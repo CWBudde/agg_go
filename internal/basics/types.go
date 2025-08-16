@@ -1,0 +1,141 @@
+// Package basics provides core types and constants for the AGG rendering library.
+// This package contains the fundamental building blocks used throughout the library.
+package basics
+
+// Basic integer types following AGG's naming convention
+type (
+	Int8   = int8
+	Int8u  = uint8
+	Int16  = int16
+	Int16u = uint16
+	Int32  = int32
+	Int32u = uint32
+	Int64  = int64
+	Int64u = uint64
+)
+
+// CoverType represents coverage values for anti-aliasing
+type CoverType = Int8u
+
+// CoordType represents coordinate values
+type CoordType = int32
+
+// Basic geometric types
+type Point[T ~int | ~int32 | ~float32 | ~float64] struct {
+	X, Y T
+}
+
+type Rect[T ~int | ~int32 | ~float32 | ~float64] struct {
+	X1, Y1, X2, Y2 T
+}
+
+type Vertex[T ~int | ~int32 | ~float32 | ~float64] struct {
+	X, Y T
+	Cmd  uint32
+}
+
+// RowInfo represents row information for rendering buffers
+type RowInfo[T any] struct {
+	X1, X2 int
+	Ptr    []T
+}
+
+// NewRowInfo creates a new RowInfo with the specified parameters
+func NewRowInfo[T any](x1, x2 int, ptr []T) RowInfo[T] {
+	return RowInfo[T]{X1: x1, X2: x2, Ptr: ptr}
+}
+
+// ConstRowInfo represents read-only row information
+type ConstRowInfo[T any] struct {
+	X1, X2 int
+	Ptr    []T
+}
+
+// NewConstRowInfo creates a new ConstRowInfo with the specified parameters
+func NewConstRowInfo[T any](x1, x2 int, ptr []T) ConstRowInfo[T] {
+	return ConstRowInfo[T]{X1: x1, X2: x2, Ptr: ptr}
+}
+
+// Utility functions for basic types
+func IMin(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func IMax(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func UMin[T ~uint | ~uint32 | ~uint8 | ~uint16](a, b T) T {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func UMax[T ~uint | ~uint32 | ~uint8 | ~uint16](a, b T) T {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+// Rectangle utility functions
+func IntersectRectangles[T ~int | ~int32 | ~float32 | ~float64](r1, r2 Rect[T]) (Rect[T], bool) {
+	result := Rect[T]{
+		X1: max(r1.X1, r2.X1),
+		Y1: max(r1.Y1, r2.Y1),
+		X2: min(r1.X2, r2.X2),
+		Y2: min(r1.Y2, r2.Y2),
+	}
+
+	if result.X1 < result.X2 && result.Y1 < result.Y2 {
+		return result, true
+	}
+	return result, false
+}
+
+func UniteRectangles[T ~int | ~int32 | ~float32 | ~float64](r1, r2 Rect[T]) Rect[T] {
+	return Rect[T]{
+		X1: min(r1.X1, r2.X1),
+		Y1: min(r1.Y1, r2.Y1),
+		X2: max(r1.X2, r2.X2),
+		Y2: max(r1.Y2, r2.Y2),
+	}
+}
+
+// IsEqualEps compares two floating point values with epsilon tolerance
+func IsEqualEps(v1, v2, epsilon float64) bool {
+	if v1 < v2 {
+		return (v2 - v1) <= epsilon
+	}
+	return (v1 - v2) <= epsilon
+}
+
+// Commonly used type aliases matching AGG's conventions
+
+// Point type aliases for common numeric types
+type (
+	PointI = Point[int]     // Integer point
+	PointF = Point[float32] // Float32 point
+	PointD = Point[float64] // Float64/double point
+)
+
+// Rect type aliases for common numeric types
+type (
+	RectI = Rect[int]     // Integer rectangle
+	RectF = Rect[float32] // Float32 rectangle
+	RectD = Rect[float64] // Float64/double rectangle
+)
+
+// Vertex type aliases for common numeric types
+type (
+	VertexI = Vertex[int]     // Integer vertex
+	VertexF = Vertex[float32] // Float32 vertex
+	VertexD = Vertex[float64] // Float64/double vertex
+)

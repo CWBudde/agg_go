@@ -8,88 +8,109 @@ This is a comprehensive checklist of files that need to be ported from the origi
 
 #### agg_basics.h - Core types, enums, path commands, geometry utilities
 
+Go files:
+- internal/basics/types.go
+- internal/basics/constants.go
+- internal/basics/path.go
+- internal/basics/math.go
+
 **Allocators (Templates → Go Generics)**
 
-- [x] pod_allocator<T> → Generic allocator interface
-- [x] obj_allocator<T> → Object allocator with constructors
+- [ ] pod_allocator<T> → Generic allocator interface
+- [ ] obj_allocator<T> → Object allocator with constructors
 
 **Basic Types**
 
-- [x] int8, int8u, int16, int16u, int32, int32u, int64, int64u type definitions
-- [x] cover_type (unsigned char)
-- [x] Enums: cover_scale_e, poly_subpixel_scale_e, filling_rule_e
-- [x] Path command enums: path_commands_e, path_flags_e
+- [ ] int8, int8u, int16, int16u, int32, int32u, int64, int64u type definitions
+- [ ] cover_type (unsigned char)
+- [ ] Enums: cover_scale_e, poly_subpixel_scale_e, filling_rule_e
+- [ ] Path command enums: path_commands_e, path_flags_e
 
 **Rounding Functions**
 
-- [x] iround(), uround(), ifloor(), ufloor(), iceil(), uceil()
-- [x] Platform-specific optimizations (FISTP, QIFIST)
+- [ ] iround(), uround(), ifloor(), ufloor(), iceil(), uceil()
+- [ ] Platform-specific optimizations (FISTP, QIFIST)
 
 **Template Structs → Go Generics**
 
 - [x] saturation<Limit> → Saturation[T] with limit parameter
 - [x] mul_one<Shift> → MulOne with shift parameter
-- [x] rect_base<T> → Rect[T] generic struct
-- [x] point_base<T> → Point[T] generic struct
-- [x] vertex_base<T> → Vertex[T] generic struct
-- [x] row_info<T> → RowInfo[T] generic struct
-- [x] const_row_info<T> → ConstRowInfo[T] generic struct
+- [ ] rect_base<T> → Rect[T] generic struct
+- [ ] point_base<T> → Point[T] generic struct
+- [ ] vertex_base<T> → Vertex[T] generic struct
+- [ ] row_info<T> → RowInfo[T] generic struct
+- [ ] const_row_info<T> → ConstRowInfo[T] generic struct
 
 **Geometry Functions**
 
-- [x] intersect_rectangles(), unite_rectangles()
-- [x] is_equal_eps() epsilon comparison
+- [ ] intersect_rectangles(), unite_rectangles()
+- [ ] is_equal_eps() epsilon comparison
 
 **Path Utility Functions**
 
-- [x] is_vertex(), is_drawing(), is_stop(), is_move_to()
-- [x] is_line_to(), is_curve(), is_curve3(), is_curve4()
-- [x] is_end_poly(), is_close(), is_next_poly()
-- [x] is_cw(), is_ccw(), is_oriented(), is_closed()
-- [x] get_close_flag(), clear_orientation(), get_orientation(), set_orientation()
+- [ ] is_vertex(), is_drawing(), is_stop(), is_move_to()
+- [ ] is_line_to(), is_curve(), is_curve3(), is_curve4()
+- [ ] is_end_poly(), is_close(), is_next_poly()
+- [ ] is_cw(), is_ccw(), is_oriented(), is_closed()
+- [ ] get_close_flag(), clear_orientation(), get_orientation(), set_orientation()
 
 **Constants**
 
-- [x] pi constant
+- [ ] pi constant
 - [x] deg2rad(), rad2deg() conversions
 
 #### agg_config.h - Configuration definitions
 
-- [x] Configuration constants (mostly compile-time in C++)
-- [x] Type overrides mechanism for Go
+Go files:
+- internal/config/config.go
+
+- [ ] Configuration constants (mostly compile-time in C++)
+- [ ] Type overrides mechanism for Go
 
 #### agg_array.h - Dynamic array implementation
 
+Go files:
+- internal/array/interfaces.go
+- internal/array/algorithms.go
+- internal/array/comparators.go
+- internal/array/pod_arrays.go
+- internal/array/pod_bvector.go
+- internal/array/block_allocator.go
+
 **POD Array Types (Templates → Go Generics)**
 
-- [x] pod_array_adaptor<T> → PodArrayAdaptor[T]
-- [x] pod_auto_array<T, Size> → PodAutoArray[T] with size
-- [x] pod_auto_vector<T, Size> → PodAutoVector[T] with size
-- [x] pod_array<T> → PodArray[T] dynamic array
-- [x] pod_vector<T> → PodVector[T] growable vector
-- [x] pod_bvector<T, S> → PodBVector[T] block vector
+- [ ] pod_array_adaptor<T> → PodArrayAdaptor[T]
+- [ ] pod_auto_array<T, Size> → PodAutoArray[T] with size
+- [ ] pod_auto_vector<T, Size> → PodAutoVector[T] with size
+- [ ] pod_array<T> → PodArray[T] dynamic array
+- [ ] pod_vector<T> → PodVector[T] growable vector
+- [ ] pod_bvector<T, S> → PodBVector[T] block vector
 
 **Block Allocator**
 
-- [x] block_allocator class → BlockAllocator struct
-- [x] allocate() with alignment support
-- [x] block management
+- [ ] block_allocator class → BlockAllocator struct
+- [ ] allocate() with alignment support
+- [ ] block management
 
 **Algorithms (Templates → Go Generics)**
 
-- [x] quick_sort<Array, Less> → QuickSort[T] with comparator
-- [x] swap_elements<T> → SwapElements[T]
-- [x] remove_duplicates<Array, Equal> → RemoveDuplicates[T]
-- [x] invert_container<Array> → InvertContainer[T]
-- [x] binary_search_pos<Array, Value, Less> → BinarySearchPos[T]
-- [x] range_adaptor<Array> → RangeAdaptor[T]
+- [ ] quick_sort<Array, Less> → QuickSort[T] with comparator
+- [ ] swap_elements<T> → SwapElements[T]
+- [ ] remove_duplicates<Array, Equal> → RemoveDuplicates[T]
+- [ ] invert_container<Array> → InvertContainer[T]
+- [ ] binary_search_pos<Array, Value, Less> → BinarySearchPos[T]
+- [ ] range_adaptor<Array> → RangeAdaptor[T]
 
 **Comparison Functions**
 
-- [x] int_less(), int_greater()
-- [x] unsigned_less(), unsigned_greater()
+- [ ] int_less(), int_greater()
+- [ ] unsigned_less(), unsigned_greater()
 
 #### agg_math.h - Mathematical functions and constants
+
+Go files:
+- internal/basics/math.go
+- internal/basics/constants.go
 
 **Constants**
 
@@ -102,21 +123,21 @@ This is a comprehensive checklist of files that need to be ported from the origi
 - [x] point_in_triangle()
 - [x] calc_distance()
 - [x] calc_sq_distance()
-- [x] calc_line_point_distance()
-- [x] calc_segment_point_u()
+- [ ] calc_line_point_distance()
+- [ ] calc_segment_point_u()
 - [x] calc_segment_point_sq_distance() (2 overloads)
 - [x] calc_intersection()
-- [x] intersection_exists()
-- [x] calc_orthogonal()
-- [x] dilate_triangle()
+- [ ] intersection_exists()
+- [ ] calc_orthogonal()
+- [ ] dilate_triangle()
 - [x] calc_triangle_area()
 - [x] calc_polygon_area<Storage>() → CalcPolygonArea[T]()
 
 **Fast Math**
 
 - [x] fast_sqrt() with lookup tables
-- [x] g_sqrt_table[1024] lookup table
-- [x] g_elder_bit_table[256] lookup table
+- [ ] g_sqrt_table[1024] lookup table
+- [ ] g_elder_bit_table[256] lookup table
 - [x] besj() Bessel function
 
 ---
@@ -125,129 +146,154 @@ This is a comprehensive checklist of files that need to be ported from the origi
 
 #### agg_color_gray.h - Grayscale color handling
 
+Go files:
+- internal/color/gray.go
+- internal/color/conversion.go
+
 **Template Types → Go Generics**
 
-- [x] gray8T<Colorspace> → Gray8[CS] generic struct
-- [x] gray16T<Colorspace> → Gray16[CS] generic struct
-- [x] gray32T<Colorspace> → Gray32[CS] generic struct
+- [ ] gray8T<Colorspace> → Gray8[CS] generic struct
+- [ ] gray16T<Colorspace> → Gray16[CS] generic struct
+- [ ] gray32T<Colorspace> → Gray32[CS] generic struct
 
 **Core Gray8 Methods**
 
-- [x] luminance(rgba) - ITU-R BT.709 calculation
-- [x] luminance(rgba8) - Optimized 8-bit version
-- [x] convert() methods between colorspaces
-- [x] convert() from/to RGBA types
-- [x] convert_from_sRGB() → ConvertFromSRGB()
-- [x] convert_to_sRGB() → ConvertToSRGB()
-- [x] make_rgba8(), make_srgba8(), make_rgba16(), make_rgba32()
-- [x] Constructors and operators
+- [ ] luminance(rgba) - ITU-R BT.709 calculation
+- [ ] luminance(rgba8) - Optimized 8-bit version
+- [ ] convert() methods between colorspaces
+- [ ] convert() from/to RGBA types
+- [ ] convert_from_sRGB() → ConvertFromSRGB()
+- [ ] convert_to_sRGB() → ConvertToSRGB()
+- [ ] make_rgba8(), make_srgba8(), make_rgba16(), make_rgba32()
+- [ ] Constructors and operators
 
 **Gray16 and Gray32 Variants**
 
-- [x] gray16 type with 16-bit precision
-- [x] gray32 type with 32-bit precision
-- [x] Conversion methods for each precision
+- [ ] gray16 type with 16-bit precision
+- [ ] gray32 type with 32-bit precision
+- [ ] Conversion methods for each precision
 
 #### agg_color_rgba.h - RGBA color handling
 
+Go files:
+- internal/color/rgba.go
+- internal/color/rgb.go
+- internal/color/conversion.go
+
 **Order Structs (Component Ordering)**
 
-- [x] order_rgb → OrderRGB constants
-- [x] order_bgr → OrderBGR constants  
-- [x] order_rgba → OrderRGBA constants
-- [x] order_argb → OrderARGB constants
-- [x] order_abgr → OrderABGR constants
-- [x] order_bgra → OrderBGRA constants
+- [ ] order_rgb → OrderRGB constants
+- [ ] order_bgr → OrderBGR constants  
+- [ ] order_rgba → OrderRGBA constants
+- [ ] order_argb → OrderARGB constants
+- [ ] order_abgr → OrderABGR constants
+- [ ] order_bgra → OrderBGRA constants
 
 **Colorspace Tags**
 
-- [x] linear struct → Linear type tag
-- [x] sRGB struct → SRGB type tag
+- [ ] linear struct → Linear type tag
+- [ ] sRGB struct → SRGB type tag
 
 **Base RGBA Type (float64)**
 
-- [x] rgba struct → RGBA base type
-- [x] clear(), transparent(), opacity() methods
-- [x] premultiply(), demultiply() methods
-- [x] gradient() interpolation
-- [x] Operators: +=, _=, +, _
-- [x] no_color() static method
-- [x] from_wavelength() static method
+- [ ] rgba struct → RGBA base type
+- [ ] clear(), transparent(), opacity() methods
+- [ ] premultiply(), demultiply() methods
+- [ ] gradient() interpolation
+- [ ] Operators: +=, _=, +, _
+- [ ] no_color() static method
+- [ ] from_wavelength() static method
 
 **Template Types → Go Generics**
 
-- [x] rgba8T<Colorspace> → RGBA8[CS] generic struct
-- [x] rgba16T<Colorspace> → RGBA16[CS] generic struct
-- [x] rgba32T<Colorspace> → RGBA32[CS] generic struct
+- [ ] rgba8T<Colorspace> → RGBA8[CS] generic struct
+- [ ] rgba16T<Colorspace> → RGBA16[CS] generic struct
+- [ ] rgba32T<Colorspace> → RGBA32[CS] generic struct
 
 **RGBA8 Core Methods**
 
-- [x] convert() between colorspaces (linear ↔ sRGB)
-- [x] convert() to/from float rgba
-- [x] premultiply(), demultiply() operations
-- [x] gradient() interpolation
-- [x] clear(), transparent() methods
-- [x] add(), subtract(), multiply() blend operations
-- [x] apply_gamma_dir(), apply_gamma_inv()
+- [ ] convert() between colorspaces (linear ↔ sRGB)
+- [ ] convert() to/from float rgba
+- [ ] premultiply(), demultiply() operations
+- [ ] gradient() interpolation
+- [ ] clear(), transparent() methods
+- [ ] add(), subtract(), multiply() blend operations
+- [ ] apply_gamma_dir(), apply_gamma_inv()
 
 **RGBA16 and RGBA32 Variants**
 
-- [x] 16-bit and 32-bit precision versions
-- [x] Corresponding conversion methods
+- [ ] 16-bit and 32-bit precision versions
+- [ ] Corresponding conversion methods
 
 **Helper Functions**
 
-- [x] rgba_pre() → RGBAPre() premultiplied constructor
-- [x] rgb_conv_rgba8() → RGBConvRGBA8()
-- [x] rgb_conv_rgba16() → RGBConvRGBA16()
+- [ ] rgba_pre() → RGBAPre() premultiplied constructor
+- [ ] rgb_conv_rgba8() → RGBConvRGBA8()
+- [ ] rgb_conv_rgba16() → RGBConvRGBA16()
 
 **sRGB Conversion Tables**
 
-- [x] sRGB_conv<T> → SRGBConv[T] conversion utilities
-- [x] Lookup tables for sRGB ↔ linear conversion
+- [ ] sRGB_conv<T> → SRGBConv[T] conversion utilities
+- [ ] Lookup tables for sRGB ↔ linear conversion
 
 #### agg_pixfmt_base.h - Base pixel format definitions
 
+Go files:
+- internal/pixfmt/base.go
+
 **Pixel Format Tags**
 
-- [x] pixfmt_gray_tag → PixFmtGrayTag
-- [x] pixfmt_rgb_tag → PixFmtRGBTag
-- [x] pixfmt_rgba_tag → PixFmtRGBATag
+- [ ] pixfmt_gray_tag → PixFmtGrayTag
+- [ ] pixfmt_rgb_tag → PixFmtRGBTag
+- [ ] pixfmt_rgba_tag → PixFmtRGBATag
 
 **Base Blender Template → Go Generic**
 
-- [x] blender_base<ColorT, Order> → BlenderBase[C, O]
-- [x] get() methods for pixel extraction
-- [x] set() methods for pixel setting
+- [ ] blender_base<ColorT, Order> → BlenderBase[C, O]
+- [ ] get() methods for pixel extraction
+- [ ] set() methods for pixel setting
 
 #### agg_pixfmt_gray.h - Grayscale pixel formats
 
+Go files:
+- internal/pixfmt/pixfmt_gray.go
+- internal/pixfmt/pixfmt_gray16.go
+- internal/pixfmt/pixfmt_gray32.go
+- internal/pixfmt/blender_gray.go
+- internal/pixfmt/blender_gray16.go
+- internal/pixfmt/blender_gray32.go
+- internal/pixfmt/gamma_gray.go
+
 **Blender Types**
 
-- [x] blender_gray<ColorT> → BlenderGray[C]
-- [x] blender_gray_pre<ColorT> → BlenderGrayPre[C]
-- [x] blend_pix() methods for both
+- [ ] blender_gray<ColorT> → BlenderGray[C]
+- [ ] blender_gray_pre<ColorT> → BlenderGrayPre[C]
+- [ ] blend_pix() methods for both
 
 **Gamma Application**
 
-- [x] apply_gamma_dir_gray<ColorT, GammaLut> → ApplyGammaDirGray[C]
-- [x] apply_gamma_inv_gray<ColorT, GammaLut> → ApplyGammaInvGray[C]
+- [ ] apply_gamma_dir_gray<ColorT, GammaLut> → ApplyGammaDirGray[C]
+- [ ] apply_gamma_inv_gray<ColorT, GammaLut> → ApplyGammaInvGray[C]
 
 **Main Pixel Format Template**
 
-- [x] pixfmt_alpha_blend_gray<Blender, RenBuf> → PixFmtAlphaBlendGray[B]
-- [x] Core pixel operations (copy_pixel, blend_pixel, etc.)
-- [x] Span operations (copy_hline, blend_hline, etc.)
-- [x] copy_from() for buffer copying
+- [ ] pixfmt_alpha_blend_gray<Blender, RenBuf> → PixFmtAlphaBlendGray[B]
+- [ ] Core pixel operations (copy_pixel, blend_pixel, etc.)
+- [ ] Span operations (copy_hline, blend_hline, etc.)
+- [ ] copy_from() for buffer copying
 
 **Concrete Types**
 
-- [x] pixfmt_gray8 → PixFmtGray8
-- [x] pixfmt_sgray8 → PixFmtSGray8
-- [x] pixfmt_gray16 → PixFmtGray16
-- [x] pixfmt_gray32 → PixFmtGray32
+- [ ] pixfmt_gray8 → PixFmtGray8
+- [ ] pixfmt_sgray8 → PixFmtSGray8
+- [ ] pixfmt_gray16 → PixFmtGray16
+- [ ] pixfmt_gray32 → PixFmtGray32
 
 #### agg_pixfmt_rgb.h - RGB pixel formats
+
+Go files:
+- internal/pixfmt/pixfmt_rgb.go
+- internal/pixfmt/blender_rgb.go
 
 **Gamma Application Classes**
 
@@ -256,25 +302,25 @@ This is a comprehensive checklist of files that need to be ported from the origi
 
 **Blender Types**
 
-- [x] blender_rgb<ColorT, Order> → BlenderRGB[C, O]
-- [x] blender_rgb_pre<ColorT, Order> → BlenderRGBPre[C, O]
-- [x] blender_rgb_gamma<ColorT, Order, Gamma> → BlenderRGBGamma[C, O]
+- [ ] blender_rgb<ColorT, Order> → BlenderRGB[C, O]
+- [ ] blender_rgb_pre<ColorT, Order> → BlenderRGBPre[C, O]
+- [ ] blender_rgb_gamma<ColorT, Order, Gamma> → BlenderRGBGamma[C, O]
 
 **Main Pixel Format Template**
 
-- [x] pixfmt_alpha_blend_rgb<Blender, RenBuf, Step, Offset>
-- [x] pixel_type nested struct → RGBPixelType
-- [x] row_data(), make_pix(), copy_pixel(), blend_pixel()
-- [x] Hline operations (copy_hline, blend_hline, etc.)
-- [x] Solid color operations (fill, blend*solid*\*)
-- [x] copy_from(), blend_from() for compositing
+- [ ] pixfmt_alpha_blend_rgb<Blender, RenBuf, Step, Offset>
+- [ ] pixel_type nested struct → RGBPixelType
+- [ ] row_data(), make_pix(), copy_pixel(), blend_pixel()
+- [ ] Hline operations (copy_hline, blend_hline, etc.)
+- [ ] Solid color operations (fill, blend*solid*\*)
+- [ ] copy_from(), blend_from() for compositing
 
 **Concrete RGB24 Types**
 
-- [x] pixfmt_rgb24 → PixFmtRGB24
-- [x] pixfmt_bgr24 → PixFmtBGR24  
-- [x] pixfmt_srgb24 → PixFmtSRGB24
-- [x] pixfmt_sbgr24 → PixFmtSBGR24
+- [ ] pixfmt_rgb24 → PixFmtRGB24
+- [ ] pixfmt_bgr24 → PixFmtBGR24  
+- [ ] pixfmt_srgb24 → PixFmtSRGB24
+- [ ] pixfmt_sbgr24 → PixFmtSBGR24
 
 **RGB48 Types (16-bit per channel)**
 
@@ -299,25 +345,30 @@ This is a comprehensive checklist of files that need to be ported from the origi
 
 #### agg_pixfmt_rgba.h - RGBA pixel formats
 
+Go files:
+- internal/pixfmt/pixfmt_rgba.go
+- internal/pixfmt/blender_rgba.go
+- internal/pixfmt/gamma_rgba.go
+
 **Blender Types**
 
-- [x] blender_rgba<ColorT, Order> → BlenderRGBA[C, O]
-- [x] blender_rgba_pre<ColorT, Order> → BlenderRGBAPre[C, O]
-- [x] blender_rgba_plain<ColorT, Order> → BlenderRGBAPlain[C, O]
+- [ ] blender_rgba<ColorT, Order> → BlenderRGBA[C, O]
+- [ ] blender_rgba_pre<ColorT, Order> → BlenderRGBAPre[C, O]
+- [ ] blender_rgba_plain<ColorT, Order> → BlenderRGBAPlain[C, O]
 - [ ] Composite blenders (multiply, screen, overlay, etc.)
 
 **Main RGBA Pixel Format**
 
-- [x] pixfmt_alpha_blend_rgba<Blender, RenBuf>
-- [x] Full alpha channel support
-- [x] Premultiplied/non-premultiplied operations
+- [ ] pixfmt_alpha_blend_rgba<Blender, RenBuf>
+- [ ] Full alpha channel support
+- [ ] Premultiplied/non-premultiplied operations
 
 **Concrete RGBA32 Types**
 
-- [x] pixfmt_rgba32 → PixFmtRGBA32
-- [x] pixfmt_argb32 → PixFmtARGB32
-- [x] pixfmt_abgr32 → PixFmtABGR32
-- [x] pixfmt_bgra32 → PixFmtBGRA32
+- [ ] pixfmt_rgba32 → PixFmtRGBA32
+- [ ] pixfmt_argb32 → PixFmtARGB32
+- [ ] pixfmt_abgr32 → PixFmtABGR32
+- [ ] pixfmt_bgra32 → PixFmtBGRA32
 
 **RGBA64 Types (16-bit per channel)**
 
@@ -347,68 +398,76 @@ This is a comprehensive checklist of files that need to be ported from the origi
 
 #### agg_rendering_buffer.h
 
+Go files:
+- internal/buffer/rendering_buffer.go
+- internal/buffer/rendering_buffer_dynarow.go
+- internal/config/config.go (type selection)
+
 **row_accessor<T> template class:**
 
-- [x] Default constructor
-- [x] Parameterized constructor (buf, width, height, stride)
-- [x] attach() method
-- [x] buf() accessor methods (const and non-const)
-- [x] width() accessor method
-- [x] height() accessor method
-- [x] stride() accessor method
-- [x] stride_abs() accessor method
-- [x] row_ptr(int, int y, unsigned) method
-- [x] row_ptr(int y) method (const and non-const)
-- [x] row() method returning row_data
-- [x] copy_from() template method
-- [x] clear() method
-- [x] Private member variables (m_buf, m_start, m_width, m_height, m_stride)
+- [ ] Default constructor
+- [ ] Parameterized constructor (buf, width, height, stride)
+- [ ] attach() method
+- [ ] buf() accessor methods (const and non-const)
+- [ ] width() accessor method
+- [ ] height() accessor method
+- [ ] stride() accessor method
+- [ ] stride_abs() accessor method
+- [ ] row_ptr(int, int y, unsigned) method
+- [ ] row_ptr(int y) method (const and non-const)
+- [ ] row() method returning row_data
+- [ ] copy_from() template method
+- [ ] clear() method
+- [ ] Private member variables (m_buf, m_start, m_width, m_height, m_stride)
 
 **row_ptr_cache<T> template class:**
 
-- [x] Default constructor
-- [x] Parameterized constructor (buf, width, height, stride)
-- [x] attach() method with row pointer caching
-- [x] buf() accessor methods (const and non-const)
-- [x] width() accessor method
-- [x] height() accessor method
-- [x] stride() accessor method
-- [x] stride_abs() accessor method
-- [x] row_ptr(int, int y, unsigned) method
-- [x] row_ptr(int y) method (const and non-const)
-- [x] row() method returning row_data
-- [x] rows() method returning row pointer array
-- [x] copy_from() template method
-- [x] clear() method
-- [x] Private member variables (m_buf, m_rows, m_width, m_height, m_stride)
+- [ ] Default constructor
+- [ ] Parameterized constructor (buf, width, height, stride)
+- [ ] attach() method with row pointer caching
+- [ ] buf() accessor methods (const and non-const)
+- [ ] width() accessor method
+- [ ] height() accessor method
+- [ ] stride() accessor method
+- [ ] stride_abs() accessor method
+- [ ] row_ptr(int, int y, unsigned) method
+- [ ] row_ptr(int y) method (const and non-const)
+- [ ] row() method returning row_data
+- [ ] rows() method returning row pointer array
+- [ ] copy_from() template method
+- [ ] clear() method
+- [ ] Private member variables (m_buf, m_rows, m_width, m_height, m_stride)
 
 **Type definitions:**
 
-- [x] rendering_buffer typedef (configurable between row_accessor and row_ptr_cache)
+- [ ] rendering_buffer typedef (configurable between row_accessor and row_ptr_cache)
 
 #### agg_rendering_buffer_dynarow.h
 
+Go files:
+- internal/buffer/rendering_buffer_dynarow.go
+
 **rendering_buffer_dynarow class:**
 
-- [x] Destructor
-- [x] Default constructor
-- [x] Parameterized constructor (width, height, byte_width)
-- [x] init() method with memory management
-- [x] width() accessor method
-- [x] height() accessor method
-- [x] byte_width() accessor method
-- [x] row_ptr(int x, int y, unsigned len) method with dynamic allocation
-- [x] row_ptr(int y) const method
-- [x] row_ptr(int y) non-const method
-- [x] row(int y) method returning row_data
-- [x] Private member variables (m_rows, m_width, m_height, m_byte_width)
-- [x] Copy constructor and assignment operator (prohibited)
+- [ ] Destructor
+- [ ] Default constructor
+- [ ] Parameterized constructor (width, height, byte_width)
+- [ ] init() method with memory management
+- [ ] width() accessor method
+- [ ] height() accessor method
+- [ ] byte_width() accessor method
+- [ ] row_ptr(int x, int y, unsigned len) method with dynamic allocation
+- [ ] row_ptr(int y) const method
+- [ ] row_ptr(int y) non-const method
+- [ ] row(int y) method returning row_data
+- [ ] Private member variables (m_rows, m_width, m_height, m_byte_width)
+- [ ] Copy constructor and assignment operator (prohibited)
 
 **Template adaptation considerations:**
 
-- [x] Design Go generics approach for template types
-- [x] Consider interface-based design for type flexibility
-- [x] Implement concrete types for common use cases (uint8)
+- [ ] Design Go generics approach for template types
+- [ ] Consider interface-based design for type flexibility
+- [ ] Implement concrete types for common use cases (uint8)
 
 ---
 
@@ -416,64 +475,70 @@ This is a comprehensive checklist of files that need to be ported from the origi
 
 #### agg_scanline_bin.h
 
+Go files:
+- internal/scanline/scanline_bin.go
+
 **scanline_bin class:**
 
-- [x] span struct (x, len members)
-- [x] coord_type typedef
-- [x] const_iterator typedef
-- [x] Default constructor
-- [x] reset(min_x, max_x) method
-- [x] add_cell(x, cover) method
-- [x] add_span(x, len, cover) method
-- [x] add_cells(x, len, covers) method
-- [x] finalize(y) method
-- [x] reset_spans() method
-- [x] y() accessor method
-- [x] num_spans() accessor method
-- [x] begin() accessor method
-- [x] Private members (m_last_x, m_y, m_spans, m_cur_span)
-- [x] Copy constructor and assignment operator (prohibited)
+- [ ] span struct (x, len members)
+- [ ] coord_type typedef
+- [ ] const_iterator typedef
+- [ ] Default constructor
+- [ ] reset(min_x, max_x) method
+- [ ] add_cell(x, cover) method
+- [ ] add_span(x, len, cover) method
+- [ ] add_cells(x, len, covers) method
+- [ ] finalize(y) method
+- [ ] reset_spans() method
+- [ ] y() accessor method
+- [ ] num_spans() accessor method
+- [ ] begin() accessor method
+- [ ] Private members (m_last_x, m_y, m_spans, m_cur_span)
+- [ ] Copy constructor and assignment operator (prohibited)
 
 **scanline32_bin class:**
 
-- [x] span struct with constructors
-- [x] coord_type typedef
-- [x] span_array_type typedef
-- [x] const_iterator nested class
-- [x] Default constructor
-- [x] reset(min_x, max_x) method
-- [x] add_cell(x, cover) method
-- [x] add_span(x, len, cover) method
-- [x] add_cells(x, len, covers) method
-- [x] finalize(y) method
-- [x] reset_spans() method
-- [x] y() accessor method
-- [x] num_spans() accessor method
-- [x] begin() accessor method
-- [x] Private members (m_max_len, m_last_x, m_y, m_spans)
-- [x] Copy constructor and assignment operator (prohibited)
+- [ ] span struct with constructors
+- [ ] coord_type typedef
+- [ ] span_array_type typedef
+- [ ] const_iterator nested class
+- [ ] Default constructor
+- [ ] reset(min_x, max_x) method
+- [ ] add_cell(x, cover) method
+- [ ] add_span(x, len, cover) method
+- [ ] add_cells(x, len, covers) method
+- [ ] finalize(y) method
+- [ ] reset_spans() method
+- [ ] y() accessor method
+- [ ] num_spans() accessor method
+- [ ] begin() accessor method
+- [ ] Private members (m_max_len, m_last_x, m_y, m_spans)
+- [ ] Copy constructor and assignment operator (prohibited)
 
 #### agg_scanline_p.h
 
+Go files:
+- internal/scanline/scanline_p8.go
+
 **scanline_p8 class:**
 
-- [x] self_type typedef
-- [x] cover_type typedef (int8u)
-- [x] coord_type typedef (int16)
-- [x] span struct (x, len, covers pointer)
-- [x] iterator and const_iterator typedefs
-- [x] Default constructor
-- [x] reset(min_x, max_x) method with memory allocation
-- [x] add_cell(x, cover) method
-- [x] add_cells(x, len, covers) method with memcpy
-- [x] add_span(x, len, cover) method for solid spans
-- [x] finalize(y) method
-- [x] reset_spans() method
-- [x] y() accessor method
-- [x] num_spans() accessor method
-- [x] begin() accessor method
-- [x] Private members (m_last_x, m_y, m_covers, m_cover_ptr, m_spans, m_cur_span)
-- [x] Copy constructor and assignment operator (prohibited)
+- [ ] self_type typedef
+- [ ] cover_type typedef (int8u)
+- [ ] coord_type typedef (int16)
+- [ ] span struct (x, len, covers pointer)
+- [ ] iterator and const_iterator typedefs
+- [ ] Default constructor
+- [ ] reset(min_x, max_x) method with memory allocation
+- [ ] add_cell(x, cover) method
+- [ ] add_cells(x, len, covers) method with memcpy
+- [ ] add_span(x, len, cover) method for solid spans
+- [ ] finalize(y) method
+- [ ] reset_spans() method
+- [ ] y() accessor method
+- [ ] num_spans() accessor method
+- [ ] begin() accessor method
+- [ ] Private members (m_last_x, m_y, m_covers, m_cover_ptr, m_spans, m_cur_span)
+- [ ] Copy constructor and assignment operator (prohibited)
 
 **scanline32_p8 class:**
 
@@ -500,22 +565,22 @@ This is a comprehensive checklist of files that need to be ported from the origi
 
 **scanline_u8 class:**
 
-- [x] self_type typedef
-- [x] cover_type typedef (int8u)
-- [x] coord_type typedef (int16)
-- [x] span struct (x, len, covers array pointer)
-- [x] iterator and const_iterator typedefs
-- [x] Default constructor
-- [x] reset(min_x, max_x) method
-- [x] add_cell(x, cover) method
-- [x] add_cells(x, len, covers) method
-- [x] add_span(x, len, cover) method
-- [x] finalize(y) method
-- [x] reset_spans() method
-- [x] y() accessor method
-- [x] num_spans() accessor method
-- [x] begin() accessor method
-- [x] Private members (m_min_x, m_last_x, m_y, m_covers, m_spans, m_cur_span)
+- [ ] self_type typedef
+- [ ] cover_type typedef (int8u)
+- [ ] coord_type typedef (int16)
+- [ ] span struct (x, len, covers array pointer)
+- [ ] iterator and const_iterator typedefs
+- [ ] Default constructor
+- [ ] reset(min_x, max_x) method
+- [ ] add_cell(x, cover) method
+- [ ] add_cells(x, len, covers) method
+- [ ] add_span(x, len, cover) method
+- [ ] finalize(y) method
+- [ ] reset_spans() method
+- [ ] y() accessor method
+- [ ] num_spans() accessor method
+- [ ] begin() accessor method
+- [ ] Private members (m_min_x, m_last_x, m_y, m_covers, m_spans, m_cur_span)
 
 **scanline32_u8 class:**
 
@@ -605,65 +670,65 @@ This is a comprehensive checklist of files that need to be ported from the origi
 
 **rasterizer_cells_aa<Cell> template class:**
 
-- [x] cell_block_scale_e enum (cell_block_shift, cell_block_size, cell_block_mask, cell_block_pool)
-- [x] sorted_y struct (start, num members)
-- [x] cell_type typedef
-- [x] self_type typedef
-- [x] Destructor with block memory cleanup
-- [x] Constructor with cell_block_limit parameter
-- [x] reset() method
-- [x] style(style_cell) method
-- [x] line(x1, y1, x2, y2) method for line rasterization
-- [x] min_x() accessor method
-- [x] min_y() accessor method
-- [x] max_x() accessor method
-- [x] max_y() accessor method
-- [x] sort_cells() method
-- [x] total_cells() accessor method
-- [x] scanline_num_cells(y) method
-- [x] scanline_cells(y) method
-- [x] sorted() accessor method
-- [x] set_curr_cell(x, y) private method
-- [x] add_curr_cell() private method
-- [x] render_hline() private method
-- [x] allocate_block() private method
-- [x] Private members (m_num_blocks, m_max_blocks, m_curr_block, m_num_cells, etc.)
-- [x] Copy constructor and assignment operator (prohibited)
+- [ ] cell_block_scale_e enum (cell_block_shift, cell_block_size, cell_block_mask, cell_block_pool)
+- [ ] sorted_y struct (start, num members)
+- [ ] cell_type typedef
+- [ ] self_type typedef
+- [ ] Destructor with block memory cleanup
+- [ ] Constructor with cell_block_limit parameter
+- [ ] reset() method
+- [ ] style(style_cell) method
+- [ ] line(x1, y1, x2, y2) method for line rasterization
+- [ ] min_x() accessor method
+- [ ] min_y() accessor method
+- [ ] max_x() accessor method
+- [ ] max_y() accessor method
+- [ ] sort_cells() method
+- [ ] total_cells() accessor method
+- [ ] scanline_num_cells(y) method
+- [ ] scanline_cells(y) method
+- [ ] sorted() accessor method
+- [ ] set_curr_cell(x, y) private method
+- [ ] add_curr_cell() private method
+- [ ] render_hline() private method
+- [ ] allocate_block() private method
+- [ ] Private members (m_num_blocks, m_max_blocks, m_curr_block, m_num_cells, etc.)
+- [ ] Copy constructor and assignment operator (prohibited)
 
 #### agg_rasterizer_scanline_aa.h
 
 **rasterizer_scanline_aa<Clip> template class:**
 
-- [x] status enum (status_initial, status_move_to, status_line_to, status_closed)
-- [x] clip_type typedef
-- [x] conv_type typedef
-- [x] coord_type typedef
-- [x] aa_scale_e enum (aa_shift, aa_scale, aa_mask, aa_scale2, aa_mask2)
-- [x] Default constructor with cell_block_limit
-- [x] Template constructor with gamma function
-- [x] reset() method
-- [x] reset_clipping() method
-- [x] clip_box(x1, y1, x2, y2) method
-- [x] filling_rule(filling_rule) method
-- [x] auto_close(flag) method
-- [x] gamma() template method for gamma correction
-- [x] apply_gamma(cover) method
-- [x] move_to(x, y) method (integer coordinates)
-- [x] line_to(x, y) method (integer coordinates)
-- [x] move_to_d(x, y) method (double coordinates)
-- [x] line_to_d(x, y) method (double coordinates)
-- [x] close_polygon() method
-- [x] add_path() template method
-- [x] add_vertex(x, y, cmd) method
-- [x] edge(x1, y1, x2, y2) method
-- [x] edge_d(x1, y1, x2, y2) method
-- [x] sort() method
-- [x] rewind_scanlines() method
-- [x] calculate_alpha() method
-- [x] sweep_scanline() template method
-- [x] navigate_scanline(y) method
-- [x] hit_test(tx, ty) method
-- [x] Private members (m_outline, m_clipper, m_filling_rule, m_gamma, etc.)
+- [ ] status enum (status_initial, status_move_to, status_line_to, status_closed)
+- [ ] clip_type typedef
+- [ ] conv_type typedef
+- [ ] coord_type typedef
+- [ ] aa_scale_e enum (aa_shift, aa_scale, aa_mask, aa_scale2, aa_mask2)
+- [ ] Default constructor with cell_block_limit
+- [ ] Template constructor with gamma function
+- [ ] reset() method
+- [ ] reset_clipping() method
+- [ ] clip_box(x1, y1, x2, y2) method
+- [ ] filling_rule(filling_rule) method
+- [ ] auto_close(flag) method
+- [ ] gamma() template method for gamma correction
+- [ ] apply_gamma(cover) method
+- [ ] move_to(x, y) method (integer coordinates)
+- [ ] line_to(x, y) method (integer coordinates)
+- [ ] move_to_d(x, y) method (double coordinates)
+- [ ] line_to_d(x, y) method (double coordinates)
+- [ ] close_polygon() method
+- [ ] add_path() template method
+- [ ] add_vertex(x, y, cmd) method
+- [ ] edge(x1, y1, x2, y2) method
+- [ ] edge_d(x1, y1, x2, y2) method
+- [ ] sort() method
+- [ ] rewind_scanlines() method
+- [ ] calculate_alpha() method
+- [ ] sweep_scanline() template method
+- [ ] navigate_scanline(y) method
+- [ ] hit_test(tx, ty) method
+- [ ] Private members (m_outline, m_clipper, m_filling_rule, m_gamma, etc.)
 
 #### agg_rasterizer_scanline_aa_nogamma.h
 
@@ -800,155 +865,155 @@ This is a comprehensive checklist of files that need to be ported from the origi
 
 **Template Class renderer_base<PixelFormat>**
 
-- [x] pixfmt_type, color_type, row_data typedefs
-- [x] Default constructor
-- [x] Parameterized constructor with pixel format
-- [x] attach() method for pixel format attachment
+- [ ] pixfmt_type, color_type, row_data typedefs
+- [ ] Default constructor
+- [ ] Parameterized constructor with pixel format
+- [ ] attach() method for pixel format attachment
 
 **Pixel Format Access**
 
-- [x] ren() const method - pixel format accessor
-- [x] ren() non-const method - pixel format accessor
-- [x] width() const method
-- [x] height() const method
+- [ ] ren() const method - pixel format accessor
+- [ ] ren() non-const method - pixel format accessor
+- [ ] width() const method
+- [ ] height() const method
 
 **Clipping Operations**
 
-- [x] clip_box(x1, y1, x2, y2) method with bounds checking
-- [x] reset_clipping(visibility) method
-- [x] clip_box_naked(x1, y1, x2, y2) method - no bounds checking
-- [x] inbox(x, y) const method - point-in-clip test
+- [ ] clip_box(x1, y1, x2, y2) method with bounds checking
+- [ ] reset_clipping(visibility) method
+- [ ] clip_box_naked(x1, y1, x2, y2) method - no bounds checking
+- [ ] inbox(x, y) const method - point-in-clip test
 
 **Clipping Accessors**
 
-- [x] clip_box() const method
-- [x] xmin(), ymin(), xmax(), ymax() accessors
-- [x] bounding_clip_box() const method
-- [x] bounding_xmin(), bounding_ymin(), bounding_xmax(), bounding_ymax() accessors
+- [ ] clip_box() const method
+- [ ] xmin(), ymin(), xmax(), ymax() accessors
+- [ ] bounding_clip_box() const method
+- [ ] bounding_xmin(), bounding_ymin(), bounding_xmax(), bounding_ymax() accessors
 
 **Buffer Operations**
 
-- [x] clear(color) method - clear entire buffer
-- [x] fill(color) method - fill with blending
+- [ ] clear(color) method - clear entire buffer
+- [ ] fill(color) method - fill with blending
 
 **Pixel Operations**
 
-- [x] copy_pixel(x, y, color) method
-- [x] blend_pixel(x, y, color, cover) method
-- [x] pixel(x, y) const method - get pixel color
+- [ ] copy_pixel(x, y, color) method
+- [ ] blend_pixel(x, y, color, cover) method
+- [ ] pixel(x, y) const method - get pixel color
 
 **Line Operations**
 
-- [x] copy_hline(x1, y, x2, color) method
-- [x] copy_vline(x, y1, y2, color) method
-- [x] blend_hline(x1, y, x2, color, cover) method
-- [x] blend_vline(x, y1, y2, color, cover) method
+- [ ] copy_hline(x1, y, x2, color) method
+- [ ] copy_vline(x, y1, y2, color) method
+- [ ] blend_hline(x1, y, x2, color, cover) method
+- [ ] blend_vline(x, y1, y2, color, cover) method
 
 **Rectangle Operations**
 
-- [x] copy_bar(x1, y1, x2, y2, color) method
-- [x] blend_bar(x1, y1, x2, y2, color, cover) method
+- [ ] copy_bar(x1, y1, x2, y2, color) method
+- [ ] blend_bar(x1, y1, x2, y2, color, cover) method
 
 **Span Operations**
 
-- [x] blend_solid_hspan(x, y, len, color, covers) method
-- [x] blend_solid_vspan(x, y, len, color, covers) method
-- [x] copy_color_hspan(x, y, len, colors) method
-- [x] copy_color_vspan(x, y, len, colors) method
-- [x] blend_color_hspan(x, y, len, colors, covers, cover) method
-- [x] blend_color_vspan(x, y, len, colors, covers, cover) method
+- [ ] blend_solid_hspan(x, y, len, color, covers) method
+- [ ] blend_solid_vspan(x, y, len, color, covers) method
+- [ ] copy_color_hspan(x, y, len, colors) method
+- [ ] copy_color_vspan(x, y, len, colors) method
+- [ ] blend_color_hspan(x, y, len, colors, covers, cover) method
+- [ ] blend_color_vspan(x, y, len, colors, covers, cover) method
 
 **Buffer Copying**
 
-- [x] copy_from() template method for buffer-to-buffer copying
+- [ ] copy_from() template method for buffer-to-buffer copying
 
 #### agg_renderer_scanline.h - Scanline rendering functions and classes
 
 **Free Functions**
 
-- [x] render_scanline_aa_solid<Scanline, BaseRenderer, ColorT>() function
-- [x] render_scanlines_aa_solid<Rasterizer, Scanline, BaseRenderer, ColorT>() function
-- [x] render_scanline_aa<Scanline, BaseRenderer, SpanAllocator, SpanGenerator>() function
-- [x] render_scanlines_aa<Rasterizer, Scanline, BaseRenderer, SpanAllocator, SpanGenerator>() function
-- [x] render_scanline_bin_solid<Scanline, BaseRenderer, ColorT>() function
-- [x] render_scanlines_bin_solid<Rasterizer, Scanline, BaseRenderer, ColorT>() function
+- [ ] render_scanline_aa_solid<Scanline, BaseRenderer, ColorT>() function
+- [ ] render_scanlines_aa_solid<Rasterizer, Scanline, BaseRenderer, ColorT>() function
+- [ ] render_scanline_aa<Scanline, BaseRenderer, SpanAllocator, SpanGenerator>() function
+- [ ] render_scanlines_aa<Rasterizer, Scanline, BaseRenderer, SpanAllocator, SpanGenerator>() function
+- [ ] render_scanline_bin_solid<Scanline, BaseRenderer, ColorT>() function
+- [ ] render_scanlines_bin_solid<Rasterizer, Scanline, BaseRenderer, ColorT>() function
 
 **Template Class renderer_scanline_aa_solid<BaseRenderer>**
 
-- [x] base_ren_type, color_type typedefs
-- [x] Constructor with base renderer
-- [x] attach(base_ren) method
-- [x] color(color) setter method
-- [x] color() const getter method
-- [x] prepare() method
-- [x] render<Scanline>(scanline) template method
+- [ ] base_ren_type, color_type typedefs
+- [ ] Constructor with base renderer
+- [ ] attach(base_ren) method
+- [ ] color(color) setter method
+- [ ] color() const getter method
+- [ ] prepare() method
+- [ ] render<Scanline>(scanline) template method
 
 **Template Class renderer_scanline_aa<BaseRenderer, SpanAllocator, SpanGenerator>**
 
-- [x] base_ren_type, alloc_type, span_gen_type typedefs
-- [x] Constructor with base renderer
-- [x] attach(base_ren, span_allocator, span_generator) method
-- [x] prepare() method
-- [x] render<Scanline>(scanline) template method
+- [ ] base_ren_type, alloc_type, span_gen_type typedefs
+- [ ] Constructor with base renderer
+- [ ] attach(base_ren, span_allocator, span_generator) method
+- [ ] prepare() method
+- [ ] render<Scanline>(scanline) template method
 
 **Template Class renderer_scanline_bin_solid<BaseRenderer>**
 
-- [x] base_ren_type, color_type typedefs
-- [x] Constructor and attach method
-- [x] color management methods
-- [x] prepare() method
-- [x] render<Scanline>(scanline) template method for binary scanlines
+- [ ] base_ren_type, color_type typedefs
+- [ ] Constructor and attach method
+- [ ] color management methods
+- [ ] prepare() method
+- [ ] render<Scanline>(scanline) template method for binary scanlines
 
 **Template Class renderer_scanline_bin<BaseRenderer, SpanAllocator, SpanGenerator>**
 
-- [x] Similar structure to renderer_scanline_aa but for binary scanlines
-- [x] Base renderer and span generator management
-- [x] Binary scanline rendering
+- [ ] Similar structure to renderer_scanline_aa but for binary scanlines
+- [ ] Base renderer and span generator management
+- [ ] Binary scanline rendering
 
 #### agg_renderer_primitives.h - Primitive drawing operations
 
 **Template Class renderer_primitives<BaseRenderer>**
 
-- [x] base_ren_type, color_type typedefs
-- [x] Constructor with base renderer
-- [x] attach(base_ren) method
+- [ ] base_ren_type, color_type typedefs
+- [ ] Constructor with base renderer
+- [ ] attach(base_ren) method
 
 **Color Management**
 
-- [x] fill_color(color) setter method
-- [x] line_color(color) setter method
-- [x] fill_color() const getter method
-- [x] line_color() const getter method
+- [ ] fill_color(color) setter method
+- [ ] line_color(color) setter method
+- [ ] fill_color() const getter method
+- [ ] line_color() const getter method
 
 **Rectangle Operations**
 
-- [x] rectangle(x1, y1, x2, y2) method - outlined rectangle
-- [x] solid_rectangle(x1, y1, x2, y2) method - filled rectangle
-- [x] outlined_rectangle(x1, y1, x2, y2) method - outlined with different line color
+- [ ] rectangle(x1, y1, x2, y2) method - outlined rectangle
+- [ ] solid_rectangle(x1, y1, x2, y2) method - filled rectangle
+- [ ] outlined_rectangle(x1, y1, x2, y2) method - outlined with different line color
 
 **Ellipse Operations**
 
-- [x] ellipse(x, y, rx, ry) method - outlined ellipse with Bresenham algorithm
-- [x] solid_ellipse(x, y, rx, ry) method - filled ellipse
-- [x] outlined_ellipse(x, y, rx, ry) method - outlined with different line color
+- [ ] ellipse(x, y, rx, ry) method - outlined ellipse with Bresenham algorithm
+- [ ] solid_ellipse(x, y, rx, ry) method - filled ellipse
+- [ ] outlined_ellipse(x, y, rx, ry) method - outlined with different line color
 
 **Line Drawing**
 
-- [x] line(x1, y1, x2, y2, last) method using DDA algorithm
-- [x] move_to(x, y) method for path building
-- [x] line_to(x, y, last) method for path building
+- [ ] line(x1, y1, x2, y2, last) method using DDA algorithm
+- [ ] move_to(x, y) method for path building
+- [ ] line_to(x, y, last) method for path building
 
 **Accessors**
 
-- [x] ren() const method - base renderer accessor
-- [ ] rbuf() const method - rendering buffer accessor (not needed in Go implementation)
+- [ ] ren() const method - base renderer accessor
+- [ ] rbuf() const method - rendering buffer accessor
 
 **Private Members**
 
-- [x] m_ren pointer to base renderer
-- [x] m_fill_color member
-- [x] m_line_color member
-- [x] m_curr_x, m_curr_y current position members
+- [ ] m_ren pointer to base renderer
+- [ ] m_fill_color member
+- [ ] m_line_color member
+- [ ] m_curr_x, m_curr_y current position members
 
 #### agg_renderer_markers.h - Marker shape rendering
 
@@ -1176,18 +1241,18 @@ This is a comprehensive checklist of files that need to be ported from the origi
 
 **ellipse_bresenham_interpolator class**
 
-- [x] Constructor: `ellipse_bresenham_interpolator(int rx, int ry)`
-- [x] dx() const getter method
-- [x] dy() const getter method
-- [x] operator++() increment operator for pixel stepping (Inc() method in Go)
+- [ ] Constructor: `ellipse_bresenham_interpolator(int rx, int ry)`
+- [ ] dx() const getter method
+- [ ] dy() const getter method
+- [ ] operator++() increment operator for pixel stepping
 
 **Member Variables**
 
-- [x] Radius squared: m_rx2, m_ry2 (int)
-- [x] Double radius squared: m_two_rx2, m_two_ry2 (int)
-- [x] Current deltas: m_dx, m_dy (int)
-- [x] Increments: m_inc_x, m_inc_y (int)
-- [x] Current function value: m_cur_f (int)
+- [ ] Radius squared: m_rx2, m_ry2 (int)
+- [ ] Double radius squared: m_two_rx2, m_two_ry2 (int)
+- [ ] Current deltas: m_dx, m_dy (int)
+- [ ] Increments: m_inc_x, m_inc_y (int)
+- [ ] Current function value: m_cur_f (int)
 
 #### agg_rounded_rect.h - Rounded rectangle generation
 
@@ -1343,9 +1408,9 @@ This is a comprehensive checklist of files that need to be ported from the origi
 
 ### Spans and Gradients
 
-- [x] agg_span_allocator.h - Span allocator
+- [ ] agg_span_allocator.h - Span allocator
 - [ ] agg_span_converter.h - Span converter
-- [x] agg_span_solid.h - Solid color span
+- [ ] agg_span_solid.h - Solid color span
 - [ ] agg_span_gradient.h - Gradient span
 - [ ] agg_span_gradient_alpha.h - Alpha gradient span
 - [ ] agg_span_gradient_contour.h - Contour gradient span
@@ -1393,7 +1458,7 @@ This is a comprehensive checklist of files that need to be ported from the origi
 - [ ] agg_blur.h - Blur effects
 - [ ] agg_bounding_rect.h - Bounding rectangle calculation
 - [ ] agg_clip_liang_barsky.h - Liang-Barsky clipping algorithm
-- [x] agg_dda_line.h - DDA line algorithm (line_bresenham_interpolator and dda2_line_interpolator implemented)
+- [ ] agg_dda_line.h - DDA line algorithm
 - [ ] agg_gamma_functions.h - Gamma correction functions
 - [ ] agg_gamma_lut.h - Gamma lookup table
 - [ ] agg_gradient_lut.h - Gradient lookup table

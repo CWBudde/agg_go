@@ -1,0 +1,6 @@
+# Cache
+.gocache/
+
+# Test coverage
+.coverage/
+
