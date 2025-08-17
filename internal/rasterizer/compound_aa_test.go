@@ -41,26 +41,26 @@ func (m *MockCompoundClipper) LineTo(outline *RasterizerCellsAA[*CellStyleAA], x
 	// Convert to subpixel coordinates
 	x2 := basics.IRound(x * basics.PolySubpixelScale)
 	y2 := basics.IRound(y * basics.PolySubpixelScale)
-	
+
 	// Debug: print coordinates (disabled)
 	// fmt.Printf("LineTo: (%f,%f) -> (%d,%d) from (%d,%d)\n", x, y, x2, y2, m.lastX, m.lastY)
-	
+
 	// Simple mock: just add a cell at the destination for testing
 	// The real implementation would use proper line rasterization
 	activeOutline := outline
 	if activeOutline == nil {
 		activeOutline = m.outline
 	}
-	
+
 	if activeOutline != nil {
 		// Just add a simple cell at the destination to test compound functionality
 		ex := x2 >> basics.PolySubpixelShift
 		ey := y2 >> basics.PolySubpixelShift
 		activeOutline.setCurrCell(ex, ey)
 		activeOutline.currCell.SetCoverage(128, 256) // Add some coverage
-		activeOutline.addCurrCell() // Actually add the cell
+		activeOutline.addCurrCell()                  // Actually add the cell
 	}
-	
+
 	// Update position
 	m.lastX = x2
 	m.lastY = y2
@@ -287,13 +287,13 @@ func TestRasterizerCompoundAACalculateAlpha(t *testing.T) {
 	if alpha0 != 0 {
 		t.Errorf("CalculateAlpha(0) = %d, want 0", alpha0)
 	}
-	
+
 	// Test that positive area produces positive alpha
 	alpha1 := rasterizer.CalculateAlpha(1000)
 	if alpha1 == 0 {
 		t.Error("CalculateAlpha(1000) should produce non-zero alpha")
 	}
-	
+
 	// Test that larger area produces larger or equal alpha
 	alpha2 := rasterizer.CalculateAlpha(10000)
 	if alpha2 < alpha1 {
@@ -338,7 +338,7 @@ func TestRasterizerCompoundAALayerOrdering(t *testing.T) {
 
 	// Sort first to ensure we have sortable data
 	rasterizer.Sort()
-	
+
 	for _, order := range orders {
 		rasterizer.LayerOrder(order)
 		if !rasterizer.RewindScanlines() {
@@ -387,7 +387,7 @@ func TestRasterizerCompoundAAHitTest(t *testing.T) {
 		}()
 		return rasterizer.HitTest(50, 50)
 	}()
-	
+
 	// For testing purposes, we'll just verify the hit test doesn't crash
 	// The actual hit results depend on proper line rasterization
 	t.Logf("Hit test inside rectangle: %v", hitInside)

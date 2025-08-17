@@ -751,31 +751,31 @@ This is a comprehensive checklist of files that need to be ported from the origi
 
 **Coordinate conversion structs:**
 
-- [ ] ras_conv_int struct (coord_type typedef, mul_div, xi, yi, upscale, downscale methods)
-- [ ] ras_conv_int_sat struct (saturated integer conversion)
-- [ ] ras_conv_int_3x struct (3x integer conversion for sub-pixel rendering)
-- [ ] ras_conv_dbl struct (double precision conversion)
-- [ ] ras_conv_dbl_3x struct (3x double conversion)
+- [x] ras_conv_int struct (coord_type typedef, mul_div, xi, yi, upscale, downscale methods)
+- [x] ras_conv_int_sat struct (saturated integer conversion)
+- [x] ras_conv_int_3x struct (3x integer conversion for sub-pixel rendering)
+- [x] ras_conv_dbl struct (double precision conversion)
+- [x] ras_conv_dbl_3x struct (3x double conversion)
 
 **Clipping template classes:**
 
-- [ ] rasterizer_sl_no_clip<Conv> template class
-- [ ] rasterizer_sl_clip_int<Conv> template class
-- [ ] rasterizer_sl_clip_int_sat<Conv> template class
-- [ ] rasterizer_sl_clip_int_3x<Conv> template class
-- [ ] rasterizer_sl_clip_dbl<Conv> template class
-- [ ] rasterizer_sl_clip_dbl_3x<Conv> template class
+- [x] rasterizer_sl_no_clip<Conv> template class
+- [x] rasterizer_sl_clip_int<Conv> template class
+- [x] rasterizer_sl_clip_int_sat<Conv> template class
+- [x] rasterizer_sl_clip_int_3x<Conv> template class
+- [x] rasterizer_sl_clip_dbl<Conv> template class
+- [x] rasterizer_sl_clip_dbl_3x<Conv> template class
 
 **Each clipping class includes:**
 
-- [ ] conv_type typedef
-- [ ] coord_type typedef
-- [ ] Constructor with clipping bounds
-- [ ] reset_clipping() method
-- [ ] clip_box() method
-- [ ] move_to() method
-- [ ] line_to() method
-- [ ] Private clipping implementation
+- [x] conv_type typedef
+- [x] coord_type typedef
+- [x] Constructor with clipping bounds
+- [x] reset_clipping() method
+- [x] clip_box() method
+- [x] move_to() method
+- [x] line_to() method
+- [x] Private clipping implementation
 
 #### agg_rasterizer_outline.h
 

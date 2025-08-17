@@ -7,6 +7,15 @@ import (
 // Maximum coordinate value for polygon clipping
 const PolyMaxCoord = (1 << 30) - 1
 
+// ConverterInterface defines the interface for coordinate conversion
+type ConverterInterface interface {
+	MulDiv(a, b, c float64) float64
+	Xi(v any) int
+	Yi(v any) int
+	Upscale(v float64) any
+	Downscale(v int) any
+}
+
 // RasConvInt provides integer coordinate conversion for rasterization.
 // Equivalent to AGG's ras_conv_int struct.
 type RasConvInt struct{}
@@ -15,71 +24,125 @@ type RasConvInt struct{}
 type CoordType = int
 
 // MulDiv performs multiplication and division with rounding
-func (RasConvInt) MulDiv(a, b, c float64) int {
-	return basics.IRound(a * b / c)
+func (RasConvInt) MulDiv(a, b, c float64) float64 {
+	return float64(basics.IRound(a * b / c))
 }
 
 // Xi converts input X coordinate (no transformation for integer converter)
-func (RasConvInt) Xi(v int) int { return v }
+func (RasConvInt) Xi(v any) int {
+	switch val := v.(type) {
+	case int:
+		return val
+	case float64:
+		return basics.IRound(val)
+	default:
+		return 0
+	}
+}
 
 // Yi converts input Y coordinate (no transformation for integer converter)
-func (RasConvInt) Yi(v int) int { return v }
+func (RasConvInt) Yi(v any) int {
+	switch val := v.(type) {
+	case int:
+		return val
+	case float64:
+		return basics.IRound(val)
+	default:
+		return 0
+	}
+}
 
 // Upscale converts double coordinate to subpixel integer coordinate
-func (RasConvInt) Upscale(v float64) int {
+func (RasConvInt) Upscale(v float64) any {
 	return basics.IRound(v * basics.PolySubpixelScale)
 }
 
 // Downscale converts subpixel integer coordinate back to integer (no-op)
-func (RasConvInt) Downscale(v int) int { return v }
+func (RasConvInt) Downscale(v int) any { return v }
 
 // RasConvIntSat provides saturated integer coordinate conversion.
 // Equivalent to AGG's ras_conv_int_sat struct.
 type RasConvIntSat struct{}
 
 // MulDiv performs multiplication and division with saturation
-func (RasConvIntSat) MulDiv(a, b, c float64) int {
+func (RasConvIntSat) MulDiv(a, b, c float64) float64 {
 	sat := basics.NewSaturation[int](PolyMaxCoord)
-	return sat.IRound(a * b / c)
+	return float64(sat.IRound(a * b / c))
 }
 
 // Xi converts input X coordinate (no transformation)
-func (RasConvIntSat) Xi(v int) int { return v }
+func (RasConvIntSat) Xi(v any) int {
+	switch val := v.(type) {
+	case int:
+		return val
+	case float64:
+		return basics.IRound(val)
+	default:
+		return 0
+	}
+}
 
 // Yi converts input Y coordinate (no transformation)
-func (RasConvIntSat) Yi(v int) int { return v }
+func (RasConvIntSat) Yi(v any) int {
+	switch val := v.(type) {
+	case int:
+		return val
+	case float64:
+		return basics.IRound(val)
+	default:
+		return 0
+	}
+}
 
 // Upscale converts double coordinate to subpixel integer with saturation
-func (RasConvIntSat) Upscale(v float64) int {
+func (RasConvIntSat) Upscale(v float64) any {
 	sat := basics.NewSaturation[int](PolyMaxCoord)
 	return sat.IRound(v * basics.PolySubpixelScale)
 }
 
 // Downscale converts subpixel integer coordinate back to integer (no-op)
-func (RasConvIntSat) Downscale(v int) int { return v }
+func (RasConvIntSat) Downscale(v int) any { return v }
 
 // RasConvInt3x provides 3x integer coordinate conversion for sub-pixel rendering.
 // Equivalent to AGG's ras_conv_int_3x struct.
 type RasConvInt3x struct{}
 
 // MulDiv performs multiplication and division with rounding
-func (RasConvInt3x) MulDiv(a, b, c float64) int {
-	return basics.IRound(a * b / c)
+func (RasConvInt3x) MulDiv(a, b, c float64) float64 {
+	return float64(basics.IRound(a * b / c))
 }
 
 // Xi converts input X coordinate with 3x scaling
-func (RasConvInt3x) Xi(v int) int { return v * 3 }
+func (RasConvInt3x) Xi(v any) int {
+	switch val := v.(type) {
+	case int:
+		return val * 3
+	case float64:
+		return basics.IRound(val) * 3
+	default:
+		return 0
+	}
+}
 
 // Yi converts input Y coordinate (no transformation)
-func (RasConvInt3x) Yi(v int) int { return v }
+func (RasConvInt3x) Yi(v any) int {
+	switch val := v.(type) {
+	case int:
+		return val
+	case float64:
+		return basics.IRound(val)
+	default:
+		return 0
+	}
+}
 
 // Upscale converts double coordinate to subpixel integer coordinate
-func (RasConvInt3x) Upscale(v float64) int {
+func (RasConvInt3x) Upscale(v float64) any {
 	return basics.IRound(v * basics.PolySubpixelScale)
 }
 
 // Downscale converts subpixel integer coordinate back to integer (no-op)
-func (RasConvInt3x) Downscale(v int) int { return v }
+func (RasConvInt3x) Downscale(v int) any { return v }
 
 // RasConvDbl provides double precision coordinate conversion.
 // Equivalent to AGG's ras_conv_dbl struct.
@@ -94,20 +157,34 @@ func (RasConvDbl) MulDiv(a, b, c float64) float64 {
 }
 
 // Xi converts input X coordinate to subpixel integer
-func (RasConvDbl) Xi(v float64) int {
-	return basics.IRound(v * basics.PolySubpixelScale)
+func (RasConvDbl) Xi(v any) int {
+	switch val := v.(type) {
+	case float64:
+		return basics.IRound(val * basics.PolySubpixelScale)
+	case int:
+		return basics.IRound(float64(val) * basics.PolySubpixelScale)
+	default:
+		return 0
+	}
 }
 
 // Yi converts input Y coordinate to subpixel integer
-func (RasConvDbl) Yi(v float64) int {
-	return basics.IRound(v * basics.PolySubpixelScale)
+func (RasConvDbl) Yi(v any) int {
+	switch val := v.(type) {
+	case float64:
+		return basics.IRound(val * basics.PolySubpixelScale)
+	case int:
+		return basics.IRound(float64(val) * basics.PolySubpixelScale)
+	default:
+		return 0
+	}
 }
 
 // Upscale for double converter is pass-through
-func (RasConvDbl) Upscale(v float64) float64 { return v }
+func (RasConvDbl) Upscale(v float64) any { return v }
 
 // Downscale converts subpixel integer back to double coordinate
-func (RasConvDbl) Downscale(v int) float64 {
+func (RasConvDbl) Downscale(v int) any {
 	return float64(v) / basics.PolySubpixelScale
 }
 
@@ -121,21 +198,40 @@ func (RasConvDbl3x) MulDiv(a, b, c float64) float64 {
 }
 
 // Xi converts input X coordinate to subpixel integer with 3x scaling
-func (RasConvDbl3x) Xi(v float64) int {
-	return basics.IRound(v * basics.PolySubpixelScale * 3)
+func (RasConvDbl3x) Xi(v any) int {
+	switch val := v.(type) {
+	case float64:
+		return basics.IRound(val * basics.PolySubpixelScale * 3)
+	case int:
+		return basics.IRound(float64(val) * basics.PolySubpixelScale * 3)
+	default:
+		return 0
+	}
 }
 
 // Yi converts input Y coordinate to subpixel integer
-func (RasConvDbl3x) Yi(v float64) int {
-	return basics.IRound(v * basics.PolySubpixelScale)
+func (RasConvDbl3x) Yi(v any) int {
+	switch val := v.(type) {
+	case float64:
+		return basics.IRound(val * basics.PolySubpixelScale)
+	case int:
+		return basics.IRound(float64(val) * basics.PolySubpixelScale)
+	default:
+		return 0
+	}
 }
 
 // Upscale for double converter is pass-through
-func (RasConvDbl3x) Upscale(v float64) float64 { return v }
+func (RasConvDbl3x) Upscale(v float64) any { return v }
 
 // Downscale converts subpixel integer back to double coordinate
-func (RasConvDbl3x) Downscale(v int) float64 {
+func (RasConvDbl3x) Downscale(v int) any {
 	return float64(v) / basics.PolySubpixelScale
+}
+
+// RasterizerInterface defines the interface that rasterizers must implement
+type RasterizerInterface interface {
+	Line(x1, y1, x2, y2 int)
 }
 
 // ClipInterface defines the interface for clipping implementations
@@ -146,159 +242,379 @@ type ClipInterface interface {
 	LineTo(x, y float64)
 }
 
-// RasterizerSlNoClip provides a no-clipping implementation.
-// Equivalent to AGG's rasterizer_sl_no_clip<Conv> template class.
-type RasterizerSlNoClip[Conv any] struct {
-	outline *RasterizerCellsAA[*CellAA] // The underlying rasterizer
+
+// RasterizerSlClip implements the scanline clipping rasterizer.
+// Equivalent to AGG's rasterizer_sl_clip<Conv> template class.
+type RasterizerSlClip[Conv any] struct {
+	clipBox     basics.Rect[float64]
+	x1, y1      float64
+	f1          uint32
+	clipping    bool
+	rasterizer  RasterizerInterface  // Internal rasterizer for line drawing
 }
 
-// NewRasterizerSlNoClip creates a new no-clip rasterizer
-func NewRasterizerSlNoClip[Conv any](outline *RasterizerCellsAA[*CellAA]) *RasterizerSlNoClip[Conv] {
-	return &RasterizerSlNoClip[Conv]{
-		outline: outline,
-	}
-}
-
-// ResetClipping does nothing for no-clip implementation
-func (r *RasterizerSlNoClip[Conv]) ResetClipping() {
-	// No-op
-}
-
-// ClipBox does nothing for no-clip implementation
-func (r *RasterizerSlNoClip[Conv]) ClipBox(x1, y1, x2, y2 float64) {
-	// No-op
-}
-
-// MoveTo converts coordinates and calls the outline
-func (r *RasterizerSlNoClip[Conv]) MoveTo(x, y float64) {
-	conv := *new(Conv)
-
-	// Use type assertion to call the appropriate conversion method
-	switch c := any(conv).(type) {
-	case RasConvInt:
-		r.outline.setCurrCell(c.Upscale(x)>>basics.PolySubpixelShift, c.Upscale(y)>>basics.PolySubpixelShift)
-	case RasConvDbl:
-		r.outline.setCurrCell(c.Xi(x)>>basics.PolySubpixelShift, c.Yi(y)>>basics.PolySubpixelShift)
-	}
-}
-
-// LineTo converts coordinates and draws a line
-func (r *RasterizerSlNoClip[Conv]) LineTo(x, y float64) {
-	conv := *new(Conv)
-
-	// Use type assertion to call the appropriate conversion method
-	switch c := any(conv).(type) {
-	case RasConvInt:
-		x1, y1 := c.Upscale(x), c.Upscale(y)
-		r.outline.Line(0, 0, x1, y1) // Would need to track previous position
-	case RasConvDbl:
-		x1, y1 := c.Xi(x), c.Yi(y)
-		r.outline.Line(0, 0, x1, y1) // Would need to track previous position
-	}
-}
-
-// RasterizerSlClipInt provides integer clipping implementation.
-// Equivalent to AGG's rasterizer_sl_clip_int<Conv> template class.
-type RasterizerSlClipInt[Conv any] struct {
-	outline  *RasterizerCellsAA[*CellAA]
-	clipBox  basics.RectI
-	x1, y1   int
-	f1       uint32
-	clipping bool
-}
-
-// NewRasterizerSlClipInt creates a new integer clipping rasterizer
-func NewRasterizerSlClipInt[Conv any](outline *RasterizerCellsAA[*CellAA]) *RasterizerSlClipInt[Conv] {
-	return &RasterizerSlClipInt[Conv]{
-		outline:  outline,
-		clipBox:  basics.RectI{X1: 0, Y1: 0, X2: 0, Y2: 0},
-		clipping: false,
+// NewRasterizerSlClip creates a new scanline clipping rasterizer
+func NewRasterizerSlClip[Conv any](rasterizer RasterizerInterface) *RasterizerSlClip[Conv] {
+	return &RasterizerSlClip[Conv]{
+		clipBox:    basics.Rect[float64]{X1: 0, Y1: 0, X2: 0, Y2: 0},
+		clipping:   false,
+		rasterizer: rasterizer,
 	}
 }
 
 // ResetClipping disables clipping
-func (r *RasterizerSlClipInt[Conv]) ResetClipping() {
+func (r *RasterizerSlClip[Conv]) ResetClipping() {
 	r.clipping = false
 }
 
-// ClipBox sets the clipping rectangle
-func (r *RasterizerSlClipInt[Conv]) ClipBox(x1, y1, x2, y2 float64) {
-	r.clipBox = basics.RectI{
-		X1: basics.IRound(x1),
-		Y1: basics.IRound(y1),
-		X2: basics.IRound(x2),
-		Y2: basics.IRound(y2),
+// ClipBox sets the clipping rectangle and enables clipping
+func (r *RasterizerSlClip[Conv]) ClipBox(x1, y1, x2, y2 float64) {
+	r.clipBox = basics.Rect[float64]{X1: x1, Y1: y1, X2: x2, Y2: y2}
+	// Normalize the rectangle
+	if r.clipBox.X1 > r.clipBox.X2 {
+		r.clipBox.X1, r.clipBox.X2 = r.clipBox.X2, r.clipBox.X1
+	}
+	if r.clipBox.Y1 > r.clipBox.Y2 {
+		r.clipBox.Y1, r.clipBox.Y2 = r.clipBox.Y2, r.clipBox.Y1
 	}
 	r.clipping = true
 }
 
-// MoveTo sets the current position with clipping
-func (r *RasterizerSlClipInt[Conv]) MoveTo(x, y float64) {
-	conv := *new(Conv)
-
-	switch c := any(conv).(type) {
-	case RasConvInt:
-		r.x1, r.y1 = c.Upscale(x), c.Upscale(y)
-	case RasConvDbl:
-		r.x1, r.y1 = c.Xi(x), c.Yi(y)
-	}
-
+// MoveTo sets the current position
+func (r *RasterizerSlClip[Conv]) MoveTo(x1, y1 float64) {
+	r.x1 = x1
+	r.y1 = y1
 	if r.clipping {
-		r.f1 = r.clippingFlags(r.x1, r.y1)
+		r.f1 = basics.ClippingFlags(x1, y1, r.clipBox)
 	}
 }
 
-// LineTo draws a line to the specified position with clipping
-func (r *RasterizerSlClipInt[Conv]) LineTo(x, y float64) {
+// lineClipY implements Y-axis clipping for lines
+func (r *RasterizerSlClip[Conv]) lineClipY(
+	ras RasterizerInterface,
+	x1, y1, x2, y2 float64,
+	f1, f2 uint32,
+) {
 	conv := *new(Conv)
 
-	var x2, y2 int
-	switch c := any(conv).(type) {
-	case RasConvInt:
-		x2, y2 = c.Upscale(x), c.Upscale(y)
-	case RasConvDbl:
-		x2, y2 = c.Xi(x), c.Yi(y)
+	f1 &= 10 // Keep only Y flags (8 + 2)
+	f2 &= 10
+
+	if (f1 | f2) == 0 {
+		// Fully visible
+		switch c := any(conv).(type) {
+		case RasConvInt:
+			ras.Line(c.Xi(x1), c.Yi(y1), c.Xi(x2), c.Yi(y2))
+		case RasConvIntSat:
+			ras.Line(c.Xi(x1), c.Yi(y1), c.Xi(x2), c.Yi(y2))
+		case RasConvInt3x:
+			ras.Line(c.Xi(x1), c.Yi(y1), c.Xi(x2), c.Yi(y2))
+		case RasConvDbl:
+			ras.Line(c.Xi(x1), c.Yi(y1), c.Xi(x2), c.Yi(y2))
+		case RasConvDbl3x:
+			ras.Line(c.Xi(x1), c.Yi(y1), c.Xi(x2), c.Yi(y2))
+		}
+		return
 	}
 
+	if f1 == f2 {
+		// Invisible by Y
+		return
+	}
+
+	tx1, ty1 := x1, y1
+	tx2, ty2 := x2, y2
+
+	if f1&8 != 0 { // y1 < clip.y1
+		switch c := any(conv).(type) {
+		case RasConvInt:
+			tx1 = x1 + c.MulDiv(r.clipBox.Y1-y1, x2-x1, y2-y1)
+		case RasConvIntSat:
+			tx1 = x1 + c.MulDiv(r.clipBox.Y1-y1, x2-x1, y2-y1)
+		case RasConvInt3x:
+			tx1 = x1 + c.MulDiv(r.clipBox.Y1-y1, x2-x1, y2-y1)
+		case RasConvDbl:
+			tx1 = x1 + c.MulDiv(r.clipBox.Y1-y1, x2-x1, y2-y1)
+		case RasConvDbl3x:
+			tx1 = x1 + c.MulDiv(r.clipBox.Y1-y1, x2-x1, y2-y1)
+		}
+		ty1 = r.clipBox.Y1
+	}
+
+	if f1&2 != 0 { // y1 > clip.y2
+		switch c := any(conv).(type) {
+		case RasConvInt:
+			tx1 = x1 + c.MulDiv(r.clipBox.Y2-y1, x2-x1, y2-y1)
+		case RasConvIntSat:
+			tx1 = x1 + c.MulDiv(r.clipBox.Y2-y1, x2-x1, y2-y1)
+		case RasConvInt3x:
+			tx1 = x1 + c.MulDiv(r.clipBox.Y2-y1, x2-x1, y2-y1)
+		case RasConvDbl:
+			tx1 = x1 + c.MulDiv(r.clipBox.Y2-y1, x2-x1, y2-y1)
+		case RasConvDbl3x:
+			tx1 = x1 + c.MulDiv(r.clipBox.Y2-y1, x2-x1, y2-y1)
+		}
+		ty1 = r.clipBox.Y2
+	}
+
+	if f2&8 != 0 { // y2 < clip.y1
+		switch c := any(conv).(type) {
+		case RasConvInt:
+			tx2 = x1 + c.MulDiv(r.clipBox.Y1-y1, x2-x1, y2-y1)
+		case RasConvIntSat:
+			tx2 = x1 + c.MulDiv(r.clipBox.Y1-y1, x2-x1, y2-y1)
+		case RasConvInt3x:
+			tx2 = x1 + c.MulDiv(r.clipBox.Y1-y1, x2-x1, y2-y1)
+		case RasConvDbl:
+			tx2 = x1 + c.MulDiv(r.clipBox.Y1-y1, x2-x1, y2-y1)
+		case RasConvDbl3x:
+			tx2 = x1 + c.MulDiv(r.clipBox.Y1-y1, x2-x1, y2-y1)
+		}
+		ty2 = r.clipBox.Y1
+	}
+
+	if f2&2 != 0 { // y2 > clip.y2
+		switch c := any(conv).(type) {
+		case RasConvInt:
+			tx2 = x1 + c.MulDiv(r.clipBox.Y2-y1, x2-x1, y2-y1)
+		case RasConvIntSat:
+			tx2 = x1 + c.MulDiv(r.clipBox.Y2-y1, x2-x1, y2-y1)
+		case RasConvInt3x:
+			tx2 = x1 + c.MulDiv(r.clipBox.Y2-y1, x2-x1, y2-y1)
+		case RasConvDbl:
+			tx2 = x1 + c.MulDiv(r.clipBox.Y2-y1, x2-x1, y2-y1)
+		case RasConvDbl3x:
+			tx2 = x1 + c.MulDiv(r.clipBox.Y2-y1, x2-x1, y2-y1)
+		}
+		ty2 = r.clipBox.Y2
+	}
+
+	switch c := any(conv).(type) {
+	case RasConvInt:
+		ras.Line(c.Xi(tx1), c.Yi(ty1), c.Xi(tx2), c.Yi(ty2))
+	case RasConvIntSat:
+		ras.Line(c.Xi(tx1), c.Yi(ty1), c.Xi(tx2), c.Yi(ty2))
+	case RasConvInt3x:
+		ras.Line(c.Xi(tx1), c.Yi(ty1), c.Xi(tx2), c.Yi(ty2))
+	case RasConvDbl:
+		ras.Line(c.Xi(tx1), c.Yi(ty1), c.Xi(tx2), c.Yi(ty2))
+	case RasConvDbl3x:
+		ras.Line(c.Xi(tx1), c.Yi(ty1), c.Xi(tx2), c.Yi(ty2))
+	}
+}
+
+// LineTo draws a line from the current position to (x2, y2) with clipping
+func (r *RasterizerSlClip[Conv]) LineTo(x2, y2 float64) {
+	ras := r.rasterizer
+	conv := *new(Conv)
+
 	if r.clipping {
-		f2 := r.clippingFlags(x2, y2)
-		if (r.f1 & f2) == 0 {
-			if r.f1 != 0 {
-				// Line crosses clipping boundary - would implement clipping here
-				r.lineClipY(r.x1, r.y1, x2, y2, r.f1, f2)
-			} else {
-				r.outline.Line(r.x1, r.y1, x2, y2)
+		f2 := basics.ClippingFlags(x2, y2, r.clipBox)
+
+		if (r.f1&10) == (f2&10) && (r.f1&10) != 0 {
+			// Invisible by Y
+			r.x1 = x2
+			r.y1 = y2
+			r.f1 = f2
+			return
+		}
+
+		x1, y1 := r.x1, r.y1
+		f1 := r.f1
+		var y3, y4 float64
+		var f3, f4 uint32
+
+		// Handle X clipping cases
+		switch ((f1 & 5) << 1) | (f2 & 5) {
+		case 0: // Visible by X
+			r.lineClipY(ras, x1, y1, x2, y2, f1, f2)
+
+		case 1: // x2 > clip.x2
+			switch c := any(conv).(type) {
+			case RasConvInt:
+				y3 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
+			case RasConvIntSat:
+				y3 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
+			case RasConvInt3x:
+				y3 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
+			case RasConvDbl:
+				y3 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
+			case RasConvDbl3x:
+				y3 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
 			}
+			f3 = basics.ClippingFlagsY(y3, r.clipBox)
+			r.lineClipY(ras, x1, y1, r.clipBox.X2, y3, f1, f3)
+			r.lineClipY(ras, r.clipBox.X2, y3, r.clipBox.X2, y2, f3, f2)
+
+		case 2: // x1 > clip.x2
+			switch c := any(conv).(type) {
+			case RasConvInt:
+				y3 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
+			case RasConvIntSat:
+				y3 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
+			case RasConvInt3x:
+				y3 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
+			case RasConvDbl:
+				y3 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
+			case RasConvDbl3x:
+				y3 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
+			}
+			f3 = basics.ClippingFlagsY(y3, r.clipBox)
+			r.lineClipY(ras, r.clipBox.X2, y1, r.clipBox.X2, y3, f1, f3)
+			r.lineClipY(ras, r.clipBox.X2, y3, x2, y2, f3, f2)
+
+		case 3: // x1 > clip.x2 && x2 > clip.x2
+			r.lineClipY(ras, r.clipBox.X2, y1, r.clipBox.X2, y2, f1, f2)
+
+		case 4: // x2 < clip.x1
+			switch c := any(conv).(type) {
+			case RasConvInt:
+				y3 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
+			case RasConvIntSat:
+				y3 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
+			case RasConvInt3x:
+				y3 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
+			case RasConvDbl:
+				y3 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
+			case RasConvDbl3x:
+				y3 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
+			}
+			f3 = basics.ClippingFlagsY(y3, r.clipBox)
+			r.lineClipY(ras, x1, y1, r.clipBox.X1, y3, f1, f3)
+			r.lineClipY(ras, r.clipBox.X1, y3, r.clipBox.X1, y2, f3, f2)
+
+		case 6: // x1 > clip.x2 && x2 < clip.x1
+			switch c := any(conv).(type) {
+			case RasConvInt:
+				y3 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
+				y4 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
+			case RasConvIntSat:
+				y3 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
+				y4 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
+			case RasConvInt3x:
+				y3 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
+				y4 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
+			case RasConvDbl:
+				y3 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
+				y4 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
+			case RasConvDbl3x:
+				y3 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
+				y4 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
+			}
+			f3 = basics.ClippingFlagsY(y3, r.clipBox)
+			f4 = basics.ClippingFlagsY(y4, r.clipBox)
+			r.lineClipY(ras, r.clipBox.X2, y1, r.clipBox.X2, y3, f1, f3)
+			r.lineClipY(ras, r.clipBox.X2, y3, r.clipBox.X1, y4, f3, f4)
+			r.lineClipY(ras, r.clipBox.X1, y4, r.clipBox.X1, y2, f4, f2)
+
+		case 8: // x1 < clip.x1
+			switch c := any(conv).(type) {
+			case RasConvInt:
+				y3 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
+			case RasConvIntSat:
+				y3 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
+			case RasConvInt3x:
+				y3 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
+			case RasConvDbl:
+				y3 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
+			case RasConvDbl3x:
+				y3 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
+			}
+			f3 = basics.ClippingFlagsY(y3, r.clipBox)
+			r.lineClipY(ras, r.clipBox.X1, y1, r.clipBox.X1, y3, f1, f3)
+			r.lineClipY(ras, r.clipBox.X1, y3, x2, y2, f3, f2)
+
+		case 9: // x1 < clip.x1 && x2 > clip.x2
+			switch c := any(conv).(type) {
+			case RasConvInt:
+				y3 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
+				y4 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
+			case RasConvIntSat:
+				y3 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
+				y4 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
+			case RasConvInt3x:
+				y3 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
+				y4 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
+			case RasConvDbl:
+				y3 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
+				y4 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
+			case RasConvDbl3x:
+				y3 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
+				y4 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
+			}
+			f3 = basics.ClippingFlagsY(y3, r.clipBox)
+			f4 = basics.ClippingFlagsY(y4, r.clipBox)
+			r.lineClipY(ras, r.clipBox.X1, y1, r.clipBox.X1, y3, f1, f3)
+			r.lineClipY(ras, r.clipBox.X1, y3, r.clipBox.X2, y4, f3, f4)
+			r.lineClipY(ras, r.clipBox.X2, y4, r.clipBox.X2, y2, f4, f2)
+
+		case 12: // x1 < clip.x1 && x2 < clip.x1
+			r.lineClipY(ras, r.clipBox.X1, y1, r.clipBox.X1, y2, f1, f2)
 		}
 		r.f1 = f2
 	} else {
-		r.outline.Line(r.x1, r.y1, x2, y2)
+		switch c := any(conv).(type) {
+		case RasConvInt:
+			ras.Line(c.Xi(r.x1), c.Yi(r.y1), c.Xi(x2), c.Yi(y2))
+		case RasConvIntSat:
+			ras.Line(c.Xi(r.x1), c.Yi(r.y1), c.Xi(x2), c.Yi(y2))
+		case RasConvInt3x:
+			ras.Line(c.Xi(r.x1), c.Yi(r.y1), c.Xi(x2), c.Yi(y2))
+		case RasConvDbl:
+			ras.Line(c.Xi(r.x1), c.Yi(r.y1), c.Xi(x2), c.Yi(y2))
+		case RasConvDbl3x:
+			ras.Line(c.Xi(r.x1), c.Yi(r.y1), c.Xi(x2), c.Yi(y2))
+		}
 	}
-
-	r.x1, r.y1 = x2, y2
+	r.x1 = x2
+	r.y1 = y2
 }
 
-// clippingFlags returns clipping flags for a point
-func (r *RasterizerSlClipInt[Conv]) clippingFlags(x, y int) uint32 {
-	var f uint32 = 0
-	if x < r.clipBox.X1<<basics.PolySubpixelShift {
-		f |= 1
-	}
-	if y < r.clipBox.Y1<<basics.PolySubpixelShift {
-		f |= 2
-	}
-	if x > r.clipBox.X2<<basics.PolySubpixelShift {
-		f |= 4
-	}
-	if y > r.clipBox.Y2<<basics.PolySubpixelShift {
-		f |= 8
-	}
-	return f
+// RasterizerSlNoClip provides a no-clipping implementation.
+// Equivalent to AGG's rasterizer_sl_no_clip class.
+type RasterizerSlNoClip struct {
+	x1, y1     float64
+	rasterizer RasterizerInterface
 }
 
-// lineClipY implements Y clipping for lines (simplified version)
-func (r *RasterizerSlClipInt[Conv]) lineClipY(x1, y1, x2, y2 int, f1, f2 uint32) {
-	// Simplified clipping implementation
-	// Full implementation would use Liang-Barsky or Cohen-Sutherland clipping
-	r.outline.Line(x1, y1, x2, y2)
+// NewRasterizerSlNoClip creates a new no-clip rasterizer
+func NewRasterizerSlNoClip(rasterizer RasterizerInterface) *RasterizerSlNoClip {
+	return &RasterizerSlNoClip{
+		x1:         0,
+		y1:         0,
+		rasterizer: rasterizer,
+	}
 }
+
+// ResetClipping does nothing for no-clip implementation
+func (r *RasterizerSlNoClip) ResetClipping() {
+	// No-op
+}
+
+// ClipBox does nothing for no-clip implementation
+func (r *RasterizerSlNoClip) ClipBox(x1, y1, x2, y2 float64) {
+	// No-op
+}
+
+// MoveTo sets the current position
+func (r *RasterizerSlNoClip) MoveTo(x1, y1 float64) {
+	r.x1 = x1
+	r.y1 = y1
+}
+
+// LineTo draws a line from the current position to (x2, y2)
+func (r *RasterizerSlNoClip) LineTo(x2, y2 float64) {
+	// For simplicity, just convert to integer coordinates
+	x1i, y1i := int(r.x1), int(r.y1)
+	x2i, y2i := int(x2), int(y2)
+	r.rasterizer.Line(x1i, y1i, x2i, y2i)
+	r.x1 = x2
+	r.y1 = y2
+}
+
+// Type aliases for convenience
+type RasterizerSlClipInt = *RasterizerSlClip[RasConvInt]
+type RasterizerSlClipIntSat = *RasterizerSlClip[RasConvIntSat]
+type RasterizerSlClipInt3x = *RasterizerSlClip[RasConvInt3x]
+type RasterizerSlClipDbl = *RasterizerSlClip[RasConvDbl]
+type RasterizerSlClipDbl3x = *RasterizerSlClip[RasConvDbl3x]
