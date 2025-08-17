@@ -179,6 +179,17 @@ func (bv *PodBVector[T]) PushBack(val T) {
 	bv.Add(val)
 }
 
+// Last returns a reference to the last element in the vector.
+// Returns a pointer to the last element, or nil if the vector is empty.
+func (bv *PodBVector[T]) Last() *T {
+	if bv.size == 0 {
+		return nil
+	}
+	blockIdx := (bv.size - 1) >> bv.scale.Shift
+	elemIdx := (bv.size - 1) & bv.scale.Mask
+	return &bv.blocks[blockIdx][elemIdx]
+}
+
 // ModifyLast removes the last element and adds a new one.
 func (bv *PodBVector[T]) ModifyLast(val T) {
 	if bv.size > 0 {

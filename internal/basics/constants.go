@@ -26,6 +26,15 @@ const (
 	FillEvenOdd
 )
 
+// Layer order enumeration for compound rasterization
+type LayerOrder int
+
+const (
+	LayerUnsorted LayerOrder = iota // Unsorted layers
+	LayerDirect                     // Direct layer order
+	LayerInverse                    // Inverse layer order
+)
+
 // Mathematical constants
 const (
 	Pi      = math.Pi

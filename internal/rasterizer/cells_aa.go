@@ -110,9 +110,18 @@ func NewRasterizerCellsAA[Cell CellInterface](cellBlockLimit uint32) *Rasterizer
 		sorted:         false,
 	}
 
-	// Initialize cells using interface instead of directly
-	r.styleCell = *new(Cell)
-	r.currCell = *new(Cell)
+	// Initialize cells properly for both value and pointer types
+	var dummy Cell
+	switch any(dummy).(type) {
+	case *CellStyleAA:
+		// For pointer types, create new instances
+		r.styleCell = any(&CellStyleAA{}).(Cell)
+		r.currCell = any(&CellStyleAA{}).(Cell)
+	default:
+		// For value types, use zero value
+		r.styleCell = *new(Cell)
+		r.currCell = *new(Cell)
+	}
 	r.styleCell.Initial()
 	r.currCell.Initial()
 	return r

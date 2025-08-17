@@ -494,24 +494,24 @@ This is a comprehensive checklist of files that need to be ported from the origi
 
 **scanline32_p8 class:**
 
-- [ ] self_type typedef
-- [ ] cover_type typedef (int8u)
-- [ ] coord_type typedef (int32)
-- [ ] span struct with constructors
-- [ ] span_array_type typedef
-- [ ] const_iterator nested class
-- [ ] Default constructor
-- [ ] reset(min_x, max_x) method
-- [ ] add_cell(x, cover) method
-- [ ] add_cells(x, len, covers) method
-- [ ] add_span(x, len, cover) method
-- [ ] finalize(y) method
-- [ ] reset_spans() method
-- [ ] y() accessor method
-- [ ] num_spans() accessor method
-- [ ] begin() accessor method
-- [ ] Private members for 32-bit coordinate handling
-- [ ] Copy constructor and assignment operator (prohibited)
+- [x] self_type typedef → Scanline32P8
+- [x] cover_type typedef (int8u) → CoverType
+- [x] coord_type typedef (int32) → Coord32Type
+- [x] span struct with constructors → Span32P8
+- [x] span_array_type typedef → PodArray[Span32P8]
+- [x] const_iterator nested class → Go slice iteration
+- [x] Default constructor → NewScanline32P8()
+- [x] reset(min_x, max_x) method → Reset()
+- [x] add_cell(x, cover) method → AddCell()
+- [x] add_cells(x, len, covers) method → AddCells()
+- [x] add_span(x, len, cover) method → AddSpan()
+- [x] finalize(y) method → Finalize()
+- [x] reset_spans() method → ResetSpans()
+- [x] y() accessor method → Y()
+- [x] num_spans() accessor method → NumSpans()
+- [x] begin() accessor method → Begin()/Spans()
+- [x] Private members for 32-bit coordinate handling
+- [x] Copy constructor and assignment operator (prohibited)
 
 #### agg_scanline_u.h
 
@@ -536,83 +536,90 @@ This is a comprehensive checklist of files that need to be ported from the origi
 
 **scanline32_u8 class:**
 
-- [ ] Similar structure adapted for 32-bit coordinates
-- [ ] 32-bit typedefs and member variables
-- [ ] All corresponding methods adapted for larger coordinate space
+- [x] Similar structure adapted for 32-bit coordinates
+- [x] 32-bit typedefs and member variables
+- [x] All corresponding methods adapted for larger coordinate space
 
 #### agg_scanline_storage_aa.h
 
 **scanline_cell_storage<T> template class:**
 
-- [ ] extra_span struct (len, ptr members)
-- [ ] value_type typedef
-- [ ] Destructor with memory cleanup
-- [ ] Default constructor
-- [ ] Copy constructor with deep copy
-- [ ] Assignment operator with proper cleanup
-- [ ] remove_all() method
-- [ ] add_cells(cells, num_cells) method with dynamic allocation
-- [ ] operator[] const overload for cell access
-- [ ] operator[] non-const overload for cell access
-- [ ] copy_extra_storage() private helper method
-- [ ] Private members (m_cells, m_extra_storage)
+- [x] extra_span struct (len, ptr members)
+- [x] value_type typedef
+- [x] Destructor with memory cleanup
+- [x] Default constructor
+- [x] Copy constructor with deep copy
+- [x] Assignment operator with proper cleanup
+- [x] remove_all() method
+- [x] add_cells(cells, num_cells) method with dynamic allocation
+- [x] operator[] const overload for cell access
+- [x] operator[] non-const overload for cell access
+- [x] copy_extra_storage() private helper method
+- [x] Private members (m_cells, m_extra_storage)
 
 **scanline_storage_aa class:**
 
-- [ ] Embedded span and scanline structs
-- [ ] Constructor and destructor
-- [ ] min_x(), max_x() accessor methods
-- [ ] reset(min_x, max_x) method
-- [ ] add_cells() method
-- [ ] finalize() method
-- [ ] size() accessor method
-- [ ] operator[] for scanline access
-- [ ] Memory management methods
+- [x] Embedded span and scanline structs
+- [x] Constructor and destructor
+- [x] min_x(), max_x() accessor methods
+- [x] prepare() method (equivalent to reset)
+- [x] render() method (stores scanlines)
+- [x] rewind_scanlines() method
+- [x] sweep_scanline() method
+- [x] embedded_scanline class for efficient iteration
+- [x] serialized_scanlines_adaptor_aa class for serialization
+- [x] Memory management methods
 
 **scanline_storage_aa8 typedef:**
 
-- [ ] Concrete instantiation for int8u cover type
+- [x] Concrete instantiation for int8u cover type
+- [x] Additional type aliases: ScanlineStorageAA16, ScanlineStorageAA32
+- [x] SerializedScanlinesAdaptorAA8, AA16, AA32 type aliases
 
 #### agg_scanline_storage_bin.h
 
 **scanline_storage_bin class:**
 
-- [ ] Similar structure to AA storage but for binary scanlines
-- [ ] span and scanline structs for binary data
-- [ ] Constructor and destructor
-- [ ] reset() method
-- [ ] add_span() method
-- [ ] finalize() method
-- [ ] Access methods for binary scanline data
+- [x] Similar structure to AA storage but for binary scanlines
+- [x] span and scanline structs for binary data
+- [x] Constructor and destructor
+- [x] prepare() method (reset functionality)
+- [x] render() method (add_span functionality)
+- [x] finalize() method (included in render)
+- [x] Access methods for binary scanline data
+- [x] Serialization support (byte_size, serialize)
+- [x] EmbeddedScanline support
+- [x] SerializedScanlinesAdaptorBin class
+- [x] Comprehensive test coverage
 
 #### agg_scanline_boolean_algebra.h
 
 **Boolean operation functors (all template-based):**
 
-- [ ] sbool_combine_spans_bin template functor
-- [ ] sbool_combine_spans_empty template functor
-- [ ] sbool_add_span_empty template functor
-- [ ] sbool_add_span_bin template functor
-- [ ] sbool_add_span_aa template functor
-- [ ] sbool_intersect_spans_aa template functor with cover_scale_e enum
-- [ ] sbool_unite_spans_aa template functor
-- [ ] sbool_xor_spans_aa template functor
-- [ ] sbool_subtract_spans_aa template functor
-- [ ] Additional boolean operation functors
+- [x] sbool_combine_spans_bin template functor
+- [x] sbool_combine_spans_empty template functor
+- [x] sbool_add_span_empty template functor
+- [x] sbool_add_span_bin template functor
+- [x] sbool_add_span_aa template functor
+- [x] sbool_intersect_spans_aa template functor with cover_scale_e enum
+- [x] sbool_unite_spans_aa template functor
+- [x] sbool_xor_spans_aa template functor
+- [x] sbool_subtract_spans_aa template functor
+- [x] Additional boolean operation functors
 
 **Main algorithm templates:**
 
-- [ ] sbool_intersect_shapes template function
-- [ ] sbool_unite_shapes template function
-- [ ] sbool_xor_shapes template function
-- [ ] sbool_subtract_shapes template function
+- [x] sbool_intersect_shapes template function
+- [x] sbool_unite_shapes template function
+- [x] sbool_xor_shapes template function
+- [x] sbool_subtract_shapes template function
 
 **Template adaptation considerations:**
 
-- [ ] Convert C++ functors to Go function types or interfaces
-- [ ] Adapt template parameters to Go generics or concrete types
-- [ ] Handle iterator patterns with Go-idiomatic approaches
-- [ ] Memory management adaptation for Go's garbage collector
+- [x] Convert C++ functors to Go function types or interfaces
+- [x] Adapt template parameters to Go generics or concrete types
+- [x] Handle iterator patterns with Go-idiomatic approaches
+- [x] Memory management adaptation for Go's garbage collector
 
 ---
 
@@ -686,59 +693,59 @@ This is a comprehensive checklist of files that need to be ported from the origi
 
 **rasterizer_scanline_aa_nogamma<Clip> template class:**
 
-- [ ] Similar structure to rasterizer_scanline_aa but without gamma correction
-- [ ] Simplified apply_gamma() method (no gamma table)
-- [ ] All other methods matching rasterizer_scanline_aa interface
-- [ ] Performance-optimized implementation
+- [x] Similar structure to rasterizer_scanline_aa but without gamma correction
+- [x] Simplified apply_gamma() method (no gamma table)
+- [x] All other methods matching rasterizer_scanline_aa interface
+- [x] Performance-optimized implementation
 
 #### agg_rasterizer_compound_aa.h
 
 **cell_style_aa struct:**
 
-- [ ] Position members (x, y)
-- [ ] Coverage members (cover, area)
-- [ ] Style members (left, right)
-- [ ] initial() method
-- [ ] style(c) method
-- [ ] not_equal(ex, ey, c) method
+- [x] Position members (x, y)
+- [x] Coverage members (cover, area)
+- [x] Style members (left, right)
+- [x] initial() method
+- [x] style(c) method
+- [x] not_equal(ex, ey, c) method
 
 **layer_order_e enum:**
 
-- [ ] layer_unsorted constant
-- [ ] layer_direct constant
-- [ ] layer_inverse constant
+- [x] layer_unsorted constant
+- [x] layer_direct constant
+- [x] layer_inverse constant
 
 **rasterizer_compound_aa<Clip> template class:**
 
-- [ ] style_info struct (start_cell, num_cells, last_x)
-- [ ] cell_info struct (x, area, cover)
-- [ ] clip_type typedef
-- [ ] conv_type typedef
-- [ ] coord_type typedef
-- [ ] aa_scale_e enum constants
-- [ ] Default constructor
-- [ ] reset() method
-- [ ] reset_clipping() method
-- [ ] clip_box(x1, y1, x2, y2) method
-- [ ] filling_rule(filling_rule) method
-- [ ] layer_order(order) method
-- [ ] styles(left, right) method
-- [ ] move_to(x, y) method
-- [ ] line_to(x, y) method
-- [ ] move_to_d(x, y) method
-- [ ] line_to_d(x, y) method
-- [ ] add_vertex(x, y, cmd) method
-- [ ] edge(x1, y1, x2, y2) method
-- [ ] edge_d(x1, y1, x2, y2) method
-- [ ] sort() method
-- [ ] navigate_scanline(y) method
-- [ ] hit_test(tx, ty) method
-- [ ] allocate_master_alpha() method
-- [ ] sweep_styles() method
-- [ ] scanline_start() method
-- [ ] scanline_length() method
-- [ ] style(style_id) method
-- [ ] Private members for style and layer management
+- [x] style_info struct (start_cell, num_cells, last_x)
+- [x] cell_info struct (x, area, cover)
+- [x] clip_type typedef
+- [x] conv_type typedef
+- [x] coord_type typedef
+- [x] aa_scale_e enum constants
+- [x] Default constructor
+- [x] reset() method
+- [x] reset_clipping() method
+- [x] clip_box(x1, y1, x2, y2) method
+- [x] filling_rule(filling_rule) method
+- [x] layer_order(order) method
+- [x] styles(left, right) method
+- [x] move_to(x, y) method
+- [x] line_to(x, y) method
+- [x] move_to_d(x, y) method
+- [x] line_to_d(x, y) method
+- [x] add_vertex(x, y, cmd) method
+- [x] edge(x1, y1, x2, y2) method
+- [x] edge_d(x1, y1, x2, y2) method
+- [x] sort() method
+- [x] navigate_scanline(y) method
+- [x] hit_test(tx, ty) method
+- [x] allocate_master_alpha() method
+- [x] sweep_styles() method
+- [x] scanline_start() method
+- [x] scanline_length() method
+- [x] style(style_id) method
+- [x] Private members for style and layer management
 
 #### agg_rasterizer_sl_clip.h
 

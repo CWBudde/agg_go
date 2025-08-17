@@ -8,11 +8,11 @@ import (
 
 func TestCompositeBlenderMultiply(t *testing.T) {
 	blender := NewMultiplyBlender[color.Linear, RGBAOrder]()
-	
+
 	// Test multiply blend with white source and red destination
-	dst := []basics.Int8u{255, 0, 0, 255} // Red
+	dst := []basics.Int8u{255, 0, 0, 255}          // Red
 	blender.BlendPix(dst, 255, 255, 255, 255, 255) // White source, full coverage
-	
+
 	// With multiply, result should be destination * source = red * white = red
 	// But the formula includes alpha blending, so it's more complex
 	// For now, just verify the function doesn't crash and modifies the pixel
@@ -25,22 +25,22 @@ func TestCompositeBlenderMultiply(t *testing.T) {
 
 func TestCompositeBlenderScreen(t *testing.T) {
 	blender := NewScreenBlender[color.Linear, RGBAOrder]()
-	
+
 	// Test screen blend
-	dst := []basics.Int8u{128, 128, 128, 255} // 50% gray
+	dst := []basics.Int8u{128, 128, 128, 255}      // 50% gray
 	blender.BlendPix(dst, 128, 128, 128, 255, 255) // Same gray source
-	
+
 	// Screen should lighten the image
 	t.Logf("Screen blend result: R=%d, G=%d, B=%d, A=%d", dst[0], dst[1], dst[2], dst[3])
 }
 
 func TestCompositeBlenderOverlay(t *testing.T) {
 	blender := NewOverlayBlender[color.Linear, RGBAOrder]()
-	
+
 	// Test overlay blend
 	dst := []basics.Int8u{100, 100, 100, 255}
 	blender.BlendPix(dst, 200, 200, 200, 255, 255)
-	
+
 	t.Logf("Overlay blend result: R=%d, G=%d, B=%d, A=%d", dst[0], dst[1], dst[2], dst[3])
 }
 
@@ -51,17 +51,17 @@ func TestPixFmtTransposer(t *testing.T) {
 		height: 20,
 		pixels: make([]color.RGBA8[color.Linear], 10*20),
 	}
-	
+
 	// Set a test pixel
 	mockPixfmt.pixels[5*10+3] = color.RGBA8[color.Linear]{R: 255, G: 0, B: 0, A: 255} // Red at (3,5)
-	
+
 	transposer := NewPixFmtTransposer(mockPixfmt)
-	
+
 	// Check transposed dimensions
 	if transposer.Width() != 20 || transposer.Height() != 10 {
 		t.Errorf("Transposer dimensions wrong: got %dx%d, want 20x10", transposer.Width(), transposer.Height())
 	}
-	
+
 	// Check transposed pixel access - (3,5) should become (5,3)
 	pixel := transposer.GetPixel(5, 3)
 	if pixel.R != 255 || pixel.G != 0 || pixel.B != 0 {
