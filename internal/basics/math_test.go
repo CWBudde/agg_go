@@ -453,44 +453,44 @@ func BenchmarkCalcPolygonArea(b *testing.B) {
 }
 
 func TestLookupTables(t *testing.T) {
-    t.Run("ElderBitTable correctness", func(t *testing.T) {
-        for i := 0; i < 256; i++ {
-            var expected uint32
-            if i == 0 {
-                expected = 0
-            } else {
-                // floor(log2(i))
-                v := i
-                for (v >> 1) > 0 {
-                    expected++
-                    v >>= 1
-                }
-            }
-            if gElderBitTable[i] != expected {
-                t.Fatalf("gElderBitTable[%d]=%d, expected %d", i, gElderBitTable[i], expected)
-            }
-        }
-    })
+	t.Run("ElderBitTable correctness", func(t *testing.T) {
+		for i := 0; i < 256; i++ {
+			var expected uint32
+			if i == 0 {
+				expected = 0
+			} else {
+				// floor(log2(i))
+				v := i
+				for (v >> 1) > 0 {
+					expected++
+					v >>= 1
+				}
+			}
+			if gElderBitTable[i] != expected {
+				t.Fatalf("gElderBitTable[%d]=%d, expected %d", i, gElderBitTable[i], expected)
+			}
+		}
+	})
 
-    t.Run("SqrtTable sanity", func(t *testing.T) {
-        if len(gSqrtTable) != 1024 {
-            t.Fatalf("gSqrtTable length=%d, expected 1024", len(gSqrtTable))
-        }
-        // Non-decreasing and within 16-bit range (matches AGG's int16u g_sqrt_table[1024])
-        prev := uint16(0)
-        for idx, v := range gSqrtTable {
-            if v < prev {
-                t.Fatalf("gSqrtTable not non-decreasing at %d: %d < %d", idx, v, prev)
-            }
-            // Values should be valid uint16 (no need to check > 65535 since v is uint16)
-            prev = v
-        }
-        // First value should be 0, last should be 65504 (from AGG)
-        if gSqrtTable[0] != 0 {
-            t.Fatalf("gSqrtTable[0]=%d, expected 0", gSqrtTable[0])
-        }
-        if gSqrtTable[len(gSqrtTable)-1] != 65504 {
-            t.Fatalf("gSqrtTable[1023]=%d, expected 65504", gSqrtTable[len(gSqrtTable)-1])
-        }
-    })
+	t.Run("SqrtTable sanity", func(t *testing.T) {
+		if len(gSqrtTable) != 1024 {
+			t.Fatalf("gSqrtTable length=%d, expected 1024", len(gSqrtTable))
+		}
+		// Non-decreasing and within 16-bit range (matches AGG's int16u g_sqrt_table[1024])
+		prev := uint16(0)
+		for idx, v := range gSqrtTable {
+			if v < prev {
+				t.Fatalf("gSqrtTable not non-decreasing at %d: %d < %d", idx, v, prev)
+			}
+			// Values should be valid uint16 (no need to check > 65535 since v is uint16)
+			prev = v
+		}
+		// First value should be 0, last should be 65504 (from AGG)
+		if gSqrtTable[0] != 0 {
+			t.Fatalf("gSqrtTable[0]=%d, expected 0", gSqrtTable[0])
+		}
+		if gSqrtTable[len(gSqrtTable)-1] != 65504 {
+			t.Fatalf("gSqrtTable[1023]=%d, expected 65504", gSqrtTable[len(gSqrtTable)-1])
+		}
+	})
 }

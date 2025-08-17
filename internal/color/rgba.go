@@ -430,7 +430,7 @@ func RGBA8Lerp(p, q, a basics.Int8u) basics.Int8u {
 		greater = 1
 	}
 	t := (int32(q)-int32(p))*int32(a) + RGBA8BaseMSB - greater
-	return basics.Int8u(int32(p) + (((t>>RGBA8BaseShift)+t)>>RGBA8BaseShift))
+	return basics.Int8u(int32(p) + (((t >> RGBA8BaseShift) + t) >> RGBA8BaseShift))
 }
 
 // RGBA8Prelerp performs premultiplied linear interpolation
@@ -467,6 +467,24 @@ func RGBA16Lerp(p, q, a basics.Int16u) basics.Int16u {
 		return 65535
 	}
 	return basics.Int16u(result)
+}
+
+// RGBA16Prelerp performs premultiplied linear interpolation for 16-bit values
+func RGBA16Prelerp(p, q, a basics.Int16u) basics.Int16u {
+	diff := int64(q) - int64(p)
+	result := int64(p) + (diff*int64(a)+32767)/65535
+	if result < 0 {
+		return 0
+	}
+	if result > 65535 {
+		return 65535
+	}
+	return basics.Int16u(result)
+}
+
+// RGBA16MultCover multiplies a 16-bit color component by coverage
+func RGBA16MultCover(c, cover basics.Int16u) basics.Int16u {
+	return RGBA16Multiply(c, cover)
 }
 
 // Helper functions for min operations

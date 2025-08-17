@@ -251,8 +251,9 @@ This is a comprehensive checklist of files that need to be ported from the origi
 
 **Gamma Application Classes**
 
-- [ ] apply_gamma_dir_rgb<ColorT, Order, GammaLut>
-- [ ] apply_gamma_inv_rgb<ColorT, Order, GammaLut>
+- [x] apply_gamma_dir_rgb<ColorT, Order, GammaLut> → ApplyGammaDirectRGB[C, O]
+- [x] apply_gamma_inv_rgb<ColorT, Order, GammaLut> → ApplyGammaInverseRGB[C, O]
+- [x] **COMPLETED**: Added gamma correction support for packed RGB formats (RGB555, RGB565, BGR555, BGR565)
 
 **Blender Types**
 
@@ -278,24 +279,40 @@ This is a comprehensive checklist of files that need to be ported from the origi
 
 **RGB48 Types (16-bit per channel)**
 
-- [ ] pixfmt_rgb48 → PixFmtRGB48
-- [ ] pixfmt_bgr48 → PixFmtBGR48
+- [x] pixfmt_rgb48 → PixFmtRGB48Linear
+- [x] pixfmt_bgr48 → PixFmtBGR48Linear
+
+**RGB96 Types (32-bit float per channel)**
+
+- [x] PixFmtRGB96Linear → PixFmtRGB96Linear  
+- [x] PixFmtBGR96Linear → PixFmtBGR96Linear
+
+**RGBX32/XRGB32 Types (RGB with padding byte)**
+
+- [x] pixfmt_rgbx32 → PixFmtRGBX32
+- [x] pixfmt_xrgb32 → PixFmtXRGB32
+- [x] pixfmt_bgrx32 → PixFmtBGRX32
+- [x] pixfmt_xbgr32 → PixFmtXBGR32
+
+**Premultiplied Variants**
+
+- [x] All RGB24/RGB48/RGB96/RGBX32 premultiplied variants → PixFmt*Pre
 
 **Gamma Variants**
 
-- [ ] pixfmt_rgb24_gamma<Gamma> → PixFmtRGB24Gamma[G]
-- [ ] Similar for all RGB formats
+- [x] pixfmt_rgb24_gamma<Gamma> → PixFmtRGB24Gamma[G]
+- [x] Similar for all RGB formats → PixFmtRGBGamma wrapper
 
 #### agg_pixfmt_rgb_packed.h - Packed RGB pixel formats
 
 **Packed Formats (555, 565, etc.)**
 
-- [ ] pixfmt_rgb555 → PixFmtRGB555
-- [ ] pixfmt_rgb565 → PixFmtRGB565
-- [ ] pixfmt_bgr555 → PixFmtBGR555
-- [ ] pixfmt_bgr565 → PixFmtBGR565
-- [ ] Packing/unpacking utilities
-- [ ] Bit-shift operations for packed formats
+- [x] pixfmt_rgb555 → PixFmtRGB555
+- [x] pixfmt_rgb565 → PixFmtRGB565
+- [x] pixfmt_bgr555 → PixFmtBGR555
+- [x] pixfmt_bgr565 → PixFmtBGR565
+- [x] Packing/unpacking utilities
+- [x] Bit-shift operations for packed formats
 
 #### agg_pixfmt_rgba.h - RGBA pixel formats
 
@@ -304,7 +321,7 @@ This is a comprehensive checklist of files that need to be ported from the origi
 - [x] blender_rgba<ColorT, Order> → BlenderRGBA[C, O]
 - [x] blender_rgba_pre<ColorT, Order> → BlenderRGBAPre[C, O]
 - [x] blender_rgba_plain<ColorT, Order> → BlenderRGBAPlain[C, O]
-- [ ] Composite blenders (multiply, screen, overlay, etc.)
+- [x] Composite blenders (multiply, screen, overlay, etc.)
 
 **Main RGBA Pixel Format**
 
@@ -321,25 +338,25 @@ This is a comprehensive checklist of files that need to be ported from the origi
 
 **RGBA64 Types (16-bit per channel)**
 
-- [ ] pixfmt_rgba64 → PixFmtRGBA64
-- [ ] pixfmt_argb64 → PixFmtARGB64
-- [ ] Similar variants
+- [x] pixfmt_rgba64 → PixFmtRGBA64
+- [x] pixfmt_argb64 → PixFmtARGB64
+- [x] Similar variants
 
 #### agg_pixfmt_transposer.h - Pixel format transposer
 
 **Transposer Wrapper**
 
-- [ ] pixfmt_transposer<PixFmt> → PixFmtTransposer[P]
-- [ ] Transposes x/y coordinates
-- [ ] Wraps another pixel format
+- [x] pixfmt_transposer<PixFmt> → PixFmtTransposer[P]
+- [x] Transposes x/y coordinates
+- [x] Wraps another pixel format
 
 #### agg_pixfmt_amask_adaptor.h - Alpha mask adaptor
 
 **Alpha Mask Adaptor**
 
-- [ ] pixfmt_amask_adaptor<PixFmt, AlphaMask> → PixFmtAMaskAdaptor[P, A]
-- [ ] Applies alpha mask to pixel format operations
-- [ ] combine_pixel() with mask
+- [x] pixfmt_amask_adaptor<PixFmt, AlphaMask> → PixFmtAMaskAdaptor[P, A]
+- [x] Applies alpha mask to pixel format operations
+- [x] combine_pixel() with mask
 
 ---
 

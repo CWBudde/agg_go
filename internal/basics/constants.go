@@ -104,7 +104,7 @@ func (s Saturation[T]) Apply(v T) T {
 // IRound performs saturation-aware rounding for floating point values
 func (s Saturation[T]) IRound(v float64) T {
 	limit := float64(s.limit)
-	
+
 	// Use type switch to determine if T is unsigned
 	var zero T
 	switch any(zero).(type) {
@@ -119,7 +119,7 @@ func (s Saturation[T]) IRound(v float64) T {
 			return -s.limit
 		}
 	}
-	
+
 	if v > limit {
 		return s.limit
 	}

@@ -289,6 +289,23 @@ func RGB8MultCover24(c, cover basics.Int8u) basics.Int8u {
 	return RGBA8MultCover(c, cover) // Reuse RGBA function
 }
 
+// RGB16 manipulation functions for 16-bit RGB operations
+
+// RGB16Lerp performs linear interpolation between two 16-bit RGB values
+func RGB16Lerp(p, q, a basics.Int16u) basics.Int16u {
+	return RGBA16Lerp(p, q, a) // Reuse RGBA function
+}
+
+// RGB16Prelerp performs premultiplied linear interpolation for 16-bit RGB
+func RGB16Prelerp(p, q, a basics.Int16u) basics.Int16u {
+	return RGBA16Prelerp(p, q, a) // Reuse RGBA function
+}
+
+// RGB16MultCover multiplies a 16-bit RGB component by coverage
+func RGB16MultCover(c, cover basics.Int16u) basics.Int16u {
+	return RGBA16MultCover(c, cover) // Reuse RGBA function
+}
+
 // Common RGB constants
 var (
 	RGB8Black   = RGB8Linear{R: 0, G: 0, B: 0}

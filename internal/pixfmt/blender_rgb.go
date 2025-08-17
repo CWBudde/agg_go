@@ -201,3 +201,199 @@ func ConvertRGBAToRGB[CS any](rgba color.RGBA8[CS]) color.RGB8[CS] {
 func ConvertRGBToRGBA[CS any](rgb color.RGB8[CS]) color.RGBA8[CS] {
 	return color.RGBA8[CS]{R: rgb.R, G: rgb.G, B: rgb.B, A: 255}
 }
+
+//==============================================================================
+// RGB48 (16-bit per channel) Blenders
+//==============================================================================
+
+// RGB48Blender represents the interface for 16-bit RGB pixel blending operations
+type RGB48Blender interface {
+	BlendPix(dst []basics.Int16u, r, g, b, alpha, cover basics.Int16u)
+}
+
+// BlenderRGB48 implements standard RGB48 blending (16-bit per channel)
+type BlenderRGB48[CS any, O any] struct{}
+
+// BlendPix blends an RGB48 pixel with alpha into an RGB48 buffer
+func (bl BlenderRGB48[CS, O]) BlendPix(dst []basics.Int16u, r, g, b, alpha, cover basics.Int16u) {
+	blendAlpha := color.RGB16MultCover(alpha, cover)
+	if blendAlpha > 0 {
+		order := getRGBColorOrder[O]()
+		dst[order.R] = color.RGB16Lerp(dst[order.R], r, blendAlpha)
+		dst[order.G] = color.RGB16Lerp(dst[order.G], g, blendAlpha)
+		dst[order.B] = color.RGB16Lerp(dst[order.B], b, blendAlpha)
+	}
+}
+
+// BlenderRGB48Pre implements premultiplied RGB48 blending
+type BlenderRGB48Pre[CS any, O any] struct{}
+
+// BlendPix blends a premultiplied RGB48 pixel into an RGB48 buffer
+func (bl BlenderRGB48Pre[CS, O]) BlendPix(dst []basics.Int16u, r, g, b, alpha, cover basics.Int16u) {
+	cr := color.RGB16MultCover(r, cover)
+	cg := color.RGB16MultCover(g, cover)
+	cb := color.RGB16MultCover(b, cover)
+	ca := color.RGB16MultCover(alpha, cover)
+
+	order := getRGBColorOrder[O]()
+	dst[order.R] = color.RGB16Prelerp(dst[order.R], cr, ca)
+	dst[order.G] = color.RGB16Prelerp(dst[order.G], cg, ca)
+	dst[order.B] = color.RGB16Prelerp(dst[order.B], cb, ca)
+}
+
+// BlenderRGB48Gamma implements gamma-corrected RGB48 blending
+type BlenderRGB48Gamma[CS any, O any, G any] struct {
+	gamma G
+}
+
+// NewBlenderRGB48Gamma creates a new gamma blender for 16-bit
+func NewBlenderRGB48Gamma[CS any, O any, G any](gamma G) BlenderRGB48Gamma[CS, O, G] {
+	return BlenderRGB48Gamma[CS, O, G]{gamma: gamma}
+}
+
+// BlendPix blends RGB48 with gamma correction
+func (bl BlenderRGB48Gamma[CS, O, G]) BlendPix(dst []basics.Int16u, r, g, b, alpha, cover basics.Int16u) {
+	blendAlpha := color.RGB16MultCover(alpha, cover)
+	if blendAlpha > 0 {
+		order := getRGBColorOrder[O]()
+
+		// Apply gamma correction if gamma interface is implemented
+		if gamma, ok := interface{}(bl.gamma).(Gamma16Corrector); ok {
+			dr := gamma.Dir(dst[order.R])
+			dg := gamma.Dir(dst[order.G])
+			db := gamma.Dir(dst[order.B])
+
+			sr := gamma.Dir(r)
+			sg := gamma.Dir(g)
+			sb := gamma.Dir(b)
+
+			dst[order.R] = gamma.Inv(color.RGB16Lerp(dr, sr, blendAlpha))
+			dst[order.G] = gamma.Inv(color.RGB16Lerp(dg, sg, blendAlpha))
+			dst[order.B] = gamma.Inv(color.RGB16Lerp(db, sb, blendAlpha))
+		} else {
+			// Fallback to regular blending
+			dst[order.R] = color.RGB16Lerp(dst[order.R], r, blendAlpha)
+			dst[order.G] = color.RGB16Lerp(dst[order.G], g, blendAlpha)
+			dst[order.B] = color.RGB16Lerp(dst[order.B], b, blendAlpha)
+		}
+	}
+}
+
+// Gamma16Corrector interface for 16-bit gamma correction
+type Gamma16Corrector interface {
+	Dir(v basics.Int16u) basics.Int16u // Apply gamma correction
+	Inv(v basics.Int16u) basics.Int16u // Apply inverse gamma correction
+}
+
+// Concrete RGB48 blender types
+type (
+	BlenderRGB48Linear    = BlenderRGB48[color.Linear, color.RGB24Order]
+	BlenderRGB48SRGB      = BlenderRGB48[color.SRGB, color.RGB24Order]
+	BlenderRGB48PreLinear = BlenderRGB48Pre[color.Linear, color.RGB24Order]
+	BlenderRGB48PreSRGB   = BlenderRGB48Pre[color.SRGB, color.RGB24Order]
+
+	BlenderBGR48Linear    = BlenderRGB48[color.Linear, color.BGR24Order]
+	BlenderBGR48SRGB      = BlenderRGB48[color.SRGB, color.BGR24Order]
+	BlenderBGR48PreLinear = BlenderRGB48Pre[color.Linear, color.BGR24Order]
+	BlenderBGR48PreSRGB   = BlenderRGB48Pre[color.SRGB, color.BGR24Order]
+)
+
+//==============================================================================
+// RGB96 (32-bit float per channel) Blenders
+//==============================================================================
+
+// RGB96Blender represents the interface for 32-bit float RGB pixel blending operations
+type RGB96Blender interface {
+	BlendPix(dst []float32, r, g, b, alpha, cover float32)
+}
+
+// BlenderRGB96 implements standard RGB96 blending (32-bit float per channel)
+type BlenderRGB96[CS any, O any] struct{}
+
+// BlendPix blends an RGB96 pixel with alpha into an RGB96 buffer
+func (bl BlenderRGB96[CS, O]) BlendPix(dst []float32, r, g, b, alpha, cover float32) {
+	blendAlpha := alpha * cover
+	if blendAlpha > 0 {
+		order := getRGBColorOrder[O]()
+		invAlpha := 1.0 - blendAlpha
+		dst[order.R] = dst[order.R]*invAlpha + r*blendAlpha
+		dst[order.G] = dst[order.G]*invAlpha + g*blendAlpha
+		dst[order.B] = dst[order.B]*invAlpha + b*blendAlpha
+	}
+}
+
+// BlenderRGB96Pre implements premultiplied RGB96 blending
+type BlenderRGB96Pre[CS any, O any] struct{}
+
+// BlendPix blends a premultiplied RGB96 pixel into an RGB96 buffer
+func (bl BlenderRGB96Pre[CS, O]) BlendPix(dst []float32, r, g, b, alpha, cover float32) {
+	cr := r * cover
+	cg := g * cover
+	cb := b * cover
+	ca := alpha * cover
+
+	order := getRGBColorOrder[O]()
+	invAlpha := 1.0 - ca
+	dst[order.R] = dst[order.R]*invAlpha + cr
+	dst[order.G] = dst[order.G]*invAlpha + cg
+	dst[order.B] = dst[order.B]*invAlpha + cb
+}
+
+// BlenderRGB96Gamma implements gamma-corrected RGB96 blending
+type BlenderRGB96Gamma[CS any, O any, G any] struct {
+	gamma G
+}
+
+// NewBlenderRGB96Gamma creates a new gamma blender for 32-bit float
+func NewBlenderRGB96Gamma[CS any, O any, G any](gamma G) BlenderRGB96Gamma[CS, O, G] {
+	return BlenderRGB96Gamma[CS, O, G]{gamma: gamma}
+}
+
+// BlendPix blends RGB96 with gamma correction
+func (bl BlenderRGB96Gamma[CS, O, G]) BlendPix(dst []float32, r, g, b, alpha, cover float32) {
+	blendAlpha := alpha * cover
+	if blendAlpha > 0 {
+		order := getRGBColorOrder[O]()
+
+		// Apply gamma correction if gamma interface is implemented
+		if gamma, ok := interface{}(bl.gamma).(Gamma32Corrector); ok {
+			dr := gamma.Dir(dst[order.R])
+			dg := gamma.Dir(dst[order.G])
+			db := gamma.Dir(dst[order.B])
+
+			sr := gamma.Dir(r)
+			sg := gamma.Dir(g)
+			sb := gamma.Dir(b)
+
+			invAlpha := 1.0 - blendAlpha
+			dst[order.R] = gamma.Inv(dr*invAlpha + sr*blendAlpha)
+			dst[order.G] = gamma.Inv(dg*invAlpha + sg*blendAlpha)
+			dst[order.B] = gamma.Inv(db*invAlpha + sb*blendAlpha)
+		} else {
+			// Fallback to regular blending
+			invAlpha := 1.0 - blendAlpha
+			dst[order.R] = dst[order.R]*invAlpha + r*blendAlpha
+			dst[order.G] = dst[order.G]*invAlpha + g*blendAlpha
+			dst[order.B] = dst[order.B]*invAlpha + b*blendAlpha
+		}
+	}
+}
+
+// Gamma32Corrector interface for 32-bit float gamma correction
+type Gamma32Corrector interface {
+	Dir(v float32) float32 // Apply gamma correction
+	Inv(v float32) float32 // Apply inverse gamma correction
+}
+
+// Concrete RGB96 blender types
+type (
+	BlenderRGB96Linear    = BlenderRGB96[color.Linear, color.RGB24Order]
+	BlenderRGB96SRGB      = BlenderRGB96[color.SRGB, color.RGB24Order]
+	BlenderRGB96PreLinear = BlenderRGB96Pre[color.Linear, color.RGB24Order]
+	BlenderRGB96PreSRGB   = BlenderRGB96Pre[color.SRGB, color.RGB24Order]
+
+	BlenderBGR96Linear    = BlenderRGB96[color.Linear, color.BGR24Order]
+	BlenderBGR96SRGB      = BlenderRGB96[color.SRGB, color.BGR24Order]
+	BlenderBGR96PreLinear = BlenderRGB96Pre[color.Linear, color.BGR24Order]
+	BlenderBGR96PreSRGB   = BlenderRGB96Pre[color.SRGB, color.BGR24Order]
+)

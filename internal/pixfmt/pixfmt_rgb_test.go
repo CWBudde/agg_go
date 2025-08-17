@@ -398,3 +398,190 @@ func BenchmarkPixFmtRGB24Clear(b *testing.B) {
 		pixfmt.Clear(color)
 	}
 }
+
+//==============================================================================
+// RGB48 (16-bit per channel) Tests
+//==============================================================================
+
+func TestPixFmtRGB48Linear(t *testing.T) {
+	// Create a 4x4 RGB48 buffer (48 bytes total: 4*4*3*2)
+	width, height := 4, 4
+	bufData := make([]basics.Int16u, width*height*3)
+	rbuf := buffer.NewRenderingBufferU16WithData(bufData, width, height, width*3*2)
+
+	// Create RGB48 pixel format
+	pixfmt := NewPixFmtRGB48Linear(rbuf)
+
+	// Test basic properties
+	if pixfmt.Width() != width {
+		t.Errorf("Width() failed: got %d, want %d", pixfmt.Width(), width)
+	}
+	if pixfmt.Height() != height {
+		t.Errorf("Height() failed: got %d, want %d", pixfmt.Height(), height)
+	}
+	if pixfmt.PixWidth() != 6 {
+		t.Errorf("PixWidth() failed: got %d, want 6", pixfmt.PixWidth())
+	}
+
+	// Test pixel operations with 16-bit values
+	red := color.RGB16Linear{R: 65535, G: 0, B: 0}   // Full red
+	green := color.RGB16Linear{R: 0, G: 65535, B: 0} // Full green
+	blue := color.RGB16Linear{R: 0, G: 0, B: 65535}  // Full blue
+
+	// Test CopyPixel
+	pixfmt.CopyPixel(0, 0, red)
+	pixfmt.CopyPixel(1, 0, green)
+	pixfmt.CopyPixel(2, 0, blue)
+
+	// Test GetPixel
+	pixel := pixfmt.GetPixel(0, 0)
+	if pixel.R != 65535 || pixel.G != 0 || pixel.B != 0 {
+		t.Errorf("GetPixel(0,0) failed: got {%d, %d, %d}, want {65535, 0, 0}", pixel.R, pixel.G, pixel.B)
+	}
+
+	pixel = pixfmt.GetPixel(1, 0)
+	if pixel.R != 0 || pixel.G != 65535 || pixel.B != 0 {
+		t.Errorf("GetPixel(1,0) failed: got {%d, %d, %d}, want {0, 65535, 0}", pixel.R, pixel.G, pixel.B)
+	}
+
+	pixel = pixfmt.GetPixel(2, 0)
+	if pixel.R != 0 || pixel.G != 0 || pixel.B != 65535 {
+		t.Errorf("GetPixel(2,0) failed: got {%d, %d, %d}, want {0, 0, 65535}", pixel.R, pixel.G, pixel.B)
+	}
+
+	// Test bounds checking
+	pixel = pixfmt.GetPixel(-1, 0)
+	if pixel.R != 0 || pixel.G != 0 || pixel.B != 0 {
+		t.Errorf("GetPixel(-1,0) bounds check failed: got {%d, %d, %d}, want {0, 0, 0}", pixel.R, pixel.G, pixel.B)
+	}
+
+	// Test blending with 16-bit values
+	gray := color.RGB16Linear{R: 32768, G: 32768, B: 32768} // Mid gray
+	pixfmt.CopyPixel(0, 1, gray)
+	pixfmt.BlendPixel(0, 1, red, 32768, 65535) // Blend with half alpha
+
+	pixel = pixfmt.GetPixel(0, 1)
+	if pixel.R <= 32768 || pixel.R >= 65535 {
+		t.Errorf("BlendPixel failed: red component %d should be between 32768 and 65535", pixel.R)
+	}
+}
+
+//==============================================================================
+// RGBX32 (RGB with padding byte) Tests
+//==============================================================================
+
+func TestPixFmtRGBX32(t *testing.T) {
+	// Create a 4x4 RGBX32 buffer (64 bytes total: 4*4*4)
+	width, height := 4, 4
+	bufData := make([]basics.Int8u, width*height*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(bufData, width, height, width*4)
+
+	// Create RGBX32 pixel format
+	pixfmt := NewPixFmtRGBX32(rbuf)
+
+	// Test basic properties
+	if pixfmt.Width() != width {
+		t.Errorf("Width() failed: got %d, want %d", pixfmt.Width(), width)
+	}
+	if pixfmt.Height() != height {
+		t.Errorf("Height() failed: got %d, want %d", pixfmt.Height(), height)
+	}
+	if pixfmt.PixWidth() != 4 {
+		t.Errorf("PixWidth() failed: got %d, want 4", pixfmt.PixWidth())
+	}
+
+	// Test pixel operations
+	red := color.RGB8Linear{R: 255, G: 0, B: 0}
+
+	// Set padding byte to a known value
+	bufData[3] = 99 // Padding byte for first pixel
+
+	// Test CopyPixel
+	pixfmt.CopyPixel(0, 0, red)
+
+	// Verify RGB values are set correctly
+	if bufData[0] != 255 || bufData[1] != 0 || bufData[2] != 0 {
+		t.Errorf("RGBX32 CopyPixel failed: buffer [%d, %d, %d, %d] should have RGB [255, 0, 0]",
+			bufData[0], bufData[1], bufData[2], bufData[3])
+	}
+
+	// Verify padding byte is unchanged
+	if bufData[3] != 99 {
+		t.Errorf("RGBX32 CopyPixel modified padding byte: got %d, want 99", bufData[3])
+	}
+
+	// Test GetPixel
+	pixel := pixfmt.GetPixel(0, 0)
+	if pixel.R != 255 || pixel.G != 0 || pixel.B != 0 {
+		t.Errorf("RGBX32 GetPixel failed: got {%d, %d, %d}, want {255, 0, 0}", pixel.R, pixel.G, pixel.B)
+	}
+}
+
+func TestPixFmtXRGB32(t *testing.T) {
+	// Create a 4x4 XRGB32 buffer (64 bytes total: 4*4*4)
+	width, height := 4, 4
+	bufData := make([]basics.Int8u, width*height*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(bufData, width, height, width*4)
+
+	// Create XRGB32 pixel format
+	pixfmt := NewPixFmtXRGB32(rbuf)
+
+	// Test pixel operations
+	red := color.RGB8Linear{R: 255, G: 0, B: 0}
+
+	// Set padding byte to a known value
+	bufData[0] = 99 // Padding byte for first pixel (at beginning)
+
+	// Test CopyPixel
+	pixfmt.CopyPixel(0, 0, red)
+
+	// Verify RGB values are set correctly (at offsets 1, 2, 3)
+	if bufData[1] != 255 || bufData[2] != 0 || bufData[3] != 0 {
+		t.Errorf("XRGB32 CopyPixel failed: buffer [%d, %d, %d, %d] should have RGB at [1,2,3] = [255, 0, 0]",
+			bufData[0], bufData[1], bufData[2], bufData[3])
+	}
+
+	// Verify padding byte is unchanged
+	if bufData[0] != 99 {
+		t.Errorf("XRGB32 CopyPixel modified padding byte: got %d, want 99", bufData[0])
+	}
+
+	// Test GetPixel
+	pixel := pixfmt.GetPixel(0, 0)
+	if pixel.R != 255 || pixel.G != 0 || pixel.B != 0 {
+		t.Errorf("XRGB32 GetPixel failed: got {%d, %d, %d}, want {255, 0, 0}", pixel.R, pixel.G, pixel.B)
+	}
+}
+
+//==============================================================================
+// Premultiplied RGB Tests
+//==============================================================================
+
+func TestPixFmtRGB24Pre(t *testing.T) {
+	width, height := 4, 4
+	bufData := make([]basics.Int8u, width*height*3)
+	rbuf := buffer.NewRenderingBufferU8WithData(bufData, width, height, width*3)
+	pixfmt := NewPixFmtRGB24Pre(rbuf)
+
+	// Test basic properties
+	if pixfmt.Width() != width {
+		t.Errorf("Width() failed: got %d, want %d", pixfmt.Width(), width)
+	}
+	if pixfmt.PixWidth() != 3 {
+		t.Errorf("PixWidth() failed: got %d, want 3", pixfmt.PixWidth())
+	}
+
+	// Set initial pixel to gray
+	gray := color.RGB8Linear{R: 128, G: 128, B: 128}
+	pixfmt.CopyPixel(0, 0, gray)
+
+	// Blend with premultiplied semantics
+	red := color.RGB8Linear{R: 255, G: 0, B: 0}
+	pixfmt.BlendPixel(0, 0, red, 128, 255)
+
+	// Should use premultiplied blending
+	pixel := pixfmt.GetPixel(0, 0)
+	if pixel.R <= 128 {
+		t.Errorf("Premultiplied blending failed: red component %d should be greater than 128", pixel.R)
+	}
+}
