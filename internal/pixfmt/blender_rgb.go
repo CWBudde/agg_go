@@ -23,20 +23,20 @@ type BlenderRGB[CS any, O any] struct{}
 func (bl BlenderRGB[CS, O]) BlendPix(dst []basics.Int8u, r, g, b, alpha, cover basics.Int8u) {
 	blendAlpha := color.RGBA8MultCover(alpha, cover)
 	if blendAlpha > 0 {
-		// For now, use fixed RGB order - we can make this configurable later
-		dst[0] = color.RGBA8Lerp(dst[0], r, blendAlpha)
-		dst[1] = color.RGBA8Lerp(dst[1], g, blendAlpha)
-		dst[2] = color.RGBA8Lerp(dst[2], b, blendAlpha)
+		order := getRGBColorOrder[O]()
+		dst[order.R] = color.RGBA8Lerp(dst[order.R], r, blendAlpha)
+		dst[order.G] = color.RGBA8Lerp(dst[order.G], g, blendAlpha)
+		dst[order.B] = color.RGBA8Lerp(dst[order.B], b, blendAlpha)
 	}
 }
 
 // BlendPixSimple blends RGB without coverage
 func (bl BlenderRGB[CS, O]) BlendPixSimple(dst []basics.Int8u, r, g, b, alpha basics.Int8u) {
 	if alpha > 0 {
-		// For now, use fixed RGB order - we can make this configurable later
-		dst[0] = color.RGBA8Lerp(dst[0], r, alpha)
-		dst[1] = color.RGBA8Lerp(dst[1], g, alpha)
-		dst[2] = color.RGBA8Lerp(dst[2], b, alpha)
+		order := getRGBColorOrder[O]()
+		dst[order.R] = color.RGBA8Lerp(dst[order.R], r, alpha)
+		dst[order.G] = color.RGBA8Lerp(dst[order.G], g, alpha)
+		dst[order.B] = color.RGBA8Lerp(dst[order.B], b, alpha)
 	}
 }
 
@@ -50,17 +50,18 @@ func (bl BlenderRGBPre[CS, O]) BlendPix(dst []basics.Int8u, r, g, b, alpha, cove
 	cb := color.RGBA8MultCover(b, cover)
 	ca := color.RGBA8MultCover(alpha, cover)
 
-	// For RGB format, we use premultiplied blending but don't store alpha
-	dst[0] = color.RGBA8Prelerp(dst[0], cr, ca)
-	dst[1] = color.RGBA8Prelerp(dst[1], cg, ca)
-	dst[2] = color.RGBA8Prelerp(dst[2], cb, ca)
+	order := getRGBColorOrder[O]()
+	dst[order.R] = color.RGBA8Prelerp(dst[order.R], cr, ca)
+	dst[order.G] = color.RGBA8Prelerp(dst[order.G], cg, ca)
+	dst[order.B] = color.RGBA8Prelerp(dst[order.B], cb, ca)
 }
 
 // BlendPixSimple blends premultiplied RGB without coverage
 func (bl BlenderRGBPre[CS, O]) BlendPixSimple(dst []basics.Int8u, r, g, b, alpha basics.Int8u) {
-	dst[0] = color.RGBA8Prelerp(dst[0], r, alpha)
-	dst[1] = color.RGBA8Prelerp(dst[1], g, alpha)
-	dst[2] = color.RGBA8Prelerp(dst[2], b, alpha)
+	order := getRGBColorOrder[O]()
+	dst[order.R] = color.RGBA8Prelerp(dst[order.R], r, alpha)
+	dst[order.G] = color.RGBA8Prelerp(dst[order.G], g, alpha)
+	dst[order.B] = color.RGBA8Prelerp(dst[order.B], b, alpha)
 }
 
 // BlenderRGBGamma implements gamma-corrected RGB blending

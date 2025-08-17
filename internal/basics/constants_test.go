@@ -289,12 +289,12 @@ func TestFillingRule(t *testing.T) {
 }
 
 func TestMathConstants(t *testing.T) {
-    if VertexDistEpsilon != 1e-14 {
-        t.Errorf("VertexDistEpsilon expected 1e-14, got %g", VertexDistEpsilon)
-    }
-    if IntersectionEpsilon != 1.0e-30 {
-        t.Errorf("IntersectionEpsilon expected 1.0e-30, got %g", IntersectionEpsilon)
-    }
+	if VertexDistEpsilon != 1e-14 {
+		t.Errorf("VertexDistEpsilon expected 1e-14, got %g", VertexDistEpsilon)
+	}
+	if IntersectionEpsilon != 1.0e-30 {
+		t.Errorf("IntersectionEpsilon expected 1.0e-30, got %g", IntersectionEpsilon)
+	}
 }
 
 // Benchmark tests
@@ -317,82 +317,82 @@ func BenchmarkMulOneMul(b *testing.B) {
 }
 
 func BenchmarkIRound(b *testing.B) {
-    b.ResetTimer()
-    for i := 0; i < b.N; i++ {
-        IRound(float64(i) + 0.5)
-    }
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		IRound(float64(i) + 0.5)
+	}
 }
 
 // Additional tests merged from constants_extra_test.go
 
 func TestUFloorAndUCeil(t *testing.T) {
-    t.Run("UFloor", func(t *testing.T) {
-        tests := []struct {
-            in       float64
-            expected uint32
-        }{
-            {3.9, 3},
-            {3.1, 3},
-            {0.0, 0},
-            {7.0, 7}, // exact integer
-            {-3.1, 0}, // negative clamps to 0
-            {-0.1, 0}, // negative clamps to 0
-        }
-        for _, tt := range tests {
-            got := UFloor(tt.in)
-            if got != tt.expected {
-                t.Errorf("UFloor(%v) = %d, want %d", tt.in, got, tt.expected)
-            }
-        }
-    })
+	t.Run("UFloor", func(t *testing.T) {
+		tests := []struct {
+			in       float64
+			expected uint32
+		}{
+			{3.9, 3},
+			{3.1, 3},
+			{0.0, 0},
+			{7.0, 7},  // exact integer
+			{-3.1, 0}, // negative clamps to 0
+			{-0.1, 0}, // negative clamps to 0
+		}
+		for _, tt := range tests {
+			got := UFloor(tt.in)
+			if got != tt.expected {
+				t.Errorf("UFloor(%v) = %d, want %d", tt.in, got, tt.expected)
+			}
+		}
+	})
 
-    t.Run("UCeil", func(t *testing.T) {
-        tests := []struct {
-            in       float64
-            expected uint32
-        }{
-            {3.1, 4},
-            {3.9, 4},
-            {0.0, 0},
-            {7.0, 7}, // exact integer
-            {-3.1, 0}, // negative clamps to 0
-            {-0.1, 0}, // negative clamps to 0
-        }
-        for _, tt := range tests {
-            got := UCeil(tt.in)
-            if got != tt.expected {
-                t.Errorf("UCeil(%v) = %d, want %d", tt.in, got, tt.expected)
-            }
-        }
-    })
+	t.Run("UCeil", func(t *testing.T) {
+		tests := []struct {
+			in       float64
+			expected uint32
+		}{
+			{3.1, 4},
+			{3.9, 4},
+			{0.0, 0},
+			{7.0, 7},  // exact integer
+			{-3.1, 0}, // negative clamps to 0
+			{-0.1, 0}, // negative clamps to 0
+		}
+		for _, tt := range tests {
+			got := UCeil(tt.in)
+			if got != tt.expected {
+				t.Errorf("UCeil(%v) = %d, want %d", tt.in, got, tt.expected)
+			}
+		}
+	})
 }
 
 func TestSaturationUnsignedIRound(t *testing.T) {
-    // For unsigned saturation, lower bound should clamp to 0
-    sat := NewSaturation[uint32](255)
+	// For unsigned saturation, lower bound should clamp to 0
+	sat := NewSaturation[uint32](255)
 
-    tests := []struct {
-        in       float64
-        expected uint32
-    }{
-        {-1.2, 0},    // negative clamps to 0
-        {-300.0, 0},  // below -limit clamps to 0
-        {0.0, 0},     // zero
-        {5.4, 5},     // standard rounding down
-        {5.5, 6},     // standard rounding up
-        {300.0, 255}, // above limit clamps to limit
-    }
+	tests := []struct {
+		in       float64
+		expected uint32
+	}{
+		{-1.2, 0},    // negative clamps to 0
+		{-300.0, 0},  // below -limit clamps to 0
+		{0.0, 0},     // zero
+		{5.4, 5},     // standard rounding down
+		{5.5, 6},     // standard rounding up
+		{300.0, 255}, // above limit clamps to limit
+	}
 
-    for _, tt := range tests {
-        got := sat.IRound(tt.in)
-        if got != tt.expected {
-            t.Errorf("Saturation[uint32].IRound(%v) = %d, want %d", tt.in, got, tt.expected)
-        }
-    }
+	for _, tt := range tests {
+		got := sat.IRound(tt.in)
+		if got != tt.expected {
+			t.Errorf("Saturation[uint32].IRound(%v) = %d, want %d", tt.in, got, tt.expected)
+		}
+	}
 }
 
 func TestPiConstant(t *testing.T) {
-    if Pi != math.Pi {
-        t.Errorf("Pi mismatch: got %v, want %v", Pi, math.Pi)
-    }
+	if Pi != math.Pi {
+		t.Errorf("Pi mismatch: got %v, want %v", Pi, math.Pi)
+	}
 }

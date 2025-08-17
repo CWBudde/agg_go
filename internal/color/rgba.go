@@ -421,18 +421,16 @@ func RGBA8Multiply(a, b basics.Int8u) basics.Int8u {
 }
 
 // RGBA8Lerp performs linear interpolation between two values
-// Implements: p + (q - p) * a / 255
+// Matches AGG's lerp implementation exactly
 func RGBA8Lerp(p, q, a basics.Int8u) basics.Int8u {
-	// Use signed arithmetic to handle the case where p > q
-	diff := int32(q) - int32(p)
-	result := int32(p) + (diff*int32(a)+127)/255
-	if result < 0 {
-		return 0
+	// AGG implementation: int t = (q - p) * a + base_MSB - (p > q);
+	// return value_type(p + (((t >> base_shift) + t) >> base_shift));
+	var greater int32 = 0
+	if p > q {
+		greater = 1
 	}
-	if result > 255 {
-		return 255
-	}
-	return basics.Int8u(result)
+	t := (int32(q)-int32(p))*int32(a) + RGBA8BaseMSB - greater
+	return basics.Int8u(int32(p) + (((t>>RGBA8BaseShift)+t)>>RGBA8BaseShift))
 }
 
 // RGBA8Prelerp performs premultiplied linear interpolation

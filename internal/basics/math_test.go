@@ -476,19 +476,21 @@ func TestLookupTables(t *testing.T) {
         if len(gSqrtTable) != 1024 {
             t.Fatalf("gSqrtTable length=%d, expected 1024", len(gSqrtTable))
         }
-        // Non-decreasing and within 0..255 range
-        prev := uint32(0)
+        // Non-decreasing and within 16-bit range (matches AGG's int16u g_sqrt_table[1024])
+        prev := uint16(0)
         for idx, v := range gSqrtTable {
             if v < prev {
                 t.Fatalf("gSqrtTable not non-decreasing at %d: %d < %d", idx, v, prev)
             }
-            if v > 255 {
-                t.Fatalf("gSqrtTable[%d]=%d > 255", idx, v)
-            }
+            // Values should be valid uint16 (no need to check > 65535 since v is uint16)
             prev = v
         }
-        if gSqrtTable[0] != 0 || gSqrtTable[len(gSqrtTable)-1] != 255 {
-            t.Fatalf("gSqrtTable endpoints unexpected: first=%d last=%d", gSqrtTable[0], gSqrtTable[len(gSqrtTable)-1])
+        // First value should be 0, last should be 65504 (from AGG)
+        if gSqrtTable[0] != 0 {
+            t.Fatalf("gSqrtTable[0]=%d, expected 0", gSqrtTable[0])
+        }
+        if gSqrtTable[len(gSqrtTable)-1] != 65504 {
+            t.Fatalf("gSqrtTable[1023]=%d, expected 65504", gSqrtTable[len(gSqrtTable)-1])
         }
     })
 }
