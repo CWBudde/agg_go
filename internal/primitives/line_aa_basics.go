@@ -38,6 +38,19 @@ func LineDblHR(x int) int {
 	return x << LineSubpixelShift
 }
 
+// LineDBLHR is an alias for LineDblHR for compatibility.
+func LineDBLHR(x int) int {
+	return LineDblHR(x)
+}
+
+// LineCoordSatInstance provides a global instance for coordinate saturation.
+var LineCoordSatInstance = LineCoordSat{}
+
+// LineCoordSatConv function interface
+func LineCoordSatConv(x float64) int {
+	return LineCoordSatInstance.Conv(x)
+}
+
 // LineCoord provides coordinate conversion for standard precision.
 type LineCoord struct{}
 

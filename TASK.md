@@ -1017,106 +1017,110 @@ This is a comprehensive checklist of files that need to be ported from the origi
 - [x] dot(x, y, r) method - small filled circle
 - [x] pixel(x, y, color) method - single pixel marker
 
-#### agg_renderer_outline_aa.h - Anti-aliased outline rendering
+#### agg_renderer_outline_aa.h - Anti-aliased outline rendering [COMPLETED]
 
 **Template Class renderer_outline_aa<BaseRenderer>**
 
-- [ ] base_ren_type, color_type, coord_type typedefs
-- [ ] Constructor with base renderer
-- [ ] attach(base_ren) method
+- [x] base_ren_type, color_type, coord_type typedefs
+- [x] Constructor with base renderer
+- [x] attach(base_ren) method
 
 **Line Pattern Support**
 
-- [ ] pattern(line_pattern) method
-- [ ] pattern() const getter method
-- [ ] pattern_scale() setter method
-- [ ] pattern_scale() const getter method
-- [ ] pattern_start() setter method
+- [x] pattern(line_pattern) method
+- [x] pattern() const getter method
+- [x] pattern_scale() setter method
+- [x] pattern_scale() const getter method
+- [x] pattern_start() setter method
 
 **Line Join and Cap Settings**
 
-- [ ] line_join(join_type) method - miter, round, bevel
-- [ ] line_cap(cap_type) method - butt, square, round
-- [ ] inner_join(join_type) method
-- [ ] width(line_width) setter method
-- [ ] width() const getter method
+- [x] line_join(join_type) method - miter, round, bevel
+- [x] line_cap(cap_type) method - butt, square, round
+- [x] inner_join(join_type) method
+- [x] width(line_width) setter method
+- [x] width() const getter method
 
 **Rendering Methods**
 
-- [ ] move_to(x, y) method
-- [ ] line_to(x, y) method
-- [ ] move_to_d(x, y) method - double precision
-- [ ] line_to_d(x, y) method - double precision
-- [ ] close_polygon() method
-- [ ] add_path<VertexSource>(vs, path_id) template method
-- [ ] add_vertex(x, y, cmd) method
+- [x] move_to(x, y) method
+- [x] line_to(x, y) method
+- [x] move_to_d(x, y) method - double precision
+- [x] line_to_d(x, y) method - double precision
+- [x] close_polygon() method
+- [x] add_path<VertexSource>(vs, path_id) template method
+- [x] add_vertex(x, y, cmd) method
 
 **Accuracy Control**
 
-- [ ] accuracy(approximation_scale) setter method
-- [ ] accuracy() const getter method
+- [x] accuracy(approximation_scale) setter method
+- [x] accuracy() const getter method
 
 #### agg_renderer_outline_image.h - Image-based outline rendering
 
 **Template Class renderer_outline_image<BaseRenderer, ImagePattern>**
 
-- [ ] base_ren_type, color_type, order_type typedefs
-- [ ] pattern_type typedef
-- [ ] Constructor with base renderer and pattern
-- [ ] attach(base_ren) method
+- [x] base_ren_type, color_type, order_type typedefs
+- [x] pattern_type typedef
+- [x] Constructor with base renderer and pattern
+- [x] attach(base_ren) method
 
 **Pattern Management**
 
-- [ ] pattern(image_pattern) setter method
-- [ ] pattern() const getter method
-- [ ] pattern_scale_x(), pattern_scale_y() setters
-- [ ] pattern_scale() unified setter method
+- [x] pattern(image_pattern) setter method
+- [x] pattern() const getter method
+- [x] pattern_scale_x(), pattern_scale_y() setters
+- [x] pattern_scale() unified setter method
 
 **Rendering Methods**
 
-- [ ] move_to(x, y) method
-- [ ] line_to(x, y) method
-- [ ] move_to_d(x, y) method
-- [ ] line_to_d(x, y) method
-- [ ] Pattern-based line stroke rendering
+- [x] move_to(x, y) method
+- [x] line_to(x, y) method
+- [x] move_to_d(x, y) method
+- [x] line_to_d(x, y) method
+- [x] Pattern-based line stroke rendering
 
 **Image Pattern Application**
 
-- [ ] Subpixel pattern positioning
-- [ ] Pattern scaling and rotation
-- [ ] Pattern tiling along line path
+- [x] Subpixel pattern positioning
+- [x] Pattern scaling and rotation
+- [x] Pattern tiling along line path
 
-#### agg_renderer_mclip.h - Multi-clipping renderer
+#### agg_renderer_mclip.h - Multi-clipping renderer ✅
 
-**Template Class renderer_mclip<PixelFormat>**
+**Template Class renderer_mclip<PixelFormat>** → `RendererMClip[PF, CT]`
 
-- [ ] pixfmt_type, color_type typedefs
-- [ ] base_ren_type typedef
-- [ ] Constructor with pixel format
-- [ ] attach(pixfmt) method
+- [x] pixfmt_type, color_type typedefs → Generic type parameters PF, CT
+- [x] base_ren_type typedef → `*RendererBase[PF, CT]`
+- [x] Constructor with pixel format → `NewRendererMClip[PF, CT](pixfmt)`
+- [x] attach(pixfmt) method → `Attach(pixfmt PF)`
 
 **Clipping Region Management**
 
-- [ ] first_clip_box() method
-- [ ] add_clip_box(x1, y1, x2, y2) method
-- [ ] remove_last_clip_box() method
-- [ ] clear_clip_boxes() method
-- [ ] clip_box_count() const method
+- [x] first_clip_box() method → `FirstClipBox()`
+- [x] add_clip_box(x1, y1, x2, y2) method → `AddClipBox(x1, y1, x2, y2 int)`
+- [x] next_clip_box() method → `NextClipBox() bool`
+- [x] reset_clipping(visibility) method → `ResetClipping(visibility bool)`
 
 **Multi-region Clipping Operations**
 
-- [ ] copy_pixel(x, y, color) method with multi-clip
-- [ ] blend_pixel(x, y, color, cover) method with multi-clip
-- [ ] copy_hline(x1, y, x2, color) method with multi-clip
-- [ ] blend_hline(x1, y, x2, color, cover) method with multi-clip
-- [ ] copy_vline(x, y1, y2, color) method with multi-clip
-- [ ] blend_vline(x, y1, y2, color, cover) method with multi-clip
+- [x] copy_pixel(x, y, color) method with multi-clip → `CopyPixel(x, y int, c interface{})`
+- [x] blend_pixel(x, y, color, cover) method with multi-clip → `BlendPixel(x, y int, c interface{}, cover basics.Int8u)`
+- [x] copy_hline(x1, y, x2, color) method with multi-clip → `CopyHline(x1, y, x2 int, c interface{})`
+- [x] blend_hline(x1, y, x2, color, cover) method with multi-clip → `BlendHline(x1, y, x2 int, c interface{}, cover basics.Int8u)`
+- [x] copy_vline(x, y1, y2, color) method with multi-clip → `CopyVline(x, y1, y2 int, c interface{})`
+- [x] blend_vline(x, y1, y2, color, cover) method with multi-clip → `BlendVline(x, y1, y2 int, c interface{}, cover basics.Int8u)`
+- [x] copy_bar, blend_bar methods → `CopyBar`, `BlendBar` with multi-clip support
+- [x] span operations (solid and color) → `BlendSolidHspan`, `BlendColorHspan`, etc. with multi-clip
+- [x] copy_from, blend_from operations → `CopyFrom`, `BlendFrom` with multi-clip support
 
 **Clipping Logic**
 
-- [ ] inbox_all(x, y) const method - point in all clips
-- [ ] inbox_any(x, y) const method - point in any clip
-- [ ] Intersection and union clipping operations
+- [x] clip box iteration via FirstClipBox/NextClipBox pattern
+- [x] bounding box calculation for all clip regions → `BoundingClipBox()`
+- [x] comprehensive test suite covering all multi-region scenarios
+
+**Implementation**: `internal/renderer/renderer_mclip.go` with full test coverage
 
 #### agg_renderer_raster_text.h - Raster text rendering
 
@@ -1591,6 +1595,1043 @@ This is a comprehensive checklist of files that need to be ported from the origi
 4. Gradients and patterns
 5. Text rendering
 6. High-level AGG2D interface
+
+## Examples
+
+After implementing the core AGG library components above, these examples should be ported to demonstrate the library functionality and serve as usage documentation.
+
+### Basic Drawing and Primitives
+
+#### rounded_rect.cpp - Interactive Rounded Rectangle Demo
+
+**Core AGG Components Required**
+
+- [ ] agg_rounded_rect.h/.cpp → RoundedRect struct with state machine
+- [ ] agg_conv_stroke.h → ConvStroke[VS] converter for outline generation
+- [ ] agg_ellipse.h → Ellipse struct for control point markers
+- [ ] Platform controls (slider_ctrl, cbox_ctrl) → Go UI integration
+
+**Implementation Details**
+
+**Application Structure**
+- [ ] main application struct inheriting platform support
+- [ ] Mouse interaction state (m_x[2], m_y[2] control points, m_dx, m_dy drag offsets, m_idx selection)
+- [ ] Control widgets (radius slider, offset slider, white-on-black checkbox)
+
+**Rounded Rectangle Component**
+- [ ] rounded_rect.init(x1, y1, x2, y2, radius) method
+- [ ] normalize_radius() method for constraint validation
+- [ ] vertex source interface (rewind/vertex pattern)
+- [ ] State machine for corner generation using composed arc objects
+
+**Stroke Conversion Pipeline**
+- [ ] conv_stroke<rounded_rect> template instantiation → ConvStroke[RoundedRect]
+- [ ] width(1.0) line width setting
+- [ ] Line join/cap support (miter, round, bevel options)
+
+**Rendering Pipeline Usage**
+- [ ] rasterizer_scanline_aa<> → RasterizerScanlineAA for path rasterization
+- [ ] scanline_p8 → ScanlineP8 for anti-aliased coverage data
+- [ ] renderer_base<pixfmt> → RendererBase[PixFmt] pixel format wrapper
+- [ ] renderer_scanline_aa_solid<renderer_base> → RendererScanlineAASolid[Base] solid color renderer
+- [ ] render_scanlines(ras, sl, ren) function → RenderScanlines()
+
+**Interactive Features**
+- [ ] Mouse hit testing with sqrt((x-mx)² + (y-my)²) < 5.0 collision detection
+- [ ] Drag and drop for rectangle corner positioning
+- [ ] Real-time subpixel offset demonstration (m_offset.value() applied to coordinates)
+- [ ] Background color toggle (white-on-black mode switching)
+
+**Control Integration**
+- [ ] Slider controls for radius (0.0-50.0 range) and subpixel offset (-2.0 to 3.0)
+- [ ] Real-time label updates ("radius=%4.3f", "subpixel offset=%4.3f")
+- [ ] Control rendering using render_ctrl(ras, sl, rb, control) template function
+
+**Key Algorithms and Techniques**
+- [ ] Subpixel positioning accuracy demonstration
+- [ ] Anti-aliasing quality visualization
+- [ ] Interactive geometric manipulation
+- [ ] Real-time shape recalculation and rendering
+
+#### circles.cpp - High Performance Circle Rendering
+
+**Core AGG Components Required**
+
+- [ ] agg_ellipse.h → Ellipse struct for circle generation
+- [ ] agg_conv_transform.h → ConvTransform[VS, Trans] for coordinate transformations
+- [ ] agg_bspline.h → BSpline for smooth animation curves
+- [ ] agg_gsv_text.h → GSVText for performance statistics display
+
+**Implementation Details**
+
+**Performance Test Structure**
+- [ ] Configurable circle count (default 10,000 circles)
+- [ ] Random circle generation with position, size, and color variation
+- [ ] Frame rate measurement and display
+- [ ] Memory usage optimization techniques
+
+**Circle Generation Pipeline**
+- [ ] ellipse.init(x, y, rx, ry, num_steps, cw) method calls
+- [ ] Automatic step count calculation based on radius (calc_num_steps())
+- [ ] Vertex source iteration for each circle
+- [ ] Batch rendering optimization for thousands of objects
+
+**Transform System Integration**
+- [ ] trans_affine transformation matrices → TransAffine struct
+- [ ] Scale, rotation, and translation operations
+- [ ] Transform composition for complex animations
+- [ ] conv_transform wrapper for applying transforms to circles
+
+**Rendering Optimization**
+- [ ] Scanline renderer reuse to minimize allocations
+- [ ] Color pre-calculation and caching
+- [ ] Viewport culling for off-screen circles
+- [ ] Adaptive quality based on circle size (num_steps calculation)
+
+**Control Features**
+- [ ] Circle count slider (scale_ctrl) for performance testing
+- [ ] Animation speed controls
+- [ ] Quality vs. performance trade-off settings
+- [ ] Real-time FPS display and statistics
+
+**Key Algorithms and Techniques**
+- [ ] High-performance batch rendering
+- [ ] Automatic level-of-detail (LOD) based on object size
+- [ ] Memory pool management for large object counts
+- [ ] Viewport-based culling optimization
+
+#### conv_stroke.cpp - Comprehensive Stroke Demonstration
+
+**Core AGG Components Required**
+
+- [ ] agg_conv_stroke.h → ConvStroke[VS] stroke generator
+- [ ] agg_conv_dash.h → ConvDash[VS] for dashed line patterns
+- [ ] agg_conv_marker.h → ConvMarker[VS] for line decorations
+- [ ] agg_arrowhead.h → Arrowhead vertex source for line terminators
+
+**Implementation Details**
+
+**Interactive Path Definition**
+- [ ] Three control points (m_x[3], m_y[3]) for defining stroke path
+- [ ] Mouse interaction for point manipulation
+- [ ] Real-time path update and redraw
+- [ ] Path segment visualization
+
+**Stroke Parameter Controls**
+- [ ] Line join types: miter, miter-revert, round, bevel (rbox_ctrl)
+- [ ] Line cap types: butt, square, round (rbox_ctrl)
+- [ ] Line width slider (3.0 to 40.0 range)
+- [ ] Miter limit slider (1.0 to 10.0 range) for sharp angle handling
+
+**Stroke Generation Pipeline**
+- [ ] conv_stroke template with configurable parameters
+- [ ] width(w) method for line thickness
+- [ ] line_join(join_type) method for corner handling
+- [ ] line_cap(cap_type) method for endpoint treatment
+- [ ] miter_limit(limit) method for sharp angle clipping
+
+**Advanced Stroke Features**
+- [ ] Inner join handling for self-intersecting paths
+- [ ] Stroke accuracy control (approximation_scale)
+- [ ] Path direction awareness (cw/ccw handling)
+- [ ] Zero-width stroke handling and degenerate case management
+
+**Rendering Pipeline Integration**
+- [ ] Compatible with all rasterizer types
+- [ ] Anti-aliased and non-anti-aliased rendering modes
+- [ ] Multiple pixel format support
+- [ ] Transformation-aware stroke generation
+
+**Key Algorithms and Techniques**
+- [ ] Geometric stroke expansion algorithms
+- [ ] Join and cap geometric calculations
+- [ ] Miter limit enforcement and fallback
+- [ ] Adaptive tessellation for curved joins
+
+#### conv_dash_marker.cpp - Dashed Lines and Marker Placement
+
+**Core AGG Components Required**
+
+- [ ] agg_conv_dash.h → ConvDash[VS] for dash pattern generation
+- [ ] agg_conv_marker.h → ConvMarker[VS, MarkerLocator, MarkerShape] for marker placement
+- [ ] agg_vcgen_markers_term.h → VCGenMarkersTerm vertex generator for path terminals
+- [ ] agg_conv_smooth_poly1.h → ConvSmoothPoly1[VS] for path smoothing
+
+**Implementation Details**
+
+**Dash Pattern System**
+- [ ] add_dash(dash_len, gap_len) method for pattern definition
+- [ ] dash_start(start_offset) method for pattern phase control
+- [ ] Pattern repetition along path length
+- [ ] Automatic pattern scaling based on path curvature
+
+**Marker Placement System**
+- [ ] Marker locators: even spacing, distance-based, vertex-based
+- [ ] Custom marker shapes (arrowheads, circles, squares)
+- [ ] Marker orientation relative to path direction
+- [ ] Marker size scaling based on line properties
+
+**Interactive Controls**
+- [ ] Cap style selection (butt, square, round) for dash segments
+- [ ] Line width control affecting both dashes and markers
+- [ ] Path smoothing control for organic appearance
+- [ ] Polygon closing option for closed paths
+- [ ] Fill rule selection (even-odd vs non-zero winding)
+
+**Path Manipulation**
+- [ ] Three-point interactive path definition
+- [ ] Real-time path smoothing with smoothing parameter
+- [ ] Path closing/opening toggle
+- [ ] Mouse-based vertex manipulation
+
+**Advanced Features**
+- [ ] Marker terminal generation at path endpoints
+- [ ] Dash pattern alignment at path joints
+- [ ] Smooth transitions between dash segments
+- [ ] Marker collision detection and avoidance
+
+**Key Algorithms and Techniques**
+- [ ] Arc length parameterization for even dash spacing
+- [ ] Path normal calculation for marker orientation
+- [ ] Smooth polygon generation from control points
+- [ ] Pattern phase management across path segments
+
+#### make_arrows.cpp - Arrowhead Shape Generation
+
+**Core AGG Components Required**
+
+- [ ] agg_path_storage.h → PathStorage for arrow geometry
+- [ ] Hard-coded arrow coordinate arrays → Static shape definitions
+- [ ] move_to(), line_to(), close_polygon() → Path building methods
+
+**Implementation Details**
+
+**Arrow Geometry Definition**
+- [ ] Pre-calculated arrow vertex coordinates
+- [ ] Four distinct arrow orientations (up, down, left, right)
+- [ ] Coordinate precision using double precision values
+- [ ] Closed polygon definitions for filled arrows
+
+**Path Construction**
+- [ ] path_storage.remove_all() → path clearing
+- [ ] Sequence of move_to/line_to operations for each arrow
+- [ ] close_polygon() calls to create filled shapes
+- [ ] Multiple arrow definition in single path storage
+
+**Shape Variations**
+- [ ] Different arrow head styles and proportions
+- [ ] Configurable arrow dimensions
+- [ ] Sharp vs. rounded arrow tips
+- [ ] Hollow vs. filled arrow styles
+
+**Integration Points**
+- [ ] Compatible with all stroke and fill converters
+- [ ] Transformable using conv_transform
+- [ ] Usable as marker shapes in conv_marker
+- [ ] Suitable for interactive manipulation
+
+**Key Algorithms and Techniques**
+- [ ] Precise geometric calculation for arrow shapes
+- [ ] Coordinate system consistency
+- [ ] Path command optimization
+- [ ] Reusable shape definition patterns
+
+#### make_gb_poly.cpp - General Polygon Utilities
+
+**Core AGG Components Required**
+
+- [ ] agg_path_storage.h → PathStorage for polygon construction
+- [ ] Polygon generation algorithms → Geometric utility functions
+- [ ] Vertex manipulation utilities → Point array processing
+
+**Implementation Details**
+
+**Polygon Generation Methods**
+- [ ] Regular polygon generation (n-sided shapes)
+- [ ] Star polygon creation with inner/outer radius
+- [ ] Rounded polygon corners using arc interpolation
+- [ ] Custom polygon from point array
+
+**Utility Functions**
+- [ ] Polygon centroid calculation
+- [ ] Area and perimeter computation
+- [ ] Winding direction detection and correction
+- [ ] Polygon simplification and optimization
+
+**Path Building Operations**
+- [ ] Efficient vertex addition with minimal allocations
+- [ ] Automatic polygon closing detection
+- [ ] Vertex deduplication and cleanup
+- [ ] Path command optimization
+
+**Integration Features**
+- [ ] Compatible with all AGG converters
+- [ ] Transformation-ready polygon definitions
+- [ ] Suitable for boolean operations
+- [ ] Optimized for rendering performance
+
+**Key Algorithms and Techniques**
+- [ ] Efficient polygon generation algorithms
+- [ ] Geometric utility function implementation
+- [ ] Memory-efficient vertex storage
+- [ ] Reusable polygon construction patterns
+
+#### bezier_div.cpp - Adaptive Bezier Curve Subdivision
+
+**Core AGG Components Required**
+
+- [ ] agg_curves.h → curve4_div, curve3_div classes for curve subdivision
+- [ ] agg_bezier_arc.h → bezier_arc class for arc-to-bezier conversion
+- [ ] agg_conv_curve.h → conv_curve converter for automatic curve handling
+- [ ] ctrl/agg_bezier_ctrl.h → Interactive bezier curve control widget
+
+**Implementation Details**
+
+**Curve Subdivision System**
+- [ ] Adaptive subdivision based on curve flatness
+- [ ] curve4_div class for cubic bezier curves
+- [ ] curve3_div class for quadratic bezier curves
+- [ ] Tolerance-based subdivision control
+
+**Interactive Curve Editing**
+- [ ] bezier_ctrl widget for visual curve manipulation
+- [ ] Four control points for cubic bezier definition
+- [ ] Real-time curve update during point dragging
+- [ ] Curve parameter visualization (control polygon)
+
+**Subdivision Parameter Controls**
+- [ ] Angle tolerance slider for curvature sensitivity
+- [ ] Approximation scale for detail level control
+- [ ] Cusp limit for sharp corner handling
+- [ ] Line width control for stroke visualization
+
+**Rendering Modes**
+- [ ] Curve outline rendering (stroked)
+- [ ] Control point visualization
+- [ ] Subdivision point display option
+- [ ] Curve direction indicators
+
+**Advanced Curve Features**
+- [ ] Curve type selection (cubic, quadratic, arc)
+- [ ] Special case handling (loops, cusps, inflections)
+- [ ] Inner join type selection for stroke generation
+- [ ] Line cap and join style options
+
+**Performance Optimization**
+- [ ] Subdivision caching for static curves
+- [ ] Adaptive level-of-detail based on view scale
+- [ ] Memory pool for temporary subdivision storage
+- [ ] Vectorized curve evaluation where possible
+
+**Key Algorithms and Techniques**
+- [ ] De Casteljau subdivision algorithm
+- [ ] Curve flatness estimation
+- [ ] Adaptive tolerance calculation
+- [ ] Memory-efficient subdivision storage
+
+#### bspline.cpp - B-Spline Curve Rendering and Editing
+
+**Core AGG Components Required**
+
+- [ ] agg_bspline.h → bspline class for B-spline curve representation
+- [ ] agg_conv_bspline.h → conv_bspline converter for path integration
+- [ ] Interactive control point editing → UI integration for spline manipulation
+
+**Implementation Details**
+
+**B-Spline Mathematics**
+- [ ] Cubic B-spline basis function evaluation
+- [ ] Control point to curve point mapping
+- [ ] Knot vector management (uniform/non-uniform)
+- [ ] Curve parameter to arc length conversion
+
+**Interactive Spline Editing**
+- [ ] Multiple control point manipulation
+- [ ] Control point addition/removal
+- [ ] Real-time curve regeneration
+- [ ] Tangent vector visualization
+
+**Spline Parameters**
+- [ ] Curve degree selection (cubic standard)
+- [ ] Tension parameter for curve tightness
+- [ ] Continuity control (C0, C1, C2)
+- [ ] Endpoint behavior (clamped, periodic, open)
+
+**Rendering Integration**
+- [ ] Compatible with stroke and fill converters
+- [ ] Smooth curve tessellation
+- [ ] Adaptive point generation based on curvature
+- [ ] Integration with transformation system
+
+**Key Algorithms and Techniques**
+- [ ] Efficient B-spline evaluation algorithms
+- [ ] Curve-to-polyline conversion
+- [ ] Adaptive sampling based on curvature
+- [ ] Interactive curve editing algorithms
+
+#### conv_contour.cpp - Path Contour Generation
+
+**Core AGG Components Required**
+
+- [ ] agg_conv_contour.h → conv_contour converter for path offsetting
+- [ ] agg_vcgen_contour.h → vcgen_contour vertex generator for offset calculation
+- [ ] Path offsetting algorithms → Geometric computation for parallel curves
+
+**Implementation Details**
+
+**Contour Generation System**
+- [ ] Positive/negative offset distances for expansion/contraction
+- [ ] Line join handling for offset intersections
+- [ ] Self-intersection detection and resolution
+- [ ] Closed path contour generation
+
+**Offset Parameters**
+- [ ] Contour distance control (positive for expansion)
+- [ ] Line join type selection for corners
+- [ ] Miter limit handling for sharp angles
+- [ ] Inner join type for concave regions
+
+**Advanced Contour Features**
+- [ ] Multiple simultaneous contours
+- [ ] Contour hierarchy management
+- [ ] Intersection removal algorithms
+- [ ] Smooth contour transitions
+
+**Path Processing**
+- [ ] Compatible with all vertex sources
+- [ ] Preserves path structure and commands
+- [ ] Handles open and closed paths differently
+- [ ] Maintains path orientation
+
+**Key Algorithms and Techniques**
+- [ ] Parallel curve calculation algorithms
+- [ ] Offset curve intersection computation
+- [ ] Self-intersection removal
+- [ ] Geometric robustness for edge cases
+
+### Anti-Aliasing and Rendering Quality
+
+#### aa_demo.cpp - Visual Anti-Aliasing Quality Demonstration
+
+**Core AGG Components Required**
+
+- [ ] agg_rasterizer_scanline_aa.h → RasterizerScanlineAA for high-quality rasterization
+- [ ] agg_scanline_u.h → ScanlineU8 for unpacked coverage data
+- [ ] Custom square renderer class → RendererEnlarged[Renderer] for pixel magnification
+- [ ] agg_renderer_scanline.h → render_scanlines_aa_solid() function
+
+**Implementation Details**
+
+**Custom Square Vertex Source**
+- [ ] square class with configurable size parameter
+- [ ] template draw() method accepting rasterizer, scanline, renderer, color, position
+- [ ] Direct coordinate generation using move_to_d(), line_to_d() methods
+- [ ] Closed polygon creation for filled square rendering
+
+**Enlarged Pixel Renderer System**
+- [ ] renderer_enlarged<Renderer> template class → RendererEnlarged[Renderer]
+- [ ] Scanline processing with per-pixel magnification
+- [ ] Coverage-to-alpha blending: (covers[i] * color.a) >> 8
+- [ ] Nested rasterizer and scanline for magnified pixel rendering
+
+**Scanline Processing Pipeline**
+- [ ] render(scanline) template method implementation
+- [ ] span iteration: for span in scanline.begin() to end
+- [ ] per-pixel coverage extraction: span.covers[i] for i in 0..span.len
+- [ ] Alpha modulation based on coverage values
+
+**Visual Demonstration Features**
+- [ ] Pixel-level magnification for anti-aliasing visualization
+- [ ] Coverage value to visual intensity mapping
+- [ ] Side-by-side comparison of aliased vs anti-aliased rendering
+- [ ] Interactive controls for magnification factor
+
+**Anti-Aliasing Quality Metrics**
+- [ ] Subpixel accuracy demonstration
+- [ ] Coverage gradient visualization
+- [ ] Edge smoothness comparison
+- [ ] Visual artifacts identification and elimination
+
+**Key Algorithms and Techniques**
+- [ ] Subpixel sampling and coverage calculation
+- [ ] Alpha blending mathematics for smooth edges
+- [ ] Magnified pixel rendering for educational visualization
+- [ ] Coverage-based intensity modulation
+
+#### aa_test.cpp - Comprehensive Anti-Aliasing Testing Suite
+
+**Core AGG Components Required**
+
+- [ ] agg_rasterizer_scanline_aa.h → RasterizerScanlineAA with gamma support
+- [ ] agg_scanline_u.h → ScanlineU8 for coverage data
+- [ ] agg_conv_dash.h → ConvDash[VS] for dashed line testing
+- [ ] agg_span_gradient.h → SpanGradient for gradient testing
+- [ ] agg_span_gouraud_rgba.h → SpanGouraudRGBA for smooth shading tests
+
+**Implementation Details**
+
+**Simple Vertex Source Framework**
+- [ ] simple_vertex_source class with configurable vertex count
+- [ ] Line constructor: init(x1, y1, x2, y2) for two-point paths
+- [ ] Triangle constructor: init(x1, y1, x2, y2, x3, y3) for closed polygons
+- [ ] Vertex source interface: rewind()/vertex() pattern implementation
+
+**Anti-Aliasing Test Categories**
+- [ ] Line rendering accuracy tests
+- [ ] Polygon edge quality tests
+- [ ] Curve approximation fidelity tests
+- [ ] Intersection and overlap handling tests
+
+**Gradient Integration Testing**
+- [ ] span_interpolator_linear for coordinate interpolation
+- [ ] Linear gradient span generation
+- [ ] Gradient-to-anti-aliasing interaction verification
+- [ ] Color interpolation accuracy in anti-aliased regions
+
+**Gouraud Shading with Anti-Aliasing**
+- [ ] span_gouraud_rgba for vertex color interpolation
+- [ ] Triangle mesh rendering with smooth color transitions
+- [ ] Anti-aliasing preservation during color interpolation
+- [ ] Edge color accuracy verification
+
+**Random Testing Framework**
+- [ ] frand() function for deterministic randomness
+- [ ] Random geometry generation for stress testing
+- [ ] Statistical quality analysis
+- [ ] Automated pass/fail criteria
+
+**Performance Benchmarking**
+- [ ] Frame rate measurement for different AA settings
+- [ ] Memory usage analysis
+- [ ] Coverage calculation performance testing
+- [ ] Comparative benchmarking against reference implementations
+
+**Key Algorithms and Techniques**
+- [ ] Systematic anti-aliasing quality evaluation
+- [ ] Statistical analysis of coverage distributions
+- [ ] Edge case handling verification
+- [ ] Performance vs. quality trade-off analysis
+
+#### line_thickness.cpp - Precise Line Thickness Control
+
+**Core AGG Components Required**
+
+- [ ] agg_conv_stroke.h → ConvStroke[VS] for line width control
+- [ ] Subpixel positioning system → Double precision coordinate handling
+- [ ] agg_rasterizer_scanline_aa.h → RasterizerScanlineAA with high precision
+- [ ] Line thickness measurement tools → Width verification algorithms
+
+**Implementation Details**
+
+**Precision Line Width System**
+- [ ] Configurable line width from 0.1 to 10.0 pixels
+- [ ] Subpixel width increments (0.1 pixel resolution)
+- [ ] Width measurement verification using geometric analysis
+- [ ] Visual width calibration against reference measurements
+
+**Subpixel Positioning Accuracy**
+- [ ] Double precision coordinate input (move_to_d, line_to_d)
+- [ ] Subpixel offset testing (0.1 pixel increments)
+- [ ] Position accuracy verification using visual inspection
+- [ ] Anti-aliasing impact on perceived line position
+
+**Line Quality Metrics**
+- [ ] Edge sharpness measurement
+- [ ] Width consistency along line length
+- [ ] End cap accuracy (butt, round, square)
+- [ ] Join accuracy at line intersections
+
+**Interactive Testing Controls**
+- [ ] Line width slider with real-time preview
+- [ ] Subpixel position offset controls
+- [ ] Zoom controls for detailed inspection
+- [ ] Reference grid overlay for measurement
+
+**Thickness Measurement Algorithms**
+- [ ] Cross-section analysis of rendered lines
+- [ ] Peak detection in coverage profiles
+- [ ] Statistical width measurement across line length
+- [ ] Comparison against theoretical width values
+
+**Visual Verification Tools**
+- [ ] Magnified view of line cross-sections
+- [ ] Coverage profile graphs
+- [ ] Width measurement overlays
+- [ ] Side-by-side comparison views
+
+**Key Algorithms and Techniques**
+- [ ] Subpixel line positioning mathematics
+- [ ] Width measurement through coverage analysis
+- [ ] Visual calibration and verification methods
+- [ ] Precision rendering quality assessment
+
+#### rasterizers.cpp - Rasterizer Performance and Quality Comparison
+
+**Core AGG Components Required**
+
+- [ ] agg_rasterizer_scanline_aa.h → RasterizerScanlineAA for anti-aliased rendering
+- [ ] agg_rasterizer_outline.h → RasterizerOutline for outline-only rendering
+- [ ] agg_scanline_p.h → ScanlineP8 for packed anti-aliased scanlines
+- [ ] agg_scanline_bin.h → ScanlineBin for binary (aliased) scanlines
+- [ ] agg_renderer_primitives.h → RendererPrimitives for fast primitive rendering
+
+**Implementation Details**
+
+**Multi-Rasterizer Framework**
+- [ ] Rasterizer selection system with runtime switching
+- [ ] Performance timing for each rasterizer type
+- [ ] Quality comparison using identical geometry
+- [ ] Memory usage profiling per rasterizer
+
+**Anti-Aliased Rasterization Path**
+- [ ] rasterizer_scanline_aa<> with gamma correction support
+- [ ] scanline_p8 for detailed coverage information
+- [ ] renderer_scanline_aa_solid for high-quality rendering
+- [ ] Gamma correction parameter controls
+
+**Binary (Aliased) Rasterization Path**
+- [ ] Same rasterizer with binary output mode
+- [ ] scanline_bin for fast binary scanlines
+- [ ] renderer_scanline_bin_solid for aliased rendering
+- [ ] Performance comparison against anti-aliased mode
+
+**Outline Rasterization**
+- [ ] rasterizer_outline for wireframe/outline rendering
+- [ ] renderer_primitives for fast line drawing
+- [ ] Direct pixel manipulation for maximum speed
+- [ ] Line pattern and styling support
+
+**Performance Benchmarking System**
+- [ ] Frame rate measurement across rasterizer types
+- [ ] Geometry complexity scaling tests
+- [ ] Memory allocation profiling
+- [ ] Cache efficiency analysis
+
+**Interactive Controls**
+- [ ] Gamma correction slider (0.0 to 1.0)
+- [ ] Alpha transparency control
+- [ ] Performance test mode toggle
+- [ ] Rasterizer selection controls
+
+**Quality Assessment Tools**
+- [ ] Visual quality comparison
+- [ ] Edge smoothness analysis
+- [ ] Performance vs. quality trade-off visualization
+- [ ] Statistical quality metrics
+
+**Key Algorithms and Techniques**
+- [ ] Multi-path rendering system architecture
+- [ ] Performance measurement and comparison
+- [ ] Quality metrics and assessment
+- [ ] Trade-off analysis between speed and quality
+
+#### rasterizers2.cpp - Advanced Rasterization Techniques
+
+**Core AGG Components Required**
+
+- [ ] Advanced rasterizer configurations → Extended RasterizerScanlineAA options
+- [ ] Multiple scanline types → ScanlineP8, ScanlineU8, ScanlineBin comparison
+- [ ] Complex geometry handling → Self-intersecting and degenerate path processing
+- [ ] Memory optimization techniques → Efficient scanline storage and processing
+
+**Implementation Details**
+
+**Advanced Rasterizer Configuration**
+- [ ] Cell block size optimization for different geometry types
+- [ ] Gamma correction curve customization
+- [ ] Clipping region optimization
+- [ ] Memory pool management for large geometry
+
+**Scanline Type Comparison**
+- [ ] Packed vs. unpacked scanline performance analysis
+- [ ] Memory usage comparison between scanline types
+- [ ] Coverage precision trade-offs
+- [ ] Processing speed optimization
+
+**Complex Geometry Handling**
+- [ ] Self-intersecting polygon rasterization
+- [ ] Degenerate case handling (zero-area triangles, coincident points)
+- [ ] Large coordinate range support
+- [ ] Numerical stability in edge cases
+
+**Memory Management Optimization**
+- [ ] Scanline storage efficiency
+- [ ] Coverage data compression
+- [ ] Memory pool reuse strategies
+- [ ] Garbage collection impact minimization
+
+**Advanced Rendering Features**
+- [ ] Multi-sample anti-aliasing simulation
+- [ ] Adaptive quality based on geometry complexity
+- [ ] Level-of-detail rendering
+- [ ] Batch processing optimization
+
+**Performance Profiling Tools**
+- [ ] Memory usage monitoring
+- [ ] CPU cache efficiency measurement
+- [ ] Scalability testing with complex scenes
+- [ ] Bottleneck identification and optimization
+
+**Key Algorithms and Techniques**
+- [ ] Advanced memory management for graphics
+- [ ] Scalable rasterization algorithms
+- [ ] Complex geometry processing
+- [ ] Performance optimization strategies
+
+#### rasterizer_compound.cpp - Multi-Style Compound Rendering
+
+**Core AGG Components Required**
+
+- [ ] agg_rasterizer_compound_aa.h → RasterizerCompoundAA for multi-style rendering
+- [ ] Style management system → Multiple fill/stroke styles per shape
+- [ ] Layer ordering system → Depth control for overlapping shapes
+- [ ] Master alpha buffer → Global transparency control
+
+**Implementation Details**
+
+**Compound Rasterizer Architecture**
+- [ ] Multi-style cell storage system
+- [ ] Left/right style assignment for shape regions
+- [ ] Style inheritance and composition rules
+- [ ] Efficient style switching during rasterization
+
+**Style Management System**
+- [ ] styles(left_style, right_style) method for region definition
+- [ ] Style identifier management and lookup
+- [ ] Style property inheritance chains
+- [ ] Dynamic style modification during rendering
+
+**Layer Ordering Control**
+- [ ] layer_order() method for depth sorting
+- [ ] Layer unsorted, direct, and inverse modes
+- [ ] Z-buffer style depth management
+- [ ] Transparency ordering and composition
+
+**Master Alpha Buffer**
+- [ ] allocate_master_alpha() for global alpha control
+- [ ] Per-pixel alpha accumulation
+- [ ] Alpha blending across multiple styles
+- [ ] Transparency interaction between layers
+
+**Complex Shape Composition**
+- [ ] Overlapping shape region detection
+- [ ] Style blending in intersection areas
+- [ ] Non-zero vs. even-odd winding rule interaction
+- [ ] Complex boolean operation simulation
+
+**Performance Optimization**
+- [ ] Style switching overhead minimization
+- [ ] Memory efficient multi-style storage
+- [ ] Scanline processing optimization for compound shapes
+- [ ] Cache-friendly style access patterns
+
+**Interactive Features**
+- [ ] Real-time style modification
+- [ ] Layer reordering controls
+- [ ] Alpha blending parameter adjustment
+- [ ] Visual debugging of style assignments
+
+**Key Algorithms and Techniques**
+- [ ] Multi-style rasterization algorithms
+- [ ] Efficient compound shape processing
+- [ ] Layer-based rendering management
+- [ ] Complex transparency and blending operations
+
+### Color and Pixel Format Demos
+
+#### Color Blending
+
+- [ ] **blend_color.cpp** - Color blending mode demonstration
+  - *Dependencies*: All pixel formats, blending operations
+  - *Demonstrates*: Different blend modes, color operations
+
+- [ ] **compositing.cpp** - Alpha compositing operations
+  - *Dependencies*: Alpha blending, RGBA pixel formats
+  - *Demonstrates*: Porter-Duff compositing, alpha channel operations
+
+- [ ] **compositing2.cpp** - Advanced compositing techniques
+  - *Dependencies*: Advanced blending, multiple pixel formats
+  - *Demonstrates*: Complex compositing scenarios
+
+- [ ] **component_rendering.cpp** - Multi-component rendering
+  - *Dependencies*: Component separation, color channel manipulation
+  - *Demonstrates*: CMYK separation, color component isolation
+
+#### Gamma and Color Correction
+
+- [ ] **gamma_correction.cpp** - Gamma correction demonstration
+  - *Dependencies*: agg_gamma_lut.h, gamma functions, sRGB conversion
+  - *Demonstrates*: Gamma correction, color space conversions
+
+- [ ] **gamma_ctrl.cpp** - Interactive gamma correction
+  - *Dependencies*: Gamma correction + interactive controls
+  - *Demonstrates*: Real-time gamma adjustment, UI integration
+
+- [ ] **gamma_tuner.cpp** - Gamma tuning utilities
+  - *Dependencies*: Advanced gamma functions, color analysis
+  - *Demonstrates*: Gamma calibration, color accuracy tuning
+
+### Image Processing and Filters
+
+#### Basic Image Operations
+
+- [ ] **image1.cpp** - Basic image loading and display
+  - *Dependencies*: Image loading, basic pixel format conversion
+  - *Demonstrates*: Image I/O, format conversion, basic display
+
+- [ ] **image_alpha.cpp** - Image alpha channel processing
+  - *Dependencies*: RGBA image handling, alpha blending
+  - *Demonstrates*: Alpha channel manipulation, transparency effects
+
+- [ ] **image_transforms.cpp** - Image geometric transformations
+  - *Dependencies*: agg_trans_affine.h/.cpp, image interpolation
+  - *Demonstrates*: Rotation, scaling, skewing of images
+
+- [ ] **image_perspective.cpp** - Perspective image transformations
+  - *Dependencies*: agg_trans_perspective.h, perspective correction
+  - *Demonstrates*: 3D perspective effects, keystone correction
+
+#### Image Filtering
+
+- [ ] **image_filters.cpp** - Image resampling and filtering
+  - *Dependencies*: agg_image_filters.h/.cpp, span image filters
+  - *Demonstrates*: Image scaling, interpolation methods, filter quality
+
+- [ ] **image_filters2.cpp** - Advanced image filtering
+  - *Dependencies*: Advanced image filters, custom filter kernels
+  - *Demonstrates*: Custom filtering, advanced interpolation
+
+- [ ] **image_fltr_graph.cpp** - Image filter visualization
+  - *Dependencies*: Image filters + graphing capabilities
+  - *Demonstrates*: Filter response visualization, frequency analysis
+
+- [ ] **image_resample.cpp** - Image resampling techniques
+  - *Dependencies*: Resampling algorithms, quality control
+  - *Demonstrates*: Different resampling methods, quality comparison
+
+#### Pattern and Texture
+
+- [ ] **pattern_fill.cpp** - Pattern filling operations
+  - *Dependencies*: Pattern rendering, span generators
+  - *Demonstrates*: Texture mapping, pattern repetition
+
+- [ ] **pattern_perspective.cpp** - Perspective pattern mapping
+  - *Dependencies*: Pattern rendering + perspective transforms
+  - *Demonstrates*: 3D texture mapping effects
+
+- [ ] **pattern_resample.cpp** - Pattern resampling
+  - *Dependencies*: Pattern rendering + resampling
+  - *Demonstrates*: Adaptive pattern scaling
+
+### Gradients and Shading
+
+- [ ] **gradients.cpp** - Basic gradient rendering
+  - *Dependencies*: agg_span_gradient.h, gradient functions, span allocator
+  - *Demonstrates*: Linear/radial gradients, color interpolation
+
+- [ ] **gradient_focal.cpp** - Focal gradients (spotlight effects)
+  - *Dependencies*: Advanced gradient rendering, focal point calculations
+  - *Demonstrates*: Spotlight effects, non-uniform radial gradients
+
+- [ ] **gradients_contour.cpp** - Contour-based gradients
+  - *Dependencies*: agg_span_gradient_contour.h, distance field gradients
+  - *Demonstrates*: Shape-based gradients, distance field effects
+
+- [ ] **alpha_gradient.cpp** - Alpha channel gradients
+  - *Dependencies*: agg_span_gradient_alpha.h, alpha blending
+  - *Demonstrates*: Transparency gradients, fade effects
+
+- [ ] **gouraud.cpp** - Gouraud shading
+  - *Dependencies*: agg_span_gouraud.h, interpolated shading
+  - *Demonstrates*: Smooth color interpolation across triangles
+
+- [ ] **gouraud_mesh.cpp** - Gouraud shading on triangle meshes
+  - *Dependencies*: Advanced Gouraud shading, mesh processing
+  - *Demonstrates*: 3D-style shading, mesh rendering
+
+### Text Rendering
+
+- [ ] **raster_text.cpp** - Raster font text rendering
+  - *Dependencies*: agg_embedded_raster_fonts.h/.cpp, text rendering
+  - *Demonstrates*: Bitmap fonts, text layout, character rendering
+
+- [ ] **freetype_test.cpp** - FreeType font integration
+  - *Dependencies*: FreeType integration, vector font rendering
+  - *Demonstrates*: TrueType fonts, vector text, font hinting
+
+- [ ] **truetype_test.cpp** - TrueType font specific testing
+  - *Dependencies*: Platform-specific TrueType support
+  - *Demonstrates*: Native TrueType rendering, platform integration
+
+### Advanced Graphics Techniques
+
+#### Distortion and Special Effects
+
+- [ ] **distortions.cpp** - Image distortion effects
+  - *Dependencies*: agg_trans_warp_magnifier.h, custom transforms
+  - *Demonstrates*: Lens effects, magnification, image warping
+
+- [ ] **perspective.cpp** - Perspective projection effects
+  - *Dependencies*: agg_trans_perspective.h/.cpp, 3D transformations
+  - *Demonstrates*: 3D perspective, vanishing points
+
+- [ ] **trans_curve1.cpp** - Path transformation along curves
+  - *Dependencies*: agg_trans_single_path.h/.cpp, path following
+  - *Demonstrates*: Text/shapes following curved paths
+
+- [ ] **trans_curve1_ft.cpp** - FreeType text along curves
+  - *Dependencies*: trans_curve1 + FreeType integration
+  - *Demonstrates*: Vector text following paths
+
+- [ ] **trans_curve2.cpp** - Advanced curve transformations
+  - *Dependencies*: agg_trans_double_path.h/.cpp, dual path transforms
+  - *Demonstrates*: Complex path-based transformations
+
+- [ ] **trans_curve2_ft.cpp** - FreeType advanced curve text
+  - *Dependencies*: trans_curve2 + FreeType integration
+  - *Demonstrates*: Advanced text path effects
+
+- [ ] **trans_polar.cpp** - Polar coordinate transformations
+  - *Dependencies*: Custom polar transforms, coordinate conversion
+  - *Demonstrates*: Radial effects, polar projections
+
+#### Blur and Filter Effects
+
+- [ ] **blur.cpp** - Gaussian blur effects
+  - *Dependencies*: agg_blur.h, convolution filters
+  - *Demonstrates*: Various blur algorithms, performance optimization
+
+- [ ] **simple_blur.cpp** - Simple blur implementation
+  - *Dependencies*: Basic blur algorithms
+  - *Demonstrates*: Straightforward blur effects, learning example
+
+### Interactive and Complex Demos
+
+#### User Interface Integration
+
+- [ ] **interactive_polygon.cpp** - Interactive polygon editor
+  - *Dependencies*: All basic components + mouse/keyboard handling
+  - *Demonstrates*: Interactive graphics, real-time editing
+
+- [ ] **multi_clip.cpp** - Multiple clipping region demo
+  - *Dependencies*: agg_renderer_mclip.h, advanced clipping
+  - *Demonstrates*: Complex clipping operations, multi-region rendering
+
+#### Advanced Applications
+
+- [ ] **lion.cpp** - Complex SVG-like vector graphics (AGG's signature demo)
+  - *Dependencies*: Path storage, transformations, color handling
+  - *Demonstrates*: Complex vector art, path parsing, transformations
+
+- [ ] **lion_lens.cpp** - Lion demo with lens distortion effects
+  - *Dependencies*: lion.cpp + lens/magnification effects
+  - *Demonstrates*: Real-time distortion, interactive effects
+
+- [ ] **lion_outline.cpp** - Lion demo with outline rendering
+  - *Dependencies*: lion.cpp + outline renderers
+  - *Demonstrates*: Vector outline rendering, stroke effects
+
+- [ ] **mol_view.cpp** - Molecular structure visualization
+  - *Dependencies*: 3D projection, scientific visualization
+  - *Demonstrates*: Scientific graphics, 3D data visualization
+
+- [ ] **graph_test.cpp** - Graph plotting and charting
+  - *Dependencies*: Mathematical plotting, axis rendering
+  - *Demonstrates*: Data visualization, chart generation
+
+- [ ] **idea.cpp** - Artistic/creative graphics demo
+  - *Dependencies*: Various advanced techniques
+  - *Demonstrates*: Creative applications, artistic effects
+
+#### Boolean Operations and Advanced Path Processing
+
+- [ ] **scanline_boolean.cpp** - Boolean operations on scanlines
+  - *Dependencies*: agg_scanline_boolean_algebra.h, boolean functors
+  - *Demonstrates*: Union, intersection, XOR operations on shapes
+
+- [ ] **scanline_boolean2.cpp** - Advanced boolean operations
+  - *Dependencies*: Advanced scanline boolean algebra
+  - *Demonstrates*: Complex boolean operations, performance optimization
+
+- [ ] **gpc_test.cpp** - General Polygon Clipper integration
+  - *Dependencies*: gpc.h/.c, polygon clipping algorithms
+  - *Demonstrates*: Industrial-strength polygon clipping
+
+#### Specialized Renderers
+
+- [ ] **polymorphic_renderer.cpp** - Polymorphic rendering demo
+  - *Dependencies*: All renderer types, polymorphic interfaces
+  - *Demonstrates*: Renderer abstraction, flexible rendering
+
+- [ ] **flash_rasterizer.cpp** - Flash-style vector rasterization
+  - *Dependencies*: Specialized rasterization techniques
+  - *Demonstrates*: Web graphics, animation-friendly rendering
+
+- [ ] **flash_rasterizer2.cpp** - Advanced Flash-style rendering
+  - *Dependencies*: Advanced Flash-style techniques
+  - *Demonstrates*: High-performance vector animation
+
+#### Line and Pattern Effects
+
+- [ ] **line_patterns.cpp** - Line pattern rendering
+  - *Dependencies*: Pattern generation, line styling
+  - *Demonstrates*: Custom line patterns, decorative strokes
+
+- [ ] **line_patterns_clip.cpp** - Line patterns with clipping
+  - *Dependencies*: line_patterns.cpp + clipping operations
+  - *Demonstrates*: Pattern clipping, bounded line effects
+
+#### Alpha and Masking
+
+- [ ] **alpha_mask.cpp** - Alpha mask operations
+  - *Dependencies*: agg_alpha_mask_u8.h, masking operations
+  - *Demonstrates*: Stencil operations, selective rendering
+
+- [ ] **alpha_mask2.cpp** - Advanced alpha masking
+  - *Dependencies*: Advanced alpha mask techniques
+  - *Demonstrates*: Complex masking scenarios
+
+- [ ] **alpha_mask3.cpp** - Alpha mask with gradients
+  - *Dependencies*: Alpha masking + gradient operations
+  - *Demonstrates*: Smooth masking transitions
+
+#### High-Level Interface Demo
+
+- [ ] **agg2d_demo.cpp** - AGG2D high-level interface demonstration
+  - *Dependencies*: agg2d.h/.cpp, complete AGG2D implementation
+  - *Demonstrates*: Simplified API usage, high-level graphics operations
+
+### Platform Integration Examples
+
+Note: Platform-specific examples should be implemented after core library completion, adapted for Go's platform abstraction.
+
+#### Cross-Platform Examples
+
+- [ ] **Platform abstraction layer** - Go-native platform support
+  - *Dependencies*: Complete AGG core, Go platform libraries
+  - *Demonstrates*: Window creation, event handling, buffer display
+
+### Priority Order for Example Implementation
+
+#### Phase 1: Basic Examples (After Core Rendering Pipeline)
+
+1. rounded_rect.cpp - Basic shape rendering
+2. circles.cpp - Performance and ellipse rendering
+3. aa_demo.cpp - Anti-aliasing demonstration
+4. conv_stroke.cpp - Basic stroke operations
+
+#### Phase 2: Intermediate Examples (After Path and Transform Systems)
+
+1. lion.cpp - Complex vector graphics
+2. bezier_div.cpp - Curve rendering
+3. gradients.cpp - Basic gradients
+4. image1.cpp - Basic image operations
+
+#### Phase 3: Advanced Examples (After Full Feature Set)
+
+1. All remaining examples based on user priorities
+2. Platform integration examples
+3. Performance benchmarking examples
 
 ## Notes
 

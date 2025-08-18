@@ -57,6 +57,21 @@ func (d *Dda2LineInterpolator) Inc() {
 	}
 }
 
+// Dec decrements the interpolator (equivalent to operator--).
+func (d *Dda2LineInterpolator) Dec() {
+	if d.mod < d.rem {
+		d.mod += d.cnt
+		d.y--
+	}
+	d.mod -= d.rem
+	d.y -= d.lft
+}
+
+// DecInc decrements then increments the interpolator.
+func (d *Dda2LineInterpolator) DecInc() {
+	d.Dec()
+}
+
 // Y returns the current y value.
 func (d *Dda2LineInterpolator) Y() int {
 	return d.y
