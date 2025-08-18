@@ -20,6 +20,9 @@ type BaseRenderer interface {
 
 	// Area operations
 	BlendBar(x1, y1, x2, y2 int, c interface{}, cover basics.Int8u)
+
+	// Clipping box for visibility testing
+	BoundingClipBox() basics.RectI
 }
 
 // RendererPrimitives provides primitive drawing operations on top of a base renderer.

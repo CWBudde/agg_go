@@ -62,6 +62,11 @@ func (d *Dda2LineInterpolator) Y() int {
 	return d.y
 }
 
+// AdjustForward adjusts the interpolator forward (used in anti-aliased line rendering).
+func (d *Dda2LineInterpolator) AdjustForward() {
+	d.mod -= d.cnt
+}
+
 // NewLineBresenhamInterpolator creates a new line Bresenham interpolator.
 func NewLineBresenhamInterpolator(x1, y1, x2, y2 int) *LineBresenhamInterpolator {
 	li := &LineBresenhamInterpolator{

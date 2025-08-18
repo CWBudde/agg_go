@@ -29,6 +29,26 @@ type Rect[T ~int | ~int32 | ~float32 | ~float64] struct {
 	X1, Y1, X2, Y2 T
 }
 
+// Clip clips this rectangle against another rectangle, returning true if they intersect
+func (r *Rect[T]) Clip(clipBox Rect[T]) bool {
+	if r.X2 > clipBox.X1 && r.Y2 > clipBox.Y1 && r.X1 < clipBox.X2 && r.Y1 < clipBox.Y2 {
+		if r.X1 < clipBox.X1 {
+			r.X1 = clipBox.X1
+		}
+		if r.Y1 < clipBox.Y1 {
+			r.Y1 = clipBox.Y1
+		}
+		if r.X2 > clipBox.X2 {
+			r.X2 = clipBox.X2
+		}
+		if r.Y2 > clipBox.Y2 {
+			r.Y2 = clipBox.Y2
+		}
+		return true
+	}
+	return false
+}
+
 type Vertex[T ~int | ~int32 | ~float32 | ~float64] struct {
 	X, Y T
 	Cmd  uint32

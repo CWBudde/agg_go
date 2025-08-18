@@ -242,15 +242,14 @@ type ClipInterface interface {
 	LineTo(x, y float64)
 }
 
-
 // RasterizerSlClip implements the scanline clipping rasterizer.
 // Equivalent to AGG's rasterizer_sl_clip<Conv> template class.
 type RasterizerSlClip[Conv any] struct {
-	clipBox     basics.Rect[float64]
-	x1, y1      float64
-	f1          uint32
-	clipping    bool
-	rasterizer  RasterizerInterface  // Internal rasterizer for line drawing
+	clipBox    basics.Rect[float64]
+	x1, y1     float64
+	f1         uint32
+	clipping   bool
+	rasterizer RasterizerInterface // Internal rasterizer for line drawing
 }
 
 // NewRasterizerSlClip creates a new scanline clipping rasterizer

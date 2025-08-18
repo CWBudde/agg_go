@@ -153,3 +153,17 @@ func (m MulOne[T]) Mul(a, b T) T {
 	q := a*b + (1 << (m.shift - 1))
 	return (q + (q >> m.shift)) >> m.shift
 }
+
+// Abs returns the absolute value of x.
+func Abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
+// SaturationIRound performs saturation-aware rounding with given limit.
+func SaturationIRound(v float64, limit int) int {
+	saturation := NewSaturation(limit)
+	return saturation.IRound(v)
+}

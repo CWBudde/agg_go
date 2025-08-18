@@ -781,30 +781,32 @@ This is a comprehensive checklist of files that need to be ported from the origi
 
 **rasterizer_outline<Renderer> template class:**
 
-- [ ] renderer_type typedef
-- [ ] coord_type typedef
-- [ ] Constructor with renderer
-- [ ] attach(renderer) method
-- [ ] filling_rule(filling_rule) method
-- [ ] gamma() method
-- [ ] reset() method
-- [ ] move_to(x, y) method
-- [ ] line_to(x, y) method
-- [ ] move_to_d(x, y) method
-- [ ] line_to_d(x, y) method
-- [ ] close_polygon() method
-- [ ] add_path() template method
-- [ ] add_vertex(x, y, cmd) method
-- [ ] Private outline rendering implementation
+- [x] renderer_type typedef (implemented as generic constraint OutlineRenderer)
+- [x] coord_type typedef (handled by OutlineRenderer.Coord method)
+- [x] Constructor with renderer (NewRasterizerOutline)
+- [x] attach(renderer) method
+- [N/A] filling_rule(filling_rule) method (not in original AGG agg_rasterizer_outline.h)
+- [N/A] gamma() method (not in original AGG agg_rasterizer_outline.h)
+- [N/A] reset() method (not in original AGG agg_rasterizer_outline.h)
+- [x] move_to(x, y) method
+- [x] line_to(x, y) method
+- [x] move_to_d(x, y) method
+- [x] line_to_d(x, y) method
+- [x] close_polygon() method (implemented as Close)
+- [x] add_path() template method
+- [x] add_vertex(x, y, cmd) method
+- [x] render_all_paths() template method
+- [x] render_ctrl() template method
+- [x] Private outline rendering implementation
 
 #### agg_rasterizer_outline_aa.h
 
 **rasterizer_outline_aa<Renderer> template class:**
 
-- [ ] Similar structure to rasterizer_outline but with anti-aliasing
-- [ ] Enhanced line rendering with coverage calculation
-- [ ] Anti-aliased endpoint handling
-- [ ] Smooth line joining algorithms
+- [x] Similar structure to rasterizer_outline but with anti-aliasing
+- [x] Enhanced line rendering with coverage calculation
+- [x] Anti-aliased endpoint handling
+- [x] Smooth line joining algorithms
 
 **Template adaptation considerations:**
 
@@ -978,42 +980,42 @@ This is a comprehensive checklist of files that need to be ported from the origi
 
 **Template Class renderer_markers<BaseRenderer> (inherits from renderer_primitives)**
 
-- [ ] base_type, base_ren_type, color_type typedefs
-- [ ] Inheritance from renderer_primitives<BaseRenderer>
+- [x] base_type, base_ren_type, color_type typedefs
+- [x] Inheritance from renderer_primitives<BaseRenderer>
 
 **Visibility and Basic Operations**
 
-- [ ] visible(x, y, r) const method - visibility test within bounds
+- [x] visible(x, y, r) const method - visibility test within bounds
 
 **Basic Shape Markers**
 
-- [ ] square(x, y, r) method - solid square marker
-- [ ] diamond(x, y, r) method - solid diamond marker
-- [ ] circle(x, y, r) method - solid circle marker using ellipse algorithm
-- [ ] crossed_circle(x, y, r) method - circle with cross pattern
+- [x] square(x, y, r) method - solid square marker
+- [x] diamond(x, y, r) method - solid diamond marker
+- [x] circle(x, y, r) method - solid circle marker using ellipse algorithm
+- [x] crossed_circle(x, y, r) method - circle with cross pattern
 
 **Semi-ellipse Markers (Direction-specific)**
 
-- [ ] semiellipse_left(x, y, r) method
-- [ ] semiellipse_right(x, y, r) method
-- [ ] semiellipse_up(x, y, r) method
-- [ ] semiellipse_down(x, y, r) method
+- [x] semiellipse_left(x, y, r) method
+- [x] semiellipse_right(x, y, r) method
+- [x] semiellipse_up(x, y, r) method
+- [x] semiellipse_down(x, y, r) method
 
 **Triangle Markers (Direction-specific)**
 
-- [ ] triangle_left(x, y, r) method
-- [ ] triangle_right(x, y, r) method
-- [ ] triangle_up(x, y, r) method
-- [ ] triangle_down(x, y, r) method
+- [x] triangle_left(x, y, r) method
+- [x] triangle_right(x, y, r) method
+- [x] triangle_up(x, y, r) method
+- [x] triangle_down(x, y, r) method
 
 **Ray and Line Markers**
 
-- [ ] four_rays(x, y, r) method - plus sign pattern
-- [ ] cross(x, y, r) method - diagonal cross pattern
-- [ ] x(x, y, r) method - X pattern
-- [ ] dash(x, y, r) method - horizontal dash
-- [ ] dot(x, y, r) method - small filled circle
-- [ ] pixel(x, y, color) method - single pixel marker
+- [x] four_rays(x, y, r) method - plus sign pattern
+- [x] cross(x, y, r) method - diagonal cross pattern
+- [x] x(x, y, r) method - X pattern
+- [x] dash(x, y, r) method - horizontal dash
+- [x] dot(x, y, r) method - small filled circle
+- [x] pixel(x, y, color) method - single pixel marker
 
 #### agg_renderer_outline_aa.h - Anti-aliased outline rendering
 
