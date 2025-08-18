@@ -790,8 +790,8 @@ func IntersectScanlines(sl1, sl2, sl BooleanScanlineInterface, combineSpansFunc 
 // UniteScanlines unites two scanlines and generates a new one
 func UniteScanlines(sl1, sl2, sl BooleanScanlineInterface,
 	addSpan1Func, addSpan2Func AddSpanAAFunc,
-	combineSpansFunc CombineSpansAAFunc) {
-
+	combineSpansFunc CombineSpansAAFunc,
+) {
 	sl.ResetSpans()
 
 	num1 := sl1.NumSpans()
@@ -967,8 +967,8 @@ func UniteScanlines(sl1, sl2, sl BooleanScanlineInterface,
 
 // IntersectShapes intersects two shape generators
 func IntersectShapes(sg1, sg2 RasterizerInterface, sl1, sl2, sl BooleanScanlineInterface,
-	ren RendererInterface, combineSpansFunc CombineSpansAAFunc) {
-
+	ren RendererInterface, combineSpansFunc CombineSpansAAFunc,
+) {
 	// Prepare the scanline generators
 	if !sg1.RewindScanlines() {
 		return
@@ -1034,8 +1034,8 @@ func IntersectShapes(sg1, sg2 RasterizerInterface, sl1, sl2, sl BooleanScanlineI
 // UniteShapes unites two shape generators
 func UniteShapes(sg1, sg2 RasterizerInterface, sl1, sl2, sl BooleanScanlineInterface,
 	ren RendererInterface, addSpan1Func, addSpan2Func AddSpanAAFunc,
-	combineSpansFunc CombineSpansAAFunc) {
-
+	combineSpansFunc CombineSpansAAFunc,
+) {
 	// Prepare scanline generators
 	flag1 := sg1.RewindScanlines()
 	flag2 := sg2.RewindScanlines()
@@ -1104,8 +1104,8 @@ func UniteShapes(sg1, sg2 RasterizerInterface, sl1, sl2, sl BooleanScanlineInter
 
 // SubtractShapes subtracts shapes "sg1-sg2"
 func SubtractShapes(sg1, sg2 RasterizerInterface, sl1, sl2, sl BooleanScanlineInterface,
-	ren RendererInterface, addSpan1Func AddSpanAAFunc, combineSpansFunc CombineSpansAAFunc) {
-
+	ren RendererInterface, addSpan1Func AddSpanAAFunc, combineSpansFunc CombineSpansAAFunc,
+) {
 	// Prepare scanline generators - sg1 is master, sg2 is slave
 	if !sg1.RewindScanlines() {
 		return

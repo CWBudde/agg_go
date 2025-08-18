@@ -50,8 +50,8 @@ type VertexSourceInterface interface {
 // This corresponds to AGG's render_all_paths function.
 func RenderAllPaths(ras RasterizerInterface, sl ScanlineInterface, renderer interface{},
 	vertexSource VertexSourceInterface, colorStorage PathColorStorage,
-	pathIdStorage PathIdStorage, numPaths int) {
-
+	pathIdStorage PathIdStorage, numPaths int,
+) {
 	// This is a simplified version - in a full implementation, we'd need
 	// to define more complete interfaces for the rasterizer's path handling
 	for i := 0; i < numPaths; i++ {
@@ -85,8 +85,8 @@ func RenderAllPaths(ras RasterizerInterface, sl ScanlineInterface, renderer inte
 // This corresponds to AGG's render_scanlines_compound function.
 func RenderScanlinesCompound(ras CompoundRasterizerInterface, slAA ScanlineInterface,
 	slBin ScanlineInterface, ren BaseRendererInterface, alloc SpanAllocatorInterface,
-	styleHandler StyleHandlerInterface) {
-
+	styleHandler StyleHandlerInterface,
+) {
 	if !ras.RewindScanlines() {
 		return
 	}
@@ -139,8 +139,8 @@ func RenderScanlinesCompound(ras CompoundRasterizerInterface, slAA ScanlineInter
 
 // renderCompoundSpanGenerated renders a scanline with span generation for compound rendering.
 func renderCompoundSpanGenerated(sl ScanlineInterface, ren BaseRendererInterface,
-	alloc SpanAllocatorInterface, styleHandler StyleHandlerInterface, style int) {
-
+	alloc SpanAllocatorInterface, styleHandler StyleHandlerInterface, style int,
+) {
 	iter := sl.Begin()
 	numSpans := sl.NumSpans()
 	y := sl.Y()
@@ -163,8 +163,8 @@ func renderCompoundSpanGenerated(sl ScanlineInterface, ren BaseRendererInterface
 func renderCompoundMultipleStyles(ras CompoundRasterizerInterface, slAA ScanlineInterface,
 	slBin ScanlineInterface, ren BaseRendererInterface, alloc SpanAllocatorInterface,
 	styleHandler StyleHandlerInterface, colorSpan []interface{}, mixBuffer []interface{},
-	minX int, numStyles int) {
-
+	minX int, numStyles int,
+) {
 	// Clear the mix buffer spans
 	iterBin := slBin.Begin()
 	numSpansBin := slBin.NumSpans()
@@ -229,8 +229,8 @@ func renderCompoundMultipleStyles(ras CompoundRasterizerInterface, slAA Scanline
 
 // renderCompoundSolidStyle renders a span with solid color for compound rendering.
 func renderCompoundSolidStyle(span SpanData, styleHandler StyleHandlerInterface,
-	style int, mixBuffer []interface{}, minX int) {
-
+	style int, mixBuffer []interface{}, minX int,
+) {
 	color := styleHandler.Color(style)
 
 	for i := 0; i < span.Len; i++ {
@@ -253,8 +253,8 @@ func renderCompoundSolidStyle(span SpanData, styleHandler StyleHandlerInterface,
 // renderCompoundGeneratedStyle renders a span with generated colors for compound rendering.
 func renderCompoundGeneratedStyle(span SpanData, sl ScanlineInterface,
 	styleHandler StyleHandlerInterface, style int, colorSpan []interface{},
-	mixBuffer []interface{}, minX int, alloc SpanAllocatorInterface) {
-
+	mixBuffer []interface{}, minX int, alloc SpanAllocatorInterface,
+) {
 	colors := alloc.Allocate(span.Len)
 	styleHandler.GenerateSpan(colors, span.X, sl.Y(), span.Len, style)
 

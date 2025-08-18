@@ -1,8 +1,9 @@
 package markers
 
 import (
-	"agg_go/internal/basics"
 	"testing"
+
+	"agg_go/internal/basics"
 )
 
 // MockRenderer implements the BaseRenderer interface for testing

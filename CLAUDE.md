@@ -99,4 +99,43 @@ just todo            # Find TODO/FIXME comments
 - Panic for programmer errors (bounds violations, invalid state)
 - Graceful degradation for edge cases in rendering
 
-The codebase follows the detailed porting plan in TASK.md which lists every C++ file that needs Go implementation. Always mark completed tasks as done ("[x]") once completed.
+The codebase follows the detailed porting plan in TASKS.md which lists every C++ file that needs Go implementation. Always mark completed tasks as done ("[x]") once completed.
+
+## Current Test Failures (with TODO comments added)
+
+As of the latest test run, several issues remain that require further investigation and fixes:
+
+### Liang-Barsky Clipping Algorithm (internal/basics/)
+- **Issue**: Algorithm behavior doesn't match test expectations for edge cases
+- **Status**: TODO comments added documenting the discrepancy
+- **Next**: Compare with original AGG C++ implementation for expected behavior
+
+### Pixel Blending Mathematics (internal/pixfmt/)
+- **Issue**: Premultiplied alpha blending calculations incorrect
+- **Status**: Fixed zero-alpha case, but complex blending still fails
+- **Next**: Review alpha premultiplication and RGBA8Prelerp implementation
+
+### Rasterizer Clipping Boundary Detection (internal/rasterizer/)
+- **Issue**: Boundary detection for lines crossing clip regions
+- **Status**: TODO comments added for Cases 8 and 12
+- **Next**: Review AGG scanline clipping algorithm implementation
+
+### VCGen State Management (internal/vcgen/)
+- **Issue**: B-spline and smooth polygon generators have edge case failures
+- **Status**: Fixed several state management issues, added bounds checking
+- **Next**: Remaining vertex sequence access panics need fixes
+
+### Converter Integration (internal/conv/)
+- **Issue**: Adaptor integration between path converters and vertex generators
+- **Status**: Missing integration causing test failures
+- **Next**: Implement proper ConvAdaptorVCGen integration
+
+### Missing Dependencies from TASKS.md
+Many AGG components are not yet implemented. Key missing dependencies include:
+- Advanced curve approximation algorithms
+- Complete scanline rendering pipeline components
+- Full rasterizer cell storage and sorting
+- Gamma correction and color management
+- Advanced path stroking and dashing algorithms
+
+For new features, always check TASKS.md for dependency requirements before implementation.

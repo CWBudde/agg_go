@@ -1,10 +1,11 @@
 package pixfmt
 
 import (
+	"testing"
+
 	"agg_go/internal/basics"
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
-	"testing"
 )
 
 // Test RGB555 packing/unpacking accuracy

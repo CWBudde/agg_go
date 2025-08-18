@@ -6,7 +6,7 @@ This repository contains a minimal Go implementation of the Anti-Grain Geometry 
 
 ## Project Status
 
-See [TASK.md](TASK.md) for a detailed implementation plan outlining all C++ files that need to be ported to Go.
+See [TASKS.md](TASKS.md) for a detailed implementation plan outlining all C++ files that need to be ported to Go.
 
 ## Potential Issues
 

@@ -3,9 +3,10 @@
 package scanline
 
 import (
-	"agg_go/internal/basics"
 	"encoding/binary"
 	"math"
+
+	"agg_go/internal/basics"
 )
 
 // SerializedScanlinesAdaptorAA provides access to serialized scanline data.

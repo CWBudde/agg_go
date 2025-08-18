@@ -32,7 +32,8 @@ type RendererOutlineAA[BaseRenderer BaseRendererInterface, ColorType ColorTypeIn
 
 // NewRendererOutlineAA creates a new anti-aliased outline renderer.
 func NewRendererOutlineAA[BaseRenderer BaseRendererInterface, ColorType ColorTypeInterface](
-	ren BaseRenderer, prof *LineProfileAA) *RendererOutlineAA[BaseRenderer, ColorType] {
+	ren BaseRenderer, prof *LineProfileAA,
+) *RendererOutlineAA[BaseRenderer, ColorType] {
 	return &RendererOutlineAA[BaseRenderer, ColorType]{
 		ren:      ren,
 		profile:  prof,
@@ -107,8 +108,8 @@ func (r *RendererOutlineAA[BaseRenderer, ColorType]) AccurateJoinOnly() bool {
 
 // SemidotHline renders a horizontal line segment for semidot operations.
 func (r *RendererOutlineAA[BaseRenderer, ColorType]) SemidotHline(
-	cmp func(int) bool, xc1, yc1, xc2, yc2, x1, y1, x2 int) {
-
+	cmp func(int) bool, xc1, yc1, xc2, yc2, x1, y1, x2 int,
+) {
 	covers := make([]basics.CoverType, MaxHalfWidth*2+4)
 	p1 := 0
 	x := x1 << primitives.LineSubpixelShift
@@ -139,8 +140,8 @@ func (r *RendererOutlineAA[BaseRenderer, ColorType]) SemidotHline(
 
 // Semidot renders a semidot (half circle) shape.
 func (r *RendererOutlineAA[BaseRenderer, ColorType]) Semidot(
-	cmp func(int) bool, xc1, yc1, xc2, yc2 int) {
-
+	cmp func(int) bool, xc1, yc1, xc2, yc2 int,
+) {
 	if r.clipping && basics.ClippingFlags(xc1, yc1, r.clipBox) != 0 {
 		return
 	}
@@ -176,8 +177,8 @@ func (r *RendererOutlineAA[BaseRenderer, ColorType]) Semidot(
 
 // PieHline renders a horizontal line segment for pie operations.
 func (r *RendererOutlineAA[BaseRenderer, ColorType]) PieHline(
-	xc, yc, xp1, yp1, xp2, yp2, xh1, yh1, xh2 int) {
-
+	xc, yc, xp1, yp1, xp2, yp2, xh1, yh1, xh2 int,
+) {
 	if r.clipping && basics.ClippingFlags(xc, yc, r.clipBox) != 0 {
 		return
 	}

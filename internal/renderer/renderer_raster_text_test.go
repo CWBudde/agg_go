@@ -1,10 +1,11 @@
 package renderer
 
 import (
+	"testing"
+
 	"agg_go/internal/basics"
 	"agg_go/internal/fonts"
 	"agg_go/internal/glyph"
-	"testing"
 )
 
 // MockBaseRenderer implements BaseRendererInterface for testing

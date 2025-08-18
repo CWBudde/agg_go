@@ -580,8 +580,8 @@ type LineInterpolatorImage struct {
 
 // NewLineInterpolatorImage creates a new image line interpolator.
 func NewLineInterpolatorImage(ren ImageRenderer, lp *primitives.LineParameters,
-	sx, sy, ex, ey, patternStart int, scaleX float64) *LineInterpolatorImage {
-
+	sx, sy, ex, ey, patternStart int, scaleX float64,
+) *LineInterpolatorImage {
 	li := &LineInterpolatorImage{
 		lp:  lp,
 		ren: ren,

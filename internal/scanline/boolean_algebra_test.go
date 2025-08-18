@@ -28,6 +28,7 @@ func (ms *BooleanMockScanline) NumSpans() int { return len(ms.spans) }
 func (ms *BooleanMockScanline) Begin() scanline.ScanlineIterator {
 	return &BooleanMockIterator{sl: ms, index: 0}
 }
+
 func (ms *BooleanMockScanline) ResetSpans() {
 	ms.spans = ms.spans[:0]
 	ms.cells = make(map[int]basics.Int8u)

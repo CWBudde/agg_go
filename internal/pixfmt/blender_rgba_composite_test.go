@@ -1,9 +1,10 @@
 package pixfmt
 
 import (
+	"testing"
+
 	"agg_go/internal/basics"
 	"agg_go/internal/color"
-	"testing"
 )
 
 func TestCompositeBlenderMultiply(t *testing.T) {

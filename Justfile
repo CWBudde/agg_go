@@ -167,10 +167,10 @@ todo:
     @echo "================="
     @grep -r "TODO\|FIXME\|XXX\|HACK" --include="*.go" . || echo "No TODO items found"
 
-# Update task status in TASK.md
+# Update task status in TASKS.md
 update-tasks:
     @echo "Checking implementation status..."
-    @echo "This would scan code and update TASK.md checkboxes"
+    @echo "This would scan code and update TASKS.md checkboxes"
     @echo "(Implementation needed)"
 
 # Git helpers

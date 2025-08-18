@@ -60,7 +60,8 @@ func NewPixFmtAMaskAdaptor(pixfmt interface {
 	BlendVline(x, y, length int, c color.RGBA8[color.Linear], cover basics.Int8u)
 	BlendSolidHspan(x, y, length int, c color.RGBA8[color.Linear], covers []basics.Int8u)
 	BlendSolidVspan(x, y, length int, c color.RGBA8[color.Linear], covers []basics.Int8u)
-}, amask AlphaMaskInterface) *PixFmtAMaskAdaptor {
+}, amask AlphaMaskInterface,
+) *PixFmtAMaskAdaptor {
 	return &PixFmtAMaskAdaptor{
 		pixfmt: pixfmt,
 		amask:  amask,
@@ -81,7 +82,8 @@ func (pa *PixFmtAMaskAdaptor) AttachPixfmt(pixfmt interface {
 	BlendVline(x, y, length int, c color.RGBA8[color.Linear], cover basics.Int8u)
 	BlendSolidHspan(x, y, length int, c color.RGBA8[color.Linear], covers []basics.Int8u)
 	BlendSolidVspan(x, y, length int, c color.RGBA8[color.Linear], covers []basics.Int8u)
-}) {
+},
+) {
 	pa.pixfmt = pixfmt
 }
 
@@ -193,7 +195,8 @@ func (pa *PixFmtAMaskAdaptor) CopyFrom(src interface {
 	RowData(y int) []basics.Int8u
 	Width() int
 	Height() int
-}, xdst, ydst, xsrc, ysrc, length int) {
+}, xdst, ydst, xsrc, ysrc, length int,
+) {
 	if copier, ok := pa.pixfmt.(interface {
 		CopyFrom(src interface {
 			RowData(y int) []basics.Int8u
@@ -210,7 +213,8 @@ func (pa *PixFmtAMaskAdaptor) BlendFrom(src interface {
 	GetPixel(x, y int) color.RGBA8[color.Linear]
 	Width() int
 	Height() int
-}, xdst, ydst, xsrc, ysrc, length int, cover basics.Int8u) {
+}, xdst, ydst, xsrc, ysrc, length int, cover basics.Int8u,
+) {
 	// Blend pixel by pixel with mask applied
 	for i := 0; i < length; i++ {
 		if xsrc+i >= 0 && xsrc+i < src.Width() && ysrc >= 0 && ysrc < src.Height() {

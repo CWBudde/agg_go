@@ -9,6 +9,7 @@ This is a comprehensive checklist of files that need to be ported from the origi
 #### agg_basics.h - Core types, enums, path commands, geometry utilities
 
 Go files:
+
 - internal/basics/types.go
 - internal/basics/constants.go
 - internal/basics/path.go
@@ -62,6 +63,7 @@ Go files:
 #### agg_config.h - Configuration definitions
 
 Go files:
+
 - internal/config/config.go
 
 - [ ] Configuration constants (mostly compile-time in C++)
@@ -70,6 +72,7 @@ Go files:
 #### agg_array.h - Dynamic array implementation
 
 Go files:
+
 - internal/array/interfaces.go
 - internal/array/algorithms.go
 - internal/array/comparators.go
@@ -109,6 +112,7 @@ Go files:
 #### agg_math.h - Mathematical functions and constants
 
 Go files:
+
 - internal/basics/math.go
 - internal/basics/constants.go
 
@@ -147,6 +151,7 @@ Go files:
 #### agg_color_gray.h - Grayscale color handling
 
 Go files:
+
 - internal/color/gray.go
 - internal/color/conversion.go
 
@@ -176,6 +181,7 @@ Go files:
 #### agg_color_rgba.h - RGBA color handling
 
 Go files:
+
 - internal/color/rgba.go
 - internal/color/rgb.go
 - internal/color/conversion.go
@@ -183,7 +189,7 @@ Go files:
 **Order Structs (Component Ordering)**
 
 - [ ] order_rgb → OrderRGB constants
-- [ ] order_bgr → OrderBGR constants  
+- [ ] order_bgr → OrderBGR constants
 - [ ] order_rgba → OrderRGBA constants
 - [ ] order_argb → OrderARGB constants
 - [ ] order_abgr → OrderABGR constants
@@ -239,6 +245,7 @@ Go files:
 #### agg_pixfmt_base.h - Base pixel format definitions
 
 Go files:
+
 - internal/pixfmt/base.go
 
 **Pixel Format Tags**
@@ -256,6 +263,7 @@ Go files:
 #### agg_pixfmt_gray.h - Grayscale pixel formats
 
 Go files:
+
 - internal/pixfmt/pixfmt_gray.go
 - internal/pixfmt/pixfmt_gray16.go
 - internal/pixfmt/pixfmt_gray32.go
@@ -292,6 +300,7 @@ Go files:
 #### agg_pixfmt_rgb.h - RGB pixel formats
 
 Go files:
+
 - internal/pixfmt/pixfmt_rgb.go
 - internal/pixfmt/blender_rgb.go
 
@@ -318,7 +327,7 @@ Go files:
 **Concrete RGB24 Types**
 
 - [ ] pixfmt_rgb24 → PixFmtRGB24
-- [ ] pixfmt_bgr24 → PixFmtBGR24  
+- [ ] pixfmt_bgr24 → PixFmtBGR24
 - [ ] pixfmt_srgb24 → PixFmtSRGB24
 - [ ] pixfmt_sbgr24 → PixFmtSBGR24
 
@@ -346,6 +355,7 @@ Go files:
 #### agg_pixfmt_rgba.h - RGBA pixel formats
 
 Go files:
+
 - internal/pixfmt/pixfmt_rgba.go
 - internal/pixfmt/blender_rgba.go
 - internal/pixfmt/gamma_rgba.go
@@ -399,6 +409,7 @@ Go files:
 #### agg_rendering_buffer.h
 
 Go files:
+
 - internal/buffer/rendering_buffer.go
 - internal/buffer/rendering_buffer_dynarow.go
 - internal/config/config.go (type selection)
@@ -445,6 +456,7 @@ Go files:
 #### agg_rendering_buffer_dynarow.h
 
 Go files:
+
 - internal/buffer/rendering_buffer_dynarow.go
 
 **rendering_buffer_dynarow class:**
@@ -476,6 +488,7 @@ Go files:
 #### agg_scanline_bin.h
 
 Go files:
+
 - internal/scanline/scanline_bin.go
 
 **scanline_bin class:**
@@ -518,6 +531,7 @@ Go files:
 #### agg_scanline_p.h
 
 Go files:
+
 - internal/scanline/scanline_p8.go
 
 **scanline_p8 class:**

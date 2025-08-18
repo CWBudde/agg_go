@@ -3,9 +3,10 @@
 package scanline
 
 import (
+	"math"
+
 	"agg_go/internal/array"
 	"agg_go/internal/basics"
-	"math"
 )
 
 // ScanlineInterface defines the interface for scanline containers.

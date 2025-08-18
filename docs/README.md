@@ -22,7 +22,7 @@ The project is in early development. The following foundation has been establish
 
 ### 📋 Next Steps (High Priority)
 
-Based on TASK.md Phase 1 priorities:
+Based on TASKS.md Phase 1 priorities:
 
 1. **Pixel Formats** (`internal/pixfmt/`)
 
@@ -58,6 +58,6 @@ Based on TASK.md Phase 1 priorities:
 
 ## For Developers
 
-See [TASK.md](../TASK.md) for the complete implementation roadmap with all files to be ported from the original AGG C++ codebase.
+See [TASKS.md](./TASKS.md) for the complete implementation roadmap with all files to be ported from the original AGG C++ codebase.
 
 The project follows Go idioms while maintaining AGG's core functionality and performance characteristics.

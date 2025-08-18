@@ -1,8 +1,9 @@
 package scanline
 
 import (
-	"agg_go/internal/basics"
 	"testing"
+
+	"agg_go/internal/basics"
 )
 
 // Mock implementations for testing

@@ -45,23 +45,27 @@ type BlenderRGBPre[CS any, O any] struct{}
 
 // BlendPix blends a premultiplied RGB pixel into an RGB buffer
 func (bl BlenderRGBPre[CS, O]) BlendPix(dst []basics.Int8u, r, g, b, alpha, cover basics.Int8u) {
-	cr := color.RGBA8MultCover(r, cover)
-	cg := color.RGBA8MultCover(g, cover)
-	cb := color.RGBA8MultCover(b, cover)
 	ca := color.RGBA8MultCover(alpha, cover)
+	if ca > 0 {
+		cr := color.RGBA8MultCover(r, cover)
+		cg := color.RGBA8MultCover(g, cover)
+		cb := color.RGBA8MultCover(b, cover)
 
-	order := getRGBColorOrder[O]()
-	dst[order.R] = color.RGBA8Prelerp(dst[order.R], cr, ca)
-	dst[order.G] = color.RGBA8Prelerp(dst[order.G], cg, ca)
-	dst[order.B] = color.RGBA8Prelerp(dst[order.B], cb, ca)
+		order := getRGBColorOrder[O]()
+		dst[order.R] = color.RGBA8Prelerp(dst[order.R], cr, ca)
+		dst[order.G] = color.RGBA8Prelerp(dst[order.G], cg, ca)
+		dst[order.B] = color.RGBA8Prelerp(dst[order.B], cb, ca)
+	}
 }
 
 // BlendPixSimple blends premultiplied RGB without coverage
 func (bl BlenderRGBPre[CS, O]) BlendPixSimple(dst []basics.Int8u, r, g, b, alpha basics.Int8u) {
-	order := getRGBColorOrder[O]()
-	dst[order.R] = color.RGBA8Prelerp(dst[order.R], r, alpha)
-	dst[order.G] = color.RGBA8Prelerp(dst[order.G], g, alpha)
-	dst[order.B] = color.RGBA8Prelerp(dst[order.B], b, alpha)
+	if alpha > 0 {
+		order := getRGBColorOrder[O]()
+		dst[order.R] = color.RGBA8Prelerp(dst[order.R], r, alpha)
+		dst[order.G] = color.RGBA8Prelerp(dst[order.G], g, alpha)
+		dst[order.B] = color.RGBA8Prelerp(dst[order.B], b, alpha)
+	}
 }
 
 // BlenderRGBGamma implements gamma-corrected RGB blending

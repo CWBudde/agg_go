@@ -1,8 +1,9 @@
 package rasterizer
 
 import (
-	"agg_go/internal/basics"
 	"testing"
+
+	"agg_go/internal/basics"
 )
 
 // MockRasterizer for testing

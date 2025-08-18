@@ -1,8 +1,9 @@
 package rasterizer
 
 import (
-	"agg_go/internal/primitives"
 	"testing"
+
+	"agg_go/internal/primitives"
 )
 
 // MockOutlineAARenderer implements OutlineAARenderer for testing

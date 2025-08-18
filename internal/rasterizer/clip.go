@@ -520,6 +520,10 @@ func (r *RasterizerSlClip[Conv]) LineTo(x2, y2 float64) {
 				y3 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
 			}
 			f3 = basics.ClippingFlagsY(y3, r.clipBox)
+			// TODO: Fix clipping for boundary-crossing lines
+			// Test expectation: single line from intersection to end point
+			// Current behavior: draws 2 lines (vertical boundary segment + clipped segment)
+			// The first lineClipY call may be drawing an unwanted boundary line
 			r.lineClipY(ras, r.clipBox.X1, y1, r.clipBox.X1, y3, f1, f3)
 			r.lineClipY(ras, r.clipBox.X1, y3, x2, y2, f3, f2)
 
@@ -548,6 +552,11 @@ func (r *RasterizerSlClip[Conv]) LineTo(x2, y2 float64) {
 			r.lineClipY(ras, r.clipBox.X2, y4, r.clipBox.X2, y2, f4, f2)
 
 		case 12: // x1 < clip.x1 && x2 < clip.x1
+			// TODO: Fix rasterizer clipping boundary detection logic
+			// Test expectation: when both points are completely outside the same boundary
+			// (e.g., both points left of clipBox.X1), no lines should be drawn.
+			// Current behavior: draws a vertical line along the boundary.
+			// Need to compare with AGG C++ implementation to determine correct behavior.
 			r.lineClipY(ras, r.clipBox.X1, y1, r.clipBox.X1, y2, f1, f2)
 		}
 		r.f1 = f2
@@ -612,8 +621,10 @@ func (r *RasterizerSlNoClip) LineTo(x2, y2 float64) {
 }
 
 // Type aliases for convenience
-type RasterizerSlClipInt = *RasterizerSlClip[RasConvInt]
-type RasterizerSlClipIntSat = *RasterizerSlClip[RasConvIntSat]
-type RasterizerSlClipInt3x = *RasterizerSlClip[RasConvInt3x]
-type RasterizerSlClipDbl = *RasterizerSlClip[RasConvDbl]
-type RasterizerSlClipDbl3x = *RasterizerSlClip[RasConvDbl3x]
+type (
+	RasterizerSlClipInt    = *RasterizerSlClip[RasConvInt]
+	RasterizerSlClipIntSat = *RasterizerSlClip[RasConvIntSat]
+	RasterizerSlClipInt3x  = *RasterizerSlClip[RasConvInt3x]
+	RasterizerSlClipDbl    = *RasterizerSlClip[RasConvDbl]
+	RasterizerSlClipDbl3x  = *RasterizerSlClip[RasConvDbl3x]
+)

@@ -4,8 +4,9 @@
 package glyph
 
 import (
-	"agg_go/internal/basics"
 	"unsafe"
+
+	"agg_go/internal/basics"
 )
 
 // GlyphRect represents the bounding rectangle and positioning information for a glyph

@@ -27,6 +27,11 @@ const (
 	PathFlagsMask  PathFlag = 0xF0
 )
 
+// PathCommand constants with flags
+const (
+	PathFlagClose = PathCommand(PathFlagsClose)
+)
+
 // Path utility functions
 func IsVertex(c PathCommand) bool {
 	return c >= PathCmdMoveTo && c < PathCmdEndPoly

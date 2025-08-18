@@ -581,6 +581,11 @@ func TestPixFmtRGB24Pre(t *testing.T) {
 
 	// Should use premultiplied blending
 	pixel := pixfmt.GetPixel(0, 0)
+	// TODO: Fix premultiplied blending mathematics
+	// Current result is 63, expected >128
+	// This may be related to the interaction between input color premultiplication,
+	// alpha handling, and the BlenderRGBPre implementation
+	// The basic zero-alpha case works correctly, but this alpha blending case needs investigation
 	if pixel.R <= 128 {
 		t.Errorf("Premultiplied blending failed: red component %d should be greater than 128", pixel.R)
 	}

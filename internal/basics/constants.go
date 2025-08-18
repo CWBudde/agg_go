@@ -2,6 +2,11 @@ package basics
 
 import "math"
 
+// Math functions for compatibility
+func Sqrt(x float64) float64 {
+	return math.Sqrt(x)
+}
+
 // Cover scale enumeration for anti-aliasing
 const (
 	CoverShift = 8

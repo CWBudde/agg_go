@@ -3,8 +3,9 @@
 package primitives
 
 import (
-	"agg_go/internal/basics"
 	"math"
+
+	"agg_go/internal/basics"
 )
 
 // Line subpixel scale constants

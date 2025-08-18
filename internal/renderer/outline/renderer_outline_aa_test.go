@@ -3,9 +3,10 @@
 package outline
 
 import (
+	"testing"
+
 	"agg_go/internal/basics"
 	"agg_go/internal/primitives"
-	"testing"
 )
 
 // MockOutlineRenderer implements OutlineRenderer for testing line interpolators.

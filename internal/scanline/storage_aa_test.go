@@ -1,8 +1,9 @@
 package scanline
 
 import (
-	"agg_go/internal/basics"
 	"testing"
+
+	"agg_go/internal/basics"
 )
 
 func TestScanlineCellStorage_NewAndBasicOperations(t *testing.T) {

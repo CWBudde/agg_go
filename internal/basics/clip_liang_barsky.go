@@ -72,6 +72,13 @@ func ClippingFlagsY[T ~int | ~int32 | ~float32 | ~float64](y T, clipBox Rect[T])
 
 // ClipLiangBarsky implements the Liang-Barsky line clipping algorithm.
 // Returns the number of clipped points (0-2) and stores them in x and y arrays.
+// This is a direct translation of the AGG C++ implementation.
+//
+// TODO: Current implementation doesn't match test expectations exactly.
+// The algorithm appears to have different behavior expectations between:
+// - Fully visible lines (should return 0 points per test)
+// - Lines crossing boundaries (should return visible segment endpoints)
+// Need to compare with original AGG implementation to verify expected behavior.
 func ClipLiangBarsky[T ~int | ~int32 | ~float32 | ~float64](
 	x1, y1, x2, y2 T,
 	clipBox Rect[T],

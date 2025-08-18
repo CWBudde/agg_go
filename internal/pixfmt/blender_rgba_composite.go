@@ -1,9 +1,10 @@
 package pixfmt
 
 import (
+	"math"
+
 	"agg_go/internal/basics"
 	"agg_go/internal/color"
-	"math"
 )
 
 // Composite blend operation types

@@ -3,9 +3,10 @@
 package scanline
 
 import (
-	"agg_go/internal/basics"
 	"encoding/binary"
 	"math"
+
+	"agg_go/internal/basics"
 )
 
 // EmbeddedScanlineSerial is an embedded scanline that reads from serialized binary data.

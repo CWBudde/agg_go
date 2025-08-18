@@ -3,8 +3,9 @@
 package array
 
 import (
-	"agg_go/internal/basics"
 	"math"
+
+	"agg_go/internal/basics"
 )
 
 // VertexSequence is a specialized vector that automatically filters vertices
@@ -94,11 +95,52 @@ func (vs *VertexSequence[T]) Close(closed bool) {
 			vs.storage.RemoveLast()
 		}
 	}
+
+	// Calculate distances between consecutive vertices (like in AGG's operator())
+	// Each vertex stores the distance to the NEXT vertex
+	vs.calculateDistances()
+}
+
+// calculateDistances calculates and stores distances between consecutive vertices.
+// This mimics the side effect of AGG's vertex_dist::operator() function.
+func (vs *VertexSequence[T]) calculateDistances() {
+	// Only calculate distances for VertexDist types
+	for i := 0; i < vs.storage.Size()-1; i++ {
+		curr := vs.storage.At(i)
+		next := vs.storage.At(i + 1)
+
+		// Use type assertion to check if this is a VertexDist
+		if vd, ok := any(curr).(VertexDist); ok {
+			if nextVd, ok := any(next).(VertexDist); ok {
+				// Calculate distance and create a new vertex with updated distance
+				newVd := vd
+				newVd.CalculateDistance(nextVd)
+				// Convert back to T and set
+				vs.storage.Set(i, any(newVd).(T))
+			}
+		}
+	}
 }
 
 // RemoveAll clears all vertices from the sequence.
 func (vs *VertexSequence[T]) RemoveAll() {
 	vs.storage.RemoveAll()
+}
+
+// At returns the vertex at the specified index (array access operator).
+// This provides direct access like C++ operator[].
+func (vs *VertexSequence[T]) At(index int) T {
+	return vs.storage.At(index)
+}
+
+// Set modifies the vertex at the specified index.
+func (vs *VertexSequence[T]) Set(index int, val T) {
+	vs.storage.Set(index, val)
+}
+
+// RemoveLast removes the last vertex from the sequence.
+func (vs *VertexSequence[T]) RemoveLast() {
+	vs.storage.RemoveLast()
 }
 
 // LineAAVertex represents a vertex for anti-aliased line rendering.
@@ -183,4 +225,79 @@ func (v *VertexDist) CalculateDistance(other VertexDist) {
 	if v.Dist <= basics.VertexDistEpsilon {
 		v.Dist = 1.0 / basics.VertexDistEpsilon
 	}
+}
+
+// VertexDistCmd represents a vertex with distance information and command.
+// This combines vertex coordinate, distance, and path command.
+type VertexDistCmd struct {
+	X, Y float64            // Vertex coordinates
+	Dist float64            // Distance to the next vertex
+	Cmd  basics.PathCommand // Path command for this vertex
+}
+
+// NewVertexDistCmd creates a new vertex with distance and command.
+func NewVertexDistCmd(x, y, dist float64, cmd basics.PathCommand) VertexDistCmd {
+	return VertexDistCmd{X: x, Y: y, Dist: dist, Cmd: cmd}
+}
+
+// Validate implements the VertexFilter interface for VertexDistCmd.
+func (v VertexDistCmd) Validate(val VertexFilter) bool {
+	other, ok := val.(VertexDistCmd)
+	if !ok {
+		return false
+	}
+
+	distance := basics.CalcDistance(v.X, v.Y, other.X, other.Y)
+	return distance > basics.VertexDistEpsilon
+}
+
+// CalculateDistance calculates and sets the distance to another vertex.
+func (v *VertexDistCmd) CalculateDistance(other VertexDistCmd) {
+	v.Dist = basics.CalcDistance(v.X, v.Y, other.X, other.Y)
+	if v.Dist <= basics.VertexDistEpsilon {
+		v.Dist = 1.0 / basics.VertexDistEpsilon
+	}
+}
+
+// VertexCmdSequence is a wrapper type for vertex sequence with commands
+type VertexCmdSequence struct {
+	*VertexSequence[VertexDistCmd]
+}
+
+// NewVertexCmdSequence creates a new vertex command sequence
+func NewVertexCmdSequence() *VertexCmdSequence {
+	return &VertexCmdSequence{
+		VertexSequence: NewVertexSequence[VertexDistCmd](),
+	}
+}
+
+// At returns the vertex at the specified index
+func (vs *VertexCmdSequence) At(index int) VertexDistCmd {
+	return vs.Get(index)
+}
+
+// ModifyAt modifies the vertex at the specified index
+func (vs *VertexCmdSequence) ModifyAt(index int, val VertexDistCmd) {
+	if index < vs.Size() && index >= 0 {
+		vs.storage.Set(index, val)
+	}
+}
+
+// RemoveAt removes the vertex at the specified index
+// This is a simple implementation that shifts elements
+func (vs *VertexCmdSequence) RemoveAt(index int) {
+	if index < 0 || index >= vs.Size() {
+		return
+	}
+
+	// Create a new sequence without the removed element
+	newSeq := NewVertexCmdSequence()
+	for i := 0; i < vs.Size(); i++ {
+		if i != index {
+			newSeq.Add(vs.At(i))
+		}
+	}
+
+	// Replace current storage with new sequence
+	vs.VertexSequence = newSeq.VertexSequence
 }
