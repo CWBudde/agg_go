@@ -101,41 +101,21 @@ just todo            # Find TODO/FIXME comments
 
 The codebase follows the detailed porting plan in TASKS.md which lists every C++ file that needs Go implementation. Always mark completed tasks as done ("[x]") once completed.
 
-## Current Test Failures (with TODO comments added)
+## Test Failures and Implementation Issues
 
-As of the latest test run, several issues remain that require further investigation and fixes:
+As of the latest test run, several issues remain that require further investigation and fixes. For a comprehensive catalog of all failing tests, implementation deviations, and fix priorities, see **TEST_TASKS.md**.
 
-### Liang-Barsky Clipping Algorithm (internal/basics/)
-- **Issue**: Algorithm behavior doesn't match test expectations for edge cases
-- **Status**: TODO comments added documenting the discrepancy
-- **Next**: Compare with original AGG C++ implementation for expected behavior
+**Summary:**
 
-### Pixel Blending Mathematics (internal/pixfmt/)
-- **Issue**: Premultiplied alpha blending calculations incorrect
-- **Status**: Fixed zero-alpha case, but complex blending still fails
-- **Next**: Review alpha premultiplication and RGBA8Prelerp implementation
+- **9 test failures**: Including algorithm failures (premultiplied alpha blending, rasterizer clipping), crashes (VCGen bounds violations), and build issues
+- **5 implementation deviations**: Areas where the Go port differs from C++ AGG behavior
+- **Missing dependencies**: Many AGG components are not yet implemented (see TASKS.md)
 
-### Rasterizer Clipping Boundary Detection (internal/rasterizer/)
-- **Issue**: Boundary detection for lines crossing clip regions
-- **Status**: TODO comments added for Cases 8 and 12
-- **Next**: Review AGG scanline clipping algorithm implementation
+**Key areas needing attention:**
 
-### VCGen State Management (internal/vcgen/)
-- **Issue**: B-spline and smooth polygon generators have edge case failures
-- **Status**: Fixed several state management issues, added bounds checking
-- **Next**: Remaining vertex sequence access panics need fixes
+- `internal/vcgen/` - HIGH PRIORITY: Vertex sequence access panics need immediate fixes
+- `internal/pixfmt/` - HIGH PRIORITY: Premultiplied alpha blending mathematics corrections
+- `internal/rasterizer/` - MEDIUM-HIGH: Boundary detection for scanline clipping
+- Platform backends - MEDIUM: Optional SDL2/X11 dependency issues
 
-### Converter Integration (internal/conv/)
-- **Issue**: Adaptor integration between path converters and vertex generators
-- **Status**: Missing integration causing test failures
-- **Next**: Implement proper ConvAdaptorVCGen integration
-
-### Missing Dependencies from TASKS.md
-Many AGG components are not yet implemented. Key missing dependencies include:
-- Advanced curve approximation algorithms
-- Complete scanline rendering pipeline components
-- Full rasterizer cell storage and sorting
-- Gamma correction and color management
-- Advanced path stroking and dashing algorithms
-
-For new features, always check TASKS.md for dependency requirements before implementation.
+For detailed analysis, reproduction steps, and fix recommendations for each issue, consult **TEST_TASKS.md**.

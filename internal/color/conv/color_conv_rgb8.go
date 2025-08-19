@@ -3,8 +3,9 @@
 package conv
 
 import (
-	"agg_go/internal/basics"
 	"encoding/binary"
+
+	"agg_go/internal/basics"
 )
 
 // Standard RGB8 conversion functors
@@ -41,8 +42,10 @@ func (c *ColorConvRGB24) CopyRow(dst, src []basics.Int8u, width int) {
 }
 
 // Type aliases for common RGB24 conversions
-type ColorConvRGB24ToBGR24 = ColorConvRGB24
-type ColorConvBGR24ToRGB24 = ColorConvRGB24
+type (
+	ColorConvRGB24ToBGR24 = ColorConvRGB24
+	ColorConvBGR24ToRGB24 = ColorConvRGB24
+)
 
 // ColorConvRGBA32 performs channel reordering for 32-bit RGBA data.
 // Template parameters I1, I2, I3, I4 specify the channel mapping.

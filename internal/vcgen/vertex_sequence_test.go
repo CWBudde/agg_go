@@ -101,7 +101,7 @@ func TestVCGenVertexSequence_PathFlags(t *testing.T) {
 
 func TestVCGenVertexSequence_Shortening(t *testing.T) {
 	gen := NewVCGenVertexSequence()
-	gen.SetShorten(5.0) // Shorten by 5 units total (2.5 from each end)
+	gen.SetShorten(5.0) // Shorten by 5 units from end only (matching C++ AGG)
 
 	// Create a straight line path longer than shortening amount
 	gen.AddVertex(0, 0, basics.PathCmdMoveTo)
@@ -124,9 +124,14 @@ func TestVCGenVertexSequence_Shortening(t *testing.T) {
 		t.Error("Shortened path should still have vertices")
 	}
 
-	// First vertex should be moved inward
-	if len(vertices) > 0 && vertices[0].X <= 0 {
-		t.Error("First vertex should be shortened from start")
+	// First vertex should be unchanged (shortening is from end only)
+	if len(vertices) > 0 && vertices[0].X != 0 {
+		t.Errorf("First vertex should be unchanged, got X=%.1f", vertices[0].X)
+	}
+
+	// Last vertex should be shortened from 20 to 15 (shortened by 5 from end)
+	if len(vertices) > 1 && vertices[len(vertices)-1].X != 15 {
+		t.Errorf("Last vertex should be at X=15 (shortened from end), got X=%.1f", vertices[len(vertices)-1].X)
 	}
 }
 

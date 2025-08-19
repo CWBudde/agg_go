@@ -1,8 +1,9 @@
 package conv
 
 import (
-	"agg_go/internal/basics"
 	"testing"
+
+	"agg_go/internal/basics"
 )
 
 // MockRenderingBuffer implements RenderingBuffer for testing

@@ -526,3 +526,9 @@ func (it *PerspectiveIteratorX) Next() {
 	it.X = it.nomX * d
 	it.Y = it.nomY * d
 }
+
+// Begin creates a new horizontal line iterator for perspective transformation.
+// This method matches the AGG C++ API where trans_perspective has a begin() method.
+func (t *TransPerspective) Begin(x, y, step float64) *PerspectiveIteratorX {
+	return t.NewIteratorX(x, y, step)
+}

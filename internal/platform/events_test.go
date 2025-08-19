@@ -97,10 +97,10 @@ func TestKeyCodeHelpers(t *testing.T) {
 		expectKeypad     bool
 		expectNavigation bool
 	}{
-		{"ASCII letter", KeyCode(65), true, false, false, false, false},         // 'A'
-		{"ASCII space", KeyCode(32), true, false, false, false, false},          // ' '
-		{"ASCII tilde", KeyCode(126), true, false, false, false, false},         // '~'
-		{"Control char", KeyCode(1), false, false, false, false, false},         // Control character
+		{"ASCII letter", KeyCode(65), true, false, false, false, false}, // 'A'
+		{"ASCII space", KeyCode(32), true, false, false, false, false},  // ' '
+		{"ASCII tilde", KeyCode(126), true, false, false, false, false}, // '~'
+		{"Control char", KeyCode(1), false, false, false, false, false}, // Control character
 		{"Backspace", KeyBackspace, false, false, false, false, false},
 		{"Function key F1", KeyF1, false, true, false, false, false},
 		{"Function key F12", KeyF12, false, true, false, false, false},

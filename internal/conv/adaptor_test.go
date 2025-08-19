@@ -240,6 +240,29 @@ func TestNullMarkers(t *testing.T) {
 	}
 }
 
+func TestConvAdaptorVCGen_ConstAccessors(t *testing.T) {
+	source := NewMockVertexSource([]Vertex{{X: 0, Y: 0, Cmd: basics.PathCmdStop}})
+	generator := NewMockVertexGenerator()
+	markers := NewMockMarkers()
+	adaptor := NewConvAdaptorVCGenWithMarkers(source, generator, markers)
+
+	// Test const accessor methods
+	if adaptor.GetGenerator() != generator {
+		t.Error("GetGenerator() should return the same generator instance")
+	}
+	if adaptor.GetMarkers() != markers {
+		t.Error("GetMarkers() should return the same markers instance")
+	}
+
+	// Ensure regular accessors still work
+	if adaptor.Generator() != generator {
+		t.Error("Generator() should return the same generator instance")
+	}
+	if adaptor.Markers() != markers {
+		t.Error("Markers() should return the same markers instance")
+	}
+}
+
 func TestConvAdaptorVCGen_AttachNewSource(t *testing.T) {
 	sourceVertices1 := []Vertex{
 		{X: 1, Y: 1, Cmd: basics.PathCmdMoveTo},
@@ -319,6 +342,85 @@ func BenchmarkConvAdaptorVCGen_SmallPath(b *testing.B) {
 				break
 			}
 		}
+	}
+}
+
+func TestConvAdaptorVCGen_MultipleSubPaths(t *testing.T) {
+	// Create a multi-path with two sub-paths
+	sourceVertices := []Vertex{
+		// First sub-path: triangle
+		{X: 0, Y: 0, Cmd: basics.PathCmdMoveTo},
+		{X: 10, Y: 0, Cmd: basics.PathCmdLineTo},
+		{X: 5, Y: 10, Cmd: basics.PathCmdLineTo},
+		{X: 0, Y: 0, Cmd: basics.PathCmdEndPoly | basics.PathFlagClose},
+
+		// Second sub-path: rectangle
+		{X: 20, Y: 20, Cmd: basics.PathCmdMoveTo},
+		{X: 30, Y: 20, Cmd: basics.PathCmdLineTo},
+		{X: 30, Y: 30, Cmd: basics.PathCmdLineTo},
+		{X: 20, Y: 30, Cmd: basics.PathCmdLineTo},
+		{X: 20, Y: 20, Cmd: basics.PathCmdEndPoly | basics.PathFlagClose},
+
+		{X: 0, Y: 0, Cmd: basics.PathCmdStop},
+	}
+
+	source := NewMockVertexSource(sourceVertices)
+	generator := NewMockVertexGenerator()
+	adaptor := NewConvAdaptorVCGen(source, generator)
+
+	adaptor.Rewind(0)
+
+	var resultVertices []Vertex
+	moveToCount := 0
+	endPolyCount := 0
+
+	for {
+		x, y, cmd := adaptor.Vertex()
+		if cmd == basics.PathCmdStop {
+			break
+		}
+
+		resultVertices = append(resultVertices, Vertex{X: x, Y: y, Cmd: cmd})
+
+		if cmd == basics.PathCmdMoveTo {
+			moveToCount++
+		}
+		if (cmd & basics.PathCmdMask) == basics.PathCmdEndPoly {
+			endPolyCount++
+		}
+	}
+
+	// Should have processed both sub-paths
+	if moveToCount != 2 {
+		t.Errorf("Expected 2 MoveTo commands (one per sub-path), got %d", moveToCount)
+	}
+
+	if endPolyCount != 2 {
+		t.Errorf("Expected 2 EndPoly commands (one per sub-path), got %d", endPolyCount)
+	}
+
+	// Should have generated vertices for both paths
+	if len(resultVertices) < 8 {
+		t.Errorf("Expected at least 8 vertices from both sub-paths, got %d", len(resultVertices))
+	}
+
+	// Verify we have vertices from both sub-paths by checking coordinates
+	hasFirstPath := false
+	hasSecondPath := false
+	for _, v := range resultVertices {
+		if v.X == 0 && v.Y == 0 && v.Cmd == basics.PathCmdMoveTo {
+			hasFirstPath = true
+		}
+		if v.X == 20 && v.Y == 20 && v.Cmd == basics.PathCmdMoveTo {
+			hasSecondPath = true
+		}
+	}
+
+	if !hasFirstPath {
+		t.Error("Missing vertices from first sub-path")
+	}
+	if !hasSecondPath {
+		t.Error("Missing vertices from second sub-path")
 	}
 }
 

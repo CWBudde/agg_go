@@ -103,37 +103,79 @@ func (c *ConvAdaptorVCGen) Markers() Markers {
 	return c.markers
 }
 
+// GetGenerator returns the vertex generator (read-only access)
+func (c *ConvAdaptorVCGen) GetGenerator() VertexGenerator {
+	return c.generator
+}
+
+// GetMarkers returns the markers (read-only access)
+func (c *ConvAdaptorVCGen) GetMarkers() Markers {
+	return c.markers
+}
+
 // Rewind rewinds the converter
 func (c *ConvAdaptorVCGen) Rewind(pathID uint) {
 	c.source.Rewind(pathID)
 	c.status = StatusInitial
+	c.lastCmd = 0 // Reset last command
 }
 
 // Vertex returns the next vertex in the converted sequence
 func (c *ConvAdaptorVCGen) Vertex() (x, y float64, cmd basics.PathCommand) {
-	cmd = basics.PathCmdStop
-
 	for {
 		switch c.status {
 		case StatusInitial:
 			c.markers.RemoveAll()
+			// Read initial vertex from source
 			c.startX, c.startY, c.lastCmd = c.source.Vertex()
 			c.status = StatusAccumulate
 
 		case StatusAccumulate:
+			// Check if last command was stop - if so, we're done
 			if c.lastCmd == basics.PathCmdStop {
-				c.status = StatusGenerate
-				c.generator.PrepareSrc()
-				c.generator.Rewind(0)
-				c.markers.PrepareSrc()
-				c.markers.Rewind(0)
-				continue
+				return 0, 0, basics.PathCmdStop
 			}
 
-			c.generator.AddVertex(c.startX, c.startY, c.lastCmd)
-			c.markers.AddVertex(c.startX, c.startY, c.lastCmd)
+			// Clear generator and start with initial vertex
+			c.generator.RemoveAll()
 
-			c.startX, c.startY, c.lastCmd = c.source.Vertex()
+			// Add initial vertex if it's a MoveTo
+			if c.lastCmd == basics.PathCmdMoveTo {
+				c.generator.AddVertex(c.startX, c.startY, basics.PathCmdMoveTo)
+				c.markers.AddVertex(c.startX, c.startY, basics.PathCmdMoveTo)
+			}
+
+			// Process vertices until we hit stop, end_poly, or another MoveTo
+			for {
+				x, y, cmd := c.source.Vertex()
+				c.lastCmd = cmd
+
+				if cmd == basics.PathCmdStop {
+					break
+				}
+
+				if (cmd & basics.PathCmdMask) == basics.PathCmdMoveTo {
+					// Found another MoveTo - save position and break to process current path
+					c.startX, c.startY = x, y
+					break
+				}
+
+				if (cmd & basics.PathCmdMask) == basics.PathCmdEndPoly {
+					c.generator.AddVertex(x, y, cmd)
+					break
+				}
+
+				// Regular vertex command
+				c.generator.AddVertex(x, y, cmd)
+				c.markers.AddVertex(x, y, basics.PathCmdLineTo)
+			}
+
+			// Prepare generator and transition to generate
+			c.generator.PrepareSrc()
+			c.generator.Rewind(0)
+			c.markers.PrepareSrc()
+			c.markers.Rewind(0)
+			c.status = StatusGenerate
 			continue
 
 		case StatusGenerate:
@@ -147,11 +189,10 @@ func (c *ConvAdaptorVCGen) Vertex() (x, y float64, cmd basics.PathCommand) {
 				return x, y, cmd
 			}
 
-			c.status = StatusInitial
-			return 0, 0, basics.PathCmdStop
+			// Transition back to accumulate to check for more sub-paths
+			// Only return PathCmdStop if source is truly exhausted
+			c.status = StatusAccumulate
+			continue
 		}
-		break
 	}
-
-	return 0, 0, basics.PathCmdStop
 }

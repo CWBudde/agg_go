@@ -293,6 +293,30 @@ func (t *TransAffine) IsEqual(m *TransAffine, epsilon float64) bool {
 		basics.IsEqualEps(t.TY, m.TY, epsilon)
 }
 
+// IsOrthogonal checks if the transformation preserves orthogonality.
+// An orthogonal transformation preserves angles and distances (rotation, reflection).
+// The transformation matrix columns (or rows) must be orthonormal.
+func (t *TransAffine) IsOrthogonal(epsilon float64) bool {
+	// Get the 2x2 transformation matrix (ignore translation)
+	// Matrix columns are [SX, SHY] and [SHX, SY]
+
+	// Calculate dot product of columns (should be 0 for orthogonality)
+	dotProduct := t.SX*t.SHX + t.SHY*t.SY
+
+	// Check if columns are orthogonal (dot product near zero)
+	if math.Abs(dotProduct) > epsilon {
+		return false
+	}
+
+	// Calculate lengths of column vectors (should be 1 for orthonormality)
+	col1Length := math.Sqrt(t.SX*t.SX + t.SHY*t.SHY)
+	col2Length := math.Sqrt(t.SHX*t.SHX + t.SY*t.SY)
+
+	// Check if columns are normalized (unit length)
+	return basics.IsEqualEps(col1Length, 1.0, epsilon) &&
+		basics.IsEqualEps(col2Length, 1.0, epsilon)
+}
+
 // GetRotation extracts the rotation angle from the matrix.
 func (t *TransAffine) GetRotation() float64 {
 	x1, y1 := 0.0, 0.0

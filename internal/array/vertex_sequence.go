@@ -16,13 +16,8 @@ type VertexSequence[T VertexFilter] struct {
 	storage *PodBVector[T]
 }
 
-// VertexFilter represents a vertex type that can validate itself against another vertex.
-// This corresponds to AGG's requirement that T must expose bool T::operator() (const T& val).
-type VertexFilter interface {
-	// Validate checks if this vertex should be kept when the given vertex is being added.
-	// Returns true if the vertex meets the criteria, false if it should be filtered.
-	Validate(val VertexFilter) bool
-}
+// Use VertexFilter from basics package
+type VertexFilter = basics.VertexFilter
 
 // NewVertexSequence creates a new vertex sequence with default block scale.
 func NewVertexSequence[T VertexFilter]() *VertexSequence[T] {
@@ -98,12 +93,12 @@ func (vs *VertexSequence[T]) Close(closed bool) {
 
 	// Calculate distances between consecutive vertices (like in AGG's operator())
 	// Each vertex stores the distance to the NEXT vertex
-	vs.calculateDistances()
+	vs.CalculateDistances()
 }
 
-// calculateDistances calculates and stores distances between consecutive vertices.
+// CalculateDistances calculates and stores distances between consecutive vertices.
 // This mimics the side effect of AGG's vertex_dist::operator() function.
-func (vs *VertexSequence[T]) calculateDistances() {
+func (vs *VertexSequence[T]) CalculateDistances() {
 	// Only calculate distances for VertexDist types
 	for i := 0; i < vs.storage.Size()-1; i++ {
 		curr := vs.storage.At(i)
@@ -300,4 +295,50 @@ func (vs *VertexCmdSequence) RemoveAt(index int) {
 
 	// Replace current storage with new sequence
 	vs.VertexSequence = newSeq.VertexSequence
+}
+
+// ShortenPath shortens a vertex sequence from the end by the specified distance.
+// This is a port of AGG's shorten_path template function.
+func ShortenPath(vs *VertexSequence[VertexDist], s float64, closed bool) {
+	if s > 0.0 && vs.Size() > 1 {
+		var d float64
+		n := vs.Size() - 2
+
+		// Remove vertices from the end while their distance is less than s
+		for n >= 0 {
+			d = vs.Get(n).Dist
+			if d > s {
+				break
+			}
+			vs.RemoveLast()
+			s -= d
+			n--
+		}
+
+		if vs.Size() < 2 {
+			vs.RemoveAll()
+		} else {
+			// Adjust the last vertex position
+			n = vs.Size() - 1
+			prev := vs.Get(n - 1)
+			last := vs.Get(n)
+
+			d = (prev.Dist - s) / prev.Dist
+			x := prev.X + (last.X-prev.X)*d
+			y := prev.Y + (last.Y-prev.Y)*d
+
+			// Create new vertex with adjusted position
+			newLast := VertexDist{X: x, Y: y, Dist: 0.0}
+
+			// Replace the last vertex
+			vs.ModifyLast(newLast)
+
+			// Validate the vertex - if it fails validation, remove it
+			if !prev.Validate(newLast) {
+				vs.RemoveLast()
+			}
+
+			vs.Close(closed)
+		}
+	}
 }

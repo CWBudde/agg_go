@@ -11,110 +11,109 @@ import (
 	"time"
 
 	"agg_go/internal/buffer"
+	"agg_go/internal/platform/types"
 )
 
-// WindowFlags represents window configuration flags.
-type WindowFlags uint32
+// Type aliases to avoid breaking existing code while using shared types
+type (
+	WindowFlags   = types.WindowFlags
+	PixelFormat   = types.PixelFormat
+	InputFlags    = types.InputFlags
+	KeyCode       = types.KeyCode
+	EventCallback = types.EventCallback
+)
 
+// Re-export constants for backward compatibility
 const (
-	WindowResize           WindowFlags = 1 << 0 // Window can be resized
-	WindowHWBuffer         WindowFlags = 1 << 1 // Use hardware buffer (platform dependent)
-	WindowKeepAspectRatio  WindowFlags = 1 << 2 // Maintain aspect ratio during resize
-	WindowProcessAllKeys   WindowFlags = 1 << 3 // Process all keyboard events
+	WindowResize          = types.WindowResize
+	WindowHWBuffer        = types.WindowHWBuffer
+	WindowKeepAspectRatio = types.WindowKeepAspectRatio
+	WindowProcessAllKeys  = types.WindowProcessAllKeys
 )
 
-// PixelFormat represents the pixel format of the rendering buffer.
-type PixelFormat int
-
+// Re-export pixel format constants for backward compatibility
 const (
-	PixelFormatUndefined PixelFormat = iota // No conversions applied
-	PixelFormatBW                           // 1 bit per color B/W
-	PixelFormatGray8                        // Simple 256 level grayscale
-	PixelFormatSGray8                       // Simple 256 level grayscale (sRGB)
-	PixelFormatGray16                       // Simple 65535 level grayscale
-	PixelFormatGray32                       // Grayscale, one 32-bit float per pixel
-	PixelFormatRGB555                       // 15 bit rgb
-	PixelFormatRGB565                       // 16 bit rgb
-	PixelFormatRGB24                        // R-G-B, one byte per color component
-	PixelFormatSRGB24                       // R-G-B, one byte per color component (sRGB)
-	PixelFormatBGR24                        // B-G-R, one byte per color component
-	PixelFormatSBGR24                       // B-G-R, native win32 BMP format (sRGB)
-	PixelFormatRGBA32                       // R-G-B-A, one byte per color component
-	PixelFormatSRGBA32                      // R-G-B-A, one byte per color component (sRGB)
-	PixelFormatARGB32                       // A-R-G-B, native MAC format
-	PixelFormatSARGB32                      // A-R-G-B, native MAC format (sRGB)
-	PixelFormatABGR32                       // A-B-G-R, one byte per color component
-	PixelFormatSABGR32                      // A-B-G-R, one byte per color component (sRGB)
-	PixelFormatBGRA32                       // B-G-R-A, native win32 BMP format
-	PixelFormatSBGRA32                      // B-G-R-A, native win32 BMP format (sRGB)
-	PixelFormatRGB48                        // R-G-B, 16 bits per color component
-	PixelFormatBGR48                        // B-G-R, native win32 BMP format
-	PixelFormatRGB96                        // R-G-B, one 32-bit float per color component
-	PixelFormatBGR96                        // B-G-R, one 32-bit float per color component
-	PixelFormatRGBA64                       // R-G-B-A, 16 bits per color component
-	PixelFormatARGB64                       // A-R-G-B, native MAC format
-	PixelFormatABGR64                       // A-B-G-R, one byte per color component
-	PixelFormatBGRA64                       // B-G-R-A, native win32 BMP format
-	PixelFormatRGBA128                      // R-G-B-A, one 32-bit float per color component
-	PixelFormatARGB128                      // A-R-G-B, one 32-bit float per color component
-	PixelFormatABGR128                      // A-B-G-R, one 32-bit float per color component
-	PixelFormatBGRA128                      // B-G-R-A, one 32-bit float per color component
+	PixelFormatUndefined = types.PixelFormatUndefined
+	PixelFormatBW        = types.PixelFormatBW
+	PixelFormatGray8     = types.PixelFormatGray8
+	PixelFormatSGray8    = types.PixelFormatSGray8
+	PixelFormatGray16    = types.PixelFormatGray16
+	PixelFormatGray32    = types.PixelFormatGray32
+	PixelFormatRGB555    = types.PixelFormatRGB555
+	PixelFormatRGB565    = types.PixelFormatRGB565
+	PixelFormatRGB24     = types.PixelFormatRGB24
+	PixelFormatSRGB24    = types.PixelFormatSRGB24
+	PixelFormatBGR24     = types.PixelFormatBGR24
+	PixelFormatSBGR24    = types.PixelFormatSBGR24
+	PixelFormatRGBA32    = types.PixelFormatRGBA32
+	PixelFormatSRGBA32   = types.PixelFormatSRGBA32
+	PixelFormatARGB32    = types.PixelFormatARGB32
+	PixelFormatSARGB32   = types.PixelFormatSARGB32
+	PixelFormatABGR32    = types.PixelFormatABGR32
+	PixelFormatSABGR32   = types.PixelFormatSABGR32
+	PixelFormatBGRA32    = types.PixelFormatBGRA32
+	PixelFormatSBGRA32   = types.PixelFormatSBGRA32
+	PixelFormatRGB48     = types.PixelFormatRGB48
+	PixelFormatSRGB48    = types.PixelFormatSRGB48
+	PixelFormatBGR48     = types.PixelFormatBGR48
+	PixelFormatSBGR48    = types.PixelFormatSBGR48
+	PixelFormatRGBA64    = types.PixelFormatRGBA64
+	PixelFormatSRGBA64   = types.PixelFormatSRGBA64
+	PixelFormatARGB64    = types.PixelFormatARGB64
+	PixelFormatSARGB64   = types.PixelFormatSARGB64
+	PixelFormatABGR64    = types.PixelFormatABGR64
+	PixelFormatSABGR64   = types.PixelFormatSABGR64
+	PixelFormatBGRA64    = types.PixelFormatBGRA64
+	PixelFormatSBGRA64   = types.PixelFormatSBGRA64
+	PixelFormatRGB96     = types.PixelFormatRGB96
+	PixelFormatSRGB96    = types.PixelFormatSRGB96
+	PixelFormatBGR96     = types.PixelFormatBGR96
+	PixelFormatSBGR96    = types.PixelFormatSBGR96
+	PixelFormatRGBA128   = types.PixelFormatRGBA128
+	PixelFormatSRGBA128  = types.PixelFormatSRGBA128
+	PixelFormatARGB128   = types.PixelFormatARGB128
+	PixelFormatSARGB128  = types.PixelFormatSARGB128
+	PixelFormatABGR128   = types.PixelFormatABGR128
+	PixelFormatSABGR128  = types.PixelFormatSABGR128
+	PixelFormatBGRA128   = types.PixelFormatBGRA128
+	PixelFormatSBGRA128  = types.PixelFormatSBGRA128
 )
 
-// String returns the string representation of the pixel format.
-func (pf PixelFormat) String() string {
-	formats := []string{
-		"Undefined", "BW", "Gray8", "SGray8", "Gray16", "Gray32",
-		"RGB555", "RGB565", "RGB24", "SRGB24", "BGR24", "SBGR24",
-		"RGBA32", "SRGBA32", "ARGB32", "SARGB32", "ABGR32", "SABGR32",
-		"BGRA32", "SBGRA32", "RGB48", "BGR48", "RGB96", "BGR96",
-		"RGBA64", "ARGB64", "ABGR64", "BGRA64", "RGBA128", "ARGB128",
-		"ABGR128", "BGRA128",
-	}
-	if int(pf) < len(formats) {
-		return formats[pf]
-	}
-	return fmt.Sprintf("Unknown(%d)", int(pf))
-}
+// Re-export input flag constants for backward compatibility with examples
+const (
+	MouseLeft  = types.MouseLeft
+	MouseRight = types.MouseRight
+	KbdShift   = types.KbdShift
+	KbdCtrl    = types.KbdCtrl
+)
 
-// BPP returns the bits per pixel for the pixel format.
-func (pf PixelFormat) BPP() int {
-	switch pf {
-	case PixelFormatBW:
-		return 1
-	case PixelFormatGray8, PixelFormatSGray8:
-		return 8
-	case PixelFormatGray16, PixelFormatRGB555, PixelFormatRGB565:
-		return 16
-	case PixelFormatRGB24, PixelFormatSRGB24, PixelFormatBGR24, PixelFormatSBGR24:
-		return 24
-	case PixelFormatRGBA32, PixelFormatSRGBA32, PixelFormatARGB32, PixelFormatSARGB32,
-		 PixelFormatABGR32, PixelFormatSABGR32, PixelFormatBGRA32, PixelFormatSBGRA32,
-		 PixelFormatGray32:
-		return 32
-	case PixelFormatRGB48, PixelFormatBGR48:
-		return 48
-	case PixelFormatRGBA64, PixelFormatARGB64, PixelFormatABGR64, PixelFormatBGRA64:
-		return 64
-	case PixelFormatRGB96, PixelFormatBGR96:
-		return 96
-	case PixelFormatRGBA128, PixelFormatARGB128, PixelFormatABGR128, PixelFormatBGRA128:
-		return 128
-	default:
-		return 0
-	}
-}
+// Re-export key constants for backward compatibility with examples
+const (
+	KeyEscape = types.KeyEscape
+	KeyF1     = types.KeyF1
+	KeyF2     = types.KeyF2
+	KeyF3     = types.KeyF3
+	KeyF4     = types.KeyF4
+	KeyF5     = types.KeyF5
+	KeyF6     = types.KeyF6
+	KeyF7     = types.KeyF7
+	KeyF8     = types.KeyF8
+	KeyF9     = types.KeyF9
+	KeyF10    = types.KeyF10
+	KeyF11    = types.KeyF11
+	KeyF12    = types.KeyF12
+)
 
 // PlatformSupport provides the core platform support functionality for AGG applications.
 // It manages rendering buffers, handles events, and provides basic window operations.
 type PlatformSupport struct {
 	// Window configuration
-	format       PixelFormat
-	flipY        bool
-	bpp          int
-	windowFlags  WindowFlags
-	caption      string
-	waitMode     bool
+	format      PixelFormat
+	flipY       bool
+	bpp         int
+	windowFlags WindowFlags
+	caption     string
+	waitMode    bool
 
 	// Window dimensions
 	initialWidth  int
@@ -315,9 +314,9 @@ func (ps *PlatformSupport) CopyWindowToImage(idx int) {
 
 // CopyImageToImage copies one image buffer to another.
 func (ps *PlatformSupport) CopyImageToImage(idxTo, idxFrom int) {
-	if idxFrom >= 0 && idxFrom < maxImages && 
-	   idxTo >= 0 && idxTo < maxImages && 
-	   ps.imageBuffers[idxFrom].Buf() != nil {
+	if idxFrom >= 0 && idxFrom < maxImages &&
+		idxTo >= 0 && idxTo < maxImages &&
+		ps.imageBuffers[idxFrom].Buf() != nil {
 		fromBuffer := &ps.imageBuffers[idxFrom]
 		ps.CreateImage(idxTo, fromBuffer.Width(), fromBuffer.Height())
 		ps.imageBuffers[idxTo].CopyFrom(fromBuffer)
@@ -428,13 +427,13 @@ func (ps *PlatformSupport) SetOnPostDraw(handler func(rawHandler interface{})) {
 func (ps *PlatformSupport) TriggerResize(width, height int) {
 	ps.currentWidth = width
 	ps.currentHeight = height
-	
+
 	// Update window buffer
 	stride := width * ps.bpp / 8
 	bufferSize := stride * height
 	windowData := make([]uint8, bufferSize)
 	ps.windowBuffer.Attach(windowData, width, height, stride)
-	
+
 	if ps.onResizeHandler != nil {
 		ps.onResizeHandler(width, height)
 	}

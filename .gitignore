@@ -1,6 +1,72 @@
-# Cache
-.gocache/
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories (remove the comment below to include it)
+# vendor/
+
+# Go workspace file
+go.work
+
+# Build artifacts
+/build/
+/dist/
+/bin/
 
 # Test coverage
 .coverage/
+coverage.html
+coverage.out
+*.cover
 
+# Cache directories
+.gocache/
+.cache/
+
+# AI/ML cache
+.fastembed_cache/
+.codanna/
+.codannaignore
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS generated files
+Thumbs.db
+.directory
+
+# Log files
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# Documentation build artifacts
+/docs/build/
+
+# Example binaries (if built)
+/examples/*/main
+/examples/*/*/main
+
+# Just build artifacts
+.just/
+
+# Profiling files
+*.pprof
+cpu.prof
+mem.prof

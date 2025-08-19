@@ -107,7 +107,10 @@ func (v *VCGenSmoothPoly1) Vertex() (x, y float64, cmd basics.PathCommand) {
 			}
 
 			if v.srcVertices.Size() == 2 {
-				// TODO: Handle line segments (2 vertices) properly
+				// Handle line segments (2 vertices) properly
+				if v.srcVertex >= 2 {
+					return 0, 0, basics.PathCmdStop
+				}
 				vertex := v.srcVertices.At(v.srcVertex)
 				x, y = vertex.X, vertex.Y
 				v.srcVertex++

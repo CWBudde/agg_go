@@ -1,9 +1,10 @@
 package conv
 
 import (
-	"agg_go/internal/basics"
 	"encoding/binary"
 	"testing"
+
+	"agg_go/internal/basics"
 )
 
 func TestColorConvGray16ToGray8(t *testing.T) {

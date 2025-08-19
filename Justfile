@@ -123,6 +123,12 @@ run EXAMPLE:
     @echo "Running example: {{EXAMPLE}}"
     go run examples/basic/{{EXAMPLE}}/main.go
 
+# Run X11 demo (requires X11 headers and running X server)
+run-x11-demo:
+    @echo "Running X11 demo..."
+    @echo "Note: Requires X11 headers and running X server"
+    go run -tags x11 examples/x11_demo/main.go
+
 # Development workflow commands
 
 # Start development mode (format, check, test on file changes)
@@ -195,6 +201,16 @@ build-windows:
 # Linux-specific build  
 build-linux:
     GOOS=linux go build ./...
+
+# Build with X11 support (Linux only)
+build-x11:
+    @echo "Building with X11 support..."
+    go build -tags x11 ./...
+
+# Build X11 examples
+build-x11-examples:
+    @echo "Building X11 examples..."
+    go build -tags x11 -o /tmp/x11-demo examples/x11_demo/main.go
 
 # macOS-specific build
 build-macos:

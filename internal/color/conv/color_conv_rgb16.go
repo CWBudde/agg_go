@@ -3,8 +3,9 @@
 package conv
 
 import (
-	"agg_go/internal/basics"
 	"encoding/binary"
+
+	"agg_go/internal/basics"
 )
 
 // ColorConvGray16ToGray8 converts 16-bit grayscale to 8-bit grayscale.

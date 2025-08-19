@@ -47,14 +47,14 @@ func (rc *RenderingContext) SetupResizeTransform(width, height int) {
 		// Calculate uniform scaling that maintains aspect ratio
 		scaleX := float64(width) / float64(rc.platformSupport.initialWidth)
 		scaleY := float64(height) / float64(rc.platformSupport.initialHeight)
-		
+
 		// Use the smaller scale to ensure everything fits
 		scale := math.Min(scaleX, scaleY)
-		
+
 		// Calculate centering offsets
 		offsetX := (float64(width) - float64(rc.platformSupport.initialWidth)*scale) / 2.0
 		offsetY := (float64(height) - float64(rc.platformSupport.initialHeight)*scale) / 2.0
-		
+
 		// Create transformation matrix: translate then scale
 		rc.resizeMatrix = transform.NewTransAffineTranslation(offsetX, offsetY)
 		rc.resizeMatrix.Multiply(transform.NewTransAffineScaling(scale))
@@ -96,10 +96,10 @@ func (rc *RenderingContext) ClearWindow(r, g, b, a uint8) {
 	if buf.Buf() == nil {
 		return
 	}
-	
+
 	data := buf.Buf()
 	bpp := rc.platformSupport.bpp / 8
-	
+
 	// Fill buffer based on pixel format
 	switch rc.platformSupport.format {
 	case PixelFormatRGBA32, PixelFormatSRGBA32:
@@ -167,10 +167,10 @@ func (rc *RenderingContext) ClearImage(idx int, r, g, b, a uint8) {
 	if buf == nil || buf.Buf() == nil {
 		return
 	}
-	
+
 	data := buf.Buf()
 	bpp := rc.platformSupport.bpp / 8
-	
+
 	// Use the same clearing logic as ClearWindow
 	switch rc.platformSupport.format {
 	case PixelFormatRGBA32, PixelFormatSRGBA32:
@@ -216,19 +216,19 @@ func (rc *RenderingContext) GetPixel(x, y int) (r, g, b, a uint8, ok bool) {
 	if buf.Buf() == nil {
 		return 0, 0, 0, 0, false
 	}
-	
+
 	if x < 0 || y < 0 || x >= buf.Width() || y >= buf.Height() {
 		return 0, 0, 0, 0, false
 	}
-	
+
 	data := buf.Buf()
 	bpp := rc.platformSupport.bpp / 8
 	offset := y*buf.Stride() + x*bpp
-	
+
 	if offset+bpp > len(data) {
 		return 0, 0, 0, 0, false
 	}
-	
+
 	switch rc.platformSupport.format {
 	case PixelFormatRGBA32, PixelFormatSRGBA32:
 		return data[offset], data[offset+1], data[offset+2], data[offset+3], true
@@ -259,19 +259,19 @@ func (rc *RenderingContext) SetPixel(x, y int, r, g, b, a uint8) bool {
 	if buf.Buf() == nil {
 		return false
 	}
-	
+
 	if x < 0 || y < 0 || x >= buf.Width() || y >= buf.Height() {
 		return false
 	}
-	
+
 	data := buf.Buf()
 	bpp := rc.platformSupport.bpp / 8
 	offset := y*buf.Stride() + x*bpp
-	
+
 	if offset+bpp > len(data) {
 		return false
 	}
-	
+
 	switch rc.platformSupport.format {
 	case PixelFormatRGBA32, PixelFormatSRGBA32:
 		data[offset] = r
@@ -321,22 +321,22 @@ func (rc *RenderingContext) BlendPixel(x, y int, r, g, b, a uint8) bool {
 	if a == 255 {
 		return rc.SetPixel(x, y, r, g, b, a) // Fully opaque, replace
 	}
-	
+
 	// Get existing pixel
 	existingR, existingG, existingB, existingA, ok := rc.GetPixel(x, y)
 	if !ok {
 		return false
 	}
-	
+
 	// Alpha blending: new = src * alpha + dst * (1 - alpha)
 	alpha := float64(a) / 255.0
 	invAlpha := 1.0 - alpha
-	
+
 	blendedR := uint8(float64(r)*alpha + float64(existingR)*invAlpha)
 	blendedG := uint8(float64(g)*alpha + float64(existingG)*invAlpha)
 	blendedB := uint8(float64(b)*alpha + float64(existingB)*invAlpha)
 	blendedA := uint8(math.Max(float64(a), float64(existingA)))
-	
+
 	return rc.SetPixel(x, y, blendedR, blendedG, blendedB, blendedA)
 }
 
@@ -345,7 +345,7 @@ func (rc *RenderingContext) BlendPixel(x, y int, r, g, b, a uint8) bool {
 func (rc *RenderingContext) DrawLine(x0, y0, x1, y1 int, r, g, b, a uint8) {
 	dx := abs(x1 - x0)
 	dy := abs(y1 - y0)
-	
+
 	var sx, sy int
 	if x0 < x1 {
 		sx = 1
@@ -357,17 +357,17 @@ func (rc *RenderingContext) DrawLine(x0, y0, x1, y1 int, r, g, b, a uint8) {
 	} else {
 		sy = -1
 	}
-	
+
 	err := dx - dy
 	x, y := x0, y0
-	
+
 	for {
 		rc.SetPixel(x, y, r, g, b, a)
-		
+
 		if x == x1 && y == y1 {
 			break
 		}
-		
+
 		e2 := 2 * err
 		if e2 > -dy {
 			err -= dy
@@ -406,7 +406,7 @@ func (rc *RenderingContext) DrawCircle(centerX, centerY, radius int, r, g, b, a 
 	x := radius
 	y := 0
 	err := 0
-	
+
 	for x >= y {
 		rc.SetPixel(centerX+x, centerY+y, r, g, b, a)
 		rc.SetPixel(centerX+y, centerY+x, r, g, b, a)
@@ -416,7 +416,7 @@ func (rc *RenderingContext) DrawCircle(centerX, centerY, radius int, r, g, b, a 
 		rc.SetPixel(centerX-y, centerY-x, r, g, b, a)
 		rc.SetPixel(centerX+y, centerY-x, r, g, b, a)
 		rc.SetPixel(centerX+x, centerY-y, r, g, b, a)
-		
+
 		y++
 		err += 1 + 2*y
 		if 2*(err-x)+1 > 0 {
@@ -458,7 +458,7 @@ func abs(x int) int {
 // Statistics returns rendering statistics and buffer information.
 func (rc *RenderingContext) Statistics() map[string]interface{} {
 	stats := make(map[string]interface{})
-	
+
 	// Window buffer info
 	buf := rc.WindowBuffer()
 	stats["window_width"] = buf.Width()
@@ -467,14 +467,14 @@ func (rc *RenderingContext) Statistics() map[string]interface{} {
 	stats["pixel_format"] = rc.platformSupport.format.String()
 	stats["bpp"] = rc.platformSupport.bpp
 	stats["flip_y"] = rc.platformSupport.flipY
-	
+
 	// Calculate buffer size
 	if buf.Buf() != nil {
 		stats["window_buffer_size"] = len(buf.Buf())
 	} else {
 		stats["window_buffer_size"] = 0
 	}
-	
+
 	// Count active image buffers
 	activeImages := 0
 	for i := 0; i < maxImages; i++ {
@@ -483,7 +483,7 @@ func (rc *RenderingContext) Statistics() map[string]interface{} {
 		}
 	}
 	stats["active_image_buffers"] = activeImages
-	
+
 	// Transformation info
 	isIdentity := rc.resizeMatrix.IsIdentity(1e-10)
 	stats["has_resize_transform"] = !isIdentity
@@ -493,6 +493,6 @@ func (rc *RenderingContext) Statistics() map[string]interface{} {
 		stats["resize_translate_x"] = rc.resizeMatrix.TX
 		stats["resize_translate_y"] = rc.resizeMatrix.TY
 	}
-	
+
 	return stats
 }

@@ -92,14 +92,15 @@ func (v *VCGenVertexSequence) Shorten() float64 {
 	return v.shorten
 }
 
-// shortenPath shortens the path by the specified amount
+// shortenPath shortens the path by the specified amount from the END only
+// This matches the C++ AGG implementation exactly
 func (v *VCGenVertexSequence) shortenPath() {
-	if v.srcVertices.Size() <= 1 || v.shorten <= 0.0 {
+	if v.shorten <= 0.0 || v.srcVertices.Size() <= 1 {
 		return
 	}
 
-	// Calculate total path length
-	totalLen := 0.0
+	// First, calculate distances between consecutive vertices
+	// This stores the distance from the previous vertex to the current one
 	for i := 1; i < v.srcVertices.Size(); i++ {
 		v1 := v.srcVertices.At(i - 1)
 		v2 := v.srcVertices.At(i)
@@ -112,84 +113,51 @@ func (v *VCGenVertexSequence) shortenPath() {
 			Dist: dist,
 			Cmd:  v2.Cmd,
 		})
-		totalLen += dist
 	}
 
-	if totalLen < v.shorten {
+	// Shorten from the end by removing segments
+	s := v.shorten
+	n := v.srcVertices.Size() - 2 // Start from second-to-last vertex
+
+	// Remove complete segments from the end
+	for n >= 0 && v.srcVertices.Size() > 1 {
+		vertex := v.srcVertices.At(n + 1) // The vertex at position n+1
+		d := vertex.Dist
+		if d > s {
+			break // This segment is longer than remaining shortening distance
+		}
+		v.srcVertices.RemoveLast()
+		s -= d
+		n--
+	}
+
+	// Check if we removed everything except the first vertex
+	if v.srcVertices.Size() < 2 {
 		v.srcVertices.RemoveAll()
 		return
 	}
 
-	// Shorten from both ends
-	shortenPerEnd := v.shorten / 2.0
+	// Interpolate the final vertex position if we have remaining shortening distance
+	if s > 0 {
+		n = v.srcVertices.Size() - 1
+		prev := v.srcVertices.At(n - 1)
+		last := v.srcVertices.At(n)
 
-	// Shorten from start
-	accLen := 0.0
-	startIdx := 1
-	for i := 1; i < v.srcVertices.Size() && accLen < shortenPerEnd; i++ {
-		vertex := v.srcVertices.At(i)
-		accLen += vertex.Dist
-		startIdx = i
-	}
+		// Calculate the interpolation factor
+		// s is the remaining distance to shorten
+		// last.Dist is the total distance of the last segment
+		d := (last.Dist - s) / last.Dist
 
-	if accLen > shortenPerEnd && startIdx > 1 {
-		// Interpolate the start vertex
-		vertex := v.srcVertices.At(startIdx)
-		prevVertex := v.srcVertices.At(startIdx - 1)
+		// Interpolate position along the segment
+		x := prev.X + (last.X-prev.X)*d
+		y := prev.Y + (last.Y-prev.Y)*d
 
-		excess := accLen - shortenPerEnd
-		ratio := excess / vertex.Dist
-
-		newX := vertex.X - (vertex.X-prevVertex.X)*ratio
-		newY := vertex.Y - (vertex.Y-prevVertex.Y)*ratio
-
-		v.srcVertices.ModifyAt(startIdx, array.VertexDistCmd{
-			X:    newX,
-			Y:    newY,
-			Dist: excess,
-			Cmd:  vertex.Cmd,
+		// Update the last vertex position
+		v.srcVertices.ModifyAt(n, array.VertexDistCmd{
+			X:    x,
+			Y:    y,
+			Dist: last.Dist,
+			Cmd:  last.Cmd,
 		})
-	}
-
-	// Remove vertices from start
-	for i := 1; i < startIdx; i++ {
-		v.srcVertices.RemoveAt(1)
-	}
-
-	if v.srcVertices.Size() <= 1 {
-		return
-	}
-
-	// Shorten from end
-	accLen = 0.0
-	endIdx := v.srcVertices.Size() - 1
-	for i := v.srcVertices.Size() - 1; i > 0 && accLen < shortenPerEnd; i-- {
-		vertex := v.srcVertices.At(i)
-		accLen += vertex.Dist
-		endIdx = i
-	}
-
-	if accLen > shortenPerEnd && endIdx < v.srcVertices.Size()-1 {
-		// Interpolate the end vertex
-		vertex := v.srcVertices.At(endIdx)
-		nextVertex := v.srcVertices.At(endIdx + 1)
-
-		excess := accLen - shortenPerEnd
-		ratio := excess / nextVertex.Dist
-
-		newX := nextVertex.X - (nextVertex.X-vertex.X)*ratio
-		newY := nextVertex.Y - (nextVertex.Y-vertex.Y)*ratio
-
-		v.srcVertices.ModifyAt(endIdx, array.VertexDistCmd{
-			X:    newX,
-			Y:    newY,
-			Dist: vertex.Dist,
-			Cmd:  vertex.Cmd,
-		})
-	}
-
-	// Remove vertices from end
-	for i := endIdx + 1; i < v.srcVertices.Size(); {
-		v.srcVertices.RemoveAt(i)
 	}
 }

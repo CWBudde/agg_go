@@ -241,8 +241,8 @@ func (t *TransDoublePath) TotalLength2() float64 {
 // transform1 transforms a point along a single path.
 // This corresponds to AGG's transform1 method.
 func (t *TransDoublePath) transform1(vertices *array.VertexSequence[array.VertexDist],
-	kindex, kx float64, x, y *float64) {
-
+	kindex, kx float64, x, y *float64,
+) {
 	var x1, y1, dx, dy, d, dd float64
 
 	*x *= kx

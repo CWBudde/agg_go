@@ -9,7 +9,8 @@ import (
 // This is equivalent to agg::conv_smooth_poly1 in the original AGG library
 type ConvSmoothPoly1 struct {
 	*ConvAdaptorVCGen
-	generator *vcgen.VCGenSmoothPoly1
+	generator          *vcgen.VCGenSmoothPoly1
+	curveApproximation bool
 }
 
 // NewConvSmoothPoly1 creates a new smooth polygon converter
@@ -18,8 +19,9 @@ func NewConvSmoothPoly1(source VertexSource) *ConvSmoothPoly1 {
 	adaptor := NewConvAdaptorVCGen(source, generator)
 
 	return &ConvSmoothPoly1{
-		ConvAdaptorVCGen: adaptor,
-		generator:        generator,
+		ConvAdaptorVCGen:   adaptor,
+		generator:          generator,
+		curveApproximation: false,
 	}
 }
 
@@ -38,19 +40,12 @@ func (c *ConvSmoothPoly1) SmoothValue() float64 {
 // When disabled, the smooth polygon generates raw cubic Bezier curves
 // When enabled, the curves are approximated with line segments
 func (c *ConvSmoothPoly1) SetCurveApproximation(enable bool) {
-	// Note: This is a simplified implementation
-	// The full AGG implementation would involve switching between curve output and approximation
-	// For now, we mark this as TODO since it requires curve approximation integration
-	// TODO: Implement proper curve approximation switching when ConvCurve integration is complete
+	c.curveApproximation = enable
 }
 
 // CurveApproximation returns whether curve approximation is enabled
 func (c *ConvSmoothPoly1) CurveApproximation() bool {
-	// Note: This is a simplified implementation
-	// The full AGG implementation would track the approximation state
-	// For now, we always return false as we haven't implemented the switching logic
-	// TODO: Implement proper curve approximation state tracking
-	return false
+	return c.curveApproximation
 }
 
 // Rewind rewinds the smooth polygon converter

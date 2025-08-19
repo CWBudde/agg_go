@@ -93,7 +93,8 @@ func TestClipLiangBarsky(t *testing.T) {
 		{
 			name: "fully_visible",
 			x1:   20, y1: 30, x2: 40, y2: 50,
-			expectedPointCount: 0, // Fully visible means no clipping needed
+			expectedPointCount: 1, // AGG returns the endpoint for fully visible lines
+			expectedPoints:     []float64{40, 50},
 		},
 		{
 			name: "fully_outside_left",
@@ -114,8 +115,8 @@ func TestClipLiangBarsky(t *testing.T) {
 		{
 			name: "crosses_right_boundary",
 			x1:   25, y1: 30, x2: 55, y2: 50,
-			expectedPointCount: 2,
-			expectedPoints:     []float64{25, 30, 50, 46.67}, // approximately
+			expectedPointCount: 1,
+			expectedPoints:     []float64{50, 46.67}, // approximately - only the clipped endpoint
 		},
 		{
 			name: "horizontal_line_clipped",
@@ -268,9 +269,9 @@ func TestClipLineSegment(t *testing.T) {
 			x1:   5, y1: 30, x2: 55, y2: 50,
 			expectedResult: 3, // both points moved
 			expectedX1:     10,
-			expectedY1:     32.5,
+			expectedY1:     32.0,
 			expectedX2:     50,
-			expectedY2:     46.67,
+			expectedY2:     48.0,
 		},
 	}
 

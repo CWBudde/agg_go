@@ -50,7 +50,7 @@ func (v *VCGenBSpline) SetInterpolationStep(step float64) {
 	// TODO: Fix edge cases with very small interpolation steps
 	// Very small steps can cause excessive vertex generation and potential infinite loops
 	// Add reasonable minimum step size to prevent performance issues
-	const minStep = 1e-4 // Minimum step to prevent excessive vertex generation
+	const minStep = 1e-2 // Minimum step to prevent excessive vertex generation
 	if step < minStep {
 		v.interpolationStep = minStep
 	} else {
@@ -76,13 +76,11 @@ func (v *VCGenBSpline) AddVertex(x, y float64, cmd basics.PathCommand) {
 	v.status = BSplineInitial
 
 	if basics.IsMoveTo(cmd) {
-		v.srcVertices.ModifyLast(basics.Point[float64]{X: x, Y: y})
-	} else {
-		if basics.IsVertex(cmd) {
-			v.srcVertices.Add(basics.Point[float64]{X: x, Y: y})
-		} else {
-			v.closed = basics.IsClosed(uint32(cmd))
-		}
+		v.srcVertices.Add(basics.Point[float64]{X: x, Y: y})
+	} else if basics.IsVertex(cmd) {
+		v.srcVertices.Add(basics.Point[float64]{X: x, Y: y})
+	} else if basics.IsEndPoly(cmd) {
+		v.closed = basics.IsClosed(uint32(cmd))
 	}
 }
 
@@ -108,7 +106,7 @@ func (v *VCGenBSpline) Rewind(pathID uint) {
 	}
 
 	if v.status == BSplineInitial && v.srcVertices.Size() > 2 {
-		if v.closed {
+		if v.closed && v.srcVertices.Size() >= 3 {
 			// For closed paths, we need extra points for continuity
 			v.splineX = curves.NewBSplineWithCapacity(v.srcVertices.Size() + 8)
 			v.splineY = curves.NewBSplineWithCapacity(v.srcVertices.Size() + 8)
@@ -126,6 +124,7 @@ func (v *VCGenBSpline) Rewind(pathID uint) {
 		} else {
 			v.splineX = curves.NewBSplineWithCapacity(v.srcVertices.Size())
 			v.splineY = curves.NewBSplineWithCapacity(v.srcVertices.Size())
+			v.closed = false // Disable closed mode if insufficient points
 		}
 
 		// Add all source vertices to the spline

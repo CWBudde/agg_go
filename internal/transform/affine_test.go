@@ -262,6 +262,65 @@ func TestIsEqual(t *testing.T) {
 	}
 }
 
+func TestIsOrthogonal(t *testing.T) {
+	// Test identity matrix (orthogonal)
+	identity := NewTransAffine()
+	if !identity.IsOrthogonal(testEpsilon) {
+		t.Error("Identity matrix should be orthogonal")
+	}
+
+	// Test pure rotation (orthogonal)
+	angle := math.Pi / 4 // 45 degrees
+	rotation := NewTransAffineRotation(angle)
+	if !rotation.IsOrthogonal(testEpsilon) {
+		t.Error("Pure rotation should be orthogonal")
+	}
+
+	// Test rotation with translation (still orthogonal)
+	rotationWithTranslation := NewTransAffineRotation(angle)
+	rotationWithTranslation.Translate(10, 20)
+	if !rotationWithTranslation.IsOrthogonal(testEpsilon) {
+		t.Error("Rotation with translation should be orthogonal")
+	}
+
+	// Test reflection (orthogonal)
+	reflection := NewTransAffineFromValues(-1, 0, 0, 1, 0, 0) // reflection across Y axis
+	if !reflection.IsOrthogonal(testEpsilon) {
+		t.Error("Reflection should be orthogonal")
+	}
+
+	// Test uniform scaling (not orthogonal unless scale = 1)
+	scaling := NewTransAffineScaling(2)
+	if scaling.IsOrthogonal(testEpsilon) {
+		t.Error("Non-unit uniform scaling should not be orthogonal")
+	}
+
+	// Test non-uniform scaling (not orthogonal)
+	nonUniformScaling := NewTransAffineScalingXY(2, 3)
+	if nonUniformScaling.IsOrthogonal(testEpsilon) {
+		t.Error("Non-uniform scaling should not be orthogonal")
+	}
+
+	// Test shear transformation (not orthogonal)
+	shear := NewTransAffineFromValues(1, 0.5, 0.2, 1, 0, 0)
+	if shear.IsOrthogonal(testEpsilon) {
+		t.Error("Shear transformation should not be orthogonal")
+	}
+
+	// Test combined rotation and reflection (orthogonal)
+	combined := NewTransAffineRotation(math.Pi / 6)
+	combined.Multiply(NewTransAffineFromValues(-1, 0, 0, 1, 0, 0)) // add reflection
+	if !combined.IsOrthogonal(testEpsilon) {
+		t.Error("Combined rotation and reflection should be orthogonal")
+	}
+
+	// Test degenerate matrix (not orthogonal)
+	degenerate := NewTransAffineFromValues(0, 0, 0, 0, 0, 0)
+	if degenerate.IsOrthogonal(testEpsilon) {
+		t.Error("Degenerate matrix should not be orthogonal")
+	}
+}
+
 func TestGetRotation(t *testing.T) {
 	angle := math.Pi / 3 // 60 degrees
 	m := NewTransAffineRotation(angle)

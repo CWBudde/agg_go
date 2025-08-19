@@ -15,6 +15,7 @@ func TestVCGenSmoothPoly1_Basic(t *testing.T) {
 	gen.AddVertex(100, 0, basics.PathCmdLineTo)
 	gen.AddVertex(100, 100, basics.PathCmdLineTo)
 	gen.AddVertex(0, 100, basics.PathCmdLineTo)
+	gen.AddVertex(0, 0, basics.PathCmdEndPoly|basics.PathCommand(basics.PathFlagsClose))
 
 	gen.Rewind(0)
 
