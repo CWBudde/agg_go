@@ -239,25 +239,23 @@ type ClipInterface interface {
 	ResetClipping()
 	ClipBox(x1, y1, x2, y2 float64)
 	MoveTo(x, y float64)
-	LineTo(x, y float64)
+	LineTo(outline RasterizerInterface, x, y float64)
 }
 
 // RasterizerSlClip implements the scanline clipping rasterizer.
 // Equivalent to AGG's rasterizer_sl_clip<Conv> template class.
 type RasterizerSlClip[Conv any] struct {
-	clipBox    basics.Rect[float64]
-	x1, y1     float64
-	f1         uint32
-	clipping   bool
-	rasterizer RasterizerInterface // Internal rasterizer for line drawing
+	clipBox  basics.Rect[float64]
+	x1, y1   float64
+	f1       uint32
+	clipping bool
 }
 
 // NewRasterizerSlClip creates a new scanline clipping rasterizer
-func NewRasterizerSlClip[Conv any](rasterizer RasterizerInterface) *RasterizerSlClip[Conv] {
+func NewRasterizerSlClip[Conv any]() *RasterizerSlClip[Conv] {
 	return &RasterizerSlClip[Conv]{
-		clipBox:    basics.Rect[float64]{X1: 0, Y1: 0, X2: 0, Y2: 0},
-		clipping:   false,
-		rasterizer: rasterizer,
+		clipBox:  basics.Rect[float64]{X1: 0, Y1: 0, X2: 0, Y2: 0},
+		clipping: false,
 	}
 }
 
@@ -403,8 +401,8 @@ func (r *RasterizerSlClip[Conv]) lineClipY(
 }
 
 // LineTo draws a line from the current position to (x2, y2) with clipping
-func (r *RasterizerSlClip[Conv]) LineTo(x2, y2 float64) {
-	ras := r.rasterizer
+func (r *RasterizerSlClip[Conv]) LineTo(outline RasterizerInterface, x2, y2 float64) {
+	ras := outline
 	conv := *new(Conv)
 
 	if r.clipping {
@@ -611,11 +609,11 @@ func (r *RasterizerSlNoClip) MoveTo(x1, y1 float64) {
 }
 
 // LineTo draws a line from the current position to (x2, y2)
-func (r *RasterizerSlNoClip) LineTo(x2, y2 float64) {
+func (r *RasterizerSlNoClip) LineTo(outline RasterizerInterface, x2, y2 float64) {
 	// For simplicity, just convert to integer coordinates
 	x1i, y1i := int(r.x1), int(r.y1)
 	x2i, y2i := int(x2), int(y2)
-	r.rasterizer.Line(x1i, y1i, x2i, y2i)
+	outline.Line(x1i, y1i, x2i, y2i)
 	r.x1 = x2
 	r.y1 = y2
 }

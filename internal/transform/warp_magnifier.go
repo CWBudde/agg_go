@@ -6,6 +6,10 @@ import (
 	"math"
 )
 
+// Compile-time interface checks
+var _ Transformer = (*TransWarpMagnifier)(nil)
+var _ InverseTransformer = (*TransWarpMagnifier)(nil)
+
 // TransWarpMagnifier implements a lens-like magnification transformation that creates
 // a circular area of magnification with smooth falloff outside the radius.
 // This is useful for creating magnifying glass effects in graphics applications.
@@ -116,9 +120,7 @@ func (m *TransWarpMagnifier) InverseTransform(x, y *float64) {
 	} else {
 		// Outside the magnified radius: reverse the smooth transition
 		rnew := r - m.radius*(m.magn-1.0)
-		if r > 0 {
-			*x = m.xc + rnew*dx/r
-			*y = m.yc + rnew*dy/r
-		}
+		*x = m.xc + rnew*dx/r
+		*y = m.yc + rnew*dy/r
 	}
 }

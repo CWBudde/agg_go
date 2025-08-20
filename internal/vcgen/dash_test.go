@@ -260,9 +260,10 @@ func TestVCGenDashClosedPath(t *testing.T) {
 	hasMoveTo := false
 	hasLineTo := false
 	for _, v := range vertices {
-		if v.cmd == basics.PathCmdMoveTo {
+		switch v.cmd {
+		case basics.PathCmdMoveTo:
 			hasMoveTo = true
-		} else if v.cmd == basics.PathCmdLineTo {
+		case basics.PathCmdLineTo:
 			hasLineTo = true
 		}
 	}

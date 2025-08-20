@@ -1,0 +1,35 @@
+// Package platform provides interfaces for platform-specific functionality in AGG.
+// This package defines interfaces for backend implementations, event handling, and platform abstraction.
+package platform
+
+import "agg_go/internal/platform/types"
+
+// EventCallbackSetter defines the interface for platform backends that support event callbacks.
+// This interface replaces the duck-typing pattern used in platform backend code.
+type EventCallbackSetter interface {
+	// SetEventCallback sets the callback function for platform events
+	SetEventCallback(callback types.EventCallback)
+}
+
+// Backend defines the core interface for platform backends.
+// This interface provides a common abstraction for different platform implementations
+// such as SDL2, X11, or other windowing systems.
+type Backend interface {
+	// Initialize initializes the backend with the given parameters
+	Initialize(width, height int, title string) error
+
+	// Shutdown shuts down the backend and releases resources
+	Shutdown() error
+
+	// Update updates the backend (processes events, refreshes display, etc.)
+	Update() error
+}
+
+// Compile-time interface checks
+// These verify that platform backends implement the expected interfaces
+
+// Note: Actual backend implementations would add these checks in their own files:
+// var _ EventCallbackSetter = (*SDL2Backend)(nil)
+// var _ EventCallbackSetter = (*X11Backend)(nil)
+// var _ Backend = (*SDL2Backend)(nil)
+// var _ Backend = (*X11Backend)(nil)

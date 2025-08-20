@@ -8,6 +8,15 @@ import (
 	"agg_go/internal/basics"
 )
 
+// AA scale constants for compound rasterization
+const (
+	AAShift  = 8
+	AAScale  = 1 << AAShift // 256
+	AAMask   = AAScale - 1  // 255
+	AAScale2 = AAScale * 2  // 512
+	AAMask2  = AAScale2 - 1 // 511
+)
+
 // StyleInfo contains information about a rendering style during compound rasterization
 type StyleInfo struct {
 	StartCell uint32 // Starting index in the cell array
@@ -247,6 +256,39 @@ func (r *RasterizerCompoundAA[Clip]) EdgeD(x1, y1, x2, y2 float64) {
 	r.clipper.LineTo(r.outline, x2, y2)
 }
 
+// AddVertex adds a vertex to the path based on the path command
+func (r *RasterizerCompoundAA[Clip]) AddVertex(x, y float64, cmd uint32) {
+	pathCmd := basics.PathCommand(cmd & uint32(basics.PathCmdMask))
+
+	switch {
+	case basics.IsMoveTo(pathCmd):
+		r.MoveToD(x, y)
+	case basics.IsVertex(pathCmd):
+		r.LineToD(x, y)
+	case basics.IsClose(cmd):
+		r.LineToD(float64(r.startX)/basics.PolySubpixelScale, float64(r.startY)/basics.PolySubpixelScale)
+	}
+}
+
+// AddPath adds a complete path from a vertex source
+func (r *RasterizerCompoundAA[Clip]) AddPath(vs VertexSource, pathID uint32) {
+	var x, y float64
+	var cmd uint32
+
+	vs.Rewind(pathID)
+	if r.outline.Sorted() {
+		r.Reset()
+	}
+
+	for {
+		cmd = vs.Vertex(&x, &y)
+		if basics.IsStop(basics.PathCommand(cmd & uint32(basics.PathCmdMask))) {
+			break
+		}
+		r.AddVertex(x, y, cmd)
+	}
+}
+
 // Bounds returns the bounding box of the rasterized geometry
 func (r *RasterizerCompoundAA[Clip]) MinX() int     { return r.outline.MinX() }
 func (r *RasterizerCompoundAA[Clip]) MinY() int     { return r.outline.MinY() }
@@ -357,14 +399,14 @@ func (r *RasterizerCompoundAA[Clip]) SweepStyles() uint32 {
 			style.NumCells = 0
 			style.LastX = math.MinInt32
 
-			r.slStart = cells[0].GetX()
-			r.slLen = uint32(cells[numCells-1].GetX() - r.slStart + 1)
+			r.slStart = (*cells[0]).GetX()
+			r.slLen = uint32((*cells[numCells-1]).GetX() - r.slStart + 1)
 
 			// Add all styles from cells
 			for i := 0; i < int(numCells); i++ {
 				currCell := cells[i]
-				r.addStyle(int(currCell.Left))
-				r.addStyle(int(currCell.Right))
+				r.addStyle(int((*currCell).Left))
+				r.addStyle(int((*currCell).Right))
 			}
 
 			// Convert Y-histogram into array of starting indexes
@@ -382,41 +424,41 @@ func (r *RasterizerCompoundAA[Clip]) SweepStyles() uint32 {
 
 				// Process left style
 				styleID := 0
-				if currCell.Left >= 0 {
-					styleID = int(currCell.Left) - r.minStyle + 1
+				if (*currCell).Left >= 0 {
+					styleID = int((*currCell).Left) - r.minStyle + 1
 				}
 
 				style := &r.styles.Data()[styleID]
-				if currCell.GetX() == style.LastX {
+				if (*currCell).GetX() == style.LastX {
 					cell := &r.cells.Data()[style.StartCell+style.NumCells-1]
-					cell.Area += currCell.GetArea()
-					cell.Cover += currCell.GetCover()
+					cell.Area += (*currCell).GetArea()
+					cell.Cover += (*currCell).GetCover()
 				} else {
 					cell := &r.cells.Data()[style.StartCell+style.NumCells]
-					cell.X = currCell.GetX()
-					cell.Area = currCell.GetArea()
-					cell.Cover = currCell.GetCover()
-					style.LastX = currCell.GetX()
+					cell.X = (*currCell).GetX()
+					cell.Area = (*currCell).GetArea()
+					cell.Cover = (*currCell).GetCover()
+					style.LastX = (*currCell).GetX()
 					style.NumCells++
 				}
 
 				// Process right style
 				styleID = 0
-				if currCell.Right >= 0 {
-					styleID = int(currCell.Right) - r.minStyle + 1
+				if (*currCell).Right >= 0 {
+					styleID = int((*currCell).Right) - r.minStyle + 1
 				}
 
 				style = &r.styles.Data()[styleID]
-				if currCell.GetX() == style.LastX {
+				if (*currCell).GetX() == style.LastX {
 					cell := &r.cells.Data()[style.StartCell+style.NumCells-1]
-					cell.Area -= currCell.GetArea()
-					cell.Cover -= currCell.GetCover()
+					cell.Area -= (*currCell).GetArea()
+					cell.Cover -= (*currCell).GetCover()
 				} else {
 					cell := &r.cells.Data()[style.StartCell+style.NumCells]
-					cell.X = currCell.GetX()
-					cell.Area = -currCell.GetArea()
-					cell.Cover = -currCell.GetCover()
-					style.LastX = currCell.GetX()
+					cell.X = (*currCell).GetX()
+					cell.Area = -(*currCell).GetArea()
+					cell.Cover = -(*currCell).GetCover()
+					style.LastX = (*currCell).GetX()
 					style.NumCells++
 				}
 			}

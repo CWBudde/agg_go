@@ -8,6 +8,10 @@ import (
 	"agg_go/internal/basics"
 )
 
+// Compile-time interface checks
+var _ Transformer = (*TransAffine)(nil)
+var _ InverseTransformer = (*TransAffine)(nil)
+
 // AffineEpsilon is the default epsilon for affine transformation comparisons
 const AffineEpsilon = 1e-14
 
@@ -70,6 +74,29 @@ func NewTransAffineParlToParl(src, dst [6]float64) *TransAffine {
 	t := NewTransAffine()
 	t.ParlToParl(src, dst)
 	return t
+}
+
+// NewTransAffineFromTransformer creates a TransAffine by copying another transformer.
+// This is useful when working with span interpolators that need TransAffine specifically.
+func NewTransAffineFromTransformer(transformer Transformer) *TransAffine {
+	// Transform a unit square to extract the transformation matrix
+	x1, y1 := 0.0, 0.0
+	x2, y2 := 1.0, 0.0
+	x3, y3 := 0.0, 1.0
+
+	transformer.Transform(&x1, &y1) // Origin
+	transformer.Transform(&x2, &y2) // Unit X vector
+	transformer.Transform(&x3, &y3) // Unit Y vector
+
+	// Build matrix from transformed unit vectors
+	return &TransAffine{
+		SX:  x2 - x1, // X component of transformed unit X vector
+		SHY: y2 - y1, // Y component of transformed unit X vector
+		SHX: x3 - x1, // X component of transformed unit Y vector
+		SY:  y3 - y1, // Y component of transformed unit Y vector
+		TX:  x1,      // Translation X
+		TY:  y1,      // Translation Y
+	}
 }
 
 // Reset resets the matrix to identity.
@@ -411,4 +438,54 @@ func (t *TransAffine) DivideBy(m *TransAffine) *TransAffine {
 func (t *TransAffine) Inverse() *TransAffine {
 	result := t.Copy()
 	return result.Invert()
+}
+
+// ToArray returns the matrix as a 6-element array [sx, shy, shx, sy, tx, ty].
+// This is a convenience method that wraps StoreTo.
+func (t *TransAffine) ToArray() [6]float64 {
+	var m [6]float64
+	t.StoreTo(m[:])
+	return m
+}
+
+// C++ Compatible Methods
+// These methods match the original C++ AGG API signatures more closely
+
+// Translation extracts the translation values via pointer parameters (C++ compatible).
+// This matches the C++ method: void translation(double* dx, double* dy) const
+func (t *TransAffine) Translation(dx, dy *float64) {
+	*dx = t.TX
+	*dy = t.TY
+}
+
+// Scaling extracts the scaling factors via pointer parameters (C++ compatible).
+// This matches the C++ method: void scaling(double* x, double* y) const
+func (t *TransAffine) Scaling(x, y *float64) {
+	x1, y1 := 0.0, 0.0
+	x2, y2 := 1.0, 1.0
+	temp := *t
+	temp.Multiply(NewTransAffineRotation(-t.GetRotation()))
+	temp.Transform(&x1, &y1)
+	temp.Transform(&x2, &y2)
+	*x = x2 - x1
+	*y = y2 - y1
+}
+
+// ScalingAbs extracts absolute scaling factors via pointer parameters (C++ compatible).
+// This matches the C++ method: void scaling_abs(double* x, double* y) const
+func (t *TransAffine) ScalingAbs(x, y *float64) {
+	*x = math.Sqrt(t.SX*t.SX + t.SHX*t.SHX)
+	*y = math.Sqrt(t.SHY*t.SHY + t.SY*t.SY)
+}
+
+// AverageScale returns the average scale factor (C++ compatible name).
+// This matches the C++ method: double scale() const
+func (t *TransAffine) AverageScale() float64 {
+	return t.GetScale()
+}
+
+// Rotation extracts the rotation angle (C++ compatible name).
+// This matches the C++ method: double rotation() const
+func (t *TransAffine) Rotation() float64 {
+	return t.GetRotation()
 }

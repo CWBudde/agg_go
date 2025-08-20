@@ -97,14 +97,13 @@ func (vs *VertexSequence[T]) Close(closed bool) {
 }
 
 // CalculateDistances calculates and stores distances between consecutive vertices.
-// This mimics the side effect of AGG's vertex_dist::operator() function.
+// This mimics the side effect of AGG's vertex_dist::operator() and line_aa_vertex::operator() functions.
 func (vs *VertexSequence[T]) CalculateDistances() {
-	// Only calculate distances for VertexDist types
 	for i := 0; i < vs.storage.Size()-1; i++ {
 		curr := vs.storage.At(i)
 		next := vs.storage.At(i + 1)
 
-		// Use type assertion to check if this is a VertexDist
+		// Handle VertexDist types
 		if vd, ok := any(curr).(VertexDist); ok {
 			if nextVd, ok := any(next).(VertexDist); ok {
 				// Calculate distance and create a new vertex with updated distance
@@ -112,6 +111,17 @@ func (vs *VertexSequence[T]) CalculateDistances() {
 				newVd.CalculateDistance(nextVd)
 				// Convert back to T and set
 				vs.storage.Set(i, any(newVd).(T))
+			}
+		}
+
+		// Handle LineAAVertex types (critical for anti-aliased outline rendering)
+		if lv, ok := any(curr).(LineAAVertex); ok {
+			if nextLv, ok := any(next).(LineAAVertex); ok {
+				// Calculate distance and create a new vertex with updated distance
+				newLv := lv
+				newLv.CalculateDistance(nextLv)
+				// Convert back to T and set
+				vs.storage.Set(i, any(newLv).(T))
 			}
 		}
 	}

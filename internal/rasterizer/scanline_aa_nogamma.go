@@ -82,7 +82,7 @@ func (r *RasterizerScanlineAANoGamma[Clip]) MoveTo(x, y int) {
 
 // LineTo adds a line segment to the current contour
 func (r *RasterizerScanlineAANoGamma[Clip]) LineTo(x, y int) {
-	r.clipper.LineTo(float64(x)/basics.PolySubpixelScale, float64(y)/basics.PolySubpixelScale)
+	r.clipper.LineTo(r.outline, float64(x)/basics.PolySubpixelScale, float64(y)/basics.PolySubpixelScale)
 	r.status = StatusLineTo
 }
 
@@ -102,14 +102,14 @@ func (r *RasterizerScanlineAANoGamma[Clip]) MoveToD(x, y float64) {
 
 // LineToD adds a line segment to the current contour using floating-point coordinates
 func (r *RasterizerScanlineAANoGamma[Clip]) LineToD(x, y float64) {
-	r.clipper.LineTo(x, y)
+	r.clipper.LineTo(r.outline, x, y)
 	r.status = StatusLineTo
 }
 
 // ClosePolygon closes the current polygon contour
 func (r *RasterizerScanlineAANoGamma[Clip]) ClosePolygon() {
 	if r.status == StatusLineTo {
-		r.clipper.LineTo(float64(r.startX)/basics.PolySubpixelScale, float64(r.startY)/basics.PolySubpixelScale)
+		r.clipper.LineTo(r.outline, float64(r.startX)/basics.PolySubpixelScale, float64(r.startY)/basics.PolySubpixelScale)
 		r.status = StatusClosed
 	}
 }
@@ -134,7 +134,7 @@ func (r *RasterizerScanlineAANoGamma[Clip]) Edge(x1, y1, x2, y2 int) {
 		r.Reset()
 	}
 	r.clipper.MoveTo(float64(x1)/basics.PolySubpixelScale, float64(y1)/basics.PolySubpixelScale)
-	r.clipper.LineTo(float64(x2)/basics.PolySubpixelScale, float64(y2)/basics.PolySubpixelScale)
+	r.clipper.LineTo(r.outline, float64(x2)/basics.PolySubpixelScale, float64(y2)/basics.PolySubpixelScale)
 	r.status = StatusMoveTo
 }
 
@@ -144,7 +144,7 @@ func (r *RasterizerScanlineAANoGamma[Clip]) EdgeD(x1, y1, x2, y2 float64) {
 		r.Reset()
 	}
 	r.clipper.MoveTo(x1, y1)
-	r.clipper.LineTo(x2, y2)
+	r.clipper.LineTo(r.outline, x2, y2)
 	r.status = StatusMoveTo
 }
 

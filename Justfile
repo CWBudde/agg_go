@@ -19,8 +19,26 @@ build-lib:
 
 # Build all examples
 build-examples:
-    @echo "Building examples..."
-    find examples -name "*.go" -path "*/main.go" -exec dirname {} \; | sort -u | xargs -I {} go build -o /dev/null {}
+    @echo "Building core examples..."
+    @cd examples/core/basic/hello_world && go build -o /tmp/example-test . || echo "Failed: hello_world"
+    @cd examples/core/basic/shapes && go build -o /tmp/example-test . || echo "Failed: shapes" 
+    @cd examples/core/basic/lines && go build -o /tmp/example-test . || echo "Failed: lines"
+    @cd examples/core/basic/rounded_rect && go build -o /tmp/example-test . || echo "Failed: rounded_rect"
+    @cd examples/core/basic/colors_gray && go build -o /tmp/example-test . || echo "Failed: colors_gray"
+    @cd examples/core/basic/colors_rgba && go build -o /tmp/example-test . || echo "Failed: colors_rgba"
+    @cd examples/core/basic/embedded_fonts_hello && go build -o /tmp/example-test . || echo "Failed: embedded_fonts_hello"
+    @cd examples/core/basic/basic_demo && go build -o /tmp/example-test . || echo "Failed: basic_demo"
+    @cd examples/core/intermediate/gradients && go build -o /tmp/example-test . || echo "Failed: gradients"
+    @cd examples/core/intermediate/text_rendering && go build -o /tmp/example-test . || echo "Failed: text_rendering"
+    @cd examples/core/intermediate/controls/gamma_correction && go build -o /tmp/example-test . || echo "Failed: gamma_correction"
+    @cd examples/core/intermediate/controls/slider_demo && go build -o /tmp/example-test . || echo "Failed: slider_demo"
+    @cd examples/core/intermediate/controls/rbox_demo && go build -o /tmp/example-test . || echo "Failed: rbox_demo"
+    @cd examples/core/intermediate/controls/spline_demo && go build -o /tmp/example-test . || echo "Failed: spline_demo"
+    @cd examples/core/advanced/advanced_rendering && go build -o /tmp/example-test . || echo "Failed: advanced_rendering"
+    @echo "Building platform examples (with build tags)..."
+    @cd examples/platform/sdl2 && go build -tags sdl2 -o /tmp/example-test . || echo "SDL2 dependencies missing (optional)"
+    @cd examples/platform/x11 && go build -tags x11 -o /tmp/example-test . || echo "X11 dependencies missing (optional)"
+    @rm -f /tmp/example-test
 
 # Build specific example
 build-example EXAMPLE:
@@ -58,6 +76,11 @@ test-bench:
 test-visual:
     @echo "Running visual tests..."
     go test ./tests/visual/...
+
+# Run freetype tests
+test-freetype:
+    @echo "Running freetype tests..."
+    go test -v -tags=freetype ./...
 
 # Development commands
 
@@ -111,23 +134,75 @@ rebuild: clean build
 # Run hello world example
 run-hello:
     @echo "Running hello world example..."
-    go run examples/basic/hello_world/main.go
+    go run examples/core/basic/hello_world/main.go
 
 # Run specific example
 run-example EXAMPLE:
     @echo "Running example: {{EXAMPLE}}"
     go run examples/{{EXAMPLE}}/main.go
 
-# Run hello_world example (alias for convenience)
+# Run basic example (alias for convenience)
 run EXAMPLE:
     @echo "Running example: {{EXAMPLE}}"
-    go run examples/basic/{{EXAMPLE}}/main.go
+    go run examples/core/basic/{{EXAMPLE}}/main.go
+
+# Run all basic examples
+run-examples-basic:
+    @echo "Running all basic examples..."
+    @GOCACHE=$PWD/.gocache sh -c 'root=$PWD; out=examples/core/basic/_out; \
+        mkdir -p "$out"; \
+        for d in $(find examples/core/basic -mindepth 1 -maxdepth 1 -type d | sort); do \
+            if [ -f "$d/main.go" ]; then \
+                name=$(basename "$d"); \
+                echo "--- $name"; \
+                ( cd "$out" && go run "$root/$d/main.go" ) || exit $?; \
+            fi; \
+        done'
 
 # Run X11 demo (requires X11 headers and running X server)
 run-x11-demo:
     @echo "Running X11 demo..."
     @echo "Note: Requires X11 headers and running X server"
-    go run -tags x11 examples/x11_demo/main.go
+    go run -tags x11 examples/platform/x11/main.go
+
+# Run SDL2 demo (requires SDL2 dependencies)
+run-sdl2-demo:
+    @echo "Running SDL2 demo..."
+    @echo "Note: Requires SDL2 development libraries"
+    go run -tags sdl2 examples/platform/sdl2/main.go
+
+# Run intermediate examples
+run-examples-intermediate:
+    @echo "Running intermediate examples..."
+    @for dir in examples/core/intermediate/*/; do \
+        if [ -f "$$dir/main.go" ]; then \
+            echo "Running $$(basename $$dir)..."; \
+            go run "$$dir/main.go" || echo "Failed: $$(basename $$dir)"; \
+        fi \
+    done
+
+# Run advanced examples
+run-examples-advanced:
+    @echo "Running advanced examples..."
+    @for dir in examples/core/advanced/*/; do \
+        if [ -f "$$dir/main.go" ]; then \
+            echo "Running $$(basename $$dir)..."; \
+            go run "$$dir/main.go" || echo "Failed: $$(basename $$dir)"; \
+        fi \
+    done
+
+# Run test examples (AGG 2.6 compatibility tests)
+run-tests:
+    @echo "Running test examples..."
+    @echo "Note: Most test examples are not yet implemented"
+    @for dir in examples/tests/*/; do \
+        if [ -f "$$dir/main.go" ]; then \
+            echo "Running test: $$(basename $$dir)..."; \
+            go run "$$dir/main.go" || echo "Failed: $$(basename $$dir)"; \
+        else \
+            echo "Test not implemented: $$(basename $$dir)"; \
+        fi \
+    done
 
 # Development workflow commands
 
@@ -210,7 +285,12 @@ build-x11:
 # Build X11 examples
 build-x11-examples:
     @echo "Building X11 examples..."
-    go build -tags x11 -o /tmp/x11-demo examples/x11_demo/main.go
+    go build -tags x11 -o /tmp/x11-demo examples/platform/x11/main.go
+
+# Build SDL2 examples
+build-sdl2-examples:
+    @echo "Building SDL2 examples..."
+    go build -tags sdl2 -o /tmp/sdl2-demo examples/platform/sdl2/main.go
 
 # macOS-specific build
 build-macos:

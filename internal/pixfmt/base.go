@@ -4,6 +4,7 @@ package pixfmt
 
 import (
 	"agg_go/internal/basics"
+	"agg_go/internal/color"
 )
 
 // Pixel format category tags for type safety
@@ -45,7 +46,11 @@ type PixelFormat interface {
 
 // BlenderBase provides the base interface for pixel blending operations
 type BlenderBase[C any, O any] interface {
-	BlendPix(dst []basics.Int8u, src C, cover basics.Int8u)
+	BlendPix(dst []basics.Int8u, r, g, b, a, cover basics.Int8u)
+	Get(p []basics.Int8u, cover basics.Int8u) color.RGBA
+	GetRaw(p []basics.Int8u) (r, g, b, a basics.Int8u)
+	Set(p []basics.Int8u, c color.RGBA)
+	SetRaw(p []basics.Int8u, r, g, b, a basics.Int8u)
 }
 
 // PixelType represents a pixel with multiple components

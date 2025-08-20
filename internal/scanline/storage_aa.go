@@ -4,6 +4,7 @@ package scanline
 
 import (
 	"math"
+	"unsafe"
 
 	"agg_go/internal/array"
 	"agg_go/internal/basics"
@@ -48,22 +49,21 @@ type ExtraSpan[T any] struct {
 //
 // This is equivalent to AGG's scanline_cell_storage<T> template class.
 type ScanlineCellStorage[T any] struct {
-	cells        *array.PodBVector[T]   // Primary block-based storage
-	extraStorage []ExtraSpan[T]         // Overflow storage for large spans
-	allocator    basics.PodAllocator[T] // Allocator for extra spans
+	cells        *array.PodBVector[T]            // Primary block-based storage
+	extraStorage *array.PodBVector[ExtraSpan[T]] // Overflow storage for large spans (pod_bvector<extra_span, 6>)
+	allocator    basics.PodAllocator[T]          // Allocator for extra spans
 }
 
 // NewScanlineCellStorage creates a new scanline cell storage container.
-// The initial block size is set to 128-2 = 126 to match AGG's default.
+// The initial block size is set to match AGG's default: pod_bvector<T, 12> with increment 128-2.
 func NewScanlineCellStorage[T any]() *ScanlineCellStorage[T] {
-	// Create PodBVector with custom block size
-	// AGG uses 128-2, which corresponds to block scale 6 (64) + some padding
-	blockScale := array.NewBlockScale(6) // 64 elements per block
-	cellStorage := array.NewPodBVectorWithIncrement[T](blockScale, 126)
+	// Create PodBVector with custom block size to match C++: pod_bvector<T, 12>
+	// The 12 is the block scale (2^12 = 4096), and 128-2 = 126 is the block increment
+	cellStorage := array.NewPodBVectorWithIncrement[T](array.NewBlockScale(12), 126)
 
 	return &ScanlineCellStorage[T]{
 		cells:        cellStorage,
-		extraStorage: nil,
+		extraStorage: array.NewPodBVectorWithScale[ExtraSpan[T]](array.NewBlockScale(6)), // pod_bvector<extra_span, 6>
 		allocator:    basics.NewPodAllocator[T](),
 	}
 }
@@ -77,7 +77,7 @@ func NewScanlineCellStorageCopy[T any](other *ScanlineCellStorage[T]) *ScanlineC
 
 	storage := &ScanlineCellStorage[T]{
 		cells:        array.NewPodBVectorCopy(other.cells),
-		extraStorage: nil,
+		extraStorage: array.NewPodBVectorWithScale[ExtraSpan[T]](array.NewBlockScale(6)),
 		allocator:    basics.NewPodAllocator[T](),
 	}
 
@@ -88,8 +88,14 @@ func NewScanlineCellStorageCopy[T any](other *ScanlineCellStorage[T]) *ScanlineC
 // RemoveAll clears all stored data and releases extra storage.
 // This corresponds to AGG's remove_all() method.
 func (s *ScanlineCellStorage[T]) RemoveAll() {
-	// Clear extra storage (in Go, we just clear the slice - GC handles memory)
-	s.extraStorage = nil
+	// Clear extra storage and deallocate pod_allocator blocks (matching C++ behavior)
+	for i := s.extraStorage.Size() - 1; i >= 0; i-- {
+		extraSpan := s.extraStorage.At(i)
+		if extraSpan.Ptr != nil {
+			s.allocator.Deallocate(extraSpan.Ptr, extraSpan.Len)
+		}
+	}
+	s.extraStorage.RemoveAll()
 
 	// Clear the main cell storage
 	s.cells.RemoveAll()
@@ -124,10 +130,10 @@ func (s *ScanlineCellStorage[T]) AddCells(cells []T, numCells int) int {
 	copy(extraSpan.Ptr, cells[:numCells])
 
 	// Add to extra storage
-	s.extraStorage = append(s.extraStorage, extraSpan)
+	s.extraStorage.Add(extraSpan)
 
 	// Return negative index indicating extra storage
-	return -len(s.extraStorage)
+	return -s.extraStorage.Size()
 }
 
 // Get returns a pointer to the cells at the specified index.
@@ -149,11 +155,11 @@ func (s *ScanlineCellStorage[T]) Get(idx int) []T {
 
 	// Negative index - access extra storage
 	extraIdx := -idx - 1
-	if extraIdx >= len(s.extraStorage) {
+	if extraIdx >= s.extraStorage.Size() {
 		return nil
 	}
 
-	return s.extraStorage[extraIdx].Ptr
+	return s.extraStorage.At(extraIdx).Ptr
 }
 
 // getBlockSlice returns a slice starting at the given index in the main storage.
@@ -201,21 +207,19 @@ func (s *ScanlineCellStorage[T]) Assign(other *ScanlineCellStorage[T]) {
 // copyExtraStorage copies extra storage from another instance.
 // This is a private helper method used by the copy constructor.
 func (s *ScanlineCellStorage[T]) copyExtraStorage(other *ScanlineCellStorage[T]) {
-	if other == nil || len(other.extraStorage) == 0 {
+	if other == nil || other.extraStorage.Size() == 0 {
 		return
 	}
 
-	// Allocate new extra storage
-	s.extraStorage = make([]ExtraSpan[T], len(other.extraStorage))
-
 	// Deep copy each extra span
-	for i, srcSpan := range other.extraStorage {
+	for i := 0; i < other.extraStorage.Size(); i++ {
+		srcSpan := other.extraStorage.At(i)
 		dstSpan := ExtraSpan[T]{
 			Len: srcSpan.Len,
 			Ptr: s.allocator.Allocate(srcSpan.Len),
 		}
 		copy(dstSpan.Ptr, srcSpan.Ptr)
-		s.extraStorage[i] = dstSpan
+		s.extraStorage.Add(dstSpan)
 	}
 }
 
@@ -254,8 +258,8 @@ type ScanlineStorageAA[T any] struct {
 // NewScanlineStorageAA creates a new anti-aliased scanline storage container.
 func NewScanlineStorageAA[T any]() *ScanlineStorageAA[T] {
 	// Create storage components with initial block sizes matching AGG
-	spans := array.NewPodBVectorWithIncrement[SpanData](array.NewBlockScale(8), 256-2) // Block increment size
-	scanlines := array.NewPodBVector[ScanlineData]()
+	spans := array.NewPodBVectorWithIncrement[SpanData](array.NewBlockScale(10), 256-2) // pod_bvector<span_data, 10>
+	scanlines := array.NewPodBVectorWithScale[ScanlineData](array.NewBlockScale(8))     // pod_bvector<scanline_data, 8>
 
 	storage := &ScanlineStorageAA[T]{
 		covers:      NewScanlineCellStorage[T](),
@@ -326,7 +330,7 @@ func (s *ScanlineStorageAA[T]) Render(sl ScanlineInterface) {
 			length = -length
 		}
 
-		// Store the coverage data (convert from basics.Int8u to T if needed)
+		// Store the coverage data using proper type conversion
 		var coversT []T
 		if length > 0 && len(span.Covers) > 0 {
 			// Use the minimum of length and available covers
@@ -335,8 +339,19 @@ func (s *ScanlineStorageAA[T]) Render(sl ScanlineInterface) {
 				actualLength = len(span.Covers)
 			}
 			coversT = make([]T, actualLength)
-			for i := 0; i < actualLength; i++ {
-				coversT[i] = any(span.Covers[i]).(T)
+			// Use unsafe conversion for proper type handling (matching C++ memcpy)
+			if actualLength > 0 {
+				srcPtr := unsafe.Pointer(&span.Covers[0])
+				dstPtr := unsafe.Pointer(&coversT[0])
+				srcSize := actualLength * int(unsafe.Sizeof(span.Covers[0]))
+				dstSize := actualLength * int(unsafe.Sizeof(coversT[0]))
+				// Only copy if sizes match (same underlying type)
+				if srcSize == dstSize {
+					for i := 0; i < srcSize; i++ {
+						*(*byte)(unsafe.Pointer(uintptr(dstPtr) + uintptr(i))) =
+							*(*byte)(unsafe.Pointer(uintptr(srcPtr) + uintptr(i)))
+					}
+				}
 			}
 		}
 		sp.CoversID = s.covers.AddCells(coversT, len(coversT))
@@ -409,16 +424,29 @@ func (s *ScanlineStorageAA[T]) SweepScanline(sl ScanlineInterface) bool {
 			covers := s.covers.Get(sp.CoversID)
 
 			if sp.Len < 0 {
-				// Solid span - use first coverage value, convert T to basics.Int8u
+				// Solid span - use first coverage value with proper type conversion
 				if len(covers) > 0 {
-					cover := any(covers[0]).(basics.Int8u)
+					// Use unsafe conversion for proper type handling
+					var cover basics.Int8u
+					if unsafe.Sizeof(covers[0]) == unsafe.Sizeof(cover) {
+						srcPtr := unsafe.Pointer(&covers[0])
+						dstPtr := unsafe.Pointer(&cover)
+						*(*byte)(dstPtr) = *(*byte)(srcPtr)
+					}
 					sl.AddSpan(int(sp.X), int(-sp.Len), cover)
 				}
 			} else {
-				// Coverage span - convert []T to []basics.Int8u
+				// Coverage span - convert []T to []basics.Int8u with proper type handling
 				coversInt8u := make([]basics.Int8u, len(covers))
-				for i, cover := range covers {
-					coversInt8u[i] = any(cover).(basics.Int8u)
+				if len(covers) > 0 && unsafe.Sizeof(covers[0]) == unsafe.Sizeof(coversInt8u[0]) {
+					// Direct memory copy for compatible types
+					srcPtr := unsafe.Pointer(&covers[0])
+					dstPtr := unsafe.Pointer(&coversInt8u[0])
+					size := len(covers) * int(unsafe.Sizeof(coversInt8u[0]))
+					for i := 0; i < size; i++ {
+						*(*byte)(unsafe.Pointer(uintptr(dstPtr) + uintptr(i))) =
+							*(*byte)(unsafe.Pointer(uintptr(srcPtr) + uintptr(i)))
+					}
 				}
 				sl.AddCells(int(sp.X), int(sp.Len), coversInt8u)
 			}
@@ -472,6 +500,159 @@ func (s *ScanlineStorageAA[T]) CoversByIndex(i int) []T {
 	return s.covers.Get(i)
 }
 
+// writeInt32 writes a 32-bit integer in little-endian byte order.
+// This matches AGG's write_int32 static method.
+func writeInt32(dst []byte, val basics.Int32) {
+	dst[0] = byte(val)
+	dst[1] = byte(val >> 8)
+	dst[2] = byte(val >> 16)
+	dst[3] = byte(val >> 24)
+}
+
+// ByteSize calculates the total size in bytes needed to serialize all stored scanlines.
+// This corresponds to AGG's byte_size() method.
+func (s *ScanlineStorageAA[T]) ByteSize() int {
+	var size int
+	// Size for min_x, min_y, max_x, max_y (4 int32 values)
+	size = 4 * 4 // 4 bytes per int32 * 4 values
+
+	// Calculate size for each scanline
+	for i := 0; i < s.scanlines.Size(); i++ {
+		// Size for scanline header: scanline_size, Y, num_spans (3 int32 values)
+		size += 3 * 4
+
+		slThis := s.scanlines.At(i)
+		numSpans := slThis.NumSpans
+		spanIdx := slThis.StartSpan
+
+		// Calculate size for each span
+		for j := 0; j < numSpans; j++ {
+			if spanIdx+j >= s.spans.Size() {
+				break // Safety check to prevent index out of bounds
+			}
+
+			sp := s.spans.At(spanIdx + j)
+
+			// Size for span header: X, span_len (2 int32 values)
+			size += 2 * 4
+
+			// Size for coverage data
+			if sp.Len < 0 {
+				// Solid span - single coverage value
+				size += int(unsafe.Sizeof(*new(T)))
+			} else {
+				// Coverage array - multiple coverage values
+				size += int(sp.Len) * int(unsafe.Sizeof(*new(T)))
+			}
+		}
+	}
+
+	return size
+}
+
+// Serialize writes all stored scanline data to a byte buffer.
+// The data is written in AGG's serialization format for cross-platform compatibility.
+// This corresponds to AGG's serialize() method.
+func (s *ScanlineStorageAA[T]) Serialize(data []byte) {
+	if len(data) < s.ByteSize() {
+		return // Not enough space
+	}
+
+	offset := 0
+
+	// Write bounds (min_x, min_y, max_x, max_y)
+	writeInt32(data[offset:], basics.Int32(s.minX))
+	offset += 4
+	writeInt32(data[offset:], basics.Int32(s.minY))
+	offset += 4
+	writeInt32(data[offset:], basics.Int32(s.maxX))
+	offset += 4
+	writeInt32(data[offset:], basics.Int32(s.maxY))
+	offset += 4
+
+	// Write each scanline
+	for i := 0; i < s.scanlines.Size(); i++ {
+		slThis := s.scanlines.At(i)
+
+		// Remember position for scanline size
+		sizePos := offset
+		offset += 4 // Reserve space for scanline size
+
+		// Write Y coordinate
+		writeInt32(data[offset:], basics.Int32(slThis.Y))
+		offset += 4
+
+		// Write number of spans
+		writeInt32(data[offset:], basics.Int32(slThis.NumSpans))
+		offset += 4
+
+		// Write each span
+		numSpans := slThis.NumSpans
+		spanIdx := slThis.StartSpan
+
+		for j := 0; j < numSpans; j++ {
+			if spanIdx+j >= s.spans.Size() {
+				break // Safety check to prevent index out of bounds
+			}
+
+			sp := s.spans.At(spanIdx + j)
+			covers := s.covers.Get(sp.CoversID)
+
+			// Write span X coordinate
+			writeInt32(data[offset:], sp.X)
+			offset += 4
+
+			// Write span length
+			writeInt32(data[offset:], sp.Len)
+			offset += 4
+
+			// Write coverage data
+			if sp.Len < 0 {
+				// Solid span - write single coverage value
+				if len(covers) > 0 {
+					// Use memcpy equivalent with unsafe.Pointer for proper type T handling
+					coverSize := int(unsafe.Sizeof(covers[0]))
+					if offset+coverSize <= len(data) {
+						// Direct memory copy using unsafe pointers (matching C++ std::memcpy)
+						srcPtr := unsafe.Pointer(&covers[0])
+						dstPtr := unsafe.Pointer(&data[offset])
+						for i := 0; i < coverSize; i++ {
+							*(*byte)(unsafe.Pointer(uintptr(dstPtr) + uintptr(i))) =
+								*(*byte)(unsafe.Pointer(uintptr(srcPtr) + uintptr(i)))
+						}
+						offset += coverSize
+					}
+				}
+			} else {
+				// Coverage array - write all coverage values
+				actualLen := int(sp.Len)
+				if len(covers) < actualLen {
+					actualLen = len(covers)
+				}
+
+				coverSize := int(unsafe.Sizeof(covers[0]))
+				totalSize := actualLen * coverSize
+				if offset+totalSize <= len(data) {
+					// Bulk memory copy using unsafe pointers (matching C++ std::memcpy)
+					if actualLen > 0 {
+						srcPtr := unsafe.Pointer(&covers[0])
+						dstPtr := unsafe.Pointer(&data[offset])
+						for i := 0; i < totalSize; i++ {
+							*(*byte)(unsafe.Pointer(uintptr(dstPtr) + uintptr(i))) =
+								*(*byte)(unsafe.Pointer(uintptr(srcPtr) + uintptr(i)))
+						}
+						offset += totalSize
+					}
+				}
+			}
+		}
+
+		// Write scanline size at the reserved position
+		scanlineSize := offset - sizePos
+		writeInt32(data[sizePos:], basics.Int32(scanlineSize))
+	}
+}
+
 // EmbeddedScanline provides efficient iteration over stored scanlines without
 // copying span data. This corresponds to AGG's embedded_scanline class.
 type EmbeddedScanline[T any] struct {
@@ -481,10 +662,13 @@ type EmbeddedScanline[T any] struct {
 }
 
 // EmbeddedScanlineIterator provides iteration over spans in an embedded scanline.
+// This corresponds to AGG's embedded_scanline::const_iterator class.
 type EmbeddedScanlineIterator[T any] struct {
-	storage *ScanlineStorageAA[T] // Reference to the storage
-	spanIdx int                   // Current span index
-	span    EmbeddedSpan[T]       // Current span data
+	storage     *ScanlineStorageAA[T] // Reference to the storage
+	spanIdx     int                   // Current span index
+	span        EmbeddedSpan[T]       // Current span data
+	numSpans    int                   // Total number of spans
+	currentSpan int                   // Current span counter for bounds checking
 }
 
 // EmbeddedSpan represents a span within an embedded scanline.
@@ -519,10 +703,14 @@ func (e *EmbeddedScanline[T]) Y() int {
 // Begin returns an iterator to the first span in the scanline.
 func (e *EmbeddedScanline[T]) Begin() *EmbeddedScanlineIterator[T] {
 	iter := &EmbeddedScanlineIterator[T]{
-		storage: e.storage,
-		spanIdx: e.scanlineData.StartSpan,
+		storage:     e.storage,
+		spanIdx:     e.scanlineData.StartSpan,
+		numSpans:    e.scanlineData.NumSpans,
+		currentSpan: 0,
 	}
-	iter.initSpan()
+	if e.scanlineData.NumSpans > 0 {
+		iter.initSpan()
+	}
 	return iter
 }
 
@@ -539,18 +727,31 @@ func (it *EmbeddedScanlineIterator[T]) GetSpan() EmbeddedSpan[T] {
 }
 
 // Next advances to the next span and returns true if valid.
+// This implements the C++ operator++() behavior.
 func (it *EmbeddedScanlineIterator[T]) Next() bool {
+	it.currentSpan++
+	if it.currentSpan >= it.numSpans {
+		return false // No more spans
+	}
 	it.spanIdx++
 	it.initSpan()
-	return true // In this simple implementation, we assume bounds are checked externally
+	return true
 }
 
 // initSpan initializes the current span data.
 func (it *EmbeddedScanlineIterator[T]) initSpan() {
-	s := it.storage.SpanByIndex(it.spanIdx)
-	it.span.X = s.X
-	it.span.Len = s.Len
-	it.span.Covers = it.storage.CoversByIndex(s.CoversID)
+	// Bounds check to match C++ safety
+	if it.spanIdx >= 0 && it.currentSpan < it.numSpans {
+		s := it.storage.SpanByIndex(it.spanIdx)
+		it.span.X = s.X
+		it.span.Len = s.Len
+		it.span.Covers = it.storage.CoversByIndex(s.CoversID)
+	} else {
+		// Initialize with safe defaults for out-of-bounds access
+		it.span.X = 0
+		it.span.Len = 0
+		it.span.Covers = nil
+	}
 }
 
 // Concrete type aliases for common usage matching AGG's typedefs

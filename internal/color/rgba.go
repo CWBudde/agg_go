@@ -28,6 +28,19 @@ type (
 	SRGB   struct{}
 )
 
+// GammaLUT represents a gamma lookup table interface
+// This is defined here to avoid circular imports with pixfmt
+type GammaLUT interface {
+	Dir(v basics.Int8u) basics.Int8u // Direct gamma correction
+	Inv(v basics.Int8u) basics.Int8u // Inverse gamma correction
+}
+
+// GammaFunc represents a gamma correction function interface for floating-point values
+type GammaFunc interface {
+	DirFloat(v float32) float32 // Direct gamma correction for float
+	InvFloat(v float32) float32 // Inverse gamma correction for float
+}
+
 // RGBA represents a floating-point RGBA color (base type)
 type RGBA struct {
 	R, G, B, A float64
@@ -407,6 +420,22 @@ func (c *RGBA8[CS]) MultiplyAssign(k float64) *RGBA8[CS] {
 	return c
 }
 
+// ApplyGammaDir applies direct gamma correction to RGB components (alpha unchanged)
+func (c *RGBA8[CS]) ApplyGammaDir(gamma GammaLUT) {
+	c.R = gamma.Dir(c.R)
+	c.G = gamma.Dir(c.G)
+	c.B = gamma.Dir(c.B)
+	// Alpha component is not affected by gamma correction
+}
+
+// ApplyGammaInv applies inverse gamma correction to RGB components (alpha unchanged)
+func (c *RGBA8[CS]) ApplyGammaInv(gamma GammaLUT) {
+	c.R = gamma.Inv(c.R)
+	c.G = gamma.Inv(c.G)
+	c.B = gamma.Inv(c.B)
+	// Alpha component is not affected by gamma correction
+}
+
 // Constants for RGBA8 fixed-point arithmetic
 const (
 	RGBA8BaseMask  = 255
@@ -624,6 +653,46 @@ func (c RGBA16[CS]) GetOpacity() float64 {
 	return float64(c.A) / 65535.0
 }
 
+// ApplyGammaDir applies direct gamma correction to RGB components (alpha unchanged)
+// Converts 16-bit values to 8-bit for gamma lookup, then scales back up
+func (c *RGBA16[CS]) ApplyGammaDir(gamma GammaLUT) {
+	// Convert to 8-bit for gamma lookup
+	r8 := basics.Int8u(c.R >> 8)
+	g8 := basics.Int8u(c.G >> 8)
+	b8 := basics.Int8u(c.B >> 8)
+
+	// Apply gamma correction
+	r8Corrected := gamma.Dir(r8)
+	g8Corrected := gamma.Dir(g8)
+	b8Corrected := gamma.Dir(b8)
+
+	// Scale back to 16-bit (duplicate the byte: 0xAB -> 0xABAB)
+	c.R = basics.Int16u(r8Corrected)<<8 | basics.Int16u(r8Corrected)
+	c.G = basics.Int16u(g8Corrected)<<8 | basics.Int16u(g8Corrected)
+	c.B = basics.Int16u(b8Corrected)<<8 | basics.Int16u(b8Corrected)
+	// Alpha component is not affected by gamma correction
+}
+
+// ApplyGammaInv applies inverse gamma correction to RGB components (alpha unchanged)
+// Converts 16-bit values to 8-bit for gamma lookup, then scales back up
+func (c *RGBA16[CS]) ApplyGammaInv(gamma GammaLUT) {
+	// Convert to 8-bit for gamma lookup
+	r8 := basics.Int8u(c.R >> 8)
+	g8 := basics.Int8u(c.G >> 8)
+	b8 := basics.Int8u(c.B >> 8)
+
+	// Apply inverse gamma correction
+	r8Corrected := gamma.Inv(r8)
+	g8Corrected := gamma.Inv(g8)
+	b8Corrected := gamma.Inv(b8)
+
+	// Scale back to 16-bit (duplicate the byte: 0xAB -> 0xABAB)
+	c.R = basics.Int16u(r8Corrected)<<8 | basics.Int16u(r8Corrected)
+	c.G = basics.Int16u(g8Corrected)<<8 | basics.Int16u(g8Corrected)
+	c.B = basics.Int16u(b8Corrected)<<8 | basics.Int16u(b8Corrected)
+	// Alpha component is not affected by gamma correction
+}
+
 // Common 16-bit color types
 type (
 	RGBA16Linear = RGBA16[Linear]
@@ -732,6 +801,22 @@ func (c *RGBA32[CS]) Opacity(a float64) *RGBA32[CS] {
 // GetOpacity returns the alpha as a float64 (0.0 to 1.0)
 func (c RGBA32[CS]) GetOpacity() float64 {
 	return float64(c.A)
+}
+
+// ApplyGammaDir applies direct gamma correction to RGB components (alpha unchanged)
+func (c *RGBA32[CS]) ApplyGammaDir(gamma GammaFunc) {
+	c.R = gamma.DirFloat(c.R)
+	c.G = gamma.DirFloat(c.G)
+	c.B = gamma.DirFloat(c.B)
+	// Alpha component is not affected by gamma correction
+}
+
+// ApplyGammaInv applies inverse gamma correction to RGB components (alpha unchanged)
+func (c *RGBA32[CS]) ApplyGammaInv(gamma GammaFunc) {
+	c.R = gamma.InvFloat(c.R)
+	c.G = gamma.InvFloat(c.G)
+	c.B = gamma.InvFloat(c.B)
+	// Alpha component is not affected by gamma correction
 }
 
 // Add adds another RGBA32 color

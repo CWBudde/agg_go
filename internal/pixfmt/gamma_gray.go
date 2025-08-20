@@ -1,6 +1,8 @@
 package pixfmt
 
 import (
+	"math"
+
 	"agg_go/internal/basics"
 )
 
@@ -65,32 +67,11 @@ func (lut *SimpleGammaLut) buildTables(gamma float64) {
 		// Normalize to 0-1 range
 		v := float64(i) / 255.0
 
-		// Apply gamma correction
-		corrected := 1.0
-		if v > 0 {
-			// Use simple power function for gamma correction
-			if gamma != 1.0 {
-				corrected = v
-				for j := 1; j < int(gamma*10); j++ {
-					corrected *= v
-				}
-			} else {
-				corrected = v
-			}
-		}
+		// Apply gamma correction using proper power function
+		corrected := math.Pow(v, gamma)
 
 		// For inverse gamma, apply the inverse power
-		invCorrected := 1.0
-		if v > 0 {
-			if invGamma != 1.0 {
-				invCorrected = v
-				for j := 1; j < int(invGamma*10); j++ {
-					invCorrected *= v
-				}
-			} else {
-				invCorrected = v
-			}
-		}
+		invCorrected := math.Pow(v, invGamma)
 
 		// Clamp and convert back to 8-bit
 		if corrected > 1.0 {

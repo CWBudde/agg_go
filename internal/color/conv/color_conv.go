@@ -9,11 +9,11 @@ import (
 
 // RenderingBuffer interface represents the minimum required interface
 // for color conversion operations, compatible with existing buffer types.
+// This matches the C++ AGG rendering_buffer interface.
 type RenderingBuffer interface {
 	Width() int
 	Height() int
 	RowPtr(x, y, length int) []basics.Int8u
-	RowPtrConst(y int) []basics.Int8u
 }
 
 // CopyRowFunctor defines the interface for row copying operations.
@@ -39,10 +39,10 @@ func ColorConv(dst, src RenderingBuffer, copyRowFunctor CopyRowFunctor) {
 
 	if width > 0 && height > 0 {
 		for y := 0; y < height; y++ {
-			// Get the full row from source
-			srcRow := src.RowPtrConst(y)
-			// Get the full row from destination (allocate if needed)
-			dstRow := dst.RowPtr(0, y, len(srcRow))
+			// Match C++ AGG buffer access pattern exactly
+			// C++ uses: copy_row_functor(dst->row_ptr(0, y, width), src->row_ptr(y), width)
+			dstRow := dst.RowPtr(0, y, width)
+			srcRow := src.RowPtr(0, y, width) // Use consistent interface
 			if dstRow != nil && srcRow != nil {
 				copyRowFunctor.CopyRow(dstRow, srcRow, width)
 			}

@@ -42,23 +42,15 @@ func (m *MockCompoundClipper) LineTo(outline *RasterizerCellsAA[*CellStyleAA], x
 	x2 := basics.IRound(x * basics.PolySubpixelScale)
 	y2 := basics.IRound(y * basics.PolySubpixelScale)
 
-	// Debug: print coordinates (disabled)
-	// fmt.Printf("LineTo: (%f,%f) -> (%d,%d) from (%d,%d)\n", x, y, x2, y2, m.lastX, m.lastY)
-
-	// Simple mock: just add a cell at the destination for testing
-	// The real implementation would use proper line rasterization
+	// Use proper line rasterization instead of just adding endpoint cells
 	activeOutline := outline
 	if activeOutline == nil {
 		activeOutline = m.outline
 	}
 
 	if activeOutline != nil {
-		// Just add a simple cell at the destination to test compound functionality
-		ex := x2 >> basics.PolySubpixelShift
-		ey := y2 >> basics.PolySubpixelShift
-		activeOutline.setCurrCell(ex, ey)
-		activeOutline.currCell.SetCoverage(128, 256) // Add some coverage
-		activeOutline.addCurrCell()                  // Actually add the cell
+		// Use the actual line rasterization algorithm from the cells_aa implementation
+		activeOutline.Line(m.lastX, m.lastY, x2, y2)
 	}
 
 	// Update position

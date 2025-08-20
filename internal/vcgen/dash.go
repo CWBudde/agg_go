@@ -80,6 +80,11 @@ func (d *VCGenDash) DashStart(ds float64) {
 	d.calcDashStart(math.Abs(ds))
 }
 
+// GetDashStart returns the current dash start offset
+func (d *VCGenDash) GetDashStart() float64 {
+	return d.dashStart
+}
+
 // calcDashStart calculates the dash start position within the pattern
 func (d *VCGenDash) calcDashStart(ds float64) {
 	d.currDash = 0

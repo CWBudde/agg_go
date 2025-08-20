@@ -218,10 +218,10 @@ func (c *ColorConvRGB555RGB24) CopyRow(dst, src []basics.Int8u, width int) {
 		// Read 16-bit RGB555 value
 		rgb := binary.LittleEndian.Uint16(src[srcIdx:])
 
-		// Extract 5-bit components and expand to 8-bit
-		dst[dstIdx+c.R] = basics.Int8u((rgb>>7)&0xF8) | basics.Int8u((rgb>>12)&0x07)
-		dst[dstIdx+1] = basics.Int8u((rgb>>2)&0xF8) | basics.Int8u((rgb>>7)&0x07)
-		dst[dstIdx+c.B] = basics.Int8u((rgb<<3)&0xF8) | basics.Int8u((rgb>>2)&0x07)
+		// Extract 5-bit components (match C++ AGG exactly)
+		dst[dstIdx+c.R] = basics.Int8u((rgb >> 7) & 0xF8)
+		dst[dstIdx+1] = basics.Int8u((rgb >> 2) & 0xF8)
+		dst[dstIdx+c.B] = basics.Int8u((rgb << 3) & 0xF8)
 	}
 }
 
@@ -294,10 +294,10 @@ func (c *ColorConvRGB565RGB24) CopyRow(dst, src []basics.Int8u, width int) {
 		// Read 16-bit RGB565 value
 		rgb := binary.LittleEndian.Uint16(src[srcIdx:])
 
-		// Extract and expand components
-		dst[dstIdx+c.R] = basics.Int8u((rgb>>8)&0xF8) | basics.Int8u((rgb>>13)&0x07)
-		dst[dstIdx+1] = basics.Int8u((rgb>>3)&0xFC) | basics.Int8u((rgb>>9)&0x03)
-		dst[dstIdx+c.B] = basics.Int8u((rgb<<3)&0xF8) | basics.Int8u((rgb>>2)&0x07)
+		// Extract components (match C++ AGG exactly)
+		dst[dstIdx+c.R] = basics.Int8u((rgb >> 8) & 0xF8)
+		dst[dstIdx+1] = basics.Int8u((rgb >> 3) & 0xFC)
+		dst[dstIdx+c.B] = basics.Int8u((rgb << 3) & 0xF8)
 	}
 }
 

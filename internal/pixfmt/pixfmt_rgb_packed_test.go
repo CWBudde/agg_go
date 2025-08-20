@@ -200,7 +200,7 @@ func TestBlenderRGB555(t *testing.T) {
 	blender := BlenderRGB555{}
 
 	// Start with a known pixel
-	var pixel basics.Int16u = MakePixel555(100, 150, 200)
+	var pixel = MakePixel555(100, 150, 200)
 
 	// Blend with 50% alpha, no coverage modulation
 	blender.BlendPix(&pixel, 200, 100, 50, 128, 255)
@@ -230,7 +230,7 @@ func TestBlenderRGB565(t *testing.T) {
 	blender := BlenderRGB565{}
 
 	// Start with a known pixel
-	var pixel basics.Int16u = MakePixel565(100, 150, 200)
+	var pixel = MakePixel565(100, 150, 200)
 
 	// Blend with 50% alpha, no coverage modulation
 	blender.BlendPix(&pixel, 200, 100, 50, 128, 255)
@@ -381,7 +381,7 @@ func BenchmarkRGB565Unpack(b *testing.B) {
 
 func BenchmarkBlenderRGB555(b *testing.B) {
 	blender := BlenderRGB555{}
-	var pixel basics.Int16u = MakePixel555(100, 150, 200)
+	var pixel = MakePixel555(100, 150, 200)
 
 	for i := 0; i < b.N; i++ {
 		blender.BlendPix(&pixel, 200, 100, 50, 128, 255)
@@ -390,7 +390,7 @@ func BenchmarkBlenderRGB555(b *testing.B) {
 
 func BenchmarkBlenderRGB565(b *testing.B) {
 	blender := BlenderRGB565{}
-	var pixel basics.Int16u = MakePixel565(100, 150, 200)
+	var pixel = MakePixel565(100, 150, 200)
 
 	for i := 0; i < b.N; i++ {
 		blender.BlendPix(&pixel, 200, 100, 50, 128, 255)

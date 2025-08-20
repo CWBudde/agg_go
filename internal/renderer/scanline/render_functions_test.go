@@ -254,3 +254,119 @@ func TestRenderScanlineAA(t *testing.T) {
 		}
 	}
 }
+
+func TestRenderScanlineBinSolid(t *testing.T) {
+	tests := []struct {
+		name          string
+		spans         []SpanData
+		expectedCalls []HlineCall
+	}{
+		{
+			name: "positive_length_span",
+			spans: []SpanData{
+				{X: 10, Len: 5, Covers: nil}, // Binary spans don't use covers
+			},
+			expectedCalls: []HlineCall{
+				{X: 10, Y: 5, X2: 14, Color: "red", Cover: basics.CoverFull}, // X + Len - 1 = 10 + 5 - 1 = 14
+			},
+		},
+		{
+			name: "negative_length_span",
+			spans: []SpanData{
+				{X: 20, Len: -8, Covers: nil}, // Negative length
+			},
+			expectedCalls: []HlineCall{
+				{X: 20, Y: 5, X2: 27, Color: "red", Cover: basics.CoverFull}, // X - Len - 1 = 20 - (-8) - 1 = 20 + 8 - 1 = 27
+			},
+		},
+		{
+			name: "multiple_spans_mixed",
+			spans: []SpanData{
+				{X: 5, Len: 3, Covers: nil},   // Positive: endX = 5 + 3 - 1 = 7
+				{X: 15, Len: -4, Covers: nil}, // Negative: endX = 15 - (-4) - 1 = 18
+			},
+			expectedCalls: []HlineCall{
+				{X: 5, Y: 5, X2: 7, Color: "red", Cover: basics.CoverFull},
+				{X: 15, Y: 5, X2: 18, Color: "red", Cover: basics.CoverFull},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			renderer := &MockBaseRenderer{}
+			scanline := &MockScanline{
+				y:        5,
+				numSpans: len(tt.spans),
+				spans:    tt.spans,
+			}
+
+			RenderScanlineBinSolid(scanline, renderer, "red")
+
+			if len(renderer.hlineCalls) != len(tt.expectedCalls) {
+				t.Errorf("Expected %d hline calls, got %d", len(tt.expectedCalls), len(renderer.hlineCalls))
+			}
+
+			for i, expected := range tt.expectedCalls {
+				if i >= len(renderer.hlineCalls) {
+					t.Errorf("Missing hline call %d", i)
+					continue
+				}
+				actual := renderer.hlineCalls[i]
+				if actual != expected {
+					t.Errorf("Hline call %d: expected %+v, got %+v", i, expected, actual)
+				}
+			}
+		})
+	}
+}
+
+func TestRenderScanlinesBinSolid(t *testing.T) {
+	renderer := &MockBaseRenderer{}
+	color := "blue"
+
+	// Create test scanlines with negative lengths to verify the fix
+	scanline1 := &MockScanline{
+		y:        0,
+		numSpans: 1,
+		spans: []SpanData{
+			{X: 10, Len: -5, Covers: nil}, // Should result in endX = 10 - (-5) - 1 = 14
+		},
+	}
+
+	scanline2 := &MockScanline{
+		y:        1,
+		numSpans: 1,
+		spans: []SpanData{
+			{X: 20, Len: 3, Covers: nil}, // Should result in endX = 20 + 3 - 1 = 22
+		},
+	}
+
+	rasterizer := &MockRasterizer{
+		minX:      0,
+		maxX:      30,
+		scanlines: []*MockScanline{scanline1, scanline2},
+	}
+
+	scanline := &MockScanline{}
+
+	RenderScanlinesBinSolid(rasterizer, scanline, renderer, color)
+
+	if len(renderer.hlineCalls) != 2 {
+		t.Errorf("Expected 2 hline calls, got %d", len(renderer.hlineCalls))
+	}
+
+	// Check first scanline (negative length)
+	call1 := renderer.hlineCalls[0]
+	expected1 := HlineCall{X: 10, Y: 0, X2: 14, Color: color, Cover: basics.CoverFull}
+	if call1 != expected1 {
+		t.Errorf("First hline call: expected %+v, got %+v", expected1, call1)
+	}
+
+	// Check second scanline (positive length)
+	call2 := renderer.hlineCalls[1]
+	expected2 := HlineCall{X: 20, Y: 1, X2: 22, Color: color, Cover: basics.CoverFull}
+	if call2 != expected2 {
+		t.Errorf("Second hline call: expected %+v, got %+v", expected2, call2)
+	}
+}

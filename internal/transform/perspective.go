@@ -8,6 +8,10 @@ import (
 	"agg_go/internal/basics"
 )
 
+// Compile-time interface checks
+var _ Transformer = (*TransPerspective)(nil)
+var _ InverseTransformer = (*TransPerspective)(nil)
+
 // TransPerspective represents a 3x3 perspective transformation matrix.
 // The matrix components are:
 //
@@ -295,8 +299,9 @@ func (t *TransPerspective) MultiplyInvAffine(m *TransAffine) *TransPerspective {
 func (t *TransPerspective) PremultiplyInv(m *TransPerspective) *TransPerspective {
 	temp := *m
 	temp.Invert()
+	original := *t
 	*t = temp
-	return t.Multiply(m)
+	return t.Multiply(&original)
 }
 
 // PremultiplyInvAffine multiplies the inverse of "m" by "this" and assigns the result to "this".

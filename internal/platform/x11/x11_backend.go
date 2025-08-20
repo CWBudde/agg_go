@@ -38,6 +38,7 @@ import "C"
 
 import (
 	"fmt"
+	"time"
 	"unsafe"
 
 	"agg_go/internal/buffer"
@@ -164,7 +165,7 @@ func (x *X11Backend) Init(width, height int, flags types.WindowFlags) error {
 	C.XFlush(x.display)
 
 	x.initialized = true
-	x.startTicks = 1000 // Mock start time
+	x.startTicks = uint32(time.Now().UnixNano() / 1e6)
 
 	// Trigger init callback
 	if x.eventCallback != nil {

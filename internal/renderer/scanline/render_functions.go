@@ -42,9 +42,14 @@ func RenderScanlinesAASolid(ras RasterizerInterface, sl ScanlineInterface, ren B
 	}
 
 	// Reset scanline for the rasterizer bounds
-	if resetInterface, ok := sl.(interface{ Reset(minX, maxX int) }); ok {
-		resetInterface.Reset(ras.MinX(), ras.MaxX())
+	if resetScanline, ok := sl.(ResettableScanline); ok {
+		resetScanline.Reset(ras.MinX(), ras.MaxX())
 	}
+
+	// Store color reference to avoid repeated interface{} passing
+	// This corresponds to AGG's: typename BaseRenderer::color_type ren_color = color;
+	// In Go, we can't pre-convert the type, but we avoid repeated parameter passing
+	renderColor := color
 
 	// Sweep through all scanlines
 	for ras.SweepScanline(sl) {
@@ -60,12 +65,12 @@ func RenderScanlinesAASolid(ras RasterizerInterface, sl ScanlineInterface, ren B
 
 			if span.Len > 0 {
 				// Positive length: anti-aliased span with coverage array
-				ren.BlendSolidHspan(x, y, span.Len, color, span.Covers)
+				ren.BlendSolidHspan(x, y, span.Len, renderColor, span.Covers)
 			} else {
 				// Negative length: solid span with single coverage value
 				endX := x - span.Len - 1
 				cover := span.Covers[0]
-				ren.BlendHline(x, y, endX, color, cover)
+				ren.BlendHline(x, y, endX, renderColor, cover)
 			}
 
 			// Move to next span
@@ -124,8 +129,8 @@ func RenderScanlinesAA(ras RasterizerInterface, sl ScanlineInterface, ren BaseRe
 	}
 
 	// Reset scanline for the rasterizer bounds
-	if resetInterface, ok := sl.(interface{ Reset(minX, maxX int) }); ok {
-		resetInterface.Reset(ras.MinX(), ras.MaxX())
+	if resetScanline, ok := sl.(ResettableScanline); ok {
+		resetScanline.Reset(ras.MinX(), ras.MaxX())
 	}
 
 	// Prepare the span generator
@@ -148,9 +153,10 @@ func RenderScanlineBinSolid(sl ScanlineInterface, ren BaseRendererInterface, col
 		span := iter.GetSpan()
 
 		// For binary scanlines, calculate the end coordinate
+		// This matches AGG's formula: span->x - 1 + ((span->len < 0) ? -span->len : span->len)
 		var endX int
 		if span.Len < 0 {
-			endX = span.X - span.Len
+			endX = span.X - span.Len - 1
 		} else {
 			endX = span.X + span.Len - 1
 		}
@@ -173,9 +179,13 @@ func RenderScanlinesBinSolid(ras RasterizerInterface, sl ScanlineInterface, ren 
 	}
 
 	// Reset scanline for the rasterizer bounds
-	if resetInterface, ok := sl.(interface{ Reset(minX, maxX int) }); ok {
-		resetInterface.Reset(ras.MinX(), ras.MaxX())
+	if resetScanline, ok := sl.(ResettableScanline); ok {
+		resetScanline.Reset(ras.MinX(), ras.MaxX())
 	}
+
+	// Store color reference to avoid repeated interface{} passing
+	// This corresponds to AGG's: typename BaseRenderer::color_type ren_color(color);
+	renderColor := color
 
 	// Sweep through all scanlines
 	for ras.SweepScanline(sl) {
@@ -188,15 +198,16 @@ func RenderScanlinesBinSolid(ras RasterizerInterface, sl ScanlineInterface, ren 
 			span := iter.GetSpan()
 
 			// Calculate end coordinate for binary rendering
+			// This matches AGG's formula: span->x - 1 + ((span->len < 0) ? -span->len : span->len)
 			var endX int
 			if span.Len < 0 {
-				endX = span.X - span.Len
+				endX = span.X - span.Len - 1
 			} else {
 				endX = span.X + span.Len - 1
 			}
 
 			// Render with full coverage
-			ren.BlendHline(span.X, y, endX, color, basics.CoverFull)
+			ren.BlendHline(span.X, y, endX, renderColor, basics.CoverFull)
 
 			// Move to next span
 			if i < numSpans-1 {
@@ -247,8 +258,8 @@ func RenderScanlinesBin(ras RasterizerInterface, sl ScanlineInterface, ren BaseR
 	}
 
 	// Reset scanline for the rasterizer bounds
-	if resetInterface, ok := sl.(interface{ Reset(minX, maxX int) }); ok {
-		resetInterface.Reset(ras.MinX(), ras.MaxX())
+	if resetScanline, ok := sl.(ResettableScanline); ok {
+		resetScanline.Reset(ras.MinX(), ras.MaxX())
 	}
 
 	// Prepare the span generator

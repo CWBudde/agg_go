@@ -245,3 +245,78 @@ func abs(x int) int {
 	}
 	return x
 }
+
+func TestSpanInterpolatorLinearSubdiv(t *testing.T) {
+	t.Run("BasicFunctionality", func(t *testing.T) {
+		trans := transform.NewTransAffine()
+		interp := NewSpanInterpolatorLinearSubdivDefault(trans)
+
+		// Test basic operation
+		interp.Begin(0, 0, 10)
+		x, y := interp.Coordinates()
+		if x != 0 || y != 0 {
+			t.Errorf("Expected (0,0), got (%d,%d)", x, y)
+		}
+
+		// Test advancement
+		interp.Next()
+		x, y = interp.Coordinates()
+		if x != 256 || y != 0 {
+			t.Errorf("Expected (256,0), got (%d,%d)", x, y)
+		}
+	})
+
+	t.Run("SubdivisionLogic", func(t *testing.T) {
+		trans := transform.NewTransAffine()
+		interp := NewSpanInterpolatorLinearSubdiv(trans, 8, 2) // Small subdivision size for testing
+
+		// Test with span longer than subdivision size
+		interp.Begin(0, 0, 10)
+
+		// Advance through multiple subdivisions
+		for i := 0; i < 8; i++ {
+			x, y := interp.Coordinates()
+			t.Logf("Step %d: (%d,%d)", i, x, y)
+			if i < 7 {
+				interp.Next()
+			}
+		}
+	})
+
+	t.Run("SubdivShift", func(t *testing.T) {
+		trans := transform.NewTransAffine()
+		interp := NewSpanInterpolatorLinearSubdiv(trans, 8, 3)
+
+		if interp.SubdivShift() != 3 {
+			t.Errorf("Expected subdivision shift 3, got %d", interp.SubdivShift())
+		}
+
+		interp.SetSubdivShift(5)
+		if interp.SubdivShift() != 5 {
+			t.Errorf("Expected subdivision shift 5 after set, got %d", interp.SubdivShift())
+		}
+	})
+
+	t.Run("InterfaceCompliance", func(t *testing.T) {
+		trans := transform.NewTransAffine()
+		// Test that subdivided interpolator implements SpanInterpolatorInterface
+		var interp SpanInterpolatorInterface = NewSpanInterpolatorLinearSubdivDefault(trans)
+
+		// Test interface methods
+		interp.Begin(0, 0, 5)
+		x, y := interp.Coordinates()
+		if x != 0 || y != 0 {
+			t.Errorf("Interface coordinates: got (%d, %d), want (0, 0)", x, y)
+		}
+
+		interp.Next()
+		x2, y2 := interp.Coordinates()
+		if x2 == x && y2 == y {
+			t.Error("Interface Next() should advance coordinates")
+		}
+
+		if interp.SubpixelShift() != 8 {
+			t.Errorf("Interface SubpixelShift: got %d, want 8", interp.SubpixelShift())
+		}
+	})
+}

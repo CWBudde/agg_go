@@ -9,7 +9,10 @@ package x11
 import "C"
 
 import (
+	"encoding/binary"
 	"fmt"
+	"os"
+	"time"
 
 	"agg_go/internal/buffer"
 	"agg_go/internal/platform/types"
@@ -182,6 +185,81 @@ func (x *X11Backend) copyRawToXImage(src, dst []byte, srcStride, dstStride int) 
 	return nil
 }
 
+// loadBMP loads a 24-bit uncompressed BMP file.
+func (x *X11Backend) loadBMP(filename string) (*X11ImageSurface, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	// Read BMP file header
+	fileHeader := make([]byte, 14)
+	if _, err := file.Read(fileHeader); err != nil {
+		return nil, fmt.Errorf("failed to read BMP file header: %w", err)
+	}
+
+	if string(fileHeader[0:2]) != "BM" {
+		return nil, fmt.Errorf("not a BMP file")
+	}
+
+	// Read DIB header size
+	var dibHeaderSize uint32
+	if err := binary.Read(file, binary.LittleEndian, &dibHeaderSize); err != nil {
+		return nil, fmt.Errorf("failed to read DIB header size: %w", err)
+	}
+
+	// Read the rest of the DIB header (we only support BITMAPINFOHEADER)
+	if dibHeaderSize != 40 {
+		return nil, fmt.Errorf("unsupported DIB header size: %d", dibHeaderSize)
+	}
+
+	dibHeader := make([]byte, 36) // 40 - 4 bytes for size
+	if _, err := file.Read(dibHeader); err != nil {
+		return nil, fmt.Errorf("failed to read DIB header: %w", err)
+	}
+
+	width := int(binary.LittleEndian.Uint32(dibHeader[0:4]))
+	height := int(binary.LittleEndian.Uint32(dibHeader[4:8]))
+	bpp := binary.LittleEndian.Uint16(dibHeader[10:12])
+	compression := binary.LittleEndian.Uint32(dibHeader[12:16])
+
+	if bpp != 24 || compression != 0 {
+		return nil, fmt.Errorf("unsupported BMP format: bpp=%d, compression=%d", bpp, compression)
+	}
+
+	// Move to pixel data
+	pixelDataOffset := binary.LittleEndian.Uint32(fileHeader[10:14])
+	if _, err := file.Seek(int64(pixelDataOffset), 0); err != nil {
+		return nil, fmt.Errorf("failed to seek to pixel data: %w", err)
+	}
+
+	// Read pixel data
+	rowSize := (width*3 + 3) &^ 3 // 24-bit BMP rows are padded to 4 bytes
+	pixelData := make([]byte, rowSize*height)
+	if _, err := file.Read(pixelData); err != nil {
+		return nil, fmt.Errorf("failed to read pixel data: %w", err)
+	}
+
+	// Create X11ImageSurface
+	surface := &X11ImageSurface{
+		width:  width,
+		height: height,
+		bpp:    24,
+		stride: width * 3,
+		data:   make([]byte, width*3*height),
+	}
+
+	// Copy pixel data, flipping vertically
+	for y := 0; y < height; y++ {
+		srcRow := (height - 1 - y) * rowSize
+		dstRow := y * surface.stride
+		copy(surface.data[dstRow:dstRow+surface.stride], pixelData[srcRow:srcRow+width*3])
+	}
+
+	return surface, nil
+}
+
 // CreateImageSurface creates an X11 image surface
 func (x *X11Backend) CreateImageSurface(width, height int) (interface{}, error) {
 	// For X11, we create a simple byte buffer that can be converted to XImage
@@ -210,11 +288,9 @@ func (x *X11Backend) DestroyImageSurface(surface interface{}) error {
 	return nil
 }
 
-// GetTicks returns the current tick count
+// GetTicks returns the current tick count in milliseconds
 func (x *X11Backend) GetTicks() uint32 {
-	// Simple mock implementation - in a real implementation,
-	// you might use a proper timer
-	return x.startTicks + 1000
+	return uint32(time.Now().UnixNano()/1e6) - x.startTicks
 }
 
 // Delay provides a delay (no-op for X11)
@@ -224,9 +300,7 @@ func (x *X11Backend) Delay(ms uint32) {
 
 // LoadImage loads an image file (basic BMP support)
 func (x *X11Backend) LoadImage(filename string) (interface{}, error) {
-	// TODO: Implement actual image loading
-	// For now, return a mock surface
-	return x.CreateImageSurface(100, 100)
+	return x.loadBMP(filename)
 }
 
 // SaveImage saves an image to file (basic BMP support)

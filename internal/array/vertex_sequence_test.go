@@ -266,6 +266,49 @@ func BenchmarkVertexSequenceAdd(b *testing.B) {
 	}
 }
 
+func TestLineAAVertexSequenceDistanceCalculation(t *testing.T) {
+	vs := NewVertexSequence[LineAAVertex]()
+
+	// Add vertices with distances larger than the validation threshold (384)
+	// Using a 300-400-500 triangle scaled by 10 for sufficient distance
+	vs.Add(NewLineAAVertex(0, 0))       // Distance to next should be 500 (3-4-5 * 100)
+	vs.Add(NewLineAAVertex(3000, 4000)) // Distance to next should be 4000 (horizontal)
+	vs.Add(NewLineAAVertex(7000, 4000)) // Last vertex, distance irrelevant
+
+	// Close the sequence to trigger distance calculations
+	vs.Close(false)
+
+	// Verify we still have vertices after validation
+	if vs.Size() < 2 {
+		t.Fatalf("Vertices were filtered out during Close(), size = %d, want >= 2", vs.Size())
+	}
+
+	// Check that distances were calculated correctly
+	v1 := vs.At(0)
+	if v1.Len == 0 {
+		t.Errorf("First vertex distance was not calculated (still 0)")
+	}
+
+	// Distance from (0,0) to (3000,4000) should be 5000
+	expectedDist := 5000
+	if v1.Len != expectedDist {
+		t.Errorf("First vertex distance = %d, want %d", v1.Len, expectedDist)
+	}
+
+	if vs.Size() >= 2 {
+		v2 := vs.At(1)
+		if v2.Len == 0 {
+			t.Errorf("Second vertex distance was not calculated (still 0)")
+		}
+
+		// Distance from (3000,4000) to (7000,4000) should be 4000
+		expectedDist2 := 4000
+		if v2.Len != expectedDist2 {
+			t.Errorf("Second vertex distance = %d, want %d", v2.Len, expectedDist2)
+		}
+	}
+}
+
 func BenchmarkLineAAVertexValidate(b *testing.B) {
 	v1 := NewLineAAVertex(0, 0)
 	v2 := NewLineAAVertex(1000, 1000)

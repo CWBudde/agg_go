@@ -399,7 +399,7 @@ func (gc *GradientContour) Calculate(x, y, d int) int {
 
 	// Sample buffer and scale to gradient range
 	sample := float64(gc.buffer[py*gc.width+px])
-	result := sample*(gc.d2/256.0) + gc.d1
+	result := gc.d1 + (sample/255.0)*(gc.d2-gc.d1)
 
 	return basics.IRound(result) << GradientSubpixelShift
 }

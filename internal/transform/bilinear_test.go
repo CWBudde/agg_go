@@ -37,7 +37,7 @@ func TestTransBilinear_IdentityTransformation(t *testing.T) {
 
 	tolerance := 1e-10
 	for _, point := range testPoints {
-		x, y := tb.Transform(point[0], point[1])
+		x, y := tb.TransformValues(point[0], point[1])
 		if math.Abs(x-point[0]) > tolerance || math.Abs(y-point[1]) > tolerance {
 			t.Errorf("Identity transform failed for point (%f,%f): got (%f,%f)",
 				point[0], point[1], x, y)
@@ -70,7 +70,7 @@ func TestTransBilinear_RectToQuad(t *testing.T) {
 
 	tolerance := 1e-10
 	for _, tc := range testCases {
-		x, y := tb.Transform(tc[0], tc[1])
+		x, y := tb.TransformValues(tc[0], tc[1])
 		if math.Abs(x-tc[2]) > tolerance || math.Abs(y-tc[3]) > tolerance {
 			t.Errorf("RectToQuad failed for (%f,%f): got (%f,%f), want (%f,%f)",
 				tc[0], tc[1], x, y, tc[2], tc[3])
@@ -103,7 +103,7 @@ func TestTransBilinear_QuadToRect(t *testing.T) {
 
 	tolerance := 1e-10
 	for _, tc := range testCases {
-		x, y := tb.Transform(tc[0], tc[1])
+		x, y := tb.TransformValues(tc[0], tc[1])
 		if math.Abs(x-tc[2]) > tolerance || math.Abs(y-tc[3]) > tolerance {
 			t.Errorf("QuadToRect failed for (%f,%f): got (%f,%f), want (%f,%f)",
 				tc[0], tc[1], x, y, tc[2], tc[3])
@@ -142,7 +142,7 @@ func TestTransBilinear_ArbitraryQuadToQuad(t *testing.T) {
 
 	tolerance := 1e-10
 	for _, tc := range testCases {
-		x, y := tb.Transform(tc[0], tc[1])
+		x, y := tb.TransformValues(tc[0], tc[1])
 		if math.Abs(x-tc[2]) > tolerance || math.Abs(y-tc[3]) > tolerance {
 			t.Errorf("QuadToQuad failed for (%f,%f): got (%f,%f), want (%f,%f)",
 				tc[0], tc[1], x, y, tc[2], tc[3])
@@ -150,7 +150,7 @@ func TestTransBilinear_ArbitraryQuadToQuad(t *testing.T) {
 	}
 
 	// Test center point (should be somewhere reasonable)
-	centerX, centerY := tb.Transform(1, 1)
+	centerX, centerY := tb.TransformValues(1, 1)
 	if centerX < 0 || centerX > 5 || centerY < 1 || centerY > 6 {
 		t.Errorf("Center point transformation seems unreasonable: (%f,%f)", centerX, centerY)
 	}
@@ -166,7 +166,7 @@ func TestTransBilinear_DegenerateQuadrilateral(t *testing.T) {
 	// This should result in an invalid transformation due to singularity
 	if tb.IsValid() {
 		// If it's somehow valid, at least check it doesn't crash
-		_, _ = tb.Transform(0.5, 0.5)
+		_, _ = tb.TransformValues(0.5, 0.5)
 		t.Log("Degenerate quadrilateral resulted in valid transformation - this may be mathematically correct")
 	}
 }
@@ -176,7 +176,7 @@ func TestTransBilinear_InvalidTransform(t *testing.T) {
 	tb := NewTransBilinear() // starts invalid
 
 	// Transform should return input unchanged
-	x, y := tb.Transform(5, 7)
+	x, y := tb.TransformValues(5, 7)
 	if x != 5 || y != 7 {
 		t.Errorf("Invalid transform should return input unchanged: got (%f,%f), want (5,7)", x, y)
 	}
@@ -238,7 +238,7 @@ func TestIteratorX_WithTransform(t *testing.T) {
 
 	for i := 0; i < 10; i++ {
 		// Get expected position using direct transform
-		expectedX, expectedY := tb.Transform(currentX, startY)
+		expectedX, expectedY := tb.TransformValues(currentX, startY)
 
 		// Compare with iterator position
 		if math.Abs(it.X()-expectedX) > tolerance || math.Abs(it.Y()-expectedY) > tolerance {
@@ -288,7 +288,7 @@ func TestTransBilinear_BilinearInterpolation(t *testing.T) {
 
 	// Test the center point (0.5, 0.5)
 	// With bilinear interpolation, this should map to (1, 1)
-	x, y := tb.Transform(0.5, 0.5)
+	x, y := tb.TransformValues(0.5, 0.5)
 	tolerance := 1e-10
 
 	if math.Abs(x-1.0) > tolerance || math.Abs(y-1.0) > tolerance {
@@ -308,7 +308,7 @@ func BenchmarkTransBilinear_Transform(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		tb.Transform(0.5, 0.7)
+		tb.TransformValues(0.5, 0.7)
 	}
 }
 
@@ -363,9 +363,9 @@ func TestTransBilinear_InverseTransform_Identity(t *testing.T) {
 	tolerance := 1e-8
 	for _, point := range testPoints {
 		// Forward transform
-		fx, fy := tb.Transform(point[0], point[1])
+		fx, fy := tb.TransformValues(point[0], point[1])
 		// Inverse transform should give back original
-		ix, iy := tb.InverseTransform(fx, fy)
+		ix, iy := tb.InverseTransformValues(fx, fy)
 
 		if math.Abs(ix-point[0]) > tolerance || math.Abs(iy-point[1]) > tolerance {
 			t.Errorf("Inverse identity failed for (%f,%f): forward->(%f,%f) inverse->(%f,%f)",
@@ -396,9 +396,9 @@ func TestTransBilinear_InverseTransform_RectToQuad(t *testing.T) {
 	tolerance := 1e-8
 	for _, point := range testPoints {
 		// Forward transform
-		fx, fy := tb.Transform(point[0], point[1])
+		fx, fy := tb.TransformValues(point[0], point[1])
 		// Inverse transform
-		ix, iy := tb.InverseTransform(fx, fy)
+		ix, iy := tb.InverseTransformValues(fx, fy)
 
 		if math.Abs(ix-point[0]) > tolerance || math.Abs(iy-point[1]) > tolerance {
 			t.Errorf("Inverse RectToQuad failed for (%f,%f): forward->(%f,%f) inverse->(%f,%f)",
@@ -430,9 +430,9 @@ func TestTransBilinear_InverseTransform_ArbitraryQuad(t *testing.T) {
 	tolerance := 1e-8
 	for _, point := range testPoints {
 		// Forward transform
-		fx, fy := tb.Transform(point[0], point[1])
+		fx, fy := tb.TransformValues(point[0], point[1])
 		// Inverse transform
-		ix, iy := tb.InverseTransform(fx, fy)
+		ix, iy := tb.InverseTransformValues(fx, fy)
 
 		if math.Abs(ix-point[0]) > tolerance || math.Abs(iy-point[1]) > tolerance {
 			t.Errorf("Inverse arbitrary quad failed for (%f,%f): forward->(%f,%f) inverse->(%f,%f)",
@@ -445,7 +445,7 @@ func TestTransBilinear_InverseTransform_InvalidTransform(t *testing.T) {
 	// Test inverse with invalid transformation
 	tb := NewTransBilinear()
 
-	x, y := tb.InverseTransform(5, 7)
+	x, y := tb.InverseTransformValues(5, 7)
 	if x != 5 || y != 7 {
 		t.Errorf("Invalid inverse transform should return input unchanged: got (%f,%f), want (5,7)", x, y)
 	}
@@ -461,7 +461,7 @@ func TestTransBilinear_InverseTransform_NonConvergent(t *testing.T) {
 
 	// Test inverse at a reasonable point
 	fx, fy := 0.5, 0.5
-	ix, iy := tb.InverseTransform(fx, fy)
+	ix, iy := tb.InverseTransformValues(fx, fy)
 
 	// Should not return NaN or Inf
 	if math.IsNaN(ix) || math.IsNaN(iy) || math.IsInf(ix, 0) || math.IsInf(iy, 0) {
@@ -470,7 +470,7 @@ func TestTransBilinear_InverseTransform_NonConvergent(t *testing.T) {
 
 	// If transformation is valid, test round-trip accuracy with relaxed tolerance
 	if tb.IsValid() {
-		checkX, checkY := tb.Transform(ix, iy)
+		checkX, checkY := tb.TransformValues(ix, iy)
 		tolerance := 1e-6 // More relaxed for nearly degenerate cases
 		if math.Abs(checkX-fx) > tolerance || math.Abs(checkY-fy) > tolerance {
 			t.Logf("Round-trip accuracy reduced for nearly degenerate case: target=(%f,%f) result=(%f,%f)",
@@ -500,8 +500,8 @@ func TestTransBilinear_InverseTransform_CornerCases(t *testing.T) {
 
 	tolerance := 1e-7
 	for _, point := range testPoints {
-		fx, fy := tb.Transform(point[0], point[1])
-		ix, iy := tb.InverseTransform(fx, fy)
+		fx, fy := tb.TransformValues(point[0], point[1])
+		ix, iy := tb.InverseTransformValues(fx, fy)
 
 		if math.Abs(ix-point[0]) > tolerance || math.Abs(iy-point[1]) > tolerance {
 			t.Errorf("Inverse corner case failed for (%f,%f): forward->(%f,%f) inverse->(%f,%f)",
@@ -522,7 +522,7 @@ func BenchmarkTransBilinear_InverseTransform(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		tb.InverseTransform(0.5, 0.7)
+		tb.InverseTransformValues(0.5, 0.7)
 	}
 }
 
@@ -536,7 +536,7 @@ func TestTransBilinear_EdgeCases(t *testing.T) {
 		tb := NewTransBilinearQuadToQuad(src, dst)
 		// This might be valid depending on the mathematical properties
 		// The key test is that it doesn't crash
-		_, _ = tb.Transform(0.5, 0.5)
+		_, _ = tb.TransformValues(0.5, 0.5)
 	})
 
 	t.Run("LargeValues", func(t *testing.T) {
@@ -545,7 +545,7 @@ func TestTransBilinear_EdgeCases(t *testing.T) {
 
 		tb := NewTransBilinearQuadToQuad(src, dst)
 		if tb.IsValid() {
-			x, y := tb.Transform(0.5, 0.5)
+			x, y := tb.TransformValues(0.5, 0.5)
 			if math.IsNaN(x) || math.IsNaN(y) || math.IsInf(x, 0) || math.IsInf(y, 0) {
 				t.Error("Large values should not produce NaN or Inf")
 			}
@@ -561,10 +561,122 @@ func TestTransBilinear_EdgeCases(t *testing.T) {
 		// Should either be valid with reasonable results or invalid
 		// Main test is that it doesn't crash
 		if tb.IsValid() {
-			x, y := tb.Transform(0.5, 0.5)
+			x, y := tb.TransformValues(0.5, 0.5)
 			if math.IsNaN(x) || math.IsNaN(y) {
 				t.Error("Near-singular matrix should not produce NaN")
 			}
 		}
 	})
+}
+
+func TestTransBilinear_TransformerInterface(t *testing.T) {
+	// Test that TransBilinear properly implements Transformer interface
+	quad := [8]float64{0, 0, 2, 0, 2, 2, 0, 2}
+	tb := NewTransBilinearRectToQuad(0, 0, 1, 1, quad)
+
+	if !tb.IsValid() {
+		t.Fatal("Transformation should be valid")
+	}
+
+	// Test pointer-based Transform method
+	x, y := 0.5, 0.5
+	tb.Transform(&x, &y)
+
+	// Should transform to center of the quad (1, 1)
+	tolerance := 1e-10
+	if math.Abs(x-1.0) > tolerance || math.Abs(y-1.0) > tolerance {
+		t.Errorf("Transform interface failed: expected (1,1), got (%f,%f)", x, y)
+	}
+}
+
+func TestTransBilinear_ToMatrix(t *testing.T) {
+	// Test matrix extraction
+	src := [8]float64{0, 0, 1, 0, 1, 1, 0, 1}
+	dst := [8]float64{0, 0, 2, 0, 2, 2, 0, 2} // scaling by 2
+
+	tb := NewTransBilinearQuadToQuad(src, dst)
+	matrix := tb.ToMatrix()
+
+	// For a simple scale transformation, we can verify some expected values
+	if !tb.IsValid() {
+		t.Fatal("Transformation should be valid")
+	}
+
+	// Just verify we get a non-zero matrix
+	hasNonZero := false
+	for i := 0; i < 4; i++ {
+		for j := 0; j < 2; j++ {
+			if math.Abs(matrix[i][j]) > 1e-10 {
+				hasNonZero = true
+				break
+			}
+		}
+	}
+
+	if !hasNonZero {
+		t.Error("ToMatrix should return non-zero matrix for valid transformation")
+	}
+}
+
+func TestNewTransBilinearFromTransformer(t *testing.T) {
+	// Create an affine transformation for testing
+	affine := NewTransAffineFromValues(2.0, 0.0, 0.0, 2.0, 1.0, 1.0) // scale by 2, translate by (1,1)
+
+	// Create a source quadrilateral (unit square)
+	srcQuad := [8]float64{0, 0, 1, 0, 1, 1, 0, 1}
+
+	// Extract bilinear transformation
+	tb := NewTransBilinearFromTransformer(affine, srcQuad)
+
+	if !tb.IsValid() {
+		t.Fatal("Transformation should be valid")
+	}
+
+	// Test that it produces similar results
+	tolerance := 1e-10
+	testPoints := [][2]float64{{0, 0}, {1, 0}, {0.5, 0.5}}
+
+	for _, point := range testPoints {
+		// Transform with original affine
+		ax, ay := point[0], point[1]
+		affine.Transform(&ax, &ay)
+
+		// Transform with extracted bilinear
+		bx, by := tb.TransformValues(point[0], point[1])
+
+		if math.Abs(ax-bx) > tolerance || math.Abs(ay-by) > tolerance {
+			t.Errorf("NewTransBilinearFromTransformer mismatch at (%f,%f): affine=(%f,%f), bilinear=(%f,%f)",
+				point[0], point[1], ax, ay, bx, by)
+		}
+	}
+}
+
+func TestNewTransBilinearFromRect(t *testing.T) {
+	// Create a simple affine transformation
+	affine := NewTransAffineFromValues(1.5, 0.0, 0.0, 1.5, 0.5, 0.5)
+
+	// Extract bilinear approximation over a rectangle
+	tb := NewTransBilinearFromRect(affine, 0, 0, 2, 2)
+
+	if !tb.IsValid() {
+		t.Fatal("Transformation should be valid")
+	}
+
+	// Test corner points of the rectangle
+	corners := [][2]float64{{0, 0}, {2, 0}, {2, 2}, {0, 2}}
+	tolerance := 1e-10
+
+	for _, corner := range corners {
+		// Transform with original affine
+		ax, ay := corner[0], corner[1]
+		affine.Transform(&ax, &ay)
+
+		// Transform with extracted bilinear
+		bx, by := tb.TransformValues(corner[0], corner[1])
+
+		if math.Abs(ax-bx) > tolerance || math.Abs(ay-by) > tolerance {
+			t.Errorf("NewTransBilinearFromRect mismatch at corner (%f,%f): affine=(%f,%f), bilinear=(%f,%f)",
+				corner[0], corner[1], ax, ay, bx, by)
+		}
+	}
 }

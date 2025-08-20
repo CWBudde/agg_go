@@ -13,8 +13,8 @@ func RenderScanlines(ras RasterizerInterface, sl ScanlineInterface, renderer Ren
 	}
 
 	// Reset scanline for the rasterizer bounds
-	if resetInterface, ok := sl.(interface{ Reset(minX, maxX int) }); ok {
-		resetInterface.Reset(ras.MinX(), ras.MaxX())
+	if resetScanline, ok := sl.(ResettableScanline); ok {
+		resetScanline.Reset(ras.MinX(), ras.MaxX())
 	}
 
 	// Prepare the renderer
@@ -56,8 +56,8 @@ func RenderAllPaths(ras RasterizerInterface, sl ScanlineInterface, renderer inte
 	// to define more complete interfaces for the rasterizer's path handling
 	for i := 0; i < numPaths; i++ {
 		// Reset the rasterizer for this path
-		if resetInterface, ok := ras.(interface{ Reset() }); ok {
-			resetInterface.Reset()
+		if resettable, ok := ras.(Resettable); ok {
+			resettable.Reset()
 		}
 
 		// Add the path to the rasterizer
@@ -70,8 +70,8 @@ func RenderAllPaths(ras RasterizerInterface, sl ScanlineInterface, renderer inte
 
 		// Set the color on the renderer
 		color := colorStorage.GetColor(i)
-		if colorInterface, ok := renderer.(interface{ SetColor(color interface{}) }); ok {
-			colorInterface.SetColor(color)
+		if colorSetter, ok := renderer.(ColorSetter); ok {
+			colorSetter.SetColor(color)
 		}
 
 		// Render the scanlines
@@ -96,11 +96,11 @@ func RenderScanlinesCompound(ras CompoundRasterizerInterface, slAA ScanlineInter
 	length := maxX - minX + 2
 
 	// Reset scanlines
-	if resetInterface, ok := slAA.(interface{ Reset(minX, maxX int) }); ok {
-		resetInterface.Reset(minX, maxX)
+	if resetScanline, ok := slAA.(ResettableScanline); ok {
+		resetScanline.Reset(minX, maxX)
 	}
-	if resetInterface, ok := slBin.(interface{ Reset(minX, maxX int) }); ok {
-		resetInterface.Reset(minX, maxX)
+	if resetScanline, ok := slBin.(ResettableScanline); ok {
+		resetScanline.Reset(minX, maxX)
 	}
 
 	// Allocate buffers for compound rendering

@@ -89,19 +89,69 @@ const (
 
 // Re-export key constants for backward compatibility with examples
 const (
-	KeyEscape = types.KeyEscape
-	KeyF1     = types.KeyF1
-	KeyF2     = types.KeyF2
-	KeyF3     = types.KeyF3
-	KeyF4     = types.KeyF4
-	KeyF5     = types.KeyF5
-	KeyF6     = types.KeyF6
-	KeyF7     = types.KeyF7
-	KeyF8     = types.KeyF8
-	KeyF9     = types.KeyF9
-	KeyF10    = types.KeyF10
-	KeyF11    = types.KeyF11
-	KeyF12    = types.KeyF12
+	// ASCII set
+	KeyBackspace = types.KeyBackspace
+	KeyTab       = types.KeyTab
+	KeyClear     = types.KeyClear
+	KeyReturn    = types.KeyReturn
+	KeyPause     = types.KeyPause
+	KeyEscape    = types.KeyEscape
+	KeyDelete    = types.KeyDelete
+
+	// Keypad
+	KeyKP0        = types.KeyKP0
+	KeyKP1        = types.KeyKP1
+	KeyKP2        = types.KeyKP2
+	KeyKP3        = types.KeyKP3
+	KeyKP4        = types.KeyKP4
+	KeyKP5        = types.KeyKP5
+	KeyKP6        = types.KeyKP6
+	KeyKP7        = types.KeyKP7
+	KeyKP8        = types.KeyKP8
+	KeyKP9        = types.KeyKP9
+	KeyKPPeriod   = types.KeyKPPeriod
+	KeyKPDivide   = types.KeyKPDivide
+	KeyKPMultiply = types.KeyKPMultiply
+	KeyKPMinus    = types.KeyKPMinus
+	KeyKPPlus     = types.KeyKPPlus
+	KeyKPEnter    = types.KeyKPEnter
+	KeyKPEquals   = types.KeyKPEquals
+
+	// Arrow keys and navigation
+	KeyUp       = types.KeyUp
+	KeyDown     = types.KeyDown
+	KeyRight    = types.KeyRight
+	KeyLeft     = types.KeyLeft
+	KeyInsert   = types.KeyInsert
+	KeyHome     = types.KeyHome
+	KeyEnd      = types.KeyEnd
+	KeyPageUp   = types.KeyPageUp
+	KeyPageDown = types.KeyPageDown
+
+	// Function keys
+	KeyF1  = types.KeyF1
+	KeyF2  = types.KeyF2
+	KeyF3  = types.KeyF3
+	KeyF4  = types.KeyF4
+	KeyF5  = types.KeyF5
+	KeyF6  = types.KeyF6
+	KeyF7  = types.KeyF7
+	KeyF8  = types.KeyF8
+	KeyF9  = types.KeyF9
+	KeyF10 = types.KeyF10
+	KeyF11 = types.KeyF11
+	KeyF12 = types.KeyF12
+
+	// Modifier keys
+	KeyNumLock    = types.KeyNumLock
+	KeyCapsLock   = types.KeyCapsLock
+	KeyScrollLock = types.KeyScrollLock
+	KeyRShift     = types.KeyRShift
+	KeyLShift     = types.KeyLShift
+	KeyRCtrl      = types.KeyRCtrl
+	KeyLCtrl      = types.KeyLCtrl
+	KeyRAlt       = types.KeyRAlt
+	KeyLAlt       = types.KeyLAlt
 )
 
 // PlatformSupport provides the core platform support functionality for AGG applications.

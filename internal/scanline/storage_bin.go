@@ -83,11 +83,13 @@ func (it *EmbeddedScanlineBinIterator) Span() SpanDataBin {
 	return it.span
 }
 
-// Next advances to the next span and returns true if successful.
-func (it *EmbeddedScanlineBinIterator) Next() bool {
+// Next advances to the next span.
+// This corresponds to AGG's operator++() for the const_iterator.
+// Note: AGG doesn't return a value from operator++, it just advances the iterator.
+// The caller is responsible for checking bounds via the parent scanline's num_spans.
+func (it *EmbeddedScanlineBinIterator) Next() {
 	it.spanIdx++
 	it.span = it.storage.SpanByIndex(it.spanIdx)
-	return true // Iterator behavior matches AGG - caller checks bounds
 }
 
 // ScanlineStorageBin is a storage container for binary scanlines.
@@ -107,9 +109,11 @@ type ScanlineStorageBin struct {
 
 // NewScanlineStorageBin creates a new binary scanline storage container.
 func NewScanlineStorageBin() *ScanlineStorageBin {
-	// Use block increment size of 256-2 = 254 to match AGG default
-	spansScale := array.NewBlockScale(8)    // 256 elements per block
-	scanlineScale := array.NewBlockScale(6) // 64 elements per block
+	// Use block increment size of 256-2 = 254 to match AGG default exactly
+	// AGG uses pod_bvector<span_data, 10> which gives 1024 elements per block, but with increment of 254
+	// We need to replicate this behavior with our block vector implementation
+	spansScale := array.NewBlockScale(10)   // 1024 elements per block to match AGG's pod_bvector<span_data, 10>
+	scanlineScale := array.NewBlockScale(8) // 256 elements per block to match AGG's pod_bvector<scanline_data, 8>
 
 	storage := &ScanlineStorageBin{
 		spans:       array.NewPodBVectorWithScale[SpanDataBin](spansScale),
@@ -383,3 +387,21 @@ func (s *ScanlineStorageBin) SpanByIndex(i int) SpanDataBin {
 	}
 	return s.fakeSpan
 }
+
+// Compile-time interface compliance checks
+// Ensure ScanlineStorageBin implements the RasterizerInterface from boolean_algebra.go
+var _ interface {
+	RewindScanlines() bool
+	// SweepScanline method signature varies by implementation, but basic bounds methods must match
+	MinX() int
+	MinY() int
+	MaxX() int
+	MaxY() int
+} = (*ScanlineStorageBin)(nil)
+
+// Ensure EmbeddedScanlineBin implements core scanline interface methods
+var _ interface {
+	Y() int
+	NumSpans() int
+	Reset(int, int)
+} = (*EmbeddedScanlineBin)(nil)

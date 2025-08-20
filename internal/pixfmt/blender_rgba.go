@@ -41,6 +41,52 @@ func (bl BlenderRGBA[CS, O]) BlendPixSimple(dst []basics.Int8u, r, g, b, a basic
 	}
 }
 
+// Get extracts a pixel from buffer and converts to floating-point RGBA with coverage
+func (bl BlenderRGBA[CS, O]) Get(p []basics.Int8u, cover basics.Int8u) color.RGBA {
+	order := getColorOrder[O]()
+	if cover > 0 {
+		c := color.RGBA{
+			R: float64(p[order.R]) / 255.0,
+			G: float64(p[order.G]) / 255.0,
+			B: float64(p[order.B]) / 255.0,
+			A: float64(p[order.A]) / 255.0,
+		}
+		if cover < 255 {
+			coverScale := float64(cover) / 255.0
+			c.R *= coverScale
+			c.G *= coverScale
+			c.B *= coverScale
+			c.A *= coverScale
+		}
+		return c
+	}
+	return color.NoColor()
+}
+
+// GetRaw extracts raw RGBA component values from buffer
+func (bl BlenderRGBA[CS, O]) GetRaw(p []basics.Int8u) (r, g, b, a basics.Int8u) {
+	order := getColorOrder[O]()
+	return p[order.R], p[order.G], p[order.B], p[order.A]
+}
+
+// Set converts floating-point RGBA to buffer format and stores
+func (bl BlenderRGBA[CS, O]) Set(p []basics.Int8u, c color.RGBA) {
+	order := getColorOrder[O]()
+	p[order.R] = basics.Int8u(c.R*255 + 0.5)
+	p[order.G] = basics.Int8u(c.G*255 + 0.5)
+	p[order.B] = basics.Int8u(c.B*255 + 0.5)
+	p[order.A] = basics.Int8u(c.A*255 + 0.5)
+}
+
+// SetRaw stores raw RGBA component values to buffer
+func (bl BlenderRGBA[CS, O]) SetRaw(p []basics.Int8u, r, g, b, a basics.Int8u) {
+	order := getColorOrder[O]()
+	p[order.R] = r
+	p[order.G] = g
+	p[order.B] = b
+	p[order.A] = a
+}
+
 // BlenderRGBAPre implements premultiplied RGBA blending (premultiplied source into premultiplied buffer)
 type BlenderRGBAPre[CS any, O any] struct{}
 
@@ -65,6 +111,59 @@ func (bl BlenderRGBAPre[CS, O]) BlendPixSimple(dst []basics.Int8u, r, g, b, a ba
 	dst[order.G] = color.RGBA8Prelerp(dst[order.G], g, a)
 	dst[order.B] = color.RGBA8Prelerp(dst[order.B], b, a)
 	dst[order.A] = color.RGBA8Prelerp(dst[order.A], a, a)
+}
+
+// Get extracts a premultiplied pixel from buffer and converts to floating-point RGBA
+func (bl BlenderRGBAPre[CS, O]) Get(p []basics.Int8u, cover basics.Int8u) color.RGBA {
+	order := getColorOrder[O]()
+	if cover > 0 {
+		c := color.RGBA{
+			R: float64(p[order.R]) / 255.0,
+			G: float64(p[order.G]) / 255.0,
+			B: float64(p[order.B]) / 255.0,
+			A: float64(p[order.A]) / 255.0,
+		}
+		// Demultiply the premultiplied values
+		if c.A > 0 {
+			c.Demultiply()
+		}
+		if cover < 255 {
+			coverScale := float64(cover) / 255.0
+			c.R *= coverScale
+			c.G *= coverScale
+			c.B *= coverScale
+			c.A *= coverScale
+		}
+		return c
+	}
+	return color.NoColor()
+}
+
+// GetRaw extracts raw premultiplied RGBA component values from buffer
+func (bl BlenderRGBAPre[CS, O]) GetRaw(p []basics.Int8u) (r, g, b, a basics.Int8u) {
+	order := getColorOrder[O]()
+	return p[order.R], p[order.G], p[order.B], p[order.A]
+}
+
+// Set converts floating-point RGBA to premultiplied buffer format and stores
+func (bl BlenderRGBAPre[CS, O]) Set(p []basics.Int8u, c color.RGBA) {
+	order := getColorOrder[O]()
+	// Premultiply the color before storing
+	premultC := c
+	premultC.Premultiply()
+	p[order.R] = basics.Int8u(premultC.R*255 + 0.5)
+	p[order.G] = basics.Int8u(premultC.G*255 + 0.5)
+	p[order.B] = basics.Int8u(premultC.B*255 + 0.5)
+	p[order.A] = basics.Int8u(premultC.A*255 + 0.5)
+}
+
+// SetRaw stores raw premultiplied RGBA component values to buffer
+func (bl BlenderRGBAPre[CS, O]) SetRaw(p []basics.Int8u, r, g, b, a basics.Int8u) {
+	order := getColorOrder[O]()
+	p[order.R] = r
+	p[order.G] = g
+	p[order.B] = b
+	p[order.A] = a
 }
 
 // BlenderRGBAPlain implements plain RGBA blending (non-premultiplied source into non-premultiplied buffer)
@@ -98,6 +197,52 @@ func (bl BlenderRGBAPlain[CS, O]) BlendPix(dst []basics.Int8u, r, g, b, a, cover
 			dst[order.B] = inv
 		}
 	}
+}
+
+// Get extracts a plain (non-premultiplied) pixel from buffer and converts to floating-point RGBA
+func (bl BlenderRGBAPlain[CS, O]) Get(p []basics.Int8u, cover basics.Int8u) color.RGBA {
+	order := getColorOrder[O]()
+	if cover > 0 {
+		c := color.RGBA{
+			R: float64(p[order.R]) / 255.0,
+			G: float64(p[order.G]) / 255.0,
+			B: float64(p[order.B]) / 255.0,
+			A: float64(p[order.A]) / 255.0,
+		}
+		if cover < 255 {
+			coverScale := float64(cover) / 255.0
+			c.R *= coverScale
+			c.G *= coverScale
+			c.B *= coverScale
+			c.A *= coverScale
+		}
+		return c
+	}
+	return color.NoColor()
+}
+
+// GetRaw extracts raw plain RGBA component values from buffer
+func (bl BlenderRGBAPlain[CS, O]) GetRaw(p []basics.Int8u) (r, g, b, a basics.Int8u) {
+	order := getColorOrder[O]()
+	return p[order.R], p[order.G], p[order.B], p[order.A]
+}
+
+// Set converts floating-point RGBA to plain buffer format and stores
+func (bl BlenderRGBAPlain[CS, O]) Set(p []basics.Int8u, c color.RGBA) {
+	order := getColorOrder[O]()
+	p[order.R] = basics.Int8u(c.R*255 + 0.5)
+	p[order.G] = basics.Int8u(c.G*255 + 0.5)
+	p[order.B] = basics.Int8u(c.B*255 + 0.5)
+	p[order.A] = basics.Int8u(c.A*255 + 0.5)
+}
+
+// SetRaw stores raw plain RGBA component values to buffer
+func (bl BlenderRGBAPlain[CS, O]) SetRaw(p []basics.Int8u, r, g, b, a basics.Int8u) {
+	order := getColorOrder[O]()
+	p[order.R] = r
+	p[order.G] = g
+	p[order.B] = b
+	p[order.A] = a
 }
 
 // Helper function to get color order based on type parameter

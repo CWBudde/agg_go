@@ -384,7 +384,7 @@ func NewPixFmtSBGR24(rbuf *buffer.RenderingBufferU8) *PixFmtSBGR24 {
 	return NewPixFmtAlphaBlendRGB[BlenderBGR24SRGB, color.SRGB, color.BGR24Order](rbuf, BlenderBGR24SRGB{})
 }
 
-//==============================================================================
+// ==============================================================================
 // RGB48 (16-bit per channel) Pixel Formats
 //==============================================================================
 
@@ -515,7 +515,7 @@ func NewPixFmtBGR48SRGB(rbuf *buffer.RenderingBufferU16) *PixFmtBGR48SRGB {
 	return NewPixFmtAlphaBlendRGB48[BlenderBGR48SRGB, color.SRGB, color.BGR24Order](rbuf, BlenderBGR48SRGB{})
 }
 
-//==============================================================================
+// ==============================================================================
 // RGB96 (32-bit float per channel) Pixel Formats
 //==============================================================================
 
@@ -646,7 +646,7 @@ func NewPixFmtBGR96SRGB(rbuf *buffer.RenderingBufferF32) *PixFmtBGR96SRGB {
 	return NewPixFmtAlphaBlendRGB96[BlenderBGR96SRGB, color.SRGB, color.BGR24Order](rbuf, BlenderBGR96SRGB{})
 }
 
-//==============================================================================
+// ==============================================================================
 // RGBX32/XRGB32 (RGB with padding byte) Pixel Formats
 //==============================================================================
 
@@ -854,7 +854,7 @@ func NewPixFmtSXBGR32(rbuf *buffer.RenderingBufferU8) *PixFmtSXBGR32 {
 	return NewPixFmtAlphaBlendRGBX32[BlenderBGR24SRGB, color.SRGB, XBGR32Order](rbuf, BlenderBGR24SRGB{})
 }
 
-//==============================================================================
+// ==============================================================================
 // Premultiplied RGB Pixel Format Types
 //==============================================================================
 

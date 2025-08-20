@@ -67,12 +67,12 @@ func (mc *MockClip) MoveTo(x, y float64) {
 	mc.moveToX, mc.moveToY = x, y
 }
 
-func (mc *MockClip) LineTo(x, y float64) {
+func (mc *MockClip) LineTo(outline RasterizerInterface, x, y float64) {
 	mc.lineToX, mc.lineToY = x, y
 }
 
 func TestNewRasterizerScanlineAA(t *testing.T) {
-	r := NewRasterizerScanlineAA[*MockClip](1024)
+	r := NewRasterizerScanlineAA[*MockClip, RasConvInt](1024)
 
 	if r == nil {
 		t.Fatal("Expected non-nil rasterizer")
@@ -99,7 +99,7 @@ func TestNewRasterizerScanlineAA(t *testing.T) {
 }
 
 func TestRasterizerScanlineAA_Reset(t *testing.T) {
-	r := NewRasterizerScanlineAA[*MockClip](1024)
+	r := NewRasterizerScanlineAA[*MockClip, RasConvInt](1024)
 	r.status = StatusLineTo
 
 	r.Reset()
@@ -110,7 +110,7 @@ func TestRasterizerScanlineAA_Reset(t *testing.T) {
 }
 
 func TestRasterizerScanlineAA_FillingRule(t *testing.T) {
-	r := NewRasterizerScanlineAA[*MockClip](1024)
+	r := NewRasterizerScanlineAA[*MockClip, RasConvInt](1024)
 
 	r.FillingRule(basics.FillEvenOdd)
 
@@ -120,7 +120,7 @@ func TestRasterizerScanlineAA_FillingRule(t *testing.T) {
 }
 
 func TestRasterizerScanlineAA_AutoClose(t *testing.T) {
-	r := NewRasterizerScanlineAA[*MockClip](1024)
+	r := NewRasterizerScanlineAA[*MockClip, RasConvInt](1024)
 
 	r.AutoClose(false)
 
@@ -130,7 +130,7 @@ func TestRasterizerScanlineAA_AutoClose(t *testing.T) {
 }
 
 func TestRasterizerScanlineAA_SetGamma(t *testing.T) {
-	r := NewRasterizerScanlineAA[*MockClip](1024)
+	r := NewRasterizerScanlineAA[*MockClip, RasConvInt](1024)
 
 	// Set a simple gamma function (square root)
 	r.SetGamma(func(x float64) float64 {
@@ -150,7 +150,7 @@ func TestRasterizerScanlineAA_SetGamma(t *testing.T) {
 }
 
 func TestRasterizerScanlineAA_ApplyGamma(t *testing.T) {
-	r := NewRasterizerScanlineAA[*MockClip](1024)
+	r := NewRasterizerScanlineAA[*MockClip, RasConvInt](1024)
 
 	// With linear gamma, ApplyGamma should return the same value
 	result := r.ApplyGamma(128)
@@ -168,7 +168,7 @@ func TestRasterizerScanlineAA_ApplyGamma(t *testing.T) {
 }
 
 func TestRasterizerScanlineAA_MoveTo(t *testing.T) {
-	r := NewRasterizerScanlineAA[*MockClip](1024)
+	r := NewRasterizerScanlineAA[*MockClip, RasConvInt](1024)
 	clip := &MockClip{}
 	r.clipper = clip
 
@@ -188,7 +188,7 @@ func TestRasterizerScanlineAA_MoveTo(t *testing.T) {
 }
 
 func TestRasterizerScanlineAA_LineTo(t *testing.T) {
-	r := NewRasterizerScanlineAA[*MockClip](1024)
+	r := NewRasterizerScanlineAA[*MockClip, RasConvInt](1024)
 	clip := &MockClip{}
 	r.clipper = clip
 
@@ -204,7 +204,7 @@ func TestRasterizerScanlineAA_LineTo(t *testing.T) {
 }
 
 func TestRasterizerScanlineAA_MoveToD(t *testing.T) {
-	r := NewRasterizerScanlineAA[*MockClip](1024)
+	r := NewRasterizerScanlineAA[*MockClip, RasConvInt](1024)
 	clip := &MockClip{}
 	r.clipper = clip
 
@@ -227,7 +227,7 @@ func TestRasterizerScanlineAA_MoveToD(t *testing.T) {
 }
 
 func TestRasterizerScanlineAA_CalculateAlpha(t *testing.T) {
-	r := NewRasterizerScanlineAA[*MockClip](1024)
+	r := NewRasterizerScanlineAA[*MockClip, RasConvInt](1024)
 
 	// Test with filling rule FillNonZero
 	r.FillingRule(basics.FillNonZero)
@@ -251,7 +251,7 @@ func TestRasterizerScanlineAA_CalculateAlpha(t *testing.T) {
 }
 
 func TestRasterizerScanlineAA_ClipBox(t *testing.T) {
-	r := NewRasterizerScanlineAA[*MockClip](1024)
+	r := NewRasterizerScanlineAA[*MockClip, RasConvInt](1024)
 	clip := &MockClip{}
 	r.clipper = clip
 
@@ -268,7 +268,7 @@ func TestRasterizerScanlineAA_ClipBox(t *testing.T) {
 }
 
 func TestRasterizerScanlineAA_ResetClipping(t *testing.T) {
-	r := NewRasterizerScanlineAA[*MockClip](1024)
+	r := NewRasterizerScanlineAA[*MockClip, RasConvInt](1024)
 	clip := &MockClip{}
 	r.clipper = clip
 
@@ -283,7 +283,7 @@ func TestRasterizerScanlineAA_ResetClipping(t *testing.T) {
 }
 
 func TestRasterizerScanlineAA_AddVertex(t *testing.T) {
-	r := NewRasterizerScanlineAA[*MockClip](1024)
+	r := NewRasterizerScanlineAA[*MockClip, RasConvInt](1024)
 	clip := &MockClip{}
 	r.clipper = clip
 

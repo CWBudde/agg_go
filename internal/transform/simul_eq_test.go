@@ -233,6 +233,205 @@ func BenchmarkSimulEq3x3(b *testing.B) {
 	}
 }
 
+func TestSimulEq_MultipleRightSide(t *testing.T) {
+	// Test system with 2 right-hand sides
+	// 2x + y = 3, 5
+	// x + 3y = 4, 7
+	// Solutions: (1,1) and (1.6,1.8)
+	left := [][]float64{
+		{2.0, 1.0},
+		{1.0, 3.0},
+	}
+	right := [][]float64{
+		{3.0, 5.0},
+		{4.0, 7.0},
+	}
+	result := make([][]float64, 2)
+	for i := range result {
+		result[i] = make([]float64, 2)
+	}
+
+	success := SimulEq(left, right, result)
+
+	if !success {
+		t.Fatal("SimulEq failed to solve system with multiple right sides")
+	}
+
+	// Check first solution (x=1, y=1)
+	expected1 := []float64{1.0, 1.0}
+	tolerance := 1e-10
+	for i := range result {
+		if math.Abs(result[i][0]-expected1[i]) > tolerance {
+			t.Errorf("First solution result[%d] = %f, want %f", i, result[i][0], expected1[i])
+		}
+	}
+
+	// Check second solution (x=1.6, y=1.8)
+	expected2 := []float64{1.6, 1.8}
+	for i := range result {
+		if math.Abs(result[i][1]-expected2[i]) > tolerance {
+			t.Errorf("Second solution result[%d] = %f, want %f", i, result[i][1], expected2[i])
+		}
+	}
+
+	// Verify both solutions by substitution
+	for col := 0; col < 2; col++ {
+		for i := 0; i < 2; i++ {
+			computed := 0.0
+			for j := 0; j < 2; j++ {
+				computed += left[i][j] * result[j][col]
+			}
+			if math.Abs(computed-right[i][col]) > tolerance {
+				t.Errorf("Verification failed for equation %d, column %d: computed %f, expected %f",
+					i, col, computed, right[i][col])
+			}
+		}
+	}
+}
+
+func TestSimulEq_4x4System(t *testing.T) {
+	// Test larger system: 4x4 matrix
+	// Using a well-conditioned matrix with known solution
+	left := [][]float64{
+		{4.0, 1.0, 2.0, 1.0},
+		{1.0, 3.0, 1.0, 2.0},
+		{2.0, 1.0, 4.0, 1.0},
+		{1.0, 2.0, 1.0, 3.0},
+	}
+	right := [][]float64{
+		{13.0},
+		{11.0},
+		{12.0},
+		{10.0},
+	}
+	result := make([][]float64, 4)
+	for i := range result {
+		result[i] = make([]float64, 1)
+	}
+
+	success := SimulEq(left, right, result)
+
+	if !success {
+		t.Fatal("SimulEq failed to solve 4x4 system")
+	}
+
+	// Verify solution by substitution
+	tolerance := 1e-12
+	for i := 0; i < 4; i++ {
+		computed := 0.0
+		for j := 0; j < 4; j++ {
+			computed += left[i][j] * result[j][0]
+		}
+		if math.Abs(computed-right[i][0]) > tolerance {
+			t.Errorf("Verification failed for equation %d: computed %f, expected %f",
+				i, computed, right[i][0])
+		}
+	}
+}
+
+func TestSimulEq_5x5System(t *testing.T) {
+	// Test even larger system: 5x5 matrix
+	left := [][]float64{
+		{5.0, 1.0, 1.0, 1.0, 1.0},
+		{1.0, 4.0, 1.0, 1.0, 1.0},
+		{1.0, 1.0, 3.0, 1.0, 1.0},
+		{1.0, 1.0, 1.0, 2.0, 1.0},
+		{1.0, 1.0, 1.0, 1.0, 1.0},
+	}
+	right := [][]float64{
+		{10.0},
+		{9.0},
+		{8.0},
+		{7.0},
+		{6.0},
+	}
+	result := make([][]float64, 5)
+	for i := range result {
+		result[i] = make([]float64, 1)
+	}
+
+	success := SimulEq(left, right, result)
+
+	if !success {
+		t.Fatal("SimulEq failed to solve 5x5 system")
+	}
+
+	// Verify solution by substitution
+	tolerance := 1e-11
+	for i := 0; i < 5; i++ {
+		computed := 0.0
+		for j := 0; j < 5; j++ {
+			computed += left[i][j] * result[j][0]
+		}
+		if math.Abs(computed-right[i][0]) > tolerance {
+			t.Errorf("Verification failed for equation %d: computed %f, expected %f",
+				i, computed, right[i][0])
+		}
+	}
+}
+
+func TestSimulEq_NearSingular(t *testing.T) {
+	// Test with nearly singular matrix (small but non-zero determinant)
+	epsilon := 1e-10
+	left := [][]float64{
+		{1.0, 1.0},
+		{1.0, 1.0 + epsilon},
+	}
+	right := [][]float64{
+		{2.0},
+		{2.0 + epsilon},
+	}
+	result := make([][]float64, 2)
+	for i := range result {
+		result[i] = make([]float64, 1)
+	}
+
+	success := SimulEq(left, right, result)
+
+	if !success {
+		t.Fatal("SimulEq failed to solve near-singular system")
+	}
+
+	// The solution should be approximately (1, 1)
+	tolerance := 1e-8 // More lenient due to numerical precision
+	if math.Abs(result[0][0]-1.0) > tolerance || math.Abs(result[1][0]-1.0) > tolerance {
+		t.Errorf("Near-singular solution: got (%f, %f), expected approximately (1.0, 1.0)",
+			result[0][0], result[1][0])
+	}
+
+	// Verify by substitution
+	for i := 0; i < 2; i++ {
+		computed := left[i][0]*result[0][0] + left[i][1]*result[1][0]
+		if math.Abs(computed-right[i][0]) > tolerance {
+			t.Errorf("Near-singular verification failed for equation %d: computed %f, expected %f",
+				i, computed, right[i][0])
+		}
+	}
+}
+
+func TestSimulEq_TrueSingular(t *testing.T) {
+	// Test with truly singular matrix (zero determinant)
+	left := [][]float64{
+		{1.0, 2.0},
+		{2.0, 4.0}, // Second row is 2x first row
+	}
+	right := [][]float64{
+		{3.0},
+		{6.0}, // Consistent with singularity
+	}
+	result := make([][]float64, 2)
+	for i := range result {
+		result[i] = make([]float64, 1)
+	}
+
+	success := SimulEq(left, right, result)
+
+	// Should fail for singular matrix
+	if success {
+		t.Error("SimulEq should have failed for singular matrix")
+	}
+}
+
 func BenchmarkSolve4x2(b *testing.B) {
 	left := [4][4]float64{
 		{1.0, 0.0, 1.0, 0.0},

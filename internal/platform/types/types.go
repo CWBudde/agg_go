@@ -3,6 +3,8 @@
 // a common location for type definitions that multiple packages need.
 package types
 
+import "fmt"
+
 // WindowFlags represents window configuration flags.
 type WindowFlags uint32
 
@@ -374,9 +376,9 @@ func (k KeyCode) String() string {
 	case KeyKPMultiply:
 		return "KPMultiply"
 	case KeyKPMinus:
-		return "KPMinus"
+		return "KP-"
 	case KeyKPPlus:
-		return "KPPlus"
+		return "KP+"
 	case KeyKPEnter:
 		return "KPEnter"
 	case KeyKPEquals:
@@ -461,10 +463,35 @@ func (k KeyCode) String() string {
 		return "Compose"
 	default:
 		if k >= 32 && k < 127 {
-			return string(rune(k))
+			return fmt.Sprintf("'%c'", k)
 		}
-		return "Unknown"
+		return fmt.Sprintf("Unknown(%d)", k)
 	}
+}
+
+// IsASCII returns true if the key code represents a printable ASCII character.
+func (k KeyCode) IsASCII() bool {
+	return k >= 32 && k < 127
+}
+
+// IsFunctionKey returns true if the key code is a function key (F1-F12).
+func (k KeyCode) IsFunctionKey() bool {
+	return k >= KeyF1 && k <= KeyF12
+}
+
+// IsArrowKey returns true if the key code is an arrow key (Up, Down, Left, Right).
+func (k KeyCode) IsArrowKey() bool {
+	return k == KeyUp || k == KeyDown || k == KeyLeft || k == KeyRight
+}
+
+// IsKeypadKey returns true if the key code is a keypad key.
+func (k KeyCode) IsKeypadKey() bool {
+	return k >= KeyKP0 && k <= KeyKPEquals
+}
+
+// IsNavigationKey returns true if the key code is a navigation key (Home, End, PageUp, PageDown, Insert, or an arrow key).
+func (k KeyCode) IsNavigationKey() bool {
+	return k.IsArrowKey() || k == KeyInsert || k == KeyHome || k == KeyEnd || k == KeyPageUp || k == KeyPageDown
 }
 
 // EventCallback defines the interface for handling platform events.

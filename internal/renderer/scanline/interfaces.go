@@ -59,9 +59,6 @@ type RasterizerInterface interface {
 // BaseRendererInterface defines the interface for base renderers.
 // This corresponds to the BaseRenderer template parameter in AGG's functions.
 type BaseRendererInterface interface {
-	// Color type - we use interface{} for flexibility
-	// In a real implementation, this might be constrained to specific color types
-
 	// BlendSolidHspan blends a horizontal span with solid color and coverage array
 	BlendSolidHspan(x, y, len int, color interface{}, covers []basics.Int8u)
 
@@ -135,3 +132,39 @@ type StyleHandlerInterface interface {
 	// GenerateSpan generates colors for a span with the given style
 	GenerateSpan(colors []interface{}, x, y, len, style int)
 }
+
+// ResettableScanline defines the interface for scanlines that can be reset.
+// This interface is implemented by scanline types that support resetting
+// their bounds and internal state for reuse across multiple rendering passes.
+type ResettableScanline interface {
+	ScanlineInterface
+
+	// Reset resets the scanline for the given horizontal bounds.
+	// This prepares the scanline for a new rendering pass within the specified X range.
+	Reset(minX, maxX int)
+}
+
+// Resettable defines the interface for objects that can be reset to their initial state.
+// This interface is used for objects that support resetting without parameters.
+type Resettable interface {
+	// Reset resets the object to its initial state
+	Reset()
+}
+
+// ColorSetter defines the interface for objects that can have their color set.
+// This interface is used by renderers and other objects that need to maintain a current color.
+type ColorSetter interface {
+	// SetColor sets the current color for the object
+	SetColor(color interface{})
+}
+
+// Compile-time interface checks
+// These ensure that expected types implement the required interfaces at compile time.
+// If a type doesn't implement an interface, the compilation will fail with a clear error.
+
+// Ensure common scanline types implement ResettableScanline
+// These checks should be added in the scanline package implementations to avoid import cycles:
+// var _ renderer.ResettableScanline = (*ScanlineU8)(nil)
+// var _ renderer.ResettableScanline = (*ScanlineP8)(nil)
+// var _ renderer.ResettableScanline = (*ScanlineBin)(nil)
+// var _ renderer.ResettableScanline = (*Scanline32U8)(nil)

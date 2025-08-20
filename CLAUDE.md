@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Go port of the Anti-Grain Geometry (AGG) 2.6 C++ library - a high-quality 2D graphics rendering library with anti-aliasing capabilities. The project is in early development with foundational components implemented.
+This is a Go port of the Anti-Grain Geometry (AGG) 2.6 C++ library - a high-quality 2D graphics rendering library with anti-aliasing capabilities. The project is in intermediate development most internal parts are implemented. There are only slight inconsistencies and bugs, which needs fixing. The examples are yet to be fully ported and tested. The public API is still being finalized and a redesign is planned.
 
 ## Development Commands
 
@@ -16,7 +16,7 @@ just --list
 
 # Essential development workflow
 just check          # Run fmt, vet, lint, tidy, and tests
-just quick           # Fast feedback: fmt + vet only
+just quick           # Fast feedback: fmt + vet only -> call often!
 just build           # Build library and examples
 just test            # Run all tests (unit + integration)
 
@@ -40,6 +40,8 @@ just stats           # Show project statistics
 just todo            # Find TODO/FIXME comments
 ```
 
+Use the MCP `mcp__codanna*` commands for code navigation and manipulation for Go, wherever this comes handy.
+
 **Common Workflows:**
 
 - Development: `just quick && just test-unit` for fast feedback
@@ -49,13 +51,15 @@ just todo            # Find TODO/FIXME comments
 
 ## Architecture & Key Concepts
 
-### Public API Design
+### Public API Design (yet to be finalized or redesigned)
 
-- **Clean Interface**: Only `agg.go` and `types.go` are exposed to users
+- **Clean Interface**: Only `agg2d.go` and `types.go` (and other files on root) are exposed to users
 - **Hidden Implementation**: All complexity lives in `internal/` packages
 - **User-Focused**: Simple API like `ctx := agg.NewContext(800, 600); ctx.SetColor(agg.Red); ctx.DrawCircle(x, y, r)`
 
 ### C++ to Go Translation Strategy
+
+The original code can be found in ../agg-2.6 and the source code in particular is located at ../agg-2.6/agg-src/. If possible always refer to the original C++ implementation for guidance. If not otherwise denoted below, try to be as close as possible to the original source code.
 
 - **Templates → Generics**: C++ template classes become Go generic types (e.g., `Point[T]`, `Rect[T]`)
 - **Manual Memory → GC**: Replaces C++ new/delete with Go's garbage collector
@@ -70,6 +74,51 @@ just todo            # Find TODO/FIXME comments
 4. **Rasterization** (`internal/rasterizer/`: vector → coverage data)
 5. **Scanline Generation** (`internal/scanline/`: horizontal strips)
 6. **Pixel Rendering** (`internal/renderer/` + `internal/pixfmt/`: final output)
+
+## Repository Structure
+
+```
+agg_go/
+├── agg2d*.go              # Public API files (user-facing interface)
+├── types.go, context.go   # Core types and context definitions
+├── internal/              # Implementation packages (hidden from users)
+│   ├── array/            # Dynamic arrays and containers
+│   ├── basics/           # Math, clipping, fundamental operations
+│   ├── buffer/           # Rendering buffer management
+│   ├── color/            # Color space handling and conversions
+│   ├── conv/             # Path converters (stroke, dash, contour, etc.)
+│   ├── ctrl/             # UI controls for examples
+│   ├── curves/           # Curve mathematics (B-splines, etc.)
+│   ├── font/             # Font loading and management
+│   ├── path/             # Path storage and manipulation
+│   ├── pixfmt/           # Pixel format implementations
+│   ├── rasterizer/       # Vector to pixel conversion
+│   ├── renderer/         # Final pixel rendering
+│   ├── scanline/         # Scanline generation and storage
+│   ├── span/             # Span generation for gradients/patterns
+│   ├── transform/        # Affine transformations
+│   ├── vcgen/            # Vertex generators
+│   └── ???/              # far more like vpgen, primitives, gsv, gpc, and such (not everything is still in use though)
+├── examples/             # Example applications
+│   ├── core/basic/       # Simple demos
+│   ├── core/intermediate/ # Advanced features
+│   └── platform/         # Platform-specific backends
+└── tests/                # Test suites
+```
+
+### File Naming Scheme
+
+The Go port follows a systematic naming convention derived from the original C++ AGG library:
+
+- **C++ Header → Go Package/File**: `rasterizer_scanline_aa.h` becomes `internal/rasterizer/scanline_aa.go`
+- **Package Name Provides Context**: Since Go packages provide namespace, files omit redundant prefixes
+  - `internal/conv/stroke.go` not `conv_stroke.go` (package already indicates conversion)
+  - `internal/renderer/base.go` not `renderer_base.go` (package already indicates renderer)
+  - `internal/vpgen/clip_polygon.go` not `vpgen_clip_polygon.go`
+- **Template Suffixes**: C++ templates like `pixfmt_rgba32` become `internal/pixfmt/pixfmt_rgba.go` with generics
+- **Public API**: Root-level files like `agg2d.go` provide the clean user interface, hiding internal complexity
+
+This naming scheme maintains traceability to the original C++ source while following Go conventions for package organization and file naming, avoiding redundant prefixes within package directories.
 
 ## Development Patterns
 
@@ -104,18 +153,3 @@ The codebase follows the detailed porting plan in TASKS.md which lists every C++
 ## Test Failures and Implementation Issues
 
 As of the latest test run, several issues remain that require further investigation and fixes. For a comprehensive catalog of all failing tests, implementation deviations, and fix priorities, see **TEST_TASKS.md**.
-
-**Summary:**
-
-- **9 test failures**: Including algorithm failures (premultiplied alpha blending, rasterizer clipping), crashes (VCGen bounds violations), and build issues
-- **5 implementation deviations**: Areas where the Go port differs from C++ AGG behavior
-- **Missing dependencies**: Many AGG components are not yet implemented (see TASKS.md)
-
-**Key areas needing attention:**
-
-- `internal/vcgen/` - HIGH PRIORITY: Vertex sequence access panics need immediate fixes
-- `internal/pixfmt/` - HIGH PRIORITY: Premultiplied alpha blending mathematics corrections
-- `internal/rasterizer/` - MEDIUM-HIGH: Boundary detection for scanline clipping
-- Platform backends - MEDIUM: Optional SDL2/X11 dependency issues
-
-For detailed analysis, reproduction steps, and fix recommendations for each issue, consult **TEST_TASKS.md**.

@@ -5,6 +5,7 @@ package transform
 import (
 	"agg_go/internal/array"
 	"agg_go/internal/basics"
+	"math"
 )
 
 // Status represents the state of path construction.
@@ -282,4 +283,92 @@ func (t *TransSinglePath) Transform(x, y *float64) {
 	// Apply perpendicular offset
 	*x = x2 - *y*dy/dd
 	*y = y2 + *y*dx/dd
+}
+
+// GetPositionAt returns the x,y position at a specific distance along the path.
+func (t *TransSinglePath) GetPositionAt(distance float64) (x, y float64) {
+	x, y = distance, 0.0
+	t.Transform(&x, &y)
+	return x, y
+}
+
+// GetTangentAt returns the normalized tangent vector at a specific distance along the path.
+func (t *TransSinglePath) GetTangentAt(distance float64) (dx, dy float64) {
+	if t.Status != StatusReady || t.SrcVertices.Size() < 2 {
+		return 0.0, 0.0
+	}
+
+	// Scale distance if base length is set
+	if t.baseLength > 1e-10 {
+		pathLength := t.SrcVertices.At(t.SrcVertices.Size() - 1).Dist
+		distance *= pathLength / t.baseLength
+	}
+
+	var i, j int
+	var dd float64
+
+	switch {
+	case distance < 0.0:
+		// Extrapolation on the left
+		v0 := t.SrcVertices.At(0)
+		v1 := t.SrcVertices.At(1)
+		dx = v1.X - v0.X
+		dy = v1.Y - v0.Y
+		dd = v1.Dist - v0.Dist
+	case distance > t.SrcVertices.At(t.SrcVertices.Size()-1).Dist:
+		// Extrapolation on the right
+		lastIdx := t.SrcVertices.Size() - 1
+		secondLastIdx := t.SrcVertices.Size() - 2
+		vLast := t.SrcVertices.At(lastIdx)
+		vSecondLast := t.SrcVertices.At(secondLastIdx)
+		dx = vLast.X - vSecondLast.X
+		dy = vLast.Y - vSecondLast.Y
+		dd = vLast.Dist - vSecondLast.Dist
+	default:
+		// Interpolation - find the segment
+		if t.preserveXScale {
+			i = 0
+			j = t.SrcVertices.Size() - 1
+			for (j - i) > 1 {
+				k := (i + j) >> 1
+				if distance < t.SrcVertices.At(k).Dist {
+					j = k
+				} else {
+					i = k
+				}
+			}
+		} else {
+			i = int(distance * t.kindex)
+			j = i + 1
+		}
+
+		vi := t.SrcVertices.At(i)
+		vj := t.SrcVertices.At(j)
+		dx = vj.X - vi.X
+		dy = vj.Y - vi.Y
+		dd = vj.Dist - vi.Dist
+	}
+
+	// Normalize the tangent vector
+	if dd > 0 {
+		length := basics.CalcDistance(0, 0, dx, dy)
+		if length > 0 {
+			dx /= length
+			dy /= length
+		}
+	}
+	return dx, dy
+}
+
+// GetNormalAt returns the normalized normal vector at a specific distance along the path.
+func (t *TransSinglePath) GetNormalAt(distance float64) (nx, ny float64) {
+	dx, dy := t.GetTangentAt(distance)
+	// Normal is perpendicular to tangent (rotated 90 degrees counter-clockwise)
+	return -dy, dx
+}
+
+// GetAngleAt returns the angle in radians at a specific distance along the path.
+func (t *TransSinglePath) GetAngleAt(distance float64) float64 {
+	dx, dy := t.GetTangentAt(distance)
+	return math.Atan2(dy, dx)
 }

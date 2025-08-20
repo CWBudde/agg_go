@@ -27,6 +27,39 @@ func TestNewTransAffine(t *testing.T) {
 	}
 }
 
+func TestToArray(t *testing.T) {
+	m := NewTransAffineFromValues(2.0, 0.5, 1.0, 3.0, 10.0, 20.0)
+	array := m.ToArray()
+	expected := [6]float64{2.0, 0.5, 1.0, 3.0, 10.0, 20.0}
+
+	for i, v := range expected {
+		if math.Abs(array[i]-v) > testEpsilon {
+			t.Errorf("ToArray()[%d]: expected %f, got %f", i, v, array[i])
+		}
+	}
+}
+
+func TestNewTransAffineFromTransformer(t *testing.T) {
+	// Create an original TransAffine with known values
+	original := NewTransAffineFromValues(2.0, 0.5, 1.0, 3.0, 10.0, 20.0)
+
+	// Extract it using the new function
+	extracted := NewTransAffineFromTransformer(original)
+
+	// Verify the matrices are equal
+	if !extracted.IsEqual(original, testEpsilon) {
+		t.Errorf("NewTransAffineFromTransformer should preserve transformation:\nOriginal: %+v\nExtracted: %+v", original, extracted)
+	}
+
+	// Test with identity
+	identity := NewTransAffine()
+	extractedIdentity := NewTransAffineFromTransformer(identity)
+
+	if !extractedIdentity.IsIdentity(testEpsilon) {
+		t.Errorf("NewTransAffineFromTransformer should preserve identity transformation")
+	}
+}
+
 func TestNewTransAffineFromValues(t *testing.T) {
 	m := NewTransAffineFromValues(2.0, 0.5, 1.0, 3.0, 10.0, 20.0)
 
@@ -657,5 +690,90 @@ func BenchmarkInvert(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		result := m.Copy()
 		result.Invert()
+	}
+}
+
+// Test C++ compatible methods
+func TestTranslationCppCompat(t *testing.T) {
+	tx, ty := 10.0, 20.0
+	m := NewTransAffineTranslation(tx, ty)
+
+	var extractedTx, extractedTy float64
+	m.Translation(&extractedTx, &extractedTy)
+
+	if math.Abs(extractedTx-tx) > testEpsilon || math.Abs(extractedTy-ty) > testEpsilon {
+		t.Error("Translation C++ compatible method failed")
+	}
+
+	// Test it matches the Go-idiomatic method
+	goTx, goTy := m.GetTranslation()
+	if math.Abs(extractedTx-goTx) > testEpsilon || math.Abs(extractedTy-goTy) > testEpsilon {
+		t.Error("Translation C++ method should match Go method")
+	}
+}
+
+func TestScalingCppCompat(t *testing.T) {
+	sx, sy := 2.0, 3.0
+	m := NewTransAffineScalingXY(sx, sy)
+
+	var extractedSx, extractedSy float64
+	m.Scaling(&extractedSx, &extractedSy)
+
+	if math.Abs(extractedSx-sx) > testEpsilon || math.Abs(extractedSy-sy) > testEpsilon {
+		t.Error("Scaling C++ compatible method failed")
+	}
+
+	// Test it matches the Go-idiomatic method
+	goSx, goSy := m.GetScaling()
+	if math.Abs(extractedSx-goSx) > testEpsilon || math.Abs(extractedSy-goSy) > testEpsilon {
+		t.Error("Scaling C++ method should match Go method")
+	}
+}
+
+func TestScalingAbsCppCompat(t *testing.T) {
+	// Test with shear to verify it calculates magnitude correctly
+	m := NewTransAffineFromValues(3.0, 0.0, 4.0, 0.0, 0.0, 0.0)
+
+	var sx, sy float64
+	m.ScalingAbs(&sx, &sy)
+
+	expectedSx := math.Sqrt(3.0*3.0 + 4.0*4.0) // 5.0
+	expectedSy := 0.0
+
+	if math.Abs(sx-expectedSx) > testEpsilon || math.Abs(sy-expectedSy) > testEpsilon {
+		t.Errorf("ScalingAbs C++ compatible method failed: got (%f, %f), expected (%f, %f)", sx, sy, expectedSx, expectedSy)
+	}
+
+	// Test it matches the Go-idiomatic method
+	goSx, goSy := m.GetScalingAbs()
+	if math.Abs(sx-goSx) > testEpsilon || math.Abs(sy-goSy) > testEpsilon {
+		t.Error("ScalingAbs C++ method should match Go method")
+	}
+}
+
+func TestAverageScaleCppCompat(t *testing.T) {
+	m := NewTransAffineScalingXY(2.0, 3.0)
+
+	cppScale := m.AverageScale()
+	goScale := m.GetScale()
+
+	if math.Abs(cppScale-goScale) > testEpsilon {
+		t.Error("AverageScale C++ compatible method should match GetScale")
+	}
+}
+
+func TestRotationCppCompat(t *testing.T) {
+	angle := math.Pi / 3 // 60 degrees
+	m := NewTransAffineRotation(angle)
+
+	cppAngle := m.Rotation()
+	goAngle := m.GetRotation()
+
+	if math.Abs(cppAngle-goAngle) > testEpsilon {
+		t.Error("Rotation C++ compatible method should match GetRotation")
+	}
+
+	if math.Abs(cppAngle-angle) > testEpsilon {
+		t.Errorf("Rotation failed: got %f, expected %f", cppAngle, angle)
 	}
 }

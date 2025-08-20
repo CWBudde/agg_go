@@ -1,5 +1,9 @@
 package transform
 
+// Compile-time interface checks
+var _ Transformer = (*TransBilinear)(nil)
+var _ InverseTransformer = (*TransBilinear)(nil)
+
 // TransBilinear represents a bilinear transformation for quadrilateral mapping
 type TransBilinear struct {
 	mtx   [4][2]float64 // Transformation matrix coefficients
@@ -54,23 +58,25 @@ func (tb *TransBilinear) QuadToQuad(src, dst [8]float64) {
 }
 
 // RectToQuad sets the direct transformation from rectangle to quadrilateral
+// Matches C++ AGG implementation: src[0,6]=x1, src[2,4]=x2, src[1,3]=y1, src[5,7]=y2
 func (tb *TransBilinear) RectToQuad(x1, y1, x2, y2 float64, quad [8]float64) {
 	src := [8]float64{
-		x1, y1, // bottom-left
-		x2, y1, // bottom-right
-		x2, y2, // top-right
-		x1, y2, // top-left
+		x1, y1, // 0,1: bottom-left
+		x2, y1, // 2,3: bottom-right
+		x2, y2, // 4,5: top-right
+		x1, y2, // 6,7: top-left
 	}
 	tb.QuadToQuad(src, quad)
 }
 
 // QuadToRect sets the reverse transformation from quadrilateral to rectangle
+// Matches C++ AGG implementation: dst[0,6]=x1, dst[2,4]=x2, dst[1,3]=y1, dst[5,7]=y2
 func (tb *TransBilinear) QuadToRect(quad [8]float64, x1, y1, x2, y2 float64) {
 	dst := [8]float64{
-		x1, y1, // bottom-left
-		x2, y1, // bottom-right
-		x2, y2, // top-right
-		x1, y2, // top-left
+		x1, y1, // 0,1: bottom-left
+		x2, y1, // 2,3: bottom-right
+		x2, y2, // 4,5: top-right
+		x1, y2, // 6,7: top-left
 	}
 	tb.QuadToQuad(quad, dst)
 }
@@ -80,8 +86,23 @@ func (tb *TransBilinear) IsValid() bool {
 	return tb.valid
 }
 
-// Transform applies the bilinear transformation to a point
-func (tb *TransBilinear) Transform(x, y float64) (float64, float64) {
+// Transform applies the bilinear transformation to a point (implements Transformer interface)
+func (tb *TransBilinear) Transform(x, y *float64) {
+	if !tb.valid {
+		return
+	}
+
+	tx := *x
+	ty := *y
+	xy := tx * ty
+	*x = tb.mtx[0][0] + tb.mtx[1][0]*xy + tb.mtx[2][0]*tx + tb.mtx[3][0]*ty
+	*y = tb.mtx[0][1] + tb.mtx[1][1]*xy + tb.mtx[2][1]*tx + tb.mtx[3][1]*ty
+}
+
+// TransformValues applies the bilinear transformation to a point and returns new coordinates
+// Extension: This method is not present in the original C++ AGG implementation.
+// It provides a convenient value-returning variant of the pointer-based Transform method.
+func (tb *TransBilinear) TransformValues(x, y float64) (float64, float64) {
 	if !tb.valid {
 		return x, y
 	}
@@ -92,9 +113,24 @@ func (tb *TransBilinear) Transform(x, y float64) (float64, float64) {
 	return newX, newY
 }
 
-// InverseTransform finds the source coordinates that would transform to the given destination coordinates
-// Uses Newton-Raphson iteration to solve the inverse bilinear transformation
-func (tb *TransBilinear) InverseTransform(dx, dy float64) (float64, float64) {
+// InverseTransform applies the inverse bilinear transformation (implements extended Transformer interface)
+// Extension: This method is not present in the original C++ AGG implementation.
+// It provides inverse transformation capabilities using Newton-Raphson iteration.
+func (tb *TransBilinear) InverseTransform(x, y *float64) {
+	if !tb.valid {
+		return
+	}
+
+	dx, dy := *x, *y
+	sx, sy := tb.InverseTransformValues(dx, dy)
+	*x = sx
+	*y = sy
+}
+
+// InverseTransformValues finds the source coordinates that would transform to the given destination coordinates
+// Extension: This method is not present in the original C++ AGG implementation.
+// Uses Newton-Raphson iteration to solve the inverse bilinear transformation.
+func (tb *TransBilinear) InverseTransformValues(dx, dy float64) (float64, float64) {
 	if !tb.valid {
 		return dx, dy
 	}
@@ -108,7 +144,7 @@ func (tb *TransBilinear) InverseTransform(dx, dy float64) (float64, float64) {
 
 	for i := 0; i < maxIterations; i++ {
 		// Current transformation result
-		fx, fy := tb.Transform(x, y)
+		fx, fy := tb.TransformValues(x, y)
 
 		// Calculate residual (how far we are from target)
 		residualX := fx - dx
@@ -152,6 +188,8 @@ func (tb *TransBilinear) InverseTransform(dx, dy float64) (float64, float64) {
 }
 
 // IteratorX provides efficient iteration along horizontal lines
+// Note: The C++ AGG version has public x,y fields and operator++.
+// This Go version uses methods for better encapsulation, which is idiomatic Go.
 type IteratorX struct {
 	x, y float64 // Current transformed coordinates
 	incX float64 // X increment per step
@@ -159,6 +197,7 @@ type IteratorX struct {
 }
 
 // NewIteratorX creates a new iterator starting at (tx, ty) with given step size
+// This corresponds to the begin(x, y, step) method in C++ AGG.
 func (tb *TransBilinear) NewIteratorX(tx, ty, step float64) *IteratorX {
 	if !tb.valid {
 		return &IteratorX{x: tx, y: ty}
@@ -186,4 +225,42 @@ func (it *IteratorX) Y() float64 {
 func (it *IteratorX) Next() {
 	it.x += it.incX
 	it.y += it.incY
+}
+
+// ToMatrix returns the transformation matrix as a 4x2 array
+// Extension: This method is not present in the original C++ AGG implementation.
+// This is useful for debugging and interfacing with span interpolators.
+func (tb *TransBilinear) ToMatrix() [4][2]float64 {
+	return tb.mtx
+}
+
+// NewTransBilinearFromTransformer attempts to create a TransBilinear from another transformer
+// by sampling it at 4 corner points and fitting a bilinear transformation.
+// Extension: This function is not present in the original C++ AGG implementation.
+// This is useful for integrating with span interpolators.
+func NewTransBilinearFromTransformer(transformer Transformer, srcQuad [8]float64) *TransBilinear {
+	// Transform the source quadrilateral using the provided transformer
+	var dstQuad [8]float64
+	for i := 0; i < 4; i++ {
+		x, y := srcQuad[i*2], srcQuad[i*2+1]
+		transformer.Transform(&x, &y)
+		dstQuad[i*2] = x
+		dstQuad[i*2+1] = y
+	}
+
+	return NewTransBilinearQuadToQuad(srcQuad, dstQuad)
+}
+
+// NewTransBilinearFromRect creates a bilinear transformation by sampling a transformer over a rectangle
+// Extension: This function is not present in the original C++ AGG implementation.
+func NewTransBilinearFromRect(transformer Transformer, x1, y1, x2, y2 float64) *TransBilinear {
+	// Create a rectangle as source quadrilateral
+	srcQuad := [8]float64{
+		x1, y1, // bottom-left
+		x2, y1, // bottom-right
+		x2, y2, // top-right
+		x1, y2, // top-left
+	}
+
+	return NewTransBilinearFromTransformer(transformer, srcQuad)
 }

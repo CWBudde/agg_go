@@ -421,3 +421,163 @@ func TestTransSinglePath_SinglePoint(t *testing.T) {
 
 	// Behavior may vary, but should not crash
 }
+
+func TestTransSinglePath_GetPositionAt(t *testing.T) {
+	tsp := NewTransSinglePath()
+
+	// Create a horizontal line from (0,0) to (100,0)
+	tsp.MoveTo(0, 0)
+	tsp.LineTo(100, 0)
+	tsp.FinalizePath()
+
+	// Test position at start
+	x, y := tsp.GetPositionAt(0.0)
+	if math.Abs(x-0.0) > 1e-10 || math.Abs(y-0.0) > 1e-10 {
+		t.Errorf("Expected (0,0) at start, got (%f,%f)", x, y)
+	}
+
+	// Test position at middle
+	x, y = tsp.GetPositionAt(50.0)
+	if math.Abs(x-50.0) > 1e-10 || math.Abs(y-0.0) > 1e-10 {
+		t.Errorf("Expected (50,0) at middle, got (%f,%f)", x, y)
+	}
+
+	// Test position at end
+	x, y = tsp.GetPositionAt(100.0)
+	if math.Abs(x-100.0) > 1e-10 || math.Abs(y-0.0) > 1e-10 {
+		t.Errorf("Expected (100,0) at end, got (%f,%f)", x, y)
+	}
+}
+
+func TestTransSinglePath_GetTangentAt(t *testing.T) {
+	tsp := NewTransSinglePath()
+
+	// Create a horizontal line from (0,0) to (100,0)
+	tsp.MoveTo(0, 0)
+	tsp.LineTo(100, 0)
+	tsp.FinalizePath()
+
+	// Test tangent at middle - should be (1,0) for horizontal line
+	dx, dy := tsp.GetTangentAt(50.0)
+	expectedDx, expectedDy := 1.0, 0.0
+	if math.Abs(dx-expectedDx) > 1e-10 || math.Abs(dy-expectedDy) > 1e-10 {
+		t.Errorf("Expected tangent (%f,%f) for horizontal line, got (%f,%f)", expectedDx, expectedDy, dx, dy)
+	}
+
+	// Test that tangent is normalized
+	length := math.Sqrt(dx*dx + dy*dy)
+	if math.Abs(length-1.0) > 1e-10 {
+		t.Errorf("Expected normalized tangent (length=1), got length=%f", length)
+	}
+}
+
+func TestTransSinglePath_GetTangentAt_VerticalLine(t *testing.T) {
+	tsp := NewTransSinglePath()
+
+	// Create a vertical line from (0,0) to (0,100)
+	tsp.MoveTo(0, 0)
+	tsp.LineTo(0, 100)
+	tsp.FinalizePath()
+
+	// Test tangent at middle - should be (0,1) for vertical line going up
+	dx, dy := tsp.GetTangentAt(50.0)
+	expectedDx, expectedDy := 0.0, 1.0
+	if math.Abs(dx-expectedDx) > 1e-10 || math.Abs(dy-expectedDy) > 1e-10 {
+		t.Errorf("Expected tangent (%f,%f) for vertical line, got (%f,%f)", expectedDx, expectedDy, dx, dy)
+	}
+}
+
+func TestTransSinglePath_GetNormalAt(t *testing.T) {
+	tsp := NewTransSinglePath()
+
+	// Create a horizontal line from (0,0) to (100,0)
+	tsp.MoveTo(0, 0)
+	tsp.LineTo(100, 0)
+	tsp.FinalizePath()
+
+	// Test normal at middle - should be (0,1) for horizontal line (90° CCW from tangent)
+	nx, ny := tsp.GetNormalAt(50.0)
+	expectedNx, expectedNy := 0.0, 1.0
+	if math.Abs(nx-expectedNx) > 1e-10 || math.Abs(ny-expectedNy) > 1e-10 {
+		t.Errorf("Expected normal (%f,%f) for horizontal line, got (%f,%f)", expectedNx, expectedNy, nx, ny)
+	}
+
+	// Test that normal is normalized
+	length := math.Sqrt(nx*nx + ny*ny)
+	if math.Abs(length-1.0) > 1e-10 {
+		t.Errorf("Expected normalized normal (length=1), got length=%f", length)
+	}
+}
+
+func TestTransSinglePath_GetAngleAt(t *testing.T) {
+	tsp := NewTransSinglePath()
+
+	// Create a horizontal line from (0,0) to (100,0)
+	tsp.MoveTo(0, 0)
+	tsp.LineTo(100, 0)
+	tsp.FinalizePath()
+
+	// Test angle at middle - should be 0 for horizontal line pointing right
+	angle := tsp.GetAngleAt(50.0)
+	expectedAngle := 0.0
+	if math.Abs(angle-expectedAngle) > 1e-10 {
+		t.Errorf("Expected angle %f for horizontal line, got %f", expectedAngle, angle)
+	}
+}
+
+func TestTransSinglePath_GetAngleAt_VerticalLine(t *testing.T) {
+	tsp := NewTransSinglePath()
+
+	// Create a vertical line from (0,0) to (0,100)
+	tsp.MoveTo(0, 0)
+	tsp.LineTo(0, 100)
+	tsp.FinalizePath()
+
+	// Test angle at middle - should be π/2 for vertical line pointing up
+	angle := tsp.GetAngleAt(50.0)
+	expectedAngle := math.Pi / 2
+	if math.Abs(angle-expectedAngle) > 1e-10 {
+		t.Errorf("Expected angle %f for vertical line, got %f", expectedAngle, angle)
+	}
+}
+
+func TestTransSinglePath_GetAngleAt_DiagonalLine(t *testing.T) {
+	tsp := NewTransSinglePath()
+
+	// Create a 45-degree diagonal line from (0,0) to (100,100)
+	tsp.MoveTo(0, 0)
+	tsp.LineTo(100, 100)
+	tsp.FinalizePath()
+
+	// Test angle at middle - should be π/4 for 45-degree line
+	angle := tsp.GetAngleAt(tsp.TotalLength() / 2)
+	expectedAngle := math.Pi / 4
+	if math.Abs(angle-expectedAngle) > 1e-10 {
+		t.Errorf("Expected angle %f for diagonal line, got %f", expectedAngle, angle)
+	}
+}
+
+func TestTransSinglePath_HelperMethods_EmptyPath(t *testing.T) {
+	tsp := NewTransSinglePath()
+
+	// Test helper methods on empty path (should not crash)
+	x, y := tsp.GetPositionAt(10.0)
+	if x != 10.0 || y != 0.0 {
+		t.Errorf("Expected (10,0) for empty path, got (%f,%f)", x, y)
+	}
+
+	dx, dy := tsp.GetTangentAt(10.0)
+	if dx != 0.0 || dy != 0.0 {
+		t.Errorf("Expected (0,0) tangent for empty path, got (%f,%f)", dx, dy)
+	}
+
+	nx, ny := tsp.GetNormalAt(10.0)
+	if nx != 0.0 || ny != 0.0 {
+		t.Errorf("Expected (0,0) normal for empty path, got (%f,%f)", nx, ny)
+	}
+
+	angle := tsp.GetAngleAt(10.0)
+	if angle != 0.0 {
+		t.Errorf("Expected 0 angle for empty path, got %f", angle)
+	}
+}

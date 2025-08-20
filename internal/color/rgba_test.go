@@ -1,6 +1,7 @@
 package color
 
 import (
+	"math"
 	"testing"
 
 	"agg_go/internal/basics"
@@ -190,8 +191,219 @@ func TestRGBA8CommonTypes(t *testing.T) {
 	}
 }
 
+// Test implementations of gamma interfaces
+type testGammaLUT struct {
+	gamma float64
+}
+
+func newTestGammaLUT(gamma float64) *testGammaLUT {
+	return &testGammaLUT{gamma: gamma}
+}
+
+func (g *testGammaLUT) Dir(v basics.Int8u) basics.Int8u {
+	// Apply gamma correction using proper power function
+	normalized := float64(v) / 255.0
+	if normalized <= 0 {
+		return 0
+	}
+	corrected := math.Pow(normalized, g.gamma)
+	if corrected > 1.0 {
+		corrected = 1.0
+	}
+	return basics.Int8u(corrected*255 + 0.5)
+}
+
+func (g *testGammaLUT) Inv(v basics.Int8u) basics.Int8u {
+	// Apply inverse gamma correction (gamma^-1)
+	normalized := float64(v) / 255.0
+	if normalized <= 0 {
+		return 0
+	}
+	corrected := math.Pow(normalized, 1.0/g.gamma)
+	if corrected > 1.0 {
+		corrected = 1.0
+	}
+	return basics.Int8u(corrected*255 + 0.5)
+}
+
+type testGammaFunc struct {
+	gamma float64
+}
+
+func newTestGammaFunc(gamma float64) *testGammaFunc {
+	return &testGammaFunc{gamma: gamma}
+}
+
+func (g *testGammaFunc) DirFloat(v float32) float32 {
+	if v <= 0 {
+		return 0
+	}
+	result := math.Pow(float64(v), g.gamma)
+	if result > 1.0 {
+		result = 1.0
+	}
+	return float32(result)
+}
+
+func (g *testGammaFunc) InvFloat(v float32) float32 {
+	if v <= 0 {
+		return 0
+	}
+	result := math.Pow(float64(v), 1.0/g.gamma)
+	if result > 1.0 {
+		result = 1.0
+	}
+	return float32(result)
+}
+
+func TestRGBA8ApplyGamma(t *testing.T) {
+	gamma := newTestGammaLUT(2.0) // Square gamma for testing
+
+	// Test ApplyGammaDir
+	c := NewRGBA8[Linear](128, 64, 192, 255)
+	original := c
+	c.ApplyGammaDir(gamma)
+
+	// RGB values should change, alpha should remain the same
+	if c.A != original.A {
+		t.Errorf("ApplyGammaDir changed alpha: got %d, expected %d", c.A, original.A)
+	}
+
+	// For gamma=2.0, values should be reduced (darker)
+	if c.R >= original.R || c.G >= original.G || c.B >= original.B {
+		t.Errorf("ApplyGammaDir with gamma=2.0 should reduce values: got (%d,%d,%d), original (%d,%d,%d)",
+			c.R, c.G, c.B, original.R, original.G, original.B)
+	}
+
+	// Test ApplyGammaInv
+	c.ApplyGammaInv(gamma)
+
+	// Values should be approximately back to original (some rounding error expected)
+	tolerance := basics.Int8u(5) // Allow some tolerance for rounding
+	if absInt8u(c.R, original.R) > tolerance ||
+		absInt8u(c.G, original.G) > tolerance ||
+		absInt8u(c.B, original.B) > tolerance {
+		t.Errorf("ApplyGammaInv didn't restore original: got (%d,%d,%d), expected (%d,%d,%d)",
+			c.R, c.G, c.B, original.R, original.G, original.B)
+	}
+}
+
+func TestRGBA8ApplyGammaEdgeCases(t *testing.T) {
+	gamma := newTestGammaLUT(2.0)
+
+	// Test with all zeros
+	c := NewRGBA8[Linear](0, 0, 0, 128)
+	c.ApplyGammaDir(gamma)
+	if c.R != 0 || c.G != 0 || c.B != 0 || c.A != 128 {
+		t.Errorf("Gamma on zeros: got (%d,%d,%d,%d), expected (0,0,0,128)", c.R, c.G, c.B, c.A)
+	}
+
+	// Test with max values
+	c = NewRGBA8[Linear](255, 255, 255, 255)
+	c.ApplyGammaDir(gamma)
+	if c.R != 255 || c.G != 255 || c.B != 255 || c.A != 255 {
+		t.Errorf("Gamma on max values: got (%d,%d,%d,%d), expected (255,255,255,255)", c.R, c.G, c.B, c.A)
+	}
+}
+
+func TestRGBA16ApplyGamma(t *testing.T) {
+	gamma := newTestGammaLUT(2.0)
+
+	// Test ApplyGammaDir
+	c := NewRGBA16[Linear](32768, 16384, 49152, 65535) // ~50%, ~25%, ~75%, 100%
+	original := c
+	c.ApplyGammaDir(gamma)
+
+	// Alpha should remain unchanged
+	if c.A != original.A {
+		t.Errorf("ApplyGammaDir changed alpha: got %d, expected %d", c.A, original.A)
+	}
+
+	// RGB values should change
+	if c.R == original.R && c.G == original.G && c.B == original.B {
+		t.Error("ApplyGammaDir should change RGB values")
+	}
+
+	// Test ApplyGammaInv
+	c.ApplyGammaInv(gamma)
+
+	// Values should be approximately back to original
+	tolerance := basics.Int16u(1000) // Allow tolerance for 8-bit conversion rounding
+	if abs16u(c.R, original.R) > tolerance ||
+		abs16u(c.G, original.G) > tolerance ||
+		abs16u(c.B, original.B) > tolerance {
+		t.Errorf("ApplyGammaInv didn't restore original within tolerance: got (%d,%d,%d), expected (%d,%d,%d)",
+			c.R, c.G, c.B, original.R, original.G, original.B)
+	}
+}
+
+func TestRGBA32ApplyGamma(t *testing.T) {
+	gammaFunc := newTestGammaFunc(2.0)
+
+	// Test ApplyGammaDir
+	c := NewRGBA32[Linear](0.5, 0.25, 0.75, 1.0)
+	original := c
+	c.ApplyGammaDir(gammaFunc)
+
+	// Alpha should remain unchanged
+	if c.A != original.A {
+		t.Errorf("ApplyGammaDir changed alpha: got %.3f, expected %.3f", c.A, original.A)
+	}
+
+	// For gamma=2.0, values should be reduced (squared)
+	if c.R >= original.R || c.G >= original.G || c.B >= original.B {
+		t.Errorf("ApplyGammaDir with gamma=2.0 should reduce values: got (%.3f,%.3f,%.3f), original (%.3f,%.3f,%.3f)",
+			c.R, c.G, c.B, original.R, original.G, original.B)
+	}
+
+	// Test ApplyGammaInv
+	c.ApplyGammaInv(gammaFunc)
+
+	// Values should be approximately back to original
+	tolerance := float32(0.1) // Allow some tolerance
+	if abs32(c.R, original.R) > tolerance ||
+		abs32(c.G, original.G) > tolerance ||
+		abs32(c.B, original.B) > tolerance {
+		t.Errorf("ApplyGammaInv didn't restore original: got (%.3f,%.3f,%.3f), expected (%.3f,%.3f,%.3f)",
+			c.R, c.G, c.B, original.R, original.G, original.B)
+	}
+}
+
+func TestGammaIdentity(t *testing.T) {
+	identityGamma := newTestGammaLUT(1.0) // Identity gamma
+
+	c := NewRGBA8[Linear](128, 64, 192, 255)
+	original := c
+
+	c.ApplyGammaDir(identityGamma)
+	if c.R != original.R || c.G != original.G || c.B != original.B || c.A != original.A {
+		t.Errorf("Identity gamma should not change values: got (%d,%d,%d,%d), expected (%d,%d,%d,%d)",
+			c.R, c.G, c.B, c.A, original.R, original.G, original.B, original.A)
+	}
+
+	c.ApplyGammaInv(identityGamma)
+	if c.R != original.R || c.G != original.G || c.B != original.B || c.A != original.A {
+		t.Errorf("Identity inverse gamma should not change values: got (%d,%d,%d,%d), expected (%d,%d,%d,%d)",
+			c.R, c.G, c.B, c.A, original.R, original.G, original.B, original.A)
+	}
+}
+
 // Helper functions for tests
 func absInt8u(a, b basics.Int8u) basics.Int8u {
+	if a > b {
+		return a - b
+	}
+	return b - a
+}
+
+func abs16u(a, b basics.Int16u) basics.Int16u {
+	if a > b {
+		return a - b
+	}
+	return b - a
+}
+
+func abs32(a, b float32) float32 {
 	if a > b {
 		return a - b
 	}

@@ -88,6 +88,32 @@ type normalizedRGBA struct {
 // blendOperation performs the actual blending calculation
 func (bl CompositeBlender[CS, O]) blendOperation(d, s normalizedRGBA) normalizedRGBA {
 	switch bl.op {
+	case CompOpClear:
+		return bl.clear(d, s)
+	case CompOpSrc:
+		return bl.src(d, s)
+	case CompOpDst:
+		return bl.dst(d, s)
+	case CompOpSrcOver:
+		return bl.sourceOver(d, s)
+	case CompOpDstOver:
+		return bl.dstOver(d, s)
+	case CompOpSrcIn:
+		return bl.srcIn(d, s)
+	case CompOpDstIn:
+		return bl.dstIn(d, s)
+	case CompOpSrcOut:
+		return bl.srcOut(d, s)
+	case CompOpDstOut:
+		return bl.dstOut(d, s)
+	case CompOpSrcAtop:
+		return bl.srcAtop(d, s)
+	case CompOpDstAtop:
+		return bl.dstAtop(d, s)
+	case CompOpXor:
+		return bl.xor(d, s)
+	case CompOpPlus:
+		return bl.plus(d, s)
 	case CompOpMultiply:
 		return bl.multiply(d, s)
 	case CompOpScreen:
@@ -110,11 +136,117 @@ func (bl CompositeBlender[CS, O]) blendOperation(d, s normalizedRGBA) normalized
 		return bl.difference(d, s)
 	case CompOpExclusion:
 		return bl.exclusion(d, s)
-	case CompOpPlus:
-		return bl.plus(d, s)
 	default:
 		// Default to source-over blending
 		return bl.sourceOver(d, s)
+	}
+}
+
+// Porter-Duff Composite Operations
+// These implement the SVG compositing specification
+
+// clear blend mode: Dca' = 0, Da' = 0
+func (bl CompositeBlender[CS, O]) clear(d, s normalizedRGBA) normalizedRGBA {
+	return normalizedRGBA{r: 0, g: 0, b: 0, a: 0}
+}
+
+// src blend mode: Dca' = Sca, Da' = Sa
+func (bl CompositeBlender[CS, O]) src(d, s normalizedRGBA) normalizedRGBA {
+	return s
+}
+
+// dst blend mode: Dca' = Dca, Da' = Da (no change)
+func (bl CompositeBlender[CS, O]) dst(d, s normalizedRGBA) normalizedRGBA {
+	return d
+}
+
+// dstOver blend mode: Dca' = Dca + Sca.(1 - Da), Da' = Da + Sa.(1 - Da)
+func (bl CompositeBlender[CS, O]) dstOver(d, s normalizedRGBA) normalizedRGBA {
+	if d.a >= 1.0 {
+		return d
+	}
+	d1a := 1.0 - d.a
+	return normalizedRGBA{
+		r: d.r + s.r*d1a,
+		g: d.g + s.g*d1a,
+		b: d.b + s.b*d1a,
+		a: d.a + s.a*d1a,
+	}
+}
+
+// srcIn blend mode: Dca' = Sca.Da, Da' = Sa.Da
+func (bl CompositeBlender[CS, O]) srcIn(d, s normalizedRGBA) normalizedRGBA {
+	return normalizedRGBA{
+		r: s.r * d.a,
+		g: s.g * d.a,
+		b: s.b * d.a,
+		a: s.a * d.a,
+	}
+}
+
+// dstIn blend mode: Dca' = Dca.Sa, Da' = Da.Sa
+func (bl CompositeBlender[CS, O]) dstIn(d, s normalizedRGBA) normalizedRGBA {
+	return normalizedRGBA{
+		r: d.r * s.a,
+		g: d.g * s.a,
+		b: d.b * s.a,
+		a: d.a * s.a,
+	}
+}
+
+// srcOut blend mode: Dca' = Sca.(1 - Da), Da' = Sa.(1 - Da)
+func (bl CompositeBlender[CS, O]) srcOut(d, s normalizedRGBA) normalizedRGBA {
+	d1a := 1.0 - d.a
+	return normalizedRGBA{
+		r: s.r * d1a,
+		g: s.g * d1a,
+		b: s.b * d1a,
+		a: s.a * d1a,
+	}
+}
+
+// dstOut blend mode: Dca' = Dca.(1 - Sa), Da' = Da.(1 - Sa)
+func (bl CompositeBlender[CS, O]) dstOut(d, s normalizedRGBA) normalizedRGBA {
+	s1a := 1.0 - s.a
+	return normalizedRGBA{
+		r: d.r * s1a,
+		g: d.g * s1a,
+		b: d.b * s1a,
+		a: d.a * s1a,
+	}
+}
+
+// srcAtop blend mode: Dca' = Sca.Da + Dca.(1 - Sa), Da' = Da
+func (bl CompositeBlender[CS, O]) srcAtop(d, s normalizedRGBA) normalizedRGBA {
+	s1a := 1.0 - s.a
+	return normalizedRGBA{
+		r: s.r*d.a + d.r*s1a,
+		g: s.g*d.a + d.g*s1a,
+		b: s.b*d.a + d.b*s1a,
+		a: d.a,
+	}
+}
+
+// dstAtop blend mode: Dca' = Dca.Sa + Sca.(1 - Da), Da' = Sa
+func (bl CompositeBlender[CS, O]) dstAtop(d, s normalizedRGBA) normalizedRGBA {
+	d1a := 1.0 - d.a
+	return normalizedRGBA{
+		r: d.r*s.a + s.r*d1a,
+		g: d.g*s.a + s.g*d1a,
+		b: d.b*s.a + s.b*d1a,
+		a: s.a,
+	}
+}
+
+// xor blend mode: Dca' = Sca.(1 - Da) + Dca.(1 - Sa), Da' = Sa + Da - 2.Sa.Da
+func (bl CompositeBlender[CS, O]) xor(d, s normalizedRGBA) normalizedRGBA {
+	s1a := 1.0 - s.a
+	d1a := 1.0 - d.a
+	return normalizedRGBA{
+		r: s.r*d1a + d.r*s1a,
+		g: s.g*d1a + d.g*s1a,
+		b: s.b*d1a + d.b*s1a,
+		a: s.a + d.a - 2*s.a*d.a,
 	}
 }
 
@@ -268,10 +400,10 @@ func (bl CompositeBlender[CS, O]) colorBurn(d, s normalizedRGBA) normalizedRGBA 
 		if sca > 0 {
 			return sada*(1.0-math.Min(1.0, (1.0-dca/da)*sa/sca)) + sca*d1a + dca*s1a
 		}
-		if dca < da {
-			return dca * s1a
+		if dca > da {
+			return sada + dca*s1a
 		}
-		return sada + sca*d1a + dca*s1a
+		return dca * s1a
 	}
 
 	return normalizedRGBA{
@@ -307,48 +439,55 @@ func (bl CompositeBlender[CS, O]) hardLight(d, s normalizedRGBA) normalizedRGBA 
 	}
 }
 
-// softLight blend mode
+// softLight blend mode - matches AGG C++ implementation
 func (bl CompositeBlender[CS, O]) softLight(d, s normalizedRGBA) normalizedRGBA {
 	if s.a <= 0 {
 		return d
 	}
 
-	d1a := 1.0 - d.a
-	s1a := 1.0 - s.a
+	if d.a <= 0 {
+		return normalizedRGBA{
+			r: s.r * (1.0 - d.a),
+			g: s.g * (1.0 - d.a),
+			b: s.b * (1.0 - d.a),
+			a: s.a,
+		}
+	}
+
 	sada := s.a * d.a
+	s1a := 1.0 - s.a
+	d1a := 1.0 - d.a
 
 	calcSoftLight := func(dca, sca, da, sa, sada, d1a, s1a float64) float64 {
+		dcasa := dca * sa
 		if 2*sca <= sa {
-			return dca*(sa+(2*sca-sa)*(1-dca/da)) + sca*d1a + dca*s1a
+			return dcasa - (sada-2*sca*da)*dcasa*(sada-dcasa) + sca*d1a + dca*s1a
 		}
 		if 4*dca <= da {
-			return sada*((2*sca-sa)*((16*dca/da-12)*dca/da+3)) + sca*d1a + dca*s1a
+			return dcasa + (2*sca*da-sada)*((((16*dcasa-12)*dcasa+4)*dca*da)-dca*da) + sca*d1a + dca*s1a
 		}
-		return sada*((2*sca-sa)*(math.Sqrt(dca/da)-dca/da)) + sca*d1a + dca*s1a
+		return dcasa + (2*sca*da-sada)*(math.Sqrt(dcasa)-dcasa) + sca*d1a + dca*s1a
 	}
 
 	return normalizedRGBA{
 		r: calcSoftLight(d.r, s.r, d.a, s.a, sada, d1a, s1a),
 		g: calcSoftLight(d.g, s.g, d.a, s.a, sada, d1a, s1a),
 		b: calcSoftLight(d.b, s.b, d.a, s.a, sada, d1a, s1a),
-		a: d.a + s.a - s.a*d.a,
+		a: s.a + d.a - sada,
 	}
 }
 
-// difference blend mode: Dca' = |Dca.Sa - Sca.Da| + Sca.(1 - Da) + Dca.(1 - Sa)
+// difference blend mode: Dca' = Sca + Dca - 2.min(Sca.Da, Dca.Sa), Da' = Sa + Da - Sa.Da
 func (bl CompositeBlender[CS, O]) difference(d, s normalizedRGBA) normalizedRGBA {
 	if s.a <= 0 {
 		return d
 	}
 
-	d1a := 1.0 - d.a
-	s1a := 1.0 - s.a
-
 	return normalizedRGBA{
-		r: math.Abs(d.r*s.a-s.r*d.a) + s.r*d1a + d.r*s1a,
-		g: math.Abs(d.g*s.a-s.g*d.a) + s.g*d1a + d.g*s1a,
-		b: math.Abs(d.b*s.a-s.b*d.a) + s.b*d1a + d.b*s1a,
-		a: d.a + s.a - s.a*d.a,
+		r: s.r + d.r - 2*math.Min(s.r*d.a, d.r*s.a),
+		g: s.g + d.g - 2*math.Min(s.g*d.a, d.g*s.a),
+		b: s.b + d.b - 2*math.Min(s.b*d.a, d.b*s.a),
+		a: s.a + d.a - s.a*d.a,
 	}
 }
 
@@ -468,4 +607,87 @@ func NewExclusionBlender[CS any, O any]() CompositeBlender[CS, O] {
 
 func NewPlusBlender[CS any, O any]() CompositeBlender[CS, O] {
 	return NewCompositeBlender[CS, O](CompOpPlus)
+}
+
+// BlendColorHspan blends a horizontal span of pixels with a single color
+func (bl CompositeBlender[CS, O]) BlendColorHspan(dst []basics.Int8u, x, y, length int, r, g, b, a basics.Int8u, covers []basics.Int8u) {
+	pixelSize := 4 // RGBA pixel size
+	offset := y*length*pixelSize + x*pixelSize
+
+	for i := 0; i < length; i++ {
+		cover := basics.Int8u(255)
+		if covers != nil && i < len(covers) {
+			cover = covers[i]
+		}
+		if cover > 0 {
+			bl.BlendPix(dst[offset:], r, g, b, a, cover)
+		}
+		offset += pixelSize
+	}
+}
+
+// BlendColorVspan blends a vertical span of pixels with a single color
+func (bl CompositeBlender[CS, O]) BlendColorVspan(dst []basics.Int8u, x, y, length, stride int, r, g, b, a basics.Int8u, covers []basics.Int8u) {
+	pixelSize := 4 // RGBA pixel size
+	offset := y*stride + x*pixelSize
+
+	for i := 0; i < length; i++ {
+		cover := basics.Int8u(255)
+		if covers != nil && i < len(covers) {
+			cover = covers[i]
+		}
+		if cover > 0 {
+			bl.BlendPix(dst[offset:], r, g, b, a, cover)
+		}
+		offset += stride
+	}
+}
+
+// Additional helper constructors for Porter-Duff operations
+func NewClearBlender[CS any, O any]() CompositeBlender[CS, O] {
+	return NewCompositeBlender[CS, O](CompOpClear)
+}
+
+func NewSrcBlender[CS any, O any]() CompositeBlender[CS, O] {
+	return NewCompositeBlender[CS, O](CompOpSrc)
+}
+
+func NewDstBlender[CS any, O any]() CompositeBlender[CS, O] {
+	return NewCompositeBlender[CS, O](CompOpDst)
+}
+
+func NewSrcOverBlender[CS any, O any]() CompositeBlender[CS, O] {
+	return NewCompositeBlender[CS, O](CompOpSrcOver)
+}
+
+func NewDstOverBlender[CS any, O any]() CompositeBlender[CS, O] {
+	return NewCompositeBlender[CS, O](CompOpDstOver)
+}
+
+func NewSrcInBlender[CS any, O any]() CompositeBlender[CS, O] {
+	return NewCompositeBlender[CS, O](CompOpSrcIn)
+}
+
+func NewDstInBlender[CS any, O any]() CompositeBlender[CS, O] {
+	return NewCompositeBlender[CS, O](CompOpDstIn)
+}
+
+func NewSrcOutBlender[CS any, O any]() CompositeBlender[CS, O] {
+	return NewCompositeBlender[CS, O](CompOpSrcOut)
+}
+
+func NewDstOutBlender[CS any, O any]() CompositeBlender[CS, O] {
+	return NewCompositeBlender[CS, O](CompOpDstOut)
+}
+
+func NewSrcAtopBlender[CS any, O any]() CompositeBlender[CS, O] {
+	return NewCompositeBlender[CS, O](CompOpSrcAtop)
+}
+
+func NewDstAtopBlender[CS any, O any]() CompositeBlender[CS, O] {
+	return NewCompositeBlender[CS, O](CompOpDstAtop)
+}
+
+func NewXorBlender[CS any, O any]() CompositeBlender[CS, O] {
+	return NewCompositeBlender[CS, O](CompOpXor)
 }

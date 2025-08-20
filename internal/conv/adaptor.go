@@ -117,82 +117,65 @@ func (c *ConvAdaptorVCGen) GetMarkers() Markers {
 func (c *ConvAdaptorVCGen) Rewind(pathID uint) {
 	c.source.Rewind(pathID)
 	c.status = StatusInitial
-	c.lastCmd = 0 // Reset last command
 }
 
 // Vertex returns the next vertex in the converted sequence
 func (c *ConvAdaptorVCGen) Vertex() (x, y float64, cmd basics.PathCommand) {
-	for {
+	cmd = basics.PathCmdStop
+	done := false
+
+	for !done {
 		switch c.status {
 		case StatusInitial:
 			c.markers.RemoveAll()
-			// Read initial vertex from source
 			c.startX, c.startY, c.lastCmd = c.source.Vertex()
 			c.status = StatusAccumulate
+			fallthrough
 
 		case StatusAccumulate:
-			// Check if last command was stop - if so, we're done
-			if c.lastCmd == basics.PathCmdStop {
+			if basics.IsStop(c.lastCmd) {
 				return 0, 0, basics.PathCmdStop
 			}
 
-			// Clear generator and start with initial vertex
 			c.generator.RemoveAll()
+			c.generator.AddVertex(c.startX, c.startY, basics.PathCmdMoveTo)
+			c.markers.AddVertex(c.startX, c.startY, basics.PathCmdMoveTo)
 
-			// Add initial vertex if it's a MoveTo
-			if c.lastCmd == basics.PathCmdMoveTo {
-				c.generator.AddVertex(c.startX, c.startY, basics.PathCmdMoveTo)
-				c.markers.AddVertex(c.startX, c.startY, basics.PathCmdMoveTo)
-			}
-
-			// Process vertices until we hit stop, end_poly, or another MoveTo
 			for {
-				x, y, cmd := c.source.Vertex()
-				c.lastCmd = cmd
-
-				if cmd == basics.PathCmdStop {
-					break
-				}
-
-				if (cmd & basics.PathCmdMask) == basics.PathCmdMoveTo {
-					// Found another MoveTo - save position and break to process current path
-					c.startX, c.startY = x, y
-					break
-				}
-
-				if (cmd & basics.PathCmdMask) == basics.PathCmdEndPoly {
+				x, y, cmd = c.source.Vertex()
+				if basics.IsVertex(cmd) {
+					c.lastCmd = cmd
+					if basics.IsMoveTo(cmd) {
+						c.startX = x
+						c.startY = y
+						break
+					}
 					c.generator.AddVertex(x, y, cmd)
-					break
+					c.markers.AddVertex(x, y, basics.PathCmdLineTo)
+				} else {
+					if basics.IsStop(cmd) {
+						c.lastCmd = basics.PathCmdStop
+						break
+					}
+					if basics.IsEndPoly(cmd) {
+						c.generator.AddVertex(x, y, cmd)
+						break
+					}
 				}
-
-				// Regular vertex command
-				c.generator.AddVertex(x, y, cmd)
-				c.markers.AddVertex(x, y, basics.PathCmdLineTo)
 			}
-
-			// Prepare generator and transition to generate
-			c.generator.PrepareSrc()
 			c.generator.Rewind(0)
-			c.markers.PrepareSrc()
-			c.markers.Rewind(0)
 			c.status = StatusGenerate
-			continue
 
 		case StatusGenerate:
 			x, y, cmd = c.generator.Vertex()
-			if cmd != basics.PathCmdStop {
-				return x, y, cmd
+			if basics.IsStop(cmd) {
+				// Read next command from source for next accumulate cycle
+				c.startX, c.startY, c.lastCmd = c.source.Vertex()
+				c.status = StatusAccumulate
+				continue // Continue to next iteration of while loop
 			}
-
-			x, y, cmd = c.markers.Vertex()
-			if cmd != basics.PathCmdStop {
-				return x, y, cmd
-			}
-
-			// Transition back to accumulate to check for more sub-paths
-			// Only return PathCmdStop if source is truly exhausted
-			c.status = StatusAccumulate
-			continue
+			done = true
 		}
 	}
+	return x, y, cmd
 }

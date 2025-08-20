@@ -445,3 +445,145 @@ func TestOperationsChaining(t *testing.T) {
 		t.Errorf("Chained operations failed, expected (15,30), got (%f,%f)", x, y)
 	}
 }
+
+func TestPerspectivePremultiplyInv(t *testing.T) {
+	// Create two non-trivial transformation matrices
+	p1 := NewTransPerspectiveFromValues(2.0, 0.5, 0.1, 0.3, 1.5, 0.2, 10.0, 20.0, 1.0)
+	p2 := NewTransPerspectiveFromValues(1.5, 0.2, 0.05, 0.1, 1.8, 0.15, 5.0, 10.0, 1.0)
+
+	// Save original values
+	original := *p1
+
+	// Apply premultiply_inv: p1 = inv(p2) * p1
+	p1.PremultiplyInv(p2)
+
+	// Verify by checking that p2 * result = original
+	// Create a copy of p2 and multiply with result
+	verification := *p2
+	verification.Multiply(p1)
+
+	// Check if verification equals original within epsilon
+	if !verification.IsEqual(&original, 1e-10) {
+		t.Error("PremultiplyInv failed: p2 * result should equal original")
+	}
+
+	// Test with a specific point transformation
+	x, y := 1.0, 2.0
+
+	// Transform with original matrix
+	x1, y1 := x, y
+	original.Transform(&x1, &y1)
+
+	// Transform with p2, then with result of premultiply_inv
+	x2, y2 := x, y
+	p2.Transform(&x2, &y2)
+	p1.Transform(&x2, &y2)
+
+	if math.Abs(x1-x2) > 1e-10 || math.Abs(y1-y2) > 1e-10 {
+		t.Errorf("Point transformation mismatch: original (%f,%f), p2*result (%f,%f)", x1, y1, x2, y2)
+	}
+}
+
+func TestPerspectivePremultiplyInvAffine(t *testing.T) {
+	// Create a perspective transformation
+	p := NewTransPerspectiveFromValues(1.5, 0.2, 0.05, 0.3, 1.2, 0.1, 8.0, 12.0, 1.0)
+
+	// Create an affine transformation
+	a := NewTransAffineFromValues(2.0, 0.5, 0.3, 1.8, 15.0, 25.0)
+
+	// Save original values
+	original := *p
+	affine := *a
+
+	// Apply premultiply_inv_affine: p = inv(a) * p
+	p.PremultiplyInvAffine(a)
+
+	// Verify by checking that a * result ≈ original
+	// Create perspective from affine and multiply with result
+	verification := NewTransPerspectiveFromAffine(&affine)
+	verification.Multiply(p)
+
+	// Check if verification equals original within epsilon
+	if !verification.IsEqual(&original, 1e-10) {
+		t.Error("PremultiplyInvAffine failed: affine * result should equal original")
+	}
+}
+
+func TestConstructorVariants(t *testing.T) {
+	// Test NewTransPerspectiveRectToQuad
+	quad := [8]float64{0.0, 0.0, 2.0, 0.0, 2.0, 1.0, 0.0, 1.0}
+	p1 := NewTransPerspectiveRectToQuad(0.0, 0.0, 1.0, 1.0, quad)
+
+	// Test that unit square corners map to quad corners
+	x, y := 0.0, 0.0
+	p1.Transform(&x, &y)
+	if math.Abs(x-0.0) > perspectiveTestEpsilon || math.Abs(y-0.0) > perspectiveTestEpsilon {
+		t.Errorf("RectToQuad: (0,0) should map to (0,0), got (%f,%f)", x, y)
+	}
+
+	x, y = 1.0, 0.0
+	p1.Transform(&x, &y)
+	if math.Abs(x-2.0) > perspectiveTestEpsilon || math.Abs(y-0.0) > perspectiveTestEpsilon {
+		t.Errorf("RectToQuad: (1,0) should map to (2,0), got (%f,%f)", x, y)
+	}
+
+	// Test NewTransPerspectiveQuadToRect
+	p2 := NewTransPerspectiveQuadToRect(quad, 0.0, 0.0, 1.0, 1.0)
+
+	// Test that quad corners map to unit square corners
+	x, y = 0.0, 0.0
+	p2.Transform(&x, &y)
+	if math.Abs(x-0.0) > perspectiveTestEpsilon || math.Abs(y-0.0) > perspectiveTestEpsilon {
+		t.Errorf("QuadToRect: (0,0) should map to (0,0), got (%f,%f)", x, y)
+	}
+
+	x, y = 2.0, 0.0
+	p2.Transform(&x, &y)
+	if math.Abs(x-1.0) > perspectiveTestEpsilon || math.Abs(y-0.0) > perspectiveTestEpsilon {
+		t.Errorf("QuadToRect: (2,0) should map to (1,0), got (%f,%f)", x, y)
+	}
+
+	// Test NewTransPerspectiveQuadToQuad
+	src := [8]float64{0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0}
+	dst := [8]float64{10.0, 10.0, 20.0, 10.0, 20.0, 20.0, 10.0, 20.0}
+	p3 := NewTransPerspectiveQuadToQuad(src, dst)
+
+	// Test that source corners map to destination corners
+	x, y = 0.0, 0.0
+	p3.Transform(&x, &y)
+	if math.Abs(x-10.0) > perspectiveTestEpsilon || math.Abs(y-10.0) > perspectiveTestEpsilon {
+		t.Errorf("QuadToQuad: (0,0) should map to (10,10), got (%f,%f)", x, y)
+	}
+
+	x, y = 1.0, 1.0
+	p3.Transform(&x, &y)
+	if math.Abs(x-20.0) > perspectiveTestEpsilon || math.Abs(y-20.0) > perspectiveTestEpsilon {
+		t.Errorf("QuadToQuad: (1,1) should map to (20,20), got (%f,%f)", x, y)
+	}
+}
+
+func TestBeginMethod(t *testing.T) {
+	// Test that Begin() method exists and works like NewIteratorX
+	p := NewTransPerspectiveFromValues(2.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 1.0)
+
+	// Test Begin method
+	it1 := p.Begin(0.0, 0.0, 1.0)
+
+	// Test NewIteratorX method
+	it2 := p.NewIteratorX(0.0, 0.0, 1.0)
+
+	// Both should produce the same initial values
+	if math.Abs(it1.X-it2.X) > perspectiveTestEpsilon || math.Abs(it1.Y-it2.Y) > perspectiveTestEpsilon {
+		t.Errorf("Begin() and NewIteratorX() should produce same result: Begin(%f,%f) vs NewIteratorX(%f,%f)",
+			it1.X, it1.Y, it2.X, it2.Y)
+	}
+
+	// Both should advance identically
+	it1.Next()
+	it2.Next()
+
+	if math.Abs(it1.X-it2.X) > perspectiveTestEpsilon || math.Abs(it1.Y-it2.Y) > perspectiveTestEpsilon {
+		t.Errorf("Begin() and NewIteratorX() should advance identically: Begin(%f,%f) vs NewIteratorX(%f,%f)",
+			it1.X, it1.Y, it2.X, it2.Y)
+	}
+}

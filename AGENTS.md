@@ -1,44 +1,42 @@
 # Repository Guidelines
 
-## Project Structure & Modules
+This document describes how to work in this repository efficiently and consistently.
 
-- `agg.go`, `types.go`: Public API surface.
-- `internal/…`: All implementation packages (e.g., `basics`, `color`, `buffer`, `pixfmt`, `scanline`, `rasterizer`, `renderer`).
-- `examples/…`: Runnable examples (e.g., `examples/basic/hello_world`).
-- `tests/{unit,integration,benchmark,visual}`: Test suites by type.
-- `docs/…`: Architecture and status docs.
+## Project Structure & Module Organization
+- Public API: `agg.go`, `types.go`.
+- Implementation: `internal/<pkg>/` (e.g., `basics`, `color`, `buffer`, `pixfmt`, `scanline`, `rasterizer`, `renderer`).
+- Examples: `examples/<group>/<name>/` (e.g., `examples/basic/hello_world`).
+- Tests: `tests/{unit,integration,benchmark,visual}`.
+- Docs: `docs/` for architecture and status notes.
 
-## Build, Test, and Dev Commands
+## Build, Test, and Development Commands
+- Build library and examples: `just build`.
+- Run tests: `just test` | unit only: `just test-unit` | integration: `just test-integration`.
+- Coverage report: `just test-coverage` (opens/produces `coverage.html`).
+- Run an example: `just run-example basic/hello_world`.
+- Quality checks: `just fmt` | `just vet` | `just lint` | `just tidy` | `just check`.
+- Install pre-commit hook: `just init-hooks` (runs `just pre-commit` on commit).
 
-- `just build`: Build library and examples.
-- `just test` | `just test-unit` | `just test-integration`: Run tests.
-- `just test-coverage`: Generate `coverage.html` report.
-- `just run-example EXAMPLE`: Run `examples/EXAMPLE/main.go` (e.g., `basic/hello_world`).
-- `just fmt` | `just vet` | `just lint` | `just tidy` | `just check`: Format, vet, lint, tidy, then run tests.
-- `just init-hooks`: Install a pre-commit hook to run `just pre-commit`.
-
-## Coding Style & Naming
-
-- Formatting: enforced by `gofumpt` + `gci` via `treefmt`; run `just lint` or `treefmt --fail-on-change`.
-- Linting: `golangci-lint` (includes `misspell`, `gocritic`); keep code idiomatic and simple.
-- Packages: short, lowercase names (no underscores).
+## Coding Style & Naming Conventions
+- Formatting: `gofumpt` + `gci` via `treefmt`. Enforce with `just lint` or `treefmt --fail-on-change`.
+- Linting: `golangci-lint` (includes `misspell`, `gocritic`). Keep code idiomatic and simple.
+- Packages: short, lowercase, no underscores.
 - Files: `snake_case.go`; tests as `*_test.go`.
-- Identifiers: Exported `PascalCase`, unexported `camelCase`. Avoid stutter in public API.
+- Identifiers: Exported `PascalCase`, unexported `camelCase`. Avoid API stutter.
 
 ## Testing Guidelines
-
-- Unit tests live beside code under `internal/<pkg>` or under `tests/unit` when cross-package.
-- Integration/visual/bench tests under `tests/{integration,visual,benchmark}`.
-- Use standard `testing` (`TestXxx`, `BenchmarkXxx`). Run `just test-coverage` to inspect coverage.
-- Prefer deterministic tests; isolate state and avoid global mutation.
+- Framework: standard `testing` (`TestXxx`, `BenchmarkXxx`).
+- Location: unit tests beside code (`internal/<pkg>`) or cross-package in `tests/unit`.
+- Other suites: `tests/{integration,visual,benchmark}`.
+- Practices: deterministic tests; isolate state; avoid global mutation.
+- Coverage: `just test-coverage` then open `coverage.html`.
 
 ## Commit & Pull Request Guidelines
-
-- Commits: short, imperative subject (e.g., "rasterizer: fix cell merge"). Git history favors concise messages.
-- PRs: focused scope; include description, linked issue/TASKS.md items, and before/after images for visual changes.
+- Commits: short, imperative subject (e.g., `rasterizer: fix cell merge`).
+- PRs: focused scope; include description, linked issue (and `TASKS.md` items when relevant), and before/after images for visual changes.
 - CI locally: ensure `just check` passes; update docs/examples when API changes.
 
 ## Security & Configuration Tips
-
-- No manual memory management; avoid unsafe unless justified and reviewed.
-- Run `just tidy` to keep `go.mod` clean. Use `build-*-platforms` only when needed.
+- No manual memory management; avoid `unsafe` unless justified and reviewed.
+- Keep `go.mod` tidy with `just tidy`.
+- Use platform-specific builds only when necessary (`build-*-platforms`).

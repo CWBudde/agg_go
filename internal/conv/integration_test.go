@@ -106,9 +106,10 @@ func TestIntegration_SmoothPolyAndCurve(t *testing.T) {
 	lineToCount := 0
 	moveToCount := 0
 	for _, v := range resultVertices {
-		if v.Cmd == basics.PathCmdLineTo {
+		switch v.Cmd {
+		case basics.PathCmdLineTo:
 			lineToCount++
-		} else if v.Cmd == basics.PathCmdMoveTo {
+		case basics.PathCmdMoveTo:
 			moveToCount++
 		}
 	}

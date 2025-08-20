@@ -239,6 +239,103 @@ func TestScanlineBinResetSpans(t *testing.T) {
 	}
 }
 
+// Additional edge case tests for proper AGG compliance
+
+func TestScanlineBinEmptyBegin(t *testing.T) {
+	sl := NewScanlineBin()
+	sl.Reset(0, 100)
+
+	// Empty scanline should return nil from Begin()
+	spans := sl.Begin()
+	if spans != nil {
+		t.Errorf("Expected nil from Begin() for empty scanline, got %v", spans)
+	}
+}
+
+func TestScanlineBinAGGIndexConvention(t *testing.T) {
+	sl := NewScanlineBin()
+	sl.Reset(0, 100)
+
+	// Add a single cell
+	sl.AddCell(10, 128)
+
+	// Check that span is stored at index 1 (AGG convention)
+	if sl.curSpan != 1 {
+		t.Errorf("Expected curSpan to be 1 (AGG convention), got %d", sl.curSpan)
+	}
+
+	spans := sl.Begin()
+	if len(spans) != 1 {
+		t.Errorf("Expected 1 span from Begin(), got %d", len(spans))
+	}
+
+	if spans[0].X != 10 {
+		t.Errorf("Expected span X to be 10, got %d", spans[0].X)
+	}
+}
+
+func TestScanlineBinSpanIndexZeroUnused(t *testing.T) {
+	sl := NewScanlineBin()
+	sl.Reset(0, 100)
+
+	// Add some spans
+	sl.AddCell(5, 100)
+	sl.AddCell(10, 100) // Non-consecutive, creates new span
+	sl.AddCell(11, 100) // Consecutive, extends span
+
+	if sl.NumSpans() != 2 {
+		t.Errorf("Expected 2 spans, got %d", sl.NumSpans())
+	}
+
+	// Verify AGG convention: index 0 should be unused
+	// curSpan should be 2 (pointing to last span)
+	if sl.curSpan != 2 {
+		t.Errorf("Expected curSpan to be 2, got %d", sl.curSpan)
+	}
+
+	spans := sl.Begin()
+	if len(spans) != 2 {
+		t.Errorf("Expected 2 spans from Begin(), got %d", len(spans))
+	}
+
+	// First span
+	if spans[0].X != 5 || spans[0].Len != 1 {
+		t.Errorf("First span: expected (X:5, Len:1), got (X:%d, Len:%d)", spans[0].X, spans[0].Len)
+	}
+
+	// Second span (merged)
+	if spans[1].X != 10 || spans[1].Len != 2 {
+		t.Errorf("Second span: expected (X:10, Len:2), got (X:%d, Len:%d)", spans[1].X, spans[1].Len)
+	}
+}
+
+func TestScanlineBinLargeSpanGrowth(t *testing.T) {
+	sl := NewScanlineBin()
+	sl.Reset(0, 1000)
+
+	// Add many non-consecutive spans to test array growth
+	for i := 0; i < 50; i++ {
+		sl.AddCell(i*10, 128) // Each cell is 10 units apart
+	}
+
+	if sl.NumSpans() != 50 {
+		t.Errorf("Expected 50 spans, got %d", sl.NumSpans())
+	}
+
+	spans := sl.Begin()
+	if len(spans) != 50 {
+		t.Errorf("Expected 50 spans from Begin(), got %d", len(spans))
+	}
+
+	// Check a few spans
+	if spans[0].X != 0 {
+		t.Errorf("First span X: expected 0, got %d", spans[0].X)
+	}
+	if spans[49].X != 490 {
+		t.Errorf("Last span X: expected 490, got %d", spans[49].X)
+	}
+}
+
 // Tests for Scanline32Bin (32-bit coordinates)
 
 func TestNewScanline32Bin(t *testing.T) {

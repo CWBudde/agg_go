@@ -305,3 +305,46 @@ func BenchmarkWarpMagnifierInverseTransform(b *testing.B) {
 		m.InverseTransform(&tx, &ty)
 	}
 }
+
+func TestWarpMagnifierInterfaces(t *testing.T) {
+	// This test verifies that warp magnifier implements the required interfaces
+	// and can be used with transformation systems like conv_transform
+
+	// Create warp magnifier
+	m := NewTransWarpMagnifier()
+	m.SetCenter(50.0, 50.0)
+	m.SetMagnification(2.0)
+	m.SetRadius(30.0)
+
+	// Test that warp magnifier implements Transformer interface
+	var transformer interface{} = m
+	if _, ok := transformer.(Transformer); !ok {
+		t.Error("TransWarpMagnifier should implement Transformer interface")
+	}
+
+	// Test that warp magnifier implements InverseTransformer interface
+	if _, ok := transformer.(InverseTransformer); !ok {
+		t.Error("TransWarpMagnifier should implement InverseTransformer interface")
+	}
+
+	// Test that the Transformer interface method works correctly
+	var transformerInterface Transformer = m
+	x, y := 60.0, 60.0 // Distance from center (50,50) is ~14.14, less than radius 30
+	originalX, originalY := x, y
+	transformerInterface.Transform(&x, &y)
+
+	// Should be magnified by factor of 2
+	expectedX := 50.0 + (originalX-50.0)*2.0
+	expectedY := 50.0 + (originalY-50.0)*2.0
+
+	if math.Abs(x-expectedX) > warpMagnifierTestEpsilon || math.Abs(y-expectedY) > warpMagnifierTestEpsilon {
+		t.Errorf("Transformer interface test failed: expected (%g,%g), got (%g,%g)", expectedX, expectedY, x, y)
+	}
+
+	// Test that the InverseTransformer interface method works correctly
+	var inverseTransformerInterface InverseTransformer = m
+	inverseTransformerInterface.InverseTransform(&x, &y)
+	if math.Abs(x-originalX) > warpMagnifierTestEpsilon || math.Abs(y-originalY) > warpMagnifierTestEpsilon {
+		t.Errorf("InverseTransformer interface test failed: original (%g,%g), final (%g,%g)", originalX, originalY, x, y)
+	}
+}

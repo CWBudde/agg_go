@@ -124,6 +124,11 @@ type SerializedScanlinesAdaptorBin struct {
 	maxY int    // Maximum Y coordinate
 }
 
+// BinaryCoverType represents the cover type for binary scanlines.
+// This corresponds to AGG's typedef bool cover_type in serialized_scanlines_adaptor_bin.
+// For binary scanlines, coverage is simply a boolean (covered/not covered).
+type BinaryCoverType = bool
+
 // NewSerializedScanlinesAdaptorBin creates a new adaptor for reading serialized data.
 func NewSerializedScanlinesAdaptorBin() *SerializedScanlinesAdaptorBin {
 	return &SerializedScanlinesAdaptorBin{

@@ -285,30 +285,72 @@ func FastSqrt(val uint32) uint32 {
 	return uint32(gSqrtTable[val]) >> shift
 }
 
-// Besj calculates the Bessel function of the first kind (simplified implementation)
-func Besj(x float64) float64 {
-	if x == 0.0 {
-		return 1.0
+// BesselJ calculates the Bessel function of the first kind of order n
+// This is a direct port of AGG's besj function from agg_math.h
+func BesselJ(x float64, n int) float64 {
+	if n < 0 {
+		return 0
 	}
 
-	// Use series expansion for small values
-	if math.Abs(x) < 3.0 {
-		x2 := x * x / 4.0
-		term := 1.0
-		sum := 1.0
+	d := 1e-6
+	b := 0.0
 
-		for i := 1; i < 50; i++ {
-			term *= -x2 / (float64(i) * float64(i))
-			sum += term
+	if math.Abs(x) <= d {
+		if n != 0 {
+			return 0
+		}
+		return 1
+	}
 
-			if math.Abs(term) < 1e-12 {
-				break
+	b1 := 0.0 // b1 is the value from the previous iteration
+
+	// Set up a starting order for recurrence
+	m1 := int(math.Abs(x)) + 6
+	if math.Abs(x) > 5 {
+		m1 = int(math.Abs(1.4*x + 60/x))
+	}
+	m2 := int(float64(n) + 2 + math.Abs(x)/4)
+	if m1 > m2 {
+		m2 = m1
+	}
+
+	// Apply recurrence down from current max order
+	for {
+		c3 := 0.0
+		c2 := 1e-30
+		c4 := 0.0
+		m8 := 1
+		if m2/2*2 == m2 {
+			m8 = -1
+		}
+		imax := m2 - 2
+		for i := 1; i <= imax; i++ {
+			c6 := 2*float64(m2-i)*c2/x - c3
+			c3 = c2
+			c2 = c6
+			if m2-i-1 == n {
+				b = c6
+			}
+			m8 = -1 * m8
+			if m8 > 0 {
+				c4 += 2 * c6
 			}
 		}
-
-		return sum
+		c6 := 2*c2/x - c3
+		if n == 0 {
+			b = c6
+		}
+		c4 += c6
+		b /= c4
+		if math.Abs(b-b1) < d {
+			return b
+		}
+		b1 = b
+		m2 += 3
 	}
+}
 
-	// For larger values, use asymptotic approximation
-	return math.Sqrt(2.0/(math.Pi*x)) * math.Cos(x-math.Pi/4.0)
+// Besj provides backward compatibility - calculates J0 Bessel function
+func Besj(x float64) float64 {
+	return BesselJ(x, 0)
 }

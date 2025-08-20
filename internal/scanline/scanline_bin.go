@@ -19,48 +19,56 @@ type SpanBin struct {
 // It only stores which pixels are covered, not their coverage values.
 //
 // This is equivalent to AGG's scanline_bin class.
+// IMPORTANT: Following AGG convention, spans are stored starting at index 1 (index 0 is unused).
 type ScanlineBin struct {
 	lastX   int                      // Last X coordinate processed (sentinel: 0x7FFFFFF0)
 	y       int                      // Y coordinate of current scanline
-	spans   *array.PodArray[SpanBin] // Spans array
-	curSpan int                      // Index of current span being built
+	spans   *array.PodArray[SpanBin] // Spans array (index 0 unused, spans start at index 1)
+	curSpan int                      // Index of current span being built (starts at 1)
 }
 
 // NewScanlineBin creates a new binary scanline container.
 func NewScanlineBin() *ScanlineBin {
+	spans := array.NewPodArray[SpanBin]()
+	// Ensure we have space for the dummy element at index 0
+	if spans.Size() == 0 {
+		spans.Resize(1)
+	}
 	return &ScanlineBin{
 		lastX:   0x7FFFFFF0, // Sentinel value indicating no previous X
-		curSpan: 0,
-		spans:   array.NewPodArray[SpanBin](),
+		curSpan: 0,          // Will start at index 1 when first span is added
+		spans:   spans,
 	}
 }
 
 // Reset prepares the scanline for a new row between min_x and max_x coordinates.
 func (sl *ScanlineBin) Reset(minX, maxX int) {
 	maxLen := maxX - minX + 3
-	if maxLen > sl.spans.Size() {
-		sl.spans.Resize(maxLen)
+	// Ensure we have space for at least the dummy element at index 0 plus the calculated spans
+	if maxLen+1 > sl.spans.Size() {
+		sl.spans.Resize(maxLen + 1)
 	}
 	sl.lastX = 0x7FFFFFF0 // Reset to sentinel value
-	sl.curSpan = 0
+	sl.curSpan = 0        // Will start at index 1 when first span is added
 }
 
 // AddCell adds a single cell to the scanline. The coverage value is ignored.
 func (sl *ScanlineBin) AddCell(x int, _ uint) {
-	if x == sl.lastX+1 {
+	if x == sl.lastX+1 && sl.curSpan > 0 {
 		// Extend current span
 		currentSpan := sl.spans.ValueAt(sl.curSpan)
 		currentSpan.Len++
 		sl.spans.Set(sl.curSpan, currentSpan)
 	} else {
-		// Start new span
+		// Start new span - AGG convention: spans start at index 1
 		sl.curSpan++
 		newSpan := SpanBin{
 			X:   basics.Int16(x),
 			Len: 1,
 		}
+		// Ensure we have space for the new span
 		if sl.curSpan >= sl.spans.Size() {
-			sl.spans.Resize(sl.spans.Size() + 1)
+			sl.spans.Resize(sl.spans.Size() + 10) // Grow in chunks for efficiency
 		}
 		sl.spans.Set(sl.curSpan, newSpan)
 	}
@@ -69,20 +77,21 @@ func (sl *ScanlineBin) AddCell(x int, _ uint) {
 
 // AddSpan adds a span of pixels to the scanline. The coverage value is ignored.
 func (sl *ScanlineBin) AddSpan(x int, length int, _ uint) {
-	if x == sl.lastX+1 {
+	if x == sl.lastX+1 && sl.curSpan > 0 {
 		// Extend current span
 		currentSpan := sl.spans.ValueAt(sl.curSpan)
 		currentSpan.Len += basics.Int16(length)
 		sl.spans.Set(sl.curSpan, currentSpan)
 	} else {
-		// Start new span
+		// Start new span - AGG convention: spans start at index 1
 		sl.curSpan++
 		newSpan := SpanBin{
 			X:   basics.Int16(x),
 			Len: basics.Int16(length),
 		}
+		// Ensure we have space for the new span
 		if sl.curSpan >= sl.spans.Size() {
-			sl.spans.Resize(sl.spans.Size() + 1)
+			sl.spans.Resize(sl.spans.Size() + 10) // Grow in chunks for efficiency
 		}
 		sl.spans.Set(sl.curSpan, newSpan)
 	}
@@ -102,7 +111,7 @@ func (sl *ScanlineBin) Finalize(y int) {
 // ResetSpans prepares the scanline for accumulating a new set of spans.
 func (sl *ScanlineBin) ResetSpans() {
 	sl.lastX = 0x7FFFFFF0 // Reset to sentinel value
-	sl.curSpan = 0
+	sl.curSpan = 0        // Will start at index 1 when first span is added
 }
 
 // Y returns the Y coordinate of the current scanline.
@@ -111,8 +120,9 @@ func (sl *ScanlineBin) Y() int {
 }
 
 // NumSpans returns the number of spans in the current scanline.
+// Following AGG convention: spans start at index 1, so curSpan is the count.
 func (sl *ScanlineBin) NumSpans() int {
-	return sl.curSpan
+	return sl.curSpan // curSpan is already the count since we start from 1
 }
 
 // Begin returns an iterator (slice) to the spans.
@@ -121,6 +131,7 @@ func (sl *ScanlineBin) Begin() []SpanBin {
 	if sl.curSpan == 0 {
 		return nil
 	}
+	// AGG stores spans starting at index 1, return slice from 1 to curSpan (inclusive)
 	return sl.spans.Data()[1 : sl.curSpan+1]
 }
 
@@ -130,7 +141,7 @@ func (sl *ScanlineBin) Spans() []SpanBin {
 	return sl.Begin()
 }
 
-//=============================================================scanline32_bin
+// =============================================================scanline32_bin
 
 // Span32Bin represents a binary horizontal span with 32-bit coordinates.
 // This is used for larger coordinate spaces.

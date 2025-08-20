@@ -78,11 +78,7 @@ func (mi *MockScanlineIterator) GetSpan() SpanInfo {
 		return SpanInfo{}
 	}
 	span := mi.spans[mi.index]
-	return SpanInfo{
-		X:      span.X,
-		Len:    span.Len,
-		Covers: span.Covers,
-	}
+	return SpanInfo(span)
 }
 
 func (mi *MockScanlineIterator) Next() bool {
@@ -341,9 +337,9 @@ func TestScanlineStorageAA_ConcreteTypes(t *testing.T) {
 	}
 
 	// Test type aliases
-	var _ *ScanlineStorageAA8 = storage8
-	var _ *ScanlineStorageAA16 = storage16
-	var _ *ScanlineStorageAA32 = storage32
+	var _ = storage8
+	var _ = storage16
+	var _ = storage32
 }
 
 func TestScanlineStorageAA_BoundsChecking(t *testing.T) {

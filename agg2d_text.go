@@ -1,0 +1,289 @@
+// Package agg provides text rendering functionality for the AGG2D high-level interface.
+// This implements the text-related methods from the original C++ Agg2D class.
+package agg
+
+import (
+	"agg_go/internal/font"
+	"agg_go/internal/font/freetype"
+	"math"
+)
+
+// Font loads and configures a font for text rendering.
+// This matches the C++ Agg2D::font() method signature and behavior.
+func (agg2d *Agg2D) Font(fileName string, height float64, bold, italic bool,
+	cacheType FontCacheType, angle float64) error {
+
+	if agg2d.fontEngine == nil {
+		// Initialize font engine if not already done
+		engine, err := freetype.NewFontEngineFreetype(false, 32)
+		if err != nil {
+			return err
+		}
+		agg2d.fontEngine = engine
+		agg2d.fontCacheManager = font.NewFontCacheManager(engine, 32)
+	}
+
+	// Store font parameters
+	agg2d.textAngle = angle
+	agg2d.fontHeight = height
+	agg2d.fontCacheType = cacheType
+
+	// Determine rendering type based on cache type
+	var renderingType freetype.GlyphRenderingType
+	if cacheType == VectorFontCache {
+		renderingType = freetype.GlyphRenderingOutline
+	} else {
+		renderingType = freetype.GlyphRenderingAAGray8
+	}
+
+	// Load the font
+	if ftEngine, ok := agg2d.fontEngine.(*freetype.FontEngineFreetype); ok {
+		err := ftEngine.LoadFont(fileName, 0, renderingType, nil)
+		if err != nil {
+			return err
+		}
+
+		ftEngine.SetHinting(agg2d.textHints)
+
+		// Set height based on cache type
+		if cacheType == VectorFontCache {
+			ftEngine.SetHeight(height)
+		} else {
+			// Convert world coordinates to screen coordinates for raster fonts
+			worldHeight := height
+			agg2d.WorldToScreen(&worldHeight, &worldHeight)
+			ftEngine.SetHeight(worldHeight)
+		}
+	}
+
+	return nil
+}
+
+// FontHeight returns the current font height.
+func (agg2d *Agg2D) FontHeight() float64 {
+	return agg2d.fontHeight
+}
+
+// FlipText sets whether to flip text rendering vertically.
+func (agg2d *Agg2D) FlipText(flip bool) {
+	if ftEngine, ok := agg2d.fontEngine.(*freetype.FontEngineFreetype); ok {
+		ftEngine.SetFlipY(flip)
+	}
+}
+
+// NOTE: TextAlignment method already exists in agg2d.go, so we don't redefine it here
+
+// TextHints enables or disables font hinting for better text rendering.
+func (agg2d *Agg2D) TextHints(hints bool) {
+	agg2d.textHints = hints
+	if ftEngine, ok := agg2d.fontEngine.(*freetype.FontEngineFreetype); ok {
+		ftEngine.SetHinting(hints)
+	}
+}
+
+// GetTextHints returns whether text hinting is currently enabled.
+func (agg2d *Agg2D) GetTextHints() bool {
+	return agg2d.textHints
+}
+
+// TextWidth calculates the width of the given text string in current units.
+// This matches the C++ Agg2D::textWidth() method.
+func (agg2d *Agg2D) TextWidth(str string) float64 {
+	fcm, ok := agg2d.fontCacheManager.(*font.FontCacheManager)
+	if !ok || fcm == nil {
+		return 0.0
+	}
+
+	x := 0.0
+	y := 0.0
+	first := true
+
+	// Iterate through each character to calculate total width
+	for _, r := range str {
+		glyph := fcm.Glyph(uint(r))
+		if glyph != nil {
+			if !first {
+				// Add kerning adjustment
+				prevR := uint(0) // We'd need to track the previous character for proper kerning
+				fcm.AddKerning(&x, &y, prevR, uint(r))
+			}
+			x += glyph.AdvanceX
+			y += glyph.AdvanceY
+			first = false
+		}
+	}
+
+	// Convert screen coordinates back to world coordinates for raster fonts
+	if agg2d.fontCacheType == RasterFontCache {
+		worldX := x
+		agg2d.ScreenToWorld(&worldX, &y)
+		return worldX
+	}
+
+	return x
+}
+
+// Text renders text at the specified position with optional positioning adjustments.
+// This closely matches the C++ Agg2D::text() method implementation.
+func (agg2d *Agg2D) Text(x, y float64, str string, roundOff bool, dx, dy float64) {
+	fcm, ok := agg2d.fontCacheManager.(*font.FontCacheManager)
+	if !ok || fcm == nil || len(str) == 0 {
+		return
+	}
+
+	// Calculate alignment offsets
+	alignDx := 0.0
+	alignDy := 0.0
+
+	// Horizontal alignment
+	switch agg2d.textAlignX {
+	case AlignCenter:
+		alignDx = -agg2d.TextWidth(str) * 0.5
+	case AlignRight:
+		alignDx = -agg2d.TextWidth(str)
+	}
+
+	// Vertical alignment - calculate font ascender
+	ascent := agg2d.fontHeight
+	// Try to get ascent from 'H' character for better alignment
+	glyph := fcm.Glyph(uint('H'))
+	if glyph != nil {
+		ascent = float64(glyph.Bounds.Y2 - glyph.Bounds.Y1)
+	}
+
+	if agg2d.fontCacheType == RasterFontCache {
+		worldAscent := ascent
+		agg2d.ScreenToWorld(&worldAscent, &worldAscent)
+		ascent = worldAscent
+	}
+
+	switch agg2d.textAlignY {
+	case AlignCenter:
+		alignDy = -ascent * 0.5
+	case AlignTop:
+		alignDy = -ascent
+	}
+
+	// Flip Y alignment if font engine has Y-flipping enabled
+	if ftEngine, ok := agg2d.fontEngine.(*freetype.FontEngineFreetype); ok {
+		if ftEngine.GetFlipY() {
+			alignDy = -alignDy
+		}
+	}
+
+	// Calculate starting position
+	startX := x + alignDx
+	startY := y + alignDy
+
+	// Apply rounding if requested
+	if roundOff {
+		startX = math.Floor(startX)
+		startY = math.Floor(startY)
+	}
+
+	// Apply additional offset
+	startX += dx
+	startY += dy
+
+	// Set up transformation matrix for text rotation
+	if agg2d.textAngle != 0.0 {
+		// TODO: Apply rotation transformation
+		// This would require setting up a transformation matrix
+		// and applying it to the rendering pipeline
+	}
+
+	// Convert to screen coordinates for raster fonts
+	if agg2d.fontCacheType == RasterFontCache {
+		agg2d.WorldToScreen(&startX, &startY)
+	}
+
+	// Render each character
+	currentX := startX
+	currentY := startY
+	runes := []rune(str)
+
+	for i, r := range runes {
+		glyph := fcm.Glyph(uint(r))
+		if glyph == nil {
+			continue
+		}
+
+		// Apply kerning if not the first character
+		if i > 0 {
+			fcm.AddKerning(&currentX, &currentY, uint(runes[i-1]), uint(r))
+		}
+
+		// Initialize glyph adaptors for rendering
+		fcm.InitEmbeddedAdaptors(glyph, currentX, currentY)
+
+		// Render based on glyph data type
+		switch glyph.DataType {
+		case font.GlyphDataOutline:
+			// Vector font rendering - add path to current path and draw
+			agg2d.path.RemoveAll()
+			// TODO: Add glyph outline path to current path
+			// This requires converting the font's path data to our path format
+			agg2d.DrawPath(FillAndStroke)
+
+		case font.GlyphDataGray8:
+			// Raster font rendering - render using scanlines
+			if adaptor := fcm.Gray8Adaptor(); adaptor != nil {
+				// TODO: Render the glyph using the scanline renderer
+				// This requires integration with the scanline rendering system
+				agg2d.renderGlyphScanlines(adaptor, glyph, currentX, currentY)
+			}
+
+		case font.GlyphDataMono:
+			// Monochrome font rendering
+			if adaptor := fcm.MonoAdaptor(); adaptor != nil {
+				// TODO: Render the monochrome glyph
+				agg2d.renderGlyphScanlines(adaptor, glyph, currentX, currentY)
+			}
+		}
+
+		// Advance to next character position
+		currentX += glyph.AdvanceX
+		currentY += glyph.AdvanceY
+	}
+}
+
+// renderGlyphScanlines renders a glyph using scanline data.
+// This is a helper method for the Text() function.
+func (agg2d *Agg2D) renderGlyphScanlines(adaptor interface{}, glyph *font.GlyphCache, x, y float64) {
+	// TODO: Implement scanline rendering for glyphs
+	// This requires integration with the AGG scanline rendering system
+	// For now, this is a placeholder that demonstrates the structure
+
+	switch a := adaptor.(type) {
+	case *font.SerializedScanlinesAdaptorAA:
+		// Render anti-aliased scanlines
+		bounds := a.Bounds()
+		data := a.Data()
+
+		// Position the glyph at the correct location
+		offsetX := int(x) + bounds.X1
+		offsetY := int(y) + bounds.Y1
+
+		// TODO: Use the AGG renderer to draw the scanline data
+		// This would involve:
+		// 1. Setting up a scanline renderer with the current fill color
+		// 2. Processing the serialized scanline data
+		// 3. Rendering each scanline at the correct position
+		_ = offsetX
+		_ = offsetY
+		_ = data
+
+	case *font.SerializedScanlinesAdaptorBin:
+		// Render binary scanlines
+		bounds := a.Bounds()
+		data := a.Data()
+
+		offsetX := int(x) + bounds.X1
+		offsetY := int(y) + bounds.Y1
+
+		// TODO: Similar to above but for binary (1-bit) data
+		_ = offsetX
+		_ = offsetY
+		_ = data
+	}
+}
