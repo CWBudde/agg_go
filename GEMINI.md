@@ -48,3 +48,37 @@ The project uses a `Justfile` for build orchestration.
 ### All Checks
 
 - **Run all checks (fmt, vet, lint, test):** `just check`
+
+### C++ to Go Translation Strategy
+
+The original code can be found in ../agg-2.6 and the source code in particular is located at ../agg-2.6/agg-src/. If possible always refer to the original C++ implementation for guidance. If not otherwise denoted below, try to be as close as possible to the original source code.
+
+- **Templates → Generics**: C++ template classes become Go generic types (e.g., `Point[T]`, `Rect[T]`)
+- **Manual Memory → GC**: Replaces C++ new/delete with Go's garbage collector
+- **Inheritance → Interfaces**: C++ virtual methods become Go interfaces
+- **Enums → Typed Constants**: C++ enums become Go typed constants
+- **Avoid using interface{} (or any)**: Prefer constrained generics and explicit interfaces that model the required capabilities at compile time.
+
+### Rendering Pipeline Flow
+
+1. **Path Definition** (`types.go`: Path, MoveTo, LineTo)
+2. **Transformation** (`internal/transform/`: affine matrices)
+3. **Conversion** (`internal/conv/`: stroke, dash, contour)
+4. **Rasterization** (`internal/rasterizer/`: vector → coverage data)
+5. **Scanline Generation** (`internal/scanline/`: horizontal strips)
+6. **Pixel Rendering** (`internal/renderer/` + `internal/pixfmt/`: final output)
+
+### Memory Management
+
+- Use Go slices instead of C++ raw pointers
+- Rendering buffers wrap slices with bounds checking
+- Reuse slices where possible for performance (scanlines, spans)
+- No manual allocation/deallocation needed
+
+### Error Handling
+
+- Return errors for I/O operations and invalid parameters
+- Panic for programmer errors (bounds violations, invalid state)
+- Graceful degradation for edge cases in rendering
+
+The codebase follows the detailed porting plan in docs/TASKS.md which lists every C++ file that needs Go implementation. Always mark completed tasks as done ("[x]") once completed.
