@@ -66,7 +66,7 @@ func main() {
 
 // saveAsPNG converts the AGG image to PNG format and writes it to filename.
 func saveAsPNG(img *agg.Image, filename string) error {
-	goImg := image.NewRGBA(image.Rect(0, 0, img.Width(), img.Height()))
+	goImg := image.NewRGBA(image.Rect(0, 0, img.Width, img.Height))
 	copy(goImg.Pix, img.Data)
 	f, err := os.Create(filename)
 	if err != nil {

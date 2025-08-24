@@ -68,7 +68,7 @@ func main() {
 // saveAsPNG converts the AGG image to PNG format
 func saveAsPNG(img *agg.Image, filename string) error {
 	// Create Go image from AGG image
-	goImg := image.NewRGBA(image.Rect(0, 0, img.Width(), img.Height()))
+	goImg := image.NewRGBA(image.Rect(0, 0, img.Width, img.Height))
 
 	// Copy pixel data from AGG buffer to Go image
 	copy(goImg.Pix, img.Data)

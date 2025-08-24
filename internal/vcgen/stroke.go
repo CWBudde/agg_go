@@ -87,11 +87,25 @@ func (vg *VCGenStroke) PrepareSrc() {
 
 // shortenPath implements basic path shortening (simplified version)
 func (vg *VCGenStroke) shortenPath() {
-	// TODO: Implement proper path shortening when agg_shorten_path is ported
-	// For now, this is a no-op
-	if vg.shorten > 0 && vg.srcVertices.Size() > 1 {
-		// Basic shortening - just remove some length from ends
-		// This is a simplified version, the full implementation is complex
+	// TODO: Confirm that this aligns with the original C++ implementation
+	// Use the shared shorten_path implementation to trim the polyline.
+	// This matches AGG's agg_shorten_path behavior and mirrors vcgen_dash.
+	if vg.shorten > 0.0 && vg.srcVertices.Size() > 1 {
+		// Convert basics.VertexDist to array.VertexDist for ShortenPath
+		convertedVertices := array.NewVertexSequence[array.VertexDist]()
+		for i := 0; i < vg.srcVertices.Size(); i++ {
+			v := vg.srcVertices.At(i)
+			convertedVertices.Add(array.VertexDist{X: v.X, Y: v.Y, Dist: v.Dist})
+		}
+
+		array.ShortenPath(convertedVertices, vg.shorten, vg.closed)
+
+		// Convert back to basics.VertexDist
+		vg.srcVertices.RemoveAll()
+		for i := 0; i < convertedVertices.Size(); i++ {
+			v := convertedVertices.At(i)
+			vg.srcVertices.Add(basics.VertexDist{X: v.X, Y: v.Y, Dist: v.Dist})
+		}
 	}
 }
 

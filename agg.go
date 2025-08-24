@@ -74,17 +74,6 @@ type Direction = agg2d.Direction
 // DrawPathFlag type for rendering operations
 type DrawPathFlag = agg2d.DrawPathFlag
 
-// Clamp constrains a value to a specified range.
-func Clamp(value, min, max float64) float64 {
-	if value < min {
-		return min
-	}
-	if value > max {
-		return max
-	}
-	return value
-}
-
 // Lerp performs linear interpolation between two values.
 func Lerp(a, b, t float64) float64 {
 	return a + (b-a)*t
@@ -194,8 +183,8 @@ func (a *Agg2D) LineWidth(w float64) {
 }
 
 // LineCap sets the line cap style.
-func (a *Agg2D) LineCap(cap LineCap) {
-	a.impl.LineCap(int(cap))
+func (a *Agg2D) LineCap(capStyle LineCap) {
+	a.impl.LineCap(int(capStyle))
 }
 
 // LineJoin sets the line join style.
@@ -263,24 +252,6 @@ func (a *Agg2D) Rectangle(x1, y1, x2, y2 float64) {
 
 func (a *Agg2D) Ellipse(cx, cy, rx, ry float64) {
 	a.impl.Ellipse(cx, cy, rx, ry)
-}
-
-// Image type - simplified for now
-type Image struct {
-	Data   []uint8
-	Width  int
-	Height int
-	Stride int
-}
-
-// NewImage creates a new Image wrapper
-func NewImage(data []uint8, width, height, stride int) *Image {
-	return &Image{
-		Data:   data,
-		Width:  width,
-		Height: height,
-		Stride: stride,
-	}
 }
 
 // Package-level initialization

@@ -6,17 +6,6 @@ import (
 	"errors"
 )
 
-// TextAlignment defines text alignment options.
-type TextAlignment int
-
-const (
-	AlignLeft TextAlignment = iota
-	AlignRight
-	AlignCenter
-	AlignTop
-	AlignBottom
-)
-
 // FontCacheType defines font caching modes.
 type FontCacheType int
 

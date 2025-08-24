@@ -178,4 +178,4 @@ This checklist is generated from TODO-like comments found in Go source files (`T
   - [ ] L217: Handle not-ready cases (insufficient points, RemoveAll, etc)
 
 - [ ] internal/vcgen/stroke.go
-  - [ ] L90: Implement proper path shortening when agg_shorten_path is ported
+  - [ ] L90: Implement proper path shortening when agg_shorten_path is ported (uses array.ShortenPath) -> Done, but confirm that this aligns with the original C++ implementation

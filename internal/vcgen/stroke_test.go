@@ -289,3 +289,43 @@ func TestVCGenStrokeDifferentLineJoins(t *testing.T) {
 		})
 	}
 }
+
+func TestVCGenStrokeShortenReducesExtent(t *testing.T) {
+    // A horizontal open path; shortening should reduce the maximum X
+    collectMaxX := func(vg *VCGenStroke) float64 {
+        maxX := -1e308
+        for {
+            x, _, cmd := vg.Vertex()
+            if basics.IsStop(cmd) {
+                break
+            }
+            if cmd == basics.PathCmdMoveTo || cmd == basics.PathCmdLineTo {
+                if x > maxX {
+                    maxX = x
+                }
+            }
+        }
+        return maxX
+    }
+
+    base := NewVCGenStroke()
+    base.SetWidth(4.0)
+    base.SetLineCap(basics.ButtCap)
+    base.AddVertex(0, 0, basics.PathCmdMoveTo)
+    base.AddVertex(100, 0, basics.PathCmdLineTo)
+    base.Rewind(0)
+    maxXBase := collectMaxX(base)
+
+    shortened := NewVCGenStroke()
+    shortened.SetWidth(4.0)
+    shortened.SetLineCap(basics.ButtCap)
+    shortened.SetShorten(20.0)
+    shortened.AddVertex(0, 0, basics.PathCmdMoveTo)
+    shortened.AddVertex(100, 0, basics.PathCmdLineTo)
+    shortened.Rewind(0)
+    maxXShort := collectMaxX(shortened)
+
+    if !(maxXShort < maxXBase-1e-6) {
+        t.Fatalf("expected shortened stroke max X < base (got %.3f vs %.3f)", maxXShort, maxXBase)
+    }
+}

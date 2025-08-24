@@ -48,6 +48,7 @@ type RadialGradientSpec struct {
 
 // Context gradient methods
 
+/* TODO
 // SetLinearGradient sets a linear gradient for fill operations.
 func (ctx *Context) SetLinearGradient(x1, y1, x2, y2 float64, c1, c2 Color) {
 	ctx.agg2d.FillLinearGradient(x1, y1, x2, y2, c1, c2, 1.0)
@@ -97,6 +98,7 @@ func (ctx *Context) SetStrokeRadialGradientWithProfile(cx, cy, radius float64, c
 func (ctx *Context) SetStrokeRadialGradientMultiStop(cx, cy, radius float64, c1, c2, c3 Color) {
 	ctx.agg2d.LineRadialGradientMultiStop(cx, cy, radius, c1, c2, c3)
 }
+*/
 
 // Gradient utility functions
 
@@ -172,6 +174,7 @@ func (rg *RadialGradientSpec) SetProfile(profile float64) {
 
 // Gradient query methods
 
+/* TODO
 // GetFillGradientType returns the current fill gradient type.
 func (ctx *Context) GetFillGradientType() GradientType {
 	return GradientType(ctx.agg2d.FillGradientFlag())
@@ -191,6 +194,7 @@ func (ctx *Context) GetFillGradientBounds() (d1, d2 float64) {
 func (ctx *Context) GetStrokeGradientBounds() (d1, d2 float64) {
 	return ctx.agg2d.LineGradientD1(), ctx.agg2d.LineGradientD2()
 }
+*/
 
 // Convenience gradient constructors
 

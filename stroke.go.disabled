@@ -3,8 +3,6 @@
 package agg
 
 // LineJoin defines the style of line joins.
-type LineJoin int
-
 const (
 	JoinMiter LineJoin = iota // Miter join - sharp corner
 	JoinRound                 // Round join - rounded corner

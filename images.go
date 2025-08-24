@@ -14,8 +14,6 @@ import (
 )
 
 // ImageFilter represents different image filtering options
-type ImageFilter int
-
 const (
 	ImageFilterBilinear ImageFilter = iota
 	ImageFilterHanning
@@ -43,8 +41,6 @@ const (
 )
 
 // ImageResample defines image resampling modes.
-type ImageResample int
-
 const (
 	NoResample        ImageResample = iota // No resampling
 	ResampleAlways                         // Always resample
@@ -92,6 +88,7 @@ func (img *Image) Attach(buf []uint8, width, height, stride int) {
 
 // Context image methods
 
+/* TODO
 // DrawImage draws an image at the specified coordinates.
 func (ctx *Context) DrawImage(img *Image, x, y float64) error {
 	if img == nil {
@@ -146,6 +143,7 @@ func (ctx *Context) DrawImageRegion(img *Image, srcX, srcY, srcW, srcH int, dstX
 
 	return ctx.agg2d.TransformImage(img, srcX, srcY, srcX+srcW, srcY+srcH, dstX, dstY, dstX+dstW, dstY+dstH)
 }
+*/
 
 // Image loading functions
 
@@ -263,6 +261,7 @@ func (ctx *Context) SetImageFilter(filter ImageFilter) {
 	ctx.agg2d.ImageFilter(filter)
 }
 
+/* TODO
 // GetImageFilter returns the current image filtering method.
 func (ctx *Context) GetImageFilter() ImageFilter {
 	return ctx.agg2d.imageFilter
@@ -325,6 +324,7 @@ func (ctx *Context) CreateImagePattern(img *Image, x, y, width, height float64, 
 	// TODO: Implement proper pattern support when span generators are ready
 	return ctx.DrawImageScaled(img, x, y, width, height)
 }
+*/
 
 // Image creation utilities
 

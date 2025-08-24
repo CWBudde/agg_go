@@ -45,7 +45,7 @@ type Application struct {
 	// UI controls
 	gammaSlider  *slider.SliderCtrl
 	alphaSlider  *slider.SliderCtrl
-	testCheckbox *checkbox.CheckboxCtrl
+	testCheckbox *checkbox.CheckboxCtrl[color.RGBA8[color.Linear]]
 
 	// Rendering components
 	ras   *rasterizer.RasterizerScanlineAA[*rasterizer.RasterizerSlNoClip, rasterizer.RasConvDbl]
@@ -54,7 +54,7 @@ type Application struct {
 
 	// Rendering buffer and pixel format
 	rbuf *buffer.RenderingBufferU8
-	pixf *pixfmt.PixFmtAlphaBlendRGBA[blender.BlenderRGBA[color.Linear, color.ColorOrder], color.Linear]
+	pixf *pixfmt.PixFmtAlphaBlendRGBA[blender.BlenderRGBA[color.Linear, color.RGBAOrder], color.Linear]
 
 	// Image buffer
 	imageData []byte
@@ -87,14 +87,15 @@ func NewApplication() *Application {
 	app.alphaSlider.SetValue(1.0)
 	app.alphaSlider.SetLabel("Alpha=%1.2f")
 
-	app.testCheckbox = checkbox.NewCheckboxCtrl(130+10.0, 10.0+4.0+16.0, "Test Performance", !flipY)
+	black := color.RGBA8[color.Linear]{} // Use zero-value for default color
+	app.testCheckbox = checkbox.NewCheckboxCtrl(130+10.0, 10.0+4.0+16.0, "Test Performance", !flipY, black, black, black)
 
 	// Initialize rendering components
 	app.rbuf = buffer.NewRenderingBufferU8WithData(app.imageData, frameWidth, frameHeight, frameWidth*pixelSize)
 
 	// Create blender and pixel format
-	blender := blender.BlenderRGBA[color.Linear, color.ColorOrder]{}
-	app.pixf = pixfmt.NewPixFmtAlphaBlendRGBA[blender.BlenderRGBA[color.Linear, color.ColorOrder], color.Linear](app.rbuf, blender)
+	blender := blender.BlenderRGBA[color.Linear, color.RGBAOrder]{}
+	app.pixf = pixfmt.NewPixFmtAlphaBlendRGBA[blender.BlenderRGBA[color.Linear, color.RGBAOrder], color.Linear](app.rbuf, blender)
 
 	// Create rasterizer and scanlines
 	app.ras = rasterizer.NewRasterizerScanlineAA[*rasterizer.RasterizerSlNoClip, rasterizer.RasConvDbl](1000) // cell block limit
@@ -109,10 +110,7 @@ type SpanType interface {
 	scanlinePackage.SpanP8 | scanlinePackage.SpanBin
 }
 
-// ColorType constraint for renderer color types
-type ColorType interface {
-	color.RGBA8[color.Linear]
-}
+
 
 // Adapter interfaces to bridge incompatibilities between different packages
 
@@ -230,19 +228,19 @@ func (ra *rasterizerAdapter) MaxX() int {
 }
 
 // baseRendererAdapter adapts our pixel format to the BaseRendererInterface needed by scanline renderers
-type baseRendererAdapter[C ColorType] struct {
-	pixf *pixfmt.PixFmtAlphaBlendRGBA[blender.BlenderRGBA[color.Linear, color.ColorOrder], color.Linear]
+type baseRendererAdapter struct {
+	pixf *pixfmt.PixFmtAlphaBlendRGBA[blender.BlenderRGBA[color.Linear, color.RGBAOrder], color.Linear]
 }
 
-func (br *baseRendererAdapter[C]) BlendSolidHspan(x, y, len int, c C, covers []basics.Int8u) {
+func (br *baseRendererAdapter) BlendSolidHspan(x, y, len int, c color.RGBA8[color.Linear], covers []basics.Int8u) {
 	br.pixf.BlendSolidHspan(x, y, len, c, covers)
 }
 
-func (br *baseRendererAdapter[C]) BlendHline(x, y, x2 int, c C, cover basics.Int8u) {
+func (br *baseRendererAdapter) BlendHline(x, y, x2 int, c color.RGBA8[color.Linear], cover basics.Int8u) {
 	br.pixf.BlendHline(x, y, x2, c, cover)
 }
 
-func (br *baseRendererAdapter[C]) BlendColorHspan(x, y, len int, colors []C, covers []basics.Int8u, cover basics.Int8u) {
+func (br *baseRendererAdapter) BlendColorHspan(x, y, len int, colors []color.RGBA8[color.Linear], covers []basics.Int8u, cover basics.Int8u) {
 	// This method is not implemented as the pixel format doesn't support it directly
 	// For now, we'll just ignore color hspan calls
 	_ = colors
@@ -250,7 +248,7 @@ func (br *baseRendererAdapter[C]) BlendColorHspan(x, y, len int, colors []C, cov
 	_ = cover
 }
 
-func (br *baseRendererAdapter[C]) Clear(c C) {
+func (br *baseRendererAdapter) Clear(c color.RGBA8[color.Linear]) {
 	// Clear the entire buffer with the given color
 	for y := 0; y < br.pixf.Height(); y++ {
 		for x := 0; x < br.pixf.Width(); x++ {
@@ -262,8 +260,8 @@ func (br *baseRendererAdapter[C]) Clear(c C) {
 // drawAntiAliased renders the triangle with anti-aliasing and gamma correction
 func (app *Application) drawAntiAliased() {
 	// Create base renderer adapter and anti-aliased renderer
-	baseRen := &baseRendererAdapter[color.RGBA8[color.Linear]]{pixf: app.pixf}
-	renAA := scanline.NewRendererScanlineAASolidWithRenderer[*baseRendererAdapter[color.RGBA8[color.Linear]]](baseRen)
+	baseRen := &baseRendererAdapter{pixf: app.pixf}
+	renAA := scanline.NewRendererScanlineAASolidWithRenderer[*baseRendererAdapter](baseRen)
 
 	// Create path for triangle
 	pathStorage := path.NewPathStorage()
@@ -313,7 +311,7 @@ func (app *Application) drawAntiAliased() {
 
 	// Render scanlines using adapters (simplified approach)
 	// Due to interface incompatibilities, we'll use a direct rendering approach
-	app.renderDirectly(renAA, color.RGBA8[color.Linear]{
+	app.renderDirectly(color.RGBA8[color.Linear]{
 		R: basics.Int8u(0.7*255 + 0.5),
 		G: basics.Int8u(0.5*255 + 0.5),
 		B: basics.Int8u(0.1*255 + 0.5),
@@ -327,8 +325,8 @@ func (app *Application) drawAntiAliased() {
 // drawAliased renders the triangle without anti-aliasing (binary)
 func (app *Application) drawAliased() {
 	// Create base renderer adapter and binary renderer
-	baseRen := &baseRendererAdapter[color.RGBA8[color.Linear]]{pixf: app.pixf}
-	renBin := scanline.NewRendererScanlineBinSolidWithRenderer[*baseRendererAdapter[color.RGBA8[color.Linear]]](baseRen)
+	baseRen := &baseRendererAdapter{pixf: app.pixf}
+	renBin := scanline.NewRendererScanlineBinSolidWithRenderer[*baseRendererAdapter](baseRen)
 
 	// Create path for triangle (offset by 200 pixels left, matching C++)
 	pathStorage := path.NewPathStorage()
@@ -378,7 +376,7 @@ func (app *Application) drawAliased() {
 
 	// Render scanlines using adapters (simplified approach)
 	// Due to interface incompatibilities, we'll use a direct rendering approach
-	app.renderDirectly(renBin, color.RGBA8[color.Linear]{
+	app.renderDirectly(color.RGBA8[color.Linear]{
 		R: basics.Int8u(0.1*255 + 0.5),
 		G: basics.Int8u(0.5*255 + 0.5),
 		B: basics.Int8u(0.7*255 + 0.5),
@@ -391,7 +389,7 @@ func (app *Application) drawAliased() {
 
 // renderDirectly performs direct rendering without the scanline system
 // This is a workaround for interface incompatibilities
-func (app *Application) renderDirectly(ren any, triangleColor color.RGBA8[color.Linear]) {
+func (app *Application) renderDirectly(triangleColor color.RGBA8[color.Linear]) {
 	// Simple direct rasterization approach
 	// This bypasses the scanline system entirely due to interface issues
 
@@ -420,7 +418,7 @@ func (app *Application) renderDirectly(ren any, triangleColor color.RGBA8[color.
 // onDraw renders the complete frame
 func (app *Application) onDraw() {
 	// Clear background to white
-	baseRen := &baseRendererAdapter[color.RGBA8[color.Linear]]{pixf: app.pixf}
+	baseRen := &baseRendererAdapter{pixf: app.pixf}
 	baseRen.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
 
 	// Draw both triangles
