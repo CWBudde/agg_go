@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"agg_go/internal/fonts"
+	"agg_go/internal/scanline"
 )
 
 // CacheManager2 integrates the FreeType2 engine with the enhanced cache manager.
@@ -15,10 +16,10 @@ import (
 type CacheManager2 struct {
 	fontEngine   FontEngineInterface
 	cachedGlyphs *fonts.FmanCachedGlyphs
-	currentFont  interface{} // Reference to current font context
-	pathAdaptor  interface{} // Either PathAdaptorInt16Type or PathAdaptorInt32Type
-	gray8Adaptor interface{} // Will be *fonts.FmanSerializedScanlinesAdaptorAA when available
-	monoAdaptor  interface{} // Will be *fonts.FmanSerializedScanlinesAdaptorBin when available
+	currentFont  LoadedFaceInterface // Reference to current font context
+	pathAdaptor  interface{}         // Either *path.SerializedIntegerPathAdaptor[int16] or *path.SerializedIntegerPathAdaptor[int32]
+	gray8Adaptor *scanline.SerializedScanlinesAdaptorAA[uint8]
+	monoAdaptor  *scanline.SerializedScanlinesAdaptorBin
 	lastError    error
 }
 
@@ -83,12 +84,12 @@ func (cm *CacheManager2) PathAdaptor() interface{} {
 }
 
 // Gray8Adaptor returns the gray8 scanline adaptor.
-func (cm *CacheManager2) Gray8Adaptor() interface{} {
+func (cm *CacheManager2) Gray8Adaptor() *scanline.SerializedScanlinesAdaptorAA[uint8] {
 	return cm.gray8Adaptor
 }
 
 // MonoAdaptor returns the mono scanline adaptor.
-func (cm *CacheManager2) MonoAdaptor() interface{} {
+func (cm *CacheManager2) MonoAdaptor() *scanline.SerializedScanlinesAdaptorBin {
 	return cm.monoAdaptor
 }
 

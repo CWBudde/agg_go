@@ -237,4 +237,3 @@ func TestBezierCtrlInRect(t *testing.T) {
 		t.Error("InRect(2.0, 2.0) should be false")
 	}
 }
-

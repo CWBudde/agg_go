@@ -306,9 +306,13 @@ func (fe *FontEngine) decomposeOutlineToPath(outline *C.FT_Outline, flipY bool, 
 
 		// Move to start point in the appropriate path storage
 		if fe.flag32 {
-			pathStorage.(*path.PathStorageInteger[int32]).MoveTo(int32(x), int32(y))
+			if storage32, ok := pathStorage.(*path.PathStorageInteger[int32]); ok {
+				storage32.MoveTo(int32(x), int32(y))
+			}
 		} else {
-			pathStorage.(*path.PathStorageInteger[int16]).MoveTo(int16(x), int16(y))
+			if storage16, ok := pathStorage.(*path.PathStorageInteger[int16]); ok {
+				storage16.MoveTo(int16(x), int16(y))
+			}
 		}
 
 		// Process the contour points
@@ -319,9 +323,13 @@ func (fe *FontEngine) decomposeOutlineToPath(outline *C.FT_Outline, flipY bool, 
 
 		// Close the polygon
 		if fe.flag32 {
-			// TODO: pathStorage.(*path.PathStorageInteger[int32]).ClosePolygon()
+			if storage32, ok := pathStorage.(*path.PathStorageInteger[int32]); ok {
+				storage32.ClosePolygon()
+			}
 		} else {
-			// TODO: pathStorage.(*path.PathStorageInteger[int16]).ClosePolygon()
+			if storage16, ok := pathStorage.(*path.PathStorageInteger[int16]); ok {
+				storage16.ClosePolygon()
+			}
 		}
 
 		first = last + 1
@@ -354,9 +362,13 @@ func (fe *FontEngine) processContourPoints(outline *C.FT_Outline, first, last in
 			}
 
 			if fe.flag32 {
-				pathStorage.(*path.PathStorageInteger[int32]).LineTo(int32(x), int32(y))
+				if storage32, ok := pathStorage.(*path.PathStorageInteger[int32]); ok {
+				storage32.LineTo(int32(x), int32(y))
+			}
 			} else {
-				pathStorage.(*path.PathStorageInteger[int16]).LineTo(int16(x), int16(y))
+				if storage16, ok := pathStorage.(*path.PathStorageInteger[int16]); ok {
+				storage16.LineTo(int16(x), int16(y))
+			}
 			}
 
 		case 0: // FT_CURVE_TAG_CONIC - quadratic curve

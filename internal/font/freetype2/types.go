@@ -9,6 +9,7 @@ import (
 	"agg_go/internal/basics"
 	"agg_go/internal/fonts"
 	"agg_go/internal/path"
+	"agg_go/internal/scanline"
 	"agg_go/internal/transform"
 )
 
@@ -64,12 +65,12 @@ type FontEngineAdaptorTypes struct {
 	PathAdaptorInt32 *path.SerializedIntegerPathAdaptor[int32]
 
 	// Shared scanline adaptors
-	Gray8Adaptor interface{} // Will be *scanline.SerializedScanlinesAdaptorAA when available
-	MonoAdaptor  interface{} // Will be *scanline.SerializedScanlinesAdaptorBin when available
+	Gray8Adaptor *scanline.SerializedScanlinesAdaptorAA[uint8]
+	MonoAdaptor  *scanline.SerializedScanlinesAdaptorBin
 
 	// Scanline storage types
-	ScanlinesAA  interface{} // Will be *scanline.ScanlineStorageAA8 when available
-	ScanlinesBin interface{} // Will be *scanline.ScanlineStorageBin when available
+	ScanlinesAA  *scanline.ScanlineStorageAA[uint8]
+	ScanlinesBin *scanline.ScanlineStorageBin
 }
 
 // FontEngineInterface defines the interface that all FreeType2 engines must implement.
@@ -141,6 +142,17 @@ const (
 	EncodingAdobeExpert
 )
 
+// PathStorageInterface defines the interface for path storage used in font rendering.
+// This provides a common interface for both int16 and int32 path storage variants.
+type PathStorageInterface[T any] interface {
+	RemoveAll()
+	MoveTo(x, y T)
+	LineTo(x, y T)
+	Curve3(xCtrl, yCtrl, xTo, yTo T)
+	Curve4(xCtrl1, yCtrl1, xCtrl2, yCtrl2, xTo, yTo T)
+	ClosePolygon()
+}
+
 // FontEngineBase provides common functionality for both Int16 and Int32 variants.
 // This corresponds to AGG's fman::font_engine_freetype_base class.
 type FontEngineBase struct {
@@ -157,13 +169,13 @@ type FontEngineBase struct {
 	curves32      *path.PathStorageInteger[int32] // TODO: Add conv_curve wrapper
 
 	// Scanline components
-	scanlineU8   interface{} // Will be *scanline.ScanlineU8 when available
-	scanlineBin  interface{} // Will be *scanline.ScanlineBin when available
-	scanlinesAA  interface{} // Will be *scanline.ScanlineStorageAA8 when available
-	scanlinesBin interface{} // Will be *scanline.ScanlineStorageBin when available
+	scanlineU8   *scanline.ScanlineU8
+	scanlineBin  *scanline.ScanlineBin
+	scanlinesAA  *scanline.ScanlineStorageAA[uint8]
+	scanlinesBin *scanline.ScanlineStorageBin
 
 	// Rasterizer
-	rasterizer interface{} // Will be *rasterizer.RasterizerScanlineAA when available
+	rasterizer interface{} // Complex generic parameters, will be typed later
 }
 
 // NewFontEngineBase creates a new base font engine with the specified configuration.
@@ -177,11 +189,11 @@ func NewFontEngineBase(flag32 bool, maxFaces uint32) *FontEngineBase {
 		maxFaces:      maxFaces,
 		pathStorage16: path.NewPathStorageInteger[int16](),
 		pathStorage32: path.NewPathStorageInteger[int32](),
-		scanlineU8:    nil, // TODO: Initialize when scanline types are available
-		scanlineBin:   nil, // TODO: Initialize when scanline types are available
-		scanlinesAA:   nil, // TODO: Initialize when scanline types are available
-		scanlinesBin:  nil, // TODO: Initialize when scanline types are available
-		rasterizer:    nil, // TODO: Initialize when rasterizer is available
+		scanlineU8:    scanline.NewScanlineU8(),
+		scanlineBin:   scanline.NewScanlineBin(),
+		scanlinesAA:   scanline.NewScanlineStorageAA[uint8](),
+		scanlinesBin:  scanline.NewScanlineStorageBin(),
+		rasterizer:    nil, // TODO: Initialize with proper generic parameters
 	}
 }
 

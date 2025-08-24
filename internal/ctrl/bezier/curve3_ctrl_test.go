@@ -272,4 +272,3 @@ func TestCurve3CtrlComparedToBezier(t *testing.T) {
 		t.Error("Both controls should have same default point radius")
 	}
 }
-

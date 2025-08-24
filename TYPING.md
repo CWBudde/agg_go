@@ -337,7 +337,7 @@ All rasterizer tests pass, confirming that the type safety improvements maintain
 - [x] **Rasterizer converter interface{} return types** - Fixed test files to handle typed returns from Upscale/Downscale methods properly (maintaining backward compatibility with existing interface{} API)
 - [x] **Mock test renderer color types** - Updated all mock renderers to use generic color types `[C any]` instead of `interface{}`:
   - `MockBaseRenderer[C any]` in `internal/renderer/raster_text_test.go`
-  - `MockOutlineRenderer[C any]` in `internal/renderer/outline_test.go` 
+  - `MockOutlineRenderer[C any]` in `internal/renderer/outline_test.go`
   - `MockOutlineAARenderer[C any]` in `internal/renderer/outline_aa_test.go`
   - `MockColorStorage[C any]` and `MockColorStorageAA[C any]` for color storage tests
 - [x] **Polymorphic test collections** - Replaced `[]interface{}` collections with type-safe generic helpers
@@ -388,7 +388,14 @@ All rasterizer tests pass, confirming that the type safety improvements maintain
 
 - [x] **Pixfmt RGB packed interface{} usage** - Converted all RGB555/565/BGR555/BGR565 formats to use proper `blender.RGB16PackedBlender` constraints, eliminating runtime type assertions
 - [ ] agg2d interface{} fields (marked as "to be updated in later phase")
-- [ ] FreeType2 build-tag conditional code (work-in-progress integration)
+- [x] **FreeType2 interface{} elimination** (COMPLETED) - Successfully replaced all `interface{}` usage in font/freetype2 code:
+  - [x] FontEngineBase struct fields converted from `interface{}` to concrete scanline types
+  - [x] FontEngineAdaptorTypes struct fields typed with proper generic adaptors
+  - [x] CacheManager2 struct fields and methods now use typed scanline adaptors
+  - [x] PathStorage interface created and properly used in engine.go
+  - [x] All type assertions replaced with proper type checking
+  - [x] All scanline components properly initialized in constructors
+  - [x] Package compiles successfully with build tag `freetype`
 
 - Go files containing interface{} (line numbers):
   - [ ] internal/agg2d/agg2d.go: line 98, 134, 135
