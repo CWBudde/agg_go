@@ -288,11 +288,14 @@ func (app *Application) drawChar(char rune, x, y int) {
 // showStatistics displays platform and rendering statistics
 func (app *Application) showStatistics() {
 	fmt.Println("\n=== Platform Statistics ===")
+
+	/* TODO FIX stats!!!
 	stats := app.rc.Statistics()
 
 	for key, value := range stats {
 		fmt.Printf("%s: %v\n", key, value)
 	}
+	*/
 
 	fmt.Printf("Current caption: %s\n", app.ps.GetCaption())
 	fmt.Printf("Wait mode: %v\n", app.ps.WaitMode())

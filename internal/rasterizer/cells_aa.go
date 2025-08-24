@@ -423,7 +423,7 @@ func (r *RasterizerCellsAA[Cell]) SortCells() {
 	r.sortedY.Zero()
 
 	// Create Y-histogram (count cells for each Y)
-	var nb int = int(r.numCells)
+	nb := int(r.numCells)
 	blockIdx := 0
 	for nb > 0 {
 		blockSize := CellBlockSize

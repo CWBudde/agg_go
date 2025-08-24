@@ -224,7 +224,7 @@ func (m *MockCompoundRasterizer) SweepStyles() int {
 func (m *MockCompoundRasterizer) SweepScanlineWithStyle(sl ScanlineInterface, styleId int) bool {
 	if styleId == -1 {
 		// Binary scanline sweep - use regular sweep count
-		return m.MockRasterizer.SweepScanline(sl)
+		return m.SweepScanline(sl)
 	}
 	if styleId >= 0 && styleId < len(m.styleResults) {
 		// Ensure styleSweepCounts is initialized
@@ -238,7 +238,7 @@ func (m *MockCompoundRasterizer) SweepScanlineWithStyle(sl ScanlineInterface, st
 			m.styleSweepCounts[styleId]++
 
 			// Copy scanline data for AA scanline
-			if mockSl, ok := sl.(*MockScanline); ok && len(m.MockRasterizer.sweepResults) > 0 {
+			if mockSl, ok := sl.(*MockScanline); ok && len(m.sweepResults) > 0 {
 				mockSl.y = 8
 				mockSl.numSpans = 1
 				mockSl.spans = []SpanData{{X: 5, Len: 2, Covers: []basics.Int8u{255, 128}}}

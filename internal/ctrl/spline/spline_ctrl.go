@@ -247,13 +247,14 @@ func (s *SplineCtrlImpl[C]) setXP(idx uint, val float64) {
 		val = 1.0
 	}
 
-	if idx == 0 {
+	switch idx {
+	case 0:
 		// First point is fixed at x=0
 		val = 0.0
-	} else if idx == s.numPnt-1 {
+	case s.numPnt - 1:
 		// Last point is fixed at x=1
 		val = 1.0
-	} else {
+	default:
 		// Interior points cannot cross neighbors
 		if val < s.xp[idx-1]+0.001 {
 			val = s.xp[idx-1] + 0.001

@@ -210,7 +210,7 @@ func ConvertRGBToRGBA[CS any](rgb color.RGB8[CS]) color.RGBA8[CS] {
 
 // ==============================================================================
 // RGB48 (16-bit per channel) Blenders
-//==============================================================================
+// ==============================================================================
 
 // RGB48Blender represents the interface for 16-bit RGB pixel blending operations
 type RGB48Blender interface {
@@ -299,7 +299,7 @@ type (
 
 // ==============================================================================
 // RGB96 (32-bit float per channel) Blenders
-//==============================================================================
+// ==============================================================================
 
 // RGB96Blender represents the interface for 32-bit float RGB pixel blending operations
 type RGB96Blender interface {

@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"agg_go"
+	agg "agg_go"
 )
 
 func main() {

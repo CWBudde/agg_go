@@ -381,7 +381,7 @@ func NewPixFmtSBGR24(rbuf *buffer.RenderingBufferU8) *PixFmtSBGR24 {
 
 // ==============================================================================
 // RGB48 (16-bit per channel) Pixel Formats
-//==============================================================================
+// ==============================================================================
 
 // PixFmtAlphaBlendRGB48 represents RGB pixel format with 16-bit components (6 bytes per pixel)
 type PixFmtAlphaBlendRGB48[B blender.RGB48Blender, CS any, O any] struct {
@@ -510,7 +510,7 @@ func NewPixFmtBGR48SRGB(rbuf *buffer.RenderingBufferU16) *PixFmtBGR48SRGB {
 
 // ==============================================================================
 // RGB96 (32-bit float per channel) Pixel Formats
-//==============================================================================
+// ==============================================================================
 
 // PixFmtAlphaBlendRGB96 represents RGB pixel format with 32-bit float components (12 bytes per pixel)
 type PixFmtAlphaBlendRGB96[B blender.RGB96Blender, CS any, O any] struct {
@@ -639,7 +639,7 @@ func NewPixFmtBGR96SRGB(rbuf *buffer.RenderingBufferF32) *PixFmtBGR96SRGB {
 
 // ==============================================================================
 // RGBX32/XRGB32 (RGB with padding byte) Pixel Formats
-//==============================================================================
+// ==============================================================================
 
 // These formats store RGB in 4 bytes with one padding byte
 // RGBX32: RGB + padding byte (RGBX ordering)
@@ -847,7 +847,7 @@ func NewPixFmtSXBGR32(rbuf *buffer.RenderingBufferU8) *PixFmtSXBGR32 {
 
 // ==============================================================================
 // Premultiplied RGB Pixel Format Types
-//==============================================================================
+// ==============================================================================
 
 // RGB24 premultiplied variants
 type (

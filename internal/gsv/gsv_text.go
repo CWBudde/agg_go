@@ -169,7 +169,7 @@ func (gsv *GSVText) Rewind(pathID uint) {
 	}
 
 	// Parse font header
-	gsv.indices = gsv.font[gsv.getValue16(gsv.font[:]):] // Skip to index table
+	gsv.indices = gsv.font[gsv.getValue16(gsv.font):] // Skip to index table
 	baseHeight := gsv.getValue16(gsv.font[4:])
 	gsv.glyphs = gsv.indices[257*2:] // Skip 256 character indices + null terminator
 

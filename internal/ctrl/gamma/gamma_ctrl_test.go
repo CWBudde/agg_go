@@ -325,9 +325,10 @@ func TestGammaCtrlVertexGeneration(t *testing.T) {
 				}
 
 				vertexCount++
-				if cmd == basics.PathCmdMoveTo {
+				switch cmd {
+				case basics.PathCmdMoveTo:
 					hasMoveTo = true
-				} else if cmd == basics.PathCmdLineTo {
+				case basics.PathCmdLineTo:
 					// hasLineTo = true
 				}
 
