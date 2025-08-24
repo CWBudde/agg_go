@@ -7,9 +7,9 @@ import (
 )
 
 // MockOutlineAARenderer implements OutlineAARenderer for testing
-type MockOutlineAARenderer struct {
+type MockOutlineAARenderer[C any] struct {
 	AccurateJoinOnlyVal bool
-	ColorCalls          []interface{}
+	ColorCalls          []C
 	Line0Calls          []primitives.LineParameters
 	Line1Calls          []struct {
 		LP primitives.LineParameters
@@ -38,10 +38,10 @@ type MockOutlineAARenderer struct {
 	}
 }
 
-func NewMockOutlineAARenderer() *MockOutlineAARenderer {
-	return &MockOutlineAARenderer{
+func NewMockOutlineAARenderer[C any]() *MockOutlineAARenderer[C] {
+	return &MockOutlineAARenderer[C]{
 		AccurateJoinOnlyVal: false,
-		ColorCalls:          make([]interface{}, 0),
+		ColorCalls:          make([]C, 0),
 		Line0Calls:          make([]primitives.LineParameters, 0),
 		Line1Calls: make([]struct {
 			LP primitives.LineParameters
@@ -71,19 +71,19 @@ func NewMockOutlineAARenderer() *MockOutlineAARenderer {
 	}
 }
 
-func (m *MockOutlineAARenderer) AccurateJoinOnly() bool {
+func (m *MockOutlineAARenderer[C]) AccurateJoinOnly() bool {
 	return m.AccurateJoinOnlyVal
 }
 
-func (m *MockOutlineAARenderer) Color(c interface{}) {
+func (m *MockOutlineAARenderer[C]) Color(c C) {
 	m.ColorCalls = append(m.ColorCalls, c)
 }
 
-func (m *MockOutlineAARenderer) Line0(lp primitives.LineParameters) {
+func (m *MockOutlineAARenderer[C]) Line0(lp primitives.LineParameters) {
 	m.Line0Calls = append(m.Line0Calls, lp)
 }
 
-func (m *MockOutlineAARenderer) Line1(lp primitives.LineParameters, sx, sy int) {
+func (m *MockOutlineAARenderer[C]) Line1(lp primitives.LineParameters, sx, sy int) {
 	m.Line1Calls = append(m.Line1Calls, struct {
 		LP primitives.LineParameters
 		SX int
@@ -91,7 +91,7 @@ func (m *MockOutlineAARenderer) Line1(lp primitives.LineParameters, sx, sy int) 
 	}{lp, sx, sy})
 }
 
-func (m *MockOutlineAARenderer) Line2(lp primitives.LineParameters, ex, ey int) {
+func (m *MockOutlineAARenderer[C]) Line2(lp primitives.LineParameters, ex, ey int) {
 	m.Line2Calls = append(m.Line2Calls, struct {
 		LP primitives.LineParameters
 		EX int
@@ -99,7 +99,7 @@ func (m *MockOutlineAARenderer) Line2(lp primitives.LineParameters, ex, ey int) 
 	}{lp, ex, ey})
 }
 
-func (m *MockOutlineAARenderer) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) {
+func (m *MockOutlineAARenderer[C]) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) {
 	m.Line3Calls = append(m.Line3Calls, struct {
 		LP     primitives.LineParameters
 		SX, SY int
@@ -107,7 +107,7 @@ func (m *MockOutlineAARenderer) Line3(lp primitives.LineParameters, sx, sy, ex, 
 	}{lp, sx, sy, ex, ey})
 }
 
-func (m *MockOutlineAARenderer) Pie(x, y, x1, y1, x2, y2 int) {
+func (m *MockOutlineAARenderer[C]) Pie(x, y, x1, y1, x2, y2 int) {
 	m.PieCalls = append(m.PieCalls, struct {
 		X, Y   int
 		X1, Y1 int
@@ -115,7 +115,7 @@ func (m *MockOutlineAARenderer) Pie(x, y, x1, y1, x2, y2 int) {
 	}{x, y, x1, y1, x2, y2})
 }
 
-func (m *MockOutlineAARenderer) Semidot(cmp func(int) bool, x, y, x1, y1 int) {
+func (m *MockOutlineAARenderer[C]) Semidot(cmp func(int) bool, x, y, x1, y1 int) {
 	m.SemidotCalls = append(m.SemidotCalls, struct {
 		Cmp    func(int) bool
 		X, Y   int
@@ -124,7 +124,7 @@ func (m *MockOutlineAARenderer) Semidot(cmp func(int) bool, x, y, x1, y1 int) {
 }
 
 func TestNewRasterizerOutlineAA(t *testing.T) {
-	renderer := NewMockOutlineAARenderer()
+	renderer := NewMockOutlineAARenderer[string]()
 	rasterizer := NewRasterizerOutlineAA(renderer)
 
 	if rasterizer == nil {
@@ -146,8 +146,8 @@ func TestNewRasterizerOutlineAA(t *testing.T) {
 }
 
 func TestRasterizerOutlineAAAttach(t *testing.T) {
-	renderer1 := NewMockOutlineAARenderer()
-	renderer2 := NewMockOutlineAARenderer()
+	renderer1 := NewMockOutlineAARenderer[string]()
+	renderer2 := NewMockOutlineAARenderer[string]()
 	rasterizer := NewRasterizerOutlineAA(renderer1)
 
 	rasterizer.Attach(renderer2)
@@ -156,7 +156,7 @@ func TestRasterizerOutlineAAAttach(t *testing.T) {
 }
 
 func TestRasterizerOutlineAALineJoin(t *testing.T) {
-	renderer := NewMockOutlineAARenderer()
+	renderer := NewMockOutlineAARenderer[string]()
 	rasterizer := NewRasterizerOutlineAA(renderer)
 
 	// Test setting different join types
@@ -182,7 +182,7 @@ func TestRasterizerOutlineAALineJoin(t *testing.T) {
 }
 
 func TestRasterizerOutlineAARoundCap(t *testing.T) {
-	renderer := NewMockOutlineAARenderer()
+	renderer := NewMockOutlineAARenderer[string]()
 	rasterizer := NewRasterizerOutlineAA(renderer)
 
 	// Default should be false
@@ -202,7 +202,7 @@ func TestRasterizerOutlineAARoundCap(t *testing.T) {
 }
 
 func TestRasterizerOutlineAAMoveTo(t *testing.T) {
-	renderer := NewMockOutlineAARenderer()
+	renderer := NewMockOutlineAARenderer[string]()
 	rasterizer := NewRasterizerOutlineAA(renderer)
 
 	rasterizer.MoveTo(100, 200)
@@ -212,7 +212,7 @@ func TestRasterizerOutlineAAMoveTo(t *testing.T) {
 }
 
 func TestRasterizerOutlineAALineTo(t *testing.T) {
-	renderer := NewMockOutlineAARenderer()
+	renderer := NewMockOutlineAARenderer[string]()
 	rasterizer := NewRasterizerOutlineAA(renderer)
 
 	rasterizer.MoveTo(0, 0)
@@ -222,7 +222,7 @@ func TestRasterizerOutlineAALineTo(t *testing.T) {
 }
 
 func TestRasterizerOutlineAAMoveToD(t *testing.T) {
-	renderer := NewMockOutlineAARenderer()
+	renderer := NewMockOutlineAARenderer[string]()
 	rasterizer := NewRasterizerOutlineAA(renderer)
 
 	rasterizer.MoveToD(1.5, 2.5)
@@ -231,7 +231,7 @@ func TestRasterizerOutlineAAMoveToD(t *testing.T) {
 }
 
 func TestRasterizerOutlineAALineToD(t *testing.T) {
-	renderer := NewMockOutlineAARenderer()
+	renderer := NewMockOutlineAARenderer[string]()
 	rasterizer := NewRasterizerOutlineAA(renderer)
 
 	rasterizer.MoveToD(0.0, 0.0)
@@ -241,7 +241,7 @@ func TestRasterizerOutlineAALineToD(t *testing.T) {
 }
 
 func TestRasterizerOutlineAARenderTwoVertices(t *testing.T) {
-	renderer := NewMockOutlineAARenderer()
+	renderer := NewMockOutlineAARenderer[string]()
 	rasterizer := NewRasterizerOutlineAA(renderer)
 
 	// Add two vertices and render
@@ -256,7 +256,7 @@ func TestRasterizerOutlineAARenderTwoVertices(t *testing.T) {
 }
 
 func TestRasterizerOutlineAARenderTwoVerticesWithRoundCap(t *testing.T) {
-	renderer := NewMockOutlineAARenderer()
+	renderer := NewMockOutlineAARenderer[string]()
 	rasterizer := NewRasterizerOutlineAA(renderer)
 	rasterizer.SetRoundCap(true)
 
@@ -275,7 +275,7 @@ func TestRasterizerOutlineAARenderTwoVerticesWithRoundCap(t *testing.T) {
 }
 
 func TestRasterizerOutlineAARenderThreeVertices(t *testing.T) {
-	renderer := NewMockOutlineAARenderer()
+	renderer := NewMockOutlineAARenderer[string]()
 	rasterizer := NewRasterizerOutlineAA(renderer)
 
 	// Add three vertices and render
@@ -291,7 +291,7 @@ func TestRasterizerOutlineAARenderThreeVertices(t *testing.T) {
 }
 
 func TestRasterizerOutlineAARenderThreeVerticesRoundJoin(t *testing.T) {
-	renderer := NewMockOutlineAARenderer()
+	renderer := NewMockOutlineAARenderer[string]()
 	rasterizer := NewRasterizerOutlineAA(renderer)
 	rasterizer.SetLineJoin(OutlineRoundJoin)
 
@@ -311,7 +311,7 @@ func TestRasterizerOutlineAARenderThreeVerticesRoundJoin(t *testing.T) {
 }
 
 func TestRasterizerOutlineAARenderMultipleVertices(t *testing.T) {
-	renderer := NewMockOutlineAARenderer()
+	renderer := NewMockOutlineAARenderer[string]()
 	rasterizer := NewRasterizerOutlineAA(renderer)
 
 	// Add multiple vertices forming a rectangle
@@ -330,7 +330,7 @@ func TestRasterizerOutlineAARenderMultipleVertices(t *testing.T) {
 }
 
 func TestRasterizerOutlineAARenderClosed(t *testing.T) {
-	renderer := NewMockOutlineAARenderer()
+	renderer := NewMockOutlineAARenderer[string]()
 	rasterizer := NewRasterizerOutlineAA(renderer)
 
 	// Add vertices forming a triangle
@@ -408,7 +408,7 @@ func (m *MockVertexSourceAA) Vertex(x, y *float64) uint32 {
 }
 
 func TestRasterizerOutlineAAAddPath(t *testing.T) {
-	renderer := NewMockOutlineAARenderer()
+	renderer := NewMockOutlineAARenderer[string]()
 	rasterizer := NewRasterizerOutlineAA(renderer)
 
 	// Create a mock vertex source with a simple path
@@ -425,15 +425,16 @@ func TestRasterizerOutlineAAAddPath(t *testing.T) {
 }
 
 // Mock color storage for testing
-type MockColorStorageAA struct {
-	Colors []interface{}
+type MockColorStorageAA[C any] struct {
+	Colors []C
 }
 
-func (m *MockColorStorageAA) GetColor(index int) interface{} {
+func (m *MockColorStorageAA[C]) GetColor(index int) C {
 	if index >= 0 && index < len(m.Colors) {
 		return m.Colors[index]
 	}
-	return "default"
+	var zero C
+	return zero
 }
 
 // Mock path ID storage for testing
@@ -449,7 +450,7 @@ func (m *MockPathIDStorageAA) GetPathID(index int) uint32 {
 }
 
 func TestRasterizerOutlineAARenderAllPaths(t *testing.T) {
-	renderer := NewMockOutlineAARenderer()
+	renderer := NewMockOutlineAARenderer[string]()
 	rasterizer := NewRasterizerOutlineAA(renderer)
 
 	vs := NewMockVertexSourceAA()
@@ -457,7 +458,7 @@ func TestRasterizerOutlineAARenderAllPaths(t *testing.T) {
 	vs.AddVertex(100, 100, 2) // LineTo
 	vs.AddVertex(0, 0, 0)     // Stop
 
-	colors := &MockColorStorageAA{Colors: []interface{}{"red", "blue"}}
+	colors := &MockColorStorageAA[string]{Colors: []string{"red", "blue"}}
 	pathIDs := &MockPathIDStorageAA{PathIDs: []uint32{0, 1}}
 
 	rasterizer.RenderAllPaths(vs, colors, pathIDs, 2)
@@ -469,7 +470,7 @@ func TestRasterizerOutlineAARenderAllPaths(t *testing.T) {
 }
 
 func BenchmarkRasterizerOutlineAAMoveTo(b *testing.B) {
-	renderer := NewMockOutlineAARenderer()
+	renderer := NewMockOutlineAARenderer[string]()
 	rasterizer := NewRasterizerOutlineAA(renderer)
 
 	b.ResetTimer()
@@ -479,7 +480,7 @@ func BenchmarkRasterizerOutlineAAMoveTo(b *testing.B) {
 }
 
 func BenchmarkRasterizerOutlineAALineTo(b *testing.B) {
-	renderer := NewMockOutlineAARenderer()
+	renderer := NewMockOutlineAARenderer[string]()
 	rasterizer := NewRasterizerOutlineAA(renderer)
 
 	rasterizer.MoveTo(0, 0)
@@ -491,7 +492,7 @@ func BenchmarkRasterizerOutlineAALineTo(b *testing.B) {
 }
 
 func BenchmarkRasterizerOutlineAARenderTwoVertices(b *testing.B) {
-	renderer := NewMockOutlineAARenderer()
+	renderer := NewMockOutlineAARenderer[string]()
 	rasterizer := NewRasterizerOutlineAA(renderer)
 
 	b.ResetTimer()

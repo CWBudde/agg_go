@@ -7,37 +7,37 @@ import (
 )
 
 // MockOutlineRenderer is a test implementation of OutlineRenderer
-type MockOutlineRenderer struct {
-	Operations []string    // Records all operations for verification
-	X, Y       int         // Current position
-	Color      interface{} // Current line color
+type MockOutlineRenderer[C any] struct {
+	Operations []string // Records all operations for verification
+	X, Y       int      // Current position
+	Color      C        // Current line color
 }
 
-func NewMockOutlineRenderer() *MockOutlineRenderer {
-	return &MockOutlineRenderer{
+func NewMockOutlineRenderer[C any]() *MockOutlineRenderer[C] {
+	return &MockOutlineRenderer[C]{
 		Operations: make([]string, 0),
 		X:          0,
 		Y:          0,
 	}
 }
 
-func (m *MockOutlineRenderer) MoveTo(x, y int) {
+func (m *MockOutlineRenderer[C]) MoveTo(x, y int) {
 	m.X = x
 	m.Y = y
 	m.Operations = append(m.Operations, "MoveTo")
 }
 
-func (m *MockOutlineRenderer) LineTo(x, y int) {
+func (m *MockOutlineRenderer[C]) LineTo(x, y int) {
 	m.X = x
 	m.Y = y
 	m.Operations = append(m.Operations, "LineTo")
 }
 
-func (m *MockOutlineRenderer) Coord(c float64) int {
+func (m *MockOutlineRenderer[C]) Coord(c float64) int {
 	return int(c * 256) // Standard subpixel scale
 }
 
-func (m *MockOutlineRenderer) LineColor(c interface{}) {
+func (m *MockOutlineRenderer[C]) LineColor(c C) {
 	m.Color = c
 	m.Operations = append(m.Operations, "LineColor")
 }
@@ -77,15 +77,16 @@ func (mvs *MockOutlineVertexSource) Vertex(x, y *float64) uint32 {
 }
 
 // MockColorStorage for testing multi-path rendering
-type MockColorStorage struct {
-	colors []interface{}
+type MockColorStorage[C any] struct {
+	colors []C
 }
 
-func (mcs *MockColorStorage) GetColor(index int) interface{} {
+func (mcs *MockColorStorage[C]) GetColor(index int) C {
 	if index >= 0 && index < len(mcs.colors) {
 		return mcs.colors[index]
 	}
-	return nil
+	var zero C
+	return zero
 }
 
 // MockPathIDStorage for testing multi-path rendering
@@ -101,33 +102,34 @@ func (mps *MockPathIDStorage) GetPathID(index int) uint32 {
 }
 
 // MockController for testing control rendering
-type MockController struct {
+type MockController[C any] struct {
 	paths  [][]Vertex
-	colors []interface{}
+	colors []C
 }
 
-func (mc *MockController) NumPaths() int {
+func (mc *MockController[C]) NumPaths() int {
 	return len(mc.paths)
 }
 
-func (mc *MockController) Color(pathIndex int) interface{} {
+func (mc *MockController[C]) Color(pathIndex int) C {
 	if pathIndex >= 0 && pathIndex < len(mc.colors) {
 		return mc.colors[pathIndex]
 	}
-	return nil
+	var zero C
+	return zero
 }
 
-func (mc *MockController) Rewind(pathID uint32) {
+func (mc *MockController[C]) Rewind(pathID uint32) {
 	// Implement based on pathID if needed
 }
 
-func (mc *MockController) Vertex(x, y *float64) uint32 {
+func (mc *MockController[C]) Vertex(x, y *float64) uint32 {
 	// Basic implementation - could be enhanced for specific test cases
 	return uint32(basics.PathCmdStop)
 }
 
 func TestNewRasterizerOutline(t *testing.T) {
-	renderer := NewMockOutlineRenderer()
+	renderer := NewMockOutlineRenderer[string]()
 	rasterizer := NewRasterizerOutline(renderer)
 
 	if rasterizer.renderer != renderer {
@@ -140,8 +142,8 @@ func TestNewRasterizerOutline(t *testing.T) {
 }
 
 func TestAttach(t *testing.T) {
-	renderer1 := NewMockOutlineRenderer()
-	renderer2 := NewMockOutlineRenderer()
+	renderer1 := NewMockOutlineRenderer[string]()
+	renderer2 := NewMockOutlineRenderer[string]()
 	rasterizer := NewRasterizerOutline(renderer1)
 
 	rasterizer.Attach(renderer2)
@@ -152,7 +154,7 @@ func TestAttach(t *testing.T) {
 }
 
 func TestMoveTo(t *testing.T) {
-	renderer := NewMockOutlineRenderer()
+	renderer := NewMockOutlineRenderer[string]()
 	rasterizer := NewRasterizerOutline(renderer)
 
 	rasterizer.MoveTo(100, 200)
@@ -175,7 +177,7 @@ func TestMoveTo(t *testing.T) {
 }
 
 func TestLineTo(t *testing.T) {
-	renderer := NewMockOutlineRenderer()
+	renderer := NewMockOutlineRenderer[string]()
 	rasterizer := NewRasterizerOutline(renderer)
 
 	rasterizer.MoveTo(0, 0) // Initialize path
@@ -192,7 +194,7 @@ func TestLineTo(t *testing.T) {
 }
 
 func TestMoveToD(t *testing.T) {
-	renderer := NewMockOutlineRenderer()
+	renderer := NewMockOutlineRenderer[string]()
 	rasterizer := NewRasterizerOutline(renderer)
 
 	rasterizer.MoveToD(1.5, 2.5)
@@ -207,7 +209,7 @@ func TestMoveToD(t *testing.T) {
 }
 
 func TestLineToD(t *testing.T) {
-	renderer := NewMockOutlineRenderer()
+	renderer := NewMockOutlineRenderer[string]()
 	rasterizer := NewRasterizerOutline(renderer)
 
 	rasterizer.MoveTo(0, 0) // Initialize path
@@ -223,7 +225,7 @@ func TestLineToD(t *testing.T) {
 }
 
 func TestClose(t *testing.T) {
-	renderer := NewMockOutlineRenderer()
+	renderer := NewMockOutlineRenderer[string]()
 	rasterizer := NewRasterizerOutline(renderer)
 
 	// Create a path with more than 2 vertices
@@ -248,7 +250,7 @@ func TestClose(t *testing.T) {
 }
 
 func TestCloseWithTwoVertices(t *testing.T) {
-	renderer := NewMockOutlineRenderer()
+	renderer := NewMockOutlineRenderer[string]()
 	rasterizer := NewRasterizerOutline(renderer)
 
 	// Create a path with only 2 vertices
@@ -263,7 +265,7 @@ func TestCloseWithTwoVertices(t *testing.T) {
 }
 
 func TestAddVertex(t *testing.T) {
-	renderer := NewMockOutlineRenderer()
+	renderer := NewMockOutlineRenderer[string]()
 	rasterizer := NewRasterizerOutline(renderer)
 
 	// Test MoveTo command
@@ -288,7 +290,7 @@ func TestAddVertex(t *testing.T) {
 }
 
 func TestAddVertexEndPoly(t *testing.T) {
-	renderer := NewMockOutlineRenderer()
+	renderer := NewMockOutlineRenderer[string]()
 	rasterizer := NewRasterizerOutline(renderer)
 
 	// Create a path
@@ -307,7 +309,7 @@ func TestAddVertexEndPoly(t *testing.T) {
 }
 
 func TestAddPath(t *testing.T) {
-	renderer := NewMockOutlineRenderer()
+	renderer := NewMockOutlineRenderer[string]()
 	rasterizer := NewRasterizerOutline(renderer)
 
 	// Create a mock vertex source with a simple path
@@ -335,7 +337,7 @@ func TestAddPath(t *testing.T) {
 }
 
 func TestRenderAllPaths(t *testing.T) {
-	renderer := NewMockOutlineRenderer()
+	renderer := NewMockOutlineRenderer[string]()
 	rasterizer := NewRasterizerOutline(renderer)
 
 	// Create mock vertex source (simple implementation for this test)
@@ -347,7 +349,7 @@ func TestRenderAllPaths(t *testing.T) {
 	vs := NewMockOutlineVertexSource(vertices)
 
 	// Create color and path ID storage
-	colors := &MockColorStorage{colors: []interface{}{"red", "blue"}}
+	colors := &MockColorStorage[string]{colors: []string{"red", "blue"}}
 	pathIDs := &MockPathIDStorage{pathIDs: []uint32{0, 1}}
 
 	rasterizer.RenderAllPaths(vs, colors, pathIDs, 2)
@@ -366,7 +368,7 @@ func TestRenderAllPaths(t *testing.T) {
 }
 
 func TestRenderCtrl(t *testing.T) {
-	renderer := NewMockOutlineRenderer()
+	renderer := NewMockOutlineRenderer[string]()
 	rasterizer := NewRasterizerOutline(renderer)
 
 	// Create a mock controller with 2 paths
@@ -374,9 +376,9 @@ func TestRenderCtrl(t *testing.T) {
 		{{10.0, 20.0, uint32(basics.PathCmdMoveTo)}, {30.0, 40.0, uint32(basics.PathCmdLineTo)}},
 		{{50.0, 60.0, uint32(basics.PathCmdMoveTo)}, {70.0, 80.0, uint32(basics.PathCmdLineTo)}},
 	}
-	colors := []interface{}{"red", "blue"}
+	colors := []string{"red", "blue"}
 
-	ctrl := &MockController{paths: paths, colors: colors}
+	ctrl := &MockController[string]{paths: paths, colors: colors}
 	rasterizer.RenderCtrl(ctrl)
 
 	// Should have 2 LineColor operations (one for each path)
@@ -394,7 +396,7 @@ func TestRenderCtrl(t *testing.T) {
 
 // Benchmark tests
 func BenchmarkMoveTo(b *testing.B) {
-	renderer := NewMockOutlineRenderer()
+	renderer := NewMockOutlineRenderer[string]()
 	rasterizer := NewRasterizerOutline(renderer)
 
 	b.ResetTimer()
@@ -404,7 +406,7 @@ func BenchmarkMoveTo(b *testing.B) {
 }
 
 func BenchmarkLineTo(b *testing.B) {
-	renderer := NewMockOutlineRenderer()
+	renderer := NewMockOutlineRenderer[string]()
 	rasterizer := NewRasterizerOutline(renderer)
 
 	rasterizer.MoveTo(0, 0) // Initialize path
@@ -416,7 +418,7 @@ func BenchmarkLineTo(b *testing.B) {
 }
 
 func BenchmarkAddVertex(b *testing.B) {
-	renderer := NewMockOutlineRenderer()
+	renderer := NewMockOutlineRenderer[string]()
 	rasterizer := NewRasterizerOutline(renderer)
 
 	b.ResetTimer()

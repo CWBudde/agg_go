@@ -330,6 +330,27 @@ All rasterizer tests pass, confirming that the type safety improvements maintain
 - [x] Eliminated 3 runtime type assertions in span_image_filter_rgba.go
 - [x] All control types properly generic with backward-compatible constructors
 
+#### [x] Test File Interface Cleanup (Latest)
+
+**Successfully Completed:**
+
+- [x] **Rasterizer converter interface{} return types** - Fixed test files to handle typed returns from Upscale/Downscale methods properly (maintaining backward compatibility with existing interface{} API)
+- [x] **Mock test renderer color types** - Updated all mock renderers to use generic color types `[C any]` instead of `interface{}`:
+  - `MockBaseRenderer[C any]` in `internal/renderer/raster_text_test.go`
+  - `MockOutlineRenderer[C any]` in `internal/renderer/outline_test.go` 
+  - `MockOutlineAARenderer[C any]` in `internal/renderer/outline_aa_test.go`
+  - `MockColorStorage[C any]` and `MockColorStorageAA[C any]` for color storage tests
+- [x] **Polymorphic test collections** - Replaced `[]interface{}` collections with type-safe generic helpers
+- [x] **Test factory functions** - Updated factory functions to return `any` instead of `interface{}` (modern Go idiom)
+- [x] **Platform interface compatibility** - Updated `OnPostDraw(rawHandler any)` in platform tests
+
+**Results:**
+
+- All test files compile and pass with full type safety
+- Eliminated interface{} usage from all test mock implementations while maintaining test coverage
+- Test code now uses compile-time type checking instead of runtime type assertions
+- Backward compatibility maintained for production code while improving test code quality
+
 #### [x] Phase 9 Implementation Completed
 
 **Successfully Completed:**
@@ -348,6 +369,21 @@ All rasterizer tests pass, confirming that the type safety improvements maintain
 - Font system uses typed interfaces instead of `interface{}` placeholders
 - Fill rule system uses proper interface instead of runtime type assertions
 
+#### [x] Test File Interface{} Cleanup (Phase 9 Final)
+
+**Successfully Completed:**
+
+- [x] **internal/ctrl/bezier/bezier_ctrl_test.go** - Replaced `interface{}` helper function with `fmt.Sprintf`
+- [x] **internal/ctrl/bezier/curve3_ctrl_test.go** - Replaced `interface{}` helper function with `fmt.Sprintf`
+- [x] **internal/transform/warp_magnifier_test.go** - Replaced `interface{}` with `any` for interface type assertion testing
+
+**Results:**
+
+- All test files compile and pass with full type safety
+- Eliminated unnecessary `interface{}` helper functions in control tests
+- Used modern Go `any` alias for legitimate polymorphic interface testing
+- All Phase 9 test file objectives completed successfully
+
 #### [ ] Remaining for Future Phases (Architectural)
 
 - [x] **Pixfmt RGB packed interface{} usage** - Converted all RGB555/565/BGR555/BGR565 formats to use proper `blender.RGB16PackedBlender` constraints, eliminating runtime type assertions
@@ -356,26 +392,13 @@ All rasterizer tests pass, confirming that the type safety improvements maintain
 
 - Go files containing interface{} (line numbers):
   - [ ] internal/agg2d/agg2d.go: line 98, 134, 135
-  - [ ] internal/ctrl/bezier/bezier_ctrl_test.go: line 241
-  - [ ] internal/ctrl/bezier/curve3_ctrl_test.go: line 276
-  - [ ] internal/font/freetype2/cache_integration.go: line 18, 19, 20, 21, 81, 86, 91
-  - [ ] internal/font/freetype2/types.go: line 67, 68, 71, 72, 160, 161, 162, 163, 166
+  - [ ] internal/agg2d/text.go
+  - [x] internal/ctrl/bezier/bezier_ctrl_test.go: line 241 (COMPLETED)
+  - [x] internal/ctrl/bezier/curve3_ctrl_test.go: line 276 (COMPLETED)
   - [ ] internal/fonts/interfaces.go: line 2
-  - [ ] internal/pixfmt/gamma/rgb_test.go: line 281, 283, 287, 291, 295
-  - [ ] internal/pixfmt/pixfmt_rgba.go: line 118, 158, 244
-  - [ ] internal/pixfmt/pixfmt_rgb.go: line 114, 160, 244, 473, 604
-  - [ ] internal/platform/backend_test.go: line 269
-  - [ ] internal/platform/events_test.go: line 290
   - [ ] internal/platform/interfaces.go: line 15, 31
-  - [ ] internal/rasterizer/clip_test.go: line 376
-  - [ ] internal/rasterizer/outline_aa_test.go: line 12, 44, 78, 429, 432, 460
-  - [ ] internal/rasterizer/outline_test.go: line 13, 40, 81, 84, 106, 113, 350, 377
-  - [ ] internal/renderer/base.go: line 3, 49
-  - [ ] internal/renderer/raster_text_test.go: line 19, 25, 33, 42
   - [ ] internal/renderer/scanline/interfaces.go: line 60
-  - [ ] internal/transform/warp_magnifier_test.go: line 320
-
-**Result:** Successfully completed Phase 9 core objectives. All control systems now use proper generic type parameters with compile-time type safety. RGBA span filters use proper interface constraints instead of runtime type assertions. Eliminated interface{} from all actively-used control Color() methods while maintaining backward compatibility. **Additionally completed:** RGB packed pixel format type safety migration - all RGB555/RGB565/BGR555/BGR565 formats now use compile-time `blender.RGB16PackedBlender` constraints instead of runtime interface{} type assertions. Remaining interface{} usage is either architectural (requiring larger refactor) or intentionally deferred to later phases.
+  - [x] internal/transform/warp_magnifier_test.go: line 320 (COMPLETED)
 
 ## Implementation Notes
 

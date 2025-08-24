@@ -9,41 +9,41 @@ import (
 )
 
 // MockBaseRenderer implements BaseRendererInterface for testing
-type MockBaseRenderer struct {
-	blendHSpanCalls []BlendHSpanCall
-	blendVSpanCalls []BlendVSpanCall
+type MockBaseRenderer[C any] struct {
+	blendHSpanCalls []BlendHSpanCall[C]
+	blendVSpanCalls []BlendVSpanCall[C]
 }
 
-type BlendHSpanCall struct {
+type BlendHSpanCall[C any] struct {
 	X, Y, Len int
-	Color     interface{}
+	Color     C
 	Covers    []basics.CoverType
 }
 
-type BlendVSpanCall struct {
+type BlendVSpanCall[C any] struct {
 	X, Y, Len int
-	Color     interface{}
+	Color     C
 	Covers    []basics.CoverType
 }
 
-func NewMockBaseRenderer() *MockBaseRenderer {
-	return &MockBaseRenderer{}
+func NewMockBaseRenderer[C any]() *MockBaseRenderer[C] {
+	return &MockBaseRenderer[C]{}
 }
 
-func (m *MockBaseRenderer) BlendSolidHspan(x, y, len int, c interface{}, covers []basics.CoverType) {
+func (m *MockBaseRenderer[C]) BlendSolidHspan(x, y, len int, c C, covers []basics.CoverType) {
 	// Make a copy of covers to avoid sharing slice references
 	coversCopy := make([]basics.CoverType, len)
 	copy(coversCopy, covers)
-	m.blendHSpanCalls = append(m.blendHSpanCalls, BlendHSpanCall{
+	m.blendHSpanCalls = append(m.blendHSpanCalls, BlendHSpanCall[C]{
 		X: x, Y: y, Len: len, Color: c, Covers: coversCopy,
 	})
 }
 
-func (m *MockBaseRenderer) BlendSolidVspan(x, y, len int, c interface{}, covers []basics.CoverType) {
+func (m *MockBaseRenderer[C]) BlendSolidVspan(x, y, len int, c C, covers []basics.CoverType) {
 	// Make a copy of covers to avoid sharing slice references
 	coversCopy := make([]basics.CoverType, len)
 	copy(coversCopy, covers)
-	m.blendVSpanCalls = append(m.blendVSpanCalls, BlendVSpanCall{
+	m.blendVSpanCalls = append(m.blendVSpanCalls, BlendVSpanCall[C]{
 		X: x, Y: y, Len: len, Color: c, Covers: coversCopy,
 	})
 }
@@ -142,11 +142,11 @@ func TestGlyphRasterBin(t *testing.T) {
 }
 
 func TestRendererRasterHTextSolid(t *testing.T) {
-	mockRenderer := NewMockBaseRenderer()
+	mockRenderer := NewMockBaseRenderer[string]()
 	font := fonts.GetSimple4x6Font()
 	g := glyph.NewGlyphRasterBin(font)
 
-	renderer := NewRendererRasterHTextSolid[*MockBaseRenderer, *glyph.GlyphRasterBin](mockRenderer, g)
+	renderer := NewRendererRasterHTextSolid[*MockBaseRenderer[string], *glyph.GlyphRasterBin, string](mockRenderer, g)
 
 	// Set color
 	color := "red"
@@ -177,11 +177,11 @@ func TestRendererRasterHTextSolid(t *testing.T) {
 }
 
 func TestRendererRasterVTextSolid(t *testing.T) {
-	mockRenderer := NewMockBaseRenderer()
+	mockRenderer := NewMockBaseRenderer[string]()
 	font := fonts.GetSimple4x6Font()
 	g := glyph.NewGlyphRasterBin(font)
 
-	renderer := NewRendererRasterVTextSolid[*MockBaseRenderer, *glyph.GlyphRasterBin](mockRenderer, g)
+	renderer := NewRendererRasterVTextSolid[*MockBaseRenderer[string], *glyph.GlyphRasterBin, string](mockRenderer, g)
 
 	// Set color
 	color := "blue"
@@ -286,11 +286,11 @@ func TestScanlineSingleSpan(t *testing.T) {
 }
 
 func TestRendererRasterTextWithMultipleCharacters(t *testing.T) {
-	mockRenderer := NewMockBaseRenderer()
+	mockRenderer := NewMockBaseRenderer[string]()
 	font := fonts.GetSimple4x6Font()
 	g := glyph.NewGlyphRasterBin(font)
 
-	renderer := NewRendererRasterHTextSolid[*MockBaseRenderer, *glyph.GlyphRasterBin](mockRenderer, g)
+	renderer := NewRendererRasterHTextSolid[*MockBaseRenderer[string], *glyph.GlyphRasterBin, string](mockRenderer, g)
 	renderer.SetColor("green")
 
 	// Render multiple characters
@@ -324,11 +324,11 @@ func TestRendererRasterTextWithMultipleCharacters(t *testing.T) {
 }
 
 func TestRendererRasterTextWithFlip(t *testing.T) {
-	mockRenderer := NewMockBaseRenderer()
+	mockRenderer := NewMockBaseRenderer[string]()
 	font := fonts.GetSimple4x6Font()
 	g := glyph.NewGlyphRasterBin(font)
 
-	renderer := NewRendererRasterHTextSolid[*MockBaseRenderer, *glyph.GlyphRasterBin](mockRenderer, g)
+	renderer := NewRendererRasterHTextSolid[*MockBaseRenderer[string], *glyph.GlyphRasterBin, string](mockRenderer, g)
 	renderer.SetColor("purple")
 
 	// Render with flip=true
@@ -373,12 +373,12 @@ func TestGlyphRasterBinEmptyFont(t *testing.T) {
 }
 
 func TestRendererRasterVTextSolidAttach(t *testing.T) {
-	mockRenderer1 := NewMockBaseRenderer()
-	mockRenderer2 := NewMockBaseRenderer()
+	mockRenderer1 := NewMockBaseRenderer[string]()
+	mockRenderer2 := NewMockBaseRenderer[string]()
 	font := fonts.GetSimple4x6Font()
 	g := glyph.NewGlyphRasterBin(font)
 
-	renderer := NewRendererRasterVTextSolid[*MockBaseRenderer, *glyph.GlyphRasterBin](mockRenderer1, g)
+	renderer := NewRendererRasterVTextSolid[*MockBaseRenderer[string], *glyph.GlyphRasterBin, string](mockRenderer1, g)
 
 	// Test initial renderer
 	renderer.SetColor("red")

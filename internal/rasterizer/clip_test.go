@@ -364,7 +364,6 @@ func TestComplexClippingScenario(t *testing.T) {
 
 func TestTypeAliases(t *testing.T) {
 	// Test that type aliases work correctly
-	mock := &MockRasterizer{}
 	clipInt := NewRasterizerSlClip[RasConvInt]()
 	clipIntSat := NewRasterizerSlClip[RasConvIntSat]()
 	clipInt3x := NewRasterizerSlClip[RasConvInt3x]()
@@ -372,38 +371,32 @@ func TestTypeAliases(t *testing.T) {
 	clipDbl3x := NewRasterizerSlClip[RasConvDbl3x]()
 
 	// Basic functionality test for each type
-
-	rasterizers := []interface{}{
-		clipInt, clipIntSat, clipInt3x, clipDbl, clipDbl3x,
+	types := []struct {
+		name string
+		test func(t *testing.T)
+	}{
+		{"Int", func(t *testing.T) { testRasterizer(t, clipInt) }},
+		{"IntSat", func(t *testing.T) { testRasterizer(t, clipIntSat) }},
+		{"Int3x", func(t *testing.T) { testRasterizer(t, clipInt3x) }},
+		{"Dbl", func(t *testing.T) { testRasterizer(t, clipDbl) }},
+		{"Dbl3x", func(t *testing.T) { testRasterizer(t, clipDbl3x) }},
 	}
 
-	for i, rast := range rasterizers {
-		t.Run(typeName(i), func(t *testing.T) {
-			mock.Reset()
+	for _, typ := range types {
+		t.Run(typ.name, typ.test)
+	}
+}
 
-			// Use type switch to call methods (since they have the same interface)
-			switch r := rast.(type) {
-			case *RasterizerSlClip[RasConvInt]:
-				r.MoveTo(10, 20)
-				r.LineTo(mock, 30, 40)
-			case *RasterizerSlClip[RasConvIntSat]:
-				r.MoveTo(10, 20)
-				r.LineTo(mock, 30, 40)
-			case *RasterizerSlClip[RasConvInt3x]:
-				r.MoveTo(10, 20)
-				r.LineTo(mock, 30, 40)
-			case *RasterizerSlClip[RasConvDbl]:
-				r.MoveTo(10, 20)
-				r.LineTo(mock, 30, 40)
-			case *RasterizerSlClip[RasConvDbl3x]:
-				r.MoveTo(10, 20)
-				r.LineTo(mock, 30, 40)
-			}
+// testRasterizer is a generic helper function to test any rasterizer type
+func testRasterizer[Conv any](t *testing.T, clipper *RasterizerSlClip[Conv]) {
+	mock := &MockRasterizer{}
+	mock.Reset()
 
-			if len(mock.Lines) != 1 {
-				t.Errorf("Expected 1 line for type alias test, got %d", len(mock.Lines))
-			}
-		})
+	clipper.MoveTo(10, 20)
+	clipper.LineTo(mock, 30, 40)
+
+	if len(mock.Lines) != 1 {
+		t.Errorf("Expected 1 line for type alias test, got %d", len(mock.Lines))
 	}
 }
 

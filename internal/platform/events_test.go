@@ -287,7 +287,7 @@ func (h *testEventHandler) OnDraw() {
 	h.drawCalled = true
 }
 
-func (h *testEventHandler) OnPostDraw(rawHandler interface{}) {
+func (h *testEventHandler) OnPostDraw(rawHandler any) {
 	h.postDrawCalled = true
 }
 

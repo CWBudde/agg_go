@@ -317,7 +317,7 @@ func TestWarpMagnifierInterfaces(t *testing.T) {
 	m.SetRadius(30.0)
 
 	// Test that warp magnifier implements Transformer interface
-	var transformer interface{} = m
+	var transformer any = m
 	if _, ok := transformer.(Transformer); !ok {
 		t.Error("TransWarpMagnifier should implement Transformer interface")
 	}

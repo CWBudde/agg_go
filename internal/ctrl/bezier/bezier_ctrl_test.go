@@ -1,6 +1,7 @@
 package bezier
 
 import (
+	"fmt"
 	"testing"
 
 	"agg_go/internal/basics"
@@ -178,7 +179,7 @@ func TestBezierCtrlVertexGeneration(t *testing.T) {
 
 	// Test vertex generation for each path
 	for pathID := uint(0); pathID < 7; pathID++ {
-		t.Run(f("Path %d", pathID), func(t *testing.T) {
+		t.Run(fmt.Sprintf("Path %d", pathID), func(t *testing.T) {
 			ctrl.Rewind(pathID)
 
 			vertexCount := 0
@@ -237,8 +238,3 @@ func TestBezierCtrlInRect(t *testing.T) {
 	}
 }
 
-// Helper function for formatted strings
-func f(format string, args ...interface{}) string {
-	// Simple sprintf replacement for testing
-	return format
-}

@@ -1,6 +1,4 @@
 // Package renderer provides high-level rendering functionality for AGG.
-// This file introduces a typed variant of the base renderer that is generic
-// over the concrete color type C, avoiding interface{} for colors.
 package renderer
 
 import (
@@ -45,8 +43,17 @@ type PixelFormat[C any] interface {
 	Fill(c C)
 }
 
-// RendererBase provides the typed base renderer functionality.
-// It mirrors RendererBase but uses a concrete color type C instead of interface{}.
+// RendererBase provides the foundational structure for all rendering operations.
+// It is a generic type that works with any pixel format (PF) and color type (C).
+//
+// The RendererBase manages the core rendering state including the pixel format
+// for drawing operations and the clipping boundaries that constrain where
+// pixels can be rendered. This serves as the base for more specialized
+// renderer implementations.
+//
+// Type parameters:
+//   - PF: The pixel format type that must implement PixelFormat[C]
+//   - C: The color type used by the pixel format
 type RendererBase[PF PixelFormat[C], C any] struct {
 	pixfmt  PF           // The pixel format
 	clipBox basics.RectI // Current clipping rectangle

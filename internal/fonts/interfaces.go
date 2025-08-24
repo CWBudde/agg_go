@@ -1,5 +1,3 @@
-// Package fonts provides proper type interfaces for font adaptors and scanlines
-// to eliminate interface{} usage and provide compile-time type safety.
 package fonts
 
 import (

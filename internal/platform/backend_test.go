@@ -266,7 +266,7 @@ func (m *MockEventCallback) OnDraw() {
 	m.drawCalled = true
 }
 
-func (m *MockEventCallback) OnPostDraw(rawHandler interface{}) {
+func (m *MockEventCallback) OnPostDraw(rawHandler any) {
 	m.postDrawCalled = true
 }
 

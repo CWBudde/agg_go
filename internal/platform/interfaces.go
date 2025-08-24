@@ -12,7 +12,7 @@ type EventCallbackSetter interface {
 }
 
 // ImageSurface defines the interface for platform-specific image surfaces.
-// This replaces the use of interface{} in image-related operations.
+// This provides a common abstraction for image data across different backend implementations.
 type ImageSurface interface {
 	// GetWidth returns the width of the image surface
 	GetWidth() int
@@ -27,8 +27,9 @@ type ImageSurface interface {
 	IsValid() bool
 }
 
-// NativeHandle defines the interface for platform-specific native handles.
-// This replaces the use of interface{} in GetNativeHandle operations.
+// NativeHandle provides a common interface for platform-specific native handles.
+// Implementations should represent underlying system resources (e.g., window handles,
+// file descriptors, or device contexts) and provide type identification and validation.
 type NativeHandle interface {
 	// GetType returns a string identifying the type of native handle
 	GetType() string

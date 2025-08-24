@@ -278,21 +278,21 @@ func TestPixFmtRGBGamma_ConcreteTypes(t *testing.T) {
 	// Test that all the concrete type definitions work
 	testCases := []struct {
 		name   string
-		create func() interface{}
+		create func() any
 	}{
-		{"RGB24Gamma", func() interface{} {
+		{"RGB24Gamma", func() any {
 			pixfmt := pixfmt.NewPixFmtRGB24(rbuf)
 			return NewPixFmtRGB24Gamma(pixfmt, 2.2)
 		}},
-		{"RGB24GammaLinear", func() interface{} {
+		{"RGB24GammaLinear", func() any {
 			pixfmt := pixfmt.NewPixFmtRGB24(rbuf)
 			return NewPixFmtRGB24GammaLinear(pixfmt)
 		}},
-		{"BGR24Gamma", func() interface{} {
+		{"BGR24Gamma", func() any {
 			pixfmt := pixfmt.NewPixFmtBGR24(rbuf)
 			return NewPixFmtBGR24Gamma(pixfmt, 2.2)
 		}},
-		{"BGR24GammaLinear", func() interface{} {
+		{"BGR24GammaLinear", func() any {
 			pixfmt := pixfmt.NewPixFmtBGR24(rbuf)
 			return NewPixFmtBGR24GammaLinear(pixfmt)
 		}},

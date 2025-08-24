@@ -56,9 +56,6 @@ type RasterizerInterface interface {
 	MaxX() int
 }
 
-// Typed interfaces for better type safety and performance
-// These interfaces use concrete color types instead of interface{}
-
 // BaseRendererInterface defines the interface for base renderers.
 // This corresponds to the BaseRenderer template parameter in AGG's functions.
 type BaseRendererInterface[C any] interface {
