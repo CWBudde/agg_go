@@ -7,6 +7,15 @@ import (
 	"agg_go/internal/buffer"
 )
 
+// RenderingBufferInterface defines the common interface for all rendering buffer types.
+type RenderingBufferInterface[T any] interface {
+	Width() int
+	Height() int
+	Stride() int
+	Attach(buf []T, width, height, stride int)
+	Row(y int) []T
+}
+
 // RenderingBufferType represents the type of rendering buffer to use by default.
 type RenderingBufferType int
 
@@ -86,7 +95,7 @@ func GetDefaultRenderingBufferType() RenderingBufferType {
 }
 
 // NewRenderingBuffer creates a rendering buffer using the configured default type.
-func NewRenderingBuffer[T any]() interface{} {
+func NewRenderingBuffer[T any]() RenderingBufferInterface[T] {
 	switch globalConfig.DefaultRenderingBufferType {
 	case RenderingBufferCached:
 		return buffer.NewRenderingBufferCache[T]()
@@ -96,7 +105,7 @@ func NewRenderingBuffer[T any]() interface{} {
 }
 
 // NewRenderingBufferWithData creates a rendering buffer with data using the configured default type.
-func NewRenderingBufferWithData[T any](buf []T, width, height, stride int) interface{} {
+func NewRenderingBufferWithData[T any](buf []T, width, height, stride int) RenderingBufferInterface[T] {
 	switch globalConfig.DefaultRenderingBufferType {
 	case RenderingBufferCached:
 		rbc := buffer.NewRenderingBufferCache[T]()

@@ -28,7 +28,7 @@ const (
 // The control allows users to interactively modify a smooth curve by dragging
 // control points. It's commonly used for gamma correction, color transfer functions,
 // and other curve-based parameter adjustments.
-type SplineCtrlImpl struct {
+type SplineCtrlImpl[C any] struct {
 	*ctrl.BaseCtrl
 
 	// Configuration
@@ -70,7 +70,7 @@ type SplineCtrlImpl struct {
 // x1, y1, x2, y2: bounding rectangle for the control
 // numPnt: number of control points (clamped to 4-32 range)
 // flipY: whether to flip Y coordinates for rendering
-func NewSplineCtrlImpl(x1, y1, x2, y2 float64, numPnt uint, flipY bool) *SplineCtrlImpl {
+func NewSplineCtrlImpl[C any](x1, y1, x2, y2 float64, numPnt uint, flipY bool) *SplineCtrlImpl[C] {
 	// Clamp number of points to valid range
 	if numPnt < 4 {
 		numPnt = 4
@@ -79,7 +79,7 @@ func NewSplineCtrlImpl(x1, y1, x2, y2 float64, numPnt uint, flipY bool) *SplineC
 		numPnt = maxControlPoints
 	}
 
-	ctrl := &SplineCtrlImpl{
+	ctrl := &SplineCtrlImpl[C]{
 		BaseCtrl:    ctrl.NewBaseCtrl(x1, y1, x2, y2, flipY),
 		numPnt:      numPnt,
 		borderWidth: 1.0,
@@ -112,7 +112,7 @@ func NewSplineCtrlImpl(x1, y1, x2, y2 float64, numPnt uint, flipY bool) *SplineC
 }
 
 // calcSplineBox calculates the inner bounds of the spline area.
-func (s *SplineCtrlImpl) calcSplineBox() {
+func (s *SplineCtrlImpl[C]) calcSplineBox() {
 	s.xs1 = s.X1() + s.borderWidth
 	s.ys1 = s.Y1() + s.borderWidth
 	s.xs2 = s.X2() - s.borderWidth
@@ -120,7 +120,7 @@ func (s *SplineCtrlImpl) calcSplineBox() {
 }
 
 // updateSpline recalculates the spline curve and lookup table.
-func (s *SplineCtrlImpl) updateSpline() {
+func (s *SplineCtrlImpl[C]) updateSpline() {
 	// Create slices from the arrays for the spline initialization
 	xPoints := make([]float64, s.numPnt)
 	yPoints := make([]float64, s.numPnt)
@@ -152,46 +152,46 @@ func (s *SplineCtrlImpl) updateSpline() {
 }
 
 // BorderWidth sets the border width and extra space around the control.
-func (s *SplineCtrlImpl) BorderWidth(width, extra float64) {
+func (s *SplineCtrlImpl[C]) BorderWidth(width, extra float64) {
 	s.borderWidth = width
 	s.borderExtra = extra
 	s.calcSplineBox()
 }
 
 // CurveWidth sets the width of the curve line.
-func (s *SplineCtrlImpl) CurveWidth(width float64) {
+func (s *SplineCtrlImpl[C]) CurveWidth(width float64) {
 	s.curveWidth = width
 }
 
 // PointSize sets the size of the control points.
-func (s *SplineCtrlImpl) PointSize(size float64) {
+func (s *SplineCtrlImpl[C]) PointSize(size float64) {
 	s.pointSize = size
 }
 
 // ActivePoint sets the currently active control point.
-func (s *SplineCtrlImpl) ActivePoint(index int) {
+func (s *SplineCtrlImpl[C]) ActivePoint(index int) {
 	if index >= -1 && index < int(s.numPnt) {
 		s.activePnt = index
 	}
 }
 
 // ActivePoint returns the index of the currently active control point.
-func (s *SplineCtrlImpl) GetActivePoint() int {
+func (s *SplineCtrlImpl[C]) GetActivePoint() int {
 	return s.activePnt
 }
 
 // Spline returns the pre-calculated spline values as a slice.
-func (s *SplineCtrlImpl) Spline() []float64 {
+func (s *SplineCtrlImpl[C]) Spline() []float64 {
 	return s.splineValues[:]
 }
 
 // Spline8 returns the pre-calculated 8-bit spline values as a slice.
-func (s *SplineCtrlImpl) Spline8() []uint8 {
+func (s *SplineCtrlImpl[C]) Spline8() []uint8 {
 	return s.splineValues8[:]
 }
 
 // Value returns the spline value for a given X coordinate.
-func (s *SplineCtrlImpl) Value(x float64) float64 {
+func (s *SplineCtrlImpl[C]) Value(x float64) float64 {
 	value := s.spline.Get(x)
 	if value < 0.0 {
 		value = 0.0
@@ -203,7 +203,7 @@ func (s *SplineCtrlImpl) Value(x float64) float64 {
 }
 
 // SetValue sets the Y coordinate of a control point by index.
-func (s *SplineCtrlImpl) SetValue(idx uint, y float64) {
+func (s *SplineCtrlImpl[C]) SetValue(idx uint, y float64) {
 	if idx < s.numPnt {
 		s.setYP(idx, y)
 		s.updateSpline()
@@ -211,7 +211,7 @@ func (s *SplineCtrlImpl) SetValue(idx uint, y float64) {
 }
 
 // SetPoint sets both X and Y coordinates of a control point by index.
-func (s *SplineCtrlImpl) SetPoint(idx uint, x, y float64) {
+func (s *SplineCtrlImpl[C]) SetPoint(idx uint, x, y float64) {
 	if idx < s.numPnt {
 		s.setXP(idx, x)
 		s.setYP(idx, y)
@@ -220,7 +220,7 @@ func (s *SplineCtrlImpl) SetPoint(idx uint, x, y float64) {
 }
 
 // GetPointX returns the X coordinate of a control point.
-func (s *SplineCtrlImpl) GetPointX(idx uint) float64 {
+func (s *SplineCtrlImpl[C]) GetPointX(idx uint) float64 {
 	if idx < s.numPnt {
 		return s.xp[idx]
 	}
@@ -228,7 +228,7 @@ func (s *SplineCtrlImpl) GetPointX(idx uint) float64 {
 }
 
 // GetPointY returns the Y coordinate of a control point.
-func (s *SplineCtrlImpl) GetPointY(idx uint) float64 {
+func (s *SplineCtrlImpl[C]) GetPointY(idx uint) float64 {
 	if idx < s.numPnt {
 		return s.yp[idx]
 	}
@@ -238,7 +238,7 @@ func (s *SplineCtrlImpl) GetPointY(idx uint) float64 {
 // setXP sets the X coordinate of a control point with constraints.
 // The first and last points are constrained to x=0 and x=1 respectively.
 // Interior points cannot cross their neighbors.
-func (s *SplineCtrlImpl) setXP(idx uint, val float64) {
+func (s *SplineCtrlImpl[C]) setXP(idx uint, val float64) {
 	// Clamp to [0, 1] range
 	if val < 0.0 {
 		val = 0.0
@@ -267,7 +267,7 @@ func (s *SplineCtrlImpl) setXP(idx uint, val float64) {
 }
 
 // setYP sets the Y coordinate of a control point with constraints.
-func (s *SplineCtrlImpl) setYP(idx uint, val float64) {
+func (s *SplineCtrlImpl[C]) setYP(idx uint, val float64) {
 	// Clamp to [0, 1] range
 	if val < 0.0 {
 		val = 0.0
@@ -279,22 +279,22 @@ func (s *SplineCtrlImpl) setYP(idx uint, val float64) {
 }
 
 // calcXP converts normalized X coordinate to screen coordinates.
-func (s *SplineCtrlImpl) calcXP(idx uint) float64 {
+func (s *SplineCtrlImpl[C]) calcXP(idx uint) float64 {
 	return s.xs1 + (s.xs2-s.xs1)*s.xp[idx]
 }
 
 // calcYP converts normalized Y coordinate to screen coordinates.
-func (s *SplineCtrlImpl) calcYP(idx uint) float64 {
+func (s *SplineCtrlImpl[C]) calcYP(idx uint) float64 {
 	return s.ys1 + (s.ys2-s.ys1)*s.yp[idx]
 }
 
 // NumPaths returns the number of rendering paths (always 5).
-func (s *SplineCtrlImpl) NumPaths() uint {
+func (s *SplineCtrlImpl[C]) NumPaths() uint {
 	return numPaths
 }
 
 // calcCurve generates the spline curve path for rendering.
-func (s *SplineCtrlImpl) calcCurve() {
+func (s *SplineCtrlImpl[C]) calcCurve() {
 	s.curvePath.RemoveAll()
 
 	// Start the curve at the first point
@@ -317,7 +317,7 @@ func (s *SplineCtrlImpl) calcCurve() {
 // 2: Spline curve
 // 3: Inactive control points
 // 4: Active control point
-func (s *SplineCtrlImpl) Rewind(pathID uint) {
+func (s *SplineCtrlImpl[C]) Rewind(pathID uint) {
 	s.currentPath = pathID
 	s.vertexIndex = 0
 	s.vertexCount = 0
@@ -380,7 +380,7 @@ func (s *SplineCtrlImpl) Rewind(pathID uint) {
 }
 
 // Vertex returns the next vertex in the current rendering path.
-func (s *SplineCtrlImpl) Vertex() (x, y float64, cmd basics.PathCommand) {
+func (s *SplineCtrlImpl[C]) Vertex() (x, y float64, cmd basics.PathCommand) {
 	var cmdUint uint32
 
 	switch s.currentPath {
@@ -467,7 +467,7 @@ func calcDistance(x1, y1, x2, y2 float64) float64 {
 }
 
 // InRect checks if a point is within the control's bounds.
-func (s *SplineCtrlImpl) InRect(x, y float64) bool {
+func (s *SplineCtrlImpl[C]) InRect(x, y float64) bool {
 	// Apply inverse transformation to convert screen coordinates to control coordinates
 	s.InverseTransformXY(&x, &y)
 	return x >= s.X1() && x <= s.X2() && y >= s.Y1() && y <= s.Y2()
@@ -475,7 +475,7 @@ func (s *SplineCtrlImpl) InRect(x, y float64) bool {
 
 // OnMouseButtonDown handles mouse press events.
 // Returns true if the control needs to be redrawn.
-func (s *SplineCtrlImpl) OnMouseButtonDown(x, y float64) bool {
+func (s *SplineCtrlImpl[C]) OnMouseButtonDown(x, y float64) bool {
 	// Convert screen coordinates to control coordinates
 	s.InverseTransformXY(&x, &y)
 
@@ -503,7 +503,7 @@ func (s *SplineCtrlImpl) OnMouseButtonDown(x, y float64) bool {
 
 // OnMouseButtonUp handles mouse release events.
 // Returns true if the control needs to be redrawn.
-func (s *SplineCtrlImpl) OnMouseButtonUp(x, y float64) bool {
+func (s *SplineCtrlImpl[C]) OnMouseButtonUp(x, y float64) bool {
 	if s.movePnt >= 0 {
 		s.movePnt = -1
 		return true // Redraw needed to show final position
@@ -514,7 +514,7 @@ func (s *SplineCtrlImpl) OnMouseButtonUp(x, y float64) bool {
 // OnMouseMove handles mouse movement events.
 // buttonPressed indicates if the mouse button is still pressed.
 // Returns true if the control needs to be redrawn.
-func (s *SplineCtrlImpl) OnMouseMove(x, y float64, buttonPressed bool) bool {
+func (s *SplineCtrlImpl[C]) OnMouseMove(x, y float64, buttonPressed bool) bool {
 	// Convert screen coordinates to control coordinates
 	s.InverseTransformXY(&x, &y)
 
@@ -547,7 +547,7 @@ func (s *SplineCtrlImpl) OnMouseMove(x, y float64, buttonPressed bool) bool {
 
 // OnArrowKeys handles arrow key events for precise control point adjustment.
 // Returns true if the control needs to be redrawn.
-func (s *SplineCtrlImpl) OnArrowKeys(left, right, down, up bool) bool {
+func (s *SplineCtrlImpl[C]) OnArrowKeys(left, right, down, up bool) bool {
 	if s.activePnt < 0 || s.activePnt >= int(s.numPnt) {
 		return false // No active point to move
 	}
@@ -591,16 +591,16 @@ func (s *SplineCtrlImpl) OnArrowKeys(left, right, down, up bool) bool {
 }
 
 // Color returns the color for a specific rendering path.
-// This is a placeholder that returns nil - actual colors should be managed
-// by the SplineCtrl wrapper.
-func (s *SplineCtrlImpl) Color(pathID uint) interface{} {
-	return nil
+func (s *SplineCtrlImpl[C]) Color(pathID uint) C {
+	// Return zero value - this should be overridden by concrete implementations
+	var zero C
+	return zero
 }
 
 // SplineCtrl is a generic wrapper around SplineCtrlImpl that provides color management.
 // This corresponds to AGG's spline_ctrl template class.
 type SplineCtrl[ColorT any] struct {
-	*SplineCtrlImpl
+	*SplineCtrlImpl[ColorT]
 
 	// Colors for the 5 rendering paths
 	backgroundColor    ColorT
@@ -618,7 +618,7 @@ type SplineCtrl[ColorT any] struct {
 // numPnt: number of control points (clamped to 4-32 range)
 // flipY: whether to flip Y coordinates for rendering
 func NewSplineCtrl[ColorT any](x1, y1, x2, y2 float64, numPnt uint, flipY bool) *SplineCtrl[ColorT] {
-	impl := NewSplineCtrlImpl(x1, y1, x2, y2, numPnt, flipY)
+	impl := NewSplineCtrlImpl[ColorT](x1, y1, x2, y2, numPnt, flipY)
 
 	ctrl := &SplineCtrl[ColorT]{
 		SplineCtrlImpl: impl,
@@ -660,7 +660,7 @@ func (s *SplineCtrl[ColorT]) SetActivePointColor(c ColorT) {
 }
 
 // Color returns the color for a specific rendering path.
-func (s *SplineCtrl[ColorT]) Color(pathID uint) interface{} {
+func (s *SplineCtrl[ColorT]) Color(pathID uint) ColorT {
 	if pathID < uint(len(s.colors)) {
 		return *s.colors[pathID]
 	}

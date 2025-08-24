@@ -3,10 +3,11 @@
 package gsv
 
 import (
-	"agg_go/internal/basics"
 	"encoding/binary"
 	"os"
 	"unsafe"
+
+	"agg_go/internal/basics"
 )
 
 // Status represents the internal state of the GSV text renderer.

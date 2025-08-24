@@ -4,6 +4,7 @@ import (
 	"agg_go/internal/basics"
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
+	"agg_go/internal/pixfmt/blender"
 )
 
 // PixFmtAlphaBlendGray16 implements alpha blending for 16-bit grayscale pixel formats
@@ -84,7 +85,7 @@ func (pf *PixFmtAlphaBlendGray16[B, CS]) BlendPixel(x, y int, c color.Gray16[CS]
 	if InBounds(x, y, pf.Width(), pf.Height()) && c.A > 0 {
 		pixel := pf.PixPtr(x, y)
 		if pixel != nil {
-			if blender, ok := any(pf.blender).(Gray16Blender); ok {
+			if blender, ok := any(pf.blender).(blender.Gray16Blender); ok {
 				blender.BlendPix(pixel, c.V, c.A, cover)
 			}
 		}
@@ -102,87 +103,78 @@ func (pf *PixFmtAlphaBlendGray16[B, CS]) GetPixel(x, y int) color.Gray16[CS] {
 	return color.Gray16[CS]{}
 }
 
+// Pixel returns the pixel at the given coordinates (alias for GetPixel to satisfy interface)
+func (pf *PixFmtAlphaBlendGray16[B, CS]) Pixel(x, y int) color.Gray16[CS] {
+	return pf.GetPixel(x, y)
+}
+
 // Line operations
 
 // CopyHline copies a horizontal line
-func (pf *PixFmtAlphaBlendGray16[B, CS]) CopyHline(x1, y, x2 int, c color.Gray16[CS]) {
-	if y < 0 || y >= pf.Height() {
+func (pf *PixFmtAlphaBlendGray16[B, CS]) CopyHline(x, y, length int, c color.Gray16[CS]) {
+	if y < 0 || y >= pf.Height() || length <= 0 {
 		return
 	}
 
-	if x1 > x2 {
-		x1, x2 = x2, x1
+	x = Max(0, x)
+	if x+length > pf.Width() {
+		length = pf.Width() - x
 	}
 
-	x1 = Max(0, x1)
-	x2 = Min(pf.Width()-1, x2)
-
-	if x1 <= x2 {
-		row := pf.RowPtr(y)
-		CopyGray16Hline(row, x1, x2-x1+1, c)
-	}
+	row := pf.RowPtr(y)
+	blender.CopyGray16Hline(row, x, length, c)
 }
 
 // BlendHline blends a horizontal line with coverage
-func (pf *PixFmtAlphaBlendGray16[B, CS]) BlendHline(x1, y, x2 int, c color.Gray16[CS], cover basics.Int16u) {
-	if y < 0 || y >= pf.Height() || c.A == 0 {
+func (pf *PixFmtAlphaBlendGray16[B, CS]) BlendHline(x, y, length int, c color.Gray16[CS], cover basics.Int16u) {
+	if y < 0 || y >= pf.Height() || length <= 0 || c.A == 0 {
 		return
 	}
 
-	if x1 > x2 {
-		x1, x2 = x2, x1
+	x = Max(0, x)
+	if x+length > pf.Width() {
+		length = pf.Width() - x
 	}
 
-	x1 = Max(0, x1)
-	x2 = Min(pf.Width()-1, x2)
-
-	if x1 <= x2 {
-		row := pf.RowPtr(y)
-		if blender, ok := any(pf.blender).(Gray16Blender); ok {
-			// Use the interface blender directly on each pixel
-			length := x2 - x1 + 1
-			for i := 0; i < length; i++ {
-				if c.A > 0 {
-					blender.BlendPix(&row[x1+i], c.V, c.A, cover)
-				}
+	row := pf.RowPtr(y)
+	if blender, ok := any(pf.blender).(blender.Gray16Blender); ok {
+		for i := 0; i < length; i++ {
+			if c.A > 0 {
+				blender.BlendPix(&row[x+i], c.V, c.A, cover)
 			}
 		}
 	}
 }
 
 // CopyVline copies a vertical line
-func (pf *PixFmtAlphaBlendGray16[B, CS]) CopyVline(x, y1, y2 int, c color.Gray16[CS]) {
-	if x < 0 || x >= pf.Width() {
+func (pf *PixFmtAlphaBlendGray16[B, CS]) CopyVline(x, y, length int, c color.Gray16[CS]) {
+	if x < 0 || x >= pf.Width() || length <= 0 {
 		return
 	}
 
-	if y1 > y2 {
-		y1, y2 = y2, y1
+	y = Max(0, y)
+	if y+length > pf.Height() {
+		length = pf.Height() - y
 	}
 
-	y1 = Max(0, y1)
-	y2 = Min(pf.Height()-1, y2)
-
-	for y := y1; y <= y2; y++ {
-		pf.CopyPixel(x, y, c)
+	for i := 0; i < length; i++ {
+		pf.CopyPixel(x, y+i, c)
 	}
 }
 
 // BlendVline blends a vertical line with coverage
-func (pf *PixFmtAlphaBlendGray16[B, CS]) BlendVline(x, y1, y2 int, c color.Gray16[CS], cover basics.Int16u) {
-	if x < 0 || x >= pf.Width() || c.A == 0 {
+func (pf *PixFmtAlphaBlendGray16[B, CS]) BlendVline(x, y, length int, c color.Gray16[CS], cover basics.Int16u) {
+	if x < 0 || x >= pf.Width() || length <= 0 || c.A == 0 {
 		return
 	}
 
-	if y1 > y2 {
-		y1, y2 = y2, y1
+	y = Max(0, y)
+	if y+length > pf.Height() {
+		length = pf.Height() - y
 	}
 
-	y1 = Max(0, y1)
-	y2 = Min(pf.Height()-1, y2)
-
-	for y := y1; y <= y2; y++ {
-		pf.BlendPixel(x, y, c, cover)
+	for i := 0; i < length; i++ {
+		pf.BlendPixel(x, y+i, c, cover)
 	}
 }
 
@@ -203,7 +195,7 @@ func (pf *PixFmtAlphaBlendGray16[B, CS]) CopyBar(x1, y1, x2, y2 int, c color.Gra
 	y2 = Min(pf.Height()-1, y2)
 
 	for y := y1; y <= y2; y++ {
-		pf.CopyHline(x1, y, x2, c)
+		pf.CopyHline(x1, y, x2-x1+1, c)
 	}
 }
 
@@ -226,7 +218,7 @@ func (pf *PixFmtAlphaBlendGray16[B, CS]) BlendBar(x1, y1, x2, y2 int, c color.Gr
 	y2 = Min(pf.Height()-1, y2)
 
 	for y := y1; y <= y2; y++ {
-		pf.BlendHline(x1, y, x2, c, cover)
+		pf.BlendHline(x1, y, x2-x1+1, c, cover)
 	}
 }
 
@@ -246,7 +238,7 @@ func (pf *PixFmtAlphaBlendGray16[B, CS]) BlendSolidHspan(x, y, length int, c col
 		coverOffset := Max(0, -x)
 		effectiveLength := x2 - x1 + 1
 
-		if blender, ok := any(pf.blender).(Gray16Blender); ok {
+		if blender, ok := any(pf.blender).(blender.Gray16Blender); ok {
 			// Blend each pixel with its corresponding coverage
 			for i := 0; i < effectiveLength; i++ {
 				coverIndex := coverOffset + i
@@ -275,6 +267,94 @@ func (pf *PixFmtAlphaBlendGray16[B, CS]) BlendSolidVspan(x, y, length int, c col
 	}
 }
 
+// Color span operations
+
+// CopyColorHspan copies a horizontal span of colors
+func (pf *PixFmtAlphaBlendGray16[B, CS]) CopyColorHspan(x, y, length int, colors []color.Gray16[CS]) {
+	if y < 0 || y >= pf.Height() || length <= 0 || len(colors) == 0 {
+		return
+	}
+
+	x = Max(0, x)
+	if x+length > pf.Width() {
+		length = pf.Width() - x
+	}
+
+	for i := 0; i < length; i++ {
+		colorIdx := i % len(colors)
+		pf.CopyPixel(x+i, y, colors[colorIdx])
+	}
+}
+
+// BlendColorHspan blends a horizontal span of colors
+func (pf *PixFmtAlphaBlendGray16[B, CS]) BlendColorHspan(x, y, length int, colors []color.Gray16[CS], covers []basics.Int8u, cover basics.Int8u) {
+	if y < 0 || y >= pf.Height() || length <= 0 || len(colors) == 0 {
+		return
+	}
+
+	x = Max(0, x)
+	if x+length > pf.Width() {
+		length = pf.Width() - x
+	}
+
+	for i := 0; i < length; i++ {
+		colorIdx := i % len(colors)
+		c := colors[colorIdx]
+		if c.A == 0 {
+			continue
+		}
+
+		cvr := basics.Int16u(cover)
+		if covers != nil && i < len(covers) {
+			cvr = basics.Int16u(covers[i])
+		}
+		pf.BlendPixel(x+i, y, c, cvr)
+	}
+}
+
+// CopyColorVspan copies a vertical span of colors
+func (pf *PixFmtAlphaBlendGray16[B, CS]) CopyColorVspan(x, y, length int, colors []color.Gray16[CS]) {
+	if x < 0 || x >= pf.Width() || length <= 0 || len(colors) == 0 {
+		return
+	}
+
+	y = Max(0, y)
+	if y+length > pf.Height() {
+		length = pf.Height() - y
+	}
+
+	for i := 0; i < length; i++ {
+		colorIdx := i % len(colors)
+		pf.CopyPixel(x, y+i, colors[colorIdx])
+	}
+}
+
+// BlendColorVspan blends a vertical span of colors
+func (pf *PixFmtAlphaBlendGray16[B, CS]) BlendColorVspan(x, y, length int, colors []color.Gray16[CS], covers []basics.Int8u, cover basics.Int8u) {
+	if x < 0 || x >= pf.Width() || length <= 0 || len(colors) == 0 {
+		return
+	}
+
+	y = Max(0, y)
+	if y+length > pf.Height() {
+		length = pf.Height() - y
+	}
+
+	for i := 0; i < length; i++ {
+		colorIdx := i % len(colors)
+		c := colors[colorIdx]
+		if c.A == 0 {
+			continue
+		}
+
+		cvr := basics.Int16u(cover)
+		if covers != nil && i < len(covers) {
+			cvr = basics.Int16u(covers[i])
+		}
+		pf.BlendPixel(x, y+i, c, cvr)
+	}
+}
+
 // Clear operations
 
 // Clear fills the entire buffer with a color (sets alpha to 0)
@@ -294,25 +374,25 @@ func (pf *PixFmtAlphaBlendGray16[B, CS]) Fill(c color.Gray16[CS]) {
 
 // Concrete pixel format types
 type (
-	PixFmtGray16     = PixFmtAlphaBlendGray16[BlenderGray16Linear, color.Linear]
-	PixFmtSGray16    = PixFmtAlphaBlendGray16[BlenderGray16SRGB, color.SRGB]
-	PixFmtGray16Pre  = PixFmtAlphaBlendGray16[BlenderGray16PreLinear, color.Linear]
-	PixFmtSGray16Pre = PixFmtAlphaBlendGray16[BlenderGray16PreSRGB, color.SRGB]
+	PixFmtGray16     = PixFmtAlphaBlendGray16[blender.BlenderGray16Linear, color.Linear]
+	PixFmtSGray16    = PixFmtAlphaBlendGray16[blender.BlenderGray16SRGB, color.SRGB]
+	PixFmtGray16Pre  = PixFmtAlphaBlendGray16[blender.BlenderGray16PreLinear, color.Linear]
+	PixFmtSGray16Pre = PixFmtAlphaBlendGray16[blender.BlenderGray16PreSRGB, color.SRGB]
 )
 
 // Constructor functions for concrete types
 func NewPixFmtGray16(rbuf *buffer.RenderingBufferU16) *PixFmtGray16 {
-	return NewPixFmtAlphaBlendGray16[BlenderGray16Linear, color.Linear](rbuf, BlenderGray16Linear{})
+	return NewPixFmtAlphaBlendGray16[blender.BlenderGray16Linear, color.Linear](rbuf, blender.BlenderGray16Linear{})
 }
 
 func NewPixFmtSGray16(rbuf *buffer.RenderingBufferU16) *PixFmtSGray16 {
-	return NewPixFmtAlphaBlendGray16[BlenderGray16SRGB, color.SRGB](rbuf, BlenderGray16SRGB{})
+	return NewPixFmtAlphaBlendGray16[blender.BlenderGray16SRGB, color.SRGB](rbuf, blender.BlenderGray16SRGB{})
 }
 
 func NewPixFmtGray16Pre(rbuf *buffer.RenderingBufferU16) *PixFmtGray16Pre {
-	return NewPixFmtAlphaBlendGray16[BlenderGray16PreLinear, color.Linear](rbuf, BlenderGray16PreLinear{})
+	return NewPixFmtAlphaBlendGray16[blender.BlenderGray16PreLinear, color.Linear](rbuf, blender.BlenderGray16PreLinear{})
 }
 
 func NewPixFmtSGray16Pre(rbuf *buffer.RenderingBufferU16) *PixFmtSGray16Pre {
-	return NewPixFmtAlphaBlendGray16[BlenderGray16PreSRGB, color.SRGB](rbuf, BlenderGray16PreSRGB{})
+	return NewPixFmtAlphaBlendGray16[blender.BlenderGray16PreSRGB, color.SRGB](rbuf, blender.BlenderGray16PreSRGB{})
 }

@@ -4,6 +4,7 @@ import (
 	"agg_go/internal/basics"
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
+	"agg_go/internal/pixfmt/blender"
 )
 
 // Packed pixel formats use 16-bit integers to store RGB values
@@ -77,14 +78,14 @@ func UnpackPixelBGR565(pixel basics.Int16u) (r, g, b basics.Int8u) {
 }
 
 // PixFmtRGB555 represents a 16-bit RGB555 pixel format
-type PixFmtRGB555[B any] struct {
+type PixFmtRGB555[B blender.RGB16PackedBlender] struct {
 	rbuf     *buffer.RenderingBufferU16
 	blender  B
 	category PixFmtRGBTag
 }
 
 // NewPixFmtRGB555 creates a new RGB555 pixel format
-func NewPixFmtRGB555[B any](rbuf *buffer.RenderingBufferU16, blender B) *PixFmtRGB555[B] {
+func NewPixFmtRGB555[B blender.RGB16PackedBlender](rbuf *buffer.RenderingBufferU16, blender B) *PixFmtRGB555[B] {
 	return &PixFmtRGB555[B]{
 		rbuf:    rbuf,
 		blender: blender,
@@ -146,33 +147,19 @@ func (pf *PixFmtRGB555[B]) BlendPixel(x, y int, c color.RGB8[color.Linear], alph
 		return
 	}
 
-	// Use blender interface if available
-	if blender, ok := interface{}(pf.blender).(interface {
-		BlendPix(pixel *basics.Int16u, r, g, b, alpha, cover basics.Int8u)
-	}); ok {
-		blender.BlendPix(&row[x], c.R, c.G, c.B, alpha, cover)
-	} else {
-		// Fallback: extract, blend in 8-bit space, repack
-		r, g, b := UnpackPixel555(row[x])
-		blendAlpha := color.RGBA8MultCover(alpha, cover)
-		if blendAlpha > 0 {
-			r = color.RGBA8Lerp(r, c.R, blendAlpha)
-			g = color.RGBA8Lerp(g, c.G, blendAlpha)
-			b = color.RGBA8Lerp(b, c.B, blendAlpha)
-			row[x] = MakePixel555(r, g, b)
-		}
-	}
+	// Direct blending call - no type assertion needed with proper constraints
+	pf.blender.BlendPix(&row[x], c.R, c.G, c.B, alpha, cover)
 }
 
 // PixFmtRGB565 represents a 16-bit RGB565 pixel format
-type PixFmtRGB565[B any] struct {
+type PixFmtRGB565[B blender.RGB16PackedBlender] struct {
 	rbuf     *buffer.RenderingBufferU16
 	blender  B
 	category PixFmtRGBTag
 }
 
 // NewPixFmtRGB565 creates a new RGB565 pixel format
-func NewPixFmtRGB565[B any](rbuf *buffer.RenderingBufferU16, blender B) *PixFmtRGB565[B] {
+func NewPixFmtRGB565[B blender.RGB16PackedBlender](rbuf *buffer.RenderingBufferU16, blender B) *PixFmtRGB565[B] {
 	return &PixFmtRGB565[B]{
 		rbuf:    rbuf,
 		blender: blender,
@@ -234,33 +221,19 @@ func (pf *PixFmtRGB565[B]) BlendPixel(x, y int, c color.RGB8[color.Linear], alph
 		return
 	}
 
-	// Use blender interface if available
-	if blender, ok := interface{}(pf.blender).(interface {
-		BlendPix(pixel *basics.Int16u, r, g, b, alpha, cover basics.Int8u)
-	}); ok {
-		blender.BlendPix(&row[x], c.R, c.G, c.B, alpha, cover)
-	} else {
-		// Fallback: extract, blend in 8-bit space, repack
-		r, g, b := UnpackPixel565(row[x])
-		blendAlpha := color.RGBA8MultCover(alpha, cover)
-		if blendAlpha > 0 {
-			r = color.RGBA8Lerp(r, c.R, blendAlpha)
-			g = color.RGBA8Lerp(g, c.G, blendAlpha)
-			b = color.RGBA8Lerp(b, c.B, blendAlpha)
-			row[x] = MakePixel565(r, g, b)
-		}
-	}
+	// Direct blending call - no type assertion needed with proper constraints
+	pf.blender.BlendPix(&row[x], c.R, c.G, c.B, alpha, cover)
 }
 
 // PixFmtBGR555 represents a 16-bit BGR555 pixel format
-type PixFmtBGR555[B any] struct {
+type PixFmtBGR555[B blender.RGB16PackedBlender] struct {
 	rbuf     *buffer.RenderingBufferU16
 	blender  B
 	category PixFmtRGBTag
 }
 
 // NewPixFmtBGR555 creates a new BGR555 pixel format
-func NewPixFmtBGR555[B any](rbuf *buffer.RenderingBufferU16, blender B) *PixFmtBGR555[B] {
+func NewPixFmtBGR555[B blender.RGB16PackedBlender](rbuf *buffer.RenderingBufferU16, blender B) *PixFmtBGR555[B] {
 	return &PixFmtBGR555[B]{
 		rbuf:    rbuf,
 		blender: blender,
@@ -322,33 +295,19 @@ func (pf *PixFmtBGR555[B]) BlendPixel(x, y int, c color.RGB8[color.Linear], alph
 		return
 	}
 
-	// Use blender interface if available
-	if blender, ok := interface{}(pf.blender).(interface {
-		BlendPix(pixel *basics.Int16u, r, g, b, alpha, cover basics.Int8u)
-	}); ok {
-		blender.BlendPix(&row[x], c.R, c.G, c.B, alpha, cover)
-	} else {
-		// Fallback: extract, blend in 8-bit space, repack
-		r, g, b := UnpackPixelBGR555(row[x])
-		blendAlpha := color.RGBA8MultCover(alpha, cover)
-		if blendAlpha > 0 {
-			r = color.RGBA8Lerp(r, c.R, blendAlpha)
-			g = color.RGBA8Lerp(g, c.G, blendAlpha)
-			b = color.RGBA8Lerp(b, c.B, blendAlpha)
-			row[x] = MakePixelBGR555(r, g, b)
-		}
-	}
+	// Direct blending call - no type assertion needed with proper constraints
+	pf.blender.BlendPix(&row[x], c.R, c.G, c.B, alpha, cover)
 }
 
 // PixFmtBGR565 represents a 16-bit BGR565 pixel format
-type PixFmtBGR565[B any] struct {
+type PixFmtBGR565[B blender.RGB16PackedBlender] struct {
 	rbuf     *buffer.RenderingBufferU16
 	blender  B
 	category PixFmtRGBTag
 }
 
 // NewPixFmtBGR565 creates a new BGR565 pixel format
-func NewPixFmtBGR565[B any](rbuf *buffer.RenderingBufferU16, blender B) *PixFmtBGR565[B] {
+func NewPixFmtBGR565[B blender.RGB16PackedBlender](rbuf *buffer.RenderingBufferU16, blender B) *PixFmtBGR565[B] {
 	return &PixFmtBGR565[B]{
 		rbuf:    rbuf,
 		blender: blender,
@@ -410,31 +369,32 @@ func (pf *PixFmtBGR565[B]) BlendPixel(x, y int, c color.RGB8[color.Linear], alph
 		return
 	}
 
-	// Use blender interface if available
-	if blender, ok := interface{}(pf.blender).(interface {
-		BlendPix(pixel *basics.Int16u, r, g, b, alpha, cover basics.Int8u)
-	}); ok {
-		blender.BlendPix(&row[x], c.R, c.G, c.B, alpha, cover)
-	} else {
-		// Fallback: extract, blend in 8-bit space, repack
-		r, g, b := UnpackPixelBGR565(row[x])
-		blendAlpha := color.RGBA8MultCover(alpha, cover)
-		if blendAlpha > 0 {
-			r = color.RGBA8Lerp(r, c.R, blendAlpha)
-			g = color.RGBA8Lerp(g, c.G, blendAlpha)
-			b = color.RGBA8Lerp(b, c.B, blendAlpha)
-			row[x] = MakePixelBGR565(r, g, b)
-		}
-	}
+	// Direct blending call - no type assertion needed with proper constraints
+	pf.blender.BlendPix(&row[x], c.R, c.G, c.B, alpha, cover)
+}
+
+// NoBlender is a placeholder type for pixel formats without blending capability
+type NoBlender struct{}
+
+// BlendPix implements RGB16PackedBlender interface with no-op blending
+func (nb NoBlender) BlendPix(pixel *basics.Int16u, r, g, b, alpha, cover basics.Int8u) {
+	// No-op: plain formats don't perform blending, just overwrite
+	// This method should not be called for plain formats, but provided for interface compliance
+}
+
+// MakePix implements RGB16PackedBlender interface - should not be used for NoBlender
+func (nb NoBlender) MakePix(r, g, b basics.Int8u) basics.Int16u {
+	// This should not be called for NoBlender, return zero value
+	return 0
 }
 
 // Convenience type aliases for common packed formats
 type (
 	// RGB555 formats
-	PixFmtRGB555Plain = PixFmtRGB555[interface{}]
-	PixFmtBGR555Plain = PixFmtBGR555[interface{}]
+	PixFmtRGB555Plain = PixFmtRGB555[NoBlender]
+	PixFmtBGR555Plain = PixFmtBGR555[NoBlender]
 
 	// RGB565 formats
-	PixFmtRGB565Plain = PixFmtRGB565[interface{}]
-	PixFmtBGR565Plain = PixFmtBGR565[interface{}]
+	PixFmtRGB565Plain = PixFmtRGB565[NoBlender]
+	PixFmtBGR565Plain = PixFmtBGR565[NoBlender]
 )

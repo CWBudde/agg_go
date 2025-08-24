@@ -6,8 +6,9 @@
 package freetype2
 
 import (
-	"agg_go/internal/path"
 	"unsafe"
+
+	"agg_go/internal/path"
 )
 
 // FontEngineInt16 uses 16-bit precision (10.6 format) for vector cache.
@@ -20,11 +21,11 @@ type FontEngineInt16 struct {
 
 // Type aliases for Int16 variant to match AGG's typedef structure
 type (
-	PathAdaptorInt16Type    = *path.SerializedIntegerPathAdaptor[int16]
-	Gray8AdaptorInt16Type   = *FontEngineAdaptorTypes  // Shared with base
-	MonoAdaptorInt16Type    = *FontEngineAdaptorTypes  // Shared with base
-	ScanlinesAAInt16Type    = *FontEngineAdaptorTypes  // Shared with base
-	ScanlinesBinInt16Type   = *FontEngineAdaptorTypes  // Shared with base
+	PathAdaptorInt16Type  = *path.SerializedIntegerPathAdaptor[int16]
+	Gray8AdaptorInt16Type = *FontEngineAdaptorTypes // Shared with base
+	MonoAdaptorInt16Type  = *FontEngineAdaptorTypes // Shared with base
+	ScanlinesAAInt16Type  = *FontEngineAdaptorTypes // Shared with base
+	ScanlinesBinInt16Type = *FontEngineAdaptorTypes // Shared with base
 )
 
 // NewFontEngineInt16 creates a new 16-bit precision FreeType font engine.
@@ -34,7 +35,7 @@ func NewFontEngineInt16(maxFaces uint32, ftMemory unsafe.Pointer) (*FontEngineIn
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return &FontEngineInt16{
 		FontEngine: baseEngine,
 	}, nil
@@ -84,11 +85,11 @@ type FontEngineInt32 struct {
 
 // Type aliases for Int32 variant to match AGG's typedef structure
 type (
-	PathAdaptorInt32Type    = *path.SerializedIntegerPathAdaptor[int32]
-	Gray8AdaptorInt32Type   = *FontEngineAdaptorTypes  // Shared with base
-	MonoAdaptorInt32Type    = *FontEngineAdaptorTypes  // Shared with base
-	ScanlinesAAInt32Type    = *FontEngineAdaptorTypes  // Shared with base
-	ScanlinesBinInt32Type   = *FontEngineAdaptorTypes  // Shared with base
+	PathAdaptorInt32Type  = *path.SerializedIntegerPathAdaptor[int32]
+	Gray8AdaptorInt32Type = *FontEngineAdaptorTypes // Shared with base
+	MonoAdaptorInt32Type  = *FontEngineAdaptorTypes // Shared with base
+	ScanlinesAAInt32Type  = *FontEngineAdaptorTypes // Shared with base
+	ScanlinesBinInt32Type = *FontEngineAdaptorTypes // Shared with base
 )
 
 // NewFontEngineInt32 creates a new 32-bit precision FreeType font engine.
@@ -98,7 +99,7 @@ func NewFontEngineInt32(maxFaces uint32, ftMemory unsafe.Pointer) (*FontEngineIn
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return &FontEngineInt32{
 		FontEngine: baseEngine,
 	}, nil

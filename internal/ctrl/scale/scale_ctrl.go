@@ -214,7 +214,7 @@ func (s *ScaleCtrl) SliderColor(c color.RGBA) {
 }
 
 // Color returns the color for the specified path.
-func (s *ScaleCtrl) Color(pathID uint) interface{} {
+func (s *ScaleCtrl) Color(pathID uint) color.RGBA {
 	if pathID < uint(len(s.colors)) {
 		return s.colors[pathID]
 	}

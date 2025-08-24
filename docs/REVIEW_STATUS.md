@@ -561,7 +561,7 @@ Go files:
 **scanline_storage_bin class:**
 
 - [x] Similar structure to AA storage but for binary scanlines
-- [x] span and scanline structs for binary data  
+- [x] span and scanline structs for binary data
 - [x] Constructor and destructor
 - [x] prepare() method (equivalent to C++ prepare, not reset)
 - [x] render() method (handles span processing, not separate add_span/finalize)

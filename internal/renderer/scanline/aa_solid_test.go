@@ -5,10 +5,10 @@ import (
 )
 
 func TestRendererScanlineAASolid(t *testing.T) {
-	baseRenderer := &MockBaseRenderer{}
+	baseRenderer := &MockBaseRenderer[string]{}
 
 	t.Run("creation and basic operations", func(t *testing.T) {
-		renderer := NewRendererScanlineAASolid[*MockBaseRenderer]()
+		renderer := NewRendererScanlineAASolid[*MockBaseRenderer[string], string]()
 
 		// Test attachment
 		renderer.Attach(baseRenderer)
@@ -32,7 +32,7 @@ func TestRendererScanlineAASolid(t *testing.T) {
 	})
 
 	t.Run("prepare does nothing", func(t *testing.T) {
-		renderer := NewRendererScanlineAASolid[*MockBaseRenderer]()
+		renderer := NewRendererScanlineAASolid[*MockBaseRenderer[string], string]()
 		// Should not panic
 		renderer.Prepare()
 	})

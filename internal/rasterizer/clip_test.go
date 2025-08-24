@@ -365,11 +365,11 @@ func TestComplexClippingScenario(t *testing.T) {
 func TestTypeAliases(t *testing.T) {
 	// Test that type aliases work correctly
 	mock := &MockRasterizer{}
-	var clipInt = NewRasterizerSlClip[RasConvInt]()
-	var clipIntSat = NewRasterizerSlClip[RasConvIntSat]()
-	var clipInt3x = NewRasterizerSlClip[RasConvInt3x]()
-	var clipDbl = NewRasterizerSlClip[RasConvDbl]()
-	var clipDbl3x = NewRasterizerSlClip[RasConvDbl3x]()
+	clipInt := NewRasterizerSlClip[RasConvInt]()
+	clipIntSat := NewRasterizerSlClip[RasConvIntSat]()
+	clipInt3x := NewRasterizerSlClip[RasConvInt3x]()
+	clipDbl := NewRasterizerSlClip[RasConvDbl]()
+	clipDbl3x := NewRasterizerSlClip[RasConvDbl3x]()
 
 	// Basic functionality test for each type
 

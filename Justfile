@@ -87,7 +87,7 @@ test-freetype:
 # Format all Go code
 fmt:
     @echo "Formatting Go code..."
-    go fmt ./...
+    treefmt --allow-missing-formatter
 
 # Run go vet
 vet:

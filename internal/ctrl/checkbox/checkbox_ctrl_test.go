@@ -7,9 +7,9 @@ import (
 	"agg_go/internal/color"
 )
 
-func TestNewCheckboxCtrl(t *testing.T) {
+func TestNewDefaultCheckboxCtrl(t *testing.T) {
 	// Test basic constructor
-	checkbox := NewCheckboxCtrl(10.0, 20.0, "Test Label", false)
+	checkbox := NewDefaultCheckboxCtrl(10.0, 20.0, "Test Label", false)
 
 	if checkbox == nil {
 		t.Fatal("NewCheckboxCtrl returned nil")
@@ -46,14 +46,14 @@ func TestNewCheckboxCtrl(t *testing.T) {
 	}
 
 	// Test flip Y = true
-	checkboxFlipped := NewCheckboxCtrl(0.0, 0.0, "", true)
+	checkboxFlipped := NewDefaultCheckboxCtrl(0.0, 0.0, "", true)
 	if !checkboxFlipped.FlipY() {
 		t.Error("FlipY should be true")
 	}
 }
 
 func TestCheckboxState(t *testing.T) {
-	checkbox := NewCheckboxCtrl(0.0, 0.0, "", false)
+	checkbox := NewDefaultCheckboxCtrl(0.0, 0.0, "", false)
 
 	// Test initial state
 	if checkbox.IsChecked() {
@@ -84,7 +84,7 @@ func TestCheckboxState(t *testing.T) {
 }
 
 func TestCheckboxLabel(t *testing.T) {
-	checkbox := NewCheckboxCtrl(0.0, 0.0, "Initial", false)
+	checkbox := NewDefaultCheckboxCtrl(0.0, 0.0, "Initial", false)
 
 	// Test initial label
 	if checkbox.Label() != "Initial" {
@@ -115,7 +115,7 @@ func TestCheckboxLabel(t *testing.T) {
 }
 
 func TestCheckboxTextSettings(t *testing.T) {
-	checkbox := NewCheckboxCtrl(0.0, 0.0, "Test", false)
+	checkbox := NewDefaultCheckboxCtrl(0.0, 0.0, "Test", false)
 
 	// Test SetTextThickness
 	checkbox.SetTextThickness(2.5)
@@ -140,7 +140,7 @@ func TestCheckboxTextSettings(t *testing.T) {
 }
 
 func TestCheckboxColors(t *testing.T) {
-	checkbox := NewCheckboxCtrl(0.0, 0.0, "Test", false)
+	checkbox := NewDefaultCheckboxCtrl(0.0, 0.0, "Test", false)
 
 	// Test default colors
 	expectedInactive := color.NewRGBA(0.0, 0.0, 0.0, 1.0)
@@ -178,7 +178,7 @@ func TestCheckboxColors(t *testing.T) {
 }
 
 func TestCheckboxMouseInteraction(t *testing.T) {
-	checkbox := NewCheckboxCtrl(10.0, 20.0, "Test", false)
+	checkbox := NewDefaultCheckboxCtrl(10.0, 20.0, "Test", false)
 
 	// Test click inside bounds - should toggle
 	if !checkbox.OnMouseButtonDown(12.0, 22.0) {
@@ -229,7 +229,7 @@ func TestCheckboxMouseInteraction(t *testing.T) {
 }
 
 func TestCheckboxMouseOtherEvents(t *testing.T) {
-	checkbox := NewCheckboxCtrl(0.0, 0.0, "Test", false)
+	checkbox := NewDefaultCheckboxCtrl(0.0, 0.0, "Test", false)
 
 	// Test OnMouseButtonUp (should always return false)
 	if checkbox.OnMouseButtonUp(5.0, 5.0) {
@@ -254,7 +254,7 @@ func TestCheckboxMouseOtherEvents(t *testing.T) {
 }
 
 func TestCheckboxVertexSource(t *testing.T) {
-	checkbox := NewCheckboxCtrl(0.0, 0.0, "Test", false)
+	checkbox := NewDefaultCheckboxCtrl(0.0, 0.0, "Test", false)
 
 	// Test NumPaths
 	if checkbox.NumPaths() != 3 {
@@ -287,7 +287,7 @@ func TestCheckboxVertexSource(t *testing.T) {
 }
 
 func TestCheckboxBorderVertices(t *testing.T) {
-	checkbox := NewCheckboxCtrl(10.0, 20.0, "", false)
+	checkbox := NewDefaultCheckboxCtrl(10.0, 20.0, "", false)
 
 	// Test border path (path 0)
 	checkbox.Rewind(0)
@@ -324,7 +324,7 @@ func TestCheckboxBorderVertices(t *testing.T) {
 }
 
 func TestCheckboxTextVertices(t *testing.T) {
-	checkbox := NewCheckboxCtrl(0.0, 0.0, "A", false)
+	checkbox := NewDefaultCheckboxCtrl(0.0, 0.0, "A", false)
 
 	// Test text path (path 1)
 	checkbox.Rewind(1)
@@ -359,7 +359,7 @@ func TestCheckboxTextVertices(t *testing.T) {
 }
 
 func TestCheckboxCheckmarkVertices(t *testing.T) {
-	checkbox := NewCheckboxCtrl(0.0, 0.0, "", false)
+	checkbox := NewDefaultCheckboxCtrl(0.0, 0.0, "", false)
 
 	// Test checkmark path when unchecked (path 2)
 	checkbox.Rewind(2)
@@ -405,7 +405,7 @@ func TestCheckboxCheckmarkVertices(t *testing.T) {
 }
 
 func TestCheckboxInvalidPath(t *testing.T) {
-	checkbox := NewCheckboxCtrl(0.0, 0.0, "Test", false)
+	checkbox := NewDefaultCheckboxCtrl(0.0, 0.0, "Test", false)
 
 	// Test invalid path ID
 	checkbox.Rewind(999)
@@ -416,7 +416,7 @@ func TestCheckboxInvalidPath(t *testing.T) {
 }
 
 func TestCheckboxWithTransformation(t *testing.T) {
-	checkbox := NewCheckboxCtrl(0.0, 0.0, "", false)
+	checkbox := NewDefaultCheckboxCtrl(0.0, 0.0, "", false)
 
 	// Test that clicks work with coordinate transformation
 	// The InverseTransformXY should be called in OnMouseButtonDown
@@ -446,7 +446,7 @@ func TestCheckboxWithTransformation(t *testing.T) {
 // Integration test to verify the checkbox works as expected in a complete scenario
 func TestCheckboxIntegration(t *testing.T) {
 	// Create checkbox with all features
-	checkbox := NewCheckboxCtrl(50.0, 100.0, "Enable Feature", true)
+	checkbox := NewDefaultCheckboxCtrl(50.0, 100.0, "Enable Feature", true)
 
 	// Configure appearance
 	checkbox.SetTextSize(12.0, 0.0)
@@ -500,14 +500,19 @@ func TestCheckboxIntegration(t *testing.T) {
 		}
 	}
 
-	// Test color retrieval
-	if checkbox.Color(0) == nil {
-		t.Error("Should return valid color for border path")
+	// Test color retrieval - colors should be valid (not zero values)
+	borderColor := checkbox.Color(0)
+	if borderColor.R == 0 && borderColor.G == 0 && borderColor.B == 0 && borderColor.A == 0 {
+		t.Error("Border color should not be zero value")
 	}
-	if checkbox.Color(1) == nil {
-		t.Error("Should return valid color for text path")
+
+	textColor := checkbox.Color(1)
+	if textColor.R == 0 && textColor.G == 0 && textColor.B == 0 && textColor.A == 0 {
+		t.Error("Text color should not be zero value")
 	}
-	if checkbox.Color(2) == nil {
-		t.Error("Should return valid color for checkmark path")
+
+	checkmarkColor := checkbox.Color(2)
+	if checkmarkColor.R == 0 && checkmarkColor.G == 0 && checkmarkColor.B == 0 && checkmarkColor.A == 0 {
+		t.Error("Checkmark color should not be zero value")
 	}
 }

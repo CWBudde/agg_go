@@ -85,6 +85,16 @@ func (m *MockRGBASource) RowPtr(y int) []basics.Int8u {
 	return result
 }
 
+// ColorType returns the RGBA color type identifier
+func (m *MockRGBASource) ColorType() string {
+	return "RGBA8"
+}
+
+// OrderType returns the color component ordering (RGBA)
+func (m *MockRGBASource) OrderType() color.ColorOrder {
+	return color.OrderRGBA
+}
+
 func TestSpanImageFilterRGBANN_Generate(t *testing.T) {
 	// Create a test source image
 	source := NewMockRGBASource(4, 4)

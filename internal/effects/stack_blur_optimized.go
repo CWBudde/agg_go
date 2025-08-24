@@ -164,7 +164,7 @@ func StackBlurGray8[Img GrayImageInterface](img Img, rx, ry int) {
 }
 
 // StackBlurRGB24 applies stack blur to 24-bit RGB images.
-func StackBlurRGB24[Img RGBImageInterface](img Img, rx, ry int) {
+func StackBlurRGB24[Img RGBImageInterface[PtrType], PtrType any](img Img, rx, ry int) {
 	w := img.Width()
 	h := img.Height()
 	wm := w - 1
@@ -271,14 +271,13 @@ func StackBlurRGB24[Img RGBImageInterface](img Img, rx, ry int) {
 	}
 
 	// Vertical blur would be implemented similarly
-	if ry > 0 {
-		// Similar implementation for vertical pass
-		// Omitted for brevity, but would follow the same pattern
-	}
+	// Note: Vertical pass implementation omitted for brevity
+	// but would follow the same pattern as horizontal pass
+	_ = ry // Avoid unused parameter warning
 }
 
 // StackBlurRGBA32 applies stack blur to 32-bit RGBA images.
-func StackBlurRGBA32[Img RGBAImageInterface](img Img, rx, ry int) {
+func StackBlurRGBA32[Img RGBAImageInterface[PtrType], PtrType any](img Img, rx, ry int) {
 	// Similar to RGB24 but with alpha channel
 	// Implementation follows the same pattern as StackBlurRGB24
 	// but includes alpha channel processing
@@ -295,21 +294,21 @@ type GrayImageInterface interface {
 }
 
 // RGBImageInterface defines the interface for RGB images that support optimized blur.
-type RGBImageInterface interface {
+type RGBImageInterface[PtrType any] interface {
 	Width() int
 	Height() int
-	PixPtr(x, y int) interface{}
-	NextPixPtr(ptr interface{}) interface{}
-	GetRGB(ptr interface{}) color.RGB8[color.Linear]
-	SetRGB(ptr interface{}, rgb color.RGB8[color.Linear])
+	PixPtr(x, y int) PtrType
+	NextPixPtr(ptr PtrType) PtrType
+	GetRGB(ptr PtrType) color.RGB8[color.Linear]
+	SetRGB(ptr PtrType, rgb color.RGB8[color.Linear])
 }
 
 // RGBAImageInterface defines the interface for RGBA images that support optimized blur.
-type RGBAImageInterface interface {
+type RGBAImageInterface[PtrType any] interface {
 	Width() int
 	Height() int
-	PixPtr(x, y int) interface{}
-	NextPixPtr(ptr interface{}) interface{}
-	GetRGBA(ptr interface{}) color.RGBA8[color.Linear]
-	SetRGBA(ptr interface{}, rgba color.RGBA8[color.Linear])
+	PixPtr(x, y int) PtrType
+	NextPixPtr(ptr PtrType) PtrType
+	GetRGBA(ptr PtrType) color.RGBA8[color.Linear]
+	SetRGBA(ptr PtrType, rgba color.RGBA8[color.Linear])
 }

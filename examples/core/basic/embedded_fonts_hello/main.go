@@ -16,18 +16,23 @@ import (
 	rtext "agg_go/internal/renderer"
 )
 
+// ColorRGBA8 defines the constraint for colors that can be converted to RGBA8.
+type ColorRGBA8 interface {
+	agg.Color | agg.RGBA8
+}
+
 // simpleSpanRenderer is a minimal bridge that implements
 // BlendSolidHspan/BlendSolidVspan over an agg.Image buffer.
 // It applies straight alpha blending modulated by per-pixel coverage.
-type simpleSpanRenderer struct {
+type simpleSpanRenderer[C ColorRGBA8] struct {
 	img    *agg.Image
 	scaleX int
 	scaleY int
 }
 
 // colorToRGBA8 converts supported agg color inputs to 8-bit RGBA.
-func colorToRGBA8(c interface{}) (r, g, b, a uint8) {
-	switch v := c.(type) {
+func colorToRGBA8[C ColorRGBA8](c C) (r, g, b, a uint8) {
+	switch v := any(c).(type) {
 	case agg.Color:
 		return v.R, v.G, v.B, v.A
 	case agg.RGBA8:
@@ -38,15 +43,15 @@ func colorToRGBA8(c interface{}) (r, g, b, a uint8) {
 	}
 }
 
-func (s *simpleSpanRenderer) blendPixel(x, y int, sr, sg, sb, sa, cover uint8) {
-	if x < 0 || y < 0 || x >= s.img.Width() || y >= s.img.Height() {
+func (s *simpleSpanRenderer[C]) blendPixel(x, y int, sr, sg, sb, sa, cover uint8) {
+	if x < 0 || y < 0 || x >= s.img.Width || y >= s.img.Height {
 		return
 	}
 	// Modulate alpha by coverage
 	alpha := uint32(sa) * uint32(cover) / 255
 	inv := 255 - alpha
 
-	off := (y*s.img.Width() + x) * 4
+	off := (y*s.img.Width + x) * 4
 	d := s.img.Data
 	dr, dg, db, da := uint32(d[off+0]), uint32(d[off+1]), uint32(d[off+2]), uint32(d[off+3])
 
@@ -56,7 +61,7 @@ func (s *simpleSpanRenderer) blendPixel(x, y int, sr, sg, sb, sa, cover uint8) {
 	d[off+3] = uint8((alpha + da*inv) / 255)
 }
 
-func (s *simpleSpanRenderer) BlendSolidHspan(x, y, length int, c interface{}, covers []basics.CoverType) {
+func (s *simpleSpanRenderer[C]) BlendSolidHspan(x, y, length int, c C, covers []basics.CoverType) {
 	sr, sg, sb, sa := colorToRGBA8(c)
 	if length <= 0 {
 		return
@@ -75,7 +80,7 @@ func (s *simpleSpanRenderer) BlendSolidHspan(x, y, length int, c interface{}, co
 	// For each vertical replication
 	for vy := 0; vy < s.scaleY; vy++ {
 		yy := ys + vy
-		if yy < 0 || yy >= s.img.Height() {
+		if yy < 0 || yy >= s.img.Height {
 			continue
 		}
 		// Expand horizontally per source cover
@@ -95,7 +100,7 @@ func (s *simpleSpanRenderer) BlendSolidHspan(x, y, length int, c interface{}, co
 	}
 }
 
-func (s *simpleSpanRenderer) BlendSolidVspan(x, y, length int, c interface{}, covers []basics.CoverType) {
+func (s *simpleSpanRenderer[C]) BlendSolidVspan(x, y, length int, c C, covers []basics.CoverType) {
 	sr, sg, sb, sa := colorToRGBA8(c)
 	if length <= 0 {
 		return
@@ -128,7 +133,7 @@ func (s *simpleSpanRenderer) BlendSolidVspan(x, y, length int, c interface{}, co
 }
 
 func saveAsPNG(img *agg.Image, filename string) error {
-	goImg := image.NewRGBA(image.Rect(0, 0, img.Width(), img.Height()))
+	goImg := image.NewRGBA(image.Rect(0, 0, img.Width, img.Height))
 	copy(goImg.Pix, img.Data)
 	f, err := os.Create(filename)
 	if err != nil {
@@ -159,16 +164,16 @@ func main() {
 
 	// Bridge spans into the context image
 	// Unscaled renderer (1x)
-	ren1x := &simpleSpanRenderer{img: ctx.GetImage(), scaleX: 1, scaleY: 1}
-	text1x := rtext.NewRendererRasterHTextSolid[*simpleSpanRenderer, *glyph.GlyphRasterBin](ren1x, gSmall)
+	ren1x := &simpleSpanRenderer[agg.RGBA8]{img: ctx.GetImage(), scaleX: 1, scaleY: 1}
+	text1x := rtext.NewRendererRasterHTextSolid[*simpleSpanRenderer[agg.RGBA8], *glyph.GlyphRasterBin](ren1x, gSmall)
 
 	// Scaled renderer (2x)
-	ren2x := &simpleSpanRenderer{img: ctx.GetImage(), scaleX: 2, scaleY: 2}
-	text2x := rtext.NewRendererRasterHTextSolid[*simpleSpanRenderer, *glyph.GlyphRasterBin](ren2x, gMedium)
+	ren2x := &simpleSpanRenderer[agg.RGBA8]{img: ctx.GetImage(), scaleX: 2, scaleY: 2}
+	text2x := rtext.NewRendererRasterHTextSolid[*simpleSpanRenderer[agg.RGBA8], *glyph.GlyphRasterBin](ren2x, gMedium)
 
 	// Scaled renderer (3x) for larger display
-	ren3x := &simpleSpanRenderer{img: ctx.GetImage(), scaleX: 3, scaleY: 3}
-	text3x := rtext.NewRendererRasterHTextSolid[*simpleSpanRenderer, *glyph.GlyphRasterBin](ren3x, gVerdana)
+	ren3x := &simpleSpanRenderer[agg.RGBA8]{img: ctx.GetImage(), scaleX: 3, scaleY: 3}
+	text3x := rtext.NewRendererRasterHTextSolid[*simpleSpanRenderer[agg.RGBA8], *glyph.GlyphRasterBin](ren3x, gVerdana)
 
 	// Draw a baseline guide (optional)
 	ctx.SetColor(agg.RGBA(0.85, 0.9, 1.0, 1))
@@ -184,7 +189,7 @@ func main() {
 	// Monospace at 2x as well
 	ren2x.scaleX, ren2x.scaleY = 2, 2
 	text2x.Attach(ren2x)
-	text2x = rtext.NewRendererRasterHTextSolid[*simpleSpanRenderer, *glyph.GlyphRasterBin](ren2x, gMono)
+	text2x = rtext.NewRendererRasterHTextSolid[*simpleSpanRenderer[agg.RGBA8], *glyph.GlyphRasterBin](ren2x, gMono)
 	text2x.SetColor(agg.NewRGBA8(40, 120, 200, 255))
 	text2x.RenderText(20, 135, "MCS5x10Mono @2x", false)
 

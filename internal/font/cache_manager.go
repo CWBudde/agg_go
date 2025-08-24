@@ -2,9 +2,10 @@
 package font
 
 import (
+	"unsafe"
+
 	"agg_go/internal/basics"
 	"agg_go/internal/path"
-	"unsafe"
 )
 
 // Block allocator parameters, matching C++ implementation.
@@ -21,8 +22,8 @@ type FontEngine interface {
 	PrepareGlyph(glyphCode uint) bool
 	GlyphIndex() uint
 	DataSize() uint
-	DataType() interface{}
-	Bounds() interface{}
+	DataType() GlyphDataType
+	Bounds() basics.Rect[int]
 	AdvanceX() float64
 	AdvanceY() float64
 	WriteGlyphTo(data []byte)
@@ -107,8 +108,8 @@ func (fc *FontCache) FindGlyph(glyphCode uint) *GlyphCache {
 
 // CacheGlyph stores a glyph in the cache.
 func (fc *FontCache) CacheGlyph(glyphCode, glyphIndex uint, dataSize uint,
-	dataType GlyphDataType, bounds basics.Rect[int], advanceX, advanceY float64) *GlyphCache {
-
+	dataType GlyphDataType, bounds basics.Rect[int], advanceX, advanceY float64,
+) *GlyphCache {
 	msb := (glyphCode >> 8) & 0xFF
 	lsb := glyphCode & 0xFF
 
@@ -213,28 +214,13 @@ func (fcm *FontCacheManager) Glyph(charCode uint) *GlyphCache {
 		return nil
 	}
 
-	// Cache the glyph - convert interface types
-	var dataType GlyphDataType
-	var bounds basics.Rect[int]
-
-	if dt := fcm.fontEngine.DataType(); dt != nil {
-		if gdType, ok := dt.(GlyphDataType); ok {
-			dataType = gdType
-		}
-	}
-
-	if b := fcm.fontEngine.Bounds(); b != nil {
-		if rect, ok := b.(basics.Rect[int]); ok {
-			bounds = rect
-		}
-	}
-
+	// Cache the glyph with typed values
 	glyph := fcm.currentCache.CacheGlyph(
 		charCode,
 		fcm.fontEngine.GlyphIndex(),
 		fcm.fontEngine.DataSize(),
-		dataType,
-		bounds,
+		fcm.fontEngine.DataType(),
+		fcm.fontEngine.Bounds(),
 		fcm.fontEngine.AdvanceX(),
 		fcm.fontEngine.AdvanceY(),
 	)

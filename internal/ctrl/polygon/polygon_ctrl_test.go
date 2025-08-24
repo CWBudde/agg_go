@@ -8,7 +8,7 @@ import (
 	"agg_go/internal/color"
 )
 
-func TestNewPolygonCtrl(t *testing.T) {
+func TestNewDefaultPolygonCtrl(t *testing.T) {
 	tests := []struct {
 		name        string
 		numPoints   uint
@@ -23,7 +23,7 @@ func TestNewPolygonCtrl(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctrl := NewPolygonCtrl(tt.numPoints, tt.pointRadius)
+			ctrl := NewDefaultPolygonCtrl(tt.numPoints, tt.pointRadius)
 
 			if ctrl.NumPoints() != tt.numPoints {
 				t.Errorf("NumPoints() = %d, want %d", ctrl.NumPoints(), tt.numPoints)
@@ -50,7 +50,7 @@ func TestNewPolygonCtrl(t *testing.T) {
 }
 
 func TestPolygonCoordinates(t *testing.T) {
-	ctrl := NewPolygonCtrl(3, 5.0)
+	ctrl := NewDefaultPolygonCtrl(3, 5.0)
 
 	// Test setting coordinates
 	coords := []struct{ x, y float64 }{
@@ -88,7 +88,7 @@ func TestPolygonCoordinates(t *testing.T) {
 }
 
 func TestPolygonConfiguration(t *testing.T) {
-	ctrl := NewPolygonCtrl(4, 5.0)
+	ctrl := NewDefaultPolygonCtrl(4, 5.0)
 
 	// Test line width
 	ctrl.SetLineWidth(2.5)
@@ -123,7 +123,7 @@ func TestPolygonConfiguration(t *testing.T) {
 }
 
 func TestPolygonMouseInteraction(t *testing.T) {
-	ctrl := NewPolygonCtrl(3, 10.0) // Large radius for easier testing
+	ctrl := NewDefaultPolygonCtrl(3, 10.0) // Large radius for easier testing
 
 	// Set up triangle
 	ctrl.SetXn(0, 0.0)
@@ -163,7 +163,7 @@ func TestPolygonMouseInteraction(t *testing.T) {
 }
 
 func TestPointInPolygon(t *testing.T) {
-	ctrl := NewPolygonCtrl(4, 5.0)
+	ctrl := NewDefaultPolygonCtrl(4, 5.0)
 
 	// Set up square
 	ctrl.SetXn(0, 0.0)
@@ -192,7 +192,7 @@ func TestPointInPolygon(t *testing.T) {
 }
 
 func TestVertexGeneration(t *testing.T) {
-	ctrl := NewPolygonCtrl(3, 5.0)
+	ctrl := NewDefaultPolygonCtrl(3, 5.0)
 
 	// Set up triangle
 	ctrl.SetXn(0, 0.0)
@@ -258,7 +258,7 @@ func TestVertexGeneration(t *testing.T) {
 }
 
 func TestCheckEdge(t *testing.T) {
-	ctrl := NewPolygonCtrl(3, 10.0)
+	ctrl := NewDefaultPolygonCtrl(3, 10.0)
 
 	// Set up triangle
 	ctrl.SetXn(0, 0.0)
@@ -280,7 +280,7 @@ func TestCheckEdge(t *testing.T) {
 }
 
 func TestArrowKeys(t *testing.T) {
-	ctrl := NewPolygonCtrl(3, 5.0)
+	ctrl := NewDefaultPolygonCtrl(3, 5.0)
 
 	// Set initial position
 	ctrl.SetXn(0, 50.0)
@@ -331,7 +331,7 @@ func TestArrowKeys(t *testing.T) {
 
 func TestPolygonControlAgainstCPPBehavior(t *testing.T) {
 	// Test that our implementation matches the C++ AGG behavior for core functionality
-	ctrl := NewPolygonCtrl(4, 10.0)
+	ctrl := NewDefaultPolygonCtrl(4, 10.0)
 
 	// Set up a square like in C++ tests
 	ctrl.SetXn(0, 100.0)

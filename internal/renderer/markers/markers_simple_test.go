@@ -26,34 +26,26 @@ func NewMockRenderer(width, height int) *MockRenderer {
 	}
 }
 
-func (m *MockRenderer) BlendPixel(x, y int, c interface{}, cover basics.Int8u) {
-	if color, ok := c.(MockColor); ok {
-		m.pixels[[2]int{x, y}] = color
+func (m *MockRenderer) BlendPixel(x, y int, c MockColor, cover basics.Int8u) {
+	m.pixels[[2]int{x, y}] = c
+}
+
+func (m *MockRenderer) BlendHline(x1, y, x2 int, c MockColor, cover basics.Int8u) {
+	for x := x1; x <= x2; x++ {
+		m.pixels[[2]int{x, y}] = c
 	}
 }
 
-func (m *MockRenderer) BlendHline(x1, y, x2 int, c interface{}, cover basics.Int8u) {
-	if color, ok := c.(MockColor); ok {
+func (m *MockRenderer) BlendVline(x, y1, y2 int, c MockColor, cover basics.Int8u) {
+	for y := y1; y <= y2; y++ {
+		m.pixels[[2]int{x, y}] = c
+	}
+}
+
+func (m *MockRenderer) BlendBar(x1, y1, x2, y2 int, c MockColor, cover basics.Int8u) {
+	for y := y1; y <= y2; y++ {
 		for x := x1; x <= x2; x++ {
-			m.pixels[[2]int{x, y}] = color
-		}
-	}
-}
-
-func (m *MockRenderer) BlendVline(x, y1, y2 int, c interface{}, cover basics.Int8u) {
-	if color, ok := c.(MockColor); ok {
-		for y := y1; y <= y2; y++ {
-			m.pixels[[2]int{x, y}] = color
-		}
-	}
-}
-
-func (m *MockRenderer) BlendBar(x1, y1, x2, y2 int, c interface{}, cover basics.Int8u) {
-	if color, ok := c.(MockColor); ok {
-		for y := y1; y <= y2; y++ {
-			for x := x1; x <= x2; x++ {
-				m.pixels[[2]int{x, y}] = color
-			}
+			m.pixels[[2]int{x, y}] = c
 		}
 	}
 }

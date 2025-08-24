@@ -9,8 +9,10 @@ import (
 )
 
 // Compile-time interface checks
-var _ Transformer = (*TransAffine)(nil)
-var _ InverseTransformer = (*TransAffine)(nil)
+var (
+	_ Transformer        = (*TransAffine)(nil)
+	_ InverseTransformer = (*TransAffine)(nil)
+)
 
 // AffineEpsilon is the default epsilon for affine transformation comparisons
 const AffineEpsilon = 1e-14

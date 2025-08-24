@@ -7,7 +7,7 @@ import (
 
 	"agg_go/internal/basics"
 	"agg_go/internal/color"
-	"agg_go/internal/pixfmt"
+	"agg_go/internal/pixfmt/blender"
 )
 
 func main() {
@@ -133,8 +133,8 @@ func demonstrateBlending() {
 	fmt.Println("======================")
 
 	// Create different blenders
-	normalBlender := pixfmt.BlenderRGBA8{}
-	preBlender := pixfmt.BlenderRGBA8Pre{}
+	normalBlender := blender.BlenderRGBA8{}
+	preBlender := blender.BlenderRGBA8Pre{}
 
 	// Test pixel buffer (RGBA format)
 	dst := []basics.Int8u{100, 100, 100, 255}              // Gray background

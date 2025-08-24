@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"agg_go/internal/buffer"
+	"agg_go/internal/platform"
 	"agg_go/internal/platform/types"
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -275,7 +276,7 @@ func (s *SDL2Backend) copyRawToSurface(src []byte, dst []byte, srcStride, dstStr
 }
 
 // CreateImageSurface creates an SDL2 image surface
-func (s *SDL2Backend) CreateImageSurface(width, height int) (interface{}, error) {
+func (s *SDL2Backend) CreateImageSurface(width, height int) (platform.ImageSurface, error) {
 	surface, err := sdl.CreateRGBSurface(
 		0, int32(width), int32(height), int32(s.bpp),
 		s.rmask, s.gmask, s.bmask, s.amask)
@@ -302,7 +303,7 @@ func (s *SDL2Backend) CreateImageSurface(width, height int) (interface{}, error)
 }
 
 // DestroyImageSurface destroys an SDL2 image surface
-func (s *SDL2Backend) DestroyImageSurface(surface interface{}) error {
+func (s *SDL2Backend) DestroyImageSurface(surface platform.ImageSurface) error {
 	if imageSurface, ok := surface.(*SDL2ImageSurface); ok {
 		if imageSurface.index >= 0 && imageSurface.index < len(s.imageSurfaces) {
 			s.imageSurfaces[imageSurface.index] = nil
@@ -325,7 +326,7 @@ func (s *SDL2Backend) Delay(ms uint32) {
 }
 
 // LoadImage loads an image file using SDL2_image
-func (s *SDL2Backend) LoadImage(filename string) (interface{}, error) {
+func (s *SDL2Backend) LoadImage(filename string) (platform.ImageSurface, error) {
 	// Note: This requires SDL2_image library
 	// For now, we'll create a basic BMP loader or return a placeholder
 
@@ -354,7 +355,7 @@ func (s *SDL2Backend) LoadImage(filename string) (interface{}, error) {
 }
 
 // SaveImage saves an image to file
-func (s *SDL2Backend) SaveImage(surface interface{}, filename string) error {
+func (s *SDL2Backend) SaveImage(surface platform.ImageSurface, filename string) error {
 	if imageSurface, ok := surface.(*SDL2ImageSurface); ok && imageSurface.surface != nil {
 		return imageSurface.surface.SaveBMP(filename)
 	}
@@ -367,7 +368,7 @@ func (s *SDL2Backend) GetImageExtension() string {
 }
 
 // GetNativeHandle returns the native SDL2 handles
-func (s *SDL2Backend) GetNativeHandle() interface{} {
+func (s *SDL2Backend) GetNativeHandle() platform.NativeHandle {
 	return &SDL2NativeHandle{
 		window:   s.window,
 		renderer: s.renderer,
@@ -382,6 +383,32 @@ type SDL2ImageSurface struct {
 	index   int // Index in the imageSurfaces array, or -1 if not tracked
 }
 
+// Interface methods for ImageSurface
+func (s *SDL2ImageSurface) GetWidth() int {
+	if s.surface == nil {
+		return 0
+	}
+	return int(s.surface.W)
+}
+
+func (s *SDL2ImageSurface) GetHeight() int {
+	if s.surface == nil {
+		return 0
+	}
+	return int(s.surface.H)
+}
+
+func (s *SDL2ImageSurface) GetData() []byte {
+	if s.surface == nil {
+		return nil
+	}
+	return s.surface.Pixels()
+}
+
+func (s *SDL2ImageSurface) IsValid() bool {
+	return s.surface != nil
+}
+
 // SDL2NativeHandle provides access to native SDL2 handles
 type SDL2NativeHandle struct {
 	window   *sdl.Window
@@ -389,3 +416,7 @@ type SDL2NativeHandle struct {
 	texture  *sdl.Texture
 	surface  *sdl.Surface
 }
+
+// Interface methods for NativeHandle
+func (s *SDL2NativeHandle) GetType() string { return "SDL2" }
+func (s *SDL2NativeHandle) IsValid() bool   { return s.window != nil }

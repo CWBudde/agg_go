@@ -43,12 +43,13 @@ static FT_F26Dot6 double_to_ft_26dot6(double d) {
 import "C"
 
 import (
-	"agg_go/internal/basics"
-	"agg_go/internal/fonts"
-	"agg_go/internal/transform"
 	"errors"
 	"fmt"
 	"unsafe"
+
+	"agg_go/internal/basics"
+	"agg_go/internal/fonts"
+	"agg_go/internal/transform"
 )
 
 // LoadedFace represents a loaded font face with instance management capabilities.
@@ -56,22 +57,22 @@ import (
 type LoadedFace struct {
 	// Reference to parent engine
 	engine *FontEngine
-	
+
 	// FreeType face handle
 	ftFace C.FT_Face
-	
+
 	// Face name (dynamically allocated)
 	faceName string
-	
+
 	// Current instance settings
-	dpi        uint32
-	height     float64
-	width      float64
-	rendering  GlyphRendering
-	hinting    bool
-	flipY      bool
-	charMap    CharEncoding
-	
+	dpi       uint32
+	height    float64
+	width     float64
+	rendering GlyphRendering
+	hinting   bool
+	flipY     bool
+	charMap   CharEncoding
+
 	// Transformation matrix
 	affine *transform.TransAffine
 }
@@ -90,7 +91,7 @@ func NewLoadedFace(engine *FontEngine, ftFace C.FT_Face) *LoadedFace {
 		charMap:   EncodingNone,
 		affine:    transform.NewTransAffine(),
 	}
-	
+
 	lf.setFaceName()
 	return lf
 }
@@ -101,10 +102,10 @@ func (lf *LoadedFace) setFaceName() {
 		lf.faceName = "unknown"
 		return
 	}
-	
+
 	familyName := C.get_face_family_name(lf.ftFace)
 	styleName := C.get_face_style_name(lf.ftFace)
-	
+
 	if familyName != nil && styleName != nil {
 		lf.faceName = fmt.Sprintf("%s %s", C.GoString(familyName), C.GoString(styleName))
 	} else if familyName != nil {
@@ -199,7 +200,7 @@ func (lf *LoadedFace) CharMap() CharEncoding {
 func (lf *LoadedFace) SelectInstance(height, width float64, hinting bool, rendering GlyphRendering) {
 	// Adjust rendering to what this face can support
 	rendering = lf.CapableRendering(rendering)
-	
+
 	// Only update if parameters have changed
 	if lf.height != height || lf.width != width || lf.hinting != hinting || lf.rendering != rendering {
 		lf.height = height
@@ -216,33 +217,33 @@ func (lf *LoadedFace) CapableRendering(rendering GlyphRendering) GlyphRendering 
 	if lf.ftFace == nil {
 		return GlyphRenNativeGray8
 	}
-	
+
 	switch rendering {
 	case GlyphRenNativeMono, GlyphRenNativeGray8:
 		// Native bitmap modes are always supported
 		return rendering
-		
+
 	case GlyphRenOutline:
 		// Outline mode requires scalable fonts
 		if C.face_is_scalable(lf.ftFace) == 0 {
 			return GlyphRenNativeGray8
 		}
 		return rendering
-		
+
 	case GlyphRenAggMono:
 		// AGG mono mode requires scalable fonts
 		if C.face_is_scalable(lf.ftFace) == 0 {
 			return GlyphRenNativeMono
 		}
 		return rendering
-		
+
 	case GlyphRenAggGray8:
 		// AGG gray8 mode requires scalable fonts
 		if C.face_is_scalable(lf.ftFace) == 0 {
 			return GlyphRenNativeGray8
 		}
 		return rendering
-		
+
 	default:
 		return GlyphRenNativeGray8
 	}
@@ -253,7 +254,7 @@ func (lf *LoadedFace) updateCharSize() {
 	if lf.ftFace == nil {
 		return
 	}
-	
+
 	if lf.dpi > 0 {
 		// Use resolution-based sizing
 		C.FT_Set_Char_Size(lf.ftFace,
@@ -289,7 +290,7 @@ func (lf *LoadedFace) SetCharMap(encoding CharEncoding) error {
 	if lf.ftFace == nil {
 		return errors.New("no face loaded")
 	}
-	
+
 	var ftEncoding C.FT_Encoding
 	switch encoding {
 	case EncodingNone:
@@ -307,12 +308,12 @@ func (lf *LoadedFace) SetCharMap(encoding CharEncoding) error {
 	default:
 		return fmt.Errorf("unsupported encoding: %d", encoding)
 	}
-	
+
 	err := C.FT_Select_Charmap(lf.ftFace, ftEncoding)
 	if err != 0 {
 		return fmt.Errorf("failed to set charmap: FreeType error %d", err)
 	}
-	
+
 	lf.charMap = encoding
 	return nil
 }
@@ -323,30 +324,30 @@ func (lf *LoadedFace) PrepareGlyph(glyphCode uint32) (*PreparedGlyph, bool) {
 	if lf.ftFace == nil {
 		return nil, false
 	}
-	
+
 	// Get glyph index
 	glyphIndex := uint32(C.FT_Get_Char_Index(lf.ftFace, C.FT_ULong(glyphCode)))
 	if glyphIndex == 0 {
 		return nil, false
 	}
-	
+
 	// Load glyph
 	loadFlags := C.FT_LOAD_DEFAULT
 	if !lf.hinting {
 		loadFlags |= C.FT_LOAD_NO_HINTING
 	}
-	
+
 	err := C.FT_Load_Glyph(lf.ftFace, C.FT_UInt(glyphIndex), C.FT_Int32(loadFlags))
 	if err != 0 {
 		return nil, false
 	}
-	
+
 	glyph := lf.ftFace.glyph
 	prepared := &PreparedGlyph{
 		GlyphCode:  glyphCode,
 		GlyphIndex: glyphIndex,
 	}
-	
+
 	// Set bounds and advance
 	prepared.Bounds = basics.Rect[int]{
 		X1: int(glyph.bitmap_left),
@@ -354,25 +355,25 @@ func (lf *LoadedFace) PrepareGlyph(glyphCode uint32) (*PreparedGlyph, bool) {
 		X2: int(int(glyph.bitmap_left) + int(glyph.bitmap.width)),
 		Y2: int(glyph.bitmap_top),
 	}
-	
+
 	prepared.AdvanceX = float64(C.ft_26dot6_to_double(glyph.advance.x))
 	prepared.AdvanceY = float64(C.ft_26dot6_to_double(glyph.advance.y))
-	
+
 	// Determine data type and size based on rendering mode
 	switch lf.rendering {
 	case GlyphRenOutline:
 		prepared.DataType = fonts.FmanGlyphDataOutline
 		prepared.DataSize = 0 // Outline data is handled separately
-		
+
 		// Decompose outline if available
 		if glyph.format == C.FT_GLYPH_FORMAT_OUTLINE {
 			// TODO: Decompose outline to path storage
 			// This would be handled by the engine's path storage
 		}
-		
+
 	case GlyphRenNativeGray8, GlyphRenAggGray8:
 		prepared.DataType = fonts.FmanGlyphDataGray8
-		
+
 		// Render to bitmap if not already done
 		if glyph.format != C.FT_GLYPH_FORMAT_BITMAP {
 			err = C.FT_Render_Glyph(glyph, C.FT_RENDER_MODE_NORMAL)
@@ -381,10 +382,10 @@ func (lf *LoadedFace) PrepareGlyph(glyphCode uint32) (*PreparedGlyph, bool) {
 			}
 		}
 		prepared.DataSize = uint32(int(glyph.bitmap.rows) * int(glyph.bitmap.pitch))
-		
+
 	case GlyphRenNativeMono, GlyphRenAggMono:
 		prepared.DataType = fonts.FmanGlyphDataMono
-		
+
 		// Render to monochrome bitmap
 		if glyph.format != C.FT_GLYPH_FORMAT_BITMAP {
 			err = C.FT_Render_Glyph(glyph, C.FT_RENDER_MODE_MONO)
@@ -393,12 +394,12 @@ func (lf *LoadedFace) PrepareGlyph(glyphCode uint32) (*PreparedGlyph, bool) {
 			}
 		}
 		prepared.DataSize = uint32(int(glyph.bitmap.rows) * int(glyph.bitmap.pitch))
-		
+
 	default:
 		prepared.DataType = fonts.FmanGlyphDataInvalid
 		prepared.DataSize = 0
 	}
-	
+
 	return prepared, true
 }
 
@@ -408,14 +409,14 @@ func (lf *LoadedFace) AddKerning(first, second uint32) (dx, dy float64) {
 	if lf.ftFace == nil || C.face_has_kerning(lf.ftFace) == 0 {
 		return 0, 0
 	}
-	
+
 	var delta C.FT_Vector
 	err := C.FT_Get_Kerning(lf.ftFace, C.FT_UInt(first), C.FT_UInt(second),
 		C.FT_KERNING_DEFAULT, &delta)
 	if err != 0 {
 		return 0, 0
 	}
-	
+
 	dx = float64(C.ft_26dot6_to_double(delta.x))
 	dy = float64(C.ft_26dot6_to_double(delta.y))
 	return dx, dy
@@ -427,9 +428,9 @@ func (lf *LoadedFace) WriteGlyphTo(prepared *PreparedGlyph, data []byte) {
 	if lf.ftFace == nil || prepared.DataSize == 0 {
 		return
 	}
-	
+
 	glyph := lf.ftFace.glyph
-	
+
 	switch prepared.DataType {
 	case fonts.FmanGlyphDataGray8:
 		bitmap := &glyph.bitmap
@@ -437,7 +438,7 @@ func (lf *LoadedFace) WriteGlyphTo(prepared *PreparedGlyph, data []byte) {
 			srcData := unsafe.Slice((*byte)(bitmap.buffer), prepared.DataSize)
 			copy(data, srcData)
 		}
-		
+
 	case fonts.FmanGlyphDataMono:
 		bitmap := &glyph.bitmap
 		if bitmap.buffer != nil && len(data) >= int(prepared.DataSize) {

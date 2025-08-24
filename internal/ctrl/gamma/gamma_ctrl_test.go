@@ -10,7 +10,7 @@ import (
 
 func TestNewGammaCtrlImpl(t *testing.T) {
 	x1, y1, x2, y2 := 10.0, 20.0, 200.0, 150.0
-	ctrl := NewGammaCtrlImpl(x1, y1, x2, y2, false)
+	ctrl := NewGammaCtrlImpl[color.RGBA](x1, y1, x2, y2, false)
 
 	if ctrl == nil {
 		t.Fatal("NewGammaCtrlImpl returned nil")
@@ -50,18 +50,16 @@ func TestNewGammaCtrl(t *testing.T) {
 	// Test color access
 	for i := uint(0); i < 7; i++ {
 		color := ctrl.Color(i)
-		if color == nil {
-			t.Errorf("Color %d is nil", i)
-		}
-		// Should be RGBA color type
-		if color == nil {
-			t.Errorf("Color %d is nil", i)
+		// RGBA is a value type, not a pointer, so it can't be nil
+		// Just verify it's a valid RGBA color by checking alpha channel
+		if color.A < 0.0 {
+			t.Errorf("Color %d has invalid alpha: %f", i, color.A)
 		}
 	}
 }
 
 func TestGammaCtrlBounds(t *testing.T) {
-	ctrl := NewGammaCtrlImpl(0, 0, 100, 100, false)
+	ctrl := NewGammaCtrlImpl[color.RGBA](0, 0, 100, 100, false)
 
 	// Test InRect
 	tests := []struct {
@@ -87,7 +85,7 @@ func TestGammaCtrlBounds(t *testing.T) {
 }
 
 func TestGammaCtrlValues(t *testing.T) {
-	ctrl := NewGammaCtrlImpl(0, 0, 100, 100, false)
+	ctrl := NewGammaCtrlImpl[color.RGBA](0, 0, 100, 100, false)
 
 	// Test setting and getting values
 	testValues := []struct {
@@ -117,7 +115,7 @@ func TestGammaCtrlValues(t *testing.T) {
 }
 
 func TestGammaCtrlMouseInteraction(t *testing.T) {
-	ctrl := NewGammaCtrlImpl(0, 0, 100, 100, false)
+	ctrl := NewGammaCtrlImpl[color.RGBA](0, 0, 100, 100, false)
 
 	// Calculate where control points should be for default values
 	ctrl.calcPoints()
@@ -188,7 +186,7 @@ func TestGammaCtrlMouseInteraction(t *testing.T) {
 }
 
 func TestGammaCtrlKeyboardInteraction(t *testing.T) {
-	ctrl := NewGammaCtrlImpl(0, 0, 100, 100, false)
+	ctrl := NewGammaCtrlImpl[color.RGBA](0, 0, 100, 100, false)
 
 	// Set to known values
 	ctrl.Values(1.0, 1.0, 1.0, 1.0)
@@ -268,7 +266,7 @@ func TestGammaCtrlKeyboardInteraction(t *testing.T) {
 }
 
 func TestGammaCtrlAppearanceSettings(t *testing.T) {
-	ctrl := NewGammaCtrlImpl(0, 0, 100, 100, false)
+	ctrl := NewGammaCtrlImpl[color.RGBA](0, 0, 100, 100, false)
 
 	// Test border width
 	ctrl.SetBorderWidth(3.0, 1.0)
@@ -308,7 +306,7 @@ func TestGammaCtrlAppearanceSettings(t *testing.T) {
 }
 
 func TestGammaCtrlVertexGeneration(t *testing.T) {
-	ctrl := NewGammaCtrlImpl(0, 0, 100, 100, false)
+	ctrl := NewGammaCtrlImpl[color.RGBA](0, 0, 100, 100, false)
 
 	// Test paths (skip curve and text paths which may have external dependencies)
 	testPaths := []uint{0, 1, 3, 4, 5} // Skip paths 2 (curve) and 6 (text)
@@ -357,7 +355,7 @@ func TestGammaCtrlVertexGeneration(t *testing.T) {
 }
 
 func TestGammaCtrlGammaFunctionality(t *testing.T) {
-	ctrl := NewGammaCtrlImpl(0, 0, 100, 100, false)
+	ctrl := NewGammaCtrlImpl[color.RGBA](0, 0, 100, 100, false)
 
 	// Test Y function
 	testPoints := []float64{0.0, 0.25, 0.5, 0.75, 1.0}
@@ -425,28 +423,28 @@ func TestGammaCtrlColorCustomization(t *testing.T) {
 	// Test that Color() returns the set colors
 	for i := uint(0); i < 7; i++ {
 		colorVal := ctrl.Color(i)
-		if colorVal == nil {
-			t.Errorf("Color(%d) is nil", i)
+		// RGBA is a value type, not a pointer, so it can't be nil
+		// Just check that the color has reasonable values
+		if colorVal.A < 0.0 {
+			t.Errorf("Color(%d) has invalid alpha: %f", i, colorVal.A)
 		}
 		// Note: All colors were set to testColor, so they should all match
-		if rgba, ok := colorVal.(color.RGBA); ok {
-			if rgba != testColor {
-				t.Errorf("Color(%d) does not match set color", i)
-			}
-		} else {
-			t.Errorf("Color(%d) is not RGBA type", i)
+		// colorVal is already color.RGBA type from Color() method
+		if colorVal != testColor {
+			t.Errorf("Color(%d) does not match set color", i)
 		}
 	}
 
 	// Test out of range color
 	outOfRangeColor := ctrl.Color(10)
-	if outOfRangeColor == nil {
-		t.Error("Out of range color should return default, not nil")
+	// RGBA is a value type, so it can't be nil - just check it returns a valid color
+	if outOfRangeColor.A < 0.0 {
+		t.Error("Out of range color should return valid default color")
 	}
 }
 
 func TestGammaCtrlTransformation(t *testing.T) {
-	ctrl := NewGammaCtrlImpl(0, 0, 100, 100, false)
+	ctrl := NewGammaCtrlImpl[color.RGBA](0, 0, 100, 100, false)
 
 	// Test coordinate transformation (basic test)
 	x, y := 50.0, 50.0
@@ -462,28 +460,28 @@ func TestGammaCtrlTransformation(t *testing.T) {
 }
 
 func TestGammaCtrlEdgeCases(t *testing.T) {
-	_ = NewGammaCtrlImpl(0, 0, 100, 100, false) // For potential future use
+	_ = NewGammaCtrlImpl[color.RGBA](0, 0, 100, 100, false) // For potential future use
 
 	// Test very small control area
-	smallCtrl := NewGammaCtrlImpl(0, 0, 10, 10, false)
+	smallCtrl := NewGammaCtrlImpl[color.RGBA](0, 0, 10, 10, false)
 	if smallCtrl == nil {
 		t.Error("Should handle small control area")
 	}
 
 	// Test zero-size control area
-	zeroCtrl := NewGammaCtrlImpl(0, 0, 0, 0, false)
+	zeroCtrl := NewGammaCtrlImpl[color.RGBA](0, 0, 0, 0, false)
 	if zeroCtrl == nil {
 		t.Error("Should handle zero-size control area")
 	}
 
 	// Test negative coordinates
-	negCtrl := NewGammaCtrlImpl(-100, -100, -10, -10, false)
+	negCtrl := NewGammaCtrlImpl[color.RGBA](-100, -100, -10, -10, false)
 	if negCtrl == nil {
 		t.Error("Should handle negative coordinates")
 	}
 
 	// Test flipY
-	flipCtrl := NewGammaCtrlImpl(0, 0, 100, 100, true)
+	flipCtrl := NewGammaCtrlImpl[color.RGBA](0, 0, 100, 100, true)
 	if flipCtrl == nil {
 		t.Error("Should handle Y-axis flipping")
 	}
@@ -494,7 +492,7 @@ func TestGammaCtrlEdgeCases(t *testing.T) {
 
 // Benchmark tests
 func BenchmarkGammaCtrlVertexGeneration(b *testing.B) {
-	ctrl := NewGammaCtrlImpl(0, 0, 100, 100, false)
+	ctrl := NewGammaCtrlImpl[color.RGBA](0, 0, 100, 100, false)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -511,7 +509,7 @@ func BenchmarkGammaCtrlVertexGeneration(b *testing.B) {
 }
 
 func BenchmarkGammaCtrlMouseInteraction(b *testing.B) {
-	ctrl := NewGammaCtrlImpl(0, 0, 100, 100, false)
+	ctrl := NewGammaCtrlImpl[color.RGBA](0, 0, 100, 100, false)
 	ctrl.calcPoints()
 
 	b.ResetTimer()
@@ -523,7 +521,7 @@ func BenchmarkGammaCtrlMouseInteraction(b *testing.B) {
 }
 
 func BenchmarkGammaCtrlArrowKeys(b *testing.B) {
-	ctrl := NewGammaCtrlImpl(0, 0, 100, 100, false)
+	ctrl := NewGammaCtrlImpl[color.RGBA](0, 0, 100, 100, false)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

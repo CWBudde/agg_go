@@ -1,10 +1,11 @@
 package gsv
 
 import (
-	"agg_go/internal/basics"
-	"agg_go/internal/transform"
 	"math"
 	"testing"
+
+	"agg_go/internal/basics"
+	"agg_go/internal/transform"
 )
 
 func TestNewGSVText(t *testing.T) {

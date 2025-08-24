@@ -9,7 +9,7 @@ import (
 
 // Ctrl defines the core control interface that all AGG controls must implement.
 // This corresponds to the C++ ctrl base class from agg_ctrl.h.
-type Ctrl interface {
+type Ctrl[C any] interface {
 	// Event handling methods
 	InRect(x, y float64) bool
 	OnMouseButtonDown(x, y float64) bool
@@ -37,7 +37,7 @@ type Ctrl interface {
 	Vertex() (x, y float64, cmd basics.PathCommand)
 
 	// Color management for multi-path rendering
-	Color(pathID uint) interface{}
+	Color(pathID uint) C
 }
 
 // BaseCtrl provides common control functionality that can be embedded by specific controls.

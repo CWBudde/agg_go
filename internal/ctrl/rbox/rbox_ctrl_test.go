@@ -7,9 +7,9 @@ import (
 	"agg_go/internal/color"
 )
 
-func TestNewRboxCtrl(t *testing.T) {
+func TestNewDefaultRboxCtrl(t *testing.T) {
 	// Test basic construction
-	ctrl := NewRboxCtrl(10, 20, 200, 150, false)
+	ctrl := NewDefaultRboxCtrl(10, 20, 200, 150, false)
 
 	// Verify bounds
 	if ctrl.X1() != 10 || ctrl.Y1() != 20 || ctrl.X2() != 200 || ctrl.Y2() != 150 {
@@ -32,14 +32,14 @@ func TestNewRboxCtrl(t *testing.T) {
 	}
 
 	// Test with FlipY enabled
-	ctrlFlipped := NewRboxCtrl(0, 0, 100, 100, true)
+	ctrlFlipped := NewDefaultRboxCtrl(0, 0, 100, 100, true)
 	if ctrlFlipped.FlipY() != true {
 		t.Errorf("Expected FlipY to be true, got %t", ctrlFlipped.FlipY())
 	}
 }
 
 func TestAddItem(t *testing.T) {
-	ctrl := NewRboxCtrl(0, 0, 100, 100, false)
+	ctrl := NewDefaultRboxCtrl(0, 0, 100, 100, false)
 
 	// Test adding items
 	testItems := []string{
@@ -66,7 +66,7 @@ func TestAddItem(t *testing.T) {
 	}
 
 	// Test maximum items (32)
-	ctrl = NewRboxCtrl(0, 0, 100, 100, false)
+	ctrl = NewDefaultRboxCtrl(0, 0, 100, 100, false)
 
 	// Add exactly 32 items
 	for i := 0; i < 32; i++ {
@@ -92,7 +92,7 @@ func TestAddItem(t *testing.T) {
 }
 
 func TestItemSelection(t *testing.T) {
-	ctrl := NewRboxCtrl(0, 0, 100, 100, false)
+	ctrl := NewDefaultRboxCtrl(0, 0, 100, 100, false)
 
 	// Add some test items
 	items := []string{"Red", "Green", "Blue", "Yellow"}
@@ -138,7 +138,7 @@ func TestItemSelection(t *testing.T) {
 }
 
 func TestBorderStyling(t *testing.T) {
-	ctrl := NewRboxCtrl(0, 0, 100, 100, false)
+	ctrl := NewDefaultRboxCtrl(0, 0, 100, 100, false)
 
 	// Test initial border width
 	if ctrl.BorderWidth() != 1.0 {
@@ -159,7 +159,7 @@ func TestBorderStyling(t *testing.T) {
 }
 
 func TestTextStyling(t *testing.T) {
-	ctrl := NewRboxCtrl(0, 0, 100, 100, false)
+	ctrl := NewDefaultRboxCtrl(0, 0, 100, 100, false)
 
 	// Test initial text settings
 	if ctrl.TextThickness() != 1.5 {
@@ -198,7 +198,7 @@ func TestTextStyling(t *testing.T) {
 }
 
 func TestColorManagement(t *testing.T) {
-	ctrl := NewRboxCtrl(0, 0, 100, 100, false)
+	ctrl := NewDefaultRboxCtrl(0, 0, 100, 100, false)
 
 	// Test setting and getting colors
 	testColors := []color.RGBA{
@@ -218,29 +218,21 @@ func TestColorManagement(t *testing.T) {
 
 	// Verify colors through Color interface
 	for i, expectedColor := range testColors {
-		returnedColor := ctrl.Color(uint(i))
-		if actualColor, ok := returnedColor.(color.RGBA); ok {
-			if actualColor != expectedColor {
-				t.Errorf("Expected color %d to be %v, got %v", i, expectedColor, actualColor)
-			}
-		} else {
-			t.Errorf("Expected Color(%d) to return color.RGBA, got %T", i, returnedColor)
+		actualColor := ctrl.Color(uint(i))
+		if actualColor != expectedColor {
+			t.Errorf("Expected color %d to be %v, got %v", i, expectedColor, actualColor)
 		}
 	}
 
 	// Test invalid path ID (should return background color)
 	invalidColorVal := ctrl.Color(10)
-	if actualColor, ok := invalidColorVal.(color.RGBA); ok {
-		if actualColor != testColors[0] {
-			t.Errorf("Expected invalid path ID to return background color %v, got %v", testColors[0], actualColor)
-		}
-	} else {
-		t.Errorf("Expected invalid path ID to return color.RGBA, got %T", invalidColorVal)
+	if invalidColorVal != testColors[0] {
+		t.Errorf("Expected invalid path ID to return background color %v, got %v", testColors[0], invalidColorVal)
 	}
 }
 
 func TestMouseInteraction(t *testing.T) {
-	ctrl := NewRboxCtrl(10, 10, 200, 100, false)
+	ctrl := NewDefaultRboxCtrl(10, 10, 200, 100, false)
 
 	// Add some items
 	ctrl.AddItem("Option 1")
@@ -293,7 +285,7 @@ func TestMouseInteraction(t *testing.T) {
 }
 
 func TestArrowKeyNavigation(t *testing.T) {
-	ctrl := NewRboxCtrl(0, 0, 100, 100, false)
+	ctrl := NewDefaultRboxCtrl(0, 0, 100, 100, false)
 
 	// Add some items
 	ctrl.AddItem("First")
@@ -360,7 +352,7 @@ func TestArrowKeyNavigation(t *testing.T) {
 }
 
 func TestVertexGeneration(t *testing.T) {
-	ctrl := NewRboxCtrl(0, 0, 100, 100, false)
+	ctrl := NewDefaultRboxCtrl(0, 0, 100, 100, false)
 
 	// Add some test items
 	ctrl.AddItem("Item 1")
@@ -414,7 +406,7 @@ func TestVertexGeneration(t *testing.T) {
 
 func TestEmptyRboxVertexGeneration(t *testing.T) {
 	// Test vertex generation with no items
-	ctrl := NewRboxCtrl(0, 0, 100, 100, false)
+	ctrl := NewDefaultRboxCtrl(0, 0, 100, 100, false)
 
 	// Background and border should still generate vertices
 	for _, pathID := range []uint{0, 1} {
@@ -436,7 +428,7 @@ func TestEmptyRboxVertexGeneration(t *testing.T) {
 }
 
 func TestInRect(t *testing.T) {
-	ctrl := NewRboxCtrl(10, 20, 110, 120, false)
+	ctrl := NewDefaultRboxCtrl(10, 20, 110, 120, false)
 
 	// Test points inside the control
 	testCases := []struct {
@@ -467,7 +459,7 @@ func TestInRect(t *testing.T) {
 }
 
 func TestItemTextAccess(t *testing.T) {
-	ctrl := NewRboxCtrl(0, 0, 100, 100, false)
+	ctrl := NewDefaultRboxCtrl(0, 0, 100, 100, false)
 
 	// Test with no items
 	if ctrl.ItemText(0) != "" {
@@ -503,7 +495,7 @@ func TestItemTextAccess(t *testing.T) {
 }
 
 func TestDefaultColors(t *testing.T) {
-	ctrl := NewRboxCtrl(0, 0, 100, 100, false)
+	ctrl := NewDefaultRboxCtrl(0, 0, 100, 100, false)
 
 	// Test that default colors are set and reasonable
 	expectedDefaults := []struct {
@@ -518,15 +510,11 @@ func TestDefaultColors(t *testing.T) {
 	}
 
 	for _, def := range expectedDefaults {
-		colorVal := ctrl.Color(def.pathID)
-		if rgba, ok := colorVal.(color.RGBA); ok {
-			// Verify RGBA values are in valid range [0, 1]
-			if rgba.R < 0 || rgba.R > 1 || rgba.G < 0 || rgba.G > 1 ||
-				rgba.B < 0 || rgba.B > 1 || rgba.A < 0 || rgba.A > 1 {
-				t.Errorf("Default %s color has invalid RGBA values: %v", def.desc, rgba)
-			}
-		} else {
-			t.Errorf("Expected %s color to be RGBA, got %T", def.desc, colorVal)
+		rgba := ctrl.Color(def.pathID)
+		// Verify RGBA values are in valid range [0, 1]
+		if rgba.R < 0 || rgba.R > 1 || rgba.G < 0 || rgba.G > 1 ||
+			rgba.B < 0 || rgba.B > 1 || rgba.A < 0 || rgba.A > 1 {
+			t.Errorf("Default %s color has invalid RGBA values: %v", def.desc, rgba)
 		}
 	}
 }
@@ -535,7 +523,7 @@ func TestDefaultColors(t *testing.T) {
 func BenchmarkAddItems(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		ctrl := NewRboxCtrl(0, 0, 100, 100, false)
+		ctrl := NewDefaultRboxCtrl(0, 0, 100, 100, false)
 		for j := 0; j < 20; j++ { // Add 20 items
 			ctrl.AddItem("Test Item")
 		}
@@ -543,7 +531,7 @@ func BenchmarkAddItems(b *testing.B) {
 }
 
 func BenchmarkVertexGeneration(b *testing.B) {
-	ctrl := NewRboxCtrl(0, 0, 100, 100, false)
+	ctrl := NewDefaultRboxCtrl(0, 0, 100, 100, false)
 	for i := 0; i < 10; i++ {
 		ctrl.AddItem("Item")
 	}

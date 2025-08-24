@@ -4,6 +4,7 @@ import (
 	"math"
 	"testing"
 
+	"agg_go/internal/basics"
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
 )
@@ -67,7 +68,7 @@ func TestPixFmtGray32BlendPixel(t *testing.T) {
 
 	// Blend with another color
 	blendGray := color.NewGray32WithAlpha[color.Linear](0.75, 0.5) // 50% alpha
-	pf.BlendPixel(5, 5, blendGray, 1.0)                            // Full coverage
+	pf.BlendPixel(5, 5, blendGray, 255)                            // Full coverage
 
 	// Result should be between 0.25 and 0.75
 	result := pf.GetPixel(5, 5)
@@ -115,7 +116,7 @@ func TestPixFmtGray32BlendHline(t *testing.T) {
 
 	// Blend a line
 	blendColor := color.NewGray32WithAlpha[color.Linear](0.875, 0.5)
-	pf.BlendHline(5, 10, 15, blendColor, 1.0)
+	pf.BlendHline(5, 10, 15, blendColor, 255)
 
 	// Check that line was blended
 	for x := 5; x <= 15; x++ {
@@ -166,10 +167,10 @@ func TestPixFmtGray32SolidSpan(t *testing.T) {
 	bg := color.NewGray32WithAlpha[color.Linear](0.125, 1.0)
 	pf.Fill(bg)
 
-	// Create coverage array
-	covers := make([]float32, 10)
+	// Create coverage array (0-255 range)
+	covers := make([]basics.Int8u, 10)
 	for i := range covers {
-		covers[i] = float32(i+1) / 10.0 // Increasing coverage from 0.1 to 1.0
+		covers[i] = basics.Int8u((i + 1) * 25) // Increasing coverage from 25 to 250
 	}
 
 	// Blend solid span
@@ -224,8 +225,8 @@ func TestPixFmtGray32BoundsChecking(t *testing.T) {
 	// Test out of bounds operations (should not crash)
 	pf.CopyPixel(-1, -1, gray)
 	pf.CopyPixel(width, height, gray)
-	pf.BlendPixel(-5, -5, gray, 1.0)
-	pf.BlendPixel(width+5, height+5, gray, 1.0)
+	pf.BlendPixel(-5, -5, gray, 255)
+	pf.BlendPixel(width+5, height+5, gray, 255)
 
 	// Get out of bounds pixel should return zero value
 	outPixel := pf.GetPixel(-1, -1)
@@ -246,7 +247,7 @@ func TestPixFmtGray32ZeroAlpha(t *testing.T) {
 
 	// Try to blend with zero alpha color
 	zeroAlpha := color.NewGray32WithAlpha[color.Linear](0.9, 0.0)
-	pf.BlendPixel(5, 5, zeroAlpha, 1.0)
+	pf.BlendPixel(5, 5, zeroAlpha, 255)
 
 	// Pixel should remain unchanged
 	result := pf.GetPixel(5, 5)
@@ -267,11 +268,11 @@ func TestPixFmtGray32PartialCoverage(t *testing.T) {
 
 	// Blend with partial coverage
 	blendColor := color.NewGray32WithAlpha[color.Linear](0.8, 1.0)
-	pf.BlendPixel(5, 5, blendColor, 0.5) // 50% coverage
+	pf.BlendPixel(5, 5, blendColor, 127) // 50% coverage (127/255 ≈ 0.5)
 
 	// Result should be closer to background than to blend color
 	result := pf.GetPixel(5, 5)
-	expectedApprox := float32(0.2 + (0.8-0.2)*0.5)        // Linear interpolation with 50% coverage
+	expectedApprox := float32(0.2 + (0.8-0.2)*0.5)        // Linear interpolation with 50% coverage (127/255)
 	if math.Abs(float64(result.V-expectedApprox)) > 0.1 { // Allow some tolerance
 		t.Errorf("BlendPixel with partial coverage failed: expected ~%f, got %f", expectedApprox, result.V)
 	}

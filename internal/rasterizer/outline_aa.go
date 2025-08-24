@@ -22,12 +22,12 @@ const (
 // OutlineAARenderer defines the interface that a renderer must implement
 // to be used with RasterizerOutlineAA.
 // This corresponds to the Renderer template parameter in AGG.
-type OutlineAARenderer interface {
+type OutlineAARenderer[C any] interface {
 	// AccurateJoinOnly returns true if the renderer only supports accurate joins
 	AccurateJoinOnly() bool
 
 	// Color sets the current color for rendering
-	Color(c interface{})
+	Color(c C)
 
 	// Line rendering methods for different configurations
 	// line0: render line without caps
@@ -62,7 +62,7 @@ type DrawVars struct {
 
 // RasterizerOutlineAA provides anti-aliased outline rasterization.
 // This is a port of AGG's rasterizer_outline_aa<Renderer, Coord> template class.
-type RasterizerOutlineAA[R OutlineAARenderer] struct {
+type RasterizerOutlineAA[R OutlineAARenderer[C], C any] struct {
 	renderer    R                                         // The attached renderer
 	srcVertices *array.VertexSequence[array.LineAAVertex] // Source vertex storage
 	lineJoin    OutlineAAJoin                             // Line join style
@@ -72,13 +72,13 @@ type RasterizerOutlineAA[R OutlineAARenderer] struct {
 }
 
 // NewRasterizerOutlineAA creates a new anti-aliased outline rasterizer.
-func NewRasterizerOutlineAA[R OutlineAARenderer](ren R) *RasterizerOutlineAA[R] {
+func NewRasterizerOutlineAA[R OutlineAARenderer[C], C any](ren R) *RasterizerOutlineAA[R, C] {
 	join := OutlineRoundJoin
 	if ren.AccurateJoinOnly() {
 		join = OutlineMiterAccurateJoin
 	}
 
-	return &RasterizerOutlineAA[R]{
+	return &RasterizerOutlineAA[R, C]{
 		renderer:    ren,
 		srcVertices: array.NewVertexSequence[array.LineAAVertex](),
 		lineJoin:    join,
@@ -89,12 +89,12 @@ func NewRasterizerOutlineAA[R OutlineAARenderer](ren R) *RasterizerOutlineAA[R] 
 }
 
 // Attach attaches a new renderer to this rasterizer.
-func (r *RasterizerOutlineAA[R]) Attach(ren R) {
+func (r *RasterizerOutlineAA[R, C]) Attach(ren R) {
 	r.renderer = ren
 }
 
 // LineJoin sets the line join style.
-func (r *RasterizerOutlineAA[R]) SetLineJoin(join OutlineAAJoin) {
+func (r *RasterizerOutlineAA[R, C]) SetLineJoin(join OutlineAAJoin) {
 	if r.renderer.AccurateJoinOnly() {
 		r.lineJoin = OutlineMiterAccurateJoin
 	} else {
@@ -103,46 +103,46 @@ func (r *RasterizerOutlineAA[R]) SetLineJoin(join OutlineAAJoin) {
 }
 
 // GetLineJoin returns the current line join style.
-func (r *RasterizerOutlineAA[R]) GetLineJoin() OutlineAAJoin {
+func (r *RasterizerOutlineAA[R, C]) GetLineJoin() OutlineAAJoin {
 	return r.lineJoin
 }
 
 // SetRoundCap sets whether to use round caps.
-func (r *RasterizerOutlineAA[R]) SetRoundCap(v bool) {
+func (r *RasterizerOutlineAA[R, C]) SetRoundCap(v bool) {
 	r.roundCap = v
 }
 
 // GetRoundCap returns the current round cap setting.
-func (r *RasterizerOutlineAA[R]) GetRoundCap() bool {
+func (r *RasterizerOutlineAA[R, C]) GetRoundCap() bool {
 	return r.roundCap
 }
 
 // MoveTo moves to the specified integer coordinates.
-func (r *RasterizerOutlineAA[R]) MoveTo(x, y int) {
+func (r *RasterizerOutlineAA[R, C]) MoveTo(x, y int) {
 	r.startX = x
 	r.startY = y
 	r.srcVertices.ModifyLast(array.NewLineAAVertex(x, y))
 }
 
 // LineTo draws a line to the specified integer coordinates.
-func (r *RasterizerOutlineAA[R]) LineTo(x, y int) {
+func (r *RasterizerOutlineAA[R, C]) LineTo(x, y int) {
 	r.srcVertices.Add(array.NewLineAAVertex(x, y))
 }
 
 // MoveToD moves to the specified floating-point coordinates.
-func (r *RasterizerOutlineAA[R]) MoveToD(x, y float64) {
+func (r *RasterizerOutlineAA[R, C]) MoveToD(x, y float64) {
 	coord := primitives.LineCoord{}
 	r.MoveTo(coord.Conv(x), coord.Conv(y))
 }
 
 // LineToD draws a line to the specified floating-point coordinates.
-func (r *RasterizerOutlineAA[R]) LineToD(x, y float64) {
+func (r *RasterizerOutlineAA[R, C]) LineToD(x, y float64) {
 	coord := primitives.LineCoord{}
 	r.LineTo(coord.Conv(x), coord.Conv(y))
 }
 
 // AddVertex adds a vertex with the specified command to the path.
-func (r *RasterizerOutlineAA[R]) AddVertex(x, y float64, cmd uint32) {
+func (r *RasterizerOutlineAA[R, C]) AddVertex(x, y float64, cmd uint32) {
 	if basics.IsMoveTo(basics.PathCommand(cmd)) {
 		r.Render(false)
 		r.MoveToD(x, y)
@@ -159,7 +159,7 @@ func (r *RasterizerOutlineAA[R]) AddVertex(x, y float64, cmd uint32) {
 }
 
 // AddPath adds an entire path from a vertex source.
-func (r *RasterizerOutlineAA[R]) AddPath(vs VertexSource, pathID uint32) {
+func (r *RasterizerOutlineAA[R, C]) AddPath(vs VertexSource, pathID uint32) {
 	var x, y float64
 
 	vs.Rewind(pathID)
@@ -174,7 +174,7 @@ func (r *RasterizerOutlineAA[R]) AddPath(vs VertexSource, pathID uint32) {
 }
 
 // RenderAllPaths renders multiple paths using different colors.
-func (r *RasterizerOutlineAA[R]) RenderAllPaths(vs VertexSource, colors ColorStorage, pathIDs PathIDStorage, numPaths int) {
+func (r *RasterizerOutlineAA[R, C]) RenderAllPaths(vs VertexSource, colors ColorStorage[C], pathIDs PathIDStorage, numPaths int) {
 	for i := 0; i < numPaths; i++ {
 		r.renderer.Color(colors.GetColor(i))
 		r.AddPath(vs, pathIDs.GetPathID(i))
@@ -182,7 +182,7 @@ func (r *RasterizerOutlineAA[R]) RenderAllPaths(vs VertexSource, colors ColorSto
 }
 
 // RenderCtrl renders a UI control.
-func (r *RasterizerOutlineAA[R]) RenderCtrl(ctrl Controller) {
+func (r *RasterizerOutlineAA[R, C]) RenderCtrl(ctrl Controller[C]) {
 	for i := 0; i < ctrl.NumPaths(); i++ {
 		r.renderer.Color(ctrl.Color(i))
 		r.AddPath(ctrl, uint32(i))
@@ -191,7 +191,7 @@ func (r *RasterizerOutlineAA[R]) RenderCtrl(ctrl Controller) {
 
 // Draw renders vertices from start to end index.
 // This corresponds to AGG's draw method.
-func (r *RasterizerOutlineAA[R]) draw(dv *DrawVars, start, end int) {
+func (r *RasterizerOutlineAA[R, C]) draw(dv *DrawVars, start, end int) {
 	for i := start; i < end; i++ {
 		if r.lineJoin == OutlineRoundJoin {
 			dv.XB1 = dv.Curr.X1 + (dv.Curr.Y2 - dv.Curr.Y1)
@@ -268,7 +268,7 @@ func (r *RasterizerOutlineAA[R]) draw(dv *DrawVars, start, end int) {
 
 // Render processes and renders the accumulated vertices.
 // This corresponds to AGG's render method.
-func (r *RasterizerOutlineAA[R]) Render(closePolygon bool) {
+func (r *RasterizerOutlineAA[R, C]) Render(closePolygon bool) {
 	r.srcVertices.Close(closePolygon)
 
 	if closePolygon {
@@ -281,7 +281,7 @@ func (r *RasterizerOutlineAA[R]) Render(closePolygon bool) {
 }
 
 // renderClosed renders a closed polygon.
-func (r *RasterizerOutlineAA[R]) renderClosed() {
+func (r *RasterizerOutlineAA[R, C]) renderClosed() {
 	if r.srcVertices.Size() < 3 {
 		return
 	}
@@ -345,7 +345,7 @@ func (r *RasterizerOutlineAA[R]) renderClosed() {
 }
 
 // renderOpen renders an open path.
-func (r *RasterizerOutlineAA[R]) renderOpen() {
+func (r *RasterizerOutlineAA[R, C]) renderOpen() {
 	switch r.srcVertices.Size() {
 	case 0, 1:
 		return
@@ -362,7 +362,7 @@ func (r *RasterizerOutlineAA[R]) renderOpen() {
 }
 
 // renderTwoVertices renders a path with exactly two vertices.
-func (r *RasterizerOutlineAA[R]) renderTwoVertices() {
+func (r *RasterizerOutlineAA[R, C]) renderTwoVertices() {
 	v1 := r.srcVertices.Get(0)
 	v2 := r.srcVertices.Get(1)
 
@@ -384,7 +384,7 @@ func (r *RasterizerOutlineAA[R]) renderTwoVertices() {
 }
 
 // renderThreeVertices renders a path with exactly three vertices.
-func (r *RasterizerOutlineAA[R]) renderThreeVertices() {
+func (r *RasterizerOutlineAA[R, C]) renderThreeVertices() {
 	v1 := r.srcVertices.Get(0)
 	v2 := r.srcVertices.Get(1)
 	v3 := r.srcVertices.Get(2)
@@ -419,7 +419,7 @@ func (r *RasterizerOutlineAA[R]) renderThreeVertices() {
 }
 
 // renderMultipleVertices renders a path with more than three vertices.
-func (r *RasterizerOutlineAA[R]) renderMultipleVertices() {
+func (r *RasterizerOutlineAA[R, C]) renderMultipleVertices() {
 	dv := &DrawVars{Idx: 3}
 
 	// Setup initial vertices

@@ -398,7 +398,7 @@ TODO: Complete GPC Algorithm Implementation
 The code below contains the full GPC scanline algorithm implementation that has issues.
 It needs to be debugged and fixed to handle complex polygon intersection operations.
 The main problems identified were in:
-1. Polygon node vertex accumulation during scanline processing  
+1. Polygon node vertex accumulation during scanline processing
 2. Proper linking of vertex chains in addLeft/addRight functions
 3. Conversion from internal polygon nodes to final GPCPolygon format
 
@@ -1300,8 +1300,8 @@ func countOptimalVertices(contour *GPCVertexList) int {
 
 // buildLocalMinimaTable constructs the Local Minima Table from input polygons
 func buildLocalMinimaTable(lmt **lmtNode, sbtree **sbTree, sbtEntries *int,
-	polygon *GPCPolygon, edgeType int, operation GPCOp) []*edgeNode {
-
+	polygon *GPCPolygon, edgeType int, operation GPCOp,
+) []*edgeNode {
 	if polygon.NumContours == 0 {
 		return nil
 	}
@@ -1817,11 +1817,10 @@ func minimaxTest(subj, clip *GPCPolygon, op GPCOp) {
 	// Check all subject contour bounding boxes against clip boxes
 	for s := 0; s < subj.NumContours; s++ {
 		for c := 0; c < clip.NumContours; c++ {
-			overlapTable[c*subj.NumContours+s] =
-				!((sBbox[s].XMax < cBbox[c].XMin) ||
-					(sBbox[s].XMin > cBbox[c].XMax)) &&
-					!((sBbox[s].YMax < cBbox[c].YMin) ||
-						(sBbox[s].YMin > cBbox[c].YMax))
+			overlapTable[c*subj.NumContours+s] = !((sBbox[s].XMax < cBbox[c].XMin) ||
+				(sBbox[s].XMin > cBbox[c].XMax)) &&
+				!((sBbox[s].YMax < cBbox[c].YMin) ||
+					(sBbox[s].YMin > cBbox[c].YMax))
 		}
 	}
 

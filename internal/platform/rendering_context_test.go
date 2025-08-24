@@ -452,35 +452,35 @@ func TestStatistics(t *testing.T) {
 	stats := rc.Statistics()
 
 	// Check basic window info
-	if stats["window_width"] != 800 {
-		t.Errorf("Expected window_width 800, got %v", stats["window_width"])
+	if stats.WindowWidth != 800 {
+		t.Errorf("Expected window_width 800, got %v", stats.WindowWidth)
 	}
 
-	if stats["window_height"] != 600 {
-		t.Errorf("Expected window_height 600, got %v", stats["window_height"])
+	if stats.WindowHeight != 600 {
+		t.Errorf("Expected window_height 600, got %v", stats.WindowHeight)
 	}
 
-	if stats["pixel_format"] != "RGBA32" {
-		t.Errorf("Expected pixel_format RGBA32, got %v", stats["pixel_format"])
+	if stats.PixelFormat != "RGBA32" {
+		t.Errorf("Expected pixel_format RGBA32, got %v", stats.PixelFormat)
 	}
 
-	if stats["bpp"] != 32 {
-		t.Errorf("Expected bpp 32, got %v", stats["bpp"])
+	if stats.BPP != 32 {
+		t.Errorf("Expected bpp 32, got %v", stats.BPP)
 	}
 
-	if stats["flip_y"] != false {
-		t.Errorf("Expected flip_y false, got %v", stats["flip_y"])
+	if stats.FlipY != false {
+		t.Errorf("Expected flip_y false, got %v", stats.FlipY)
 	}
 
 	// Check buffer size
 	expectedSize := 800 * 600 * 4 // width * height * 4 bytes per pixel
-	if stats["window_buffer_size"] != expectedSize {
-		t.Errorf("Expected window_buffer_size %d, got %v", expectedSize, stats["window_buffer_size"])
+	if stats.WindowBufferSize != expectedSize {
+		t.Errorf("Expected window_buffer_size %d, got %v", expectedSize, stats.WindowBufferSize)
 	}
 
 	// Check image buffer count
-	if stats["active_image_buffers"] != 0 {
-		t.Errorf("Expected active_image_buffers 0, got %v", stats["active_image_buffers"])
+	if stats.ActiveImageBuffers != 0 {
+		t.Errorf("Expected active_image_buffers 0, got %v", stats.ActiveImageBuffers)
 	}
 
 	// Create some image buffers
@@ -488,20 +488,20 @@ func TestStatistics(t *testing.T) {
 	ps.CreateImage(2, 50, 50)
 
 	stats = rc.Statistics()
-	if stats["active_image_buffers"] != 2 {
-		t.Errorf("Expected active_image_buffers 2, got %v", stats["active_image_buffers"])
+	if stats.ActiveImageBuffers != 2 {
+		t.Errorf("Expected active_image_buffers 2, got %v", stats.ActiveImageBuffers)
 	}
 
 	// Test resize transform info
 	rc.SetupResizeTransform(1600, 1200) // Scale by 2
 	stats = rc.Statistics()
 
-	if stats["has_resize_transform"] != true {
+	if stats.HasResizeTransform != true {
 		t.Error("Expected has_resize_transform to be true after setup")
 	}
 
 	// Check that scale values are present
-	if _, exists := stats["resize_scale_x"]; !exists {
+	if stats.ResizeScaleX == 0 {
 		t.Error("resize_scale_x should be present when transform is not identity")
 	}
 }

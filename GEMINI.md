@@ -12,39 +12,39 @@ The project uses a `Justfile` for build orchestration.
 
 ### Building
 
--   **Build the library:** `just build-lib`
--   **Build all examples:** `just build-examples`
--   **Build a specific example:** `just build-example EXAMPLE=<example_name>`
+- **Build the library:** `just build-lib`
+- **Build all examples:** `just build-examples`
+- **Build a specific example:** `just build-example EXAMPLE=<example_name>`
 
 ### Running
 
--   **Run a specific example:** `just run-example EXAMPLE=<example_name>`
--   **Run the "hello world" example:** `just run-hello`
+- **Run a specific example:** `just run-example EXAMPLE=<example_name>`
+- **Run the "hello world" example:** `just run-hello`
 
 ### Testing
 
--   **Run all tests:** `just test`
--   **Run unit tests:** `just test-unit`
--   **Run integration tests:** `just test-integration`
--   **Run benchmark tests:** `just test-bench`
--   **Run visual regression tests:** `just test-visual`
--   **Run tests with coverage:** `just test-coverage`
+- **Run all tests:** `just test`
+- **Run unit tests:** `just test-unit`
+- **Run integration tests:** `just test-integration`
+- **Run benchmark tests:** `just test-bench`
+- **Run visual regression tests:** `just test-visual`
+- **Run tests with coverage:** `just test-coverage`
 
 ## Development Conventions
 
 ### Formatting
 
--   **Format all Go code:** `just fmt`
+- **Format all Go code:** `just fmt`
 
 ### Linting
 
--   **Run linters:** `just lint`
--   **Fix linting issues:** `just lint-fix`
+- **Run linters:** `just lint`
+- **Fix linting issues:** `just lint-fix`
 
 ### Dependencies
 
--   **Tidy dependencies:** `just tidy`
+- **Tidy dependencies:** `just tidy`
 
 ### All Checks
 
--   **Run all checks (fmt, vet, lint, test):** `just check`
+- **Run all checks (fmt, vet, lint, test):** `just check`

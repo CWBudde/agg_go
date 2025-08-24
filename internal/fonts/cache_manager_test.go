@@ -34,7 +34,8 @@ func NewMockFontEngine(signature string) *MockFontEngine {
 }
 
 func (m *MockFontEngine) AddGlyph(code uint32, index uint32, dataType GlyphDataType,
-	bounds basics.Rect[int], advanceX, advanceY float64, data []byte) {
+	bounds basics.Rect[int], advanceX, advanceY float64, data []byte,
+) {
 	m.glyphData[code] = mockGlyphData{
 		index:    index,
 		data:     data,

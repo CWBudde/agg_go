@@ -51,21 +51,21 @@ type ControlEvent struct {
 }
 
 // PathInfo represents information about a rendering path
-type PathInfo struct {
+type PathInfo[C any] struct {
 	ID    uint
-	Color interface{}
+	Color C
 }
 
 // VertexIterator provides iteration over control vertices
-type VertexIterator struct {
+type VertexIterator[C any] struct {
 	pathID      uint
 	vertexIndex uint
-	ctrl        Ctrl
+	ctrl        Ctrl[C]
 }
 
 // NewVertexIterator creates a new vertex iterator for a control
-func NewVertexIterator(ctrl Ctrl, pathID uint) *VertexIterator {
-	iter := &VertexIterator{
+func NewVertexIterator[C any](ctrl Ctrl[C], pathID uint) *VertexIterator[C] {
+	iter := &VertexIterator[C]{
 		pathID:      pathID,
 		vertexIndex: 0,
 		ctrl:        ctrl,
@@ -75,7 +75,7 @@ func NewVertexIterator(ctrl Ctrl, pathID uint) *VertexIterator {
 }
 
 // Next returns the next vertex in the path
-func (vi *VertexIterator) Next() (x, y float64, cmd basics.PathCommand, done bool) {
+func (vi *VertexIterator[C]) Next() (x, y float64, cmd basics.PathCommand, done bool) {
 	x, y, cmd = vi.ctrl.Vertex()
 	done = cmd == basics.PathCmdStop
 	if !done {
@@ -85,17 +85,17 @@ func (vi *VertexIterator) Next() (x, y float64, cmd basics.PathCommand, done boo
 }
 
 // Reset rewinds the iterator to the beginning
-func (vi *VertexIterator) Reset() {
+func (vi *VertexIterator[C]) Reset() {
 	vi.vertexIndex = 0
 	vi.ctrl.Rewind(vi.pathID)
 }
 
 // PathID returns the current path ID
-func (vi *VertexIterator) PathID() uint {
+func (vi *VertexIterator[C]) PathID() uint {
 	return vi.pathID
 }
 
 // VertexIndex returns the current vertex index
-func (vi *VertexIterator) VertexIndex() uint {
+func (vi *VertexIterator[C]) VertexIndex() uint {
 	return vi.vertexIndex
 }

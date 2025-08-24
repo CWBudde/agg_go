@@ -4,9 +4,12 @@
 package freetype
 
 import (
-	"agg_go/internal/basics"
-	"agg_go/internal/path"
 	"errors"
+
+	"agg_go/internal/basics"
+	"agg_go/internal/font"
+	"agg_go/internal/path"
+	"agg_go/internal/transform"
 )
 
 // FontEngineFreetype is a stub implementation when FreeType is not available.
@@ -25,15 +28,7 @@ const (
 	GlyphRenderingMono
 )
 
-// GlyphDataType defines the type of glyph data stored in a cache entry.
-type GlyphDataType int
-
-const (
-	GlyphDataInvalid GlyphDataType = iota
-	GlyphDataMono
-	GlyphDataGray8
-	GlyphDataOutline
-)
+// Use GlyphDataType from font package to avoid duplication
 
 // NewFontEngineFreetype returns an error indicating FreeType is not available.
 func NewFontEngineFreetype(flag32 bool, maxFaces uint) (*FontEngineFreetype, error) {
@@ -66,11 +61,11 @@ func (fe *FontEngineFreetype) DataSize() uint {
 	return 0
 }
 
-func (fe *FontEngineFreetype) DataType() interface{} {
-	return GlyphDataInvalid
+func (fe *FontEngineFreetype) DataType() font.GlyphDataType {
+	return font.GlyphDataInvalid
 }
 
-func (fe *FontEngineFreetype) Bounds() interface{} {
+func (fe *FontEngineFreetype) Bounds() basics.Rect[int] {
 	return basics.Rect[int]{}
 }
 
@@ -112,7 +107,7 @@ func (fe *FontEngineFreetype) SetHinting(h bool) {
 func (fe *FontEngineFreetype) SetFlipY(f bool) {
 }
 
-func (fe *FontEngineFreetype) SetTransform(affine interface{}) {
+func (fe *FontEngineFreetype) SetTransform(affine *transform.TransAffine) {
 }
 
 func (fe *FontEngineFreetype) GetHeight() float64 {

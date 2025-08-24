@@ -5,20 +5,21 @@
 package freetype2
 
 import (
-	"agg_go/internal/fonts"
 	"fmt"
+
+	"agg_go/internal/fonts"
 )
 
 // CacheManager2 integrates the FreeType2 engine with the enhanced cache manager.
 // This corresponds to AGG's fman::font_cache_manager2 template class.
 type CacheManager2 struct {
-	fontEngine     FontEngineInterface
-	cachedGlyphs   *fonts.FmanCachedGlyphs
-	currentFont    interface{} // Reference to current font context
-	pathAdaptor    interface{} // Either PathAdaptorInt16Type or PathAdaptorInt32Type
-	gray8Adaptor   interface{} // Will be *fonts.FmanSerializedScanlinesAdaptorAA when available
-	monoAdaptor    interface{} // Will be *fonts.FmanSerializedScanlinesAdaptorBin when available
-	lastError      error
+	fontEngine   FontEngineInterface
+	cachedGlyphs *fonts.FmanCachedGlyphs
+	currentFont  interface{} // Reference to current font context
+	pathAdaptor  interface{} // Either PathAdaptorInt16Type or PathAdaptorInt32Type
+	gray8Adaptor interface{} // Will be *fonts.FmanSerializedScanlinesAdaptorAA when available
+	monoAdaptor  interface{} // Will be *fonts.FmanSerializedScanlinesAdaptorBin when available
+	lastError    error
 }
 
 // NewCacheManager2 creates a new cache manager with the specified font engine.
@@ -27,10 +28,10 @@ func NewCacheManager2(fontEngine FontEngineInterface) *CacheManager2 {
 		fontEngine:   fontEngine,
 		cachedGlyphs: fonts.NewFmanCachedGlyphs(),
 	}
-	
+
 	// Initialize adaptors based on engine type
 	cm.initializeAdaptors()
-	
+
 	return cm
 }
 
@@ -68,11 +69,11 @@ func (cm *CacheManager2) Glyph(charCode uint32) *fonts.FmanCachedGlyph {
 	if cachedGlyph := cm.cachedGlyphs.FindGlyph(charCode); cachedGlyph != nil {
 		return cachedGlyph
 	}
-	
+
 	// Glyph not in cache - need to prepare it
 	// For this, we need a loaded face - this should be managed by the font selection process
 	// This is a simplified version; in practice, font selection would be more complex
-	
+
 	return nil // TODO: Implement glyph loading from font engine
 }
 
@@ -97,18 +98,18 @@ func (cm *CacheManager2) InitEmbeddedAdaptors(glyph *fonts.FmanCachedGlyph, x, y
 	if glyph == nil {
 		return
 	}
-	
+
 	switch glyph.DataType {
 	case fonts.FmanGlyphDataGray8:
 		// Initialize gray8 adaptor with glyph data
 		// TODO: Implement when FmanSerializedScanlinesAdaptorAA is available
 		// cm.gray8Adaptor = fonts.NewFmanSerializedScanlinesAdaptorAA(glyph.Data, glyph.Bounds, x, y)
-		
+
 	case fonts.FmanGlyphDataMono:
 		// Initialize mono adaptor with glyph data
 		// TODO: Implement when FmanSerializedScanlinesAdaptorBin is available
 		// cm.monoAdaptor = fonts.NewFmanSerializedScanlinesAdaptorBin(glyph.Data, glyph.Bounds, x, y)
-		
+
 	case fonts.FmanGlyphDataOutline:
 		// For outline glyphs, the path data should be available in the path adaptor
 		// This is handled by the font engine's outline decomposition
@@ -135,27 +136,27 @@ func (cm *CacheManager2) Close() error {
 	cm.pathAdaptor = nil
 	cm.gray8Adaptor = nil
 	cm.monoAdaptor = nil
-	
+
 	// Clean up cached glyphs
 	if cm.cachedGlyphs != nil {
 		// TODO: Implement proper cleanup when available
 		cm.cachedGlyphs = nil
 	}
-	
+
 	// Clean up font engine
 	if cm.fontEngine != nil {
 		return cm.fontEngine.Close()
 	}
-	
+
 	return nil
 }
 
 // FontManager provides a high-level interface for font management with FreeType2.
 // This combines font engine creation, face loading, and cache management.
 type FontManager struct {
-	engines      map[string]FontEngineInterface
-	cacheManager *CacheManager2
-	currentFont  string
+	engines       map[string]FontEngineInterface
+	cacheManager  *CacheManager2
+	currentFont   string
 	defaultEngine string
 }
 
@@ -166,13 +167,13 @@ func NewFontManager() (*FontManager, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	engine32, err := NewFontEngineInt32Default()
 	if err != nil {
 		engine16.Close()
 		return nil, err
 	}
-	
+
 	fm := &FontManager{
 		engines: map[string]FontEngineInterface{
 			"int16": engine16,
@@ -180,10 +181,10 @@ func NewFontManager() (*FontManager, error) {
 		},
 		defaultEngine: "int16", // Start with compact 16-bit engine
 	}
-	
+
 	// Initialize cache manager with default engine
 	fm.cacheManager = NewCacheManager2(fm.engines[fm.defaultEngine])
-	
+
 	return fm, nil
 }
 
@@ -194,26 +195,26 @@ func (fm *FontManager) LoadFont(fileName string, preferredEngine string) (Loaded
 	if engineKey == "" {
 		engineKey = fm.defaultEngine
 	}
-	
+
 	engine, exists := fm.engines[engineKey]
 	if !exists {
 		engineKey = fm.defaultEngine
 		engine = fm.engines[engineKey]
 	}
-	
+
 	// Load the font face
 	loadedFace, err := engine.LoadFaceFile(fileName)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	fm.currentFont = fileName
-	
+
 	// Update cache manager if we switched engines
 	if engineKey != fm.defaultEngine {
 		fm.cacheManager = NewCacheManager2(engine)
 	}
-	
+
 	return loadedFace, nil
 }
 
@@ -224,26 +225,26 @@ func (fm *FontManager) LoadFontFromMemory(buffer []byte, preferredEngine string)
 	if engineKey == "" {
 		engineKey = fm.defaultEngine
 	}
-	
+
 	engine, exists := fm.engines[engineKey]
 	if !exists {
 		engineKey = fm.defaultEngine
 		engine = fm.engines[engineKey]
 	}
-	
+
 	// Load the font face
 	loadedFace, err := engine.LoadFace(buffer, uint(len(buffer)))
 	if err != nil {
 		return nil, err
 	}
-	
+
 	fm.currentFont = "memory"
-	
+
 	// Update cache manager if we switched engines
 	if engineKey != fm.defaultEngine {
 		fm.cacheManager = NewCacheManager2(engine)
 	}
-	
+
 	return loadedFace, nil
 }
 
@@ -257,12 +258,12 @@ func (fm *FontManager) SwitchEngine(engineType string) error {
 	if _, exists := fm.engines[engineType]; !exists {
 		return fmt.Errorf("unknown engine type: %s", engineType)
 	}
-	
+
 	if engineType != fm.defaultEngine {
 		fm.defaultEngine = engineType
 		fm.cacheManager = NewCacheManager2(fm.engines[engineType])
 	}
-	
+
 	return nil
 }
 
@@ -273,7 +274,7 @@ func (fm *FontManager) Close() error {
 		fm.cacheManager.Close()
 		fm.cacheManager = nil
 	}
-	
+
 	// Close all engines
 	for _, engine := range fm.engines {
 		if engine != nil {
@@ -281,6 +282,6 @@ func (fm *FontManager) Close() error {
 		}
 	}
 	fm.engines = nil
-	
+
 	return nil
 }

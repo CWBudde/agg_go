@@ -4,33 +4,34 @@
 package span
 
 // SpanAllocator provides basic span allocation functionality.
-// This is a simple implementation of the SpanAllocator interface
+// This is a simple implementation of the SpanAllocatorInterface
 // that allocates color arrays for scanline rendering.
-type SpanAllocator struct {
-	buffer []interface{} // Reusable buffer for color allocation
+type SpanAllocator[C SpanColorType] struct {
+	buffer []C // Reusable buffer for color allocation
 }
 
 // NewSpanAllocator creates a new span allocator.
-func NewSpanAllocator() *SpanAllocator {
-	return &SpanAllocator{
-		buffer: make([]interface{}, 0, 256), // Start with reasonable capacity
+func NewSpanAllocator[C SpanColorType]() *SpanAllocator[C] {
+	return &SpanAllocator[C]{
+		buffer: make([]C, 0, 256), // Start with reasonable capacity
 	}
 }
 
 // Allocate allocates an array of colors for the given length.
 // Returns a slice that can hold 'len' color values.
 // The returned slice is valid until the next call to Allocate.
-func (sa *SpanAllocator) Allocate(length int) []interface{} {
+func (sa *SpanAllocator[C]) Allocate(length int) []C {
 	// Ensure buffer has enough capacity
 	if cap(sa.buffer) < length {
-		sa.buffer = make([]interface{}, length, length*2)
+		sa.buffer = make([]C, length, length*2)
 	} else {
 		sa.buffer = sa.buffer[:length]
 	}
 
-	// Clear the buffer (set all elements to nil)
+	// Clear the buffer (set all elements to zero value)
+	var zero C
 	for i := range sa.buffer {
-		sa.buffer[i] = nil
+		sa.buffer[i] = zero
 	}
 
 	return sa.buffer

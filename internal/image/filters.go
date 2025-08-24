@@ -442,12 +442,14 @@ func (b *BlackmanFilter) CalcWeight(x float64) float64 {
 }
 
 // Pre-defined filter variants
-type Sinc36Filter struct{ *SincFilter }
-type Sinc64Filter struct{ *SincFilter }
-type Sinc100Filter struct{ *SincFilter }
-type Sinc144Filter struct{ *SincFilter }
-type Sinc196Filter struct{ *SincFilter }
-type Sinc256Filter struct{ *SincFilter }
+type (
+	Sinc36Filter  struct{ *SincFilter }
+	Sinc64Filter  struct{ *SincFilter }
+	Sinc100Filter struct{ *SincFilter }
+	Sinc144Filter struct{ *SincFilter }
+	Sinc196Filter struct{ *SincFilter }
+	Sinc256Filter struct{ *SincFilter }
+)
 
 func NewSinc36Filter() *Sinc36Filter   { return &Sinc36Filter{NewSincFilter(3.0)} }
 func NewSinc64Filter() *Sinc64Filter   { return &Sinc64Filter{NewSincFilter(4.0)} }
@@ -456,12 +458,14 @@ func NewSinc144Filter() *Sinc144Filter { return &Sinc144Filter{NewSincFilter(6.0
 func NewSinc196Filter() *Sinc196Filter { return &Sinc196Filter{NewSincFilter(7.0)} }
 func NewSinc256Filter() *Sinc256Filter { return &Sinc256Filter{NewSincFilter(8.0)} }
 
-type Lanczos36Filter struct{ *LanczosFilter }
-type Lanczos64Filter struct{ *LanczosFilter }
-type Lanczos100Filter struct{ *LanczosFilter }
-type Lanczos144Filter struct{ *LanczosFilter }
-type Lanczos196Filter struct{ *LanczosFilter }
-type Lanczos256Filter struct{ *LanczosFilter }
+type (
+	Lanczos36Filter  struct{ *LanczosFilter }
+	Lanczos64Filter  struct{ *LanczosFilter }
+	Lanczos100Filter struct{ *LanczosFilter }
+	Lanczos144Filter struct{ *LanczosFilter }
+	Lanczos196Filter struct{ *LanczosFilter }
+	Lanczos256Filter struct{ *LanczosFilter }
+)
 
 func NewLanczos36Filter() *Lanczos36Filter   { return &Lanczos36Filter{NewLanczosFilter(3.0)} }
 func NewLanczos64Filter() *Lanczos64Filter   { return &Lanczos64Filter{NewLanczosFilter(4.0)} }
@@ -470,12 +474,14 @@ func NewLanczos144Filter() *Lanczos144Filter { return &Lanczos144Filter{NewLancz
 func NewLanczos196Filter() *Lanczos196Filter { return &Lanczos196Filter{NewLanczosFilter(7.0)} }
 func NewLanczos256Filter() *Lanczos256Filter { return &Lanczos256Filter{NewLanczosFilter(8.0)} }
 
-type Blackman36Filter struct{ *BlackmanFilter }
-type Blackman64Filter struct{ *BlackmanFilter }
-type Blackman100Filter struct{ *BlackmanFilter }
-type Blackman144Filter struct{ *BlackmanFilter }
-type Blackman196Filter struct{ *BlackmanFilter }
-type Blackman256Filter struct{ *BlackmanFilter }
+type (
+	Blackman36Filter  struct{ *BlackmanFilter }
+	Blackman64Filter  struct{ *BlackmanFilter }
+	Blackman100Filter struct{ *BlackmanFilter }
+	Blackman144Filter struct{ *BlackmanFilter }
+	Blackman196Filter struct{ *BlackmanFilter }
+	Blackman256Filter struct{ *BlackmanFilter }
+)
 
 func NewBlackman36Filter() *Blackman36Filter   { return &Blackman36Filter{NewBlackmanFilter(3.0)} }
 func NewBlackman64Filter() *Blackman64Filter   { return &Blackman64Filter{NewBlackmanFilter(4.0)} }

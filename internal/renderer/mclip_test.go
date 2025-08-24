@@ -10,8 +10,8 @@ import (
 
 // TestNewRendererMClip tests the constructor
 func TestNewRendererMClip(t *testing.T) {
-	pixfmt := NewMockPixelFormat(100, 80)
-	renderer := NewRendererMClip[*MockPixelFormat, MockColorType](pixfmt)
+	pixfmt := NewMockPixelFormat[string](100, 80)
+	renderer := NewRendererMClip[*MockPixelFormat[string], string](pixfmt)
 
 	if renderer == nil {
 		t.Fatal("NewRendererMClip should not return nil")
@@ -35,8 +35,8 @@ func TestNewRendererMClip(t *testing.T) {
 
 // TestClipBoxManagement tests clip box management methods
 func TestClipBoxManagement(t *testing.T) {
-	pixfmt := NewMockPixelFormat(100, 100)
-	renderer := NewRendererMClip[*MockPixelFormat, MockColorType](pixfmt)
+	pixfmt := NewMockPixelFormat[string](100, 100)
+	renderer := NewRendererMClip[*MockPixelFormat[string], string](pixfmt)
 
 	// Initially, no clip boxes should be added
 	renderer.FirstClipBox()
@@ -82,8 +82,8 @@ func TestClipBoxManagement(t *testing.T) {
 
 // TestClipBoxBoundaryConditions tests edge cases for clip box management
 func TestClipBoxBoundaryConditions(t *testing.T) {
-	pixfmt := NewMockPixelFormat(100, 100)
-	renderer := NewRendererMClip[*MockPixelFormat, MockColorType](pixfmt)
+	pixfmt := NewMockPixelFormat[string](100, 100)
+	renderer := NewRendererMClip[*MockPixelFormat[string], string](pixfmt)
 
 	// Test adding clip box outside surface bounds (should be clipped)
 	renderer.AddClipBox(90, 90, 200, 200)
@@ -114,8 +114,8 @@ func TestClipBoxBoundaryConditions(t *testing.T) {
 
 // TestPixelOperations tests pixel-level rendering methods
 func TestPixelOperations(t *testing.T) {
-	pixfmt := NewMockPixelFormat(100, 100)
-	renderer := NewRendererMClip[*MockPixelFormat, MockColorType](pixfmt)
+	pixfmt := NewMockPixelFormat[string](100, 100)
+	renderer := NewRendererMClip[*MockPixelFormat[string], string](pixfmt)
 
 	// Add two non-overlapping clip boxes
 	renderer.AddClipBox(10, 10, 30, 30)
@@ -153,9 +153,9 @@ func TestPixelOperations(t *testing.T) {
 		t.Errorf("Expected Pixel(20,20) to return %v, got %v", testColor, pixel)
 	}
 
-	// Test Pixel method outside clip boxes (should return NoColor)
+	// Test Pixel method outside clip boxes (should return zero value)
 	pixel = renderer.Pixel(5, 5)
-	expected := MockColorType{}.NoColor()
+	expected := ""
 	if pixel != expected {
 		t.Errorf("Expected Pixel outside clip boxes to return %v, got %v", expected, pixel)
 	}
@@ -163,8 +163,8 @@ func TestPixelOperations(t *testing.T) {
 
 // TestLineOperations tests line rendering methods
 func TestLineOperations(t *testing.T) {
-	pixfmt := NewMockPixelFormat(100, 100)
-	renderer := NewRendererMClip[*MockPixelFormat, MockColorType](pixfmt)
+	pixfmt := NewMockPixelFormat[string](100, 100)
+	renderer := NewRendererMClip[*MockPixelFormat[string], string](pixfmt)
 
 	// Add a clip box
 	renderer.AddClipBox(20, 20, 60, 60)
@@ -208,8 +208,8 @@ func TestLineOperations(t *testing.T) {
 
 // TestBarOperations tests rectangle/bar rendering methods
 func TestBarOperations(t *testing.T) {
-	pixfmt := NewMockPixelFormat(100, 100)
-	renderer := NewRendererMClip[*MockPixelFormat, MockColorType](pixfmt)
+	pixfmt := NewMockPixelFormat[string](100, 100)
+	renderer := NewRendererMClip[*MockPixelFormat[string], string](pixfmt)
 
 	// Add overlapping clip boxes to test multi-region rendering
 	renderer.AddClipBox(10, 10, 40, 40)
@@ -234,8 +234,8 @@ func TestBarOperations(t *testing.T) {
 
 // TestSpanOperations tests span rendering methods
 func TestSpanOperations(t *testing.T) {
-	pixfmt := NewMockPixelFormat(100, 100)
-	renderer := NewRendererMClip[*MockPixelFormat, MockColorType](pixfmt)
+	pixfmt := NewMockPixelFormat[string](100, 100)
+	renderer := NewRendererMClip[*MockPixelFormat[string], string](pixfmt)
 
 	renderer.AddClipBox(20, 20, 70, 70)
 
@@ -259,7 +259,7 @@ func TestSpanOperations(t *testing.T) {
 	}
 
 	// Test CopyColorHspan
-	colors := []interface{}{"red", "green", "blue", "yellow", "purple"}
+	colors := []string{"red", "green", "blue", "yellow", "purple"}
 	renderer.CopyColorHspan(25, 25, 5, colors)
 	for i, expectedColor := range colors {
 		if pixfmt.Pixel(25+i, 25) != expectedColor {
@@ -286,8 +286,8 @@ func TestSpanOperations(t *testing.T) {
 
 // TestBufferCopyOperations tests buffer copy methods
 func TestBufferCopyOperations(t *testing.T) {
-	pixfmt := NewMockPixelFormat(100, 100)
-	renderer := NewRendererMClip[*MockPixelFormat, MockColorType](pixfmt)
+	pixfmt := NewMockPixelFormat[string](100, 100)
+	renderer := NewRendererMClip[*MockPixelFormat[string], string](pixfmt)
 
 	renderer.AddClipBox(10, 10, 50, 50)
 
@@ -296,7 +296,7 @@ func TestBufferCopyOperations(t *testing.T) {
 	// Note: Clear should work on the entire surface, not just clip regions
 
 	// Test CopyFrom (basic test - implementation may be simplified)
-	srcBuffer := "dummy_source"
+	srcBuffer := NewMockPixelFormat[string](50, 50)
 	rect := &basics.RectI{X1: 0, Y1: 0, X2: 20, Y2: 20}
 	renderer.CopyFrom(srcBuffer, rect, 15, 15)
 	// This mainly tests that the method doesn't panic and iterates through clip boxes
@@ -308,8 +308,8 @@ func TestBufferCopyOperations(t *testing.T) {
 
 // TestMultipleClipBoxIteration tests the iteration mechanism with multiple clip boxes
 func TestMultipleClipBoxIteration(t *testing.T) {
-	pixfmt := NewMockPixelFormat(100, 100)
-	renderer := NewRendererMClip[*MockPixelFormat, MockColorType](pixfmt)
+	pixfmt := NewMockPixelFormat[string](100, 100)
+	renderer := NewRendererMClip[*MockPixelFormat[string], string](pixfmt)
 
 	// Add multiple clip boxes
 	renderer.AddClipBox(10, 10, 30, 30) // Box 1

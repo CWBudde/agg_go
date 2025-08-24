@@ -518,85 +518,115 @@ func (m *AMaskNoClipU8) CombineVspan(x, y int, dst []basics.Int8u, numPix int) {
 // Predefined alpha mask constructor functions for common pixel formats
 
 // Grayscale alpha masks
-type AlphaMaskGray8 = *AlphaMaskU8
-type AMaskNoClipGray8 = *AMaskNoClipU8
+type (
+	AlphaMaskGray8   = *AlphaMaskU8
+	AMaskNoClipGray8 = *AMaskNoClipU8
+)
 
 // RGB24 alpha masks (R, G, B components)
-type AlphaMaskRGB24R = *AlphaMaskU8
-type AlphaMaskRGB24G = *AlphaMaskU8
-type AlphaMaskRGB24B = *AlphaMaskU8
+type (
+	AlphaMaskRGB24R = *AlphaMaskU8
+	AlphaMaskRGB24G = *AlphaMaskU8
+	AlphaMaskRGB24B = *AlphaMaskU8
+)
 
-type AMaskNoClipRGB24R = *AMaskNoClipU8
-type AMaskNoClipRGB24G = *AMaskNoClipU8
-type AMaskNoClipRGB24B = *AMaskNoClipU8
+type (
+	AMaskNoClipRGB24R = *AMaskNoClipU8
+	AMaskNoClipRGB24G = *AMaskNoClipU8
+	AMaskNoClipRGB24B = *AMaskNoClipU8
+)
 
 // BGR24 alpha masks (B, G, R components)
-type AlphaMaskBGR24R = *AlphaMaskU8
-type AlphaMaskBGR24G = *AlphaMaskU8
-type AlphaMaskBGR24B = *AlphaMaskU8
+type (
+	AlphaMaskBGR24R = *AlphaMaskU8
+	AlphaMaskBGR24G = *AlphaMaskU8
+	AlphaMaskBGR24B = *AlphaMaskU8
+)
 
-type AMaskNoClipBGR24R = *AMaskNoClipU8
-type AMaskNoClipBGR24G = *AMaskNoClipU8
-type AMaskNoClipBGR24B = *AMaskNoClipU8
+type (
+	AMaskNoClipBGR24R = *AMaskNoClipU8
+	AMaskNoClipBGR24G = *AMaskNoClipU8
+	AMaskNoClipBGR24B = *AMaskNoClipU8
+)
 
 // RGBA32 alpha masks (R, G, B, A components)
-type AlphaMaskRGBA32R = *AlphaMaskU8
-type AlphaMaskRGBA32G = *AlphaMaskU8
-type AlphaMaskRGBA32B = *AlphaMaskU8
-type AlphaMaskRGBA32A = *AlphaMaskU8
+type (
+	AlphaMaskRGBA32R = *AlphaMaskU8
+	AlphaMaskRGBA32G = *AlphaMaskU8
+	AlphaMaskRGBA32B = *AlphaMaskU8
+	AlphaMaskRGBA32A = *AlphaMaskU8
+)
 
-type AMaskNoClipRGBA32R = *AMaskNoClipU8
-type AMaskNoClipRGBA32G = *AMaskNoClipU8
-type AMaskNoClipRGBA32B = *AMaskNoClipU8
-type AMaskNoClipRGBA32A = *AMaskNoClipU8
+type (
+	AMaskNoClipRGBA32R = *AMaskNoClipU8
+	AMaskNoClipRGBA32G = *AMaskNoClipU8
+	AMaskNoClipRGBA32B = *AMaskNoClipU8
+	AMaskNoClipRGBA32A = *AMaskNoClipU8
+)
 
 // ARGB32 alpha masks (A, R, G, B components)
-type AlphaMaskARGB32R = *AlphaMaskU8
-type AlphaMaskARGB32G = *AlphaMaskU8
-type AlphaMaskARGB32B = *AlphaMaskU8
-type AlphaMaskARGB32A = *AlphaMaskU8
+type (
+	AlphaMaskARGB32R = *AlphaMaskU8
+	AlphaMaskARGB32G = *AlphaMaskU8
+	AlphaMaskARGB32B = *AlphaMaskU8
+	AlphaMaskARGB32A = *AlphaMaskU8
+)
 
-type AMaskNoClipARGB32R = *AMaskNoClipU8
-type AMaskNoClipARGB32G = *AMaskNoClipU8
-type AMaskNoClipARGB32B = *AMaskNoClipU8
-type AMaskNoClipARGB32A = *AMaskNoClipU8
+type (
+	AMaskNoClipARGB32R = *AMaskNoClipU8
+	AMaskNoClipARGB32G = *AMaskNoClipU8
+	AMaskNoClipARGB32B = *AMaskNoClipU8
+	AMaskNoClipARGB32A = *AMaskNoClipU8
+)
 
 // BGRA32 alpha masks (B, G, R, A components)
-type AlphaMaskBGRA32R = *AlphaMaskU8
-type AlphaMaskBGRA32G = *AlphaMaskU8
-type AlphaMaskBGRA32B = *AlphaMaskU8
-type AlphaMaskBGRA32A = *AlphaMaskU8
+type (
+	AlphaMaskBGRA32R = *AlphaMaskU8
+	AlphaMaskBGRA32G = *AlphaMaskU8
+	AlphaMaskBGRA32B = *AlphaMaskU8
+	AlphaMaskBGRA32A = *AlphaMaskU8
+)
 
-type AMaskNoClipBGRA32R = *AMaskNoClipU8
-type AMaskNoClipBGRA32G = *AMaskNoClipU8
-type AMaskNoClipBGRA32B = *AMaskNoClipU8
-type AMaskNoClipBGRA32A = *AMaskNoClipU8
+type (
+	AMaskNoClipBGRA32R = *AMaskNoClipU8
+	AMaskNoClipBGRA32G = *AMaskNoClipU8
+	AMaskNoClipBGRA32B = *AMaskNoClipU8
+	AMaskNoClipBGRA32A = *AMaskNoClipU8
+)
 
 // ABGR32 alpha masks (A, B, G, R components)
-type AlphaMaskABGR32R = *AlphaMaskU8
-type AlphaMaskABGR32G = *AlphaMaskU8
-type AlphaMaskABGR32B = *AlphaMaskU8
-type AlphaMaskABGR32A = *AlphaMaskU8
+type (
+	AlphaMaskABGR32R = *AlphaMaskU8
+	AlphaMaskABGR32G = *AlphaMaskU8
+	AlphaMaskABGR32B = *AlphaMaskU8
+	AlphaMaskABGR32A = *AlphaMaskU8
+)
 
-type AMaskNoClipABGR32R = *AMaskNoClipU8
-type AMaskNoClipABGR32G = *AMaskNoClipU8
-type AMaskNoClipABGR32B = *AMaskNoClipU8
-type AMaskNoClipABGR32A = *AMaskNoClipU8
+type (
+	AMaskNoClipABGR32R = *AMaskNoClipU8
+	AMaskNoClipABGR32G = *AMaskNoClipU8
+	AMaskNoClipABGR32B = *AMaskNoClipU8
+	AMaskNoClipABGR32A = *AMaskNoClipU8
+)
 
 // RGB to grayscale conversion alpha masks
-type AlphaMaskRGB24Gray = *AlphaMaskU8
-type AlphaMaskBGR24Gray = *AlphaMaskU8
-type AlphaMaskRGBA32Gray = *AlphaMaskU8
-type AlphaMaskARGB32Gray = *AlphaMaskU8
-type AlphaMaskBGRA32Gray = *AlphaMaskU8
-type AlphaMaskABGR32Gray = *AlphaMaskU8
+type (
+	AlphaMaskRGB24Gray  = *AlphaMaskU8
+	AlphaMaskBGR24Gray  = *AlphaMaskU8
+	AlphaMaskRGBA32Gray = *AlphaMaskU8
+	AlphaMaskARGB32Gray = *AlphaMaskU8
+	AlphaMaskBGRA32Gray = *AlphaMaskU8
+	AlphaMaskABGR32Gray = *AlphaMaskU8
+)
 
-type AMaskNoClipRGB24Gray = *AMaskNoClipU8
-type AMaskNoClipBGR24Gray = *AMaskNoClipU8
-type AMaskNoClipRGBA32Gray = *AMaskNoClipU8
-type AMaskNoClipARGB32Gray = *AMaskNoClipU8
-type AMaskNoClipBGRA32Gray = *AMaskNoClipU8
-type AMaskNoClipABGR32Gray = *AMaskNoClipU8
+type (
+	AMaskNoClipRGB24Gray  = *AMaskNoClipU8
+	AMaskNoClipBGR24Gray  = *AMaskNoClipU8
+	AMaskNoClipRGBA32Gray = *AMaskNoClipU8
+	AMaskNoClipARGB32Gray = *AMaskNoClipU8
+	AMaskNoClipBGRA32Gray = *AMaskNoClipU8
+	AMaskNoClipABGR32Gray = *AMaskNoClipU8
+)
 
 // Constructor helpers for predefined types
 

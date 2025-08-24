@@ -8,7 +8,7 @@ import (
 )
 
 func TestNewBezierCtrl(t *testing.T) {
-	ctrl := NewBezierCtrl()
+	ctrl := NewDefaultBezierCtrl()
 
 	// Test default configuration
 	if ctrl.LineWidth() != 1.0 {
@@ -43,7 +43,7 @@ func TestNewBezierCtrl(t *testing.T) {
 }
 
 func TestBezierCtrlSetCurve(t *testing.T) {
-	ctrl := NewBezierCtrl()
+	ctrl := NewDefaultBezierCtrl()
 
 	// Set new curve points
 	ctrl.SetCurve(0.0, 0.0, 25.0, 75.0, 75.0, 25.0, 100.0, 100.0)
@@ -64,7 +64,7 @@ func TestBezierCtrlSetCurve(t *testing.T) {
 }
 
 func TestBezierCtrlIndividualPointSetters(t *testing.T) {
-	ctrl := NewBezierCtrl()
+	ctrl := NewDefaultBezierCtrl()
 
 	// Test individual setters
 	ctrl.SetX1(10.0)
@@ -92,7 +92,7 @@ func TestBezierCtrlIndividualPointSetters(t *testing.T) {
 }
 
 func TestBezierCtrlConfiguration(t *testing.T) {
-	ctrl := NewBezierCtrl()
+	ctrl := NewDefaultBezierCtrl()
 
 	// Test line width
 	ctrl.SetLineWidth(2.5)
@@ -115,7 +115,7 @@ func TestBezierCtrlConfiguration(t *testing.T) {
 }
 
 func TestBezierCtrlCurveAccess(t *testing.T) {
-	ctrl := NewBezierCtrl()
+	ctrl := NewDefaultBezierCtrl()
 
 	// Set known curve
 	ctrl.SetCurve(0.0, 0.0, 33.33, 33.33, 66.66, 66.66, 100.0, 100.0)
@@ -131,7 +131,7 @@ func TestBezierCtrlCurveAccess(t *testing.T) {
 }
 
 func TestBezierCtrlMouseInteraction(t *testing.T) {
-	ctrl := NewBezierCtrl()
+	ctrl := NewDefaultBezierCtrl()
 
 	// Test mouse interaction (delegates to polygon control)
 	// This primarily tests that the methods exist and can be called
@@ -169,7 +169,7 @@ func TestBezierCtrlMouseInteraction(t *testing.T) {
 }
 
 func TestBezierCtrlVertexGeneration(t *testing.T) {
-	ctrl := NewBezierCtrl()
+	ctrl := NewDefaultBezierCtrl()
 
 	// Test path count
 	if numPaths := ctrl.NumPaths(); numPaths != 7 {
@@ -207,7 +207,7 @@ func TestBezierCtrlVertexGeneration(t *testing.T) {
 }
 
 func TestBezierCtrlColorInterface(t *testing.T) {
-	ctrl := NewBezierCtrl()
+	ctrl := NewDefaultBezierCtrl()
 
 	// Set a specific color
 	blue := color.NewRGBA(0.0, 0.0, 1.0, 1.0)
@@ -223,7 +223,7 @@ func TestBezierCtrlColorInterface(t *testing.T) {
 }
 
 func TestBezierCtrlInRect(t *testing.T) {
-	ctrl := NewBezierCtrl()
+	ctrl := NewDefaultBezierCtrl()
 
 	// Test the inherited InRect method
 	// Since BaseCtrl sets bounds to (0,0,1,1), points within should return true

@@ -470,6 +470,7 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
   - [ ] Integration with `math_stroke` for geometric calculations
 
 #### agg_vcgen_contour.h - Contour generator ❌ **PENDING**
+
 - [ ] **Core Contour Generation**
   - [ ] `vcgen_contour` struct implementation
   - [ ] `width()` setter and getter for offset distance
@@ -492,6 +493,7 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 ### Vertex Processors ✅ **COMPLETED**
 
 #### agg_vpgen_clip_polygon.h - Polygon clipping vertex processor
+
 - [x] `vpgen_clip_polygon` struct implementation
 - [x] Rectangular clipping window support
 - [x] Liang-Barsky line clipping algorithm integration
@@ -499,6 +501,7 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 - [x] Automatic polygon closure handling
 
 #### agg_vpgen_clip_polyline.h - Polyline clipping vertex processor
+
 - [x] `vpgen_clip_polyline` struct implementation
 - [x] Rectangular clipping window support
 - [x] Liang-Barsky line clipping for polylines
@@ -506,6 +509,7 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 - [x] Path command preservation for clipped segments
 
 #### agg_vpgen_segmentator.h - Segmentator vertex processor
+
 - [x] `vpgen_segmentator` struct implementation
 - [x] Path segmentation into equal-length pieces
 - [x] Configurable approximation scale for segment density
@@ -517,6 +521,7 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 ### Spans and Gradients
 
 #### agg_span_allocator.h - Memory allocation for color spans
+
 - [x] span_allocator → SpanAllocator[C] struct - Memory allocator for color spans (`internal/spans/allocator.go`)
 - [x] Allocation interface
 - [x] Memory optimization
@@ -524,6 +529,7 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 - [x] Memory efficiency
 
 #### agg_span_converter.h - Span conversion pipeline
+
 - [x] span_converter → SpanConverter[SG, SC] struct - Pipeline for span processing
 - [x] Component attachment
 - [x] Processing interface
@@ -533,12 +539,14 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 - [x] Compatible converters
 
 #### agg_span_solid.h - Solid color span generation
+
 - [x] span_solid → SpanSolid[C] struct - generates uniform color spans
 - [x] Single color fill across entire span length
 - [x] Efficient constant-time generation
 - [x] Integration with span allocator system
 
 #### agg_span_gradient.h - Gradient span generation
+
 - [x] span_gradient → SpanGradient[C, I, GF, CF] struct - Multi-parameter gradient generator
 - [x] Subpixel coordinate system
 - [x] Initialization methods
@@ -551,6 +559,7 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 - [x] Subpixel precision management
 
 #### agg_span_gradient_alpha.h - Alpha-only gradient generation
+
 - [x] span_gradient_alpha → SpanGradientAlpha[I, GF, AF] struct - Alpha-only gradient generator
 - [x] Core alpha generation
 - [x] Alpha lookup interface
@@ -560,6 +569,7 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 - [x] Alpha application methods
 
 #### agg_span_gradient_contour.h - Contour-based gradient generation
+
 - [x] gradient_contour → GradientContour struct - Core distance field gradient generator (`internal/span/span_gradient_contour.go`)
 - [x] Core distance methods
 - [ ] Distance field preprocessing
@@ -571,6 +581,7 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 - [ ] Edge handling
 
 #### agg_span_gradient_image.h - Image-based gradient generation
+
 - [x] span_gradient_image → GradientImageRGBA8 struct - Image-derived gradient generator
 - [ ] Pixel sampling interface
 - [ ] Image coordinate mapping
@@ -582,6 +593,7 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 - [ ] Memory management
 
 #### agg_span_gouraud.h - Base Gouraud shading implementation
+
 - [x] span_gouraud → SpanGouraud[C] struct - Base Gouraud shading system
 - [x] Vertex definition
 - [x] Vertex color interpolation
@@ -593,6 +605,7 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 - [x] Performance optimization
 
 #### agg_span_gouraud_gray.h - Grayscale Gouraud shading
+
 - [x] span_gouraud_gray → SpanGouraudGray struct - Optimized grayscale Gouraud shading
 - [ ] Single channel processing
 - [ ] Grayscale interpolation
@@ -602,6 +615,7 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 - [ ] Grayscale rendering pipeline
 
 #### agg_span_gouraud_rgba.h - RGBA Gouraud shading
+
 - [x] span_gouraud_rgba → SpanGouraudRGBA struct - Full-color RGBA Gouraud shading
 - [ ] Multi-channel interpolation
 - [ ] Advanced color handling
@@ -617,6 +631,7 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 ### Image Processing
 
 #### [x] agg_image_accessors.h - Image pixel data access with boundary handling ✅ **COMPLETED**
+
 - [x] image_accessor_clip → ImageAccessorClip[PixFmt] struct - Bounds-checked pixel access with background color
 - [x] Construction and attachment
 - [x] Pixel reading interface
@@ -631,6 +646,7 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 - [x] wrap_mode_reflect_auto_pow2 → WrapModeReflectAutoPow2 struct - Adaptive mirror
 
 #### agg_image_filters.h - Image filtering kernel functions and lookup tables ✅ **COMPLETED**
+
 - [x] image_filter_scale_e → ImageFilterScale enumeration - Filter precision constants
 - [x] image_subpixel_scale_e → ImageSubpixelScale enumeration - Subpixel precision
 - [x] image_filter_lut → ImageFilterLUT struct - Pre-computed filter weight lookup table
@@ -653,6 +669,7 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 - [x] image_filter_lanczos → LanczosFilter struct - Lanczos filter
 
 #### agg_span_image_filter.h - Base classes for image filtering span generators ✅ **COMPLETED**
+
 - [x] span_image_filter → SpanImageFilter[Source, Interpolator] struct - Foundation for filtered image spans
 - [x] Construction and setup
 - [x] Filter offset control
@@ -665,6 +682,7 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 - [x] span_image_resample → SpanImageResample[Source, Interpolator] struct - General resampling with any interpolator
 
 #### agg_span_image_filter_gray.h - Specialized grayscale image filtering spans ✅ **COMPLETED**
+
 - [x] span_image_filter_gray_nn → SpanImageFilterGrayNN[Source, Interpolator] struct - Fast grayscale nearest neighbor
 - [x] generate(span, x, y, len) → Generate() - fill span with nearest neighbor pixels
 - [x] span_image_filter_gray_bilinear → SpanImageFilterGrayBilinear[Source, Interpolator] struct - Bilinear grayscale interpolation
@@ -679,6 +697,7 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 - [x] Precision handling
 
 #### agg_span_image_filter_rgb.h - RGB color image filtering spans ✅ **COMPLETED**
+
 - [x] span_image_filter_rgb_nn → SpanImageFilterRGBNN[Source, Interpolator] struct - Fast RGB nearest neighbor
 - [x] generate(span, x, y, len) → Generate() - RGB nearest neighbor span generation
 - [x] span_image_filter_rgb_bilinear → SpanImageFilterRGBBilinear[Source, Interpolator] struct - Bilinear RGB interpolation
@@ -690,6 +709,7 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 - [x] RGB memory access patterns
 
 #### agg_span_image_filter_rgba.h - RGBA image filtering with alpha channel processing ✅ **COMPLETED**
+
 - [x] span_image_filter_rgba_nn → SpanImageFilterRGBANN[Source, Interpolator] struct - Fast RGBA nearest neighbor
 - [x] generate(span, x, y, len) → Generate() - RGBA nearest neighbor span generation
 - [x] span_image_filter_rgba_bilinear → SpanImageFilterRGBABilinear[Source, Interpolator] struct - Bilinear RGBA interpolation
@@ -708,6 +728,7 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 ### Pattern Processing
 
 #### agg_pattern_filters_rgba.h - RGBA pattern filters (`internal/span/pattern_filters.go`) ✅ **COMPLETED**
+
 - [x] pattern_filter_nn → PatternFilterNN[ColorT] struct - Nearest neighbor sampling
 - [x] pattern_filter_bilinear_rgba → PatternFilterBilinearRGBA[ColorT] struct - Smooth bilinear interpolation
 - [x] Subpixel coordinate extraction
@@ -717,6 +738,7 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 - [x] Subpixel-aware rendering pipeline
 
 #### agg_span_pattern_gray.h - Grayscale pattern span generator (`internal/span/span_pattern_gray.go`) ✅ **COMPLETED**
+
 - [x] span_pattern_gray → SpanPatternGray[Source] struct - Grayscale pattern rendering
 - [x] Pattern offset management
 - [x] SpanGenerator interface implementation
@@ -724,12 +746,14 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 - [x] Source coordinate calculation
 
 #### agg_span_pattern_rgb.h - RGB pattern span generator (`internal/span/span_pattern_rgb.go`) ✅ **COMPLETED**
+
 - [x] span_pattern_rgb → SpanPatternRGB[Source] struct - RGB pattern rendering
 - [x] Component order abstraction
 - [x] Efficient RGB pixel extraction
 - [x] RGB span generation process
 
 #### agg_span_pattern_rgba.h - RGBA pattern span generator (`internal/span/span_pattern_rgba.go`) ✅ **COMPLETED**
+
 - [x] span_pattern_rgba → SpanPatternRGBA[Source] struct - Full-color pattern rendering
 - [x] Component order abstraction
 - [x] High-precision color handling
@@ -745,6 +769,7 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 ### Interpolators
 
 #### agg_span_interpolator_linear.h - Linear Span Interpolator ✅ **COMPLETED**
+
 - [x] span_interpolator_linear → SpanInterpolatorLinear[T] struct - Linear span interpolation with affine transformation
 - [x] Construction and configuration
 - [x] Linear interpolation methods
@@ -752,6 +777,7 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 - [x] Efficient span processing
 
 #### agg_span_interpolator_persp.h - Perspective Span Interpolator ✅ **COMPLETED**
+
 - [x] span_interpolator_persp_exact → SpanInterpolatorPerspectiveExact struct - Exact perspective interpolation (`internal/span/interpolator_persp.go`)
 - [x] span_interpolator_persp_lerp → SpanInterpolatorPerspectiveLerp struct - Linear approximation perspective interpolation (`internal/span/interpolator_persp.go`)
 - [ ] Flexible mapping support
@@ -760,6 +786,7 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 - [ ] Complex projection support
 
 #### agg_span_interpolator_trans.h - Transform Span Interpolator ✅ **COMPLETED**
+
 - [x] span_interpolator_trans → SpanInterpolatorTransform[T] struct - Generic transformer-based interpolation
 - [x] Flexible transformation interface
 - [x] Exact transformation
@@ -767,6 +794,7 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 - [ ] Non-linear transformation support
 
 #### agg_span_interpolator_adaptor.h - Interpolator Adaptor ✅ **COMPLETED**
+
 - [x] span_interpolator_adaptor → SpanInterpolatorAdaptor[Interpolator, Distortion] struct - Distortion effect wrapper (`internal/span/interpolator_adaptor.go`)
 - [x] Interpolator composition
 - [x] Distortion effect application
@@ -774,6 +802,7 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 - [x] Advanced visual effects
 
 #### agg_span_subdiv_adaptor.h - Subdivision Adaptor ✅ **COMPLETED**
+
 - [x] span_subdiv_adaptor → SpanSubdivAdaptor[Interpolator] struct - Adaptive subdivision wrapper
 - [x] Adaptive accuracy management
 - [x] Error reduction strategy
@@ -786,6 +815,7 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 ### Utility and Math
 
 #### agg_alpha_mask_u8.h - 8-bit alpha mask (`internal/pixfmt/alpha_mask.go`) ✅ **COMPLETED**
+
 - [x] one_component_mask_u8 → OneComponentMaskU8 struct - Single channel alpha extraction
 - [x] rgb_to_gray_mask_u8 → RGBToGrayMaskU8 struct - RGB to grayscale alpha conversion
 - [x] alpha_mask_u8 → AlphaMaskU8 struct - Configurable alpha mask renderer
@@ -795,6 +825,7 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 - [x] Multi-format alpha support
 
 #### agg_bitset_iterator.h - Bitset iterator (`internal/basics/bitset_iterator.go`) ✅ **COMPLETED**
+
 - [x] bitset_iterator → BitsetIterator struct - Iterator for traversing set bits
 - [x] Iterator interface methods
 - [x] Bit scanning optimization
@@ -802,6 +833,7 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 - [x] Memory-efficient data structure support
 
 #### agg_blur.h - Blur effects (`internal/effects/blur.go`) ✅ COMPLETED
+
 - [x] Stack blur implementation (Mario Klingemann's algorithm)
 - [x] Recursive blur implementation (IIR Gaussian-like)
 - [x] Slight blur implementation
@@ -811,6 +843,7 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 - [x] Optimized implementations
 
 #### agg_bounding_rect.h - Bounding rectangle calculation (`internal/basics/bounding_rect.go`) ✅ **COMPLETED**
+
 - [x] bounding_rect → BoundingRect function - Calculate axis-aligned bounding rectangle
 - [x] Path bounding rectangle
 - [ ] Transformed bounding rectangle
@@ -818,17 +851,20 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 - [x] Performance optimization
 
 #### agg_clip_liang_barsky.h - Liang-Barsky clipping algorithm (`internal/basics/clip_liang_barsky.go`) ✅ **COMPLETED**
+
 - [x] Clipping flag constants for vertex classification
 - [x] ClippingFlags() → Cyrus-Beck vertex classification
 - [x] Parametric line clipping
 - [x] Integration with rendering pipeline
 
 #### agg_dda_line.h - DDA line algorithm (`internal/span/dda_line.go`) ✅ **COMPLETED**
+
 - [x] GouraudDDAInterpolator struct - DDA line interpolator for Gouraud shading
 - [x] Interpolation methods
 - [x] Fractional arithmetic system
 
 #### agg_gamma_functions.h - Gamma correction functions (`internal/pixfmt/gamma_functions.go`) ✅ **COMPLETED**
+
 - [x] Linear gamma functions
 - [x] Power gamma functions
 - [x] Standard gamma curves
@@ -840,6 +876,7 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 - [x] Comprehensive test coverage with edge cases and round-trip validation
 
 #### agg_gamma_lut.h - Gamma lookup table (`internal/pixfmt/gamma_lut.go`) ✅ **COMPLETED**
+
 - [x] gamma_lut → GammaLUT[GammaF] struct - Gamma lookup table with configurable function
 - [x] Table generation and initialization
 - [x] Fast gamma correction methods
@@ -847,6 +884,7 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 - [x] Multi-precision support
 
 #### agg_gradient_lut.h - Gradient lookup table (`internal/span/gradient_lut.go`) ✅ **COMPLETED**
+
 - [x] gradient_lut → GradientLUT struct - Gradient color lookup table
 - [x] Color stop management
 - [x] Gradient access methods
@@ -854,12 +892,14 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 - [x] Performance optimization
 
 #### agg_line_aa_basics.h - Anti-aliased line basics (`internal/primitives/line_aa_basics.go`) ✅ **COMPLETED**
+
 - [x] Subpixel precision constants
 - [x] Medium resolution constants
 - [x] Resolution conversion utilities
 - [x] Integration with rendering pipeline
 
 #### agg_math_stroke.h - Stroke mathematics (`internal/basics/math_stroke.go`) ✅ **COMPLETED**
+
 - [x] Line cap and join style definitions
 - [x] MathStroke struct for stroke calculations
 - [x] Line join calculations
@@ -867,6 +907,7 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 - [x] VertexConsumer interface for stroke output
 
 #### agg_shorten_path.h - Path shortening (`internal/path/shorten_path.go`)
+
 - [x] shorten_path → ShortenPath function - Remove length from path end
 - [ ] Length-based path trimming
 - [ ] Edge case handling
@@ -874,6 +915,7 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 - [ ] Use in stroke processing
 
 #### agg_simul_eq.h - Simultaneous equations solver (`internal/transform/simul_eq.go`) ✅ **COMPLETED**
+
 - [x] SimulEq function - Simultaneous equation system solver
 - [x] Linear system solution
 - [x] Numerical robustness
@@ -881,6 +923,7 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 - [x] Comprehensive test coverage
 
 #### agg_vertex_sequence.h - Vertex sequence (`internal/array/vertex_sequence.go`, `internal/vcgen/vertex_sequence.go`) ✅ **COMPLETED**
+
 - [x] VertexSequence struct - Dynamic vertex array with distance tracking
 - [x] Vertex operations
 - [x] Memory-efficient vertex arrays
@@ -891,12 +934,14 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 ### Text and Fonts
 
 #### agg_embedded_raster_fonts.h - Embedded Raster Fonts (`internal/fonts/embedded_fonts.go`) ✅ **COMPLETED**
+
 - [x] Embedded font data arrays - **GSE and MCS fonts implemented with full test coverage**
 - [ ] Font data format
 - [ ] Glyph access interface
 - [ ] Integration with rendering
 
 #### agg_font_cache_manager.h - Font Cache Manager (`internal/fonts/cache_manager.go`) ✅ **COMPLETED**
+
 - [x] glyph_cache → GlyphCache struct - Individual glyph data storage ✅
 - [x] font_cache → FontCache struct - Per-font glyph cache ✅
 - [x] font_cache_pool → FontCachePool struct - Multiple font cache management ✅
@@ -905,11 +950,13 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 - [x] Fast glyph lookup ✅
 
 #### agg_font_cache_manager2.h - Font Cache Manager v2 (`internal/fonts/cache_manager2.go`) ✅ **COMPLETED**
+
 - [x] Improved caching algorithms over v1 ✅
 - [x] Extended Font Support ✅
 - [x] Advanced Memory Management ✅
 
 #### agg_glyph_raster_bin.h - Binary Glyph Rasterizer (`internal/glyph/glyph_raster_bin.go`) ✅ **COMPLETED**
+
 - [x] glyph_raster_bin → GlyphRasterBin struct - Bitmap font renderer ✅
 - [x] glyph_rect → GlyphRect struct - Glyph positioning information ✅
 - [x] Binary font data interpretation ✅
@@ -918,6 +965,7 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 - [x] Cross-platform font data access ✅
 
 #### agg_gsv_text.h - GSV Text Rendering ✅ **COMPLETED** (`internal/gsv/gsv_text.go`)
+
 - [x] gsv_text → GSVText struct - Vector-based text renderer ✅
 - [x] Typography controls ✅
 - [x] Font data management ✅
@@ -928,6 +976,7 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 - [x] UI control support ✅
 
 #### agg_renderer_raster_text.h - Text Rendering Components (`internal/renderer/renderer_raster_text.go`) ✅ **COMPLETED**
+
 - [x] renderer_raster_htext_solid → RendererRasterHTextSolid[BaseRenderer, GlyphGenerator] - Solid horizontal text ✅
 - [x] renderer_raster_vtext_solid → RendererRasterVTextSolid[BaseRenderer, GlyphGenerator] - Solid vertical text ✅
 - [x] renderer_raster_htext → RendererRasterHText[ScanlineRenderer, GlyphGenerator] - Horizontal text with gradients/patterns ✅
@@ -941,58 +990,68 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 ### Controls (ctrl/) ✅ **COMPLETED**
 
 #### agg_ctrl.h - Base control class
+
 - [x] `Ctrl` interface for base control abstraction
 - [x] Coordinate system and transformation management
 - [x] Mouse and keyboard event handling interface
 - [x] Generic `RenderCtrl` function for rendering
 
 #### agg_bezier_ctrl.h - Bezier curve control
+
 - [x] `BezierCtrlImpl` struct for Bezier control
 - [x] 4-point cubic Bezier curve definition
 - [x] Interactive control point manipulation
 - [x] Real-time curve preview
 
 #### agg_cbox_ctrl.h - Checkbox control
+
 - [x] `CboxCtrlImpl` struct for checkbox implementation
 - [x] Boolean state management
 - [x] Text label support
 - [x] Mouse click handling for state toggle
 
 #### agg_gamma_ctrl.h - Gamma control
+
 - [x] `GammaCtrlImpl` struct for gamma control
 - [x] Gamma curve visualization and editing
 - [x] Multi-point spline-based curve definition
 - [x] Real-time gamma preview
 
 #### agg_gamma_spline.h - Gamma spline
+
 - [x] `GammaSpline` struct for spline-based gamma curve
 - [x] Cubic spline interpolation
 - [x] Efficient evaluation for pixel processing
 
 #### agg_polygon_ctrl.h - Polygon control
+
 - [x] `PolygonCtrlImpl` struct for polygon control
 - [x] Variable vertex count support
 - [x] Interactive vertex manipulation
 - [x] Polygon closing and opening
 
 #### agg_rbox_ctrl.h - Radio button control
+
 - [x] `RboxCtrlImpl` struct for radio button group
 - [x] Mutual exclusion logic
 - [x] Dynamic option addition with text labels
 
 #### agg_scale_ctrl.h - Scale control
+
 - [x] `ScaleCtrl` struct for range control
 - [x] Two-value range selector
 - [x] Horizontal and vertical orientation support
 - [x] Interactive pointer and range bar dragging
 
 #### agg_slider_ctrl.h - Slider control
+
 - [x] `SliderCtrlImpl` struct for slider implementation
 - [x] Horizontal and vertical orientation support
 - [x] Configurable value range and steps
 - [x] Interactive drag and click handling
 
 #### agg_spline_ctrl.h - Spline control
+
 - [x] `SplineCtrlImpl` struct for spline control
 - [x] Variable control point spline curves
 - [x] Interactive point manipulation
@@ -1001,11 +1060,13 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 ---
 
 ### Platform Support (platform/) ✅ **COMPLETED**
+
 - [x] agg_platform_support.h - Platform support interface
 
 ---
 
 ### Utilities (util/) ❌ **PENDING**
+
 - [ ] agg_color_conv.h - Color conversion utilities
 - [ ] agg_color_conv_rgb16.h - 16-bit RGB color conversion
 - [ ] agg_color_conv_rgb8.h - 8-bit RGB color conversion
@@ -1013,23 +1074,27 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 ---
 
 ## Core Implementation Files (src/) ❌ **PENDING**
+
 - #### Most `.cpp` implementation files are not yet ported.
 
 ---
 
 ## AGG2D High-Level Interface ⚠️ **PARTIALLY COMPLETED**
+
 - [x] `agg2d.h` - API ported to Go
 - [-] `agg2d.cpp` - API ported but rendering pipeline incomplete
 
 ---
 
 ## Font Support ⚠️ **PARTIALLY COMPLETED**
+
 - ✅ **CORE IMPLEMENTATION COMPLETED** for FreeType Integration
 - ❌ **PENDING** for Win32 TrueType Support
 
 ---
 
 ## General Polygon Clipper (GPC) ⚠️ **PARTIALLY IMPLEMENTED**
+
 - ✅ Full public API (gpc.h) - 100% complete and tested
 - ✅ Internal data structures - All structures defined
 - ✅ Foundation functions - LMT construction, scanbeam trees, basic helpers

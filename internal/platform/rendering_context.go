@@ -455,24 +455,48 @@ func abs(x int) int {
 	return x
 }
 
+// Statistics contains rendering statistics and buffer information.
+type Statistics struct {
+	// Window buffer info
+	WindowWidth  int    `json:"window_width"`
+	WindowHeight int    `json:"window_height"`
+	WindowStride int    `json:"window_stride"`
+	PixelFormat  string `json:"pixel_format"`
+	BPP          int    `json:"bpp"`
+	FlipY        bool   `json:"flip_y"`
+
+	// Buffer size info
+	WindowBufferSize int `json:"window_buffer_size"`
+
+	// Image buffer info
+	ActiveImageBuffers int `json:"active_image_buffers"`
+
+	// Transform info
+	HasResizeTransform bool    `json:"has_resize_transform"`
+	ResizeScaleX       float64 `json:"resize_scale_x,omitempty"`
+	ResizeScaleY       float64 `json:"resize_scale_y,omitempty"`
+	ResizeTranslateX   float64 `json:"resize_translate_x,omitempty"`
+	ResizeTranslateY   float64 `json:"resize_translate_y,omitempty"`
+}
+
 // Statistics returns rendering statistics and buffer information.
-func (rc *RenderingContext) Statistics() map[string]interface{} {
-	stats := make(map[string]interface{})
+func (rc *RenderingContext) Statistics() *Statistics {
+	stats := &Statistics{}
 
 	// Window buffer info
 	buf := rc.WindowBuffer()
-	stats["window_width"] = buf.Width()
-	stats["window_height"] = buf.Height()
-	stats["window_stride"] = buf.Stride()
-	stats["pixel_format"] = rc.platformSupport.format.String()
-	stats["bpp"] = rc.platformSupport.bpp
-	stats["flip_y"] = rc.platformSupport.flipY
+	stats.WindowWidth = buf.Width()
+	stats.WindowHeight = buf.Height()
+	stats.WindowStride = buf.Stride()
+	stats.PixelFormat = rc.platformSupport.format.String()
+	stats.BPP = rc.platformSupport.bpp
+	stats.FlipY = rc.platformSupport.flipY
 
 	// Calculate buffer size
 	if buf.Buf() != nil {
-		stats["window_buffer_size"] = len(buf.Buf())
+		stats.WindowBufferSize = len(buf.Buf())
 	} else {
-		stats["window_buffer_size"] = 0
+		stats.WindowBufferSize = 0
 	}
 
 	// Count active image buffers
@@ -482,16 +506,16 @@ func (rc *RenderingContext) Statistics() map[string]interface{} {
 			activeImages++
 		}
 	}
-	stats["active_image_buffers"] = activeImages
+	stats.ActiveImageBuffers = activeImages
 
 	// Transformation info
 	isIdentity := rc.resizeMatrix.IsIdentity(1e-10)
-	stats["has_resize_transform"] = !isIdentity
+	stats.HasResizeTransform = !isIdentity
 	if !isIdentity {
-		stats["resize_scale_x"] = rc.resizeMatrix.SX
-		stats["resize_scale_y"] = rc.resizeMatrix.SY
-		stats["resize_translate_x"] = rc.resizeMatrix.TX
-		stats["resize_translate_y"] = rc.resizeMatrix.TY
+		stats.ResizeScaleX = rc.resizeMatrix.SX
+		stats.ResizeScaleY = rc.resizeMatrix.SY
+		stats.ResizeTranslateX = rc.resizeMatrix.TX
+		stats.ResizeTranslateY = rc.resizeMatrix.TY
 	}
 
 	return stats

@@ -1,9 +1,10 @@
 package span
 
 import (
+	"testing"
+
 	"agg_go/internal/basics"
 	"agg_go/internal/color"
-	"testing"
 )
 
 // MockRGBAPatternSource implements RGBASourceInterface for pattern testing

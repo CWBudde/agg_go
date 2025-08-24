@@ -6,84 +6,19 @@ import (
 	"agg_go/internal/basics"
 )
 
-// Mock implementations for testing
-
-type MockScanline struct {
-	y        int
-	numSpans int
-	spans    []SpanData
-	spanIdx  int
-}
-
-func (m *MockScanline) Y() int                  { return m.y }
-func (m *MockScanline) NumSpans() int           { return m.numSpans }
-func (m *MockScanline) Begin() ScanlineIterator { m.spanIdx = 0; return m }
-
-func (m *MockScanline) GetSpan() SpanData {
-	if m.spanIdx < len(m.spans) {
-		return m.spans[m.spanIdx]
-	}
-	return SpanData{}
-}
-
-func (m *MockScanline) Next() bool {
-	m.spanIdx++
-	return m.spanIdx < len(m.spans)
-}
-
-func (m *MockScanline) Reset(minX, maxX int) {
-	// Mock reset implementation
-}
-
-type MockBaseRenderer struct {
-	solidHspanCalls []SolidHspanCall
-	hlineCalls      []HlineCall
-	colorHspanCalls []ColorHspanCall
-}
-
-type SolidHspanCall struct {
-	X, Y, Len int
-	Color     interface{}
-	Covers    []basics.Int8u
-}
-
-type HlineCall struct {
-	X, Y, X2 int
-	Color    interface{}
-	Cover    basics.Int8u
-}
-
-type ColorHspanCall struct {
-	X, Y, Len int
-	Colors    []interface{}
-	Covers    []basics.Int8u
-	Cover     basics.Int8u
-}
-
-func (m *MockBaseRenderer) BlendSolidHspan(x, y, len int, color interface{}, covers []basics.Int8u) {
-	m.solidHspanCalls = append(m.solidHspanCalls, SolidHspanCall{x, y, len, color, covers})
-}
-
-func (m *MockBaseRenderer) BlendHline(x, y, x2 int, color interface{}, cover basics.Int8u) {
-	m.hlineCalls = append(m.hlineCalls, HlineCall{x, y, x2, color, cover})
-}
-
-func (m *MockBaseRenderer) BlendColorHspan(x, y, len int, colors []interface{}, covers []basics.Int8u, cover basics.Int8u) {
-	m.colorHspanCalls = append(m.colorHspanCalls, ColorHspanCall{x, y, len, colors, covers, cover})
-}
-
-type MockRasterizer struct {
-	minX, maxX   int
+// MockRasterizerWithScanlines extends MockRasterizer for render_functions testing
+type MockRasterizerWithScanlines struct {
+	MockRasterizer
 	scanlines    []*MockScanline
 	currentIndex int
 }
 
-func (m *MockRasterizer) RewindScanlines() bool {
+func (m *MockRasterizerWithScanlines) RewindScanlines() bool {
 	m.currentIndex = 0
 	return len(m.scanlines) > 0
 }
 
-func (m *MockRasterizer) SweepScanline(sl ScanlineInterface) bool {
+func (m *MockRasterizerWithScanlines) SweepScanline(sl ScanlineInterface) bool {
 	if m.currentIndex >= len(m.scanlines) {
 		return false
 	}
@@ -100,39 +35,39 @@ func (m *MockRasterizer) SweepScanline(sl ScanlineInterface) bool {
 	return true
 }
 
-func (m *MockRasterizer) MinX() int { return m.minX }
-func (m *MockRasterizer) MaxX() int { return m.maxX }
-
-type MockSpanAllocator struct {
-	buffer []interface{}
+// MockSpanAllocatorWithBuffer extends MockSpanAllocator for render_functions testing
+type MockSpanAllocatorWithBuffer[C any] struct {
+	MockSpanAllocator[C]
+	buffer []C
 }
 
-func (m *MockSpanAllocator) Allocate(length int) []interface{} {
+func (m *MockSpanAllocatorWithBuffer[C]) Allocate(length int) []C {
 	if cap(m.buffer) < length {
-		m.buffer = make([]interface{}, length)
+		m.buffer = make([]C, length)
 	} else {
 		m.buffer = m.buffer[:length]
 	}
+	m.allocations = append(m.allocations, m.buffer)
 	return m.buffer
 }
 
-type MockSpanGenerator struct {
-	prepareCalled bool
-	color         interface{}
+// MockSpanGeneratorWithColor extends MockSpanGenerator for render_functions testing
+type MockSpanGeneratorWithColor[C any] struct {
+	MockSpanGenerator[C]
+	color C
 }
 
-func (m *MockSpanGenerator) Prepare() {
-	m.prepareCalled = true
-}
-
-func (m *MockSpanGenerator) Generate(colors []interface{}, x, y, len int) {
+func (m *MockSpanGeneratorWithColor[C]) Generate(colors []C, x, y, len int) {
+	m.generateCalls = append(m.generateCalls, GenerateCall[C]{
+		X: x, Y: y, Len: len, Colors: colors,
+	})
 	for i := 0; i < len; i++ {
 		colors[i] = m.color
 	}
 }
 
 func TestRenderScanlineAASolid(t *testing.T) {
-	renderer := &MockBaseRenderer{}
+	renderer := &MockBaseRenderer[string]{}
 	color := "red"
 
 	t.Run("positive length span", func(t *testing.T) {
@@ -157,7 +92,7 @@ func TestRenderScanlineAASolid(t *testing.T) {
 	})
 
 	t.Run("negative length span", func(t *testing.T) {
-		renderer = &MockBaseRenderer{}
+		renderer = &MockBaseRenderer[string]{}
 		scanline := &MockScanline{
 			y:        15,
 			numSpans: 1,
@@ -181,7 +116,7 @@ func TestRenderScanlineAASolid(t *testing.T) {
 }
 
 func TestRenderScanlinesAASolid(t *testing.T) {
-	renderer := &MockBaseRenderer{}
+	renderer := &MockBaseRenderer[string]{}
 	color := "blue"
 
 	scanline1 := &MockScanline{
@@ -196,9 +131,11 @@ func TestRenderScanlinesAASolid(t *testing.T) {
 		spans:    []SpanData{{X: 2, Len: 3, Covers: []basics.Int8u{128, 128, 128}}},
 	}
 
-	rasterizer := &MockRasterizer{
-		minX:      0,
-		maxX:      10,
+	rasterizer := &MockRasterizerWithScanlines{
+		MockRasterizer: MockRasterizer{
+			minX: 0,
+			maxX: 10,
+		},
 		scanlines: []*MockScanline{scanline1, scanline2},
 	}
 
@@ -224,9 +161,9 @@ func TestRenderScanlinesAASolid(t *testing.T) {
 }
 
 func TestRenderScanlineAA(t *testing.T) {
-	renderer := &MockBaseRenderer{}
-	allocator := &MockSpanAllocator{}
-	generator := &MockSpanGenerator{color: "green"}
+	renderer := &MockBaseRenderer[string]{}
+	allocator := &MockSpanAllocatorWithBuffer[string]{}
+	generator := &MockSpanGeneratorWithColor[string]{color: "green"}
 
 	scanline := &MockScanline{
 		y:        20,
@@ -259,14 +196,14 @@ func TestRenderScanlineBinSolid(t *testing.T) {
 	tests := []struct {
 		name          string
 		spans         []SpanData
-		expectedCalls []HlineCall
+		expectedCalls []HlineCall[string]
 	}{
 		{
 			name: "positive_length_span",
 			spans: []SpanData{
 				{X: 10, Len: 5, Covers: nil}, // Binary spans don't use covers
 			},
-			expectedCalls: []HlineCall{
+			expectedCalls: []HlineCall[string]{
 				{X: 10, Y: 5, X2: 14, Color: "red", Cover: basics.CoverFull}, // X + Len - 1 = 10 + 5 - 1 = 14
 			},
 		},
@@ -275,7 +212,7 @@ func TestRenderScanlineBinSolid(t *testing.T) {
 			spans: []SpanData{
 				{X: 20, Len: -8, Covers: nil}, // Negative length
 			},
-			expectedCalls: []HlineCall{
+			expectedCalls: []HlineCall[string]{
 				{X: 20, Y: 5, X2: 27, Color: "red", Cover: basics.CoverFull}, // X - Len - 1 = 20 - (-8) - 1 = 20 + 8 - 1 = 27
 			},
 		},
@@ -285,7 +222,7 @@ func TestRenderScanlineBinSolid(t *testing.T) {
 				{X: 5, Len: 3, Covers: nil},   // Positive: endX = 5 + 3 - 1 = 7
 				{X: 15, Len: -4, Covers: nil}, // Negative: endX = 15 - (-4) - 1 = 18
 			},
-			expectedCalls: []HlineCall{
+			expectedCalls: []HlineCall[string]{
 				{X: 5, Y: 5, X2: 7, Color: "red", Cover: basics.CoverFull},
 				{X: 15, Y: 5, X2: 18, Color: "red", Cover: basics.CoverFull},
 			},
@@ -294,7 +231,7 @@ func TestRenderScanlineBinSolid(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			renderer := &MockBaseRenderer{}
+			renderer := &MockBaseRenderer[string]{}
 			scanline := &MockScanline{
 				y:        5,
 				numSpans: len(tt.spans),
@@ -322,7 +259,7 @@ func TestRenderScanlineBinSolid(t *testing.T) {
 }
 
 func TestRenderScanlinesBinSolid(t *testing.T) {
-	renderer := &MockBaseRenderer{}
+	renderer := &MockBaseRenderer[string]{}
 	color := "blue"
 
 	// Create test scanlines with negative lengths to verify the fix
@@ -342,9 +279,11 @@ func TestRenderScanlinesBinSolid(t *testing.T) {
 		},
 	}
 
-	rasterizer := &MockRasterizer{
-		minX:      0,
-		maxX:      30,
+	rasterizer := &MockRasterizerWithScanlines{
+		MockRasterizer: MockRasterizer{
+			minX: 0,
+			maxX: 30,
+		},
 		scanlines: []*MockScanline{scanline1, scanline2},
 	}
 
@@ -358,14 +297,14 @@ func TestRenderScanlinesBinSolid(t *testing.T) {
 
 	// Check first scanline (negative length)
 	call1 := renderer.hlineCalls[0]
-	expected1 := HlineCall{X: 10, Y: 0, X2: 14, Color: color, Cover: basics.CoverFull}
+	expected1 := HlineCall[string]{X: 10, Y: 0, X2: 14, Color: color, Cover: basics.CoverFull}
 	if call1 != expected1 {
 		t.Errorf("First hline call: expected %+v, got %+v", expected1, call1)
 	}
 
 	// Check second scanline (positive length)
 	call2 := renderer.hlineCalls[1]
-	expected2 := HlineCall{X: 20, Y: 1, X2: 22, Color: color, Cover: basics.CoverFull}
+	expected2 := HlineCall[string]{X: 20, Y: 1, X2: 22, Color: color, Cover: basics.CoverFull}
 	if call2 != expected2 {
 		t.Errorf("Second hline call: expected %+v, got %+v", expected2, call2)
 	}

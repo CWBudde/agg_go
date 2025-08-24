@@ -11,26 +11,26 @@ import (
 // RendererMarkers provides marker drawing operations on top of a base renderer.
 // This is a port of AGG's renderer_markers<BaseRenderer> template class.
 // It embeds RendererPrimitives to inherit all primitive drawing capabilities.
-type RendererMarkers[BR primitives_pkg.BaseRenderer, CT interface{}] struct {
-	*primitives_pkg.RendererPrimitives[BR, CT]
+type RendererMarkers[BR primitives_pkg.BaseRenderer[C], C any] struct {
+	*primitives_pkg.RendererPrimitives[BR, C]
 }
 
 // NewRendererMarkers creates a new marker renderer with the given base renderer.
-func NewRendererMarkers[BR primitives_pkg.BaseRenderer, CT interface{}](ren BR) *RendererMarkers[BR, CT] {
-	return &RendererMarkers[BR, CT]{
-		RendererPrimitives: primitives_pkg.NewRendererPrimitives[BR, CT](ren),
+func NewRendererMarkers[BR primitives_pkg.BaseRenderer[C], C any](ren BR) *RendererMarkers[BR, C] {
+	return &RendererMarkers[BR, C]{
+		RendererPrimitives: primitives_pkg.NewRendererPrimitives[BR, C](ren),
 	}
 }
 
 // Visible tests if a marker with the given center and radius would be visible
 // within the renderer's bounding clipping box.
-func (rm *RendererMarkers[BR, CT]) Visible(x, y, r int) bool {
+func (rm *RendererMarkers[BR, C]) Visible(x, y, r int) bool {
 	rc := basics.RectI{X1: x - r, Y1: y - r, X2: x + r, Y2: y + r}
 	return rc.Clip(rm.Ren().BoundingClipBox())
 }
 
 // Square draws a solid square marker centered at (x, y) with radius r.
-func (rm *RendererMarkers[BR, CT]) Square(x, y, r int) {
+func (rm *RendererMarkers[BR, C]) Square(x, y, r int) {
 	if rm.Visible(x, y, r) {
 		if r > 0 {
 			rm.OutlinedRectangle(x-r, y-r, x+r, y+r)
@@ -41,7 +41,7 @@ func (rm *RendererMarkers[BR, CT]) Square(x, y, r int) {
 }
 
 // Diamond draws a solid diamond marker centered at (x, y) with radius r.
-func (rm *RendererMarkers[BR, CT]) Diamond(x, y, r int) {
+func (rm *RendererMarkers[BR, C]) Diamond(x, y, r int) {
 	if rm.Visible(x, y, r) {
 		if r > 0 {
 			dy := -r
@@ -66,7 +66,7 @@ func (rm *RendererMarkers[BR, CT]) Diamond(x, y, r int) {
 }
 
 // Circle draws a solid circle marker centered at (x, y) with radius r.
-func (rm *RendererMarkers[BR, CT]) Circle(x, y, r int) {
+func (rm *RendererMarkers[BR, C]) Circle(x, y, r int) {
 	if rm.Visible(x, y, r) {
 		if r > 0 {
 			rm.OutlinedEllipse(x, y, r, r)
@@ -77,7 +77,7 @@ func (rm *RendererMarkers[BR, CT]) Circle(x, y, r int) {
 }
 
 // CrossedCircle draws a circle with cross lines extending beyond the circle.
-func (rm *RendererMarkers[BR, CT]) CrossedCircle(x, y, r int) {
+func (rm *RendererMarkers[BR, C]) CrossedCircle(x, y, r int) {
 	if rm.Visible(x, y, r) {
 		if r > 0 {
 			rm.OutlinedEllipse(x, y, r, r)
@@ -97,7 +97,7 @@ func (rm *RendererMarkers[BR, CT]) CrossedCircle(x, y, r int) {
 }
 
 // SemiEllipseLeft draws a left-facing semi-ellipse marker.
-func (rm *RendererMarkers[BR, CT]) SemiEllipseLeft(x, y, r int) {
+func (rm *RendererMarkers[BR, C]) SemiEllipseLeft(x, y, r int) {
 	if rm.Visible(x, y, r) {
 		if r > 0 {
 			r8 := r * 4 / 5
@@ -124,7 +124,7 @@ func (rm *RendererMarkers[BR, CT]) SemiEllipseLeft(x, y, r int) {
 }
 
 // SemiEllipseRight draws a right-facing semi-ellipse marker.
-func (rm *RendererMarkers[BR, CT]) SemiEllipseRight(x, y, r int) {
+func (rm *RendererMarkers[BR, C]) SemiEllipseRight(x, y, r int) {
 	if rm.Visible(x, y, r) {
 		if r > 0 {
 			r8 := r * 4 / 5
@@ -151,7 +151,7 @@ func (rm *RendererMarkers[BR, CT]) SemiEllipseRight(x, y, r int) {
 }
 
 // SemiEllipseUp draws an upward-facing semi-ellipse marker.
-func (rm *RendererMarkers[BR, CT]) SemiEllipseUp(x, y, r int) {
+func (rm *RendererMarkers[BR, C]) SemiEllipseUp(x, y, r int) {
 	if rm.Visible(x, y, r) {
 		if r > 0 {
 			r8 := r * 4 / 5
@@ -178,7 +178,7 @@ func (rm *RendererMarkers[BR, CT]) SemiEllipseUp(x, y, r int) {
 }
 
 // SemiEllipseDown draws a downward-facing semi-ellipse marker.
-func (rm *RendererMarkers[BR, CT]) SemiEllipseDown(x, y, r int) {
+func (rm *RendererMarkers[BR, C]) SemiEllipseDown(x, y, r int) {
 	if rm.Visible(x, y, r) {
 		if r > 0 {
 			r8 := r * 4 / 5
@@ -205,7 +205,7 @@ func (rm *RendererMarkers[BR, CT]) SemiEllipseDown(x, y, r int) {
 }
 
 // TriangleLeft draws a left-pointing triangle marker.
-func (rm *RendererMarkers[BR, CT]) TriangleLeft(x, y, r int) {
+func (rm *RendererMarkers[BR, C]) TriangleLeft(x, y, r int) {
 	if rm.Visible(x, y, r) {
 		if r > 0 {
 			dy := -r
@@ -231,7 +231,7 @@ func (rm *RendererMarkers[BR, CT]) TriangleLeft(x, y, r int) {
 }
 
 // TriangleRight draws a right-pointing triangle marker.
-func (rm *RendererMarkers[BR, CT]) TriangleRight(x, y, r int) {
+func (rm *RendererMarkers[BR, C]) TriangleRight(x, y, r int) {
 	if rm.Visible(x, y, r) {
 		if r > 0 {
 			dy := -r
@@ -257,7 +257,7 @@ func (rm *RendererMarkers[BR, CT]) TriangleRight(x, y, r int) {
 }
 
 // TriangleUp draws an upward-pointing triangle marker.
-func (rm *RendererMarkers[BR, CT]) TriangleUp(x, y, r int) {
+func (rm *RendererMarkers[BR, C]) TriangleUp(x, y, r int) {
 	if rm.Visible(x, y, r) {
 		if r > 0 {
 			dy := -r
@@ -283,7 +283,7 @@ func (rm *RendererMarkers[BR, CT]) TriangleUp(x, y, r int) {
 }
 
 // TriangleDown draws a downward-pointing triangle marker.
-func (rm *RendererMarkers[BR, CT]) TriangleDown(x, y, r int) {
+func (rm *RendererMarkers[BR, C]) TriangleDown(x, y, r int) {
 	if rm.Visible(x, y, r) {
 		if r > 0 {
 			dy := -r
@@ -309,7 +309,7 @@ func (rm *RendererMarkers[BR, CT]) TriangleDown(x, y, r int) {
 }
 
 // FourRays draws a four-ray (plus sign) marker with filled center.
-func (rm *RendererMarkers[BR, CT]) FourRays(x, y, r int) {
+func (rm *RendererMarkers[BR, C]) FourRays(x, y, r int) {
 	if rm.Visible(x, y, r) {
 		if r > 0 {
 			dy := -r
@@ -344,7 +344,7 @@ func (rm *RendererMarkers[BR, CT]) FourRays(x, y, r int) {
 }
 
 // Cross draws a simple cross (plus sign) marker.
-func (rm *RendererMarkers[BR, CT]) Cross(x, y, r int) {
+func (rm *RendererMarkers[BR, C]) Cross(x, y, r int) {
 	if rm.Visible(x, y, r) {
 		if r > 0 {
 			rm.Ren().BlendVline(x, y-r, y+r, rm.GetLineColor(), basics.CoverFull)
@@ -356,7 +356,7 @@ func (rm *RendererMarkers[BR, CT]) Cross(x, y, r int) {
 }
 
 // X draws an X-shaped marker.
-func (rm *RendererMarkers[BR, CT]) X(x, y, r int) {
+func (rm *RendererMarkers[BR, C]) X(x, y, r int) {
 	if rm.Visible(x, y, r) {
 		if r > 0 {
 			dy := -r * 7 / 10
@@ -373,7 +373,7 @@ func (rm *RendererMarkers[BR, CT]) X(x, y, r int) {
 }
 
 // Dash draws a horizontal dash marker.
-func (rm *RendererMarkers[BR, CT]) Dash(x, y, r int) {
+func (rm *RendererMarkers[BR, C]) Dash(x, y, r int) {
 	if rm.Visible(x, y, r) {
 		if r > 0 {
 			rm.Ren().BlendHline(x-r, y, x+r, rm.GetLineColor(), basics.CoverFull)
@@ -384,7 +384,7 @@ func (rm *RendererMarkers[BR, CT]) Dash(x, y, r int) {
 }
 
 // Dot draws a filled dot (solid ellipse) marker.
-func (rm *RendererMarkers[BR, CT]) Dot(x, y, r int) {
+func (rm *RendererMarkers[BR, C]) Dot(x, y, r int) {
 	if rm.Visible(x, y, r) {
 		if r > 0 {
 			rm.SolidEllipse(x, y, r, r)
@@ -395,12 +395,12 @@ func (rm *RendererMarkers[BR, CT]) Dot(x, y, r int) {
 }
 
 // Pixel draws a single pixel marker.
-func (rm *RendererMarkers[BR, CT]) Pixel(x, y, _ int) {
+func (rm *RendererMarkers[BR, C]) Pixel(x, y, _ int) {
 	rm.Ren().BlendPixel(x, y, rm.GetFillColor(), basics.CoverFull)
 }
 
 // Marker draws a single marker of the specified type at (x, y) with radius r.
-func (rm *RendererMarkers[BR, CT]) Marker(x, y, r int, markerType MarkerType) {
+func (rm *RendererMarkers[BR, C]) Marker(x, y, r int, markerType MarkerType) {
 	switch markerType {
 	case MarkerSquare:
 		rm.Square(x, y, r)
@@ -443,7 +443,7 @@ func (rm *RendererMarkers[BR, CT]) Marker(x, y, r int, markerType MarkerType) {
 
 // Markers draws multiple markers of the same type with the same radius.
 // Takes slices of x coordinates, y coordinates, a common radius, and marker type.
-func (rm *RendererMarkers[BR, CT]) Markers(x, y []int, r int, markerType MarkerType) {
+func (rm *RendererMarkers[BR, C]) Markers(x, y []int, r int, markerType MarkerType) {
 	if len(x) != len(y) || len(x) == 0 {
 		return
 	}
@@ -462,7 +462,7 @@ func (rm *RendererMarkers[BR, CT]) Markers(x, y []int, r int, markerType MarkerT
 
 // MarkersVarRadius draws multiple markers of the same type with varying radii.
 // Takes slices of x coordinates, y coordinates, radii, and marker type.
-func (rm *RendererMarkers[BR, CT]) MarkersVarRadius(x, y, r []int, markerType MarkerType) {
+func (rm *RendererMarkers[BR, C]) MarkersVarRadius(x, y, r []int, markerType MarkerType) {
 	if len(x) != len(y) || len(x) != len(r) || len(x) == 0 {
 		return
 	}
@@ -474,7 +474,7 @@ func (rm *RendererMarkers[BR, CT]) MarkersVarRadius(x, y, r []int, markerType Ma
 
 // MarkersVarColor draws multiple markers with varying fill colors.
 // Takes slices of x coordinates, y coordinates, radii, fill colors, and marker type.
-func (rm *RendererMarkers[BR, CT]) MarkersVarColor(x, y, r []int, fillColors []CT, markerType MarkerType) {
+func (rm *RendererMarkers[BR, C]) MarkersVarColor(x, y, r []int, fillColors []C, markerType MarkerType) {
 	if len(x) != len(y) || len(x) != len(r) || len(x) != len(fillColors) || len(x) == 0 {
 		return
 	}
@@ -487,7 +487,7 @@ func (rm *RendererMarkers[BR, CT]) MarkersVarColor(x, y, r []int, fillColors []C
 
 // MarkersVarColorAndLine draws multiple markers with varying fill and line colors.
 // Takes slices of x coordinates, y coordinates, radii, fill colors, line colors, and marker type.
-func (rm *RendererMarkers[BR, CT]) MarkersVarColorAndLine(x, y, r []int, fillColors, lineColors []CT, markerType MarkerType) {
+func (rm *RendererMarkers[BR, C]) MarkersVarColorAndLine(x, y, r []int, fillColors, lineColors []C, markerType MarkerType) {
 	if len(x) != len(y) || len(x) != len(r) || len(x) != len(fillColors) || len(x) != len(lineColors) || len(x) == 0 {
 		return
 	}

@@ -14,36 +14,6 @@ type (
 	PixFmtRGBATag struct{}
 )
 
-// PixelFormat represents the interface that all pixel formats must implement
-type PixelFormat interface {
-	// Basic properties
-	Width() int
-	Height() int
-	PixWidth() int // Bytes per pixel
-
-	// Pixel operations
-	CopyPixel(x, y int, c interface{})
-	BlendPixel(x, y int, c interface{}, cover basics.Int8u)
-
-	// Line operations
-	CopyHline(x1, y, x2 int, c interface{})
-	BlendHline(x1, y, x2 int, c interface{}, cover basics.Int8u)
-	CopyVline(x, y1, y2 int, c interface{})
-	BlendVline(x, y1, y2 int, c interface{}, cover basics.Int8u)
-
-	// Rectangle operations
-	CopyBar(x1, y1, x2, y2 int, c interface{})
-	BlendBar(x1, y1, x2, y2 int, c interface{}, cover basics.Int8u)
-
-	// Span operations
-	BlendSolidHspan(x, y, length int, c interface{}, covers []basics.Int8u)
-	BlendSolidVspan(x, y, length int, c interface{}, covers []basics.Int8u)
-
-	// Clear operations
-	Clear(c interface{})
-	Fill(c interface{})
-}
-
 // BlenderBase provides the base interface for pixel blending operations
 type BlenderBase[C any, O any] interface {
 	BlendPix(dst []basics.Int8u, r, g, b, a, cover basics.Int8u)

@@ -49,8 +49,8 @@ func main() {
 }
 
 // createDemoRboxes creates various rbox configurations for demonstration
-func createDemoRboxes() []*rbox.RboxCtrl {
-	rboxes := make([]*rbox.RboxCtrl, 0, 4)
+func createDemoRboxes() []*rbox.RboxCtrl[color.RGBA] {
+	rboxes := make([]*rbox.RboxCtrl[color.RGBA], 0, 4)
 
 	// 1. Basic color selection radio button group
 	colorRbox := rbox.NewRboxCtrl(10, 10, 150, 120, false)

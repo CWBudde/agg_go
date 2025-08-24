@@ -35,10 +35,10 @@ func (mr *mockRasterizer) AddPath(vs VertexSourceInterface, pathID uint) {
 type mockScanline struct{}
 
 type mockRenderer struct {
-	colorCalls []interface{}
+	colorCalls []string
 }
 
-func (mr *mockRenderer) SetColor(color interface{}) {
+func (mr *mockRenderer) SetColor(color string) {
 	mr.colorCalls = append(mr.colorCalls, color)
 }
 
@@ -47,7 +47,7 @@ type mockControl struct {
 	rewindCalls []uint
 	vertexIndex int
 	vertices    [][3]float64 // x, y, cmd
-	colors      []interface{}
+	colors      []string
 }
 
 func newMockControl() *mockControl {
@@ -60,7 +60,7 @@ func newMockControl() *mockControl {
 			{0, 100, float64(basics.PathCmdLineTo)},
 			{0, 0, float64(basics.PathCmdStop)},
 		},
-		colors: []interface{}{"red", "blue"},
+		colors: []string{"red", "blue"},
 	}
 }
 
@@ -88,7 +88,7 @@ func (mc *mockControl) Vertex() (x, y float64, cmd basics.PathCommand) {
 	return v[0], v[1], basics.PathCommand(v[2])
 }
 
-func (mc *mockControl) Color(pathID uint) interface{} {
+func (mc *mockControl) Color(pathID uint) string {
 	if pathID < uint(len(mc.colors)) {
 		return mc.colors[pathID]
 	}
@@ -97,7 +97,7 @@ func (mc *mockControl) Color(pathID uint) interface{} {
 
 func TestCtrlVertexSourceAdapter(t *testing.T) {
 	ctrl := newMockControl()
-	adapter := &ctrlVertexSourceAdapter{ctrl: ctrl, pathID: 0}
+	adapter := &ctrlVertexSourceAdapter[string]{ctrl: ctrl, pathID: 0}
 
 	// Test Rewind
 	adapter.Rewind(0)
@@ -149,7 +149,7 @@ func TestRenderCtrlGeneric(t *testing.T) {
 		}
 		ras.resetCalled = false // Reset for next iteration
 
-		adapter := &ctrlVertexSourceAdapter{ctrl: ctrl, pathID: i}
+		adapter := &ctrlVertexSourceAdapter[string]{ctrl: ctrl, pathID: i}
 		ras.AddPath(adapter, i)
 
 		if len(ras.addPathCalls) != int(i+1) {
@@ -172,9 +172,9 @@ func TestSimpleRenderCtrl(t *testing.T) {
 	ctrl := newMockControl()
 
 	renderCalls := make(map[uint][]Vertex)
-	colorCalls := make(map[uint]interface{})
+	colorCalls := make(map[uint]string)
 
-	renderFunc := func(pathID uint, vertices []Vertex, color interface{}) {
+	renderFunc := func(pathID uint, vertices []Vertex, color string) {
 		renderCalls[pathID] = vertices
 		colorCalls[pathID] = color
 	}
@@ -213,12 +213,12 @@ func TestSimpleRenderCtrl(t *testing.T) {
 }
 
 func TestCreateTestRenderFunc(t *testing.T) {
-	renderFunc := CreateTestRenderFunc()
+	renderFunc := CreateTestRenderFunc[string]()
 
 	// Test that it doesn't panic with various inputs
 	renderFunc(0, []Vertex{{X: 10, Y: 20, Cmd: uint32(basics.PathCmdMoveTo)}}, "red")
-	renderFunc(1, []Vertex{}, nil)
-	renderFunc(999, nil, struct{}{})
+	renderFunc(1, []Vertex{}, "")
+	renderFunc(999, nil, "blue")
 
 	// If we get here without panicking, the test passes
 }
@@ -249,7 +249,7 @@ func TestRenderControlIntegration(t *testing.T) {
 	var totalVertices int
 	var totalPaths int
 
-	renderFunc := func(pathID uint, vertices []Vertex, color interface{}) {
+	renderFunc := func(pathID uint, vertices []Vertex, color string) {
 		totalPaths++
 		totalVertices += len(vertices)
 
@@ -261,9 +261,9 @@ func TestRenderControlIntegration(t *testing.T) {
 			}
 		}
 
-		// Verify color is not nil
-		if color == nil {
-			t.Errorf("Path %d has nil color", pathID)
+		// Verify color is not empty
+		if color == "" {
+			t.Errorf("Path %d has empty color", pathID)
 		}
 	}
 

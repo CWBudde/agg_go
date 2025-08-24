@@ -72,13 +72,14 @@ static long dbl_to_int26p6(double p) {
 import "C"
 
 import (
+	"errors"
+	"fmt"
+	"unsafe"
+
 	"agg_go/internal/basics"
 	"agg_go/internal/font"
 	"agg_go/internal/path"
 	"agg_go/internal/transform"
-	"errors"
-	"fmt"
-	"unsafe"
 )
 
 // CRC32 table for font signature generation (AUTODIN II polynomial)
@@ -271,8 +272,8 @@ func (fe *FontEngineFreetype) SetResolution(dpi uint) {
 
 // LoadFont loads a font from file or memory.
 func (fe *FontEngineFreetype) LoadFont(fontName string, faceIndex uint, renType GlyphRenderingType,
-	fontMem []byte) error {
-
+	fontMem []byte,
+) error {
 	var face C.FT_Face
 	var err C.FT_Error
 
@@ -536,12 +537,12 @@ func (fe *FontEngineFreetype) DataSize() uint {
 }
 
 // DataType returns the type of the current glyph data.
-func (fe *FontEngineFreetype) DataType() interface{} {
+func (fe *FontEngineFreetype) DataType() font.GlyphDataType {
 	return fe.dataType
 }
 
 // Bounds returns the bounding rectangle of the current glyph.
-func (fe *FontEngineFreetype) Bounds() interface{} {
+func (fe *FontEngineFreetype) Bounds() basics.Rect[int] {
 	return fe.bounds
 }
 

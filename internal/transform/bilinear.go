@@ -1,8 +1,10 @@
 package transform
 
 // Compile-time interface checks
-var _ Transformer = (*TransBilinear)(nil)
-var _ InverseTransformer = (*TransBilinear)(nil)
+var (
+	_ Transformer        = (*TransBilinear)(nil)
+	_ InverseTransformer = (*TransBilinear)(nil)
+)
 
 // TransBilinear represents a bilinear transformation for quadrilateral mapping
 type TransBilinear struct {

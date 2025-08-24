@@ -8,8 +8,10 @@ import (
 )
 
 // Compile-time interface checks
-var _ Transformer = (*TransViewport)(nil)
-var _ InverseTransformer = (*TransViewport)(nil)
+var (
+	_ Transformer        = (*TransViewport)(nil)
+	_ InverseTransformer = (*TransViewport)(nil)
+)
 
 // AspectRatio defines how aspect ratio is preserved during viewport transformations.
 type AspectRatio int

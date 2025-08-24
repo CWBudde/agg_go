@@ -8,11 +8,11 @@ import (
 )
 
 // BaseRendererInterface defines the interface for base renderers.
-type BaseRendererInterface interface {
+type BaseRendererInterface[C any] interface {
 	Width() int
 	Height() int
-	BlendSolidHSpan(x, y, length int, color interface{}, covers []basics.CoverType)
-	BlendSolidVSpan(x, y, length int, color interface{}, covers []basics.CoverType)
+	BlendSolidHSpan(x, y, length int, color C, covers []basics.CoverType)
+	BlendSolidVSpan(x, y, length int, color C, covers []basics.CoverType)
 }
 
 // ColorTypeInterface defines the interface for color types.
@@ -22,19 +22,19 @@ type ColorTypeInterface interface {
 
 // RendererOutlineAA provides anti-aliased outline rendering.
 // This is equivalent to AGG's renderer_outline_aa template class.
-type RendererOutlineAA[BaseRenderer BaseRendererInterface, ColorType ColorTypeInterface] struct {
+type RendererOutlineAA[BaseRenderer BaseRendererInterface[C], C any] struct {
 	ren      BaseRenderer   // Base renderer
 	profile  *LineProfileAA // Line profile
-	color    ColorType      // Current color
+	color    C              // Current color
 	clipBox  basics.RectI   // Clipping box
 	clipping bool           // Clipping enabled
 }
 
 // NewRendererOutlineAA creates a new anti-aliased outline renderer.
-func NewRendererOutlineAA[BaseRenderer BaseRendererInterface, ColorType ColorTypeInterface](
+func NewRendererOutlineAA[BaseRenderer BaseRendererInterface[C], C any](
 	ren BaseRenderer, prof *LineProfileAA,
-) *RendererOutlineAA[BaseRenderer, ColorType] {
-	return &RendererOutlineAA[BaseRenderer, ColorType]{
+) *RendererOutlineAA[BaseRenderer, C] {
+	return &RendererOutlineAA[BaseRenderer, C]{
 		ren:      ren,
 		profile:  prof,
 		clipBox:  basics.RectI{X1: 0, Y1: 0, X2: 0, Y2: 0},
@@ -43,42 +43,42 @@ func NewRendererOutlineAA[BaseRenderer BaseRendererInterface, ColorType ColorTyp
 }
 
 // Attach attaches a base renderer.
-func (r *RendererOutlineAA[BaseRenderer, ColorType]) Attach(ren BaseRenderer) {
+func (r *RendererOutlineAA[BaseRenderer, C]) Attach(ren BaseRenderer) {
 	r.ren = ren
 }
 
 // Color sets the drawing color.
-func (r *RendererOutlineAA[BaseRenderer, ColorType]) Color(c ColorType) {
+func (r *RendererOutlineAA[BaseRenderer, C]) Color(c C) {
 	r.color = c
 }
 
 // GetColor returns the current drawing color.
-func (r *RendererOutlineAA[BaseRenderer, ColorType]) GetColor() ColorType {
+func (r *RendererOutlineAA[BaseRenderer, C]) GetColor() C {
 	return r.color
 }
 
 // Profile sets the line profile.
-func (r *RendererOutlineAA[BaseRenderer, ColorType]) Profile(prof *LineProfileAA) {
+func (r *RendererOutlineAA[BaseRenderer, C]) Profile(prof *LineProfileAA) {
 	r.profile = prof
 }
 
 // GetProfile returns the current line profile.
-func (r *RendererOutlineAA[BaseRenderer, ColorType]) GetProfile() *LineProfileAA {
+func (r *RendererOutlineAA[BaseRenderer, C]) GetProfile() *LineProfileAA {
 	return r.profile
 }
 
 // SubpixelWidth returns the subpixel width.
-func (r *RendererOutlineAA[BaseRenderer, ColorType]) SubpixelWidth() int {
+func (r *RendererOutlineAA[BaseRenderer, C]) SubpixelWidth() int {
 	return r.profile.SubpixelWidth()
 }
 
 // ResetClipping disables clipping.
-func (r *RendererOutlineAA[BaseRenderer, ColorType]) ResetClipping() {
+func (r *RendererOutlineAA[BaseRenderer, C]) ResetClipping() {
 	r.clipping = false
 }
 
 // ClipBox sets the clipping box.
-func (r *RendererOutlineAA[BaseRenderer, ColorType]) ClipBox(x1, y1, x2, y2 float64) {
+func (r *RendererOutlineAA[BaseRenderer, C]) ClipBox(x1, y1, x2, y2 float64) {
 	r.clipBox.X1 = int(x1*primitives.LineSubpixelScale + 0.5)
 	r.clipBox.Y1 = int(y1*primitives.LineSubpixelScale + 0.5)
 	r.clipBox.X2 = int(x2*primitives.LineSubpixelScale + 0.5)
@@ -87,27 +87,27 @@ func (r *RendererOutlineAA[BaseRenderer, ColorType]) ClipBox(x1, y1, x2, y2 floa
 }
 
 // Cover returns coverage value for the given distance.
-func (r *RendererOutlineAA[BaseRenderer, ColorType]) Cover(d int) int {
+func (r *RendererOutlineAA[BaseRenderer, C]) Cover(d int) int {
 	return int(r.profile.Value(d))
 }
 
 // BlendSolidHSpan renders a horizontal span.
-func (r *RendererOutlineAA[BaseRenderer, ColorType]) BlendSolidHSpan(x, y, length int, covers []basics.CoverType) {
+func (r *RendererOutlineAA[BaseRenderer, C]) BlendSolidHSpan(x, y, length int, covers []basics.CoverType) {
 	r.ren.BlendSolidHSpan(x, y, length, r.color, covers)
 }
 
 // BlendSolidVSpan renders a vertical span.
-func (r *RendererOutlineAA[BaseRenderer, ColorType]) BlendSolidVSpan(x, y, length int, covers []basics.CoverType) {
+func (r *RendererOutlineAA[BaseRenderer, C]) BlendSolidVSpan(x, y, length int, covers []basics.CoverType) {
 	r.ren.BlendSolidVSpan(x, y, length, r.color, covers)
 }
 
 // AccurateJoinOnly returns false (not needed for this implementation).
-func (r *RendererOutlineAA[BaseRenderer, ColorType]) AccurateJoinOnly() bool {
+func (r *RendererOutlineAA[BaseRenderer, C]) AccurateJoinOnly() bool {
 	return false
 }
 
 // SemidotHline renders a horizontal line segment for semidot operations.
-func (r *RendererOutlineAA[BaseRenderer, ColorType]) SemidotHline(
+func (r *RendererOutlineAA[BaseRenderer, C]) SemidotHline(
 	cmp func(int) bool, xc1, yc1, xc2, yc2, x1, y1, x2 int,
 ) {
 	covers := make([]basics.CoverType, MaxHalfWidth*2+4)
@@ -139,7 +139,7 @@ func (r *RendererOutlineAA[BaseRenderer, ColorType]) SemidotHline(
 }
 
 // Semidot renders a semidot (half circle) shape.
-func (r *RendererOutlineAA[BaseRenderer, ColorType]) Semidot(
+func (r *RendererOutlineAA[BaseRenderer, C]) Semidot(
 	cmp func(int) bool, xc1, yc1, xc2, yc2 int,
 ) {
 	if r.clipping && basics.ClippingFlags(xc1, yc1, r.clipBox) != 0 {
@@ -176,7 +176,7 @@ func (r *RendererOutlineAA[BaseRenderer, ColorType]) Semidot(
 }
 
 // PieHline renders a horizontal line segment for pie operations.
-func (r *RendererOutlineAA[BaseRenderer, ColorType]) PieHline(
+func (r *RendererOutlineAA[BaseRenderer, C]) PieHline(
 	xc, yc, xp1, yp1, xp2, yp2, xh1, yh1, xh2 int,
 ) {
 	if r.clipping && basics.ClippingFlags(xc, yc, r.clipBox) != 0 {
@@ -213,7 +213,7 @@ func (r *RendererOutlineAA[BaseRenderer, ColorType]) PieHline(
 }
 
 // Pie renders a pie segment.
-func (r *RendererOutlineAA[BaseRenderer, ColorType]) Pie(xc, yc, x1, y1, x2, y2 int) {
+func (r *RendererOutlineAA[BaseRenderer, C]) Pie(xc, yc, x1, y1, x2, y2 int) {
 	radius := ((r.SubpixelWidth() + primitives.LineSubpixelMask) >> primitives.LineSubpixelShift)
 	if radius < 1 {
 		radius = 1
@@ -243,7 +243,7 @@ func (r *RendererOutlineAA[BaseRenderer, ColorType]) Pie(xc, yc, x1, y1, x2, y2 
 }
 
 // Line0NoClip renders a line without clipping (basic line).
-func (r *RendererOutlineAA[BaseRenderer, ColorType]) Line0NoClip(lp *primitives.LineParameters) {
+func (r *RendererOutlineAA[BaseRenderer, C]) Line0NoClip(lp *primitives.LineParameters) {
 	if lp.Len > primitives.LineMaxLength {
 		lp1, lp2 := lp.Divide()
 		r.Line0NoClip(&lp1)
@@ -264,7 +264,7 @@ func (r *RendererOutlineAA[BaseRenderer, ColorType]) Line0NoClip(lp *primitives.
 }
 
 // Line0 renders a basic line with clipping.
-func (r *RendererOutlineAA[BaseRenderer, ColorType]) Line0(lp *primitives.LineParameters) {
+func (r *RendererOutlineAA[BaseRenderer, C]) Line0(lp *primitives.LineParameters) {
 	if r.clipping {
 		x1 := lp.X1
 		y1 := lp.Y1
@@ -286,7 +286,7 @@ func (r *RendererOutlineAA[BaseRenderer, ColorType]) Line0(lp *primitives.LinePa
 }
 
 // Line1NoClip renders a line with start cap, without clipping.
-func (r *RendererOutlineAA[BaseRenderer, ColorType]) Line1NoClip(lp *primitives.LineParameters, sx, sy int) {
+func (r *RendererOutlineAA[BaseRenderer, C]) Line1NoClip(lp *primitives.LineParameters, sx, sy int) {
 	if lp.Len > primitives.LineMaxLength {
 		lp1, lp2 := lp.Divide()
 		r.Line1NoClip(&lp1, (lp.X1+sx)>>1, (lp.Y1+sy)>>1)
@@ -306,7 +306,7 @@ func (r *RendererOutlineAA[BaseRenderer, ColorType]) Line1NoClip(lp *primitives.
 }
 
 // Line1 renders a line with start cap and clipping.
-func (r *RendererOutlineAA[BaseRenderer, ColorType]) Line1(lp *primitives.LineParameters, sx, sy int) {
+func (r *RendererOutlineAA[BaseRenderer, C]) Line1(lp *primitives.LineParameters, sx, sy int) {
 	if r.clipping {
 		x1 := lp.X1
 		y1 := lp.Y1
@@ -337,7 +337,7 @@ func (r *RendererOutlineAA[BaseRenderer, ColorType]) Line1(lp *primitives.LinePa
 }
 
 // Line2NoClip renders a line with end cap, without clipping.
-func (r *RendererOutlineAA[BaseRenderer, ColorType]) Line2NoClip(lp *primitives.LineParameters, ex, ey int) {
+func (r *RendererOutlineAA[BaseRenderer, C]) Line2NoClip(lp *primitives.LineParameters, ex, ey int) {
 	if lp.Len > primitives.LineMaxLength {
 		lp1, lp2 := lp.Divide()
 		r.Line2NoClip(&lp1, lp1.X2+(lp1.Y2-lp1.Y1), lp1.Y2-(lp1.X2-lp1.X1))
@@ -357,7 +357,7 @@ func (r *RendererOutlineAA[BaseRenderer, ColorType]) Line2NoClip(lp *primitives.
 }
 
 // Line2 renders a line with end cap and clipping.
-func (r *RendererOutlineAA[BaseRenderer, ColorType]) Line2(lp *primitives.LineParameters, ex, ey int) {
+func (r *RendererOutlineAA[BaseRenderer, C]) Line2(lp *primitives.LineParameters, ex, ey int) {
 	if r.clipping {
 		x1 := lp.X1
 		y1 := lp.Y1
@@ -388,7 +388,7 @@ func (r *RendererOutlineAA[BaseRenderer, ColorType]) Line2(lp *primitives.LinePa
 }
 
 // Line3NoClip renders a line with both start and end caps, without clipping.
-func (r *RendererOutlineAA[BaseRenderer, ColorType]) Line3NoClip(lp *primitives.LineParameters, sx, sy, ex, ey int) {
+func (r *RendererOutlineAA[BaseRenderer, C]) Line3NoClip(lp *primitives.LineParameters, sx, sy, ex, ey int) {
 	if lp.Len > primitives.LineMaxLength {
 		lp1, lp2 := lp.Divide()
 		mx := lp1.X2 + (lp1.Y2 - lp1.Y1)
@@ -411,7 +411,7 @@ func (r *RendererOutlineAA[BaseRenderer, ColorType]) Line3NoClip(lp *primitives.
 }
 
 // Line3 renders a line with both start and end caps and clipping.
-func (r *RendererOutlineAA[BaseRenderer, ColorType]) Line3(lp *primitives.LineParameters, sx, sy, ex, ey int) {
+func (r *RendererOutlineAA[BaseRenderer, C]) Line3(lp *primitives.LineParameters, sx, sy, ex, ey int) {
 	if r.clipping {
 		x1 := lp.X1
 		y1 := lp.Y1

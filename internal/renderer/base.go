@@ -1,5 +1,3 @@
-//go:build typed_renderer
-
 // Package renderer provides high-level rendering functionality for AGG.
 // This file introduces a typed variant of the base renderer that is generic
 // over the concrete color type C, avoiding interface{} for colors.
@@ -9,9 +7,9 @@ import (
 	"agg_go/internal/basics"
 )
 
-// PixelFormatT defines the required methods for a pixel format that can be
-// used with RendererBaseT, parameterized by a concrete color type C.
-type PixelFormatT[C any] interface {
+// PixelFormat defines the required methods for a pixel format that can be
+// used with RendererBase, parameterized by a concrete color type C.
+type PixelFormat[C any] interface {
 	// Basic properties
 	Width() int
 	Height() int
@@ -28,6 +26,10 @@ type PixelFormatT[C any] interface {
 	CopyVline(x, y, length int, c C)
 	BlendVline(x, y, length int, c C, cover basics.Int8u)
 
+	// Rectangle operations
+	CopyBar(x1, y1, x2, y2 int, c C)
+	BlendBar(x1, y1, x2, y2 int, c C, cover basics.Int8u)
+
 	// Span operations for anti-aliasing
 	BlendSolidHspan(x, y, length int, c C, covers []basics.Int8u)
 	BlendSolidVspan(x, y, length int, c C, covers []basics.Int8u)
@@ -37,51 +39,55 @@ type PixelFormatT[C any] interface {
 	BlendColorHspan(x, y, length int, colors []C, covers []basics.Int8u, cover basics.Int8u)
 	CopyColorVspan(x, y, length int, colors []C)
 	BlendColorVspan(x, y, length int, colors []C, covers []basics.Int8u, cover basics.Int8u)
+
+	// Clear operations
+	Clear(c C)
+	Fill(c C)
 }
 
-// RendererBaseT provides the typed base renderer functionality.
+// RendererBase provides the typed base renderer functionality.
 // It mirrors RendererBase but uses a concrete color type C instead of interface{}.
-type RendererBaseT[PF PixelFormatT[C], C any] struct {
+type RendererBase[PF PixelFormat[C], C any] struct {
 	pixfmt  PF           // The pixel format
 	clipBox basics.RectI // Current clipping rectangle
 }
 
-// NewRendererBaseT creates a new typed renderer with default (empty) clipping.
-func NewRendererBaseT[PF PixelFormatT[C], C any]() *RendererBaseT[PF, C] {
-	return &RendererBaseT[PF, C]{
+// NewRendererBase creates a new typed renderer with default (empty) clipping.
+func NewRendererBase[PF PixelFormat[C], C any]() *RendererBase[PF, C] {
+	return &RendererBase[PF, C]{
 		clipBox: basics.RectI{X1: 1, Y1: 1, X2: 0, Y2: 0}, // Invalid box (empty)
 	}
 }
 
-// NewRendererBaseTWithPixfmt creates a new typed renderer with the given pixel format.
-func NewRendererBaseTWithPixfmt[PF PixelFormatT[C], C any](pixfmt PF) *RendererBaseT[PF, C] {
-	return &RendererBaseT[PF, C]{
+// NewRendererBaseWithPixfmt creates a new typed renderer with the given pixel format.
+func NewRendererBaseWithPixfmt[PF PixelFormat[C], C any](pixfmt PF) *RendererBase[PF, C] {
+	return &RendererBase[PF, C]{
 		pixfmt:  pixfmt,
 		clipBox: basics.RectI{X1: 0, Y1: 0, X2: pixfmt.Width() - 1, Y2: pixfmt.Height() - 1},
 	}
 }
 
 // Attach attaches a pixel format to the typed renderer.
-func (r *RendererBaseT[PF, C]) Attach(pixfmt PF) {
+func (r *RendererBase[PF, C]) Attach(pixfmt PF) {
 	r.pixfmt = pixfmt
 	r.clipBox = basics.RectI{X1: 0, Y1: 0, X2: pixfmt.Width() - 1, Y2: pixfmt.Height() - 1}
 }
 
 // Ren returns a reference to the pixel format (const version)
-func (r *RendererBaseT[PF, C]) Ren() PF { return r.pixfmt }
+func (r *RendererBase[PF, C]) Ren() PF { return r.pixfmt }
 
 // RenMut returns a mutable reference to the pixel format
-func (r *RendererBaseT[PF, C]) RenMut() *PF { return &r.pixfmt }
+func (r *RendererBase[PF, C]) RenMut() *PF { return &r.pixfmt }
 
 // Width returns the width of the rendering buffer
-func (r *RendererBaseT[PF, C]) Width() int { return r.pixfmt.Width() }
+func (r *RendererBase[PF, C]) Width() int { return r.pixfmt.Width() }
 
 // Height returns the height of the rendering buffer
-func (r *RendererBaseT[PF, C]) Height() int { return r.pixfmt.Height() }
+func (r *RendererBase[PF, C]) Height() int { return r.pixfmt.Height() }
 
 // ClipBox sets the clipping box with bounds checking
 // Returns true if the clipping box intersects with the buffer bounds
-func (r *RendererBaseT[PF, C]) ClipBox(x1, y1, x2, y2 int) bool {
+func (r *RendererBase[PF, C]) ClipBox(x1, y1, x2, y2 int) bool {
 	if x1 > x2 {
 		x1, x2 = x2, x1
 	}
@@ -100,7 +106,7 @@ func (r *RendererBaseT[PF, C]) ClipBox(x1, y1, x2, y2 int) bool {
 }
 
 // ResetClipping resets the clipping to the entire buffer or makes it empty
-func (r *RendererBaseT[PF, C]) ResetClipping(visibility bool) {
+func (r *RendererBase[PF, C]) ResetClipping(visibility bool) {
 	if visibility {
 		r.clipBox = basics.RectI{X1: 0, Y1: 0, X2: r.Width() - 1, Y2: r.Height() - 1}
 	} else {
@@ -109,47 +115,47 @@ func (r *RendererBaseT[PF, C]) ResetClipping(visibility bool) {
 }
 
 // ClipBoxNaked sets the clipping box without bounds checking
-func (r *RendererBaseT[PF, C]) ClipBoxNaked(x1, y1, x2, y2 int) {
+func (r *RendererBase[PF, C]) ClipBoxNaked(x1, y1, x2, y2 int) {
 	r.clipBox = basics.RectI{X1: x1, Y1: y1, X2: x2, Y2: y2}
 }
 
 // InBox tests if a point is inside the clipping box
-func (r *RendererBaseT[PF, C]) InBox(x, y int) bool {
+func (r *RendererBase[PF, C]) InBox(x, y int) bool {
 	return x >= r.clipBox.X1 && y >= r.clipBox.Y1 && x <= r.clipBox.X2 && y <= r.clipBox.Y2
 }
 
 // ClipBoxRect returns the current clipping box
-func (r *RendererBaseT[PF, C]) ClipBoxRect() basics.RectI { return r.clipBox }
+func (r *RendererBase[PF, C]) ClipBoxRect() basics.RectI { return r.clipBox }
 
 // Xmin returns the minimum x coordinate of the clipping box
-func (r *RendererBaseT[PF, C]) Xmin() int { return r.clipBox.X1 }
+func (r *RendererBase[PF, C]) Xmin() int { return r.clipBox.X1 }
 
 // Ymin returns the minimum y coordinate of the clipping box
-func (r *RendererBaseT[PF, C]) Ymin() int { return r.clipBox.Y1 }
+func (r *RendererBase[PF, C]) Ymin() int { return r.clipBox.Y1 }
 
 // Xmax returns the maximum x coordinate of the clipping box
-func (r *RendererBaseT[PF, C]) Xmax() int { return r.clipBox.X2 }
+func (r *RendererBase[PF, C]) Xmax() int { return r.clipBox.X2 }
 
 // Ymax returns the maximum y coordinate of the clipping box
-func (r *RendererBaseT[PF, C]) Ymax() int { return r.clipBox.Y2 }
+func (r *RendererBase[PF, C]) Ymax() int { return r.clipBox.Y2 }
 
 // BoundingClipBox returns the bounding clipping box (same as ClipBoxRect)
-func (r *RendererBaseT[PF, C]) BoundingClipBox() basics.RectI { return r.clipBox }
+func (r *RendererBase[PF, C]) BoundingClipBox() basics.RectI { return r.clipBox }
 
 // BoundingXmin returns the bounding minimum x coordinate
-func (r *RendererBaseT[PF, C]) BoundingXmin() int { return r.clipBox.X1 }
+func (r *RendererBase[PF, C]) BoundingXmin() int { return r.clipBox.X1 }
 
 // BoundingYmin returns the bounding minimum y coordinate
-func (r *RendererBaseT[PF, C]) BoundingYmin() int { return r.clipBox.Y1 }
+func (r *RendererBase[PF, C]) BoundingYmin() int { return r.clipBox.Y1 }
 
 // BoundingXmax returns the bounding maximum x coordinate
-func (r *RendererBaseT[PF, C]) BoundingXmax() int { return r.clipBox.X2 }
+func (r *RendererBase[PF, C]) BoundingXmax() int { return r.clipBox.X2 }
 
 // BoundingYmax returns the bounding maximum y coordinate
-func (r *RendererBaseT[PF, C]) BoundingYmax() int { return r.clipBox.Y2 }
+func (r *RendererBase[PF, C]) BoundingYmax() int { return r.clipBox.Y2 }
 
 // Clear clears the entire buffer with the given color (no blending)
-func (r *RendererBaseT[PF, C]) Clear(c C) {
+func (r *RendererBase[PF, C]) Clear(c C) {
 	if r.Width() > 0 {
 		for y := 0; y < r.Height(); y++ {
 			r.pixfmt.CopyHline(0, y, r.Width(), c)
@@ -158,7 +164,7 @@ func (r *RendererBaseT[PF, C]) Clear(c C) {
 }
 
 // Fill fills the entire buffer with the given color using blending
-func (r *RendererBaseT[PF, C]) Fill(c C) {
+func (r *RendererBase[PF, C]) Fill(c C) {
 	if r.Width() > 0 {
 		for y := 0; y < r.Height(); y++ {
 			r.pixfmt.BlendHline(0, y, r.Width(), c, basics.CoverFull)
@@ -167,14 +173,14 @@ func (r *RendererBaseT[PF, C]) Fill(c C) {
 }
 
 // CopyPixel copies a pixel at the given coordinates (respects clipping)
-func (r *RendererBaseT[PF, C]) CopyPixel(x, y int, c C) {
+func (r *RendererBase[PF, C]) CopyPixel(x, y int, c C) {
 	if r.InBox(x, y) {
 		r.pixfmt.CopyPixel(x, y, c)
 	}
 }
 
 // BlendPixel blends a pixel at the given coordinates with coverage (respects clipping)
-func (r *RendererBaseT[PF, C]) BlendPixel(x, y int, c C, cover basics.Int8u) {
+func (r *RendererBase[PF, C]) BlendPixel(x, y int, c C, cover basics.Int8u) {
 	if r.InBox(x, y) {
 		r.pixfmt.BlendPixel(x, y, c, cover)
 	}
@@ -182,7 +188,7 @@ func (r *RendererBaseT[PF, C]) BlendPixel(x, y int, c C, cover basics.Int8u) {
 
 // Pixel returns the pixel color at the given coordinates
 // Returns the zero value of C if outside clipping box
-func (r *RendererBaseT[PF, C]) Pixel(x, y int) C {
+func (r *RendererBase[PF, C]) Pixel(x, y int) C {
 	if r.InBox(x, y) {
 		return r.pixfmt.Pixel(x, y)
 	}
@@ -191,7 +197,7 @@ func (r *RendererBaseT[PF, C]) Pixel(x, y int) C {
 }
 
 // CopyHline copies a horizontal line (respects clipping)
-func (r *RendererBaseT[PF, C]) CopyHline(x1, y, x2 int, c C) {
+func (r *RendererBase[PF, C]) CopyHline(x1, y, x2 int, c C) {
 	if x1 > x2 {
 		x1, x2 = x2, x1
 	}
@@ -211,7 +217,7 @@ func (r *RendererBaseT[PF, C]) CopyHline(x1, y, x2 int, c C) {
 }
 
 // CopyVline copies a vertical line (respects clipping)
-func (r *RendererBaseT[PF, C]) CopyVline(x, y1, y2 int, c C) {
+func (r *RendererBase[PF, C]) CopyVline(x, y1, y2 int, c C) {
 	if y1 > y2 {
 		y1, y2 = y2, y1
 	}
@@ -231,7 +237,7 @@ func (r *RendererBaseT[PF, C]) CopyVline(x, y1, y2 int, c C) {
 }
 
 // BlendHline blends a horizontal line with coverage (respects clipping)
-func (r *RendererBaseT[PF, C]) BlendHline(x1, y, x2 int, c C, cover basics.Int8u) {
+func (r *RendererBase[PF, C]) BlendHline(x1, y, x2 int, c C, cover basics.Int8u) {
 	if x1 > x2 {
 		x1, x2 = x2, x1
 	}
@@ -251,7 +257,7 @@ func (r *RendererBaseT[PF, C]) BlendHline(x1, y, x2 int, c C, cover basics.Int8u
 }
 
 // BlendVline blends a vertical line with coverage (respects clipping)
-func (r *RendererBaseT[PF, C]) BlendVline(x, y1, y2 int, c C, cover basics.Int8u) {
+func (r *RendererBase[PF, C]) BlendVline(x, y1, y2 int, c C, cover basics.Int8u) {
 	if y1 > y2 {
 		y1, y2 = y2, y1
 	}
@@ -271,7 +277,7 @@ func (r *RendererBaseT[PF, C]) BlendVline(x, y1, y2 int, c C, cover basics.Int8u
 }
 
 // CopyBar copies a rectangular bar (respects clipping)
-func (r *RendererBaseT[PF, C]) CopyBar(x1, y1, x2, y2 int, c C) {
+func (r *RendererBase[PF, C]) CopyBar(x1, y1, x2, y2 int, c C) {
 	if x1 > x2 {
 		x1, x2 = x2, x1
 	}
@@ -288,7 +294,7 @@ func (r *RendererBaseT[PF, C]) CopyBar(x1, y1, x2, y2 int, c C) {
 }
 
 // BlendBar blends a rectangular bar with coverage (respects clipping)
-func (r *RendererBaseT[PF, C]) BlendBar(x1, y1, x2, y2 int, c C, cover basics.Int8u) {
+func (r *RendererBase[PF, C]) BlendBar(x1, y1, x2, y2 int, c C, cover basics.Int8u) {
 	if x1 > x2 {
 		x1, x2 = x2, x1
 	}
@@ -305,7 +311,7 @@ func (r *RendererBaseT[PF, C]) BlendBar(x1, y1, x2, y2 int, c C, cover basics.In
 }
 
 // BlendSolidHspan blends a horizontal span with solid color and coverage array
-func (r *RendererBaseT[PF, C]) BlendSolidHspan(x, y, length int, c C, covers []basics.Int8u) {
+func (r *RendererBase[PF, C]) BlendSolidHspan(x, y, length int, c C, covers []basics.Int8u) {
 	if y > r.Ymax() || y < r.Ymin() {
 		return
 	}
@@ -327,7 +333,7 @@ func (r *RendererBaseT[PF, C]) BlendSolidHspan(x, y, length int, c C, covers []b
 }
 
 // BlendSolidVspan blends a vertical span with solid color and coverage array
-func (r *RendererBaseT[PF, C]) BlendSolidVspan(x, y, length int, c C, covers []basics.Int8u) {
+func (r *RendererBase[PF, C]) BlendSolidVspan(x, y, length int, c C, covers []basics.Int8u) {
 	if x > r.Xmax() || x < r.Xmin() {
 		return
 	}
@@ -349,7 +355,7 @@ func (r *RendererBaseT[PF, C]) BlendSolidVspan(x, y, length int, c C, covers []b
 }
 
 // CopyColorHspan copies a horizontal span with color array
-func (r *RendererBaseT[PF, C]) CopyColorHspan(x, y, length int, colors []C) {
+func (r *RendererBase[PF, C]) CopyColorHspan(x, y, length int, colors []C) {
 	if y > r.Ymax() || y < r.Ymin() {
 		return
 	}
@@ -372,7 +378,7 @@ func (r *RendererBaseT[PF, C]) CopyColorHspan(x, y, length int, colors []C) {
 }
 
 // CopyColorVspan copies a vertical span with color array
-func (r *RendererBaseT[PF, C]) CopyColorVspan(x, y, length int, colors []C) {
+func (r *RendererBase[PF, C]) CopyColorVspan(x, y, length int, colors []C) {
 	if x > r.Xmax() || x < r.Xmin() {
 		return
 	}
@@ -395,7 +401,7 @@ func (r *RendererBaseT[PF, C]) CopyColorVspan(x, y, length int, colors []C) {
 }
 
 // BlendColorHspan blends a horizontal span with color and coverage arrays
-func (r *RendererBaseT[PF, C]) BlendColorHspan(x, y, length int, colors []C, covers []basics.Int8u, cover basics.Int8u) {
+func (r *RendererBase[PF, C]) BlendColorHspan(x, y, length int, colors []C, covers []basics.Int8u, cover basics.Int8u) {
 	if y > r.Ymax() || y < r.Ymin() {
 		return
 	}
@@ -421,7 +427,7 @@ func (r *RendererBaseT[PF, C]) BlendColorHspan(x, y, length int, colors []C, cov
 }
 
 // BlendColorVspan blends a vertical span with color and coverage arrays
-func (r *RendererBaseT[PF, C]) BlendColorVspan(x, y, length int, colors []C, covers []basics.Int8u, cover basics.Int8u) {
+func (r *RendererBase[PF, C]) BlendColorVspan(x, y, length int, colors []C, covers []basics.Int8u, cover basics.Int8u) {
 	if x > r.Xmax() || x < r.Xmin() {
 		return
 	}
@@ -448,7 +454,7 @@ func (r *RendererBaseT[PF, C]) BlendColorVspan(x, y, length int, colors []C, cov
 
 // ClipRectArea clips rectangles for copying/blending operations (typed version).
 // Returns the actual area (width/height) that can be processed in rc.X2/rc.Y2.
-func (r *RendererBaseT[PF, C]) ClipRectArea(dst *basics.RectI, src *basics.RectI, wsrc, hsrc int) basics.RectI {
+func (r *RendererBase[PF, C]) ClipRectArea(dst *basics.RectI, src *basics.RectI, wsrc, hsrc int) basics.RectI {
 	rc := basics.RectI{X1: 0, Y1: 0, X2: 0, Y2: 0}
 	cb := r.clipBox
 	cb.X2++
@@ -489,10 +495,10 @@ func (r *RendererBaseT[PF, C]) ClipRectArea(dst *basics.RectI, src *basics.RectI
 	rc.X2 = dst.X2 - dst.X1 + 1
 	rc.Y2 = dst.Y2 - dst.Y1 + 1
 
-	if rc.X2 > (src.X2-src.X1+1) {
+	if rc.X2 > (src.X2 - src.X1 + 1) {
 		rc.X2 = (src.X2 - src.X1 + 1)
 	}
-	if rc.Y2 > (src.Y2-src.Y1+1) {
+	if rc.Y2 > (src.Y2 - src.Y1 + 1) {
 		rc.Y2 = (src.Y2 - src.Y1 + 1)
 	}
 	if rc.X2 < 0 {
@@ -506,7 +512,7 @@ func (r *RendererBaseT[PF, C]) ClipRectArea(dst *basics.RectI, src *basics.RectI
 
 // CopyFrom copies from another typed pixel format into this renderer.
 // If rectSrcPtr is nil, copies the full source.
-func (r *RendererBaseT[PF, C]) CopyFrom[PF2 PixelFormatT[C]](src PF2, rectSrcPtr *basics.RectI, dx, dy int) {
+func (r *RendererBase[PF, C]) CopyFrom(src PixelFormat[C], rectSrcPtr *basics.RectI, dx, dy int) {
 	wsrc, hsrc := src.Width(), src.Height()
 	if wsrc <= 0 || hsrc <= 0 || r.Width() <= 0 || r.Height() <= 0 {
 		return
@@ -545,7 +551,7 @@ func (r *RendererBaseT[PF, C]) CopyFrom[PF2 PixelFormatT[C]](src PF2, rectSrcPtr
 }
 
 // BlendFrom blends from another typed pixel format into this renderer with uniform coverage.
-func (r *RendererBaseT[PF, C]) BlendFrom[PF2 PixelFormatT[C]](src PF2, rectSrcPtr *basics.RectI, dx, dy int, cover basics.Int8u) {
+func (r *RendererBase[PF, C]) BlendFrom(src PixelFormat[C], rectSrcPtr *basics.RectI, dx, dy int, cover basics.Int8u) {
 	wsrc, hsrc := src.Width(), src.Height()
 	if wsrc <= 0 || hsrc <= 0 || r.Width() <= 0 || r.Height() <= 0 {
 		return

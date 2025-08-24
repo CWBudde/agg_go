@@ -263,11 +263,12 @@ func TestClipBox(t *testing.T) {
 	ctx.ClipBox(10, 20, 100, 200)
 
 	// Get clip box and verify
-	clipBox := ctx.GetClipBox()
+	x1, y1, x2, y2 := ctx.GetClipBox()
 	expected := RectD{10, 20, 100, 200}
+	actual := RectD{x1, y1, x2, y2}
 
-	if clipBox != expected {
-		t.Errorf("Expected clip box %v, got %v", expected, clipBox)
+	if actual != expected {
+		t.Errorf("Expected clip box %v, got %v", expected, actual)
 	}
 }
 

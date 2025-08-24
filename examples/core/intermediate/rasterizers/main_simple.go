@@ -15,6 +15,7 @@ import (
 	"agg_go/internal/color"
 	"agg_go/internal/path"
 	"agg_go/internal/pixfmt"
+	"agg_go/internal/pixfmt/blender"
 	"agg_go/internal/rasterizer"
 )
 
@@ -41,7 +42,7 @@ type Application struct {
 
 	// Rendering buffer and pixel format
 	rbuf *buffer.RenderingBufferU8
-	pixf *pixfmt.PixFmtAlphaBlendRGBA[pixfmt.BlenderRGBA[color.Linear, pixfmt.RGBAOrder], color.Linear]
+	pixf *pixfmt.PixFmtAlphaBlendRGBA[blender.BlenderRGBA[color.Linear, pixfmt.RGBAOrder], color.Linear]
 
 	// Image buffer
 	imageData []byte
@@ -67,8 +68,8 @@ func NewApplication() *Application {
 	app.rbuf = buffer.NewRenderingBufferU8WithData(app.imageData, frameWidth, frameHeight, frameWidth*pixelSize)
 
 	// Create blender and pixel format
-	blender := pixfmt.BlenderRGBA[color.Linear, pixfmt.RGBAOrder]{}
-	app.pixf = pixfmt.NewPixFmtAlphaBlendRGBA[pixfmt.BlenderRGBA[color.Linear, pixfmt.RGBAOrder], color.Linear](app.rbuf, blender)
+	blender := blender.BlenderRGBA[color.Linear, pixfmt.RGBAOrder]{}
+	app.pixf = pixfmt.NewPixFmtAlphaBlendRGBA[blender.BlenderRGBA[color.Linear, pixfmt.RGBAOrder], color.Linear](app.rbuf, blender)
 
 	// Create rasterizer
 	app.ras = rasterizer.NewRasterizerScanlineAA[*rasterizer.RasterizerSlNoClip, rasterizer.RasConvDbl](1000) // cell block limit

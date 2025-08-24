@@ -149,14 +149,14 @@ func TestBaseCtrlInRectWithTransformation(t *testing.T) {
 type mockCtrl struct {
 	*BaseCtrl
 	numPaths uint
-	colors   []interface{}
+	colors   []string
 }
 
 func newMockCtrl(x1, y1, x2, y2 float64) *mockCtrl {
 	return &mockCtrl{
 		BaseCtrl: NewBaseCtrl(x1, y1, x2, y2, false),
 		numPaths: 2,
-		colors:   []interface{}{"red", "blue"},
+		colors:   []string{"red", "blue"},
 	}
 }
 
@@ -170,7 +170,8 @@ func (mc *mockCtrl) Rewind(pathID uint) {}
 func (mc *mockCtrl) Vertex() (x, y float64, cmd basics.PathCommand) {
 	return 0, 0, basics.PathCmdStop
 }
-func (mc *mockCtrl) Color(pathID uint) interface{} {
+
+func (mc *mockCtrl) Color(pathID uint) string {
 	if pathID < uint(len(mc.colors)) {
 		return mc.colors[pathID]
 	}
@@ -179,7 +180,7 @@ func (mc *mockCtrl) Color(pathID uint) interface{} {
 
 func TestCtrlInterface(t *testing.T) {
 	// Test that mockCtrl implements Ctrl interface
-	var ctrl Ctrl = newMockCtrl(0, 0, 100, 100)
+	var ctrl Ctrl[string] = newMockCtrl(0, 0, 100, 100)
 
 	// Test basic interface methods
 	if ctrl.NumPaths() != 2 {

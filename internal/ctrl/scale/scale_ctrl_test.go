@@ -119,7 +119,7 @@ func TestColorMethods(t *testing.T) {
 	testColor := color.NewRGBA(1.0, 0.0, 0.0, 1.0) // Red
 	scale.BackgroundColor(testColor)
 
-	bgColor := scale.Color(0).(color.RGBA)
+	bgColor := scale.Color(0)
 	if bgColor.R != 1.0 || bgColor.G != 0.0 || bgColor.B != 0.0 || bgColor.A != 1.0 {
 		t.Errorf("Expected background color (1.0, 0.0, 0.0, 1.0), got (%.1f, %.1f, %.1f, %.1f)",
 			bgColor.R, bgColor.G, bgColor.B, bgColor.A)
@@ -127,8 +127,8 @@ func TestColorMethods(t *testing.T) {
 
 	// Test pointers color affects both pointers
 	scale.PointersColor(testColor)
-	pointer1Color := scale.Color(2).(color.RGBA)
-	pointer2Color := scale.Color(3).(color.RGBA)
+	pointer1Color := scale.Color(2)
+	pointer2Color := scale.Color(3)
 
 	if pointer1Color != testColor || pointer2Color != testColor {
 		t.Error("PointersColor should set both pointer colors")

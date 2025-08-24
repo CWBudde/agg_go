@@ -9,11 +9,13 @@ Both `main_simple.go` and `main.go` have been fixed to compile successfully, but
 ## Compilation Issues Fixed
 
 ### main_simple.go
+
 - **Issue**: Unused variable `clipper` and interface incompatibility
 - **Solution**: Removed problematic clipper initialization
 - **Status**: ✅ **FIXED** - Now compiles without errors
 
-### main.go  
+### main.go
+
 - **Issue**: Interface incompatibilities between `renderer/scanline` and `rasterizer` packages
 - **Solution**: Created adapter interfaces to bridge the gap
 - **Specific fixes**:
@@ -25,7 +27,9 @@ Both `main_simple.go` and `main.go` have been fixed to compile successfully, but
 ## Runtime Issues (Still Present)
 
 ### Critical Issue: Uninitialized Clipper
+
 Both implementations crash with the same error:
+
 ```
 panic: runtime error: invalid memory address or nil pointer dereference
 [signal SIGSEGV: segmentation violation code=0x1 addr=0x0 pc=0x4978c0]
@@ -42,6 +46,7 @@ agg_go/internal/rasterizer.(*RasterizerScanlineAA[...]).MoveToD(...)
 **Location**: `/home/christian/Code/agg_go/internal/rasterizer/scanline_aa.go:35`
 
 **Required Fix**: The constructor needs to initialize the clipper field properly:
+
 ```go
 func NewRasterizerScanlineAA[Clip ClipInterface, Conv ConverterInterface](cellBlockLimit uint32) *RasterizerScanlineAA[Clip, Conv] {
     r := &RasterizerScanlineAA[Clip, Conv]{
@@ -56,14 +61,17 @@ func NewRasterizerScanlineAA[Clip ClipInterface, Conv ConverterInterface](cellBl
 ## Interface Architecture Issues
 
 ### Package Design Problems
+
 The Go port has fundamental interface design issues:
 
-1. **Circular Dependencies**: 
+1. **Circular Dependencies**:
+
    - `rasterizer` package defines `RasterizerInterface` requiring `Line()` method
    - `renderer/scanline` package defines different `RasterizerInterface` requiring `SweepScanline()`
    - These interfaces are incompatible and create circular dependency issues
 
 2. **Scanline Interface Mismatches**:
+
    - `internal/scanline` package: `Begin() []SpanP8` or `Begin() []SpanBin`
    - `internal/renderer/scanline` package: `Begin() ScanlineIterator`
    - These cannot be reconciled without significant refactoring
@@ -80,7 +88,7 @@ The Go port has fundamental interface design issues:
 2. **Interface Unification**: Unify the different `RasterizerInterface` and `ScanlineInterface` definitions
 3. **Dependency Resolution**: Resolve circular dependencies between packages
 
-### Long-term Architectural Improvements  
+### Long-term Architectural Improvements
 
 1. **Interface Consolidation**: Move all interfaces to a common `interfaces` package
 2. **Package Restructuring**: Separate interface definitions from implementations
@@ -95,12 +103,14 @@ The Go port has fundamental interface design issues:
 ## Test Results
 
 ### Compilation Tests
+
 ```bash
 $ go build main_simple.go  # ✅ SUCCESS
 $ go build main.go         # ✅ SUCCESS
 ```
 
 ### Runtime Tests
+
 ```bash
 $ go run main_simple.go    # ❌ CRASH: nil pointer dereference
 $ go run main.go          # ❌ CRASH: nil pointer dereference
@@ -113,7 +123,7 @@ Both implementations crash at the same point when trying to call `MoveToD()` →
 To get the demos working:
 
 1. **Priority 1**: Fix the clipper initialization in `RasterizerScanlineAA` constructor
-2. **Priority 2**: Resolve interface incompatibilities between packages  
+2. **Priority 2**: Resolve interface incompatibilities between packages
 3. **Priority 3**: Test actual rendering functionality once runtime crashes are resolved
 
 The adapter pattern implemented in `main.go` provides a foundation for bridging interface gaps, but the fundamental clipper initialization issue must be resolved first.

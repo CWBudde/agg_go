@@ -56,40 +56,64 @@ type RasterizerInterface interface {
 	MaxX() int
 }
 
+// Typed interfaces for better type safety and performance
+// These interfaces use concrete color types instead of interface{}
+
 // BaseRendererInterface defines the interface for base renderers.
 // This corresponds to the BaseRenderer template parameter in AGG's functions.
-type BaseRendererInterface interface {
+type BaseRendererInterface[C any] interface {
 	// BlendSolidHspan blends a horizontal span with solid color and coverage array
-	BlendSolidHspan(x, y, len int, color interface{}, covers []basics.Int8u)
+	BlendSolidHspan(x, y, len int, color C, covers []basics.Int8u)
 
 	// BlendHline blends a horizontal line with solid color and single coverage
-	BlendHline(x, y, x2 int, color interface{}, cover basics.Int8u)
+	BlendHline(x, y, x2 int, color C, cover basics.Int8u)
 
 	// BlendColorHspan blends a horizontal span with color array and coverage
-	BlendColorHspan(x, y, len int, colors []interface{}, covers []basics.Int8u, cover basics.Int8u)
+	BlendColorHspan(x, y, len int, colors []C, covers []basics.Int8u, cover basics.Int8u)
 }
 
 // SpanAllocatorInterface defines the interface for span allocators.
 // This corresponds to the SpanAllocator template parameter in AGG's functions.
-type SpanAllocatorInterface interface {
+type SpanAllocatorInterface[C any] interface {
 	// Allocate allocates an array of colors for the given length
 	// Returns a slice that can hold 'len' color values
-	Allocate(len int) []interface{}
+	Allocate(len int) []C
 }
 
 // SpanGeneratorInterface defines the interface for span generators.
 // This corresponds to the SpanGenerator template parameter in AGG's functions.
-type SpanGeneratorInterface interface {
+type SpanGeneratorInterface[C any] interface {
 	// Prepare is called before rendering begins
 	Prepare()
 
 	// Generate fills the colors array with generated colors for the given span
-	Generate(colors []interface{}, x, y, len int)
+	Generate(colors []C, x, y, len int)
+}
+
+// StyleHandlerInterface defines the interface for style handlers in compound rendering.
+type StyleHandlerInterface[C any] interface {
+	// IsSolid returns true if the style is a solid color
+	IsSolid(style int) bool
+
+	// Color returns the color for a solid style
+	Color(style int) C
+
+	// GenerateSpan generates colors for a span with the given style
+	GenerateSpan(colors []C, x, y, len, style int)
+}
+
+// ColorSetter defines the interface for objects that can have their color set.
+// This interface is used by renderers and other objects that need to maintain a current color.
+type ColorSetter[C any] interface {
+	// SetColor sets the current color for the object
+	SetColor(color C)
 }
 
 // RendererInterface defines the interface for scanline renderers.
 // This provides a common interface for all scanline renderer implementations.
-type RendererInterface interface {
+type RendererInterface[C any] interface {
+	ColorSetter[C]
+
 	// Prepare is called before rendering begins
 	Prepare()
 
@@ -121,18 +145,6 @@ type CompoundRasterizerInterface interface {
 	AllocateCoverBuffer(len int) []basics.Int8u
 }
 
-// StyleHandlerInterface defines the interface for style handlers in compound rendering.
-type StyleHandlerInterface interface {
-	// IsSolid returns true if the style is a solid color
-	IsSolid(style int) bool
-
-	// Color returns the color for a solid style
-	Color(style int) interface{}
-
-	// GenerateSpan generates colors for a span with the given style
-	GenerateSpan(colors []interface{}, x, y, len, style int)
-}
-
 // ResettableScanline defines the interface for scanlines that can be reset.
 // This interface is implemented by scanline types that support resetting
 // their bounds and internal state for reuse across multiple rendering passes.
@@ -149,13 +161,6 @@ type ResettableScanline interface {
 type Resettable interface {
 	// Reset resets the object to its initial state
 	Reset()
-}
-
-// ColorSetter defines the interface for objects that can have their color set.
-// This interface is used by renderers and other objects that need to maintain a current color.
-type ColorSetter interface {
-	// SetColor sets the current color for the object
-	SetColor(color interface{})
 }
 
 // Compile-time interface checks

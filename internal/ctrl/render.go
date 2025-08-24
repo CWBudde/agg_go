@@ -27,9 +27,9 @@ type VertexSourceInterface interface {
 //
 // The function iterates through all paths in the control, rasterizes each one,
 // and renders it with the path's associated color using anti-aliased solid rendering.
-func RenderCtrl[R RasterizerInterface, S ScanlineInterface, Ren RendererInterface](
-	ras R, sl S, renderer Ren, ctrl Ctrl) {
-
+func RenderCtrl[R RasterizerInterface, S ScanlineInterface, Ren RendererInterface, C any](
+	ras R, sl S, renderer Ren, ctrl Ctrl[C],
+) {
 	numPaths := ctrl.NumPaths()
 
 	for i := uint(0); i < numPaths; i++ {
@@ -38,7 +38,7 @@ func RenderCtrl[R RasterizerInterface, S ScanlineInterface, Ren RendererInterfac
 
 		// Add the control's path to the rasterizer
 		// We need to create an adapter since ctrl implements vertex source differently
-		adapter := &ctrlVertexSourceAdapter{ctrl: ctrl, pathID: i}
+		adapter := &ctrlVertexSourceAdapter[C]{ctrl: ctrl, pathID: i}
 		ras.AddPath(adapter, i)
 
 		// Get the color for this path
@@ -57,9 +57,9 @@ func RenderCtrl[R RasterizerInterface, S ScanlineInterface, Ren RendererInterfac
 
 // RenderCtrlRS renders a control using render storage variant.
 // This corresponds to the C++ render_ctrl_rs template function.
-func RenderCtrlRS[R RasterizerInterface, S ScanlineInterface, Ren RendererInterface](
-	ras R, sl S, renderer Ren, ctrl Ctrl) {
-
+func RenderCtrlRS[R RasterizerInterface, S ScanlineInterface, Ren RendererInterface, C any](
+	ras R, sl S, renderer Ren, ctrl Ctrl[C],
+) {
 	numPaths := ctrl.NumPaths()
 
 	for i := uint(0); i < numPaths; i++ {
@@ -67,7 +67,7 @@ func RenderCtrlRS[R RasterizerInterface, S ScanlineInterface, Ren RendererInterf
 		ras.Reset()
 
 		// Add the control's path to the rasterizer
-		adapter := &ctrlVertexSourceAdapter{ctrl: ctrl, pathID: i}
+		adapter := &ctrlVertexSourceAdapter[C]{ctrl: ctrl, pathID: i}
 		ras.AddPath(adapter, i)
 
 		// Set color on renderer and render
@@ -77,19 +77,19 @@ func RenderCtrlRS[R RasterizerInterface, S ScanlineInterface, Ren RendererInterf
 }
 
 // ctrlVertexSourceAdapter adapts a Ctrl to the VertexSourceInterface needed by rasterizers.
-type ctrlVertexSourceAdapter struct {
-	ctrl   Ctrl
+type ctrlVertexSourceAdapter[C any] struct {
+	ctrl   Ctrl[C]
 	pathID uint
 }
 
 // Rewind rewinds to the beginning of the specified path.
-func (adapter *ctrlVertexSourceAdapter) Rewind(pathID uint) {
+func (adapter *ctrlVertexSourceAdapter[C]) Rewind(pathID uint) {
 	adapter.pathID = pathID
 	adapter.ctrl.Rewind(pathID)
 }
 
 // Vertex returns the next vertex in the current path.
-func (adapter *ctrlVertexSourceAdapter) Vertex() (x, y float64, cmd uint32) {
+func (adapter *ctrlVertexSourceAdapter[C]) Vertex() (x, y float64, cmd uint32) {
 	x, y, pathCmd := adapter.ctrl.Vertex()
 	return x, y, uint32(pathCmd)
 }
@@ -97,7 +97,7 @@ func (adapter *ctrlVertexSourceAdapter) Vertex() (x, y float64, cmd uint32) {
 // SimpleRenderCtrl provides a simplified control rendering function that works with
 // the existing AGG Go implementation. This is a temporary solution until the
 // generic rendering system is fully integrated.
-func SimpleRenderCtrl(ctrl Ctrl, renderFunc func(pathID uint, vertices []Vertex, color interface{})) {
+func SimpleRenderCtrl[C any](ctrl Ctrl[C], renderFunc func(pathID uint, vertices []Vertex, color C)) {
 	numPaths := ctrl.NumPaths()
 
 	for pathID := uint(0); pathID < numPaths; pathID++ {
@@ -131,8 +131,8 @@ type Vertex struct {
 }
 
 // Helper function to create a simple render function for testing
-func CreateTestRenderFunc() func(pathID uint, vertices []Vertex, color interface{}) {
-	return func(pathID uint, vertices []Vertex, color interface{}) {
+func CreateTestRenderFunc[C any]() func(pathID uint, vertices []Vertex, color C) {
+	return func(pathID uint, vertices []Vertex, color C) {
 		// This is a no-op render function for testing
 		// Real implementations would draw the vertices using the provided color
 		_ = pathID

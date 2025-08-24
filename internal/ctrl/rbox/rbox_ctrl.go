@@ -33,7 +33,7 @@ func (ea *ellipseAdapter) Vertex() (x, y float64, cmd basics.PathCommand) {
 
 // RboxCtrl implements a radio button group control.
 // This corresponds to AGG's rbox_ctrl_impl class from agg_rbox_ctrl.h.
-type RboxCtrl struct {
+type RboxCtrl[C any] struct {
 	*ctrl.BaseCtrl
 
 	// Border styling
@@ -66,14 +66,15 @@ type RboxCtrl struct {
 	dy          float64     // Vertical spacing between items
 
 	// Colors for the 5 rendering paths
-	colors [5]color.RGBA
+	colors [5]C
 }
 
 // NewRboxCtrl creates a new radio button group control.
 // x1, y1, x2, y2: bounding rectangle
 // flipY: whether to flip Y coordinates
-func NewRboxCtrl(x1, y1, x2, y2 float64, flipY bool) *RboxCtrl {
-	rbox := &RboxCtrl{
+// backgroundColor, borderColor, textColor, inactiveColor, activeColor: colors for 5 rendering paths
+func NewRboxCtrl[C any](x1, y1, x2, y2 float64, flipY bool, backgroundColor, borderColor, textColor, inactiveColor, activeColor C) *RboxCtrl[C] {
+	rbox := &RboxCtrl[C]{
 		BaseCtrl:      ctrl.NewBaseCtrl(x1, y1, x2, y2, flipY),
 		borderWidth:   1.0,
 		borderExtra:   0.0,
@@ -94,20 +95,33 @@ func NewRboxCtrl(x1, y1, x2, y2 float64, flipY bool) *RboxCtrl {
 	rbox.ellipseStroke = conv.NewConvStroke(ellipseAdapter)
 	rbox.textRenderer = text.NewSimpleText()
 
-	// Set initial colors matching C++ AGG defaults
-	rbox.colors[0] = color.NewRGBA(1.0, 1.0, 0.9, 1.0) // Background - light yellow
-	rbox.colors[1] = color.NewRGBA(0.0, 0.0, 0.0, 1.0) // Border - black
-	rbox.colors[2] = color.NewRGBA(0.0, 0.0, 0.0, 1.0) // Text - black
-	rbox.colors[3] = color.NewRGBA(0.0, 0.0, 0.0, 1.0) // Inactive - black
-	rbox.colors[4] = color.NewRGBA(0.4, 0.0, 0.0, 1.0) // Active - dark red
+	// Set colors with provided values
+	rbox.colors[0] = backgroundColor // Background
+	rbox.colors[1] = borderColor     // Border
+	rbox.colors[2] = textColor       // Text
+	rbox.colors[3] = inactiveColor   // Inactive
+	rbox.colors[4] = activeColor     // Active
 
 	rbox.calcRbox()
 	return rbox
 }
 
+// NewDefaultRboxCtrl creates a radio button group control with default RGBA colors.
+// This provides backward compatibility for existing code.
+func NewDefaultRboxCtrl(x1, y1, x2, y2 float64, flipY bool) *RboxCtrl[color.RGBA] {
+	// Default colors matching C++ AGG defaults
+	backgroundColor := color.NewRGBA(1.0, 1.0, 0.9, 1.0) // Background - light yellow
+	borderColor := color.NewRGBA(0.0, 0.0, 0.0, 1.0)     // Border - black
+	textColor := color.NewRGBA(0.0, 0.0, 0.0, 1.0)       // Text - black
+	inactiveColor := color.NewRGBA(0.0, 0.0, 0.0, 1.0)   // Inactive - black
+	activeColor := color.NewRGBA(0.4, 0.0, 0.0, 1.0)     // Active - dark red
+
+	return NewRboxCtrl[color.RGBA](x1, y1, x2, y2, flipY, backgroundColor, borderColor, textColor, inactiveColor, activeColor)
+}
+
 // AddItem adds a radio button item with the specified label.
 // Returns true if the item was added, false if the maximum number (32) was reached.
-func (r *RboxCtrl) AddItem(text string) bool {
+func (r *RboxCtrl[C]) AddItem(text string) bool {
 	if r.numItems < 32 {
 		r.items[r.numItems] = text
 		r.numItems++
@@ -117,26 +131,26 @@ func (r *RboxCtrl) AddItem(text string) bool {
 }
 
 // CurItem returns the index of the currently selected item (-1 if none).
-func (r *RboxCtrl) CurItem() int {
+func (r *RboxCtrl[C]) CurItem() int {
 	return r.curItem
 }
 
 // SetCurItem sets the currently selected item.
 // Use -1 to deselect all items.
-func (r *RboxCtrl) SetCurItem(item int) {
+func (r *RboxCtrl[C]) SetCurItem(item int) {
 	if item >= -1 && item < int(r.numItems) {
 		r.curItem = item
 	}
 }
 
 // NumItems returns the number of items in the radio button group.
-func (r *RboxCtrl) NumItems() uint32 {
+func (r *RboxCtrl[C]) NumItems() uint32 {
 	return r.numItems
 }
 
 // ItemText returns the text for the specified item index.
 // Returns empty string if index is out of range.
-func (r *RboxCtrl) ItemText(index int) string {
+func (r *RboxCtrl[C]) ItemText(index int) string {
 	if index >= 0 && index < int(r.numItems) {
 		return r.items[index]
 	}
@@ -146,76 +160,76 @@ func (r *RboxCtrl) ItemText(index int) string {
 // Border styling methods
 
 // SetBorderWidth sets the border width and optional extra border space.
-func (r *RboxCtrl) SetBorderWidth(width, extra float64) {
+func (r *RboxCtrl[C]) SetBorderWidth(width, extra float64) {
 	r.borderWidth = width
 	r.borderExtra = extra
 	r.calcRbox()
 }
 
 // BorderWidth returns the current border width.
-func (r *RboxCtrl) BorderWidth() float64 {
+func (r *RboxCtrl[C]) BorderWidth() float64 {
 	return r.borderWidth
 }
 
 // Text styling methods
 
 // SetTextThickness sets the text stroke thickness.
-func (r *RboxCtrl) SetTextThickness(thickness float64) {
+func (r *RboxCtrl[C]) SetTextThickness(thickness float64) {
 	r.textThickness = thickness
 }
 
 // TextThickness returns the current text thickness.
-func (r *RboxCtrl) TextThickness() float64 {
+func (r *RboxCtrl[C]) TextThickness() float64 {
 	return r.textThickness
 }
 
 // SetTextSize sets the text height and optional width.
 // If width is 0.0, proportional width is used.
-func (r *RboxCtrl) SetTextSize(height, width float64) {
+func (r *RboxCtrl[C]) SetTextSize(height, width float64) {
 	r.textHeight = height
 	r.textWidth = width
 	r.dy = height * 2.0 // Update vertical spacing
 }
 
 // TextHeight returns the current text height.
-func (r *RboxCtrl) TextHeight() float64 {
+func (r *RboxCtrl[C]) TextHeight() float64 {
 	return r.textHeight
 }
 
 // TextWidth returns the current text width (0.0 means proportional).
-func (r *RboxCtrl) TextWidth() float64 {
+func (r *RboxCtrl[C]) TextWidth() float64 {
 	return r.textWidth
 }
 
 // Color management methods
 
 // SetBackgroundColor sets the background color.
-func (r *RboxCtrl) SetBackgroundColor(c color.RGBA) {
+func (r *RboxCtrl[C]) SetBackgroundColor(c C) {
 	r.colors[0] = c
 }
 
 // SetBorderColor sets the border color.
-func (r *RboxCtrl) SetBorderColor(c color.RGBA) {
+func (r *RboxCtrl[C]) SetBorderColor(c C) {
 	r.colors[1] = c
 }
 
 // SetTextColor sets the text color.
-func (r *RboxCtrl) SetTextColor(c color.RGBA) {
+func (r *RboxCtrl[C]) SetTextColor(c C) {
 	r.colors[2] = c
 }
 
 // SetInactiveColor sets the inactive radio button color.
-func (r *RboxCtrl) SetInactiveColor(c color.RGBA) {
+func (r *RboxCtrl[C]) SetInactiveColor(c C) {
 	r.colors[3] = c
 }
 
 // SetActiveColor sets the active radio button color.
-func (r *RboxCtrl) SetActiveColor(c color.RGBA) {
+func (r *RboxCtrl[C]) SetActiveColor(c C) {
 	r.colors[4] = c
 }
 
 // Color returns the color for the specified path.
-func (r *RboxCtrl) Color(pathID uint) interface{} {
+func (r *RboxCtrl[C]) Color(pathID uint) C {
 	if pathID < 5 {
 		return r.colors[pathID]
 	}
@@ -226,7 +240,7 @@ func (r *RboxCtrl) Color(pathID uint) interface{} {
 
 // OnMouseButtonDown handles mouse button down events.
 // Returns true if the event was handled.
-func (r *RboxCtrl) OnMouseButtonDown(x, y float64) bool {
+func (r *RboxCtrl[C]) OnMouseButtonDown(x, y float64) bool {
 	// Convert to control coordinates
 	r.InverseTransformXY(&x, &y)
 
@@ -249,17 +263,17 @@ func (r *RboxCtrl) OnMouseButtonDown(x, y float64) bool {
 }
 
 // OnMouseButtonUp handles mouse button up events.
-func (r *RboxCtrl) OnMouseButtonUp(x, y float64) bool {
+func (r *RboxCtrl[C]) OnMouseButtonUp(x, y float64) bool {
 	return false // No special handling needed
 }
 
 // OnMouseMove handles mouse move events.
-func (r *RboxCtrl) OnMouseMove(x, y float64, buttonPressed bool) bool {
+func (r *RboxCtrl[C]) OnMouseMove(x, y float64, buttonPressed bool) bool {
 	return false // No special handling needed
 }
 
 // OnArrowKeys handles arrow key events for keyboard navigation.
-func (r *RboxCtrl) OnArrowKeys(left, right, down, up bool) bool {
+func (r *RboxCtrl[C]) OnArrowKeys(left, right, down, up bool) bool {
 	if r.curItem >= 0 {
 		if up || right {
 			r.curItem++
@@ -283,12 +297,12 @@ func (r *RboxCtrl) OnArrowKeys(left, right, down, up bool) bool {
 // Vertex source interface methods
 
 // NumPaths returns the number of rendering paths.
-func (r *RboxCtrl) NumPaths() uint {
+func (r *RboxCtrl[C]) NumPaths() uint {
 	return 5 // Background, Border, Text, Inactive circles, Active circle
 }
 
 // Rewind starts rendering a specific path.
-func (r *RboxCtrl) Rewind(pathID uint) {
+func (r *RboxCtrl[C]) Rewind(pathID uint) {
 	r.currentPath = pathID
 	r.drawItem = 0
 	r.vertexIndex = 0
@@ -308,7 +322,7 @@ func (r *RboxCtrl) Rewind(pathID uint) {
 }
 
 // Vertex generates the next vertex for the current path.
-func (r *RboxCtrl) Vertex() (x, y float64, cmd basics.PathCommand) {
+func (r *RboxCtrl[C]) Vertex() (x, y float64, cmd basics.PathCommand) {
 	switch r.currentPath {
 	case 0: // Background
 		return r.generateBackgroundVertex()
@@ -327,7 +341,7 @@ func (r *RboxCtrl) Vertex() (x, y float64, cmd basics.PathCommand) {
 // Internal helper methods
 
 // calcRbox calculates the inner bounds after accounting for border.
-func (r *RboxCtrl) calcRbox() {
+func (r *RboxCtrl[C]) calcRbox() {
 	r.xs1 = r.X1() + r.borderWidth
 	r.ys1 = r.Y1() + r.borderWidth
 	r.xs2 = r.X2() - r.borderWidth
@@ -335,7 +349,7 @@ func (r *RboxCtrl) calcRbox() {
 }
 
 // setupBackgroundPath prepares the background rectangle vertices.
-func (r *RboxCtrl) setupBackgroundPath() {
+func (r *RboxCtrl[C]) setupBackgroundPath() {
 	r.vertices[0] = r.X1() - r.borderExtra
 	r.vertices[1] = r.Y1() - r.borderExtra
 	r.vertices[2] = r.X2() + r.borderExtra
@@ -347,7 +361,7 @@ func (r *RboxCtrl) setupBackgroundPath() {
 }
 
 // setupBorderPath prepares the border rectangle vertices.
-func (r *RboxCtrl) setupBorderPath() {
+func (r *RboxCtrl[C]) setupBorderPath() {
 	// Outer rectangle
 	r.vertices[0] = r.X1()
 	r.vertices[1] = r.Y1()
@@ -369,7 +383,7 @@ func (r *RboxCtrl) setupBorderPath() {
 }
 
 // setupTextPath prepares the first text label.
-func (r *RboxCtrl) setupTextPath() {
+func (r *RboxCtrl[C]) setupTextPath() {
 	if r.numItems > 0 {
 		r.textRenderer.SetText(r.items[0])
 		r.textRenderer.SetPosition(r.xs1+r.dy*1.5, r.ys1+r.dy/2.0)
@@ -380,7 +394,7 @@ func (r *RboxCtrl) setupTextPath() {
 
 // setupInactiveCirclesPath prepares the first inactive circle.
 // Using smaller filled circles instead of stroked circles as workaround
-func (r *RboxCtrl) setupInactiveCirclesPath() {
+func (r *RboxCtrl[C]) setupInactiveCirclesPath() {
 	if r.numItems > 0 {
 		radius := r.textHeight / 2.5 // Smaller than active circles
 		r.ellipse.Init(
@@ -395,7 +409,7 @@ func (r *RboxCtrl) setupInactiveCirclesPath() {
 }
 
 // setupActiveCirclePath prepares the active circle (filled).
-func (r *RboxCtrl) setupActiveCirclePath() {
+func (r *RboxCtrl[C]) setupActiveCirclePath() {
 	if r.curItem >= 0 {
 		r.ellipse.Init(
 			r.xs1+r.dy/1.3,
@@ -408,7 +422,7 @@ func (r *RboxCtrl) setupActiveCirclePath() {
 }
 
 // generateBackgroundVertex generates vertices for the background rectangle.
-func (r *RboxCtrl) generateBackgroundVertex() (x, y float64, cmd basics.PathCommand) {
+func (r *RboxCtrl[C]) generateBackgroundVertex() (x, y float64, cmd basics.PathCommand) {
 	if r.vertexIndex >= 4 {
 		return 0, 0, basics.PathCmdStop
 	}
@@ -429,7 +443,7 @@ func (r *RboxCtrl) generateBackgroundVertex() (x, y float64, cmd basics.PathComm
 }
 
 // generateBorderVertex generates vertices for the border.
-func (r *RboxCtrl) generateBorderVertex() (x, y float64, cmd basics.PathCommand) {
+func (r *RboxCtrl[C]) generateBorderVertex() (x, y float64, cmd basics.PathCommand) {
 	if r.vertexIndex >= 8 {
 		return 0, 0, basics.PathCmdStop
 	}
@@ -450,7 +464,7 @@ func (r *RboxCtrl) generateBorderVertex() (x, y float64, cmd basics.PathCommand)
 }
 
 // generateTextVertex generates vertices for text labels.
-func (r *RboxCtrl) generateTextVertex() (x, y float64, cmd basics.PathCommand) {
+func (r *RboxCtrl[C]) generateTextVertex() (x, y float64, cmd basics.PathCommand) {
 	x, y, cmd = r.textRenderer.Vertex()
 
 	if cmd == basics.PathCmdStop {
@@ -477,7 +491,7 @@ func (r *RboxCtrl) generateTextVertex() (x, y float64, cmd basics.PathCommand) {
 
 // generateInactiveCirclesVertex generates vertices for inactive radio circles.
 // Note: Using filled circles instead of stroked circles due to ConvStroke issue
-func (r *RboxCtrl) generateInactiveCirclesVertex() (x, y float64, cmd basics.PathCommand) {
+func (r *RboxCtrl[C]) generateInactiveCirclesVertex() (x, y float64, cmd basics.PathCommand) {
 	// If no items, return stop immediately
 	if r.numItems == 0 {
 		return 0, 0, basics.PathCmdStop
@@ -510,7 +524,7 @@ func (r *RboxCtrl) generateInactiveCirclesVertex() (x, y float64, cmd basics.Pat
 }
 
 // generateActiveCircleVertex generates vertices for the active (filled) circle.
-func (r *RboxCtrl) generateActiveCircleVertex() (x, y float64, cmd basics.PathCommand) {
+func (r *RboxCtrl[C]) generateActiveCircleVertex() (x, y float64, cmd basics.PathCommand) {
 	if r.curItem < 0 {
 		return 0, 0, basics.PathCmdStop
 	}

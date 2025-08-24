@@ -9,11 +9,11 @@ import (
 )
 
 // BaseRendererInterface defines the methods required by solid text renderers
-type BaseRendererInterface interface {
+type BaseRendererInterface[C any] interface {
 	// BlendSolidHspan blends a horizontal span with solid color
-	BlendSolidHspan(x, y, len int, c interface{}, covers []basics.CoverType)
+	BlendSolidHspan(x, y, len int, c C, covers []basics.CoverType)
 	// BlendSolidVspan blends a vertical span with solid color
-	BlendSolidVspan(x, y, len int, c interface{}, covers []basics.CoverType)
+	BlendSolidVspan(x, y, len int, c C, covers []basics.CoverType)
 }
 
 // ScanlineRendererInterface defines the methods required by scanline text renderers
@@ -46,37 +46,37 @@ type Span struct {
 
 // RendererRasterHTextSolid renders horizontal text with solid colors.
 // This is the Go equivalent of AGG's renderer_raster_htext_solid template class.
-type RendererRasterHTextSolid[BR BaseRendererInterface, GG glyph.GlyphGenerator] struct {
+type RendererRasterHTextSolid[BR BaseRendererInterface[C], GG glyph.GlyphGenerator, C any] struct {
 	ren   BR
 	glyph GG
-	color interface{}
+	color C
 }
 
 // NewRendererRasterHTextSolid creates a new horizontal solid text renderer
-func NewRendererRasterHTextSolid[BR BaseRendererInterface, GG glyph.GlyphGenerator](ren BR, glyphGen GG) *RendererRasterHTextSolid[BR, GG] {
-	return &RendererRasterHTextSolid[BR, GG]{
+func NewRendererRasterHTextSolid[BR BaseRendererInterface[C], GG glyph.GlyphGenerator, C any](ren BR, glyphGen GG) *RendererRasterHTextSolid[BR, GG, C] {
+	return &RendererRasterHTextSolid[BR, GG, C]{
 		ren:   ren,
 		glyph: glyphGen,
 	}
 }
 
 // Attach attaches a new base renderer
-func (r *RendererRasterHTextSolid[BR, GG]) Attach(ren BR) {
+func (r *RendererRasterHTextSolid[BR, GG, C]) Attach(ren BR) {
 	r.ren = ren
 }
 
 // SetColor sets the text color
-func (r *RendererRasterHTextSolid[BR, GG]) SetColor(c interface{}) {
+func (r *RendererRasterHTextSolid[BR, GG, C]) SetColor(c C) {
 	r.color = c
 }
 
 // Color returns the current text color
-func (r *RendererRasterHTextSolid[BR, GG]) Color() interface{} {
+func (r *RendererRasterHTextSolid[BR, GG, C]) Color() C {
 	return r.color
 }
 
 // RenderText renders the given text at the specified position
-func (r *RendererRasterHTextSolid[BR, GG]) RenderText(x, y float64, str string, flip bool) {
+func (r *RendererRasterHTextSolid[BR, GG, C]) RenderText(x, y float64, str string, flip bool) {
 	var rect glyph.GlyphRect
 
 	for _, ch := range str {
@@ -109,37 +109,37 @@ func (r *RendererRasterHTextSolid[BR, GG]) RenderText(x, y float64, str string, 
 
 // RendererRasterVTextSolid renders vertical text with solid colors.
 // This is the Go equivalent of AGG's renderer_raster_vtext_solid template class.
-type RendererRasterVTextSolid[BR BaseRendererInterface, GG glyph.GlyphGenerator] struct {
+type RendererRasterVTextSolid[BR BaseRendererInterface[C], GG glyph.GlyphGenerator, C any] struct {
 	ren   BR
 	glyph GG
-	color interface{}
+	color C
 }
 
 // NewRendererRasterVTextSolid creates a new vertical solid text renderer
-func NewRendererRasterVTextSolid[BR BaseRendererInterface, GG glyph.GlyphGenerator](ren BR, glyphGen GG) *RendererRasterVTextSolid[BR, GG] {
-	return &RendererRasterVTextSolid[BR, GG]{
+func NewRendererRasterVTextSolid[BR BaseRendererInterface[C], GG glyph.GlyphGenerator, C any](ren BR, glyphGen GG) *RendererRasterVTextSolid[BR, GG, C] {
+	return &RendererRasterVTextSolid[BR, GG, C]{
 		ren:   ren,
 		glyph: glyphGen,
 	}
 }
 
 // Attach attaches a new base renderer
-func (r *RendererRasterVTextSolid[BR, GG]) Attach(ren BR) {
+func (r *RendererRasterVTextSolid[BR, GG, C]) Attach(ren BR) {
 	r.ren = ren
 }
 
 // SetColor sets the text color
-func (r *RendererRasterVTextSolid[BR, GG]) SetColor(c interface{}) {
+func (r *RendererRasterVTextSolid[BR, GG, C]) SetColor(c C) {
 	r.color = c
 }
 
 // Color returns the current text color
-func (r *RendererRasterVTextSolid[BR, GG]) Color() interface{} {
+func (r *RendererRasterVTextSolid[BR, GG, C]) Color() C {
 	return r.color
 }
 
 // RenderText renders the given text vertically at the specified position
-func (r *RendererRasterVTextSolid[BR, GG]) RenderText(x, y float64, str string, flip bool) {
+func (r *RendererRasterVTextSolid[BR, GG, C]) RenderText(x, y float64, str string, flip bool) {
 	var rect glyph.GlyphRect
 
 	for _, ch := range str {

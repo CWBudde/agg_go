@@ -337,9 +337,9 @@ func TestScanlineStorageAA_ConcreteTypes(t *testing.T) {
 	}
 
 	// Test type aliases
-	var _ = storage8
-	var _ = storage16
-	var _ = storage32
+	_ = storage8
+	_ = storage16
+	_ = storage32
 }
 
 func TestScanlineStorageAA_BoundsChecking(t *testing.T) {

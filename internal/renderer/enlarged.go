@@ -1,5 +1,3 @@
-//go:build typed_renderer
-
 // Package renderer provides specialized renderers for AGG.
 // This typed variant of RendererEnlarged works with a concrete color type C
 // and a typed base renderer.

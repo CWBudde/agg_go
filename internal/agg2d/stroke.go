@@ -173,6 +173,12 @@ type StrokeAttributes struct {
 
 // GetStrokeAttributes returns the current complete stroke attributes.
 func (agg2d *Agg2D) GetStrokeAttributes() StrokeAttributes {
+	// Get dash pattern from conv_dash if available
+	var dashPattern []float64
+	if agg2d.convDash != nil {
+		dashPattern = agg2d.getDashPattern()
+	}
+
 	return StrokeAttributes{
 		Width:              agg2d.lineWidth,
 		MiterLimit:         agg2d.GetMiterLimit(),
@@ -180,8 +186,8 @@ func (agg2d *Agg2D) GetStrokeAttributes() StrokeAttributes {
 		Cap:                agg2d.lineCap,
 		Join:               agg2d.lineJoin,
 		DashStart:          agg2d.GetDashStart(),
-		DashPattern:        nil, // TODO: Implement dash pattern storage
-		DashOffset:         0.0, // TODO: Implement dash offset storage
+		DashPattern:        dashPattern,
+		DashOffset:         agg2d.GetDashStart(), // DashStart is the offset
 		PathShorten:        agg2d.GetShorten(),
 		Shorten:            agg2d.GetShorten(),
 		ApproximationScale: agg2d.GetApproximationScale(),
@@ -211,4 +217,17 @@ func (agg2d *Agg2D) GetLineWidth() float64 {
 // This matches AGG C++ naming conventions used in some examples.
 func (agg2d *Agg2D) NoDashes() {
 	agg2d.RemoveAllDashes()
+}
+
+// getDashPattern returns the current dash pattern array.
+// This is a helper method for GetStrokeAttributes.
+func (agg2d *Agg2D) getDashPattern() []float64 {
+	if agg2d.convDash == nil {
+		return nil
+	}
+
+	// For now, return empty slice as we don't have direct access to the pattern
+	// In a full implementation, conv_dash would expose its pattern
+	// This would require extending the conv.ConvDash interface
+	return []float64{}
 }

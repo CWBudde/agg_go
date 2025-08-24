@@ -10,7 +10,7 @@ import (
 
 func TestNewSplineCtrlImpl(t *testing.T) {
 	// Test basic construction
-	ctrl := NewSplineCtrlImpl(10, 20, 100, 80, 6, false)
+	ctrl := NewSplineCtrlImpl[color.RGBA](10, 20, 100, 80, 6, false)
 
 	if ctrl == nil {
 		t.Fatal("NewSplineCtrlImpl returned nil")
@@ -26,19 +26,19 @@ func TestNewSplineCtrlImpl(t *testing.T) {
 	}
 
 	// Test clamping of point count
-	ctrlLow := NewSplineCtrlImpl(0, 0, 100, 100, 2, false)
+	ctrlLow := NewSplineCtrlImpl[color.RGBA](0, 0, 100, 100, 2, false)
 	if ctrlLow.numPnt != 4 {
 		t.Errorf("Expected numPnt clamped to 4, got %d", ctrlLow.numPnt)
 	}
 
-	ctrlHigh := NewSplineCtrlImpl(0, 0, 100, 100, 50, false)
+	ctrlHigh := NewSplineCtrlImpl[color.RGBA](0, 0, 100, 100, 50, false)
 	if ctrlHigh.numPnt != maxControlPoints {
 		t.Errorf("Expected numPnt clamped to %d, got %d", maxControlPoints, ctrlHigh.numPnt)
 	}
 }
 
 func TestControlPointInitialization(t *testing.T) {
-	ctrl := NewSplineCtrlImpl(0, 0, 100, 100, 8, false)
+	ctrl := NewSplineCtrlImpl[color.RGBA](0, 0, 100, 100, 8, false)
 
 	// Check initial point distribution
 	for i := uint(0); i < ctrl.numPnt; i++ {
@@ -55,7 +55,7 @@ func TestControlPointInitialization(t *testing.T) {
 }
 
 func TestControlPointConstraints(t *testing.T) {
-	ctrl := NewSplineCtrlImpl(0, 0, 100, 100, 5, false)
+	ctrl := NewSplineCtrlImpl[color.RGBA](0, 0, 100, 100, 5, false)
 
 	// Test first point constraint (should stay at x=0)
 	ctrl.setXP(0, 0.5)
@@ -89,7 +89,7 @@ func TestControlPointConstraints(t *testing.T) {
 }
 
 func TestSplineCalculation(t *testing.T) {
-	ctrl := NewSplineCtrlImpl(0, 0, 100, 100, 4, false)
+	ctrl := NewSplineCtrlImpl[color.RGBA](0, 0, 100, 100, 4, false)
 
 	// Set up a simple curve: start low, peak in middle, end low
 	ctrl.SetPoint(1, 0.33, 0.8)
@@ -122,7 +122,7 @@ func TestSplineCalculation(t *testing.T) {
 }
 
 func TestPointAccessors(t *testing.T) {
-	ctrl := NewSplineCtrlImpl(0, 0, 100, 100, 5, false)
+	ctrl := NewSplineCtrlImpl[color.RGBA](0, 0, 100, 100, 5, false)
 
 	// Test setting and getting points
 	ctrl.SetPoint(2, 0.4, 0.7)
@@ -150,7 +150,7 @@ func TestPointAccessors(t *testing.T) {
 }
 
 func TestMouseInteraction(t *testing.T) {
-	ctrl := NewSplineCtrlImpl(0, 0, 100, 100, 4, false)
+	ctrl := NewSplineCtrlImpl[color.RGBA](0, 0, 100, 100, 4, false)
 
 	// Test mouse down on a control point
 	// Point 1 should be at screen coordinates (33.33, 50) approximately
@@ -193,7 +193,7 @@ func TestMouseInteraction(t *testing.T) {
 }
 
 func TestKeyboardNavigation(t *testing.T) {
-	ctrl := NewSplineCtrlImpl(0, 0, 100, 100, 4, false)
+	ctrl := NewSplineCtrlImpl[color.RGBA](0, 0, 100, 100, 4, false)
 
 	// Test with no active point
 	result := ctrl.OnArrowKeys(true, false, false, false)
@@ -226,7 +226,7 @@ func TestKeyboardNavigation(t *testing.T) {
 }
 
 func TestVertexSource(t *testing.T) {
-	ctrl := NewSplineCtrlImpl(10, 20, 90, 80, 4, false)
+	ctrl := NewSplineCtrlImpl[color.RGBA](10, 20, 90, 80, 4, false)
 
 	// Test number of paths
 	if ctrl.NumPaths() != numPaths {
@@ -303,7 +303,7 @@ func TestVertexSource(t *testing.T) {
 }
 
 func TestInRect(t *testing.T) {
-	ctrl := NewSplineCtrlImpl(10, 20, 90, 80, 4, false)
+	ctrl := NewSplineCtrlImpl[color.RGBA](10, 20, 90, 80, 4, false)
 
 	// Test points inside rectangle
 	if !ctrl.InRect(50, 50) {
@@ -339,12 +339,8 @@ func TestSplineCtrlGeneric(t *testing.T) {
 	ctrl.SetBackgroundColor(testColor)
 
 	retrievedColor := ctrl.Color(0)
-	if rgbaColor, ok := retrievedColor.(color.RGBA); ok {
-		if rgbaColor != testColor {
-			t.Errorf("Retrieved color doesn't match set color")
-		}
-	} else {
-		t.Error("Retrieved color is not RGBA type")
+	if retrievedColor != testColor {
+		t.Errorf("Retrieved color doesn't match set color")
 	}
 }
 
@@ -356,27 +352,29 @@ func TestSplineCtrlRGBA(t *testing.T) {
 	}
 
 	// Test that default colors are set
+	// Colors are now direct values, not pointers, so they can't be nil
+	// Instead check that the colors have valid values (non-zero alpha)
 	bgColor := ctrl.Color(0)
-	if bgColor == nil {
-		t.Error("Background color should be set by default")
+	if bgColor.A == 0 {
+		t.Error("Background color should have non-zero alpha")
 	}
 
 	borderColor := ctrl.Color(1)
-	if borderColor == nil {
-		t.Error("Border color should be set by default")
+	if borderColor.A == 0 {
+		t.Error("Border color should have non-zero alpha")
 	}
 
-	// Test all paths have colors
+	// Test all paths have colors with non-zero alpha
 	for i := uint(0); i < ctrl.NumPaths(); i++ {
 		color := ctrl.Color(i)
-		if color == nil {
-			t.Errorf("Path %d should have a color", i)
+		if color.A == 0 {
+			t.Errorf("Path %d should have a color with non-zero alpha", i)
 		}
 	}
 }
 
 func TestActivePointManagement(t *testing.T) {
-	ctrl := NewSplineCtrlImpl(0, 0, 100, 100, 5, false)
+	ctrl := NewSplineCtrlImpl[color.RGBA](0, 0, 100, 100, 5, false)
 
 	// Test initial state
 	if ctrl.GetActivePoint() != -1 {
@@ -402,7 +400,7 @@ func TestActivePointManagement(t *testing.T) {
 }
 
 func TestBorderAndSizeSettings(t *testing.T) {
-	ctrl := NewSplineCtrlImpl(0, 0, 100, 100, 4, false)
+	ctrl := NewSplineCtrlImpl[color.RGBA](0, 0, 100, 100, 4, false)
 
 	// Test border width setting
 	ctrl.BorderWidth(2.0, 1.0)
@@ -427,7 +425,7 @@ func TestBorderAndSizeSettings(t *testing.T) {
 }
 
 func TestCoordinateConversion(t *testing.T) {
-	ctrl := NewSplineCtrlImpl(10, 20, 90, 80, 4, false)
+	ctrl := NewSplineCtrlImpl[color.RGBA](10, 20, 90, 80, 4, false)
 
 	// Test coordinate conversion for first point (should be at left edge)
 	screenX := ctrl.calcXP(0)

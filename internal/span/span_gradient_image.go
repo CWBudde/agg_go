@@ -244,17 +244,13 @@ func (gi *GradientImage[ColorT]) Calculate(x, y, d2 int) int {
 		pixel := gi.buffer[py*gi.allocWidth+px]
 
 		// Update the color function's color based on the sampled pixel
-		// This requires type conversion - we'll use interface{} and type assertion
+		// Use type conversion through any to handle the generic ColorT
 		colorPtr := gi.colorFunc.Color()
-		if rgba8Ptr, ok := any(colorPtr).(*color.RGBA8[color.SRGB]); ok {
-			*rgba8Ptr = pixel
-		}
+		*colorPtr = any(pixel).(ColorT)
 	} else {
 		// No buffer available - set color to transparent black
 		colorPtr := gi.colorFunc.Color()
-		if rgba8Ptr, ok := any(colorPtr).(*color.RGBA8[color.SRGB]); ok {
-			*rgba8Ptr = color.RGBA8[color.SRGB]{}
-		}
+		*colorPtr = any(color.RGBA8[color.SRGB]{}).(ColorT)
 	}
 
 	// Gradient functions typically return distance, but image gradients

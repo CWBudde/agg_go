@@ -11,6 +11,42 @@ type EventCallbackSetter interface {
 	SetEventCallback(callback types.EventCallback)
 }
 
+// ImageSurface defines the interface for platform-specific image surfaces.
+// This replaces the use of interface{} in image-related operations.
+type ImageSurface interface {
+	// GetWidth returns the width of the image surface
+	GetWidth() int
+
+	// GetHeight returns the height of the image surface
+	GetHeight() int
+
+	// GetData returns the raw pixel data (may be platform-specific format)
+	GetData() []byte
+
+	// IsValid returns true if the surface is valid and ready for use
+	IsValid() bool
+}
+
+// NativeHandle defines the interface for platform-specific native handles.
+// This replaces the use of interface{} in GetNativeHandle operations.
+type NativeHandle interface {
+	// GetType returns a string identifying the type of native handle
+	GetType() string
+
+	// IsValid returns true if the handle is valid
+	IsValid() bool
+}
+
+// RawEventHandler defines the interface for handling platform-specific raw event handlers.
+// This provides type safety for event handler parameters in OnPostDraw.
+type RawEventHandler interface {
+	// GetBackendType returns the type of backend this handler is for
+	GetBackendType() string
+
+	// IsValid returns true if the handler is valid
+	IsValid() bool
+}
+
 // Backend defines the core interface for platform backends.
 // This interface provides a common abstraction for different platform implementations
 // such as SDL2, X11, or other windowing systems.

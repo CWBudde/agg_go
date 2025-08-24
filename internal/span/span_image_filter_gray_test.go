@@ -1,10 +1,11 @@
 package span
 
 import (
+	"testing"
+
 	"agg_go/internal/basics"
 	"agg_go/internal/color"
 	"agg_go/internal/image"
-	"testing"
 )
 
 // MockGraySource implements GraySourceInterface for testing

@@ -131,7 +131,7 @@ func (app *SDL2DemoApp) OnMouseMove(x, y int, flags platform.InputFlags) {
 func (app *SDL2DemoApp) OnMouseButtonDown(x, y int, flags platform.InputFlags) {
 	if flags.HasMouseLeft() {
 		app.isDragging = true
-		
+
 		// Add a new shape at mouse position with random properties
 		shape := Shape{
 			X:    float64(x),

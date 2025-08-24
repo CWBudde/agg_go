@@ -12,8 +12,9 @@ This example demonstrates the AGG Go rendering pipeline using ellipses as a foun
 ## Output
 
 The example generates `rounded_rect_demo.png` showing:
+
 - Blue filled ellipse
-- Red outlined ellipse  
+- Red outlined ellipse
 - Green filled ellipse
 - Purple outlined ellipse
 - Orange filled ellipse
@@ -37,20 +38,22 @@ This example uses ellipses because the high-level Fill() function is not yet imp
 1. Use `internal/shapes/rounded_rect.go` which provides the full vertex source implementation
 2. Use the low-level rendering pipeline with:
    - `internal/rasterizer/RasterizerScanlineAA`
-   - `internal/scanline/ScanlineP8` 
+   - `internal/scanline/ScanlineP8`
    - `internal/renderer/scanline/RendererScanlineAASolid`
    - `internal/renderer/scanline/RenderScanlines()`
 
 ## Implementation status
 
 ✅ **Available components:**
+
 - Core rendering pipeline (rasterizer, scanline, renderer)
 - RoundedRect vertex source in `internal/shapes/`
 - ConvStroke for outlines
 - Full pixel format support
 
 ❌ **Missing for interactive version:**
-- UI controls (sliders, checkboxes)  
+
+- UI controls (sliders, checkboxes)
 - Mouse interaction handling
 - Real-time parameter adjustment
 
@@ -59,5 +62,5 @@ The fundamental math and rendering is ready - the gaps are in interactive UI com
 ## Related examples
 
 - `../hello_world/` - Basic AGG usage
-- `../shapes/` - More shape rendering examples  
+- `../shapes/` - More shape rendering examples
 - See `../../../TASKS-EXAMPLES.md` for roadmap of all planned examples

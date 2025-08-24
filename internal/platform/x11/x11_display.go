@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"agg_go/internal/buffer"
+	"agg_go/internal/platform"
 	"agg_go/internal/platform/types"
 )
 
@@ -261,7 +262,7 @@ func (x *X11Backend) loadBMP(filename string) (*X11ImageSurface, error) {
 }
 
 // CreateImageSurface creates an X11 image surface
-func (x *X11Backend) CreateImageSurface(width, height int) (interface{}, error) {
+func (x *X11Backend) CreateImageSurface(width, height int) (platform.ImageSurface, error) {
 	// For X11, we create a simple byte buffer that can be converted to XImage
 	bpp := x.bpp
 	if bpp < 24 {
@@ -283,7 +284,7 @@ func (x *X11Backend) CreateImageSurface(width, height int) (interface{}, error) 
 }
 
 // DestroyImageSurface destroys an X11 image surface
-func (x *X11Backend) DestroyImageSurface(surface interface{}) error {
+func (x *X11Backend) DestroyImageSurface(surface platform.ImageSurface) error {
 	// For our simple implementation, just let Go GC handle it
 	return nil
 }
@@ -299,12 +300,12 @@ func (x *X11Backend) Delay(ms uint32) {
 }
 
 // LoadImage loads an image file (basic BMP support)
-func (x *X11Backend) LoadImage(filename string) (interface{}, error) {
+func (x *X11Backend) LoadImage(filename string) (platform.ImageSurface, error) {
 	return x.loadBMP(filename)
 }
 
 // SaveImage saves an image to file (basic BMP support)
-func (x *X11Backend) SaveImage(surface interface{}, filename string) error {
+func (x *X11Backend) SaveImage(surface platform.ImageSurface, filename string) error {
 	// TODO: Implement actual image saving
 	return nil
 }
@@ -315,7 +316,7 @@ func (x *X11Backend) GetImageExtension() string {
 }
 
 // GetNativeHandle returns the native X11 window handle
-func (x *X11Backend) GetNativeHandle() interface{} {
+func (x *X11Backend) GetNativeHandle() platform.NativeHandle {
 	return &X11NativeHandle{
 		display: x.display,
 		window:  x.window,
@@ -332,9 +333,19 @@ type X11ImageSurface struct {
 	data   []byte
 }
 
+// Interface methods for ImageSurface
+func (x *X11ImageSurface) GetWidth() int   { return x.width }
+func (x *X11ImageSurface) GetHeight() int  { return x.height }
+func (x *X11ImageSurface) GetData() []byte { return x.data }
+func (x *X11ImageSurface) IsValid() bool   { return x.data != nil && x.width > 0 && x.height > 0 }
+
 // X11NativeHandle provides access to native X11 handles
 type X11NativeHandle struct {
 	display *C.Display
 	window  C.Window
 	gc      C.GC
 }
+
+// Interface methods for NativeHandle
+func (x *X11NativeHandle) GetType() string { return "X11" }
+func (x *X11NativeHandle) IsValid() bool   { return x.display != nil && x.window != 0 }

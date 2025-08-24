@@ -254,56 +254,52 @@ func (sif *SpanImageFilterRGBBilinearClip[Source, Interpolator]) Generate(span [
 			xHr &= image.ImageSubpixelMask
 			yHr &= image.ImageSubpixelMask
 
-			if sourceAccessor, ok := interface{}(sif.base.source).(interface {
-				RowPtr(y int) []basics.Int8u
-			}); ok {
-				// Implementation similar to bilinear but with bounds checking and row access
-				row := sourceAccessor.RowPtr(yLr)
-				pixelOffset := xLr * 3
+			// Since Source is constrained to RGBSourceInterface, we can use RowPtr directly
+			row := sif.base.source.RowPtr(yLr)
+			pixelOffset := xLr * 3
 
-				// Top-left sample
-				weight := (image.ImageSubpixelScale - xHr) * (image.ImageSubpixelScale - yHr)
+			// Top-left sample
+			weight := (image.ImageSubpixelScale - xHr) * (image.ImageSubpixelScale - yHr)
+			if pixelOffset+2 < len(row) {
+				fg[0] += weight * int(row[pixelOffset])
+				fg[1] += weight * int(row[pixelOffset+1])
+				fg[2] += weight * int(row[pixelOffset+2])
+			}
+
+			// Top-right sample
+			weight = xHr * (image.ImageSubpixelScale - yHr)
+			if pixelOffset+5 < len(row) {
+				fg[0] += weight * int(row[pixelOffset+3])
+				fg[1] += weight * int(row[pixelOffset+4])
+				fg[2] += weight * int(row[pixelOffset+5])
+			}
+
+			// Bottom row samples
+			yLr++
+			if yLr < sif.base.source.Height() {
+				row = sif.base.source.RowPtr(yLr)
+
+				// Bottom-left sample
+				weight = (image.ImageSubpixelScale - xHr) * yHr
 				if pixelOffset+2 < len(row) {
 					fg[0] += weight * int(row[pixelOffset])
 					fg[1] += weight * int(row[pixelOffset+1])
 					fg[2] += weight * int(row[pixelOffset+2])
 				}
 
-				// Top-right sample
-				weight = xHr * (image.ImageSubpixelScale - yHr)
+				// Bottom-right sample
+				weight = xHr * yHr
 				if pixelOffset+5 < len(row) {
 					fg[0] += weight * int(row[pixelOffset+3])
 					fg[1] += weight * int(row[pixelOffset+4])
 					fg[2] += weight * int(row[pixelOffset+5])
 				}
-
-				// Bottom row samples
-				yLr++
-				if yLr < sif.base.source.Height() {
-					row = sourceAccessor.RowPtr(yLr)
-
-					// Bottom-left sample
-					weight = (image.ImageSubpixelScale - xHr) * yHr
-					if pixelOffset+2 < len(row) {
-						fg[0] += weight * int(row[pixelOffset])
-						fg[1] += weight * int(row[pixelOffset+1])
-						fg[2] += weight * int(row[pixelOffset+2])
-					}
-
-					// Bottom-right sample
-					weight = xHr * yHr
-					if pixelOffset+5 < len(row) {
-						fg[0] += weight * int(row[pixelOffset+3])
-						fg[1] += weight * int(row[pixelOffset+4])
-						fg[2] += weight * int(row[pixelOffset+5])
-					}
-				}
-
-				// Downshift results
-				fg[0] >>= (image.ImageSubpixelShift * 2)
-				fg[1] >>= (image.ImageSubpixelShift * 2)
-				fg[2] >>= (image.ImageSubpixelShift * 2)
 			}
+
+			// Downshift results
+			fg[0] >>= (image.ImageSubpixelShift * 2)
+			fg[1] >>= (image.ImageSubpixelShift * 2)
+			fg[2] >>= (image.ImageSubpixelShift * 2)
 		} else {
 			// Handle clipping case
 			if xLr < -1 || yLr < -1 || xLr > maxX || yLr > maxY {

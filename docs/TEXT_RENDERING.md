@@ -63,24 +63,28 @@ agg2d.Text(400, 300, "Hello, World!", false, 0, 0)
 ### Font Configuration
 
 #### `Font(fileName string, height float64, bold, italic bool, cacheType FontCacheType, angle float64) error`
+
 Loads and configures a font for text rendering.
 
 - **fileName**: Path to the font file (TTF/OTF)
 - **height**: Font size in points
 - **bold**: Bold text flag (currently informational)
-- **italic**: Italic text flag (currently informational) 
+- **italic**: Italic text flag (currently informational)
 - **cacheType**: `RasterFontCache` or `VectorFontCache`
 - **angle**: Text rotation angle in radians
 
 #### `FontHeight() float64`
+
 Returns the current font height in points.
 
 #### `FlipText(flip bool)`
+
 Sets whether to flip text rendering vertically.
 
 ### Text Rendering
 
 #### `Text(x, y float64, str string, roundOff bool, dx, dy float64)`
+
 Renders text at the specified position.
 
 - **x, y**: Base position for text rendering
@@ -89,22 +93,27 @@ Renders text at the specified position.
 - **dx, dy**: Additional offset for text positioning
 
 #### `TextWidth(str string) float64`
+
 Calculates the rendered width of a text string.
 
 #### `TextAlignment(alignX, alignY TextAlignment)`
+
 Sets text alignment for both horizontal and vertical positioning.
 
 **Horizontal alignment:**
+
 - `AlignLeft`: Align to the left of the position
 - `AlignCenter`: Center on the position
 - `AlignRight`: Align to the right of the position
 
 **Vertical alignment:**
+
 - `AlignBottom`: Align baseline to position
-- `AlignCenter`: Center on the position  
+- `AlignCenter`: Center on the position
 - `AlignTop`: Align top to position
 
 #### `TextHints(hints bool)` / `GetTextHints() bool`
+
 Enables or disables font hinting for improved text rendering.
 
 ## Text Alignment Examples
@@ -126,12 +135,14 @@ agg2d.Text(700, 500, "Bottom Right", false, 0, 0)
 ## Font Cache Types
 
 ### Raster Font Cache (`RasterFontCache`)
+
 - Caches pre-rendered bitmap glyphs
 - Fast rendering performance
 - Fixed to screen resolution
 - Best for UI text and standard rendering
 
 ### Vector Font Cache (`VectorFontCache`)
+
 - Caches vector outline data
 - Resolution-independent
 - Slower rendering but scalable
@@ -153,17 +164,20 @@ agg2d.Text(100, 180, "🌍 🎉 💖 🚀 🎨", false, 0, 0)        // Emoji
 ## Performance Considerations
 
 ### Glyph Caching
+
 - Glyphs are automatically cached after first render
 - Cache uses two-level indexing (MSB/LSB) for fast lookup
 - Maximum of 32 font faces cached by default
 - LRU eviction when cache is full
 
 ### Kerning Support
+
 - Automatic kerning between character pairs
 - Requires font with kerning tables
 - Slight performance cost for character pair lookups
 
 ### Memory Usage
+
 - Block allocator for efficient memory management
 - Minimal memory fragmentation
 - Glyph data shared across similar renderings
@@ -171,20 +185,25 @@ agg2d.Text(100, 180, "🌍 🎉 💖 🚀 🎨", false, 0, 0)        // Emoji
 ## Error Handling
 
 ### Without FreeType
+
 When built without FreeType support:
+
 - Font loading returns an error
 - Text rendering methods return early (no-op)
 - TextWidth() returns 0
 - No crashes or panics occur
 
 ### Font Loading Errors
+
 Common font loading issues:
+
 - File not found
 - Unsupported font format
 - Corrupted font file
 - Insufficient memory
 
 ### Graceful Degradation
+
 - Missing characters render as empty space
 - Invalid font faces fall back to default
 - Out-of-memory conditions handled gracefully
@@ -192,6 +211,7 @@ Common font loading issues:
 ## Implementation Details
 
 ### Architecture
+
 The text rendering system consists of several components:
 
 1. **Font Engine** (`internal/font/freetype/`): FreeType integration
@@ -200,11 +220,13 @@ The text rendering system consists of several components:
 4. **AGG2D Integration** (`agg2d_text.go`): High-level API
 
 ### Thread Safety
+
 - Font engines are not thread-safe
 - Each AGG2D context should be used from a single thread
 - Multiple contexts can be used concurrently
 
 ### Build Tags
+
 - `//go:build freetype`: Full FreeType implementation
 - `//go:build !freetype`: Stub implementation for graceful degradation
 
@@ -253,7 +275,7 @@ When contributing to text rendering:
 Potential improvements for future versions:
 
 - **Text Layout**: Multi-line text with line breaks
-- **Text Effects**: Shadows, outlines, gradients  
+- **Text Effects**: Shadows, outlines, gradients
 - **Advanced Typography**: Ligatures, complex scripts
 - **Alternative Backends**: Native font engines (CoreText, DirectWrite)
 - **Font Metrics**: Advanced typography metrics and baselines

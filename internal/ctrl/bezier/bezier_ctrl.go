@@ -14,27 +14,27 @@ import (
 
 // BezierCtrl implements an interactive cubic Bezier curve control.
 // This corresponds to AGG's bezier_ctrl_impl class.
-type BezierCtrl struct {
+type BezierCtrl[C any] struct {
 	*ctrl.BaseCtrl
 
 	// Bezier curve and rendering components
 	curve   *curves.Curve4
 	ellipse *shapes.Ellipse
 	stroke  *conv.ConvStroke
-	poly    *polygon.PolygonCtrl
+	poly    *polygon.PolygonCtrl[C]
 
 	// Rendering state
 	idx uint
 
 	// Color for rendering
-	lineColor color.RGBA
+	lineColor C
 }
 
 // NewBezierCtrl creates a new cubic Bezier curve control.
 // The control starts with default points that form a visible curve.
-func NewBezierCtrl() *BezierCtrl {
+func NewBezierCtrl[C any](lineColor C) *BezierCtrl[C] {
 	// Create a 4-point polygon for the Bezier control points
-	poly := polygon.NewPolygonCtrl(4, 5.0)
+	poly := polygon.NewPolygonCtrl[C](4, 5.0, lineColor)
 	poly.SetInPolygonCheck(false)
 
 	// Set default control points that create a nice visible curve
@@ -51,14 +51,14 @@ func NewBezierCtrl() *BezierCtrl {
 	ellipse := shapes.NewEllipse()
 	stroke := conv.NewConvStroke(curve)
 
-	ctrl := &BezierCtrl{
+	ctrl := &BezierCtrl[C]{
 		BaseCtrl:  ctrl.NewBaseCtrl(0, 0, 1, 1, false),
 		curve:     curve,
 		ellipse:   ellipse,
 		stroke:    stroke,
 		poly:      poly,
 		idx:       0,
-		lineColor: color.NewRGBA(0.0, 0.0, 0.0, 1.0),
+		lineColor: lineColor,
 	}
 
 	// Initialize the curve with the default points
@@ -67,10 +67,17 @@ func NewBezierCtrl() *BezierCtrl {
 	return ctrl
 }
 
+// NewDefaultBezierCtrl creates a Bezier control with default RGBA color (black).
+// This provides backward compatibility for existing code.
+func NewDefaultBezierCtrl() *BezierCtrl[color.RGBA] {
+	defaultColor := color.NewRGBA(0.0, 0.0, 0.0, 1.0) // default black
+	return NewBezierCtrl[color.RGBA](defaultColor)
+}
+
 // Curve Management Methods
 
 // SetCurve sets the Bezier curve control points.
-func (b *BezierCtrl) SetCurve(x1, y1, x2, y2, x3, y3, x4, y4 float64) {
+func (b *BezierCtrl[C]) SetCurve(x1, y1, x2, y2, x3, y3, x4, y4 float64) {
 	b.poly.SetXn(0, x1)
 	b.poly.SetYn(0, y1)
 	b.poly.SetXn(1, x2)
@@ -83,13 +90,13 @@ func (b *BezierCtrl) SetCurve(x1, y1, x2, y2, x3, y3, x4, y4 float64) {
 }
 
 // Curve returns the internal curve object after updating it with current points.
-func (b *BezierCtrl) Curve() *curves.Curve4 {
+func (b *BezierCtrl[C]) Curve() *curves.Curve4 {
 	b.updateCurve()
 	return b.curve
 }
 
 // updateCurve updates the internal curve with current control points.
-func (b *BezierCtrl) updateCurve() {
+func (b *BezierCtrl[C]) updateCurve() {
 	b.curve.Init(
 		b.poly.Xn(0), b.poly.Yn(0), // P0
 		b.poly.Xn(1), b.poly.Yn(1), // P1
@@ -101,107 +108,107 @@ func (b *BezierCtrl) updateCurve() {
 // Control Point Access Methods
 
 // X1 returns the X coordinate of the start point (P0).
-func (b *BezierCtrl) X1() float64 { return b.poly.Xn(0) }
+func (b *BezierCtrl[C]) X1() float64 { return b.poly.Xn(0) }
 
 // Y1 returns the Y coordinate of the start point (P0).
-func (b *BezierCtrl) Y1() float64 { return b.poly.Yn(0) }
+func (b *BezierCtrl[C]) Y1() float64 { return b.poly.Yn(0) }
 
 // X2 returns the X coordinate of the first control point (P1).
-func (b *BezierCtrl) X2() float64 { return b.poly.Xn(1) }
+func (b *BezierCtrl[C]) X2() float64 { return b.poly.Xn(1) }
 
 // Y2 returns the Y coordinate of the first control point (P1).
-func (b *BezierCtrl) Y2() float64 { return b.poly.Yn(1) }
+func (b *BezierCtrl[C]) Y2() float64 { return b.poly.Yn(1) }
 
 // X3 returns the X coordinate of the second control point (P2).
-func (b *BezierCtrl) X3() float64 { return b.poly.Xn(2) }
+func (b *BezierCtrl[C]) X3() float64 { return b.poly.Xn(2) }
 
 // Y3 returns the Y coordinate of the second control point (P2).
-func (b *BezierCtrl) Y3() float64 { return b.poly.Yn(2) }
+func (b *BezierCtrl[C]) Y3() float64 { return b.poly.Yn(2) }
 
 // X4 returns the X coordinate of the end point (P3).
-func (b *BezierCtrl) X4() float64 { return b.poly.Xn(3) }
+func (b *BezierCtrl[C]) X4() float64 { return b.poly.Xn(3) }
 
 // Y4 returns the Y coordinate of the end point (P3).
-func (b *BezierCtrl) Y4() float64 { return b.poly.Yn(3) }
+func (b *BezierCtrl[C]) Y4() float64 { return b.poly.Yn(3) }
 
 // SetX1 sets the X coordinate of the start point (P0).
-func (b *BezierCtrl) SetX1(x float64) { b.poly.SetXn(0, x) }
+func (b *BezierCtrl[C]) SetX1(x float64) { b.poly.SetXn(0, x) }
 
 // SetY1 sets the Y coordinate of the start point (P0).
-func (b *BezierCtrl) SetY1(y float64) { b.poly.SetYn(0, y) }
+func (b *BezierCtrl[C]) SetY1(y float64) { b.poly.SetYn(0, y) }
 
 // SetX2 sets the X coordinate of the first control point (P1).
-func (b *BezierCtrl) SetX2(x float64) { b.poly.SetXn(1, x) }
+func (b *BezierCtrl[C]) SetX2(x float64) { b.poly.SetXn(1, x) }
 
 // SetY2 sets the Y coordinate of the first control point (P1).
-func (b *BezierCtrl) SetY2(y float64) { b.poly.SetYn(1, y) }
+func (b *BezierCtrl[C]) SetY2(y float64) { b.poly.SetYn(1, y) }
 
 // SetX3 sets the X coordinate of the second control point (P2).
-func (b *BezierCtrl) SetX3(x float64) { b.poly.SetXn(2, x) }
+func (b *BezierCtrl[C]) SetX3(x float64) { b.poly.SetXn(2, x) }
 
 // SetY3 sets the Y coordinate of the second control point (P2).
-func (b *BezierCtrl) SetY3(y float64) { b.poly.SetYn(2, y) }
+func (b *BezierCtrl[C]) SetY3(y float64) { b.poly.SetYn(2, y) }
 
 // SetX4 sets the X coordinate of the end point (P3).
-func (b *BezierCtrl) SetX4(x float64) { b.poly.SetXn(3, x) }
+func (b *BezierCtrl[C]) SetX4(x float64) { b.poly.SetXn(3, x) }
 
 // SetY4 sets the Y coordinate of the end point (P3).
-func (b *BezierCtrl) SetY4(y float64) { b.poly.SetYn(3, y) }
+func (b *BezierCtrl[C]) SetY4(y float64) { b.poly.SetYn(3, y) }
 
 // Stroke Configuration Methods
 
 // SetLineWidth sets the width of the curve and control line strokes.
-func (b *BezierCtrl) SetLineWidth(w float64) {
+func (b *BezierCtrl[C]) SetLineWidth(w float64) {
 	b.stroke.SetWidth(w)
 }
 
 // LineWidth returns the current stroke width.
-func (b *BezierCtrl) LineWidth() float64 {
+func (b *BezierCtrl[C]) LineWidth() float64 {
 	return b.stroke.Width()
 }
 
 // SetPointRadius sets the radius for control point rendering and hit testing.
-func (b *BezierCtrl) SetPointRadius(r float64) {
+func (b *BezierCtrl[C]) SetPointRadius(r float64) {
 	b.poly.SetPointRadius(r)
 }
 
 // PointRadius returns the current point radius.
-func (b *BezierCtrl) PointRadius() float64 {
+func (b *BezierCtrl[C]) PointRadius() float64 {
 	return b.poly.PointRadius()
 }
 
 // Color Management
 
 // SetLineColor sets the line color for rendering.
-func (b *BezierCtrl) SetLineColor(c color.RGBA) {
+func (b *BezierCtrl[C]) SetLineColor(c C) {
 	b.lineColor = c
 	b.poly.SetLineColor(c)
 }
 
 // LineColor returns the current line color.
-func (b *BezierCtrl) LineColor() color.RGBA {
+func (b *BezierCtrl[C]) LineColor() C {
 	return b.lineColor
 }
 
 // Mouse Interaction Methods (delegate to polygon control)
 
 // OnMouseButtonDown handles mouse button press events.
-func (b *BezierCtrl) OnMouseButtonDown(x, y float64) bool {
+func (b *BezierCtrl[C]) OnMouseButtonDown(x, y float64) bool {
 	return b.poly.OnMouseButtonDown(x, y)
 }
 
 // OnMouseButtonUp handles mouse button release events.
-func (b *BezierCtrl) OnMouseButtonUp(x, y float64) bool {
+func (b *BezierCtrl[C]) OnMouseButtonUp(x, y float64) bool {
 	return b.poly.OnMouseButtonUp(x, y)
 }
 
 // OnMouseMove handles mouse move events.
-func (b *BezierCtrl) OnMouseMove(x, y float64, buttonPressed bool) bool {
+func (b *BezierCtrl[C]) OnMouseMove(x, y float64, buttonPressed bool) bool {
 	return b.poly.OnMouseMove(x, y, buttonPressed)
 }
 
 // OnArrowKeys handles arrow key events.
-func (b *BezierCtrl) OnArrowKeys(left, right, down, up bool) bool {
+func (b *BezierCtrl[C]) OnArrowKeys(left, right, down, up bool) bool {
 	return b.poly.OnArrowKeys(left, right, down, up)
 }
 
@@ -209,12 +216,12 @@ func (b *BezierCtrl) OnArrowKeys(left, right, down, up bool) bool {
 
 // NumPaths returns the number of rendering paths.
 // Returns 7: control line 1, control line 2, curve, point 1, point 2, point 3, point 4
-func (b *BezierCtrl) NumPaths() uint {
+func (b *BezierCtrl[C]) NumPaths() uint {
 	return 7
 }
 
 // Rewind resets the vertex generation state.
-func (b *BezierCtrl) Rewind(pathID uint) {
+func (b *BezierCtrl[C]) Rewind(pathID uint) {
 	b.idx = pathID
 
 	// Set approximation scale based on current transformation
@@ -271,7 +278,7 @@ func (b *BezierCtrl) Rewind(pathID uint) {
 }
 
 // Vertex returns the next vertex for rendering.
-func (b *BezierCtrl) Vertex() (x, y float64, cmd basics.PathCommand) {
+func (b *BezierCtrl[C]) Vertex() (x, y float64, cmd basics.PathCommand) {
 	switch b.idx {
 	case 0, 1, 2: // Lines and curve - use stroke
 		x, y, cmd = b.stroke.Vertex()
@@ -288,6 +295,6 @@ func (b *BezierCtrl) Vertex() (x, y float64, cmd basics.PathCommand) {
 }
 
 // Color returns the color for the specified path.
-func (b *BezierCtrl) Color(pathID uint) interface{} {
+func (b *BezierCtrl[C]) Color(pathID uint) C {
 	return b.lineColor
 }

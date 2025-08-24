@@ -2,10 +2,17 @@ package span
 
 import (
 	"testing"
+
+	"agg_go/internal/color"
+	"agg_go/internal/renderer/scanline"
 )
 
+// Compile-time verification that SpanAllocator implements SpanAllocatorInterface
+var _ scanline.SpanAllocatorInterface[color.RGBA8[color.Linear]] = (*SpanAllocator[color.RGBA8[color.Linear]])(nil)
+
 func TestSpanAllocator_Allocate(t *testing.T) {
-	alloc := NewSpanAllocator()
+	// Test with RGBA8 color type
+	alloc := NewSpanAllocator[color.RGBA8[color.Linear]]()
 
 	t.Run("basic allocation", func(t *testing.T) {
 		colors := alloc.Allocate(10)
@@ -13,10 +20,11 @@ func TestSpanAllocator_Allocate(t *testing.T) {
 			t.Errorf("Expected length 10, got %d", len(colors))
 		}
 
-		// All elements should be nil initially
-		for i, color := range colors {
-			if color != nil {
-				t.Errorf("Expected nil at index %d, got %v", i, color)
+		// All elements should be zero value initially
+		var zero color.RGBA8[color.Linear]
+		for i, c := range colors {
+			if c != zero {
+				t.Errorf("Expected zero value at index %d, got %v", i, c)
 			}
 		}
 	})
@@ -44,7 +52,7 @@ func TestSpanAllocator_Allocate(t *testing.T) {
 }
 
 func TestSpanAllocator_ZeroLength(t *testing.T) {
-	alloc := NewSpanAllocator()
+	alloc := NewSpanAllocator[color.RGBA8[color.Linear]]()
 	colors := alloc.Allocate(0)
 
 	if len(colors) != 0 {

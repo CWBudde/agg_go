@@ -7,7 +7,7 @@ import (
 
 // RenderScanlineAASolid renders a single anti-aliased scanline with solid color.
 // This corresponds to AGG's render_scanline_aa_solid function.
-func RenderScanlineAASolid(sl ScanlineInterface, ren BaseRendererInterface, color interface{}) {
+func RenderScanlineAASolid[C any](sl ScanlineInterface, ren BaseRendererInterface[C], color C) {
 	y := sl.Y()
 	numSpans := sl.NumSpans()
 	iter := sl.Begin()
@@ -36,7 +36,7 @@ func RenderScanlineAASolid(sl ScanlineInterface, ren BaseRendererInterface, colo
 
 // RenderScanlinesAASolid renders all anti-aliased scanlines from a rasterizer with solid color.
 // This corresponds to AGG's render_scanlines_aa_solid function.
-func RenderScanlinesAASolid(ras RasterizerInterface, sl ScanlineInterface, ren BaseRendererInterface, color interface{}) {
+func RenderScanlinesAASolid[C any](ras RasterizerInterface, sl ScanlineInterface, ren BaseRendererInterface[C], color C) {
 	if !ras.RewindScanlines() {
 		return
 	}
@@ -46,15 +46,14 @@ func RenderScanlinesAASolid(ras RasterizerInterface, sl ScanlineInterface, ren B
 		resetScanline.Reset(ras.MinX(), ras.MaxX())
 	}
 
-	// Store color reference to avoid repeated interface{} passing
+	// Store color reference to avoid repeated parameter passing
 	// This corresponds to AGG's: typename BaseRenderer::color_type ren_color = color;
-	// In Go, we can't pre-convert the type, but we avoid repeated parameter passing
 	renderColor := color
 
 	// Sweep through all scanlines
 	for ras.SweepScanline(sl) {
 		// Inline the render_scanline_aa_solid logic for performance
-		// This is equivalent to calling RenderScanlineAASolid but avoids function call overhead
+		// This is equivalent to calling RenderScanlineAASolidT but avoids function call overhead
 		y := sl.Y()
 		numSpans := sl.NumSpans()
 		iter := sl.Begin()
@@ -83,7 +82,7 @@ func RenderScanlinesAASolid(ras RasterizerInterface, sl ScanlineInterface, ren B
 
 // RenderScanlineAA renders a single anti-aliased scanline with span generation.
 // This corresponds to AGG's render_scanline_aa function.
-func RenderScanlineAA(sl ScanlineInterface, ren BaseRendererInterface, alloc SpanAllocatorInterface, spanGen SpanGeneratorInterface) {
+func RenderScanlineAA[C any](sl ScanlineInterface, ren BaseRendererInterface[C], alloc SpanAllocatorInterface[C], spanGen SpanGeneratorInterface[C]) {
 	y := sl.Y()
 	numSpans := sl.NumSpans()
 	iter := sl.Begin()
@@ -123,7 +122,7 @@ func RenderScanlineAA(sl ScanlineInterface, ren BaseRendererInterface, alloc Spa
 
 // RenderScanlinesAA renders all anti-aliased scanlines from a rasterizer with span generation.
 // This corresponds to AGG's render_scanlines_aa function.
-func RenderScanlinesAA(ras RasterizerInterface, sl ScanlineInterface, ren BaseRendererInterface, alloc SpanAllocatorInterface, spanGen SpanGeneratorInterface) {
+func RenderScanlinesAA[C any](ras RasterizerInterface, sl ScanlineInterface, ren BaseRendererInterface[C], alloc SpanAllocatorInterface[C], spanGen SpanGeneratorInterface[C]) {
 	if !ras.RewindScanlines() {
 		return
 	}
@@ -144,7 +143,7 @@ func RenderScanlinesAA(ras RasterizerInterface, sl ScanlineInterface, ren BaseRe
 
 // RenderScanlineBinSolid renders a single binary scanline with solid color.
 // This corresponds to AGG's render_scanline_bin_solid function.
-func RenderScanlineBinSolid(sl ScanlineInterface, ren BaseRendererInterface, color interface{}) {
+func RenderScanlineBinSolid[C any](sl ScanlineInterface, ren BaseRendererInterface[C], color C) {
 	numSpans := sl.NumSpans()
 	iter := sl.Begin()
 	y := sl.Y()
@@ -173,7 +172,7 @@ func RenderScanlineBinSolid(sl ScanlineInterface, ren BaseRendererInterface, col
 
 // RenderScanlinesBinSolid renders all binary scanlines from a rasterizer with solid color.
 // This corresponds to AGG's render_scanlines_bin_solid function.
-func RenderScanlinesBinSolid(ras RasterizerInterface, sl ScanlineInterface, ren BaseRendererInterface, color interface{}) {
+func RenderScanlinesBinSolid[C any](ras RasterizerInterface, sl ScanlineInterface, ren BaseRendererInterface[C], color C) {
 	if !ras.RewindScanlines() {
 		return
 	}
@@ -183,7 +182,7 @@ func RenderScanlinesBinSolid(ras RasterizerInterface, sl ScanlineInterface, ren 
 		resetScanline.Reset(ras.MinX(), ras.MaxX())
 	}
 
-	// Store color reference to avoid repeated interface{} passing
+	// Store color reference to avoid repeated parameter passing
 	// This corresponds to AGG's: typename BaseRenderer::color_type ren_color(color);
 	renderColor := color
 
@@ -197,8 +196,7 @@ func RenderScanlinesBinSolid(ras RasterizerInterface, sl ScanlineInterface, ren 
 		for i := 0; i < numSpans; i++ {
 			span := iter.GetSpan()
 
-			// Calculate end coordinate for binary rendering
-			// This matches AGG's formula: span->x - 1 + ((span->len < 0) ? -span->len : span->len)
+			// Calculate end coordinate
 			var endX int
 			if span.Len < 0 {
 				endX = span.X - span.Len - 1
@@ -219,10 +217,10 @@ func RenderScanlinesBinSolid(ras RasterizerInterface, sl ScanlineInterface, ren 
 
 // RenderScanlineBin renders a single binary scanline with span generation.
 // This corresponds to AGG's render_scanline_bin function.
-func RenderScanlineBin(sl ScanlineInterface, ren BaseRendererInterface, alloc SpanAllocatorInterface, spanGen SpanGeneratorInterface) {
-	y := sl.Y()
+func RenderScanlineBin[C any](sl ScanlineInterface, ren BaseRendererInterface[C], alloc SpanAllocatorInterface[C], spanGen SpanGeneratorInterface[C]) {
 	numSpans := sl.NumSpans()
 	iter := sl.Begin()
+	y := sl.Y()
 
 	for i := 0; i < numSpans; i++ {
 		span := iter.GetSpan()
@@ -240,7 +238,7 @@ func RenderScanlineBin(sl ScanlineInterface, ren BaseRendererInterface, alloc Sp
 		// Generate colors for the span
 		spanGen.Generate(colors, x, y, length)
 
-		// Blend the span with full coverage (binary rendering)
+		// Blend the span with full coverage
 		ren.BlendColorHspan(x, y, length, colors, nil, basics.CoverFull)
 
 		// Move to next span
@@ -252,7 +250,7 @@ func RenderScanlineBin(sl ScanlineInterface, ren BaseRendererInterface, alloc Sp
 
 // RenderScanlinesBin renders all binary scanlines from a rasterizer with span generation.
 // This corresponds to AGG's render_scanlines_bin function.
-func RenderScanlinesBin(ras RasterizerInterface, sl ScanlineInterface, ren BaseRendererInterface, alloc SpanAllocatorInterface, spanGen SpanGeneratorInterface) {
+func RenderScanlinesBin[C any](ras RasterizerInterface, sl ScanlineInterface, ren BaseRendererInterface[C], alloc SpanAllocatorInterface[C], spanGen SpanGeneratorInterface[C]) {
 	if !ras.RewindScanlines() {
 		return
 	}

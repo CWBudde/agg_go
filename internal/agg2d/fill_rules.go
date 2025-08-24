@@ -66,18 +66,17 @@ func (agg2d *Agg2D) FillRuleDescription() string {
 	return "Non-Zero Winding (direction-based filling)"
 }
 
+// FillingRuleSetter defines the interface for objects that can accept fill rule settings.
+// This interface is implemented by rasterizers that support different fill rule algorithms.
+type FillingRuleSetter interface {
+	FillingRule(rule basics.FillingRule)
+}
+
 // applyFillRuleToRasterizer applies the current fill rule to a rasterizer.
 // This is a helper method that will be used when integrating with the rendering pipeline.
-// The rasterizer parameter should implement a FillingRule method.
-func (agg2d *Agg2D) applyFillRuleToRasterizer(rasterizer interface{}) {
-	// Type assertion to check if rasterizer supports FillingRule
-	type FillingRuleSetter interface {
-		FillingRule(rule basics.FillingRule)
-	}
-
-	if setter, ok := rasterizer.(FillingRuleSetter); ok {
-		setter.FillingRule(agg2d.GetFillRule())
-	}
+// The rasterizer parameter must implement the FillingRuleSetter interface.
+func (agg2d *Agg2D) applyFillRuleToRasterizer(rasterizer FillingRuleSetter) {
+	rasterizer.FillingRule(agg2d.GetFillRule())
 }
 
 // FillRuleExamples provides example use cases for different fill rules.

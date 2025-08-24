@@ -8,7 +8,7 @@ import (
 )
 
 func TestNewCurve3Ctrl(t *testing.T) {
-	ctrl := NewCurve3Ctrl()
+	ctrl := NewDefaultCurve3Ctrl()
 
 	// Test default configuration
 	if ctrl.LineWidth() != 1.0 {
@@ -41,7 +41,7 @@ func TestNewCurve3Ctrl(t *testing.T) {
 }
 
 func TestCurve3CtrlSetCurve(t *testing.T) {
-	ctrl := NewCurve3Ctrl()
+	ctrl := NewDefaultCurve3Ctrl()
 
 	// Set new curve points
 	ctrl.SetCurve(0.0, 0.0, 50.0, 75.0, 100.0, 50.0)
@@ -59,7 +59,7 @@ func TestCurve3CtrlSetCurve(t *testing.T) {
 }
 
 func TestCurve3CtrlIndividualPointSetters(t *testing.T) {
-	ctrl := NewCurve3Ctrl()
+	ctrl := NewDefaultCurve3Ctrl()
 
 	// Test individual setters
 	ctrl.SetX1(10.0)
@@ -82,7 +82,7 @@ func TestCurve3CtrlIndividualPointSetters(t *testing.T) {
 }
 
 func TestCurve3CtrlConfiguration(t *testing.T) {
-	ctrl := NewCurve3Ctrl()
+	ctrl := NewDefaultCurve3Ctrl()
 
 	// Test line width
 	ctrl.SetLineWidth(3.0)
@@ -105,7 +105,7 @@ func TestCurve3CtrlConfiguration(t *testing.T) {
 }
 
 func TestCurve3CtrlCurveAccess(t *testing.T) {
-	ctrl := NewCurve3Ctrl()
+	ctrl := NewDefaultCurve3Ctrl()
 
 	// Set known curve
 	ctrl.SetCurve(0.0, 0.0, 50.0, 50.0, 100.0, 0.0)
@@ -121,7 +121,7 @@ func TestCurve3CtrlCurveAccess(t *testing.T) {
 }
 
 func TestCurve3CtrlMouseInteraction(t *testing.T) {
-	ctrl := NewCurve3Ctrl()
+	ctrl := NewDefaultCurve3Ctrl()
 
 	// Test mouse interaction (delegates to polygon control)
 	// This primarily tests that the methods exist and can be called
@@ -153,7 +153,7 @@ func TestCurve3CtrlMouseInteraction(t *testing.T) {
 }
 
 func TestCurve3CtrlVertexGeneration(t *testing.T) {
-	ctrl := NewCurve3Ctrl()
+	ctrl := NewDefaultCurve3Ctrl()
 
 	// Test path count
 	if numPaths := ctrl.NumPaths(); numPaths != 6 {
@@ -191,7 +191,7 @@ func TestCurve3CtrlVertexGeneration(t *testing.T) {
 }
 
 func TestCurve3CtrlColorInterface(t *testing.T) {
-	ctrl := NewCurve3Ctrl()
+	ctrl := NewDefaultCurve3Ctrl()
 
 	// Set a specific color
 	purple := color.NewRGBA(1.0, 0.0, 1.0, 1.0)
@@ -207,7 +207,7 @@ func TestCurve3CtrlColorInterface(t *testing.T) {
 }
 
 func TestCurve3CtrlSpecificPaths(t *testing.T) {
-	ctrl := NewCurve3Ctrl()
+	ctrl := NewDefaultCurve3Ctrl()
 
 	// Set a specific curve for testing
 	ctrl.SetCurve(0.0, 0.0, 50.0, 100.0, 100.0, 0.0)
@@ -238,7 +238,7 @@ func TestCurve3CtrlSpecificPaths(t *testing.T) {
 }
 
 func TestCurve3CtrlInRect(t *testing.T) {
-	ctrl := NewCurve3Ctrl()
+	ctrl := NewDefaultCurve3Ctrl()
 
 	// Test the inherited InRect method
 	// Since BaseCtrl sets bounds to (0,0,1,1), points within should return true
@@ -253,8 +253,8 @@ func TestCurve3CtrlInRect(t *testing.T) {
 }
 
 func TestCurve3CtrlComparedToBezier(t *testing.T) {
-	bezierCtrl := NewBezierCtrl()
-	curve3Ctrl := NewCurve3Ctrl()
+	bezierCtrl := NewDefaultBezierCtrl()
+	curve3Ctrl := NewDefaultCurve3Ctrl()
 
 	// Curve3 should have fewer paths than Bezier
 	if curve3Ctrl.NumPaths() >= bezierCtrl.NumPaths() {

@@ -19,7 +19,7 @@ Based on analysis of the current codebase (as of 2025-08-21), here's the status 
 **Core Rendering Pipeline**: Complete and functional
 
 - **Rasterizer**: `RasterizerScanlineAA` and `RasterizerScanlineAANoGamma` ✅
-- **Scanlines**: `ScanlineP8`, `ScanlineU8`, `Scanline32P8`, `Scanline32U8` ✅  
+- **Scanlines**: `ScanlineP8`, `ScanlineU8`, `Scanline32P8`, `Scanline32U8` ✅
 - **Renderers**: `RendererScanlineAASolid`, `RendererBase` ✅
 - **Render Functions**: `RenderScanlines()` functions ✅
 - **Pixel Formats**: Complete RGBA/RGB/Gray pixel format support ✅
@@ -47,6 +47,7 @@ Based on analysis of the current codebase (as of 2025-08-21), here's the status 
 - **Affine Transforms**: Complete transformation system ✅
 
 **High-Level API**: Ready for use
+
 - **Context API**: `NewContext()`, `SetColor()`, drawing methods ✅
 - **Basic Drawing**: `FillEllipse()`, `DrawEllipse()`, `FillRoundedRect()` ✅
 - **Color System**: Complete RGBA/RGB/Gray color support ✅
@@ -54,6 +55,7 @@ Based on analysis of the current codebase (as of 2025-08-21), here's the status 
 ### ❌/✅ **INTERACTIVE COMPONENTS STATUS**
 
 **UI/Control System**
+
 - **Platform Controls**: `slider_ctrl`, `cbox_ctrl`, `rbox_ctrl` now implemented ✅
   - Additional controls present: `scale_ctrl`, `polygon_ctrl`, `spline_ctrl`, `bezier_ctrl`, `gamma_ctrl`, simple text control (see `internal/ctrl/*`) ✅
   - Console demos: `examples/core/intermediate/controls/{slider_demo,rbox_demo,spline_demo,gamma_correction}` ✅
@@ -62,11 +64,13 @@ Based on analysis of the current codebase (as of 2025-08-21), here's the status 
   - Core `PlatformSupport` also exposes handler hooks; window update is stubbed for non-backend mode ↔︎
 - **Control Rendering**: `render_ctrl()` equivalent present as `ctrl.RenderCtrl` (generic scaffolding) and `ctrl.SimpleRenderCtrl` (working helper) — integration with concrete rasterizer/renderer still pending ⚠️
 
-**Specialized Renderers** - Needed for educational demos  
+**Specialized Renderers** - Needed for educational demos
+
 - **Magnified Rendering**: `renderer_enlarged` for pixel visualization - **IMPLEMENTED** ✅
 - **Custom Renderers**: Specialized AA demonstration renderers - **MISSING**
 
 **Text Rendering** - Optional for many examples
+
 - **GSV Text**: Vector text (`internal/gsv/gsv_text.go`) implemented ✅
 - **Font Support**: Embedded vector font available; FreeType and raster fonts not implemented ⚠️
 
@@ -75,18 +79,20 @@ Based on analysis of the current codebase (as of 2025-08-21), here's the status 
 #### Phase 1 Examples Readiness:
 
 1. **rounded_rect.cpp**: 90% ready (controls available; needs render_ctrl wiring for on-canvas UI) ✅/⚠️
-2. **circles.cpp**: 85% ready (vector text available for stats; integration and layout pending) ✅/⚠️  
+2. **circles.cpp**: 85% ready (vector text available for stats; integration and layout pending) ✅/⚠️
 3. **aa_demo.cpp**: 95% ready (magnified pixel renderer implemented; example ready for testing) ✅
 4. **conv_stroke.cpp**: 90% ready (controls available; needs control rendering + event wiring in-canvas) ✅/⚠️
 
 #### Recommended Implementation Strategy:
 
 **Option A: Static Examples** (Immediate - 1-2 days)
+
 - Create non-interactive versions that output to PNG files
 - Demonstrate core functionality without UI controls
 - Easy to build and run, good for testing core pipeline
 
 **Option B: Simple UI Framework** (Medium term - 3-5 days)
+
 - Implement basic slider, checkbox, radio button controls
 - Add mouse interaction for point manipulation
 - Full interactive examples as originally designed
@@ -94,8 +100,9 @@ Based on analysis of the current codebase (as of 2025-08-21), here's the status 
 ### 🎯 **CORE ASSESSMENT**
 
 The **fundamental AGG rendering pipeline is 90% complete** and fully functional. The main gaps are in:
+
 - **UI/control systems** (for interactive examples)
-- **Specialized diagnostic renderers** (for educational demos)  
+- **Specialized diagnostic renderers** (for educational demos)
 - **Text rendering** (for performance stats and labels)
 
 **Bottom line**: Core mathematical, rasterization, and drawing capabilities are solid and ready for example development. We can start with simplified static examples immediately, or invest a few days in UI infrastructure for full interactivity.

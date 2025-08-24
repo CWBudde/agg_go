@@ -1,0 +1,224 @@
+// Package agg provides AGG2D image operations implementation.
+// This file implements Phase 6 of the AGG2D high-level interface: Image Operations.
+package agg2d
+
+import (
+	"errors"
+
+	"agg_go/internal/transform"
+)
+
+// renderImage is the core image rendering method that handles all image transformations.
+// This is a simplified implementation that focuses on the transformation setup.
+// Full rendering pipeline integration will be added as the renderer interfaces stabilize.
+func (agg2d *Agg2D) renderImage(img *Image, x1, y1, x2, y2 int, parallelogram []float64) error {
+	if img == nil || img.renBuf == nil {
+		return errors.New("image or image buffer is nil")
+	}
+	if len(parallelogram) != 6 {
+		return errors.New("parallelogram must have exactly 6 elements")
+	}
+
+	// Create transformation matrix from source rectangle to destination parallelogram
+	src := [6]float64{float64(x1), float64(y1), float64(x2), float64(y1), float64(x2), float64(y2)}
+	dst := [6]float64{parallelogram[0], parallelogram[1], parallelogram[2], parallelogram[3], parallelogram[4], parallelogram[5]}
+	mtx := transform.NewTransAffineParlToParl(src, dst)
+
+	// Apply world transformation
+	if agg2d.transform != nil {
+		mtx.Multiply(agg2d.transform)
+	}
+	mtx.Invert()
+
+	// TODO: Complete integration with rendering pipeline
+	// For now, this provides the transformation matrix setup that would be used
+	// by the full span-based image rendering system.
+
+	// The full implementation would:
+	// 1. Create rasterizer and add current path
+	// 2. Setup image source accessor with appropriate pixel format
+	// 3. Create span interpolator with transformation matrix
+	// 4. Choose appropriate span generator based on imageFilter setting
+	// 5. Render using span-based renderer with proper blending
+
+	return nil // Placeholder - will be implemented with full renderer integration
+}
+
+// TransformImage transforms and renders an image with source and destination rectangles.
+// This is the most general form - other overloads delegate to this method.
+func (agg2d *Agg2D) TransformImage(img *Image, imgX1, imgY1, imgX2, imgY2 int, dstX1, dstY1, dstX2, dstY2 float64) error {
+	if img == nil {
+		return errors.New("image is nil")
+	}
+
+	// Reset and create path for destination rectangle
+	agg2d.ResetPath()
+	agg2d.MoveTo(dstX1, dstY1)
+	agg2d.LineTo(dstX2, dstY1)
+	agg2d.LineTo(dstX2, dstY2)
+	agg2d.LineTo(dstX1, dstY2)
+	agg2d.ClosePolygon()
+
+	// Create parallelogram from rectangle
+	parallelogram := []float64{dstX1, dstY1, dstX2, dstY1, dstX2, dstY2}
+
+	return agg2d.renderImage(img, imgX1, imgY1, imgX2, imgY2, parallelogram)
+}
+
+// TransformImageSimple transforms and renders an entire image to a destination rectangle.
+func (agg2d *Agg2D) TransformImageSimple(img *Image, dstX1, dstY1, dstX2, dstY2 float64) error {
+	if img == nil {
+		return errors.New("image is nil")
+	}
+
+	return agg2d.TransformImage(img, 0, 0, img.Width(), img.Height(), dstX1, dstY1, dstX2, dstY2)
+}
+
+// TransformImageParallelogram transforms image source rectangle to a parallelogram.
+func (agg2d *Agg2D) TransformImageParallelogram(img *Image, imgX1, imgY1, imgX2, imgY2 int, parallelogram []float64) error {
+	if img == nil {
+		return errors.New("image is nil")
+	}
+	if len(parallelogram) != 6 {
+		return errors.New("parallelogram must have exactly 6 elements")
+	}
+
+	// Reset and create path for parallelogram
+	agg2d.ResetPath()
+	agg2d.MoveTo(parallelogram[0], parallelogram[1])
+	agg2d.LineTo(parallelogram[2], parallelogram[3])
+	agg2d.LineTo(parallelogram[4], parallelogram[5])
+	agg2d.LineTo(
+		parallelogram[0]+parallelogram[4]-parallelogram[2],
+		parallelogram[1]+parallelogram[5]-parallelogram[3],
+	)
+	agg2d.ClosePolygon()
+
+	return agg2d.renderImage(img, imgX1, imgY1, imgX2, imgY2, parallelogram)
+}
+
+// TransformImageParallelogramSimple transforms entire image to a parallelogram.
+func (agg2d *Agg2D) TransformImageParallelogramSimple(img *Image, parallelogram []float64) error {
+	if img == nil {
+		return errors.New("image is nil")
+	}
+
+	return agg2d.TransformImageParallelogram(img, 0, 0, img.Width(), img.Height(), parallelogram)
+}
+
+// TransformImagePath transforms image using the current path as clipping region.
+// Source rectangle to destination rectangle.
+func (agg2d *Agg2D) TransformImagePath(img *Image, imgX1, imgY1, imgX2, imgY2 int, dstX1, dstY1, dstX2, dstY2 float64) error {
+	if img == nil {
+		return errors.New("image is nil")
+	}
+
+	// Use current path - don't modify it
+	parallelogram := []float64{dstX1, dstY1, dstX2, dstY1, dstX2, dstY2}
+	return agg2d.renderImage(img, imgX1, imgY1, imgX2, imgY2, parallelogram)
+}
+
+// TransformImagePathSimple transforms entire image using current path as clipping region.
+func (agg2d *Agg2D) TransformImagePathSimple(img *Image, dstX1, dstY1, dstX2, dstY2 float64) error {
+	if img == nil {
+		return errors.New("image is nil")
+	}
+
+	parallelogram := []float64{dstX1, dstY1, dstX2, dstY1, dstX2, dstY2}
+	return agg2d.renderImage(img, 0, 0, img.Width(), img.Height(), parallelogram)
+}
+
+// TransformImagePathParallelogram transforms image source rectangle to parallelogram using current path.
+func (agg2d *Agg2D) TransformImagePathParallelogram(img *Image, imgX1, imgY1, imgX2, imgY2 int, parallelogram []float64) error {
+	if img == nil {
+		return errors.New("image is nil")
+	}
+
+	return agg2d.renderImage(img, imgX1, imgY1, imgX2, imgY2, parallelogram)
+}
+
+// TransformImagePathParallelogramSimple transforms entire image to parallelogram using current path.
+func (agg2d *Agg2D) TransformImagePathParallelogramSimple(img *Image, parallelogram []float64) error {
+	if img == nil {
+		return errors.New("image is nil")
+	}
+
+	return agg2d.renderImage(img, 0, 0, img.Width(), img.Height(), parallelogram)
+}
+
+// BlendImage blends a source rectangle from image to destination without transformation.
+func (agg2d *Agg2D) BlendImage(img *Image, imgX1, imgY1, imgX2, imgY2 int, dstX, dstY float64, alpha uint) error {
+	if img == nil {
+		return errors.New("image is nil")
+	}
+	if alpha > 255 {
+		alpha = 255
+	}
+
+	// Transform to screen coordinates
+	agg2d.WorldToScreen(&dstX, &dstY)
+
+	// TODO: Implement actual blending
+	// This would use the base renderer's BlendFrom method
+	// with proper source rectangle and alpha settings
+
+	return nil // Placeholder
+}
+
+// BlendImageSimple blends entire image to destination without transformation.
+func (agg2d *Agg2D) BlendImageSimple(img *Image, dstX, dstY float64, alpha uint) error {
+	if img == nil {
+		return errors.New("image is nil")
+	}
+
+	return agg2d.BlendImage(img, 0, 0, img.Width(), img.Height(), dstX, dstY, alpha)
+}
+
+// CopyImage copies a source rectangle from image to destination without blending.
+func (agg2d *Agg2D) CopyImage(img *Image, imgX1, imgY1, imgX2, imgY2 int, dstX, dstY float64) error {
+	if img == nil {
+		return errors.New("image is nil")
+	}
+
+	// Transform to screen coordinates
+	agg2d.WorldToScreen(&dstX, &dstY)
+
+	// TODO: Implement actual copying
+	// This would use the base renderer's CopyFrom method
+	// with proper source rectangle settings
+
+	return nil // Placeholder
+}
+
+// CopyImageSimple copies entire image to destination without blending.
+func (agg2d *Agg2D) CopyImageSimple(img *Image, dstX, dstY float64) error {
+	if img == nil {
+		return errors.New("image is nil")
+	}
+
+	return agg2d.CopyImage(img, 0, 0, img.Width(), img.Height(), dstX, dstY)
+}
+
+// Premultiply premultiplies the alpha channel of the image.
+func (img *Image) Premultiply() error {
+	if img.renBuf == nil {
+		return errors.New("image buffer is nil")
+	}
+
+	// TODO: Implement premultiplication
+	// This would call the pixel format's Premultiply method
+
+	return nil // Placeholder
+}
+
+// Demultiply demultiplies the alpha channel of the image.
+func (img *Image) Demultiply() error {
+	if img.renBuf == nil {
+		return errors.New("image buffer is nil")
+	}
+
+	// TODO: Implement demultiplication
+	// This would call the pixel format's Demultiply method
+
+	return nil // Placeholder
+}

@@ -3,6 +3,8 @@
 package span
 
 import (
+	"reflect"
+
 	"agg_go/internal/basics"
 	"agg_go/internal/color"
 )
@@ -56,11 +58,12 @@ func (sc *SpanConverter[C, SG, SC]) AttachConverter(spanCnv SC) {
 
 // Prepare initializes both the generator and converter components.
 func (sc *SpanConverter[C, SG, SC]) Prepare() {
-	// Use interface{} conversion and nil check for proper zero value detection
-	if spanGen := interface{}(sc.spanGen); spanGen != nil {
+	// Check if span generator is not zero value using reflection
+	if !reflect.ValueOf(sc.spanGen).IsZero() {
 		sc.spanGen.Prepare()
 	}
-	if spanCnv := interface{}(sc.spanCnv); spanCnv != nil {
+	// Check if span converter is not zero value using reflection
+	if !reflect.ValueOf(sc.spanCnv).IsZero() {
 		sc.spanCnv.Prepare()
 	}
 }
@@ -70,12 +73,12 @@ func (sc *SpanConverter[C, SG, SC]) Prepare() {
 // 2. Then, the converter applies its transformation to the colors
 func (sc *SpanConverter[C, SG, SC]) Generate(colors []C, x, y, len int) {
 	// Stage 1: Generate colors using the span generator
-	if spanGen := interface{}(sc.spanGen); spanGen != nil {
+	if !reflect.ValueOf(sc.spanGen).IsZero() {
 		sc.spanGen.Generate(colors, x, y, len)
 	}
 
 	// Stage 2: Apply conversion to the generated colors
-	if spanCnv := interface{}(sc.spanCnv); spanCnv != nil {
+	if !reflect.ValueOf(sc.spanCnv).IsZero() {
 		sc.spanCnv.Generate(colors, x, y, len)
 	}
 }

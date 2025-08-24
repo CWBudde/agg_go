@@ -48,7 +48,8 @@ func NewMockLoadedFace() *MockLoadedFace {
 }
 
 func (m *MockLoadedFace) AddGlyph(code uint32, index uint32, dataType FmanGlyphDataType,
-	bounds basics.Rect[int], advanceX, advanceY float64, data []byte) {
+	bounds basics.Rect[int], advanceX, advanceY float64, data []byte,
+) {
 	m.glyphData[code] = mockFaceGlyphData{
 		index:    index,
 		data:     data,
@@ -109,58 +110,171 @@ func (m *MockLoadedFace) AddKerning(first, second uint32, x, y *float64) bool {
 
 // MockFontEngine2 implements FontEngine2 for testing
 type MockFontEngine2 struct {
-	pathAdaptor   *MockAdaptor
-	gray8Adaptor  *MockAdaptor
-	gray8Scanline *MockScanline
-	monoAdaptor   *MockAdaptor
-	monoScanline  *MockScanline
+	pathAdaptor   *MockPathAdaptor
+	gray8Adaptor  *MockGray8Adaptor
+	gray8Scanline *MockGray8Scanline
+	monoAdaptor   *MockMonoAdaptor
+	monoScanline  *MockMonoScanline
 }
 
-type MockAdaptor struct {
+// Separate mock types for each interface
+type MockPathAdaptor struct {
 	data        []byte
-	dataSize    uint32
 	x, y        float64
 	scale       float64
 	initialized bool
 }
 
-type MockScanline struct {
+type MockGray8Adaptor struct {
+	data        []byte
+	dataSize    uint32
+	x, y        float64
 	initialized bool
+	bounds      basics.Rect[int]
+	numSpans    uint
 }
 
-func (ma *MockAdaptor) Init(data []byte, dataSize uint32, x, y float64) {
-	ma.data = data
-	ma.dataSize = dataSize
-	ma.x = x
-	ma.y = y
-	ma.scale = 1.0
-	ma.initialized = true
+type MockMonoAdaptor struct {
+	data        []byte
+	dataSize    uint32
+	x, y        float64
+	initialized bool
+	bounds      basics.Rect[int]
+	numSpans    uint
 }
 
-func (ma *MockAdaptor) InitWithScale(data []byte, dataSize uint32, x, y, scale float64) {
-	ma.data = data
-	ma.dataSize = dataSize
-	ma.x = x
-	ma.y = y
-	ma.scale = scale
-	ma.initialized = true
+type MockGray8Scanline struct {
+	initialized bool
+	minX, maxX  int
+	y           int
+	numSpans    uint
+}
+
+type MockMonoScanline struct {
+	initialized bool
+	minX, maxX  int
+	y           int
+	numSpans    uint
+}
+
+// MockSpanIterator implements both Gray8SpanIterator and MonoSpanIterator
+type MockSpanIterator struct {
+	valid  bool
+	x      int
+	length int
+	covers []uint8
+}
+
+func (msi *MockSpanIterator) Next()           { msi.valid = false }
+func (msi *MockSpanIterator) IsValid() bool   { return msi.valid }
+func (msi *MockSpanIterator) X() int          { return msi.x }
+func (msi *MockSpanIterator) Len() int        { return msi.length }
+func (msi *MockSpanIterator) Covers() []uint8 { return msi.covers }
+
+// PathAdaptorType methods for MockPathAdaptor
+func (mpa *MockPathAdaptor) Init(data []byte, dx, dy, scale float64, coordShift int) {
+	mpa.data = data
+	mpa.x = dx
+	mpa.y = dy
+	mpa.scale = scale
+	mpa.initialized = true
+}
+
+func (mpa *MockPathAdaptor) InitWithScale(data []byte, dataSize uint32, x, y, scale float64) {
+	mpa.data = data
+	mpa.x = x
+	mpa.y = y
+	mpa.scale = scale
+	mpa.initialized = true
+}
+
+func (mpa *MockPathAdaptor) Rewind(pathID uint) {}
+
+func (mpa *MockPathAdaptor) Vertex(x, y *float64) uint {
+	*x = mpa.x
+	*y = mpa.y
+	return 0 // PathCmdStop
+}
+
+// Gray8AdaptorType methods for MockGray8Adaptor
+func (mga *MockGray8Adaptor) InitGlyph(data []byte, dataSize uint32, x, y float64) {
+	mga.data = data
+	mga.dataSize = dataSize
+	mga.x = x
+	mga.y = y
+	mga.initialized = true
+}
+
+func (mga *MockGray8Adaptor) Bounds() basics.Rect[int] { return mga.bounds }
+func (mga *MockGray8Adaptor) Rewind(pathID uint)       {}
+func (mga *MockGray8Adaptor) SweepScanline() bool      { return false }
+func (mga *MockGray8Adaptor) NumSpans() uint           { return mga.numSpans }
+
+func (mga *MockGray8Adaptor) Begin() Gray8SpanIterator {
+	return &MockSpanIterator{valid: true, x: int(mga.x), length: 10, covers: []uint8{255}}
+}
+
+// MonoAdaptorType methods for MockMonoAdaptor
+func (mma *MockMonoAdaptor) InitGlyph(data []byte, dataSize uint32, x, y float64) {
+	mma.data = data
+	mma.dataSize = dataSize
+	mma.x = x
+	mma.y = y
+	mma.initialized = true
+}
+
+func (mma *MockMonoAdaptor) Bounds() basics.Rect[int] { return mma.bounds }
+func (mma *MockMonoAdaptor) Rewind(pathID uint)       {}
+func (mma *MockMonoAdaptor) SweepScanline() bool      { return false }
+func (mma *MockMonoAdaptor) NumSpans() uint           { return mma.numSpans }
+
+func (mma *MockMonoAdaptor) Begin() MonoSpanIterator {
+	return &MockSpanIterator{valid: true, x: int(mma.x), length: 10}
+}
+
+// Gray8ScanlineType methods for MockGray8Scanline
+func (mgs *MockGray8Scanline) Reset(minX, maxX int) {
+	mgs.minX = minX
+	mgs.maxX = maxX
+	mgs.initialized = true
+}
+
+func (mgs *MockGray8Scanline) Y() int         { return mgs.y }
+func (mgs *MockGray8Scanline) NumSpans() uint { return mgs.numSpans }
+
+func (mgs *MockGray8Scanline) Begin() Gray8SpanIterator {
+	return &MockSpanIterator{valid: true, x: mgs.minX, length: 10, covers: []uint8{255}}
+}
+
+// MonoScanlineType methods for MockMonoScanline
+func (mms *MockMonoScanline) Reset(minX, maxX int) {
+	mms.minX = minX
+	mms.maxX = maxX
+	mms.initialized = true
+}
+
+func (mms *MockMonoScanline) Y() int         { return mms.y }
+func (mms *MockMonoScanline) NumSpans() uint { return mms.numSpans }
+
+func (mms *MockMonoScanline) Begin() MonoSpanIterator {
+	return &MockSpanIterator{valid: true, x: mms.minX, length: 10}
 }
 
 func NewMockFontEngine2() *MockFontEngine2 {
 	return &MockFontEngine2{
-		pathAdaptor:   &MockAdaptor{},
-		gray8Adaptor:  &MockAdaptor{},
-		gray8Scanline: &MockScanline{},
-		monoAdaptor:   &MockAdaptor{},
-		monoScanline:  &MockScanline{},
+		pathAdaptor:   &MockPathAdaptor{},
+		gray8Adaptor:  &MockGray8Adaptor{},
+		gray8Scanline: &MockGray8Scanline{},
+		monoAdaptor:   &MockMonoAdaptor{},
+		monoScanline:  &MockMonoScanline{},
 	}
 }
 
-func (m *MockFontEngine2) PathAdaptor() interface{}   { return m.pathAdaptor }
-func (m *MockFontEngine2) Gray8Adaptor() interface{}  { return m.gray8Adaptor }
-func (m *MockFontEngine2) Gray8Scanline() interface{} { return m.gray8Scanline }
-func (m *MockFontEngine2) MonoAdaptor() interface{}   { return m.monoAdaptor }
-func (m *MockFontEngine2) MonoScanline() interface{}  { return m.monoScanline }
+func (m *MockFontEngine2) PathAdaptor() PathAdaptorType     { return m.pathAdaptor }
+func (m *MockFontEngine2) Gray8Adaptor() Gray8AdaptorType   { return m.gray8Adaptor }
+func (m *MockFontEngine2) Gray8Scanline() Gray8ScanlineType { return m.gray8Scanline }
+func (m *MockFontEngine2) MonoAdaptor() MonoAdaptorType     { return m.monoAdaptor }
+func (m *MockFontEngine2) MonoScanline() MonoScanlineType   { return m.monoScanline }
 
 func TestFmanGlyphDataType_String(t *testing.T) {
 	tests := []struct {
@@ -230,7 +344,10 @@ func TestFmanCachedGlyphs_CacheAndFind(t *testing.T) {
 	bounds := basics.Rect[int]{X1: 10, Y1: 20, X2: 30, Y2: 40}
 	advanceX := 12.5
 	advanceY := 0.0
-	cachedFont := "test-font"
+
+	// Create a mock cached font
+	mockFace := NewMockLoadedFace()
+	cachedFont := NewFmanCachedFont(mockFace, 16.0, 8.0, false, FmanGlyphRenAggGray8)
 
 	glyph := cg.CacheGlyph(cachedFont, glyphCode, glyphIndex, dataSize, FmanGlyphDataGray8, bounds, advanceX, advanceY)
 	if glyph == nil {
@@ -282,14 +399,20 @@ func TestFmanCachedGlyphs_DuplicateGlyph(t *testing.T) {
 	glyphCode := uint32(65)
 	bounds := basics.Rect[int]{X1: 0, Y1: 0, X2: 10, Y2: 10}
 
+	// Create mock cached fonts
+	mockFace1 := NewMockLoadedFace()
+	font1 := NewFmanCachedFont(mockFace1, 16.0, 8.0, false, FmanGlyphRenAggMono)
+	mockFace2 := NewMockLoadedFace()
+	font2 := NewFmanCachedFont(mockFace2, 18.0, 9.0, true, FmanGlyphRenAggGray8)
+
 	// Cache first glyph
-	glyph1 := cg.CacheGlyph("font1", glyphCode, 1, 32, FmanGlyphDataMono, bounds, 10.0, 0.0)
+	glyph1 := cg.CacheGlyph(font1, glyphCode, 1, 32, FmanGlyphDataMono, bounds, 10.0, 0.0)
 	if glyph1 == nil {
 		t.Fatal("Failed to cache first glyph")
 	}
 
 	// Try to cache duplicate - should return nil
-	glyph2 := cg.CacheGlyph("font2", glyphCode, 2, 64, FmanGlyphDataGray8, bounds, 20.0, 5.0)
+	glyph2 := cg.CacheGlyph(font2, glyphCode, 2, 64, FmanGlyphDataGray8, bounds, 20.0, 5.0)
 	if glyph2 != nil {
 		t.Error("CacheGlyph should return nil for duplicate glyph")
 	}
@@ -320,7 +443,8 @@ func TestFmanCachedGlyphs_MultiLevelLookup(t *testing.T) {
 	// Cache glyphs in different ranges
 	var cachedGlyphs []*FmanCachedGlyph
 	for i, code := range testCodes {
-		font := fmt.Sprintf("font-%d", i)
+		mockFace := NewMockLoadedFace()
+		font := NewFmanCachedFont(mockFace, 16.0, 8.0, false, FmanGlyphRenAggMono)
 		glyph := cg.CacheGlyph(font, code, uint32(i+1), 32, FmanGlyphDataMono, bounds, 10.0, 0.0)
 		if glyph == nil {
 			t.Fatalf("Failed to cache glyph 0x%04X", code)
@@ -529,7 +653,7 @@ func TestFmanFontCacheManager2_InitEmbeddedAdaptors(t *testing.T) {
 
 		switch glyph.DataType {
 		case FmanGlyphDataMono:
-			monoAdaptor := engine.MonoAdaptor().(*MockAdaptor)
+			monoAdaptor := engine.MonoAdaptor().(*MockMonoAdaptor)
 			if !monoAdaptor.initialized {
 				t.Errorf("Test %d: Mono adaptor should be initialized", i)
 			}
@@ -538,7 +662,7 @@ func TestFmanFontCacheManager2_InitEmbeddedAdaptors(t *testing.T) {
 			}
 
 		case FmanGlyphDataGray8:
-			gray8Adaptor := engine.Gray8Adaptor().(*MockAdaptor)
+			gray8Adaptor := engine.Gray8Adaptor().(*MockGray8Adaptor)
 			if !gray8Adaptor.initialized {
 				t.Errorf("Test %d: Gray8 adaptor should be initialized", i)
 			}
@@ -547,7 +671,7 @@ func TestFmanFontCacheManager2_InitEmbeddedAdaptors(t *testing.T) {
 			}
 
 		case FmanGlyphDataOutline:
-			pathAdaptor := engine.PathAdaptor().(*MockAdaptor)
+			pathAdaptor := engine.PathAdaptor().(*MockPathAdaptor)
 			if !pathAdaptor.initialized {
 				t.Errorf("Test %d: Path adaptor should be initialized", i)
 			}
@@ -737,7 +861,7 @@ func ExampleFmanFontCacheManager2() {
 	fcm.InitEmbeddedAdaptors(testGlyph, 100.0, 200.0, 1.0)
 
 	// Access adaptors
-	gray8Adaptor := fcm.Gray8Adaptor().(*MockAdaptor)
+	gray8Adaptor := fcm.Gray8Adaptor().(*MockGray8Adaptor)
 	fmt.Printf("Gray8 adaptor initialized: %t\n", gray8Adaptor.initialized)
 	fmt.Printf("Gray8 adaptor position: x=%.1f, y=%.1f\n", gray8Adaptor.x, gray8Adaptor.y)
 	fmt.Printf("Gray8 adaptor data size: %d bytes\n", gray8Adaptor.dataSize)

@@ -45,13 +45,13 @@ func (gr GlyphRendering) String() string {
 // PreparedGlyph contains prepared glyph information for rendering.
 // This corresponds to AGG's fman::prepared_glyph struct.
 type PreparedGlyph struct {
-	GlyphCode  uint32                 // Character code
-	GlyphIndex uint32                 // Glyph index in font
-	DataSize   uint32                 // Size of glyph data
+	GlyphCode  uint32                  // Character code
+	GlyphIndex uint32                  // Glyph index in font
+	DataSize   uint32                  // Size of glyph data
 	DataType   fonts.FmanGlyphDataType // Type of glyph data
-	Bounds     basics.Rect[int]       // Glyph bounding rectangle
-	AdvanceX   float64                // Horizontal advance
-	AdvanceY   float64                // Vertical advance
+	Bounds     basics.Rect[int]        // Glyph bounding rectangle
+	AdvanceX   float64                 // Horizontal advance
+	AdvanceY   float64                 // Vertical advance
 }
 
 // FontEngineAdaptorTypes defines type aliases for different path storage precisions.
@@ -59,14 +59,14 @@ type PreparedGlyph struct {
 type FontEngineAdaptorTypes struct {
 	// For Int16 variant (compact, for glyphs < 200px height)
 	PathAdaptorInt16 *path.SerializedIntegerPathAdaptor[int16]
-	
+
 	// For Int32 variant (for very large glyphs)
 	PathAdaptorInt32 *path.SerializedIntegerPathAdaptor[int32]
-	
-	// Shared scanline adaptors  
+
+	// Shared scanline adaptors
 	Gray8Adaptor interface{} // Will be *scanline.SerializedScanlinesAdaptorAA when available
 	MonoAdaptor  interface{} // Will be *scanline.SerializedScanlinesAdaptorBin when available
-	
+
 	// Scanline storage types
 	ScanlinesAA  interface{} // Will be *scanline.ScanlineStorageAA8 when available
 	ScanlinesBin interface{} // Will be *scanline.ScanlineStorageBin when available
@@ -79,14 +79,14 @@ type FontEngineInterface interface {
 	LoadFace(buffer []byte, bytes uint) (LoadedFaceInterface, error)
 	LoadFaceFile(fileName string) (LoadedFaceInterface, error)
 	UnloadFace(face LoadedFaceInterface) error
-	
+
 	// Gamma correction
 	SetGamma(gamma float64)
-	
+
 	// Engine information
 	Is32Bit() bool
 	LastError() error
-	
+
 	// Resource cleanup
 	Close() error
 }
@@ -104,13 +104,13 @@ type LoadedFaceInterface interface {
 	Descent() float64
 	AscentB() float64
 	DescentB() float64
-	
+
 	// Rendering configuration
 	Hinting() bool
 	FlipY() bool
 	Transform() *transform.TransAffine
 	CharMap() CharEncoding
-	
+
 	// Instance selection and configuration
 	SelectInstance(height, width float64, hinting bool, rendering GlyphRendering)
 	CapableRendering(rendering GlyphRendering) GlyphRendering
@@ -118,12 +118,12 @@ type LoadedFaceInterface interface {
 	SetFlipY(flipY bool)
 	SetTransform(affine *transform.TransAffine)
 	SetCharMap(encoding CharEncoding) error
-	
+
 	// Glyph operations
 	PrepareGlyph(glyphCode uint32) (*PreparedGlyph, bool)
 	AddKerning(first, second uint32) (dx, dy float64)
 	WriteGlyphTo(prepared *PreparedGlyph, data []byte)
-	
+
 	// Resource cleanup
 	Close() error
 }
@@ -145,25 +145,25 @@ const (
 // This corresponds to AGG's fman::font_engine_freetype_base class.
 type FontEngineBase struct {
 	// Configuration
-	flag32               bool
-	lastError            error
-	libraryInitialized   bool
-	maxFaces             uint32
-	
+	flag32             bool
+	lastError          error
+	libraryInitialized bool
+	maxFaces           uint32
+
 	// Storage for different precision levels
-	pathStorage16        *path.PathStorageInteger[int16]
-	pathStorage32        *path.PathStorageInteger[int32]
-	curves16             *path.PathStorageInteger[int16]  // TODO: Add conv_curve wrapper
-	curves32             *path.PathStorageInteger[int32]  // TODO: Add conv_curve wrapper
-	
+	pathStorage16 *path.PathStorageInteger[int16]
+	pathStorage32 *path.PathStorageInteger[int32]
+	curves16      *path.PathStorageInteger[int16] // TODO: Add conv_curve wrapper
+	curves32      *path.PathStorageInteger[int32] // TODO: Add conv_curve wrapper
+
 	// Scanline components
-	scanlineU8           interface{} // Will be *scanline.ScanlineU8 when available
-	scanlineBin          interface{} // Will be *scanline.ScanlineBin when available
-	scanlinesAA          interface{} // Will be *scanline.ScanlineStorageAA8 when available
-	scanlinesBin         interface{} // Will be *scanline.ScanlineStorageBin when available
-	
+	scanlineU8   interface{} // Will be *scanline.ScanlineU8 when available
+	scanlineBin  interface{} // Will be *scanline.ScanlineBin when available
+	scanlinesAA  interface{} // Will be *scanline.ScanlineStorageAA8 when available
+	scanlinesBin interface{} // Will be *scanline.ScanlineStorageBin when available
+
 	// Rasterizer
-	rasterizer           interface{} // Will be *rasterizer.RasterizerScanlineAA when available
+	rasterizer interface{} // Will be *rasterizer.RasterizerScanlineAA when available
 }
 
 // NewFontEngineBase creates a new base font engine with the specified configuration.
@@ -171,17 +171,17 @@ func NewFontEngineBase(flag32 bool, maxFaces uint32) *FontEngineBase {
 	if maxFaces == 0 {
 		maxFaces = 32 // Default from AGG implementation
 	}
-	
+
 	return &FontEngineBase{
-		flag32:               flag32,
-		maxFaces:             maxFaces,
-		pathStorage16:        path.NewPathStorageInteger[int16](),
-		pathStorage32:        path.NewPathStorageInteger[int32](),
-		scanlineU8:           nil, // TODO: Initialize when scanline types are available
-		scanlineBin:          nil, // TODO: Initialize when scanline types are available
-		scanlinesAA:          nil, // TODO: Initialize when scanline types are available
-		scanlinesBin:         nil, // TODO: Initialize when scanline types are available
-		rasterizer:           nil, // TODO: Initialize when rasterizer is available
+		flag32:        flag32,
+		maxFaces:      maxFaces,
+		pathStorage16: path.NewPathStorageInteger[int16](),
+		pathStorage32: path.NewPathStorageInteger[int32](),
+		scanlineU8:    nil, // TODO: Initialize when scanline types are available
+		scanlineBin:   nil, // TODO: Initialize when scanline types are available
+		scanlinesAA:   nil, // TODO: Initialize when scanline types are available
+		scanlinesBin:  nil, // TODO: Initialize when scanline types are available
+		rasterizer:    nil, // TODO: Initialize when rasterizer is available
 	}
 }
 

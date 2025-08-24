@@ -7,8 +7,10 @@ import (
 )
 
 // Compile-time interface checks
-var _ Transformer = (*TransWarpMagnifier)(nil)
-var _ InverseTransformer = (*TransWarpMagnifier)(nil)
+var (
+	_ Transformer        = (*TransWarpMagnifier)(nil)
+	_ InverseTransformer = (*TransWarpMagnifier)(nil)
+)
 
 // TransWarpMagnifier implements a lens-like magnification transformation that creates
 // a circular area of magnification with smooth falloff outside the radius.

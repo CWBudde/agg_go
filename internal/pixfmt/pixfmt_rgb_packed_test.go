@@ -6,6 +6,7 @@ import (
 	"agg_go/internal/basics"
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
+	"agg_go/internal/pixfmt/blender"
 )
 
 // Test RGB555 packing/unpacking accuracy
@@ -26,8 +27,8 @@ func TestRGB555PackUnpack(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Pack and unpack
-			packed := MakePixel555(tt.r, tt.g, tt.b)
-			ur, ug, ub := UnpackPixel555(packed)
+			packed := blender.MakePixel555(tt.r, tt.g, tt.b)
+			ur, ug, ub := blender.UnpackPixel555(packed)
 
 			// Check that unpacked values are within precision limits
 			// RGB555 has 5 bits per component, so we lose 3 bits of precision
@@ -67,8 +68,8 @@ func TestRGB565PackUnpack(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Pack and unpack
-			packed := MakePixel565(tt.r, tt.g, tt.b)
-			ur, ug, ub := UnpackPixel565(packed)
+			packed := blender.MakePixel565(tt.r, tt.g, tt.b)
+			ur, ug, ub := blender.UnpackPixel565(packed)
 
 			// Check that unpacked values are within precision limits
 			// RGB565: Red/Blue have 5 bits (lose 3), Green has 6 bits (lose 2)
@@ -127,7 +128,7 @@ func TestPixFmtRGB555Basic(t *testing.T) {
 	width, height := 4, 4
 	buf := make([]basics.Int16u, width*height)
 	rbuf := buffer.NewRenderingBufferU16WithData(buf, width, height, width*2)
-	pixfmt := NewPixFmtRGB555(rbuf, BlenderRGB555{})
+	pixfmt := NewPixFmtRGB555(rbuf, blender.BlenderRGB555{})
 
 	// Test basic properties
 	if pixfmt.Width() != width {
@@ -164,7 +165,7 @@ func TestPixFmtRGB565Basic(t *testing.T) {
 	width, height := 4, 4
 	buf := make([]basics.Int16u, width*height)
 	rbuf := buffer.NewRenderingBufferU16WithData(buf, width, height, width*2)
-	pixfmt := NewPixFmtRGB565(rbuf, BlenderRGB565{})
+	pixfmt := NewPixFmtRGB565(rbuf, blender.BlenderRGB565{})
 
 	// Test basic properties
 	if pixfmt.Width() != width {
@@ -197,16 +198,16 @@ func TestPixFmtRGB565Basic(t *testing.T) {
 
 // Test RGB555 blending
 func TestBlenderRGB555(t *testing.T) {
-	blender := BlenderRGB555{}
+	bl := blender.BlenderRGB555{}
 
 	// Start with a known pixel
-	var pixel = MakePixel555(100, 150, 200)
+	pixel := blender.MakePixel555(100, 150, 200)
 
 	// Blend with 50% alpha, no coverage modulation
-	blender.BlendPix(&pixel, 200, 100, 50, 128, 255)
+	bl.BlendPix(&pixel, 200, 100, 50, 128, 255)
 
 	// Extract the result
-	r, g, b := UnpackPixel555(pixel)
+	r, g, b := blender.UnpackPixel555(pixel)
 
 	// Should be approximately halfway between original and new values
 	// Due to precision loss, we check within reasonable bounds
@@ -227,16 +228,16 @@ func TestBlenderRGB555(t *testing.T) {
 
 // Test RGB565 blending
 func TestBlenderRGB565(t *testing.T) {
-	blender := BlenderRGB565{}
+	bl := blender.BlenderRGB565{}
 
 	// Start with a known pixel
-	var pixel = MakePixel565(100, 150, 200)
+	pixel := blender.MakePixel565(100, 150, 200)
 
 	// Blend with 50% alpha, no coverage modulation
-	blender.BlendPix(&pixel, 200, 100, 50, 128, 255)
+	bl.BlendPix(&pixel, 200, 100, 50, 128, 255)
 
 	// Extract the result
-	r, g, b := UnpackPixel565(pixel)
+	r, g, b := blender.UnpackPixel565(pixel)
 
 	// Should be approximately halfway between original and new values
 	expectedR := (100 + 200) / 2 // ~150
@@ -259,7 +260,7 @@ func TestPackedFormatBounds(t *testing.T) {
 	width, height := 4, 4
 	buf := make([]basics.Int16u, width*height)
 	rbuf := buffer.NewRenderingBufferU16WithData(buf, width, height, width*2)
-	pixfmt := NewPixFmtRGB555(rbuf, BlenderRGB555{})
+	pixfmt := NewPixFmtRGB555(rbuf, blender.BlenderRGB555{})
 
 	// Test out-of-bounds access (should not panic)
 	testColor := color.RGB8[color.Linear]{R: 255, G: 128, B: 64}
@@ -282,7 +283,7 @@ func TestPackedColorConversion(t *testing.T) {
 
 	// RGB555
 	pixel555 := MakePixel555(testColor.R, testColor.G, testColor.B)
-	converted555 := MakeColorRGB555(pixel555)
+	converted555 := blender.MakeColorRGB555(pixel555)
 	if !within555Precision(testColor.R, converted555.R) ||
 		!within555Precision(testColor.G, converted555.G) ||
 		!within555Precision(testColor.B, converted555.B) {
@@ -291,7 +292,7 @@ func TestPackedColorConversion(t *testing.T) {
 
 	// RGB565
 	pixel565 := MakePixel565(testColor.R, testColor.G, testColor.B)
-	converted565 := MakeColorRGB565(pixel565)
+	converted565 := blender.MakeColorRGB565(pixel565)
 	if !within565RedBluePrecision(testColor.R, converted565.R) ||
 		!within565GreenPrecision(testColor.G, converted565.G) ||
 		!within565RedBluePrecision(testColor.B, converted565.B) {
@@ -300,7 +301,7 @@ func TestPackedColorConversion(t *testing.T) {
 
 	// BGR555
 	pixelBGR555 := MakePixelBGR555(testColor.R, testColor.G, testColor.B)
-	convertedBGR555 := MakeColorBGR555(pixelBGR555)
+	convertedBGR555 := blender.MakeColorBGR555(pixelBGR555)
 	if !within555Precision(testColor.R, convertedBGR555.R) ||
 		!within555Precision(testColor.G, convertedBGR555.G) ||
 		!within555Precision(testColor.B, convertedBGR555.B) {
@@ -309,7 +310,7 @@ func TestPackedColorConversion(t *testing.T) {
 
 	// BGR565
 	pixelBGR565 := MakePixelBGR565(testColor.R, testColor.G, testColor.B)
-	convertedBGR565 := MakeColorBGR565(pixelBGR565)
+	convertedBGR565 := blender.MakeColorBGR565(pixelBGR565)
 	if !within565RedBluePrecision(testColor.R, convertedBGR565.R) ||
 		!within565GreenPrecision(testColor.G, convertedBGR565.G) ||
 		!within565RedBluePrecision(testColor.B, convertedBGR565.B) {
@@ -380,19 +381,19 @@ func BenchmarkRGB565Unpack(b *testing.B) {
 }
 
 func BenchmarkBlenderRGB555(b *testing.B) {
-	blender := BlenderRGB555{}
-	var pixel = MakePixel555(100, 150, 200)
+	bl := blender.BlenderRGB555{}
+	pixel := blender.MakePixel555(100, 150, 200)
 
 	for i := 0; i < b.N; i++ {
-		blender.BlendPix(&pixel, 200, 100, 50, 128, 255)
+		bl.BlendPix(&pixel, 200, 100, 50, 128, 255)
 	}
 }
 
 func BenchmarkBlenderRGB565(b *testing.B) {
-	blender := BlenderRGB565{}
-	var pixel = MakePixel565(100, 150, 200)
+	bl := blender.BlenderRGB565{}
+	pixel := blender.MakePixel565(100, 150, 200)
 
 	for i := 0; i < b.N; i++ {
-		blender.BlendPix(&pixel, 200, 100, 50, 128, 255)
+		bl.BlendPix(&pixel, 200, 100, 50, 128, 255)
 	}
 }

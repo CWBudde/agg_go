@@ -1,0 +1,36 @@
+name: format
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  gofmt:
+    name: go fmt check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install just
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y just
+
+      - name: Run formatter
+        run: |
+          just fmt
+          # Fail if formatting changed files
+          if ! git diff --quiet -- . ':!coverage.out' ':!coverage.html'; then
+            echo "Unformatted files found. Run 'just fmt' locally and commit changes." >&2
+            git --no-pager diff --name-only
+            exit 1
+          fi

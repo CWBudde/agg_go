@@ -15,7 +15,7 @@ This project uses [Just](https://github.com/casey/just) for build orchestration.
 just --list
 
 # Essential development workflow
-just check          # Run fmt, vet, lint, tidy, and tests
+just check           # Run fmt, vet, lint, tidy, and tests
 just quick           # Fast feedback: fmt + vet only -> call often!
 just build           # Build library and examples
 just test            # Run all tests (unit + integration)
@@ -65,6 +65,7 @@ The original code can be found in ../agg-2.6 and the source code in particular i
 - **Manual Memory → GC**: Replaces C++ new/delete with Go's garbage collector
 - **Inheritance → Interfaces**: C++ virtual methods become Go interfaces
 - **Enums → Typed Constants**: C++ enums become Go typed constants
+- **Avoid using interface{} (or any)**: Prefer constrained generics and explicit interfaces that model the required capabilities at compile time.
 
 ### Rendering Pipeline Flow
 

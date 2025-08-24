@@ -2,12 +2,14 @@
 package scanline
 
 import (
+	"reflect"
+
 	"agg_go/internal/basics"
 )
 
 // RenderScanlines is a generic scanline rendering function that works with any renderer.
 // This corresponds to AGG's render_scanlines function.
-func RenderScanlines(ras RasterizerInterface, sl ScanlineInterface, renderer RendererInterface) {
+func RenderScanlines[C any](ras RasterizerInterface, sl ScanlineInterface, renderer RendererInterface[C]) {
 	if !ras.RewindScanlines() {
 		return
 	}
@@ -28,9 +30,9 @@ func RenderScanlines(ras RasterizerInterface, sl ScanlineInterface, renderer Ren
 
 // PathColorStorage represents a storage interface for path colors.
 // This is used by RenderAllPaths to access colors by index.
-type PathColorStorage interface {
+type PathColorStorage[C any] interface {
 	// GetColor returns the color at the specified index
-	GetColor(index int) interface{}
+	GetColor(index int) C
 }
 
 // PathIdStorage represents a storage interface for path IDs.
@@ -48,8 +50,8 @@ type VertexSourceInterface interface {
 
 // RenderAllPaths renders multiple paths with different colors.
 // This corresponds to AGG's render_all_paths function.
-func RenderAllPaths(ras RasterizerInterface, sl ScanlineInterface, renderer interface{},
-	vertexSource VertexSourceInterface, colorStorage PathColorStorage,
+func RenderAllPaths[C any](ras RasterizerInterface, sl ScanlineInterface, renderer RendererInterface[C],
+	vertexSource VertexSourceInterface, colorStorage PathColorStorage[C],
 	pathIdStorage PathIdStorage, numPaths int,
 ) {
 	// This is a simplified version - in a full implementation, we'd need
@@ -70,22 +72,20 @@ func RenderAllPaths(ras RasterizerInterface, sl ScanlineInterface, renderer inte
 
 		// Set the color on the renderer
 		color := colorStorage.GetColor(i)
-		if colorSetter, ok := renderer.(ColorSetter); ok {
+		if colorSetter, ok := renderer.(ColorSetter[C]); ok {
 			colorSetter.SetColor(color)
 		}
 
 		// Render the scanlines
-		if rendererInterface, ok := renderer.(RendererInterface); ok {
-			RenderScanlines(ras, sl, rendererInterface)
-		}
+		RenderScanlines(ras, sl, renderer)
 	}
 }
 
 // RenderScanlinesCompound renders scanlines using compound rasterizer with multiple styles.
 // This corresponds to AGG's render_scanlines_compound function.
-func RenderScanlinesCompound(ras CompoundRasterizerInterface, slAA ScanlineInterface,
-	slBin ScanlineInterface, ren BaseRendererInterface, alloc SpanAllocatorInterface,
-	styleHandler StyleHandlerInterface,
+func RenderScanlinesCompound[C any](ras CompoundRasterizerInterface, slAA ScanlineInterface,
+	slBin ScanlineInterface, ren BaseRendererInterface[C], alloc SpanAllocatorInterface[C],
+	styleHandler StyleHandlerInterface[C],
 ) {
 	if !ras.RewindScanlines() {
 		return
@@ -138,8 +138,8 @@ func RenderScanlinesCompound(ras CompoundRasterizerInterface, slAA ScanlineInter
 }
 
 // renderCompoundSpanGenerated renders a scanline with span generation for compound rendering.
-func renderCompoundSpanGenerated(sl ScanlineInterface, ren BaseRendererInterface,
-	alloc SpanAllocatorInterface, styleHandler StyleHandlerInterface, style int,
+func renderCompoundSpanGenerated[C any](sl ScanlineInterface, ren BaseRendererInterface[C],
+	alloc SpanAllocatorInterface[C], styleHandler StyleHandlerInterface[C], style int,
 ) {
 	iter := sl.Begin()
 	numSpans := sl.NumSpans()
@@ -160,9 +160,9 @@ func renderCompoundSpanGenerated(sl ScanlineInterface, ren BaseRendererInterface
 }
 
 // renderCompoundMultipleStyles renders scanlines with multiple styles using compound rendering.
-func renderCompoundMultipleStyles(ras CompoundRasterizerInterface, slAA ScanlineInterface,
-	slBin ScanlineInterface, ren BaseRendererInterface, alloc SpanAllocatorInterface,
-	styleHandler StyleHandlerInterface, colorSpan []interface{}, mixBuffer []interface{},
+func renderCompoundMultipleStyles[C any](ras CompoundRasterizerInterface, slAA ScanlineInterface,
+	slBin ScanlineInterface, ren BaseRendererInterface[C], alloc SpanAllocatorInterface[C],
+	styleHandler StyleHandlerInterface[C], colorSpan []C, mixBuffer []C,
 	minX int, numStyles int,
 ) {
 	// Clear the mix buffer spans
@@ -174,7 +174,8 @@ func renderCompoundMultipleStyles(ras CompoundRasterizerInterface, slAA Scanline
 
 		// Clear mix buffer section for this span
 		for j := 0; j < span.Len; j++ {
-			mixBuffer[span.X-minX+j] = nil
+			var zero C
+			mixBuffer[span.X-minX+j] = zero
 		}
 
 		if i < numSpansBin-1 {
@@ -228,8 +229,8 @@ func renderCompoundMultipleStyles(ras CompoundRasterizerInterface, slAA Scanline
 }
 
 // renderCompoundSolidStyle renders a span with solid color for compound rendering.
-func renderCompoundSolidStyle(span SpanData, styleHandler StyleHandlerInterface,
-	style int, mixBuffer []interface{}, minX int,
+func renderCompoundSolidStyle[C any](span SpanData, styleHandler StyleHandlerInterface[C],
+	style int, mixBuffer []C, minX int,
 ) {
 	color := styleHandler.Color(style)
 
@@ -243,7 +244,7 @@ func renderCompoundSolidStyle(span SpanData, styleHandler StyleHandlerInterface,
 			// Blend with existing color in mix buffer
 			// This is a simplified version - real implementation would need
 			// proper color blending based on the color type
-			if mixBuffer[bufferIndex] == nil {
+			if reflect.ValueOf(mixBuffer[bufferIndex]).IsZero() {
 				mixBuffer[bufferIndex] = color
 			}
 		}
@@ -251,9 +252,9 @@ func renderCompoundSolidStyle(span SpanData, styleHandler StyleHandlerInterface,
 }
 
 // renderCompoundGeneratedStyle renders a span with generated colors for compound rendering.
-func renderCompoundGeneratedStyle(span SpanData, sl ScanlineInterface,
-	styleHandler StyleHandlerInterface, style int, colorSpan []interface{},
-	mixBuffer []interface{}, minX int, alloc SpanAllocatorInterface,
+func renderCompoundGeneratedStyle[C any](span SpanData, sl ScanlineInterface,
+	styleHandler StyleHandlerInterface[C], style int, colorSpan []C,
+	mixBuffer []C, minX int, alloc SpanAllocatorInterface[C],
 ) {
 	colors := alloc.Allocate(span.Len)
 	styleHandler.GenerateSpan(colors, span.X, sl.Y(), span.Len, style)
@@ -268,7 +269,7 @@ func renderCompoundGeneratedStyle(span SpanData, sl ScanlineInterface,
 			// Blend with existing color in mix buffer
 			// This is a simplified version - real implementation would need
 			// proper color blending based on the color type
-			if mixBuffer[bufferIndex] == nil {
+			if reflect.ValueOf(mixBuffer[bufferIndex]).IsZero() {
 				mixBuffer[bufferIndex] = colors[i]
 			}
 		}

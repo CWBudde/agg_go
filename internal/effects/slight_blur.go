@@ -12,43 +12,40 @@ import (
 // It uses a Gaussian curve with standard deviation of r/2 as per HTML/CSS spec.
 // This filter is useful for smoothing artifacts caused by detail rendered
 // at the pixel scale, e.g. single-pixel lines.
-type SlightBlur[PixFmt PixFmtInterface] struct {
+type SlightBlur[PixFmt PixFmtInterface[T], T comparable] struct {
 	g0, g1 float64
-	buf    *array.PodVector[PixelType[PixFmt]]
+	buf    *array.PodVector[T]
 }
 
 // PixFmtInterface defines the interface for pixel formats that can be blurred.
-type PixFmtInterface interface {
+type PixFmtInterface[T any] interface {
 	Width() int
 	Height() int
-	PixValuePtr(x, y, len int) PixelIterator
+	PixValuePtr(x, y, len int) PixelIterator[T]
 }
 
 // PixelIterator represents an iterator over pixels.
-type PixelIterator interface {
-	Next() PixelIterator
-	Value() interface{}
+type PixelIterator[T any] interface {
+	Next() PixelIterator[T]
+	Value() T
 }
-
-// PixelType extracts the pixel type from a pixel format interface.
-type PixelType[T PixFmtInterface] interface{}
 
 // NewSlightBlur creates a new SlightBlur with the specified radius.
 // Default radius is 1.33, which provides good quality for single-pixel smoothing.
-func NewSlightBlur[PixFmt PixFmtInterface](radius float64) *SlightBlur[PixFmt] {
+func NewSlightBlur[PixFmt PixFmtInterface[T], T comparable](radius float64) *SlightBlur[PixFmt, T] {
 	if radius <= 0 {
 		radius = 1.33
 	}
 
-	sb := &SlightBlur[PixFmt]{
-		buf: array.NewPodVector[PixelType[PixFmt]](),
+	sb := &SlightBlur[PixFmt, T]{
+		buf: array.NewPodVector[T](),
 	}
 	sb.SetRadius(radius)
 	return sb
 }
 
 // SetRadius sets the blur radius and recalculates the Gaussian coefficients.
-func (sb *SlightBlur[PixFmt]) SetRadius(r float64) {
+func (sb *SlightBlur[PixFmt, T]) SetRadius(r float64) {
 	if r > 0 {
 		// Sample the gaussian curve at 0 and r/2 standard deviations.
 		// At 3 standard deviations, the response is < 0.005.
@@ -68,7 +65,7 @@ func (sb *SlightBlur[PixFmt]) SetRadius(r float64) {
 }
 
 // Blur applies the slight blur to the specified rectangle of the image.
-func (sb *SlightBlur[PixFmt]) Blur(img PixFmt, bounds basics.RectI) {
+func (sb *SlightBlur[PixFmt, T]) Blur(img PixFmt, bounds basics.RectI) {
 	// Make sure we stay within the image area
 	imageBounds := basics.RectI{X1: 0, Y1: 0, X2: img.Width() - 1, Y2: img.Height() - 1}
 	bounds.Clip(imageBounds)
@@ -88,15 +85,15 @@ func (sb *SlightBlur[PixFmt]) Blur(img PixFmt, bounds basics.RectI) {
 }
 
 // ApplySlightBlur is a convenience function for applying slight blur to an image.
-func ApplySlightBlur[PixFmt PixFmtInterface](img PixFmt, bounds basics.RectI, radius float64) {
+func ApplySlightBlur[PixFmt PixFmtInterface[T], T comparable](img PixFmt, bounds basics.RectI, radius float64) {
 	if radius > 0 {
-		blur := NewSlightBlur[PixFmt](radius)
+		blur := NewSlightBlur[PixFmt, T](radius)
 		blur.Blur(img, bounds)
 	}
 }
 
 // ApplySlightBlurFull applies slight blur to the entire image.
-func ApplySlightBlurFull[PixFmt PixFmtInterface](img PixFmt, radius float64) {
+func ApplySlightBlurFull[PixFmt PixFmtInterface[T], T comparable](img PixFmt, radius float64) {
 	if radius > 0 {
 		bounds := basics.RectI{X1: 0, Y1: 0, X2: img.Width() - 1, Y2: img.Height() - 1}
 		ApplySlightBlur(img, bounds, radius)

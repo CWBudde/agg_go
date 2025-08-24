@@ -34,7 +34,7 @@ type EventHandler interface {
 	OnKey(x, y int, key types.KeyCode, flags types.InputFlags)
 	OnCtrlChange()
 	OnDraw()
-	OnPostDraw(rawHandler interface{})
+	OnPostDraw(rawHandler RawEventHandler)
 }
 
 // BaseEventHandler provides default implementations for all event handler methods.
@@ -69,4 +69,4 @@ func (h *BaseEventHandler) OnCtrlChange() {}
 func (h *BaseEventHandler) OnDraw() {}
 
 // OnPostDraw is called after drawing is complete.
-func (h *BaseEventHandler) OnPostDraw(rawHandler interface{}) {}
+func (h *BaseEventHandler) OnPostDraw(rawHandler RawEventHandler) {}

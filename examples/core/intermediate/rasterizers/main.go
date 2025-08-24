@@ -17,6 +17,8 @@ import (
 	"agg_go/internal/ctrl/slider"
 	"agg_go/internal/path"
 	"agg_go/internal/pixfmt"
+	"agg_go/internal/pixfmt/blender"
+	gammaPackage "agg_go/internal/pixfmt/gamma"
 	"agg_go/internal/rasterizer"
 	"agg_go/internal/renderer/scanline"
 	scanlinePackage "agg_go/internal/scanline"
@@ -52,7 +54,7 @@ type Application struct {
 
 	// Rendering buffer and pixel format
 	rbuf *buffer.RenderingBufferU8
-	pixf *pixfmt.PixFmtAlphaBlendRGBA[pixfmt.BlenderRGBA[color.Linear, pixfmt.RGBAOrder], color.Linear]
+	pixf *pixfmt.PixFmtAlphaBlendRGBA[blender.BlenderRGBA[color.Linear, color.ColorOrder], color.Linear]
 
 	// Image buffer
 	imageData []byte
@@ -91,8 +93,8 @@ func NewApplication() *Application {
 	app.rbuf = buffer.NewRenderingBufferU8WithData(app.imageData, frameWidth, frameHeight, frameWidth*pixelSize)
 
 	// Create blender and pixel format
-	blender := pixfmt.BlenderRGBA[color.Linear, pixfmt.RGBAOrder]{}
-	app.pixf = pixfmt.NewPixFmtAlphaBlendRGBA[pixfmt.BlenderRGBA[color.Linear, pixfmt.RGBAOrder], color.Linear](app.rbuf, blender)
+	blender := blender.BlenderRGBA[color.Linear, color.ColorOrder]{}
+	app.pixf = pixfmt.NewPixFmtAlphaBlendRGBA[blender.BlenderRGBA[color.Linear, color.ColorOrder], color.Linear](app.rbuf, blender)
 
 	// Create rasterizer and scanlines
 	app.ras = rasterizer.NewRasterizerScanlineAA[*rasterizer.RasterizerSlNoClip, rasterizer.RasConvDbl](1000) // cell block limit
@@ -102,31 +104,42 @@ func NewApplication() *Application {
 	return app
 }
 
+// SpanType constraint for supported span types
+type SpanType interface {
+	scanlinePackage.SpanP8 | scanlinePackage.SpanBin
+}
+
+// ColorType constraint for renderer color types
+type ColorType interface {
+	color.RGBA8[color.Linear]
+}
+
 // Adapter interfaces to bridge incompatibilities between different packages
 
 // scanlineIteratorAdapter adapts between different scanline iterator interfaces
-type scanlineIteratorAdapter struct {
-	spans []interface{}
+type scanlineIteratorAdapter[T SpanType] struct {
+	spans []T
 	index int
 }
 
-func (it *scanlineIteratorAdapter) GetSpan() scanline.SpanData {
+func (it *scanlineIteratorAdapter[T]) GetSpan() scanline.SpanData {
 	if it.index >= len(it.spans) {
 		return scanline.SpanData{}
 	}
 
-	// Handle different span types
-	switch span := it.spans[it.index].(type) {
+	span := it.spans[it.index]
+	// Handle different span types using type assertion on any(span)
+	switch s := any(span).(type) {
 	case scanlinePackage.SpanP8:
 		return scanline.SpanData{
-			X:      int(span.X),
-			Len:    int(span.Len),
-			Covers: convertCoverageP8(span.Covers, int(span.Len)),
+			X:      int(s.X),
+			Len:    int(s.Len),
+			Covers: convertCoverageP8(s.Covers, int(s.Len)),
 		}
 	case scanlinePackage.SpanBin:
 		return scanline.SpanData{
-			X:      int(span.X),
-			Len:    int(span.Len),
+			X:      int(s.X),
+			Len:    int(s.Len),
 			Covers: nil, // Binary spans don't use coverage arrays
 		}
 	default:
@@ -134,7 +147,7 @@ func (it *scanlineIteratorAdapter) GetSpan() scanline.SpanData {
 	}
 }
 
-func (it *scanlineIteratorAdapter) Next() bool {
+func (it *scanlineIteratorAdapter[T]) Next() bool {
 	it.index++
 	return it.index < len(it.spans)
 }
@@ -154,50 +167,42 @@ func convertCoverageP8(covers *scanlinePackage.CoverType, length int) []basics.I
 }
 
 // scanlineAdapter adapts scanline packages to renderer scanline interface
-type scanlineAdapter struct {
+type scanlineAdapter[T SpanType] struct {
 	y        int
-	spans    []interface{}
-	iterator *scanlineIteratorAdapter
+	spans    []T
+	iterator *scanlineIteratorAdapter[T]
 }
 
-func (sl *scanlineAdapter) Y() int {
+func (sl *scanlineAdapter[T]) Y() int {
 	return sl.y
 }
 
-func (sl *scanlineAdapter) NumSpans() int {
+func (sl *scanlineAdapter[T]) NumSpans() int {
 	return len(sl.spans)
 }
 
-func (sl *scanlineAdapter) Begin() scanline.ScanlineIterator {
-	sl.iterator = &scanlineIteratorAdapter{spans: sl.spans, index: 0}
+func (sl *scanlineAdapter[T]) Begin() scanline.ScanlineIterator {
+	sl.iterator = &scanlineIteratorAdapter[T]{spans: sl.spans, index: 0}
 	return sl.iterator
 }
 
 // adaptScanlineP8 creates a scanline adapter for ScanlineP8
-func adaptScanlineP8(sl *scanlinePackage.ScanlineP8) *scanlineAdapter {
+func adaptScanlineP8(sl *scanlinePackage.ScanlineP8) *scanlineAdapter[scanlinePackage.SpanP8] {
 	spans := sl.Begin()
-	adapted := make([]interface{}, len(spans))
-	for i, span := range spans {
-		adapted[i] = span
-	}
 
-	return &scanlineAdapter{
+	return &scanlineAdapter[scanlinePackage.SpanP8]{
 		y:     sl.Y(),
-		spans: adapted,
+		spans: spans,
 	}
 }
 
 // adaptScanlineBin creates a scanline adapter for ScanlineBin
-func adaptScanlineBin(sl *scanlinePackage.ScanlineBin) *scanlineAdapter {
+func adaptScanlineBin(sl *scanlinePackage.ScanlineBin) *scanlineAdapter[scanlinePackage.SpanBin] {
 	spans := sl.Begin()
-	adapted := make([]interface{}, len(spans))
-	for i, span := range spans {
-		adapted[i] = span
-	}
 
-	return &scanlineAdapter{
+	return &scanlineAdapter[scanlinePackage.SpanBin]{
 		y:     sl.Y(),
-		spans: adapted,
+		spans: spans,
 	}
 }
 
@@ -225,21 +230,19 @@ func (ra *rasterizerAdapter) MaxX() int {
 }
 
 // baseRendererAdapter adapts our pixel format to the BaseRendererInterface needed by scanline renderers
-type baseRendererAdapter struct {
-	pixf *pixfmt.PixFmtAlphaBlendRGBA[pixfmt.BlenderRGBA[color.Linear, pixfmt.RGBAOrder], color.Linear]
+type baseRendererAdapter[C ColorType] struct {
+	pixf *pixfmt.PixFmtAlphaBlendRGBA[blender.BlenderRGBA[color.Linear, color.ColorOrder], color.Linear]
 }
 
-func (br *baseRendererAdapter) BlendSolidHspan(x, y, len int, colorInterface interface{}, covers []basics.Int8u) {
-	c := colorInterface.(color.RGBA8[color.Linear])
+func (br *baseRendererAdapter[C]) BlendSolidHspan(x, y, len int, c C, covers []basics.Int8u) {
 	br.pixf.BlendSolidHspan(x, y, len, c, covers)
 }
 
-func (br *baseRendererAdapter) BlendHline(x, y, x2 int, colorInterface interface{}, cover basics.Int8u) {
-	c := colorInterface.(color.RGBA8[color.Linear])
+func (br *baseRendererAdapter[C]) BlendHline(x, y, x2 int, c C, cover basics.Int8u) {
 	br.pixf.BlendHline(x, y, x2, c, cover)
 }
 
-func (br *baseRendererAdapter) BlendColorHspan(x, y, len int, colors []interface{}, covers []basics.Int8u, cover basics.Int8u) {
+func (br *baseRendererAdapter[C]) BlendColorHspan(x, y, len int, colors []C, covers []basics.Int8u, cover basics.Int8u) {
 	// This method is not implemented as the pixel format doesn't support it directly
 	// For now, we'll just ignore color hspan calls
 	_ = colors
@@ -247,12 +250,11 @@ func (br *baseRendererAdapter) BlendColorHspan(x, y, len int, colors []interface
 	_ = cover
 }
 
-func (br *baseRendererAdapter) Clear(colorInterface interface{}) {
+func (br *baseRendererAdapter[C]) Clear(c C) {
 	// Clear the entire buffer with the given color
-	c := colorInterface.(*color.RGBA8[color.Linear])
 	for y := 0; y < br.pixf.Height(); y++ {
 		for x := 0; x < br.pixf.Width(); x++ {
-			br.pixf.CopyPixel(x, y, *c)
+			br.pixf.CopyPixel(x, y, c)
 		}
 	}
 }
@@ -260,8 +262,8 @@ func (br *baseRendererAdapter) Clear(colorInterface interface{}) {
 // drawAntiAliased renders the triangle with anti-aliasing and gamma correction
 func (app *Application) drawAntiAliased() {
 	// Create base renderer adapter and anti-aliased renderer
-	baseRen := &baseRendererAdapter{pixf: app.pixf}
-	renAA := scanline.NewRendererScanlineAASolidWithRenderer[*baseRendererAdapter](baseRen)
+	baseRen := &baseRendererAdapter[color.RGBA8[color.Linear]]{pixf: app.pixf}
+	renAA := scanline.NewRendererScanlineAASolidWithRenderer[*baseRendererAdapter[color.RGBA8[color.Linear]]](baseRen)
 
 	// Create path for triangle
 	pathStorage := path.NewPathStorage()
@@ -281,7 +283,7 @@ func (app *Application) drawAntiAliased() {
 
 	// Apply gamma correction
 	gamma := app.gammaSlider.Value() * 2.0
-	gammaFunc := pixfmt.NewGammaPower(gamma)
+	gammaFunc := gammaPackage.NewGammaPower(gamma)
 	app.ras.SetGamma(gammaFunc.Apply)
 
 	// Reset rasterizer and add path
@@ -325,8 +327,8 @@ func (app *Application) drawAntiAliased() {
 // drawAliased renders the triangle without anti-aliasing (binary)
 func (app *Application) drawAliased() {
 	// Create base renderer adapter and binary renderer
-	baseRen := &baseRendererAdapter{pixf: app.pixf}
-	renBin := scanline.NewRendererScanlineBinSolidWithRenderer[*baseRendererAdapter](baseRen)
+	baseRen := &baseRendererAdapter[color.RGBA8[color.Linear]]{pixf: app.pixf}
+	renBin := scanline.NewRendererScanlineBinSolidWithRenderer[*baseRendererAdapter[color.RGBA8[color.Linear]]](baseRen)
 
 	// Create path for triangle (offset by 200 pixels left, matching C++)
 	pathStorage := path.NewPathStorage()
@@ -346,7 +348,7 @@ func (app *Application) drawAliased() {
 
 	// Apply gamma threshold for binary rendering
 	threshold := app.gammaSlider.Value()
-	gammaFunc := pixfmt.NewGammaThreshold(threshold)
+	gammaFunc := gammaPackage.NewGammaThreshold(threshold)
 	app.ras.SetGamma(gammaFunc.Apply)
 
 	// Reset rasterizer and add path
@@ -389,7 +391,7 @@ func (app *Application) drawAliased() {
 
 // renderDirectly performs direct rendering without the scanline system
 // This is a workaround for interface incompatibilities
-func (app *Application) renderDirectly(ren interface{}, triangleColor color.RGBA8[color.Linear]) {
+func (app *Application) renderDirectly(ren any, triangleColor color.RGBA8[color.Linear]) {
 	// Simple direct rasterization approach
 	// This bypasses the scanline system entirely due to interface issues
 
@@ -418,8 +420,8 @@ func (app *Application) renderDirectly(ren interface{}, triangleColor color.RGBA
 // onDraw renders the complete frame
 func (app *Application) onDraw() {
 	// Clear background to white
-	baseRen := &baseRendererAdapter{pixf: app.pixf}
-	baseRen.Clear(&color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
+	baseRen := &baseRendererAdapter[color.RGBA8[color.Linear]]{pixf: app.pixf}
+	baseRen.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
 
 	// Draw both triangles
 	app.drawAntiAliased()

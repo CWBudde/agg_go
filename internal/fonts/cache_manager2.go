@@ -71,7 +71,7 @@ func (gr FmanGlyphRendering) String() string {
 // FmanCachedGlyph stores cached glyph data with enhanced metadata including font reference.
 // This corresponds to AGG's fman::cached_glyph struct.
 type FmanCachedGlyph struct {
-	CachedFont interface{}       // Reference to the cached font (generic interface)
+	CachedFont *FmanCachedFont   // Reference to the cached font
 	GlyphCode  uint32            // Character code
 	GlyphIndex uint32            // Glyph index in font
 	Data       []byte            // Glyph bitmap or outline data
@@ -125,7 +125,7 @@ func (cg *FmanCachedGlyphs) FindGlyph(glyphCode uint32) *FmanCachedGlyph {
 // CacheGlyph caches a new glyph with the given parameters.
 // Returns the cached glyph or nil if glyph already exists.
 func (cg *FmanCachedGlyphs) CacheGlyph(
-	cachedFont interface{},
+	cachedFont *FmanCachedFont,
 	glyphCode uint32,
 	glyphIndex uint32,
 	dataSize uint32,
@@ -355,19 +355,19 @@ func (cf *FmanCachedFont) Reset() {
 // This is a simplified interface compared to v1, focusing on adaptor management.
 type FontEngine2 interface {
 	// PathAdaptor returns the path adaptor for outline glyphs
-	PathAdaptor() interface{} // Should return path_adaptor_type
+	PathAdaptor() PathAdaptorType
 
 	// Gray8Adaptor returns the gray8 adaptor for grayscale glyphs
-	Gray8Adaptor() interface{} // Should return gray8_adaptor_type
+	Gray8Adaptor() Gray8AdaptorType
 
 	// Gray8Scanline returns the gray8 scanline for grayscale rendering
-	Gray8Scanline() interface{} // Should return gray8_scanline_type
+	Gray8Scanline() Gray8ScanlineType
 
 	// MonoAdaptor returns the mono adaptor for monochrome glyphs
-	MonoAdaptor() interface{} // Should return mono_adaptor_type
+	MonoAdaptor() MonoAdaptorType
 
 	// MonoScanline returns the mono scanline for monochrome rendering
-	MonoScanline() interface{} // Should return mono_scanline_type
+	MonoScanline() MonoScanlineType
 }
 
 // FmanFontCacheManager2 is the enhanced font cache manager (version 2).
@@ -376,12 +376,12 @@ type FontEngine2 interface {
 type FmanFontCacheManager2[T FontEngine2] struct {
 	engine T // Font engine
 
-	// Adaptors for different glyph types (actual types depend on engine)
-	pathAdaptor   interface{} // path_adaptor_type from engine
-	gray8Adaptor  interface{} // gray8_adaptor_type from engine
-	gray8Scanline interface{} // gray8_scanline_type from engine
-	monoAdaptor   interface{} // mono_adaptor_type from engine
-	monoScanline  interface{} // mono_scanline_type from engine
+	// Adaptors for different glyph types (properly typed)
+	pathAdaptor   PathAdaptorType   // Path adaptor from engine
+	gray8Adaptor  Gray8AdaptorType  // Gray8 adaptor from engine
+	gray8Scanline Gray8ScanlineType // Gray8 scanline from engine
+	monoAdaptor   MonoAdaptorType   // Mono adaptor from engine
+	monoScanline  MonoScanlineType  // Mono scanline from engine
 }
 
 // NewFmanFontCacheManager2 creates a new enhanced font cache manager.
@@ -409,28 +409,16 @@ func (fcm *FmanFontCacheManager2[T]) InitEmbeddedAdaptors(
 
 	switch gl.DataType {
 	case FmanGlyphDataMono:
-		// Initialize mono adaptor
-		if monoInit, ok := fcm.monoAdaptor.(interface {
-			Init(data []byte, dataSize uint32, x, y float64)
-		}); ok {
-			monoInit.Init(gl.Data, gl.DataSize, x, y)
-		}
+		// Initialize mono adaptor - now type-safe
+		fcm.monoAdaptor.InitGlyph(gl.Data, gl.DataSize, x, y)
 
 	case FmanGlyphDataGray8:
-		// Initialize gray8 adaptor
-		if gray8Init, ok := fcm.gray8Adaptor.(interface {
-			Init(data []byte, dataSize uint32, x, y float64)
-		}); ok {
-			gray8Init.Init(gl.Data, gl.DataSize, x, y)
-		}
+		// Initialize gray8 adaptor - now type-safe
+		fcm.gray8Adaptor.InitGlyph(gl.Data, gl.DataSize, x, y)
 
 	case FmanGlyphDataOutline:
-		// Initialize path adaptor with scale
-		if pathInit, ok := fcm.pathAdaptor.(interface {
-			InitWithScale(data []byte, dataSize uint32, x, y, scale float64)
-		}); ok {
-			pathInit.InitWithScale(gl.Data, gl.DataSize, x, y, scale)
-		}
+		// Initialize path adaptor with scale - now type-safe
+		fcm.pathAdaptor.InitWithScale(gl.Data, gl.DataSize, x, y, scale)
 
 	default:
 		// Invalid or unknown data type
@@ -439,27 +427,27 @@ func (fcm *FmanFontCacheManager2[T]) InitEmbeddedAdaptors(
 }
 
 // PathAdaptor returns the path adaptor for outline glyphs.
-func (fcm *FmanFontCacheManager2[T]) PathAdaptor() interface{} {
+func (fcm *FmanFontCacheManager2[T]) PathAdaptor() PathAdaptorType {
 	return fcm.pathAdaptor
 }
 
 // Gray8Adaptor returns the gray8 adaptor for grayscale glyphs.
-func (fcm *FmanFontCacheManager2[T]) Gray8Adaptor() interface{} {
+func (fcm *FmanFontCacheManager2[T]) Gray8Adaptor() Gray8AdaptorType {
 	return fcm.gray8Adaptor
 }
 
 // Gray8Scanline returns the gray8 scanline for grayscale rendering.
-func (fcm *FmanFontCacheManager2[T]) Gray8Scanline() interface{} {
+func (fcm *FmanFontCacheManager2[T]) Gray8Scanline() Gray8ScanlineType {
 	return fcm.gray8Scanline
 }
 
 // MonoAdaptor returns the mono adaptor for monochrome glyphs.
-func (fcm *FmanFontCacheManager2[T]) MonoAdaptor() interface{} {
+func (fcm *FmanFontCacheManager2[T]) MonoAdaptor() MonoAdaptorType {
 	return fcm.monoAdaptor
 }
 
 // MonoScanline returns the mono scanline for monochrome rendering.
-func (fcm *FmanFontCacheManager2[T]) MonoScanline() interface{} {
+func (fcm *FmanFontCacheManager2[T]) MonoScanline() MonoScanlineType {
 	return fcm.monoScanline
 }
 

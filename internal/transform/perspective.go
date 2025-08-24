@@ -9,8 +9,10 @@ import (
 )
 
 // Compile-time interface checks
-var _ Transformer = (*TransPerspective)(nil)
-var _ InverseTransformer = (*TransPerspective)(nil)
+var (
+	_ Transformer        = (*TransPerspective)(nil)
+	_ InverseTransformer = (*TransPerspective)(nil)
+)
 
 // TransPerspective represents a 3x3 perspective transformation matrix.
 // The matrix components are:

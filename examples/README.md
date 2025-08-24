@@ -9,6 +9,7 @@ This directory contains progressive examples demonstrating the AGG Go library ca
 Core examples use only the internal Go implementation and are guaranteed to build without external dependencies.
 
 #### Basic Examples (`core/basic/`)
+
 - **hello_world/** - Simple context creation and basic drawing
 - **shapes/** - Drawing basic geometric shapes (circles, rectangles, lines)
 - **colors_gray/** - Grayscale color handling
@@ -18,6 +19,7 @@ Core examples use only the internal Go implementation and are guaranteed to buil
 - **embedded_fonts_hello/** - Basic text rendering with embedded fonts
 
 #### Intermediate Examples (`core/intermediate/`)
+
 - **gradients/** - Gradient fills and color interpolation
 - **controls/** - Interactive UI controls (sliders, checkboxes, etc.)
 - **text_rendering/** - Advanced text rendering features
@@ -25,6 +27,7 @@ Core examples use only the internal Go implementation and are guaranteed to buil
 - **transforms/** - Affine transformations and coordinate systems
 
 #### Advanced Examples (`core/advanced/`)
+
 - **advanced_rendering/** - Complex rendering techniques
 - **image_filters/** - Image processing and filtering
 - **custom_renderer/** - Custom rendering pipelines
@@ -35,11 +38,13 @@ Core examples use only the internal Go implementation and are guaranteed to buil
 Platform-specific backends with external dependencies. These examples use build tags for optional compilation.
 
 #### SDL2 Backend (`platform/sdl2/`)
+
 - Interactive graphics applications using SDL2
 - Requires: `go get github.com/veandco/go-sdl2/sdl`
 - Build: `go build -tags sdl2`
 
-#### X11 Backend (`platform/x11/`)  
+#### X11 Backend (`platform/x11/`)
+
 - Native X11 windowing system integration
 - Requires: X11 development headers (libx11-dev)
 - Build: `go build -tags x11`
@@ -49,7 +54,7 @@ Platform-specific backends with external dependencies. These examples use build 
 Test examples that mirror the original AGG 2.6 C++ examples for compatibility verification.
 
 - **circles/** - Circle rendering tests
-- **aa_demo/** - Anti-aliasing demonstration  
+- **aa_demo/** - Anti-aliasing demonstration
 - **rounded_rect/** - Rounded rectangle tests
 - **lines/** - Line rendering tests
 - **gradients/** - Gradient rendering tests
@@ -85,7 +90,7 @@ just build-examples
 
 # Run core examples by category
 just run-examples-basic          # All basic examples
-just run-examples-intermediate   # Intermediate examples  
+just run-examples-intermediate   # Intermediate examples
 just run-examples-advanced       # Advanced examples
 
 # Run specific examples

@@ -1,8 +1,9 @@
 package span
 
 import (
-	"agg_go/internal/color"
 	"testing"
+
+	"agg_go/internal/color"
 )
 
 // TestColorForSpan is a simple color type for testing span converters

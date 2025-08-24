@@ -312,5 +312,5 @@ func demonstrateTransformationQueries() error {
 // Additional helper function for the demo
 func init() {
 	// Ensure output directory exists
-	os.MkdirAll("examples/advanced_rendering", 0755)
+	os.MkdirAll("examples/advanced_rendering", 0o755)
 }

@@ -188,7 +188,7 @@ type PlatformSupport struct {
 	onKeyHandler        func(x, y int, key KeyCode, flags InputFlags)
 	onCtrlChangeHandler func()
 	onDrawHandler       func()
-	onPostDrawHandler   func(rawHandler interface{})
+	onPostDrawHandler   func(rawHandler RawEventHandler)
 }
 
 const (
@@ -467,7 +467,7 @@ func (ps *PlatformSupport) SetOnDraw(handler func()) {
 }
 
 // SetOnPostDraw sets the post-draw event handler.
-func (ps *PlatformSupport) SetOnPostDraw(handler func(rawHandler interface{})) {
+func (ps *PlatformSupport) SetOnPostDraw(handler func(rawHandler RawEventHandler)) {
 	ps.onPostDrawHandler = handler
 }
 

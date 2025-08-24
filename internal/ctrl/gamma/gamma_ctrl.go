@@ -24,7 +24,7 @@ import (
 // - Mouse interaction for dragging control points
 // - Keyboard support for fine adjustments
 // - Text display of current control point values
-type GammaCtrlImpl struct {
+type GammaCtrlImpl[C any] struct {
 	*ctrl.BaseCtrl
 
 	// Core gamma functionality
@@ -69,8 +69,8 @@ type GammaCtrlImpl struct {
 // NewGammaCtrlImpl creates a new gamma control implementation.
 // x1, y1, x2, y2: bounding rectangle
 // flipY: whether to flip Y coordinates
-func NewGammaCtrlImpl(x1, y1, x2, y2 float64, flipY bool) *GammaCtrlImpl {
-	ctrl := &GammaCtrlImpl{
+func NewGammaCtrlImpl[C any](x1, y1, x2, y2 float64, flipY bool) *GammaCtrlImpl[C] {
+	ctrl := &GammaCtrlImpl[C]{
 		BaseCtrl:      ctrl.NewBaseCtrl(x1, y1, x2, y2, flipY),
 		gammaSpline:   NewGammaSpline(),
 		borderWidth:   2.0,
@@ -115,7 +115,7 @@ func NewGammaCtrlImpl(x1, y1, x2, y2 float64, flipY bool) *GammaCtrlImpl {
 }
 
 // calcSplineBox calculates the inner bounds for the spline area.
-func (gc *GammaCtrlImpl) calcSplineBox() {
+func (gc *GammaCtrlImpl[C]) calcSplineBox() {
 	gc.xs1 = gc.xc1 + gc.borderWidth
 	gc.ys1 = gc.yc1 + gc.borderWidth
 	gc.xs2 = gc.xc2 - gc.borderWidth
@@ -123,7 +123,7 @@ func (gc *GammaCtrlImpl) calcSplineBox() {
 }
 
 // calcPoints calculates the screen coordinates of the control points.
-func (gc *GammaCtrlImpl) calcPoints() {
+func (gc *GammaCtrlImpl[C]) calcPoints() {
 	kx1, ky1, kx2, ky2 := gc.gammaSpline.GetValues()
 	gc.xp1 = gc.xs1 + (gc.xs2-gc.xs1)*kx1*0.25
 	gc.yp1 = gc.ys1 + (gc.ys2-gc.ys1)*ky1*0.25
@@ -132,7 +132,7 @@ func (gc *GammaCtrlImpl) calcPoints() {
 }
 
 // calcValues calculates the control point values from screen coordinates.
-func (gc *GammaCtrlImpl) calcValues() {
+func (gc *GammaCtrlImpl[C]) calcValues() {
 	kx1 := (gc.xp1 - gc.xs1) * 4.0 / (gc.xs2 - gc.xs1)
 	ky1 := (gc.yp1 - gc.ys1) * 4.0 / (gc.ys2 - gc.ys1)
 	kx2 := (gc.xs2 - gc.xp2) * 4.0 / (gc.xs2 - gc.xs1)
@@ -141,31 +141,31 @@ func (gc *GammaCtrlImpl) calcValues() {
 }
 
 // SetBorderWidth sets the border width and extra border space.
-func (gc *GammaCtrlImpl) SetBorderWidth(width, extra float64) {
+func (gc *GammaCtrlImpl[C]) SetBorderWidth(width, extra float64) {
 	gc.borderWidth = width
 	gc.borderExtra = extra
 	gc.calcSplineBox()
 }
 
 // SetCurveWidth sets the width of the gamma curve line.
-func (gc *GammaCtrlImpl) SetCurveWidth(width float64) {
+func (gc *GammaCtrlImpl[C]) SetCurveWidth(width float64) {
 	gc.curveWidth = width
 	gc.curveStroke.SetWidth(width)
 }
 
 // SetGridWidth sets the width of the grid lines.
-func (gc *GammaCtrlImpl) SetGridWidth(width float64) {
+func (gc *GammaCtrlImpl[C]) SetGridWidth(width float64) {
 	gc.gridWidth = width
 }
 
 // SetTextThickness sets the thickness of text rendering.
-func (gc *GammaCtrlImpl) SetTextThickness(thickness float64) {
+func (gc *GammaCtrlImpl[C]) SetTextThickness(thickness float64) {
 	gc.textThickness = thickness
 	gc.textStroke.SetWidth(thickness)
 }
 
 // SetTextSize sets the text size.
-func (gc *GammaCtrlImpl) SetTextSize(height, width float64) {
+func (gc *GammaCtrlImpl[C]) SetTextSize(height, width float64) {
 	gc.textWidth = width
 	gc.textHeight = height
 	gc.yc2 = gc.Y2() - gc.textHeight*2.0
@@ -174,48 +174,48 @@ func (gc *GammaCtrlImpl) SetTextSize(height, width float64) {
 }
 
 // SetPointSize sets the size of control point markers.
-func (gc *GammaCtrlImpl) SetPointSize(size float64) {
+func (gc *GammaCtrlImpl[C]) SetPointSize(size float64) {
 	gc.pointSize = size
 }
 
 // Values sets the gamma curve control points.
-func (gc *GammaCtrlImpl) Values(kx1, ky1, kx2, ky2 float64) {
+func (gc *GammaCtrlImpl[C]) Values(kx1, ky1, kx2, ky2 float64) {
 	gc.gammaSpline.Values(kx1, ky1, kx2, ky2)
 }
 
 // GetValues returns the current gamma curve control points.
-func (gc *GammaCtrlImpl) GetValues() (kx1, ky1, kx2, ky2 float64) {
+func (gc *GammaCtrlImpl[C]) GetValues() (kx1, ky1, kx2, ky2 float64) {
 	return gc.gammaSpline.GetValues()
 }
 
 // Gamma returns the gamma lookup table.
-func (gc *GammaCtrlImpl) Gamma() []uint8 {
+func (gc *GammaCtrlImpl[C]) Gamma() []uint8 {
 	return gc.gammaSpline.Gamma()
 }
 
 // Y calculates the gamma-corrected value for a given input.
-func (gc *GammaCtrlImpl) Y(x float64) float64 {
+func (gc *GammaCtrlImpl[C]) Y(x float64) float64 {
 	return gc.gammaSpline.Y(x)
 }
 
 // GetGammaSpline returns the underlying gamma spline.
-func (gc *GammaCtrlImpl) GetGammaSpline() *GammaSpline {
+func (gc *GammaCtrlImpl[C]) GetGammaSpline() *GammaSpline {
 	return gc.gammaSpline
 }
 
 // ChangeActivePoint toggles which control point is active.
-func (gc *GammaCtrlImpl) ChangeActivePoint() {
+func (gc *GammaCtrlImpl[C]) ChangeActivePoint() {
 	gc.p1Active = !gc.p1Active
 }
 
 // InRect checks if a point is within the control bounds.
-func (gc *GammaCtrlImpl) InRect(x, y float64) bool {
+func (gc *GammaCtrlImpl[C]) InRect(x, y float64) bool {
 	gc.InverseTransformXY(&x, &y)
 	return x >= gc.X1() && x <= gc.X2() && y >= gc.Y1() && y <= gc.Y2()
 }
 
 // OnMouseButtonDown handles mouse button press events.
-func (gc *GammaCtrlImpl) OnMouseButtonDown(x, y float64) bool {
+func (gc *GammaCtrlImpl[C]) OnMouseButtonDown(x, y float64) bool {
 	gc.InverseTransformXY(&x, &y)
 	gc.calcPoints()
 
@@ -241,7 +241,7 @@ func (gc *GammaCtrlImpl) OnMouseButtonDown(x, y float64) bool {
 }
 
 // OnMouseButtonUp handles mouse button release events.
-func (gc *GammaCtrlImpl) OnMouseButtonUp(x, y float64) bool {
+func (gc *GammaCtrlImpl[C]) OnMouseButtonUp(x, y float64) bool {
 	if gc.mousePoint != 0 {
 		gc.mousePoint = 0
 		return true
@@ -250,7 +250,7 @@ func (gc *GammaCtrlImpl) OnMouseButtonUp(x, y float64) bool {
 }
 
 // OnMouseMove handles mouse movement events.
-func (gc *GammaCtrlImpl) OnMouseMove(x, y float64, buttonPressed bool) bool {
+func (gc *GammaCtrlImpl[C]) OnMouseMove(x, y float64, buttonPressed bool) bool {
 	gc.InverseTransformXY(&x, &y)
 
 	if !buttonPressed {
@@ -275,7 +275,7 @@ func (gc *GammaCtrlImpl) OnMouseMove(x, y float64, buttonPressed bool) bool {
 }
 
 // OnArrowKeys handles keyboard arrow key events for fine adjustment.
-func (gc *GammaCtrlImpl) OnArrowKeys(left, right, down, up bool) bool {
+func (gc *GammaCtrlImpl[C]) OnArrowKeys(left, right, down, up bool) bool {
 	kx1, ky1, kx2, ky2 := gc.gammaSpline.GetValues()
 	ret := false
 
@@ -322,19 +322,19 @@ func (gc *GammaCtrlImpl) OnArrowKeys(left, right, down, up bool) bool {
 }
 
 // calcDistance calculates the distance between two points.
-func (gc *GammaCtrlImpl) calcDistance(x1, y1, x2, y2 float64) float64 {
+func (gc *GammaCtrlImpl[C]) calcDistance(x1, y1, x2, y2 float64) float64 {
 	dx := x2 - x1
 	dy := y2 - y1
 	return math.Sqrt(dx*dx + dy*dy)
 }
 
 // NumPaths returns the number of rendering paths.
-func (gc *GammaCtrlImpl) NumPaths() uint {
+func (gc *GammaCtrlImpl[C]) NumPaths() uint {
 	return 7
 }
 
 // Rewind prepares a specific path for vertex generation.
-func (gc *GammaCtrlImpl) Rewind(pathID uint) {
+func (gc *GammaCtrlImpl[C]) Rewind(pathID uint) {
 	gc.currentPath = pathID
 	gc.vertexIndex = 0
 	gc.vertexCount = 0
@@ -358,7 +358,7 @@ func (gc *GammaCtrlImpl) Rewind(pathID uint) {
 }
 
 // Vertex returns the next vertex for the current path.
-func (gc *GammaCtrlImpl) Vertex() (x, y float64, cmd basics.PathCommand) {
+func (gc *GammaCtrlImpl[C]) Vertex() (x, y float64, cmd basics.PathCommand) {
 	switch gc.currentPath {
 	case 0, 1, 3: // Background, Border, Grid - use pre-calculated vertices
 		return gc.getPreCalculatedVertex()
@@ -375,14 +375,15 @@ func (gc *GammaCtrlImpl) Vertex() (x, y float64, cmd basics.PathCommand) {
 	}
 }
 
-// Color returns the color for a specific path (placeholder for interface).
-func (gc *GammaCtrlImpl) Color(pathID uint) interface{} {
-	// This will be overridden by the templated GammaCtrl
-	return nil
+// Color returns the color for a specific path.
+func (gc *GammaCtrlImpl[C]) Color(pathID uint) C {
+	// Return zero value - this should be overridden by concrete implementations
+	var zero C
+	return zero
 }
 
 // setupBackgroundPath prepares vertices for the background rectangle.
-func (gc *GammaCtrlImpl) setupBackgroundPath() {
+func (gc *GammaCtrlImpl[C]) setupBackgroundPath() {
 	gc.vertices[0] = gc.X1() - gc.borderExtra
 	gc.vertices[1] = gc.Y1() - gc.borderExtra
 	gc.vertices[2] = gc.X2() + gc.borderExtra
@@ -395,7 +396,7 @@ func (gc *GammaCtrlImpl) setupBackgroundPath() {
 }
 
 // setupBorderPath prepares vertices for the border rectangles.
-func (gc *GammaCtrlImpl) setupBorderPath() {
+func (gc *GammaCtrlImpl[C]) setupBorderPath() {
 	// Outer border
 	gc.vertices[0] = gc.X1()
 	gc.vertices[1] = gc.Y1()
@@ -430,7 +431,7 @@ func (gc *GammaCtrlImpl) setupBorderPath() {
 }
 
 // setupCurvePath prepares the gamma curve for rendering.
-func (gc *GammaCtrlImpl) setupCurvePath() {
+func (gc *GammaCtrlImpl[C]) setupCurvePath() {
 	// Ensure we have valid bounds before setting up the curve
 	if gc.xs2 <= gc.xs1 || gc.ys2 <= gc.ys1 {
 		return // Invalid bounds, skip setup
@@ -441,7 +442,7 @@ func (gc *GammaCtrlImpl) setupCurvePath() {
 }
 
 // setupGridPath prepares vertices for the grid lines.
-func (gc *GammaCtrlImpl) setupGridPath() {
+func (gc *GammaCtrlImpl[C]) setupGridPath() {
 	gc.calcPoints()
 
 	// Horizontal center line
@@ -478,7 +479,7 @@ func (gc *GammaCtrlImpl) setupGridPath() {
 }
 
 // setupPoint1Path prepares the inactive control point.
-func (gc *GammaCtrlImpl) setupPoint1Path() {
+func (gc *GammaCtrlImpl[C]) setupPoint1Path() {
 	gc.calcPoints()
 	if gc.p1Active {
 		gc.ellipse.Init(gc.xp2, gc.yp2, gc.pointSize, gc.pointSize, 32, false)
@@ -488,7 +489,7 @@ func (gc *GammaCtrlImpl) setupPoint1Path() {
 }
 
 // setupPoint2Path prepares the active control point.
-func (gc *GammaCtrlImpl) setupPoint2Path() {
+func (gc *GammaCtrlImpl[C]) setupPoint2Path() {
 	gc.calcPoints()
 	if gc.p1Active {
 		gc.ellipse.Init(gc.xp1, gc.yp1, gc.pointSize, gc.pointSize, 32, false)
@@ -498,7 +499,7 @@ func (gc *GammaCtrlImpl) setupPoint2Path() {
 }
 
 // setupTextPath prepares the text display.
-func (gc *GammaCtrlImpl) setupTextPath() {
+func (gc *GammaCtrlImpl[C]) setupTextPath() {
 	kx1, ky1, kx2, ky2 := gc.gammaSpline.GetValues()
 	text := fmt.Sprintf("%5.3f %5.3f %5.3f %5.3f", kx1, ky1, kx2, ky2)
 
@@ -513,7 +514,7 @@ func (gc *GammaCtrlImpl) setupTextPath() {
 }
 
 // getPreCalculatedVertex returns the next pre-calculated vertex.
-func (gc *GammaCtrlImpl) getPreCalculatedVertex() (x, y float64, cmd basics.PathCommand) {
+func (gc *GammaCtrlImpl[C]) getPreCalculatedVertex() (x, y float64, cmd basics.PathCommand) {
 	if gc.vertexIndex >= gc.vertexCount {
 		return 0, 0, basics.PathCmdStop
 	}
@@ -542,10 +543,10 @@ func (gc *GammaCtrlImpl) getPreCalculatedVertex() (x, y float64, cmd basics.Path
 	return x, y, cmd
 }
 
-// GammaCtrl is a generic gamma control with customizable colors.
+// GammaCtrl is a gamma control with RGBA colors.
 // This corresponds to AGG's templated gamma_ctrl class.
 type GammaCtrl struct {
-	*GammaCtrlImpl
+	*GammaCtrlImpl[color.RGBA]
 
 	// Color scheme for the 7 rendering paths
 	backgroundColor  color.RGBA
@@ -560,10 +561,10 @@ type GammaCtrl struct {
 	colors [7]*color.RGBA
 }
 
-// NewGammaCtrl creates a new gamma control with default colors.
+// NewGammaCtrl creates a new gamma control with default RGBA colors.
 func NewGammaCtrl(x1, y1, x2, y2 float64, flipY bool) *GammaCtrl {
 	ctrl := &GammaCtrl{
-		GammaCtrlImpl:    NewGammaCtrlImpl(x1, y1, x2, y2, flipY),
+		GammaCtrlImpl:    NewGammaCtrlImpl[color.RGBA](x1, y1, x2, y2, flipY),
 		backgroundColor:  color.NewRGBA(1.0, 1.0, 0.9, 1.0), // Light yellow
 		borderColor:      color.NewRGBA(0.0, 0.0, 0.0, 1.0), // Black
 		curveColor:       color.NewRGBA(0.0, 0.0, 0.0, 1.0), // Black
@@ -585,6 +586,11 @@ func NewGammaCtrl(x1, y1, x2, y2 float64, flipY bool) *GammaCtrl {
 	return ctrl
 }
 
+// NewGammaCtrlGeneric creates a new gamma control with generic color type.
+func NewGammaCtrlGeneric[C any](x1, y1, x2, y2 float64, flipY bool) *GammaCtrlImpl[C] {
+	return NewGammaCtrlImpl[C](x1, y1, x2, y2, flipY)
+}
+
 // Color setter methods
 func (gc *GammaCtrl) SetBackgroundColor(c color.RGBA)  { gc.backgroundColor = c }
 func (gc *GammaCtrl) SetBorderColor(c color.RGBA)      { gc.borderColor = c }
@@ -595,7 +601,7 @@ func (gc *GammaCtrl) SetActivePntColor(c color.RGBA)   { gc.activePntColor = c }
 func (gc *GammaCtrl) SetTextColor(c color.RGBA)        { gc.textColor = c }
 
 // Color returns the color for a specific path.
-func (gc *GammaCtrl) Color(pathID uint) interface{} {
+func (gc *GammaCtrl) Color(pathID uint) color.RGBA {
 	if pathID < 7 {
 		return *gc.colors[pathID]
 	}

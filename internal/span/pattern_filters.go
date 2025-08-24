@@ -293,6 +293,8 @@ func (pf *PatternFilterBilinearRGBA32[CS]) PixelHighRes(buf [][]color.RGBA32[CS]
 }
 
 // Type aliases matching C++ AGG naming
-type PatternFilterNNRGBA8 = PatternFilterNN[color.RGBA8[color.Linear]]
-type PatternFilterNNRGBA16 = PatternFilterNN[color.RGBA16[color.Linear]]
-type PatternFilterNNRGBA32 = PatternFilterNN[color.RGBA32[color.Linear]]
+type (
+	PatternFilterNNRGBA8  = PatternFilterNN[color.RGBA8[color.Linear]]
+	PatternFilterNNRGBA16 = PatternFilterNN[color.RGBA16[color.Linear]]
+	PatternFilterNNRGBA32 = PatternFilterNN[color.RGBA32[color.Linear]]
+)

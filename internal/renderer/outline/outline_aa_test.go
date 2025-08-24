@@ -28,13 +28,13 @@ type MockBaseRenderer struct {
 
 type HSpanCall struct {
 	x, y, length int
-	color        interface{} // Keep for BaseRenderer calls
+	color        TestColor
 	covers       []basics.CoverType
 }
 
 type VSpanCall struct {
 	x, y, length int
-	color        interface{} // Keep for BaseRenderer calls
+	color        TestColor
 	covers       []basics.CoverType
 }
 
@@ -73,7 +73,7 @@ func (m *MockOutlineRenderer) BlendSolidHSpan(x, y, length int, covers []basics.
 	copy(coversCopy, covers)
 
 	m.hspanCalls = append(m.hspanCalls, HSpanCall{
-		x: x, y: y, length: length, color: nil, covers: coversCopy,
+		x: x, y: y, length: length, color: TestColor{}, covers: coversCopy,
 	})
 }
 
@@ -83,7 +83,7 @@ func (m *MockOutlineRenderer) BlendSolidVSpan(x, y, length int, covers []basics.
 	copy(coversCopy, covers)
 
 	m.vspanCalls = append(m.vspanCalls, VSpanCall{
-		x: x, y: y, length: length, color: nil, covers: coversCopy,
+		x: x, y: y, length: length, color: TestColor{}, covers: coversCopy,
 	})
 }
 
@@ -91,7 +91,7 @@ func (m *MockOutlineRenderer) BlendSolidVSpan(x, y, length int, covers []basics.
 func (m *MockBaseRenderer) Width() int  { return m.width }
 func (m *MockBaseRenderer) Height() int { return m.height }
 
-func (m *MockBaseRenderer) BlendSolidHSpan(x, y, length int, color interface{}, covers []basics.CoverType) {
+func (m *MockBaseRenderer) BlendSolidHSpan(x, y, length int, color TestColor, covers []basics.CoverType) {
 	// Make a copy of covers slice to avoid reference issues
 	coversCopy := make([]basics.CoverType, len(covers))
 	copy(coversCopy, covers)
@@ -101,7 +101,7 @@ func (m *MockBaseRenderer) BlendSolidHSpan(x, y, length int, color interface{}, 
 	})
 }
 
-func (m *MockBaseRenderer) BlendSolidVSpan(x, y, length int, color interface{}, covers []basics.CoverType) {
+func (m *MockBaseRenderer) BlendSolidVSpan(x, y, length int, color TestColor, covers []basics.CoverType) {
 	// Make a copy of covers slice to avoid reference issues
 	coversCopy := make([]basics.CoverType, len(covers))
 	copy(coversCopy, covers)

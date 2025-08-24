@@ -348,8 +348,7 @@ func (s *ScanlineStorageAA[T]) Render(sl ScanlineInterface) {
 				// Only copy if sizes match (same underlying type)
 				if srcSize == dstSize {
 					for i := 0; i < srcSize; i++ {
-						*(*byte)(unsafe.Pointer(uintptr(dstPtr) + uintptr(i))) =
-							*(*byte)(unsafe.Pointer(uintptr(srcPtr) + uintptr(i)))
+						*(*byte)(unsafe.Pointer(uintptr(dstPtr) + uintptr(i))) = *(*byte)(unsafe.Pointer(uintptr(srcPtr) + uintptr(i)))
 					}
 				}
 			}
@@ -444,8 +443,7 @@ func (s *ScanlineStorageAA[T]) SweepScanline(sl ScanlineInterface) bool {
 					dstPtr := unsafe.Pointer(&coversInt8u[0])
 					size := len(covers) * int(unsafe.Sizeof(coversInt8u[0]))
 					for i := 0; i < size; i++ {
-						*(*byte)(unsafe.Pointer(uintptr(dstPtr) + uintptr(i))) =
-							*(*byte)(unsafe.Pointer(uintptr(srcPtr) + uintptr(i)))
+						*(*byte)(unsafe.Pointer(uintptr(dstPtr) + uintptr(i))) = *(*byte)(unsafe.Pointer(uintptr(srcPtr) + uintptr(i)))
 					}
 				}
 				sl.AddCells(int(sp.X), int(sp.Len), coversInt8u)
@@ -617,8 +615,7 @@ func (s *ScanlineStorageAA[T]) Serialize(data []byte) {
 						srcPtr := unsafe.Pointer(&covers[0])
 						dstPtr := unsafe.Pointer(&data[offset])
 						for i := 0; i < coverSize; i++ {
-							*(*byte)(unsafe.Pointer(uintptr(dstPtr) + uintptr(i))) =
-								*(*byte)(unsafe.Pointer(uintptr(srcPtr) + uintptr(i)))
+							*(*byte)(unsafe.Pointer(uintptr(dstPtr) + uintptr(i))) = *(*byte)(unsafe.Pointer(uintptr(srcPtr) + uintptr(i)))
 						}
 						offset += coverSize
 					}
@@ -638,8 +635,7 @@ func (s *ScanlineStorageAA[T]) Serialize(data []byte) {
 						srcPtr := unsafe.Pointer(&covers[0])
 						dstPtr := unsafe.Pointer(&data[offset])
 						for i := 0; i < totalSize; i++ {
-							*(*byte)(unsafe.Pointer(uintptr(dstPtr) + uintptr(i))) =
-								*(*byte)(unsafe.Pointer(uintptr(srcPtr) + uintptr(i)))
+							*(*byte)(unsafe.Pointer(uintptr(dstPtr) + uintptr(i))) = *(*byte)(unsafe.Pointer(uintptr(srcPtr) + uintptr(i)))
 						}
 						offset += totalSize
 					}

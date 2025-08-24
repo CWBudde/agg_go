@@ -10,8 +10,6 @@ excludes = [
   # go.sum & go.mod
   "go.sum",
   "go.mod",
-  # pdf files
-  "**/*.pdf",
   # ttf files
   "**/*.ttf",
 ]
@@ -36,10 +34,3 @@ command = "gci"
 options = ["-w"]
 includes = ["*.go"]
 priority = 1        # run after gofumpt
-
-### SVG
-
-[formatter.svgo]
-# HACK: fixes an known issue where the formatter changes the mtime of the file.
-command = "./tools/svgo-wrapper.sh"
-includes = ["*.svg"]
