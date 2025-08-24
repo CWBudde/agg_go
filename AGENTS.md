@@ -46,3 +46,4 @@ This document describes how to work in this repository efficiently and consisten
 - No manual memory management; avoid `unsafe` unless justified and reviewed.
 - Keep `go.mod` tidy with `just tidy`.
 - Use platform-specific builds only when necessary (`build-*-platforms`).
+- Prefer proper interfaces and generics over duck typing with interface{}!

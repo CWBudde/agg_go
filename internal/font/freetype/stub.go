@@ -42,7 +42,7 @@ func (fe *FontEngineFreetype) Close() error {
 }
 
 func (fe *FontEngineFreetype) FontSignature() string {
-	return ""
+	return fe.signature
 }
 
 func (fe *FontEngineFreetype) ChangeStamp() int {
