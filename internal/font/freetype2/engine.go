@@ -363,12 +363,12 @@ func (fe *FontEngine) processContourPoints(outline *C.FT_Outline, first, last in
 
 			if fe.flag32 {
 				if storage32, ok := pathStorage.(*path.PathStorageInteger[int32]); ok {
-				storage32.LineTo(int32(x), int32(y))
-			}
+					storage32.LineTo(int32(x), int32(y))
+				}
 			} else {
 				if storage16, ok := pathStorage.(*path.PathStorageInteger[int16]); ok {
-				storage16.LineTo(int16(x), int16(y))
-			}
+					storage16.LineTo(int16(x), int16(y))
+				}
 			}
 
 		case 0: // FT_CURVE_TAG_CONIC - quadratic curve
