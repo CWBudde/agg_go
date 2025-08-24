@@ -1,6 +1,6 @@
 // Package agg provides AGG2D image operations implementation.
 // This file implements Phase 6 of the AGG2D high-level interface: Image Operations.
-package agg
+package agg2d
 
 import (
 	"agg_go/internal/transform"

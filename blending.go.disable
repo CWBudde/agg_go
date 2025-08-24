@@ -1,0 +1,327 @@
+// Package agg provides blending and compositing functionality for 2D graphics.
+// This file contains blend modes and alpha compositing operations.
+package agg
+
+// BlendMode and constants are defined in agg2d.go
+
+// Blend mode operations
+
+// SetBlendMode sets the blending mode for subsequent drawing operations.
+func (ctx *Context) SetBlendMode(mode BlendMode) {
+	ctx.agg2d.blendMode = mode
+}
+
+// GetBlendMode returns the current blending mode.
+func (ctx *Context) GetBlendMode() BlendMode {
+	return ctx.agg2d.blendMode
+}
+
+// Alpha operations
+
+// SetGlobalAlpha sets the global alpha value for all drawing operations.
+func (ctx *Context) SetGlobalAlpha(alpha float64) {
+	if alpha < 0.0 {
+		alpha = 0.0
+	} else if alpha > 1.0 {
+		alpha = 1.0
+	}
+
+	// Convert to 8-bit alpha
+	alphaValue := uint8(alpha * 255)
+
+	// Apply to both fill and stroke colors
+	fillColor := ctx.agg2d.fillColor
+	fillColor.A = alphaValue
+	ctx.agg2d.FillColor(fillColor)
+
+	strokeColor := ctx.agg2d.lineColor
+	strokeColor.A = alphaValue
+	ctx.agg2d.LineColor(strokeColor)
+}
+
+// GetGlobalAlpha returns the current global alpha value.
+func (ctx *Context) GetGlobalAlpha() float64 {
+	// Get alpha from current fill color as representative value
+	return float64(ctx.agg2d.fillColor.A) / 255.0
+}
+
+// Compositing operations
+
+// SetCompositeOperation sets the composite operation (same as blend mode).
+func (ctx *Context) SetCompositeOperation(operation BlendMode) {
+	ctx.SetBlendMode(operation)
+}
+
+// GetCompositeOperation returns the current composite operation.
+func (ctx *Context) GetCompositeOperation() BlendMode {
+	return ctx.GetBlendMode()
+}
+
+// Premultiplied alpha support
+
+// EnablePremultipliedAlpha enables premultiplied alpha mode.
+func (ctx *Context) EnablePremultipliedAlpha(enabled bool) {
+	// Placeholder - would set premultiplied alpha mode
+}
+
+// IsPremultipliedAlphaEnabled returns whether premultiplied alpha is enabled.
+func (ctx *Context) IsPremultipliedAlphaEnabled() bool {
+	return false // Placeholder
+}
+
+// Advanced blending controls
+
+// SetMasterAlpha sets the master alpha for the entire rendering context.
+func (ctx *Context) SetMasterAlpha(alpha float64) {
+	if alpha < 0.0 {
+		alpha = 0.0
+	} else if alpha > 1.0 {
+		alpha = 1.0
+	}
+	ctx.agg2d.masterAlpha = alpha
+}
+
+// GetMasterAlpha returns the current master alpha.
+func (ctx *Context) GetMasterAlpha() float64 {
+	return ctx.agg2d.masterAlpha
+}
+
+// Convenience blend mode methods
+
+// SetBlendNormal sets normal blend mode (alpha blending).
+func (ctx *Context) SetBlendNormal() {
+	ctx.SetBlendMode(BlendSrcOver)
+}
+
+// SetBlendMultiply sets multiply blend mode.
+func (ctx *Context) SetBlendMultiply() {
+	ctx.SetBlendMode(BlendMultiply)
+}
+
+// SetBlendScreen sets screen blend mode.
+func (ctx *Context) SetBlendScreen() {
+	ctx.SetBlendMode(BlendScreen)
+}
+
+// SetBlendOverlay sets overlay blend mode.
+func (ctx *Context) SetBlendOverlay() {
+	ctx.SetBlendMode(BlendOverlay)
+}
+
+// SetBlendDarken sets darken blend mode.
+func (ctx *Context) SetBlendDarken() {
+	ctx.SetBlendMode(BlendDarken)
+}
+
+// SetBlendLighten sets lighten blend mode.
+func (ctx *Context) SetBlendLighten() {
+	ctx.SetBlendMode(BlendLighten)
+}
+
+// SetBlendDifference sets difference blend mode.
+func (ctx *Context) SetBlendDifference() {
+	ctx.SetBlendMode(BlendDifference)
+}
+
+// SetBlendExclusion sets exclusion blend mode.
+func (ctx *Context) SetBlendExclusion() {
+	ctx.SetBlendMode(BlendExclusion)
+}
+
+// Porter-Duff operations
+
+// SetBlendClear sets clear blend mode (destination becomes transparent).
+func (ctx *Context) SetBlendClear() {
+	ctx.SetBlendMode(BlendClear)
+}
+
+// SetBlendSrc sets source blend mode (ignores destination).
+func (ctx *Context) SetBlendSrc() {
+	ctx.SetBlendMode(BlendSrc)
+}
+
+// SetBlendDst sets destination blend mode (ignores source).
+func (ctx *Context) SetBlendDst() {
+	ctx.SetBlendMode(BlendDst)
+}
+
+// SetBlendSrcIn sets source-in blend mode.
+func (ctx *Context) SetBlendSrcIn() {
+	ctx.SetBlendMode(BlendSrcIn)
+}
+
+// SetBlendDstIn sets destination-in blend mode.
+func (ctx *Context) SetBlendDstIn() {
+	ctx.SetBlendMode(BlendDstIn)
+}
+
+// SetBlendSrcOut sets source-out blend mode.
+func (ctx *Context) SetBlendSrcOut() {
+	ctx.SetBlendMode(BlendSrcOut)
+}
+
+// SetBlendDstOut sets destination-out blend mode.
+func (ctx *Context) SetBlendDstOut() {
+	ctx.SetBlendMode(BlendDstOut)
+}
+
+// SetBlendXor sets XOR blend mode.
+func (ctx *Context) SetBlendXor() {
+	ctx.SetBlendMode(BlendXor)
+}
+
+// Alpha mask operations
+
+// SetAlphaMask enables alpha mask mode for subsequent operations.
+func (ctx *Context) SetAlphaMask(enabled bool) {
+	// Note: This would require integration with AGG's alpha mask functionality
+	// For now, this is a placeholder for future implementation
+}
+
+// CreateAlphaMask creates an alpha mask from the current rendering.
+func (ctx *Context) CreateAlphaMask() *Image {
+	// This would create an alpha mask image from the current context
+	// Implementation would require integration with alpha mask classes
+	return nil // Placeholder
+}
+
+// ApplyAlphaMask applies an alpha mask to subsequent rendering operations.
+func (ctx *Context) ApplyAlphaMask(mask *Image) {
+	// This would apply an alpha mask to the rendering pipeline
+	// Implementation requires alpha mask integration
+}
+
+// Color space operations (future expansion)
+
+// SetColorSpace sets the color space for blending operations.
+func (ctx *Context) SetColorSpace(space string) {
+	// Placeholder for color space management
+	// Could support sRGB, Linear RGB, etc.
+}
+
+// GetColorSpace returns the current color space.
+func (ctx *Context) GetColorSpace() string {
+	return "sRGB" // Default assumption
+}
+
+// Utility functions for blend modes
+
+// BlendModeToString converts a blend mode to its string representation.
+func BlendModeToString(mode BlendMode) string {
+	switch mode {
+	case BlendAlpha:
+		return "alpha"
+	case BlendClear:
+		return "clear"
+	case BlendSrc:
+		return "src"
+	case BlendDst:
+		return "dst"
+	case BlendSrcOver:
+		return "src-over"
+	case BlendDstOver:
+		return "dst-over"
+	case BlendSrcIn:
+		return "src-in"
+	case BlendDstIn:
+		return "dst-in"
+	case BlendSrcOut:
+		return "src-out"
+	case BlendDstOut:
+		return "dst-out"
+	case BlendSrcAtop:
+		return "src-atop"
+	case BlendDstAtop:
+		return "dst-atop"
+	case BlendXor:
+		return "xor"
+	case BlendPlus:
+		return "plus"
+	case BlendMinus:
+		return "minus"
+	case BlendMultiply:
+		return "multiply"
+	case BlendScreen:
+		return "screen"
+	case BlendOverlay:
+		return "overlay"
+	case BlendDarken:
+		return "darken"
+	case BlendLighten:
+		return "lighten"
+	case BlendColorDodge:
+		return "color-dodge"
+	case BlendColorBurn:
+		return "color-burn"
+	case BlendHardLight:
+		return "hard-light"
+	case BlendSoftLight:
+		return "soft-light"
+	case BlendDifference:
+		return "difference"
+	case BlendExclusion:
+		return "exclusion"
+	default:
+		return "unknown"
+	}
+}
+
+// StringToBlendMode converts a string to a blend mode.
+func StringToBlendMode(s string) BlendMode {
+	switch s {
+	case "alpha":
+		return BlendAlpha
+	case "clear":
+		return BlendClear
+	case "src":
+		return BlendSrc
+	case "dst":
+		return BlendDst
+	case "src-over":
+		return BlendSrcOver
+	case "dst-over":
+		return BlendDstOver
+	case "src-in":
+		return BlendSrcIn
+	case "dst-in":
+		return BlendDstIn
+	case "src-out":
+		return BlendSrcOut
+	case "dst-out":
+		return BlendDstOut
+	case "src-atop":
+		return BlendSrcAtop
+	case "dst-atop":
+		return BlendDstAtop
+	case "xor":
+		return BlendXor
+	case "plus":
+		return BlendPlus
+	case "minus":
+		return BlendMinus
+	case "multiply":
+		return BlendMultiply
+	case "screen":
+		return BlendScreen
+	case "overlay":
+		return BlendOverlay
+	case "darken":
+		return BlendDarken
+	case "lighten":
+		return BlendLighten
+	case "color-dodge":
+		return BlendColorDodge
+	case "color-burn":
+		return BlendColorBurn
+	case "hard-light":
+		return BlendHardLight
+	case "soft-light":
+		return BlendSoftLight
+	case "difference":
+		return BlendDifference
+	case "exclusion":
+		return BlendExclusion
+	default:
+		return BlendSrcOver // Default to normal blending
+	}
+}

@@ -1,6 +1,6 @@
 // Package agg provides gradient functionality for the AGG2D high-level interface.
 // This implements Phase 4: Gradient Support from the AGG 2.6 C++ library.
-package agg
+package agg2d
 
 import (
 	"math"

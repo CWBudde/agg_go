@@ -1,6 +1,6 @@
 // Package agg provides text rendering functionality for the AGG2D high-level interface.
 // This implements the text-related methods from the original C++ Agg2D class.
-package agg
+package agg2d
 
 import (
 	"agg_go/internal/font"

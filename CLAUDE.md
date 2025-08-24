@@ -148,8 +148,4 @@ This naming scheme maintains traceability to the original C++ source while follo
 - Panic for programmer errors (bounds violations, invalid state)
 - Graceful degradation for edge cases in rendering
 
-The codebase follows the detailed porting plan in TASKS.md which lists every C++ file that needs Go implementation. Always mark completed tasks as done ("[x]") once completed.
-
-## Test Failures and Implementation Issues
-
-As of the latest test run, several issues remain that require further investigation and fixes. For a comprehensive catalog of all failing tests, implementation deviations, and fix priorities, see **TEST_TASKS.md**.
+The codebase follows the detailed porting plan in docs/TASKS.md which lists every C++ file that needs Go implementation. Always mark completed tasks as done ("[x]") once completed.

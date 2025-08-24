@@ -1,6 +1,6 @@
 // Path commands implementation for AGG2D interface.
 // This file contains all the path manipulation methods that match the C++ AGG2D interface.
-package agg
+package agg2d
 
 import (
 	"agg_go/internal/basics"

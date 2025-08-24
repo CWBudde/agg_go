@@ -1,8 +1,10 @@
 package span
 
 import (
+	"fmt"
 	"math"
 	"testing"
+	"time"
 
 	"agg_go/internal/basics"
 	"agg_go/internal/path"
@@ -88,8 +90,10 @@ func TestDistanceTransformAlgorithm(t *testing.T) {
 	gc.dt(spanf, spang, spanr, spann, length)
 
 	// Verify that distances are computed correctly
-	// Expected pattern: distances to nearest zero
-	expected := []float32{0, 1, 4, 0, 1, 4, 0}
+	// Expected pattern: squared distances to nearest zero
+	// Position 2: closest to position 3 (distance 1, squared = 1)
+	// Position 5: closest to position 6 (distance 1, squared = 1)
+	expected := []float32{0, 1, 1, 0, 1, 1, 0}
 
 	tolerance := float32(0.001)
 	for i := 0; i < length; i++ {
@@ -286,6 +290,143 @@ func TestPerformDistanceTransformSingleBlackPixel(t *testing.T) {
 			t.Errorf("Expected corner distance %d > center distance %d",
 				result[corner], centerValue)
 		}
+	}
+}
+
+func TestDistanceTransformComplexCases(t *testing.T) {
+	gc := NewGradientContour()
+
+	testCases := []struct {
+		name     string
+		input    []float32
+		expected []float32
+	}{
+		{
+			name:     "Single_zero_in_middle",
+			input:    []float32{math.MaxFloat32, math.MaxFloat32, 0, math.MaxFloat32, math.MaxFloat32},
+			expected: []float32{4, 1, 0, 1, 4},
+		},
+		{
+			name:     "Two_zeros_far_apart",
+			input:    []float32{0, math.MaxFloat32, math.MaxFloat32, math.MaxFloat32, math.MaxFloat32, math.MaxFloat32, 0},
+			expected: []float32{0, 1, 4, 9, 4, 1, 0},
+		},
+		{
+			name:     "Multiple_zeros_adjacent",
+			input:    []float32{math.MaxFloat32, 0, 0, math.MaxFloat32, math.MaxFloat32},
+			expected: []float32{1, 0, 0, 1, 4},
+		},
+		{
+			name:     "All_zeros",
+			input:    []float32{0, 0, 0, 0, 0},
+			expected: []float32{0, 0, 0, 0, 0},
+		},
+		{
+			name:     "No_zeros",
+			input:    []float32{math.MaxFloat32, math.MaxFloat32, math.MaxFloat32},
+			expected: []float32{math.MaxFloat32, math.MaxFloat32, math.MaxFloat32},
+		},
+		{
+			name:     "Single_element_zero",
+			input:    []float32{0},
+			expected: []float32{0},
+		},
+		{
+			name:     "Single_element_non_zero",
+			input:    []float32{math.MaxFloat32},
+			expected: []float32{math.MaxFloat32},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			length := len(tc.input)
+			spang := make([]float32, length+1)
+			spanr := make([]float32, length)
+			spann := make([]int, length)
+
+			gc.dt(tc.input, spang, spanr, spann, length)
+
+			tolerance := float32(0.001)
+			for i := 0; i < length; i++ {
+				if math.IsInf(float64(tc.expected[i]), 0) {
+					if !math.IsInf(float64(spanr[i]), 0) {
+						t.Errorf("Position %d: expected infinity, got %f", i, spanr[i])
+					}
+				} else if math.Abs(float64(spanr[i]-tc.expected[i])) > float64(tolerance) {
+					t.Errorf("Position %d: expected %f, got %f", i, tc.expected[i], spanr[i])
+				}
+			}
+		})
+	}
+}
+
+func TestDistanceTransformPerformance(t *testing.T) {
+	gc := NewGradientContour()
+
+	// Test with larger arrays to ensure O(n) performance
+	for _, size := range []int{100, 1000, 10000} {
+		t.Run(fmt.Sprintf("Size_%d", size), func(t *testing.T) {
+			input := make([]float32, size)
+			for i := range input {
+				input[i] = math.MaxFloat32
+			}
+			// Add some zeros scattered throughout
+			input[0] = 0
+			input[size/3] = 0
+			input[2*size/3] = 0
+			input[size-1] = 0
+
+			spang := make([]float32, size+1)
+			spanr := make([]float32, size)
+			spann := make([]int, size)
+
+			start := time.Now()
+			gc.dt(input, spang, spanr, spann, size)
+			duration := time.Since(start)
+
+			// Verify results are reasonable (not all infinity)
+			hasFiniteValues := false
+			for _, val := range spanr {
+				if !math.IsInf(float64(val), 0) {
+					hasFiniteValues = true
+					break
+				}
+			}
+			if !hasFiniteValues {
+				t.Errorf("All values are infinity for size %d", size)
+			}
+
+			t.Logf("Size %d completed in %v", size, duration)
+		})
+	}
+}
+
+func BenchmarkDistanceTransform(b *testing.B) {
+	gc := NewGradientContour()
+
+	sizes := []int{100, 1000, 10000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("Size_%d", size), func(b *testing.B) {
+			input := make([]float32, size)
+			for i := range input {
+				if i%50 == 0 {
+					input[i] = 0
+				} else {
+					input[i] = math.MaxFloat32
+				}
+			}
+
+			spang := make([]float32, size+1)
+			spanr := make([]float32, size)
+			spann := make([]int, size)
+
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				gc.dt(input, spang, spanr, spann, size)
+			}
+		})
 	}
 }
 

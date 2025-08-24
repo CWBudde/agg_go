@@ -1,6 +1,6 @@
 // Basic shape drawing methods for AGG2D interface.
 // This file contains all the basic shape drawing methods that match the C++ AGG2D interface.
-package agg
+package agg2d
 
 import (
 	"math"

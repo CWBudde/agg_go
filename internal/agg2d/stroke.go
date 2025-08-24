@@ -1,6 +1,6 @@
 // Package agg provides advanced stroke attributes for the AGG2D high-level interface.
 // This implements Phase 5: Advanced Rendering - Stroke Attributes from the AGG 2.6 C++ library.
-package agg
+package agg2d
 
 import (
 	"agg_go/internal/conv"
@@ -164,9 +164,11 @@ type StrokeAttributes struct {
 	Cap                LineCap
 	Join               LineJoin
 	DashStart          float64
+	DashPattern        []float64 // Dash pattern array
+	DashOffset         float64   // Dash offset
+	PathShorten        float64   // Path shortening
 	Shorten            float64
 	ApproximationScale float64
-	// Note: Dash patterns are not included as they require different handling
 }
 
 // GetStrokeAttributes returns the current complete stroke attributes.
@@ -178,6 +180,9 @@ func (agg2d *Agg2D) GetStrokeAttributes() StrokeAttributes {
 		Cap:                agg2d.lineCap,
 		Join:               agg2d.lineJoin,
 		DashStart:          agg2d.GetDashStart(),
+		DashPattern:        nil, // TODO: Implement dash pattern storage
+		DashOffset:         0.0, // TODO: Implement dash offset storage
+		PathShorten:        agg2d.GetShorten(),
 		Shorten:            agg2d.GetShorten(),
 		ApproximationScale: agg2d.GetApproximationScale(),
 	}

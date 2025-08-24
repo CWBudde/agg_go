@@ -11,6 +11,7 @@ const (
 	StatusInitial Status = iota
 	StatusAccumulate
 	StatusGenerate
+	StatusMarkers
 )
 
 // VertexSource interface for providing vertices
@@ -169,7 +170,18 @@ func (c *ConvAdaptorVCGen) Vertex() (x, y float64, cmd basics.PathCommand) {
 		case StatusGenerate:
 			x, y, cmd = c.generator.Vertex()
 			if basics.IsStop(cmd) {
-				// Read next command from source for next accumulate cycle
+				// After generator finishes, prepare and output markers
+				c.markers.PrepareSrc()
+				c.markers.Rewind(0)
+				c.status = StatusMarkers
+				continue // Continue to markers state
+			}
+			done = true
+
+		case StatusMarkers:
+			x, y, cmd = c.markers.Vertex()
+			if basics.IsStop(cmd) {
+				// After markers finish, read next command from source for next accumulate cycle
 				c.startX, c.startY, c.lastCmd = c.source.Vertex()
 				c.status = StatusAccumulate
 				continue // Continue to next iteration of while loop

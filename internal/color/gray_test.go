@@ -71,7 +71,6 @@ func TestGray8Arithmetic(t *testing.T) {
 
 	// Test Lerp
 	result = Gray8Lerp(0, 255, 128) // 50% interpolation
-	expected = basics.Int8u(127)    // Should be approximately 127-128
 	if result < 126 || result > 129 {
 		t.Errorf("Gray8Lerp(0, 255, 128) expected ~127, got %d", result)
 	}

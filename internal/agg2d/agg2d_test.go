@@ -1,4 +1,4 @@
-package agg
+package agg2d
 
 import (
 	"testing"

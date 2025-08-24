@@ -1,116 +1,98 @@
+//go:build typed_renderer
+
 // Package renderer provides specialized renderers for AGG.
+// This typed variant of RendererEnlarged works with a concrete color type C
+// and a typed base renderer.
 package renderer
 
 import (
-	"agg_go"
 	"agg_go/internal/basics"
+	aggcolor "agg_go/internal/color"
 	scanline_renderer "agg_go/internal/renderer/scanline"
 )
 
-// BaseRendererWithCopyBar extends BaseRendererInterface with CopyBar method
-type BaseRendererWithCopyBar interface {
-	scanline_renderer.BaseRendererInterface
-	CopyBar(x1, y1, x2, y2 int, c interface{})
+// BaseRendererTWithCopyBar defines the minimal typed base renderer surface
+// needed by the enlarged renderer (CopyBar with typed color).
+type BaseRendererTWithCopyBar[C any] interface {
+	CopyBar(x1, y1, x2, y2 int, c C)
 }
 
-// RendererEnlarged is a specialized renderer that magnifies pixels for visualization.
-// This renderer is used in the aa_demo example to show anti-aliasing coverage values.
-// It implements the RendererInterface to work with the render_scanlines function.
-type RendererEnlarged[Ren BaseRendererWithCopyBar] struct {
-	baseRenderer Ren         // The underlying base renderer
-	size         float64     // Size multiplier for magnification
-	color        interface{} // Current color
+// AlphaModFunc modifies the input color C by the given coverage (0..255),
+// typically by scaling its alpha channel.
+type AlphaModFunc[C any] func(c C, cover basics.Int8u) C
+
+// RendererEnlargedT magnifies pixels for visualization using a typed base renderer.
+type RendererEnlargedT[Ren BaseRendererTWithCopyBar[C], C any] struct {
+	baseRenderer Ren
+	size         float64
+	color        C
+	modAlpha     AlphaModFunc[C]
 }
 
-// NewRendererEnlarged creates a new enlarged pixel renderer.
-func NewRendererEnlarged[Ren BaseRendererWithCopyBar](
-	baseRenderer Ren, size float64) *RendererEnlarged[Ren] {
-
-	return &RendererEnlarged[Ren]{
+// NewRendererEnlargedT creates a new typed enlarged renderer.
+// modAlpha can be nil; in that case, coverage is ignored and the color is used as-is.
+func NewRendererEnlargedT[Ren BaseRendererTWithCopyBar[C], C any](
+	baseRenderer Ren, size float64, modAlpha AlphaModFunc[C],
+) *RendererEnlargedT[Ren, C] {
+	return &RendererEnlargedT[Ren, C]{
 		baseRenderer: baseRenderer,
 		size:         size,
+		modAlpha:     modAlpha,
 	}
 }
 
 // Color returns the current color for rendering.
-func (r *RendererEnlarged[Ren]) Color() interface{} {
-	return r.color
-}
+func (r *RendererEnlargedT[Ren, C]) Color() C { return r.color }
 
 // SetColor sets the current color for rendering.
-func (r *RendererEnlarged[Ren]) SetColor(color interface{}) {
-	r.color = color
-}
+func (r *RendererEnlargedT[Ren, C]) SetColor(color C) { r.color = color }
 
 // Prepare prepares the renderer for rendering (no-op for this renderer).
-func (r *RendererEnlarged[Ren]) Prepare() {
-	// Nothing to prepare for this renderer
-}
+func (r *RendererEnlargedT[Ren, C]) Prepare() {}
 
 // Render renders a scanline with pixel magnification.
-// This method processes each pixel in the scanline and renders a magnified version.
-func (r *RendererEnlarged[Ren]) Render(sl scanline_renderer.ScanlineInterface) {
+func (r *RendererEnlargedT[Ren, C]) Render(sl scanline_renderer.ScanlineInterface) {
 	y := sl.Y()
 	numSpans := sl.NumSpans()
-
 	if numSpans == 0 {
 		return
 	}
 
-	iter := sl.Begin()
-
-	// Process each span in the scanline
+	it := sl.Begin()
 	for i := 0; i < numSpans; i++ {
-		span := iter.GetSpan()
-		x := span.X
-		covers := span.Covers
-		numPix := span.Len
+		sp := it.GetSpan()
+		x := sp.X
+		covers := sp.Covers
+		n := sp.Len
 
-		// Process each pixel in the span
-		for j := 0; j < numPix; j++ {
+		for j := 0; j < n; j++ {
 			if j < len(covers) {
 				cover := covers[j]
-
-				// Calculate alpha based on coverage and current color
-				var alpha basics.Int8u
-				if color, ok := r.color.(agg.RGBA8); ok {
-					alpha = basics.Int8u((int(cover) * int(color.A)) >> 8)
-				} else {
-					alpha = cover
+				c := r.color
+				if r.modAlpha != nil {
+					c = r.modAlpha(c, cover)
 				}
-
-				// Create a color with the calculated alpha
-				renderColor := r.color
-				if color, ok := r.color.(agg.RGBA8); ok {
-					renderColor = agg.RGBA8{R: color.R, G: color.G, B: color.B, A: alpha}
-				}
-
-				// Draw the magnified pixel
-				currentX := x + j
-				r.drawMagnifiedPixel(float64(currentX), float64(y), renderColor)
+				cx := x + j
+				r.drawMagnifiedPixel(float64(cx), float64(y), c)
 			}
 		}
-
-		// Move to next span if not the last one
 		if i < numSpans-1 {
-			iter.Next()
+			it.Next()
 		}
 	}
 }
 
-// drawMagnifiedPixel draws a single magnified pixel.
-// This is a helper method to draw the magnified representation of a pixel.
-func (r *RendererEnlarged[Ren]) drawMagnifiedPixel(x, y float64, color interface{}) {
-	// In the C++ version, they create a new rasterizer/scanline for each pixel
-	// and draw a square using render_scanlines_aa_solid.
-	// For simplicity in Go, we'll draw directly to the base renderer.
-
-	// Calculate the magnified coordinates
+// drawMagnifiedPixel draws a single magnified pixel as a filled rectangle.
+func (r *RendererEnlargedT[Ren, C]) drawMagnifiedPixel(x, y float64, c C) {
 	magX1 := int(x * r.size)
 	magY1 := int(y * r.size)
 	magX2 := int((x + 1) * r.size)
 	magY2 := int((y + 1) * r.size)
+	r.baseRenderer.CopyBar(magX1, magY1, magX2-1, magY2-1, c)
+}
 
-	// Draw the magnified pixel as a filled rectangle
-	r.baseRenderer.CopyBar(magX1, magY1, magX2-1, magY2-1, color)
+// RGBA8CoverMod is a helper alpha modifier for agg color.RGBA8[CS] types.
+func RGBA8CoverMod[CS any](c aggcolor.RGBA8[CS], cover basics.Int8u) aggcolor.RGBA8[CS] {
+	a := basics.Int8u((int(cover) * int(c.A)) >> 8)
+	return aggcolor.RGBA8[CS]{R: c.R, G: c.G, B: c.B, A: a}
 }

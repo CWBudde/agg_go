@@ -16,6 +16,7 @@ const (
 	SmoothPolyCtrlE
 	SmoothPolyCtrl1
 	SmoothPolyCtrl2
+	SmoothPolyVertex
 	SmoothPolyEndPoly
 	SmoothPolyStop
 )
@@ -131,9 +132,12 @@ func (v *VCGenSmoothPoly1) Vertex() (x, y float64, cmd basics.PathCommand) {
 		case SmoothPolyPolygon:
 			if v.closed {
 				if v.srcVertex >= v.srcVertices.Size() {
+					// Generate control points for the final segment back to start
+					v.calculate(v.srcVertex - 1) // Calculate for the last actual vertex
 					vertex := v.srcVertices.At(0)
 					x, y = vertex.X, vertex.Y
-					v.status = SmoothPolyEndPoly
+					v.srcVertex++              // Increment to prevent re-entry
+					v.status = SmoothPolyCtrl1 // Go through control point states
 					return x, y, basics.PathCmdCurve4
 				}
 			} else {
@@ -153,8 +157,10 @@ func (v *VCGenSmoothPoly1) Vertex() (x, y float64, cmd basics.PathCommand) {
 			if v.srcVertex == 1 {
 				return x, y, basics.PathCmdMoveTo
 			} else {
+				// For subsequent vertices, first output the control points, then the vertex as LineTo
 				v.status = SmoothPolyCtrl1
-				return x, y, basics.PathCmdCurve4
+				// Don't return the vertex as Curve4, return it after control points
+				continue
 			}
 
 		case SmoothPolyCtrl1:
@@ -164,8 +170,23 @@ func (v *VCGenSmoothPoly1) Vertex() (x, y float64, cmd basics.PathCommand) {
 
 		case SmoothPolyCtrl2:
 			x, y = v.ctrl2X, v.ctrl2Y
-			v.status = SmoothPolyPolygon
+			v.status = SmoothPolyVertex
 			return x, y, basics.PathCmdCurve4
+
+		case SmoothPolyVertex:
+			// Return the vertex position that was calculated in SmoothPolyPolygon
+			if v.closed && v.srcVertex > v.srcVertices.Size() {
+				// This is the final segment return, go to EndPoly
+				vertex := v.srcVertices.At(0) // Return to start vertex
+				x, y = vertex.X, vertex.Y
+				v.status = SmoothPolyEndPoly
+				return x, y, basics.PathCmdCurve4
+			} else {
+				vertex := v.srcVertices.At(v.srcVertex - 1) // srcVertex was already incremented
+				x, y = vertex.X, vertex.Y
+				v.status = SmoothPolyPolygon
+				return x, y, basics.PathCmdLineTo
+			}
 
 		case SmoothPolyEndPoly:
 			v.status = SmoothPolyStop
@@ -188,11 +209,8 @@ func (v *VCGenSmoothPoly1) Vertex() (x, y float64, cmd basics.PathCommand) {
 func (v *VCGenSmoothPoly1) calculate(idx int) {
 	size := v.srcVertices.Size()
 
-	// TODO: Fix smooth poly generator bounds checking and vertex sequence access
-	// Issue: When accessing vertices with modulo arithmetic, need to ensure we have enough points
-	// for smoothing calculation (need at least 4 points for proper cubic Bezier)
 	if size < 3 {
-		// Not enough points for proper smoothing - use simple control points
+		// Not enough points for proper smoothing
 		v.ctrl1X = 0
 		v.ctrl1Y = 0
 		v.ctrl2X = 0
@@ -201,28 +219,77 @@ func (v *VCGenSmoothPoly1) calculate(idx int) {
 	}
 
 	// Get four consecutive vertices for smoothing calculation
-	v0 := v.srcVertices.At((idx - 1 + size) % size)
-	v1 := v.srcVertices.At(idx)
-	v2 := v.srcVertices.At((idx + 1) % size)
-	v3 := v.srcVertices.At((idx + 2) % size)
+	// matching the C++ prev/curr/next/next logic
+	var v0, v1, v2, v3 array.VertexDistCmd
 
-	// Calculate distances
-	dist01 := basics.Sqrt((v1.X-v0.X)*(v1.X-v0.X) + (v1.Y-v0.Y)*(v1.Y-v0.Y))
-	dist12 := basics.Sqrt((v2.X-v1.X)*(v2.X-v1.X) + (v2.Y-v1.Y)*(v2.Y-v1.Y))
-	dist23 := basics.Sqrt((v3.X-v2.X)*(v3.X-v2.X) + (v3.Y-v2.Y)*(v3.Y-v2.Y))
-
-	if dist01 < basics.VertexDistEpsilon {
-		dist01 = 1.0
-	}
-	if dist12 < basics.VertexDistEpsilon {
-		dist12 = 1.0
-	}
-	if dist23 < basics.VertexDistEpsilon {
-		dist23 = 1.0
+	// v0 = prev(idx)
+	if idx == 0 {
+		if v.closed && size > 1 {
+			v0 = v.srcVertices.At(size - 1)
+		} else {
+			v0 = v.srcVertices.At(0) // Use same vertex if no previous
+		}
+	} else {
+		v0 = v.srcVertices.At(idx - 1)
 	}
 
-	k1 := dist01 / (dist01 + dist12)
-	k2 := dist12 / (dist12 + dist23)
+	// v1 = curr(idx)
+	v1 = v.srcVertices.At(idx)
+
+	// v2 = next(idx)
+	if idx >= size-1 {
+		if v.closed {
+			v2 = v.srcVertices.At(0)
+		} else {
+			v2 = v.srcVertices.At(size - 1) // Use same vertex if no next
+		}
+	} else {
+		v2 = v.srcVertices.At(idx + 1)
+	}
+
+	// v3 = next(idx + 1)
+	if idx >= size-2 {
+		if v.closed {
+			if size > 1 {
+				v3 = v.srcVertices.At((idx + 2) % size)
+			} else {
+				v3 = v2 // Fallback
+			}
+		} else {
+			v3 = v2 // Use same as v2 if no next-next
+		}
+	} else {
+		v3 = v.srcVertices.At(idx + 2)
+	}
+
+	// Use the distances from the vertex_dist structures (C++ version uses v0.dist, v1.dist, v2.dist)
+	// The C++ algorithm uses the distance to the NEXT vertex, stored in the vertex_dist.dist field
+	// Ensure distances are valid and non-zero
+	dist0 := v0.Dist
+	dist1 := v1.Dist
+	dist2 := v2.Dist
+
+	if dist0 <= 0 {
+		dist0 = basics.Sqrt((v1.X-v0.X)*(v1.X-v0.X) + (v1.Y-v0.Y)*(v1.Y-v0.Y))
+		if dist0 < basics.VertexDistEpsilon {
+			dist0 = 1.0
+		}
+	}
+	if dist1 <= 0 {
+		dist1 = basics.Sqrt((v2.X-v1.X)*(v2.X-v1.X) + (v2.Y-v1.Y)*(v2.Y-v1.Y))
+		if dist1 < basics.VertexDistEpsilon {
+			dist1 = 1.0
+		}
+	}
+	if dist2 <= 0 {
+		dist2 = basics.Sqrt((v3.X-v2.X)*(v3.X-v2.X) + (v3.Y-v2.Y)*(v3.Y-v2.Y))
+		if dist2 < basics.VertexDistEpsilon {
+			dist2 = 1.0
+		}
+	}
+
+	k1 := dist0 / (dist0 + dist1)
+	k2 := dist1 / (dist1 + dist2)
 
 	xm1 := v0.X + (v2.X-v0.X)*k1
 	ym1 := v0.Y + (v2.Y-v0.Y)*k1

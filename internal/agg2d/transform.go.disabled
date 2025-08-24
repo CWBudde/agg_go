@@ -1,6 +1,6 @@
 // Package agg provides transformation functionality for the AGG2D high-level interface.
 // This implements Phase 5: Advanced Rendering - Transformations from the AGG 2.6 C++ library.
-package agg
+package agg2d
 
 import (
 	"math"
@@ -347,16 +347,6 @@ func (agg2d *Agg2D) InvertTransform() *transform.TransAffine {
 }
 
 // Utility functions for angle conversion
-
-// Deg2Rad converts degrees to radians.
-func Deg2Rad(degrees float64) float64 {
-	return degrees * math.Pi / 180.0
-}
-
-// Rad2Deg converts radians to degrees.
-func Rad2Deg(radians float64) float64 {
-	return radians * 180.0 / math.Pi
-}
 
 // Viewport transformations
 

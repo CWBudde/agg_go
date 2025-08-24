@@ -1,6 +1,6 @@
-// Package agg provides fill rule functionality for the AGG2D high-level interface.
+// Package agg2d provides fill rule functionality for the AGG2D high-level interface.
 // This implements Phase 5: Advanced Rendering - Fill Rules from the AGG 2.6 C++ library.
-package agg
+package agg2d
 
 import (
 	"agg_go/internal/basics"

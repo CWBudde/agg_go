@@ -314,20 +314,31 @@ func (gc *GradientContour) performDistanceTransform(bwBuffer []uint8, width, hei
 }
 
 // dt performs the 1D distance transform algorithm by Pedro Felzenszwalb
+// This is a direct translation of the C++ algorithm from AGG
 func (gc *GradientContour) dt(spanf, spang, spanr []float32, spann []int, length int) {
-	square := func(x int) int { return x * x }
+	square := func(x int) float32 { return float32(x * x) }
 
 	k := 0
 	spann[0] = 0
 	spang[0] = -math.MaxFloat32
 	spang[1] = math.MaxFloat32
 
+	// First pass: build lower envelope of parabolas
 	for q := 1; q <= length-1; q++ {
-		s := ((spanf[q] + float32(square(q))) - (spanf[spann[k]] + float32(square(spann[k])))) / float32(2*q-2*spann[k])
+		var s float32
+		if 2*q-2*spann[k] != 0 {
+			s = ((spanf[q] + square(q)) - (spanf[spann[k]] + square(spann[k]))) / float32(2*q-2*spann[k])
+		} else {
+			s = math.MaxFloat32
+		}
 
 		for s <= spang[k] {
 			k--
-			s = ((spanf[q] + float32(square(q))) - (spanf[spann[k]] + float32(square(spann[k])))) / float32(2*q-2*spann[k])
+			if 2*q-2*spann[k] != 0 {
+				s = ((spanf[q] + square(q)) - (spanf[spann[k]] + square(spann[k]))) / float32(2*q-2*spann[k])
+			} else {
+				s = math.MaxFloat32
+			}
 		}
 
 		k++
@@ -336,12 +347,13 @@ func (gc *GradientContour) dt(spanf, spang, spanr []float32, spann []int, length
 		spang[k+1] = math.MaxFloat32
 	}
 
+	// Second pass: query the envelope
 	k = 0
 	for q := 0; q <= length-1; q++ {
 		for spang[k+1] < float32(q) {
 			k++
 		}
-		spanr[q] = float32(square(q-spann[k])) + spanf[spann[k]]
+		spanr[q] = square(q-spann[k]) + spanf[spann[k]]
 	}
 }
 

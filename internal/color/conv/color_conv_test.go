@@ -37,7 +37,11 @@ func (m *MockRenderingBuffer) RowPtr(x, y, length int) []basics.Int8u {
 		return nil
 	}
 	row := m.data[y]
-	end := x + length
+	// In the color conversion context, length represents pixel width,
+	// but we need to return byte-addressable slice
+	// Calculate bytes per pixel from row length divided by buffer width
+	bytesPerPixel := len(row) / m.width
+	end := x + (length * bytesPerPixel)
 	if end > len(row) {
 		end = len(row)
 	}
