@@ -261,6 +261,86 @@ func (x *X11Backend) loadBMP(filename string) (*X11ImageSurface, error) {
 	return surface, nil
 }
 
+// saveBMP saves a 24-bit uncompressed BMP file.
+func (x *X11Backend) saveBMP(surface *X11ImageSurface, filename string) error {
+	if surface.bpp != 24 {
+		return fmt.Errorf("only 24-bit BMP saving is supported, got %d bpp", surface.bpp)
+	}
+
+	file, err := os.Create(filename)
+	if err != nil {
+		return fmt.Errorf("failed to create file: %w", err)
+	}
+	defer file.Close()
+
+	width := surface.width
+	height := surface.height
+	rowSize := (width*3 + 3) &^ 3 // 24-bit BMP rows are padded to 4 bytes
+	imageSize := rowSize * height
+	fileSize := 54 + imageSize // BMP header (14) + DIB header (40) + image data
+
+	// BMP File Header (14 bytes)
+	fileHeader := make([]byte, 14)
+	fileHeader[0] = 'B'
+	fileHeader[1] = 'M'
+	binary.LittleEndian.PutUint32(fileHeader[2:6], uint32(fileSize)) // File size
+	binary.LittleEndian.PutUint16(fileHeader[6:8], 0)                // Reserved
+	binary.LittleEndian.PutUint16(fileHeader[8:10], 0)               // Reserved
+	binary.LittleEndian.PutUint32(fileHeader[10:14], 54)             // Pixel data offset
+
+	if _, err := file.Write(fileHeader); err != nil {
+		return fmt.Errorf("failed to write BMP file header: %w", err)
+	}
+
+	// DIB Header (BITMAPINFOHEADER - 40 bytes)
+	dibHeader := make([]byte, 40)
+	binary.LittleEndian.PutUint32(dibHeader[0:4], 40)                  // DIB header size
+	binary.LittleEndian.PutUint32(dibHeader[4:8], uint32(width))       // Width
+	binary.LittleEndian.PutUint32(dibHeader[8:12], uint32(height))     // Height
+	binary.LittleEndian.PutUint16(dibHeader[12:14], 1)                 // Planes
+	binary.LittleEndian.PutUint16(dibHeader[14:16], 24)                // Bits per pixel
+	binary.LittleEndian.PutUint32(dibHeader[16:20], 0)                 // Compression (none)
+	binary.LittleEndian.PutUint32(dibHeader[20:24], uint32(imageSize)) // Image size
+	binary.LittleEndian.PutUint32(dibHeader[24:28], 2835)              // X pixels per meter
+	binary.LittleEndian.PutUint32(dibHeader[28:32], 2835)              // Y pixels per meter
+	binary.LittleEndian.PutUint32(dibHeader[32:36], 0)                 // Colors used
+	binary.LittleEndian.PutUint32(dibHeader[36:40], 0)                 // Important colors
+
+	if _, err := file.Write(dibHeader); err != nil {
+		return fmt.Errorf("failed to write DIB header: %w", err)
+	}
+
+	// Write pixel data (BMP stores rows bottom-to-top)
+	rowBuffer := make([]byte, rowSize)
+	for y := height - 1; y >= 0; y-- {
+		srcRow := y * surface.stride
+
+		// Copy pixels and handle padding
+		for x := 0; x < width; x++ {
+			srcPixel := srcRow + x*3
+			dstPixel := x * 3
+
+			if srcPixel+2 < len(surface.data) {
+				// BMP expects BGR order, assuming surface data is RGB
+				rowBuffer[dstPixel+0] = surface.data[srcPixel+2] // B
+				rowBuffer[dstPixel+1] = surface.data[srcPixel+1] // G
+				rowBuffer[dstPixel+2] = surface.data[srcPixel+0] // R
+			}
+		}
+
+		// Zero-fill padding bytes
+		for i := width * 3; i < rowSize; i++ {
+			rowBuffer[i] = 0
+		}
+
+		if _, err := file.Write(rowBuffer); err != nil {
+			return fmt.Errorf("failed to write pixel row %d: %w", y, err)
+		}
+	}
+
+	return nil
+}
+
 // CreateImageSurface creates an X11 image surface
 func (x *X11Backend) CreateImageSurface(width, height int) (platform.ImageSurface, error) {
 	// For X11, we create a simple byte buffer that can be converted to XImage
@@ -306,8 +386,16 @@ func (x *X11Backend) LoadImage(filename string) (platform.ImageSurface, error) {
 
 // SaveImage saves an image to file (basic BMP support)
 func (x *X11Backend) SaveImage(surface platform.ImageSurface, filename string) error {
-	// TODO: Implement actual image saving
-	return nil
+	if surface == nil || !surface.IsValid() {
+		return fmt.Errorf("invalid surface")
+	}
+
+	x11Surface, ok := surface.(*X11ImageSurface)
+	if !ok {
+		return fmt.Errorf("surface is not an X11ImageSurface")
+	}
+
+	return x.saveBMP(x11Surface, filename)
 }
 
 // GetImageExtension returns the preferred image extension

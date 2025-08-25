@@ -47,12 +47,15 @@ func NewVCGenBSpline() *VCGenBSpline {
 
 // SetInterpolationStep sets the interpolation step size
 func (v *VCGenBSpline) SetInterpolationStep(step float64) {
-	// TODO: Fix edge cases with very small interpolation steps
-	// Very small steps can cause excessive vertex generation and potential infinite loops
-	// Add reasonable minimum step size to prevent performance issues
-	const minStep = 1e-2 // Minimum step to prevent excessive vertex generation
+	// Prevent edge cases with very small interpolation steps that can cause
+	// excessive vertex generation and potential infinite loops
+	const minStep = 1e-3 // Minimum step to prevent excessive vertex generation
+	const maxStep = 1.0  // Maximum step for reasonable interpolation
+
 	if step < minStep {
 		v.interpolationStep = minStep
+	} else if step > maxStep {
+		v.interpolationStep = maxStep
 	} else {
 		v.interpolationStep = step
 	}
@@ -76,7 +79,13 @@ func (v *VCGenBSpline) AddVertex(x, y float64, cmd basics.PathCommand) {
 	v.status = BSplineInitial
 
 	if basics.IsMoveTo(cmd) {
-		v.srcVertices.Add(basics.Point[float64]{X: x, Y: y})
+		// In C++, MoveTo calls modify_last which replaces the last point
+		// Only modify if we have points, otherwise add as first point
+		if v.srcVertices.Size() > 0 {
+			v.srcVertices.ModifyLast(basics.Point[float64]{X: x, Y: y})
+		} else {
+			v.srcVertices.Add(basics.Point[float64]{X: x, Y: y})
+		}
 	} else if basics.IsVertex(cmd) {
 		v.srcVertices.Add(basics.Point[float64]{X: x, Y: y})
 	} else if basics.IsEndPoly(cmd) {
@@ -95,24 +104,17 @@ func (v *VCGenBSpline) Rewind(pathID uint) {
 	v.maxAbscissa = 0.0
 	v.srcVertex = 0
 
-	// TODO: Fix multiple rewinds state management
-	// Issue: Multiple rewinds should produce same results, but spline is only prepared once
-	// when status == BSplineInitial. On subsequent rewinds, we need to reset properly.
-
-	// Check if we have sufficient vertices for B-spline generation
-	if v.srcVertices.Size() <= 2 {
-		v.status = BSplineStop
-		return
-	}
-
+	// Multiple rewinds state management: prepare spline only on initial status
+	// After first rewind, status becomes BSplineReady and we only reset parameters
 	if v.status == BSplineInitial && v.srcVertices.Size() > 2 {
 		if v.closed && v.srcVertices.Size() >= 3 {
 			// For closed paths, we need extra points for continuity
 			v.splineX = curves.NewBSplineWithCapacity(v.srcVertices.Size() + 8)
 			v.splineY = curves.NewBSplineWithCapacity(v.srcVertices.Size() + 8)
 
-			// Add wrap-around points for closed spline
+			// Add wrap-around points for closed spline (matching C++ behavior)
 			size := v.srcVertices.Size()
+			// Add points before the start for continuity
 			v.splineX.AddPoint(0.0, v.srcVertices.At(size-3).X)
 			v.splineY.AddPoint(0.0, v.srcVertices.At(size-3).Y)
 			v.splineX.AddPoint(1.0, v.srcVertices.At(size-3).X)
@@ -145,62 +147,108 @@ func (v *VCGenBSpline) Rewind(pathID uint) {
 
 		if v.closed {
 			v.curAbscissa = 4.0
-			v.maxAbscissa += 4.0
+			v.maxAbscissa += 5.0 // In C++: += 5.0, not += 4.0
+			// Add points after the end for continuity
+			v.splineX.AddPoint(float64(v.srcVertices.Size()+4), v.srcVertices.At(0).X)
+			v.splineY.AddPoint(float64(v.srcVertices.Size()+4), v.srcVertices.At(0).Y)
+			v.splineX.AddPoint(float64(v.srcVertices.Size()+5), v.srcVertices.At(1).X)
+			v.splineY.AddPoint(float64(v.srcVertices.Size()+5), v.srcVertices.At(1).Y)
+			v.splineX.AddPoint(float64(v.srcVertices.Size()+6), v.srcVertices.At(2).X)
+			v.splineY.AddPoint(float64(v.srcVertices.Size()+6), v.srcVertices.At(2).Y)
+			// Add one more point if available
+			if v.srcVertices.Size() > 3 {
+				v.splineX.AddPoint(float64(v.srcVertices.Size()+7), v.srcVertices.At(3).X)
+				v.splineY.AddPoint(float64(v.srcVertices.Size()+7), v.srcVertices.At(3).Y)
+			} else {
+				v.splineX.AddPoint(float64(v.srcVertices.Size()+7), v.srcVertices.At(0).X)
+				v.splineY.AddPoint(float64(v.srcVertices.Size()+7), v.srcVertices.At(0).Y)
+			}
 		}
 
 		v.splineX.Prepare()
 		v.splineY.Prepare()
 		v.status = BSplineReady
-	} else if v.srcVertices.Size() > 2 {
-		// Reset for multiple rewinds - spline is already prepared
+	} else {
+		// For subsequent rewinds, just reset the abscissa values
 		v.curAbscissa = 0.0
 		v.maxAbscissa = float64(v.srcVertices.Size() - 1)
 
-		if v.closed {
+		if v.closed && v.srcVertices.Size() > 2 {
 			v.curAbscissa = 4.0
-			v.maxAbscissa += 4.0
+			v.maxAbscissa += 5.0
 		}
+		v.status = BSplineReady
 	}
-
-	v.status = BSplinePolygon
 }
 
 // Vertex returns the next vertex in the B-spline
 func (v *VCGenBSpline) Vertex() (x, y float64, cmd basics.PathCommand) {
 	cmd = basics.PathCmdLineTo
 
-	for {
+	for !basics.IsStop(cmd) {
 		switch v.status {
-		case BSplinePolygon:
-			if v.srcVertex == 0 {
-				v.srcVertex = 1
-				cmd = basics.PathCmdMoveTo
-				// TODO: Fix B-spline generator state management
-				// Issue: When srcVertices.Size() <= 2, the spline is not prepared but we're still
-				// trying to generate vertices. Should return Stop for insufficient points.
-				if v.srcVertices.Size() > 2 {
-					x = v.splineX.Get(v.curAbscissa)
-					y = v.splineY.Get(v.curAbscissa)
-					v.curAbscissa += v.interpolationStep
-					return x, y, cmd
-				} else {
-					// Not enough points for B-spline, go to stop
-					v.status = BSplineStop
-					return 0, 0, basics.PathCmdStop
+		case BSplineInitial:
+			// This should not happen in normal flow, but handle it
+			v.Rewind(0)
+			continue
+
+		case BSplineReady:
+			// Handle insufficient points case like C++
+			if v.srcVertices.Size() < 2 {
+				cmd = basics.PathCmdStop
+				break
+			}
+
+			// Special case for exactly 2 points: output them directly (like C++)
+			if v.srcVertices.Size() == 2 {
+				if v.srcVertex == 0 {
+					point := v.srcVertices.At(0)
+					x, y = point.X, point.Y
+					v.srcVertex++
+					return x, y, basics.PathCmdMoveTo
 				}
-			} else {
-				if v.curAbscissa >= v.maxAbscissa {
-					x = v.splineX.Get(v.maxAbscissa)
-					y = v.splineY.Get(v.maxAbscissa)
-					v.status = BSplineEndPoly
+				if v.srcVertex == 1 {
+					point := v.srcVertices.At(1)
+					x, y = point.X, point.Y
+					v.srcVertex++
 					return x, y, basics.PathCmdLineTo
+				}
+				cmd = basics.PathCmdStop
+				break
+			}
+
+			// For 3+ points, start spline generation
+			cmd = basics.PathCmdMoveTo
+			v.status = BSplinePolygon
+			v.srcVertex = 0
+
+		case BSplinePolygon:
+			if v.curAbscissa >= v.maxAbscissa {
+				if v.closed {
+					v.status = BSplineEndPoly
+					break
 				} else {
-					x = v.splineX.Get(v.curAbscissa)
-					y = v.splineY.Get(v.curAbscissa)
-					v.curAbscissa += v.interpolationStep
+					// For open splines, output the final vertex directly
+					point := v.srcVertices.At(v.srcVertices.Size() - 1)
+					x, y = point.X, point.Y
+					v.status = BSplineEndPoly
 					return x, y, basics.PathCmdLineTo
 				}
 			}
+
+			// Use stateful interpolation for better performance (like C++)
+			x = v.splineX.GetStateful(v.curAbscissa)
+			y = v.splineY.GetStateful(v.curAbscissa)
+			v.srcVertex++
+			v.curAbscissa += v.interpolationStep
+
+			// First vertex is MoveTo, rest are LineTo
+			return x, y, func() basics.PathCommand {
+				if v.srcVertex == 1 {
+					return basics.PathCmdMoveTo
+				}
+				return basics.PathCmdLineTo
+			}()
 
 		case BSplineEndPoly:
 			v.status = BSplineStop
@@ -214,8 +262,9 @@ func (v *VCGenBSpline) Vertex() (x, y float64, cmd basics.PathCommand) {
 			return 0, 0, basics.PathCmdStop
 
 		default:
-			// TODO: Handle cases where B-spline is not ready (insufficient points, RemoveAll, etc)
+			// Handle any unhandled state
 			return 0, 0, basics.PathCmdStop
 		}
 	}
+	return x, y, cmd
 }

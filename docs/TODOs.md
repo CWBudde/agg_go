@@ -4,21 +4,6 @@ This checklist is generated from TODO-like comments found in Go source files (`T
 
 `rg -n "TODO|FIXME|XXX|HACK" --glob "**/*.go" -S --sort path`
 
-- [ ] internal/vcgen/bspline.go
-
-  - [ ] L50: Fix edge cases with very small interpolation steps
-  - [ ] L98: Fix multiple rewinds state management
-  - [ ] L178: Fix B-spline generator state management
-  - [ ] L217: Handle not-ready cases (insufficient points, RemoveAll, etc)
-
-- [ ] internal/vcgen/stroke.go
-
-  - [ ] L90: Implement proper path shortening when agg_shorten_path is ported (uses array.ShortenPath) -> Done, but confirm that this aligns with the original C++ implementation
-
-- [ ] internal/platform/x11/x11_display.go
-
-  - [ ] L309: Implement actual image saving
-
 - [ ] internal/font/freetype2/cache_integration.go
 
   - [ ] L47: Convert to Fman adaptors when available (optional enhancement)

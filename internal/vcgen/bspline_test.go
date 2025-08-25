@@ -245,15 +245,26 @@ func TestVCGenBSpline_InsufficientPoints(t *testing.T) {
 		t.Errorf("Single point should result in Stop, got %v at (%f,%f)", cmd, x, y)
 	}
 
-	// Test with two points
+	// Test with two points - C++ outputs them directly, not through spline
 	gen.RemoveAll()
 	gen.AddVertex(0, 0, basics.PathCmdMoveTo)
 	gen.AddVertex(50, 50, basics.PathCmdLineTo)
 	gen.Rewind(0)
 
+	// Should output the two points directly
+	x, y, cmd = gen.Vertex()
+	if cmd != basics.PathCmdMoveTo {
+		t.Errorf("First of two points should be MoveTo, got %v at (%f,%f)", cmd, x, y)
+	}
+
+	x, y, cmd = gen.Vertex()
+	if cmd != basics.PathCmdLineTo {
+		t.Errorf("Second of two points should be LineTo, got %v at (%f,%f)", cmd, x, y)
+	}
+
 	x, y, cmd = gen.Vertex()
 	if cmd != basics.PathCmdStop {
-		t.Errorf("Two points should result in Stop, got %v at (%f,%f)", cmd, x, y)
+		t.Errorf("After two points should be Stop, got %v at (%f,%f)", cmd, x, y)
 	}
 }
 
@@ -418,18 +429,18 @@ func TestVCGenBSpline_EdgeCases(t *testing.T) {
 	// but shouldn't crash
 	_ = hasVertices
 
-	// Test with very small interpolation step
+	// Test with very small interpolation step (should be clamped)
 	gen.RemoveAll()
-	gen.SetInterpolationStep(1e-6)
+	gen.SetInterpolationStep(1e-10) // Very small, should be clamped to 1e-3
 	gen.AddVertex(0, 0, basics.PathCmdMoveTo)
 	gen.AddVertex(1, 1, basics.PathCmdLineTo)
 	gen.AddVertex(2, 0, basics.PathCmdLineTo)
 
 	gen.Rewind(0)
 
-	// Should not cause infinite loops or excessive memory usage
+	// Should not cause infinite loops or excessive memory usage due to clamping
 	count := 0
-	for count < 10000 { // Safety limit
+	for count < 5000 { // Safety limit
 		_, _, cmd := gen.Vertex()
 		if cmd == basics.PathCmdStop {
 			break
@@ -437,8 +448,14 @@ func TestVCGenBSpline_EdgeCases(t *testing.T) {
 		count++
 	}
 
-	if count >= 10000 {
-		t.Error("Very small interpolation step might cause excessive vertex generation")
+	// With clamping to 1e-3, should have reasonable number of vertices
+	if count >= 5000 {
+		t.Errorf("Very small interpolation step should be clamped to prevent excessive vertex generation, got %d vertices", count)
+	}
+
+	// Should be less than 3000 vertices for this simple 3-point spline with min step
+	if count > 3000 {
+		t.Errorf("Expected reasonable number of vertices, got %d", count)
 	}
 }
 
@@ -511,4 +528,191 @@ func BenchmarkVCGenBSpline_ManyControlPoints(b *testing.B) {
 			}
 		}
 	}
+}
+
+// Test fixes for the TODO items
+func TestVCGenBSpline_FixedTODOs(t *testing.T) {
+	t.Run("VerySmallInterpolationStep", func(t *testing.T) {
+		gen := NewVCGenBSpline()
+
+		// Test very small step (should be clamped to minimum)
+		gen.SetInterpolationStep(1e-10)
+		step := gen.InterpolationStep()
+		if step < 1e-3 {
+			t.Errorf("Expected step to be clamped to minimum 1e-3, got %e", step)
+		}
+
+		// Test very large step (should be clamped to maximum)
+		gen.SetInterpolationStep(2.0)
+		step = gen.InterpolationStep()
+		if step > 1.0 {
+			t.Errorf("Expected step to be clamped to maximum 1.0, got %f", step)
+		}
+	})
+
+	t.Run("MultipleRewindsConsistency", func(t *testing.T) {
+		gen := NewVCGenBSpline()
+		gen.SetInterpolationStep(0.1)
+
+		// Add control points
+		gen.AddVertex(0, 0, basics.PathCmdMoveTo)
+		gen.AddVertex(50, 100, basics.PathCmdLineTo)
+		gen.AddVertex(100, 50, basics.PathCmdLineTo)
+		gen.AddVertex(150, 0, basics.PathCmdLineTo)
+
+		// First iteration
+		gen.Rewind(0)
+		var firstRun []struct {
+			x, y float64
+			cmd  basics.PathCommand
+		}
+		for {
+			x, y, cmd := gen.Vertex()
+			if cmd == basics.PathCmdStop {
+				break
+			}
+			firstRun = append(firstRun, struct {
+				x, y float64
+				cmd  basics.PathCommand
+			}{x, y, cmd})
+		}
+
+		// Second iteration should be identical
+		gen.Rewind(0)
+		var secondRun []struct {
+			x, y float64
+			cmd  basics.PathCommand
+		}
+		for {
+			x, y, cmd := gen.Vertex()
+			if cmd == basics.PathCmdStop {
+				break
+			}
+			secondRun = append(secondRun, struct {
+				x, y float64
+				cmd  basics.PathCommand
+			}{x, y, cmd})
+		}
+
+		if len(firstRun) != len(secondRun) {
+			t.Errorf("Multiple rewinds produced different vertex counts: %d vs %d",
+				len(firstRun), len(secondRun))
+		}
+
+		for i := 0; i < len(firstRun) && i < len(secondRun); i++ {
+			if math.Abs(firstRun[i].x-secondRun[i].x) > 1e-10 ||
+				math.Abs(firstRun[i].y-secondRun[i].y) > 1e-10 ||
+				firstRun[i].cmd != secondRun[i].cmd {
+				t.Errorf("Multiple rewinds produced different vertex %d: "+
+					"(%f,%f,%v) vs (%f,%f,%v)", i,
+					firstRun[i].x, firstRun[i].y, firstRun[i].cmd,
+					secondRun[i].x, secondRun[i].y, secondRun[i].cmd)
+			}
+		}
+	})
+
+	t.Run("InsufficientPointsHandling", func(t *testing.T) {
+		gen := NewVCGenBSpline()
+
+		// Test with 0 points
+		gen.Rewind(0)
+		_, _, cmd := gen.Vertex()
+		if cmd != basics.PathCmdStop {
+			t.Errorf("Expected Stop for 0 points, got %v", cmd)
+		}
+
+		// Test with 1 point
+		gen.AddVertex(50, 50, basics.PathCmdMoveTo)
+		gen.Rewind(0)
+		_, _, cmd = gen.Vertex()
+		if cmd != basics.PathCmdStop {
+			t.Errorf("Expected Stop for 1 point, got %v", cmd)
+		}
+
+		// Test with 2 points (should output them directly)
+		gen.AddVertex(100, 100, basics.PathCmdLineTo)
+		gen.Rewind(0)
+
+		// Should get MoveTo
+		_, _, cmd = gen.Vertex()
+		if cmd != basics.PathCmdMoveTo {
+			t.Errorf("Expected MoveTo for first of 2 points, got %v", cmd)
+		}
+
+		// Should get LineTo
+		_, _, cmd = gen.Vertex()
+		if cmd != basics.PathCmdLineTo {
+			t.Errorf("Expected LineTo for second of 2 points, got %v", cmd)
+		}
+
+		// Should get Stop
+		_, _, cmd = gen.Vertex()
+		if cmd != basics.PathCmdStop {
+			t.Errorf("Expected Stop after 2 points, got %v", cmd)
+		}
+	})
+
+	t.Run("MoveToModifyLastBehavior", func(t *testing.T) {
+		gen := NewVCGenBSpline()
+
+		// First MoveTo should add a point
+		gen.AddVertex(10, 10, basics.PathCmdMoveTo)
+		if gen.srcVertices.Size() != 1 {
+			t.Errorf("Expected 1 vertex after first MoveTo, got %d", gen.srcVertices.Size())
+		}
+
+		// Second MoveTo should modify (replace) the last point
+		gen.AddVertex(20, 20, basics.PathCmdMoveTo)
+		if gen.srcVertices.Size() != 1 {
+			t.Errorf("Expected 1 vertex after second MoveTo, got %d", gen.srcVertices.Size())
+		}
+
+		point := gen.srcVertices.At(0)
+		if point.X != 20 || point.Y != 20 {
+			t.Errorf("Expected last point to be (20,20), got (%f,%f)", point.X, point.Y)
+		}
+	})
+
+	t.Run("ClosedPathHandling", func(t *testing.T) {
+		gen := NewVCGenBSpline()
+		gen.SetInterpolationStep(0.5)
+
+		// Add closed path
+		gen.AddVertex(0, 0, basics.PathCmdMoveTo)
+		gen.AddVertex(50, 100, basics.PathCmdLineTo)
+		gen.AddVertex(100, 50, basics.PathCmdLineTo)
+		gen.AddVertex(50, 0, basics.PathCmdLineTo)
+		gen.AddVertex(0, 0, basics.PathCmdEndPoly|basics.PathFlagClose)
+
+		gen.Rewind(0)
+
+		var vertices []struct {
+			x, y float64
+			cmd  basics.PathCommand
+		}
+		for {
+			x, y, cmd := gen.Vertex()
+			if cmd == basics.PathCmdStop {
+				break
+			}
+			vertices = append(vertices, struct {
+				x, y float64
+				cmd  basics.PathCommand
+			}{x, y, cmd})
+		}
+
+		// Should have vertices including EndPoly with close flag
+		if len(vertices) < 2 {
+			t.Errorf("Expected multiple vertices for closed path, got %d", len(vertices))
+		}
+
+		// Last vertex should be EndPoly with close flag
+		lastVertex := vertices[len(vertices)-1]
+		if (lastVertex.cmd & basics.PathCmdMask) != basics.PathCmdEndPoly {
+			t.Errorf("Expected last command to be EndPoly, got %v", lastVertex.cmd)
+		}
+		if (lastVertex.cmd & basics.PathFlagClose) == 0 {
+			t.Error("Expected close flag on closed path")
+		}
+	})
 }

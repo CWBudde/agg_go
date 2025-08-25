@@ -315,7 +315,9 @@ func ShortenPath(vs *VertexSequence[VertexDist], s float64, closed bool) {
 		n := vs.Size() - 2
 
 		// Remove vertices from the end while their distance is less than s
-		for n >= 0 {
+		// Note: In C++, the loop condition is "while(n)" which stops when n becomes 0
+		// This means we don't process the vertex at index 0 (the first vertex)
+		for n > 0 {
 			d = vs.Get(n).Dist
 			if d > s {
 				break
