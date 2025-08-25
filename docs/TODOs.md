@@ -50,3 +50,7 @@ This checklist is generated from TODO-like comments found in Go source files (`T
   - [ ] L1261: Implement Verdana17_bold font data
   - [ ] L1268: Implement Verdana18 font data
   - [ ] L1275: Implement Verdana18_bold font data
+
+# Missing Features
+
+- [ ] UI Toolkit: The project lacks a UI toolkit for creating interactive examples with controls like sliders and checkboxes. This makes it difficult to create faithful ports of the original C++ examples that use `agg::ctrl`. The `line_thickness` example was ported without the interactive controls.
