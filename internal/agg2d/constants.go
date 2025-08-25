@@ -6,11 +6,11 @@ import "math"
 
 // Mathematical constants
 const (
-	Pi      = math.Pi
-	Pi2     = math.Pi * 2
-	PiHalf  = math.Pi / 2
-	Deg2Rad = math.Pi / 180.0
-	Rad2Deg = 180.0 / math.Pi
+	Pi            = math.Pi
+	Pi2           = math.Pi * 2
+	PiHalf        = math.Pi / 2
+	Deg2RadFactor = math.Pi / 180.0
+	Rad2DegFactor = 180.0 / math.Pi
 )
 
 // Additional LineCap constants not yet defined in agg2d.go
@@ -77,4 +77,22 @@ const (
 	Spline16    = ImageFilterSpline16
 	Spline36    = ImageFilterSpline36
 	Blackman144 = ImageFilterBlackman
+)
+
+// DrawPathFlag represents different path drawing modes
+type DrawPathFlag int
+
+const (
+	FillOnly          DrawPathFlag = iota // Fill the path only
+	StrokeOnly                            // Stroke the path only
+	FillAndStroke                         // Both fill and stroke the path
+	FillWithLineColor                     // Fill the path using line color
+)
+
+// Direction represents path direction
+type Direction int
+
+const (
+	CW  Direction = iota // Clockwise
+	CCW                  // Counter-clockwise
 )

@@ -207,11 +207,7 @@ func (agg2d *Agg2D) SetStrokeAttributes(attrs StrokeAttributes) {
 	agg2d.ApproximationScale(attrs.ApproximationScale)
 }
 
-// GetLineWidth returns the current line width.
-// This method was referenced in the advanced_rendering example but was missing.
-func (agg2d *Agg2D) GetLineWidth() float64 {
-	return agg2d.lineWidth
-}
+// GetLineWidth is now defined in rendering.go to avoid duplication
 
 // NoDashes is an alias for RemoveAllDashes() for compatibility.
 // This matches AGG C++ naming conventions used in some examples.

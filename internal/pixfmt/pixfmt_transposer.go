@@ -171,12 +171,80 @@ func (pt *PixFmtTransposer) CopyFrom(src interface {
 		// Transpose coordinates for underlying format
 		copier.CopyFrom(src, ydst, xdst, ysrc, xsrc, length)
 	} else {
-		// Fallback: copy pixel by pixel
-		for i := 0; i < length; i++ {
-			if xsrc+i >= 0 && xsrc+i < src.Width() && ysrc >= 0 && ysrc < src.Height() {
-				// This is a simplified fallback - a real implementation would need
-				// to handle the specific pixel format of the source
-				pt.CopyPixel(xdst+i, ydst, color.RGBA8[color.Linear]{})
+		// Fallback: copy pixel by pixel using source's RowData interface
+		// First try to get bytes per pixel from source if it implements PixWidth()
+		bytesPerPixel := 4 // Default to RGBA8
+		if pixWidthProvider, ok := src.(interface{ PixWidth() int }); ok {
+			bytesPerPixel = pixWidthProvider.PixWidth()
+		} else {
+			// Try to detect pixel format from row data length
+			if ysrc >= 0 && ysrc < src.Height() {
+				srcRowData := src.RowData(ysrc)
+				if srcRowData != nil && src.Width() > 0 {
+					detectedBPP := len(srcRowData) / src.Width()
+					if detectedBPP > 0 && detectedBPP <= 8 { // Reasonable range for BPP
+						bytesPerPixel = detectedBPP
+					}
+				}
+			}
+		}
+
+		// Extract pixels from the source row data and copy them
+		if ysrc >= 0 && ysrc < src.Height() {
+			srcRowData := src.RowData(ysrc)
+			if srcRowData != nil {
+				for i := 0; i < length; i++ {
+					srcX := xsrc + i
+					dstX := xdst + i
+
+					// Check bounds
+					if srcX >= 0 && srcX < src.Width() {
+						// Extract pixel data from source row data
+						srcOffset := srcX * bytesPerPixel
+						if srcOffset+bytesPerPixel-1 < len(srcRowData) {
+							// Handle different pixel formats
+							var srcColor color.RGBA8[color.Linear]
+							switch bytesPerPixel {
+							case 1: // Grayscale
+								gray := basics.Int8u(srcRowData[srcOffset])
+								srcColor = color.RGBA8[color.Linear]{R: gray, G: gray, B: gray, A: 255}
+							case 2: // Grayscale + Alpha
+								gray := basics.Int8u(srcRowData[srcOffset])
+								alpha := basics.Int8u(srcRowData[srcOffset+1])
+								srcColor = color.RGBA8[color.Linear]{R: gray, G: gray, B: gray, A: alpha}
+							case 3: // RGB
+								srcColor = color.RGBA8[color.Linear]{
+									R: basics.Int8u(srcRowData[srcOffset]),
+									G: basics.Int8u(srcRowData[srcOffset+1]),
+									B: basics.Int8u(srcRowData[srcOffset+2]),
+									A: 255,
+								}
+							case 4: // RGBA
+								srcColor = color.RGBA8[color.Linear]{
+									R: basics.Int8u(srcRowData[srcOffset]),
+									G: basics.Int8u(srcRowData[srcOffset+1]),
+									B: basics.Int8u(srcRowData[srcOffset+2]),
+									A: basics.Int8u(srcRowData[srcOffset+3]),
+								}
+							default:
+								// For other formats, try to copy as RGBA with alpha=255
+								if bytesPerPixel >= 3 {
+									srcColor = color.RGBA8[color.Linear]{
+										R: basics.Int8u(srcRowData[srcOffset]),
+										G: basics.Int8u(srcRowData[srcOffset+1]),
+										B: basics.Int8u(srcRowData[srcOffset+2]),
+										A: 255,
+									}
+								} else {
+									// Fallback: treat as grayscale
+									gray := basics.Int8u(srcRowData[srcOffset])
+									srcColor = color.RGBA8[color.Linear]{R: gray, G: gray, B: gray, A: 255}
+								}
+							}
+							pt.CopyPixel(dstX, ydst, srcColor)
+						}
+					}
+				}
 			}
 		}
 	}

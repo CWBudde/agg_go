@@ -4,39 +4,16 @@ This checklist is generated from TODO-like comments found in Go source files (`T
 
 `rg -n "TODO|FIXME|XXX|HACK" --glob "**/*.go" -S --sort path`
 
-- [x] internal/conv/marker_test.go
+- [ ] internal/vcgen/bspline.go
 
-  - [x] L170: Investigate multi-marker processing to match C++ behavior
+  - [ ] L50: Fix edge cases with very small interpolation steps
+  - [ ] L98: Fix multiple rewinds state management
+  - [ ] L178: Fix B-spline generator state management
+  - [ ] L217: Handle not-ready cases (insufficient points, RemoveAll, etc)
 
-- [x] internal/conv/smooth_poly1.go
+- [ ] internal/vcgen/stroke.go
 
-  - [x] L92: Implement proper curve approximation control
-
-- [x] internal/ctrl/render.go
-
-  - [x] L50: Use color with appropriate renderer
-  - [x] L52: Call appropriate render function per renderer type
-  - [x] L74: Implement SetColor based on renderer interface
-  - [x] L75: Implement scanline rendering invocation
-
-- [x] internal/pixfmt/blender/base_test.go
-
-  - [x] L269: Move this test to the parent pixfmt package
-
-- [ ] internal/pixfmt/pixfmt_rgb_test.go
-
-  - [ ] L584: Fix premultiplied blending mathematics
-
-- [ ] internal/pixfmt/pixfmt_rgba64.go
-
-  - [ ] L214: Implement ARGB order for PixFmtARGB64Linear
-  - [ ] L215: Implement ABGR order for PixFmtABGR64Linear
-  - [ ] L216: Implement BGRA order for PixFmtBGRA64Linear
-
-- [ ] internal/platform/platform_support.go
-
-  - [ ] L339: Implement image loading (BMP/PPM format)
-  - [ ] L346: Implement image saving (BMP/PPM format)
+  - [ ] L90: Implement proper path shortening when agg_shorten_path is ported (uses array.ShortenPath) -> Done, but confirm that this aligns with the original C++ implementation
 
 - [ ] internal/platform/x11/x11_display.go
 
@@ -89,39 +66,11 @@ This checklist is generated from TODO-like comments found in Go source files (`T
   - [ ] L1268: Implement Verdana18 font data
   - [ ] L1275: Implement Verdana18_bold font data
 
-- [ ] internal/gpc/gpc.go
-
-  - [ ] L352: Implement proper intersection detection and complex scanline algorithm
-  - [ ] L391: Fix the complete scanline algorithm for intersection, difference, XOR
-  - [ ] L396: Complete GPC algorithm implementation
-
-- [ ] internal/rasterizer/clip.go
-
-  - [ ] L521: Fix clipping for boundary-crossing lines
-  - [ ] L553: Fix rasterizer clipping boundary detection logic
-
-- [ ] internal/vcgen/bspline.go
-
-  - [ ] L50: Fix edge cases with very small interpolation steps
-  - [ ] L98: Fix multiple rewinds state management
-  - [ ] L178: Fix B-spline generator state management
-  - [ ] L217: Handle not-ready cases (insufficient points, RemoveAll, etc)
-
-- [ ] internal/vcgen/stroke.go
-
-  - [ ] L90: Implement proper path shortening when agg_shorten_path is ported (uses array.ShortenPath) -> Done, but confirm that this aligns with the original C++ implementation
-
-- [ ] examples/core/basic/basic_demo/main.go
-
-  - [ ] L292: FIX stats in demo ("TODO FIX stats!!!")
-
 - [ ] internal/agg2d/image.go
 
   - [ ] L33: Complete integration with rendering pipeline
-  - [ ] L161: Implement actual blending
-  - [ ] L186: Implement actual copying
-  - [ ] L208: Implement premultiplication
-  - [ ] L220: Implement demultiplication
+  - [ ] L165: Implement actual blending
+  - [ ] L217: Implement actual copying
 
 - [ ] internal/agg2d/rendering.go
 
@@ -146,24 +95,3 @@ This checklist is generated from TODO-like comments found in Go source files (`T
 - [ ] internal/agg2d/paths.go
 
   - [ ] L93: Implement proper smooth curve calculations by tracking previous control points
-
-- [ ] internal/effects/slight_blur.go
-
-  - [ ] L83: Implement full pixel format integration for slight_blur
-
-- [ ] internal/gpc/gpc.go
-
-  - [ ] L928: Implement triangulation for polygons with holes in PolygonToTristrip
-
-- [ ] internal/pixfmt/pixfmt_transposer.go
-
-  - [ ] L177: Implement proper pixel format handling in CopyFrom
-
-- [x] internal/platform/x11/x11_display.go
-
-  - [x] L299: Implement delay using system calls
-
-- [x] internal/renderer/scanline/helpers.go
-
-  - [x] L245: Implement proper color blending in renderCompoundSolidStyle
-  - [x] L270: Implement proper color blending in renderCompoundGeneratedStyle

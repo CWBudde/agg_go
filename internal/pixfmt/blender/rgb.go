@@ -47,14 +47,11 @@ type BlenderRGBPre[CS any, O any] struct{}
 func (bl BlenderRGBPre[CS, O]) BlendPix(dst []basics.Int8u, r, g, b, alpha, cover basics.Int8u) {
 	ca := color.RGBA8MultCover(alpha, cover)
 	if ca > 0 {
-		// For premultiplied blending, premultiply source colors by alpha first, then by cover
-		pr := color.RGBA8Multiply(r, alpha)
-		pg := color.RGBA8Multiply(g, alpha)
-		pb := color.RGBA8Multiply(b, alpha)
-
-		cr := color.RGBA8MultCover(pr, cover)
-		cg := color.RGBA8MultCover(pg, cover)
-		cb := color.RGBA8MultCover(pb, cover)
+		// For premultiplied blending, multiply source colors by cover only (not by alpha)
+		// The "pre" refers to using prelerp formula, not premultiplying input colors
+		cr := color.RGBA8MultCover(r, cover)
+		cg := color.RGBA8MultCover(g, cover)
+		cb := color.RGBA8MultCover(b, cover)
 
 		order := GetRGBColorOrder[O]()
 		dst[order.R] = color.RGBA8Prelerp(dst[order.R], cr, ca)
@@ -67,13 +64,10 @@ func (bl BlenderRGBPre[CS, O]) BlendPix(dst []basics.Int8u, r, g, b, alpha, cove
 func (bl BlenderRGBPre[CS, O]) BlendPixSimple(dst []basics.Int8u, r, g, b, alpha basics.Int8u) {
 	if alpha > 0 {
 		order := GetRGBColorOrder[O]()
-		// For premultiplied blending, the source colors should be premultiplied by alpha first
-		pr := color.RGBA8Multiply(r, alpha)
-		pg := color.RGBA8Multiply(g, alpha)
-		pb := color.RGBA8Multiply(b, alpha)
-		dst[order.R] = color.RGBA8Prelerp(dst[order.R], pr, alpha)
-		dst[order.G] = color.RGBA8Prelerp(dst[order.G], pg, alpha)
-		dst[order.B] = color.RGBA8Prelerp(dst[order.B], pb, alpha)
+		// For premultiplied blending, use colors directly with prelerp (matching C++ behavior)
+		dst[order.R] = color.RGBA8Prelerp(dst[order.R], r, alpha)
+		dst[order.G] = color.RGBA8Prelerp(dst[order.G], g, alpha)
+		dst[order.B] = color.RGBA8Prelerp(dst[order.B], b, alpha)
 	}
 }
 

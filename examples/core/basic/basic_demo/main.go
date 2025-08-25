@@ -289,14 +289,24 @@ func (app *Application) drawChar(char rune, x, y int) {
 func (app *Application) showStatistics() {
 	fmt.Println("\n=== Platform Statistics ===")
 
-	/* TODO FIX stats!!!
 	stats := app.rc.Statistics()
 
-	for key, value := range stats {
-		fmt.Printf("%s: %v\n", key, value)
-	}
-	*/
+	// Window buffer information
+	fmt.Printf("Window size: %dx%d (stride: %d)\n", stats.WindowWidth, stats.WindowHeight, stats.WindowStride)
+	fmt.Printf("Pixel format: %s (%d bpp)\n", stats.PixelFormat, stats.BPP)
+	fmt.Printf("Flip Y: %v\n", stats.FlipY)
+	fmt.Printf("Window buffer size: %d bytes\n", stats.WindowBufferSize)
+	fmt.Printf("Active image buffers: %d\n", stats.ActiveImageBuffers)
 
+	// Transformation information
+	if stats.HasResizeTransform {
+		fmt.Printf("Resize transform: scale(%.3f, %.3f), translate(%.1f, %.1f)\n",
+			stats.ResizeScaleX, stats.ResizeScaleY, stats.ResizeTranslateX, stats.ResizeTranslateY)
+	} else {
+		fmt.Println("Resize transform: identity")
+	}
+
+	// Platform information
 	fmt.Printf("Current caption: %s\n", app.ps.GetCaption())
 	fmt.Printf("Wait mode: %v\n", app.ps.WaitMode())
 	fmt.Printf("Window flags: %d\n", app.ps.WindowFlags())

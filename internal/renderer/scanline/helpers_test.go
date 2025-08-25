@@ -437,3 +437,119 @@ func TestGray8_AddWithCover_CallsAdd(t *testing.T) {
 		t.Errorf("AddWithCover should behave same as Add, got %+v, want %+v", dest, expected)
 	}
 }
+
+// Test coverage accumulation in compound rendering
+func TestRenderCompoundSolidStyle_CoverageAccumulation(t *testing.T) {
+	// Create test data
+	span := SpanData{
+		X:      2,
+		Len:    3,
+		Covers: []basics.Int8u{100, 200, 150}, // Coverage values that would exceed 255 when accumulated
+	}
+
+	styleHandler := &MockStyleHandler[color.RGBA8[color.Linear]]{
+		colors: []color.RGBA8[color.Linear]{{R: 255, G: 0, B: 0, A: 255}}, // Red color
+	}
+
+	mixBuffer := make([]color.RGBA8[color.Linear], 10)
+	coverBuffer := make([]basics.Int8u, 10)
+	minX := 0
+
+	// First call - should add coverage normally
+	renderCompoundSolidStyle(span, styleHandler, 0, mixBuffer, coverBuffer, minX)
+
+	// Check that coverage was accumulated
+	expectedCoverages := []basics.Int8u{100, 200, 150}
+	for i, expectedCover := range expectedCoverages {
+		if coverBuffer[span.X+i] != expectedCover {
+			t.Errorf("Coverage[%d] = %d, want %d", span.X+i, coverBuffer[span.X+i], expectedCover)
+		}
+	}
+
+	// Second call with same span - should clamp coverage to not exceed CoverFull
+	renderCompoundSolidStyle(span, styleHandler, 0, mixBuffer, coverBuffer, minX)
+
+	// Check that coverage was accumulated correctly, clamped where needed
+	expectedFinalCoverages := []basics.Int8u{200, 255, 255} // 100+100, min(200+200,255), min(150+150,255)
+	for i, expectedCover := range expectedFinalCoverages {
+		if coverBuffer[span.X+i] != expectedCover {
+			t.Errorf("Coverage[%d] = %d, want %d", span.X+i, coverBuffer[span.X+i], expectedCover)
+		}
+	}
+}
+
+func TestRenderCompoundGeneratedStyle_CoverageAccumulation(t *testing.T) {
+	// Create test data
+	span := SpanData{
+		X:      1,
+		Len:    2,
+		Covers: []basics.Int8u{128, 200}, // Coverage values
+	}
+
+	sl := &MockScanline{y: 5}
+	styleHandler := &MockStyleHandler[color.RGBA8[color.Linear]]{}
+	alloc := &MockSpanAllocator[color.RGBA8[color.Linear]]{}
+
+	mixBuffer := make([]color.RGBA8[color.Linear], 10)
+	coverBuffer := make([]basics.Int8u, 10)
+	colorSpan := make([]color.RGBA8[color.Linear], 10)
+	minX := 0
+
+	// First call - should add coverage normally
+	renderCompoundGeneratedStyle(span, sl, styleHandler, 0, colorSpan, mixBuffer, coverBuffer, minX, alloc)
+
+	// Check that coverage was accumulated
+	expectedCoverages := []basics.Int8u{128, 200}
+	for i, expectedCover := range expectedCoverages {
+		if coverBuffer[span.X+i] != expectedCover {
+			t.Errorf("Coverage[%d] = %d, want %d", span.X+i, coverBuffer[span.X+i], expectedCover)
+		}
+	}
+
+	// Second call with overlapping coverage - should clamp to not exceed CoverFull
+	renderCompoundGeneratedStyle(span, sl, styleHandler, 0, colorSpan, mixBuffer, coverBuffer, minX, alloc)
+
+	// Check clamping: 128+128=256->255, 200+200=400->255
+	for i := range expectedCoverages {
+		if coverBuffer[span.X+i] != basics.CoverFull {
+			t.Errorf("Coverage[%d] = %d, want %d (CoverFull)", span.X+i, coverBuffer[span.X+i], basics.CoverFull)
+		}
+	}
+}
+
+func TestRenderCompoundSolidStyle_ZeroCoverageSkipped(t *testing.T) {
+	// Test that zero coverage pixels are skipped
+	span := SpanData{
+		X:      0,
+		Len:    3,
+		Covers: []basics.Int8u{100, 0, 150}, // Middle pixel has zero coverage
+	}
+
+	styleHandler := &MockStyleHandler[color.RGBA8[color.Linear]]{
+		colors: []color.RGBA8[color.Linear]{{R: 128, G: 128, B: 128, A: 255}}, // Gray color
+	}
+
+	initialColor := color.RGBA8[color.Linear]{R: 64, G: 64, B: 64, A: 128}
+	mixBuffer := []color.RGBA8[color.Linear]{initialColor, initialColor, initialColor}
+	coverBuffer := []basics.Int8u{200, 200, 100} // Pre-existing high coverage
+	minX := 0
+
+	// Call the function
+	renderCompoundSolidStyle(span, styleHandler, 0, mixBuffer, coverBuffer, minX)
+
+	// Check that the zero-coverage pixel was skipped and buffer unchanged
+	if mixBuffer[1] != initialColor {
+		t.Errorf("Zero-coverage pixel should not be modified, got %v", mixBuffer[1])
+	}
+	if coverBuffer[1] != 200 {
+		t.Errorf("Zero-coverage pixel coverage should remain unchanged, got %d", coverBuffer[1])
+	}
+
+	// Check that non-zero coverage pixels were processed
+	if coverBuffer[0] != 255 { // 200+100 clamped to 255
+		t.Errorf("Expected coverage[0] to be clamped to 255, got %d", coverBuffer[0])
+	}
+	if coverBuffer[2] != 250 { // 100+150 = 250
+		t.Errorf("Expected coverage[2] to be 250, got %d", coverBuffer[2])
+	}
+}

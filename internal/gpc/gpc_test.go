@@ -754,4 +754,176 @@ func TestGPCPerformanceBenchmark(t *testing.T) {
 	}
 }
 
+// TestPolygonToTristripWithHoles tests the improved PolygonToTristrip implementation with holes
+func TestPolygonToTristripWithHoles(t *testing.T) {
+	// Create a polygon with a hole
+	polygon := createPolygonWithHole()
+
+	// Convert to tristrip using the new implementation
+	result, err := PolygonToTristrip(polygon)
+	if err != nil {
+		t.Errorf("PolygonToTristrip() error: %v", err)
+		return
+	}
+
+	if result == nil {
+		t.Error("PolygonToTristrip() returned nil result")
+		return
+	}
+
+	t.Logf("PolygonToTristrip with holes produced %d triangle strips", result.NumStrips)
+}
+
+// TestCompleteScanlineAlgorithm tests the complete GPC scanline algorithm
+func TestCompleteScanlineAlgorithm(t *testing.T) {
+	// Create two overlapping rectangles
+	rect1 := createRectanglePolygon(0, 0, 10, 10)
+	rect2 := createRectanglePolygon(5, 5, 15, 15)
+
+	tests := []struct {
+		name           string
+		operation      GPCOp
+		expectContours bool
+	}{
+		{"Union", GPCUnion, true},
+		{"Intersection", GPCInt, true},
+		{"Difference", GPCDiff, true},
+		{"XOR", GPCXor, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := PolygonClip(tt.operation, rect1, rect2)
+			if err != nil {
+				t.Errorf("PolygonClip(%s) error: %v", tt.name, err)
+				return
+			}
+
+			if result == nil {
+				t.Error("PolygonClip() returned nil result")
+				return
+			}
+
+			// For most operations, we should get some result
+			if tt.expectContours {
+				t.Logf("Operation %s produced %d contours", tt.name, result.NumContours)
+			}
+
+			// Validate the result structure
+			if err := result.Validate(); err != nil {
+				t.Errorf("Result validation failed for %s: %v", tt.name, err)
+			}
+		})
+	}
+}
+
+// TestTristripClipWithComplexPolygons tests tristrip clipping with more complex scenarios
+func TestTristripClipWithComplexPolygons(t *testing.T) {
+	// Create a complex polygon (hexagon)
+	hexagon := NewGPCPolygon()
+	vertices := NewGPCVertexList(6)
+	for i := 0; i < 6; i++ {
+		angle := 2 * math.Pi * float64(i) / 6
+		x := 5 + 3*math.Cos(angle)
+		y := 5 + 3*math.Sin(angle)
+		vertices.AddVertex(x, y)
+	}
+	hexagon.AddContour(vertices, false)
+
+	// Create a square for clipping
+	square := createRectanglePolygon(3, 3, 7, 7)
+
+	// Test tristrip clipping
+	result, err := TristripClip(GPCInt, hexagon, square)
+	if err != nil {
+		t.Errorf("TristripClip() error: %v", err)
+		return
+	}
+
+	if result == nil {
+		t.Error("TristripClip() returned nil result")
+		return
+	}
+
+	t.Logf("TristripClip produced %d triangle strips", result.NumStrips)
+}
+
+// TestEdgeCasesForGPCOperations tests edge cases in GPC operations
+func TestEdgeCasesForGPCOperations(t *testing.T) {
+	// Test with empty polygons
+	empty := NewGPCPolygon()
+	rect := createRectanglePolygon(0, 0, 5, 5)
+
+	// Union with empty polygon
+	result, err := PolygonClip(GPCUnion, empty, rect)
+	if err != nil {
+		t.Errorf("Union with empty polygon error: %v", err)
+	} else if result == nil || result.NumContours == 0 {
+		t.Error("Union with empty polygon should return the non-empty polygon")
+	}
+
+	// Intersection with empty polygon
+	result, err = PolygonClip(GPCInt, rect, empty)
+	if err != nil {
+		t.Errorf("Intersection with empty polygon error: %v", err)
+	} else if result == nil || result.NumContours != 0 {
+		t.Error("Intersection with empty polygon should return empty")
+	}
+
+	// Difference with empty polygon
+	result, err = PolygonClip(GPCDiff, rect, empty)
+	if err != nil {
+		t.Errorf("Difference with empty polygon error: %v", err)
+	} else if result == nil || result.NumContours == 0 {
+		t.Error("Difference with empty polygon should return the subject polygon")
+	}
+}
+
+// TestPolygonWithMultipleHoles tests polygons with multiple holes
+func TestPolygonWithMultipleHoles(t *testing.T) {
+	polygon := NewGPCPolygon()
+
+	// Large outer contour
+	outer := NewGPCVertexList(4)
+	outer.AddVertex(0, 0)
+	outer.AddVertex(20, 0)
+	outer.AddVertex(20, 20)
+	outer.AddVertex(0, 20)
+	polygon.AddContour(outer, false)
+
+	// First hole
+	hole1 := NewGPCVertexList(4)
+	hole1.AddVertex(2, 2)
+	hole1.AddVertex(2, 8)
+	hole1.AddVertex(8, 8)
+	hole1.AddVertex(8, 2)
+	polygon.AddContour(hole1, true)
+
+	// Second hole
+	hole2 := NewGPCVertexList(4)
+	hole2.AddVertex(12, 12)
+	hole2.AddVertex(12, 18)
+	hole2.AddVertex(18, 18)
+	hole2.AddVertex(18, 12)
+	polygon.AddContour(hole2, true)
+
+	// Test validation
+	err := polygon.Validate()
+	if err != nil {
+		t.Errorf("Polygon with multiple holes validation failed: %v", err)
+	}
+
+	if polygon.NumContours != 3 {
+		t.Errorf("Expected 3 contours, got %d", polygon.NumContours)
+	}
+
+	// Test conversion to tristrip
+	result, err := PolygonToTristrip(polygon)
+	if err != nil {
+		t.Errorf("PolygonToTristrip() with multiple holes error: %v", err)
+	} else {
+		t.Logf("Polygon with multiple holes converted to %d triangle strips", result.NumStrips)
+	}
+}
+
 // Benchmark tests will be in a separate file

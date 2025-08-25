@@ -40,7 +40,7 @@ just stats           # Show project statistics
 just todo            # Find TODO/FIXME comments
 ```
 
-Use the MCP `mcp__codanna*` commands for code navigation and manipulation for Go, wherever this comes handy.
+Use the MCP `mcp__codanna*` commands for code navigation and manipulation for the language Go, wherever this comes handy.
 
 **Common Workflows:**
 

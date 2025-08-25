@@ -103,125 +103,27 @@ func NewApplication() *Application {
 	return app
 }
 
-// SpanType constraint for supported span types
-type SpanType interface {
-	scanlinePackage.SpanP8 | scanlinePackage.SpanBin
+// scanlineP8Adapter adapts internal scanline to rasterizer interface
+type scanlineP8Adapter struct {
+	sl *scanlinePackage.ScanlineP8
 }
 
-// Adapter interfaces to bridge incompatibilities between different packages
+func (a *scanlineP8Adapter) ResetSpans()                      { a.sl.ResetSpans() }
+func (a *scanlineP8Adapter) AddCell(x int, cover uint32)      { a.sl.AddCell(x, uint(cover)) }
+func (a *scanlineP8Adapter) AddSpan(x, len int, cover uint32) { a.sl.AddSpan(x, len, uint(cover)) }
+func (a *scanlineP8Adapter) Finalize(y int)                   { a.sl.Finalize(y) }
+func (a *scanlineP8Adapter) NumSpans() int                    { return a.sl.NumSpans() }
 
-// scanlineIteratorAdapter adapts between different scanline iterator interfaces
-type scanlineIteratorAdapter[T SpanType] struct {
-	spans []T
-	index int
+// scanlineBinAdapter adapts internal scanline to rasterizer interface
+type scanlineBinAdapter struct {
+	sl *scanlinePackage.ScanlineBin
 }
 
-func (it *scanlineIteratorAdapter[T]) GetSpan() scanline.SpanData {
-	if it.index >= len(it.spans) {
-		return scanline.SpanData{}
-	}
-
-	span := it.spans[it.index]
-	// Handle different span types using type assertion on any(span)
-	switch s := any(span).(type) {
-	case scanlinePackage.SpanP8:
-		return scanline.SpanData{
-			X:      int(s.X),
-			Len:    int(s.Len),
-			Covers: convertCoverageP8(s.Covers, int(s.Len)),
-		}
-	case scanlinePackage.SpanBin:
-		return scanline.SpanData{
-			X:      int(s.X),
-			Len:    int(s.Len),
-			Covers: nil, // Binary spans don't use coverage arrays
-		}
-	default:
-		return scanline.SpanData{}
-	}
-}
-
-func (it *scanlineIteratorAdapter[T]) Next() bool {
-	it.index++
-	return it.index < len(it.spans)
-}
-
-// convertCoverageP8 converts coverage values from internal format to basics.Int8u
-func convertCoverageP8(covers *scanlinePackage.CoverType, length int) []basics.Int8u {
-	if covers == nil || length <= 0 {
-		return nil
-	}
-
-	// Convert coverage pointer to slice (simplified approach)
-	result := make([]basics.Int8u, length)
-	for i := 0; i < length; i++ {
-		result[i] = basics.Int8u(255) // Simplified: assume full coverage for now
-	}
-	return result
-}
-
-// scanlineAdapter adapts scanline packages to renderer scanline interface
-type scanlineAdapter[T SpanType] struct {
-	y        int
-	spans    []T
-	iterator *scanlineIteratorAdapter[T]
-}
-
-func (sl *scanlineAdapter[T]) Y() int {
-	return sl.y
-}
-
-func (sl *scanlineAdapter[T]) NumSpans() int {
-	return len(sl.spans)
-}
-
-func (sl *scanlineAdapter[T]) Begin() scanline.ScanlineIterator {
-	sl.iterator = &scanlineIteratorAdapter[T]{spans: sl.spans, index: 0}
-	return sl.iterator
-}
-
-// adaptScanlineP8 creates a scanline adapter for ScanlineP8
-func adaptScanlineP8(sl *scanlinePackage.ScanlineP8) *scanlineAdapter[scanlinePackage.SpanP8] {
-	spans := sl.Begin()
-
-	return &scanlineAdapter[scanlinePackage.SpanP8]{
-		y:     sl.Y(),
-		spans: spans,
-	}
-}
-
-// adaptScanlineBin creates a scanline adapter for ScanlineBin
-func adaptScanlineBin(sl *scanlinePackage.ScanlineBin) *scanlineAdapter[scanlinePackage.SpanBin] {
-	spans := sl.Begin()
-
-	return &scanlineAdapter[scanlinePackage.SpanBin]{
-		y:     sl.Y(),
-		spans: spans,
-	}
-}
-
-// rasterizerAdapter adapts between rasterizer interfaces
-type rasterizerAdapter struct {
-	ras *rasterizer.RasterizerScanlineAA[*rasterizer.RasterizerSlNoClip, rasterizer.RasConvDbl]
-}
-
-func (ra *rasterizerAdapter) RewindScanlines() bool {
-	return ra.ras.RewindScanlines()
-}
-
-func (ra *rasterizerAdapter) SweepScanline(sl scanline.ScanlineInterface) bool {
-	// This is where we need to bridge the interface gap
-	// We'll use a simplified approach that doesn't require full scanline compatibility
-	return false // Simplified: return false to avoid complex bridging
-}
-
-func (ra *rasterizerAdapter) MinX() int {
-	return ra.ras.MinX()
-}
-
-func (ra *rasterizerAdapter) MaxX() int {
-	return ra.ras.MaxX()
-}
+func (a *scanlineBinAdapter) ResetSpans()                      { a.sl.ResetSpans() }
+func (a *scanlineBinAdapter) AddCell(x int, cover uint32)      { a.sl.AddCell(x, uint(cover)) }
+func (a *scanlineBinAdapter) AddSpan(x, len int, cover uint32) { a.sl.AddSpan(x, len, uint(cover)) }
+func (a *scanlineBinAdapter) Finalize(y int)                   { a.sl.Finalize(y) }
+func (a *scanlineBinAdapter) NumSpans() int                    { return a.sl.NumSpans() }
 
 // baseRendererAdapter adapts our pixel format to the BaseRendererInterface needed by scanline renderers
 type baseRendererAdapter struct {
@@ -301,21 +203,50 @@ func (app *Application) drawAntiAliased() {
 		}
 	}
 
-	// Create adapters to bridge interface incompatibilities
-	rasAdapter := &rasterizerAdapter{ras: app.ras}
-	slAdapter := adaptScanlineP8(app.slP8)
-
-	// Render scanlines using adapters (simplified approach)
-	// Due to interface incompatibilities, we'll use a direct rendering approach
-	app.renderDirectly(color.RGBA8[color.Linear]{
+	// Use the proper scanline rendering approach - this is efficient!
+	triangleColor := color.RGBA8[color.Linear]{
 		R: basics.Int8u(0.7*255 + 0.5),
 		G: basics.Int8u(0.5*255 + 0.5),
 		B: basics.Int8u(0.1*255 + 0.5),
 		A: basics.Int8u(alpha*255 + 0.5),
-	})
+	}
 
-	_ = rasAdapter // Avoid unused variable warning
-	_ = slAdapter  // Avoid unused variable warning
+	// Proper scanline sweep - this matches the C++ render_scanlines approach
+	// Reset the scanline for new rendering pass
+	app.slP8.Reset(app.ras.MinX(), app.ras.MaxX())
+	slP8Adapter := &scanlineP8Adapter{sl: app.slP8}
+	if app.ras.RewindScanlines() {
+		for app.ras.SweepScanline(slP8Adapter) {
+			y := app.slP8.Y()
+			spans := app.slP8.Begin()
+
+			for _, span := range spans {
+				x := int(span.X)
+				length := int(span.Len)
+
+				if length > 0 {
+					// Anti-aliased span with coverage array
+					covers := span.GetCovers()
+					if len(covers) >= length {
+						// Convert to basics.Int8u slice
+						coverSlice := make([]basics.Int8u, length)
+						for i := 0; i < length; i++ {
+							coverSlice[i] = basics.Int8u(covers[i])
+						}
+						baseRen.BlendSolidHspan(x, y, length, triangleColor, coverSlice)
+					}
+				} else {
+					// Solid span with single coverage value
+					endX := x - length - 1
+					covers := span.GetCovers()
+					if len(covers) > 0 {
+						cover := basics.Int8u(covers[0])
+						baseRen.BlendHline(x, y, endX, triangleColor, cover)
+					}
+				}
+			}
+		}
+	}
 }
 
 // drawAliased renders the triangle without anti-aliasing (binary)
@@ -366,45 +297,34 @@ func (app *Application) drawAliased() {
 		}
 	}
 
-	// Create adapters to bridge interface incompatibilities
-	rasAdapter := &rasterizerAdapter{ras: app.ras}
-	slAdapter := adaptScanlineBin(app.slBin)
-
-	// Render scanlines using adapters (simplified approach)
-	// Due to interface incompatibilities, we'll use a direct rendering approach
-	app.renderDirectly(color.RGBA8[color.Linear]{
+	// Use the proper scanline rendering approach - this is efficient!
+	triangleColor := color.RGBA8[color.Linear]{
 		R: basics.Int8u(0.1*255 + 0.5),
 		G: basics.Int8u(0.5*255 + 0.5),
 		B: basics.Int8u(0.7*255 + 0.5),
 		A: basics.Int8u(alpha*255 + 0.5),
-	})
-
-	_ = rasAdapter // Avoid unused variable warning
-	_ = slAdapter  // Avoid unused variable warning
-}
-
-// renderDirectly performs direct rendering without the scanline system
-// This is a workaround for interface incompatibilities
-func (app *Application) renderDirectly(triangleColor color.RGBA8[color.Linear]) {
-	// Simple direct rasterization approach
-	// This bypasses the scanline system entirely due to interface issues
-
-	if !app.ras.RewindScanlines() {
-		return
 	}
 
-	// Manual scanline rendering approach similar to main_simple.go
-	for y := app.ras.MinY(); y <= app.ras.MaxY(); y++ {
-		if !app.ras.NavigateScanline(y) {
-			continue
-		}
+	// Proper scanline sweep for binary rendering
+	// Reset the scanline for new rendering pass
+	app.slBin.Reset(app.ras.MinX(), app.ras.MaxX())
+	slBinAdapter := &scanlineBinAdapter{sl: app.slBin}
+	if app.ras.RewindScanlines() {
+		for app.ras.SweepScanline(slBinAdapter) {
+			y := app.slBin.Y()
+			spans := app.slBin.Begin()
 
-		// Simple hit test approach for each pixel
-		for x := app.ras.MinX(); x <= app.ras.MaxX(); x++ {
-			if app.ras.HitTest(x, y) {
-				// Apply color directly to pixel format
-				if x >= 0 && x < frameWidth && y >= 0 && y < frameHeight {
-					app.pixf.BlendPixel(x, y, triangleColor, 255)
+			for _, span := range spans {
+				x := int(span.X)
+				length := int(span.Len)
+
+				// For binary scanlines, we always draw solid spans with full coverage
+				if length > 0 {
+					baseRen.BlendHline(x, y, x+length-1, triangleColor, 255)
+				} else {
+					// Negative length solid span
+					endX := x - length - 1
+					baseRen.BlendHline(x, y, endX, triangleColor, 255)
 				}
 			}
 		}

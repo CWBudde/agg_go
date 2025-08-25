@@ -166,17 +166,22 @@ func renderCompoundMultipleStyles[C any](ras CompoundRasterizerInterface, slAA S
 	styleHandler StyleHandlerInterface[C], colorSpan []C, mixBuffer []C,
 	minX int, numStyles int,
 ) {
-	// Clear the mix buffer spans
+	// Allocate coverage buffer for tracking accumulated coverage per pixel
+	length := len(mixBuffer)
+	coverBuffer := ras.AllocateCoverBuffer(length)
+
+	// Clear the mix buffer and cover buffer spans
 	iterBin := slBin.Begin()
 	numSpansBin := slBin.NumSpans()
 
 	for i := 0; i < numSpansBin; i++ {
 		span := iterBin.GetSpan()
 
-		// Clear mix buffer section for this span
+		// Clear mix buffer and cover buffer sections for this span
 		for j := 0; j < span.Len; j++ {
 			var zero C
 			mixBuffer[span.X-minX+j] = zero
+			coverBuffer[span.X-minX+j] = 0
 		}
 
 		if i < numSpansBin-1 {
@@ -198,11 +203,11 @@ func renderCompoundMultipleStyles[C any](ras CompoundRasterizerInterface, slAA S
 
 				if solid {
 					// Solid color processing
-					renderCompoundSolidStyle(span, styleHandler, style, mixBuffer, minX)
+					renderCompoundSolidStyle(span, styleHandler, style, mixBuffer, coverBuffer, minX)
 				} else {
 					// Span generator processing
 					renderCompoundGeneratedStyle(span, slAA, styleHandler, style,
-						colorSpan, mixBuffer, minX, alloc)
+						colorSpan, mixBuffer, coverBuffer, minX, alloc)
 				}
 
 				if i < numSpans-1 {
@@ -220,7 +225,7 @@ func renderCompoundMultipleStyles[C any](ras CompoundRasterizerInterface, slAA S
 	for i := 0; i < numSpansBin; i++ {
 		span := iterBin.GetSpan()
 
-		ren.BlendColorHspan(span.X, y, span.Len, mixBuffer[span.X-minX:],
+		ren.BlendColorHspan(span.X, y, span.Len, mixBuffer[span.X-minX:span.X-minX+span.Len],
 			nil, basics.CoverFull)
 
 		if i < numSpansBin-1 {
@@ -231,7 +236,7 @@ func renderCompoundMultipleStyles[C any](ras CompoundRasterizerInterface, slAA S
 
 // renderCompoundSolidStyle renders a span with solid color for compound rendering.
 func renderCompoundSolidStyle[C any](span SpanData, styleHandler StyleHandlerInterface[C],
-	style int, mixBuffer []C, minX int,
+	style int, mixBuffer []C, coverBuffer []basics.Int8u, minX int,
 ) {
 	sourceColor := styleHandler.Color(style)
 
@@ -239,11 +244,14 @@ func renderCompoundSolidStyle[C any](span SpanData, styleHandler StyleHandlerInt
 		cover := span.Covers[i]
 		bufferIndex := span.X - minX + i
 
-		if cover == basics.CoverFull {
-			mixBuffer[bufferIndex] = sourceColor
-		} else {
-			// Use proper color blending with cover value
+		// Check if accumulated coverage would exceed CoverFull
+		if uint32(coverBuffer[bufferIndex])+uint32(cover) > uint32(basics.CoverFull) {
+			cover = basics.CoverFull - coverBuffer[bufferIndex]
+		}
+
+		if cover > 0 {
 			blendColorWithCover(&mixBuffer[bufferIndex], sourceColor, cover)
+			coverBuffer[bufferIndex] += cover
 		}
 	}
 }
@@ -251,7 +259,7 @@ func renderCompoundSolidStyle[C any](span SpanData, styleHandler StyleHandlerInt
 // renderCompoundGeneratedStyle renders a span with generated colors for compound rendering.
 func renderCompoundGeneratedStyle[C any](span SpanData, sl ScanlineInterface,
 	styleHandler StyleHandlerInterface[C], style int, colorSpan []C,
-	mixBuffer []C, minX int, alloc SpanAllocatorInterface[C],
+	mixBuffer []C, coverBuffer []basics.Int8u, minX int, alloc SpanAllocatorInterface[C],
 ) {
 	colors := alloc.Allocate(span.Len)
 	styleHandler.GenerateSpan(colors, span.X, sl.Y(), span.Len, style)
@@ -260,11 +268,14 @@ func renderCompoundGeneratedStyle[C any](span SpanData, sl ScanlineInterface,
 		cover := span.Covers[i]
 		bufferIndex := span.X - minX + i
 
-		if cover == basics.CoverFull {
-			mixBuffer[bufferIndex] = colors[i]
-		} else {
-			// Use proper color blending with cover value
+		// Check if accumulated coverage would exceed CoverFull
+		if uint32(coverBuffer[bufferIndex])+uint32(cover) > uint32(basics.CoverFull) {
+			cover = basics.CoverFull - coverBuffer[bufferIndex]
+		}
+
+		if cover > 0 {
 			blendColorWithCover(&mixBuffer[bufferIndex], colors[i], cover)
+			coverBuffer[bufferIndex] += cover
 		}
 	}
 }

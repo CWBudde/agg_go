@@ -31,10 +31,6 @@ type (
 
 // Core constants
 const (
-	// Blend modes
-	BlendAlpha = 0
-	BlendDst   = 3
-
 	// Gradients
 	Solid  Gradient = 0
 	Linear Gradient = 1

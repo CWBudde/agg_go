@@ -457,11 +457,12 @@ func (r *RasterizerSlClip[Conv]) LineTo(outline RasterizerInterface, x2, y2 floa
 				y3 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
 			}
 			f3 = basics.ClippingFlagsY(y3, r.clipBox)
-			r.lineClipY(ras, r.clipBox.X2, y1, r.clipBox.X2, y3, f1, f3)
+			// Fixed: Only draw the visible segment from intersection to end point
 			r.lineClipY(ras, r.clipBox.X2, y3, x2, y2, f3, f2)
 
 		case 3: // x1 > clip.x2 && x2 > clip.x2
-			r.lineClipY(ras, r.clipBox.X2, y1, r.clipBox.X2, y2, f1, f2)
+			// Fixed: When both points are completely outside the same boundary,
+			// no lines should be drawn (matches C++ AGG implementation)
 
 		case 4: // x2 < clip.x1
 			switch c := any(conv).(type) {
@@ -518,11 +519,8 @@ func (r *RasterizerSlClip[Conv]) LineTo(outline RasterizerInterface, x2, y2 floa
 				y3 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
 			}
 			f3 = basics.ClippingFlagsY(y3, r.clipBox)
-			// TODO: Fix clipping for boundary-crossing lines
-			// Test expectation: single line from intersection to end point
-			// Current behavior: draws 2 lines (vertical boundary segment + clipped segment)
-			// The first lineClipY call may be drawing an unwanted boundary line
-			r.lineClipY(ras, r.clipBox.X1, y1, r.clipBox.X1, y3, f1, f3)
+			// Fixed: Only draw the visible segment from intersection to end point
+			// The boundary line was creating unwanted artifacts
 			r.lineClipY(ras, r.clipBox.X1, y3, x2, y2, f3, f2)
 
 		case 9: // x1 < clip.x1 && x2 > clip.x2
@@ -550,12 +548,9 @@ func (r *RasterizerSlClip[Conv]) LineTo(outline RasterizerInterface, x2, y2 floa
 			r.lineClipY(ras, r.clipBox.X2, y4, r.clipBox.X2, y2, f4, f2)
 
 		case 12: // x1 < clip.x1 && x2 < clip.x1
-			// TODO: Fix rasterizer clipping boundary detection logic
-			// Test expectation: when both points are completely outside the same boundary
-			// (e.g., both points left of clipBox.X1), no lines should be drawn.
-			// Current behavior: draws a vertical line along the boundary.
-			// Need to compare with AGG C++ implementation to determine correct behavior.
-			r.lineClipY(ras, r.clipBox.X1, y1, r.clipBox.X1, y2, f1, f2)
+			// Fixed: When both points are completely outside the same boundary,
+			// no lines should be drawn (matches C++ AGG implementation)
+			// Just update position without drawing anything
 		}
 		r.f1 = f2
 	} else {

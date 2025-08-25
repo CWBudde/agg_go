@@ -164,14 +164,14 @@ func TestRasterizerSlClipWithClipping(t *testing.T) {
 			name:   "fully_outside_left",
 			startX: 0, startY: 20,
 			endX: 5, endY: 30,
-			expectedLineCount: 1, // AGG draws boundary line when both points are outside same boundary
-			shouldHaveLines:   true,
+			expectedLineCount: 0, // Fixed: No lines drawn when both points outside same boundary
+			shouldHaveLines:   false,
 		},
 		{
 			name:   "crosses_boundary",
 			startX: 5, startY: 20,
 			endX: 25, endY: 30,
-			expectedLineCount: 2, // AGG draws boundary segment + visible segment for boundary crossings
+			expectedLineCount: 1, // Fixed: Only draw the visible segment (no boundary line)
 			shouldHaveLines:   true,
 		},
 	}

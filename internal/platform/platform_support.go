@@ -7,7 +7,13 @@
 package platform
 
 import (
+	"encoding/binary"
 	"fmt"
+	"image"
+	"image/png"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"agg_go/internal/buffer"
@@ -195,6 +201,29 @@ const (
 	maxImages = 16 // Maximum number of image buffers
 )
 
+// BMP file header structures
+type BMPFileHeader struct {
+	Type      uint16 // File type, must be 'BM'
+	Size      uint32 // Size of file in bytes
+	Reserved1 uint16 // Reserved, must be 0
+	Reserved2 uint16 // Reserved, must be 0
+	OffBits   uint32 // Offset to bitmap data in bytes
+}
+
+type BMPInfoHeader struct {
+	Size          uint32 // Size of this header in bytes
+	Width         int32  // Width of bitmap in pixels
+	Height        int32  // Height of bitmap in pixels
+	Planes        uint16 // Number of color planes, must be 1
+	BitCount      uint16 // Number of bits per pixel
+	Compression   uint32 // Compression method used
+	SizeImage     uint32 // Size of bitmap in bytes
+	XPelsPerMeter int32  // Horizontal resolution in pixels per meter
+	YPelsPerMeter int32  // Vertical resolution in pixels per meter
+	ClrUsed       uint32 // Number of colors in color table
+	ClrImportant  uint32 // Number of important colors used
+}
+
 // NewPlatformSupport creates a new platform support instance with the specified pixel format and Y-axis orientation.
 func NewPlatformSupport(format PixelFormat, flipY bool) *PlatformSupport {
 	ps := &PlatformSupport{
@@ -334,16 +363,517 @@ func (ps *PlatformSupport) CreateImage(idx int, width, height int) bool {
 	return true
 }
 
-// LoadImage loads an image from file (stub implementation).
-func (ps *PlatformSupport) LoadImage(idx int, filename string) bool {
-	// TODO: Implement image loading (BMP/PPM format)
-	// For now, just create an empty image
-	return ps.CreateImage(idx, 0, 0)
+// loadBMP loads a BMP image file and converts it to the platform's pixel format
+func (ps *PlatformSupport) loadBMP(filename string) ([]uint8, int, int, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, 0, 0, err
+	}
+	defer file.Close()
+
+	// Read BMP file header
+	var fileHeader BMPFileHeader
+	if err := binary.Read(file, binary.LittleEndian, &fileHeader); err != nil {
+		return nil, 0, 0, fmt.Errorf("failed to read BMP file header: %v", err)
+	}
+
+	// Verify BMP signature
+	if fileHeader.Type != 0x4D42 { // "BM" in little endian
+		return nil, 0, 0, fmt.Errorf("not a valid BMP file")
+	}
+
+	// Read BMP info header
+	var infoHeader BMPInfoHeader
+	if err := binary.Read(file, binary.LittleEndian, &infoHeader); err != nil {
+		return nil, 0, 0, fmt.Errorf("failed to read BMP info header: %v", err)
+	}
+
+	// Validate basic BMP properties
+	if infoHeader.Planes != 1 {
+		return nil, 0, 0, fmt.Errorf("unsupported number of planes: %d", infoHeader.Planes)
+	}
+	if infoHeader.Compression != 0 {
+		return nil, 0, 0, fmt.Errorf("compressed BMP files are not supported")
+	}
+	if infoHeader.BitCount != 24 && infoHeader.BitCount != 32 {
+		return nil, 0, 0, fmt.Errorf("unsupported bit depth: %d", infoHeader.BitCount)
+	}
+
+	width := int(infoHeader.Width)
+	height := int(infoHeader.Height)
+	if width <= 0 || height <= 0 {
+		return nil, 0, 0, fmt.Errorf("invalid image dimensions: %dx%d", width, height)
+	}
+
+	// BMP images are typically stored bottom-to-top
+	flipVertical := height > 0
+	if height < 0 {
+		height = -height
+		flipVertical = false
+	}
+
+	// Seek to pixel data
+	if _, err := file.Seek(int64(fileHeader.OffBits), 0); err != nil {
+		return nil, 0, 0, fmt.Errorf("failed to seek to pixel data: %v", err)
+	}
+
+	// Calculate stride and buffer size for our target format
+	targetStride := width * ps.bpp / 8
+	buffer := make([]uint8, height*targetStride)
+
+	// Read pixel data
+	srcStride := ((width*int(infoHeader.BitCount) + 31) / 32) * 4 // BMP row padding
+	rowData := make([]uint8, srcStride)
+
+	for y := 0; y < height; y++ {
+		if _, err := file.Read(rowData); err != nil {
+			return nil, 0, 0, fmt.Errorf("failed to read pixel data: %v", err)
+		}
+
+		// Determine target row (handle vertical flip)
+		targetY := y
+		if flipVertical != ps.flipY {
+			targetY = height - 1 - y
+		}
+
+		// Convert pixels to target format
+		for x := 0; x < width; x++ {
+			var r, g, b, a uint8
+			srcIdx := x * int(infoHeader.BitCount) / 8
+
+			// Read source pixel (BMP is BGR format)
+			if infoHeader.BitCount == 24 {
+				b = rowData[srcIdx]
+				g = rowData[srcIdx+1]
+				r = rowData[srcIdx+2]
+				a = 255
+			} else { // 32-bit BGRA
+				b = rowData[srcIdx]
+				g = rowData[srcIdx+1]
+				r = rowData[srcIdx+2]
+				a = rowData[srcIdx+3]
+			}
+
+			// Write to target buffer (assuming RGBA format)
+			dstIdx := targetY*targetStride + x*ps.bpp/8
+			if ps.bpp == 32 {
+				buffer[dstIdx] = r
+				buffer[dstIdx+1] = g
+				buffer[dstIdx+2] = b
+				buffer[dstIdx+3] = a
+			} else if ps.bpp == 24 {
+				buffer[dstIdx] = r
+				buffer[dstIdx+1] = g
+				buffer[dstIdx+2] = b
+			}
+		}
+	}
+
+	return buffer, width, height, nil
 }
 
-// SaveImage saves an image to file (stub implementation).
+// loadPPM loads a PPM P6 (binary) image file
+func (ps *PlatformSupport) loadPPM(filename string) ([]uint8, int, int, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, 0, 0, err
+	}
+	defer file.Close()
+
+	// Read PPM header
+	var magic string
+	var width, height, maxVal int
+
+	// Read magic number
+	if _, err := fmt.Fscanf(file, "%s", &magic); err != nil {
+		return nil, 0, 0, fmt.Errorf("failed to read PPM magic: %v", err)
+	}
+	if magic != "P6" {
+		return nil, 0, 0, fmt.Errorf("unsupported PPM format: %s (only P6 supported)", magic)
+	}
+
+	// Read dimensions
+	if _, err := fmt.Fscanf(file, "%d %d", &width, &height); err != nil {
+		return nil, 0, 0, fmt.Errorf("failed to read PPM dimensions: %v", err)
+	}
+	if width <= 0 || height <= 0 {
+		return nil, 0, 0, fmt.Errorf("invalid PPM dimensions: %dx%d", width, height)
+	}
+
+	// Read maximum value
+	if _, err := fmt.Fscanf(file, "%d", &maxVal); err != nil {
+		return nil, 0, 0, fmt.Errorf("failed to read PPM max value: %v", err)
+	}
+	if maxVal != 255 {
+		return nil, 0, 0, fmt.Errorf("unsupported PPM max value: %d (only 255 supported)", maxVal)
+	}
+
+	// Skip whitespace after header
+	var dummy byte
+	file.Read([]byte{dummy})
+
+	// Calculate target stride and allocate buffer
+	targetStride := width * ps.bpp / 8
+	buffer := make([]uint8, height*targetStride)
+
+	// Read pixel data (PPM is RGB)
+	pixelData := make([]uint8, width*height*3)
+	if _, err := file.Read(pixelData); err != nil {
+		return nil, 0, 0, fmt.Errorf("failed to read PPM pixel data: %v", err)
+	}
+
+	// Convert to target format
+	for y := 0; y < height; y++ {
+		targetY := y
+		if ps.flipY {
+			targetY = height - 1 - y
+		}
+
+		for x := 0; x < width; x++ {
+			srcIdx := (y*width + x) * 3
+			r := pixelData[srcIdx]
+			g := pixelData[srcIdx+1]
+			b := pixelData[srcIdx+2]
+
+			dstIdx := targetY*targetStride + x*ps.bpp/8
+			if ps.bpp == 32 {
+				buffer[dstIdx] = r
+				buffer[dstIdx+1] = g
+				buffer[dstIdx+2] = b
+				buffer[dstIdx+3] = 255 // Full alpha
+			} else if ps.bpp == 24 {
+				buffer[dstIdx] = r
+				buffer[dstIdx+1] = g
+				buffer[dstIdx+2] = b
+			}
+		}
+	}
+
+	return buffer, width, height, nil
+}
+
+// loadPNG loads a PNG image file using Go's standard library
+func (ps *PlatformSupport) loadPNG(filename string) ([]uint8, int, int, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, 0, 0, err
+	}
+	defer file.Close()
+
+	// Decode PNG image
+	img, err := png.Decode(file)
+	if err != nil {
+		return nil, 0, 0, fmt.Errorf("failed to decode PNG: %v", err)
+	}
+
+	bounds := img.Bounds()
+	width := bounds.Dx()
+	height := bounds.Dy()
+
+	// Calculate target stride and allocate buffer
+	targetStride := width * ps.bpp / 8
+	buffer := make([]uint8, height*targetStride)
+
+	// Convert image to target format
+	for y := 0; y < height; y++ {
+		targetY := y
+		if ps.flipY {
+			targetY = height - 1 - y
+		}
+
+		for x := 0; x < width; x++ {
+			srcR, srcG, srcB, srcA := img.At(bounds.Min.X+x, bounds.Min.Y+y).RGBA()
+
+			// Convert from 16-bit to 8-bit
+			r := uint8(srcR >> 8)
+			g := uint8(srcG >> 8)
+			b := uint8(srcB >> 8)
+			a := uint8(srcA >> 8)
+
+			dstIdx := targetY*targetStride + x*ps.bpp/8
+			if ps.bpp == 32 {
+				buffer[dstIdx] = r
+				buffer[dstIdx+1] = g
+				buffer[dstIdx+2] = b
+				buffer[dstIdx+3] = a
+			} else if ps.bpp == 24 {
+				buffer[dstIdx] = r
+				buffer[dstIdx+1] = g
+				buffer[dstIdx+2] = b
+			}
+		}
+	}
+
+	return buffer, width, height, nil
+}
+
+// LoadImage loads an image from file.
+func (ps *PlatformSupport) LoadImage(idx int, filename string) bool {
+	if idx < 0 || idx >= maxImages {
+		return false
+	}
+
+	// Determine file format from extension
+	ext := strings.ToLower(filepath.Ext(filename))
+
+	// Try to append extension if none provided
+	if ext == "" {
+		// Try .bmp first (default for AGG), then .ppm, then .png
+		for _, tryExt := range []string{".bmp", ".ppm", ".png"} {
+			tryFilename := filename + tryExt
+			if _, err := os.Stat(tryFilename); err == nil {
+				filename = tryFilename
+				ext = tryExt
+				break
+			}
+		}
+
+		// If still no extension, default to .bmp
+		if ext == "" {
+			filename += ".bmp"
+			ext = ".bmp"
+		}
+	}
+
+	// Load image based on format
+	var buffer []uint8
+	var width, height int
+	var err error
+
+	switch ext {
+	case ".bmp":
+		buffer, width, height, err = ps.loadBMP(filename)
+	case ".ppm":
+		buffer, width, height, err = ps.loadPPM(filename)
+	case ".png":
+		buffer, width, height, err = ps.loadPNG(filename)
+	default:
+		return false
+	}
+
+	if err != nil {
+		fmt.Printf("Error loading image %s: %v\n", filename, err)
+		return false
+	}
+
+	// Attach buffer to image slot
+	stride := width * ps.bpp / 8
+	ps.imageBuffers[idx].Attach(buffer, width, height, stride)
+	return true
+}
+
+// saveBMP saves an image buffer to a BMP file
+func (ps *PlatformSupport) saveBMP(filename string, buffer []uint8, width, height, stride int) error {
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	// Calculate BMP parameters
+	bitsPerPixel := uint16(ps.bpp)
+	imageSize := uint32(height * stride)
+	fileSize := 54 + imageSize // File header (14) + Info header (40) + Image data
+
+	// Create BMP file header
+	fileHeader := BMPFileHeader{
+		Type:      0x4D42, // "BM"
+		Size:      fileSize,
+		Reserved1: 0,
+		Reserved2: 0,
+		OffBits:   54, // Offset to pixel data (14 + 40)
+	}
+
+	// Create BMP info header
+	infoHeader := BMPInfoHeader{
+		Size:          40,
+		Width:         int32(width),
+		Height:        int32(height), // Positive = bottom-to-top
+		Planes:        1,
+		BitCount:      bitsPerPixel,
+		Compression:   0, // No compression
+		SizeImage:     imageSize,
+		XPelsPerMeter: 2835, // 72 DPI
+		YPelsPerMeter: 2835, // 72 DPI
+		ClrUsed:       0,
+		ClrImportant:  0,
+	}
+
+	// Write headers
+	if err := binary.Write(file, binary.LittleEndian, &fileHeader); err != nil {
+		return fmt.Errorf("failed to write BMP file header: %v", err)
+	}
+	if err := binary.Write(file, binary.LittleEndian, &infoHeader); err != nil {
+		return fmt.Errorf("failed to write BMP info header: %v", err)
+	}
+
+	// Calculate BMP row stride (must be multiple of 4)
+	bmpStride := ((width*int(bitsPerPixel) + 31) / 32) * 4
+	rowPadding := bmpStride - (width * int(bitsPerPixel) / 8)
+	padding := make([]uint8, rowPadding)
+
+	// Write pixel data (BMP is bottom-to-top, BGR format)
+	for y := height - 1; y >= 0; y-- {
+		srcY := y
+		if ps.flipY {
+			srcY = height - 1 - y
+		}
+
+		for x := 0; x < width; x++ {
+			srcIdx := srcY*stride + x*ps.bpp/8
+
+			// Convert from source format to BGR(A)
+			if ps.bpp == 32 {
+				// Source is RGBA, write as BGRA
+				r := buffer[srcIdx]
+				g := buffer[srcIdx+1]
+				b := buffer[srcIdx+2]
+				a := buffer[srcIdx+3]
+				file.Write([]byte{b, g, r, a})
+			} else if ps.bpp == 24 {
+				// Source is RGB, write as BGR
+				r := buffer[srcIdx]
+				g := buffer[srcIdx+1]
+				b := buffer[srcIdx+2]
+				file.Write([]byte{b, g, r})
+			}
+		}
+
+		// Write row padding
+		if rowPadding > 0 {
+			file.Write(padding)
+		}
+	}
+
+	return nil
+}
+
+// savePPM saves an image buffer to a PPM P6 file
+func (ps *PlatformSupport) savePPM(filename string, buffer []uint8, width, height, stride int) error {
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	// Write PPM header
+	header := fmt.Sprintf("P6\n%d %d\n255\n", width, height)
+	if _, err := file.WriteString(header); err != nil {
+		return fmt.Errorf("failed to write PPM header: %v", err)
+	}
+
+	// Write pixel data (PPM is top-to-bottom, RGB format)
+	pixelData := make([]byte, 3)
+	for y := 0; y < height; y++ {
+		srcY := y
+		if ps.flipY {
+			srcY = height - 1 - y
+		}
+
+		for x := 0; x < width; x++ {
+			srcIdx := srcY*stride + x*ps.bpp/8
+
+			// Extract RGB components
+			if ps.bpp == 32 {
+				pixelData[0] = buffer[srcIdx]   // R
+				pixelData[1] = buffer[srcIdx+1] // G
+				pixelData[2] = buffer[srcIdx+2] // B
+			} else if ps.bpp == 24 {
+				pixelData[0] = buffer[srcIdx]   // R
+				pixelData[1] = buffer[srcIdx+1] // G
+				pixelData[2] = buffer[srcIdx+2] // B
+			}
+
+			if _, err := file.Write(pixelData); err != nil {
+				return fmt.Errorf("failed to write PPM pixel data: %v", err)
+			}
+		}
+	}
+
+	return nil
+}
+
+// savePNG saves an image buffer to a PNG file
+func (ps *PlatformSupport) savePNG(filename string, buffer []uint8, width, height, stride int) error {
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	// Create Go image from buffer
+	bounds := image.Rect(0, 0, width, height)
+	img := image.NewRGBA(bounds)
+
+	// Copy pixel data
+	for y := 0; y < height; y++ {
+		srcY := y
+		if ps.flipY {
+			srcY = height - 1 - y
+		}
+
+		for x := 0; x < width; x++ {
+			srcIdx := srcY*stride + x*ps.bpp/8
+			dstIdx := y*img.Stride + x*4
+
+			if ps.bpp == 32 {
+				img.Pix[dstIdx] = buffer[srcIdx]     // R
+				img.Pix[dstIdx+1] = buffer[srcIdx+1] // G
+				img.Pix[dstIdx+2] = buffer[srcIdx+2] // B
+				img.Pix[dstIdx+3] = buffer[srcIdx+3] // A
+			} else if ps.bpp == 24 {
+				img.Pix[dstIdx] = buffer[srcIdx]     // R
+				img.Pix[dstIdx+1] = buffer[srcIdx+1] // G
+				img.Pix[dstIdx+2] = buffer[srcIdx+2] // B
+				img.Pix[dstIdx+3] = 255              // A
+			}
+		}
+	}
+
+	// Encode as PNG
+	return png.Encode(file, img)
+}
+
+// SaveImage saves an image to file.
 func (ps *PlatformSupport) SaveImage(idx int, filename string) bool {
-	// TODO: Implement image saving (BMP/PPM format)
+	if idx < 0 || idx >= maxImages || ps.imageBuffers[idx].Buf() == nil {
+		return false
+	}
+
+	// Get buffer information
+	buffer := ps.imageBuffers[idx].Buf()
+	width := ps.imageBuffers[idx].Width()
+	height := ps.imageBuffers[idx].Height()
+	stride := ps.imageBuffers[idx].Stride()
+
+	// Determine file format from extension
+	ext := strings.ToLower(filepath.Ext(filename))
+
+	// Default to .bmp if no extension
+	if ext == "" {
+		filename += ".bmp"
+		ext = ".bmp"
+	}
+
+	// Save image based on format
+	var err error
+	switch ext {
+	case ".bmp":
+		err = ps.saveBMP(filename, buffer, width, height, stride)
+	case ".ppm":
+		err = ps.savePPM(filename, buffer, width, height, stride)
+	case ".png":
+		err = ps.savePNG(filename, buffer, width, height, stride)
+	default:
+		fmt.Printf("Unsupported image format: %s\n", ext)
+		return false
+	}
+
+	if err != nil {
+		fmt.Printf("Error saving image %s: %v\n", filename, err)
+		return false
+	}
+
 	return true
 }
 
@@ -406,7 +936,12 @@ func (ps *PlatformSupport) Message(msg string) {
 
 // ImageExtension returns the default image file extension for this platform.
 func (ps *PlatformSupport) ImageExtension() string {
-	return ".bmp" // Default to BMP format
+	return ".bmp" // Default to BMP format for AGG compatibility
+}
+
+// SupportedImageExtensions returns a list of supported image file extensions.
+func (ps *PlatformSupport) SupportedImageExtensions() []string {
+	return []string{".bmp", ".ppm", ".png"}
 }
 
 // Run starts the main event loop (stub implementation).
