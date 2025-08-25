@@ -5,7 +5,9 @@ package agg2d
 import (
 	"errors"
 
+	"agg_go/internal/basics"
 	"agg_go/internal/buffer"
+	"agg_go/internal/color"
 	"agg_go/internal/transform"
 )
 
@@ -105,8 +107,12 @@ func (agg2d *Agg2D) renderImage(img *Image, x1, y1, x2, y2 int, parallelogram []
 						srcPixel[3] = uint8((uint16(srcPixel[3]) * uint16(agg2d.imageBlendColor[3])) / 255)
 					}
 
-					// Render the pixel using the specified blend mode
-					agg2d.blendPixel(dx, dy, srcPixel, agg2d.imageBlendMode)
+					// Simple pixel blending for transform operations
+					// For more complex blending, use the rendering pipeline methods
+					if agg2d.pixfmt != nil {
+						rgba := color.NewRGBA8[color.Linear](srcPixel[0], srcPixel[1], srcPixel[2], srcPixel[3])
+						agg2d.pixfmt.BlendPixel(dx, dy, rgba, 255)
+					}
 				}
 			}
 		}
@@ -266,23 +272,20 @@ func (agg2d *Agg2D) BlendImage(img *Image, imgX1, imgY1, imgX2, imgY2 int, dstX,
 		srcHeight = imgY2 - imgY1
 	}
 
-	// Perform the actual blending
-	for dy := 0; dy < srcHeight; dy++ {
-		for dx := 0; dx < srcWidth; dx++ {
-			srcX, srcY := imgX1+dx, imgY1+dy
-			dstX, dstY := dstXInt+dx, dstYInt+dy
+	// Create image pixel format for the source
+	imgPixFmt := newImagePixelFormat(img)
 
-			// Get source pixel
-			srcPixel := img.GetPixel(srcX, srcY)
+	// Create source rectangle
+	srcRect := &basics.RectI{
+		X1: imgX1,
+		Y1: imgY1,
+		X2: imgX2 - 1, // AGG uses inclusive coordinates
+		Y2: imgY2 - 1,
+	}
 
-			// Apply alpha modulation
-			if alpha < 255 {
-				srcPixel[3] = uint8((uint16(srcPixel[3]) * uint16(alpha)) / 255)
-			}
-
-			// Blend with destination using current blend mode
-			agg2d.blendPixel(dstX, dstY, srcPixel, agg2d.imageBlendMode)
-		}
+	// Use the rendering pipeline for blending
+	if agg2d.renBase != nil {
+		agg2d.renBase.BlendFrom(imgPixFmt, srcRect, dstXInt, dstYInt, basics.Int8u(alpha))
 	}
 
 	return nil
@@ -357,16 +360,20 @@ func (agg2d *Agg2D) CopyImage(img *Image, imgX1, imgY1, imgX2, imgY2 int, dstX, 
 		srcHeight = imgY2 - imgY1
 	}
 
-	// Perform the actual copying (no blending)
-	for dy := 0; dy < srcHeight; dy++ {
-		for dx := 0; dx < srcWidth; dx++ {
-			srcX, srcY := imgX1+dx, imgY1+dy
-			dstX, dstY := dstXInt+dx, dstYInt+dy
+	// Create image pixel format for the source
+	imgPixFmt := newImagePixelFormat(img)
 
-			// Get source pixel and copy directly to destination
-			srcPixel := img.GetPixel(srcX, srcY)
-			agg2d.setPixel(dstX, dstY, srcPixel)
-		}
+	// Create source rectangle
+	srcRect := &basics.RectI{
+		X1: imgX1,
+		Y1: imgY1,
+		X2: imgX2 - 1, // AGG uses inclusive coordinates
+		Y2: imgY2 - 1,
+	}
+
+	// Use the rendering pipeline for copying
+	if agg2d.renBase != nil {
+		agg2d.renBase.CopyFrom(imgPixFmt, srcRect, dstXInt, dstYInt)
 	}
 
 	return nil
@@ -460,11 +467,8 @@ func (img *Image) Attach(buf []uint8, width, height, stride int) {
 }
 
 // PixelFormat returns a pixel format interface for the image
-// TODO: This needs to return an appropriate pixel format based on the image data
-func (img *Image) PixelFormat() interface{} {
-	// TODO: Create and return appropriate pixel format (PixFmtRGBA32, etc.)
-	// based on the image data format
-	return nil
+func (img *Image) PixelFormat() *imagePixelFormat {
+	return newImagePixelFormat(img)
 }
 
 // IsAttached returns true if the image has buffer data attached
@@ -512,59 +516,4 @@ func (agg2d *Agg2D) rendererIntersects(y int) bool {
 // GetBounds returns the current rendering bounds
 func (agg2d *Agg2D) GetBounds() struct{ X1, Y1, X2, Y2 float64 } {
 	return agg2d.clipBox
-}
-
-// setPixel sets a pixel directly (for copying operations)
-func (agg2d *Agg2D) setPixel(x, y int, pixel [4]uint8) {
-	if agg2d.rbuf == nil || x < 0 || y < 0 || x >= agg2d.rbuf.Width() || y >= agg2d.rbuf.Height() {
-		return
-	}
-
-	// Get the pixel buffer and set the pixel directly
-	if agg2d.pixfmt != nil {
-		// Use pixel format's copy pixel method
-		color := [4]uint8{pixel[0], pixel[1], pixel[2], pixel[3]}
-		// Convert to the internal color format and set
-		// This is a simplified implementation - actual implementation would depend on pixfmt interface
-		_ = color // For now, avoid unused variable error
-	}
-}
-
-// blendPixel blends a pixel using the specified blend mode (for blending operations)
-func (agg2d *Agg2D) blendPixel(x, y int, pixel [4]uint8, blendMode BlendMode) {
-	if agg2d.rbuf == nil || x < 0 || y < 0 || x >= agg2d.rbuf.Width() || y >= agg2d.rbuf.Height() {
-		return
-	}
-
-	// Get destination pixel for blending
-	dstPixel := agg2d.getPixel(x, y)
-
-	// Apply blending based on blend mode
-	var result [4]uint8
-	switch blendMode {
-	case BlendAlpha:
-		// Standard alpha blending
-		alpha := float64(pixel[3]) / 255.0
-		invAlpha := 1.0 - alpha
-		result[0] = uint8(float64(pixel[0])*alpha + float64(dstPixel[0])*invAlpha)
-		result[1] = uint8(float64(pixel[1])*alpha + float64(dstPixel[1])*invAlpha)
-		result[2] = uint8(float64(pixel[2])*alpha + float64(dstPixel[2])*invAlpha)
-		result[3] = uint8(float64(pixel[3])*alpha + float64(dstPixel[3])*invAlpha)
-	default:
-		// For other blend modes, implement as needed
-		result = pixel
-	}
-
-	agg2d.setPixel(x, y, result)
-}
-
-// getPixel gets a pixel from the destination buffer
-func (agg2d *Agg2D) getPixel(x, y int) [4]uint8 {
-	if agg2d.rbuf == nil || x < 0 || y < 0 || x >= agg2d.rbuf.Width() || y >= agg2d.rbuf.Height() {
-		return [4]uint8{0, 0, 0, 0}
-	}
-
-	// This is a simplified implementation
-	// Actual implementation would use the pixel format interface
-	return [4]uint8{0, 0, 0, 255} // Default to black with full alpha
 }

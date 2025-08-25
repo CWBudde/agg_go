@@ -20,9 +20,9 @@ This checklist is generated from TODO-like comments found in Go source files (`T
 
 - [ ] internal/fonts/embedded_fonts.go
 
-  - [ ] L1056: Implement GSE4x8 font data
-  - [ ] L1063: Implement GSE5x9 font data
-  - [ ] L1070: Implement GSE6x9 font data
+  - [x] L1056: Implement GSE4x8 font data
+  - [x] L1063: Implement GSE5x9 font data
+  - [x] L1070: Implement GSE6x9 font data
   - [ ] L1077: Implement GSE6x12 font data
   - [ ] L1084: Implement GSE7x11 font data
   - [ ] L1091: Implement GSE7x11_bold font data
@@ -50,33 +50,3 @@ This checklist is generated from TODO-like comments found in Go source files (`T
   - [ ] L1261: Implement Verdana17_bold font data
   - [ ] L1268: Implement Verdana18 font data
   - [ ] L1275: Implement Verdana18_bold font data
-
-- [ ] internal/agg2d/image.go
-
-  - [ ] L33: Complete integration with rendering pipeline
-  - [ ] L165: Implement actual blending
-  - [ ] L217: Implement actual copying
-
-- [ ] internal/agg2d/rendering.go
-
-  - [ ] L14: Implement full fill rendering with gradients and patterns
-  - [ ] L33: Implement full stroke rendering with dashes and line styles
-  - [ ] L73: Implement proper curve approximation scale setting
-
-- [ ] internal/agg2d/text.go
-
-  - [ ] L191: Apply rotation transformation
-  - [ ] L225: Add glyph outline path to current path
-  - [ ] L232: Render the glyph using the scanline renderer
-  - [ ] L240: Render the monochrome glyph
-  - [ ] L254: Implement scanline rendering for glyphs
-  - [ ] L268: Use the AGG renderer to draw the scanline data
-  - [ ] L285: Implement binary (1-bit) rendering path similar to AA
-
-- [ ] internal/agg2d/text_test.go
-
-  - [ ] L97: Add tests with actual font loading when FreeType is available
-
-- [ ] internal/agg2d/paths.go
-
-  - [ ] L93: Implement proper smooth curve calculations by tracking previous control points

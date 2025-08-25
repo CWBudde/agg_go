@@ -106,7 +106,7 @@ func TestInBox(t *testing.T) {
 func TestWorldScreenScalarConversion(t *testing.T) {
 	agg2d := NewAgg2D()
 	agg2d.transform = transform.NewTransAffine()
-	agg2d.transform.Scale(2.0, 2.0) // 2x scale
+	agg2d.transform.ScaleXY(2.0, 2.0) // 2x scale
 
 	// Test world to screen
 	worldScalar := 10.0

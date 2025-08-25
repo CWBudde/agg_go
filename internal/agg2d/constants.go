@@ -13,6 +13,13 @@ const (
 	Rad2DegFactor = 180.0 / math.Pi
 )
 
+// Curve approximation constants
+const (
+	// ApproxScale is the global approximation scale factor for curves.
+	// This matches g_approxScale from the original C++ AGG library.
+	ApproxScale = 1.0
+)
+
 // Additional LineCap constants not yet defined in agg2d.go
 const (
 	CapSquare LineCap = 2

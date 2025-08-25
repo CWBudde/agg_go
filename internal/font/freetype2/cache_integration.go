@@ -18,8 +18,8 @@ type CacheManager2 struct {
 	cachedGlyphs *fonts.FmanCachedGlyphs
 	currentFont  LoadedFaceInterface // Reference to current font context
 	pathAdaptor  interface{}         // Either *path.SerializedIntegerPathAdaptor[int16] or *path.SerializedIntegerPathAdaptor[int32]
-	gray8Adaptor *scanline.SerializedScanlinesAdaptorAA[uint8]
-	monoAdaptor  *scanline.SerializedScanlinesAdaptorBin
+	gray8Adaptor *Gray8AdaptorWrapper
+	monoAdaptor  *MonoAdaptorWrapper
 	lastError    error
 }
 
@@ -44,9 +44,9 @@ func (cm *CacheManager2) initializeAdaptors() {
 			cm.pathAdaptor = engine32.PathAdaptor()
 			adaptorTypes := engine32.Gray8Adaptor()
 			if adaptorTypes != nil {
-				// TODO: Convert to Fman adaptors when available
-				// cm.gray8Adaptor = convertToFmanAA(adaptorTypes.Gray8Adaptor)
-				// cm.monoAdaptor = convertToFmanBin(adaptorTypes.MonoAdaptor)
+				// Convert to Fman adaptors
+				cm.gray8Adaptor = NewGray8AdaptorWrapper(adaptorTypes.Gray8Adaptor)
+				cm.monoAdaptor = NewMonoAdaptorWrapper(adaptorTypes.MonoAdaptor)
 			}
 		}
 	} else {
@@ -55,9 +55,9 @@ func (cm *CacheManager2) initializeAdaptors() {
 			cm.pathAdaptor = engine16.PathAdaptor()
 			adaptorTypes := engine16.Gray8Adaptor()
 			if adaptorTypes != nil {
-				// TODO: Convert to Fman adaptors when available
-				// cm.gray8Adaptor = convertToFmanAA(adaptorTypes.Gray8Adaptor)
-				// cm.monoAdaptor = convertToFmanBin(adaptorTypes.MonoAdaptor)
+				// Convert to Fman adaptors
+				cm.gray8Adaptor = NewGray8AdaptorWrapper(adaptorTypes.Gray8Adaptor)
+				cm.monoAdaptor = NewMonoAdaptorWrapper(adaptorTypes.MonoAdaptor)
 			}
 		}
 	}
@@ -110,12 +110,12 @@ func (cm *CacheManager2) PathAdaptor() interface{} {
 }
 
 // Gray8Adaptor returns the gray8 scanline adaptor.
-func (cm *CacheManager2) Gray8Adaptor() *scanline.SerializedScanlinesAdaptorAA[uint8] {
+func (cm *CacheManager2) Gray8Adaptor() *Gray8AdaptorWrapper {
 	return cm.gray8Adaptor
 }
 
 // MonoAdaptor returns the mono scanline adaptor.
-func (cm *CacheManager2) MonoAdaptor() *scanline.SerializedScanlinesAdaptorBin {
+func (cm *CacheManager2) MonoAdaptor() *MonoAdaptorWrapper {
 	return cm.monoAdaptor
 }
 
@@ -129,16 +129,14 @@ func (cm *CacheManager2) InitEmbeddedAdaptors(glyph *fonts.FmanCachedGlyph, x, y
 	switch glyph.DataType {
 	case fonts.FmanGlyphDataGray8:
 		// Initialize gray8 adaptor with glyph data
-		if len(glyph.Data) > 0 {
-			cm.gray8Adaptor = scanline.NewSerializedScanlinesAdaptorAA[uint8](glyph.Data, len(glyph.Data), x, y)
+		if cm.gray8Adaptor != nil && len(glyph.Data) > 0 {
+			cm.gray8Adaptor.InitGlyph(glyph.Data, glyph.DataSize, x, y)
 		}
 
 	case fonts.FmanGlyphDataMono:
 		// Initialize mono adaptor with glyph data
-		if len(glyph.Data) > 0 {
-			monoAdaptor := scanline.NewSerializedScanlinesAdaptorBin()
-			monoAdaptor.Init(glyph.Data, x, y)
-			cm.monoAdaptor = monoAdaptor
+		if cm.monoAdaptor != nil && len(glyph.Data) > 0 {
+			cm.monoAdaptor.InitGlyph(glyph.Data, glyph.DataSize, x, y)
 		}
 
 	case fonts.FmanGlyphDataOutline:

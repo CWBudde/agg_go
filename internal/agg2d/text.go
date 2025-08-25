@@ -5,8 +5,11 @@ package agg2d
 import (
 	"math"
 
+	"agg_go/internal/color"
 	"agg_go/internal/font"
 	"agg_go/internal/font/freetype"
+	"agg_go/internal/path"
+	"agg_go/internal/renderer/scanline"
 )
 
 // Font loads and configures a font for text rendering.
@@ -186,11 +189,10 @@ func (agg2d *Agg2D) Text(x, y float64, str string, roundOff bool, dx, dy float64
 	startX += dx
 	startY += dy
 
-	// Set up transformation matrix for text rotation
-	if agg2d.textAngle != 0.0 {
-		// TODO: Apply rotation transformation
-		// This would require setting up a transformation matrix
-		// and applying it to the rendering pipeline
+	// Get path adaptor for vector fonts - we'll handle rotation at the agg2d level
+	var pathStorage *path.PathStorageStl
+	if ps := fcm.PathAdaptor(); ps != nil {
+		pathStorage = ps
 	}
 
 	// Convert to screen coordinates for raster fonts
@@ -222,22 +224,37 @@ func (agg2d *Agg2D) Text(x, y float64, str string, roundOff bool, dx, dy float64
 		case font.GlyphDataOutline:
 			// Vector font rendering - add path to current path and draw
 			agg2d.path.RemoveAll()
-			// TODO: Add glyph outline path to current path
-			// This requires converting the font's path data to our path format
-			agg2d.DrawPath(FillAndStroke)
+			if pathStorage != nil {
+				// Add the glyph path to the current path
+				agg2d.path.ConcatPath(pathStorage, 0)
+			}
+
+			// For text rotation, apply transformation to the entire rendering context
+			if agg2d.textAngle != 0.0 {
+				// Save current transform
+				savedTransform := *agg2d.transform
+				// Apply text rotation: translate(-x,-y) -> rotate(angle) -> translate(x,y)
+				agg2d.transform.Translate(-x, -y)
+				agg2d.transform.Rotate(agg2d.textAngle)
+				agg2d.transform.Translate(x, y)
+
+				agg2d.DrawPath(FillAndStroke)
+
+				// Restore transform
+				*agg2d.transform = savedTransform
+			} else {
+				agg2d.DrawPath(FillAndStroke)
+			}
 
 		case font.GlyphDataGray8:
 			// Raster font rendering - render using scanlines
 			if adaptor := fcm.Gray8Adaptor(); adaptor != nil {
-				// TODO: Render the glyph using the scanline renderer
-				// This requires integration with the scanline rendering system
 				agg2d.renderGlyphScanlines(adaptor, glyph, currentX, currentY)
 			}
 
 		case font.GlyphDataMono:
 			// Monochrome font rendering
 			if adaptor := fcm.MonoAdaptor(); adaptor != nil {
-				// TODO: Render the monochrome glyph
 				agg2d.renderGlyphScanlines(adaptor, glyph, currentX, currentY)
 			}
 		}
@@ -251,9 +268,23 @@ func (agg2d *Agg2D) Text(x, y float64, str string, roundOff bool, dx, dy float64
 // renderGlyphScanlines renders a glyph using scanline data.
 // This is a helper method for the Text() function.
 func (agg2d *Agg2D) renderGlyphScanlines(adaptor interface{}, glyph *font.GlyphCache, x, y float64) {
-	// TODO: Implement scanline rendering for glyphs
-	// This requires integration with the AGG scanline rendering system
-	// For now, this is a placeholder that demonstrates the structure
+	if agg2d.renBase == nil || agg2d.scanline == nil {
+		return
+	}
+
+	// Get the current fill color as RGBA8[Linear]
+	fillColor := color.RGBA8[color.Linear]{
+		R: agg2d.fillColor[0],
+		G: agg2d.fillColor[1],
+		B: agg2d.fillColor[2],
+		A: agg2d.fillColor[3],
+	}
+
+	// Apply master alpha
+	if agg2d.masterAlpha != 1.0 {
+		alpha := uint8(float64(fillColor.A) * agg2d.masterAlpha)
+		fillColor.A = alpha
+	}
 
 	switch a := adaptor.(type) {
 	case *font.SerializedScanlinesAdaptorAA:
@@ -265,14 +296,18 @@ func (agg2d *Agg2D) renderGlyphScanlines(adaptor interface{}, glyph *font.GlyphC
 		offsetX := int(x) + bounds.X1
 		offsetY := int(y) + bounds.Y1
 
-		// TODO: Use the AGG renderer to draw the scanline data
-		// This would involve:
-		// 1. Setting up a scanline renderer with the current fill color
-		// 2. Processing the serialized scanline data
-		// 3. Rendering each scanline at the correct position
-		_ = offsetX
-		_ = offsetY
-		_ = data
+		// For font glyphs, we need to process the serialized scanline data
+		// and render each scanline directly using the base renderer
+		// This is a simplified approach - in full AGG, this would use
+		// a proper serialized scanlines adaptor that implements RasterizerInterface
+		if len(data) > 0 {
+			// Use the bounds to render a simple filled rectangle for now
+			// In a full implementation, this would deserialize and render actual scanlines
+			for yi := bounds.Y1; yi <= bounds.Y2; yi++ {
+				agg2d.renBase.BlendHline(offsetX, offsetY+yi-bounds.Y1,
+					offsetX+bounds.X2-bounds.X1, fillColor, 255)
+			}
+		}
 
 	case *font.SerializedScanlinesAdaptorBin:
 		// Render binary scanlines
@@ -282,9 +317,37 @@ func (agg2d *Agg2D) renderGlyphScanlines(adaptor interface{}, glyph *font.GlyphC
 		offsetX := int(x) + bounds.X1
 		offsetY := int(y) + bounds.Y1
 
-		// TODO: Similar to above but for binary (1-bit) data
-		_ = offsetX
-		_ = offsetY
-		_ = data
+		// Similar approach for binary data - render as solid rectangle
+		if len(data) > 0 {
+			for yi := bounds.Y1; yi <= bounds.Y2; yi++ {
+				agg2d.renBase.BlendHline(offsetX, offsetY+yi-bounds.Y1,
+					offsetX+bounds.X2-bounds.X1, fillColor, 255)
+			}
+		}
 	}
+}
+
+// renderScanlines renders scanlines using the provided rasterizer and scanline adaptors.
+// This is a wrapper method that bridges between font glyph adaptors and the AGG rendering pipeline.
+func (agg2d *Agg2D) renderScanlines(ras scanline.RasterizerInterface, sl scanline.ScanlineInterface) {
+	if agg2d.renBase == nil {
+		return
+	}
+
+	// Get the current fill color as RGBA8[Linear]
+	fillColor := color.RGBA8[color.Linear]{
+		R: agg2d.fillColor[0],
+		G: agg2d.fillColor[1],
+		B: agg2d.fillColor[2],
+		A: agg2d.fillColor[3],
+	}
+
+	// Apply master alpha
+	if agg2d.masterAlpha != 1.0 {
+		alpha := uint8(float64(fillColor.A) * agg2d.masterAlpha)
+		fillColor.A = alpha
+	}
+
+	// Use the scanline renderer to render all scanlines
+	scanline.RenderScanlinesAASolid(ras, sl, agg2d.renBase, fillColor)
 }

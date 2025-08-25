@@ -8,7 +8,11 @@ import (
 	"agg_go/internal/basics"
 	"agg_go/internal/color"
 	"agg_go/internal/conv"
-	"agg_go/internal/renderer/scanline"
+	"agg_go/internal/rasterizer"
+	renscan "agg_go/internal/renderer/scanline"
+	"agg_go/internal/scanline"
+	"agg_go/internal/span"
+	"agg_go/internal/transform"
 )
 
 // Rendering methods
@@ -24,9 +28,9 @@ func (agg2d *Agg2D) renderFill() {
 
 	// Apply fill rule (even-odd or non-zero winding)
 	if agg2d.evenOddFlag {
-		agg2d.rasterizer.SetFillRule(basics.FillEvenOdd)
+		agg2d.rasterizer.FillingRule(basics.FillEvenOdd)
 	} else {
-		agg2d.rasterizer.SetFillRule(basics.FillNonZero)
+		agg2d.rasterizer.FillingRule(basics.FillNonZero)
 	}
 
 	// Create transformed curve converter
@@ -39,7 +43,7 @@ func (agg2d *Agg2D) renderFill() {
 		if cmd == basics.PathCmdStop {
 			break
 		}
-		agg2d.rasterizer.AddVertex(x, y, cmd)
+		agg2d.rasterizer.AddVertex(x, y, uint32(cmd))
 	}
 
 	// Render with appropriate color/gradient
@@ -60,7 +64,7 @@ func (agg2d *Agg2D) renderStroke() {
 	agg2d.rasterizer.Reset()
 
 	// Always use non-zero fill rule for strokes
-	agg2d.rasterizer.SetFillRule(basics.FillNonZero)
+	agg2d.rasterizer.FillingRule(basics.FillNonZero)
 
 	// Create stroke path (potentially with dashes)
 	var strokeSource conv.VertexSource
@@ -79,7 +83,7 @@ func (agg2d *Agg2D) renderStroke() {
 		if cmd == basics.PathCmdStop {
 			break
 		}
-		agg2d.rasterizer.AddVertex(x, y, cmd)
+		agg2d.rasterizer.AddVertex(x, y, uint32(cmd))
 	}
 
 	// Render with appropriate color/gradient
@@ -101,9 +105,9 @@ func (agg2d *Agg2D) renderFillWithLineColor() {
 
 	// Apply fill rule (even-odd or non-zero winding)
 	if agg2d.evenOddFlag {
-		agg2d.rasterizer.SetFillRule(basics.FillEvenOdd)
+		agg2d.rasterizer.FillingRule(basics.FillEvenOdd)
 	} else {
-		agg2d.rasterizer.SetFillRule(basics.FillNonZero)
+		agg2d.rasterizer.FillingRule(basics.FillNonZero)
 	}
 
 	// Create transformed curve converter
@@ -116,7 +120,7 @@ func (agg2d *Agg2D) renderFillWithLineColor() {
 		if cmd == basics.PathCmdStop {
 			break
 		}
-		agg2d.rasterizer.AddVertex(x, y, cmd)
+		agg2d.rasterizer.AddVertex(x, y, uint32(cmd))
 	}
 
 	// Render using line color instead of fill color
@@ -142,7 +146,7 @@ func (agg2d *Agg2D) renderSolidFillWithColor(c Color) {
 	internalColor := color.RGBA8[color.Linear]{R: c[0], G: c[1], B: c[2], A: c[3]}
 
 	// Create solid renderer
-	renSolid := scanline.NewRendererScanlineAASolidWithColor(agg2d.renBase, internalColor)
+	renSolid := renscan.NewRendererScanlineAASolidWithColor(agg2d.renBase, internalColor)
 
 	// Render scanlines
 	scanlineRender(agg2d.rasterizer, agg2d.scanline, renSolid)
@@ -158,53 +162,175 @@ func (agg2d *Agg2D) renderSolidStroke() {
 	internalColor := color.RGBA8[color.Linear]{R: agg2d.lineColor[0], G: agg2d.lineColor[1], B: agg2d.lineColor[2], A: agg2d.lineColor[3]}
 
 	// Create solid renderer
-	renSolid := scanline.NewRendererScanlineAASolidWithColor(agg2d.renBase, internalColor)
+	renSolid := renscan.NewRendererScanlineAASolidWithColor(agg2d.renBase, internalColor)
 
 	// Render scanlines
 	scanlineRender(agg2d.rasterizer, agg2d.scanline, renSolid)
 }
 
-// renderGradientFill renders gradient fill (placeholder for now)
+// renderGradientFill renders gradient fill using the appropriate gradient type
 func (agg2d *Agg2D) renderGradientFill() {
-	// TODO: Implement gradient fill rendering
-	// For now, fall back to solid fill
-	agg2d.renderSolidFill()
+	if agg2d.fillGradientFlag == Linear {
+		agg2d.renderLinearGradientFill(true) // true = use fill gradient settings
+	} else if agg2d.fillGradientFlag == Radial {
+		agg2d.renderRadialGradientFill(true) // true = use fill gradient settings
+	} else {
+		// Solid fill fallback
+		agg2d.renderSolidFill()
+	}
 }
 
-// renderGradientStroke renders gradient stroke (placeholder for now)
+// renderLinearGradientFill renders linear gradient fill
+func (agg2d *Agg2D) renderLinearGradientFill(useFillGradient bool) {
+	if agg2d.renBase == nil || agg2d.spanAllocator == nil {
+		return
+	}
+
+	// Choose the appropriate gradient settings
+	var gradientMatrix *transform.TransAffine
+	var gradientColors [256]Color
+	var d1, d2 float64
+
+	if useFillGradient {
+		gradientMatrix = agg2d.fillGradientMatrix
+		gradientColors = agg2d.fillGradient
+		d1 = agg2d.fillGradientD1
+		d2 = agg2d.fillGradientD2
+	} else {
+		gradientMatrix = agg2d.lineGradientMatrix
+		gradientColors = agg2d.lineGradient
+		d1 = agg2d.lineGradientD1
+		d2 = agg2d.lineGradientD2
+	}
+
+	// Create span interpolator with the gradient transformation matrix
+	spanInterpolator := span.NewSpanInterpolatorLinearDefault(gradientMatrix)
+
+	// Convert first and last gradient colors to RGBA8 for span generator
+	startColor := color.RGBA8[color.Linear]{R: gradientColors[0][0], G: gradientColors[0][1], B: gradientColors[0][2], A: gradientColors[0][3]}
+	endColor := color.RGBA8[color.Linear]{R: gradientColors[255][0], G: gradientColors[255][1], B: gradientColors[255][2], A: gradientColors[255][3]}
+
+	// Create linear gradient span generator
+	spanGenerator := span.NewLinearGradientRGBA8(
+		spanInterpolator,
+		startColor, endColor,
+		d1, d2,
+		256, // gradient size
+	)
+
+	// Render scanlines using the span generator directly
+	// Create adapters to bridge interface differences
+	rasAdapter := rasterizerAdapter{ras: agg2d.rasterizer}
+	slAdapter := &scanlineWrapper{sl: agg2d.scanline}
+	renscan.RenderScanlinesAA(rasAdapter, slAdapter, agg2d.renBase, agg2d.spanAllocator, spanGenerator)
+}
+
+// renderRadialGradientFill renders radial gradient fill
+func (agg2d *Agg2D) renderRadialGradientFill(useFillGradient bool) {
+	if agg2d.renBase == nil || agg2d.spanAllocator == nil {
+		return
+	}
+
+	// Choose the appropriate gradient settings
+	var gradientMatrix *transform.TransAffine
+	var gradientColors [256]Color
+	var d1, d2 float64
+
+	if useFillGradient {
+		gradientMatrix = agg2d.fillGradientMatrix
+		gradientColors = agg2d.fillGradient
+		d1 = agg2d.fillGradientD1
+		d2 = agg2d.fillGradientD2
+	} else {
+		gradientMatrix = agg2d.lineGradientMatrix
+		gradientColors = agg2d.lineGradient
+		d1 = agg2d.lineGradientD1
+		d2 = agg2d.lineGradientD2
+	}
+
+	// Create span interpolator with the gradient transformation matrix
+	spanInterpolator := span.NewSpanInterpolatorLinearDefault(gradientMatrix)
+
+	// Convert first and last gradient colors to RGBA8 for span generator
+	startColor := color.RGBA8[color.Linear]{R: gradientColors[0][0], G: gradientColors[0][1], B: gradientColors[0][2], A: gradientColors[0][3]}
+	endColor := color.RGBA8[color.Linear]{R: gradientColors[255][0], G: gradientColors[255][1], B: gradientColors[255][2], A: gradientColors[255][3]}
+
+	// Create radial gradient span generator
+	spanGenerator := span.NewRadialGradientRGBA8(
+		spanInterpolator,
+		startColor, endColor,
+		d1, d2,
+		256, // gradient size
+	)
+
+	// Render scanlines using the span generator directly
+	// Create adapters to bridge interface differences
+	rasAdapter := rasterizerAdapter{ras: agg2d.rasterizer}
+	slAdapter := &scanlineWrapper{sl: agg2d.scanline}
+	renscan.RenderScanlinesAA(rasAdapter, slAdapter, agg2d.renBase, agg2d.spanAllocator, spanGenerator)
+}
+
+// renderGradientStroke renders gradient stroke using line gradient settings
 func (agg2d *Agg2D) renderGradientStroke() {
-	// TODO: Implement gradient stroke rendering
-	// For now, fall back to solid stroke
-	agg2d.renderSolidStroke()
+	if agg2d.lineGradientFlag == Linear {
+		agg2d.renderLinearGradientFill(false) // false = use line gradient settings
+	} else if agg2d.lineGradientFlag == Radial {
+		agg2d.renderRadialGradientFill(false) // false = use line gradient settings
+	} else {
+		// Solid stroke fallback
+		agg2d.renderSolidStroke()
+	}
 }
 
-// renderGradientFillWithLineGradient renders fill using line gradient (placeholder for now)
+// renderGradientFillWithLineGradient renders fill using line gradient settings
 func (agg2d *Agg2D) renderGradientFillWithLineGradient() {
-	// TODO: Implement gradient fill using line gradient
-	// For now, fall back to solid fill with line color
-	agg2d.renderSolidFillWithColor(agg2d.lineColor)
+	if agg2d.lineGradientFlag == Linear {
+		agg2d.renderLinearGradientFill(false) // false = use line gradient settings
+	} else if agg2d.lineGradientFlag == Radial {
+		agg2d.renderRadialGradientFill(false) // false = use line gradient settings
+	} else {
+		// Solid fill fallback using line color
+		agg2d.renderSolidFillWithColor(agg2d.lineColor)
+	}
 }
 
-// scanlineRender is a helper function to render scanlines
-func scanlineRender[R any, S any](rasterizer interface{}, scanline S, renderer R) {
-	// TODO: Implement proper scanline rendering
-	// This is a placeholder that needs to be implemented based on the actual
-	// interfaces provided by the rasterizer and scanline types
+// scanlineRender is a helper function to render scanlines using a renderer
+func scanlineRender(rasterizer *rasterizer.RasterizerScanlineAA[*rasterizer.RasterizerSlNoClip, rasterizer.RasConvDbl], sl *scanline.ScanlineU8, renderer renscan.RendererInterface[color.RGBA8[color.Linear]]) {
+	// Create adapters to bridge interface differences
+	rasAdapter := rasterizerAdapter{ras: rasterizer}
+	slAdapter := &scanlineWrapper{sl: sl}
+
+	if !rasAdapter.RewindScanlines() {
+		return
+	}
+
+	// Reset scanline for the rasterizer bounds
+	slAdapter.Reset(rasAdapter.MinX(), rasAdapter.MaxX())
+
+	// Prepare the renderer
+	renderer.Prepare()
+
+	// Sweep through all scanlines
+	for rasAdapter.SweepScanline(slAdapter) {
+		renderer.Render(slAdapter)
+	}
 }
 
 // updateApproximationScales updates the approximation scale for curve converters
 // based on the current transformation matrix scaling
 func (agg2d *Agg2D) updateApproximationScales() {
 	if agg2d.convCurve != nil {
-		// Calculate overall scaling factor from transformation matrix
-		scaleX := math.Sqrt(agg2d.transform.SX*agg2d.transform.SX + agg2d.transform.SHY*agg2d.transform.SHY)
-		scaleY := math.Sqrt(agg2d.transform.SHX*agg2d.transform.SHX + agg2d.transform.SY*agg2d.transform.SY)
-		scale := (scaleX + scaleY) / 2.0
+		// Use the world-to-screen scaling factor with the global approximation scale
+		scale := agg2d.WorldToScreenScalar(1.0) * ApproxScale
 
 		// Update curve approximation scale
-		// TODO: Implement proper curve approximation scale setting
-		// agg2d.convCurve.SetApproximationScale(scale)
-		_ = scale // Avoid unused variable warning for now
+		agg2d.convCurve.SetApproximationScale(scale)
+	}
+
+	if agg2d.convStroke != nil {
+		// Also update the stroke converter with the same scale for consistency
+		scale := agg2d.WorldToScreenScalar(1.0) * ApproxScale
+		agg2d.convStroke.SetApproximationScale(scale)
 	}
 }
 

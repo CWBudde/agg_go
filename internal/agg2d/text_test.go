@@ -1,6 +1,7 @@
 package agg2d
 
 import (
+	"os"
 	"testing"
 )
 
@@ -94,7 +95,8 @@ func TestTextWidth(t *testing.T) {
 		t.Errorf("Expected text width to be 0 with no font loaded, got %v", width)
 	}
 
-	// TODO: Add tests with actual font loading when FreeType is available
+	// Test with actual font loading when FreeType is available
+	testWithFreeType(t, agg2d)
 }
 
 // TestTextRendering tests basic text rendering functionality.
@@ -276,4 +278,237 @@ func BenchmarkTextRender(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		agg2d.Text(float64(i%800), float64((i/800)%600), testText, false, 0, 0)
 	}
+}
+
+// testWithFreeType tests font loading when FreeType is available.
+// This function is called from TestTextWidth to add comprehensive font tests.
+func testWithFreeType(t *testing.T, agg2d *Agg2D) {
+	fontPath := findSystemFont()
+	if fontPath == "" {
+		t.Skip("No system font found for FreeType testing")
+		return
+	}
+
+	t.Logf("Testing with font: %s", fontPath)
+
+	// Test basic font loading
+	err := agg2d.Font(fontPath, 16.0, false, false, RasterFontCache, 0.0)
+	if err != nil {
+		t.Logf("FreeType not available or font load failed: %v", err)
+		t.Skip("Skipping FreeType-dependent tests")
+		return
+	}
+
+	// Test text width calculation with actual font
+	width := agg2d.TextWidth("Hello World")
+	if width <= 0.0 {
+		t.Errorf("Expected positive text width with loaded font, got %v", width)
+	}
+
+	// Test with different text strings
+	testStrings := []string{
+		"A",
+		"Hello",
+		"The quick brown fox",
+		"",
+	}
+
+	for _, str := range testStrings {
+		width := agg2d.TextWidth(str)
+		if str == "" && width != 0.0 {
+			t.Errorf("Expected zero width for empty string, got %v", width)
+		} else if str != "" && width <= 0.0 {
+			t.Errorf("Expected positive width for '%s', got %v", str, width)
+		}
+	}
+}
+
+// TestFontLoadingWithFreeType tests various font loading scenarios.
+func TestFontLoadingWithFreeType(t *testing.T) {
+	fontPath := findSystemFont()
+	if fontPath == "" {
+		t.Skip("No system font found for FreeType testing")
+		return
+	}
+
+	agg2d := NewAgg2D()
+	buf := make([]byte, 800*600*4)
+	agg2d.Attach(buf, 800, 600, 800*4)
+
+	tests := []struct {
+		name      string
+		height    float64
+		bold      bool
+		italic    bool
+		cacheType FontCacheType
+		angle     float64
+	}{
+		{"Basic", 16.0, false, false, RasterFontCache, 0.0},
+		{"Bold", 16.0, true, false, RasterFontCache, 0.0},
+		{"Italic", 16.0, false, true, RasterFontCache, 0.0},
+		{"BoldItalic", 16.0, true, true, RasterFontCache, 0.0},
+		{"LargeSize", 32.0, false, false, RasterFontCache, 0.0},
+		{"SmallSize", 8.0, false, false, RasterFontCache, 0.0},
+		{"VectorCache", 16.0, false, false, VectorFontCache, 0.0},
+		{"WithAngle", 16.0, false, false, RasterFontCache, 45.0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := agg2d.Font(fontPath, tt.height, tt.bold, tt.italic, tt.cacheType, tt.angle)
+			if err != nil {
+				t.Logf("Font loading failed for %s: %v", tt.name, err)
+				t.Skip("Skipping test due to font loading failure")
+				return
+			}
+
+			// Verify font height was set
+			if agg2d.FontHeight() != tt.height {
+				t.Errorf("Expected font height %v, got %v", tt.height, agg2d.FontHeight())
+			}
+
+			// Test text rendering doesn't crash
+			agg2d.Text(100, 100, "Test Text", false, 0, 0)
+
+			// Test text width calculation
+			width := agg2d.TextWidth("Test")
+			// Note: VectorFontCache may return 0 width as it's not designed for text measurement
+			if tt.cacheType != VectorFontCache && width <= 0.0 {
+				t.Errorf("Expected positive text width for cache type %v, got %v", tt.cacheType, width)
+			}
+		})
+	}
+}
+
+// TestTextRenderingWithFreeType tests text rendering with actual fonts.
+func TestTextRenderingWithFreeType(t *testing.T) {
+	fontPath := findSystemFont()
+	if fontPath == "" {
+		t.Skip("No system font found for FreeType testing")
+		return
+	}
+
+	agg2d := NewAgg2D()
+	buf := make([]byte, 800*600*4)
+	agg2d.Attach(buf, 800, 600, 800*4)
+	agg2d.ClearAll(White)
+	agg2d.FillColor(Black)
+
+	err := agg2d.Font(fontPath, 16.0, false, false, RasterFontCache, 0.0)
+	if err != nil {
+		t.Skip("FreeType not available or font load failed")
+		return
+	}
+
+	// Test rendering with different alignments
+	alignments := []struct {
+		name   string
+		alignX TextAlignment
+		alignY TextAlignment
+	}{
+		{"LeftTop", AlignLeft, AlignTop},
+		{"CenterCenter", AlignCenter, AlignCenter},
+		{"RightBottom", AlignRight, AlignBottom},
+	}
+
+	for _, alignment := range alignments {
+		t.Run(alignment.name, func(t *testing.T) {
+			agg2d.TextAlignment(alignment.alignX, alignment.alignY)
+			agg2d.Text(400, 300, "Test Text with "+alignment.name, false, 0, 0)
+			// Should not crash - this is the main test
+		})
+	}
+
+	// Test with Unicode characters
+	agg2d.Text(100, 400, "Unicode: 世界 🌍", false, 0, 0)
+
+	// Test with different font heights
+	heights := []float64{8.0, 12.0, 16.0, 24.0, 32.0}
+	for i, height := range heights {
+		err := agg2d.Font(fontPath, height, false, false, RasterFontCache, 0.0)
+		if err != nil {
+			continue
+		}
+		agg2d.Text(100, 100+float64(i*40), "Height test", false, 0, 0)
+	}
+}
+
+// BenchmarkTextRenderWithFreeType benchmarks text rendering with actual fonts.
+func BenchmarkTextRenderWithFreeType(b *testing.B) {
+	fontPath := findSystemFont()
+	if fontPath == "" {
+		b.Skip("No system font found for FreeType testing")
+		return
+	}
+
+	agg2d := NewAgg2D()
+	buf := make([]byte, 800*600*4)
+	agg2d.Attach(buf, 800, 600, 800*4)
+	agg2d.ClearAll(White)
+	agg2d.FillColor(Black)
+
+	err := agg2d.Font(fontPath, 16.0, false, false, RasterFontCache, 0.0)
+	if err != nil {
+		b.Skip("FreeType not available or font load failed")
+		return
+	}
+
+	testText := "Benchmark Text with FreeType"
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		agg2d.Text(float64(i%800), float64((i/800)%600), testText, false, 0, 0)
+	}
+}
+
+// BenchmarkTextWidthWithFreeType benchmarks text width calculation with actual fonts.
+func BenchmarkTextWidthWithFreeType(b *testing.B) {
+	fontPath := findSystemFont()
+	if fontPath == "" {
+		b.Skip("No system font found for FreeType testing")
+		return
+	}
+
+	agg2d := NewAgg2D()
+	buf := make([]byte, 800*600*4)
+	agg2d.Attach(buf, 800, 600, 800*4)
+
+	err := agg2d.Font(fontPath, 16.0, false, false, RasterFontCache, 0.0)
+	if err != nil {
+		b.Skip("FreeType not available or font load failed")
+		return
+	}
+
+	testText := "The quick brown fox jumps over the lazy dog"
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		agg2d.TextWidth(testText)
+	}
+}
+
+// findSystemFont attempts to locate a system font for testing.
+// This function tries common font paths on Linux, macOS, and Windows.
+func findSystemFont() string {
+	// Common system font paths
+	fontPaths := []string{
+		"/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",                 // Linux (Debian/Ubuntu)
+		"/usr/share/fonts/TTF/DejaVuSans.ttf",                             // Linux (Arch)
+		"/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf", // Linux (RedHat/Fedora)
+		"/usr/share/fonts/truetype/ubuntu-font-family/Ubuntu-R.ttf",       // Linux (Ubuntu)
+		"/usr/share/fonts/truetype/lato/Lato-Regular.ttf",                 // Linux (some distros)
+		"/System/Library/Fonts/Arial.ttf",                                 // macOS
+		"/System/Library/Fonts/Helvetica.ttc",                             // macOS
+		"/Library/Fonts/Arial.ttf",                                        // macOS (user)
+		"C:\\Windows\\Fonts\\arial.ttf",                                   // Windows
+		"C:\\Windows\\Fonts\\calibri.ttf",                                 // Windows
+	}
+
+	for _, fontPath := range fontPaths {
+		if _, err := os.Stat(fontPath); err == nil {
+			return fontPath
+		}
+	}
+
+	return ""
 }

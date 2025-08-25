@@ -10,6 +10,7 @@ import (
 	"agg_go/internal/pixfmt"
 	"agg_go/internal/rasterizer"
 	"agg_go/internal/scanline"
+	"agg_go/internal/span"
 	"agg_go/internal/transform"
 )
 
@@ -145,6 +146,13 @@ type Agg2D struct {
 	convCurve  *conv.ConvCurve
 	convDash   *conv.ConvDash // Optional dash converter (nil when not using dashes)
 	convStroke *conv.ConvStroke
+
+	// Span rendering components for gradients and patterns
+	spanAllocator *span.SpanAllocator[color.RGBA8[color.Linear]]
+
+	// Control point tracking for smooth curves
+	lastCtrlX, lastCtrlY float64
+	hasLastCtrl          bool
 }
 
 // TransformStack is defined in transform.go
@@ -230,6 +238,9 @@ func NewAgg2D() *Agg2D {
 	// Initialize rasterizer with default cell block limit and clipper
 	clipper := &rasterizer.RasterizerSlNoClip{}
 	agg2d.rasterizer = rasterizer.NewRasterizerScanlineAA[*rasterizer.RasterizerSlNoClip, rasterizer.RasConvDbl](8192, clipper)
+
+	// Initialize span allocator for gradient rendering
+	agg2d.spanAllocator = span.NewSpanAllocator[color.RGBA8[color.Linear]]()
 
 	// Set default line cap and join
 	if agg2d.convStroke != nil {
