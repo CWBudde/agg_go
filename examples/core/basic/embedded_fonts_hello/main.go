@@ -44,14 +44,14 @@ func colorToRGBA8[C ColorRGBA8](c C) (r, g, b, a uint8) {
 }
 
 func (s *simpleSpanRenderer[C]) blendPixel(x, y int, sr, sg, sb, sa, cover uint8) {
-	if x < 0 || y < 0 || x >= s.img.Width || y >= s.img.Height {
+	if x < 0 || y < 0 || x >= s.img.Width() || y >= s.img.Height() {
 		return
 	}
 	// Modulate alpha by coverage
 	alpha := uint32(sa) * uint32(cover) / 255
 	inv := 255 - alpha
 
-	off := (y*s.img.Width + x) * 4
+	off := (y*s.img.Width() + x) * 4
 	d := s.img.Data
 	dr, dg, db, da := uint32(d[off+0]), uint32(d[off+1]), uint32(d[off+2]), uint32(d[off+3])
 
@@ -80,7 +80,7 @@ func (s *simpleSpanRenderer[C]) BlendSolidHspan(x, y, length int, c C, covers []
 	// For each vertical replication
 	for vy := 0; vy < s.scaleY; vy++ {
 		yy := ys + vy
-		if yy < 0 || yy >= s.img.Height {
+		if yy < 0 || yy >= s.img.Height() {
 			continue
 		}
 		// Expand horizontally per source cover
@@ -133,7 +133,7 @@ func (s *simpleSpanRenderer[C]) BlendSolidVspan(x, y, length int, c C, covers []
 }
 
 func saveAsPNG(img *agg.Image, filename string) error {
-	goImg := image.NewRGBA(image.Rect(0, 0, img.Width, img.Height))
+	goImg := image.NewRGBA(image.Rect(0, 0, img.Width(), img.Height()))
 	copy(goImg.Pix, img.Data)
 	f, err := os.Create(filename)
 	if err != nil {
