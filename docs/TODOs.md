@@ -19,9 +19,9 @@ This checklist is generated from TODO-like comments found in Go source files (`T
   - [x] L74: Implement SetColor based on renderer interface
   - [x] L75: Implement scanline rendering invocation
 
-- [ ] internal/pixfmt/blender/base_test.go
+- [x] internal/pixfmt/blender/base_test.go
 
-  - [ ] L269: Move this test to the parent pixfmt package
+  - [x] L269: Move this test to the parent pixfmt package
 
 - [ ] internal/pixfmt/pixfmt_rgb_test.go
 

@@ -265,13 +265,3 @@ func TestBlenderRGBAPlainRoundTrip(t *testing.T) {
 	}
 }
 
-// TestBlenderBaseInterface is commented out to avoid import cycle
-// TODO: Move this test to the parent pixfmt package
-/*
-func TestBlenderBaseInterface(t *testing.T) {
-	// Test that all blenders implement the BlenderBase interface
-	var _ BlenderBase[basics.Int8u, RGBAOrder] = BlenderRGBA[color.Linear, RGBAOrder]{}
-	var _ BlenderBase[basics.Int8u, RGBAOrder] = BlenderRGBAPre[color.Linear, RGBAOrder]{}
-	var _ BlenderBase[basics.Int8u, RGBAOrder] = BlenderRGBAPlain[color.Linear, RGBAOrder]{}
-}
-*/
