@@ -11,9 +11,9 @@ func TestDelay(t *testing.T) {
 	backend := &X11Backend{}
 
 	testCases := []struct {
-		name       string
-		delayMs    uint32
-		tolerance  time.Duration // Allow some tolerance for timing precision
+		name      string
+		delayMs   uint32
+		tolerance time.Duration // Allow some tolerance for timing precision
 	}{
 		{
 			name:      "short delay 10ms",
@@ -21,7 +21,7 @@ func TestDelay(t *testing.T) {
 			tolerance: 5 * time.Millisecond,
 		},
 		{
-			name:      "medium delay 50ms", 
+			name:      "medium delay 50ms",
 			delayMs:   50,
 			tolerance: 5 * time.Millisecond,
 		},
@@ -53,11 +53,11 @@ func TestDelay(t *testing.T) {
 // TestDelayZero verifies that zero delay works correctly
 func TestDelayZero(t *testing.T) {
 	backend := &X11Backend{}
-	
+
 	start := time.Now()
 	backend.Delay(0)
 	elapsed := time.Since(start)
-	
+
 	// Zero delay should complete very quickly (within 1ms)
 	if elapsed > time.Millisecond {
 		t.Errorf("Delay(0) took %v, expected to complete quickly", elapsed)

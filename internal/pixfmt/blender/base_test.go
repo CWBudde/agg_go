@@ -264,4 +264,3 @@ func TestBlenderRGBAPlainRoundTrip(t *testing.T) {
 		t.Errorf("BlenderRGBAPlain round trip failed: original %+v, retrieved %+v", originalColor, retrievedColor)
 	}
 }
-
