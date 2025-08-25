@@ -5,6 +5,7 @@ import (
 	"reflect"
 
 	"agg_go/internal/basics"
+	"agg_go/internal/color"
 )
 
 // RenderScanlines is a generic scanline rendering function that works with any renderer.
@@ -232,21 +233,17 @@ func renderCompoundMultipleStyles[C any](ras CompoundRasterizerInterface, slAA S
 func renderCompoundSolidStyle[C any](span SpanData, styleHandler StyleHandlerInterface[C],
 	style int, mixBuffer []C, minX int,
 ) {
-	color := styleHandler.Color(style)
+	sourceColor := styleHandler.Color(style)
 
 	for i := 0; i < span.Len; i++ {
 		cover := span.Covers[i]
 		bufferIndex := span.X - minX + i
 
 		if cover == basics.CoverFull {
-			mixBuffer[bufferIndex] = color
+			mixBuffer[bufferIndex] = sourceColor
 		} else {
-			// Blend with existing color in mix buffer
-			// This is a simplified version - real implementation would need
-			// proper color blending based on the color type
-			if reflect.ValueOf(mixBuffer[bufferIndex]).IsZero() {
-				mixBuffer[bufferIndex] = color
-			}
+			// Use proper color blending with cover value
+			blendColorWithCover(&mixBuffer[bufferIndex], sourceColor, cover)
 		}
 	}
 }
@@ -266,12 +263,54 @@ func renderCompoundGeneratedStyle[C any](span SpanData, sl ScanlineInterface,
 		if cover == basics.CoverFull {
 			mixBuffer[bufferIndex] = colors[i]
 		} else {
-			// Blend with existing color in mix buffer
-			// This is a simplified version - real implementation would need
-			// proper color blending based on the color type
-			if reflect.ValueOf(mixBuffer[bufferIndex]).IsZero() {
-				mixBuffer[bufferIndex] = colors[i]
-			}
+			// Use proper color blending with cover value
+			blendColorWithCover(&mixBuffer[bufferIndex], colors[i], cover)
+		}
+	}
+}
+
+// blendColorWithCover performs proper color blending with cover value using AddWithCover methods
+func blendColorWithCover[C any](dest *C, src C, cover basics.Int8u) {
+	// Use type switches to handle different color types
+	switch destPtr := any(dest).(type) {
+	case *color.RGBA8[color.Linear]:
+		if srcColor, ok := any(src).(color.RGBA8[color.Linear]); ok {
+			destPtr.AddWithCover(srcColor, cover)
+		}
+	case *color.RGBA8[color.SRGB]:
+		if srcColor, ok := any(src).(color.RGBA8[color.SRGB]); ok {
+			destPtr.AddWithCover(srcColor, cover)
+		}
+	case *color.RGBA16[color.Linear]:
+		if srcColor, ok := any(src).(color.RGBA16[color.Linear]); ok {
+			destPtr.AddWithCover(srcColor, cover)
+		}
+	case *color.RGBA16[color.SRGB]:
+		if srcColor, ok := any(src).(color.RGBA16[color.SRGB]); ok {
+			destPtr.AddWithCover(srcColor, cover)
+		}
+	case *color.RGBA32[color.Linear]:
+		if srcColor, ok := any(src).(color.RGBA32[color.Linear]); ok {
+			destPtr.AddWithCover(srcColor, cover)
+		}
+	case *color.RGBA32[color.SRGB]:
+		if srcColor, ok := any(src).(color.RGBA32[color.SRGB]); ok {
+			destPtr.AddWithCover(srcColor, cover)
+		}
+	case *color.Gray8[color.Linear]:
+		if srcColor, ok := any(src).(color.Gray8[color.Linear]); ok {
+			destPtr.AddWithCover(srcColor, cover)
+		}
+	case *color.Gray8[color.SRGB]:
+		if srcColor, ok := any(src).(color.Gray8[color.SRGB]); ok {
+			destPtr.AddWithCover(srcColor, cover)
+		}
+	default:
+		// Fallback to the simplified approach if the color type doesn't support AddWithCover
+		if cover == basics.CoverFull {
+			*dest = src
+		} else if reflect.ValueOf(*dest).IsZero() {
+			*dest = src
 		}
 	}
 }

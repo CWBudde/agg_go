@@ -610,9 +610,12 @@ func (r *RasterizerSlNoClip) MoveTo(x1, y1 float64) {
 
 // LineTo draws a line from the current position to (x2, y2)
 func (r *RasterizerSlNoClip) LineTo(outline RasterizerInterface, x2, y2 float64) {
-	// For simplicity, just convert to integer coordinates
-	x1i, y1i := int(r.x1), int(r.y1)
-	x2i, y2i := int(x2), int(y2)
+	// Apply coordinate conversion just like RasConvDbl.Xi() and Yi() do
+	// This matches the C++ ras_conv_dbl::upscale() behavior
+	x1i := basics.IRound(r.x1 * basics.PolySubpixelScale)
+	y1i := basics.IRound(r.y1 * basics.PolySubpixelScale)
+	x2i := basics.IRound(x2 * basics.PolySubpixelScale)
+	y2i := basics.IRound(y2 * basics.PolySubpixelScale)
 	outline.Line(x1i, y1i, x2i, y2i)
 	r.x1 = x2
 	r.y1 = y2

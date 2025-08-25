@@ -9,6 +9,8 @@ import (
 	"agg_go/internal/basics"
 	"agg_go/internal/fonts"
 	"agg_go/internal/path"
+	"agg_go/internal/pixfmt/gamma"
+	"agg_go/internal/rasterizer"
 	"agg_go/internal/scanline"
 	"agg_go/internal/transform"
 )
@@ -174,8 +176,9 @@ type FontEngineBase struct {
 	scanlinesAA  *scanline.ScanlineStorageAA[uint8]
 	scanlinesBin *scanline.ScanlineStorageBin
 
-	// Rasterizer
-	rasterizer interface{} // Complex generic parameters, will be typed later
+	// Rasterizer and gamma correction
+	rasterizer interface{}         // Complex generic parameters, will be typed later
+	gammaFunc  gamma.GammaFunction // Gamma correction function
 }
 
 // NewFontEngineBase creates a new base font engine with the specified configuration.
@@ -193,14 +196,30 @@ func NewFontEngineBase(flag32 bool, maxFaces uint32) *FontEngineBase {
 		scanlineBin:   scanline.NewScanlineBin(),
 		scanlinesAA:   scanline.NewScanlineStorageAA[uint8](),
 		scanlinesBin:  scanline.NewScanlineStorageBin(),
-		rasterizer:    nil, // TODO: Initialize with proper generic parameters
+		rasterizer:    rasterizer.NewRasterizerSlNoClip(nil), // Simple no-clip rasterizer for font rendering
+		gammaFunc:     gamma.NewGammaNone(),                  // Default to no gamma correction
 	}
 }
 
 // SetGamma sets the gamma correction for the rasterizer.
-func (feb *FontEngineBase) SetGamma(gamma float64) {
-	// TODO: Implement gamma function and apply to rasterizer
-	// This would correspond to AGG's template<class GammaF> void gamma(const GammaF& f)
+func (feb *FontEngineBase) SetGamma(gammaValue float64) {
+	if gammaValue <= 0 {
+		// Invalid gamma, use no correction
+		feb.gammaFunc = gamma.NewGammaNone()
+	} else if gammaValue == 1.0 {
+		// No correction needed
+		feb.gammaFunc = gamma.NewGammaNone()
+	} else {
+		// Use power gamma correction
+		feb.gammaFunc = gamma.NewGammaPower(gammaValue)
+	}
+	// Note: The gamma function will be applied during rasterization
+	// This corresponds to AGG's template<class GammaF> void gamma(const GammaF& f)
+}
+
+// GetGammaFunc returns the current gamma correction function.
+func (feb *FontEngineBase) GetGammaFunc() gamma.GammaFunction {
+	return feb.gammaFunc
 }
 
 // Is32Bit returns whether this engine uses 32-bit precision.

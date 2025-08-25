@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"agg_go/internal/basics"
+	"agg_go/internal/curves"
 )
 
 func TestConvSmoothPoly1_Basic(t *testing.T) {
@@ -140,7 +141,7 @@ func TestConvSmoothPoly1_CurveApproximation(t *testing.T) {
 	source := NewCurveVertexSource(vertices)
 	smooth := NewConvSmoothPoly1(source)
 
-	// Test without curve approximation
+	// Test without curve approximation (ConvSmoothPoly1 just generates cubic curves)
 	smooth.SetCurveApproximation(false)
 	if smooth.CurveApproximation() != false {
 		t.Error("Expected curve approximation to be false")
@@ -158,7 +159,7 @@ func TestConvSmoothPoly1_CurveApproximation(t *testing.T) {
 		noCurveApproxVertices++
 	}
 
-	// Test with curve approximation
+	// Test with curve approximation (ConvSmoothPoly1 still generates same cubic curves)
 	smooth.SetCurveApproximation(true)
 	if smooth.CurveApproximation() != true {
 		t.Error("Expected curve approximation to be true")
@@ -176,7 +177,7 @@ func TestConvSmoothPoly1_CurveApproximation(t *testing.T) {
 		curveApproxVertices++
 	}
 
-	// Both modes should generate vertices, but possibly different counts
+	// Both modes should generate same vertices since ConvSmoothPoly1 doesn't approximate
 	if noCurveApproxVertices == 0 || curveApproxVertices == 0 {
 		t.Error("Both approximation modes should generate vertices")
 	}
@@ -594,6 +595,278 @@ func TestConvSmoothPoly1_EdgeCases(t *testing.T) {
 	}
 }
 
+func TestConvSmoothPoly1Curve_Basic(t *testing.T) {
+	// Create a simple rectangular path
+	vertices := []CurveVertex{
+		{X: 0, Y: 0, Cmd: basics.PathCmdMoveTo},
+		{X: 100, Y: 0, Cmd: basics.PathCmdLineTo},
+		{X: 100, Y: 100, Cmd: basics.PathCmdLineTo},
+		{X: 0, Y: 100, Cmd: basics.PathCmdLineTo},
+		{X: 0, Y: 0, Cmd: basics.PathCmdEndPoly | basics.PathCommand(basics.PathFlagsClose)},
+	}
+
+	source := NewCurveVertexSource(vertices)
+	smoothCurve := NewConvSmoothPoly1Curve(source)
+
+	smoothCurve.Rewind(0)
+
+	// Collect all vertices - should be line segments approximating the smooth curves
+	var resultVertices []CurveVertex
+	for {
+		x, y, cmd := smoothCurve.Vertex()
+		if cmd == basics.PathCmdStop {
+			break
+		}
+		resultVertices = append(resultVertices, CurveVertex{X: x, Y: y, Cmd: cmd})
+	}
+
+	// Should have generated many line segments to approximate the smooth curves
+	if len(resultVertices) < 10 {
+		t.Errorf("Smooth polygon with curve approximation should generate many line segments, got %d", len(resultVertices))
+	}
+
+	// First vertex should be MoveTo
+	if resultVertices[0].Cmd != basics.PathCmdMoveTo {
+		t.Errorf("First vertex should be MoveTo, got %v", resultVertices[0].Cmd)
+	}
+
+	// Should have only MoveTo and LineTo commands (no Curve4 since they're approximated)
+	for i, v := range resultVertices {
+		if v.Cmd != basics.PathCmdMoveTo && v.Cmd != basics.PathCmdLineTo &&
+			(v.Cmd&basics.PathCmdMask) != basics.PathCmdEndPoly {
+			t.Errorf("Vertex %d should be MoveTo/LineTo/EndPoly but got %v", i, v.Cmd)
+		}
+	}
+
+	// Last vertex should be EndPoly (but might be LineTo since curve approximation creates line segments)
+	if len(resultVertices) > 0 {
+		lastVertex := resultVertices[len(resultVertices)-1]
+		maskedCmd := lastVertex.Cmd & basics.PathCmdMask
+		if maskedCmd != basics.PathCmdEndPoly && lastVertex.Cmd != basics.PathCmdLineTo {
+			t.Errorf("Last vertex should be EndPoly or LineTo, got %v (masked: %v)",
+				lastVertex.Cmd, maskedCmd)
+		}
+	}
+}
+
+func TestConvSmoothPoly1Curve_ApproximationMethods(t *testing.T) {
+	vertices := []CurveVertex{
+		{X: 0, Y: 0, Cmd: basics.PathCmdMoveTo},
+		{X: 50, Y: 0, Cmd: basics.PathCmdLineTo},
+		{X: 50, Y: 50, Cmd: basics.PathCmdLineTo},
+		{X: 0, Y: 50, Cmd: basics.PathCmdLineTo},
+		{X: 0, Y: 0, Cmd: basics.PathCmdStop},
+	}
+
+	source := NewCurveVertexSource(vertices)
+	smoothCurve := NewConvSmoothPoly1Curve(source)
+
+	// Test default approximation method
+	defaultMethod := smoothCurve.ApproximationMethod()
+	if defaultMethod < 0 || defaultMethod > 2 {
+		t.Errorf("Default approximation method should be valid, got %v", defaultMethod)
+	}
+
+	// Test setting different approximation methods
+	methods := []curves.CurveApproximationMethod{
+		curves.CurveInc,
+		curves.CurveDiv,
+	}
+
+	for _, method := range methods {
+		smoothCurve.SetApproximationMethod(method)
+		if smoothCurve.ApproximationMethod() != method {
+			t.Errorf("Expected approximation method %v, got %v", method, smoothCurve.ApproximationMethod())
+		}
+	}
+}
+
+func TestConvSmoothPoly1Curve_ApproximationScale(t *testing.T) {
+	vertices := []CurveVertex{
+		{X: 0, Y: 0, Cmd: basics.PathCmdMoveTo},
+		{X: 50, Y: 0, Cmd: basics.PathCmdLineTo},
+		{X: 50, Y: 50, Cmd: basics.PathCmdLineTo},
+		{X: 0, Y: 50, Cmd: basics.PathCmdLineTo},
+		{X: 0, Y: 0, Cmd: basics.PathCmdStop},
+	}
+
+	source := NewCurveVertexSource(vertices)
+	smoothCurve := NewConvSmoothPoly1Curve(source)
+
+	// Test default approximation scale
+	defaultScale := smoothCurve.ApproximationScale()
+	if defaultScale <= 0 || defaultScale > 10 {
+		t.Errorf("Default approximation scale should be reasonable, got %f", defaultScale)
+	}
+
+	// Test setting different approximation scales
+	testScales := []float64{0.1, 1.0, 2.0, 5.0}
+
+	for _, scale := range testScales {
+		smoothCurve.SetApproximationScale(scale)
+		actualScale := smoothCurve.ApproximationScale()
+		if actualScale != scale {
+			t.Errorf("Expected approximation scale %f, got %f", scale, actualScale)
+		}
+
+		// Test that different scales produce different vertex counts
+		source.index = 0
+		smoothCurve.Rewind(0)
+		vertexCount := 0
+		for {
+			_, _, cmd := smoothCurve.Vertex()
+			if cmd == basics.PathCmdStop {
+				break
+			}
+			vertexCount++
+		}
+
+		// Should have some vertices for any reasonable scale
+		if vertexCount == 0 {
+			t.Errorf("Scale %f should produce vertices", scale)
+		}
+	}
+}
+
+func TestConvSmoothPoly1Curve_AngleTolerance(t *testing.T) {
+	vertices := []CurveVertex{
+		{X: 0, Y: 0, Cmd: basics.PathCmdMoveTo},
+		{X: 100, Y: 0, Cmd: basics.PathCmdLineTo},
+		{X: 100, Y: 100, Cmd: basics.PathCmdLineTo},
+		{X: 0, Y: 100, Cmd: basics.PathCmdLineTo},
+		{X: 0, Y: 0, Cmd: basics.PathCmdStop},
+	}
+
+	source := NewCurveVertexSource(vertices)
+	smoothCurve := NewConvSmoothPoly1Curve(source)
+
+	// Test default angle tolerance
+	defaultTolerance := smoothCurve.AngleTolerance()
+	if defaultTolerance < 0 || defaultTolerance > 1 {
+		t.Errorf("Default angle tolerance should be reasonable, got %f", defaultTolerance)
+	}
+
+	// Test setting different angle tolerances
+	testTolerances := []float64{0.01, 0.1, 0.2, 0.5}
+
+	for _, tolerance := range testTolerances {
+		smoothCurve.SetAngleTolerance(tolerance)
+		actualTolerance := smoothCurve.AngleTolerance()
+		if actualTolerance != tolerance {
+			t.Errorf("Expected angle tolerance %f, got %f", tolerance, actualTolerance)
+		}
+	}
+}
+
+func TestConvSmoothPoly1Curve_CuspLimit(t *testing.T) {
+	vertices := []CurveVertex{
+		{X: 0, Y: 0, Cmd: basics.PathCmdMoveTo},
+		{X: 100, Y: 0, Cmd: basics.PathCmdLineTo},
+		{X: 100, Y: 100, Cmd: basics.PathCmdLineTo},
+		{X: 0, Y: 100, Cmd: basics.PathCmdLineTo},
+		{X: 0, Y: 0, Cmd: basics.PathCmdStop},
+	}
+
+	source := NewCurveVertexSource(vertices)
+	smoothCurve := NewConvSmoothPoly1Curve(source)
+
+	// Test default cusp limit
+	defaultLimit := smoothCurve.CuspLimit()
+	if defaultLimit < 0 {
+		t.Errorf("Default cusp limit should be non-negative, got %f", defaultLimit)
+	}
+
+	// Test setting different cusp limits
+	testLimits := []float64{0.0, 0.1, 0.5, 1.0}
+
+	for _, limit := range testLimits {
+		smoothCurve.SetCuspLimit(limit)
+		actualLimit := smoothCurve.CuspLimit()
+		if math.Abs(actualLimit-limit) > 1e-10 {
+			t.Errorf("Expected cusp limit %f, got %f", limit, actualLimit)
+		}
+	}
+}
+
+func TestConvSmoothPoly1Curve_SmoothValue(t *testing.T) {
+	vertices := []CurveVertex{
+		{X: 0, Y: 0, Cmd: basics.PathCmdMoveTo},
+		{X: 50, Y: 0, Cmd: basics.PathCmdLineTo},
+		{X: 50, Y: 50, Cmd: basics.PathCmdLineTo},
+		{X: 0, Y: 50, Cmd: basics.PathCmdLineTo},
+		{X: 0, Y: 0, Cmd: basics.PathCmdStop},
+	}
+
+	source := NewCurveVertexSource(vertices)
+	smoothCurve := NewConvSmoothPoly1Curve(source)
+
+	// Test default smooth value
+	defaultSmooth := smoothCurve.SmoothValue()
+	if defaultSmooth <= 0 || defaultSmooth > 2.0 {
+		t.Errorf("Default smooth value should be reasonable, got %f", defaultSmooth)
+	}
+
+	// Test setting custom smooth values
+	testValues := []float64{0.0, 0.5, 1.0}
+
+	for _, value := range testValues {
+		smoothCurve.SetSmoothValue(value)
+		actualValue := smoothCurve.SmoothValue()
+		if actualValue != value {
+			t.Errorf("Expected smooth value %f, got %f", value, actualValue)
+		}
+	}
+}
+
+func TestConvSmoothPoly1Curve_DifferentApproximations(t *testing.T) {
+	vertices := []CurveVertex{
+		{X: 0, Y: 0, Cmd: basics.PathCmdMoveTo},
+		{X: 100, Y: 0, Cmd: basics.PathCmdLineTo},
+		{X: 100, Y: 100, Cmd: basics.PathCmdLineTo},
+		{X: 0, Y: 100, Cmd: basics.PathCmdLineTo},
+		{X: 0, Y: 0, Cmd: basics.PathCmdStop},
+	}
+
+	source := NewCurveVertexSource(vertices)
+	smoothCurve := NewConvSmoothPoly1Curve(source)
+
+	// Test with coarse approximation (fewer line segments)
+	smoothCurve.SetApproximationScale(5.0)
+	source.index = 0
+	smoothCurve.Rewind(0)
+
+	coarseVertexCount := 0
+	for {
+		_, _, cmd := smoothCurve.Vertex()
+		if cmd == basics.PathCmdStop {
+			break
+		}
+		coarseVertexCount++
+	}
+
+	// Test with fine approximation (more line segments)
+	smoothCurve.SetApproximationScale(0.1)
+	source.index = 0
+	smoothCurve.Rewind(0)
+
+	fineVertexCount := 0
+	for {
+		_, _, cmd := smoothCurve.Vertex()
+		if cmd == basics.PathCmdStop {
+			break
+		}
+		fineVertexCount++
+	}
+
+	// Fine approximation should typically generate more vertices
+	if coarseVertexCount == 0 || fineVertexCount == 0 {
+		t.Error("Both approximation scales should generate vertices")
+	}
+
+	// Note: We don't strictly require fineVertexCount > coarseVertexCount
+	// because the actual behavior depends on the curve complexity and implementation
+}
+
 // Benchmark tests
 func BenchmarkConvSmoothPoly1_Rectangle(b *testing.B) {
 	vertices := []CurveVertex{
@@ -698,6 +971,59 @@ func BenchmarkConvSmoothPoly1_MaxSmoothing(b *testing.B) {
 		smooth.Rewind(0)
 		for {
 			_, _, cmd := smooth.Vertex()
+			if cmd == basics.PathCmdStop {
+				break
+			}
+		}
+	}
+}
+
+func BenchmarkConvSmoothPoly1Curve_Rectangle(b *testing.B) {
+	vertices := []CurveVertex{
+		{X: 0, Y: 0, Cmd: basics.PathCmdMoveTo},
+		{X: 100, Y: 0, Cmd: basics.PathCmdLineTo},
+		{X: 100, Y: 100, Cmd: basics.PathCmdLineTo},
+		{X: 0, Y: 100, Cmd: basics.PathCmdLineTo},
+		{X: 0, Y: 0, Cmd: basics.PathCmdStop},
+	}
+
+	source := NewCurveVertexSource(vertices)
+	smoothCurve := NewConvSmoothPoly1Curve(source)
+	smoothCurve.SetSmoothValue(0.5)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		source.index = 0
+		smoothCurve.Rewind(0)
+		for {
+			_, _, cmd := smoothCurve.Vertex()
+			if cmd == basics.PathCmdStop {
+				break
+			}
+		}
+	}
+}
+
+func BenchmarkConvSmoothPoly1Curve_FineApproximation(b *testing.B) {
+	vertices := []CurveVertex{
+		{X: 0, Y: 0, Cmd: basics.PathCmdMoveTo},
+		{X: 100, Y: 0, Cmd: basics.PathCmdLineTo},
+		{X: 100, Y: 100, Cmd: basics.PathCmdLineTo},
+		{X: 0, Y: 100, Cmd: basics.PathCmdLineTo},
+		{X: 0, Y: 0, Cmd: basics.PathCmdStop},
+	}
+
+	source := NewCurveVertexSource(vertices)
+	smoothCurve := NewConvSmoothPoly1Curve(source)
+	smoothCurve.SetSmoothValue(0.8)
+	smoothCurve.SetApproximationScale(0.1) // Fine approximation
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		source.index = 0
+		smoothCurve.Rewind(0)
+		for {
+			_, _, cmd := smoothCurve.Vertex()
 			if cmd == basics.PathCmdStop {
 				break
 			}

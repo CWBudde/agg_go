@@ -41,6 +41,12 @@ type GammaFunc interface {
 	InvFloat(v float32) float32 // Inverse gamma correction for float
 }
 
+// ColorBlender defines the interface for colors that can be blended with cover values
+// for compound rendering operations. This matches the C++ AGG add(color, cover) method.
+type ColorBlender interface {
+	AddWithCover(c ColorBlender, cover basics.Int8u)
+}
+
 // RGBA represents a floating-point RGBA color (base type)
 type RGBA struct {
 	R, G, B, A float64
@@ -372,6 +378,34 @@ func (c RGBA8[CS]) Add(c2 RGBA8[CS]) RGBA8[CS] {
 	}
 }
 
+// AddWithCover adds another RGBA8 color with coverage, matching C++ AGG's add(color, cover) method
+func (c *RGBA8[CS]) AddWithCover(c2 RGBA8[CS], cover basics.Int8u) {
+	if cover == basics.CoverMask {
+		if c2.A == 255 { // base_mask
+			*c = c2
+			return
+		} else {
+			cr := uint32(c.R) + uint32(c2.R)
+			cg := uint32(c.G) + uint32(c2.G)
+			cb := uint32(c.B) + uint32(c2.B)
+			ca := uint32(c.A) + uint32(c2.A)
+			c.R = basics.Int8u(minUint32(cr, 255))
+			c.G = basics.Int8u(minUint32(cg, 255))
+			c.B = basics.Int8u(minUint32(cb, 255))
+			c.A = basics.Int8u(minUint32(ca, 255))
+		}
+	} else {
+		cr := uint32(c.R) + uint32(RGBA8MultCover(c2.R, cover))
+		cg := uint32(c.G) + uint32(RGBA8MultCover(c2.G, cover))
+		cb := uint32(c.B) + uint32(RGBA8MultCover(c2.B, cover))
+		ca := uint32(c.A) + uint32(RGBA8MultCover(c2.A, cover))
+		c.R = basics.Int8u(minUint32(cr, 255))
+		c.G = basics.Int8u(minUint32(cg, 255))
+		c.B = basics.Int8u(minUint32(cb, 255))
+		c.A = basics.Int8u(minUint32(ca, 255))
+	}
+}
+
 // Scale multiplies the color by a scalar value
 func (c RGBA8[CS]) Scale(k float64) RGBA8[CS] {
 	return RGBA8[CS]{
@@ -525,6 +559,13 @@ func minUint32(a, b uint32) uint32 {
 }
 
 func minFloat64(a, b float64) float64 {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func minFloat32(a, b float32) float32 {
 	if a < b {
 		return a
 	}
@@ -693,6 +734,45 @@ func (c *RGBA16[CS]) ApplyGammaInv(gamma GammaLUT) {
 	// Alpha component is not affected by gamma correction
 }
 
+// Add adds another RGBA16 color
+func (c RGBA16[CS]) Add(c2 RGBA16[CS]) RGBA16[CS] {
+	return RGBA16[CS]{
+		R: basics.Int16u(minUint32(uint32(c.R)+uint32(c2.R), 65535)),
+		G: basics.Int16u(minUint32(uint32(c.G)+uint32(c2.G), 65535)),
+		B: basics.Int16u(minUint32(uint32(c.B)+uint32(c2.B), 65535)),
+		A: basics.Int16u(minUint32(uint32(c.A)+uint32(c2.A), 65535)),
+	}
+}
+
+// AddWithCover adds another RGBA16 color with coverage, matching C++ AGG's add(color, cover) method
+func (c *RGBA16[CS]) AddWithCover(c2 RGBA16[CS], cover basics.Int8u) {
+	cover16 := basics.Int16u(cover)<<8 | basics.Int16u(cover) // Convert 8-bit cover to 16-bit
+	if cover == basics.CoverMask {
+		if c2.A == 65535 { // base_mask for 16-bit
+			*c = c2
+			return
+		} else {
+			cr := uint32(c.R) + uint32(c2.R)
+			cg := uint32(c.G) + uint32(c2.G)
+			cb := uint32(c.B) + uint32(c2.B)
+			ca := uint32(c.A) + uint32(c2.A)
+			c.R = basics.Int16u(minUint32(cr, 65535))
+			c.G = basics.Int16u(minUint32(cg, 65535))
+			c.B = basics.Int16u(minUint32(cb, 65535))
+			c.A = basics.Int16u(minUint32(ca, 65535))
+		}
+	} else {
+		cr := uint32(c.R) + uint32(RGBA16MultCover(c2.R, cover16))
+		cg := uint32(c.G) + uint32(RGBA16MultCover(c2.G, cover16))
+		cb := uint32(c.B) + uint32(RGBA16MultCover(c2.B, cover16))
+		ca := uint32(c.A) + uint32(RGBA16MultCover(c2.A, cover16))
+		c.R = basics.Int16u(minUint32(cr, 65535))
+		c.G = basics.Int16u(minUint32(cg, 65535))
+		c.B = basics.Int16u(minUint32(cb, 65535))
+		c.A = basics.Int16u(minUint32(ca, 65535))
+	}
+}
+
 // Common 16-bit color types
 type (
 	RGBA16Linear = RGBA16[Linear]
@@ -826,6 +906,27 @@ func (c RGBA32[CS]) Add(c2 RGBA32[CS]) RGBA32[CS] {
 		G: c.G + c2.G,
 		B: c.B + c2.B,
 		A: c.A + c2.A,
+	}
+}
+
+// AddWithCover adds another RGBA32 color with coverage, matching C++ AGG's add(color, cover) method
+func (c *RGBA32[CS]) AddWithCover(c2 RGBA32[CS], cover basics.Int8u) {
+	coverFloat := float32(cover) / 255.0
+	if cover == basics.CoverMask {
+		if c2.A == 1.0 { // base_mask for float32 (1.0)
+			*c = c2
+			return
+		} else {
+			c.R = minFloat32(c.R+c2.R, 1.0)
+			c.G = minFloat32(c.G+c2.G, 1.0)
+			c.B = minFloat32(c.B+c2.B, 1.0)
+			c.A = minFloat32(c.A+c2.A, 1.0)
+		}
+	} else {
+		c.R = minFloat32(c.R+c2.R*coverFloat, 1.0)
+		c.G = minFloat32(c.G+c2.G*coverFloat, 1.0)
+		c.B = minFloat32(c.B+c2.B*coverFloat, 1.0)
+		c.A = minFloat32(c.A+c2.A*coverFloat, 1.0)
 	}
 }
 

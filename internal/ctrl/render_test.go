@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"agg_go/internal/basics"
+	"agg_go/internal/renderer/scanline"
 )
 
 // Mock implementations for testing
@@ -275,5 +276,262 @@ func TestRenderControlIntegration(t *testing.T) {
 
 	if totalVertices == 0 {
 		t.Error("Expected some vertices to be rendered")
+	}
+}
+
+// Full scanline interfaces mocks for comprehensive testing
+
+type mockScanlineRasterizer struct {
+	resetCalled          bool
+	addPathCalls         []uint
+	rewindScanlinesCount int
+	sweepScanlineCalls   int
+	currentSweepCount    int
+	minX, maxX           int
+}
+
+func (mr *mockScanlineRasterizer) Reset() {
+	mr.resetCalled = true
+	// Reset the sweep count for the new path
+	mr.currentSweepCount = 0
+}
+
+func (mr *mockScanlineRasterizer) AddPath(vs VertexSourceInterface, pathID uint) {
+	mr.addPathCalls = append(mr.addPathCalls, pathID)
+	// Consume the vertex source
+	vs.Rewind(pathID)
+	for {
+		x, y, cmd := vs.Vertex()
+		_, _, _ = x, y, cmd
+		if cmd == 0 {
+			break
+		}
+	}
+}
+
+func (mr *mockScanlineRasterizer) RewindScanlines() bool {
+	mr.rewindScanlinesCount++
+	mr.currentSweepCount = 0
+	return true
+}
+
+func (mr *mockScanlineRasterizer) SweepScanline(sl scanline.ScanlineInterface) bool {
+	mr.sweepScanlineCalls++
+	mr.currentSweepCount++
+	// Return false after processing some scanlines to end the loop for this path
+	return mr.currentSweepCount <= 2
+}
+
+func (mr *mockScanlineRasterizer) MinX() int {
+	return mr.minX
+}
+
+func (mr *mockScanlineRasterizer) MaxX() int {
+	return mr.maxX
+}
+
+// Mock scanline that returns a simple span
+type mockScanlineFull struct {
+	y        int
+	numSpans int
+}
+
+func (ms *mockScanlineFull) Y() int {
+	return ms.y
+}
+
+func (ms *mockScanlineFull) NumSpans() int {
+	return ms.numSpans
+}
+
+func (ms *mockScanlineFull) Begin() scanline.ScanlineIterator {
+	return &mockScanlineIterator{
+		span: scanline.SpanData{
+			X:      10,
+			Len:    20,
+			Covers: []basics.Int8u{basics.CoverFull, basics.CoverFull},
+		},
+	}
+}
+
+type mockScanlineIterator struct {
+	span    scanline.SpanData
+	hasNext bool
+}
+
+func (msi *mockScanlineIterator) GetSpan() scanline.SpanData {
+	return msi.span
+}
+
+func (msi *mockScanlineIterator) Next() bool {
+	if msi.hasNext {
+		msi.hasNext = false
+		return true
+	}
+	return false
+}
+
+// Mock base renderer
+type mockBaseRenderer struct {
+	blendSolidHspanCalls []blendSolidHspanCall
+	blendHlineCalls      []blendHlineCall
+	blendColorHspanCalls []blendColorHspanCall
+}
+
+type blendSolidHspanCall struct {
+	x, y, len int
+	color     string
+	covers    []basics.Int8u
+}
+
+type blendHlineCall struct {
+	x, y, x2 int
+	color    string
+	cover    basics.Int8u
+}
+
+type blendColorHspanCall struct {
+	x, y, len int
+	colors    []string
+	covers    []basics.Int8u
+	cover     basics.Int8u
+}
+
+func (mbr *mockBaseRenderer) BlendSolidHspan(x, y, len int, color string, covers []basics.Int8u) {
+	mbr.blendSolidHspanCalls = append(mbr.blendSolidHspanCalls, blendSolidHspanCall{
+		x: x, y: y, len: len, color: color, covers: covers,
+	})
+}
+
+func (mbr *mockBaseRenderer) BlendHline(x, y, x2 int, color string, cover basics.Int8u) {
+	mbr.blendHlineCalls = append(mbr.blendHlineCalls, blendHlineCall{
+		x: x, y: y, x2: x2, color: color, cover: cover,
+	})
+}
+
+func (mbr *mockBaseRenderer) BlendColorHspan(x, y, len int, colors []string, covers []basics.Int8u, cover basics.Int8u) {
+	mbr.blendColorHspanCalls = append(mbr.blendColorHspanCalls, blendColorHspanCall{
+		x: x, y: y, len: len, colors: colors, covers: covers, cover: cover,
+	})
+}
+
+// Mock renderer with color setting capability
+type mockFullRenderer struct {
+	currentColor        string
+	setColorCalls       []string
+	prepareCalled       bool
+	renderScanlineCalls int
+}
+
+func (mfr *mockFullRenderer) SetColor(color string) {
+	mfr.currentColor = color
+	mfr.setColorCalls = append(mfr.setColorCalls, color)
+}
+
+func (mfr *mockFullRenderer) Prepare() {
+	mfr.prepareCalled = true
+}
+
+func (mfr *mockFullRenderer) Render(sl scanline.ScanlineInterface) {
+	mfr.renderScanlineCalls++
+	// Just count the render calls for testing
+}
+
+// Test RenderCtrl function with full scanline interfaces
+func TestRenderCtrlFull(t *testing.T) {
+	ctrl := newMockControl()
+	ras := &mockScanlineRasterizer{minX: 0, maxX: 100}
+	sl := &mockScanlineFull{y: 50, numSpans: 1}
+	ren := &mockBaseRenderer{}
+
+	// Call the RenderCtrl function
+	RenderCtrl(ras, sl, ren, ctrl)
+
+	// Verify rasterizer was called correctly for each path
+	expectedPaths := int(ctrl.NumPaths())
+	if len(ras.addPathCalls) != expectedPaths {
+		t.Errorf("Expected %d AddPath calls, got %d", expectedPaths, len(ras.addPathCalls))
+	}
+
+	// Verify RewindScanlines was called for each path
+	if ras.rewindScanlinesCount != expectedPaths {
+		t.Errorf("Expected %d RewindScanlines calls, got %d", expectedPaths, ras.rewindScanlinesCount)
+	}
+
+	// Verify AddPath was called with correct path IDs
+	for i := 0; i < expectedPaths; i++ {
+		if int(ras.addPathCalls[i]) != i {
+			t.Errorf("Expected AddPath call %d to have pathID %d, got %d", i, i, ras.addPathCalls[i])
+		}
+	}
+
+	// Verify renderer was called - it should have been called via RenderScanlinesAASolid
+	// The number of calls depends on how many paths were processed and how many scanlines each generated
+	if len(ren.blendSolidHspanCalls) == 0 {
+		t.Error("Expected BlendSolidHspan to be called from RenderScanlinesAASolid")
+	}
+
+	// Since each path generates separate RenderScanlinesAASolid calls,
+	// we should see calls for each color. The exact order and number depends on
+	// the mock rasterizer implementation, so we just verify that both colors appear.
+	colorsUsed := make(map[string]bool)
+	for _, call := range ren.blendSolidHspanCalls {
+		colorsUsed[call.color] = true
+	}
+
+	expectedColors := []string{"red", "blue"}
+	for _, expectedColor := range expectedColors {
+		if !colorsUsed[expectedColor] {
+			t.Errorf("Expected to see color %s in render calls, but it was not found", expectedColor)
+		}
+	}
+}
+
+// Test RenderCtrlRS function with full scanline interfaces
+func TestRenderCtrlRSFull(t *testing.T) {
+	ctrl := newMockControl()
+	ras := &mockScanlineRasterizer{minX: 0, maxX: 100}
+	sl := &mockScanlineFull{y: 50, numSpans: 1}
+	ren := &mockFullRenderer{}
+
+	// Call the RenderCtrlRS function
+	RenderCtrlRS(ras, sl, ren, ctrl)
+
+	expectedPaths := int(ctrl.NumPaths())
+
+	// Verify rasterizer was called correctly
+	if ras.rewindScanlinesCount == 0 {
+		t.Error("Expected RewindScanlines to be called")
+	}
+
+	if ras.sweepScanlineCalls == 0 {
+		t.Error("Expected SweepScanline to be called")
+	}
+
+	if len(ras.addPathCalls) != expectedPaths {
+		t.Errorf("Expected %d AddPath calls, got %d", expectedPaths, len(ras.addPathCalls))
+	}
+
+	// Verify renderer SetColor was called correctly
+	if len(ren.setColorCalls) != expectedPaths {
+		t.Errorf("Expected %d SetColor calls, got %d", expectedPaths, len(ren.setColorCalls))
+	}
+
+	// Verify Prepare was called
+	if !ren.prepareCalled {
+		t.Error("Expected Prepare to be called from RenderScanlines")
+	}
+
+	// Verify Render was called
+	if ren.renderScanlineCalls == 0 {
+		t.Error("Expected Render to be called from RenderScanlines")
+	}
+
+	// Verify correct colors were set
+	expectedColors := []string{"red", "blue"}
+	for i, color := range ren.setColorCalls {
+		if color != expectedColors[i] {
+			t.Errorf("Expected SetColor(%s) for path %d, got SetColor(%s)", expectedColors[i], i, color)
+		}
 	}
 }

@@ -32,24 +32,27 @@ func (m *MockMarkerLocator) Rewind(markerIndex uint) {
 }
 
 func (m *MockMarkerLocator) Vertex() (x, y float64, cmd basics.PathCommand) {
-	if m.currentMarker >= len(m.markers) {
-		return 0, 0, basics.PathCmdStop
+	// Process all markers sequentially within a single rewind
+	for m.currentMarker < len(m.markers) {
+		marker := m.markers[m.currentMarker]
+		switch m.vertexCount {
+		case 0:
+			// Return first point (marker position)
+			m.vertexCount++
+			return marker.x1, marker.y1, basics.PathCmdMoveTo
+		case 1:
+			// Return second point (direction)
+			m.vertexCount++
+			return marker.x2, marker.y2, basics.PathCmdLineTo
+		default:
+			// After providing two vertices for this marker, move to next marker
+			m.currentMarker++
+			m.vertexCount = 0
+			// Continue loop to process next marker if available
+		}
 	}
-
-	marker := m.markers[m.currentMarker]
-	switch m.vertexCount {
-	case 0:
-		// Return first point (marker position)
-		m.vertexCount++
-		return marker.x1, marker.y1, basics.PathCmdMoveTo
-	case 1:
-		// Return second point (direction)
-		m.vertexCount++
-		return marker.x2, marker.y2, basics.PathCmdLineTo
-	default:
-		// After providing two vertices for this marker, return stop
-		return 0, 0, basics.PathCmdStop
-	}
+	// No more markers available
+	return 0, 0, basics.PathCmdStop
 }
 
 // MockMarkerShapes provides test marker geometry
@@ -153,21 +156,67 @@ func TestConvMarker_MultipleMarkers(t *testing.T) {
 	marker := NewConvMarker(locator, shapes)
 	marker.Rewind(0)
 
-	vertexCount := 0
-	for i := 0; i < 10; i++ { // Limit to avoid infinite loop
-		_, _, cmd := marker.Vertex()
+	// Collect all vertices to analyze the pattern
+	vertices := []struct {
+		x, y float64
+		cmd  basics.PathCommand
+	}{}
+
+	for i := 0; i < 20; i++ { // Limit to avoid infinite loop
+		x, y, cmd := marker.Vertex()
 		if basics.IsStop(cmd) {
 			break
 		}
-		vertexCount++
+		vertices = append(vertices, struct {
+			x, y float64
+			cmd  basics.PathCommand
+		}{x, y, cmd})
 	}
 
-	// Should have vertices for at least one marker (implementation may process markers sequentially)
-	if vertexCount < 2 { // At least 2 vertices for one marker
-		t.Errorf("Expected at least 2 vertices for markers, got %d", vertexCount)
+	// Should have vertices for both markers
+	if len(vertices) < 4 { // At least 2 vertices per marker * 2 markers
+		t.Errorf("Expected at least 4 vertices for both markers, got %d", len(vertices))
+
+		// Debug output to understand current behavior
+		t.Logf("Vertices received:")
+		for i, v := range vertices {
+			t.Logf("  %d: (%.2f, %.2f) cmd=%v", i, v.x, v.y, v.cmd)
+		}
+		return
 	}
-	// Note: This test currently only processes the first marker
-	// TODO: Investigate multi-marker processing behavior to match C++ implementation
+
+	// Analyze the pattern - should see position jumps indicating multiple markers
+	markerPositions := []struct{ x, y float64 }{}
+	for i, v := range vertices {
+		if basics.IsMoveTo(v.cmd) {
+			// Check if this is a significant position change (new marker)
+			if len(markerPositions) == 0 {
+				markerPositions = append(markerPositions, struct{ x, y float64 }{v.x, v.y})
+			} else {
+				// Check distance from last marker
+				lastPos := markerPositions[len(markerPositions)-1]
+				dist := (v.x-lastPos.x)*(v.x-lastPos.x) + (v.y-lastPos.y)*(v.y-lastPos.y)
+				if dist > 1.0 { // Significant distance indicates new marker
+					markerPositions = append(markerPositions, struct{ x, y float64 }{v.x, v.y})
+				}
+			}
+		}
+
+		// Debug: log first few vertices
+		if i < 6 {
+			t.Logf("Vertex %d: (%.2f, %.2f) cmd=%v", i, v.x, v.y, v.cmd)
+		}
+	}
+
+	// Should detect both marker positions
+	expectedMarkers := 2
+	if len(markerPositions) != expectedMarkers {
+		t.Errorf("Expected %d distinct markers, found %d", expectedMarkers, len(markerPositions))
+		t.Logf("Marker positions found:")
+		for i, pos := range markerPositions {
+			t.Logf("  Marker %d: (%.2f, %.2f)", i+1, pos.x, pos.y)
+		}
+	}
 }
 
 func TestConvMarker_MarkerOrientation(t *testing.T) {

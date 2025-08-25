@@ -32,9 +32,13 @@ type RasterizerScanlineAA[Clip ClipInterface, Conv ConverterInterface] struct {
 }
 
 // NewRasterizerScanlineAA creates a new anti-aliased scanline rasterizer
-func NewRasterizerScanlineAA[Clip ClipInterface, Conv ConverterInterface](cellBlockLimit uint32) *RasterizerScanlineAA[Clip, Conv] {
+func NewRasterizerScanlineAA[Clip ClipInterface, Conv ConverterInterface](
+	cellBlockLimit uint32,
+	clipper Clip,
+) *RasterizerScanlineAA[Clip, Conv] {
 	r := &RasterizerScanlineAA[Clip, Conv]{
 		outline:     NewRasterizerCellsAASimple(cellBlockLimit),
+		clipper:     clipper, // <-- initialize!
 		fillingRule: basics.FillNonZero,
 		autoClose:   true,
 		startX:      0,
@@ -52,8 +56,8 @@ func NewRasterizerScanlineAA[Clip ClipInterface, Conv ConverterInterface](cellBl
 }
 
 // NewRasterizerScanlineAAWithGamma creates a new rasterizer with custom gamma function
-func NewRasterizerScanlineAAWithGamma[Clip ClipInterface, Conv ConverterInterface](gammaFunc func(float64) float64, cellBlockLimit uint32) *RasterizerScanlineAA[Clip, Conv] {
-	r := NewRasterizerScanlineAA[Clip, Conv](cellBlockLimit)
+func NewRasterizerScanlineAAWithGamma[Clip ClipInterface, Conv ConverterInterface](gammaFunc func(float64) float64, cellBlockLimit uint32, clipper Clip) *RasterizerScanlineAA[Clip, Conv] {
+	r := NewRasterizerScanlineAA[Clip, Conv](cellBlockLimit, clipper)
 	r.SetGamma(gammaFunc)
 	return r
 }
@@ -362,8 +366,9 @@ func (r *RasterizerScanlineAA[Clip, Conv]) SweepScanline(sl ScanlineInterface) b
 		}
 
 		sl.ResetSpans()
-		numCells := r.outline.ScanlineNumCells(uint32(r.scanY))
-		cells := r.outline.ScanlineCells(uint32(r.scanY))
+		yIdx := uint32(r.scanY - r.outline.MinY())
+		numCells := r.outline.ScanlineNumCells(yIdx)
+		cells := r.outline.ScanlineCells(yIdx)
 		cover := 0
 
 		cellIndex := uint32(0)
@@ -419,8 +424,9 @@ func (r *RasterizerScanlineAA[Clip, Conv]) HitTest(tx, ty int) bool {
 		return false
 	}
 
-	numCells := r.outline.ScanlineNumCells(uint32(ty))
-	cells := r.outline.ScanlineCells(uint32(ty))
+	yIdx := uint32(ty - r.outline.MinY())
+	numCells := r.outline.ScanlineNumCells(yIdx)
+	cells := r.outline.ScanlineCells(yIdx)
 	cover := 0
 
 	for i := uint32(0); i < numCells; i++ {

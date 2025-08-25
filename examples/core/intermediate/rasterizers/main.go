@@ -17,7 +17,6 @@ import (
 	"agg_go/internal/ctrl/slider"
 	"agg_go/internal/path"
 	"agg_go/internal/pixfmt"
-	"agg_go/internal/pixfmt/blender"
 	gammaPackage "agg_go/internal/pixfmt/gamma"
 	"agg_go/internal/rasterizer"
 	"agg_go/internal/renderer/scanline"
@@ -54,7 +53,7 @@ type Application struct {
 
 	// Rendering buffer and pixel format
 	rbuf *buffer.RenderingBufferU8
-	pixf *pixfmt.PixFmtAlphaBlendRGBA[blender.BlenderRGBA[color.Linear, color.RGBAOrder], color.Linear]
+	pixf *pixfmt.PixFmtRGBA32
 
 	// Image buffer
 	imageData []byte
@@ -94,11 +93,10 @@ func NewApplication() *Application {
 	app.rbuf = buffer.NewRenderingBufferU8WithData(app.imageData, frameWidth, frameHeight, frameWidth*pixelSize)
 
 	// Create blender and pixel format
-	blender := blender.BlenderRGBA[color.Linear, color.RGBAOrder]{}
-	app.pixf = pixfmt.NewPixFmtAlphaBlendRGBA[blender.BlenderRGBA[color.Linear, color.RGBAOrder], color.Linear](app.rbuf, blender)
+	app.pixf = pixfmt.NewPixFmtRGBA32(app.rbuf)
 
 	// Create rasterizer and scanlines
-	app.ras = rasterizer.NewRasterizerScanlineAA[*rasterizer.RasterizerSlNoClip, rasterizer.RasConvDbl](1000) // cell block limit
+	app.ras = rasterizer.NewRasterizerScanlineAA[*rasterizer.RasterizerSlNoClip, rasterizer.RasConvDbl](1000, &rasterizer.RasterizerSlNoClip{}) // cell block limit
 	app.slP8 = scanlinePackage.NewScanlineP8()
 	app.slBin = scanlinePackage.NewScanlineBin()
 
@@ -109,8 +107,6 @@ func NewApplication() *Application {
 type SpanType interface {
 	scanlinePackage.SpanP8 | scanlinePackage.SpanBin
 }
-
-
 
 // Adapter interfaces to bridge incompatibilities between different packages
 
@@ -229,18 +225,18 @@ func (ra *rasterizerAdapter) MaxX() int {
 
 // baseRendererAdapter adapts our pixel format to the BaseRendererInterface needed by scanline renderers
 type baseRendererAdapter struct {
-	pixf *pixfmt.PixFmtAlphaBlendRGBA[blender.BlenderRGBA[color.Linear, color.RGBAOrder], color.Linear]
+	pixf *pixfmt.PixFmtRGBA32
 }
 
-func (br *baseRendererAdapter) BlendSolidHspan(x, y, len int, c color.RGBA8[color.Linear], covers []basics.Int8u) {
-	br.pixf.BlendSolidHspan(x, y, len, c, covers)
+func (br *baseRendererAdapter) BlendSolidHspan(x, y, leng int, c color.RGBA8[color.Linear], covers []basics.Int8u) {
+	br.pixf.BlendSolidHspan(x, y, leng, c, covers)
 }
 
 func (br *baseRendererAdapter) BlendHline(x, y, x2 int, c color.RGBA8[color.Linear], cover basics.Int8u) {
 	br.pixf.BlendHline(x, y, x2, c, cover)
 }
 
-func (br *baseRendererAdapter) BlendColorHspan(x, y, len int, colors []color.RGBA8[color.Linear], covers []basics.Int8u, cover basics.Int8u) {
+func (br *baseRendererAdapter) BlendColorHspan(x, y, leng int, colors []color.RGBA8[color.Linear], covers []basics.Int8u, cover basics.Int8u) {
 	// This method is not implemented as the pixel format doesn't support it directly
 	// For now, we'll just ignore color hspan calls
 	_ = colors

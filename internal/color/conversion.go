@@ -43,6 +43,23 @@ func ConvertRGBA8SRGBToLinear(c RGBA8[SRGB]) RGBA8[Linear] {
 	}
 }
 
+// Convert RGB8 between colorspaces using optimized lookup tables
+func ConvertRGB8LinearToSRGB(c RGB8[Linear]) RGB8[SRGB] {
+	return RGB8[SRGB]{
+		R: SRGBConv8BitRGBToSRGB(c.R),
+		G: SRGBConv8BitRGBToSRGB(c.G),
+		B: SRGBConv8BitRGBToSRGB(c.B),
+	}
+}
+
+func ConvertRGB8SRGBToLinear(c RGB8[SRGB]) RGB8[Linear] {
+	return RGB8[Linear]{
+		R: SRGBConv8BitRGBFromSRGB(c.R),
+		G: SRGBConv8BitRGBFromSRGB(c.G),
+		B: SRGBConv8BitRGBFromSRGB(c.B),
+	}
+}
+
 // Convert Gray8 between colorspaces
 func ConvertGray8LinearToSRGB(g Gray8[Linear]) Gray8[SRGB] {
 	return Gray8[SRGB]{
@@ -217,6 +234,31 @@ func RGBA8Pre[CS any](r, g, b, a float64) RGBA8[CS] {
 
 // Generic conversion functions to match C++ AGG template pattern
 // These follow the static convert() methods pattern from C++ AGG
+
+// ConvertRGB8Types converts between RGB8 colorspaces
+func ConvertRGB8Types[CS1, CS2 any](dst *RGB8[CS2], src RGB8[CS1]) {
+	// This is where we would dispatch based on colorspace types
+	// For now, we implement the most common conversions
+	switch any(dst).(type) {
+	case *RGB8[SRGB]:
+		if linear, ok := any(src).(RGB8[Linear]); ok {
+			*dst = any(ConvertRGB8LinearToSRGB(linear)).(RGB8[CS2])
+		} else {
+			// Same colorspace or unsupported conversion
+			*dst = RGB8[CS2](src)
+		}
+	case *RGB8[Linear]:
+		if srgb, ok := any(src).(RGB8[SRGB]); ok {
+			*dst = any(ConvertRGB8SRGBToLinear(srgb)).(RGB8[CS2])
+		} else {
+			// Same colorspace or unsupported conversion
+			*dst = RGB8[CS2](src)
+		}
+	default:
+		// Same colorspace or unsupported conversion
+		*dst = RGB8[CS2](src)
+	}
+}
 
 // ConvertRGBA8Types converts between RGBA8 colorspaces
 func ConvertRGBA8Types[CS1, CS2 any](dst *RGBA8[CS2], src RGBA8[CS1]) {

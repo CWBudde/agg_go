@@ -231,8 +231,9 @@ func NewAgg2D() *Agg2D {
 	agg2d.convCurve = conv.NewConvCurve(pathAdapter)
 	agg2d.convStroke = conv.NewConvStroke(agg2d.convCurve)
 
-	// Initialize rasterizer with default cell block limit
-	agg2d.rasterizer = rasterizer.NewRasterizerScanlineAA[*rasterizer.RasterizerSlNoClip, rasterizer.RasConvDbl](8192)
+	// Initialize rasterizer with default cell block limit and clipper
+	clipper := &rasterizer.RasterizerSlNoClip{}
+	agg2d.rasterizer = rasterizer.NewRasterizerScanlineAA[*rasterizer.RasterizerSlNoClip, rasterizer.RasConvDbl](8192, clipper)
 
 	// Set default line cap and join
 	if agg2d.convStroke != nil {

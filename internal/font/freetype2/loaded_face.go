@@ -367,8 +367,10 @@ func (lf *LoadedFace) PrepareGlyph(glyphCode uint32) (*PreparedGlyph, bool) {
 
 		// Decompose outline if available
 		if glyph.format == C.FT_GLYPH_FORMAT_OUTLINE {
-			// TODO: Decompose outline to path storage
-			// This would be handled by the engine's path storage
+			// Decompose the FreeType outline to AGG path storage
+			if decomErr := lf.engine.DecomposeFTOutline(&glyph.outline, lf.flipY); decomErr != nil {
+				return nil, false // Return false to indicate glyph preparation failed
+			}
 		}
 
 	case GlyphRenNativeGray8, GlyphRenAggGray8:

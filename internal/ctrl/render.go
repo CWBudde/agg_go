@@ -1,20 +1,30 @@
 package ctrl
 
+import (
+	"agg_go/internal/renderer/scanline"
+)
+
 // RasterizerInterface defines the interface that rasterizers must implement for control rendering.
+// This extends the scanline.RasterizerInterface with the AddPath method needed for controls.
 type RasterizerInterface interface {
+	scanline.RasterizerInterface
 	Reset()
 	AddPath(vs VertexSourceInterface, pathID uint)
 }
 
 // ScanlineInterface defines the interface that scanlines must implement for control rendering.
-type ScanlineInterface interface {
-	// This will be implemented based on existing scanline interfaces
-}
+// This uses the same interface as the scanline package.
+type ScanlineInterface = scanline.ScanlineInterface
 
 // RendererInterface defines the interface that renderers must implement for control rendering.
-type RendererInterface interface {
-	// This will be implemented based on existing renderer interfaces
+// This uses the scanline package's renderer interfaces.
+type RendererInterface[C any] interface {
+	scanline.RendererInterface[C]
 }
+
+// BaseRendererInterface defines the interface for base renderers used in control rendering.
+// This uses the same interface as the scanline package.
+type BaseRendererInterface[C any] = scanline.BaseRendererInterface[C]
 
 // VertexSourceInterface defines the interface for vertex sources used in control rendering.
 type VertexSourceInterface interface {
@@ -27,7 +37,7 @@ type VertexSourceInterface interface {
 //
 // The function iterates through all paths in the control, rasterizes each one,
 // and renders it with the path's associated color using anti-aliased solid rendering.
-func RenderCtrl[R RasterizerInterface, S ScanlineInterface, Ren RendererInterface, C any](
+func RenderCtrl[R RasterizerInterface, S ScanlineInterface, Ren BaseRendererInterface[C], C any](
 	ras R, sl S, renderer Ren, ctrl Ctrl[C],
 ) {
 	numPaths := ctrl.NumPaths()
@@ -44,20 +54,15 @@ func RenderCtrl[R RasterizerInterface, S ScanlineInterface, Ren RendererInterfac
 		// Get the color for this path
 		color := ctrl.Color(i)
 
-		// Use the existing render functions from the scanline package
-		// This is a placeholder - the actual implementation will depend on
-		// the concrete types passed in
-		_ = color // TODO: Use color with appropriate renderer
-
-		// TODO: Call appropriate render function based on renderer type
-		// This would be something like:
-		// scanline.RenderScanlinesAASolid(ras, sl, renderer, color)
+		// Render the scanlines with anti-aliased solid color
+		// This corresponds to the C++ render_scanlines_aa_solid call
+		scanline.RenderScanlinesAASolid(ras, sl, renderer, color)
 	}
 }
 
 // RenderCtrlRS renders a control using render storage variant.
 // This corresponds to the C++ render_ctrl_rs template function.
-func RenderCtrlRS[R RasterizerInterface, S ScanlineInterface, Ren RendererInterface, C any](
+func RenderCtrlRS[R RasterizerInterface, S ScanlineInterface, Ren RendererInterface[C], C any](
 	ras R, sl S, renderer Ren, ctrl Ctrl[C],
 ) {
 	numPaths := ctrl.NumPaths()
@@ -71,8 +76,12 @@ func RenderCtrlRS[R RasterizerInterface, S ScanlineInterface, Ren RendererInterf
 		ras.AddPath(adapter, i)
 
 		// Set color on renderer and render
-		// renderer.SetColor(ctrl.Color(i)) // TODO: Implement based on renderer interface
-		// scanline.RenderScanlines(ras, sl, renderer) // TODO: Implement
+		// This corresponds to the C++ r.color(c.color(i)) call
+		renderer.SetColor(ctrl.Color(i))
+
+		// Render the scanlines using the renderer's current color
+		// This corresponds to the C++ render_scanlines call
+		scanline.RenderScanlines(ras, sl, renderer)
 	}
 }
 

@@ -9,6 +9,7 @@ import (
 	"unsafe"
 
 	"agg_go/internal/path"
+	"agg_go/internal/scanline"
 )
 
 // FontEngineInt16 uses 16-bit precision (10.6 format) for vector cache.
@@ -43,18 +44,17 @@ func NewFontEngineInt16(maxFaces uint32, ftMemory unsafe.Pointer) (*FontEngineIn
 
 // PathAdaptor returns the 16-bit path adaptor for this engine.
 func (fe16 *FontEngineInt16) PathAdaptor() PathAdaptorInt16Type {
-	// TODO: Implement serialized path adaptor wrapper
-	// This should wrap the PathStorageInteger[int16] with serialization capability
-	return nil // Placeholder
+	// Create a new serialized path adaptor for int16
+	return path.NewSerializedIntegerPathAdaptor[int16]()
 }
 
 // Gray8Adaptor returns the gray8 scanline adaptor.
 func (fe16 *FontEngineInt16) Gray8Adaptor() Gray8AdaptorInt16Type {
 	// Return the shared adaptor types from base engine
 	return &FontEngineAdaptorTypes{
-		PathAdaptorInt16: nil, // TODO: Implement when SerializedIntegerPathAdaptor is available
-		Gray8Adaptor:     nil, // TODO: Implement when scanline adaptors are available
-		MonoAdaptor:      nil, // TODO: Implement when scanline adaptors are available
+		PathAdaptorInt16: fe16.PathAdaptor(),
+		Gray8Adaptor:     scanline.NewSerializedScanlinesAdaptorAAEmpty[uint8](),
+		MonoAdaptor:      scanline.NewSerializedScanlinesAdaptorBin(),
 		ScanlinesAA:      fe16.FontEngineBase.scanlinesAA,
 		ScanlinesBin:     fe16.FontEngineBase.scanlinesBin,
 	}
@@ -107,18 +107,17 @@ func NewFontEngineInt32(maxFaces uint32, ftMemory unsafe.Pointer) (*FontEngineIn
 
 // PathAdaptor returns the 32-bit path adaptor for this engine.
 func (fe32 *FontEngineInt32) PathAdaptor() PathAdaptorInt32Type {
-	// TODO: Implement serialized path adaptor wrapper
-	// This should wrap the PathStorageInteger[int32] with serialization capability
-	return nil // Placeholder
+	// Create a new serialized path adaptor for int32
+	return path.NewSerializedIntegerPathAdaptor[int32]()
 }
 
 // Gray8Adaptor returns the gray8 scanline adaptor.
 func (fe32 *FontEngineInt32) Gray8Adaptor() Gray8AdaptorInt32Type {
 	// Return the shared adaptor types from base engine
 	return &FontEngineAdaptorTypes{
-		PathAdaptorInt32: nil, // TODO: Implement when SerializedIntegerPathAdaptor is available
-		Gray8Adaptor:     nil, // TODO: Implement when scanline adaptors are available
-		MonoAdaptor:      nil, // TODO: Implement when scanline adaptors are available
+		PathAdaptorInt32: fe32.PathAdaptor(),
+		Gray8Adaptor:     scanline.NewSerializedScanlinesAdaptorAAEmpty[uint8](),
+		MonoAdaptor:      scanline.NewSerializedScanlinesAdaptorBin(),
 		ScanlinesAA:      fe32.FontEngineBase.scanlinesAA,
 		ScanlinesBin:     fe32.FontEngineBase.scanlinesBin,
 	}

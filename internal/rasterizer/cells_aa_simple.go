@@ -100,8 +100,98 @@ func (r *RasterizerCellsAASimple) MaxY() int { return r.maxY }
 
 // SortCells sorts all cells by Y coordinate and then by X coordinate
 func (r *RasterizerCellsAASimple) SortCells() {
-	// Implementation of cell sorting algorithm
-	// This would include the complex sorting logic from AGG
+	if r.sorted {
+		return
+	}
+
+	// Flush any pending current cell before sorting
+	r.addCurrCell()
+
+	// Empty/degenerate?
+	if r.numCells == 0 || r.minY > r.maxY {
+		r.sortedY.Clear()
+		r.sortedCells.Clear()
+		r.sorted = true
+		return
+	}
+
+	// 1) Count cells per Y
+	h := r.maxY - r.minY + 1
+	counts := make([]uint32, h)
+
+	for b := uint32(0); b < r.numBlocks; b++ {
+		block := r.cells[b]
+		// compute number of valid entries in this block
+		limit := CellBlockSize
+		// if last (possibly partial) block:
+		lastBlock := (r.numCells - 1) >> CellBlockShift
+		if b == lastBlock {
+			// entries in last block = (numCells - fullBlocks*BlockSize)
+			used := int(r.numCells - (lastBlock << CellBlockShift))
+			if used < limit {
+				limit = used
+			}
+		}
+		for i := 0; i < limit; i++ {
+			c := block[i]
+			if c == nil {
+				continue
+			}
+			y := c.GetY()
+			if y < r.minY || y > r.maxY {
+				continue
+			}
+			counts[y-r.minY]++
+		}
+	}
+
+	// 2) Build ranges (start, num) into sortedY
+	r.sortedY.Resize(h)
+	total := uint32(0)
+	for i := 0; i < h; i++ {
+		sy := r.sortedY.At(i) // copy
+		sy.Start = total
+		sy.Num = counts[i]
+		r.sortedY.Set(i, sy) // write back
+		total += counts[i]
+	}
+
+	// 3) Allocate sortedCells and fill per-Y runs
+	r.sortedCells.Resize(int(total))
+
+	// per-Y write cursors (offset inside each run)
+	write := make([]uint32, h)
+
+	for b := uint32(0); b < r.numBlocks; b++ {
+		block := r.cells[b]
+		limit := CellBlockSize
+		lastBlock := (r.numCells - 1) >> CellBlockShift
+		if b == lastBlock {
+			used := int(r.numCells - (lastBlock << CellBlockShift))
+			if used < limit {
+				limit = used
+			}
+		}
+		for i := 0; i < limit; i++ {
+			c := block[i]
+			if c == nil {
+				continue
+			}
+			y := c.GetY()
+			if y < r.minY || y > r.maxY {
+				continue
+			}
+			yi := y - r.minY
+			sy := r.sortedY.At(yi)
+			off := write[yi]
+			r.sortedCells.Set(int(sy.Start+off), c)
+			write[yi] = off + 1
+		}
+	}
+
+	// 4) Sort cells by X within each Y-run and consolidate identical X cells
+	r.sortCellsByXAndConsolidate()
+
 	r.sorted = true
 }
 
@@ -228,9 +318,7 @@ func (r *RasterizerCellsAASimple) renderLine(x1, y1, x2, y2, dy int) {
 		// Multi-scanline case - step through each Y
 		for ey := ey1; ey <= ey2; ey++ {
 			// Calculate X intersection for this Y
-			if ey == ey1 && ey == ey2 {
-				r.renderHLine(ey, x1, fy1, x2, fy2)
-			} else if ey == ey1 {
+			if ey == ey1 {
 				// First scanline
 				nextY := (ey + 1) << basics.PolySubpixelShift
 				x := int64(x1) + ((int64(dx) * int64(nextY-y1)) / int64(dy))
@@ -252,28 +340,221 @@ func (r *RasterizerCellsAASimple) renderLine(x1, y1, x2, y2, dy int) {
 	}
 }
 
+// sortCellsByXAndConsolidate sorts cells by X coordinate within each Y-run and consolidates
+// cells with identical coordinates by summing their area and cover values
+func (r *RasterizerCellsAASimple) sortCellsByXAndConsolidate() {
+	h := r.maxY - r.minY + 1
+
+	for i := 0; i < h; i++ {
+		sy := r.sortedY.At(i)
+		if sy.Num == 0 {
+			continue
+		}
+
+		// Get slice of cell pointers for this Y-scanline
+		start := int(sy.Start)
+		length := int(sy.Num)
+
+		if length <= 1 {
+			continue // Single cell or empty - no need to sort
+		}
+
+		// Extract cells into a slice for sorting
+		cells := make([]*CellAA, length)
+		for j := 0; j < length; j++ {
+			cells[j] = r.sortedCells.At(start + j)
+		}
+
+		// Sort by X coordinate using Go's standard library
+		r.quickSortCellsByX(cells)
+
+		// Consolidate cells with identical X coordinates
+		consolidated := r.consolidateCells(cells)
+
+		// Update the counts and write back consolidated cells
+		newSy := sy
+		newSy.Num = uint32(len(consolidated))
+		r.sortedY.Set(i, newSy)
+
+		// Write consolidated cells back to sortedCells
+		for j, cell := range consolidated {
+			r.sortedCells.Set(start+j, cell)
+		}
+
+		// If we have fewer cells after consolidation, we need to compact
+		// For simplicity, we'll leave gaps for now as this is implementation detail
+	}
+}
+
+// quickSortCellsByX implements a quicksort algorithm for cell pointers by X coordinate
+// This mirrors the C++ qsort_cells implementation
+func (r *RasterizerCellsAASimple) quickSortCellsByX(cells []*CellAA) {
+	const qsortThreshold = 9
+
+	if len(cells) <= 1 {
+		return
+	}
+
+	// For small arrays, use insertion sort
+	if len(cells) <= qsortThreshold {
+		r.insertionSortCellsByX(cells)
+		return
+	}
+
+	// Quicksort partition
+	pivot := r.partitionCells(cells)
+
+	// Recursively sort partitions
+	r.quickSortCellsByX(cells[:pivot])
+	r.quickSortCellsByX(cells[pivot+1:])
+}
+
+// insertionSortCellsByX performs insertion sort on cells by X coordinate
+func (r *RasterizerCellsAASimple) insertionSortCellsByX(cells []*CellAA) {
+	for i := 1; i < len(cells); i++ {
+		key := cells[i]
+		keyX := key.GetX()
+		j := i - 1
+
+		for j >= 0 && cells[j].GetX() > keyX {
+			cells[j+1] = cells[j]
+			j--
+		}
+		cells[j+1] = key
+	}
+}
+
+// partitionCells partitions the cell array for quicksort
+func (r *RasterizerCellsAASimple) partitionCells(cells []*CellAA) int {
+	// Use last element as pivot
+	pivotIdx := len(cells) - 1
+	pivot := cells[pivotIdx]
+	pivotX := pivot.GetX()
+
+	i := -1
+	for j := 0; j < pivotIdx; j++ {
+		if cells[j].GetX() <= pivotX {
+			i++
+			cells[i], cells[j] = cells[j], cells[i]
+		}
+	}
+
+	cells[i+1], cells[pivotIdx] = cells[pivotIdx], cells[i+1]
+	return i + 1
+}
+
+// consolidateCells consolidates cells with identical X coordinates by summing their area and cover
+func (r *RasterizerCellsAASimple) consolidateCells(cells []*CellAA) []*CellAA {
+	if len(cells) == 0 {
+		return cells
+	}
+
+	consolidated := make([]*CellAA, 0, len(cells))
+
+	i := 0
+	for i < len(cells) {
+		currentCell := *cells[i] // Make a copy
+		currentX := currentCell.GetX()
+
+		// Sum all cells with the same X coordinate
+		j := i + 1
+		for j < len(cells) && cells[j].GetX() == currentX {
+			currentCell.AddArea(cells[j].GetArea())
+			currentCell.AddCover(cells[j].GetCover())
+			j++
+		}
+
+		consolidated = append(consolidated, &currentCell)
+		i = j
+	}
+
+	return consolidated
+}
+
 // renderHLine renders a horizontal line segment within a single scanline
+// This is a complete implementation of the AGG render_hline algorithm
 func (r *RasterizerCellsAASimple) renderHLine(ey, x1, y1, x2, y2 int) {
 	ex1 := x1 >> basics.PolySubpixelShift
 	ex2 := x2 >> basics.PolySubpixelShift
 	fx1 := x1 & basics.PolySubpixelMask
 	fx2 := x2 & basics.PolySubpixelMask
 
-	// Trivial case
+	var delta, p, first int
+	var dx int64
+	var incr, lift, mod, rem int
+
+	// Trivial case - happens often
 	if y1 == y2 {
 		r.setCurrCell(ex2, ey)
 		return
 	}
 
-	// Single cell case
+	// Everything is located in a single cell - that is easy!
 	if ex1 == ex2 {
-		delta := y2 - y1
+		delta = y2 - y1
 		r.currCell.AddCover(delta)
 		r.currCell.AddArea((fx1 + fx2) * delta)
 		return
 	}
 
-	// Multi-cell case would be implemented here with the full AGG algorithm
-	// This is a simplified placeholder
-	r.setCurrCell(ex2, ey)
+	// Ok, we'll have to render a run of adjacent cells on the same hline...
+	p = (basics.PolySubpixelScale - fx1) * (y2 - y1)
+	first = basics.PolySubpixelScale
+	incr = 1
+
+	dx = int64(x2) - int64(x1)
+
+	if dx < 0 {
+		p = fx1 * (y2 - y1)
+		first = 0
+		incr = -1
+		dx = -dx
+	}
+
+	delta = int(int64(p) / dx)
+	mod = int(int64(p) % dx)
+
+	if mod < 0 {
+		delta--
+		mod += int(dx)
+	}
+
+	r.currCell.AddCover(delta)
+	r.currCell.AddArea((fx1 + first) * delta)
+
+	ex1 += incr
+	r.setCurrCell(ex1, ey)
+	y1 += delta
+
+	if ex1 != ex2 {
+		p = basics.PolySubpixelScale * (y2 - y1 + delta)
+		lift = int(int64(p) / dx)
+		rem = int(int64(p) % dx)
+
+		if rem < 0 {
+			lift--
+			rem += int(dx)
+		}
+
+		mod -= int(dx)
+
+		for ex1 != ex2 {
+			delta = lift
+			mod += rem
+			if mod >= 0 {
+				mod -= int(dx)
+				delta++
+			}
+
+			r.currCell.AddCover(delta)
+			r.currCell.AddArea(basics.PolySubpixelScale * delta)
+			y1 += delta
+			ex1 += incr
+			r.setCurrCell(ex1, ey)
+		}
+	}
+
+	delta = y2 - y1
+	r.currCell.AddCover(delta)
+	r.currCell.AddArea((fx2 + basics.PolySubpixelScale - first) * delta)
 }

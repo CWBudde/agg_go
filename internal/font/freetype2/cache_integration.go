@@ -75,7 +75,33 @@ func (cm *CacheManager2) Glyph(charCode uint32) *fonts.FmanCachedGlyph {
 	// For this, we need a loaded face - this should be managed by the font selection process
 	// This is a simplified version; in practice, font selection would be more complex
 
-	return nil // TODO: Implement glyph loading from font engine
+	if cm.currentFont == nil {
+		cm.lastError = fmt.Errorf("no font loaded for glyph preparation")
+		return nil
+	}
+
+	// Prepare the glyph using the loaded face
+	preparedGlyph, found := cm.currentFont.PrepareGlyph(charCode)
+	if !found {
+		cm.lastError = fmt.Errorf("glyph not found for character code %d", charCode)
+		return nil
+	}
+
+	// Convert to cached glyph format
+	// Cache the glyph using the proper method signature
+	// Note: PreparedGlyph doesn't have Data field, glyph data is handled separately
+	cachedGlyph := cm.cachedGlyphs.CacheGlyph(
+		nil, // cachedFont - would need to be managed by cache
+		charCode,
+		preparedGlyph.GlyphIndex,
+		preparedGlyph.DataSize,
+		preparedGlyph.DataType,
+		preparedGlyph.Bounds,
+		preparedGlyph.AdvanceX,
+		preparedGlyph.AdvanceY,
+	)
+
+	return cachedGlyph
 }
 
 // PathAdaptor returns the path adaptor for vector font rendering.
@@ -103,13 +129,17 @@ func (cm *CacheManager2) InitEmbeddedAdaptors(glyph *fonts.FmanCachedGlyph, x, y
 	switch glyph.DataType {
 	case fonts.FmanGlyphDataGray8:
 		// Initialize gray8 adaptor with glyph data
-		// TODO: Implement when FmanSerializedScanlinesAdaptorAA is available
-		// cm.gray8Adaptor = fonts.NewFmanSerializedScanlinesAdaptorAA(glyph.Data, glyph.Bounds, x, y)
+		if len(glyph.Data) > 0 {
+			cm.gray8Adaptor = scanline.NewSerializedScanlinesAdaptorAA[uint8](glyph.Data, len(glyph.Data), x, y)
+		}
 
 	case fonts.FmanGlyphDataMono:
 		// Initialize mono adaptor with glyph data
-		// TODO: Implement when FmanSerializedScanlinesAdaptorBin is available
-		// cm.monoAdaptor = fonts.NewFmanSerializedScanlinesAdaptorBin(glyph.Data, glyph.Bounds, x, y)
+		if len(glyph.Data) > 0 {
+			monoAdaptor := scanline.NewSerializedScanlinesAdaptorBin()
+			monoAdaptor.Init(glyph.Data, x, y)
+			cm.monoAdaptor = monoAdaptor
+		}
 
 	case fonts.FmanGlyphDataOutline:
 		// For outline glyphs, the path data should be available in the path adaptor
@@ -123,7 +153,31 @@ func (cm *CacheManager2) InitEmbeddedAdaptors(glyph *fonts.FmanCachedGlyph, x, y
 func (cm *CacheManager2) AddKerning(x, y *float64, first, second uint32) {
 	// This requires access to a loaded face
 	// In practice, this would be called on the currently active font face
-	// TODO: Implement proper font face management and kerning lookup
+	if cm.currentFont == nil {
+		cm.lastError = fmt.Errorf("no font loaded for kerning calculation")
+		return
+	}
+
+	// Get kerning adjustment from the loaded face
+	dx, dy := cm.currentFont.AddKerning(first, second)
+
+	// Apply the kerning adjustment
+	if x != nil {
+		*x += dx
+	}
+	if y != nil {
+		*y += dy
+	}
+}
+
+// SetCurrentFont sets the current font face for glyph preparation and kerning.
+func (cm *CacheManager2) SetCurrentFont(face LoadedFaceInterface) {
+	cm.currentFont = face
+}
+
+// GetCurrentFont returns the current font face.
+func (cm *CacheManager2) GetCurrentFont() LoadedFaceInterface {
+	return cm.currentFont
 }
 
 // LastError returns the last error that occurred.
@@ -140,7 +194,8 @@ func (cm *CacheManager2) Close() error {
 
 	// Clean up cached glyphs
 	if cm.cachedGlyphs != nil {
-		// TODO: Implement proper cleanup when available
+		// Reset all cached glyphs
+		cm.cachedGlyphs.Reset()
 		cm.cachedGlyphs = nil
 	}
 

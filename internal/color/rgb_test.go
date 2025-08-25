@@ -315,3 +315,121 @@ func BenchmarkRGB8Luminance(b *testing.B) {
 		_ = rgb.Luminance()
 	}
 }
+
+func TestRGB8ColorspaceConversion(t *testing.T) {
+	// Test conversion from Linear to sRGB
+	linearRgb := NewRGB8[Linear](128, 192, 64)
+	srgbRgb := ConvertRGB8LinearToSRGB(linearRgb)
+
+	// Linear values should be converted using the sRGB curve
+	// We can't check exact values easily, but we can verify basic properties
+	if srgbRgb.R == linearRgb.R && srgbRgb.G == linearRgb.G && srgbRgb.B == linearRgb.B {
+		t.Error("Linear to sRGB conversion should change values (unless input values happen to match)")
+	}
+
+	// Test conversion from sRGB to Linear
+	srgbOriginal := NewRGB8[SRGB](128, 192, 64)
+	linearConverted := ConvertRGB8SRGBToLinear(srgbOriginal)
+
+	// Values should be different after conversion
+	if linearConverted.R == srgbOriginal.R && linearConverted.G == srgbOriginal.G && linearConverted.B == srgbOriginal.B {
+		t.Error("sRGB to Linear conversion should change values (unless input values happen to match)")
+	}
+
+	// Test round-trip conversion accuracy
+	linearOriginal := NewRGB8[Linear](100, 150, 200)
+	srgbConverted := ConvertRGB8LinearToSRGB(linearOriginal)
+	linearRoundtrip := ConvertRGB8SRGBToLinear(srgbConverted)
+
+	// Round-trip should be very close to original (allowing for lookup table quantization)
+	if absInt(int(linearRoundtrip.R)-int(linearOriginal.R)) > 1 ||
+		absInt(int(linearRoundtrip.G)-int(linearOriginal.G)) > 1 ||
+		absInt(int(linearRoundtrip.B)-int(linearOriginal.B)) > 1 {
+		t.Errorf("Linear round-trip conversion failed: original=%v, roundtrip=%v",
+			linearOriginal, linearRoundtrip)
+	}
+
+	// Test specific known conversion values
+	// Black should remain black in both colorspaces
+	blackLinear := NewRGB8[Linear](0, 0, 0)
+	blackSRGB := ConvertRGB8LinearToSRGB(blackLinear)
+	if blackSRGB.R != 0 || blackSRGB.G != 0 || blackSRGB.B != 0 {
+		t.Errorf("Black conversion failed: got %v, want {0, 0, 0}", blackSRGB)
+	}
+
+	// White should remain white in both colorspaces
+	whiteLinear := NewRGB8[Linear](255, 255, 255)
+	whiteSRGB := ConvertRGB8LinearToSRGB(whiteLinear)
+	if whiteSRGB.R != 255 || whiteSRGB.G != 255 || whiteSRGB.B != 255 {
+		t.Errorf("White conversion failed: got %v, want {255, 255, 255}", whiteSRGB)
+	}
+
+	// Test mid-gray conversion consistency with known sRGB curve
+	// Mid-gray in linear (128) should convert to a higher sRGB value due to gamma correction
+	midGrayLinear := NewRGB8[Linear](128, 128, 128)
+	midGraySRGB := ConvertRGB8LinearToSRGB(midGrayLinear)
+	if midGraySRGB.R <= 128 || midGraySRGB.G <= 128 || midGraySRGB.B <= 128 {
+		t.Errorf("Mid-gray Linear to sRGB should increase values: got %v, expected > 128", midGraySRGB)
+	}
+}
+
+func TestRGB8GenericConversion(t *testing.T) {
+	// Test ConvertRGB8Types function
+	linearSrc := NewRGB8[Linear](100, 150, 200)
+	var srgbDst RGB8[SRGB]
+
+	ConvertRGB8Types(&srgbDst, linearSrc)
+
+	// Should be same as direct conversion
+	expected := ConvertRGB8LinearToSRGB(linearSrc)
+	if srgbDst.R != expected.R || srgbDst.G != expected.G || srgbDst.B != expected.B {
+		t.Errorf("ConvertRGB8Types failed: got %v, want %v", srgbDst, expected)
+	}
+
+	// Test reverse conversion
+	srgbSrc := NewRGB8[SRGB](100, 150, 200)
+	var linearDst RGB8[Linear]
+
+	ConvertRGB8Types(&linearDst, srgbSrc)
+
+	expected2 := ConvertRGB8SRGBToLinear(srgbSrc)
+	if linearDst.R != expected2.R || linearDst.G != expected2.G || linearDst.B != expected2.B {
+		t.Errorf("ConvertRGB8Types reverse failed: got %v, want %v", linearDst, expected2)
+	}
+
+	// Test same-colorspace conversion (should be no-op)
+	linearSrc2 := NewRGB8[Linear](75, 125, 175)
+	var linearDst2 RGB8[Linear]
+
+	ConvertRGB8Types(&linearDst2, linearSrc2)
+
+	if linearDst2.R != linearSrc2.R || linearDst2.G != linearSrc2.G || linearDst2.B != linearSrc2.B {
+		t.Errorf("Same-colorspace conversion should be no-op: got %v, want %v", linearDst2, linearSrc2)
+	}
+}
+
+func TestRGB8ConvertFunction(t *testing.T) {
+	// Test the generic ConvertRGB8 function
+	linearSrc := NewRGB8[Linear](80, 120, 160)
+	srgbDst := ConvertRGB8[Linear, SRGB](linearSrc)
+
+	// Should match direct conversion
+	expected := ConvertRGB8LinearToSRGB(linearSrc)
+	if srgbDst.R != expected.R || srgbDst.G != expected.G || srgbDst.B != expected.B {
+		t.Errorf("ConvertRGB8 function failed: got %v, want %v", srgbDst, expected)
+	}
+
+	// Test the Convert method (should be identity)
+	result := linearSrc.Convert()
+	if result.R != linearSrc.R || result.G != linearSrc.G || result.B != linearSrc.B {
+		t.Errorf("Convert method should be identity: got %v, want %v", result, linearSrc)
+	}
+}
+
+// Helper function for absolute difference for int
+func absInt(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
+}

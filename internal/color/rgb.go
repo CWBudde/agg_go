@@ -82,10 +82,17 @@ func NewRGB8[CS any](r, g, b basics.Int8u) RGB8[CS] {
 }
 
 // Convert converts between colorspaces for RGB8
+// This is a self-converting method that doesn't change colorspace but
+// can be used as a base for colorspace-specific conversions
 func (c RGB8[CS]) Convert() RGB8[CS] {
-	// For now, just return the same color
-	// TODO: Implement proper colorspace conversion
 	return c
+}
+
+// ConvertTo converts RGB8 from one colorspace to another
+func ConvertRGB8[CS1, CS2 any](src RGB8[CS1]) RGB8[CS2] {
+	var dst RGB8[CS2]
+	ConvertRGB8Types(&dst, src)
+	return dst
 }
 
 // ConvertToRGB converts to floating-point RGB

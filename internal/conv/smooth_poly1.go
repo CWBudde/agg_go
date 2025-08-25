@@ -2,6 +2,7 @@ package conv
 
 import (
 	"agg_go/internal/basics"
+	"agg_go/internal/curves"
 	"agg_go/internal/vcgen"
 )
 
@@ -86,18 +87,44 @@ func (c *ConvSmoothPoly1Curve) SmoothValue() float64 {
 	return c.smooth.SmoothValue()
 }
 
-// SetCurveApproximation enables or disables curve approximation
-// This delegates to the underlying ConvCurve for curve approximation control
-func (c *ConvSmoothPoly1Curve) SetCurveApproximation(enable bool) {
-	// TODO: Implement proper curve approximation control
-	// This should control whether the ConvCurve approximates the smooth polygon's curves
-	// For now, this is a no-op as the ConvCurve always approximates
+// ApproximationMethod returns the current approximation method
+func (c *ConvSmoothPoly1Curve) ApproximationMethod() curves.CurveApproximationMethod {
+	return c.ConvCurve.ApproximationMethod()
 }
 
-// CurveApproximation returns whether curve approximation is enabled
-func (c *ConvSmoothPoly1Curve) CurveApproximation() bool {
-	// ConvSmoothPoly1Curve always uses curve approximation via ConvCurve
-	return true
+// SetApproximationMethod sets the approximation method
+func (c *ConvSmoothPoly1Curve) SetApproximationMethod(method curves.CurveApproximationMethod) {
+	c.ConvCurve.SetApproximationMethod(method)
+}
+
+// ApproximationScale returns the current approximation scale
+func (c *ConvSmoothPoly1Curve) ApproximationScale() float64 {
+	return c.ConvCurve.ApproximationScale()
+}
+
+// SetApproximationScale sets the approximation scale
+func (c *ConvSmoothPoly1Curve) SetApproximationScale(scale float64) {
+	c.ConvCurve.SetApproximationScale(scale)
+}
+
+// AngleTolerance returns the current angle tolerance
+func (c *ConvSmoothPoly1Curve) AngleTolerance() float64 {
+	return c.ConvCurve.AngleTolerance()
+}
+
+// SetAngleTolerance sets the angle tolerance
+func (c *ConvSmoothPoly1Curve) SetAngleTolerance(tolerance float64) {
+	c.ConvCurve.SetAngleTolerance(tolerance)
+}
+
+// CuspLimit returns the current cusp limit
+func (c *ConvSmoothPoly1Curve) CuspLimit() float64 {
+	return c.ConvCurve.CuspLimit()
+}
+
+// SetCuspLimit sets the cusp limit
+func (c *ConvSmoothPoly1Curve) SetCuspLimit(limit float64) {
+	c.ConvCurve.SetCuspLimit(limit)
 }
 
 // Rewind rewinds the converter

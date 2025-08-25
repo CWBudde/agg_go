@@ -393,8 +393,8 @@ func (fe *FontEngine) processConicCurve(outline *C.FT_Outline, i *int, last int,
 	pathStorage interface{}, startPoint *C.FT_Vector,
 ) error {
 	// Get control point
-	// controlPtr := uintptr(unsafe.Pointer(outline.points)) + uintptr(*i)*unsafe.Sizeof(C.FT_Vector{})
-	// vControl := (*C.FT_Vector)(unsafe.Pointer(controlPtr))
+	controlPtr := uintptr(unsafe.Pointer(outline.points)) + uintptr(*i)*unsafe.Sizeof(C.FT_Vector{})
+	vControl := (*C.FT_Vector)(unsafe.Pointer(controlPtr))
 
 	for {
 		if *i >= last {
@@ -402,27 +402,27 @@ func (fe *FontEngine) processConicCurve(outline *C.FT_Outline, i *int, last int,
 		}
 
 		*i++
-		// nextPtr := uintptr(unsafe.Pointer(outline.points)) + uintptr(*i)*unsafe.Sizeof(C.FT_Vector{})
-		// nextPoint := (*C.FT_Vector)(unsafe.Pointer(nextPtr))
+		nextPtr := uintptr(unsafe.Pointer(outline.points)) + uintptr(*i)*unsafe.Sizeof(C.FT_Vector{})
+		nextPoint := (*C.FT_Vector)(unsafe.Pointer(nextPtr))
 
 		nextTagPtr := uintptr(unsafe.Pointer(outline.tags)) + uintptr(*i)
 		nextTag := int(*(*C.char)(unsafe.Pointer(nextTagPtr))) & 3
 
 		if nextTag == 1 { // FT_CURVE_TAG_ON - end of curve
-			// x1 := float64(vControl.x) / 64.0
-			// y1 := float64(vControl.y) / 64.0
-			// x2 := float64(nextPoint.x) / 64.0
-			// y2 := float64(nextPoint.y) / 64.0
+			x1 := float64(vControl.x) / 64.0
+			y1 := float64(vControl.y) / 64.0
+			x2 := float64(nextPoint.x) / 64.0
+			y2 := float64(nextPoint.y) / 64.0
 
-			// if flipY {
-			//	y1 = -y1
-			//	y2 = -y2
-			// }
+			if flipY {
+				y1 = -y1
+				y2 = -y2
+			}
 
 			if fe.flag32 {
-				// TODO: // TODO: pathStorage.(*path.PathStorageInteger[int32]).Curve3(int32(x1), int32(y1), int32(x2), int32(y2))
+				pathStorage.(*path.PathStorageInteger[int32]).Curve3(int32(x1), int32(y1), int32(x2), int32(y2))
 			} else {
-				// TODO: // TODO: pathStorage.(*path.PathStorageInteger[int16]).Curve3(int16(x1), int16(y1), int16(x2), int16(y2))
+				pathStorage.(*path.PathStorageInteger[int16]).Curve3(int16(x1), int16(y1), int16(x2), int16(y2))
 			}
 			break
 		}
@@ -432,46 +432,46 @@ func (fe *FontEngine) processConicCurve(outline *C.FT_Outline, i *int, last int,
 		}
 
 		// Multiple conic points - create intermediate curve
-		// vMiddle := C.FT_Vector{
-		//	x: (vControl.x + nextPoint.x) / 2,
-		//	y: (vControl.y + nextPoint.y) / 2,
-		// }
-
-		// 		x1 := float64(vControl.x) / 64.0
-		// 		y1 := float64(vControl.y) / 64.0
-		// 		x2 := float64(vMiddle.x) / 64.0
-		// 		y2 := float64(vMiddle.y) / 64.0
-
-		// if flipY {
-		//	y1 = -y1
-		//	y2 = -y2
-		// }
-
-		if fe.flag32 {
-			// TODO: pathStorage.(*path.PathStorageInteger[int32]).Curve3(x1, y1, x2, y2)
-		} else {
-			// TODO: pathStorage.(*path.PathStorageInteger[int16]).Curve3(x1, y1, x2, y2)
+		vMiddle := C.FT_Vector{
+			x: (vControl.x + nextPoint.x) / 2,
+			y: (vControl.y + nextPoint.y) / 2,
 		}
 
-		// vControl = nextPoint // nextPoint was commented out
+		x1 := float64(vControl.x) / 64.0
+		y1 := float64(vControl.y) / 64.0
+		x2 := float64(vMiddle.x) / 64.0
+		y2 := float64(vMiddle.y) / 64.0
+
+		if flipY {
+			y1 = -y1
+			y2 = -y2
+		}
+
+		if fe.flag32 {
+			pathStorage.(*path.PathStorageInteger[int32]).Curve3(int32(x1), int32(y1), int32(x2), int32(y2))
+		} else {
+			pathStorage.(*path.PathStorageInteger[int16]).Curve3(int16(x1), int16(y1), int16(x2), int16(y2))
+		}
+
+		vControl = nextPoint
 	}
 
 	// Handle curve back to start if needed
 	if *i >= last {
-		// 		x1 := float64(vControl.x) / 64.0
-		// 		y1 := float64(vControl.y) / 64.0
-		// 		x2 := float64(startPoint.x) / 64.0
-		// 		y2 := float64(startPoint.y) / 64.0
+		x1 := float64(vControl.x) / 64.0
+		y1 := float64(vControl.y) / 64.0
+		x2 := float64(startPoint.x) / 64.0
+		y2 := float64(startPoint.y) / 64.0
 
-		// if flipY {
-		//	y1 = -y1
-		//	y2 = -y2
-		// }
+		if flipY {
+			y1 = -y1
+			y2 = -y2
+		}
 
 		if fe.flag32 {
-			// TODO: pathStorage.(*path.PathStorageInteger[int32]).Curve3(x1, y1, x2, y2)
+			pathStorage.(*path.PathStorageInteger[int32]).Curve3(int32(x1), int32(y1), int32(x2), int32(y2))
 		} else {
-			// TODO: pathStorage.(*path.PathStorageInteger[int16]).Curve3(x1, y1, x2, y2)
+			pathStorage.(*path.PathStorageInteger[int16]).Curve3(int16(x1), int16(y1), int16(x2), int16(y2))
 		}
 	}
 
@@ -487,14 +487,14 @@ func (fe *FontEngine) processCubicCurve(outline *C.FT_Outline, i *int, last int,
 	}
 
 	// Get first control point
-	// ctrl1Ptr := uintptr(unsafe.Pointer(outline.points)) + uintptr(*i)*unsafe.Sizeof(C.FT_Vector{})
-	// vCtrl1 := (*C.FT_Vector)(unsafe.Pointer(ctrl1Ptr))
+	ctrl1Ptr := uintptr(unsafe.Pointer(outline.points)) + uintptr(*i)*unsafe.Sizeof(C.FT_Vector{})
+	vCtrl1 := (*C.FT_Vector)(unsafe.Pointer(ctrl1Ptr))
 
 	*i++
 
 	// Get second control point
-	// ctrl2Ptr := uintptr(unsafe.Pointer(outline.points)) + uintptr(*i)*unsafe.Sizeof(C.FT_Vector{})
-	// vCtrl2 := (*C.FT_Vector)(unsafe.Pointer(ctrl2Ptr))
+	ctrl2Ptr := uintptr(unsafe.Pointer(outline.points)) + uintptr(*i)*unsafe.Sizeof(C.FT_Vector{})
+	vCtrl2 := (*C.FT_Vector)(unsafe.Pointer(ctrl2Ptr))
 
 	// Verify second control point is cubic
 	tag2Ptr := uintptr(unsafe.Pointer(outline.tags)) + uintptr(*i)
@@ -503,33 +503,33 @@ func (fe *FontEngine) processCubicCurve(outline *C.FT_Outline, i *int, last int,
 		return errors.New("second cubic control point has wrong tag")
 	}
 
-	// var endPoint *C.FT_Vector
+	var endPoint *C.FT_Vector
 	if *i < last {
 		*i++
-		// endPtr := uintptr(unsafe.Pointer(outline.points)) + uintptr(*i)*unsafe.Sizeof(C.FT_Vector{})
-		// endPoint = (*C.FT_Vector)(unsafe.Pointer(endPtr))
+		endPtr := uintptr(unsafe.Pointer(outline.points)) + uintptr(*i)*unsafe.Sizeof(C.FT_Vector{})
+		endPoint = (*C.FT_Vector)(unsafe.Pointer(endPtr))
 	} else {
 		// Curve back to start
-		// endPoint = startPoint
+		endPoint = startPoint
 	}
 
-	// 	x1 := float64(vCtrl1.x) / 64.0
-	// 	y1 := float64(vCtrl1.y) / 64.0
-	// 	x2 := float64(vCtrl2.x) / 64.0
-	// 	y2 := float64(vCtrl2.y) / 64.0
-	// 	x3 := float64(endPoint.x) / 64.0
-	// 	y3 := float64(endPoint.y) / 64.0
+	x1 := float64(vCtrl1.x) / 64.0
+	y1 := float64(vCtrl1.y) / 64.0
+	x2 := float64(vCtrl2.x) / 64.0
+	y2 := float64(vCtrl2.y) / 64.0
+	x3 := float64(endPoint.x) / 64.0
+	y3 := float64(endPoint.y) / 64.0
 
-	// if flipY {
-	//	y1 = -y1
-	//	y2 = -y2
-	//	y3 = -y3
-	// }
+	if flipY {
+		y1 = -y1
+		y2 = -y2
+		y3 = -y3
+	}
 
 	if fe.flag32 {
-		// TODO: pathStorage.(*path.PathStorageInteger[int32]).Curve4(x1, y1, x2, y2, x3, y3)
+		pathStorage.(*path.PathStorageInteger[int32]).Curve4(int32(x1), int32(y1), int32(x2), int32(y2), int32(x3), int32(y3))
 	} else {
-		// TODO: pathStorage.(*path.PathStorageInteger[int16]).Curve4(x1, y1, x2, y2, x3, y3)
+		pathStorage.(*path.PathStorageInteger[int16]).Curve4(int16(x1), int16(y1), int16(x2), int16(y2), int16(x3), int16(y3))
 	}
 
 	return nil

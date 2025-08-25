@@ -205,6 +205,11 @@ func (g *Gray8[CS]) Add(c Gray8[CS], cover basics.Int8u) {
 	}
 }
 
+// AddWithCover adds another Gray8 color with coverage for compound rendering compatibility
+func (g *Gray8[CS]) AddWithCover(c Gray8[CS], cover basics.Int8u) {
+	g.Add(c, cover)
+}
+
 // EmptyValue returns the empty (transparent) value
 func Gray8EmptyValue() basics.Int8u {
 	return 0

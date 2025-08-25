@@ -87,7 +87,7 @@ func (c *ConvMarker) Vertex() (x, y float64, cmd basics.PathCommand) {
 			}
 			(*c.markerLocator).Rewind(c.marker)
 			c.marker++
-			c.numMarkers = 0
+			c.numMarkers = 0 // Reset count for this marker locator position
 			c.status = MarkerStatusMarkers
 
 		case MarkerStatusMarkers:
