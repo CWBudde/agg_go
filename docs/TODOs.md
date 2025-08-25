@@ -159,9 +159,9 @@ This checklist is generated from TODO-like comments found in Go source files (`T
 
   - [ ] L177: Implement proper pixel format handling in CopyFrom
 
-- [ ] internal/platform/x11/x11_display.go
+- [x] internal/platform/x11/x11_display.go
 
-  - [ ] L299: Implement delay using system calls
+  - [x] L299: Implement delay using system calls
 
 - [x] internal/renderer/scanline/helpers.go
 

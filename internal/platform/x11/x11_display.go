@@ -294,9 +294,9 @@ func (x *X11Backend) GetTicks() uint32 {
 	return uint32(time.Now().UnixNano()/1e6) - x.startTicks
 }
 
-// Delay provides a delay (no-op for X11)
+// Delay provides a delay using time.Sleep
 func (x *X11Backend) Delay(ms uint32) {
-	// X11 doesn't provide built-in delay, would need to use system calls
+	time.Sleep(time.Duration(ms) * time.Millisecond)
 }
 
 // LoadImage loads an image file (basic BMP support)
