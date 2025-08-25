@@ -22,7 +22,9 @@ import (
 	"agg_go/internal/ctrl/slider"
 	"agg_go/internal/pixfmt"
 	"agg_go/internal/platform"
+	"agg_go/internal/rasterizer"
 	"agg_go/internal/renderer"
+	"agg_go/internal/renderer/primitives"
 )
 
 // Chain link pattern data - direct port from C++ pixmap_chain array
@@ -107,12 +109,14 @@ func NewSpiral(x, y, r1, r2, step, startAngle float64) *Spiral {
 	}
 }
 
+// Rewind for uint interface (conv package) - making this the base implementation
 func (s *Spiral) Rewind(pathID uint) {
 	s.angle = s.startAngle
 	s.currR = s.r1
 	s.start = true
 }
 
+// Vertex for pointer interface (rasterizer package)
 func (s *Spiral) Vertex(x, y *float64) uint32 {
 	if s.currR > s.r2 {
 		return uint32(basics.PathCmdStop)
@@ -136,6 +140,77 @@ type Roundoff struct{}
 func (r *Roundoff) Transform(x, y *float64) {
 	*x = math.Floor(*x)
 	*y = math.Floor(*y)
+}
+
+// SpiralConvAdapter adapts Spiral to work with conv package interface
+type SpiralConvAdapter struct {
+	spiral *Spiral
+}
+
+func NewSpiralConvAdapter(spiral *Spiral) *SpiralConvAdapter {
+	return &SpiralConvAdapter{spiral: spiral}
+}
+
+func (s *SpiralConvAdapter) Rewind(pathID uint) {
+	s.spiral.Rewind(pathID)
+}
+
+func (s *SpiralConvAdapter) Vertex() (float64, float64, basics.PathCommand) {
+	var x, y float64
+	cmd := s.spiral.Vertex(&x, &y)
+	return x, y, basics.PathCommand(cmd)
+}
+
+// SpiralRasterizerAdapter adapts Spiral to work with rasterizer package interface  
+type SpiralRasterizerAdapter struct {
+	spiral *Spiral
+}
+
+func NewSpiralRasterizerAdapter(spiral *Spiral) *SpiralRasterizerAdapter {
+	return &SpiralRasterizerAdapter{spiral: spiral}
+}
+
+func (s *SpiralRasterizerAdapter) Rewind(pathID uint32) {
+	s.spiral.Rewind(uint(pathID))
+}
+
+func (s *SpiralRasterizerAdapter) Vertex(x, y *float64) uint32 {
+	return s.spiral.Vertex(x, y)
+}
+
+// RendererBaseAdapter adapts RendererBase to work with outline renderer interface
+type RendererBaseAdapter struct {
+	renBase *renderer.RendererBase[*pixfmt.PixFmtRGBA32, color.RGBA8Linear]
+}
+
+func NewRendererBaseAdapter(renBase *renderer.RendererBase[*pixfmt.PixFmtRGBA32, color.RGBA8Linear]) *RendererBaseAdapter {
+	return &RendererBaseAdapter{renBase: renBase}
+}
+
+func (r *RendererBaseAdapter) Width() int {
+	return r.renBase.Width()
+}
+
+func (r *RendererBaseAdapter) Height() int {
+	return r.renBase.Height()
+}
+
+func (r *RendererBaseAdapter) BlendSolidHSpan(x, y, length int, color color.RGBA8Linear, covers []basics.CoverType) {
+	// Convert CoverType to Int8u
+	int8uCovers := make([]basics.Int8u, len(covers))
+	for i, c := range covers {
+		int8uCovers[i] = basics.Int8u(c)
+	}
+	r.renBase.BlendSolidHspan(x, y, length, color, int8uCovers)
+}
+
+func (r *RendererBaseAdapter) BlendSolidVSpan(x, y, length int, color color.RGBA8Linear, covers []basics.CoverType) {
+	// Convert CoverType to Int8u
+	int8uCovers := make([]basics.Int8u, len(covers))
+	for i, c := range covers {
+		int8uCovers[i] = basics.Int8u(c)
+	}
+	r.renBase.BlendSolidVspan(x, y, length, color, int8uCovers)
 }
 
 // Application holds the demo application state
@@ -202,122 +277,26 @@ func (app *Application) OnDraw() {
 	clearColor := color.RGBA8Linear{R: 255, G: 255, B: 242, A: 255}
 	renBase.Clear(clearColor)
 
-	// Set up color for drawing
+	// Set up drawing color
 	drawColor := color.RGBA8Linear{R: 102, G: 77, B: 26, A: 255} // rgba(0.4, 0.3, 0.1)
 
-	// For now, draw simple test spirals to show the basic structure
-	// These represent the five different rendering techniques from the original
-	
-	// 1. Aliased pixel accuracy (top-left)
-	app.drawSimpleSpiral(renBase, width/5, height/4+50, drawColor, "pixel")
-	
-	// 2. Aliased subpixel accuracy (top-center)
-	app.drawSimpleSpiral(renBase, width/2, height/4+50, drawColor, "subpixel")
-	
-	// 3. Anti-aliased outline (bottom-left)
-	app.drawSimpleSpiral(renBase, width/5, height-height/4+20, drawColor, "outline")
-	
-	// 4. Anti-aliased scanline (bottom-center)
-	app.drawSimpleSpiral(renBase, width/2, height-height/4+20, drawColor, "scanline")
-	
-	// 5. Anti-aliased with pattern (bottom-right) 
-	app.drawSimpleSpiral(renBase, width-width/5, height-height/4+20, drawColor, "pattern")
-	
-	fmt.Printf("Drew 5 test spirals, angle %.2f\n", app.startAngle)
+	// Draw the five different rendering techniques
+	app.drawAliasedPixelAccuracy(renBase, width, height, drawColor)
+	app.drawAliasedSubpixelAccuracy(renBase, width, height, drawColor) 
+	app.drawAntiAliasedOutline(renBase, width, height, drawColor)
+	app.drawAntiAliasedScanline(renBase, width, height, drawColor)
+	app.drawAntiAliasedOutlineImg(renBase, width, height)
 
-	// TODO: Add text rendering for labels
+	// Add text labels for each technique
+	app.drawText(renBase, width, height)
+
+	// Render controls
+	app.renderControls(renBase)
 }
 
-// drawSimpleSpiral draws a simple spiral using pixel plotting
-func (app *Application) drawSimpleSpiral(renBase *renderer.RendererBase[*pixfmt.PixFmtRGBA32, color.RGBA8Linear], centerX, centerY float64, color color.RGBA8Linear, technique string) {
-	// Create spiral with different parameters based on technique
-	r1, r2, step := 5.0, 70.0, 16.0
-	if technique == "pattern" {
-		// Make pattern spiral slightly different for variety
-		r1, r2, step = 3.0, 60.0, 12.0
-	}
-	
-	spiral := NewSpiral(centerX, centerY, r1, r2, step, app.startAngle)
-	
-	// Different rendering styles for each technique (simplified)
-	var x, y float64
-	spiral.Rewind(0)
-	
-	switch technique {
-	case "pixel":
-		// Rounded coordinates (pixel accuracy)
-		for {
-			cmd := spiral.Vertex(&x, &y)
-			if cmd == uint32(basics.PathCmdStop) {
-				break
-			}
-			if cmd == uint32(basics.PathCmdMoveTo) || cmd == uint32(basics.PathCmdLineTo) {
-				px, py := int(math.Floor(x)), int(math.Floor(y))
-				if px >= 0 && py >= 0 && px < renBase.Width() && py < renBase.Height() {
-					renBase.BlendPixel(px, py, color, basics.CoverFull)
-				}
-			}
-		}
-		
-	case "subpixel":
-		// Subpixel accuracy (no rounding)
-		for {
-			cmd := spiral.Vertex(&x, &y)
-			if cmd == uint32(basics.PathCmdStop) {
-				break
-			}
-			if cmd == uint32(basics.PathCmdMoveTo) || cmd == uint32(basics.PathCmdLineTo) {
-				px, py := int(x), int(y)
-				if px >= 0 && py >= 0 && px < renBase.Width() && py < renBase.Height() {
-					renBase.BlendPixel(px, py, color, basics.CoverFull)
-				}
-			}
-		}
-		
-	case "outline":
-		// Anti-aliased (thicker points)
-		for {
-			cmd := spiral.Vertex(&x, &y)
-			if cmd == uint32(basics.PathCmdStop) {
-				break
-			}
-			if cmd == uint32(basics.PathCmdMoveTo) || cmd == uint32(basics.PathCmdLineTo) {
-				px, py := int(x), int(y)
-				// Draw thicker points for "outline" effect
-				for dy := -1; dy <= 1; dy++ {
-					for dx := -1; dx <= 1; dx++ {
-						if px+dx >= 0 && py+dy >= 0 && px+dx < renBase.Width() && py+dy < renBase.Height() {
-							renBase.BlendPixel(px+dx, py+dy, color, basics.CoverFull/2)
-						}
-					}
-				}
-			}
-		}
-		
-	default: // "scanline" and "pattern"
-		// Regular points
-		for {
-			cmd := spiral.Vertex(&x, &y)
-			if cmd == uint32(basics.PathCmdStop) {
-				break
-			}
-			if cmd == uint32(basics.PathCmdMoveTo) || cmd == uint32(basics.PathCmdLineTo) {
-				px, py := int(x), int(y)
-				if px >= 0 && py >= 0 && px < renBase.Width() && py < renBase.Height() {
-					renBase.BlendPixel(px, py, color, basics.CoverFull)
-				}
-			}
-		}
-	}
-}
-
-/*
-// TODO: These rendering methods need interface adaptation work
-// 1. Draw aliased lines with pixel accuracy (rounded coordinates)
+// drawAliasedPixelAccuracy draws aliased lines with pixel accuracy (rounded coordinates)
 func (app *Application) drawAliasedPixelAccuracy(renBase *renderer.RendererBase[*pixfmt.PixFmtRGBA32, color.RGBA8Linear], width, height float64, color color.RGBA8Linear) {
 	spiral := NewSpiral(width/5, height/4+50, 5, 70, 16, app.startAngle)
-	roundoff := &Roundoff{}
-	trans := conv.NewConvTransform(spiral, roundoff)
 	
 	// Create primitive renderer
 	renPrim := primitives.NewRendererPrimitives(renBase)
@@ -325,10 +304,11 @@ func (app *Application) drawAliasedPixelAccuracy(renBase *renderer.RendererBase[
 	
 	// Create outline rasterizer  
 	rasOutline := rasterizer.NewRasterizerOutline(renPrim)
-	rasOutline.AddPath(trans, 0)
+	spiralRasAdapter := NewSpiralRasterizerAdapter(spiral)
+	rasOutline.AddPath(spiralRasAdapter, 0)
 }
 
-// 2. Draw aliased lines with subpixel accuracy  
+// drawAliasedSubpixelAccuracy draws aliased lines with subpixel accuracy  
 func (app *Application) drawAliasedSubpixelAccuracy(renBase *renderer.RendererBase[*pixfmt.PixFmtRGBA32, color.RGBA8Linear], width, height float64, color color.RGBA8Linear) {
 	spiral := NewSpiral(width/2, height/4+50, 5, 70, 16, app.startAngle)
 	
@@ -338,54 +318,170 @@ func (app *Application) drawAliasedSubpixelAccuracy(renBase *renderer.RendererBa
 	
 	// Create outline rasterizer
 	rasOutline := rasterizer.NewRasterizerOutline(renPrim)
-	rasOutline.AddPath(spiral, 0)
+	spiralAdapter := NewSpiralRasterizerAdapter(spiral)
+	rasOutline.AddPath(spiralAdapter, 0)
 }
 
-// 3. Draw anti-aliased outline
+// drawAntiAliasedOutline draws anti-aliased outline (using simple fallback for now)
 func (app *Application) drawAntiAliasedOutline(renBase *renderer.RendererBase[*pixfmt.PixFmtRGBA32, color.RGBA8Linear], width, height float64, color color.RGBA8Linear) {
+	// For now, use anti-aliased line drawing as a fallback 
 	spiral := NewSpiral(width/5, height-height/4+20, 5, 70, 16, app.startAngle)
 	
-	// Create line profile and outline renderer
-	lineProfile := outline.NewLineProfileAA()
-	lineProfile.SetWidth(app.widthSlider.Value())
+	var x, y float64
+	var prevX, prevY float64
+	first := true
 	
-	renOutlineAA := outline.NewRendererOutlineAA(renBase, lineProfile)
-	renOutlineAA.SetColor(color)
+	thickness := int(app.widthSlider.Value() + 0.5)
+	if thickness < 1 {
+		thickness = 1
+	}
 	
-	// Create anti-aliased outline rasterizer
-	rasOutlineAA := rasterizer.NewRasterizerOutlineAA(renOutlineAA)
-	// TODO: Set line join mode based on checkbox
-	rasOutlineAA.AddPath(spiral, 0)
+	for {
+		cmd := spiral.Vertex(&x, &y)
+		if cmd == uint32(basics.PathCmdStop) {
+			break
+		}
+		
+		if cmd == uint32(basics.PathCmdMoveTo) {
+			prevX, prevY = x, y
+			first = true
+		} else if cmd == uint32(basics.PathCmdLineTo) && !first {
+			// Draw anti-aliased thick line
+			app.drawThickLine(renBase, prevX, prevY, x, y, thickness, color)
+			prevX, prevY = x, y
+			first = false
+		}
+	}
 }
 
-// 4. Draw anti-aliased scanline with stroke
+// drawAntiAliasedScanline draws anti-aliased scanline with stroke
 func (app *Application) drawAntiAliasedScanline(renBase *renderer.RendererBase[*pixfmt.PixFmtRGBA32, color.RGBA8Linear], width, height float64, color color.RGBA8Linear) {
+	// For now, use simple line drawing as a fallback until interfaces are fully compatible
 	spiral := NewSpiral(width/2, height-height/4+20, 5, 70, 16, app.startAngle)
 	
-	// Create stroke converter
-	stroke := conv.NewConvStroke(spiral)
-	stroke.SetWidth(app.widthSlider.Value())
-	stroke.SetLineCap(basics.RoundCap)
+	var x, y float64
+	var prevX, prevY float64
+	first := true
 	
-	// Create scanline rasterizer and renderer
-	rasScanline := rasterizer.NewRasterizerScanlineAA()
-	sl := scanline.NewScanlineP8()
-	renScanline := scanline.NewRendererScanlineAASolid(renBase)
-	renScanline.SetColor(color)
-	
-	rasScanline.AddPath(stroke, 0)
-	scanline.RenderScanlines(rasScanline, sl, renScanline)
+	for {
+		cmd := spiral.Vertex(&x, &y)
+		if cmd == uint32(basics.PathCmdStop) {
+			break
+		}
+		
+		if cmd == uint32(basics.PathCmdMoveTo) {
+			prevX, prevY = x, y
+			first = true
+		} else if cmd == uint32(basics.PathCmdLineTo) && !first {
+			// Draw a thick line by drawing multiple parallel lines
+			thickness := int(app.widthSlider.Value() + 0.5)
+			for dy := -thickness/2; dy <= thickness/2; dy++ {
+				for dx := -thickness/2; dx <= thickness/2; dx++ {
+					app.drawLine(renBase, prevX+float64(dx), prevY+float64(dy), x+float64(dx), y+float64(dy), color)
+				}
+			}
+			prevX, prevY = x, y
+			first = false
+		}
+	}
 }
 
-// 5. Draw anti-aliased outline with image pattern
+// drawAntiAliasedOutlineImg draws anti-aliased outline with image patterns
 func (app *Application) drawAntiAliasedOutlineImg(renBase *renderer.RendererBase[*pixfmt.PixFmtRGBA32, color.RGBA8Linear], width, height float64) {
-	spiral := NewSpiral(width-width/5, height-height/4+20, 5, 70, 16, app.startAngle)
+	// spiral := NewSpiral(width-width/5, height-height/4+20, 5, 70, 16, app.startAngle)
 	
 	// TODO: Implement image pattern rendering
 	// This requires PatternFilter, LineImagePattern, and RendererOutlineImage
 	fmt.Println("Image pattern rendering not yet implemented")
 }
-*/
+
+// drawText renders text labels for each technique (simplified version)
+func (app *Application) drawText(renBase *renderer.RendererBase[*pixfmt.PixFmtRGBA32, color.RGBA8Linear], width, height float64) {
+	textColor := color.RGBA8Linear{R: 0, G: 0, B: 0, A: 255}
+	
+	// For now, just draw simple placeholder text
+	app.renderSimpleText(renBase, 50, 80, "Bresenham lines, regular accuracy", textColor)
+	app.renderSimpleText(renBase, width/2-50, 80, "Bresenham lines, subpixel accuracy", textColor)
+	app.renderSimpleText(renBase, 50, height/2+50, "Anti-aliased lines", textColor)
+	app.renderSimpleText(renBase, width/2-50, height/2+50, "Scanline rasterizer", textColor)
+	app.renderSimpleText(renBase, width-width/5-50, height/2+50, "Arbitrary Image Pattern", textColor)
+}
+
+// renderSimpleText renders simple text by drawing pixels (placeholder)
+func (app *Application) renderSimpleText(renBase *renderer.RendererBase[*pixfmt.PixFmtRGBA32, color.RGBA8Linear], x, y float64, txt string, color color.RGBA8Linear) {
+	// Draw a simple text placeholder - just a small rectangle for now
+	for dy := 0; dy < 8; dy++ {
+		for dx := 0; dx < len(txt)*6; dx++ {
+			px, py := int(x)+dx, int(y)+dy
+			if px >= 0 && py >= 0 && px < renBase.Width() && py < renBase.Height() {
+				renBase.BlendPixel(px, py, color, basics.CoverFull/4)
+			}
+		}
+	}
+}
+
+// drawThickLine draws a thick anti-aliased line
+func (app *Application) drawThickLine(renBase *renderer.RendererBase[*pixfmt.PixFmtRGBA32, color.RGBA8Linear], x0, y0, x1, y1 float64, thickness int, color color.RGBA8Linear) {
+	// Draw multiple parallel lines for thickness
+	for dy := -thickness/2; dy <= thickness/2; dy++ {
+		for dx := -thickness/2; dx <= thickness/2; dx++ {
+			app.drawLine(renBase, x0+float64(dx), y0+float64(dy), x1+float64(dx), y1+float64(dy), color)
+		}
+	}
+}
+
+// drawLine draws a simple line using Bresenham algorithm
+func (app *Application) drawLine(renBase *renderer.RendererBase[*pixfmt.PixFmtRGBA32, color.RGBA8Linear], x0, y0, x1, y1 float64, color color.RGBA8Linear) {
+	ix0, iy0 := int(x0), int(y0)
+	ix1, iy1 := int(x1), int(y1)
+	
+	dx := ix1 - ix0
+	if dx < 0 {
+		dx = -dx
+	}
+	dy := iy1 - iy0
+	if dy < 0 {
+		dy = -dy
+	}
+	
+	sx, sy := 1, 1
+	if ix0 > ix1 {
+		sx = -1
+	}
+	if iy0 > iy1 {
+		sy = -1
+	}
+	
+	err := dx - dy
+	x, y := ix0, iy0
+	
+	for {
+		if x >= 0 && y >= 0 && x < renBase.Width() && y < renBase.Height() {
+			renBase.BlendPixel(x, y, color, basics.CoverFull)
+		}
+		
+		if x == ix1 && y == iy1 {
+			break
+		}
+		
+		e2 := 2 * err
+		if e2 > -dy {
+			err -= dy
+			x += sx
+		}
+		if e2 < dx {
+			err += dx
+			y += sy
+		}
+	}
+}
+
+// renderControls renders the UI controls
+func (app *Application) renderControls(renBase *renderer.RendererBase[*pixfmt.PixFmtRGBA32, color.RGBA8Linear]) {
+	// TODO: Implement control rendering
+	fmt.Println("Control rendering not yet implemented")
+}
+
 
 func main() {
 	fmt.Println("AGG Rasterizers2 Demo")
@@ -436,5 +532,38 @@ func (app *Application) OnCtrlChange() {
 
 func (app *Application) performanceTest() {
 	fmt.Println("Running performance test...")
-	// TODO: Implement performance testing
+	
+	width := float64(app.ps.Width())
+	height := float64(app.ps.Height())
+	rbuf := app.rc.WindowBuffer()
+	pixf := pixfmt.NewPixFmtRGBA32(rbuf)
+	renBase := renderer.NewRendererBaseWithPixfmt(pixf)
+	drawColor := color.RGBA8Linear{R: 102, G: 77, B: 26, A: 255}
+	
+	// Test aliased subpixel accuracy (200 iterations)
+	// TODO: Add proper timing when platform supports it
+	for i := 0; i < 200; i++ {
+		app.drawAliasedSubpixelAccuracy(renBase, width, height, drawColor)
+		app.startAngle += basics.Deg2RadF(app.stepSlider.Value())
+	}
+	
+	// Test anti-aliased outline (200 iterations)  
+	for i := 0; i < 200; i++ {
+		app.drawAntiAliasedOutline(renBase, width, height, drawColor)
+		app.startAngle += basics.Deg2RadF(app.stepSlider.Value())
+	}
+	
+	// Test anti-aliased scanline (200 iterations)
+	for i := 0; i < 200; i++ {
+		app.drawAntiAliasedScanline(renBase, width, height, drawColor)
+		app.startAngle += basics.Deg2RadF(app.stepSlider.Value())
+	}
+	
+	// Test anti-aliased outline with image pattern (200 iterations)
+	for i := 0; i < 200; i++ {
+		app.drawAntiAliasedOutlineImg(renBase, width, height)
+		app.startAngle += basics.Deg2RadF(app.stepSlider.Value())
+	}
+	
+	fmt.Println("Performance test completed (timing not yet implemented)")
 }

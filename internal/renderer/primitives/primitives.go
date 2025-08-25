@@ -197,7 +197,14 @@ func (rp *RendererPrimitives[BR, C]) MoveTo(x, y int) {
 }
 
 // LineTo draws a line from the current position to (x, y).
-func (rp *RendererPrimitives[BR, C]) LineTo(x, y int, last bool) {
+func (rp *RendererPrimitives[BR, C]) LineTo(x, y int) {
+	rp.Line(rp.currX, rp.currY, x, y, false)
+	rp.currX = x
+	rp.currY = y
+}
+
+// LineToLast draws a line from the current position to (x, y) with last pixel.
+func (rp *RendererPrimitives[BR, C]) LineToLast(x, y int, last bool) {
 	rp.Line(rp.currX, rp.currY, x, y, last)
 	rp.currX = x
 	rp.currY = y
