@@ -2,6 +2,18 @@
 
 This is a comprehensive checklist of files that need to be ported from the original AGG 2.6 C++ codebase to Go. Please always check the original C++ implementation for reference in ../agg-2.6
 
+## Core Library TODOs
+
+This checklist tracks remaining TODO items and missing features in the AGG Go port. Regenerate TODO comments with:
+
+`rg -n "TODO|FIXME|XXX|HACK" --glob "**/*.go" -S --sort path`
+
+- [ ] **Font System**
+
+  - [ ] `internal/font/freetype2/engine.go:83`: Support custom memory management (optional enhancement)
+
+---
+
 ## Core Header Files (include/)
 
 Previously completed tasks have been moved to TASKS-COMPLETED.md
@@ -9,51 +21,6 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 ---
 
 ### Transformations
-
-#### agg_trans_affine.h - 2D Affine transformations (core transformation system)
-
-- [x] trans_affine → TransAffine struct - 2x3 affine transformation matrix (`internal/transform/affine.go`)
-- [x] Reset() - reset to identity matrix
-- [x] Translation operations
-- [x] Scaling operations
-- [x] Rotation operations
-- [x] Matrix composition and multiplication
-- [x] Matrix inversion and determinant
-- [x] Decomposition methods
-- [x] Point transformation methods
-- [x] Vector transformation (no translation)
-- [x] trans_affine_rotation → NewTransAffineRotation(angle) - pure rotation matrix
-- [x] trans_affine_scaling → NewTransAffineScaling(s) or (sx, sy) - pure scaling matrix
-- [x] trans_affine_translation → NewTransAffineTranslation(x, y) - pure translation matrix
-- [x] trans_affine_skewing → NewTransAffineSkewing(x, y) - pure skew matrix
-- [x] Matrix property checks
-- [x] Epsilon handling
-- [x] Vertex source compatibility
-- [x] Span interpolator integration
-- [x] Transformation around arbitrary points
-- [x] Transformation chaining
-- [x] Fast path detection
-- [x] Batch transformation
-- [x] Singular matrix handling
-- [x] Numerical stability
-
-#### agg_trans_bilinear.h - Bilinear transformations for quadrilateral mapping
-
-- [x] trans_bilinear → TransBilinear struct - Bilinear coordinate transformation
-- [x] Construction from control points
-- [x] Coefficient calculation
-- [x] Forward transformation
-- [x] Inverse coordinate mapping
-- [x] Image rectification (application examples - core transformation supports these use cases)
-- [x] Texture mapping applications (application examples - core transformation supports these use)
-- [x] Span interpolator compatibility
-- [x] Path transformation (core transformation supports these use cases)
-- [x] Coefficient caching
-- [x] Numerical stability
-- [x] agg_trans_affine.h → internal/transform package (affine transformation base)
-- [x] agg_basics.h → internal/basics package (point types)
-- [x] agg_simul_eq.h → simultaneous equation solver
-- [x] Mathematical utilities for iterative solving
 
 #### agg_trans_perspective.h - 3D perspective projections in 2D space
 

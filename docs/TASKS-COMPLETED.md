@@ -1679,3 +1679,51 @@ This is a comprehensive checklist of files that have been ported from the origin
 - agg_math.h → internal/math package (distance functions)
 - Vertex source interface from agg_basics.h
 - Compatible with all AGG path storage types
+
+### Transformations
+
+#### agg_trans_affine.h - 2D Affine transformations (core transformation system)
+
+- [x] trans_affine → TransAffine struct - 2x3 affine transformation matrix (`internal/transform/affine.go`)
+- [x] Reset() - reset to identity matrix
+- [x] Translation operations
+- [x] Scaling operations
+- [x] Rotation operations
+- [x] Matrix composition and multiplication
+- [x] Matrix inversion and determinant
+- [x] Decomposition methods
+- [x] Point transformation methods
+- [x] Vector transformation (no translation)
+- [x] trans_affine_rotation → NewTransAffineRotation(angle) - pure rotation matrix
+- [x] trans_affine_scaling → NewTransAffineScaling(s) or (sx, sy) - pure scaling matrix
+- [x] trans_affine_translation → NewTransAffineTranslation(x, y) - pure translation matrix
+- [x] trans_affine_skewing → NewTransAffineSkewing(x, y) - pure skew matrix
+- [x] Matrix property checks
+- [x] Epsilon handling
+- [x] Vertex source compatibility
+- [x] Span interpolator integration
+- [x] Transformation around arbitrary points
+- [x] Transformation chaining
+- [x] Fast path detection
+- [x] Batch transformation
+- [x] Singular matrix handling
+- [x] Numerical stability
+
+#### agg_trans_bilinear.h - Bilinear transformations for quadrilateral mapping
+
+- [x] trans_bilinear → TransBilinear struct - Bilinear coordinate transformation
+- [x] Construction from control points
+- [x] Coefficient calculation
+- [x] Forward transformation
+- [x] Inverse coordinate mapping
+- [x] Image rectification (application examples - core transformation supports these use cases)
+- [x] Texture mapping applications (application examples - core transformation supports these use)
+- [x] Span interpolator compatibility
+- [x] Path transformation (core transformation supports these use cases)
+- [x] Coefficient caching
+- [x] Numerical stability
+- [x] agg_trans_affine.h → internal/transform package (affine transformation base)
+- [x] agg_basics.h → internal/basics package (point types)
+- [x] agg_simul_eq.h → simultaneous equation solver
+- [x] Mathematical utilities for iterative solving
+
