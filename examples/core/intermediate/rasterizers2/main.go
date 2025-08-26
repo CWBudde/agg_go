@@ -18,6 +18,7 @@ import (
 
 	"agg_go/internal/basics"
 	"agg_go/internal/color"
+	"agg_go/internal/ctrl"
 	"agg_go/internal/ctrl/checkbox"
 	"agg_go/internal/ctrl/slider"
 	"agg_go/internal/pixfmt"
@@ -26,6 +27,7 @@ import (
 	"agg_go/internal/renderer"
 	"agg_go/internal/renderer/outline"
 	"agg_go/internal/renderer/primitives"
+	"agg_go/internal/scanline"
 )
 
 // Chain link pattern data - direct port from C++ pixmap_chain array
@@ -309,6 +311,110 @@ func (r *RendererBaseImageAdapter) BlendColorVSpan(x, y int, length int, colors 
 		}
 		r.renBase.BlendPixel(x, y+i, color, cover)
 	}
+}
+
+// ControlVertexSourceAdapter adapts control's vertex source interface to the rasterizer's requirements
+type ControlVertexSourceAdapter struct {
+	ctrl   ctrl.Ctrl[color.RGBA8Linear]
+	pathID uint32
+}
+
+func NewControlVertexSourceAdapter(ctrl ctrl.Ctrl[color.RGBA8Linear]) *ControlVertexSourceAdapter {
+	return &ControlVertexSourceAdapter{ctrl: ctrl}
+}
+
+func (adapter *ControlVertexSourceAdapter) Rewind(pathID uint32) {
+	adapter.pathID = pathID
+	adapter.ctrl.Rewind(uint(pathID))
+}
+
+func (adapter *ControlVertexSourceAdapter) Vertex(x, y *float64) uint32 {
+	px, py, cmd := adapter.ctrl.Vertex()
+	*x = px
+	*y = py
+	return uint32(cmd)
+}
+
+// ControlRasterizerAdapter adapts the rasterizer to work with control interface
+type ControlRasterizerAdapter struct {
+	ras *rasterizer.RasterizerScanlineAANoGamma[*rasterizer.RasterizerSlNoClip]
+}
+
+func NewControlRasterizerAdapter() *ControlRasterizerAdapter {
+	noClip := rasterizer.NewRasterizerSlNoClip(nil)
+	ras := rasterizer.NewRasterizerScanlineAANoGamma[*rasterizer.RasterizerSlNoClip](1024)
+	ras.SetClipper(noClip)
+
+	return &ControlRasterizerAdapter{ras: ras}
+}
+
+func (adapter *ControlRasterizerAdapter) Reset() {
+	adapter.ras.Reset()
+}
+
+func (adapter *ControlRasterizerAdapter) AddPath(vs ctrl.VertexSourceInterface, pathID uint) {
+	// Convert ctrl.VertexSourceInterface to rasterizer.VertexSource
+	ctrlAdapter := &controlToRasterizerVertexAdapter{vs: vs}
+	adapter.ras.AddPath(ctrlAdapter, uint32(pathID))
+}
+
+func (adapter *ControlRasterizerAdapter) RewindScanlines() bool {
+	return adapter.ras.RewindScanlines()
+}
+
+func (adapter *ControlRasterizerAdapter) MinX() int {
+	return adapter.ras.MinX()
+}
+
+func (adapter *ControlRasterizerAdapter) MaxX() int {
+	return adapter.ras.MaxX()
+}
+
+func (adapter *ControlRasterizerAdapter) SweepScanline(sl scanline.ScanlineInterface) bool {
+	// Create adapter for scanline interface compatibility
+	slAdapter := &scanlineInterfaceAdapter{sl: sl}
+	return adapter.ras.SweepScanline(slAdapter)
+}
+
+// controlToRasterizerVertexAdapter converts ctrl.VertexSourceInterface to rasterizer.VertexSource
+type controlToRasterizerVertexAdapter struct {
+	vs ctrl.VertexSourceInterface
+}
+
+func (adapter *controlToRasterizerVertexAdapter) Rewind(pathID uint32) {
+	adapter.vs.Rewind(uint(pathID))
+}
+
+func (adapter *controlToRasterizerVertexAdapter) Vertex(x, y *float64) uint32 {
+	px, py, cmd := adapter.vs.Vertex()
+	*x = px
+	*y = py
+	return cmd
+}
+
+// scanlineInterfaceAdapter adapts scanline.ScanlineInterface to rasterizer scanline interface
+type scanlineInterfaceAdapter struct {
+	sl scanline.ScanlineInterface
+}
+
+func (adapter *scanlineInterfaceAdapter) ResetSpans() {
+	adapter.sl.ResetSpans()
+}
+
+func (adapter *scanlineInterfaceAdapter) AddCell(x int, cover uint32) {
+	adapter.sl.AddCell(x, cover)
+}
+
+func (adapter *scanlineInterfaceAdapter) AddSpan(x, length int, cover uint32) {
+	adapter.sl.AddSpan(x, length, cover)
+}
+
+func (adapter *scanlineInterfaceAdapter) Finalize(y int) {
+	adapter.sl.Finalize(y)
+}
+
+func (adapter *scanlineInterfaceAdapter) NumSpans() int {
+	return adapter.sl.NumSpans()
 }
 
 // Application holds the demo application state
@@ -682,11 +788,53 @@ func (app *Application) drawLine(renBase *renderer.RendererBase[*pixfmt.PixFmtRG
 	}
 }
 
-// renderControls renders the UI controls
+// renderControls renders the UI controls using proper AGG rendering pipeline
 func (app *Application) renderControls(renBase *renderer.RendererBase[*pixfmt.PixFmtRGBA32, color.RGBA8Linear]) {
-	// TODO: Implement full control rendering with proper interface compatibility
-	// For now, use simple rendering to show controls exist
-	app.renderSimpleControlPlaceholders(renBase)
+	// Create rasterizer and scanline for control rendering
+	ras := NewControlRasterizerAdapter()
+	sl := scanline.NewScanlineP8()
+
+	// Create base renderer adapter for controls
+	baseRenderer := &controlBaseRendererAdapter{renBase: renBase}
+
+	// Render each control using the AGG pipeline
+	app.renderSliderControl(ras, sl, baseRenderer, app.stepSlider)
+	app.renderSliderControl(ras, sl, baseRenderer, app.widthSlider)
+	app.renderCheckboxControl(ras, sl, baseRenderer, app.testBox)
+	app.renderCheckboxControl(ras, sl, baseRenderer, app.rotateBox)
+	app.renderCheckboxControl(ras, sl, baseRenderer, app.joinBox)
+	app.renderCheckboxControl(ras, sl, baseRenderer, app.scaleBox)
+}
+
+// controlBaseRendererAdapter adapts RendererBase to work with ctrl.BaseRendererInterface
+type controlBaseRendererAdapter struct {
+	renBase *renderer.RendererBase[*pixfmt.PixFmtRGBA32, color.RGBA8Linear]
+}
+
+func (adapter *controlBaseRendererAdapter) BlendSolidHSpan(x, y, length int, color color.RGBA8Linear, covers []basics.Int8u) {
+	adapter.renBase.BlendSolidHspan(x, y, length, color, covers)
+}
+
+func (adapter *controlBaseRendererAdapter) BlendSolidVSpan(x, y, length int, color color.RGBA8Linear, covers []basics.Int8u) {
+	adapter.renBase.BlendSolidVspan(x, y, length, color, covers)
+}
+
+// renderSliderControl renders a slider control using the AGG pipeline
+func (app *Application) renderSliderControl(ras *ControlRasterizerAdapter, sl *scanline.ScanlineP8,
+	baseRenderer *controlBaseRendererAdapter, sliderCtrl *slider.SliderCtrl,
+) {
+	// Use the ctrl.RenderCtrl function with adapters
+	ctrl.RenderCtrl[*ControlRasterizerAdapter, *scanline.ScanlineP8, *controlBaseRendererAdapter, color.RGBA8Linear](
+		ras, sl, baseRenderer, sliderCtrl)
+}
+
+// renderCheckboxControl renders a checkbox control using the AGG pipeline
+func (app *Application) renderCheckboxControl(ras *ControlRasterizerAdapter, sl *scanline.ScanlineP8,
+	baseRenderer *controlBaseRendererAdapter, checkboxCtrl *checkbox.CheckboxCtrl[color.RGBA8Linear],
+) {
+	// Use the ctrl.RenderCtrl function with adapters
+	ctrl.RenderCtrl[*ControlRasterizerAdapter, *scanline.ScanlineP8, *controlBaseRendererAdapter, color.RGBA8Linear](
+		ras, sl, baseRenderer, checkboxCtrl)
 }
 
 // renderSimpleControlPlaceholders renders simple placeholders for controls
@@ -728,6 +876,9 @@ func main() {
 	app.ps.SetOnResize(app.OnResize)
 	app.ps.SetOnDraw(app.OnDraw)
 	app.ps.SetOnIdle(app.OnIdle)
+	app.ps.SetOnMouseButtonDown(app.OnMouseButtonDown)
+	app.ps.SetOnMouseButtonUp(app.OnMouseButtonUp)
+	app.ps.SetOnMouseMove(app.OnMouseMove)
 
 	if app.ps.Init(500, 450, 0) == nil {
 		app.ps.Run()
@@ -764,6 +915,97 @@ func (app *Application) OnCtrlChange() {
 	}
 }
 
+// Mouse event handlers for control interaction
+func (app *Application) OnMouseButtonDown(x, y int, flags uint32) bool {
+	// Check if any control is clicked
+	fx, fy := float64(x), float64(y)
+
+	// Check sliders first
+	if app.stepSlider.OnMouseButtonDown(fx, fy, flags) {
+		app.ps.ForceRedraw()
+		return true
+	}
+	if app.widthSlider.OnMouseButtonDown(fx, fy, flags) {
+		app.ps.ForceRedraw()
+		return true
+	}
+
+	// Check checkboxes
+	if app.testBox.OnMouseButtonDown(fx, fy, flags) {
+		app.OnCtrlChange() // Trigger control change handling
+		app.ps.ForceRedraw()
+		return true
+	}
+	if app.rotateBox.OnMouseButtonDown(fx, fy, flags) {
+		app.ps.ForceRedraw()
+		return true
+	}
+	if app.joinBox.OnMouseButtonDown(fx, fy, flags) {
+		app.ps.ForceRedraw()
+		return true
+	}
+	if app.scaleBox.OnMouseButtonDown(fx, fy, flags) {
+		app.ps.ForceRedraw()
+		return true
+	}
+
+	return false
+}
+
+func (app *Application) OnMouseButtonUp(x, y int, flags uint32) bool {
+	// Check if any control needs to handle mouse up
+	fx, fy := float64(x), float64(y)
+
+	// Check sliders
+	if app.stepSlider.OnMouseButtonUp(fx, fy, flags) {
+		app.ps.ForceRedraw()
+		return true
+	}
+	if app.widthSlider.OnMouseButtonUp(fx, fy, flags) {
+		app.ps.ForceRedraw()
+		return true
+	}
+
+	// Check checkboxes
+	if app.testBox.OnMouseButtonUp(fx, fy, flags) {
+		app.ps.ForceRedraw()
+		return true
+	}
+	if app.rotateBox.OnMouseButtonUp(fx, fy, flags) {
+		app.ps.ForceRedraw()
+		return true
+	}
+	if app.joinBox.OnMouseButtonUp(fx, fy, flags) {
+		app.ps.ForceRedraw()
+		return true
+	}
+	if app.scaleBox.OnMouseButtonUp(fx, fy, flags) {
+		app.ps.ForceRedraw()
+		return true
+	}
+
+	return false
+}
+
+func (app *Application) OnMouseMove(x, y int, flags uint32) bool {
+	// Check if any control needs to handle mouse move (for slider dragging)
+	fx, fy := float64(x), float64(y)
+
+	// Check sliders for dragging
+	if app.stepSlider.OnMouseMove(fx, fy, flags) {
+		app.ps.ForceRedraw()
+		return true
+	}
+	if app.widthSlider.OnMouseMove(fx, fy, flags) {
+		app.ps.ForceRedraw()
+		return true
+	}
+
+	// Checkboxes typically don't need mouse move handling
+
+	return false
+}
+
 func (app *Application) performanceTest() {
 	fmt.Println("Running performance test...")
 
@@ -775,29 +1017,52 @@ func (app *Application) performanceTest() {
 	drawColor := color.RGBA8Linear{R: 102, G: 77, B: 26, A: 255}
 
 	// Test aliased subpixel accuracy (200 iterations)
-	// TODO: Add proper timing when platform supports it
+	fmt.Print("Testing aliased subpixel accuracy...")
+	app.ps.StartTimer()
 	for i := 0; i < 200; i++ {
 		app.drawAliasedSubpixelAccuracy(renBase, width, height, drawColor)
 		app.startAngle += basics.Deg2RadF(app.stepSlider.Value())
 	}
+	elapsed1 := app.ps.ElapsedTime()
+	fmt.Printf(" %.2f ms\n", elapsed1)
 
 	// Test anti-aliased outline (200 iterations)
+	fmt.Print("Testing anti-aliased outline...")
+	app.ps.StartTimer()
 	for i := 0; i < 200; i++ {
 		app.drawAntiAliasedOutline(renBase, width, height, drawColor)
 		app.startAngle += basics.Deg2RadF(app.stepSlider.Value())
 	}
+	elapsed2 := app.ps.ElapsedTime()
+	fmt.Printf(" %.2f ms\n", elapsed2)
 
 	// Test anti-aliased scanline (200 iterations)
+	fmt.Print("Testing anti-aliased scanline...")
+	app.ps.StartTimer()
 	for i := 0; i < 200; i++ {
 		app.drawAntiAliasedScanline(renBase, width, height, drawColor)
 		app.startAngle += basics.Deg2RadF(app.stepSlider.Value())
 	}
+	elapsed3 := app.ps.ElapsedTime()
+	fmt.Printf(" %.2f ms\n", elapsed3)
 
 	// Test anti-aliased outline with image pattern (200 iterations)
+	fmt.Print("Testing anti-aliased outline with image pattern...")
+	app.ps.StartTimer()
 	for i := 0; i < 200; i++ {
 		app.drawAntiAliasedOutlineImg(renBase, width, height)
 		app.startAngle += basics.Deg2RadF(app.stepSlider.Value())
 	}
+	elapsed4 := app.ps.ElapsedTime()
+	fmt.Printf(" %.2f ms\n", elapsed4)
 
-	fmt.Println("Performance test completed (timing not yet implemented)")
+	// Display summary
+	totalTime := elapsed1 + elapsed2 + elapsed3 + elapsed4
+	fmt.Printf("\nPerformance Test Results:\n")
+	fmt.Printf("  Aliased subpixel accuracy:     %8.2f ms\n", elapsed1)
+	fmt.Printf("  Anti-aliased outline:          %8.2f ms\n", elapsed2)
+	fmt.Printf("  Anti-aliased scanline:         %8.2f ms\n", elapsed3)
+	fmt.Printf("  Anti-aliased outline + image:  %8.2f ms\n", elapsed4)
+	fmt.Printf("  Total time:                    %8.2f ms\n", totalTime)
+	fmt.Println("Performance test completed!")
 }

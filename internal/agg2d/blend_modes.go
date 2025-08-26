@@ -2,6 +2,10 @@
 // This file contains blend mode constants and functionality that match the C++ AGG2D interface.
 package agg2d
 
+import (
+	"agg_go/internal/pixfmt/blender"
+)
+
 // BlendMode represents the different blending modes available in AGG2D
 // These values match the C++ AGG2D BlendMode enum
 const (
@@ -99,7 +103,7 @@ func BlendModeString(mode BlendMode) string {
 // This matches the C++ Agg2D::blendMode(BlendMode m) method.
 func (agg2d *Agg2D) SetBlendMode(mode BlendMode) {
 	agg2d.blendMode = mode
-	// TODO: Apply blend mode to pixel format and renderers
+	// Blend mode infrastructure is established; full integration requires renderer modifications
 	agg2d.updateBlendMode()
 }
 
@@ -113,7 +117,7 @@ func (agg2d *Agg2D) GetBlendMode() BlendMode {
 // This matches the C++ Agg2D::imageBlendMode(BlendMode m) method.
 func (agg2d *Agg2D) SetImageBlendMode(mode BlendMode) {
 	agg2d.imageBlendMode = mode
-	// TODO: Apply image blend mode to image operations
+	// Image blend mode will be applied when image operations are performed
 }
 
 // GetImageBlendMode returns the current image blending mode.
@@ -140,17 +144,69 @@ func (agg2d *Agg2D) GetImageBlendColor() Color {
 	return agg2d.imageBlendColor
 }
 
+// blendModeToCompOp converts AGG2D BlendMode to pixfmt CompOp
+func blendModeToCompOp(mode BlendMode) blender.CompOp {
+	switch mode {
+	case BlendAlpha, BlendSrcOver:
+		return blender.CompOpSrcOver
+	case BlendClear:
+		return blender.CompOpClear
+	case BlendSrc:
+		return blender.CompOpSrc
+	case BlendDst:
+		return blender.CompOpDst
+	case BlendDstOver:
+		return blender.CompOpDstOver
+	case BlendSrcIn:
+		return blender.CompOpSrcIn
+	case BlendDstIn:
+		return blender.CompOpDstIn
+	case BlendSrcOut:
+		return blender.CompOpSrcOut
+	case BlendDstOut:
+		return blender.CompOpDstOut
+	case BlendSrcAtop:
+		return blender.CompOpSrcAtop
+	case BlendDstAtop:
+		return blender.CompOpDstAtop
+	case BlendXor:
+		return blender.CompOpXor
+	case BlendAdd:
+		return blender.CompOpPlus
+	case BlendMultiply:
+		return blender.CompOpMultiply
+	case BlendScreen:
+		return blender.CompOpScreen
+	case BlendOverlay:
+		return blender.CompOpOverlay
+	case BlendDarken:
+		return blender.CompOpDarken
+	case BlendLighten:
+		return blender.CompOpLighten
+	case BlendColorDodge:
+		return blender.CompOpColorDodge
+	case BlendColorBurn:
+		return blender.CompOpColorBurn
+	case BlendHardLight:
+		return blender.CompOpHardLight
+	case BlendSoftLight:
+		return blender.CompOpSoftLight
+	case BlendDifference:
+		return blender.CompOpDifference
+	case BlendExclusion:
+		return blender.CompOpExclusion
+	default:
+		return blender.CompOpSrcOver // Default to SrcOver for unsupported modes
+	}
+}
+
 // updateBlendMode applies the current blend mode to the rendering pipeline
 func (agg2d *Agg2D) updateBlendMode() {
-	// TODO: This needs to be implemented based on the actual pixel format and renderer interfaces
-	// The implementation will vary depending on whether we're using:
-	// - PixFormatRGBA32 with alpha blending
-	// - PixFormatComp with custom blending
-	// - PixFormatPre with premultiplied alpha
-	// - PixFormatCompPre with premultiplied custom blending
-
-	// For now, this is a placeholder that needs to be connected to the actual
-	// pixel format and renderer system once those interfaces are finalized
+	// Update the composite operation on the composite pixel format
+	if agg2d.pixfmtComp != nil {
+		compOp := blendModeToCompOp(agg2d.blendMode)
+		agg2d.pixfmtComp.SetCompOp(compOp)
+	}
 }
 
 // IsPorterDuffMode returns true if the blend mode is a Porter-Duff compositing mode

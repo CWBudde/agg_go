@@ -192,6 +192,95 @@ func (a *Agg2D) LineJoin(join LineJoin) {
 	a.impl.LineJoin(int(join))
 }
 
+// FillLinearGradient sets up a linear gradient for fill operations.
+func (a *Agg2D) FillLinearGradient(x1, y1, x2, y2 float64, c1, c2 Color, profile float64) {
+	internalC1 := [4]uint8{c1.R, c1.G, c1.B, c1.A}
+	internalC2 := [4]uint8{c2.R, c2.G, c2.B, c2.A}
+	a.impl.FillLinearGradient(x1, y1, x2, y2, internalC1, internalC2, profile)
+}
+
+// FillRadialGradient sets up a radial gradient for fill operations.
+func (a *Agg2D) FillRadialGradient(x, y, r float64, c1, c2 Color, profile float64) {
+	internalC1 := [4]uint8{c1.R, c1.G, c1.B, c1.A}
+	internalC2 := [4]uint8{c2.R, c2.G, c2.B, c2.A}
+	a.impl.FillRadialGradient(x, y, r, internalC1, internalC2, profile)
+}
+
+// FillRadialGradientMultiStop sets up a radial gradient with three colors.
+func (a *Agg2D) FillRadialGradientMultiStop(x, y, r float64, c1, c2, c3 Color) {
+	internalC1 := [4]uint8{c1.R, c1.G, c1.B, c1.A}
+	internalC2 := [4]uint8{c2.R, c2.G, c2.B, c2.A}
+	internalC3 := [4]uint8{c3.R, c3.G, c3.B, c3.A}
+	a.impl.FillRadialGradientMultiStop(x, y, r, internalC1, internalC2, internalC3)
+}
+
+// LineLinearGradient sets up a linear gradient for line/stroke operations.
+func (a *Agg2D) LineLinearGradient(x1, y1, x2, y2 float64, c1, c2 Color, profile float64) {
+	internalC1 := [4]uint8{c1.R, c1.G, c1.B, c1.A}
+	internalC2 := [4]uint8{c2.R, c2.G, c2.B, c2.A}
+	a.impl.LineLinearGradient(x1, y1, x2, y2, internalC1, internalC2, profile)
+}
+
+// LineRadialGradient sets up a radial gradient for line/stroke operations.
+func (a *Agg2D) LineRadialGradient(x, y, r float64, c1, c2 Color, profile float64) {
+	internalC1 := [4]uint8{c1.R, c1.G, c1.B, c1.A}
+	internalC2 := [4]uint8{c2.R, c2.G, c2.B, c2.A}
+	a.impl.LineRadialGradient(x, y, r, internalC1, internalC2, profile)
+}
+
+// LineRadialGradientMultiStop sets up a radial gradient with three colors for line operations.
+func (a *Agg2D) LineRadialGradientMultiStop(x, y, r float64, c1, c2, c3 Color) {
+	internalC1 := [4]uint8{c1.R, c1.G, c1.B, c1.A}
+	internalC2 := [4]uint8{c2.R, c2.G, c2.B, c2.A}
+	internalC3 := [4]uint8{c3.R, c3.G, c3.B, c3.A}
+	a.impl.LineRadialGradientMultiStop(x, y, r, internalC1, internalC2, internalC3)
+}
+
+// FillGradientFlag returns the current fill gradient type.
+func (a *Agg2D) FillGradientFlag() int {
+	return a.impl.FillGradientFlag()
+}
+
+// LineGradientFlag returns the current line gradient type.
+func (a *Agg2D) LineGradientFlag() int {
+	return a.impl.LineGradientFlag()
+}
+
+// FillGradientD1 returns the first bound of the current fill gradient.
+func (a *Agg2D) FillGradientD1() float64 {
+	return a.impl.FillGradientD1()
+}
+
+// FillGradientD2 returns the second bound of the current fill gradient.
+func (a *Agg2D) FillGradientD2() float64 {
+	return a.impl.FillGradientD2()
+}
+
+// LineGradientD1 returns the first bound of the current line gradient.
+func (a *Agg2D) LineGradientD1() float64 {
+	return a.impl.LineGradientD1()
+}
+
+// LineGradientD2 returns the second bound of the current line gradient.
+func (a *Agg2D) LineGradientD2() float64 {
+	return a.impl.LineGradientD2()
+}
+
+// TransformImage transforms and renders an image with source and destination rectangles.
+func (a *Agg2D) TransformImage(img *Image, imgX1, imgY1, imgX2, imgY2 int, dstX1, dstY1, dstX2, dstY2 float64) error {
+	return a.impl.TransformImage(img.ToInternalImage(), imgX1, imgY1, imgX2, imgY2, dstX1, dstY1, dstX2, dstY2)
+}
+
+// TransformImageSimple transforms and renders entire image to destination rectangle.
+func (a *Agg2D) TransformImageSimple(img *Image, dstX1, dstY1, dstX2, dstY2 float64) error {
+	return a.impl.TransformImageSimple(img.ToInternalImage(), dstX1, dstY1, dstX2, dstY2)
+}
+
+// TransformImageParallelogram transforms and renders an image using a parallelogram.
+func (a *Agg2D) TransformImageParallelogram(img *Image, imgX1, imgY1, imgX2, imgY2 int, parallelogram []float64) error {
+	return a.impl.TransformImageParallelogram(img.ToInternalImage(), imgX1, imgY1, imgX2, imgY2, parallelogram)
+}
+
 // ResetTransformations resets the transformation matrix to identity.
 func (a *Agg2D) ResetTransformations() {
 	a.impl.ResetTransformations()
@@ -205,6 +294,16 @@ func (a *Agg2D) ImageFilter(f ImageFilter) {
 // ImageResample sets the image resampling method.
 func (a *Agg2D) ImageResample(r ImageResample) {
 	a.impl.ImageResample(int(r))
+}
+
+// GetImageFilter returns the current image filtering method.
+func (a *Agg2D) GetImageFilter() ImageFilter {
+	return ImageFilter(a.impl.GetImageFilter())
+}
+
+// GetImageResample returns the current image resampling method.
+func (a *Agg2D) GetImageResample() ImageResample {
+	return ImageResample(a.impl.GetImageResample())
 }
 
 // TextAlignment sets text alignment.

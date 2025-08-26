@@ -10,6 +10,7 @@ import (
 	"image/png"
 	"os"
 
+	"agg_go/internal/agg2d"
 	"agg_go/internal/buffer"
 )
 
@@ -86,9 +87,16 @@ func (img *Image) Attach(buf []uint8, width, height, stride int) {
 	img.height = height
 }
 
+// ToInternalImage converts this Image to the internal agg2d.Image type.
+func (img *Image) ToInternalImage() *agg2d.Image {
+	if img == nil {
+		return nil
+	}
+	return agg2d.NewImage(img.Data, img.width, img.height, img.renBuf.Stride())
+}
+
 // Context image methods
 
-/* TODO
 // DrawImage draws an image at the specified coordinates.
 func (ctx *Context) DrawImage(img *Image, x, y float64) error {
 	if img == nil {
@@ -143,7 +151,6 @@ func (ctx *Context) DrawImageRegion(img *Image, srcX, srcY, srcW, srcH int, dstX
 
 	return ctx.agg2d.TransformImage(img, srcX, srcY, srcX+srcW, srcY+srcH, dstX, dstY, dstX+dstW, dstY+dstH)
 }
-*/
 
 // Image loading functions
 
@@ -261,10 +268,9 @@ func (ctx *Context) SetImageFilter(filter ImageFilter) {
 	ctx.agg2d.ImageFilter(filter)
 }
 
-/* TODO
 // GetImageFilter returns the current image filtering method.
 func (ctx *Context) GetImageFilter() ImageFilter {
-	return ctx.agg2d.imageFilter
+	return ctx.agg2d.GetImageFilter()
 }
 
 // Image resampling methods
@@ -276,7 +282,7 @@ func (ctx *Context) SetImageResample(resample ImageResample) {
 
 // GetImageResample returns the current image resampling method.
 func (ctx *Context) GetImageResample() ImageResample {
-	return ctx.agg2d.imageResample
+	return ctx.agg2d.GetImageResample()
 }
 
 // Advanced image operations
@@ -324,7 +330,6 @@ func (ctx *Context) CreateImagePattern(img *Image, x, y, width, height float64, 
 	// TODO: Implement proper pattern support when span generators are ready
 	return ctx.DrawImageScaled(img, x, y, width, height)
 }
-*/
 
 // Image creation utilities
 

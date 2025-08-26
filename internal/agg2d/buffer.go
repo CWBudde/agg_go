@@ -6,6 +6,7 @@ import (
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
 	"agg_go/internal/pixfmt"
+	"agg_go/internal/pixfmt/blender"
 )
 
 // Image represents a raster image that can be used as a rendering target.
@@ -76,6 +77,10 @@ func (agg2d *Agg2D) initializeRendering() {
 		// Create pixel format
 		agg2d.pixfmt = pixfmt.NewPixFmtRGBA32(agg2d.rbuf)
 		agg2d.renBase = &baseRendererAdapter[color.RGBA8[color.Linear]]{pf: agg2d.pixfmt}
+
+		// Create composite pixel format with default source-over blending
+		agg2d.pixfmtComp = pixfmt.NewPixFmtCompositeRGBA32(agg2d.rbuf, blender.CompOpSrcOver)
+		agg2d.renBaseComp = &baseRendererAdapter[color.RGBA8[color.Linear]]{pf: agg2d.pixfmtComp}
 
 		// Initialize rasterizer if needed
 		// Note: The rasterizer is already created in NewAgg2D with the correct types

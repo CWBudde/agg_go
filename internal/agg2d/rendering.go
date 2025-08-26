@@ -138,15 +138,27 @@ func (agg2d *Agg2D) renderSolidFill() {
 
 // renderSolidFillWithColor renders solid fill using specified color
 func (agg2d *Agg2D) renderSolidFillWithColor(c Color) {
-	if agg2d.renBase == nil {
+	// Choose the appropriate renderer based on blend mode
+	var renderer *baseRendererAdapter[color.RGBA8[color.Linear]]
+	if agg2d.blendMode == BlendAlpha {
+		renderer = agg2d.renBase
+	} else {
+		renderer = agg2d.renBaseComp
+	}
+
+	if renderer == nil {
 		return
 	}
 
-	// Convert Color to internal color format
-	internalColor := color.RGBA8[color.Linear]{R: c[0], G: c[1], B: c[2], A: c[3]}
+	// Apply master alpha to color
+	masterAlpha := uint8(agg2d.masterAlpha * 255.0)
+	adjustedAlpha := uint8((uint16(c[3]) * uint16(masterAlpha)) / 255)
+
+	// Convert Color to internal color format with master alpha applied
+	internalColor := color.RGBA8[color.Linear]{R: c[0], G: c[1], B: c[2], A: adjustedAlpha}
 
 	// Create solid renderer
-	renSolid := renscan.NewRendererScanlineAASolidWithColor(agg2d.renBase, internalColor)
+	renSolid := renscan.NewRendererScanlineAASolidWithColor(renderer, internalColor)
 
 	// Render scanlines
 	scanlineRender(agg2d.rasterizer, agg2d.scanline, renSolid)
@@ -154,15 +166,27 @@ func (agg2d *Agg2D) renderSolidFillWithColor(c Color) {
 
 // renderSolidStroke renders solid stroke using current line color
 func (agg2d *Agg2D) renderSolidStroke() {
-	if agg2d.renBase == nil {
+	// Choose the appropriate renderer based on blend mode
+	var renderer *baseRendererAdapter[color.RGBA8[color.Linear]]
+	if agg2d.blendMode == BlendAlpha {
+		renderer = agg2d.renBase
+	} else {
+		renderer = agg2d.renBaseComp
+	}
+
+	if renderer == nil {
 		return
 	}
 
-	// Convert Color to internal color format
-	internalColor := color.RGBA8[color.Linear]{R: agg2d.lineColor[0], G: agg2d.lineColor[1], B: agg2d.lineColor[2], A: agg2d.lineColor[3]}
+	// Apply master alpha to line color
+	masterAlpha := uint8(agg2d.masterAlpha * 255.0)
+	adjustedAlpha := uint8((uint16(agg2d.lineColor[3]) * uint16(masterAlpha)) / 255)
+
+	// Convert Color to internal color format with master alpha applied
+	internalColor := color.RGBA8[color.Linear]{R: agg2d.lineColor[0], G: agg2d.lineColor[1], B: agg2d.lineColor[2], A: adjustedAlpha}
 
 	// Create solid renderer
-	renSolid := renscan.NewRendererScanlineAASolidWithColor(agg2d.renBase, internalColor)
+	renSolid := renscan.NewRendererScanlineAASolidWithColor(renderer, internalColor)
 
 	// Render scanlines
 	scanlineRender(agg2d.rasterizer, agg2d.scanline, renSolid)
@@ -182,7 +206,15 @@ func (agg2d *Agg2D) renderGradientFill() {
 
 // renderLinearGradientFill renders linear gradient fill
 func (agg2d *Agg2D) renderLinearGradientFill(useFillGradient bool) {
-	if agg2d.renBase == nil || agg2d.spanAllocator == nil {
+	// Choose the appropriate renderer based on blend mode
+	var renderer *baseRendererAdapter[color.RGBA8[color.Linear]]
+	if agg2d.blendMode == BlendAlpha {
+		renderer = agg2d.renBase
+	} else {
+		renderer = agg2d.renBaseComp
+	}
+
+	if renderer == nil || agg2d.spanAllocator == nil {
 		return
 	}
 
@@ -222,12 +254,20 @@ func (agg2d *Agg2D) renderLinearGradientFill(useFillGradient bool) {
 	// Create adapters to bridge interface differences
 	rasAdapter := rasterizerAdapter{ras: agg2d.rasterizer}
 	slAdapter := &scanlineWrapper{sl: agg2d.scanline}
-	renscan.RenderScanlinesAA(rasAdapter, slAdapter, agg2d.renBase, agg2d.spanAllocator, spanGenerator)
+	renscan.RenderScanlinesAA(rasAdapter, slAdapter, renderer, agg2d.spanAllocator, spanGenerator)
 }
 
 // renderRadialGradientFill renders radial gradient fill
 func (agg2d *Agg2D) renderRadialGradientFill(useFillGradient bool) {
-	if agg2d.renBase == nil || agg2d.spanAllocator == nil {
+	// Choose the appropriate renderer based on blend mode
+	var renderer *baseRendererAdapter[color.RGBA8[color.Linear]]
+	if agg2d.blendMode == BlendAlpha {
+		renderer = agg2d.renBase
+	} else {
+		renderer = agg2d.renBaseComp
+	}
+
+	if renderer == nil || agg2d.spanAllocator == nil {
 		return
 	}
 
@@ -267,7 +307,7 @@ func (agg2d *Agg2D) renderRadialGradientFill(useFillGradient bool) {
 	// Create adapters to bridge interface differences
 	rasAdapter := rasterizerAdapter{ras: agg2d.rasterizer}
 	slAdapter := &scanlineWrapper{sl: agg2d.scanline}
-	renscan.RenderScanlinesAA(rasAdapter, slAdapter, agg2d.renBase, agg2d.spanAllocator, spanGenerator)
+	renscan.RenderScanlinesAA(rasAdapter, slAdapter, renderer, agg2d.spanAllocator, spanGenerator)
 }
 
 // renderGradientStroke renders gradient stroke using line gradient settings
@@ -346,8 +386,18 @@ func (agg2d *Agg2D) render(fillColor bool) {
 // updateRasterizerGamma updates the rasterizer gamma correction
 func (agg2d *Agg2D) updateRasterizerGamma() {
 	if agg2d.rasterizer != nil && agg2d.antiAliasGamma != 1.0 {
-		// TODO: Implement gamma correction in rasterizer
-		// agg2d.rasterizer.SetGamma(agg2d.antiAliasGamma)
+		// Create gamma function from gamma value
+		gamma := agg2d.antiAliasGamma
+		gammaFunc := func(x float64) float64 {
+			if x <= 0.0 {
+				return 0.0
+			}
+			if x >= 1.0 {
+				return 1.0
+			}
+			return math.Pow(x, 1.0/gamma)
+		}
+		agg2d.rasterizer.SetGamma(gammaFunc)
 	}
 }
 
@@ -450,7 +500,7 @@ func (agg2d *Agg2D) SetMasterAlpha(alpha float64) {
 		alpha = 1.0
 	}
 	agg2d.masterAlpha = alpha
-	// TODO: Apply master alpha to renderers
+	// Master alpha is applied when renderers are created in renderSolidFillWithColor and renderSolidStroke
 }
 
 // GetAntiAliasGamma returns the current anti-alias gamma value

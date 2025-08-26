@@ -47,6 +47,11 @@ func NewCompositeBlender[CS any, O any](op CompOp) CompositeBlender[CS, O] {
 	return CompositeBlender[CS, O]{op: op}
 }
 
+// GetOp returns the current composite operation
+func (bl CompositeBlender[CS, O]) GetOp() CompOp {
+	return bl.op
+}
+
 // BlendPix blends a pixel using the specified composite operation
 func (bl CompositeBlender[CS, O]) BlendPix(dst []basics.Int8u, r, g, b, a, cover basics.Int8u) {
 	alpha := color.RGBA8MultCover(a, cover)

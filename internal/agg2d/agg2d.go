@@ -90,8 +90,10 @@ type Agg2D struct {
 	rasterizer *rasterizer.RasterizerScanlineAA[*rasterizer.RasterizerSlNoClip, rasterizer.RasConvDbl]
 
 	// Rendering components (now properly typed)
-	pixfmt  *pixfmt.PixFmtRGBA32
-	renBase *baseRendererAdapter[color.RGBA8[color.Linear]]
+	pixfmt      *pixfmt.PixFmtRGBA32
+	pixfmtComp  *pixfmt.PixFmtCompositeRGBA32
+	renBase     *baseRendererAdapter[color.RGBA8[color.Linear]]
+	renBaseComp *baseRendererAdapter[color.RGBA8[color.Linear]]
 
 	// Master alpha and anti-aliasing gamma
 	masterAlpha    float64

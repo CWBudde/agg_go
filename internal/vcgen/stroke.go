@@ -87,7 +87,8 @@ func (vg *VCGenStroke) PrepareSrc() {
 
 // shortenPath implements basic path shortening (simplified version)
 func (vg *VCGenStroke) shortenPath() {
-	// TODO: Confirm that this aligns with the original C++ implementation
+	// VERIFIED: This aligns with the original C++ implementation in agg_vcgen_stroke.cpp
+	// The C++ version also calls shorten_path(m_src_vertices, m_shorten, m_closed) in rewind().
 	// Use the shared shorten_path implementation to trim the polyline.
 	// This matches AGG's agg_shorten_path behavior and mirrors vcgen_dash.
 	if vg.shorten > 0.0 && vg.srcVertices.Size() > 1 {

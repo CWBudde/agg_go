@@ -4,6 +4,9 @@ package agg2d
 
 import (
 	"math"
+
+	"agg_go/internal/color"
+	"agg_go/internal/renderer"
 )
 
 // Note: Mathematical constants Pi, Deg2Rad, Rad2Deg functions are defined in constants.go
@@ -91,13 +94,9 @@ func (agg2d *Agg2D) ClearClipBox(c Color) {
 // ClearClipBoxRGBA clears the current clipping box with the specified RGBA values.
 // This matches the C++ Agg2D::clearClipBox(unsigned r, g, b, a) method.
 func (agg2d *Agg2D) ClearClipBoxRGBA(r, g, b, a uint8) {
-	if agg2d.renBase == nil {
+	if agg2d.renBase == nil || agg2d.pixfmt == nil {
 		return
 	}
-
-	// TODO: Implement actual clip box clearing
-	// This needs to clear only the pixels within the current clipping rectangle
-	// For now, this is a placeholder implementation
 
 	// Convert the clip box coordinates to integers
 	x1 := int(math.Floor(agg2d.clipBox.X1))
@@ -113,23 +112,28 @@ func (agg2d *Agg2D) ClearClipBoxRGBA(r, g, b, a uint8) {
 		y1 = 0
 	}
 	if x2 > agg2d.renBase.Width() {
-		x2 = agg2d.renBase.Width()
+		x2 = agg2d.renBase.Width() - 1
 	}
 	if y2 > agg2d.renBase.Height() {
-		y2 = agg2d.renBase.Height()
+		y2 = agg2d.renBase.Height() - 1
 	}
 
-	// TODO: Clear the rectangular region with the specified color
-	// This requires implementing a ClearRect method or similar
+	// Skip if the clip box is empty or invalid
+	if x1 > x2 || y1 > y2 {
+		return
+	}
 
-	_ = x1
-	_ = y1
-	_ = x2
-	_ = y2 // Avoid unused variable warnings
-	_ = r
-	_ = g
-	_ = b
-	_ = a
+	// Create a color for clearing
+	clearColor := color.RGBA8[color.Linear]{R: r, G: g, B: b, A: a}
+
+	// Create a temporary renderer base to handle the clearing with clipping
+	rendererBase := renderer.NewRendererBaseWithPixfmt(agg2d.pixfmt)
+
+	// Set the clipping box to match our desired clear area
+	rendererBase.ClipBox(x1, y1, x2, y2)
+
+	// Use CopyBar to clear the clipped area
+	rendererBase.CopyBar(x1, y1, x2, y2, clearColor)
 }
 
 // Clamp clamps a value between min and max

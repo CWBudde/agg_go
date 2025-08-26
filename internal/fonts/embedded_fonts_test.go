@@ -440,9 +440,10 @@ func TestMCSFontDimensions(t *testing.T) {
 		expectedBaseline int
 	}{
 		{"MCS5x10Mono", GetMCS5x10Mono, 10, 2},
-		// Note: Other MCS fonts are placeholders returning MCS5x10Mono data for now
-		{"MCS5x11Mono", GetMCS5x11Mono, 11, 3}, // actual font data
-		{"MCS6x10Mono", GetMCS6x10Mono, 10, 3}, // actual font data
+		{"MCS5x11Mono", GetMCS5x11Mono, 11, 3},         // actual font data
+		{"MCS6x10Mono", GetMCS6x10Mono, 10, 3},         // actual font data
+		{"MCS7x12MonoHigh", GetMCS7x12MonoHigh, 12, 3}, // newly implemented
+		{"MCS7x12MonoLow", GetMCS7x12MonoLow, 12, 4},   // newly implemented
 	}
 
 	for _, tc := range testCases {
@@ -602,6 +603,60 @@ func TestVerdanaFontImmutability(t *testing.T) {
 
 	if font2[0] != originalByte {
 		t.Error("Modifying one Verdana font slice affected another")
+	}
+}
+
+// Test newly implemented MCS7x12 fonts
+func TestMCS7x12Fonts(t *testing.T) {
+	// Test MCS7x12MonoHigh
+	fontHigh := GetMCS7x12MonoHigh()
+	if len(fontHigh) < 4 {
+		t.Fatalf("MCS7x12MonoHigh font data too short: %d bytes", len(fontHigh))
+	}
+	if fontHigh[0] != 12 { // height
+		t.Errorf("MCS7x12MonoHigh: expected height 12, got %d", fontHigh[0])
+	}
+	if fontHigh[1] != 3 { // baseline
+		t.Errorf("MCS7x12MonoHigh: expected baseline 3, got %d", fontHigh[1])
+	}
+	if fontHigh[2] != 32 { // start char
+		t.Errorf("MCS7x12MonoHigh: expected start char 32, got %d", fontHigh[2])
+	}
+	if fontHigh[3] != 96 { // num chars
+		t.Errorf("MCS7x12MonoHigh: expected 96 chars, got %d", fontHigh[3])
+	}
+
+	// Test MCS7x12MonoLow
+	fontLow := GetMCS7x12MonoLow()
+	if len(fontLow) < 4 {
+		t.Fatalf("MCS7x12MonoLow font data too short: %d bytes", len(fontLow))
+	}
+	if fontLow[0] != 12 { // height
+		t.Errorf("MCS7x12MonoLow: expected height 12, got %d", fontLow[0])
+	}
+	if fontLow[1] != 4 { // baseline
+		t.Errorf("MCS7x12MonoLow: expected baseline 4, got %d", fontLow[1])
+	}
+	if fontLow[2] != 32 { // start char
+		t.Errorf("MCS7x12MonoLow: expected start char 32, got %d", fontLow[2])
+	}
+	if fontLow[3] != 96 { // num chars
+		t.Errorf("MCS7x12MonoLow: expected 96 chars, got %d", fontLow[3])
+	}
+
+	// Test that they have different content (different baseline)
+	if bytes.Equal(fontHigh, fontLow) {
+		t.Error("MCS7x12MonoHigh and MCS7x12MonoLow should have different data")
+	}
+
+	// Test immutability
+	font1 := GetMCS7x12MonoHigh()
+	font2 := GetMCS7x12MonoHigh()
+	if &font1[0] == &font2[0] {
+		t.Error("MCS7x12MonoHigh should return copies, not the same slice")
+	}
+	if !bytes.Equal(font1, font2) {
+		t.Error("Multiple MCS7x12MonoHigh calls should return identical data")
 	}
 }
 
