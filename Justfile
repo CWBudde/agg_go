@@ -3,6 +3,14 @@
 
 set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
 
+# Platform detection variables
+os := `uname -s`
+arch := `uname -m`
+platform := if os == "Linux" { "linux" } else if os == "Darwin" { "darwin" } else if os =~ "MINGW|MSYS|CYGWIN" { "windows" } else { "unknown" }
+
+# Platform-specific binary extensions
+bin_ext := if platform == "windows" { ".exe" } else { "" }
+
 # Default recipe - show available commands
 default:
     @just --list
@@ -44,6 +52,61 @@ build-examples:
 build-example EXAMPLE:
     @echo "Building example: {{EXAMPLE}}"
     go build -o /tmp/agg-example examples/{{EXAMPLE}}/main.go
+
+# Build all examples for current platform with organized output
+build-all-examples: build-core-examples build-platform-examples
+    @echo "All examples built for {{platform}} platform"
+
+# Build core examples for multiple platforms (cross-compile)
+build-all-examples-multi:
+    @echo "Building core examples for multiple platforms..."
+    @mkdir -p bin/linux bin/darwin bin/windows
+    @echo "Cross-compiling for Linux..."
+    @GOOS=linux go build -o bin/linux/hello_world examples/core/basic/hello_world/main.go && echo "  ✓ linux/hello_world" || echo "  ✗ linux/hello_world"
+    @GOOS=linux go build -o bin/linux/shapes examples/core/basic/shapes/main.go && echo "  ✓ linux/shapes" || echo "  ✗ linux/shapes"
+    @echo "Cross-compiling for macOS..."
+    @GOOS=darwin go build -o bin/darwin/hello_world examples/core/basic/hello_world/main.go && echo "  ✓ darwin/hello_world" || echo "  ✗ darwin/hello_world"
+    @GOOS=darwin go build -o bin/darwin/shapes examples/core/basic/shapes/main.go && echo "  ✓ darwin/shapes" || echo "  ✗ darwin/shapes"
+    @echo "Cross-compiling for Windows..."
+    @GOOS=windows go build -o bin/windows/hello_world.exe examples/core/basic/hello_world/main.go && echo "  ✓ windows/hello_world.exe" || echo "  ✗ windows/hello_world.exe"
+    @GOOS=windows go build -o bin/windows/shapes.exe examples/core/basic/shapes/main.go && echo "  ✓ windows/shapes.exe" || echo "  ✗ windows/shapes.exe"
+    @echo "Cross-compilation complete (selected examples)"
+
+# Build only core examples (no platform dependencies)
+build-core-examples:
+    @echo "Building core examples only..."
+    @mkdir -p bin/core
+    @echo "Building hello_world..."
+    @go build -o bin/core/hello_world{{bin_ext}} examples/core/basic/hello_world/main.go && echo "  ✓ hello_world" || echo "  ✗ hello_world"
+    @echo "Building shapes..."
+    @go build -o bin/core/shapes{{bin_ext}} examples/core/basic/shapes/main.go && echo "  ✓ shapes" || echo "  ✗ shapes"
+    @echo "Building lines..."
+    @go build -o bin/core/lines{{bin_ext}} examples/core/basic/lines/main.go && echo "  ✓ lines" || echo "  ✗ lines"
+    @echo "Building rounded_rect..."
+    @go build -o bin/core/rounded_rect{{bin_ext}} examples/core/basic/rounded_rect/main.go && echo "  ✓ rounded_rect" || echo "  ✗ rounded_rect"
+    @echo "Building colors_gray..."
+    @go build -o bin/core/colors_gray{{bin_ext}} examples/core/basic/colors_gray/main.go && echo "  ✓ colors_gray" || echo "  ✗ colors_gray"
+    @echo "Building colors_rgba..."
+    @go build -o bin/core/colors_rgba{{bin_ext}} examples/core/basic/colors_rgba/main.go && echo "  ✓ colors_rgba" || echo "  ✗ colors_rgba"
+    @echo "Building embedded_fonts_hello..."
+    @go build -o bin/core/embedded_fonts_hello{{bin_ext}} examples/core/basic/embedded_fonts_hello/main.go && echo "  ✓ embedded_fonts_hello" || echo "  ✗ embedded_fonts_hello"
+    @echo "Building basic_demo..."
+    @go build -o bin/core/basic_demo{{bin_ext}} examples/core/basic/basic_demo/main.go && echo "  ✓ basic_demo" || echo "  ✗ basic_demo"
+    @echo "Building gradients..."
+    @go build -o bin/core/gradients{{bin_ext}} examples/core/intermediate/gradients/main.go && echo "  ✓ gradients" || echo "  ✗ gradients"
+    @echo "Building text_rendering..."
+    @go build -o bin/core/text_rendering{{bin_ext}} examples/core/intermediate/text_rendering/main.go && echo "  ✓ text_rendering" || echo "  ✗ text_rendering"
+    @echo "Building advanced_rendering..."
+    @go build -o bin/core/advanced_rendering{{bin_ext}} examples/core/advanced/advanced_rendering/main.go && echo "  ✓ advanced_rendering" || echo "  ✗ advanced_rendering"
+
+# Build only platform-specific examples
+build-platform-examples:
+    @echo "Building platform examples for {{platform}}..."
+    @mkdir -p bin/{{platform}}
+    @echo "Building X11 demo..."
+    @go build -tags x11 -o bin/{{platform}}/x11_demo{{bin_ext}} examples/platform/x11/main.go && echo "  ✓ x11_demo" || echo "  ✗ x11_demo (X11 dependencies missing)"
+    @echo "Building SDL2 demo..."
+    @go build -tags sdl2 -o bin/{{platform}}/sdl2_demo{{bin_ext}} examples/platform/sdl2/main.go && echo "  ✓ sdl2_demo" || echo "  ✗ sdl2_demo (SDL2 dependencies missing)"
 
 # Test commands
 
@@ -125,6 +188,9 @@ clean:
     rm -f coverage.out coverage.html
     find . -name "*.test" -delete
     find . -name "*_test.exe" -delete
+
+# Clean everything (build artifacts + compiled examples)
+clean-all: clean clean-examples
 
 # Clean and rebuild everything
 rebuild: clean build
@@ -247,6 +313,61 @@ todo:
     @echo "TODO items found:"
     @echo "================="
     @grep -r "TODO\|FIXME\|XXX\|HACK" --include="*.go" . || echo "No TODO items found"
+
+# List all available examples
+list-examples:
+    @echo "Available Examples:"
+    @echo "=================="
+    @echo ""
+    @echo "Core Examples (platform independent):"
+    @find examples/core -name "main.go" -type f | sed 's|examples/core/||; s|/main.go||' | sort | sed 's/^/  /'
+    @echo ""
+    @echo "Platform Examples:"
+    @find examples/platform -name "main.go" -type f | sed 's|examples/platform/||; s|/main.go||' | sort | sed 's/^/  /'
+    @if find examples/tests -name "main.go" -type f >/dev/null 2>&1; then \
+        echo ""; \
+        echo "Test Examples:"; \
+        find examples/tests -name "main.go" -type f | sed 's|examples/tests/||; s|/main.go||' | sort | sed 's/^/  /'; \
+    fi
+    @echo ""
+    @echo "Usage:"
+    @echo "  just build-example-to-bin <name>    # Build specific example"
+    @echo "  just run-example <path>             # Run example directly"
+
+# Clean compiled examples from bin/
+clean-examples:
+    @echo "Cleaning compiled examples..."
+    @if [ -d bin/ ]; then \
+        rm -rf bin/; \
+        echo "Removed bin/ directory"; \
+    else \
+        echo "bin/ directory doesn't exist"; \
+    fi
+
+# Show platform information
+show-platform:
+    @echo "Platform Information:"
+    @echo "===================="
+    @echo "OS: {{os}}"
+    @echo "Architecture: {{arch}}"
+    @echo "Platform: {{platform}}"
+    @echo "Binary extension: {{bin_ext}}"
+    @echo ""
+    @echo "Available GUI libraries:"
+    @if [ "{{platform}}" = "linux" ] && command -v pkg-config >/dev/null 2>&1; then \
+        if pkg-config --exists x11; then \
+            echo "  ✓ X11 available"; \
+        else \
+            echo "  ✗ X11 not available (install libx11-dev)"; \
+        fi; \
+        if pkg-config --exists sdl2; then \
+            echo "  ✓ SDL2 available"; \
+        else \
+            echo "  ✗ SDL2 not available (install libsdl2-dev)"; \
+        fi; \
+    else \
+        echo "  Platform detection needed for other OSes"; \
+    fi
 
 # Update task status in TASKS.md
 update-tasks:

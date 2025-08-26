@@ -4,17 +4,23 @@ package agg2d
 
 import (
 	"errors"
-	"math"
 
 	"agg_go/internal/basics"
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
+	"agg_go/internal/conv"
 	"agg_go/internal/transform"
 )
 
 // renderImage is the core image rendering method that handles all image transformations.
 // This implements the full image rendering pipeline with proper transformation and filtering.
 func (agg2d *Agg2D) renderImage(img *Image, x1, y1, x2, y2 int, parallelogram []float64) error {
+	return agg2d.renderImageWithPath(img, x1, y1, x2, y2, parallelogram, false)
+}
+
+// renderImageWithPath is the core image rendering method with optional path-based clipping.
+// When usePathClip is true, the current path is used as a clipping mask for the image.
+func (agg2d *Agg2D) renderImageWithPath(img *Image, x1, y1, x2, y2 int, parallelogram []float64, usePathClip bool) error {
 	if img == nil || img.renBuf == nil {
 		return errors.New("image or image buffer is nil")
 	}
@@ -83,9 +89,57 @@ func (agg2d *Agg2D) renderImage(img *Image, x1, y1, x2, y2 int, parallelogram []
 		maxY = float64(agg2d.rbuf.Height() - 1)
 	}
 
+	// If path clipping is requested, prepare the rasterizer with the current path
+	var pathMask map[[2]int]bool
+	if usePathClip && agg2d.path != nil && agg2d.path.TotalVertices() > 0 && agg2d.rasterizer != nil {
+		pathMask = make(map[[2]int]bool)
+
+		// Reset and configure rasterizer for path mask generation
+		agg2d.rasterizer.Reset()
+		agg2d.rasterizer.FillingRule(agg2d.GetFillRule())
+
+		// Add the current path to the rasterizer with world transformation applied
+		transformedPath := conv.NewConvTransform(agg2d.convCurve, agg2d.transform)
+		transformedPath.Rewind(0)
+		for {
+			x, y, cmd := transformedPath.Vertex()
+			if cmd == basics.PathCmdStop {
+				break
+			}
+			agg2d.rasterizer.AddVertex(x, y, uint32(cmd))
+		}
+
+		// Generate the path mask by rasterizing within the image bounds
+		if agg2d.scanline != nil {
+			// Create an adapter for the scanline to match the rasterizer interface
+			slAdapter := &rasScanlineAdapter{sl: agg2d.scanline}
+			agg2d.scanline.Reset(int(minX), int(maxX))
+			for agg2d.rasterizer.SweepScanline(slAdapter) {
+				y := agg2d.scanline.Y()
+				if y >= int(minY) && y <= int(maxY) {
+					spans := agg2d.scanline.Spans()
+					for _, span := range spans {
+						for x := int(span.X); x < int(span.X)+int(span.Len); x++ {
+							if x >= int(minX) && x <= int(maxX) {
+								pathMask[[2]int{x, y}] = true
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
 	// Render the image by sampling the transformed coordinates
 	for dy := int(minY); dy <= int(maxY); dy++ {
 		for dx := int(minX); dx <= int(maxX); dx++ {
+			// Check path clipping if enabled
+			if usePathClip && pathMask != nil {
+				if !pathMask[[2]int{dx, dy}] {
+					continue // Skip pixels outside the path
+				}
+			}
+
 			// Transform destination coordinate back to source space
 			srcX, srcY := float64(dx), float64(dy)
 			mtx.InverseTransform(&srcX, &srcY)
@@ -191,6 +245,7 @@ func (agg2d *Agg2D) TransformImageParallelogramSimple(img *Image, parallelogram 
 }
 
 // TransformImagePath transforms and renders image along current path.
+// The image is clipped to the shape of the current path, matching the original AGG C++ behavior.
 func (agg2d *Agg2D) TransformImagePath(img *Image, imgX1, imgY1, imgX2, imgY2 int, dstX1, dstY1, dstX2, dstY2 float64) error {
 	if img == nil {
 		return errors.New("image is nil")
@@ -202,31 +257,11 @@ func (agg2d *Agg2D) TransformImagePath(img *Image, imgX1, imgY1, imgX2, imgY2 in
 		return agg2d.TransformImage(img, imgX1, imgY1, imgX2, imgY2, dstX1, dstY1, dstX2, dstY2)
 	}
 
-	// For now, apply a simple rectangular clip based on the path's bounding box
-	// This is a simplified implementation that provides the basic clipping concept
-	// Full path-based clipping would require:
-	// 1. Rasterizing the path to create an alpha mask
-	// 2. Rendering the image to a temporary buffer
-	// 3. Compositing the image using the path mask
+	// Create destination parallelogram from rectangle
+	parallelogram := []float64{dstX1, dstY1, dstX2, dstY1, dstX2, dstY2}
 
-	// For this simplified implementation, use a basic bounding approximation
-	// In a full implementation, we would calculate the actual path bounding box
-	// For now, assume the entire viewport as bounds
-	minX, minY, maxX, maxY := 0.0, 0.0, float64(agg2d.rbuf.Width()), float64(agg2d.rbuf.Height())
-
-	// Apply bounding box clipping to destination coordinates
-	clippedX1 := math.Max(dstX1, minX)
-	clippedY1 := math.Max(dstY1, minY)
-	clippedX2 := math.Min(dstX2, maxX)
-	clippedY2 := math.Min(dstY2, maxY)
-
-	// Only render if there's a valid clipped area
-	if clippedX1 >= clippedX2 || clippedY1 >= clippedY2 {
-		return nil // Nothing to render
-	}
-
-	// Perform the transformation with clipped coordinates
-	return agg2d.TransformImage(img, imgX1, imgY1, imgX2, imgY2, clippedX1, clippedY1, clippedX2, clippedY2)
+	// Use the path-enabled rendering method
+	return agg2d.renderImageWithPath(img, imgX1, imgY1, imgX2, imgY2, parallelogram, true)
 }
 
 // TransformImagePathSimple transforms and renders entire image along current path to destination rectangle.
@@ -239,6 +274,7 @@ func (agg2d *Agg2D) TransformImagePathSimple(img *Image, dstX1, dstY1, dstX2, ds
 }
 
 // TransformImagePathParallelogram transforms and renders image along current path to destination parallelogram.
+// The image is clipped to the shape of the current path, matching the original AGG C++ behavior.
 func (agg2d *Agg2D) TransformImagePathParallelogram(img *Image, imgX1, imgY1, imgX2, imgY2 int, parallelogram []float64) error {
 	if img == nil {
 		return errors.New("image is nil")
@@ -254,28 +290,8 @@ func (agg2d *Agg2D) TransformImagePathParallelogram(img *Image, imgX1, imgY1, im
 		return agg2d.TransformImageParallelogram(img, imgX1, imgY1, imgX2, imgY2, parallelogram)
 	}
 
-	// For path-based parallelogram transformation, we need to clip the parallelogram
-	// to the path's bounding box as a simplified implementation
-
-	// For this simplified implementation, use a basic bounding approximation
-	// In a full implementation, we would calculate the actual path bounding box
-	minX, minY, maxX, maxY := 0.0, 0.0, float64(agg2d.rbuf.Width()), float64(agg2d.rbuf.Height())
-
-	// Check if parallelogram intersects with path bounding box
-	// Find parallelogram bounding box
-	paraMinX := math.Min(parallelogram[0], math.Min(parallelogram[2], parallelogram[4]))
-	paraMaxX := math.Max(parallelogram[0], math.Max(parallelogram[2], parallelogram[4]))
-	paraMinY := math.Min(parallelogram[1], math.Min(parallelogram[3], parallelogram[5]))
-	paraMaxY := math.Max(parallelogram[1], math.Max(parallelogram[3], parallelogram[5]))
-
-	// Check for intersection
-	if paraMaxX < minX || paraMinX > maxX || paraMaxY < minY || paraMinY > maxY {
-		return nil // No intersection, nothing to render
-	}
-
-	// For now, proceed with the original parallelogram if there's intersection
-	// A full implementation would clip the parallelogram to the exact path shape
-	return agg2d.TransformImageParallelogram(img, imgX1, imgY1, imgX2, imgY2, parallelogram)
+	// Use the path-enabled rendering method
+	return agg2d.renderImageWithPath(img, imgX1, imgY1, imgX2, imgY2, parallelogram, true)
 }
 
 // TransformImagePathParallelogramSimple transforms and renders entire image along current path to destination parallelogram.

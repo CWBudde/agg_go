@@ -1,11 +1,11 @@
 package sdl2
 
 import (
-    "fmt"
+	"fmt"
 
-    "agg_go/internal/buffer"
-    "agg_go/internal/platform/types"
-    "github.com/veandco/go-sdl2/sdl"
+	"agg_go/internal/buffer"
+	"agg_go/internal/platform/types"
+	"github.com/veandco/go-sdl2/sdl"
 )
 
 // copyBufferToSurface copies the AGG rendering buffer to SDL2 surface, handling pixel format conversion

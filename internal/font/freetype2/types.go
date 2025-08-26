@@ -7,6 +7,7 @@ package freetype2
 
 import (
 	"agg_go/internal/basics"
+	"agg_go/internal/conv"
 	"agg_go/internal/fonts"
 	"agg_go/internal/path"
 	"agg_go/internal/pixfmt/gamma"
@@ -167,8 +168,8 @@ type FontEngineBase struct {
 	// Storage for different precision levels
 	pathStorage16 *path.PathStorageInteger[int16]
 	pathStorage32 *path.PathStorageInteger[int32]
-	curves16      *path.PathStorageInteger[int16] // TODO: Add conv_curve wrapper
-	curves32      *path.PathStorageInteger[int32] // TODO: Add conv_curve wrapper
+	curves16      *conv.ConvCurveInteger[int16] // ConvCurve wrapper for int16 paths
+	curves32      *conv.ConvCurveInteger[int32] // ConvCurve wrapper for int32 paths
 
 	// Scanline components
 	scanlineU8   *scanline.ScanlineU8
@@ -187,11 +188,23 @@ func NewFontEngineBase(flag32 bool, maxFaces uint32) *FontEngineBase {
 		maxFaces = 32 // Default from AGG implementation
 	}
 
+	// Create path storage instances
+	pathStorage16 := path.NewPathStorageInteger[int16]()
+	pathStorage32 := path.NewPathStorageInteger[int32]()
+
+	// Create curve converters with default approximation scale (matching AGG default)
+	curves16 := conv.NewConvCurveInteger(pathStorage16)
+	curves32 := conv.NewConvCurveInteger(pathStorage32)
+	curves16.SetApproximationScale(4.0)
+	curves32.SetApproximationScale(4.0)
+
 	return &FontEngineBase{
 		flag32:        flag32,
 		maxFaces:      maxFaces,
-		pathStorage16: path.NewPathStorageInteger[int16](),
-		pathStorage32: path.NewPathStorageInteger[int32](),
+		pathStorage16: pathStorage16,
+		pathStorage32: pathStorage32,
+		curves16:      curves16,
+		curves32:      curves32,
 		scanlineU8:    scanline.NewScanlineU8(),
 		scanlineBin:   scanline.NewScanlineBin(),
 		scanlinesAA:   scanline.NewScanlineStorageAA[uint8](),

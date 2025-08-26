@@ -9,13 +9,13 @@ package x11
 import "C"
 
 import (
-    "encoding/binary"
-    "fmt"
-    "os"
-    "time"
+	"encoding/binary"
+	"fmt"
+	"os"
+	"time"
 
-    "agg_go/internal/buffer"
-    "agg_go/internal/platform/types"
+	"agg_go/internal/buffer"
+	"agg_go/internal/platform/types"
 )
 
 // copyBufferToXImage copies the AGG rendering buffer to XImage, handling pixel format conversion

@@ -6,19 +6,19 @@ This checklist tracks remaining TODO items and missing features in the AGG Go po
 
 ## Core Library TODOs
 
-- [ ] **Agg2D API Enhancements**
+- [x] **Agg2D API Enhancements**
 
-  - [ ] `internal/agg2d/image.go:179,196`: Implement path-based image transformations
+  - [x] `internal/agg2d/image.go:179,196`: Implement path-based image transformations
 
 - [ ] **Font System**
 
   - [ ] `internal/font/freetype2/engine.go:83`: Support custom memory management (optional enhancement)
-  - [ ] `internal/font/freetype2/types.go:170,171`: Add conv_curve wrapper for int16/int32 paths (optional enhancement)
-  - [ ] `internal/fonts/embedded_fonts.go`: Complete implementation of remaining embedded font datasets:
-    - [ ] MCS11_prop - currently returns placeholder data (MCS5x10Mono)
-    - [ ] MCS11_prop_condensed - currently returns placeholder data (MCS5x10Mono)
-    - [ ] MCS12_prop - currently returns placeholder data (MCS5x10Mono)
-    - [ ] MCS13_prop - currently returns placeholder data (MCS5x10Mono)
+  - [x] `internal/font/freetype2/types.go:170,171`: Add conv_curve wrapper for int16/int32 paths (optional enhancement)
+  - [x] `internal/fonts/embedded_fonts.go`: Complete implementation of remaining embedded font datasets:
+    - [x] MCS11_prop - implemented with actual font data
+    - [x] MCS11_prop_condensed - implemented with actual font data
+    - [x] MCS12_prop - implemented with actual font data
+    - [x] MCS13_prop - implemented with actual font data
 
 - [x] **Rendering Pipeline**
   - [x] `gradients.go:51,177`: Complete gradient rendering implementation

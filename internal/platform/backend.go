@@ -1,10 +1,10 @@
 package platform
 
 import (
-    "fmt"
+	"fmt"
 
-    "agg_go/internal/buffer"
-    types "agg_go/internal/platform/types"
+	"agg_go/internal/buffer"
+	types "agg_go/internal/platform/types"
 )
 
 // PlatformBackend defines the interface that platform-specific implementations must satisfy.
@@ -23,9 +23,9 @@ type PlatformBackend interface {
 	GetWindowSize() (width, height int)
 
 	// Buffer management
-    UpdateWindow(buffer *buffer.RenderingBuffer[uint8]) error
-    CreateImageSurface(width, height int) (types.ImageSurface, error)
-    DestroyImageSurface(surface types.ImageSurface) error
+	UpdateWindow(buffer *buffer.RenderingBuffer[uint8]) error
+	CreateImageSurface(width, height int) (types.ImageSurface, error)
+	DestroyImageSurface(surface types.ImageSurface) error
 
 	// Event handling
 	PollEvents() bool
@@ -37,12 +37,12 @@ type PlatformBackend interface {
 	Delay(ms uint32)
 
 	// Image operations (platform-specific format support)
-    LoadImage(filename string) (types.ImageSurface, error)
-    SaveImage(surface types.ImageSurface, filename string) error
+	LoadImage(filename string) (types.ImageSurface, error)
+	SaveImage(surface types.ImageSurface, filename string) error
 	GetImageExtension() string
 
 	// Platform-specific data access (for advanced users)
-    GetNativeHandle() types.NativeHandle
+	GetNativeHandle() types.NativeHandle
 }
 
 // BackendType represents the type of platform backend

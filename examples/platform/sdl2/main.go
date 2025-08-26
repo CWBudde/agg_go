@@ -46,23 +46,23 @@ func NewSDL2DemoApp() (*SDL2DemoApp, error) {
 		running:     true,
 	}
 
-    // Create backend factory and ensure SDL2 is available
-    factory := platform.GetBackendFactory()
-    hasSDL2 := false
-    for _, b := range factory.GetAvailableBackends() {
-        if b == platform.BackendSDL2 {
-            hasSDL2 = true
-            break
-        }
-    }
-    if !hasSDL2 {
-        return nil, fmt.Errorf("SDL2 backend not available in this build. Build with '-tags sdl2' and ensure SDL2 dev libraries are installed.")
-    }
-    backend, err := factory.CreateBackend(platform.BackendSDL2, platform.PixelFormatRGBA32, false)
-    if err != nil {
-        return nil, fmt.Errorf("failed to create SDL2 backend: %w", err)
-    }
-    app.backend = backend
+	// Create backend factory and ensure SDL2 is available
+	factory := platform.GetBackendFactory()
+	hasSDL2 := false
+	for _, b := range factory.GetAvailableBackends() {
+		if b == platform.BackendSDL2 {
+			hasSDL2 = true
+			break
+		}
+	}
+	if !hasSDL2 {
+		return nil, fmt.Errorf("SDL2 backend not available in this build. Build with '-tags sdl2' and ensure SDL2 dev libraries are installed.")
+	}
+	backend, err := factory.CreateBackend(platform.BackendSDL2, platform.PixelFormatRGBA32, false)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create SDL2 backend: %w", err)
+	}
+	app.backend = backend
 
 	// Create platform support
 	app.ps = platform.NewPlatformSupport(platform.PixelFormatRGBA32, false)
@@ -125,19 +125,19 @@ func (app *SDL2DemoApp) OnResize(width, height int) {
 
 // OnMouseMove is called when the mouse is moved
 func (app *SDL2DemoApp) OnMouseMove(x, y int, flags platform.InputFlags) {
-    app.mouseX = x
-    app.mouseY = y
+	app.mouseX = x
+	app.mouseY = y
 
-    if app.isDragging || flags.HasMouseLeft() {
-        // Create trail effect with varying colors
-        trail_r := uint8((app.frameCount + x) % 256)
-        trail_g := uint8((app.frameCount + y) % 256)
-        trail_b := uint8((app.frameCount + x + y) % 256)
-        app.rc.FillRectangle(x-3, y-3, 6, 6, trail_r, trail_g, trail_b, 180)
+	if app.isDragging || flags.HasMouseLeft() {
+		// Create trail effect with varying colors
+		trail_r := uint8((app.frameCount + x) % 256)
+		trail_g := uint8((app.frameCount + y) % 256)
+		trail_b := uint8((app.frameCount + x + y) % 256)
+		app.rc.FillRectangle(x-3, y-3, 6, 6, trail_r, trail_g, trail_b, 180)
 
-        // Immediately present to improve responsiveness while dragging
-        _ = app.backend.UpdateWindow(app.ps.WindowBuffer())
-    }
+		// Immediately present to improve responsiveness while dragging
+		_ = app.backend.UpdateWindow(app.ps.WindowBuffer())
+	}
 }
 
 // OnMouseButtonDown is called when a mouse button is pressed
@@ -198,7 +198,7 @@ func (app *SDL2DemoApp) OnKey(x, y int, key platform.KeyCode, flags platform.Inp
 
 // OnDraw is called when the window needs to be redrawn
 func (app *SDL2DemoApp) OnDraw() {
-    app.frameCount++
+	app.frameCount++
 
 	// Clear background with animated gradient
 	bgR := uint8(math.Sin(float64(app.frameCount)*0.005)*20 + 30)
@@ -210,11 +210,11 @@ func (app *SDL2DemoApp) OnDraw() {
 	app.updateShapes()
 	app.drawShapes()
 
-    // Draw UI elements
-    app.drawUI()
+	// Draw UI elements
+	app.drawUI()
 
-    // Present the rendered buffer to the SDL2 window
-    _ = app.backend.UpdateWindow(app.ps.WindowBuffer())
+	// Present the rendered buffer to the SDL2 window
+	_ = app.backend.UpdateWindow(app.ps.WindowBuffer())
 }
 
 // OnIdle is called when the application is idle
@@ -348,18 +348,18 @@ func (app *SDL2DemoApp) Run() error {
 		return fmt.Errorf("failed to initialize platform support: %w", err)
 	}
 
-    // Initialize the backend
-    err = app.backend.Init(900, 700, platform.WindowResize)
-    if err != nil {
-        return fmt.Errorf("failed to initialize backend: %w", err)
-    }
-    defer app.backend.Destroy()
+	// Initialize the backend
+	err = app.backend.Init(900, 700, platform.WindowResize)
+	if err != nil {
+		return fmt.Errorf("failed to initialize backend: %w", err)
+	}
+	defer app.backend.Destroy()
 
-    // Report backend type for clarity
-    fmt.Println("SDL2 Demo starting...")
-    if nh := app.backend.GetNativeHandle(); nh != nil {
-        fmt.Printf("Using backend: %s\n", nh.GetType())
-    }
+	// Report backend type for clarity
+	fmt.Println("SDL2 Demo starting...")
+	if nh := app.backend.GetNativeHandle(); nh != nil {
+		fmt.Printf("Using backend: %s\n", nh.GetType())
+	}
 
 	// Run the event loop
 	for app.running {
