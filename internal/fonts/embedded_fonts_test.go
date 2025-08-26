@@ -441,8 +441,8 @@ func TestMCSFontDimensions(t *testing.T) {
 	}{
 		{"MCS5x10Mono", GetMCS5x10Mono, 10, 2},
 		// Note: Other MCS fonts are placeholders returning MCS5x10Mono data for now
-		{"MCS5x11Mono", GetMCS5x11Mono, 10, 2}, // placeholder
-		{"MCS6x10Mono", GetMCS6x10Mono, 10, 2}, // placeholder
+		{"MCS5x11Mono", GetMCS5x11Mono, 11, 3}, // actual font data
+		{"MCS6x10Mono", GetMCS6x10Mono, 10, 3}, // actual font data
 	}
 
 	for _, tc := range testCases {
@@ -557,8 +557,8 @@ func TestVerdanaFontDimensions(t *testing.T) {
 	}{
 		{"Verdana12", GetVerdana12, 12, 3},
 		// Note: Other Verdana fonts are placeholders returning Verdana12 data for now
-		{"Verdana13", GetVerdana13, 12, 3}, // placeholder
-		{"Verdana14", GetVerdana14, 12, 3}, // placeholder
+		{"Verdana13", GetVerdana13, 13, 3}, // actual font data
+		{"Verdana14", GetVerdana14, 14, 3}, // actual font data
 	}
 
 	for _, tc := range testCases {

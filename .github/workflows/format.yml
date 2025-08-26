@@ -7,8 +7,8 @@ permissions:
   contents: read
 
 jobs:
-  gofmt:
-    name: go fmt check
+  treefmt:
+    name: treefmt check
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -20,17 +20,12 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Install just
+      - name: Install treefmt
         run: |
-          sudo apt-get update
-          sudo apt-get install -y just
+          curl -L https://github.com/numtide/treefmt/releases/download/v2.0.0/treefmt-linux-amd64.tar.gz | tar xz
+          sudo mv treefmt /usr/local/bin/treefmt
+          sudo chmod +x /usr/local/bin/treefmt
 
-      - name: Run formatter
+      - name: Run formatter check
         run: |
-          just fmt
-          # Fail if formatting changed files
-          if ! git diff --quiet -- . ':!coverage.out' ':!coverage.html'; then
-            echo "Unformatted files found. Run 'just fmt' locally and commit changes." >&2
-            git --no-pager diff --name-only
-            exit 1
-          fi
+          treefmt --fail-on-change --allow-missing-formatter

@@ -1,48 +1,50 @@
 // Package agg provides transformation functionality for 2D graphics.
-// This file contains transformation matrices and operations.
+// This file contains transformation matrices and operations, wired to internal/agg2d.
 package agg
 
 import (
 	"math"
 
+	ia "agg_go/internal/agg2d"
 	"agg_go/internal/transform"
 )
 
-// ViewportOption defines viewport alignment options.
-type ViewportOption int
-
-const (
-	Anisotropic ViewportOption = iota // Stretch to fit, ignoring aspect ratio
-	XMinYMin                          // Align to top-left, preserve aspect ratio
-	XMidYMin                          // Align to top-center, preserve aspect ratio
-	XMaxYMin                          // Align to top-right, preserve aspect ratio
-	XMinYMid                          // Align to middle-left, preserve aspect ratio
-	XMidYMid                          // Align to center, preserve aspect ratio
-	XMaxYMid                          // Align to middle-right, preserve aspect ratio
-	XMinYMax                          // Align to bottom-left, preserve aspect ratio
-	XMidYMax                          // Align to bottom-center, preserve aspect ratio
-	XMaxYMax                          // Align to bottom-right, preserve aspect ratio
+// Re-export internal types and options for public API.
+type (
+	// Local public Transformations type; we convert to/from internal as needed.
+	Transformations struct{ AffineMatrix [6]float64 }
+	ViewportOption  = ia.ViewportOption
 )
 
-// Transformations and NewTransformations are defined in agg2d_transform.go
+// Viewport alignment/scaling options (aliases to internal constants).
+const (
+	Anisotropic ViewportOption = ia.Anisotropic
+	XMinYMin    ViewportOption = ia.XMinYMin
+	XMinYMid    ViewportOption = ia.XMinYMid
+	XMinYMax    ViewportOption = ia.XMinYMax
+	XMidYMin    ViewportOption = ia.XMidYMin
+	XMidYMid    ViewportOption = ia.XMidYMid
+	XMidYMax    ViewportOption = ia.XMidYMax
+	XMaxYMin    ViewportOption = ia.XMaxYMin
+	XMaxYMid    ViewportOption = ia.XMaxYMid
+	XMaxYMax    ViewportOption = ia.XMaxYMax
+)
 
 // NewTransformationsFromValues creates a transformation from matrix values.
 func NewTransformationsFromValues(sx, shy, shx, sy, tx, ty float64) *Transformations {
-	return &Transformations{
-		AffineMatrix: [6]float64{sx, shy, shx, sy, tx, ty},
-	}
+	return &Transformations{AffineMatrix: [6]float64{sx, shy, shx, sy, tx, ty}}
 }
 
 // Context transformation methods
 
 // GetTransform returns the current transformation matrix from the context.
 func (ctx *Context) GetTransform() *Transformations {
-	return ctx.agg2d.GetTransformations()
+	return fromInternalTransformations(ctx.agg2d.impl.GetTransformations())
 }
 
 // SetTransform sets the transformation matrix on the context.
 func (ctx *Context) SetTransform(tr *Transformations) {
-	ctx.agg2d.SetTransformations(tr)
+	ctx.agg2d.impl.SetTransformations(toInternalTransformations(tr))
 }
 
 // ResetTransform resets the transformation matrix to identity.
@@ -52,54 +54,54 @@ func (ctx *Context) ResetTransform() {
 
 // Transform multiplies the current transformation matrix with another.
 func (ctx *Context) Transform(tr *Transformations) {
-	ctx.agg2d.AffineFromMatrix(tr)
+	ctx.agg2d.impl.AffineFromMatrix(toInternalTransformations(tr))
 }
 
 // Translate applies a translation transformation.
 func (ctx *Context) Translate(tx, ty float64) {
-	ctx.agg2d.Translate(tx, ty)
+	ctx.agg2d.impl.Translate(tx, ty)
 }
 
 // Rotate applies a rotation transformation (angle in radians).
 func (ctx *Context) Rotate(angle float64) {
-	ctx.agg2d.Rotate(angle)
+	ctx.agg2d.impl.Rotate(angle)
 }
 
 // RotateDegrees applies a rotation transformation (angle in degrees).
 func (ctx *Context) RotateDegrees(degrees float64) {
-	ctx.agg2d.Rotate(degrees * math.Pi / 180.0)
+	ctx.agg2d.impl.Rotate(degrees * math.Pi / 180.0)
 }
 
 // Scale applies a scaling transformation.
 func (ctx *Context) Scale(sx, sy float64) {
-	ctx.agg2d.Scale(sx, sy)
+	ctx.agg2d.impl.Scale(sx, sy)
 }
 
 // ScaleUniform applies uniform scaling (same factor for both axes).
 func (ctx *Context) ScaleUniform(s float64) {
-	ctx.agg2d.UniformScale(s)
+	ctx.agg2d.impl.UniformScale(s)
 }
 
 // Skew applies a skewing transformation (angles in radians).
 func (ctx *Context) Skew(sx, sy float64) {
-	ctx.agg2d.Skew(sx, sy)
+	ctx.agg2d.impl.Skew(sx, sy)
 }
 
 // SkewDegrees applies a skewing transformation (angles in degrees).
 func (ctx *Context) SkewDegrees(sx, sy float64) {
-	ctx.agg2d.Skew(sx*math.Pi/180.0, sy*math.Pi/180.0)
+	ctx.agg2d.impl.Skew(sx*math.Pi/180.0, sy*math.Pi/180.0)
 }
 
 // Advanced transformation operations
 
 // PushTransform saves the current transformation on the stack.
 func (ctx *Context) PushTransform() {
-	ctx.agg2d.PushTransform()
+	ctx.agg2d.impl.PushTransform()
 }
 
 // PopTransform restores the last saved transformation from the stack.
 func (ctx *Context) PopTransform() bool {
-	return ctx.agg2d.PopTransform()
+	return ctx.agg2d.impl.PopTransform()
 }
 
 // Coordinate conversions
@@ -107,45 +109,46 @@ func (ctx *Context) PopTransform() bool {
 // WorldToScreen converts world coordinates to screen coordinates.
 func (ctx *Context) WorldToScreen(wx, wy float64) (sx, sy float64) {
 	sx, sy = wx, wy
-	ctx.agg2d.WorldToScreen(&sx, &sy)
+	ctx.agg2d.impl.WorldToScreen(&sx, &sy)
 	return sx, sy
 }
 
 // ScreenToWorld converts screen coordinates to world coordinates.
 func (ctx *Context) ScreenToWorld(sx, sy float64) (wx, wy float64) {
 	wx, wy = sx, sy
-	ctx.agg2d.ScreenToWorld(&wx, &wy)
+	ctx.agg2d.impl.ScreenToWorld(&wx, &wy)
 	return wx, wy
 }
 
 // WorldToScreenDistance converts a world distance to screen distance.
 func (ctx *Context) WorldToScreenDistance(wd float64) float64 {
-	return ctx.agg2d.WorldToScreenDistance(wd)
+	return ctx.agg2d.impl.WorldToScreenDistance(wd)
 }
 
 // ScreenToWorldDistance converts a screen distance to world distance.
 func (ctx *Context) ScreenToWorldDistance(sd float64) (float64, bool) {
-	return ctx.agg2d.ScreenToWorldDistance(sd)
+	return ctx.agg2d.impl.ScreenToWorldDistance(sd)
 }
 
 // Viewport operations
 
 // Viewport sets up a viewport transformation.
 func (ctx *Context) Viewport(worldX1, worldY1, worldX2, worldY2 float64,
-	screenX1, screenY1, screenX2, screenY2 float64, opt ViewportOption) {
-	ctx.agg2d.Viewport(worldX1, worldY1, worldX2, worldY2,
+	screenX1, screenY1, screenX2, screenY2 float64, opt ViewportOption,
+) {
+	ctx.agg2d.impl.Viewport(worldX1, worldY1, worldX2, worldY2,
 		screenX1, screenY1, screenX2, screenY2, opt)
 }
 
 // ViewportFitPage sets up viewport to fit the entire page.
 func (ctx *Context) ViewportFitPage(worldX1, worldY1, worldX2, worldY2 float64) {
-	ctx.agg2d.Viewport(worldX1, worldY1, worldX2, worldY2,
+	ctx.agg2d.impl.Viewport(worldX1, worldY1, worldX2, worldY2,
 		0, 0, float64(ctx.width), float64(ctx.height), XMidYMid)
 }
 
 // ViewportCenter centers the world coordinates in the screen.
 func (ctx *Context) ViewportCenter(worldX1, worldY1, worldX2, worldY2 float64) {
-	ctx.agg2d.Viewport(worldX1, worldY1, worldX2, worldY2,
+	ctx.agg2d.impl.Viewport(worldX1, worldY1, worldX2, worldY2,
 		0, 0, float64(ctx.width), float64(ctx.height), XMidYMid)
 }
 
@@ -224,27 +227,21 @@ func (t *Transformations) Reset() {
 
 // Clone creates a copy of this transformation.
 func (t *Transformations) Clone() *Transformations {
-	return &Transformations{
-		AffineMatrix: t.AffineMatrix,
-	}
+	return &Transformations{AffineMatrix: t.AffineMatrix}
 }
 
 // Static transformation constructors
 
 // Translation creates a translation transformation.
 func Translation(tx, ty float64) *Transformations {
-	return &Transformations{
-		AffineMatrix: [6]float64{1.0, 0.0, 0.0, 1.0, tx, ty},
-	}
+	return &Transformations{AffineMatrix: [6]float64{1.0, 0.0, 0.0, 1.0, tx, ty}}
 }
 
 // Rotation creates a rotation transformation (angle in radians).
 func Rotation(angle float64) *Transformations {
 	cos := math.Cos(angle)
 	sin := math.Sin(angle)
-	return &Transformations{
-		AffineMatrix: [6]float64{cos, sin, -sin, cos, 0.0, 0.0},
-	}
+	return &Transformations{AffineMatrix: [6]float64{cos, sin, -sin, cos, 0.0, 0.0}}
 }
 
 // RotationDegrees creates a rotation transformation (angle in degrees).
@@ -254,9 +251,7 @@ func RotationDegrees(degrees float64) *Transformations {
 
 // Scaling creates a scaling transformation.
 func Scaling(sx, sy float64) *Transformations {
-	return &Transformations{
-		AffineMatrix: [6]float64{sx, 0.0, 0.0, sy, 0.0, 0.0},
-	}
+	return &Transformations{AffineMatrix: [6]float64{sx, 0.0, 0.0, sy, 0.0, 0.0}}
 }
 
 // UniformScaling creates a uniform scaling transformation.
@@ -266,9 +261,7 @@ func UniformScaling(s float64) *Transformations {
 
 // Skewing creates a skewing transformation (angles in radians).
 func Skewing(sx, sy float64) *Transformations {
-	return &Transformations{
-		AffineMatrix: [6]float64{1.0, math.Tan(sy), math.Tan(sx), 1.0, 0.0, 0.0},
-	}
+	return &Transformations{AffineMatrix: [6]float64{1.0, math.Tan(sy), math.Tan(sx), 1.0, 0.0, 0.0}}
 }
 
 // Helper function for transformation calculations
@@ -277,4 +270,19 @@ func transformAbs(x float64) float64 {
 		return -x
 	}
 	return x
+}
+
+// Internal conversion helpers
+func toInternalTransformations(t *Transformations) *ia.Transformations {
+	if t == nil {
+		return nil
+	}
+	return &ia.Transformations{AffineMatrix: t.AffineMatrix}
+}
+
+func fromInternalTransformations(it *ia.Transformations) *Transformations {
+	if it == nil {
+		return nil
+	}
+	return &Transformations{AffineMatrix: it.AffineMatrix}
 }
