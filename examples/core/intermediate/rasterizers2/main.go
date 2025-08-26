@@ -13,21 +13,23 @@
 package main
 
 import (
-	"fmt"
-	"math"
+    "fmt"
+    "math"
 
-	"agg_go/internal/basics"
-	"agg_go/internal/color"
-	"agg_go/internal/ctrl"
-	"agg_go/internal/ctrl/checkbox"
-	"agg_go/internal/ctrl/slider"
-	"agg_go/internal/pixfmt"
-	"agg_go/internal/platform"
-	"agg_go/internal/rasterizer"
-	"agg_go/internal/renderer"
-	"agg_go/internal/renderer/outline"
-	"agg_go/internal/renderer/primitives"
-	"agg_go/internal/scanline"
+    "agg_go/internal/basics"
+    "agg_go/internal/color"
+    "agg_go/internal/ctrl"
+    "agg_go/internal/ctrl/checkbox"
+    "agg_go/internal/ctrl/slider"
+    "agg_go/internal/pixfmt"
+    "agg_go/internal/platform"
+    "agg_go/internal/rasterizer"
+    "agg_go/internal/renderer"
+    renscan "agg_go/internal/renderer/scanline"
+    "agg_go/internal/renderer/outline"
+    "agg_go/internal/renderer/primitives"
+    "agg_go/internal/scanline"
+    "agg_go/internal/transform"
 )
 
 // Chain link pattern data - direct port from C++ pixmap_chain array
@@ -337,15 +339,13 @@ func (adapter *ControlVertexSourceAdapter) Vertex(x, y *float64) uint32 {
 
 // ControlRasterizerAdapter adapts the rasterizer to work with control interface
 type ControlRasterizerAdapter struct {
-	ras *rasterizer.RasterizerScanlineAANoGamma[*rasterizer.RasterizerSlNoClip]
+    ras *rasterizer.RasterizerScanlineAA[*rasterizer.RasterizerSlNoClip, rasterizer.RasConvDbl]
 }
 
 func NewControlRasterizerAdapter() *ControlRasterizerAdapter {
-	noClip := rasterizer.NewRasterizerSlNoClip(nil)
-	ras := rasterizer.NewRasterizerScanlineAANoGamma[*rasterizer.RasterizerSlNoClip](1024)
-	ras.SetClipper(noClip)
-
-	return &ControlRasterizerAdapter{ras: ras}
+    noClip := rasterizer.NewRasterizerSlNoClip(nil)
+    ras := rasterizer.NewRasterizerScanlineAA[*rasterizer.RasterizerSlNoClip, rasterizer.RasConvDbl](1024, noClip)
+    return &ControlRasterizerAdapter{ras: ras}
 }
 
 func (adapter *ControlRasterizerAdapter) Reset() {
@@ -370,10 +370,15 @@ func (adapter *ControlRasterizerAdapter) MaxX() int {
 	return adapter.ras.MaxX()
 }
 
-func (adapter *ControlRasterizerAdapter) SweepScanline(sl scanline.ScanlineInterface) bool {
-	// Create adapter for scanline interface compatibility
-	slAdapter := &scanlineInterfaceAdapter{sl: sl}
-	return adapter.ras.SweepScanline(slAdapter)
+func (adapter *ControlRasterizerAdapter) SweepScanline(sl renscan.ScanlineInterface) bool {
+    // Adapt renderer/scanline interface to rasterizer scanline interface
+    switch w := sl.(type) {
+    case *rendererScanlineP8Wrapper:
+        return adapter.ras.SweepScanline(&rasScanlineP8Adapter{sl: w.sl})
+    default:
+        // Fallback: try to extract spans dynamically (not ideal, but safe default)
+        return false
+    }
 }
 
 // controlToRasterizerVertexAdapter converts ctrl.VertexSourceInterface to rasterizer.VertexSource
@@ -392,29 +397,76 @@ func (adapter *controlToRasterizerVertexAdapter) Vertex(x, y *float64) uint32 {
 	return cmd
 }
 
-// scanlineInterfaceAdapter adapts scanline.ScanlineInterface to rasterizer scanline interface
-type scanlineInterfaceAdapter struct {
-	sl scanline.ScanlineInterface
+// Adapter: wrap internal/scanline.ScanlineP8 to renderer/scanline.ScanlineInterface
+type rendererScanlineP8Wrapper struct{ sl *scanline.ScanlineP8 }
+
+func newRendererScanlineP8Wrapper(sl *scanline.ScanlineP8) *rendererScanlineP8Wrapper { return &rendererScanlineP8Wrapper{sl: sl} }
+
+// Reset implements renscan.ResettableScanline
+func (w *rendererScanlineP8Wrapper) Reset(minX, maxX int) { w.sl.Reset(minX, maxX) }
+func (w *rendererScanlineP8Wrapper) Y() int               { return w.sl.Y() }
+func (w *rendererScanlineP8Wrapper) NumSpans() int        { return w.sl.NumSpans() }
+
+type spanIterP8 struct {
+    spans []scanline.SpanP8
+    idx   int
 }
 
-func (adapter *scanlineInterfaceAdapter) ResetSpans() {
-	adapter.sl.ResetSpans()
+func (it *spanIterP8) GetSpan() renscan.SpanData {
+    s := it.spans[it.idx]
+    // For ScanlineP8, Len < 0 indicates solid spans. Use absolute length
+    length := s.ActualLen()
+    covers := s.GetCovers()
+    return renscan.SpanData{X: int(s.X), Len: length, Covers: covers}
+}
+func (it *spanIterP8) Next() bool { it.idx++; return it.idx < len(it.spans) }
+
+func (w *rendererScanlineP8Wrapper) Begin() renscan.ScanlineIterator {
+    spans := w.sl.Spans()
+    if len(spans) == 0 {
+        return &spanIterP8{spans: nil, idx: 0}
+    }
+    return &spanIterP8{spans: spans, idx: 0}
 }
 
-func (adapter *scanlineInterfaceAdapter) AddCell(x int, cover uint32) {
-	adapter.sl.AddCell(x, cover)
-}
+// Adapter: adapt ScanlineP8 to rasterizer.ScanlineInterface for SweepScanline
+type rasScanlineP8Adapter struct{ sl *scanline.ScanlineP8 }
 
-func (adapter *scanlineInterfaceAdapter) AddSpan(x, length int, cover uint32) {
-	adapter.sl.AddSpan(x, length, cover)
+func (a *rasScanlineP8Adapter) ResetSpans()                 { a.sl.ResetSpans() }
+func (a *rasScanlineP8Adapter) AddCell(x int, cover uint32) { a.sl.AddCell(x, uint(cover)) }
+func (a *rasScanlineP8Adapter) AddSpan(x, length int, cover uint32) {
+    a.sl.AddSpan(x, length, uint(cover))
 }
+func (a *rasScanlineP8Adapter) Finalize(y int) { a.sl.Finalize(y) }
+func (a *rasScanlineP8Adapter) NumSpans() int  { return a.sl.NumSpans() }
 
-func (adapter *scanlineInterfaceAdapter) Finalize(y int) {
-	adapter.sl.Finalize(y)
-}
+// SliderCtrlAdapter wraps slider.SliderCtrl to present RGBA8Linear colors
+type SliderCtrlAdapter struct{ s *slider.SliderCtrl }
 
-func (adapter *scanlineInterfaceAdapter) NumSpans() int {
-	return adapter.sl.NumSpans()
+func NewSliderCtrlAdapter(s *slider.SliderCtrl) *SliderCtrlAdapter { return &SliderCtrlAdapter{s: s} }
+
+// Delegate ctrl.Ctrl methods, converting only Color
+func (a *SliderCtrlAdapter) InRect(x, y float64) bool                                  { return a.s.InRect(x, y) }
+func (a *SliderCtrlAdapter) OnMouseButtonDown(x, y float64) bool                        { return a.s.OnMouseButtonDown(x, y) }
+func (a *SliderCtrlAdapter) OnMouseButtonUp(x, y float64) bool                          { return a.s.OnMouseButtonUp(x, y) }
+func (a *SliderCtrlAdapter) OnMouseMove(x, y float64, buttonPressed bool) bool          { return a.s.OnMouseMove(x, y, buttonPressed) }
+func (a *SliderCtrlAdapter) OnArrowKeys(left, right, down, up bool) bool                { return a.s.OnArrowKeys(left, right, down, up) }
+func (a *SliderCtrlAdapter) SetTransform(mtx *transform.TransAffine)                    { a.s.SetTransform(mtx) }
+func (a *SliderCtrlAdapter) ClearTransform()                                            { a.s.ClearTransform() }
+func (a *SliderCtrlAdapter) TransformXY(x, y *float64)                                  { a.s.TransformXY(x, y) }
+func (a *SliderCtrlAdapter) InverseTransformXY(x, y *float64)                           { a.s.InverseTransformXY(x, y) }
+func (a *SliderCtrlAdapter) Scale() float64                                             { return a.s.Scale() }
+func (a *SliderCtrlAdapter) X1() float64                                                { return a.s.X1() }
+func (a *SliderCtrlAdapter) Y1() float64                                                { return a.s.Y1() }
+func (a *SliderCtrlAdapter) X2() float64                                                { return a.s.X2() }
+func (a *SliderCtrlAdapter) Y2() float64                                                { return a.s.Y2() }
+func (a *SliderCtrlAdapter) FlipY() bool                                                { return a.s.FlipY() }
+func (a *SliderCtrlAdapter) NumPaths() uint                                             { return a.s.NumPaths() }
+func (a *SliderCtrlAdapter) Rewind(pathID uint)                                         { a.s.Rewind(pathID) }
+func (a *SliderCtrlAdapter) Vertex() (x, y float64, cmd basics.PathCommand)             { return a.s.Vertex() }
+func (a *SliderCtrlAdapter) Color(pathID uint) color.RGBA8Linear {
+    c := a.s.Color(pathID)
+    return color.RGBA8Linear{R: basics.Int8u(c.R*255 + 0.5), G: basics.Int8u(c.G*255 + 0.5), B: basics.Int8u(c.B*255 + 0.5), A: basics.Int8u(c.A*255 + 0.5)}
 }
 
 // Application holds the demo application state
@@ -790,51 +842,57 @@ func (app *Application) drawLine(renBase *renderer.RendererBase[*pixfmt.PixFmtRG
 
 // renderControls renders the UI controls using proper AGG rendering pipeline
 func (app *Application) renderControls(renBase *renderer.RendererBase[*pixfmt.PixFmtRGBA32, color.RGBA8Linear]) {
-	// Create rasterizer and scanline for control rendering
-	ras := NewControlRasterizerAdapter()
-	sl := scanline.NewScanlineP8()
+    // Create rasterizer and scanline for control rendering
+    ras := NewControlRasterizerAdapter()
+    sl := scanline.NewScanlineP8()
+    slWrap := newRendererScanlineP8Wrapper(sl)
 
 	// Create base renderer adapter for controls
 	baseRenderer := &controlBaseRendererAdapter{renBase: renBase}
 
 	// Render each control using the AGG pipeline
-	app.renderSliderControl(ras, sl, baseRenderer, app.stepSlider)
-	app.renderSliderControl(ras, sl, baseRenderer, app.widthSlider)
-	app.renderCheckboxControl(ras, sl, baseRenderer, app.testBox)
-	app.renderCheckboxControl(ras, sl, baseRenderer, app.rotateBox)
-	app.renderCheckboxControl(ras, sl, baseRenderer, app.joinBox)
-	app.renderCheckboxControl(ras, sl, baseRenderer, app.scaleBox)
+    app.renderSliderControl(ras, slWrap, baseRenderer, app.stepSlider)
+    app.renderSliderControl(ras, slWrap, baseRenderer, app.widthSlider)
+    app.renderCheckboxControl(ras, slWrap, baseRenderer, app.testBox)
+    app.renderCheckboxControl(ras, slWrap, baseRenderer, app.rotateBox)
+    app.renderCheckboxControl(ras, slWrap, baseRenderer, app.joinBox)
+    app.renderCheckboxControl(ras, slWrap, baseRenderer, app.scaleBox)
 }
 
 // controlBaseRendererAdapter adapts RendererBase to work with ctrl.BaseRendererInterface
 type controlBaseRendererAdapter struct {
-	renBase *renderer.RendererBase[*pixfmt.PixFmtRGBA32, color.RGBA8Linear]
+    renBase *renderer.RendererBase[*pixfmt.PixFmtRGBA32, color.RGBA8Linear]
 }
 
-func (adapter *controlBaseRendererAdapter) BlendSolidHSpan(x, y, length int, color color.RGBA8Linear, covers []basics.Int8u) {
-	adapter.renBase.BlendSolidHspan(x, y, length, color, covers)
+func (adapter *controlBaseRendererAdapter) BlendSolidHspan(x, y, length int, c color.RGBA8Linear, covers []basics.Int8u) {
+    adapter.renBase.BlendSolidHspan(x, y, length, c, covers)
 }
 
-func (adapter *controlBaseRendererAdapter) BlendSolidVSpan(x, y, length int, color color.RGBA8Linear, covers []basics.Int8u) {
-	adapter.renBase.BlendSolidVspan(x, y, length, color, covers)
+func (adapter *controlBaseRendererAdapter) BlendHline(x, y, x2 int, c color.RGBA8Linear, cover basics.Int8u) {
+    adapter.renBase.BlendHline(x, y, x2, c, cover)
+}
+
+func (adapter *controlBaseRendererAdapter) BlendColorHspan(x, y, length int, colors []color.RGBA8Linear, covers []basics.Int8u, cover basics.Int8u) {
+    adapter.renBase.BlendColorHspan(x, y, length, colors, covers, cover)
 }
 
 // renderSliderControl renders a slider control using the AGG pipeline
-func (app *Application) renderSliderControl(ras *ControlRasterizerAdapter, sl *scanline.ScanlineP8,
-	baseRenderer *controlBaseRendererAdapter, sliderCtrl *slider.SliderCtrl,
+func (app *Application) renderSliderControl(ras *ControlRasterizerAdapter, sl *rendererScanlineP8Wrapper,
+    baseRenderer *controlBaseRendererAdapter, s *slider.SliderCtrl,
 ) {
-	// Use the ctrl.RenderCtrl function with adapters
-	ctrl.RenderCtrl[*ControlRasterizerAdapter, *scanline.ScanlineP8, *controlBaseRendererAdapter, color.RGBA8Linear](
-		ras, sl, baseRenderer, sliderCtrl)
+    // Wrap slider to adapt color type
+    sAdapter := NewSliderCtrlAdapter(s)
+    ctrl.RenderCtrl[*ControlRasterizerAdapter, *rendererScanlineP8Wrapper, *controlBaseRendererAdapter, color.RGBA8Linear](
+        ras, sl, baseRenderer, sAdapter)
 }
 
 // renderCheckboxControl renders a checkbox control using the AGG pipeline
-func (app *Application) renderCheckboxControl(ras *ControlRasterizerAdapter, sl *scanline.ScanlineP8,
-	baseRenderer *controlBaseRendererAdapter, checkboxCtrl *checkbox.CheckboxCtrl[color.RGBA8Linear],
+func (app *Application) renderCheckboxControl(ras *ControlRasterizerAdapter, sl *rendererScanlineP8Wrapper,
+    baseRenderer *controlBaseRendererAdapter, checkboxCtrl *checkbox.CheckboxCtrl[color.RGBA8Linear],
 ) {
-	// Use the ctrl.RenderCtrl function with adapters
-	ctrl.RenderCtrl[*ControlRasterizerAdapter, *scanline.ScanlineP8, *controlBaseRendererAdapter, color.RGBA8Linear](
-		ras, sl, baseRenderer, checkboxCtrl)
+    // Use the ctrl.RenderCtrl function with adapters
+    ctrl.RenderCtrl[*ControlRasterizerAdapter, *rendererScanlineP8Wrapper, *controlBaseRendererAdapter, color.RGBA8Linear](
+        ras, sl, baseRenderer, checkboxCtrl)
 }
 
 // renderSimpleControlPlaceholders renders simple placeholders for controls
@@ -876,9 +934,9 @@ func main() {
 	app.ps.SetOnResize(app.OnResize)
 	app.ps.SetOnDraw(app.OnDraw)
 	app.ps.SetOnIdle(app.OnIdle)
-	app.ps.SetOnMouseButtonDown(app.OnMouseButtonDown)
-	app.ps.SetOnMouseButtonUp(app.OnMouseButtonUp)
-	app.ps.SetOnMouseMove(app.OnMouseMove)
+    app.ps.SetOnMouseDown(func(x, y int, flags platform.InputFlags) { _ = app.OnMouseButtonDown(x, y, flags) })
+    app.ps.SetOnMouseUp(func(x, y int, flags platform.InputFlags) { _ = app.OnMouseButtonUp(x, y, flags) })
+    app.ps.SetOnMouseMove(func(x, y int, flags platform.InputFlags) { _ = app.OnMouseMove(x, y, flags) })
 
 	if app.ps.Init(500, 450, 0) == nil {
 		app.ps.Run()
@@ -916,90 +974,90 @@ func (app *Application) OnCtrlChange() {
 }
 
 // Mouse event handlers for control interaction
-func (app *Application) OnMouseButtonDown(x, y int, flags uint32) bool {
+func (app *Application) OnMouseButtonDown(x, y int, flags platform.InputFlags) bool {
 	// Check if any control is clicked
 	fx, fy := float64(x), float64(y)
 
 	// Check sliders first
-	if app.stepSlider.OnMouseButtonDown(fx, fy, flags) {
-		app.ps.ForceRedraw()
-		return true
-	}
-	if app.widthSlider.OnMouseButtonDown(fx, fy, flags) {
-		app.ps.ForceRedraw()
-		return true
-	}
+    if app.stepSlider.OnMouseButtonDown(fx, fy) {
+        app.ps.ForceRedraw()
+        return true
+    }
+    if app.widthSlider.OnMouseButtonDown(fx, fy) {
+        app.ps.ForceRedraw()
+        return true
+    }
 
 	// Check checkboxes
-	if app.testBox.OnMouseButtonDown(fx, fy, flags) {
-		app.OnCtrlChange() // Trigger control change handling
-		app.ps.ForceRedraw()
-		return true
-	}
-	if app.rotateBox.OnMouseButtonDown(fx, fy, flags) {
-		app.ps.ForceRedraw()
-		return true
-	}
-	if app.joinBox.OnMouseButtonDown(fx, fy, flags) {
-		app.ps.ForceRedraw()
-		return true
-	}
-	if app.scaleBox.OnMouseButtonDown(fx, fy, flags) {
-		app.ps.ForceRedraw()
-		return true
-	}
+    if app.testBox.OnMouseButtonDown(fx, fy) {
+        app.OnCtrlChange() // Trigger control change handling
+        app.ps.ForceRedraw()
+        return true
+    }
+    if app.rotateBox.OnMouseButtonDown(fx, fy) {
+        app.ps.ForceRedraw()
+        return true
+    }
+    if app.joinBox.OnMouseButtonDown(fx, fy) {
+        app.ps.ForceRedraw()
+        return true
+    }
+    if app.scaleBox.OnMouseButtonDown(fx, fy) {
+        app.ps.ForceRedraw()
+        return true
+    }
 
 	return false
 }
 
-func (app *Application) OnMouseButtonUp(x, y int, flags uint32) bool {
+func (app *Application) OnMouseButtonUp(x, y int, flags platform.InputFlags) bool {
 	// Check if any control needs to handle mouse up
 	fx, fy := float64(x), float64(y)
 
 	// Check sliders
-	if app.stepSlider.OnMouseButtonUp(fx, fy, flags) {
-		app.ps.ForceRedraw()
-		return true
-	}
-	if app.widthSlider.OnMouseButtonUp(fx, fy, flags) {
-		app.ps.ForceRedraw()
-		return true
-	}
+    if app.stepSlider.OnMouseButtonUp(fx, fy) {
+        app.ps.ForceRedraw()
+        return true
+    }
+    if app.widthSlider.OnMouseButtonUp(fx, fy) {
+        app.ps.ForceRedraw()
+        return true
+    }
 
 	// Check checkboxes
-	if app.testBox.OnMouseButtonUp(fx, fy, flags) {
-		app.ps.ForceRedraw()
-		return true
-	}
-	if app.rotateBox.OnMouseButtonUp(fx, fy, flags) {
-		app.ps.ForceRedraw()
-		return true
-	}
-	if app.joinBox.OnMouseButtonUp(fx, fy, flags) {
-		app.ps.ForceRedraw()
-		return true
-	}
-	if app.scaleBox.OnMouseButtonUp(fx, fy, flags) {
-		app.ps.ForceRedraw()
-		return true
-	}
+    if app.testBox.OnMouseButtonUp(fx, fy) {
+        app.ps.ForceRedraw()
+        return true
+    }
+    if app.rotateBox.OnMouseButtonUp(fx, fy) {
+        app.ps.ForceRedraw()
+        return true
+    }
+    if app.joinBox.OnMouseButtonUp(fx, fy) {
+        app.ps.ForceRedraw()
+        return true
+    }
+    if app.scaleBox.OnMouseButtonUp(fx, fy) {
+        app.ps.ForceRedraw()
+        return true
+    }
 
 	return false
 }
 
-func (app *Application) OnMouseMove(x, y int, flags uint32) bool {
+func (app *Application) OnMouseMove(x, y int, flags platform.InputFlags) bool {
 	// Check if any control needs to handle mouse move (for slider dragging)
 	fx, fy := float64(x), float64(y)
 
 	// Check sliders for dragging
-	if app.stepSlider.OnMouseMove(fx, fy, flags) {
-		app.ps.ForceRedraw()
-		return true
-	}
-	if app.widthSlider.OnMouseMove(fx, fy, flags) {
-		app.ps.ForceRedraw()
-		return true
-	}
+    if app.stepSlider.OnMouseMove(fx, fy, (flags&platform.MouseLeft) != 0) {
+        app.ps.ForceRedraw()
+        return true
+    }
+    if app.widthSlider.OnMouseMove(fx, fy, (flags&platform.MouseLeft) != 0) {
+        app.ps.ForceRedraw()
+        return true
+    }
 
 	// Checkboxes typically don't need mouse move handling
 
