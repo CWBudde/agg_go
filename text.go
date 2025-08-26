@@ -116,6 +116,7 @@ func (ctx *Context) ResetTextRotation() { ctx.PopTransform() }
 
 // Styling placeholders
 func (ctx *Context) SetBold(bold bool) {}
+
 func (ctx *Context) SetItalic(italic bool) {
 	if italic {
 		ctx.Skew(0.2, 0)
@@ -127,9 +128,11 @@ func (ctx *Context) SetUnderline(u bool) {}
 func (ctx *Context) DrawTextCentered(text string, x, y float64) error {
 	return ctx.DrawTextAligned(text, x, y, AlignCenter)
 }
+
 func (ctx *Context) DrawTextRight(text string, x, y float64) error {
 	return ctx.DrawTextAligned(text, x, y, AlignRight)
 }
+
 func (ctx *Context) DrawTextLeft(text string, x, y float64) error {
 	return ctx.DrawTextAligned(text, x, y, AlignLeft)
 }

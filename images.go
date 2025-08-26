@@ -95,6 +95,36 @@ func (img *Image) ToInternalImage() *agg2d.Image {
 	return agg2d.NewImage(img.Data, img.width, img.height, img.renBuf.Stride())
 }
 
+// ToGoImage converts the AGG image to a standard Go image.RGBA.
+func (img *Image) ToGoImage() *image.RGBA {
+	if img == nil {
+		return nil
+	}
+
+	goImg := image.NewRGBA(image.Rect(0, 0, img.width, img.height))
+
+	// Copy pixel data from AGG format (RGBA) to Go image format (RGBA)
+	stride := img.renBuf.Stride()
+	for y := 0; y < img.height; y++ {
+		srcRow := y * stride
+		dstRow := y * goImg.Stride
+		for x := 0; x < img.width; x++ {
+			srcIdx := srcRow + x*4
+			dstIdx := dstRow + x*4
+
+			// AGG format is RGBA, Go image is also RGBA, so direct copy
+			if srcIdx+3 < len(img.Data) && dstIdx+3 < len(goImg.Pix) {
+				goImg.Pix[dstIdx] = img.Data[srcIdx]     // R
+				goImg.Pix[dstIdx+1] = img.Data[srcIdx+1] // G
+				goImg.Pix[dstIdx+2] = img.Data[srcIdx+2] // B
+				goImg.Pix[dstIdx+3] = img.Data[srcIdx+3] // A
+			}
+		}
+	}
+
+	return goImg
+}
+
 // Context image methods
 
 // DrawImage draws an image at the specified coordinates.

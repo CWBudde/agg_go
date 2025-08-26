@@ -455,6 +455,7 @@ func (a *SliderCtrlAdapter) OnMouseButtonUp(x, y float64) bool   { return a.s.On
 func (a *SliderCtrlAdapter) OnMouseMove(x, y float64, buttonPressed bool) bool {
 	return a.s.OnMouseMove(x, y, buttonPressed)
 }
+
 func (a *SliderCtrlAdapter) OnArrowKeys(left, right, down, up bool) bool {
 	return a.s.OnArrowKeys(left, right, down, up)
 }

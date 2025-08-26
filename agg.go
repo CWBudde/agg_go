@@ -79,6 +79,11 @@ func Lerp(a, b, t float64) float64 {
 	return a + (b-a)*t
 }
 
+// Deg2RadFunc converts degrees to radians.
+func Deg2RadFunc(degrees float64) float64 {
+	return degrees * Deg2Rad
+}
+
 // Public type definitions that wrap internal types
 type (
 	LineCap       int
@@ -351,6 +356,79 @@ func (a *Agg2D) Rectangle(x1, y1, x2, y2 float64) {
 
 func (a *Agg2D) Ellipse(cx, cy, rx, ry float64) {
 	a.impl.Ellipse(cx, cy, rx, ry)
+}
+
+// RoundedRect draws a rounded rectangle.
+func (a *Agg2D) RoundedRect(x1, y1, x2, y2, r float64) {
+	a.impl.RoundedRect(x1, y1, x2, y2, r)
+}
+
+// Path relative methods
+func (a *Agg2D) LineRel(dx, dy float64) {
+	a.impl.LineRel(dx, dy)
+}
+
+func (a *Agg2D) HorLineRel(dx float64) {
+	a.impl.HorLineRel(dx)
+}
+
+func (a *Agg2D) VerLineRel(dy float64) {
+	a.impl.VerLineRel(dy)
+}
+
+func (a *Agg2D) ArcRel(rx, ry, angle float64, largeArcFlag, sweepFlag bool, dx, dy float64) {
+	a.impl.ArcRel(rx, ry, angle, largeArcFlag, sweepFlag, dx, dy)
+}
+
+// Viewport sets the viewport transformation.
+func (a *Agg2D) Viewport(worldX1, worldY1, worldX2, worldY2, screenX1, screenY1, screenX2, screenY2 float64, opt ViewportOption) {
+	a.impl.Viewport(worldX1, worldY1, worldX2, worldY2, screenX1, screenY1, screenX2, screenY2, int(opt))
+}
+
+// Text methods
+func (a *Agg2D) Font(fontName string, height float64, bold, italic bool, cacheType FontCacheType, angle float64) error {
+	return a.impl.Font(fontName, height, bold, italic, cacheType, angle)
+}
+
+func (a *Agg2D) Text(x, y float64, str string, roundOff bool, dx, dy float64) {
+	a.impl.Text(x, y, str, roundOff, dx, dy)
+}
+
+// Blend mode methods
+func (a *Agg2D) BlendMode(mode BlendMode) {
+	a.impl.SetBlendMode(mode)
+}
+
+func (a *Agg2D) GetBlendMode() BlendMode {
+	return a.impl.GetBlendMode()
+}
+
+func (a *Agg2D) ImageBlendMode(mode BlendMode) {
+	a.impl.SetImageBlendMode(mode)
+}
+
+// Master alpha methods
+func (a *Agg2D) MasterAlpha(alpha float64) {
+	a.impl.SetMasterAlpha(alpha)
+}
+
+func (a *Agg2D) GetMasterAlpha() float64 {
+	return a.impl.GetMasterAlpha()
+}
+
+// Utility methods
+func (a *Agg2D) NoFill() {
+	a.impl.NoFill()
+}
+
+func (a *Agg2D) NoLine() {
+	a.impl.NoLine()
+}
+
+// Image transformation methods
+func (a *Agg2D) TransformImagePath(img *Image, imgX1, imgY1, imgX2, imgY2 int, dstX1, dstY1, dstX2, dstY2 float64) error {
+	internalImg := img.ToInternalImage()
+	return a.impl.TransformImagePath(internalImg, imgX1, imgY1, imgX2, imgY2, dstX1, dstY1, dstX2, dstY2)
 }
 
 // Package-level initialization

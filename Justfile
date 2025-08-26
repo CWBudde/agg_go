@@ -54,8 +54,25 @@ build-example EXAMPLE:
     go build -o /tmp/agg-example examples/{{EXAMPLE}}/main.go
 
 # Build all examples for current platform with organized output
-build-all-examples: build-core-examples build-platform-examples
-    @echo "All examples built for {{platform}} platform"
+build-all-examples:
+    @echo "Building all examples for {{platform}} platform in bin/{{platform}}/"
+    @mkdir -p bin/{{platform}}
+    @echo "Building core examples..."
+    @go build -o bin/{{platform}}/hello_world{{bin_ext}} examples/core/basic/hello_world/main.go && echo "  ✓ hello_world" || echo "  ✗ hello_world"
+    @go build -o bin/{{platform}}/shapes{{bin_ext}} examples/core/basic/shapes/main.go && echo "  ✓ shapes" || echo "  ✗ shapes"
+    @go build -o bin/{{platform}}/lines{{bin_ext}} examples/core/basic/lines/main.go && echo "  ✓ lines" || echo "  ✗ lines"
+    @go build -o bin/{{platform}}/rounded_rect{{bin_ext}} examples/core/basic/rounded_rect/main.go && echo "  ✓ rounded_rect" || echo "  ✗ rounded_rect"
+    @go build -o bin/{{platform}}/colors_gray{{bin_ext}} examples/core/basic/colors_gray/main.go && echo "  ✓ colors_gray" || echo "  ✗ colors_gray"
+    @go build -o bin/{{platform}}/colors_rgba{{bin_ext}} examples/core/basic/colors_rgba/main.go && echo "  ✓ colors_rgba" || echo "  ✗ colors_rgba"
+    @go build -o bin/{{platform}}/embedded_fonts_hello{{bin_ext}} examples/core/basic/embedded_fonts_hello/main.go && echo "  ✓ embedded_fonts_hello" || echo "  ✗ embedded_fonts_hello"
+    @go build -o bin/{{platform}}/basic_demo{{bin_ext}} examples/core/basic/basic_demo/main.go && echo "  ✓ basic_demo" || echo "  ✗ basic_demo"
+    @go build -o bin/{{platform}}/gradients{{bin_ext}} examples/core/intermediate/gradients/main.go && echo "  ✓ gradients" || echo "  ✗ gradients"
+    @go build -o bin/{{platform}}/text_rendering{{bin_ext}} examples/core/intermediate/text_rendering/main.go && echo "  ✓ text_rendering" || echo "  ✗ text_rendering"
+    @go build -o bin/{{platform}}/advanced_rendering{{bin_ext}} examples/core/advanced/advanced_rendering/main.go && echo "  ✓ advanced_rendering" || echo "  ✗ advanced_rendering"
+    @echo "Building platform-specific examples..."
+    @go build -tags x11 -o bin/{{platform}}/x11_demo{{bin_ext}} examples/platform/x11/main.go && echo "  ✓ x11_demo" || echo "  ✗ x11_demo (X11 dependencies missing)"
+    @go build -tags sdl2 -o bin/{{platform}}/sdl2_demo{{bin_ext}} examples/platform/sdl2/main.go && echo "  ✓ sdl2_demo" || echo "  ✗ sdl2_demo (SDL2 dependencies missing)"
+    @echo "All examples built in bin/{{platform}}/"
 
 # Build core examples for multiple platforms (cross-compile)
 build-all-examples-multi:
@@ -72,40 +89,27 @@ build-all-examples-multi:
     @GOOS=windows go build -o bin/windows/shapes.exe examples/core/basic/shapes/main.go && echo "  ✓ windows/shapes.exe" || echo "  ✗ windows/shapes.exe"
     @echo "Cross-compilation complete (selected examples)"
 
-# Build only core examples (no platform dependencies)
+# Build only core examples (platform-independent, but organized by platform)
 build-core-examples:
-    @echo "Building core examples only..."
-    @mkdir -p bin/core
-    @echo "Building hello_world..."
-    @go build -o bin/core/hello_world{{bin_ext}} examples/core/basic/hello_world/main.go && echo "  ✓ hello_world" || echo "  ✗ hello_world"
-    @echo "Building shapes..."
-    @go build -o bin/core/shapes{{bin_ext}} examples/core/basic/shapes/main.go && echo "  ✓ shapes" || echo "  ✗ shapes"
-    @echo "Building lines..."
-    @go build -o bin/core/lines{{bin_ext}} examples/core/basic/lines/main.go && echo "  ✓ lines" || echo "  ✗ lines"
-    @echo "Building rounded_rect..."
-    @go build -o bin/core/rounded_rect{{bin_ext}} examples/core/basic/rounded_rect/main.go && echo "  ✓ rounded_rect" || echo "  ✗ rounded_rect"
-    @echo "Building colors_gray..."
-    @go build -o bin/core/colors_gray{{bin_ext}} examples/core/basic/colors_gray/main.go && echo "  ✓ colors_gray" || echo "  ✗ colors_gray"
-    @echo "Building colors_rgba..."
-    @go build -o bin/core/colors_rgba{{bin_ext}} examples/core/basic/colors_rgba/main.go && echo "  ✓ colors_rgba" || echo "  ✗ colors_rgba"
-    @echo "Building embedded_fonts_hello..."
-    @go build -o bin/core/embedded_fonts_hello{{bin_ext}} examples/core/basic/embedded_fonts_hello/main.go && echo "  ✓ embedded_fonts_hello" || echo "  ✗ embedded_fonts_hello"
-    @echo "Building basic_demo..."
-    @go build -o bin/core/basic_demo{{bin_ext}} examples/core/basic/basic_demo/main.go && echo "  ✓ basic_demo" || echo "  ✗ basic_demo"
-    @echo "Building gradients..."
-    @go build -o bin/core/gradients{{bin_ext}} examples/core/intermediate/gradients/main.go && echo "  ✓ gradients" || echo "  ✗ gradients"
-    @echo "Building text_rendering..."
-    @go build -o bin/core/text_rendering{{bin_ext}} examples/core/intermediate/text_rendering/main.go && echo "  ✓ text_rendering" || echo "  ✗ text_rendering"
-    @echo "Building advanced_rendering..."
-    @go build -o bin/core/advanced_rendering{{bin_ext}} examples/core/advanced/advanced_rendering/main.go && echo "  ✓ advanced_rendering" || echo "  ✗ advanced_rendering"
+    @echo "Building core examples for {{platform}} platform in bin/{{platform}}/"
+    @mkdir -p bin/{{platform}}
+    @go build -o bin/{{platform}}/hello_world{{bin_ext}} examples/core/basic/hello_world/main.go && echo "  ✓ hello_world" || echo "  ✗ hello_world"
+    @go build -o bin/{{platform}}/shapes{{bin_ext}} examples/core/basic/shapes/main.go && echo "  ✓ shapes" || echo "  ✗ shapes"
+    @go build -o bin/{{platform}}/lines{{bin_ext}} examples/core/basic/lines/main.go && echo "  ✓ lines" || echo "  ✗ lines"
+    @go build -o bin/{{platform}}/rounded_rect{{bin_ext}} examples/core/basic/rounded_rect/main.go && echo "  ✓ rounded_rect" || echo "  ✗ rounded_rect"
+    @go build -o bin/{{platform}}/colors_gray{{bin_ext}} examples/core/basic/colors_gray/main.go && echo "  ✓ colors_gray" || echo "  ✗ colors_gray"
+    @go build -o bin/{{platform}}/colors_rgba{{bin_ext}} examples/core/basic/colors_rgba/main.go && echo "  ✓ colors_rgba" || echo "  ✗ colors_rgba"
+    @go build -o bin/{{platform}}/embedded_fonts_hello{{bin_ext}} examples/core/basic/embedded_fonts_hello/main.go && echo "  ✓ embedded_fonts_hello" || echo "  ✗ embedded_fonts_hello"
+    @go build -o bin/{{platform}}/basic_demo{{bin_ext}} examples/core/basic/basic_demo/main.go && echo "  ✓ basic_demo" || echo "  ✗ basic_demo"
+    @go build -o bin/{{platform}}/gradients{{bin_ext}} examples/core/intermediate/gradients/main.go && echo "  ✓ gradients" || echo "  ✗ gradients"
+    @go build -o bin/{{platform}}/text_rendering{{bin_ext}} examples/core/intermediate/text_rendering/main.go && echo "  ✓ text_rendering" || echo "  ✗ text_rendering"
+    @go build -o bin/{{platform}}/advanced_rendering{{bin_ext}} examples/core/advanced/advanced_rendering/main.go && echo "  ✓ advanced_rendering" || echo "  ✗ advanced_rendering"
 
 # Build only platform-specific examples
 build-platform-examples:
-    @echo "Building platform examples for {{platform}}..."
+    @echo "Building platform-specific examples for {{platform}}..."
     @mkdir -p bin/{{platform}}
-    @echo "Building X11 demo..."
     @go build -tags x11 -o bin/{{platform}}/x11_demo{{bin_ext}} examples/platform/x11/main.go && echo "  ✓ x11_demo" || echo "  ✗ x11_demo (X11 dependencies missing)"
-    @echo "Building SDL2 demo..."
     @go build -tags sdl2 -o bin/{{platform}}/sdl2_demo{{bin_ext}} examples/platform/sdl2/main.go && echo "  ✓ sdl2_demo" || echo "  ✗ sdl2_demo (SDL2 dependencies missing)"
 
 # Test commands

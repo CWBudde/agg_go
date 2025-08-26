@@ -6,119 +6,43 @@ Previously completed tasks are in TASKS-COMPLETED.md for the completed API tasks
 
 ---
 
+## Examples Implementation Status (Updated 2025-08-26)
+
+### ✅ **IMPLEMENTED EXAMPLES** (8 out of ~78 total)
+
+1. **rounded_rect.cpp** → `examples/core/basic/rounded_rect/main.go`
+2. **circles.cpp** → `examples/tests/circles/main.go`
+3. **aa_demo.cpp** → `examples/tests/aa_demo/main.go`
+4. **rasterizers.cpp** → `examples/core/intermediate/rasterizers/main.go`
+5. **rasterizers2.cpp** → `examples/core/intermediate/rasterizers2/main.go`
+6. **gradients.cpp** → `examples/core/intermediate/gradients/main.go`
+7. **Control Examples**: `examples/core/intermediate/controls/{slider_demo,gamma_correction,rbox_demo,spline_demo}/main.go`
+8. **Basic Examples**: `examples/core/basic/{hello_world,shapes,lines,colors_*,embedded_fonts_hello,basic_demo}/main.go`
+
+### ❌ **MAJOR MISSING EXAMPLES**
+
+- **conv_stroke.cpp** - Stroke demonstration (directory exists, no implementation)
+- **bezier_div.cpp** - Bezier curve subdivision
+- **bspline.cpp** - B-spline curves
+- **conv_contour.cpp** - Path contour/offset
+- **lion.cpp** - AGG's signature complex vector demo
+- **All image processing examples** (image1, image_alpha, image_transforms, etc.)
+- **All text rendering examples** (raster_text, freetype_test, etc.)
+- **All advanced effects** (blur, distortions, perspective, etc.)
+
+**Current Status**: ~10% of original AGG examples implemented
+
+---
+
 ## Examples
 
 After implementing the core AGG library components above, these examples should be ported to demonstrate the library functionality and serve as usage documentation.
 
-## Dependency Analysis & Implementation Status
-
-Based on analysis of the current codebase (as of 2025-08-21), here's the status of core dependencies for examples:
-
-### ✅ **AVAILABLE COMPONENTS**
-
-**Core Rendering Pipeline**: Complete and functional
-
-- **Rasterizer**: `RasterizerScanlineAA` and `RasterizerScanlineAANoGamma` ✅
-- **Scanlines**: `ScanlineP8`, `ScanlineU8`, `Scanline32P8`, `Scanline32U8` ✅
-- **Renderers**: `RendererScanlineAASolid`, `RendererBase` ✅
-- **Render Functions**: `RenderScanlines()` functions ✅
-- **Pixel Formats**: Complete RGBA/RGB/Gray pixel format support ✅
-
-**Basic Shapes**: Ready for examples
-
-- **Ellipse**: `ellipse` struct with vertex source interface ✅
-- **Rounded Rectangle**: `rounded_rect` struct implemented ✅
-- **Arc**: `arc` struct for arc generation ✅
-- **Arrowhead**: `arrowhead` struct for arrow shapes ✅
-
-**Path Converters**: Fully implemented
-
-- **ConvStroke**: Full stroke conversion pipeline ✅
-- **ConvDash**: Dash pattern generation ✅
-- **ConvMarker**: Marker placement system ✅
-- **ConvTransform**: Transformation converter ✅
-- **ConvContour**: Path offsetting ✅
-
-**Mathematical Components**: Complete
-
-- **B-Splines**: `BSpline` interpolation curves ✅
-- **Bezier Curves**: `Curve3`, `Curve4` approximation ✅
-- **Bezier Arcs**: Arc-to-Bezier conversion ✅
-- **Affine Transforms**: Complete transformation system ✅
-
-**High-Level API**: Ready for use
-
-- **Context API**: `NewContext()`, `SetColor()`, drawing methods ✅
-- **Basic Drawing**: `FillEllipse()`, `DrawEllipse()`, `FillRoundedRect()` ✅
-- **Color System**: Complete RGBA/RGB/Gray color support ✅
-
-### ❌/✅ **INTERACTIVE COMPONENTS STATUS**
-
-**UI/Control System**
-
-- **Platform Controls**: `slider_ctrl`, `cbox_ctrl`, `rbox_ctrl` now implemented ✅
-  - Additional controls present: `scale_ctrl`, `polygon_ctrl`, `spline_ctrl`, `bezier_ctrl`, `gamma_ctrl`, simple text control (see `internal/ctrl/*`) ✅
-  - Console demos: `examples/core/intermediate/controls/{slider_demo,rbox_demo,spline_demo,gamma_correction}` ✅
-- **Mouse Interaction**: Event handling and callbacks available via platform backends (SDL2/X11) ✅
-  - Backends: `examples/platform/{sdl2,x11}` demonstrate interactive input and drawing ✅
-  - Core `PlatformSupport` also exposes handler hooks; window update is stubbed for non-backend mode ↔︎
-- **Control Rendering**: `render_ctrl()` equivalent present as `ctrl.RenderCtrl` (generic scaffolding) and `ctrl.SimpleRenderCtrl` (working helper) — integration with concrete rasterizer/renderer still pending ⚠️
-
-**Specialized Renderers** - Needed for educational demos
-
-- **Magnified Rendering**: `renderer_enlarged` for pixel visualization - **IMPLEMENTED** ✅
-- **Custom Renderers**: Specialized AA demonstration renderers - **MISSING**
-
-**Text Rendering** - Optional for many examples
-
-- **GSV Text**: Vector text (`internal/gsv/gsv_text.go`) implemented ✅
-- **Font Support**: Embedded vector font available; FreeType and raster fonts not implemented ⚠️
-
-### 🚧 **EXAMPLE-SPECIFIC STATUS**
-
-#### Phase 1 Examples Readiness:
-
-1. **rounded_rect.cpp**: 90% ready (controls available; needs render_ctrl wiring for on-canvas UI) ✅/⚠️
-2. **circles.cpp**: 85% ready (vector text available for stats; integration and layout pending) ✅/⚠️
-3. **aa_demo.cpp**: 95% ready (magnified pixel renderer implemented; example ready for testing) ✅
-4. **conv_stroke.cpp**: 90% ready (controls available; needs control rendering + event wiring in-canvas) ✅/⚠️
-
-#### Recommended Implementation Strategy:
-
-**Option A: Static Examples** (Immediate - 1-2 days)
-
-- Create non-interactive versions that output to PNG files
-- Demonstrate core functionality without UI controls
-- Easy to build and run, good for testing core pipeline
-
-**Option B: Simple UI Framework** (Medium term - 3-5 days)
-
-- Implement basic slider, checkbox, radio button controls
-- Add mouse interaction for point manipulation
-- Full interactive examples as originally designed
-
-### 🎯 **CORE ASSESSMENT**
-
-The **fundamental AGG rendering pipeline is 90% complete** and fully functional. The main gaps are in:
-
-- **UI/control systems** (for interactive examples)
-- **Specialized diagnostic renderers** (for educational demos)
-- **Text rendering** (for performance stats and labels)
-
-**Bottom line**: Core mathematical, rasterization, and drawing capabilities are solid and ready for example development. We can start with simplified static examples immediately, or invest a few days in UI infrastructure for full interactivity.
-
 ### Basic Drawing and Primitives
 
-#### rounded_rect.cpp - Interactive Rounded Rectangle Demo
+#### rounded_rect.cpp - Interactive Rounded Rectangle Demo ✅ **IMPLEMENTED**
 
-**Core AGG Components Required**
-
-- [x] agg_rounded_rect.h/.cpp → RoundedRect struct with state machine
-- [x] agg_conv_stroke.h → ConvStroke[VS] converter for outline generation ✅
-- [x] agg_ellipse.h → Ellipse struct for control point markers
-- [x] Platform controls (slider_ctrl, cbox_ctrl) → Go UI integration ✅
-
-**Implementation Details**
+**Go Implementation**: `examples/core/basic/rounded_rect/main.go`
 
 **Application Structure**
 
@@ -167,16 +91,9 @@ The **fundamental AGG rendering pipeline is 90% complete** and fully functional.
 - [x] Interactive geometric manipulation
 - [x] Real-time shape recalculation and rendering
 
-#### circles.cpp - High Performance Circle Rendering
+#### circles.cpp - High Performance Circle Rendering ✅ **IMPLEMENTED**
 
-**Core AGG Components Required**
-
-- [x] agg_ellipse.h → Ellipse struct for circle generation
-- [x] agg_conv_transform.h → ConvTransform[VS, Trans] for coordinate transformations ✅
-- [x] agg_bspline.h → BSpline for smooth animation curves ✅
-- [x] agg_gsv_text.h → GSVText for performance statistics display ✅
-
-**Implementation Details**
+**Go Implementation**: `examples/tests/circles/main.go`
 
 **Performance Test Structure**
 
@@ -222,14 +139,7 @@ The **fundamental AGG rendering pipeline is 90% complete** and fully functional.
 
 #### conv_stroke.cpp - Comprehensive Stroke Demonstration
 
-**Core AGG Components Required**
-
-- [x] agg_conv_stroke.h → ConvStroke[VS] stroke generator ✅
-- [x] agg_conv_dash.h → ConvDash[VS] for dashed line patterns ✅
-- [x] agg_conv_marker.h → ConvMarker[VS] for line decorations ✅
-- [x] agg_arrowhead.h → Arrowhead vertex source for line terminators
-
-**Implementation Details**
+**Status**: Empty directory at `examples/tests/conv_stroke/` - No Go implementation
 
 **Interactive Path Definition**
 
@@ -276,15 +186,6 @@ The **fundamental AGG rendering pipeline is 90% complete** and fully functional.
 
 #### conv_dash_marker.cpp - Dashed Lines and Marker Placement
 
-**Core AGG Components Required**
-
-- [x] agg_conv_dash.h → ConvDash[VS] for dash pattern generation ✅
-- [x] agg_conv_marker.h → ConvMarker[VS, MarkerLocator, MarkerShape] for marker placement ✅
-- [x] agg_vcgen_markers_term.h → VCGenMarkersTerm vertex generator for path terminals ✅
-- [x] agg_conv_smooth_poly1.h → ConvSmoothPoly1[VS] for path smoothing ✅
-
-**Implementation Details**
-
 **Dash Pattern System**
 
 - [x] add_dash(dash_len, gap_len) method for pattern definition
@@ -330,14 +231,6 @@ The **fundamental AGG rendering pipeline is 90% complete** and fully functional.
 
 #### make_arrows.cpp - Arrowhead Shape Generation
 
-**Core AGG Components Required**
-
-- [x] agg_path_storage.h → PathStorage for arrow geometry ✅
-- [x] Hard-coded arrow coordinate arrays → Static shape definitions ✅
-- [x] move_to(), line_to(), close_polygon() → Path building methods ✅
-
-**Implementation Details**
-
 **Arrow Geometry Definition**
 
 - [ ] Pre-calculated arrow vertex coordinates
@@ -375,14 +268,6 @@ The **fundamental AGG rendering pipeline is 90% complete** and fully functional.
 
 #### make_gb_poly.cpp - General Polygon Utilities
 
-**Core AGG Components Required**
-
-- [x] agg_path_storage.h → PathStorage for polygon construction ✅
-- [x] Polygon generation algorithms → Geometric utility functions ✅
-- [x] Vertex manipulation utilities → Point array processing ✅
-
-**Implementation Details**
-
 **Polygon Generation Methods**
 
 - [ ] Regular polygon generation (n-sided shapes)
@@ -419,15 +304,6 @@ The **fundamental AGG rendering pipeline is 90% complete** and fully functional.
 - [ ] Reusable polygon construction patterns
 
 #### bezier_div.cpp - Adaptive Bezier Curve Subdivision
-
-**Core AGG Components Required**
-
-- [x] agg_curves.h → curve4_div, curve3_div classes for curve subdivision ✅
-- [x] agg_bezier_arc.h → bezier_arc class for arc-to-bezier conversion ✅
-- [x] agg_conv_curve.h → conv_curve converter for automatic curve handling ✅
-- [x] ctrl/agg_bezier_ctrl.h → Interactive bezier curve control widget ✅
-
-**Implementation Details**
 
 **Curve Subdivision System**
 
@@ -480,14 +356,6 @@ The **fundamental AGG rendering pipeline is 90% complete** and fully functional.
 
 #### bspline.cpp - B-Spline Curve Rendering and Editing
 
-**Core AGG Components Required**
-
-- [x] agg_bspline.h → bspline class for B-spline curve representation ✅
-- [x] agg_conv_bspline.h → conv_bspline converter for path integration ✅
-- [ ] Interactive control point editing → UI integration for spline manipulation ❌
-
-**Implementation Details**
-
 **B-Spline Mathematics**
 
 - [ ] Cubic B-spline basis function evaluation
@@ -524,14 +392,6 @@ The **fundamental AGG rendering pipeline is 90% complete** and fully functional.
 - [ ] Interactive curve editing algorithms
 
 #### conv_contour.cpp - Path Contour Generation
-
-**Core AGG Components Required**
-
-- [x] agg_conv_contour.h → conv_contour converter for path offsetting ✅
-- [x] agg_vcgen_contour.h → vcgen_contour vertex generator for offset calculation ✅
-- [x] Path offsetting algorithms → Geometric computation for parallel curves ✅
-
-**Implementation Details**
 
 **Contour Generation System**
 
@@ -572,14 +432,7 @@ The **fundamental AGG rendering pipeline is 90% complete** and fully functional.
 
 #### aa_demo.cpp - Visual Anti-Aliasing Quality Demonstration
 
-**Core AGG Components Required**
-
-- [x] agg_rasterizer_scanline_aa.h → RasterizerScanlineAA for high-quality rasterization ✅
-- [x] agg_scanline_u.h → ScanlineU8 for unpacked coverage data ✅
-- [x] Custom square renderer class → RendererEnlarged[Renderer] for pixel magnification ✅
-- [x] agg_renderer_scanline.h → render_scanlines_aa_solid() function ✅
-
-**Implementation Details**
+**Go Implementation**: `examples/tests/aa_demo/main.go`
 
 **Custom Square Vertex Source**
 
@@ -624,16 +477,6 @@ The **fundamental AGG rendering pipeline is 90% complete** and fully functional.
 - [x] Coverage-based intensity modulation
 
 #### aa_test.cpp - Comprehensive Anti-Aliasing Testing Suite
-
-**Core AGG Components Required**
-
-- [ ] agg_rasterizer_scanline_aa.h → RasterizerScanlineAA with gamma support
-- [ ] agg_scanline_u.h → ScanlineU8 for coverage data
-- [ ] agg_conv_dash.h → ConvDash[VS] for dashed line testing
-- [ ] agg_span_gradient.h → SpanGradient for gradient testing
-- [ ] agg_span_gouraud_rgba.h → SpanGouraudRGBA for smooth shading tests
-
-**Implementation Details**
 
 **Simple Vertex Source Framework**
 
@@ -686,15 +529,6 @@ The **fundamental AGG rendering pipeline is 90% complete** and fully functional.
 
 #### line_thickness.cpp - Precise Line Thickness Control
 
-**Core AGG Components Required**
-
-- [ ] agg_conv_stroke.h → ConvStroke[VS] for line width control
-- [ ] Subpixel positioning system → Double precision coordinate handling
-- [ ] agg_rasterizer_scanline_aa.h → RasterizerScanlineAA with high precision
-- [ ] Line thickness measurement tools → Width verification algorithms
-
-**Implementation Details**
-
 **Precision Line Width System**
 
 - [ ] Configurable line width from 0.1 to 10.0 pixels
@@ -744,17 +578,9 @@ The **fundamental AGG rendering pipeline is 90% complete** and fully functional.
 - [ ] Visual calibration and verification methods
 - [ ] Precision rendering quality assessment
 
-#### rasterizers.cpp - Rasterizer Performance and Quality Comparison
+#### rasterizers.cpp - Rasterizer Performance and Quality Comparison ✅ **IMPLEMENTED**
 
-**Core AGG Components Required**
-
-- [ ] agg_rasterizer_scanline_aa.h → RasterizerScanlineAA for anti-aliased rendering
-- [ ] agg_rasterizer_outline.h → RasterizerOutline for outline-only rendering
-- [ ] agg_scanline_p.h → ScanlineP8 for packed anti-aliased scanlines
-- [ ] agg_scanline_bin.h → ScanlineBin for binary (aliased) scanlines
-- [ ] agg_renderer_primitives.h → RendererPrimitives for fast primitive rendering
-
-**Implementation Details**
+**Go Implementation**: `examples/core/intermediate/rasterizers/main.go`
 
 **Multi-Rasterizer Framework**
 
@@ -812,16 +638,9 @@ The **fundamental AGG rendering pipeline is 90% complete** and fully functional.
 - [ ] Quality metrics and assessment
 - [ ] Trade-off analysis between speed and quality
 
-#### rasterizers2.cpp - Advanced Rasterization Techniques
+#### rasterizers2.cpp - Advanced Rasterization Techniques ✅ **IMPLEMENTED**
 
-**Core AGG Components Required**
-
-- [ ] Advanced rasterizer configurations → Extended RasterizerScanlineAA options
-- [ ] Multiple scanline types → ScanlineP8, ScanlineU8, ScanlineBin comparison
-- [ ] Complex geometry handling → Self-intersecting and degenerate path processing
-- [ ] Memory optimization techniques → Efficient scanline storage and processing
-
-**Implementation Details**
+**Go Implementation**: `examples/core/intermediate/rasterizers2/main.go`
 
 **Advanced Rasterizer Configuration**
 
@@ -873,15 +692,6 @@ The **fundamental AGG rendering pipeline is 90% complete** and fully functional.
 - [ ] Performance optimization strategies
 
 #### rasterizer_compound.cpp - Multi-Style Compound Rendering
-
-**Core AGG Components Required**
-
-- [ ] agg_rasterizer_compound_aa.h → RasterizerCompoundAA for multi-style rendering
-- [ ] Style management system → Multiple fill/stroke styles per shape
-- [ ] Layer ordering system → Depth control for overlapping shapes
-- [ ] Master alpha buffer → Global transparency control
-
-**Implementation Details**
 
 **Compound Rasterizer Architecture**
 
@@ -1040,8 +850,10 @@ The **fundamental AGG rendering pipeline is 90% complete** and fully functional.
 
 ### Gradients and Shading
 
-- [ ] **gradients.cpp** - Basic gradient rendering
+- [-] **gradients.cpp** - Gradient rendering
+  -> TODO: Interactive version that alignes with original C++ code
 
+  - **Go Implementation**: `examples/core/intermediate/gradients/main.go`
   - _Dependencies_: agg_span_gradient.h, gradient functions, span allocator
   - _Demonstrates_: Linear/radial gradients, color interpolation
 

@@ -225,6 +225,11 @@ func (ctx *Context) GetImage() *Image {
 	return ctx.image
 }
 
+// GetAgg2D returns the underlying AGG2D instance for advanced operations.
+func (ctx *Context) GetAgg2D() *Agg2D {
+	return ctx.agg2d
+}
+
 // SetLineWidth sets the line width for stroke operations.
 func (ctx *Context) SetLineWidth(width float64) {
 	ctx.agg2d.LineWidth(width)

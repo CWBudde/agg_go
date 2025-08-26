@@ -330,3 +330,168 @@ func BenchmarkFontSignatureGeneration(b *testing.B) {
 		engine.updateSignature()
 	}
 }
+
+// TestDecomposeFTOutlineWithFont tests font outline decomposition with a real font
+func TestDecomposeFTOutlineWithFont(t *testing.T) {
+	engine, err := NewFontEngineFreetype(false, 32)
+	if err != nil {
+		t.Fatalf("Failed to create engine: %v", err)
+	}
+	defer engine.Close()
+
+	// Try to load a common system font
+	fontPaths := []string{
+		"/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+		"/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+		"/System/Library/Fonts/Arial.ttf", // macOS
+		"C:\\Windows\\Fonts\\arial.ttf",   // Windows
+	}
+
+	var fontLoaded bool
+	for _, fontPath := range fontPaths {
+		if engine.LoadFont(fontPath, 0, GlyphRenderingOutline, nil) == nil {
+			fontLoaded = true
+			break
+		}
+	}
+
+	if !fontLoaded {
+		t.Skip("No test fonts available - skipping font outline decomposition test")
+	}
+
+	engine.SetHeight(24.0)
+
+	// Test characters that are likely to have different outline types
+	testCases := []struct {
+		name string
+		char rune
+		desc string
+	}{
+		{"LatinA", 'A', "Simple character with straight lines"},
+		{"LatinO", 'O', "Character with curves"},
+		{"LatinG", 'G', "Character with mixed lines and curves"},
+		{"Digit0", '0', "Digit with oval shape"},
+		{"Period", '.', "Simple punctuation"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Prepare the glyph - this will call decomposeFTOutline internally
+			if !engine.PrepareGlyph(uint(tc.char)) {
+				t.Errorf("Failed to prepare glyph for character '%c' (%d)", tc.char, tc.char)
+				return
+			}
+
+			// Verify the glyph was prepared successfully
+			if engine.GlyphIndex() == 0 {
+				t.Errorf("No glyph index set after preparing '%c'", tc.char)
+			}
+
+			// Check that the path storage has vertices (outline was decomposed)
+			path := engine.PathAdaptor()
+			if path.TotalVertices() == 0 {
+				t.Errorf("No vertices in path after decomposing outline for '%c'", tc.char)
+			}
+
+			// Verify advance metrics are reasonable
+			advX := engine.AdvanceX()
+			advY := engine.AdvanceY()
+			if advX < 0 || advX > 1000 { // Sanity check for advance
+				t.Errorf("Unreasonable advance X %f for character '%c'", advX, tc.char)
+			}
+			if advY < -100 || advY > 100 { // Most fonts have small or zero Y advance
+				t.Errorf("Unreasonable advance Y %f for character '%c'", advY, tc.char)
+			}
+		})
+	}
+}
+
+// TestDecomposeFTOutlineEdgeCases tests edge cases in outline decomposition
+func TestDecomposeFTOutlineEdgeCases(t *testing.T) {
+	engine, err := NewFontEngineFreetype(false, 32)
+	if err != nil {
+		t.Fatalf("Failed to create engine: %v", err)
+	}
+	defer engine.Close()
+
+	// Try to load a font that likely has complex outlines
+	fontPaths := []string{
+		"/usr/share/fonts/truetype/liberation/LiberationSerif-Italic.ttf",
+		"/usr/share/fonts/truetype/dejavu/DejaVuSerif-Italic.ttf",
+	}
+
+	var fontLoaded bool
+	for _, fontPath := range fontPaths {
+		if engine.LoadFont(fontPath, 0, GlyphRenderingOutline, nil) == nil {
+			fontLoaded = true
+			break
+		}
+	}
+
+	if !fontLoaded {
+		t.Skip("No italic test fonts available - skipping edge case tests")
+	}
+
+	engine.SetHeight(24.0)
+
+	// Test characters that might have conic control points or complex curves
+	testChars := []rune{'f', 'g', 'Q', '@', '%'}
+
+	for _, char := range testChars {
+		t.Run(string(char), func(t *testing.T) {
+			// This test ensures that decomposeFTOutline doesn't crash
+			// The fix should prevent the segmentation fault from occurring
+			if !engine.PrepareGlyph(uint(char)) {
+				t.Logf("Could not prepare glyph for '%c' - font may not contain this character", char)
+				return
+			}
+
+			path := engine.PathAdaptor()
+			vertices := path.TotalVertices()
+			if vertices > 0 {
+				t.Logf("Successfully decomposed outline for '%c' with %d vertices", char, vertices)
+			}
+		})
+	}
+}
+
+// TestDecomposeFTOutlineFlipY tests outline decomposition with Y-axis flipping
+func TestDecomposeFTOutlineFlipY(t *testing.T) {
+	engine, err := NewFontEngineFreetype(false, 32)
+	if err != nil {
+		t.Fatalf("Failed to create engine: %v", err)
+	}
+	defer engine.Close()
+
+	fontPath := "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"
+	if engine.LoadFont(fontPath, 0, GlyphRenderingOutline, nil) != nil {
+		t.Skip("Liberation Sans not available - skipping FlipY test")
+	}
+
+	engine.SetHeight(24.0)
+
+	// Test without flip Y
+	engine.SetFlipY(false)
+	if !engine.PrepareGlyph(uint('A')) {
+		t.Fatal("Failed to prepare glyph A without flip Y")
+	}
+	pathNormal := engine.PathAdaptor()
+	verticesNormal := pathNormal.TotalVertices()
+
+	// Test with flip Y
+	engine.SetFlipY(true)
+	if !engine.PrepareGlyph(uint('A')) {
+		t.Fatal("Failed to prepare glyph A with flip Y")
+	}
+	pathFlipped := engine.PathAdaptor()
+	verticesFlipped := pathFlipped.TotalVertices()
+
+	// Both should produce the same number of vertices
+	if verticesNormal != verticesFlipped {
+		t.Errorf("Vertex count differs between normal (%d) and flipped (%d) Y axis", verticesNormal, verticesFlipped)
+	}
+
+	if verticesFlipped == 0 {
+		t.Error("No vertices produced with Y-axis flipping")
+	}
+}

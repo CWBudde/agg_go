@@ -607,9 +607,23 @@ func (fe *FontEngineFreetype) decomposeFTOutline(outline *C.FT_Outline, flipY bo
 	for n := 0; n < int(outline.n_contours); n++ {
 		last := int(C.short(uintptr(unsafe.Pointer(uintptr(unsafe.Pointer(outline.contours)) + uintptr(n)*unsafe.Sizeof(C.short(0))))))
 
-		// Get starting points
-		vStart := (*C.FT_Vector)(unsafe.Pointer(uintptr(unsafe.Pointer(outline.points)) + uintptr(first)*unsafe.Sizeof(C.FT_Vector{})))
-		vLast := (*C.FT_Vector)(unsafe.Pointer(uintptr(unsafe.Pointer(outline.points)) + uintptr(last)*unsafe.Sizeof(C.FT_Vector{})))
+		// Bounds checking - ensure indices are within valid range
+		if first < 0 || last < 0 || first >= int(outline.n_points) || last >= int(outline.n_points) {
+			// Invalid indices - return false to avoid crash
+			return false
+		}
+
+		// Get starting points from outline using safer array indexing
+		vStartOriginal := (*C.FT_Vector)(unsafe.Pointer(uintptr(unsafe.Pointer(outline.points)) + uintptr(first)*unsafe.Sizeof(C.FT_Vector{})))
+		vLastOriginal := (*C.FT_Vector)(unsafe.Pointer(uintptr(unsafe.Pointer(outline.points)) + uintptr(last)*unsafe.Sizeof(C.FT_Vector{})))
+
+		// Storage for modified start/last points - ensures memory remains valid throughout loop
+		vStartStorage := *vStartOriginal
+		vLastStorage := *vLastOriginal
+
+		// Pointers to the active start/last points
+		vStart := vStartOriginal
+		vLast := vLastOriginal
 
 		vControl := *vStart
 		point := vStart
@@ -630,12 +644,14 @@ func (fe *FontEngineFreetype) decomposeFTOutline(outline *C.FT_Outline, flipY bo
 				vStart = vLast
 			} else {
 				// If both first and last points are conic, start at their middle
-				middlePoint := C.FT_Vector{
-					x: (vStart.x + vLast.x) / 2,
-					y: (vStart.y + vLast.y) / 2,
-				}
-				vStart = &middlePoint
-				vLast = &middlePoint
+				// Modify the storage variables directly, following C++ implementation
+				vStartStorage.x = (vStartStorage.x + vLastStorage.x) / 2
+				vStartStorage.y = (vStartStorage.y + vLastStorage.y) / 2
+				vLastStorage = vStartStorage
+
+				// Point to our storage variables
+				vStart = &vStartStorage
+				vLast = &vLastStorage
 			}
 		}
 
