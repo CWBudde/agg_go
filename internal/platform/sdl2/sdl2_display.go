@@ -1,12 +1,11 @@
 package sdl2
 
 import (
-	"fmt"
+    "fmt"
 
-	"agg_go/internal/buffer"
-	"agg_go/internal/platform"
-	"agg_go/internal/platform/types"
-	"github.com/veandco/go-sdl2/sdl"
+    "agg_go/internal/buffer"
+    "agg_go/internal/platform/types"
+    "github.com/veandco/go-sdl2/sdl"
 )
 
 // copyBufferToSurface copies the AGG rendering buffer to SDL2 surface, handling pixel format conversion
@@ -276,7 +275,7 @@ func (s *SDL2Backend) copyRawToSurface(src []byte, dst []byte, srcStride, dstStr
 }
 
 // CreateImageSurface creates an SDL2 image surface
-func (s *SDL2Backend) CreateImageSurface(width, height int) (platform.ImageSurface, error) {
+func (s *SDL2Backend) CreateImageSurface(width, height int) (types.ImageSurface, error) {
 	surface, err := sdl.CreateRGBSurface(
 		0, int32(width), int32(height), int32(s.bpp),
 		s.rmask, s.gmask, s.bmask, s.amask)
@@ -303,7 +302,7 @@ func (s *SDL2Backend) CreateImageSurface(width, height int) (platform.ImageSurfa
 }
 
 // DestroyImageSurface destroys an SDL2 image surface
-func (s *SDL2Backend) DestroyImageSurface(surface platform.ImageSurface) error {
+func (s *SDL2Backend) DestroyImageSurface(surface types.ImageSurface) error {
 	if imageSurface, ok := surface.(*SDL2ImageSurface); ok {
 		if imageSurface.index >= 0 && imageSurface.index < len(s.imageSurfaces) {
 			s.imageSurfaces[imageSurface.index] = nil
@@ -326,7 +325,7 @@ func (s *SDL2Backend) Delay(ms uint32) {
 }
 
 // LoadImage loads an image file using SDL2_image
-func (s *SDL2Backend) LoadImage(filename string) (platform.ImageSurface, error) {
+func (s *SDL2Backend) LoadImage(filename string) (types.ImageSurface, error) {
 	// Note: This requires SDL2_image library
 	// For now, we'll create a basic BMP loader or return a placeholder
 
@@ -355,7 +354,7 @@ func (s *SDL2Backend) LoadImage(filename string) (platform.ImageSurface, error) 
 }
 
 // SaveImage saves an image to file
-func (s *SDL2Backend) SaveImage(surface platform.ImageSurface, filename string) error {
+func (s *SDL2Backend) SaveImage(surface types.ImageSurface, filename string) error {
 	if imageSurface, ok := surface.(*SDL2ImageSurface); ok && imageSurface.surface != nil {
 		return imageSurface.surface.SaveBMP(filename)
 	}
@@ -368,7 +367,7 @@ func (s *SDL2Backend) GetImageExtension() string {
 }
 
 // GetNativeHandle returns the native SDL2 handles
-func (s *SDL2Backend) GetNativeHandle() platform.NativeHandle {
+func (s *SDL2Backend) GetNativeHandle() types.NativeHandle {
 	return &SDL2NativeHandle{
 		window:   s.window,
 		renderer: s.renderer,

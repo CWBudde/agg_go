@@ -9,14 +9,13 @@ package x11
 import "C"
 
 import (
-	"encoding/binary"
-	"fmt"
-	"os"
-	"time"
+    "encoding/binary"
+    "fmt"
+    "os"
+    "time"
 
-	"agg_go/internal/buffer"
-	"agg_go/internal/platform"
-	"agg_go/internal/platform/types"
+    "agg_go/internal/buffer"
+    "agg_go/internal/platform/types"
 )
 
 // copyBufferToXImage copies the AGG rendering buffer to XImage, handling pixel format conversion
@@ -342,7 +341,7 @@ func (x *X11Backend) saveBMP(surface *X11ImageSurface, filename string) error {
 }
 
 // CreateImageSurface creates an X11 image surface
-func (x *X11Backend) CreateImageSurface(width, height int) (platform.ImageSurface, error) {
+func (x *X11Backend) CreateImageSurface(width, height int) (types.ImageSurface, error) {
 	// For X11, we create a simple byte buffer that can be converted to XImage
 	bpp := x.bpp
 	if bpp < 24 {
@@ -364,7 +363,7 @@ func (x *X11Backend) CreateImageSurface(width, height int) (platform.ImageSurfac
 }
 
 // DestroyImageSurface destroys an X11 image surface
-func (x *X11Backend) DestroyImageSurface(surface platform.ImageSurface) error {
+func (x *X11Backend) DestroyImageSurface(surface types.ImageSurface) error {
 	// For our simple implementation, just let Go GC handle it
 	return nil
 }
@@ -380,12 +379,12 @@ func (x *X11Backend) Delay(ms uint32) {
 }
 
 // LoadImage loads an image file (basic BMP support)
-func (x *X11Backend) LoadImage(filename string) (platform.ImageSurface, error) {
+func (x *X11Backend) LoadImage(filename string) (types.ImageSurface, error) {
 	return x.loadBMP(filename)
 }
 
 // SaveImage saves an image to file (basic BMP support)
-func (x *X11Backend) SaveImage(surface platform.ImageSurface, filename string) error {
+func (x *X11Backend) SaveImage(surface types.ImageSurface, filename string) error {
 	if surface == nil || !surface.IsValid() {
 		return fmt.Errorf("invalid surface")
 	}
@@ -404,7 +403,7 @@ func (x *X11Backend) GetImageExtension() string {
 }
 
 // GetNativeHandle returns the native X11 window handle
-func (x *X11Backend) GetNativeHandle() platform.NativeHandle {
+func (x *X11Backend) GetNativeHandle() types.NativeHandle {
 	return &X11NativeHandle{
 		display: x.display,
 		window:  x.window,

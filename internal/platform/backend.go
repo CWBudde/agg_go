@@ -1,9 +1,10 @@
 package platform
 
 import (
-	"fmt"
+    "fmt"
 
-	"agg_go/internal/buffer"
+    "agg_go/internal/buffer"
+    types "agg_go/internal/platform/types"
 )
 
 // PlatformBackend defines the interface that platform-specific implementations must satisfy.
@@ -22,9 +23,9 @@ type PlatformBackend interface {
 	GetWindowSize() (width, height int)
 
 	// Buffer management
-	UpdateWindow(buffer *buffer.RenderingBuffer[uint8]) error
-	CreateImageSurface(width, height int) (ImageSurface, error)
-	DestroyImageSurface(surface ImageSurface) error
+    UpdateWindow(buffer *buffer.RenderingBuffer[uint8]) error
+    CreateImageSurface(width, height int) (types.ImageSurface, error)
+    DestroyImageSurface(surface types.ImageSurface) error
 
 	// Event handling
 	PollEvents() bool
@@ -36,12 +37,12 @@ type PlatformBackend interface {
 	Delay(ms uint32)
 
 	// Image operations (platform-specific format support)
-	LoadImage(filename string) (ImageSurface, error)
-	SaveImage(surface ImageSurface, filename string) error
+    LoadImage(filename string) (types.ImageSurface, error)
+    SaveImage(surface types.ImageSurface, filename string) error
 	GetImageExtension() string
 
 	// Platform-specific data access (for advanced users)
-	GetNativeHandle() NativeHandle
+    GetNativeHandle() types.NativeHandle
 }
 
 // BackendType represents the type of platform backend
@@ -80,7 +81,7 @@ type BackendFactory interface {
 	GetDefaultBackend() BackendType
 }
 
-// MockImageSurface implements ImageSurface for testing
+// MockImageSurface implements types.ImageSurface for testing
 type MockImageSurface struct {
 	width  int
 	height int
@@ -92,7 +93,7 @@ func (m *MockImageSurface) GetHeight() int  { return m.height }
 func (m *MockImageSurface) GetData() []byte { return m.data }
 func (m *MockImageSurface) IsValid() bool   { return m.data != nil }
 
-// MockNativeHandle implements NativeHandle for testing
+// MockNativeHandle implements types.NativeHandle for testing
 type MockNativeHandle struct {
 	backendType string
 	valid       bool
@@ -188,7 +189,7 @@ func (m *MockBackend) UpdateWindow(buffer *buffer.RenderingBuffer[uint8]) error 
 }
 
 // CreateImageSurface creates a mock image surface
-func (m *MockBackend) CreateImageSurface(width, height int) (ImageSurface, error) {
+func (m *MockBackend) CreateImageSurface(width, height int) (types.ImageSurface, error) {
 	// Create a mock surface with proper interface implementation
 	data := make([]byte, width*height*4) // Assume RGBA32
 	return &MockImageSurface{
@@ -199,7 +200,7 @@ func (m *MockBackend) CreateImageSurface(width, height int) (ImageSurface, error
 }
 
 // DestroyImageSurface destroys a mock image surface
-func (m *MockBackend) DestroyImageSurface(surface ImageSurface) error {
+func (m *MockBackend) DestroyImageSurface(surface types.ImageSurface) error {
 	// Nothing to do for mock - Go GC will handle cleanup
 	return nil
 }
@@ -234,7 +235,7 @@ func (m *MockBackend) Delay(ms uint32) {
 }
 
 // LoadImage loads a mock image
-func (m *MockBackend) LoadImage(filename string) (ImageSurface, error) {
+func (m *MockBackend) LoadImage(filename string) (types.ImageSurface, error) {
 	// Return a mock 100x100 RGBA surface
 	data := make([]byte, 100*100*4)
 	return &MockImageSurface{
@@ -245,7 +246,7 @@ func (m *MockBackend) LoadImage(filename string) (ImageSurface, error) {
 }
 
 // SaveImage saves a mock image
-func (m *MockBackend) SaveImage(surface ImageSurface, filename string) error {
+func (m *MockBackend) SaveImage(surface types.ImageSurface, filename string) error {
 	return nil
 }
 
@@ -255,7 +256,7 @@ func (m *MockBackend) GetImageExtension() string {
 }
 
 // GetNativeHandle returns the mock native handle
-func (m *MockBackend) GetNativeHandle() NativeHandle {
+func (m *MockBackend) GetNativeHandle() types.NativeHandle {
 	return &MockNativeHandle{
 		backendType: "mock",
 		valid:       true,
