@@ -15,6 +15,7 @@ package main
 import (
     "fmt"
     "math"
+    "time"
 
     "agg_go/internal/basics"
     "agg_go/internal/color"
@@ -938,9 +939,17 @@ func main() {
     app.ps.SetOnMouseUp(func(x, y int, flags platform.InputFlags) { _ = app.OnMouseButtonUp(x, y, flags) })
     app.ps.SetOnMouseMove(func(x, y int, flags platform.InputFlags) { _ = app.OnMouseMove(x, y, flags) })
 
-	if app.ps.Init(500, 450, 0) == nil {
-		app.ps.Run()
-	}
+    if app.ps.Init(500, 450, 0) == nil {
+        // Call the (stub) platform loop once to trigger initial draw
+        app.ps.Run()
+        // Keep the app alive and drive animations via OnIdle
+        fmt.Println("Entering keep-alive loop (Ctrl+C to exit)...")
+        ticker := time.NewTicker(time.Millisecond * 16)
+        defer ticker.Stop()
+        for range ticker.C {
+            app.OnIdle()
+        }
+    }
 }
 
 // Platform event handlers
