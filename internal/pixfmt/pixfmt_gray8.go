@@ -8,7 +8,7 @@ import (
 )
 
 // PixFmtAlphaBlendGray implements alpha blending for grayscale pixel formats
-type PixFmtAlphaBlendGray[B any, CS any] struct {
+type PixFmtAlphaBlendGray[B any, CS color.Space] struct {
 	rbuf     *buffer.RenderingBufferU8
 	blender  B
 	category PixFmtGrayTag
@@ -25,7 +25,7 @@ func (p *GrayPixelType) Set(v basics.Int8u) {
 }
 
 // NewPixFmtAlphaBlendGray creates a new grayscale pixel format
-func NewPixFmtAlphaBlendGray[B any, CS any](rbuf *buffer.RenderingBufferU8, blender B) *PixFmtAlphaBlendGray[B, CS] {
+func NewPixFmtAlphaBlendGray[B any, CS color.Space](rbuf *buffer.RenderingBufferU8, blender B) *PixFmtAlphaBlendGray[B, CS] {
 	return &PixFmtAlphaBlendGray[B, CS]{
 		rbuf:    rbuf,
 		blender: blender,

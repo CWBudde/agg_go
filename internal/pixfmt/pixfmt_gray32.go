@@ -8,7 +8,7 @@ import (
 )
 
 // PixFmtAlphaBlendGray32 implements alpha blending for 32-bit float grayscale pixel formats
-type PixFmtAlphaBlendGray32[B any, CS any] struct {
+type PixFmtAlphaBlendGray32[B any, CS color.Space] struct {
 	rbuf     *buffer.RenderingBufferF32
 	blender  B
 	category PixFmtGrayTag
@@ -25,7 +25,7 @@ func (p *Gray32PixelType) Set(v float32) {
 }
 
 // NewPixFmtAlphaBlendGray32 creates a new 32-bit float grayscale pixel format
-func NewPixFmtAlphaBlendGray32[B any, CS any](rbuf *buffer.RenderingBufferF32, blender B) *PixFmtAlphaBlendGray32[B, CS] {
+func NewPixFmtAlphaBlendGray32[B any, CS color.Space](rbuf *buffer.RenderingBufferF32, blender B) *PixFmtAlphaBlendGray32[B, CS] {
 	return &PixFmtAlphaBlendGray32[B, CS]{
 		rbuf:    rbuf,
 		blender: blender,

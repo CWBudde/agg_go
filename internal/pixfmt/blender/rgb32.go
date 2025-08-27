@@ -216,3 +216,25 @@ type (
 	BlenderRGB32PreSimple[S color.Space] = BlenderRGB96Pre[S, order.RGB]
 	BlenderBGR32PreSimple[S color.Space] = BlenderRGB96Pre[S, order.BGR]
 )
+
+////////////////////////////////////////////////////////////////////////////////
+// Specific space and order aliases
+////////////////////////////////////////////////////////////////////////////////
+
+type (
+	// Standard linear space aliases
+	BlenderRGB96Linear = BlenderRGB96[color.Linear, order.RGB]
+	BlenderBGR96Linear = BlenderRGB96[color.Linear, order.BGR]
+
+	// SRGB space aliases
+	BlenderRGB96SRGB = BlenderRGB96[color.SRGB, order.RGB]
+	BlenderBGR96SRGB = BlenderRGB96[color.SRGB, order.BGR]
+
+	// Premultiplied linear space aliases
+	BlenderRGB96PreLinear = BlenderRGB96Pre[color.Linear, order.RGB]
+	BlenderBGR96PreLinear = BlenderRGB96Pre[color.Linear, order.BGR]
+
+	// Premultiplied SRGB space aliases
+	BlenderRGB96PreSRGB = BlenderRGB96Pre[color.SRGB, order.RGB]
+	BlenderBGR96PreSRGB = BlenderRGB96Pre[color.SRGB, order.BGR]
+)

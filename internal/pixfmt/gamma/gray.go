@@ -4,6 +4,7 @@ import (
 	"math"
 
 	"agg_go/internal/basics"
+	"agg_go/internal/color"
 	"agg_go/internal/pixfmt"
 	"agg_go/internal/pixfmt/blender"
 )
@@ -162,8 +163,8 @@ func (pf *PixFmtGrayGamma[PF, G]) PixWidth() int {
 
 // Gamma correction pixel format types
 type (
-	PixFmtGray8Gamma  = PixFmtGrayGamma[*pixfmt.PixFmtAlphaBlendGray[blender.BlenderGray8SRGB, any], *SimpleGammaLut]
-	PixFmtGray8Linear = PixFmtGrayGamma[*pixfmt.PixFmtAlphaBlendGray[blender.BlenderGray8Linear, any], *LinearGammaLut]
+	PixFmtGray8Gamma  = PixFmtGrayGamma[*pixfmt.PixFmtAlphaBlendGray[blender.BlenderGray8SRGB, color.SRGB], *SimpleGammaLut]
+	PixFmtGray8Linear = PixFmtGrayGamma[*pixfmt.PixFmtAlphaBlendGray[blender.BlenderGray8Linear, color.Linear], *LinearGammaLut]
 )
 
 // Constructor functions for gamma-corrected formats

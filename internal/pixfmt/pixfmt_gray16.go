@@ -8,7 +8,7 @@ import (
 )
 
 // PixFmtAlphaBlendGray16 implements alpha blending for 16-bit grayscale pixel formats
-type PixFmtAlphaBlendGray16[B any, CS any] struct {
+type PixFmtAlphaBlendGray16[B any, CS color.Space] struct {
 	rbuf     *buffer.RenderingBufferU16
 	blender  B
 	category PixFmtGrayTag
@@ -25,7 +25,7 @@ func (p *Gray16PixelType) Set(v basics.Int16u) {
 }
 
 // NewPixFmtAlphaBlendGray16 creates a new 16-bit grayscale pixel format
-func NewPixFmtAlphaBlendGray16[B any, CS any](rbuf *buffer.RenderingBufferU16, blender B) *PixFmtAlphaBlendGray16[B, CS] {
+func NewPixFmtAlphaBlendGray16[B any, CS color.Space](rbuf *buffer.RenderingBufferU16, blender B) *PixFmtAlphaBlendGray16[B, CS] {
 	return &PixFmtAlphaBlendGray16[B, CS]{
 		rbuf:    rbuf,
 		blender: blender,

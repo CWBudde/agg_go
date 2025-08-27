@@ -9,13 +9,13 @@ import (
 )
 
 // PixFmtCompositeRGBA represents an RGBA pixel format with composite blending
-type PixFmtCompositeRGBA[CS any, O any] struct {
+type PixFmtCompositeRGBA[CS color.Space, O order.RGBAOrder] struct {
 	rbuf    *buffer.RenderingBufferU8
 	blender blender.CompositeBlender[CS, O]
 }
 
 // NewPixFmtCompositeRGBA creates a new composite RGBA pixel format
-func NewPixFmtCompositeRGBA[CS any, O any](rbuf *buffer.RenderingBufferU8, op blender.CompOp) *PixFmtCompositeRGBA[CS, O] {
+func NewPixFmtCompositeRGBA[CS color.Space, O order.RGBAOrder](rbuf *buffer.RenderingBufferU8, op blender.CompOp) *PixFmtCompositeRGBA[CS, O] {
 	return &PixFmtCompositeRGBA[CS, O]{
 		rbuf:    rbuf,
 		blender: blender.NewCompositeBlender[CS, O](op),
@@ -49,12 +49,12 @@ func (pf *PixFmtCompositeRGBA[CS, O]) GetPixel(x, y int) color.RGBA8[CS] {
 		return color.RGBA8[CS]{}
 	}
 
-	order := blender.GetColorOrder[O]()
+	var order O
 	return color.RGBA8[CS]{
-		R: row[pixelOffset+int(order.R)],
-		G: row[pixelOffset+int(order.G)],
-		B: row[pixelOffset+int(order.B)],
-		A: row[pixelOffset+int(order.A)],
+		R: row[pixelOffset+order.IdxR()],
+		G: row[pixelOffset+order.IdxG()],
+		B: row[pixelOffset+order.IdxB()],
+		A: row[pixelOffset+order.IdxA()],
 	}
 }
 
@@ -70,11 +70,11 @@ func (pf *PixFmtCompositeRGBA[CS, O]) CopyPixel(x, y int, c color.RGBA8[CS]) {
 		return
 	}
 
-	order := blender.GetColorOrder[O]()
-	row[pixelOffset+int(order.R)] = c.R
-	row[pixelOffset+int(order.G)] = c.G
-	row[pixelOffset+int(order.B)] = c.B
-	row[pixelOffset+int(order.A)] = c.A
+	var order O
+	row[pixelOffset+order.IdxR()] = c.R
+	row[pixelOffset+order.IdxG()] = c.G
+	row[pixelOffset+order.IdxB()] = c.B
+	row[pixelOffset+order.IdxA()] = c.A
 }
 
 // BlendPixel blends a pixel using composite blending
