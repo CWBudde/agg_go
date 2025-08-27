@@ -5,9 +5,10 @@ import (
 
 	"agg_go/internal/basics"
 	"agg_go/internal/color"
+	"agg_go/internal/order"
 )
 
-// Composite blend operation types
+// Composite blend operation types (SVG/Porter-Duff + extras)
 type CompOp int
 
 const (
@@ -37,61 +38,73 @@ const (
 	CompOpExclusion
 )
 
-// CompositeBlender implements composite blending operations for RGBA
-type CompositeBlender[CS any, O any] struct {
+// CompositeBlender operates in premultiplied space (Sca/Dca, Sa/Da).
+// S is the color space tag, O is the byte/channel order (compile-time).
+type CompositeBlender[S color.Space, O order.RGBAOrder] struct {
 	op CompOp
 }
 
-// NewCompositeBlender creates a new composite blender with the specified operation
-func NewCompositeBlender[CS any, O any](op CompOp) CompositeBlender[CS, O] {
-	return CompositeBlender[CS, O]{op: op}
+func NewCompositeBlender[S color.Space, O order.RGBAOrder](op CompOp) CompositeBlender[S, O] {
+	return CompositeBlender[S, O]{op: op}
 }
 
-// GetOp returns the current composite operation
-func (bl CompositeBlender[CS, O]) GetOp() CompOp {
-	return bl.op
-}
+func (bl CompositeBlender[S, O]) GetOp() CompOp { return bl.op }
 
-// BlendPix blends a pixel using the specified composite operation
-func (bl CompositeBlender[CS, O]) BlendPix(dst []basics.Int8u, r, g, b, a, cover basics.Int8u) {
-	alpha := color.RGBA8MultCover(a, cover)
-	if alpha == 0 {
+// BlendPix:
+//   - Interprets dst as *premultiplied* RGBA (Dca, Da) in order O
+//   - Builds premultiplied source Sca/Sa from (r,g,b,a) and coverage
+//   - Evaluates the chosen composite op in premultiplied algebra
+//   - Writes premultiplied result back to dst
+func (bl CompositeBlender[S, O]) BlendPix(dst []basics.Int8u, r, g, b, a, cover basics.Int8u) {
+	var o O
+
+	// Sa with coverage in [0,1]
+	sa := float64(color.RGBA8MultCover(a, cover)) / 255.0
+	if sa <= 0 {
 		return
 	}
 
-	order := GetColorOrder[O]()
-
-	// Convert to normalized floating point for calculations
+	// Sca (premultiplied source)
 	s := normalizedRGBA{
-		r: float64(r) / 255.0,
-		g: float64(g) / 255.0,
-		b: float64(b) / 255.0,
-		a: float64(alpha) / 255.0,
+		r: (float64(r) / 255.0) * sa,
+		g: (float64(g) / 255.0) * sa,
+		b: (float64(b) / 255.0) * sa,
+		a: sa,
 	}
 
+	// Dca/Da (premultiplied destination), read as-is
 	d := normalizedRGBA{
-		r: float64(dst[order.R]) / 255.0,
-		g: float64(dst[order.G]) / 255.0,
-		b: float64(dst[order.B]) / 255.0,
-		a: float64(dst[order.A]) / 255.0,
+		r: float64(dst[o.IdxR()]) / 255.0,
+		g: float64(dst[o.IdxG()]) / 255.0,
+		b: float64(dst[o.IdxB()]) / 255.0,
+		a: float64(dst[o.IdxA()]) / 255.0,
 	}
 
-	result := bl.blendOperation(d, s)
+	res := bl.blendOperation(d, s)
 
-	// Clamp and convert back to 8-bit
-	dst[order.R] = basics.Int8u(clamp(result.r * 255.0))
-	dst[order.G] = basics.Int8u(clamp(result.g * 255.0))
-	dst[order.B] = basics.Int8u(clamp(result.b * 255.0))
-	dst[order.A] = basics.Int8u(clamp(result.a * 255.0))
+	// Store premultiplied result
+	dst[o.IdxR()] = to8(res.r)
+	dst[o.IdxG()] = to8(res.g)
+	dst[o.IdxB()] = to8(res.b)
+	dst[o.IdxA()] = to8(res.a)
 }
 
-// normalizedRGBA represents RGBA values in normalized floating point [0, 1]
-type normalizedRGBA struct {
-	r, g, b, a float64
+// normalizedRGBA holds premultiplied color components in [0,1]
+type normalizedRGBA struct{ r, g, b, a float64 }
+
+// Utility: clamp [0,1] -> uint8 with rounding
+func to8(v float64) basics.Int8u {
+	if v < 0 {
+		return 0
+	}
+	if v > 1 {
+		return 255
+	}
+	return basics.Int8u(v*255.0 + 0.5)
 }
 
-// blendOperation performs the actual blending calculation
-func (bl CompositeBlender[CS, O]) blendOperation(d, s normalizedRGBA) normalizedRGBA {
+// Select the composite equation
+func (bl CompositeBlender[S, O]) blendOperation(d, s normalizedRGBA) normalizedRGBA {
 	switch bl.op {
 	case CompOpClear:
 		return bl.clear(d, s)
@@ -142,352 +155,328 @@ func (bl CompositeBlender[CS, O]) blendOperation(d, s normalizedRGBA) normalized
 	case CompOpExclusion:
 		return bl.exclusion(d, s)
 	default:
-		// Default to source-over blending
 		return bl.sourceOver(d, s)
 	}
 }
 
-// Porter-Duff Composite Operations
-// These implement the SVG compositing specification
+// Porter–Duff/SVG ops (all in premultiplied space)
 
-// clear blend mode: Dca' = 0, Da' = 0
-func (bl CompositeBlender[CS, O]) clear(d, s normalizedRGBA) normalizedRGBA {
-	return normalizedRGBA{r: 0, g: 0, b: 0, a: 0}
+// clear: D' = 0
+func (bl CompositeBlender[S, O]) clear(d, s normalizedRGBA) normalizedRGBA {
+	return normalizedRGBA{}
 }
 
-// src blend mode: Dca' = Sca, Da' = Sa
-func (bl CompositeBlender[CS, O]) src(d, s normalizedRGBA) normalizedRGBA {
+// src: D' = S
+func (bl CompositeBlender[S, O]) src(d, s normalizedRGBA) normalizedRGBA {
 	return s
 }
 
-// dst blend mode: Dca' = Dca, Da' = Da (no change)
-func (bl CompositeBlender[CS, O]) dst(d, s normalizedRGBA) normalizedRGBA {
+// dst: D' = D
+func (bl CompositeBlender[S, O]) dst(d, s normalizedRGBA) normalizedRGBA {
 	return d
 }
 
-// dstOver blend mode: Dca' = Dca + Sca.(1 - Da), Da' = Da + Sa.(1 - Da)
-func (bl CompositeBlender[CS, O]) dstOver(d, s normalizedRGBA) normalizedRGBA {
+// src-over: Dca' = Sca + Dca(1 - Sa); Da' = Sa + Da(1 - Sa)
+func (bl CompositeBlender[S, O]) sourceOver(d, s normalizedRGBA) normalizedRGBA {
+	if s.a <= 0 {
+		return d
+	}
+	is1 := 1.0 - s.a
+	return normalizedRGBA{
+		r: s.r + d.r*is1,
+		g: s.g + d.g*is1,
+		b: s.b + d.b*is1,
+		a: s.a + d.a*is1,
+	}
+}
+
+// dst-over: Dca' = Dca + Sca(1 - Da); Da' = Da + Sa(1 - Da)
+func (bl CompositeBlender[S, O]) dstOver(d, s normalizedRGBA) normalizedRGBA {
 	if d.a >= 1.0 {
 		return d
 	}
-	d1a := 1.0 - d.a
+	id1 := 1.0 - d.a
 	return normalizedRGBA{
-		r: d.r + s.r*d1a,
-		g: d.g + s.g*d1a,
-		b: d.b + s.b*d1a,
-		a: d.a + s.a*d1a,
+		r: d.r + s.r*id1,
+		g: d.g + s.g*id1,
+		b: d.b + s.b*id1,
+		a: d.a + s.a*id1,
 	}
 }
 
-// srcIn blend mode: Dca' = Sca.Da, Da' = Sa.Da
-func (bl CompositeBlender[CS, O]) srcIn(d, s normalizedRGBA) normalizedRGBA {
-	return normalizedRGBA{
-		r: s.r * d.a,
-		g: s.g * d.a,
-		b: s.b * d.a,
-		a: s.a * d.a,
-	}
+// src-in: Dca' = Sca*Da; Da' = Sa*Da
+func (bl CompositeBlender[S, O]) srcIn(d, s normalizedRGBA) normalizedRGBA {
+	return normalizedRGBA{r: s.r * d.a, g: s.g * d.a, b: s.b * d.a, a: s.a * d.a}
 }
 
-// dstIn blend mode: Dca' = Dca.Sa, Da' = Da.Sa
-func (bl CompositeBlender[CS, O]) dstIn(d, s normalizedRGBA) normalizedRGBA {
-	return normalizedRGBA{
-		r: d.r * s.a,
-		g: d.g * s.a,
-		b: d.b * s.a,
-		a: d.a * s.a,
-	}
+// dst-in: Dca' = Dca*Sa; Da' = Da*Sa
+func (bl CompositeBlender[S, O]) dstIn(d, s normalizedRGBA) normalizedRGBA {
+	return normalizedRGBA{r: d.r * s.a, g: d.g * s.a, b: d.b * s.a, a: d.a * s.a}
 }
 
-// srcOut blend mode: Dca' = Sca.(1 - Da), Da' = Sa.(1 - Da)
-func (bl CompositeBlender[CS, O]) srcOut(d, s normalizedRGBA) normalizedRGBA {
-	d1a := 1.0 - d.a
-	return normalizedRGBA{
-		r: s.r * d1a,
-		g: s.g * d1a,
-		b: s.b * d1a,
-		a: s.a * d1a,
-	}
+// src-out: Dca' = Sca(1 - Da); Da' = Sa(1 - Da)
+func (bl CompositeBlender[S, O]) srcOut(d, s normalizedRGBA) normalizedRGBA {
+	id := 1.0 - d.a
+	return normalizedRGBA{r: s.r * id, g: s.g * id, b: s.b * id, a: s.a * id}
 }
 
-// dstOut blend mode: Dca' = Dca.(1 - Sa), Da' = Da.(1 - Sa)
-func (bl CompositeBlender[CS, O]) dstOut(d, s normalizedRGBA) normalizedRGBA {
-	s1a := 1.0 - s.a
-	return normalizedRGBA{
-		r: d.r * s1a,
-		g: d.g * s1a,
-		b: d.b * s1a,
-		a: d.a * s1a,
-	}
+// dst-out: Dca' = Dca(1 - Sa); Da' = Da(1 - Sa)
+func (bl CompositeBlender[S, O]) dstOut(d, s normalizedRGBA) normalizedRGBA {
+	is := 1.0 - s.a
+	return normalizedRGBA{r: d.r * is, g: d.g * is, b: d.b * is, a: d.a * is}
 }
 
-// srcAtop blend mode: Dca' = Sca.Da + Dca.(1 - Sa), Da' = Da
-func (bl CompositeBlender[CS, O]) srcAtop(d, s normalizedRGBA) normalizedRGBA {
-	s1a := 1.0 - s.a
+// src-atop: Dca' = Sca*Da + Dca(1 - Sa); Da' = Da
+func (bl CompositeBlender[S, O]) srcAtop(d, s normalizedRGBA) normalizedRGBA {
+	is := 1.0 - s.a
 	return normalizedRGBA{
-		r: s.r*d.a + d.r*s1a,
-		g: s.g*d.a + d.g*s1a,
-		b: s.b*d.a + d.b*s1a,
+		r: s.r*d.a + d.r*is,
+		g: s.g*d.a + d.g*is,
+		b: s.b*d.a + d.b*is,
 		a: d.a,
 	}
 }
 
-// dstAtop blend mode: Dca' = Dca.Sa + Sca.(1 - Da), Da' = Sa
-func (bl CompositeBlender[CS, O]) dstAtop(d, s normalizedRGBA) normalizedRGBA {
-	d1a := 1.0 - d.a
+// dst-atop: Dca' = Dca*Sa + Sca(1 - Da); Da' = Sa
+func (bl CompositeBlender[S, O]) dstAtop(d, s normalizedRGBA) normalizedRGBA {
+	id := 1.0 - d.a
 	return normalizedRGBA{
-		r: d.r*s.a + s.r*d1a,
-		g: d.g*s.a + s.g*d1a,
-		b: d.b*s.a + s.b*d1a,
+		r: d.r*s.a + s.r*id,
+		g: d.g*s.a + s.g*id,
+		b: d.b*s.a + s.b*id,
 		a: s.a,
 	}
 }
 
-// xor blend mode: Dca' = Sca.(1 - Da) + Dca.(1 - Sa), Da' = Sa + Da - 2.Sa.Da
-func (bl CompositeBlender[CS, O]) xor(d, s normalizedRGBA) normalizedRGBA {
-	s1a := 1.0 - s.a
-	d1a := 1.0 - d.a
+// xor: Dca' = Sca(1 - Da) + Dca(1 - Sa); Da' = Sa + Da - 2SaDa
+func (bl CompositeBlender[S, O]) xor(d, s normalizedRGBA) normalizedRGBA {
+	is := 1.0 - s.a
+	id := 1.0 - d.a
 	return normalizedRGBA{
-		r: s.r*d1a + d.r*s1a,
-		g: s.g*d1a + d.g*s1a,
-		b: s.b*d1a + d.b*s1a,
+		r: s.r*id + d.r*is,
+		g: s.g*id + d.g*is,
+		b: s.b*id + d.b*is,
 		a: s.a + d.a - 2*s.a*d.a,
 	}
 }
 
-// multiply blend mode: Dca' = Sca.Dca + Sca.(1 - Da) + Dca.(1 - Sa)
-func (bl CompositeBlender[CS, O]) multiply(d, s normalizedRGBA) normalizedRGBA {
+// plus (linear dodge): Dca' = Sca + Dca; Da' = Sa + Da - SaDa
+func (bl CompositeBlender[S, O]) plus(d, s normalizedRGBA) normalizedRGBA {
+	return normalizedRGBA{
+		r: d.r + s.r,
+		g: d.g + s.g,
+		b: d.b + s.b,
+		a: s.a + d.a - s.a*d.a,
+	}
+}
+
+// multiply: Dca' = ScaDca + Sca(1 - Da) + Dca(1 - Sa); Da' = Sa + Da - SaDa
+func (bl CompositeBlender[S, O]) multiply(d, s normalizedRGBA) normalizedRGBA {
 	if s.a <= 0 {
 		return d
 	}
-
-	s1a := 1.0 - s.a
-	d1a := 1.0 - d.a
-
+	is := 1.0 - s.a
+	id := 1.0 - d.a
 	return normalizedRGBA{
-		r: s.r*d.r + s.r*d1a + d.r*s1a,
-		g: s.g*d.g + s.g*d1a + d.g*s1a,
-		b: s.b*d.b + s.b*d1a + d.b*s1a,
+		r: s.r*d.r + s.r*id + d.r*is,
+		g: s.g*d.g + s.g*id + d.g*is,
+		b: s.b*d.b + s.b*id + d.b*is,
 		a: d.a + s.a - s.a*d.a,
 	}
 }
 
-// screen blend mode: Dca' = Sca + Dca - Sca.Dca
-func (bl CompositeBlender[CS, O]) screen(d, s normalizedRGBA) normalizedRGBA {
+// screen: Dca' = Sca + Dca - ScaDca; Da' = Sa + Da - SaDa
+func (bl CompositeBlender[S, O]) screen(d, s normalizedRGBA) normalizedRGBA {
 	if s.a <= 0 {
 		return d
 	}
-
 	return normalizedRGBA{
-		r: d.r + s.r - s.r*d.r,
-		g: d.g + s.g - s.g*d.g,
-		b: d.b + s.b - s.b*d.b,
+		r: s.r + d.r - s.r*d.r,
+		g: s.g + d.g - s.g*d.g,
+		b: s.b + d.b - s.b*d.b,
 		a: d.a + s.a - s.a*d.a,
 	}
 }
 
-// overlay blend mode
-func (bl CompositeBlender[CS, O]) overlay(d, s normalizedRGBA) normalizedRGBA {
+// overlay
+func (bl CompositeBlender[S, O]) overlay(d, s normalizedRGBA) normalizedRGBA {
 	if s.a <= 0 {
 		return d
 	}
-
-	d1a := 1.0 - d.a
-	s1a := 1.0 - s.a
+	id := 1.0 - d.a
+	is := 1.0 - s.a
 	sada := s.a * d.a
 
-	calcOverlay := func(dca, sca, da, sa, sada, d1a, s1a float64) float64 {
+	calc := func(dca, sca, da, sa, sada, id, is float64) float64 {
 		if 2*dca <= da {
-			return 2*sca*dca + sca*d1a + dca*s1a
+			return 2*sca*dca + sca*id + dca*is
 		}
-		return sada - 2*(da-dca)*(sa-sca) + sca*d1a + dca*s1a
+		return sada - 2*(da-dca)*(sa-sca) + sca*id + dca*is
 	}
 
 	return normalizedRGBA{
-		r: calcOverlay(d.r, s.r, d.a, s.a, sada, d1a, s1a),
-		g: calcOverlay(d.g, s.g, d.a, s.a, sada, d1a, s1a),
-		b: calcOverlay(d.b, s.b, d.a, s.a, sada, d1a, s1a),
+		r: calc(d.r, s.r, d.a, s.a, sada, id, is),
+		g: calc(d.g, s.g, d.a, s.a, sada, id, is),
+		b: calc(d.b, s.b, d.a, s.a, sada, id, is),
 		a: d.a + s.a - s.a*d.a,
 	}
 }
 
-// darken blend mode: Dca' = min(Sca.Da, Dca.Sa) + Sca.(1 - Da) + Dca.(1 - Sa)
-func (bl CompositeBlender[CS, O]) darken(d, s normalizedRGBA) normalizedRGBA {
+// darken
+func (bl CompositeBlender[S, O]) darken(d, s normalizedRGBA) normalizedRGBA {
 	if s.a <= 0 {
 		return d
 	}
-
-	d1a := 1.0 - d.a
-	s1a := 1.0 - s.a
-
+	id := 1.0 - d.a
+	is := 1.0 - s.a
 	return normalizedRGBA{
-		r: math.Min(s.r*d.a, d.r*s.a) + s.r*d1a + d.r*s1a,
-		g: math.Min(s.g*d.a, d.g*s.a) + s.g*d1a + d.g*s1a,
-		b: math.Min(s.b*d.a, d.b*s.a) + s.b*d1a + d.b*s1a,
+		r: math.Min(s.r*d.a, d.r*s.a) + s.r*id + d.r*is,
+		g: math.Min(s.g*d.a, d.g*s.a) + s.g*id + d.g*is,
+		b: math.Min(s.b*d.a, d.b*s.a) + s.b*id + d.b*is,
 		a: d.a + s.a - s.a*d.a,
 	}
 }
 
-// lighten blend mode: Dca' = max(Sca.Da, Dca.Sa) + Sca.(1 - Da) + Dca.(1 - Sa)
-func (bl CompositeBlender[CS, O]) lighten(d, s normalizedRGBA) normalizedRGBA {
+// lighten
+func (bl CompositeBlender[S, O]) lighten(d, s normalizedRGBA) normalizedRGBA {
 	if s.a <= 0 {
 		return d
 	}
-
-	d1a := 1.0 - d.a
-	s1a := 1.0 - s.a
-
+	id := 1.0 - d.a
+	is := 1.0 - s.a
 	return normalizedRGBA{
-		r: math.Max(s.r*d.a, d.r*s.a) + s.r*d1a + d.r*s1a,
-		g: math.Max(s.g*d.a, d.g*s.a) + s.g*d1a + d.g*s1a,
-		b: math.Max(s.b*d.a, d.b*s.a) + s.b*d1a + d.b*s1a,
+		r: math.Max(s.r*d.a, d.r*s.a) + s.r*id + d.r*is,
+		g: math.Max(s.g*d.a, d.g*s.a) + s.g*id + d.g*is,
+		b: math.Max(s.b*d.a, d.b*s.a) + s.b*id + d.b*is,
 		a: d.a + s.a - s.a*d.a,
 	}
 }
 
-// colorDodge blend mode
-func (bl CompositeBlender[CS, O]) colorDodge(d, s normalizedRGBA) normalizedRGBA {
+// color-dodge
+func (bl CompositeBlender[S, O]) colorDodge(d, s normalizedRGBA) normalizedRGBA {
 	if s.a <= 0 {
 		return d
 	}
-
 	if d.a <= 0 {
-		return normalizedRGBA{
-			r: s.r * (1.0 - d.a),
-			g: s.g * (1.0 - d.a),
-			b: s.b * (1.0 - d.a),
-			a: s.a,
-		}
+		// Sca*(1 - Da)
+		id := 1.0 - d.a
+		return normalizedRGBA{r: s.r * id, g: s.g * id, b: s.b * id, a: s.a}
 	}
-
 	sada := s.a * d.a
-	s1a := 1.0 - s.a
-	d1a := 1.0 - d.a
+	is := 1.0 - s.a
+	id := 1.0 - d.a
 
-	calcDodge := func(dca, sca, da, sa, sada, d1a, s1a float64) float64 {
+	calc := func(dca, sca, da, sa, sada, id, is float64) float64 {
 		if sca < sa {
-			return sada*math.Min(1.0, (dca/da)*sa/(sa-sca)) + sca*d1a + dca*s1a
+			return sada*math.Min(1.0, (dca/da)*sa/(sa-sca)) + sca*id + dca*is
 		}
 		if dca > 0 {
-			return sada + sca*d1a + dca*s1a
+			return sada + sca*id + dca*is
 		}
-		return sca * d1a
+		return sca * id
 	}
 
 	return normalizedRGBA{
-		r: calcDodge(d.r, s.r, d.a, s.a, sada, d1a, s1a),
-		g: calcDodge(d.g, s.g, d.a, s.a, sada, d1a, s1a),
-		b: calcDodge(d.b, s.b, d.a, s.a, sada, d1a, s1a),
+		r: calc(d.r, s.r, d.a, s.a, sada, id, is),
+		g: calc(d.g, s.g, d.a, s.a, sada, id, is),
+		b: calc(d.b, s.b, d.a, s.a, sada, id, is),
 		a: d.a + s.a - s.a*d.a,
 	}
 }
 
-// colorBurn blend mode
-func (bl CompositeBlender[CS, O]) colorBurn(d, s normalizedRGBA) normalizedRGBA {
+// color-burn
+func (bl CompositeBlender[S, O]) colorBurn(d, s normalizedRGBA) normalizedRGBA {
 	if s.a <= 0 {
 		return d
 	}
-
 	if d.a <= 0 {
-		return normalizedRGBA{
-			r: s.r * (1.0 - d.a),
-			g: s.g * (1.0 - d.a),
-			b: s.b * (1.0 - d.a),
-			a: s.a,
-		}
+		id := 1.0 - d.a
+		return normalizedRGBA{r: s.r * id, g: s.g * id, b: s.b * id, a: s.a}
 	}
-
 	sada := s.a * d.a
-	s1a := 1.0 - s.a
-	d1a := 1.0 - d.a
+	is := 1.0 - s.a
+	id := 1.0 - d.a
 
-	calcBurn := func(dca, sca, da, sa, sada, d1a, s1a float64) float64 {
+	calc := func(dca, sca, da, sa, sada, id, is float64) float64 {
 		if sca > 0 {
-			return sada*(1.0-math.Min(1.0, (1.0-dca/da)*sa/sca)) + sca*d1a + dca*s1a
+			return sada*(1.0-math.Min(1.0, (1.0-dca/da)*sa/sca)) + sca*id + dca*is
 		}
 		if dca > da {
-			return sada + dca*s1a
+			return sada + dca*is
 		}
-		return dca * s1a
+		return dca * is
 	}
 
 	return normalizedRGBA{
-		r: calcBurn(d.r, s.r, d.a, s.a, sada, d1a, s1a),
-		g: calcBurn(d.g, s.g, d.a, s.a, sada, d1a, s1a),
-		b: calcBurn(d.b, s.b, d.a, s.a, sada, d1a, s1a),
+		r: calc(d.r, s.r, d.a, s.a, sada, id, is),
+		g: calc(d.g, s.g, d.a, s.a, sada, id, is),
+		b: calc(d.b, s.b, d.a, s.a, sada, id, is),
 		a: d.a + s.a - s.a*d.a,
 	}
 }
 
-// hardLight blend mode (overlay with source and destination swapped)
-func (bl CompositeBlender[CS, O]) hardLight(d, s normalizedRGBA) normalizedRGBA {
+// hard-light (overlay with src/dst swapped)
+func (bl CompositeBlender[S, O]) hardLight(d, s normalizedRGBA) normalizedRGBA {
 	if s.a <= 0 {
 		return d
 	}
-
-	d1a := 1.0 - d.a
-	s1a := 1.0 - s.a
+	id := 1.0 - d.a
+	is := 1.0 - s.a
 	sada := s.a * d.a
 
-	calcHardLight := func(dca, sca, da, sa, sada, d1a, s1a float64) float64 {
+	calc := func(dca, sca, da, sa, sada, id, is float64) float64 {
 		if 2*sca <= sa {
-			return 2*sca*dca + sca*d1a + dca*s1a
+			return 2*sca*dca + sca*id + dca*is
 		}
-		return sada - 2*(da-dca)*(sa-sca) + sca*d1a + dca*s1a
+		return sada - 2*(da-dca)*(sa-sca) + sca*id + dca*is
 	}
 
 	return normalizedRGBA{
-		r: calcHardLight(d.r, s.r, d.a, s.a, sada, d1a, s1a),
-		g: calcHardLight(d.g, s.g, d.a, s.a, sada, d1a, s1a),
-		b: calcHardLight(d.b, s.b, d.a, s.a, sada, d1a, s1a),
+		r: calc(d.r, s.r, d.a, s.a, sada, id, is),
+		g: calc(d.g, s.g, d.a, s.a, sada, id, is),
+		b: calc(d.b, s.b, d.a, s.a, sada, id, is),
 		a: d.a + s.a - s.a*d.a,
 	}
 }
 
-// softLight blend mode - matches AGG C++ implementation
-func (bl CompositeBlender[CS, O]) softLight(d, s normalizedRGBA) normalizedRGBA {
+// soft-light (matches AGG’s form)
+func (bl CompositeBlender[S, O]) softLight(d, s normalizedRGBA) normalizedRGBA {
 	if s.a <= 0 {
 		return d
 	}
-
 	if d.a <= 0 {
-		return normalizedRGBA{
-			r: s.r * (1.0 - d.a),
-			g: s.g * (1.0 - d.a),
-			b: s.b * (1.0 - d.a),
-			a: s.a,
-		}
+		id := 1.0 - d.a
+		return normalizedRGBA{r: s.r * id, g: s.g * id, b: s.b * id, a: s.a}
 	}
 
 	sada := s.a * d.a
-	s1a := 1.0 - s.a
-	d1a := 1.0 - d.a
+	is := 1.0 - s.a
+	id := 1.0 - d.a
 
-	calcSoftLight := func(dca, sca, da, sa, sada, d1a, s1a float64) float64 {
+	calc := func(dca, sca, da, sa, sada, id, is float64) float64 {
 		dcasa := dca * sa
 		if 2*sca <= sa {
-			return dcasa - (sada-2*sca*da)*dcasa*(sada-dcasa) + sca*d1a + dca*s1a
+			return dcasa - (sada-2*sca*da)*dcasa*(sada-dcasa) + sca*id + dca*is
 		}
 		if 4*dca <= da {
-			return dcasa + (2*sca*da-sada)*((((16*dcasa-12)*dcasa+4)*dca*da)-dca*da) + sca*d1a + dca*s1a
+			return dcasa + (2*sca*da-sada)*((((16*dcasa-12)*dcasa+4)*dca*da)-dca*da) + sca*id + dca*is
 		}
-		return dcasa + (2*sca*da-sada)*(math.Sqrt(dcasa)-dcasa) + sca*d1a + dca*s1a
+		return dcasa + (2*sca*da-sada)*(math.Sqrt(dcasa)-dcasa) + sca*id + dca*is
 	}
 
 	return normalizedRGBA{
-		r: calcSoftLight(d.r, s.r, d.a, s.a, sada, d1a, s1a),
-		g: calcSoftLight(d.g, s.g, d.a, s.a, sada, d1a, s1a),
-		b: calcSoftLight(d.b, s.b, d.a, s.a, sada, d1a, s1a),
+		r: calc(d.r, s.r, d.a, s.a, sada, id, is),
+		g: calc(d.g, s.g, d.a, s.a, sada, id, is),
+		b: calc(d.b, s.b, d.a, s.a, sada, id, is),
 		a: s.a + d.a - sada,
 	}
 }
 
-// difference blend mode: Dca' = Sca + Dca - 2.min(Sca.Da, Dca.Sa), Da' = Sa + Da - Sa.Da
-func (bl CompositeBlender[CS, O]) difference(d, s normalizedRGBA) normalizedRGBA {
+// difference: Dca' = Sca + Dca - 2 min(Sca Da, Dca Sa)
+func (bl CompositeBlender[S, O]) difference(d, s normalizedRGBA) normalizedRGBA {
 	if s.a <= 0 {
 		return d
 	}
-
 	return normalizedRGBA{
 		r: s.r + d.r - 2*math.Min(s.r*d.a, d.r*s.a),
 		g: s.g + d.g - 2*math.Min(s.g*d.a, d.g*s.a),
@@ -496,203 +485,147 @@ func (bl CompositeBlender[CS, O]) difference(d, s normalizedRGBA) normalizedRGBA
 	}
 }
 
-// exclusion blend mode: Dca' = (Sca.Da + Dca.Sa - 2.Sca.Dca) + Sca.(1 - Da) + Dca.(1 - Sa)
-func (bl CompositeBlender[CS, O]) exclusion(d, s normalizedRGBA) normalizedRGBA {
+// exclusion
+func (bl CompositeBlender[S, O]) exclusion(d, s normalizedRGBA) normalizedRGBA {
 	if s.a <= 0 {
 		return d
 	}
-
-	d1a := 1.0 - d.a
-	s1a := 1.0 - s.a
-
+	id := 1.0 - d.a
+	is := 1.0 - s.a
 	return normalizedRGBA{
-		r: s.r*d.a + d.r*s.a - 2*s.r*d.r + s.r*d1a + d.r*s1a,
-		g: s.g*d.a + d.g*s.a - 2*s.g*d.g + s.g*d1a + d.g*s1a,
-		b: s.b*d.a + d.b*s.a - 2*s.b*d.b + s.b*d1a + d.b*s1a,
+		r: s.r*d.a + d.r*s.a - 2*s.r*d.r + s.r*id + d.r*is,
+		g: s.g*d.a + d.g*s.a - 2*s.g*d.g + s.g*id + d.g*is,
+		b: s.b*d.a + d.b*s.a - 2*s.b*d.b + s.b*id + d.b*is,
 		a: d.a + s.a - s.a*d.a,
 	}
 }
 
-// plus blend mode: Dca' = Sca + Dca
-func (bl CompositeBlender[CS, O]) plus(d, s normalizedRGBA) normalizedRGBA {
-	return normalizedRGBA{
-		r: d.r + s.r,
-		g: d.g + s.g,
-		b: d.b + s.b,
-		a: d.a + s.a - s.a*d.a,
-	}
-}
+// ---------- Helpers / convenience ----------
 
-// sourceOver blend mode (standard alpha blending)
-func (bl CompositeBlender[CS, O]) sourceOver(d, s normalizedRGBA) normalizedRGBA {
-	if s.a <= 0 {
-		return d
-	}
-
-	invSrcAlpha := 1.0 - s.a
-	return normalizedRGBA{
-		r: s.r + d.r*invSrcAlpha,
-		g: s.g + d.g*invSrcAlpha,
-		b: s.b + d.b*invSrcAlpha,
-		a: s.a + d.a*invSrcAlpha,
-	}
-}
-
-// clamp clamps a value to [0, 255]
-func clamp(v float64) float64 {
-	if v < 0 {
-		return 0
-	}
-	if v > 255 {
-		return 255
-	}
-	return v
-}
-
-// Concrete composite blender types for convenience
+// Common aliases (Linear space, different orders)
 type (
-	CompositeBlenderRGBA8Multiply   = CompositeBlender[color.Linear, RGBAOrder]
-	CompositeBlenderRGBA8Screen     = CompositeBlender[color.Linear, RGBAOrder]
-	CompositeBlenderRGBA8Overlay    = CompositeBlender[color.Linear, RGBAOrder]
-	CompositeBlenderRGBA8Darken     = CompositeBlender[color.Linear, RGBAOrder]
-	CompositeBlenderRGBA8Lighten    = CompositeBlender[color.Linear, RGBAOrder]
-	CompositeBlenderRGBA8ColorDodge = CompositeBlender[color.Linear, RGBAOrder]
-	CompositeBlenderRGBA8ColorBurn  = CompositeBlender[color.Linear, RGBAOrder]
-	CompositeBlenderRGBA8HardLight  = CompositeBlender[color.Linear, RGBAOrder]
-	CompositeBlenderRGBA8SoftLight  = CompositeBlender[color.Linear, RGBAOrder]
-	CompositeBlenderRGBA8Difference = CompositeBlender[color.Linear, RGBAOrder]
-	CompositeBlenderRGBA8Exclusion  = CompositeBlender[color.Linear, RGBAOrder]
-	CompositeBlenderRGBA8Plus       = CompositeBlender[color.Linear, RGBAOrder]
+	CompositeBlenderRGBA8LinearRGBA = CompositeBlender[color.Linear, order.RGBA]
+	CompositeBlenderRGBA8LinearBGRA = CompositeBlender[color.Linear, order.BGRA]
+	CompositeBlenderRGBA8LinearARGB = CompositeBlender[color.Linear, order.ARGB]
+	CompositeBlenderRGBA8LinearABGR = CompositeBlender[color.Linear, order.ABGR]
 )
 
-// Helper functions to create specific composite blenders
-func NewMultiplyBlender[CS any, O any]() CompositeBlender[CS, O] {
-	return NewCompositeBlender[CS, O](CompOpMultiply)
+// Helper constructors
+func NewMultiplyBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
+	return NewCompositeBlender[S, O](CompOpMultiply)
+}
+func NewScreenBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
+	return NewCompositeBlender[S, O](CompOpScreen)
+}
+func NewOverlayBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
+	return NewCompositeBlender[S, O](CompOpOverlay)
+}
+func NewDarkenBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
+	return NewCompositeBlender[S, O](CompOpDarken)
+}
+func NewLightenBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
+	return NewCompositeBlender[S, O](CompOpLighten)
+}
+func NewColorDodgeBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
+	return NewCompositeBlender[S, O](CompOpColorDodge)
+}
+func NewColorBurnBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
+	return NewCompositeBlender[S, O](CompOpColorBurn)
+}
+func NewHardLightBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
+	return NewCompositeBlender[S, O](CompOpHardLight)
+}
+func NewSoftLightBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
+	return NewCompositeBlender[S, O](CompOpSoftLight)
+}
+func NewDifferenceBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
+	return NewCompositeBlender[S, O](CompOpDifference)
+}
+func NewExclusionBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
+	return NewCompositeBlender[S, O](CompOpExclusion)
+}
+func NewPlusBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
+	return NewCompositeBlender[S, O](CompOpPlus)
+}
+func NewClearBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
+	return NewCompositeBlender[S, O](CompOpClear)
+}
+func NewSrcBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
+	return NewCompositeBlender[S, O](CompOpSrc)
+}
+func NewDstBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
+	return NewCompositeBlender[S, O](CompOpDst)
+}
+func NewSrcOverBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
+	return NewCompositeBlender[S, O](CompOpSrcOver)
+}
+func NewDstOverBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
+	return NewCompositeBlender[S, O](CompOpDstOver)
+}
+func NewSrcInBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
+	return NewCompositeBlender[S, O](CompOpSrcIn)
+}
+func NewDstInBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
+	return NewCompositeBlender[S, O](CompOpDstIn)
+}
+func NewSrcOutBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
+	return NewCompositeBlender[S, O](CompOpSrcOut)
+}
+func NewDstOutBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
+	return NewCompositeBlender[S, O](CompOpDstOut)
+}
+func NewSrcAtopBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
+	return NewCompositeBlender[S, O](CompOpSrcAtop)
+}
+func NewDstAtopBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
+	return NewCompositeBlender[S, O](CompOpDstAtop)
 }
 
-func NewScreenBlender[CS any, O any]() CompositeBlender[CS, O] {
-	return NewCompositeBlender[CS, O](CompOpScreen)
+func NewXorBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
+	return NewCompositeBlender[S, O](CompOpXor)
 }
 
-func NewOverlayBlender[CS any, O any]() CompositeBlender[CS, O] {
-	return NewCompositeBlender[CS, O](CompOpOverlay)
-}
-
-func NewDarkenBlender[CS any, O any]() CompositeBlender[CS, O] {
-	return NewCompositeBlender[CS, O](CompOpDarken)
-}
-
-func NewLightenBlender[CS any, O any]() CompositeBlender[CS, O] {
-	return NewCompositeBlender[CS, O](CompOpLighten)
-}
-
-func NewColorDodgeBlender[CS any, O any]() CompositeBlender[CS, O] {
-	return NewCompositeBlender[CS, O](CompOpColorDodge)
-}
-
-func NewColorBurnBlender[CS any, O any]() CompositeBlender[CS, O] {
-	return NewCompositeBlender[CS, O](CompOpColorBurn)
-}
-
-func NewHardLightBlender[CS any, O any]() CompositeBlender[CS, O] {
-	return NewCompositeBlender[CS, O](CompOpHardLight)
-}
-
-func NewSoftLightBlender[CS any, O any]() CompositeBlender[CS, O] {
-	return NewCompositeBlender[CS, O](CompOpSoftLight)
-}
-
-func NewDifferenceBlender[CS any, O any]() CompositeBlender[CS, O] {
-	return NewCompositeBlender[CS, O](CompOpDifference)
-}
-
-func NewExclusionBlender[CS any, O any]() CompositeBlender[CS, O] {
-	return NewCompositeBlender[CS, O](CompOpExclusion)
-}
-
-func NewPlusBlender[CS any, O any]() CompositeBlender[CS, O] {
-	return NewCompositeBlender[CS, O](CompOpPlus)
-}
-
-// BlendColorHspan blends a horizontal span of pixels with a single color
-func (bl CompositeBlender[CS, O]) BlendColorHspan(dst []basics.Int8u, x, y, length int, r, g, b, a basics.Int8u, covers []basics.Int8u) {
-	pixelSize := 4 // RGBA pixel size
-	offset := y*length*pixelSize + x*pixelSize
-
+// BlendColorHspan blends a horizontal span (with stride in bytes).
+// dst points to the beginning of the *whole image* buffer.
+func (bl CompositeBlender[S, O]) BlendColorHspan(
+	dst []basics.Int8u, x, y, length, stride int,
+	r, g, b, a basics.Int8u, covers []basics.Int8u,
+) {
+	if length <= 0 {
+		return
+	}
+	const pix = 4
+	offset := y*stride + x*pix
 	for i := 0; i < length; i++ {
-		cover := basics.Int8u(255)
+		c := basics.Int8u(255)
 		if covers != nil && i < len(covers) {
-			cover = covers[i]
+			c = covers[i]
 		}
-		if cover > 0 {
-			bl.BlendPix(dst[offset:], r, g, b, a, cover)
+		if c != 0 {
+			bl.BlendPix(dst[offset:], r, g, b, a, c)
 		}
-		offset += pixelSize
+		offset += pix
 	}
 }
 
-// BlendColorVspan blends a vertical span of pixels with a single color
-func (bl CompositeBlender[CS, O]) BlendColorVspan(dst []basics.Int8u, x, y, length, stride int, r, g, b, a basics.Int8u, covers []basics.Int8u) {
-	pixelSize := 4 // RGBA pixel size
-	offset := y*stride + x*pixelSize
-
+// BlendColorVspan blends a vertical span (with stride in bytes).
+func (bl CompositeBlender[S, O]) BlendColorVspan(
+	dst []basics.Int8u, x, y, length, stride int,
+	r, g, b, a basics.Int8u, covers []basics.Int8u,
+) {
+	if length <= 0 {
+		return
+	}
+	const pix = 4
+	offset := y*stride + x*pix
 	for i := 0; i < length; i++ {
-		cover := basics.Int8u(255)
+		c := basics.Int8u(255)
 		if covers != nil && i < len(covers) {
-			cover = covers[i]
+			c = covers[i]
 		}
-		if cover > 0 {
-			bl.BlendPix(dst[offset:], r, g, b, a, cover)
+		if c != 0 {
+			bl.BlendPix(dst[offset:], r, g, b, a, c)
 		}
 		offset += stride
 	}
-}
-
-// Additional helper constructors for Porter-Duff operations
-func NewClearBlender[CS any, O any]() CompositeBlender[CS, O] {
-	return NewCompositeBlender[CS, O](CompOpClear)
-}
-
-func NewSrcBlender[CS any, O any]() CompositeBlender[CS, O] {
-	return NewCompositeBlender[CS, O](CompOpSrc)
-}
-
-func NewDstBlender[CS any, O any]() CompositeBlender[CS, O] {
-	return NewCompositeBlender[CS, O](CompOpDst)
-}
-
-func NewSrcOverBlender[CS any, O any]() CompositeBlender[CS, O] {
-	return NewCompositeBlender[CS, O](CompOpSrcOver)
-}
-
-func NewDstOverBlender[CS any, O any]() CompositeBlender[CS, O] {
-	return NewCompositeBlender[CS, O](CompOpDstOver)
-}
-
-func NewSrcInBlender[CS any, O any]() CompositeBlender[CS, O] {
-	return NewCompositeBlender[CS, O](CompOpSrcIn)
-}
-
-func NewDstInBlender[CS any, O any]() CompositeBlender[CS, O] {
-	return NewCompositeBlender[CS, O](CompOpDstIn)
-}
-
-func NewSrcOutBlender[CS any, O any]() CompositeBlender[CS, O] {
-	return NewCompositeBlender[CS, O](CompOpSrcOut)
-}
-
-func NewDstOutBlender[CS any, O any]() CompositeBlender[CS, O] {
-	return NewCompositeBlender[CS, O](CompOpDstOut)
-}
-
-func NewSrcAtopBlender[CS any, O any]() CompositeBlender[CS, O] {
-	return NewCompositeBlender[CS, O](CompOpSrcAtop)
-}
-
-func NewDstAtopBlender[CS any, O any]() CompositeBlender[CS, O] {
-	return NewCompositeBlender[CS, O](CompOpDstAtop)
-}
-
-func NewXorBlender[CS any, O any]() CompositeBlender[CS, O] {
-	return NewCompositeBlender[CS, O](CompOpXor)
 }

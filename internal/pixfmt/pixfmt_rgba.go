@@ -4,6 +4,7 @@ import (
 	"agg_go/internal/basics"
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
+	"agg_go/internal/order"
 	"agg_go/internal/pixfmt/blender"
 )
 
@@ -28,121 +29,117 @@ func (p *RGBAPixelType) GetColor() color.RGBA8[color.Linear] {
 }
 
 // PixFmtAlphaBlendRGBA represents the main RGBA pixel format with alpha blending
-type PixFmtAlphaBlendRGBA[B blender.RGBABlender, CS any] struct {
+type PixFmtAlphaBlendRGBA[
+	B blender.RGBABlender[S, O],
+	S color.Space,
+	O order.RGBAOrder,
+] struct {
 	rbuf     *buffer.RenderingBufferU8
 	blender  B
 	category PixFmtRGBATag
 }
 
 // NewPixFmtAlphaBlendRGBA creates a new RGBA pixel format
-func NewPixFmtAlphaBlendRGBA[B blender.RGBABlender, CS any](rbuf *buffer.RenderingBufferU8, blender B) *PixFmtAlphaBlendRGBA[B, CS] {
-	return &PixFmtAlphaBlendRGBA[B, CS]{
-		rbuf:    rbuf,
-		blender: blender,
-	}
+func NewPixFmtAlphaBlendRGBA[
+	B blender.RGBABlender[S, O],
+	S color.Space,
+	O order.RGBAOrder,
+](rbuf *buffer.RenderingBufferU8, b B) *PixFmtAlphaBlendRGBA[B, S, O] {
+	return &PixFmtAlphaBlendRGBA[B, S, O]{rbuf: rbuf, blender: b}
 }
 
 // Width returns the buffer width
-func (pf *PixFmtAlphaBlendRGBA[B, CS]) Width() int {
+func (pf *PixFmtAlphaBlendRGBA[B, S, O]) Width() int {
 	return pf.rbuf.Width()
 }
 
 // Height returns the buffer height
-func (pf *PixFmtAlphaBlendRGBA[B, CS]) Height() int {
+func (pf *PixFmtAlphaBlendRGBA[B, S, O]) Height() int {
 	return pf.rbuf.Height()
 }
 
 // PixWidth returns bytes per pixel (4 for RGBA)
-func (pf *PixFmtAlphaBlendRGBA[B, CS]) PixWidth() int {
+func (pf *PixFmtAlphaBlendRGBA[B, S, O]) PixWidth() int {
 	return 4
 }
 
 // GetPixel returns the pixel at the given coordinates
-func (pf *PixFmtAlphaBlendRGBA[B, CS]) GetPixel(x, y int) color.RGBA8[CS] {
+func (pf *PixFmtAlphaBlendRGBA[B, S, O]) GetPixel(x, y int) color.RGBA8[S] {
 	if !InBounds(x, y, pf.Width(), pf.Height()) {
-		return color.RGBA8[CS]{}
+		return color.RGBA8[S]{}
 	}
-
 	row := buffer.RowU8(pf.rbuf, y)
-	pixelOffset := x * 4
-	if pixelOffset+3 >= len(row) {
-		return color.RGBA8[CS]{}
+	off := x * 4
+	if off+3 >= len(row) {
+		return color.RGBA8[S]{}
 	}
 
-	// Assume RGBA order for now - we'll make this configurable later
-	return color.RGBA8[CS]{
-		R: row[pixelOffset],
-		G: row[pixelOffset+1],
-		B: row[pixelOffset+2],
-		A: row[pixelOffset+3],
-	}
+	r, g, b, a := pf.blender.GetPlain(row[off : off+4])
+	return color.RGBA8[S]{R: r, G: g, B: b, A: a}
 }
 
 // Pixel returns the pixel at the given coordinates (alias for GetPixel)
-func (pf *PixFmtAlphaBlendRGBA[B, CS]) Pixel(x, y int) color.RGBA8[CS] {
+func (pf *PixFmtAlphaBlendRGBA[B, S, O]) Pixel(x, y int) color.RGBA8[S] {
 	return pf.GetPixel(x, y)
 }
 
 // CopyPixel copies a pixel without blending
-func (pf *PixFmtAlphaBlendRGBA[B, CS]) CopyPixel(x, y int, c color.RGBA8[CS]) {
+func (pf *PixFmtAlphaBlendRGBA[B, S, O]) CopyPixel(x, y int, c color.RGBA8[S]) {
 	if !InBounds(x, y, pf.Width(), pf.Height()) {
 		return
 	}
 
 	row := buffer.RowU8(pf.rbuf, y)
-	pixelOffset := x * 4
-	if pixelOffset+3 >= len(row) {
+	off := x * 4
+	if off+3 >= len(row) {
 		return
 	}
 
-	// Assume RGBA order for now - we'll make this configurable later
-	row[pixelOffset] = c.R
-	row[pixelOffset+1] = c.G
-	row[pixelOffset+2] = c.B
-	row[pixelOffset+3] = c.A
+	pf.blender.SetPlain(row[off:off+4], c.R, c.G, c.B, c.A)
 }
 
 // BlendPixel blends a pixel with the given coverage
-func (pf *PixFmtAlphaBlendRGBA[B, CS]) BlendPixel(x, y int, c color.RGBA8[CS], cover basics.Int8u) {
+func (pf *PixFmtAlphaBlendRGBA[B, S, O]) BlendPixel(x, y int, c color.RGBA8[S], cover basics.Int8u) {
 	if !InBounds(x, y, pf.Width(), pf.Height()) || c.IsTransparent() {
 		return
 	}
 
 	row := buffer.RowU8(pf.rbuf, y)
-	pixelOffset := x * 4
-	if pixelOffset+3 >= len(row) {
+	off := x * 4
+	if off+3 >= len(row) {
 		return
 	}
 
 	// Direct blending call - no type assertion needed with proper constraints
-	pf.blender.BlendPix(row[pixelOffset:pixelOffset+4], c.R, c.G, c.B, c.A, cover)
+	pf.blender.BlendPix(row[off:off+4], c.R, c.G, c.B, c.A, cover)
 }
 
 // CopyHline copies a horizontal line
-func (pf *PixFmtAlphaBlendRGBA[B, CS]) CopyHline(x, y, length int, c color.RGBA8[CS]) {
+func (pf *PixFmtAlphaBlendRGBA[B, S, O]) CopyHline(x, y, length int, c color.RGBA8[S]) {
 	if y < 0 || y >= pf.Height() || length <= 0 {
 		return
 	}
-
 	x = ClampX(x, pf.Width())
 	if x+length > pf.Width() {
 		length = pf.Width() - x
 	}
 
+	ir, ig, ib, ia := idxs[O]()
 	row := buffer.RowU8(pf.rbuf, y)
+	p := x * 4
 	for i := 0; i < length; i++ {
-		pixelOffset := (x + i) * 4
-		if pixelOffset+3 < len(row) {
-			row[pixelOffset] = c.R
-			row[pixelOffset+1] = c.G
-			row[pixelOffset+2] = c.B
-			row[pixelOffset+3] = c.A
+		if p+3 < len(row) {
+			row[p+ir] = c.R
+			row[p+ig] = c.G
+			row[p+ib] = c.B
+			row[p+ia] = c.A
 		}
+		p += 4
 	}
 }
 
 // BlendHline blends a horizontal line
-func (pf *PixFmtAlphaBlendRGBA[B, CS]) BlendHline(x, y, length int, c color.RGBA8[CS], cover basics.Int8u) {
+func (pf *PixFmtAlphaBlendRGBA[B, S, O]) BlendHline(x, y, length int, c color.RGBA8[S], cover basics.Int8u) {
 	if y < 0 || y >= pf.Height() || length <= 0 || c.IsTransparent() {
 		return
 	}
@@ -162,7 +159,7 @@ func (pf *PixFmtAlphaBlendRGBA[B, CS]) BlendHline(x, y, length int, c color.RGBA
 }
 
 // CopyVline copies a vertical line
-func (pf *PixFmtAlphaBlendRGBA[B, CS]) CopyVline(x, y, length int, c color.RGBA8[CS]) {
+func (pf *PixFmtAlphaBlendRGBA[B, S, O]) CopyVline(x, y, length int, c color.RGBA8[S]) {
 	if x < 0 || x >= pf.Width() || length <= 0 {
 		return
 	}
@@ -178,7 +175,7 @@ func (pf *PixFmtAlphaBlendRGBA[B, CS]) CopyVline(x, y, length int, c color.RGBA8
 }
 
 // BlendVline blends a vertical line
-func (pf *PixFmtAlphaBlendRGBA[B, CS]) BlendVline(x, y, length int, c color.RGBA8[CS], cover basics.Int8u) {
+func (pf *PixFmtAlphaBlendRGBA[B, S, O]) BlendVline(x, y, length int, c color.RGBA8[S], cover basics.Int8u) {
 	if x < 0 || x >= pf.Width() || length <= 0 || c.IsTransparent() {
 		return
 	}
@@ -193,40 +190,37 @@ func (pf *PixFmtAlphaBlendRGBA[B, CS]) BlendVline(x, y, length int, c color.RGBA
 	}
 }
 
-// CopyBar copies a filled rectangle
-func (pf *PixFmtAlphaBlendRGBA[B, CS]) CopyBar(x1, y1, x2, y2 int, c color.RGBA8[CS]) {
+func (pf *PixFmtAlphaBlendRGBA[B, S, O]) CopyBar(x1, y1, x2, y2 int, c color.RGBA8[S]) {
 	if y1 > y2 {
 		y1, y2 = y2, y1
 	}
 	if x1 > x2 {
 		x1, x2 = x2, x1
 	}
-
+	length := x2 - x1 + 1
 	for y := y1; y <= y2; y++ {
-		pf.CopyHline(x1, y, x2, c)
+		pf.CopyHline(x1, y, length, c)
 	}
 }
 
-// BlendBar blends a filled rectangle
-func (pf *PixFmtAlphaBlendRGBA[B, CS]) BlendBar(x1, y1, x2, y2 int, c color.RGBA8[CS], cover basics.Int8u) {
+func (pf *PixFmtAlphaBlendRGBA[B, S, O]) BlendBar(x1, y1, x2, y2 int, c color.RGBA8[S], cover basics.Int8u) {
 	if c.IsTransparent() {
 		return
 	}
-
 	if y1 > y2 {
 		y1, y2 = y2, y1
 	}
 	if x1 > x2 {
 		x1, x2 = x2, x1
 	}
-
+	length := x2 - x1 + 1
 	for y := y1; y <= y2; y++ {
-		pf.BlendHline(x1, y, x2, c, cover)
+		pf.BlendHline(x1, y, length, c, cover)
 	}
 }
 
 // BlendSolidHspan blends a horizontal span with varying coverage
-func (pf *PixFmtAlphaBlendRGBA[B, CS]) BlendSolidHspan(x, y, length int, c color.RGBA8[CS], covers []basics.Int8u) {
+func (pf *PixFmtAlphaBlendRGBA[B, S, O]) BlendSolidHspan(x, y, length int, c color.RGBA8[S], covers []basics.Int8u) {
 	if y < 0 || y >= pf.Height() || length <= 0 || c.IsTransparent() {
 		return
 	}
@@ -259,7 +253,7 @@ func (pf *PixFmtAlphaBlendRGBA[B, CS]) BlendSolidHspan(x, y, length int, c color
 }
 
 // BlendSolidVspan blends a vertical span with varying coverage
-func (pf *PixFmtAlphaBlendRGBA[B, CS]) BlendSolidVspan(x, y, length int, c color.RGBA8[CS], covers []basics.Int8u) {
+func (pf *PixFmtAlphaBlendRGBA[B, S, O]) BlendSolidVspan(x, y, length int, c color.RGBA8[S], covers []basics.Int8u) {
 	if x < 0 || x >= pf.Width() || length <= 0 || c.IsTransparent() {
 		return
 	}
@@ -285,7 +279,7 @@ func (pf *PixFmtAlphaBlendRGBA[B, CS]) BlendSolidVspan(x, y, length int, c color
 }
 
 // CopyColorHspan copies a horizontal span of colors
-func (pf *PixFmtAlphaBlendRGBA[B, CS]) CopyColorHspan(x, y, length int, colors []color.RGBA8[CS]) {
+func (pf *PixFmtAlphaBlendRGBA[B, S, O]) CopyColorHspan(x, y, length int, colors []color.RGBA8[S]) {
 	if y < 0 || y >= pf.Height() || length <= 0 || len(colors) == 0 {
 		return
 	}
@@ -302,7 +296,7 @@ func (pf *PixFmtAlphaBlendRGBA[B, CS]) CopyColorHspan(x, y, length int, colors [
 }
 
 // BlendColorHspan blends a horizontal span of colors
-func (pf *PixFmtAlphaBlendRGBA[B, CS]) BlendColorHspan(x, y, length int, colors []color.RGBA8[CS], covers []basics.Int8u, cover basics.Int8u) {
+func (pf *PixFmtAlphaBlendRGBA[B, S, O]) BlendColorHspan(x, y, length int, colors []color.RGBA8[S], covers []basics.Int8u, cover basics.Int8u) {
 	if y < 0 || y >= pf.Height() || length <= 0 || len(colors) == 0 {
 		return
 	}
@@ -328,7 +322,7 @@ func (pf *PixFmtAlphaBlendRGBA[B, CS]) BlendColorHspan(x, y, length int, colors 
 }
 
 // CopyColorVspan copies a vertical span of colors
-func (pf *PixFmtAlphaBlendRGBA[B, CS]) CopyColorVspan(x, y, length int, colors []color.RGBA8[CS]) {
+func (pf *PixFmtAlphaBlendRGBA[B, S, O]) CopyColorVspan(x, y, length int, colors []color.RGBA8[S]) {
 	if x < 0 || x >= pf.Width() || length <= 0 || len(colors) == 0 {
 		return
 	}
@@ -345,7 +339,7 @@ func (pf *PixFmtAlphaBlendRGBA[B, CS]) CopyColorVspan(x, y, length int, colors [
 }
 
 // BlendColorVspan blends a vertical span of colors
-func (pf *PixFmtAlphaBlendRGBA[B, CS]) BlendColorVspan(x, y, length int, colors []color.RGBA8[CS], covers []basics.Int8u, cover basics.Int8u) {
+func (pf *PixFmtAlphaBlendRGBA[B, S, O]) BlendColorVspan(x, y, length int, colors []color.RGBA8[S], covers []basics.Int8u, cover basics.Int8u) {
 	if x < 0 || x >= pf.Width() || length <= 0 || len(colors) == 0 {
 		return
 	}
@@ -371,47 +365,178 @@ func (pf *PixFmtAlphaBlendRGBA[B, CS]) BlendColorVspan(x, y, length int, colors 
 }
 
 // Clear clears the entire buffer with the given color
-func (pf *PixFmtAlphaBlendRGBA[B, CS]) Clear(c color.RGBA8[CS]) {
+func (pf *PixFmtAlphaBlendRGBA[B, S, O]) Clear(c color.RGBA8[S]) {
 	for y := 0; y < pf.Height(); y++ {
 		row := buffer.RowU8(pf.rbuf, y)
 		for x := 0; x < pf.Width(); x++ {
-			pixelOffset := x * 4
-			if pixelOffset+3 < len(row) {
-				row[pixelOffset] = c.R
-				row[pixelOffset+1] = c.G
-				row[pixelOffset+2] = c.B
-				row[pixelOffset+3] = c.A
+			off := x * 4
+			if off+3 >= len(row) {
+				break
 			}
+			pf.blender.SetPlain(row[off:off+4], c.R, c.G, c.B, c.A)
 		}
 	}
 }
 
 // Fill is an alias for Clear (fills entire buffer)
-func (pf *PixFmtAlphaBlendRGBA[B, CS]) Fill(c color.RGBA8[CS]) {
+func (pf *PixFmtAlphaBlendRGBA[B, S, O]) Fill(c color.RGBA8[S]) {
 	pf.Clear(c)
 }
 
 // Concrete RGBA pixel format types for different color orders
 type (
-	PixFmtRGBA32 = PixFmtAlphaBlendRGBA[blender.BlenderRGBA8, color.Linear]
-	PixFmtARGB32 = PixFmtAlphaBlendRGBA[blender.BlenderARGB8, color.Linear]
-	PixFmtBGRA32 = PixFmtAlphaBlendRGBA[blender.BlenderBGRA8, color.Linear]
-	PixFmtABGR32 = PixFmtAlphaBlendRGBA[blender.BlenderABGR8, color.Linear]
+	// Premultiplied framebuffer, plain src blending (AGG blender_rgba)
+	PixFmtRGBA32[S color.Space] = PixFmtAlphaBlendRGBA[blender.BlenderRGBA8[S, order.RGBA], S, order.RGBA]
+	PixFmtBGRA32[S color.Space] = PixFmtAlphaBlendRGBA[blender.BlenderRGBA8[S, order.BGRA], S, order.BGRA]
+	PixFmtARGB32[S color.Space] = PixFmtAlphaBlendRGBA[blender.BlenderRGBA8[S, order.ARGB], S, order.ARGB]
+	PixFmtABGR32[S color.Space] = PixFmtAlphaBlendRGBA[blender.BlenderRGBA8[S, order.ABGR], S, order.ABGR]
+
+	// Premultiplied framebuffer, premul-style blending (AGG blender_rgba_pre)
+	PixFmtRGBA32Pre[S color.Space] = PixFmtAlphaBlendRGBA[blender.BlenderRGBA8Pre[S, order.RGBA], S, order.RGBA]
+	PixFmtBGRA32Pre[S color.Space] = PixFmtAlphaBlendRGBA[blender.BlenderRGBA8Pre[S, order.BGRA], S, order.BGRA]
+	PixFmtARGB32Pre[S color.Space] = PixFmtAlphaBlendRGBA[blender.BlenderRGBA8Pre[S, order.ARGB], S, order.ARGB]
+	PixFmtABGR32Pre[S color.Space] = PixFmtAlphaBlendRGBA[blender.BlenderRGBA8Pre[S, order.ABGR], S, order.ABGR]
+
+	// Plain framebuffer (AGG blender_rgba_plain)
+	PixFmtRGBA32Plain[S color.Space] = PixFmtAlphaBlendRGBA[blender.BlenderRGBA8Plain[S, order.RGBA], S, order.RGBA]
+	PixFmtBGRA32Plain[S color.Space] = PixFmtAlphaBlendRGBA[blender.BlenderRGBA8Plain[S, order.BGRA], S, order.BGRA]
+	PixFmtARGB32Plain[S color.Space] = PixFmtAlphaBlendRGBA[blender.BlenderRGBA8Plain[S, order.ARGB], S, order.ARGB]
+	PixFmtABGR32Plain[S color.Space] = PixFmtAlphaBlendRGBA[blender.BlenderRGBA8Plain[S, order.ABGR], S, order.ABGR]
 )
 
-// Constructor functions
-func NewPixFmtRGBA32(rbuf *buffer.RenderingBufferU8) *PixFmtRGBA32 {
-	return NewPixFmtAlphaBlendRGBA[blender.BlenderRGBA8, color.Linear](rbuf, blender.BlenderRGBA8{})
+//////////////////////////////////////////////////////////////////////////////////////
+// Constructors
+//////////////////////////////////////////////////////////////////////////////////////
+
+// Constructors for RGBA pixel formats
+func NewPixFmtRGBA32[S color.Space](rbuf *buffer.RenderingBufferU8) *PixFmtRGBA32[S] {
+	return NewPixFmtAlphaBlendRGBA[blender.BlenderRGBA8[S, order.RGBA], S, order.RGBA](rbuf, blender.BlenderRGBA8[S, order.RGBA]{})
 }
 
-func NewPixFmtARGB32(rbuf *buffer.RenderingBufferU8) *PixFmtARGB32 {
-	return NewPixFmtAlphaBlendRGBA[blender.BlenderARGB8, color.Linear](rbuf, blender.BlenderARGB8{})
+func NewPixFmtBGRA32[S color.Space](rbuf *buffer.RenderingBufferU8) *PixFmtBGRA32[S] {
+	return NewPixFmtAlphaBlendRGBA[blender.BlenderRGBA8[S, order.BGRA], S, order.BGRA](rbuf, blender.BlenderRGBA8[S, order.BGRA]{})
 }
 
-func NewPixFmtBGRA32(rbuf *buffer.RenderingBufferU8) *PixFmtBGRA32 {
-	return NewPixFmtAlphaBlendRGBA[blender.BlenderBGRA8, color.Linear](rbuf, blender.BlenderBGRA8{})
+func NewPixFmtARGB32[S color.Space](rbuf *buffer.RenderingBufferU8) *PixFmtARGB32[S] {
+	return NewPixFmtAlphaBlendRGBA[blender.BlenderRGBA8[S, order.ARGB], S, order.ARGB](rbuf, blender.BlenderRGBA8[S, order.ARGB]{})
 }
 
-func NewPixFmtABGR32(rbuf *buffer.RenderingBufferU8) *PixFmtABGR32 {
-	return NewPixFmtAlphaBlendRGBA[blender.BlenderABGR8, color.Linear](rbuf, blender.BlenderABGR8{})
+func NewPixFmtABGR32[S color.Space](rbuf *buffer.RenderingBufferU8) *PixFmtABGR32[S] {
+	return NewPixFmtAlphaBlendRGBA[blender.BlenderRGBA8[S, order.ABGR], S, order.ABGR](rbuf, blender.BlenderRGBA8[S, order.ABGR]{})
+}
+
+// Constructors for RGBA pixel formats (premultiplied)
+func NewPixFmtRGBA32Pre[S color.Space](r *buffer.RenderingBufferU8) *PixFmtRGBA32Pre[S] {
+	return NewPixFmtAlphaBlendRGBA[blender.BlenderRGBA8Pre[S, order.RGBA], S, order.RGBA](r, blender.BlenderRGBA8Pre[S, order.RGBA]{})
+}
+
+func NewPixFmtBGRA32Pre[S color.Space](r *buffer.RenderingBufferU8) *PixFmtBGRA32Pre[S] {
+	return NewPixFmtAlphaBlendRGBA[blender.BlenderRGBA8Pre[S, order.BGRA], S, order.BGRA](r, blender.BlenderRGBA8Pre[S, order.BGRA]{})
+}
+
+func NewPixFmtARGB32Pre[S color.Space](r *buffer.RenderingBufferU8) *PixFmtARGB32Pre[S] {
+	return NewPixFmtAlphaBlendRGBA[blender.BlenderRGBA8Pre[S, order.ARGB], S, order.ARGB](r, blender.BlenderRGBA8Pre[S, order.ARGB]{})
+}
+
+func NewPixFmtABGR32Pre[S color.Space](r *buffer.RenderingBufferU8) *PixFmtABGR32Pre[S] {
+	return NewPixFmtAlphaBlendRGBA[blender.BlenderRGBA8Pre[S, order.ABGR], S, order.ABGR](r, blender.BlenderRGBA8Pre[S, order.ABGR]{})
+}
+
+// Constructors for RGBA pixel formats (plain)
+func NewPixFmtRGBA32Plain[S color.Space](r *buffer.RenderingBufferU8) *PixFmtRGBA32Plain[S] {
+	return NewPixFmtAlphaBlendRGBA[blender.BlenderRGBA8Plain[S, order.RGBA], S, order.RGBA](r, blender.BlenderRGBA8Plain[S, order.RGBA]{})
+}
+
+func NewPixFmtBGRA32Plain[S color.Space](r *buffer.RenderingBufferU8) *PixFmtBGRA32Plain[S] {
+	return NewPixFmtAlphaBlendRGBA[blender.BlenderRGBA8Plain[S, order.BGRA], S, order.BGRA](r, blender.BlenderRGBA8Plain[S, order.BGRA]{})
+}
+
+func NewPixFmtARGB32Plain[S color.Space](r *buffer.RenderingBufferU8) *PixFmtARGB32Plain[S] {
+	return NewPixFmtAlphaBlendRGBA[blender.BlenderRGBA8Plain[S, order.ARGB], S, order.ARGB](r, blender.BlenderRGBA8Plain[S, order.ARGB]{})
+}
+
+func NewPixFmtABGR32Plain[S color.Space](r *buffer.RenderingBufferU8) *PixFmtABGR32Plain[S] {
+	return NewPixFmtAlphaBlendRGBA[blender.BlenderRGBA8Plain[S, order.ABGR], S, order.ABGR](r, blender.BlenderRGBA8Plain[S, order.ABGR]{})
+}
+
+// Constructors for RGBA pixel formats (linear)
+
+func NewPixFmtRGBA32Linear(r *buffer.RenderingBufferU8) *PixFmtRGBA32[color.Linear] {
+	return NewPixFmtRGBA32[color.Linear](r)
+}
+
+func NewPixFmtBGRA32Linear(r *buffer.RenderingBufferU8) *PixFmtBGRA32[color.Linear] {
+	return NewPixFmtBGRA32[color.Linear](r)
+}
+
+func NewPixFmtARGB32Linear(r *buffer.RenderingBufferU8) *PixFmtARGB32[color.Linear] {
+	return NewPixFmtARGB32[color.Linear](r)
+}
+
+func NewPixFmtABGR32Linear(r *buffer.RenderingBufferU8) *PixFmtABGR32[color.Linear] {
+	return NewPixFmtABGR32[color.Linear](r)
+}
+
+// Constructors for RGBA pixel formats (linear, premultiplied)
+
+func NewPixFmtRGBA32PreLinear(r *buffer.RenderingBufferU8) *PixFmtRGBA32Pre[color.Linear] {
+	return NewPixFmtRGBA32Pre[color.Linear](r)
+}
+
+func NewPixFmtBGRA32PreLinear(r *buffer.RenderingBufferU8) *PixFmtBGRA32Pre[color.Linear] {
+	return NewPixFmtBGRA32Pre[color.Linear](r)
+}
+
+func NewPixFmtARGB32PreLinear(r *buffer.RenderingBufferU8) *PixFmtARGB32Pre[color.Linear] {
+	return NewPixFmtARGB32Pre[color.Linear](r)
+}
+
+func NewPixFmtABGR32PreLinear(r *buffer.RenderingBufferU8) *PixFmtABGR32Pre[color.Linear] {
+	return NewPixFmtABGR32Pre[color.Linear](r)
+}
+
+// Constructors for RGBA pixel formats (linear, plain)
+
+func NewPixFmtRGBA32PlainLinear(r *buffer.RenderingBufferU8) *PixFmtRGBA32Plain[color.Linear] {
+	return NewPixFmtRGBA32Plain[color.Linear](r)
+}
+
+func NewPixFmtBGRA32PlainLinear(r *buffer.RenderingBufferU8) *PixFmtBGRA32Plain[color.Linear] {
+	return NewPixFmtBGRA32Plain[color.Linear](r)
+}
+
+func NewPixFmtARGB32PlainLinear(r *buffer.RenderingBufferU8) *PixFmtARGB32Plain[color.Linear] {
+	return NewPixFmtARGB32Plain[color.Linear](r)
+}
+
+func NewPixFmtABGR32PlainLinear(r *buffer.RenderingBufferU8) *PixFmtABGR32Plain[color.Linear] {
+	return NewPixFmtABGR32Plain[color.Linear](r)
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Helpers
+////////////////////////////////////////////////////////////////////////////////
+
+func idxs[O order.RGBAOrder]() (ir, ig, ib, ia int) {
+	var o O
+	return o.IdxR(), o.IdxG(), o.IdxB(), o.IdxA()
+}
+
+func premul(r, g, b, a basics.Int8u) (pr, pg, pb, pa basics.Int8u) {
+	if a == 255 || a == 0 {
+		return r * (a / 255), g * (a / 255), b * (a / 255), a // fast paths; see below for exact multiply
+	}
+	return color.RGBA8Multiply(r, a), color.RGBA8Multiply(g, a),
+		color.RGBA8Multiply(b, a), a
+}
+
+// classic rounded demul: x*255/a
+func demul8(x, a basics.Int8u) basics.Int8u {
+	if a == 0 {
+		return 0
+	}
+	if a == 255 {
+		return x
+	}
+	return basics.Int8u((uint32(x)*255 + uint32(a)/2) / uint32(a))
 }

@@ -4,6 +4,7 @@ import (
 	"agg_go/internal/basics"
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
+	"agg_go/internal/order"
 	"agg_go/internal/pixfmt/blender"
 )
 
@@ -29,18 +30,23 @@ func (p *RGBPixelType) GetColor() color.RGB8[color.Linear] {
 
 // PixFmtAlphaBlendRGB represents the main RGB pixel format with alpha blending
 // This is a 24-bit format (3 bytes per pixel) without alpha channel storage
-type PixFmtAlphaBlendRGB[B blender.RGBBlender, CS any, O any] struct {
+type PixFmtAlphaBlendRGB[
+	B blender.RGBBlender[S, O],
+	S color.Space,
+	O order.RGBOrder,
+] struct {
 	rbuf     *buffer.RenderingBufferU8
 	blender  B
-	category PixFmtRGBTag
+	category PixFmtRGBATag
 }
 
 // NewPixFmtAlphaBlendRGB creates a new RGB pixel format
-func NewPixFmtAlphaBlendRGB[B blender.RGBBlender, CS any, O any](rbuf *buffer.RenderingBufferU8, blender B) *PixFmtAlphaBlendRGB[B, CS, O] {
-	return &PixFmtAlphaBlendRGB[B, CS, O]{
-		rbuf:    rbuf,
-		blender: blender,
-	}
+func NewPixFmtAlphaBlendRGB[
+	B blender.RGBBlender[S, O],
+	S color.Space,
+	O order.RGBOrder,
+](rbuf *buffer.RenderingBufferU8, b B) *PixFmtAlphaBlendRGB[B, S, O] {
+	return &PixFmtAlphaBlendRGB[B, S, O]{rbuf: rbuf, blender: b}
 }
 
 // Width returns the buffer width
@@ -380,264 +386,6 @@ func NewPixFmtSBGR24(rbuf *buffer.RenderingBufferU8) *PixFmtSBGR24 {
 }
 
 // ==============================================================================
-// RGB48 (16-bit per channel) Pixel Formats
-// ==============================================================================
-
-// PixFmtAlphaBlendRGB48 represents RGB pixel format with 16-bit components (6 bytes per pixel)
-type PixFmtAlphaBlendRGB48[B blender.RGB48Blender, CS any, O any] struct {
-	rbuf     *buffer.RenderingBufferU16
-	blender  B
-	category PixFmtRGBTag
-}
-
-// NewPixFmtAlphaBlendRGB48 creates a new RGB48 pixel format
-func NewPixFmtAlphaBlendRGB48[B blender.RGB48Blender, CS any, O any](rbuf *buffer.RenderingBufferU16, blender B) *PixFmtAlphaBlendRGB48[B, CS, O] {
-	return &PixFmtAlphaBlendRGB48[B, CS, O]{
-		rbuf:    rbuf,
-		blender: blender,
-	}
-}
-
-// Width returns the buffer width
-func (pf *PixFmtAlphaBlendRGB48[B, CS, O]) Width() int {
-	return pf.rbuf.Width()
-}
-
-// Height returns the buffer height
-func (pf *PixFmtAlphaBlendRGB48[B, CS, O]) Height() int {
-	return pf.rbuf.Height()
-}
-
-// PixWidth returns bytes per pixel (6 for RGB48)
-func (pf *PixFmtAlphaBlendRGB48[B, CS, O]) PixWidth() int {
-	return 6
-}
-
-// GetPixel returns the pixel at the given coordinates
-func (pf *PixFmtAlphaBlendRGB48[B, CS, O]) GetPixel(x, y int) color.RGB16[CS] {
-	if !InBounds(x, y, pf.Width(), pf.Height()) {
-		return color.RGB16[CS]{}
-	}
-
-	row := buffer.RowU16(pf.rbuf, y)
-	pixelOffset := x * 3 // 3 components per pixel
-	if pixelOffset+2 >= len(row) {
-		return color.RGB16[CS]{}
-	}
-
-	order := blender.GetRGBColorOrder[O]()
-	return color.RGB16[CS]{
-		R: row[pixelOffset+order.R],
-		G: row[pixelOffset+order.G],
-		B: row[pixelOffset+order.B],
-	}
-}
-
-// CopyPixel copies a pixel without blending
-func (pf *PixFmtAlphaBlendRGB48[B, CS, O]) CopyPixel(x, y int, c color.RGB16[CS]) {
-	if !InBounds(x, y, pf.Width(), pf.Height()) {
-		return
-	}
-
-	row := buffer.RowU16(pf.rbuf, y)
-	pixelOffset := x * 3
-	if pixelOffset+2 >= len(row) {
-		return
-	}
-
-	order := blender.GetRGBColorOrder[O]()
-	row[pixelOffset+order.R] = c.R
-	row[pixelOffset+order.G] = c.G
-	row[pixelOffset+order.B] = c.B
-}
-
-// BlendPixel blends a pixel with the given alpha and coverage
-func (pf *PixFmtAlphaBlendRGB48[B, CS, O]) BlendPixel(x, y int, c color.RGB16[CS], alpha, cover basics.Int16u) {
-	if !InBounds(x, y, pf.Width(), pf.Height()) {
-		return
-	}
-
-	row := buffer.RowU16(pf.rbuf, y)
-	pixelOffset := x * 3
-	if pixelOffset+2 >= len(row) {
-		return
-	}
-
-	// Direct blending call - no type assertion needed with proper constraints
-	pf.blender.BlendPix(row[pixelOffset:pixelOffset+3], c.R, c.G, c.B, alpha, cover)
-}
-
-// Clear clears the entire buffer with the given color
-func (pf *PixFmtAlphaBlendRGB48[B, CS, O]) Clear(c color.RGB16[CS]) {
-	for y := 0; y < pf.Height(); y++ {
-		row := buffer.RowU16(pf.rbuf, y)
-		for x := 0; x < pf.Width(); x++ {
-			pixelOffset := x * 3
-			if pixelOffset+2 < len(row) {
-				order := blender.GetRGBColorOrder[O]()
-				row[pixelOffset+order.R] = c.R
-				row[pixelOffset+order.G] = c.G
-				row[pixelOffset+order.B] = c.B
-			}
-		}
-	}
-}
-
-// Concrete RGB48 pixel format types
-type (
-	PixFmtRGB48Linear = PixFmtAlphaBlendRGB48[blender.BlenderRGB48Linear, color.Linear, color.RGB24Order]
-	PixFmtBGR48Linear = PixFmtAlphaBlendRGB48[blender.BlenderBGR48Linear, color.Linear, color.BGR24Order]
-	PixFmtRGB48SRGB   = PixFmtAlphaBlendRGB48[blender.BlenderRGB48SRGB, color.SRGB, color.RGB24Order]
-	PixFmtBGR48SRGB   = PixFmtAlphaBlendRGB48[blender.BlenderBGR48SRGB, color.SRGB, color.BGR24Order]
-)
-
-// Constructor functions for RGB48 pixel formats
-func NewPixFmtRGB48Linear(rbuf *buffer.RenderingBufferU16) *PixFmtRGB48Linear {
-	return NewPixFmtAlphaBlendRGB48[blender.BlenderRGB48Linear, color.Linear, color.RGB24Order](rbuf, blender.BlenderRGB48Linear{})
-}
-
-func NewPixFmtBGR48Linear(rbuf *buffer.RenderingBufferU16) *PixFmtBGR48Linear {
-	return NewPixFmtAlphaBlendRGB48[blender.BlenderBGR48Linear, color.Linear, color.BGR24Order](rbuf, blender.BlenderBGR48Linear{})
-}
-
-func NewPixFmtRGB48SRGB(rbuf *buffer.RenderingBufferU16) *PixFmtRGB48SRGB {
-	return NewPixFmtAlphaBlendRGB48[blender.BlenderRGB48SRGB, color.SRGB, color.RGB24Order](rbuf, blender.BlenderRGB48SRGB{})
-}
-
-func NewPixFmtBGR48SRGB(rbuf *buffer.RenderingBufferU16) *PixFmtBGR48SRGB {
-	return NewPixFmtAlphaBlendRGB48[blender.BlenderBGR48SRGB, color.SRGB, color.BGR24Order](rbuf, blender.BlenderBGR48SRGB{})
-}
-
-// ==============================================================================
-// RGB96 (32-bit float per channel) Pixel Formats
-// ==============================================================================
-
-// PixFmtAlphaBlendRGB96 represents RGB pixel format with 32-bit float components (12 bytes per pixel)
-type PixFmtAlphaBlendRGB96[B blender.RGB96Blender, CS any, O any] struct {
-	rbuf     *buffer.RenderingBufferF32
-	blender  B
-	category PixFmtRGBTag
-}
-
-// NewPixFmtAlphaBlendRGB96 creates a new RGB96 pixel format
-func NewPixFmtAlphaBlendRGB96[B blender.RGB96Blender, CS any, O any](rbuf *buffer.RenderingBufferF32, blender B) *PixFmtAlphaBlendRGB96[B, CS, O] {
-	return &PixFmtAlphaBlendRGB96[B, CS, O]{
-		rbuf:    rbuf,
-		blender: blender,
-	}
-}
-
-// Width returns the buffer width
-func (pf *PixFmtAlphaBlendRGB96[B, CS, O]) Width() int {
-	return pf.rbuf.Width()
-}
-
-// Height returns the buffer height
-func (pf *PixFmtAlphaBlendRGB96[B, CS, O]) Height() int {
-	return pf.rbuf.Height()
-}
-
-// PixWidth returns bytes per pixel (12 for RGB96)
-func (pf *PixFmtAlphaBlendRGB96[B, CS, O]) PixWidth() int {
-	return 12
-}
-
-// GetPixel returns the pixel at the given coordinates
-func (pf *PixFmtAlphaBlendRGB96[B, CS, O]) GetPixel(x, y int) color.RGB32[CS] {
-	if !InBounds(x, y, pf.Width(), pf.Height()) {
-		return color.RGB32[CS]{}
-	}
-
-	row := buffer.RowF32(pf.rbuf, y)
-	pixelOffset := x * 3 // 3 components per pixel
-	if pixelOffset+2 >= len(row) {
-		return color.RGB32[CS]{}
-	}
-
-	order := blender.GetRGBColorOrder[O]()
-	return color.RGB32[CS]{
-		R: row[pixelOffset+order.R],
-		G: row[pixelOffset+order.G],
-		B: row[pixelOffset+order.B],
-	}
-}
-
-// CopyPixel copies a pixel without blending
-func (pf *PixFmtAlphaBlendRGB96[B, CS, O]) CopyPixel(x, y int, c color.RGB32[CS]) {
-	if !InBounds(x, y, pf.Width(), pf.Height()) {
-		return
-	}
-
-	row := buffer.RowF32(pf.rbuf, y)
-	pixelOffset := x * 3
-	if pixelOffset+2 >= len(row) {
-		return
-	}
-
-	order := blender.GetRGBColorOrder[O]()
-	row[pixelOffset+order.R] = c.R
-	row[pixelOffset+order.G] = c.G
-	row[pixelOffset+order.B] = c.B
-}
-
-// BlendPixel blends a pixel with the given alpha and coverage
-func (pf *PixFmtAlphaBlendRGB96[B, CS, O]) BlendPixel(x, y int, c color.RGB32[CS], alpha, cover float32) {
-	if !InBounds(x, y, pf.Width(), pf.Height()) {
-		return
-	}
-
-	row := buffer.RowF32(pf.rbuf, y)
-	pixelOffset := x * 3
-	if pixelOffset+2 >= len(row) {
-		return
-	}
-
-	// Direct blending call - no type assertion needed with proper constraints
-	pf.blender.BlendPix(row[pixelOffset:pixelOffset+3], c.R, c.G, c.B, alpha, cover)
-}
-
-// Clear clears the entire buffer with the given color
-func (pf *PixFmtAlphaBlendRGB96[B, CS, O]) Clear(c color.RGB32[CS]) {
-	for y := 0; y < pf.Height(); y++ {
-		row := buffer.RowF32(pf.rbuf, y)
-		for x := 0; x < pf.Width(); x++ {
-			pixelOffset := x * 3
-			if pixelOffset+2 < len(row) {
-				order := blender.GetRGBColorOrder[O]()
-				row[pixelOffset+order.R] = c.R
-				row[pixelOffset+order.G] = c.G
-				row[pixelOffset+order.B] = c.B
-			}
-		}
-	}
-}
-
-// Concrete RGB96 pixel format types
-type (
-	PixFmtRGB96Linear = PixFmtAlphaBlendRGB96[blender.BlenderRGB96Linear, color.Linear, color.RGB24Order]
-	PixFmtBGR96Linear = PixFmtAlphaBlendRGB96[blender.BlenderBGR96Linear, color.Linear, color.BGR24Order]
-	PixFmtRGB96SRGB   = PixFmtAlphaBlendRGB96[blender.BlenderRGB96SRGB, color.SRGB, color.RGB24Order]
-	PixFmtBGR96SRGB   = PixFmtAlphaBlendRGB96[blender.BlenderBGR96SRGB, color.SRGB, color.BGR24Order]
-)
-
-// Constructor functions for RGB96 pixel formats
-func NewPixFmtRGB96Linear(rbuf *buffer.RenderingBufferF32) *PixFmtRGB96Linear {
-	return NewPixFmtAlphaBlendRGB96[blender.BlenderRGB96Linear, color.Linear, color.RGB24Order](rbuf, blender.BlenderRGB96Linear{})
-}
-
-func NewPixFmtBGR96Linear(rbuf *buffer.RenderingBufferF32) *PixFmtBGR96Linear {
-	return NewPixFmtAlphaBlendRGB96[blender.BlenderBGR96Linear, color.Linear, color.BGR24Order](rbuf, blender.BlenderBGR96Linear{})
-}
-
-func NewPixFmtRGB96SRGB(rbuf *buffer.RenderingBufferF32) *PixFmtRGB96SRGB {
-	return NewPixFmtAlphaBlendRGB96[blender.BlenderRGB96SRGB, color.SRGB, color.RGB24Order](rbuf, blender.BlenderRGB96SRGB{})
-}
-
-func NewPixFmtBGR96SRGB(rbuf *buffer.RenderingBufferF32) *PixFmtBGR96SRGB {
-	return NewPixFmtAlphaBlendRGB96[blender.BlenderBGR96SRGB, color.SRGB, color.BGR24Order](rbuf, blender.BlenderBGR96SRGB{})
-}
-
-// ==============================================================================
 // RGBX32/XRGB32 (RGB with padding byte) Pixel Formats
 // ==============================================================================
 
@@ -857,22 +605,6 @@ type (
 	PixFmtSBGR24Pre = PixFmtAlphaBlendRGB[blender.BlenderBGR24PreSRGB, color.SRGB, color.BGR24Order]
 )
 
-// RGB48 premultiplied variants
-type (
-	PixFmtRGB48Pre     = PixFmtAlphaBlendRGB48[blender.BlenderRGB48PreLinear, color.Linear, color.RGB24Order]
-	PixFmtBGR48Pre     = PixFmtAlphaBlendRGB48[blender.BlenderBGR48PreLinear, color.Linear, color.BGR24Order]
-	PixFmtRGB48PreSRGB = PixFmtAlphaBlendRGB48[blender.BlenderRGB48PreSRGB, color.SRGB, color.RGB24Order]
-	PixFmtBGR48PreSRGB = PixFmtAlphaBlendRGB48[blender.BlenderBGR48PreSRGB, color.SRGB, color.BGR24Order]
-)
-
-// RGB96 premultiplied variants
-type (
-	PixFmtRGB96Pre     = PixFmtAlphaBlendRGB96[blender.BlenderRGB96PreLinear, color.Linear, color.RGB24Order]
-	PixFmtBGR96Pre     = PixFmtAlphaBlendRGB96[blender.BlenderBGR96PreLinear, color.Linear, color.BGR24Order]
-	PixFmtRGB96PreSRGB = PixFmtAlphaBlendRGB96[blender.BlenderRGB96PreSRGB, color.SRGB, color.RGB24Order]
-	PixFmtBGR96PreSRGB = PixFmtAlphaBlendRGB96[blender.BlenderBGR96PreSRGB, color.SRGB, color.BGR24Order]
-)
-
 // RGBX32 premultiplied variants
 type (
 	PixFmtRGBX32Pre = PixFmtAlphaBlendRGBX32[blender.BlenderRGB24Pre, color.Linear, RGBX32Order]
@@ -901,40 +633,6 @@ func NewPixFmtSRGB24Pre(rbuf *buffer.RenderingBufferU8) *PixFmtSRGB24Pre {
 
 func NewPixFmtSBGR24Pre(rbuf *buffer.RenderingBufferU8) *PixFmtSBGR24Pre {
 	return NewPixFmtAlphaBlendRGB[blender.BlenderBGR24PreSRGB, color.SRGB, color.BGR24Order](rbuf, blender.BlenderBGR24PreSRGB{})
-}
-
-// Constructor functions for premultiplied RGB48 formats
-func NewPixFmtRGB48Pre(rbuf *buffer.RenderingBufferU16) *PixFmtRGB48Pre {
-	return NewPixFmtAlphaBlendRGB48[blender.BlenderRGB48PreLinear, color.Linear, color.RGB24Order](rbuf, blender.BlenderRGB48PreLinear{})
-}
-
-func NewPixFmtBGR48Pre(rbuf *buffer.RenderingBufferU16) *PixFmtBGR48Pre {
-	return NewPixFmtAlphaBlendRGB48[blender.BlenderBGR48PreLinear, color.Linear, color.BGR24Order](rbuf, blender.BlenderBGR48PreLinear{})
-}
-
-func NewPixFmtRGB48PreSRGB(rbuf *buffer.RenderingBufferU16) *PixFmtRGB48PreSRGB {
-	return NewPixFmtAlphaBlendRGB48[blender.BlenderRGB48PreSRGB, color.SRGB, color.RGB24Order](rbuf, blender.BlenderRGB48PreSRGB{})
-}
-
-func NewPixFmtBGR48PreSRGB(rbuf *buffer.RenderingBufferU16) *PixFmtBGR48PreSRGB {
-	return NewPixFmtAlphaBlendRGB48[blender.BlenderBGR48PreSRGB, color.SRGB, color.BGR24Order](rbuf, blender.BlenderBGR48PreSRGB{})
-}
-
-// Constructor functions for premultiplied RGB96 formats
-func NewPixFmtRGB96Pre(rbuf *buffer.RenderingBufferF32) *PixFmtRGB96Pre {
-	return NewPixFmtAlphaBlendRGB96[blender.BlenderRGB96PreLinear, color.Linear, color.RGB24Order](rbuf, blender.BlenderRGB96PreLinear{})
-}
-
-func NewPixFmtBGR96Pre(rbuf *buffer.RenderingBufferF32) *PixFmtBGR96Pre {
-	return NewPixFmtAlphaBlendRGB96[blender.BlenderBGR96PreLinear, color.Linear, color.BGR24Order](rbuf, blender.BlenderBGR96PreLinear{})
-}
-
-func NewPixFmtRGB96PreSRGB(rbuf *buffer.RenderingBufferF32) *PixFmtRGB96PreSRGB {
-	return NewPixFmtAlphaBlendRGB96[blender.BlenderRGB96PreSRGB, color.SRGB, color.RGB24Order](rbuf, blender.BlenderRGB96PreSRGB{})
-}
-
-func NewPixFmtBGR96PreSRGB(rbuf *buffer.RenderingBufferF32) *PixFmtBGR96PreSRGB {
-	return NewPixFmtAlphaBlendRGB96[blender.BlenderBGR96PreSRGB, color.SRGB, color.BGR24Order](rbuf, blender.BlenderBGR96PreSRGB{})
 }
 
 // Constructor functions for premultiplied RGBX32 formats

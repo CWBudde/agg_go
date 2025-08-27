@@ -5,118 +5,140 @@ import (
 	"agg_go/internal/color"
 )
 
-// GrayBlender provides the interface for grayscale blending operations
-type GrayBlender interface {
-	BlendPix(dst *basics.Int8u, cv, alpha, cover basics.Int8u)
+////////////////////////////////////////////////////////////////////////////////
+// Interfaces
+////////////////////////////////////////////////////////////////////////////////
+
+// GrayBlender blends 8-bit grayscale pixels in color space S.
+type GrayBlender[S color.Space] interface {
+	// v = source value (plain or premultiplied depending on impl)
+	// a = source alpha (plain or premultiplied depending on impl)
+	// cover scales contribution in [0..255]
+	BlendPix(dst *basics.Int8u, v, a, cover basics.Int8u)
 }
 
-// BlenderGray implements non-premultiplied blending for grayscale colors
-type BlenderGray[C any] struct{}
+////////////////////////////////////////////////////////////////////////////////
+// Non-premultiplied grayscale -> Non-premultiplied destination
+////////////////////////////////////////////////////////////////////////////////
 
-// BlendPix blends a pixel using non-premultiplied alpha compositing
-func (b BlenderGray[C]) BlendPix(dst *basics.Int8u, cv, alpha basics.Int8u, cover basics.Int8u) {
-	b.BlendPixAlpha(dst, cv, color.Gray8Multiply(alpha, cover))
+type BlenderGray[S color.Space] struct{}
+
+// BlendPix: straight (non-premultiplied) alpha with coverage.
+// a' = a * cover (8-bit), then dst = lerp(dst, v, a').
+func (BlenderGray[S]) BlendPix(dst *basics.Int8u, v, a, cover basics.Int8u) {
+	if a == 0 || cover == 0 {
+		return
+	}
+	BlendGrayAlpha(dst, v, color.Gray8Multiply(a, cover))
 }
 
-// BlendPixAlpha blends a pixel with the given alpha value
-func (b BlenderGray[C]) BlendPixAlpha(dst *basics.Int8u, cv, alpha basics.Int8u) {
-	*dst = color.Gray8Lerp(*dst, cv, alpha)
+// BlendGrayAlpha: dst = dst + (v - dst) * a
+func BlendGrayAlpha(dst *basics.Int8u, v, a basics.Int8u) {
+	*dst = color.Gray8Lerp(*dst, v, a)
 }
 
-// BlenderGrayPre implements premultiplied blending for grayscale colors
-type BlenderGrayPre[C any] struct{}
+////////////////////////////////////////////////////////////////////////////////
+// Premultiplied grayscale -> Premultiplied destination
+////////////////////////////////////////////////////////////////////////////////
 
-// BlendPix blends a pixel using premultiplied alpha compositing
-func (b BlenderGrayPre[C]) BlendPix(dst *basics.Int8u, cv, alpha basics.Int8u, cover basics.Int8u) {
-	b.BlendPixAlpha(dst, color.Gray8Multiply(cv, cover), color.Gray8Multiply(alpha, cover))
+type BlenderGrayPre[S color.Space] struct{}
+
+// BlendPix: premultiplied compositing; coverage scales both v and a.
+// dst = prelerp(dst, v*cover, a*cover)
+func (BlenderGrayPre[S]) BlendPix(dst *basics.Int8u, v, a, cover basics.Int8u) {
+	if a == 0 || cover == 0 {
+		return
+	}
+	BlendGrayPreAlpha(dst, color.Gray8Multiply(v, cover), color.Gray8Multiply(a, cover))
 }
 
-// BlendPixAlpha blends a pixel with premultiplied values
-func (b BlenderGrayPre[C]) BlendPixAlpha(dst *basics.Int8u, cv, alpha basics.Int8u) {
-	*dst = color.Gray8Prelerp(*dst, cv, alpha)
+// BlendGrayPreAlpha: dst = dst + v - dst*a
+func BlendGrayPreAlpha(dst *basics.Int8u, v, a basics.Int8u) {
+	*dst = color.Gray8Prelerp(*dst, v, a)
 }
 
-// Concrete blender types for common grayscale formats
+////////////////////////////////////////////////////////////////////////////////
+// Convenience aliases (concrete, non-generic)
+////////////////////////////////////////////////////////////////////////////////
+
 type (
-	BlenderGray8        = BlenderGray[color.Gray8Linear]
-	BlenderGray8SRGB    = BlenderGray[color.Gray8SRGB]
-	BlenderGray8Pre     = BlenderGrayPre[color.Gray8Linear]
-	BlenderGray8PreSRGB = BlenderGrayPre[color.Gray8SRGB]
+	BlenderGray8        = BlenderGray[color.Linear]
+	BlenderGray8SRGB    = BlenderGray[color.SRGB]
+	BlenderGray8Pre     = BlenderGrayPre[color.Linear]
+	BlenderGray8PreSRGB = BlenderGrayPre[color.SRGB]
 )
 
-// Helper functions for blending operations
+////////////////////////////////////////////////////////////////////////////////
+// Helpers for single pixels and spans (generic over S)
+////////////////////////////////////////////////////////////////////////////////
 
-// BlendGrayPixel blends a single grayscale pixel
-func BlendGrayPixel[C any](dst *basics.Int8u, src color.Gray8[C], cover basics.Int8u, blender BlenderGray[C]) {
-	if src.A > 0 {
-		blender.BlendPix(dst, src.V, src.A, cover)
+// BlendGrayPixel blends one non-premultiplied grayscale pixel.
+func BlendGrayPixel[S color.Space](dst *basics.Int8u, src color.Gray8[S], cover basics.Int8u, b GrayBlender[S]) {
+	if src.A != 0 && cover != 0 {
+		b.BlendPix(dst, src.V, src.A, cover)
 	}
 }
 
-// BlendGrayPixelPre blends a single premultiplied grayscale pixel
-func BlendGrayPixelPre[C any](dst *basics.Int8u, src color.Gray8[C], cover basics.Int8u, blender BlenderGrayPre[C]) {
-	if src.A > 0 {
-		blender.BlendPix(dst, src.V, src.A, cover)
+// BlendGrayPixelPre blends one premultiplied grayscale pixel.
+// (Kept for API clarity; you can also call BlendGrayPixel with a Pre blender.)
+func BlendGrayPixelPre[S color.Space](dst *basics.Int8u, src color.Gray8[S], cover basics.Int8u, b BlenderGrayPre[S]) {
+	if src.A != 0 && cover != 0 {
+		b.BlendPix(dst, src.V, src.A, cover)
 	}
 }
 
-// CopyGrayPixel copies a grayscale pixel (no blending)
-func CopyGrayPixel[C any](dst *basics.Int8u, src color.Gray8[C]) {
+// CopyGrayPixel copies a grayscale value (no blending).
+func CopyGrayPixel[S color.Space](dst *basics.Int8u, src color.Gray8[S]) {
 	*dst = src.V
 }
 
-// BlendGrayHline blends a horizontal line of grayscale pixels
-func BlendGrayHline[C any](dst []basics.Int8u, x, len int, src color.Gray8[C], covers []basics.Int8u, blender BlenderGray[C]) {
-	if src.A == 0 {
+// BlendGrayHline blends a horizontal run with optional per-pixel coverage.
+// Works with both plain and premultiplied variants via the interface.
+func BlendGrayHline[S color.Space](dst []basics.Int8u, x, n int, src color.Gray8[S], covers []basics.Int8u, b GrayBlender[S]) {
+	if n <= 0 || src.A == 0 {
 		return
 	}
-
 	if covers == nil {
-		// Solid color - no coverage array
-		for i := 0; i < len; i++ {
-			blender.BlendPixAlpha(&dst[x+i], src.V, src.A)
+		// Uniform full cover
+		for i := 0; i < n; i++ {
+			b.BlendPix(&dst[x+i], src.V, src.A, 255)
 		}
-	} else {
-		// Variable coverage
-		for i := 0; i < len; i++ {
-			if covers[i] > 0 {
-				blender.BlendPix(&dst[x+i], src.V, src.A, covers[i])
-			}
+		return
+	}
+	// Variable coverage
+	for i := 0; i < n; i++ {
+		if cv := covers[i]; cv != 0 {
+			b.BlendPix(&dst[x+i], src.V, src.A, cv)
 		}
 	}
 }
 
-// BlendGrayHlinePre blends a horizontal line of premultiplied grayscale pixels
-func BlendGrayHlinePre[C any](dst []basics.Int8u, x, len int, src color.Gray8[C], covers []basics.Int8u, blender BlenderGrayPre[C]) {
-	if src.A == 0 {
+// BlendGrayHlinePre blends a premultiplied run (explicit helper).
+func BlendGrayHlinePre[S color.Space](dst []basics.Int8u, x, n int, src color.Gray8[S], covers []basics.Int8u, b BlenderGrayPre[S]) {
+	if n <= 0 || src.A == 0 {
 		return
 	}
-
 	if covers == nil {
-		// Solid color - no coverage array
-		for i := 0; i < len; i++ {
-			blender.BlendPixAlpha(&dst[x+i], src.V, src.A)
+		for i := 0; i < n; i++ {
+			b.BlendPix(&dst[x+i], src.V, src.A, 255)
 		}
-	} else {
-		// Variable coverage
-		for i := 0; i < len; i++ {
-			if covers[i] > 0 {
-				blender.BlendPix(&dst[x+i], src.V, src.A, covers[i])
-			}
+		return
+	}
+	for i := 0; i < n; i++ {
+		if cv := covers[i]; cv != 0 {
+			b.BlendPix(&dst[x+i], src.V, src.A, cv)
 		}
 	}
 }
 
-// CopyGrayHline copies a horizontal line of grayscale pixels
-func CopyGrayHline[C any](dst []basics.Int8u, x, len int, src color.Gray8[C]) {
-	for i := 0; i < len; i++ {
+// CopyGrayHline copies a horizontal run (no blending).
+func CopyGrayHline[S color.Space](dst []basics.Int8u, x, n int, src color.Gray8[S]) {
+	for i := 0; i < n; i++ {
 		dst[x+i] = src.V
 	}
 }
 
-// FillGraySpan fills a span with a solid grayscale color
-func FillGraySpan[C any](dst []basics.Int8u, x, len int, src color.Gray8[C]) {
-	for i := 0; i < len; i++ {
-		dst[x+i] = src.V
-	}
+// FillGraySpan is an alias for CopyGrayHline (semantic sugar).
+func FillGraySpan[S color.Space](dst []basics.Int8u, x, n int, src color.Gray8[S]) {
+	CopyGrayHline[S](dst, x, n, src)
 }

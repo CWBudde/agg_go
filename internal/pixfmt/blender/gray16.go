@@ -5,54 +5,82 @@ import (
 	"agg_go/internal/color"
 )
 
-// Gray16Blender provides the interface for 16-bit grayscale blending operations
-type Gray16Blender interface {
-	BlendPix(dst *basics.Int16u, cv, alpha, cover basics.Int16u)
+////////////////////////////////////////////////////////////////////////////////
+// Interfaces
+////////////////////////////////////////////////////////////////////////////////
+
+// Gray16Blender blends 16-bit grayscale pixels in color space S.
+// (Grayscale has no channel order; we only carry S.)
+type Gray16Blender[S color.Space] interface {
+	// v = source value (plain or premultiplied depending on impl)
+	// a = source alpha (plain or premultiplied depending on impl)
+	// cover scales contribution in [0..65535]
+	BlendPix(dst *basics.Int16u, v, a, cover basics.Int16u)
 }
 
-// BlenderGray16 implements non-premultiplied blending for 16-bit grayscale colors
-type BlenderGray16[C any] struct{}
+////////////////////////////////////////////////////////////////////////////////
+// Non-premultiplied grayscale -> Non-premultiplied destination
+////////////////////////////////////////////////////////////////////////////////
 
-// BlendPix blends a pixel using non-premultiplied alpha compositing
-func (b BlenderGray16[C]) BlendPix(dst *basics.Int16u, cv, alpha, cover basics.Int16u) {
-	b.BlendPixAlpha(dst, cv, Gray16Multiply(alpha, cover))
+type BlenderGray16[S color.Space] struct{}
+
+// BlendPix: straight (non-premultiplied) alpha compositing with coverage.
+// a' = a * cover (fixed-point), then dst = lerp(dst, v, a').
+func (BlenderGray16[S]) BlendPix(dst *basics.Int16u, v, a, cover basics.Int16u) {
+	if a == 0 || cover == 0 {
+		return
+	}
+	BlendGray16Alpha(dst, v, Gray16Multiply(a, cover))
 }
 
-// BlendPixAlpha blends a pixel with the given alpha value
-func (b BlenderGray16[C]) BlendPixAlpha(dst *basics.Int16u, cv, alpha basics.Int16u) {
-	*dst = Gray16Lerp(*dst, cv, alpha)
+// BlendGray16Alpha performs straight alpha blend: dst = dst + (v - dst) * a
+func BlendGray16Alpha(dst *basics.Int16u, v, a basics.Int16u) {
+	*dst = Gray16Lerp(*dst, v, a)
 }
 
-// BlenderGray16Pre implements premultiplied blending for 16-bit grayscale colors
-type BlenderGray16Pre[C any] struct{}
+////////////////////////////////////////////////////////////////////////////////
+// Premultiplied grayscale -> Premultiplied destination
+////////////////////////////////////////////////////////////////////////////////
 
-// BlendPix blends a pixel using premultiplied alpha compositing
-func (b BlenderGray16Pre[C]) BlendPix(dst *basics.Int16u, cv, alpha, cover basics.Int16u) {
-	b.BlendPixAlpha(dst, Gray16Multiply(cv, cover), Gray16Multiply(alpha, cover))
+type BlenderGray16Pre[S color.Space] struct{}
+
+// BlendPix: premultiplied compositing; coverage scales both v and a.
+// dst = prelerp(dst, v*cover, a*cover)
+func (BlenderGray16Pre[S]) BlendPix(dst *basics.Int16u, v, a, cover basics.Int16u) {
+	if a == 0 || cover == 0 {
+		return
+	}
+	BlendGray16PreAlpha(dst, Gray16Multiply(v, cover), Gray16Multiply(a, cover))
 }
 
-// BlendPixAlpha blends a pixel with premultiplied values
-func (b BlenderGray16Pre[C]) BlendPixAlpha(dst *basics.Int16u, cv, alpha basics.Int16u) {
-	*dst = Gray16Prelerp(*dst, cv, alpha)
+// BlendGray16PreAlpha performs premultiplied blend: dst = dst + v - dst*a
+func BlendGray16PreAlpha(dst *basics.Int16u, v, a basics.Int16u) {
+	*dst = Gray16Prelerp(*dst, v, a)
 }
 
-// Concrete blender types for common 16-bit grayscale formats
+////////////////////////////////////////////////////////////////////////////////
+/* Convenience aliases (concrete, non-generic) */
+////////////////////////////////////////////////////////////////////////////////
+
 type (
-	BlenderGray16Linear    = BlenderGray16[color.Gray16Linear]
-	BlenderGray16SRGB      = BlenderGray16[color.Gray16SRGB]
-	BlenderGray16PreLinear = BlenderGray16Pre[color.Gray16Linear]
-	BlenderGray16PreSRGB   = BlenderGray16Pre[color.Gray16SRGB]
+	BlenderGray16Linear    = BlenderGray16[color.Linear]
+	BlenderGray16SRGB      = BlenderGray16[color.SRGB]
+	BlenderGray16PreLinear = BlenderGray16Pre[color.Linear]
+	BlenderGray16PreSRGB   = BlenderGray16Pre[color.SRGB]
 )
 
-// Gray16 arithmetic operations
+////////////////////////////////////////////////////////////////////////////////
+// Fixed-point arithmetic helpers (unchanged semantics)
+////////////////////////////////////////////////////////////////////////////////
 
-// Gray16Multiply performs fixed-point multiplication for 16-bit values
+// Gray16Multiply performs fixed-point multiplication for 16-bit values.
+// Same “(x*65535 + 0x8000) / 65535” rounded behavior as your original.
 func Gray16Multiply(a, b basics.Int16u) basics.Int16u {
 	t := uint64(a)*uint64(b) + 0x8000
 	return basics.Int16u(((t >> 16) + t) >> 16)
 }
 
-// Gray16Lerp performs linear interpolation for 16-bit values
+// Gray16Lerp: straight interpolation p + (q - p)*a with rounding parity guard
 func Gray16Lerp(p, q, a basics.Int16u) basics.Int16u {
 	var t int64
 	if p > q {
@@ -63,84 +91,82 @@ func Gray16Lerp(p, q, a basics.Int16u) basics.Int16u {
 	return basics.Int16u(int64(p) + (((t >> 16) + t) >> 16))
 }
 
-// Gray16Prelerp performs premultiplied linear interpolation for 16-bit values
+// Gray16Prelerp: premultiplied interpolation p + q - p*a
 func Gray16Prelerp(p, q, a basics.Int16u) basics.Int16u {
 	return p + q - Gray16Multiply(p, a)
 }
 
-// Helper functions for blending operations
+////////////////////////////////////////////////////////////////////////////////
+// Helpers for single pixels and spans (generic over S color.Space)
+////////////////////////////////////////////////////////////////////////////////
 
-// BlendGray16Pixel blends a single 16-bit grayscale pixel
-func BlendGray16Pixel[C any](dst *basics.Int16u, src color.Gray16[C], cover basics.Int16u, blender BlenderGray16[C]) {
-	if src.A > 0 {
-		blender.BlendPix(dst, src.V, src.A, cover)
+// BlendGray16Pixel blends one non-premultiplied grayscale pixel.
+func BlendGray16Pixel[S color.Space](dst *basics.Int16u, src color.Gray16[S], cover basics.Int16u, b Gray16Blender[S]) {
+	if src.A != 0 && cover != 0 {
+		b.BlendPix(dst, src.V, src.A, cover)
 	}
 }
 
-// BlendGray16PixelPre blends a single premultiplied 16-bit grayscale pixel
-func BlendGray16PixelPre[C any](dst *basics.Int16u, src color.Gray16[C], cover basics.Int16u, blender BlenderGray16Pre[C]) {
-	if src.A > 0 {
-		blender.BlendPix(dst, src.V, src.A, cover)
+// BlendGray16PixelPre blends one premultiplied grayscale pixel.
+// (Kept for API clarity; you can also call BlendGray16Pixel with a Pre blender.)
+func BlendGray16PixelPre[S color.Space](dst *basics.Int16u, src color.Gray16[S], cover basics.Int16u, b BlenderGray16Pre[S]) {
+	if src.A != 0 && cover != 0 {
+		b.BlendPix(dst, src.V, src.A, cover)
 	}
 }
 
-// CopyGray16Pixel copies a 16-bit grayscale pixel (no blending)
-func CopyGray16Pixel[C any](dst *basics.Int16u, src color.Gray16[C]) {
+// CopyGray16Pixel copies a grayscale value (no blending).
+func CopyGray16Pixel[S color.Space](dst *basics.Int16u, src color.Gray16[S]) {
 	*dst = src.V
 }
 
-// BlendGray16Hline blends a horizontal line of 16-bit grayscale pixels
-func BlendGray16Hline[C any](dst []basics.Int16u, x, len int, src color.Gray16[C], covers []basics.Int16u, blender BlenderGray16[C]) {
-	if src.A == 0 {
+// BlendGray16Hline blends a horizontal run with optional per-pixel coverage.
+// Works with both plain and premultiplied variants via the interface.
+func BlendGray16Hline[S color.Space](dst []basics.Int16u, x, n int, src color.Gray16[S], covers []basics.Int16u, b Gray16Blender[S]) {
+	if n <= 0 || src.A == 0 {
 		return
 	}
-
 	if covers == nil {
-		// Solid color - no coverage array
-		for i := 0; i < len; i++ {
-			blender.BlendPixAlpha(&dst[x+i], src.V, src.A)
+		// Uniform full cover
+		for i := 0; i < n; i++ {
+			b.BlendPix(&dst[x+i], src.V, src.A, 0xFFFF)
 		}
-	} else {
-		// Variable coverage
-		for i := 0; i < len; i++ {
-			if covers[i] > 0 {
-				blender.BlendPix(&dst[x+i], src.V, src.A, covers[i])
-			}
+		return
+	}
+	// Variable coverage
+	for i := 0; i < n; i++ {
+		if cv := covers[i]; cv != 0 {
+			b.BlendPix(&dst[x+i], src.V, src.A, cv)
 		}
 	}
 }
 
-// BlendGray16HlinePre blends a horizontal line of premultiplied 16-bit grayscale pixels
-func BlendGray16HlinePre[C any](dst []basics.Int16u, x, len int, src color.Gray16[C], covers []basics.Int16u, blender BlenderGray16Pre[C]) {
-	if src.A == 0 {
+// BlendGray16HlinePre blends a premultiplied run (explicit helper).
+func BlendGray16HlinePre[S color.Space](dst []basics.Int16u, x, n int, src color.Gray16[S], covers []basics.Int16u, b BlenderGray16Pre[S]) {
+	if n <= 0 || src.A == 0 {
 		return
 	}
-
 	if covers == nil {
-		// Solid color - no coverage array
-		for i := 0; i < len; i++ {
-			blender.BlendPixAlpha(&dst[x+i], src.V, src.A)
+		for i := 0; i < n; i++ {
+			b.BlendPix(&dst[x+i], src.V, src.A, 0xFFFF)
 		}
-	} else {
-		// Variable coverage
-		for i := 0; i < len; i++ {
-			if covers[i] > 0 {
-				blender.BlendPix(&dst[x+i], src.V, src.A, covers[i])
-			}
+		return
+	}
+	for i := 0; i < n; i++ {
+		if cv := covers[i]; cv != 0 {
+			b.BlendPix(&dst[x+i], src.V, src.A, cv)
 		}
 	}
 }
 
-// CopyGray16Hline copies a horizontal line of 16-bit grayscale pixels
-func CopyGray16Hline[C any](dst []basics.Int16u, x, len int, src color.Gray16[C]) {
-	for i := 0; i < len; i++ {
+// CopyGray16Hline copies a horizontal run (no blending).
+func CopyGray16Hline[S color.Space](dst []basics.Int16u, x, n int, src color.Gray16[S]) {
+	for i := 0; i < n; i++ {
 		dst[x+i] = src.V
 	}
 }
 
-// FillGray16Span fills a span with a solid 16-bit grayscale color
-func FillGray16Span[C any](dst []basics.Int16u, x, len int, src color.Gray16[C]) {
-	for i := 0; i < len; i++ {
-		dst[x+i] = src.V
-	}
+// FillGray16Span is an alias for CopyGray16Hline (semantic sugar).
+func FillGray16Span[S color.Space](dst []basics.Int16u, x, n int, src color.Gray16[S]) {
+	CopyGray16Hline[S](dst, x, n, src)
 }

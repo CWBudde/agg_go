@@ -22,12 +22,6 @@ var (
 	OrderBGRA = ColorOrder{R: 2, G: 1, B: 0, A: 3}
 )
 
-// Colorspace tags for type safety
-type (
-	Linear struct{}
-	SRGB   struct{}
-)
-
 // GammaLUT represents a gamma lookup table interface
 // This is defined here to avoid circular imports with pixfmt
 type GammaLUT interface {

@@ -29,7 +29,7 @@ func TestPixFmtRGBA32Basic(t *testing.T) {
 	rbuf := buffer.NewRenderingBufferU8WithData(buf, width, height, width*4)
 
 	// Create pixel format
-	pf := NewPixFmtRGBA32(rbuf)
+	pf := NewPixFmtRGBA32[color.Linear](rbuf)
 
 	// Test basic properties
 	if pf.Width() != width {
@@ -47,7 +47,7 @@ func TestPixFmtRGBA32CopyPixel(t *testing.T) {
 	width, height := 10, 10
 	buf := make([]basics.Int8u, width*height*4)
 	rbuf := buffer.NewRenderingBufferU8WithData(buf, width, height, width*4)
-	pf := NewPixFmtRGBA32(rbuf)
+	pf := NewPixFmtRGBA32[color.Linear](rbuf)
 
 	// Test copy pixel
 	rgba := color.NewRGBA8[color.Linear](128, 64, 192, 255)
@@ -65,7 +65,7 @@ func TestPixFmtRGBA32BlendPixel(t *testing.T) {
 	width, height := 10, 10
 	buf := make([]basics.Int8u, width*height*4)
 	rbuf := buffer.NewRenderingBufferU8WithData(buf, width, height, width*4)
-	pf := NewPixFmtRGBA32(rbuf)
+	pf := NewPixFmtRGBA32[color.Linear](rbuf)
 
 	// Set background
 	bg := color.NewRGBA8[color.Linear](100, 100, 100, 255)
@@ -92,7 +92,7 @@ func TestPixFmtRGBA32Lines(t *testing.T) {
 	width, height := 20, 20
 	buf := make([]basics.Int8u, width*height*4)
 	rbuf := buffer.NewRenderingBufferU8WithData(buf, width, height, width*4)
-	pf := NewPixFmtRGBA32(rbuf)
+	pf := NewPixFmtRGBA32[color.Linear](rbuf)
 
 	rgba := color.NewRGBA8[color.Linear](128, 64, 192, 255)
 
@@ -121,7 +121,7 @@ func TestPixFmtRGBA32Rectangle(t *testing.T) {
 	width, height := 20, 20
 	buf := make([]basics.Int8u, width*height*4)
 	rbuf := buffer.NewRenderingBufferU8WithData(buf, width, height, width*4)
-	pf := NewPixFmtRGBA32(rbuf)
+	pf := NewPixFmtRGBA32[color.Linear](rbuf)
 
 	rgba := color.NewRGBA8[color.Linear](200, 100, 50, 255)
 
@@ -150,7 +150,7 @@ func TestPixFmtRGBA32Spans(t *testing.T) {
 	width, height := 20, 20
 	buf := make([]basics.Int8u, width*height*4)
 	rbuf := buffer.NewRenderingBufferU8WithData(buf, width, height, width*4)
-	pf := NewPixFmtRGBA32(rbuf)
+	pf := NewPixFmtRGBA32[color.Linear](rbuf)
 
 	rgba := color.NewRGBA8[color.Linear](150, 200, 100, 255)
 
@@ -180,7 +180,7 @@ func TestPixFmtRGBA32Clear(t *testing.T) {
 	}
 
 	rbuf := buffer.NewRenderingBufferU8WithData(buf, width, height, width*4)
-	pf := NewPixFmtRGBA32(rbuf)
+	pf := NewPixFmtRGBA32[color.Linear](rbuf)
 
 	// Clear with a specific color
 	clearColor := color.NewRGBA8[color.Linear](50, 100, 150, 200)
@@ -202,7 +202,7 @@ func TestPixFmtRGBA32Bounds(t *testing.T) {
 	width, height := 10, 10
 	buf := make([]basics.Int8u, width*height*4)
 	rbuf := buffer.NewRenderingBufferU8WithData(buf, width, height, width*4)
-	pf := NewPixFmtRGBA32(rbuf)
+	pf := NewPixFmtRGBA32[color.Linear](rbuf)
 
 	rgba := color.NewRGBA8[color.Linear](128, 128, 128, 255)
 
@@ -226,10 +226,10 @@ func TestPixFmtRGBA32ConcreteTypes(t *testing.T) {
 	rbuf := buffer.NewRenderingBufferU8WithData(buf, width, height, width*4)
 
 	// Test that all concrete types can be created
-	_ = NewPixFmtRGBA32(rbuf)
-	_ = NewPixFmtARGB32(rbuf)
-	_ = NewPixFmtBGRA32(rbuf)
-	_ = NewPixFmtABGR32(rbuf)
+	_ = NewPixFmtRGBA32[color.Linear](rbuf)
+	_ = NewPixFmtARGB32[color.Linear](rbuf)
+	_ = NewPixFmtBGRA32[color.Linear](rbuf)
+	_ = NewPixFmtABGR32[color.Linear](rbuf)
 
 	// These should compile without errors
 }

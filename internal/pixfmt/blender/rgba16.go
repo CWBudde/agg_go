@@ -3,149 +3,275 @@ package blender
 import (
 	"agg_go/internal/basics"
 	"agg_go/internal/color"
+	"agg_go/internal/order"
 )
 
-// BlenderRGBA16 implements standard RGBA blending for 16-bit values with byte order support
-type BlenderRGBA16[CS any, O any] struct{}
-
-// BlendPix blends a 16-bit RGBA pixel respecting byte order
-func (bl BlenderRGBA16[CS, O]) BlendPix(dst []basics.Int8u, r, g, b, a, cover basics.Int16u) {
-	alpha := color.RGBA16MultCover(a, cover)
-	if alpha > 0 {
-		order := GetColorOrder[O]()
-
-		// Read destination as 16-bit values based on order
-		dr := basics.Int16u(dst[order.R*2]) | (basics.Int16u(dst[order.R*2+1]) << 8)
-		dg := basics.Int16u(dst[order.G*2]) | (basics.Int16u(dst[order.G*2+1]) << 8)
-		db := basics.Int16u(dst[order.B*2]) | (basics.Int16u(dst[order.B*2+1]) << 8)
-		da := basics.Int16u(dst[order.A*2]) | (basics.Int16u(dst[order.A*2+1]) << 8)
-
-		// Blend
-		dr = color.RGBA16Lerp(dr, r, alpha)
-		dg = color.RGBA16Lerp(dg, g, alpha)
-		db = color.RGBA16Lerp(db, b, alpha)
-		da = color.RGBA16Prelerp(da, alpha, alpha)
-
-		// Write back as little-endian bytes based on order
-		dst[order.R*2] = basics.Int8u(dr)
-		dst[order.R*2+1] = basics.Int8u(dr >> 8)
-		dst[order.G*2] = basics.Int8u(dg)
-		dst[order.G*2+1] = basics.Int8u(dg >> 8)
-		dst[order.B*2] = basics.Int8u(db)
-		dst[order.B*2+1] = basics.Int8u(db >> 8)
-		dst[order.A*2] = basics.Int8u(da)
-		dst[order.A*2+1] = basics.Int8u(da >> 8)
-	}
+// RGBABlender16 is the 16-bit counterpart to RGBABlender for pixfmt usage.
+type RGBABlender16[S color.Space, O order.RGBAOrder] interface {
+	BlendPix(dst []basics.Int8u, r, g, b, a, cover basics.Int16u)
+	SetPlain(dst []basics.Int8u, r, g, b, a basics.Int16u)
+	GetPlain(src []basics.Int8u) (r, g, b, a basics.Int16u)
 }
 
-// BlenderRGBA16Pre implements premultiplied RGBA blending for 16-bit values with byte order support
-type BlenderRGBA16Pre[CS any, O any] struct{}
+////////////////////////////////////////////////////////////////////////////////
+// Plain (non-premultiplied) source -> Premultiplied destination (16-bit)
+////////////////////////////////////////////////////////////////////////////////
 
-// BlendPix blends a premultiplied 16-bit RGBA pixel respecting byte order
-func (bl BlenderRGBA16Pre[CS, O]) BlendPix(dst []basics.Int8u, r, g, b, a, cover basics.Int16u) {
-	cr := color.RGBA16MultCover(r, cover)
-	cg := color.RGBA16MultCover(g, cover)
-	cb := color.RGBA16MultCover(b, cover)
-	ca := color.RGBA16MultCover(a, cover)
+// BlenderRGBA16 blends *plain* 16-bit source into a premultiplied destination buffer.
+// Analogous to AGG's blender_rgba for 16-bit channels.
+type BlenderRGBA16[S color.Space, O order.RGBAOrder] struct{}
 
-	order := GetColorOrder[O]()
+// BlendPix blends a non-premultiplied RGBA16 source into a premultiplied buffer.
+// Alpha is scaled by coverage; channels use lerp; alpha uses prelerp.
+func (BlenderRGBA16[S, O]) BlendPix(dst []basics.Int8u, r, g, b, a, cover basics.Int16u) {
+	alpha := color.RGBA16MultCover(a, cover)
+	if alpha == 0 {
+		return
+	}
+	var o O
 
-	// Read destination as 16-bit values based on order
-	dr := basics.Int16u(dst[order.R*2]) | (basics.Int16u(dst[order.R*2+1]) << 8)
-	dg := basics.Int16u(dst[order.G*2]) | (basics.Int16u(dst[order.G*2+1]) << 8)
-	db := basics.Int16u(dst[order.B*2]) | (basics.Int16u(dst[order.B*2+1]) << 8)
-	da := basics.Int16u(dst[order.A*2]) | (basics.Int16u(dst[order.A*2+1]) << 8)
+	// Load dst components (little-endian) in order O
+	dr := basics.Int16u(dst[o.IdxR()*2]) | basics.Int16u(dst[o.IdxR()*2+1])<<8
+	dg := basics.Int16u(dst[o.IdxG()*2]) | basics.Int16u(dst[o.IdxG()*2+1])<<8
+	db := basics.Int16u(dst[o.IdxB()*2]) | basics.Int16u(dst[o.IdxB()*2+1])<<8
+	da := basics.Int16u(dst[o.IdxA()*2]) | basics.Int16u(dst[o.IdxA()*2+1])<<8
 
 	// Blend
-	dr = color.RGBA16Prelerp(dr, cr, ca)
-	dg = color.RGBA16Prelerp(dg, cg, ca)
-	db = color.RGBA16Prelerp(db, cb, ca)
-	da = color.RGBA16Prelerp(da, ca, ca)
+	dr = color.RGBA16Lerp(dr, r, alpha)
+	dg = color.RGBA16Lerp(dg, g, alpha)
+	db = color.RGBA16Lerp(db, b, alpha)
+	da = color.RGBA16Prelerp(da, alpha, alpha)
 
-	// Write back as little-endian bytes based on order
-	dst[order.R*2] = basics.Int8u(dr)
-	dst[order.R*2+1] = basics.Int8u(dr >> 8)
-	dst[order.G*2] = basics.Int8u(dg)
-	dst[order.G*2+1] = basics.Int8u(dg >> 8)
-	dst[order.B*2] = basics.Int8u(db)
-	dst[order.B*2+1] = basics.Int8u(db >> 8)
-	dst[order.A*2] = basics.Int8u(da)
-	dst[order.A*2+1] = basics.Int8u(da >> 8)
+	// Store back (little-endian)
+	dst[o.IdxR()*2+0], dst[o.IdxR()*2+1] = basics.Int8u(dr), basics.Int8u(dr>>8)
+	dst[o.IdxG()*2+0], dst[o.IdxG()*2+1] = basics.Int8u(dg), basics.Int8u(dg>>8)
+	dst[o.IdxB()*2+0], dst[o.IdxB()*2+1] = basics.Int8u(db), basics.Int8u(db>>8)
+	dst[o.IdxA()*2+0], dst[o.IdxA()*2+1] = basics.Int8u(da), basics.Int8u(da>>8)
 }
 
-// BlenderRGBA16Plain implements plain RGBA blending for 16-bit values with byte order support
-type BlenderRGBA16Plain[CS any, O any] struct{}
+func (BlenderRGBA16[S, O]) SetPlain(dst []basics.Int8u, r, g, b, a basics.Int16u) {
+	// store PREMULTIPLIED to the framebuffer
+	var o O
+	pr := color.RGBA16Multiply(r, a)
+	pg := color.RGBA16Multiply(g, a)
+	pb := color.RGBA16Multiply(b, a)
 
-// BlendPix blends a plain 16-bit RGBA pixel respecting byte order
-func (bl BlenderRGBA16Plain[CS, O]) BlendPix(dst []basics.Int8u, r, g, b, a, cover basics.Int16u) {
+	put16 := func(off int, v basics.Int16u) {
+		dst[off+0] = basics.Int8u(v)
+		dst[off+1] = basics.Int8u(v >> 8)
+	}
+	put16(o.IdxR()*2, pr)
+	put16(o.IdxG()*2, pg)
+	put16(o.IdxB()*2, pb)
+	put16(o.IdxA()*2, a)
+}
+
+func (BlenderRGBA16[S, O]) GetPlain(src []basics.Int8u) (r, g, b, a basics.Int16u) {
+	// read PREMULTIPLIED from the framebuffer, return PLAIN
+	var o O
+	get16 := func(off int) basics.Int16u {
+		return basics.Int16u(src[off]) | basics.Int16u(src[off+1])<<8
+	}
+	pr := get16(o.IdxR() * 2)
+	pg := get16(o.IdxG() * 2)
+	pb := get16(o.IdxB() * 2)
+	a = get16(o.IdxA() * 2)
+
+	if a != 0 {
+		r = demul16(pr, a)
+		g = demul16(pg, a)
+		b = demul16(pb, a)
+	} else {
+		r, g, b = 0, 0, 0
+	}
+	return
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Premultiplied source -> Premultiplied destination (16-bit)
+////////////////////////////////////////////////////////////////////////////////
+
+// BlenderRGBA16Pre blends *premultiplied* 16-bit source into a premultiplied destination.
+// Analogous to AGG's blender_rgba_pre for 16-bit channels.
+type BlenderRGBA16Pre[S color.Space, O order.RGBAOrder] struct{}
+
+// BlendPix blends premultiplied RGBA16 into premultiplied buffer.
+// Coverage scales all premultiplied components; channels & alpha use prelerp.
+func (BlenderRGBA16Pre[S, O]) BlendPix(dst []basics.Int8u, r, g, b, a, cover basics.Int16u) {
+	// Scale by coverage only when not full mask
+	if cover != 0xFFFF {
+		r = color.RGBA16MultCover(r, cover)
+		g = color.RGBA16MultCover(g, cover)
+		b = color.RGBA16MultCover(b, cover)
+		a = color.RGBA16MultCover(a, cover)
+	}
+	// Early-out when the source contributes nothing
+	if a|r|g|b == 0 {
+		return
+	}
+	var o O
+
+	// Load dst (little-endian)
+	dr := basics.Int16u(dst[o.IdxR()*2]) | basics.Int16u(dst[o.IdxR()*2+1])<<8
+	dg := basics.Int16u(dst[o.IdxG()*2]) | basics.Int16u(dst[o.IdxG()*2+1])<<8
+	db := basics.Int16u(dst[o.IdxB()*2]) | basics.Int16u(dst[o.IdxB()*2+1])<<8
+	da := basics.Int16u(dst[o.IdxA()*2]) | basics.Int16u(dst[o.IdxA()*2+1])<<8
+
+	// Blend in premultiplied space
+	dr = color.RGBA16Prelerp(dr, r, a)
+	dg = color.RGBA16Prelerp(dg, g, a)
+	db = color.RGBA16Prelerp(db, b, a)
+	da = color.RGBA16Prelerp(da, a, a)
+
+	// Store (little-endian)
+	dst[o.IdxR()*2+0], dst[o.IdxR()*2+1] = basics.Int8u(dr), basics.Int8u(dr>>8)
+	dst[o.IdxG()*2+0], dst[o.IdxG()*2+1] = basics.Int8u(dg), basics.Int8u(dg>>8)
+	dst[o.IdxB()*2+0], dst[o.IdxB()*2+1] = basics.Int8u(db), basics.Int8u(db>>8)
+	dst[o.IdxA()*2+0], dst[o.IdxA()*2+1] = basics.Int8u(da), basics.Int8u(da>>8)
+}
+
+func (BlenderRGBA16Pre[S, O]) SetPlain(dst []basics.Int8u, r, g, b, a basics.Int16u) {
+	BlenderRGBA16[S, O]{}.SetPlain(dst, r, g, b, a) // premultiply on write
+}
+
+func (BlenderRGBA16Pre[S, O]) GetPlain(src []basics.Int8u) (r, g, b, a basics.Int16u) {
+	return BlenderRGBA16[S, O]{}.GetPlain(src) // demultiply on read
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Plain (non-premultiplied) source -> Plain destination (16-bit)
+////////////////////////////////////////////////////////////////////////////////
+
+// BlenderRGBA16Plain blends *plain* 16-bit source into a *plain* destination.
+// It mirrors AGG's blender_rgba_plain: premultiply dst → blend → demultiply.
+type BlenderRGBA16Plain[S color.Space, O order.RGBAOrder] struct{}
+
+// BlendPix blends plain src into plain dst using premultiplied math internally.
+func (BlenderRGBA16Plain[S, O]) BlendPix(dst []basics.Int8u, r, g, b, a, cover basics.Int16u) {
 	alpha := color.RGBA16MultCover(a, cover)
-	if alpha > 0 {
-		order := GetColorOrder[O]()
-
-		// Read destination as 16-bit values based on order
-		dr := basics.Int16u(dst[order.R*2]) | (basics.Int16u(dst[order.R*2+1]) << 8)
-		dg := basics.Int16u(dst[order.G*2]) | (basics.Int16u(dst[order.G*2+1]) << 8)
-		db := basics.Int16u(dst[order.B*2]) | (basics.Int16u(dst[order.B*2+1]) << 8)
-		da := basics.Int16u(dst[order.A*2]) | (basics.Int16u(dst[order.A*2+1]) << 8)
-
-		// Premultiply destination for calculation
-		pdr := color.RGBA16Multiply(dr, da)
-		pdg := color.RGBA16Multiply(dg, da)
-		pdb := color.RGBA16Multiply(db, da)
-
-		// Blend in premultiplied space
-		pdr = color.RGBA16Lerp(pdr, r, alpha)
-		pdg = color.RGBA16Lerp(pdg, g, alpha)
-		pdb = color.RGBA16Lerp(pdb, b, alpha)
-		da = color.RGBA16Prelerp(da, alpha, alpha)
-
-		// Demultiply result back to plain space
-		if da > 0 {
-			dr = basics.Int16u((uint32(pdr)*65535 + uint32(da)/2) / uint32(da))
-			dg = basics.Int16u((uint32(pdg)*65535 + uint32(da)/2) / uint32(da))
-			db = basics.Int16u((uint32(pdb)*65535 + uint32(da)/2) / uint32(da))
-		} else {
-			dr, dg, db = 0, 0, 0
-		}
-
-		// Write back as little-endian bytes based on order
-		dst[order.R*2] = basics.Int8u(dr)
-		dst[order.R*2+1] = basics.Int8u(dr >> 8)
-		dst[order.G*2] = basics.Int8u(dg)
-		dst[order.G*2+1] = basics.Int8u(dg >> 8)
-		dst[order.B*2] = basics.Int8u(db)
-		dst[order.B*2+1] = basics.Int8u(db >> 8)
-		dst[order.A*2] = basics.Int8u(da)
-		dst[order.A*2+1] = basics.Int8u(da >> 8)
+	if alpha == 0 {
+		return
 	}
+	var o O
+
+	// Load dst (little-endian)
+	dr := basics.Int16u(dst[o.IdxR()*2]) | basics.Int16u(dst[o.IdxR()*2+1])<<8
+	dg := basics.Int16u(dst[o.IdxG()*2]) | basics.Int16u(dst[o.IdxG()*2+1])<<8
+	db := basics.Int16u(dst[o.IdxB()*2]) | basics.Int16u(dst[o.IdxB()*2+1])<<8
+	da := basics.Int16u(dst[o.IdxA()*2]) | basics.Int16u(dst[o.IdxA()*2+1])<<8
+
+	// Premultiply destination by its alpha
+	pdr := color.RGBA16Multiply(dr, da)
+	pdg := color.RGBA16Multiply(dg, da)
+	pdb := color.RGBA16Multiply(db, da)
+
+	// Blend in premul space
+	pdr = color.RGBA16Lerp(pdr, r, alpha)
+	pdg = color.RGBA16Lerp(pdg, g, alpha)
+	pdb = color.RGBA16Lerp(pdb, b, alpha)
+	da = color.RGBA16Prelerp(da, alpha, alpha)
+
+	// Demultiply back to plain
+	if da != 0 {
+		dr = demul16(pdr, da)
+		dg = demul16(pdg, da)
+		db = demul16(pdb, da)
+	} else {
+		dr, dg, db = 0, 0, 0
+	}
+
+	// Store (little-endian)
+	dst[o.IdxR()*2+0], dst[o.IdxR()*2+1] = basics.Int8u(dr), basics.Int8u(dr>>8)
+	dst[o.IdxG()*2+0], dst[o.IdxG()*2+1] = basics.Int8u(dg), basics.Int8u(dg>>8)
+	dst[o.IdxB()*2+0], dst[o.IdxB()*2+1] = basics.Int8u(db), basics.Int8u(db>>8)
+	dst[o.IdxA()*2+0], dst[o.IdxA()*2+1] = basics.Int8u(da), basics.Int8u(da>>8)
 }
 
-// Helper function to blend a single RGBA16 pixel
-func BlendRGBA16Pixel[B interface {
-	BlendPix(dst []basics.Int8u, r, g, b, a, cover basics.Int16u)
-}](dst []basics.Int8u, src color.RGBA16[color.Linear], cover basics.Int16u, blender B) {
-	if !src.IsTransparent() {
-		blender.BlendPix(dst, src.R, src.G, src.B, src.A, cover)
+func (BlenderRGBA16Plain[S, O]) SetPlain(dst []basics.Int8u, r, g, b, a basics.Int16u) {
+	var o O
+	put16 := func(off int, v basics.Int16u) {
+		dst[off+0] = basics.Int8u(v)
+		dst[off+1] = basics.Int8u(v >> 8)
 	}
+	put16(o.IdxR()*2, r)
+	put16(o.IdxG()*2, g)
+	put16(o.IdxB()*2, b)
+	put16(o.IdxA()*2, a)
 }
 
-// Concrete 16-bit blender types for different byte orders
+func (BlenderRGBA16Plain[S, O]) GetPlain(src []basics.Int8u) (r, g, b, a basics.Int16u) {
+	var o O
+	get16 := func(off int) basics.Int16u {
+		return basics.Int16u(src[off]) | basics.Int16u(src[off+1])<<8
+	}
+	r = get16(o.IdxR() * 2)
+	g = get16(o.IdxG() * 2)
+	b = get16(o.IdxB() * 2)
+	a = get16(o.IdxA() * 2)
+	return
+}
+
+// demul16 converts a premultiplied component x back to straight: round(x * 65535 / a).
+func demul16(x, a basics.Int16u) basics.Int16u {
+	return basics.Int16u((uint32(x)*65535 + uint32(a)/2) / uint32(a))
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Helpers & concrete aliases
+////////////////////////////////////////////////////////////////////////////////
+
+// BlendRGBA16Pixel is a typed helper like the 8-bit version.
+func BlendRGBA16Pixel[B RGBABlender16[S, O], S color.Space, O order.RGBAOrder](
+	dst []basics.Int8u,
+	src color.RGBA16[S],
+	cover basics.Int16u,
+	b B,
+) {
+	if src.IsTransparent() || cover == 0 {
+		return
+	}
+	b.BlendPix(dst, src.R, src.G, src.B, src.A, cover)
+}
+
+// Common aliases (Linear space + various byte orders)
 type (
-	// Standard RGBA16 blenders with Linear color space
-	BlenderRGBA16Linear = BlenderRGBA16[color.Linear, RGBAOrder]
-	BlenderARGB16Linear = BlenderRGBA16[color.Linear, ARGBOrder]
-	BlenderABGR16Linear = BlenderRGBA16[color.Linear, ABGROrder]
-	BlenderBGRA16Linear = BlenderRGBA16[color.Linear, BGRAOrder]
+	BlenderRGBA16LinearRGBA = BlenderRGBA16[color.Linear, order.RGBA]
+	BlenderRGBA16LinearBGRA = BlenderRGBA16[color.Linear, order.BGRA]
+	BlenderRGBA16LinearARGB = BlenderRGBA16[color.Linear, order.ARGB]
+	BlenderRGBA16LinearABGR = BlenderRGBA16[color.Linear, order.ABGR]
 
-	// Premultiplied RGBA16 blenders
-	BlenderRGBA16PreLinear = BlenderRGBA16Pre[color.Linear, RGBAOrder]
-	BlenderARGB16PreLinear = BlenderRGBA16Pre[color.Linear, ARGBOrder]
-	BlenderABGR16PreLinear = BlenderRGBA16Pre[color.Linear, ABGROrder]
-	BlenderBGRA16PreLinear = BlenderRGBA16Pre[color.Linear, BGRAOrder]
+	BlenderRGBA16PreLinearRGBA = BlenderRGBA16Pre[color.Linear, order.RGBA]
+	BlenderRGBA16PreLinearBGRA = BlenderRGBA16Pre[color.Linear, order.BGRA]
+	BlenderRGBA16PreLinearARGB = BlenderRGBA16Pre[color.Linear, order.ARGB]
+	BlenderRGBA16PreLinearABGR = BlenderRGBA16Pre[color.Linear, order.ABGR]
 
-	// Plain RGBA16 blenders
-	BlenderRGBA16PlainLinear = BlenderRGBA16Plain[color.Linear, RGBAOrder]
-	BlenderARGB16PlainLinear = BlenderRGBA16Plain[color.Linear, ARGBOrder]
-	BlenderABGR16PlainLinear = BlenderRGBA16Plain[color.Linear, ABGROrder]
-	BlenderBGRA16PlainLinear = BlenderRGBA16Plain[color.Linear, BGRAOrder]
+	BlenderRGBA16PlainLinearRGBA = BlenderRGBA16Plain[color.Linear, order.RGBA]
+	BlenderRGBA16PlainLinearBGRA = BlenderRGBA16Plain[color.Linear, order.BGRA]
+	BlenderRGBA16PlainLinearARGB = BlenderRGBA16Plain[color.Linear, order.ARGB]
+	BlenderRGBA16PlainLinearABGR = BlenderRGBA16Plain[color.Linear, order.ABGR]
+)
+
+////////////////////////////////////////////////////////////////////////////////
+// Aliases
+////////////////////////////////////////////////////////////////////////////////
+
+// Aliases (plain -> premul)
+type (
+	BlenderARGB16[S color.Space] = BlenderRGBA16[S, order.ARGB]
+	BlenderBGRA16[S color.Space] = BlenderRGBA16[S, order.BGRA]
+	BlenderABGR16[S color.Space] = BlenderRGBA16[S, order.ABGR]
+)
+
+// Premultiplied source -> premultiplied dst
+type (
+	BlenderARGB16Pre[S color.Space] = BlenderRGBA16Pre[S, order.ARGB]
+	BlenderBGRA16Pre[S color.Space] = BlenderRGBA16Pre[S, order.BGRA]
+	BlenderABGR16Pre[S color.Space] = BlenderRGBA16Pre[S, order.ABGR]
+)
+
+// Plain -> plain
+type (
+	BlenderARGB16Plain[S color.Space] = BlenderRGBA16Plain[S, order.ARGB]
+	BlenderBGRA16Plain[S color.Space] = BlenderRGBA16Plain[S, order.BGRA]
+	BlenderABGR16Plain[S color.Space] = BlenderRGBA16Plain[S, order.ABGR]
 )

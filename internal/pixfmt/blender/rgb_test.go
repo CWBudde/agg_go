@@ -5,10 +5,11 @@ import (
 
 	"agg_go/internal/basics"
 	"agg_go/internal/color"
+	"agg_go/internal/order"
 )
 
 func TestBlenderRGB(t *testing.T) {
-	blender := BlenderRGB24{}
+	blender := BlenderRGB[color.Linear, order.RGB]{}
 
 	// Test BlendPix with full opacity
 	dst := []basics.Int8u{100, 150, 200}       // RGB destination
@@ -56,7 +57,7 @@ func TestBlenderRGB(t *testing.T) {
 }
 
 func TestBlenderRGBPre(t *testing.T) {
-	blender := BlenderRGB24Pre{}
+	blender := BlenderRGBPre[color.Linear, order.RGB]{}
 
 	// Test BlendPix with premultiplied colors
 	dst := []basics.Int8u{100, 150, 200}
@@ -86,7 +87,7 @@ func TestBlenderRGBPre(t *testing.T) {
 }
 
 func TestBlenderBGR(t *testing.T) {
-	blender := BlenderBGR24{}
+	blender := BlenderRGB[color.Linear, order.BGR]{}
 
 	// Test BGR color order
 	dst := []basics.Int8u{100, 150, 200}       // BGR destination (B=100, G=150, R=200)
@@ -98,26 +99,23 @@ func TestBlenderBGR(t *testing.T) {
 	}
 }
 
-func TestGetRGBColorOrder(t *testing.T) {
-	// Test RGB order
-	order := GetRGBColorOrder[color.RGB24Order]()
-	if order.R != 0 || order.G != 1 || order.B != 2 {
-		t.Errorf("RGB order failed: got R=%d, G=%d, B=%d, want R=0, G=1, B=2", order.R, order.G, order.B)
+func TestRGBOrderIndices(t *testing.T) {
+	var rgb order.RGB
+	if rgb.IdxR() != 0 || rgb.IdxG() != 1 || rgb.IdxB() != 2 {
+		t.Errorf("RGB indices wrong: R=%d G=%d B=%d", rgb.IdxR(), rgb.IdxG(), rgb.IdxB())
 	}
-
-	// Test BGR order
-	order = GetRGBColorOrder[color.BGR24Order]()
-	if order.R != 2 || order.G != 1 || order.B != 0 {
-		t.Errorf("BGR order failed: got R=%d, G=%d, B=%d, want R=2, G=1, B=0", order.R, order.G, order.B)
+	var bgr order.BGR
+	if bgr.IdxR() != 2 || bgr.IdxG() != 1 || bgr.IdxB() != 0 {
+		t.Errorf("BGR indices wrong: R=%d G=%d B=%d", bgr.IdxR(), bgr.IdxG(), bgr.IdxB())
 	}
 }
 
 func TestBlendRGBPixel(t *testing.T) {
 	dst := []basics.Int8u{100, 150, 200}
-	src := color.RGB8Linear{R: 255, G: 0, B: 0}
-	blender := BlenderRGB24{}
+	src := color.RGB8[color.Linear]{R: 255, G: 0, B: 0}
+	bl := BlenderRGB[color.Linear, order.RGB]{}
 
-	BlendRGBPixel(dst, src, 255, 255, blender)
+	BlendRGBPixel[BlenderRGB[color.Linear, order.RGB], color.Linear, order.RGB](dst, src, 255, 255, bl)
 
 	// Should blend to red
 	if dst[0] != 255 || dst[1] != 0 || dst[2] != 0 {
@@ -127,9 +125,9 @@ func TestBlendRGBPixel(t *testing.T) {
 
 func TestCopyRGBPixel(t *testing.T) {
 	dst := []basics.Int8u{100, 150, 200}
-	src := color.RGB8Linear{R: 255, G: 128, B: 64}
+	src := color.RGB8[color.Linear]{R: 255, G: 128, B: 64}
 
-	CopyRGBPixel[color.RGB24Order](dst, src)
+	CopyRGBPixel[color.Linear, order.RGB](dst, src)
 
 	if dst[0] != 255 || dst[1] != 128 || dst[2] != 64 {
 		t.Errorf("CopyRGBPixel failed: got [%d, %d, %d], want [255, 128, 64]", dst[0], dst[1], dst[2])
@@ -143,11 +141,13 @@ func TestBlendRGBHline(t *testing.T) {
 		dst[i] = 100 // Initialize with gray
 	}
 
-	src := color.RGB8Linear{R: 255, G: 0, B: 0}
-	blender := BlenderRGB24{}
+	src := color.RGB8[color.Linear]{R: 255, G: 0, B: 0}
+	bl := BlenderRGB[color.Linear, order.RGB]{}
 
 	// Blend 3 pixels starting at x=0
-	BlendRGBHline(dst, 0, 3, src, 255, nil, blender)
+	BlendRGBHline[BlenderRGB[color.Linear, order.RGB], color.Linear, order.RGB](
+		dst, 0, 3, src, 255, nil, bl,
+	)
 
 	// Check all pixels became red
 	for i := 0; i < 3; i++ {
@@ -165,7 +165,9 @@ func TestBlendRGBHline(t *testing.T) {
 	}
 
 	covers := []basics.Int8u{255, 128, 64}
-	BlendRGBHline(dst, 0, 3, src, 255, covers, blender)
+	BlendRGBHline[BlenderRGB[color.Linear, order.RGB], color.Linear, order.RGB](
+		dst, 0, 3, src, 255, covers, bl,
+	)
 
 	// First pixel should be fully red, others partially blended
 	if dst[0] != 255 || dst[1] != 0 || dst[2] != 0 {
@@ -181,9 +183,9 @@ func TestBlendRGBHline(t *testing.T) {
 
 func TestCopyRGBHline(t *testing.T) {
 	dst := make([]basics.Int8u, 9) // 3 pixels
-	src := color.RGB8Linear{R: 255, G: 128, B: 64}
+	src := color.RGB8[color.Linear]{R: 255, G: 128, B: 64}
 
-	CopyRGBHline[color.RGB24Order](dst, 0, 3, src)
+	CopyRGBHline[color.Linear, order.RGB](dst, 0, 3, src)
 
 	// Check all pixels
 	for i := 0; i < 3; i++ {
@@ -196,7 +198,7 @@ func TestCopyRGBHline(t *testing.T) {
 }
 
 func TestConvertRGBAToRGB(t *testing.T) {
-	rgba := color.RGBA8Linear{R: 255, G: 128, B: 64, A: 192}
+	rgba := color.RGBA8[color.Linear]{R: 255, G: 128, B: 64, A: 192}
 	rgb := ConvertRGBAToRGB(rgba)
 
 	if rgb.R != 255 || rgb.G != 128 || rgb.B != 64 {
@@ -205,7 +207,7 @@ func TestConvertRGBAToRGB(t *testing.T) {
 }
 
 func TestConvertRGBToRGBA(t *testing.T) {
-	rgb := color.RGB8Linear{R: 255, G: 128, B: 64}
+	rgb := color.RGB8[color.Linear]{R: 255, G: 128, B: 64}
 	rgba := ConvertRGBToRGBA(rgb)
 
 	if rgba.R != 255 || rgba.G != 128 || rgba.B != 64 || rgba.A != 255 {
@@ -216,50 +218,42 @@ func TestConvertRGBToRGBA(t *testing.T) {
 
 // Test that blenders implement the interface
 func TestBlenderInterfaces(t *testing.T) {
-	var _ RGBBlender = BlenderRGB24{}
-	var _ RGBBlender = BlenderRGB24Pre{}
-	var _ RGBBlender = BlenderBGR24{}
-	var _ RGBBlender = BlenderBGR24Pre{}
+	var _ RGBBlender[color.Linear, order.RGB] = BlenderRGB[color.Linear, order.RGB]{}
+	var _ RGBBlender[color.Linear, order.RGB] = BlenderRGBPre[color.Linear, order.RGB]{}
+	var _ RGBBlender[color.Linear, order.BGR] = BlenderRGB[color.Linear, order.BGR]{}
+	var _ RGBBlender[color.Linear, order.BGR] = BlenderRGBPre[color.Linear, order.BGR]{}
 }
 
-// Benchmark tests
+// Benchmarks
 func BenchmarkBlenderRGB24(b *testing.B) {
-	blender := BlenderRGB24{}
+	bl := BlenderRGB[color.Linear, order.RGB]{}
 	dst := []basics.Int8u{100, 150, 200}
-
-	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		blender.BlendPix(dst, 255, 0, 0, 255, 255)
+		bl.BlendPix(dst, 255, 0, 0, 255, 255)
 	}
 }
 
 func BenchmarkBlenderRGB24Pre(b *testing.B) {
-	blender := BlenderRGB24Pre{}
+	bl := BlenderRGBPre[color.Linear, order.RGB]{}
 	dst := []basics.Int8u{100, 150, 200}
-
-	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		blender.BlendPix(dst, 128, 0, 0, 128, 255)
+		bl.BlendPix(dst, 128, 0, 0, 128, 255)
 	}
 }
 
 func BenchmarkBlendRGBHline(b *testing.B) {
 	dst := make([]basics.Int8u, 300) // 100 pixels
-	src := color.RGB8Linear{R: 255, G: 0, B: 0}
-	blender := BlenderRGB24{}
-
-	b.ResetTimer()
+	src := color.RGB8[color.Linear]{R: 255, G: 0, B: 0}
+	bl := BlenderRGB[color.Linear, order.RGB]{}
 	for i := 0; i < b.N; i++ {
-		BlendRGBHline(dst, 0, 100, src, 255, nil, blender)
+		BlendRGBHline[BlenderRGB[color.Linear, order.RGB], color.Linear, order.RGB](dst, 0, 100, src, 255, nil, bl)
 	}
 }
 
 func BenchmarkCopyRGBHline(b *testing.B) {
 	dst := make([]basics.Int8u, 300) // 100 pixels
-	src := color.RGB8Linear{R: 255, G: 0, B: 0}
-
-	b.ResetTimer()
+	src := color.RGB8[color.Linear]{R: 255, G: 0, B: 0}
 	for i := 0; i < b.N; i++ {
-		CopyRGBHline[color.RGB24Order](dst, 0, 100, src)
+		CopyRGBHline[color.Linear, order.RGB](dst, 0, 100, src)
 	}
 }

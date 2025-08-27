@@ -8,66 +8,67 @@ import (
 // anti-aliased rendering without gamma correction. It provides the same interface
 // as RasterizerScanlineAA but with simplified coverage calculation for better performance.
 // This is equivalent to AGG's rasterizer_scanline_aa_nogamma<Clip> template class.
-type RasterizerScanlineAANoGamma[Clip ClipInterface] struct {
+type RasterizerScanlineAANoGamma[Clip ClipInterface[CoordType], CoordType any] struct {
 	outline     *RasterizerCellsAASimple // Cell-based rasterizer
 	clipper     Clip                     // Clipping implementation
 	fillingRule basics.FillingRule       // Filling rule (non-zero or even-odd)
 	autoClose   bool                     // Auto-close polygons flag
-	startX      int                      // Starting X coordinate
-	startY      int                      // Starting Y coordinate
+	startX      CoordType                // Starting X coordinate
+	startY      CoordType                // Starting Y coordinate
 	status      Status                   // Current rasterizer status
 	scanY       int                      // Current scanline Y coordinate
 }
 
 // NewRasterizerScanlineAANoGamma creates a new anti-aliased scanline rasterizer without gamma correction
-func NewRasterizerScanlineAANoGamma[Clip ClipInterface](cellBlockLimit uint32) *RasterizerScanlineAANoGamma[Clip] {
-	return &RasterizerScanlineAANoGamma[Clip]{
+func NewRasterizerScanlineAANoGamma[Clip ClipInterface[CoordType], CoordType any](cellBlockLimit uint32) *RasterizerScanlineAANoGamma[Clip, CoordType] {
+	var zero CoordType
+	return &RasterizerScanlineAANoGamma[Clip, CoordType]{
 		outline:     NewRasterizerCellsAASimple(cellBlockLimit),
 		fillingRule: basics.FillNonZero,
 		autoClose:   true,
-		startX:      0,
-		startY:      0,
+		startX:      zero,
+		startY:      zero,
 		status:      StatusInitial,
 		scanY:       0,
 	}
 }
 
 // Reset clears the rasterizer and prepares it for new geometry
-func (r *RasterizerScanlineAANoGamma[Clip]) Reset() {
+func (r *RasterizerScanlineAANoGamma[Clip, CoordType]) Reset() {
 	r.outline.Reset()
 	r.status = StatusInitial
 }
 
 // ResetClipping resets the clipping settings
-func (r *RasterizerScanlineAANoGamma[Clip]) ResetClipping() {
+func (r *RasterizerScanlineAANoGamma[Clip, CoordType]) ResetClipping() {
 	r.Reset()
 	r.clipper.ResetClipping()
 }
 
 // ClipBox sets the clipping rectangle
-func (r *RasterizerScanlineAANoGamma[Clip]) ClipBox(x1, y1, x2, y2 float64) {
+func (r *RasterizerScanlineAANoGamma[Clip, CoordType]) ClipBox(x1, y1, x2, y2 CoordType) {
 	r.Reset()
 	r.clipper.ClipBox(x1, y1, x2, y2)
 }
 
 // FillingRule sets the polygon filling rule
-func (r *RasterizerScanlineAANoGamma[Clip]) FillingRule(rule basics.FillingRule) {
+func (r *RasterizerScanlineAANoGamma[Clip, CoordType]) FillingRule(rule basics.FillingRule) {
 	r.fillingRule = rule
 }
 
 // AutoClose sets whether polygons should be automatically closed
-func (r *RasterizerScanlineAANoGamma[Clip]) AutoClose(flag bool) {
+func (r *RasterizerScanlineAANoGamma[Clip, CoordType]) AutoClose(flag bool) {
 	r.autoClose = flag
 }
 
 // ApplyGamma applies gamma correction to the coverage value.
 // In the no-gamma variant, this simply returns the cover value unchanged.
-func (r *RasterizerScanlineAANoGamma[Clip]) ApplyGamma(cover uint32) uint32 {
+func (r *RasterizerScanlineAANoGamma[Clip, CoordType]) ApplyGamma(cover uint32) uint32 {
 	return cover
 }
 
 // MoveTo starts a new contour at the specified integer coordinates
-func (r *RasterizerScanlineAANoGamma[Clip]) MoveTo(x, y int) {
+func (r *RasterizerScanlineAANoGamma[Clip, CoordType]) MoveTo(x, y int) {
 	if r.outline.Sorted() {
 		r.Reset()
 	}
@@ -81,13 +82,13 @@ func (r *RasterizerScanlineAANoGamma[Clip]) MoveTo(x, y int) {
 }
 
 // LineTo adds a line segment to the current contour
-func (r *RasterizerScanlineAANoGamma[Clip]) LineTo(x, y int) {
+func (r *RasterizerScanlineAANoGamma[Clip, CoordType]) LineTo(x, y int) {
 	r.clipper.LineTo(r.outline, float64(x)/basics.PolySubpixelScale, float64(y)/basics.PolySubpixelScale)
 	r.status = StatusLineTo
 }
 
 // MoveToD starts a new contour at the specified floating-point coordinates
-func (r *RasterizerScanlineAANoGamma[Clip]) MoveToD(x, y float64) {
+func (r *RasterizerScanlineAANoGamma[Clip, CoordType]) MoveToD(x, y float64) {
 	if r.outline.Sorted() {
 		r.Reset()
 	}
@@ -101,13 +102,13 @@ func (r *RasterizerScanlineAANoGamma[Clip]) MoveToD(x, y float64) {
 }
 
 // LineToD adds a line segment to the current contour using floating-point coordinates
-func (r *RasterizerScanlineAANoGamma[Clip]) LineToD(x, y float64) {
+func (r *RasterizerScanlineAANoGamma[Clip, CoordType]) LineToD(x, y float64) {
 	r.clipper.LineTo(r.outline, x, y)
 	r.status = StatusLineTo
 }
 
 // ClosePolygon closes the current polygon contour
-func (r *RasterizerScanlineAANoGamma[Clip]) ClosePolygon() {
+func (r *RasterizerScanlineAANoGamma[Clip, CoordType]) ClosePolygon() {
 	if r.status == StatusLineTo {
 		r.clipper.LineTo(r.outline, float64(r.startX)/basics.PolySubpixelScale, float64(r.startY)/basics.PolySubpixelScale)
 		r.status = StatusClosed
@@ -115,7 +116,7 @@ func (r *RasterizerScanlineAANoGamma[Clip]) ClosePolygon() {
 }
 
 // AddVertex adds a vertex to the path based on the path command
-func (r *RasterizerScanlineAANoGamma[Clip]) AddVertex(x, y float64, cmd uint32) {
+func (r *RasterizerScanlineAANoGamma[Clip, CoordType]) AddVertex(x, y float64, cmd uint32) {
 	pathCmd := basics.PathCommand(cmd & uint32(basics.PathCmdMask))
 
 	switch {
@@ -129,7 +130,7 @@ func (r *RasterizerScanlineAANoGamma[Clip]) AddVertex(x, y float64, cmd uint32) 
 }
 
 // Edge adds a single edge (line segment) to the rasterizer
-func (r *RasterizerScanlineAANoGamma[Clip]) Edge(x1, y1, x2, y2 int) {
+func (r *RasterizerScanlineAANoGamma[Clip, CoordType]) Edge(x1, y1, x2, y2 int) {
 	if r.outline.Sorted() {
 		r.Reset()
 	}
@@ -139,7 +140,7 @@ func (r *RasterizerScanlineAANoGamma[Clip]) Edge(x1, y1, x2, y2 int) {
 }
 
 // EdgeD adds a single edge using floating-point coordinates
-func (r *RasterizerScanlineAANoGamma[Clip]) EdgeD(x1, y1, x2, y2 float64) {
+func (r *RasterizerScanlineAANoGamma[Clip, CoordType]) EdgeD(x1, y1, x2, y2 float64) {
 	if r.outline.Sorted() {
 		r.Reset()
 	}
@@ -149,7 +150,7 @@ func (r *RasterizerScanlineAANoGamma[Clip]) EdgeD(x1, y1, x2, y2 float64) {
 }
 
 // AddPath adds a complete path from a vertex source
-func (r *RasterizerScanlineAANoGamma[Clip]) AddPath(vs VertexSource, pathID uint32) {
+func (r *RasterizerScanlineAANoGamma[Clip, CoordType]) AddPath(vs VertexSource, pathID uint32) {
 	var x, y float64
 	var cmd uint32
 
@@ -168,27 +169,27 @@ func (r *RasterizerScanlineAANoGamma[Clip]) AddPath(vs VertexSource, pathID uint
 }
 
 // MinX returns the minimum X coordinate of the rasterized geometry
-func (r *RasterizerScanlineAANoGamma[Clip]) MinX() int {
+func (r *RasterizerScanlineAANoGamma[Clip, CoordType]) MinX() int {
 	return r.outline.MinX()
 }
 
 // MinY returns the minimum Y coordinate of the rasterized geometry
-func (r *RasterizerScanlineAANoGamma[Clip]) MinY() int {
+func (r *RasterizerScanlineAANoGamma[Clip, CoordType]) MinY() int {
 	return r.outline.MinY()
 }
 
 // MaxX returns the maximum X coordinate of the rasterized geometry
-func (r *RasterizerScanlineAANoGamma[Clip]) MaxX() int {
+func (r *RasterizerScanlineAANoGamma[Clip, CoordType]) MaxX() int {
 	return r.outline.MaxX()
 }
 
 // MaxY returns the maximum Y coordinate of the rasterized geometry
-func (r *RasterizerScanlineAANoGamma[Clip]) MaxY() int {
+func (r *RasterizerScanlineAANoGamma[Clip, CoordType]) MaxY() int {
 	return r.outline.MaxY()
 }
 
 // Sort sorts the cells for scanline processing
-func (r *RasterizerScanlineAANoGamma[Clip]) Sort() {
+func (r *RasterizerScanlineAANoGamma[Clip, CoordType]) Sort() {
 	if r.autoClose {
 		r.ClosePolygon()
 	}
@@ -196,7 +197,7 @@ func (r *RasterizerScanlineAANoGamma[Clip]) Sort() {
 }
 
 // RewindScanlines prepares for scanline iteration, returns true if there are scanlines to process
-func (r *RasterizerScanlineAANoGamma[Clip]) RewindScanlines() bool {
+func (r *RasterizerScanlineAANoGamma[Clip, CoordType]) RewindScanlines() bool {
 	if r.autoClose {
 		r.ClosePolygon()
 	}
@@ -209,7 +210,7 @@ func (r *RasterizerScanlineAANoGamma[Clip]) RewindScanlines() bool {
 }
 
 // NavigateScanline positions the rasterizer at a specific scanline
-func (r *RasterizerScanlineAANoGamma[Clip]) NavigateScanline(y int) bool {
+func (r *RasterizerScanlineAANoGamma[Clip, CoordType]) NavigateScanline(y int) bool {
 	if r.autoClose {
 		r.ClosePolygon()
 	}
@@ -225,7 +226,7 @@ func (r *RasterizerScanlineAANoGamma[Clip]) NavigateScanline(y int) bool {
 
 // CalculateAlpha calculates the alpha (coverage) value for the given area
 // without gamma correction, following the original AGG algorithm
-func (r *RasterizerScanlineAANoGamma[Clip]) CalculateAlpha(area int) uint32 {
+func (r *RasterizerScanlineAANoGamma[Clip, CoordType]) CalculateAlpha(area int) uint32 {
 	cover := area >> (basics.PolySubpixelShift*2 + 1 - AAShift)
 
 	if cover < 0 {
@@ -247,7 +248,7 @@ func (r *RasterizerScanlineAANoGamma[Clip]) CalculateAlpha(area int) uint32 {
 }
 
 // SweepScanline generates the next scanline of anti-aliased spans
-func (r *RasterizerScanlineAANoGamma[Clip]) SweepScanline(sl ScanlineInterface) bool {
+func (r *RasterizerScanlineAANoGamma[Clip, CoordType]) SweepScanline(sl ScanlineInterface) bool {
 	for {
 		if r.scanY > r.outline.MaxY() {
 			return false
@@ -307,7 +308,7 @@ func (r *RasterizerScanlineAANoGamma[Clip]) SweepScanline(sl ScanlineInterface) 
 }
 
 // HitTest checks if the specified point is inside the rasterized geometry
-func (r *RasterizerScanlineAANoGamma[Clip]) HitTest(tx, ty int) bool {
+func (r *RasterizerScanlineAANoGamma[Clip, CoordType]) HitTest(tx, ty int) bool {
 	if !r.NavigateScanline(ty) {
 		return false
 	}

@@ -6,261 +6,301 @@ import (
 
 	"agg_go/internal/basics"
 	"agg_go/internal/color"
+	"agg_go/internal/order"
 )
 
 func TestBlenderRGBAGet(t *testing.T) {
-	blender := BlenderRGBA[color.Linear, RGBAOrder]{}
+	// plain read (what old BlenderRGBA.Get did)
+	pixel := []basics.Int8u{128, 64, 192, 255}
+	cover := basics.Int8u(255)
+	result := getPlain[order.RGBA](pixel, cover)
 
-	// Test basic Get functionality
-	pixel := []basics.Int8u{128, 64, 192, 255} // RGBA: 50%, 25%, 75%, 100%
-	cover := basics.Int8u(255)                 // Full coverage
-
-	result := blender.Get(pixel, cover)
-
-	expectedR := 128.0 / 255.0
-	expectedG := 64.0 / 255.0
-	expectedB := 192.0 / 255.0
-	expectedA := 255.0 / 255.0
-
-	if math.Abs(result.R-expectedR) > 0.01 {
-		t.Errorf("Get R: expected %f, got %f", expectedR, result.R)
+	if math.Abs(result.R-128.0/255.0) > 0.01 {
+		t.Errorf("Get R mismatch")
 	}
-	if math.Abs(result.G-expectedG) > 0.01 {
-		t.Errorf("Get G: expected %f, got %f", expectedG, result.G)
+	if math.Abs(result.G-64.0/255.0) > 0.01 {
+		t.Errorf("Get G mismatch")
 	}
-	if math.Abs(result.B-expectedB) > 0.01 {
-		t.Errorf("Get B: expected %f, got %f", expectedB, result.B)
+	if math.Abs(result.B-192.0/255.0) > 0.01 {
+		t.Errorf("Get B mismatch")
 	}
-	if math.Abs(result.A-expectedA) > 0.01 {
-		t.Errorf("Get A: expected %f, got %f", expectedA, result.A)
+	if math.Abs(result.A-1.0) > 0.01 {
+		t.Errorf("Get A mismatch")
 	}
 }
 
 func TestBlenderRGBAGetWithCoverage(t *testing.T) {
-	blender := BlenderRGBA[color.Linear, RGBAOrder]{}
-
-	// Test Get with partial coverage
-	pixel := []basics.Int8u{255, 255, 255, 255} // White pixel
-	cover := basics.Int8u(128)                  // 50% coverage
-
-	result := blender.Get(pixel, cover)
-
-	// With 50% coverage, all components should be scaled down by 0.5
-	expected := 0.5
-	if math.Abs(result.R-expected) > 0.01 {
-		t.Errorf("Get with coverage R: expected %f, got %f", expected, result.R)
-	}
-	if math.Abs(result.G-expected) > 0.01 {
-		t.Errorf("Get with coverage G: expected %f, got %f", expected, result.G)
-	}
-	if math.Abs(result.B-expected) > 0.01 {
-		t.Errorf("Get with coverage B: expected %f, got %f", expected, result.B)
-	}
-	if math.Abs(result.A-expected) > 0.01 {
-		t.Errorf("Get with coverage A: expected %f, got %f", expected, result.A)
+	pixel := []basics.Int8u{255, 255, 255, 255}
+	result := getPlain[order.RGBA](pixel, 128)
+	exp := 0.5
+	if math.Abs(result.R-exp) > 0.01 || math.Abs(result.G-exp) > 0.01 ||
+		math.Abs(result.B-exp) > 0.01 || math.Abs(result.A-exp) > 0.01 {
+		t.Errorf("Get with coverage should scale by 0.5, got %+v", result)
 	}
 }
 
 func TestBlenderRGBAGetZeroCoverage(t *testing.T) {
-	blender := BlenderRGBA[color.Linear, RGBAOrder]{}
-
 	pixel := []basics.Int8u{255, 255, 255, 255}
-	cover := basics.Int8u(0) // Zero coverage
-
-	result := blender.Get(pixel, cover)
-
-	// Zero coverage should return NoColor (transparent black)
-	expected := color.NoColor()
-	if result.R != expected.R || result.G != expected.G || result.B != expected.B || result.A != expected.A {
-		t.Errorf("Get with zero coverage should return NoColor, got %+v", result)
+	result := getPlain[order.RGBA](pixel, 0)
+	if result != color.NoColor() {
+		t.Errorf("Zero coverage should return NoColor, got %+v", result)
 	}
 }
 
 func TestBlenderRGBAGetRaw(t *testing.T) {
-	blender := BlenderRGBA[color.Linear, RGBAOrder]{}
-
 	pixel := []basics.Int8u{128, 64, 192, 255}
-
-	r, g, b, a := blender.GetRaw(pixel)
-
+	r, g, b, a := getRaw[order.RGBA](pixel)
 	if r != 128 || g != 64 || b != 192 || a != 255 {
-		t.Errorf("GetRaw: expected (128, 64, 192, 255), got (%d, %d, %d, %d)", r, g, b, a)
+		t.Errorf("GetRaw mismatch: got (%d,%d,%d,%d)", r, g, b, a)
 	}
 }
 
 func TestBlenderRGBASet(t *testing.T) {
-	blender := BlenderRGBA[color.Linear, RGBAOrder]{}
-
 	pixel := make([]basics.Int8u, 4)
-	inputColor := color.RGBA{R: 0.5, G: 0.25, B: 0.75, A: 1.0}
+	in := color.RGBA{R: 0.5, G: 0.25, B: 0.75, A: 1.0}
+	setPlain[order.RGBA](pixel, in)
 
-	blender.Set(pixel, inputColor)
-
-	expectedR := basics.Int8u(128) // 0.5 * 255 + 0.5 = 128
-	expectedG := basics.Int8u(64)  // 0.25 * 255 + 0.5 = 64
-	expectedB := basics.Int8u(191) // 0.75 * 255 + 0.5 = 191
-	expectedA := basics.Int8u(255) // 1.0 * 255 + 0.5 = 255
-
-	if pixel[0] != expectedR || pixel[1] != expectedG || pixel[2] != expectedB || pixel[3] != expectedA {
-		t.Errorf("Set: expected (%d, %d, %d, %d), got (%d, %d, %d, %d)",
-			expectedR, expectedG, expectedB, expectedA,
-			pixel[0], pixel[1], pixel[2], pixel[3])
+	expR := basics.Int8u(128)
+	expG := basics.Int8u(64)
+	expB := basics.Int8u(191)
+	expA := basics.Int8u(255)
+	if pixel[0] != expR || pixel[1] != expG || pixel[2] != expB || pixel[3] != expA {
+		t.Errorf("Set (plain) mismatch: got %v", pixel)
 	}
 }
 
 func TestBlenderRGBASetRaw(t *testing.T) {
-	blender := BlenderRGBA[color.Linear, RGBAOrder]{}
-
 	pixel := make([]basics.Int8u, 4)
-	blender.SetRaw(pixel, 128, 64, 192, 255)
-
+	var o order.RGBA
+	pixel[o.IdxR()], pixel[o.IdxG()], pixel[o.IdxB()], pixel[o.IdxA()] = 128, 64, 192, 255
 	if pixel[0] != 128 || pixel[1] != 64 || pixel[2] != 192 || pixel[3] != 255 {
-		t.Errorf("SetRaw: expected (128, 64, 192, 255), got (%d, %d, %d, %d)", pixel[0], pixel[1], pixel[2], pixel[3])
+		t.Errorf("SetRaw mismatch: %v", pixel)
 	}
 }
 
 func TestBlenderRGBARoundTrip(t *testing.T) {
-	blender := BlenderRGBA[color.Linear, RGBAOrder]{}
-
-	// Test that Set followed by Get preserves the color (within rounding error)
-	originalColor := color.RGBA{R: 0.3, G: 0.6, B: 0.9, A: 0.8}
+	orig := color.RGBA{R: 0.3, G: 0.6, B: 0.9, A: 0.8}
 	pixel := make([]basics.Int8u, 4)
-
-	blender.Set(pixel, originalColor)
-	retrievedColor := blender.Get(pixel, 255)
-
-	tolerance := 0.01 // Allow for floating point rounding errors
-	if math.Abs(retrievedColor.R-originalColor.R) > tolerance ||
-		math.Abs(retrievedColor.G-originalColor.G) > tolerance ||
-		math.Abs(retrievedColor.B-originalColor.B) > tolerance ||
-		math.Abs(retrievedColor.A-originalColor.A) > tolerance {
-		t.Errorf("Round trip failed: original %+v, retrieved %+v", originalColor, retrievedColor)
+	setPlain[order.RGBA](pixel, orig)
+	got := getPlain[order.RGBA](pixel, 255)
+	if math.Abs(got.R-orig.R) > 0.01 ||
+		math.Abs(got.G-orig.G) > 0.01 ||
+		math.Abs(got.B-orig.B) > 0.01 ||
+		math.Abs(got.A-orig.A) > 0.01 {
+		t.Errorf("Round trip (plain) mismatch: orig %+v, got %+v", orig, got)
 	}
 }
 
 func TestBlenderRGBAColorOrders(t *testing.T) {
-	testCases := []struct {
-		name     string
-		setFunc  func([]basics.Int8u, color.RGBA)
-		expected color.ColorOrder
-	}{
-		{"RGBA", BlenderRGBA[color.Linear, RGBAOrder]{}.Set, color.OrderRGBA},
-		{"ARGB", BlenderRGBA[color.Linear, ARGBOrder]{}.Set, color.OrderARGB},
-		{"BGRA", BlenderRGBA[color.Linear, BGRAOrder]{}.Set, color.OrderBGRA},
-		{"ABGR", BlenderRGBA[color.Linear, ABGROrder]{}.Set, color.OrderABGR},
+	type caseT struct {
+		name string
+		set  func([]basics.Int8u, color.RGBA)
+		idx  func() (r, g, b, a int)
+	}
+	cases := []caseT{
+		{
+			"RGBA",
+			func(p []basics.Int8u, c color.RGBA) { setPlain[order.RGBA](p, c) },
+			func() (int, int, int, int) { var o order.RGBA; return o.IdxR(), o.IdxG(), o.IdxB(), o.IdxA() },
+		},
+		{
+			"ARGB",
+			func(p []basics.Int8u, c color.RGBA) { setPlain[order.ARGB](p, c) },
+			func() (int, int, int, int) { var o order.ARGB; return o.IdxR(), o.IdxG(), o.IdxB(), o.IdxA() },
+		},
+		{
+			"BGRA",
+			func(p []basics.Int8u, c color.RGBA) { setPlain[order.BGRA](p, c) },
+			func() (int, int, int, int) { var o order.BGRA; return o.IdxR(), o.IdxG(), o.IdxB(), o.IdxA() },
+		},
+		{
+			"ABGR",
+			func(p []basics.Int8u, c color.RGBA) { setPlain[order.ABGR](p, c) },
+			func() (int, int, int, int) { var o order.ABGR; return o.IdxR(), o.IdxG(), o.IdxB(), o.IdxA() },
+		},
 	}
 
-	for _, tc := range testCases {
+	expR := basics.Int8u(51)  // 0.2*255+0.5
+	expG := basics.Int8u(102) // 0.4*255+0.5
+	expB := basics.Int8u(153) // 0.6*255+0.5
+	expA := basics.Int8u(204) // 0.8*255+0.5
+	c := color.RGBA{R: 0.2, G: 0.4, B: 0.6, A: 0.8}
+
+	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			pixel := make([]basics.Int8u, 4)
-			testColor := color.RGBA{R: 0.2, G: 0.4, B: 0.6, A: 0.8}
-
-			tc.setFunc(pixel, testColor)
-
-			// Verify the pixel is stored in the correct order
-			expectedR := basics.Int8u(51)  // 0.2 * 255 + 0.5 = 51
-			expectedG := basics.Int8u(102) // 0.4 * 255 + 0.5 = 102
-			expectedB := basics.Int8u(153) // 0.6 * 255 + 0.5 = 153
-			expectedA := basics.Int8u(204) // 0.8 * 255 + 0.5 = 204
-
-			if pixel[tc.expected.R] != expectedR {
-				t.Errorf("%s order R component: expected %d at index %d, got %d", tc.name, expectedR, tc.expected.R, pixel[tc.expected.R])
-			}
-			if pixel[tc.expected.G] != expectedG {
-				t.Errorf("%s order G component: expected %d at index %d, got %d", tc.name, expectedG, tc.expected.G, pixel[tc.expected.G])
-			}
-			if pixel[tc.expected.B] != expectedB {
-				t.Errorf("%s order B component: expected %d at index %d, got %d", tc.name, expectedB, tc.expected.B, pixel[tc.expected.B])
-			}
-			if pixel[tc.expected.A] != expectedA {
-				t.Errorf("%s order A component: expected %d at index %d, got %d", tc.name, expectedA, tc.expected.A, pixel[tc.expected.A])
+			p := make([]basics.Int8u, 4)
+			tc.set(p, c)
+			ri, gi, bi, ai := tc.idx()
+			if p[ri] != expR || p[gi] != expG || p[bi] != expB || p[ai] != expA {
+				t.Errorf("%s order mismatch: got %v (r@%d=%d g@%d=%d b@%d=%d a@%d=%d)",
+					tc.name, p, ri, p[ri], gi, p[gi], bi, p[bi], ai, p[ai])
 			}
 		})
 	}
 }
 
 func TestBlenderRGBAPreGet(t *testing.T) {
-	blender := BlenderRGBAPre[color.Linear, RGBAOrder]{}
-
-	// Test premultiplied Get - create a premultiplied pixel
-	originalColor := color.RGBA{R: 0.6, G: 0.4, B: 0.8, A: 0.5}
-	premultColor := originalColor
-	premultColor.Premultiply()
-
+	// premultiplied read (what old BlenderRGBAPre.Get did)
+	orig := color.RGBA{R: 0.6, G: 0.4, B: 0.8, A: 0.5}
+	pm := orig
+	pm.Premultiply()
 	pixel := []basics.Int8u{
-		basics.Int8u(77),  // 0.3 * 255 + 0.5 = 77
-		basics.Int8u(51),  // 0.2 * 255 + 0.5 = 51
-		basics.Int8u(102), // 0.4 * 255 + 0.5 = 102
-		basics.Int8u(128), // 0.5 * 255 + 0.5 = 128
+		basics.Int8u(pm.R*255 + 0.5),
+		basics.Int8u(pm.G*255 + 0.5),
+		basics.Int8u(pm.B*255 + 0.5),
+		basics.Int8u(pm.A*255 + 0.5),
 	}
+	got := getPremult[order.RGBA](pixel, 255)
 
-	result := blender.Get(pixel, 255)
-
-	tolerance := 0.02 // Premultiplied operations have more rounding
-	if math.Abs(result.R-originalColor.R) > tolerance ||
-		math.Abs(result.G-originalColor.G) > tolerance ||
-		math.Abs(result.B-originalColor.B) > tolerance ||
-		math.Abs(result.A-originalColor.A) > tolerance {
-		t.Errorf("BlenderRGBAPre Get: expected %+v, got %+v", originalColor, result)
+	tol := 0.02
+	if math.Abs(got.R-orig.R) > tol || math.Abs(got.G-orig.G) > tol ||
+		math.Abs(got.B-orig.B) > tol || math.Abs(got.A-orig.A) > tol {
+		t.Errorf("Premult Get mismatch: orig %+v, got %+v", orig, got)
 	}
 }
 
 func TestBlenderRGBAPreSet(t *testing.T) {
-	blender := BlenderRGBAPre[color.Linear, RGBAOrder]{}
-
 	pixel := make([]basics.Int8u, 4)
-	inputColor := color.RGBA{R: 0.6, G: 0.4, B: 0.8, A: 0.5}
+	in := color.RGBA{R: 0.6, G: 0.4, B: 0.8, A: 0.5}
+	setPremult[order.RGBA](pixel, in)
 
-	blender.Set(pixel, inputColor)
-
-	// The Set method should premultiply before storing
-	expectedPremult := inputColor
-	expectedPremult.Premultiply()
-
-	expectedR := basics.Int8u(77)  // 0.3 * 255 + 0.5 = 77  (0.6 * 0.5)
-	expectedG := basics.Int8u(51)  // 0.2 * 255 + 0.5 = 51  (0.4 * 0.5)
-	expectedB := basics.Int8u(102) // 0.4 * 255 + 0.5 = 102 (0.8 * 0.5)
-	expectedA := basics.Int8u(128) // 0.5 * 255 + 0.5 = 128
-
-	if pixel[0] != expectedR || pixel[1] != expectedG || pixel[2] != expectedB || pixel[3] != expectedA {
-		t.Errorf("BlenderRGBAPre Set: expected (%d, %d, %d, %d), got (%d, %d, %d, %d)",
-			expectedR, expectedG, expectedB, expectedA,
-			pixel[0], pixel[1], pixel[2], pixel[3])
+	// Expected premult bytes
+	pm := in
+	pm.Premultiply()
+	exp := []basics.Int8u{
+		basics.Int8u(pm.R*255 + 0.5),
+		basics.Int8u(pm.G*255 + 0.5),
+		basics.Int8u(pm.B*255 + 0.5),
+		basics.Int8u(pm.A*255 + 0.5),
+	}
+	if pixel[0] != exp[0] || pixel[1] != exp[1] || pixel[2] != exp[2] || pixel[3] != exp[3] {
+		t.Errorf("Premult Set mismatch: got %v, exp %v", pixel, exp)
 	}
 }
 
 func TestBlenderRGBAPreRoundTrip(t *testing.T) {
-	blender := BlenderRGBAPre[color.Linear, RGBAOrder]{}
-
-	originalColor := color.RGBA{R: 0.3, G: 0.6, B: 0.9, A: 0.7}
+	orig := color.RGBA{R: 0.3, G: 0.6, B: 0.9, A: 0.7}
 	pixel := make([]basics.Int8u, 4)
+	setPremult[order.RGBA](pixel, orig)
+	got := getPremult[order.RGBA](pixel, 255)
 
-	blender.Set(pixel, originalColor)
-	retrievedColor := blender.Get(pixel, 255)
-
-	tolerance := 0.02 // Premultiplied operations have more rounding
-	if math.Abs(retrievedColor.R-originalColor.R) > tolerance ||
-		math.Abs(retrievedColor.G-originalColor.G) > tolerance ||
-		math.Abs(retrievedColor.B-originalColor.B) > tolerance ||
-		math.Abs(retrievedColor.A-originalColor.A) > tolerance {
-		t.Errorf("BlenderRGBAPre round trip failed: original %+v, retrieved %+v", originalColor, retrievedColor)
+	tol := 0.02
+	if math.Abs(got.R-orig.R) > tol || math.Abs(got.G-orig.G) > tol ||
+		math.Abs(got.B-orig.B) > tol || math.Abs(got.A-orig.A) > tol {
+		t.Errorf("Premult round trip mismatch: orig %+v, got %+v", orig, got)
 	}
 }
 
-func TestBlenderRGBAPlainRoundTrip(t *testing.T) {
-	blender := BlenderRGBAPlain[color.Linear, RGBAOrder]{}
+//
+// keep a couple of sanity-blend tests that still use the real blenders
+//
 
-	originalColor := color.RGBA{R: 0.3, G: 0.6, B: 0.9, A: 0.7}
-	pixel := make([]basics.Int8u, 4)
-
-	blender.Set(pixel, originalColor)
-	retrievedColor := blender.Get(pixel, 255)
-
-	tolerance := 0.01
-	if math.Abs(retrievedColor.R-originalColor.R) > tolerance ||
-		math.Abs(retrievedColor.G-originalColor.G) > tolerance ||
-		math.Abs(retrievedColor.B-originalColor.B) > tolerance ||
-		math.Abs(retrievedColor.A-originalColor.A) > tolerance {
-		t.Errorf("BlenderRGBAPlain round trip failed: original %+v, retrieved %+v", originalColor, retrievedColor)
+func TestBlenderRGBA8_BlendPix(t *testing.T) {
+	bl := BlenderRGBA8[color.Linear, order.RGBA]{}
+	dst := []basics.Int8u{100, 100, 100, 255}
+	bl.BlendPix(dst, 200, 150, 50, 128, 255)
+	if dst[0] <= 100 || dst[0] >= 200 {
+		t.Errorf("R should move toward src")
 	}
+	if dst[1] <= 100 || dst[1] >= 150 {
+		t.Errorf("G should move toward src")
+	}
+	if dst[2] < 70 || dst[2] > 90 { // 100 -> 50 at ~50% alpha ≈ 75
+		t.Errorf("B out of expected range, got %d", dst[2])
+	}
+}
+
+func TestBlenderRGBA8Pre_BlendPix_Modifies(t *testing.T) {
+	bl := BlenderRGBA8Pre[color.Linear, order.RGBA]{}
+	dst := []basics.Int8u{100, 100, 100, 255}
+	orig := append([]basics.Int8u(nil), dst...)
+	bl.BlendPix(dst, 200, 150, 50, 128, 255)
+	changed := false
+	for i := 0; i < 4; i++ {
+		if dst[i] != orig[i] {
+			changed = true
+			break
+		}
+	}
+	if !changed {
+		t.Error("premult BlendPix should modify destination")
+	}
+}
+
+func TestBlenderRGBA8Plain_BlendPix_Modifies(t *testing.T) {
+	bl := BlenderRGBA8Plain[color.Linear, order.RGBA]{}
+	dst := []basics.Int8u{100, 100, 100, 200}
+	bl.BlendPix(dst, 200, 150, 50, 128, 255)
+	if dst[0] == 100 && dst[1] == 100 && dst[2] == 100 {
+		t.Error("plain BlendPix should change RGB")
+	}
+}
+
+func getPlain[O order.RGBAOrder](p []basics.Int8u, cover basics.Int8u) color.RGBA {
+	if cover == 0 {
+		return color.NoColor()
+	}
+	var o O
+	c := color.RGBA{
+		R: float64(p[o.IdxR()]) / 255.0,
+		G: float64(p[o.IdxG()]) / 255.0,
+		B: float64(p[o.IdxB()]) / 255.0,
+		A: float64(p[o.IdxA()]) / 255.0,
+	}
+	if cover < 255 {
+		scale := float64(cover) / 255.0
+		c.R *= scale
+		c.G *= scale
+		c.B *= scale
+		c.A *= scale
+	}
+	return c
+}
+
+func getPremult[O order.RGBAOrder](p []basics.Int8u, cover basics.Int8u) color.RGBA {
+	if cover == 0 {
+		return color.NoColor()
+	}
+	var o O
+	c := color.RGBA{
+		R: float64(p[o.IdxR()]) / 255.0,
+		G: float64(p[o.IdxG()]) / 255.0,
+		B: float64(p[o.IdxB()]) / 255.0,
+		A: float64(p[o.IdxA()]) / 255.0,
+	}
+	// the stored pixel is premultiplied -> demultiply to straight
+	if c.A > 0 {
+		c.Demultiply()
+	}
+	if cover < 255 {
+		scale := float64(cover) / 255.0
+		c.R *= scale
+		c.G *= scale
+		c.B *= scale
+		c.A *= scale
+	}
+	return c
+}
+
+func setPlain[O order.RGBAOrder](p []basics.Int8u, c color.RGBA) {
+	var o O
+	p[o.IdxR()] = basics.Int8u(c.R*255 + 0.5)
+	p[o.IdxG()] = basics.Int8u(c.G*255 + 0.5)
+	p[o.IdxB()] = basics.Int8u(c.B*255 + 0.5)
+	p[o.IdxA()] = basics.Int8u(c.A*255 + 0.5)
+}
+
+func setPremult[O order.RGBAOrder](p []basics.Int8u, c color.RGBA) {
+	var o O
+	pm := c
+	pm.Premultiply()
+	p[o.IdxR()] = basics.Int8u(pm.R*255 + 0.5)
+	p[o.IdxG()] = basics.Int8u(pm.G*255 + 0.5)
+	p[o.IdxB()] = basics.Int8u(pm.B*255 + 0.5)
+	p[o.IdxA()] = basics.Int8u(pm.A*255 + 0.5)
+}
+
+func getRaw[O order.RGBAOrder](p []basics.Int8u) (r, g, b, a basics.Int8u) {
+	var o O
+	return p[o.IdxR()], p[o.IdxG()], p[o.IdxB()], p[o.IdxA()]
 }

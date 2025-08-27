@@ -5,10 +5,11 @@ import (
 
 	"agg_go/internal/basics"
 	"agg_go/internal/color"
+	"agg_go/internal/order"
 )
 
 func TestCompositeBlenderMultiply(t *testing.T) {
-	blender := NewMultiplyBlender[color.Linear, RGBAOrder]()
+	blender := NewMultiplyBlender[color.Linear, order.RGBA]()
 
 	// Test multiply blend with white source and red destination
 	dst := []basics.Int8u{255, 0, 0, 255}          // Red
@@ -25,7 +26,7 @@ func TestCompositeBlenderMultiply(t *testing.T) {
 }
 
 func TestCompositeBlenderScreen(t *testing.T) {
-	blender := NewScreenBlender[color.Linear, RGBAOrder]()
+	blender := NewScreenBlender[color.Linear, order.RGBA]()
 
 	// Test screen blend
 	dst := []basics.Int8u{128, 128, 128, 255}      // 50% gray
@@ -36,7 +37,7 @@ func TestCompositeBlenderScreen(t *testing.T) {
 }
 
 func TestCompositeBlenderOverlay(t *testing.T) {
-	blender := NewOverlayBlender[color.Linear, RGBAOrder]()
+	blender := NewOverlayBlender[color.Linear, order.RGBA]()
 
 	// Test overlay blend
 	dst := []basics.Int8u{100, 100, 100, 255}
@@ -49,42 +50,42 @@ func TestCompositeBlenderOverlay(t *testing.T) {
 func TestPorterDuffOperations(t *testing.T) {
 	tests := []struct {
 		name     string
-		blender  CompositeBlender[color.Linear, RGBAOrder]
+		blender  CompositeBlender[color.Linear, order.RGBA]
 		dst      []basics.Int8u
 		src      []basics.Int8u
 		expected []basics.Int8u
 	}{
 		{
 			name:     "Clear",
-			blender:  NewClearBlender[color.Linear, RGBAOrder](),
+			blender:  NewClearBlender[color.Linear, order.RGBA](),
 			dst:      []basics.Int8u{255, 0, 0, 255}, // Red
 			src:      []basics.Int8u{0, 255, 0, 255}, // Green
 			expected: []basics.Int8u{0, 0, 0, 0},     // Transparent
 		},
 		{
 			name:     "Src",
-			blender:  NewSrcBlender[color.Linear, RGBAOrder](),
+			blender:  NewSrcBlender[color.Linear, order.RGBA](),
 			dst:      []basics.Int8u{255, 0, 0, 255}, // Red
 			src:      []basics.Int8u{0, 255, 0, 255}, // Green
 			expected: []basics.Int8u{0, 255, 0, 255}, // Green
 		},
 		{
 			name:     "Dst",
-			blender:  NewDstBlender[color.Linear, RGBAOrder](),
+			blender:  NewDstBlender[color.Linear, order.RGBA](),
 			dst:      []basics.Int8u{255, 0, 0, 255}, // Red
 			src:      []basics.Int8u{0, 255, 0, 255}, // Green
 			expected: []basics.Int8u{255, 0, 0, 255}, // Red (unchanged)
 		},
 		{
 			name:     "SrcIn",
-			blender:  NewSrcInBlender[color.Linear, RGBAOrder](),
+			blender:  NewSrcInBlender[color.Linear, order.RGBA](),
 			dst:      []basics.Int8u{255, 0, 0, 255}, // Red, opaque
 			src:      []basics.Int8u{0, 255, 0, 128}, // Green, half alpha
 			expected: []basics.Int8u{0, 255, 0, 128}, // Src * dst.alpha (255) = Src
 		},
 		{
 			name:     "XOR",
-			blender:  NewXorBlender[color.Linear, RGBAOrder](),
+			blender:  NewXorBlender[color.Linear, order.RGBA](),
 			dst:      []basics.Int8u{255, 0, 0, 128},   // Red, half alpha
 			src:      []basics.Int8u{0, 255, 0, 128},   // Green, half alpha
 			expected: []basics.Int8u{127, 127, 0, 127}, // Expected XOR result (approximately)
@@ -118,14 +119,14 @@ func TestPorterDuffOperations(t *testing.T) {
 func TestBlendModeFormulas(t *testing.T) {
 	tests := []struct {
 		name    string
-		blender CompositeBlender[color.Linear, RGBAOrder]
+		blender CompositeBlender[color.Linear, order.RGBA]
 		dst     []basics.Int8u
 		src     []basics.Int8u
 		checkFn func(t *testing.T, result []basics.Int8u)
 	}{
 		{
 			name:    "Multiply with white source",
-			blender: NewMultiplyBlender[color.Linear, RGBAOrder](),
+			blender: NewMultiplyBlender[color.Linear, order.RGBA](),
 			dst:     []basics.Int8u{128, 64, 192, 255},
 			src:     []basics.Int8u{255, 255, 255, 255},
 			checkFn: func(t *testing.T, result []basics.Int8u) {
@@ -141,7 +142,7 @@ func TestBlendModeFormulas(t *testing.T) {
 		},
 		{
 			name:    "Screen with black source",
-			blender: NewScreenBlender[color.Linear, RGBAOrder](),
+			blender: NewScreenBlender[color.Linear, order.RGBA](),
 			dst:     []basics.Int8u{128, 64, 192, 255},
 			src:     []basics.Int8u{0, 0, 0, 255},
 			checkFn: func(t *testing.T, result []basics.Int8u) {
@@ -157,7 +158,7 @@ func TestBlendModeFormulas(t *testing.T) {
 		},
 		{
 			name:    "Plus blend",
-			blender: NewPlusBlender[color.Linear, RGBAOrder](),
+			blender: NewPlusBlender[color.Linear, order.RGBA](),
 			dst:     []basics.Int8u{100, 50, 25, 255},
 			src:     []basics.Int8u{50, 100, 25, 128},
 			checkFn: func(t *testing.T, result []basics.Int8u) {
@@ -188,7 +189,7 @@ func TestBlendModeFormulas(t *testing.T) {
 func TestAlphaBlending(t *testing.T) {
 	tests := []struct {
 		name    string
-		blender CompositeBlender[color.Linear, RGBAOrder]
+		blender CompositeBlender[color.Linear, order.RGBA]
 		dst     []basics.Int8u
 		src     []basics.Int8u
 		cover   basics.Int8u
@@ -196,7 +197,7 @@ func TestAlphaBlending(t *testing.T) {
 	}{
 		{
 			name:    "Zero alpha source",
-			blender: NewMultiplyBlender[color.Linear, RGBAOrder](),
+			blender: NewMultiplyBlender[color.Linear, order.RGBA](),
 			dst:     []basics.Int8u{255, 0, 0, 255},
 			src:     []basics.Int8u{0, 255, 0, 0}, // Green with zero alpha
 			cover:   255,
@@ -213,7 +214,7 @@ func TestAlphaBlending(t *testing.T) {
 		},
 		{
 			name:    "Partial coverage",
-			blender: NewSrcOverBlender[color.Linear, RGBAOrder](),
+			blender: NewSrcOverBlender[color.Linear, order.RGBA](),
 			dst:     []basics.Int8u{255, 0, 0, 255},
 			src:     []basics.Int8u{0, 255, 0, 255},
 			cover:   128, // 50% coverage
