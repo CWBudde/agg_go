@@ -162,8 +162,8 @@ func (pf *PixFmtGrayGamma[PF, G]) PixWidth() int {
 
 // Gamma correction pixel format types
 type (
-	PixFmtGray8Gamma  = PixFmtGrayGamma[*pixfmt.PixFmtAlphaBlendGray[blender.BlenderGray8, any], *SimpleGammaLut]
-	PixFmtGray8Linear = PixFmtGrayGamma[*pixfmt.PixFmtAlphaBlendGray[blender.BlenderGray8, any], *LinearGammaLut]
+	PixFmtGray8Gamma  = PixFmtGrayGamma[*pixfmt.PixFmtAlphaBlendGray[blender.BlenderGray8SRGB, any], *SimpleGammaLut]
+	PixFmtGray8Linear = PixFmtGrayGamma[*pixfmt.PixFmtAlphaBlendGray[blender.BlenderGray8Linear, any], *LinearGammaLut]
 )
 
 // Constructor functions for gamma-corrected formats

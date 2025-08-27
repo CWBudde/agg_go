@@ -8,7 +8,7 @@ import (
 )
 
 func TestBlenderGray(t *testing.T) {
-	blender := BlenderGray[color.Linear]{}
+	blender := BlenderGray8[color.Linear]{}
 
 	// Test blending with full coverage
 	dst := basics.Int8u(100)
@@ -25,7 +25,7 @@ func TestBlenderGray(t *testing.T) {
 }
 
 func TestBlenderGrayPre(t *testing.T) {
-	blender := BlenderGrayPre[color.Linear]{}
+	blender := BlenderGray8Pre[color.Linear]{}
 
 	// Test premultiplied blending
 	dst := basics.Int8u(100)
@@ -46,7 +46,7 @@ func TestBlendGrayPixel(t *testing.T) {
 	dst := basics.Int8u(50)
 	src := color.NewGray8WithAlpha[color.Linear](150, 200)
 	cover := basics.Int8u(255)
-	blender := BlenderGray[color.Linear]{}
+	blender := BlenderGray8[color.Linear]{}
 
 	BlendGrayPixel(&dst, src, cover, blender)
 
@@ -61,7 +61,7 @@ func TestBlendGrayPixelZeroAlpha(t *testing.T) {
 	dst := original
 	src := color.NewGray8WithAlpha[color.Linear](200, 0) // Zero alpha
 	cover := basics.Int8u(255)
-	blender := BlenderGray[color.Linear]{}
+	blender := BlenderGray8[color.Linear]{}
 
 	BlendGrayPixel(&dst, src, cover, blender)
 
@@ -91,7 +91,7 @@ func TestBlendGrayHline(t *testing.T) {
 	}
 
 	src := color.NewGray8WithAlpha[color.Linear](150, 200)
-	blender := BlenderGray[color.Linear]{}
+	blender := BlenderGray8[color.Linear]{}
 
 	// Blend horizontal line
 	x := 2
@@ -120,7 +120,7 @@ func TestBlendGrayHlineWithCovers(t *testing.T) {
 
 	src := color.NewGray8WithAlpha[color.Linear](150, 255) // Full alpha
 	covers := []basics.Int8u{255, 200, 100, 50, 0}         // Varying coverage
-	blender := BlenderGray[color.Linear]{}
+	blender := BlenderGray8[color.Linear]{}
 
 	// Blend horizontal line with varying coverage
 	x := 2
@@ -190,18 +190,8 @@ func TestFillGraySpan(t *testing.T) {
 	}
 }
 
-func TestBlenderTypes(t *testing.T) {
-	// Test that concrete blender types can be created
-	_ = BlenderGray8{}
-	_ = BlenderGray8SRGB{}
-	_ = BlenderGray8Pre{}
-	_ = BlenderGray8PreSRGB{}
-
-	// These should compile without errors
-}
-
 func TestBlenderGrayPremultiplied(t *testing.T) {
-	blender := BlenderGrayPre[color.Linear]{}
+	blender := BlenderGray8Pre[color.Linear]{}
 
 	// Test with values that demonstrate premultiplied behavior
 	dst := basics.Int8u(0)     // Start with black

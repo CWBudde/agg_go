@@ -85,7 +85,7 @@ func (pf *PixFmtAlphaBlendGray[B, CS]) BlendPixel(x, y int, c color.Gray8[CS], c
 	if InBounds(x, y, pf.Width(), pf.Height()) && c.A > 0 {
 		pixel := pf.PixPtr(x, y)
 		if pixel != nil {
-			if blender, ok := any(pf.blender).(blender.GrayBlender); ok {
+			if blender, ok := any(pf.blender).(blender.BlenderGray8Linear); ok {
 				blender.BlendPix(pixel, c.V, c.A, cover)
 			}
 		}
@@ -137,7 +137,7 @@ func (pf *PixFmtAlphaBlendGray[B, CS]) BlendHline(x, y, length int, c color.Gray
 	}
 
 	row := pf.RowPtr(y)
-	if blender, ok := any(pf.blender).(blender.GrayBlender); ok {
+	if blender, ok := any(pf.blender).(blender.BlenderGray8Linear); ok {
 		for i := 0; i < length; i++ {
 			if c.A > 0 {
 				blender.BlendPix(&row[x+i], c.V, c.A, cover)
@@ -238,7 +238,7 @@ func (pf *PixFmtAlphaBlendGray[B, CS]) BlendSolidHspan(x, y, length int, c color
 		coverOffset := Max(0, -x)
 		effectiveLength := x2 - x1 + 1
 
-		if blender, ok := any(pf.blender).(blender.GrayBlender); ok {
+		if blender, ok := any(pf.blender).(blender.BlenderGray8Linear); ok {
 			// Blend each pixel with its corresponding coverage
 			for i := 0; i < effectiveLength; i++ {
 				coverIndex := coverOffset + i
@@ -374,15 +374,15 @@ func (pf *PixFmtAlphaBlendGray[B, CS]) Fill(c color.Gray8[CS]) {
 
 // Concrete pixel format types
 type (
-	PixFmtGray8     = PixFmtAlphaBlendGray[blender.BlenderGray8, color.Linear]
+	PixFmtGray8     = PixFmtAlphaBlendGray[blender.BlenderGray8Linear, color.Linear]
 	PixFmtSGray8    = PixFmtAlphaBlendGray[blender.BlenderGray8SRGB, color.SRGB]
-	PixFmtGray8Pre  = PixFmtAlphaBlendGray[blender.BlenderGray8Pre, color.Linear]
+	PixFmtGray8Pre  = PixFmtAlphaBlendGray[blender.BlenderGray8PreLinear, color.Linear]
 	PixFmtSGray8Pre = PixFmtAlphaBlendGray[blender.BlenderGray8PreSRGB, color.SRGB]
 )
 
 // Constructor functions for concrete types
 func NewPixFmtGray8(rbuf *buffer.RenderingBufferU8) *PixFmtGray8 {
-	return NewPixFmtAlphaBlendGray[blender.BlenderGray8, color.Linear](rbuf, blender.BlenderGray8{})
+	return NewPixFmtAlphaBlendGray[blender.BlenderGray8Linear, color.Linear](rbuf, blender.BlenderGray8Linear{})
 }
 
 func NewPixFmtSGray8(rbuf *buffer.RenderingBufferU8) *PixFmtSGray8 {
@@ -390,7 +390,7 @@ func NewPixFmtSGray8(rbuf *buffer.RenderingBufferU8) *PixFmtSGray8 {
 }
 
 func NewPixFmtGray8Pre(rbuf *buffer.RenderingBufferU8) *PixFmtGray8Pre {
-	return NewPixFmtAlphaBlendGray[blender.BlenderGray8Pre, color.Linear](rbuf, blender.BlenderGray8Pre{})
+	return NewPixFmtAlphaBlendGray[blender.BlenderGray8PreLinear, color.Linear](rbuf, blender.BlenderGray8PreLinear{})
 }
 
 func NewPixFmtSGray8Pre(rbuf *buffer.RenderingBufferU8) *PixFmtSGray8Pre {

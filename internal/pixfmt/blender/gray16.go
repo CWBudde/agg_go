@@ -63,10 +63,13 @@ func BlendGray16PreAlpha(dst *basics.Int16u, v, a basics.Int16u) {
 ////////////////////////////////////////////////////////////////////////////////
 
 type (
+	// Standard grayscale blenders
+	BlenderGray16SRGB    = BlenderGray16[color.SRGB]
+	BlenderGray16PreSRGB = BlenderGray16Pre[color.SRGB]
+
+	// Linear space variants for high-quality rendering
 	BlenderGray16Linear    = BlenderGray16[color.Linear]
-	BlenderGray16SRGB      = BlenderGray16[color.SRGB]
 	BlenderGray16PreLinear = BlenderGray16Pre[color.Linear]
-	BlenderGray16PreSRGB   = BlenderGray16Pre[color.SRGB]
 )
 
 ////////////////////////////////////////////////////////////////////////////////

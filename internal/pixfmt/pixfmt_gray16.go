@@ -85,7 +85,7 @@ func (pf *PixFmtAlphaBlendGray16[B, CS]) BlendPixel(x, y int, c color.Gray16[CS]
 	if InBounds(x, y, pf.Width(), pf.Height()) && c.A > 0 {
 		pixel := pf.PixPtr(x, y)
 		if pixel != nil {
-			if blender, ok := any(pf.blender).(blender.Gray16Blender); ok {
+			if blender, ok := any(pf.blender).(blender.BlenderGray16Linear); ok {
 				blender.BlendPix(pixel, c.V, c.A, cover)
 			}
 		}
@@ -137,7 +137,7 @@ func (pf *PixFmtAlphaBlendGray16[B, CS]) BlendHline(x, y, length int, c color.Gr
 	}
 
 	row := pf.RowPtr(y)
-	if blender, ok := any(pf.blender).(blender.Gray16Blender); ok {
+	if blender, ok := any(pf.blender).(blender.BlenderGray16Linear); ok {
 		for i := 0; i < length; i++ {
 			if c.A > 0 {
 				blender.BlendPix(&row[x+i], c.V, c.A, cover)
@@ -238,7 +238,7 @@ func (pf *PixFmtAlphaBlendGray16[B, CS]) BlendSolidHspan(x, y, length int, c col
 		coverOffset := Max(0, -x)
 		effectiveLength := x2 - x1 + 1
 
-		if blender, ok := any(pf.blender).(blender.Gray16Blender); ok {
+		if blender, ok := any(pf.blender).(blender.BlenderGray16Linear); ok {
 			// Blend each pixel with its corresponding coverage
 			for i := 0; i < effectiveLength; i++ {
 				coverIndex := coverOffset + i

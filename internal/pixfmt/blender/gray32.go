@@ -141,7 +141,7 @@ func BlendGray32Hline[S color.Space](dst []float32, x, n int, src color.Gray32[S
 
 // CopyGray32Hline copies a horizontal line without blending.
 func CopyGray32Hline[S color.Space](dst []float32, x, n int, src color.Gray32[S]) {
-	for i := 0; i < n; i++ {
+	for i := range n {
 		dst[x+i] = src.V
 	}
 }

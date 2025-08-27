@@ -5,25 +5,26 @@ import (
 
 	"agg_go/internal/basics"
 	"agg_go/internal/color"
+	"agg_go/internal/order"
 	"agg_go/internal/pixfmt/blender"
 )
 
 // TestBlenderInterfaceCompliance tests that all blender types implement the BlenderBase interface
 func TestBlenderInterfaceCompliance(t *testing.T) {
 	// Test basic RGBA blenders (matching the original commented test)
-	var _ BlenderBase[basics.Int8u, blender.RGBAOrder] = blender.BlenderRGBA[color.Linear, blender.RGBAOrder]{}
-	var _ BlenderBase[basics.Int8u, blender.RGBAOrder] = blender.BlenderRGBAPre[color.Linear, blender.RGBAOrder]{}
-	var _ BlenderBase[basics.Int8u, blender.RGBAOrder] = blender.BlenderRGBAPlain[color.Linear, blender.RGBAOrder]{}
+	var _ BlenderBase[basics.Int8u, order.RGBA] = blender.BlenderRGBA[color.Linear, order.RGBA]{}
+	var _ BlenderBase[basics.Int8u, order.RGBA] = blender.BlenderRGBAPre[color.Linear, order.RGBA]{}
+	var _ BlenderBase[basics.Int8u, order.RGBA] = blender.BlenderRGBAPlain[color.Linear, order.RGBA]{}
 
 	// Test other RGBA color orders
-	var _ BlenderBase[basics.Int8u, blender.ARGBOrder] = blender.BlenderRGBA[color.Linear, blender.ARGBOrder]{}
-	var _ BlenderBase[basics.Int8u, blender.BGRAOrder] = blender.BlenderRGBA[color.Linear, blender.BGRAOrder]{}
-	var _ BlenderBase[basics.Int8u, blender.ABGROrder] = blender.BlenderRGBA[color.Linear, blender.ABGROrder]{}
+	var _ BlenderBase[basics.Int8u, order.ARGB] = blender.BlenderRGBA[color.Linear, order.ARGB]{}
+	var _ BlenderBase[basics.Int8u, order.BGRA] = blender.BlenderRGBA[color.Linear, order.BGRA]{}
+	var _ BlenderBase[basics.Int8u, order.ABGR] = blender.BlenderRGBA[color.Linear, order.ABGR]{}
 
 	// Test RGBA blenders with SRGB color space
-	var _ BlenderBase[basics.Int8u, blender.RGBAOrder] = blender.BlenderRGBA[color.SRGB, blender.RGBAOrder]{}
-	var _ BlenderBase[basics.Int8u, blender.RGBAOrder] = blender.BlenderRGBAPre[color.SRGB, blender.RGBAOrder]{}
-	var _ BlenderBase[basics.Int8u, blender.RGBAOrder] = blender.BlenderRGBAPlain[color.SRGB, blender.RGBAOrder]{}
+	var _ BlenderBase[basics.Int8u, order.RGBA] = blender.BlenderRGBA[color.SRGB, order.RGBA]{}
+	var _ BlenderBase[basics.Int8u, order.RGBA] = blender.BlenderRGBAPre[color.SRGB, order.RGBA]{}
+	var _ BlenderBase[basics.Int8u, order.RGBA] = blender.BlenderRGBAPlain[color.SRGB, order.RGBA]{}
 }
 
 // TestBlenderInterfaceBehavior tests actual interface method behavior
@@ -34,8 +35,8 @@ func TestBlenderInterfaceBehavior(t *testing.T) {
 	cover := basics.Int8u(255)
 
 	// Test RGBA blender - use the types just like in the blender package
-	rgbaBlender := blender.BlenderRGBA[color.Linear, blender.RGBAOrder]{}
-	var blenderInterface BlenderBase[basics.Int8u, blender.RGBAOrder] = rgbaBlender
+	rgbaBlender := blender.BlenderRGBA[color.Linear, order.RGBA]{}
+	var blenderInterface BlenderBase[basics.Int8u, order.RGBA] = rgbaBlender
 
 	// Test Get method
 	retrievedColor := blenderInterface.Get(pixel, cover)

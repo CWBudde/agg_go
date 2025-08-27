@@ -21,11 +21,11 @@ type GrayBlender[S color.Space] interface {
 // Non-premultiplied grayscale -> Non-premultiplied destination
 ////////////////////////////////////////////////////////////////////////////////
 
-type BlenderGray[S color.Space] struct{}
+type BlenderGray8[S color.Space] struct{}
 
 // BlendPix: straight (non-premultiplied) alpha with coverage.
 // a' = a * cover (8-bit), then dst = lerp(dst, v, a').
-func (BlenderGray[S]) BlendPix(dst *basics.Int8u, v, a, cover basics.Int8u) {
+func (BlenderGray8[S]) BlendPix(dst *basics.Int8u, v, a, cover basics.Int8u) {
 	if a == 0 || cover == 0 {
 		return
 	}
@@ -41,11 +41,11 @@ func BlendGrayAlpha(dst *basics.Int8u, v, a basics.Int8u) {
 // Premultiplied grayscale -> Premultiplied destination
 ////////////////////////////////////////////////////////////////////////////////
 
-type BlenderGrayPre[S color.Space] struct{}
+type BlenderGray8Pre[S color.Space] struct{}
 
 // BlendPix: premultiplied compositing; coverage scales both v and a.
 // dst = prelerp(dst, v*cover, a*cover)
-func (BlenderGrayPre[S]) BlendPix(dst *basics.Int8u, v, a, cover basics.Int8u) {
+func (BlenderGray8Pre[S]) BlendPix(dst *basics.Int8u, v, a, cover basics.Int8u) {
 	if a == 0 || cover == 0 {
 		return
 	}
@@ -62,38 +62,13 @@ func BlendGrayPreAlpha(dst *basics.Int8u, v, a basics.Int8u) {
 ////////////////////////////////////////////////////////////////////////////////
 
 type (
-	BlenderGray8        = BlenderGray[color.Linear]
-	BlenderGray8SRGB    = BlenderGray[color.SRGB]
-	BlenderGray8Pre     = BlenderGrayPre[color.Linear]
-	BlenderGray8PreSRGB = BlenderGrayPre[color.SRGB]
-)
-
-////////////////////////////////////////////////////////////////////////////////
-// Extended grayscale aliases
-////////////////////////////////////////////////////////////////////////////////
-
-type (
 	// Standard grayscale blenders
-	BlenderGray8Standard    = BlenderGray[color.SRGB]
-	BlenderGray8PreStandard = BlenderGrayPre[color.SRGB]
+	BlenderGray8SRGB    = BlenderGray8[color.SRGB]
+	BlenderGray8PreSRGB = BlenderGray8Pre[color.SRGB]
 
 	// Linear space variants for high-quality rendering
-	BlenderGray8Linear    = BlenderGray[color.Linear]
-	BlenderGray8PreLinear = BlenderGrayPre[color.Linear]
-
-	// Ultra-short aliases
-	Gray8Blender    = BlenderGray[color.SRGB]
-	Gray8PreBlender = BlenderGrayPre[color.SRGB]
-
-	// Alternative naming schemes
-	GrayBlender8    = BlenderGray[color.SRGB]
-	GrayBlender8Pre = BlenderGrayPre[color.SRGB]
-
-	// Luminance-focused aliases (same as gray, but semantically clearer)
-	LuminanceBlender8          = BlenderGray[color.SRGB]
-	LuminanceBlender8Pre       = BlenderGrayPre[color.SRGB]
-	LuminanceBlender8Linear    = BlenderGray[color.Linear]
-	LuminanceBlender8PreLinear = BlenderGrayPre[color.Linear]
+	BlenderGray8Linear    = BlenderGray8[color.Linear]
+	BlenderGray8PreLinear = BlenderGray8Pre[color.Linear]
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -102,16 +77,16 @@ type (
 
 type (
 	// Common single-channel formats
-	BlenderMonochrome    = BlenderGray[color.SRGB]
-	BlenderMonochromePre = BlenderGrayPre[color.SRGB]
+	BlenderMonochrome    = BlenderGray8[color.SRGB]
+	BlenderMonochromePre = BlenderGray8Pre[color.SRGB]
 
 	// Alpha channel blending (grayscale used for alpha)
-	BlenderAlpha8    = BlenderGray[color.Linear]
-	BlenderAlpha8Pre = BlenderGrayPre[color.Linear]
+	BlenderAlpha8    = BlenderGray8[color.Linear]
+	BlenderAlpha8Pre = BlenderGray8Pre[color.Linear]
 
 	// Mask blending (for compositing operations)
-	BlenderMask8    = BlenderGray[color.Linear]
-	BlenderMask8Pre = BlenderGrayPre[color.Linear]
+	BlenderMask8    = BlenderGray8[color.Linear]
+	BlenderMask8Pre = BlenderGray8Pre[color.Linear]
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -127,25 +102,25 @@ func BlendGrayPixel[S color.Space](dst *basics.Int8u, src color.Gray8[S], cover 
 
 // BlendGrayPixelPre blends one premultiplied grayscale pixel.
 // (Kept for API clarity; you can also call BlendGrayPixel with a Pre blender.)
-func BlendGrayPixelPre[S color.Space](dst *basics.Int8u, src color.Gray8[S], cover basics.Int8u, b BlenderGrayPre[S]) {
+func BlendGrayPixelPre[S color.Space](dst *basics.Int8u, src color.Gray8[S], cover basics.Int8u, b BlenderGray8Pre[S]) {
 	if src.A != 0 && cover != 0 {
 		b.BlendPix(dst, src.V, src.A, cover)
 	}
 }
 
-func (BlenderGray[S]) SetPlain(dst *basics.Int8u, v, a basics.Int8u) {
+func (BlenderGray8[S]) SetPlain(dst *basics.Int8u, v, a basics.Int8u) {
 	*dst = v
 }
 
-func (BlenderGray[S]) GetPlain(src *basics.Int8u) (v, a basics.Int8u) {
+func (BlenderGray8[S]) GetPlain(src *basics.Int8u) (v, a basics.Int8u) {
 	return *src, 255
 }
 
-func (BlenderGrayPre[S]) SetPlain(dst *basics.Int8u, v, a basics.Int8u) {
+func (BlenderGray8Pre[S]) SetPlain(dst *basics.Int8u, v, a basics.Int8u) {
 	*dst = color.Gray8Multiply(v, a)
 }
 
-func (BlenderGrayPre[S]) GetPlain(src *basics.Int8u) (v, a basics.Int8u) {
+func (BlenderGray8Pre[S]) GetPlain(src *basics.Int8u) (v, a basics.Int8u) {
 	return *src, 255
 }
 
@@ -176,7 +151,7 @@ func BlendGrayHline[S color.Space](dst []basics.Int8u, x, n int, src color.Gray8
 }
 
 // BlendGrayHlinePre blends a premultiplied run (explicit helper).
-func BlendGrayHlinePre[S color.Space](dst []basics.Int8u, x, n int, src color.Gray8[S], covers []basics.Int8u, b BlenderGrayPre[S]) {
+func BlendGrayHlinePre[S color.Space](dst []basics.Int8u, x, n int, src color.Gray8[S], covers []basics.Int8u, b BlenderGray8Pre[S]) {
 	if n <= 0 || src.A == 0 {
 		return
 	}

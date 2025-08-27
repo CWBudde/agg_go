@@ -85,7 +85,7 @@ func (pf *PixFmtAlphaBlendGray32[B, CS]) BlendPixel(x, y int, c color.Gray32[CS]
 	if InBounds(x, y, pf.Width(), pf.Height()) && c.A > 0.0 {
 		pixel := pf.PixPtr(x, y)
 		if pixel != nil {
-			if blender, ok := any(pf.blender).(blender.Gray32Blender); ok {
+			if blender, ok := any(pf.blender).(blender.BlenderGray32Linear); ok {
 				// Convert Int8u cover to float32 (0-255 -> 0.0-1.0)
 				floatCover := float32(cover) / 255.0
 				blender.BlendPix(pixel, c.V, c.A, floatCover)
@@ -139,7 +139,7 @@ func (pf *PixFmtAlphaBlendGray32[B, CS]) BlendHline(x, y, length int, c color.Gr
 	}
 
 	row := pf.RowPtr(y)
-	if blender, ok := any(pf.blender).(blender.Gray32Blender); ok {
+	if blender, ok := any(pf.blender).(blender.BlenderGray32Linear); ok {
 		floatCover := float32(cover) / 255.0
 		for i := 0; i < length; i++ {
 			if c.A > 0.0 {
@@ -245,7 +245,7 @@ func (pf *PixFmtAlphaBlendGray32[B, CS]) BlendSolidHspan(x, y, length int, c col
 		coverOffset := Max(0, -x)
 		effectiveLength := x2 - x1 + 1
 
-		if blender, ok := any(pf.blender).(blender.Gray32Blender); ok {
+		if blender, ok := any(pf.blender).(blender.BlenderGray32Linear); ok {
 			// Blend each pixel with its corresponding coverage
 			for i := 0; i < effectiveLength; i++ {
 				coverIndex := coverOffset + i
