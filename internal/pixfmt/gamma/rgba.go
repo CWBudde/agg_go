@@ -3,6 +3,7 @@ package gamma
 import (
 	"agg_go/internal/basics"
 	"agg_go/internal/color"
+	"agg_go/internal/order"
 	"agg_go/internal/pixfmt"
 	"agg_go/internal/pixfmt/blender"
 )
@@ -88,36 +89,36 @@ func (pf *PixFmtRGBAGamma[PF, G]) PixWidth() int {
 
 // RGBA Gamma correction pixel format types
 type (
-	PixFmtRGBA32Gamma  = PixFmtRGBAGamma[*pixfmt.PixFmtAlphaBlendRGBA[blender.BlenderRGBA8, color.Linear], *SimpleGammaLut]
-	PixFmtRGBA32Linear = PixFmtRGBAGamma[*pixfmt.PixFmtAlphaBlendRGBA[blender.BlenderRGBA8, color.Linear], *LinearGammaLut]
+	PixFmtRGBA32Gamma  = PixFmtRGBAGamma[*pixfmt.PixFmtAlphaBlendRGBA[blender.BlenderRGBA8[color.Linear, order.RGBA], color.Linear, order.RGBA], *SimpleGammaLut]
+	PixFmtRGBA32Linear = PixFmtRGBAGamma[*pixfmt.PixFmtAlphaBlendRGBA[blender.BlenderRGBA8[color.Linear, order.RGBA], color.Linear, order.RGBA], *LinearGammaLut]
 )
 
 // Constructor functions for gamma-corrected RGBA formats
-func NewPixFmtRGBA32Gamma(pf *pixfmt.PixFmtAlphaBlendRGBA[blender.BlenderRGBA8, color.Linear], gamma float64) *PixFmtRGBA32Gamma {
-	return NewPixFmtRGBAGamma[*pixfmt.PixFmtAlphaBlendRGBA[blender.BlenderRGBA8, color.Linear]](pf, NewSimpleGammaLut(gamma))
+func NewPixFmtRGBA32Gamma(pf *pixfmt.PixFmtAlphaBlendRGBA[blender.BlenderRGBA8[color.Linear, order.RGBA], color.Linear, order.RGBA], gamma float64) *PixFmtRGBA32Gamma {
+	return NewPixFmtRGBAGamma[*pixfmt.PixFmtAlphaBlendRGBA[blender.BlenderRGBA8[color.Linear, order.RGBA], color.Linear, order.RGBA]](pf, NewSimpleGammaLut(gamma))
 }
 
-func NewPixFmtRGBA32Linear(pf *pixfmt.PixFmtAlphaBlendRGBA[blender.BlenderRGBA8, color.Linear]) *PixFmtRGBA32Linear {
-	return NewPixFmtRGBAGamma[*pixfmt.PixFmtAlphaBlendRGBA[blender.BlenderRGBA8, color.Linear]](pf, NewLinearGammaLut())
+func NewPixFmtRGBA32Linear(pf *pixfmt.PixFmtAlphaBlendRGBA[blender.BlenderRGBA8[color.Linear, order.RGBA], color.Linear, order.RGBA]) *PixFmtRGBA32Linear {
+	return NewPixFmtRGBAGamma[*pixfmt.PixFmtAlphaBlendRGBA[blender.BlenderRGBA8[color.Linear, order.RGBA], color.Linear, order.RGBA]](pf, NewLinearGammaLut())
 }
 
 // RGBA multiplier for premultiplication/demultiplication with different component orders
-type RGBAMultiplier[O any] struct{}
+type RGBAMultiplier[O order.RGBAOrder] struct{}
 
 // Premultiply premultiplies RGBA pixel components by alpha
 func (m RGBAMultiplier[O]) Premultiply(p []basics.Int8u) {
 	if len(p) >= 4 {
-		order := blender.GetColorOrder[O]()
-		a := p[order.A]
+		var order O
+		a := p[order.IdxA()]
 		if a < 255 {
 			if a == 0 {
-				p[order.R] = 0
-				p[order.G] = 0
-				p[order.B] = 0
+				p[order.IdxR()] = 0
+				p[order.IdxG()] = 0
+				p[order.IdxB()] = 0
 			} else {
-				p[order.R] = basics.Int8u((uint32(p[order.R]) * uint32(a)) / 255)
-				p[order.G] = basics.Int8u((uint32(p[order.G]) * uint32(a)) / 255)
-				p[order.B] = basics.Int8u((uint32(p[order.B]) * uint32(a)) / 255)
+				p[order.IdxR()] = basics.Int8u((uint32(p[order.IdxR()]) * uint32(a)) / 255)
+				p[order.IdxG()] = basics.Int8u((uint32(p[order.IdxG()]) * uint32(a)) / 255)
+				p[order.IdxB()] = basics.Int8u((uint32(p[order.IdxB()]) * uint32(a)) / 255)
 			}
 		}
 	}
@@ -126,20 +127,20 @@ func (m RGBAMultiplier[O]) Premultiply(p []basics.Int8u) {
 // Demultiply demultiplies RGBA pixel components by alpha
 func (m RGBAMultiplier[O]) Demultiply(p []basics.Int8u) {
 	if len(p) >= 4 {
-		order := blender.GetColorOrder[O]()
-		a := p[order.A]
+		var order O
+		a := p[order.IdxA()]
 		if a < 255 && a > 0 {
-			p[order.R] = basics.Int8u((uint32(p[order.R])*255 + uint32(a)/2) / uint32(a))
-			p[order.G] = basics.Int8u((uint32(p[order.G])*255 + uint32(a)/2) / uint32(a))
-			p[order.B] = basics.Int8u((uint32(p[order.B])*255 + uint32(a)/2) / uint32(a))
+			p[order.IdxR()] = basics.Int8u((uint32(p[order.IdxR()])*255 + uint32(a)/2) / uint32(a))
+			p[order.IdxG()] = basics.Int8u((uint32(p[order.IdxG()])*255 + uint32(a)/2) / uint32(a))
+			p[order.IdxB()] = basics.Int8u((uint32(p[order.IdxB()])*255 + uint32(a)/2) / uint32(a))
 		}
 	}
 }
 
 // Concrete multiplier types for different color orders
 type (
-	RGBAMultiplierRGBA = RGBAMultiplier[blender.RGBAOrder]
-	RGBAMultiplierARGB = RGBAMultiplier[blender.ARGBOrder]
-	RGBAMultiplierBGRA = RGBAMultiplier[blender.BGRAOrder]
-	RGBAMultiplierABGR = RGBAMultiplier[blender.ABGROrder]
+	RGBAMultiplierRGBA = RGBAMultiplier[order.RGBA]
+	RGBAMultiplierARGB = RGBAMultiplier[order.ARGB]
+	RGBAMultiplierBGRA = RGBAMultiplier[order.BGRA]
+	RGBAMultiplierABGR = RGBAMultiplier[order.ABGR]
 )

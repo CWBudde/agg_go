@@ -514,69 +514,91 @@ type (
 func NewMultiplyBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
 	return NewCompositeBlender[S, O](CompOpMultiply)
 }
+
 func NewScreenBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
 	return NewCompositeBlender[S, O](CompOpScreen)
 }
+
 func NewOverlayBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
 	return NewCompositeBlender[S, O](CompOpOverlay)
 }
+
 func NewDarkenBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
 	return NewCompositeBlender[S, O](CompOpDarken)
 }
+
 func NewLightenBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
 	return NewCompositeBlender[S, O](CompOpLighten)
 }
+
 func NewColorDodgeBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
 	return NewCompositeBlender[S, O](CompOpColorDodge)
 }
+
 func NewColorBurnBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
 	return NewCompositeBlender[S, O](CompOpColorBurn)
 }
+
 func NewHardLightBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
 	return NewCompositeBlender[S, O](CompOpHardLight)
 }
+
 func NewSoftLightBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
 	return NewCompositeBlender[S, O](CompOpSoftLight)
 }
+
 func NewDifferenceBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
 	return NewCompositeBlender[S, O](CompOpDifference)
 }
+
 func NewExclusionBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
 	return NewCompositeBlender[S, O](CompOpExclusion)
 }
+
 func NewPlusBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
 	return NewCompositeBlender[S, O](CompOpPlus)
 }
+
 func NewClearBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
 	return NewCompositeBlender[S, O](CompOpClear)
 }
+
 func NewSrcBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
 	return NewCompositeBlender[S, O](CompOpSrc)
 }
+
 func NewDstBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
 	return NewCompositeBlender[S, O](CompOpDst)
 }
+
 func NewSrcOverBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
 	return NewCompositeBlender[S, O](CompOpSrcOver)
 }
+
 func NewDstOverBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
 	return NewCompositeBlender[S, O](CompOpDstOver)
 }
+
 func NewSrcInBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
 	return NewCompositeBlender[S, O](CompOpSrcIn)
 }
+
 func NewDstInBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
 	return NewCompositeBlender[S, O](CompOpDstIn)
 }
+
 func NewSrcOutBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
 	return NewCompositeBlender[S, O](CompOpSrcOut)
 }
+
 func NewDstOutBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
 	return NewCompositeBlender[S, O](CompOpDstOut)
 }
+
 func NewSrcAtopBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
 	return NewCompositeBlender[S, O](CompOpSrcAtop)
 }
+
 func NewDstAtopBlender[S color.Space, O order.RGBAOrder]() CompositeBlender[S, O] {
 	return NewCompositeBlender[S, O](CompOpDstAtop)
 }

@@ -316,149 +316,51 @@ func (r *RasterizerSlClip[C, V]) LineTo(sink LineSink, x2, y2 C) {
 
 		// Handle X clipping cases
 		switch ((f1 & (ClpX1|ClpX2)) << 1) | (f2 & (ClpX1|ClpX2)) {
-		case 0: // Visible by X
-			r.lineClipY(ras, x1, y1, x2, y2, f1, f2)
-
+		case 0:
+			r.lineClipY(sink, x1, y1, x2, y2, f1, f2)
 		case 1: // x2 > clip.x2
-			switch c := any(conv).(type) {
-			case RasConvInt:
-				y3 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
-			case RasConvIntSat:
-				y3 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
-			case RasConvInt3x:
-				y3 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
-			case RasConvDbl:
-				y3 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
-			case RasConvDbl3x:
-				y3 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
-			}
-			f3 = basics.ClippingFlagsY(y3, r.clipBox)
-			r.lineClipY(ras, x1, y1, r.clipBox.X2, y3, f1, f3)
-			r.lineClipY(ras, r.clipBox.X2, y3, r.clipBox.X2, y2, f3, f2)
-
+			y3 := y1 + r.conv.MulDiv(float64(r.clipBox.X2-x1), float64(y2-y1), float64(x2-x1))
+			f3 := clippingFlagsY(y3, r.clipBox)
+			r.lineClipY(sink, x1, y1, r.clipBox.X2, y3, f1, f3)
+			r.lineClipY(sink, r.clipBox.X2, y3, r.clipBox.X2, y2, f3, f2)
 		case 2: // x1 > clip.x2
-			switch c := any(conv).(type) {
-			case RasConvInt:
-				y3 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
-			case RasConvIntSat:
-				y3 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
-			case RasConvInt3x:
-				y3 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
-			case RasConvDbl:
-				y3 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
-			case RasConvDbl3x:
-				y3 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
-			}
-			f3 = basics.ClippingFlagsY(y3, r.clipBox)
-			// Fixed: Only draw the visible segment from intersection to end point
-			r.lineClipY(ras, r.clipBox.X2, y3, x2, y2, f3, f2)
-
-		case 3: // x1 > clip.x2 && x2 > clip.x2
-			// Fixed: When both points are completely outside the same boundary,
-			// no lines should be drawn (matches C++ AGG implementation)
-
+			y3 := y1 + r.conv.MulDiv(float64(r.clipBox.X2-x1), float64(y2-y1), float64(x2-x1))
+			f3 := clippingFlagsY(y3, r.clipBox)
+			r.lineClipY(sink, r.clipBox.X2, y3, x2, y2, f3, f2)
+		case 3: // both > x2
+			r.lineClipY(sink, r.clipBox.X2, y1, r.clipBox.X2, y2, f1, f2)
 		case 4: // x2 < clip.x1
-			switch c := any(conv).(type) {
-			case RasConvInt:
-				y3 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
-			case RasConvIntSat:
-				y3 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
-			case RasConvInt3x:
-				y3 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
-			case RasConvDbl:
-				y3 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
-			case RasConvDbl3x:
-				y3 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
-			}
-			f3 = basics.ClippingFlagsY(y3, r.clipBox)
-			r.lineClipY(ras, x1, y1, r.clipBox.X1, y3, f1, f3)
-			r.lineClipY(ras, r.clipBox.X1, y3, r.clipBox.X1, y2, f3, f2)
-
-		case 6: // x1 > clip.x2 && x2 < clip.x1
-			switch c := any(conv).(type) {
-			case RasConvInt:
-				y3 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
-				y4 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
-			case RasConvIntSat:
-				y3 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
-				y4 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
-			case RasConvInt3x:
-				y3 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
-				y4 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
-			case RasConvDbl:
-				y3 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
-				y4 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
-			case RasConvDbl3x:
-				y3 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
-				y4 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
-			}
-			f3 = basics.ClippingFlagsY(y3, r.clipBox)
-			f4 = basics.ClippingFlagsY(y4, r.clipBox)
-			r.lineClipY(ras, r.clipBox.X2, y1, r.clipBox.X2, y3, f1, f3)
-			r.lineClipY(ras, r.clipBox.X2, y3, r.clipBox.X1, y4, f3, f4)
-			r.lineClipY(ras, r.clipBox.X1, y4, r.clipBox.X1, y2, f4, f2)
-
+			y3 := y1 + r.conv.MulDiv(float64(r.clipBox.X1-x1), float64(y2-y1), float64(x2-x1))
+			f3 := clippingFlagsY(y3, r.clipBox)
+			r.lineClipY(sink, x1, y1, r.clipBox.X1, y3, f1, f3)
+			r.lineClipY(sink, r.clipBox.X1, y3, r.clipBox.X1, y2, f3, f2)
+		case 6: // x1 > x2 && x2 < x1
+			y3 := y1 + r.conv.MulDiv(float64(r.clipBox.X2-x1), float64(y2-y1), float64(x2-x1))
+			y4 := y1 + r.conv.MulDiv(float64(r.clipBox.X1-x1), float64(y2-y1), float64(x2-x1))
+			f3 := clippingFlagsY(y3, r.clipBox)
+			f4 := clippingFlagsY(y4, r.clipBox)
+			r.lineClipY(sink, r.clipBox.X2, y1, r.clipBox.X2, y3, f1, f3)
+			r.lineClipY(sink, r.clipBox.X2, y3, r.clipBox.X1, y4, f3, f4)
+			r.lineClipY(sink, r.clipBox.X1, y4, r.clipBox.X1, y2, f4, f2)
 		case 8: // x1 < clip.x1
-			switch c := any(conv).(type) {
-			case RasConvInt:
-				y3 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
-			case RasConvIntSat:
-				y3 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
-			case RasConvInt3x:
-				y3 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
-			case RasConvDbl:
-				y3 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
-			case RasConvDbl3x:
-				y3 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
-			}
-			f3 = basics.ClippingFlagsY(y3, r.clipBox)
-			// Fixed: Only draw the visible segment from intersection to end point
-			// The boundary line was creating unwanted artifacts
-			r.lineClipY(ras, r.clipBox.X1, y3, x2, y2, f3, f2)
-
-		case 9: // x1 < clip.x1 && x2 > clip.x2
-			switch c := any(conv).(type) {
-			case RasConvInt:
-				y3 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
-				y4 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
-			case RasConvIntSat:
-				y3 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
-				y4 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
-			case RasConvInt3x:
-				y3 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
-				y4 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
-			case RasConvDbl:
-				y3 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
-				y4 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
-			case RasConvDbl3x:
-				y3 = y1 + c.MulDiv(r.clipBox.X1-x1, y2-y1, x2-x1)
-				y4 = y1 + c.MulDiv(r.clipBox.X2-x1, y2-y1, x2-x1)
-			}
-			f3 = basics.ClippingFlagsY(y3, r.clipBox)
-			f4 = basics.ClippingFlagsY(y4, r.clipBox)
-			r.lineClipY(ras, r.clipBox.X1, y1, r.clipBox.X1, y3, f1, f3)
-			r.lineClipY(ras, r.clipBox.X1, y3, r.clipBox.X2, y4, f3, f4)
-			r.lineClipY(ras, r.clipBox.X2, y4, r.clipBox.X2, y2, f4, f2)
-
-		case 12: // x1 < clip.x1 && x2 < clip.x1
-			// Fixed: When both points are completely outside the same boundary,
-			// no lines should be drawn (matches C++ AGG implementation)
-			// Just update position without drawing anything
+			y3 := y1 + r.conv.MulDiv(float64(r.clipBox.X1-x1), float64(y2-y1), float64(x2-x1))
+			f3 := clippingFlagsY(y3, r.clipBox)
+			r.lineClipY(sink, r.clipBox.X1, y1, r.clipBox.X1, y3, f1, f3)
+			r.lineClipY(sink, r.clipBox.X1, y3, x2, y2, f3, f2)
+		case 9: // x1 < x1 && x2 > x2
+			y3 := y1 + r.conv.MulDiv(float64(r.clipBox.X1-x1), float64(y2-y1), float64(x2-x1))
+			y4 := y1 + r.conv.MulDiv(float64(r.clipBox.X2-x1), float64(y2-y1), float64(x2-x1))
+			f3 := clippingFlagsY(y3, r.clipBox)
+			f4 := clippingFlagsY(y4, r.clipBox)
+			r.lineClipY(sink, r.clipBox.X1, y1, r.clipBox.X1, y3, f1, f3)
+			r.lineClipY(sink, r.clipBox.X1, y3, r.clipBox.X2, y4, f3, f4)
+			r.lineClipY(sink, r.clipBox.X2, y4, r.clipBox.X2, y2, f4, f2)
+		case 12: // both < x1
+			r.lineClipY(sink, r.clipBox.X1, y1, r.clipBox.X1, y2, f1, f2)
 		}
 		r.f1 = f2
 	} else {
-		switch c := any(conv).(type) {
-		case RasConvInt:
-			ras.Line(c.Xi(r.x1), c.Yi(r.y1), c.Xi(x2), c.Yi(y2))
-		case RasConvIntSat:
-			ras.Line(c.Xi(r.x1), c.Yi(r.y1), c.Xi(x2), c.Yi(y2))
-		case RasConvInt3x:
-			ras.Line(c.Xi(r.x1), c.Yi(r.y1), c.Xi(x2), c.Yi(y2))
-		case RasConvDbl:
-			ras.Line(c.Xi(r.x1), c.Yi(r.y1), c.Xi(x2), c.Yi(y2))
-		case RasConvDbl3x:
-			ras.Line(c.Xi(r.x1), c.Yi(r.y1), c.Xi(x2), c.Yi(y2))
-		}
+		sink.Line(r.conv.Xi(r.x1), r.conv.Yi(r.y1), r.conv.Xi(x2), r.conv.Yi(y2))
 	}
 	r.x1 = x2
 	r.y1 = y2
@@ -467,109 +369,28 @@ func (r *RasterizerSlClip[C, V]) LineTo(sink LineSink, x2, y2 C) {
 // RasterizerSlNoClip provides a no-clipping implementation.
 // Equivalent to AGG's rasterizer_sl_no_clip class.
 type RasterizerSlNoClip struct {
-	x1, y1     float64
-	rasterizer RasterizerInterface
+	x1, y1 int
 }
 
 // NewRasterizerSlNoClip creates a new no-clip rasterizer
-func NewRasterizerSlNoClip(rasterizer RasterizerInterface) *RasterizerSlNoClip {
-	return &RasterizerSlNoClip{
-		x1:         0,
-		y1:         0,
-		rasterizer: rasterizer,
-	}
+func NewRasterizerSlNoClip() *RasterizerSlNoClip {
+	return &RasterizerSlNoClip{}
 }
 
 // ResetClipping does nothing for no-clip implementation
-func (r *RasterizerSlNoClip) ResetClipping() {
-	// No-op
-}
+func (r *RasterizerSlNoClip) ResetClipping() {}
 
 // ClipBox does nothing for no-clip implementation
-func (r *RasterizerSlNoClip) ClipBox(x1, y1, x2, y2 float64) {
-	// No-op
-}
+func (r *RasterizerSlNoClip) ClipBox(_, _, _, _ int) {}
 
 // MoveTo sets the current position
-func (r *RasterizerSlNoClip) MoveTo(x1, y1 float64) {
-	r.x1 = x1
-	r.y1 = y1
+func (r *RasterizerSlNoClip) MoveTo(x1, y1 int) {
+	r.x1, r.y1 = x1, y1
 }
 
 // LineTo draws a line from the current position to (x2, y2)
-func (r *RasterizerSlNoClip) LineTo(outline RasterizerInterface, x2, y2 float64) {
-	// Apply coordinate conversion just like RasConvDbl.Xi() and Yi() do
-	// This matches the C++ ras_conv_dbl::upscale() behavior
-	x1i := basics.IRound(r.x1 * basics.PolySubpixelScale)
-	y1i := basics.IRound(r.y1 * basics.PolySubpixelScale)
-	x2i := basics.IRound(x2 * basics.PolySubpixelScale)
-	y2i := basics.IRound(y2 * basics.PolySubpixelScale)
-	outline.Line(x1i, y1i, x2i, y2i)
-	r.x1 = x2
-	r.y1 = y2
+func (r *RasterizerSlNoClip) LineTo(sink LineSink, x2, y2 int) {
+	sink.Line(r.x1, r.y1, x2, y2)
+	r.x1, r.y1 = x2, y2
 }
 
-// Concrete clipper implementations for common coordinate types
-
-// RasterizerSlClipInt provides integer coordinate clipping
-type RasterizerSlClipInt struct {
-	clipBox  basics.Rect[int]
-	x1, y1   int
-	f1       uint32
-	clipping bool
-}
-
-// NewRasterizerSlClipInt creates a new integer coordinate clipper
-func NewRasterizerSlClipInt() *RasterizerSlClipInt {
-	return &RasterizerSlClipInt{
-		clipBox:  basics.Rect[int]{X1: 0, Y1: 0, X2: 0, Y2: 0},
-		clipping: false,
-	}
-}
-
-func (r *RasterizerSlClipInt) ResetClipping() {
-	r.clipping = false
-}
-
-func (r *RasterizerSlClipInt) ClipBox(x1, y1, x2, y2 int) {
-	r.clipBox = basics.Rect[int]{X1: x1, Y1: y1, X2: x2, Y2: y2}
-	if r.clipBox.X1 > r.clipBox.X2 {
-		r.clipBox.X1, r.clipBox.X2 = r.clipBox.X2, r.clipBox.X1
-	}
-	if r.clipBox.Y1 > r.clipBox.Y2 {
-		r.clipBox.Y1, r.clipBox.Y2 = r.clipBox.Y2, r.clipBox.Y1
-	}
-	r.clipping = true
-}
-
-func (r *RasterizerSlClipInt) MoveTo(x1, y1 int) {
-	r.x1 = x1
-	r.y1 = y1
-	if r.clipping {
-		r.f1 = basics.ClippingFlags(float64(x1), float64(y1), basics.Rect[float64]{
-			X1: float64(r.clipBox.X1), Y1: float64(r.clipBox.Y1),
-			X2: float64(r.clipBox.X2), Y2: float64(r.clipBox.Y2),
-		})
-	}
-}
-
-func (r *RasterizerSlClipInt) LineTo(outline RasterizerInterface, x2, y2 int) {
-	if r.clipping {
-		f2 := basics.ClippingFlags(float64(x2), float64(y2), basics.Rect[float64]{
-			X1: float64(r.clipBox.X1), Y1: float64(r.clipBox.Y1),
-			X2: float64(r.clipBox.X2), Y2: float64(r.clipBox.Y2),
-		})
-		if (r.f1 & f2) == 0 {
-			if (r.f1 | f2) != 0 {
-				// Complex clipping needed - for now, pass through
-				outline.Line(r.x1, r.y1, x2, y2)
-			} else {
-				outline.Line(r.x1, r.y1, x2, y2)
-			}
-		}
-	} else {
-		outline.Line(r.x1, r.y1, x2, y2)
-	}
-	r.x1 = x2
-	r.y1 = y2
-}

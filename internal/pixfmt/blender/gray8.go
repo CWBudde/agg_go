@@ -69,6 +69,52 @@ type (
 )
 
 ////////////////////////////////////////////////////////////////////////////////
+// Extended grayscale aliases
+////////////////////////////////////////////////////////////////////////////////
+
+type (
+	// Standard grayscale blenders
+	BlenderGray8Standard    = BlenderGray[color.SRGB]
+	BlenderGray8PreStandard = BlenderGrayPre[color.SRGB]
+
+	// Linear space variants for high-quality rendering
+	BlenderGray8Linear    = BlenderGray[color.Linear]
+	BlenderGray8PreLinear = BlenderGrayPre[color.Linear]
+
+	// Ultra-short aliases
+	Gray8Blender    = BlenderGray[color.SRGB]
+	Gray8PreBlender = BlenderGrayPre[color.SRGB]
+
+	// Alternative naming schemes
+	GrayBlender8    = BlenderGray[color.SRGB]
+	GrayBlender8Pre = BlenderGrayPre[color.SRGB]
+
+	// Luminance-focused aliases (same as gray, but semantically clearer)
+	LuminanceBlender8          = BlenderGray[color.SRGB]
+	LuminanceBlender8Pre       = BlenderGrayPre[color.SRGB]
+	LuminanceBlender8Linear    = BlenderGray[color.Linear]
+	LuminanceBlender8PreLinear = BlenderGrayPre[color.Linear]
+)
+
+////////////////////////////////////////////////////////////////////////////////
+// Platform and usage-specific aliases
+////////////////////////////////////////////////////////////////////////////////
+
+type (
+	// Common single-channel formats
+	BlenderMonochrome    = BlenderGray[color.SRGB]
+	BlenderMonochromePre = BlenderGrayPre[color.SRGB]
+
+	// Alpha channel blending (grayscale used for alpha)
+	BlenderAlpha8    = BlenderGray[color.Linear]
+	BlenderAlpha8Pre = BlenderGrayPre[color.Linear]
+
+	// Mask blending (for compositing operations)
+	BlenderMask8    = BlenderGray[color.Linear]
+	BlenderMask8Pre = BlenderGrayPre[color.Linear]
+)
+
+////////////////////////////////////////////////////////////////////////////////
 // Helpers for single pixels and spans (generic over S)
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -85,6 +131,22 @@ func BlendGrayPixelPre[S color.Space](dst *basics.Int8u, src color.Gray8[S], cov
 	if src.A != 0 && cover != 0 {
 		b.BlendPix(dst, src.V, src.A, cover)
 	}
+}
+
+func (BlenderGray[S]) SetPlain(dst *basics.Int8u, v, a basics.Int8u) {
+	*dst = v
+}
+
+func (BlenderGray[S]) GetPlain(src *basics.Int8u) (v, a basics.Int8u) {
+	return *src, 255
+}
+
+func (BlenderGrayPre[S]) SetPlain(dst *basics.Int8u, v, a basics.Int8u) {
+	*dst = color.Gray8Multiply(v, a)
+}
+
+func (BlenderGrayPre[S]) GetPlain(src *basics.Int8u) (v, a basics.Int8u) {
+	return *src, 255
 }
 
 // CopyGrayPixel copies a grayscale value (no blending).

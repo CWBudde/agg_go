@@ -4,6 +4,7 @@ import (
 	"agg_go/internal/basics"
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
+	"agg_go/internal/order"
 	"agg_go/internal/pixfmt/blender"
 )
 
@@ -12,15 +13,23 @@ import (
 // ==============================================================================
 
 // PixFmtAlphaBlendRGB48 represents RGB pixel format with 16-bit components (6 bytes per pixel)
-type PixFmtAlphaBlendRGB48[B blender.RGB48Blender, CS any, O any] struct {
+type PixFmtAlphaBlendRGB48[
+	B blender.RGB48Blender[S, O],
+	S color.Space,
+	O order.RGBOrder,
+] struct {
 	rbuf     *buffer.RenderingBufferU16
 	blender  B
 	category PixFmtRGBTag
 }
 
 // NewPixFmtAlphaBlendRGB48 creates a new RGB48 pixel format
-func NewPixFmtAlphaBlendRGB48[B blender.RGB48Blender, CS any, O any](rbuf *buffer.RenderingBufferU16, blender B) *PixFmtAlphaBlendRGB48[B, CS, O] {
-	return &PixFmtAlphaBlendRGB48[B, CS, O]{
+func NewPixFmtAlphaBlendRGB48[
+	B blender.RGB48Blender[S, O],
+	S color.Space,
+	O order.RGBOrder,
+](rbuf *buffer.RenderingBufferU16, blender B) *PixFmtAlphaBlendRGB48[B, S, O] {
+	return &PixFmtAlphaBlendRGB48[B, S, O]{
 		rbuf:    rbuf,
 		blender: blender,
 	}

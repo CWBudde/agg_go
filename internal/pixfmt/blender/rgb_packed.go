@@ -5,6 +5,10 @@ import (
 	"agg_go/internal/color"
 )
 
+////////////////////////////////////////////////////////////////////////////////
+// Interfaces (RGB 16-bit packed)
+////////////////////////////////////////////////////////////////////////////////
+
 // RGB16PackedBlender represents the interface for 16-bit packed RGB pixel blending operations
 type RGB16PackedBlender interface {
 	BlendPix(pixel *basics.Int16u, r, g, b, alpha, cover basics.Int8u)

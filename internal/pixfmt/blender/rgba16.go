@@ -6,9 +6,15 @@ import (
 	"agg_go/internal/order"
 )
 
-// RGBABlender16 is the 16-bit counterpart to RGBABlender for pixfmt usage.
+////////////////////////////////////////////////////////////////////////////////
+// Interfaces RGBA (16-bit)
+////////////////////////////////////////////////////////////////////////////////
+
 type RGBABlender16[S color.Space, O order.RGBAOrder] interface {
 	BlendPix(dst []basics.Int8u, r, g, b, a, cover basics.Int16u)
+
+	// Write/read a *plain* RGBA color to/from the framebuffer pixel.
+	// (For premul storage these do premultiply/demultiply.)
 	SetPlain(dst []basics.Int8u, r, g, b, a basics.Int16u)
 	GetPlain(src []basics.Int8u) (r, g, b, a basics.Int16u)
 }

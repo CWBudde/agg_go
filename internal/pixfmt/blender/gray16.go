@@ -6,7 +6,7 @@ import (
 )
 
 ////////////////////////////////////////////////////////////////////////////////
-// Interfaces
+// Interfaces (Gray 16-bit)
 ////////////////////////////////////////////////////////////////////////////////
 
 // Gray16Blender blends 16-bit grayscale pixels in color space S.
@@ -113,6 +113,22 @@ func BlendGray16PixelPre[S color.Space](dst *basics.Int16u, src color.Gray16[S],
 	if src.A != 0 && cover != 0 {
 		b.BlendPix(dst, src.V, src.A, cover)
 	}
+}
+
+func (BlenderGray16[S]) SetPlain(dst *basics.Int16u, v, a basics.Int16u) {
+	*dst = v
+}
+
+func (BlenderGray16[S]) GetPlain(src *basics.Int16u) (v, a basics.Int16u) {
+	return *src, 0xFFFF
+}
+
+func (BlenderGray16Pre[S]) SetPlain(dst *basics.Int16u, v, a basics.Int16u) {
+	*dst = Gray16Multiply(v, a)
+}
+
+func (BlenderGray16Pre[S]) GetPlain(src *basics.Int16u) (v, a basics.Int16u) {
+	return *src, 0xFFFF
 }
 
 // CopyGray16Pixel copies a grayscale value (no blending).

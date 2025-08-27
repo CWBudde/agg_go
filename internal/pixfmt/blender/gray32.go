@@ -4,8 +4,12 @@ import (
 	"agg_go/internal/color"
 )
 
+////////////////////////////////////////////////////////////////////////////////
+// Interfaces (Gray 32-bit)
+////////////////////////////////////////////////////////////////////////////////
+
 // Gray32Blender blends 32-bit float grayscale pixels in color space S.
-// (No channel order concept for single-channel grayscale.)
+// (Grayscale has no channel order; we only carry S.)
 type Gray32Blender[S color.Space] interface {
 	// BlendPix blends a source value v with alpha a into *dst with coverage cover.
 	// Semantics depend on the concrete blender:
@@ -90,6 +94,22 @@ func BlendGray32PixelPre[S color.Space](dst *float32, src color.Gray32[S], cover
 	if src.A > 0 && cover > 0 {
 		b.BlendPix(dst, src.V, src.A, cover)
 	}
+}
+
+func (BlenderGray32[S]) SetPlain(dst *float32, v, a float32) {
+	*dst = v
+}
+
+func (BlenderGray32[S]) GetPlain(src *float32) (v, a float32) {
+	return *src, 1.0
+}
+
+func (BlenderGray32Pre[S]) SetPlain(dst *float32, v, a float32) {
+	*dst = v * a
+}
+
+func (BlenderGray32Pre[S]) GetPlain(src *float32) (v, a float32) {
+	return *src, 1.0
 }
 
 // CopyGray32Pixel copies one grayscale value (no blending).

@@ -190,12 +190,15 @@ type (
 func NewPixFmtRGBA64[S color.Space](r *buffer.RenderingBufferU8) *PixFmtRGBA64[S] {
 	return NewPixFmtAlphaBlendRGBA64[blender.BlenderRGBA16[S, order.RGBA], S, order.RGBA](r, blender.BlenderRGBA16[S, order.RGBA]{})
 }
+
 func NewPixFmtBGRA64[S color.Space](r *buffer.RenderingBufferU8) *PixFmtBGRA64[S] {
 	return NewPixFmtAlphaBlendRGBA64[blender.BlenderRGBA16[S, order.BGRA], S, order.BGRA](r, blender.BlenderRGBA16[S, order.BGRA]{})
 }
+
 func NewPixFmtARGB64[S color.Space](r *buffer.RenderingBufferU8) *PixFmtARGB64[S] {
 	return NewPixFmtAlphaBlendRGBA64[blender.BlenderRGBA16[S, order.ARGB], S, order.ARGB](r, blender.BlenderRGBA16[S, order.ARGB]{})
 }
+
 func NewPixFmtABGR64[S color.Space](r *buffer.RenderingBufferU8) *PixFmtABGR64[S] {
 	return NewPixFmtAlphaBlendRGBA64[blender.BlenderRGBA16[S, order.ABGR], S, order.ABGR](r, blender.BlenderRGBA16[S, order.ABGR]{})
 }
@@ -204,12 +207,15 @@ func NewPixFmtABGR64[S color.Space](r *buffer.RenderingBufferU8) *PixFmtABGR64[S
 func NewPixFmtRGBA64Pre[S color.Space](r *buffer.RenderingBufferU8) *PixFmtRGBA64Pre[S] {
 	return NewPixFmtAlphaBlendRGBA64[blender.BlenderRGBA16Pre[S, order.RGBA], S, order.RGBA](r, blender.BlenderRGBA16Pre[S, order.RGBA]{})
 }
+
 func NewPixFmtBGRA64Pre[S color.Space](r *buffer.RenderingBufferU8) *PixFmtBGRA64Pre[S] {
 	return NewPixFmtAlphaBlendRGBA64[blender.BlenderRGBA16Pre[S, order.BGRA], S, order.BGRA](r, blender.BlenderRGBA16Pre[S, order.BGRA]{})
 }
+
 func NewPixFmtARGB64Pre[S color.Space](r *buffer.RenderingBufferU8) *PixFmtARGB64Pre[S] {
 	return NewPixFmtAlphaBlendRGBA64[blender.BlenderRGBA16Pre[S, order.ARGB], S, order.ARGB](r, blender.BlenderRGBA16Pre[S, order.ARGB]{})
 }
+
 func NewPixFmtABGR64Pre[S color.Space](r *buffer.RenderingBufferU8) *PixFmtABGR64Pre[S] {
 	return NewPixFmtAlphaBlendRGBA64[blender.BlenderRGBA16Pre[S, order.ABGR], S, order.ABGR](r, blender.BlenderRGBA16Pre[S, order.ABGR]{})
 }
@@ -218,12 +224,15 @@ func NewPixFmtABGR64Pre[S color.Space](r *buffer.RenderingBufferU8) *PixFmtABGR6
 func NewPixFmtRGBA64Plain[S color.Space](r *buffer.RenderingBufferU8) *PixFmtRGBA64Plain[S] {
 	return NewPixFmtAlphaBlendRGBA64[blender.BlenderRGBA16Plain[S, order.RGBA], S, order.RGBA](r, blender.BlenderRGBA16Plain[S, order.RGBA]{})
 }
+
 func NewPixFmtBGRA64Plain[S color.Space](r *buffer.RenderingBufferU8) *PixFmtBGRA64Plain[S] {
 	return NewPixFmtAlphaBlendRGBA64[blender.BlenderRGBA16Plain[S, order.BGRA], S, order.BGRA](r, blender.BlenderRGBA16Plain[S, order.BGRA]{})
 }
+
 func NewPixFmtARGB64Plain[S color.Space](r *buffer.RenderingBufferU8) *PixFmtARGB64Plain[S] {
 	return NewPixFmtAlphaBlendRGBA64[blender.BlenderRGBA16Plain[S, order.ARGB], S, order.ARGB](r, blender.BlenderRGBA16Plain[S, order.ARGB]{})
 }
+
 func NewPixFmtABGR64Plain[S color.Space](r *buffer.RenderingBufferU8) *PixFmtABGR64Plain[S] {
 	return NewPixFmtAlphaBlendRGBA64[blender.BlenderRGBA16Plain[S, order.ABGR], S, order.ABGR](r, blender.BlenderRGBA16Plain[S, order.ABGR]{})
 }

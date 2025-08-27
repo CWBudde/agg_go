@@ -7,25 +7,26 @@ import (
 )
 
 ////////////////////////////////////////////////////////////////////////////////
-// Interfaces (mirroring the RGBA pattern)
+// Interfaces (RGB 8-bit)
 ////////////////////////////////////////////////////////////////////////////////
 
 type RGBBlender[S color.Space, O order.RGBOrder] interface {
 	BlendPix(dst []basics.Int8u, r, g, b, a, cover basics.Int8u)
-}
 
-type RGBBlenderSimple[S color.Space, O order.RGBOrder] interface {
-	BlendPix(dst []basics.Int8u, r, g, b, a basics.Int8u)
+	// Write/read a *plain* RGB color to/from the framebuffer pixel.
+	// (For premul storage these do premultiply/demultiply.)
+	SetPlain(dst []basics.Int8u, r, g, b basics.Int8u)
+	GetPlain(src []basics.Int8u) (r, g, b basics.Int8u)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Plain (non-premultiplied) source -> RGB destination (no alpha stored)
 ////////////////////////////////////////////////////////////////////////////////
 
-type BlenderRGB[S color.Space, O order.RGBOrder] struct{}
+type BlenderRGB8[S color.Space, O order.RGBOrder] struct{}
 
 // Lerp by alpha*cover; destination stores only RGB (3 bytes).
-func (BlenderRGB[S, O]) BlendPix(dst []basics.Int8u, r, g, b, a, cover basics.Int8u) {
+func (BlenderRGB8[S, O]) BlendPix(dst []basics.Int8u, r, g, b, a, cover basics.Int8u) {
 	alpha := color.RGBA8MultCover(a, cover)
 	if alpha == 0 {
 		return
@@ -36,14 +37,19 @@ func (BlenderRGB[S, O]) BlendPix(dst []basics.Int8u, r, g, b, a, cover basics.In
 	dst[o.IdxB()] = color.RGBA8Lerp(dst[o.IdxB()], b, alpha)
 }
 
-func (BlenderRGB[S, O]) BlendPixSimple(dst []basics.Int8u, r, g, b, a basics.Int8u) {
-	if a == 0 {
-		return
-	}
+func (BlenderRGB8[S, O]) SetPlain(dst []basics.Int8u, r, g, b basics.Int8u) {
 	var o O
-	dst[o.IdxR()] = color.RGBA8Lerp(dst[o.IdxR()], r, a)
-	dst[o.IdxG()] = color.RGBA8Lerp(dst[o.IdxG()], g, a)
-	dst[o.IdxB()] = color.RGBA8Lerp(dst[o.IdxB()], b, a)
+	dst[o.IdxR()] = r
+	dst[o.IdxG()] = g
+	dst[o.IdxB()] = b
+}
+
+func (BlenderRGB8[S, O]) GetPlain(src []basics.Int8u) (r, g, b basics.Int8u) {
+	var o O
+	r = src[o.IdxR()]
+	g = src[o.IdxG()]
+	b = src[o.IdxB()]
+	return
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -72,14 +78,19 @@ func (BlenderRGBPre[S, O]) BlendPix(dst []basics.Int8u, r, g, b, a, cover basics
 	dst[o.IdxB()] = color.RGBA8Prelerp(dst[o.IdxB()], b, a)
 }
 
-func (BlenderRGBPre[S, O]) BlendPixSimple(dst []basics.Int8u, r, g, b, a basics.Int8u) {
-	if a == 0 {
-		return
-	}
+func (BlenderRGBPre[S, O]) SetPlain(dst []basics.Int8u, r, g, b basics.Int8u) {
 	var o O
-	dst[o.IdxR()] = color.RGBA8Prelerp(dst[o.IdxR()], r, a)
-	dst[o.IdxG()] = color.RGBA8Prelerp(dst[o.IdxG()], g, a)
-	dst[o.IdxB()] = color.RGBA8Prelerp(dst[o.IdxB()], b, a)
+	dst[o.IdxR()] = r
+	dst[o.IdxG()] = g
+	dst[o.IdxB()] = b
+}
+
+func (BlenderRGBPre[S, O]) GetPlain(src []basics.Int8u) (r, g, b basics.Int8u) {
+	var o O
+	r = src[o.IdxR()]
+	g = src[o.IdxG()]
+	b = src[o.IdxB()]
+	return
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -116,6 +127,21 @@ func (bl BlenderRGBGamma[S, O, G]) BlendPix(dst []basics.Int8u, r, g, b, a, cove
 	dst[o.IdxR()] = bl.gamma.Inv(color.RGBA8Lerp(dr, sr, alpha))
 	dst[o.IdxG()] = bl.gamma.Inv(color.RGBA8Lerp(dg, sg, alpha))
 	dst[o.IdxB()] = bl.gamma.Inv(color.RGBA8Lerp(db, sb, alpha))
+}
+
+func (bl BlenderRGBGamma[S, O, G]) SetPlain(dst []basics.Int8u, r, g, b basics.Int8u) {
+	var o O
+	dst[o.IdxR()] = r
+	dst[o.IdxG()] = g
+	dst[o.IdxB()] = b
+}
+
+func (bl BlenderRGBGamma[S, O, G]) GetPlain(src []basics.Int8u) (r, g, b basics.Int8u) {
+	var o O
+	r = src[o.IdxR()]
+	g = src[o.IdxG()]
+	b = src[o.IdxB()]
+	return
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -159,13 +185,13 @@ func BlendRGBHline[B RGBBlender[S, O], S color.Space, O order.RGBOrder](
 	p := x * pixStep
 
 	if covers == nil {
-		for i := 0; i < length; i++ {
+		for range length {
 			bl.BlendPix(dst[p:p+3], src.R, src.G, src.B, alpha, 255)
 			p += pixStep
 		}
 		return
 	}
-	for i := 0; i < length; i++ {
+	for i := range length {
 		if c := covers[i]; c != 0 {
 			bl.BlendPix(dst[p:p+3], src.R, src.G, src.B, alpha, c)
 		}
@@ -184,7 +210,7 @@ func CopyRGBHline[S color.Space, O order.RGBOrder](
 	const pixStep = 3
 	var o O
 	p := x * pixStep
-	for i := 0; i < length; i++ {
+	for range length {
 		dst[p+o.IdxR()] = src.R
 		dst[p+o.IdxG()] = src.G
 		dst[p+o.IdxB()] = src.B
@@ -200,27 +226,79 @@ func FillRGBSpan[S color.Space, O order.RGBOrder](
 	CopyRGBHline[S, O](dst, x, length, src)
 }
 
-func ConvertRGBAToRGB[S color.Space](rgba color.RGBA8[S]) color.RGB8[S] {
-	return color.RGB8[S]{R: rgba.R, G: rgba.G, B: rgba.B}
-}
-
-func ConvertRGBToRGBA[S color.Space](rgb color.RGB8[S]) color.RGBA8[S] {
-	return color.RGBA8[S]{R: rgb.R, G: rgb.G, B: rgb.B, A: 255}
-}
-
 ////////////////////////////////////////////////////////////////////////////////
-// Convenience aliases (Linear / sRGB × RGB / BGR)
+// Convenience aliases (consistent with RGBA pattern)
 ////////////////////////////////////////////////////////////////////////////////
 
-// 8-bit
+// Linear space
 type (
-	BlenderRGB24LinearRGB = BlenderRGB[color.Linear, order.RGB]
-	BlenderRGB24LinearBGR = BlenderRGB[color.Linear, order.BGR]
-	BlenderRGB24SRGBRGB   = BlenderRGB[color.SRGB, order.RGB]
-	BlenderRGB24SRGBBGR   = BlenderRGB[color.SRGB, order.BGR]
+	BlenderRGB8LinearRGB = BlenderRGB8[color.Linear, order.RGB]
+	BlenderRGB8LinearBGR = BlenderRGB8[color.Linear, order.BGR]
 
-	BlenderRGB24PreLinearRGB = BlenderRGBPre[color.Linear, order.RGB]
-	BlenderRGB24PreLinearBGR = BlenderRGBPre[color.Linear, order.BGR]
-	BlenderRGB24PreSRGBRGB   = BlenderRGBPre[color.SRGB, order.RGB]
-	BlenderRGB24PreSRGBBGR   = BlenderRGBPre[color.SRGB, order.BGR]
+	BlenderRGB8PreLinearRGB = BlenderRGBPre[color.Linear, order.RGB]
+	BlenderRGB8PreLinearBGR = BlenderRGBPre[color.Linear, order.BGR]
+)
+
+// sRGB space
+type (
+	BlenderRGB8SRGBrgb = BlenderRGB8[color.SRGB, order.RGB]
+	BlenderRGB8SRGBbgr = BlenderRGB8[color.SRGB, order.BGR]
+
+	BlenderRGB8PreSRGBrgb = BlenderRGBPre[color.SRGB, order.RGB]
+	BlenderRGB8PreSRGBbgr = BlenderRGBPre[color.SRGB, order.BGR]
+)
+
+////////////////////////////////////////////////////////////////////////////////
+// Platform-specific aliases (matching RGBA pattern)
+////////////////////////////////////////////////////////////////////////////////
+
+type (
+	// Standard RGB (most common web/OpenGL format)
+	BlenderRGB8Standard    = BlenderRGB8[color.SRGB, order.RGB]
+	BlenderRGB8PreStandard = BlenderRGBPre[color.SRGB, order.RGB]
+
+	// Windows/DirectX common format (BGR)
+	BlenderBGR8Windows    = BlenderRGB8[color.SRGB, order.BGR]
+	BlenderBGR8PreWindows = BlenderRGBPre[color.SRGB, order.BGR]
+
+	// Linear space variants for high-quality rendering
+	BlenderRGB8Linear    = BlenderRGB8[color.Linear, order.RGB]
+	BlenderRGB8PreLinear = BlenderRGBPre[color.Linear, order.RGB]
+	BlenderBGR8Linear    = BlenderRGB8[color.Linear, order.BGR]
+	BlenderBGR8PreLinear = BlenderRGBPre[color.Linear, order.BGR]
+)
+
+////////////////////////////////////////////////////////////////////////////////
+// Short aliases for common usage (matching RGBA pattern)
+////////////////////////////////////////////////////////////////////////////////
+
+type (
+	// Generic order-specific aliases (similar to RGBA pattern)
+	BlenderRGBGeneric[S color.Space] = BlenderRGB8[S, order.RGB]
+	BlenderBGRGeneric[S color.Space] = BlenderRGB8[S, order.BGR]
+
+	BlenderRGBPreGeneric[S color.Space] = BlenderRGBPre[S, order.RGB]
+	BlenderBGRPreGeneric[S color.Space] = BlenderRGBPre[S, order.BGR]
+)
+
+////////////////////////////////////////////////////////////////////////////////
+// Compatibility aliases for pixfmt
+////////////////////////////////////////////////////////////////////////////////
+
+type (
+	// Primary compatibility aliases matching pixfmt usage
+	BlenderRGB24SRGB   = BlenderRGB8[color.SRGB, order.RGB]
+	BlenderBGR24SRGB   = BlenderRGB8[color.SRGB, order.BGR]
+	BlenderRGB24Linear = BlenderRGB8[color.Linear, order.RGB]
+	BlenderBGR24Linear = BlenderRGB8[color.Linear, order.BGR]
+
+	// Pre-multiplied variants
+	BlenderRGB24PreSRGB   = BlenderRGBPre[color.SRGB, order.RGB]
+	BlenderBGR24PreSRGB   = BlenderRGBPre[color.SRGB, order.BGR]
+	BlenderRGB24PreLinear = BlenderRGBPre[color.Linear, order.RGB]
+	BlenderBGR24PreLinear = BlenderRGBPre[color.Linear, order.BGR]
+
+	// Simplified aliases used by pixfmt constructors
+	BlenderRGB24Pre = BlenderRGBPre[color.Linear, order.RGB]
+	BlenderBGR24Pre = BlenderRGBPre[color.Linear, order.BGR]
 )

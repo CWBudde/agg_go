@@ -1726,4 +1726,3 @@ This is a comprehensive checklist of files that have been ported from the origin
 - [x] agg_basics.h → internal/basics package (point types)
 - [x] agg_simul_eq.h → simultaneous equation solver
 - [x] Mathematical utilities for iterative solving
-

@@ -3,47 +3,47 @@ package gamma
 import (
 	"agg_go/internal/basics"
 	"agg_go/internal/color"
+	"agg_go/internal/order"
 	"agg_go/internal/pixfmt"
-	"agg_go/internal/pixfmt/blender"
 )
 
 // ApplyGammaDirectRGB applies direct gamma correction to RGB pixels
-type ApplyGammaDirectRGB[C any, O any] struct {
+type ApplyGammaDirectRGB[C any, O order.RGBOrder] struct {
 	gamma GammaLut
 }
 
 // NewApplyGammaDirectRGB creates a new direct gamma applicator for RGB
-func NewApplyGammaDirectRGB[C any, O any](gamma GammaLut) *ApplyGammaDirectRGB[C, O] {
+func NewApplyGammaDirectRGB[C any, O order.RGBOrder](gamma GammaLut) *ApplyGammaDirectRGB[C, O] {
 	return &ApplyGammaDirectRGB[C, O]{gamma: gamma}
 }
 
 // Apply applies direct gamma correction to an RGB pixel array
 func (a *ApplyGammaDirectRGB[C, O]) Apply(p []basics.Int8u) {
 	if len(p) >= 3 {
-		order := blender.GetRGBColorOrder[O]()
-		p[order.R] = a.gamma.Dir(p[order.R])
-		p[order.G] = a.gamma.Dir(p[order.G])
-		p[order.B] = a.gamma.Dir(p[order.B])
+		var order O
+		p[order.IdxR()] = a.gamma.Dir(p[order.IdxR()])
+		p[order.IdxG()] = a.gamma.Dir(p[order.IdxG()])
+		p[order.IdxB()] = a.gamma.Dir(p[order.IdxB()])
 	}
 }
 
 // ApplyGammaInverseRGB applies inverse gamma correction to RGB pixels
-type ApplyGammaInverseRGB[C any, O any] struct {
+type ApplyGammaInverseRGB[C any, O order.RGBOrder] struct {
 	gamma GammaLut
 }
 
 // NewApplyGammaInverseRGB creates a new inverse gamma applicator for RGB
-func NewApplyGammaInverseRGB[C any, O any](gamma GammaLut) *ApplyGammaInverseRGB[C, O] {
+func NewApplyGammaInverseRGB[C any, O order.RGBOrder](gamma GammaLut) *ApplyGammaInverseRGB[C, O] {
 	return &ApplyGammaInverseRGB[C, O]{gamma: gamma}
 }
 
 // Apply applies inverse gamma correction to an RGB pixel array
 func (a *ApplyGammaInverseRGB[C, O]) Apply(p []basics.Int8u) {
 	if len(p) >= 3 {
-		order := blender.GetRGBColorOrder[O]()
-		p[order.R] = a.gamma.Inv(p[order.R])
-		p[order.G] = a.gamma.Inv(p[order.G])
-		p[order.B] = a.gamma.Inv(p[order.B])
+		var order O
+		p[order.IdxR()] = a.gamma.Inv(p[order.IdxR()])
+		p[order.IdxG()] = a.gamma.Inv(p[order.IdxG()])
+		p[order.IdxB()] = a.gamma.Inv(p[order.IdxB()])
 	}
 }
 
@@ -51,8 +51,8 @@ func (a *ApplyGammaInverseRGB[C, O]) Apply(p []basics.Int8u) {
 type PixFmtRGBGamma[PF any, G any] struct {
 	pixfmt PF
 	gamma  G
-	dirApp ApplyGammaDirectRGB[color.Linear, color.RGB24Order]
-	invApp ApplyGammaInverseRGB[color.Linear, color.RGB24Order]
+	dirApp ApplyGammaDirectRGB[color.Linear, order.RGB]
+	invApp ApplyGammaInverseRGB[color.Linear, order.RGB]
 }
 
 // NewPixFmtRGBGamma creates a new gamma-corrected RGB pixel format wrapper
@@ -64,8 +64,8 @@ func NewPixFmtRGBGamma[PF any, G any](pixfmt PF, gamma G) *PixFmtRGBGamma[PF, G]
 	return &PixFmtRGBGamma[PF, G]{
 		pixfmt: pixfmt,
 		gamma:  gamma,
-		dirApp: *NewApplyGammaDirectRGB[color.Linear, color.RGB24Order](gammaLut),
-		invApp: *NewApplyGammaInverseRGB[color.Linear, color.RGB24Order](gammaLut),
+		dirApp: *NewApplyGammaDirectRGB[color.Linear, order.RGB](gammaLut),
+		invApp: *NewApplyGammaInverseRGB[color.Linear, order.RGB](gammaLut),
 	}
 }
 

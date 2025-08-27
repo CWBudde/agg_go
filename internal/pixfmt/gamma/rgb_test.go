@@ -7,6 +7,7 @@ import (
 	"agg_go/internal/basics"
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
+	"agg_go/internal/order"
 	"agg_go/internal/pixfmt"
 )
 
@@ -15,7 +16,7 @@ const testEpsilon = 1e-9
 func TestApplyGammaDirectRGB_BasicFunctionality(t *testing.T) {
 	// Test with gamma = 2.2 (common display gamma)
 	gamma := NewSimpleGammaLut(2.2)
-	applicator := NewApplyGammaDirectRGB[color.Linear, color.RGB24Order](gamma)
+	applicator := NewApplyGammaDirectRGB[color.Linear, order.RGBOrder](gamma)
 
 	// Test pixel with mid-range values
 	pixel := []basics.Int8u{128, 64, 192}
@@ -40,7 +41,7 @@ func TestApplyGammaDirectRGB_BasicFunctionality(t *testing.T) {
 func TestApplyGammaInverseRGB_BasicFunctionality(t *testing.T) {
 	// Test with gamma = 2.2
 	gamma := NewSimpleGammaLut(2.2)
-	applicator := NewApplyGammaInverseRGB[color.Linear, color.RGB24Order](gamma)
+	applicator := NewApplyGammaInverseRGB[color.Linear, order.RGBOrder](gamma)
 
 	// Test pixel with mid-range values
 	pixel := []basics.Int8u{128, 64, 192}
@@ -75,8 +76,8 @@ func TestApplyGammaRGB_RoundTrip(t *testing.T) {
 	for _, gammaVal := range gammaValues {
 		t.Run(fmt.Sprintf("Gamma%.1f", gammaVal), func(t *testing.T) {
 			gamma := NewSimpleGammaLut(gammaVal)
-			dirApp := NewApplyGammaDirectRGB[color.Linear, color.RGB24Order](gamma)
-			invApp := NewApplyGammaInverseRGB[color.Linear, color.RGB24Order](gamma)
+			dirApp := NewApplyGammaDirectRGB[color.Linear, order.RGBOrder](gamma)
+			invApp := NewApplyGammaInverseRGB[color.Linear, order.RGBOrder](gamma)
 
 			for _, original := range testPixels {
 				// Make copies for testing
@@ -108,8 +109,8 @@ func TestApplyGammaRGB_RoundTrip(t *testing.T) {
 
 func TestApplyGammaRGB_LinearGamma(t *testing.T) {
 	gamma := NewLinearGammaLut()
-	dirApp := NewApplyGammaDirectRGB[color.Linear, color.RGB24Order](gamma)
-	invApp := NewApplyGammaInverseRGB[color.Linear, color.RGB24Order](gamma)
+	dirApp := NewApplyGammaDirectRGB[color.Linear, order.RGBOrder](gamma)
+	invApp := NewApplyGammaInverseRGB[color.Linear, order.RGBOrder](gamma)
 
 	testPixels := [][]basics.Int8u{
 		{0, 0, 0},
@@ -148,14 +149,14 @@ func TestApplyGammaRGB_ColorOrdering(t *testing.T) {
 	gamma := NewSimpleGammaLut(2.2)
 
 	// Test RGB ordering
-	rgbApp := NewApplyGammaDirectRGB[color.Linear, color.RGB24Order](gamma)
+	rgbApp := NewApplyGammaDirectRGB[color.Linear, order.RGB](gamma)
 	rgbPixel := []basics.Int8u{100, 150, 200} // R=100, G=150, B=200
 	rgbOriginal := make([]basics.Int8u, len(rgbPixel))
 	copy(rgbOriginal, rgbPixel)
 	rgbApp.Apply(rgbPixel)
 
 	// Test BGR ordering
-	bgrApp := NewApplyGammaDirectRGB[color.Linear, color.BGR24Order](gamma)
+	bgrApp := NewApplyGammaDirectRGB[color.Linear, order.BGR](gamma)
 	bgrPixel := []basics.Int8u{200, 150, 100} // B=200, G=150, R=100 (same RGB values, different order)
 	bgrOriginal := make([]basics.Int8u, len(bgrPixel))
 	copy(bgrOriginal, bgrPixel)
@@ -181,7 +182,7 @@ func TestApplyGammaRGB_ColorOrdering(t *testing.T) {
 
 func TestApplyGammaRGB_ShortBuffer(t *testing.T) {
 	gamma := NewSimpleGammaLut(2.2)
-	dirApp := NewApplyGammaDirectRGB[color.Linear, color.RGB24Order](gamma)
+	dirApp := NewApplyGammaDirectRGB[color.Linear, order.RGBOrder](gamma)
 
 	// Test with buffer too short (should not panic)
 	shortBuffer := []basics.Int8u{100, 150} // Only 2 bytes
@@ -200,8 +201,8 @@ func TestApplyGammaRGB_ShortBuffer(t *testing.T) {
 
 func TestApplyGammaRGB_EdgeCases(t *testing.T) {
 	gamma := NewSimpleGammaLut(2.2)
-	dirApp := NewApplyGammaDirectRGB[color.Linear, color.RGB24Order](gamma)
-	invApp := NewApplyGammaInverseRGB[color.Linear, color.RGB24Order](gamma)
+	dirApp := NewApplyGammaDirectRGB[color.Linear, order.RGBOrder](gamma)
+	invApp := NewApplyGammaInverseRGB[color.Linear, order.RGBOrder](gamma)
 
 	// Test edge values
 	edgeCases := [][]basics.Int8u{
@@ -375,7 +376,7 @@ func (m *mockPixFmtWithForEach) ForEachPixel(fn func([]basics.Int8u)) {
 // Benchmark tests for performance
 func BenchmarkApplyGammaDirectRGB(b *testing.B) {
 	gamma := NewSimpleGammaLut(2.2)
-	app := NewApplyGammaDirectRGB[color.Linear, color.RGB24Order](gamma)
+	app := NewApplyGammaDirectRGB[color.Linear, order.RGBOrder](gamma)
 	pixel := []basics.Int8u{128, 128, 128}
 
 	b.ResetTimer()
@@ -386,7 +387,7 @@ func BenchmarkApplyGammaDirectRGB(b *testing.B) {
 
 func BenchmarkApplyGammaInverseRGB(b *testing.B) {
 	gamma := NewSimpleGammaLut(2.2)
-	app := NewApplyGammaInverseRGB[color.Linear, color.RGB24Order](gamma)
+	app := NewApplyGammaInverseRGB[color.Linear, order.RGBOrder](gamma)
 	pixel := []basics.Int8u{128, 128, 128}
 
 	b.ResetTimer()

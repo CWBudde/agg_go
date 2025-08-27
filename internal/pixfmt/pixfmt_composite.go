@@ -4,6 +4,7 @@ import (
 	"agg_go/internal/basics"
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
+	"agg_go/internal/order"
 	"agg_go/internal/pixfmt/blender"
 )
 
@@ -270,14 +271,17 @@ func (pf *PixFmtCompositeRGBA[CS, O]) Fill(c color.RGBA8[CS]) {
 
 // Concrete composite pixel format types for convenience
 type (
-	PixFmtCompositeRGBA32     = PixFmtCompositeRGBA[color.Linear, blender.RGBAOrder]
-	PixFmtCompositeARGB32     = PixFmtCompositeRGBA[color.Linear, blender.ARGBOrder]
-	PixFmtCompositeBGRA32     = PixFmtCompositeRGBA[color.Linear, blender.BGRAOrder]
-	PixFmtCompositeABGR32     = PixFmtCompositeRGBA[color.Linear, blender.ABGROrder]
-	PixFmtCompositeRGBA32SRGB = PixFmtCompositeRGBA[color.SRGB, blender.RGBAOrder]
+	PixFmtCompositeRGBA32     = PixFmtCompositeRGBA[color.Linear, order.RGBA]
+	PixFmtCompositeARGB32     = PixFmtCompositeRGBA[color.Linear, order.ARGB]
+	PixFmtCompositeBGRA32     = PixFmtCompositeRGBA[color.Linear, order.BGRA]
+	PixFmtCompositeABGR32     = PixFmtCompositeRGBA[color.Linear, order.ABGR]
+	PixFmtCompositeRGBA32SRGB = PixFmtCompositeRGBA[color.SRGB, order.RGBA]
+	PixFmtCompositeARGB32SRGB = PixFmtCompositeRGBA[color.SRGB, order.ARGB]
+	PixFmtCompositeBGRA32SRGB = PixFmtCompositeRGBA[color.SRGB, order.BGRA]
+	PixFmtCompositeABGR32SRGB = PixFmtCompositeRGBA[color.SRGB, order.ABGR]
 )
 
 // NewPixFmtCompositeRGBA32 creates a new composite RGBA32 pixel format
 func NewPixFmtCompositeRGBA32(rbuf *buffer.RenderingBufferU8, op blender.CompOp) *PixFmtCompositeRGBA32 {
-	return NewPixFmtCompositeRGBA[color.Linear, blender.RGBAOrder](rbuf, op)
+	return NewPixFmtCompositeRGBA[color.Linear, order.RGBA](rbuf, op)
 }

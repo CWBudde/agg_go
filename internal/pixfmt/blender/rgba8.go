@@ -7,6 +7,21 @@ import (
 )
 
 ////////////////////////////////////////////////////////////////////////////////
+// Interfaces RGBA (8-bit)
+////////////////////////////////////////////////////////////////////////////////
+
+type RGBABlender[S color.Space, O order.RGBAOrder] interface {
+	// Blend "plain" src (r,g,b,a) into dst[0:4] with coverage.
+	// The concrete blender decides how to handle premul/plain storage + order.
+	BlendPix(dst []basics.Int8u, r, g, b, a, cover basics.Int8u)
+
+	// Write/read a *plain* RGBA color to/from the framebuffer pixel.
+	// (For premul storage these do premultiply/demultiply.)
+	SetPlain(dst []basics.Int8u, r, g, b, a basics.Int8u)
+	GetPlain(src []basics.Int8u) (r, g, b, a basics.Int8u)
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // Plain (non-premultiplied) source -> Premultiplied destination
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -284,4 +299,76 @@ type (
 	BlenderARGB8Plain[S color.Space] = BlenderRGBA8Plain[S, order.ARGB]
 	BlenderBGRA8Plain[S color.Space] = BlenderRGBA8Plain[S, order.BGRA]
 	BlenderABGR8Plain[S color.Space] = BlenderRGBA8Plain[S, order.ABGR]
+)
+
+////////////////////////////////////////////////////////////////////////////////
+// Common platform-specific aliases
+////////////////////////////////////////////////////////////////////////////////
+
+// Most common combinations for various platforms
+type (
+	// Standard RGBA (most common)
+	BlenderRGBA8Standard      = BlenderRGBA8[color.SRGB, order.RGBA]
+	BlenderRGBA8PreStandard   = BlenderRGBA8Pre[color.SRGB, order.RGBA]
+	BlenderRGBA8PlainStandard = BlenderRGBA8Plain[color.SRGB, order.RGBA]
+
+	// Windows/DirectX common format (BGRA)
+	BlenderBGRA8Windows      = BlenderRGBA8[color.SRGB, order.BGRA]
+	BlenderBGRA8PreWindows   = BlenderRGBA8Pre[color.SRGB, order.BGRA]
+	BlenderBGRA8PlainWindows = BlenderRGBA8Plain[color.SRGB, order.BGRA]
+
+	// Mac/iOS common format (ARGB)
+	BlenderARGB8Mac      = BlenderRGBA8[color.SRGB, order.ARGB]
+	BlenderARGB8PreMac   = BlenderRGBA8Pre[color.SRGB, order.ARGB]
+	BlenderARGB8PlainMac = BlenderRGBA8Plain[color.SRGB, order.ARGB]
+
+	// Android common format (ABGR)
+	BlenderABGR8Android      = BlenderRGBA8[color.SRGB, order.ABGR]
+	BlenderABGR8PreAndroid   = BlenderRGBA8Pre[color.SRGB, order.ABGR]
+	BlenderABGR8PlainAndroid = BlenderRGBA8Plain[color.SRGB, order.ABGR]
+)
+
+////////////////////////////////////////////////////////////////////////////////
+// Linear space aliases for high-quality rendering
+////////////////////////////////////////////////////////////////////////////////
+
+type (
+	// Linear space variants (better for blending quality)
+	BlenderRGBA8Linear      = BlenderRGBA8[color.Linear, order.RGBA]
+	BlenderRGBA8PreLinear   = BlenderRGBA8Pre[color.Linear, order.RGBA]
+	BlenderRGBA8PlainLinear = BlenderRGBA8Plain[color.Linear, order.RGBA]
+
+	BlenderBGRA8Linear      = BlenderRGBA8[color.Linear, order.BGRA]
+	BlenderBGRA8PreLinear   = BlenderRGBA8Pre[color.Linear, order.BGRA]
+	BlenderBGRA8PlainLinear = BlenderRGBA8Plain[color.Linear, order.BGRA]
+
+	BlenderARGB8Linear      = BlenderRGBA8[color.Linear, order.ARGB]
+	BlenderARGB8PreLinear   = BlenderRGBA8Pre[color.Linear, order.ARGB]
+	BlenderARGB8PlainLinear = BlenderRGBA8Plain[color.Linear, order.ARGB]
+
+	BlenderABGR8Linear      = BlenderRGBA8[color.Linear, order.ABGR]
+	BlenderABGR8PreLinear   = BlenderRGBA8Pre[color.Linear, order.ABGR]
+	BlenderABGR8PlainLinear = BlenderRGBA8Plain[color.Linear, order.ABGR]
+)
+
+////////////////////////////////////////////////////////////////////////////////
+// Short aliases for common usage
+////////////////////////////////////////////////////////////////////////////////
+
+type (
+	// Ultra-short aliases for the most common cases
+	RGBA8Blender = BlenderRGBA8[color.SRGB, order.RGBA]
+	BGRA8Blender = BlenderRGBA8[color.SRGB, order.BGRA]
+	ARGB8Blender = BlenderRGBA8[color.SRGB, order.ARGB]
+	ABGR8Blender = BlenderRGBA8[color.SRGB, order.ABGR]
+
+	RGBA8PreBlender = BlenderRGBA8Pre[color.SRGB, order.RGBA]
+	BGRA8PreBlender = BlenderRGBA8Pre[color.SRGB, order.BGRA]
+	ARGB8PreBlender = BlenderRGBA8Pre[color.SRGB, order.ARGB]
+	ABGR8PreBlender = BlenderRGBA8Pre[color.SRGB, order.ABGR]
+
+	RGBA8PlainBlender = BlenderRGBA8Plain[color.SRGB, order.RGBA]
+	BGRA8PlainBlender = BlenderRGBA8Plain[color.SRGB, order.BGRA]
+	ARGB8PlainBlender = BlenderRGBA8Plain[color.SRGB, order.ARGB]
+	ABGR8PlainBlender = BlenderRGBA8Plain[color.SRGB, order.ABGR]
 )
