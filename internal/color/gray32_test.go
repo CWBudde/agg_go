@@ -78,8 +78,13 @@ func TestGray32_PremultiplyDemultiply_RoundTrip(t *testing.T) {
 	cases := []struct {
 		v, a float32
 	}{
-		{0, 0}, {1, 0}, {0, 1}, {1, 1},
-		{0.8, 0.5}, {0.123, 0.01}, {0.75, 0.99},
+		{0, 0},
+		{1, 0},
+		{0, 1},
+		{1, 1},
+		{0.8, 0.5},
+		{0.123, 0.01},
+		{0.75, 0.99},
 	}
 	for _, c := range cases {
 		g := NewGray32WithAlpha[Linear](c.v, c.a)

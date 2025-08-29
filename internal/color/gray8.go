@@ -116,12 +116,13 @@ func Gray8Multiply(a, b basics.Int8u) basics.Int8u {
 
 // Lerp performs linear interpolation
 func Gray8Lerp(p, q, a basics.Int8u) basics.Int8u {
-	var t int32
+	var correction int32
 	if p > q {
-		t = int32(q-p)*int32(a) + Gray8BaseMSB - 1
+		correction = 1
 	} else {
-		t = int32(q-p)*int32(a) + Gray8BaseMSB
+		correction = 0
 	}
+	t := (int32(q)-int32(p))*int32(a) + Gray8BaseMSB - correction
 	return basics.Int8u(int32(p) + (((t >> Gray8BaseShift) + t) >> Gray8BaseShift))
 }
 
@@ -159,10 +160,14 @@ func (g *Gray8[CS]) Demultiply() {
 
 // Gradient performs linear interpolation between two colors
 func (g Gray8[CS]) Gradient(c2 Gray8[CS], k float64) Gray8[CS] {
-	ik := basics.Int8u(k*float64(Gray8BaseScale) + 0.5)
+	ik := k*float64(Gray8BaseScale) + 0.5
+	if ik > Gray8BaseMask {
+		ik = Gray8BaseMask
+	}
+	ikInt := basics.Int8u(ik)
 	return Gray8[CS]{
-		V: Gray8Lerp(g.V, c2.V, ik),
-		A: Gray8Lerp(g.A, c2.A, ik),
+		V: Gray8Lerp(g.V, c2.V, ikInt),
+		A: Gray8Lerp(g.A, c2.A, ikInt),
 	}
 }
 

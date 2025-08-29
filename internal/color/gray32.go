@@ -70,7 +70,7 @@ func (g *Gray32[CS]) Demultiply() {
 func Gray32Multiply(a, b float32) float32 { return a * b }
 
 func Gray32Demultiply(a, b float32) float32 {
-	if b == 0 {
+	if b <= 0 {
 		return 0
 	}
 	return a / b
@@ -118,6 +118,16 @@ func (g *Gray32[CS]) Add(c Gray32[CS], coverU8 uint8) {
 }
 
 func (g *Gray32[CS]) AddWithCover(c Gray32[CS], cover uint8) { g.Add(c, cover) }
+
+// EmptyValue returns the empty (transparent) value
+func Gray32EmptyValue() float32 {
+	return 0.0
+}
+
+// FullValue returns the full (opaque) value
+func Gray32FullValue() float32 {
+	return 1.0
+}
 
 // ===== Constants & small helpers =====
 

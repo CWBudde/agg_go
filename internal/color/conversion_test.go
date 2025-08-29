@@ -369,6 +369,7 @@ func f32NearlyEqual(a, b, eps float32) bool {
 	}
 	return d <= eps
 }
+
 func clamp01(x float64) float64 {
 	if x < 0 {
 		return 0
