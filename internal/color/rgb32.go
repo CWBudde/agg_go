@@ -115,12 +115,6 @@ func (c RGB32[CS]) Luminance() float32 {
 	return 0.2126*c.R + 0.7152*c.G + 0.0722*c.B
 }
 
-// Common 32-bit RGB color types
-type (
-	RGB32Linear = RGB32[Linear]
-	RGB32SRGB   = RGB32[SRGB]
-)
-
 // RGB24Order and BGR24Order type markers
 type (
 	RGB24Order struct{}
@@ -177,4 +171,27 @@ var (
 	RGB8Cyan    = RGB8Linear{R: 0, G: 255, B: 255}
 	RGB8Magenta = RGB8Linear{R: 255, G: 0, B: 255}
 	RGB8Yellow  = RGB8Linear{R: 255, G: 255, B: 0}
+)
+
+// Zero-overhead, monomorphized helpers (no interface at call-site):
+func ApplyGammaDir32RGB[CS Space, G lut32Like](px *RGB32[CS], g G) {
+	px.R = g.DirFloat(px.R)
+	px.G = g.DirFloat(px.G)
+	px.B = g.DirFloat(px.B)
+}
+
+func ApplyGammaInv32RGB[CS Space, G lut32Like](px *RGB32[CS], g G) {
+	px.R = g.InvFloat(px.R)
+	px.G = g.InvFloat(px.G)
+	px.B = g.InvFloat(px.B)
+}
+
+// Helper methods for RGB32
+func (c *RGB32[CS]) ApplyGammaDir(lut lut32Like) { ApplyGammaDir32RGB(c, lut) }
+func (c *RGB32[CS]) ApplyGammaInv(lut lut32Like) { ApplyGammaInv32RGB(c, lut) }
+
+// Common 32-bit RGB color types
+type (
+	RGB32Linear = RGB32[Linear]
+	RGB32SRGB   = RGB32[SRGB]
 )

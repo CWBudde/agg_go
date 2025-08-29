@@ -31,8 +31,8 @@ func TestRGB32(t *testing.T) {
 	// Test ConvertFromRGB32
 	frgb = RGB{R: 1.0, G: 0.5, B: 0.0}
 	rgb = ConvertFromRGB32[Linear](frgb)
-	if math.Abs(float64(rgb.R)-1.0) > 1e-6 || 
-		math.Abs(float64(rgb.G)-0.5) > 1e-6 || 
+	if math.Abs(float64(rgb.R)-1.0) > 1e-6 ||
+		math.Abs(float64(rgb.G)-0.5) > 1e-6 ||
 		math.Abs(float64(rgb.B)-0.0) > 1e-6 {
 		t.Errorf("ConvertFromRGB32 failed: got %v, want {1.0, 0.5, 0.0}", rgb)
 	}
@@ -46,9 +46,9 @@ func TestRGB32(t *testing.T) {
 	// Test ToRGBA32
 	rgb = NewRGB32[Linear](0.4, 0.6, 0.8)
 	rgba32 := rgb.ToRGBA32()
-	if math.Abs(float64(rgba32.R)-0.4) > 1e-6 || 
-		math.Abs(float64(rgba32.G)-0.6) > 1e-6 || 
-		math.Abs(float64(rgba32.B)-0.8) > 1e-6 || 
+	if math.Abs(float64(rgba32.R)-0.4) > 1e-6 ||
+		math.Abs(float64(rgba32.G)-0.6) > 1e-6 ||
+		math.Abs(float64(rgba32.B)-0.8) > 1e-6 ||
 		math.Abs(float64(rgba32.A)-1.0) > 1e-6 {
 		t.Errorf("ToRGBA32 failed: got %v, want {0.4, 0.6, 0.8, 1.0}", rgba32)
 	}
@@ -57,8 +57,8 @@ func TestRGB32(t *testing.T) {
 	rgb1 := NewRGB32[Linear](0.4, 0.4, 0.4)
 	rgb2 := NewRGB32[Linear](0.2, 0.3, 0.1)
 	sum := rgb1.Add(rgb2)
-	if math.Abs(float64(sum.R)-0.6) > 1e-6 || 
-		math.Abs(float64(sum.G)-0.7) > 1e-6 || 
+	if math.Abs(float64(sum.R)-0.6) > 1e-6 ||
+		math.Abs(float64(sum.G)-0.7) > 1e-6 ||
 		math.Abs(float64(sum.B)-0.5) > 1e-6 {
 		t.Errorf("Add failed: got %v, want {0.6, 0.7, 0.5}", sum)
 	}
@@ -66,8 +66,8 @@ func TestRGB32(t *testing.T) {
 	// Test Scale
 	rgb = NewRGB32[Linear](0.4, 0.6, 0.8)
 	scaled := rgb.Scale(1.5)
-	if math.Abs(float64(scaled.R)-0.6) > 1e-6 || 
-		math.Abs(float64(scaled.G)-0.9) > 1e-6 || 
+	if math.Abs(float64(scaled.R)-0.6) > 1e-6 ||
+		math.Abs(float64(scaled.G)-0.9) > 1e-6 ||
 		math.Abs(float64(scaled.B)-1.2) > 1e-6 {
 		t.Errorf("Scale failed: got %v, want {0.6, 0.9, 1.2}", scaled)
 	}
@@ -76,8 +76,8 @@ func TestRGB32(t *testing.T) {
 	rgb1 = NewRGB32[Linear](0.0, 0.0, 0.0)
 	rgb2 = NewRGB32[Linear](1.0, 1.0, 1.0)
 	mid := rgb1.Gradient(rgb2, 0.5)
-	if math.Abs(float64(mid.R)-0.5) > 1e-6 || 
-		math.Abs(float64(mid.G)-0.5) > 1e-6 || 
+	if math.Abs(float64(mid.R)-0.5) > 1e-6 ||
+		math.Abs(float64(mid.G)-0.5) > 1e-6 ||
 		math.Abs(float64(mid.B)-0.5) > 1e-6 {
 		t.Errorf("Gradient failed: got %v, expected {0.5, 0.5, 0.5}", mid)
 	}
@@ -129,8 +129,8 @@ func TestRGB32Conversions(t *testing.T) {
 	// Test ConvertRGBAToRGB32
 	rgba := NewRGBA(0.4, 0.6, 0.8, 0.5) // Alpha should be ignored
 	rgb := ConvertRGBAToRGB32[Linear](rgba)
-	if math.Abs(float64(rgb.R)-0.4) > 1e-6 || 
-		math.Abs(float64(rgb.G)-0.6) > 1e-6 || 
+	if math.Abs(float64(rgb.R)-0.4) > 1e-6 ||
+		math.Abs(float64(rgb.G)-0.6) > 1e-6 ||
 		math.Abs(float64(rgb.B)-0.8) > 1e-6 {
 		t.Errorf("ConvertRGBAToRGB32 failed: got %v, want {0.4, 0.6, 0.8}", rgb)
 	}
@@ -149,20 +149,20 @@ func TestRGB32Conversions(t *testing.T) {
 func TestRGB32EdgeCases(t *testing.T) {
 	// Test extreme values
 	extreme := NewRGB32[Linear](-0.5, 1.5, 0.0)
-	
+
 	// Add should work with negative values
 	positive := NewRGB32[Linear](0.7, 0.2, 0.3)
 	sum := extreme.Add(positive)
-	if math.Abs(float64(sum.R)-0.2) > 1e-6 || 
-		math.Abs(float64(sum.G)-1.7) > 1e-6 || 
+	if math.Abs(float64(sum.R)-0.2) > 1e-6 ||
+		math.Abs(float64(sum.G)-1.7) > 1e-6 ||
 		math.Abs(float64(sum.B)-0.3) > 1e-6 {
 		t.Errorf("Add with negative values failed: got %v, want {0.2, 1.7, 0.3}", sum)
 	}
 
 	// Scale should work with negative multiplier
 	scaled := positive.Scale(-1.0)
-	if math.Abs(float64(scaled.R)+0.7) > 1e-6 || 
-		math.Abs(float64(scaled.G)+0.2) > 1e-6 || 
+	if math.Abs(float64(scaled.R)+0.7) > 1e-6 ||
+		math.Abs(float64(scaled.G)+0.2) > 1e-6 ||
 		math.Abs(float64(scaled.B)+0.3) > 1e-6 {
 		t.Errorf("Scale with negative multiplier failed: got %v, want {-0.7, -0.2, -0.3}", scaled)
 	}
@@ -170,7 +170,7 @@ func TestRGB32EdgeCases(t *testing.T) {
 	// Test epsilon boundary cases for IsBlack and IsWhite
 	almostBlack := NewRGB32[Linear](1e-7, 1e-7, 1e-7)
 	almostWhite := NewRGB32[Linear](0.999999, 0.999999, 0.999999)
-	
+
 	if !almostBlack.IsBlack() {
 		t.Error("Almost black should be considered black")
 	}
@@ -183,10 +183,10 @@ func TestRGB32ColorspaceConversion(t *testing.T) {
 	// Test conversion from Linear to sRGB using the conversion functions
 	linearRgb := NewRGB32[Linear](0.5, 0.75, 0.25)
 	srgbRgb := ConvertRGBA32LinearToSRGB(linearRgb.ToRGBA32())
-	
+
 	// Convert back to RGB32
 	convertedSRGB := NewRGB32[SRGB](srgbRgb.R, srgbRgb.G, srgbRgb.B)
-	
+
 	// Values should be different after gamma correction
 	if math.Abs(float64(convertedSRGB.R)-float64(linearRgb.R)) < 0.01 &&
 		math.Abs(float64(convertedSRGB.G)-float64(linearRgb.G)) < 0.01 &&
@@ -197,24 +197,24 @@ func TestRGB32ColorspaceConversion(t *testing.T) {
 
 func TestRGB32HelperFunctions(t *testing.T) {
 	// Test RGB helper functions that are part of rgb32.go
-	
+
 	// Test RGB16Lerp
 	result := RGB16Lerp(0, 65535, 32768) // 50% between 0 and 65535
-	expected := uint16(32767) // Should be approximately halfway
+	expected := uint16(32767)            // Should be approximately halfway
 	if result < expected-1 || result > expected+1 {
 		t.Errorf("RGB16Lerp failed: got %d, expected ~%d", result, expected)
 	}
-	
+
 	// Test RGB16Prelerp (premultiplied interpolation)
 	prelerpResult := RGB16Prelerp(16384, 49152, 32768)
 	// This should be similar to regular lerp for this case
 	if prelerpResult < 30000 || prelerpResult > 35000 {
 		t.Errorf("RGB16Prelerp result seems out of range: got %d", prelerpResult)
 	}
-	
+
 	// Test RGB16MultCover
 	multResult := RGB16MultCover(32768, 32768) // 50% * 50%
-	expectedMult := uint16(16384) // Should be approximately 25%
+	expectedMult := uint16(16384)              // Should be approximately 25%
 	if multResult < expectedMult-1000 || multResult > expectedMult+1000 {
 		t.Errorf("RGB16MultCover failed: got %d, expected ~%d", multResult, expectedMult)
 	}

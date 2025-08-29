@@ -248,3 +248,27 @@ func RGBA8Prelerp(p, q, a basics.Int8u) basics.Int8u {
 func RGBA8MultCover(c, cover basics.Int8u) basics.Int8u {
 	return RGBA8Multiply(c, cover)
 }
+
+// Apply 8-bit gamma (RGB only) to an RGBA8 pixel in-place.
+func ApplyGammaDir8[CS Space, LUT lut8Like](px *RGBA8[CS], lut LUT) {
+	px.R = lut.Dir(px.R)
+	px.G = lut.Dir(px.G)
+	px.B = lut.Dir(px.B)
+}
+
+func ApplyGammaInv8[CS Space, LUT lut8Like](px *RGBA8[CS], lut LUT) {
+	px.R = lut.Inv(px.R)
+	px.G = lut.Inv(px.G)
+	px.B = lut.Inv(px.B)
+}
+
+// Helper for method receivers:
+func (c *RGBA8[CS]) ApplyGammaDir(lut lut8Like) { ApplyGammaDir8(c, lut) }
+func (c *RGBA8[CS]) ApplyGammaInv(lut lut8Like) { ApplyGammaInv8(c, lut) }
+
+// Common 8-bit RGBA color types
+type (
+	RGBA8Linear = RGBA8[Linear]
+	RGBA8SRGB   = RGBA8[SRGB]
+	SRGBA8      = RGBA8[SRGB] // Alias for backwards compatibility
+)

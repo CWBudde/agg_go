@@ -3,6 +3,7 @@ package color
 import (
 	"math"
 	"testing"
+
 	"agg_go/internal/basics"
 )
 
@@ -129,7 +130,7 @@ func TestRGB16Conversions(t *testing.T) {
 	rgba := NewRGBA(0.4, 0.6, 0.8, 0.5) // Alpha should be ignored
 	rgb := ConvertRGBAToRGB16[Linear](rgba)
 	expectedR := basics.Int16u(26214) // 0.4*65535 + 0.5 ≈ 26214
-	expectedG := basics.Int16u(39321) // 0.6*65535 + 0.5 ≈ 39321  
+	expectedG := basics.Int16u(39321) // 0.6*65535 + 0.5 ≈ 39321
 	expectedB := basics.Int16u(52428) // 0.8*65535 + 0.5 ≈ 52428
 	if rgb.R != expectedR || rgb.G != expectedG || rgb.B != expectedB {
 		t.Errorf("ConvertRGBAToRGB16 failed: got %v, want {%d, %d, %d}", rgb, expectedR, expectedG, expectedB)
@@ -152,7 +153,7 @@ func TestRGB16Conversions(t *testing.T) {
 func TestRGB16EdgeCases(t *testing.T) {
 	// Test maximum values
 	maxRgb := NewRGB16[Linear](65535, 65535, 65535)
-	
+
 	// Add should clamp at maximum
 	sum := maxRgb.Add(NewRGB16[Linear](1, 1, 1))
 	if sum.R != 65535 || sum.G != 65535 || sum.B != 65535 {
@@ -174,13 +175,13 @@ func TestRGB16EdgeCases(t *testing.T) {
 	// Test Gradient boundary cases
 	black := NewRGB16[Linear](0, 0, 0)
 	white := NewRGB16[Linear](65535, 65535, 65535)
-	
+
 	// k=0 should return first color
 	grad0 := black.Gradient(white, 0)
 	if grad0.R != 0 || grad0.G != 0 || grad0.B != 0 {
 		t.Errorf("Gradient with k=0 should return first color: got %v", grad0)
 	}
-	
+
 	// k=65535 should return second color
 	grad1 := black.Gradient(white, 65535)
 	if grad1.R != 65535 || grad1.G != 65535 || grad1.B != 65535 {
@@ -191,7 +192,7 @@ func TestRGB16EdgeCases(t *testing.T) {
 func TestRGB16ColorspaceConversion(t *testing.T) {
 	// Test conversion from Linear to sRGB using the conversion functions
 	linearRgb := NewRGB16[Linear](32768, 49152, 16384)
-	
+
 	// Convert to RGBA32 for colorspace conversion (since RGB16 doesn't have direct colorspace conversion)
 	rgba32 := RGBA32[Linear]{
 		R: float32(linearRgb.R) / 65535.0,
@@ -200,27 +201,27 @@ func TestRGB16ColorspaceConversion(t *testing.T) {
 		A: 1.0,
 	}
 	srgbRgba32 := ConvertRGBA32LinearToSRGB(rgba32)
-	
+
 	// Convert back to RGB16
 	convertedSRGB := NewRGB16[SRGB](
 		uint16(srgbRgba32.R*65535+0.5),
 		uint16(srgbRgba32.G*65535+0.5),
 		uint16(srgbRgba32.B*65535+0.5),
 	)
-	
+
 	// Values should be different after gamma correction
 	if convertedSRGB.R == linearRgb.R && convertedSRGB.G == linearRgb.G && convertedSRGB.B == linearRgb.B {
 		t.Error("Linear to sRGB conversion should change values")
 	}
-	
+
 	// Test specific known conversion values
 	// Black should remain black in both colorspaces
 	blackLinear := NewRGB16[Linear](0, 0, 0)
 	if !blackLinear.IsBlack() {
 		t.Error("Black should remain black regardless of colorspace")
 	}
-	
-	// White should remain white in both colorspaces  
+
+	// White should remain white in both colorspaces
 	whiteLinear := NewRGB16[Linear](65535, 65535, 65535)
 	if !whiteLinear.IsWhite() {
 		t.Error("White should remain white regardless of colorspace")
@@ -230,11 +231,11 @@ func TestRGB16ColorspaceConversion(t *testing.T) {
 func TestRGB16HelperFunctions(t *testing.T) {
 	// Test RGB16Lerp function directly
 	result := RGB16Lerp(0, 65535, 32768) // 50% between 0 and 65535
-	expected := uint16(32767) // Should be approximately halfway
+	expected := uint16(32767)            // Should be approximately halfway
 	if result < expected-1 || result > expected+1 {
 		t.Errorf("RGB16Lerp failed: got %d, expected ~%d", result, expected)
 	}
-	
+
 	// Test endpoints
 	if RGB16Lerp(100, 200, 0) != 100 {
 		t.Error("RGB16Lerp with alpha 0 should return first value")
@@ -242,17 +243,17 @@ func TestRGB16HelperFunctions(t *testing.T) {
 	if RGB16Lerp(100, 200, 65535) != 200 {
 		t.Error("RGB16Lerp with alpha 65535 should return second value")
 	}
-	
+
 	// Test RGB16Prelerp (premultiplied interpolation)
 	prelerpResult := RGB16Prelerp(16384, 49152, 32768)
 	// This should be similar to regular lerp for this case
 	if prelerpResult < 30000 || prelerpResult > 35000 {
 		t.Errorf("RGB16Prelerp result seems out of range: got %d", prelerpResult)
 	}
-	
+
 	// Test RGB16MultCover
 	multResult := RGB16MultCover(32768, 32768) // 50% * 50%
-	expectedMult := uint16(16384) // Should be approximately 25%
+	expectedMult := uint16(16384)              // Should be approximately 25%
 	if multResult < expectedMult-1000 || multResult > expectedMult+1000 {
 		t.Errorf("RGB16MultCover failed: got %d, expected ~%d", multResult, expectedMult)
 	}
@@ -300,19 +301,19 @@ func TestRGB16ExplicitConversion(t *testing.T) {
 	t.Run("Convert method", func(t *testing.T) {
 		originalRGB := NewRGB16[Linear](25600, 38400, 51200)
 		convertedRGB := originalRGB.Convert()
-		
+
 		if convertedRGB.R != originalRGB.R || convertedRGB.G != originalRGB.G || convertedRGB.B != originalRGB.B {
 			t.Errorf("Convert should return identical values: got %v, want %v", convertedRGB, originalRGB)
 		}
 	})
-	
+
 	t.Run("Round-trip RGB conversion", func(t *testing.T) {
 		original := NewRGB16[Linear](25600, 38400, 51200)
-		
+
 		// Convert to float and back
 		rgbFloat := original.ConvertToRGB()
 		roundTrip := ConvertFromRGB16[Linear](rgbFloat)
-		
+
 		// Allow small error due to float precision
 		if absUint16(roundTrip.R, original.R) > 1 ||
 			absUint16(roundTrip.G, original.G) > 1 ||
