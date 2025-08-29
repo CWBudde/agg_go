@@ -386,6 +386,251 @@ func TestGray8_Luminance_FloatVsInt_Consistency(t *testing.T) {
 	}
 }
 
+// -------- Additional comprehensive tests (matching Gray16/Gray32) --------
+
+func TestGray8_BoundaryValues(t *testing.T) {
+	z := NewGray8WithAlpha[Linear](0, 0)
+	if !z.IsTransparent() {
+		t.Errorf("A=0 must be transparent")
+	}
+	if z.IsOpaque() {
+		t.Errorf("A=0 must not be opaque")
+	}
+	f := NewGray8WithAlpha[Linear](Gray8BaseMask, Gray8BaseMask)
+	if f.IsTransparent() {
+		t.Errorf("A=full must not be transparent")
+	}
+	if !f.IsOpaque() {
+		t.Errorf("A=full must be opaque")
+	}
+}
+
+func TestGray8_ConvertToRGBA_And_Back(t *testing.T) {
+	// Converting Gray8 -> RGBA -> Gray8 should recover within 1 LSB (rounding)
+	cases := []Gray8[Linear]{
+		NewGray8WithAlpha[Linear](0, 0),
+		NewGray8WithAlpha[Linear](1, 1),
+		NewGray8WithAlpha[Linear](123, 234),
+		NewGray8WithAlpha[Linear](128, 200),
+		NewGray8WithAlpha[Linear](255, 255),
+	}
+	for _, g := range cases {
+		r := g.ConvertToRGBA()                  // linear floats
+		back := ConvertGray8FromRGBA[Linear](r) // uses BT.709 luminance on linear floats
+
+		if d := absIntGray8(int(back.V) - int(g.V)); d > 1 {
+			t.Fatalf("Gray8->RGBA->Gray8 drift >1 LSB for V: orig=%d back=%d (d=%d)", g.V, back.V, d)
+		}
+		if d := absIntGray8(int(back.A) - int(g.A)); d > 1 {
+			t.Fatalf("Gray8->RGBA->Gray8 drift >1 LSB for A: orig=%d back=%d (d=%d)", g.A, back.A, d)
+		}
+	}
+}
+
+func TestGray8_FromLinearRGBA_BT709(t *testing.T) {
+	// These are linear RGBA samples; expected V = round((0.2126R + 0.7152G + 0.0722B) * 255)
+	type S struct{ R, G, B, A float64 }
+	samples := []S{
+		{0, 0, 0, 1},
+		{1, 1, 1, 1},
+		{0.5, 0.5, 0.5, 0.75},
+		{0.2, 0.7, 0.1, 0.25},
+		{0.9, 0.1, 0.3, 0.6},
+	}
+
+	for _, s := range samples {
+		lum := 0.2126*s.R + 0.7152*s.G + 0.0722*s.B
+		expV := basics.Int8u(lum*255 + 0.5)
+		expA := basics.Int8u(s.A*255 + 0.5)
+
+		got := ConvertGray8FromRGBA[Linear](RGBA(s))
+		if d := absIntGray8(int(got.V) - int(expV)); d > 1 {
+			t.Fatalf("BT.709 V mismatch: exp=%d got=%d (d=%d) for sample=%+v", expV, got.V, d, s)
+		}
+		if d := absIntGray8(int(got.A) - int(expA)); d > 1 {
+			t.Fatalf("Alpha mismatch: exp=%d got=%d (d=%d) for sample=%+v", expA, got.A, d, s)
+		}
+	}
+}
+
+func TestGray8_PremultiplyEdgeCases(t *testing.T) {
+	// Test with zero alpha
+	g := NewGray8WithAlpha[Linear](200, 0)
+	g.Premultiply()
+	if g.V != 0 {
+		t.Errorf("Premultiply with A=0 should set V=0, got V=%d", g.V)
+	}
+
+	// Test with alpha = 255 (should not change V)
+	g = NewGray8WithAlpha[Linear](200, 255)
+	originalV := g.V
+	g.Premultiply()
+	if g.V != originalV {
+		t.Errorf("Premultiply with A=255 should not change V: original=%d, got=%d", originalV, g.V)
+	}
+
+	// Test with very small alpha
+	g = NewGray8WithAlpha[Linear](200, 1)
+	g.Premultiply()
+	if g.V >= 200 {
+		t.Errorf("Premultiply with very small A should significantly reduce V, got V=%d", g.V)
+	}
+}
+
+func TestGray8_DemultiplyEdgeCases(t *testing.T) {
+	// Test with zero alpha
+	g := NewGray8WithAlpha[Linear](128, 0)
+	g.Demultiply()
+	if g.V != 0 {
+		t.Errorf("Demultiply with A=0 should set V=0, got V=%d", g.V)
+	}
+
+	// Test with alpha = 255 (should not change V significantly)
+	g = NewGray8WithAlpha[Linear](200, 255)
+	originalV := g.V
+	g.Demultiply()
+	if absIntGray8(int(g.V)-int(originalV)) > 1 {
+		t.Errorf("Demultiply with A=255 should barely change V: original=%d, got=%d", originalV, g.V)
+	}
+
+	// Test demultiply after premultiply with very small alpha
+	g = NewGray8WithAlpha[Linear](200, 2)
+	g.Premultiply()
+	g.Demultiply()
+	// For very small alpha values, we expect some precision loss
+	// This is documented behavior and expected
+}
+
+func TestGray8_GetOpacityMethod(t *testing.T) {
+	g := NewGray8WithAlpha[Linear](128, 128)
+	opacity := g.GetOpacity()
+	expected := 128.0 / 255.0
+	if abs(opacity-expected) > 0.01 {
+		t.Errorf("GetOpacity() expected ~%f, got %f", expected, opacity)
+	}
+}
+
+func TestGray8_AddWithCoverMethod(t *testing.T) {
+	g := NewGray8WithAlpha[Linear](100, 100)
+	c := NewGray8WithAlpha[Linear](150, 150)
+
+	// Test AddWithCover (should behave same as Add for Gray8)
+	g1 := g
+	g2 := g
+
+	g1.Add(c, 128)
+	g2.AddWithCover(c, 128)
+
+	if g1.V != g2.V || g1.A != g2.A {
+		t.Errorf("AddWithCover should behave same as Add: Add={V:%d,A:%d} AddWithCover={V:%d,A:%d}",
+			g1.V, g1.A, g2.V, g2.A)
+	}
+}
+
+func TestGray8_EdgeCaseValues(t *testing.T) {
+	// Test creation with boundary values
+	g := NewGray8WithAlpha[Linear](0, 255)
+	if g.V != 0 || g.A != 255 {
+		t.Errorf("Expected V=0, A=255, got V=%d, A=%d", g.V, g.A)
+	}
+
+	g = NewGray8WithAlpha[Linear](255, 0)
+	if g.V != 255 || g.A != 0 {
+		t.Errorf("Expected V=255, A=0, got V=%d, A=%d", g.V, g.A)
+	}
+}
+
+func TestGray8_ArithmeticEdgeCases(t *testing.T) {
+	// Test multiply with edge values
+	if Gray8Multiply(0, 255) != 0 {
+		t.Error("Gray8Multiply(0, 255) should be 0")
+	}
+	if Gray8Multiply(255, 0) != 0 {
+		t.Error("Gray8Multiply(255, 0) should be 0")
+	}
+	if Gray8Multiply(255, 255) != 255 {
+		t.Error("Gray8Multiply(255, 255) should be 255")
+	}
+
+	// Test lerp with edge values
+	if Gray8Lerp(0, 255, 0) != 0 {
+		t.Error("Gray8Lerp(0, 255, 0) should return first value")
+	}
+	if Gray8Lerp(0, 255, 255) != 255 {
+		t.Error("Gray8Lerp(0, 255, 255) should return second value")
+	}
+}
+
+func TestGray8_ConversionConsistency(t *testing.T) {
+	// Test that ConvertToRGBA8 and ConvertToRGBA produce consistent results
+	g := NewGray8WithAlpha[Linear](128, 200)
+
+	rgba := g.ConvertToRGBA()
+	rgba8 := g.ConvertToRGBA8()
+
+	// Convert rgba8 back to float for comparison
+	rgbaFromRGBA8 := RGBA{
+		R: float64(rgba8.R) / 255.0,
+		G: float64(rgba8.G) / 255.0,
+		B: float64(rgba8.B) / 255.0,
+		A: float64(rgba8.A) / 255.0,
+	}
+
+	tolerance := 1.0 / 255.0 // 1 LSB tolerance
+	if abs(rgba.R-rgbaFromRGBA8.R) > tolerance ||
+		abs(rgba.G-rgbaFromRGBA8.G) > tolerance ||
+		abs(rgba.B-rgbaFromRGBA8.B) > tolerance ||
+		abs(rgba.A-rgbaFromRGBA8.A) > tolerance {
+		t.Errorf("ConvertToRGBA and ConvertToRGBA8 inconsistent: float=%+v int=%+v", rgba, rgba8)
+	}
+}
+
+func TestGray8_ColorSpaceSpecificConversions(t *testing.T) {
+	// Test Linear colorspace
+	gLinear := NewGray8WithAlpha[Linear](128, 200)
+	rgbaLinear := gLinear.ConvertToRGBA8()
+	if rgbaLinear.R != 128 || rgbaLinear.G != 128 || rgbaLinear.B != 128 || rgbaLinear.A != 200 {
+		t.Errorf("Linear Gray8->RGBA8 mismatch: expected {128,128,128,200}, got %+v", rgbaLinear)
+	}
+
+	// Test SRGB colorspace
+	gSRGB := NewGray8WithAlpha[SRGB](128, 200)
+	rgbaSRGB := gSRGB.ConvertToRGBA8()
+	if rgbaSRGB.R != 128 || rgbaSRGB.G != 128 || rgbaSRGB.B != 128 || rgbaSRGB.A != 200 {
+		t.Errorf("SRGB Gray8->RGBA8 mismatch: expected {128,128,128,200}, got %+v", rgbaSRGB)
+	}
+}
+
+func TestGray8_ComprehensiveRoundTripTesting(t *testing.T) {
+	// Test multiple round trips with various values
+	testValues := []struct{ v, a basics.Int8u }{
+		{0, 0}, {255, 255}, {128, 128}, {64, 192}, {192, 64}, {1, 254}, {254, 1},
+	}
+
+	for _, tv := range testValues {
+		original := NewGray8WithAlpha[Linear](tv.v, tv.a)
+
+		// Round trip: Gray8 -> RGBA -> Gray8
+		rgba := original.ConvertToRGBA()
+		recovered := ConvertGray8FromRGBA[Linear](rgba)
+
+		if absIntGray8(int(recovered.V)-int(original.V)) > 1 {
+			t.Errorf("Round trip V drift >1 LSB: orig=%d recovered=%d", original.V, recovered.V)
+		}
+		if absIntGray8(int(recovered.A)-int(original.A)) > 1 {
+			t.Errorf("Round trip A drift >1 LSB: orig=%d recovered=%d", original.A, recovered.A)
+		}
+	}
+}
+
+// Helper function for integer absolute value
+func absIntGray8(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
 // Helper function for floating point comparison
 func abs(x float64) float64 {
 	if x < 0 {

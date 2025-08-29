@@ -7,12 +7,12 @@ import (
 )
 
 // RGB8 represents an 8-bit RGB color with colorspace (24-bit, 3 bytes)
-type RGB8[CS ColorSpace] struct {
+type RGB8[CS Space] struct {
 	R, G, B basics.Int8u
 }
 
 // NewRGB8 creates a new 8-bit RGB color
-func NewRGB8[CS ColorSpace](r, g, b basics.Int8u) RGB8[CS] {
+func NewRGB8[CS Space](r, g, b basics.Int8u) RGB8[CS] {
 	return RGB8[CS]{R: r, G: g, B: b}
 }
 
@@ -45,7 +45,7 @@ func (c RGB8[CS]) ConvertToRGBA() RGBA {
 }
 
 // ConvertFromRGB converts from floating-point RGB
-func ConvertFromRGB[CS ColorSpace](c RGB) RGB8[CS] {
+func ConvertFromRGB[CS Space](c RGB) RGB8[CS] {
 	return RGB8[CS]{
 		R: basics.Int8u(c.R*255 + 0.5),
 		G: basics.Int8u(c.G*255 + 0.5),
@@ -54,7 +54,7 @@ func ConvertFromRGB[CS ColorSpace](c RGB) RGB8[CS] {
 }
 
 // ConvertRGBAToRGB8 converts from RGBA (ignores alpha)
-func ConvertRGBAToRGB8[CS ColorSpace](c RGBA) RGB8[CS] {
+func ConvertRGBAToRGB8[CS Space](c RGBA) RGB8[CS] {
 	return RGB8[CS]{
 		R: basics.Int8u(c.R*255 + 0.5),
 		G: basics.Int8u(c.G*255 + 0.5),

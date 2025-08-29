@@ -5,7 +5,7 @@ import (
 )
 
 // Gray16 represents a 16-bit grayscale color
-type Gray16[CS ColorSpace] struct {
+type Gray16[CS Space] struct {
 	V basics.Int16u
 	A basics.Int16u
 }
@@ -18,12 +18,12 @@ const (
 )
 
 // NewGray16 creates a new 16-bit grayscale color
-func NewGray16[CS ColorSpace](v basics.Int16u) Gray16[CS] {
+func NewGray16[CS Space](v basics.Int16u) Gray16[CS] {
 	return Gray16[CS]{V: v, A: Gray16BaseMask}
 }
 
 // NewGray16WithAlpha creates a new 16-bit grayscale color with alpha
-func NewGray16WithAlpha[CS ColorSpace](v, a basics.Int16u) Gray16[CS] {
+func NewGray16WithAlpha[CS Space](v, a basics.Int16u) Gray16[CS] {
 	return Gray16[CS]{V: v, A: a}
 }
 
@@ -56,7 +56,7 @@ func (g Gray16[CS]) ConvertToRGBA16() RGBA16[CS] {
 }
 
 // ConvertFromRGBA converts from floating-point RGBA
-func ConvertGray16FromRGBA[CS ColorSpace](c RGBA) Gray16[CS] {
+func ConvertGray16FromRGBA[CS Space](c RGBA) Gray16[CS] {
 	lum := LuminanceFromRGBA(c)
 	return Gray16[CS]{
 		V: basics.Int16u(lum*65535 + 0.5),

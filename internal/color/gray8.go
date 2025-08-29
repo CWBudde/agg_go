@@ -5,7 +5,7 @@ import (
 )
 
 // Gray8 represents an 8-bit grayscale color with colorspace
-type Gray8[CS ColorSpace] struct {
+type Gray8[CS Space] struct {
 	V basics.Int8u // Value (luminance)
 	A basics.Int8u // Alpha channel
 }
@@ -19,17 +19,17 @@ const (
 )
 
 // NewGray8 creates a new 8-bit grayscale color
-func NewGray8[CS ColorSpace](v basics.Int8u) Gray8[CS] {
+func NewGray8[CS Space](v basics.Int8u) Gray8[CS] {
 	return Gray8[CS]{V: v, A: Gray8BaseMask}
 }
 
 // NewGray8WithAlpha creates a new 8-bit grayscale color with alpha
-func NewGray8WithAlpha[CS ColorSpace](v, a basics.Int8u) Gray8[CS] {
+func NewGray8WithAlpha[CS Space](v, a basics.Int8u) Gray8[CS] {
 	return Gray8[CS]{V: v, A: a}
 }
 
 // ConvertFromRGBA converts from floating-point RGBA to grayscale
-func ConvertGray8FromRGBA[CS ColorSpace](c RGBA) Gray8[CS] {
+func ConvertGray8FromRGBA[CS Space](c RGBA) Gray8[CS] {
 	lum := LuminanceFromRGBA(c)
 	return Gray8[CS]{
 		V: basics.Int8u(lum*255 + 0.5),
@@ -39,7 +39,7 @@ func ConvertGray8FromRGBA[CS ColorSpace](c RGBA) Gray8[CS] {
 
 // ConvertFromRGBA8 converts from 8-bit RGBA to grayscale
 // Route by colorspace (no reflection; compile-time monomorphization with a tiny type switch)
-func ConvertGray8FromRGBA8[CS ColorSpace](c RGBA8[CS]) Gray8[CS] {
+func ConvertGray8FromRGBA8[CS Space](c RGBA8[CS]) Gray8[CS] {
 	var v basics.Int8u
 	switch any(c).(type) {
 	case RGBA8[Linear]:

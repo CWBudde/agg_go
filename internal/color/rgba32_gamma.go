@@ -1,13 +1,13 @@
 package color
 
 // Zero-overhead, monomorphized helpers (no interface at call-site):
-func ApplyGammaDir32[CS ColorSpace, G lut32Like](px *RGBA32[CS], g G) {
+func ApplyGammaDir32[CS Space, G lut32Like](px *RGBA32[CS], g G) {
 	px.R = g.DirFloat(px.R)
 	px.G = g.DirFloat(px.G)
 	px.B = g.DirFloat(px.B)
 }
 
-func ApplyGammaInv32[CS ColorSpace, G lut32Like](px *RGBA32[CS], g G) {
+func ApplyGammaInv32[CS Space, G lut32Like](px *RGBA32[CS], g G) {
 	px.R = g.InvFloat(px.R)
 	px.G = g.InvFloat(px.G)
 	px.B = g.InvFloat(px.B)

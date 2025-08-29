@@ -5,23 +5,23 @@ import (
 )
 
 // Apply 16-bit gamma (V channel only) to a Gray16 pixel in-place.
-func ApplyGammaDir16Gray[CS ColorSpace, LUT lut16Like](px *Gray16[CS], lut LUT) {
+func ApplyGammaDir16Gray[CS Space, LUT lut16Like](px *Gray16[CS], lut LUT) {
 	px.V = lut.Dir(basics.Int8u(px.V >> 8))
 }
 
-func ApplyGammaInv16Gray[CS ColorSpace, LUT lut16Like](px *Gray16[CS], lut LUT) {
+func ApplyGammaInv16Gray[CS Space, LUT lut16Like](px *Gray16[CS], lut LUT) {
 	v8 := lut.Inv(px.V)
 	px.V = basics.Int16u(v8)<<8 | basics.Int16u(v8)
 }
 
 // Apply gamma using 8-bit LUT (down-sample, apply, up-sample)
-func ApplyGammaDir16GrayUsing8[CS ColorSpace, LUT lut8Like](px *Gray16[CS], lut LUT) {
+func ApplyGammaDir16GrayUsing8[CS Space, LUT lut8Like](px *Gray16[CS], lut LUT) {
 	v8 := basics.Int8u(px.V >> 8)
 	v8 = lut.Dir(v8)
 	px.V = basics.Int16u(v8)<<8 | basics.Int16u(v8)
 }
 
-func ApplyGammaInv16GrayUsing8[CS ColorSpace, LUT lut8Like](px *Gray16[CS], lut LUT) {
+func ApplyGammaInv16GrayUsing8[CS Space, LUT lut8Like](px *Gray16[CS], lut LUT) {
 	v8 := basics.Int8u(px.V >> 8)
 	v8 = lut.Inv(v8)
 	px.V = basics.Int16u(v8)<<8 | basics.Int16u(v8)

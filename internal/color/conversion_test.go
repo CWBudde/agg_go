@@ -400,3 +400,11 @@ func srgbCollapsedBucket(i int) (lo, hi int, l8 basics.Int8u) {
 	}
 	return lo, hi, l8
 }
+
+// Helper function for absolute difference for int
+func absInt(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
+}

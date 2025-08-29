@@ -3,18 +3,18 @@ package color
 import "math"
 
 // Gray32 represents a 32-bit floating-point grayscale color
-type Gray32[CS ColorSpace] struct {
+type Gray32[CS Space] struct {
 	V float32
 	A float32
 }
 
 // NewGray32 creates a new 32-bit grayscale color
-func NewGray32[CS ColorSpace](v float32) Gray32[CS] {
+func NewGray32[CS Space](v float32) Gray32[CS] {
 	return Gray32[CS]{V: v, A: 1.0}
 }
 
 // NewGray32WithAlpha creates a new 32-bit grayscale color with alpha
-func NewGray32WithAlpha[CS ColorSpace](v, a float32) Gray32[CS] {
+func NewGray32WithAlpha[CS Space](v, a float32) Gray32[CS] {
 	return Gray32[CS]{V: v, A: a}
 }
 
@@ -78,7 +78,7 @@ func Gray32Demultiply(a, b float32) float32 {
 
 // Interpolate p→q by a (assuming q is premultiplied by a)
 func Gray32Prelerp(p, q, a float32) float32 {
-	// more accurate than p + q - p*a in float32: (1-a)*p + q
+	// more accurate than p + q - p*a in float32:
 	return (1-a)*p + q
 }
 
@@ -142,7 +142,7 @@ func clamp01f32(x float32) float32 {
 }
 
 // ConvertFromRGBA converts from floating-point RGBA
-func ConvertGray32FromRGBA[CS ColorSpace](c RGBA) Gray32[CS] {
+func ConvertGray32FromRGBA[CS Space](c RGBA) Gray32[CS] {
 	lum := LuminanceFromRGBA(c)
 	return Gray32[CS]{
 		V: float32(lum),

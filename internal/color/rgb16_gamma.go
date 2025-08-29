@@ -1,18 +1,16 @@
-// Package color provides color types and conversion functions for AGG.
-// This package implements RGBA, grayscale, and color space conversions.
 package color
 
 import (
 	"agg_go/internal/basics"
 )
 
-func ApplyGammaDir16[CS Space, LUT lut16Like](px *RGBA16[CS], lut LUT) {
+func ApplyGammaDir16RGB[CS Space, LUT lut16Like](px *RGB16[CS], lut LUT) {
 	px.R = lut.Dir(basics.Int8u(px.R >> 8))
 	px.G = lut.Dir(basics.Int8u(px.G >> 8))
 	px.B = lut.Dir(basics.Int8u(px.B >> 8))
 }
 
-func ApplyGammaInv16[CS Space, LUT lut16Like](px *RGBA16[CS], lut LUT) {
+func ApplyGammaInv16RGB[CS Space, LUT lut16Like](px *RGB16[CS], lut LUT) {
 	r8 := lut.Inv(px.R)
 	g8 := lut.Inv(px.G)
 	b8 := lut.Inv(px.B)
@@ -21,7 +19,7 @@ func ApplyGammaInv16[CS Space, LUT lut16Like](px *RGBA16[CS], lut LUT) {
 	px.B = basics.Int16u(b8)<<8 | basics.Int16u(b8)
 }
 
-func ApplyGammaDir16Using8[CS Space, LUT lut8Like](px *RGBA16[CS], lut LUT) {
+func ApplyGammaDir16RGBUsing8[CS Space, LUT lut8Like](px *RGB16[CS], lut LUT) {
 	r8 := basics.Int8u(px.R >> 8)
 	g8 := basics.Int8u(px.G >> 8)
 	b8 := basics.Int8u(px.B >> 8)
@@ -33,7 +31,7 @@ func ApplyGammaDir16Using8[CS Space, LUT lut8Like](px *RGBA16[CS], lut LUT) {
 	px.B = basics.Int16u(b8)<<8 | basics.Int16u(b8)
 }
 
-func ApplyGammaInv16Using8[CS Space, LUT lut8Like](px *RGBA16[CS], lut LUT) {
+func ApplyGammaInv16RGBUsing8[CS Space, LUT lut8Like](px *RGB16[CS], lut LUT) {
 	r8 := basics.Int8u(px.R >> 8)
 	g8 := basics.Int8u(px.G >> 8)
 	b8 := basics.Int8u(px.B >> 8)
@@ -45,9 +43,9 @@ func ApplyGammaInv16Using8[CS Space, LUT lut8Like](px *RGBA16[CS], lut LUT) {
 	px.B = basics.Int16u(b8)<<8 | basics.Int16u(b8)
 }
 
-// Helper for method receivers:
-func (c *RGBA16[CS]) ApplyGammaDir(lut lut16Like) { ApplyGammaDir16(c, lut) }
-func (c *RGBA16[CS]) ApplyGammaInv(lut lut16Like) { ApplyGammaInv16(c, lut) }
+// Helper methods for RGB16
+func (c *RGB16[CS]) ApplyGammaDir(lut lut16Like) { ApplyGammaDir16RGB(c, lut) }
+func (c *RGB16[CS]) ApplyGammaInv(lut lut16Like) { ApplyGammaInv16RGB(c, lut) }
 
-func (c *RGBA16[CS]) ApplyGammaDirUsing8(lut lut8Like) { ApplyGammaDir16Using8(c, lut) }
-func (c *RGBA16[CS]) ApplyGammaInvUsing8(lut lut8Like) { ApplyGammaInv16Using8(c, lut) }
+func (c *RGB16[CS]) ApplyGammaDirUsing8(lut lut8Like) { ApplyGammaDir16RGBUsing8(c, lut) }
+func (c *RGB16[CS]) ApplyGammaInvUsing8(lut lut8Like) { ApplyGammaInv16RGBUsing8(c, lut) }

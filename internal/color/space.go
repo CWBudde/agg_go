@@ -1,8 +1,8 @@
 package color
 
-// ColorSpace is a zero-cost compile-time marker interface.
+// Space is a zero-cost compile-time marker interface.
 // It prevents using arbitrary types as the CS type parameter.
-type ColorSpace interface {
+type Space interface {
 	isColorSpace()
 }
 

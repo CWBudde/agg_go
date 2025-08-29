@@ -7,12 +7,12 @@ import (
 )
 
 // RGBA32 represents a 32-bit floating-point RGBA color
-type RGBA32[CS ColorSpace] struct {
+type RGBA32[CS Space] struct {
 	R, G, B, A float32
 }
 
 // NewRGBA32 creates a new 32-bit RGBA color
-func NewRGBA32[CS ColorSpace](r, g, b, a float32) RGBA32[CS] {
+func NewRGBA32[CS Space](r, g, b, a float32) RGBA32[CS] {
 	return RGBA32[CS]{R: r, G: g, B: b, A: a}
 }
 
@@ -27,7 +27,7 @@ func (c RGBA32[CS]) ConvertToRGBA() RGBA {
 }
 
 // ConvertFromRGBA converts from floating-point RGBA
-func ConvertFromRGBA32[CS ColorSpace](c RGBA) RGBA32[CS] {
+func ConvertFromRGBA32[CS Space](c RGBA) RGBA32[CS] {
 	return RGBA32[CS]{
 		R: float32(c.R),
 		G: float32(c.G),

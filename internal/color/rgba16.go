@@ -87,12 +87,12 @@ type (
 )
 
 // RGBA16 represents a 16-bit RGBA color
-type RGBA16[CS ColorSpace] struct {
+type RGBA16[CS Space] struct {
 	R, G, B, A basics.Int16u
 }
 
 // NewRGBA16 creates a new 16-bit RGBA color
-func NewRGBA16[CS ColorSpace](r, g, b, a basics.Int16u) RGBA16[CS] {
+func NewRGBA16[CS Space](r, g, b, a basics.Int16u) RGBA16[CS] {
 	return RGBA16[CS]{R: r, G: g, B: b, A: a}
 }
 
@@ -108,7 +108,7 @@ func (c RGBA16[CS]) ConvertToRGBA() RGBA {
 }
 
 // ConvertFromRGBA converts from floating-point RGBA
-func ConvertFromRGBA16[CS ColorSpace](c RGBA) RGBA16[CS] {
+func ConvertFromRGBA16[CS Space](c RGBA) RGBA16[CS] {
 	return RGBA16[CS]{
 		R: basics.Int16u(c.R*65535 + 0.5),
 		G: basics.Int16u(c.G*65535 + 0.5),

@@ -197,20 +197,20 @@ func ConvertGray32SRGBToLinear(g Gray32[SRGB]) Gray32[Linear] {
 // Simple “Make” helpers (unchanged)
 //
 
-func MakeRGBA8[CS ColorSpace](r, g, b, a basics.Int8u) RGBA8[CS] {
+func MakeRGBA8[CS Space](r, g, b, a basics.Int8u) RGBA8[CS] {
 	return RGBA8[CS]{R: r, G: g, B: b, A: a}
 }
 func MakeSRGBA8(r, g, b, a basics.Int8u) RGBA8[SRGB] { return RGBA8[SRGB]{R: r, G: g, B: b, A: a} }
-func MakeRGBA16[CS ColorSpace](r, g, b, a basics.Int16u) RGBA16[CS] {
+func MakeRGBA16[CS Space](r, g, b, a basics.Int16u) RGBA16[CS] {
 	return RGBA16[CS]{R: r, G: g, B: b, A: a}
 }
 
-func MakeRGBA32[CS ColorSpace](r, g, b, a float32) RGBA32[CS] {
+func MakeRGBA32[CS Space](r, g, b, a float32) RGBA32[CS] {
 	return RGBA32[CS]{R: r, G: g, B: b, A: a}
 }
 
 // Convenience: build premultiplied RGBA8 directly (kept from your version)
-func RGBA8Pre[CS ColorSpace](r, g, b, a float64) RGBA8[CS] {
+func RGBA8Pre[CS Space](r, g, b, a float64) RGBA8[CS] {
 	return RGBA8[CS]{
 		R: basics.Int8u(r*a*255 + 0.5),
 		G: basics.Int8u(g*a*255 + 0.5),
@@ -223,15 +223,15 @@ func RGBA8Pre[CS ColorSpace](r, g, b, a float64) RGBA8[CS] {
 // Gray8 -> RGBA8 “make” helpers (kept)
 //
 
-func MakeRGBA8FromGray8Linear[CS ColorSpace](g Gray8[Linear]) RGBA8[Linear] {
+func MakeRGBA8FromGray8Linear[CS Space](g Gray8[Linear]) RGBA8[Linear] {
 	return RGBA8[Linear]{R: g.V, G: g.V, B: g.V, A: g.A}
 }
 
-func MakeRGBA8FromGray8SRGB[CS ColorSpace](g Gray8[SRGB]) RGBA8[SRGB] {
+func MakeRGBA8FromGray8SRGB[CS Space](g Gray8[SRGB]) RGBA8[SRGB] {
 	return RGBA8[SRGB]{R: g.V, G: g.V, B: g.V, A: g.A}
 }
 
-func MakeSRGBA8FromGray8Linear[CS ColorSpace](g Gray8[Linear]) RGBA8[SRGB] {
+func MakeSRGBA8FromGray8Linear[CS Space](g Gray8[Linear]) RGBA8[SRGB] {
 	return RGBA8[SRGB]{
 		R: linear8ToSrgb8(g.V),
 		G: linear8ToSrgb8(g.V),
@@ -240,7 +240,7 @@ func MakeSRGBA8FromGray8Linear[CS ColorSpace](g Gray8[Linear]) RGBA8[SRGB] {
 	}
 }
 
-func MakeRGBA8FromGray8SRGB_ToLinear[CS ColorSpace](g Gray8[SRGB]) RGBA8[Linear] {
+func MakeRGBA8FromGray8SRGB_ToLinear[CS Space](g Gray8[SRGB]) RGBA8[Linear] {
 	return RGBA8[Linear]{
 		R: srgb8ToLinear8(g.V),
 		G: srgb8ToLinear8(g.V),
