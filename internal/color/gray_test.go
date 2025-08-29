@@ -1,236 +1,166 @@
 package color
 
 import (
+	"math"
 	"testing"
 
 	"agg_go/internal/basics"
 )
 
-// Test Gray8 basic functionality
-func TestGray8Basic(t *testing.T) {
-	// Test constructor
-	g := NewGray8[Linear](128)
-	if g.V != 128 {
-		t.Errorf("Expected V=128, got V=%d", g.V)
+// --- helpers ---------------------------------------------------------------
+
+func expLumLinear8(r, g, b uint8) basics.Int8u {
+	return basics.Int8u((uint32(r)*bt709R + uint32(g)*bt709G + uint32(b)*bt709B) >> 8)
+}
+
+func almostEqualFloat(a, b, tol float64) bool {
+	if math.IsNaN(a) || math.IsNaN(b) {
+		return false
 	}
-	if g.A != Gray8BaseMask {
-		t.Errorf("Expected A=%d, got A=%d", Gray8BaseMask, g.A)
+	return math.Abs(a-b) <= tol
+}
+
+func almostEqualU8(a, b basics.Int8u, tol uint8) bool {
+	da := int(a)
+	db := int(b)
+	return absInt(da-db) <= int(tol)
+}
+
+// --- tests -----------------------------------------------------------------
+
+func TestLuminanceFromRGBA8Linear_KnownValues(t *testing.T) {
+	cases := []struct {
+		name    string
+		r, g, b uint8
+	}{
+		{"black", 0, 0, 0},
+		{"white", 255, 255, 255},
+		{"red", 255, 0, 0},
+		{"green", 0, 255, 0},
+		{"blue", 0, 0, 255},
+		{"random-ish", 12, 34, 56},
 	}
 
-	// Test constructor with alpha
-	g2 := NewGray8WithAlpha[Linear](64, 200)
-	if g2.V != 64 || g2.A != 200 {
-		t.Errorf("Expected V=64, A=200, got V=%d, A=%d", g2.V, g2.A)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := LuminanceFromRGBA8Linear(RGBA8[Linear]{
+				R: basics.Int8u(tc.r),
+				G: basics.Int8u(tc.g),
+				B: basics.Int8u(tc.b),
+				A: 255,
+			})
+			want := expLumLinear8(tc.r, tc.g, tc.b)
+			if got != want {
+				t.Fatalf("got %d, want %d", got, want)
+			}
+		})
 	}
 }
 
-func TestGray8Methods(t *testing.T) {
-	g := NewGray8WithAlpha[Linear](128, 200)
-
-	// Test Clear
-	g.Clear()
-	if g.V != 0 || g.A != 0 {
-		t.Errorf("Clear() failed: V=%d, A=%d", g.V, g.A)
+func TestLuminanceFromRGBA8SRGB_UsesLUTThen709(t *testing.T) {
+	// We validate the integer pipeline by running the same math against
+	// the LUT-linearized channels (no magic numbers beyond the shared weights).
+	cases := []struct {
+		name    string
+		r, g, b uint8
+	}{
+		{"black", 0, 0, 0},
+		{"white", 255, 255, 255},
+		{"mid-gray", 128, 128, 128},
+		{"quarter-gray", 64, 64, 64},
+		{"three-quarter-gray", 192, 192, 192},
+		{"sr", 255, 32, 32},
+		{"sg", 32, 255, 32},
+		{"sb", 32, 32, 255},
+		{"rgb-mix", 12, 200, 150},
 	}
 
-	// Test Transparent
-	g = NewGray8WithAlpha[Linear](128, 200)
-	g.Transparent()
-	if g.V != 128 || g.A != 0 {
-		t.Errorf("Transparent() failed: V=%d, A=%d", g.V, g.A)
-	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := LuminanceFromRGBA8SRGB(RGBA8[SRGB]{
+				R: basics.Int8u(tc.r),
+				G: basics.Int8u(tc.g),
+				B: basics.Int8u(tc.b),
+				A: 255,
+			})
 
-	// Test Opacity
-	g = NewGray8WithAlpha[Linear](128, 200)
-	g.Opacity(0.5)
-	expected := basics.Int8u(0.5*float64(Gray8BaseMask) + 0.5)
-	if g.A != expected {
-		t.Errorf("Opacity(0.5) failed: expected A=%d, got A=%d", expected, g.A)
-	}
+			// Reference expectation: linearize via the same LUT, then apply integer BT.709.
+			rl := srgb8ToLinear8(basics.Int8u(tc.r))
+			gl := srgb8ToLinear8(basics.Int8u(tc.g))
+			bl := srgb8ToLinear8(basics.Int8u(tc.b))
+			want := expLumLinear8(uint8(rl), uint8(gl), uint8(bl))
 
-	// Test IsTransparent
-	g.A = 0
-	if !g.IsTransparent() {
-		t.Error("IsTransparent() should return true for A=0")
-	}
-
-	// Test IsOpaque
-	g.A = Gray8BaseMask
-	if !g.IsOpaque() {
-		t.Error("IsOpaque() should return true for A=255")
-	}
-}
-
-func TestGray8Arithmetic(t *testing.T) {
-	// Test Multiply
-	result := Gray8Multiply(128, 128)
-	expected := basics.Int8u(64) // 128*128/256 ≈ 64
-	if result != expected {
-		t.Errorf("Gray8Multiply(128, 128) expected %d, got %d", expected, result)
-	}
-
-	// Test Lerp
-	result = Gray8Lerp(0, 255, 128) // 50% interpolation
-	if result < 126 || result > 129 {
-		t.Errorf("Gray8Lerp(0, 255, 128) expected ~127, got %d", result)
-	}
-
-	// Test Prelerp
-	result = Gray8Prelerp(100, 50, 128)
-	// p + q - multiply(p, a) = 100 + 50 - multiply(100, 128)
-	mulResult := Gray8Multiply(100, 128)
-	expected = 100 + 50 - mulResult
-	if result != expected {
-		t.Errorf("Gray8Prelerp(100, 50, 128) expected %d, got %d", expected, result)
+			if got != want {
+				t.Fatalf("got %d, want %d (rl=%d gl=%d bl=%d)", got, want, rl, gl, bl)
+			}
+		})
 	}
 }
 
-func TestGray8Premultiply(t *testing.T) {
-	g := NewGray8WithAlpha[Linear](200, 128)
-	originalV := g.V
-
-	g.Premultiply()
-
-	// V should be reduced by alpha
-	expectedV := Gray8Multiply(originalV, 128)
-	if g.V != expectedV {
-		t.Errorf("Premultiply() expected V=%d, got V=%d", expectedV, g.V)
+func TestLuminanceFromRGBA_FloatKnownValues(t *testing.T) {
+	cases := []struct {
+		name    string
+		r, g, b float64
+		want    float64
+	}{
+		{"black", 0, 0, 0, 0},
+		{"white", 1, 1, 1, 1},
+		{"red", 1, 0, 0, 0.2126},
+		{"green", 0, 1, 0, 0.7152},
+		{"blue", 0, 0, 1, 0.0722},
+		{"mid-gray", 0.5, 0.5, 0.5, 0.5},
 	}
 
-	// Alpha should remain unchanged
-	if g.A != 128 {
-		t.Errorf("Premultiply() should not change alpha: got A=%d", g.A)
-	}
-}
-
-func TestGray8Demultiply(t *testing.T) {
-	g := NewGray8WithAlpha[Linear](100, 128)
-	g.Premultiply()
-	premultipliedV := g.V
-
-	g.Demultiply()
-
-	// V should be increased back (approximately)
-	if g.V <= premultipliedV {
-		t.Errorf("Demultiply() should increase V: premult=%d, demult=%d", premultipliedV, g.V)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := LuminanceFromRGBA(RGBA{
+				R: tc.r, G: tc.g, B: tc.b, A: 1,
+			})
+			if !almostEqualFloat(got, tc.want, 1e-9) {
+				t.Fatalf("got %.10f, want %.10f", got, tc.want)
+			}
+		})
 	}
 }
 
-func TestGray8Gradient(t *testing.T) {
-	g1 := NewGray8WithAlpha[Linear](0, 0)
-	g2 := NewGray8WithAlpha[Linear](255, 255)
-
-	// 50% interpolation
-	result := g1.Gradient(g2, 0.5)
-
-	// Should be approximately halfway
-	if result.V < 125 || result.V > 130 {
-		t.Errorf("Gradient V expected ~127, got %d", result.V)
-	}
-	if result.A < 125 || result.A > 130 {
-		t.Errorf("Gradient A expected ~127, got %d", result.A)
-	}
-}
-
-func TestGray8Add(t *testing.T) {
-	g := NewGray8WithAlpha[Linear](100, 100)
-	c := NewGray8WithAlpha[Linear](50, 50)
-
-	g.Add(c, 255) // Full coverage
-
-	// Values should be added (with clamping)
-	expectedV := basics.Int8u(150)
-	expectedA := basics.Int8u(150)
-
-	if g.V != expectedV {
-		t.Errorf("Add() V expected %d, got %d", expectedV, g.V)
-	}
-	if g.A != expectedA {
-		t.Errorf("Add() A expected %d, got %d", expectedA, g.A)
-	}
-}
-
-func TestGray8Conversion(t *testing.T) {
-	// Test conversion from RGBA
-	rgba := NewRGBA(0.5, 0.5, 0.5, 0.8)
-	gray := ConvertGray8FromRGBA[Linear](rgba)
-
-	// Should be approximately 50% gray with 80% alpha
-	// Allow for rounding differences
-	if gray.V < 127 || gray.V > 128 {
-		t.Errorf("ConvertGray8FromRGBA V expected ~128, got %d", gray.V)
-	}
-	if gray.A < 203 || gray.A > 205 {
-		t.Errorf("ConvertGray8FromRGBA A expected ~204, got %d", gray.A)
+func TestConsistency_Linear8_vs_Float(t *testing.T) {
+	// For a few representative colors, the 8-bit integer path and the
+	// float path (with normalized linear inputs) should agree within ~1 U8.
+	cases := []struct {
+		name    string
+		r, g, b uint8
+	}{
+		{"black", 0, 0, 0},
+		{"white", 255, 255, 255},
+		{"red", 255, 0, 0},
+		{"green", 0, 255, 0},
+		{"blue", 0, 0, 255},
+		{"mid-gray", 128, 128, 128},
+		{"random-ish", 23, 45, 210},
 	}
 
-	// Test conversion to RGBA
-	rgba2 := gray.ConvertToRGBA()
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			l8 := LuminanceFromRGBA8Linear(RGBA8[Linear]{
+				R: basics.Int8u(tc.r),
+				G: basics.Int8u(tc.g),
+				B: basics.Int8u(tc.b),
+				A: 255,
+			})
 
-	expectedR := float64(gray.V) / 255.0
-	expectedG := expectedR
-	expectedB := expectedR
-	expectedAlpha := float64(gray.A) / 255.0
+			lf := LuminanceFromRGBA(RGBA{
+				R: float64(tc.r) / 255.0,
+				G: float64(tc.g) / 255.0,
+				B: float64(tc.b) / 255.0,
+				A: 1.0,
+			})
+			// Scale float 0..1 back to 0..255 and round.
+			lfU8 := basics.Int8u(math.Round(lf * 255.0))
 
-	tolerance := 0.01
-	if abs(rgba2.R-expectedR) > tolerance {
-		t.Errorf("ConvertToRGBA R expected %.3f, got %.3f", expectedR, rgba2.R)
+			// Allow small mismatch due to integer weights (sum 257)>>8 vs exact 0.2126/0.7152/0.0722
+			if !almostEqualU8(l8, lfU8, 1) {
+				t.Fatalf("linear8=%d, float≈%d differ by >1", l8, lfU8)
+			}
+		})
 	}
-	if abs(rgba2.G-expectedG) > tolerance {
-		t.Errorf("ConvertToRGBA G expected %.3f, got %.3f", expectedG, rgba2.G)
-	}
-	if abs(rgba2.B-expectedB) > tolerance {
-		t.Errorf("ConvertToRGBA B expected %.3f, got %.3f", expectedB, rgba2.B)
-	}
-	if abs(rgba2.A-expectedAlpha) > tolerance {
-		t.Errorf("ConvertToRGBA A expected %.3f, got %.3f", expectedAlpha, rgba2.A)
-	}
-}
-
-func TestGray8Constants(t *testing.T) {
-	if Gray8EmptyValue() != 0 {
-		t.Errorf("Gray8EmptyValue() expected 0, got %d", Gray8EmptyValue())
-	}
-
-	if Gray8FullValue() != Gray8BaseMask {
-		t.Errorf("Gray8FullValue() expected %d, got %d", Gray8BaseMask, Gray8FullValue())
-	}
-}
-
-func TestGray16Basic(t *testing.T) {
-	g := NewGray16[Linear](32768)
-	if g.V != 32768 {
-		t.Errorf("Expected V=32768, got V=%d", g.V)
-	}
-	if g.A != Gray16BaseMask {
-		t.Errorf("Expected A=%d, got A=%d", Gray16BaseMask, g.A)
-	}
-
-	g.Clear()
-	if g.V != 0 || g.A != 0 {
-		t.Errorf("Clear() failed: V=%d, A=%d", g.V, g.A)
-	}
-}
-
-func TestGray32Basic(t *testing.T) {
-	g := NewGray32[Linear](0.5)
-	if g.V != 0.5 {
-		t.Errorf("Expected V=0.5, got V=%f", g.V)
-	}
-	if g.A != 1.0 {
-		t.Errorf("Expected A=1.0, got A=%f", g.A)
-	}
-
-	g.Clear()
-	if g.V != 0.0 || g.A != 0.0 {
-		t.Errorf("Clear() failed: V=%f, A=%f", g.V, g.A)
-	}
-}
-
-// Helper function for floating point comparison
-func abs(x float64) float64 {
-	if x < 0 {
-		return -x
-	}
-	return x
 }

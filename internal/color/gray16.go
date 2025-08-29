@@ -27,6 +27,19 @@ func NewGray16WithAlpha[CS ColorSpace](v, a basics.Int16u) Gray16[CS] {
 	return Gray16[CS]{V: v, A: a}
 }
 
+func NewGray16Linear(v basics.Int16u) Gray16[Linear] {
+	return NewGray16[Linear](v)
+}
+func NewGray16LinearA(v, a basics.Int16u) Gray16[Linear] {
+	return NewGray16WithAlpha[Linear](v, a)
+}
+func NewGray16SRGB(v basics.Int16u) Gray16[SRGB] {
+	return NewGray16[SRGB](v)
+}
+func NewGray16SRGBA(v, a basics.Int16u) Gray16[SRGB] {
+	return NewGray16WithAlpha[SRGB](v, a)
+}
+
 // ConvertToRGBA converts to floating-point RGBA
 func (g Gray16[CS]) ConvertToRGBA() RGBA {
 	v := float64(g.V) / 65535.0
@@ -72,4 +85,12 @@ func (g Gray16[CS]) IsTransparent() bool {
 // IsOpaque returns true if the color is fully opaque
 func (g Gray16[CS]) IsOpaque() bool {
 	return g.A == Gray16BaseMask
+}
+
+func (g *Gray16[CS]) Opacity(a float32) {
+	g.A = basics.Int16u(clamp01f32(a) * 65535.0)
+}
+
+func (g Gray16[CS]) GetOpacity() float32 {
+	return float32(g.A) / 65535.0
 }

@@ -11,18 +11,24 @@ import (
 // sRGB <-> Linear scalar helpers (double precision)
 //
 
+const (
+	srgbBreak   = 0.04045           // sRGB-domain breakpoint
+	linearBreak = srgbBreak / 12.92 // exact corresponding linear breakpoint
+	invGamma    = 1.0 / 2.4
+)
+
 func ConvertFromSRGB(v float64) float64 {
-	if v <= 0.04045 {
+	if v <= srgbBreak {
 		return v / 12.92
 	}
 	return math.Pow((v+0.055)/1.055, 2.4)
 }
 
 func ConvertToSRGB(v float64) float64 {
-	if v <= 0.0031308 {
+	if v <= linearBreak {
 		return v * 12.92
 	}
-	return 1.055*math.Pow(v, 1.0/2.4) - 0.055
+	return 1.055*math.Pow(v, invGamma) - 0.055
 }
 
 //
