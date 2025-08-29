@@ -6,15 +6,23 @@ import (
 )
 
 ////////////////////////////////////////////////////////////////////////////////
-// Interfaces
+// Gray Blender interface
 ////////////////////////////////////////////////////////////////////////////////
 
 // GrayBlender blends 8-bit grayscale pixels in color space S.
+// GrayBlender defines the minimal interface used by grayscale pixfmt implementations.
+// The blender handles color space interpretation.
 type GrayBlender[S color.Space] interface {
-	// v = source value (plain or premultiplied depending on impl)
-	// a = source alpha (plain or premultiplied depending on impl)
-	// cover scales contribution in [0..255]
-	BlendPix(dst *basics.Int8u, v, a, cover basics.Int8u)
+	// GetPlain reads a pixel and returns plain grayscale value and alpha
+	// interpreted according to color space S
+	GetPlain(px *basics.Int8u) (v, a basics.Int8u)
+
+	// SetPlain writes plain grayscale value to a pixel with alpha
+	SetPlain(px *basics.Int8u, v, a basics.Int8u)
+
+	// BlendPix blends plain grayscale source into the pixel with given alpha and coverage
+	// v is interpreted according to S
+	BlendPix(px *basics.Int8u, v, a, cover basics.Int8u)
 }
 
 ////////////////////////////////////////////////////////////////////////////////

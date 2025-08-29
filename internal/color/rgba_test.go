@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"agg_go/internal/basics"
+	"agg_go/internal/gamma"
 )
 
 func TestRGBA8Arithmetic(t *testing.T) {
@@ -257,12 +258,12 @@ func (g *testGammaFunc) InvFloat(v float32) float32 {
 }
 
 func TestRGBA8ApplyGamma(t *testing.T) {
-	gamma := newTestGammaLUT(2.0) // Square gamma for testing
+	lut := gamma.NewGammaLUT8WithGamma(2.0)
 
 	// Test ApplyGammaDir
 	c := NewRGBA8[Linear](128, 64, 192, 255)
 	original := c
-	c.ApplyGammaDir(gamma)
+	c.ApplyGammaDir(lut)
 
 	// RGB values should change, alpha should remain the same
 	if c.A != original.A {
@@ -276,7 +277,7 @@ func TestRGBA8ApplyGamma(t *testing.T) {
 	}
 
 	// Test ApplyGammaInv
-	c.ApplyGammaInv(gamma)
+	c.ApplyGammaInv(lut)
 
 	// Values should be approximately back to original (some rounding error expected)
 	tolerance := basics.Int8u(5) // Allow some tolerance for rounding
@@ -307,28 +308,23 @@ func TestRGBA8ApplyGammaEdgeCases(t *testing.T) {
 }
 
 func TestRGBA16ApplyGamma(t *testing.T) {
-	gamma := newTestGammaLUT(2.0)
+	lut := gamma.NewGammaLUT16WithGamma(2.0)
 
-	// Test ApplyGammaDir
-	c := NewRGBA16[Linear](32768, 16384, 49152, 65535) // ~50%, ~25%, ~75%, 100%
+	c := NewRGBA16[Linear](32768, 16384, 49152, 65535)
 	original := c
-	c.ApplyGammaDir(gamma)
 
-	// Alpha should remain unchanged
+	c.ApplyGammaDir(lut)
+
 	if c.A != original.A {
 		t.Errorf("ApplyGammaDir changed alpha: got %d, expected %d", c.A, original.A)
 	}
-
-	// RGB values should change
 	if c.R == original.R && c.G == original.G && c.B == original.B {
 		t.Error("ApplyGammaDir should change RGB values")
 	}
 
-	// Test ApplyGammaInv
-	c.ApplyGammaInv(gamma)
+	c.ApplyGammaInv(lut)
 
-	// Values should be approximately back to original
-	tolerance := basics.Int16u(1000) // Allow tolerance for 8-bit conversion rounding
+	tolerance := basics.Int16u(1000)
 	if abs16u(c.R, original.R) > tolerance ||
 		abs16u(c.G, original.G) > tolerance ||
 		abs16u(c.B, original.B) > tolerance {
@@ -340,27 +336,21 @@ func TestRGBA16ApplyGamma(t *testing.T) {
 func TestRGBA32ApplyGamma(t *testing.T) {
 	gammaFunc := newTestGammaFunc(2.0)
 
-	// Test ApplyGammaDir
 	c := NewRGBA32[Linear](0.5, 0.25, 0.75, 1.0)
 	original := c
-	c.ApplyGammaDir(gammaFunc)
 
-	// Alpha should remain unchanged
+	c.ApplyGammaDir(gammaFunc)
 	if c.A != original.A {
 		t.Errorf("ApplyGammaDir changed alpha: got %.3f, expected %.3f", c.A, original.A)
 	}
-
-	// For gamma=2.0, values should be reduced (squared)
 	if c.R >= original.R || c.G >= original.G || c.B >= original.B {
 		t.Errorf("ApplyGammaDir with gamma=2.0 should reduce values: got (%.3f,%.3f,%.3f), original (%.3f,%.3f,%.3f)",
 			c.R, c.G, c.B, original.R, original.G, original.B)
 	}
 
-	// Test ApplyGammaInv
 	c.ApplyGammaInv(gammaFunc)
 
-	// Values should be approximately back to original
-	tolerance := float32(0.1) // Allow some tolerance
+	tolerance := float32(0.1)
 	if abs32(c.R, original.R) > tolerance ||
 		abs32(c.G, original.G) > tolerance ||
 		abs32(c.B, original.B) > tolerance {

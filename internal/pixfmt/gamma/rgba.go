@@ -89,17 +89,17 @@ func (pf *PixFmtRGBAGamma[PF, G]) PixWidth() int {
 
 // RGBA Gamma correction pixel format types
 type (
-	PixFmtRGBA32Gamma  = PixFmtRGBAGamma[*pixfmt.PixFmtAlphaBlendRGBA[blender.BlenderRGBA8[color.Linear, order.RGBA], color.Linear, order.RGBA], *SimpleGammaLut]
-	PixFmtRGBA32Linear = PixFmtRGBAGamma[*pixfmt.PixFmtAlphaBlendRGBA[blender.BlenderRGBA8[color.Linear, order.RGBA], color.Linear, order.RGBA], *LinearGammaLut]
+	PixFmtRGBA32Gamma  = PixFmtRGBAGamma[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8[color.Linear, order.RGBA]], *SimpleGammaLut]
+	PixFmtRGBA32Linear = PixFmtRGBAGamma[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8[color.Linear, order.RGBA]], *LinearGammaLut]
 )
 
 // Constructor functions for gamma-corrected RGBA formats
-func NewPixFmtRGBA32Gamma(pf *pixfmt.PixFmtAlphaBlendRGBA[blender.BlenderRGBA8[color.Linear, order.RGBA], color.Linear, order.RGBA], gamma float64) *PixFmtRGBA32Gamma {
-	return NewPixFmtRGBAGamma[*pixfmt.PixFmtAlphaBlendRGBA[blender.BlenderRGBA8[color.Linear, order.RGBA], color.Linear, order.RGBA]](pf, NewSimpleGammaLut(gamma))
+func NewPixFmtRGBA32Gamma(pf *pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8[color.Linear, order.RGBA]], gamma float64) *PixFmtRGBA32Gamma {
+	return NewPixFmtRGBAGamma[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8[color.Linear, order.RGBA]]](pf, NewSimpleGammaLut(gamma))
 }
 
-func NewPixFmtRGBA32Linear(pf *pixfmt.PixFmtAlphaBlendRGBA[blender.BlenderRGBA8[color.Linear, order.RGBA], color.Linear, order.RGBA]) *PixFmtRGBA32Linear {
-	return NewPixFmtRGBAGamma[*pixfmt.PixFmtAlphaBlendRGBA[blender.BlenderRGBA8[color.Linear, order.RGBA], color.Linear, order.RGBA]](pf, NewLinearGammaLut())
+func NewPixFmtRGBA32Linear(pf *pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8[color.Linear, order.RGBA]]) *PixFmtRGBA32Linear {
+	return NewPixFmtRGBAGamma[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8[color.Linear, order.RGBA]]](pf, NewLinearGammaLut())
 }
 
 // RGBA multiplier for premultiplication/demultiplication with different component orders

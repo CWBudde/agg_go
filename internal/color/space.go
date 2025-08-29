@@ -1,6 +1,10 @@
 package color
 
-type Space interface{ isColorSpace() }
+// ColorSpace is a zero-cost compile-time marker interface.
+// It prevents using arbitrary types as the CS type parameter.
+type ColorSpace interface {
+	isColorSpace()
+}
 
 // Spaces you support today:
 type Linear struct{}

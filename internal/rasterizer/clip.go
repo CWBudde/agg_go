@@ -1,8 +1,6 @@
 package rasterizer
 
 import (
-	"math"
-
 	"agg_go/internal/basics"
 )
 
@@ -271,7 +269,7 @@ func (r *RasterizerSlClip[C, V]) lineClipY(
 ) {
 	f1 &= (ClpY1 | ClpY2)
 	f2 &= (ClpY1 | ClpY2)
-	if (f1|f2) == 0 {
+	if (f1 | f2) == 0 {
 		// fully visible
 		sink.Line(r.conv.Xi(x1), r.conv.Yi(y1), r.conv.Xi(x2), r.conv.Yi(y2))
 		return
@@ -300,6 +298,7 @@ func (r *RasterizerSlClip[C, V]) lineClipY(
 		ty2 = r.clipBox.Y2
 	}
 	sink.Line(r.conv.Xi(tx1), r.conv.Yi(ty1), r.conv.Xi(tx2), r.conv.Yi(ty2))
+}
 
 // LineTo draws a line from the current position to (x2, y2) with clipping
 func (r *RasterizerSlClip[C, V]) LineTo(sink LineSink, x2, y2 C) {
@@ -315,7 +314,7 @@ func (r *RasterizerSlClip[C, V]) LineTo(sink LineSink, x2, y2 C) {
 		f1 := r.f1
 
 		// Handle X clipping cases
-		switch ((f1 & (ClpX1|ClpX2)) << 1) | (f2 & (ClpX1|ClpX2)) {
+		switch ((f1 & (ClpX1 | ClpX2)) << 1) | (f2 & (ClpX1 | ClpX2)) {
 		case 0:
 			r.lineClipY(sink, x1, y1, x2, y2, f1, f2)
 		case 1: // x2 > clip.x2
@@ -393,4 +392,3 @@ func (r *RasterizerSlNoClip) LineTo(sink LineSink, x2, y2 int) {
 	sink.Line(r.x1, r.y1, x2, y2)
 	r.x1, r.y1 = x2, y2
 }
-

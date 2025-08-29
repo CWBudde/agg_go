@@ -2,13 +2,15 @@ package color
 
 import (
 	"math"
+	"sync"
 
 	"agg_go/internal/basics"
 )
 
-// sRGB conversion functions
+//
+// sRGB <-> Linear scalar helpers (double precision)
+//
 
-// ConvertFromSRGB converts from sRGB to linear RGB
 func ConvertFromSRGB(v float64) float64 {
 	if v <= 0.04045 {
 		return v / 12.92
@@ -16,7 +18,6 @@ func ConvertFromSRGB(v float64) float64 {
 	return math.Pow((v+0.055)/1.055, 2.4)
 }
 
-// ConvertToSRGB converts from linear RGB to sRGB
 func ConvertToSRGB(v float64) float64 {
 	if v <= 0.0031308 {
 		return v * 12.92
@@ -24,295 +25,223 @@ func ConvertToSRGB(v float64) float64 {
 	return 1.055*math.Pow(v, 1.0/2.4) - 0.055
 }
 
-// Convert RGBA8 between colorspaces using optimized lookup tables
+//
+// Small, cache-once lookup tables for 8-bit sRGB <-> linear
+//
+
+var (
+	onceTables      sync.Once
+	srgbToLinearU8  [256]basics.Int8u
+	linearToSrgbU8  [256]basics.Int8u
+	srgbToLinearF32 [256]float32
+	linearToSrgbF32 [256]float32
+)
+
+func initSRGBTables() {
+	onceTables.Do(func() {
+		for i := range 256 {
+			v := float64(i) / 255.0
+
+			lin := ConvertFromSRGB(v)
+			srgbToLinearU8[i] = basics.Int8u(lin*255 + 0.5)
+			srgbToLinearF32[i] = float32(lin)
+
+			s := ConvertToSRGB(v)
+			linearToSrgbU8[i] = basics.Int8u(s*255 + 0.5)
+			linearToSrgbF32[i] = float32(s)
+		}
+	})
+}
+
+// Fast 8-bit helpers
+func srgb8ToLinear8(v basics.Int8u) basics.Int8u { initSRGBTables(); return srgbToLinearU8[v] }
+func linear8ToSrgb8(v basics.Int8u) basics.Int8u { initSRGBTables(); return linearToSrgbU8[v] }
+
+// Fast float helpers (indexed from U8 when going sRGB->linear; computed for linear->sRGB)
+func srgb8ToLinearF32(v basics.Int8u) float32 { initSRGBTables(); return srgbToLinearF32[v] }
+
+func linearF32ToSrgb8(v float32) basics.Int8u {
+	return basics.Int8u(ConvertToSRGB(float64(v))*255 + 0.5)
+}
+
+// Alpha passthrough (no gamma on alpha in AGG)
+func alphaU8FromSRGB(a basics.Int8u) basics.Int8u { return a }
+func alphaU8ToSRGB(a basics.Int8u) basics.Int8u   { return a }
+func alphaF32FromSRGB(a basics.Int8u) float32     { return float32(a) / 255.0 }
+func alphaF32ToSRGB(a float32) basics.Int8u       { return basics.Int8u(a*255 + 0.5) }
+
+//
+// RGBA8 <-> RGBA8 colorspace conversions
+//
+
 func ConvertRGBA8LinearToSRGB(c RGBA8[Linear]) RGBA8[SRGB] {
 	return RGBA8[SRGB]{
-		R: SRGBConv8BitRGBToSRGB(c.R),
-		G: SRGBConv8BitRGBToSRGB(c.G),
-		B: SRGBConv8BitRGBToSRGB(c.B),
-		A: SRGBConv8BitAlphaToSRGB(c.A),
+		R: linear8ToSrgb8(c.R),
+		G: linear8ToSrgb8(c.G),
+		B: linear8ToSrgb8(c.B),
+		A: alphaU8ToSRGB(c.A),
 	}
 }
 
 func ConvertRGBA8SRGBToLinear(c RGBA8[SRGB]) RGBA8[Linear] {
 	return RGBA8[Linear]{
-		R: SRGBConv8BitRGBFromSRGB(c.R),
-		G: SRGBConv8BitRGBFromSRGB(c.G),
-		B: SRGBConv8BitRGBFromSRGB(c.B),
-		A: SRGBConv8BitAlphaFromSRGB(c.A),
+		R: srgb8ToLinear8(c.R),
+		G: srgb8ToLinear8(c.G),
+		B: srgb8ToLinear8(c.B),
+		A: alphaU8FromSRGB(c.A),
 	}
 }
 
-// Convert RGB8 between colorspaces using optimized lookup tables
+//
+// RGB8 (no alpha)
+//
+
 func ConvertRGB8LinearToSRGB(c RGB8[Linear]) RGB8[SRGB] {
 	return RGB8[SRGB]{
-		R: SRGBConv8BitRGBToSRGB(c.R),
-		G: SRGBConv8BitRGBToSRGB(c.G),
-		B: SRGBConv8BitRGBToSRGB(c.B),
+		R: linear8ToSrgb8(c.R),
+		G: linear8ToSrgb8(c.G),
+		B: linear8ToSrgb8(c.B),
 	}
 }
 
 func ConvertRGB8SRGBToLinear(c RGB8[SRGB]) RGB8[Linear] {
 	return RGB8[Linear]{
-		R: SRGBConv8BitRGBFromSRGB(c.R),
-		G: SRGBConv8BitRGBFromSRGB(c.G),
-		B: SRGBConv8BitRGBFromSRGB(c.B),
+		R: srgb8ToLinear8(c.R),
+		G: srgb8ToLinear8(c.G),
+		B: srgb8ToLinear8(c.B),
 	}
 }
 
-// Convert Gray8 between colorspaces
+//
+// Gray8
+// Prefer table-based conversions to avoid per-pixel pow.
+//
+
 func ConvertGray8LinearToSRGB(g Gray8[Linear]) Gray8[SRGB] {
-	return Gray8[SRGB]{
-		V: basics.Int8u(ConvertToSRGB(float64(g.V)/255.0)*255 + 0.5),
-		A: g.A,
-	}
+	return Gray8[SRGB]{V: linear8ToSrgb8(g.V), A: alphaU8ToSRGB(g.A)}
 }
 
 func ConvertGray8SRGBToLinear(g Gray8[SRGB]) Gray8[Linear] {
-	return Gray8[Linear]{
-		V: basics.Int8u(ConvertFromSRGB(float64(g.V)/255.0)*255 + 0.5),
-		A: g.A,
+	return Gray8[Linear]{V: srgb8ToLinear8(g.V), A: alphaU8FromSRGB(g.A)}
+}
+
+// (Aliases kept for compatibility)
+func ConvertGray8FromSRGBToLinear(g Gray8[SRGB]) Gray8[Linear] { return ConvertGray8SRGBToLinear(g) }
+func ConvertGray8FromLinearToSRGB(g Gray8[Linear]) Gray8[SRGB] { return ConvertGray8LinearToSRGB(g) }
+
+//
+// Gray16
+// We approximate via 8-bit table (>>8 then replicate) to keep tables small.
+// If you need exactness, you can add 65536-entry tables, but that’s quite large.
+//
+
+func ConvertGray16LinearToSRGB(g Gray16[Linear]) Gray16[SRGB] {
+	v8 := basics.Int8u(g.V >> 8)
+	a8 := basics.Int8u(g.A >> 8)
+	V := basics.Int16u(linear8ToSrgb8(v8))
+	A := basics.Int16u(alphaU8ToSRGB(a8))
+	return Gray16[SRGB]{
+		V: (V << 8) | V,
+		A: (A << 8) | A,
 	}
 }
 
-// Gray8 colorspace conversion functions
-func ConvertGray8FromSRGBToLinear(g Gray8[SRGB]) Gray8[Linear] {
-	return Gray8[Linear]{
-		V: SRGBConv8BitRGBFromSRGB(g.V),
-		A: SRGBConv8BitAlphaFromSRGB(g.A),
+func ConvertGray16SRGBToLinear(g Gray16[SRGB]) Gray16[Linear] {
+	v8 := basics.Int8u(g.V >> 8)
+	a8 := basics.Int8u(g.A >> 8)
+	V := basics.Int16u(srgb8ToLinear8(v8))
+	A := basics.Int16u(alphaU8FromSRGB(a8))
+	return Gray16[Linear]{
+		V: (V << 8) | V,
+		A: (A << 8) | A,
 	}
 }
 
-func ConvertGray8FromLinearToSRGB(g Gray8[Linear]) Gray8[SRGB] {
-	return Gray8[SRGB]{
-		V: SRGBConv8BitRGBToSRGB(g.V),
-		A: SRGBConv8BitAlphaToSRGB(g.A),
+//
+// Float32 (RGBA32 & Gray32)
+//
+
+func ConvertRGBA32LinearToSRGB(c RGBA32[Linear]) RGBA32[SRGB] {
+	return RGBA32[SRGB]{
+		R: float32(ConvertToSRGB(float64(c.R))),
+		G: float32(ConvertToSRGB(float64(c.G))),
+		B: float32(ConvertToSRGB(float64(c.B))),
+		A: c.A, // alpha unchanged
 	}
 }
 
-// Helper functions for creating colors with conversion
-func MakeRGBA8[CS any](r, g, b, a basics.Int8u) RGBA8[CS] {
+func ConvertRGBA32SRGBToLinear(c RGBA32[SRGB]) RGBA32[Linear] {
+	return RGBA32[Linear]{
+		R: float32(ConvertFromSRGB(float64(c.R))),
+		G: float32(ConvertFromSRGB(float64(c.G))),
+		B: float32(ConvertFromSRGB(float64(c.B))),
+		A: c.A, // alpha unchanged
+	}
+}
+
+func ConvertGray32LinearToSRGB(g Gray32[Linear]) Gray32[SRGB] {
+	return Gray32[SRGB]{V: float32(ConvertToSRGB(float64(g.V))), A: g.A}
+}
+
+func ConvertGray32SRGBToLinear(g Gray32[SRGB]) Gray32[Linear] {
+	return Gray32[Linear]{V: float32(ConvertFromSRGB(float64(g.V))), A: g.A}
+}
+
+//
+// Simple “Make” helpers (unchanged)
+//
+
+func MakeRGBA8[CS ColorSpace](r, g, b, a basics.Int8u) RGBA8[CS] {
 	return RGBA8[CS]{R: r, G: g, B: b, A: a}
 }
-
-func MakeSRGBA8(r, g, b, a basics.Int8u) RGBA8[SRGB] {
-	return RGBA8[SRGB]{R: r, G: g, B: b, A: a}
-}
-
-func MakeRGBA16[CS any](r, g, b, a basics.Int16u) RGBA16[CS] {
+func MakeSRGBA8(r, g, b, a basics.Int8u) RGBA8[SRGB] { return RGBA8[SRGB]{R: r, G: g, B: b, A: a} }
+func MakeRGBA16[CS ColorSpace](r, g, b, a basics.Int16u) RGBA16[CS] {
 	return RGBA16[CS]{R: r, G: g, B: b, A: a}
 }
 
-func MakeRGBA32[CS any](r, g, b, a float32) RGBA32[CS] {
+func MakeRGBA32[CS ColorSpace](r, g, b, a float32) RGBA32[CS] {
 	return RGBA32[CS]{R: r, G: g, B: b, A: a}
 }
 
-// RGB conversion helpers (without alpha)
-func RGBConvRGBA8[CS any](r, g, b basics.Int8u) RGBA8[CS] {
-	return RGBA8[CS]{R: r, G: g, B: b, A: 255}
-}
-
-func RGBConvRGBA16[CS any](r, g, b basics.Int16u) RGBA16[CS] {
-	return RGBA16[CS]{R: r, G: g, B: b, A: 65535}
-}
-
-// sRGB conversion lookup tables for performance
-// These are computed once and cached for 8-bit conversions
-var (
-	srgbToLinearTable    [256]basics.Int8u
-	linearToSRGBTable    [256]basics.Int8u
-	srgbToLinearF32Table [256]float32
-	linearToSRGBF32Table [256]float32
-	tablesInitialized    bool
-)
-
-// initSRGBTables initializes the lookup tables
-func initSRGBTables() {
-	if tablesInitialized {
-		return
-	}
-
-	for i := 0; i < 256; i++ {
-		v := float64(i) / 255.0
-
-		// sRGB to linear
-		linear := ConvertFromSRGB(v)
-		srgbToLinearTable[i] = basics.Int8u(linear*255 + 0.5)
-		srgbToLinearF32Table[i] = float32(linear)
-
-		// Linear to sRGB
-		srgb := ConvertToSRGB(v)
-		linearToSRGBTable[i] = basics.Int8u(srgb*255 + 0.5)
-		linearToSRGBF32Table[i] = float32(srgb)
-	}
-
-	tablesInitialized = true
-}
-
-// SRGBConv provides generic conversion utilities based on C++ AGG sRGB_conv template
-type SRGBConv[T any] struct{}
-
-// SRGBConv8BitRGBFromSRGB converts 8-bit sRGB to linear using lookup table
-func SRGBConv8BitRGBFromSRGB(v basics.Int8u) basics.Int8u {
-	initSRGBTables()
-	return srgbToLinearTable[v]
-}
-
-// SRGBConv8BitRGBToSRGB converts 8-bit linear to sRGB using lookup table
-func SRGBConv8BitRGBToSRGB(v basics.Int8u) basics.Int8u {
-	initSRGBTables()
-	return linearToSRGBTable[v]
-}
-
-// SRGBConvF32RGBFromSRGB converts using float32 lookup table
-func SRGBConvF32RGBFromSRGB(v basics.Int8u) float32 {
-	initSRGBTables()
-	return srgbToLinearF32Table[v]
-}
-
-// SRGBConvF32RGBToSRGB converts from float32 to sRGB using computation
-func SRGBConvF32RGBToSRGB(v float32) basics.Int8u {
-	return basics.Int8u(ConvertToSRGB(float64(v))*255 + 0.5)
-}
-
-// Alpha conversion functions (alpha doesn't undergo gamma correction)
-func SRGBConv8BitAlphaFromSRGB(a basics.Int8u) basics.Int8u {
-	return a
-}
-
-func SRGBConv8BitAlphaToSRGB(a basics.Int8u) basics.Int8u {
-	return a
-}
-
-func SRGBConvF32AlphaFromSRGB(a basics.Int8u) float32 {
-	return float32(a) / 255.0
-}
-
-func SRGBConvF32AlphaToSRGB(a float32) basics.Int8u {
-	return basics.Int8u(a*255 + 0.5)
-}
-
-// Gray8 make functions for different colorspaces
-func MakeRGBA8FromGray8Linear[CS any](g Gray8[Linear]) RGBA8[Linear] {
-	return RGBA8[Linear]{R: g.V, G: g.V, B: g.V, A: g.A}
-}
-
-func MakeRGBA8FromGray8SRGB[CS any](g Gray8[SRGB]) RGBA8[SRGB] {
-	return RGBA8[SRGB]{R: g.V, G: g.V, B: g.V, A: g.A}
-}
-
-func MakeSRGBA8FromGray8Linear[CS any](g Gray8[Linear]) RGBA8[SRGB] {
-	// Convert from linear to sRGB
-	return RGBA8[SRGB]{
-		R: SRGBConv8BitRGBToSRGB(g.V),
-		G: SRGBConv8BitRGBToSRGB(g.V),
-		B: SRGBConv8BitRGBToSRGB(g.V),
-		A: SRGBConv8BitAlphaToSRGB(g.A),
-	}
-}
-
-func MakeRGBA8FromGray8SRGB_ToLinear[CS any](g Gray8[SRGB]) RGBA8[Linear] {
-	// Convert from sRGB to linear
-	return RGBA8[Linear]{
-		R: SRGBConv8BitRGBFromSRGB(g.V),
-		G: SRGBConv8BitRGBFromSRGB(g.V),
-		B: SRGBConv8BitRGBFromSRGB(g.V),
-		A: SRGBConv8BitAlphaFromSRGB(g.A),
-	}
-}
-
-// RGBA8Pre creates a premultiplied RGBA8 color (renamed to avoid conflict)
-func RGBA8Pre[CS any](r, g, b, a float64) RGBA8[CS] {
-	c := RGBA8[CS]{
+// Convenience: build premultiplied RGBA8 directly (kept from your version)
+func RGBA8Pre[CS ColorSpace](r, g, b, a float64) RGBA8[CS] {
+	return RGBA8[CS]{
 		R: basics.Int8u(r*a*255 + 0.5),
 		G: basics.Int8u(g*a*255 + 0.5),
 		B: basics.Int8u(b*a*255 + 0.5),
 		A: basics.Int8u(a*255 + 0.5),
 	}
-	return c
 }
 
-// Generic conversion functions to match C++ AGG template pattern
-// These follow the static convert() methods pattern from C++ AGG
+//
+// Gray8 -> RGBA8 “make” helpers (kept)
+//
 
-// ConvertRGB8Types converts between RGB8 colorspaces
-func ConvertRGB8Types[CS1, CS2 any](dst *RGB8[CS2], src RGB8[CS1]) {
-	// This is where we would dispatch based on colorspace types
-	// For now, we implement the most common conversions
-	switch any(dst).(type) {
-	case *RGB8[SRGB]:
-		if linear, ok := any(src).(RGB8[Linear]); ok {
-			*dst = any(ConvertRGB8LinearToSRGB(linear)).(RGB8[CS2])
-		} else {
-			// Same colorspace or unsupported conversion
-			*dst = RGB8[CS2](src)
-		}
-	case *RGB8[Linear]:
-		if srgb, ok := any(src).(RGB8[SRGB]); ok {
-			*dst = any(ConvertRGB8SRGBToLinear(srgb)).(RGB8[CS2])
-		} else {
-			// Same colorspace or unsupported conversion
-			*dst = RGB8[CS2](src)
-		}
-	default:
-		// Same colorspace or unsupported conversion
-		*dst = RGB8[CS2](src)
+func MakeRGBA8FromGray8Linear[CS ColorSpace](g Gray8[Linear]) RGBA8[Linear] {
+	return RGBA8[Linear]{R: g.V, G: g.V, B: g.V, A: g.A}
+}
+
+func MakeRGBA8FromGray8SRGB[CS ColorSpace](g Gray8[SRGB]) RGBA8[SRGB] {
+	return RGBA8[SRGB]{R: g.V, G: g.V, B: g.V, A: g.A}
+}
+
+func MakeSRGBA8FromGray8Linear[CS ColorSpace](g Gray8[Linear]) RGBA8[SRGB] {
+	return RGBA8[SRGB]{
+		R: linear8ToSrgb8(g.V),
+		G: linear8ToSrgb8(g.V),
+		B: linear8ToSrgb8(g.V),
+		A: alphaU8ToSRGB(g.A),
 	}
 }
 
-// ConvertRGBA8Types converts between RGBA8 colorspaces
-func ConvertRGBA8Types[CS1, CS2 any](dst *RGBA8[CS2], src RGBA8[CS1]) {
-	// This is where we would dispatch based on colorspace types
-	// For now, we implement the most common conversions
-	switch any(dst).(type) {
-	case *RGBA8[SRGB]:
-		if linear, ok := any(src).(RGBA8[Linear]); ok {
-			*dst = any(ConvertRGBA8LinearToSRGB(linear)).(RGBA8[CS2])
-		}
-	case *RGBA8[Linear]:
-		if srgb, ok := any(src).(RGBA8[SRGB]); ok {
-			*dst = any(ConvertRGBA8SRGBToLinear(srgb)).(RGBA8[CS2])
-		}
-	default:
-		// Same colorspace or unsupported conversion
-		*dst = RGBA8[CS2](src)
+func MakeRGBA8FromGray8SRGB_ToLinear[CS ColorSpace](g Gray8[SRGB]) RGBA8[Linear] {
+	return RGBA8[Linear]{
+		R: srgb8ToLinear8(g.V),
+		G: srgb8ToLinear8(g.V),
+		B: srgb8ToLinear8(g.V),
+		A: alphaU8FromSRGB(g.A),
 	}
 }
 
-// ConvertRGBAToRGBA8 converts from float64 RGBA to typed RGBA8
-func ConvertRGBAToRGBA8[CS any](dst *RGBA8[CS], src RGBA) {
-	switch any(dst).(type) {
-	case *RGBA8[Linear]:
-		*dst = any(RGBA8[Linear]{
-			R: basics.Int8u(src.R*255 + 0.5),
-			G: basics.Int8u(src.G*255 + 0.5),
-			B: basics.Int8u(src.B*255 + 0.5),
-			A: basics.Int8u(src.A*255 + 0.5),
-		}).(RGBA8[CS])
-	case *RGBA8[SRGB]:
-		*dst = any(RGBA8[SRGB]{
-			R: SRGBConvF32RGBToSRGB(float32(src.R)),
-			G: SRGBConvF32RGBToSRGB(float32(src.G)),
-			B: SRGBConvF32RGBToSRGB(float32(src.B)),
-			A: SRGBConvF32AlphaToSRGB(float32(src.A)),
-		}).(RGBA8[CS])
-	}
-}
-
-// ConvertRGBA8ToRGBA converts from typed RGBA8 to float64 RGBA
-func ConvertRGBA8ToRGBA[CS any](dst *RGBA, src RGBA8[CS]) {
-	switch any(src).(type) {
-	case RGBA8[Linear]:
-		linear := any(src).(RGBA8[Linear])
-		dst.R = float64(linear.R) / 255.0
-		dst.G = float64(linear.G) / 255.0
-		dst.B = float64(linear.B) / 255.0
-		dst.A = float64(linear.A) / 255.0
-	case RGBA8[SRGB]:
-		srgb := any(src).(RGBA8[SRGB])
-		dst.R = float64(SRGBConvF32RGBFromSRGB(srgb.R))
-		dst.G = float64(SRGBConvF32RGBFromSRGB(srgb.G))
-		dst.B = float64(SRGBConvF32RGBFromSRGB(srgb.B))
-		dst.A = float64(SRGBConvF32AlphaFromSRGB(srgb.A))
-	}
-}
+func RGB8ToSRGB(src RGB8[Linear]) RGB8[SRGB]   { return ConvertRGB8LinearToSRGB(src) }
+func RGB8ToLinear(src RGB8[SRGB]) RGB8[Linear] { return ConvertRGB8SRGBToLinear(src) }

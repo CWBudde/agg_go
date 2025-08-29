@@ -319,7 +319,7 @@ func (g *GradientAlphaLUT) Values() []basics.Int8u {
 // AlphaType implementations for existing color types
 
 // RGBA8AlphaWrapper wraps RGBA8 to implement AlphaType interface
-type RGBA8AlphaWrapper[CS any] struct {
+type RGBA8AlphaWrapper[CS ColorSpace] struct {
 	Color *color.RGBA8[CS]
 }
 
@@ -332,7 +332,7 @@ func (w RGBA8AlphaWrapper[CS]) GetAlpha() basics.Int8u {
 }
 
 // Gray8AlphaWrapper wraps Gray8 to implement AlphaType interface
-type Gray8AlphaWrapper[CS any] struct {
+type Gray8AlphaWrapper[CS ColorSpace] struct {
 	Color *color.Gray8[CS]
 }
 
@@ -345,18 +345,18 @@ func (w Gray8AlphaWrapper[CS]) GetAlpha() basics.Int8u {
 }
 
 // Helper functions to create wrappers
-func NewRGBA8AlphaWrapper[CS any](c *color.RGBA8[CS]) RGBA8AlphaWrapper[CS] {
+func NewRGBA8AlphaWrapper[CS ColorSpace](c *color.RGBA8[CS]) RGBA8AlphaWrapper[CS] {
 	return RGBA8AlphaWrapper[CS]{Color: c}
 }
 
-func NewGray8AlphaWrapper[CS any](c *color.Gray8[CS]) Gray8AlphaWrapper[CS] {
+func NewGray8AlphaWrapper[CS ColorSpace](c *color.Gray8[CS]) Gray8AlphaWrapper[CS] {
 	return Gray8AlphaWrapper[CS]{Color: c}
 }
 
 // Helper functions for creating common alpha gradient configurations
 
 // NewLinearAlphaGradientRGBA8 creates a linear alpha gradient for RGBA8 colors.
-func NewLinearAlphaGradientRGBA8[InterpolatorT SpanInterpolatorInterface, CS any](
+func NewLinearAlphaGradientRGBA8[InterpolatorT SpanInterpolatorInterface, CS ColorSpace](
 	interpolator InterpolatorT,
 	startAlpha, endAlpha basics.Int8u,
 	d1, d2 float64,
@@ -374,7 +374,7 @@ func NewLinearAlphaGradientRGBA8[InterpolatorT SpanInterpolatorInterface, CS any
 }
 
 // NewRadialAlphaGradientRGBA8 creates a radial alpha gradient for RGBA8 colors.
-func NewRadialAlphaGradientRGBA8[InterpolatorT SpanInterpolatorInterface, CS any](
+func NewRadialAlphaGradientRGBA8[InterpolatorT SpanInterpolatorInterface, CS ColorSpace](
 	interpolator InterpolatorT,
 	startAlpha, endAlpha basics.Int8u,
 	d1, d2 float64,

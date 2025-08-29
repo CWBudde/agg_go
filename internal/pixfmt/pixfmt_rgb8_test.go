@@ -457,7 +457,7 @@ func TestPixFmtXRGB32(t *testing.T) {
 	rbuf := buffer.NewRenderingBufferU8WithData(bufData, width, height, width*4)
 
 	// Create XRGB32 pixel format
-	pixfmt := NewPixFmtXRGB32Pre(rbuf)
+	pixfmt := NewPixFmtXRGB32Pre[color.Linear](rbuf)
 
 	// Test pixel operations
 	red := color.RGB8Linear{R: 255, G: 0, B: 0}

@@ -11,6 +11,13 @@ import (
 // Gray32Blender blends 32-bit float grayscale pixels in color space S.
 // (Grayscale has no channel order; we only carry S.)
 type Gray32Blender[S color.Space] interface {
+	// GetPlain reads a pixel and returns plain grayscale value and alpha
+	// interpreted according to color space S
+	GetPlain(px *float32) (v, a float32)
+
+	// SetPlain writes plain grayscale value to a pixel with alpha
+	SetPlain(px *float32, v, a float32)
+
 	// BlendPix blends a source value v with alpha a into *dst with coverage cover.
 	// Semantics depend on the concrete blender:
 	//  - BlenderGray32[S]     : non-premultiplied source -> non-premultiplied dst
@@ -32,6 +39,14 @@ func (BlenderGray32[S]) BlendPix(dst *float32, v, a, cover float32) {
 	BlendGray32Alpha(dst, v, a*cover)
 }
 
+func (BlenderGray32[S]) SetPlain(px *float32, v, a float32) {
+	*px = v // For non-premultiplied gray, just set the value (alpha is implicit)
+}
+
+func (BlenderGray32[S]) GetPlain(px *float32) (v, a float32) {
+	return *px, 1.0 // Return value and full alpha
+}
+
 // BlendGray32Alpha performs straight (non-premultiplied) lerp: dst = dst + (v - dst) * a
 func BlendGray32Alpha(dst *float32, v, a float32) {
 	*dst = Gray32Lerp(*dst, v, a)
@@ -49,6 +64,16 @@ func (BlenderGray32Pre[S]) BlendPix(dst *float32, v, a, cover float32) {
 		return
 	}
 	BlendGray32PreAlpha(dst, v*cover, a*cover)
+}
+
+func (BlenderGray32Pre[S]) SetPlain(px *float32, v, a float32) {
+	*px = v * a // Premultiply the value by alpha
+}
+
+func (BlenderGray32Pre[S]) GetPlain(px *float32) (v, a float32) {
+	// For premultiplied gray, we assume full alpha and return the stored value
+	// In practice, gray formats don't store alpha separately
+	return *px, 1.0
 }
 
 // BlendGray32PreAlpha performs premultiplied blend: dst = dst + v - dst*a
@@ -94,22 +119,6 @@ func BlendGray32PixelPre[S color.Space](dst *float32, src color.Gray32[S], cover
 	if src.A > 0 && cover > 0 {
 		b.BlendPix(dst, src.V, src.A, cover)
 	}
-}
-
-func (BlenderGray32[S]) SetPlain(dst *float32, v, a float32) {
-	*dst = v
-}
-
-func (BlenderGray32[S]) GetPlain(src *float32) (v, a float32) {
-	return *src, 1.0
-}
-
-func (BlenderGray32Pre[S]) SetPlain(dst *float32, v, a float32) {
-	*dst = v * a
-}
-
-func (BlenderGray32Pre[S]) GetPlain(src *float32) (v, a float32) {
-	return *src, 1.0
 }
 
 // CopyGray32Pixel copies one grayscale value (no blending).

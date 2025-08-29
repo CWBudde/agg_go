@@ -133,7 +133,7 @@ This naming scheme maintains traceability to the original C++ source while follo
 ### Template Translation Examples
 
 - `pod_array<T>` → `PodArray[T]` with Go generics
-- `rgba8T<Colorspace>` → `RGBA8[CS any]` where CS is Linear or SRGB type
+- `rgba8T<Colorspace>` → `RGBA8[CS ColorSpace]` where CS is Linear or SRGB type
 - C++ enum → Go typed constants with methods
 
 ### Memory Management

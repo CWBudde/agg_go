@@ -8,7 +8,7 @@ import (
 )
 
 // PixFmtAlphaBlendGray implements alpha blending for grayscale pixel formats
-type PixFmtAlphaBlendGray[B any, CS color.Space] struct {
+type PixFmtAlphaBlendGray[CS color.Space, B blender.GrayBlender[CS]] struct {
 	rbuf     *buffer.RenderingBufferU8
 	blender  B
 	category PixFmtGrayTag
@@ -25,37 +25,37 @@ func (p *GrayPixelType) Set(v basics.Int8u) {
 }
 
 // NewPixFmtAlphaBlendGray creates a new grayscale pixel format
-func NewPixFmtAlphaBlendGray[B any, CS color.Space](rbuf *buffer.RenderingBufferU8, blender B) *PixFmtAlphaBlendGray[B, CS] {
-	return &PixFmtAlphaBlendGray[B, CS]{
+func NewPixFmtAlphaBlendGray[CS color.Space, B blender.GrayBlender[CS]](rbuf *buffer.RenderingBufferU8, blender B) *PixFmtAlphaBlendGray[CS, B] {
+	return &PixFmtAlphaBlendGray[CS, B]{
 		rbuf:    rbuf,
 		blender: blender,
 	}
 }
 
 // Basic properties
-func (pf *PixFmtAlphaBlendGray[B, CS]) Width() int {
+func (pf *PixFmtAlphaBlendGray[CS, B]) Width() int {
 	return pf.rbuf.Width()
 }
 
-func (pf *PixFmtAlphaBlendGray[B, CS]) Height() int {
+func (pf *PixFmtAlphaBlendGray[CS, B]) Height() int {
 	return pf.rbuf.Height()
 }
 
-func (pf *PixFmtAlphaBlendGray[B, CS]) PixWidth() int {
+func (pf *PixFmtAlphaBlendGray[CS, B]) PixWidth() int {
 	return 1 // 1 byte per pixel for grayscale
 }
 
-func (pf *PixFmtAlphaBlendGray[B, CS]) Stride() int {
+func (pf *PixFmtAlphaBlendGray[CS, B]) Stride() int {
 	return pf.rbuf.Stride()
 }
 
 // RowPtr returns a pointer to the pixel data for the given row
-func (pf *PixFmtAlphaBlendGray[B, CS]) RowPtr(y int) []basics.Int8u {
+func (pf *PixFmtAlphaBlendGray[CS, B]) RowPtr(y int) []basics.Int8u {
 	return buffer.RowU8(pf.rbuf, y)
 }
 
 // PixPtr returns a pointer to the specific pixel
-func (pf *PixFmtAlphaBlendGray[B, CS]) PixPtr(x, y int) *basics.Int8u {
+func (pf *PixFmtAlphaBlendGray[CS, B]) PixPtr(x, y int) *basics.Int8u {
 	row := buffer.RowU8(pf.rbuf, y)
 	if x >= 0 && x < len(row) {
 		return &row[x]
@@ -64,14 +64,14 @@ func (pf *PixFmtAlphaBlendGray[B, CS]) PixPtr(x, y int) *basics.Int8u {
 }
 
 // MakePix creates a pixel value from grayscale components
-func (pf *PixFmtAlphaBlendGray[B, CS]) MakePix(v basics.Int8u) GrayPixelType {
+func (pf *PixFmtAlphaBlendGray[CS, B]) MakePix(v basics.Int8u) GrayPixelType {
 	return GrayPixelType{V: v}
 }
 
 // Core pixel operations
 
 // CopyPixel copies a pixel without blending
-func (pf *PixFmtAlphaBlendGray[B, CS]) CopyPixel(x, y int, c color.Gray8[CS]) {
+func (pf *PixFmtAlphaBlendGray[CS, B]) CopyPixel(x, y int, c color.Gray8[CS]) {
 	if InBounds(x, y, pf.Width(), pf.Height()) {
 		pixel := pf.PixPtr(x, y)
 		if pixel != nil {
@@ -81,19 +81,17 @@ func (pf *PixFmtAlphaBlendGray[B, CS]) CopyPixel(x, y int, c color.Gray8[CS]) {
 }
 
 // BlendPixel blends a pixel with coverage
-func (pf *PixFmtAlphaBlendGray[B, CS]) BlendPixel(x, y int, c color.Gray8[CS], cover basics.Int8u) {
+func (pf *PixFmtAlphaBlendGray[CS, B]) BlendPixel(x, y int, c color.Gray8[CS], cover basics.Int8u) {
 	if InBounds(x, y, pf.Width(), pf.Height()) && c.A > 0 {
 		pixel := pf.PixPtr(x, y)
 		if pixel != nil {
-			if blender, ok := any(pf.blender).(blender.BlenderGray8Linear); ok {
-				blender.BlendPix(pixel, c.V, c.A, cover)
-			}
+			pf.blender.BlendPix(pixel, c.V, c.A, cover)
 		}
 	}
 }
 
 // GetPixel gets the pixel color at the specified coordinates
-func (pf *PixFmtAlphaBlendGray[B, CS]) GetPixel(x, y int) color.Gray8[CS] {
+func (pf *PixFmtAlphaBlendGray[CS, B]) GetPixel(x, y int) color.Gray8[CS] {
 	if InBounds(x, y, pf.Width(), pf.Height()) {
 		pixel := pf.PixPtr(x, y)
 		if pixel != nil {
@@ -104,14 +102,14 @@ func (pf *PixFmtAlphaBlendGray[B, CS]) GetPixel(x, y int) color.Gray8[CS] {
 }
 
 // Pixel returns the pixel at the given coordinates (alias for GetPixel to satisfy interface)
-func (pf *PixFmtAlphaBlendGray[B, CS]) Pixel(x, y int) color.Gray8[CS] {
+func (pf *PixFmtAlphaBlendGray[CS, B]) Pixel(x, y int) color.Gray8[CS] {
 	return pf.GetPixel(x, y)
 }
 
 // Line operations
 
 // CopyHline copies a horizontal line
-func (pf *PixFmtAlphaBlendGray[B, CS]) CopyHline(x, y, length int, c color.Gray8[CS]) {
+func (pf *PixFmtAlphaBlendGray[CS, B]) CopyHline(x, y, length int, c color.Gray8[CS]) {
 	if y < 0 || y >= pf.Height() || length <= 0 {
 		return
 	}
@@ -126,7 +124,7 @@ func (pf *PixFmtAlphaBlendGray[B, CS]) CopyHline(x, y, length int, c color.Gray8
 }
 
 // BlendHline blends a horizontal line with coverage
-func (pf *PixFmtAlphaBlendGray[B, CS]) BlendHline(x, y, length int, c color.Gray8[CS], cover basics.Int8u) {
+func (pf *PixFmtAlphaBlendGray[CS, B]) BlendHline(x, y, length int, c color.Gray8[CS], cover basics.Int8u) {
 	if y < 0 || y >= pf.Height() || length <= 0 || c.A == 0 {
 		return
 	}
@@ -137,17 +135,15 @@ func (pf *PixFmtAlphaBlendGray[B, CS]) BlendHline(x, y, length int, c color.Gray
 	}
 
 	row := pf.RowPtr(y)
-	if blender, ok := any(pf.blender).(blender.BlenderGray8Linear); ok {
-		for i := 0; i < length; i++ {
-			if c.A > 0 {
-				blender.BlendPix(&row[x+i], c.V, c.A, cover)
-			}
+	for i := 0; i < length; i++ {
+		if c.A > 0 {
+			pf.blender.BlendPix(&row[x+i], c.V, c.A, cover)
 		}
 	}
 }
 
 // CopyVline copies a vertical line
-func (pf *PixFmtAlphaBlendGray[B, CS]) CopyVline(x, y, length int, c color.Gray8[CS]) {
+func (pf *PixFmtAlphaBlendGray[CS, B]) CopyVline(x, y, length int, c color.Gray8[CS]) {
 	if x < 0 || x >= pf.Width() || length <= 0 {
 		return
 	}
@@ -163,7 +159,7 @@ func (pf *PixFmtAlphaBlendGray[B, CS]) CopyVline(x, y, length int, c color.Gray8
 }
 
 // BlendVline blends a vertical line with coverage
-func (pf *PixFmtAlphaBlendGray[B, CS]) BlendVline(x, y, length int, c color.Gray8[CS], cover basics.Int8u) {
+func (pf *PixFmtAlphaBlendGray[CS, B]) BlendVline(x, y, length int, c color.Gray8[CS], cover basics.Int8u) {
 	if x < 0 || x >= pf.Width() || length <= 0 || c.A == 0 {
 		return
 	}
@@ -181,7 +177,7 @@ func (pf *PixFmtAlphaBlendGray[B, CS]) BlendVline(x, y, length int, c color.Gray
 // Rectangle operations
 
 // CopyBar copies a filled rectangle
-func (pf *PixFmtAlphaBlendGray[B, CS]) CopyBar(x1, y1, x2, y2 int, c color.Gray8[CS]) {
+func (pf *PixFmtAlphaBlendGray[CS, B]) CopyBar(x1, y1, x2, y2 int, c color.Gray8[CS]) {
 	if x1 > x2 {
 		x1, x2 = x2, x1
 	}
@@ -200,7 +196,7 @@ func (pf *PixFmtAlphaBlendGray[B, CS]) CopyBar(x1, y1, x2, y2 int, c color.Gray8
 }
 
 // BlendBar blends a filled rectangle with coverage
-func (pf *PixFmtAlphaBlendGray[B, CS]) BlendBar(x1, y1, x2, y2 int, c color.Gray8[CS], cover basics.Int8u) {
+func (pf *PixFmtAlphaBlendGray[CS, B]) BlendBar(x1, y1, x2, y2 int, c color.Gray8[CS], cover basics.Int8u) {
 	if c.A == 0 {
 		return
 	}
@@ -225,7 +221,7 @@ func (pf *PixFmtAlphaBlendGray[B, CS]) BlendBar(x1, y1, x2, y2 int, c color.Gray
 // Span operations
 
 // BlendSolidHspan blends a horizontal span with solid color and variable coverage
-func (pf *PixFmtAlphaBlendGray[B, CS]) BlendSolidHspan(x, y, length int, c color.Gray8[CS], covers []basics.Int8u) {
+func (pf *PixFmtAlphaBlendGray[CS, B]) BlendSolidHspan(x, y, length int, c color.Gray8[CS], covers []basics.Int8u) {
 	if y < 0 || y >= pf.Height() || c.A == 0 || length <= 0 {
 		return
 	}
@@ -238,20 +234,18 @@ func (pf *PixFmtAlphaBlendGray[B, CS]) BlendSolidHspan(x, y, length int, c color
 		coverOffset := Max(0, -x)
 		effectiveLength := x2 - x1 + 1
 
-		if blender, ok := any(pf.blender).(blender.BlenderGray8Linear); ok {
-			// Blend each pixel with its corresponding coverage
-			for i := 0; i < effectiveLength; i++ {
-				coverIndex := coverOffset + i
-				if coverIndex < len(covers) && covers[coverIndex] > 0 && c.A > 0 {
-					blender.BlendPix(&row[x1+i], c.V, c.A, covers[coverIndex])
-				}
+		// Blend each pixel with its corresponding coverage
+		for i := 0; i < effectiveLength; i++ {
+			coverIndex := coverOffset + i
+			if coverIndex < len(covers) && covers[coverIndex] > 0 && c.A > 0 {
+				pf.blender.BlendPix(&row[x1+i], c.V, c.A, covers[coverIndex])
 			}
 		}
 	}
 }
 
 // BlendSolidVspan blends a vertical span with solid color and variable coverage
-func (pf *PixFmtAlphaBlendGray[B, CS]) BlendSolidVspan(x, y, length int, c color.Gray8[CS], covers []basics.Int8u) {
+func (pf *PixFmtAlphaBlendGray[CS, B]) BlendSolidVspan(x, y, length int, c color.Gray8[CS], covers []basics.Int8u) {
 	if x < 0 || x >= pf.Width() || c.A == 0 || length <= 0 {
 		return
 	}
@@ -270,7 +264,7 @@ func (pf *PixFmtAlphaBlendGray[B, CS]) BlendSolidVspan(x, y, length int, c color
 // Color span operations
 
 // CopyColorHspan copies a horizontal span of colors
-func (pf *PixFmtAlphaBlendGray[B, CS]) CopyColorHspan(x, y, length int, colors []color.Gray8[CS]) {
+func (pf *PixFmtAlphaBlendGray[CS, B]) CopyColorHspan(x, y, length int, colors []color.Gray8[CS]) {
 	if y < 0 || y >= pf.Height() || length <= 0 || len(colors) == 0 {
 		return
 	}
@@ -287,7 +281,7 @@ func (pf *PixFmtAlphaBlendGray[B, CS]) CopyColorHspan(x, y, length int, colors [
 }
 
 // BlendColorHspan blends a horizontal span of colors
-func (pf *PixFmtAlphaBlendGray[B, CS]) BlendColorHspan(x, y, length int, colors []color.Gray8[CS], covers []basics.Int8u, cover basics.Int8u) {
+func (pf *PixFmtAlphaBlendGray[CS, B]) BlendColorHspan(x, y, length int, colors []color.Gray8[CS], covers []basics.Int8u, cover basics.Int8u) {
 	if y < 0 || y >= pf.Height() || length <= 0 || len(colors) == 0 {
 		return
 	}
@@ -313,7 +307,7 @@ func (pf *PixFmtAlphaBlendGray[B, CS]) BlendColorHspan(x, y, length int, colors 
 }
 
 // CopyColorVspan copies a vertical span of colors
-func (pf *PixFmtAlphaBlendGray[B, CS]) CopyColorVspan(x, y, length int, colors []color.Gray8[CS]) {
+func (pf *PixFmtAlphaBlendGray[CS, B]) CopyColorVspan(x, y, length int, colors []color.Gray8[CS]) {
 	if x < 0 || x >= pf.Width() || length <= 0 || len(colors) == 0 {
 		return
 	}
@@ -330,7 +324,7 @@ func (pf *PixFmtAlphaBlendGray[B, CS]) CopyColorVspan(x, y, length int, colors [
 }
 
 // BlendColorVspan blends a vertical span of colors
-func (pf *PixFmtAlphaBlendGray[B, CS]) BlendColorVspan(x, y, length int, colors []color.Gray8[CS], covers []basics.Int8u, cover basics.Int8u) {
+func (pf *PixFmtAlphaBlendGray[CS, B]) BlendColorVspan(x, y, length int, colors []color.Gray8[CS], covers []basics.Int8u, cover basics.Int8u) {
 	if x < 0 || x >= pf.Width() || length <= 0 || len(colors) == 0 {
 		return
 	}
@@ -358,7 +352,7 @@ func (pf *PixFmtAlphaBlendGray[B, CS]) BlendColorVspan(x, y, length int, colors 
 // Clear operations
 
 // Clear fills the entire buffer with a color (sets alpha to 0)
-func (pf *PixFmtAlphaBlendGray[B, CS]) Clear(c color.Gray8[CS]) {
+func (pf *PixFmtAlphaBlendGray[CS, B]) Clear(c color.Gray8[CS]) {
 	for y := 0; y < pf.Height(); y++ {
 		row := pf.RowPtr(y)
 		for x := 0; x < pf.Width(); x++ {
@@ -368,31 +362,31 @@ func (pf *PixFmtAlphaBlendGray[B, CS]) Clear(c color.Gray8[CS]) {
 }
 
 // Fill fills the entire buffer with a color (ignores alpha)
-func (pf *PixFmtAlphaBlendGray[B, CS]) Fill(c color.Gray8[CS]) {
+func (pf *PixFmtAlphaBlendGray[CS, B]) Fill(c color.Gray8[CS]) {
 	pf.Clear(c)
 }
 
 // Concrete pixel format types
 type (
-	PixFmtGray8     = PixFmtAlphaBlendGray[blender.BlenderGray8Linear, color.Linear]
-	PixFmtSGray8    = PixFmtAlphaBlendGray[blender.BlenderGray8SRGB, color.SRGB]
-	PixFmtGray8Pre  = PixFmtAlphaBlendGray[blender.BlenderGray8PreLinear, color.Linear]
-	PixFmtSGray8Pre = PixFmtAlphaBlendGray[blender.BlenderGray8PreSRGB, color.SRGB]
+	PixFmtGray8     = PixFmtAlphaBlendGray[color.Linear, blender.BlenderGray8Linear]
+	PixFmtSGray8    = PixFmtAlphaBlendGray[color.SRGB, blender.BlenderGray8SRGB]
+	PixFmtGray8Pre  = PixFmtAlphaBlendGray[color.Linear, blender.BlenderGray8PreLinear]
+	PixFmtSGray8Pre = PixFmtAlphaBlendGray[color.SRGB, blender.BlenderGray8PreSRGB]
 )
 
 // Constructor functions for concrete types
 func NewPixFmtGray8(rbuf *buffer.RenderingBufferU8) *PixFmtGray8 {
-	return NewPixFmtAlphaBlendGray[blender.BlenderGray8Linear, color.Linear](rbuf, blender.BlenderGray8Linear{})
+	return NewPixFmtAlphaBlendGray[color.Linear](rbuf, blender.BlenderGray8Linear{})
 }
 
 func NewPixFmtSGray8(rbuf *buffer.RenderingBufferU8) *PixFmtSGray8 {
-	return NewPixFmtAlphaBlendGray[blender.BlenderGray8SRGB, color.SRGB](rbuf, blender.BlenderGray8SRGB{})
+	return NewPixFmtAlphaBlendGray[color.SRGB](rbuf, blender.BlenderGray8SRGB{})
 }
 
 func NewPixFmtGray8Pre(rbuf *buffer.RenderingBufferU8) *PixFmtGray8Pre {
-	return NewPixFmtAlphaBlendGray[blender.BlenderGray8PreLinear, color.Linear](rbuf, blender.BlenderGray8PreLinear{})
+	return NewPixFmtAlphaBlendGray[color.Linear](rbuf, blender.BlenderGray8PreLinear{})
 }
 
 func NewPixFmtSGray8Pre(rbuf *buffer.RenderingBufferU8) *PixFmtSGray8Pre {
-	return NewPixFmtAlphaBlendGray[blender.BlenderGray8PreSRGB, color.SRGB](rbuf, blender.BlenderGray8PreSRGB{})
+	return NewPixFmtAlphaBlendGray[color.SRGB](rbuf, blender.BlenderGray8PreSRGB{})
 }

@@ -7,18 +7,33 @@ import (
 )
 
 ////////////////////////////////////////////////////////////////////////////////
-// Interfaces RGBA (8-bit)
+// RGBA Blender interface
 ////////////////////////////////////////////////////////////////////////////////
 
-type RGBABlender[S color.Space, O order.RGBAOrder] interface {
-	// Blend "plain" src (r,g,b,a) into dst[0:4] with coverage.
-	// The concrete blender decides how to handle premul/plain storage + order.
-	BlendPix(dst []basics.Int8u, r, g, b, a, cover basics.Int8u)
+// RGBABlender defines the minimal interface used by pixfmt implementations.
+// The blender handles color space interpretation and internal pixel ordering.
+type RGBABlender[S color.Space] interface {
+	// GetPlain reads a pixel and returns plain (non-premultiplied) RGBA components
+	// interpreted according to color space S
+	GetPlain(px []byte) (r, g, b, a basics.Int8u)
 
-	// Write/read a *plain* RGBA color to/from the framebuffer pixel.
-	// (For premul storage these do premultiply/demultiply.)
-	SetPlain(dst []basics.Int8u, r, g, b, a basics.Int8u)
-	GetPlain(src []basics.Int8u) (r, g, b, a basics.Int8u)
+	// SetPlain writes plain RGBA components to a pixel, mapping them to the
+	// internal order and storage format of the blender
+	SetPlain(px []byte, r, g, b, a basics.Int8u)
+
+	// BlendPix blends plain RGBA source into the pixel with given coverage
+	// r,g,b,a are interpreted according to S, and mapped to the order internal to the blender
+	BlendPix(px []byte, r, g, b, a, cover basics.Int8u)
+}
+
+// RawRGBAOrder provides optional fast path for zero-cost index access.
+// Blenders that expose direct index access should implement this interface
+// to allow optimized operations when order-specific code is needed.
+type RawRGBAOrder interface {
+	IdxR() int
+	IdxG() int
+	IdxB() int
+	IdxA() int
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -60,6 +75,12 @@ func (BlenderRGBA8[S, O]) GetPlain(src []basics.Int8u) (r, g, b, a basics.Int8u)
 	return demul8(src[o.IdxR()], a), demul8(src[o.IdxG()], a), demul8(src[o.IdxB()], a), a
 }
 
+// RawRGBAOrder interface implementation for fast path access
+func (BlenderRGBA8[S, O]) IdxR() int { var o O; return o.IdxR() }
+func (BlenderRGBA8[S, O]) IdxG() int { var o O; return o.IdxG() }
+func (BlenderRGBA8[S, O]) IdxB() int { var o O; return o.IdxB() }
+func (BlenderRGBA8[S, O]) IdxA() int { var o O; return o.IdxA() }
+
 ////////////////////////////////////////////////////////////////////////////////
 // Premultiplied source -> Premultiplied destination
 ////////////////////////////////////////////////////////////////////////////////
@@ -94,6 +115,12 @@ func (BlenderRGBA8Pre[S, O]) SetPlain(dst []basics.Int8u, r, g, b, a basics.Int8
 func (BlenderRGBA8Pre[S, O]) GetPlain(src []basics.Int8u) (r, g, b, a basics.Int8u) {
 	return BlenderRGBA8[S, O]{}.GetPlain(src)
 }
+
+// RawRGBAOrder interface implementation for fast path access
+func (BlenderRGBA8Pre[S, O]) IdxR() int { var o O; return o.IdxR() }
+func (BlenderRGBA8Pre[S, O]) IdxG() int { var o O; return o.IdxG() }
+func (BlenderRGBA8Pre[S, O]) IdxB() int { var o O; return o.IdxB() }
+func (BlenderRGBA8Pre[S, O]) IdxA() int { var o O; return o.IdxA() }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Plain (non-premultiplied) source -> Plain destination
@@ -144,13 +171,19 @@ func (BlenderRGBA8Plain[S, O]) GetPlain(src []basics.Int8u) (r, g, b, a basics.I
 	return src[o.IdxR()], src[o.IdxG()], src[o.IdxB()], src[o.IdxA()]
 }
 
+// RawRGBAOrder interface implementation for fast path access
+func (BlenderRGBA8Plain[S, O]) IdxR() int { var o O; return o.IdxR() }
+func (BlenderRGBA8Plain[S, O]) IdxG() int { var o O; return o.IdxG() }
+func (BlenderRGBA8Plain[S, O]) IdxB() int { var o O; return o.IdxB() }
+func (BlenderRGBA8Plain[S, O]) IdxA() int { var o O; return o.IdxA() }
+
 // BlendRGBAPixel blends a single pixel using the provided blender B.
 // Works for any Space S and Order O, and never branches on order at runtime.
 func BlendRGBAPixel[S color.Space, O order.RGBAOrder](
 	dst []basics.Int8u,
 	src color.RGBA8[S],
 	cover basics.Int8u,
-	b RGBABlender[S, O],
+	b RGBABlender[S],
 ) {
 	if src.IsTransparent() || cover == 0 {
 		return
@@ -177,7 +210,7 @@ func BlendRGBAHline[S color.Space, O order.RGBAOrder](
 	x, length int,
 	src color.RGBA8[S],
 	covers []basics.Int8u, // nil => full cover
-	b RGBABlender[S, O],
+	b RGBABlender[S],
 ) {
 	if length <= 0 || src.IsTransparent() {
 		return

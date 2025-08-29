@@ -90,7 +90,7 @@ func (r *RendererEnlargedT[Ren, C]) drawMagnifiedPixel(x, y float64, c C) {
 }
 
 // RGBA8CoverMod is a helper alpha modifier for agg color.RGBA8[CS] types.
-func RGBA8CoverMod[CS any](c aggcolor.RGBA8[CS], cover basics.Int8u) aggcolor.RGBA8[CS] {
+func RGBA8CoverMod[CS ColorSpace](c aggcolor.RGBA8[CS], cover basics.Int8u) aggcolor.RGBA8[CS] {
 	a := basics.Int8u((int(cover) * int(c.A)) >> 8)
 	return aggcolor.RGBA8[CS]{R: c.R, G: c.G, B: c.B, A: a}
 }

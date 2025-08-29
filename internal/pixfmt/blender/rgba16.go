@@ -10,13 +10,28 @@ import (
 // Interfaces RGBA (16-bit)
 ////////////////////////////////////////////////////////////////////////////////
 
-type RGBABlender16[S color.Space, O order.RGBAOrder] interface {
-	BlendPix(dst []basics.Int8u, r, g, b, a, cover basics.Int16u)
-
-	// Write/read a *plain* RGBA color to/from the framebuffer pixel.
-	// (For premul storage these do premultiply/demultiply.)
-	SetPlain(dst []basics.Int8u, r, g, b, a basics.Int16u)
+// RGBABlender16 defines the minimal interface used by RGBA16 pixfmt implementations.
+// The blender handles color space interpretation and internal pixel ordering.
+type RGBABlender16[S color.Space] interface {
+	// GetPlain reads a pixel and returns plain RGBA components
+	// interpreted according to color space S
 	GetPlain(src []basics.Int8u) (r, g, b, a basics.Int16u)
+
+	// SetPlain writes plain RGBA components to a pixel, mapping them to the
+	// internal order of the blender
+	SetPlain(dst []basics.Int8u, r, g, b, a basics.Int16u)
+
+	// BlendPix blends plain RGBA source into the pixel with given coverage
+	// r,g,b,a are interpreted according to S, and mapped to the order internal to the blender
+	BlendPix(dst []basics.Int8u, r, g, b, a, cover basics.Int16u)
+}
+
+// RawRGBA16Order provides optional fast path for zero-cost index access for RGBA16.
+type RawRGBA16Order interface {
+	IdxR() int
+	IdxG() int
+	IdxB() int
+	IdxA() int
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -93,6 +108,12 @@ func (BlenderRGBA16[S, O]) GetPlain(src []basics.Int8u) (r, g, b, a basics.Int16
 	return
 }
 
+// RawRGBA16Order interface implementation for fast path access
+func (BlenderRGBA16[S, O]) IdxR() int { var o O; return o.IdxR() }
+func (BlenderRGBA16[S, O]) IdxG() int { var o O; return o.IdxG() }
+func (BlenderRGBA16[S, O]) IdxB() int { var o O; return o.IdxB() }
+func (BlenderRGBA16[S, O]) IdxA() int { var o O; return o.IdxA() }
+
 ////////////////////////////////////////////////////////////////////////////////
 // Premultiplied source -> Premultiplied destination (16-bit)
 ////////////////////////////////////////////////////////////////////////////////
@@ -143,6 +164,12 @@ func (BlenderRGBA16Pre[S, O]) SetPlain(dst []basics.Int8u, r, g, b, a basics.Int
 func (BlenderRGBA16Pre[S, O]) GetPlain(src []basics.Int8u) (r, g, b, a basics.Int16u) {
 	return BlenderRGBA16[S, O]{}.GetPlain(src) // demultiply on read
 }
+
+// RawRGBA16Order interface implementation for fast path access
+func (BlenderRGBA16Pre[S, O]) IdxR() int { var o O; return o.IdxR() }
+func (BlenderRGBA16Pre[S, O]) IdxG() int { var o O; return o.IdxG() }
+func (BlenderRGBA16Pre[S, O]) IdxB() int { var o O; return o.IdxB() }
+func (BlenderRGBA16Pre[S, O]) IdxA() int { var o O; return o.IdxA() }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Plain (non-premultiplied) source -> Plain destination (16-bit)
@@ -217,6 +244,12 @@ func (BlenderRGBA16Plain[S, O]) GetPlain(src []basics.Int8u) (r, g, b, a basics.
 	return
 }
 
+// RawRGBA16Order interface implementation for fast path access
+func (BlenderRGBA16Plain[S, O]) IdxR() int { var o O; return o.IdxR() }
+func (BlenderRGBA16Plain[S, O]) IdxG() int { var o O; return o.IdxG() }
+func (BlenderRGBA16Plain[S, O]) IdxB() int { var o O; return o.IdxB() }
+func (BlenderRGBA16Plain[S, O]) IdxA() int { var o O; return o.IdxA() }
+
 // demul16 converts a premultiplied component x back to straight: round(x * 65535 / a).
 func demul16(x, a basics.Int16u) basics.Int16u {
 	return basics.Int16u((uint32(x)*65535 + uint32(a)/2) / uint32(a))
@@ -227,7 +260,7 @@ func demul16(x, a basics.Int16u) basics.Int16u {
 ////////////////////////////////////////////////////////////////////////////////
 
 // BlendRGBA16Pixel is a typed helper like the 8-bit version.
-func BlendRGBA16Pixel[B RGBABlender16[S, O], S color.Space, O order.RGBAOrder](
+func BlendRGBA16Pixel[B RGBABlender16[S], S color.Space](
 	dst []basics.Int8u,
 	src color.RGBA16[S],
 	cover basics.Int16u,

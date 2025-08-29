@@ -7,16 +7,57 @@ import (
 )
 
 ////////////////////////////////////////////////////////////////////////////////
-// Interfaces (RGB 8-bit)
+// RGB Blender interface
 ////////////////////////////////////////////////////////////////////////////////
 
-type RGBBlender[S color.Space, O order.RGBOrder] interface {
-	BlendPix(dst []basics.Int8u, r, g, b, a, cover basics.Int8u)
+// RGBBlender defines the minimal interface used by RGB pixfmt implementations.
+// The blender handles color space interpretation and internal pixel ordering.
+type RGBBlender[S color.Space] interface {
+	// GetPlain reads a pixel and returns plain RGB components
+	// interpreted according to color space S
+	GetPlain(px []byte) (r, g, b basics.Int8u)
 
-	// Write/read a *plain* RGB color to/from the framebuffer pixel.
-	// (For premul storage these do premultiply/demultiply.)
-	SetPlain(dst []basics.Int8u, r, g, b basics.Int8u)
-	GetPlain(src []basics.Int8u) (r, g, b basics.Int8u)
+	// SetPlain writes plain RGB components to a pixel, mapping them to the
+	// internal order of the blender
+	SetPlain(px []byte, r, g, b basics.Int8u)
+
+	// BlendPix blends plain RGB source into the pixel with given alpha and coverage
+	// r,g,b are interpreted according to S, and mapped to the order internal to the blender
+	BlendPix(px []byte, r, g, b, a, cover basics.Int8u)
+}
+
+// RawRGBOrder provides optional fast path for zero-cost index access for RGB.
+type RawRGBOrder interface {
+	IdxR() int
+	IdxG() int
+	IdxB() int
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// RGBX Blender interface for 4-byte RGB with padding
+////////////////////////////////////////////////////////////////////////////////
+
+// RGBXBlender defines the interface for 4-byte RGB pixels with padding byte.
+// The blender handles color space interpretation and internal pixel ordering.
+type RGBXBlender[S color.Space] interface {
+	// GetPlain reads a 4-byte pixel and returns plain RGB components
+	// interpreted according to color space S (padding byte ignored)
+	GetPlain(px []byte) (r, g, b basics.Int8u)
+
+	// SetPlain writes plain RGB components to a 4-byte pixel, mapping them to the
+	// internal order of the blender (padding byte unchanged)
+	SetPlain(px []byte, r, g, b basics.Int8u)
+
+	// BlendPix blends plain RGB source into the 4-byte pixel with given alpha and coverage
+	// r,g,b are interpreted according to S, and mapped to the order internal to the blender
+	BlendPix(px []byte, r, g, b, a, cover basics.Int8u)
+}
+
+// RawRGBXOrder provides optional fast path for zero-cost index access for RGBX.
+type RawRGBXOrder interface {
+	IdxR() int
+	IdxG() int
+	IdxB() int
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -51,6 +92,11 @@ func (BlenderRGB8[S, O]) GetPlain(src []basics.Int8u) (r, g, b basics.Int8u) {
 	b = src[o.IdxB()]
 	return
 }
+
+// RawRGBOrder interface implementation for fast path access
+func (BlenderRGB8[S, O]) IdxR() int { var o O; return o.IdxR() }
+func (BlenderRGB8[S, O]) IdxG() int { var o O; return o.IdxG() }
+func (BlenderRGB8[S, O]) IdxB() int { var o O; return o.IdxB() }
 
 ////////////////////////////////////////////////////////////////////////////////
 /* Premultiplied source -> RGB destination (no alpha stored)
@@ -92,6 +138,97 @@ func (BlenderRGBPre[S, O]) GetPlain(src []basics.Int8u) (r, g, b basics.Int8u) {
 	b = src[o.IdxB()]
 	return
 }
+
+// RawRGBOrder interface implementation for fast path access
+func (BlenderRGBPre[S, O]) IdxR() int { var o O; return o.IdxR() }
+func (BlenderRGBPre[S, O]) IdxG() int { var o O; return o.IdxG() }
+func (BlenderRGBPre[S, O]) IdxB() int { var o O; return o.IdxB() }
+
+////////////////////////////////////////////////////////////////////////////////
+// Plain (non-premultiplied) source -> RGBX destination (4-byte with padding)
+////////////////////////////////////////////////////////////////////////////////
+
+type BlenderRGBX8[S color.Space, O order.RGBOrder] struct{}
+
+// Lerp by alpha*cover; destination stores RGB in 4-byte format with padding.
+func (BlenderRGBX8[S, O]) BlendPix(dst []basics.Int8u, r, g, b, a, cover basics.Int8u) {
+	alpha := color.RGBA8MultCover(a, cover)
+	if alpha == 0 {
+		return
+	}
+	var o O
+	dst[o.IdxR()] = color.RGBA8Lerp(dst[o.IdxR()], r, alpha)
+	dst[o.IdxG()] = color.RGBA8Lerp(dst[o.IdxG()], g, alpha)
+	dst[o.IdxB()] = color.RGBA8Lerp(dst[o.IdxB()], b, alpha)
+	// Padding byte at position 3 remains unchanged
+}
+
+func (BlenderRGBX8[S, O]) SetPlain(dst []basics.Int8u, r, g, b basics.Int8u) {
+	var o O
+	dst[o.IdxR()] = r
+	dst[o.IdxG()] = g
+	dst[o.IdxB()] = b
+	// Padding byte remains unchanged
+}
+
+func (BlenderRGBX8[S, O]) GetPlain(src []basics.Int8u) (r, g, b basics.Int8u) {
+	var o O
+	r = src[o.IdxR()]
+	g = src[o.IdxG()]
+	b = src[o.IdxB()]
+	// Padding byte ignored
+	return
+}
+
+// RawRGBXOrder interface implementation for fast path access
+func (BlenderRGBX8[S, O]) IdxR() int { var o O; return o.IdxR() }
+func (BlenderRGBX8[S, O]) IdxG() int { var o O; return o.IdxG() }
+func (BlenderRGBX8[S, O]) IdxB() int { var o O; return o.IdxB() }
+
+////////////////////////////////////////////////////////////////////////////////
+// Premultiplied source -> RGBX destination (4-byte with padding)
+////////////////////////////////////////////////////////////////////////////////
+
+type BlenderRGBXPre[S color.Space, O order.RGBOrder] struct{}
+
+func (BlenderRGBXPre[S, O]) BlendPix(dst []basics.Int8u, r, g, b, a, cover basics.Int8u) {
+	if cover != 255 {
+		r = color.RGBA8MultCover(r, cover)
+		g = color.RGBA8MultCover(g, cover)
+		b = color.RGBA8MultCover(b, cover)
+		a = color.RGBA8MultCover(a, cover)
+	}
+	if a == 0 && r == 0 && g == 0 && b == 0 {
+		return
+	}
+	var o O
+	dst[o.IdxR()] = color.RGBA8Prelerp(dst[o.IdxR()], r, a)
+	dst[o.IdxG()] = color.RGBA8Prelerp(dst[o.IdxG()], g, a)
+	dst[o.IdxB()] = color.RGBA8Prelerp(dst[o.IdxB()], b, a)
+	// Padding byte remains unchanged
+}
+
+func (BlenderRGBXPre[S, O]) SetPlain(dst []basics.Int8u, r, g, b basics.Int8u) {
+	var o O
+	dst[o.IdxR()] = r
+	dst[o.IdxG()] = g
+	dst[o.IdxB()] = b
+	// Padding byte remains unchanged
+}
+
+func (BlenderRGBXPre[S, O]) GetPlain(src []basics.Int8u) (r, g, b basics.Int8u) {
+	var o O
+	r = src[o.IdxR()]
+	g = src[o.IdxG()]
+	b = src[o.IdxB()]
+	// Padding byte ignored
+	return
+}
+
+// RawRGBXOrder interface implementation for fast path access
+func (BlenderRGBXPre[S, O]) IdxR() int { var o O; return o.IdxR() }
+func (BlenderRGBXPre[S, O]) IdxG() int { var o O; return o.IdxG() }
+func (BlenderRGBXPre[S, O]) IdxB() int { var o O; return o.IdxB() }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Gamma-corrected 8-bit RGB (no alpha stored)
@@ -148,7 +285,7 @@ func (bl BlenderRGBGamma[S, O, G]) GetPlain(src []basics.Int8u) (r, g, b basics.
 // Helpers for 8-bit RGB
 ////////////////////////////////////////////////////////////////////////////////
 
-func BlendRGBPixel[B RGBBlender[S, O], S color.Space, O order.RGBOrder](
+func BlendRGBPixel[B RGBBlender[S], S color.Space, O order.RGBOrder](
 	dst []basics.Int8u,
 	src color.RGB8[S],
 	alpha, cover basics.Int8u,
@@ -170,7 +307,7 @@ func CopyRGBPixel[S color.Space, O order.RGBOrder](
 	dst[o.IdxB()] = src.B
 }
 
-func BlendRGBHline[B RGBBlender[S, O], S color.Space, O order.RGBOrder](
+func BlendRGBHline[B RGBBlender[S], S color.Space, O order.RGBOrder](
 	dst []basics.Int8u,
 	x, length int,
 	src color.RGB8[S],

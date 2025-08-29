@@ -12,10 +12,16 @@ import (
 // Gray16Blender blends 16-bit grayscale pixels in color space S.
 // (Grayscale has no channel order; we only carry S.)
 type Gray16Blender[S color.Space] interface {
-	// v = source value (plain or premultiplied depending on impl)
-	// a = source alpha (plain or premultiplied depending on impl)
-	// cover scales contribution in [0..65535]
-	BlendPix(dst *basics.Int16u, v, a, cover basics.Int16u)
+	// GetPlain reads a pixel and returns plain grayscale value and alpha
+	// interpreted according to color space S
+	GetPlain(px *basics.Int16u) (v, a basics.Int16u)
+
+	// SetPlain writes plain grayscale value to a pixel with alpha
+	SetPlain(px *basics.Int16u, v, a basics.Int16u)
+
+	// BlendPix blends plain grayscale source into the pixel with given alpha and coverage
+	// v is interpreted according to S
+	BlendPix(px *basics.Int16u, v, a, cover basics.Int16u)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -31,6 +37,14 @@ func (BlenderGray16[S]) BlendPix(dst *basics.Int16u, v, a, cover basics.Int16u) 
 		return
 	}
 	BlendGray16Alpha(dst, v, Gray16Multiply(a, cover))
+}
+
+func (BlenderGray16[S]) SetPlain(px *basics.Int16u, v, a basics.Int16u) {
+	*px = v // For non-premultiplied gray, just set the value (alpha is implicit)
+}
+
+func (BlenderGray16[S]) GetPlain(px *basics.Int16u) (v, a basics.Int16u) {
+	return *px, 0xFFFF // Return value and full alpha
 }
 
 // BlendGray16Alpha performs straight alpha blend: dst = dst + (v - dst) * a
@@ -51,6 +65,16 @@ func (BlenderGray16Pre[S]) BlendPix(dst *basics.Int16u, v, a, cover basics.Int16
 		return
 	}
 	BlendGray16PreAlpha(dst, Gray16Multiply(v, cover), Gray16Multiply(a, cover))
+}
+
+func (BlenderGray16Pre[S]) SetPlain(px *basics.Int16u, v, a basics.Int16u) {
+	*px = Gray16Multiply(v, a) // Premultiply the value by alpha
+}
+
+func (BlenderGray16Pre[S]) GetPlain(px *basics.Int16u) (v, a basics.Int16u) {
+	// For premultiplied gray, we assume full alpha and return the stored value
+	// In practice, gray formats don't store alpha separately
+	return *px, 0xFFFF
 }
 
 // BlendGray16PreAlpha performs premultiplied blend: dst = dst + v - dst*a
@@ -116,22 +140,6 @@ func BlendGray16PixelPre[S color.Space](dst *basics.Int16u, src color.Gray16[S],
 	if src.A != 0 && cover != 0 {
 		b.BlendPix(dst, src.V, src.A, cover)
 	}
-}
-
-func (BlenderGray16[S]) SetPlain(dst *basics.Int16u, v, a basics.Int16u) {
-	*dst = v
-}
-
-func (BlenderGray16[S]) GetPlain(src *basics.Int16u) (v, a basics.Int16u) {
-	return *src, 0xFFFF
-}
-
-func (BlenderGray16Pre[S]) SetPlain(dst *basics.Int16u, v, a basics.Int16u) {
-	*dst = Gray16Multiply(v, a)
-}
-
-func (BlenderGray16Pre[S]) GetPlain(src *basics.Int16u) (v, a basics.Int16u) {
-	return *src, 0xFFFF
 }
 
 // CopyGray16Pixel copies a grayscale value (no blending).

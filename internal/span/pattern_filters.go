@@ -40,10 +40,10 @@ func (pf *PatternFilterNN[ColorT]) PixelHighRes(buf [][]ColorT, p *ColorT, x, y 
 
 // PatternFilterBilinearRGBA8 implements bilinear pattern filtering for RGBA8 colors.
 // This is a port of AGG's pattern_filter_bilinear_rgba template struct.
-type PatternFilterBilinearRGBA8[CS any] struct{}
+type PatternFilterBilinearRGBA8[CS ColorSpace] struct{}
 
 // NewPatternFilterBilinearRGBA8 creates a new bilinear RGBA8 pattern filter.
-func NewPatternFilterBilinearRGBA8[CS any]() *PatternFilterBilinearRGBA8[CS] {
+func NewPatternFilterBilinearRGBA8[CS ColorSpace]() *PatternFilterBilinearRGBA8[CS] {
 	return &PatternFilterBilinearRGBA8[CS]{}
 }
 
@@ -125,10 +125,10 @@ func (pf *PatternFilterBilinearRGBA8[CS]) PixelHighRes(buf [][]color.RGBA8[CS], 
 }
 
 // PatternFilterBilinearRGBA16 implements bilinear pattern filtering for RGBA16 colors.
-type PatternFilterBilinearRGBA16[CS any] struct{}
+type PatternFilterBilinearRGBA16[CS ColorSpace] struct{}
 
 // NewPatternFilterBilinearRGBA16 creates a new bilinear RGBA16 pattern filter.
-func NewPatternFilterBilinearRGBA16[CS any]() *PatternFilterBilinearRGBA16[CS] {
+func NewPatternFilterBilinearRGBA16[CS ColorSpace]() *PatternFilterBilinearRGBA16[CS] {
 	return &PatternFilterBilinearRGBA16[CS]{}
 }
 
@@ -210,10 +210,10 @@ func (pf *PatternFilterBilinearRGBA16[CS]) PixelHighRes(buf [][]color.RGBA16[CS]
 }
 
 // PatternFilterBilinearRGBA32 implements bilinear pattern filtering for RGBA32 colors.
-type PatternFilterBilinearRGBA32[CS any] struct{}
+type PatternFilterBilinearRGBA32[CS ColorSpace] struct{}
 
 // NewPatternFilterBilinearRGBA32 creates a new bilinear RGBA32 pattern filter.
-func NewPatternFilterBilinearRGBA32[CS any]() *PatternFilterBilinearRGBA32[CS] {
+func NewPatternFilterBilinearRGBA32[CS ColorSpace]() *PatternFilterBilinearRGBA32[CS] {
 	return &PatternFilterBilinearRGBA32[CS]{}
 }
 

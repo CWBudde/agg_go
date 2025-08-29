@@ -169,19 +169,19 @@ func NewPixFmtBGR96PreSRGB(rbuf *buffer.RenderingBufferF32) *PixFmtBGR96PreSRGB 
 	return NewPixFmtAlphaBlendRGB96[blender.BlenderBGR96PreSRGB, color.SRGB, order.BGR](rbuf, blender.BlenderBGR96PreSRGB{})
 }
 
-// Constructor functions for premultiplied RGBX32 formats
-func NewPixFmtRGBX32Pre(rbuf *buffer.RenderingBufferU8) *PixFmtRGBX32Pre {
-	return NewPixFmtAlphaBlendRGBX32[blender.BlenderRGB24Pre, color.Linear, order.RGBX32](rbuf, blender.BlenderRGB24Pre{})
+// Constructor functions for premultiplied RGBX32 formats (8-bit per channel)
+func NewPixFmtRGBX32PreLinear(rbuf *buffer.RenderingBufferU8) *PixFmtRGBX32Pre[color.Linear] {
+	return NewPixFmtRGBX32Pre[color.Linear](rbuf)
 }
 
-func NewPixFmtXRGB32Pre(rbuf *buffer.RenderingBufferU8) *PixFmtXRGB32Pre {
-	return NewPixFmtAlphaBlendRGBX32[blender.BlenderRGB24Pre, color.Linear, order.XRGB32](rbuf, blender.BlenderRGB24Pre{})
+func NewPixFmtXRGB32PreLinear(rbuf *buffer.RenderingBufferU8) *PixFmtXRGB32Pre[color.Linear] {
+	return NewPixFmtXRGB32Pre[color.Linear](rbuf)
 }
 
-func NewPixFmtBGRX32Pre(rbuf *buffer.RenderingBufferU8) *PixFmtBGRX32Pre {
-	return NewPixFmtAlphaBlendRGBX32[blender.BlenderBGR24Pre, color.Linear, order.BGRX32](rbuf, blender.BlenderBGR24Pre{})
+func NewPixFmtBGRX32PreLinear(rbuf *buffer.RenderingBufferU8) *PixFmtBGRX32Pre[color.Linear] {
+	return NewPixFmtBGRX32Pre[color.Linear](rbuf)
 }
 
-func NewPixFmtXBGR32Pre(rbuf *buffer.RenderingBufferU8) *PixFmtXBGR32Pre {
-	return NewPixFmtAlphaBlendRGBX32[blender.BlenderBGR24Pre, color.Linear, order.XBGR32](rbuf, blender.BlenderBGR24Pre{})
+func NewPixFmtXBGR32PreLinear(rbuf *buffer.RenderingBufferU8) *PixFmtXBGR32Pre[color.Linear] {
+	return NewPixFmtXBGR32Pre[color.Linear](rbuf)
 }

@@ -216,14 +216,6 @@ func TestConvertRGBToRGBA(t *testing.T) {
 	}
 }
 
-// Test that blenders implement the interface
-func TestBlenderInterfaces(t *testing.T) {
-	var _ RGBBlender[color.Linear, order.RGB] = BlenderRGB8[color.Linear, order.RGB]{}
-	var _ RGBBlender[color.Linear, order.RGB] = BlenderRGBPre[color.Linear, order.RGB]{}
-	var _ RGBBlender[color.Linear, order.BGR] = BlenderRGB8[color.Linear, order.BGR]{}
-	var _ RGBBlender[color.Linear, order.BGR] = BlenderRGBPre[color.Linear, order.BGR]{}
-}
-
 // Benchmarks
 func BenchmarkBlenderRGB24(b *testing.B) {
 	bl := BlenderRGB8[color.Linear, order.RGB]{}

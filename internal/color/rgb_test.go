@@ -373,57 +373,35 @@ func TestRGB8ColorspaceConversion(t *testing.T) {
 	}
 }
 
-func TestRGB8GenericConversion(t *testing.T) {
-	// Test ConvertRGB8Types function
-	linearSrc := NewRGB8[Linear](100, 150, 200)
-	var srgbDst RGB8[SRGB]
+func TestRGB8ExplicitConversion(t *testing.T) {
+	t.Run("Linear->sRGB", func(t *testing.T) {
+		linearSrc := NewRGB8[Linear](100, 150, 200)
+		srgbDst := ConvertRGB8LinearToSRGB(linearSrc)
 
-	ConvertRGB8Types(&srgbDst, linearSrc)
+		expected := ConvertRGB8LinearToSRGB(linearSrc) // direct reference
+		if srgbDst.R != expected.R || srgbDst.G != expected.G || srgbDst.B != expected.B {
+			t.Errorf("Linear->sRGB failed: got %v, want %v", srgbDst, expected)
+		}
+	})
 
-	// Should be same as direct conversion
-	expected := ConvertRGB8LinearToSRGB(linearSrc)
-	if srgbDst.R != expected.R || srgbDst.G != expected.G || srgbDst.B != expected.B {
-		t.Errorf("ConvertRGB8Types failed: got %v, want %v", srgbDst, expected)
-	}
+	t.Run("sRGB->Linear", func(t *testing.T) {
+		srgbSrc := NewRGB8[SRGB](100, 150, 200)
+		linearDst := ConvertRGB8SRGBToLinear(srgbSrc)
 
-	// Test reverse conversion
-	srgbSrc := NewRGB8[SRGB](100, 150, 200)
-	var linearDst RGB8[Linear]
+		expected := ConvertRGB8SRGBToLinear(srgbSrc)
+		if linearDst.R != expected.R || linearDst.G != expected.G || linearDst.B != expected.B {
+			t.Errorf("sRGB->Linear failed: got %v, want %v", linearDst, expected)
+		}
+	})
 
-	ConvertRGB8Types(&linearDst, srgbSrc)
+	t.Run("Same colorspace no-op", func(t *testing.T) {
+		linearSrc := NewRGB8[Linear](75, 125, 175)
+		linearDst := RGB8[Linear](linearSrc) // no conversion, just copy
 
-	expected2 := ConvertRGB8SRGBToLinear(srgbSrc)
-	if linearDst.R != expected2.R || linearDst.G != expected2.G || linearDst.B != expected2.B {
-		t.Errorf("ConvertRGB8Types reverse failed: got %v, want %v", linearDst, expected2)
-	}
-
-	// Test same-colorspace conversion (should be no-op)
-	linearSrc2 := NewRGB8[Linear](75, 125, 175)
-	var linearDst2 RGB8[Linear]
-
-	ConvertRGB8Types(&linearDst2, linearSrc2)
-
-	if linearDst2.R != linearSrc2.R || linearDst2.G != linearSrc2.G || linearDst2.B != linearSrc2.B {
-		t.Errorf("Same-colorspace conversion should be no-op: got %v, want %v", linearDst2, linearSrc2)
-	}
-}
-
-func TestRGB8ConvertFunction(t *testing.T) {
-	// Test the generic ConvertRGB8 function
-	linearSrc := NewRGB8[Linear](80, 120, 160)
-	srgbDst := ConvertRGB8[Linear, SRGB](linearSrc)
-
-	// Should match direct conversion
-	expected := ConvertRGB8LinearToSRGB(linearSrc)
-	if srgbDst.R != expected.R || srgbDst.G != expected.G || srgbDst.B != expected.B {
-		t.Errorf("ConvertRGB8 function failed: got %v, want %v", srgbDst, expected)
-	}
-
-	// Test the Convert method (should be identity)
-	result := linearSrc.Convert()
-	if result.R != linearSrc.R || result.G != linearSrc.G || result.B != linearSrc.B {
-		t.Errorf("Convert method should be identity: got %v, want %v", result, linearSrc)
-	}
+		if linearDst.R != linearSrc.R || linearDst.G != linearSrc.G || linearDst.B != linearSrc.B {
+			t.Errorf("Same-CS copy should be no-op: got %v, want %v", linearDst, linearSrc)
+		}
+	})
 }
 
 // Helper function for absolute difference for int

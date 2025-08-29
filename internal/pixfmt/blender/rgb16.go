@@ -10,8 +10,27 @@ import (
 // Interfaces (RGB 16-bit)
 ////////////////////////////////////////////////////////////////////////////////
 
-type RGB48Blender[S color.Space, O order.RGBOrder] interface {
-	BlendPix(dst []basics.Int16u, r, g, b, a, cover basics.Int16u)
+// RGB48Blender defines the minimal interface used by RGB48 pixfmt implementations.
+// The blender handles color space interpretation and internal pixel ordering.
+type RGB48Blender[S color.Space] interface {
+	// GetPlain reads a pixel and returns plain RGB components
+	// interpreted according to color space S
+	GetPlain(px []basics.Int16u) (r, g, b basics.Int16u)
+
+	// SetPlain writes plain RGB components to a pixel, mapping them to the
+	// internal order of the blender
+	SetPlain(px []basics.Int16u, r, g, b basics.Int16u)
+
+	// BlendPix blends plain RGB source into the pixel with given alpha and coverage
+	// r,g,b are interpreted according to S, and mapped to the order internal to the blender
+	BlendPix(px []basics.Int16u, r, g, b, a, cover basics.Int16u)
+}
+
+// RawRGB48Order provides optional fast path for zero-cost index access for RGB48.
+type RawRGB48Order interface {
+	IdxR() int
+	IdxG() int
+	IdxB() int
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -30,6 +49,26 @@ func (BlenderRGB48[S, O]) BlendPix(dst []basics.Int16u, r, g, b, a, cover basics
 	dst[o.IdxB()] = color.RGB16Lerp(dst[o.IdxB()], b, alpha)
 }
 
+func (BlenderRGB48[S, O]) SetPlain(dst []basics.Int16u, r, g, b basics.Int16u) {
+	var o O
+	dst[o.IdxR()] = r
+	dst[o.IdxG()] = g
+	dst[o.IdxB()] = b
+}
+
+func (BlenderRGB48[S, O]) GetPlain(src []basics.Int16u) (r, g, b basics.Int16u) {
+	var o O
+	r = src[o.IdxR()]
+	g = src[o.IdxG()]
+	b = src[o.IdxB()]
+	return
+}
+
+// RawRGB48Order interface implementation for fast path access
+func (BlenderRGB48[S, O]) IdxR() int { var o O; return o.IdxR() }
+func (BlenderRGB48[S, O]) IdxG() int { var o O; return o.IdxG() }
+func (BlenderRGB48[S, O]) IdxB() int { var o O; return o.IdxB() }
+
 type BlenderRGB48Pre[S color.Space, O order.RGBOrder] struct{}
 
 func (BlenderRGB48Pre[S, O]) BlendPix(dst []basics.Int16u, r, g, b, a, cover basics.Int16u) {
@@ -47,6 +86,26 @@ func (BlenderRGB48Pre[S, O]) BlendPix(dst []basics.Int16u, r, g, b, a, cover bas
 	dst[o.IdxG()] = color.RGB16Prelerp(dst[o.IdxG()], g, a)
 	dst[o.IdxB()] = color.RGB16Prelerp(dst[o.IdxB()], b, a)
 }
+
+func (BlenderRGB48Pre[S, O]) SetPlain(dst []basics.Int16u, r, g, b basics.Int16u) {
+	var o O
+	// For RGB formats, we don't have alpha, so just set the values directly
+	// (Pre variants would typically premultiply, but RGB has no alpha channel)
+	dst[o.IdxR()] = r
+	dst[o.IdxG()] = g
+	dst[o.IdxB()] = b
+}
+
+func (BlenderRGB48Pre[S, O]) GetPlain(src []basics.Int16u) (r, g, b basics.Int16u) {
+	var o O
+	// RGB has no alpha stored, so we can't demultiply - just return the stored values
+	return src[o.IdxR()], src[o.IdxG()], src[o.IdxB()]
+}
+
+// RawRGB48Order interface implementation for fast path access
+func (BlenderRGB48Pre[S, O]) IdxR() int { var o O; return o.IdxR() }
+func (BlenderRGB48Pre[S, O]) IdxG() int { var o O; return o.IdxG() }
+func (BlenderRGB48Pre[S, O]) IdxB() int { var o O; return o.IdxB() }
 
 type Gamma16Corrector interface {
 	Dir(v basics.Int16u) basics.Int16u
@@ -80,46 +139,22 @@ func (bl BlenderRGB48Gamma[S, O, G]) BlendPix(dst []basics.Int16u, r, g, b, a, c
 	dst[o.IdxB()] = bl.gamma.Inv(color.RGB16Lerp(db, sb, alpha))
 }
 
-func (BlenderRGB48[S, O]) SetPlain(dst []basics.Int16u, r, g, b, a basics.Int16u) {
+func (bl BlenderRGB48Gamma[S, O, G]) SetPlain(dst []basics.Int16u, r, g, b basics.Int16u) {
 	var o O
 	dst[o.IdxR()] = r
 	dst[o.IdxG()] = g
 	dst[o.IdxB()] = b
 }
 
-func (BlenderRGB48[S, O]) GetPlain(src []basics.Int16u) (r, g, b, a basics.Int16u) {
+func (bl BlenderRGB48Gamma[S, O, G]) GetPlain(src []basics.Int16u) (r, g, b basics.Int16u) {
 	var o O
-	return src[o.IdxR()], src[o.IdxG()], src[o.IdxB()], 0xFFFF
+	return src[o.IdxR()], src[o.IdxG()], src[o.IdxB()]
 }
 
-func (BlenderRGB48Pre[S, O]) SetPlain(dst []basics.Int16u, r, g, b, a basics.Int16u) {
-	var o O
-	dst[o.IdxR()] = color.RGBA16Multiply(r, a)
-	dst[o.IdxG()] = color.RGBA16Multiply(g, a)
-	dst[o.IdxB()] = color.RGBA16Multiply(b, a)
-}
-
-func (BlenderRGB48Pre[S, O]) GetPlain(src []basics.Int16u) (r, g, b, a basics.Int16u) {
-	var o O
-	a = 0xFFFF
-	if a == 0 {
-		return 0, 0, 0, 0
-	}
-	// RGB has no alpha stored, so we can't demultiply - just return the stored values
-	return src[o.IdxR()], src[o.IdxG()], src[o.IdxB()], a
-}
-
-func (bl BlenderRGB48Gamma[S, O, G]) SetPlain(dst []basics.Int16u, r, g, b, a basics.Int16u) {
-	var o O
-	dst[o.IdxR()] = r
-	dst[o.IdxG()] = g
-	dst[o.IdxB()] = b
-}
-
-func (bl BlenderRGB48Gamma[S, O, G]) GetPlain(src []basics.Int16u) (r, g, b, a basics.Int16u) {
-	var o O
-	return src[o.IdxR()], src[o.IdxG()], src[o.IdxB()], 0xFFFF
-}
+// RawRGB48Order interface implementation for fast path access
+func (bl BlenderRGB48Gamma[S, O, G]) IdxR() int { var o O; return o.IdxR() }
+func (bl BlenderRGB48Gamma[S, O, G]) IdxG() int { var o O; return o.IdxG() }
+func (bl BlenderRGB48Gamma[S, O, G]) IdxB() int { var o O; return o.IdxB() }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Convenience aliases (Linear / sRGB × RGB / BGR)

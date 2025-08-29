@@ -1,4 +1,4 @@
-package pixfmt
+package blender
 
 import (
 	"testing"
@@ -6,25 +6,29 @@ import (
 	"agg_go/internal/basics"
 	"agg_go/internal/color"
 	"agg_go/internal/order"
-	"agg_go/internal/pixfmt/blender"
 )
 
 // TestBlenderInterfaceCompliance tests that all blender types implement their respective interfaces
 func TestBlenderInterfaceCompliance(t *testing.T) {
 	// Test RGBA blenders implement RGBABlender interface
-	var _ blender.RGBABlender[color.Linear, order.RGBA] = blender.BlenderRGBA8[color.Linear, order.RGBA]{}
-	var _ blender.RGBABlender[color.Linear, order.RGBA] = blender.BlenderRGBA8Pre[color.Linear, order.RGBA]{}
-	var _ blender.RGBABlender[color.Linear, order.RGBA] = blender.BlenderRGBA8Plain[color.Linear, order.RGBA]{}
+	var _ RGBABlender[color.Linear] = BlenderRGBA8[color.Linear, order.RGBA]{}
+	var _ RGBABlender[color.Linear] = BlenderRGBA8Pre[color.Linear, order.RGBA]{}
+	var _ RGBABlender[color.Linear] = BlenderRGBA8Plain[color.Linear, order.RGBA]{}
 
 	// Test other RGBA color orders
-	var _ blender.RGBABlender[color.Linear, order.ARGB] = blender.BlenderRGBA8[color.Linear, order.ARGB]{}
-	var _ blender.RGBABlender[color.Linear, order.BGRA] = blender.BlenderRGBA8[color.Linear, order.BGRA]{}
-	var _ blender.RGBABlender[color.Linear, order.ABGR] = blender.BlenderRGBA8[color.Linear, order.ABGR]{}
+	var _ RGBABlender[color.Linear] = BlenderRGBA8[color.Linear, order.ARGB]{}
+	var _ RGBABlender[color.Linear] = BlenderRGBA8[color.Linear, order.BGRA]{}
+	var _ RGBABlender[color.Linear] = BlenderRGBA8[color.Linear, order.ABGR]{}
 
 	// Test RGBA blenders with SRGB color space
-	var _ blender.RGBABlender[color.SRGB, order.RGBA] = blender.BlenderRGBA8[color.SRGB, order.RGBA]{}
-	var _ blender.RGBABlender[color.SRGB, order.RGBA] = blender.BlenderRGBA8Pre[color.SRGB, order.RGBA]{}
-	var _ blender.RGBABlender[color.SRGB, order.RGBA] = blender.BlenderRGBA8Plain[color.SRGB, order.RGBA]{}
+	var _ RGBABlender[color.SRGB] = BlenderRGBA8[color.SRGB, order.RGBA]{}
+	var _ RGBABlender[color.SRGB] = BlenderRGBA8Pre[color.SRGB, order.RGBA]{}
+	var _ RGBABlender[color.SRGB] = BlenderRGBA8Plain[color.SRGB, order.RGBA]{}
+
+	// Test RawRGBAOrder interface compliance
+	var _ RawRGBAOrder = BlenderRGBA8[color.Linear, order.RGBA]{}
+	var _ RawRGBAOrder = BlenderRGBA8Pre[color.Linear, order.RGBA]{}
+	var _ RawRGBAOrder = BlenderRGBA8Plain[color.Linear, order.RGBA]{}
 }
 
 // TestRGBABlenderBehavior tests actual RGBA blender method behavior
@@ -33,19 +37,16 @@ func TestRGBABlenderBehavior(t *testing.T) {
 	pixel := []basics.Int8u{128, 64, 192, 255} // R=128, G=64, B=192, A=255
 
 	// Test RGBA8 blender
-	rgbaBlender := blender.BlenderRGBA8[color.Linear, order.RGBA]{}
+	rgbaBlender := BlenderRGBA8[color.Linear, order.RGBA]{}
 
 	// Test GetPlain method (should return the original values for RGBA8Plain storage)
 	// Note: BlenderRGBA8 expects premultiplied storage, so this gets demultiplied values
 	r, g, b, a := rgbaBlender.GetPlain(pixel)
 	if a == 0 {
 		t.Errorf("Alpha should not be zero for test pixel")
-	} else {
-		// For fully opaque pixels, GetPlain should return the same values
-		if r != 128 || g != 64 || b != 192 || a != 255 {
-			t.Logf("GetPlain returned: (%d,%d,%d,%d), expected close to (128,64,192,255)", r, g, b, a)
-			// This might be expected behavior for premultiplied blenders
-		}
+	} else if r != 128 || g != 64 || b != 192 || a != 255 {
+		t.Logf("GetPlain returned: (%d,%d,%d,%d), expected close to (128,64,192,255)", r, g, b, a)
+		// This might be expected behavior for premultiplied blenders
 	}
 
 	// Test SetPlain method

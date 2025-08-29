@@ -290,7 +290,6 @@ func (r *RasterizerScanlineAANoGamma[C, V, Clip]) SweepScanline(sl ScanlineInter
 			curCell := cells[cellIndex]
 			x := curCell.X
 			area := curCell.Area
-			var alpha uint32
 
 			cover += curCell.Cover
 
