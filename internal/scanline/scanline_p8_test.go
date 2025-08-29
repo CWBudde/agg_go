@@ -78,7 +78,7 @@ func TestScanlineP8_NonConsecutiveCells(t *testing.T) {
 	}
 
 	// Check each span
-	expectedX := []CoordType{10, 20, 30}
+	expectedX := []basics.Int32{10, 20, 30}
 	for i, span := range spans {
 		if span.X != expectedX[i] {
 			t.Errorf("Span %d: X should be %d, got %d", i, expectedX[i], span.X)

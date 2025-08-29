@@ -8,7 +8,7 @@ import (
 // anti-aliased rendering without gamma correction. It provides the same interface
 // as RasterizerScanlineAA but with simplified coverage calculation for better performance.
 // This is equivalent to AGG's rasterizer_scanline_aa_nogamma<Clip> template class.
-type RasterizerScanlineAANoGamma[C Coord, V Conv[C], Clip any] struct {
+type RasterizerScanlineAANoGamma[C basics.CoordType, V Conv[C], Clip any] struct {
 	outline *RasterizerCellsAASimple // Cell-based rasterizer
 	clipper interface {
 		ResetClipping()
@@ -26,7 +26,7 @@ type RasterizerScanlineAANoGamma[C Coord, V Conv[C], Clip any] struct {
 }
 
 // NewRasterizerScanlineAANoGamma creates a new anti-aliased scanline rasterizer without gamma correction
-func NewRasterizerScanlineAANoGamma[C Coord, V Conv[C], Clip any](conv V, clipper interface {
+func NewRasterizerScanlineAANoGamma[C basics.CoordType, V Conv[C], Clip any](conv V, clipper interface {
 	ResetClipping()
 	ClipBox(x1, y1, x2, y2 C)
 	MoveTo(x1, y1 C)

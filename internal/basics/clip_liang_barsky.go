@@ -29,7 +29,7 @@ const (
 //	1100  |  1000  | 1001
 //	      |        |
 //	clip_box.x1  clip_box.x2
-func ClippingFlags[T ~int | ~int32 | ~float32 | ~float64](x, y T, clipBox Rect[T]) uint32 {
+func ClippingFlags[T CoordType](x, y T, clipBox Rect[T]) uint32 {
 	var flags uint32
 	if x > clipBox.X2 {
 		flags |= ClippingFlagsX2Clipped
@@ -47,7 +47,7 @@ func ClippingFlags[T ~int | ~int32 | ~float32 | ~float64](x, y T, clipBox Rect[T
 }
 
 // ClippingFlagsX determines clipping flags for X coordinate only
-func ClippingFlagsX[T ~int | ~int32 | ~float32 | ~float64](x T, clipBox Rect[T]) uint32 {
+func ClippingFlagsX[T CoordType](x T, clipBox Rect[T]) uint32 {
 	var flags uint32
 	if x > clipBox.X2 {
 		flags |= ClippingFlagsX2Clipped
@@ -59,7 +59,7 @@ func ClippingFlagsX[T ~int | ~int32 | ~float32 | ~float64](x T, clipBox Rect[T])
 }
 
 // ClippingFlagsY determines clipping flags for Y coordinate only
-func ClippingFlagsY[T ~int | ~int32 | ~float32 | ~float64](y T, clipBox Rect[T]) uint32 {
+func ClippingFlagsY[T CoordType](y T, clipBox Rect[T]) uint32 {
 	var flags uint32
 	if y > clipBox.Y2 {
 		flags |= ClippingFlagsY2Clipped
@@ -73,15 +73,17 @@ func ClippingFlagsY[T ~int | ~int32 | ~float32 | ~float64](y T, clipBox Rect[T])
 // ClipLiangBarsky implements the Liang-Barsky line clipping algorithm.
 // Returns the number of clipped points (0-2) and stores them in x and y arrays.
 // This is a direct translation of the AGG C++ implementation.
-func ClipLiangBarsky[T ~int | ~int32 | ~float32 | ~float64](
+func ClipLiangBarsky[T CoordType](
 	x1, y1, x2, y2 T,
 	clipBox Rect[T],
 	x, y []T,
 ) uint32 {
 	const nearzero = 1e-30
 
-	deltax := float64(x2 - x1)
-	deltay := float64(y2 - y1)
+	fx1, fy1 := float64(x1), float64(y1)
+	fx2, fy2 := float64(x2), float64(y2)
+	deltax := fx2 - fx1
+	deltay := fy2 - fy1
 
 	var xin, xout, yin, yout float64
 	var tinx, tiny, toutx, touty float64
@@ -197,7 +199,7 @@ func ClipLiangBarsky[T ~int | ~int32 | ~float32 | ~float64](
 }
 
 // ClipMovePoint moves a point to the clipping boundary
-func ClipMovePoint[T ~int | ~int32 | ~float32 | ~float64](
+func ClipMovePoint[T CoordType](
 	x1, y1, x2, y2 T,
 	clipBox Rect[T],
 	x, y *T,
@@ -239,7 +241,7 @@ func ClipMovePoint[T ~int | ~int32 | ~float32 | ~float64](
 //
 //	(ret & 1) != 0  - First point has been moved
 //	(ret & 2) != 0  - Second point has been moved
-func ClipLineSegment[T ~int | ~int32 | ~float32 | ~float64](
+func ClipLineSegment[T CoordType](
 	x1, y1, x2, y2 *T,
 	clipBox Rect[T],
 ) uint32 {

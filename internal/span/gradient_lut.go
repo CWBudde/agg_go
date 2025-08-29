@@ -52,12 +52,12 @@ func (ci *ColorInterpolatorGeneric[T]) Color() T {
 
 // ColorInterpolatorRGBA8 provides optimized interpolation for 8-bit RGBA colors
 // using DDA line interpolators for each color channel.
-type ColorInterpolatorRGBA8[CS ColorSpace] struct {
+type ColorInterpolatorRGBA8[CS color.Space] struct {
 	r, g, b, a *DDALineInterpolator
 }
 
 // NewColorInterpolatorRGBA8 creates a new optimized RGBA8 color interpolator.
-func NewColorInterpolatorRGBA8[CS ColorSpace](c1, c2 color.RGBA8[CS], length uint) *ColorInterpolatorRGBA8[CS] {
+func NewColorInterpolatorRGBA8[CS color.Space](c1, c2 color.RGBA8[CS], length uint) *ColorInterpolatorRGBA8[CS] {
 	if length == 0 {
 		length = 1
 	}
@@ -93,12 +93,12 @@ func (ci *ColorInterpolatorRGBA8[CS]) Color() color.RGBA8[CS] {
 
 // ColorInterpolatorGray8 provides optimized interpolation for 8-bit grayscale colors
 // using DDA line interpolators for value and alpha channels.
-type ColorInterpolatorGray8[CS ColorSpace] struct {
+type ColorInterpolatorGray8[CS color.Space] struct {
 	v, a *DDALineInterpolator
 }
 
 // NewColorInterpolatorGray8 creates a new optimized Gray8 color interpolator.
-func NewColorInterpolatorGray8[CS ColorSpace](c1, c2 color.Gray8[CS], length uint) *ColorInterpolatorGray8[CS] {
+func NewColorInterpolatorGray8[CS color.Space](c1, c2 color.Gray8[CS], length uint) *ColorInterpolatorGray8[CS] {
 	if length == 0 {
 		length = 1
 	}

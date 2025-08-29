@@ -17,15 +17,20 @@ type (
 // CoverType represents coverage values for anti-aliasing
 type CoverType = Int8u
 
-// CoordType represents coordinate values
-type CoordType = int32
+// CoordType represents a coordinate type that can be either integer or floating-point.
+// This corresponds to AGG's coord_type template parameter concept.
+type CoordType interface {
+	~int | ~int8 | ~int16 | ~int32 | ~int64 |
+		~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr |
+		~float32 | ~float64
+}
 
 // Basic geometric types
-type Point[T ~int | ~int32 | ~float32 | ~float64] struct {
+type Point[T CoordType] struct {
 	X, Y T
 }
 
-type Rect[T ~int | ~int32 | ~float32 | ~float64] struct {
+type Rect[T CoordType] struct {
 	X1, Y1, X2, Y2 T
 }
 
@@ -59,7 +64,7 @@ func (r *Rect[T]) Clip(clipBox Rect[T]) bool {
 	return false
 }
 
-type Vertex[T ~int | ~int32 | ~float32 | ~float64] struct {
+type Vertex[T CoordType] struct {
 	X, Y T
 	Cmd  uint32
 }
@@ -116,7 +121,7 @@ func UMax[T ~uint | ~uint32 | ~uint8 | ~uint16](a, b T) T {
 }
 
 // Rectangle utility functions
-func IntersectRectangles[T ~int | ~int32 | ~float32 | ~float64](r1, r2 Rect[T]) (Rect[T], bool) {
+func IntersectRectangles[T CoordType](r1, r2 Rect[T]) (Rect[T], bool) {
 	result := Rect[T]{
 		X1: max(r1.X1, r2.X1),
 		Y1: max(r1.Y1, r2.Y1),
@@ -130,7 +135,7 @@ func IntersectRectangles[T ~int | ~int32 | ~float32 | ~float64](r1, r2 Rect[T]) 
 	return result, false
 }
 
-func UniteRectangles[T ~int | ~int32 | ~float32 | ~float64](r1, r2 Rect[T]) Rect[T] {
+func UniteRectangles[T CoordType](r1, r2 Rect[T]) Rect[T] {
 	return Rect[T]{
 		X1: min(r1.X1, r2.X1),
 		Y1: min(r1.Y1, r2.Y1),

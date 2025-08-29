@@ -11,14 +11,14 @@ import (
 // CoverType represents coverage values for anti-aliasing (0-255)
 type CoverType = basics.Int8u
 
-// CoordType represents 16-bit coordinate values for scanline_u8
-type CoordType = basics.Int16
+// Coord16Type represents 16-bit coordinate values for scanline_u8
+type Coord16Type = basics.Int16
 
 // Span represents a horizontal span of pixels with coverage values.
 // This corresponds to the span struct in AGG's scanline_u8 class.
 type Span struct {
-	X      CoordType   // Starting X coordinate
-	Len    CoordType   // Length of the span
+	X      Coord16Type // Starting X coordinate
+	Len    Coord16Type // Length of the span
 	Covers []CoverType // Pointer to coverage values array
 }
 
@@ -80,7 +80,7 @@ func (sl *ScanlineU8) AddCell(x int, cover uint) {
 		// Start new span
 		sl.curSpan++
 		newSpan := Span{
-			X:      CoordType(x + sl.minX),
+			X:      Coord16Type(x + sl.minX),
 			Len:    1,
 			Covers: sl.covers.Data()[x:], // Slice starting at position x
 		}
@@ -104,14 +104,14 @@ func (sl *ScanlineU8) AddCells(x int, length int, covers []CoverType) {
 	if x == sl.lastX+1 {
 		// Extend current span
 		currentSpan := sl.spans.ValueAt(sl.curSpan)
-		currentSpan.Len += CoordType(length)
+		currentSpan.Len += Coord16Type(length)
 		sl.spans.Set(sl.curSpan, currentSpan)
 	} else {
 		// Start new span
 		sl.curSpan++
 		newSpan := Span{
-			X:      CoordType(x + sl.minX),
-			Len:    CoordType(length),
+			X:      Coord16Type(x + sl.minX),
+			Len:    Coord16Type(length),
 			Covers: sl.covers.Data()[x:], // Slice starting at position x
 		}
 		if sl.curSpan >= sl.spans.Size() {
@@ -136,14 +136,14 @@ func (sl *ScanlineU8) AddSpan(x int, length int, cover uint) {
 	if x == sl.lastX+1 {
 		// Extend current span
 		currentSpan := sl.spans.ValueAt(sl.curSpan)
-		currentSpan.Len += CoordType(length)
+		currentSpan.Len += Coord16Type(length)
 		sl.spans.Set(sl.curSpan, currentSpan)
 	} else {
 		// Start new span
 		sl.curSpan++
 		newSpan := Span{
-			X:      CoordType(x + sl.minX),
-			Len:    CoordType(length),
+			X:      Coord16Type(x + sl.minX),
+			Len:    Coord16Type(length),
 			Covers: sl.covers.Data()[x:], // Slice starting at position x
 		}
 		if sl.curSpan >= sl.spans.Size() {

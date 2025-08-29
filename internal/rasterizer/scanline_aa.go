@@ -19,7 +19,7 @@ const (
 // RasterizerScanlineAA is the main polygon rasterizer for high-quality anti-aliased rendering.
 // It uses coordinates in the format specified by the converter's coordinate type.
 // This is equivalent to AGG's rasterizer_scanline_aa<Clip> template class.
-type RasterizerScanlineAA[C Coord, V Conv[C], Clip any] struct {
+type RasterizerScanlineAA[C basics.CoordType, V Conv[C], Clip any] struct {
 	outline *RasterizerCellsAASimple // Cell-based rasterizer
 	clipper interface {
 		ResetClipping()
@@ -38,7 +38,7 @@ type RasterizerScanlineAA[C Coord, V Conv[C], Clip any] struct {
 }
 
 // NewRasterizerScanlineAA creates a new anti-aliased scanline rasterizer
-func NewRasterizerScanlineAA[C Coord, V Conv[C], Clip any](conv V, clipper interface {
+func NewRasterizerScanlineAA[C basics.CoordType, V Conv[C], Clip any](conv V, clipper interface {
 	ResetClipping()
 	ClipBox(x1, y1, x2, y2 C)
 	MoveTo(x1, y1 C)
@@ -64,7 +64,7 @@ func NewRasterizerScanlineAA[C Coord, V Conv[C], Clip any](conv V, clipper inter
 }
 
 // NewRasterizerScanlineAAWithGamma creates a new rasterizer with custom gamma function
-func NewRasterizerScanlineAAWithGamma[C Coord, V Conv[C], Clip any](conv V, clipper interface {
+func NewRasterizerScanlineAAWithGamma[C basics.CoordType, V Conv[C], Clip any](conv V, clipper interface {
 	ResetClipping()
 	ClipBox(x1, y1, x2, y2 C)
 	MoveTo(x1, y1 C)

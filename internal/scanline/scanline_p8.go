@@ -14,8 +14,8 @@ import (
 // This corresponds to the span struct in AGG's scanline_p8 class.
 // If Len is negative, it's a solid span where all pixels have the same coverage value.
 type SpanP8 struct {
-	X      CoordType     // Starting X coordinate (16-bit)
-	Len    CoordType     // Length of span (negative = solid span with single cover value)
+	X      basics.Int32  // Starting X coordinate (32-bit)
+	Len    basics.Int32  // Length of span (negative = solid span with single cover value)
 	Covers *basics.Int8u // Pointer to coverage values in the coverage array
 }
 
@@ -89,7 +89,7 @@ func (sl *ScanlineP8) AddCell(x int, cover uint) {
 		spanData := sl.spans.Data()
 		sl.curSpan = &spanData[sl.spanIndex]
 		sl.curSpan.Covers = sl.coverPtr
-		sl.curSpan.X = CoordType(x)
+		sl.curSpan.X = basics.Int32(x)
 		sl.curSpan.Len = 1
 	}
 
@@ -114,15 +114,15 @@ func (sl *ScanlineP8) AddCells(x int, length int, covers []CoverType) {
 
 	if x == sl.lastX+1 && sl.curSpan.Len > 0 {
 		// Extend current span (non-solid span)
-		sl.curSpan.Len += CoordType(length)
+		sl.curSpan.Len += basics.Int32(length)
 	} else {
 		// Start new span
 		sl.spanIndex++
 		spanData := sl.spans.Data()
 		sl.curSpan = &spanData[sl.spanIndex]
 		sl.curSpan.Covers = sl.coverPtr
-		sl.curSpan.X = CoordType(x)
-		sl.curSpan.Len = CoordType(length)
+		sl.curSpan.X = basics.Int32(x)
+		sl.curSpan.Len = basics.Int32(length)
 	}
 
 	// Move coverage pointer forward by length
@@ -142,7 +142,7 @@ func (sl *ScanlineP8) AddSpan(x int, length int, cover uint) {
 		sl.curSpan.Covers != nil &&
 		*sl.curSpan.Covers == CoverType(cover) {
 		// Extend the existing solid span
-		sl.curSpan.Len -= CoordType(length)
+		sl.curSpan.Len -= basics.Int32(length)
 	} else {
 		// Store the single coverage value
 		*sl.coverPtr = CoverType(cover)
@@ -152,8 +152,8 @@ func (sl *ScanlineP8) AddSpan(x int, length int, cover uint) {
 		spanData := sl.spans.Data()
 		sl.curSpan = &spanData[sl.spanIndex]
 		sl.curSpan.Covers = sl.coverPtr
-		sl.curSpan.X = CoordType(x)
-		sl.curSpan.Len = -CoordType(length) // Negative indicates solid span
+		sl.curSpan.X = basics.Int32(x)
+		sl.curSpan.Len = -basics.Int32(length) // Negative indicates solid span
 
 		// Move coverage pointer forward by 1 (only one value stored for solid spans)
 		coverPtrIndex := int(uintptr(unsafe.Pointer(sl.coverPtr))-uintptr(unsafe.Pointer(&coverData[0]))) / int(unsafe.Sizeof(CoverType(0)))

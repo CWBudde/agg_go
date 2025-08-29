@@ -383,7 +383,7 @@ func (g *GradientLinearColorRGBA) ColorAt(index int) color.RGBA {
 }
 
 // GradientLinearColorRGBA8 implements linear color interpolation for RGBA8 colors.
-type GradientLinearColorRGBA8[CS ColorSpace] struct {
+type GradientLinearColorRGBA8[CS color.Space] struct {
 	c1   color.RGBA8[CS] // Start color
 	c2   color.RGBA8[CS] // End color
 	size int             // Number of color steps
@@ -391,7 +391,7 @@ type GradientLinearColorRGBA8[CS ColorSpace] struct {
 }
 
 // NewGradientLinearColorRGBA8 creates a new linear RGBA8 color gradient.
-func NewGradientLinearColorRGBA8[CS ColorSpace](c1, c2 color.RGBA8[CS], size int) *GradientLinearColorRGBA8[CS] {
+func NewGradientLinearColorRGBA8[CS color.Space](c1, c2 color.RGBA8[CS], size int) *GradientLinearColorRGBA8[CS] {
 	if size <= 0 {
 		size = 256
 	}

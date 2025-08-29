@@ -7,13 +7,8 @@ import (
 // Maximum coordinate value for polygon clipping
 const PolyMaxCoord = (1 << 30) - 1
 
-// Coord constraint for coordinate types
-type Coord interface {
-	~int | ~int32 | ~int64 | ~float64
-}
-
 // Conv defines the conversion policy interface (mirrors AGG's ras_conv_* "static" API)
-type Conv[C Coord] interface {
+type Conv[C basics.CoordType] interface {
 	// MulDiv returns round(a*b/c) for the coordinate type
 	MulDiv(a, b, c float64) C
 	Xi(v C) int
@@ -175,7 +170,7 @@ type LineSink interface {
 }
 
 // Rect represents a clipping rectangle for generic coordinate types
-type Rect[C Coord] struct {
+type Rect[C basics.CoordType] struct {
 	X1, Y1, X2, Y2 C
 }
 
@@ -197,7 +192,7 @@ const (
 	ClpY2 = 8
 )
 
-func clippingFlags[C Coord](x, y C, rc Rect[C]) uint {
+func clippingFlags[C basics.CoordType](x, y C, rc Rect[C]) uint {
 	var f uint
 	if x < rc.X1 {
 		f |= ClpX1
@@ -212,7 +207,7 @@ func clippingFlags[C Coord](x, y C, rc Rect[C]) uint {
 	return f
 }
 
-func clippingFlagsY[C Coord](y C, rc Rect[C]) uint {
+func clippingFlagsY[C basics.CoordType](y C, rc Rect[C]) uint {
 	if y < rc.Y1 {
 		return ClpY1
 	}
@@ -224,7 +219,7 @@ func clippingFlagsY[C Coord](y C, rc Rect[C]) uint {
 
 // RasterizerSlClip implements the scanline clipping rasterizer.
 // Equivalent to AGG's rasterizer_sl_clip<Conv> template class.
-type RasterizerSlClip[C Coord, V Conv[C]] struct {
+type RasterizerSlClip[C basics.CoordType, V Conv[C]] struct {
 	conv     V
 	clipBox  Rect[C]
 	x1, y1   C
@@ -233,7 +228,7 @@ type RasterizerSlClip[C Coord, V Conv[C]] struct {
 }
 
 // NewRasterizerSlClip creates a new scanline clipping rasterizer
-func NewRasterizerSlClip[C Coord, V Conv[C]](conv V) *RasterizerSlClip[C, V] {
+func NewRasterizerSlClip[C basics.CoordType, V Conv[C]](conv V) *RasterizerSlClip[C, V] {
 	return &RasterizerSlClip[C, V]{
 		conv:     conv,
 		clipping: false,
