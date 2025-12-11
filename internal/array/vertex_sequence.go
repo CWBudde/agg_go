@@ -12,6 +12,10 @@ import (
 // based on a validation function. This is equivalent to AGG's vertex_sequence<T, S>.
 // The type T must implement a callable operator that returns true if the vertex
 // should be kept or false if it should be filtered out.
+//
+// Deprecated: Use concrete types VertexDistSequence or LineAAVertexSequence instead.
+// This generic version requires any() casts for distance calculations.
+// It is kept only for VertexCmdSequence compatibility.
 type VertexSequence[T VertexFilter] struct {
 	storage *PodBVector[T]
 }
@@ -307,9 +311,225 @@ func (vs *VertexCmdSequence) RemoveAt(index int) {
 	vs.VertexSequence = newSeq.VertexSequence
 }
 
+// VertexDistSequence is a concrete vertex sequence for VertexDist.
+// This eliminates the need for any() casts in CalculateDistances.
+type VertexDistSequence struct {
+	storage *PodBVector[VertexDist]
+}
+
+// NewVertexDistSequence creates a new vertex distance sequence with default block scale.
+func NewVertexDistSequence() *VertexDistSequence {
+	return &VertexDistSequence{
+		storage: NewPodBVectorWithScale[VertexDist](NewBlockScale(6)),
+	}
+}
+
+// NewVertexDistSequenceWithScale creates a new vertex distance sequence with specified block scale.
+func NewVertexDistSequenceWithScale(scale BlockScale) *VertexDistSequence {
+	return &VertexDistSequence{
+		storage: NewPodBVectorWithScale[VertexDist](scale),
+	}
+}
+
+// Size returns the number of vertices in the sequence.
+func (vs *VertexDistSequence) Size() int {
+	return vs.storage.Size()
+}
+
+// Get returns the vertex at the specified index.
+func (vs *VertexDistSequence) Get(index int) VertexDist {
+	return vs.storage.At(index)
+}
+
+// Add adds a vertex to the sequence after validation.
+func (vs *VertexDistSequence) Add(val VertexDist) {
+	if vs.storage.Size() > 1 {
+		prev := vs.storage.At(vs.storage.Size() - 2)
+		curr := vs.storage.At(vs.storage.Size() - 1)
+		if !prev.Validate(curr) {
+			vs.storage.RemoveLast()
+		}
+	}
+	vs.storage.Add(val)
+}
+
+// ModifyLast replaces the last vertex with a new one after validation.
+func (vs *VertexDistSequence) ModifyLast(val VertexDist) {
+	vs.storage.RemoveLast()
+	vs.Add(val)
+}
+
+// Close processes the sequence for closure and removes invalid vertices.
+func (vs *VertexDistSequence) Close(closed bool) {
+	// Remove trailing vertices that don't validate
+	for vs.storage.Size() > 1 {
+		prev := vs.storage.At(vs.storage.Size() - 2)
+		curr := vs.storage.At(vs.storage.Size() - 1)
+		if prev.Validate(curr) {
+			break
+		}
+		last := vs.storage.At(vs.storage.Size() - 1)
+		vs.storage.RemoveLast()
+		vs.ModifyLast(last)
+	}
+
+	// If closed, validate the last vertex against the first
+	if closed {
+		for vs.storage.Size() > 1 {
+			last := vs.storage.At(vs.storage.Size() - 1)
+			first := vs.storage.At(0)
+			if last.Validate(first) {
+				break
+			}
+			vs.storage.RemoveLast()
+		}
+	}
+
+	vs.CalculateDistances()
+}
+
+// CalculateDistances calculates and stores distances between consecutive vertices.
+// No any() casts needed - we know we're working with VertexDist.
+func (vs *VertexDistSequence) CalculateDistances() {
+	for i := 0; i < vs.storage.Size()-1; i++ {
+		curr := vs.storage.At(i)
+		next := vs.storage.At(i + 1)
+		curr.CalculateDistance(next)
+		vs.storage.Set(i, curr)
+	}
+}
+
+// RemoveAll clears all vertices from the sequence.
+func (vs *VertexDistSequence) RemoveAll() {
+	vs.storage.RemoveAll()
+}
+
+// At returns the vertex at the specified index.
+func (vs *VertexDistSequence) At(index int) VertexDist {
+	return vs.storage.At(index)
+}
+
+// Set modifies the vertex at the specified index.
+func (vs *VertexDistSequence) Set(index int, val VertexDist) {
+	vs.storage.Set(index, val)
+}
+
+// RemoveLast removes the last vertex from the sequence.
+func (vs *VertexDistSequence) RemoveLast() {
+	vs.storage.RemoveLast()
+}
+
+// LineAAVertexSequence is a concrete vertex sequence for LineAAVertex.
+// This eliminates the need for any() casts in CalculateDistances.
+type LineAAVertexSequence struct {
+	storage *PodBVector[LineAAVertex]
+}
+
+// NewLineAAVertexSequence creates a new line AA vertex sequence with default block scale.
+func NewLineAAVertexSequence() *LineAAVertexSequence {
+	return &LineAAVertexSequence{
+		storage: NewPodBVectorWithScale[LineAAVertex](NewBlockScale(6)),
+	}
+}
+
+// NewLineAAVertexSequenceWithScale creates a new line AA vertex sequence with specified block scale.
+func NewLineAAVertexSequenceWithScale(scale BlockScale) *LineAAVertexSequence {
+	return &LineAAVertexSequence{
+		storage: NewPodBVectorWithScale[LineAAVertex](scale),
+	}
+}
+
+// Size returns the number of vertices in the sequence.
+func (vs *LineAAVertexSequence) Size() int {
+	return vs.storage.Size()
+}
+
+// Get returns the vertex at the specified index.
+func (vs *LineAAVertexSequence) Get(index int) LineAAVertex {
+	return vs.storage.At(index)
+}
+
+// Add adds a vertex to the sequence after validation.
+func (vs *LineAAVertexSequence) Add(val LineAAVertex) {
+	if vs.storage.Size() > 1 {
+		prev := vs.storage.At(vs.storage.Size() - 2)
+		curr := vs.storage.At(vs.storage.Size() - 1)
+		if !prev.Validate(curr) {
+			vs.storage.RemoveLast()
+		}
+	}
+	vs.storage.Add(val)
+}
+
+// ModifyLast replaces the last vertex with a new one after validation.
+func (vs *LineAAVertexSequence) ModifyLast(val LineAAVertex) {
+	vs.storage.RemoveLast()
+	vs.Add(val)
+}
+
+// Close processes the sequence for closure and removes invalid vertices.
+func (vs *LineAAVertexSequence) Close(closed bool) {
+	// Remove trailing vertices that don't validate
+	for vs.storage.Size() > 1 {
+		prev := vs.storage.At(vs.storage.Size() - 2)
+		curr := vs.storage.At(vs.storage.Size() - 1)
+		if prev.Validate(curr) {
+			break
+		}
+		last := vs.storage.At(vs.storage.Size() - 1)
+		vs.storage.RemoveLast()
+		vs.ModifyLast(last)
+	}
+
+	// If closed, validate the last vertex against the first
+	if closed {
+		for vs.storage.Size() > 1 {
+			last := vs.storage.At(vs.storage.Size() - 1)
+			first := vs.storage.At(0)
+			if last.Validate(first) {
+				break
+			}
+			vs.storage.RemoveLast()
+		}
+	}
+
+	vs.CalculateDistances()
+}
+
+// CalculateDistances calculates and stores distances between consecutive vertices.
+// No any() casts needed - we know we're working with LineAAVertex.
+func (vs *LineAAVertexSequence) CalculateDistances() {
+	for i := 0; i < vs.storage.Size()-1; i++ {
+		curr := vs.storage.At(i)
+		next := vs.storage.At(i + 1)
+		curr.CalculateDistance(next)
+		vs.storage.Set(i, curr)
+	}
+}
+
+// RemoveAll clears all vertices from the sequence.
+func (vs *LineAAVertexSequence) RemoveAll() {
+	vs.storage.RemoveAll()
+}
+
+// At returns the vertex at the specified index.
+func (vs *LineAAVertexSequence) At(index int) LineAAVertex {
+	return vs.storage.At(index)
+}
+
+// Set modifies the vertex at the specified index.
+func (vs *LineAAVertexSequence) Set(index int, val LineAAVertex) {
+	vs.storage.Set(index, val)
+}
+
+// RemoveLast removes the last vertex from the sequence.
+func (vs *LineAAVertexSequence) RemoveLast() {
+	vs.storage.RemoveLast()
+}
+
 // ShortenPath shortens a vertex sequence from the end by the specified distance.
 // This is a port of AGG's shorten_path template function.
-func ShortenPath(vs *VertexSequence[VertexDist], s float64, closed bool) {
+func ShortenPath(vs *VertexDistSequence, s float64, closed bool) {
 	if s > 0.0 && vs.Size() > 1 {
 		var d float64
 		n := vs.Size() - 2

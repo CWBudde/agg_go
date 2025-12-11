@@ -119,11 +119,11 @@ func TestRenderScanlinesCompound(t *testing.T) {
 		}
 		scanlineAA := &MockScanline{}
 		scanlineBin := &MockScanline{}
-		baseRenderer := &MockBaseRenderer[string]{}
-		spanAllocator := &MockSpanAllocator[string]{}
-		styleHandler := &MockStyleHandler[string]{}
+		baseRenderer := &MockBaseRenderer[color.RGBA8[color.Linear]]{}
+		spanAllocator := &MockSpanAllocator[color.RGBA8[color.Linear]]{}
+		styleHandler := &MockStyleHandler[color.RGBA8[color.Linear]]{}
 
-		RenderScanlinesCompound(rasterizer, scanlineAA, scanlineBin,
+		RenderScanlinesCompound[color.RGBA8[color.Linear], *color.RGBA8[color.Linear]](rasterizer, scanlineAA, scanlineBin,
 			baseRenderer, spanAllocator, styleHandler)
 
 		if len(spanAllocator.allocations) > 0 {
@@ -149,14 +149,14 @@ func TestRenderScanlinesCompound(t *testing.T) {
 			spans:    []SpanData{{X: 2, Len: 3, Covers: []basics.Int8u{255, 200, 150}}},
 		}
 		scanlineBin := &MockScanline{}
-		baseRenderer := &MockBaseRenderer[string]{}
-		spanAllocator := &MockSpanAllocator[string]{}
-		styleHandler := &MockStyleHandler[string]{
+		baseRenderer := &MockBaseRenderer[color.RGBA8[color.Linear]]{}
+		spanAllocator := &MockSpanAllocator[color.RGBA8[color.Linear]]{}
+		styleHandler := &MockStyleHandler[color.RGBA8[color.Linear]]{
 			solidFlags: []bool{true}, // Style 100 is solid
-			colors:     []string{"red"},
+			colors:     []color.RGBA8[color.Linear]{{R: 255, G: 0, B: 0, A: 255}},
 		}
 
-		RenderScanlinesCompound(rasterizer, scanlineAA, scanlineBin,
+		RenderScanlinesCompound[color.RGBA8[color.Linear], *color.RGBA8[color.Linear]](rasterizer, scanlineAA, scanlineBin,
 			baseRenderer, spanAllocator, styleHandler)
 
 		// Should have allocated the main color span buffer
@@ -189,13 +189,13 @@ func TestRenderScanlinesCompound(t *testing.T) {
 			spans:    []SpanData{{X: 5, Len: 2, Covers: []basics.Int8u{255, 128}}},
 		}
 		scanlineBin := &MockScanline{}
-		baseRenderer := &MockBaseRenderer[string]{}
-		spanAllocator := &MockSpanAllocator[string]{}
-		styleHandler := &MockStyleHandler[string]{
+		baseRenderer := &MockBaseRenderer[color.RGBA8[color.Linear]]{}
+		spanAllocator := &MockSpanAllocator[color.RGBA8[color.Linear]]{}
+		styleHandler := &MockStyleHandler[color.RGBA8[color.Linear]]{
 			solidFlags: []bool{false}, // Style ID 200 is not solid - but need to check index 0
 		}
 
-		RenderScanlinesCompound(rasterizer, scanlineAA, scanlineBin,
+		RenderScanlinesCompound[color.RGBA8[color.Linear], *color.RGBA8[color.Linear]](rasterizer, scanlineAA, scanlineBin,
 			baseRenderer, spanAllocator, styleHandler)
 
 		// Should have allocated spans
@@ -241,14 +241,14 @@ func TestRenderScanlinesCompound(t *testing.T) {
 			numSpans: 1,
 			spans:    []SpanData{{X: 1, Len: 3, Covers: []basics.Int8u{255, 255, 255}}},
 		}
-		baseRenderer := &MockBaseRenderer[string]{}
-		spanAllocator := &MockSpanAllocator[string]{}
-		styleHandler := &MockStyleHandler[string]{
+		baseRenderer := &MockBaseRenderer[color.RGBA8[color.Linear]]{}
+		spanAllocator := &MockSpanAllocator[color.RGBA8[color.Linear]]{}
+		styleHandler := &MockStyleHandler[color.RGBA8[color.Linear]]{
 			solidFlags: []bool{true, true}, // Both styles are solid
-			colors:     []string{"red", "blue"},
+			colors:     []color.RGBA8[color.Linear]{{R: 255, G: 0, B: 0, A: 255}, {R: 0, G: 0, B: 255, A: 255}},
 		}
 
-		RenderScanlinesCompound(rasterizer, scanlineAA, scanlineBin,
+		RenderScanlinesCompound[color.RGBA8[color.Linear], *color.RGBA8[color.Linear]](rasterizer, scanlineAA, scanlineBin,
 			baseRenderer, spanAllocator, styleHandler)
 
 		// Should process multiple styles and emit final result
@@ -263,101 +263,7 @@ func TestRenderScanlinesCompound(t *testing.T) {
 	})
 }
 
-// Test blendColorWithCover function with different color types
-
-func TestBlendColorWithCover_RGBA8Linear_FullCover(t *testing.T) {
-	var dest color.RGBA8[color.Linear]
-	src := color.RGBA8[color.Linear]{R: 100, G: 150, B: 200, A: 255}
-
-	blendColorWithCover(&dest, src, basics.CoverFull)
-
-	if dest != src {
-		t.Errorf("Expected dest to equal src with full cover, got %+v, want %+v", dest, src)
-	}
-}
-
-func TestBlendColorWithCover_RGBA8Linear_PartialCover(t *testing.T) {
-	dest := color.RGBA8[color.Linear]{R: 50, G: 75, B: 100, A: 128}
-	src := color.RGBA8[color.Linear]{R: 100, G: 150, B: 200, A: 255}
-	cover := basics.Int8u(127) // ~50% cover
-
-	expected := dest
-	expected.AddWithCover(src, cover)
-
-	blendColorWithCover(&dest, src, cover)
-
-	if dest != expected {
-		t.Errorf("Expected dest %+v, got %+v", expected, dest)
-	}
-}
-
-func TestBlendColorWithCover_RGBA8SRGB_FullCover(t *testing.T) {
-	var dest color.RGBA8[color.SRGB]
-	src := color.RGBA8[color.SRGB]{R: 100, G: 150, B: 200, A: 255}
-
-	blendColorWithCover(&dest, src, basics.CoverFull)
-
-	if dest != src {
-		t.Errorf("Expected dest to equal src with full cover, got %+v, want %+v", dest, src)
-	}
-}
-
-func TestBlendColorWithCover_RGBA16Linear_PartialCover(t *testing.T) {
-	dest := color.RGBA16[color.Linear]{R: 12800, G: 19200, B: 25600, A: 32768}
-	src := color.RGBA16[color.Linear]{R: 25600, G: 38400, B: 51200, A: 65535}
-	cover := basics.Int8u(127) // ~50% cover
-
-	expected := dest
-	expected.AddWithCover(src, cover)
-
-	blendColorWithCover(&dest, src, cover)
-
-	if dest != expected {
-		t.Errorf("Expected dest %+v, got %+v", expected, dest)
-	}
-}
-
-func TestBlendColorWithCover_RGBA32Linear_PartialCover(t *testing.T) {
-	dest := color.RGBA32[color.Linear]{R: 0.2, G: 0.3, B: 0.4, A: 0.5}
-	src := color.RGBA32[color.Linear]{R: 0.4, G: 0.6, B: 0.8, A: 1.0}
-	cover := basics.Int8u(127) // ~50% cover
-
-	expected := dest
-	expected.AddWithCover(src, cover)
-
-	blendColorWithCover(&dest, src, cover)
-
-	if dest != expected {
-		t.Errorf("Expected dest %+v, got %+v", expected, dest)
-	}
-}
-
-func TestBlendColorWithCover_Gray8Linear_PartialCover(t *testing.T) {
-	dest := color.Gray8[color.Linear]{V: 75, A: 128}
-	src := color.Gray8[color.Linear]{V: 150, A: 255}
-	cover := basics.Int8u(127) // ~50% cover
-
-	expected := dest
-	expected.AddWithCover(src, cover)
-
-	blendColorWithCover(&dest, src, cover)
-
-	if dest != expected {
-		t.Errorf("Expected dest %+v, got %+v", expected, dest)
-	}
-}
-
-func TestBlendColorWithCover_UnsupportedType_Fallback(t *testing.T) {
-	var dest int
-	src := int(42)
-
-	// Should fall back to simple assignment with full cover
-	blendColorWithCover(&dest, src, basics.CoverFull)
-
-	if dest != src {
-		t.Errorf("Expected fallback behavior to assign src to dest, got %d, want %d", dest, src)
-	}
-}
+// Test AddWithCover method directly on color types (used by compound rendering)
 
 // Test RGBA8 AddWithCover method behavior for edge cases
 

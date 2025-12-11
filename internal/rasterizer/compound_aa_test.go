@@ -8,12 +8,12 @@ import (
 
 // MockCompoundClipper provides a simple implementation for testing that generates basic cells
 type MockCompoundClipper struct {
-	outline *RasterizerCellsAA[*CellStyleAA]
+	outline *RasterizerCellsAAStyled
 	lastX   int
 	lastY   int
 }
 
-func NewMockCompoundClipper(outline *RasterizerCellsAA[*CellStyleAA]) *MockCompoundClipper {
+func NewMockCompoundClipper(outline *RasterizerCellsAAStyled) *MockCompoundClipper {
 	return &MockCompoundClipper{outline: outline}
 }
 
@@ -37,7 +37,7 @@ func (m *MockCompoundClipper) MoveTo(x, y float64) {
 	}
 }
 
-func (m *MockCompoundClipper) LineTo(outline *RasterizerCellsAA[*CellStyleAA], x, y float64) {
+func (m *MockCompoundClipper) LineTo(outline *RasterizerCellsAAStyled, x, y float64) {
 	// Convert to subpixel coordinates
 	x2 := basics.IRound(x * basics.PolySubpixelScale)
 	y2 := basics.IRound(y * basics.PolySubpixelScale)

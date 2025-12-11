@@ -36,7 +36,7 @@ func (p *pointSliceConsumer) RemoveAll() {
 type VCGenContour struct {
 	stroker     *basics.MathStroke
 	width       float64
-	srcVertices *array.VertexSequence[basics.VertexDist]
+	srcVertices *array.VertexDistSequence
 	outVertices []basics.Point[float64]
 	consumer    *pointSliceConsumer
 	status      contourStatus
@@ -53,7 +53,7 @@ func NewVCGenContour() *VCGenContour {
 	vc := &VCGenContour{
 		stroker:     basics.NewMathStroke(),
 		width:       1.0,
-		srcVertices: array.NewVertexSequence[basics.VertexDist](),
+		srcVertices: array.NewVertexDistSequence(),
 		outVertices: outVertices,
 		status:      contourInitial,
 		srcVertex:   0,

@@ -21,7 +21,7 @@ type EqualFunc[T any] func(a, b T) bool
 
 // QuickSort performs hybrid quicksort with insertion sort for small arrays.
 // This is equivalent to AGG's quick_sort<Array, Less> function.
-func QuickSort[T any](arr ArrayInterface[T], less LessFunc[T]) {
+func QuickSort[T any](arr GenericArrayInterface[T], less LessFunc[T]) {
 	if arr.Size() < 2 {
 		return
 	}
@@ -133,7 +133,7 @@ func quickSortSlice[T any](arr []T, less LessFunc[T]) {
 // RemoveDuplicates removes duplicates from a sorted array.
 // Returns the number of remaining elements.
 // This is equivalent to AGG's remove_duplicates<Array, Equal> function.
-func RemoveDuplicates[T any](arr ArrayInterface[T], equal EqualFunc[T]) int {
+func RemoveDuplicates[T any](arr GenericArrayInterface[T], equal EqualFunc[T]) int {
 	if arr.Size() < 2 {
 		return arr.Size()
 	}
@@ -168,7 +168,7 @@ func RemoveDuplicatesSlice[T any](arr []T, equal EqualFunc[T]) int {
 
 // InvertContainer reverses the elements in an array.
 // This is equivalent to AGG's invert_container<Array> function.
-func InvertContainer[T any](arr ArrayInterface[T]) {
+func InvertContainer[T any](arr GenericArrayInterface[T]) {
 	i := 0
 	j := arr.Size() - 1
 	for i < j {
@@ -194,7 +194,7 @@ func InvertSlice[T any](arr []T) {
 
 // BinarySearchPos finds the position where a value should be inserted in a sorted array.
 // This is equivalent to AGG's binary_search_pos<Array, Value, Less> function.
-func BinarySearchPos[T any](arr ArrayInterface[T], val T, less LessFunc[T]) int {
+func BinarySearchPos[T any](arr GenericArrayInterface[T], val T, less LessFunc[T]) int {
 	if arr.Size() == 0 {
 		return 0
 	}
@@ -252,13 +252,13 @@ func BinarySearchPosSlice[T any](arr []T, val T, less LessFunc[T]) int {
 // RangeAdaptor provides a view into a subset of an array.
 // This is equivalent to AGG's range_adaptor<Array> template class.
 type RangeAdaptor[T any] struct {
-	array ArrayInterface[T]
+	array GenericArrayInterface[T]
 	start int
 	size  int
 }
 
 // NewRangeAdaptor creates a new range adaptor.
-func NewRangeAdaptor[T any](array ArrayInterface[T], start, size int) *RangeAdaptor[T] {
+func NewRangeAdaptor[T any](array GenericArrayInterface[T], start, size int) *RangeAdaptor[T] {
 	// Clamp start and size to valid bounds
 	if start < 0 {
 		start = 0

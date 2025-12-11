@@ -8,7 +8,7 @@ import (
 
 func TestRasterizerCellsAA_Basic(t *testing.T) {
 	// Create a rasterizer for basic cells
-	rasterizer := NewRasterizerCellsAA[*CellAA](1024)
+	rasterizer := NewRasterizerCellsAASimple(1024)
 
 	// Test initial state
 	if rasterizer.TotalCells() != 0 {
@@ -65,7 +65,7 @@ func TestRasterizerCellsAA_Basic(t *testing.T) {
 }
 
 func TestRasterizerCellsAA_Reset(t *testing.T) {
-	rasterizer := NewRasterizerCellsAA[*CellAA](1024)
+	rasterizer := NewRasterizerCellsAASimple(1024)
 
 	// Add some data
 	x1, y1 := 5<<basics.PolySubpixelShift, 5<<basics.PolySubpixelShift
@@ -85,7 +85,7 @@ func TestRasterizerCellsAA_Reset(t *testing.T) {
 }
 
 func TestRasterizerCellsAA_VerticalLine(t *testing.T) {
-	rasterizer := NewRasterizerCellsAA[*CellAA](1024)
+	rasterizer := NewRasterizerCellsAASimple(1024)
 
 	// Test vertical line (special case in Line method)
 	x := 10 << basics.PolySubpixelShift
@@ -113,7 +113,7 @@ func TestRasterizerCellsAA_VerticalLine(t *testing.T) {
 }
 
 func TestRasterizerCellsAA_HorizontalLine(t *testing.T) {
-	rasterizer := NewRasterizerCellsAA[*CellAA](1024)
+	rasterizer := NewRasterizerCellsAASimple(1024)
 
 	// Test horizontal line
 	x1 := 5 << basics.PolySubpixelShift

@@ -565,3 +565,112 @@ func (pv *PodVector[T]) Assign(other *PodVector[T]) {
 		copy(pv.array[:pv.size], other.array[:other.size])
 	}
 }
+
+// PodStructArray is a dynamic array for POD structs (unconstrained).
+// This is used for span types and other POD structures in AGG that
+// don't fit the any constraint but are still safe for array storage.
+type PodStructArray[T any] struct {
+	array []T
+	size  int
+}
+
+// NewPodStructArray creates a new dynamic POD struct array.
+func NewPodStructArray[T any]() *PodStructArray[T] {
+	return &PodStructArray[T]{
+		array: nil,
+		size:  0,
+	}
+}
+
+// NewPodStructArrayWithSize creates a new dynamic POD struct array with the specified size.
+func NewPodStructArrayWithSize[T any](size int) *PodStructArray[T] {
+	var array []T
+	if size > 0 {
+		array = make([]T, size)
+	}
+	return &PodStructArray[T]{
+		array: array,
+		size:  size,
+	}
+}
+
+// Size returns the number of elements.
+func (psa *PodStructArray[T]) Size() int {
+	return psa.size
+}
+
+// At returns the element at the specified index with bounds checking.
+func (psa *PodStructArray[T]) At(i int) T {
+	if i < 0 || i >= psa.size {
+		panic(fmt.Sprintf("index %d out of bounds [0, %d)", i, psa.size))
+	}
+	return psa.array[i]
+}
+
+// Set sets the element at the specified index with bounds checking.
+func (psa *PodStructArray[T]) Set(i int, v T) {
+	if i < 0 || i >= psa.size {
+		panic(fmt.Sprintf("index %d out of bounds [0, %d)", i, psa.size))
+	}
+	psa.array[i] = v
+}
+
+// ValueAt returns the element at the specified index (unsafe, may panic).
+func (psa *PodStructArray[T]) ValueAt(i int) T {
+	return psa.array[i]
+}
+
+// Resize changes the size of the array, reallocating if necessary.
+func (psa *PodStructArray[T]) Resize(size int) {
+	if size == psa.size {
+		return
+	}
+
+	if size == 0 {
+		psa.array = nil
+		psa.size = 0
+		return
+	}
+
+	newArray := make([]T, size)
+	if psa.array != nil {
+		copyLen := basics.IMin(psa.size, size)
+		copy(newArray[:copyLen], psa.array[:copyLen])
+	}
+
+	psa.array = newArray
+	psa.size = size
+}
+
+// Data returns the underlying slice.
+func (psa *PodStructArray[T]) Data() []T {
+	if psa.array == nil {
+		return nil
+	}
+	return psa.array[:psa.size]
+}
+
+// Allocate allocates n elements. All data is lost, but elements can be accessed.
+func (psa *PodStructArray[T]) Allocate(size int) {
+	if size == 0 {
+		psa.array = nil
+		psa.size = 0
+		return
+	}
+
+	psa.array = make([]T, size)
+	psa.size = size
+}
+
+// Zero fills the array with zero values.
+func (psa *PodStructArray[T]) Zero() {
+	var zero T
+	for i := 0; i < psa.size; i++ {
+		psa.array[i] = zero
+	}
+}
+
+// Clear clears all elements (sets size to 0).
+func (psa *PodStructArray[T]) Clear() {
+	psa.size = 0
+}

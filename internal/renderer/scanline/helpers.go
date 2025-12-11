@@ -2,10 +2,7 @@
 package scanline
 
 import (
-	"reflect"
-
 	"agg_go/internal/basics"
-	"agg_go/internal/color"
 )
 
 // RenderScanlines is a generic scanline rendering function that works with any renderer.
@@ -84,7 +81,11 @@ func RenderAllPaths[C any](ras RasterizerInterface, sl ScanlineInterface, render
 
 // RenderScanlinesCompound renders scanlines using compound rasterizer with multiple styles.
 // This corresponds to AGG's render_scanlines_compound function.
-func RenderScanlinesCompound[C any](ras CompoundRasterizerInterface, slAA ScanlineInterface,
+// PC is the pointer type constraint that ensures *C has AddWithCover method for color blending.
+func RenderScanlinesCompound[C any, PC interface {
+	*C
+	AddWithCover(src C, cover basics.Int8u)
+}](ras CompoundRasterizerInterface, slAA ScanlineInterface,
 	slBin ScanlineInterface, ren BaseRendererInterface[C], alloc SpanAllocatorInterface[C],
 	styleHandler StyleHandlerInterface[C],
 ) {
@@ -131,7 +132,7 @@ func RenderScanlinesCompound[C any](ras CompoundRasterizerInterface, slAA Scanli
 		} else {
 			// Multiple styles - use compound rendering
 			if ras.SweepScanlineWithStyle(slBin, -1) {
-				renderCompoundMultipleStyles(ras, slAA, slBin, ren, alloc,
+				renderCompoundMultipleStyles[C, PC](ras, slAA, slBin, ren, alloc,
 					styleHandler, colorSpan, mixBuffer, minX, numStyles)
 			}
 		}
@@ -161,7 +162,11 @@ func renderCompoundSpanGenerated[C any](sl ScanlineInterface, ren BaseRendererIn
 }
 
 // renderCompoundMultipleStyles renders scanlines with multiple styles using compound rendering.
-func renderCompoundMultipleStyles[C any](ras CompoundRasterizerInterface, slAA ScanlineInterface,
+// PC is the pointer type constraint that ensures *C has AddWithCover method for color blending.
+func renderCompoundMultipleStyles[C any, PC interface {
+	*C
+	AddWithCover(src C, cover basics.Int8u)
+}](ras CompoundRasterizerInterface, slAA ScanlineInterface,
 	slBin ScanlineInterface, ren BaseRendererInterface[C], alloc SpanAllocatorInterface[C],
 	styleHandler StyleHandlerInterface[C], colorSpan []C, mixBuffer []C,
 	minX int, numStyles int,
@@ -203,10 +208,10 @@ func renderCompoundMultipleStyles[C any](ras CompoundRasterizerInterface, slAA S
 
 				if solid {
 					// Solid color processing
-					renderCompoundSolidStyle(span, styleHandler, style, mixBuffer, coverBuffer, minX)
+					renderCompoundSolidStyle[C, PC](span, styleHandler, style, mixBuffer, coverBuffer, minX)
 				} else {
 					// Span generator processing
-					renderCompoundGeneratedStyle(span, slAA, styleHandler, style,
+					renderCompoundGeneratedStyle[C, PC](span, slAA, styleHandler, style,
 						colorSpan, mixBuffer, coverBuffer, minX, alloc)
 				}
 
@@ -235,7 +240,11 @@ func renderCompoundMultipleStyles[C any](ras CompoundRasterizerInterface, slAA S
 }
 
 // renderCompoundSolidStyle renders a span with solid color for compound rendering.
-func renderCompoundSolidStyle[C any](span SpanData, styleHandler StyleHandlerInterface[C],
+// PC is the pointer type constraint that ensures *C has AddWithCover method.
+func renderCompoundSolidStyle[C any, PC interface {
+	*C
+	AddWithCover(src C, cover basics.Int8u)
+}](span SpanData, styleHandler StyleHandlerInterface[C],
 	style int, mixBuffer []C, coverBuffer []basics.Int8u, minX int,
 ) {
 	sourceColor := styleHandler.Color(style)
@@ -250,14 +259,18 @@ func renderCompoundSolidStyle[C any](span SpanData, styleHandler StyleHandlerInt
 		}
 
 		if cover > 0 {
-			blendColorWithCover(&mixBuffer[bufferIndex], sourceColor, cover)
+			PC(&mixBuffer[bufferIndex]).AddWithCover(sourceColor, cover)
 			coverBuffer[bufferIndex] += cover
 		}
 	}
 }
 
 // renderCompoundGeneratedStyle renders a span with generated colors for compound rendering.
-func renderCompoundGeneratedStyle[C any](span SpanData, sl ScanlineInterface,
+// PC is the pointer type constraint that ensures *C has AddWithCover method.
+func renderCompoundGeneratedStyle[C any, PC interface {
+	*C
+	AddWithCover(src C, cover basics.Int8u)
+}](span SpanData, sl ScanlineInterface,
 	styleHandler StyleHandlerInterface[C], style int, colorSpan []C,
 	mixBuffer []C, coverBuffer []basics.Int8u, minX int, alloc SpanAllocatorInterface[C],
 ) {
@@ -274,54 +287,9 @@ func renderCompoundGeneratedStyle[C any](span SpanData, sl ScanlineInterface,
 		}
 
 		if cover > 0 {
-			blendColorWithCover(&mixBuffer[bufferIndex], colors[i], cover)
+			PC(&mixBuffer[bufferIndex]).AddWithCover(colors[i], cover)
 			coverBuffer[bufferIndex] += cover
 		}
 	}
 }
 
-// blendColorWithCover performs proper color blending with cover value using AddWithCover methods
-func blendColorWithCover[C any](dest *C, src C, cover basics.Int8u) {
-	// Use type switches to handle different color types
-	switch destPtr := any(dest).(type) {
-	case *color.RGBA8[color.Linear]:
-		if srcColor, ok := any(src).(color.RGBA8[color.Linear]); ok {
-			destPtr.AddWithCover(srcColor, cover)
-		}
-	case *color.RGBA8[color.SRGB]:
-		if srcColor, ok := any(src).(color.RGBA8[color.SRGB]); ok {
-			destPtr.AddWithCover(srcColor, cover)
-		}
-	case *color.RGBA16[color.Linear]:
-		if srcColor, ok := any(src).(color.RGBA16[color.Linear]); ok {
-			destPtr.AddWithCover(srcColor, cover)
-		}
-	case *color.RGBA16[color.SRGB]:
-		if srcColor, ok := any(src).(color.RGBA16[color.SRGB]); ok {
-			destPtr.AddWithCover(srcColor, cover)
-		}
-	case *color.RGBA32[color.Linear]:
-		if srcColor, ok := any(src).(color.RGBA32[color.Linear]); ok {
-			destPtr.AddWithCover(srcColor, cover)
-		}
-	case *color.RGBA32[color.SRGB]:
-		if srcColor, ok := any(src).(color.RGBA32[color.SRGB]); ok {
-			destPtr.AddWithCover(srcColor, cover)
-		}
-	case *color.Gray8[color.Linear]:
-		if srcColor, ok := any(src).(color.Gray8[color.Linear]); ok {
-			destPtr.AddWithCover(srcColor, cover)
-		}
-	case *color.Gray8[color.SRGB]:
-		if srcColor, ok := any(src).(color.Gray8[color.SRGB]); ok {
-			destPtr.AddWithCover(srcColor, cover)
-		}
-	default:
-		// Fallback to the simplified approach if the color type doesn't support AddWithCover
-		if cover == basics.CoverFull {
-			*dest = src
-		} else if reflect.ValueOf(*dest).IsZero() {
-			*dest = src
-		}
-	}
-}

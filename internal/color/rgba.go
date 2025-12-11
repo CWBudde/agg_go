@@ -4,8 +4,6 @@ package color
 
 import (
 	"math"
-
-	"agg_go/internal/basics"
 )
 
 // ColorOrder defines component ordering for different pixel formats
@@ -21,12 +19,6 @@ var (
 	OrderABGR = ColorOrder{R: 3, G: 2, B: 1, A: 0}
 	OrderBGRA = ColorOrder{R: 2, G: 1, B: 0, A: 3}
 )
-
-// ColorBlender defines the interface for colors that can be blended with cover values
-// for compound rendering operations. This matches the C++ AGG add(color, cover) method.
-type ColorBlender interface {
-	AddWithCover(c ColorBlender, cover basics.Int8u)
-}
 
 // RGBA represents a floating-point RGBA color (base type)
 type RGBA struct {

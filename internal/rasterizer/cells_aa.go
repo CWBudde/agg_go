@@ -24,6 +24,9 @@ type SortedY struct {
 // RasterizerCellsAA implements the main rasterization algorithm.
 // This is an internal class used by the rasterizer and should not be used directly.
 // It's equivalent to AGG's rasterizer_cells_aa<Cell> template class.
+//
+// Deprecated: Use RasterizerCellsAASimple for CellAA or RasterizerCellsAAStyled for CellStyleAA.
+// This generic version uses runtime type assertions which violate the project's design principles.
 type RasterizerCellsAA[Cell CellInterface] struct {
 	numBlocks      uint32
 	maxBlocks      uint32

@@ -99,7 +99,7 @@ type CompoundClipInterface interface {
 	ResetClipping()
 	ClipBox(x1, y1, x2, y2 float64)
 	MoveTo(x, y float64)
-	LineTo(outline *RasterizerCellsAA[*CellStyleAA], x, y float64)
+	LineTo(outline *RasterizerCellsAAStyled, x, y float64)
 }
 
 // RasterizerCompoundAA implements compound anti-aliased rasterization.
@@ -107,10 +107,10 @@ type CompoundClipInterface interface {
 // The Clip type parameter allows for different clipping implementations.
 type RasterizerCompoundAA[Clip CompoundClipInterface] struct {
 	// Core rasterization components
-	outline     *RasterizerCellsAA[*CellStyleAA] // Cell rasterizer with style support
-	clipper     Clip                             // Clipping implementation
-	fillingRule basics.FillingRule               // Polygon filling rule
-	layerOrder  basics.LayerOrder                // Layer rendering order
+	outline     *RasterizerCellsAAStyled // Cell rasterizer with style support
+	clipper     Clip                     // Clipping implementation
+	fillingRule basics.FillingRule       // Polygon filling rule
+	layerOrder  basics.LayerOrder        // Layer rendering order
 
 	// Style management
 	styles   *array.PodVector[StyleInfo] // Active styles information
@@ -134,7 +134,7 @@ type RasterizerCompoundAA[Clip CompoundClipInterface] struct {
 // NewRasterizerCompoundAA creates a new compound anti-aliased rasterizer
 func NewRasterizerCompoundAA[Clip CompoundClipInterface](clipper Clip) *RasterizerCompoundAA[Clip] {
 	return &RasterizerCompoundAA[Clip]{
-		outline:     NewRasterizerCellsAA[*CellStyleAA](1024),
+		outline:     NewRasterizerCellsAAStyled(1024),
 		clipper:     clipper,
 		fillingRule: basics.FillNonZero,
 		layerOrder:  basics.LayerDirect,
@@ -187,7 +187,7 @@ func (r *RasterizerCompoundAA[Clip]) LayerOrder(order basics.LayerOrder) {
 
 // Styles sets the left and right style identifiers for subsequent path operations
 func (r *RasterizerCompoundAA[Clip]) Styles(left, right int) {
-	cell := &CellStyleAA{}
+	cell := CellStyleAA{}
 	cell.Initial()
 	cell.Left = int16(left)
 	cell.Right = int16(right)

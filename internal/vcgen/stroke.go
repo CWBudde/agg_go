@@ -25,7 +25,7 @@ const (
 // VCGenStroke generates stroke vertices from input path vertices
 type VCGenStroke struct {
 	stroker     *basics.MathStroke
-	srcVertices *array.VertexSequence[basics.VertexDist]
+	srcVertices *array.VertexDistSequence
 	outVertices *array.PodBVector[basics.PointD]
 	shorten     float64
 	closed      bool
@@ -39,7 +39,7 @@ type VCGenStroke struct {
 func NewVCGenStroke() *VCGenStroke {
 	return &VCGenStroke{
 		stroker:     basics.NewMathStroke(),
-		srcVertices: array.NewVertexSequence[basics.VertexDist](),
+		srcVertices: array.NewVertexDistSequence(),
 		outVertices: array.NewPodBVector[basics.PointD](),
 		shorten:     0.0,
 		closed:      false,
@@ -93,7 +93,7 @@ func (vg *VCGenStroke) shortenPath() {
 	// This matches AGG's agg_shorten_path behavior and mirrors vcgen_dash.
 	if vg.shorten > 0.0 && vg.srcVertices.Size() > 1 {
 		// Convert basics.VertexDist to array.VertexDist for ShortenPath
-		convertedVertices := array.NewVertexSequence[array.VertexDist]()
+		convertedVertices := array.NewVertexDistSequence()
 		for i := 0; i < vg.srcVertices.Size(); i++ {
 			v := vg.srcVertices.At(i)
 			convertedVertices.Add(array.VertexDist{X: v.X, Y: v.Y, Dist: v.Dist})

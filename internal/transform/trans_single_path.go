@@ -29,7 +29,7 @@ type VertexSource interface {
 // This corresponds to AGG's trans_single_path class.
 type TransSinglePath struct {
 	// Source vertices with distance information (exported for testing)
-	SrcVertices *array.VertexSequence[array.VertexDist]
+	SrcVertices *array.VertexDistSequence
 
 	// Base length for scaling (0.0 means use calculated length)
 	baseLength float64
@@ -47,7 +47,7 @@ type TransSinglePath struct {
 // NewTransSinglePath creates a new single path transformation.
 func NewTransSinglePath() *TransSinglePath {
 	return &TransSinglePath{
-		SrcVertices:    array.NewVertexSequenceWithScale[array.VertexDist](array.NewBlockScale(6)),
+		SrcVertices:    array.NewVertexDistSequenceWithScale(array.NewBlockScale(6)),
 		baseLength:     0.0,
 		kindex:         0.0,
 		Status:         StatusInitial,

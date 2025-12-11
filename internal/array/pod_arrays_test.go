@@ -6,7 +6,7 @@ import (
 
 func TestPodArrayAdaptor(t *testing.T) {
 	// Create test data
-	data := []int{1, 2, 3, 4, 5}
+	data := []int32{1, 2, 3, 4, 5}
 	adaptor := NewPodArrayAdaptor(data)
 
 	// Test size
@@ -44,7 +44,7 @@ func TestPodArrayAdaptor(t *testing.T) {
 
 func TestPodAutoArray(t *testing.T) {
 	// Test creation
-	arr := NewPodAutoArray[int](5)
+	arr := NewPodAutoArray[int32](5)
 
 	if arr.Size() != 5 {
 		t.Errorf("Expected size 5, got %d", arr.Size())
@@ -52,18 +52,18 @@ func TestPodAutoArray(t *testing.T) {
 
 	// Test element access and modification
 	for i := 0; i < arr.Size(); i++ {
-		arr.Set(i, i*10)
+		arr.Set(i, int32(i*10))
 	}
 
 	for i := 0; i < arr.Size(); i++ {
-		expected := i * 10
+		expected := int32(i * 10)
 		if arr.At(i) != expected {
 			t.Errorf("At(%d): expected %d, got %d", i, expected, arr.At(i))
 		}
 	}
 
 	// Test creation from data
-	sourceData := []int{10, 20, 30}
+	sourceData := []int32{10, 20, 30}
 	arr2 := NewPodAutoArrayFrom(sourceData)
 
 	if arr2.Size() != 3 {
@@ -77,7 +77,7 @@ func TestPodAutoArray(t *testing.T) {
 	}
 
 	// Test assignment
-	newData := []int{100, 200}
+	newData := []int32{100, 200}
 	arr2.Assign(newData)
 
 	// Should have copied first 2 elements and zeroed the rest
@@ -93,7 +93,7 @@ func TestPodAutoArray(t *testing.T) {
 }
 
 func TestPodAutoVector(t *testing.T) {
-	vec := NewPodAutoVector[int](10)
+	vec := NewPodAutoVector[int32](10)
 
 	// Test initial state
 	if vec.Size() != 0 {
@@ -105,7 +105,7 @@ func TestPodAutoVector(t *testing.T) {
 
 	// Test adding elements
 	for i := 0; i < 5; i++ {
-		vec.Add(i * 2)
+		vec.Add(int32(i * 2))
 	}
 
 	if vec.Size() != 5 {
@@ -113,7 +113,7 @@ func TestPodAutoVector(t *testing.T) {
 	}
 
 	for i := 0; i < vec.Size(); i++ {
-		expected := i * 2
+		expected := int32(i * 2)
 		if vec.At(i) != expected {
 			t.Errorf("At(%d): expected %d, got %d", i, expected, vec.At(i))
 		}
@@ -138,7 +138,7 @@ func TestPodAutoVector(t *testing.T) {
 	}
 
 	// Test capacity overflow
-	vec = NewPodAutoVector[int](2)
+	vec = NewPodAutoVector[int32](2)
 	vec.Add(1)
 	vec.Add(2)
 
@@ -152,24 +152,24 @@ func TestPodAutoVector(t *testing.T) {
 
 func TestPodArray(t *testing.T) {
 	// Test empty creation
-	arr := NewPodArray[int]()
+	arr := NewPodArray[int32]()
 	if arr.Size() != 0 {
 		t.Errorf("Expected size 0, got %d", arr.Size())
 	}
 
 	// Test creation with size
-	arr = NewPodArrayWithSize[int](5)
+	arr = NewPodArrayWithSize[int32](5)
 	if arr.Size() != 5 {
 		t.Errorf("Expected size 5, got %d", arr.Size())
 	}
 
 	// Test element access and modification
 	for i := 0; i < arr.Size(); i++ {
-		arr.Set(i, i+100)
+		arr.Set(i, int32(i+100))
 	}
 
 	for i := 0; i < arr.Size(); i++ {
-		expected := i + 100
+		expected := int32(i + 100)
 		if arr.At(i) != expected {
 			t.Errorf("At(%d): expected %d, got %d", i, expected, arr.At(i))
 		}
@@ -183,7 +183,7 @@ func TestPodArray(t *testing.T) {
 
 	// Check that original data is preserved
 	for i := 0; i < 5; i++ {
-		expected := i + 100
+		expected := int32(i + 100)
 		if arr.At(i) != expected {
 			t.Errorf("After resize, At(%d): expected %d, got %d", i, expected, arr.At(i))
 		}
@@ -202,7 +202,7 @@ func TestPodArray(t *testing.T) {
 	}
 
 	// Test assignment
-	arr3 := NewPodArray[int]()
+	arr3 := NewPodArray[int32]()
 	arr3.Assign(arr)
 
 	if arr3.Size() != arr.Size() {
@@ -217,7 +217,7 @@ func TestPodArray(t *testing.T) {
 }
 
 func TestPodVector(t *testing.T) {
-	vec := NewPodVector[int]()
+	vec := NewPodVector[int32]()
 
 	// Test initial state
 	if vec.Size() != 0 || vec.Capacity() != 0 {
@@ -226,7 +226,7 @@ func TestPodVector(t *testing.T) {
 
 	// Test adding elements (auto-grow)
 	for i := 0; i < 20; i++ {
-		vec.Add(i)
+		vec.Add(int32(i))
 	}
 
 	if vec.Size() != 20 {
@@ -234,13 +234,13 @@ func TestPodVector(t *testing.T) {
 	}
 
 	for i := 0; i < vec.Size(); i++ {
-		if vec.At(i) != i {
+		if vec.At(i) != int32(i) {
 			t.Errorf("At(%d): expected %d, got %d", i, i, vec.At(i))
 		}
 	}
 
 	// Test with initial capacity
-	vec2 := NewPodVectorWithCapacity[int](10, 5)
+	vec2 := NewPodVectorWithCapacity[int32](10, 5)
 	if vec2.Capacity() != 15 {
 		t.Errorf("Expected capacity 15, got %d", vec2.Capacity())
 	}
@@ -288,8 +288,8 @@ func TestPodVector(t *testing.T) {
 	}
 
 	// Test ByteSize
-	if vec.ByteSize() != vec.Size()*8 { // int is 8 bytes on 64-bit
-		t.Errorf("ByteSize: expected %d, got %d", vec.Size()*8, vec.ByteSize())
+	if vec.ByteSize() != vec.Size()*4 { // int32 is 4 bytes
+		t.Errorf("ByteSize: expected %d, got %d", vec.Size()*4, vec.ByteSize())
 	}
 }
 
@@ -322,7 +322,7 @@ func TestPodVectorSerialization(t *testing.T) {
 }
 
 func TestPodVectorBounds(t *testing.T) {
-	vec := NewPodVectorWithCapacity[int](5, 0)
+	vec := NewPodVectorWithCapacity[int32](5, 0)
 	vec.Add(10)
 	vec.Add(20)
 

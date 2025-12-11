@@ -63,12 +63,12 @@ type DrawVars struct {
 // RasterizerOutlineAA provides anti-aliased outline rasterization.
 // This is a port of AGG's rasterizer_outline_aa<Renderer, Coord> template class.
 type RasterizerOutlineAA[R OutlineAARenderer[C], C any] struct {
-	renderer    R                                         // The attached renderer
-	srcVertices *array.VertexSequence[array.LineAAVertex] // Source vertex storage
-	lineJoin    OutlineAAJoin                             // Line join style
-	roundCap    bool                                      // Whether to use round caps
-	startX      int                                       // Starting X coordinate
-	startY      int                                       // Starting Y coordinate
+	renderer    R                              // The attached renderer
+	srcVertices *array.LineAAVertexSequence    // Source vertex storage
+	lineJoin    OutlineAAJoin                  // Line join style
+	roundCap    bool                           // Whether to use round caps
+	startX      int                            // Starting X coordinate
+	startY      int                            // Starting Y coordinate
 }
 
 // NewRasterizerOutlineAA creates a new anti-aliased outline rasterizer.
@@ -80,7 +80,7 @@ func NewRasterizerOutlineAA[R OutlineAARenderer[C], C any](ren R) *RasterizerOut
 
 	return &RasterizerOutlineAA[R, C]{
 		renderer:    ren,
-		srcVertices: array.NewVertexSequence[array.LineAAVertex](),
+		srcVertices: array.NewLineAAVertexSequence(),
 		lineJoin:    join,
 		roundCap:    false,
 		startX:      0,

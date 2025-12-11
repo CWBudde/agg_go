@@ -31,10 +31,10 @@ type VCGenDash struct {
 	currDashStart float64                                 // Current dash start position
 	currDash      uint                                    // Current dash index
 	currRest      float64                                 // Remaining distance in current segment
-	v1            *array.VertexDist                       // Current vertex
-	v2            *array.VertexDist                       // Next vertex
-	srcVertices   *array.VertexSequence[array.VertexDist] // Source vertices storage
-	closed        uint                                    // Whether path is closed
+	v1            *array.VertexDist        // Current vertex
+	v2            *array.VertexDist        // Next vertex
+	srcVertices   *array.VertexDistSequence // Source vertices storage
+	closed        uint                     // Whether path is closed
 	status        DashStatus                              // Current generator status
 	srcVertex     uint                                    // Current source vertex index
 }
@@ -48,7 +48,7 @@ func NewVCGenDash() *VCGenDash {
 		shorten:       0.0,
 		currDashStart: 0.0,
 		currDash:      0,
-		srcVertices:   array.NewVertexSequence[array.VertexDist](),
+		srcVertices:   array.NewVertexDistSequence(),
 		closed:        0,
 		status:        DashStatusInitial,
 		srcVertex:     0,

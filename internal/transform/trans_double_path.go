@@ -11,8 +11,8 @@ import (
 // This corresponds to AGG's trans_double_path class.
 type TransDoublePath struct {
 	// Source vertices for the two paths
-	srcVertices1 *array.VertexSequence[array.VertexDist]
-	srcVertices2 *array.VertexSequence[array.VertexDist]
+	srcVertices1 *array.VertexDistSequence
+	srcVertices2 *array.VertexDistSequence
 
 	// Base dimensions for scaling
 	baseLength float64
@@ -33,8 +33,8 @@ type TransDoublePath struct {
 // NewTransDoublePath creates a new double path transformation.
 func NewTransDoublePath() *TransDoublePath {
 	return &TransDoublePath{
-		srcVertices1:   array.NewVertexSequenceWithScale[array.VertexDist](array.NewBlockScale(6)),
-		srcVertices2:   array.NewVertexSequenceWithScale[array.VertexDist](array.NewBlockScale(6)),
+		srcVertices1:   array.NewVertexDistSequenceWithScale(array.NewBlockScale(6)),
+		srcVertices2:   array.NewVertexDistSequenceWithScale(array.NewBlockScale(6)),
 		baseLength:     0.0,
 		baseHeight:     1.0,
 		kindex1:        0.0,
@@ -155,7 +155,7 @@ func (t *TransDoublePath) AddPaths(vs1, vs2 VertexSource, path1ID, path2ID uint)
 
 // finalizePath prepares a single path for transformation.
 // This corresponds to AGG's finalize_path method.
-func (t *TransDoublePath) finalizePath(vertices *array.VertexSequence[array.VertexDist]) float64 {
+func (t *TransDoublePath) finalizePath(vertices *array.VertexDistSequence) float64 {
 	vertices.Close(false)
 
 	// Remove degenerate final segments (like in AGG)
@@ -240,7 +240,7 @@ func (t *TransDoublePath) TotalLength2() float64 {
 
 // transform1 transforms a point along a single path.
 // This corresponds to AGG's transform1 method.
-func (t *TransDoublePath) transform1(vertices *array.VertexSequence[array.VertexDist],
+func (t *TransDoublePath) transform1(vertices *array.VertexDistSequence,
 	kindex, kx float64, x, y *float64,
 ) {
 	var x1, y1, dx, dy, d, dd float64

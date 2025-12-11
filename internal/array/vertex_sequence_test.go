@@ -5,9 +5,9 @@ import (
 )
 
 func TestNewVertexSequence(t *testing.T) {
-	vs := NewVertexSequence[LineAAVertex]()
+	vs := NewLineAAVertexSequence()
 	if vs == nil {
-		t.Fatalf("NewVertexSequence returned nil")
+		t.Fatalf("NewLineAAVertexSequence returned nil")
 	}
 	if vs.Size() != 0 {
 		t.Errorf("New vertex sequence size = %d, want 0", vs.Size())
@@ -16,9 +16,9 @@ func TestNewVertexSequence(t *testing.T) {
 
 func TestNewVertexSequenceWithScale(t *testing.T) {
 	scale := NewBlockScale(4)
-	vs := NewVertexSequenceWithScale[LineAAVertex](scale)
+	vs := NewLineAAVertexSequenceWithScale(scale)
 	if vs == nil {
-		t.Fatalf("NewVertexSequenceWithScale returned nil")
+		t.Fatalf("NewLineAAVertexSequenceWithScale returned nil")
 	}
 	if vs.Size() != 0 {
 		t.Errorf("New vertex sequence size = %d, want 0", vs.Size())
@@ -54,7 +54,7 @@ func TestLineAAVertexCalculateDistance(t *testing.T) {
 }
 
 func TestVertexSequenceAdd(t *testing.T) {
-	vs := NewVertexSequence[LineAAVertex]()
+	vs := NewLineAAVertexSequence()
 
 	// Add first vertex
 	v1 := NewLineAAVertex(0, 0)
@@ -79,7 +79,7 @@ func TestVertexSequenceAdd(t *testing.T) {
 }
 
 func TestVertexSequenceAddWithFiltering(t *testing.T) {
-	vs := NewVertexSequence[LineAAVertex]()
+	vs := NewLineAAVertexSequence()
 
 	// Add first vertex
 	v1 := NewLineAAVertex(0, 0)
@@ -101,7 +101,7 @@ func TestVertexSequenceAddWithFiltering(t *testing.T) {
 }
 
 func TestVertexSequenceGet(t *testing.T) {
-	vs := NewVertexSequence[LineAAVertex]()
+	vs := NewLineAAVertexSequence()
 
 	v1 := NewLineAAVertex(10, 20)
 	v2 := NewLineAAVertex(1000, 2000)
@@ -121,7 +121,7 @@ func TestVertexSequenceGet(t *testing.T) {
 }
 
 func TestVertexSequenceModifyLast(t *testing.T) {
-	vs := NewVertexSequence[LineAAVertex]()
+	vs := NewLineAAVertexSequence()
 
 	v1 := NewLineAAVertex(0, 0)
 	v2 := NewLineAAVertex(1000, 1000)
@@ -150,7 +150,7 @@ func TestVertexSequenceModifyLast(t *testing.T) {
 }
 
 func TestVertexSequenceClose(t *testing.T) {
-	vs := NewVertexSequence[LineAAVertex]()
+	vs := NewLineAAVertexSequence()
 
 	// Add several vertices
 	vs.Add(NewLineAAVertex(0, 0))
@@ -171,7 +171,7 @@ func TestVertexSequenceClose(t *testing.T) {
 }
 
 func TestVertexSequenceRemoveAll(t *testing.T) {
-	vs := NewVertexSequence[LineAAVertex]()
+	vs := NewLineAAVertexSequence()
 
 	vs.Add(NewLineAAVertex(0, 0))
 	vs.Add(NewLineAAVertex(1000, 1000))
@@ -229,7 +229,7 @@ func TestVertexDistCalculateDistanceSmall(t *testing.T) {
 }
 
 func TestVertexSequenceWithVertexDist(t *testing.T) {
-	vs := NewVertexSequence[VertexDist]()
+	vs := NewVertexDistSequence()
 
 	// Add vertices with sufficient distance
 	vs.Add(NewVertexDist(0.0, 0.0))
@@ -257,7 +257,7 @@ func TestVertexFilterConstraint(t *testing.T) {
 }
 
 func BenchmarkVertexSequenceAdd(b *testing.B) {
-	vs := NewVertexSequence[LineAAVertex]()
+	vs := NewLineAAVertexSequence()
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -267,7 +267,7 @@ func BenchmarkVertexSequenceAdd(b *testing.B) {
 }
 
 func TestLineAAVertexSequenceDistanceCalculation(t *testing.T) {
-	vs := NewVertexSequence[LineAAVertex]()
+	vs := NewLineAAVertexSequence()
 
 	// Add vertices with distances larger than the validation threshold (384)
 	// Using a 300-400-500 triangle scaled by 10 for sufficient distance

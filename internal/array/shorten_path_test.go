@@ -7,7 +7,7 @@ import (
 // TestShortenPath tests the ShortenPath function
 func TestShortenPath(t *testing.T) {
 	// Create a simple path with 3 vertices
-	vs := NewVertexSequence[VertexDist]()
+	vs := NewVertexDistSequence()
 	vs.Add(VertexDist{X: 0, Y: 0, Dist: 10.0})  // Distance to next: 10
 	vs.Add(VertexDist{X: 10, Y: 0, Dist: 10.0}) // Distance to next: 10
 	vs.Add(VertexDist{X: 20, Y: 0, Dist: 0.0})  // End vertex
@@ -30,7 +30,7 @@ func TestShortenPath(t *testing.T) {
 
 // TestShortenPathRemoveVertices tests shortening that removes entire vertices
 func TestShortenPathRemoveVertices(t *testing.T) {
-	vs := NewVertexSequence[VertexDist]()
+	vs := NewVertexDistSequence()
 	vs.Add(VertexDist{X: 0, Y: 0, Dist: 10.0})  // Distance to next: 10
 	vs.Add(VertexDist{X: 10, Y: 0, Dist: 10.0}) // Distance to next: 10
 	vs.Add(VertexDist{X: 20, Y: 0, Dist: 0.0})  // End vertex
@@ -55,7 +55,7 @@ func TestShortenPathRemoveVertices(t *testing.T) {
 
 // TestShortenPathRemoveAll tests shortening that removes vertices when possible
 func TestShortenPathRemoveAll(t *testing.T) {
-	vs := NewVertexSequence[VertexDist]()
+	vs := NewVertexDistSequence()
 	vs.Add(VertexDist{X: 0, Y: 0, Dist: 10.0})
 	vs.Add(VertexDist{X: 10, Y: 0, Dist: 0.0})
 
@@ -71,7 +71,7 @@ func TestShortenPathRemoveAll(t *testing.T) {
 
 // TestShortenPathNoShortening tests shortening by 0
 func TestShortenPathNoShortening(t *testing.T) {
-	vs := NewVertexSequence[VertexDist]()
+	vs := NewVertexDistSequence()
 	vs.Add(VertexDist{X: 0, Y: 0, Dist: 10.0})
 	vs.Add(VertexDist{X: 10, Y: 0, Dist: 0.0})
 
@@ -94,7 +94,7 @@ func TestShortenPathNoShortening(t *testing.T) {
 
 // TestShortenPathClosed tests shortening on closed paths
 func TestShortenPathClosed(t *testing.T) {
-	vs := NewVertexSequence[VertexDist]()
+	vs := NewVertexDistSequence()
 	vs.Add(VertexDist{X: 0, Y: 0, Dist: 10.0})
 	vs.Add(VertexDist{X: 10, Y: 0, Dist: 10.0})
 	vs.Add(VertexDist{X: 10, Y: 10, Dist: 10.0})
@@ -136,7 +136,7 @@ func TestShortenPathClosed(t *testing.T) {
 
 // TestShortenPathSingleVertex tests behavior with single vertex
 func TestShortenPathSingleVertex(t *testing.T) {
-	vs := NewVertexSequence[VertexDist]()
+	vs := NewVertexDistSequence()
 	vs.Add(VertexDist{X: 0, Y: 0, Dist: 0.0})
 
 	// Try to shorten with only one vertex
