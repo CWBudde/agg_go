@@ -2,6 +2,7 @@ package array
 
 import (
 	"testing"
+
 	"agg_go/internal/basics"
 )
 
@@ -375,9 +376,9 @@ func TestVertexCmdSequenceDistanceCalculation(t *testing.T) {
 
 	// Add vertices with distances larger than the validation threshold (epsilon)
 	// Using coordinates that give clear, verifiable distances
-	vs.Add(NewVertexDistCmd(0.0, 0.0, 0, basics.PathCmdMoveTo))       // Distance to next should be 5.0 (3-4-5 triangle)
-	vs.Add(NewVertexDistCmd(3.0, 4.0, 0, basics.PathCmdLineTo))       // Distance to next should be 4.0 (horizontal)
-	vs.Add(NewVertexDistCmd(7.0, 4.0, 0, basics.PathCmdLineTo))       // Last vertex, distance irrelevant
+	vs.Add(NewVertexDistCmd(0.0, 0.0, 0, basics.PathCmdMoveTo)) // Distance to next should be 5.0 (3-4-5 triangle)
+	vs.Add(NewVertexDistCmd(3.0, 4.0, 0, basics.PathCmdLineTo)) // Distance to next should be 4.0 (horizontal)
+	vs.Add(NewVertexDistCmd(7.0, 4.0, 0, basics.PathCmdLineTo)) // Last vertex, distance irrelevant
 
 	// Close the sequence to trigger distance calculations
 	vs.Close(false)
