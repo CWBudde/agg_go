@@ -25,21 +25,18 @@ The project is in early development. The following foundation has been establish
 Based on TASKS.md Phase 1 priorities:
 
 1. **Pixel Formats** (`internal/pixfmt/`)
-
    - Base pixel format interfaces
    - RGB24/RGB32 implementations
    - RGBA32 implementations
    - Grayscale implementations
 
 2. **Scanlines** (`internal/scanline/`)
-
    - Scanline U8 implementation
    - Scanline P8 implementation
    - Binary scanline implementation
    - Storage implementations
 
 3. **Rasterizers** (`internal/rasterizer/`)
-
    - Anti-aliased cell rasterizer
    - Scanline rasterizer
    - Clipping implementations

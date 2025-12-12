@@ -53,7 +53,7 @@ func createDemoRboxes() []*rbox.RboxCtrl[color.RGBA] {
 	rboxes := make([]*rbox.RboxCtrl[color.RGBA], 0, 4)
 
 	// 1. Basic color selection radio button group
-	colorRbox := rbox.NewRboxCtrl(10, 10, 150, 120, false)
+	colorRbox := rbox.NewDefaultRboxCtrl(10, 10, 150, 120, false)
 	colorRbox.AddItem("Red")
 	colorRbox.AddItem("Green")
 	colorRbox.AddItem("Blue")
@@ -62,7 +62,7 @@ func createDemoRboxes() []*rbox.RboxCtrl[color.RGBA] {
 	rboxes = append(rboxes, colorRbox)
 
 	// 2. Graphics quality radio button group with custom colors
-	qualityRbox := rbox.NewRboxCtrl(170, 10, 300, 100, false)
+	qualityRbox := rbox.NewDefaultRboxCtrl(170, 10, 300, 100, false)
 	qualityRbox.AddItem("Low Quality")
 	qualityRbox.AddItem("Medium Quality")
 	qualityRbox.AddItem("High Quality")
@@ -77,7 +77,7 @@ func createDemoRboxes() []*rbox.RboxCtrl[color.RGBA] {
 	rboxes = append(rboxes, qualityRbox)
 
 	// 3. File format radio button group with custom text sizing
-	formatRbox := rbox.NewRboxCtrl(10, 140, 200, 250, false)
+	formatRbox := rbox.NewDefaultRboxCtrl(10, 140, 200, 250, false)
 	formatRbox.AddItem("PNG")
 	formatRbox.AddItem("JPEG")
 	formatRbox.AddItem("BMP")
@@ -89,7 +89,7 @@ func createDemoRboxes() []*rbox.RboxCtrl[color.RGBA] {
 	rboxes = append(rboxes, formatRbox)
 
 	// 4. Single item radio button (edge case)
-	singleRbox := rbox.NewRboxCtrl(220, 140, 320, 170, false)
+	singleRbox := rbox.NewDefaultRboxCtrl(220, 140, 320, 170, false)
 	singleRbox.AddItem("Only Option")
 	singleRbox.SetCurItem(0)
 	rboxes = append(rboxes, singleRbox)
@@ -98,7 +98,7 @@ func createDemoRboxes() []*rbox.RboxCtrl[color.RGBA] {
 }
 
 // demonstrateRbox shows basic rbox functionality
-func demonstrateRbox(r *rbox.RboxCtrl, groupNum int) {
+func demonstrateRbox(r *rbox.RboxCtrl[color.RGBA], groupNum int) {
 	fmt.Printf("Radio Button Group %d:\n", groupNum)
 	fmt.Printf("  Bounds: (%.0f,%.0f) to (%.0f,%.0f)\n", r.X1(), r.Y1(), r.X2(), r.Y2())
 	fmt.Printf("  Number of items: %d\n", r.NumItems())
@@ -125,7 +125,7 @@ func demonstrateRbox(r *rbox.RboxCtrl, groupNum int) {
 }
 
 // demonstrateMouseInteraction simulates mouse clicks on radio buttons
-func demonstrateMouseInteraction(r *rbox.RboxCtrl) {
+func demonstrateMouseInteraction(r *rbox.RboxCtrl[color.RGBA]) {
 	fmt.Printf("Testing mouse interaction on first radio button group:\n")
 
 	originalSelection := r.CurItem()
@@ -159,7 +159,7 @@ func demonstrateMouseInteraction(r *rbox.RboxCtrl) {
 }
 
 // demonstrateArrowKeyNavigation simulates arrow key navigation
-func demonstrateArrowKeyNavigation(r *rbox.RboxCtrl) {
+func demonstrateArrowKeyNavigation(r *rbox.RboxCtrl[color.RGBA]) {
 	fmt.Printf("Testing arrow key navigation on second radio button group:\n")
 
 	// Start with item 0 selected
@@ -202,7 +202,7 @@ func demonstrateArrowKeyNavigation(r *rbox.RboxCtrl) {
 }
 
 // demonstrateVertexGeneration shows vertex generation for all paths
-func demonstrateVertexGeneration(r *rbox.RboxCtrl) {
+func demonstrateVertexGeneration(r *rbox.RboxCtrl[color.RGBA]) {
 	fmt.Printf("Testing vertex generation for third radio button group:\n")
 	fmt.Printf("Number of rendering paths: %d\n", r.NumPaths())
 
@@ -280,7 +280,7 @@ func demonstrateRealWorldUsage() {
 	fmt.Println("\n--- Real World Usage Example ---")
 
 	// Create a settings dialog-style radio button group
-	antiAliasingRbox := rbox.NewRboxCtrl(50, 50, 250, 150, false)
+	antiAliasingRbox := rbox.NewDefaultRboxCtrl(50, 50, 250, 150, false)
 
 	// Add anti-aliasing options
 	antiAliasingRbox.AddItem("No Anti-aliasing")

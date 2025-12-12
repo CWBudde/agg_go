@@ -5,6 +5,16 @@ package pixfmt
 import (
 	"agg_go/internal/basics"
 	"agg_go/internal/color"
+	"agg_go/internal/order"
+)
+
+// Re-export order types for convenience.
+// This allows users to write pixfmt.RGBAOrder instead of importing order separately.
+type (
+	RGBAOrder = order.RGBA
+	BGRAOrder = order.BGRA
+	ARGBOrder = order.ARGB
+	ABGROrder = order.ABGR
 )
 
 // Pixel format category tags for type safety

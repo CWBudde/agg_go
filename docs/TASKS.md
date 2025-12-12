@@ -9,7 +9,6 @@ This checklist tracks remaining TODO items and missing features in the AGG Go po
 `rg -n "TODO|FIXME|XXX|HACK" --glob "**/*.go" -S --sort path`
 
 - [ ] **Font System**
-
   - [ ] `internal/font/freetype2/engine.go:83`: Support custom memory management (optional enhancement)
 
 ---

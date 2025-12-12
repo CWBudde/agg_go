@@ -126,7 +126,7 @@ func (w *scanlineWrapper) Begin() renscan.ScanlineIterator {
 
 // rasterizerAdapter adapts internal rasterizer to renderer/scanline.RasterizerInterface
 type rasterizerAdapter struct {
-	ras *rasterizer.RasterizerScanlineAA[*rasterizer.RasterizerSlNoClip, rasterizer.RasConvDbl]
+	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
 }
 
 func (r rasterizerAdapter) RewindScanlines() bool { return r.ras.RewindScanlines() }

@@ -87,10 +87,10 @@ type Agg2D struct {
 
 	// Scanline and rasterizer
 	scanline   *scanline.ScanlineU8
-	rasterizer *rasterizer.RasterizerScanlineAA[*rasterizer.RasterizerSlNoClip, rasterizer.RasConvDbl]
+	rasterizer *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
 
 	// Rendering components (now properly typed)
-	pixfmt      *pixfmt.PixFmtRGBA32
+	pixfmt      *pixfmt.PixFmtRGBA32[color.Linear]
 	pixfmtComp  *pixfmt.PixFmtCompositeRGBA32
 	renBase     *baseRendererAdapter[color.RGBA8[color.Linear]]
 	renBaseComp *baseRendererAdapter[color.RGBA8[color.Linear]]
@@ -238,8 +238,9 @@ func NewAgg2D() *Agg2D {
 	agg2d.convStroke = conv.NewConvStroke(agg2d.convCurve)
 
 	// Initialize rasterizer with default cell block limit and clipper
-	clipper := &rasterizer.RasterizerSlNoClip{}
-	agg2d.rasterizer = rasterizer.NewRasterizerScanlineAA[*rasterizer.RasterizerSlNoClip, rasterizer.RasConvDbl](8192, clipper)
+	clipper := rasterizer.NewRasterizerSlNoClip()
+	conv := rasterizer.RasConvInt{}
+	agg2d.rasterizer = rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](conv, clipper)
 
 	// Initialize span allocator for gradient rendering
 	agg2d.spanAllocator = span.NewSpanAllocator[color.RGBA8[color.Linear]]()

@@ -23,20 +23,20 @@ const MaxDashes = 32
 // VCGenDash is the dash vertex generator.
 // This is a port of AGG's vcgen_dash class.
 type VCGenDash struct {
-	dashes        [MaxDashes]float64                      // Dash pattern array
-	totalDashLen  float64                                 // Total length of one dash cycle
-	numDashes     uint                                    // Number of elements in dash array
-	dashStart     float64                                 // Dash start offset
-	shorten       float64                                 // Path shortening distance
-	currDashStart float64                                 // Current dash start position
-	currDash      uint                                    // Current dash index
-	currRest      float64                                 // Remaining distance in current segment
-	v1            *array.VertexDist        // Current vertex
-	v2            *array.VertexDist        // Next vertex
+	dashes        [MaxDashes]float64        // Dash pattern array
+	totalDashLen  float64                   // Total length of one dash cycle
+	numDashes     uint                      // Number of elements in dash array
+	dashStart     float64                   // Dash start offset
+	shorten       float64                   // Path shortening distance
+	currDashStart float64                   // Current dash start position
+	currDash      uint                      // Current dash index
+	currRest      float64                   // Remaining distance in current segment
+	v1            *array.VertexDist         // Current vertex
+	v2            *array.VertexDist         // Next vertex
 	srcVertices   *array.VertexDistSequence // Source vertices storage
-	closed        uint                     // Whether path is closed
-	status        DashStatus                              // Current generator status
-	srcVertex     uint                                    // Current source vertex index
+	closed        uint                      // Whether path is closed
+	status        DashStatus                // Current generator status
+	srcVertex     uint                      // Current source vertex index
 }
 
 // NewVCGenDash creates a new dash vertex generator

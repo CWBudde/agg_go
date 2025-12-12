@@ -292,4 +292,3 @@ func renderCompoundGeneratedStyle[C any, PC interface {
 		}
 	}
 }
-

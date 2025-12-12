@@ -6,6 +6,7 @@ import (
 	"math"
 
 	"agg_go/internal/color"
+	"agg_go/internal/pixfmt"
 	"agg_go/internal/renderer"
 )
 
@@ -127,7 +128,7 @@ func (agg2d *Agg2D) ClearClipBoxRGBA(r, g, b, a uint8) {
 	clearColor := color.RGBA8[color.Linear]{R: r, G: g, B: b, A: a}
 
 	// Create a temporary renderer base to handle the clearing with clipping
-	rendererBase := renderer.NewRendererBaseWithPixfmt(agg2d.pixfmt)
+	rendererBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]](agg2d.pixfmt)
 
 	// Set the clipping box to match our desired clear area
 	rendererBase.ClipBox(x1, y1, x2, y2)

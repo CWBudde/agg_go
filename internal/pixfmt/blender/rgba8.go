@@ -385,6 +385,21 @@ type (
 )
 
 ////////////////////////////////////////////////////////////////////////////////
+// Generic aliases matching C++ AGG naming
+////////////////////////////////////////////////////////////////////////////////
+
+// BlenderRGBA is the generic 8-bit RGBA blender matching C++ blender_rgba<ColorT, Order>.
+// This is an alias for BlenderRGBA8 to match the C++ naming convention where
+// blender_rgba<rgba8, order_rgba> is equivalent to blender_rgba32.
+type BlenderRGBA[S color.Space, O order.RGBAOrder] = BlenderRGBA8[S, O]
+
+// BlenderRGBAPre is the generic 8-bit premultiplied RGBA blender matching C++ blender_rgba_pre<ColorT, Order>.
+type BlenderRGBAPre[S color.Space, O order.RGBAOrder] = BlenderRGBA8Pre[S, O]
+
+// BlenderRGBAPlain is the generic 8-bit plain RGBA blender matching C++ blender_rgba_plain<ColorT, Order>.
+type BlenderRGBAPlain[S color.Space, O order.RGBAOrder] = BlenderRGBA8Plain[S, O]
+
+////////////////////////////////////////////////////////////////////////////////
 // Short aliases for common usage
 ////////////////////////////////////////////////////////////////////////////////
 

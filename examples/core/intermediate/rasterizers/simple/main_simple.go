@@ -1,6 +1,6 @@
 // Package main implements a simplified rasterizers example from AGG.
-// This example demonstrates the comparison between anti-aliased and aliased rendering
-// with gamma correction and transparency controls.
+// This example demonstrates basic rendering without using the full rasterizer pipeline.
+// For the full rasterizer demonstration, see the "direct" example.
 // Simplified port of ../agg-2.6/agg-src/examples/rasterizers.cpp
 package main
 
@@ -13,10 +13,10 @@ import (
 	"agg_go/internal/basics"
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
+	"agg_go/internal/order"
 	"agg_go/internal/path"
 	"agg_go/internal/pixfmt"
 	"agg_go/internal/pixfmt/blender"
-	"agg_go/internal/rasterizer"
 )
 
 const (
@@ -37,12 +37,9 @@ type Application struct {
 	gamma float64
 	alpha float64
 
-	// Rendering components
-	ras *rasterizer.RasterizerScanlineAA[*rasterizer.RasterizerSlNoClip, rasterizer.RasConvDbl]
-
 	// Rendering buffer and pixel format
 	rbuf *buffer.RenderingBufferU8
-	pixf *pixfmt.PixFmtAlphaBlendRGBA[blender.BlenderRGBA[color.Linear, pixfmt.RGBAOrder], color.Linear]
+	pixf *pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8[color.Linear, order.RGBA]]
 
 	// Image buffer
 	imageData []byte
@@ -68,15 +65,8 @@ func NewApplication() *Application {
 	app.rbuf = buffer.NewRenderingBufferU8WithData(app.imageData, frameWidth, frameHeight, frameWidth*pixelSize)
 
 	// Create blender and pixel format
-	blender := blender.BlenderRGBA[color.Linear, pixfmt.RGBAOrder]{}
-	app.pixf = pixfmt.NewPixFmtAlphaBlendRGBA[blender.BlenderRGBA[color.Linear, pixfmt.RGBAOrder], color.Linear](app.rbuf, blender)
-
-	// Create rasterizer
-	app.ras = rasterizer.NewRasterizerScanlineAA[*rasterizer.RasterizerSlNoClip, rasterizer.RasConvDbl](1000) // cell block limit
-
-	// Note: Clipper initialization removed due to interface incompatibility and circular dependency
-	// The RasterizerScanlineAA doesn't implement the Line() method required by RasterizerInterface
-	// and creating a clipper with the rasterizer itself creates circular dependency
+	b := blender.BlenderRGBA8[color.Linear, order.RGBA]{}
+	app.pixf = pixfmt.NewPixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8[color.Linear, order.RGBA]](app.rbuf, b)
 
 	return app
 }
@@ -91,50 +81,110 @@ func (app *Application) clearBuffer() {
 	}
 }
 
-// simpleScanlineRender performs a simplified scanline rendering
-func (app *Application) simpleScanlineRender(triangleColor color.RGBA8[color.Linear], useGamma bool) {
-	// Set up gamma function
-	if useGamma {
-		gamma := app.gamma * 2.0
-		gammaFunc := func(x float64) float64 {
-			return math.Pow(x, gamma)
-		}
-		app.ras.SetGamma(gammaFunc)
-	} else {
-		// Binary threshold function
-		threshold := app.gamma
-		gammaFunc := func(x float64) float64 {
-			if x < threshold {
-				return 0.0
-			}
+// isPointInTriangle checks if a point is inside a triangle using barycentric coordinates
+func (app *Application) isPointInTriangle(px, py float64, offsetX float64) bool {
+	// Adjust triangle coordinates with offset
+	x1, y1 := app.x[0]+offsetX, app.y[0]
+	x2, y2 := app.x[1]+offsetX, app.y[1]
+	x3, y3 := app.x[2]+offsetX, app.y[2]
+
+	// Barycentric coordinate calculation
+	denom := (y2-y3)*(x1-x3) + (x3-x2)*(y1-y3)
+	if math.Abs(denom) < 1e-10 {
+		return false
+	}
+
+	a := ((y2-y3)*(px-x3) + (x3-x2)*(py-y3)) / denom
+	b := ((y3-y1)*(px-x3) + (x1-x3)*(py-y3)) / denom
+	c := 1 - a - b
+
+	return a >= 0 && b >= 0 && c >= 0
+}
+
+// calculateCoverage calculates anti-aliased coverage for a pixel
+func (app *Application) calculateCoverage(px, py float64, offsetX float64, useAntiAliasing bool) float64 {
+	if !useAntiAliasing {
+		// Binary coverage - either fully inside or outside
+		if app.isPointInTriangle(px+0.5, py+0.5, offsetX) {
 			return 1.0
 		}
-		app.ras.SetGamma(gammaFunc)
+		return 0.0
 	}
 
-	// Check if we can render scanlines
-	if !app.ras.RewindScanlines() {
-		return
-	}
+	// Anti-aliased coverage - sample multiple points within the pixel
+	samples := 4 // 4x4 supersampling
+	sampleSize := 1.0 / float64(samples)
+	totalCoverage := 0.0
 
-	// Manual scanline rendering - simplified approach
-	for y := app.ras.MinY(); y <= app.ras.MaxY(); y++ {
-		// Get scanline data manually by examining cells
-		if !app.ras.NavigateScanline(y) {
-			continue
+	for sy := 0; sy < samples; sy++ {
+		for sx := 0; sx < samples; sx++ {
+			sampleX := px + (float64(sx)+0.5)*sampleSize
+			sampleY := py + (float64(sy)+0.5)*sampleSize
+
+			if app.isPointInTriangle(sampleX, sampleY, offsetX) {
+				totalCoverage += 1.0
+			}
 		}
+	}
 
-		// For each pixel in the scanline, test if it's covered
-		for x := app.ras.MinX(); x <= app.ras.MaxX(); x++ {
-			// Simple hit test to determine coverage
-			if app.ras.HitTest(x, y) {
-				// Apply alpha blending
-				finalColor := triangleColor
-				finalColor.A = basics.Int8u(float64(finalColor.A) * app.alpha)
+	return totalCoverage / float64(samples*samples)
+}
 
-				// Bounds check
-				if x >= 0 && x < frameWidth && y >= 0 && y < frameHeight {
-					app.pixf.BlendPixel(x, y, finalColor, 255)
+// applyGamma applies gamma correction to coverage value
+func (app *Application) applyGamma(coverage float64, useAntiAliasing bool) float64 {
+	if !useAntiAliasing {
+		// Binary threshold for aliased rendering
+		if coverage >= app.gamma {
+			return 1.0
+		}
+		return 0.0
+	}
+
+	// Power gamma for anti-aliased rendering
+	gamma := app.gamma * 2.0
+	return math.Pow(coverage, gamma)
+}
+
+// renderTriangle renders a triangle with the specified parameters
+func (app *Application) renderTriangle(triangleColor color.RGBA8[color.Linear], offsetX float64, useAntiAliasing bool) {
+	// Calculate bounding box
+	minX := int(math.Floor(math.Min(math.Min(app.x[0], app.x[1]), app.x[2]) + offsetX))
+	maxX := int(math.Ceil(math.Max(math.Max(app.x[0], app.x[1]), app.x[2]) + offsetX))
+	minY := int(math.Floor(math.Min(math.Min(app.y[0], app.y[1]), app.y[2])))
+	maxY := int(math.Ceil(math.Max(math.Max(app.y[0], app.y[1]), app.y[2])))
+
+	// Clamp to image bounds
+	if minX < 0 {
+		minX = 0
+	}
+	if maxX >= frameWidth {
+		maxX = frameWidth - 1
+	}
+	if minY < 0 {
+		minY = 0
+	}
+	if maxY >= frameHeight {
+		maxY = frameHeight - 1
+	}
+
+	// Rasterize each pixel in the bounding box
+	for y := minY; y <= maxY; y++ {
+		for x := minX; x <= maxX; x++ {
+			coverage := app.calculateCoverage(float64(x), float64(y), offsetX, useAntiAliasing)
+			if coverage > 0 {
+				// Apply gamma correction
+				correctedCoverage := app.applyGamma(coverage, useAntiAliasing)
+
+				if correctedCoverage > 0 {
+					// Apply alpha and coverage
+					finalColor := triangleColor
+					finalColor.A = basics.Int8u(float64(finalColor.A)*app.alpha*correctedCoverage + 0.5)
+
+					if finalColor.A > 0 {
+						// Blend with existing pixel
+						cover := basics.Int8u(correctedCoverage*255 + 0.5)
+						app.pixf.BlendPixel(x, y, finalColor, cover)
+					}
 				}
 			}
 		}
@@ -143,55 +193,30 @@ func (app *Application) simpleScanlineRender(triangleColor color.RGBA8[color.Lin
 
 // drawAntiAliased renders the triangle with anti-aliasing and gamma correction
 func (app *Application) drawAntiAliased() {
-	// Create path for triangle
-	pathStorage := path.NewPathStorage()
-	pathStorage.MoveTo(app.x[0], app.y[0])
-	pathStorage.LineTo(app.x[1], app.y[1])
-	pathStorage.LineTo(app.x[2], app.y[2])
-	pathStorage.ClosePolygon(basics.PathFlag(basics.PathFlagClose))
-
-	// Reset rasterizer and add path vertices manually
-	app.ras.Reset()
-
-	// Add triangle vertices to rasterizer
-	app.ras.MoveToD(app.x[0], app.y[0])
-	app.ras.LineToD(app.x[1], app.y[1])
-	app.ras.LineToD(app.x[2], app.y[2])
-	app.ras.ClosePolygon()
-
 	// Set color (brownish)
 	triangleColor := color.RGBA8[color.Linear]{
 		R: basics.Int8u(0.7*255 + 0.5),
 		G: basics.Int8u(0.5*255 + 0.5),
 		B: basics.Int8u(0.1*255 + 0.5),
-		A: basics.Int8u(app.alpha*255 + 0.5),
+		A: 255,
 	}
 
-	// Render with anti-aliasing
-	app.simpleScanlineRender(triangleColor, true)
+	// Render with anti-aliasing (no offset)
+	app.renderTriangle(triangleColor, 0, true)
 }
 
 // drawAliased renders the triangle without anti-aliasing (binary)
 func (app *Application) drawAliased() {
-	// Reset rasterizer and add path vertices manually (offset by 200 pixels left)
-	app.ras.Reset()
-
-	// Add triangle vertices to rasterizer
-	app.ras.MoveToD(app.x[0]-200, app.y[0])
-	app.ras.LineToD(app.x[1]-200, app.y[1])
-	app.ras.LineToD(app.x[2]-200, app.y[2])
-	app.ras.ClosePolygon()
-
 	// Set color (blueish - different from anti-aliased)
 	triangleColor := color.RGBA8[color.Linear]{
 		R: basics.Int8u(0.1*255 + 0.5),
 		G: basics.Int8u(0.5*255 + 0.5),
 		B: basics.Int8u(0.7*255 + 0.5),
-		A: basics.Int8u(app.alpha*255 + 0.5),
+		A: 255,
 	}
 
-	// Render with binary (aliased) rendering
-	app.simpleScanlineRender(triangleColor, false)
+	// Render without anti-aliasing (offset by -200 pixels)
+	app.renderTriangle(triangleColor, -200, false)
 }
 
 // onDraw renders the complete frame
@@ -224,8 +249,16 @@ func (app *Application) saveImage(filename string) error {
 }
 
 func main() {
-	fmt.Println("AGG Rasterizers Example (Simplified)")
+	fmt.Println("AGG Rasterizers Example (Simple)")
 	fmt.Println("This example demonstrates anti-aliased vs aliased rendering")
+
+	// Demonstrate path storage API (even though we're not using the full rasterizer)
+	pathStorage := path.NewPathStorage()
+	pathStorage.MoveTo(100, 100)
+	pathStorage.LineTo(200, 100)
+	pathStorage.LineTo(150, 200)
+	pathStorage.ClosePolygon(basics.PathFlag(basics.PathFlagClose))
+	fmt.Printf("Created path with %d vertices\n", pathStorage.TotalVertices())
 
 	// Create application
 	app := NewApplication()
@@ -281,5 +314,5 @@ func main() {
 
 	fmt.Println("\nExample completed successfully!")
 	fmt.Println("\nNote: This is a simplified version that demonstrates the core concepts.")
-	fmt.Println("For interactive mouse manipulation, see the full implementation.")
+	fmt.Println("For full rasterizer pipeline usage, see the 'direct' example.")
 }

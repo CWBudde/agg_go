@@ -13,6 +13,7 @@ import (
 	"agg_go/internal/basics"
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
+	"agg_go/internal/order"
 	"agg_go/internal/pixfmt"
 	"agg_go/internal/pixfmt/blender"
 )
@@ -37,7 +38,7 @@ type Application struct {
 
 	// Rendering buffer and pixel format
 	rbuf *buffer.RenderingBufferU8
-	pixf *pixfmt.PixFmtAlphaBlendRGBA[blender.BlenderRGBA[color.Linear, pixfmt.RGBAOrder], color.Linear]
+	pixf *pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8[color.Linear, order.RGBA]]
 
 	// Image buffer
 	imageData []byte
@@ -63,8 +64,8 @@ func NewApplication() *Application {
 	app.rbuf = buffer.NewRenderingBufferU8WithData(app.imageData, frameWidth, frameHeight, frameWidth*pixelSize)
 
 	// Create blender and pixel format
-	blender := blender.BlenderRGBA[color.Linear, pixfmt.RGBAOrder]{}
-	app.pixf = pixfmt.NewPixFmtAlphaBlendRGBA[blender.BlenderRGBA[color.Linear, pixfmt.RGBAOrder], color.Linear](app.rbuf, blender)
+	b := blender.BlenderRGBA8[color.Linear, order.RGBA]{}
+	app.pixf = pixfmt.NewPixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8[color.Linear, order.RGBA]](app.rbuf, b)
 
 	return app
 }

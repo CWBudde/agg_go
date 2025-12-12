@@ -390,8 +390,10 @@ func (r *RasterizerSlNoClip) LineTo(sink LineSink, x2, y2 int) {
 
 // Type aliases for backward compatibility and convenience.
 // These match the naming convention used in C++ AGG (ras_conv_*).
-type RasConvInt = IntConv
-type RasConvIntSat = IntSatConv
-type RasConvInt3x = Int3xConv
-type RasConvDbl = DblConv
-type RasConvDbl3x = Dbl3xConv
+type (
+	RasConvInt    = IntConv
+	RasConvIntSat = IntSatConv
+	RasConvInt3x  = Int3xConv
+	RasConvDbl    = DblConv
+	RasConvDbl3x  = Dbl3xConv
+)

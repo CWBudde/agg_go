@@ -80,9 +80,9 @@ func (vc *VCGenContour) AddVertex(x, y float64, cmd basics.PathCommand) {
 
 	if basics.IsMoveTo(cmd) {
 		// For MoveTo, start a new path by adding the vertex
-		vc.srcVertices.Add(basics.VertexDist{X: x, Y: y, Dist: 0})
+		vc.srcVertices.Add(array.VertexDist{X: x, Y: y, Dist: 0})
 	} else if basics.IsVertex(cmd) {
-		vc.srcVertices.Add(basics.VertexDist{X: x, Y: y, Dist: 0})
+		vc.srcVertices.Add(array.VertexDist{X: x, Y: y, Dist: 0})
 	} else if basics.IsEndPoly(cmd) {
 		vc.closed = basics.GetCloseFlag(uint32(cmd))
 		if vc.orientation == uint32(basics.PathFlagsNone) {
@@ -283,23 +283,30 @@ func (vc *VCGenContour) GetAutoDetectOrientation() bool {
 	return vc.autoDetect
 }
 
-// Helper methods for vertex access
+// Helper methods for vertex access - convert array.VertexDist to basics.VertexDist for MathStroke
 func (vc *VCGenContour) prev(idx int) basics.VertexDist {
 	size := vc.srcVertices.Size()
+	var v array.VertexDist
 	if idx == 0 {
-		return vc.srcVertices.At(size - 1)
+		v = vc.srcVertices.At(size - 1)
+	} else {
+		v = vc.srcVertices.At(idx - 1)
 	}
-	return vc.srcVertices.At(idx - 1)
+	return basics.VertexDist{X: v.X, Y: v.Y, Dist: v.Dist}
 }
 
 func (vc *VCGenContour) curr(idx int) basics.VertexDist {
-	return vc.srcVertices.At(idx)
+	v := vc.srcVertices.At(idx)
+	return basics.VertexDist{X: v.X, Y: v.Y, Dist: v.Dist}
 }
 
 func (vc *VCGenContour) next(idx int) basics.VertexDist {
 	size := vc.srcVertices.Size()
+	var v array.VertexDist
 	if idx == size-1 {
-		return vc.srcVertices.At(0)
+		v = vc.srcVertices.At(0)
+	} else {
+		v = vc.srcVertices.At(idx + 1)
 	}
-	return vc.srcVertices.At(idx + 1)
+	return basics.VertexDist{X: v.X, Y: v.Y, Dist: v.Dist}
 }

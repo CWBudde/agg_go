@@ -754,17 +754,14 @@ After implementing the core AGG library components above, these examples should 
 #### Color Blending
 
 - [ ] **blend_color.cpp** - Color blending mode demonstration
-
   - _Dependencies_: All pixel formats, blending operations
   - _Demonstrates_: Different blend modes, color operations
 
 - [ ] **compositing.cpp** - Alpha compositing operations
-
   - _Dependencies_: Alpha blending, RGBA pixel formats
   - _Demonstrates_: Porter-Duff compositing, alpha channel operations
 
 - [ ] **compositing2.cpp** - Advanced compositing techniques
-
   - _Dependencies_: Advanced blending, multiple pixel formats
   - _Demonstrates_: Complex compositing scenarios
 
@@ -775,12 +772,10 @@ After implementing the core AGG library components above, these examples should 
 #### Gamma and Color Correction
 
 - [ ] **gamma_correction.cpp** - Gamma correction demonstration
-
   - _Dependencies_: agg_gamma_lut.h, gamma functions, sRGB conversion
   - _Demonstrates_: Gamma correction, color space conversions
 
 - [ ] **gamma_ctrl.cpp** - Interactive gamma correction
-
   - _Dependencies_: Gamma correction + interactive controls
   - _Demonstrates_: Real-time gamma adjustment, UI integration
 
@@ -793,17 +788,14 @@ After implementing the core AGG library components above, these examples should 
 #### Basic Image Operations
 
 - [ ] **image1.cpp** - Basic image loading and display
-
   - _Dependencies_: Image loading, basic pixel format conversion
   - _Demonstrates_: Image I/O, format conversion, basic display
 
 - [ ] **image_alpha.cpp** - Image alpha channel processing
-
   - _Dependencies_: RGBA image handling, alpha blending
   - _Demonstrates_: Alpha channel manipulation, transparency effects
 
 - [ ] **image_transforms.cpp** - Image geometric transformations
-
   - _Dependencies_: agg_trans_affine.h/.cpp, image interpolation
   - _Demonstrates_: Rotation, scaling, skewing of images
 
@@ -814,17 +806,14 @@ After implementing the core AGG library components above, these examples should 
 #### Image Filtering
 
 - [ ] **image_filters.cpp** - Image resampling and filtering
-
   - _Dependencies_: agg_image_filters.h/.cpp, span image filters
   - _Demonstrates_: Image scaling, interpolation methods, filter quality
 
 - [ ] **image_filters2.cpp** - Advanced image filtering
-
   - _Dependencies_: Advanced image filters, custom filter kernels
   - _Demonstrates_: Custom filtering, advanced interpolation
 
 - [ ] **image_fltr_graph.cpp** - Image filter visualization
-
   - _Dependencies_: Image filters + graphing capabilities
   - _Demonstrates_: Filter response visualization, frequency analysis
 
@@ -835,12 +824,10 @@ After implementing the core AGG library components above, these examples should 
 #### Pattern and Texture
 
 - [ ] **pattern_fill.cpp** - Pattern filling operations
-
   - _Dependencies_: Pattern rendering, span generators
   - _Demonstrates_: Texture mapping, pattern repetition
 
 - [ ] **pattern_perspective.cpp** - Perspective pattern mapping
-
   - _Dependencies_: Pattern rendering + perspective transforms
   - _Demonstrates_: 3D texture mapping effects
 
@@ -852,28 +839,23 @@ After implementing the core AGG library components above, these examples should 
 
 - [-] **gradients.cpp** - Gradient rendering
   -> TODO: Interactive version that alignes with original C++ code
-
   - **Go Implementation**: `examples/core/intermediate/gradients/main.go`
   - _Dependencies_: agg_span_gradient.h, gradient functions, span allocator
   - _Demonstrates_: Linear/radial gradients, color interpolation
 
 - [ ] **gradient_focal.cpp** - Focal gradients (spotlight effects)
-
   - _Dependencies_: Advanced gradient rendering, focal point calculations
   - _Demonstrates_: Spotlight effects, non-uniform radial gradients
 
 - [ ] **gradients_contour.cpp** - Contour-based gradients
-
   - _Dependencies_: agg_span_gradient_contour.h, distance field gradients
   - _Demonstrates_: Shape-based gradients, distance field effects
 
 - [ ] **alpha_gradient.cpp** - Alpha channel gradients
-
   - _Dependencies_: agg_span_gradient_alpha.h, alpha blending
   - _Demonstrates_: Transparency gradients, fade effects
 
 - [ ] **gouraud.cpp** - Gouraud shading
-
   - _Dependencies_: agg_span_gouraud.h, interpolated shading
   - _Demonstrates_: Smooth color interpolation across triangles
 
@@ -884,12 +866,10 @@ After implementing the core AGG library components above, these examples should 
 ### Text Rendering
 
 - [ ] **raster_text.cpp** - Raster font text rendering
-
   - _Dependencies_: agg_embedded_raster_fonts.h/.cpp, text rendering
   - _Demonstrates_: Bitmap fonts, text layout, character rendering
 
 - [ ] **freetype_test.cpp** - FreeType font integration
-
   - _Dependencies_: FreeType integration, vector font rendering
   - _Demonstrates_: TrueType fonts, vector text, font hinting
 
@@ -902,32 +882,26 @@ After implementing the core AGG library components above, these examples should 
 #### Distortion and Special Effects
 
 - [ ] **distortions.cpp** - Image distortion effects
-
   - _Dependencies_: agg_trans_warp_magnifier.h, custom transforms
   - _Demonstrates_: Lens effects, magnification, image warping
 
 - [ ] **perspective.cpp** - Perspective projection effects
-
   - _Dependencies_: agg_trans_perspective.h/.cpp, 3D transformations
   - _Demonstrates_: 3D perspective, vanishing points
 
 - [ ] **trans_curve1.cpp** - Path transformation along curves
-
   - _Dependencies_: agg_trans_single_path.h/.cpp, path following
   - _Demonstrates_: Text/shapes following curved paths
 
 - [ ] **trans_curve1_ft.cpp** - FreeType text along curves
-
   - _Dependencies_: trans_curve1 + FreeType integration
   - _Demonstrates_: Vector text following paths
 
 - [ ] **trans_curve2.cpp** - Advanced curve transformations
-
   - _Dependencies_: agg_trans_double_path.h/.cpp, dual path transforms
   - _Demonstrates_: Complex path-based transformations
 
 - [ ] **trans_curve2_ft.cpp** - FreeType advanced curve text
-
   - _Dependencies_: trans_curve2 + FreeType integration
   - _Demonstrates_: Advanced text path effects
 
@@ -938,7 +912,6 @@ After implementing the core AGG library components above, these examples should 
 #### Blur and Filter Effects
 
 - [ ] **blur.cpp** - Gaussian blur effects
-
   - _Dependencies_: agg_blur.h, convolution filters
   - _Demonstrates_: Various blur algorithms, performance optimization
 
@@ -951,7 +924,6 @@ After implementing the core AGG library components above, these examples should 
 #### User Interface Integration
 
 - [ ] **interactive_polygon.cpp** - Interactive polygon editor
-
   - _Dependencies_: All basic components + mouse/keyboard handling
   - _Demonstrates_: Interactive graphics, real-time editing
 
@@ -962,27 +934,22 @@ After implementing the core AGG library components above, these examples should 
 #### Advanced Applications
 
 - [ ] **lion.cpp** - Complex SVG-like vector graphics (AGG's signature demo)
-
   - _Dependencies_: Path storage, transformations, color handling
   - _Demonstrates_: Complex vector art, path parsing, transformations
 
 - [ ] **lion_lens.cpp** - Lion demo with lens distortion effects
-
   - _Dependencies_: lion.cpp + lens/magnification effects
   - _Demonstrates_: Real-time distortion, interactive effects
 
 - [ ] **lion_outline.cpp** - Lion demo with outline rendering
-
   - _Dependencies_: lion.cpp + outline renderers
   - _Demonstrates_: Vector outline rendering, stroke effects
 
 - [ ] **mol_view.cpp** - Molecular structure visualization
-
   - _Dependencies_: 3D projection, scientific visualization
   - _Demonstrates_: Scientific graphics, 3D data visualization
 
 - [ ] **graph_test.cpp** - Graph plotting and charting
-
   - _Dependencies_: Mathematical plotting, axis rendering
   - _Demonstrates_: Data visualization, chart generation
 
@@ -993,12 +960,10 @@ After implementing the core AGG library components above, these examples should 
 #### Boolean Operations and Advanced Path Processing
 
 - [ ] **scanline_boolean.cpp** - Boolean operations on scanlines
-
   - _Dependencies_: agg_scanline_boolean_algebra.h, boolean functors
   - _Demonstrates_: Union, intersection, XOR operations on shapes
 
 - [ ] **scanline_boolean2.cpp** - Advanced boolean operations
-
   - _Dependencies_: Advanced scanline boolean algebra
   - _Demonstrates_: Complex boolean operations, performance optimization
 
@@ -1009,12 +974,10 @@ After implementing the core AGG library components above, these examples should 
 #### Specialized Renderers
 
 - [ ] **polymorphic_renderer.cpp** - Polymorphic rendering demo
-
   - _Dependencies_: All renderer types, polymorphic interfaces
   - _Demonstrates_: Renderer abstraction, flexible rendering
 
 - [ ] **flash_rasterizer.cpp** - Flash-style vector rasterization
-
   - _Dependencies_: Specialized rasterization techniques
   - _Demonstrates_: Web graphics, animation-friendly rendering
 
@@ -1025,7 +988,6 @@ After implementing the core AGG library components above, these examples should 
 #### Line and Pattern Effects
 
 - [ ] **line_patterns.cpp** - Line pattern rendering
-
   - _Dependencies_: Pattern generation, line styling
   - _Demonstrates_: Custom line patterns, decorative strokes
 
@@ -1036,12 +998,10 @@ After implementing the core AGG library components above, these examples should 
 #### Alpha and Masking
 
 - [ ] **alpha_mask.cpp** - Alpha mask operations
-
   - _Dependencies_: agg_alpha_mask_u8.h, masking operations
   - _Demonstrates_: Stencil operations, selective rendering
 
 - [ ] **alpha_mask2.cpp** - Advanced alpha masking
-
   - _Dependencies_: Advanced alpha mask techniques
   - _Demonstrates_: Complex masking scenarios
 

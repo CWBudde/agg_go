@@ -335,9 +335,9 @@ func (agg2d *Agg2D) renderGradientFillWithLineGradient() {
 }
 
 // scanlineRender is a helper function to render scanlines using a renderer
-func scanlineRender(rasterizer *rasterizer.RasterizerScanlineAA[*rasterizer.RasterizerSlNoClip, rasterizer.RasConvDbl], sl *scanline.ScanlineU8, renderer renscan.RendererInterface[color.RGBA8[color.Linear]]) {
+func scanlineRender(ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip], sl *scanline.ScanlineU8, renderer renscan.RendererInterface[color.RGBA8[color.Linear]]) {
 	// Create adapters to bridge interface differences
-	rasAdapter := rasterizerAdapter{ras: rasterizer}
+	rasAdapter := rasterizerAdapter{ras: ras}
 	slAdapter := &scanlineWrapper{sl: sl}
 
 	if !rasAdapter.RewindScanlines() {

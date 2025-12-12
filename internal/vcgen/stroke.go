@@ -61,9 +61,9 @@ func (vg *VCGenStroke) AddVertex(x, y float64, cmd basics.PathCommand) {
 	vg.status = Initial
 
 	if basics.IsMoveTo(cmd) {
-		vg.srcVertices.ModifyLast(basics.VertexDist{X: x, Y: y})
+		vg.srcVertices.ModifyLast(array.VertexDist{X: x, Y: y})
 	} else if basics.IsVertex(cmd) {
-		vg.srcVertices.Add(basics.VertexDist{X: x, Y: y})
+		vg.srcVertices.Add(array.VertexDist{X: x, Y: y})
 	} else {
 		vg.closed = basics.GetCloseFlag(uint32(cmd)) != 0
 	}
@@ -92,21 +92,8 @@ func (vg *VCGenStroke) shortenPath() {
 	// Use the shared shorten_path implementation to trim the polyline.
 	// This matches AGG's agg_shorten_path behavior and mirrors vcgen_dash.
 	if vg.shorten > 0.0 && vg.srcVertices.Size() > 1 {
-		// Convert basics.VertexDist to array.VertexDist for ShortenPath
-		convertedVertices := array.NewVertexDistSequence()
-		for i := 0; i < vg.srcVertices.Size(); i++ {
-			v := vg.srcVertices.At(i)
-			convertedVertices.Add(array.VertexDist{X: v.X, Y: v.Y, Dist: v.Dist})
-		}
-
-		array.ShortenPath(convertedVertices, vg.shorten, vg.closed)
-
-		// Convert back to basics.VertexDist
-		vg.srcVertices.RemoveAll()
-		for i := 0; i < convertedVertices.Size(); i++ {
-			v := convertedVertices.At(i)
-			vg.srcVertices.Add(basics.VertexDist{X: v.X, Y: v.Y, Dist: v.Dist})
-		}
+		// ShortenPath works directly with VertexDistSequence which uses array.VertexDist
+		array.ShortenPath(vg.srcVertices, vg.shorten, vg.closed)
 	}
 }
 
@@ -145,8 +132,8 @@ func (vg *VCGenStroke) Vertex() (x, y float64, cmd basics.PathCommand) {
 
 		case Cap1:
 			// Calculate start cap
-			v0 := vg.srcVertices.At(0)
-			v1 := vg.srcVertices.At(1)
+			v0 := toBasicsVertexDist(vg.srcVertices.At(0))
+			v1 := toBasicsVertexDist(vg.srcVertices.At(1))
 			consumer := array.NewPodBVectorConsumer(vg.outVertices)
 			vg.stroker.CalcCap(consumer, v0, v1, v0.Dist)
 			vg.srcVertex = 1
@@ -157,8 +144,8 @@ func (vg *VCGenStroke) Vertex() (x, y float64, cmd basics.PathCommand) {
 		case Cap2:
 			// Calculate end cap
 			size := vg.srcVertices.Size()
-			v0 := vg.srcVertices.At(size - 1)
-			v1 := vg.srcVertices.At(size - 2)
+			v0 := toBasicsVertexDist(vg.srcVertices.At(size - 1))
+			v1 := toBasicsVertexDist(vg.srcVertices.At(size - 2))
 			consumer := array.NewPodBVectorConsumer(vg.outVertices)
 			vg.stroker.CalcCap(consumer, v0, v1, v1.Dist)
 			vg.prevStatus = Outline2
@@ -240,29 +227,42 @@ func (vg *VCGenStroke) Vertex() (x, y float64, cmd basics.PathCommand) {
 	return 0, 0, cmd
 }
 
-// Helper methods for vertex access with wrapping
+// toBasicsVertexDist converts array.VertexDist to basics.VertexDist for MathStroke methods
+func toBasicsVertexDist(v array.VertexDist) basics.VertexDist {
+	return basics.VertexDist{X: v.X, Y: v.Y, Dist: v.Dist}
+}
+
+// Helper methods for vertex access with wrapping - convert to basics.VertexDist for MathStroke
 func (vg *VCGenStroke) getPrev(idx int) basics.VertexDist {
+	var v array.VertexDist
 	if idx == 0 {
 		if vg.closed && vg.srcVertices.Size() > 1 {
-			return vg.srcVertices.At(vg.srcVertices.Size() - 1)
+			v = vg.srcVertices.At(vg.srcVertices.Size() - 1)
+		} else {
+			v = vg.srcVertices.At(0)
 		}
-		return vg.srcVertices.At(0)
+	} else {
+		v = vg.srcVertices.At(idx - 1)
 	}
-	return vg.srcVertices.At(idx - 1)
+	return toBasicsVertexDist(v)
 }
 
 func (vg *VCGenStroke) getCurr(idx int) basics.VertexDist {
-	return vg.srcVertices.At(idx)
+	return toBasicsVertexDist(vg.srcVertices.At(idx))
 }
 
 func (vg *VCGenStroke) getNext(idx int) basics.VertexDist {
+	var v array.VertexDist
 	if idx >= vg.srcVertices.Size()-1 {
 		if vg.closed && vg.srcVertices.Size() > 1 {
-			return vg.srcVertices.At(0)
+			v = vg.srcVertices.At(0)
+		} else {
+			v = vg.srcVertices.At(vg.srcVertices.Size() - 1)
 		}
-		return vg.srcVertices.At(vg.srcVertices.Size() - 1)
+	} else {
+		v = vg.srcVertices.At(idx + 1)
 	}
-	return vg.srcVertices.At(idx + 1)
+	return toBasicsVertexDist(v)
 }
 
 // Stroke parameter delegation methods

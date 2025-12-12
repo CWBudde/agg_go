@@ -75,7 +75,7 @@ func (agg2d *Agg2D) initializeRendering() {
 
 	if width > 0 && height > 0 {
 		// Create pixel format
-		agg2d.pixfmt = pixfmt.NewPixFmtRGBA32(agg2d.rbuf)
+		agg2d.pixfmt = pixfmt.NewPixFmtRGBA32[color.Linear](agg2d.rbuf)
 		agg2d.renBase = &baseRendererAdapter[color.RGBA8[color.Linear]]{pf: agg2d.pixfmt}
 
 		// Create composite pixel format with default source-over blending

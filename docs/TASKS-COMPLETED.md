@@ -1337,14 +1337,12 @@ This is a comprehensive checklist of files that have been ported from the origin
   - [x] angle_tolerance(), cusp_limit()
   - [x] rewind(), vertex() vertex source interface
 - [x] curve3_div → Curve3Div struct - Recursive subdivision for quadratic curves
-
   - [x] init() with control points
   - [x] approximation_scale(), angle_tolerance()
   - [x] cusp_limit(), count_estimate()
   - [x] rewind(), vertex() vertex source interface
 
 - [x] curve4_inc → Curve4Inc struct - Incremental approximation for cubic curves
-
   - [x] init() with 4 control points
   - [x] approximation_method(), approximation_scale()
   - [x] angle_tolerance(), cusp_limit()
@@ -1359,7 +1357,6 @@ This is a comprehensive checklist of files that have been ported from the origin
 ##### High-Level Curve Wrappers
 
 - [x] curve3 → Curve3 struct - Adaptive quadratic curve wrapper
-
   - [x] Embeds either Curve3Inc or Curve3Div based on method
   - [x] approximation_method() switching logic
   - [x] Unified interface for both methods
@@ -1372,7 +1369,6 @@ This is a comprehensive checklist of files that have been ported from the origin
 ##### Curve Conversion Utilities
 
 - [x] curve4_points → Curve4Points struct - 4-point curve storage
-
   - [x] cp[8] control point array → CP [8]float64
   - [x] init() methods for different curve types
 
@@ -1482,7 +1478,6 @@ This is a comprehensive checklist of files that have been ported from the origin
 **Core Storage Templates → Go Generics**
 
 - [x] vertex_block_storage<T> → VertexBlockStorage[T] struct - Block-based vertex storage
-
   - [x] allocate_block() → AllocateBlock() - Memory block management
   - [x] storage_ptrs() → StoragePtrs() - Access to vertex arrays
   - [x] allocate_continuous_block() → AllocateContinuousBlock()
@@ -1511,14 +1506,12 @@ This is a comprehensive checklist of files that have been ported from the origin
 **Additional Go-Specific Storage Types**
 
 - [x] vertex_stl_storage<T> → VertexStlStorage[T] struct - Slice-based vertex storage
-
   - [x] Alternative to block storage using Go slices
   - [x] Capacity management with Reserve() and Shrink()
   - [x] Simpler memory management for smaller paths
   - [x] Compatible with PathBase interface
 
 - [x] PathStorageStl → PathBase[\*VertexStlStorage[float64]] - STL-based path storage
-
   - [x] Alternative path storage using slice backend
   - [x] Factory functions with capacity pre-allocation
   - [x] Performance optimized for known path sizes
@@ -1530,7 +1523,6 @@ This is a comprehensive checklist of files that have been ported from the origin
 **Path Adapter Classes (Templates → Go Generics)**
 
 - [x] poly_plain_adaptor<T> → PolyPlainAdaptor[T] struct
-
   - [x] Simple array-based polygon adapter
   - [x] rewind(), vertex() vertex source interface
   - [x] Direct access to vertex arrays
@@ -1655,7 +1647,6 @@ This is a comprehensive checklist of files that have been ported from the origin
 **Length Measurement Algorithm**
 
 - [x] Straight line segment measurement
-
   - [x] Euclidean distance calculation between vertices
   - [x] Accumulates lengths for line_to commands
   - [x] Skips move_to commands (no length contribution)

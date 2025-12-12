@@ -5,20 +5,17 @@
 ### Core RGBA8 Format Refactoring
 
 - [x] **Define slimmer blender contract**
-
   - [x] `RGBABlender[S color.Space]` interface with `GetPlain/SetPlain/BlendPix`
   - [x] `RawRGBAOrder` interface for fast path optimization
   - [x] All concrete blenders implement interfaces properly
 
 - [x] **Simplify RGBA8 pixfmt type parameters**
-
   - [x] `PixFmtAlphaBlendRGBA[S color.Space, B blender.RGBABlender[S]]`
   - [x] Remove order parameter `O` from pixfmt
   - [x] Update constructor signatures
   - [x] Update all method receivers
 
 - [x] **Remove direct dependence on order in RGBA8 pixfmt**
-
   - [x] Replace all `idxs[O]()` usage with blender methods
   - [x] Primary path via `GetPlain/SetPlain/BlendPix`
   - [x] Fast path via `RawRGBAOrder` type assertion (e.g., in `CopyHline`)
@@ -53,7 +50,6 @@
 ### Completed Items (Remaining Issues)
 
 - [x] **RGB16 format (48-bit) - COMPLETED**
-
   - [x] Remove `idxsRGB[O]()` usage
   - [x] Update `RGB48Blender` interface from `[S, O]` to `[S]`
   - [x] Apply same pattern as RGB8
@@ -69,7 +65,6 @@
 ### 16-bit Format Updates
 
 - [ ] **RGBA16 formats - NEEDS EXTENSIVE REFACTORING**
-
   - [x] `RGBABlender16` interface updated to remove order parameter
   - [ ] Apply same refactoring pattern as RGBA8 to pixfmt_rgba16.go
   - ⚠️ **Note**: Requires complete rewrite of method signatures - currently needs major work
@@ -96,7 +91,6 @@
 ### Extended Features (Optional)
 
 - [ ] **Consider additional color spaces**
-
   - [ ] Evaluate need beyond `Linear/SRGB` (e.g., Lab, HSV)
   - [ ] Extend `color.Space` constraint if needed
 
