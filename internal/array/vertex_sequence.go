@@ -8,149 +8,8 @@ import (
 	"agg_go/internal/basics"
 )
 
-// VertexSequence is a specialized vector that automatically filters vertices
-// based on a validation function. This is equivalent to AGG's vertex_sequence<T, S>.
-// The type T must implement a callable operator that returns true if the vertex
-// should be kept or false if it should be filtered out.
-//
-// Deprecated: Use concrete types VertexDistSequence or LineAAVertexSequence instead.
-// This generic version requires any() casts for distance calculations.
-// It is kept only for VertexCmdSequence compatibility.
-type VertexSequence[T VertexFilter] struct {
-	storage *PodBVector[T]
-}
-
 // Use VertexFilter from basics package
 type VertexFilter = basics.VertexFilter
-
-// NewVertexSequence creates a new vertex sequence with default block scale.
-func NewVertexSequence[T VertexFilter]() *VertexSequence[T] {
-	return &VertexSequence[T]{
-		storage: NewPodBVectorWithScale[T](NewBlockScale(6)), // Default S=6 like AGG
-	}
-}
-
-// NewVertexSequenceWithScale creates a new vertex sequence with specified block scale.
-func NewVertexSequenceWithScale[T VertexFilter](scale BlockScale) *VertexSequence[T] {
-	return &VertexSequence[T]{
-		storage: NewPodBVectorWithScale[T](scale),
-	}
-}
-
-// Size returns the number of vertices in the sequence.
-func (vs *VertexSequence[T]) Size() int {
-	return vs.storage.Size()
-}
-
-// Get returns the vertex at the specified index.
-func (vs *VertexSequence[T]) Get(index int) T {
-	return vs.storage.At(index)
-}
-
-// Add adds a vertex to the sequence after validation.
-// This corresponds to AGG's vertex_sequence::add method.
-func (vs *VertexSequence[T]) Add(val T) {
-	// If we have more than 1 vertex, validate the previous vertex against the current one
-	if vs.storage.Size() > 1 {
-		prev := vs.storage.At(vs.storage.Size() - 2)
-		curr := vs.storage.At(vs.storage.Size() - 1)
-		if !prev.Validate(curr) {
-			vs.storage.RemoveLast()
-		}
-	}
-	vs.storage.Add(val)
-}
-
-// ModifyLast replaces the last vertex with a new one after validation.
-// This corresponds to AGG's vertex_sequence::modify_last method.
-func (vs *VertexSequence[T]) ModifyLast(val T) {
-	vs.storage.RemoveLast()
-	vs.Add(val)
-}
-
-// Close processes the sequence for closure and removes invalid vertices.
-// This corresponds to AGG's vertex_sequence::close method.
-func (vs *VertexSequence[T]) Close(closed bool) {
-	// Remove trailing vertices that don't validate
-	for vs.storage.Size() > 1 {
-		prev := vs.storage.At(vs.storage.Size() - 2)
-		curr := vs.storage.At(vs.storage.Size() - 1)
-		if prev.Validate(curr) {
-			break
-		}
-		last := vs.storage.At(vs.storage.Size() - 1)
-		vs.storage.RemoveLast()
-		vs.ModifyLast(last)
-	}
-
-	// If closed, validate the last vertex against the first
-	if closed {
-		for vs.storage.Size() > 1 {
-			last := vs.storage.At(vs.storage.Size() - 1)
-			first := vs.storage.At(0)
-			if last.Validate(first) {
-				break
-			}
-			vs.storage.RemoveLast()
-		}
-	}
-
-	// Calculate distances between consecutive vertices (like in AGG's operator())
-	// Each vertex stores the distance to the NEXT vertex
-	vs.CalculateDistances()
-}
-
-// CalculateDistances calculates and stores distances between consecutive vertices.
-// This mimics the side effect of AGG's vertex_dist::operator() and line_aa_vertex::operator() functions.
-func (vs *VertexSequence[T]) CalculateDistances() {
-	for i := 0; i < vs.storage.Size()-1; i++ {
-		curr := vs.storage.At(i)
-		next := vs.storage.At(i + 1)
-
-		// Handle VertexDist types
-		if vd, ok := any(curr).(VertexDist); ok {
-			if nextVd, ok := any(next).(VertexDist); ok {
-				// Calculate distance and create a new vertex with updated distance
-				newVd := vd
-				newVd.CalculateDistance(nextVd)
-				// Convert back to T and set
-				vs.storage.Set(i, any(newVd).(T))
-			}
-		}
-
-		// Handle LineAAVertex types (critical for anti-aliased outline rendering)
-		if lv, ok := any(curr).(LineAAVertex); ok {
-			if nextLv, ok := any(next).(LineAAVertex); ok {
-				// Calculate distance and create a new vertex with updated distance
-				newLv := lv
-				newLv.CalculateDistance(nextLv)
-				// Convert back to T and set
-				vs.storage.Set(i, any(newLv).(T))
-			}
-		}
-	}
-}
-
-// RemoveAll clears all vertices from the sequence.
-func (vs *VertexSequence[T]) RemoveAll() {
-	vs.storage.RemoveAll()
-}
-
-// At returns the vertex at the specified index (array access operator).
-// This provides direct access like C++ operator[].
-func (vs *VertexSequence[T]) At(index int) T {
-	return vs.storage.At(index)
-}
-
-// Set modifies the vertex at the specified index.
-func (vs *VertexSequence[T]) Set(index int, val T) {
-	vs.storage.Set(index, val)
-}
-
-// RemoveLast removes the last vertex from the sequence.
-func (vs *VertexSequence[T]) RemoveLast() {
-	vs.storage.RemoveLast()
-}
 
 // LineAAVertex represents a vertex for anti-aliased line rendering.
 // This corresponds to AGG's line_aa_vertex struct.
@@ -268,47 +127,112 @@ func (v *VertexDistCmd) CalculateDistance(other VertexDistCmd) {
 	}
 }
 
-// VertexCmdSequence is a wrapper type for vertex sequence with commands
+// VertexCmdSequence is a concrete vertex sequence for VertexDistCmd.
 type VertexCmdSequence struct {
-	*VertexSequence[VertexDistCmd]
+	storage *PodBVector[VertexDistCmd]
 }
 
 // NewVertexCmdSequence creates a new vertex command sequence
 func NewVertexCmdSequence() *VertexCmdSequence {
 	return &VertexCmdSequence{
-		VertexSequence: NewVertexSequence[VertexDistCmd](),
+		storage: NewPodBVectorWithScale[VertexDistCmd](NewBlockScale(6)),
 	}
+}
+
+// Size returns the number of vertices in the sequence.
+func (vs *VertexCmdSequence) Size() int {
+	return vs.storage.Size()
+}
+
+// Get returns the vertex at the specified index.
+func (vs *VertexCmdSequence) Get(index int) VertexDistCmd {
+	return vs.storage.At(index)
+}
+
+// Add adds a vertex to the sequence after validation.
+func (vs *VertexCmdSequence) Add(val VertexDistCmd) {
+	if vs.storage.Size() > 1 {
+		prev := vs.storage.At(vs.storage.Size() - 2)
+		curr := vs.storage.At(vs.storage.Size() - 1)
+		if !prev.Validate(curr) {
+			vs.storage.RemoveLast()
+		}
+	}
+	vs.storage.Add(val)
+}
+
+// ModifyLast replaces the last vertex with a new one after validation.
+func (vs *VertexCmdSequence) ModifyLast(val VertexDistCmd) {
+	vs.storage.RemoveLast()
+	vs.Add(val)
+}
+
+// Close processes the sequence for closure and removes invalid vertices.
+func (vs *VertexCmdSequence) Close(closed bool) {
+	// Remove trailing vertices that don't validate
+	for vs.storage.Size() > 1 {
+		prev := vs.storage.At(vs.storage.Size() - 2)
+		curr := vs.storage.At(vs.storage.Size() - 1)
+		if prev.Validate(curr) {
+			break
+		}
+		last := vs.storage.At(vs.storage.Size() - 1)
+		vs.storage.RemoveLast()
+		vs.ModifyLast(last)
+	}
+
+	// If closed, validate the last vertex against the first
+	if closed {
+		for vs.storage.Size() > 1 {
+			last := vs.storage.At(vs.storage.Size() - 1)
+			first := vs.storage.At(0)
+			if last.Validate(first) {
+				break
+			}
+			vs.storage.RemoveLast()
+		}
+	}
+}
+
+// RemoveAll clears all vertices from the sequence.
+func (vs *VertexCmdSequence) RemoveAll() {
+	vs.storage.RemoveAll()
 }
 
 // At returns the vertex at the specified index
 func (vs *VertexCmdSequence) At(index int) VertexDistCmd {
-	return vs.Get(index)
+	return vs.storage.At(index)
+}
+
+// Set modifies the vertex at the specified index.
+func (vs *VertexCmdSequence) Set(index int, val VertexDistCmd) {
+	vs.storage.Set(index, val)
+}
+
+// RemoveLast removes the last vertex from the sequence.
+func (vs *VertexCmdSequence) RemoveLast() {
+	vs.storage.RemoveLast()
 }
 
 // ModifyAt modifies the vertex at the specified index
 func (vs *VertexCmdSequence) ModifyAt(index int, val VertexDistCmd) {
-	if index < vs.Size() && index >= 0 {
+	if index < vs.storage.Size() && index >= 0 {
 		vs.storage.Set(index, val)
 	}
 }
 
 // RemoveAt removes the vertex at the specified index
-// This is a simple implementation that shifts elements
+// This shifts elements to fill the gap.
 func (vs *VertexCmdSequence) RemoveAt(index int) {
-	if index < 0 || index >= vs.Size() {
+	if index < 0 || index >= vs.storage.Size() {
 		return
 	}
 
-	// Create a new sequence without the removed element
-	newSeq := NewVertexCmdSequence()
-	for i := 0; i < vs.Size(); i++ {
-		if i != index {
-			newSeq.Add(vs.At(i))
-		}
+	// Shift elements down
+	for i := index; i < vs.storage.Size()-1; i++ {
+		vs.storage.Set(i, vs.storage.At(i+1))
 	}
-
-	// Replace current storage with new sequence
-	vs.VertexSequence = newSeq.VertexSequence
+	vs.storage.RemoveLast()
 }
 
 // VertexDistSequence is a concrete vertex sequence for VertexDist.

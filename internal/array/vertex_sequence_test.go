@@ -2,9 +2,10 @@ package array
 
 import (
 	"testing"
+	"agg_go/internal/basics"
 )
 
-func TestNewVertexSequence(t *testing.T) {
+func TestNewLineAAVertexSequence(t *testing.T) {
 	vs := NewLineAAVertexSequence()
 	if vs == nil {
 		t.Fatalf("NewLineAAVertexSequence returned nil")
@@ -14,7 +15,7 @@ func TestNewVertexSequence(t *testing.T) {
 	}
 }
 
-func TestNewVertexSequenceWithScale(t *testing.T) {
+func TestNewLineAAVertexSequenceWithScale(t *testing.T) {
 	scale := NewBlockScale(4)
 	vs := NewLineAAVertexSequenceWithScale(scale)
 	if vs == nil {
@@ -326,5 +327,45 @@ func BenchmarkVertexDistValidate(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		v1.Validate(v2)
+	}
+}
+
+// Additional tests for VertexCmdSequence
+func TestVertexCmdSequence(t *testing.T) {
+	vs := NewVertexCmdSequence()
+
+	if vs.Size() != 0 {
+		t.Errorf("New VertexCmdSequence should be empty, got size %d", vs.Size())
+	}
+
+	// Add elements
+	v1 := NewVertexDistCmd(0, 0, 0, basics.PathCmdMoveTo)
+	vs.Add(v1)
+
+	if vs.Size() != 1 {
+		t.Errorf("Expected size 1 after adding, got %d", vs.Size())
+	}
+
+	got := vs.Get(0)
+	if got.X != 0 || got.Y != 0 {
+		t.Errorf("Get(0) returned unexpected value")
+	}
+
+	// Test RemoveAt
+	v2 := NewVertexDistCmd(10, 10, 0, basics.PathCmdLineTo)
+	vs.Add(v2)
+	v3 := NewVertexDistCmd(20, 20, 0, basics.PathCmdLineTo)
+	vs.Add(v3)
+
+	// [v1, v2, v3]
+	vs.RemoveAt(1)
+	// [v1, v3]
+
+	if vs.Size() != 2 {
+		t.Errorf("Expected size 2 after RemoveAt, got %d", vs.Size())
+	}
+
+	if vs.At(1).X != 20 {
+		t.Errorf("Expected element at index 1 to be v3 (20,20), got (%f,%f)", vs.At(1).X, vs.At(1).Y)
 	}
 }
