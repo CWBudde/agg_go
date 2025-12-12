@@ -156,15 +156,15 @@ func (vm *ViewportManager) CopyViewport(sourceName, destName string) error {
 	}
 
 	// Create a new viewport with the same settings
-	copy := NewTransViewport()
+	copied := NewTransViewport()
 	wx1, wy1, wx2, wy2 := source.GetWorldViewport()
 	dx1, dy1, dx2, dy2 := source.GetDeviceViewport()
 
-	copy.WorldViewport(wx1, wy1, wx2, wy2)
-	copy.DeviceViewport(dx1, dy1, dx2, dy2)
-	copy.PreserveAspectRatio(source.AlignX(), source.AlignY(), source.AspectRatio())
+	copied.WorldViewport(wx1, wy1, wx2, wy2)
+	copied.DeviceViewport(dx1, dy1, dx2, dy2)
+	copied.PreserveAspectRatio(source.AlignX(), source.AlignY(), source.AspectRatio())
 
-	vm.viewports[destName] = copy
+	vm.viewports[destName] = copied
 	return nil
 }
 
@@ -200,17 +200,17 @@ func (vs *ViewportStack) Push() {
 	currentName := vs.manager.GetCurrentName()
 
 	// Create a copy of the current viewport
-	copy := NewTransViewport()
+	copied := NewTransViewport()
 	wx1, wy1, wx2, wy2 := current.GetWorldViewport()
 	dx1, dy1, dx2, dy2 := current.GetDeviceViewport()
 
-	copy.WorldViewport(wx1, wy1, wx2, wy2)
-	copy.DeviceViewport(dx1, dy1, dx2, dy2)
-	copy.PreserveAspectRatio(current.AlignX(), current.AlignY(), current.AspectRatio())
+	copied.WorldViewport(wx1, wy1, wx2, wy2)
+	copied.DeviceViewport(dx1, dy1, dx2, dy2)
+	copied.PreserveAspectRatio(current.AlignX(), current.AlignY(), current.AspectRatio())
 
 	state := ViewportState{
 		name:     currentName,
-		viewport: copy,
+		viewport: copied,
 	}
 
 	vs.stack = append(vs.stack, state)
