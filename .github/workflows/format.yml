@@ -7,8 +7,8 @@ permissions:
   contents: read
 
 jobs:
-  treefmt:
-    name: treefmt check
+  format:
+    name: format check
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -20,7 +20,16 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Run treefmt
-        uses: numtide/treefmt-action@v2
-        with:
-          fail-on-change: true
+      - name: Install just
+        uses: extractions/setup-just@v2
+
+      - name: Run formatter
+        run: just fmt
+
+      - name: Check for changes
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "Code is not formatted. Please run 'just fmt'"
+            git diff
+            exit 1
+          fi
