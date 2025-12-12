@@ -7,7 +7,7 @@ import (
 )
 
 func TestNewRasterizerScanlineAANoGamma(t *testing.T) {
-	r := NewRasterizerScanlineAANoGamma[*MockClip](1024)
+	r := NewRasterizerScanlineAANoGamma[float64, DblConv, *MockClip](DblConv{}, &MockClip{})
 
 	if r == nil {
 		t.Fatal("Expected non-nil rasterizer")
@@ -27,7 +27,7 @@ func TestNewRasterizerScanlineAANoGamma(t *testing.T) {
 }
 
 func TestRasterizerScanlineAANoGammaApplyGamma(t *testing.T) {
-	r := NewRasterizerScanlineAANoGamma[*MockClip](1024)
+	r := NewRasterizerScanlineAANoGamma[float64, DblConv, *MockClip](DblConv{}, &MockClip{})
 
 	// Test that ApplyGamma returns the input unchanged (no gamma correction)
 	testValues := []uint32{0, 50, 100, 128, 200, 255}
@@ -40,7 +40,7 @@ func TestRasterizerScanlineAANoGammaApplyGamma(t *testing.T) {
 }
 
 func TestRasterizerScanlineAANoGammaReset(t *testing.T) {
-	r := NewRasterizerScanlineAANoGamma[*MockClip](1024)
+	r := NewRasterizerScanlineAANoGamma[float64, DblConv, *MockClip](DblConv{}, &MockClip{})
 
 	// Change state
 	r.status = StatusMoveTo
@@ -56,7 +56,7 @@ func TestRasterizerScanlineAANoGammaReset(t *testing.T) {
 }
 
 func TestRasterizerScanlineAANoGammaFillingRule(t *testing.T) {
-	r := NewRasterizerScanlineAANoGamma[*MockClip](1024)
+	r := NewRasterizerScanlineAANoGamma[float64, DblConv, *MockClip](DblConv{}, &MockClip{})
 
 	// Test setting different filling rules
 	r.FillingRule(basics.FillEvenOdd)
@@ -71,7 +71,7 @@ func TestRasterizerScanlineAANoGammaFillingRule(t *testing.T) {
 }
 
 func TestRasterizerScanlineAANoGammaAutoClose(t *testing.T) {
-	r := NewRasterizerScanlineAANoGamma[*MockClip](1024)
+	r := NewRasterizerScanlineAANoGamma[float64, DblConv, *MockClip](DblConv{}, &MockClip{})
 
 	// Test auto close setting
 	r.AutoClose(false)
@@ -87,7 +87,7 @@ func TestRasterizerScanlineAANoGammaAutoClose(t *testing.T) {
 
 func TestRasterizerScanlineAANoGammaMoveTo(t *testing.T) {
 	clipper := &MockClip{}
-	r := NewRasterizerScanlineAANoGamma[*MockClip](1024)
+	r := NewRasterizerScanlineAANoGamma[float64, DblConv, *MockClip](DblConv{}, &MockClip{})
 	r.clipper = clipper
 
 	// Test integer MoveTo
@@ -105,7 +105,7 @@ func TestRasterizerScanlineAANoGammaMoveTo(t *testing.T) {
 
 func TestRasterizerScanlineAANoGammaMoveToD(t *testing.T) {
 	clipper := &MockClip{}
-	r := NewRasterizerScanlineAANoGamma[*MockClip](1024)
+	r := NewRasterizerScanlineAANoGamma[float64, DblConv, *MockClip](DblConv{}, &MockClip{})
 	r.clipper = clipper
 
 	// Test floating point MoveTo
@@ -126,7 +126,7 @@ func TestRasterizerScanlineAANoGammaMoveToD(t *testing.T) {
 
 func TestRasterizerScanlineAANoGammaLineTo(t *testing.T) {
 	clipper := &MockClip{}
-	r := NewRasterizerScanlineAANoGamma[*MockClip](1024)
+	r := NewRasterizerScanlineAANoGamma[float64, DblConv, *MockClip](DblConv{}, &MockClip{})
 	r.clipper = clipper
 
 	// Must start with MoveTo
@@ -142,7 +142,7 @@ func TestRasterizerScanlineAANoGammaLineTo(t *testing.T) {
 
 func TestRasterizerScanlineAANoGammaClosePolygon(t *testing.T) {
 	clipper := &MockClip{}
-	r := NewRasterizerScanlineAANoGamma[*MockClip](1024)
+	r := NewRasterizerScanlineAANoGamma[float64, DblConv, *MockClip](DblConv{}, &MockClip{})
 	r.clipper = clipper
 
 	// Create a simple path
@@ -160,7 +160,7 @@ func TestRasterizerScanlineAANoGammaClosePolygon(t *testing.T) {
 
 func TestRasterizerScanlineAANoGammaAddVertex(t *testing.T) {
 	clipper := &MockClip{}
-	r := NewRasterizerScanlineAANoGamma[*MockClip](1024)
+	r := NewRasterizerScanlineAANoGamma[float64, DblConv, *MockClip](DblConv{}, &MockClip{})
 	r.clipper = clipper
 
 	// Test MoveTo command
@@ -184,7 +184,7 @@ func TestRasterizerScanlineAANoGammaAddVertex(t *testing.T) {
 
 func TestRasterizerScanlineAANoGammaEdge(t *testing.T) {
 	clipper := &MockClip{}
-	r := NewRasterizerScanlineAANoGamma[*MockClip](1024)
+	r := NewRasterizerScanlineAANoGamma[float64, DblConv, *MockClip](DblConv{}, &MockClip{})
 	r.clipper = clipper
 
 	// Test Edge with integer coordinates
@@ -201,7 +201,7 @@ func TestRasterizerScanlineAANoGammaEdge(t *testing.T) {
 }
 
 func TestRasterizerScanlineAANoGammaCalculateAlpha(t *testing.T) {
-	r := NewRasterizerScanlineAANoGamma[*MockClip](1024)
+	r := NewRasterizerScanlineAANoGamma[float64, DblConv, *MockClip](DblConv{}, &MockClip{})
 
 	tests := []struct {
 		area     int
@@ -221,7 +221,7 @@ func TestRasterizerScanlineAANoGammaCalculateAlpha(t *testing.T) {
 }
 
 func TestRasterizerScanlineAANoGammaEvenOddFilling(t *testing.T) {
-	r := NewRasterizerScanlineAANoGamma[*MockClip](1024)
+	r := NewRasterizerScanlineAANoGamma[float64, DblConv, *MockClip](DblConv{}, &MockClip{})
 	r.FillingRule(basics.FillEvenOdd)
 
 	// Test even-odd specific calculation
@@ -236,7 +236,7 @@ func TestRasterizerScanlineAANoGammaEvenOddFilling(t *testing.T) {
 
 func TestRasterizerScanlineAANoGammaRewindScanlines(t *testing.T) {
 	clipper := &MockClip{}
-	r := NewRasterizerScanlineAANoGamma[*MockClip](1024)
+	r := NewRasterizerScanlineAANoGamma[float64, DblConv, *MockClip](DblConv{}, &MockClip{})
 	r.clipper = clipper
 
 	// Empty rasterizer should return false
@@ -256,7 +256,7 @@ func TestRasterizerScanlineAANoGammaRewindScanlines(t *testing.T) {
 
 func TestRasterizerScanlineAANoGammaNavigateScanline(t *testing.T) {
 	clipper := &MockClip{}
-	r := NewRasterizerScanlineAANoGamma[*MockClip](1024)
+	r := NewRasterizerScanlineAANoGamma[float64, DblConv, *MockClip](DblConv{}, &MockClip{})
 	r.clipper = clipper
 
 	// Empty rasterizer should return false
@@ -267,7 +267,7 @@ func TestRasterizerScanlineAANoGammaNavigateScanline(t *testing.T) {
 
 func TestRasterizerScanlineAANoGammaHitTest(t *testing.T) {
 	clipper := &MockClip{}
-	r := NewRasterizerScanlineAANoGamma[*MockClip](1024)
+	r := NewRasterizerScanlineAANoGamma[float64, DblConv, *MockClip](DblConv{}, &MockClip{})
 	r.clipper = clipper
 
 	// Empty rasterizer should return false for any hit test
@@ -305,7 +305,7 @@ func (mvs *MockVertexSource) Vertex(x, y *float64) uint32 {
 
 func TestRasterizerScanlineAANoGammaAddPath(t *testing.T) {
 	clipper := &MockClip{}
-	r := NewRasterizerScanlineAANoGamma[*MockClip](1024)
+	r := NewRasterizerScanlineAANoGamma[float64, DblConv, *MockClip](DblConv{}, &MockClip{})
 	r.clipper = clipper
 
 	// Create a simple path: MoveTo, LineTo, LineTo, EndPoly+Close
@@ -330,7 +330,7 @@ func BenchmarkRasterizerScanlineAANoGamma_Triangle(b *testing.B) {
 	clipper := &MockClip{}
 
 	for i := 0; i < b.N; i++ {
-		r := NewRasterizerScanlineAANoGamma[*MockClip](1024)
+		r := NewRasterizerScanlineAANoGamma[float64, DblConv, *MockClip](DblConv{}, &MockClip{})
 		r.clipper = clipper
 
 		// Draw a triangle
@@ -345,7 +345,7 @@ func BenchmarkRasterizerScanlineAANoGamma_Triangle(b *testing.B) {
 }
 
 func BenchmarkRasterizerScanlineAANoGamma_ApplyGamma(b *testing.B) {
-	r := NewRasterizerScanlineAANoGamma[*MockClip](1024)
+	r := NewRasterizerScanlineAANoGamma[float64, DblConv, *MockClip](DblConv{}, &MockClip{})
 
 	for i := 0; i < b.N; i++ {
 		r.ApplyGamma(uint32(i % 256))

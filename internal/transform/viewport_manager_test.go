@@ -140,18 +140,18 @@ func TestCopyViewport(t *testing.T) {
 		t.Fatalf("CopyViewport failed: %v", err)
 	}
 
-	copy := vm.GetViewport("copy")
-	if copy == nil {
+	copiedVP := vm.GetViewport("copy")
+	if copiedVP == nil {
 		t.Fatal("Copied viewport should exist")
 	}
 
 	// Check that settings were copied
-	wx1, wy1, wx2, wy2 := copy.GetWorldViewport()
+	wx1, wy1, wx2, wy2 := copiedVP.GetWorldViewport()
 	if wx1 != 10.0 || wy1 != 20.0 || wx2 != 110.0 || wy2 != 120.0 {
 		t.Errorf("Copied viewport world bounds incorrect, got (%g,%g)-(%g,%g)", wx1, wy1, wx2, wy2)
 	}
 
-	if copy.AlignX() != 0.25 || copy.AlignY() != 0.75 || copy.AspectRatio() != AspectRatioMeet {
+	if copiedVP.AlignX() != 0.25 || copiedVP.AlignY() != 0.75 || copiedVP.AspectRatio() != AspectRatioMeet {
 		t.Error("Copied viewport aspect ratio settings incorrect")
 	}
 }

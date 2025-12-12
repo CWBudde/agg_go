@@ -149,7 +149,7 @@ func TestAspectRatioStretch(t *testing.T) {
 
 	// With AspectRatioStretch, scales can be different
 	expectedScaleX := 200.0 / 100.0 // 2.0
-	expectedScaleY := 100.0 / 100.0 // 1.0
+	expectedScaleY := 1.0            // 100.0 / 100.0
 
 	if math.Abs(v.ScaleX()-expectedScaleX) > viewportTestEpsilon {
 		t.Errorf("AspectRatioStretch ScaleX should be %g, got %g", expectedScaleX, v.ScaleX())

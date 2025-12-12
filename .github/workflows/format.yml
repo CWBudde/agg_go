@@ -7,8 +7,8 @@ permissions:
   contents: read
 
 jobs:
-  treefmt:
-    name: treefmt check
+  format:
+    name: format check
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -20,12 +20,16 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Install treefmt
-        run: |
-          curl -L https://github.com/numtide/treefmt/releases/download/v2.0.0/treefmt-linux-amd64.tar.gz | tar xz
-          sudo mv treefmt /usr/local/bin/treefmt
-          sudo chmod +x /usr/local/bin/treefmt
+      - name: Install just
+        uses: extractions/setup-just@v2
 
-      - name: Run formatter check
+      - name: Run formatter
+        run: just fmt
+
+      - name: Check for changes
         run: |
-          treefmt --fail-on-change --allow-missing-formatter
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "Code is not formatted. Please run 'just fmt'"
+            git diff
+            exit 1
+          fi

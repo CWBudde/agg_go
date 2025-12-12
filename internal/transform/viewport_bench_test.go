@@ -32,48 +32,6 @@ func BenchmarkViewportInverseTransform(b *testing.B) {
 	}
 }
 
-func BenchmarkViewportTransformBatch(b *testing.B) {
-	v := NewTransViewport()
-	v.WorldViewport(0.0, 0.0, 1000.0, 1000.0)
-	v.DeviceViewport(0.0, 0.0, 1024.0, 768.0)
-
-	// Create a batch of 1000 coordinate pairs
-	coords := make([]float64, 2000)
-	for i := 0; i < len(coords); i += 2 {
-		coords[i] = float64(i/2) * 0.5
-		coords[i+1] = float64(i/2) * 0.5
-	}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		// Make a copy to avoid modifying original
-		testCoords := make([]float64, len(coords))
-		copy(testCoords, coords)
-		v.TransformBatch(testCoords)
-	}
-}
-
-func BenchmarkViewportTransformPoints(b *testing.B) {
-	v := NewTransViewport()
-	v.WorldViewport(0.0, 0.0, 1000.0, 1000.0)
-	v.DeviceViewport(0.0, 0.0, 1024.0, 768.0)
-
-	// Create a batch of 1000 points
-	points := make([]Point, 1000)
-	for i := range points {
-		points[i].X = float64(i) * 0.5
-		points[i].Y = float64(i) * 0.5
-	}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		// Make a copy to avoid modifying original
-		testPoints := make([]Point, len(points))
-		copy(testPoints, points)
-		v.TransformPoints(testPoints)
-	}
-}
-
 func BenchmarkViewportToAffine(b *testing.B) {
 	v := NewTransViewport()
 	v.WorldViewport(0.0, 0.0, 1000.0, 1000.0)
@@ -96,34 +54,6 @@ func BenchmarkViewportToAffineCached(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		v.ToAffine()
-	}
-}
-
-func BenchmarkViewportZoomIn(b *testing.B) {
-	v := NewTransViewport()
-	v.WorldViewport(0.0, 0.0, 1000.0, 1000.0)
-	v.DeviceViewport(0.0, 0.0, 1024.0, 768.0)
-
-	centerX, centerY := 512.0, 384.0
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		// Reset viewport for each iteration
-		v.WorldViewport(0.0, 0.0, 1000.0, 1000.0)
-		v.ZoomIn(1.1, centerX, centerY)
-	}
-}
-
-func BenchmarkViewportPan(b *testing.B) {
-	v := NewTransViewport()
-	v.WorldViewport(0.0, 0.0, 1000.0, 1000.0)
-	v.DeviceViewport(0.0, 0.0, 1024.0, 768.0)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		// Reset viewport for each iteration
-		v.WorldViewport(0.0, 0.0, 1000.0, 1000.0)
-		v.Pan(10.0, 10.0)
 	}
 }
 
@@ -153,47 +83,29 @@ func BenchmarkViewportManager(b *testing.B) {
 	}
 }
 
-// Benchmark comparison between individual transforms vs batch transforms
-func BenchmarkCompareTransformMethods(b *testing.B) {
+// Benchmark transforming multiple points
+func BenchmarkTransformMultiplePoints(b *testing.B) {
 	v := NewTransViewport()
 	v.WorldViewport(0.0, 0.0, 1000.0, 1000.0)
 	v.DeviceViewport(0.0, 0.0, 1024.0, 768.0)
 
 	numPoints := 1000
+	coords := make([]float64, numPoints*2)
+	for i := 0; i < len(coords); i += 2 {
+		coords[i] = float64(i/2) * 0.5
+		coords[i+1] = float64(i/2) * 0.5
+	}
 
-	b.Run("Individual", func(b *testing.B) {
-		coords := make([]float64, numPoints*2)
-		for i := 0; i < len(coords); i += 2 {
-			coords[i] = float64(i/2) * 0.5
-			coords[i+1] = float64(i/2) * 0.5
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		testCoords := make([]float64, len(coords))
+		copy(testCoords, coords)
+
+		// Transform each point individually
+		for j := 0; j < len(testCoords); j += 2 {
+			v.Transform(&testCoords[j], &testCoords[j+1])
 		}
-
-		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
-			testCoords := make([]float64, len(coords))
-			copy(testCoords, coords)
-
-			// Transform each point individually
-			for j := 0; j < len(testCoords); j += 2 {
-				v.Transform(&testCoords[j], &testCoords[j+1])
-			}
-		}
-	})
-
-	b.Run("Batch", func(b *testing.B) {
-		coords := make([]float64, numPoints*2)
-		for i := 0; i < len(coords); i += 2 {
-			coords[i] = float64(i/2) * 0.5
-			coords[i+1] = float64(i/2) * 0.5
-		}
-
-		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
-			testCoords := make([]float64, len(coords))
-			copy(testCoords, coords)
-			v.TransformBatch(testCoords)
-		}
-	})
+	}
 }
 
 // Benchmark different aspect ratio modes

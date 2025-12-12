@@ -21,30 +21,6 @@ jobs:
           cache: true
 
       - name: GolangCI-Lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v9
         with:
           version: latest
-          args: ./...
-
-  treefmt:
-    name: treefmt
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache: true
-
-      - name: Install treefmt
-        run: |
-          curl -L https://github.com/numtide/treefmt/releases/download/v2.0.0/treefmt-linux-amd64.tar.gz | tar xz
-          sudo mv treefmt /usr/local/bin/treefmt
-          sudo chmod +x /usr/local/bin/treefmt
-
-      - name: Run formatter check
-        run: |
-          treefmt --fail-on-change

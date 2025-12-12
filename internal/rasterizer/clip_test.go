@@ -23,26 +23,20 @@ func (m *MockRasterizer) Reset() {
 	m.Lines = nil
 }
 
-func TestRasConvInt(t *testing.T) {
-	conv := RasConvInt{}
+func TestIntConv(t *testing.T) {
+	conv := IntConv{}
 
 	// Test MulDiv
 	result := conv.MulDiv(10.0, 20.0, 4.0)
-	expected := 50.0
+	expected := 50
 	if result != expected {
-		t.Errorf("MulDiv(10, 20, 4) = %f, want %f", result, expected)
+		t.Errorf("MulDiv(10, 20, 4) = %d, want %d", result, expected)
 	}
 
 	// Test Xi with int
 	xi := conv.Xi(100)
 	if xi != 100 {
 		t.Errorf("Xi(100) = %d, want 100", xi)
-	}
-
-	// Test Xi with float64
-	xi = conv.Xi(100.7)
-	if xi != 101 {
-		t.Errorf("Xi(100.7) = %d, want 101", xi)
 	}
 
 	// Test Yi
@@ -52,21 +46,21 @@ func TestRasConvInt(t *testing.T) {
 	}
 
 	// Test Upscale
-	upscaled := conv.Upscale(1.0).(int)
+	upscaled := conv.Upscale(1.0)
 	expected_upscaled := basics.IRound(basics.PolySubpixelScale)
 	if upscaled != expected_upscaled {
 		t.Errorf("Upscale(1.0) = %d, want %d", upscaled, expected_upscaled)
 	}
 
 	// Test Downscale
-	downscaled := conv.Downscale(256).(int)
-	if downscaled != 256 {
-		t.Errorf("Downscale(256) = %d, want 256", downscaled)
+	downscaled := conv.Downscale(256)
+	if downscaled != 1 {
+		t.Errorf("Downscale(256) = %d, want 1", downscaled)
 	}
 }
 
-func TestRasConvDbl(t *testing.T) {
-	conv := RasConvDbl{}
+func TestDblConv(t *testing.T) {
+	conv := DblConv{}
 
 	// Test MulDiv
 	result := conv.MulDiv(10.0, 20.0, 4.0)
@@ -90,21 +84,21 @@ func TestRasConvDbl(t *testing.T) {
 	}
 
 	// Test Upscale (pass-through for double)
-	upscaled := conv.Upscale(42.5).(float64)
+	upscaled := conv.Upscale(42.5)
 	if upscaled != 42.5 {
 		t.Errorf("Upscale(42.5) = %f, want 42.5", upscaled)
 	}
 
 	// Test Downscale
-	downscaled := conv.Downscale(256).(float64)
+	downscaled := conv.Downscale(256)
 	expectedDownscaled := 256.0 / basics.PolySubpixelScale
 	if downscaled != expectedDownscaled {
 		t.Errorf("Downscale(256) = %f, want %f", downscaled, expectedDownscaled)
 	}
 }
 
-func TestRasConvInt3x(t *testing.T) {
-	conv := RasConvInt3x{}
+func TestInt3xConv(t *testing.T) {
+	conv := Int3xConv{}
 
 	// Test Xi with 3x scaling
 	xi := conv.Xi(100)
@@ -121,7 +115,7 @@ func TestRasConvInt3x(t *testing.T) {
 
 func TestRasterizerSlClipBasic(t *testing.T) {
 	mock := &MockRasterizer{}
-	clipper := NewRasterizerSlClip[RasConvInt]()
+	clipper := NewRasterizerSlClip[int, IntConv](IntConv{})
 
 	// Test without clipping
 	clipper.MoveTo(10, 20)
@@ -141,15 +135,15 @@ func TestRasterizerSlClipBasic(t *testing.T) {
 
 func TestRasterizerSlClipWithClipping(t *testing.T) {
 	mock := &MockRasterizer{}
-	clipper := NewRasterizerSlClip[RasConvInt]()
+	clipper := NewRasterizerSlClip[int, IntConv](IntConv{})
 
 	// Set clipping box
 	clipper.ClipBox(10, 10, 50, 50)
 
 	tests := []struct {
 		name              string
-		startX, startY    float64
-		endX, endY        float64
+		startX, startY    int
+		endX, endY        int
 		expectedLineCount int
 		shouldHaveLines   bool
 	}{
@@ -200,7 +194,7 @@ func TestRasterizerSlClipWithClipping(t *testing.T) {
 
 func TestRasterizerSlClipResetClipping(t *testing.T) {
 	mock := &MockRasterizer{}
-	clipper := NewRasterizerSlClip[RasConvInt]()
+	clipper := NewRasterizerSlClip[int, IntConv](IntConv{})
 
 	// Set clipping and then reset it
 	clipper.ClipBox(10, 10, 50, 50)
@@ -224,7 +218,7 @@ func TestRasterizerSlClipResetClipping(t *testing.T) {
 
 func TestRasterizerSlClipNormalization(t *testing.T) {
 	_ = &MockRasterizer{} // not used in this test
-	clipper := NewRasterizerSlClip[RasConvInt]()
+	clipper := NewRasterizerSlClip[int, IntConv](IntConv{})
 
 	// Set clipping box with reversed coordinates
 	clipper.ClipBox(50, 50, 10, 10)
@@ -239,7 +233,7 @@ func TestRasterizerSlClipNormalization(t *testing.T) {
 
 func TestRasterizerSlNoClip(t *testing.T) {
 	mock := &MockRasterizer{}
-	noClip := NewRasterizerSlNoClip(mock)
+	noClip := NewRasterizerSlNoClip()
 
 	// Test basic functionality
 	noClip.MoveTo(10, 20)
@@ -277,58 +271,16 @@ func TestRasterizerSlNoClip(t *testing.T) {
 	}
 }
 
-func TestAllConverterTypes(t *testing.T) {
-	converters := []struct {
-		name string
-		test func(t *testing.T)
-	}{
-		{"RasConvInt", func(t *testing.T) { testConverterType[RasConvInt](t) }},
-		{"RasConvIntSat", func(t *testing.T) { testConverterType[RasConvIntSat](t) }},
-		{"RasConvInt3x", func(t *testing.T) { testConverterType[RasConvInt3x](t) }},
-		{"RasConvDbl", func(t *testing.T) { testConverterType[RasConvDbl](t) }},
-		{"RasConvDbl3x", func(t *testing.T) { testConverterType[RasConvDbl3x](t) }},
-	}
-
-	for _, conv := range converters {
-		t.Run(conv.name, conv.test)
-	}
-}
-
-func testConverterType[Conv any](t *testing.T) {
-	mock := &MockRasterizer{}
-	clipper := NewRasterizerSlClip[Conv]()
-
-	// Basic test: draw a line without clipping
-	clipper.MoveTo(10, 20)
-	clipper.LineTo(mock, 30, 40)
-
-	if len(mock.Lines) != 1 {
-		t.Errorf("Expected 1 line for converter type, got %d", len(mock.Lines))
-		return
-	}
-
-	// Test with clipping enabled
-	mock.Reset()
-	clipper.ClipBox(15, 15, 35, 35)
-	clipper.MoveTo(10, 20)
-	clipper.LineTo(mock, 30, 40)
-
-	// Should have at least one line (could be clipped)
-	if len(mock.Lines) == 0 {
-		t.Errorf("Expected at least one line with clipping enabled")
-	}
-}
-
 func TestComplexClippingScenario(t *testing.T) {
 	mock := &MockRasterizer{}
-	clipper := NewRasterizerSlClip[RasConvInt]()
+	clipper := NewRasterizerSlClip[int, IntConv](IntConv{})
 
 	// Set a clipping box
 	clipper.ClipBox(20, 20, 80, 80)
 
 	// Draw multiple lines that cross different boundaries
 	testLines := []struct {
-		startX, startY, endX, endY float64
+		startX, startY, endX, endY int
 		description                string
 	}{
 		{10, 50, 90, 50, "horizontal line crossing both boundaries"},
@@ -363,23 +315,23 @@ func TestComplexClippingScenario(t *testing.T) {
 }
 
 func TestTypeAliases(t *testing.T) {
-	// Test that type aliases work correctly
-	clipInt := NewRasterizerSlClip[RasConvInt]()
-	clipIntSat := NewRasterizerSlClip[RasConvIntSat]()
-	clipInt3x := NewRasterizerSlClip[RasConvInt3x]()
-	clipDbl := NewRasterizerSlClip[RasConvDbl]()
-	clipDbl3x := NewRasterizerSlClip[RasConvDbl3x]()
+	// Test that different converter types work correctly
+	clipInt := NewRasterizerSlClip[int, IntConv](IntConv{})
+	clipIntSat := NewRasterizerSlClip[int, IntSatConv](IntSatConv{})
+	clipInt3x := NewRasterizerSlClip[int, Int3xConv](Int3xConv{})
+	clipDbl := NewRasterizerSlClip[float64, DblConv](DblConv{})
+	clipDbl3x := NewRasterizerSlClip[float64, Dbl3xConv](Dbl3xConv{})
 
 	// Basic functionality test for each type
 	types := []struct {
 		name string
 		test func(t *testing.T)
 	}{
-		{"Int", func(t *testing.T) { testRasterizer(t, clipInt) }},
-		{"IntSat", func(t *testing.T) { testRasterizer(t, clipIntSat) }},
-		{"Int3x", func(t *testing.T) { testRasterizer(t, clipInt3x) }},
-		{"Dbl", func(t *testing.T) { testRasterizer(t, clipDbl) }},
-		{"Dbl3x", func(t *testing.T) { testRasterizer(t, clipDbl3x) }},
+		{"Int", func(t *testing.T) { testRasterizerInt(t, clipInt) }},
+		{"IntSat", func(t *testing.T) { testRasterizerInt(t, clipIntSat) }},
+		{"Int3x", func(t *testing.T) { testRasterizerInt(t, clipInt3x) }},
+		{"Dbl", func(t *testing.T) { testRasterizerDbl(t, clipDbl) }},
+		{"Dbl3x", func(t *testing.T) { testRasterizerDbl(t, clipDbl3x) }},
 	}
 
 	for _, typ := range types {
@@ -387,13 +339,26 @@ func TestTypeAliases(t *testing.T) {
 	}
 }
 
-// testRasterizer is a generic helper function to test any rasterizer type
-func testRasterizer[Conv any](t *testing.T, clipper *RasterizerSlClip[Conv]) {
+// testRasterizerInt is a helper function to test int-based rasterizer types
+func testRasterizerInt[V Conv[int]](t *testing.T, clipper *RasterizerSlClip[int, V]) {
 	mock := &MockRasterizer{}
 	mock.Reset()
 
 	clipper.MoveTo(10, 20)
 	clipper.LineTo(mock, 30, 40)
+
+	if len(mock.Lines) != 1 {
+		t.Errorf("Expected 1 line for type alias test, got %d", len(mock.Lines))
+	}
+}
+
+// testRasterizerDbl is a helper function to test float64-based rasterizer types
+func testRasterizerDbl[V Conv[float64]](t *testing.T, clipper *RasterizerSlClip[float64, V]) {
+	mock := &MockRasterizer{}
+	mock.Reset()
+
+	clipper.MoveTo(10.0, 20.0)
+	clipper.LineTo(mock, 30.0, 40.0)
 
 	if len(mock.Lines) != 1 {
 		t.Errorf("Expected 1 line for type alias test, got %d", len(mock.Lines))

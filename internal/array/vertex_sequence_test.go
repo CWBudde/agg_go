@@ -2,9 +2,11 @@ package array
 
 import (
 	"testing"
+
+	"agg_go/internal/basics"
 )
 
-func TestNewVertexSequence(t *testing.T) {
+func TestNewLineAAVertexSequence(t *testing.T) {
 	vs := NewLineAAVertexSequence()
 	if vs == nil {
 		t.Fatalf("NewLineAAVertexSequence returned nil")
@@ -14,7 +16,7 @@ func TestNewVertexSequence(t *testing.T) {
 	}
 }
 
-func TestNewVertexSequenceWithScale(t *testing.T) {
+func TestNewLineAAVertexSequenceWithScale(t *testing.T) {
 	scale := NewBlockScale(4)
 	vs := NewLineAAVertexSequenceWithScale(scale)
 	if vs == nil {
@@ -326,5 +328,119 @@ func BenchmarkVertexDistValidate(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		v1.Validate(v2)
+	}
+}
+
+// Additional tests for VertexCmdSequence
+func TestVertexCmdSequence(t *testing.T) {
+	vs := NewVertexCmdSequence()
+
+	if vs.Size() != 0 {
+		t.Errorf("New VertexCmdSequence should be empty, got size %d", vs.Size())
+	}
+
+	// Add elements
+	v1 := NewVertexDistCmd(0, 0, 0, basics.PathCmdMoveTo)
+	vs.Add(v1)
+
+	if vs.Size() != 1 {
+		t.Errorf("Expected size 1 after adding, got %d", vs.Size())
+	}
+
+	got := vs.Get(0)
+	if got.X != 0 || got.Y != 0 {
+		t.Errorf("Get(0) returned unexpected value")
+	}
+
+	// Test RemoveAt
+	v2 := NewVertexDistCmd(10, 10, 0, basics.PathCmdLineTo)
+	vs.Add(v2)
+	v3 := NewVertexDistCmd(20, 20, 0, basics.PathCmdLineTo)
+	vs.Add(v3)
+
+	// [v1, v2, v3]
+	vs.RemoveAt(1)
+	// [v1, v3]
+
+	if vs.Size() != 2 {
+		t.Errorf("Expected size 2 after RemoveAt, got %d", vs.Size())
+	}
+
+	if vs.At(1).X != 20 {
+		t.Errorf("Expected element at index 1 to be v3 (20,20), got (%f,%f)", vs.At(1).X, vs.At(1).Y)
+	}
+}
+
+func TestVertexCmdSequenceDistanceCalculation(t *testing.T) {
+	vs := NewVertexCmdSequence()
+
+	// Add vertices with distances larger than the validation threshold (epsilon)
+	// Using coordinates that give clear, verifiable distances
+	vs.Add(NewVertexDistCmd(0.0, 0.0, 0, basics.PathCmdMoveTo)) // Distance to next should be 5.0 (3-4-5 triangle)
+	vs.Add(NewVertexDistCmd(3.0, 4.0, 0, basics.PathCmdLineTo)) // Distance to next should be 4.0 (horizontal)
+	vs.Add(NewVertexDistCmd(7.0, 4.0, 0, basics.PathCmdLineTo)) // Last vertex, distance irrelevant
+
+	// Close the sequence to trigger distance calculations
+	vs.Close(false)
+
+	// Verify we still have vertices after validation
+	if vs.Size() < 2 {
+		t.Fatalf("Vertices were filtered out during Close(), size = %d, want >= 2", vs.Size())
+	}
+
+	// Check that distances were calculated correctly
+	v1 := vs.At(0)
+	if v1.Dist == 0 {
+		t.Errorf("First vertex distance was not calculated (still 0)")
+	}
+
+	// Distance from (0,0) to (3,4) should be 5.0
+	expectedDist := 5.0
+	if v1.Dist != expectedDist {
+		t.Errorf("First vertex distance = %f, want %f", v1.Dist, expectedDist)
+	}
+
+	if vs.Size() >= 2 {
+		v2 := vs.At(1)
+		if v2.Dist == 0 {
+			t.Errorf("Second vertex distance was not calculated (still 0)")
+		}
+
+		// Distance from (3,4) to (7,4) should be 4.0
+		expectedDist2 := 4.0
+		if v2.Dist != expectedDist2 {
+			t.Errorf("Second vertex distance = %f, want %f", v2.Dist, expectedDist2)
+		}
+	}
+}
+
+func TestVertexCmdSequenceClose(t *testing.T) {
+	vs := NewVertexCmdSequence()
+
+	// Add several vertices forming a square
+	vs.Add(NewVertexDistCmd(0.0, 0.0, 0, basics.PathCmdMoveTo))
+	vs.Add(NewVertexDistCmd(10.0, 0.0, 0, basics.PathCmdLineTo))
+	vs.Add(NewVertexDistCmd(10.0, 10.0, 0, basics.PathCmdLineTo))
+	vs.Add(NewVertexDistCmd(0.0, 10.0, 0, basics.PathCmdLineTo))
+
+	originalSize := vs.Size()
+
+	// Close as a polygon
+	vs.Close(true)
+
+	// The close operation may filter some vertices, but should maintain structure
+	finalSize := vs.Size()
+	if finalSize > originalSize {
+		t.Errorf("Close increased size from %d to %d", originalSize, finalSize)
+	}
+
+	// Verify distances were calculated
+	if finalSize > 0 {
+		for i := 0; i < finalSize-1; i++ {
+			v := vs.At(i)
+			if v.Dist == 0 {
+				t.Errorf("Vertex at index %d has zero distance after Close()", i)
+			}
+		}
 	}
 }
