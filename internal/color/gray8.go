@@ -37,20 +37,16 @@ func ConvertGray8FromRGBA[CS Space](c RGBA) Gray8[CS] {
 	}
 }
 
-// ConvertFromRGBA8 converts from 8-bit RGBA to grayscale
-// Route by colorspace (no reflection; compile-time monomorphization with a tiny type switch)
-func ConvertGray8FromRGBA8[CS Space](c RGBA8[CS]) Gray8[CS] {
-	var v basics.Int8u
-	switch any(c).(type) {
-	case RGBA8[Linear]:
-		v = LuminanceFromRGBA8Linear(RGBA8[Linear](c))
-	case RGBA8[SRGB]:
-		v = LuminanceFromRGBA8SRGB(RGBA8[SRGB](c))
-	default:
-		// Sensible default if more spaces appear later: assume linear
-		v = basics.Int8u((uint32(c.R)*bt709R + uint32(c.G)*bt709G + uint32(c.B)*bt709B) >> 8)
-	}
-	return Gray8[CS]{V: v, A: c.A}
+// ConvertGray8LinearFromRGBA8 converts from 8-bit Linear RGBA to Linear grayscale
+func ConvertGray8LinearFromRGBA8(c RGBA8[Linear]) Gray8[Linear] {
+	v := LuminanceFromRGBA8Linear(c)
+	return Gray8[Linear]{V: v, A: c.A}
+}
+
+// ConvertGray8SRGBFromRGBA8 converts from 8-bit SRGB RGBA to SRGB grayscale
+func ConvertGray8SRGBFromRGBA8(c RGBA8[SRGB]) Gray8[SRGB] {
+	v := LuminanceFromRGBA8SRGB(c)
+	return Gray8[SRGB]{V: v, A: c.A}
 }
 
 // ConvertToRGBA converts grayscale to floating-point RGBA

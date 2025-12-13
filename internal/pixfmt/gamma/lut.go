@@ -6,7 +6,12 @@ import (
 	"agg_go/internal/basics"
 )
 
-// Numeric constraint for gamma LUT types
+// Unsigned constraint for gamma LUT types - only supports unsigned integer types
+type Unsigned interface {
+	~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr
+}
+
+// Numeric constraint for SRGB LUT types - supports numeric types including floats
 type Numeric interface {
 	basics.Int8u | basics.Int16u | basics.Int32u | float32 | float64
 }
@@ -22,26 +27,26 @@ const (
 )
 
 // GammaLUT provides a high-performance gamma lookup table
-// This is a generic implementation matching C++ AGG's gamma_lut template
-type GammaLUT[LoResT, HiResT Numeric] struct {
+// This is a clean generic implementation without type switches
+type GammaLUT[LoResT, HiResT Unsigned] struct {
 	gamma      float64
 	gammaShift uint
-	gammaSize  uint
+	gammaSize  int
 	gammaMask  uint
 	hiResShift uint
-	hiResSize  uint
+	hiResSize  int
 	hiResMask  uint
-	dirGamma   []HiResT
-	invGamma   []LoResT
+	dir        []HiResT // Direct gamma table
+	inv        []LoResT // Inverse gamma table
 }
 
 // NewGammaLUT creates a new gamma lookup table with default parameters
-func NewGammaLUT[LoResT, HiResT Numeric]() *GammaLUT[LoResT, HiResT] {
+func NewGammaLUT[LoResT, HiResT Unsigned]() *GammaLUT[LoResT, HiResT] {
 	return NewGammaLUTWithShifts[LoResT, HiResT](DefaultGammaShift, DefaultHiResShift)
 }
 
 // NewGammaLUTWithShifts creates a new gamma lookup table with custom bit shifts
-func NewGammaLUTWithShifts[LoResT, HiResT Numeric](gammaShift, hiResShift uint) *GammaLUT[LoResT, HiResT] {
+func NewGammaLUTWithShifts[LoResT, HiResT Unsigned](gammaShift, hiResShift uint) *GammaLUT[LoResT, HiResT] {
 	lut := &GammaLUT[LoResT, HiResT]{
 		gamma:      1.0,
 		gammaShift: gammaShift,
@@ -50,120 +55,71 @@ func NewGammaLUTWithShifts[LoResT, HiResT Numeric](gammaShift, hiResShift uint) 
 		hiResShift: hiResShift,
 		hiResSize:  1 << hiResShift,
 		hiResMask:  (1 << hiResShift) - 1,
+		dir:        make([]HiResT, 1<<gammaShift),
+		inv:        make([]LoResT, 1<<hiResShift),
 	}
-	lut.dirGamma = make([]HiResT, lut.gammaSize)
-	lut.invGamma = make([]LoResT, lut.hiResSize)
 
 	// Initialize with identity mapping
-	lut.initIdentity()
+	for i := 0; i < lut.gammaSize; i++ {
+		var scaled uint
+		if lut.hiResShift >= lut.gammaShift {
+			scaled = uint(i) << (lut.hiResShift - lut.gammaShift)
+		} else {
+			scaled = uint(i) >> (lut.gammaShift - lut.hiResShift)
+		}
+		lut.dir[i] = HiResT(scaled)
+	}
+	for i := 0; i < lut.hiResSize; i++ {
+		var scaled uint
+		if lut.hiResShift >= lut.gammaShift {
+			scaled = uint(i) >> (lut.hiResShift - lut.gammaShift)
+		} else {
+			scaled = uint(i) << (lut.gammaShift - lut.hiResShift)
+		}
+		lut.inv[i] = LoResT(scaled)
+	}
+
 	return lut
 }
 
 // NewGammaLUTWithGamma creates a new gamma lookup table with specified gamma value
-func NewGammaLUTWithGamma[LoResT, HiResT Numeric](gamma float64) *GammaLUT[LoResT, HiResT] {
+func NewGammaLUTWithGamma[LoResT, HiResT Unsigned](gamma float64) *GammaLUT[LoResT, HiResT] {
 	lut := NewGammaLUT[LoResT, HiResT]()
 	lut.SetGamma(gamma)
 	return lut
 }
 
-// initIdentity initializes the tables with identity mapping (gamma = 1.0)
-func (lut *GammaLUT[LoResT, HiResT]) initIdentity() {
-	// Direct gamma table: scale from low-res to hi-res
-	for i := uint(0); i < lut.gammaSize; i++ {
-		var scaled uint
-		if lut.hiResShift >= lut.gammaShift {
-			scaled = i << (lut.hiResShift - lut.gammaShift)
-		} else {
-			scaled = i >> (lut.gammaShift - lut.hiResShift)
-		}
-
-		// Convert to appropriate type
-		switch any(&lut.dirGamma[i]).(type) {
-		case *basics.Int8u:
-			*any(&lut.dirGamma[i]).(*basics.Int8u) = basics.Int8u(scaled)
-		case *basics.Int16u:
-			*any(&lut.dirGamma[i]).(*basics.Int16u) = basics.Int16u(scaled)
-		case *basics.Int32u:
-			*any(&lut.dirGamma[i]).(*basics.Int32u) = basics.Int32u(scaled)
-		case *float32:
-			*any(&lut.dirGamma[i]).(*float32) = float32(scaled)
-		case *float64:
-			*any(&lut.dirGamma[i]).(*float64) = float64(scaled)
-		}
-	}
-
-	// Inverse gamma table: scale from hi-res to low-res
-	for i := uint(0); i < lut.hiResSize; i++ {
-		var scaled uint
-		if lut.hiResShift >= lut.gammaShift {
-			scaled = i >> (lut.hiResShift - lut.gammaShift)
-		} else {
-			scaled = i << (lut.gammaShift - lut.hiResShift)
-		}
-
-		// Convert to appropriate type
-		switch any(&lut.invGamma[i]).(type) {
-		case *basics.Int8u:
-			*any(&lut.invGamma[i]).(*basics.Int8u) = basics.Int8u(scaled)
-		case *basics.Int16u:
-			*any(&lut.invGamma[i]).(*basics.Int16u) = basics.Int16u(scaled)
-		case *basics.Int32u:
-			*any(&lut.invGamma[i]).(*basics.Int32u) = basics.Int32u(scaled)
-		case *float32:
-			*any(&lut.invGamma[i]).(*float32) = float32(scaled)
-		case *float64:
-			*any(&lut.invGamma[i]).(*float64) = float64(scaled)
-		}
-	}
-}
-
 // SetGamma sets the gamma value and rebuilds the lookup tables
 func (lut *GammaLUT[LoResT, HiResT]) SetGamma(gamma float64) {
+	if !(gamma > 0) || math.IsNaN(gamma) || math.IsInf(gamma, 0) {
+		gamma = 1.0
+	}
 	lut.gamma = gamma
 
-	// Build direct gamma table
-	for i := uint(0); i < lut.gammaSize; i++ {
-		normalized := float64(i) / float64(lut.gammaMask)
-		corrected := math.Pow(normalized, gamma)
-		value := corrected * float64(lut.hiResMask)
-		rounded := basics.URound(value)
+	gMax := float64(lut.gammaMask)
+	hMax := float64(lut.hiResMask)
 
-		// Convert to appropriate HiResT type
-		switch any(&lut.dirGamma[i]).(type) {
-		case *basics.Int8u:
-			*any(&lut.dirGamma[i]).(*basics.Int8u) = basics.Int8u(rounded)
-		case *basics.Int16u:
-			*any(&lut.dirGamma[i]).(*basics.Int16u) = basics.Int16u(rounded)
-		case *basics.Int32u:
-			*any(&lut.dirGamma[i]).(*basics.Int32u) = basics.Int32u(rounded)
-		case *float32:
-			*any(&lut.dirGamma[i]).(*float32) = float32(rounded)
-		case *float64:
-			*any(&lut.dirGamma[i]).(*float64) = float64(rounded)
+	// Build direct gamma table: y = pow(x, gamma) * hiResMask
+	for i := 0; i < lut.gammaSize; i++ {
+		x := float64(i) / gMax
+		y := math.Pow(x, gamma) * hMax
+		u := uint(basics.URound(y))
+		if u > lut.hiResMask {
+			u = lut.hiResMask
 		}
+		lut.dir[i] = HiResT(u)
 	}
 
-	// Build inverse gamma table
+	// Build inverse gamma table: y = pow(x, 1/gamma) * gammaMask
 	invGamma := 1.0 / gamma
-	for i := uint(0); i < lut.hiResSize; i++ {
-		normalized := float64(i) / float64(lut.hiResMask)
-		corrected := math.Pow(normalized, invGamma)
-		value := corrected * float64(lut.gammaMask)
-		rounded := basics.URound(value)
-
-		// Convert to appropriate LoResT type
-		switch any(&lut.invGamma[i]).(type) {
-		case *basics.Int8u:
-			*any(&lut.invGamma[i]).(*basics.Int8u) = basics.Int8u(rounded)
-		case *basics.Int16u:
-			*any(&lut.invGamma[i]).(*basics.Int16u) = basics.Int16u(rounded)
-		case *basics.Int32u:
-			*any(&lut.invGamma[i]).(*basics.Int32u) = basics.Int32u(rounded)
-		case *float32:
-			*any(&lut.invGamma[i]).(*float32) = float32(rounded)
-		case *float64:
-			*any(&lut.invGamma[i]).(*float64) = float64(rounded)
+	for i := 0; i < lut.hiResSize; i++ {
+		x := float64(i) / hMax
+		y := math.Pow(x, invGamma) * gMax
+		u := uint(basics.URound(y))
+		if u > lut.gammaMask {
+			u = lut.gammaMask
 		}
+		lut.inv[i] = LoResT(u)
 	}
 }
 
@@ -174,14 +130,14 @@ func (lut *GammaLUT[LoResT, HiResT]) Gamma() float64 {
 
 // Dir performs direct gamma correction lookup
 func (lut *GammaLUT[LoResT, HiResT]) Dir(v LoResT) HiResT {
-	idx := uint(v) & lut.gammaMask
-	return lut.dirGamma[idx]
+	idx := int(uint(v) & lut.gammaMask)
+	return lut.dir[idx]
 }
 
 // Inv performs inverse gamma correction lookup
 func (lut *GammaLUT[LoResT, HiResT]) Inv(v HiResT) LoResT {
-	idx := uint(v) & lut.hiResMask
-	return lut.invGamma[idx]
+	idx := int(uint(v) & lut.hiResMask)
+	return lut.inv[idx]
 }
 
 // Concrete 8-bit gamma LUT types

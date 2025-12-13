@@ -99,16 +99,19 @@ func UCeil(v float64) uint32 {
 	return 0
 }
 
-// Saturation template equivalent using generics
-type Saturation[T ~int | ~int32 | ~uint | ~uint32] struct {
-	limit T
+// Saturation functions for different types
+// These replace the generic Saturation[T] type to avoid runtime type switches
+
+// SaturationInt provides saturation clamping for int values
+type SaturationInt struct {
+	limit int
 }
 
-func NewSaturation[T ~int | ~int32 | ~uint | ~uint32](limit T) Saturation[T] {
-	return Saturation[T]{limit: limit}
+func NewSaturationInt(limit int) SaturationInt {
+	return SaturationInt{limit: limit}
 }
 
-func (s Saturation[T]) Apply(v T) T {
+func (s SaturationInt) Apply(v int) int {
 	if v > s.limit {
 		return s.limit
 	}
@@ -116,28 +119,99 @@ func (s Saturation[T]) Apply(v T) T {
 }
 
 // IRound performs saturation-aware rounding for floating point values
-func (s Saturation[T]) IRound(v float64) T {
+func (s SaturationInt) IRound(v float64) int {
 	limit := float64(s.limit)
-
-	// Use type switch to determine if T is unsigned
-	var zero T
-	switch any(zero).(type) {
-	case uint, uint32:
-		// T is unsigned, clamp negative values to 0
-		if v < 0 {
-			return 0
-		}
-	default:
-		// T is signed (int, int32), use original AGG behavior
-		if v < -limit {
-			return -s.limit
-		}
+	if v < -limit {
+		return -s.limit
 	}
-
 	if v > limit {
 		return s.limit
 	}
-	return T(IRound(v))
+	return IRound(v)
+}
+
+// SaturationInt32 provides saturation clamping for int32 values
+type SaturationInt32 struct {
+	limit int32
+}
+
+func NewSaturationInt32(limit int32) SaturationInt32 {
+	return SaturationInt32{limit: limit}
+}
+
+func (s SaturationInt32) Apply(v int32) int32 {
+	if v > s.limit {
+		return s.limit
+	}
+	return v
+}
+
+// IRound performs saturation-aware rounding for floating point values
+func (s SaturationInt32) IRound(v float64) int32 {
+	limit := float64(s.limit)
+	if v < -limit {
+		return -s.limit
+	}
+	if v > limit {
+		return s.limit
+	}
+	return int32(IRound(v))
+}
+
+// SaturationUint provides saturation clamping for uint values
+type SaturationUint struct {
+	limit uint
+}
+
+func NewSaturationUint(limit uint) SaturationUint {
+	return SaturationUint{limit: limit}
+}
+
+func (s SaturationUint) Apply(v uint) uint {
+	if v > s.limit {
+		return s.limit
+	}
+	return v
+}
+
+// IRound performs saturation-aware rounding for floating point values
+func (s SaturationUint) IRound(v float64) uint {
+	if v < 0 {
+		return 0
+	}
+	limit := float64(s.limit)
+	if v > limit {
+		return s.limit
+	}
+	return uint(IRound(v))
+}
+
+// SaturationUint32 provides saturation clamping for uint32 values
+type SaturationUint32 struct {
+	limit uint32
+}
+
+func NewSaturationUint32(limit uint32) SaturationUint32 {
+	return SaturationUint32{limit: limit}
+}
+
+func (s SaturationUint32) Apply(v uint32) uint32 {
+	if v > s.limit {
+		return s.limit
+	}
+	return v
+}
+
+// IRound performs saturation-aware rounding for floating point values
+func (s SaturationUint32) IRound(v float64) uint32 {
+	if v < 0 {
+		return 0
+	}
+	limit := float64(s.limit)
+	if v > limit {
+		return s.limit
+	}
+	return uint32(IRound(v))
 }
 
 // MulOne template equivalent with shift-based multiplication
@@ -169,6 +243,6 @@ func Abs(x int) int {
 
 // SaturationIRound performs saturation-aware rounding with given limit.
 func SaturationIRound(v float64, limit int) int {
-	saturation := NewSaturation(limit)
+	saturation := NewSaturationInt(limit)
 	return saturation.IRound(v)
 }

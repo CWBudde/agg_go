@@ -200,7 +200,7 @@ func TestGray8Constants(t *testing.T) {
 func TestGray8_ConvertFromRGBA8_SRGBNeedsLinearization(t *testing.T) {
 	// Middle gray in sRGB space: 188 encodes ~0.5 linear
 	c := RGBA8[SRGB]{R: 188, G: 188, B: 188, A: 255}
-	g := ConvertGray8FromRGBA8[SRGB](c)
+	g := ConvertGray8SRGBFromRGBA8(c)
 
 	// Expect near 128 (0.5 in linear) — allow 1 LSB
 	if g.V < 127 || g.V > 129 {
@@ -377,7 +377,7 @@ func TestGray8_Luminance_FloatVsInt_Consistency(t *testing.T) {
 		// Build a matching 8-bit linear sample and compare
 		to8 := func(x float64) basics.Int8u { return basics.Int8u(x*255 + 0.5) }
 		s8 := RGBA8[Linear]{R: to8(s.R), G: to8(s.G), B: to8(s.B), A: to8(s.A)}
-		gI := ConvertGray8FromRGBA8[Linear](s8)
+		gI := ConvertGray8LinearFromRGBA8(s8)
 
 		diff := int(gF.V) - int(gI.V)
 		if diff < -1 || diff > 1 {

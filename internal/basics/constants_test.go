@@ -7,7 +7,7 @@ import (
 
 func TestSaturation(t *testing.T) {
 	t.Run("Apply method", func(t *testing.T) {
-		saturation := NewSaturation[int](100)
+		saturation := NewSaturationInt(100)
 
 		tests := []struct {
 			input    int
@@ -29,7 +29,7 @@ func TestSaturation(t *testing.T) {
 	})
 
 	t.Run("IRound method", func(t *testing.T) {
-		saturation := NewSaturation[int](127)
+		saturation := NewSaturationInt(127)
 
 		tests := []struct {
 			input    float64
@@ -54,14 +54,14 @@ func TestSaturation(t *testing.T) {
 
 	t.Run("Different types", func(t *testing.T) {
 		// Test with int32
-		sat32 := NewSaturation[int32](1000)
+		sat32 := NewSaturationInt32(1000)
 		result32 := sat32.Apply(1500)
 		if result32 != 1000 {
 			t.Errorf("int32 saturation failed: expected 1000, got %d", result32)
 		}
 
 		// Test with uint32
-		satU32 := NewSaturation[uint32](255)
+		satU32 := NewSaturationUint32(255)
 		resultU32 := satU32.Apply(300)
 		if resultU32 != 255 {
 			t.Errorf("uint32 saturation failed: expected 255, got %d", resultU32)
@@ -299,7 +299,7 @@ func TestMathConstants(t *testing.T) {
 
 // Benchmark tests
 func BenchmarkSaturationIRound(b *testing.B) {
-	saturation := NewSaturation[int](127)
+	saturation := NewSaturationInt(127)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -369,7 +369,7 @@ func TestUFloorAndUCeil(t *testing.T) {
 
 func TestSaturationUnsignedIRound(t *testing.T) {
 	// For unsigned saturation, lower bound should clamp to 0
-	sat := NewSaturation[uint32](255)
+	sat := NewSaturationUint32(255)
 
 	tests := []struct {
 		in       float64
@@ -386,7 +386,7 @@ func TestSaturationUnsignedIRound(t *testing.T) {
 	for _, tt := range tests {
 		got := sat.IRound(tt.in)
 		if got != tt.expected {
-			t.Errorf("Saturation[uint32].IRound(%v) = %d, want %d", tt.in, got, tt.expected)
+			t.Errorf("SaturationUint32.IRound(%v) = %d, want %d", tt.in, got, tt.expected)
 		}
 	}
 }

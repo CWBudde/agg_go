@@ -52,7 +52,7 @@ type IntSatConv struct{}
 
 // MulDiv performs multiplication and division with saturation
 func (IntSatConv) MulDiv(a, b, c float64) int {
-	sat := basics.NewSaturation[int](PolyMaxCoord)
+	sat := basics.NewSaturationInt(PolyMaxCoord)
 	return sat.IRound(a * b / c)
 }
 
@@ -68,7 +68,7 @@ func (IntSatConv) Yi(v int) int {
 
 // Upscale converts double coordinate to subpixel integer with saturation
 func (IntSatConv) Upscale(v float64) int {
-	sat := basics.NewSaturation[int](PolyMaxCoord)
+	sat := basics.NewSaturationInt(PolyMaxCoord)
 	return sat.IRound(v * basics.PolySubpixelScale)
 }
 
