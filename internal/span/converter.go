@@ -135,6 +135,13 @@ func (ac *AlphaConverterSpan[C]) Generate(colors []C, x, y, len int) {
 
 // applyAlphaToColor applies alpha to a single color using type assertion.
 // This handles the common color types used in AGG.
+//
+// Note: This type switch is an acceptable module boundary pattern.
+// The span system is intentionally generic to handle any color type,
+// but alpha conversion only applies to colors with alpha channels.
+// Using interfaces would require breaking changes to all color types
+// and lose the ability to gracefully handle unknown/custom color types.
+// Unknown types fall through to the default case (no-op), which is correct.
 func (ac *AlphaConverterSpan[C]) applyAlphaToColor(c *C) {
 	// Use type assertion to handle different color types from the AGG color package
 	switch color := any(c).(type) {
@@ -144,8 +151,20 @@ func (ac *AlphaConverterSpan[C]) applyAlphaToColor(c *C) {
 	case *color.RGBA8[color.Linear]:
 		// For 8-bit RGBA with Linear colorspace
 		color.A = basics.Int8u(float64(color.A) * ac.alpha)
+	case *color.RGBA16[color.SRGB]:
+		// For 16-bit RGBA with SRGB colorspace
+		color.A = basics.Int16u(float64(color.A) * ac.alpha)
+	case *color.RGBA16[color.Linear]:
+		// For 16-bit RGBA with Linear colorspace
+		color.A = basics.Int16u(float64(color.A) * ac.alpha)
+	case *color.RGBA32[color.SRGB]:
+		// For 32-bit float RGBA with SRGB colorspace
+		color.A = float32(float64(color.A) * ac.alpha)
+	case *color.RGBA32[color.Linear]:
+		// For 32-bit float RGBA with Linear colorspace
+		color.A = float32(float64(color.A) * ac.alpha)
 	case *color.RGBA:
-		// For floating-point RGBA
+		// For floating-point RGBA (64-bit)
 		color.A = color.A * ac.alpha
 	default:
 		// For color types without alpha channel, alpha conversion is not possible
@@ -190,6 +209,9 @@ func (bac *BrightnessAlphaConverter[C]) Generate(colors []C, x, y, len int) {
 }
 
 // applyBrightnessAlpha applies brightness-based alpha to a single color.
+//
+// Note: This type switch is an acceptable module boundary pattern.
+// See applyAlphaToColor() for detailed rationale.
 func (bac *BrightnessAlphaConverter[C]) applyBrightnessAlpha(c *C) {
 	switch color := any(c).(type) {
 	case *color.RGBA8[color.SRGB]:
@@ -212,8 +234,44 @@ func (bac *BrightnessAlphaConverter[C]) applyBrightnessAlpha(c *C) {
 		}
 		color.A = bac.alphaArray[index]
 
+	case *color.RGBA16[color.SRGB]:
+		// For 16-bit colors, scale to 8-bit range for calculation
+		brightness := int(color.R>>8) + int(color.G>>8) + int(color.B>>8)
+		index := brightness * 767 / (3 * 255)
+		if index >= len(bac.alphaArray) {
+			index = len(bac.alphaArray) - 1
+		}
+		color.A = basics.Int16u(bac.alphaArray[index]) << 8
+
+	case *color.RGBA16[color.Linear]:
+		// Same algorithm for Linear colorspace
+		brightness := int(color.R>>8) + int(color.G>>8) + int(color.B>>8)
+		index := brightness * 767 / (3 * 255)
+		if index >= len(bac.alphaArray) {
+			index = len(bac.alphaArray) - 1
+		}
+		color.A = basics.Int16u(bac.alphaArray[index]) << 8
+
+	case *color.RGBA32[color.SRGB]:
+		// For 32-bit float RGBA, scale to 8-bit range for calculation
+		brightness := int(color.R*255) + int(color.G*255) + int(color.B*255)
+		index := brightness * 767 / (3 * 255)
+		if index >= len(bac.alphaArray) {
+			index = len(bac.alphaArray) - 1
+		}
+		color.A = float32(bac.alphaArray[index]) / 255.0
+
+	case *color.RGBA32[color.Linear]:
+		// Same algorithm for Linear colorspace
+		brightness := int(color.R*255) + int(color.G*255) + int(color.B*255)
+		index := brightness * 767 / (3 * 255)
+		if index >= len(bac.alphaArray) {
+			index = len(bac.alphaArray) - 1
+		}
+		color.A = float32(bac.alphaArray[index]) / 255.0
+
 	case *color.RGBA:
-		// For floating-point RGBA, scale to 8-bit range for calculation
+		// For floating-point RGBA (64-bit), scale to 8-bit range for calculation
 		brightness := int(color.R*255) + int(color.G*255) + int(color.B*255)
 		index := brightness * 767 / (3 * 255)
 		if index >= len(bac.alphaArray) {

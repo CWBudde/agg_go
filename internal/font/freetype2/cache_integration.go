@@ -8,7 +8,6 @@ import (
 	"fmt"
 
 	"agg_go/internal/fonts"
-	"agg_go/internal/scanline"
 )
 
 // CacheManager2 integrates the FreeType2 engine with the enhanced cache manager.

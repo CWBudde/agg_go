@@ -11,7 +11,6 @@ import (
 	"agg_go/internal/fonts"
 	"agg_go/internal/path"
 	"agg_go/internal/pixfmt/gamma"
-	"agg_go/internal/rasterizer"
 	"agg_go/internal/scanline"
 	"agg_go/internal/transform"
 )
@@ -177,9 +176,8 @@ type FontEngineBase struct {
 	scanlinesAA  *scanline.ScanlineStorageAA[uint8]
 	scanlinesBin *scanline.ScanlineStorageBin
 
-	// Rasterizer and gamma correction
-	rasterizer interface{}         // Complex generic parameters, will be typed later
-	gammaFunc  gamma.GammaFunction // Gamma correction function
+	// Gamma correction
+	gammaFunc gamma.GammaFunction // Gamma correction function
 }
 
 // NewFontEngineBase creates a new base font engine with the specified configuration.
@@ -205,12 +203,11 @@ func NewFontEngineBase(flag32 bool, maxFaces uint32) *FontEngineBase {
 		pathStorage32: pathStorage32,
 		curves16:      curves16,
 		curves32:      curves32,
-		scanlineU8:    scanline.NewScanlineU8(),
-		scanlineBin:   scanline.NewScanlineBin(),
-		scanlinesAA:   scanline.NewScanlineStorageAA[uint8](),
-		scanlinesBin:  scanline.NewScanlineStorageBin(),
-		rasterizer:    rasterizer.NewRasterizerSlNoClip(nil), // Simple no-clip rasterizer for font rendering
-		gammaFunc:     gamma.NewGammaNone(),                  // Default to no gamma correction
+		scanlineU8:   scanline.NewScanlineU8(),
+		scanlineBin:  scanline.NewScanlineBin(),
+		scanlinesAA:  scanline.NewScanlineStorageAA[uint8](),
+		scanlinesBin: scanline.NewScanlineStorageBin(),
+		gammaFunc:    gamma.NewGammaNone(), // Default to no gamma correction
 	}
 }
 

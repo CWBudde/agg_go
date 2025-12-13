@@ -125,10 +125,18 @@ type Agg2D struct {
 	textAlignX       TextAlignment
 	textAlignY       TextAlignment
 	textHints        bool
-	fontHeight       float64
-	fontAscent       float64
-	fontDescent      float64
-	fontCacheType    FontCacheType
+	fontHeight    float64
+	fontAscent    float64
+	fontDescent   float64
+	fontCacheType FontCacheType
+
+	// Font engine and cache manager use interface{} because their concrete types
+	// depend on build tags (freetype vs non-freetype). This is an ACCEPTABLE use
+	// of interface{} for cross-cutting concerns at module boundaries.
+	//
+	// DO NOT attempt to "fix" this with typed interfaces - the actual implementation
+	// is selected at compile time via build tags, making interface{} the correct choice.
+	// This pattern is analogous to C++ template specialization at build time.
 	fontEngine       interface{} // FontEngine interface - actual type depends on build tags
 	fontCacheManager interface{} // FontCacheManager - manages glyph caching
 

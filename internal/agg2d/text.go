@@ -267,7 +267,7 @@ func (agg2d *Agg2D) Text(x, y float64, str string, roundOff bool, dx, dy float64
 
 // renderGlyphScanlines renders a glyph using scanline data.
 // This is a helper method for the Text() function.
-func (agg2d *Agg2D) renderGlyphScanlines(adaptor interface{}, glyph *font.GlyphCache, x, y float64) {
+func (agg2d *Agg2D) renderGlyphScanlines(adaptor font.SerializedScanlinesAdaptor, glyph *font.GlyphCache, x, y float64) {
 	if agg2d.renBase == nil || agg2d.scanline == nil {
 		return
 	}
@@ -286,43 +286,24 @@ func (agg2d *Agg2D) renderGlyphScanlines(adaptor interface{}, glyph *font.GlyphC
 		fillColor.A = alpha
 	}
 
-	switch a := adaptor.(type) {
-	case *font.SerializedScanlinesAdaptorAA:
-		// Render anti-aliased scanlines
-		bounds := a.Bounds()
-		data := a.Data()
+	// Use the interface methods directly - no type assertion needed
+	bounds := adaptor.Bounds()
+	data := adaptor.Data()
 
-		// Position the glyph at the correct location
-		offsetX := int(x) + bounds.X1
-		offsetY := int(y) + bounds.Y1
+	// Position the glyph at the correct location
+	offsetX := int(x) + bounds.X1
+	offsetY := int(y) + bounds.Y1
 
-		// For font glyphs, we need to process the serialized scanline data
-		// and render each scanline directly using the base renderer
-		// This is a simplified approach - in full AGG, this would use
-		// a proper serialized scanlines adaptor that implements RasterizerInterface
-		if len(data) > 0 {
-			// Use the bounds to render a simple filled rectangle for now
-			// In a full implementation, this would deserialize and render actual scanlines
-			for yi := bounds.Y1; yi <= bounds.Y2; yi++ {
-				agg2d.renBase.BlendHline(offsetX, offsetY+yi-bounds.Y1,
-					offsetX+bounds.X2-bounds.X1, fillColor, 255)
-			}
-		}
-
-	case *font.SerializedScanlinesAdaptorBin:
-		// Render binary scanlines
-		bounds := a.Bounds()
-		data := a.Data()
-
-		offsetX := int(x) + bounds.X1
-		offsetY := int(y) + bounds.Y1
-
-		// Similar approach for binary data - render as solid rectangle
-		if len(data) > 0 {
-			for yi := bounds.Y1; yi <= bounds.Y2; yi++ {
-				agg2d.renBase.BlendHline(offsetX, offsetY+yi-bounds.Y1,
-					offsetX+bounds.X2-bounds.X1, fillColor, 255)
-			}
+	// For font glyphs, we need to process the serialized scanline data
+	// and render each scanline directly using the base renderer
+	// This is a simplified approach - in full AGG, this would use
+	// a proper serialized scanlines adaptor that implements RasterizerInterface
+	if len(data) > 0 {
+		// Use the bounds to render a simple filled rectangle for now
+		// In a full implementation, this would deserialize and render actual scanlines
+		for yi := bounds.Y1; yi <= bounds.Y2; yi++ {
+			agg2d.renBase.BlendHline(offsetX, offsetY+yi-bounds.Y1,
+				offsetX+bounds.X2-bounds.X1, fillColor, 255)
 		}
 	}
 }

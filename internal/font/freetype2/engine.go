@@ -42,6 +42,7 @@ import (
 	"fmt"
 	"unsafe"
 
+	"agg_go/internal/font"
 	"agg_go/internal/path"
 )
 
@@ -219,7 +220,7 @@ func (fe *FontEngine) GetPathStorage32() *path.PathStorageInteger[int32] {
 }
 
 // GetPathStorage returns the appropriate path storage based on engine precision.
-func (fe *FontEngine) GetPathStorage() interface{} {
+func (fe *FontEngine) GetPathStorage() font.IntegerPathStorage {
 	if fe.flag32 {
 		return fe.pathStorage32
 	}
@@ -235,7 +236,7 @@ func (fe *FontEngine) DecomposeFTOutline(outline *C.FT_Outline, flipY bool) erro
 	}
 
 	// Clear the appropriate path storage
-	var pathStorage interface{}
+	var pathStorage font.IntegerPathStorage
 	if fe.flag32 {
 		fe.pathStorage32.RemoveAll()
 		pathStorage = fe.pathStorage32
@@ -249,7 +250,7 @@ func (fe *FontEngine) DecomposeFTOutline(outline *C.FT_Outline, flipY bool) erro
 
 // decomposeOutlineToPath performs the actual outline decomposition.
 // This implements the complex FreeType outline walking algorithm from AGG.
-func (fe *FontEngine) decomposeOutlineToPath(outline *C.FT_Outline, flipY bool, pathStorage interface{}) error {
+func (fe *FontEngine) decomposeOutlineToPath(outline *C.FT_Outline, flipY bool, pathStorage font.IntegerPathStorage) error {
 	first := 0
 
 	for n := 0; n < int(outline.n_contours); n++ {
@@ -304,16 +305,8 @@ func (fe *FontEngine) decomposeOutlineToPath(outline *C.FT_Outline, flipY bool, 
 			y = -y
 		}
 
-		// Move to start point in the appropriate path storage
-		if fe.flag32 {
-			if storage32, ok := pathStorage.(*path.PathStorageInteger[int32]); ok {
-				storage32.MoveTo(int32(x), int32(y))
-			}
-		} else {
-			if storage16, ok := pathStorage.(*path.PathStorageInteger[int16]); ok {
-				storage16.MoveTo(int16(x), int16(y))
-			}
-		}
+		// Move to start point using the interface method
+		pathStorage.MoveTo64(int64(x), int64(y))
 
 		// Process the contour points
 		err := fe.processContourPoints(outline, first, last, flipY, pathStorage, startPoint)
@@ -322,15 +315,7 @@ func (fe *FontEngine) decomposeOutlineToPath(outline *C.FT_Outline, flipY bool, 
 		}
 
 		// Close the polygon
-		if fe.flag32 {
-			if storage32, ok := pathStorage.(*path.PathStorageInteger[int32]); ok {
-				storage32.ClosePolygon()
-			}
-		} else {
-			if storage16, ok := pathStorage.(*path.PathStorageInteger[int16]); ok {
-				storage16.ClosePolygon()
-			}
-		}
+		pathStorage.ClosePolygon()
 
 		first = last + 1
 	}
@@ -340,7 +325,7 @@ func (fe *FontEngine) decomposeOutlineToPath(outline *C.FT_Outline, flipY bool, 
 
 // processContourPoints processes the points in a single contour.
 func (fe *FontEngine) processContourPoints(outline *C.FT_Outline, first, last int, flipY bool,
-	pathStorage interface{}, startPoint *C.FT_Vector,
+	pathStorage font.IntegerPathStorage, startPoint *C.FT_Vector,
 ) error {
 	i := first
 	for i < last {
@@ -361,15 +346,7 @@ func (fe *FontEngine) processContourPoints(outline *C.FT_Outline, first, last in
 				y = -y
 			}
 
-			if fe.flag32 {
-				if storage32, ok := pathStorage.(*path.PathStorageInteger[int32]); ok {
-					storage32.LineTo(int32(x), int32(y))
-				}
-			} else {
-				if storage16, ok := pathStorage.(*path.PathStorageInteger[int16]); ok {
-					storage16.LineTo(int16(x), int16(y))
-				}
-			}
+			pathStorage.LineTo64(int64(x), int64(y))
 
 		case 0: // FT_CURVE_TAG_CONIC - quadratic curve
 			err := fe.processConicCurve(outline, &i, last, flipY, pathStorage, startPoint)
@@ -390,7 +367,7 @@ func (fe *FontEngine) processContourPoints(outline *C.FT_Outline, first, last in
 
 // processConicCurve handles quadratic Bézier curves.
 func (fe *FontEngine) processConicCurve(outline *C.FT_Outline, i *int, last int, flipY bool,
-	pathStorage interface{}, startPoint *C.FT_Vector,
+	pathStorage font.IntegerPathStorage, startPoint *C.FT_Vector,
 ) error {
 	// Get control point
 	controlPtr := uintptr(unsafe.Pointer(outline.points)) + uintptr(*i)*unsafe.Sizeof(C.FT_Vector{})
@@ -419,11 +396,7 @@ func (fe *FontEngine) processConicCurve(outline *C.FT_Outline, i *int, last int,
 				y2 = -y2
 			}
 
-			if fe.flag32 {
-				pathStorage.(*path.PathStorageInteger[int32]).Curve3(int32(x1), int32(y1), int32(x2), int32(y2))
-			} else {
-				pathStorage.(*path.PathStorageInteger[int16]).Curve3(int16(x1), int16(y1), int16(x2), int16(y2))
-			}
+			pathStorage.Curve3_64(int64(x1), int64(y1), int64(x2), int64(y2))
 			break
 		}
 
@@ -447,11 +420,7 @@ func (fe *FontEngine) processConicCurve(outline *C.FT_Outline, i *int, last int,
 			y2 = -y2
 		}
 
-		if fe.flag32 {
-			pathStorage.(*path.PathStorageInteger[int32]).Curve3(int32(x1), int32(y1), int32(x2), int32(y2))
-		} else {
-			pathStorage.(*path.PathStorageInteger[int16]).Curve3(int16(x1), int16(y1), int16(x2), int16(y2))
-		}
+		pathStorage.Curve3_64(int64(x1), int64(y1), int64(x2), int64(y2))
 
 		vControl = nextPoint
 	}
@@ -468,11 +437,7 @@ func (fe *FontEngine) processConicCurve(outline *C.FT_Outline, i *int, last int,
 			y2 = -y2
 		}
 
-		if fe.flag32 {
-			pathStorage.(*path.PathStorageInteger[int32]).Curve3(int32(x1), int32(y1), int32(x2), int32(y2))
-		} else {
-			pathStorage.(*path.PathStorageInteger[int16]).Curve3(int16(x1), int16(y1), int16(x2), int16(y2))
-		}
+		pathStorage.Curve3_64(int64(x1), int64(y1), int64(x2), int64(y2))
 	}
 
 	return nil
@@ -480,7 +445,7 @@ func (fe *FontEngine) processConicCurve(outline *C.FT_Outline, i *int, last int,
 
 // processCubicCurve handles cubic Bézier curves.
 func (fe *FontEngine) processCubicCurve(outline *C.FT_Outline, i *int, last int, flipY bool,
-	pathStorage interface{}, startPoint *C.FT_Vector,
+	pathStorage font.IntegerPathStorage, startPoint *C.FT_Vector,
 ) error {
 	if *i+1 > last {
 		return errors.New("insufficient points for cubic curve")
@@ -526,11 +491,7 @@ func (fe *FontEngine) processCubicCurve(outline *C.FT_Outline, i *int, last int,
 		y3 = -y3
 	}
 
-	if fe.flag32 {
-		pathStorage.(*path.PathStorageInteger[int32]).Curve4(int32(x1), int32(y1), int32(x2), int32(y2), int32(x3), int32(y3))
-	} else {
-		pathStorage.(*path.PathStorageInteger[int16]).Curve4(int16(x1), int16(y1), int16(x2), int16(y2), int16(x3), int16(y3))
-	}
+	pathStorage.Curve4_64(int64(x1), int64(y1), int64(x2), int64(y2), int64(x3), int64(y3))
 
 	return nil
 }

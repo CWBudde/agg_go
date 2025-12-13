@@ -47,6 +47,12 @@ type FontMetrics struct {
 	LineGap   float64 // Recommended line spacing gap
 }
 
+// SerializedScanlinesAdaptorAA and SerializedScanlinesAdaptorBin both implement
+// the font.SerializedScanlinesAdaptor interface, providing a unified way to access
+// serialized scanline data for glyph rendering. Both types expose the same interface
+// methods (Bounds() and Data()), eliminating the need for interface{} type assertions
+// in rendering code.
+
 // SerializedScanlinesAdaptorAA provides access to anti-aliased scanline data.
 // This adapts serialized AA scanline data for rendering.
 type SerializedScanlinesAdaptorAA struct {

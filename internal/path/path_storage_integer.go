@@ -79,6 +79,28 @@ func (psi *PathStorageInteger[T]) ClosePolygon() {
 	// No operation needed
 }
 
+// MoveTo64 implements font.IntegerPathStorage.MoveTo with int64 parameters.
+// This allows PathStorageInteger[int16] and PathStorageInteger[int32] to both
+// satisfy the IntegerPathStorage interface without type assertions.
+func (psi *PathStorageInteger[T]) MoveTo64(x, y int64) {
+	psi.MoveTo(T(x), T(y))
+}
+
+// LineTo64 implements font.IntegerPathStorage.LineTo with int64 parameters.
+func (psi *PathStorageInteger[T]) LineTo64(x, y int64) {
+	psi.LineTo(T(x), T(y))
+}
+
+// Curve3_64 implements font.IntegerPathStorage.Curve3 with int64 parameters.
+func (psi *PathStorageInteger[T]) Curve3_64(xCtrl, yCtrl, xTo, yTo int64) {
+	psi.Curve3(T(xCtrl), T(yCtrl), T(xTo), T(yTo))
+}
+
+// Curve4_64 implements font.IntegerPathStorage.Curve4 with int64 parameters.
+func (psi *PathStorageInteger[T]) Curve4_64(xCtrl1, yCtrl1, xCtrl2, yCtrl2, xTo, yTo int64) {
+	psi.Curve4(T(xCtrl1), T(yCtrl1), T(xCtrl2), T(yCtrl2), T(xTo), T(yTo))
+}
+
 // Size returns the number of vertices in the path.
 func (psi *PathStorageInteger[T]) Size() uint32 {
 	return uint32(psi.storage.Size())
