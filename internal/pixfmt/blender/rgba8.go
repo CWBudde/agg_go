@@ -60,19 +60,16 @@ func (BlenderRGBA8[S, O]) BlendPix(dst []basics.Int8u, r, g, b, a, cover basics.
 
 func (BlenderRGBA8[S, O]) SetPlain(dst []basics.Int8u, r, g, b, a basics.Int8u) {
 	var o O
-	dst[o.IdxR()] = color.RGBA8Multiply(r, a)
-	dst[o.IdxG()] = color.RGBA8Multiply(g, a)
-	dst[o.IdxB()] = color.RGBA8Multiply(b, a)
-	dst[o.IdxA()] = a
+	// SetPlain should set the exact plain/straight alpha values without premultiplying
+	// The blending operations (BlendPix, etc.) handle premultiplication as needed
+	dst[o.IdxR()], dst[o.IdxG()], dst[o.IdxB()], dst[o.IdxA()] = r, g, b, a
 }
 
 func (BlenderRGBA8[S, O]) GetPlain(src []basics.Int8u) (r, g, b, a basics.Int8u) {
 	var o O
-	a = src[o.IdxA()]
-	if a == 0 {
-		return 0, 0, 0, 0
-	}
-	return demul8(src[o.IdxR()], a), demul8(src[o.IdxG()], a), demul8(src[o.IdxB()], a), a
+	// GetPlain returns the exact stored values without demultiplying
+	// This matches SetPlain which stores plain/straight alpha values
+	return src[o.IdxR()], src[o.IdxG()], src[o.IdxB()], src[o.IdxA()]
 }
 
 // RawRGBAOrder interface implementation for fast path access

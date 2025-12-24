@@ -123,11 +123,14 @@ func TestGray32_LerpAndPrelerp(t *testing.T) {
 	}
 
 	// Prelerp extremes
-	if !feq(Gray32Prelerp(0.4, 0.2, 0.0), 0.4, epsTight) {
-		t.Fatalf("Prelerp a=0")
+	// Formula: (1-a)*p + q  which equals  p + q - p*a
+	// When a=0: p + q
+	// When a=1: q
+	if !feq(Gray32Prelerp(0.4, 0.2, 0.0), 0.6, epsTight) {
+		t.Fatalf("Prelerp a=0 should return p+q = 0.6")
 	}
 	if !feq(Gray32Prelerp(0.4, 0.2, 1.0), 0.2, epsTight) {
-		t.Fatalf("Prelerp a=1")
+		t.Fatalf("Prelerp a=1 should return q")
 	}
 	// Prelerp mid
 	pm := Gray32Prelerp(0.4, 0.2, 0.5)
@@ -406,8 +409,11 @@ func TestGray32_LerpProperties(t *testing.T) {
 
 func TestGray32_PrelerpProperties(t *testing.T) {
 	// Test extremes
-	if !feq(Gray32Prelerp(0.4, 0.2, 0.0), 0.4, epsTight) {
-		t.Fatal("a=0 should return p")
+	// Prelerp formula: (1-a)*p + q = p + q - p*a
+	// When a=0: p + q (not p!)
+	// When a=1: q
+	if !feq(Gray32Prelerp(0.4, 0.2, 0.0), 0.6, epsTight) {
+		t.Fatal("a=0 should return p+q = 0.6")
 	}
 	if !feq(Gray32Prelerp(0.4, 0.2, 1.0), 0.2, epsTight) {
 		t.Fatal("a=1 should return q")
@@ -453,11 +459,14 @@ func TestGray32_AddWithPartialCoverage(t *testing.T) {
 	// Test partial coverage behavior
 	g := NewGray32WithAlpha[Linear](0.4, 0.4)
 	c := NewGray32WithAlpha[Linear](0.8, 0.8)
-	g.Add(c, 128) // ~50% coverage
+	g.Add(c, 128) // ~50% coverage (128/255 = 0.5020)
 
-	// Components should increase but not by full amount
-	if !(g.V > 0.4 && g.V < 0.8) || !(g.A > 0.4 && g.A < 0.8) {
-		t.Fatalf("Partial coverage should partially increase components: got V=%f A=%f", g.V, g.A)
+	// Add formula: g.V += c.V * cover
+	// Expected: 0.4 + 0.8 * 0.5020 = 0.4 + 0.4016 ≈ 0.8016
+	// Components should increase from original 0.4
+	// Result can be >= 0.8 because we're adding, not blending with alpha
+	if g.V <= 0.4 || g.A <= 0.4 {
+		t.Fatalf("Partial coverage should increase components: got V=%f A=%f", g.V, g.A)
 	}
 
 	// Test zero coverage

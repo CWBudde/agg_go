@@ -91,7 +91,7 @@ func (g Gray16[CS]) IsOpaque() bool {
 }
 
 func (g *Gray16[CS]) Opacity(a float32) {
-	g.A = basics.Int16u(clamp01f32(a) * 65535.0)
+	g.A = basics.Int16u(clamp01f32(a)*65535.0 + 0.5)
 }
 
 func (g Gray16[CS]) GetOpacity() float32 {
@@ -138,9 +138,9 @@ func Gray16Multiply(a, b basics.Int16u) basics.Int16u {
 func Gray16Lerp(p, q, a basics.Int16u) basics.Int16u {
 	var t int64
 	if p > q {
-		t = int64(q-p)*int64(a) + Gray16BaseMSB - 1
+		t = (int64(q)-int64(p))*int64(a) + Gray16BaseMSB - 1
 	} else {
-		t = int64(q-p)*int64(a) + Gray16BaseMSB
+		t = (int64(q)-int64(p))*int64(a) + Gray16BaseMSB
 	}
 	return basics.Int16u(int64(p) + (((t >> Gray16BaseShift) + t) >> Gray16BaseShift))
 }
@@ -152,10 +152,14 @@ func Gray16Prelerp(p, q, a basics.Int16u) basics.Int16u {
 
 // Gradient performs linear interpolation between two colors
 func (g Gray16[CS]) Gradient(c2 Gray16[CS], k float64) Gray16[CS] {
-	ik := basics.Int16u(k*float64(Gray16BaseScale) + 0.5)
+	ik := k*float64(Gray16BaseScale) + 0.5
+	if ik > float64(Gray16BaseMask) {
+		ik = float64(Gray16BaseMask)
+	}
+	ikInt := basics.Int16u(ik)
 	return Gray16[CS]{
-		V: Gray16Lerp(g.V, c2.V, ik),
-		A: Gray16Lerp(g.A, c2.A, ik),
+		V: Gray16Lerp(g.V, c2.V, ikInt),
+		A: Gray16Lerp(g.A, c2.A, ikInt),
 	}
 }
 

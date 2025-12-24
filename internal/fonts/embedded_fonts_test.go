@@ -373,8 +373,19 @@ func TestAllFontAccessors(t *testing.T) {
 				t.Errorf("%s should start at space (32), got %d", name, startChar)
 			}
 
-			if numChars != 96 {
-				t.Errorf("%s should have 96 chars, got %d", name, numChars)
+			// MCS proportional fonts have 128 chars, others have 96
+			expectedChars := byte(96)
+			if len(name) >= 3 && name[:3] == "MCS" {
+				// Check if it's a proportional font (ends with "Prop" or "PropCondensed")
+				if len(name) >= 4 && name[len(name)-4:] == "Prop" {
+					expectedChars = 128
+				} else if len(name) >= 13 && name[len(name)-13:] == "PropCondensed" {
+					expectedChars = 128
+				}
+			}
+
+			if numChars != expectedChars {
+				t.Errorf("%s should have %d chars, got %d", name, expectedChars, numChars)
 			}
 		})
 	}
@@ -680,10 +691,15 @@ func TestFontFamiliesCoverage(t *testing.T) {
 				t.Errorf("%s family font %d is too short: %d bytes", family, i, len(font))
 			}
 
-			// All fonts should have 96 characters (ASCII 32-127)
+			// MCS proportional fonts have 128 chars, others have 96 (ASCII 32-127)
 			numChars := int(font[3])
-			if numChars != 96 {
-				t.Errorf("%s family font %d should have 96 chars, got %d", family, i, numChars)
+			expectedChars := 96
+			// MCS family: index 0 is MCS5x10Mono (96 chars), index 1 is MCS11Prop (128 chars)
+			if family == "MCS" && i == 1 {
+				expectedChars = 128
+			}
+			if numChars != expectedChars {
+				t.Errorf("%s family font %d should have %d chars, got %d", family, i, expectedChars, numChars)
 			}
 		}
 	}
