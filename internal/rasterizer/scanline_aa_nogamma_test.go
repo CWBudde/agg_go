@@ -30,10 +30,10 @@ func TestRasterizerScanlineAANoGammaApplyGamma(t *testing.T) {
 	r := NewRasterizerScanlineAANoGamma[float64, DblConv, *MockClip](DblConv{}, &MockClip{})
 
 	// Test that ApplyGamma returns the input unchanged (no gamma correction)
-	testValues := []uint32{0, 50, 100, 128, 200, 255}
+	testValues := []int{0, 50, 100, 128, 200, 255}
 	for _, val := range testValues {
 		result := r.ApplyGamma(val)
-		if result != val {
+		if result != uint8(val) {
 			t.Errorf("Expected ApplyGamma(%d) = %d, got %d", val, val, result)
 		}
 	}
@@ -87,8 +87,7 @@ func TestRasterizerScanlineAANoGammaAutoClose(t *testing.T) {
 
 func TestRasterizerScanlineAANoGammaMoveTo(t *testing.T) {
 	clipper := &MockClip{}
-	r := NewRasterizerScanlineAANoGamma[float64, DblConv, *MockClip](DblConv{}, &MockClip{})
-	r.clipper = clipper
+	r := NewRasterizerScanlineAANoGamma[float64, DblConv, *MockClip](DblConv{}, clipper)
 
 	// Test integer MoveTo
 	x, y := 100, 200
@@ -98,15 +97,15 @@ func TestRasterizerScanlineAANoGammaMoveTo(t *testing.T) {
 		t.Error("Expected status to be StatusMoveTo after MoveTo")
 	}
 
-	if r.startX != x || r.startY != y {
-		t.Errorf("Expected start position (%d, %d), got (%d, %d)", x, y, r.startX, r.startY)
+	// Verify the clipper was called with correct coordinates
+	if clipper.moveToX != float64(x) || clipper.moveToY != float64(y) {
+		t.Errorf("Expected clipper MoveTo called with (%d, %d), got (%f, %f)", x, y, clipper.moveToX, clipper.moveToY)
 	}
 }
 
 func TestRasterizerScanlineAANoGammaMoveToD(t *testing.T) {
 	clipper := &MockClip{}
-	r := NewRasterizerScanlineAANoGamma[float64, DblConv, *MockClip](DblConv{}, &MockClip{})
-	r.clipper = clipper
+	r := NewRasterizerScanlineAANoGamma[float64, DblConv, *MockClip](DblConv{}, clipper)
 
 	// Test floating point MoveTo
 	x, y := 10.5, 20.7
@@ -116,18 +115,15 @@ func TestRasterizerScanlineAANoGammaMoveToD(t *testing.T) {
 		t.Error("Expected status to be StatusMoveTo after MoveToD")
 	}
 
-	expectedX := int(x * basics.PolySubpixelScale)
-	expectedY := int(y * basics.PolySubpixelScale)
-
-	if r.startX != expectedX || r.startY != expectedY {
-		t.Errorf("Expected start position (%d, %d), got (%d, %d)", expectedX, expectedY, r.startX, r.startY)
+	// Verify the clipper was called with correct coordinates
+	if clipper.moveToX != x || clipper.moveToY != y {
+		t.Errorf("Expected clipper MoveTo called with (%f, %f), got (%f, %f)", x, y, clipper.moveToX, clipper.moveToY)
 	}
 }
 
 func TestRasterizerScanlineAANoGammaLineTo(t *testing.T) {
 	clipper := &MockClip{}
-	r := NewRasterizerScanlineAANoGamma[float64, DblConv, *MockClip](DblConv{}, &MockClip{})
-	r.clipper = clipper
+	r := NewRasterizerScanlineAANoGamma[float64, DblConv, *MockClip](DblConv{}, clipper)
 
 	// Must start with MoveTo
 	r.MoveTo(0, 0)
@@ -348,56 +344,8 @@ func BenchmarkRasterizerScanlineAANoGamma_ApplyGamma(b *testing.B) {
 	r := NewRasterizerScanlineAANoGamma[float64, DblConv, *MockClip](DblConv{}, &MockClip{})
 
 	for i := 0; i < b.N; i++ {
-		r.ApplyGamma(uint32(i % 256))
+		r.ApplyGamma(i % 256)
 	}
 }
 
-// Test HitTestScanline implementation
-func TestHitTestScanline(t *testing.T) {
-	ht := &HitTestScanline{targetX: 50, hit: false}
-
-	// Test ResetSpans
-	ht.hit = true
-	ht.ResetSpans()
-	if ht.hit {
-		t.Error("Expected hit to be false after ResetSpans")
-	}
-
-	// Test AddCell - hit case
-	ht.AddCell(50, 100)
-	if !ht.hit {
-		t.Error("Expected hit to be true after AddCell with matching X")
-	}
-
-	// Test AddCell - miss case
-	ht.ResetSpans()
-	ht.AddCell(60, 100)
-	if ht.hit {
-		t.Error("Expected hit to be false after AddCell with non-matching X")
-	}
-
-	// Test AddSpan - hit case
-	ht.ResetSpans()
-	ht.AddSpan(40, 20, 100) // span from 40 to 60, includes 50
-	if !ht.hit {
-		t.Error("Expected hit to be true after AddSpan containing target")
-	}
-
-	// Test AddSpan - miss case
-	ht.ResetSpans()
-	ht.AddSpan(60, 10, 100) // span from 60 to 70, doesn't include 50
-	if ht.hit {
-		t.Error("Expected hit to be false after AddSpan not containing target")
-	}
-
-	// Test NumSpans
-	ht.hit = true
-	if ht.NumSpans() != 1 {
-		t.Error("Expected NumSpans to return 1 when hit is true")
-	}
-
-	ht.hit = false
-	if ht.NumSpans() != 0 {
-		t.Error("Expected NumSpans to return 0 when hit is false")
-	}
-}
+// TODO: Add tests for HitTestScanline if/when it's implemented

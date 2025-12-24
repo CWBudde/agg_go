@@ -350,7 +350,8 @@ func TestSign(t *testing.T) {
 		{5.0, 1},
 		{-3.0, -1},
 		{0.0, 0},
-		{1e-15, 0}, // Very small positive treated as zero
+		{1e-15, 1}, // Very small positive is still positive
+		{-1e-15, -1}, // Very small negative is still negative
 	}
 
 	for _, test := range tests {

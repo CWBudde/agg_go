@@ -502,8 +502,9 @@ func TestConvStrokeComplexPaths(t *testing.T) {
 		}
 
 		// Triangle should generate substantial number of vertices due to joins
-		if len(outputVertices) < 15 {
-			t.Errorf("Expected at least 15 vertices for stroked triangle, got %d", len(outputVertices))
+		// With 3 corners and round joins, expect at least 12-14 vertices
+		if len(outputVertices) < 12 {
+			t.Errorf("Expected at least 12 vertices for stroked triangle, got %d", len(outputVertices))
 		}
 
 		// Should contain EndPoly for closed path

@@ -93,7 +93,7 @@ func TestNewRasterizerScanlineAA(t *testing.T) {
 
 	// Check that gamma table is initialized linearly
 	for i := 0; i < AAScale; i++ {
-		if r.gamma[i] != i {
+		if r.gamma[i] != uint8(i) {
 			t.Errorf("Expected gamma[%d] = %d, got %d", i, i, r.gamma[i])
 		}
 	}
@@ -144,12 +144,12 @@ func TestRasterizerScanlineAA_SetGamma(t *testing.T) {
 
 	// Check a few values
 	expected0 := basics.URound(0.0 * AAMask)
-	if r.gamma[0] != int(expected0) {
+	if r.gamma[0] != uint8(expected0) {
 		t.Errorf("Expected gamma[0] = %d, got %d", expected0, r.gamma[0])
 	}
 
 	expected255 := basics.URound(1.0 * AAMask)
-	if r.gamma[255] != int(expected255) {
+	if r.gamma[255] != uint8(expected255) {
 		t.Errorf("Expected gamma[255] = %d, got %d", expected255, r.gamma[255])
 	}
 }
@@ -167,7 +167,7 @@ func TestRasterizerScanlineAA_ApplyGamma(t *testing.T) {
 	// Test with custom gamma
 	r.SetGamma(func(x float64) float64 { return x * 0.5 })
 	result = r.ApplyGamma(128)
-	expected := uint32(basics.URound(0.5 * 128))
+	expected := uint8(basics.URound(0.5 * 128))
 	if result != expected {
 		t.Errorf("Expected ApplyGamma(128) = %d, got %d", expected, result)
 	}
@@ -183,10 +183,7 @@ func TestRasterizerScanlineAA_MoveTo(t *testing.T) {
 		t.Error("Expected status to be StatusMoveTo")
 	}
 
-	if r.startX != 100 || r.startY != 200 {
-		t.Errorf("Expected start position (100, 200), got (%d, %d)", r.startX, r.startY)
-	}
-
+	// Verify the clipper was called with correct coordinates
 	if clip.moveToX != 100.0 || clip.moveToY != 200.0 {
 		t.Errorf("Expected clipper MoveTo called with (100, 200), got (%f, %f)", clip.moveToX, clip.moveToY)
 	}
@@ -217,13 +214,7 @@ func TestRasterizerScanlineAA_MoveToD(t *testing.T) {
 		t.Error("Expected status to be StatusMoveTo")
 	}
 
-	expectedX := basics.IRound(10.5 * basics.PolySubpixelScale)
-	expectedY := basics.IRound(20.25 * basics.PolySubpixelScale)
-
-	if r.startX != expectedX || r.startY != expectedY {
-		t.Errorf("Expected start position (%d, %d), got (%d, %d)", expectedX, expectedY, r.startX, r.startY)
-	}
-
+	// Verify the clipper was called with correct coordinates
 	if clip.moveToX != 10.5 || clip.moveToY != 20.25 {
 		t.Errorf("Expected clipper MoveTo called with (10.5, 20.25), got (%f, %f)", clip.moveToX, clip.moveToY)
 	}

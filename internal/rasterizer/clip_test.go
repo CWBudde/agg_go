@@ -226,7 +226,7 @@ func TestRasterizerSlClipNormalization(t *testing.T) {
 	// Check that the clip box was normalized
 	if clipper.clipBox.X1 != 10 || clipper.clipBox.Y1 != 10 ||
 		clipper.clipBox.X2 != 50 || clipper.clipBox.Y2 != 50 {
-		t.Errorf("Clip box not normalized: got (%f,%f)-(%f,%f), want (10,10)-(50,50)",
+		t.Errorf("Clip box not normalized: got (%d,%d)-(%d,%d), want (10,10)-(50,50)",
 			clipper.clipBox.X1, clipper.clipBox.Y1, clipper.clipBox.X2, clipper.clipBox.Y2)
 	}
 }

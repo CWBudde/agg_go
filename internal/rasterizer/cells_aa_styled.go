@@ -72,6 +72,38 @@ func (r *RasterizerCellsAAStyled) Style(styleCell CellStyleAA) {
 // Line rasterizes a line from (x1,y1) to (x2,y2) using the AGG algorithm
 func (r *RasterizerCellsAAStyled) Line(x1, y1, x2, y2 int) {
 	// Implementation of AGG's line rasterization algorithm
+
+	// Update bounding box with start point (matches C++ AGG behavior)
+	ex1 := x1 >> basics.PolySubpixelShift
+	ey1 := y1 >> basics.PolySubpixelShift
+	ex2 := x2 >> basics.PolySubpixelShift
+	ey2 := y2 >> basics.PolySubpixelShift
+
+	if ex1 < r.minX {
+		r.minX = ex1
+	}
+	if ex1 > r.maxX {
+		r.maxX = ex1
+	}
+	if ey1 < r.minY {
+		r.minY = ey1
+	}
+	if ey1 > r.maxY {
+		r.maxY = ey1
+	}
+	if ex2 < r.minX {
+		r.minX = ex2
+	}
+	if ex2 > r.maxX {
+		r.maxX = ex2
+	}
+	if ey2 < r.minY {
+		r.minY = ey2
+	}
+	if ey2 > r.maxY {
+		r.maxY = ey2
+	}
+
 	dy := y2 - y1
 
 	if dy != 0 {
