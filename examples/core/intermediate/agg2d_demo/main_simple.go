@@ -1,3 +1,6 @@
+//go:build agg2d_demo_simple
+// +build agg2d_demo_simple
+
 // Package main demonstrates the AGG2D high-level interface.
 // This is a simplified version that avoids text rendering to focus on graphics features.
 package main

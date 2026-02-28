@@ -34,7 +34,7 @@ func main() {
 	img := ctx.GetImage()
 
 	fmt.Printf("Generated image: %dx%d, %d bytes\n",
-		img.Width, img.Height, len(img.Data))
+		img.Width(), img.Height(), len(img.Data))
 
 	// For now, just print some pixel values to verify it's working
 	if len(img.Data) >= 16 {

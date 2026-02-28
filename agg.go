@@ -33,7 +33,9 @@
 package agg
 
 import (
+	"fmt"
 	"math"
+	"os"
 
 	"agg_go/internal/agg2d"
 )
@@ -133,7 +135,11 @@ const (
 // Agg2D provides the public interface to the AGG2D rendering engine.
 // It wraps the internal implementation and exposes only the necessary methods.
 type Agg2D struct {
-	impl *agg2d.Agg2D
+	impl           *agg2d.Agg2D
+	attachedBuffer []uint8
+	attachedWidth  int
+	attachedHeight int
+	attachedStride int
 }
 
 // NewAgg2D creates a new AGG2D rendering context.
@@ -146,6 +152,10 @@ func NewAgg2D() *Agg2D {
 // Attach attaches a rendering buffer to the AGG2D context.
 func (a *Agg2D) Attach(buf []uint8, width, height, stride int) {
 	a.impl.Attach(buf, width, height, stride)
+	a.attachedBuffer = buf
+	a.attachedWidth = width
+	a.attachedHeight = height
+	a.attachedStride = stride
 }
 
 // ClipBox sets the clipping rectangle.
@@ -185,6 +195,10 @@ func (a *Agg2D) LineColor(c Color) {
 // LineWidth sets the line width.
 func (a *Agg2D) LineWidth(w float64) {
 	a.impl.LineWidth(w)
+}
+
+func (a *Agg2D) GetLineWidth() float64 {
+	return a.impl.GetLineWidth()
 }
 
 // LineCap sets the line cap style.
@@ -363,6 +377,14 @@ func (a *Agg2D) RoundedRect(x1, y1, x2, y2, r float64) {
 	a.impl.RoundedRect(x1, y1, x2, y2, r)
 }
 
+func (a *Agg2D) DrawCircle(cx, cy, radius float64) {
+	a.impl.DrawCircle(cx, cy, radius)
+}
+
+func (a *Agg2D) FillCircle(cx, cy, radius float64) {
+	a.impl.FillCircle(cx, cy, radius)
+}
+
 // Path relative methods
 func (a *Agg2D) LineRel(dx, dy float64) {
 	a.impl.LineRel(dx, dy)
@@ -388,6 +410,54 @@ func (a *Agg2D) Viewport(worldX1, worldY1, worldX2, worldY2, screenX1, screenY1,
 // Text methods
 func (a *Agg2D) Font(fontName string, height float64, bold, italic bool, cacheType FontCacheType, angle float64) error {
 	return a.impl.Font(fontName, height, bold, italic, cacheType, angle)
+}
+
+func (a *Agg2D) MiterLimit(ml float64) {
+	a.impl.MiterLimit(ml)
+}
+
+func (a *Agg2D) GetMiterLimit() float64 {
+	return a.impl.GetMiterLimit()
+}
+
+func (a *Agg2D) AddDash(dashLen, gapLen float64) {
+	a.impl.AddDash(dashLen, gapLen)
+}
+
+func (a *Agg2D) RemoveAllDashes() {
+	a.impl.RemoveAllDashes()
+}
+
+func (a *Agg2D) DashStart(offset float64) {
+	a.impl.DashStart(offset)
+}
+
+func (a *Agg2D) GetDashStart() float64 {
+	return a.impl.GetDashStart()
+}
+
+func (a *Agg2D) NoDashes() {
+	a.impl.NoDashes()
+}
+
+func (a *Agg2D) FillEvenOdd(evenOddFlag bool) {
+	a.impl.FillEvenOdd(evenOddFlag)
+}
+
+func (a *Agg2D) GetFillEvenOdd() bool {
+	return a.impl.GetFillEvenOdd()
+}
+
+func (a *Agg2D) IsEvenOddFillRule() bool {
+	return a.impl.IsEvenOddFillRule()
+}
+
+func (a *Agg2D) IsNonZeroFillRule() bool {
+	return a.impl.IsNonZeroFillRule()
+}
+
+func (a *Agg2D) FillRuleDescription() string {
+	return a.impl.FillRuleDescription()
 }
 
 func (a *Agg2D) Text(x, y float64, str string, roundOff bool, dx, dy float64) {
@@ -427,6 +497,42 @@ func (a *Agg2D) NoFill() {
 
 func (a *Agg2D) NoLine() {
 	a.impl.NoLine()
+}
+
+func (a *Agg2D) SaveImagePPM(filename string) error {
+	if a.attachedBuffer == nil || a.attachedWidth <= 0 || a.attachedHeight <= 0 || a.attachedStride <= 0 {
+		return fmt.Errorf("no attached RGBA buffer")
+	}
+
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	if _, err := fmt.Fprintf(file, "P6\n%d %d\n255\n", a.attachedWidth, a.attachedHeight); err != nil {
+		return err
+	}
+
+	rgbRow := make([]byte, a.attachedWidth*3)
+	for y := 0; y < a.attachedHeight; y++ {
+		rowStart := y * a.attachedStride
+		for x := 0; x < a.attachedWidth; x++ {
+			src := rowStart + x*4
+			dst := x * 3
+			if src+2 >= len(a.attachedBuffer) {
+				return fmt.Errorf("attached buffer too small for %dx%d image", a.attachedWidth, a.attachedHeight)
+			}
+			rgbRow[dst] = a.attachedBuffer[src]
+			rgbRow[dst+1] = a.attachedBuffer[src+1]
+			rgbRow[dst+2] = a.attachedBuffer[src+2]
+		}
+		if _, err := file.Write(rgbRow); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // Image transformation methods

@@ -142,7 +142,7 @@ func TestPathConversionStrokeWithJoins(t *testing.T) {
 	}{
 		{agg2d.JoinMiter, "miter"},
 		{agg2d.JoinRound, "round"},
-		//{agg2d.JoinBevel, "bevel"}, // Might not be implemented
+		// {agg2d.JoinBevel, "bevel"}, // Might not be implemented
 	}
 
 	for _, joinTest := range joinTypes {

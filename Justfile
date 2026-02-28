@@ -164,7 +164,7 @@ vet:
 # Run linters (golangci-lint and treefmt)
 lint:
     @echo "Running golangci-lint..."
-    golangci-lint run ./...
+    golangci-lint run --new ./...
     @echo "Running treefmt..."
     treefmt --fail-on-change
 

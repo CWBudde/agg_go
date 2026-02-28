@@ -78,13 +78,6 @@ func (c *CellAA) AddArea(area int) { c.Area += area }
 // This removal eliminates problematic runtime type assertions (any() casts) that
 // violated the project's design principles.
 
-// swapCells swaps two cell pointers (shared utility function)
-func swapCells[T any](a, b *T) {
-	temp := *a
-	*a = *b
-	*b = temp
-}
-
 // qsortCells implements quicksort for cell pointers, sorting by X coordinate
 // This is a shared helper function used by both RasterizerCellsAASimple and RasterizerCellsAAStyled
 func qsortCells[Cell CellInterface](start []*Cell, num int) {
@@ -100,22 +93,22 @@ func qsortCells[Cell CellInterface](start []*Cell, num int) {
 		if length > qsortThreshold {
 			// Use base + len/2 as pivot
 			pivot := base + length/2
-			swapCells(&start[base], &start[pivot])
+			start[base], start[pivot] = start[pivot], start[base]
 
 			i := base + 1
 			j := limit - 1
 
 			// Ensure *i <= *base <= *j
 			if (*start[j]).GetX() < (*start[i]).GetX() {
-				swapCells(&start[i], &start[j])
+				start[i], start[j] = start[j], start[i]
 			}
 
 			if (*start[base]).GetX() < (*start[i]).GetX() {
-				swapCells(&start[base], &start[i])
+				start[base], start[i] = start[i], start[base]
 			}
 
 			if (*start[j]).GetX() < (*start[base]).GetX() {
-				swapCells(&start[base], &start[j])
+				start[base], start[j] = start[j], start[base]
 			}
 
 			for {
@@ -129,10 +122,10 @@ func qsortCells[Cell CellInterface](start []*Cell, num int) {
 					break
 				}
 
-				swapCells(&start[i], &start[j])
+				start[i], start[j] = start[j], start[i]
 			}
 
-			swapCells(&start[base], &start[j])
+			start[base], start[j] = start[j], start[base]
 
 			// Push largest sub-array
 			if j-base > limit-i {
@@ -150,7 +143,7 @@ func qsortCells[Cell CellInterface](start []*Cell, num int) {
 			for i := base + 1; i < limit; i++ {
 				j := i
 				for j > base && (*start[j]).GetX() < (*start[j-1]).GetX() {
-					swapCells(&start[j], &start[j-1])
+					start[j], start[j-1] = start[j-1], start[j]
 					j--
 				}
 			}

@@ -456,12 +456,13 @@ func (ps *PlatformSupport) loadBMP(filename string) ([]uint8, int, int, error) {
 
 			// Write to target buffer (assuming RGBA format)
 			dstIdx := targetY*targetStride + x*ps.bpp/8
-			if ps.bpp == 32 {
+			switch ps.bpp {
+			case 32:
 				buffer[dstIdx] = r
 				buffer[dstIdx+1] = g
 				buffer[dstIdx+2] = b
 				buffer[dstIdx+3] = a
-			} else if ps.bpp == 24 {
+			case 24:
 				buffer[dstIdx] = r
 				buffer[dstIdx+1] = g
 				buffer[dstIdx+2] = b
@@ -536,12 +537,13 @@ func (ps *PlatformSupport) loadPPM(filename string) ([]uint8, int, int, error) {
 			b := pixelData[srcIdx+2]
 
 			dstIdx := targetY*targetStride + x*ps.bpp/8
-			if ps.bpp == 32 {
+			switch ps.bpp {
+			case 32:
 				buffer[dstIdx] = r
 				buffer[dstIdx+1] = g
 				buffer[dstIdx+2] = b
 				buffer[dstIdx+3] = 255 // Full alpha
-			} else if ps.bpp == 24 {
+			case 24:
 				buffer[dstIdx] = r
 				buffer[dstIdx+1] = g
 				buffer[dstIdx+2] = b
@@ -591,12 +593,13 @@ func (ps *PlatformSupport) loadPNG(filename string) ([]uint8, int, int, error) {
 			a := uint8(srcA >> 8)
 
 			dstIdx := targetY*targetStride + x*ps.bpp/8
-			if ps.bpp == 32 {
+			switch ps.bpp {
+			case 32:
 				buffer[dstIdx] = r
 				buffer[dstIdx+1] = g
 				buffer[dstIdx+2] = b
 				buffer[dstIdx+3] = a
-			} else if ps.bpp == 24 {
+			case 24:
 				buffer[dstIdx] = r
 				buffer[dstIdx+1] = g
 				buffer[dstIdx+2] = b
@@ -723,14 +726,15 @@ func (ps *PlatformSupport) saveBMP(filename string, buffer []uint8, width, heigh
 			srcIdx := srcY*stride + x*ps.bpp/8
 
 			// Convert from source format to BGR(A)
-			if ps.bpp == 32 {
+			switch ps.bpp {
+			case 32:
 				// Source is RGBA, write as BGRA
 				r := buffer[srcIdx]
 				g := buffer[srcIdx+1]
 				b := buffer[srcIdx+2]
 				a := buffer[srcIdx+3]
 				file.Write([]byte{b, g, r, a})
-			} else if ps.bpp == 24 {
+			case 24:
 				// Source is RGB, write as BGR
 				r := buffer[srcIdx]
 				g := buffer[srcIdx+1]
@@ -774,11 +778,12 @@ func (ps *PlatformSupport) savePPM(filename string, buffer []uint8, width, heigh
 			srcIdx := srcY*stride + x*ps.bpp/8
 
 			// Extract RGB components
-			if ps.bpp == 32 {
+			switch ps.bpp {
+			case 32:
 				pixelData[0] = buffer[srcIdx]   // R
 				pixelData[1] = buffer[srcIdx+1] // G
 				pixelData[2] = buffer[srcIdx+2] // B
-			} else if ps.bpp == 24 {
+			case 24:
 				pixelData[0] = buffer[srcIdx]   // R
 				pixelData[1] = buffer[srcIdx+1] // G
 				pixelData[2] = buffer[srcIdx+2] // B
@@ -816,12 +821,13 @@ func (ps *PlatformSupport) savePNG(filename string, buffer []uint8, width, heigh
 			srcIdx := srcY*stride + x*ps.bpp/8
 			dstIdx := y*img.Stride + x*4
 
-			if ps.bpp == 32 {
+			switch ps.bpp {
+			case 32:
 				img.Pix[dstIdx] = buffer[srcIdx]     // R
 				img.Pix[dstIdx+1] = buffer[srcIdx+1] // G
 				img.Pix[dstIdx+2] = buffer[srcIdx+2] // B
 				img.Pix[dstIdx+3] = buffer[srcIdx+3] // A
-			} else if ps.bpp == 24 {
+			case 24:
 				img.Pix[dstIdx] = buffer[srcIdx]     // R
 				img.Pix[dstIdx+1] = buffer[srcIdx+1] // G
 				img.Pix[dstIdx+2] = buffer[srcIdx+2] // B

@@ -41,7 +41,7 @@ func main() {
 	defer file.Close()
 
 	// PPM header
-	fmt.Fprintf(file, "P6\n%d %d\n255\n", img.Width, img.Height)
+	fmt.Fprintf(file, "P6\n%d %d\n255\n", img.Width(), img.Height())
 
 	// Write pixel data (convert RGBA to RGB)
 	for i := 0; i < len(img.Data); i += 4 {

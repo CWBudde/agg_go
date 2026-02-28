@@ -180,7 +180,6 @@ func (r *Rect[C]) Normalize() {
 		r.X1, r.X2 = r.X2, r.X1
 	}
 	if r.Y2 < r.Y1 {
-		r.Y1, r.Y2 = r.Y1, r.Y2
 	}
 }
 

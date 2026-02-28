@@ -323,7 +323,7 @@ func TestCircleComponentPipeline(t *testing.T) {
 
 	verifyRedDominantPixel := func(x, y int, description string) {
 		actual := pixfmt.Pixel(x, y)
-		if !(actual.R > actual.G+20 && actual.R > actual.B+20) {
+		if actual.R <= actual.G+20 || actual.R <= actual.B+20 {
 			t.Errorf("%s at (%d,%d): expected red-dominant pixel, got RGB(%d,%d,%d)",
 				description, x, y, actual.R, actual.G, actual.B)
 		} else {

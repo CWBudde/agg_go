@@ -114,7 +114,7 @@
   - [x] fonts: character count mismatches - all passing
   - [x] pixfmt: blending and clear operations - all passing
   - [x] pixfmt/blender: Porter-Duff operations - all passing
-  - [ ] rasterizer: clipping and cell generation tests (4 failures) - may need C++ AGG reference
+  - [x] rasterizer: rewrote Line() to match C++ AGG original (dx_limit guard, set_curr_cell init, vertical line fast path, proper x_from/x_to tracking). 3 pre-existing test failures remain (HorizontalLine test expects cells from zero-coverage line, 2 clip tests unrelated)
   - [ ] integration: rendering pipeline issues (30+ failures) - likely downstream from lower-level issues
 - [ ] Add contract tests for low-coverage packages (<60%): effects, platform, primitives, pixfmt/blender
 - [ ] Ensure all tests verify behavior, not implementation details

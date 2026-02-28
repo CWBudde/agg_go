@@ -194,11 +194,12 @@ func (agg2d *Agg2D) renderSolidStroke() {
 
 // renderGradientFill renders gradient fill using the appropriate gradient type
 func (agg2d *Agg2D) renderGradientFill() {
-	if agg2d.fillGradientFlag == Linear {
+	switch agg2d.fillGradientFlag {
+	case Linear:
 		agg2d.renderLinearGradientFill(true) // true = use fill gradient settings
-	} else if agg2d.fillGradientFlag == Radial {
+	case Radial:
 		agg2d.renderRadialGradientFill(true) // true = use fill gradient settings
-	} else {
+	default:
 		// Solid fill fallback
 		agg2d.renderSolidFill()
 	}
@@ -312,11 +313,12 @@ func (agg2d *Agg2D) renderRadialGradientFill(useFillGradient bool) {
 
 // renderGradientStroke renders gradient stroke using line gradient settings
 func (agg2d *Agg2D) renderGradientStroke() {
-	if agg2d.lineGradientFlag == Linear {
+	switch agg2d.lineGradientFlag {
+	case Linear:
 		agg2d.renderLinearGradientFill(false) // false = use line gradient settings
-	} else if agg2d.lineGradientFlag == Radial {
+	case Radial:
 		agg2d.renderRadialGradientFill(false) // false = use line gradient settings
-	} else {
+	default:
 		// Solid stroke fallback
 		agg2d.renderSolidStroke()
 	}
@@ -324,11 +326,12 @@ func (agg2d *Agg2D) renderGradientStroke() {
 
 // renderGradientFillWithLineGradient renders fill using line gradient settings
 func (agg2d *Agg2D) renderGradientFillWithLineGradient() {
-	if agg2d.lineGradientFlag == Linear {
+	switch agg2d.lineGradientFlag {
+	case Linear:
 		agg2d.renderLinearGradientFill(false) // false = use line gradient settings
-	} else if agg2d.lineGradientFlag == Radial {
+	case Radial:
 		agg2d.renderRadialGradientFill(false) // false = use line gradient settings
-	} else {
+	default:
 		// Solid fill fallback using line color
 		agg2d.renderSolidFillWithColor(agg2d.lineColor)
 	}
