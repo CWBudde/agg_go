@@ -21,7 +21,7 @@ Status values:
 |---|---|---|---|---|---|
 | `attach(buf,width,height,stride)` | `agg2d.h:261`, `agg2d.cpp:125` | `(*agg2d.Agg2D).Attach` | close | `internal/agg2d/agg2d_test.go` | |
 | `attach(Image&)` | `agg2d.h:262`, `agg2d.cpp:153` | `(*agg2d.Agg2D).Attach` (via `Image`) | unassessed | `internal/agg2d/image_test.go` | API shape differs in Go. |
-| `clipBox(x1,y1,x2,y2)` | `agg2d.h:264`, `agg2d.cpp:159` | `(*agg2d.Agg2D).ClipBox` | close | `internal/agg2d/agg2d_test.go` | Renderer clip propagation audit pending. |
+| `clipBox(x1,y1,x2,y2)` | `agg2d.h:264`, `agg2d.cpp:159` | `(*agg2d.Agg2D).ClipBox` | close | `internal/agg2d/agg2d_test.go` | Propagates clip to rasterizer and renderer adapters; copy/blend ops now use clipped renderer-base path. |
 | `clipBox() const` | `agg2d.h:265`, `agg2d.cpp:246` | `(*agg2d.Agg2D).GetClipBox` | close | `internal/agg2d/agg2d_test.go` | |
 | `clearAll(Color)` | `agg2d.h:267`, `agg2d.cpp:252` | `(*agg2d.Agg2D).ClearAll` | close | `internal/agg2d/agg2d_test.go` | |
 | `clearAll(r,g,b,a)` | `agg2d.h:268`, `agg2d.cpp:258` | `(*agg2d.Agg2D).ClearAllRGBA` | close | `internal/agg2d/agg2d_test.go` | |
@@ -34,8 +34,8 @@ Status values:
 |---|---|---|---|---|---|
 | `worldToScreen(x,y)` | `agg2d.h:275`, `agg2d.cpp:276` | `(*agg2d.Agg2D).WorldToScreen` | close | `internal/agg2d/utilities_test.go` | |
 | `screenToWorld(x,y)` | `agg2d.h:276`, `agg2d.cpp:282` | `(*agg2d.Agg2D).ScreenToWorld` | close | `internal/agg2d/utilities_test.go` | |
-| `worldToScreen(scalar)` | `agg2d.h:277`, `agg2d.cpp:289` | `(*agg2d.Agg2D).WorldToScreenScalar` | close | `internal/agg2d/utilities_test.go` | |
-| `screenToWorld(scalar)` | `agg2d.h:278`, `agg2d.cpp:302` | `(*agg2d.Agg2D).ScreenToWorldScalar` | close | `internal/agg2d/utilities_test.go` | |
+| `worldToScreen(scalar)` | `agg2d.h:277`, `agg2d.cpp:289` | `(*agg2d.Agg2D).WorldToScreenScalar` | close | `internal/agg2d/utilities_test.go` | Uses AGG diagonal-distance metric (`(0,0)->(s,s)` normalized by `sqrt(2)`). |
+| `screenToWorld(scalar)` | `agg2d.h:278`, `agg2d.cpp:302` | `(*agg2d.Agg2D).ScreenToWorldScalar` | close | `internal/agg2d/utilities_test.go` | Uses AGG diagonal-distance inverse metric. |
 | `alignPoint(x,y)` | `agg2d.h:279`, `agg2d.cpp:315` | `(*agg2d.Agg2D).AlignPoint` | close | `internal/agg2d/utilities_test.go` | |
 | `inBox(worldX,worldY)` | `agg2d.h:280`, `agg2d.cpp:325` | `(*agg2d.Agg2D).InBox` | close | `internal/agg2d/utilities_test.go` | |
 
@@ -62,14 +62,14 @@ Status values:
 | `noLine()` | `agg2d.h:306`, `agg2d.cpp:456` | `NoLine` | close | `internal/agg2d/utilities_test.go` | |
 | `fillColor() const` | `agg2d.h:308`, `agg2d.cpp:462` | `GetFillColor` | close | `internal/agg2d/agg2d_test.go` | |
 | `lineColor() const` | `agg2d.h:309`, `agg2d.cpp:468` | `GetLineColor` | close | `internal/agg2d/agg2d_test.go` | |
-| `fillLinearGradient(...)` | `agg2d.h:311`, `agg2d.cpp:474` | `FillLinearGradient` | close | `internal/agg2d/gradient_test.go` | Transform-order audit pending. |
-| `lineLinearGradient(...)` | `agg2d.h:312`, `agg2d.cpp:507` | `LineLinearGradient` | close | `internal/agg2d/gradient_test.go` | Transform-order audit pending. |
-| `fillRadialGradient(c1,c2,profile)` | `agg2d.h:314`, `agg2d.cpp:540` | `FillRadialGradient` | placeholder | `internal/agg2d/gradient_test.go` | Uses non-fidelity helper path currently. |
-| `lineRadialGradient(c1,c2,profile)` | `agg2d.h:315`, `agg2d.cpp:571` | `LineRadialGradient` | placeholder | `internal/agg2d/gradient_test.go` | Uses non-fidelity helper path currently. |
-| `fillRadialGradient(c1,c2,c3)` | `agg2d.h:317`, `agg2d.cpp:602` | `FillRadialGradientMultiStop` | placeholder | `internal/agg2d/gradient_test.go` | |
-| `lineRadialGradient(c1,c2,c3)` | `agg2d.h:318`, `agg2d.cpp:625` | `LineRadialGradientMultiStop` | placeholder | `internal/agg2d/gradient_test.go` | |
-| `fillRadialGradient(x,y,r)` | `agg2d.h:320`, `agg2d.cpp:647` | `FillRadialGradientPos` | placeholder | `internal/agg2d/gradient_test.go` | |
-| `lineRadialGradient(x,y,r)` | `agg2d.h:321`, `agg2d.cpp:659` | `LineRadialGradientPos` | placeholder | `internal/agg2d/gradient_test.go` | |
+| `fillLinearGradient(...)` | `agg2d.h:311`, `agg2d.cpp:474` | `FillLinearGradient` | close | `internal/agg2d/gradient_test.go` | Matrix order verified (`rotate -> translate -> transform -> invert`). |
+| `lineLinearGradient(...)` | `agg2d.h:312`, `agg2d.cpp:507` | `LineLinearGradient` | close | `internal/agg2d/gradient_test.go` | Matrix order verified (`rotate -> translate -> transform -> invert`), line profile bounds follow AGG `*128.0`. |
+| `fillRadialGradient(c1,c2,profile)` | `agg2d.h:314`, `agg2d.cpp:540` | `FillRadialGradient` | close | `internal/agg2d/gradient_test.go` | Uses transformed center + AGG scalar metric (`worldToScreen`) for `d2`. |
+| `lineRadialGradient(c1,c2,profile)` | `agg2d.h:315`, `agg2d.cpp:571` | `LineRadialGradient` | close | `internal/agg2d/gradient_test.go` | Uses transformed center + AGG scalar metric (`worldToScreen`) for `d2`. |
+| `fillRadialGradient(c1,c2,c3)` | `agg2d.h:317`, `agg2d.cpp:602` | `FillRadialGradientMultiStop` | close | `internal/agg2d/gradient_test.go` | Uses transformed center + AGG scalar metric (`worldToScreen`) for `d2`. |
+| `lineRadialGradient(c1,c2,c3)` | `agg2d.h:318`, `agg2d.cpp:625` | `LineRadialGradientMultiStop` | close | `internal/agg2d/gradient_test.go` | Uses transformed center + AGG scalar metric (`worldToScreen`) for `d2`. |
+| `fillRadialGradient(x,y,r)` | `agg2d.h:320`, `agg2d.cpp:647` | `FillRadialGradientPos` | close | `internal/agg2d/gradient_test.go` | Uses transformed center + AGG scalar metric (`worldToScreen`) for `d2`. |
+| `lineRadialGradient(x,y,r)` | `agg2d.h:321`, `agg2d.cpp:659` | `LineRadialGradientPos` | close | `internal/agg2d/gradient_test.go` | Uses transformed center + AGG scalar metric (`worldToScreen`) for `d2`. |
 | `lineWidth(w)` | `agg2d.h:323`, `agg2d.cpp:671` | `LineWidth` | close | `internal/agg2d/rendering_test.go` | |
 | `lineWidth() const` | `agg2d.h:324`, `agg2d.cpp:679` | `GetLineWidth` | close | `internal/agg2d/rendering_test.go` | C++ signature typo preserved in source. |
 | `lineCap(cap)` | `agg2d.h:326`, `agg2d.cpp:701` | `LineCap` | close | `internal/agg2d/rendering_test.go` | |
@@ -162,14 +162,14 @@ Status values:
 | `imageFilter() const` | `agg2d.h:444`, `agg2d.cpp:1261` | `GetImageFilter` | close | `internal/agg2d/image_test.go` | |
 | `imageResample(f)` | `agg2d.h:446`, `agg2d.cpp:1268` | `ImageResample` | close | `internal/agg2d/image_test.go` | |
 | `imageResample() const` | `agg2d.h:447`, `agg2d.cpp:1275` | `GetImageResample` | close | `internal/agg2d/image_test.go` | |
-| `transformImage(img,srcRect,dstRect)` | `agg2d.h:449`, `agg2d.cpp:1282` | `TransformImage` | placeholder | `internal/agg2d/image_test.go` | Simplified path currently. |
-| `transformImage(img,dstRect)` | `agg2d.h:453`, `agg2d.cpp:1296` | `TransformImageSimple` | placeholder | `internal/agg2d/image_test.go` | |
-| `transformImage(img,srcRect,parallelogram)` | `agg2d.h:456`, `agg2d.cpp:1309` | `TransformImageParallelogram` | placeholder | `internal/agg2d/image_test.go` | |
-| `transformImage(img,parallelogram)` | `agg2d.h:460`, `agg2d.cpp:1324` | `TransformImageParallelogramSimple` | placeholder | `internal/agg2d/image_test.go` | |
-| `transformImagePath(img,srcRect,dstRect)` | `agg2d.h:463`, `agg2d.cpp:1337` | `TransformImagePath` | placeholder | `internal/agg2d/image_test.go` | |
-| `transformImagePath(img,dstRect)` | `agg2d.h:467`, `agg2d.cpp:1345` | `TransformImagePathSimple` | placeholder | `internal/agg2d/image_test.go` | |
-| `transformImagePath(img,srcRect,parallelogram)` | `agg2d.h:470`, `agg2d.cpp:1352` | `TransformImagePathParallelogram` | placeholder | `internal/agg2d/image_test.go` | |
-| `transformImagePath(img,parallelogram)` | `agg2d.h:474`, `agg2d.cpp:1359` | `TransformImagePathParallelogramSimple` | placeholder | `internal/agg2d/image_test.go` | |
+| `transformImage(img,srcRect,dstRect)` | `agg2d.h:449`, `agg2d.cpp:1282` | `TransformImage` | close | `internal/agg2d/image_test.go` | Uses path+rasterizer+scanline span-interpolator flow with AGG-style filter/resample dispatch. |
+| `transformImage(img,dstRect)` | `agg2d.h:453`, `agg2d.cpp:1296` | `TransformImageSimple` | close | `internal/agg2d/image_test.go` | Uses path+rasterizer+scanline span-interpolator flow with AGG-style filter/resample dispatch. |
+| `transformImage(img,srcRect,parallelogram)` | `agg2d.h:456`, `agg2d.cpp:1309` | `TransformImageParallelogram` | close | `internal/agg2d/image_test.go` | Uses path+rasterizer+scanline span-interpolator flow with AGG-style filter/resample dispatch. |
+| `transformImage(img,parallelogram)` | `agg2d.h:460`, `agg2d.cpp:1324` | `TransformImageParallelogramSimple` | close | `internal/agg2d/image_test.go` | Uses path+rasterizer+scanline span-interpolator flow with AGG-style filter/resample dispatch. |
+| `transformImagePath(img,srcRect,dstRect)` | `agg2d.h:463`, `agg2d.cpp:1337` | `TransformImagePath` | close | `internal/agg2d/image_test.go` | Uses current path as clip shape (no automatic fallback path) and AGG-style filter/resample dispatch. |
+| `transformImagePath(img,dstRect)` | `agg2d.h:467`, `agg2d.cpp:1345` | `TransformImagePathSimple` | close | `internal/agg2d/image_test.go` | Uses current path as clip shape (no automatic fallback path) and AGG-style filter/resample dispatch. |
+| `transformImagePath(img,srcRect,parallelogram)` | `agg2d.h:470`, `agg2d.cpp:1352` | `TransformImagePathParallelogram` | close | `internal/agg2d/image_test.go` | Uses current path as clip shape (no automatic fallback path) and AGG-style filter/resample dispatch. |
+| `transformImagePath(img,parallelogram)` | `agg2d.h:474`, `agg2d.cpp:1359` | `TransformImagePathParallelogramSimple` | close | `internal/agg2d/image_test.go` | Uses current path as clip shape (no automatic fallback path) and AGG-style filter/resample dispatch. |
 
 ## Image Blending and Copy
 
@@ -190,6 +190,5 @@ Status values:
 
 ## Current Priority Gaps
 
-- Image transform/render pipeline fidelity (`TransformImage*` and `renderImage` internals).
 - Gradient world/screen transform parity (`FillRadialGradient*`, `LineRadialGradient*` internals).
 - Text raster rendering fidelity (`Text`, `TextWidth`, glyph scanline rendering).

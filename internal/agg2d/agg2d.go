@@ -6,6 +6,7 @@ import (
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
 	"agg_go/internal/conv"
+	aggimage "agg_go/internal/image"
 	"agg_go/internal/path"
 	"agg_go/internal/pixfmt"
 	"agg_go/internal/rasterizer"
@@ -53,7 +54,7 @@ const (
 	RasterFontCache FontCacheType = 0
 
 	// Image filter
-	ImageFilterBilinear ImageFilter = 0
+	ImageFilterBilinear ImageFilter = 1
 
 	// Image resample
 	NoResample ImageResample = 0
@@ -141,8 +142,9 @@ type Agg2D struct {
 	fontCacheManager interface{} // FontCacheManager - manages glyph caching
 
 	// Image filtering
-	imageFilter   ImageFilter
-	imageResample ImageResample
+	imageFilter    ImageFilter
+	imageResample  ImageResample
+	imageFilterLUT *aggimage.ImageFilterLUT
 
 	// Fill mode
 	evenOddFlag bool
@@ -229,6 +231,7 @@ func NewAgg2D() *Agg2D {
 		fontCacheType:      RasterFontCache,
 		imageFilter:        ImageFilterBilinear,
 		imageResample:      NoResample,
+		imageFilterLUT:     aggimage.NewImageFilterLUTWithFilter(aggimage.BilinearFilter{}, true),
 		lineWidth:          1.0,
 		lineCap:            CapRound,
 		lineJoin:           JoinRound,

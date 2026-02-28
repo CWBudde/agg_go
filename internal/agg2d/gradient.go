@@ -58,6 +58,7 @@ func (agg2d *Agg2D) FillLinearGradient(x1, y1, x2, y2 float64, c1, c2 Color, pro
 	agg2d.fillGradientMatrix.Reset()
 	agg2d.fillGradientMatrix.Rotate(angle)
 	agg2d.fillGradientMatrix.Translate(x1, y1)
+	agg2d.fillGradientMatrix.Multiply(agg2d.transform)
 	agg2d.fillGradientMatrix.Invert()
 
 	// Set gradient parameters
@@ -74,8 +75,8 @@ func (agg2d *Agg2D) FillLinearGradient(x1, y1, x2, y2 float64, c1, c2 Color, pro
 // This matches the C++ Agg2D::lineLinearGradient method.
 func (agg2d *Agg2D) LineLinearGradient(x1, y1, x2, y2 float64, c1, c2 Color, profile float64) {
 	// Calculate gradient profile bounds
-	startGradient := 128 - int(profile*127.0)
-	endGradient := 128 + int(profile*127.0)
+	startGradient := 128 - int(profile*128.0)
+	endGradient := 128 + int(profile*128.0)
 
 	// Ensure we have at least one interpolation step
 	if endGradient <= startGradient {
@@ -109,6 +110,7 @@ func (agg2d *Agg2D) LineLinearGradient(x1, y1, x2, y2 float64, c1, c2 Color, pro
 	agg2d.lineGradientMatrix.Reset()
 	agg2d.lineGradientMatrix.Rotate(angle)
 	agg2d.lineGradientMatrix.Translate(x1, y1)
+	agg2d.lineGradientMatrix.Multiply(agg2d.transform)
 	agg2d.lineGradientMatrix.Invert()
 
 	// Set gradient parameters
@@ -184,8 +186,8 @@ func (agg2d *Agg2D) FillRadialGradient(x, y, r float64, c1, c2 Color, profile fl
 // This matches the C++ Agg2D::lineRadialGradient method.
 func (agg2d *Agg2D) LineRadialGradient(x, y, r float64, c1, c2 Color, profile float64) {
 	// Calculate gradient profile bounds
-	startGradient := 128 - int(profile*127.0)
-	endGradient := 128 + int(profile*127.0)
+	startGradient := 128 - int(profile*128.0)
+	endGradient := 128 + int(profile*128.0)
 
 	// Ensure we have at least one interpolation step
 	if endGradient <= startGradient {
@@ -345,20 +347,15 @@ func (agg2d *Agg2D) LineRadialGradientPos(x, y, r float64) {
 }
 
 // Helper methods for coordinate transformation
-// These will need to be implemented based on the existing AGG2D transformation system
 
 // worldToScreen converts a world coordinate distance to screen coordinates
 func (agg2d *Agg2D) worldToScreen(distance float64) float64 {
-	// For now, assume 1:1 mapping - this should be implemented based on
-	// the current world-to-screen transformation matrix
-	return distance
+	return agg2d.worldToScreenScalar(distance)
 }
 
 // worldToScreenPoint converts world coordinates to screen coordinates
 func (agg2d *Agg2D) worldToScreenPoint(x, y *float64) {
-	// For now, assume 1:1 mapping - this should be implemented based on
-	// the current world-to-screen transformation matrix
-	// The actual implementation would apply the current transformation matrix
+	agg2d.WorldToScreen(x, y)
 }
 
 // Accessor methods for gradient parameters

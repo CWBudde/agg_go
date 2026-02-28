@@ -3,6 +3,9 @@ package agg2d
 
 import (
 	"testing"
+
+	"agg_go/internal/span"
+	"agg_go/internal/transform"
 )
 
 // TestTransformImage tests the primary TransformImage method.
@@ -424,6 +427,159 @@ func TestRenderImageInternalMethod(t *testing.T) {
 	if err == nil {
 		t.Error("Expected error for image with nil buffer")
 	}
+}
+
+func TestTransformImageSimpleResetsPathToDestinationRect(t *testing.T) {
+	agg2d := NewAgg2D()
+	buf := make([]uint8, 20*20*4)
+	agg2d.Attach(buf, 20, 20, 20*4)
+	agg2d.ImageFilter(NoFilter)
+
+	imgBuf := make([]uint8, 2*2*4)
+	img := NewImage(imgBuf, 2, 2, 2*4)
+
+	// Seed a non-rectangular path that should be replaced by TransformImageSimple.
+	agg2d.ResetPath()
+	agg2d.MoveTo(1, 1)
+	agg2d.LineTo(2, 1)
+	agg2d.LineTo(2, 2)
+	agg2d.ClosePolygon()
+
+	if err := agg2d.TransformImageSimple(img, 4, 4, 6, 6); err != nil {
+		t.Fatalf("TransformImageSimple failed: %v", err)
+	}
+
+	if got := agg2d.path.TotalVertices(); got != 5 {
+		t.Fatalf("expected rectangular image path with 5 vertices, got %d", got)
+	}
+
+	x0, y0, _ := agg2d.path.Vertex(0)
+	x1, y1, _ := agg2d.path.Vertex(1)
+	x2, y2, _ := agg2d.path.Vertex(2)
+	x3, y3, _ := agg2d.path.Vertex(3)
+	if x0 != 4 || y0 != 4 || x1 != 6 || y1 != 4 || x2 != 6 || y2 != 6 || x3 != 4 || y3 != 6 {
+		t.Fatalf("unexpected destination rectangle path: (%v,%v)-(%v,%v)-(%v,%v)-(%v,%v)", x0, y0, x1, y1, x2, y2, x3, y3)
+	}
+}
+
+func TestTransformImagePathWithoutPathRendersNothing(t *testing.T) {
+	agg2d := NewAgg2D()
+	buf := make([]uint8, 16*16*4)
+	agg2d.Attach(buf, 16, 16, 16*4)
+
+	imgBuf := make([]uint8, 2*2*4)
+	for i := 0; i < len(imgBuf); i += 4 {
+		imgBuf[i+0] = 255
+		imgBuf[i+1] = 255
+		imgBuf[i+2] = 255
+		imgBuf[i+3] = 255
+	}
+	img := NewImage(imgBuf, 2, 2, 2*4)
+
+	// No path is defined here: AGG transformImagePath uses existing path only.
+	if err := agg2d.TransformImagePathSimple(img, 4, 4, 8, 8); err != nil {
+		t.Fatalf("TransformImagePathSimple failed: %v", err)
+	}
+
+	for i, v := range buf {
+		if v != 0 {
+			t.Fatalf("expected untouched destination without path, first changed byte at %d: %d", i, v)
+		}
+	}
+}
+
+func TestImageFilterConstantsAreDistinct(t *testing.T) {
+	if NoFilter == Bilinear {
+		t.Fatalf("NoFilter and Bilinear must be distinct for AGG parity, both are %d", NoFilter)
+	}
+}
+
+func TestNewImageFilterGeneratorDispatch(t *testing.T) {
+	agg2d := NewAgg2D()
+
+	imgBuf := make([]uint8, 4*4*4)
+	img := NewImage(imgBuf, 4, 4, 4*4)
+	source := newImagePixelFormat(img)
+
+	identityInterpolator := span.NewSpanInterpolatorLinearDefault(transform.NewTransAffine())
+
+	t.Run("NoFilterUsesNearestNeighbor", func(t *testing.T) {
+		agg2d.ImageFilter(NoFilter)
+		agg2d.ImageResample(ResampleAlways)
+
+		gen := agg2d.newImageFilterGenerator(source, identityInterpolator)
+		if _, ok := gen.(*span.SpanImageFilterRGBANN[*imagePixelFormat, *span.SpanInterpolatorLinear[*transform.TransAffine]]); !ok {
+			t.Fatalf("expected nearest-neighbor generator, got %T", gen)
+		}
+	})
+
+	t.Run("BilinearNoResampleUsesBilinearGenerator", func(t *testing.T) {
+		agg2d.ImageFilter(Bilinear)
+		agg2d.ImageResample(NoResample)
+
+		gen := agg2d.newImageFilterGenerator(source, identityInterpolator)
+		if _, ok := gen.(*span.SpanImageFilterRGBABilinear[*imagePixelFormat, *span.SpanInterpolatorLinear[*transform.TransAffine]]); !ok {
+			t.Fatalf("expected bilinear generator, got %T", gen)
+		}
+	})
+
+	t.Run("ResampleAlwaysUsesAffineResampler", func(t *testing.T) {
+		agg2d.ImageFilter(Bilinear)
+		agg2d.ImageResample(ResampleAlways)
+
+		gen := agg2d.newImageFilterGenerator(source, identityInterpolator)
+		if _, ok := gen.(*span.SpanImageResampleRGBAAffine[*imagePixelFormat]); !ok {
+			t.Fatalf("expected affine resample generator, got %T", gen)
+		}
+	})
+
+	t.Run("ResampleOnZoomOutUsesAffineResamplerWhenScaleExceedsThreshold", func(t *testing.T) {
+		agg2d.ImageFilter(Bilinear)
+		agg2d.ImageResample(ResampleOnZoomOut)
+
+		zoomOut := transform.NewTransAffine()
+		zoomOut.ScaleXY(2.0, 1.0)
+		zoomOutInterpolator := span.NewSpanInterpolatorLinearDefault(zoomOut)
+
+		gen := agg2d.newImageFilterGenerator(source, zoomOutInterpolator)
+		if _, ok := gen.(*span.SpanImageResampleRGBAAffine[*imagePixelFormat]); !ok {
+			t.Fatalf("expected affine resample generator for zoom-out, got %T", gen)
+		}
+	})
+
+	t.Run("ResampleOnZoomOutKeepsBilinearBelowThreshold", func(t *testing.T) {
+		agg2d.ImageFilter(Bilinear)
+		agg2d.ImageResample(ResampleOnZoomOut)
+
+		noZoomOut := transform.NewTransAffine()
+		noZoomOut.ScaleXY(1.1, 1.0)
+		noZoomOutInterpolator := span.NewSpanInterpolatorLinearDefault(noZoomOut)
+
+		gen := agg2d.newImageFilterGenerator(source, noZoomOutInterpolator)
+		if _, ok := gen.(*span.SpanImageFilterRGBABilinear[*imagePixelFormat, *span.SpanInterpolatorLinear[*transform.TransAffine]]); !ok {
+			t.Fatalf("expected bilinear generator below zoom-out threshold, got %T", gen)
+		}
+	})
+
+	t.Run("Diameter2FilterUses2x2Generator", func(t *testing.T) {
+		agg2d.ImageFilter(Hanning)
+		agg2d.ImageResample(NoResample)
+
+		gen := agg2d.newImageFilterGenerator(source, identityInterpolator)
+		if _, ok := gen.(*span.SpanImageFilterRGBA2x2[*imagePixelFormat, *span.SpanInterpolatorLinear[*transform.TransAffine]]); !ok {
+			t.Fatalf("expected 2x2 LUT generator, got %T", gen)
+		}
+	})
+
+	t.Run("LargeDiameterFilterUsesGeneralLUTGenerator", func(t *testing.T) {
+		agg2d.ImageFilter(Spline36)
+		agg2d.ImageResample(NoResample)
+
+		gen := agg2d.newImageFilterGenerator(source, identityInterpolator)
+		if _, ok := gen.(*span.SpanImageFilterRGBA[*imagePixelFormat, *span.SpanInterpolatorLinear[*transform.TransAffine]]); !ok {
+			t.Fatalf("expected general LUT generator, got %T", gen)
+		}
+	})
 }
 
 // BenchmarkTransformImage benchmarks the image transformation performance.

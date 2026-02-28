@@ -11,8 +11,6 @@ Classification policy:
 
 | Package | Location | Placeholder / Simplification | Class | AGG Reference | Target Phase |
 |---|---|---|---|---|---|
-| `internal/agg2d` | `internal/agg2d/image.go:42` | `renderImageWithPath` uses a custom pixel loop + inverse mapping, bypassing AGG span/interpolator/filter pipeline; nearest-neighbor note at `:149`. | `must-fix` | `../agg-2.6/agg-src/agg2d/agg2d.cpp:1600`, `:1718`, `:1282` | Phase `1.1` |
-| `internal/agg2d` | `internal/agg2d/gradient.go:351` | `worldToScreen`/`worldToScreenPoint` helper is a no-op/1:1 placeholder, affecting radial gradient transform setup. | `must-fix` | `../agg-2.6/agg-src/agg2d/agg2d.cpp:276`, `:289`, `:540` | Phase `1.2` |
 | `internal/rasterizer` | `internal/rasterizer/cells_aa_simple.go:497` | After consolidation, Y-runs are not compacted ("leave gaps for now"), risking run-index mismatch. | `must-fix` | `../agg-2.6/agg-src/include/agg_rasterizer_cells_aa.h:627` | Phase `2.1` |
 | `internal/rasterizer` | `internal/rasterizer/cells_aa_styled.go:483` | Same non-compaction behavior in styled rasterizer path. | `must-fix` | `../agg-2.6/agg-src/include/agg_rasterizer_cells_aa.h:627` | Phase `2.1` |
 | `internal/span` | `internal/span/span_image_filter_rgb.go:316` | Bilinear-clip partial-overlap path falls back to background instead of weighted edge sampling. | `must-fix` | `../agg-2.6/agg-src/include/agg_span_image_filter_rgb.h:170`, `:270` | Phase `1.1` |
@@ -23,7 +21,7 @@ Classification policy:
 
 ## Priority Summary
 
-- `must-fix`: 5
+- `must-fix`: 3
 - `acceptable temporary`: 2
 - `low-priority`: 2
 
@@ -31,6 +29,9 @@ Classification policy:
 
 - `internal/scanline/storage_aa_serialized.go`: removed placeholder embedded iterator and `any`-based cover decoding; now parses serialized AA spans per AGG layout.
 - `internal/agg2d/text.go`: removed rectangle glyph fallback; gray8/mono glyphs now render using bitmap coverage data per pixel.
+- `internal/agg2d/gradient.go`: replaced no-op world/screen helpers with real transform/scalar conversion, and aligned gradient matrix setup ordering with AGG path.
+- `internal/agg2d/image.go`: replaced custom per-pixel transformed-image loop with rasterizer + scanline + span-interpolator path, including image blend conversion on generated spans.
+- `internal/agg2d/image.go` + `internal/span/span_image_filter_rgba.go`: aligned filter/resample dispatch with AGG (`NoFilter` NN, bilinear / LUT-2x2 / LUT-general, affine resample for `ResampleAlways` and zoom-out threshold).
 
 ## Execution Order (Parity-First)
 

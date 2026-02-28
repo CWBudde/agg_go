@@ -272,6 +272,53 @@ func TestClipBox(t *testing.T) {
 	}
 }
 
+func TestClipBoxPropagatesToRendererCopyOps(t *testing.T) {
+	ctx := NewAgg2D()
+
+	width, height := 6, 6
+	stride := width * 4
+	dst := make([]uint8, height*stride)
+	ctx.Attach(dst, width, height, stride)
+
+	srcW, srcH := 3, 3
+	src := make([]uint8, srcW*srcH*4)
+	for i := 0; i < len(src); i += 4 {
+		src[i+0] = 255
+		src[i+1] = 0
+		src[i+2] = 0
+		src[i+3] = 255
+	}
+	img := NewImage(src, srcW, srcH, srcW*4)
+
+	ctx.ClipBox(1, 1, 2, 2)
+	if err := ctx.CopyImageSimple(img, 0, 0); err != nil {
+		t.Fatalf("CopyImageSimple failed: %v", err)
+	}
+
+	redPixels := 0
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			offset := y*stride + x*4
+			r, g, b, a := dst[offset], dst[offset+1], dst[offset+2], dst[offset+3]
+			inClip := x >= 1 && x <= 2 && y >= 1 && y <= 2
+
+			if inClip {
+				if r != 255 || g != 0 || b != 0 || a != 255 {
+					t.Fatalf("pixel (%d,%d) expected red in clip box, got rgba=(%d,%d,%d,%d)", x, y, r, g, b, a)
+				}
+				redPixels++
+				continue
+			}
+			if r != 0 || g != 0 || b != 0 || a != 0 {
+				t.Fatalf("pixel (%d,%d) expected untouched outside clip box, got rgba=(%d,%d,%d,%d)", x, y, r, g, b, a)
+			}
+		}
+	}
+	if redPixels != 4 {
+		t.Fatalf("expected 4 copied red pixels in clip region, got %d", redPixels)
+	}
+}
+
 // TestClearAll verifies buffer clearing
 func TestClearAll(t *testing.T) {
 	ctx := NewAgg2D()

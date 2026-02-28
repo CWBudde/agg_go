@@ -50,26 +50,25 @@ func (agg2d *Agg2D) InBox(worldX, worldY float64) bool {
 // WorldToScreenScalar converts a world scalar value to screen coordinates.
 // This matches the C++ Agg2D::worldToScreen(double scalar) method.
 func (agg2d *Agg2D) WorldToScreenScalar(scalar float64) float64 {
-	// Calculate the overall scaling factor from the transformation matrix
-	scaleX := math.Sqrt(agg2d.transform.SX*agg2d.transform.SX + agg2d.transform.SHY*agg2d.transform.SHY)
-	scaleY := math.Sqrt(agg2d.transform.SHX*agg2d.transform.SHX + agg2d.transform.SY*agg2d.transform.SY)
-	scale := (scaleX + scaleY) / 2.0
-
-	return scalar * scale
+	x1, y1 := 0.0, 0.0
+	x2, y2 := scalar, scalar
+	agg2d.WorldToScreen(&x1, &y1)
+	agg2d.WorldToScreen(&x2, &y2)
+	dx := x2 - x1
+	dy := y2 - y1
+	return math.Sqrt(dx*dx+dy*dy) / math.Sqrt(2.0)
 }
 
 // ScreenToWorldScalar converts a screen scalar value to world coordinates.
 // This matches the C++ Agg2D::screenToWorld(double scalar) method.
 func (agg2d *Agg2D) ScreenToWorldScalar(scalar float64) float64 {
-	// Calculate the overall scaling factor from the transformation matrix
-	scaleX := math.Sqrt(agg2d.transform.SX*agg2d.transform.SX + agg2d.transform.SHY*agg2d.transform.SHY)
-	scaleY := math.Sqrt(agg2d.transform.SHX*agg2d.transform.SHX + agg2d.transform.SY*agg2d.transform.SY)
-	scale := (scaleX + scaleY) / 2.0
-
-	if scale > 0.0 {
-		return scalar / scale
-	}
-	return scalar
+	x1, y1 := 0.0, 0.0
+	x2, y2 := scalar, scalar
+	agg2d.ScreenToWorld(&x1, &y1)
+	agg2d.ScreenToWorld(&x2, &y2)
+	dx := x2 - x1
+	dy := y2 - y1
+	return math.Sqrt(dx*dx+dy*dy) / math.Sqrt(2.0)
 }
 
 // NoFill disables fill rendering.

@@ -16,20 +16,21 @@ import (
 
 // ImageFilter represents different image filtering options
 const (
-	ImageFilterBilinear ImageFilter = iota
-	ImageFilterHanning
-	ImageFilterHermite
-	ImageFilterQuadric
-	ImageFilterBicubic
-	ImageFilterCatrom
-	ImageFilterSpline16
-	ImageFilterSpline36
-	ImageFilterBlackman144
+	ImageFilterNoFilter    ImageFilter = ImageFilter(agg2d.NoFilter)
+	ImageFilterBilinear    ImageFilter = ImageFilter(agg2d.Bilinear)
+	ImageFilterHanning     ImageFilter = ImageFilter(agg2d.Hanning)
+	ImageFilterHermite     ImageFilter = ImageFilter(agg2d.Hermite)
+	ImageFilterQuadric     ImageFilter = ImageFilter(agg2d.Quadric)
+	ImageFilterBicubic     ImageFilter = ImageFilter(agg2d.Bicubic)
+	ImageFilterCatrom      ImageFilter = ImageFilter(agg2d.Catrom)
+	ImageFilterSpline16    ImageFilter = ImageFilter(agg2d.Spline16)
+	ImageFilterSpline36    ImageFilter = ImageFilter(agg2d.Spline36)
+	ImageFilterBlackman144 ImageFilter = ImageFilter(agg2d.Blackman144)
 )
 
-// Aliases for backwards compatibility
+// Short aliases matching the original AGG2D naming.
 const (
-	NoFilter    = ImageFilterBilinear // Default filter
+	NoFilter    = ImageFilterNoFilter
 	Bilinear    = ImageFilterBilinear
 	Hanning     = ImageFilterHanning
 	Hermite     = ImageFilterHermite
@@ -43,9 +44,9 @@ const (
 
 // ImageResample defines image resampling modes.
 const (
-	NoResample        ImageResample = iota // No resampling
-	ResampleAlways                         // Always resample
-	ResampleOnZoomOut                      // Resample only when zooming out
+	NoResample        ImageResample = ImageResample(agg2d.NoResample)
+	ResampleAlways    ImageResample = ImageResample(agg2d.ResampleAlways)
+	ResampleOnZoomOut ImageResample = ImageResample(agg2d.ResampleOnZoomOut)
 )
 
 // Image represents a raster image that can be used as a rendering target.

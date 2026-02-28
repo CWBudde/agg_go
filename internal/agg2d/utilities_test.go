@@ -122,6 +122,22 @@ func TestWorldScreenScalarConversion(t *testing.T) {
 	if math.Abs(backToWorld-worldScalar) > 1e-10 {
 		t.Errorf("ScreenToWorldScalar(%v) = %v, want %v", screenScalar, backToWorld, worldScalar)
 	}
+
+	t.Run("anisotropic transform uses AGG scalar metric", func(t *testing.T) {
+		agg2d.transform = transform.NewTransAffineFromValues(2.0, 0.5, 1.0, 3.0, 7.0, -2.0)
+		scalar := 10.0
+
+		x1, y1 := 0.0, 0.0
+		x2, y2 := scalar, scalar
+		agg2d.transform.Transform(&x1, &y1)
+		agg2d.transform.Transform(&x2, &y2)
+		expected := math.Sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1)) / math.Sqrt(2.0)
+
+		got := agg2d.WorldToScreenScalar(scalar)
+		if math.Abs(got-expected) > 1e-10 {
+			t.Fatalf("WorldToScreenScalar(%v) = %v, want %v", scalar, got, expected)
+		}
+	})
 }
 
 func TestNoFillNoLine(t *testing.T) {

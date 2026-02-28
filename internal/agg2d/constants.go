@@ -32,21 +32,21 @@ const (
 
 // Additional ImageFilter constants
 const (
-	ImageFilterBicubic  ImageFilter = 1
-	ImageFilterSpline16 ImageFilter = 2
-	ImageFilterSpline36 ImageFilter = 3
-	ImageFilterHanning  ImageFilter = 4
-	ImageFilterHamming  ImageFilter = 5
-	ImageFilterHermite  ImageFilter = 6
-	ImageFilterKaiser   ImageFilter = 7
-	ImageFilterQuadric  ImageFilter = 8
-	ImageFilterCatrom   ImageFilter = 9
-	ImageFilterGaussian ImageFilter = 10
-	ImageFilterBessel   ImageFilter = 11
-	ImageFilterMitchell ImageFilter = 12
-	ImageFilterSinc     ImageFilter = 13
-	ImageFilterLanczos  ImageFilter = 14
-	ImageFilterBlackman ImageFilter = 15
+	ImageFilterHanning  ImageFilter = 2
+	ImageFilterHermite  ImageFilter = 3
+	ImageFilterQuadric  ImageFilter = 4
+	ImageFilterBicubic  ImageFilter = 5
+	ImageFilterCatrom   ImageFilter = 6
+	ImageFilterSpline16 ImageFilter = 7
+	ImageFilterSpline36 ImageFilter = 8
+	ImageFilterBlackman ImageFilter = 9
+	ImageFilterHamming  ImageFilter = 10
+	ImageFilterKaiser   ImageFilter = 11
+	ImageFilterGaussian ImageFilter = 12
+	ImageFilterBessel   ImageFilter = 13
+	ImageFilterMitchell ImageFilter = 14
+	ImageFilterSinc     ImageFilter = 15
+	ImageFilterLanczos  ImageFilter = 16
 )
 
 // Additional ImageResample constants
@@ -74,16 +74,16 @@ type RectD struct {
 
 // Image filter constants for testing
 const (
-	NoFilter    = 0
-	Bilinear    = ImageFilterBilinear
-	Hanning     = ImageFilterHanning
-	Hermite     = ImageFilterHermite
-	Quadric     = ImageFilterQuadric
-	Bicubic     = ImageFilterBicubic
-	Catrom      = ImageFilterCatrom
-	Spline16    = ImageFilterSpline16
-	Spline36    = ImageFilterSpline36
-	Blackman144 = ImageFilterBlackman
+	NoFilter    ImageFilter = 0
+	Bilinear                = ImageFilterBilinear
+	Hanning                 = ImageFilterHanning
+	Hermite                 = ImageFilterHermite
+	Quadric                 = ImageFilterQuadric
+	Bicubic                 = ImageFilterBicubic
+	Catrom                  = ImageFilterCatrom
+	Spline16                = ImageFilterSpline16
+	Spline36                = ImageFilterSpline36
+	Blackman144             = ImageFilterBlackman
 )
 
 // DrawPathFlag represents different path drawing modes

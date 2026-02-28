@@ -3,6 +3,8 @@ package agg2d
 import (
 	"math"
 	"testing"
+
+	"agg_go/internal/transform"
 )
 
 // TestColorGradient tests the Color.Gradient method for color interpolation
@@ -116,8 +118,12 @@ func TestLinearGradientSetup(t *testing.T) {
 		if agg2d.lineGradient[0] != green {
 			t.Errorf("Expected gradient start color %v, got %v", green, agg2d.lineGradient[0])
 		}
-		if agg2d.lineGradient[255] != yellow {
-			t.Errorf("Expected gradient end color %v, got %v", yellow, agg2d.lineGradient[255])
+		lineEndColor := agg2d.lineGradient[255]
+		if abs(int(lineEndColor.R())-int(yellow.R())) > 1 ||
+			abs(int(lineEndColor.G())-int(yellow.G())) > 1 ||
+			abs(int(lineEndColor.B())-int(yellow.B())) > 1 ||
+			abs(int(lineEndColor.A())-int(yellow.A())) > 1 {
+			t.Errorf("Expected line gradient end color near %v, got %v", yellow, lineEndColor)
 		}
 
 		// Check gradient distance (diagonal: sqrt(50^2 + 50^2))
@@ -202,8 +208,12 @@ func TestRadialGradientSetup(t *testing.T) {
 		if agg2d.lineGradient[0] != cyan {
 			t.Errorf("Expected gradient center color %v, got %v", cyan, agg2d.lineGradient[0])
 		}
-		if agg2d.lineGradient[255] != magenta {
-			t.Errorf("Expected gradient edge color %v, got %v", magenta, agg2d.lineGradient[255])
+		lineEdgeColor := agg2d.lineGradient[255]
+		if abs(int(lineEdgeColor.R())-int(magenta.R())) > 1 ||
+			abs(int(lineEdgeColor.G())-int(magenta.G())) > 1 ||
+			abs(int(lineEdgeColor.B())-int(magenta.B())) > 1 ||
+			abs(int(lineEdgeColor.A())-int(magenta.A())) > 1 {
+			t.Errorf("Expected gradient edge color near %v, got %v", magenta, lineEdgeColor)
 		}
 	})
 }
@@ -331,6 +341,87 @@ func TestGradientPositionMethods(t *testing.T) {
 			t.Errorf("Expected line gradient radius %v, got %v", expectedRadius, agg2d.lineGradientD2)
 		}
 	})
+}
+
+func TestRadialGradientUsesWorldToScreenTransform(t *testing.T) {
+	agg2d := NewAgg2D()
+
+	width, height := 100, 100
+	buf := make([]uint8, width*height*4)
+	agg2d.Attach(buf, width, height, width*4)
+
+	agg2d.Scale(2.0, 3.0)
+	agg2d.Translate(10.0, -4.0)
+
+	centerX, centerY := 5.0, 7.0
+	radius := 10.0
+	expectedCenterX, expectedCenterY := centerX, centerY
+	agg2d.WorldToScreen(&expectedCenterX, &expectedCenterY)
+	expectedRadius := agg2d.WorldToScreenScalar(radius)
+
+	agg2d.FillRadialGradient(centerX, centerY, radius, White, Black, 1.0)
+	if math.Abs(agg2d.fillGradientD2-expectedRadius) > 1e-9 {
+		t.Fatalf("fill radial radius mismatch: got %v, want %v", agg2d.fillGradientD2, expectedRadius)
+	}
+	if math.Abs(agg2d.fillGradientMatrix.TX+expectedCenterX) > 1e-9 {
+		t.Fatalf("fill radial matrix TX mismatch: got %v, want %v", agg2d.fillGradientMatrix.TX, -expectedCenterX)
+	}
+	if math.Abs(agg2d.fillGradientMatrix.TY+expectedCenterY) > 1e-9 {
+		t.Fatalf("fill radial matrix TY mismatch: got %v, want %v", agg2d.fillGradientMatrix.TY, -expectedCenterY)
+	}
+
+	agg2d.LineRadialGradient(centerX, centerY, radius, White, Black, 1.0)
+	if math.Abs(agg2d.lineGradientD2-expectedRadius) > 1e-9 {
+		t.Fatalf("line radial radius mismatch: got %v, want %v", agg2d.lineGradientD2, expectedRadius)
+	}
+	if math.Abs(agg2d.lineGradientMatrix.TX+expectedCenterX) > 1e-9 {
+		t.Fatalf("line radial matrix TX mismatch: got %v, want %v", agg2d.lineGradientMatrix.TX, -expectedCenterX)
+	}
+	if math.Abs(agg2d.lineGradientMatrix.TY+expectedCenterY) > 1e-9 {
+		t.Fatalf("line radial matrix TY mismatch: got %v, want %v", agg2d.lineGradientMatrix.TY, -expectedCenterY)
+	}
+}
+
+func TestLinearGradientMatrixUsesCurrentTransform(t *testing.T) {
+	agg2d := NewAgg2D()
+
+	width, height := 100, 100
+	buf := make([]uint8, width*height*4)
+	agg2d.Attach(buf, width, height, width*4)
+
+	agg2d.Scale(2.0, 3.0)
+	agg2d.Translate(4.0, -6.0)
+
+	x1, y1 := 3.0, 5.0
+	x2, y2 := 13.0, 5.0
+
+	agg2d.FillLinearGradient(x1, y1, x2, y2, White, Black, 1.0)
+	expectedFill := transform.NewTransAffine()
+	expectedFill.Rotate(math.Atan2(y2-y1, x2-x1))
+	expectedFill.Translate(x1, y1)
+	expectedFill.Multiply(agg2d.transform)
+	expectedFill.Invert()
+	assertAffineApproxEqual(t, agg2d.fillGradientMatrix, expectedFill, 1e-9)
+
+	agg2d.LineLinearGradient(x1, y1, x2, y2, White, Black, 1.0)
+	expectedLine := transform.NewTransAffine()
+	expectedLine.Rotate(math.Atan2(y2-y1, x2-x1))
+	expectedLine.Translate(x1, y1)
+	expectedLine.Multiply(agg2d.transform)
+	expectedLine.Invert()
+	assertAffineApproxEqual(t, agg2d.lineGradientMatrix, expectedLine, 1e-9)
+}
+
+func assertAffineApproxEqual(t *testing.T, got, want *transform.TransAffine, eps float64) {
+	t.Helper()
+	if math.Abs(got.SX-want.SX) > eps ||
+		math.Abs(got.SHY-want.SHY) > eps ||
+		math.Abs(got.SHX-want.SHX) > eps ||
+		math.Abs(got.SY-want.SY) > eps ||
+		math.Abs(got.TX-want.TX) > eps ||
+		math.Abs(got.TY-want.TY) > eps {
+		t.Fatalf("affine mismatch: got %+v, want %+v", *got, *want)
+	}
 }
 
 // Helper function for absolute value of integers

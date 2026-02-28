@@ -8,6 +8,7 @@ import (
 	"agg_go/internal/basics"
 	"agg_go/internal/color"
 	"agg_go/internal/conv"
+	aggimage "agg_go/internal/image"
 	"agg_go/internal/rasterizer"
 	renscan "agg_go/internal/renderer/scanline"
 	"agg_go/internal/scanline"
@@ -452,6 +453,49 @@ func (agg2d *Agg2D) ResetTransformations() {
 // ImageFilter sets the image filtering method.
 func (agg2d *Agg2D) ImageFilter(f ImageFilter) {
 	agg2d.imageFilter = f
+	if agg2d.imageFilterLUT == nil {
+		agg2d.imageFilterLUT = aggimage.NewImageFilterLUT()
+	}
+
+	switch f {
+	case NoFilter:
+		// AGG keeps the LUT unchanged for NoFilter.
+		return
+	case Bilinear:
+		agg2d.imageFilterLUT.Calculate(aggimage.BilinearFilter{}, true)
+	case Hanning:
+		agg2d.imageFilterLUT.Calculate(aggimage.HanningFilter{}, true)
+	case Hermite:
+		agg2d.imageFilterLUT.Calculate(aggimage.HermiteFilter{}, true)
+	case Quadric:
+		agg2d.imageFilterLUT.Calculate(aggimage.QuadricFilter{}, true)
+	case Bicubic:
+		agg2d.imageFilterLUT.Calculate(aggimage.BicubicFilter{}, true)
+	case Catrom:
+		agg2d.imageFilterLUT.Calculate(aggimage.CatromFilter{}, true)
+	case Spline16:
+		agg2d.imageFilterLUT.Calculate(aggimage.Spline16Filter{}, true)
+	case Spline36:
+		agg2d.imageFilterLUT.Calculate(aggimage.Spline36Filter{}, true)
+	case Blackman144:
+		agg2d.imageFilterLUT.Calculate(aggimage.NewBlackman144Filter(), true)
+	case ImageFilterHamming:
+		agg2d.imageFilterLUT.Calculate(aggimage.HammingFilter{}, true)
+	case ImageFilterKaiser:
+		agg2d.imageFilterLUT.Calculate(aggimage.NewKaiserFilter(0), true)
+	case ImageFilterGaussian:
+		agg2d.imageFilterLUT.Calculate(aggimage.GaussianFilter{}, true)
+	case ImageFilterBessel:
+		agg2d.imageFilterLUT.Calculate(aggimage.BesselFilter{}, true)
+	case ImageFilterMitchell:
+		agg2d.imageFilterLUT.Calculate(aggimage.NewMitchellFilter(0, 0), true)
+	case ImageFilterSinc:
+		agg2d.imageFilterLUT.Calculate(aggimage.NewSincFilter(2.0), true)
+	case ImageFilterLanczos:
+		agg2d.imageFilterLUT.Calculate(aggimage.NewLanczosFilter(2.0), true)
+	default:
+		agg2d.imageFilterLUT.Calculate(aggimage.BilinearFilter{}, true)
+	}
 }
 
 // ImageResample sets the image resampling method.

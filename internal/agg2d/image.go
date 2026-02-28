@@ -9,184 +9,219 @@ import (
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
 	"agg_go/internal/conv"
+	"agg_go/internal/order"
+	"agg_go/internal/pixfmt/blender"
+	renscan "agg_go/internal/renderer/scanline"
+	"agg_go/internal/span"
 	"agg_go/internal/transform"
 )
 
-// renderImage is the core image rendering method that handles all image transformations.
-// This implements the full image rendering pipeline with proper transformation and filtering.
-func (agg2d *Agg2D) renderImage(img *Image, x1, y1, x2, y2 int, parallelogram []float64) error {
-	return agg2d.renderImageWithPath(img, x1, y1, x2, y2, parallelogram, false)
+type imageSampleGenerator interface {
+	Generate(colors []color.RGBA8[color.Linear], x, y int)
 }
 
-// renderImageWithPath is the core image rendering method with optional path-based clipping.
-// When usePathClip is true, the current path is used as a clipping mask for the image.
-func (agg2d *Agg2D) renderImageWithPath(img *Image, x1, y1, x2, y2 int, parallelogram []float64, usePathClip bool) error {
+type imageSamplePreparer interface {
+	Prepare()
+}
+
+type imageSpanGenerator struct {
+	sample      imageSampleGenerator
+	blendMode   BlendMode
+	blendColor  Color
+	compBlender blender.CompositeBlender[color.Linear, order.RGBA]
+	hasCompOp   bool
+}
+
+func newImageSpanGenerator(sample imageSampleGenerator, blendMode BlendMode, blendColor Color) *imageSpanGenerator {
+	sg := &imageSpanGenerator{
+		sample:     sample,
+		blendMode:  blendMode,
+		blendColor: blendColor,
+	}
+	if blendMode != BlendDst {
+		sg.compBlender = blender.NewCompositeBlender[color.Linear, order.RGBA](blendModeToCompOp(blendMode))
+		sg.hasCompOp = true
+	}
+	return sg
+}
+
+func (sg *imageSpanGenerator) Prepare() {
+	if preparer, ok := sg.sample.(imageSamplePreparer); ok {
+		preparer.Prepare()
+	}
+}
+
+func (sg *imageSpanGenerator) Generate(colors []color.RGBA8[color.Linear], x, y, length int) {
+	if sg.sample == nil || length <= 0 || len(colors) == 0 {
+		return
+	}
+	if length < len(colors) {
+		colors = colors[:length]
+	}
+
+	sg.sample.Generate(colors, x, y)
+
+	if sg.hasCompOp {
+		srcR, srcG, srcB := sg.blendColor[0], sg.blendColor[1], sg.blendColor[2]
+		for i := range colors {
+			pixel := []basics.Int8u{colors[i].R, colors[i].G, colors[i].B, colors[i].A}
+			sg.compBlender.BlendPix(pixel, srcR, srcG, srcB, 255, basics.CoverFull)
+			colors[i].R = pixel[0]
+			colors[i].G = pixel[1]
+			colors[i].B = pixel[2]
+			colors[i].A = pixel[3]
+		}
+	}
+
+	// AGG applies alpha from imageBlendColor after blend conversion.
+	if sg.blendColor[3] != 255 {
+		alpha := sg.blendColor[3]
+		for i := range colors {
+			colors[i].R = color.RGBA8Multiply(colors[i].R, alpha)
+			colors[i].G = color.RGBA8Multiply(colors[i].G, alpha)
+			colors[i].B = color.RGBA8Multiply(colors[i].B, alpha)
+			colors[i].A = color.RGBA8Multiply(colors[i].A, alpha)
+		}
+	}
+}
+
+func (agg2d *Agg2D) newImageFilterGenerator(
+	source *imagePixelFormat,
+	interpolator *span.SpanInterpolatorLinear[*transform.TransAffine],
+) imageSampleGenerator {
+	if agg2d.imageFilter == NoFilter {
+		return span.NewSpanImageFilterRGBANNWithParams[*imagePixelFormat, *span.SpanInterpolatorLinear[*transform.TransAffine]](source, interpolator)
+	}
+
+	resample := agg2d.imageResample == ResampleAlways
+	if agg2d.imageResample == ResampleOnZoomOut && interpolator != nil {
+		if tr := interpolator.Transformer(); tr != nil {
+			sx, sy := tr.GetScalingAbs()
+			if sx > 1.125 || sy > 1.125 {
+				resample = true
+			}
+		}
+	}
+
+	if resample {
+		return span.NewSpanImageResampleRGBAAffineWithParams[*imagePixelFormat](
+			source,
+			interpolator,
+			agg2d.imageFilterLUT,
+		)
+	}
+
+	if agg2d.imageFilter == Bilinear {
+		return span.NewSpanImageFilterRGBABilinearWithParams[*imagePixelFormat, *span.SpanInterpolatorLinear[*transform.TransAffine]](source, interpolator)
+	}
+
+	if agg2d.imageFilterLUT == nil {
+		return span.NewSpanImageFilterRGBABilinearWithParams[*imagePixelFormat, *span.SpanInterpolatorLinear[*transform.TransAffine]](source, interpolator)
+	}
+
+	if agg2d.imageFilterLUT.Diameter() == 2 {
+		return span.NewSpanImageFilterRGBA2x2WithParams[*imagePixelFormat, *span.SpanInterpolatorLinear[*transform.TransAffine]](
+			source,
+			interpolator,
+			agg2d.imageFilterLUT,
+		)
+	}
+
+	return span.NewSpanImageFilterRGBAWithParams[*imagePixelFormat, *span.SpanInterpolatorLinear[*transform.TransAffine]](
+		source,
+		interpolator,
+		agg2d.imageFilterLUT,
+	)
+}
+
+func (agg2d *Agg2D) setImagePathRect(x1, y1, x2, y2 float64) {
+	agg2d.ResetPath()
+	agg2d.MoveTo(x1, y1)
+	agg2d.LineTo(x2, y1)
+	agg2d.LineTo(x2, y2)
+	agg2d.LineTo(x1, y2)
+	agg2d.ClosePolygon()
+}
+
+func (agg2d *Agg2D) setImagePathParallelogram(parallelogram []float64) {
+	agg2d.ResetPath()
+	agg2d.MoveTo(parallelogram[0], parallelogram[1])
+	agg2d.LineTo(parallelogram[2], parallelogram[3])
+	agg2d.LineTo(parallelogram[4], parallelogram[5])
+	agg2d.LineTo(
+		parallelogram[0]+parallelogram[4]-parallelogram[2],
+		parallelogram[1]+parallelogram[5]-parallelogram[3],
+	)
+	agg2d.ClosePolygon()
+}
+
+func (agg2d *Agg2D) addCurrentPathToRasterizer() {
+	if agg2d.path == nil || agg2d.path.TotalVertices() == 0 || agg2d.rasterizer == nil {
+		return
+	}
+
+	transformedPath := conv.NewConvTransform(agg2d.convCurve, agg2d.transform)
+	transformedPath.Rewind(0)
+	for {
+		x, y, cmd := transformedPath.Vertex()
+		if cmd == basics.PathCmdStop {
+			return
+		}
+		agg2d.rasterizer.AddVertex(x, y, uint32(cmd))
+	}
+}
+
+// renderImage renders the current path using AGG-style image span interpolation.
+func (agg2d *Agg2D) renderImage(img *Image, x1, y1, x2, y2 int, parallelogram []float64) error {
 	if img == nil || img.renBuf == nil {
 		return errors.New("image or image buffer is nil")
 	}
 	if len(parallelogram) != 6 {
 		return errors.New("parallelogram must have exactly 6 elements")
 	}
+	if agg2d.rasterizer == nil || agg2d.scanline == nil || agg2d.spanAllocator == nil {
+		return errors.New("render pipeline is not initialized")
+	}
 
-	// Create transformation matrix from source rectangle to destination parallelogram
-	src := [6]float64{float64(x1), float64(y1), float64(x2), float64(y1), float64(x2), float64(y2)}
-	dst := [6]float64{parallelogram[0], parallelogram[1], parallelogram[2], parallelogram[3], parallelogram[4], parallelogram[5]}
+	src := [6]float64{
+		float64(x1), float64(y1),
+		float64(x2), float64(y1),
+		float64(x2), float64(y2),
+	}
+	dst := [6]float64{
+		parallelogram[0], parallelogram[1],
+		parallelogram[2], parallelogram[3],
+		parallelogram[4], parallelogram[5],
+	}
+
 	mtx := transform.NewTransAffineParlToParl(src, dst)
-
-	// Apply world transformation
 	if agg2d.transform != nil {
 		mtx.Multiply(agg2d.transform)
 	}
 	mtx.Invert()
 
-	// Create a simplified image rendering implementation
-	// This performs basic transformed image rendering using pixel-by-pixel processing
+	agg2d.rasterizer.Reset()
+	agg2d.rasterizer.FillingRule(agg2d.GetFillRule())
+	agg2d.addCurrentPathToRasterizer()
 
-	// Calculate the destination bounds by transforming the source rectangle corners
-	corners := [][2]float64{
-		{float64(x1), float64(y1)},
-		{float64(x2), float64(y1)},
-		{float64(x2), float64(y2)},
-		{float64(x1), float64(y2)},
+	interpolator := span.NewSpanInterpolatorLinearDefault(mtx)
+	imageSource := newImagePixelFormat(img)
+	sampleGenerator := agg2d.newImageFilterGenerator(imageSource, interpolator)
+	spanGenerator := newImageSpanGenerator(sampleGenerator, agg2d.imageBlendMode, agg2d.imageBlendColor)
+
+	var renderer *baseRendererAdapter[color.RGBA8[color.Linear]]
+	if agg2d.blendMode == BlendAlpha {
+		renderer = agg2d.renBase
+	} else {
+		renderer = agg2d.renBaseComp
+	}
+	if renderer == nil {
+		return nil
 	}
 
-	// Transform each corner to find the destination bounding box
-	var minX, minY, maxX, maxY float64
-	for i, corner := range corners {
-		tx, ty := corner[0], corner[1]
-		mtx.Transform(&tx, &ty)
-
-		if i == 0 {
-			minX, maxX = tx, tx
-			minY, maxY = ty, ty
-		} else {
-			if tx < minX {
-				minX = tx
-			}
-			if tx > maxX {
-				maxX = tx
-			}
-			if ty < minY {
-				minY = ty
-			}
-			if ty > maxY {
-				maxY = ty
-			}
-		}
-	}
-
-	// Clamp to rendering buffer bounds
-	if minX < 0 {
-		minX = 0
-	}
-	if minY < 0 {
-		minY = 0
-	}
-	if maxX >= float64(agg2d.rbuf.Width()) {
-		maxX = float64(agg2d.rbuf.Width() - 1)
-	}
-	if maxY >= float64(agg2d.rbuf.Height()) {
-		maxY = float64(agg2d.rbuf.Height() - 1)
-	}
-
-	// If path clipping is requested, prepare the rasterizer with the current path
-	var pathMask map[[2]int]bool
-	if usePathClip && agg2d.path != nil && agg2d.path.TotalVertices() > 0 && agg2d.rasterizer != nil {
-		pathMask = make(map[[2]int]bool)
-
-		// Reset and configure rasterizer for path mask generation
-		agg2d.rasterizer.Reset()
-		agg2d.rasterizer.FillingRule(agg2d.GetFillRule())
-
-		// Add the current path to the rasterizer with world transformation applied
-		transformedPath := conv.NewConvTransform(agg2d.convCurve, agg2d.transform)
-		transformedPath.Rewind(0)
-		for {
-			x, y, cmd := transformedPath.Vertex()
-			if cmd == basics.PathCmdStop {
-				break
-			}
-			agg2d.rasterizer.AddVertex(x, y, uint32(cmd))
-		}
-
-		// Generate the path mask by rasterizing within the image bounds
-		if agg2d.scanline != nil {
-			// Create an adapter for the scanline to match the rasterizer interface
-			slAdapter := &rasScanlineAdapter{sl: agg2d.scanline}
-			agg2d.scanline.Reset(int(minX), int(maxX))
-			for agg2d.rasterizer.SweepScanline(slAdapter) {
-				y := agg2d.scanline.Y()
-				if y >= int(minY) && y <= int(maxY) {
-					spans := agg2d.scanline.Spans()
-					for _, span := range spans {
-						for x := int(span.X); x < int(span.X)+int(span.Len); x++ {
-							if x >= int(minX) && x <= int(maxX) {
-								pathMask[[2]int{x, y}] = true
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-
-	// Render the image by sampling the transformed coordinates
-	for dy := int(minY); dy <= int(maxY); dy++ {
-		for dx := int(minX); dx <= int(maxX); dx++ {
-			// Check path clipping if enabled
-			if usePathClip && pathMask != nil {
-				if !pathMask[[2]int{dx, dy}] {
-					continue // Skip pixels outside the path
-				}
-			}
-
-			// Transform destination coordinate back to source space
-			srcX, srcY := float64(dx), float64(dy)
-			mtx.InverseTransform(&srcX, &srcY)
-
-			// Check if the source coordinate is within the source rectangle
-			if srcX >= float64(x1) && srcX < float64(x2) && srcY >= float64(y1) && srcY < float64(y2) {
-				// Sample the source image (using nearest neighbor for now)
-				sampleX := int(srcX)
-				sampleY := int(srcY)
-
-				if sampleX >= 0 && sampleX < img.Width() && sampleY >= 0 && sampleY < img.Height() {
-					srcPixel := img.GetPixel(sampleX, sampleY)
-
-					// Apply image blend mode and color modulation
-					if agg2d.imageBlendColor != White {
-						// Modulate with blend color
-						srcPixel[0] = uint8((uint16(srcPixel[0]) * uint16(agg2d.imageBlendColor[0])) / 255)
-						srcPixel[1] = uint8((uint16(srcPixel[1]) * uint16(agg2d.imageBlendColor[1])) / 255)
-						srcPixel[2] = uint8((uint16(srcPixel[2]) * uint16(agg2d.imageBlendColor[2])) / 255)
-						srcPixel[3] = uint8((uint16(srcPixel[3]) * uint16(agg2d.imageBlendColor[3])) / 255)
-					}
-
-					// Use appropriate pixel format based on image blend mode
-					rgba := color.NewRGBA8[color.Linear](srcPixel[0], srcPixel[1], srcPixel[2], srcPixel[3])
-					if agg2d.imageBlendMode == BlendAlpha {
-						// Use standard alpha blending
-						if agg2d.pixfmt != nil {
-							agg2d.pixfmt.BlendPixel(dx, dy, rgba, 255)
-						}
-					} else {
-						// Use composite blending with imageBlendMode
-						if agg2d.pixfmtComp != nil {
-							// Temporarily set the composite operation for image blending
-							origCompOp := agg2d.pixfmtComp.GetCompOp()
-							imageCompOp := blendModeToCompOp(agg2d.imageBlendMode)
-							agg2d.pixfmtComp.SetCompOp(imageCompOp)
-
-							agg2d.pixfmtComp.BlendPixel(dx, dy, rgba, 255)
-
-							// Restore original composite operation
-							agg2d.pixfmtComp.SetCompOp(origCompOp)
-						}
-					}
-				}
-			}
-		}
-	}
+	rasAdapter := rasterizerAdapter{ras: agg2d.rasterizer}
+	slAdapter := &scanlineWrapper{sl: agg2d.scanline}
+	renscan.RenderScanlinesAA(rasAdapter, slAdapter, renderer, agg2d.spanAllocator, spanGenerator)
 
 	return nil
 }
@@ -202,6 +237,8 @@ func (agg2d *Agg2D) TransformImage(img *Image, imgX1, imgY1, imgX2, imgY2 int, d
 	if imgX1 < 0 || imgY1 < 0 || imgX2 > img.Width() || imgY2 > img.Height() {
 		return errors.New("invalid source rectangle bounds")
 	}
+
+	agg2d.setImagePathRect(dstX1, dstY1, dstX2, dstY2)
 
 	// Create destination parallelogram from rectangle
 	parallelogram := []float64{dstX1, dstY1, dstX2, dstY1, dstX2, dstY2}
@@ -232,6 +269,8 @@ func (agg2d *Agg2D) TransformImageParallelogram(img *Image, imgX1, imgY1, imgX2,
 		return errors.New("invalid source rectangle bounds")
 	}
 
+	agg2d.setImagePathParallelogram(parallelogram)
+
 	return agg2d.renderImage(img, imgX1, imgY1, imgX2, imgY2, parallelogram)
 }
 
@@ -251,17 +290,10 @@ func (agg2d *Agg2D) TransformImagePath(img *Image, imgX1, imgY1, imgX2, imgY2 in
 		return errors.New("image is nil")
 	}
 
-	// Check if there's an active path to use as clipping
-	if agg2d.path == nil || agg2d.path.TotalVertices() == 0 {
-		// No path defined, fall back to regular transform
-		return agg2d.TransformImage(img, imgX1, imgY1, imgX2, imgY2, dstX1, dstY1, dstX2, dstY2)
-	}
-
 	// Create destination parallelogram from rectangle
 	parallelogram := []float64{dstX1, dstY1, dstX2, dstY1, dstX2, dstY2}
 
-	// Use the path-enabled rendering method
-	return agg2d.renderImageWithPath(img, imgX1, imgY1, imgX2, imgY2, parallelogram, true)
+	return agg2d.renderImage(img, imgX1, imgY1, imgX2, imgY2, parallelogram)
 }
 
 // TransformImagePathSimple transforms and renders entire image along current path to destination rectangle.
@@ -284,14 +316,7 @@ func (agg2d *Agg2D) TransformImagePathParallelogram(img *Image, imgX1, imgY1, im
 		return errors.New("parallelogram requires 6 coordinates (3 points)")
 	}
 
-	// Check if there's an active path to use as clipping
-	if agg2d.path == nil || agg2d.path.TotalVertices() == 0 {
-		// No path defined, fall back to regular transform
-		return agg2d.TransformImageParallelogram(img, imgX1, imgY1, imgX2, imgY2, parallelogram)
-	}
-
-	// Use the path-enabled rendering method
-	return agg2d.renderImageWithPath(img, imgX1, imgY1, imgX2, imgY2, parallelogram, true)
+	return agg2d.renderImage(img, imgX1, imgY1, imgX2, imgY2, parallelogram)
 }
 
 // TransformImagePathParallelogramSimple transforms and renders entire image along current path to destination parallelogram.

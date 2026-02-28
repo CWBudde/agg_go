@@ -57,13 +57,13 @@ Primary target: `internal/agg2d/*` against `agg2d.cpp`.
 
 ### 1.1 Image pipeline parity (critical)
 
-- [ ] Replace simplified `renderImage*` implementation with AGG-style scanline/span pipeline:
+- [x] Replace simplified `renderImage*` implementation with AGG-style scanline/span pipeline:
   - interpolator-based sampling
   - filter LUT integration
   - resample mode behavior (`NoResample`, `ResampleAlways`, `ResampleOnZoomOut`)
   - blend-color conversion path equivalent to AGG behavior
-- [ ] Remove nearest-neighbor-only fallback for transformed image rendering.
-- [ ] Align transform usage with AGG matrix flow (`parl->world->invert` then interpolator).
+- [x] Remove nearest-neighbor-only fallback for transformed image rendering.
+- [x] Align transform usage with AGG matrix flow (`parl->world->invert` then interpolator).
 
 Files:
 
@@ -73,9 +73,9 @@ Files:
 
 ### 1.2 Gradient parity
 
-- [ ] Ensure linear/radial gradient matrix construction matches AGG ordering.
-- [ ] Remove no-op world/screen helper placeholders and use real transform/scalar conversion.
-- [ ] Verify gradient distance (`d1/d2`) handling matches C++ path.
+- [x] Ensure linear/radial gradient matrix construction matches AGG ordering.
+- [x] Remove no-op world/screen helper placeholders and use real transform/scalar conversion.
+- [x] Verify gradient distance (`d1/d2`) handling matches C++ path.
 
 Files:
 
@@ -95,7 +95,7 @@ Files:
 
 ### 1.4 Clipping and renderer-state parity
 
-- [ ] Ensure `ClipBox` updates all relevant renderer and rasterizer states consistently.
+- [x] Ensure `ClipBox` updates all relevant renderer and rasterizer states consistently.
 - [ ] Verify `clearClipBox`, `copyImage`, `blendImage`, transformed image operations obey clip box identically to AGG semantics.
 
 Files:
@@ -216,8 +216,8 @@ For each task:
 
 ## Immediate Execution Queue (Start Here)
 
-1. [ ] Rebuild `internal/agg2d/image.go` around AGG span-interpolator pipeline.
-2. [ ] Fix `internal/agg2d/gradient.go` transform/scalar parity (remove no-op helpers).
+1. [x] Rebuild `internal/agg2d/image.go` around AGG span-interpolator pipeline.
+2. [x] Fix `internal/agg2d/gradient.go` transform/scalar parity (remove no-op helpers).
 3. [x] Replace text rectangle fallback in `internal/agg2d/text.go`.
-4. [ ] Align clip propagation across rasterizer and renderer bases in `internal/agg2d/buffer.go`.
+4. [x] Align clip propagation across rasterizer and renderer bases in `internal/agg2d/buffer.go`.
 5. [ ] Add pixel-asserting AGG2D tests for the above before moving to lower-priority items.

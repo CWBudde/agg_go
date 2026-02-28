@@ -6,6 +6,7 @@ import (
 	"agg_go/internal/basics"
 	"agg_go/internal/color"
 	"agg_go/internal/image"
+	"agg_go/internal/transform"
 )
 
 // SpanImageFilterRGBANN implements nearest neighbor RGBA image filtering.
@@ -677,26 +678,296 @@ func (sif *SpanImageFilterRGBA[Source, Interpolator]) Generate(span []color.RGBA
 
 // SpanImageResampleRGBAAffine provides affine resampling with automatic scale detection for RGBA.
 // This is a port of AGG's span_image_resample_rgba_affine template class.
-type SpanImageResampleRGBAAffine[Source SourceInterface] struct {
+type SpanImageResampleRGBAAffine[Source RGBASourceInterface] struct {
 	base *SpanImageResampleAffine[Source]
 }
 
 // NewSpanImageResampleRGBAAffine creates a new affine RGBA resampling filter.
-func NewSpanImageResampleRGBAAffine[Source SourceInterface]() *SpanImageResampleRGBAAffine[Source] {
+func NewSpanImageResampleRGBAAffine[Source RGBASourceInterface]() *SpanImageResampleRGBAAffine[Source] {
 	return &SpanImageResampleRGBAAffine[Source]{
 		base: NewSpanImageResampleAffine[Source](),
 	}
 }
 
+// NewSpanImageResampleRGBAAffineWithParams creates a new affine RGBA resampling filter with parameters.
+func NewSpanImageResampleRGBAAffineWithParams[Source RGBASourceInterface](
+	src Source,
+	interpolator *SpanInterpolatorLinear[*transform.TransAffine],
+	filter *image.ImageFilterLUT,
+) *SpanImageResampleRGBAAffine[Source] {
+	return &SpanImageResampleRGBAAffine[Source]{
+		base: NewSpanImageResampleAffineWithParams(src, interpolator, filter),
+	}
+}
+
+// Prepare prepares the affine resampler by extracting scaling from the affine transform.
+func (sirga *SpanImageResampleRGBAAffine[Source]) Prepare() {
+	sirga.base.Prepare()
+}
+
+// Generate generates a span of RGBA pixels using affine resampling.
+func (sirga *SpanImageResampleRGBAAffine[Source]) Generate(span []color.RGBA8[color.Linear], x, y int) {
+	length := len(span)
+	if length == 0 {
+		return
+	}
+
+	baseFilter := sirga.base.base
+	baseFilter.interpolator.Begin(float64(x)+baseFilter.FilterDxDbl(), float64(y)+baseFilter.FilterDyDbl(), length)
+
+	filter := baseFilter.Filter()
+	if filter == nil {
+		bilinear := NewSpanImageFilterRGBABilinearWithParams(baseFilter.Source(), baseFilter.Interpolator())
+		bilinear.Generate(span, x, y)
+		return
+	}
+
+	diameter := filter.Diameter()
+	filterScale := diameter << image.ImageSubpixelShift
+	radiusX := (diameter * sirga.base.RX()) >> 1
+	radiusY := (diameter * sirga.base.RY()) >> 1
+	lenXLr := (diameter*sirga.base.RX() + image.ImageSubpixelMask) >> image.ImageSubpixelShift
+
+	weightArray := filter.WeightArray()
+	orderType := baseFilter.source.OrderType()
+
+	for i := 0; i < length; i++ {
+		sx, sy := baseFilter.interpolator.Coordinates()
+
+		sx += baseFilter.FilterDxInt() - radiusX
+		sy += baseFilter.FilterDyInt() - radiusY
+
+		var fg [4]int
+
+		yLr := sy >> image.ImageSubpixelShift
+		yHr := ((image.ImageSubpixelMask - (sy & image.ImageSubpixelMask)) * sirga.base.RYInv()) >> image.ImageSubpixelShift
+		totalWeight := 0
+		xLr := sx >> image.ImageSubpixelShift
+		xHr := ((image.ImageSubpixelMask - (sx & image.ImageSubpixelMask)) * sirga.base.RXInv()) >> image.ImageSubpixelShift
+
+		xHr2 := xHr
+		fgPtr := sirga.base.Source().Span(xLr, yLr, lenXLr)
+
+		for yHr < len(weightArray) {
+			weightY := int(weightArray[yHr])
+			xHr = xHr2
+
+			for xHr < len(weightArray) {
+				weight := (weightY*int(weightArray[xHr]) + image.ImageFilterScale/2) >> image.ImageFilterShift
+
+				if len(fgPtr) >= 4 {
+					fg[0] += int(fgPtr[orderType.R]) * weight
+					fg[1] += int(fgPtr[orderType.G]) * weight
+					fg[2] += int(fgPtr[orderType.B]) * weight
+					fg[3] += int(fgPtr[orderType.A]) * weight
+				}
+				totalWeight += weight
+				xHr += sirga.base.RXInv()
+
+				if xHr >= filterScale {
+					break
+				}
+				fgPtr = sirga.base.Source().NextX()
+			}
+
+			yHr += sirga.base.RYInv()
+			if yHr >= filterScale {
+				break
+			}
+			fgPtr = sirga.base.Source().NextY()
+		}
+
+		if totalWeight > 0 {
+			fg[0] /= totalWeight
+			fg[1] /= totalWeight
+			fg[2] /= totalWeight
+			fg[3] /= totalWeight
+		}
+
+		if fg[0] < 0 {
+			fg[0] = 0
+		}
+		if fg[1] < 0 {
+			fg[1] = 0
+		}
+		if fg[2] < 0 {
+			fg[2] = 0
+		}
+		if fg[3] < 0 {
+			fg[3] = 0
+		}
+		if fg[3] > 255 {
+			fg[3] = 255
+		}
+		if fg[0] > fg[3] {
+			fg[0] = fg[3]
+		}
+		if fg[1] > fg[3] {
+			fg[1] = fg[3]
+		}
+		if fg[2] > fg[3] {
+			fg[2] = fg[3]
+		}
+
+		span[i] = color.RGBA8[color.Linear]{
+			R: basics.Int8u(fg[0]),
+			G: basics.Int8u(fg[1]),
+			B: basics.Int8u(fg[2]),
+			A: basics.Int8u(fg[3]),
+		}
+
+		baseFilter.interpolator.Next()
+	}
+}
+
 // SpanImageResampleRGBA provides general RGBA image resampling with configurable interpolation.
 // This is a port of AGG's span_image_resample_rgba template class.
-type SpanImageResampleRGBA[Source SourceInterface, Interpolator SpanInterpolatorInterface] struct {
+type SpanImageResampleRGBA[Source RGBASourceInterface, Interpolator SpanInterpolatorInterface] struct {
 	base *SpanImageResample[Source, Interpolator]
 }
 
 // NewSpanImageResampleRGBA creates a new general RGBA resampling filter.
-func NewSpanImageResampleRGBA[Source SourceInterface, Interpolator SpanInterpolatorInterface]() *SpanImageResampleRGBA[Source, Interpolator] {
+func NewSpanImageResampleRGBA[Source RGBASourceInterface, Interpolator SpanInterpolatorInterface]() *SpanImageResampleRGBA[Source, Interpolator] {
 	return &SpanImageResampleRGBA[Source, Interpolator]{
 		base: NewSpanImageResample[Source, Interpolator](),
+	}
+}
+
+// NewSpanImageResampleRGBAWithParams creates a new general RGBA resampling filter with parameters.
+func NewSpanImageResampleRGBAWithParams[Source RGBASourceInterface, Interpolator SpanInterpolatorInterface](
+	src Source,
+	interpolator Interpolator,
+	filter *image.ImageFilterLUT,
+) *SpanImageResampleRGBA[Source, Interpolator] {
+	return &SpanImageResampleRGBA[Source, Interpolator]{
+		base: NewSpanImageResampleWithParams(src, interpolator, filter),
+	}
+}
+
+// Prepare is a compatibility no-op for the general resampler.
+func (sirg *SpanImageResampleRGBA[Source, Interpolator]) Prepare() {}
+
+// Generate generates a span of RGBA pixels using general resampling.
+func (sirg *SpanImageResampleRGBA[Source, Interpolator]) Generate(span []color.RGBA8[color.Linear], x, y int) {
+	length := len(span)
+	if length == 0 {
+		return
+	}
+
+	baseFilter := sirg.base.base
+	baseFilter.interpolator.Begin(float64(x)+baseFilter.FilterDxDbl(), float64(y)+baseFilter.FilterDyDbl(), length)
+
+	filter := baseFilter.Filter()
+	if filter == nil {
+		bilinear := NewSpanImageFilterRGBABilinearWithParams(baseFilter.Source(), baseFilter.Interpolator())
+		bilinear.Generate(span, x, y)
+		return
+	}
+
+	diameter := filter.Diameter()
+	filterScale := diameter << image.ImageSubpixelShift
+	weightArray := filter.WeightArray()
+	orderType := baseFilter.source.OrderType()
+
+	for i := 0; i < length; i++ {
+		sx, sy := baseFilter.interpolator.Coordinates()
+
+		rx := image.ImageSubpixelScale
+		ry := image.ImageSubpixelScale
+		rxInv := image.ImageSubpixelScale
+		ryInv := image.ImageSubpixelScale
+
+		sirg.base.AdjustScale(&rx, &ry)
+
+		rxInv = image.ImageSubpixelScale * image.ImageSubpixelScale / rx
+		ryInv = image.ImageSubpixelScale * image.ImageSubpixelScale / ry
+
+		radiusX := (diameter * rx) >> 1
+		radiusY := (diameter * ry) >> 1
+		lenXLr := (diameter*rx + image.ImageSubpixelMask) >> image.ImageSubpixelShift
+
+		sx += baseFilter.FilterDxInt() - radiusX
+		sy += baseFilter.FilterDyInt() - radiusY
+
+		var fg [4]int
+
+		yLr := sy >> image.ImageSubpixelShift
+		yHr := ((image.ImageSubpixelMask - (sy & image.ImageSubpixelMask)) * ryInv) >> image.ImageSubpixelShift
+		totalWeight := 0
+		xLr := sx >> image.ImageSubpixelShift
+		xHr := ((image.ImageSubpixelMask - (sx & image.ImageSubpixelMask)) * rxInv) >> image.ImageSubpixelShift
+		xHr2 := xHr
+
+		fgPtr := sirg.base.Source().Span(xLr, yLr, lenXLr)
+
+		for yHr < len(weightArray) {
+			weightY := int(weightArray[yHr])
+			xHr = xHr2
+
+			for xHr < len(weightArray) {
+				weight := (weightY*int(weightArray[xHr]) + image.ImageFilterScale/2) >> image.ImageFilterShift
+
+				if len(fgPtr) >= 4 {
+					fg[0] += int(fgPtr[orderType.R]) * weight
+					fg[1] += int(fgPtr[orderType.G]) * weight
+					fg[2] += int(fgPtr[orderType.B]) * weight
+					fg[3] += int(fgPtr[orderType.A]) * weight
+				}
+				totalWeight += weight
+				xHr += rxInv
+
+				if xHr >= filterScale {
+					break
+				}
+				fgPtr = sirg.base.Source().NextX()
+			}
+
+			yHr += ryInv
+			if yHr >= filterScale {
+				break
+			}
+			fgPtr = sirg.base.Source().NextY()
+		}
+
+		if totalWeight > 0 {
+			fg[0] /= totalWeight
+			fg[1] /= totalWeight
+			fg[2] /= totalWeight
+			fg[3] /= totalWeight
+		}
+
+		if fg[0] < 0 {
+			fg[0] = 0
+		}
+		if fg[1] < 0 {
+			fg[1] = 0
+		}
+		if fg[2] < 0 {
+			fg[2] = 0
+		}
+		if fg[3] < 0 {
+			fg[3] = 0
+		}
+		if fg[3] > 255 {
+			fg[3] = 255
+		}
+		if fg[0] > fg[3] {
+			fg[0] = fg[3]
+		}
+		if fg[1] > fg[3] {
+			fg[1] = fg[3]
+		}
+		if fg[2] > fg[3] {
+			fg[2] = fg[3]
+		}
+
+		span[i] = color.RGBA8[color.Linear]{
+			R: basics.Int8u(fg[0]),
+			G: basics.Int8u(fg[1]),
+			B: basics.Int8u(fg[2]),
+			A: basics.Int8u(fg[3]),
+		}
+
+		baseFilter.interpolator.Next()
 	}
 }
