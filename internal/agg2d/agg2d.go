@@ -241,7 +241,7 @@ func NewAgg2D() *Agg2D {
 	}
 
 	// Initialize converters
-	pathAdapter := &pathVertexSourceAdapter{path: agg2d.path}
+	pathAdapter := path.NewPathStorageStlVertexSourceAdapter(agg2d.path)
 	agg2d.convCurve = conv.NewConvCurve(pathAdapter)
 	agg2d.convStroke = conv.NewConvStroke(agg2d.convCurve)
 

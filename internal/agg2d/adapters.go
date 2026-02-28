@@ -5,27 +5,11 @@ package agg2d
 import (
 	"agg_go/internal/basics"
 	"agg_go/internal/color"
-	"agg_go/internal/path"
 	"agg_go/internal/rasterizer"
 	"agg_go/internal/renderer"
 	renscan "agg_go/internal/renderer/scanline"
 	"agg_go/internal/scanline"
 )
-
-// pathVertexSourceAdapter adapts path.PathStorageStl to vertex source interface
-type pathVertexSourceAdapter struct {
-	path *path.PathStorageStl
-}
-
-func (p *pathVertexSourceAdapter) Rewind(pathID uint) {
-	p.path.Rewind(pathID)
-}
-
-// Simplified stub - proper implementation needs interface matching
-func (p *pathVertexSourceAdapter) Vertex() (float64, float64, basics.PathCommand) {
-	// This is a simplified stub
-	return 0, 0, 0 // Using 0 as stop command for now
-}
 
 // pixFmtAdapter adapts pixfmt to renderer interfaces
 type pixFmtAdapter[C any] struct {

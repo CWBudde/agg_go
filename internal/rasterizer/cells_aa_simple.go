@@ -68,9 +68,30 @@ func (r *RasterizerCellsAASimple) Style(styleCell CellAA) {
 	r.styleCell = styleCell
 }
 
+// coordLimit is the maximum absolute coordinate value accepted by Line().
+// The C++ AGG library uses 32-bit int, so coordinates are inherently bounded.
+// With Go's 64-bit int, we must clamp to prevent degenerate rendering behavior.
+const coordLimit = math.MaxInt32
+
+func clampCoord(v int) int {
+	if v > coordLimit {
+		return coordLimit
+	}
+	if v < -coordLimit {
+		return -coordLimit
+	}
+	return v
+}
+
 // Line rasterizes a line from (x1,y1) to (x2,y2) using the AGG algorithm.
 // This is a faithful port of rasterizer_cells_aa::line() from the C++ AGG source.
 func (r *RasterizerCellsAASimple) Line(x1, y1, x2, y2 int) {
+	// Clamp coordinates to 32-bit range — the C++ original uses 32-bit int.
+	x1 = clampCoord(x1)
+	y1 = clampCoord(y1)
+	x2 = clampCoord(x2)
+	y2 = clampCoord(y2)
+
 	const dxLimit = 16384 << basics.PolySubpixelShift
 
 	dx := int64(x2) - int64(x1)

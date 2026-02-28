@@ -72,6 +72,12 @@ func (r *RasterizerCellsAAStyled) Style(styleCell CellStyleAA) {
 // Line rasterizes a line from (x1,y1) to (x2,y2) using the AGG algorithm.
 // This is a faithful port of rasterizer_cells_aa::line() from the C++ AGG source.
 func (r *RasterizerCellsAAStyled) Line(x1, y1, x2, y2 int) {
+	// Clamp coordinates to 32-bit range — the C++ original uses 32-bit int.
+	x1 = clampCoord(x1)
+	y1 = clampCoord(y1)
+	x2 = clampCoord(x2)
+	y2 = clampCoord(y2)
+
 	const dxLimit = 16384 << basics.PolySubpixelShift
 
 	dx := int64(x2) - int64(x1)

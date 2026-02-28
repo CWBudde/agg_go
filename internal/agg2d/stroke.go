@@ -4,6 +4,7 @@ package agg2d
 
 import (
 	"agg_go/internal/conv"
+	"agg_go/internal/path"
 )
 
 // MiterLimit sets the miter limit for line joins.
@@ -122,7 +123,7 @@ func (agg2d *Agg2D) initializeDashing() {
 	}
 
 	// Create dash converter that operates on the curve converter
-	pathAdapter := &pathVertexSourceAdapter{path: agg2d.path}
+	pathAdapter := path.NewPathStorageStlVertexSourceAdapter(agg2d.path)
 	agg2d.convCurve = conv.NewConvCurve(pathAdapter)
 	agg2d.convDash = conv.NewConvDash(agg2d.convCurve)
 

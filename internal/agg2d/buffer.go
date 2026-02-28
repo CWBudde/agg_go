@@ -120,9 +120,9 @@ func (agg2d *Agg2D) ClipBox(x1, y1, x2, y2 float64) {
 	agg2d.clipBox.X2 = x2
 	agg2d.clipBox.Y2 = y2
 
-	// if agg2d.rasterizer != nil {
-	//     agg2d.rasterizer.ClipBox(x1, y1, x2, y2)
-	// }
+	if agg2d.rasterizer != nil {
+		agg2d.rasterizer.ClipBox(x1, y1, x2, y2)
+	}
 }
 
 // WorldToScreen transforms world coordinates to screen coordinates.

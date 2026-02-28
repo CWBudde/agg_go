@@ -115,7 +115,7 @@
   - [x] pixfmt: blending and clear operations - all passing
   - [x] pixfmt/blender: Porter-Duff operations - all passing
   - [x] rasterizer: rewrote Line() to match C++ AGG original (dx_limit guard, set_curr_cell init, vertical line fast path, proper x_from/x_to tracking). 3 pre-existing test failures remain (HorizontalLine test expects cells from zero-coverage line, 2 clip tests unrelated)
-  - [ ] integration: rendering pipeline issues (30+ failures) - likely downstream from lower-level issues
+  - [x] integration: fixed pathVertexSourceAdapter stub (was returning PathCmdStop immediately), enabled ClipBox propagation to rasterizer, added coordinate clamping for 64-bit int safety. 19/53 tests now pass (was 0). Remaining 34 failures are rendering correctness issues (blending, transforms, path converters)
 - [ ] Add contract tests for low-coverage packages (<60%): effects, platform, primitives, pixfmt/blender
 - [ ] Ensure all tests verify behavior, not implementation details
 - [ ] Add missing edge case tests from AGG documentation
