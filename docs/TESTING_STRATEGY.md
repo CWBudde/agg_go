@@ -84,6 +84,7 @@ func TestNewLineAAVertexSequence(t *testing.T) {
 ```
 
 **Key Points**:
+
 - Test constructors return non-nil values
 - Verify initial state is correct
 - Test basic operations (Add, Get, Size, etc.)
@@ -107,6 +108,7 @@ func TestVertexFilterConstraint(t *testing.T) {
 ```
 
 **Key Points**:
+
 - Compile-time verification of interface satisfaction
 - Ensures type constraints work correctly with generics
 
@@ -131,6 +133,7 @@ func (ms *MockScanline) ResetSpans() {
 ```
 
 **Key Points**:
+
 - Mocks implement only required interfaces
 - Keep mocks simple and focused
 - Test observable behavior, not mock existence (anti-pattern!)
@@ -185,6 +188,7 @@ func TestVertexDistCalculateDistance(t *testing.T) {
 ```
 
 **Key Points**:
+
 - Use known values with predictable results (e.g., 3-4-5 triangle)
 - Verify mathematical correctness
 - Test both forward and reverse operations where applicable
@@ -207,6 +211,7 @@ func BenchmarkVertexSequenceAdd(b *testing.B) {
 ```
 
 **Key Points**:
+
 - Use `b.ResetTimer()` to exclude setup time
 - Test realistic usage patterns
 - Useful for comparing implementations
@@ -241,6 +246,7 @@ class Session {
 ### ❌ **Don't Mock Without Understanding Dependencies**
 
 **Before mocking**, ask:
+
 1. What side effects does the real method have?
 2. Does this test depend on any of those side effects?
 3. Do I fully understand what this test needs?
@@ -324,6 +330,7 @@ These files contain `t.Log()` instead of assertions and should be deleted or ref
 **Status**: Not yet implemented
 
 **Plan**:
+
 1. Generate reference images from C++ AGG for:
    - Basic shapes (lines, rectangles, circles)
    - Anti-aliased edges

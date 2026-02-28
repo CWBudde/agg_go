@@ -203,11 +203,11 @@ func NewFontEngineBase(flag32 bool, maxFaces uint32) *FontEngineBase {
 		pathStorage32: pathStorage32,
 		curves16:      curves16,
 		curves32:      curves32,
-		scanlineU8:   scanline.NewScanlineU8(),
-		scanlineBin:  scanline.NewScanlineBin(),
-		scanlinesAA:  scanline.NewScanlineStorageAA[uint8](),
-		scanlinesBin: scanline.NewScanlineStorageBin(),
-		gammaFunc:    gamma.NewGammaNone(), // Default to no gamma correction
+		scanlineU8:    scanline.NewScanlineU8(),
+		scanlineBin:   scanline.NewScanlineBin(),
+		scanlinesAA:   scanline.NewScanlineStorageAA[uint8](),
+		scanlinesBin:  scanline.NewScanlineStorageBin(),
+		gammaFunc:     gamma.NewGammaNone(), // Default to no gamma correction
 	}
 }
 

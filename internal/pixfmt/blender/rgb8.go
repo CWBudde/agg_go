@@ -115,7 +115,7 @@ func (BlenderRGBPre[S, O]) BlendPix(dst []basics.Int8u, r, g, b, a, cover basics
 		b = color.RGBA8MultCover(b, cover)
 		a = color.RGBA8MultCover(a, cover)
 	}
-	if a == 0 && r == 0 && g == 0 && b == 0 {
+	if a == 0 {
 		return
 	}
 	var o O

@@ -53,6 +53,7 @@
 **2.1 Audit** - Created `docs/GENERICS_AUDIT.md` documenting every generic type, C++ template mapping, and instantiation count
 
 **2.2 Categorization**
+
 - **Category A (True Generics)**: ~40 types keep generics (`Point[T]`, `Rect[T]`, `PodArray[T]`, `RGBA8[CS]`, etc.)
 - **Category B (False Generics)**: 5 types need concrete replacements (`VertexSequence`, `RasterizerCellsAA`, `GammaLUT`, `Saturation`, `Gray8`)
 - **Category C (Combinatorial)**: 0 types need code generation (interfaces + type aliases sufficient)
@@ -109,10 +110,10 @@
 - [x] Fixed agg2d Sign function test (corrected test expectation for very small values)
 - [x] Fixed pixfmt/gamma nil pointer panic (changed RGBOrder from interface type to concrete type in tests)
 - [ ] Fix failing tests in remaining packages:
-  - [ ] color: Gray16/Gray32 conversion and lerp tests (7 failures) - precision/rounding issues
-  - [ ] fonts: character count mismatches (5 failures)
-  - [ ] pixfmt: blending and clear operations (3 failures)
-  - [ ] pixfmt/blender: Porter-Duff operations (3 failures)
+  - [x] color: Gray16/Gray32 conversion and lerp tests - all passing
+  - [x] fonts: character count mismatches - all passing
+  - [x] pixfmt: blending and clear operations - all passing
+  - [x] pixfmt/blender: Porter-Duff operations - all passing
   - [ ] rasterizer: clipping and cell generation tests (4 failures) - may need C++ AGG reference
   - [ ] integration: rendering pipeline issues (30+ failures) - likely downstream from lower-level issues
 - [ ] Add contract tests for low-coverage packages (<60%): effects, platform, primitives, pixfmt/blender

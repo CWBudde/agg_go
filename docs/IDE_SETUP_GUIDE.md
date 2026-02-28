@@ -34,11 +34,13 @@ Your IDE is experiencing test discovery issues due to a **dual-workspace configu
 Choose which directory to use as your primary workspace:
 
 **Option A: Use `/mnt/projekte/Code/agg_go` (Recommended)**
+
 - More accessible path
 - Likely your actual working directory
 - Keep this, remove the `/home/christian/Code/agg_go` copy
 
 **Option B: Use `/home/christian/Code/agg_go`**
+
 - Update your IDE to point here instead
 - Delete `/mnt/projekte/Code/agg_go`
 
@@ -74,10 +76,7 @@ Create or update `.vscode/settings.json` in your primary workspace:
   "go.lintOnSave": "package",
   "go.vetOnSave": "package",
   "go.useLanguageServer": true,
-  "go.languageServerFlags": [
-    "-logfile", "/tmp/gopls.log",
-    "-rpc.trace"
-  ],
+  "go.languageServerFlags": ["-logfile", "/tmp/gopls.log", "-rpc.trace"],
   "[go]": {
     "editor.defaultFormatter": "golang.go",
     "editor.formatOnSave": true,
@@ -130,6 +129,7 @@ Create `~/.config/gopls/settings.json`:
 ## Implementation Steps
 
 ### Step 1: Backup Your Work
+
 ```bash
 cd /mnt/projekte/Code/agg_go
 git status  # Ensure no uncommitted changes
@@ -137,6 +137,7 @@ git log --oneline -5  # Verify you're on the right branch
 ```
 
 ### Step 2: Choose Primary Workspace
+
 ```bash
 # Option A: Keep /mnt/projekte/Code/agg_go (recommended)
 rm -rf /home/christian/Code/agg_go
@@ -147,6 +148,7 @@ rm -rf /home/christian/Code/agg_go
 ```
 
 ### Step 3: Clean All IDE Caches
+
 ```bash
 # Kill all gopls processes
 pkill -9 gopls
@@ -160,6 +162,7 @@ go clean -cache -testcache -modcache
 ```
 
 ### Step 4: Create IDE Configuration
+
 ```bash
 # Create VS Code settings
 mkdir -p /mnt/projekte/Code/agg_go/.vscode
@@ -187,6 +190,7 @@ EOF
 ```
 
 ### Step 5: Create Gopls Configuration
+
 ```bash
 mkdir -p ~/.config/gopls
 cat > ~/.config/gopls/settings.json << 'EOF'
@@ -202,6 +206,7 @@ EOF
 ```
 
 ### Step 6: Verify Configuration
+
 ```bash
 # Start fresh gopls
 cd /mnt/projekte/Code/agg_go
@@ -215,13 +220,17 @@ just quick  # fmt + vet
 ```
 
 ### Step 7: Restart IDE
+
 Close and reopen VS Code completely (not just the folder). This ensures:
+
 - Fresh gopls instance starts
 - Proper workspace initialization
 - Cache rebuilt from scratch
 
 ### Step 8: Verify Test Discovery
+
 In VS Code:
+
 1. Open Test Explorer (left sidebar)
 2. Click refresh button
 3. Verify each test appears exactly once
@@ -230,6 +239,7 @@ In VS Code:
 ## Troubleshooting
 
 ### Tests still show duplicates
+
 ```bash
 # Check for remaining duplicate directories
 find ~ -name "agg_go" -type d 2>/dev/null
@@ -239,6 +249,7 @@ ls -la /mnt/projekte/Code/agg_go/.vscode/settings.json
 ```
 
 ### Gopls still running old processes
+
 ```bash
 # Force kill all
 killall -9 gopls
@@ -251,6 +262,7 @@ pgrep gopls
 ```
 
 ### IDE still hangs on tests
+
 ```bash
 # Check gopls log for errors
 tail -100 /tmp/gopls.log
@@ -263,6 +275,7 @@ export GOMAXPROCS=4  # Limit parallel processing
 ```
 
 ### Can't find test files
+
 ```bash
 # Verify module is correct
 cat go.mod
@@ -280,6 +293,7 @@ go test ./... -list . 2>&1 | head -20
 After cleanup, optimize your IDE setup:
 
 ### Reduce Analysis Scope
+
 ```json
 // In .vscode/settings.json
 "go.languageServerFlags": [
@@ -292,6 +306,7 @@ After cleanup, optimize your IDE setup:
 ```
 
 ### Optimize Test Discovery
+
 ```json
 {
   "go.testExplorer.showOutput": true,
@@ -302,6 +317,7 @@ After cleanup, optimize your IDE setup:
 ```
 
 ### Monitor Performance
+
 ```bash
 # Watch gopls memory usage
 while true; do
@@ -348,6 +364,7 @@ To avoid this in the future:
 ---
 
 If you continue to experience issues after following this guide, capture:
+
 1. Output of `go list ./...`
 2. Output of `go test -list ./... | sort | uniq -c`
 3. Content of `/tmp/gopls.log` (last 50 lines)

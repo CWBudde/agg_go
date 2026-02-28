@@ -121,10 +121,10 @@ type Agg2D struct {
 	lineWidth float64
 
 	// Text attributes
-	textAngle        float64
-	textAlignX       TextAlignment
-	textAlignY       TextAlignment
-	textHints        bool
+	textAngle     float64
+	textAlignX    TextAlignment
+	textAlignY    TextAlignment
+	textHints     bool
 	fontHeight    float64
 	fontAscent    float64
 	fontDescent   float64

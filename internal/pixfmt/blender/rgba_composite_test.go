@@ -79,16 +79,16 @@ func TestPorterDuffOperations(t *testing.T) {
 		{
 			name:     "SrcIn",
 			blender:  NewSrcInBlender[color.Linear, order.RGBA](),
-			dst:      []basics.Int8u{255, 0, 0, 255}, // Red, opaque
-			src:      []basics.Int8u{0, 255, 0, 128}, // Green, half alpha
-			expected: []basics.Int8u{0, 255, 0, 128}, // Src * dst.alpha (255) = Src
+			dst:      []basics.Int8u{255, 0, 0, 255}, // Red, opaque (premul)
+			src:      []basics.Int8u{0, 255, 0, 128}, // Green, half alpha (non-premul input)
+			expected: []basics.Int8u{0, 128, 0, 128}, // Src_premul * dst.alpha = {0,128,0} * 1.0 = {0,128,0,128} (premul)
 		},
 		{
 			name:     "XOR",
 			blender:  NewXorBlender[color.Linear, order.RGBA](),
-			dst:      []basics.Int8u{255, 0, 0, 128},   // Red, half alpha
-			src:      []basics.Int8u{0, 255, 0, 128},   // Green, half alpha
-			expected: []basics.Int8u{127, 127, 0, 127}, // Expected XOR result (approximately)
+			dst:      []basics.Int8u{128, 0, 0, 128}, // Red, half alpha (premul: R=255*0.5=128, A=128)
+			src:      []basics.Int8u{0, 255, 0, 128}, // Green, half alpha (non-premul input)
+			expected: []basics.Int8u{64, 64, 0, 127}, // XOR result (premul): Sca*(1-Da) + Dca*(1-Sa) = {64,64,0,127}
 		},
 	}
 
@@ -159,15 +159,15 @@ func TestBlendModeFormulas(t *testing.T) {
 		{
 			name:    "Plus blend",
 			blender: NewPlusBlender[color.Linear, order.RGBA](),
-			dst:     []basics.Int8u{100, 50, 25, 255},
-			src:     []basics.Int8u{50, 100, 25, 128},
+			dst:     []basics.Int8u{100, 50, 25, 255}, // Premul destination
+			src:     []basics.Int8u{50, 100, 25, 128}, // Non-premul source → premul {25, 50, 12.5, 128}
 			checkFn: func(t *testing.T, result []basics.Int8u) {
-				// Plus should add the colors (with clamping)
-				if result[0] < 140 || result[0] > 160 { // ~150 expected
-					t.Errorf("Plus blend R: got %d, expected ~150", result[0])
+				// Plus adds premul colors: Dca' = Sca + Dca = {25,50,12.5} + {100,50,25} = {125,100,37.5}
+				if result[0] < 123 || result[0] > 127 { // ~125 expected (100 + 25)
+					t.Errorf("Plus blend R: got %d, expected ~125", result[0])
 				}
-				if result[1] < 140 || result[1] > 160 { // ~150 expected
-					t.Errorf("Plus blend G: got %d, expected ~150", result[1])
+				if result[1] < 98 || result[1] > 102 { // ~100 expected (50 + 50)
+					t.Errorf("Plus blend G: got %d, expected ~100", result[1])
 				}
 			},
 		},
