@@ -68,15 +68,28 @@ func (r *RasterizerCellsAASimple) Style(styleCell CellAA) {
 	r.styleCell = styleCell
 }
 
-// Line rasterizes a line from (x1,y1) to (x2,y2) using the AGG algorithm
+// Line rasterizes a line from (x1,y1) to (x2,y2) using the AGG algorithm.
+// This is a faithful port of rasterizer_cells_aa::line() from the C++ AGG source.
 func (r *RasterizerCellsAASimple) Line(x1, y1, x2, y2 int) {
-	// Implementation of AGG's line rasterization algorithm
+	const dxLimit = 16384 << basics.PolySubpixelShift
 
-	// Update bounding box with start point (matches C++ AGG behavior)
+	dx := int64(x2) - int64(x1)
+
+	if dx >= dxLimit || dx <= -dxLimit {
+		cx := int((int64(x1) + int64(x2)) >> 1)
+		cy := int((int64(y1) + int64(y2)) >> 1)
+		r.Line(x1, y1, cx, cy)
+		r.Line(cx, cy, x2, y2)
+		return
+	}
+
+	dy := int64(y2) - int64(y1)
 	ex1 := x1 >> basics.PolySubpixelShift
-	ey1 := y1 >> basics.PolySubpixelShift
 	ex2 := x2 >> basics.PolySubpixelShift
+	ey1 := y1 >> basics.PolySubpixelShift
 	ey2 := y2 >> basics.PolySubpixelShift
+	fy1 := y1 & basics.PolySubpixelMask
+	fy2 := y2 & basics.PolySubpixelMask
 
 	if ex1 < r.minX {
 		r.minX = ex1
@@ -103,19 +116,108 @@ func (r *RasterizerCellsAASimple) Line(x1, y1, x2, y2 int) {
 		r.maxY = ey2
 	}
 
-	dy := y2 - y1
+	r.setCurrCell(ex1, ey1)
 
-	if dy != 0 {
-		if y1 > y2 {
-			// Swap points if line goes upward
-			x1, y1, x2, y2 = x2, y2, x1, y1
-			dy = -dy
-		}
-
-		r.renderLine(x1, y1, x2, y2, dy)
+	// Everything is on a single hline
+	if ey1 == ey2 {
+		r.renderHLine(ey1, x1, fy1, x2, fy2)
+		return
 	}
 
-	r.setCurrCell(x2>>basics.PolySubpixelShift, y2>>basics.PolySubpixelShift)
+	// Vertical line - we have to calculate start and end cells,
+	// and then the common values of the area and coverage for
+	// all cells of the line. We know exactly there's only one
+	// cell, so we don't have to call renderHLine().
+	incr := 1
+	if dx == 0 {
+		ex := x1 >> basics.PolySubpixelShift
+		twoFx := (x1 - (ex << basics.PolySubpixelShift)) << 1
+
+		first := basics.PolySubpixelScale
+		if dy < 0 {
+			first = 0
+			incr = -1
+		}
+
+		delta := first - fy1
+		r.currCell.AddCover(delta)
+		r.currCell.AddArea(twoFx * delta)
+
+		ey1 += incr
+		r.setCurrCell(ex, ey1)
+
+		delta = first + first - basics.PolySubpixelScale
+		area := twoFx * delta
+		for ey1 != ey2 {
+			r.currCell.SetCover(delta)
+			r.currCell.SetArea(area)
+			ey1 += incr
+			r.setCurrCell(ex, ey1)
+		}
+
+		delta = fy2 - basics.PolySubpixelScale + first
+		r.currCell.AddCover(delta)
+		r.currCell.AddArea(twoFx * delta)
+		return
+	}
+
+	// Ok, we have to render several hlines
+	var xFrom, xTo int
+	var p int64
+	var rem, mod, lift, delta int
+
+	p = int64(basics.PolySubpixelScale-fy1) * dx
+	first := basics.PolySubpixelScale
+
+	if dy < 0 {
+		p = int64(fy1) * dx
+		first = 0
+		incr = -1
+		dy = -dy
+	}
+
+	delta = int(p / dy)
+	mod = int(p % dy)
+
+	if mod < 0 {
+		delta--
+		mod += int(dy)
+	}
+
+	xFrom = x1 + delta
+	r.renderHLine(ey1, x1, fy1, xFrom, first)
+
+	ey1 += incr
+	r.setCurrCell(xFrom>>basics.PolySubpixelShift, ey1)
+
+	if ey1 != ey2 {
+		p = int64(basics.PolySubpixelScale) * dx
+		lift = int(p / dy)
+		rem = int(p % dy)
+
+		if rem < 0 {
+			lift--
+			rem += int(dy)
+		}
+		mod -= int(dy)
+
+		for ey1 != ey2 {
+			delta = lift
+			mod += rem
+			if mod >= 0 {
+				mod -= int(dy)
+				delta++
+			}
+
+			xTo = xFrom + delta
+			r.renderHLine(ey1, xFrom, basics.PolySubpixelScale-first, xTo, first)
+			xFrom = xTo
+
+			ey1 += incr
+			r.setCurrCell(xFrom>>basics.PolySubpixelShift, ey1)
+		}
+	}
+	r.renderHLine(ey1, xFrom, basics.PolySubpixelScale-first, x2, fy2)
 }
 
 // MinX returns the minimum X coordinate of the bounding box
@@ -327,49 +429,6 @@ func (r *RasterizerCellsAASimple) allocateBlock() {
 	// Allocate new block
 	r.cells[r.numBlocks] = make([]*CellAA, CellBlockSize)
 	r.numBlocks++
-}
-
-// renderLine implements the AGG line rendering algorithm
-func (r *RasterizerCellsAASimple) renderLine(x1, y1, x2, y2, dy int) {
-	dx := x2 - x1
-
-	ey1 := y1 >> basics.PolySubpixelShift
-	ey2 := y2 >> basics.PolySubpixelShift
-
-	fy1 := y1 & basics.PolySubpixelMask
-	fy2 := y2 & basics.PolySubpixelMask
-
-	// Implementation of the complex AGG line rasterization algorithm
-	// This is a simplified version - the full implementation would include
-	// all the cases handled in the original AGG render_hline method
-
-	if ey1 == ey2 {
-		// Horizontal line case
-		r.renderHLine(ey1, x1, fy1, x2, fy2)
-	} else {
-		// Multi-scanline case - step through each Y
-		for ey := ey1; ey <= ey2; ey++ {
-			// Calculate X intersection for this Y
-			if ey == ey1 {
-				// First scanline
-				nextY := (ey + 1) << basics.PolySubpixelShift
-				x := int64(x1) + ((int64(dx) * int64(nextY-y1)) / int64(dy))
-				r.renderHLine(ey, x1, fy1, int(x), basics.PolySubpixelScale)
-			} else if ey == ey2 {
-				// Last scanline
-				prevY := ey << basics.PolySubpixelShift
-				x := int64(x1) + ((int64(dx) * int64(prevY-y1)) / int64(dy))
-				r.renderHLine(ey, int(x), 0, x2, fy2)
-			} else {
-				// Middle scanlines
-				currY := ey << basics.PolySubpixelShift
-				x := int64(x1) + ((int64(dx) * int64(currY-y1)) / int64(dy))
-				nextY := (ey + 1) << basics.PolySubpixelShift
-				nextX := int64(x1) + ((int64(dx) * int64(nextY-y1)) / int64(dy))
-				r.renderHLine(ey, int(x), 0, int(nextX), basics.PolySubpixelScale)
-			}
-		}
-	}
 }
 
 // sortCellsByXAndConsolidate sorts cells by X coordinate within each Y-run and consolidates

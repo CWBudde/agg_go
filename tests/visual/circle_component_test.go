@@ -12,7 +12,6 @@ import (
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
 	"agg_go/internal/pixfmt"
-	"agg_go/internal/pixfmt/blender"
 	"agg_go/internal/rasterizer"
 	"agg_go/internal/renderer"
 	scanlinestorage "agg_go/internal/scanline"
@@ -102,8 +101,7 @@ func TestCircleComponentPipeline(t *testing.T) {
 	t.Log("✓ Rendering buffer created successfully")
 
 	// Create RGBA pixel format with alpha blending
-	blenderInstance := blender.NewCompositeBlender[color.Linear, interface{}](blender.CompOpSrcOver)
-	pixfmt := pixfmt.NewPixFmtAlphaBlendRGBA[blender.CompositeBlender[color.Linear, interface{}], color.Linear](renderingBuffer, blenderInstance)
+	pixfmt := pixfmt.NewPixFmtRGBA32Linear(renderingBuffer)
 	if pixfmt.Width() != width || pixfmt.Height() != height {
 		t.Fatalf("Pixel format setup failed: got %dx%d, expected %dx%d",
 			pixfmt.Width(), pixfmt.Height(), width, height)
@@ -130,12 +128,12 @@ func TestCircleComponentPipeline(t *testing.T) {
 	t.Log("Stage 4: Setting up rasterizer and scanline")
 
 	// Create clipper (real clipper for this test)
-	clipper := rasterizer.NewRasterizerSlClip[rasterizer.RasConvDbl]()
+	conv := rasterizer.RasConvInt{}
+	clipper := rasterizer.NewRasterizerSlNoClip()
 
 	// Create rasterizer
-	cellBlockLimit := uint32(512)
-	rasterizerInstance := rasterizer.NewRasterizerScanlineAA[*rasterizer.RasterizerSlClip[rasterizer.RasConvDbl], rasterizer.RasConvDbl](cellBlockLimit, clipper)
-	rasterizerInstance.FillingRule(basics.FillNonZero)
+	rasterizerInstance := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](conv, clipper)
+	rasterizerInstance.FillingRule(basics.FillEvenOdd)
 
 	// Set clipping box to cover our canvas
 	rasterizerInstance.ClipBox(0, 0, float64(width), float64(height))
@@ -451,7 +449,7 @@ func TestCircleComponentPipeline(t *testing.T) {
 	// Stage 8: Save result as PNG for visual verification
 	t.Log("Stage 8: Saving result as PNG file")
 
-	outputPath := "/home/christian/Code/agg_go/tests/visual/output/circle_component_test.png"
+	outputPath := filepath.Join("output", "circle_component_test.png")
 	if err := savePNG(outputPath, pixelData, width, height); err != nil {
 		t.Logf("Warning: Failed to save PNG: %v", err)
 	} else {
@@ -483,14 +481,14 @@ func TestCircleVisualDemo(t *testing.T) {
 
 	// Set up the rendering pipeline
 	renderingBuffer := buffer.NewRenderingBufferWithData(pixelData, width, height, stride)
-	blenderInstance := blender.NewCompositeBlender[color.Linear, interface{}](blender.CompOpSrcOver)
-	pixfmt := pixfmt.NewPixFmtAlphaBlendRGBA[blender.CompositeBlender[color.Linear, interface{}], color.Linear](renderingBuffer, blenderInstance)
+	pixfmt := pixfmt.NewPixFmtRGBA32Linear(renderingBuffer)
 	baseRenderer := renderer.NewRendererBaseWithPixfmt(pixfmt)
 
 	// Set up rasterizer
-	clipper := rasterizer.NewRasterizerSlClip[rasterizer.RasConvDbl]()
-	rasterizerInstance := rasterizer.NewRasterizerScanlineAA[*rasterizer.RasterizerSlClip[rasterizer.RasConvDbl], rasterizer.RasConvDbl](1024, clipper)
-	rasterizerInstance.FillingRule(basics.FillNonZero)
+	conv := rasterizer.RasConvInt{}
+	clipper := rasterizer.NewRasterizerSlNoClip()
+	rasterizerInstance := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](conv, clipper)
+	rasterizerInstance.FillingRule(basics.FillEvenOdd)
 	rasterizerInstance.ClipBox(0, 0, float64(width), float64(height))
 
 	// Create circle path
@@ -549,7 +547,7 @@ func TestCircleVisualDemo(t *testing.T) {
 	}
 
 	// Save the result
-	outputPath := "/home/christian/Code/agg_go/tests/visual/output/circle_demo_400x400.png"
+	outputPath := filepath.Join("output", "circle_demo_400x400.png")
 	if err := savePNG(outputPath, pixelData, width, height); err != nil {
 		t.Errorf("Failed to save PNG: %v", err)
 	} else {
@@ -586,8 +584,7 @@ func TestComponentStages(t *testing.T) {
 		data := make([]uint8, height*stride)
 
 		buf := buffer.NewRenderingBufferWithData(data, width, height, stride)
-		blenderInstance := blender.NewCompositeBlender[color.Linear, interface{}](blender.CompOpSrcOver)
-		pf := pixfmt.NewPixFmtAlphaBlendRGBA[blender.CompositeBlender[color.Linear, interface{}], color.Linear](buf, blenderInstance)
+		pf := pixfmt.NewPixFmtRGBA32Linear(buf)
 
 		// Test pixel operations
 		testColor := color.RGBA8[color.Linear]{R: 128, G: 64, B: 192, A: 255}
