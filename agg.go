@@ -394,6 +394,10 @@ func (a *Agg2D) Text(x, y float64, str string, roundOff bool, dx, dy float64) {
 	a.impl.Text(x, y, str, roundOff, dx, dy)
 }
 
+func (a *Agg2D) TextWidth(str string) float64 {
+	return a.impl.TextWidth(str)
+}
+
 // Blend mode methods
 func (a *Agg2D) BlendMode(mode BlendMode) {
 	a.impl.SetBlendMode(mode)
