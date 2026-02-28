@@ -1,197 +1,223 @@
-# AGG Go Port - Recovery Plan
+# AGG Go Port - Fidelity-First Plan
 
-## Decisions
+## Objective
 
-| Question   | Decision                                                                         |
-| ---------- | -------------------------------------------------------------------------------- |
-| Approach   | **Hybrid**: Idiomatic Go with generics where possible, code generation where not |
-| Scope      | **Extensive**: Willing to rework abstractions                                    |
-| Constraint | Stay close to original C++ AGG, must be sustainable                              |
-| Tests      | Test-alongside: Add contract tests as we fix each component                      |
+Port AGG 2.6 to Go so that:
 
-## Guiding Principles
+1. Rendering behavior stays as close as possible to original AGG (`../agg-2.6/agg-src`).
+2. Go code remains idiomatic, maintainable, and testable.
+3. Deviations from AGG are explicit, justified, and tested.
 
-1. **Algorithms match AGG** - Rendering pipeline, math, and algorithms produce identical results
-2. **Structure maps to AGG** - Package/file names trace back to C++ sources
-3. **Generics where they work** - Use Go generics for genuinely parameterized types
-4. **Code generation where they don't** - Generate specialized code for template-heavy patterns
-5. **No `any()` type assertions** - If we need runtime type switching, the design is wrong
-6. **Sustainable** - Code should be maintainable, not clever
+## Non-Negotiables
 
----
+- [ ] Every major behavior maps to a C++ source reference (file + method).
+- [ ] No placeholder rendering paths in production-critical pipeline stages.
+- [ ] Public API remains stable and idiomatic; internal architecture may change.
+- [ ] Completed work is reflected in `docs/TASKS.md` with `[x]`.
 
-## Phase 1: Stabilize Build
+## Porting Rules
 
-- [x] **Phase 1 Complete**: Core internal packages build successfully
-
-**Summary**: Fixed type mismatches, removed problematic generics, and established concrete types for array, rasterizer, renderer, and pixfmt packages. Internal packages now build cleanly.
-
-### Completed Tasks
-
-**1.1 array** - Fixed `pod_arrays_test.go` type mismatches (int vs int32), created concrete `VertexDistSequence` and `LineAAVertexSequence` types
-
-**1.2 rasterizer** - Created `RasterizerCellsAASimple` and `RasterizerCellsAAStyled` concrete types, removed runtime type switching
-
-**1.3 renderer** - Defined `Blendable[Self]` constraint, replaced 8+ type switches in `helpers.go` with constraint-based generics
-
-**1.4 pixfmt** - Added `BlenderRGBA` type aliases, re-exported order types in `base.go`
-
-**1.5 examples** - Fixed generic instantiation errors in basic and intermediate examples
-
-**1.6 Checkpoint** - All `internal/` packages build successfully; some examples need API implementation (deferred to Phase 5)
+1. Fidelity first for algorithms and numeric behavior.
+2. Idiomatic Go for ownership, naming, package boundaries, and tests.
+3. No silent fallbacks that change rendering semantics.
+4. If behavior differs from AGG, document as an intentional delta.
 
 ---
 
-## Phase 2: Generics Audit & Design
+## Phase 0 - Baseline and Traceability
 
-- [x] **Phase 2 Complete**: All generics categorized and design decisions made
+### 0.1 Parity ledger
 
-**Summary**: Audited 40+ generic types, categorized into true generics (keep), false generics (refactor to concrete), and combinatorial cases (use interfaces). Determined code generation is not needed.
+- [x] Create `docs/PARITY_LEDGER.md` with one row per `Agg2D` method.
+- [x] Columns: C++ source method, Go method, status (`exact`, `close`, `placeholder`, `missing`), test reference, notes.
+- [x] Add source anchors for key AGG2D methods in:
+  - `../agg-2.6/agg-src/agg2d/agg2d.h`
+  - `../agg-2.6/agg-src/agg2d/agg2d.cpp`
 
-### Completed Tasks
+### 0.2 Placeholder inventory
 
-**2.1 Audit** - Created `docs/GENERICS_AUDIT.md` documenting every generic type, C++ template mapping, and instantiation count
+- [x] Record all placeholder/simplified paths in rendering-critical packages:
+  - `internal/agg2d`
+  - `internal/rasterizer`
+  - `internal/scanline`
+  - `internal/renderer`
+  - `internal/span`
+- [x] Classify each as `must-fix`, `acceptable temporary`, or `low-priority`.
 
-**2.2 Categorization**
+### Exit criteria
 
-- **Category A (True Generics)**: ~40 types keep generics (`Point[T]`, `Rect[T]`, `PodArray[T]`, `RGBA8[CS]`, etc.)
-- **Category B (False Generics)**: 5 types need concrete replacements (`VertexSequence`, `RasterizerCellsAA`, `GammaLUT`, `Saturation`, `Gray8`)
-- **Category C (Combinatorial)**: 0 types need code generation (interfaces + type aliases sufficient)
-
-**2.3 Code Generation Decision** - NOT NEEDED; pixel format system uses blender interfaces with fast-path type assertions for performance
-
----
-
-## Phase 3: Core Package Rework
-
-- [x] **Phase 3 Complete**: All packages free of problematic `any()` casts
-
-**Summary**: Eliminated problematic `any()` casts from 7 packages (array, rasterizer, pixfmt, basics, color, span, font). Documented acceptable `any()` uses at module boundaries. Net result: cleaner type system, ~100+ lines of boilerplate removed, zero runtime cost.
-
-### Completed Tasks
-
-**3.1 array** - Replaced generic `VertexSequence[T]` with 3 concrete types (`VertexDistSequence`, `LineAAVertexSequence`, `VertexCmdSequence`)
-
-**3.2 rasterizer** - Used existing concrete types `RasterizerCellsAASimple` and `RasterizerCellsAAStyled`, removed generic `RasterizerCellsAA[Cell]`
-
-**3.3 pixfmt/gamma** - Replaced type-switch `GammaLUT` with clean generic implementation using proper `Unsigned` constraint
-
-**3.4 basics** - Replaced generic `Saturation[T]` with 4 concrete structs (`SaturationInt`, `SaturationInt32`, `SaturationUint`, `SaturationUint32`)
-
-**3.5 color** - Replaced generic `ConvertGray8FromRGBA8[CS]` with concrete `ConvertGray8LinearFromRGBA8` and `ConvertGray8SRGBFromRGBA8`
-
-**3.6 span/converter** - Documented type switches as **ACCEPTABLE** (module boundary pattern, graceful degradation, follows C++ AGG template specialization)
-
-**3.7 font subsystem** - Created `internal/font/interfaces.go` with `IntegerPathStorage` and `SerializedScanlinesAdaptor` interfaces, eliminated ~85 lines of type assertions across 7 files, documented legitimate `interface{}` uses (build-tag dispatch in agg2d.go)
+- [x] Ledger exists and covers all `Agg2D` public operations.
+- [x] Placeholder inventory is complete and prioritized.
 
 ---
 
-## Phase 4: Test Strategy
+## Phase 1 - AGG2D Behavioral Parity (Highest Priority)
 
-- [ ] **Phase 4 Complete**: Comprehensive test suite in place
+Primary target: `internal/agg2d/*` against `agg2d.cpp`.
 
-### 4.1 Contract Tests
+### 1.1 Image pipeline parity (critical)
 
-**Principle**: Test public API behavior, not internal state
+- [ ] Replace simplified `renderImage*` implementation with AGG-style scanline/span pipeline:
+  - interpolator-based sampling
+  - filter LUT integration
+  - resample mode behavior (`NoResample`, `ResampleAlways`, `ResampleOnZoomOut`)
+  - blend-color conversion path equivalent to AGG behavior
+- [ ] Remove nearest-neighbor-only fallback for transformed image rendering.
+- [ ] Align transform usage with AGG matrix flow (`parl->world->invert` then interpolator).
 
-**Status**: ✅ **In Progress** - Test patterns documented, existing tests audited
+Files:
 
-**Completed**:
+- `internal/agg2d/image.go`
+- `internal/span/*` as needed
+- `internal/renderer/scanline/*` as needed
 
-- [x] Audited existing test coverage (225 test files in internal/, 13 in tests/)
-- [x] Documented test patterns in `docs/TESTING_STRATEGY.md`
-- [x] Fixed build failures in test files (rasterizer, pixfmt)
-- [x] Applied testing anti-patterns principles to tests
-- [x] Identified packages needing additional coverage
+### 1.2 Gradient parity
 
-**Remaining Tasks**:
+- [ ] Ensure linear/radial gradient matrix construction matches AGG ordering.
+- [ ] Remove no-op world/screen helper placeholders and use real transform/scalar conversion.
+- [ ] Verify gradient distance (`d1/d2`) handling matches C++ path.
 
-- [x] Fixed conv package tests (BSpline edge cases, GPC placeholder acknowledgment, ConvStroke vertex count)
-- [x] Fixed agg2d Sign function test (corrected test expectation for very small values)
-- [x] Fixed pixfmt/gamma nil pointer panic (changed RGBOrder from interface type to concrete type in tests)
-- [ ] Fix failing tests in remaining packages:
-  - [x] color: Gray16/Gray32 conversion and lerp tests - all passing
-  - [x] fonts: character count mismatches - all passing
-  - [x] pixfmt: blending and clear operations - all passing
-  - [x] pixfmt/blender: Porter-Duff operations - all passing
-  - [x] rasterizer: rewrote Line() to match C++ AGG original (dx_limit guard, set_curr_cell init, vertical line fast path, proper x_from/x_to tracking). 3 pre-existing test failures remain (HorizontalLine test expects cells from zero-coverage line, 2 clip tests unrelated)
-  - [x] integration: fixed pathVertexSourceAdapter stub (was returning PathCmdStop immediately), enabled ClipBox propagation to rasterizer, added coordinate clamping for 64-bit int safety. 19/53 tests now pass (was 0). Remaining 34 failures are rendering correctness issues (blending, transforms, path converters)
-- [ ] Add contract tests for low-coverage packages (<60%): effects, platform, primitives, pixfmt/blender
-- [ ] Ensure all tests verify behavior, not implementation details
-- [ ] Add missing edge case tests from AGG documentation
+Files:
 
-### 4.2 Visual Regression Tests
+- `internal/agg2d/gradient.go`
+- `internal/agg2d/utilities.go`
 
-**Tasks**:
+### 1.3 Text parity (minimum acceptable)
 
-- [ ] Generate reference images from C++ AGG
-  - [ ] Basic shapes (lines, rectangles, circles)
-  - [ ] Anti-aliased edges
-  - [ ] Gradients
-  - [ ] Text rendering
-- [ ] Create image comparison utility
-- [ ] Store golden images in `tests/golden/`
-- [ ] Add visual regression test suite
-- [ ] Set acceptable pixel difference threshold
+- [ ] Remove rectangle fallback glyph rendering.
+- [ ] Render glyph scanlines/paths through real rasterizer/scanline pipeline.
+- [ ] Match vector vs raster cache behavior contract from AGG2D.
 
-### 4.3 Clean Up Existing Tests
+Files:
 
-**Tasks**:
+- `internal/agg2d/text.go`
+- `internal/font/*` and/or `internal/fonts/*`
 
-- [ ] Identify and delete debug test files:
-  - [ ] `tests/integration/debug_test.go`
-  - [ ] `tests/integration/debug2_test.go`
-  - [ ] `tests/integration/debug3_test.go`
-  - [ ] `tests/integration/minimal_debug_test.go`
-  - [ ] Others with `t.Log()` instead of assertions
-- [ ] Remove tests that access private fields
-- [ ] Convert useful tests to contract-based
-- [ ] Ensure all remaining tests have meaningful assertions
+### 1.4 Clipping and renderer-state parity
 
-### 4.4 Property Tests (optional)
+- [ ] Ensure `ClipBox` updates all relevant renderer and rasterizer states consistently.
+- [ ] Verify `clearClipBox`, `copyImage`, `blendImage`, transformed image operations obey clip box identically to AGG semantics.
 
-**Tasks**:
+Files:
 
-- [ ] Add property tests for transforms (composition, inverse)
-- [ ] Add property tests for color math (clamping, conversion)
-- [ ] Use `testing/quick` or similar
+- `internal/agg2d/buffer.go`
+- `internal/agg2d/utilities.go`
+- `internal/agg2d/image.go`
+
+### Exit criteria
+
+- [ ] No `simplified`/`for now` rendering paths in `internal/agg2d` critical methods.
+- [ ] AGG2D image, gradient, text, clipping contract tests pass.
+- [ ] Visual tests for AGG2D demos pass against reference thresholds.
 
 ---
 
-## Phase 5: Documentation & API
+## Phase 2 - Core Pipeline Parity (Rasterizer -> Scanline -> Renderer -> Pixfmt)
 
-- [ ] **Phase 5 Complete**: Documentation updated, API finalized
+### 2.1 Rasterizer and scanline correctness
 
-### 5.1 Update docs/
+- [ ] Verify fill rules, clipping, cell accumulation, and sweep behavior against AGG reference.
+- [ ] Resolve known integration inconsistencies in rendering correctness tests.
 
-**Tasks**:
+### 2.2 Renderer and pixfmt semantics
 
-- [ ] Update `docs/TASKS.md` with new structure
-- [ ] Document code generation (if used)
-- [ ] Update architecture docs to reflect changes
-- [ ] Add migration notes from old design
-- [ ] Update `CLAUDE.md` if patterns changed
+- [ ] Verify compositing behavior for Porter-Duff modes and alpha paths.
+- [ ] Ensure premultiplied vs straight-alpha behavior matches AGG where required.
+- [ ] Confirm copy/blend operations align with `agg_renderer_base` semantics.
 
-### 5.2 Finalize Public API
+### 2.3 Converters (conv/vcgen/vpgen) chain fidelity
 
-**Tasks**:
+- [ ] Validate converter ordering and state-machine parity for stroke/dash/curve/contour.
+- [ ] Ensure approximation scales are propagated exactly where AGG does.
 
-- [ ] Review `Context` API for usability
-- [ ] Ensure internals don't leak through public API
-- [ ] Add examples for common use cases:
-  - [ ] Drawing basic shapes
-  - [ ] Using gradients
-  - [ ] Text rendering
-  - [ ] Image manipulation
-- [ ] Write getting started guide
+### Exit criteria
+
+- [ ] Integration tests for full pipeline pass without known behavioral exceptions.
+- [ ] Golden image diffs are within agreed threshold.
 
 ---
 
-## Success Criteria
+## Phase 3 - Font Subsystem Consolidation and Type Safety
 
-- [ ] `go build ./...` passes with no errors
-- [ ] `go test ./...` passes with meaningful tests
-- [ ] Zero `any()` type assertions in production code
-- [ ] Visual output matches C++ AGG reference images
-- [ ] Each Go file traces to its C++ AGG source
-- [ ] Code is readable and maintainable
+### 3.1 Consolidate `internal/font` vs `internal/fonts`
+
+- [ ] Define a single authoritative font/cache architecture.
+- [ ] Remove duplicated concepts and adapters where possible.
+
+### 3.2 Replace runtime `interface{}` where feasible
+
+- [ ] Replace broad `interface{}` in AGG2D font fields with explicit interfaces.
+- [ ] Keep runtime dispatch only where build-tag boundaries require it, and document it.
+
+### Exit criteria
+
+- [ ] One coherent font stack is used by AGG2D.
+- [ ] No avoidable runtime type assertions in text-critical path.
+
+---
+
+## Phase 4 - Test Strategy for Port Fidelity
+
+### 4.1 Contract tests (API behavior)
+
+- [ ] Expand AGG2D tests to assert outputs, not just `err == nil`.
+- [ ] Add deterministic checks for transform-image, clipping, blend modes, gradients, text bounds.
+
+### 4.2 Visual regression tests
+
+- [ ] Generate canonical references from C++ AGG for core scenarios.
+- [ ] Store references under `tests/visual/reference`.
+- [ ] Add automated diff thresholding and report generation.
+
+### 4.3 C++ parity checks
+
+- [ ] For each parity-ledger row marked `exact`, include at least one source-linked test case.
+- [ ] For rows marked `close`, include documented rationale.
+
+### Exit criteria
+
+- [ ] `go test ./...` passes.
+- [ ] Visual regression suite passes in CI.
+- [ ] Parity ledger has no untriaged `placeholder` entries.
+
+---
+
+## Phase 5 - API and Documentation Finalization
+
+### 5.1 API cleanup
+
+- [ ] Keep high-level `Context` ergonomic and clearly separated from low-level AGG2D behavior.
+- [ ] Ensure naming is idiomatic Go without losing AGG traceability in docs.
+
+### 5.2 Documentation hygiene
+
+- [ ] Keep `docs/TASKS.md` and `docs/TASKS-COMPLETED.md` synchronized with completed items.
+- [ ] Update architecture docs after each completed phase.
+- [ ] Add explicit “known deltas from AGG” section.
+
+### Exit criteria
+
+- [ ] Public API docs and examples align with actual behavior.
+- [ ] All completed tasks marked in `docs/TASKS.md`.
+
+---
+
+## Working Cadence
+
+For each task:
+
+1. Link C++ source method(s).
+2. Implement/fix Go behavior.
+3. Add or update contract tests.
+4. Add/update visual regression if rendering-visible.
+5. Mark ledger status and `docs/TASKS.md`.
+
+---
+
+## Immediate Execution Queue (Start Here)
+
+1. [ ] Rebuild `internal/agg2d/image.go` around AGG span-interpolator pipeline.
+2. [ ] Fix `internal/agg2d/gradient.go` transform/scalar parity (remove no-op helpers).
+3. [x] Replace text rectangle fallback in `internal/agg2d/text.go`.
+4. [ ] Align clip propagation across rasterizer and renderer bases in `internal/agg2d/buffer.go`.
+5. [ ] Add pixel-asserting AGG2D tests for the above before moving to lower-priority items.

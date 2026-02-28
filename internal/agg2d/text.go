@@ -5,6 +5,7 @@ package agg2d
 import (
 	"math"
 
+	"agg_go/internal/basics"
 	"agg_go/internal/color"
 	"agg_go/internal/font"
 	"agg_go/internal/font/freetype"
@@ -289,21 +290,90 @@ func (agg2d *Agg2D) renderGlyphScanlines(adaptor font.SerializedScanlinesAdaptor
 	// Use the interface methods directly - no type assertion needed
 	bounds := adaptor.Bounds()
 	data := adaptor.Data()
+	if len(data) == 0 {
+		return
+	}
+
+	width := bounds.X2 - bounds.X1
+	height := bounds.Y2 - bounds.Y1
+	if width <= 0 || height <= 0 {
+		return
+	}
 
 	// Position the glyph at the correct location
 	offsetX := int(x) + bounds.X1
 	offsetY := int(y) + bounds.Y1
 
-	// For font glyphs, we need to process the serialized scanline data
-	// and render each scanline directly using the base renderer
-	// This is a simplified approach - in full AGG, this would use
-	// a proper serialized scanlines adaptor that implements RasterizerInterface
-	if len(data) > 0 {
-		// Use the bounds to render a simple filled rectangle for now
-		// In a full implementation, this would deserialize and render actual scanlines
-		for yi := bounds.Y1; yi <= bounds.Y2; yi++ {
-			agg2d.renBase.BlendHline(offsetX, offsetY+yi-bounds.Y1,
-				offsetX+bounds.X2-bounds.X1, fillColor, 255)
+	dataType := font.GlyphDataGray8
+	if glyph != nil {
+		dataType = glyph.DataType
+	}
+
+	pitch := len(data) / height
+	if pitch <= 0 {
+		return
+	}
+
+	covers := make([]basics.Int8u, width)
+
+	switch dataType {
+	case font.GlyphDataGray8:
+		for row := 0; row < height; row++ {
+			rowStart := row * pitch
+			if rowStart >= len(data) {
+				break
+			}
+
+			rowData := data[rowStart:]
+			rowLen := pitch
+			if rowLen > len(rowData) {
+				rowLen = len(rowData)
+			}
+
+			for i := range covers {
+				covers[i] = 0
+			}
+
+			copyWidth := width
+			if copyWidth > rowLen {
+				copyWidth = rowLen
+			}
+			for col := 0; col < copyWidth; col++ {
+				covers[col] = basics.Int8u(rowData[col])
+			}
+
+			agg2d.renBase.BlendSolidHspan(offsetX, offsetY+row, width, fillColor, covers)
+		}
+
+	case font.GlyphDataMono:
+		for row := 0; row < height; row++ {
+			rowStart := row * pitch
+			if rowStart >= len(data) {
+				break
+			}
+
+			rowData := data[rowStart:]
+			rowLen := pitch
+			if rowLen > len(rowData) {
+				rowLen = len(rowData)
+			}
+
+			for col := 0; col < width; col++ {
+				byteIdx := col >> 3
+				if byteIdx >= rowLen {
+					covers[col] = 0
+					continue
+				}
+
+				bit := uint(7 - (col & 7))
+				if ((rowData[byteIdx] >> bit) & 0x1) != 0 {
+					covers[col] = basics.CoverFull
+				} else {
+					covers[col] = 0
+				}
+			}
+
+			agg2d.renBase.BlendSolidHspan(offsetX, offsetY+row, width, fillColor, covers)
 		}
 	}
 }

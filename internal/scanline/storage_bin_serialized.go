@@ -21,9 +21,11 @@ type EmbeddedScanlineSerial struct {
 // EmbeddedScanlineSerialIterator provides iteration over spans in serialized data.
 // This corresponds to the const_iterator class in AGG's embedded_scanline.
 type EmbeddedScanlineSerialIterator struct {
-	ptr  []byte     // Current position in span data
-	span SpanSerial // Current span
-	dx   int        // X offset for coordinate transformation
+	ptr       []byte     // Current position in span data
+	span      SpanSerial // Current span
+	dx        int        // X offset for coordinate transformation
+	remaining int        // Number of spans remaining (including current)
+	valid     bool       // Whether current span is valid
 }
 
 // SpanSerial represents a span read from serialized data.
@@ -59,13 +61,18 @@ func (sl *EmbeddedScanlineSerial) Y() int {
 // Begin returns an iterator for the spans in this scanline.
 func (sl *EmbeddedScanlineSerial) Begin() *EmbeddedScanlineSerialIterator {
 	it := &EmbeddedScanlineSerialIterator{
-		ptr: sl.ptr,
-		dx:  sl.dx,
+		ptr:       sl.ptr,
+		dx:        sl.dx,
+		remaining: sl.numSpans,
+		valid:     false,
 	}
 
-	// Read first span
-	it.span.X = basics.Int32(it.readInt32()) + basics.Int32(it.dx)
-	it.span.Len = basics.Int32(it.readInt32())
+	if it.remaining > 0 && len(it.ptr) >= 8 {
+		// Read first span.
+		it.span.X = basics.Int32(it.readInt32()) + basics.Int32(it.dx)
+		it.span.Len = basics.Int32(it.readInt32())
+		it.valid = true
+	}
 
 	return it
 }
@@ -95,8 +102,20 @@ func (it *EmbeddedScanlineSerialIterator) Span() SpanSerial {
 
 // Next advances to the next span.
 func (it *EmbeddedScanlineSerialIterator) Next() {
+	if !it.valid {
+		return
+	}
+
+	it.remaining--
+	if it.remaining <= 0 || len(it.ptr) < 8 {
+		it.valid = false
+		it.span = SpanSerial{}
+		return
+	}
+
 	it.span.X = basics.Int32(it.readInt32()) + basics.Int32(it.dx)
 	it.span.Len = basics.Int32(it.readInt32())
+	it.valid = true
 }
 
 // readInt32 reads a 32-bit integer from the current position and advances the pointer.
@@ -107,6 +126,27 @@ func (it *EmbeddedScanlineSerialIterator) readInt32() int {
 	val := int(binary.LittleEndian.Uint32(it.ptr[:4]))
 	it.ptr = it.ptr[4:]
 	return val
+}
+
+// IsValid reports whether the iterator currently points to a valid span.
+func (it *EmbeddedScanlineSerialIterator) IsValid() bool {
+	return it.valid
+}
+
+// X returns the current span starting X coordinate.
+func (it *EmbeddedScanlineSerialIterator) X() int {
+	if !it.valid {
+		return 0
+	}
+	return int(it.span.X)
+}
+
+// Len returns the current span length.
+func (it *EmbeddedScanlineSerialIterator) Len() int {
+	if !it.valid {
+		return 0
+	}
+	return int(it.span.Len)
 }
 
 // SerializedScanlinesAdaptorBin provides access to serialized binary scanline data.
