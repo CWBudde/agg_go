@@ -1,4 +1,7 @@
 // Based on the original AGG examples: scanline_boolean.cpp.
+//go:build js && wasm
+// +build js,wasm
+
 package main
 
 import (
@@ -18,11 +21,11 @@ const (
 )
 
 var (
-	sboolPoly1X = [4]float64{100, 350, 350, 100}
-	sboolPoly1Y = [4]float64{150, 150, 400, 400}
-	sboolPoly2X = [4]float64{250, 500, 500, 250}
-	sboolPoly2Y = [4]float64{250, 250, 500, 500}
-	sboolOp     = SBoolXor
+	sboolPoly1X   = [4]float64{100, 350, 350, 100}
+	sboolPoly1Y   = [4]float64{150, 150, 400, 400}
+	sboolPoly2X   = [4]float64{250, 500, 500, 250}
+	sboolPoly2Y   = [4]float64{250, 250, 500, 500}
+	sboolOp       = SBoolXor
 	sboolSelected = -1
 	sboolPolyIdx  = 0 // 0 for poly1, 1 for poly2
 	sboolDragDX   = 0.0
@@ -36,7 +39,7 @@ func drawSBoolDemo() {
 	// 1. Draw individual shapes with transparency for context
 	agg2d.FillColor(agg.RGBA(0.1, 0.5, 0.8, 0.2))
 	agg2d.NoLine()
-	
+
 	// Poly 1
 	agg2d.ResetPath()
 	agg2d.MoveTo(sboolPoly1X[0], sboolPoly1Y[0])
@@ -61,26 +64,26 @@ func drawSBoolDemo() {
 	// For Union, we use Non-Zero filling rule on a combined path.
 	// For Intersection/Sub, we would need the actual boolean clipper,
 	// but we'll simulate what we can.
-	
+
 	agg2d.FillColor(agg.Black)
 	agg2d.ResetPath()
-	
+
 	// Combine paths
 	addPolyToAgg2D(agg2d, sboolPoly1X[:], sboolPoly1Y[:])
 	addPolyToAgg2D(agg2d, sboolPoly2X[:], sboolPoly2Y[:])
-	
+
 	switch sboolOp {
 	case SBoolUnion:
 		agg2d.FillEvenOdd(false) // Non-zero = Union
 	case SBoolXor:
-		agg2d.FillEvenOdd(true)  // Even-odd = XOR
+		agg2d.FillEvenOdd(true) // Even-odd = XOR
 	default:
 		// Simulation fallback
 		agg2d.FillEvenOdd(true)
 	}
-	
+
 	agg2d.DrawPath(agg.FillOnly)
-	
+
 	// 3. Draw handles
 	drawSBoolHandles(agg2d, sboolPoly1X[:], sboolPoly1Y[:], agg.RGBA(0.1, 0.5, 0.8, 0.6))
 	drawSBoolHandles(agg2d, sboolPoly2X[:], sboolPoly2Y[:], agg.RGBA(0.8, 0.2, 0.1, 0.6))

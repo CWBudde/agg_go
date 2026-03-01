@@ -1695,7 +1695,7 @@ The FreeType2 port in `internal/font/freetype2/` is significantly closer to `agg
 
 ### internal/conv/gpc.go
 
-**Status: PARTIAL** - The converter is no longer a placeholder and does invoke polygon clipping. Closed contours are normalized before being handed to GPC, focused tests cover contour accumulation, and the example/path-adapter coverage now emits real geometry for the basic overlapping-rectangle cases again. Remaining work is broader AGG parity review rather than the earlier empty-result failure path.
+**Status: PARTIAL** - The converter is no longer a placeholder and does invoke polygon clipping. Closed contours are normalized before being handed to GPC, focused tests cover contour accumulation, and converter-side geometry tests now assert exact command counts, path-vertex counts, bounds, and directional-difference behavior for basic rectangle cases. Remaining work is broader AGG parity review rather than the earlier empty-result failure path.
 
 ### internal/color/rgb.go
 

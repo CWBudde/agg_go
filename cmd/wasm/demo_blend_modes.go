@@ -1,4 +1,7 @@
 // Based on the original AGG examples: compositing.cpp and compositing2.cpp.
+//go:build js && wasm
+// +build js,wasm
+
 package main
 
 import (

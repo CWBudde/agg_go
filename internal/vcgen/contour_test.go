@@ -183,6 +183,33 @@ func TestVCGenContour_OrientationDetection(t *testing.T) {
 	// (though testing exact coordinates would require more complex setup)
 }
 
+func TestVCGenContourApproximationScaleAffectsRoundJoinSubdivision(t *testing.T) {
+	buildContour := func(scale float64) []struct {
+		x, y float64
+		cmd  basics.PathCommand
+	} {
+		vc := NewVCGenContour()
+		vc.Width(3.0)
+		vc.LineJoin(basics.RoundJoin)
+		vc.ApproximationScale(scale)
+		vc.AddVertex(0, 0, basics.PathCmdMoveTo)
+		vc.AddVertex(20, 0, basics.PathCmdLineTo)
+		vc.AddVertex(20, 20, basics.PathCmdLineTo)
+		vc.Rewind(0)
+		return collectVertices(vc)
+	}
+
+	coarse := buildContour(0.25)
+	fine := buildContour(4.0)
+
+	if len(coarse) <= 1 {
+		t.Fatalf("expected coarse contour to emit vertices, got %d", len(coarse))
+	}
+	if len(fine) <= len(coarse) {
+		t.Fatalf("expected finer contour approximation scale to emit more vertices, got coarse=%d fine=%d", len(coarse), len(fine))
+	}
+}
+
 func TestVCGenContour_NegativeWidth(t *testing.T) {
 	vc := NewVCGenContour()
 	vc.Width(-1.0) // Negative width

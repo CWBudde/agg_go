@@ -1,3 +1,6 @@
+//go:build js && wasm
+// +build js,wasm
+
 package main
 
 import (
@@ -20,4 +23,3 @@ func (a *WasmAdapter) Vertex(x, y *float64) uint32 {
 	*y = vy
 	return cmd
 }
-

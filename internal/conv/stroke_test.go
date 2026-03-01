@@ -659,6 +659,46 @@ func TestConvStrokeApproximationScale(t *testing.T) {
 	}
 }
 
+func TestConvStrokeApproximationScaleAffectsRoundGeometry(t *testing.T) {
+	vertices := []Vertex{
+		{X: 0, Y: 0, Cmd: basics.PathCmdMoveTo},
+		{X: 20, Y: 0, Cmd: basics.PathCmdLineTo},
+		{X: 20, Y: 20, Cmd: basics.PathCmdLineTo},
+		{X: 0, Y: 20, Cmd: basics.PathCmdLineTo},
+		{X: 0, Y: 0, Cmd: basics.PathCmdEndPoly | basics.PathCommand(basics.PathFlagsClose)},
+	}
+
+	countVertices := func(scale float64) int {
+		source := NewMockVertexSource(vertices)
+		stroke := NewConvStroke(source)
+		stroke.SetWidth(4.0)
+		stroke.SetLineCap(basics.RoundCap)
+		stroke.SetLineJoin(basics.RoundJoin)
+		stroke.SetApproximationScale(scale)
+		stroke.Rewind(0)
+
+		count := 0
+		for {
+			_, _, cmd := stroke.Vertex()
+			if basics.IsStop(cmd) {
+				break
+			}
+			count++
+		}
+		return count
+	}
+
+	coarse := countVertices(0.25)
+	fine := countVertices(4.0)
+
+	if coarse == 0 {
+		t.Fatal("expected coarse stroked path to emit vertices")
+	}
+	if fine <= coarse {
+		t.Fatalf("expected finer stroke approximation scale to emit more vertices, got coarse=%d fine=%d", coarse, fine)
+	}
+}
+
 func TestConvStrokeRewindConsistency(t *testing.T) {
 	// Use a simpler path to avoid numerical instabilities
 	vertices := []Vertex{

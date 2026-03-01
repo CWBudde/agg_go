@@ -1,4 +1,7 @@
 // Based on the original AGG examples: aa_test.cpp.
+//go:build js && wasm
+// +build js,wasm
+
 package main
 
 import (
@@ -59,7 +62,7 @@ func drawAATestDemo() {
 		lwY1 := 40.5
 		lwX2 := 20.0 + float64(i*(i+1)) + float64(i-1)*4.0
 		lwY2 := 100.5
-		
+
 		c2 := agg.RGBA(float64(i%2), float64(i%3)*0.5, float64(i%5)*0.25, 1.0)
 		agg2d.FillLinearGradient(lwX1, lwY1, lwX2, lwY2, agg.White, c2, 1.0)
 		agg2d.LineWidth(float64(i))
@@ -81,7 +84,7 @@ func drawAATestDemo() {
 		c2 := agg.RGBA(float64(i%2), float64(i%3)*0.5, float64(i%5)*0.25, 1.0)
 		agg2d.FillLinearGradient(x1, y1, x2, y2, agg.White, c2, 1.0)
 		agg2d.NoLine()
-		
+
 		agg2d.ResetPath()
 		agg2d.MoveTo(x1, y1)
 		agg2d.LineTo(x2, y2)

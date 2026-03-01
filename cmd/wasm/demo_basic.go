@@ -1,4 +1,7 @@
 // Based on the original AGG examples: lines.cpp, circles.cpp, and rounded_rect.cpp.
+//go:build js && wasm
+// +build js,wasm
+
 package main
 
 import (

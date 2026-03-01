@@ -1,4 +1,7 @@
 // Based on the original AGG examples: aa_demo.cpp.
+//go:build js && wasm
+// +build js,wasm
+
 package main
 
 import (
@@ -33,17 +36,17 @@ func (r *EnlargedRenderer) Render(sl renscan.ScanlineInterface) {
 		x := span.X
 		numPix := span.Len
 		covers := span.Covers
-		
+
 		for i := 0; i < numPix; i++ {
 			cover := covers[i]
 			alpha := (uint16(cover) * uint16(r.color.A)) >> 8
-			
+
 			// Draw the "enlarged pixel" square
 			r.ctx.SetColor(agg.NewColor(r.color.R, r.color.G, r.color.B, uint8(alpha)))
 			r.ctx.FillRectangle(
-				float64(x+i)*r.pixelSize, 
-				float64(y)*r.pixelSize, 
-				r.pixelSize, 
+				float64(x+i)*r.pixelSize,
+				float64(y)*r.pixelSize,
+				r.pixelSize,
 				r.pixelSize,
 			)
 		}
@@ -82,12 +85,12 @@ func drawAADemo() {
 
 	// Use adapter to fix Rewind(uint) vs Rewind(uint32) mismatch
 	adapter := &WasmAdapter{ps: ps}
-	
+
 	// Set up the rasterizer
 	ras := agg2d.GetInternalRasterizer()
 	ras.Reset()
 	ras.AddPath(adapter, 0)
-	
+
 	// Use our custom renderer to "zoom in" on the pixels
 	agg2d.ScanlineRender(ras, enlargedRen)
 

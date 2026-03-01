@@ -294,6 +294,43 @@ func TestConvCurve_ApproximationScale(t *testing.T) {
 	}
 }
 
+func TestConvCurve_ApproximationScaleAffectsSubdivision(t *testing.T) {
+	vertices := []CurveVertex{
+		{X: 0, Y: 0, Cmd: basics.PathCmdMoveTo},
+		{X: 25, Y: 120, Cmd: basics.PathCmdCurve4},
+		{X: 75, Y: 120, Cmd: basics.PathCmdLineTo},
+		{X: 100, Y: 0, Cmd: basics.PathCmdLineTo},
+		{X: 0, Y: 0, Cmd: basics.PathCmdStop},
+	}
+
+	countVertices := func(scale float64) int {
+		source := NewCurveVertexSource(vertices)
+		curve := NewConvCurve(source)
+		curve.SetApproximationScale(scale)
+		curve.Rewind(0)
+
+		count := 0
+		for {
+			_, _, cmd := curve.Vertex()
+			if cmd == basics.PathCmdStop {
+				break
+			}
+			count++
+		}
+		return count
+	}
+
+	coarse := countVertices(0.1)
+	fine := countVertices(10.0)
+
+	if coarse < 2 {
+		t.Fatalf("expected coarse curve approximation to emit multiple vertices, got %d", coarse)
+	}
+	if fine <= coarse {
+		t.Fatalf("expected finer approximation scale to emit more vertices, got coarse=%d fine=%d", coarse, fine)
+	}
+}
+
 func TestConvCurve_AngleTolerance(t *testing.T) {
 	vertices := []CurveVertex{
 		{X: 0, Y: 0, Cmd: basics.PathCmdMoveTo},

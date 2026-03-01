@@ -1,4 +1,7 @@
 // Based on the original AGG examples: conv_dash_marker.cpp.
+//go:build js && wasm
+// +build js,wasm
+
 package main
 
 import (
@@ -12,8 +15,8 @@ import (
 var (
 	dashTriangleX = [3]float64{157, 469, 243}
 	dashTriangleY = [3]float64{160, 270, 410}
-	dashWidth    = 3.0
-	dashClosed   = true
+	dashWidth     = 3.0
+	dashClosed    = true
 	dashSelected  = -1
 	dashDragDX    = 0.0
 	dashDragDY    = 0.0
@@ -50,7 +53,7 @@ func drawDashDemo() {
 	midY := (dashTriangleY[0] + dashTriangleY[1] + dashTriangleY[2]) / 3.0
 	ps.LineTo(midX, midY)
 	ps.LineTo(dashTriangleX[2], dashTriangleY[2])
-	
+
 	if dashClosed {
 		ps.ClosePolygon(basics.PathFlagsNone)
 	}
@@ -84,7 +87,7 @@ func drawDashDemo() {
 	agg2d.RemoveAllDashes()
 	agg2d.AddDash(20, 5)
 	agg2d.AddDash(5, 5)
-	
+
 	agg2d.ResetPath()
 	ps.Rewind(0)
 	for {

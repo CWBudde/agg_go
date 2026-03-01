@@ -7,7 +7,7 @@ let ctx;
 let imageData;
 let pixels;
 
-window.onerror = function(message, source, lineno, colno, error) {
+window.onerror = function (message, source, lineno, colno, error) {
   console.error("Global JS Error:", message, "at", source, ":", lineno);
   updateStatus("JS Error: " + message);
 };
@@ -18,15 +18,15 @@ async function init() {
     const result = await WebAssembly.instantiateStreaming(
       fetch("main.wasm"),
       go.importObject,
-    ).catch(err => {
-        console.error("WASM Fetch/Instantiate Error:", err);
-        throw err;
+    ).catch((err) => {
+      console.error("WASM Fetch/Instantiate Error:", err);
+      throw err;
     });
-    
+
     wasmInstance = result.instance;
-    go.run(wasmInstance).catch(err => {
-        console.error("WASM Runtime Error:", err);
-        updateStatus("WASM Error: " + err.message);
+    go.run(wasmInstance).catch((err) => {
+      console.error("WASM Runtime Error:", err);
+      updateStatus("WASM Error: " + err.message);
     });
 
     // Hide loading screen
@@ -51,13 +51,18 @@ async function init() {
       const aaControls = document.getElementById("aaControls");
       const dashControls = document.getElementById("dashControls");
       const gouraudControls = document.getElementById("gouraudControls");
-      const imageFilterControls = document.getElementById("imageFilterControls");
+      const imageFilterControls = document.getElementById(
+        "imageFilterControls",
+      );
       const sboolControls = document.getElementById("sboolControls");
       aaControls.style.display = selector.value === "aa" ? "flex" : "none";
       dashControls.style.display = selector.value === "dash" ? "flex" : "none";
-      gouraudControls.style.display = selector.value === "gouraud" ? "flex" : "none";
-      imageFilterControls.style.display = selector.value === "imagefilters" ? "flex" : "none";
-      sboolControls.style.display = selector.value === "sbool" ? "flex" : "none";
+      gouraudControls.style.display =
+        selector.value === "gouraud" ? "flex" : "none";
+      imageFilterControls.style.display =
+        selector.value === "imagefilters" ? "flex" : "none";
+      sboolControls.style.display =
+        selector.value === "sbool" ? "flex" : "none";
       renderSelectedDemo();
     });
 
@@ -75,13 +80,19 @@ async function init() {
     filterSelector.addEventListener("change", () => {
       const filterType = parseInt(filterSelector.value);
       setImageFilter(filterType);
-      
+
       // Only show radius slider for Sinc, Lanczos, Blackman
       const hasRadius = filterType >= 12;
-      document.getElementById("radiusLabel").style.display = hasRadius ? "inline" : "none";
-      document.getElementById("filterRadiusSlider").style.display = hasRadius ? "inline" : "none";
-      document.getElementById("filterRadiusValue").style.display = hasRadius ? "inline" : "none";
-      
+      document.getElementById("radiusLabel").style.display = hasRadius
+        ? "inline"
+        : "none";
+      document.getElementById("filterRadiusSlider").style.display = hasRadius
+        ? "inline"
+        : "none";
+      document.getElementById("filterRadiusValue").style.display = hasRadius
+        ? "inline"
+        : "none";
+
       renderSelectedDemo();
     });
 
@@ -180,13 +191,16 @@ const demoDescriptions = {
     "Compositing and blend modes. Showcases how different layers can be combined using standard and advanced blend modes like Multiply, Screen, and Overlay.",
   bspline:
     "B-Spline curve smoothing. Demonstrates the creation of smooth, continuous curves from a set of control points.",
-  "dash": "Advanced line styling. Showcases various dash patterns and line thicknesses applied to both simple lines and complex paths.",
-  "gouraud": "Smooth color interpolation across triangles. Demonstrates AGG's capability to render gradient-shaded meshes with sub-pixel precision and adjustable dilation.",
-  "imagefilters": "Comparison of different image interpolation filters. Rotates and scales a procedurally generated image using filters like Bilinear, Bicubic, Sinc, and Lanczos to showcase quality vs. performance.",
-  "sbool": "Boolean operations on vector shapes. Demonstrates combining multiple paths using filling rules to achieve Union and XOR-like effects with interactive polygons.",
-  "aatest": "Comprehensive anti-aliasing precision test. Renders radial lines, various ellipse sizes, and gradient-filled triangles at fractional offsets to verify the rasterizer's quality."
-  };
-
+  dash: "Advanced line styling. Showcases various dash patterns and line thicknesses applied to both simple lines and complex paths.",
+  gouraud:
+    "Smooth color interpolation across triangles. Demonstrates AGG's capability to render gradient-shaded meshes with sub-pixel precision and adjustable dilation.",
+  imagefilters:
+    "Comparison of different image interpolation filters. Rotates and scales a procedurally generated image using filters like Bilinear, Bicubic, Sinc, and Lanczos to showcase quality vs. performance.",
+  sbool:
+    "Boolean operations on vector shapes. Demonstrates combining multiple paths using filling rules to achieve Union and XOR-like effects with interactive polygons.",
+  aatest:
+    "Comprehensive anti-aliasing precision test. Renders radial lines, various ellipse sizes, and gradient-filled triangles at fractional offsets to verify the rasterizer's quality.",
+};
 
 function renderSelectedDemo() {
   const selector = document.getElementById("demoSelector");

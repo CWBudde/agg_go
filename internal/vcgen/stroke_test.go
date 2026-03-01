@@ -152,6 +152,48 @@ func TestVCGenStrokeClosedPath(t *testing.T) {
 	}
 }
 
+func TestVCGenStrokeClosedPathEmitsBothOutlines(t *testing.T) {
+	vg := NewVCGenStroke()
+	vg.SetWidth(2.0)
+	vg.AddVertex(0, 0, basics.PathCmdMoveTo)
+	vg.AddVertex(10, 0, basics.PathCmdLineTo)
+	vg.AddVertex(10, 10, basics.PathCmdLineTo)
+	vg.AddVertex(0, 10, basics.PathCmdLineTo)
+	vg.AddVertex(0, 0, basics.PathCommand(uint32(basics.PathCmdEndPoly)|uint32(basics.PathFlagsClose)))
+
+	vg.Rewind(0)
+
+	moveToCount := 0
+	endPolyCount := 0
+	var endPolyCmds []basics.PathCommand
+	for {
+		_, _, cmd := vg.Vertex()
+		if basics.IsStop(cmd) {
+			break
+		}
+		if basics.IsMoveTo(cmd) {
+			moveToCount++
+		}
+		if basics.IsEndPoly(cmd) {
+			endPolyCount++
+			endPolyCmds = append(endPolyCmds, cmd)
+		}
+	}
+
+	if moveToCount < 2 {
+		t.Fatalf("expected closed stroke to emit separate move_to commands for both outlines, got %d", moveToCount)
+	}
+	if endPolyCount != 2 {
+		t.Fatalf("expected closed stroke to emit two end_poly commands, got %d", endPolyCount)
+	}
+	if !basics.IsCCW(uint32(endPolyCmds[0])) {
+		t.Fatalf("expected first outline end_poly to be CCW, got %v", endPolyCmds[0])
+	}
+	if !basics.IsCW(uint32(endPolyCmds[1])) {
+		t.Fatalf("expected second outline end_poly to be CW, got %v", endPolyCmds[1])
+	}
+}
+
 func TestVCGenStrokeRemoveAll(t *testing.T) {
 	vg := NewVCGenStroke()
 

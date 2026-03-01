@@ -233,9 +233,11 @@ func (a freetypeLoadedFaceAdapter) AscentB() float64 { return a.face.AscentB() }
 func (a freetypeLoadedFaceAdapter) DescentB() float64 {
 	return a.face.DescentB()
 }
+
 func (a freetypeLoadedFaceAdapter) SelectInstance(height, width float64, hinting bool, rendering fonts.FmanGlyphRendering) {
 	a.face.SelectInstance(height, width, hinting, fromFmanGlyphRendering(rendering))
 }
+
 func (a freetypeLoadedFaceAdapter) PrepareGlyph(cp uint32) (fonts.PreparedGlyph, bool) {
 	prepared, ok := a.face.PrepareGlyph(cp)
 	if !ok || prepared == nil {
@@ -251,6 +253,7 @@ func (a freetypeLoadedFaceAdapter) PrepareGlyph(cp uint32) (fonts.PreparedGlyph,
 		AdvanceY:   prepared.AdvanceY,
 	}, true
 }
+
 func (a freetypeLoadedFaceAdapter) WriteGlyphTo(prepared *fonts.PreparedGlyph, data []byte) {
 	if prepared == nil {
 		return
@@ -265,6 +268,7 @@ func (a freetypeLoadedFaceAdapter) WriteGlyphTo(prepared *fonts.PreparedGlyph, d
 		AdvanceY:   prepared.AdvanceY,
 	}, data)
 }
+
 func (a freetypeLoadedFaceAdapter) AddKerning(first, second uint32, x, y *float64) bool {
 	dx, dy := a.face.AddKerning(first, second)
 	if x != nil {

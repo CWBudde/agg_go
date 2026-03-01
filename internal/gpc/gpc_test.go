@@ -815,12 +815,12 @@ func TestComplexGeometricOperations(t *testing.T) {
 	rect2 := createRect(5, 5, 15, 15)
 
 	tests := []struct {
-		name          string
-		operation     GPCOp
-		wantContours  int
-		wantVertices  int
-		wantBounds    [4]float64
-		wantArea      float64
+		name         string
+		operation    GPCOp
+		wantContours int
+		wantVertices int
+		wantBounds   [4]float64
+		wantArea     float64
 	}{
 		{
 			name:         "Union",
@@ -888,6 +888,66 @@ func TestComplexGeometricOperations(t *testing.T) {
 			}
 
 			t.Logf("Operation %s completed successfully with %d contours", tt.name, result.NumContours)
+		})
+	}
+}
+
+func TestDifferenceDirectionality(t *testing.T) {
+	rectA := createRectanglePolygon(0, 0, 10, 10)
+	rectB := createRectanglePolygon(5, 2, 12, 8)
+
+	tests := []struct {
+		name         string
+		subject      *GPCPolygon
+		clip         *GPCPolygon
+		wantContours int
+		wantVertices int
+		wantBounds   [4]float64
+		wantArea     float64
+	}{
+		{
+			name:         "A-minus-B",
+			subject:      rectA,
+			clip:         rectB,
+			wantContours: 1,
+			wantVertices: 8,
+			wantBounds:   [4]float64{0, 0, 10, 10},
+			wantArea:     70,
+		},
+		{
+			name:         "B-minus-A",
+			subject:      rectB,
+			clip:         rectA,
+			wantContours: 1,
+			wantVertices: 4,
+			wantBounds:   [4]float64{10, 2, 12, 8},
+			wantArea:     12,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := PolygonClip(GPCDiff, tt.subject, tt.clip)
+			if err != nil {
+				t.Fatalf("PolygonClip(GPCDiff) error = %v", err)
+			}
+			if result == nil {
+				t.Fatal("PolygonClip(GPCDiff) returned nil result")
+			}
+			if result.NumContours != tt.wantContours {
+				t.Fatalf("contours = %d, want %d", result.NumContours, tt.wantContours)
+			}
+			if got := totalPolygonVertices(result); got != tt.wantVertices {
+				t.Fatalf("total vertices = %d, want %d", got, tt.wantVertices)
+			}
+			xmin, ymin, xmax, ymax := polygonBounds(t, result)
+			gotBounds := [4]float64{xmin, ymin, xmax, ymax}
+			if gotBounds != tt.wantBounds {
+				t.Fatalf("bounds = %v, want %v", gotBounds, tt.wantBounds)
+			}
+			if got := polygonArea(t, result); math.Abs(got-tt.wantArea) > 1e-9 {
+				t.Fatalf("area = %v, want %v", got, tt.wantArea)
+			}
 		})
 	}
 }

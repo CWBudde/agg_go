@@ -7,7 +7,9 @@
 
     <style>
       body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+          Arial, sans-serif;
         background-color: #f5f5f7;
         color: #1d1d1f;
         display: flex;
@@ -44,12 +46,12 @@
         box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.1);
       }
       canvas {
-          background-color: white;
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-          border-radius: 12px;
-          max-width: 100%;
-          height: auto;
-          cursor: crosshair;
+        background-color: white;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        border-radius: 12px;
+        max-width: 100%;
+        height: auto;
+        cursor: crosshair;
       }
       .status {
         margin-top: 1rem;
@@ -104,26 +106,49 @@
       <button id="renderBtn">Refresh / Reset</button>
     </div>
 
-    <div class="controls" id="aaControls" style="display: none;">
+    <div class="controls" id="aaControls" style="display: none">
       <label for="zoomSlider">Pixel Size:</label>
-      <input type="range" id="zoomSlider" min="8" max="64" value="32" step="1">
+      <input
+        type="range"
+        id="zoomSlider"
+        min="8"
+        max="64"
+        value="32"
+        step="1"
+      />
       <span id="zoomValue">32</span>
     </div>
 
-    <div class="controls" id="dashControls" style="display: none;">
+    <div class="controls" id="dashControls" style="display: none">
       <label for="dashWidthSlider">Line Width:</label>
-      <input type="range" id="dashWidthSlider" min="0.5" max="10" value="3" step="0.5">
+      <input
+        type="range"
+        id="dashWidthSlider"
+        min="0.5"
+        max="10"
+        value="3"
+        step="0.5"
+      />
       <span id="dashWidthValue">3</span>
-      <label style="margin-left: 1rem;"><input type="checkbox" id="dashClosed" checked> Closed</label>
+      <label style="margin-left: 1rem"
+        ><input type="checkbox" id="dashClosed" checked /> Closed</label
+      >
     </div>
 
-    <div class="controls" id="gouraudControls" style="display: none;">
+    <div class="controls" id="gouraudControls" style="display: none">
       <label for="dilationSlider">Dilation:</label>
-      <input type="range" id="dilationSlider" min="-2" max="5" value="0.5" step="0.1">
+      <input
+        type="range"
+        id="dilationSlider"
+        min="-2"
+        max="5"
+        value="0.5"
+        step="0.1"
+      />
       <span id="dilationValue">0.5</span>
     </div>
 
-    <div class="controls" id="imageFilterControls" style="display: none;">
+    <div class="controls" id="imageFilterControls" style="display: none">
       <label for="filterSelector">Filter:</label>
       <select id="filterSelector">
         <option value="0">Bilinear</option>
@@ -142,12 +167,22 @@
         <option value="13">Lanczos</option>
         <option value="14">Blackman</option>
       </select>
-      <label for="filterRadiusSlider" id="radiusLabel" style="display: none;">Radius:</label>
-      <input type="range" id="filterRadiusSlider" min="2" max="8" value="4" step="0.1" style="display: none;">
-      <span id="filterRadiusValue" style="display: none;">4</span>
+      <label for="filterRadiusSlider" id="radiusLabel" style="display: none"
+        >Radius:</label
+      >
+      <input
+        type="range"
+        id="filterRadiusSlider"
+        min="2"
+        max="8"
+        value="4"
+        step="0.1"
+        style="display: none"
+      />
+      <span id="filterRadiusValue" style="display: none">4</span>
     </div>
 
-    <div class="controls" id="sboolControls" style="display: none;">
+    <div class="controls" id="sboolControls" style="display: none">
       <label for="sboolOpSelector">Operation:</label>
       <select id="sboolOpSelector">
         <option value="0">Union (Non-Zero)</option>

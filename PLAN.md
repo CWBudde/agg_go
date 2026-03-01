@@ -142,7 +142,7 @@ Files:
 
 - [x] Restore AGG2D stroke/dash/transform ordering and line cap/join enum parity.
 - [x] Align viewport, gradient, and related transform/scalar propagation with AGG2D behavior.
-- [ ] Audit lower-level converter/vcgen/vpgen state machines beyond the Agg2D call sites, especially stroke/dash/curve/contour behavior and approximation-scale propagation.
+- [x] Audit lower-level converter/vcgen/vpgen state machines beyond the Agg2D call sites, especially stroke/dash/curve/contour behavior and approximation-scale propagation.
 
 ### Exit criteria
 
@@ -195,10 +195,10 @@ Files:
 ### 4.2 Visual regression tests
 
 - [ ] Generate canonical references from C++ AGG for core scenarios.
-  `tests/visual/reference` already exists for the current Go-side visual suite, but the remaining parity step is to replace or supplement those images with canonical outputs generated from the original C++ AGG implementation.
+      `tests/visual/reference` already exists for the current Go-side visual suite, but the remaining parity step is to replace or supplement those images with canonical outputs generated from the original C++ AGG implementation.
 - [x] Store references under `tests/visual/reference`.
 - [x] Add automated diff thresholding and report generation.
-  `tests/visual/framework` now supports diff-threshold pass/fail rules (`VISUAL_DIFF_TOLERANCE`, `VISUAL_MAX_DIFFERENT_PIXELS`, `VISUAL_MAX_DIFFERENT_RATIO`, `VISUAL_IGNORE_ALPHA`, `VISUAL_GENERATE_DIFFS`) and emits HTML reports with per-test diff statistics.
+      `tests/visual/framework` now supports diff-threshold pass/fail rules (`VISUAL_DIFF_TOLERANCE`, `VISUAL_MAX_DIFFERENT_PIXELS`, `VISUAL_MAX_DIFFERENT_RATIO`, `VISUAL_IGNORE_ALPHA`, `VISUAL_GENERATE_DIFFS`) and emits HTML reports with per-test diff statistics.
 
 ### 4.3 C++ parity checks
 

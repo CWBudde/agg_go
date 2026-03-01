@@ -157,14 +157,14 @@ func (sg *SpanGouraudRGBA) Generate(span []RGBAColor, x, y int, length uint) {
 
 	// Calculate starting point with subpixel accuracy
 	start := pc1.x - (x << SubpixelShift)
-	
+
 	// Safety: prevent massive underflow if start is negative or too small
 	if start < 0 {
 		// If start is negative, it means we're beginning before the span's x
 		// We'll skip the "beginning part" logic
 		start = 0
 	}
-	
+
 	r.Sub(uint(start))
 	g.Sub(uint(start))
 	b.Sub(uint(start))

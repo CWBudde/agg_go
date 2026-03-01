@@ -64,23 +64,23 @@ type RectD struct {
 
 // Image filter constants for testing
 const (
-	NoFilter    ImageFilter = 0
-	Bilinear                = ImageFilterBilinear
-	Hanning                 = ImageFilterHanning
-	Hamming                 = ImageFilterHamming
-	Hermite                 = ImageFilterHermite
-	Quadric                 = ImageFilterQuadric
-	Bicubic                 = ImageFilterBicubic
-	Catrom                  = ImageFilterCatrom
-	Spline16                = ImageFilterSpline16
-	Spline36                = ImageFilterSpline36
-	Blackman                = ImageFilterBlackman
-	Kaiser                  = ImageFilterKaiser
-	Gaussian                = ImageFilterGaussian
-	Bessel                  = ImageFilterBessel
-	Mitchell                = ImageFilterMitchell
-	Sinc                    = ImageFilterSinc
-	Lanczos                 = ImageFilterLanczos
+	NoFilter ImageFilter = 0
+	Bilinear             = ImageFilterBilinear
+	Hanning              = ImageFilterHanning
+	Hamming              = ImageFilterHamming
+	Hermite              = ImageFilterHermite
+	Quadric              = ImageFilterQuadric
+	Bicubic              = ImageFilterBicubic
+	Catrom               = ImageFilterCatrom
+	Spline16             = ImageFilterSpline16
+	Spline36             = ImageFilterSpline36
+	Blackman             = ImageFilterBlackman
+	Kaiser               = ImageFilterKaiser
+	Gaussian             = ImageFilterGaussian
+	Bessel               = ImageFilterBessel
+	Mitchell             = ImageFilterMitchell
+	Sinc                 = ImageFilterSinc
+	Lanczos              = ImageFilterLanczos
 )
 
 // DrawPathFlag represents different path drawing modes

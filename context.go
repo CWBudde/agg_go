@@ -75,6 +75,11 @@ func (ctx *Context) Height() int {
 	return ctx.height
 }
 
+// Width returns the context width in pixels.
+func (ctx *Context) Width() int {
+	return ctx.width
+}
+
 // Clear fills the entire context with the specified color.
 func (ctx *Context) Clear(color Color) {
 	ctx.agg2d.ClearAll(color)

@@ -1,6 +1,7 @@
 package conv
 
 import (
+	"math"
 	"testing"
 
 	"agg_go/internal/basics"
@@ -236,6 +237,105 @@ func TestConvGPC_ResultContoursExplainEmptyVertexStream(t *testing.T) {
 	}
 	if converter.result.NumContours > 0 && emitted == 0 {
 		t.Fatalf("result has %d contours but vertex stream emitted none", converter.result.NumContours)
+	}
+}
+
+func TestConvGPC_ExactGeometryForRectangles(t *testing.T) {
+	rect1 := []Vertex{
+		{0, 0, basics.PathCmdMoveTo},
+		{10, 0, basics.PathCmdLineTo},
+		{10, 10, basics.PathCmdLineTo},
+		{0, 10, basics.PathCmdLineTo},
+		{0, 0, basics.PathCmdEndPoly | basics.PathFlagClose},
+	}
+	rect2 := []Vertex{
+		{5, 5, basics.PathCmdMoveTo},
+		{15, 5, basics.PathCmdLineTo},
+		{15, 15, basics.PathCmdLineTo},
+		{5, 15, basics.PathCmdLineTo},
+		{5, 5, basics.PathCmdEndPoly | basics.PathFlagClose},
+	}
+
+	tests := []struct {
+		name         string
+		op           GPCOp
+		wantCommands int
+		wantVertices int
+		wantBounds   [4]float64
+	}{
+		{"Union", GPCOr, 9, 8, [4]float64{0, 0, 15, 15}},
+		{"Intersection", GPCAnd, 5, 4, [4]float64{5, 5, 10, 10}},
+		{"XOR", GPCXor, 14, 12, [4]float64{0, 0, 15, 15}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			converter := NewConvGPC(NewMockVertexSource(rect1), NewMockVertexSource(rect2), tt.op)
+			vertices := extractAllVertices(converter)
+
+			if got := countNonStopCommands(vertices); got != tt.wantCommands {
+				t.Fatalf("non-stop commands = %d, want %d", got, tt.wantCommands)
+			}
+			if got := countPathVertices(vertices); got != tt.wantVertices {
+				t.Fatalf("path vertices = %d, want %d", got, tt.wantVertices)
+			}
+
+			xmin, ymin, xmax, ymax := vertexBounds(t, vertices)
+			gotBounds := [4]float64{xmin, ymin, xmax, ymax}
+			if gotBounds != tt.wantBounds {
+				t.Fatalf("bounds = %v, want %v", gotBounds, tt.wantBounds)
+			}
+		})
+	}
+}
+
+func TestConvGPC_DifferenceDirectionality(t *testing.T) {
+	rectA := []Vertex{
+		{0, 0, basics.PathCmdMoveTo},
+		{10, 0, basics.PathCmdLineTo},
+		{10, 10, basics.PathCmdLineTo},
+		{0, 10, basics.PathCmdLineTo},
+		{0, 0, basics.PathCmdEndPoly | basics.PathFlagClose},
+	}
+	rectB := []Vertex{
+		{5, 2, basics.PathCmdMoveTo},
+		{12, 2, basics.PathCmdLineTo},
+		{12, 8, basics.PathCmdLineTo},
+		{5, 8, basics.PathCmdLineTo},
+		{5, 2, basics.PathCmdEndPoly | basics.PathFlagClose},
+	}
+
+	tests := []struct {
+		name         string
+		op           GPCOp
+		source1      []Vertex
+		source2      []Vertex
+		wantCommands int
+		wantVertices int
+		wantBounds   [4]float64
+	}{
+		{"A-minus-B", GPCAMinusB, rectA, rectB, 9, 8, [4]float64{0, 0, 10, 10}},
+		{"B-minus-A", GPCBMinusA, rectA, rectB, 5, 4, [4]float64{10, 2, 12, 8}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			converter := NewConvGPC(NewMockVertexSource(tt.source1), NewMockVertexSource(tt.source2), tt.op)
+			vertices := extractAllVertices(converter)
+
+			if got := countNonStopCommands(vertices); got != tt.wantCommands {
+				t.Fatalf("non-stop commands = %d, want %d", got, tt.wantCommands)
+			}
+			if got := countPathVertices(vertices); got != tt.wantVertices {
+				t.Fatalf("path vertices = %d, want %d", got, tt.wantVertices)
+			}
+
+			xmin, ymin, xmax, ymax := vertexBounds(t, vertices)
+			gotBounds := [4]float64{xmin, ymin, xmax, ymax}
+			if gotBounds != tt.wantBounds {
+				t.Fatalf("bounds = %v, want %v", gotBounds, tt.wantBounds)
+			}
+		})
 	}
 }
 
@@ -489,6 +589,61 @@ func countPreparedDrawableCommands(vs VertexSource) int {
 		count++
 	}
 	return count
+}
+
+func countNonStopCommands(vertices []Vertex) int {
+	count := 0
+	for _, v := range vertices {
+		if !basics.IsStop(v.Cmd) {
+			count++
+		}
+	}
+	return count
+}
+
+func countPathVertices(vertices []Vertex) int {
+	count := 0
+	for _, v := range vertices {
+		if basics.IsVertex(v.Cmd) {
+			count++
+		}
+	}
+	return count
+}
+
+func vertexBounds(t *testing.T, vertices []Vertex) (xmin, ymin, xmax, ymax float64) {
+	t.Helper()
+
+	xmin = math.MaxFloat64
+	ymin = math.MaxFloat64
+	xmax = -math.MaxFloat64
+	ymax = -math.MaxFloat64
+	found := false
+
+	for _, v := range vertices {
+		if !basics.IsVertex(v.Cmd) {
+			continue
+		}
+		found = true
+		if v.X < xmin {
+			xmin = v.X
+		}
+		if v.Y < ymin {
+			ymin = v.Y
+		}
+		if v.X > xmax {
+			xmax = v.X
+		}
+		if v.Y > ymax {
+			ymax = v.Y
+		}
+	}
+
+	if !found {
+		t.Fatal("no path vertices found")
+	}
+
+	return xmin, ymin, xmax, ymax
 }
 
 // Benchmark tests for performance
