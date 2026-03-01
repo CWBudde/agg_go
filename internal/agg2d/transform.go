@@ -417,11 +417,9 @@ func (agg2d *Agg2D) GetViewportTransform(worldX1, worldY1, worldX2, worldY2,
 	return viewportTransform(worldX1, worldY1, worldX2, worldY2, screenX1, screenY1, screenX2, screenY2, opt)
 }
 
-// ResetTransform resets the transformation matrix to identity.
-// This is an alias to avoid conflicts with the existing method in agg2d.go.
+// ResetTransform is a Go compatibility alias for ResetTransformations.
 func (agg2d *Agg2D) ResetTransform() {
-	agg2d.transform.Reset()
-	agg2d.updateApproximationScales()
+	agg2d.ResetTransformations()
 }
 
 // Parallelogram transformations

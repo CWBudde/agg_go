@@ -103,7 +103,6 @@ func BlendModeString(mode BlendMode) string {
 // This matches the C++ Agg2D::blendMode(BlendMode m) method.
 func (agg2d *Agg2D) SetBlendMode(mode BlendMode) {
 	agg2d.blendMode = mode
-	// Blend mode infrastructure is established; full integration requires renderer modifications
 	agg2d.updateBlendMode()
 }
 
@@ -117,7 +116,6 @@ func (agg2d *Agg2D) GetBlendMode() BlendMode {
 // This matches the C++ Agg2D::imageBlendMode(BlendMode m) method.
 func (agg2d *Agg2D) SetImageBlendMode(mode BlendMode) {
 	agg2d.imageBlendMode = mode
-	// Image blend mode will be applied when image operations are performed
 }
 
 // GetImageBlendMode returns the current image blending mode.
@@ -135,7 +133,7 @@ func (agg2d *Agg2D) SetImageBlendColor(c Color) {
 // SetImageBlendColorRGBA sets the image blend color using RGBA values.
 // This matches the C++ Agg2D::imageBlendColor(unsigned r, g, b, a) method.
 func (agg2d *Agg2D) SetImageBlendColorRGBA(r, g, b, a uint8) {
-	agg2d.imageBlendColor = Color{r, g, b, a}
+	agg2d.SetImageBlendColor(Color{r, g, b, a})
 }
 
 // GetImageBlendColor returns the current image blend color.

@@ -576,7 +576,7 @@ func BenchmarkViewportTransform(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		agg2d.ResetTransform()
+		agg2d.ResetTransformations()
 		agg2d.Viewport(0, 0, 1000, 1000, 0, 0, 800, 600, XMidYMid)
 	}
 }

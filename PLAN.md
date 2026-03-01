@@ -104,17 +104,20 @@ Notes:
 - [x] Ensure `ClipBox` updates all relevant renderer and rasterizer states consistently.
 - [x] Verify `clearClipBox`, `copyImage`, `blendImage`, transformed image operations obey clip box identically to AGG semantics.
       Verified by dedicated pixel-asserting tests in `internal/agg2d/{agg2d,image,utilities}_test.go`.
+- [x] Align `clearAll`, `inBox`, `alignPoint`, fill-rule updates, attach-time gamma reset, and master-alpha/gamma rasterizer behavior with `agg2d.cpp`.
 
 Files:
 
 - `internal/agg2d/buffer.go`
 - `internal/agg2d/utilities.go`
 - `internal/agg2d/image.go`
+- `internal/agg2d/rendering.go`
+- `internal/agg2d/fill_rules.go`
 
 ### Exit criteria
 
-- [ ] No `simplified`/`for now` rendering paths in `internal/agg2d` critical methods.
-- [ ] AGG2D image, gradient, text, clipping contract tests pass.
+- [x] No `simplified`/`for now` rendering paths in `internal/agg2d` critical methods.
+- [x] AGG2D image, gradient, text, clipping contract tests pass.
 - [ ] Visual tests for AGG2D demos pass against reference thresholds.
 
 ---
@@ -123,19 +126,23 @@ Files:
 
 ### 2.1 Rasterizer and scanline correctness
 
-- [ ] Verify fill rules, clipping, cell accumulation, and sweep behavior against AGG reference.
-- [ ] Resolve known integration inconsistencies in rendering correctness tests.
+- [x] Align fill rules, clipping edge cases, cell accumulation, and sweep indexing with AGG reference in the core AA rasterizers.
+- [x] Preserve AGG duplicate-cell behavior in sorted cell stores and compound scanline handling.
+- [x] Resolve known integration inconsistencies caused by non-AGG test-driver assumptions (`Rectangle()+DrawPath()`, missing even-odd enablement, invalid star geometry).
+- [ ] Continue auditing `compound_aa` and related rasterizer paths for any remaining source-level edge cases not yet covered by direct parity tests.
 
 ### 2.2 Renderer and pixfmt semantics
 
-- [ ] Verify compositing behavior for Porter-Duff modes and alpha paths.
-- [ ] Ensure premultiplied vs straight-alpha behavior matches AGG where required.
-- [ ] Confirm copy/blend operations align with `agg_renderer_base` semantics.
+- [x] Confirm copy/blend overlap behavior aligns with `agg_renderer_base` semantics in renderer base and concrete RGB/RGBA pixfmts.
+- [x] Align premultiplied vs straight-alpha behavior for Agg2D image rendering and composite image paths.
+- [x] Port the core `copy_from` / `blend_from` helper surface needed by RGBA, RGB, Gray, transposer, amask, and composite pixfmts.
+- [ ] Expand parity coverage for Porter-Duff and non-`BlendAlpha` composite behavior against C++ reference outputs, especially outside the currently covered image-path cases.
 
 ### 2.3 Converters (conv/vcgen/vpgen) chain fidelity
 
-- [ ] Validate converter ordering and state-machine parity for stroke/dash/curve/contour.
-- [ ] Ensure approximation scales are propagated exactly where AGG does.
+- [x] Restore AGG2D stroke/dash/transform ordering and line cap/join enum parity.
+- [x] Align viewport, gradient, and related transform/scalar propagation with AGG2D behavior.
+- [ ] Audit lower-level converter/vcgen/vpgen state machines beyond the Agg2D call sites, especially stroke/dash/curve/contour behavior and approximation-scale propagation.
 
 ### Exit criteria
 
