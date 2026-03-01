@@ -39,6 +39,7 @@ import (
 
 	"agg_go/internal/agg2d"
 	"agg_go/internal/color"
+	aggimage "agg_go/internal/image"
 	"agg_go/internal/rasterizer"
 	renscan "agg_go/internal/renderer/scanline"
 )
@@ -93,7 +94,6 @@ func Deg2RadFunc(degrees float64) float64 {
 type (
 	LineCap       int
 	LineJoin      int
-	ImageFilter   int
 	ImageResample int
 	TextAlignment int
 )
@@ -110,13 +110,6 @@ const (
 	JoinMiter LineJoin = iota
 	JoinRound
 	JoinBevel
-)
-
-// ImageFilter constants
-const (
-	FilterNearest ImageFilter = iota
-	FilterBilinear
-	FilterBicubic
 )
 
 // ImageResample constants
@@ -309,9 +302,83 @@ func (a *Agg2D) ResetTransformations() {
 	a.impl.ResetTransformations()
 }
 
-// ImageFilter sets the image filtering method.
-func (a *Agg2D) ImageFilter(f ImageFilter) {
-	a.impl.ImageFilter(int(f))
+// ImageFilter type
+type ImageFilter int
+
+// ImageFilter constants for image interpolation.
+const (
+	FilterBilinear ImageFilter = iota
+	FilterHanning
+	FilterHamming
+	FilterHermite
+	FilterQuadric
+	FilterBicubic
+	FilterCatrom
+	FilterMitchell
+	FilterSpline16
+	FilterSpline36
+	FilterGaussian
+	FilterBessel
+	FilterSinc
+	FilterLanczos
+	FilterBlackman
+)
+
+// ImageFilter sets the image filtering method using a predefined filter type.
+func (a *Agg2D) ImageFilter(ft ImageFilter) {
+	var f aggimage.FilterFunction
+	switch ft {
+	case FilterBilinear:
+		f = aggimage.BilinearFilter{}
+	case FilterHanning:
+		f = aggimage.HanningFilter{}
+	case FilterHamming:
+		f = aggimage.HammingFilter{}
+	case FilterHermite:
+		f = aggimage.HermiteFilter{}
+	case FilterQuadric:
+		f = aggimage.QuadricFilter{}
+	case FilterBicubic:
+		f = aggimage.BicubicFilter{}
+	case FilterCatrom:
+		f = aggimage.CatromFilter{}
+	case FilterMitchell:
+		f = aggimage.NewMitchellFilter(1.0/3.0, 1.0/3.0)
+	case FilterSpline16:
+		f = aggimage.Spline16Filter{}
+	case FilterSpline36:
+		f = aggimage.Spline36Filter{}
+	case FilterGaussian:
+		f = aggimage.GaussianFilter{}
+	case FilterBessel:
+		f = aggimage.BesselFilter{}
+	case FilterSinc:
+		f = aggimage.NewSincFilter(4.0)
+	case FilterLanczos:
+		f = aggimage.NewLanczosFilter(4.0)
+	case FilterBlackman:
+		f = aggimage.NewBlackmanFilter(4.0)
+	default:
+		f = aggimage.BilinearFilter{}
+	}
+	a.impl.SetImageFilterLUT(aggimage.NewImageFilterLUTWithFilter(f, true))
+}
+
+// SetImageFilterRadius sets the image filtering method with a custom radius for supported filters.
+func (a *Agg2D) SetImageFilterRadius(ft ImageFilter, radius float64) {
+	var f aggimage.FilterFunction
+	switch ft {
+	case FilterSinc:
+		f = aggimage.NewSincFilter(radius)
+	case FilterLanczos:
+		f = aggimage.NewLanczosFilter(radius)
+	case FilterBlackman:
+		f = aggimage.NewBlackmanFilter(radius)
+	default:
+		a.ImageFilter(ft)
+		return
+	}
+	a.impl.SetImageFilterLUT(aggimage.NewImageFilterLUTWithFilter(f, true))
 }
 
 // ImageResample sets the image resampling method.

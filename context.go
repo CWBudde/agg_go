@@ -48,9 +48,26 @@ func NewContext(width, height int) *Context {
 	return ctx
 }
 
-// Width returns the context width in pixels.
-func (ctx *Context) Width() int {
-	return ctx.width
+// NewContextForImage creates a new rendering context for an existing image.
+func NewContextForImage(img *Image) *Context {
+	if img == nil {
+		return nil
+	}
+	agg2d := NewAgg2D()
+	agg2d.Attach(img.Data, img.width, img.height, img.renBuf.Stride())
+
+	ctx := &Context{
+		agg2d:     agg2d,
+		image:     img,
+		width:     img.Width(),
+		height:    img.Height(),
+		lineWidth: 1.0,
+	}
+
+	ctx.SetColor(Black)
+	ctx.agg2d.LineWidth(ctx.lineWidth)
+
+	return ctx
 }
 
 // Height returns the context height in pixels.

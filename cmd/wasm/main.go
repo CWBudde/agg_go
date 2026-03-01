@@ -31,6 +31,8 @@ func main() {
 	js.Global().Set("setDashWidth", js.FuncOf(setDashWidth))
 	js.Global().Set("setDashClosed", js.FuncOf(setDashClosed))
 	js.Global().Set("setGouraudDilation", js.FuncOf(setGouraudDilation))
+	js.Global().Set("setImageFilter", js.FuncOf(setImageFilter))
+	js.Global().Set("setImageFilterRadius", js.FuncOf(setImageFilterRadius))
 
 	// Keep the Go program running
 	select {}
@@ -121,6 +123,20 @@ func setGouraudDilation(this js.Value, args []js.Value) interface{} {
 	return nil
 }
 
+func setImageFilter(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		imgFilterType = agg.ImageFilter(args[0].Int())
+	}
+	return nil
+}
+
+func setImageFilterRadius(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		imgFilterRadius = args[0].Float()
+	}
+	return nil
+}
+
 func getCanvasDimensions(this js.Value, args []js.Value) interface{} {
 	return map[string]interface{}{
 		"width":  width,
@@ -155,9 +171,12 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 	js.Global().Get("document").Call("getElementById", statusMsgID).Get("style").Set("color", "")
 	logStatus("Rendering " + demoType + "...")
 
-	// Reset specific demo state if needed
+	// Release cached demo state when switching away from a demo.
 	if demoType != "lion" {
 		lionPaths = nil
+	}
+	if demoType != "imagefilters" {
+		testImage = nil
 	}
 
 	ctx.Clear(agg.White)
@@ -185,6 +204,8 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 		drawDashDemo()
 	case "gouraud":
 		drawGouraudDemo()
+	case "imagefilters":
+		drawImageFiltersDemo()
 	case "aatest":
 		drawAATestDemo()
 	default:

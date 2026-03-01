@@ -433,6 +433,8 @@ func (agg2d *Agg2D) ImageFilter(f ImageFilter) {
 		agg2d.imageFilterLUT.Calculate(aggimage.BilinearFilter{}, true)
 	case Hanning:
 		agg2d.imageFilterLUT.Calculate(aggimage.HanningFilter{}, true)
+	case Hamming:
+		agg2d.imageFilterLUT.Calculate(aggimage.HammingFilter{}, true)
 	case Hermite:
 		agg2d.imageFilterLUT.Calculate(aggimage.HermiteFilter{}, true)
 	case Quadric:
@@ -445,25 +447,45 @@ func (agg2d *Agg2D) ImageFilter(f ImageFilter) {
 		agg2d.imageFilterLUT.Calculate(aggimage.Spline16Filter{}, true)
 	case Spline36:
 		agg2d.imageFilterLUT.Calculate(aggimage.Spline36Filter{}, true)
-	case Blackman144:
-		agg2d.imageFilterLUT.Calculate(aggimage.NewBlackman144Filter(), true)
-	case ImageFilterHamming:
-		agg2d.imageFilterLUT.Calculate(aggimage.HammingFilter{}, true)
-	case ImageFilterKaiser:
+	case Blackman:
+		agg2d.imageFilterLUT.Calculate(aggimage.NewBlackmanFilter(4.0), true)
+	case Kaiser:
 		agg2d.imageFilterLUT.Calculate(aggimage.NewKaiserFilter(0), true)
-	case ImageFilterGaussian:
+	case Gaussian:
 		agg2d.imageFilterLUT.Calculate(aggimage.GaussianFilter{}, true)
-	case ImageFilterBessel:
+	case Bessel:
 		agg2d.imageFilterLUT.Calculate(aggimage.BesselFilter{}, true)
-	case ImageFilterMitchell:
+	case Mitchell:
 		agg2d.imageFilterLUT.Calculate(aggimage.NewMitchellFilter(0, 0), true)
-	case ImageFilterSinc:
-		agg2d.imageFilterLUT.Calculate(aggimage.NewSincFilter(2.0), true)
-	case ImageFilterLanczos:
-		agg2d.imageFilterLUT.Calculate(aggimage.NewLanczosFilter(2.0), true)
+	case Sinc:
+		agg2d.imageFilterLUT.Calculate(aggimage.NewSincFilter(4.0), true)
+	case Lanczos:
+		agg2d.imageFilterLUT.Calculate(aggimage.NewLanczosFilter(4.0), true)
 	default:
 		agg2d.imageFilterLUT.Calculate(aggimage.BilinearFilter{}, true)
 	}
+}
+
+// SetImageFilterRadius sets the image filtering method with a custom radius for supported filters.
+func (agg2d *Agg2D) SetImageFilterRadius(f ImageFilter, radius float64) {
+	agg2d.imageFilter = f
+	if agg2d.imageFilterLUT == nil {
+		agg2d.imageFilterLUT = aggimage.NewImageFilterLUT()
+	}
+
+	var funcObj aggimage.FilterFunction
+	switch f {
+	case Blackman:
+		funcObj = aggimage.NewBlackmanFilter(radius)
+	case Sinc:
+		funcObj = aggimage.NewSincFilter(radius)
+	case Lanczos:
+		funcObj = aggimage.NewLanczosFilter(radius)
+	default:
+		agg2d.ImageFilter(f)
+		return
+	}
+	agg2d.imageFilterLUT.Calculate(funcObj, true)
 }
 
 // ImageResample sets the image resampling method.

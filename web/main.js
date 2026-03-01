@@ -51,15 +51,39 @@ async function init() {
       const aaControls = document.getElementById("aaControls");
       const dashControls = document.getElementById("dashControls");
       const gouraudControls = document.getElementById("gouraudControls");
+      const imageFilterControls = document.getElementById("imageFilterControls");
       aaControls.style.display = selector.value === "aa" ? "flex" : "none";
       dashControls.style.display = selector.value === "dash" ? "flex" : "none";
       gouraudControls.style.display = selector.value === "gouraud" ? "flex" : "none";
+      imageFilterControls.style.display = selector.value === "imagefilters" ? "flex" : "none";
       renderSelectedDemo();
     });
 
     document
       .getElementById("renderBtn")
       .addEventListener("click", renderSelectedDemo);
+
+    const filterSelector = document.getElementById("filterSelector");
+    filterSelector.addEventListener("change", () => {
+      const filterType = parseInt(filterSelector.value);
+      setImageFilter(filterType);
+      
+      // Only show radius slider for Sinc, Lanczos, Blackman
+      const hasRadius = filterType >= 12;
+      document.getElementById("radiusLabel").style.display = hasRadius ? "inline" : "none";
+      document.getElementById("filterRadiusSlider").style.display = hasRadius ? "inline" : "none";
+      document.getElementById("filterRadiusValue").style.display = hasRadius ? "inline" : "none";
+      
+      renderSelectedDemo();
+    });
+
+    const filterRadiusSlider = document.getElementById("filterRadiusSlider");
+    filterRadiusSlider.addEventListener("input", () => {
+      const val = parseFloat(filterRadiusSlider.value);
+      document.getElementById("filterRadiusValue").textContent = val;
+      setImageFilterRadius(parseInt(filterSelector.value), val);
+      renderSelectedDemo();
+    });
 
     const zoomSlider = document.getElementById("zoomSlider");
     zoomSlider.addEventListener("input", () => {
@@ -150,6 +174,7 @@ const demoDescriptions = {
     "B-Spline curve smoothing. Demonstrates the creation of smooth, continuous curves from a set of control points.",
   "dash": "Advanced line styling. Showcases various dash patterns and line thicknesses applied to both simple lines and complex paths.",
   "gouraud": "Smooth color interpolation across triangles. Demonstrates AGG's capability to render gradient-shaded meshes with sub-pixel precision and adjustable dilation.",
+  "imagefilters": "Comparison of different image interpolation filters. Rotates and scales a procedurally generated image using filters like Bilinear, Bicubic, Sinc, and Lanczos to showcase quality vs. performance.",
   "aatest": "Comprehensive anti-aliasing precision test. Renders radial lines, various ellipse sizes, and gradient-filled triangles at fractional offsets to verify the rasterizer's quality."
   };
 

@@ -384,3 +384,8 @@ func (a *gouraudRasAdapter) Vertex(x, y *float64) uint32 {
 	*y = vy
 	return uint32(cmd)
 }
+
+// SetImageFilterLUT sets the image filter lookup table.
+func (agg2d *Agg2D) SetImageFilterLUT(lut *aggimage.ImageFilterLUT) {
+	agg2d.imageFilterLUT = lut
+}
