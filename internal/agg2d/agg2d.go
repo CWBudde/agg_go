@@ -379,17 +379,8 @@ func (a *gouraudRasAdapter) Rewind(pathID uint32) {
 }
 
 func (a *gouraudRasAdapter) Vertex(x, y *float64) uint32 {
-	watchdog := 0
-	for {
-		vx, vy, cmd := a.sg.Vertex()
-		if !basics.IsStop(cmd) || watchdog > 1000 {
-			if watchdog > 1000 {
-				panic("gouraudRasAdapter: Watchdog triggered")
-			}
-			*x = vx
-			*y = vy
-			return uint32(cmd)
-		}
-		watchdog++
-	}
+	vx, vy, cmd := a.sg.Vertex()
+	*x = vx
+	*y = vy
+	return uint32(cmd)
 }
