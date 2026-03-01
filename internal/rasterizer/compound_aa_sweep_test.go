@@ -101,3 +101,25 @@ func TestCompoundAAPointerDerefFix(t *testing.T) {
 		}
 	}
 }
+
+func TestCompoundAANavigateNegativeScanline(t *testing.T) {
+	clipper := NewMockCompoundClipper(nil)
+	rasterizer := NewRasterizerCompoundAA(clipper)
+	clipper.outline = rasterizer.outline
+
+	rasterizer.Styles(1, 0)
+	rasterizer.MoveTo(-10, -10)
+	rasterizer.LineTo(10, -10)
+	rasterizer.LineTo(10, 10)
+	rasterizer.LineTo(-10, 10)
+	rasterizer.LineTo(-10, -10)
+	rasterizer.Sort()
+
+	if !rasterizer.NavigateScanline(-5) {
+		t.Fatal("Expected NavigateScanline to support negative scanlines")
+	}
+
+	if numStyles := rasterizer.SweepStyles(); numStyles == 0 {
+		t.Fatal("Expected styles on negative scanline")
+	}
+}

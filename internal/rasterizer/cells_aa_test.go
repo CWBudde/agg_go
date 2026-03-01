@@ -46,9 +46,9 @@ func TestRasterizerCellsAA_Basic(t *testing.T) {
 
 	// Test scanline access
 	for y := minY; y <= maxY; y++ {
-		numCells := rasterizer.ScanlineNumCells(uint32(y))
+		numCells := rasterizer.ScanlineNumCells(y)
 		if numCells > 0 {
-			cells := rasterizer.ScanlineCells(uint32(y))
+			cells := rasterizer.ScanlineCells(y)
 			if len(cells) != int(numCells) {
 				t.Errorf("Scanline %d: expected %d cells, got %d", y, numCells, len(cells))
 			}
@@ -103,7 +103,7 @@ func TestRasterizerCellsAA_VerticalLine(t *testing.T) {
 	// All cells should have the same X coordinate
 	expectedX := x >> basics.PolySubpixelShift
 	for y := rasterizer.MinY(); y <= rasterizer.MaxY(); y++ {
-		cells := rasterizer.ScanlineCells(uint32(y))
+		cells := rasterizer.ScanlineCells(y)
 		for _, cell := range cells {
 			if (*cell).GetX() != expectedX {
 				t.Errorf("Vertical line: expected X=%d, got X=%d", expectedX, (*cell).GetX())
@@ -125,5 +125,29 @@ func TestRasterizerCellsAA_HorizontalLine(t *testing.T) {
 
 	if rasterizer.TotalCells() != 0 {
 		t.Errorf("Expected no accumulated cells for an exact horizontal edge, got %d", rasterizer.TotalCells())
+	}
+}
+
+func TestRasterizerCellsAA_SortPreservesDuplicateXCells(t *testing.T) {
+	rasterizer := NewRasterizerCellsAASimple(1024)
+
+	rasterizer.currCell = CellAA{X: 7, Y: 3, Cover: 1, Area: 2}
+	rasterizer.addCurrCell()
+	rasterizer.currCell = CellAA{X: 7, Y: 3, Cover: 3, Area: 4}
+	rasterizer.addCurrCell()
+	rasterizer.currCell.Initial()
+
+	rasterizer.SortCells()
+
+	if got := rasterizer.ScanlineNumCells(3); got != 2 {
+		t.Fatalf("Expected duplicate X cells to remain after sorting, got %d cells", got)
+	}
+
+	cells := rasterizer.ScanlineCells(3)
+	if len(cells) != 2 {
+		t.Fatalf("Expected 2 scanline cells, got %d", len(cells))
+	}
+	if cells[0].X != 7 || cells[1].X != 7 {
+		t.Fatalf("Expected both sorted cells to keep X=7, got %d and %d", cells[0].X, cells[1].X)
 	}
 }

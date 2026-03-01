@@ -330,8 +330,9 @@ func (r *RasterizerCellsAAStyled) SortCells() {
 		}
 	}
 
-	// 4) Sort cells by X within each Y-run and consolidate identical X cells
-	r.sortCellsByXAndConsolidate()
+	// 4) Sort cells by X within each Y-run. Like AGG, preserve duplicate X/style
+	// entries and let the sweep phase combine them as needed.
+	r.sortCellsByX()
 
 	r.sorted = true
 }
@@ -342,20 +343,20 @@ func (r *RasterizerCellsAAStyled) TotalCells() uint32 {
 }
 
 // ScanlineNumCells returns the number of cells for the given scanline Y
-func (r *RasterizerCellsAAStyled) ScanlineNumCells(y uint32) uint32 {
-	if !r.sorted || int(y) < r.minY || int(y) > r.maxY {
+func (r *RasterizerCellsAAStyled) ScanlineNumCells(y int) uint32 {
+	if !r.sorted || y < r.minY || y > r.maxY {
 		return 0
 	}
-	return r.sortedY.At(int(y - uint32(r.minY))).Num
+	return r.sortedY.At(y - r.minY).Num
 }
 
 // ScanlineCells returns the cells for the given scanline Y
-func (r *RasterizerCellsAAStyled) ScanlineCells(y uint32) []*CellStyleAA {
-	if !r.sorted || int(y) < r.minY || int(y) > r.maxY {
+func (r *RasterizerCellsAAStyled) ScanlineCells(y int) []*CellStyleAA {
+	if !r.sorted || y < r.minY || y > r.maxY {
 		return nil
 	}
 
-	sortedRange := r.sortedY.At(int(y - uint32(r.minY)))
+	sortedRange := r.sortedY.At(y - r.minY)
 	cells := make([]*CellStyleAA, sortedRange.Num)
 
 	for i := uint32(0); i < sortedRange.Num; i++ {
@@ -438,9 +439,9 @@ func (r *RasterizerCellsAAStyled) allocateBlock() {
 	r.numBlocks++
 }
 
-// sortCellsByXAndConsolidate sorts cells by X coordinate within each Y-run and consolidates
-// cells with identical coordinates by summing their area and cover values
-func (r *RasterizerCellsAAStyled) sortCellsByXAndConsolidate() {
+// sortCellsByX sorts cells by X coordinate within each Y-run.
+// Duplicate X/style entries are preserved to match AGG's cell storage model.
+func (r *RasterizerCellsAAStyled) sortCellsByX() {
 	h := r.maxY - r.minY + 1
 
 	for i := 0; i < h; i++ {
@@ -463,24 +464,12 @@ func (r *RasterizerCellsAAStyled) sortCellsByXAndConsolidate() {
 			cells[j] = r.sortedCells.At(start + j)
 		}
 
-		// Sort by X coordinate using Go's standard library
+		// Sort by X coordinate using the same quicksort/insertion-sort shape as AGG.
 		r.quickSortCellsByX(cells)
 
-		// Consolidate cells with identical X coordinates
-		consolidated := r.consolidateCells(cells)
-
-		// Update the counts and write back consolidated cells
-		newSy := sy
-		newSy.Num = uint32(len(consolidated))
-		r.sortedY.Set(i, newSy)
-
-		// Write consolidated cells back to sortedCells
-		for j, cell := range consolidated {
+		for j, cell := range cells {
 			r.sortedCells.Set(start+j, cell)
 		}
-
-		// If we have fewer cells after consolidation, we need to compact
-		// For simplicity, we'll leave gaps for now as this is implementation detail
 	}
 }
 
@@ -539,38 +528,6 @@ func (r *RasterizerCellsAAStyled) partitionCells(cells []*CellStyleAA) int {
 
 	cells[i+1], cells[pivotIdx] = cells[pivotIdx], cells[i+1]
 	return i + 1
-}
-
-// consolidateCells consolidates cells with identical X coordinates by summing their area and cover
-// Note: For styled cells, we only consolidate cells with the same X AND same styles
-func (r *RasterizerCellsAAStyled) consolidateCells(cells []*CellStyleAA) []*CellStyleAA {
-	if len(cells) == 0 {
-		return cells
-	}
-
-	consolidated := make([]*CellStyleAA, 0, len(cells))
-
-	i := 0
-	for i < len(cells) {
-		currentCell := *cells[i] // Make a copy
-		currentX := currentCell.GetX()
-		currentLeft := currentCell.Left
-		currentRight := currentCell.Right
-
-		// Sum all cells with the same X coordinate AND same styles
-		j := i + 1
-		for j < len(cells) && cells[j].GetX() == currentX &&
-			cells[j].Left == currentLeft && cells[j].Right == currentRight {
-			currentCell.AddArea(cells[j].GetArea())
-			currentCell.AddCover(cells[j].GetCover())
-			j++
-		}
-
-		consolidated = append(consolidated, &currentCell)
-		i = j
-	}
-
-	return consolidated
 }
 
 // renderHLine renders a horizontal line segment within a single scanline

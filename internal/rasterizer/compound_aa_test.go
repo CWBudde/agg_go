@@ -241,6 +241,42 @@ func TestRasterizerCompoundAADoubleCoords(t *testing.T) {
 	}
 }
 
+func TestRasterizerCompoundAAAddPathCloseRendersClosingEdge(t *testing.T) {
+	clipper := NewMockCompoundClipper(nil)
+	rasterizer := NewRasterizerCompoundAA(clipper)
+	clipper.outline = rasterizer.outline
+
+	rasterizer.Styles(1, 0)
+
+	vs := &MockVertexSource{
+		vertices: []vertex{
+			{10, 10, uint32(basics.PathCmdMoveTo)},
+			{20, 10, uint32(basics.PathCmdLineTo)},
+			{20, 20, uint32(basics.PathCmdLineTo)},
+			{10, 20, uint32(basics.PathCmdLineTo)},
+			{0, 0, uint32(basics.PathCmdEndPoly) | uint32(basics.PathFlagsClose)},
+		},
+	}
+
+	rasterizer.AddPath(vs, 0)
+	rasterizer.Sort()
+
+	foundClosingEdge := false
+	for y := 11; y < 20 && !foundClosingEdge; y++ {
+		cells := rasterizer.outline.ScanlineCells(y)
+		for _, cell := range cells {
+			if cell.X == 10 {
+				foundClosingEdge = true
+				break
+			}
+		}
+	}
+
+	if !foundClosingEdge {
+		t.Fatal("Expected closed path to rasterize the closing edge at x=10")
+	}
+}
+
 // TestRasterizerCompoundAAEdge tests edge methods
 func TestRasterizerCompoundAAEdge(t *testing.T) {
 	// Create clipper first, then create rasterizer

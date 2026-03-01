@@ -126,7 +126,7 @@ type RasterizerCompoundAA[Clip CompoundClipInterface] struct {
 	// Current processing state
 	startX  int    // Starting X coordinate for current path
 	startY  int    // Starting Y coordinate for current path
-	scanY   uint32 // Current scanline Y coordinate
+	scanY   int    // Current scanline Y coordinate
 	slStart int    // Scanline start X coordinate
 	slLen   uint32 // Scanline length
 }
@@ -147,7 +147,7 @@ func NewRasterizerCompoundAA[Clip CompoundClipInterface](clipper Clip) *Rasteriz
 		maxStyle:    math.MinInt32,
 		startX:      0,
 		startY:      0,
-		scanY:       math.MaxUint32,
+		scanY:       math.MaxInt32,
 		slStart:     0,
 		slLen:       0,
 	}
@@ -158,7 +158,7 @@ func (r *RasterizerCompoundAA[Clip]) Reset() {
 	r.outline.Reset()
 	r.minStyle = math.MaxInt32
 	r.maxStyle = math.MinInt32
-	r.scanY = math.MaxUint32
+	r.scanY = math.MaxInt32
 	r.slStart = 0
 	r.slLen = 0
 }
@@ -266,7 +266,10 @@ func (r *RasterizerCompoundAA[Clip]) AddVertex(x, y float64, cmd uint32) {
 	case basics.IsVertex(pathCmd):
 		r.LineToD(x, y)
 	case basics.IsClose(cmd):
-		r.LineToD(float64(r.startX)/basics.PolySubpixelScale, float64(r.startY)/basics.PolySubpixelScale)
+		r.clipper.LineTo(r.outline,
+			float64(r.startX)/basics.PolySubpixelScale,
+			float64(r.startY)/basics.PolySubpixelScale,
+		)
 	}
 }
 
@@ -304,7 +307,7 @@ func (r *RasterizerCompoundAA[Clip]) Sort() {
 
 // HitTest checks if the given point is covered by any rendered geometry
 func (r *RasterizerCompoundAA[Clip]) HitTest(tx, ty int) bool {
-	if !r.NavigateScanline(uint32(ty)) {
+	if !r.NavigateScanline(ty) {
 		return false
 	}
 
@@ -319,7 +322,7 @@ func (r *RasterizerCompoundAA[Clip]) HitTest(tx, ty int) bool {
 }
 
 // NavigateScanline prepares the rasterizer for processing a specific scanline
-func (r *RasterizerCompoundAA[Clip]) NavigateScanline(y uint32) bool {
+func (r *RasterizerCompoundAA[Clip]) NavigateScanline(y int) bool {
 	r.outline.SortCells()
 	if r.outline.TotalCells() == 0 {
 		return false
@@ -327,7 +330,7 @@ func (r *RasterizerCompoundAA[Clip]) NavigateScanline(y uint32) bool {
 	if r.maxStyle < r.minStyle {
 		return false
 	}
-	if y < uint32(r.outline.MinY()) || y > uint32(r.outline.MaxY()) {
+	if y < r.outline.MinY() || y > r.outline.MaxY() {
 		return false
 	}
 	r.scanY = y
@@ -344,7 +347,7 @@ func (r *RasterizerCompoundAA[Clip]) RewindScanlines() bool {
 	if r.maxStyle < r.minStyle {
 		return false
 	}
-	r.scanY = uint32(r.outline.MinY())
+	r.scanY = r.outline.MinY()
 	r.styles.Allocate(r.maxStyle-r.minStyle+2, 128)
 	return true
 }
@@ -377,7 +380,7 @@ func (r *RasterizerCompoundAA[Clip]) addStyle(styleID int) {
 // SweepStyles processes all styles for the current scanline and returns the count
 func (r *RasterizerCompoundAA[Clip]) SweepStyles() uint32 {
 	for {
-		if r.scanY > uint32(r.outline.MaxY()) {
+		if r.scanY > r.outline.MaxY() {
 			return 0
 		}
 
@@ -520,7 +523,7 @@ func (r *RasterizerCompoundAA[Clip]) CalculateAlpha(area int) uint32 {
 // SweepScanline sweeps one scanline with the specified style index
 func (r *RasterizerCompoundAA[Clip]) SweepScanline(sl CompoundScanlineInterface, styleIdx int) bool {
 	scanY := r.scanY - 1
-	if scanY > uint32(r.outline.MaxY()) {
+	if scanY > r.outline.MaxY() {
 		return false
 	}
 
@@ -564,7 +567,7 @@ func (r *RasterizerCompoundAA[Clip]) SweepScanline(sl CompoundScanlineInterface,
 	if sl.NumSpans() == 0 {
 		return false
 	}
-	sl.Finalize(int(scanY))
+	sl.Finalize(scanY)
 	return true
 }
 
