@@ -59,12 +59,10 @@ func TestBasicDrawing(t *testing.T) {
 	// Set fill color to blue
 	agg2d.FillColor(Blue)
 
-	// Try to draw a simple rectangle (even if rendering isn't fully functional)
+	// Draw a simple rectangle and verify the basic API path runs cleanly.
 	agg2d.Rectangle(10, 10, 50, 50)
 	agg2d.DrawPath(FillOnly)
 
-	// At this stage, we're just testing that the API calls don't crash
-	// The actual rendering may not work due to incomplete implementation
 	t.Log("Basic drawing API calls completed without crashing")
 }
 
@@ -79,14 +77,13 @@ func TestGradientAPI(t *testing.T) {
 
 	agg2d.Attach(buffer, width, height, stride)
 
-	// Test gradient setup (API only for now)
+	// Set up a gradient and exercise the draw path end-to-end.
 	agg2d.FillLinearGradient(0, 0, 100, 100, Red, Blue, 1.0)
 
 	// Draw a shape with gradient
 	agg2d.Rectangle(20, 20, 80, 80)
 	agg2d.DrawPath(FillOnly)
 
-	// At this stage, gradients may not render but API should not crash
 	t.Log("Gradient API calls completed without crashing")
 }
 

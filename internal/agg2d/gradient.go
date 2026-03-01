@@ -42,9 +42,9 @@ func setupRadialGradient(matrix *transform.TransAffine, x, y, r float64) (d1, d2
 }
 
 func (agg2d *Agg2D) setupWorldRadialGradient(matrix *transform.TransAffine, x, y, r float64) (d1, d2 float64) {
-	screenRadius := agg2d.worldToScreen(r)
+	screenRadius := agg2d.WorldToScreenScalar(r)
 	screenX, screenY := x, y
-	agg2d.worldToScreenPoint(&screenX, &screenY)
+	agg2d.WorldToScreen(&screenX, &screenY)
 	return setupRadialGradient(matrix, screenX, screenY, screenRadius)
 }
 
@@ -78,7 +78,7 @@ func (agg2d *Agg2D) FillLinearGradient(x1, y1, x2, y2 float64, c1, c2 Color, pro
 	agg2d.fillGradientD2 = math.Sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1))
 	agg2d.fillGradientFlag = Linear
 
-	// Set fill color to a placeholder (gradient takes precedence)
+	// Match AGG by setting a concrete color even when the gradient is active.
 	agg2d.fillColor = NewColor(0, 0, 0, 255)
 }
 
@@ -103,7 +103,7 @@ func (agg2d *Agg2D) LineLinearGradient(x1, y1, x2, y2 float64, c1, c2 Color, pro
 	agg2d.lineGradientD2 = math.Sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1))
 	agg2d.lineGradientFlag = Linear
 
-	// Set line color to a placeholder (gradient takes precedence)
+	// Match AGG by setting a concrete color even when the gradient is active.
 	agg2d.lineColor = NewColor(0, 0, 0, 255)
 }
 
@@ -163,18 +163,6 @@ func (agg2d *Agg2D) FillRadialGradientPos(x, y, r float64) {
 // without changing the colors. This matches the C++ Agg2D::lineRadialGradient(x, y, r) method.
 func (agg2d *Agg2D) LineRadialGradientPos(x, y, r float64) {
 	agg2d.lineGradientD1, agg2d.lineGradientD2 = agg2d.setupWorldRadialGradient(agg2d.lineGradientMatrix, x, y, r)
-}
-
-// Helper methods for coordinate transformation
-
-// worldToScreen converts a world coordinate distance to screen coordinates
-func (agg2d *Agg2D) worldToScreen(distance float64) float64 {
-	return agg2d.worldToScreenScalar(distance)
-}
-
-// worldToScreenPoint converts world coordinates to screen coordinates
-func (agg2d *Agg2D) worldToScreenPoint(x, y *float64) {
-	agg2d.WorldToScreen(x, y)
 }
 
 // Accessor methods for gradient parameters

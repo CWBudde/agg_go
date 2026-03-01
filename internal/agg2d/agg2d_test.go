@@ -2,6 +2,8 @@ package agg2d
 
 import (
 	"testing"
+
+	"agg_go/internal/basics"
 )
 
 // TestNewAgg2D verifies that NewAgg2D creates a properly initialized context
@@ -269,6 +271,25 @@ func TestClipBox(t *testing.T) {
 
 	if actual != expected {
 		t.Errorf("Expected clip box %v, got %v", expected, actual)
+	}
+}
+
+func TestFillEvenOddUpdatesRasterizerImmediately(t *testing.T) {
+	ctx := NewAgg2D()
+
+	width, height := 10, 10
+	stride := width * 4
+	buffer := make([]uint8, height*stride)
+	ctx.Attach(buffer, width, height, stride)
+
+	ctx.FillEvenOdd(true)
+	if ctx.rasterizer.GetFillingRule() != basics.FillEvenOdd {
+		t.Fatalf("expected rasterizer fill rule %v, got %v", basics.FillEvenOdd, ctx.rasterizer.GetFillingRule())
+	}
+
+	ctx.FillEvenOdd(false)
+	if ctx.rasterizer.GetFillingRule() != basics.FillNonZero {
+		t.Fatalf("expected rasterizer fill rule %v, got %v", basics.FillNonZero, ctx.rasterizer.GetFillingRule())
 	}
 }
 

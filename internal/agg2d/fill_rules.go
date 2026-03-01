@@ -16,10 +16,9 @@ import (
 // This matches the C++ Agg2D::fillEvenOdd method.
 func (agg2d *Agg2D) FillEvenOdd(evenOddFlag bool) {
 	agg2d.evenOddFlag = evenOddFlag
-
-	// Apply the fill rule to the rasterizer if it exists
-	// Note: In a complete implementation, we would set this on the rasterizer
-	// For now, we store the flag and apply it when rendering
+	if agg2d.rasterizer != nil {
+		agg2d.rasterizer.FillingRule(agg2d.GetFillRule())
+	}
 }
 
 // GetFillEvenOdd returns the current fill rule.
@@ -64,19 +63,6 @@ func (agg2d *Agg2D) FillRuleDescription() string {
 		return "Even-Odd (XOR-based filling)"
 	}
 	return "Non-Zero Winding (direction-based filling)"
-}
-
-// FillingRuleSetter defines the interface for objects that can accept fill rule settings.
-// This interface is implemented by rasterizers that support different fill rule algorithms.
-type FillingRuleSetter interface {
-	FillingRule(rule basics.FillingRule)
-}
-
-// applyFillRuleToRasterizer applies the current fill rule to a rasterizer.
-// This is a helper method that will be used when integrating with the rendering pipeline.
-// The rasterizer parameter must implement the FillingRuleSetter interface.
-func (agg2d *Agg2D) applyFillRuleToRasterizer(rasterizer FillingRuleSetter) {
-	rasterizer.FillingRule(agg2d.GetFillRule())
 }
 
 // FillRuleExamples provides example use cases for different fill rules.

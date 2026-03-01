@@ -99,6 +99,11 @@ func (r *RasterizerScanlineAA[C, V, Clip]) FillingRule(rule basics.FillingRule) 
 	r.fillingRule = rule
 }
 
+// GetFillingRule returns the current polygon filling rule.
+func (r *RasterizerScanlineAA[C, V, Clip]) GetFillingRule() basics.FillingRule {
+	return r.fillingRule
+}
+
 // AutoClose sets whether polygons should be automatically closed
 func (r *RasterizerScanlineAA[C, V, Clip]) AutoClose(flag bool) {
 	r.autoClose = flag
