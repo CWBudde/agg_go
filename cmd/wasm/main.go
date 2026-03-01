@@ -77,6 +77,9 @@ func onMouseMove(this js.Value, args []js.Value) interface{} {
 }
 
 func onMouseUp(this js.Value, args []js.Value) interface{} {
+	if len(args) < 1 {
+		return nil
+	}
 	demoType := args[0].String()
 	if demoType == "aa" {
 		handleAAMouseUp()
@@ -125,20 +128,41 @@ func getCanvasDimensions(this js.Value, args []js.Value) interface{} {
 	}
 }
 
+func Log(msg string) {
+	fmt.Println(msg)
+	js.Global().Get("document").Call("getElementById", "statusMsg").Set("textContent", msg)
+}
+
+func updateStatusJS(msg string) {
+	js.Global().Get("document").Call("getElementById", "statusMsg").Set("textContent", msg)
+}
+
 func renderDemo(this js.Value, args []js.Value) interface{} {
 	if len(args) < 1 {
 		return nil
 	}
 
 	demoType := args[0].String()
-	fmt.Printf("Rendering demo: %s\n", demoType)
-	
-	ctx.Clear(agg.White)
-	
+
+	// Add panic recovery to prevent the WASM instance from dying silently
+	defer func() {
+		if r := recover(); r != nil {
+			errStr := fmt.Sprintf("FATAL ERROR in %s: %v", demoType, r)
+			Log(errStr)
+			js.Global().Get("document").Call("getElementById", "statusMsg").Get("style").Set("color", "#ff3b30")
+		}
+	}()
+
+	// Reset UI status color
+	js.Global().Get("document").Call("getElementById", "statusMsg").Get("style").Set("color", "")
+	updateStatusJS("Rendering " + demoType + "...")
+
 	// Reset specific demo state if needed
 	if demoType != "lion" {
 		lionPaths = nil
 	}
+
+	ctx.Clear(agg.White)
 
 	switch demoType {
 	case "lines":

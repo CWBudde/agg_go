@@ -157,6 +157,14 @@ func (sg *SpanGouraudRGBA) Generate(span []RGBAColor, x, y int, length uint) {
 
 	// Calculate starting point with subpixel accuracy
 	start := pc1.x - (x << SubpixelShift)
+	
+	// Safety: prevent massive underflow if start is negative or too small
+	if start < 0 {
+		// If start is negative, it means we're beginning before the span's x
+		// We'll skip the "beginning part" logic
+		start = 0
+	}
+	
 	r.Sub(uint(start))
 	g.Sub(uint(start))
 	b.Sub(uint(start))
@@ -167,7 +175,8 @@ func (sg *SpanGouraudRGBA) Generate(span []RGBAColor, x, y int, length uint) {
 	len := int(length)
 
 	// Beginning part - check for overflow since we rolled back interpolators
-	for len > 0 && start > 0 {
+	// Added hard limit to prevent infinite loops if start is corrupted
+	for len > 0 && start > 0 && spanIdx < int(length) {
 		vr := r.Y()
 		vg := g.Y()
 		vb := b.Y()
@@ -208,7 +217,7 @@ func (sg *SpanGouraudRGBA) Generate(span []RGBAColor, x, y int, length uint) {
 	}
 
 	// Middle part - no overflow checking needed
-	for len > 0 && nlen > 0 {
+	for len > 0 && nlen > 0 && spanIdx < int(length) {
 		span[spanIdx] = RGBAColor{
 			R: r.Y(),
 			G: g.Y(),
@@ -226,7 +235,7 @@ func (sg *SpanGouraudRGBA) Generate(span []RGBAColor, x, y int, length uint) {
 	}
 
 	// Ending part - check for overflow again
-	for len > 0 {
+	for len > 0 && spanIdx < int(length) {
 		vr := r.Y()
 		vg := g.Y()
 		vb := b.Y()
