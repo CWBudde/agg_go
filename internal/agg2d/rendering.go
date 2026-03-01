@@ -369,20 +369,22 @@ func (agg2d *Agg2D) render(fillColor bool) {
 
 // updateRasterizerGamma updates the rasterizer gamma correction
 func (agg2d *Agg2D) updateRasterizerGamma() {
-	if agg2d.rasterizer != nil && agg2d.antiAliasGamma != 1.0 {
-		// Create gamma function from gamma value
-		gamma := agg2d.antiAliasGamma
-		gammaFunc := func(x float64) float64 {
-			if x <= 0.0 {
-				return 0.0
-			}
-			if x >= 1.0 {
-				return 1.0
-			}
-			return math.Pow(x, 1.0/gamma)
-		}
-		agg2d.rasterizer.SetGamma(gammaFunc)
+	if agg2d.rasterizer == nil {
+		return
 	}
+
+	gamma := agg2d.antiAliasGamma
+	alpha := agg2d.masterAlpha
+	gammaFunc := func(x float64) float64 {
+		if x <= 0.0 {
+			return 0.0
+		}
+		if x >= 1.0 {
+			return alpha
+		}
+		return alpha * math.Pow(x, 1.0/gamma)
+	}
+	agg2d.rasterizer.SetGamma(gammaFunc)
 }
 
 // LineWidth sets the line width.

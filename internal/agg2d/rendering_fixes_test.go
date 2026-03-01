@@ -41,6 +41,26 @@ func TestGammaCorrection(t *testing.T) {
 	// If we get here without panic, the gamma function was applied successfully
 }
 
+func TestAttachResetsRasterizerGamma(t *testing.T) {
+	agg2d := NewAgg2D()
+
+	buf := make([]uint8, 100*100*4)
+	agg2d.Attach(buf, 100, 100, 100*4)
+
+	agg2d.SetAntiAliasGamma(2.0)
+	if got := agg2d.rasterizer.ApplyGamma(128); got == 128 {
+		t.Fatalf("expected non-linear gamma after SetAntiAliasGamma, got identity result %d", got)
+	}
+
+	agg2d.Attach(buf, 100, 100, 100*4)
+	if gamma := agg2d.GetAntiAliasGamma(); gamma != 1.0 {
+		t.Fatalf("expected attach to reset stored gamma to 1.0, got %v", gamma)
+	}
+	if got := agg2d.rasterizer.ApplyGamma(128); got != 128 {
+		t.Fatalf("expected attach to reset rasterizer gamma to identity, got %d", got)
+	}
+}
+
 func TestMasterAlpha(t *testing.T) {
 	// Create AGG2D instance
 	agg2d := NewAgg2D()
@@ -82,6 +102,26 @@ func TestMasterAlpha(t *testing.T) {
 
 	// The master alpha should be applied during rendering
 	// We don't check the exact pixel values here, but verify no crash occurs
+}
+
+func TestMasterAlphaAffectsRasterizerGamma(t *testing.T) {
+	agg2d := NewAgg2D()
+
+	buf := make([]uint8, 100*100*4)
+	agg2d.Attach(buf, 100, 100, 100*4)
+
+	agg2d.SetMasterAlpha(0.5)
+	got := agg2d.rasterizer.ApplyGamma(255)
+	if got != 127 {
+		t.Fatalf("expected master alpha to scale full coverage to 127, got %d", got)
+	}
+
+	agg2d.SetAntiAliasGamma(2.0)
+	got = agg2d.rasterizer.ApplyGamma(64)
+	want := uint8(0.5 * math.Pow(float64(64)/255.0, 0.5) * 255.0)
+	if got != want {
+		t.Fatalf("expected combined master alpha/gamma coverage %d, got %d", want, got)
+	}
 }
 
 func TestBlendModes(t *testing.T) {

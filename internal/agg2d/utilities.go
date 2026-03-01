@@ -6,8 +6,6 @@ import (
 	"math"
 
 	"agg_go/internal/color"
-	"agg_go/internal/pixfmt"
-	"agg_go/internal/renderer"
 )
 
 // Note: Mathematical constants Pi, Deg2Rad, Rad2Deg functions are defined in constants.go
@@ -27,24 +25,26 @@ func Rad2Deg(radians float64) float64 {
 // AlignPoint aligns a point to pixel boundaries for crisp rendering.
 // This matches the C++ Agg2D::alignPoint method.
 func (agg2d *Agg2D) AlignPoint(x, y *float64) {
-	if x != nil {
-		*x = math.Floor(*x) + 0.5
+	if x == nil || y == nil {
+		return
 	}
-	if y != nil {
-		*y = math.Floor(*y) + 0.5
-	}
+
+	agg2d.WorldToScreen(x, y)
+	*x = math.Floor(*x) + 0.5
+	*y = math.Floor(*y) + 0.5
+	agg2d.ScreenToWorld(x, y)
 }
 
 // InBox checks if a world coordinate point is inside the current clipping box.
 // This matches the C++ Agg2D::inBox method.
 func (agg2d *Agg2D) InBox(worldX, worldY float64) bool {
-	// Transform world coordinates to screen coordinates
-	screenX, screenY := worldX, worldY
-	agg2d.transform.Transform(&screenX, &screenY)
+	agg2d.WorldToScreen(&worldX, &worldY)
+	if agg2d.renBase != nil {
+		return agg2d.renBase.rendererBase().InBox(int(worldX), int(worldY))
+	}
 
-	// Check if the screen coordinates are within the clip box
-	return screenX >= agg2d.clipBox.X1 && screenX <= agg2d.clipBox.X2 &&
-		screenY >= agg2d.clipBox.Y1 && screenY <= agg2d.clipBox.Y2
+	return int(worldX) >= int(agg2d.clipBox.X1) && int(worldX) <= int(agg2d.clipBox.X2) &&
+		int(worldY) >= int(agg2d.clipBox.Y1) && int(worldY) <= int(agg2d.clipBox.Y2)
 }
 
 // WorldToScreenScalar converts a world scalar value to screen coordinates.
@@ -94,47 +94,12 @@ func (agg2d *Agg2D) ClearClipBox(c Color) {
 // ClearClipBoxRGBA clears the current clipping box with the specified RGBA values.
 // This matches the C++ Agg2D::clearClipBox(unsigned r, g, b, a) method.
 func (agg2d *Agg2D) ClearClipBoxRGBA(r, g, b, a uint8) {
-	if agg2d.renBase == nil || agg2d.pixfmt == nil {
+	if agg2d.renBase == nil {
 		return
 	}
 
-	// Convert the clip box coordinates to integers
-	x1 := int(math.Floor(agg2d.clipBox.X1))
-	y1 := int(math.Floor(agg2d.clipBox.Y1))
-	x2 := int(math.Ceil(agg2d.clipBox.X2))
-	y2 := int(math.Ceil(agg2d.clipBox.Y2))
-
-	// Ensure coordinates are within buffer bounds
-	if x1 < 0 {
-		x1 = 0
-	}
-	if y1 < 0 {
-		y1 = 0
-	}
-	if x2 > agg2d.renBase.Width() {
-		x2 = agg2d.renBase.Width() - 1
-	}
-	if y2 > agg2d.renBase.Height() {
-		y2 = agg2d.renBase.Height() - 1
-	}
-
-	// Skip if the clip box is empty or invalid
-	if x1 > x2 || y1 > y2 {
-		return
-	}
-
-	// Create a color for clearing
 	clearColor := color.RGBA8[color.Linear]{R: r, G: g, B: b, A: a}
-
-	// Use a renderer base with the concrete RGBA pixfmt so clip-box clearing
-	// follows the same clipped bar path as AGG.
-	rendererBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]](agg2d.pixfmt)
-
-	// Set the clipping box to match our desired clear area
-	rendererBase.ClipBox(x1, y1, x2, y2)
-
-	// Use CopyBar to clear the clipped area
-	rendererBase.CopyBar(x1, y1, x2, y2, clearColor)
+	agg2d.renBase.rendererBase().CopyBar(0, 0, agg2d.renBase.Width(), agg2d.renBase.Height(), clearColor)
 }
 
 // Clamp clamps a value between min and max

@@ -355,6 +355,28 @@ func TestClearAll(t *testing.T) {
 	}
 }
 
+func TestClearAllIgnoresClipBox(t *testing.T) {
+	ctx := NewAgg2D()
+
+	width, height := 4, 4
+	stride := width * 4
+	buffer := make([]uint8, height*stride)
+
+	ctx.Attach(buffer, width, height, stride)
+	ctx.ClipBox(1, 1, 2, 2)
+	ctx.ClearAllRGBA(10, 20, 30, 40)
+
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			offset := y*stride + x*4
+			if buffer[offset] != 10 || buffer[offset+1] != 20 || buffer[offset+2] != 30 || buffer[offset+3] != 40 {
+				t.Fatalf("pixel (%d,%d) = (%d,%d,%d,%d), want (10,20,30,40)", x, y,
+					buffer[offset], buffer[offset+1], buffer[offset+2], buffer[offset+3])
+			}
+		}
+	}
+}
+
 // TestImageFilter verifies image filter settings
 func TestImageFilter(t *testing.T) {
 	ctx := NewAgg2D()

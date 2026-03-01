@@ -66,6 +66,7 @@ func (agg2d *Agg2D) Attach(buf []uint8, width, height, stride int) {
 
 	// Initialize rendering pipeline
 	agg2d.initializeRendering()
+	agg2d.updateRasterizerGamma()
 }
 
 // initializeRendering sets up the rendering pipeline
@@ -102,23 +103,12 @@ func (agg2d *Agg2D) initializeRendering() {
 
 // ClearAll fills the entire buffer with the specified color.
 func (agg2d *Agg2D) ClearAll(c Color) {
-	// Simple implementation - fill the entire buffer
-	buf := agg2d.rbuf.Buf()
-	width := agg2d.rbuf.Width()
-	height := agg2d.rbuf.Height()
-	stride := agg2d.rbuf.Stride()
-
-	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
-			offset := y*stride + x*4
-			if offset+3 < len(buf) {
-				buf[offset] = c[0]   // R
-				buf[offset+1] = c[1] // G
-				buf[offset+2] = c[2] // B
-				buf[offset+3] = c[3] // A
-			}
-		}
+	if agg2d.renBase == nil {
+		return
 	}
+
+	clearColor := color.RGBA8[color.Linear]{R: c[0], G: c[1], B: c[2], A: c[3]}
+	agg2d.renBase.Clear(clearColor)
 }
 
 // ClipBox sets the clipping rectangle.

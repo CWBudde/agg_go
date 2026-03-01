@@ -73,12 +73,28 @@ func TestAlignPoint(t *testing.T) {
 
 	// Test with nil pointers
 	agg2d.AlignPoint(nil, nil) // Should not panic
+
+	t.Run("aligns in screen space and maps back", func(t *testing.T) {
+		agg2d.Scale(2.0, 2.0)
+
+		x, y := 1.2, 3.7
+		agg2d.AlignPoint(&x, &y)
+
+		if math.Abs(x-1.25) > 1e-10 {
+			t.Fatalf("aligned x = %v, want %v", x, 1.25)
+		}
+		if math.Abs(y-3.75) > 1e-10 {
+			t.Fatalf("aligned y = %v, want %v", y, 3.75)
+		}
+	})
 }
 
 func TestInBox(t *testing.T) {
 	agg2d := NewAgg2D()
+	buf := make([]uint8, 101*101*4)
+	agg2d.Attach(buf, 101, 101, 101*4)
 	agg2d.transform = transform.NewTransAffine() // Identity transform
-	agg2d.clipBox = struct{ X1, Y1, X2, Y2 float64 }{0, 0, 100, 100}
+	agg2d.ClipBox(0, 0, 100, 100)
 
 	tests := []struct {
 		x, y     float64
@@ -101,6 +117,18 @@ func TestInBox(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("uses transformed integer clip test", func(t *testing.T) {
+		if !agg2d.InBox(100.9, 100.9) {
+			t.Fatal("InBox should accept coordinates that truncate into the clip box")
+		}
+		if !agg2d.InBox(-0.2, -0.2) {
+			t.Fatal("InBox should match AGG integer truncation near zero")
+		}
+		if agg2d.InBox(101.0, 101.0) {
+			t.Fatal("InBox should reject coordinates outside the clip box after truncation")
+		}
+	})
 }
 
 func TestWorldScreenScalarConversion(t *testing.T) {
@@ -178,6 +206,37 @@ func TestClearClipBoxRespectsClip(t *testing.T) {
 
 	agg2d.ClearAllRGBA(0, 0, 255, 255)
 	agg2d.ClipBox(1, 1, 2, 2)
+	agg2d.ClearClipBoxRGBA(255, 0, 0, 255)
+
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			i := y*stride + x*4
+			got := [4]uint8{buf[i], buf[i+1], buf[i+2], buf[i+3]}
+			inClip := x >= 1 && x <= 2 && y >= 1 && y <= 2
+			if inClip {
+				want := [4]uint8{255, 0, 0, 255}
+				if got != want {
+					t.Fatalf("pixel (%d,%d): got %v, want %v", x, y, got, want)
+				}
+				continue
+			}
+			want := [4]uint8{0, 0, 255, 255}
+			if got != want {
+				t.Fatalf("pixel (%d,%d): got %v, want %v", x, y, got, want)
+			}
+		}
+	}
+}
+
+func TestClearClipBoxUsesRendererClipSemantics(t *testing.T) {
+	agg2d := NewAgg2D()
+	width, height := 5, 5
+	stride := width * 4
+	buf := make([]uint8, height*stride)
+	agg2d.Attach(buf, width, height, stride)
+
+	agg2d.ClearAllRGBA(0, 0, 255, 255)
+	agg2d.ClipBox(1.9, 1.9, 2.1, 2.1)
 	agg2d.ClearClipBoxRGBA(255, 0, 0, 255)
 
 	for y := 0; y < height; y++ {
