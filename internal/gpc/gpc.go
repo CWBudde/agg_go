@@ -191,6 +191,12 @@ type polygonClipDebugInfo struct {
 	OutPolyWasNil   bool
 	CountedContours int
 	MaxRawVertices  int
+	BoundaryAddsLeft  int
+	BoundaryAddsRight int
+	IntersectAddsLeft  int
+	IntersectAddsRight int
+	BoundaryVClass   map[int]int
+	IntersectVClass  map[int]int
 }
 
 var lastPolygonClipDebugInfo polygonClipDebugInfo
@@ -414,7 +420,10 @@ func PolygonClip(operation GPCOp, subjectPolygon, clipPolygon *GPCPolygon) (*GPC
 
 // polygonClipComplete implements the complete GPC scanline algorithm
 func polygonClipComplete(operation GPCOp, subjectPolygon, clipPolygon *GPCPolygon) (*GPCPolygon, error) {
-	lastPolygonClipDebugInfo = polygonClipDebugInfo{}
+	lastPolygonClipDebugInfo = polygonClipDebugInfo{
+		BoundaryVClass:  make(map[int]int),
+		IntersectVClass: make(map[int]int),
+	}
 
 	// Identify potentially contributing contours using bounding box overlap
 	if ((operation == GPCInt) || (operation == GPCDiff)) &&
@@ -579,6 +588,7 @@ func polygonClipComplete(operation GPCOp, subjectPolygon, clipPolygon *GPCPolygo
 				}
 
 				vclass := tr + (tl << 1) + (br << 2) + (bl << 3)
+				lastPolygonClipDebugInfo.BoundaryVClass[vclass]++
 
 				if contributing {
 					xb := edge.XB
@@ -591,17 +601,20 @@ func polygonClipComplete(operation GPCOp, subjectPolygon, clipPolygon *GPCPolygo
 					case int(vtxERI):
 						if xb != px {
 							addRight(cf, xb, yb)
+							lastPolygonClipDebugInfo.BoundaryAddsRight++
 							px = xb
 						}
 						edge.OutP[ABOVE] = cf
 						cf = nil
 					case int(vtxELI):
 						addLeft(edge.OutP[BELOW], xb, yb)
+						lastPolygonClipDebugInfo.BoundaryAddsLeft++
 						px = xb
 						cf = edge.OutP[BELOW]
 					case int(vtxEMX):
 						if xb != px {
 							addLeft(cf, xb, yb)
+							lastPolygonClipDebugInfo.BoundaryAddsLeft++
 							px = xb
 						}
 						mergeRight(cf, edge.OutP[BELOW], outPoly)
@@ -609,18 +622,21 @@ func polygonClipComplete(operation GPCOp, subjectPolygon, clipPolygon *GPCPolygo
 					case int(vtxILI):
 						if xb != px {
 							addLeft(cf, xb, yb)
+							lastPolygonClipDebugInfo.BoundaryAddsLeft++
 							px = xb
 						}
 						edge.OutP[ABOVE] = cf
 						cf = nil
 					case int(vtxIRI):
 						addRight(edge.OutP[BELOW], xb, yb)
+						lastPolygonClipDebugInfo.BoundaryAddsRight++
 						px = xb
 						cf = edge.OutP[BELOW]
 						edge.OutP[BELOW] = nil
 					case int(vtxIMX):
 						if xb != px {
 							addRight(cf, xb, yb)
+							lastPolygonClipDebugInfo.BoundaryAddsRight++
 							px = xb
 						}
 						mergeLeft(cf, edge.OutP[BELOW], outPoly)
@@ -629,6 +645,7 @@ func polygonClipComplete(operation GPCOp, subjectPolygon, clipPolygon *GPCPolygo
 					case int(vtxIMM):
 						if xb != px {
 							addRight(cf, xb, yb)
+							lastPolygonClipDebugInfo.BoundaryAddsRight++
 							px = xb
 						}
 						mergeLeft(cf, edge.OutP[BELOW], outPoly)
@@ -638,6 +655,7 @@ func polygonClipComplete(operation GPCOp, subjectPolygon, clipPolygon *GPCPolygo
 					case int(vtxEMM):
 						if xb != px {
 							addLeft(cf, xb, yb)
+							lastPolygonClipDebugInfo.BoundaryAddsLeft++
 							px = xb
 						}
 						mergeRight(cf, edge.OutP[BELOW], outPoly)
@@ -647,12 +665,14 @@ func polygonClipComplete(operation GPCOp, subjectPolygon, clipPolygon *GPCPolygo
 					case int(vtxLED):
 						if edge.Bot.Y == yb && edge.OutP[BELOW] != nil {
 							addLeft(edge.OutP[BELOW], xb, yb)
+							lastPolygonClipDebugInfo.BoundaryAddsLeft++
 						}
 						edge.OutP[ABOVE] = edge.OutP[BELOW]
 						px = xb
 					case int(vtxRED):
 						if edge.Bot.Y == yb && edge.OutP[BELOW] != nil {
 							addRight(edge.OutP[BELOW], xb, yb)
+							lastPolygonClipDebugInfo.BoundaryAddsRight++
 						}
 						edge.OutP[ABOVE] = edge.OutP[BELOW]
 						px = xb
@@ -752,6 +772,7 @@ func polygonClipComplete(operation GPCOp, subjectPolygon, clipPolygon *GPCPolygo
 					}
 
 					vclass := tr + (tl << 1) + (br << 2) + (bl << 3)
+					lastPolygonClipDebugInfo.IntersectVClass[vclass]++
 
 					switch vclass {
 					case int(vtxEMN):
@@ -760,18 +781,21 @@ func polygonClipComplete(operation GPCOp, subjectPolygon, clipPolygon *GPCPolygo
 					case int(vtxERI):
 						if p != nil {
 							addRight(p, ix, iy)
+							lastPolygonClipDebugInfo.IntersectAddsRight++
 							e1.OutP[ABOVE] = p
 							e0.OutP[ABOVE] = nil
 						}
 					case int(vtxELI):
 						if q != nil {
 							addLeft(q, ix, iy)
+							lastPolygonClipDebugInfo.IntersectAddsLeft++
 							e0.OutP[ABOVE] = q
 							e1.OutP[ABOVE] = nil
 						}
 					case int(vtxEMX):
 						if p != nil && q != nil {
 							addLeft(p, ix, iy)
+							lastPolygonClipDebugInfo.IntersectAddsLeft++
 							mergeRight(p, q, outPoly)
 							e0.OutP[ABOVE] = nil
 							e1.OutP[ABOVE] = nil
@@ -782,18 +806,21 @@ func polygonClipComplete(operation GPCOp, subjectPolygon, clipPolygon *GPCPolygo
 					case int(vtxILI):
 						if p != nil {
 							addLeft(p, ix, iy)
+							lastPolygonClipDebugInfo.IntersectAddsLeft++
 							e1.OutP[ABOVE] = p
 							e0.OutP[ABOVE] = nil
 						}
 					case int(vtxIRI):
 						if q != nil {
 							addRight(q, ix, iy)
+							lastPolygonClipDebugInfo.IntersectAddsRight++
 							e0.OutP[ABOVE] = q
 							e1.OutP[ABOVE] = nil
 						}
 					case int(vtxIMX):
 						if p != nil && q != nil {
 							addRight(p, ix, iy)
+							lastPolygonClipDebugInfo.IntersectAddsRight++
 							mergeLeft(p, q, outPoly)
 							e0.OutP[ABOVE] = nil
 							e1.OutP[ABOVE] = nil
@@ -801,6 +828,7 @@ func polygonClipComplete(operation GPCOp, subjectPolygon, clipPolygon *GPCPolygo
 					case int(vtxIMM):
 						if p != nil && q != nil {
 							addRight(p, ix, iy)
+							lastPolygonClipDebugInfo.IntersectAddsRight++
 							mergeLeft(p, q, outPoly)
 							addLocalMin(&outPoly, e0, ix, iy)
 							e1.OutP[ABOVE] = e0.OutP[ABOVE]
@@ -808,6 +836,7 @@ func polygonClipComplete(operation GPCOp, subjectPolygon, clipPolygon *GPCPolygo
 					case int(vtxEMM):
 						if p != nil && q != nil {
 							addLeft(p, ix, iy)
+							lastPolygonClipDebugInfo.IntersectAddsLeft++
 							mergeRight(p, q, outPoly)
 							addLocalMin(&outPoly, e0, ix, iy)
 							e1.OutP[ABOVE] = e0.OutP[ABOVE]

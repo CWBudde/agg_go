@@ -798,12 +798,18 @@ func TestPolygonClipDebugOverlappingRectangles(t *testing.T) {
 	}
 
 	t.Logf(
-		"debug: local_min_adds=%d out_poly_nil=%v max_raw_vertices=%d counted_contours=%d result_contours=%d",
+		"debug: local_min_adds=%d out_poly_nil=%v max_raw_vertices=%d counted_contours=%d result_contours=%d boundary_adds=(L:%d R:%d) intersect_adds=(L:%d R:%d) boundary_vclass=%v intersect_vclass=%v",
 		lastPolygonClipDebugInfo.LocalMinAdds,
 		lastPolygonClipDebugInfo.OutPolyWasNil,
 		lastPolygonClipDebugInfo.MaxRawVertices,
 		lastPolygonClipDebugInfo.CountedContours,
 		result.NumContours,
+		lastPolygonClipDebugInfo.BoundaryAddsLeft,
+		lastPolygonClipDebugInfo.BoundaryAddsRight,
+		lastPolygonClipDebugInfo.IntersectAddsLeft,
+		lastPolygonClipDebugInfo.IntersectAddsRight,
+		lastPolygonClipDebugInfo.BoundaryVClass,
+		lastPolygonClipDebugInfo.IntersectVClass,
 	)
 }
 

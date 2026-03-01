@@ -186,9 +186,11 @@ Files:
 
 ### 4.1 Contract tests (API behavior)
 
-- [ ] Expand AGG2D tests to assert outputs, not just `err == nil`.
-      Started by converting `internal/agg2d/rendering_test.go`, `internal/agg2d/image_test.go`, and `internal/agg2d/text_phase1_test.go` from smoke-style "no crash" checks to deterministic output assertions for solid fill, gradient fill, translated rendering output, clipped fill/stroke rendering, blend-mode compositing, transformed image placement/color coverage, and vector-text alignment/bounds.
-- [ ] Add deterministic checks for transform-image, clipping, blend modes, gradients, text bounds.
+- [x] Expand AGG2D tests to assert outputs, not just `err == nil`, for the currently covered rendering paths.
+      `internal/agg2d/rendering_test.go`, `internal/agg2d/image_test.go`, and `internal/agg2d/text_phase1_test.go` now use deterministic output assertions for solid fill, gradient fill, translated rendering output, clipped fill/stroke rendering, blend-mode compositing, transformed image placement/color coverage, and vector-text alignment/bounds.
+- [x] Add deterministic checks for transform-image, clipping, blend modes, gradients, and text bounds.
+- [ ] Continue replacing remaining AGG2D smoke/integration tests with output assertions where they still only verify "no crash" behavior.
+      Remaining likely targets include broader path/image integration cases in `internal/agg2d/rendering_fixes_test.go` and any text rendering paths that still depend on loose FreeType/system-font checks rather than deterministic bounds or pixel contracts.
 
 ### 4.2 Visual regression tests
 
