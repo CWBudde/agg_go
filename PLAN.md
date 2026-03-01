@@ -146,8 +146,8 @@ Files:
 
 ### Exit criteria
 
-- [ ] Integration tests for full pipeline pass without known behavioral exceptions.
-- [ ] Golden image diffs are within agreed threshold.
+- [x] Integration tests for full pipeline pass without known behavioral exceptions.
+- [x] Golden image diffs are within agreed threshold.
 
 ---
 
