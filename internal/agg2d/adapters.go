@@ -163,6 +163,14 @@ func newImagePixelFormat(img *Image) *imagePixelFormat {
 	return &imagePixelFormat{img: img}
 }
 
+type imagePixelFormatPre struct {
+	img *Image
+}
+
+func newImagePixelFormatPre(img *Image) *imagePixelFormatPre {
+	return &imagePixelFormatPre{img: img}
+}
+
 func (ipf *imagePixelFormat) Width() int {
 	return ipf.img.Width()
 }
@@ -189,6 +197,29 @@ func (ipf *imagePixelFormat) OrderType() color.ColorOrder {
 func (ipf *imagePixelFormat) Pixel(x, y int) color.RGBA8[color.Linear] {
 	pixel := ipf.img.GetPixel(x, y)
 	return color.NewRGBA8[color.Linear](pixel[0], pixel[1], pixel[2], pixel[3])
+}
+
+func (ipf *imagePixelFormatPre) Width() int {
+	return ipf.img.Width()
+}
+
+func (ipf *imagePixelFormatPre) Height() int {
+	return ipf.img.Height()
+}
+
+func (ipf *imagePixelFormatPre) Pixel(x, y int) color.RGBA8[color.Linear] {
+	pixel := ipf.img.GetPixel(x, y)
+	a := pixel[3]
+	return color.NewRGBA8[color.Linear](
+		color.RGBA8Multiply(pixel[0], a),
+		color.RGBA8Multiply(pixel[1], a),
+		color.RGBA8Multiply(pixel[2], a),
+		a,
+	)
+}
+
+func (ipf *imagePixelFormatPre) GetPixel(x, y int) color.RGBA8[color.Linear] {
+	return ipf.Pixel(x, y)
 }
 
 func (ipf *imagePixelFormat) pixelSliceClamped(x, y int) []basics.Int8u {

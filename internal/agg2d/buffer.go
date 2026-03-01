@@ -57,6 +57,7 @@ func (agg2d *Agg2D) Attach(buf []uint8, width, height, stride int) {
 	agg2d.ClipBox(0, 0, float64(width), float64(height))
 	agg2d.LineCap(CapRound)
 	agg2d.LineJoin(JoinRound)
+	agg2d.FlipText(false)
 	agg2d.ImageFilter(ImageFilterBilinear)
 	agg2d.ImageResample(NoResample)
 	agg2d.masterAlpha = 1.0
@@ -76,7 +77,9 @@ func (agg2d *Agg2D) initializeRendering() {
 	if width > 0 && height > 0 {
 		// Create pixel format
 		agg2d.pixfmt = pixfmt.NewPixFmtRGBA32[color.Linear](agg2d.rbuf)
+		agg2d.pixfmtPre = pixfmt.NewPixFmtRGBA32Pre[color.Linear](agg2d.rbuf)
 		agg2d.renBase = newBaseRendererAdapter[color.RGBA8[color.Linear]](agg2d.pixfmt)
+		agg2d.renBasePre = newBaseRendererAdapter[color.RGBA8[color.Linear]](agg2d.pixfmtPre)
 
 		// Create composite pixel format with default source-over blending
 		agg2d.pixfmtComp = pixfmt.NewPixFmtCompositeRGBA32(agg2d.rbuf, blender.CompOpSrcOver)
@@ -127,6 +130,9 @@ func (agg2d *Agg2D) ClipBox(x1, y1, x2, y2 float64) {
 	rx2, ry2 := int(x2), int(y2)
 	if agg2d.renBase != nil {
 		agg2d.renBase.ClipBox(rx1, ry1, rx2, ry2)
+	}
+	if agg2d.renBasePre != nil {
+		agg2d.renBasePre.ClipBox(rx1, ry1, rx2, ry2)
 	}
 	if agg2d.renBaseComp != nil {
 		agg2d.renBaseComp.ClipBox(rx1, ry1, rx2, ry2)

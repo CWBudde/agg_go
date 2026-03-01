@@ -20,16 +20,6 @@ const (
 	ApproxScale = 1.0
 )
 
-// Additional LineCap constants not yet defined in agg2d.go
-const (
-	CapSquare LineCap = 2
-)
-
-// Additional LineJoin constants not yet defined in agg2d.go
-const (
-	JoinBevel LineJoin = 2
-)
-
 // Additional ImageFilter constants
 const (
 	ImageFilterHanning  ImageFilter = 2

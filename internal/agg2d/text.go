@@ -42,6 +42,7 @@ func (agg2d *Agg2D) Font(fileName string, height float64, bold, italic bool,
 
 	// Load the font
 	if agg2d.fontEngine != nil {
+		agg2d.fontEngine.SetFlipY(agg2d.flipText)
 		err := agg2d.fontEngine.LoadFont(fileName, 0, renderingType, nil)
 		if err != nil {
 			return err
@@ -68,6 +69,7 @@ func (agg2d *Agg2D) FontHeight() float64 {
 
 // FlipText sets whether to flip text rendering vertically.
 func (agg2d *Agg2D) FlipText(flip bool) {
+	agg2d.flipText = flip
 	if agg2d.fontEngine != nil {
 		agg2d.fontEngine.SetFlipY(flip)
 	}

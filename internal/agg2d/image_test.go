@@ -311,6 +311,28 @@ func TestBlendImageUsesGeneralBlendMode(t *testing.T) {
 	}
 }
 
+func TestBlendImageUsesPremultipliedRendererForAlphaMode(t *testing.T) {
+	agg2d := NewAgg2D()
+	width, height := 4, 4
+	buf := make([]uint8, width*height*4)
+	agg2d.Attach(buf, width, height, width*4)
+	agg2d.SetBlendMode(BlendAlpha)
+
+	src := []uint8{255, 0, 0, 128}
+	img := NewImage(src, 1, 1, 4)
+
+	if err := agg2d.BlendImageSimple(img, 1, 1, 255); err != nil {
+		t.Fatalf("BlendImageSimple failed: %v", err)
+	}
+
+	i := (1*width + 1) * 4
+	got := [4]uint8{buf[i], buf[i+1], buf[i+2], buf[i+3]}
+	want := [4]uint8{128, 0, 0, 128}
+	if got != want {
+		t.Fatalf("BlendImageSimple should use premultiplied image blending, got %v, want %v", got, want)
+	}
+}
+
 func TestBlendImageRespectsClipBox(t *testing.T) {
 	agg2d := NewAgg2D()
 	width, height := 6, 6
@@ -345,6 +367,91 @@ func TestBlendImageRespectsClipBox(t *testing.T) {
 			} else if r != 0 || g != 0 || b != 0 || a != 0 {
 				t.Fatalf("pixel (%d,%d) expected unchanged outside clip box, got (%d,%d,%d,%d)", x, y, r, g, b, a)
 			}
+		}
+	}
+}
+
+func TestBlendImageSubrectUsesSourceOffset(t *testing.T) {
+	agg2d := NewAgg2D()
+	width, height := 6, 6
+	stride := width * 4
+	buf := make([]uint8, height*stride)
+	agg2d.Attach(buf, width, height, stride)
+
+	src := make([]uint8, 4*4*4)
+	for y := 0; y < 4; y++ {
+		for x := 0; x < 4; x++ {
+			i := (y*4 + x) * 4
+			src[i+0] = uint8(x * 40)
+			src[i+1] = uint8(y * 40)
+			src[i+2] = 0
+			src[i+3] = 255
+		}
+	}
+	img := NewImage(src, 4, 4, 4*4)
+
+	if err := agg2d.BlendImage(img, 1, 1, 3, 3, 2, 2, 255); err != nil {
+		t.Fatalf("BlendImage failed: %v", err)
+	}
+
+	// The 2x2 source sub-rectangle [(1,1), (2,2)] should land at (2,2)-(3,3).
+	tests := []struct {
+		x, y int
+		want [4]uint8
+	}{
+		{2, 2, [4]uint8{40, 40, 0, 255}},
+		{3, 2, [4]uint8{80, 40, 0, 255}},
+		{2, 3, [4]uint8{40, 80, 0, 255}},
+		{3, 3, [4]uint8{80, 80, 0, 255}},
+	}
+
+	for _, tc := range tests {
+		i := (tc.y*stride + tc.x*4)
+		got := [4]uint8{buf[i], buf[i+1], buf[i+2], buf[i+3]}
+		if got != tc.want {
+			t.Fatalf("pixel (%d,%d): got %v, want %v", tc.x, tc.y, got, tc.want)
+		}
+	}
+}
+
+func TestCopyImageSubrectUsesSourceOffset(t *testing.T) {
+	agg2d := NewAgg2D()
+	width, height := 6, 6
+	stride := width * 4
+	buf := make([]uint8, height*stride)
+	agg2d.Attach(buf, width, height, stride)
+
+	src := make([]uint8, 4*4*4)
+	for y := 0; y < 4; y++ {
+		for x := 0; x < 4; x++ {
+			i := (y*4 + x) * 4
+			src[i+0] = uint8(10 + x)
+			src[i+1] = uint8(20 + y)
+			src[i+2] = 30
+			src[i+3] = 255
+		}
+	}
+	img := NewImage(src, 4, 4, 4*4)
+
+	if err := agg2d.CopyImage(img, 1, 1, 3, 3, 2, 2); err != nil {
+		t.Fatalf("CopyImage failed: %v", err)
+	}
+
+	tests := []struct {
+		x, y int
+		want [4]uint8
+	}{
+		{2, 2, [4]uint8{11, 21, 30, 255}},
+		{3, 2, [4]uint8{12, 21, 30, 255}},
+		{2, 3, [4]uint8{11, 22, 30, 255}},
+		{3, 3, [4]uint8{12, 22, 30, 255}},
+	}
+
+	for _, tc := range tests {
+		i := (tc.y*stride + tc.x*4)
+		got := [4]uint8{buf[i], buf[i+1], buf[i+2], buf[i+3]}
+		if got != tc.want {
+			t.Fatalf("pixel (%d,%d): got %v, want %v", tc.x, tc.y, got, tc.want)
 		}
 	}
 }
@@ -535,6 +642,32 @@ func TestTransformImageRespectsClipBox(t *testing.T) {
 	}
 	if redInside == 0 {
 		t.Fatalf("expected transformed image to render within clip box")
+	}
+}
+
+func TestTransformImageUsesPremultipliedRenderer(t *testing.T) {
+	agg2d := NewAgg2D()
+	width, height := 8, 8
+	stride := width * 4
+	buf := make([]uint8, height*stride)
+	agg2d.Attach(buf, width, height, stride)
+	agg2d.ImageFilter(Bilinear)
+	agg2d.ImageResample(NoResample)
+
+	src := []uint8{
+		255, 0, 0, 128,
+	}
+	img := NewImage(src, 1, 1, 4)
+
+	if err := agg2d.TransformImageSimple(img, 2, 2, 3, 3); err != nil {
+		t.Fatalf("TransformImageSimple failed: %v", err)
+	}
+
+	i := 2*stride + 2*4
+	got := [4]uint8{buf[i], buf[i+1], buf[i+2], buf[i+3]}
+	want := [4]uint8{128, 0, 0, 128}
+	if got != want {
+		t.Fatalf("transformed image pixel: got %v, want %v", got, want)
 	}
 }
 

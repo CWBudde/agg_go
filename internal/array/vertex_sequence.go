@@ -202,6 +202,8 @@ func (vs *VertexDistSequence) Close(closed bool) {
 			last := vs.storage.At(vs.storage.Size() - 1)
 			first := vs.storage.At(0)
 			if validateVertexDist(last, first) {
+				last.CalculateDistance(first)
+				vs.storage.Set(vs.storage.Size()-1, last)
 				break
 			}
 			vs.storage.RemoveLast()

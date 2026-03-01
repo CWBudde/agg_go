@@ -179,14 +179,18 @@ func TestMasterAlphaEffect(t *testing.T) {
 	fullAlphaPixel := getPixel(buffer1, stride, 50, 50)
 	halfAlphaPixel := getPixel(buffer2, stride, 50, 50)
 
-	// Master alpha should make the red less intense
-	if halfAlphaPixel[0] >= fullAlphaPixel[0] {
-		t.Errorf("Master alpha should reduce color intensity: full=%d, half=%d",
-			fullAlphaPixel[0], halfAlphaPixel[0])
+	// Over an opaque white background the red channel stays saturated, while
+	// green/blue rise because the red is blended with white.
+	if halfAlphaPixel[0] != 255 {
+		t.Errorf("Half master alpha should preserve the saturated red channel, got RGB(%d,%d,%d)",
+			halfAlphaPixel[0], halfAlphaPixel[1], halfAlphaPixel[2])
 	}
-
-	// Half alpha should create lighter red (blended with white background)
-	if halfAlphaPixel[0] < 200 {
+	if halfAlphaPixel[1] <= fullAlphaPixel[1] || halfAlphaPixel[2] <= fullAlphaPixel[2] {
+		t.Errorf("Master alpha should lighten the non-red channels: full RGB(%d,%d,%d), half RGB(%d,%d,%d)",
+			fullAlphaPixel[0], fullAlphaPixel[1], fullAlphaPixel[2],
+			halfAlphaPixel[0], halfAlphaPixel[1], halfAlphaPixel[2])
+	}
+	if halfAlphaPixel[1] < 100 || halfAlphaPixel[2] < 100 {
 		t.Errorf("Half master alpha should create light red, got RGB(%d,%d,%d)",
 			halfAlphaPixel[0], halfAlphaPixel[1], halfAlphaPixel[2])
 	}
@@ -232,6 +236,26 @@ func TestGradientRendering(t *testing.T) {
 	if centerPixel[0] < 50 || centerPixel[2] < 50 {
 		t.Errorf("Center gradient pixel should have both red and blue, got RGB(%d,%d,%d)",
 			centerPixel[0], centerPixel[1], centerPixel[2])
+	}
+}
+
+func TestBlendModeDstLeavesDestinationUnchanged(t *testing.T) {
+	width, height := 32, 32
+	stride := width * 4
+	buffer := make([]uint8, height*stride)
+
+	ctx := agg2d.NewAgg2D()
+	ctx.Attach(buffer, width, height, stride)
+	ctx.ClearAll(agg2d.Color{0, 0, 0, 0})
+	ctx.SetBlendMode(agg2d.BlendDst)
+	ctx.FillColor(agg2d.Color{255, 0, 0, 255})
+
+	drawFilledRectPath(ctx, 8, 8, 24, 24)
+
+	for i, v := range buffer {
+		if v != 0 {
+			t.Fatalf("BlendDst should preserve destination, first changed byte at %d: %d", i, v)
+		}
 	}
 }
 

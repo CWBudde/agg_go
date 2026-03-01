@@ -154,7 +154,29 @@ func TestFlipText(t *testing.T) {
 
 	// Test FlipText without crashing (should handle nil font engine gracefully)
 	agg2d.FlipText(true)
+	if !agg2d.flipText {
+		t.Fatal("expected flipText state to persist before font engine creation")
+	}
 	agg2d.FlipText(false)
+	if agg2d.flipText {
+		t.Fatal("expected flipText state to update when disabled")
+	}
+}
+
+func TestFlipTextResetsOnAttach(t *testing.T) {
+	agg2d := NewAgg2D()
+	buf := make([]byte, 100*100*4)
+	agg2d.Attach(buf, 100, 100, 100*4)
+
+	agg2d.FlipText(true)
+	if !agg2d.flipText {
+		t.Fatal("expected flipText to be enabled")
+	}
+
+	agg2d.Attach(buf, 100, 100, 100*4)
+	if agg2d.flipText {
+		t.Fatal("expected Attach to reset flipText to false")
+	}
 }
 
 // TestTextWithRotation tests text rendering with rotation angle.

@@ -19,10 +19,17 @@ import (
 // Rendering methods
 
 func (agg2d *Agg2D) currentRenderer() *baseRendererAdapter[color.RGBA8[color.Linear]] {
-	if agg2d.renBaseComp != nil {
+	if agg2d.blendMode != BlendAlpha && agg2d.renBaseComp != nil {
 		return agg2d.renBaseComp
 	}
 	return agg2d.renBase
+}
+
+func (agg2d *Agg2D) currentImageRenderer() *baseRendererAdapter[color.RGBA8[color.Linear]] {
+	if agg2d.blendMode != BlendAlpha && agg2d.renBaseComp != nil {
+		return agg2d.renBaseComp
+	}
+	return agg2d.renBasePre
 }
 
 // renderFill renders the current path as a filled shape
@@ -74,15 +81,9 @@ func (agg2d *Agg2D) renderStroke() {
 	// Always use non-zero fill rule for strokes
 	agg2d.rasterizer.FillingRule(basics.FillNonZero)
 
-	// Create stroke path (potentially with dashes)
-	var strokeSource conv.VertexSource
-	if agg2d.convDash != nil {
-		// Use dashed stroke
-		strokeSource = conv.NewConvTransform(agg2d.convDash, agg2d.transform)
-	} else {
-		// Use regular stroke
-		strokeSource = conv.NewConvTransform(agg2d.convStroke, agg2d.transform)
-	}
+	// The stroke converter already wraps the dashed source when dashing is enabled,
+	// matching AGG2D's path -> curve -> dash -> stroke -> transform pipeline.
+	strokeSource := conv.NewConvTransform(agg2d.convStroke, agg2d.transform)
 
 	// Add stroked path vertices to rasterizer
 	strokeSource.Rewind(0)
@@ -396,14 +397,7 @@ func (agg2d *Agg2D) LineWidth(w float64) {
 func (agg2d *Agg2D) LineCap(cap LineCap) {
 	agg2d.lineCap = cap
 	if agg2d.convStroke != nil {
-		switch cap {
-		case 0: // CapButt
-			agg2d.convStroke.SetLineCap(0) // basics.ButtCap
-		case 2: // CapSquare
-			agg2d.convStroke.SetLineCap(2) // basics.SquareCap
-		case 1: // CapRound
-			agg2d.convStroke.SetLineCap(1) // basics.RoundCap
-		}
+		agg2d.convStroke.SetLineCap(basics.LineCap(cap))
 	}
 }
 
@@ -411,14 +405,7 @@ func (agg2d *Agg2D) LineCap(cap LineCap) {
 func (agg2d *Agg2D) LineJoin(join LineJoin) {
 	agg2d.lineJoin = join
 	if agg2d.convStroke != nil {
-		switch join {
-		case 0: // JoinMiter
-			agg2d.convStroke.SetLineJoin(0) // basics.MiterJoin
-		case 1: // JoinRound
-			agg2d.convStroke.SetLineJoin(1) // basics.RoundJoin
-		case 2: // JoinBevel
-			agg2d.convStroke.SetLineJoin(2) // basics.BevelJoin
-		}
+		agg2d.convStroke.SetLineJoin(basics.LineJoin(join))
 	}
 }
 
@@ -526,7 +513,7 @@ func (agg2d *Agg2D) SetMasterAlpha(alpha float64) {
 		alpha = 1.0
 	}
 	agg2d.masterAlpha = alpha
-	// Master alpha is applied when renderers are created in renderSolidFillWithColor and renderSolidStroke
+	agg2d.updateRasterizerGamma()
 }
 
 // GetAntiAliasGamma returns the current anti-alias gamma value

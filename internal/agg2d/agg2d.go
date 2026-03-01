@@ -4,6 +4,7 @@ package agg2d
 
 import (
 	"agg_go/internal/buffer"
+	"agg_go/internal/basics"
 	"agg_go/internal/color"
 	"agg_go/internal/conv"
 	"agg_go/internal/font"
@@ -41,12 +42,14 @@ const (
 	Radial Gradient = 2
 
 	// Line caps
-	CapButt  LineCap = 0
-	CapRound LineCap = 1
+	CapButt   LineCap = 0
+	CapSquare LineCap = 1
+	CapRound  LineCap = 2
 
 	// Line joins
 	JoinMiter LineJoin = 0
-	JoinRound LineJoin = 1
+	JoinRound LineJoin = 2
+	JoinBevel LineJoin = 3
 
 	// Text alignment
 	AlignLeft   TextAlignment = 0
@@ -94,8 +97,10 @@ type Agg2D struct {
 
 	// Rendering components (now properly typed)
 	pixfmt      *pixfmt.PixFmtRGBA32[color.Linear]
+	pixfmtPre   *pixfmt.PixFmtRGBA32Pre[color.Linear]
 	pixfmtComp  *pixfmt.PixFmtCompositeRGBA32
 	renBase     *baseRendererAdapter[color.RGBA8[color.Linear]]
+	renBasePre  *baseRendererAdapter[color.RGBA8[color.Linear]]
 	renBaseComp *baseRendererAdapter[color.RGBA8[color.Linear]]
 
 	// Master alpha and anti-aliasing gamma
@@ -128,6 +133,7 @@ type Agg2D struct {
 	textAlignX    TextAlignment
 	textAlignY    TextAlignment
 	textHints     bool
+	flipText      bool
 	fontHeight    float64
 	fontAscent    float64
 	fontDescent   float64
@@ -257,8 +263,8 @@ func NewAgg2D() *Agg2D {
 
 	// Set default line cap and join
 	if agg2d.convStroke != nil {
-		agg2d.convStroke.SetLineCap(1)  // Default CapRound
-		agg2d.convStroke.SetLineJoin(1) // Default JoinRound
+		agg2d.convStroke.SetLineCap(basics.LineCap(CapRound))
+		agg2d.convStroke.SetLineJoin(basics.LineJoin(JoinRound))
 	}
 
 	return agg2d

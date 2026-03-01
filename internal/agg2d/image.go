@@ -209,7 +209,7 @@ func (agg2d *Agg2D) renderImage(img *Image, x1, y1, x2, y2 int, parallelogram []
 	sampleGenerator := agg2d.newImageFilterGenerator(imageSource, interpolator)
 	spanGenerator := newImageSpanGenerator(sampleGenerator, agg2d.imageBlendMode, agg2d.imageBlendColor)
 
-	renderer := agg2d.currentRenderer()
+	renderer := agg2d.currentImageRenderer()
 	if renderer == nil {
 		return nil
 	}
@@ -388,8 +388,35 @@ func (agg2d *Agg2D) BlendImage(img *Image, imgX1, imgY1, imgX2, imgY2 int, dstX,
 		srcHeight = imgY2 - imgY1
 	}
 
-	// Create image pixel format for the source
-	imgPixFmt := newImagePixelFormat(img)
+	clipX1 := int(agg2d.clipBox.X1)
+	clipY1 := int(agg2d.clipBox.Y1)
+	clipX2 := int(agg2d.clipBox.X2)
+	clipY2 := int(agg2d.clipBox.Y2)
+
+	if dstXInt < clipX1 {
+		delta := clipX1 - dstXInt
+		imgX1 += delta
+		dstXInt = clipX1
+		srcWidth -= delta
+	}
+	if dstYInt < clipY1 {
+		delta := clipY1 - dstYInt
+		imgY1 += delta
+		dstYInt = clipY1
+		srcHeight -= delta
+	}
+	if right := dstXInt + srcWidth - 1; right > clipX2 {
+		srcWidth -= right - clipX2
+	}
+	if bottom := dstYInt + srcHeight - 1; bottom > clipY2 {
+		srcHeight -= bottom - clipY2
+	}
+	if srcWidth <= 0 || srcHeight <= 0 {
+		return nil
+	}
+
+	imgX2 = imgX1 + srcWidth
+	imgY2 = imgY1 + srcHeight
 
 	// Create source rectangle
 	srcRect := &basics.RectI{
@@ -399,12 +426,23 @@ func (agg2d *Agg2D) BlendImage(img *Image, imgX1, imgY1, imgX2, imgY2 int, dstX,
 		Y2: imgY2 - 1,
 	}
 
-	// Use the rendering pipeline for blending.
-	// AGG uses the general blend mode for blendImage/copyImage operations.
-	renderer := agg2d.currentRenderer()
+	if agg2d.blendMode == BlendAlpha {
+		// AGG routes blendImage through the premultiplied renderer base.
+		// Use the pixfmt-level row blend here so the source can be premultiplied
+		// explicitly while preserving clip-box semantics.
+		if agg2d.pixfmtPre != nil {
+			src := newImagePixelFormatPre(img)
+			for row := 0; row < srcHeight; row++ {
+				agg2d.pixfmtPre.BlendFrom(src, dstXInt, dstYInt+row, imgX1, imgY1+row, srcWidth, basics.Int8u(alpha))
+			}
+		}
+		return nil
+	}
 
+	// Composite blend modes in this port still operate on straight source pixels.
+	renderer := agg2d.currentRenderer()
 	if renderer != nil {
-		renderer.BlendFrom(imgPixFmt, srcRect, dstXInt, dstYInt, basics.Int8u(alpha))
+		renderer.BlendFrom(newImagePixelFormat(img), srcRect, dstXInt, dstYInt, basics.Int8u(alpha))
 	}
 
 	return nil
