@@ -160,3 +160,55 @@ func TestRendererBaseTypedBasics(t *testing.T) {
 		t.Fatalf("expected blue, got %v", got)
 	}
 }
+
+func TestRendererBaseCopyFromOverlappingVerticalRegion(t *testing.T) {
+	pf := NewMockPixelFormat[string](4, 4)
+	r := NewRendererBaseWithPixfmt[*MockPixelFormat[string], string](pf)
+
+	for y := 0; y < 4; y++ {
+		for x := 0; x < 4; x++ {
+			pf.CopyPixel(x, y, string(rune('A'+y)))
+		}
+	}
+
+	srcRect := &basics.RectI{X1: 0, Y1: 0, X2: 3, Y2: 2}
+	r.CopyFrom(pf, srcRect, 0, 1)
+
+	for x := 0; x < 4; x++ {
+		if got := pf.Pixel(x, 1); got != "A" {
+			t.Fatalf("row 1 pixel %d = %q, want %q", x, got, "A")
+		}
+		if got := pf.Pixel(x, 2); got != "B" {
+			t.Fatalf("row 2 pixel %d = %q, want %q", x, got, "B")
+		}
+		if got := pf.Pixel(x, 3); got != "C" {
+			t.Fatalf("row 3 pixel %d = %q, want %q", x, got, "C")
+		}
+	}
+}
+
+func TestRendererBaseBlendFromOverlappingVerticalRegion(t *testing.T) {
+	pf := NewMockPixelFormat[string](3, 4)
+	r := NewRendererBaseWithPixfmt[*MockPixelFormat[string], string](pf)
+
+	for y := 0; y < 4; y++ {
+		for x := 0; x < 3; x++ {
+			pf.CopyPixel(x, y, string(rune('K'+y)))
+		}
+	}
+
+	srcRect := &basics.RectI{X1: 0, Y1: 0, X2: 2, Y2: 2}
+	r.BlendFrom(pf, srcRect, 0, 1, basics.CoverFull)
+
+	for x := 0; x < 3; x++ {
+		if got := pf.Pixel(x, 1); got != "K" {
+			t.Fatalf("row 1 pixel %d = %q, want %q", x, got, "K")
+		}
+		if got := pf.Pixel(x, 2); got != "L" {
+			t.Fatalf("row 2 pixel %d = %q, want %q", x, got, "L")
+		}
+		if got := pf.Pixel(x, 3); got != "M" {
+			t.Fatalf("row 3 pixel %d = %q, want %q", x, got, "M")
+		}
+	}
+}

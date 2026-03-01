@@ -161,6 +161,32 @@ type FontCacheManager struct {
 	lastError    error
 }
 
+// translatedPathSource applies a static translation to every vertex from a source path.
+// This mirrors AGG's embedded path adaptor behavior used by init_embedded_adaptors().
+type translatedPathSource struct {
+	src    path.VertexSource
+	dx, dy float64
+}
+
+func (t *translatedPathSource) Rewind(pathID uint) {
+	if t.src != nil {
+		t.src.Rewind(pathID)
+	}
+}
+
+func (t *translatedPathSource) NextVertex() (x, y float64, cmd uint32) {
+	if t.src == nil {
+		return 0, 0, uint32(basics.PathCmdStop)
+	}
+
+	x, y, cmd = t.src.NextVertex()
+	if basics.IsVertex(basics.PathCommand(cmd)) {
+		x += t.dx
+		y += t.dy
+	}
+	return x, y, cmd
+}
+
 // NewFontCacheManager creates a new font cache manager with the given font engine.
 func NewFontCacheManager(fontEngine FontEngine, maxFonts int) *FontCacheManager {
 	if maxFonts <= 0 {
@@ -233,7 +259,7 @@ func (fcm *FontCacheManager) Glyph(charCode uint) *GlyphCache {
 	return glyph
 }
 
-// AddKerning adds kerning adjustment between two characters.
+// AddKerning adds kerning adjustment between two glyph indices.
 func (fcm *FontCacheManager) AddKerning(x, y *float64, first, second uint) {
 	dx, dy := fcm.fontEngine.AddKerning(first, second)
 	*x += dx
@@ -247,14 +273,29 @@ func (fcm *FontCacheManager) PathAdaptor() *path.PathStorageStl {
 
 // InitEmbeddedAdaptors initializes the glyph adaptors for rendering at the specified position.
 func (fcm *FontCacheManager) InitEmbeddedAdaptors(glyph *GlyphCache, x, y float64) {
+	if glyph == nil {
+		return
+	}
+
 	switch glyph.DataType {
 	case GlyphDataGray8:
 		fcm.gray8Adaptor = NewSerializedScanlinesAdaptorAA(glyph.Data, glyph.Bounds)
 	case GlyphDataMono:
 		fcm.monoAdaptor = NewSerializedScanlinesAdaptorBin(glyph.Data, glyph.Bounds)
 	case GlyphDataOutline:
-		// Path data would be reconstructed here for vector fonts
-		// This requires integration with the path system
+		fcm.pathAdaptor.RemoveAll()
+		if fcm.fontEngine == nil {
+			return
+		}
+		src := fcm.fontEngine.PathAdaptor()
+		if src == nil {
+			return
+		}
+		fcm.pathAdaptor.ConcatPath(&translatedPathSource{
+			src: src,
+			dx:  x,
+			dy:  y,
+		}, 0)
 	}
 }
 

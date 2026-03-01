@@ -409,10 +409,17 @@ func (pf *PixFmtAlphaBlendRGB[CS, B]) CopyFrom(src *PixFmtAlphaBlendRGB[CS, B], 
 		return
 	}
 
-	// Copy pixel by pixel
+	rows := make([][]color.RGB8[CS], height)
 	for y := 0; y < height; y++ {
+		row := make([]color.RGB8[CS], width)
 		for x := 0; x < width; x++ {
-			pixel := src.GetPixel(srcX+x, srcY+y)
+			row[x] = src.GetPixel(srcX+x, srcY+y)
+		}
+		rows[y] = row
+	}
+
+	for y, row := range rows {
+		for x, pixel := range row {
 			pf.CopyPixel(dstX+x, dstY+y, pixel)
 		}
 	}

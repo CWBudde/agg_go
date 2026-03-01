@@ -104,6 +104,22 @@ type MockRenderBuffer struct {
 	data          []basics.Int8u
 }
 
+type BlendSrcWrapper struct {
+	pixels [][]color.RGBA8[color.Linear]
+	w      int
+	h      int
+}
+
+func (b *BlendSrcWrapper) GetPixel(x, y int) color.RGBA8[color.Linear] {
+	if y < 0 || y >= b.h || x < 0 || x >= b.w {
+		return color.RGBA8[color.Linear]{}
+	}
+	return b.pixels[y][x]
+}
+
+func (b *BlendSrcWrapper) Width() int  { return b.w }
+func (b *BlendSrcWrapper) Height() int { return b.h }
+
 func NewMockRenderBuffer(width, height int) *MockRenderBuffer {
 	return &MockRenderBuffer{
 		width:  width,
@@ -282,6 +298,37 @@ func TestPixFmtTransposer_CopyFrom_BoundsChecking(t *testing.T) {
 	transposer.CopyFrom(src, 0, 0, -1, 0, 2)
 
 	// These should complete without panicking
+}
+
+func TestPixFmtTransposer_BlendFrom_Fallback(t *testing.T) {
+	mock := NewMockPixFmt(3, 3)
+	transposer := NewPixFmtTransposer(mock)
+
+	src := &BlendSrcWrapper{
+		w: 3,
+		h: 2,
+		pixels: [][]color.RGBA8[color.Linear]{
+			{
+				{R: 10, G: 20, B: 30, A: 255},
+				{R: 40, G: 50, B: 60, A: 255},
+				{R: 70, G: 80, B: 90, A: 255},
+			},
+			{
+				{R: 15, G: 25, B: 35, A: 255},
+				{R: 45, G: 55, B: 65, A: 255},
+				{R: 75, G: 85, B: 95, A: 255},
+			},
+		},
+	}
+
+	transposer.BlendFrom(src, 0, 1, 1, 0, 2, basics.CoverFull)
+
+	if got := mock.GetPixel(1, 0); got != src.pixels[0][1] {
+		t.Fatalf("expected underlying pixel (1,0) to be %+v, got %+v", src.pixels[0][1], got)
+	}
+	if got := mock.GetPixel(1, 1); got != src.pixels[0][2] {
+		t.Fatalf("expected underlying pixel (1,1) to be %+v, got %+v", src.pixels[0][2], got)
+	}
 }
 
 func TestPixFmtTransposer_Attach(t *testing.T) {

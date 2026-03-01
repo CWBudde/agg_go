@@ -74,3 +74,36 @@ func TestPixFmtRGB48Linear(t *testing.T) {
 		t.Errorf("BlendPixel failed: red component %d should be between 32768 and 65535", pixel.R)
 	}
 }
+
+func TestPixFmtRGB48CopyFromOverlappingVerticalRegion(t *testing.T) {
+	width, height := 3, 4
+	bufData := make([]basics.Int16u, width*height*3)
+	rbuf := buffer.NewRenderingBufferU16WithData(bufData, width, height, width*3*2)
+	pixfmt := NewPixFmtRGB48Linear(rbuf)
+
+	rows := []color.RGB16Linear{
+		{R: 1000, G: 0, B: 0},
+		{R: 2000, G: 0, B: 0},
+		{R: 3000, G: 0, B: 0},
+		{R: 4000, G: 0, B: 0},
+	}
+	for y, c := range rows {
+		for x := 0; x < width; x++ {
+			pixfmt.CopyPixel(x, y, c)
+		}
+	}
+
+	pixfmt.CopyFrom(pixfmt, 0, 0, 0, 1, width, 3)
+
+	for x := 0; x < width; x++ {
+		if got := pixfmt.GetPixel(x, 1); got.R != 1000 {
+			t.Fatalf("row 1 pixel %d red = %d, want 1000", x, got.R)
+		}
+		if got := pixfmt.GetPixel(x, 2); got.R != 2000 {
+			t.Fatalf("row 2 pixel %d red = %d, want 2000", x, got.R)
+		}
+		if got := pixfmt.GetPixel(x, 3); got.R != 3000 {
+			t.Fatalf("row 3 pixel %d red = %d, want 3000", x, got.R)
+		}
+	}
+}

@@ -205,6 +205,32 @@ func (pa *PixFmtAMaskAdaptor) CopyFrom(src interface {
 		}, xdst, ydst, xsrc, ysrc, length int)
 	}); ok {
 		copier.CopyFrom(src, xdst, ydst, xsrc, ysrc, length)
+		return
+	}
+
+	if ysrc < 0 || ysrc >= src.Height() {
+		return
+	}
+	bytesPerPixel := detectBytesPerPixel(src, ysrc)
+	srcRowData := src.RowData(ysrc)
+	if srcRowData == nil {
+		return
+	}
+
+	for i := 0; i < length; i++ {
+		srcPixelX := xsrc + i
+		dstPixelX := xdst + i
+		if srcPixelX < 0 || srcPixelX >= src.Width() {
+			continue
+		}
+
+		srcColor, ok := decodeRGBA8FromRowData(srcRowData, bytesPerPixel, srcPixelX)
+		if !ok {
+			continue
+		}
+
+		// copy_from bypasses the alpha mask, matching AGG's adaptor semantics.
+		pa.pixfmt.CopyPixel(dstPixelX, ydst, srcColor)
 	}
 }
 

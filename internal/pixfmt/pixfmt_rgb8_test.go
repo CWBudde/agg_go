@@ -331,6 +331,39 @@ func TestPixFmtRGB24CopyFrom(t *testing.T) {
 	}
 }
 
+func TestPixFmtRGB24CopyFromOverlappingVerticalRegion(t *testing.T) {
+	width, height := 3, 4
+	bufData := make([]basics.Int8u, width*height*3)
+	rbuf := buffer.NewRenderingBufferU8WithData(bufData, width, height, width*3)
+	pixfmt := NewPixFmtRGB24(rbuf)
+
+	rows := []color.RGB8Linear{
+		{R: 10, G: 0, B: 0},
+		{R: 20, G: 0, B: 0},
+		{R: 30, G: 0, B: 0},
+		{R: 40, G: 0, B: 0},
+	}
+	for y, c := range rows {
+		for x := 0; x < width; x++ {
+			pixfmt.CopyPixel(x, y, c)
+		}
+	}
+
+	pixfmt.CopyFrom(pixfmt, 0, 0, 0, 1, width, 3)
+
+	for x := 0; x < width; x++ {
+		if got := pixfmt.GetPixel(x, 1); got.R != 10 {
+			t.Fatalf("row 1 pixel %d red = %d, want 10", x, got.R)
+		}
+		if got := pixfmt.GetPixel(x, 2); got.R != 20 {
+			t.Fatalf("row 2 pixel %d red = %d, want 20", x, got.R)
+		}
+		if got := pixfmt.GetPixel(x, 3); got.R != 30 {
+			t.Fatalf("row 3 pixel %d red = %d, want 30", x, got.R)
+		}
+	}
+}
+
 func TestPixFmtRGB24BlendPixelRGBA(t *testing.T) {
 	width, height := 4, 4
 	bufData := make([]basics.Int8u, width*height*3)
