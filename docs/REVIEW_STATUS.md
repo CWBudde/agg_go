@@ -1664,7 +1664,7 @@ Go files:
 
 ### internal/gpc/gpc.go
 
-**Status: PARTIAL** - Core polygon clipping code exists and is exercised by tests/benchmarks, and the polygon text I/O helpers are now implemented, so the old "operations not implemented" note is stale. Remaining work is correctness review for edge cases and the still-open converter parity issues surfaced by `internal/conv/gpc.go` example coverage.
+**Status: PARTIAL** - Core polygon clipping code exists and the polygon text I/O helpers are now implemented, so the old "operations not implemented" note is stale. Remaining work is no longer just a vague review item: direct low-level tests now assert that overlapping-rectangle union, intersection, difference, and xor should produce contours, and they currently fail because `gpc.PolygonClip()` returns empty results. The remaining issue is upstream clipping correctness, not only converter traversal.
 
 ### internal/fonts/embedded_fonts.go
 
@@ -1686,12 +1686,16 @@ The FreeType2 port in `internal/font/freetype2/` is significantly closer to `agg
 - cache-manager ownership no longer closes the engine
 - engine/face close semantics are idempotent
 - the previous engine-owned `FT_Face` mirror array has been removed; loaded faces are tracked directly in Go, which is closer to AGG's `loaded_face` ownership model
+- the old exported `FontManager` convenience layer has been reduced to a package-local helper
+- `CacheManager2` now delegates glyph caching to `internal/fonts.FmanCachedFont` and depends on narrow per-adaptor methods instead of a broader concrete adaptor bundle
+- the remaining gray8/mono wrapper types are package-local and retained only as the minimal boundary between `internal/scanline`'s concrete serialized-scanline APIs and `internal/fonts`' adaptor interfaces
+- two Go-only ownership/policy deltas are now explicit: the configurable `maxFaces` cap and `engine.Close()` proactively closing tracked faces before freeing the library, which is safer than AGG's looser caller-owned `loaded_face` lifetime model but not a direct behavior match
 
-Remaining review focus should be on the still-intentional Go deltas: convenience wrappers such as `FontManager`, any residual API surface beyond AGG's `fman` types, and any multi-face lifetime behavior still not directly modeled on the original source.
+**Status: COMPLETED** - Remaining differences in this area are now explicit intentional Go deltas rather than unresolved placeholder/parity gaps.
 
 ### internal/conv/gpc.go
 
-**Status: PARTIAL** - The converter is no longer a placeholder and does invoke polygon clipping, but example coverage still shows empty output for cases that should yield geometry. The remaining work here is converter parity/debugging against AGG's original `agg_conv_gpc.h`, not the absence of clipping support in `internal/gpc/gpc.go`.
+**Status: PARTIAL** - The converter is no longer a placeholder and does invoke polygon clipping. Closed contours are now normalized before being handed to GPC, with focused tests around contour accumulation, and narrow tests now show `ConvGPC.Rewind()` matches a direct `gpc.PolygonClip()` call. Example coverage still shows empty output for cases that should yield geometry because the stored clip result is already empty, so the remaining work has narrowed to upstream clipping correctness in `internal/gpc/gpc.go` rather than result extraction alone.
 
 ### internal/color/rgb.go
 

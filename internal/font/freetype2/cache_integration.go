@@ -59,12 +59,8 @@ func (cm *CacheManager2) initializeAdaptors() {
 	}
 
 	cm.pathAdaptor = cm.fontEngine.PathAdaptorInterface()
-
-	adaptorTypes := cm.fontEngine.AdaptorTypes()
-	if adaptorTypes != nil {
-		cm.gray8Adaptor = newGray8AdaptorWrapper(adaptorTypes.Gray8Adaptor)
-		cm.monoAdaptor = newMonoAdaptorWrapper(adaptorTypes.MonoAdaptor)
-	}
+	cm.gray8Adaptor = newGray8AdaptorWrapper(cm.fontEngine.Gray8SerializedAdaptor())
+	cm.monoAdaptor = newMonoAdaptorWrapper(cm.fontEngine.MonoSerializedAdaptor())
 }
 
 // Glyph retrieves a glyph from the cache, loading it if necessary.

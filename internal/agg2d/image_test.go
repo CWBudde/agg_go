@@ -15,21 +15,31 @@ func TestTransformImage(t *testing.T) {
 	agg2d := NewAgg2D()
 
 	// Create test buffer and attach
-	buf := make([]uint8, 800*600*4) // RGBA buffer
-	agg2d.Attach(buf, 800, 600, 800*4)
+	width, height := 32, 32
+	buf := make([]uint8, width*height*4) // RGBA buffer
+	agg2d.Attach(buf, width, height, width*4)
+	agg2d.ImageFilter(NoFilter)
+	agg2d.ImageResample(NoResample)
 
-	// Create test image
-	imgBuf := make([]uint8, 100*100*4) // Small test image
-	img := NewImage(imgBuf, 100, 100, 100*4)
+	// Create a 1x1 opaque source image for deterministic output.
+	img := NewImage([]uint8{255, 0, 0, 255}, 1, 1, 4)
 
 	// Test basic transformation
-	err := agg2d.TransformImage(img, 0, 0, 100, 100, 10, 10, 110, 110)
+	err := agg2d.TransformImage(img, 0, 0, 1, 1, 10, 10, 11, 11)
 	if err != nil {
 		t.Errorf("TransformImage failed: %v", err)
 	}
+	r, g, b, a := pixelAt(buf, width, 10, 10)
+	if r != 255 || g != 0 || b != 0 || a != 255 {
+		t.Fatalf("transformed image pixel = (%d,%d,%d,%d), want solid red", r, g, b, a)
+	}
+	r, g, b, a = pixelAt(buf, width, 0, 0)
+	if r != 0 || g != 0 || b != 0 || a != 0 {
+		t.Fatalf("outside transformed image pixel = (%d,%d,%d,%d), want untouched zero", r, g, b, a)
+	}
 
 	// Test with nil image
-	err = agg2d.TransformImage(nil, 0, 0, 100, 100, 10, 10, 110, 110)
+	err = agg2d.TransformImage(nil, 0, 0, 1, 1, 10, 10, 11, 11)
 	if err == nil {
 		t.Error("Expected error for nil image")
 	}
@@ -38,19 +48,25 @@ func TestTransformImage(t *testing.T) {
 // TestTransformImageSimple tests the simplified TransformImage method.
 func TestTransformImageSimple(t *testing.T) {
 	agg2d := NewAgg2D()
-	buf := make([]uint8, 400*300*4)
-	agg2d.Attach(buf, 400, 300, 400*4)
+	width, height := 32, 32
+	buf := make([]uint8, width*height*4)
+	agg2d.Attach(buf, width, height, width*4)
+	agg2d.ImageFilter(NoFilter)
+	agg2d.ImageResample(NoResample)
 
-	imgBuf := make([]uint8, 50*50*4)
-	img := NewImage(imgBuf, 50, 50, 50*4)
+	img := NewImage([]uint8{0, 255, 0, 255}, 1, 1, 4)
 
-	err := agg2d.TransformImageSimple(img, 20, 20, 120, 120)
+	err := agg2d.TransformImageSimple(img, 20, 20, 21, 21)
 	if err != nil {
 		t.Errorf("TransformImageSimple failed: %v", err)
 	}
+	r, g, b, a := pixelAt(buf, width, 20, 20)
+	if r != 0 || g != 255 || b != 0 || a != 255 {
+		t.Fatalf("simple transformed image pixel = (%d,%d,%d,%d), want solid green", r, g, b, a)
+	}
 
 	// Test with nil image
-	err = agg2d.TransformImageSimple(nil, 20, 20, 120, 120)
+	err = agg2d.TransformImageSimple(nil, 20, 20, 21, 21)
 	if err == nil {
 		t.Error("Expected error for nil image")
 	}
@@ -59,23 +75,33 @@ func TestTransformImageSimple(t *testing.T) {
 // TestTransformImageParallelogram tests parallelogram transformation.
 func TestTransformImageParallelogram(t *testing.T) {
 	agg2d := NewAgg2D()
-	buf := make([]uint8, 400*300*4)
-	agg2d.Attach(buf, 400, 300, 400*4)
+	width, height := 32, 32
+	buf := make([]uint8, width*height*4)
+	agg2d.Attach(buf, width, height, width*4)
+	agg2d.ImageFilter(NoFilter)
+	agg2d.ImageResample(NoResample)
 
-	imgBuf := make([]uint8, 60*60*4)
-	img := NewImage(imgBuf, 60, 60, 60*4)
+	img := NewImage([]uint8{0, 0, 255, 255}, 1, 1, 4)
 
 	// Define a simple parallelogram (x1,y1, x2,y2, x3,y3)
-	parallelogram := []float64{10, 10, 70, 20, 60, 70}
+	parallelogram := []float64{10, 10, 11, 10, 10, 11}
 
-	err := agg2d.TransformImageParallelogram(img, 0, 0, 60, 60, parallelogram)
+	err := agg2d.TransformImageParallelogram(img, 0, 0, 1, 1, parallelogram)
 	if err != nil {
 		t.Errorf("TransformImageParallelogram failed: %v", err)
+	}
+	r, g, b, a := pixelAt(buf, width, 10, 10)
+	if b == 0 || a == 0 || b < r || b < g {
+		t.Fatalf("parallelogram transformed image pixel = (%d,%d,%d,%d), want blue-dominant non-zero coverage", r, g, b, a)
+	}
+	r, g, b, a = pixelAt(buf, width, 0, 0)
+	if r != 0 || g != 0 || b != 0 || a != 0 {
+		t.Fatalf("outside parallelogram transformed image pixel = (%d,%d,%d,%d), want untouched zero", r, g, b, a)
 	}
 
 	// Test with invalid parallelogram
 	invalidParallelogram := []float64{10, 10, 70} // Wrong size
-	err = agg2d.TransformImageParallelogram(img, 0, 0, 60, 60, invalidParallelogram)
+	err = agg2d.TransformImageParallelogram(img, 0, 0, 1, 1, invalidParallelogram)
 	if err == nil {
 		t.Error("Expected error for invalid parallelogram")
 	}
@@ -84,40 +110,56 @@ func TestTransformImageParallelogram(t *testing.T) {
 // TestTransformImageParallelogramSimple tests simple parallelogram transformation.
 func TestTransformImageParallelogramSimple(t *testing.T) {
 	agg2d := NewAgg2D()
-	buf := make([]uint8, 400*300*4)
-	agg2d.Attach(buf, 400, 300, 400*4)
+	width, height := 32, 32
+	buf := make([]uint8, width*height*4)
+	agg2d.Attach(buf, width, height, width*4)
+	agg2d.ImageFilter(NoFilter)
+	agg2d.ImageResample(NoResample)
 
-	imgBuf := make([]uint8, 40*40*4)
-	img := NewImage(imgBuf, 40, 40, 40*4)
+	img := NewImage([]uint8{255, 255, 0, 255}, 1, 1, 4)
 
-	parallelogram := []float64{5, 5, 45, 15, 35, 45}
+	parallelogram := []float64{5, 5, 6, 5, 5, 6}
 
 	err := agg2d.TransformImageParallelogramSimple(img, parallelogram)
 	if err != nil {
 		t.Errorf("TransformImageParallelogramSimple failed: %v", err)
+	}
+	r, g, b, a := pixelAt(buf, width, 5, 5)
+	if r == 0 || g == 0 || a == 0 || b != 0 {
+		t.Fatalf("simple parallelogram transformed image pixel = (%d,%d,%d,%d), want red/green coverage with zero blue", r, g, b, a)
+	}
+	r, g, b, a = pixelAt(buf, width, 0, 0)
+	if r != 0 || g != 0 || b != 0 || a != 0 {
+		t.Fatalf("outside simple parallelogram transformed image pixel = (%d,%d,%d,%d), want untouched zero", r, g, b, a)
 	}
 }
 
 // TestTransformImagePath tests path-based image transformation.
 func TestTransformImagePath(t *testing.T) {
 	agg2d := NewAgg2D()
-	buf := make([]uint8, 400*300*4)
-	agg2d.Attach(buf, 400, 300, 400*4)
+	width, height := 32, 32
+	buf := make([]uint8, width*height*4)
+	agg2d.Attach(buf, width, height, width*4)
+	agg2d.ImageFilter(NoFilter)
+	agg2d.ImageResample(NoResample)
 
-	imgBuf := make([]uint8, 30*30*4)
-	img := NewImage(imgBuf, 30, 30, 30*4)
+	img := NewImage([]uint8{255, 0, 255, 255}, 1, 1, 4)
 
 	// Create a path first
 	agg2d.ResetPath()
-	agg2d.MoveTo(50, 50)
-	agg2d.LineTo(150, 60)
-	agg2d.LineTo(140, 160)
-	agg2d.LineTo(40, 150)
+	agg2d.MoveTo(8, 8)
+	agg2d.LineTo(12, 8)
+	agg2d.LineTo(12, 12)
+	agg2d.LineTo(8, 12)
 	agg2d.ClosePolygon()
 
-	err := agg2d.TransformImagePath(img, 0, 0, 30, 30, 50, 50, 150, 150)
+	err := agg2d.TransformImagePath(img, 0, 0, 1, 1, 8, 8, 12, 12)
 	if err != nil {
 		t.Errorf("TransformImagePath failed: %v", err)
+	}
+	r, g, b, a := pixelAt(buf, width, 10, 10)
+	if r != 255 || g != 0 || b != 255 || a != 255 {
+		t.Fatalf("path transformed image pixel = (%d,%d,%d,%d), want solid magenta", r, g, b, a)
 	}
 }
 

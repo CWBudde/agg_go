@@ -390,17 +390,16 @@ Current font subsystem status:
 | ---------------------------------------------- | ------------------------------------------------------- | ---------------------------------------------------- |
 | `internal/agg2d/agg2d.go`                      | concrete `*freetype.FontEngineFreetype`, `*font.FontCacheManager` | Typed; authoritative Agg2D path                      |
 | `internal/agg2d/text.go`                       | typed adaptors via `font.SerializedScanlinesAdaptor`    | Typed; no broad runtime assertions in text path      |
-| `internal/font/freetype2/types.go`             | explicit interfaces for engine / loaded-face / adaptors | Typed; separate `fman` path                          |
-| `internal/font/freetype2/engine.go`            | concrete storage plus helper accessors                  | Typed; some Go-only helper APIs remain by design     |
-| `internal/font/freetype2/cache_integration.go` | thin wrappers over `internal/fonts.FmanCachedFont` plus explicit helper APIs | Acceptable localized boundary adaptation |
-| `internal/font/freetype2/adaptor_wrappers.go`  | scanline-to-`internal/fonts` wrapper types              | Intentional package-boundary adaptation              |
+| `internal/font/freetype2/types.go`             | explicit interfaces for engine / loaded-face / serialized adaptors | Typed; separate `fman` path               |
+| `internal/font/freetype2/engine.go`            | concrete storage plus documented Go-only ownership/policy deltas   | Typed; no broad dynamic dispatch remains  |
+| `internal/font/freetype2/cache_integration.go` | thin wrapper over `internal/fonts.FmanCachedFont` with narrow per-adaptor methods | Acceptable localized boundary adaptation |
+| `internal/font/freetype2/adaptor_wrappers.go`  | package-local scanline-to-`internal/fonts` wrappers                | Minimal intentional package-boundary adaptation |
 
-**Remaining concern**: the font subsystem still has a few narrow adapters where adjacent
-internal packages use slightly different typed interfaces. `CacheManager2` now delegates
-glyph caching to `internal/fonts.FmanCachedFont`, so the remaining deltas are mostly
-package-boundary wrappers and explicit Go helper APIs. That is materially different from
-broad `interface{}`-based design and is acceptable so long as the adapters remain
-localized and documented.
+**Current concern level**: low. The font subsystem still has a few narrow adapters where
+adjacent internal packages intentionally expose different typed interfaces. `CacheManager2`
+now delegates glyph caching to `internal/fonts.FmanCachedFont`, the broader adaptor bundle
+and exported convenience manager are gone from the effective API surface, and the remaining
+wrappers are localized package-boundary shims rather than broad `interface{}`-based design.
 
 ---
 

@@ -746,7 +746,7 @@ func TestFaceInstance(t *testing.T) {
 					if prepared.DataSize == 0 {
 						t.Fatal("expected serialized native gray8 scanlines")
 					}
-					adaptor := engine.AdaptorTypes().Gray8Adaptor
+					adaptor := engine.Gray8SerializedAdaptor()
 					adaptor.Init(data, int(prepared.DataSize), 0, 0)
 					if !adaptor.RewindScanlines() {
 						t.Fatal("expected serialized native gray8 scanline data")
@@ -763,7 +763,7 @@ func TestFaceInstance(t *testing.T) {
 					if prepared.DataSize == 0 {
 						t.Fatal("expected serialized native mono scanlines")
 					}
-					adaptor := engine.AdaptorTypes().MonoAdaptor
+					adaptor := engine.MonoSerializedAdaptor()
 					adaptor.Init(data, 0, 0)
 					if !adaptor.RewindScanlines() {
 						t.Fatal("expected serialized native mono scanline data")
@@ -799,7 +799,7 @@ func TestFaceInstance(t *testing.T) {
 					if prepared.DataSize == 0 {
 						t.Fatal("expected serialized gray8 scanlines")
 					}
-					adaptor := engine.AdaptorTypes().Gray8Adaptor
+					adaptor := engine.Gray8SerializedAdaptor()
 					adaptor.Init(data, int(prepared.DataSize), 0, 0)
 					if !adaptor.RewindScanlines() {
 						t.Fatal("expected serialized gray8 scanline data")
@@ -816,7 +816,7 @@ func TestFaceInstance(t *testing.T) {
 					if prepared.DataSize == 0 {
 						t.Fatal("expected serialized mono scanlines")
 					}
-					adaptor := engine.AdaptorTypes().MonoAdaptor
+					adaptor := engine.MonoSerializedAdaptor()
 					adaptor.Init(data, 0, 0)
 					if !adaptor.RewindScanlines() {
 						t.Fatal("expected serialized mono scanline data")

@@ -46,10 +46,11 @@ type FontEngine struct {
 
 // NewFontEngine creates a new FreeType2 font engine.
 // flag32 determines whether to use 32-bit or 16-bit precision for path storage.
-// maxFaces specifies the maximum number of faces that can be loaded simultaneously.
+// maxFaces specifies a Go-only policy limit for simultaneously tracked faces.
+// AGG tracks loaded_face objects too, but does not expose a matching configurable cap.
 func NewFontEngine(flag32 bool, maxFaces uint32, ftMemory unsafe.Pointer) (*FontEngine, error) {
 	if maxFaces == 0 {
-		maxFaces = 32 // Default from AGG
+		maxFaces = 32 // Go-side default policy; AGG does not expose this knob
 	}
 
 	engine := &FontEngine{
@@ -455,6 +456,9 @@ func (fe *FontEngine) closeLoadedFace(face *LoadedFace, releaseFTFace bool) erro
 }
 
 // Close cleans up all resources used by the font engine.
+// Unlike AGG's font_engine_freetype_base destructor, this Go port also closes
+// any still-tracked faces before releasing the FreeType library so the engine
+// can provide deterministic, idempotent teardown under Go ownership.
 func (fe *FontEngine) Close() error {
 	// Clean up loaded faces
 	for len(fe.loadedFaces) > 0 {

@@ -75,6 +75,7 @@ type ConvGPC[VSA VertexSource, VSB VertexSource] struct {
 	status    conversionStatus
 	vertex    int
 	contour   int
+	lastErr   error
 
 	// Accumulation storage
 	vertexAccumulator  []gpc.GPCVertex
@@ -95,6 +96,7 @@ func NewConvGPC[VSA VertexSource, VSB VertexSource](sourceA VSA, sourceB VSB, op
 		status:             statusMoveTo,
 		vertex:             -1,
 		contour:            -1,
+		lastErr:            nil,
 		vertexAccumulator:  make([]gpc.GPCVertex, 0),
 		contourAccumulator: make([]ContourHeader, 0),
 		polyA:              gpc.NewGPCPolygon(),
@@ -122,6 +124,7 @@ func (c *ConvGPC[VSA, VSB]) Operation(op GPCOp) {
 func (c *ConvGPC[VSA, VSB]) Rewind(pathID uint) {
 	// Clear previous result
 	c.freeResult()
+	c.lastErr = nil
 
 	// Process source A and B into GPC polygons
 	c.srcA.Rewind(pathID)
@@ -146,6 +149,7 @@ func (c *ConvGPC[VSA, VSB]) Rewind(pathID uint) {
 
 	// On error, result will be empty but we continue
 	if err != nil {
+		c.lastErr = err
 		// Log error but continue with empty result - maintains vertex source interface contract
 		// In a production system, consider adding a logging framework
 		c.result.Clear()
@@ -333,4 +337,8 @@ func (c *ConvGPC[VSA, VSB]) nextVertex(x, y *float64) bool {
 // freeResult clears the result polygon
 func (c *ConvGPC[VSA, VSB]) freeResult() {
 	c.result.Clear()
+}
+
+func (c *ConvGPC[VSA, VSB]) lastClipError() error {
+	return c.lastErr
 }

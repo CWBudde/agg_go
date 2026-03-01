@@ -8,6 +8,33 @@ import (
 	"agg_go/internal/path"
 )
 
+func alphaBounds(buf []byte, width, height int) (minX, minY, maxX, maxY int, ok bool) {
+	minX, minY = width, height
+	maxX, maxY = -1, -1
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			_, _, _, a := pixelAt(buf, width, x, y)
+			if a == 0 {
+				continue
+			}
+			if x < minX {
+				minX = x
+			}
+			if y < minY {
+				minY = y
+			}
+			if x > maxX {
+				maxX = x
+			}
+			if y > maxY {
+				maxY = y
+			}
+			ok = true
+		}
+	}
+	return minX, minY, maxX, maxY, ok
+}
+
 type mockOutlineGlyph struct {
 	glyphIndex uint
 	advanceX   float64
@@ -215,5 +242,88 @@ func TestVectorGlyphCacheHitRefreshesEngineOutlineState(t *testing.T) {
 	}
 	if engine.GlyphIndex() != 100 {
 		t.Fatalf("expected engine state refreshed to glyph index 100 on cache hit, got %d", engine.GlyphIndex())
+	}
+}
+
+func TestVectorTextAlignmentProducesExpectedBounds(t *testing.T) {
+	engine := newMockTextFontEngine()
+	engine.glyphs[uint('H')] = mockOutlineGlyph{
+		glyphIndex: 10,
+		advanceX:   4,
+		bounds:     basics.Rect[int]{X1: 0, Y1: 0, X2: 2, Y2: 6},
+		buildPath: func(ps *path.PathStorageStl) {
+			ps.MoveTo(0, 0)
+			ps.LineTo(2, 0)
+			ps.LineTo(2, 6)
+			ps.LineTo(0, 6)
+			ps.ClosePolygon(basics.PathFlagsNone)
+		},
+	}
+	engine.glyphs[uint('A')] = mockOutlineGlyph{
+		glyphIndex: 20,
+		advanceX:   4,
+		bounds:     basics.Rect[int]{X1: 0, Y1: 0, X2: 2, Y2: 6},
+		buildPath: func(ps *path.PathStorageStl) {
+			ps.MoveTo(0, 0)
+			ps.LineTo(2, 0)
+			ps.LineTo(2, 6)
+			ps.LineTo(0, 6)
+			ps.ClosePolygon(basics.PathFlagsNone)
+		},
+	}
+
+	agg2d := NewAgg2D()
+	width, height := 32, 32
+	buf := make([]byte, width*height*4)
+	agg2d.Attach(buf, width, height, width*4)
+	agg2d.fontCacheType = VectorFontCache
+	agg2d.fontHeight = 6
+	agg2d.fontCacheManager = font.NewFontCacheManager(engine, 32)
+	agg2d.FillColor(Color{255, 0, 0, 255})
+	agg2d.NoLine()
+	agg2d.TextAlignment(AlignCenter, AlignTop)
+	agg2d.Text(10, 10, "AH", false, 0, 0)
+
+	minX, minY, maxX, maxY, ok := alphaBounds(buf, width, height)
+	if !ok {
+		t.Fatal("expected rendered glyph coverage")
+	}
+	if minX != 6 || minY != 4 || maxX != 11 || maxY != 9 {
+		t.Fatalf("rendered bounds = (%d,%d)-(%d,%d), want (6,4)-(11,9)", minX, minY, maxX, maxY)
+	}
+}
+
+func TestVectorTextRoundOffAndOffsetAffectBounds(t *testing.T) {
+	engine := newMockTextFontEngine()
+	engine.glyphs[uint('H')] = mockOutlineGlyph{
+		glyphIndex: 10,
+		advanceX:   4,
+		bounds:     basics.Rect[int]{X1: 0, Y1: 0, X2: 2, Y2: 4},
+		buildPath: func(ps *path.PathStorageStl) {
+			ps.MoveTo(0, 0)
+			ps.LineTo(2, 0)
+			ps.LineTo(2, 4)
+			ps.LineTo(0, 4)
+			ps.ClosePolygon(basics.PathFlagsNone)
+		},
+	}
+
+	agg2d := NewAgg2D()
+	width, height := 32, 32
+	buf := make([]byte, width*height*4)
+	agg2d.Attach(buf, width, height, width*4)
+	agg2d.fontCacheType = VectorFontCache
+	agg2d.fontHeight = 4
+	agg2d.fontCacheManager = font.NewFontCacheManager(engine, 32)
+	agg2d.FillColor(Color{255, 0, 0, 255})
+	agg2d.NoLine()
+	agg2d.Text(10.8, 10.2, "H", true, 2.0, -1.0)
+
+	minX, minY, maxX, maxY, ok := alphaBounds(buf, width, height)
+	if !ok {
+		t.Fatal("expected rendered glyph coverage")
+	}
+	if minX != 12 || minY != 9 || maxX != 13 || maxY != 12 {
+		t.Fatalf("rendered bounds = (%d,%d)-(%d,%d), want (12,9)-(13,12)", minX, minY, maxX, maxY)
 	}
 }

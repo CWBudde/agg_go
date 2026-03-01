@@ -742,39 +742,27 @@ func TestComplexGeometricOperations(t *testing.T) {
 	tests := []struct {
 		name      string
 		operation GPCOp
-		checkFunc func(*GPCPolygon) bool
+		minContours int
 	}{
 		{
 			name:      "Union",
 			operation: GPCUnion,
-			checkFunc: func(result *GPCPolygon) bool {
-				// Union should produce a polygon
-				return result.NumContours >= 0 // Allow empty result for now
-			},
+			minContours: 1,
 		},
 		{
 			name:      "Intersection",
 			operation: GPCInt,
-			checkFunc: func(result *GPCPolygon) bool {
-				// Intersection should produce a polygon
-				return result.NumContours >= 0 // Allow empty result for now
-			},
+			minContours: 1,
 		},
 		{
 			name:      "Difference",
 			operation: GPCDiff,
-			checkFunc: func(result *GPCPolygon) bool {
-				// Difference should produce a polygon
-				return result.NumContours >= 0 // Allow empty result for now
-			},
+			minContours: 1,
 		},
 		{
 			name:      "XOR",
 			operation: GPCXor,
-			checkFunc: func(result *GPCPolygon) bool {
-				// XOR should produce a polygon
-				return result.NumContours >= 0 // Allow empty result for now
-			},
+			minContours: 1,
 		},
 	}
 
@@ -791,13 +779,32 @@ func TestComplexGeometricOperations(t *testing.T) {
 				return
 			}
 
-			if !tt.checkFunc(result) {
-				t.Errorf("PolygonClip() result failed validation for operation %s", tt.name)
+			if result.NumContours < tt.minContours {
+				t.Fatalf("PolygonClip(%s) contours = %d, want at least %d", tt.name, result.NumContours, tt.minContours)
 			}
 
 			t.Logf("Operation %s completed successfully with %d contours", tt.name, result.NumContours)
 		})
 	}
+}
+
+func TestPolygonClipDebugOverlappingRectangles(t *testing.T) {
+	rect1 := createRectanglePolygon(0, 0, 10, 10)
+	rect2 := createRectanglePolygon(5, 5, 15, 15)
+
+	result, err := PolygonClip(GPCUnion, rect1, rect2)
+	if err != nil {
+		t.Fatalf("PolygonClip() error = %v", err)
+	}
+
+	t.Logf(
+		"debug: local_min_adds=%d out_poly_nil=%v max_raw_vertices=%d counted_contours=%d result_contours=%d",
+		lastPolygonClipDebugInfo.LocalMinAdds,
+		lastPolygonClipDebugInfo.OutPolyWasNil,
+		lastPolygonClipDebugInfo.MaxRawVertices,
+		lastPolygonClipDebugInfo.CountedContours,
+		result.NumContours,
+	)
 }
 
 // TestGPCPerformanceBenchmark provides basic performance testing

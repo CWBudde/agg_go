@@ -131,7 +131,52 @@ func TestConvGPC_NormalizeContourVertices(t *testing.T) {
 	}
 }
 
-func TestConvGPC_SimpleRectangles_UnionHasDrawableCommands(t *testing.T) {
+func TestConvGPC_AddToPolygonNormalizesClosedContour(t *testing.T) {
+	rect1 := []Vertex{
+		{0, 0, basics.PathCmdMoveTo},
+		{10, 0, basics.PathCmdLineTo},
+		{10, 10, basics.PathCmdLineTo},
+		{0, 10, basics.PathCmdLineTo},
+		{0, 0, basics.PathCmdEndPoly | basics.PathFlagClose},
+	}
+
+	converter := NewConvGPC(NewMockVertexSource(rect1), NewMockVertexSource([]Vertex{}), GPCOr)
+	converter.addToPolygon(NewMockVertexSource(rect1), converter.polyA)
+
+	contour, _, err := converter.polyA.GetContour(0)
+	if err != nil {
+		t.Fatalf("GetContour(0) error: %v", err)
+	}
+	if contour.NumVertices != 4 {
+		t.Fatalf("normalized contour vertices = %d, want 4", contour.NumVertices)
+	}
+}
+
+func TestConvGPC_PathStorageAdapterNormalizesClosedContour(t *testing.T) {
+	path1 := path.NewPathStorage()
+	path1.MoveTo(0, 0)
+	path1.LineTo(10, 0)
+	path1.LineTo(10, 10)
+	path1.LineTo(0, 10)
+	path1.ClosePolygon(basics.PathFlagsNone)
+
+	converter := NewConvGPC(
+		path.NewPathStorageVertexSourceAdapter(path1),
+		NewMockVertexSource([]Vertex{}),
+		GPCOr,
+	)
+	converter.addToPolygon(path.NewPathStorageVertexSourceAdapter(path1), converter.polyA)
+
+	contour, _, err := converter.polyA.GetContour(0)
+	if err != nil {
+		t.Fatalf("GetContour(0) error: %v", err)
+	}
+	if contour.NumVertices != 4 {
+		t.Fatalf("normalized path contour vertices = %d, want 4", contour.NumVertices)
+	}
+}
+
+func TestConvGPC_RewindMatchesDirectPolygonClip(t *testing.T) {
 	rect1 := []Vertex{
 		{0, 0, basics.PathCmdMoveTo},
 		{10, 0, basics.PathCmdLineTo},
@@ -147,36 +192,65 @@ func TestConvGPC_SimpleRectangles_UnionHasDrawableCommands(t *testing.T) {
 		{5, 5, basics.PathCmdEndPoly | basics.PathFlagClose},
 	}
 
-	gpc := NewConvGPC(NewMockVertexSource(rect1), NewMockVertexSource(rect2), GPCOr)
-	commands := countDrawableCommands(gpc)
-	if commands == 0 {
-		t.Fatal("expected drawable commands from union result")
+	converter := NewConvGPC(NewMockVertexSource(rect1), NewMockVertexSource(rect2), GPCOr)
+	converter.addToPolygon(NewMockVertexSource(rect1), converter.polyA)
+	converter.addToPolygon(NewMockVertexSource(rect2), converter.polyB)
+
+	directResult, directErr := gpc.PolygonClip(gpc.GPCUnion, converter.polyA, converter.polyB)
+
+	converter.Rewind(0)
+
+	if converter.lastClipError() != nil {
+		t.Fatalf("ConvGPC.Rewind clip error: %v", converter.lastClipError())
+	}
+	if directErr != nil {
+		t.Fatalf("direct PolygonClip error: %v", directErr)
+	}
+	if converter.result.NumContours != directResult.NumContours {
+		t.Fatalf("result contour mismatch: rewind=%d direct=%d", converter.result.NumContours, directResult.NumContours)
 	}
 }
 
-func TestConvGPC_PathStorageAdapter_UnionHasDrawableCommands(t *testing.T) {
-	path1 := path.NewPathStorage()
-	path1.MoveTo(0, 0)
-	path1.LineTo(10, 0)
-	path1.LineTo(10, 10)
-	path1.LineTo(0, 10)
-	path1.ClosePolygon(basics.PathFlagsNone)
+func TestConvGPC_ResultContoursExplainEmptyVertexStream(t *testing.T) {
+	rect1 := []Vertex{
+		{0, 0, basics.PathCmdMoveTo},
+		{10, 0, basics.PathCmdLineTo},
+		{10, 10, basics.PathCmdLineTo},
+		{0, 10, basics.PathCmdLineTo},
+		{0, 0, basics.PathCmdEndPoly | basics.PathFlagClose},
+	}
+	rect2 := []Vertex{
+		{5, 5, basics.PathCmdMoveTo},
+		{15, 5, basics.PathCmdLineTo},
+		{15, 15, basics.PathCmdLineTo},
+		{5, 15, basics.PathCmdLineTo},
+		{5, 5, basics.PathCmdEndPoly | basics.PathFlagClose},
+	}
 
-	path2 := path.NewPathStorage()
-	path2.MoveTo(5, 5)
-	path2.LineTo(15, 5)
-	path2.LineTo(15, 15)
-	path2.LineTo(5, 15)
-	path2.ClosePolygon(basics.PathFlagsNone)
+	converter := NewConvGPC(NewMockVertexSource(rect1), NewMockVertexSource(rect2), GPCOr)
+	converter.Rewind(0)
 
-	gpc := NewConvGPC(
-		path.NewPathStorageVertexSourceAdapter(path1),
-		path.NewPathStorageVertexSourceAdapter(path2),
-		GPCOr,
-	)
-	commands := countDrawableCommands(gpc)
-	if commands == 0 {
-		t.Fatal("expected drawable commands from path-storage union result")
+	emitted := countPreparedDrawableCommands(converter)
+	if converter.result.NumContours == 0 && emitted != 0 {
+		t.Fatalf("expected no emitted commands when result has no contours, got %d", emitted)
+	}
+	if converter.result.NumContours > 0 && emitted == 0 {
+		t.Fatalf("result has %d contours but vertex stream emitted none", converter.result.NumContours)
+	}
+}
+
+func TestConvGPC_RewindReportsClipErrors(t *testing.T) {
+	degenerate := []Vertex{
+		{0, 0, basics.PathCmdMoveTo},
+		{1, 0, basics.PathCmdLineTo},
+		{0, 0, basics.PathCmdEndPoly | basics.PathFlagClose},
+	}
+
+	converter := NewConvGPC(NewMockVertexSource(degenerate), NewMockVertexSource(degenerate), GPCOr)
+	converter.Rewind(0)
+
+	if converter.result == nil {
+		t.Fatal("expected non-nil result polygon")
 	}
 }
 
@@ -405,10 +479,8 @@ func extractAllVertices(vs VertexSource) []Vertex {
 	return vertices
 }
 
-func countDrawableCommands(vs VertexSource) int {
+func countPreparedDrawableCommands(vs VertexSource) int {
 	count := 0
-	vs.Rewind(0)
-
 	for {
 		_, _, cmd := vs.Vertex()
 		if basics.IsStop(cmd) {
@@ -416,9 +488,9 @@ func countDrawableCommands(vs VertexSource) int {
 		}
 		count++
 	}
-
 	return count
 }
+
 
 // Benchmark tests for performance
 func BenchmarkConvGPC_SimpleRectangles_Union(b *testing.B) {

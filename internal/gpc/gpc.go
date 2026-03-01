@@ -186,6 +186,15 @@ type GPCTristrip struct {
 	Strips    []*GPCVertexList // Array of triangle strips
 }
 
+type polygonClipDebugInfo struct {
+	LocalMinAdds    int
+	OutPolyWasNil   bool
+	CountedContours int
+	MaxRawVertices  int
+}
+
+var lastPolygonClipDebugInfo polygonClipDebugInfo
+
 // NewGPCTristrip creates a new empty tristrip
 func NewGPCTristrip() *GPCTristrip {
 	return &GPCTristrip{
@@ -405,6 +414,8 @@ func PolygonClip(operation GPCOp, subjectPolygon, clipPolygon *GPCPolygon) (*GPC
 
 // polygonClipComplete implements the complete GPC scanline algorithm
 func polygonClipComplete(operation GPCOp, subjectPolygon, clipPolygon *GPCPolygon) (*GPCPolygon, error) {
+	lastPolygonClipDebugInfo = polygonClipDebugInfo{}
+
 	// Identify potentially contributing contours using bounding box overlap
 	if ((operation == GPCInt) || (operation == GPCDiff)) &&
 		(subjectPolygon.NumContours > 0) && (clipPolygon.NumContours > 0) {
@@ -438,6 +449,7 @@ func polygonClipComplete(operation GPCOp, subjectPolygon, clipPolygon *GPCPolygo
 	// Initialize for scan-line algorithm
 	var aet *edgeNode
 	var outPoly *polygonNode
+	var cf *polygonNode
 	parity := [2]int{LEFT, LEFT}
 
 	// Invert clip polygon for difference operation
@@ -570,7 +582,6 @@ func polygonClipComplete(operation GPCOp, subjectPolygon, clipPolygon *GPCPolygo
 
 				if contributing {
 					xb := edge.XB
-					var cf *polygonNode
 
 					switch vclass {
 					case int(vtxEMN), int(vtxIMN):
@@ -578,70 +589,58 @@ func polygonClipComplete(operation GPCOp, subjectPolygon, clipPolygon *GPCPolygo
 						px = xb
 						cf = edge.OutP[ABOVE]
 					case int(vtxERI):
-						if xb != px && cf != nil {
+						if xb != px {
 							addRight(cf, xb, yb)
 							px = xb
 						}
 						edge.OutP[ABOVE] = cf
 						cf = nil
 					case int(vtxELI):
-						if edge.OutP[BELOW] != nil {
-							addLeft(edge.OutP[BELOW], xb, yb)
-							px = xb
-							cf = edge.OutP[BELOW]
-						}
+						addLeft(edge.OutP[BELOW], xb, yb)
+						px = xb
+						cf = edge.OutP[BELOW]
 					case int(vtxEMX):
-						if xb != px && cf != nil {
+						if xb != px {
 							addLeft(cf, xb, yb)
 							px = xb
 						}
-						if cf != nil && edge.OutP[BELOW] != nil {
-							mergeRight(cf, edge.OutP[BELOW], outPoly)
-						}
+						mergeRight(cf, edge.OutP[BELOW], outPoly)
 						cf = nil
 					case int(vtxILI):
-						if xb != px && cf != nil {
+						if xb != px {
 							addLeft(cf, xb, yb)
 							px = xb
 						}
 						edge.OutP[ABOVE] = cf
 						cf = nil
 					case int(vtxIRI):
-						if edge.OutP[BELOW] != nil {
-							addRight(edge.OutP[BELOW], xb, yb)
-							px = xb
-							cf = edge.OutP[BELOW]
-							edge.OutP[BELOW] = nil
-						}
+						addRight(edge.OutP[BELOW], xb, yb)
+						px = xb
+						cf = edge.OutP[BELOW]
+						edge.OutP[BELOW] = nil
 					case int(vtxIMX):
-						if xb != px && cf != nil {
+						if xb != px {
 							addRight(cf, xb, yb)
 							px = xb
 						}
-						if cf != nil && edge.OutP[BELOW] != nil {
-							mergeLeft(cf, edge.OutP[BELOW], outPoly)
-						}
+						mergeLeft(cf, edge.OutP[BELOW], outPoly)
 						cf = nil
 						edge.OutP[BELOW] = nil
 					case int(vtxIMM):
-						if xb != px && cf != nil {
+						if xb != px {
 							addRight(cf, xb, yb)
 							px = xb
 						}
-						if cf != nil && edge.OutP[BELOW] != nil {
-							mergeLeft(cf, edge.OutP[BELOW], outPoly)
-						}
+						mergeLeft(cf, edge.OutP[BELOW], outPoly)
 						edge.OutP[BELOW] = nil
 						addLocalMin(&outPoly, edge, xb, yb)
 						cf = edge.OutP[ABOVE]
 					case int(vtxEMM):
-						if xb != px && cf != nil {
+						if xb != px {
 							addLeft(cf, xb, yb)
 							px = xb
 						}
-						if cf != nil && edge.OutP[BELOW] != nil {
-							mergeRight(cf, edge.OutP[BELOW], outPoly)
-						}
+						mergeRight(cf, edge.OutP[BELOW], outPoly)
 						edge.OutP[BELOW] = nil
 						addLocalMin(&outPoly, edge, xb, yb)
 						cf = edge.OutP[ABOVE]
@@ -816,28 +815,92 @@ func polygonClipComplete(operation GPCOp, subjectPolygon, clipPolygon *GPCPolygo
 					}
 				}
 
-				// Swap edge bundles and x coordinates
+				// Swap bundle sides in response to edge crossing
 				if e0 != nil && e1 != nil {
-					e0.OutP[ABOVE], e1.OutP[ABOVE] = e1.OutP[ABOVE], e0.OutP[ABOVE]
-					e0.Bundle[ABOVE][CLIP], e1.Bundle[ABOVE][CLIP] = e1.Bundle[ABOVE][CLIP], e0.Bundle[ABOVE][CLIP]
-					e0.Bundle[BELOW][CLIP], e1.Bundle[BELOW][CLIP] = e1.Bundle[BELOW][CLIP], e0.Bundle[BELOW][CLIP]
-					e0.Bundle[ABOVE][SUBJ], e1.Bundle[ABOVE][SUBJ] = e1.Bundle[ABOVE][SUBJ], e0.Bundle[ABOVE][SUBJ]
-					e0.Bundle[BELOW][SUBJ], e1.Bundle[BELOW][SUBJ] = e1.Bundle[BELOW][SUBJ], e0.Bundle[BELOW][SUBJ]
-					e0.BSide[CLIP], e1.BSide[CLIP] = e1.BSide[CLIP], e0.BSide[CLIP]
-					e0.BSide[SUBJ], e1.BSide[SUBJ] = e1.BSide[SUBJ], e0.BSide[SUBJ]
-					e0.BState[ABOVE], e1.BState[ABOVE] = e1.BState[ABOVE], e0.BState[ABOVE]
-					e0.BState[BELOW], e1.BState[BELOW] = e1.BState[BELOW], e0.BState[BELOW]
-					e0.XB, e1.XB = e1.XB, e0.XB
-					e0.XT, e1.XT = e1.XT, e0.XT
+					if e0.Bundle[ABOVE][CLIP] != 0 {
+						e1.BSide[CLIP] = 1 - e1.BSide[CLIP]
+					}
+					if e1.Bundle[ABOVE][CLIP] != 0 {
+						e0.BSide[CLIP] = 1 - e0.BSide[CLIP]
+					}
+					if e0.Bundle[ABOVE][SUBJ] != 0 {
+						e1.BSide[SUBJ] = 1 - e1.BSide[SUBJ]
+					}
+					if e1.Bundle[ABOVE][SUBJ] != 0 {
+						e0.BSide[SUBJ] = 1 - e0.BSide[SUBJ]
+					}
+
+					// Swap e0 and e1 in the AET.
+					prevEdge := e0.Prev
+					nextEdge := e1.Next
+					if nextEdge != nil {
+						nextEdge.Prev = e0
+					}
+
+					if e0.BState[ABOVE] == bsBundleHead {
+						search := true
+						for search {
+							if prevEdge != nil {
+								prevEdge = prevEdge.Prev
+								if prevEdge == nil || prevEdge.BState[ABOVE] != bsBundleTail {
+									search = false
+								}
+							} else {
+								search = false
+							}
+						}
+					}
+
+					if prevEdge == nil {
+						aet.Prev = e1
+						e1.Next = aet
+						aet = e0.Next
+					} else {
+						prevEdge.Next.Prev = e1
+						e1.Next = prevEdge.Next
+						prevEdge.Next = e0.Next
+					}
+					e0.Next.Prev = prevEdge
+					e1.Next.Prev = e1
+					e0.Next = nextEdge
 				}
 			}
-		}
 
-		// Copy bundle below to bundle above for next scanbeam
-		for edge := aet; edge != nil; edge = edge.Next {
-			edge.Bundle[ABOVE][CLIP] = edge.Bundle[BELOW][CLIP]
-			edge.Bundle[ABOVE][SUBJ] = edge.Bundle[BELOW][SUBJ]
-			edge.BState[ABOVE] = edge.BState[BELOW]
+			// Prepare for next scanbeam
+			for edge := aet; edge != nil; {
+				nextEdge := edge.Next
+				succEdge := edge.Succ
+
+				if edge.Top.Y == yt && succEdge != nil {
+					// Replace AET edge by its successor.
+					succEdge.OutP[BELOW] = edge.OutP[ABOVE]
+					succEdge.BState[BELOW] = edge.BState[ABOVE]
+					succEdge.Bundle[BELOW][CLIP] = edge.Bundle[ABOVE][CLIP]
+					succEdge.Bundle[BELOW][SUBJ] = edge.Bundle[ABOVE][SUBJ]
+
+					prevEdge := edge.Prev
+					if prevEdge != nil {
+						prevEdge.Next = succEdge
+					} else {
+						aet = succEdge
+					}
+					if nextEdge != nil {
+						nextEdge.Prev = succEdge
+					}
+					succEdge.Prev = prevEdge
+					succEdge.Next = nextEdge
+				} else {
+					// Update this edge.
+					edge.OutP[BELOW] = edge.OutP[ABOVE]
+					edge.BState[BELOW] = edge.BState[ABOVE]
+					edge.Bundle[BELOW][CLIP] = edge.Bundle[ABOVE][CLIP]
+					edge.Bundle[BELOW][SUBJ] = edge.Bundle[ABOVE][SUBJ]
+					edge.XB = edge.XT
+				}
+
+				edge.OutP[ABOVE] = nil
+				edge = nextEdge
+			}
 		}
 	}
 
@@ -856,13 +919,25 @@ func boolToInt(b bool) int {
 // convertPolygonNodesToGPCPolygon converts internal polygon nodes to GPCPolygon
 func convertPolygonNodesToGPCPolygon(outPoly *polygonNode) *GPCPolygon {
 	result := NewGPCPolygon()
+	lastPolygonClipDebugInfo.OutPolyWasNil = outPoly == nil
 
 	if outPoly == nil {
 		return result
 	}
 
+	for poly := outPoly; poly != nil; poly = poly.Next {
+		rawVertices := 0
+		for v := poly.Proxy.V[LEFT]; v != nil; v = v.Next {
+			rawVertices++
+		}
+		if rawVertices > lastPolygonClipDebugInfo.MaxRawVertices {
+			lastPolygonClipDebugInfo.MaxRawVertices = rawVertices
+		}
+	}
+
 	// Count valid contours first
 	numContours := countContours(outPoly)
+	lastPolygonClipDebugInfo.CountedContours = numContours
 	if numContours == 0 {
 		return result
 	}
@@ -2066,6 +2141,7 @@ func mergeRight(p, q *polygonNode, list *polygonNode) {
 
 // addLocalMin adds a local minimum vertex and creates new polygon node
 func addLocalMin(p **polygonNode, edge *edgeNode, x, y float64) {
+	lastPolygonClipDebugInfo.LocalMinAdds++
 	existing := *p
 
 	nv := &vertexNode{

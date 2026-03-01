@@ -60,24 +60,6 @@ type PreparedGlyph struct {
 	AdvanceY   float64                 // Vertical advance
 }
 
-// FontEngineAdaptorTypes defines type aliases for different path storage precisions.
-// This corresponds to AGG's serialized path adaptors.
-type FontEngineAdaptorTypes struct {
-	// For Int16 variant (compact, for glyphs < 200px height)
-	PathAdaptorInt16 *path.SerializedIntegerPathAdaptor[int16]
-
-	// For Int32 variant (for very large glyphs)
-	PathAdaptorInt32 *path.SerializedIntegerPathAdaptor[int32]
-
-	// Shared scanline adaptors
-	Gray8Adaptor *scanline.SerializedScanlinesAdaptorAA[uint8]
-	MonoAdaptor  *scanline.SerializedScanlinesAdaptorBin
-
-	// Scanline storage types
-	ScanlinesAA  *scanline.ScanlineStorageAA[uint8]
-	ScanlinesBin *scanline.ScanlineStorageBin
-}
-
 // FontEngineInterface defines the interface that all FreeType2 engines must implement.
 // This provides a common interface for both Int16 and Int32 variants.
 type FontEngineInterface interface {
@@ -92,7 +74,8 @@ type FontEngineInterface interface {
 	// Adaptor access for fman::font_cache_manager-style consumers.
 	// Agg2D itself uses the v1 font stack, matching agg2d.h.
 	PathAdaptorInterface() path.IntegerPathAdaptor
-	AdaptorTypes() *FontEngineAdaptorTypes
+	Gray8SerializedAdaptor() *scanline.SerializedScanlinesAdaptorAA[uint8]
+	MonoSerializedAdaptor() *scanline.SerializedScanlinesAdaptorBin
 
 	// Engine information
 	Is32Bit() bool

@@ -20,14 +20,8 @@ type FontEngineInt16 struct {
 	*FontEngine
 }
 
-// Type aliases for Int16 variant to match AGG's typedef structure
-type (
-	PathAdaptorInt16Type  = *path.SerializedIntegerPathAdaptor[int16]
-	Gray8AdaptorInt16Type = *FontEngineAdaptorTypes // Shared with base
-	MonoAdaptorInt16Type  = *FontEngineAdaptorTypes // Shared with base
-	ScanlinesAAInt16Type  = *FontEngineAdaptorTypes // Shared with base
-	ScanlinesBinInt16Type = *FontEngineAdaptorTypes // Shared with base
-)
+// Type aliases for Int16 variant to match AGG's typedef structure.
+type PathAdaptorInt16Type = *path.SerializedIntegerPathAdaptor[int16]
 
 // NewFontEngineInt16 creates a new 16-bit precision FreeType font engine.
 // This engine is optimized for smaller glyphs (< 200px height) and uses less memory.
@@ -53,36 +47,14 @@ func (fe16 *FontEngineInt16) PathAdaptorInterface() path.IntegerPathAdaptor {
 	return fe16.PathAdaptor()
 }
 
-// Gray8Adaptor returns the gray8 scanline adaptor.
-func (fe16 *FontEngineInt16) Gray8Adaptor() Gray8AdaptorInt16Type {
-	// Return the shared adaptor types from base engine
-	return &FontEngineAdaptorTypes{
-		PathAdaptorInt16: fe16.PathAdaptor(),
-		Gray8Adaptor:     scanline.NewSerializedScanlinesAdaptorAAEmpty[uint8](),
-		MonoAdaptor:      scanline.NewSerializedScanlinesAdaptorBin(),
-		ScanlinesAA:      fe16.FontEngineBase.scanlinesAA,
-		ScanlinesBin:     fe16.FontEngineBase.scanlinesBin,
-	}
+// Gray8SerializedAdaptor returns the serialized AA adaptor used by CacheManager2.
+func (fe16 *FontEngineInt16) Gray8SerializedAdaptor() *scanline.SerializedScanlinesAdaptorAA[uint8] {
+	return scanline.NewSerializedScanlinesAdaptorAAEmpty[uint8]()
 }
 
-// AdaptorTypes returns the engine adaptor bundle through the common interface.
-func (fe16 *FontEngineInt16) AdaptorTypes() *FontEngineAdaptorTypes {
-	return fe16.Gray8Adaptor()
-}
-
-// MonoAdaptor returns the mono scanline adaptor.
-func (fe16 *FontEngineInt16) MonoAdaptor() MonoAdaptorInt16Type {
-	return fe16.Gray8Adaptor() // Same structure for mono
-}
-
-// ScanlinesAA returns the anti-aliased scanlines storage.
-func (fe16 *FontEngineInt16) ScanlinesAA() ScanlinesAAInt16Type {
-	return fe16.Gray8Adaptor()
-}
-
-// ScanlinesBin returns the binary scanlines storage.
-func (fe16 *FontEngineInt16) ScanlinesBin() ScanlinesBinInt16Type {
-	return fe16.Gray8Adaptor()
+// MonoSerializedAdaptor returns the serialized binary adaptor used by CacheManager2.
+func (fe16 *FontEngineInt16) MonoSerializedAdaptor() *scanline.SerializedScanlinesAdaptorBin {
+	return scanline.NewSerializedScanlinesAdaptorBin()
 }
 
 // FontEngineInt32 uses 32-bit precision (26.6 format) for vector cache.
@@ -93,14 +65,8 @@ type FontEngineInt32 struct {
 	*FontEngine
 }
 
-// Type aliases for Int32 variant to match AGG's typedef structure
-type (
-	PathAdaptorInt32Type  = *path.SerializedIntegerPathAdaptor[int32]
-	Gray8AdaptorInt32Type = *FontEngineAdaptorTypes // Shared with base
-	MonoAdaptorInt32Type  = *FontEngineAdaptorTypes // Shared with base
-	ScanlinesAAInt32Type  = *FontEngineAdaptorTypes // Shared with base
-	ScanlinesBinInt32Type = *FontEngineAdaptorTypes // Shared with base
-)
+// Type aliases for Int32 variant to match AGG's typedef structure.
+type PathAdaptorInt32Type = *path.SerializedIntegerPathAdaptor[int32]
 
 // NewFontEngineInt32 creates a new 32-bit precision FreeType font engine.
 // This engine can handle very large glyphs without overflow but uses more memory.
@@ -126,36 +92,14 @@ func (fe32 *FontEngineInt32) PathAdaptorInterface() path.IntegerPathAdaptor {
 	return fe32.PathAdaptor()
 }
 
-// Gray8Adaptor returns the gray8 scanline adaptor.
-func (fe32 *FontEngineInt32) Gray8Adaptor() Gray8AdaptorInt32Type {
-	// Return the shared adaptor types from base engine
-	return &FontEngineAdaptorTypes{
-		PathAdaptorInt32: fe32.PathAdaptor(),
-		Gray8Adaptor:     scanline.NewSerializedScanlinesAdaptorAAEmpty[uint8](),
-		MonoAdaptor:      scanline.NewSerializedScanlinesAdaptorBin(),
-		ScanlinesAA:      fe32.FontEngineBase.scanlinesAA,
-		ScanlinesBin:     fe32.FontEngineBase.scanlinesBin,
-	}
+// Gray8SerializedAdaptor returns the serialized AA adaptor used by CacheManager2.
+func (fe32 *FontEngineInt32) Gray8SerializedAdaptor() *scanline.SerializedScanlinesAdaptorAA[uint8] {
+	return scanline.NewSerializedScanlinesAdaptorAAEmpty[uint8]()
 }
 
-// AdaptorTypes returns the engine adaptor bundle through the common interface.
-func (fe32 *FontEngineInt32) AdaptorTypes() *FontEngineAdaptorTypes {
-	return fe32.Gray8Adaptor()
-}
-
-// MonoAdaptor returns the mono scanline adaptor.
-func (fe32 *FontEngineInt32) MonoAdaptor() MonoAdaptorInt32Type {
-	return fe32.Gray8Adaptor() // Same structure for mono
-}
-
-// ScanlinesAA returns the anti-aliased scanlines storage.
-func (fe32 *FontEngineInt32) ScanlinesAA() ScanlinesAAInt32Type {
-	return fe32.Gray8Adaptor()
-}
-
-// ScanlinesBin returns the binary scanlines storage.
-func (fe32 *FontEngineInt32) ScanlinesBin() ScanlinesBinInt32Type {
-	return fe32.Gray8Adaptor()
+// MonoSerializedAdaptor returns the serialized binary adaptor used by CacheManager2.
+func (fe32 *FontEngineInt32) MonoSerializedAdaptor() *scanline.SerializedScanlinesAdaptorBin {
+	return scanline.NewSerializedScanlinesAdaptorBin()
 }
 
 // Convenience constructors that match AGG's typical usage patterns
