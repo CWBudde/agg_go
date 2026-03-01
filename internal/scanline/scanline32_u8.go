@@ -61,6 +61,9 @@ func (sl *Scanline32U8) Reset(minX, maxX int) {
 // X coordinates must be provided in increasing order.
 func (sl *Scanline32U8) AddCell(x int, cover uint) {
 	x -= sl.minX
+	if x < 0 || x >= sl.covers.Size() {
+		return
+	}
 	sl.covers.Set(x, CoverType(cover))
 
 	if x == sl.lastX+1 {
@@ -85,6 +88,23 @@ func (sl *Scanline32U8) AddCell(x int, cover uint) {
 // X coordinates must be provided in increasing order.
 func (sl *Scanline32U8) AddCells(x int, length int, covers []CoverType) {
 	x -= sl.minX
+	if x < 0 {
+		diff := -x
+		if diff >= length {
+			return
+		}
+		x = 0
+		length -= diff
+		covers = covers[diff:]
+	}
+
+	if x+length > sl.covers.Size() {
+		length = sl.covers.Size() - x
+	}
+
+	if length <= 0 {
+		return
+	}
 
 	// Copy coverage values to our internal array
 	coverData := sl.covers.Data()
@@ -112,6 +132,22 @@ func (sl *Scanline32U8) AddCells(x int, length int, covers []CoverType) {
 // X coordinates must be provided in increasing order.
 func (sl *Scanline32U8) AddSpan(x int, length int, cover uint) {
 	x -= sl.minX
+	if x < 0 {
+		diff := -x
+		if diff >= length {
+			return
+		}
+		x = 0
+		length -= diff
+	}
+
+	if x+length > sl.covers.Size() {
+		length = sl.covers.Size() - x
+	}
+
+	if length <= 0 {
+		return
+	}
 
 	// Fill coverage values with the same value
 	coverData := sl.covers.Data()

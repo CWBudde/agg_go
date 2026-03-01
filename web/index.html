@@ -140,12 +140,20 @@
       </div>
 
       <div class="controls" id="aaControls" style="display: none;">
-      <label for="zoomSlider">Pixel Size:</label>
-      <input type="range" id="zoomSlider" min="8" max="64" value="32" step="1">
-      <span id="zoomValue">32</span>
+        <label for="zoomSlider">Pixel Size:</label>
+        <input type="range" id="zoomSlider" min="8" max="64" value="32" step="1">
+        <span id="zoomValue">32</span>
+      </div>
+
+      <div class="controls" id="dashControls" style="display: none;">
+        <label for="dashWidthSlider">Line Width:</label>
+        <input type="range" id="dashWidthSlider" min="0.5" max="10" value="3" step="0.5">
+        <span id="dashWidthValue">3</span>
+        <label style="margin-left: 1rem;"><input type="checkbox" id="dashClosed" checked> Closed</label>
       </div>
 
       <canvas id="aggCanvas"></canvas>
+
     <div class="description" id="demoDesc"></div>
 
     <div class="status" id="statusMsg">Initializing...</div>

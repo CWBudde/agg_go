@@ -36,7 +36,9 @@ async function init() {
     const selector = document.getElementById("demoSelector");
     selector.addEventListener("change", () => {
       const aaControls = document.getElementById("aaControls");
+      const dashControls = document.getElementById("dashControls");
       aaControls.style.display = selector.value === "aa" ? "flex" : "none";
+      dashControls.style.display = selector.value === "dash" ? "flex" : "none";
       renderSelectedDemo();
     });
 
@@ -49,6 +51,20 @@ async function init() {
       const val = parseFloat(zoomSlider.value);
       document.getElementById("zoomValue").textContent = val;
       setAAZoom(val);
+      renderSelectedDemo();
+    });
+
+    const dashWidthSlider = document.getElementById("dashWidthSlider");
+    dashWidthSlider.addEventListener("input", () => {
+      const val = parseFloat(dashWidthSlider.value);
+      document.getElementById("dashWidthValue").textContent = val;
+      setDashWidth(val);
+      renderSelectedDemo();
+    });
+
+    const dashClosedBox = document.getElementById("dashClosed");
+    dashClosedBox.addEventListener("change", () => {
+      setDashClosed(dashClosedBox.checked);
       renderSelectedDemo();
     });
 

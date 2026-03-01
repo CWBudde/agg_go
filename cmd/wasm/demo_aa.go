@@ -80,7 +80,7 @@ func drawAADemo() {
 	}
 
 	// Use adapter to fix Rewind(uint) vs Rewind(uint32) mismatch
-	adapter := &AAAdapter{ps: ps}
+	adapter := &WasmAdapter{ps: ps}
 	
 	// Set up the rasterizer
 	ras := agg2d.GetInternalRasterizer()

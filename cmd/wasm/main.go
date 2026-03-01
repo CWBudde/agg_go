@@ -28,6 +28,8 @@ func main() {
 	js.Global().Set("onMouseMove", js.FuncOf(onMouseMove))
 	js.Global().Set("onMouseUp", js.FuncOf(onMouseUp))
 	js.Global().Set("setAAZoom", js.FuncOf(setAAZoom))
+	js.Global().Set("setDashWidth", js.FuncOf(setDashWidth))
+	js.Global().Set("setDashClosed", js.FuncOf(setDashClosed))
 
 	// Keep the Go program running
 	select {}
@@ -44,6 +46,9 @@ func onMouseDown(this js.Value, args []js.Value) interface{} {
 	if demoType == "aa" {
 		return handleAAMouseDown(x, y)
 	}
+	if demoType == "dash" {
+		return handleDashMouseDown(x, y)
+	}
 	return false
 }
 
@@ -58,6 +63,9 @@ func onMouseMove(this js.Value, args []js.Value) interface{} {
 	if demoType == "aa" {
 		return handleAAMouseMove(x, y)
 	}
+	if demoType == "dash" {
+		return handleDashMouseMove(x, y)
+	}
 	return false
 }
 
@@ -66,12 +74,29 @@ func onMouseUp(this js.Value, args []js.Value) interface{} {
 	if demoType == "aa" {
 		handleAAMouseUp()
 	}
+	if demoType == "dash" {
+		handleDashMouseUp()
+	}
 	return nil
 }
 
 func setAAZoom(this js.Value, args []js.Value) interface{} {
 	if len(args) > 0 {
 		aaPixelSize = args[0].Float()
+	}
+	return nil
+}
+
+func setDashWidth(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		dashWidth = args[0].Float()
+	}
+	return nil
+}
+
+func setDashClosed(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		dashClosed = args[0].Bool()
 	}
 	return nil
 }
