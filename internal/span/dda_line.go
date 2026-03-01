@@ -25,9 +25,18 @@ func NewGouraudDDAInterpolator(y1, y2 int, count uint, fractionShift int) *Goura
 		count = 1
 	}
 
+	inc := ((y2 - y1) << fractionShift) / int(count)
+	// Clamp inc to prevent insane values that might lead to numeric instability
+	limit := 1000000 // reasonable limit for 14-bit fraction
+	if inc > limit {
+		inc = limit
+	} else if inc < -limit {
+		inc = -limit
+	}
+
 	return &GouraudDDAInterpolator{
 		y:             y1,
-		inc:           ((y2 - y1) << fractionShift) / int(count),
+		inc:           inc,
 		dy:            0,
 		fractionShift: fractionShift,
 	}

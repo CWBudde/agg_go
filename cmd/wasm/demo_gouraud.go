@@ -2,6 +2,7 @@
 package main
 
 import (
+	"fmt"
 	"math"
 
 	agg "agg_go"
@@ -20,18 +21,20 @@ func drawGouraudDemo() {
 	agg2d := ctx.GetAgg2D()
 	agg2d.ResetTransformations()
 
+	Log(fmt.Sprintf("Gouraud Dilation: %.2f", gouraudDilation))
+
 	// Subdivision into 6 triangles as in original gouraud.cpp
 	xc := (gouraudX[0] + gouraudX[1] + gouraudX[2]) / 3.0
 	yc := (gouraudY[0] + gouraudY[1] + gouraudY[2]) / 3.0
 
-	x1 := (gouraudX[1]+gouraudX[0])/2 - (xc - (gouraudX[1]+gouraudX[0])/2)
-	y1 := (gouraudY[1]+gouraudY[0])/2 - (yc - (gouraudY[1]+gouraudY[0])/2)
+	x1 := (gouraudX[1]+gouraudX[0])*0.5 - (xc - (gouraudX[1]+gouraudX[0])*0.5)
+	y1 := (gouraudY[1]+gouraudY[0])*0.5 - (yc - (gouraudY[1]+gouraudY[0])*0.5)
 
-	x2 := (gouraudX[2]+gouraudX[1])/2 - (xc - (gouraudX[2]+gouraudX[1])/2)
-	y2 := (gouraudY[2]+gouraudY[1])/2 - (yc - (gouraudY[2]+gouraudY[1])/2)
+	x2 := (gouraudX[2]+gouraudX[1])*0.5 - (xc - (gouraudX[2]+gouraudX[1])*0.5)
+	y2 := (gouraudY[2]+gouraudY[1])*0.5 - (yc - (gouraudY[2]+gouraudY[1])*0.5)
 
-	x3 := (gouraudX[0]+gouraudX[2])/2 - (xc - (gouraudX[0]+gouraudX[2])/2)
-	y3 := (gouraudY[0]+gouraudY[2])/2 - (yc - (gouraudY[0]+gouraudY[2])/2)
+	x3 := (gouraudX[0]+gouraudX[2])*0.5 - (xc - (gouraudX[0]+gouraudX[2])*0.5)
+	y3 := (gouraudY[0]+gouraudY[2])*0.5 - (yc - (gouraudY[0]+gouraudY[2])*0.5)
 
 	cRed := agg.NewColor(255, 0, 0, 255)
 	cGreen := agg.NewColor(0, 255, 0, 255)

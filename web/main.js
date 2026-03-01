@@ -7,14 +7,27 @@ let ctx;
 let imageData;
 let pixels;
 
+window.onerror = function(message, source, lineno, colno, error) {
+  console.error("Global JS Error:", message, "at", source, ":", lineno);
+  updateStatus("JS Error: " + message);
+};
+
 async function init() {
+  console.log("Initializing AGG Go Web Demo...");
   try {
     const result = await WebAssembly.instantiateStreaming(
       fetch("main.wasm"),
       go.importObject,
-    );
+    ).catch(err => {
+        console.error("WASM Fetch/Instantiate Error:", err);
+        throw err;
+    });
+    
     wasmInstance = result.instance;
-    go.run(wasmInstance);
+    go.run(wasmInstance).catch(err => {
+        console.error("WASM Runtime Error:", err);
+        updateStatus("WASM Error: " + err.message);
+    });
 
     // Hide loading screen
     document.getElementById("loading").style.display = "none";
@@ -149,14 +162,19 @@ function renderSelectedDemo() {
   document.getElementById("demoDesc").textContent =
     demoDescriptions[demoType] || "";
 
-  // Perform rendering in Go and copy pixels back to JS
-  renderDemo(demoType, pixels);
+  try {
+    // Perform rendering in Go and copy pixels back to JS
+    renderDemo(demoType, pixels);
 
-  // Update canvas
-  imageData.data.set(pixels);
-  ctx.putImageData(imageData, 0, 0);
+    // Update canvas
+    imageData.data.set(pixels);
+    ctx.putImageData(imageData, 0, 0);
 
-  updateStatus("Rendered " + demoType);
+    updateStatus("Rendered " + demoType);
+  } catch (err) {
+    console.error("Render Error:", err);
+    updateStatus("Render Error: " + err.message);
+  }
 }
 
 function updateStatus(msg) {
