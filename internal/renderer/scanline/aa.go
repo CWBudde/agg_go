@@ -23,6 +23,15 @@ func NewRendererScanlineAAWithComponents[BR BaseRendererInterface[C], SA SpanAll
 	}
 }
 
+// SetColor sets the color for the renderer (if supported by span generator).
+func (r *RendererScanlineAA[BR, SA, SG, C]) SetColor(c C) {
+	// Some span generators might support setting a base color.
+	// We check if the span generator implements ColorSetter.
+	if cs, ok := any(r.spanGenerator).(ColorSetter[C]); ok {
+		cs.SetColor(c)
+	}
+}
+
 // Attach attaches all components to this scanline renderer.
 func (r *RendererScanlineAA[BR, SA, SG, C]) Attach(ren BR, alloc SA, spanGen SG) {
 	r.baseRenderer = ren

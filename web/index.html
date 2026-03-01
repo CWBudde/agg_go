@@ -135,7 +135,9 @@
         <option value="blend">Blend Modes Demo</option>
         <option value="bspline">B-Spline Demo</option>
         <option value="dash">Dashed Lines Demo</option>
+        <option value="gouraud">Gouraud Shading (Interpolation)</option>
         <option value="aatest">Anti-Aliasing Test (Sub-pixel Precision)</option>
+
         </select>
 
       <button id="renderBtn">Re-render</button>
@@ -152,6 +154,12 @@
         <input type="range" id="dashWidthSlider" min="0.5" max="10" value="3" step="0.5">
         <span id="dashWidthValue">3</span>
         <label style="margin-left: 1rem;"><input type="checkbox" id="dashClosed" checked> Closed</label>
+      </div>
+
+      <div class="controls" id="gouraudControls" style="display: none;">
+        <label for="dilationSlider">Dilation:</label>
+        <input type="range" id="dilationSlider" min="-2" max="5" value="0.5" step="0.1">
+        <span id="dilationValue">0.5</span>
       </div>
 
       <canvas id="aggCanvas"></canvas>

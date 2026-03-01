@@ -37,8 +37,10 @@ async function init() {
     selector.addEventListener("change", () => {
       const aaControls = document.getElementById("aaControls");
       const dashControls = document.getElementById("dashControls");
+      const gouraudControls = document.getElementById("gouraudControls");
       aaControls.style.display = selector.value === "aa" ? "flex" : "none";
       dashControls.style.display = selector.value === "dash" ? "flex" : "none";
+      gouraudControls.style.display = selector.value === "gouraud" ? "flex" : "none";
       renderSelectedDemo();
     });
 
@@ -51,6 +53,14 @@ async function init() {
       const val = parseFloat(zoomSlider.value);
       document.getElementById("zoomValue").textContent = val;
       setAAZoom(val);
+      renderSelectedDemo();
+    });
+
+    const dilationSlider = document.getElementById("dilationSlider");
+    dilationSlider.addEventListener("input", () => {
+      const val = parseFloat(dilationSlider.value);
+      document.getElementById("dilationValue").textContent = val;
+      setGouraudDilation(val);
       renderSelectedDemo();
     });
 
@@ -126,6 +136,7 @@ const demoDescriptions = {
   bspline:
     "B-Spline curve smoothing. Demonstrates the creation of smooth, continuous curves from a set of control points.",
   "dash": "Advanced line styling. Showcases various dash patterns and line thicknesses applied to both simple lines and complex paths.",
+  "gouraud": "Smooth color interpolation across triangles. Demonstrates AGG's capability to render gradient-shaded meshes with sub-pixel precision and adjustable dilation.",
   "aatest": "Comprehensive anti-aliasing precision test. Renders radial lines, various ellipse sizes, and gradient-filled triangles at fractional offsets to verify the rasterizer's quality."
   };
 

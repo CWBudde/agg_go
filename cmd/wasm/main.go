@@ -161,6 +161,8 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 		drawBSplineDemo()
 	case "dash":
 		drawDashDemo()
+	case "gouraud":
+		drawGouraudDemo()
 	case "aatest":
 		drawAATestDemo()
 	default:

@@ -13,6 +13,7 @@ import (
 	"agg_go/internal/path"
 	"agg_go/internal/pixfmt"
 	"agg_go/internal/rasterizer"
+	"agg_go/internal/renderer"
 	renscan "agg_go/internal/renderer/scanline"
 	"agg_go/internal/scanline"
 	"agg_go/internal/span"
@@ -307,12 +308,79 @@ func (agg2d *Agg2D) GouraudTriangle(x1, y1, x2, y2, x3, y3 float64, c1, c2, c3 C
 	gc3 := span.RGBAColor{R: int(c3[0]) << 8, G: int(c3[1]) << 8, B: int(c3[2]) << 8, A: int(c3[3]) << 8}
 
 	spanGen := span.NewSpanGouraudRGBAWithTriangle(gc1, gc2, gc3, x1, y1, x2, y2, x3, y3, d)
-	renderer := renscan.NewRendererScanlineAA[color.RGBA8[color.Linear], *span.SpanAllocator[color.RGBA8[color.Linear]], *span.SpanGouraudRGBA](
-		agg2d.renBase.rendererBase(),
-		agg2d.spanAllocator,
-		spanGen,
-	)
 
-	agg2d.rasterizer.AddPath(spanGen, 0)
+	// Use a custom renderer that doesn't rely on the broken interfaces
+	renderer := &gouraudRenderer{
+		ren:   agg2d.renBase.rendererBase(),
+		span:  spanGen,
+		alloc: span.NewSpanAllocator[span.RGBAColor](),
+	}
+
+	// We need an adapter here too because of circular dependency or internal types
+	// But Agg2D can see spanGen and its Rewind(uint).
+	// Let's use a local adapter or just fix the interface if possible.
+	// For now, let's use a simple anonymous adapter.
+	adapter := &gouraudRasAdapter{sg: spanGen}
+	agg2d.rasterizer.AddPath(adapter, 0)
 	scanlineRender(agg2d.rasterizer, agg2d.scanline, renderer)
+}
+
+type gouraudRenderer struct {
+	ren   *renderer.RendererBase[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]]
+	span  *span.SpanGouraudRGBA
+	alloc *span.SpanAllocator[span.RGBAColor]
+}
+
+func (r *gouraudRenderer) Prepare() {
+	r.span.Prepare()
+}
+
+func (r *gouraudRenderer) SetColor(c color.RGBA8[color.Linear]) {}
+
+func (r *gouraudRenderer) Render(sl renscan.ScanlineInterface) {
+	y := sl.Y()
+	it := sl.Begin()
+	for {
+		spanData := it.GetSpan()
+		x := spanData.X
+		length := spanData.Len
+
+		colors := r.alloc.Allocate(length)
+		r.span.Generate(colors, x, y, uint(length))
+
+		// Convert back to base renderer colors and blend
+		baseColors := make([]color.RGBA8[color.Linear], length)
+		for i := 0; i < length; i++ {
+			baseColors[i] = color.RGBA8[color.Linear]{
+				R: uint8(colors[i].R >> 8),
+				G: uint8(colors[i].G >> 8),
+				B: uint8(colors[i].B >> 8),
+				A: uint8(colors[i].A >> 8),
+			}
+		}
+
+		r.ren.BlendColorHspan(x, y, length, baseColors, spanData.Covers, 255)
+
+		if !it.Next() {
+			break
+		}
+	}
+}
+
+type gouraudRasAdapter struct {
+	sg interface {
+		Rewind(uint)
+		Vertex() (float64, float64, basics.PathCommand)
+	}
+}
+
+func (a *gouraudRasAdapter) Rewind(pathID uint32) {
+	a.sg.Rewind(uint(pathID))
+}
+
+func (a *gouraudRasAdapter) Vertex(x, y *float64) uint32 {
+	vx, vy, cmd := a.sg.Vertex()
+	*x = vx
+	*y = vy
+	return uint32(cmd)
 }
