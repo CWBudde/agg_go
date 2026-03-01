@@ -37,7 +37,7 @@ func drawBlendModesDemo() {
 		agg2d.BlendMode(agg.BlendAlpha)
 		agg2d.FillColor(agg.NewColor(255, 0, 0, 180))
 		agg2d.FillCircle(x+70, y+60, 40)
-		
+
 		agg2d.FillColor(agg.NewColor(0, 255, 0, 180))
 		agg2d.FillCircle(x+110, y+60, 40)
 

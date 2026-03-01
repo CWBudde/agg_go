@@ -184,9 +184,9 @@ These types use Go generics correctly without runtime type assertions.
 
 ### A.14 Font Cache Types
 
-| Go Type                    | C++ Origin           | Constraint  | Notes      |
-| -------------------------- | -------------------- | ----------- | ---------- |
-| `font.FontCacheManager`    | `font_cache_manager` | FontEngine  | Authoritative AGG2D path |
+| Go Type                    | C++ Origin                 | Constraint  | Notes                        |
+| -------------------------- | -------------------------- | ----------- | ---------------------------- |
+| `font.FontCacheManager`    | `font_cache_manager`       | FontEngine  | Authoritative AGG2D path     |
 | `FmanFontCacheManager2[T]` | `fman::font_cache_manager` | FontEngine2 | Separate FreeType2/fman path |
 
 ### A.15 Control Types (UI)
@@ -386,14 +386,14 @@ The Phase 3 font cleanup removed the broad `interface{}` fields from the text pa
 
 Current font subsystem status:
 
-| File                                           | Current approach                                        | Assessment                                           |
-| ---------------------------------------------- | ------------------------------------------------------- | ---------------------------------------------------- |
-| `internal/agg2d/agg2d.go`                      | concrete `*freetype.FontEngineFreetype`, `*font.FontCacheManager` | Typed; authoritative Agg2D path                      |
-| `internal/agg2d/text.go`                       | typed adaptors via `font.SerializedScanlinesAdaptor`    | Typed; no broad runtime assertions in text path      |
-| `internal/font/freetype2/types.go`             | explicit interfaces for engine / loaded-face / serialized adaptors | Typed; separate `fman` path               |
-| `internal/font/freetype2/engine.go`            | concrete storage plus documented Go-only ownership/policy deltas   | Typed; no broad dynamic dispatch remains  |
-| `internal/font/freetype2/cache_integration.go` | thin wrapper over `internal/fonts.FmanCachedFont` with narrow per-adaptor methods | Acceptable localized boundary adaptation |
-| `internal/font/freetype2/adaptor_wrappers.go`  | package-local scanline-to-`internal/fonts` wrappers                | Minimal intentional package-boundary adaptation |
+| File                                           | Current approach                                                                  | Assessment                                      |
+| ---------------------------------------------- | --------------------------------------------------------------------------------- | ----------------------------------------------- |
+| `internal/agg2d/agg2d.go`                      | concrete `*freetype.FontEngineFreetype`, `*font.FontCacheManager`                 | Typed; authoritative Agg2D path                 |
+| `internal/agg2d/text.go`                       | typed adaptors via `font.SerializedScanlinesAdaptor`                              | Typed; no broad runtime assertions in text path |
+| `internal/font/freetype2/types.go`             | explicit interfaces for engine / loaded-face / serialized adaptors                | Typed; separate `fman` path                     |
+| `internal/font/freetype2/engine.go`            | concrete storage plus documented Go-only ownership/policy deltas                  | Typed; no broad dynamic dispatch remains        |
+| `internal/font/freetype2/cache_integration.go` | thin wrapper over `internal/fonts.FmanCachedFont` with narrow per-adaptor methods | Acceptable localized boundary adaptation        |
+| `internal/font/freetype2/adaptor_wrappers.go`  | package-local scanline-to-`internal/fonts` wrappers                               | Minimal intentional package-boundary adaptation |
 
 **Current concern level**: low. The font subsystem still has a few narrow adapters where
 adjacent internal packages intentionally expose different typed interfaces. `CacheManager2`

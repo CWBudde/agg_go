@@ -740,28 +740,28 @@ func TestComplexGeometricOperations(t *testing.T) {
 	rect2 := createRect(5, 5, 15, 15)
 
 	tests := []struct {
-		name      string
-		operation GPCOp
+		name        string
+		operation   GPCOp
 		minContours int
 	}{
 		{
-			name:      "Union",
-			operation: GPCUnion,
+			name:        "Union",
+			operation:   GPCUnion,
 			minContours: 1,
 		},
 		{
-			name:      "Intersection",
-			operation: GPCInt,
+			name:        "Intersection",
+			operation:   GPCInt,
 			minContours: 1,
 		},
 		{
-			name:      "Difference",
-			operation: GPCDiff,
+			name:        "Difference",
+			operation:   GPCDiff,
 			minContours: 1,
 		},
 		{
-			name:      "XOR",
-			operation: GPCXor,
+			name:        "XOR",
+			operation:   GPCXor,
 			minContours: 1,
 		},
 	}

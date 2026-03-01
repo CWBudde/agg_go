@@ -17,6 +17,11 @@ func NewColor(r, g, b, a uint8) Color {
 	return Color{R: r, G: g, B: b, A: a}
 }
 
+// NewColorRGBA8 creates a new Color from internal RGBA8.
+func NewColorRGBA8(c color.RGBA8[color.Linear]) Color {
+	return Color{R: c.R, G: c.G, B: c.B, A: c.A}
+}
+
 // NewColorRGB creates a new opaque Color with alpha = 255.
 func NewColorRGB(r, g, b uint8) Color {
 	return Color{R: r, G: g, B: b, A: 255}

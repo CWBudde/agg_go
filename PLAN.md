@@ -158,10 +158,10 @@ Files:
 - [x] Define a single authoritative font/cache architecture.
 - [x] Remove duplicated concepts and adapters where possible.
 - [x] Audit remaining `internal/font/freetype2` convenience wrappers against `agg_font_freetype2.h/.cpp` and keep only the abstractions that are justified in Go.
-  The former exported FontManager is now package-local, CacheManager2 has been reduced to a thin adaptor-facing wrapper over `internal/fonts.FmanCachedFont`, concrete gray8/mono adaptor wrapper types are no longer exposed, and test-only engine-selection/path-storage helpers are no longer exported. The remaining gray8/mono wrappers are retained as the minimal package boundary because `internal/scanline` exposes concrete serialized-scanline iteration APIs while `internal/fonts` expects generic adaptor/span interfaces.
+      The former exported FontManager is now package-local, CacheManager2 has been reduced to a thin adaptor-facing wrapper over `internal/fonts.FmanCachedFont`, concrete gray8/mono adaptor wrapper types are no longer exposed, and test-only engine-selection/path-storage helpers are no longer exported. The remaining gray8/mono wrappers are retained as the minimal package boundary because `internal/scanline` exposes concrete serialized-scanline iteration APIs while `internal/fonts` expects generic adaptor/span interfaces.
 - [x] Finish separating "Agg2D text path" vs "standalone `fman`/embedded-font support" in remaining docs/review notes.
 - [x] Continue rechecking FreeType2 face/engine lifetime behavior against AGG, especially around multi-face ownership beyond the now-fixed unload/close ownership semantics.
-  Engine-driven multi-face close now releases all tracked faces correctly. The explicit `maxFaces` cap is documented as an intentional Go-only policy delta, and `engine.Close()` actively closes tracked faces before freeing the library, which is safer than AGG's looser caller-owned loaded_face lifetime model but not a direct behavior match.
+      Engine-driven multi-face close now releases all tracked faces correctly. The explicit `maxFaces` cap is documented as an intentional Go-only policy delta, and `engine.Close()` actively closes tracked faces before freeing the library, which is safer than AGG's looser caller-owned loaded_face lifetime model but not a direct behavior match.
 
 ### 3.2 Replace runtime `interface{}` where feasible
 
@@ -170,7 +170,7 @@ Files:
 - [x] Re-audit `docs/GENERICS_AUDIT.md` and related notes so they reflect the current typed state of the font subsystem.
 - [x] Check FreeType2/CGO-adjacent font code for any remaining avoidable dynamic dispatch or stale comments claiming broader type erasure than the code now uses.
 - [x] Keep the remaining signature mismatches between neighboring internal interfaces localized behind narrow adapters rather than widening the font API surface.
-  The old FreeType2 adaptor bundle has been removed; CacheManager2 now depends on narrow per-adaptor methods plus package-local wrappers instead of a broader concrete-type aggregate.
+      The old FreeType2 adaptor bundle has been removed; CacheManager2 now depends on narrow per-adaptor methods plus package-local wrappers instead of a broader concrete-type aggregate.
 
 ### Exit criteria
 
@@ -187,7 +187,7 @@ Files:
 ### 4.1 Contract tests (API behavior)
 
 - [ ] Expand AGG2D tests to assert outputs, not just `err == nil`.
-  Started by converting `internal/agg2d/rendering_test.go`, `internal/agg2d/image_test.go`, and `internal/agg2d/text_phase1_test.go` from smoke-style "no crash" checks to deterministic output assertions for solid fill, gradient fill, translated rendering output, clipped fill/stroke rendering, blend-mode compositing, transformed image placement/color coverage, and vector-text alignment/bounds.
+      Started by converting `internal/agg2d/rendering_test.go`, `internal/agg2d/image_test.go`, and `internal/agg2d/text_phase1_test.go` from smoke-style "no crash" checks to deterministic output assertions for solid fill, gradient fill, translated rendering output, clipped fill/stroke rendering, blend-mode compositing, transformed image placement/color coverage, and vector-text alignment/bounds.
 - [ ] Add deterministic checks for transform-image, clipping, blend modes, gradients, text bounds.
 
 ### 4.2 Visual regression tests

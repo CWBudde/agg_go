@@ -25,11 +25,11 @@ type imageSamplePreparer interface {
 }
 
 type imageTransferRect struct {
-	srcX  int
-	srcY  int
-	dstX  int
-	dstY  int
-	width int
+	srcX   int
+	srcY   int
+	dstX   int
+	dstY   int
+	width  int
 	height int
 }
 

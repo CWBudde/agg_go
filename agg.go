@@ -38,6 +38,9 @@ import (
 	"os"
 
 	"agg_go/internal/agg2d"
+	"agg_go/internal/color"
+	"agg_go/internal/rasterizer"
+	renscan "agg_go/internal/renderer/scanline"
 )
 
 // Version information
@@ -539,6 +542,16 @@ func (a *Agg2D) SaveImagePPM(filename string) error {
 func (a *Agg2D) TransformImagePath(img *Image, imgX1, imgY1, imgX2, imgY2 int, dstX1, dstY1, dstX2, dstY2 float64) error {
 	internalImg := img.ToInternalImage()
 	return a.impl.TransformImagePath(internalImg, imgX1, imgY1, imgX2, imgY2, dstX1, dstY1, dstX2, dstY2)
+}
+
+// GetInternalRasterizer returns the underlying rasterizer for advanced usage.
+func (a *Agg2D) GetInternalRasterizer() *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip] {
+	return a.impl.GetInternalRasterizer()
+}
+
+// ScanlineRender renders the current rasterizer data using a custom renderer.
+func (a *Agg2D) ScanlineRender(ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip], renderer renscan.RendererInterface[color.RGBA8[color.Linear]]) {
+	a.impl.ScanlineRender(ras, renderer)
 }
 
 // Package-level initialization

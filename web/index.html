@@ -1,121 +1,156 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AGG Go - Web Demo</title>
-    
+
     <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://christian-schlichtherle.github.io/agg-go/">
-    <meta property="og:title" content="AGG Go - High-Quality 2D Graphics for Go">
-    <meta property="og:description" content="A Go port of the Anti-Grain Geometry (AGG) library, providing anti-aliased 2D rendering with subpixel accuracy. Try the interactive WebAssembly demo.">
-    <meta property="og:image" content="https://christian-schlichtherle.github.io/agg-go/og-image.png">
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:url"
+      content="https://christian-schlichtherle.github.io/agg-go/"
+    />
+    <meta
+      property="og:title"
+      content="AGG Go - High-Quality 2D Graphics for Go"
+    />
+    <meta
+      property="og:description"
+      content="A Go port of the Anti-Grain Geometry (AGG) library, providing anti-aliased 2D rendering with subpixel accuracy. Try the interactive WebAssembly demo."
+    />
+    <meta
+      property="og:image"
+      content="https://christian-schlichtherle.github.io/agg-go/og-image.png"
+    />
 
     <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:url" content="https://christian-schlichtherle.github.io/agg-go/">
-    <meta property="twitter:title" content="AGG Go - High-Quality 2D Graphics for Go">
-    <meta property="twitter:description" content="A Go port of the Anti-Grain Geometry (AGG) library, providing anti-aliased 2D rendering with subpixel accuracy. Try the interactive WebAssembly demo.">
-    <meta property="twitter:image" content="https://christian-schlichtherle.github.io/agg-go/og-image.png">
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta
+      property="twitter:url"
+      content="https://christian-schlichtherle.github.io/agg-go/"
+    />
+    <meta
+      property="twitter:title"
+      content="AGG Go - High-Quality 2D Graphics for Go"
+    />
+    <meta
+      property="twitter:description"
+      content="A Go port of the Anti-Grain Geometry (AGG) library, providing anti-aliased 2D rendering with subpixel accuracy. Try the interactive WebAssembly demo."
+    />
+    <meta
+      property="twitter:image"
+      content="https://christian-schlichtherle.github.io/agg-go/og-image.png"
+    />
 
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #f5f5f7;
-            color: #1d1d1f;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 2rem;
-            margin: 0;
-        }
-        h1 {
-            margin-bottom: 1.5rem;
-            font-weight: 600;
-        }
-        .controls {
-            margin-bottom: 2rem;
-            display: flex;
-            gap: 1rem;
-            align-items: center;
-        }
-        select, button {
-            padding: 0.5rem 1rem;
-            font-size: 1rem;
-            border-radius: 8px;
-            border: 1px solid #d2d2d7;
-            background-color: white;
-            cursor: pointer;
-        }
-        select:focus, button:focus {
-            outline: none;
-            border-color: #0071e3;
-            box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.1);
-        }
-        canvas {
-            background-color: white;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            border-radius: 12px;
-            max-width: 100%;
-            height: auto;
-        }
-        .status {
-            margin-top: 1rem;
-            font-size: 0.9rem;
-            color: #86868b;
-        }
-        .description {
-            margin-top: 1.5rem;
-            max-width: 600px;
-            text-align: center;
-            line-height: 1.5;
-            color: #424245;
-        }
-        #loading {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: white;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
-            font-weight: 500;
-        }
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+          Arial, sans-serif;
+        background-color: #f5f5f7;
+        color: #1d1d1f;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 2rem;
+        margin: 0;
+      }
+      h1 {
+        margin-bottom: 1.5rem;
+        font-weight: 600;
+      }
+      .controls {
+        margin-bottom: 2rem;
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+      }
+      select,
+      button {
+        padding: 0.5rem 1rem;
+        font-size: 1rem;
+        border-radius: 8px;
+        border: 1px solid #d2d2d7;
+        background-color: white;
+        cursor: pointer;
+      }
+      select:focus,
+      button:focus {
+        outline: none;
+        border-color: #0071e3;
+        box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.1);
+      }
+      canvas {
+          background-color: white;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+          border-radius: 12px;
+          max-width: 100%;
+          height: auto;
+          cursor: crosshair;
+      }
+
+      .status {
+        margin-top: 1rem;
+        font-size: 0.9rem;
+        color: #86868b;
+      }
+      .description {
+        margin-top: 1.5rem;
+        max-width: 600px;
+        text-align: center;
+        line-height: 1.5;
+        color: #424245;
+      }
+      #loading {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: white;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 100;
+        font-weight: 500;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div id="loading">Loading WASM...</div>
 
     <h1>AGG Go Web Demo</h1>
 
     <div class="controls">
-        <label for="demoSelector">Select Demo:</label>
-        <select id="demoSelector">
-            <option value="lines">Lines Demo</option>
-            <option value="circles">Circles Demo</option>
-            <option value="starburst">Starburst Demo</option>
-            <option value="rects">Rectangles Demo</option>
-            <option value="lion">Lion Demo (AGG Signature)</option>
-            <option value="gradients">Gradients Demo</option>
-            <option value="aa">Anti-Aliasing Demo</option>
-            <option value="blend">Blend Modes Demo</option>
-            <option value="bspline">B-Spline Demo</option>
-            <option value="dash">Dashed Lines Demo</option>
-        </select>
-        <button id="renderBtn">Re-render</button>
-    </div>
+      <label for="demoSelector">Select Demo:</label>
+      <select id="demoSelector">
+        <option value="lines">Lines Demo</option>
+        <option value="circles">Circles Demo</option>
+        <option value="starburst">Starburst Demo</option>
+        <option value="rects">Rectangles Demo</option>
+        <option value="lion">Lion Demo (AGG Signature)</option>
+        <option value="gradients">Gradients Demo</option>
+        <option value="aa">Anti-Aliasing Demo</option>
+        <option value="blend">Blend Modes Demo</option>
+        <option value="bspline">B-Spline Demo</option>
+        <option value="dash">Dashed Lines Demo</option>
+      </select>
+      <button id="renderBtn">Re-render</button>
+      </div>
 
-    <canvas id="aggCanvas"></canvas>
+      <div class="controls" id="aaControls" style="display: none;">
+      <label for="zoomSlider">Pixel Size:</label>
+      <input type="range" id="zoomSlider" min="8" max="64" value="32" step="1">
+      <span id="zoomValue">32</span>
+      </div>
 
+      <canvas id="aggCanvas"></canvas>
     <div class="description" id="demoDesc"></div>
 
     <div class="status" id="statusMsg">Initializing...</div>
 
     <script src="wasm_exec.js"></script>
     <script src="main.js"></script>
-</body>
+  </body>
 </html>

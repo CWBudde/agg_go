@@ -13,6 +13,7 @@ import (
 	"agg_go/internal/path"
 	"agg_go/internal/pixfmt"
 	"agg_go/internal/rasterizer"
+	renscan "agg_go/internal/renderer/scanline"
 	"agg_go/internal/scanline"
 	"agg_go/internal/span"
 	"agg_go/internal/transform"
@@ -284,4 +285,14 @@ func (agg2d *Agg2D) FillColor(c Color) {
 func (agg2d *Agg2D) LineColor(c Color) {
 	agg2d.lineColor = c
 	agg2d.lineGradientFlag = Solid
+}
+
+// GetInternalRasterizer returns the underlying rasterizer.
+func (agg2d *Agg2D) GetInternalRasterizer() *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip] {
+	return agg2d.rasterizer
+}
+
+// ScanlineRender renders the current rasterizer data using a custom renderer.
+func (agg2d *Agg2D) ScanlineRender(ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip], renderer renscan.RendererInterface[color.RGBA8[color.Linear]]) {
+	scanlineRender(ras, agg2d.scanline, renderer)
 }

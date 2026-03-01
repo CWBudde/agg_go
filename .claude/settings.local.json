@@ -91,10 +91,7 @@
       "Bash(getfacl:*)",
       "Bash(mount:*)"
     ],
-    "additionalDirectories": [
-      "/home/christian/Code/agg-2.6/",
-      "/tmp"
-    ]
+    "additionalDirectories": ["/home/christian/Code/agg-2.6/", "/tmp"]
   },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [

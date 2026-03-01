@@ -1594,7 +1594,7 @@ Go files:
 
 ## Implementation Status Notes
 
-### internal/shapes/*.go and internal/agg2d/paths.go
+### internal/shapes/\*.go and internal/agg2d/paths.go
 
 **Status: COMPLETED** - The old note is stale. Geometric primitives now live under `internal/shapes/`, with dedicated `arc.go`, `ellipse.go`, and `rounded_rect.go` ports plus tests, and Agg2D path helpers use those implementations directly.
 
@@ -1678,7 +1678,7 @@ Go files:
 
 `internal/fonts/cache_manager2.go` remains the separate `fman::font_cache_manager` / embedded-font path, not the Agg2D text path. Review notes for this package should stay clearly separated from `internal/font/cache_manager.go`.
 
-### internal/font/freetype2/*
+### internal/font/freetype2/\*
 
 The FreeType2 port in `internal/font/freetype2/` is significantly closer to `agg_font_freetype2.h/.cpp` than this checklist currently implies:
 

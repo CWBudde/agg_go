@@ -3,7 +3,6 @@ package main
 import (
 	"strconv"
 	"strings"
-	"unicode"
 
 	agg "agg_go"
 	"agg_go/internal/basics"
@@ -72,7 +71,7 @@ func parseLion() []LionPath {
 			continue
 		}
 
-		if unicode.IsLetter(rune(line[0])) && line[0] != 'M' && line[0] != 'L' {
+		if line[0] != 'M' && line[0] != 'L' {
 			// New color/path
 			lp := LionPath{
 				Path:  path.NewPathStorageStl(),
@@ -82,14 +81,18 @@ func parseLion() []LionPath {
 			currentPath = &result[len(result)-1]
 		} else if currentPath != nil {
 			// Path data
+			line = strings.ReplaceAll(line, ",", " ")
 			parts := strings.Fields(line)
 			for i := 0; i < len(parts); {
 				cmd := parts[i]
 				i++
 				if cmd == "M" || cmd == "L" {
-					xStr := strings.TrimSuffix(parts[i], ",")
+					if i+1 >= len(parts) {
+						break
+					}
+					xStr := parts[i]
 					i++
-					yStr := strings.TrimSuffix(parts[i], ",")
+					yStr := parts[i]
 					i++
 					x, _ := strconv.ParseFloat(xStr, 64)
 					y, _ := strconv.ParseFloat(yStr, 64)

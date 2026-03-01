@@ -491,7 +491,6 @@ func countPreparedDrawableCommands(vs VertexSource) int {
 	return count
 }
 
-
 // Benchmark tests for performance
 func BenchmarkConvGPC_SimpleRectangles_Union(b *testing.B) {
 	rect1 := []Vertex{

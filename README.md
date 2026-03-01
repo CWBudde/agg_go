@@ -30,6 +30,7 @@ A live web demo of AGG Go, compiled to WebAssembly (WASM), is available. It show
 - **Source:** `cmd/wasm/main.go` and `web/`
 
 You can also run the demo locally:
+
 ```bash
 just serve-web
 ```

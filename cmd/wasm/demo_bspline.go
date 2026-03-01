@@ -18,7 +18,7 @@ func drawBSplineDemo() {
 	agg2d.LineColor(agg.NewColor(180, 180, 180, 255))
 	agg2d.LineWidth(1.0)
 	agg2d.AddDash(5, 5)
-	
+
 	agg2d.ResetPath()
 	agg2d.MoveTo(points[0].x, points[0].y)
 	for i := 1; i < len(points); i++ {
@@ -31,13 +31,13 @@ func drawBSplineDemo() {
 	// Note: Agg2D doesn't have a direct "BSpline" method like MoveTo/LineTo,
 	// but the underlying library has conv_bspline.
 	// For this demo, we can simulate it or use the internal converter if exposed.
-	// Since we are using Agg2D, we can use CubicCurveTo to approximate or 
+	// Since we are using Agg2D, we can use CubicCurveTo to approximate or
 	// just use many small LineTo segments if we had the BSpline math here.
-	
+
 	// Let's use a simpler approach: multiple layers of transparency to show "glow"
 	agg2d.LineColor(agg.NewColor(0, 150, 255, 255))
 	agg2d.LineWidth(3.0)
-	
+
 	agg2d.ResetPath()
 	agg2d.MoveTo(points[0].x, points[0].y)
 	// Simple approximation using Bezier curves for the demo purpose
