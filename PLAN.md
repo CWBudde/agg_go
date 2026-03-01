@@ -84,7 +84,7 @@ Files:
 
 ### 1.3 Text parity (minimum acceptable)
 
-- [ ] Remove rectangle fallback glyph rendering.
+- [x] Remove rectangle fallback glyph rendering.
 - [ ] Render glyph scanlines/paths through real rasterizer/scanline pipeline.
 - [ ] Match vector vs raster cache behavior contract from AGG2D.
 
@@ -96,7 +96,8 @@ Files:
 ### 1.4 Clipping and renderer-state parity
 
 - [x] Ensure `ClipBox` updates all relevant renderer and rasterizer states consistently.
-- [ ] Verify `clearClipBox`, `copyImage`, `blendImage`, transformed image operations obey clip box identically to AGG semantics.
+- [x] Verify `clearClipBox`, `copyImage`, `blendImage`, transformed image operations obey clip box identically to AGG semantics.
+  Verified by dedicated pixel-asserting tests in `internal/agg2d/{agg2d,image,utilities}_test.go`.
 
 Files:
 
@@ -220,4 +221,5 @@ For each task:
 2. [x] Fix `internal/agg2d/gradient.go` transform/scalar parity (remove no-op helpers).
 3. [x] Replace text rectangle fallback in `internal/agg2d/text.go`.
 4. [x] Align clip propagation across rasterizer and renderer bases in `internal/agg2d/buffer.go`.
-5. [ ] Add pixel-asserting AGG2D tests for the above before moving to lower-priority items.
+5. [x] Add pixel-asserting AGG2D tests for the above before moving to lower-priority items.
+   Current coverage includes clip/copy assertions and deterministic image sampling assertions; broader end-to-end render-output parity remains tracked in Phase `4.1`.

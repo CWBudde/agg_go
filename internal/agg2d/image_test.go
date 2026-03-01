@@ -4,6 +4,7 @@ package agg2d
 import (
 	"testing"
 
+	"agg_go/internal/color"
 	"agg_go/internal/span"
 	"agg_go/internal/transform"
 )
@@ -285,6 +286,69 @@ func TestCopyImageSimple(t *testing.T) {
 	}
 }
 
+func TestBlendImageUsesGeneralBlendMode(t *testing.T) {
+	agg2d := NewAgg2D()
+	width, height := 4, 4
+	buf := make([]uint8, width*height*4)
+	agg2d.Attach(buf, width, height, width*4)
+
+	// Deliberately set image blend mode to dst (would be a no-op if used here).
+	agg2d.SetImageBlendMode(BlendDst)
+	agg2d.SetBlendMode(BlendAlpha)
+
+	src := []uint8{255, 0, 0, 255}
+	img := NewImage(src, 1, 1, 4)
+
+	if err := agg2d.BlendImageSimple(img, 1, 1, 255); err != nil {
+		t.Fatalf("BlendImageSimple failed: %v", err)
+	}
+
+	i := (1*width + 1) * 4
+	got := [4]uint8{buf[i], buf[i+1], buf[i+2], buf[i+3]}
+	want := [4]uint8{255, 0, 0, 255}
+	if got != want {
+		t.Fatalf("BlendImageSimple should follow general blend mode, got %v, want %v", got, want)
+	}
+}
+
+func TestBlendImageRespectsClipBox(t *testing.T) {
+	agg2d := NewAgg2D()
+	width, height := 6, 6
+	stride := width * 4
+	buf := make([]uint8, height*stride)
+	agg2d.Attach(buf, width, height, stride)
+
+	agg2d.ClipBox(2, 2, 3, 3)
+
+	src := make([]uint8, 3*3*4)
+	for i := 0; i < len(src); i += 4 {
+		src[i+0] = 255
+		src[i+1] = 0
+		src[i+2] = 0
+		src[i+3] = 255
+	}
+	img := NewImage(src, 3, 3, 3*4)
+
+	if err := agg2d.BlendImageSimple(img, 1, 1, 255); err != nil {
+		t.Fatalf("BlendImageSimple failed: %v", err)
+	}
+
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			i := y*stride + x*4
+			r, g, b, a := buf[i], buf[i+1], buf[i+2], buf[i+3]
+			inClip := x >= 2 && x <= 3 && y >= 2 && y <= 3
+			if inClip {
+				if r != 255 || g != 0 || b != 0 || a != 255 {
+					t.Fatalf("pixel (%d,%d) expected red in clip box, got (%d,%d,%d,%d)", x, y, r, g, b, a)
+				}
+			} else if r != 0 || g != 0 || b != 0 || a != 0 {
+				t.Fatalf("pixel (%d,%d) expected unchanged outside clip box, got (%d,%d,%d,%d)", x, y, r, g, b, a)
+			}
+		}
+	}
+}
+
 // TestImagePremultiplyDemultiply tests alpha channel operations.
 func TestImagePremultiplyDemultiply(t *testing.T) {
 	imgBuf := make([]uint8, 20*20*4)
@@ -429,6 +493,51 @@ func TestRenderImageInternalMethod(t *testing.T) {
 	}
 }
 
+func TestTransformImageRespectsClipBox(t *testing.T) {
+	agg2d := NewAgg2D()
+	width, height := 12, 12
+	stride := width * 4
+	buf := make([]uint8, height*stride)
+	agg2d.Attach(buf, width, height, stride)
+	agg2d.ImageFilter(NoFilter)
+	agg2d.ImageResample(NoResample)
+	agg2d.ClipBox(4, 4, 5, 5)
+
+	src := make([]uint8, 2*2*4)
+	for i := 0; i < len(src); i += 4 {
+		src[i+0] = 255
+		src[i+1] = 0
+		src[i+2] = 0
+		src[i+3] = 255
+	}
+	img := NewImage(src, 2, 2, 2*4)
+
+	if err := agg2d.TransformImageSimple(img, 2, 2, 8, 8); err != nil {
+		t.Fatalf("TransformImageSimple failed: %v", err)
+	}
+
+	redInside := 0
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			i := y*stride + x*4
+			r, g, b, a := buf[i], buf[i+1], buf[i+2], buf[i+3]
+			inClip := x >= 4 && x <= 5 && y >= 4 && y <= 5
+			if inClip {
+				if r == 255 && g == 0 && b == 0 && a == 255 {
+					redInside++
+				}
+				continue
+			}
+			if r != 0 || g != 0 || b != 0 || a != 0 {
+				t.Fatalf("pixel (%d,%d) expected unchanged outside clip box, got (%d,%d,%d,%d)", x, y, r, g, b, a)
+			}
+		}
+	}
+	if redInside == 0 {
+		t.Fatalf("expected transformed image to render within clip box")
+	}
+}
+
 func TestTransformImageSimpleResetsPathToDestinationRect(t *testing.T) {
 	agg2d := NewAgg2D()
 	buf := make([]uint8, 20*20*4)
@@ -484,6 +593,39 @@ func TestTransformImagePathWithoutPathRendersNothing(t *testing.T) {
 	for i, v := range buf {
 		if v != 0 {
 			t.Fatalf("expected untouched destination without path, first changed byte at %d: %d", i, v)
+		}
+	}
+}
+
+func TestImageFilterGeneratorNoFilterPixelSampling(t *testing.T) {
+	agg2d := NewAgg2D()
+	agg2d.ImageFilter(NoFilter)
+
+	// 2x2 source image:
+	// [red,   green]
+	// [blue,  yellow]
+	imgBuf := []uint8{
+		255, 0, 0, 255, 0, 255, 0, 255,
+		0, 0, 255, 255, 255, 255, 0, 255,
+	}
+	img := NewImage(imgBuf, 2, 2, 2*4)
+
+	source := newImagePixelFormat(img)
+	interpolator := span.NewSpanInterpolatorLinearDefault(transform.NewTransAffine())
+	gen := agg2d.newImageFilterGenerator(source, interpolator)
+	colors := make([]color.RGBA8[color.Linear], 4)
+	gen.Generate(colors, 0, 0)
+
+	want := [4][4]uint8{
+		{255, 0, 0, 255},
+		{0, 255, 0, 255},
+		{0, 255, 0, 255},
+		{0, 255, 0, 255},
+	}
+	for i := range colors {
+		got := [4]uint8{colors[i].R, colors[i].G, colors[i].B, colors[i].A}
+		if got != want[i] {
+			t.Fatalf("sample %d: got %v, want %v", i, got, want[i])
 		}
 	}
 }

@@ -102,6 +102,7 @@ func (agg2d *Agg2D) TextWidth(str string) float64 {
 	x := 0.0
 	y := 0.0
 	first := true
+	var prev uint
 
 	// Iterate through each character to calculate total width
 	for _, r := range str {
@@ -109,12 +110,12 @@ func (agg2d *Agg2D) TextWidth(str string) float64 {
 		if glyph != nil {
 			if !first {
 				// Add kerning adjustment
-				prevR := uint(0) // We'd need to track the previous character for proper kerning
-				fcm.AddKerning(&x, &y, prevR, uint(r))
+				fcm.AddKerning(&x, &y, prev, uint(r))
 			}
 			x += glyph.AdvanceX
 			y += glyph.AdvanceY
 			first = false
+			prev = uint(r)
 		}
 	}
 

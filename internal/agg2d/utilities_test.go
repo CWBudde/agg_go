@@ -169,6 +169,37 @@ func TestNoFillNoLine(t *testing.T) {
 	}
 }
 
+func TestClearClipBoxRespectsClip(t *testing.T) {
+	agg2d := NewAgg2D()
+	width, height := 5, 5
+	stride := width * 4
+	buf := make([]uint8, height*stride)
+	agg2d.Attach(buf, width, height, stride)
+
+	agg2d.ClearAllRGBA(0, 0, 255, 255)
+	agg2d.ClipBox(1, 1, 2, 2)
+	agg2d.ClearClipBoxRGBA(255, 0, 0, 255)
+
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			i := y*stride + x*4
+			got := [4]uint8{buf[i], buf[i+1], buf[i+2], buf[i+3]}
+			inClip := x >= 1 && x <= 2 && y >= 1 && y <= 2
+			if inClip {
+				want := [4]uint8{255, 0, 0, 255}
+				if got != want {
+					t.Fatalf("pixel (%d,%d): got %v, want %v", x, y, got, want)
+				}
+				continue
+			}
+			want := [4]uint8{0, 0, 255, 255}
+			if got != want {
+				t.Fatalf("pixel (%d,%d): got %v, want %v", x, y, got, want)
+			}
+		}
+	}
+}
+
 func TestClamp(t *testing.T) {
 	tests := []struct {
 		value, min, max, expected float64

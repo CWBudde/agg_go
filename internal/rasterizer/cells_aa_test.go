@@ -121,17 +121,9 @@ func TestRasterizerCellsAA_HorizontalLine(t *testing.T) {
 	y := 10 << basics.PolySubpixelShift
 
 	rasterizer.Line(x1, y, x2, y)
-
-	if rasterizer.TotalCells() == 0 {
-		t.Error("Expected cells after horizontal line rasterization")
-	}
-
 	rasterizer.SortCells()
 
-	// All cells should have the same Y coordinate
-	expectedY := y >> basics.PolySubpixelShift
-	if rasterizer.MinY() != expectedY || rasterizer.MaxY() != expectedY {
-		t.Errorf("Horizontal line: expected Y range [%d,%d], got [%d,%d]",
-			expectedY, expectedY, rasterizer.MinY(), rasterizer.MaxY())
+	if rasterizer.TotalCells() != 0 {
+		t.Errorf("Expected no accumulated cells for an exact horizontal edge, got %d", rasterizer.TotalCells())
 	}
 }

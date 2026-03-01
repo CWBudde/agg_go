@@ -404,22 +404,13 @@ func (agg2d *Agg2D) BlendImage(img *Image, imgX1, imgY1, imgX2, imgY2 int, dstX,
 		Y2: imgY2 - 1,
 	}
 
-	// Use the rendering pipeline for blending with imageBlendMode
+	// Use the rendering pipeline for blending.
+	// AGG uses the general blend mode for blendImage/copyImage operations.
 	var renderer *baseRendererAdapter[color.RGBA8[color.Linear]]
-	if agg2d.imageBlendMode == BlendAlpha {
+	if agg2d.blendMode == BlendAlpha {
 		renderer = agg2d.renBase
 	} else {
-		// Temporarily update the composite blend mode for image operations
-		if agg2d.renBaseComp != nil && agg2d.pixfmtComp != nil {
-			origCompOp := agg2d.pixfmtComp.GetCompOp()
-			imageCompOp := blendModeToCompOp(agg2d.imageBlendMode)
-			agg2d.pixfmtComp.SetCompOp(imageCompOp)
-			renderer = agg2d.renBaseComp
-			// Note: We restore the original operation after the blend
-			defer agg2d.pixfmtComp.SetCompOp(origCompOp)
-		} else {
-			renderer = agg2d.renBase // Fallback to alpha blending
-		}
+		renderer = agg2d.renBaseComp
 	}
 
 	if renderer != nil {

@@ -272,6 +272,31 @@ func TestRasterizerScanlineAANoGammaHitTest(t *testing.T) {
 	}
 }
 
+func TestRasterizerScanlineAANoGammaSweepScanlineWithPositiveMinY(t *testing.T) {
+	ras := NewRasterizerScanlineAANoGamma[int, IntConv, *RasterizerSlNoClip](IntConv{}, NewRasterizerSlNoClip())
+	sl := &MockScanline{}
+
+	ras.MoveToD(10, 10)
+	ras.LineToD(20, 10)
+	ras.LineToD(15, 20)
+	ras.ClosePolygon()
+
+	if !ras.RewindScanlines() {
+		t.Fatal("Expected rasterizer to contain scanlines")
+	}
+
+	if !ras.SweepScanline(sl) {
+		t.Fatal("Expected at least one swept scanline")
+	}
+
+	if sl.y < 10 {
+		t.Fatalf("Expected finalized scanline y to be within rasterized bounds, got %d", sl.y)
+	}
+	if sl.NumSpans() == 0 {
+		t.Fatal("Expected swept scanline to contain spans or cells")
+	}
+}
+
 // MockVertexSource for testing AddPath
 type MockVertexSource struct {
 	vertices []vertex

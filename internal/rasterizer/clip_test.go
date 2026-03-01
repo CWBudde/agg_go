@@ -158,14 +158,14 @@ func TestRasterizerSlClipWithClipping(t *testing.T) {
 			name:   "fully_outside_left",
 			startX: 0, startY: 20,
 			endX: 5, endY: 30,
-			expectedLineCount: 0, // Fixed: No lines drawn when both points outside same boundary
-			shouldHaveLines:   false,
+			expectedLineCount: 1,
+			shouldHaveLines:   true,
 		},
 		{
 			name:   "crosses_boundary",
 			startX: 5, startY: 20,
 			endX: 25, endY: 30,
-			expectedLineCount: 1, // Fixed: Only draw the visible segment (no boundary line)
+			expectedLineCount: 2,
 			shouldHaveLines:   true,
 		},
 	}

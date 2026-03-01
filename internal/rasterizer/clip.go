@@ -180,6 +180,7 @@ func (r *Rect[C]) Normalize() {
 		r.X1, r.X2 = r.X2, r.X1
 	}
 	if r.Y2 < r.Y1 {
+		r.Y1, r.Y2 = r.Y2, r.Y1
 	}
 }
 
@@ -319,6 +320,7 @@ func (r *RasterizerSlClip[C, V]) LineTo(sink LineSink, x2, y2 C) {
 		case 2: // x1 > clip.x2
 			y3 := y1 + r.conv.MulDiv(float64(r.clipBox.X2-x1), float64(y2-y1), float64(x2-x1))
 			f3 := clippingFlagsY(y3, r.clipBox)
+			r.lineClipY(sink, r.clipBox.X2, y1, r.clipBox.X2, y3, f1, f3)
 			r.lineClipY(sink, r.clipBox.X2, y3, x2, y2, f3, f2)
 		case 3: // both > x2
 			r.lineClipY(sink, r.clipBox.X2, y1, r.clipBox.X2, y2, f1, f2)
