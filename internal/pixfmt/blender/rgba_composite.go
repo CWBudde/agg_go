@@ -89,6 +89,50 @@ func (bl CompositeBlender[S, O]) BlendPix(dst []basics.Int8u, r, g, b, a, cover 
 	dst[o.IdxA()] = to8(res.a)
 }
 
+// CompositeBlenderPre operates in premultiplied space for both source and destination.
+// It matches AGG's comp_op_adaptor_rgba_pre behavior.
+type CompositeBlenderPre[S color.Space, O order.RGBAOrder] struct {
+	op CompOp
+}
+
+func NewCompositeBlenderPre[S color.Space, O order.RGBAOrder](op CompOp) CompositeBlenderPre[S, O] {
+	return CompositeBlenderPre[S, O]{op: op}
+}
+
+func (bl CompositeBlenderPre[S, O]) GetOp() CompOp { return bl.op }
+
+func (bl CompositeBlenderPre[S, O]) BlendPix(dst []basics.Int8u, r, g, b, a, cover basics.Int8u) {
+	if cover != 255 {
+		r = color.RGBA8MultCover(r, cover)
+		g = color.RGBA8MultCover(g, cover)
+		b = color.RGBA8MultCover(b, cover)
+		a = color.RGBA8MultCover(a, cover)
+	}
+	if a == 0 && r == 0 && g == 0 && b == 0 {
+		return
+	}
+
+	var o O
+	d := normalizedRGBA{
+		r: float64(dst[o.IdxR()]) / 255.0,
+		g: float64(dst[o.IdxG()]) / 255.0,
+		b: float64(dst[o.IdxB()]) / 255.0,
+		a: float64(dst[o.IdxA()]) / 255.0,
+	}
+	s := normalizedRGBA{
+		r: float64(r) / 255.0,
+		g: float64(g) / 255.0,
+		b: float64(b) / 255.0,
+		a: float64(a) / 255.0,
+	}
+
+	res := CompositeBlender[S, O]{op: bl.op}.blendOperation(d, s)
+	dst[o.IdxR()] = to8(res.r)
+	dst[o.IdxG()] = to8(res.g)
+	dst[o.IdxB()] = to8(res.b)
+	dst[o.IdxA()] = to8(res.a)
+}
+
 // normalizedRGBA holds premultiplied color components in [0,1]
 type normalizedRGBA struct{ r, g, b, a float64 }
 

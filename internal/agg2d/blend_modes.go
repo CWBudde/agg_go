@@ -206,6 +206,9 @@ func (agg2d *Agg2D) updateBlendMode() {
 	if agg2d.pixfmtComp != nil {
 		compOp := blendModeToCompOp(agg2d.blendMode)
 		agg2d.pixfmtComp.SetCompOp(compOp)
+		if agg2d.pixfmtCompPre != nil {
+			agg2d.pixfmtCompPre.SetCompOp(compOp)
+		}
 	}
 }
 

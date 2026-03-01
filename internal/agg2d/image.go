@@ -418,18 +418,7 @@ func (agg2d *Agg2D) BlendImage(img *Image, imgX1, imgY1, imgX2, imgY2 int, dstX,
 	imgX2 = imgX1 + srcWidth
 	imgY2 = imgY1 + srcHeight
 
-	// Create source rectangle
-	srcRect := &basics.RectI{
-		X1: imgX1,
-		Y1: imgY1,
-		X2: imgX2 - 1, // AGG uses inclusive coordinates
-		Y2: imgY2 - 1,
-	}
-
 	if agg2d.blendMode == BlendAlpha {
-		// AGG routes blendImage through the premultiplied renderer base.
-		// Use the pixfmt-level row blend here so the source can be premultiplied
-		// explicitly while preserving clip-box semantics.
 		if agg2d.pixfmtPre != nil {
 			src := newImagePixelFormatPre(img)
 			for row := 0; row < srcHeight; row++ {
@@ -439,10 +428,13 @@ func (agg2d *Agg2D) BlendImage(img *Image, imgX1, imgY1, imgX2, imgY2 int, dstX,
 		return nil
 	}
 
-	// Composite blend modes in this port still operate on straight source pixels.
-	renderer := agg2d.currentRenderer()
-	if renderer != nil {
-		renderer.BlendFrom(newImagePixelFormat(img), srcRect, dstXInt, dstYInt, basics.Int8u(alpha))
+	if agg2d.pixfmtCompPre != nil {
+		src := newImagePixelFormatPre(img)
+		for row := 0; row < srcHeight; row++ {
+			for x := 0; x < srcWidth; x++ {
+				agg2d.pixfmtCompPre.BlendPixel(dstXInt+x, dstYInt+row, src.Pixel(imgX1+x, imgY1+row), basics.Int8u(alpha))
+			}
+		}
 	}
 
 	return nil

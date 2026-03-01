@@ -8,10 +8,16 @@ import (
 	"agg_go/internal/pixfmt/blender"
 )
 
+type compositeRGBABlender[CS color.Space, O order.RGBAOrder] interface {
+	BlendPix(dst []basics.Int8u, r, g, b, a, cover basics.Int8u)
+	GetOp() blender.CompOp
+}
+
 // PixFmtCompositeRGBA represents an RGBA pixel format with composite blending
 type PixFmtCompositeRGBA[CS color.Space, O order.RGBAOrder] struct {
-	rbuf    *buffer.RenderingBufferU8
-	blender blender.CompositeBlender[CS, O]
+	rbuf          *buffer.RenderingBufferU8
+	blender       compositeRGBABlender[CS, O]
+	premultiplied bool
 }
 
 // NewPixFmtCompositeRGBA creates a new composite RGBA pixel format
@@ -19,6 +25,15 @@ func NewPixFmtCompositeRGBA[CS color.Space, O order.RGBAOrder](rbuf *buffer.Rend
 	return &PixFmtCompositeRGBA[CS, O]{
 		rbuf:    rbuf,
 		blender: blender.NewCompositeBlender[CS, O](op),
+	}
+}
+
+// NewPixFmtCompositeRGBAPre creates a new premultiplied-source composite RGBA pixel format.
+func NewPixFmtCompositeRGBAPre[CS color.Space, O order.RGBAOrder](rbuf *buffer.RenderingBufferU8, op blender.CompOp) *PixFmtCompositeRGBA[CS, O] {
+	return &PixFmtCompositeRGBA[CS, O]{
+		rbuf:          rbuf,
+		blender:       blender.NewCompositeBlenderPre[CS, O](op),
+		premultiplied: true,
 	}
 }
 
@@ -165,6 +180,10 @@ func (pf *PixFmtCompositeRGBA[CS, O]) BlendSolidHspan(x, y, length int, c color.
 
 // SetCompOp changes the composite operation
 func (pf *PixFmtCompositeRGBA[CS, O]) SetCompOp(op blender.CompOp) {
+	if pf.premultiplied {
+		pf.blender = blender.NewCompositeBlenderPre[CS, O](op)
+		return
+	}
 	pf.blender = blender.NewCompositeBlender[CS, O](op)
 }
 
@@ -275,6 +294,7 @@ type (
 	PixFmtCompositeARGB32     = PixFmtCompositeRGBA[color.Linear, order.ARGB]
 	PixFmtCompositeBGRA32     = PixFmtCompositeRGBA[color.Linear, order.BGRA]
 	PixFmtCompositeABGR32     = PixFmtCompositeRGBA[color.Linear, order.ABGR]
+	PixFmtCompositeRGBA32Pre  = PixFmtCompositeRGBA[color.Linear, order.RGBA]
 	PixFmtCompositeRGBA32SRGB = PixFmtCompositeRGBA[color.SRGB, order.RGBA]
 	PixFmtCompositeARGB32SRGB = PixFmtCompositeRGBA[color.SRGB, order.ARGB]
 	PixFmtCompositeBGRA32SRGB = PixFmtCompositeRGBA[color.SRGB, order.BGRA]
@@ -284,4 +304,8 @@ type (
 // NewPixFmtCompositeRGBA32 creates a new composite RGBA32 pixel format
 func NewPixFmtCompositeRGBA32(rbuf *buffer.RenderingBufferU8, op blender.CompOp) *PixFmtCompositeRGBA32 {
 	return NewPixFmtCompositeRGBA[color.Linear, order.RGBA](rbuf, op)
+}
+
+func NewPixFmtCompositeRGBA32Pre(rbuf *buffer.RenderingBufferU8, op blender.CompOp) *PixFmtCompositeRGBA32Pre {
+	return NewPixFmtCompositeRGBAPre[color.Linear, order.RGBA](rbuf, op)
 }

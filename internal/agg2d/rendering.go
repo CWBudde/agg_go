@@ -26,8 +26,8 @@ func (agg2d *Agg2D) currentRenderer() *baseRendererAdapter[color.RGBA8[color.Lin
 }
 
 func (agg2d *Agg2D) currentImageRenderer() *baseRendererAdapter[color.RGBA8[color.Linear]] {
-	if agg2d.blendMode != BlendAlpha && agg2d.renBaseComp != nil {
-		return agg2d.renBaseComp
+	if agg2d.blendMode != BlendAlpha && agg2d.renBaseCompPre != nil {
+		return agg2d.renBaseCompPre
 	}
 	return agg2d.renBasePre
 }

@@ -83,7 +83,9 @@ func (agg2d *Agg2D) initializeRendering() {
 
 		// Create composite pixel format with default source-over blending
 		agg2d.pixfmtComp = pixfmt.NewPixFmtCompositeRGBA32(agg2d.rbuf, blender.CompOpSrcOver)
+		agg2d.pixfmtCompPre = pixfmt.NewPixFmtCompositeRGBA32Pre(agg2d.rbuf, blender.CompOpSrcOver)
 		agg2d.renBaseComp = newBaseRendererAdapter[color.RGBA8[color.Linear]](agg2d.pixfmtComp)
+		agg2d.renBaseCompPre = newBaseRendererAdapter[color.RGBA8[color.Linear]](agg2d.pixfmtCompPre)
 
 		// Reapply current clip box to renderer adapters.
 		agg2d.ClipBox(agg2d.clipBox.X1, agg2d.clipBox.Y1, agg2d.clipBox.X2, agg2d.clipBox.Y2)
@@ -136,6 +138,9 @@ func (agg2d *Agg2D) ClipBox(x1, y1, x2, y2 float64) {
 	}
 	if agg2d.renBaseComp != nil {
 		agg2d.renBaseComp.ClipBox(rx1, ry1, rx2, ry2)
+	}
+	if agg2d.renBaseCompPre != nil {
+		agg2d.renBaseCompPre.ClipBox(rx1, ry1, rx2, ry2)
 	}
 
 	if agg2d.rasterizer != nil {
