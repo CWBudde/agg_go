@@ -906,7 +906,7 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 - [ ] Glyph access interface
 - [ ] Integration with rendering
 
-#### agg_font_cache_manager.h - Font Cache Manager (`internal/fonts/cache_manager.go`) ✅ **COMPLETED**
+#### agg_font_cache_manager.h - Font Cache Manager (`internal/font/cache_manager.go`) ✅ **COMPLETED**
 
 - [x] glyph_cache → GlyphCache struct - Individual glyph data storage ✅
 - [x] font_cache → FontCache struct - Per-font glyph cache ✅

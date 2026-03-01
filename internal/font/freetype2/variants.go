@@ -48,6 +48,11 @@ func (fe16 *FontEngineInt16) PathAdaptor() PathAdaptorInt16Type {
 	return path.NewSerializedIntegerPathAdaptor[int16]()
 }
 
+// PathAdaptorInterface returns the path adaptor through the common interface.
+func (fe16 *FontEngineInt16) PathAdaptorInterface() path.IntegerPathAdaptor {
+	return fe16.PathAdaptor()
+}
+
 // Gray8Adaptor returns the gray8 scanline adaptor.
 func (fe16 *FontEngineInt16) Gray8Adaptor() Gray8AdaptorInt16Type {
 	// Return the shared adaptor types from base engine
@@ -58,6 +63,11 @@ func (fe16 *FontEngineInt16) Gray8Adaptor() Gray8AdaptorInt16Type {
 		ScanlinesAA:      fe16.FontEngineBase.scanlinesAA,
 		ScanlinesBin:     fe16.FontEngineBase.scanlinesBin,
 	}
+}
+
+// AdaptorTypes returns the engine adaptor bundle through the common interface.
+func (fe16 *FontEngineInt16) AdaptorTypes() *FontEngineAdaptorTypes {
+	return fe16.Gray8Adaptor()
 }
 
 // MonoAdaptor returns the mono scanline adaptor.
@@ -111,6 +121,11 @@ func (fe32 *FontEngineInt32) PathAdaptor() PathAdaptorInt32Type {
 	return path.NewSerializedIntegerPathAdaptor[int32]()
 }
 
+// PathAdaptorInterface returns the path adaptor through the common interface.
+func (fe32 *FontEngineInt32) PathAdaptorInterface() path.IntegerPathAdaptor {
+	return fe32.PathAdaptor()
+}
+
 // Gray8Adaptor returns the gray8 scanline adaptor.
 func (fe32 *FontEngineInt32) Gray8Adaptor() Gray8AdaptorInt32Type {
 	// Return the shared adaptor types from base engine
@@ -121,6 +136,11 @@ func (fe32 *FontEngineInt32) Gray8Adaptor() Gray8AdaptorInt32Type {
 		ScanlinesAA:      fe32.FontEngineBase.scanlinesAA,
 		ScanlinesBin:     fe32.FontEngineBase.scanlinesBin,
 	}
+}
+
+// AdaptorTypes returns the engine adaptor bundle through the common interface.
+func (fe32 *FontEngineInt32) AdaptorTypes() *FontEngineAdaptorTypes {
+	return fe32.Gray8Adaptor()
 }
 
 // MonoAdaptor returns the mono scanline adaptor.
@@ -224,9 +244,11 @@ func (fe32 *FontEngineInt32) Close() error {
 	return fe32.FontEngine.Close()
 }
 
-// Helper functions to create the appropriate engine based on requirements
+// Helper functions to create the appropriate engine based on requirements.
+// These are Go selection helpers layered above AGG's concrete int16/int32 types.
 
-// RecommendedEngineForGlyphSize returns the recommended engine type based on glyph size.
+// RecommendedEngineForGlyphSize returns a Go-side heuristic for choosing the
+// int16 vs int32 engine based on glyph size.
 func RecommendedEngineForGlyphSize(maxGlyphHeight float64) string {
 	if maxGlyphHeight <= 200.0 {
 		return "int16" // Compact storage for smaller glyphs
@@ -234,7 +256,8 @@ func RecommendedEngineForGlyphSize(maxGlyphHeight float64) string {
 	return "int32" // Safe for very large glyphs
 }
 
-// CreateRecommendedEngine creates the recommended engine for the given glyph size.
+// CreateRecommendedEngine creates an engine using the Go-side size heuristic.
+// AGG exposes the concrete int16/int32 engine types directly instead.
 func CreateRecommendedEngine(maxGlyphHeight float64, maxFaces uint32) (FontEngineInterface, error) {
 	if RecommendedEngineForGlyphSize(maxGlyphHeight) == "int16" {
 		return NewFontEngineInt16(maxFaces, nil)

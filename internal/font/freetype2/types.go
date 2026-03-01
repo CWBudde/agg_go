@@ -1,8 +1,11 @@
 //go:build freetype
 
-// Package freetype2 provides enhanced FreeType2 font engine integration for AGG graphics library.
-// This is the v2 implementation with advanced multi-face support and improved memory management.
-// It corresponds to AGG's fman (font manager) namespace functionality.
+// Package freetype2 provides the separate FreeType2/fman font path from
+// agg_font_freetype2.h.
+//
+// The core engine/loaded-face types track AGG's fman namespace closely.
+// Some higher-level helpers in this package are Go conveniences layered on top
+// and should not be mistaken for direct AGG API equivalents.
 package freetype2
 
 import (
@@ -85,6 +88,11 @@ type FontEngineInterface interface {
 
 	// Gamma correction
 	SetGamma(gamma float64)
+
+	// Adaptor access for fman::font_cache_manager-style consumers.
+	// Agg2D itself uses the v1 font stack, matching agg2d.h.
+	PathAdaptorInterface() path.IntegerPathAdaptor
+	AdaptorTypes() *FontEngineAdaptorTypes
 
 	// Engine information
 	Is32Bit() bool

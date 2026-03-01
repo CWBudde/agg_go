@@ -1,6 +1,6 @@
-// Package fonts provides embedded font data for AGG text rendering.
-// This package contains bitmap fonts ported from the original AGG library.
-// The fonts use the AGG embedded raster font format and are binary-compatible
+// Package fonts provides embedded raster font data plus the separate fman/v2
+// support types that are not part of Agg2D's primary font path.
+// The bitmap fonts use the AGG embedded raster font format and are binary-compatible
 // with the original C++ implementation.
 package fonts
 

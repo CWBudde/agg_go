@@ -160,7 +160,7 @@ This document outlines all documentation tasks needed to comprehensively documen
 ### [ ] Font System Package (`internal/fonts/`)
 
 - [ ] Embedded fonts system
-- [ ] Cache management
+- [ ] `fman` / cache-manager-v2 support
 - [ ] Font selection algorithms
 - [ ] Performance optimization
 

@@ -186,8 +186,8 @@ These types use Go generics correctly without runtime type assertions.
 
 | Go Type                    | C++ Origin           | Constraint  | Notes      |
 | -------------------------- | -------------------- | ----------- | ---------- |
-| `FontCacheManager[T]`      | `font_cache_manager` | FontEngine  | Well-typed |
-| `FmanFontCacheManager2[T]` | N/A                  | FontEngine2 | Well-typed |
+| `font.FontCacheManager`    | `font_cache_manager` | FontEngine  | Authoritative AGG2D path |
+| `FmanFontCacheManager2[T]` | `fman::font_cache_manager` | FontEngine2 | Separate FreeType2/fman path |
 
 ### A.15 Control Types (UI)
 

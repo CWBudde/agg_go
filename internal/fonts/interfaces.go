@@ -1,3 +1,5 @@
+// Package fonts provides embedded raster font support plus the separate
+// fman/font_cache_manager2 interfaces from AGG.
 package fonts
 
 import (

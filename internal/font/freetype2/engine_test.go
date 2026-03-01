@@ -91,6 +91,8 @@ func TestFontEngineRecommendation(t *testing.T) {
 }
 
 // TestFontManager tests the high-level font manager functionality.
+// FontManager is a Go convenience wrapper, so these tests intentionally cover
+// port-added behavior rather than direct AGG API parity.
 func TestFontManager(t *testing.T) {
 	fm, err := NewFontManager()
 	if err != nil {
@@ -185,25 +187,54 @@ func TestGlyphRendering(t *testing.T) {
 
 // TestCacheManager2 tests the cache manager integration.
 func TestCacheManager2(t *testing.T) {
-	engine, err := NewFontEngineInt16Default()
-	if err != nil {
-		t.Fatalf("Failed to create engine: %v", err)
+	testCases := []struct {
+		name string
+		new  func() (FontEngineInterface, error)
+	}{
+		{
+			name: "Int16",
+			new: func() (FontEngineInterface, error) {
+				return NewFontEngineInt16Default()
+			},
+		},
+		{
+			name: "Int32",
+			new: func() (FontEngineInterface, error) {
+				return NewFontEngineInt32Default()
+			},
+		},
 	}
-	defer engine.Close()
 
-	cm := NewCacheManager2(engine)
-	if cm == nil {
-		t.Fatal("Failed to create cache manager")
-	}
-	defer cm.Close()
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			engine, err := tc.new()
+			if err != nil {
+				t.Fatalf("Failed to create engine: %v", err)
+			}
+			defer engine.Close()
 
-	// Test basic properties
-	if cm.fontEngine != engine {
-		t.Error("Cache manager should reference the provided engine")
-	}
+			cm := NewCacheManager2(engine)
+			if cm == nil {
+				t.Fatal("Failed to create cache manager")
+			}
+			defer cm.Close()
 
-	if cm.cachedGlyphs == nil {
-		t.Error("Cache manager should have initialized glyph cache")
+			if cm.fontEngine != engine {
+				t.Error("Cache manager should reference the provided engine")
+			}
+			if cm.cachedGlyphs == nil {
+				t.Error("Cache manager should have initialized glyph cache")
+			}
+			if cm.PathAdaptor() == nil {
+				t.Error("Cache manager should initialize a path adaptor")
+			}
+			if cm.Gray8Adaptor() == nil {
+				t.Error("Cache manager should initialize a gray8 adaptor")
+			}
+			if cm.MonoAdaptor() == nil {
+				t.Error("Cache manager should initialize a mono adaptor")
+			}
+		})
 	}
 }
 

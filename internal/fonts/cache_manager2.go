@@ -1,6 +1,7 @@
-// Package fonts provides enhanced font management and caching functionality for AGG.
-// This package implements the advanced font cache manager (version 2) with improved
-// cache management and font face handling.
+// Package fonts contains the AGG embedded raster fonts plus the separate
+// fman/font_cache_manager2 stack from agg_font_cache_manager2.h.
+//
+// Agg2D itself follows agg2d.h and uses internal/font's v1 font_cache_manager.
 package fonts
 
 import (
@@ -370,9 +371,9 @@ type FontEngine2 interface {
 	MonoScanline() MonoScanlineType
 }
 
-// FmanFontCacheManager2 is the enhanced font cache manager (version 2).
-// This corresponds to AGG's fman::font_cache_manager template class.
-// Unlike v1, this focuses primarily on adaptor management rather than cache management.
+// FmanFontCacheManager2 is the typed adaptor holder for the separate
+// fman::font_cache_manager path from agg_font_cache_manager2.h.
+// Agg2D does not use this stack directly.
 type FmanFontCacheManager2[T FontEngine2] struct {
 	engine T // Font engine
 

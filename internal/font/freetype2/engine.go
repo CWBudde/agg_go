@@ -44,6 +44,7 @@ import (
 
 	"agg_go/internal/font"
 	"agg_go/internal/path"
+	"agg_go/internal/transform"
 )
 
 // FontEngine is the main FreeType2 font engine with enhanced multi-face support.
@@ -209,17 +210,20 @@ func (fe *FontEngine) SetGamma(gamma float64) {
 	fe.FontEngineBase.SetGamma(gamma)
 }
 
-// GetPathStorage16 returns the 16-bit path storage for outline fonts.
+// GetPathStorage16 exposes the internal 16-bit path storage for inspection/tests.
+// This is a Go helper, not a direct AGG API surface.
 func (fe *FontEngine) GetPathStorage16() *path.PathStorageInteger[int16] {
 	return fe.pathStorage16
 }
 
-// GetPathStorage32 returns the 32-bit path storage for outline fonts.
+// GetPathStorage32 exposes the internal 32-bit path storage for inspection/tests.
+// This is a Go helper, not a direct AGG API surface.
 func (fe *FontEngine) GetPathStorage32() *path.PathStorageInteger[int32] {
 	return fe.pathStorage32
 }
 
-// GetPathStorage returns the appropriate path storage based on engine precision.
+// GetPathStorage exposes the active internal path storage through a shared
+// interface. This is a Go helper for the port, not a direct AGG API surface.
 func (fe *FontEngine) GetPathStorage() font.IntegerPathStorage {
 	if fe.flag32 {
 		return fe.pathStorage32
@@ -230,7 +234,7 @@ func (fe *FontEngine) GetPathStorage() font.IntegerPathStorage {
 // DecomposeFTOutline decomposes a FreeType outline into AGG path commands.
 // This is a key method that converts vector font outlines to AGG's path format.
 // It corresponds to AGG's decompose_ft_outline function.
-func (fe *FontEngine) DecomposeFTOutline(outline *C.FT_Outline, flipY bool) error {
+func (fe *FontEngine) DecomposeFTOutline(outline *C.FT_Outline, flipY bool, affine *transform.TransAffine) error {
 	if outline == nil || outline.n_contours <= 0 {
 		return nil // Empty outline is valid
 	}
@@ -245,12 +249,12 @@ func (fe *FontEngine) DecomposeFTOutline(outline *C.FT_Outline, flipY bool) erro
 		pathStorage = fe.pathStorage16
 	}
 
-	return fe.decomposeOutlineToPath(outline, flipY, pathStorage)
+	return fe.decomposeOutlineToPath(outline, flipY, affine, pathStorage)
 }
 
 // decomposeOutlineToPath performs the actual outline decomposition.
 // This implements the complex FreeType outline walking algorithm from AGG.
-func (fe *FontEngine) decomposeOutlineToPath(outline *C.FT_Outline, flipY bool, pathStorage font.IntegerPathStorage) error {
+func (fe *FontEngine) decomposeOutlineToPath(outline *C.FT_Outline, flipY bool, affine *transform.TransAffine, pathStorage font.IntegerPathStorage) error {
 	first := 0
 
 	for n := 0; n < int(outline.n_contours); n++ {
@@ -299,17 +303,13 @@ func (fe *FontEngine) decomposeOutlineToPath(outline *C.FT_Outline, flipY bool, 
 		}
 
 		// Convert and move to starting point
-		x := float64(startPoint.x) / 64.0
-		y := float64(startPoint.y) / 64.0
-		if flipY {
-			y = -y
-		}
+		x, y := transformFTPoint(startPoint.x, startPoint.y, flipY, affine)
 
 		// Move to start point using the interface method
 		pathStorage.MoveTo64(int64(x), int64(y))
 
 		// Process the contour points
-		err := fe.processContourPoints(outline, first, last, flipY, pathStorage, startPoint)
+		err := fe.processContourPoints(outline, first, last, flipY, affine, pathStorage, startPoint)
 		if err != nil {
 			return err
 		}
@@ -325,6 +325,7 @@ func (fe *FontEngine) decomposeOutlineToPath(outline *C.FT_Outline, flipY bool, 
 
 // processContourPoints processes the points in a single contour.
 func (fe *FontEngine) processContourPoints(outline *C.FT_Outline, first, last int, flipY bool,
+	affine *transform.TransAffine,
 	pathStorage font.IntegerPathStorage, startPoint *C.FT_Vector,
 ) error {
 	i := first
@@ -340,22 +341,18 @@ func (fe *FontEngine) processContourPoints(outline *C.FT_Outline, first, last in
 
 		switch tag {
 		case 1: // FT_CURVE_TAG_ON - straight line
-			x := float64(point.x) / 64.0
-			y := float64(point.y) / 64.0
-			if flipY {
-				y = -y
-			}
+			x, y := transformFTPoint(point.x, point.y, flipY, affine)
 
 			pathStorage.LineTo64(int64(x), int64(y))
 
 		case 0: // FT_CURVE_TAG_CONIC - quadratic curve
-			err := fe.processConicCurve(outline, &i, last, flipY, pathStorage, startPoint)
+			err := fe.processConicCurve(outline, &i, last, flipY, affine, pathStorage, startPoint)
 			if err != nil {
 				return err
 			}
 
 		default: // FT_CURVE_TAG_CUBIC - cubic curve
-			err := fe.processCubicCurve(outline, &i, last, flipY, pathStorage, startPoint)
+			err := fe.processCubicCurve(outline, &i, last, flipY, affine, pathStorage, startPoint)
 			if err != nil {
 				return err
 			}
@@ -367,6 +364,7 @@ func (fe *FontEngine) processContourPoints(outline *C.FT_Outline, first, last in
 
 // processConicCurve handles quadratic Bézier curves.
 func (fe *FontEngine) processConicCurve(outline *C.FT_Outline, i *int, last int, flipY bool,
+	affine *transform.TransAffine,
 	pathStorage font.IntegerPathStorage, startPoint *C.FT_Vector,
 ) error {
 	// Get control point
@@ -386,15 +384,8 @@ func (fe *FontEngine) processConicCurve(outline *C.FT_Outline, i *int, last int,
 		nextTag := int(*(*C.char)(unsafe.Pointer(nextTagPtr))) & 3
 
 		if nextTag == 1 { // FT_CURVE_TAG_ON - end of curve
-			x1 := float64(vControl.x) / 64.0
-			y1 := float64(vControl.y) / 64.0
-			x2 := float64(nextPoint.x) / 64.0
-			y2 := float64(nextPoint.y) / 64.0
-
-			if flipY {
-				y1 = -y1
-				y2 = -y2
-			}
+			x1, y1 := transformFTPoint(vControl.x, vControl.y, flipY, affine)
+			x2, y2 := transformFTPoint(nextPoint.x, nextPoint.y, flipY, affine)
 
 			pathStorage.Curve3_64(int64(x1), int64(y1), int64(x2), int64(y2))
 			break
@@ -410,15 +401,8 @@ func (fe *FontEngine) processConicCurve(outline *C.FT_Outline, i *int, last int,
 			y: (vControl.y + nextPoint.y) / 2,
 		}
 
-		x1 := float64(vControl.x) / 64.0
-		y1 := float64(vControl.y) / 64.0
-		x2 := float64(vMiddle.x) / 64.0
-		y2 := float64(vMiddle.y) / 64.0
-
-		if flipY {
-			y1 = -y1
-			y2 = -y2
-		}
+		x1, y1 := transformFTPoint(vControl.x, vControl.y, flipY, affine)
+		x2, y2 := transformFTPoint(vMiddle.x, vMiddle.y, flipY, affine)
 
 		pathStorage.Curve3_64(int64(x1), int64(y1), int64(x2), int64(y2))
 
@@ -427,15 +411,8 @@ func (fe *FontEngine) processConicCurve(outline *C.FT_Outline, i *int, last int,
 
 	// Handle curve back to start if needed
 	if *i >= last {
-		x1 := float64(vControl.x) / 64.0
-		y1 := float64(vControl.y) / 64.0
-		x2 := float64(startPoint.x) / 64.0
-		y2 := float64(startPoint.y) / 64.0
-
-		if flipY {
-			y1 = -y1
-			y2 = -y2
-		}
+		x1, y1 := transformFTPoint(vControl.x, vControl.y, flipY, affine)
+		x2, y2 := transformFTPoint(startPoint.x, startPoint.y, flipY, affine)
 
 		pathStorage.Curve3_64(int64(x1), int64(y1), int64(x2), int64(y2))
 	}
@@ -445,6 +422,7 @@ func (fe *FontEngine) processConicCurve(outline *C.FT_Outline, i *int, last int,
 
 // processCubicCurve handles cubic Bézier curves.
 func (fe *FontEngine) processCubicCurve(outline *C.FT_Outline, i *int, last int, flipY bool,
+	affine *transform.TransAffine,
 	pathStorage font.IntegerPathStorage, startPoint *C.FT_Vector,
 ) error {
 	if *i+1 > last {
@@ -478,22 +456,25 @@ func (fe *FontEngine) processCubicCurve(outline *C.FT_Outline, i *int, last int,
 		endPoint = startPoint
 	}
 
-	x1 := float64(vCtrl1.x) / 64.0
-	y1 := float64(vCtrl1.y) / 64.0
-	x2 := float64(vCtrl2.x) / 64.0
-	y2 := float64(vCtrl2.y) / 64.0
-	x3 := float64(endPoint.x) / 64.0
-	y3 := float64(endPoint.y) / 64.0
-
-	if flipY {
-		y1 = -y1
-		y2 = -y2
-		y3 = -y3
-	}
+	x1, y1 := transformFTPoint(vCtrl1.x, vCtrl1.y, flipY, affine)
+	x2, y2 := transformFTPoint(vCtrl2.x, vCtrl2.y, flipY, affine)
+	x3, y3 := transformFTPoint(endPoint.x, endPoint.y, flipY, affine)
 
 	pathStorage.Curve4_64(int64(x1), int64(y1), int64(x2), int64(y2), int64(x3), int64(y3))
 
 	return nil
+}
+
+func transformFTPoint(x, y C.FT_Pos, flipY bool, affine *transform.TransAffine) (float64, float64) {
+	fx := float64(x) / 64.0
+	fy := float64(y) / 64.0
+	if flipY {
+		fy = -fy
+	}
+	if affine != nil {
+		affine.Transform(&fx, &fy)
+	}
+	return fx, fy
 }
 
 // Close cleans up all resources used by the font engine.

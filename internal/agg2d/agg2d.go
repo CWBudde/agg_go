@@ -141,10 +141,12 @@ type Agg2D struct {
 	fontDescent   float64
 	fontCacheType FontCacheType
 
-	// Both engine variants (freetype build tag on/off) define the same
-	// *freetype.FontEngineFreetype type — only the behaviour differs, not
-	// the type name — so we can use the concrete types directly and avoid
-	// any type assertions at call sites.
+	// AGG's agg2d.h wires Agg2D through font_cache_manager<FontEngine>.
+	// Keep that stack authoritative here; the fman/font_cache_manager2 path
+	// remains separate for lower-level FreeType2 experiments and examples.
+	//
+	// Both build-tag variants expose the same concrete engine type, so Agg2D
+	// does not need runtime type assertions on the text path.
 	fontEngine       *freetype.FontEngineFreetype
 	fontCacheManager *font.FontCacheManager
 

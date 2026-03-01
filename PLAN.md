@@ -155,18 +155,24 @@ Files:
 
 ### 3.1 Consolidate `internal/font` vs `internal/fonts`
 
-- [ ] Define a single authoritative font/cache architecture.
-- [ ] Remove duplicated concepts and adapters where possible.
+- [x] Define a single authoritative font/cache architecture.
+- [x] Remove duplicated concepts and adapters where possible.
+- [ ] Audit remaining `internal/font/freetype2` convenience wrappers against `agg_font_freetype2.h/.cpp` and keep only the abstractions that are justified in Go.
+- [ ] Finish separating "Agg2D text path" vs "standalone `fman`/embedded-font support" in remaining docs/review notes.
 
 ### 3.2 Replace runtime `interface{}` where feasible
 
-- [ ] Replace broad `interface{}` in AGG2D font fields with explicit interfaces.
-- [ ] Keep runtime dispatch only where build-tag boundaries require it, and document it.
+- [x] Replace broad `interface{}` in AGG2D font fields with explicit interfaces.
+- [x] Keep runtime dispatch only where build-tag boundaries require it, and document it.
+- [ ] Re-audit `docs/GENERICS_AUDIT.md` and related notes so they reflect the current typed state of the font subsystem.
+- [ ] Check FreeType2/CGO-adjacent font code for any remaining avoidable dynamic dispatch or stale comments claiming broader type erasure than the code now uses.
 
 ### Exit criteria
 
-- [ ] One coherent font stack is used by AGG2D.
-- [ ] No avoidable runtime type assertions in text-critical path.
+- [x] One coherent font stack is used by AGG2D.
+- [x] No avoidable runtime type assertions in text-critical path.
+- [ ] `internal/font/freetype2` is either brought closer to AGG's `fman` API surface or its remaining Go-only convenience APIs are explicitly documented as intentional deltas.
+- [ ] Embedded raster font data and cache behavior are rechecked against AGG/review notes so Phase 3 closes without known font-subsystem placeholders.
 
 ---
 
