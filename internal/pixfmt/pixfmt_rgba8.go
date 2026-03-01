@@ -454,13 +454,14 @@ func (pf *PixFmtAlphaBlendRGBA[S, B]) CopyFrom(src interface {
 	}
 }
 
-// BlendFrom blends a single scanline from another RGBA surface.
-func (pf *PixFmtAlphaBlendRGBA[S, B]) BlendFrom(src interface {
+type rgbaBlendFromSource[S color.Space] interface {
 	GetPixel(x, y int) color.RGBA8[S]
 	Width() int
 	Height() int
-}, xdst, ydst, xsrc, ysrc, length int, cover basics.Int8u,
-) {
+}
+
+// BlendFrom blends a single scanline from another RGBA surface.
+func (pf *PixFmtAlphaBlendRGBA[S, B]) BlendFrom(src rgbaBlendFromSource[S], xdst, ydst, xsrc, ysrc, length int, cover basics.Int8u) {
 	if ydst < 0 || ydst >= pf.Height() || ysrc < 0 || ysrc >= src.Height() || length <= 0 {
 		return
 	}
@@ -483,6 +484,46 @@ func (pf *PixFmtAlphaBlendRGBA[S, B]) BlendFrom(src interface {
 	}
 	if length <= 0 {
 		return
+	}
+
+	if rowSrc, ok := src.(interface{ RowData(y int) []basics.Int8u }); ok {
+		srcRow := rowSrc.RowData(ysrc)
+		if srcRow != nil {
+			bytesPerPixel := detectBytesPerPixel(rowSrc, ysrc)
+			if bytesPerPixel == 4 {
+				if dstRow := pf.RowData(ydst); dstRow != nil && cover == basics.CoverFull {
+					start := 0
+					end := length
+					step := 1
+					if xdst > xsrc {
+						start = length - 1
+						end = -1
+						step = -1
+					}
+					for i := start; i != end; i += step {
+						srcOff := (xsrc + i) * 4
+						dstOff := (xdst + i) * 4
+						copy(dstRow[dstOff:dstOff+4], srcRow[srcOff:srcOff+4])
+					}
+					return
+				}
+				for i := 0; i < length; i++ {
+					srcOff := (xsrc + i) * 4
+					c := color.RGBA8[S]{
+						R: srcRow[srcOff+0],
+						G: srcRow[srcOff+1],
+						B: srcRow[srcOff+2],
+						A: srcRow[srcOff+3],
+					}
+					if cover == basics.CoverFull && c.A == 255 {
+						pf.CopyPixel(xdst+i, ydst, c)
+						continue
+					}
+					pf.BlendPixel(xdst+i, ydst, c, cover)
+				}
+				return
+			}
+		}
 	}
 
 	start := 0
