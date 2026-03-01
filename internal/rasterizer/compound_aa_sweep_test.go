@@ -2,7 +2,39 @@ package rasterizer
 
 import (
 	"testing"
+
+	"agg_go/internal/basics"
 )
+
+type compoundScanlineRecorder struct {
+	finalizedY int
+	numSpans   int
+}
+
+func (s *compoundScanlineRecorder) ResetSpans() {
+	s.numSpans = 0
+	s.finalizedY = 0
+}
+
+func (s *compoundScanlineRecorder) AddCell(x int, cover basics.Int8u) {
+	if cover > 0 {
+		s.numSpans++
+	}
+}
+
+func (s *compoundScanlineRecorder) AddSpan(x, len int, cover basics.Int8u) {
+	if len > 0 && cover > 0 {
+		s.numSpans++
+	}
+}
+
+func (s *compoundScanlineRecorder) Finalize(y int) {
+	s.finalizedY = y
+}
+
+func (s *compoundScanlineRecorder) NumSpans() int {
+	return s.numSpans
+}
 
 // TestCompoundAASweepStylesMinimal tests the specific pointer dereference issue that was fixed
 func TestCompoundAASweepStylesMinimal(t *testing.T) {
@@ -121,5 +153,110 @@ func TestCompoundAANavigateNegativeScanline(t *testing.T) {
 
 	if numStyles := rasterizer.SweepStyles(); numStyles == 0 {
 		t.Fatal("Expected styles on negative scanline")
+	}
+}
+
+func TestCompoundAASweepStylesLayerOrderMatchesAGG(t *testing.T) {
+	buildRasterizer := func(order basics.LayerOrder) *RasterizerCompoundAA[*MockCompoundClipper] {
+		clipper := NewMockCompoundClipper(nil)
+		rasterizer := NewRasterizerCompoundAA(clipper)
+		clipper.outline = rasterizer.outline
+		rasterizer.LayerOrder(order)
+
+		rasterizer.Styles(3, 0)
+		rasterizer.MoveTo(0, 0)
+		rasterizer.LineTo(100, 0)
+		rasterizer.LineTo(100, 100)
+		rasterizer.LineTo(0, 100)
+		rasterizer.LineTo(0, 0)
+
+		rasterizer.Styles(1, 0)
+		rasterizer.MoveTo(25, 0)
+		rasterizer.LineTo(125, 0)
+		rasterizer.LineTo(125, 100)
+		rasterizer.LineTo(25, 100)
+		rasterizer.LineTo(25, 0)
+		rasterizer.Sort()
+		return rasterizer
+	}
+
+	t.Run("direct", func(t *testing.T) {
+		rasterizer := buildRasterizer(basics.LayerDirect)
+		if !rasterizer.NavigateScanline(50) {
+			t.Fatal("expected to navigate to populated scanline")
+		}
+		if got := rasterizer.SweepStyles(); got != 3 {
+			t.Fatalf("expected 3 visible styles, got %d", got)
+		}
+		if got := rasterizer.Style(0); got != 3 {
+			t.Fatalf("expected first style to be 3 in direct order, got %d", got)
+		}
+		if got := rasterizer.Style(1); got != 1 {
+			t.Fatalf("expected second style to be 1 in direct order, got %d", got)
+		}
+		if got := rasterizer.Style(2); got != 0 {
+			t.Fatalf("expected third style to be 0 in direct order, got %d", got)
+		}
+	})
+
+	t.Run("inverse", func(t *testing.T) {
+		rasterizer := buildRasterizer(basics.LayerInverse)
+		if !rasterizer.NavigateScanline(50) {
+			t.Fatal("expected to navigate to populated scanline")
+		}
+		if got := rasterizer.SweepStyles(); got != 3 {
+			t.Fatalf("expected 3 visible styles, got %d", got)
+		}
+		if got := rasterizer.Style(0); got != 0 {
+			t.Fatalf("expected first style to be 0 in inverse order, got %d", got)
+		}
+		if got := rasterizer.Style(1); got != 1 {
+			t.Fatalf("expected second style to be 1 in inverse order, got %d", got)
+		}
+		if got := rasterizer.Style(2); got != 3 {
+			t.Fatalf("expected third style to be 3 in inverse order, got %d", got)
+		}
+	})
+}
+
+func TestCompoundAASweepStylesSkipsImplicitNoFillScanlines(t *testing.T) {
+	clipper := NewMockCompoundClipper(nil)
+	rasterizer := NewRasterizerCompoundAA(clipper)
+	clipper.outline = rasterizer.outline
+
+	// Unstyled geometry creates cells but should not produce visible styles.
+	rasterizer.Styles(-1, -1)
+	rasterizer.MoveTo(0, 0)
+	rasterizer.LineTo(20, 0)
+	rasterizer.LineTo(20, 1)
+	rasterizer.LineTo(0, 1)
+	rasterizer.LineTo(0, 0)
+
+	// Styled geometry lower in Y should be the first scanline reported by SweepStyles.
+	rasterizer.Styles(2, 0)
+	rasterizer.MoveTo(0, 10)
+	rasterizer.LineTo(20, 10)
+	rasterizer.LineTo(20, 20)
+	rasterizer.LineTo(0, 20)
+	rasterizer.LineTo(0, 10)
+	rasterizer.Sort()
+
+	if !rasterizer.NavigateScanline(0) {
+		t.Fatal("expected to navigate to first scanline with cells")
+	}
+
+	if got := rasterizer.SweepStyles(); got == 0 {
+		t.Fatal("expected SweepStyles to advance to the next visible styled scanline")
+	}
+
+	rec := &compoundScanlineRecorder{}
+	if !rasterizer.SweepScanline(rec, 0) {
+		t.Fatal("expected sweep_scanline to succeed on the advanced scanline")
+	}
+	if rec.finalizedY < 10 {
+		t.Fatalf("expected SweepStyles to skip unstyled scanlines and finalize on styled geometry, got y=%d", rec.finalizedY)
+	}
+	if got := rasterizer.Style(0); got != 2 {
+		t.Fatalf("expected visible style 2 after skipping no-fill scanlines, got %d", got)
 	}
 }

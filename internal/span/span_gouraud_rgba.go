@@ -38,6 +38,16 @@ type RGBAColor struct {
 	R, G, B, A int
 }
 
+func clampRGBAComponent(v int) int {
+	if v < 0 {
+		return 0
+	}
+	if v > 255 {
+		return 255
+	}
+	return v
+}
+
 // SpanGouraudRGBA implements RGBA Gouraud shading for triangles.
 // This provides smooth color interpolation with subpixel accuracy.
 // It's equivalent to AGG's span_gouraud_rgba template class.
@@ -177,34 +187,12 @@ func (sg *SpanGouraudRGBA) Generate(span []RGBAColor, x, y int, length uint) {
 	// Beginning part - check for overflow since we rolled back interpolators
 	// Added hard limit to prevent infinite loops if start is corrupted
 	for len > 0 && start > 0 && spanIdx < int(length) {
-		vr := r.Y()
-		vg := g.Y()
-		vb := b.Y()
-		va := a.Y()
-
-		// Clamp values to valid range [0, 255]
-		if vr < 0 {
-			vr = 0
-		} else if vr > 255 {
-			vr = 255
+		span[spanIdx] = RGBAColor{
+			R: clampRGBAComponent(r.Y()),
+			G: clampRGBAComponent(g.Y()),
+			B: clampRGBAComponent(b.Y()),
+			A: clampRGBAComponent(a.Y()),
 		}
-		if vg < 0 {
-			vg = 0
-		} else if vg > 255 {
-			vg = 255
-		}
-		if vb < 0 {
-			vb = 0
-		} else if vb > 255 {
-			vb = 255
-		}
-		if va < 0 {
-			va = 0
-		} else if va > 255 {
-			va = 255
-		}
-
-		span[spanIdx] = RGBAColor{R: vr, G: vg, B: vb, A: va}
 
 		r.Add(SubpixelScale)
 		g.Add(SubpixelScale)
@@ -219,10 +207,10 @@ func (sg *SpanGouraudRGBA) Generate(span []RGBAColor, x, y int, length uint) {
 	// Middle part - no overflow checking needed
 	for len > 0 && nlen > 0 && spanIdx < int(length) {
 		span[spanIdx] = RGBAColor{
-			R: r.Y(),
-			G: g.Y(),
-			B: b.Y(),
-			A: a.Y(),
+			R: clampRGBAComponent(r.Y()),
+			G: clampRGBAComponent(g.Y()),
+			B: clampRGBAComponent(b.Y()),
+			A: clampRGBAComponent(a.Y()),
 		}
 
 		r.Add(SubpixelScale)
@@ -236,34 +224,12 @@ func (sg *SpanGouraudRGBA) Generate(span []RGBAColor, x, y int, length uint) {
 
 	// Ending part - check for overflow again
 	for len > 0 && spanIdx < int(length) {
-		vr := r.Y()
-		vg := g.Y()
-		vb := b.Y()
-		va := a.Y()
-
-		// Clamp values to valid range [0, 255]
-		if vr < 0 {
-			vr = 0
-		} else if vr > 255 {
-			vr = 255
+		span[spanIdx] = RGBAColor{
+			R: clampRGBAComponent(r.Y()),
+			G: clampRGBAComponent(g.Y()),
+			B: clampRGBAComponent(b.Y()),
+			A: clampRGBAComponent(a.Y()),
 		}
-		if vg < 0 {
-			vg = 0
-		} else if vg > 255 {
-			vg = 255
-		}
-		if vb < 0 {
-			vb = 0
-		} else if vb > 255 {
-			vb = 255
-		}
-		if va < 0 {
-			va = 0
-		} else if va > 255 {
-			va = 255
-		}
-
-		span[spanIdx] = RGBAColor{R: vr, G: vg, B: vb, A: va}
 
 		r.Add(SubpixelScale)
 		g.Add(SubpixelScale)

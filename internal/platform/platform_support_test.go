@@ -355,15 +355,29 @@ func TestTriggerResize(t *testing.T) {
 
 func TestLoadSaveImage(t *testing.T) {
 	ps := NewPlatformSupport(PixelFormatRGB24, false)
+	ps.CreateImage(0, 2, 2)
 
-	// These are stub implementations, so they should return success
-	// but not actually load/save files
-	if !ps.LoadImage(0, "test.bmp") {
-		t.Error("LoadImage should return true (stub implementation)")
+	buf := ps.ImageBuffer(0).Buf()
+	copy(buf, []uint8{
+		255, 0, 0, 0, 255, 0,
+		0, 0, 255, 255, 255, 255,
+	})
+
+	dir := t.TempDir()
+	filename := dir + "/test.bmp"
+
+	if !ps.SaveImage(0, filename) {
+		t.Fatal("SaveImage should return true")
 	}
 
-	if !ps.SaveImage(0, "test.bmp") {
-		t.Error("SaveImage should return true (stub implementation)")
+	psLoaded := NewPlatformSupport(PixelFormatRGB24, false)
+	if !psLoaded.LoadImage(0, filename) {
+		t.Fatal("LoadImage should return true")
+	}
+
+	loaded := psLoaded.ImageBuffer(0)
+	if loaded.Width() != 2 || loaded.Height() != 2 {
+		t.Fatalf("loaded image size = %dx%d, want 2x2", loaded.Width(), loaded.Height())
 	}
 }
 
