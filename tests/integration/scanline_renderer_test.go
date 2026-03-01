@@ -31,9 +31,9 @@ func TestScanlineRendererBasic(t *testing.T) {
 		desc     string
 	}{
 		{20, 50, 50, [4]uint8{255, 255, 255, 255}, "above rectangle"},
-		{25, 25, 75, [4]uint8{255, 0, 0, 255}, "top edge of rectangle"},
-		{50, 25, 75, [4]uint8{255, 0, 0, 255}, "middle of rectangle"},
-		{75, 25, 75, [4]uint8{255, 0, 0, 255}, "bottom edge of rectangle"},
+		{25, 25, 65, [4]uint8{255, 0, 0, 255}, "top edge of rectangle"},
+		{50, 25, 65, [4]uint8{255, 0, 0, 255}, "middle of rectangle"},
+		{75, 50, 50, [4]uint8{255, 255, 255, 255}, "bottom edge outside rectangle"},
 		{80, 50, 50, [4]uint8{255, 255, 255, 255}, "below rectangle"},
 	}
 

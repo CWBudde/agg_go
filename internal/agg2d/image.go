@@ -209,12 +209,7 @@ func (agg2d *Agg2D) renderImage(img *Image, x1, y1, x2, y2 int, parallelogram []
 	sampleGenerator := agg2d.newImageFilterGenerator(imageSource, interpolator)
 	spanGenerator := newImageSpanGenerator(sampleGenerator, agg2d.imageBlendMode, agg2d.imageBlendColor)
 
-	var renderer *baseRendererAdapter[color.RGBA8[color.Linear]]
-	if agg2d.blendMode == BlendAlpha {
-		renderer = agg2d.renBase
-	} else {
-		renderer = agg2d.renBaseComp
-	}
+	renderer := agg2d.currentRenderer()
 	if renderer == nil {
 		return nil
 	}
@@ -406,12 +401,7 @@ func (agg2d *Agg2D) BlendImage(img *Image, imgX1, imgY1, imgX2, imgY2 int, dstX,
 
 	// Use the rendering pipeline for blending.
 	// AGG uses the general blend mode for blendImage/copyImage operations.
-	var renderer *baseRendererAdapter[color.RGBA8[color.Linear]]
-	if agg2d.blendMode == BlendAlpha {
-		renderer = agg2d.renBase
-	} else {
-		renderer = agg2d.renBaseComp
-	}
+	renderer := agg2d.currentRenderer()
 
 	if renderer != nil {
 		renderer.BlendFrom(imgPixFmt, srcRect, dstXInt, dstYInt, basics.Int8u(alpha))

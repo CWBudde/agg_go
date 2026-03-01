@@ -18,6 +18,13 @@ import (
 
 // Rendering methods
 
+func (agg2d *Agg2D) currentRenderer() *baseRendererAdapter[color.RGBA8[color.Linear]] {
+	if agg2d.renBaseComp != nil {
+		return agg2d.renBaseComp
+	}
+	return agg2d.renBase
+}
+
 // renderFill renders the current path as a filled shape
 func (agg2d *Agg2D) renderFill() {
 	if agg2d.rasterizer == nil || agg2d.path == nil || agg2d.scanline == nil {
@@ -139,14 +146,7 @@ func (agg2d *Agg2D) renderSolidFill() {
 
 // renderSolidFillWithColor renders solid fill using specified color
 func (agg2d *Agg2D) renderSolidFillWithColor(c Color) {
-	// Choose the appropriate renderer based on blend mode
-	var renderer *baseRendererAdapter[color.RGBA8[color.Linear]]
-	if agg2d.blendMode == BlendAlpha {
-		renderer = agg2d.renBase
-	} else {
-		renderer = agg2d.renBaseComp
-	}
-
+	renderer := agg2d.currentRenderer()
 	if renderer == nil {
 		return
 	}
@@ -167,14 +167,7 @@ func (agg2d *Agg2D) renderSolidFillWithColor(c Color) {
 
 // renderSolidStroke renders solid stroke using current line color
 func (agg2d *Agg2D) renderSolidStroke() {
-	// Choose the appropriate renderer based on blend mode
-	var renderer *baseRendererAdapter[color.RGBA8[color.Linear]]
-	if agg2d.blendMode == BlendAlpha {
-		renderer = agg2d.renBase
-	} else {
-		renderer = agg2d.renBaseComp
-	}
-
+	renderer := agg2d.currentRenderer()
 	if renderer == nil {
 		return
 	}
@@ -208,14 +201,7 @@ func (agg2d *Agg2D) renderGradientFill() {
 
 // renderLinearGradientFill renders linear gradient fill
 func (agg2d *Agg2D) renderLinearGradientFill(useFillGradient bool) {
-	// Choose the appropriate renderer based on blend mode
-	var renderer *baseRendererAdapter[color.RGBA8[color.Linear]]
-	if agg2d.blendMode == BlendAlpha {
-		renderer = agg2d.renBase
-	} else {
-		renderer = agg2d.renBaseComp
-	}
-
+	renderer := agg2d.currentRenderer()
 	if renderer == nil || agg2d.spanAllocator == nil {
 		return
 	}
@@ -261,14 +247,7 @@ func (agg2d *Agg2D) renderLinearGradientFill(useFillGradient bool) {
 
 // renderRadialGradientFill renders radial gradient fill
 func (agg2d *Agg2D) renderRadialGradientFill(useFillGradient bool) {
-	// Choose the appropriate renderer based on blend mode
-	var renderer *baseRendererAdapter[color.RGBA8[color.Linear]]
-	if agg2d.blendMode == BlendAlpha {
-		renderer = agg2d.renBase
-	} else {
-		renderer = agg2d.renBaseComp
-	}
-
+	renderer := agg2d.currentRenderer()
 	if renderer == nil || agg2d.spanAllocator == nil {
 		return
 	}

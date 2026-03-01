@@ -437,12 +437,7 @@ func (agg2d *Agg2D) renderGlyphScanlines(adaptor font.SerializedScanlinesAdaptor
 
 // renderScanlines renders scanlines using the provided rasterizer and scanline adaptors.
 func (agg2d *Agg2D) renderScanlines(ras renscan.RasterizerInterface, sl renscan.ScanlineInterface, mono bool) {
-	var renderer *baseRendererAdapter[color.RGBA8[color.Linear]]
-	if agg2d.blendMode == BlendAlpha {
-		renderer = agg2d.renBase
-	} else {
-		renderer = agg2d.renBaseComp
-	}
+	renderer := agg2d.currentRenderer()
 	if renderer == nil {
 		return
 	}
