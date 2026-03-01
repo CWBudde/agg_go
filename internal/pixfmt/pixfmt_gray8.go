@@ -106,6 +106,68 @@ func (pf *PixFmtAlphaBlendGray[CS, B]) Pixel(x, y int) color.Gray8[CS] {
 	return pf.GetPixel(x, y)
 }
 
+// RowData returns the raw row bytes for transfer operations.
+func (pf *PixFmtAlphaBlendGray[CS, B]) RowData(y int) []basics.Int8u {
+	if y < 0 || y >= pf.Height() {
+		return nil
+	}
+	return buffer.RowU8(pf.rbuf, y)
+}
+
+// CopyFrom copies a single scanline from another rendering buffer.
+func (pf *PixFmtAlphaBlendGray[CS, B]) CopyFrom(src interface {
+	RowData(y int) []basics.Int8u
+	Width() int
+	Height() int
+}, xdst, ydst, xsrc, ysrc, length int,
+) {
+	if ydst < 0 || ydst >= pf.Height() || ysrc < 0 || ysrc >= src.Height() || length <= 0 {
+		return
+	}
+
+	if xsrc < 0 {
+		length += xsrc
+		xdst -= xsrc
+		xsrc = 0
+	}
+	if xdst < 0 {
+		length += xdst
+		xsrc -= xdst
+		xdst = 0
+	}
+	if xsrc+length > src.Width() {
+		length = src.Width() - xsrc
+	}
+	if xdst+length > pf.Width() {
+		length = pf.Width() - xdst
+	}
+	if length <= 0 {
+		return
+	}
+
+	srcRow := src.RowData(ysrc)
+	if srcRow == nil {
+		return
+	}
+
+	if detectBytesPerPixel(src, ysrc) == 1 {
+		dstRow := pf.RowData(ydst)
+		if dstRow == nil {
+			return
+		}
+		copy(dstRow[xdst:xdst+length], srcRow[xsrc:xsrc+length])
+		return
+	}
+
+	for i := 0; i < length; i++ {
+		srcColor, ok := decodeRGBA8FromRowData(srcRow, detectBytesPerPixel(src, ysrc), xsrc+i)
+		if !ok {
+			continue
+		}
+		pf.CopyPixel(xdst+i, ydst, color.Gray8[CS]{V: srcColor.R, A: 255})
+	}
+}
+
 // Line operations
 
 // CopyHline copies a horizontal line

@@ -75,6 +75,14 @@ func (pf *PixFmtAlphaBlendRGBA[S, B]) Pixel(x, y int) color.RGBA8[S] {
 	return pf.GetPixel(x, y)
 }
 
+// RowData returns the raw row bytes for transfer operations.
+func (pf *PixFmtAlphaBlendRGBA[S, B]) RowData(y int) []basics.Int8u {
+	if y < 0 || y >= pf.Height() {
+		return nil
+	}
+	return buffer.RowU8(pf.rbuf, y)
+}
+
 // CopyPixel copies a pixel without blending
 func (pf *PixFmtAlphaBlendRGBA[S, B]) CopyPixel(x, y int, c color.RGBA8[S]) {
 	if !InBounds(x, y, pf.Width(), pf.Height()) {
@@ -384,6 +392,116 @@ func (pf *PixFmtAlphaBlendRGBA[S, B]) Clear(c color.RGBA8[S]) {
 // Fill is an alias for Clear (fills entire buffer)
 func (pf *PixFmtAlphaBlendRGBA[S, B]) Fill(c color.RGBA8[S]) {
 	pf.Clear(c)
+}
+
+// CopyFrom copies a single scanline from another rendering buffer.
+func (pf *PixFmtAlphaBlendRGBA[S, B]) CopyFrom(src interface {
+	RowData(y int) []basics.Int8u
+	Width() int
+	Height() int
+}, xdst, ydst, xsrc, ysrc, length int,
+) {
+	if ydst < 0 || ydst >= pf.Height() || ysrc < 0 || ysrc >= src.Height() || length <= 0 {
+		return
+	}
+
+	if xsrc < 0 {
+		length += xsrc
+		xdst -= xsrc
+		xsrc = 0
+	}
+	if xdst < 0 {
+		length += xdst
+		xsrc -= xdst
+		xdst = 0
+	}
+	if xsrc+length > src.Width() {
+		length = src.Width() - xsrc
+	}
+	if xdst+length > pf.Width() {
+		length = pf.Width() - xdst
+	}
+	if length <= 0 {
+		return
+	}
+
+	srcRow := src.RowData(ysrc)
+	if srcRow == nil {
+		return
+	}
+
+	bytesPerPixel := detectBytesPerPixel(src, ysrc)
+	if bytesPerPixel == 4 {
+		dstRow := pf.RowData(ydst)
+		if dstRow == nil {
+			return
+		}
+		copy(dstRow[xdst*4:(xdst+length)*4], srcRow[xsrc*4:(xsrc+length)*4])
+		return
+	}
+
+	for i := 0; i < length; i++ {
+		srcColor, ok := decodeRGBA8FromRowData(srcRow, bytesPerPixel, xsrc+i)
+		if !ok {
+			continue
+		}
+		pf.CopyPixel(xdst+i, ydst, color.RGBA8[S]{
+			R: srcColor.R,
+			G: srcColor.G,
+			B: srcColor.B,
+			A: srcColor.A,
+		})
+	}
+}
+
+// BlendFrom blends a single scanline from another RGBA surface.
+func (pf *PixFmtAlphaBlendRGBA[S, B]) BlendFrom(src interface {
+	GetPixel(x, y int) color.RGBA8[S]
+	Width() int
+	Height() int
+}, xdst, ydst, xsrc, ysrc, length int, cover basics.Int8u,
+) {
+	if ydst < 0 || ydst >= pf.Height() || ysrc < 0 || ysrc >= src.Height() || length <= 0 {
+		return
+	}
+
+	if xsrc < 0 {
+		length += xsrc
+		xdst -= xsrc
+		xsrc = 0
+	}
+	if xdst < 0 {
+		length += xdst
+		xsrc -= xdst
+		xdst = 0
+	}
+	if xsrc+length > src.Width() {
+		length = src.Width() - xsrc
+	}
+	if xdst+length > pf.Width() {
+		length = pf.Width() - xdst
+	}
+	if length <= 0 {
+		return
+	}
+
+	start := 0
+	end := length
+	step := 1
+	if xdst > xsrc {
+		start = length - 1
+		end = -1
+		step = -1
+	}
+
+	for i := start; i != end; i += step {
+		c := src.GetPixel(xsrc+i, ysrc)
+		if cover == basics.CoverFull && c.A == 255 {
+			pf.CopyPixel(xdst+i, ydst, c)
+			continue
+		}
+		pf.BlendPixel(xdst+i, ydst, c, cover)
+	}
 }
 
 // Premultiply converts the entire buffer from plain to premultiplied alpha

@@ -250,3 +250,22 @@ func TestUtilityFunctions(t *testing.T) {
 		t.Error("Max should return larger value")
 	}
 }
+
+func TestPixFmtGray8CopyFromOverlapSameRow(t *testing.T) {
+	width, height := 5, 1
+	buf := make([]basics.Int8u, width*height)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, width, height, width)
+	pf := NewPixFmtGray8(rbuf)
+
+	for x, v := range []basics.Int8u{1, 2, 3, 4, 5} {
+		pf.CopyPixel(x, 0, color.Gray8[color.Linear]{V: v, A: 255})
+	}
+
+	pf.CopyFrom(pf, 1, 0, 0, 0, 4)
+
+	for x, want := range []basics.Int8u{1, 1, 2, 3, 4} {
+		if got := pf.GetPixel(x, 0).V; got != want {
+			t.Fatalf("CopyFrom overlap mismatch at x=%d: got %d want %d", x, got, want)
+		}
+	}
+}

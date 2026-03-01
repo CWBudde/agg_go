@@ -233,3 +233,55 @@ func TestPixFmtRGBA32ConcreteTypes(t *testing.T) {
 
 	// These should compile without errors
 }
+
+func TestPixFmtRGBA32CopyFromOverlapSameRow(t *testing.T) {
+	width, height := 5, 1
+	buf := make([]basics.Int8u, width*height*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, width, height, width*4)
+	pf := NewPixFmtRGBA32[color.Linear](rbuf)
+
+	srcColors := []color.RGBA8[color.Linear]{
+		{R: 1, A: 255},
+		{R: 2, A: 255},
+		{R: 3, A: 255},
+		{R: 4, A: 255},
+		{R: 5, A: 255},
+	}
+	for x, c := range srcColors {
+		pf.CopyPixel(x, 0, c)
+	}
+
+	pf.CopyFrom(pf, 1, 0, 0, 0, 4)
+
+	for x, want := range []basics.Int8u{1, 1, 2, 3, 4} {
+		if got := pf.GetPixel(x, 0).R; got != want {
+			t.Fatalf("CopyFrom overlap mismatch at x=%d: got %d want %d", x, got, want)
+		}
+	}
+}
+
+func TestPixFmtRGBA32BlendFromOverlapSameRow(t *testing.T) {
+	width, height := 5, 1
+	buf := make([]basics.Int8u, width*height*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, width, height, width*4)
+	pf := NewPixFmtRGBA32[color.Linear](rbuf)
+
+	srcColors := []color.RGBA8[color.Linear]{
+		{R: 1, A: 255},
+		{R: 2, A: 255},
+		{R: 3, A: 255},
+		{R: 4, A: 255},
+		{R: 5, A: 255},
+	}
+	for x, c := range srcColors {
+		pf.CopyPixel(x, 0, c)
+	}
+
+	pf.BlendFrom(pf, 1, 0, 0, 0, 4, basics.CoverFull)
+
+	for x, want := range []basics.Int8u{1, 1, 2, 3, 4} {
+		if got := pf.GetPixel(x, 0).R; got != want {
+			t.Fatalf("BlendFrom overlap mismatch at x=%d: got %d want %d", x, got, want)
+		}
+	}
+}
