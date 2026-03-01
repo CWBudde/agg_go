@@ -23,15 +23,12 @@ Standalone examples in `examples/`:
 - `gouraud.cpp` -> `examples/core/intermediate/gouraud`
 - `gradients.cpp` -> `examples/core/intermediate/gradients`
 - `image_filters.cpp` -> `examples/core/intermediate/image_filters`
+- `lion.cpp` -> `examples/core/intermediate/lion`
+- `parse_lion.cpp` -> `internal/demo/lion` and `examples/core/intermediate/lion`
 - `rasterizers.cpp` -> `examples/core/intermediate/rasterizers`
 - `rasterizers2.cpp` -> `examples/core/intermediate/rasterizers2`
 - `rounded_rect.cpp` -> `examples/core/basic/rounded_rect`
 - `scanline_boolean.cpp` -> `examples/core/intermediate/scanline_boolean`
-
-Ported in the web demo (`cmd/wasm`) but not yet mirrored as standalone examples:
-
-- `lion.cpp`
-- `parse_lion.cpp`
 
 Custom Go examples not mapped 1:1 to a single upstream demo:
 
@@ -119,4 +116,4 @@ Recommended next parity batch, based on current library coverage:
 5. `image_resample.cpp`
 6. `raster_text.cpp`
 7. `line_patterns.cpp`
-8. `lion.cpp` as a standalone example
+8. `line_patterns.cpp`

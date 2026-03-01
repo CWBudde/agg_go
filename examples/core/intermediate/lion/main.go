@@ -1,21 +1,17 @@
-// Based on the original AGG examples: lion.cpp and parse_lion.cpp.
-//go:build js && wasm
-// +build js,wasm
-
 package main
 
 import (
+	"fmt"
+
 	agg "agg_go"
+	"agg_go/examples/shared/renderutil"
 	"agg_go/internal/basics"
 	liondemo "agg_go/internal/demo/lion"
 )
 
-type LionPath = liondemo.Path
-
-func drawLionDemo() {
-	if lionPaths == nil {
-		lionPaths = liondemo.Parse()
-	}
+func main() {
+	ctx := agg.NewContext(800, 600)
+	ctx.Clear(agg.White)
 
 	agg2d := ctx.GetAgg2D()
 	agg2d.ResetTransformations()
@@ -23,11 +19,9 @@ func drawLionDemo() {
 
 	scale := 1.2
 	offsetX, offsetY := 250.0, 100.0
-
-	for _, lp := range lionPaths {
+	for _, lp := range liondemo.Parse() {
 		agg2d.FillColor(agg.NewColor(lp.Color[0], lp.Color[1], lp.Color[2], 255))
 		agg2d.NoLine()
-
 		agg2d.ResetPath()
 		lp.Path.Rewind(0)
 		for {
@@ -45,6 +39,11 @@ func drawLionDemo() {
 		}
 		agg2d.ClosePolygon()
 		agg2d.DrawPath(agg.FillOnly)
-		agg2d.ResetPath()
 	}
+
+	const filename = "lion.png"
+	if err := renderutil.SavePNG(ctx.GetImage(), filename); err != nil {
+		panic(err)
+	}
+	fmt.Println(filename)
 }
