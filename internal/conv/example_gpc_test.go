@@ -108,7 +108,7 @@ func TestExampleUsage(t *testing.T) {
 			t.Logf("%s operation produced %d vertices", test.name, vertexCount)
 
 			if test.op == GPCOr && vertexCount == 0 {
-				t.Skip("Union operation still returns 0 vertices in ConvGPC example coverage; converter parity remains under review")
+				t.Fatal("union operation unexpectedly returned 0 vertices")
 			}
 		})
 	}
@@ -171,7 +171,7 @@ func TestConvGPC_WithPathStorageAdapter(t *testing.T) {
 			t.Logf("%s operation with PathStorage produced %d vertices", tc.name, vertexCount)
 
 			if tc.op == GPCOr && vertexCount == 0 {
-				t.Skip("Union operation still returns 0 vertices in ConvGPC adapter coverage; converter parity remains under review")
+				t.Fatal("union operation unexpectedly returned 0 vertices")
 			}
 		})
 	}

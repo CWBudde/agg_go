@@ -34,6 +34,7 @@ func main() {
 	js.Global().Set("setImageFilter", js.FuncOf(setImageFilter))
 	js.Global().Set("setImageFilterRadius", js.FuncOf(setImageFilterRadius))
 	js.Global().Set("setImageFilterAngle", js.FuncOf(setImageFilterAngle))
+	js.Global().Set("setSBoolOp", js.FuncOf(setSBoolOp))
 
 	// Keep the Go program running
 	select {}
@@ -56,6 +57,9 @@ func onMouseDown(this js.Value, args []js.Value) interface{} {
 	if demoType == "gouraud" {
 		return handleGouraudMouseDown(x, y)
 	}
+	if demoType == "sbool" {
+		return handleSBoolMouseDown(x, y)
+	}
 	return false
 }
 
@@ -76,6 +80,9 @@ func onMouseMove(this js.Value, args []js.Value) interface{} {
 	if demoType == "gouraud" {
 		return handleGouraudMouseMove(x, y)
 	}
+	if demoType == "sbool" {
+		return handleSBoolMouseMove(x, y)
+	}
 	return false
 }
 
@@ -92,6 +99,9 @@ func onMouseUp(this js.Value, args []js.Value) interface{} {
 	}
 	if demoType == "gouraud" {
 		handleGouraudMouseUp()
+	}
+	if demoType == "sbool" {
+		handleSBoolMouseUp()
 	}
 	return nil
 }
@@ -141,6 +151,13 @@ func setImageFilterRadius(this js.Value, args []js.Value) interface{} {
 func setImageFilterAngle(this js.Value, args []js.Value) interface{} {
 	if len(args) > 0 {
 		imgFilterAngle = args[0].Float()
+	}
+	return nil
+}
+
+func setSBoolOp(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		sboolOp = SBoolOp(args[0].Int())
 	}
 	return nil
 }
@@ -214,6 +231,8 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 		drawGouraudDemo()
 	case "imagefilters":
 		drawImageFiltersDemo()
+	case "sbool":
+		drawSBoolDemo()
 	case "aatest":
 		drawAATestDemo()
 	default:

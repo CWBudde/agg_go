@@ -6,6 +6,7 @@ import (
 	"image"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -28,7 +29,7 @@ type TestRunner struct {
 
 // NewTestRunner creates a new test runner with default configuration.
 func NewTestRunner(baseDir string) *TestRunner {
-	return &TestRunner{
+	runner := &TestRunner{
 		BaseDir:           baseDir,
 		ReferencesDir:     filepath.Join(baseDir, "reference"),
 		OutputDir:         filepath.Join(baseDir, "output"),
@@ -36,6 +37,8 @@ func NewTestRunner(baseDir string) *TestRunner {
 		ReportsDir:        filepath.Join(baseDir, "reports"),
 		ComparisonOptions: DefaultComparisonOptions(),
 	}
+	runner.applyEnvironmentOptions()
+	return runner
 }
 
 // RunVisualTest executes a single visual test.
@@ -222,6 +225,73 @@ func (r *TestRunner) CleanOutputs() error {
 	}
 
 	return nil
+}
+
+func (r *TestRunner) applyEnvironmentOptions() {
+	if value, ok := envUint8("VISUAL_DIFF_TOLERANCE"); ok {
+		r.ComparisonOptions.ExactMatch = false
+		r.ComparisonOptions.Tolerance = value
+	}
+	if value, ok := envInt("VISUAL_MAX_DIFFERENT_PIXELS"); ok {
+		r.ComparisonOptions.MaxDifferentPixels = value
+	}
+	if value, ok := envFloat64("VISUAL_MAX_DIFFERENT_RATIO"); ok {
+		r.ComparisonOptions.MaxDifferentRatio = value
+	}
+	if value, ok := envBool("VISUAL_IGNORE_ALPHA"); ok {
+		r.ComparisonOptions.IgnoreAlpha = value
+	}
+	if value, ok := envBool("VISUAL_GENERATE_DIFFS"); ok {
+		r.ComparisonOptions.GenerateDiffImage = value
+	}
+}
+
+func envInt(name string) (int, bool) {
+	raw, ok := os.LookupEnv(name)
+	if !ok || raw == "" {
+		return 0, false
+	}
+	value, err := strconv.Atoi(raw)
+	if err != nil {
+		return 0, false
+	}
+	return value, true
+}
+
+func envUint8(name string) (uint8, bool) {
+	raw, ok := os.LookupEnv(name)
+	if !ok || raw == "" {
+		return 0, false
+	}
+	value, err := strconv.ParseUint(raw, 10, 8)
+	if err != nil {
+		return 0, false
+	}
+	return uint8(value), true
+}
+
+func envFloat64(name string) (float64, bool) {
+	raw, ok := os.LookupEnv(name)
+	if !ok || raw == "" {
+		return 0, false
+	}
+	value, err := strconv.ParseFloat(raw, 64)
+	if err != nil {
+		return 0, false
+	}
+	return value, true
+}
+
+func envBool(name string) (bool, bool) {
+	raw, ok := os.LookupEnv(name)
+	if !ok || raw == "" {
+		return false, false
+	}
+	value, err := strconv.ParseBool(raw)
+	if err != nil {
+		return false, false
+	}
+	return value, true
 }
 
 // ListTests returns a list of available reference tests.

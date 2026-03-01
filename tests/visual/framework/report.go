@@ -63,6 +63,9 @@ func reportTemplateFuncs() template.FuncMap {
 			percent := float64(part) * 100.0 / float64(total)
 			return fmt.Sprintf("%.1f%%", percent)
 		},
+		"formatRatioPercent": func(ratio float64) string {
+			return fmt.Sprintf("%.2f%%", ratio*100.0)
+		},
 		"statusClass": func(result TestResult) string {
 			if result.Error != nil {
 				return "error"
@@ -316,6 +319,7 @@ const reportTemplate = `<!DOCTYPE html>
                     <div class="comparison-info">
                         <strong>Comparison Results:</strong><br>
                         Different pixels: {{.Comparison.DifferentPixels}} / {{.Comparison.TotalPixels}} ({{formatPercent .Comparison.DifferentPixels .Comparison.TotalPixels}})<br>
+                        Different ratio: {{formatRatioPercent .Comparison.DifferentRatio}}<br>
                         Maximum difference: {{.Comparison.MaxDifference}} / 255<br>
                         Average difference: {{printf "%.2f" .Comparison.AverageDifference}}
                     </div>

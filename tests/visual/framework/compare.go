@@ -17,10 +17,12 @@ func CompareImages(reference, generated image.Image, options ComparisonOptions) 
 
 	// Check if dimensions match
 	if refBounds.Size() != genBounds.Size() {
+		totalPixels := refBounds.Size().X * refBounds.Size().Y
 		return &ComparisonResult{
 			Passed:            false,
-			DifferentPixels:   refBounds.Size().X * refBounds.Size().Y, // All pixels different
-			TotalPixels:       refBounds.Size().X * refBounds.Size().Y,
+			DifferentPixels:   totalPixels, // All pixels different
+			DifferentRatio:    1.0,
+			TotalPixels:       totalPixels,
 			MaxDifference:     255,
 			AverageDifference: 255.0,
 		}
@@ -102,10 +104,26 @@ func CompareImages(reference, generated image.Image, options ComparisonOptions) 
 	}
 
 	averageDifference := totalDifference / float64(totalPixels*4) // 4 channels per pixel
+	differentRatio := 0.0
+	if totalPixels > 0 {
+		differentRatio = float64(differentPixels) / float64(totalPixels)
+	}
+
+	passed := differentPixels == 0
+	if options.MaxDifferentPixels > 0 || options.MaxDifferentRatio > 0 {
+		passed = true
+		if options.MaxDifferentPixels > 0 && differentPixels > options.MaxDifferentPixels {
+			passed = false
+		}
+		if options.MaxDifferentRatio > 0 && differentRatio > options.MaxDifferentRatio {
+			passed = false
+		}
+	}
 
 	return &ComparisonResult{
-		Passed:            differentPixels == 0,
+		Passed:            passed,
 		DifferentPixels:   differentPixels,
+		DifferentRatio:    differentRatio,
 		TotalPixels:       totalPixels,
 		MaxDifference:     maxDifference,
 		AverageDifference: averageDifference,

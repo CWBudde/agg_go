@@ -56,6 +56,81 @@ func createPolygonWithHole() *GPCPolygon {
 	return polygon
 }
 
+func polygonBounds(t *testing.T, polygon *GPCPolygon) (xmin, ymin, xmax, ymax float64) {
+	t.Helper()
+
+	xmin = math.MaxFloat64
+	ymin = math.MaxFloat64
+	xmax = -math.MaxFloat64
+	ymax = -math.MaxFloat64
+
+	for c := 0; c < polygon.NumContours; c++ {
+		contour, _, err := polygon.GetContour(c)
+		if err != nil {
+			t.Fatalf("GetContour(%d) error: %v", c, err)
+		}
+		for _, v := range contour.Vertices {
+			if v.X < xmin {
+				xmin = v.X
+			}
+			if v.Y < ymin {
+				ymin = v.Y
+			}
+			if v.X > xmax {
+				xmax = v.X
+			}
+			if v.Y > ymax {
+				ymax = v.Y
+			}
+		}
+	}
+
+	return xmin, ymin, xmax, ymax
+}
+
+func totalPolygonVertices(polygon *GPCPolygon) int {
+	total := 0
+	for _, contour := range polygon.Contours {
+		total += contour.NumVertices
+	}
+	return total
+}
+
+func contourArea(contour *GPCVertexList) float64 {
+	if contour == nil || contour.NumVertices < 3 {
+		return 0
+	}
+
+	area := 0.0
+	for i := 0; i < contour.NumVertices; i++ {
+		j := (i + 1) % contour.NumVertices
+		area += contour.Vertices[i].X*contour.Vertices[j].Y - contour.Vertices[j].X*contour.Vertices[i].Y
+	}
+
+	return math.Abs(area) * 0.5
+}
+
+func polygonArea(t *testing.T, polygon *GPCPolygon) float64 {
+	t.Helper()
+
+	total := 0.0
+	for c := 0; c < polygon.NumContours; c++ {
+		contour, isHole, err := polygon.GetContour(c)
+		if err != nil {
+			t.Fatalf("GetContour(%d) error: %v", c, err)
+		}
+
+		area := contourArea(contour)
+		if isHole {
+			total -= area
+		} else {
+			total += area
+		}
+	}
+
+	return total
+}
+
 func TestGPCOp_String(t *testing.T) {
 	tests := []struct {
 		op       GPCOp
@@ -740,29 +815,44 @@ func TestComplexGeometricOperations(t *testing.T) {
 	rect2 := createRect(5, 5, 15, 15)
 
 	tests := []struct {
-		name        string
-		operation   GPCOp
-		minContours int
+		name          string
+		operation     GPCOp
+		wantContours  int
+		wantVertices  int
+		wantBounds    [4]float64
+		wantArea      float64
 	}{
 		{
-			name:        "Union",
-			operation:   GPCUnion,
-			minContours: 1,
+			name:         "Union",
+			operation:    GPCUnion,
+			wantContours: 1,
+			wantVertices: 8,
+			wantBounds:   [4]float64{0, 0, 15, 15},
+			wantArea:     175,
 		},
 		{
-			name:        "Intersection",
-			operation:   GPCInt,
-			minContours: 1,
+			name:         "Intersection",
+			operation:    GPCInt,
+			wantContours: 1,
+			wantVertices: 4,
+			wantBounds:   [4]float64{5, 5, 10, 10},
+			wantArea:     25,
 		},
 		{
-			name:        "Difference",
-			operation:   GPCDiff,
-			minContours: 1,
+			name:         "Difference",
+			operation:    GPCDiff,
+			wantContours: 1,
+			wantVertices: 6,
+			wantBounds:   [4]float64{0, 0, 10, 10},
+			wantArea:     75,
 		},
 		{
-			name:        "XOR",
-			operation:   GPCXor,
-			minContours: 1,
+			name:         "XOR",
+			operation:    GPCXor,
+			wantContours: 2,
+			wantVertices: 12,
+			wantBounds:   [4]float64{0, 0, 15, 15},
+			wantArea:     150,
 		},
 	}
 
@@ -779,38 +869,27 @@ func TestComplexGeometricOperations(t *testing.T) {
 				return
 			}
 
-			if result.NumContours < tt.minContours {
-				t.Fatalf("PolygonClip(%s) contours = %d, want at least %d", tt.name, result.NumContours, tt.minContours)
+			if result.NumContours != tt.wantContours {
+				t.Fatalf("PolygonClip(%s) contours = %d, want %d", tt.name, result.NumContours, tt.wantContours)
+			}
+
+			if got := totalPolygonVertices(result); got != tt.wantVertices {
+				t.Fatalf("PolygonClip(%s) total vertices = %d, want %d", tt.name, got, tt.wantVertices)
+			}
+
+			xmin, ymin, xmax, ymax := polygonBounds(t, result)
+			gotBounds := [4]float64{xmin, ymin, xmax, ymax}
+			if gotBounds != tt.wantBounds {
+				t.Fatalf("PolygonClip(%s) bounds = %v, want %v", tt.name, gotBounds, tt.wantBounds)
+			}
+
+			if got := polygonArea(t, result); math.Abs(got-tt.wantArea) > 1e-9 {
+				t.Fatalf("PolygonClip(%s) area = %v, want %v", tt.name, got, tt.wantArea)
 			}
 
 			t.Logf("Operation %s completed successfully with %d contours", tt.name, result.NumContours)
 		})
 	}
-}
-
-func TestPolygonClipDebugOverlappingRectangles(t *testing.T) {
-	rect1 := createRectanglePolygon(0, 0, 10, 10)
-	rect2 := createRectanglePolygon(5, 5, 15, 15)
-
-	result, err := PolygonClip(GPCUnion, rect1, rect2)
-	if err != nil {
-		t.Fatalf("PolygonClip() error = %v", err)
-	}
-
-	t.Logf(
-		"debug: local_min_adds=%d out_poly_nil=%v max_raw_vertices=%d counted_contours=%d result_contours=%d boundary_adds=(L:%d R:%d) intersect_adds=(L:%d R:%d) boundary_vclass=%v intersect_vclass=%v",
-		lastPolygonClipDebugInfo.LocalMinAdds,
-		lastPolygonClipDebugInfo.OutPolyWasNil,
-		lastPolygonClipDebugInfo.MaxRawVertices,
-		lastPolygonClipDebugInfo.CountedContours,
-		result.NumContours,
-		lastPolygonClipDebugInfo.BoundaryAddsLeft,
-		lastPolygonClipDebugInfo.BoundaryAddsRight,
-		lastPolygonClipDebugInfo.IntersectAddsLeft,
-		lastPolygonClipDebugInfo.IntersectAddsRight,
-		lastPolygonClipDebugInfo.BoundaryVClass,
-		lastPolygonClipDebugInfo.IntersectVClass,
-	)
 }
 
 // TestGPCPerformanceBenchmark provides basic performance testing

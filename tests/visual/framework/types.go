@@ -12,6 +12,8 @@ type ComparisonResult struct {
 	Passed bool
 	// DifferentPixels is the count of pixels that differ
 	DifferentPixels int
+	// DifferentRatio is the fraction of pixels that differ (0.0-1.0)
+	DifferentRatio float64
 	// TotalPixels is the total number of pixels compared
 	TotalPixels int
 	// MaxDifference is the maximum color channel difference found (0-255)
@@ -59,6 +61,12 @@ type ComparisonOptions struct {
 	// Tolerance allows for small differences in color values (0-255)
 	// Only used when ExactMatch is false
 	Tolerance uint8
+	// MaxDifferentPixels allows a bounded number of differing pixels to pass.
+	// A zero value requires no differing pixels unless MaxDifferentRatio is set.
+	MaxDifferentPixels int
+	// MaxDifferentRatio allows a bounded fraction of differing pixels to pass.
+	// A zero value requires no differing pixels unless MaxDifferentPixels is set.
+	MaxDifferentRatio float64
 	// GenerateDiffImage creates a visual diff image for failures
 	GenerateDiffImage bool
 	// IgnoreAlpha ignores alpha channel differences
@@ -68,9 +76,11 @@ type ComparisonOptions struct {
 // DefaultComparisonOptions returns sensible defaults for image comparison.
 func DefaultComparisonOptions() ComparisonOptions {
 	return ComparisonOptions{
-		ExactMatch:        true,
-		Tolerance:         0,
-		GenerateDiffImage: true,
-		IgnoreAlpha:       false,
+		ExactMatch:         true,
+		Tolerance:          0,
+		MaxDifferentPixels: 0,
+		MaxDifferentRatio:  0,
+		GenerateDiffImage:  true,
+		IgnoreAlpha:        false,
 	}
 }

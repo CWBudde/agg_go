@@ -1664,7 +1664,7 @@ Go files:
 
 ### internal/gpc/gpc.go
 
-**Status: PARTIAL** - Core polygon clipping code exists and the polygon text I/O helpers are now implemented, so the old "operations not implemented" note is stale. Remaining work is no longer just a vague review item: direct low-level tests now assert that overlapping-rectangle union, intersection, difference, and xor should produce contours, and they currently fail because `gpc.PolygonClip()` returns empty results. The remaining issue is upstream clipping correctness, not only converter traversal.
+**Status: PARTIAL** - Core polygon clipping code and polygon text I/O helpers are implemented, and the previously broken overlapping-rectangle union/intersection/difference/xor cases now produce contours under direct low-level tests. Remaining work is broader correctness/parity review for more edge cases, not the earlier total failure of basic boolean operations.
 
 ### internal/fonts/embedded_fonts.go
 
@@ -1695,7 +1695,7 @@ The FreeType2 port in `internal/font/freetype2/` is significantly closer to `agg
 
 ### internal/conv/gpc.go
 
-**Status: PARTIAL** - The converter is no longer a placeholder and does invoke polygon clipping. Closed contours are now normalized before being handed to GPC, with focused tests around contour accumulation, and narrow tests now show `ConvGPC.Rewind()` matches a direct `gpc.PolygonClip()` call. Example coverage still shows empty output for cases that should yield geometry because the stored clip result is already empty, so the remaining work has narrowed to upstream clipping correctness in `internal/gpc/gpc.go` rather than result extraction alone.
+**Status: PARTIAL** - The converter is no longer a placeholder and does invoke polygon clipping. Closed contours are normalized before being handed to GPC, focused tests cover contour accumulation, and the example/path-adapter coverage now emits real geometry for the basic overlapping-rectangle cases again. Remaining work is broader AGG parity review rather than the earlier empty-result failure path.
 
 ### internal/color/rgb.go
 
