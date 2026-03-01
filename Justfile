@@ -28,10 +28,7 @@ build-lib:
 # Build WASM demo
 build-wasm:
     @echo "Building AGG Go WASM demo..."
-    @mkdir -p web
-    @cp "$$(go env GOROOT)/lib/wasm/wasm_exec.js" web/ || cp "$$(go env GOROOT)/misc/wasm/wasm_exec.js" web/
-    @GOOS=js GOARCH=wasm go build -o web/main.wasm ./cmd/wasm/main.go
-    @echo "WASM build complete: web/main.wasm"
+    ./web/build-wasm.sh
 
 # Serve the web demo locally
 serve-web: build-wasm

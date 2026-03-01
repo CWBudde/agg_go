@@ -22,6 +22,18 @@ References:
 - Completed items: `docs/TASKS-COMPLETED.md`
 - Example tracking: `docs/TASKS-EXAMPLES.md`
 
+## Web Demo
+
+A live web demo of AGG Go, compiled to WebAssembly (WASM), is available. It showcases various rendering features directly in your browser.
+
+- **Live Demo:** [https://christian-schlichtherle.github.io/agg-go/](https://christian-schlichtherle.github.io/agg-go/)
+- **Source:** `cmd/wasm/main.go` and `web/`
+
+You can also run the demo locally:
+```bash
+just serve-web
+```
+
 ## Repository Structure
 
 - Public API: `agg.go`, `types.go`, plus high‑level helpers (colors, geometry, context).
