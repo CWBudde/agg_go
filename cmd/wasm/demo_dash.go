@@ -1,3 +1,4 @@
+// Based on the original AGG examples: conv_dash_marker.cpp.
 package main
 
 import (

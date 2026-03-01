@@ -30,6 +30,7 @@ func main() {
 	js.Global().Set("setAAZoom", js.FuncOf(setAAZoom))
 	js.Global().Set("setDashWidth", js.FuncOf(setDashWidth))
 	js.Global().Set("setDashClosed", js.FuncOf(setDashClosed))
+	js.Global().Set("setGouraudDilation", js.FuncOf(setGouraudDilation))
 
 	// Keep the Go program running
 	select {}
@@ -49,6 +50,9 @@ func onMouseDown(this js.Value, args []js.Value) interface{} {
 	if demoType == "dash" {
 		return handleDashMouseDown(x, y)
 	}
+	if demoType == "gouraud" {
+		return handleGouraudMouseDown(x, y)
+	}
 	return false
 }
 
@@ -66,6 +70,9 @@ func onMouseMove(this js.Value, args []js.Value) interface{} {
 	if demoType == "dash" {
 		return handleDashMouseMove(x, y)
 	}
+	if demoType == "gouraud" {
+		return handleGouraudMouseMove(x, y)
+	}
 	return false
 }
 
@@ -76,6 +83,9 @@ func onMouseUp(this js.Value, args []js.Value) interface{} {
 	}
 	if demoType == "dash" {
 		handleDashMouseUp()
+	}
+	if demoType == "gouraud" {
+		handleGouraudMouseUp()
 	}
 	return nil
 }
@@ -101,6 +111,13 @@ func setDashClosed(this js.Value, args []js.Value) interface{} {
 	return nil
 }
 
+func setGouraudDilation(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		gouraudDilation = args[0].Float()
+	}
+	return nil
+}
+
 func getCanvasDimensions(this js.Value, args []js.Value) interface{} {
 	return map[string]interface{}{
 		"width":  width,
@@ -114,7 +131,14 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 	}
 
 	demoType := args[0].String()
+	fmt.Printf("Rendering demo: %s\n", demoType)
+	
 	ctx.Clear(agg.White)
+	
+	// Reset specific demo state if needed
+	if demoType != "lion" {
+		lionPaths = nil
+	}
 
 	switch demoType {
 	case "lines":
@@ -137,6 +161,8 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 		drawBSplineDemo()
 	case "dash":
 		drawDashDemo()
+	case "aatest":
+		drawAATestDemo()
 	default:
 		drawLinesDemo()
 	}

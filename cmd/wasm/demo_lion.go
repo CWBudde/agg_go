@@ -1,3 +1,4 @@
+// Based on the original AGG examples: lion.cpp and parse_lion.cpp.
 package main
 
 import (
@@ -21,6 +22,7 @@ func drawLionDemo() {
 
 	agg2d := ctx.GetAgg2D()
 	agg2d.ResetTransformations()
+	agg2d.ResetPath()
 
 	// Center and scale
 	scale := 1.2
@@ -48,6 +50,7 @@ func drawLionDemo() {
 		}
 		agg2d.ClosePolygon()
 		agg2d.DrawPath(agg.FillOnly)
+		agg2d.ResetPath() // Clear path after drawing this polygon
 	}
 }
 

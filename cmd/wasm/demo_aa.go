@@ -1,3 +1,4 @@
+// Based on the original AGG examples: aa_demo.cpp.
 package main
 
 import (

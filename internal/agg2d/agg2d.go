@@ -296,3 +296,23 @@ func (agg2d *Agg2D) GetInternalRasterizer() *rasterizer.RasterizerScanlineAA[int
 func (agg2d *Agg2D) ScanlineRender(ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip], renderer renscan.RendererInterface[color.RGBA8[color.Linear]]) {
 	scanlineRender(ras, agg2d.scanline, renderer)
 }
+
+// GouraudTriangle renders a Gouraud-shaded triangle.
+func (agg2d *Agg2D) GouraudTriangle(x1, y1, x2, y2, x3, y3 float64, c1, c2, c3 Color, d float64) {
+	agg2d.rasterizer.Reset()
+
+	// Convert colors to SpanGouraudRGBA expected format
+	gc1 := span.RGBAColor{R: int(c1[0]) << 8, G: int(c1[1]) << 8, B: int(c1[2]) << 8, A: int(c1[3]) << 8}
+	gc2 := span.RGBAColor{R: int(c2[0]) << 8, G: int(c2[1]) << 8, B: int(c2[2]) << 8, A: int(c2[3]) << 8}
+	gc3 := span.RGBAColor{R: int(c3[0]) << 8, G: int(c3[1]) << 8, B: int(c3[2]) << 8, A: int(c3[3]) << 8}
+
+	spanGen := span.NewSpanGouraudRGBAWithTriangle(gc1, gc2, gc3, x1, y1, x2, y2, x3, y3, d)
+	renderer := renscan.NewRendererScanlineAA[color.RGBA8[color.Linear], *span.SpanAllocator[color.RGBA8[color.Linear]], *span.SpanGouraudRGBA](
+		agg2d.renBase.rendererBase(),
+		agg2d.spanAllocator,
+		spanGen,
+	)
+
+	agg2d.rasterizer.AddPath(spanGen, 0)
+	scanlineRender(agg2d.rasterizer, agg2d.scanline, renderer)
+}

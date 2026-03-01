@@ -125,8 +125,10 @@ const demoDescriptions = {
     "Compositing and blend modes. Showcases how different layers can be combined using standard and advanced blend modes like Multiply, Screen, and Overlay.",
   bspline:
     "B-Spline curve smoothing. Demonstrates the creation of smooth, continuous curves from a set of control points.",
-  dash: "Advanced line styling. Showcases various dash patterns and line thicknesses applied to both simple lines and complex paths.",
-};
+  "dash": "Advanced line styling. Showcases various dash patterns and line thicknesses applied to both simple lines and complex paths.",
+  "aatest": "Comprehensive anti-aliasing precision test. Renders radial lines, various ellipse sizes, and gradient-filled triangles at fractional offsets to verify the rasterizer's quality."
+  };
+
 
 function renderSelectedDemo() {
   const selector = document.getElementById("demoSelector");

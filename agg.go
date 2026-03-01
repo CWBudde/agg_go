@@ -166,11 +166,12 @@ func (a *Agg2D) ClipBox(x1, y1, x2, y2 float64) {
 	a.impl.ClipBox(x1, y1, x2, y2)
 }
 
-// ClearAll fills the entire buffer with the specified color.
+// ClearAll fills the entire buffer with the specified color and resets the current path.
 func (a *Agg2D) ClearAll(c Color) {
 	// Convert public Color to internal color format
 	internalColor := [4]uint8{c.R, c.G, c.B, c.A}
 	a.impl.ClearAll(internalColor)
+	a.impl.ResetPath()
 }
 
 // WorldToScreen transforms world coordinates to screen coordinates.
@@ -552,6 +553,14 @@ func (a *Agg2D) GetInternalRasterizer() *rasterizer.RasterizerScanlineAA[int, ra
 // ScanlineRender renders the current rasterizer data using a custom renderer.
 func (a *Agg2D) ScanlineRender(ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip], renderer renscan.RendererInterface[color.RGBA8[color.Linear]]) {
 	a.impl.ScanlineRender(ras, renderer)
+}
+
+// GouraudTriangle renders a Gouraud-shaded triangle.
+func (a *Agg2D) GouraudTriangle(x1, y1, x2, y2, x3, y3 float64, c1, c2, c3 Color, d float64) {
+	internalC1 := [4]uint8{c1.R, c1.G, c1.B, c1.A}
+	internalC2 := [4]uint8{c2.R, c2.G, c2.B, c2.A}
+	internalC3 := [4]uint8{c3.R, c3.G, c3.B, c3.A}
+	a.impl.GouraudTriangle(x1, y1, x2, y2, x3, y3, internalC1, internalC2, internalC3, d)
 }
 
 // Package-level initialization

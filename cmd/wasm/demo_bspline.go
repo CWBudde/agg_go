@@ -1,3 +1,4 @@
+// Based on the original AGG examples: bspline.cpp.
 package main
 
 import (

@@ -1,3 +1,4 @@
+// Based on the original AGG examples: gradients.cpp.
 package main
 
 import (

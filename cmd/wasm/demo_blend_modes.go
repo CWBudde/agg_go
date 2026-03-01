@@ -1,3 +1,4 @@
+// Based on the original AGG examples: compositing.cpp and compositing2.cpp.
 package main
 
 import (
