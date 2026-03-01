@@ -160,7 +160,7 @@ This document outlines all documentation tasks needed to comprehensively documen
 ### [ ] Font System Package (`internal/fonts/`)
 
 - [ ] Embedded fonts system
-- [ ] `fman` / cache-manager-v2 support
+- [ ] `fman` / cache-manager-v2 support as the separate standalone path, not Agg2D's primary text stack
 - [ ] Font selection algorithms
 - [ ] Performance optimization
 

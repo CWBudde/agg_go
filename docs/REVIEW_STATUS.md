@@ -1594,110 +1594,125 @@ Go files:
 
 ## Implementation Status Notes
 
-### shapes.go
+### internal/shapes/*.go and internal/agg2d/paths.go
 
-The Go implementation of geometric primitives in `shapes.go` currently uses simplified approximations for some shapes. For instance, arcs are implemented using bezier curves, and ellipses are approximated with line segments. These are temporary solutions until the full, more precise algorithms from the original C++ implementation are ported.
+**Status: COMPLETED** - The old note is stale. Geometric primitives now live under `internal/shapes/`, with dedicated `arc.go`, `ellipse.go`, and `rounded_rect.go` ports plus tests, and Agg2D path helpers use those implementations directly.
 
-### path.go
+### internal/agg2d/text.go
 
-The path handling in `path.go` has some temporary simplifications. Quadratic and cubic bezier curves are not fully implemented as in the original AGG, and ellipse-to-path conversion is approximated.
+**Status: PARTIAL** - Text rendering is no longer a placeholder. Agg2D now loads fonts, computes width/kerning, and renders outline, gray8, and mono glyph caches through `internal/font/cache_manager.go`. Remaining review focus is parity and edge cases, not basic functionality.
 
-### agg2d_text.go
+### internal/agg2d/image.go
 
-The text rendering functionality in `agg2d_text.go` is currently a placeholder. It demonstrates the basic structure of the text rendering API, but the actual glyph rendering and font handling logic is not yet implemented.
+**Status: COMPLETED** - The old note is stale. Image transforms, parallelogram mapping, path-based image rendering, interpolation, and resampling code paths are implemented and covered by tests.
 
-### agg2d_image.go
+### internal/agg2d/gradient.go
 
-The image handling in `agg2d_image.go` is incomplete. While it sets up the transformation matrix for image drawing, the actual image rendering and filtering is not yet implemented.
+**Status: COMPLETED** - The old placeholder note is stale. Gradient setup now applies world/screen transforms and uses real gradient matrices rather than a fixed 1:1 mapping assumption.
 
-### agg2d_gradient.go
+### internal/agg2d/fill_rules.go
 
-The gradient functionality in `agg2d_gradient.go` has a simplified implementation for gradient transformations. It currently assumes a 1:1 mapping for the gradient matrix, which is a placeholder until the full gradient transformation logic is ported.
+**Status: COMPLETED** - Fill rule selection is wired into the rasterizer immediately and is applied during rendering.
 
-### agg2d_fill_rules.go
+### internal/agg2d/agg2d.go and internal/agg2d/rendering.go
 
-The fill rule handling in `agg2d_fill_rules.go` is not fully integrated into the rendering pipeline. The fill rule is stored but not yet applied during rasterization.
-
-### agg2d.go
-
-The main `agg2d.go` file, which orchestrates the high-level API, has several placeholders due to incomplete underlying components. The creation of base and scanline renderers is skipped, and path drawing is not fully implemented, pending the completion of the rendering pipeline.
+**Status: COMPLETED** - The old note is stale. The Agg2D rendering stack now initializes typed pixfmt/renderers, manages scanline/rasterizer state, and draws fill/stroke paths through the rendering pipeline.
 
 ### internal/vcgen/stroke.go
 
-The stroke vertex generator in `internal/vcgen/stroke.go` is a no-op placeholder. The logic for generating stroked paths is not yet implemented.
+**Status: COMPLETED** - The stroke vertex generator is implemented and no longer a no-op placeholder.
 
 ### internal/span/span_image_filter_rgb.go
 
-The RGB image filter span in `internal/span/span_image_filter_rgb.go` has a simplified implementation. Instead of applying a filter, it currently fills with the background color.
+**Status: COMPLETED** - Reviewed and updated. RGB nearest-neighbor, bilinear, and bilinear-clip paths are implemented, and the bilinear clip path now blends partial out-of-bounds samples per corner instead of falling back to a flat background fill.
+
+### internal/span/span_image_filter_rgba.go
+
+**Status: COMPLETED** - Reviewed and updated. RGBA nearest-neighbor, bilinear, and bilinear-clip paths are implemented, and the bilinear clip path now blends partial out-of-bounds samples per corner instead of falling back to a flat background fill.
 
 ### internal/span/span_gradient_contour.go
 
-The contour gradient span in `internal/span/span_gradient_contour.go` uses a simplified manual rasterization of the path to create a black and white buffer, which is a placeholder for the proper contour gradient generation.
+**Status: PARTIAL** - Improved. The contour gradient path no longer uses the older manual snapped-line rasterization; it now renders the transformed curve through the outline rasterizer/primitives pipeline before the distance transform. Remaining work is a deeper parity review against AGG's original contour-gradient behavior rather than the previous placeholder-style rasterization gap.
 
 ### internal/span/converter.go
 
-The span converter in `internal/span/converter.go` has a placeholder for alpha handling. It stores the alpha as metadata but does not yet apply it to the span colors.
+**Status: COMPLETED** - The alpha and brightness-alpha converters actively modify span colors; the old placeholder note is stale.
 
 ### internal/scanline/storage_aa_serialized.go
 
-The serialized anti-aliased scanline storage in `internal/scanline/storage_aa_serialized.go` is a placeholder implementation.
+**Status: COMPLETED** - Serialized AA scanline storage/adaptor support is implemented and tested; the old placeholder note is stale.
 
 ### internal/scanline/scanline_p8.go and internal/scanline/scanline32_p8.go
 
-The `scanline_p8` and `scanline32_p8` implementations in `internal/scanline/` use `unsafe` pointer arithmetic as a temporary solution to match the performance and memory layout of the original C++ code. This will be reviewed for safety and alternatives.
+**Status: COMPLETED** - Reviewed and updated. The temporary `unsafe` pointer arithmetic has been removed in favor of explicit slice-based cover tracking.
 
-### internal/renderer/renderer_mclip.go
+### internal/renderer/mclip.go
 
-The multi-clipping renderer in `internal/renderer/renderer_mclip.go` has placeholders for some buffer operations, assuming functionality that is not yet present in the base renderer.
+**Status: PARTIAL** - The multi-clip renderer is functional and tested, but should still be reviewed against AGG for exact buffer-operation parity.
 
-### internal/renderer/renderer_base.go
+### internal/renderer/base.go
 
-The base renderer in `internal/renderer/renderer_base.go` makes assumptions about the source buffer in `copy_from`, which is a temporary simplification.
+**Status: PARTIAL** - Renderer base functionality is implemented; remaining review focus is fidelity of `CopyFrom` and related transfer semantics rather than missing functionality.
 
 ### internal/platform/platform_support.go
 
-The platform support layer in `internal/platform/platform_support.go` is a placeholder. It provides the basic structure for platform integration but does not yet interact with any real windowing system. Drawing is simulated by immediately calling the draw handler.
+**Status: PARTIAL** - The generic platform support layer still uses mock/immediate redraw behavior in the fallback path, but this is no longer the whole story: SDL2/X11 backends exist separately under `internal/platform/sdl2/` and `internal/platform/x11/`.
 
-### internal/pixfmt/pixfmt_rgba.go
+### internal/pixfmt/pixfmt_rgba8.go
 
-The RGBA pixel format implementation in `internal/pixfmt/pixfmt_rgba.go` currently assumes a fixed RGBA component order. This is a temporary simplification until a configurable component order mechanism is implemented.
+**Status: COMPLETED** - The old fixed-order note is stale. RGBA pixfmt now supports multiple component orders through typed blender/order combinations (`RGBA`, `BGRA`, `ARGB`, `ABGR`).
 
 ### internal/gpc/gpc.go
 
-The General Polygon Clipper (GPC) implementation in `internal/gpc/gpc.go` is incomplete. The core clipping operations are not yet implemented, and hole handling in triangulation is skipped.
+**Status: PARTIAL** - Core polygon clipping code exists and is exercised by tests/benchmarks, so the old "operations not implemented" note is stale. Remaining work is correctness review for edge cases, I/O helpers such as `ReadPolygon`, and converter parity where example coverage still documents rough edges.
 
 ### internal/fonts/embedded_fonts.go
 
-The embedded fonts in `internal/fonts/embedded_fonts.go` are mostly placeholders. Many font types return a default font (e.g., GSE4x6, MCS5x10Mono, Verdana12) instead of the correct font data.
+**Status: PARTIAL** - This note still broadly applies. Embedded font coverage is substantial, but some aliases and fallback mappings remain intentionally shared rather than having fully distinct font data for every historical AGG face.
 
 ### internal/font/cache_manager.go
 
-The font cache manager in `internal/font/cache_manager.go` uses a simple FIFO (First-In, First-Out) cache eviction strategy as a placeholder. A more sophisticated caching mechanism is needed.
+`internal/font/cache_manager.go` is now the authoritative port of AGG's `agg_font_cache_manager.h` for the Agg2D text path. Review remaining behavior there against AGG as needed, but do not reintroduce the removed duplicate v1 cache-manager implementation under `internal/fonts/`.
 
-### internal/conv/conv_gpc.go
+### internal/fonts/cache_manager2.go
 
-The GPC converter in `internal/conv/conv_gpc.go` is a placeholder and does not yet perform any polygon clipping.
+`internal/fonts/cache_manager2.go` remains the separate `fman::font_cache_manager` / embedded-font path, not the Agg2D text path. Review notes for this package should stay clearly separated from `internal/font/cache_manager.go`.
+
+### internal/font/freetype2/*
+
+The FreeType2 port in `internal/font/freetype2/` is significantly closer to `agg_font_freetype2.h/.cpp` than this checklist currently implies:
+
+- serialized glyph cache output now covers native gray/mono, AGG gray/mono, and outline modes rather than caching raw FreeType bitmap buffers
+- cache-manager ownership no longer closes the engine
+- engine/face close semantics are idempotent
+- the previous engine-owned `FT_Face` mirror array has been removed; loaded faces are tracked directly in Go, which is closer to AGG's `loaded_face` ownership model
+
+Remaining review focus should be on the still-intentional Go deltas: convenience wrappers such as `FontManager`, any residual API surface beyond AGG's `fman` types, and any multi-face lifetime behavior still not directly modeled on the original source.
+
+### internal/conv/gpc.go
+
+**Status: PARTIAL** - The converter is no longer a placeholder and does invoke polygon clipping, but it still depends on the remaining correctness review noted for `internal/gpc/gpc.go`.
 
 ### internal/color/rgb.go
 
-The RGB color implementation in `internal/color/rgb.go` has placeholder methods that do not perform the correct color transformations.
+**Status: COMPLETED** - The old placeholder note is stale. `RGB` now supports the expected arithmetic and RGBA conversion helpers.
 
 ### internal/color/conversion.go
 
-The color conversion functions in `internal/color/conversion.go` are incomplete, with only the most common conversions implemented so far.
+**Status: PARTIAL** - This is no longer "only the most common conversions" in the original sense: the file now includes scalar, RGB8, RGBA8, Gray8, Gray16, RGBA32, and Gray32 conversions. Remaining work is breadth/parity, not a placeholder implementation.
 
 ### internal/renderer/scanline/helpers.go
 
-The scanline rendering helpers in `internal/renderer/scanline/helpers.go` are minimal placeholders.
+**Status: COMPLETED** - The helpers are functional, used by the renderer, and include compound rendering support. The old placeholder note is stale.
 
 ### internal/platform/sdl2/sdl2_display.go and internal/platform/x11/x11_display.go
 
-The SDL2 and X11 platform implementations are placeholders and do not create real surfaces or windows.
+**Status: PARTIAL** - These are no longer empty placeholders; backend code exists for real windows/surfaces. Remaining work is backend completeness and platform parity, not total absence.
 
 ### examples/core/intermediate/gradients/main.go
 
-The gradients example in `examples/core/intermediate/gradients/main.go` only demonstrates the calculation of the gradient and does not yet render it.
+**Status: COMPLETED** - The example renders gradient-filled content and writes a PNG output.
 
 ### examples/core/basic/hello_world/main.go
 
-The hello world example in `examples/core/basic/hello_world/main.go` only prints pixel values to the console to verify that the rasterizer is working, but does not display an image.
+**Status: COMPLETED** - Updated. The example now renders content and writes `hello_world.png` instead of only printing pixel values.

@@ -14,21 +14,36 @@ import (
 // CacheManager2 integrates the FreeType2 engine with the separate fman cache path.
 // It mirrors the adaptor-facing behavior of AGG's fman::font_cache_manager
 // from agg_font_cache_manager2.h, while remaining distinct from Agg2D's v1 stack.
+//
+// The glyph cache itself is delegated to internal/fonts.FmanCachedFont so this
+// wrapper stays focused on package-boundary adaptation and current-face context.
 type CacheManager2 struct {
-	fontEngine   FontEngineInterface
-	cachedGlyphs *fonts.FmanCachedGlyphs
-	currentFont  LoadedFaceInterface     // Reference to current font context
-	pathAdaptor  path.IntegerPathAdaptor // Either *path.SerializedIntegerPathAdaptor[int16] or *path.SerializedIntegerPathAdaptor[int32]
-	gray8Adaptor *Gray8AdaptorWrapper
-	monoAdaptor  *MonoAdaptorWrapper
-	lastError    error
+	fontEngine        FontEngineInterface
+	currentFont       LoadedFaceInterface     // Reference to current font context
+	currentCachedFont *fonts.FmanCachedFont   // Per-face-instance cache, mirroring AGG's cached_font more closely
+	pathAdaptor       path.IntegerPathAdaptor // Either *path.SerializedIntegerPathAdaptor[int16] or *path.SerializedIntegerPathAdaptor[int32]
+	gray8Adaptor      *Gray8AdaptorWrapper
+	monoAdaptor       *MonoAdaptorWrapper
+	lastError         error
+	cacheContext      cacheManagerFontContext
+}
+
+type cacheManagerFontContext struct {
+	face       LoadedFaceInterface
+	resolution uint32
+	height     float64
+	width      float64
+	hinting    bool
+	flipY      bool
+	rendering  GlyphRendering
+	charMap    CharEncoding
+	transform  [6]float64
 }
 
 // NewCacheManager2 creates a new cache manager with the specified font engine.
 func NewCacheManager2(fontEngine FontEngineInterface) *CacheManager2 {
 	cm := &CacheManager2{
-		fontEngine:   fontEngine,
-		cachedGlyphs: fonts.NewFmanCachedGlyphs(),
+		fontEngine: fontEngine,
 	}
 
 	// Initialize adaptors based on engine type
@@ -56,41 +71,24 @@ func (cm *CacheManager2) initializeAdaptors() {
 // This is part of the port's standalone fman cache wrapper; the surrounding
 // cache ownership is Go-managed rather than a direct one-to-one AGG object.
 func (cm *CacheManager2) Glyph(charCode uint32) *fonts.FmanCachedGlyph {
-	// Try to find the glyph in the cache first
-	if cachedGlyph := cm.cachedGlyphs.FindGlyph(charCode); cachedGlyph != nil {
-		return cachedGlyph
+	if cm.currentFont != nil {
+		cm.ensureCachedFontForCurrentContext()
 	}
-
-	// Glyph not in cache - need to prepare it
-	// For this, we need a loaded face - this should be managed by the font selection process
-	// This is a simplified version; in practice, font selection would be more complex
 
 	if cm.currentFont == nil {
 		cm.lastError = fmt.Errorf("no font loaded for glyph preparation")
 		return nil
 	}
-
-	// Prepare the glyph using the loaded face
-	preparedGlyph, found := cm.currentFont.PrepareGlyph(charCode)
-	if !found {
-		cm.lastError = fmt.Errorf("glyph not found for character code %d", charCode)
+	if cm.currentCachedFont == nil {
+		cm.lastError = fmt.Errorf("no cached font context available for glyph preparation")
 		return nil
 	}
 
-	// Convert to cached glyph format
-	// Cache the glyph using the proper method signature
-	// Note: PreparedGlyph doesn't have Data field, glyph data is handled separately
-	cachedGlyph := cm.cachedGlyphs.CacheGlyph(
-		nil, // cachedFont - would need to be managed by cache
-		charCode,
-		preparedGlyph.GlyphIndex,
-		preparedGlyph.DataSize,
-		preparedGlyph.DataType,
-		preparedGlyph.Bounds,
-		preparedGlyph.AdvanceX,
-		preparedGlyph.AdvanceY,
-	)
-
+	cachedGlyph := cm.currentCachedFont.GetGlyph(charCode)
+	if cachedGlyph == nil {
+		cm.lastError = fmt.Errorf("glyph not found for character code %d", charCode)
+		return nil
+	}
 	return cachedGlyph
 }
 
@@ -161,6 +159,8 @@ func (cm *CacheManager2) AddKerning(x, y *float64, first, second uint32) {
 // SetCurrentFont sets the current font face for glyph preparation and kerning.
 func (cm *CacheManager2) SetCurrentFont(face LoadedFaceInterface) {
 	cm.currentFont = face
+	cm.currentCachedFont = nil
+	cm.cacheContext = cacheManagerFontContext{}
 }
 
 // GetCurrentFont returns the current font face.
@@ -181,26 +181,146 @@ func (cm *CacheManager2) Close() error {
 	cm.monoAdaptor = nil
 
 	// Clean up cached glyphs
-	if cm.cachedGlyphs != nil {
-		// Reset all cached glyphs
-		cm.cachedGlyphs.Reset()
-		cm.cachedGlyphs = nil
+	if cm.currentCachedFont != nil {
+		cm.currentCachedFont.Reset()
+		cm.currentCachedFont = nil
 	}
-
-	// Clean up font engine
-	if cm.fontEngine != nil {
-		return cm.fontEngine.Close()
-	}
+	cm.currentFont = nil
+	cm.cacheContext = cacheManagerFontContext{}
 
 	return nil
 }
 
+func (cm *CacheManager2) ensureCachedFontForCurrentContext() {
+	if cm.currentFont == nil {
+		return
+	}
+
+	next := cacheManagerFontContext{
+		face:       cm.currentFont,
+		resolution: cm.currentFont.Resolution(),
+		height:     cm.currentFont.Height(),
+		width:      cm.currentFont.Width(),
+		hinting:    cm.currentFont.Hinting(),
+		flipY:      cm.currentFont.FlipY(),
+		rendering:  cm.currentFont.Rendering(),
+		charMap:    cm.currentFont.CharMap(),
+	}
+	if affine := cm.currentFont.Transform(); affine != nil {
+		next.transform = affine.ToArray()
+	}
+
+	if cm.cacheContext != next || cm.currentCachedFont == nil {
+		if cm.currentCachedFont != nil {
+			cm.currentCachedFont.Reset()
+		}
+		cm.currentCachedFont = fonts.NewFmanCachedFont(
+			freetypeLoadedFaceAdapter{face: cm.currentFont},
+			cm.currentFont.Height(),
+			cm.currentFont.Width(),
+			cm.currentFont.Hinting(),
+			toFmanGlyphRendering(cm.currentFont.Rendering()),
+		)
+	}
+	cm.cacheContext = next
+}
+
+type freetypeLoadedFaceAdapter struct {
+	face LoadedFaceInterface
+}
+
+func (a freetypeLoadedFaceAdapter) Height() float64  { return a.face.Height() }
+func (a freetypeLoadedFaceAdapter) Width() float64   { return a.face.Width() }
+func (a freetypeLoadedFaceAdapter) Ascent() float64  { return a.face.Ascent() }
+func (a freetypeLoadedFaceAdapter) Descent() float64 { return a.face.Descent() }
+func (a freetypeLoadedFaceAdapter) AscentB() float64 { return a.face.AscentB() }
+func (a freetypeLoadedFaceAdapter) DescentB() float64 {
+	return a.face.DescentB()
+}
+func (a freetypeLoadedFaceAdapter) SelectInstance(height, width float64, hinting bool, rendering fonts.FmanGlyphRendering) {
+	a.face.SelectInstance(height, width, hinting, fromFmanGlyphRendering(rendering))
+}
+func (a freetypeLoadedFaceAdapter) PrepareGlyph(cp uint32) (fonts.PreparedGlyph, bool) {
+	prepared, ok := a.face.PrepareGlyph(cp)
+	if !ok || prepared == nil {
+		return fonts.PreparedGlyph{}, false
+	}
+	return fonts.PreparedGlyph{
+		GlyphCode:  prepared.GlyphCode,
+		GlyphIndex: prepared.GlyphIndex,
+		DataSize:   prepared.DataSize,
+		DataType:   prepared.DataType,
+		Bounds:     prepared.Bounds,
+		AdvanceX:   prepared.AdvanceX,
+		AdvanceY:   prepared.AdvanceY,
+	}, true
+}
+func (a freetypeLoadedFaceAdapter) WriteGlyphTo(prepared *fonts.PreparedGlyph, data []byte) {
+	if prepared == nil {
+		return
+	}
+	a.face.WriteGlyphTo(&PreparedGlyph{
+		GlyphCode:  prepared.GlyphCode,
+		GlyphIndex: prepared.GlyphIndex,
+		DataSize:   prepared.DataSize,
+		DataType:   prepared.DataType,
+		Bounds:     prepared.Bounds,
+		AdvanceX:   prepared.AdvanceX,
+		AdvanceY:   prepared.AdvanceY,
+	}, data)
+}
+func (a freetypeLoadedFaceAdapter) AddKerning(first, second uint32, x, y *float64) bool {
+	dx, dy := a.face.AddKerning(first, second)
+	if x != nil {
+		*x += dx
+	}
+	if y != nil {
+		*y += dy
+	}
+	return true
+}
+
+func toFmanGlyphRendering(rendering GlyphRendering) fonts.FmanGlyphRendering {
+	switch rendering {
+	case GlyphRenNativeMono:
+		return fonts.FmanGlyphRenNativeMono
+	case GlyphRenNativeGray8:
+		return fonts.FmanGlyphRenNativeGray8
+	case GlyphRenOutline:
+		return fonts.FmanGlyphRenOutline
+	case GlyphRenAggMono:
+		return fonts.FmanGlyphRenAggMono
+	case GlyphRenAggGray8:
+		return fonts.FmanGlyphRenAggGray8
+	default:
+		return fonts.FmanGlyphRenNativeGray8
+	}
+}
+
+func fromFmanGlyphRendering(rendering fonts.FmanGlyphRendering) GlyphRendering {
+	switch rendering {
+	case fonts.FmanGlyphRenNativeMono:
+		return GlyphRenNativeMono
+	case fonts.FmanGlyphRenNativeGray8:
+		return GlyphRenNativeGray8
+	case fonts.FmanGlyphRenOutline:
+		return GlyphRenOutline
+	case fonts.FmanGlyphRenAggMono:
+		return GlyphRenAggMono
+	case fonts.FmanGlyphRenAggGray8:
+		return GlyphRenAggGray8
+	default:
+		return GlyphRenNativeGray8
+	}
+}
+
 // FontManager is a Go convenience wrapper around the lower-level FreeType2/fman
-// pieces. It does not correspond to a direct AGG type.
+// pieces. It does not correspond to a direct AGG type and remains an explicit
+// port delta above AGG's concrete engine types.
 type FontManager struct {
 	engines       map[string]FontEngineInterface
 	cacheManager  *CacheManager2
-	currentFont   string
+	currentFace   LoadedFaceInterface
 	defaultEngine string
 }
 
@@ -253,12 +373,15 @@ func (fm *FontManager) LoadFont(fileName string, preferredEngine string) (Loaded
 		return nil, err
 	}
 
-	fm.currentFont = fileName
-
 	// Update cache manager if we switched engines
 	if engineKey != fm.defaultEngine {
+		if fm.cacheManager != nil {
+			_ = fm.cacheManager.Close()
+		}
 		fm.cacheManager = NewCacheManager2(engine)
 	}
+	fm.currentFace = loadedFace
+	fm.cacheManager.SetCurrentFont(loadedFace)
 
 	return loadedFace, nil
 }
@@ -283,12 +406,15 @@ func (fm *FontManager) LoadFontFromMemory(buffer []byte, preferredEngine string)
 		return nil, err
 	}
 
-	fm.currentFont = "memory"
-
 	// Update cache manager if we switched engines
 	if engineKey != fm.defaultEngine {
+		if fm.cacheManager != nil {
+			_ = fm.cacheManager.Close()
+		}
 		fm.cacheManager = NewCacheManager2(engine)
 	}
+	fm.currentFace = loadedFace
+	fm.cacheManager.SetCurrentFont(loadedFace)
 
 	return loadedFace, nil
 }
@@ -296,6 +422,11 @@ func (fm *FontManager) LoadFontFromMemory(buffer []byte, preferredEngine string)
 // GetCacheManager returns the current Go-managed cache wrapper.
 func (fm *FontManager) GetCacheManager() *CacheManager2 {
 	return fm.cacheManager
+}
+
+// CurrentFace returns the currently selected loaded face for this convenience wrapper.
+func (fm *FontManager) CurrentFace() LoadedFaceInterface {
+	return fm.currentFace
 }
 
 // SwitchEngine switches to a different engine type and updates the cache manager.
@@ -306,8 +437,12 @@ func (fm *FontManager) SwitchEngine(engineType string) error {
 	}
 
 	if engineType != fm.defaultEngine {
+		if fm.cacheManager != nil {
+			_ = fm.cacheManager.Close()
+		}
 		fm.defaultEngine = engineType
 		fm.cacheManager = NewCacheManager2(fm.engines[engineType])
+		fm.currentFace = nil
 	}
 
 	return nil
@@ -320,6 +455,7 @@ func (fm *FontManager) Close() error {
 		fm.cacheManager.Close()
 		fm.cacheManager = nil
 	}
+	fm.currentFace = nil
 
 	// Close all engines
 	for _, engine := range fm.engines {

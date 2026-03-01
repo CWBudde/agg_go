@@ -8,6 +8,8 @@ import (
 	"agg_go/internal/basics"
 	"agg_go/internal/conv"
 	"agg_go/internal/path"
+	"agg_go/internal/rasterizer"
+	rprimitives "agg_go/internal/renderer/primitives"
 	"agg_go/internal/transform"
 )
 
@@ -41,6 +43,89 @@ type GradientContour struct {
 	frame  int
 	d1     float64
 	d2     float64
+}
+
+type contourGrayRenderer struct {
+	buffer []uint8
+	width  int
+	height int
+}
+
+func (r *contourGrayRenderer) BlendPixel(x, y int, c basics.Int8u, cover basics.Int8u) {
+	if cover == 0 || x < 0 || y < 0 || x >= r.width || y >= r.height {
+		return
+	}
+	r.buffer[y*r.width+x] = uint8(c)
+}
+
+func (r *contourGrayRenderer) BlendHline(x1, y, x2 int, c basics.Int8u, cover basics.Int8u) {
+	if cover == 0 || y < 0 || y >= r.height {
+		return
+	}
+	if x1 > x2 {
+		x1, x2 = x2, x1
+	}
+	if x1 < 0 {
+		x1 = 0
+	}
+	if x2 >= r.width {
+		x2 = r.width - 1
+	}
+	for x := x1; x <= x2; x++ {
+		r.buffer[y*r.width+x] = uint8(c)
+	}
+}
+
+func (r *contourGrayRenderer) BlendVline(x, y1, y2 int, c basics.Int8u, cover basics.Int8u) {
+	if cover == 0 || x < 0 || x >= r.width {
+		return
+	}
+	if y1 > y2 {
+		y1, y2 = y2, y1
+	}
+	if y1 < 0 {
+		y1 = 0
+	}
+	if y2 >= r.height {
+		y2 = r.height - 1
+	}
+	for y := y1; y <= y2; y++ {
+		r.buffer[y*r.width+x] = uint8(c)
+	}
+}
+
+func (r *contourGrayRenderer) BlendBar(x1, y1, x2, y2 int, c basics.Int8u, cover basics.Int8u) {
+	if cover == 0 {
+		return
+	}
+	if x1 > x2 {
+		x1, x2 = x2, x1
+	}
+	if y1 > y2 {
+		y1, y2 = y2, y1
+	}
+	if x1 < 0 {
+		x1 = 0
+	}
+	if y1 < 0 {
+		y1 = 0
+	}
+	if x2 >= r.width {
+		x2 = r.width - 1
+	}
+	if y2 >= r.height {
+		y2 = r.height - 1
+	}
+	for y := y1; y <= y2; y++ {
+		row := y * r.width
+		for x := x1; x <= x2; x++ {
+			r.buffer[row+x] = uint8(c)
+		}
+	}
+}
+
+func (r *contourGrayRenderer) BoundingClipBox() basics.RectI {
+	return basics.RectI{X1: 0, Y1: 0, X2: r.width - 1, Y2: r.height - 1}
 }
 
 // NewGradientContour creates a new gradient contour generator.
@@ -133,91 +218,40 @@ func (gc *GradientContour) ContourCreate(ps *path.PathStorage) []uint8 {
 	mtx := transform.NewTransAffine()
 	mtx = mtx.Multiply(transform.NewTransAffineTranslation(-x1+float64(gc.frame), -y1+float64(gc.frame)))
 
-	// Transform and rasterize the curve manually (simplified approach)
+	// Transform and rasterize the curve through the outline pipeline, which
+	// matches AGG more closely than manually drawing snapped segments.
 	trans := conv.NewConvTransform(convCurve, mtx)
-	gc.rasterizePathSimple(trans, bwBuffer, width, height)
+	gc.rasterizePathOutline(trans, bwBuffer, width, height)
 
 	// Now perform distance transform
 	return gc.performDistanceTransform(bwBuffer, width, height)
 }
 
-// rasterizePathSimple performs simple path rasterization by drawing lines between vertices
-func (gc *GradientContour) rasterizePathSimple(vs conv.VertexSource, buffer []uint8, width, height int) {
-	vs.Rewind(0)
-
-	var startX, startY, lastX, lastY float64
-	first := true
-
-	for {
-		x, y, cmd := vs.Vertex()
-		if cmd == basics.PathCmdStop {
-			break
-		}
-
-		switch cmd {
-		case basics.PathCmdMoveTo:
-			startX, startY = x, y
-			lastX, lastY = x, y
-			first = false
-
-		case basics.PathCmdLineTo:
-			if !first {
-				gc.drawLine(lastX, lastY, x, y, buffer, width, height)
-			}
-			lastX, lastY = x, y
-
-		case basics.PathCmdEndPoly:
-			if !first {
-				gc.drawLine(lastX, lastY, startX, startY, buffer, width, height)
-			}
-		}
+func (gc *GradientContour) rasterizePathOutline(vs conv.VertexSource, buffer []uint8, width, height int) {
+	base := &contourGrayRenderer{
+		buffer: buffer,
+		width:  width,
+		height: height,
 	}
+	prim := rprimitives.NewRendererPrimitives[*contourGrayRenderer, basics.Int8u](base)
+	prim.LineColor(0)
+	ras := rasterizer.NewRasterizerOutline[*rprimitives.RendererPrimitives[*contourGrayRenderer, basics.Int8u], basics.Int8u](prim)
+	ras.AddPath(&contourVertexSourceAdapter{vs: vs}, 0)
 }
 
-// drawLine draws a simple line using Bresenham's algorithm
-func (gc *GradientContour) drawLine(x0, y0, x1, y1 float64, buffer []uint8, width, height int) {
-	ix0 := int(x0 + 0.5)
-	iy0 := int(y0 + 0.5)
-	ix1 := int(x1 + 0.5)
-	iy1 := int(y1 + 0.5)
+type contourVertexSourceAdapter struct {
+	vs conv.VertexSource
+}
 
-	dx := basics.Abs(ix1 - ix0)
-	dy := basics.Abs(iy1 - iy0)
+func (a *contourVertexSourceAdapter) Rewind(pathID uint32) {
+	a.vs.Rewind(uint(pathID))
+}
 
-	sx := 1
-	if ix0 > ix1 {
-		sx = -1
-	}
-
-	sy := 1
-	if iy0 > iy1 {
-		sy = -1
-	}
-
-	err := dx - dy
-
-	x, y := ix0, iy0
-
-	for {
-		// Set pixel to black if within bounds
-		if x >= 0 && x < width && y >= 0 && y < height {
-			buffer[y*width+x] = 0
-		}
-
-		if x == ix1 && y == iy1 {
-			break
-		}
-
-		e2 := 2 * err
-		if e2 > -dy {
-			err -= dy
-			x += sx
-		}
-		if e2 < dx {
-			err += dx
-			y += sy
-		}
-	}
+func (a *contourVertexSourceAdapter) Vertex(x, y *float64) uint32 {
+	vx, vy, cmd := a.vs.Vertex()
+	*x = vx
+	*y = vy
+	return uint32(cmd)
 }
 
 // performDistanceTransform applies the distance transform algorithm

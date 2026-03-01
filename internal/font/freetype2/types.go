@@ -119,6 +119,7 @@ type LoadedFaceInterface interface {
 	// Rendering configuration
 	Hinting() bool
 	FlipY() bool
+	Rendering() GlyphRendering
 	Transform() *transform.TransAffine
 	CharMap() CharEncoding
 

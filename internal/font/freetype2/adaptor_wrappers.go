@@ -8,8 +8,9 @@ import (
 	"agg_go/internal/scanline"
 )
 
-// Gray8AdaptorWrapper adapts scanline.SerializedScanlinesAdaptorAA to fonts.Gray8AdaptorType interface.
-// This bridges FreeType's serialized scanline format with the Fman cache manager interface.
+// Gray8AdaptorWrapper is a thin Go adapter from the scanline package's
+// serialized AA adaptor to the separate internal/fonts fman interface.
+// It is an intentional package-boundary wrapper, not a direct AGG type.
 type Gray8AdaptorWrapper struct {
 	adaptor          *scanline.SerializedScanlinesAdaptorAA[uint8]
 	embeddedScanline *scanline.SerializedEmbeddedScanline[uint8]
@@ -126,8 +127,9 @@ func (w *Gray8SpanIteratorWrapper) Covers() []uint8 {
 	return nil
 }
 
-// MonoAdaptorWrapper adapts scanline.SerializedScanlinesAdaptorBin to fonts.MonoAdaptorType interface.
-// This bridges FreeType's serialized scanline format with the Fman cache manager interface.
+// MonoAdaptorWrapper is a thin Go adapter from the scanline package's
+// serialized binary adaptor to the separate internal/fonts fman interface.
+// It is an intentional package-boundary wrapper, not a direct AGG type.
 type MonoAdaptorWrapper struct {
 	adaptor          *scanline.SerializedScanlinesAdaptorBin
 	embeddedScanline *scanline.EmbeddedScanlineSerial

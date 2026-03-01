@@ -17,6 +17,29 @@ type MockRGBSource struct {
 	orderType          color.ColorOrder
 }
 
+type FixedInterpolator struct {
+	x int
+	y int
+}
+
+func NewFixedInterpolator(x, y int) *FixedInterpolator {
+	return &FixedInterpolator{x: x, y: y}
+}
+
+func (fi *FixedInterpolator) Begin(x, y float64, length int) {}
+
+func (fi *FixedInterpolator) Resynchronize(xe, ye float64, length int) {}
+
+func (fi *FixedInterpolator) Coordinates() (x, y int) {
+	return fi.x, fi.y
+}
+
+func (fi *FixedInterpolator) Next() {}
+
+func (fi *FixedInterpolator) SubpixelShift() int {
+	return image.ImageSubpixelShift
+}
+
 func NewMockRGBSource(width, height int) *MockRGBSource {
 	return &MockRGBSource{
 		width:     width,
@@ -225,6 +248,29 @@ func TestSpanImageFilterRGBBilinearClip_BackgroundColor(t *testing.T) {
 	if filter.BackgroundColor() != newBg {
 		t.Errorf("Background color after set: expected %+v, got %+v",
 			newBg, filter.BackgroundColor())
+	}
+}
+
+func TestSpanImageFilterRGBBilinearClip_PartialOverlapBlendsBackground(t *testing.T) {
+	source := NewMockRGBSource(1, 1)
+	source.SetPixel(0, 0, color.RGB8[color.Linear]{R: 200, G: 100, B: 50})
+
+	backgroundColor := color.RGB8[color.Linear]{R: 40, G: 20, B: 10}
+
+	// Coordinates chosen so that after subtracting the default 0.5-pixel filter
+	// offset the bilinear footprint overlaps 25% background and 75% source.
+	interpolator := NewFixedInterpolator(64, 128)
+
+	filter := NewSpanImageFilterRGBBilinearClipWithParams(source, backgroundColor, interpolator)
+
+	span := make([]color.RGB8[color.Linear], 1)
+	filter.Generate(span, 0, 0)
+
+	got := span[0]
+	want := color.RGB8[color.Linear]{R: 160, G: 80, B: 40}
+
+	if got != want {
+		t.Fatalf("partial-overlap sample = %+v, want %+v", got, want)
 	}
 }
 

@@ -4,8 +4,6 @@
 package scanline
 
 import (
-	"unsafe"
-
 	"agg_go/internal/array"
 	"agg_go/internal/basics"
 )
@@ -14,9 +12,9 @@ import (
 // This corresponds to the span struct in AGG's scanline_p8 class.
 // If Len is negative, it's a solid span where all pixels have the same coverage value.
 type SpanP8 struct {
-	X      basics.Int32  // Starting X coordinate (32-bit)
-	Len    basics.Int32  // Length of span (negative = solid span with single cover value)
-	Covers *basics.Int8u // Pointer to coverage values in the coverage array
+	X      basics.Int32   // Starting X coordinate (32-bit)
+	Len    basics.Int32   // Length of span (negative = solid span with single cover value)
+	Covers []basics.Int8u // Coverage values in the coverage array
 }
 
 // ScanlineP8 is a packed scanline container class.
@@ -30,9 +28,10 @@ type ScanlineP8 struct {
 	lastX     int                        // Last X coordinate processed (sentinel: 0x7FFFFFF0)
 	y         int                        // Y coordinate of current scanline
 	covers    *array.PodArray[CoverType] // Coverage values array
-	coverPtr  *CoverType                 // Current position in covers array
+	coverIdx  int                        // Next write position in covers array
 	spans     *array.PodArray[SpanP8]    // Spans array
 	curSpan   *SpanP8                    // Pointer to current span being built
+	curStart  int                        // Start index of the current span's covers
 	spanIndex int                        // Index of current span
 }
 
@@ -59,11 +58,8 @@ func (sl *ScanlineP8) Reset(minX, maxX int) {
 
 	sl.lastX = 0x7FFFFFF0 // Reset to sentinel value
 
-	// Set up coverage pointer at the beginning of the array
-	if sl.covers.Size() > 0 {
-		coverData := sl.covers.Data()
-		sl.coverPtr = &coverData[0]
-	}
+	sl.coverIdx = 0
+	sl.curStart = 0
 
 	// Set up the first span (index 0 is used as a sentinel with len=0)
 	if sl.spans.Size() > 0 {
@@ -77,27 +73,28 @@ func (sl *ScanlineP8) Reset(minX, maxX int) {
 // AddCell adds a single cell with coverage value to the scanline.
 // X coordinates must be provided in increasing order.
 func (sl *ScanlineP8) AddCell(x int, cover uint) {
+	coverData := sl.covers.Data()
+
 	// Store the coverage value
-	*sl.coverPtr = CoverType(cover)
+	coverData[sl.coverIdx] = CoverType(cover)
 
 	if x == sl.lastX+1 && sl.curSpan.Len > 0 {
 		// Extend current span (non-solid span)
 		sl.curSpan.Len++
+		sl.curSpan.Covers = coverData[sl.curStart : sl.coverIdx+1]
 	} else {
 		// Start new span
 		sl.spanIndex++
 		spanData := sl.spans.Data()
 		sl.curSpan = &spanData[sl.spanIndex]
-		sl.curSpan.Covers = sl.coverPtr
+		sl.curStart = sl.coverIdx
+		sl.curSpan.Covers = coverData[sl.curStart : sl.curStart+1]
 		sl.curSpan.X = basics.Int32(x)
 		sl.curSpan.Len = 1
 	}
 
 	sl.lastX = x
-	// Move coverage pointer forward
-	coverData := sl.covers.Data()
-	coverPtrIndex := int(uintptr(unsafe.Pointer(sl.coverPtr))-uintptr(unsafe.Pointer(&coverData[0]))) / int(unsafe.Sizeof(CoverType(0)))
-	sl.coverPtr = &coverData[coverPtrIndex+1]
+	sl.coverIdx++
 }
 
 // AddCells adds multiple cells with individual coverage values to the scanline.
@@ -105,28 +102,28 @@ func (sl *ScanlineP8) AddCell(x int, cover uint) {
 func (sl *ScanlineP8) AddCells(x int, length int, covers []CoverType) {
 	// Copy coverage values to our internal array
 	coverData := sl.covers.Data()
-	coverPtrIndex := int(uintptr(unsafe.Pointer(sl.coverPtr))-uintptr(unsafe.Pointer(&coverData[0]))) / int(unsafe.Sizeof(CoverType(0)))
 
 	// Copy the coverage values
 	for i := 0; i < length; i++ {
-		coverData[coverPtrIndex+i] = covers[i]
+		coverData[sl.coverIdx+i] = covers[i]
 	}
 
 	if x == sl.lastX+1 && sl.curSpan.Len > 0 {
 		// Extend current span (non-solid span)
 		sl.curSpan.Len += basics.Int32(length)
+		sl.curSpan.Covers = coverData[sl.curStart : sl.coverIdx+length]
 	} else {
 		// Start new span
 		sl.spanIndex++
 		spanData := sl.spans.Data()
 		sl.curSpan = &spanData[sl.spanIndex]
-		sl.curSpan.Covers = sl.coverPtr
+		sl.curStart = sl.coverIdx
+		sl.curSpan.Covers = coverData[sl.curStart : sl.curStart+length]
 		sl.curSpan.X = basics.Int32(x)
 		sl.curSpan.Len = basics.Int32(length)
 	}
 
-	// Move coverage pointer forward by length
-	sl.coverPtr = &coverData[coverPtrIndex+length]
+	sl.coverIdx += length
 	sl.lastX = x + length - 1
 }
 
@@ -139,25 +136,25 @@ func (sl *ScanlineP8) AddSpan(x int, length int, cover uint) {
 	// Check if we can merge with the previous solid span
 	if x == sl.lastX+1 &&
 		sl.curSpan.Len < 0 &&
-		sl.curSpan.Covers != nil &&
-		*sl.curSpan.Covers == CoverType(cover) {
+		len(sl.curSpan.Covers) > 0 &&
+		sl.curSpan.Covers[0] == CoverType(cover) {
 		// Extend the existing solid span
 		sl.curSpan.Len -= basics.Int32(length)
 	} else {
 		// Store the single coverage value
-		*sl.coverPtr = CoverType(cover)
+		coverData[sl.coverIdx] = CoverType(cover)
 
 		// Start new solid span
 		sl.spanIndex++
 		spanData := sl.spans.Data()
 		sl.curSpan = &spanData[sl.spanIndex]
-		sl.curSpan.Covers = sl.coverPtr
+		sl.curStart = sl.coverIdx
+		sl.curSpan.Covers = coverData[sl.curStart : sl.curStart+1]
 		sl.curSpan.X = basics.Int32(x)
 		sl.curSpan.Len = -basics.Int32(length) // Negative indicates solid span
 
-		// Move coverage pointer forward by 1 (only one value stored for solid spans)
-		coverPtrIndex := int(uintptr(unsafe.Pointer(sl.coverPtr))-uintptr(unsafe.Pointer(&coverData[0]))) / int(unsafe.Sizeof(CoverType(0)))
-		sl.coverPtr = &coverData[coverPtrIndex+1]
+		// Move coverage position forward by 1 (only one value stored for solid spans)
+		sl.coverIdx++
 	}
 
 	sl.lastX = x + length - 1
@@ -174,11 +171,8 @@ func (sl *ScanlineP8) Finalize(y int) {
 func (sl *ScanlineP8) ResetSpans() {
 	sl.lastX = 0x7FFFFFF0 // Reset to sentinel value
 
-	// Reset coverage pointer to beginning
-	if sl.covers.Size() > 0 {
-		coverData := sl.covers.Data()
-		sl.coverPtr = &coverData[0]
-	}
+	sl.coverIdx = 0
+	sl.curStart = 0
 
 	// Reset span pointer to beginning
 	if sl.spans.Size() > 0 {
@@ -234,7 +228,7 @@ func (span *SpanP8) ActualLen() int {
 // For solid spans, this returns a slice with a single repeated value.
 // For non-solid spans, this returns the actual coverage array slice.
 func (span *SpanP8) GetCovers() []CoverType {
-	if span.Covers == nil {
+	if len(span.Covers) == 0 {
 		return nil
 	}
 
@@ -243,8 +237,9 @@ func (span *SpanP8) GetCovers() []CoverType {
 		return nil
 	}
 
-	// Create a slice from the pointer
-	// Note: In a real implementation, we'd need access to the full coverage array
-	// For now, we'll use unsafe pointer arithmetic
-	return (*[1 << 20]CoverType)(unsafe.Pointer(span.Covers))[:length:length]
+	if length > len(span.Covers) {
+		length = len(span.Covers)
+	}
+
+	return span.Covers[:length]
 }

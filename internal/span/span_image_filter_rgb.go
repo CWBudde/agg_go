@@ -234,6 +234,7 @@ func (sif *SpanImageFilterRGBBilinearClip[Source, Interpolator]) Generate(span [
 	backR := int(sif.backgroundColor.R)
 	backG := int(sif.backgroundColor.G)
 	backB := int(sif.backgroundColor.B)
+	orderType := sif.base.source.OrderType()
 
 	maxX := sif.base.source.Width() - 1
 	maxY := sif.base.source.Height() - 1
@@ -312,11 +313,31 @@ func (sif *SpanImageFilterRGBBilinearClip[Source, Interpolator]) Generate(span [
 				xHr &= image.ImageSubpixelMask
 				yHr &= image.ImageSubpixelMask
 
-				// This would require complex boundary checking for each of the 4 samples
-				// For now, simplified to use background color
-				fg[0] = backR
-				fg[1] = backG
-				fg[2] = backB
+				sample := func(sampleX, sampleY, weight int) {
+					if sampleX >= 0 && sampleY >= 0 && sampleX <= maxX && sampleY <= maxY {
+						row := sif.base.source.RowPtr(sampleY)
+						pixelOffset := sampleX * 3
+						if pixelOffset+2 < len(row) {
+							fg[0] += weight * int(row[pixelOffset+orderType.R])
+							fg[1] += weight * int(row[pixelOffset+orderType.G])
+							fg[2] += weight * int(row[pixelOffset+orderType.B])
+							return
+						}
+					}
+
+					fg[0] += weight * backR
+					fg[1] += weight * backG
+					fg[2] += weight * backB
+				}
+
+				sample(xLr, yLr, (image.ImageSubpixelScale-xHr)*(image.ImageSubpixelScale-yHr))
+				sample(xLr+1, yLr, xHr*(image.ImageSubpixelScale-yHr))
+				sample(xLr, yLr+1, (image.ImageSubpixelScale-xHr)*yHr)
+				sample(xLr+1, yLr+1, xHr*yHr)
+
+				fg[0] >>= (image.ImageSubpixelShift * 2)
+				fg[1] >>= (image.ImageSubpixelShift * 2)
+				fg[2] >>= (image.ImageSubpixelShift * 2)
 			}
 		}
 

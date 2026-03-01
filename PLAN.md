@@ -158,21 +158,26 @@ Files:
 - [x] Define a single authoritative font/cache architecture.
 - [x] Remove duplicated concepts and adapters where possible.
 - [ ] Audit remaining `internal/font/freetype2` convenience wrappers against `agg_font_freetype2.h/.cpp` and keep only the abstractions that are justified in Go.
-- [ ] Finish separating "Agg2D text path" vs "standalone `fman`/embedded-font support" in remaining docs/review notes.
+  FontManager now tracks the active loaded face coherently, and CacheManager2 has been reduced to a thin adaptor-facing wrapper over `internal/fonts.FmanCachedFont` rather than maintaining a parallel glyph-cache implementation. Remaining audit scope is the explicitly non-AGG helper surface, not basic cache correctness.
+- [x] Finish separating "Agg2D text path" vs "standalone `fman`/embedded-font support" in remaining docs/review notes.
+- [ ] Continue rechecking FreeType2 face/engine lifetime behavior against AGG, especially around multi-face ownership beyond the now-fixed unload/close ownership semantics.
+  Engine-driven multi-face close now releases all tracked faces correctly; remaining lifetime review is mostly about intentional Go-only policy differences such as the explicit `maxFaces` cap and any future multi-face helper APIs.
 
 ### 3.2 Replace runtime `interface{}` where feasible
 
 - [x] Replace broad `interface{}` in AGG2D font fields with explicit interfaces.
 - [x] Keep runtime dispatch only where build-tag boundaries require it, and document it.
-- [ ] Re-audit `docs/GENERICS_AUDIT.md` and related notes so they reflect the current typed state of the font subsystem.
-- [ ] Check FreeType2/CGO-adjacent font code for any remaining avoidable dynamic dispatch or stale comments claiming broader type erasure than the code now uses.
+- [x] Re-audit `docs/GENERICS_AUDIT.md` and related notes so they reflect the current typed state of the font subsystem.
+- [x] Check FreeType2/CGO-adjacent font code for any remaining avoidable dynamic dispatch or stale comments claiming broader type erasure than the code now uses.
+- [ ] Keep the remaining signature mismatches between neighboring internal interfaces localized behind narrow adapters rather than widening the font API surface.
 
 ### Exit criteria
 
 - [x] One coherent font stack is used by AGG2D.
 - [x] No avoidable runtime type assertions in text-critical path.
-- [ ] `internal/font/freetype2` is either brought closer to AGG's `fman` API surface or its remaining Go-only convenience APIs are explicitly documented as intentional deltas.
+- [x] `internal/font/freetype2` is either brought closer to AGG's `fman` API surface or its remaining Go-only convenience APIs (`FontManager`, engine-selection helpers, thin adaptor wrappers) are explicitly documented as intentional deltas.
 - [ ] Embedded raster font data and cache behavior are rechecked against AGG/review notes so Phase 3 closes without known font-subsystem placeholders.
+- [x] FreeType2 glyph-cache tests cover native and AGG gray/mono plus outline serialization paths for a real font when available.
 
 ---
 

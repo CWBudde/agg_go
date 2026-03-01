@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"agg_go/internal/fonts"
 )
 
 // TestFontEngineCreation tests the basic creation of font engines.
@@ -123,6 +125,23 @@ func TestFontManager(t *testing.T) {
 			t.Error("Expected error when switching to invalid engine")
 		}
 	})
+
+	t.Run("SwitchEngineClearsCurrentFace", func(t *testing.T) {
+		fm.currentFace = &LoadedFace{}
+		fm.cacheManager.SetCurrentFont(&LoadedFace{})
+
+		err := fm.SwitchEngine("int16")
+		if err != nil {
+			t.Fatalf("switching back to int16 failed: %v", err)
+		}
+
+		if fm.CurrentFace() != nil {
+			t.Fatal("expected current face to be cleared after engine switch")
+		}
+		if fm.GetCacheManager().GetCurrentFont() != nil {
+			t.Fatal("expected cache manager font context to be cleared after engine switch")
+		}
+	})
 }
 
 // TestLoadedFaceBasics tests basic LoadedFace functionality without actual font files.
@@ -222,8 +241,8 @@ func TestCacheManager2(t *testing.T) {
 			if cm.fontEngine != engine {
 				t.Error("Cache manager should reference the provided engine")
 			}
-			if cm.cachedGlyphs == nil {
-				t.Error("Cache manager should have initialized glyph cache")
+			if cm.currentCachedFont != nil {
+				t.Error("Cache manager should defer cached-font creation until a face is selected")
 			}
 			if cm.PathAdaptor() == nil {
 				t.Error("Cache manager should initialize a path adaptor")
@@ -235,6 +254,247 @@ func TestCacheManager2(t *testing.T) {
 				t.Error("Cache manager should initialize a mono adaptor")
 			}
 		})
+	}
+}
+
+func TestFaceAndEngineCloseOwnership(t *testing.T) {
+	fontPath := findTestFont()
+	if fontPath == "" {
+		t.Skip("No test font found on system")
+		return
+	}
+
+	engine, err := NewFontEngineInt16Default()
+	if err != nil {
+		t.Fatalf("Failed to create engine: %v", err)
+	}
+
+	face, err := engine.LoadFaceFile(fontPath)
+	if err != nil {
+		engine.Close()
+		t.Fatalf("Failed to load font: %v", err)
+	}
+
+	if err := face.Close(); err != nil {
+		engine.Close()
+		t.Fatalf("face.Close() failed: %v", err)
+	}
+	if err := face.Close(); err != nil {
+		engine.Close()
+		t.Fatalf("face.Close() should be idempotent: %v", err)
+	}
+	if got := len(engine.loadedFaces); got != 0 {
+		engine.Close()
+		t.Fatalf("expected engine to release face after Close, got %d faces", got)
+	}
+	if err := engine.Close(); err != nil {
+		t.Fatalf("engine.Close() failed after face.Close(): %v", err)
+	}
+	if err := engine.Close(); err != nil {
+		t.Fatalf("engine.Close() should be idempotent: %v", err)
+	}
+}
+
+func TestCacheManager2DoesNotOwnEngine(t *testing.T) {
+	engine, err := NewFontEngineInt16Default()
+	if err != nil {
+		t.Fatalf("Failed to create engine: %v", err)
+	}
+	defer engine.Close()
+
+	cm := NewCacheManager2(engine)
+	if cm == nil {
+		t.Fatal("Failed to create cache manager")
+	}
+	if err := cm.Close(); err != nil {
+		t.Fatalf("cache manager close failed: %v", err)
+	}
+	if engine.library == nil {
+		t.Fatal("cache manager close should not close the engine")
+	}
+}
+
+func TestCacheManager2GlyphTracksFaceInstanceContext(t *testing.T) {
+	fontPath := findTestFont()
+	if fontPath == "" {
+		t.Skip("No test font found on system")
+		return
+	}
+
+	engine, err := NewFontEngineInt16Default()
+	if err != nil {
+		t.Fatalf("Failed to create engine: %v", err)
+	}
+	defer engine.Close()
+
+	faceIface, err := engine.LoadFaceFile(fontPath)
+	if err != nil {
+		t.Fatalf("Failed to load font: %v", err)
+	}
+	defer faceIface.Close()
+
+	face, ok := faceIface.(*LoadedFace)
+	if !ok {
+		t.Fatal("expected concrete LoadedFace")
+	}
+
+	cm := NewCacheManager2(engine)
+	defer cm.Close()
+	cm.SetCurrentFont(face)
+
+	face.SelectInstance(24.0, 24.0, true, GlyphRenNativeGray8)
+	grayGlyph := cm.Glyph(uint32('A'))
+	if grayGlyph == nil {
+		t.Fatal("expected gray glyph")
+	}
+	if grayGlyph.DataType != fonts.FmanGlyphDataGray8 {
+		t.Fatalf("unexpected gray glyph data type: %v", grayGlyph.DataType)
+	}
+	if len(grayGlyph.Data) == 0 {
+		t.Fatal("expected serialized gray glyph data")
+	}
+	cm.Gray8Adaptor().InitGlyph(grayGlyph.Data, grayGlyph.DataSize, 0, 0)
+	if !cm.Gray8Adaptor().adaptor.RewindScanlines() {
+		t.Fatal("expected serialized gray glyph data to be readable")
+	}
+
+	face.SelectInstance(24.0, 24.0, true, GlyphRenOutline)
+	outlineGlyph := cm.Glyph(uint32('A'))
+	if outlineGlyph == nil {
+		t.Fatal("expected outline glyph after rendering-mode switch")
+	}
+	if outlineGlyph.DataType != fonts.FmanGlyphDataOutline {
+		t.Fatalf("unexpected outline glyph data type: %v", outlineGlyph.DataType)
+	}
+	if grayGlyph.DataType == outlineGlyph.DataType {
+		t.Fatal("expected face-instance change to produce a different cached glyph format")
+	}
+	if len(outlineGlyph.Data) == 0 {
+		t.Fatal("expected serialized outline glyph data")
+	}
+	adaptor := cm.PathAdaptor()
+	adaptor.Init(outlineGlyph.Data, 0, 0, 1.0, 6)
+	adaptor.Rewind(0)
+	_, _, cmd := adaptor.Vertex()
+	if cmd == 0 {
+		t.Fatal("expected serialized outline data to be readable")
+	}
+}
+
+func TestMultiFaceUnloadCompactsLoadedFaces(t *testing.T) {
+	fontPath := findTestFont()
+	if fontPath == "" {
+		t.Skip("No test font found on system")
+		return
+	}
+
+	engine, err := NewFontEngineInt16(3, nil)
+	if err != nil {
+		t.Fatalf("Failed to create engine: %v", err)
+	}
+	defer engine.Close()
+
+	face1, err := engine.LoadFaceFile(fontPath)
+	if err != nil {
+		t.Fatalf("failed to load first face: %v", err)
+	}
+	face2, err := engine.LoadFaceFile(fontPath)
+	if err != nil {
+		t.Fatalf("failed to load second face: %v", err)
+	}
+	face3, err := engine.LoadFaceFile(fontPath)
+	if err != nil {
+		t.Fatalf("failed to load third face: %v", err)
+	}
+
+	if got := len(engine.loadedFaces); got != 3 {
+		t.Fatalf("expected 3 loaded faces, got %d", got)
+	}
+
+	if err := face2.Close(); err != nil {
+		t.Fatalf("failed to close middle face: %v", err)
+	}
+
+	if got := len(engine.loadedFaces); got != 2 {
+		t.Fatalf("expected 2 loaded faces after close, got %d", got)
+	}
+
+	firstLoaded, ok := face1.(*LoadedFace)
+	if !ok {
+		t.Fatal("expected first face to be concrete LoadedFace")
+	}
+	thirdLoaded, ok := face3.(*LoadedFace)
+	if !ok {
+		t.Fatal("expected third face to be concrete LoadedFace")
+	}
+
+	if engine.loadedFaces[0] != firstLoaded {
+		t.Fatal("expected first loaded face to remain in slot 0")
+	}
+	if engine.loadedFaces[1] != thirdLoaded {
+		t.Fatal("expected third loaded face to compact into slot 1")
+	}
+
+	face4, err := engine.LoadFaceFile(fontPath)
+	if err != nil {
+		t.Fatalf("failed to load replacement face: %v", err)
+	}
+	defer face4.Close()
+
+	if got := len(engine.loadedFaces); got != 3 {
+		t.Fatalf("expected replacement load to restore 3 faces, got %d", got)
+	}
+}
+
+func TestEngineCloseReleasesAllLoadedFaces(t *testing.T) {
+	fontPath := findTestFont()
+	if fontPath == "" {
+		t.Skip("No test font found on system")
+		return
+	}
+
+	engine, err := NewFontEngineInt16(3, nil)
+	if err != nil {
+		t.Fatalf("Failed to create engine: %v", err)
+	}
+
+	faces := make([]LoadedFaceInterface, 0, 3)
+	for i := 0; i < 3; i++ {
+		face, loadErr := engine.LoadFaceFile(fontPath)
+		if loadErr != nil {
+			engine.Close()
+			t.Fatalf("failed to load face %d: %v", i, loadErr)
+		}
+		faces = append(faces, face)
+	}
+
+	if got := len(engine.loadedFaces); got != 3 {
+		engine.Close()
+		t.Fatalf("expected 3 loaded faces before engine close, got %d", got)
+	}
+
+	if err := engine.Close(); err != nil {
+		t.Fatalf("engine.Close() failed: %v", err)
+	}
+
+	if got := len(engine.loadedFaces); got != 0 {
+		t.Fatalf("expected all loaded faces to be released, got %d", got)
+	}
+
+	for i, face := range faces {
+		loaded, ok := face.(*LoadedFace)
+		if !ok {
+			t.Fatalf("expected concrete LoadedFace for face %d", i)
+		}
+		if loaded.engine != nil {
+			t.Fatalf("expected engine reference cleared for face %d", i)
+		}
+		if loaded.ftFace != nil {
+			t.Fatalf("expected FreeType face released for face %d", i)
+		}
+		if err := face.Close(); err != nil {
+			t.Fatalf("face.Close() should remain idempotent after engine.Close() for face %d: %v", i, err)
+		}
 	}
 }
 
@@ -346,6 +606,12 @@ func TestWithActualFont(t *testing.T) {
 		if face.NumFaces() == 0 {
 			t.Error("Font should have at least one face")
 		}
+		if fm.CurrentFace() != face {
+			t.Error("font manager should track the currently loaded face")
+		}
+		if fm.GetCacheManager().GetCurrentFont() != face {
+			t.Error("cache manager should be bound to the currently loaded face")
+		}
 	})
 
 	t.Run("LoadFromMemory", func(t *testing.T) {
@@ -370,6 +636,12 @@ func TestWithActualFont(t *testing.T) {
 		// Test basic face properties
 		if face.Name() == "" {
 			t.Error("Font face should have a name")
+		}
+		if fm.CurrentFace() != face {
+			t.Error("font manager should track the currently loaded in-memory face")
+		}
+		if fm.GetCacheManager().GetCurrentFont() != face {
+			t.Error("cache manager should be bound to the currently loaded in-memory face")
 		}
 	})
 }
@@ -449,6 +721,121 @@ func TestFaceInstance(t *testing.T) {
 			if prepared.GlyphIndex == 0 && char != ' ' { // Space might have index 0
 				t.Errorf("Invalid glyph index 0 for character %c", rune(char))
 			}
+		}
+	})
+
+	t.Run("SerializedGlyphCaches", func(t *testing.T) {
+		concreteFace, ok := face.(*LoadedFace)
+		if !ok {
+			t.Fatal("expected concrete LoadedFace")
+		}
+
+		testCases := []struct {
+			name      string
+			rendering GlyphRendering
+			validate  func(t *testing.T, engine *FontEngineInt16, data []byte, prepared *PreparedGlyph)
+		}{
+			{
+				name:      "NativeGray8",
+				rendering: GlyphRenNativeGray8,
+				validate: func(t *testing.T, engine *FontEngineInt16, data []byte, prepared *PreparedGlyph) {
+					if prepared.DataType != fonts.FmanGlyphDataGray8 {
+						t.Fatalf("unexpected data type: %v", prepared.DataType)
+					}
+					if prepared.DataSize == 0 {
+						t.Fatal("expected serialized native gray8 scanlines")
+					}
+					adaptor := engine.AdaptorTypes().Gray8Adaptor
+					adaptor.Init(data, int(prepared.DataSize), 0, 0)
+					if !adaptor.RewindScanlines() {
+						t.Fatal("expected serialized native gray8 scanline data")
+					}
+				},
+			},
+			{
+				name:      "NativeMono",
+				rendering: GlyphRenNativeMono,
+				validate: func(t *testing.T, engine *FontEngineInt16, data []byte, prepared *PreparedGlyph) {
+					if prepared.DataType != fonts.FmanGlyphDataMono {
+						t.Fatalf("unexpected data type: %v", prepared.DataType)
+					}
+					if prepared.DataSize == 0 {
+						t.Fatal("expected serialized native mono scanlines")
+					}
+					adaptor := engine.AdaptorTypes().MonoAdaptor
+					adaptor.Init(data, 0, 0)
+					if !adaptor.RewindScanlines() {
+						t.Fatal("expected serialized native mono scanline data")
+					}
+				},
+			},
+			{
+				name:      "Outline",
+				rendering: GlyphRenOutline,
+				validate: func(t *testing.T, engine *FontEngineInt16, data []byte, prepared *PreparedGlyph) {
+					if prepared.DataType != fonts.FmanGlyphDataOutline {
+						t.Fatalf("unexpected data type: %v", prepared.DataType)
+					}
+					if prepared.DataSize == 0 {
+						t.Fatal("expected serialized outline data")
+					}
+					adaptor := engine.PathAdaptor()
+					adaptor.Init(data, 0, 0, 1.0, 6)
+					adaptor.Rewind(0)
+					_, _, cmd := adaptor.Vertex()
+					if cmd == 0 {
+						t.Fatal("expected serialized outline vertex data")
+					}
+				},
+			},
+			{
+				name:      "AggGray8",
+				rendering: GlyphRenAggGray8,
+				validate: func(t *testing.T, engine *FontEngineInt16, data []byte, prepared *PreparedGlyph) {
+					if prepared.DataType != fonts.FmanGlyphDataGray8 {
+						t.Fatalf("unexpected data type: %v", prepared.DataType)
+					}
+					if prepared.DataSize == 0 {
+						t.Fatal("expected serialized gray8 scanlines")
+					}
+					adaptor := engine.AdaptorTypes().Gray8Adaptor
+					adaptor.Init(data, int(prepared.DataSize), 0, 0)
+					if !adaptor.RewindScanlines() {
+						t.Fatal("expected serialized gray8 scanline data")
+					}
+				},
+			},
+			{
+				name:      "AggMono",
+				rendering: GlyphRenAggMono,
+				validate: func(t *testing.T, engine *FontEngineInt16, data []byte, prepared *PreparedGlyph) {
+					if prepared.DataType != fonts.FmanGlyphDataMono {
+						t.Fatalf("unexpected data type: %v", prepared.DataType)
+					}
+					if prepared.DataSize == 0 {
+						t.Fatal("expected serialized mono scanlines")
+					}
+					adaptor := engine.AdaptorTypes().MonoAdaptor
+					adaptor.Init(data, 0, 0)
+					if !adaptor.RewindScanlines() {
+						t.Fatal("expected serialized mono scanline data")
+					}
+				},
+			},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				concreteFace.SelectInstance(24.0, 24.0, true, tc.rendering)
+				prepared, ok := concreteFace.PrepareGlyph(uint32('A'))
+				if !ok {
+					t.Fatalf("failed to prepare glyph for rendering mode %v", tc.rendering)
+				}
+
+				data := make([]byte, prepared.DataSize)
+				concreteFace.WriteGlyphTo(prepared, data)
+				tc.validate(t, engine, data, prepared)
+			})
 		}
 	})
 

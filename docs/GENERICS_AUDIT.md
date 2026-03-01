@@ -382,23 +382,25 @@ This pattern is correct and doesn't need code generation.
 
 ## Interface{} Usage Analysis
 
-The following files use `interface{}` in type definitions:
+The Phase 3 font cleanup removed the broad `interface{}` fields from the text path.
 
-| File                                           | Usage                                                    | Assessment                                 |
-| ---------------------------------------------- | -------------------------------------------------------- | ------------------------------------------ |
-| `internal/agg2d/agg2d.go`                      | `fontEngine interface{}`, `fontCacheManager interface{}` | **Needs typing** - CGO boundary workaround |
-| `internal/agg2d/text.go`                       | `adaptor interface{}`                                    | **Needs typing** - CGO boundary            |
-| `internal/font/freetype2/types.go`             | `rasterizer interface{}`                                 | **Needs typing** - Complex generics        |
-| `internal/font/freetype2/engine.go`            | `pathStorage interface{}`                                | **Needs typing** - CGO boundary            |
-| `internal/font/freetype2/cache_integration.go` | `pathAdaptor interface{}`                                | **Needs typing** - CGO boundary            |
+Current font subsystem status:
 
-**Root Cause**: The font subsystem uses CGO and has complex generic dependencies that are difficult to express in Go. These `interface{}` usages are isolated to the font rendering path.
+| File                                           | Current approach                                        | Assessment                                           |
+| ---------------------------------------------- | ------------------------------------------------------- | ---------------------------------------------------- |
+| `internal/agg2d/agg2d.go`                      | concrete `*freetype.FontEngineFreetype`, `*font.FontCacheManager` | Typed; authoritative Agg2D path                      |
+| `internal/agg2d/text.go`                       | typed adaptors via `font.SerializedScanlinesAdaptor`    | Typed; no broad runtime assertions in text path      |
+| `internal/font/freetype2/types.go`             | explicit interfaces for engine / loaded-face / adaptors | Typed; separate `fman` path                          |
+| `internal/font/freetype2/engine.go`            | concrete storage plus helper accessors                  | Typed; some Go-only helper APIs remain by design     |
+| `internal/font/freetype2/cache_integration.go` | thin wrappers over `internal/fonts.FmanCachedFont` plus explicit helper APIs | Acceptable localized boundary adaptation |
+| `internal/font/freetype2/adaptor_wrappers.go`  | scanline-to-`internal/fonts` wrapper types              | Intentional package-boundary adaptation              |
 
-**Recommendation**: Document as technical debt. Consider:
-
-1. Creating a dedicated `FontTypes` interface package
-2. Using internal type assertions in a single location
-3. Eventually introducing proper interfaces as the font API stabilizes
+**Remaining concern**: the font subsystem still has a few narrow adapters where adjacent
+internal packages use slightly different typed interfaces. `CacheManager2` now delegates
+glyph caching to `internal/fonts.FmanCachedFont`, so the remaining deltas are mostly
+package-boundary wrappers and explicit Go helper APIs. That is materially different from
+broad `interface{}`-based design and is acceptable so long as the adapters remain
+localized and documented.
 
 ---
 
@@ -479,7 +481,7 @@ The existing `docs/TODO_GENERICS.md` documents the **pixel format generics refac
 
 ### Low Priority (Technical Debt)
 
-6. [ ] **Document font subsystem interface{}** - Accept as CGO boundary limitation
+6. [x] **Document font subsystem typing status** - Broad `interface{}` removed; remaining adapters are narrow and localized
 7. [ ] **Profile fast-path patterns** - Verify `any()` optimizations provide measurable benefit
 
 ---

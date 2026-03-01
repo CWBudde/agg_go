@@ -78,6 +78,8 @@ type LoadedFace struct {
 
 	// Transformation matrix
 	affine *transform.TransAffine
+
+	closed bool
 }
 
 // NewLoadedFace creates a new loaded face wrapper around a FreeType face.
@@ -186,6 +188,11 @@ func (lf *LoadedFace) Hinting() bool {
 // FlipY returns whether Y coordinates are flipped.
 func (lf *LoadedFace) FlipY() bool {
 	return lf.flipY
+}
+
+// Rendering returns the current glyph rendering mode.
+func (lf *LoadedFace) Rendering() GlyphRendering {
+	return lf.rendering
 }
 
 // Transform returns the current affine transformation.
@@ -823,6 +830,17 @@ func absInt(v int) int {
 
 // Close cleans up resources used by this loaded face.
 func (lf *LoadedFace) Close() error {
+	if lf.closed {
+		return nil
+	}
+	lf.closed = true
+
+	if lf.engine != nil {
+		engine := lf.engine
+		lf.engine = nil
+		return engine.closeLoadedFace(lf, true)
+	}
+
 	if lf.ftFace != nil {
 		C.FT_Done_Face(lf.ftFace)
 		lf.ftFace = nil

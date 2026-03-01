@@ -213,6 +213,29 @@ func TestSpanImageFilterRGBABilinearClip_Generate(t *testing.T) {
 	}
 }
 
+func TestSpanImageFilterRGBABilinearClip_PartialOverlapBlendsBackground(t *testing.T) {
+	source := NewMockRGBASource(1, 1)
+	source.SetPixel(0, 0, color.RGBA8[color.Linear]{R: 200, G: 100, B: 50, A: 240})
+
+	backgroundColor := color.RGBA8[color.Linear]{R: 40, G: 20, B: 10, A: 80}
+
+	// After subtracting the default 0.5-pixel filter offset, this samples with
+	// 75% source contribution and 25% background contribution.
+	interpolator := NewFixedInterpolator(64, 128)
+
+	filter := NewSpanImageFilterRGBABilinearClipWithParams(source, backgroundColor, interpolator)
+
+	span := make([]color.RGBA8[color.Linear], 1)
+	filter.Generate(span, 0, 0)
+
+	got := span[0]
+	want := color.RGBA8[color.Linear]{R: 160, G: 80, B: 40, A: 200}
+
+	if got != want {
+		t.Fatalf("partial-overlap sample = %+v, want %+v", got, want)
+	}
+}
+
 func TestSpanImageFilterRGBA2x2_Generate(t *testing.T) {
 	// Create a test source image
 	source := NewMockRGBASource(3, 3)

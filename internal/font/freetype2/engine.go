@@ -8,7 +8,6 @@ package freetype2
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include <stdlib.h>
-#include <string.h>
 
 // Helper functions for the main engine
 static FT_Library* new_library() {
@@ -17,22 +16,6 @@ static FT_Library* new_library() {
 
 static void free_library(FT_Library* lib) {
     free(lib);
-}
-
-static FT_Face* new_face_array(int size) {
-    return (FT_Face*)calloc(size, sizeof(FT_Face));
-}
-
-static void free_face_array(FT_Face* faces) {
-    free(faces);
-}
-
-static FT_Face get_face_from_array(FT_Face* faces, int index) {
-    return faces[index];
-}
-
-static void set_face_in_array(FT_Face* faces, int index, FT_Face face) {
-    faces[index] = face;
 }
 */
 import "C"
@@ -55,10 +38,10 @@ type FontEngine struct {
 	// FreeType library handle
 	library *C.FT_Library
 
-	// Face management
-	faces       *C.FT_Face
+	// Face management.
+	// Unlike the earlier Go port, AGG does not mirror FT_Face objects in a
+	// separate engine-owned C array. Track loaded faces directly here.
 	loadedFaces []*LoadedFace
-	numFaces    uint32
 }
 
 // NewFontEngine creates a new FreeType2 font engine.
@@ -96,20 +79,13 @@ func NewFontEngine(flag32 bool, maxFaces uint32, ftMemory unsafe.Pointer) (*Font
 
 	engine.libraryInitialized = true
 
-	// Allocate face array
-	engine.faces = C.new_face_array(C.int(maxFaces))
-	if engine.faces == nil {
-		engine.Close()
-		return nil, errors.New("failed to allocate face array")
-	}
-
 	return engine, nil
 }
 
 // LoadFace loads a font face from memory buffer.
 // This corresponds to AGG's font_engine_freetype_base::load_face method.
 func (fe *FontEngine) LoadFace(buffer []byte, bytes uint) (LoadedFaceInterface, error) {
-	if fe.numFaces >= fe.maxFaces {
+	if uint32(len(fe.loadedFaces)) >= fe.maxFaces {
 		return nil, errors.New("maximum number of faces exceeded")
 	}
 
@@ -135,7 +111,7 @@ func (fe *FontEngine) LoadFace(buffer []byte, bytes uint) (LoadedFaceInterface, 
 // LoadFaceFile loads a font face from a file.
 // This corresponds to AGG's font_engine_freetype_base::load_face_file method.
 func (fe *FontEngine) LoadFaceFile(fileName string) (LoadedFaceInterface, error) {
-	if fe.numFaces >= fe.maxFaces {
+	if uint32(len(fe.loadedFaces)) >= fe.maxFaces {
 		return nil, errors.New("maximum number of faces exceeded")
 	}
 
@@ -163,12 +139,8 @@ func (fe *FontEngine) createLoadedFace(ftFace C.FT_Face) (*LoadedFace, error) {
 	// Create the loaded face wrapper
 	loadedFace := NewLoadedFace(fe, ftFace)
 
-	// Store the FreeType face in our array
-	C.set_face_in_array(fe.faces, C.int(fe.numFaces), ftFace)
-
 	// Store the loaded face wrapper
 	fe.loadedFaces = append(fe.loadedFaces, loadedFace)
-	fe.numFaces++
 
 	return loadedFace, nil
 }
@@ -180,27 +152,7 @@ func (fe *FontEngine) UnloadFace(face LoadedFaceInterface) error {
 	if !ok {
 		return errors.New("invalid face type")
 	}
-
-	// Find the face in our collection
-	for i, lf := range fe.loadedFaces {
-		if lf == loadedFace {
-			// Clean up the face
-			lf.Close()
-
-			// Remove from our slice
-			fe.loadedFaces = append(fe.loadedFaces[:i], fe.loadedFaces[i+1:]...)
-
-			// Compact the array (simple approach - could be optimized)
-			for j := i; j < len(fe.loadedFaces); j++ {
-				C.set_face_in_array(fe.faces, C.int(j), fe.loadedFaces[j].ftFace)
-			}
-
-			fe.numFaces--
-			return nil
-		}
-	}
-
-	return errors.New("face not found in engine")
+	return fe.closeLoadedFace(loadedFace, true)
 }
 
 // SetGamma sets gamma correction for the rasterizer.
@@ -477,22 +429,46 @@ func transformFTPoint(x, y C.FT_Pos, flipY bool, affine *transform.TransAffine) 
 	return fx, fy
 }
 
+func (fe *FontEngine) closeLoadedFace(face *LoadedFace, releaseFTFace bool) error {
+	if face == nil {
+		return nil
+	}
+
+	removed := false
+	for i, lf := range fe.loadedFaces {
+		if lf == face {
+			fe.loadedFaces = append(fe.loadedFaces[:i], fe.loadedFaces[i+1:]...)
+			removed = true
+			break
+		}
+	}
+
+	if !removed && face.engine == fe {
+		return errors.New("face not found in engine")
+	}
+
+	face.engine = nil
+	if releaseFTFace && face.ftFace != nil {
+		C.FT_Done_Face(face.ftFace)
+		face.ftFace = nil
+	}
+	face.faceName = ""
+	face.closed = true
+	return nil
+}
+
 // Close cleans up all resources used by the font engine.
 func (fe *FontEngine) Close() error {
 	// Clean up loaded faces
-	for _, face := range fe.loadedFaces {
+	for len(fe.loadedFaces) > 0 {
+		face := fe.loadedFaces[len(fe.loadedFaces)-1]
 		if face != nil {
-			face.Close()
+			_ = fe.closeLoadedFace(face, true)
+			continue
 		}
+		fe.loadedFaces = fe.loadedFaces[:len(fe.loadedFaces)-1]
 	}
 	fe.loadedFaces = nil
-	fe.numFaces = 0
-
-	// Clean up face array
-	if fe.faces != nil {
-		C.free_face_array(fe.faces)
-		fe.faces = nil
-	}
 
 	// Clean up FreeType library
 	if fe.libraryInitialized && fe.library != nil {

@@ -4,9 +4,25 @@ package main
 
 import (
 	"fmt"
+	"image"
+	"image/png"
+	"os"
 
 	agg "agg_go"
 )
+
+func savePNG(img *agg.Image, filename string) error {
+	goImg := image.NewRGBA(image.Rect(0, 0, img.Width(), img.Height()))
+	copy(goImg.Pix, img.Data)
+
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	return png.Encode(file, goImg)
+}
 
 func main() {
 	// Create a new rendering context
@@ -35,12 +51,11 @@ func main() {
 
 	fmt.Printf("Generated image: %dx%d, %d bytes\n",
 		img.Width(), img.Height(), len(img.Data))
-
-	// For now, just print some pixel values to verify it's working
-	if len(img.Data) >= 16 {
-		fmt.Printf("First few pixels: R=%d G=%d B=%d A=%d\n",
-			img.Data[0], img.Data[1], img.Data[2], img.Data[3])
+	if err := savePNG(img, "hello_world.png"); err != nil {
+		fmt.Printf("Failed to save hello_world.png: %v\n", err)
+		os.Exit(1)
 	}
 
 	fmt.Println("Hello World example completed successfully!")
+	fmt.Println("Output saved to hello_world.png")
 }
