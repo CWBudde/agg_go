@@ -333,6 +333,28 @@ func TestBlendImageUsesPremultipliedRendererForAlphaMode(t *testing.T) {
 	}
 }
 
+func TestBlendImageUsesPremultipliedCompositeRenderer(t *testing.T) {
+	agg2d := NewAgg2D()
+	width, height := 4, 4
+	buf := make([]uint8, width*height*4)
+	agg2d.Attach(buf, width, height, width*4)
+	agg2d.SetBlendMode(BlendSrcOver)
+
+	src := []uint8{255, 0, 0, 128}
+	img := NewImage(src, 1, 1, 4)
+
+	if err := agg2d.BlendImageSimple(img, 1, 1, 255); err != nil {
+		t.Fatalf("BlendImageSimple failed: %v", err)
+	}
+
+	i := (1*width + 1) * 4
+	got := [4]uint8{buf[i], buf[i+1], buf[i+2], buf[i+3]}
+	want := [4]uint8{128, 0, 0, 128}
+	if got != want {
+		t.Fatalf("BlendImageSimple should use premultiplied composite image blending, got %v, want %v", got, want)
+	}
+}
+
 func TestBlendImageRespectsClipBox(t *testing.T) {
 	agg2d := NewAgg2D()
 	width, height := 6, 6
@@ -363,6 +385,44 @@ func TestBlendImageRespectsClipBox(t *testing.T) {
 			if inClip {
 				if r != 255 || g != 0 || b != 0 || a != 255 {
 					t.Fatalf("pixel (%d,%d) expected red in clip box, got (%d,%d,%d,%d)", x, y, r, g, b, a)
+				}
+			} else if r != 0 || g != 0 || b != 0 || a != 0 {
+				t.Fatalf("pixel (%d,%d) expected unchanged outside clip box, got (%d,%d,%d,%d)", x, y, r, g, b, a)
+			}
+		}
+	}
+}
+
+func TestCopyImageRespectsClipBox(t *testing.T) {
+	agg2d := NewAgg2D()
+	width, height := 6, 6
+	stride := width * 4
+	buf := make([]uint8, height*stride)
+	agg2d.Attach(buf, width, height, stride)
+
+	agg2d.ClipBox(2, 2, 3, 3)
+
+	src := make([]uint8, 3*3*4)
+	for i := 0; i < len(src); i += 4 {
+		src[i+0] = 10
+		src[i+1] = 20
+		src[i+2] = 30
+		src[i+3] = 255
+	}
+	img := NewImage(src, 3, 3, 3*4)
+
+	if err := agg2d.CopyImageSimple(img, 1, 1); err != nil {
+		t.Fatalf("CopyImageSimple failed: %v", err)
+	}
+
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			i := y*stride + x*4
+			r, g, b, a := buf[i], buf[i+1], buf[i+2], buf[i+3]
+			inClip := x >= 2 && x <= 3 && y >= 2 && y <= 3
+			if inClip {
+				if r != 10 || g != 20 || b != 30 || a != 255 {
+					t.Fatalf("pixel (%d,%d) expected copied color in clip box, got (%d,%d,%d,%d)", x, y, r, g, b, a)
 				}
 			} else if r != 0 || g != 0 || b != 0 || a != 0 {
 				t.Fatalf("pixel (%d,%d) expected unchanged outside clip box, got (%d,%d,%d,%d)", x, y, r, g, b, a)

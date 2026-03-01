@@ -3,8 +3,8 @@
 package agg2d
 
 import (
-	"agg_go/internal/buffer"
 	"agg_go/internal/basics"
+	"agg_go/internal/buffer"
 	"agg_go/internal/color"
 	"agg_go/internal/conv"
 	"agg_go/internal/font"
@@ -96,13 +96,13 @@ type Agg2D struct {
 	rasterizer *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
 
 	// Rendering components (now properly typed)
-	pixfmt      *pixfmt.PixFmtRGBA32[color.Linear]
-	pixfmtPre   *pixfmt.PixFmtRGBA32Pre[color.Linear]
-	pixfmtComp  *pixfmt.PixFmtCompositeRGBA32
-	pixfmtCompPre *pixfmt.PixFmtCompositeRGBA32Pre
-	renBase     *baseRendererAdapter[color.RGBA8[color.Linear]]
-	renBasePre  *baseRendererAdapter[color.RGBA8[color.Linear]]
-	renBaseComp *baseRendererAdapter[color.RGBA8[color.Linear]]
+	pixfmt         *pixfmt.PixFmtRGBA32[color.Linear]
+	pixfmtPre      *pixfmt.PixFmtRGBA32Pre[color.Linear]
+	pixfmtComp     *pixfmt.PixFmtCompositeRGBA32
+	pixfmtCompPre  *pixfmt.PixFmtCompositeRGBA32Pre
+	renBase        *baseRendererAdapter[color.RGBA8[color.Linear]]
+	renBasePre     *baseRendererAdapter[color.RGBA8[color.Linear]]
+	renBaseComp    *baseRendererAdapter[color.RGBA8[color.Linear]]
 	renBaseCompPre *baseRendererAdapter[color.RGBA8[color.Linear]]
 
 	// Master alpha and anti-aliasing gamma

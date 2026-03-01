@@ -24,6 +24,15 @@ type imageSamplePreparer interface {
 	Prepare()
 }
 
+type imageTransferRect struct {
+	srcX  int
+	srcY  int
+	dstX  int
+	dstY  int
+	width int
+	height int
+}
+
 type imageSpanGenerator struct {
 	sample      imageSampleGenerator
 	blendMode   BlendMode
@@ -169,6 +178,75 @@ func (agg2d *Agg2D) addCurrentPathToRasterizer() {
 		}
 		agg2d.rasterizer.AddVertex(x, y, uint32(cmd))
 	}
+}
+
+func (agg2d *Agg2D) clipImageTransfer(img *Image, imgX1, imgY1, imgX2, imgY2, dstX, dstY int) (imageTransferRect, bool) {
+	rect := imageTransferRect{
+		srcX:   imgX1,
+		srcY:   imgY1,
+		dstX:   dstX,
+		dstY:   dstY,
+		width:  imgX2 - imgX1,
+		height: imgY2 - imgY1,
+	}
+	if rect.width <= 0 || rect.height <= 0 {
+		return imageTransferRect{}, false
+	}
+
+	if rect.dstX < 0 {
+		delta := -rect.dstX
+		rect.srcX += delta
+		rect.dstX = 0
+		rect.width -= delta
+	}
+	if rect.dstY < 0 {
+		delta := -rect.dstY
+		rect.srcY += delta
+		rect.dstY = 0
+		rect.height -= delta
+	}
+
+	if right := rect.dstX + rect.width; right > agg2d.rbuf.Width() {
+		rect.width -= right - agg2d.rbuf.Width()
+	}
+	if bottom := rect.dstY + rect.height; bottom > agg2d.rbuf.Height() {
+		rect.height -= bottom - agg2d.rbuf.Height()
+	}
+	if rect.width <= 0 || rect.height <= 0 {
+		return imageTransferRect{}, false
+	}
+
+	clipX1 := int(agg2d.clipBox.X1)
+	clipY1 := int(agg2d.clipBox.Y1)
+	clipX2 := int(agg2d.clipBox.X2)
+	clipY2 := int(agg2d.clipBox.Y2)
+
+	if rect.dstX < clipX1 {
+		delta := clipX1 - rect.dstX
+		rect.srcX += delta
+		rect.dstX = clipX1
+		rect.width -= delta
+	}
+	if rect.dstY < clipY1 {
+		delta := clipY1 - rect.dstY
+		rect.srcY += delta
+		rect.dstY = clipY1
+		rect.height -= delta
+	}
+	if right := rect.dstX + rect.width - 1; right > clipX2 {
+		rect.width -= right - clipX2
+	}
+	if bottom := rect.dstY + rect.height - 1; bottom > clipY2 {
+		rect.height -= bottom - clipY2
+	}
+	if rect.width <= 0 || rect.height <= 0 {
+		return imageTransferRect{}, false
+	}
+
+	if rect.srcX < 0 || rect.srcY < 0 || rect.srcX+rect.width > img.Width() || rect.srcY+rect.height > img.Height() {
+		return imageTransferRect{}, false
+	}
+	return rect, true
 }
 
 // renderImage renders the current path using AGG-style image span interpolation.
@@ -343,11 +421,7 @@ func (agg2d *Agg2D) BlendImage(img *Image, imgX1, imgY1, imgX2, imgY2 int, dstX,
 	// Transform to screen coordinates
 	agg2d.WorldToScreen(&dstX, &dstY)
 
-	// Calculate source and destination dimensions
-	srcWidth := imgX2 - imgX1
-	srcHeight := imgY2 - imgY1
-
-	if srcWidth <= 0 || srcHeight <= 0 {
+	if imgX2-imgX1 <= 0 || imgY2-imgY1 <= 0 {
 		return errors.New("invalid source rectangle dimensions")
 	}
 
@@ -355,74 +429,16 @@ func (agg2d *Agg2D) BlendImage(img *Image, imgX1, imgY1, imgX2, imgY2 int, dstX,
 	dstXInt := int(dstX)
 	dstYInt := int(dstY)
 
-	// Create image accessor and perform bounds checking
-	if dstXInt < 0 || dstYInt < 0 || dstXInt+srcWidth > agg2d.rbuf.Width() || dstYInt+srcHeight > agg2d.rbuf.Height() {
-		// Handle clipping
-		clipSrcX1, clipSrcY1 := imgX1, imgY1
-		clipSrcX2, clipSrcY2 := imgX2, imgY2
-		clipDstX, clipDstY := dstXInt, dstYInt
-
-		// Adjust for negative destination coordinates
-		if dstXInt < 0 {
-			clipSrcX1 += -dstXInt
-			clipDstX = 0
-		}
-		if dstYInt < 0 {
-			clipSrcY1 += -dstYInt
-			clipDstY = 0
-		}
-
-		// Adjust for overflowing destination coordinates
-		if clipDstX+(clipSrcX2-clipSrcX1) > agg2d.rbuf.Width() {
-			clipSrcX2 = clipSrcX1 + (agg2d.rbuf.Width() - clipDstX)
-		}
-		if clipDstY+(clipSrcY2-clipSrcY1) > agg2d.rbuf.Height() {
-			clipSrcY2 = clipSrcY1 + (agg2d.rbuf.Height() - clipDstY)
-		}
-
-		// Update parameters for clipped region
-		imgX1, imgY1 = clipSrcX1, clipSrcY1
-		imgX2, imgY2 = clipSrcX2, clipSrcY2
-		dstXInt, dstYInt = clipDstX, clipDstY
-		srcWidth = imgX2 - imgX1
-		srcHeight = imgY2 - imgY1
-	}
-
-	clipX1 := int(agg2d.clipBox.X1)
-	clipY1 := int(agg2d.clipBox.Y1)
-	clipX2 := int(agg2d.clipBox.X2)
-	clipY2 := int(agg2d.clipBox.Y2)
-
-	if dstXInt < clipX1 {
-		delta := clipX1 - dstXInt
-		imgX1 += delta
-		dstXInt = clipX1
-		srcWidth -= delta
-	}
-	if dstYInt < clipY1 {
-		delta := clipY1 - dstYInt
-		imgY1 += delta
-		dstYInt = clipY1
-		srcHeight -= delta
-	}
-	if right := dstXInt + srcWidth - 1; right > clipX2 {
-		srcWidth -= right - clipX2
-	}
-	if bottom := dstYInt + srcHeight - 1; bottom > clipY2 {
-		srcHeight -= bottom - clipY2
-	}
-	if srcWidth <= 0 || srcHeight <= 0 {
+	rect, ok := agg2d.clipImageTransfer(img, imgX1, imgY1, imgX2, imgY2, dstXInt, dstYInt)
+	if !ok {
 		return nil
 	}
-
-	imgX2 = imgX1 + srcWidth
-	imgY2 = imgY1 + srcHeight
 
 	if agg2d.blendMode == BlendAlpha {
 		if agg2d.pixfmtPre != nil {
 			src := newImagePixelFormatPre(img)
-			for row := 0; row < srcHeight; row++ {
-				agg2d.pixfmtPre.BlendFrom(src, dstXInt, dstYInt+row, imgX1, imgY1+row, srcWidth, basics.Int8u(alpha))
+			for row := 0; row < rect.height; row++ {
+				agg2d.pixfmtPre.BlendFrom(src, rect.dstX, rect.dstY+row, rect.srcX, rect.srcY+row, rect.width, basics.Int8u(alpha))
 			}
 		}
 		return nil
@@ -430,10 +446,8 @@ func (agg2d *Agg2D) BlendImage(img *Image, imgX1, imgY1, imgX2, imgY2 int, dstX,
 
 	if agg2d.pixfmtCompPre != nil {
 		src := newImagePixelFormatPre(img)
-		for row := 0; row < srcHeight; row++ {
-			for x := 0; x < srcWidth; x++ {
-				agg2d.pixfmtCompPre.BlendPixel(dstXInt+x, dstYInt+row, src.Pixel(imgX1+x, imgY1+row), basics.Int8u(alpha))
-			}
+		for row := 0; row < rect.height; row++ {
+			agg2d.pixfmtCompPre.BlendFrom(src, rect.dstX, rect.dstY+row, rect.srcX, rect.srcY+row, rect.width, basics.Int8u(alpha))
 		}
 	}
 
@@ -464,11 +478,7 @@ func (agg2d *Agg2D) CopyImage(img *Image, imgX1, imgY1, imgX2, imgY2 int, dstX, 
 	// Transform to screen coordinates
 	agg2d.WorldToScreen(&dstX, &dstY)
 
-	// Calculate source dimensions
-	srcWidth := imgX2 - imgX1
-	srcHeight := imgY2 - imgY1
-
-	if srcWidth <= 0 || srcHeight <= 0 {
+	if imgX2-imgX1 <= 0 || imgY2-imgY1 <= 0 {
 		return errors.New("invalid source rectangle dimensions")
 	}
 
@@ -476,54 +486,16 @@ func (agg2d *Agg2D) CopyImage(img *Image, imgX1, imgY1, imgX2, imgY2 int, dstX, 
 	dstXInt := int(dstX)
 	dstYInt := int(dstY)
 
-	// Create image accessor and perform bounds checking
-	if dstXInt < 0 || dstYInt < 0 || dstXInt+srcWidth > agg2d.rbuf.Width() || dstYInt+srcHeight > agg2d.rbuf.Height() {
-		// Handle clipping
-		clipSrcX1, clipSrcY1 := imgX1, imgY1
-		clipSrcX2, clipSrcY2 := imgX2, imgY2
-		clipDstX, clipDstY := dstXInt, dstYInt
-
-		// Adjust for negative destination coordinates
-		if dstXInt < 0 {
-			clipSrcX1 += -dstXInt
-			clipDstX = 0
-		}
-		if dstYInt < 0 {
-			clipSrcY1 += -dstYInt
-			clipDstY = 0
-		}
-
-		// Adjust for overflowing destination coordinates
-		if clipDstX+(clipSrcX2-clipSrcX1) > agg2d.rbuf.Width() {
-			clipSrcX2 = clipSrcX1 + (agg2d.rbuf.Width() - clipDstX)
-		}
-		if clipDstY+(clipSrcY2-clipSrcY1) > agg2d.rbuf.Height() {
-			clipSrcY2 = clipSrcY1 + (agg2d.rbuf.Height() - clipDstY)
-		}
-
-		// Update parameters for clipped region
-		imgX1, imgY1 = clipSrcX1, clipSrcY1
-		imgX2, imgY2 = clipSrcX2, clipSrcY2
-		dstXInt, dstYInt = clipDstX, clipDstY
-		srcWidth = imgX2 - imgX1
-		srcHeight = imgY2 - imgY1
+	rect, ok := agg2d.clipImageTransfer(img, imgX1, imgY1, imgX2, imgY2, dstXInt, dstYInt)
+	if !ok {
+		return nil
 	}
 
-	// Create image pixel format for the source
-	imgPixFmt := newImagePixelFormat(img)
-
-	// Create source rectangle
-	srcRect := &basics.RectI{
-		X1: imgX1,
-		Y1: imgY1,
-		X2: imgX2 - 1, // AGG uses inclusive coordinates
-		Y2: imgY2 - 1,
-	}
-
-	// Use the rendering pipeline for copying (always uses normal copying, regardless of imageBlendMode)
-	// Note: CopyImage always does direct copying without blending, but we could apply imageBlendMode if needed
-	if agg2d.renBase != nil {
-		agg2d.renBase.CopyFrom(imgPixFmt, srcRect, dstXInt, dstYInt)
+	if agg2d.pixfmt != nil {
+		src := newImagePixelFormat(img)
+		for row := 0; row < rect.height; row++ {
+			agg2d.pixfmt.CopyFrom(src, rect.dstX, rect.dstY+row, rect.srcX, rect.srcY+row, rect.width)
+		}
 	}
 
 	return nil

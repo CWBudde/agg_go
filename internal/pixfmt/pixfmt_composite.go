@@ -251,6 +251,51 @@ func (pf *PixFmtCompositeRGBA[CS, O]) BlendColorHspan(x, y, length int, colors [
 	}
 }
 
+// BlendFrom blends a single scanline from another RGBA surface.
+func (pf *PixFmtCompositeRGBA[CS, O]) BlendFrom(src interface {
+	GetPixel(x, y int) color.RGBA8[CS]
+	Width() int
+	Height() int
+}, xdst, ydst, xsrc, ysrc, length int, cover basics.Int8u,
+) {
+	if ydst < 0 || ydst >= pf.Height() || ysrc < 0 || ysrc >= src.Height() || length <= 0 {
+		return
+	}
+
+	if xsrc < 0 {
+		length += xsrc
+		xdst -= xsrc
+		xsrc = 0
+	}
+	if xdst < 0 {
+		length += xdst
+		xsrc -= xdst
+		xdst = 0
+	}
+	if xsrc+length > src.Width() {
+		length = src.Width() - xsrc
+	}
+	if xdst+length > pf.Width() {
+		length = pf.Width() - xdst
+	}
+	if length <= 0 {
+		return
+	}
+
+	start := 0
+	end := length
+	step := 1
+	if xdst > xsrc {
+		start = length - 1
+		end = -1
+		step = -1
+	}
+
+	for i := start; i != end; i += step {
+		pf.BlendPixel(xdst+i, ydst, src.GetPixel(xsrc+i, ysrc), cover)
+	}
+}
+
 // CopyColorVspan copies a vertical span with varying colors
 func (pf *PixFmtCompositeRGBA[CS, O]) CopyColorVspan(x, y, length int, colors []color.RGBA8[CS]) {
 	for i := 0; i < length && i < len(colors); i++ {

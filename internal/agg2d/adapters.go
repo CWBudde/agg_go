@@ -164,11 +164,13 @@ func newImagePixelFormat(img *Image) *imagePixelFormat {
 }
 
 type imagePixelFormatPre struct {
-	img *Image
+	img    *Image
+	rowY   int
+	rowBuf []basics.Int8u
 }
 
 func newImagePixelFormatPre(img *Image) *imagePixelFormatPre {
-	return &imagePixelFormatPre{img: img}
+	return &imagePixelFormatPre{img: img, rowY: -1}
 }
 
 func (ipf *imagePixelFormat) Width() int {
@@ -220,6 +222,38 @@ func (ipf *imagePixelFormatPre) Pixel(x, y int) color.RGBA8[color.Linear] {
 
 func (ipf *imagePixelFormatPre) GetPixel(x, y int) color.RGBA8[color.Linear] {
 	return ipf.Pixel(x, y)
+}
+
+func (ipf *imagePixelFormatPre) RowData(y int) []basics.Int8u {
+	if ipf.img == nil || ipf.img.Data == nil || y < 0 || y >= ipf.img.height {
+		return nil
+	}
+	if ipf.rowY == y && len(ipf.rowBuf) == ipf.img.width*4 {
+		return ipf.rowBuf
+	}
+
+	src := ipf.img.PixelFormat().RowData(y)
+	if src == nil {
+		return nil
+	}
+
+	rowLen := ipf.img.width * 4
+	if cap(ipf.rowBuf) < rowLen {
+		ipf.rowBuf = make([]basics.Int8u, rowLen)
+	} else {
+		ipf.rowBuf = ipf.rowBuf[:rowLen]
+	}
+
+	for x := 0; x < ipf.img.width; x++ {
+		off := x * 4
+		a := src[off+3]
+		ipf.rowBuf[off+0] = color.RGBA8Multiply(src[off+0], a)
+		ipf.rowBuf[off+1] = color.RGBA8Multiply(src[off+1], a)
+		ipf.rowBuf[off+2] = color.RGBA8Multiply(src[off+2], a)
+		ipf.rowBuf[off+3] = a
+	}
+	ipf.rowY = y
+	return ipf.rowBuf
 }
 
 func (ipf *imagePixelFormat) pixelSliceClamped(x, y int) []basics.Int8u {
@@ -290,6 +324,10 @@ func (ipf *imagePixelFormat) RowPtr(y int) []basics.Int8u {
 		return nil
 	}
 	return ipf.img.Data[rowOffset:rowEnd]
+}
+
+func (ipf *imagePixelFormat) RowData(y int) []basics.Int8u {
+	return ipf.RowPtr(y)
 }
 
 // CopyPixel - not needed for source image operations, but required by interface
