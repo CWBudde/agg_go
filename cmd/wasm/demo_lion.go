@@ -5,9 +5,107 @@ import (
 	"strings"
 	"unicode"
 
+	agg "agg_go"
 	"agg_go/internal/basics"
 	"agg_go/internal/path"
 )
+
+type LionPath struct {
+	Path  *path.PathStorageStl
+	Color [3]uint8
+}
+
+func drawLionDemo() {
+	if lionPaths == nil {
+		lionPaths = parseLion()
+	}
+
+	agg2d := ctx.GetAgg2D()
+	agg2d.ResetTransformations()
+
+	// Center and scale
+	scale := 1.2
+	offsetX, offsetY := 250.0, 100.0
+
+	for _, lp := range lionPaths {
+		agg2d.FillColor(agg.NewColor(lp.Color[0], lp.Color[1], lp.Color[2], 255))
+		agg2d.NoLine()
+
+		agg2d.ResetPath()
+		lp.Path.Rewind(0)
+		for {
+			x, y, cmd := lp.Path.NextVertex()
+			if basics.IsStop(basics.PathCommand(cmd)) {
+				break
+			}
+
+			tx, ty := x*scale+offsetX, y*scale+offsetY
+
+			if basics.IsMoveTo(basics.PathCommand(cmd)) {
+				agg2d.MoveTo(tx, ty)
+			} else if basics.IsLineTo(basics.PathCommand(cmd)) {
+				agg2d.LineTo(tx, ty)
+			}
+		}
+		agg2d.ClosePolygon()
+		agg2d.DrawPath(agg.FillOnly)
+	}
+}
+
+func parseColor(s string) [3]uint8 {
+	var c [3]uint8
+	val, _ := strconv.ParseUint(s, 16, 32)
+	c[0] = uint8(val >> 16)
+	c[1] = uint8((val >> 8) & 0xFF)
+	c[2] = uint8(val & 0xFF)
+	return c
+}
+
+func parseLion() []LionPath {
+	lines := strings.Split(gLionData, "\n")
+	var result []LionPath
+	var currentPath *LionPath
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		if unicode.IsLetter(rune(line[0])) && line[0] != 'M' && line[0] != 'L' {
+			// New color/path
+			lp := LionPath{
+				Path:  path.NewPathStorageStl(),
+				Color: parseColor(line),
+			}
+			result = append(result, lp)
+			currentPath = &result[len(result)-1]
+		} else if currentPath != nil {
+			// Path data
+			parts := strings.Fields(line)
+			for i := 0; i < len(parts); {
+				cmd := parts[i]
+				i++
+				if cmd == "M" || cmd == "L" {
+					xStr := strings.TrimSuffix(parts[i], ",")
+					i++
+					yStr := strings.TrimSuffix(parts[i], ",")
+					i++
+					x, _ := strconv.ParseFloat(xStr, 64)
+					y, _ := strconv.ParseFloat(yStr, 64)
+
+					if cmd == "M" {
+						currentPath.Path.ClosePolygon(basics.PathFlagsNone)
+						currentPath.Path.MoveTo(x, y)
+					} else {
+						currentPath.Path.LineTo(x, y)
+					}
+				}
+			}
+		}
+	}
+	return result
+}
 
 var gLionData = `f2cc99
 M 69,18 L 82,8 L 99,3 L 118,5 L 135,12 L 149,21 L 156,13 L 165,9 L 177,13 L 183,28 L 180,50 L 164,91 L 155,107 L 154,114 L 151,121 L 141,127 L 139,136 L 155,206 L 157,251 L 126,342 L 133,357 L 128,376 L 83,376 L 75,368 L 67,350 L 61,350 L 53,369 L 4,369 L 2,361 L 5,354 L 12,342 L 16,321 L 4,257 L 4,244 L 7,218 L 9,179 L 26,127 L 43,93 L 32,77 L 30,70 L 24,67 L 16,49 L 17,35 L 18,23 L 30,12 L 40,7 L 53,7 L 62,12 L 69,18 L 69,18 L 69,18
@@ -75,7 +173,7 @@ M 116,172 L 107,182 L 98,193 L 98,183 L 90,199 L 89,189 L 84,207 L 88,206 L 87,2
 M 74,220 L 67,230 L 67,221 L 59,235 L 63,233 L 60,248 L 70,232 L 65,249 L 71,243 L 67,256 L 73,250 L 69,262 L 73,259 L 71,267 L 76,262 L 72,271 L 78,270 L 76,275 L 82,274 L 78,290 L 86,279 L 86,289 L 92,274 L 88,275 L 87,264 L 82,270 L 82,258 L 77,257 L 78,247 L 73,246 L 77,233 L 72,236 L 74,220 L 74,220 L 74,220
 M 133,230 L 147,242 L 148,250 L 145,254 L 138,247 L 129,246 L 142,245 L 138,241 L 128,237 L 137,238 L 133,230 L 133,230 L 133,230
 M 133,261 L 125,261 L 116,263 L 111,267 L 125,265 L 133,261 L 133,261 L 133,261
-M 121,271 L 109,273 L 103,279 L 99,305 L 92,316 L 85,327 L 83,335 L 89,340 L 97,341 L 94,336 L 101,336 L 96,331 L 103,330 L 97,327 L 108,325 L 99,322 L 109,321 L 100,318 L 110,317 L 105,314 L 110,312 L 107,310 L 113,308 L 105,306 L 114,303 L 105,301 L 115,298 L 105,301 L 115,298 L 107,295 L 115,294 L 108,293 L 117,291 L 109,289 L 117,286 L 109,286 L 118,283 L 112,281 L 118,279 L 114,278 L 119,276 L 115,274 L 121,271 L 121,271 L 121,271
+M 121,271 L 109,273 L 103,279 L 99,305 L 92,316 L 85,327 L 83,335 L 89,340 L 97,341 L 94,336 L 101,336 L 96,331 L 103,330 L 97,327 L 108,325 L 99,322 L 109,321 L 100,318 L 110,317 L 105,314 L 110,312 L 107,310 L 113,308 L 105,306 L 114,303 L 105,301 L 115,298 L 107,295 L 115,294 L 108,293 L 117,291 L 109,289 L 117,286 L 109,286 L 118,283 L 112,281 L 118,279 L 114,278 L 119,276 L 115,274 L 121,271 L 121,271 L 121,271
 M 79,364 L 74,359 L 74,353 L 76,347 L 80,351 L 83,356 L 82,360 L 79,364 L 79,364 L 79,364
 M 91,363 L 93,356 L 97,353 L 103,355 L 105,360 L 103,366 L 99,371 L 94,368 L 91,363 L 91,363 L 91,363
 M 110,355 L 114,353 L 118,357 L 117,363 L 113,369 L 111,362 L 110,355 L 110,355 L 110,355
@@ -85,7 +183,7 @@ M 44,130 L 41,137 L 45,136 L 43,150 L 48,142 L 48,157 L 53,150 L 52,164 L 60,156
 M 13,216 L 19,219 L 36,231 L 22,223 L 16,222 L 22,227 L 12,224 L 13,220 L 16,220 L 13,216 L 13,216 L 13,216
 M 10,231 L 14,236 L 25,239 L 27,237 L 19,234 L 10,231 L 10,231 L 10,231
 M 9,245 L 14,242 L 25,245 L 13,245 L 9,245 L 9,245 L 9,245
-M 33,255 L 26,253 L 18,254 L 25,256 L 18,258 L 27,260 L 18,263 L 27,265 L 19,267 L 29,270 L 21,272 L 29,276 L 21,278 L 30,281 L 22,283 L 31,287 L 24,288 L 32,292 L 23,293 L 34,298 L 26,299 L 37,303 L 32,305 L 39,309 L 33,309 L 39,314 L 34,314 L 40,318 L 34,317 L 40,321 L 34,321 L 41,326 L 33,326 L 40,330 L 33,332 L 39,333 L 33,337 L 42,337 L 54,341 L 49,337 L 52,335 L 47,330 L 50,330 L 45,325 L 49,325 L 45,321 L 48,321 L 45,316 L 46,306 L 45,286 L 43,274 L 36,261 L 33,255 L 33,255 L 33,255
+M 33,255 L 26,253 L 18,254 L 25,256 L 18,258 L 27,260 L 18,263 L 27,265 L 19,267 L 29,270 L 21,272 L 29,276 L 21,272 L 29,276 L 21,278 L 30,281 L 22,283 L 31,287 L 24,288 L 32,292 L 23,293 L 34,298 L 26,299 L 37,303 L 32,305 L 39,309 L 33,309 L 39,314 L 34,314 L 40,318 L 34,317 L 40,321 L 34,321 L 41,326 L 33,326 L 40,330 L 33,332 L 39,333 L 33,337 L 42,337 L 54,341 L 49,337 L 52,335 L 47,330 L 50,330 L 45,325 L 49,325 L 45,321 L 48,321 L 45,316 L 46,306 L 45,286 L 43,274 L 36,261 L 33,255 L 33,255 L 33,255
 M 7,358 L 9,351 L 14,351 L 17,359 L 11,364 L 7,358 L 7,358 L 7,358
 M 44,354 L 49,351 L 52,355 L 49,361 L 44,354 L 44,354 L 44,354
 M 32,357 L 37,353 L 40,358 L 36,361 L 32,357 L 32,357 L 32,357
@@ -154,63 +252,3 @@ M 147,338 L 142,341 L 143,345 L 141,354 L 147,343 L 147,338 L 147,338 L 147,338
 M 157,342 L 156,349 L 150,356 L 157,353 L 163,346 L 162,342 L 157,342 L 157,342 L 157,342
 M 99,265 L 96,284 L 92,299 L 73,339 L 73,333 L 87,300 L 99,265 L 99,265 L 99,265
 `
-
-type LionPath struct {
-	Path  *path.PathStorageStl
-	Color [3]uint8
-}
-
-func parseColor(s string) [3]uint8 {
-	var c [3]uint8
-	val, _ := strconv.ParseUint(s, 16, 32)
-	c[0] = uint8(val >> 16)
-	c[1] = uint8((val >> 8) & 0xFF)
-	c[2] = uint8(val & 0xFF)
-	return c
-}
-
-func ParseLion() []LionPath {
-	lines := strings.Split(gLionData, "\n")
-	var result []LionPath
-	var currentPath *LionPath
-
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-
-		if unicode.IsLetter(rune(line[0])) && line[0] != 'M' && line[0] != 'L' {
-			// New color/path
-			lp := LionPath{
-				Path:  path.NewPathStorageStl(),
-				Color: parseColor(line),
-			}
-			result = append(result, lp)
-			currentPath = &result[len(result)-1]
-		} else if currentPath != nil {
-			// Path data
-			parts := strings.Fields(line)
-			for i := 0; i < len(parts); {
-				cmd := parts[i]
-				i++
-				if cmd == "M" || cmd == "L" {
-					xStr := strings.TrimSuffix(parts[i], ",")
-					i++
-					yStr := strings.TrimSuffix(parts[i], ",")
-					i++
-					x, _ := strconv.ParseFloat(xStr, 64)
-					y, _ := strconv.ParseFloat(yStr, 64)
-
-					if cmd == "M" {
-						currentPath.Path.ClosePolygon(basics.PathFlagsNone)
-						currentPath.Path.MoveTo(x, y)
-					} else {
-						currentPath.Path.LineTo(x, y)
-					}
-				}
-			}
-		}
-	}
-	return result
-}

@@ -59,6 +59,12 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 		drawGradientsDemo()
 	case "aa":
 		drawAADemo()
+	case "blend":
+		drawBlendModesDemo()
+	case "bspline":
+		drawBSplineDemo()
+	case "dash":
+		drawDashDemo()
 	default:
 		drawLinesDemo()
 	}

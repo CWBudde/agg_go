@@ -50,7 +50,10 @@ const demoDescriptions = {
     "rects": "Filled and stroked rectangles, including rounded rectangles. Demonstrates alpha blending and semi-transparent fills.",
     "lion": "The classic AGG signature demo. High-quality vector graphics consisting of hundreds of paths parsed from the original AGG lion data.",
     "gradients": "Linear and radial gradient fills. Demonstrates the advanced span generation and multi-stop color interpolation.",
-    "aa": "Anti-aliasing showcase. Lines and circles drawn at sub-pixel offsets to demonstrate the precision and smoothness of AGG's rasterizer."
+    "aa": "Anti-aliasing showcase. Lines and circles drawn at sub-pixel offsets to demonstrate the precision and smoothness of AGG's rasterizer.",
+    "blend": "Compositing and blend modes. Showcases how different layers can be combined using standard and advanced blend modes like Multiply, Screen, and Overlay.",
+    "bspline": "B-Spline curve smoothing. Demonstrates the creation of smooth, continuous curves from a set of control points.",
+    "dash": "Advanced line styling. Showcases various dash patterns and line thicknesses applied to both simple lines and complex paths."
 };
 
 function renderSelectedDemo() {
