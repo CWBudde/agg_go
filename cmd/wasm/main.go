@@ -128,13 +128,11 @@ func getCanvasDimensions(this js.Value, args []js.Value) interface{} {
 	}
 }
 
-func Log(msg string) {
-	fmt.Println(msg)
-	js.Global().Get("document").Call("getElementById", "statusMsg").Set("textContent", msg)
-}
+const statusMsgID = "statusMsg"
 
-func updateStatusJS(msg string) {
-	js.Global().Get("document").Call("getElementById", "statusMsg").Set("textContent", msg)
+func logStatus(msg string) {
+	fmt.Println(msg)
+	js.Global().Get("document").Call("getElementById", statusMsgID).Set("textContent", msg)
 }
 
 func renderDemo(this js.Value, args []js.Value) interface{} {
@@ -148,14 +146,14 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 	defer func() {
 		if r := recover(); r != nil {
 			errStr := fmt.Sprintf("FATAL ERROR in %s: %v", demoType, r)
-			Log(errStr)
-			js.Global().Get("document").Call("getElementById", "statusMsg").Get("style").Set("color", "#ff3b30")
+			logStatus(errStr)
+			js.Global().Get("document").Call("getElementById", statusMsgID).Get("style").Set("color", "#ff3b30")
 		}
 	}()
 
 	// Reset UI status color
-	js.Global().Get("document").Call("getElementById", "statusMsg").Get("style").Set("color", "")
-	updateStatusJS("Rendering " + demoType + "...")
+	js.Global().Get("document").Call("getElementById", statusMsgID).Get("style").Set("color", "")
+	logStatus("Rendering " + demoType + "...")
 
 	// Reset specific demo state if needed
 	if demoType != "lion" {
@@ -190,7 +188,8 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 	case "aatest":
 		drawAATestDemo()
 	default:
-		drawLinesDemo()
+		logStatus("unknown demo type: " + demoType)
+		return nil
 	}
 
 	// Copy the rendered buffer to the JavaScript Uint8ClampedArray

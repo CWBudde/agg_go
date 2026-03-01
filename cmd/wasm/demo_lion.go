@@ -64,9 +64,9 @@ func parseColor(s string) [3]uint8 {
 }
 
 func parseLion() []LionPath {
-	lines := strings.Split(gLionData, "\n")
+	lines := strings.Split(lionData, "\n")
 	var result []LionPath
-	var currentPath *LionPath
+	currentIdx := -1
 
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
@@ -76,13 +76,12 @@ func parseLion() []LionPath {
 
 		if line[0] != 'M' && line[0] != 'L' {
 			// New color/path
-			lp := LionPath{
+			result = append(result, LionPath{
 				Path:  path.NewPathStorageStl(),
 				Color: parseColor(line),
-			}
-			result = append(result, lp)
-			currentPath = &result[len(result)-1]
-		} else if currentPath != nil {
+			})
+			currentIdx = len(result) - 1
+		} else if currentIdx >= 0 {
 			// Path data
 			line = strings.ReplaceAll(line, ",", " ")
 			parts := strings.Fields(line)
@@ -101,10 +100,10 @@ func parseLion() []LionPath {
 					y, _ := strconv.ParseFloat(yStr, 64)
 
 					if cmd == "M" {
-						currentPath.Path.ClosePolygon(basics.PathFlagsNone)
-						currentPath.Path.MoveTo(x, y)
+						result[currentIdx].Path.ClosePolygon(basics.PathFlagsNone)
+						result[currentIdx].Path.MoveTo(x, y)
 					} else {
-						currentPath.Path.LineTo(x, y)
+						result[currentIdx].Path.LineTo(x, y)
 					}
 				}
 			}
@@ -113,7 +112,7 @@ func parseLion() []LionPath {
 	return result
 }
 
-var gLionData = `f2cc99
+var lionData = `f2cc99
 M 69,18 L 82,8 L 99,3 L 118,5 L 135,12 L 149,21 L 156,13 L 165,9 L 177,13 L 183,28 L 180,50 L 164,91 L 155,107 L 154,114 L 151,121 L 141,127 L 139,136 L 155,206 L 157,251 L 126,342 L 133,357 L 128,376 L 83,376 L 75,368 L 67,350 L 61,350 L 53,369 L 4,369 L 2,361 L 5,354 L 12,342 L 16,321 L 4,257 L 4,244 L 7,218 L 9,179 L 26,127 L 43,93 L 32,77 L 30,70 L 24,67 L 16,49 L 17,35 L 18,23 L 30,12 L 40,7 L 53,7 L 62,12 L 69,18 L 69,18 L 69,18
 e5b27f
 M 142,79 L 136,74 L 138,82 L 133,78 L 133,84 L 127,78 L 128,85 L 124,80 L 125,87 L 119,82 L 119,90 L 125,99 L 125,96 L 128,100 L 128,94 L 131,98 L 132,93 L 135,97 L 136,93 L 138,97 L 139,94 L 141,98 L 143,94 L 144,85 L 142,79 L 142,79 L 142,79

@@ -21,7 +21,7 @@ func drawGouraudDemo() {
 	agg2d := ctx.GetAgg2D()
 	agg2d.ResetTransformations()
 
-	Log(fmt.Sprintf("Gouraud Dilation: %.2f", gouraudDilation))
+	logStatus(fmt.Sprintf("Gouraud Dilation: %.2f", gouraudDilation))
 
 	// Subdivision into 6 triangles as in original gouraud.cpp
 	xc := (gouraudX[0] + gouraudX[1] + gouraudX[2]) / 3.0

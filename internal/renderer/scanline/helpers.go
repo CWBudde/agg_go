@@ -22,13 +22,8 @@ func RenderScanlines[C any](ras RasterizerInterface, sl ScanlineInterface, rende
 	renderer.Prepare()
 
 	// Sweep through all scanlines
-	watchdog := 0
 	for ras.SweepScanline(sl) {
 		renderer.Render(sl)
-		watchdog++
-		if watchdog > 1000000 {
-			panic("RenderScanlines: Watchdog triggered (possible infinite loop)")
-		}
 	}
 }
 

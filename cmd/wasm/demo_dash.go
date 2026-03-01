@@ -12,9 +12,8 @@ import (
 var (
 	dashTriangleX = [3]float64{157, 469, 243}
 	dashTriangleY = [3]float64{160, 270, 410}
-	dashWidth     = 3.0
-	dashSmooth    = 1.0
-	dashClosed    = true
+	dashWidth    = 3.0
+	dashClosed   = true
 	dashSelected  = -1
 	dashDragDX    = 0.0
 	dashDragDY    = 0.0
