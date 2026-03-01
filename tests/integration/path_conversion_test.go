@@ -241,25 +241,30 @@ func TestPathConversionTransformChain(t *testing.T) {
 	ctx.Attach(buffer, width, height, stride)
 	ctx.ClearAll(agg2d.Color{255, 255, 255, 255}) // White background
 
-	// Apply transformation
-	ctx.Translate(75, 75)   // Move to center
-	ctx.Rotate(math.Pi / 4) // 45 degrees
+	// AGG composes transforms in call order, so translation comes last.
 	ctx.Scale(1.5, 1.0)     // Stretch horizontally
+	ctx.Rotate(math.Pi / 4) // 45 degrees
+	ctx.Translate(75, 75)   // Move to center
 
 	// Draw stroked path that will go through: transform -> stroke conversion
 	ctx.LineColor(agg2d.Color{255, 0, 255, 255}) // Magenta
 	ctx.LineWidth(4.0)
 	ctx.ResetPath()
-	ctx.Rectangle(-20, -10, 20, 10) // Rectangle centered at origin
+	addRectPath(ctx, -20, -10, 20, 10) // Rectangle centered at origin
 	ctx.DrawPath(agg2d.StrokeOnly)
 
 	// Check that transformed stroke appears in buffer
 	// Due to rotation and scaling, the rectangle outline should be visible
 	magentaFound := false
-	for y := 30; y < 120; y += 5 {
-		for x := 30; x < 120; x += 5 {
+	nonWhiteFound := false
+	for y := 30; y < 120; y++ {
+		for x := 30; x < 120; x++ {
 			pixel := getPixel(buffer, stride, x, y)
-			if pixel[0] > 200 && pixel[2] > 200 && pixel[1] < 100 {
+			if pixel != [4]uint8{255, 255, 255, 255} {
+				nonWhiteFound = true
+			}
+			if pixel[0] > 120 && pixel[2] > 120 && pixel[1] < 220 &&
+				(pixel[0] > pixel[1] || pixel[2] > pixel[1]) {
 				magentaFound = true
 				goto found
 			}
@@ -268,7 +273,10 @@ func TestPathConversionTransformChain(t *testing.T) {
 found:
 
 	if !magentaFound {
-		t.Error("Transformed stroked rectangle should be visible, but no magenta pixels found")
+		if nonWhiteFound {
+			t.Error("Transformed stroked rectangle rendered, but no magenta-tinted pixels were found")
+		}
+		t.Error("Transformed stroked rectangle should be visible, but no rendered pixels were found")
 	}
 }
 

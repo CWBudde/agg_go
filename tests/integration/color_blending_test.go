@@ -18,15 +18,11 @@ func TestColorBlendingAlphaNormal(t *testing.T) {
 
 	// Draw base layer - solid blue
 	ctx.FillColor(agg2d.Color{0, 0, 255, 255}) // Blue, full opacity
-	ctx.ResetPath()
-	ctx.Rectangle(20, 20, 80, 80)
-	ctx.DrawPath(agg2d.FillOnly)
+	drawFilledRectPath(ctx, 20, 20, 80, 80)
 
 	// Draw overlapping layer - semi-transparent red
 	ctx.FillColor(agg2d.Color{255, 0, 0, 128}) // Red, 50% opacity
-	ctx.ResetPath()
-	ctx.Rectangle(40, 40, 100, 100)
-	ctx.DrawPath(agg2d.FillOnly)
+	drawFilledRectPath(ctx, 40, 40, 100, 100)
 
 	// Test different regions
 	// Blue only region
@@ -76,10 +72,8 @@ func TestColorBlendingMultipleLayers(t *testing.T) {
 
 	for i, color := range colors {
 		ctx.FillColor(color)
-		ctx.ResetPath()
 		pos := positions[i]
-		ctx.Rectangle(float64(pos[0]), float64(pos[1]), float64(pos[2]), float64(pos[3]))
-		ctx.DrawPath(agg2d.FillOnly)
+		drawFilledRectPath(ctx, float64(pos[0]), float64(pos[1]), float64(pos[2]), float64(pos[3]))
 	}
 
 	// Check center where all three overlap
@@ -126,16 +120,12 @@ func TestColorBlendingDifferentModes(t *testing.T) {
 
 		// Draw base shape
 		ctx.FillColor(agg2d.Color{255, 0, 0, 255}) // Red
-		ctx.ResetPath()
-		ctx.Rectangle(10, 10, 90, 90)
-		ctx.DrawPath(agg2d.FillOnly)
+		drawFilledRectPath(ctx, 10, 10, 90, 90)
 
 		// Set blend mode and draw overlapping shape
 		ctx.SetBlendMode(blendTest.mode)
 		ctx.FillColor(agg2d.Color{0, 255, 0, 255}) // Green
-		ctx.ResetPath()
-		ctx.Rectangle(50, 10, 130, 90)
-		ctx.DrawPath(agg2d.FillOnly)
+		drawFilledRectPath(ctx, 50, 10, 130, 90)
 
 		// Check the blend result
 		blendPixel := getPixel(buffer, stride, 70, 50) // Overlap center
@@ -173,9 +163,7 @@ func TestMasterAlphaEffect(t *testing.T) {
 	ctx1.SetMasterAlpha(1.0)
 
 	ctx1.FillColor(agg2d.Color{255, 0, 0, 255}) // Red
-	ctx1.ResetPath()
-	ctx1.Rectangle(25, 25, 75, 75)
-	ctx1.DrawPath(agg2d.FillOnly)
+	drawFilledRectPath(ctx1, 25, 25, 75, 75)
 
 	// Render with reduced master alpha
 	buffer2 := make([]uint8, height*stride)
@@ -185,9 +173,7 @@ func TestMasterAlphaEffect(t *testing.T) {
 	ctx2.SetMasterAlpha(0.5)
 
 	ctx2.FillColor(agg2d.Color{255, 0, 0, 255}) // Same red
-	ctx2.ResetPath()
-	ctx2.Rectangle(25, 25, 75, 75)
-	ctx2.DrawPath(agg2d.FillOnly)
+	drawFilledRectPath(ctx2, 25, 25, 75, 75)
 
 	// Compare results
 	fullAlphaPixel := getPixel(buffer1, stride, 50, 50)
@@ -223,9 +209,7 @@ func TestGradientRendering(t *testing.T) {
 		1.0)                         // Linear profile
 
 	// Draw rectangle with gradient fill
-	ctx.ResetPath()
-	ctx.Rectangle(50, 25, 150, 75)
-	ctx.DrawPath(agg2d.FillOnly)
+	drawFilledRectPath(ctx, 50, 25, 150, 75)
 
 	// Check gradient progression
 	leftPixel := getPixel(buffer, stride, 60, 50)    // Near start (should be reddish)

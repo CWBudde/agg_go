@@ -78,9 +78,7 @@ func TestRenderingPipelineWithBlending(t *testing.T) {
 
 	// Draw a blue rectangle first
 	ctx.FillColor(agg2d.Color{0, 0, 255, 255}) // Blue
-	ctx.ResetPath()
-	ctx.Rectangle(30, 30, 70, 70)
-	ctx.DrawPath(agg2d.FillOnly)
+	drawFilledRectPath(ctx, 30, 30, 70, 70)
 
 	// Verify blue rectangle
 	bluePixel := getPixel(buffer, stride, 50, 50)
@@ -91,9 +89,7 @@ func TestRenderingPipelineWithBlending(t *testing.T) {
 
 	// Draw a semi-transparent red rectangle overlapping
 	ctx.FillColor(agg2d.Color{255, 0, 0, 128}) // Semi-transparent red
-	ctx.ResetPath()
-	ctx.Rectangle(50, 50, 90, 90)
-	ctx.DrawPath(agg2d.FillOnly)
+	drawFilledRectPath(ctx, 50, 50, 90, 90)
 
 	// Verify blended color in overlap area
 	overlapPixel := getPixel(buffer, stride, 60, 60)
@@ -156,9 +152,7 @@ func TestRenderingPipelinePixelPerfect(t *testing.T) {
 
 	// Draw a single pixel-aligned rectangle
 	ctx.FillColor(agg2d.Color{255, 255, 255, 255}) // White
-	ctx.ResetPath()
-	ctx.Rectangle(2, 2, 6, 6) // 4x4 white rectangle
-	ctx.DrawPath(agg2d.FillOnly)
+	drawFilledRectPath(ctx, 2, 2, 6, 6)            // 4x4 white rectangle
 
 	// Check specific pixels
 	tests := []struct {

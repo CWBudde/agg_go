@@ -43,9 +43,7 @@ func TestPixelFormatStride(t *testing.T) {
 	ctx1.Attach(normalBuffer, width, height, normalStride)
 	ctx1.ClearAll(agg2d.Color{255, 0, 0, 255})  // Red
 	ctx1.FillColor(agg2d.Color{0, 255, 0, 255}) // Green
-	ctx1.ResetPath()
-	ctx1.Rectangle(10, 10, 40, 40)
-	ctx1.DrawPath(agg2d.FillOnly)
+	drawFilledRectPath(ctx1, 10, 10, 40, 40)
 
 	// Test with padded stride (width * 4 + 16 for alignment)
 	paddedStride := width*4 + 16
@@ -55,9 +53,7 @@ func TestPixelFormatStride(t *testing.T) {
 	ctx2.Attach(paddedBuffer, width, height, paddedStride)
 	ctx2.ClearAll(agg2d.Color{255, 0, 0, 255})  // Red
 	ctx2.FillColor(agg2d.Color{0, 255, 0, 255}) // Green
-	ctx2.ResetPath()
-	ctx2.Rectangle(10, 10, 40, 40)
-	ctx2.DrawPath(agg2d.FillOnly)
+	drawFilledRectPath(ctx2, 10, 10, 40, 40)
 
 	// Compare results - they should be identical
 	for y := 0; y < height; y += 5 {
@@ -99,9 +95,7 @@ func TestPixelFormatDifferentSizes(t *testing.T) {
 
 		if size.width > 10 && size.height > 10 {
 			ctx.FillColor(agg2d.Color{255, 255, 255, 255}) // White
-			ctx.ResetPath()
-			ctx.Rectangle(2, 2, float64(size.width-2), float64(size.height-2))
-			ctx.DrawPath(agg2d.FillOnly)
+			drawFilledRectPath(ctx, 2, 2, float64(size.width-2), float64(size.height-2))
 
 			// Check center pixel
 			centerPixel := getPixel(buffer, stride, size.width/2, size.height/2)
@@ -133,19 +127,13 @@ func TestPixelFormatClipping(t *testing.T) {
 		desc  string
 	}{
 		{func() {
-			ctx.ResetPath()
-			ctx.Rectangle(-10, -10, 20, 20) // Extends beyond top-left
-			ctx.DrawPath(agg2d.FillOnly)
+			drawFilledRectPath(ctx, -10, -10, 20, 20) // Extends beyond top-left
 		}, "top-left overflow"},
 		{func() {
-			ctx.ResetPath()
-			ctx.Rectangle(40, 40, 70, 70) // Extends beyond bottom-right
-			ctx.DrawPath(agg2d.FillOnly)
+			drawFilledRectPath(ctx, 40, 40, 70, 70) // Extends beyond bottom-right
 		}, "bottom-right overflow"},
 		{func() {
-			ctx.ResetPath()
-			ctx.Rectangle(-10, 20, 70, 40) // Extends beyond left and right
-			ctx.DrawPath(agg2d.FillOnly)
+			drawFilledRectPath(ctx, -10, 20, 70, 40) // Extends beyond left and right
 		}, "horizontal overflow"},
 	}
 
@@ -202,9 +190,7 @@ func TestPixelFormatAlphaChannel(t *testing.T) {
 		y := (i/2)*40 + 10
 
 		ctx.FillColor(test.color)
-		ctx.ResetPath()
-		ctx.Rectangle(float64(x), float64(y), float64(x+30), float64(y+30))
-		ctx.DrawPath(agg2d.FillOnly)
+		drawFilledRectPath(ctx, float64(x), float64(y), float64(x+30), float64(y+30))
 
 		// Check rendered alpha
 		pixel := getPixel(buffer, stride, x+15, y+15) // Center of rectangle
@@ -247,9 +233,7 @@ func TestPixelFormatDirectAccess(t *testing.T) {
 	ctx.Attach(buffer1, width, height, stride)
 	ctx.ClearAll(agg2d.Color{0, 0, 0, 255})        // Black background
 	ctx.FillColor(agg2d.Color{255, 255, 255, 255}) // White
-	ctx.ResetPath()
-	ctx.Rectangle(25, 25, 75, 75)
-	ctx.DrawPath(agg2d.FillOnly)
+	drawFilledRectPath(ctx, 25, 25, 75, 75)
 
 	// Direct manipulation
 	for i := range buffer2 {
@@ -323,9 +307,7 @@ func TestPixelFormatColorAccuracy(t *testing.T) {
 		y := (i / 4) * 25
 
 		ctx.FillColor(color)
-		ctx.ResetPath()
-		ctx.Rectangle(float64(x), float64(y), float64(x+20), float64(y+20))
-		ctx.DrawPath(agg2d.FillOnly)
+		drawFilledRectPath(ctx, float64(x), float64(y), float64(x+20), float64(y+20))
 
 		// Check color accuracy
 		pixel := getPixel(buffer, stride, x+10, y+10)
@@ -356,9 +338,7 @@ func TestPixelFormatMemoryLayout(t *testing.T) {
 
 	// Set a specific pixel to red
 	ctx.FillColor(agg2d.Color{255, 0, 0, 255})
-	ctx.ResetPath()
-	ctx.Rectangle(5, 5, 6, 6) // Single pixel rectangle
-	ctx.DrawPath(agg2d.FillOnly)
+	drawFilledRectPath(ctx, 5, 5, 6, 6) // Single pixel rectangle
 
 	// Check memory layout directly
 	pixelOffset := 5*stride + 5*4 // Row 5, Column 5, RGBA format
@@ -414,9 +394,7 @@ func TestPixelFormatLargeBuffer(t *testing.T) {
 
 	// Draw something in the middle
 	ctx.FillColor(agg2d.Color{255, 255, 0, 255}) // Yellow
-	ctx.ResetPath()
-	ctx.Rectangle(450, 450, 550, 550) // 100x100 rectangle in center
-	ctx.DrawPath(agg2d.FillOnly)
+	drawFilledRectPath(ctx, 450, 450, 550, 550)  // 100x100 rectangle in center
 
 	// Check corners and center
 	corners := []struct{ x, y int }{

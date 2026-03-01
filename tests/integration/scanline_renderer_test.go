@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"math"
 	"testing"
 
 	"agg_go/internal/agg2d"
@@ -18,9 +19,7 @@ func TestScanlineRendererBasic(t *testing.T) {
 
 	// Draw a simple filled rectangle to test scanline generation
 	ctx.FillColor(agg2d.Color{255, 0, 0, 255}) // Red
-	ctx.ResetPath()
-	ctx.Rectangle(25, 25, 75, 75)
-	ctx.DrawPath(agg2d.FillOnly)
+	drawFilledRectPath(ctx, 25, 25, 75, 75)
 
 	// Check horizontal scanlines at different Y positions
 	scanlineTests := []struct {
@@ -131,7 +130,7 @@ func TestScanlineComplexShape(t *testing.T) {
 	innerRadius := 20.0
 
 	for i := 0; i < 10; i++ {
-		// angle := float64(i) * 3.14159 / 5
+		angle := float64(i) * math.Pi / 5.0
 		var radius float64
 		if i%2 == 0 {
 			radius = outerRadius
@@ -139,8 +138,8 @@ func TestScanlineComplexShape(t *testing.T) {
 			radius = innerRadius
 		}
 
-		x := cx + radius*float64(1.0) // Simplified cos
-		y := cy + radius*float64(0.8) // Simplified sin
+		x := cx + radius*math.Cos(angle-math.Pi/2.0)
+		y := cy + radius*math.Sin(angle-math.Pi/2.0)
 
 		if i == 0 {
 			ctx.MoveTo(x, y)
@@ -154,7 +153,7 @@ func TestScanlineComplexShape(t *testing.T) {
 	// Check that complex shape generates proper scanlines
 	// Test center (should be filled)
 	centerPixel := getPixel(buffer, stride, 75, 75)
-	if centerPixel[0] < 200 || centerPixel[1] < 200 || centerPixel[2] < 50 {
+	if centerPixel[0] < 200 || centerPixel[1] < 200 || centerPixel[2] > 50 {
 		t.Errorf("Star center should be yellow, got RGB(%d,%d,%d)",
 			centerPixel[0], centerPixel[1], centerPixel[2])
 	}
@@ -197,9 +196,7 @@ func TestScanlineSpanGeneration(t *testing.T) {
 		1.0)                         // Linear profile
 
 	// Draw rectangle with gradient fill
-	ctx.ResetPath()
-	ctx.Rectangle(50, 25, 150, 75)
-	ctx.DrawPath(agg2d.FillOnly)
+	drawFilledRectPath(ctx, 50, 25, 150, 75)
 
 	// Check horizontal spans at different positions
 	spanTests := []struct {
@@ -250,9 +247,7 @@ func TestScanlineClipping(t *testing.T) {
 
 	// Draw a larger shape that extends beyond clip region
 	ctx.FillColor(agg2d.Color{128, 0, 128, 255}) // Purple
-	ctx.ResetPath()
-	ctx.Rectangle(10, 10, 90, 90)
-	ctx.DrawPath(agg2d.FillOnly)
+	drawFilledRectPath(ctx, 10, 10, 90, 90)
 
 	// Check clipping results
 	clippingTests := []struct {
@@ -303,19 +298,15 @@ func TestScanlineSubPixelAccuracy(t *testing.T) {
 	ctx1.ClearAll(agg2d.Color{255, 255, 255, 255})
 
 	ctx1.FillColor(agg2d.Color{0, 0, 0, 255}) // Black
-	ctx1.ResetPath()
-	ctx1.Rectangle(40, 40, 60, 60)
-	ctx1.DrawPath(agg2d.FillOnly)
+	drawFilledRectPath(ctx1, 40, 40, 60, 60)
 
 	// Render subpixel-offset rectangle
 	ctx2 := agg2d.NewAgg2D()
 	ctx2.Attach(buffer2, width, height, stride)
 	ctx2.ClearAll(agg2d.Color{255, 255, 255, 255})
 
-	ctx2.FillColor(agg2d.Color{0, 0, 0, 255}) // Black
-	ctx2.ResetPath()
-	ctx2.Rectangle(40.5, 40.5, 60.5, 60.5) // Half-pixel offset
-	ctx2.DrawPath(agg2d.FillOnly)
+	ctx2.FillColor(agg2d.Color{0, 0, 0, 255})        // Black
+	drawFilledRectPath(ctx2, 40.5, 40.5, 60.5, 60.5) // Half-pixel offset
 
 	// Compare edge pixels - subpixel version should show anti-aliasing
 	edgePixel1 := getPixel(buffer1, stride, 40, 50) // Integer edge
@@ -347,15 +338,13 @@ func TestScanlineEvenOddFill(t *testing.T) {
 	ctx.ClearAll(agg2d.Color{255, 255, 255, 255}) // White background
 
 	// Enable even-odd fill rule
-	// Note: EvenOddFill method may not be available, using default fill rule
+	ctx.FillEvenOdd(true)
 
 	// Draw overlapping shapes to test even-odd rule
 	ctx.FillColor(agg2d.Color{255, 128, 0, 255}) // Orange
 	ctx.ResetPath()
-
-	// Draw two overlapping rectangles
-	ctx.Rectangle(50, 50, 100, 100) // First rectangle
-	ctx.Rectangle(70, 70, 120, 120) // Overlapping rectangle
+	addRectPath(ctx, 50, 50, 100, 100)
+	addRectPath(ctx, 70, 70, 120, 120)
 	ctx.DrawPath(agg2d.FillOnly)
 
 	// Check fill results

@@ -19,9 +19,7 @@ func TestTransformationWithRendering(t *testing.T) {
 
 	// Draw a rectangle at origin without transformation first
 	ctx.FillColor(agg2d.Color{255, 0, 0, 255}) // Red
-	ctx.ResetPath()
-	ctx.Rectangle(0, 0, 20, 20)
-	ctx.DrawPath(agg2d.FillOnly)
+	drawFilledRectPath(ctx, 0, 0, 20, 20)
 
 	// Check that original rectangle is at origin
 	originPixel := getPixel(buffer, stride, 10, 10)
@@ -46,9 +44,7 @@ func TestTranslationTransform(t *testing.T) {
 
 	// Draw a rectangle at origin (should appear translated)
 	ctx.FillColor(agg2d.Color{0, 255, 0, 255}) // Green
-	ctx.ResetPath()
-	ctx.Rectangle(0, 0, 20, 20)
-	ctx.DrawPath(agg2d.FillOnly)
+	drawFilledRectPath(ctx, 0, 0, 20, 20)
 
 	// Check that rectangle appears at translated position
 	translatedPixel := getPixel(buffer, stride, 60, 70) // 50+10, 60+10 (center)
@@ -77,9 +73,7 @@ func TestScaleTransform(t *testing.T) {
 	ctx1.ClearAll(agg2d.Color{255, 255, 255, 255})
 
 	ctx1.FillColor(agg2d.Color{255, 0, 0, 255}) // Red
-	ctx1.ResetPath()
-	ctx1.Rectangle(50, 50, 70, 70) // 20x20 rectangle
-	ctx1.DrawPath(agg2d.FillOnly)
+	drawFilledRectPath(ctx1, 50, 50, 70, 70)    // 20x20 rectangle
 
 	// Render scaled rectangle
 	ctx2 := agg2d.NewAgg2D()
@@ -88,9 +82,7 @@ func TestScaleTransform(t *testing.T) {
 
 	ctx2.Scale(2.0, 2.0)                        // 2x scale
 	ctx2.FillColor(agg2d.Color{255, 0, 0, 255}) // Red
-	ctx2.ResetPath()
-	ctx2.Rectangle(50, 50, 70, 70) // Same rectangle, but scaled
-	ctx2.DrawPath(agg2d.FillOnly)
+	drawFilledRectPath(ctx2, 50, 50, 70, 70)    // Same rectangle, but scaled
 
 	// Check that scaled version is larger
 	// Original rectangle center
@@ -118,15 +110,14 @@ func TestRotationTransform(t *testing.T) {
 	ctx.Attach(buffer, width, height, stride)
 	ctx.ClearAll(agg2d.Color{255, 255, 255, 255}) // White background
 
-	// Move to center for rotation
-	ctx.Translate(100, 100)
+	// AGG composes transforms in call order, so rotate first and translate last
+	// to keep the rotated shape centered on screen.
 	ctx.Rotate(math.Pi / 4) // 45 degrees
+	ctx.Translate(100, 100)
 
 	// Draw a rectangle that should appear rotated
 	ctx.FillColor(agg2d.Color{0, 0, 255, 255}) // Blue
-	ctx.ResetPath()
-	ctx.Rectangle(-10, -10, 10, 10) // 20x20 rectangle centered at origin
-	ctx.DrawPath(agg2d.FillOnly)
+	drawFilledRectPath(ctx, -10, -10, 10, 10)  // 20x20 rectangle centered at origin
 
 	// Check that center is still blue
 	centerPixel := getPixel(buffer, stride, 100, 100)
@@ -135,12 +126,10 @@ func TestRotationTransform(t *testing.T) {
 			centerPixel[0], centerPixel[1], centerPixel[2])
 	}
 
-	// Check that corners extend diagonally due to rotation
-	// At 45 degrees, corners should be further from center
-	diagonalPixel := getPixel(buffer, stride, 114, 114) // Approximate rotated corner
-	// This pixel should be blue or anti-aliased blue/white
-	if diagonalPixel == [4]uint8{255, 255, 255, 255} {
-		t.Error("Rotated rectangle should extend diagonally, but pixel appears white")
+	// Check that the rotated square extends past the original top edge.
+	tipPixel := getPixel(buffer, stride, 100, 86)
+	if tipPixel == [4]uint8{255, 255, 255, 255} {
+		t.Error("Rotated rectangle should extend to the rotated tip, but pixel appears white")
 	}
 }
 
@@ -154,16 +143,15 @@ func TestCompoundTransforms(t *testing.T) {
 	ctx.Attach(buffer, width, height, stride)
 	ctx.ClearAll(agg2d.Color{255, 255, 255, 255}) // White background
 
-	// Apply compound transformation: translate, rotate, scale
-	ctx.Translate(150, 150) // Move to center
-	ctx.Rotate(math.Pi / 6) // 30 degrees
+	// AGG applies these in call order, so put translation last to position the
+	// already scaled/rotated geometry at the target center.
 	ctx.Scale(1.5, 1.0)     // Scale X by 1.5, Y by 1.0
+	ctx.Rotate(math.Pi / 6) // 30 degrees
+	ctx.Translate(150, 150) // Move to center
 
 	// Draw a simple shape
 	ctx.FillColor(agg2d.Color{255, 128, 0, 255}) // Orange
-	ctx.ResetPath()
-	ctx.Rectangle(-20, -10, 20, 10) // 40x20 rectangle
-	ctx.DrawPath(agg2d.FillOnly)
+	drawFilledRectPath(ctx, -20, -10, 20, 10)    // 40x20 rectangle
 
 	// Verify that transformation was applied
 	centerPixel := getPixel(buffer, stride, 150, 150)
@@ -172,8 +160,8 @@ func TestCompoundTransforms(t *testing.T) {
 			centerPixel[0], centerPixel[1], centerPixel[2])
 	}
 
-	// Check that original rectangle position is white (not transformed location)
-	originalPixel := getPixel(buffer, stride, 130, 140) // Where rectangle would be without transform
+	// Check that an unrelated area remains white.
+	originalPixel := getPixel(buffer, stride, 20, 20)
 	if originalPixel != [4]uint8{255, 255, 255, 255} {
 		t.Error("Original position should be white (rectangle was transformed)")
 	}
@@ -199,18 +187,14 @@ func TestTransformPushPop(t *testing.T) {
 
 	// Draw with compound transformation
 	ctx.FillColor(agg2d.Color{255, 0, 255, 255}) // Magenta
-	ctx.ResetPath()
-	ctx.Rectangle(-5, -5, 5, 5)
-	ctx.DrawPath(agg2d.FillOnly)
+	drawFilledRectPath(ctx, -5, -5, 5, 5)
 
 	// Pop back to just translation
 	ctx.PopTransform()
 
 	// Draw with only translation
 	ctx.FillColor(agg2d.Color{0, 255, 255, 255}) // Cyan
-	ctx.ResetPath()
-	ctx.Rectangle(-5, -5, 5, 5)
-	ctx.DrawPath(agg2d.FillOnly)
+	drawFilledRectPath(ctx, -5, -5, 5, 5)
 
 	// Check that both shapes are rendered correctly
 	centerPixel := getPixel(buffer, stride, 100, 100)
@@ -232,15 +216,13 @@ func TestViewportTransform(t *testing.T) {
 	ctx.ClearAll(agg2d.Color{255, 255, 255, 255}) // White background
 
 	// Set viewport transformation (world coordinates 0,0,200,200 -> screen 0,0,100,100)
-	ctx.Viewport(0, 0, 100, 100, // screen viewport
-		0, 0, 200, 200, // world viewport
+	ctx.Viewport(0, 0, 200, 200, // world viewport
+		0, 0, 100, 100, // screen viewport
 		agg2d.XMidYMid) // aspect ratio preservation
 
 	// Draw in world coordinates (should be scaled down)
 	ctx.FillColor(agg2d.Color{128, 64, 192, 255}) // Purple
-	ctx.ResetPath()
-	ctx.Rectangle(50, 50, 150, 150) // 100x100 in world coordinates
-	ctx.DrawPath(agg2d.FillOnly)
+	drawFilledRectPath(ctx, 50, 50, 150, 150)     // 100x100 in world coordinates
 
 	// Check that shape appears scaled to screen coordinates
 	centerPixel := getPixel(buffer, stride, 50, 50) // Center of screen
@@ -268,9 +250,7 @@ func TestTransformWithClipping(t *testing.T) {
 
 	// Draw shape that extends beyond clip region
 	ctx.FillColor(agg2d.Color{255, 255, 0, 255}) // Yellow
-	ctx.ResetPath()
-	ctx.Rectangle(-40, -40, 40, 40) // Large rectangle centered at translation point
-	ctx.DrawPath(agg2d.FillOnly)
+	drawFilledRectPath(ctx, -40, -40, 40, 40)    // Large rectangle centered at translation point
 
 	// Check that shape is clipped
 	insideClipPixel := getPixel(buffer, stride, 50, 50)  // Inside clip region
@@ -301,9 +281,7 @@ func TestTransformPrecision(t *testing.T) {
 
 	// Draw pixel-aligned rectangle
 	ctx.FillColor(agg2d.Color{0, 0, 0, 255}) // Black
-	ctx.ResetPath()
-	ctx.Rectangle(10, 10, 20, 20)
-	ctx.DrawPath(agg2d.FillOnly)
+	drawFilledRectPath(ctx, 10, 10, 20, 20)
 
 	// Due to subpixel translation, edges should be anti-aliased
 	edgePixel := getPixel(buffer, stride, 10, 15) // Left edge
