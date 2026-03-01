@@ -489,7 +489,7 @@ func (pf *PixFmtAlphaBlendRGBA[S, B]) BlendFrom(src rgbaBlendFromSource[S], xdst
 	if rowSrc, ok := src.(interface{ RowData(y int) []basics.Int8u }); ok {
 		srcRow := rowSrc.RowData(ysrc)
 		if srcRow != nil {
-			bytesPerPixel := detectBytesPerPixel(rowSrc, ysrc)
+			bytesPerPixel := 4
 			if bytesPerPixel == 4 {
 				if dstRow := pf.RowData(ydst); dstRow != nil && cover == basics.CoverFull {
 					start := 0

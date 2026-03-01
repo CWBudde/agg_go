@@ -250,6 +250,9 @@ func TestRadialGradientMultiStop(t *testing.T) {
 		if abs(int(middleColor.G())-255) > 50 { // Allow some tolerance
 			t.Errorf("Expected green-ish at middle, got %v", middleColor)
 		}
+		if agg2d.fillGradient[128] != green {
+			t.Errorf("Expected exact middle stop color %v at index 128, got %v", green, agg2d.fillGradient[128])
+		}
 
 		// Index 255: should be blue (edge)
 		if agg2d.fillGradient[255] != blue {
@@ -272,6 +275,9 @@ func TestRadialGradientMultiStop(t *testing.T) {
 		// Check start and end colors
 		if agg2d.lineGradient[0] != yellow {
 			t.Errorf("Expected yellow at center, got %v", agg2d.lineGradient[0])
+		}
+		if agg2d.lineGradient[128] != cyan {
+			t.Errorf("Expected exact middle stop color %v at index 128, got %v", cyan, agg2d.lineGradient[128])
 		}
 		if agg2d.lineGradient[255] != magenta {
 			t.Errorf("Expected magenta at edge, got %v", agg2d.lineGradient[255])

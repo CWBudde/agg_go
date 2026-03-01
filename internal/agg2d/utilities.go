@@ -126,7 +126,8 @@ func (agg2d *Agg2D) ClearClipBoxRGBA(r, g, b, a uint8) {
 	// Create a color for clearing
 	clearColor := color.RGBA8[color.Linear]{R: r, G: g, B: b, A: a}
 
-	// Create a temporary renderer base to handle the clearing with clipping
+	// Use a renderer base with the concrete RGBA pixfmt so clip-box clearing
+	// follows the same clipped bar path as AGG.
 	rendererBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]](agg2d.pixfmt)
 
 	// Set the clipping box to match our desired clear area

@@ -355,6 +355,29 @@ func TestBlendImageUsesPremultipliedCompositeRenderer(t *testing.T) {
 	}
 }
 
+func TestImagePixelFormatPreRowDataPremultiplies(t *testing.T) {
+	img := NewImage([]uint8{
+		255, 128, 64, 128,
+		10, 20, 30, 255,
+	}, 2, 1, 2*4)
+
+	src := newImagePixelFormatPre(img)
+	row := src.RowData(0)
+	if row == nil {
+		t.Fatalf("expected row data")
+	}
+
+	want := []uint8{
+		128, 64, 32, 128,
+		10, 20, 30, 255,
+	}
+	for i, v := range want {
+		if row[i] != v {
+			t.Fatalf("row[%d]: got %d want %d", i, row[i], v)
+		}
+	}
+}
+
 func TestBlendImageRespectsClipBox(t *testing.T) {
 	agg2d := NewAgg2D()
 	width, height := 6, 6

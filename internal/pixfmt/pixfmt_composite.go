@@ -251,13 +251,14 @@ func (pf *PixFmtCompositeRGBA[CS, O]) BlendColorHspan(x, y, length int, colors [
 	}
 }
 
-// BlendFrom blends a single scanline from another RGBA surface.
-func (pf *PixFmtCompositeRGBA[CS, O]) BlendFrom(src interface {
+type compositeBlendFromSource[CS color.Space] interface {
 	GetPixel(x, y int) color.RGBA8[CS]
 	Width() int
 	Height() int
-}, xdst, ydst, xsrc, ysrc, length int, cover basics.Int8u,
-) {
+}
+
+// BlendFrom blends a single scanline from another RGBA surface.
+func (pf *PixFmtCompositeRGBA[CS, O]) BlendFrom(src compositeBlendFromSource[CS], xdst, ydst, xsrc, ysrc, length int, cover basics.Int8u) {
 	if ydst < 0 || ydst >= pf.Height() || ysrc < 0 || ysrc >= src.Height() || length <= 0 {
 		return
 	}
@@ -280,6 +281,22 @@ func (pf *PixFmtCompositeRGBA[CS, O]) BlendFrom(src interface {
 	}
 	if length <= 0 {
 		return
+	}
+
+	if rowSrc, ok := src.(interface{ RowData(y int) []basics.Int8u }); ok {
+		srcRow := rowSrc.RowData(ysrc)
+		if srcRow != nil {
+			for i := 0; i < length; i++ {
+				srcOff := (xsrc + i) * 4
+				pf.BlendPixel(xdst+i, ydst, color.RGBA8[CS]{
+					R: srcRow[srcOff+0],
+					G: srcRow[srcOff+1],
+					B: srcRow[srcOff+2],
+					A: srcRow[srcOff+3],
+				}, cover)
+			}
+			return
+		}
 	}
 
 	start := 0

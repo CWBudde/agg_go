@@ -3,6 +3,8 @@ package agg2d
 import (
 	"math"
 	"testing"
+
+	"agg_go/internal/transform"
 )
 
 // Helper function to compare floats with tolerance
@@ -268,6 +270,22 @@ func TestViewportTransformations(t *testing.T) {
 	})
 }
 
+func TestGetViewportTransformDoesNotMutateState(t *testing.T) {
+	agg2d := createTestAgg2D()
+	agg2d.Scale(2.0, 3.0)
+	agg2d.Translate(5.0, -7.0)
+
+	before := agg2d.transform.Copy()
+	got := agg2d.GetViewportTransform(0, 0, 100, 100, 0, 0, 200, 300, XMidYMid)
+	if got == nil {
+		t.Fatalf("expected viewport transform")
+	}
+
+	if !agg2d.transform.Equal(before) {
+		t.Fatalf("GetViewportTransform mutated current transform: got %+v want %+v", agg2d.transform, before)
+	}
+}
+
 func TestParallelogramTransformations(t *testing.T) {
 	const tolerance = 1e-9
 
@@ -468,6 +486,34 @@ func TestDecomposeTransform(t *testing.T) {
 		!floatEqual(components.ScaleY, expectedScaleY, tolerance) {
 		t.Errorf("Scale decomposition failed: expected (%f,%f), got (%f,%f)",
 			expectedScaleX, expectedScaleY, components.ScaleX, components.ScaleY)
+	}
+
+	if !floatEqual(components.SkewX, 0.0, tolerance) || !floatEqual(components.SkewY, 0.0, tolerance) {
+		t.Errorf("Expected zero skew for scale+rotate transform, got (%f,%f)", components.SkewX, components.SkewY)
+	}
+}
+
+func TestDecomposeTransformWithSkew(t *testing.T) {
+	const tolerance = 1e-6
+
+	agg2d := createTestAgg2D()
+	skewX := 0.2
+	skewY := -0.1
+
+	agg2d.Skew(skewX, skewY)
+
+	components := agg2d.DecomposeTransform()
+
+	reconstructed := transform.NewTransAffineFromValues(components.ScaleX, 0, 0, components.ScaleY, 0, 0)
+	reconstructed.Multiply(transform.NewTransAffineFromValues(1.0, math.Tan(components.SkewY), math.Tan(components.SkewX), 1.0, 0.0, 0.0))
+	reconstructed.Multiply(transform.NewTransAffineRotation(components.Rotation))
+
+	original := agg2d.transform.Copy()
+	original.TX = 0
+	original.TY = 0
+
+	if !reconstructed.Equal(original) {
+		t.Fatalf("decomposition should reconstruct skew transform: got %+v want %+v", reconstructed, original)
 	}
 }
 

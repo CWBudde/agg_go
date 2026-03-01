@@ -11,29 +11,6 @@ import (
 	"agg_go/internal/scanline"
 )
 
-// pixFmtAdapter adapts pixfmt to renderer interfaces
-type pixFmtAdapter[C any] struct {
-	pf renderer.PixelFormat[C]
-}
-
-func (p *pixFmtAdapter[C]) Width() int  { return p.pf.Width() }
-func (p *pixFmtAdapter[C]) Height() int { return p.pf.Height() }
-
-// RowPtr method doesn't exist in PixelFormat interface, simplified for now
-func (p *pixFmtAdapter[C]) RowPtr(y int) []uint8 { return nil }
-
-func (p *pixFmtAdapter[C]) BlendPixel(x, y int, c C, cover basics.Int8u) {
-	p.pf.BlendPixel(x, y, c, cover)
-}
-
-func (p *pixFmtAdapter[C]) CopyPixel(x, y int, c C) {
-	p.pf.CopyPixel(x, y, c)
-}
-
-func (p *pixFmtAdapter[C]) BlendHline(x, y, length int, c C, cover basics.Int8u) {
-	p.pf.BlendHline(x, y, length, c, cover)
-}
-
 // baseRendererAdapter adapts renderer base functionality
 type baseRendererAdapter[C any] struct {
 	pf      renderer.PixelFormat[C]
@@ -151,8 +128,8 @@ func (r rasterizerAdapter) SweepScanline(sl renscan.ScanlineInterface) bool {
 	return false
 }
 
-// imagePixelFormat adapts an Image to the renderer.PixelFormat interface
-// This allows images to be used with the rendering pipeline's BlendFrom and CopyFrom methods
+// imagePixelFormat exposes an Image through the source-side accessors used by
+// AGG-style span filters and pixfmt row-copy helpers.
 type imagePixelFormat struct {
 	img      *Image
 	x, y, x0 int
@@ -179,10 +156,6 @@ func (ipf *imagePixelFormat) Width() int {
 
 func (ipf *imagePixelFormat) Height() int {
 	return ipf.img.Height()
-}
-
-func (ipf *imagePixelFormat) PixWidth() int {
-	return 4 // 4 bytes per pixel for RGBA
 }
 
 // ColorType returns the RGBA color type identifier used by span image filters.
@@ -328,84 +301,4 @@ func (ipf *imagePixelFormat) RowPtr(y int) []basics.Int8u {
 
 func (ipf *imagePixelFormat) RowData(y int) []basics.Int8u {
 	return ipf.RowPtr(y)
-}
-
-// CopyPixel - not needed for source image operations, but required by interface
-func (ipf *imagePixelFormat) CopyPixel(x, y int, c color.RGBA8[color.Linear]) {
-	// Not implemented for source images
-}
-
-// BlendPixel - not needed for source image operations, but required by interface
-func (ipf *imagePixelFormat) BlendPixel(x, y int, c color.RGBA8[color.Linear], cover basics.Int8u) {
-	// Not implemented for source images
-}
-
-// CopyHline - not needed for source image operations, but required by interface
-func (ipf *imagePixelFormat) CopyHline(x, y, length int, c color.RGBA8[color.Linear]) {
-	// Not implemented for source images
-}
-
-// BlendHline - not needed for source image operations, but required by interface
-func (ipf *imagePixelFormat) BlendHline(x, y, length int, c color.RGBA8[color.Linear], cover basics.Int8u) {
-	// Not implemented for source images
-}
-
-// CopyVline - not needed for source image operations, but required by interface
-func (ipf *imagePixelFormat) CopyVline(x, y, length int, c color.RGBA8[color.Linear]) {
-	// Not implemented for source images
-}
-
-// BlendVline - not needed for source image operations, but required by interface
-func (ipf *imagePixelFormat) BlendVline(x, y, length int, c color.RGBA8[color.Linear], cover basics.Int8u) {
-	// Not implemented for source images
-}
-
-// CopyColorHspan - not needed for source image operations, but required by interface
-func (ipf *imagePixelFormat) CopyColorHspan(x, y, length int, colors []color.RGBA8[color.Linear]) {
-	// Not implemented for source images
-}
-
-// CopyColorVspan - not needed for source image operations, but required by interface
-func (ipf *imagePixelFormat) CopyColorVspan(x, y, length int, colors []color.RGBA8[color.Linear]) {
-	// Not implemented for source images
-}
-
-// BlendColorHspan - not needed for source image operations, but required by interface
-func (ipf *imagePixelFormat) BlendColorHspan(x, y, length int, colors []color.RGBA8[color.Linear], covers []basics.Int8u, cover basics.Int8u) {
-	// Not implemented for source images
-}
-
-// BlendColorVspan - not needed for source image operations, but required by interface
-func (ipf *imagePixelFormat) BlendColorVspan(x, y, length int, colors []color.RGBA8[color.Linear], covers []basics.Int8u, cover basics.Int8u) {
-	// Not implemented for source images
-}
-
-// Clear - not needed for source image operations, but required by interface
-func (ipf *imagePixelFormat) Clear(c color.RGBA8[color.Linear]) {
-	// Not implemented for source images
-}
-
-// CopyBar - not needed for source image operations, but required by interface
-func (ipf *imagePixelFormat) CopyBar(x1, y1, x2, y2 int, c color.RGBA8[color.Linear]) {
-	// Not implemented for source images
-}
-
-// BlendBar - not needed for source image operations, but required by interface
-func (ipf *imagePixelFormat) BlendBar(x1, y1, x2, y2 int, c color.RGBA8[color.Linear], cover basics.Int8u) {
-	// Not implemented for source images
-}
-
-// BlendSolidHspan - not needed for source image operations, but required by interface
-func (ipf *imagePixelFormat) BlendSolidHspan(x, y, length int, c color.RGBA8[color.Linear], covers []basics.Int8u) {
-	// Not implemented for source images
-}
-
-// BlendSolidVspan - not needed for source image operations, but required by interface
-func (ipf *imagePixelFormat) BlendSolidVspan(x, y, length int, c color.RGBA8[color.Linear], covers []basics.Int8u) {
-	// Not implemented for source images
-}
-
-// Fill - not needed for source image operations, but required by interface
-func (ipf *imagePixelFormat) Fill(c color.RGBA8[color.Linear]) {
-	// Not implemented for source images
 }

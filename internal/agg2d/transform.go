@@ -274,25 +274,33 @@ type TransformComponents struct {
 	SkewY      float64 // Vertical skew
 }
 
-// DecomposeTransform analyzes the current transformation and extracts its components.
-// Note: This is a simplified decomposition. Complex transformations may not decompose cleanly.
+// DecomposeTransform analyzes the current transformation and extracts a
+// canonical set of affine components for this Go extension API.
 func (agg2d *Agg2D) DecomposeTransform() *TransformComponents {
-	// Get matrix components
-	sx := agg2d.transform.SX
-	shy := agg2d.transform.SHY
-	shx := agg2d.transform.SHX
-	sy := agg2d.transform.SY
 	tx := agg2d.transform.TX
 	ty := agg2d.transform.TY
+	rotation := agg2d.transform.GetRotation()
 
-	// Calculate scaling and rotation
-	scaleX := math.Sqrt(sx*sx + shy*shy)
-	scaleY := math.Sqrt(shx*shx + sy*sy)
-	rotation := math.Atan2(shy, sx)
+	// Remove rotation so the remaining 2x2 matrix captures scale and skew.
+	linear := transform.NewTransAffineFromValues(
+		agg2d.transform.SX, agg2d.transform.SHY,
+		agg2d.transform.SHX, agg2d.transform.SY,
+		0.0, 0.0,
+	)
+	linear.Multiply(transform.NewTransAffineRotation(-rotation))
 
-	// Calculate skew (simplified)
-	skewX := math.Atan2(shx, sy) - rotation
-	skewY := 0.0 // Simplified - assumes no Y skew in basic cases
+	scaleX := linear.SX
+	scaleY := linear.SY
+
+	skewX := 0.0
+	if scaleY != 0.0 {
+		skewX = math.Atan2(linear.SHX, scaleY)
+	}
+
+	skewY := 0.0
+	if scaleX != 0.0 {
+		skewY = math.Atan2(linear.SHY, scaleX)
+	}
 
 	return &TransformComponents{
 		ScaleX:     scaleX,
@@ -322,26 +330,18 @@ func (agg2d *Agg2D) InvertTransform() *transform.TransAffine {
 
 // Viewport transformations
 
-// Viewport sets up a viewport transformation.
-// This maps world coordinates to screen coordinates within a viewport.
-// worldX1, worldY1, worldX2, worldY2: world coordinate bounds
-// screenX1, screenY1, screenX2, screenY2: screen coordinate bounds
-// opt: viewport scaling option (how to handle aspect ratio differences)
-// This matches the C++ Agg2D::viewport method.
-func (agg2d *Agg2D) Viewport(worldX1, worldY1, worldX2, worldY2,
+func viewportTransform(worldX1, worldY1, worldX2, worldY2,
 	screenX1, screenY1, screenX2, screenY2 float64, opt ViewportOption,
-) {
-	// Calculate world and screen dimensions
+) *transform.TransAffine {
 	worldWidth := worldX2 - worldX1
 	worldHeight := worldY2 - worldY1
 	screenWidth := screenX2 - screenX1
 	screenHeight := screenY2 - screenY1
 
 	if worldWidth == 0 || worldHeight == 0 || screenWidth == 0 || screenHeight == 0 {
-		return // Invalid dimensions
+		return nil
 	}
 
-	// Calculate scale factors
 	scaleX := screenWidth / worldWidth
 	scaleY := screenHeight / worldHeight
 
@@ -349,31 +349,23 @@ func (agg2d *Agg2D) Viewport(worldX1, worldY1, worldX2, worldY2,
 
 	switch opt {
 	case Anisotropic:
-		// Stretch to fit, ignoring aspect ratio
 		finalScaleX = scaleX
 		finalScaleY = scaleY
 		offsetX = screenX1 - worldX1*scaleX
 		offsetY = screenY1 - worldY1*scaleY
-
 	default:
-		// All other options preserve aspect ratio
-		var uniformScale float64
-		if scaleX < scaleY {
-			uniformScale = scaleX
-		} else {
+		uniformScale := scaleX
+		if scaleY < uniformScale {
 			uniformScale = scaleY
 		}
 
 		finalScaleX = uniformScale
 		finalScaleY = uniformScale
 
-		// Calculate aligned offsets based on viewport option
 		alignedScreenWidth := worldWidth * uniformScale
 		alignedScreenHeight := worldHeight * uniformScale
 
 		var alignX, alignY float64
-
-		// Horizontal alignment
 		switch opt {
 		case XMinYMin, XMinYMid, XMinYMax:
 			alignX = screenX1
@@ -385,7 +377,6 @@ func (agg2d *Agg2D) Viewport(worldX1, worldY1, worldX2, worldY2,
 			alignX = screenX1 + (screenWidth-alignedScreenWidth)/2
 		}
 
-		// Vertical alignment
 		switch opt {
 		case XMinYMin, XMidYMin, XMaxYMin:
 			alignY = screenY1
@@ -401,12 +392,21 @@ func (agg2d *Agg2D) Viewport(worldX1, worldY1, worldX2, worldY2,
 		offsetY = alignY - worldY1*uniformScale
 	}
 
-	// Create viewport transformation matrix
-	viewportTransform := transform.NewTransAffineFromValues(
-		finalScaleX, 0, 0, finalScaleY, offsetX, offsetY)
+	return transform.NewTransAffineFromValues(finalScaleX, 0, 0, finalScaleY, offsetX, offsetY)
+}
 
-	// Apply the viewport transformation
-	agg2d.Affine(viewportTransform)
+// Viewport sets up a viewport transformation.
+// This maps world coordinates to screen coordinates within a viewport.
+// worldX1, worldY1, worldX2, worldY2: world coordinate bounds
+// screenX1, screenY1, screenX2, screenY2: screen coordinate bounds
+// opt: viewport scaling option (how to handle aspect ratio differences)
+// This matches the C++ Agg2D::viewport method.
+func (agg2d *Agg2D) Viewport(worldX1, worldY1, worldX2, worldY2,
+	screenX1, screenY1, screenX2, screenY2 float64, opt ViewportOption,
+) {
+	if viewportTransform := viewportTransform(worldX1, worldY1, worldX2, worldY2, screenX1, screenY1, screenX2, screenY2, opt); viewportTransform != nil {
+		agg2d.Affine(viewportTransform)
+	}
 }
 
 // GetViewportTransform calculates the viewport transformation matrix without applying it.
@@ -414,29 +414,7 @@ func (agg2d *Agg2D) Viewport(worldX1, worldY1, worldX2, worldY2,
 func (agg2d *Agg2D) GetViewportTransform(worldX1, worldY1, worldX2, worldY2,
 	screenX1, screenY1, screenX2, screenY2 float64, opt ViewportOption,
 ) *transform.TransAffine {
-	// Save current transformation
-	savedTransform := transform.NewTransAffineFromValues(
-		agg2d.transform.SX, agg2d.transform.SHY, agg2d.transform.SHX,
-		agg2d.transform.SY, agg2d.transform.TX, agg2d.transform.TY)
-
-	// Reset to identity and apply viewport
-	agg2d.ResetTransform()
-	agg2d.Viewport(worldX1, worldY1, worldX2, worldY2, screenX1, screenY1, screenX2, screenY2, opt)
-
-	// Get the resulting transformation
-	result := transform.NewTransAffineFromValues(
-		agg2d.transform.SX, agg2d.transform.SHY, agg2d.transform.SHX,
-		agg2d.transform.SY, agg2d.transform.TX, agg2d.transform.TY)
-
-	// Restore original transformation
-	agg2d.transform.SX = savedTransform.SX
-	agg2d.transform.SHY = savedTransform.SHY
-	agg2d.transform.SHX = savedTransform.SHX
-	agg2d.transform.SY = savedTransform.SY
-	agg2d.transform.TX = savedTransform.TX
-	agg2d.transform.TY = savedTransform.TY
-
-	return result
+	return viewportTransform(worldX1, worldY1, worldX2, worldY2, screenX1, screenY1, screenX2, screenY2, opt)
 }
 
 // ResetTransform resets the transformation matrix to identity.

@@ -532,7 +532,7 @@ func (agg2d *Agg2D) SetAntiAliasGamma(gamma float64) {
 	agg2d.updateRasterizerGamma()
 }
 
-// Math helper functions (simplified)
+// Math helpers local to the rendering package.
 func cos(x float64) float64 {
 	return math.Cos(x)
 }
