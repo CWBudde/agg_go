@@ -33,6 +33,7 @@ func main() {
 	js.Global().Set("setGouraudDilation", js.FuncOf(setGouraudDilation))
 	js.Global().Set("setImageFilter", js.FuncOf(setImageFilter))
 	js.Global().Set("setImageFilterRadius", js.FuncOf(setImageFilterRadius))
+	js.Global().Set("setImageFilterAngle", js.FuncOf(setImageFilterAngle))
 
 	// Keep the Go program running
 	select {}
@@ -133,6 +134,13 @@ func setImageFilter(this js.Value, args []js.Value) interface{} {
 func setImageFilterRadius(this js.Value, args []js.Value) interface{} {
 	if len(args) > 0 {
 		imgFilterRadius = args[0].Float()
+	}
+	return nil
+}
+
+func setImageFilterAngle(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		imgFilterAngle = args[0].Float()
 	}
 	return nil
 }

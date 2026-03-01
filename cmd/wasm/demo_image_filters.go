@@ -80,11 +80,6 @@ func drawImageFiltersDemo() {
 		agg2d.TransformImageParallelogram(testImage, 0, 0, int(imgW), int(imgH), para)
 	}
 	
-	// Increment angle for animation-like feel on re-render
-	imgFilterAngle += 5.0
-	if imgFilterAngle >= 360.0 {
-		imgFilterAngle = 0.0
-	}
 }
 
 func createTestImage(w, h int) *agg.Image {
