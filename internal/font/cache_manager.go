@@ -232,6 +232,11 @@ func (fcm *FontCacheManager) Glyph(charCode uint) *GlyphCache {
 
 	// Look for cached glyph
 	if glyph := fcm.currentCache.FindGlyph(charCode); glyph != nil {
+		// Outline paths are held by the font engine adaptor, so refresh engine state
+		// to the current glyph before returning cached metrics/advance data.
+		if glyph.DataType == GlyphDataOutline {
+			_ = fcm.fontEngine.PrepareGlyph(charCode)
+		}
 		return glyph
 	}
 

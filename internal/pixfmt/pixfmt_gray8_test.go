@@ -269,3 +269,48 @@ func TestPixFmtGray8CopyFromOverlapSameRow(t *testing.T) {
 		}
 	}
 }
+
+func TestPixFmtGray8BlendFromColor(t *testing.T) {
+	buf := make([]basics.Int8u, 3)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, 3, 1, 3)
+	pf := NewPixFmtGray8(rbuf)
+	src := &grayRowSource{row: []basics.Int8u{0, 128, 255}}
+	c := color.NewGray8WithAlpha[color.Linear](200, 255)
+
+	pf.BlendFromColor(src, c, 0, 0, 0, 0, 3, basics.CoverFull)
+
+	if got := pf.GetPixel(0, 0).V; got != 0 {
+		t.Fatalf("expected zero-coverage pixel to stay empty, got %d", got)
+	}
+	mid := pf.GetPixel(1, 0).V
+	if mid == 0 || mid >= c.V {
+		t.Fatalf("expected partial blend at x=1, got %d", mid)
+	}
+	if got := pf.GetPixel(2, 0).V; got != c.V {
+		t.Fatalf("expected full-coverage pixel to match source gray, got %d want %d", got, c.V)
+	}
+}
+
+func TestPixFmtGray8BlendFromLUT(t *testing.T) {
+	buf := make([]basics.Int8u, 3)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, 3, 1, 3)
+	pf := NewPixFmtGray8(rbuf)
+	src := &grayRowSource{row: []basics.Int8u{0, 2, 1}}
+	lut := []color.Gray8[color.Linear]{
+		{V: 10, A: 255},
+		{V: 40, A: 255},
+		{V: 70, A: 255},
+	}
+
+	pf.BlendFromLUT(src, lut, 0, 0, 0, 0, 3, basics.CoverFull)
+
+	if got := pf.GetPixel(0, 0).V; got != lut[0].V {
+		t.Fatalf("lut mismatch at x=0: got %d want %d", got, lut[0].V)
+	}
+	if got := pf.GetPixel(1, 0).V; got != lut[2].V {
+		t.Fatalf("lut mismatch at x=1: got %d want %d", got, lut[2].V)
+	}
+	if got := pf.GetPixel(2, 0).V; got != lut[1].V {
+		t.Fatalf("lut mismatch at x=2: got %d want %d", got, lut[1].V)
+	}
+}

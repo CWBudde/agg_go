@@ -25,9 +25,11 @@ func (m *mockAMaskPixfmt) Height() int { return m.height }
 func (m *mockAMaskPixfmt) GetPixel(x, y int) color.RGBA8[color.Linear] {
 	return m.pixels[[2]int{x, y}]
 }
+
 func (m *mockAMaskPixfmt) CopyPixel(x, y int, c color.RGBA8[color.Linear]) {
 	m.pixels[[2]int{x, y}] = c
 }
+
 func (m *mockAMaskPixfmt) BlendPixel(x, y int, c color.RGBA8[color.Linear], cover basics.Int8u) {
 	m.pixels[[2]int{x, y}] = c
 }
@@ -35,10 +37,13 @@ func (m *mockAMaskPixfmt) CopyHline(x, y, length int, c color.RGBA8[color.Linear
 func (m *mockAMaskPixfmt) CopyVline(x, y, length int, c color.RGBA8[color.Linear]) {}
 func (m *mockAMaskPixfmt) BlendHline(x, y, length int, c color.RGBA8[color.Linear], cover basics.Int8u) {
 }
+
 func (m *mockAMaskPixfmt) BlendVline(x, y, length int, c color.RGBA8[color.Linear], cover basics.Int8u) {
 }
+
 func (m *mockAMaskPixfmt) BlendSolidHspan(x, y, length int, c color.RGBA8[color.Linear], covers []basics.Int8u) {
 }
+
 func (m *mockAMaskPixfmt) BlendSolidVspan(x, y, length int, c color.RGBA8[color.Linear], covers []basics.Int8u) {
 }
 
@@ -53,16 +58,19 @@ func (zeroAlphaMask) FillHspan(x, y int, dst []basics.Int8u, length int) {
 		dst[i] = 0
 	}
 }
+
 func (zeroAlphaMask) CombineHspan(x, y int, dst []basics.Int8u, length int) {
 	for i := 0; i < length && i < len(dst); i++ {
 		dst[i] = 0
 	}
 }
+
 func (zeroAlphaMask) FillVspan(x, y int, dst []basics.Int8u, length int) {
 	for i := 0; i < length && i < len(dst); i++ {
 		dst[i] = 0
 	}
 }
+
 func (zeroAlphaMask) CombineVspan(x, y int, dst []basics.Int8u, length int) {
 	for i := 0; i < length && i < len(dst); i++ {
 		dst[i] = 0

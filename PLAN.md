@@ -85,13 +85,19 @@ Files:
 ### 1.3 Text parity (minimum acceptable)
 
 - [x] Remove rectangle fallback glyph rendering.
-- [ ] Render glyph scanlines/paths through real rasterizer/scanline pipeline.
-- [ ] Match vector vs raster cache behavior contract from AGG2D.
+- [x] Render glyph scanlines/paths through real rasterizer/scanline pipeline.
+- [x] Match vector vs raster cache behavior contract from AGG2D.
 
 Files:
 
 - `internal/agg2d/text.go`
 - `internal/font/*` and/or `internal/fonts/*`
+
+Notes:
+
+- Raster glyph rendering now routes through scanline renderers (`RenderScanlinesAASolid`/`RenderScanlinesBinSolid`) via a glyph rasterizer adapter instead of direct per-row blending.
+- Outline glyph positioning now follows AGG2D's embedded-adaptor contract (per-glyph translation + text-angle transform path).
+- Kerning in `TextWidth`/`Text` now uses glyph indices, and outline cache hits refresh engine outline state before adaptor initialization.
 
 ### 1.4 Clipping and renderer-state parity
 

@@ -9,7 +9,8 @@ func detectBytesPerPixel(src interface {
 	RowData(y int) []basics.Int8u
 	Width() int
 	Height() int
-}, sampleY int) int {
+}, sampleY int,
+) int {
 	if pixWidthProvider, ok := src.(interface{ PixWidth() int }); ok {
 		return pixWidthProvider.PixWidth()
 	}

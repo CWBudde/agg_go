@@ -63,6 +63,14 @@ func (pf *PixFmtAlphaBlendRGB[S, B]) Pixel(x, y int) color.RGB8[S] {
 	return pf.GetPixel(x, y)
 }
 
+// RowData returns the raw row bytes for transfer operations.
+func (pf *PixFmtAlphaBlendRGB[S, B]) RowData(y int) []basics.Int8u {
+	if y < 0 || y >= pf.Height() {
+		return nil
+	}
+	return buffer.RowU8(pf.rbuf, y)
+}
+
 func (pf *PixFmtAlphaBlendRGB[S, B]) CopyPixel(x, y int, c color.RGB8[S]) {
 	if !InBounds(x, y, pf.Width(), pf.Height()) {
 		return
@@ -422,6 +430,106 @@ func (pf *PixFmtAlphaBlendRGB[CS, B]) CopyFrom(src *PixFmtAlphaBlendRGB[CS, B], 
 		for x, pixel := range row {
 			pf.CopyPixel(dstX+x, dstY+y, pixel)
 		}
+	}
+}
+
+// BlendFromColor blends a single color through a grayscale source row used as coverage.
+func (pf *PixFmtAlphaBlendRGB[S, B]) BlendFromColor(src interface {
+	RowData(y int) []basics.Int8u
+	Width() int
+	Height() int
+}, c color.RGB8[S], xdst, ydst, xsrc, ysrc, length int, alpha, cover basics.Int8u,
+) {
+	if ydst < 0 || ydst >= pf.Height() || ysrc < 0 || ysrc >= src.Height() || length <= 0 || alpha == 0 {
+		return
+	}
+
+	if xsrc < 0 {
+		length += xsrc
+		xdst -= xsrc
+		xsrc = 0
+	}
+	if xdst < 0 {
+		length += xdst
+		xsrc -= xdst
+		xdst = 0
+	}
+	if xsrc+length > src.Width() {
+		length = src.Width() - xsrc
+	}
+	if xdst+length > pf.Width() {
+		length = pf.Width() - xdst
+	}
+	if length <= 0 {
+		return
+	}
+
+	srcRow := src.RowData(ysrc)
+	if srcRow == nil {
+		return
+	}
+
+	bytesPerPixel := detectBytesPerPixel(src, ysrc)
+	for i := 0; i < length; i++ {
+		srcOffset := (xsrc + i) * bytesPerPixel
+		if srcOffset < 0 || srcOffset >= len(srcRow) {
+			continue
+		}
+		scaledCover := color.RGBA8MultCover(srcRow[srcOffset], cover)
+		if scaledCover == 0 {
+			continue
+		}
+		pf.BlendPixel(xdst+i, ydst, c, alpha, scaledCover)
+	}
+}
+
+// BlendFromLUT blends colors from a lookup table indexed by a grayscale source row.
+func (pf *PixFmtAlphaBlendRGB[S, B]) BlendFromLUT(src interface {
+	RowData(y int) []basics.Int8u
+	Width() int
+	Height() int
+}, colorLUT []color.RGB8[S], xdst, ydst, xsrc, ysrc, length int, alpha, cover basics.Int8u,
+) {
+	if ydst < 0 || ydst >= pf.Height() || ysrc < 0 || ysrc >= src.Height() || length <= 0 || len(colorLUT) == 0 || alpha == 0 {
+		return
+	}
+
+	if xsrc < 0 {
+		length += xsrc
+		xdst -= xsrc
+		xsrc = 0
+	}
+	if xdst < 0 {
+		length += xdst
+		xsrc -= xdst
+		xdst = 0
+	}
+	if xsrc+length > src.Width() {
+		length = src.Width() - xsrc
+	}
+	if xdst+length > pf.Width() {
+		length = pf.Width() - xdst
+	}
+	if length <= 0 {
+		return
+	}
+
+	srcRow := src.RowData(ysrc)
+	if srcRow == nil {
+		return
+	}
+
+	bytesPerPixel := detectBytesPerPixel(src, ysrc)
+	for i := 0; i < length; i++ {
+		srcOffset := (xsrc + i) * bytesPerPixel
+		if srcOffset < 0 || srcOffset >= len(srcRow) {
+			continue
+		}
+		lutIndex := int(srcRow[srcOffset])
+		if lutIndex >= len(colorLUT) {
+			continue
+		}
+		pf.BlendPixel(xdst+i, ydst, colorLUT[lutIndex], alpha, cover)
 	}
 }
 

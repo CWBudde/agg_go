@@ -92,3 +92,32 @@ func TestRenderGlyphScanlinesMonoDecodesBits(t *testing.T) {
 		}
 	}
 }
+
+func TestRenderGlyphScanlinesUsesGeneralBlendMode(t *testing.T) {
+	agg2d := NewAgg2D()
+	width, height := 4, 4
+	buf := make([]byte, width*height*4)
+	agg2d.Attach(buf, width, height, width*4)
+	agg2d.FillColor(Color{255, 0, 0, 255})
+
+	data := []byte{255}
+	bounds := basics.Rect[int]{X1: 1, Y1: 1, X2: 2, Y2: 2}
+	adaptor := font.NewSerializedScanlinesAdaptorAA(data, bounds)
+	glyph := &font.GlyphCache{DataType: font.GlyphDataGray8}
+
+	agg2d.SetBlendMode(BlendAlpha)
+	agg2d.ClearAll(Color{0, 255, 0, 255})
+	agg2d.renderGlyphScanlines(adaptor, glyph, 0, 0)
+	r, g, b, a := pixelAt(buf, width, 1, 1)
+	if r != 255 || g != 0 || b != 0 || a != 255 {
+		t.Fatalf("alpha blend expected pure source red, got rgba(%d,%d,%d,%d)", r, g, b, a)
+	}
+
+	agg2d.SetBlendMode(BlendMultiply)
+	agg2d.ClearAll(Color{0, 255, 0, 255})
+	agg2d.renderGlyphScanlines(adaptor, glyph, 0, 0)
+	r, g, b, a = pixelAt(buf, width, 1, 1)
+	if r == 255 && g == 0 && b == 0 {
+		t.Fatalf("multiply blend should not match pure source red, got rgba(%d,%d,%d,%d)", r, g, b, a)
+	}
+}

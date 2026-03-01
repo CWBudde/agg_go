@@ -168,6 +168,118 @@ func (pf *PixFmtAlphaBlendGray[CS, B]) CopyFrom(src interface {
 	}
 }
 
+// BlendFromColor blends a single color through a grayscale source row used as coverage.
+func (pf *PixFmtAlphaBlendGray[CS, B]) BlendFromColor(src interface {
+	RowData(y int) []basics.Int8u
+	Width() int
+	Height() int
+}, c color.Gray8[CS], xdst, ydst, xsrc, ysrc, length int, cover basics.Int8u,
+) {
+	if ydst < 0 || ydst >= pf.Height() || ysrc < 0 || ysrc >= src.Height() || length <= 0 || c.A == 0 {
+		return
+	}
+
+	if xsrc < 0 {
+		length += xsrc
+		xdst -= xsrc
+		xsrc = 0
+	}
+	if xdst < 0 {
+		length += xdst
+		xsrc -= xdst
+		xdst = 0
+	}
+	if xsrc+length > src.Width() {
+		length = src.Width() - xsrc
+	}
+	if xdst+length > pf.Width() {
+		length = pf.Width() - xdst
+	}
+	if length <= 0 {
+		return
+	}
+
+	srcRow := src.RowData(ysrc)
+	if srcRow == nil {
+		return
+	}
+
+	bytesPerPixel := detectBytesPerPixel(src, ysrc)
+	for i := 0; i < length; i++ {
+		srcOffset := (xsrc + i) * bytesPerPixel
+		if srcOffset < 0 || srcOffset >= len(srcRow) {
+			continue
+		}
+		scaledCover := color.Gray8Multiply(srcRow[srcOffset], cover)
+		if scaledCover == 0 {
+			continue
+		}
+		if scaledCover == basics.CoverFull && c.A == 255 {
+			pf.CopyPixel(xdst+i, ydst, c)
+			continue
+		}
+		pf.BlendPixel(xdst+i, ydst, c, scaledCover)
+	}
+}
+
+// BlendFromLUT blends colors from a lookup table indexed by a grayscale source row.
+func (pf *PixFmtAlphaBlendGray[CS, B]) BlendFromLUT(src interface {
+	RowData(y int) []basics.Int8u
+	Width() int
+	Height() int
+}, colorLUT []color.Gray8[CS], xdst, ydst, xsrc, ysrc, length int, cover basics.Int8u,
+) {
+	if ydst < 0 || ydst >= pf.Height() || ysrc < 0 || ysrc >= src.Height() || length <= 0 || len(colorLUT) == 0 {
+		return
+	}
+
+	if xsrc < 0 {
+		length += xsrc
+		xdst -= xsrc
+		xsrc = 0
+	}
+	if xdst < 0 {
+		length += xdst
+		xsrc -= xdst
+		xdst = 0
+	}
+	if xsrc+length > src.Width() {
+		length = src.Width() - xsrc
+	}
+	if xdst+length > pf.Width() {
+		length = pf.Width() - xdst
+	}
+	if length <= 0 {
+		return
+	}
+
+	srcRow := src.RowData(ysrc)
+	if srcRow == nil {
+		return
+	}
+
+	bytesPerPixel := detectBytesPerPixel(src, ysrc)
+	for i := 0; i < length; i++ {
+		srcOffset := (xsrc + i) * bytesPerPixel
+		if srcOffset < 0 || srcOffset >= len(srcRow) {
+			continue
+		}
+		lutIndex := int(srcRow[srcOffset])
+		if lutIndex >= len(colorLUT) {
+			continue
+		}
+		lutColor := colorLUT[lutIndex]
+		if lutColor.A == 0 {
+			continue
+		}
+		if cover == basics.CoverFull && lutColor.A == 255 {
+			pf.CopyPixel(xdst+i, ydst, lutColor)
+			continue
+		}
+		pf.BlendPixel(xdst+i, ydst, lutColor, cover)
+	}
+}
+
 // Line operations
 
 // CopyHline copies a horizontal line

@@ -8,6 +8,25 @@ import (
 	"agg_go/internal/color"
 )
 
+type grayRowSource struct {
+	row []basics.Int8u
+}
+
+func (s *grayRowSource) RowData(y int) []basics.Int8u {
+	if y != 0 {
+		return nil
+	}
+	return s.row
+}
+
+func (s *grayRowSource) Width() int {
+	return len(s.row)
+}
+
+func (s *grayRowSource) Height() int {
+	return 1
+}
+
 func TestRGBAPixelType(t *testing.T) {
 	p := &RGBAPixelType{}
 	p.Set(128, 64, 192, 255)
@@ -283,5 +302,49 @@ func TestPixFmtRGBA32BlendFromOverlapSameRow(t *testing.T) {
 		if got := pf.GetPixel(x, 0).R; got != want {
 			t.Fatalf("BlendFrom overlap mismatch at x=%d: got %d want %d", x, got, want)
 		}
+	}
+}
+
+func TestPixFmtRGBA32BlendFromColor(t *testing.T) {
+	buf := make([]basics.Int8u, 3*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, 3, 1, 3*4)
+	pf := NewPixFmtRGBA32[color.Linear](rbuf)
+	src := &grayRowSource{row: []basics.Int8u{0, 128, 255}}
+	c := color.NewRGBA8[color.Linear](200, 40, 20, 255)
+
+	pf.BlendFromColor(src, c, 0, 0, 0, 0, 3, basics.CoverFull)
+
+	if got := pf.GetPixel(0, 0); got.R != 0 || got.G != 0 || got.B != 0 || got.A != 0 {
+		t.Fatalf("expected zero-coverage pixel to stay empty, got %+v", got)
+	}
+	mid := pf.GetPixel(1, 0)
+	if mid.R == 0 || mid.R >= c.R {
+		t.Fatalf("expected partial blend at x=1, got %+v", mid)
+	}
+	if got := pf.GetPixel(2, 0); got != c {
+		t.Fatalf("expected full-coverage pixel to match source color, got %+v want %+v", got, c)
+	}
+}
+
+func TestPixFmtRGBA32BlendFromLUT(t *testing.T) {
+	buf := make([]basics.Int8u, 3*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, 3, 1, 3*4)
+	pf := NewPixFmtRGBA32[color.Linear](rbuf)
+	src := &grayRowSource{row: []basics.Int8u{0, 2, 1}}
+	lut := make([]color.RGBA8[color.Linear], 3)
+	lut[0] = color.NewRGBA8[color.Linear](10, 20, 30, 255)
+	lut[1] = color.NewRGBA8[color.Linear](40, 50, 60, 255)
+	lut[2] = color.NewRGBA8[color.Linear](70, 80, 90, 255)
+
+	pf.BlendFromLUT(src, lut, 0, 0, 0, 0, 3, basics.CoverFull)
+
+	if got := pf.GetPixel(0, 0); got != lut[0] {
+		t.Fatalf("lut mismatch at x=0: got %+v want %+v", got, lut[0])
+	}
+	if got := pf.GetPixel(1, 0); got != lut[2] {
+		t.Fatalf("lut mismatch at x=1: got %+v want %+v", got, lut[2])
+	}
+	if got := pf.GetPixel(2, 0); got != lut[1] {
+		t.Fatalf("lut mismatch at x=2: got %+v want %+v", got, lut[1])
 	}
 }

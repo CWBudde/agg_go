@@ -569,6 +569,10 @@ func (fe *FontEngineFreetype) WriteGlyphTo(data []byte) {
 		bitmap := &glyph.bitmap
 		srcData := unsafe.Slice((*byte)(bitmap.buffer), fe.dataSize)
 		copy(data, srcData)
+	case font.GlyphDataMono:
+		bitmap := &glyph.bitmap
+		srcData := unsafe.Slice((*byte)(bitmap.buffer), fe.dataSize)
+		copy(data, srcData)
 	}
 }
 

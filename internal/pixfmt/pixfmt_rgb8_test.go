@@ -260,6 +260,51 @@ func TestPixFmtRGB24Clear(t *testing.T) {
 	}
 }
 
+func TestPixFmtRGB24BlendFromColor(t *testing.T) {
+	bufData := make([]basics.Int8u, 3*3)
+	rbuf := buffer.NewRenderingBufferU8WithData(bufData, 3, 1, 3*3)
+	pixfmt := NewPixFmtRGB24(rbuf)
+	src := &grayRowSource{row: []basics.Int8u{0, 128, 255}}
+	c := color.RGB8Linear{R: 200, G: 40, B: 20}
+
+	pixfmt.BlendFromColor(src, c, 0, 0, 0, 0, 3, 255, basics.CoverFull)
+
+	if got := pixfmt.GetPixel(0, 0); got.R != 0 || got.G != 0 || got.B != 0 {
+		t.Fatalf("expected zero-coverage pixel to stay empty, got %+v", got)
+	}
+	mid := pixfmt.GetPixel(1, 0)
+	if mid.R == 0 || mid.R >= c.R {
+		t.Fatalf("expected partial blend at x=1, got %+v", mid)
+	}
+	if got := pixfmt.GetPixel(2, 0); got != c {
+		t.Fatalf("expected full-coverage pixel to match source color, got %+v want %+v", got, c)
+	}
+}
+
+func TestPixFmtRGB24BlendFromLUT(t *testing.T) {
+	bufData := make([]basics.Int8u, 3*3)
+	rbuf := buffer.NewRenderingBufferU8WithData(bufData, 3, 1, 3*3)
+	pixfmt := NewPixFmtRGB24(rbuf)
+	src := &grayRowSource{row: []basics.Int8u{0, 2, 1}}
+	lut := []color.RGB8Linear{
+		{R: 10, G: 20, B: 30},
+		{R: 40, G: 50, B: 60},
+		{R: 70, G: 80, B: 90},
+	}
+
+	pixfmt.BlendFromLUT(src, lut, 0, 0, 0, 0, 3, 255, basics.CoverFull)
+
+	if got := pixfmt.GetPixel(0, 0); got != lut[0] {
+		t.Fatalf("lut mismatch at x=0: got %+v want %+v", got, lut[0])
+	}
+	if got := pixfmt.GetPixel(1, 0); got != lut[2] {
+		t.Fatalf("lut mismatch at x=1: got %+v want %+v", got, lut[2])
+	}
+	if got := pixfmt.GetPixel(2, 0); got != lut[1] {
+		t.Fatalf("lut mismatch at x=2: got %+v want %+v", got, lut[1])
+	}
+}
+
 func TestPixFmtBGR24(t *testing.T) {
 	width, height := 4, 4
 	bufData := make([]basics.Int8u, width*height*3)

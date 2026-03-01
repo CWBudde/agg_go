@@ -74,8 +74,8 @@ func (b *baseRendererAdapter[C]) BlendPixel(x, y int, c C, cover basics.Int8u) {
 	b.rendererBase().BlendPixel(x, y, c, cover)
 }
 
-func (b *baseRendererAdapter[C]) BlendHline(x, y, length int, c C, cover basics.Int8u) {
-	b.rendererBase().BlendHline(x, y, x+length-1, c, cover)
+func (b *baseRendererAdapter[C]) BlendHline(x, y, x2 int, c C, cover basics.Int8u) {
+	b.rendererBase().BlendHline(x, y, x2, c, cover)
 }
 
 func (b *baseRendererAdapter[C]) BlendColorHspan(x, y, length int, colors []C, covers []basics.Int8u, cover basics.Int8u) {
