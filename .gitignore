@@ -66,6 +66,10 @@ Thumbs.db
 # Just build artifacts
 .just/
 
+# Web and WASM artifacts
+/web/main.wasm
+/web/wasm_exec.js
+
 # Profiling files
 *.pprof
 cpu.prof

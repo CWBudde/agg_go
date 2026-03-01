@@ -25,6 +25,19 @@ build-lib:
     @echo "Building AGG Go library..."
     go build ./...
 
+# Build WASM demo
+build-wasm:
+    @echo "Building AGG Go WASM demo..."
+    @mkdir -p web
+    @cp "$$(go env GOROOT)/lib/wasm/wasm_exec.js" web/ || cp "$$(go env GOROOT)/misc/wasm/wasm_exec.js" web/
+    @GOOS=js GOARCH=wasm go build -o web/main.wasm ./cmd/wasm/main.go
+    @echo "WASM build complete: web/main.wasm"
+
+# Serve the web demo locally
+serve-web: build-wasm
+    @echo "Serving AGG Go web demo on http://localhost:8080"
+    @go run -e "package main; import ('net/http'; 'log'); func main() { log.Println('Serving on :8080'); log.Fatal(http.ListenAndServe(':8080', http.FileServer(http.Dir('web')))) }"
+
 # Build all examples
 build-examples:
     @echo "Building core examples..."
