@@ -2977,51 +2977,45 @@ var MCS13Prop = []byte{
 	// ... (MCS13Prop data is truncated in the output but the complete data is in the script)
 }
 
+func cloneFontData(src []byte) []byte {
+	dst := make([]byte, len(src))
+	copy(dst, src)
+	return dst
+}
+
 // GetGSE4x6 returns the GSE 4x6 pixel bitmap font data
 func GetGSE4x6() []byte {
-	// Return a copy to prevent modification of the original data
-	result := make([]byte, len(GSE4x6))
-	copy(result, GSE4x6)
-	return result
+	return cloneFontData(GSE4x6)
 }
 
 // GetGSE5x7 returns the GSE 5x7 pixel bitmap font data
 func GetGSE5x7() []byte {
-	// Return a copy to prevent modification of the original data
-	result := make([]byte, len(GSE5x7))
-	copy(result, GSE5x7)
-	return result
+	return cloneFontData(GSE5x7)
 }
 
 // GetGSE4x8 returns the GSE 4x8 pixel bitmap font data
 func GetGSE4x8() []byte {
-	result := make([]byte, len(GSE4x8))
-	copy(result, GSE4x8)
-	return result
+	return cloneFontData(GSE4x8)
 }
 
 // GetGSE5x9 returns the GSE 5x9 pixel bitmap font data
 func GetGSE5x9() []byte {
-	result := make([]byte, len(GSE5x9))
-	copy(result, GSE5x9)
-	return result
+	return cloneFontData(GSE5x9)
 }
 
 // GetGSE6x9 returns the GSE 6x9 pixel bitmap font data
 func GetGSE6x9() []byte {
-	result := make([]byte, len(GSE6x9))
-	copy(result, GSE6x9)
-	return result
+	return cloneFontData(GSE6x9)
 }
 
 // GetGSE6x12 returns the GSE 6x12 pixel bitmap font data
 func GetGSE6x12() []byte {
-	return GSE6x12
+	return cloneFontData(GSE6x12)
 }
 
 // GetGSE7x11 returns the GSE 7x11 pixel bitmap font data
 func GetGSE7x11() []byte {
-	return GSE7x11
+	return cloneFontData(GSE7x11)
 }
 
 // GSE7x11Bold - gse7x11_bold font data
@@ -3117,7 +3111,7 @@ var GSE7x11Bold = []byte{
 
 // GetGSE7x11Bold returns the GSE 7x11 bold bitmap font data
 func GetGSE7x11Bold() []byte {
-	return GSE7x11Bold
+	return cloneFontData(GSE7x11Bold)
 }
 
 // GSE7x15 - gse7x15 font data
@@ -3237,7 +3231,7 @@ var GSE7x15 = []byte{
 
 // GetGSE7x15 returns the GSE 7x15 pixel bitmap font data
 func GetGSE7x15() []byte {
-	return GSE7x15
+	return cloneFontData(GSE7x15)
 }
 
 // GSE7x15Bold - gse7x15_bold font data
@@ -3357,7 +3351,7 @@ var GSE7x15Bold = []byte{
 
 // GetGSE7x15Bold returns the GSE 7x15 bold pixel bitmap font data
 func GetGSE7x15Bold() []byte {
-	return GSE7x15Bold
+	return cloneFontData(GSE7x15Bold)
 }
 
 // GSE8x16 - gse8x16 font data
@@ -3483,7 +3477,7 @@ var GSE8x16 = []byte{
 
 // GetGSE8x16 returns the GSE 8x16 pixel bitmap font data
 func GetGSE8x16() []byte {
-	return GSE8x16
+	return cloneFontData(GSE8x16)
 }
 
 // GSE8x16Bold - gse8x16_bold font data
@@ -3609,15 +3603,12 @@ var GSE8x16Bold = []byte{
 
 // GetGSE8x16Bold returns the GSE 8x16 bold pixel bitmap font data
 func GetGSE8x16Bold() []byte {
-	return GSE8x16Bold
+	return cloneFontData(GSE8x16Bold)
 }
 
 // GetMCS5x10Mono returns the MCS 5x10 monospace bitmap font data
 func GetMCS5x10Mono() []byte {
-	// Return a copy to prevent modification of the original data
-	result := make([]byte, len(MCS5x10Mono))
-	copy(result, MCS5x10Mono)
-	return result
+	return cloneFontData(MCS5x10Mono)
 }
 
 // MCS5x11mono - mcs5x11_mono font data
@@ -3713,10 +3704,7 @@ var MCS5x11mono = []byte{
 
 // GetMCS5x11Mono returns the MCS 5x11 monospace bitmap font data
 func GetMCS5x11Mono() []byte {
-	// Return a copy to prevent modification of the original data
-	result := make([]byte, len(MCS5x11mono))
-	copy(result, MCS5x11mono)
-	return result
+	return cloneFontData(MCS5x11mono)
 }
 
 // MCS6x10mono - mcs6x10_mono font data
@@ -3806,10 +3794,7 @@ var MCS6x10mono = []byte{
 
 // GetMCS6x10Mono returns the MCS 6x10 monospace bitmap font data
 func GetMCS6x10Mono() []byte {
-	// Return a copy to prevent modification of the original data
-	result := make([]byte, len(MCS6x10mono))
-	copy(result, MCS6x10mono)
-	return result
+	return cloneFontData(MCS6x10mono)
 }
 
 // MCS6x11mono - mcs6x11_mono font data
@@ -3905,10 +3890,7 @@ var MCS6x11mono = []byte{
 
 // GetMCS6x11Mono returns the MCS 6x11 monospace bitmap font data
 func GetMCS6x11Mono() []byte {
-	// Return a copy to prevent modification of the original data
-	result := make([]byte, len(MCS6x11mono))
-	copy(result, MCS6x11mono)
-	return result
+	return cloneFontData(MCS6x11mono)
 }
 
 // MCS7x12MonoHigh - MCS 7x12 monospace high bitmap font
@@ -4218,10 +4200,7 @@ var MCS7x12MonoHigh = []byte{
 
 // GetMCS7x12MonoHigh returns the MCS 7x12 monospace high bitmap font data
 func GetMCS7x12MonoHigh() []byte {
-	// Return a copy to prevent modification of the original data
-	result := make([]byte, len(MCS7x12MonoHigh))
-	copy(result, MCS7x12MonoHigh)
-	return result
+	return cloneFontData(MCS7x12MonoHigh)
 }
 
 // MCS7x12MonoLow - MCS 7x12 monospace low bitmap font
@@ -4531,46 +4510,37 @@ var MCS7x12MonoLow = []byte{
 
 // GetMCS7x12MonoLow returns the MCS 7x12 monospace low bitmap font data
 func GetMCS7x12MonoLow() []byte {
-	// Return a copy to prevent modification of the original data
-	result := make([]byte, len(MCS7x12MonoLow))
-	copy(result, MCS7x12MonoLow)
-	return result
+	return cloneFontData(MCS7x12MonoLow)
 }
 
 // GetMCS11Prop returns the MCS 11pt proportional bitmap font data
 func GetMCS11Prop() []byte {
-	return MCS11Prop
+	return cloneFontData(MCS11Prop)
 }
 
 // GetMCS11PropCondensed returns the MCS 11pt proportional condensed bitmap font data
 func GetMCS11PropCondensed() []byte {
-	return MCS11PropCondensed
+	return cloneFontData(MCS11PropCondensed)
 }
 
 // GetMCS12Prop returns the MCS 12pt proportional bitmap font data
 func GetMCS12Prop() []byte {
-	return MCS12Prop
+	return cloneFontData(MCS12Prop)
 }
 
 // GetMCS13Prop returns the MCS 13pt proportional bitmap font data
 func GetMCS13Prop() []byte {
-	return MCS13Prop
+	return cloneFontData(MCS13Prop)
 }
 
 // GetVerdana12 returns the Verdana 12pt bitmap font data
 func GetVerdana12() []byte {
-	// Return a copy to prevent modification of the original data
-	result := make([]byte, len(Verdana12))
-	copy(result, Verdana12)
-	return result
+	return cloneFontData(Verdana12)
 }
 
 // GetVerdana12Bold returns the Verdana 12pt bold bitmap font data
 func GetVerdana12Bold() []byte {
-	// Return a copy to prevent modification of the original data
-	result := make([]byte, len(Verdana12Bold))
-	copy(result, Verdana12Bold)
-	return result
+	return cloneFontData(Verdana12Bold)
 }
 
 // Verdana13 - 13pt Verdana bitmap font
@@ -4694,10 +4664,7 @@ var Verdana13 = []byte{
 
 // GetVerdana13 returns the Verdana 13pt bitmap font data
 func GetVerdana13() []byte {
-	// Return a copy to prevent modification of the original data
-	result := make([]byte, len(Verdana13))
-	copy(result, Verdana13)
-	return result
+	return cloneFontData(Verdana13)
 }
 
 // Verdana13Bold - 13pt Verdana Bold bitmap font
@@ -4824,10 +4791,7 @@ var Verdana13Bold = []byte{
 
 // GetVerdana13Bold returns the Verdana 13pt bold bitmap font data
 func GetVerdana13Bold() []byte {
-	// Return a copy to prevent modification of the original data
-	result := make([]byte, len(Verdana13Bold))
-	copy(result, Verdana13Bold)
-	return result
+	return cloneFontData(Verdana13Bold)
 }
 
 // Verdana14 - verdana14 font data
@@ -4961,9 +4925,7 @@ var Verdana14 = []byte{
 
 // GetVerdana14 returns the Verdana 14pt bitmap font data
 func GetVerdana14() []byte {
-	result := make([]byte, len(Verdana14))
-	copy(result, Verdana14)
-	return result
+	return cloneFontData(Verdana14)
 }
 
 // Verdana14Bold - verdana14_bold font data
@@ -5119,9 +5081,7 @@ var Verdana14Bold = []byte{
 
 // GetVerdana14Bold returns the Verdana 14pt bold bitmap font data
 func GetVerdana14Bold() []byte {
-	result := make([]byte, len(Verdana14Bold))
-	copy(result, Verdana14Bold)
-	return result
+	return cloneFontData(Verdana14Bold)
 }
 
 // Verdana16 - Verdana 16pt bitmap font
@@ -5280,7 +5240,7 @@ var Verdana16 = []byte{
 
 // GetVerdana16 returns the Verdana 16pt bitmap font data
 func GetVerdana16() []byte {
-	return Verdana16
+	return cloneFontData(Verdana16)
 }
 
 // Verdana16Bold - Verdana 16pt bold bitmap font
@@ -5475,7 +5435,7 @@ var Verdana16Bold = []byte{
 
 // GetVerdana16Bold returns the Verdana 16pt bold bitmap font data
 func GetVerdana16Bold() []byte {
-	return Verdana16Bold
+	return cloneFontData(Verdana16Bold)
 }
 
 // Verdana17 - verdana17 font data
@@ -5670,10 +5630,7 @@ var Verdana17 = []byte{
 
 // GetVerdana17 returns the Verdana 17pt bitmap font data
 func GetVerdana17() []byte {
-	// Return a copy to prevent modification of the original data
-	result := make([]byte, len(Verdana17))
-	copy(result, Verdana17)
-	return result
+	return cloneFontData(Verdana17)
 }
 
 // Verdana17Bold - verdana17_bold font data
@@ -5879,10 +5836,7 @@ var Verdana17Bold = []byte{
 
 // GetVerdana17Bold returns the Verdana 17pt bold bitmap font data
 func GetVerdana17Bold() []byte {
-	// Return a copy to prevent modification of the original data
-	result := make([]byte, len(Verdana17Bold))
-	copy(result, Verdana17Bold)
-	return result
+	return cloneFontData(Verdana17Bold)
 }
 
 // Verdana18 - verdana18 font data
@@ -6096,7 +6050,7 @@ var Verdana18 = []byte{
 
 // GetVerdana18 returns the Verdana 18pt bitmap font data
 func GetVerdana18() []byte {
-	return Verdana18
+	return cloneFontData(Verdana18)
 }
 
 // Verdana18Bold - verdana18_bold font data
@@ -6319,7 +6273,7 @@ var Verdana18Bold = []byte{
 
 // GetVerdana18Bold returns the Verdana 18pt bold bitmap font data
 func GetVerdana18Bold() []byte {
-	return Verdana18Bold
+	return cloneFontData(Verdana18Bold)
 }
 
 // GetSimple4x6Font returns the simple 4x6 bitmap font data

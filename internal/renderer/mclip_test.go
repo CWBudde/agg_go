@@ -295,15 +295,77 @@ func TestBufferCopyOperations(t *testing.T) {
 	renderer.Clear("white")
 	// Note: Clear should work on the entire surface, not just clip regions
 
-	// Test CopyFrom (basic test - implementation may be simplified)
 	srcBuffer := NewMockPixelFormat[string](50, 50)
-	rect := &basics.RectI{X1: 0, Y1: 0, X2: 20, Y2: 20}
-	renderer.CopyFrom(srcBuffer, rect, 15, 15)
-	// This mainly tests that the method doesn't panic and iterates through clip boxes
+	srcBuffer.CopyPixel(0, 0, "A")
+	srcBuffer.CopyPixel(1, 0, "B")
+	srcBuffer.CopyPixel(0, 1, "C")
+	srcBuffer.CopyPixel(1, 1, "D")
 
-	// Test BlendFrom (basic test - implementation may be simplified)
+	rect := &basics.RectI{X1: 0, Y1: 0, X2: 1, Y2: 1}
+	renderer.CopyFrom(srcBuffer, rect, 15, 15)
+
+	if got := pixfmt.Pixel(15, 15); got != "A" {
+		t.Fatalf("CopyFrom pixel (15,15) = %q, want %q", got, "A")
+	}
+	if got := pixfmt.Pixel(16, 15); got != "B" {
+		t.Fatalf("CopyFrom pixel (16,15) = %q, want %q", got, "B")
+	}
+	if got := pixfmt.Pixel(15, 16); got != "C" {
+		t.Fatalf("CopyFrom pixel (15,16) = %q, want %q", got, "C")
+	}
+	if got := pixfmt.Pixel(16, 16); got != "D" {
+		t.Fatalf("CopyFrom pixel (16,16) = %q, want %q", got, "D")
+	}
+
 	renderer.BlendFrom(srcBuffer, rect, 25, 25, 128)
-	// This mainly tests that the method doesn't panic and iterates through clip boxes
+
+	if got := pixfmt.Pixel(25, 25); got != "A" {
+		t.Fatalf("BlendFrom pixel (25,25) = %q, want %q", got, "A")
+	}
+	if got := pixfmt.Pixel(26, 25); got != "B" {
+		t.Fatalf("BlendFrom pixel (26,25) = %q, want %q", got, "B")
+	}
+	if got := pixfmt.Pixel(25, 26); got != "C" {
+		t.Fatalf("BlendFrom pixel (25,26) = %q, want %q", got, "C")
+	}
+	if got := pixfmt.Pixel(26, 26); got != "D" {
+		t.Fatalf("BlendFrom pixel (26,26) = %q, want %q", got, "D")
+	}
+}
+
+func TestRendererMClipCopyFromAndBlendFromRespectMultipleClipBoxes(t *testing.T) {
+	src := NewMockPixelFormat[string](4, 4)
+	dst := NewMockPixelFormat[string](20, 20)
+	renderer := NewRendererMClip[*MockPixelFormat[string], string](dst)
+
+	renderer.ResetClipping(false)
+	renderer.AddClipBox(2, 2, 3, 3)
+	renderer.AddClipBox(6, 6, 7, 7)
+
+	src.CopyPixel(0, 0, "P")
+	src.CopyPixel(1, 0, "Q")
+	src.CopyPixel(0, 1, "R")
+	src.CopyPixel(1, 1, "S")
+
+	rect := &basics.RectI{X1: 0, Y1: 0, X2: 1, Y2: 1}
+	renderer.CopyFrom(src, rect, 2, 2)
+	renderer.BlendFrom(src, rect, 6, 6, basics.CoverFull)
+
+	if got := dst.Pixel(2, 2); got != "P" {
+		t.Fatalf("clip box 1 pixel (2,2) = %q, want %q", got, "P")
+	}
+	if got := dst.Pixel(3, 3); got != "S" {
+		t.Fatalf("clip box 1 pixel (3,3) = %q, want %q", got, "S")
+	}
+	if got := dst.Pixel(6, 6); got != "P" {
+		t.Fatalf("clip box 2 pixel (6,6) = %q, want %q", got, "P")
+	}
+	if got := dst.Pixel(7, 7); got != "S" {
+		t.Fatalf("clip box 2 pixel (7,7) = %q, want %q", got, "S")
+	}
+	if got := dst.Pixel(4, 4); got != "" {
+		t.Fatalf("unexpected copy outside clip boxes at (4,4): got %q", got)
+	}
 }
 
 // TestMultipleClipBoxIteration tests the iteration mechanism with multiple clip boxes

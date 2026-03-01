@@ -157,8 +157,8 @@ Files:
 
 - [x] Define a single authoritative font/cache architecture.
 - [x] Remove duplicated concepts and adapters where possible.
-- [ ] Audit remaining `internal/font/freetype2` convenience wrappers against `agg_font_freetype2.h/.cpp` and keep only the abstractions that are justified in Go.
-  FontManager now tracks the active loaded face coherently, and CacheManager2 has been reduced to a thin adaptor-facing wrapper over `internal/fonts.FmanCachedFont` rather than maintaining a parallel glyph-cache implementation. Remaining audit scope is the explicitly non-AGG helper surface, not basic cache correctness.
+- [x] Audit remaining `internal/font/freetype2` convenience wrappers against `agg_font_freetype2.h/.cpp` and keep only the abstractions that are justified in Go.
+  The former exported FontManager is now package-local, CacheManager2 has been reduced to a thin adaptor-facing wrapper over `internal/fonts.FmanCachedFont`, concrete gray8/mono adaptor wrapper types are no longer exposed, and test-only engine-selection/path-storage helpers are no longer exported. The remaining gray8/mono wrappers are retained as the minimal package boundary because `internal/scanline` exposes concrete serialized-scanline iteration APIs while `internal/fonts` expects generic adaptor/span interfaces.
 - [x] Finish separating "Agg2D text path" vs "standalone `fman`/embedded-font support" in remaining docs/review notes.
 - [ ] Continue rechecking FreeType2 face/engine lifetime behavior against AGG, especially around multi-face ownership beyond the now-fixed unload/close ownership semantics.
   Engine-driven multi-face close now releases all tracked faces correctly; remaining lifetime review is mostly about intentional Go-only policy differences such as the explicit `maxFaces` cap and any future multi-face helper APIs.
@@ -176,7 +176,7 @@ Files:
 - [x] One coherent font stack is used by AGG2D.
 - [x] No avoidable runtime type assertions in text-critical path.
 - [x] `internal/font/freetype2` is either brought closer to AGG's `fman` API surface or its remaining Go-only convenience APIs (`FontManager`, engine-selection helpers, thin adaptor wrappers) are explicitly documented as intentional deltas.
-- [ ] Embedded raster font data and cache behavior are rechecked against AGG/review notes so Phase 3 closes without known font-subsystem placeholders.
+- [x] Embedded raster font data and cache behavior are rechecked against AGG/review notes so Phase 3 closes without known font-subsystem placeholders.
 - [x] FreeType2 glyph-cache tests cover native and AGG gray/mono plus outline serialization paths for a real font when available.
 
 ---

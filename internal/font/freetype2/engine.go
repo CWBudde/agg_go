@@ -162,21 +162,18 @@ func (fe *FontEngine) SetGamma(gamma float64) {
 	fe.FontEngineBase.SetGamma(gamma)
 }
 
-// GetPathStorage16 exposes the internal 16-bit path storage for inspection/tests.
-// This is a Go helper, not a direct AGG API surface.
-func (fe *FontEngine) GetPathStorage16() *path.PathStorageInteger[int16] {
+// pathStorage16ForTests exposes the internal 16-bit path storage for package-local tests.
+func (fe *FontEngine) pathStorage16ForTests() *path.PathStorageInteger[int16] {
 	return fe.pathStorage16
 }
 
-// GetPathStorage32 exposes the internal 32-bit path storage for inspection/tests.
-// This is a Go helper, not a direct AGG API surface.
-func (fe *FontEngine) GetPathStorage32() *path.PathStorageInteger[int32] {
+// pathStorage32ForTests exposes the internal 32-bit path storage for package-local tests.
+func (fe *FontEngine) pathStorage32ForTests() *path.PathStorageInteger[int32] {
 	return fe.pathStorage32
 }
 
-// GetPathStorage exposes the active internal path storage through a shared
-// interface. This is a Go helper for the port, not a direct AGG API surface.
-func (fe *FontEngine) GetPathStorage() font.IntegerPathStorage {
+// pathStorageForTests exposes the active internal path storage for package-local tests.
+func (fe *FontEngine) pathStorageForTests() font.IntegerPathStorage {
 	if fe.flag32 {
 		return fe.pathStorage32
 	}

@@ -83,7 +83,7 @@ func TestFontEngineRecommendation(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(fmt.Sprintf("GlyphHeight%.1f", tc.glyphHeight), func(t *testing.T) {
-			recommended := RecommendedEngineForGlyphSize(tc.glyphHeight)
+			recommended := recommendedEngineForGlyphSize(tc.glyphHeight)
 			if recommended != tc.expected {
 				t.Errorf("For glyph height %.1f, expected %s, got %s",
 					tc.glyphHeight, tc.expected, recommended)
@@ -93,10 +93,10 @@ func TestFontEngineRecommendation(t *testing.T) {
 }
 
 // TestFontManager tests the high-level font manager functionality.
-// FontManager is a Go convenience wrapper, so these tests intentionally cover
+// fontManager is a Go convenience wrapper, so these tests intentionally cover
 // port-added behavior rather than direct AGG API parity.
 func TestFontManager(t *testing.T) {
-	fm, err := NewFontManager()
+	fm, err := newFontManager()
 	if err != nil {
 		t.Fatalf("Failed to create font manager: %v", err)
 	}
@@ -354,7 +354,8 @@ func TestCacheManager2GlyphTracksFaceInstanceContext(t *testing.T) {
 		t.Fatal("expected serialized gray glyph data")
 	}
 	cm.Gray8Adaptor().InitGlyph(grayGlyph.Data, grayGlyph.DataSize, 0, 0)
-	if !cm.Gray8Adaptor().adaptor.RewindScanlines() {
+	cm.Gray8Adaptor().Rewind(0)
+	if !cm.Gray8Adaptor().SweepScanline() {
 		t.Fatal("expected serialized gray glyph data to be readable")
 	}
 
@@ -524,7 +525,7 @@ func BenchmarkEngineCreation(b *testing.B) {
 
 func BenchmarkFontManager(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		fm, err := NewFontManager()
+		fm, err := newFontManager()
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -586,7 +587,7 @@ func TestWithActualFont(t *testing.T) {
 	}
 
 	t.Run("LoadFromFile", func(t *testing.T) {
-		fm, err := NewFontManager()
+		fm, err := newFontManager()
 		if err != nil {
 			t.Fatalf("Failed to create font manager: %v", err)
 		}
@@ -621,7 +622,7 @@ func TestWithActualFont(t *testing.T) {
 			t.Fatalf("Failed to read font file: %v", err)
 		}
 
-		fm, err := NewFontManager()
+		fm, err := newFontManager()
 		if err != nil {
 			t.Fatalf("Failed to create font manager: %v", err)
 		}

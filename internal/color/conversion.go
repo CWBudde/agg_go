@@ -164,6 +164,81 @@ func ConvertGray16SRGBToLinear(g Gray16[SRGB]) Gray16[Linear] {
 }
 
 //
+// RGBA16 / RGB16
+// Follow the same 8-bit table approximation strategy used for Gray16.
+//
+
+func ConvertRGBA16LinearToSRGB(c RGBA16[Linear]) RGBA16[SRGB] {
+	r8 := basics.Int8u(c.R >> 8)
+	g8 := basics.Int8u(c.G >> 8)
+	b8 := basics.Int8u(c.B >> 8)
+	a8 := basics.Int8u(c.A >> 8)
+
+	R := basics.Int16u(linear8ToSrgb8(r8))
+	G := basics.Int16u(linear8ToSrgb8(g8))
+	B := basics.Int16u(linear8ToSrgb8(b8))
+	A := basics.Int16u(alphaU8ToSRGB(a8))
+
+	return RGBA16[SRGB]{
+		R: (R << 8) | R,
+		G: (G << 8) | G,
+		B: (B << 8) | B,
+		A: (A << 8) | A,
+	}
+}
+
+func ConvertRGBA16SRGBToLinear(c RGBA16[SRGB]) RGBA16[Linear] {
+	r8 := basics.Int8u(c.R >> 8)
+	g8 := basics.Int8u(c.G >> 8)
+	b8 := basics.Int8u(c.B >> 8)
+	a8 := basics.Int8u(c.A >> 8)
+
+	R := basics.Int16u(srgb8ToLinear8(r8))
+	G := basics.Int16u(srgb8ToLinear8(g8))
+	B := basics.Int16u(srgb8ToLinear8(b8))
+	A := basics.Int16u(alphaU8FromSRGB(a8))
+
+	return RGBA16[Linear]{
+		R: (R << 8) | R,
+		G: (G << 8) | G,
+		B: (B << 8) | B,
+		A: (A << 8) | A,
+	}
+}
+
+func ConvertRGB16LinearToSRGB(c RGB16[Linear]) RGB16[SRGB] {
+	r8 := basics.Int8u(c.R >> 8)
+	g8 := basics.Int8u(c.G >> 8)
+	b8 := basics.Int8u(c.B >> 8)
+
+	R := basics.Int16u(linear8ToSrgb8(r8))
+	G := basics.Int16u(linear8ToSrgb8(g8))
+	B := basics.Int16u(linear8ToSrgb8(b8))
+
+	return RGB16[SRGB]{
+		R: (R << 8) | R,
+		G: (G << 8) | G,
+		B: (B << 8) | B,
+	}
+}
+
+func ConvertRGB16SRGBToLinear(c RGB16[SRGB]) RGB16[Linear] {
+	r8 := basics.Int8u(c.R >> 8)
+	g8 := basics.Int8u(c.G >> 8)
+	b8 := basics.Int8u(c.B >> 8)
+
+	R := basics.Int16u(srgb8ToLinear8(r8))
+	G := basics.Int16u(srgb8ToLinear8(g8))
+	B := basics.Int16u(srgb8ToLinear8(b8))
+
+	return RGB16[Linear]{
+		R: (R << 8) | R,
+		G: (G << 8) | G,
+		B: (B << 8) | B,
+	}
+}
+
+//
 // Float32 (RGBA32 & Gray32)
 //
 
@@ -191,6 +266,22 @@ func ConvertGray32LinearToSRGB(g Gray32[Linear]) Gray32[SRGB] {
 
 func ConvertGray32SRGBToLinear(g Gray32[SRGB]) Gray32[Linear] {
 	return Gray32[Linear]{V: float32(ConvertFromSRGB(float64(g.V))), A: g.A}
+}
+
+func ConvertRGB32LinearToSRGB(c RGB32[Linear]) RGB32[SRGB] {
+	return RGB32[SRGB]{
+		R: float32(ConvertToSRGB(float64(c.R))),
+		G: float32(ConvertToSRGB(float64(c.G))),
+		B: float32(ConvertToSRGB(float64(c.B))),
+	}
+}
+
+func ConvertRGB32SRGBToLinear(c RGB32[SRGB]) RGB32[Linear] {
+	return RGB32[Linear]{
+		R: float32(ConvertFromSRGB(float64(c.R))),
+		G: float32(ConvertFromSRGB(float64(c.G))),
+		B: float32(ConvertFromSRGB(float64(c.B))),
+	}
 }
 
 //

@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"agg_go/internal/basics"
+	"agg_go/internal/gpc"
+	"agg_go/internal/path"
 )
 
 func TestNewConvGPC(t *testing.T) {
@@ -102,6 +104,79 @@ func TestConvGPC_SimpleRectangles_Union(t *testing.T) {
 	// At minimum, we should get a stop command at the end
 	if len(vertices) == 0 {
 		t.Error("Expected some vertices from union operation")
+	}
+}
+
+func TestConvGPC_NormalizeContourVertices(t *testing.T) {
+	closed := []gpc.GPCVertex{
+		{X: 0, Y: 0},
+		{X: 10, Y: 0},
+		{X: 10, Y: 10},
+		{X: 0, Y: 0},
+	}
+
+	normalized := normalizeContourVertices(closed)
+	if len(normalized) != 3 {
+		t.Fatalf("normalized contour len = %d, want 3", len(normalized))
+	}
+
+	open := []gpc.GPCVertex{
+		{X: 0, Y: 0},
+		{X: 10, Y: 0},
+		{X: 10, Y: 10},
+	}
+	normalized = normalizeContourVertices(open)
+	if len(normalized) != 3 {
+		t.Fatalf("open contour len = %d, want 3", len(normalized))
+	}
+}
+
+func TestConvGPC_SimpleRectangles_UnionHasDrawableCommands(t *testing.T) {
+	rect1 := []Vertex{
+		{0, 0, basics.PathCmdMoveTo},
+		{10, 0, basics.PathCmdLineTo},
+		{10, 10, basics.PathCmdLineTo},
+		{0, 10, basics.PathCmdLineTo},
+		{0, 0, basics.PathCmdEndPoly | basics.PathFlagClose},
+	}
+	rect2 := []Vertex{
+		{5, 5, basics.PathCmdMoveTo},
+		{15, 5, basics.PathCmdLineTo},
+		{15, 15, basics.PathCmdLineTo},
+		{5, 15, basics.PathCmdLineTo},
+		{5, 5, basics.PathCmdEndPoly | basics.PathFlagClose},
+	}
+
+	gpc := NewConvGPC(NewMockVertexSource(rect1), NewMockVertexSource(rect2), GPCOr)
+	commands := countDrawableCommands(gpc)
+	if commands == 0 {
+		t.Fatal("expected drawable commands from union result")
+	}
+}
+
+func TestConvGPC_PathStorageAdapter_UnionHasDrawableCommands(t *testing.T) {
+	path1 := path.NewPathStorage()
+	path1.MoveTo(0, 0)
+	path1.LineTo(10, 0)
+	path1.LineTo(10, 10)
+	path1.LineTo(0, 10)
+	path1.ClosePolygon(basics.PathFlagsNone)
+
+	path2 := path.NewPathStorage()
+	path2.MoveTo(5, 5)
+	path2.LineTo(15, 5)
+	path2.LineTo(15, 15)
+	path2.LineTo(5, 15)
+	path2.ClosePolygon(basics.PathFlagsNone)
+
+	gpc := NewConvGPC(
+		path.NewPathStorageVertexSourceAdapter(path1),
+		path.NewPathStorageVertexSourceAdapter(path2),
+		GPCOr,
+	)
+	commands := countDrawableCommands(gpc)
+	if commands == 0 {
+		t.Fatal("expected drawable commands from path-storage union result")
 	}
 }
 
@@ -328,6 +403,21 @@ func extractAllVertices(vs VertexSource) []Vertex {
 	}
 
 	return vertices
+}
+
+func countDrawableCommands(vs VertexSource) int {
+	count := 0
+	vs.Rewind(0)
+
+	for {
+		_, _, cmd := vs.Vertex()
+		if basics.IsStop(cmd) {
+			break
+		}
+		count++
+	}
+
+	return count
 }
 
 // Benchmark tests for performance

@@ -1648,11 +1648,11 @@ Go files:
 
 ### internal/renderer/mclip.go
 
-**Status: PARTIAL** - The multi-clip renderer is functional and tested, but should still be reviewed against AGG for exact buffer-operation parity.
+**Status: COMPLETED** - Reviewed against AGG. The multi-clip renderer delegates the full drawing and transfer surface to `renderer_base`, including `CopyFrom`/`BlendFrom`, and now has direct tests for multi-clip transfer behavior instead of only smoke coverage.
 
 ### internal/renderer/base.go
 
-**Status: PARTIAL** - Renderer base functionality is implemented; remaining review focus is fidelity of `CopyFrom` and related transfer semantics rather than missing functionality.
+**Status: COMPLETED** - Reviewed and updated. Renderer base functionality is implemented, and `CopyFrom`/`BlendFrom` now match AGG's relative `dx`/`dy` destination-offset semantics instead of treating them as absolute coordinates.
 
 ### internal/platform/platform_support.go
 
@@ -1664,11 +1664,11 @@ Go files:
 
 ### internal/gpc/gpc.go
 
-**Status: PARTIAL** - Core polygon clipping code exists and is exercised by tests/benchmarks, so the old "operations not implemented" note is stale. Remaining work is correctness review for edge cases, I/O helpers such as `ReadPolygon`, and converter parity where example coverage still documents rough edges.
+**Status: PARTIAL** - Core polygon clipping code exists and is exercised by tests/benchmarks, and the polygon text I/O helpers are now implemented, so the old "operations not implemented" note is stale. Remaining work is correctness review for edge cases and the still-open converter parity issues surfaced by `internal/conv/gpc.go` example coverage.
 
 ### internal/fonts/embedded_fonts.go
 
-**Status: PARTIAL** - This note still broadly applies. Embedded font coverage is substantial, but some aliases and fallback mappings remain intentionally shared rather than having fully distinct font data for every historical AGG face.
+**Status: COMPLETED** - The old placeholder note is stale. Embedded font coverage is substantial and matches AGG's shipped raster-font tables closely, and the public getters now return copies so callers cannot mutate the global font data, which is closer to AGG's `const` table semantics. Any remaining aliases are intentional compatibility helpers, not placeholder font data.
 
 ### internal/font/cache_manager.go
 
@@ -1691,7 +1691,7 @@ Remaining review focus should be on the still-intentional Go deltas: convenience
 
 ### internal/conv/gpc.go
 
-**Status: PARTIAL** - The converter is no longer a placeholder and does invoke polygon clipping, but it still depends on the remaining correctness review noted for `internal/gpc/gpc.go`.
+**Status: PARTIAL** - The converter is no longer a placeholder and does invoke polygon clipping, but example coverage still shows empty output for cases that should yield geometry. The remaining work here is converter parity/debugging against AGG's original `agg_conv_gpc.h`, not the absence of clipping support in `internal/gpc/gpc.go`.
 
 ### internal/color/rgb.go
 
@@ -1699,7 +1699,7 @@ Remaining review focus should be on the still-intentional Go deltas: convenience
 
 ### internal/color/conversion.go
 
-**Status: PARTIAL** - This is no longer "only the most common conversions" in the original sense: the file now includes scalar, RGB8, RGBA8, Gray8, Gray16, RGBA32, and Gray32 conversions. Remaining work is breadth/parity, not a placeholder implementation.
+**Status: COMPLETED** - Reviewed and extended. The conversion helpers now cover scalar sRGB/linear transforms plus direct colorspace conversions for `RGB8`, `RGB16`, `RGB32`, `RGBA8`, `RGBA16`, `RGBA32`, `Gray8`, `Gray16`, and `Gray32`, with matching tests for the approximation strategy used in the 16-bit paths.
 
 ### internal/renderer/scanline/helpers.go
 

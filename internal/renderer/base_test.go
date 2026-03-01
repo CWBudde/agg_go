@@ -212,3 +212,65 @@ func TestRendererBaseBlendFromOverlappingVerticalRegion(t *testing.T) {
 		}
 	}
 }
+
+func TestRendererBaseCopyFromUsesRelativeDestinationOffset(t *testing.T) {
+	src := NewMockPixelFormat[string](5, 5)
+	dst := NewMockPixelFormat[string](8, 8)
+	r := NewRendererBaseWithPixfmt[*MockPixelFormat[string], string](dst)
+
+	src.CopyPixel(2, 3, "P")
+	src.CopyPixel(3, 3, "Q")
+	src.CopyPixel(2, 4, "R")
+	src.CopyPixel(3, 4, "S")
+
+	srcRect := &basics.RectI{X1: 2, Y1: 3, X2: 3, Y2: 4}
+	r.CopyFrom(src, srcRect, 1, 2)
+
+	if got := dst.Pixel(3, 5); got != "P" {
+		t.Fatalf("dst(3,5) = %q, want %q", got, "P")
+	}
+	if got := dst.Pixel(4, 5); got != "Q" {
+		t.Fatalf("dst(4,5) = %q, want %q", got, "Q")
+	}
+	if got := dst.Pixel(3, 6); got != "R" {
+		t.Fatalf("dst(3,6) = %q, want %q", got, "R")
+	}
+	if got := dst.Pixel(4, 6); got != "S" {
+		t.Fatalf("dst(4,6) = %q, want %q", got, "S")
+	}
+
+	if got := dst.Pixel(1, 2); got != "" {
+		t.Fatalf("unexpected absolute-position copy at (1,2): got %q", got)
+	}
+}
+
+func TestRendererBaseBlendFromUsesRelativeDestinationOffset(t *testing.T) {
+	src := NewMockPixelFormat[string](5, 5)
+	dst := NewMockPixelFormat[string](8, 8)
+	r := NewRendererBaseWithPixfmt[*MockPixelFormat[string], string](dst)
+
+	src.CopyPixel(1, 1, "A")
+	src.CopyPixel(2, 1, "B")
+	src.CopyPixel(1, 2, "C")
+	src.CopyPixel(2, 2, "D")
+
+	srcRect := &basics.RectI{X1: 1, Y1: 1, X2: 2, Y2: 2}
+	r.BlendFrom(src, srcRect, 2, 3, basics.CoverFull)
+
+	if got := dst.Pixel(3, 4); got != "A" {
+		t.Fatalf("dst(3,4) = %q, want %q", got, "A")
+	}
+	if got := dst.Pixel(4, 4); got != "B" {
+		t.Fatalf("dst(4,4) = %q, want %q", got, "B")
+	}
+	if got := dst.Pixel(3, 5); got != "C" {
+		t.Fatalf("dst(3,5) = %q, want %q", got, "C")
+	}
+	if got := dst.Pixel(4, 5); got != "D" {
+		t.Fatalf("dst(4,5) = %q, want %q", got, "D")
+	}
+
+	if got := dst.Pixel(2, 3); got != "" {
+		t.Fatalf("unexpected absolute-position blend at (2,3): got %q", got)
+	}
+}

@@ -55,12 +55,19 @@ type ContourHeader struct {
 	vertices    []gpc.GPCVertex
 }
 
-// ConvGPC performs boolean clipping operations on two vertex sources using GPC
+func normalizeContourVertices(vertices []gpc.GPCVertex) []gpc.GPCVertex {
+	if len(vertices) > 2 && vertices[0].Equal(vertices[len(vertices)-1]) {
+		return vertices[:len(vertices)-1]
+	}
+	return vertices
+}
+
+// ConvGPC performs boolean clipping operations on two vertex sources using GPC.
 //
-// NOTE: The underlying GPC library implementation currently has issues that cause
-// polygon clipping operations to return empty results. The converter logic itself
-// is correct and matches the C++ AGG implementation, but the pure Go GPC library
-// needs further debugging. This is a known issue that should be addressed separately.
+// The low-level GPC package has working polygon clipping and polygon text I/O
+// helpers. Remaining review work here is converter parity: some converter-driven
+// example cases still emit empty output and need deeper comparison with AGG's
+// original agg_conv_gpc.h behavior.
 type ConvGPC[VSA VertexSource, VSB VertexSource] struct {
 	srcA      VSA
 	srcB      VSB
@@ -240,19 +247,20 @@ func (c *ConvGPC[VSA, VSB]) endContour(orientation uint) {
 		return
 	}
 
-	if len(c.vertexAccumulator) > 2 {
+	normalizedVertices := normalizeContourVertices(c.vertexAccumulator)
+	if len(normalizedVertices) > 2 {
 		// Get the last contour header
 		headerIdx := len(c.contourAccumulator) - 1
 		header := &c.contourAccumulator[headerIdx]
 
-		header.numVertices = len(c.vertexAccumulator)
+		header.numVertices = len(normalizedVertices)
 		// Set hole flag based on orientation - clockwise polygons are holes
 		// This matches the C++ logic: if(is_cw(orientation)) h.hole_flag = 1;
 		header.holeFlag = (orientation & uint(basics.PathFlagsCW)) != 0
 
 		// Copy vertices
-		header.vertices = make([]gpc.GPCVertex, len(c.vertexAccumulator))
-		copy(header.vertices, c.vertexAccumulator)
+		header.vertices = make([]gpc.GPCVertex, len(normalizedVertices))
+		copy(header.vertices, normalizedVertices)
 	} else {
 		// Remove incomplete contour (equivalent to C++ remove_last)
 		if len(c.contourAccumulator) > 0 {

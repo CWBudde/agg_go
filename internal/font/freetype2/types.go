@@ -171,7 +171,7 @@ type FontEngineBase struct {
 	flag32             bool
 	lastError          error
 	libraryInitialized bool
-	maxFaces           uint32
+	maxFaces           uint32 // Go-only policy limit; AGG tracks loaded faces but does not expose a configurable cap
 
 	// Storage for different precision levels
 	pathStorage16 *path.PathStorageInteger[int16]
@@ -192,7 +192,7 @@ type FontEngineBase struct {
 // NewFontEngineBase creates a new base font engine with the specified configuration.
 func NewFontEngineBase(flag32 bool, maxFaces uint32) *FontEngineBase {
 	if maxFaces == 0 {
-		maxFaces = 32 // Default from AGG implementation
+		maxFaces = 32 // Go-side default policy; AGG does not expose a matching configurable face limit
 	}
 
 	// Create path storage instances

@@ -22,8 +22,8 @@ type CacheManager2 struct {
 	currentFont       LoadedFaceInterface     // Reference to current font context
 	currentCachedFont *fonts.FmanCachedFont   // Per-face-instance cache, mirroring AGG's cached_font more closely
 	pathAdaptor       path.IntegerPathAdaptor // Either *path.SerializedIntegerPathAdaptor[int16] or *path.SerializedIntegerPathAdaptor[int32]
-	gray8Adaptor      *Gray8AdaptorWrapper
-	monoAdaptor       *MonoAdaptorWrapper
+	gray8Adaptor      fonts.Gray8AdaptorType
+	monoAdaptor       fonts.MonoAdaptorType
 	lastError         error
 	cacheContext      cacheManagerFontContext
 }
@@ -62,8 +62,8 @@ func (cm *CacheManager2) initializeAdaptors() {
 
 	adaptorTypes := cm.fontEngine.AdaptorTypes()
 	if adaptorTypes != nil {
-		cm.gray8Adaptor = NewGray8AdaptorWrapper(adaptorTypes.Gray8Adaptor)
-		cm.monoAdaptor = NewMonoAdaptorWrapper(adaptorTypes.MonoAdaptor)
+		cm.gray8Adaptor = newGray8AdaptorWrapper(adaptorTypes.Gray8Adaptor)
+		cm.monoAdaptor = newMonoAdaptorWrapper(adaptorTypes.MonoAdaptor)
 	}
 }
 
@@ -97,13 +97,13 @@ func (cm *CacheManager2) PathAdaptor() path.IntegerPathAdaptor {
 	return cm.pathAdaptor
 }
 
-// Gray8Adaptor returns the gray8 scanline adaptor.
-func (cm *CacheManager2) Gray8Adaptor() *Gray8AdaptorWrapper {
+// Gray8Adaptor returns the gray8 scanline adaptor through the fman interface.
+func (cm *CacheManager2) Gray8Adaptor() fonts.Gray8AdaptorType {
 	return cm.gray8Adaptor
 }
 
-// MonoAdaptor returns the mono scanline adaptor.
-func (cm *CacheManager2) MonoAdaptor() *MonoAdaptorWrapper {
+// MonoAdaptor returns the mono scanline adaptor through the fman interface.
+func (cm *CacheManager2) MonoAdaptor() fonts.MonoAdaptorType {
 	return cm.monoAdaptor
 }
 
@@ -314,19 +314,19 @@ func fromFmanGlyphRendering(rendering fonts.FmanGlyphRendering) GlyphRendering {
 	}
 }
 
-// FontManager is a Go convenience wrapper around the lower-level FreeType2/fman
-// pieces. It does not correspond to a direct AGG type and remains an explicit
-// port delta above AGG's concrete engine types.
-type FontManager struct {
+// fontManager is a package-local Go convenience wrapper around the lower-level
+// FreeType2/fman pieces. It does not correspond to a direct AGG type and
+// remains an explicit port delta above AGG's concrete engine types.
+type fontManager struct {
 	engines       map[string]FontEngineInterface
 	cacheManager  *CacheManager2
 	currentFace   LoadedFaceInterface
 	defaultEngine string
 }
 
-// NewFontManager creates a convenience wrapper with both 16-bit and 32-bit
+// newFontManager creates a convenience wrapper with both 16-bit and 32-bit
 // engines pre-initialized. AGG exposes the concrete engines separately.
-func NewFontManager() (*FontManager, error) {
+func newFontManager() (*fontManager, error) {
 	// Create both engine types
 	engine16, err := NewFontEngineInt16Default()
 	if err != nil {
@@ -339,7 +339,7 @@ func NewFontManager() (*FontManager, error) {
 		return nil, err
 	}
 
-	fm := &FontManager{
+	fm := &fontManager{
 		engines: map[string]FontEngineInterface{
 			"int16": engine16,
 			"int32": engine32,
@@ -354,7 +354,7 @@ func NewFontManager() (*FontManager, error) {
 }
 
 // LoadFont loads a font file through the selected engine.
-func (fm *FontManager) LoadFont(fileName string, preferredEngine string) (LoadedFaceInterface, error) {
+func (fm *fontManager) LoadFont(fileName string, preferredEngine string) (LoadedFaceInterface, error) {
 	// Select the appropriate engine
 	engineKey := preferredEngine
 	if engineKey == "" {
@@ -387,7 +387,7 @@ func (fm *FontManager) LoadFont(fileName string, preferredEngine string) (Loaded
 }
 
 // LoadFontFromMemory loads a font from memory through the selected engine.
-func (fm *FontManager) LoadFontFromMemory(buffer []byte, preferredEngine string) (LoadedFaceInterface, error) {
+func (fm *fontManager) LoadFontFromMemory(buffer []byte, preferredEngine string) (LoadedFaceInterface, error) {
 	// Select the appropriate engine
 	engineKey := preferredEngine
 	if engineKey == "" {
@@ -420,18 +420,18 @@ func (fm *FontManager) LoadFontFromMemory(buffer []byte, preferredEngine string)
 }
 
 // GetCacheManager returns the current Go-managed cache wrapper.
-func (fm *FontManager) GetCacheManager() *CacheManager2 {
+func (fm *fontManager) GetCacheManager() *CacheManager2 {
 	return fm.cacheManager
 }
 
 // CurrentFace returns the currently selected loaded face for this convenience wrapper.
-func (fm *FontManager) CurrentFace() LoadedFaceInterface {
+func (fm *fontManager) CurrentFace() LoadedFaceInterface {
 	return fm.currentFace
 }
 
 // SwitchEngine switches to a different engine type and updates the cache manager.
-// This is a Go convenience operation, not a direct AGG API method.
-func (fm *FontManager) SwitchEngine(engineType string) error {
+// This is a package-local convenience operation, not a direct AGG API method.
+func (fm *fontManager) SwitchEngine(engineType string) error {
 	if _, exists := fm.engines[engineType]; !exists {
 		return fmt.Errorf("unknown engine type: %s", engineType)
 	}
@@ -449,7 +449,7 @@ func (fm *FontManager) SwitchEngine(engineType string) error {
 }
 
 // Close cleans up all resources used by the font manager.
-func (fm *FontManager) Close() error {
+func (fm *fontManager) Close() error {
 	// Close cache manager
 	if fm.cacheManager != nil {
 		fm.cacheManager.Close()

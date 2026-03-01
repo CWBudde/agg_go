@@ -234,6 +234,52 @@ func TestGray16Approximation(t *testing.T) {
 	}
 }
 
+func TestRGBA16Approximation(t *testing.T) {
+	src := RGBA16[Linear]{R: 0x1234, G: 0x8080, B: 0xFEDC, A: 0xBEEF}
+	s := ConvertRGBA16LinearToSRGB(src)
+
+	checkReplicated := func(name string, got basics.Int16u, want8 basics.Int8u) {
+		want16 := basics.Int16u(want8)
+		want16 = (want16 << 8) | want16
+		if got != want16 {
+			t.Fatalf("%s mismatch: got=%#04x want=%#04x", name, got, want16)
+		}
+	}
+
+	checkReplicated("R", s.R, linear8ToSrgb8(basics.Int8u(src.R>>8)))
+	checkReplicated("G", s.G, linear8ToSrgb8(basics.Int8u(src.G>>8)))
+	checkReplicated("B", s.B, linear8ToSrgb8(basics.Int8u(src.B>>8)))
+	checkReplicated("A", s.A, alphaU8ToSRGB(basics.Int8u(src.A>>8)))
+
+	back := ConvertRGBA16SRGBToLinear(s)
+	checkReplicated("back R", back.R, srgb8ToLinear8(basics.Int8u(s.R>>8)))
+	checkReplicated("back G", back.G, srgb8ToLinear8(basics.Int8u(s.G>>8)))
+	checkReplicated("back B", back.B, srgb8ToLinear8(basics.Int8u(s.B>>8)))
+	checkReplicated("back A", back.A, alphaU8FromSRGB(basics.Int8u(s.A>>8)))
+}
+
+func TestRGB16Approximation(t *testing.T) {
+	src := RGB16[Linear]{R: 0x0101, G: 0x7F7F, B: 0xFFFF}
+	s := ConvertRGB16LinearToSRGB(src)
+
+	checkReplicated := func(name string, got basics.Int16u, want8 basics.Int8u) {
+		want16 := basics.Int16u(want8)
+		want16 = (want16 << 8) | want16
+		if got != want16 {
+			t.Fatalf("%s mismatch: got=%#04x want=%#04x", name, got, want16)
+		}
+	}
+
+	checkReplicated("R", s.R, linear8ToSrgb8(basics.Int8u(src.R>>8)))
+	checkReplicated("G", s.G, linear8ToSrgb8(basics.Int8u(src.G>>8)))
+	checkReplicated("B", s.B, linear8ToSrgb8(basics.Int8u(src.B>>8)))
+
+	back := ConvertRGB16SRGBToLinear(s)
+	checkReplicated("back R", back.R, srgb8ToLinear8(basics.Int8u(s.R>>8)))
+	checkReplicated("back G", back.G, srgb8ToLinear8(basics.Int8u(s.G>>8)))
+	checkReplicated("back B", back.B, srgb8ToLinear8(basics.Int8u(s.B>>8)))
+}
+
 func TestRGBA32FloatPaths(t *testing.T) {
 	src := RGBA32[Linear]{R: 0.1, G: 0.5, B: 0.9, A: 0.25}
 	s := ConvertRGBA32LinearToSRGB(src)
@@ -248,6 +294,19 @@ func TestRGBA32FloatPaths(t *testing.T) {
 	}
 	if s.A != src.A || back.A != src.A {
 		t.Fatalf("RGBA32 alpha changed across conversions")
+	}
+}
+
+func TestRGB32FloatPaths(t *testing.T) {
+	src := RGB32[Linear]{R: 0.1, G: 0.5, B: 0.9}
+	s := ConvertRGB32LinearToSRGB(src)
+	back := ConvertRGB32SRGBToLinear(s)
+
+	const eps = float32(1e-6)
+	if !f32NearlyEqual(src.R, back.R, eps) ||
+		!f32NearlyEqual(src.G, back.G, eps) ||
+		!f32NearlyEqual(src.B, back.B, eps) {
+		t.Fatalf("RGB32 roundtrip mismatch: src=%+v back=%+v", src, back)
 	}
 }
 

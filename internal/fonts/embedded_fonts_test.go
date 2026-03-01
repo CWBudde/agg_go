@@ -391,6 +391,70 @@ func TestAllFontAccessors(t *testing.T) {
 	}
 }
 
+func TestAllFontAccessorsReturnCopies(t *testing.T) {
+	fonts := map[string]func() []byte{
+		"GSE4x6":             GetGSE4x6,
+		"GSE5x7":             GetGSE5x7,
+		"GSE4x8":             GetGSE4x8,
+		"GSE5x9":             GetGSE5x9,
+		"GSE6x9":             GetGSE6x9,
+		"GSE6x12":            GetGSE6x12,
+		"GSE7x11":            GetGSE7x11,
+		"GSE7x11Bold":        GetGSE7x11Bold,
+		"GSE7x15":            GetGSE7x15,
+		"GSE7x15Bold":        GetGSE7x15Bold,
+		"GSE8x16":            GetGSE8x16,
+		"GSE8x16Bold":        GetGSE8x16Bold,
+		"MCS5x10Mono":        GetMCS5x10Mono,
+		"MCS5x11Mono":        GetMCS5x11Mono,
+		"MCS6x10Mono":        GetMCS6x10Mono,
+		"MCS6x11Mono":        GetMCS6x11Mono,
+		"MCS7x12MonoHigh":    GetMCS7x12MonoHigh,
+		"MCS7x12MonoLow":     GetMCS7x12MonoLow,
+		"MCS11Prop":          GetMCS11Prop,
+		"MCS11PropCondensed": GetMCS11PropCondensed,
+		"MCS12Prop":          GetMCS12Prop,
+		"MCS13Prop":          GetMCS13Prop,
+		"Verdana12":          GetVerdana12,
+		"Verdana12Bold":      GetVerdana12Bold,
+		"Verdana13":          GetVerdana13,
+		"Verdana13Bold":      GetVerdana13Bold,
+		"Verdana14":          GetVerdana14,
+		"Verdana14Bold":      GetVerdana14Bold,
+		"Verdana16":          GetVerdana16,
+		"Verdana16Bold":      GetVerdana16Bold,
+		"Verdana17":          GetVerdana17,
+		"Verdana17Bold":      GetVerdana17Bold,
+		"Verdana18":          GetVerdana18,
+		"Verdana18Bold":      GetVerdana18Bold,
+	}
+
+	for name, getter := range fonts {
+		t.Run(name, func(t *testing.T) {
+			font1 := getter()
+			font2 := getter()
+
+			if !bytes.Equal(font1, font2) {
+				t.Fatalf("%s returned inconsistent font data", name)
+			}
+
+			if len(font1) == 0 {
+				return
+			}
+
+			if &font1[0] == &font2[0] {
+				t.Fatalf("%s returned the same backing slice", name)
+			}
+
+			original := font2[0]
+			font1[0] ^= 0xff
+			if font2[0] != original {
+				t.Fatalf("%s returned mutable shared font data", name)
+			}
+		})
+	}
+}
+
 // Test MCS5x10Mono font header validation
 func TestMCS5x10MonoFontHeader(t *testing.T) {
 	font := GetMCS5x10Mono()
@@ -568,7 +632,6 @@ func TestVerdanaFontDimensions(t *testing.T) {
 		expectedBaseline int
 	}{
 		{"Verdana12", GetVerdana12, 12, 3},
-		// Note: Other Verdana fonts are placeholders returning Verdana12 data for now
 		{"Verdana13", GetVerdana13, 13, 3}, // actual font data
 		{"Verdana14", GetVerdana14, 14, 3}, // actual font data
 	}

@@ -107,11 +107,8 @@ func TestExampleUsage(t *testing.T) {
 
 			t.Logf("%s operation produced %d vertices", test.name, vertexCount)
 
-			// Note: GPC implementation is a placeholder - many operations return 0 vertices
-			// This is expected until the full GPC algorithm is implemented
-			// Once implemented, union operations should always produce results
 			if test.op == GPCOr && vertexCount == 0 {
-				t.Skip("Union operation returns 0 vertices - GPC implementation is placeholder")
+				t.Skip("Union operation still returns 0 vertices in ConvGPC example coverage; converter parity remains under review")
 			}
 		})
 	}
@@ -173,10 +170,8 @@ func TestConvGPC_WithPathStorageAdapter(t *testing.T) {
 
 			t.Logf("%s operation with PathStorage produced %d vertices", tc.name, vertexCount)
 
-			// Note: GPC implementation is a placeholder - many operations return 0 vertices
-			// This is expected until the full GPC algorithm is implemented
 			if tc.op == GPCOr && vertexCount == 0 {
-				t.Skip("Union operation returns 0 vertices - GPC implementation is placeholder")
+				t.Skip("Union operation still returns 0 vertices in ConvGPC adapter coverage; converter parity remains under review")
 			}
 		})
 	}

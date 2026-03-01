@@ -244,22 +244,22 @@ func (fe32 *FontEngineInt32) Close() error {
 	return fe32.FontEngine.Close()
 }
 
-// Helper functions to create the appropriate engine based on requirements.
-// These are Go selection helpers layered above AGG's concrete int16/int32 types.
+// Package-local engine selection helpers layered above AGG's concrete
+// int16/int32 types. Production code should prefer the explicit constructors.
 
-// RecommendedEngineForGlyphSize returns a Go-side heuristic for choosing the
+// recommendedEngineForGlyphSize returns a Go-side heuristic for choosing the
 // int16 vs int32 engine based on glyph size.
-func RecommendedEngineForGlyphSize(maxGlyphHeight float64) string {
+func recommendedEngineForGlyphSize(maxGlyphHeight float64) string {
 	if maxGlyphHeight <= 200.0 {
 		return "int16" // Compact storage for smaller glyphs
 	}
 	return "int32" // Safe for very large glyphs
 }
 
-// CreateRecommendedEngine creates an engine using the Go-side size heuristic.
+// createRecommendedEngine creates an engine using the Go-side size heuristic.
 // AGG exposes the concrete int16/int32 engine types directly instead.
-func CreateRecommendedEngine(maxGlyphHeight float64, maxFaces uint32) (FontEngineInterface, error) {
-	if RecommendedEngineForGlyphSize(maxGlyphHeight) == "int16" {
+func createRecommendedEngine(maxGlyphHeight float64, maxFaces uint32) (FontEngineInterface, error) {
+	if recommendedEngineForGlyphSize(maxGlyphHeight) == "int16" {
 		return NewFontEngineInt16(maxFaces, nil)
 	}
 	return NewFontEngineInt32(maxFaces, nil)

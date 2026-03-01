@@ -533,11 +533,13 @@ func (r *RendererBase[PF, C]) CopyFrom(src PixelFormat[C], rectSrcPtr *basics.Re
 	}
 
 	dstRect := basics.RectI{
-		X1: dx,
-		Y1: dy,
+		X1: srcRect.X1 + dx,
+		Y1: srcRect.Y1 + dy,
 		X2: dx + (srcRect.X2 - srcRect.X1),
 		Y2: dy + (srcRect.Y2 - srcRect.Y1),
 	}
+	dstRect.X2 += srcRect.X1
+	dstRect.Y2 += srcRect.Y1
 
 	rc := r.ClipRectArea(&dstRect, &srcRect, wsrc, hsrc)
 	if rc.X2 <= 0 || rc.Y2 <= 0 {
@@ -576,11 +578,13 @@ func (r *RendererBase[PF, C]) BlendFrom(src PixelFormat[C], rectSrcPtr *basics.R
 	}
 
 	dstRect := basics.RectI{
-		X1: dx,
-		Y1: dy,
+		X1: srcRect.X1 + dx,
+		Y1: srcRect.Y1 + dy,
 		X2: dx + (srcRect.X2 - srcRect.X1),
 		Y2: dy + (srcRect.Y2 - srcRect.Y1),
 	}
+	dstRect.X2 += srcRect.X1
+	dstRect.Y2 += srcRect.Y1
 
 	rc := r.ClipRectArea(&dstRect, &srcRect, wsrc, hsrc)
 	if rc.X2 <= 0 || rc.Y2 <= 0 {

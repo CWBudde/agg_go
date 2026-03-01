@@ -14,6 +14,7 @@
 package gpc
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"io"
@@ -228,10 +229,59 @@ func (ts *GPCTristrip) IsEmpty() bool {
 
 // ReadPolygon reads a polygon from an io.Reader
 func ReadPolygon(reader io.Reader, readHoleFlags bool) (*GPCPolygon, error) {
-	// This is a placeholder implementation
-	// The full implementation would parse a specific polygon format
-	// For now, return an error indicating it's not implemented
-	return nil, errors.New("ReadPolygon: not yet implemented - requires specific file format definition")
+	if reader == nil {
+		return nil, errors.New("reader cannot be nil")
+	}
+
+	scanner := bufio.NewReader(reader)
+
+	var numContours int
+	if _, err := fmt.Fscan(scanner, &numContours); err != nil {
+		return nil, fmt.Errorf("failed to read contour count: %w", err)
+	}
+	if numContours < 0 {
+		return nil, fmt.Errorf("invalid contour count: %d", numContours)
+	}
+
+	polygon := NewGPCPolygon()
+	for i := 0; i < numContours; i++ {
+		isHole := false
+		numVertices := 0
+
+		if readHoleFlags {
+			holeFlag := 0
+			if _, err := fmt.Fscan(scanner, &holeFlag, &numVertices); err != nil {
+				return nil, fmt.Errorf("failed to read contour %d header: %w", i, err)
+			}
+			if holeFlag != 0 && holeFlag != 1 {
+				return nil, fmt.Errorf("invalid hole flag for contour %d: %d", i, holeFlag)
+			}
+			isHole = holeFlag == 1
+		} else {
+			if _, err := fmt.Fscan(scanner, &numVertices); err != nil {
+				return nil, fmt.Errorf("failed to read contour %d vertex count: %w", i, err)
+			}
+		}
+
+		if numVertices < 3 {
+			return nil, fmt.Errorf("contour %d must have at least 3 vertices, got %d", i, numVertices)
+		}
+
+		contour := NewGPCVertexList(numVertices)
+		for j := 0; j < numVertices; j++ {
+			var x, y float64
+			if _, err := fmt.Fscan(scanner, &x, &y); err != nil {
+				return nil, fmt.Errorf("failed to read contour %d vertex %d: %w", i, j, err)
+			}
+			contour.AddVertex(x, y)
+		}
+
+		if err := polygon.AddContour(contour, isHole); err != nil {
+			return nil, fmt.Errorf("failed to add contour %d: %w", i, err)
+		}
+	}
+
+	return polygon, polygon.Validate()
 }
 
 // WritePolygon writes a polygon to an io.Writer

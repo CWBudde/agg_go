@@ -8,25 +8,26 @@ import (
 	"agg_go/internal/scanline"
 )
 
-// Gray8AdaptorWrapper is a thin Go adapter from the scanline package's
+// gray8AdaptorWrapper is a thin Go adapter from the scanline package's
 // serialized AA adaptor to the separate internal/fonts fman interface.
-// It is an intentional package-boundary wrapper, not a direct AGG type.
-type Gray8AdaptorWrapper struct {
+// It remains necessary because scanline exposes concrete serialized-scanline
+// iteration APIs while internal/fonts expects a generic adaptor/span interface.
+type gray8AdaptorWrapper struct {
 	adaptor          *scanline.SerializedScanlinesAdaptorAA[uint8]
 	embeddedScanline *scanline.SerializedEmbeddedScanline[uint8]
 	bounds           basics.Rect[int]
 }
 
-// NewGray8AdaptorWrapper creates a new Gray8AdaptorWrapper wrapping the given scanline adaptor.
-func NewGray8AdaptorWrapper(adaptor *scanline.SerializedScanlinesAdaptorAA[uint8]) *Gray8AdaptorWrapper {
-	return &Gray8AdaptorWrapper{
+// newGray8AdaptorWrapper creates a new gray8AdaptorWrapper wrapping the given scanline adaptor.
+func newGray8AdaptorWrapper(adaptor *scanline.SerializedScanlinesAdaptorAA[uint8]) *gray8AdaptorWrapper {
+	return &gray8AdaptorWrapper{
 		adaptor:          adaptor,
 		embeddedScanline: scanline.NewSerializedEmbeddedScanline[uint8](),
 	}
 }
 
 // InitGlyph initializes the adaptor with glyph data and position.
-func (w *Gray8AdaptorWrapper) InitGlyph(data []byte, dataSize uint32, x, y float64) {
+func (w *gray8AdaptorWrapper) InitGlyph(data []byte, dataSize uint32, x, y float64) {
 	if w.adaptor == nil || data == nil {
 		return
 	}
@@ -47,19 +48,19 @@ func (w *Gray8AdaptorWrapper) InitGlyph(data []byte, dataSize uint32, x, y float
 }
 
 // Bounds returns the bounding rectangle of the glyph.
-func (w *Gray8AdaptorWrapper) Bounds() basics.Rect[int] {
+func (w *gray8AdaptorWrapper) Bounds() basics.Rect[int] {
 	return w.bounds
 }
 
 // Rewind prepares the adaptor for scanline iteration.
-func (w *Gray8AdaptorWrapper) Rewind(pathID uint) {
+func (w *gray8AdaptorWrapper) Rewind(pathID uint) {
 	if w.adaptor != nil {
 		w.adaptor.RewindScanlines()
 	}
 }
 
 // SweepScanline returns the next scanline.
-func (w *Gray8AdaptorWrapper) SweepScanline() bool {
+func (w *gray8AdaptorWrapper) SweepScanline() bool {
 	if w.adaptor != nil && w.embeddedScanline != nil {
 		return w.adaptor.SweepSerializedEmbeddedScanline(w.embeddedScanline)
 	}
@@ -67,7 +68,7 @@ func (w *Gray8AdaptorWrapper) SweepScanline() bool {
 }
 
 // NumSpans returns the number of spans in current scanline.
-func (w *Gray8AdaptorWrapper) NumSpans() uint {
+func (w *gray8AdaptorWrapper) NumSpans() uint {
 	if w.embeddedScanline != nil {
 		return uint(w.embeddedScanline.NumSpans())
 	}
@@ -75,28 +76,28 @@ func (w *Gray8AdaptorWrapper) NumSpans() uint {
 }
 
 // Begin returns iterator for the first span.
-func (w *Gray8AdaptorWrapper) Begin() fonts.Gray8SpanIterator {
+func (w *gray8AdaptorWrapper) Begin() fonts.Gray8SpanIterator {
 	if w.embeddedScanline != nil {
 		iter := w.embeddedScanline.Begin()
-		return &Gray8SpanIteratorWrapper{iter: iter}
+		return &gray8SpanIteratorWrapper{iter: iter}
 	}
-	return &Gray8SpanIteratorWrapper{}
+	return &gray8SpanIteratorWrapper{}
 }
 
-// Gray8SpanIteratorWrapper adapts the scanline span iterator to the Fman interface.
-type Gray8SpanIteratorWrapper struct {
+// gray8SpanIteratorWrapper adapts the scanline span iterator to the Fman interface.
+type gray8SpanIteratorWrapper struct {
 	iter *scanline.SerializedEmbeddedScanlineIterator[uint8]
 }
 
 // Next advances to the next span.
-func (w *Gray8SpanIteratorWrapper) Next() {
+func (w *gray8SpanIteratorWrapper) Next() {
 	if w.iter != nil {
 		w.iter.Next()
 	}
 }
 
 // IsValid returns true if the iterator is at a valid span.
-func (w *Gray8SpanIteratorWrapper) IsValid() bool {
+func (w *gray8SpanIteratorWrapper) IsValid() bool {
 	if w.iter != nil {
 		return w.iter.IsValid()
 	}
@@ -104,7 +105,7 @@ func (w *Gray8SpanIteratorWrapper) IsValid() bool {
 }
 
 // X returns the starting X coordinate of current span.
-func (w *Gray8SpanIteratorWrapper) X() int {
+func (w *gray8SpanIteratorWrapper) X() int {
 	if w.iter != nil {
 		return w.iter.X()
 	}
@@ -112,7 +113,7 @@ func (w *Gray8SpanIteratorWrapper) X() int {
 }
 
 // Len returns the length of current span.
-func (w *Gray8SpanIteratorWrapper) Len() int {
+func (w *gray8SpanIteratorWrapper) Len() int {
 	if w.iter != nil {
 		return w.iter.Len()
 	}
@@ -120,32 +121,33 @@ func (w *Gray8SpanIteratorWrapper) Len() int {
 }
 
 // Covers returns the coverage array for current span.
-func (w *Gray8SpanIteratorWrapper) Covers() []uint8 {
+func (w *gray8SpanIteratorWrapper) Covers() []uint8 {
 	if w.iter != nil {
 		return w.iter.Covers()
 	}
 	return nil
 }
 
-// MonoAdaptorWrapper is a thin Go adapter from the scanline package's
+// monoAdaptorWrapper is a thin Go adapter from the scanline package's
 // serialized binary adaptor to the separate internal/fonts fman interface.
-// It is an intentional package-boundary wrapper, not a direct AGG type.
-type MonoAdaptorWrapper struct {
+// It remains necessary because scanline exposes concrete serialized-scanline
+// iteration APIs while internal/fonts expects a generic adaptor/span interface.
+type monoAdaptorWrapper struct {
 	adaptor          *scanline.SerializedScanlinesAdaptorBin
 	embeddedScanline *scanline.EmbeddedScanlineSerial
 	bounds           basics.Rect[int]
 }
 
-// NewMonoAdaptorWrapper creates a new MonoAdaptorWrapper wrapping the given scanline adaptor.
-func NewMonoAdaptorWrapper(adaptor *scanline.SerializedScanlinesAdaptorBin) *MonoAdaptorWrapper {
-	return &MonoAdaptorWrapper{
+// newMonoAdaptorWrapper creates a new monoAdaptorWrapper wrapping the given scanline adaptor.
+func newMonoAdaptorWrapper(adaptor *scanline.SerializedScanlinesAdaptorBin) *monoAdaptorWrapper {
+	return &monoAdaptorWrapper{
 		adaptor:          adaptor,
 		embeddedScanline: scanline.NewEmbeddedScanlineSerial(),
 	}
 }
 
 // InitGlyph initializes the adaptor with glyph data and position.
-func (w *MonoAdaptorWrapper) InitGlyph(data []byte, dataSize uint32, x, y float64) {
+func (w *monoAdaptorWrapper) InitGlyph(data []byte, dataSize uint32, x, y float64) {
 	if w.adaptor == nil || data == nil {
 		return
 	}
@@ -166,19 +168,19 @@ func (w *MonoAdaptorWrapper) InitGlyph(data []byte, dataSize uint32, x, y float6
 }
 
 // Bounds returns the bounding rectangle of the glyph.
-func (w *MonoAdaptorWrapper) Bounds() basics.Rect[int] {
+func (w *monoAdaptorWrapper) Bounds() basics.Rect[int] {
 	return w.bounds
 }
 
 // Rewind prepares the adaptor for scanline iteration.
-func (w *MonoAdaptorWrapper) Rewind(pathID uint) {
+func (w *monoAdaptorWrapper) Rewind(pathID uint) {
 	if w.adaptor != nil {
 		w.adaptor.RewindScanlines()
 	}
 }
 
 // SweepScanline returns the next scanline.
-func (w *MonoAdaptorWrapper) SweepScanline() bool {
+func (w *monoAdaptorWrapper) SweepScanline() bool {
 	if w.adaptor != nil && w.embeddedScanline != nil {
 		return w.adaptor.SweepEmbeddedScanline(w.embeddedScanline)
 	}
@@ -186,7 +188,7 @@ func (w *MonoAdaptorWrapper) SweepScanline() bool {
 }
 
 // NumSpans returns the number of spans in current scanline.
-func (w *MonoAdaptorWrapper) NumSpans() uint {
+func (w *monoAdaptorWrapper) NumSpans() uint {
 	if w.embeddedScanline != nil {
 		return uint(w.embeddedScanline.NumSpans())
 	}
@@ -194,28 +196,28 @@ func (w *MonoAdaptorWrapper) NumSpans() uint {
 }
 
 // Begin returns iterator for the first span.
-func (w *MonoAdaptorWrapper) Begin() fonts.MonoSpanIterator {
+func (w *monoAdaptorWrapper) Begin() fonts.MonoSpanIterator {
 	if w.embeddedScanline != nil {
 		iter := w.embeddedScanline.Begin()
-		return &MonoSpanIteratorWrapper{iter: iter}
+		return &monoSpanIteratorWrapper{iter: iter}
 	}
-	return &MonoSpanIteratorWrapper{}
+	return &monoSpanIteratorWrapper{}
 }
 
-// MonoSpanIteratorWrapper adapts the scanline span iterator to the Fman interface.
-type MonoSpanIteratorWrapper struct {
+// monoSpanIteratorWrapper adapts the scanline span iterator to the Fman interface.
+type monoSpanIteratorWrapper struct {
 	iter *scanline.EmbeddedScanlineSerialIterator
 }
 
 // Next advances to the next span.
-func (w *MonoSpanIteratorWrapper) Next() {
+func (w *monoSpanIteratorWrapper) Next() {
 	if w.iter != nil {
 		w.iter.Next()
 	}
 }
 
 // IsValid returns true if the iterator is at a valid span.
-func (w *MonoSpanIteratorWrapper) IsValid() bool {
+func (w *monoSpanIteratorWrapper) IsValid() bool {
 	if w.iter != nil {
 		return w.iter.IsValid()
 	}
@@ -223,7 +225,7 @@ func (w *MonoSpanIteratorWrapper) IsValid() bool {
 }
 
 // X returns the starting X coordinate of current span.
-func (w *MonoSpanIteratorWrapper) X() int {
+func (w *monoSpanIteratorWrapper) X() int {
 	if w.iter != nil {
 		return w.iter.X()
 	}
@@ -231,7 +233,7 @@ func (w *MonoSpanIteratorWrapper) X() int {
 }
 
 // Len returns the length of current span.
-func (w *MonoSpanIteratorWrapper) Len() int {
+func (w *monoSpanIteratorWrapper) Len() int {
 	if w.iter != nil {
 		return w.iter.Len()
 	}

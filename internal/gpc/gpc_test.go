@@ -623,12 +623,102 @@ func TestNumericalPrecision(t *testing.T) {
 }
 
 func TestReadPolygon(t *testing.T) {
-	reader := strings.NewReader("test polygon data")
+	tests := []struct {
+		name          string
+		input         string
+		readHoleFlags bool
+		wantContours  int
+		wantHoles     []bool
+		wantVertices  []int
+	}{
+		{
+			name:          "Without hole flags",
+			input:         "1\n3\n0.000000 0.000000\n1.000000 0.000000\n0.500000 1.000000\n",
+			readHoleFlags: false,
+			wantContours:  1,
+			wantHoles:     []bool{false},
+			wantVertices:  []int{3},
+		},
+		{
+			name:          "With hole flags",
+			input:         "2\n0 4\n0 0\n10 0\n10 10\n0 10\n1 4\n3 3\n3 7\n7 7\n7 3\n",
+			readHoleFlags: true,
+			wantContours:  2,
+			wantHoles:     []bool{false, true},
+			wantVertices:  []int{4, 4},
+		},
+	}
 
-	// Since ReadPolygon is not fully implemented, it should return an error
-	_, err := ReadPolygon(reader, false)
-	if err == nil {
-		t.Error("ReadPolygon() should return error for unimplemented functionality")
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			polygon, err := ReadPolygon(strings.NewReader(test.input), test.readHoleFlags)
+			if err != nil {
+				t.Fatalf("ReadPolygon() error: %v", err)
+			}
+
+			if polygon.NumContours != test.wantContours {
+				t.Fatalf("NumContours = %d, want %d", polygon.NumContours, test.wantContours)
+			}
+
+			for i := 0; i < test.wantContours; i++ {
+				contour, isHole, err := polygon.GetContour(i)
+				if err != nil {
+					t.Fatalf("GetContour(%d) error: %v", i, err)
+				}
+				if isHole != test.wantHoles[i] {
+					t.Fatalf("contour %d hole = %v, want %v", i, isHole, test.wantHoles[i])
+				}
+				if contour.NumVertices != test.wantVertices[i] {
+					t.Fatalf("contour %d vertex count = %d, want %d", i, contour.NumVertices, test.wantVertices[i])
+				}
+			}
+		})
+	}
+}
+
+func TestReadPolygonErrors(t *testing.T) {
+	tests := []struct {
+		name          string
+		input         string
+		readHoleFlags bool
+	}{
+		{
+			name:          "Bad contour count",
+			input:         "not-a-number\n",
+			readHoleFlags: false,
+		},
+		{
+			name:          "Negative contour count",
+			input:         "-1\n",
+			readHoleFlags: false,
+		},
+		{
+			name:          "Bad hole flag",
+			input:         "1\n2 3\n0 0\n1 0\n0 1\n",
+			readHoleFlags: true,
+		},
+		{
+			name:          "Too few vertices",
+			input:         "1\n2\n0 0\n1 0\n",
+			readHoleFlags: false,
+		},
+		{
+			name:          "Truncated vertices",
+			input:         "1\n3\n0 0\n1 0\n",
+			readHoleFlags: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if _, err := ReadPolygon(strings.NewReader(test.input), test.readHoleFlags); err == nil {
+				t.Fatal("ReadPolygon() error = nil, want non-nil")
+			}
+		})
+	}
+
+	if _, err := ReadPolygon(nil, false); err == nil {
+		t.Fatal("ReadPolygon(nil) error = nil, want non-nil")
 	}
 }
 
