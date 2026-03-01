@@ -65,6 +65,13 @@
             font-size: 0.9rem;
             color: #86868b;
         }
+        .description {
+            margin-top: 1.5rem;
+            max-width: 600px;
+            text-align: center;
+            line-height: 1.5;
+            color: #424245;
+        }
         #loading {
             position: fixed;
             top: 0;
@@ -92,11 +99,16 @@
             <option value="circles">Circles Demo</option>
             <option value="starburst">Starburst Demo</option>
             <option value="rects">Rectangles Demo</option>
+            <option value="lion">Lion Demo (AGG Signature)</option>
+            <option value="gradients">Gradients Demo</option>
+            <option value="aa">Anti-Aliasing Demo</option>
         </select>
         <button id="renderBtn">Re-render</button>
     </div>
 
     <canvas id="aggCanvas"></canvas>
+
+    <div class="description" id="demoDesc"></div>
 
     <div class="status" id="statusMsg">Initializing...</div>
 
