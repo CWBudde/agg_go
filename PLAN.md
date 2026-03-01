@@ -97,7 +97,7 @@ Files:
 
 - [x] Ensure `ClipBox` updates all relevant renderer and rasterizer states consistently.
 - [x] Verify `clearClipBox`, `copyImage`, `blendImage`, transformed image operations obey clip box identically to AGG semantics.
-  Verified by dedicated pixel-asserting tests in `internal/agg2d/{agg2d,image,utilities}_test.go`.
+      Verified by dedicated pixel-asserting tests in `internal/agg2d/{agg2d,image,utilities}_test.go`.
 
 Files:
 
@@ -222,4 +222,4 @@ For each task:
 3. [x] Replace text rectangle fallback in `internal/agg2d/text.go`.
 4. [x] Align clip propagation across rasterizer and renderer bases in `internal/agg2d/buffer.go`.
 5. [x] Add pixel-asserting AGG2D tests for the above before moving to lower-priority items.
-   Current coverage includes clip/copy assertions and deterministic image sampling assertions; broader end-to-end render-output parity remains tracked in Phase `4.1`.
+       Current coverage includes clip/copy assertions and deterministic image sampling assertions; broader end-to-end render-output parity remains tracked in Phase `4.1`.

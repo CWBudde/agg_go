@@ -3,6 +3,7 @@ package scanline
 
 import (
 	"agg_go/internal/basics"
+	"agg_go/internal/rasterizer"
 )
 
 // RenderScanlines is a generic scanline rendering function that works with any renderer.
@@ -33,42 +34,31 @@ type PathColorStorage[C any] interface {
 	GetColor(index int) C
 }
 
-// PathIdStorage represents a storage interface for path IDs.
+// PathIDStorage represents a storage interface for path IDs.
 // This is used by RenderAllPaths to access path IDs by index.
-type PathIdStorage interface {
-	// GetPathId returns the path ID at the specified index
-	GetPathId(index int) int
-}
-
-// VertexSourceInterface represents a vertex source that can be used for path rendering.
-type VertexSourceInterface interface {
-	// This would typically include methods for path traversal
-	// For now, we'll keep it minimal as a placeholder
+type PathIDStorage interface {
+	// GetPathID returns the path ID at the specified index.
+	GetPathID(index int) uint32
 }
 
 // RenderAllPaths renders multiple paths with different colors.
 // This corresponds to AGG's render_all_paths function.
 func RenderAllPaths[C any](ras RasterizerInterface, sl ScanlineInterface, renderer RendererInterface[C],
-	vertexSource VertexSourceInterface, colorStorage PathColorStorage[C],
-	pathIdStorage PathIdStorage, numPaths int,
+	vertexSource rasterizer.VertexSource, colorStorage PathColorStorage[C],
+	pathIDStorage PathIDStorage, numPaths int,
 ) {
-	// This is a simplified version - in a full implementation, we'd need
-	// to define more complete interfaces for the rasterizer's path handling
 	for i := 0; i < numPaths; i++ {
-		// Reset the rasterizer for this path
 		if resettable, ok := ras.(Resettable); ok {
 			resettable.Reset()
 		}
 
-		// Add the path to the rasterizer
-		pathId := pathIdStorage.GetPathId(i)
+		pathID := pathIDStorage.GetPathID(i)
 		if addPathInterface, ok := ras.(interface {
-			AddPath(vs VertexSourceInterface, pathId int)
+			AddPath(vs rasterizer.VertexSource, pathID uint32)
 		}); ok {
-			addPathInterface.AddPath(vertexSource, pathId)
+			addPathInterface.AddPath(vertexSource, pathID)
 		}
 
-		// Set the color on the renderer
 		color := colorStorage.GetColor(i)
 		if colorSetter, ok := renderer.(ColorSetter[C]); ok {
 			colorSetter.SetColor(color)
@@ -171,22 +161,16 @@ func renderCompoundMultipleStyles[C any, PC interface {
 	styleHandler StyleHandlerInterface[C], colorSpan []C, mixBuffer []C,
 	minX int, numStyles int,
 ) {
-	// Allocate coverage buffer for tracking accumulated coverage per pixel
-	length := len(mixBuffer)
-	coverBuffer := ras.AllocateCoverBuffer(length)
-
-	// Clear the mix buffer and cover buffer spans
+	// Clear only the mix buffer spans, matching AGG's render_scanlines_compound.
 	iterBin := slBin.Begin()
 	numSpansBin := slBin.NumSpans()
 
 	for i := 0; i < numSpansBin; i++ {
 		span := iterBin.GetSpan()
 
-		// Clear mix buffer and cover buffer sections for this span
 		for j := 0; j < span.Len; j++ {
 			var zero C
 			mixBuffer[span.X-minX+j] = zero
-			coverBuffer[span.X-minX+j] = 0
 		}
 
 		if i < numSpansBin-1 {
@@ -207,12 +191,10 @@ func renderCompoundMultipleStyles[C any, PC interface {
 				span := iter.GetSpan()
 
 				if solid {
-					// Solid color processing
-					renderCompoundSolidStyle[C, PC](span, styleHandler, style, mixBuffer, coverBuffer, minX)
+					renderCompoundSolidStyle[C, PC](span, styleHandler, style, mixBuffer, minX)
 				} else {
-					// Span generator processing
 					renderCompoundGeneratedStyle[C, PC](span, slAA, styleHandler, style,
-						colorSpan, mixBuffer, coverBuffer, minX, alloc)
+						colorSpan, mixBuffer, minX, alloc)
 				}
 
 				if i < numSpans-1 {
@@ -245,7 +227,7 @@ func renderCompoundSolidStyle[C any, PC interface {
 	*C
 	AddWithCover(src C, cover basics.Int8u)
 }](span SpanData, styleHandler StyleHandlerInterface[C],
-	style int, mixBuffer []C, coverBuffer []basics.Int8u, minX int,
+	style int, mixBuffer []C, minX int,
 ) {
 	sourceColor := styleHandler.Color(style)
 
@@ -253,14 +235,10 @@ func renderCompoundSolidStyle[C any, PC interface {
 		cover := span.Covers[i]
 		bufferIndex := span.X - minX + i
 
-		// Check if accumulated coverage would exceed CoverFull
-		if uint32(coverBuffer[bufferIndex])+uint32(cover) > uint32(basics.CoverFull) {
-			cover = basics.CoverFull - coverBuffer[bufferIndex]
-		}
-
-		if cover > 0 {
+		if cover == basics.CoverFull {
+			mixBuffer[bufferIndex] = sourceColor
+		} else if cover > 0 {
 			PC(&mixBuffer[bufferIndex]).AddWithCover(sourceColor, cover)
-			coverBuffer[bufferIndex] += cover
 		}
 	}
 }
@@ -272,7 +250,7 @@ func renderCompoundGeneratedStyle[C any, PC interface {
 	AddWithCover(src C, cover basics.Int8u)
 }](span SpanData, sl ScanlineInterface,
 	styleHandler StyleHandlerInterface[C], style int, colorSpan []C,
-	mixBuffer []C, coverBuffer []basics.Int8u, minX int, alloc SpanAllocatorInterface[C],
+	mixBuffer []C, minX int, alloc SpanAllocatorInterface[C],
 ) {
 	colors := alloc.Allocate(span.Len)
 	styleHandler.GenerateSpan(colors, span.X, sl.Y(), span.Len, style)
@@ -281,14 +259,10 @@ func renderCompoundGeneratedStyle[C any, PC interface {
 		cover := span.Covers[i]
 		bufferIndex := span.X - minX + i
 
-		// Check if accumulated coverage would exceed CoverFull
-		if uint32(coverBuffer[bufferIndex])+uint32(cover) > uint32(basics.CoverFull) {
-			cover = basics.CoverFull - coverBuffer[bufferIndex]
-		}
-
-		if cover > 0 {
+		if cover == basics.CoverFull {
+			mixBuffer[bufferIndex] = colors[i]
+		} else if cover > 0 {
 			PC(&mixBuffer[bufferIndex]).AddWithCover(colors[i], cover)
-			coverBuffer[bufferIndex] += cover
 		}
 	}
 }

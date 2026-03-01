@@ -2,6 +2,7 @@ package scanline
 
 import (
 	"agg_go/internal/basics"
+	"agg_go/internal/rasterizer"
 )
 
 // Shared mock types for all scanline tests
@@ -136,6 +137,11 @@ type MockRasterizer struct {
 	sweepCallCount int
 	minX, maxX     int
 	resetCalled    bool
+	addPathCalls   []MockAddPathCall
+}
+
+type MockAddPathCall struct {
+	PathID uint32
 }
 
 func (m *MockRasterizer) RewindScanlines() bool {
@@ -154,6 +160,9 @@ func (m *MockRasterizer) SweepScanline(sl ScanlineInterface) bool {
 func (m *MockRasterizer) MinX() int { return m.minX }
 func (m *MockRasterizer) MaxX() int { return m.maxX }
 func (m *MockRasterizer) Reset()    { m.resetCalled = true }
+func (m *MockRasterizer) AddPath(vs rasterizer.VertexSource, pathID uint32) {
+	m.addPathCalls = append(m.addPathCalls, MockAddPathCall{PathID: pathID})
+}
 
 // MockRenderer for testing helper functions
 type MockRenderer[C any] struct {
@@ -192,15 +201,21 @@ type MockPathIdStorage struct {
 	pathIds []int
 }
 
-func (m *MockPathIdStorage) GetPathId(index int) int {
+func (m *MockPathIdStorage) GetPathID(index int) uint32 {
 	if index >= 0 && index < len(m.pathIds) {
-		return m.pathIds[index]
+		return uint32(m.pathIds[index])
 	}
 	return 0
 }
 
-// MockVertexSource for testing RenderAllPaths
-type MockVertexSource struct{}
+// MockRasterizerVertexSource for testing RenderAllPaths
+type MockRasterizerVertexSource struct{}
+
+func (m *MockRasterizerVertexSource) Rewind(pathID uint32) {}
+
+func (m *MockRasterizerVertexSource) Vertex(x, y *float64) uint32 {
+	return 0
+}
 
 // MockCompoundRasterizer for testing compound rendering
 type MockCompoundRasterizer struct {
@@ -328,4 +343,8 @@ func (m *MockStyleHandler[C]) GenerateSpan(colors []C, x, y, len, style int) {
 		X:      x, Y: y, Len: len,
 		Style: style,
 	})
+	fill := m.Color(style)
+	for i := 0; i < len; i++ {
+		colors[i] = fill
+	}
 }

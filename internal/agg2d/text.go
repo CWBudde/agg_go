@@ -42,22 +42,22 @@ func (agg2d *Agg2D) Font(fileName string, height float64, bold, italic bool,
 	}
 
 	// Load the font
-	if ftEngine, ok := agg2d.fontEngine.(*freetype.FontEngineFreetype); ok {
-		err := ftEngine.LoadFont(fileName, 0, renderingType, nil)
+	if agg2d.fontEngine != nil {
+		err := agg2d.fontEngine.LoadFont(fileName, 0, renderingType, nil)
 		if err != nil {
 			return err
 		}
 
-		ftEngine.SetHinting(agg2d.textHints)
+		agg2d.fontEngine.SetHinting(agg2d.textHints)
 
 		// Set height based on cache type
 		if cacheType == VectorFontCache {
-			ftEngine.SetHeight(height)
+			agg2d.fontEngine.SetHeight(height)
 		} else {
 			// Convert world coordinates to screen coordinates for raster fonts
 			worldHeight := height
 			agg2d.WorldToScreen(&worldHeight, &worldHeight)
-			ftEngine.SetHeight(worldHeight)
+			agg2d.fontEngine.SetHeight(worldHeight)
 		}
 	}
 
@@ -71,8 +71,8 @@ func (agg2d *Agg2D) FontHeight() float64 {
 
 // FlipText sets whether to flip text rendering vertically.
 func (agg2d *Agg2D) FlipText(flip bool) {
-	if ftEngine, ok := agg2d.fontEngine.(*freetype.FontEngineFreetype); ok {
-		ftEngine.SetFlipY(flip)
+	if agg2d.fontEngine != nil {
+		agg2d.fontEngine.SetFlipY(flip)
 	}
 }
 
@@ -81,8 +81,8 @@ func (agg2d *Agg2D) FlipText(flip bool) {
 // TextHints enables or disables font hinting for better text rendering.
 func (agg2d *Agg2D) TextHints(hints bool) {
 	agg2d.textHints = hints
-	if ftEngine, ok := agg2d.fontEngine.(*freetype.FontEngineFreetype); ok {
-		ftEngine.SetHinting(hints)
+	if agg2d.fontEngine != nil {
+		agg2d.fontEngine.SetHinting(hints)
 	}
 }
 
@@ -94,8 +94,8 @@ func (agg2d *Agg2D) GetTextHints() bool {
 // TextWidth calculates the width of the given text string in current units.
 // This matches the C++ Agg2D::textWidth() method.
 func (agg2d *Agg2D) TextWidth(str string) float64 {
-	fcm, ok := agg2d.fontCacheManager.(*font.FontCacheManager)
-	if !ok || fcm == nil {
+	fcm := agg2d.fontCacheManager
+	if fcm == nil {
 		return 0.0
 	}
 
@@ -132,8 +132,8 @@ func (agg2d *Agg2D) TextWidth(str string) float64 {
 // Text renders text at the specified position with optional positioning adjustments.
 // This closely matches the C++ Agg2D::text() method implementation.
 func (agg2d *Agg2D) Text(x, y float64, str string, roundOff bool, dx, dy float64) {
-	fcm, ok := agg2d.fontCacheManager.(*font.FontCacheManager)
-	if !ok || fcm == nil || str == "" {
+	fcm := agg2d.fontCacheManager
+	if fcm == nil || str == "" {
 		return
 	}
 
@@ -171,10 +171,8 @@ func (agg2d *Agg2D) Text(x, y float64, str string, roundOff bool, dx, dy float64
 	}
 
 	// Flip Y alignment if font engine has Y-flipping enabled
-	if ftEngine, ok := agg2d.fontEngine.(*freetype.FontEngineFreetype); ok {
-		if ftEngine.GetFlipY() {
-			alignDy = -alignDy
-		}
+	if agg2d.fontEngine != nil && agg2d.fontEngine.GetFlipY() {
+		alignDy = -alignDy
 	}
 
 	// Calculate starting position

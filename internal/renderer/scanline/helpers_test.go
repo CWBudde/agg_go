@@ -70,10 +70,15 @@ func TestRenderScanlines(t *testing.T) {
 
 func TestRenderAllPaths(t *testing.T) {
 	t.Run("render multiple paths with colors", func(t *testing.T) {
-		rasterizer := &MockRasterizer{rewindResult: true}
+		rasterizer := &MockRasterizer{
+			rewindResult: true,
+			sweepResults: []bool{true, false, true, false, true, false},
+			minX:         0,
+			maxX:         10,
+		}
 		scanline := &MockScanline{}
 		renderer := &MockRenderer[string]{}
-		vertexSource := &MockVertexSource{}
+		vertexSource := &MockRasterizerVertexSource{}
 
 		colorStorage := &MockPathColorStorage[string]{
 			colors:     []string{"red", "blue", "green"},
@@ -86,11 +91,22 @@ func TestRenderAllPaths(t *testing.T) {
 		RenderAllPaths(rasterizer, scanline, renderer, vertexSource,
 			colorStorage, pathIdStorage, 3)
 
-		// Verify that the renderer had colors set
-		// Note: This is a simplified test as the full functionality would require
-		// more complex mock implementations
 		if renderer.color != "green" { // Last color set
 			t.Errorf("Expected final color to be 'green', got %v", renderer.color)
+		}
+		if len(rasterizer.addPathCalls) != 3 {
+			t.Fatalf("Expected 3 AddPath calls, got %d", len(rasterizer.addPathCalls))
+		}
+		for i, call := range rasterizer.addPathCalls {
+			if call.PathID != uint32(i+1) {
+				t.Fatalf("AddPath call %d used path ID %d, want %d", i, call.PathID, i+1)
+			}
+		}
+		if !rasterizer.resetCalled {
+			t.Error("Expected rasterizer reset to be called")
+		}
+		if len(renderer.renderCalls) != 3 {
+			t.Errorf("Expected 3 render calls, got %d", len(renderer.renderCalls))
 		}
 	})
 
@@ -98,7 +114,7 @@ func TestRenderAllPaths(t *testing.T) {
 		rasterizer := &MockRasterizer{rewindResult: true}
 		scanline := &MockScanline{}
 		renderer := &MockRenderer[string]{}
-		vertexSource := &MockVertexSource{}
+		vertexSource := &MockRasterizerVertexSource{}
 		colorStorage := &MockPathColorStorage[string]{}
 		pathIdStorage := &MockPathIdStorage{}
 
@@ -344,82 +360,66 @@ func TestGray8_AddWithCover_CallsAdd(t *testing.T) {
 	}
 }
 
-// Test coverage accumulation in compound rendering
-func TestRenderCompoundSolidStyle_CoverageAccumulation(t *testing.T) {
-	// Create test data
+func TestRenderCompoundSolidStyle_FullCoverageOverwrites(t *testing.T) {
 	span := SpanData{
 		X:      2,
 		Len:    3,
-		Covers: []basics.Int8u{100, 200, 150}, // Coverage values that would exceed 255 when accumulated
+		Covers: []basics.Int8u{100, basics.CoverFull, 150},
 	}
 
 	styleHandler := &MockStyleHandler[color.RGBA8[color.Linear]]{
-		colors: []color.RGBA8[color.Linear]{{R: 255, G: 0, B: 0, A: 255}}, // Red color
+		colors: []color.RGBA8[color.Linear]{{R: 255, G: 0, B: 0, A: 255}},
 	}
 
+	initial := color.RGBA8[color.Linear]{R: 10, G: 20, B: 30, A: 40}
 	mixBuffer := make([]color.RGBA8[color.Linear], 10)
-	coverBuffer := make([]basics.Int8u, 10)
+	for i := range mixBuffer {
+		mixBuffer[i] = initial
+	}
 	minX := 0
 
-	// First call - should add coverage normally
-	renderCompoundSolidStyle(span, styleHandler, 0, mixBuffer, coverBuffer, minX)
+	renderCompoundSolidStyle(span, styleHandler, 0, mixBuffer, minX)
 
-	// Check that coverage was accumulated
-	expectedCoverages := []basics.Int8u{100, 200, 150}
-	for i, expectedCover := range expectedCoverages {
-		if coverBuffer[span.X+i] != expectedCover {
-			t.Errorf("Coverage[%d] = %d, want %d", span.X+i, coverBuffer[span.X+i], expectedCover)
-		}
+	if mixBuffer[3] != styleHandler.colors[0] {
+		t.Fatalf("Expected full-coverage pixel to be overwritten, got %+v want %+v", mixBuffer[3], styleHandler.colors[0])
 	}
-
-	// Second call with same span - should clamp coverage to not exceed CoverFull
-	renderCompoundSolidStyle(span, styleHandler, 0, mixBuffer, coverBuffer, minX)
-
-	// Check that coverage was accumulated correctly, clamped where needed
-	expectedFinalCoverages := []basics.Int8u{200, 255, 255} // 100+100, min(200+200,255), min(150+150,255)
-	for i, expectedCover := range expectedFinalCoverages {
-		if coverBuffer[span.X+i] != expectedCover {
-			t.Errorf("Coverage[%d] = %d, want %d", span.X+i, coverBuffer[span.X+i], expectedCover)
-		}
+	if mixBuffer[2] == initial || mixBuffer[4] == initial {
+		t.Fatal("Expected partial-coverage pixels to be blended")
 	}
 }
 
-func TestRenderCompoundGeneratedStyle_CoverageAccumulation(t *testing.T) {
-	// Create test data
+func TestRenderCompoundGeneratedStyle_FullCoverageOverwrites(t *testing.T) {
 	span := SpanData{
 		X:      1,
-		Len:    2,
-		Covers: []basics.Int8u{128, 200}, // Coverage values
+		Len:    3,
+		Covers: []basics.Int8u{128, basics.CoverFull, 200},
 	}
 
 	sl := &MockScanline{y: 5}
-	styleHandler := &MockStyleHandler[color.RGBA8[color.Linear]]{}
+	styleHandler := &MockStyleHandler[color.RGBA8[color.Linear]]{
+		colors: []color.RGBA8[color.Linear]{{R: 90, G: 120, B: 150, A: 255}},
+	}
 	alloc := &MockSpanAllocator[color.RGBA8[color.Linear]]{}
 
+	initial := color.RGBA8[color.Linear]{R: 8, G: 8, B: 8, A: 8}
 	mixBuffer := make([]color.RGBA8[color.Linear], 10)
-	coverBuffer := make([]basics.Int8u, 10)
+	for i := range mixBuffer {
+		mixBuffer[i] = initial
+	}
 	colorSpan := make([]color.RGBA8[color.Linear], 10)
 	minX := 0
 
-	// First call - should add coverage normally
-	renderCompoundGeneratedStyle(span, sl, styleHandler, 0, colorSpan, mixBuffer, coverBuffer, minX, alloc)
+	renderCompoundGeneratedStyle(span, sl, styleHandler, 0, colorSpan, mixBuffer, minX, alloc)
 
-	// Check that coverage was accumulated
-	expectedCoverages := []basics.Int8u{128, 200}
-	for i, expectedCover := range expectedCoverages {
-		if coverBuffer[span.X+i] != expectedCover {
-			t.Errorf("Coverage[%d] = %d, want %d", span.X+i, coverBuffer[span.X+i], expectedCover)
-		}
+	if len(styleHandler.generateCalls) != 1 {
+		t.Fatalf("Expected one generated span call, got %d", len(styleHandler.generateCalls))
 	}
-
-	// Second call with overlapping coverage - should clamp to not exceed CoverFull
-	renderCompoundGeneratedStyle(span, sl, styleHandler, 0, colorSpan, mixBuffer, coverBuffer, minX, alloc)
-
-	// Check clamping: 128+128=256->255, 200+200=400->255
-	for i := range expectedCoverages {
-		if coverBuffer[span.X+i] != basics.CoverFull {
-			t.Errorf("Coverage[%d] = %d, want %d (CoverFull)", span.X+i, coverBuffer[span.X+i], basics.CoverFull)
-		}
+	generated := styleHandler.generateCalls[0].Colors
+	if mixBuffer[2] != generated[1] {
+		t.Fatalf("Expected full-coverage generated pixel to overwrite, got %+v want %+v", mixBuffer[2], generated[1])
+	}
+	if mixBuffer[1] == initial || mixBuffer[3] == initial {
+		t.Fatal("Expected partial-coverage generated pixels to be blended")
 	}
 }
 
@@ -437,25 +437,14 @@ func TestRenderCompoundSolidStyle_ZeroCoverageSkipped(t *testing.T) {
 
 	initialColor := color.RGBA8[color.Linear]{R: 64, G: 64, B: 64, A: 128}
 	mixBuffer := []color.RGBA8[color.Linear]{initialColor, initialColor, initialColor}
-	coverBuffer := []basics.Int8u{200, 200, 100} // Pre-existing high coverage
 	minX := 0
 
-	// Call the function
-	renderCompoundSolidStyle(span, styleHandler, 0, mixBuffer, coverBuffer, minX)
+	renderCompoundSolidStyle(span, styleHandler, 0, mixBuffer, minX)
 
-	// Check that the zero-coverage pixel was skipped and buffer unchanged
 	if mixBuffer[1] != initialColor {
 		t.Errorf("Zero-coverage pixel should not be modified, got %v", mixBuffer[1])
 	}
-	if coverBuffer[1] != 200 {
-		t.Errorf("Zero-coverage pixel coverage should remain unchanged, got %d", coverBuffer[1])
-	}
-
-	// Check that non-zero coverage pixels were processed
-	if coverBuffer[0] != 255 { // 200+100 clamped to 255
-		t.Errorf("Expected coverage[0] to be clamped to 255, got %d", coverBuffer[0])
-	}
-	if coverBuffer[2] != 250 { // 100+150 = 250
-		t.Errorf("Expected coverage[2] to be 250, got %d", coverBuffer[2])
+	if mixBuffer[0] == initialColor || mixBuffer[2] == initialColor {
+		t.Error("Expected non-zero coverage pixels to be modified")
 	}
 }

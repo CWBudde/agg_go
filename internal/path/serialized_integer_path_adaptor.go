@@ -7,6 +7,18 @@ import (
 	"agg_go/internal/basics"
 )
 
+// IntegerPathAdaptor is the interface common to all precision variants of
+// SerializedIntegerPathAdaptor. It allows callers to work with int16 or int32
+// adaptors without resorting to interface{}.
+type IntegerPathAdaptor interface {
+	Init(data []byte, dx, dy, scale float64, coordShift int)
+	Rewind(pathID uint32)
+	Vertex() (float64, float64, basics.PathCommand)
+	Size() uint32
+	IsEmpty() bool
+	SetTransform(dx, dy, scale float64)
+}
+
 // SerializedIntegerPathAdaptor reads integer path data from a serialized byte buffer.
 // This corresponds to AGG's serialized_integer_path_adaptor<T, CoordShift> template class.
 // It allows reading paths that were previously serialized with PathStorageInteger.

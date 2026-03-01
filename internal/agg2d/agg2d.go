@@ -6,6 +6,8 @@ import (
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
 	"agg_go/internal/conv"
+	"agg_go/internal/font"
+	"agg_go/internal/font/freetype"
 	aggimage "agg_go/internal/image"
 	"agg_go/internal/path"
 	"agg_go/internal/pixfmt"
@@ -131,15 +133,12 @@ type Agg2D struct {
 	fontDescent   float64
 	fontCacheType FontCacheType
 
-	// Font engine and cache manager use interface{} because their concrete types
-	// depend on build tags (freetype vs non-freetype). This is an ACCEPTABLE use
-	// of interface{} for cross-cutting concerns at module boundaries.
-	//
-	// DO NOT attempt to "fix" this with typed interfaces - the actual implementation
-	// is selected at compile time via build tags, making interface{} the correct choice.
-	// This pattern is analogous to C++ template specialization at build time.
-	fontEngine       interface{} // FontEngine interface - actual type depends on build tags
-	fontCacheManager interface{} // FontCacheManager - manages glyph caching
+	// Both engine variants (freetype build tag on/off) define the same
+	// *freetype.FontEngineFreetype type — only the behaviour differs, not
+	// the type name — so we can use the concrete types directly and avoid
+	// any type assertions at call sites.
+	fontEngine       *freetype.FontEngineFreetype
+	fontCacheManager *font.FontCacheManager
 
 	// Image filtering
 	imageFilter    ImageFilter

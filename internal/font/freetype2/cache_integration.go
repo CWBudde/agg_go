@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"agg_go/internal/fonts"
+	"agg_go/internal/path"
 )
 
 // CacheManager2 integrates the FreeType2 engine with the enhanced cache manager.
@@ -15,8 +16,8 @@ import (
 type CacheManager2 struct {
 	fontEngine   FontEngineInterface
 	cachedGlyphs *fonts.FmanCachedGlyphs
-	currentFont  LoadedFaceInterface // Reference to current font context
-	pathAdaptor  interface{}         // Either *path.SerializedIntegerPathAdaptor[int16] or *path.SerializedIntegerPathAdaptor[int32]
+	currentFont  LoadedFaceInterface     // Reference to current font context
+	pathAdaptor  path.IntegerPathAdaptor // Either *path.SerializedIntegerPathAdaptor[int16] or *path.SerializedIntegerPathAdaptor[int32]
 	gray8Adaptor *Gray8AdaptorWrapper
 	monoAdaptor  *MonoAdaptorWrapper
 	lastError    error
@@ -104,7 +105,7 @@ func (cm *CacheManager2) Glyph(charCode uint32) *fonts.FmanCachedGlyph {
 }
 
 // PathAdaptor returns the path adaptor for vector font rendering.
-func (cm *CacheManager2) PathAdaptor() interface{} {
+func (cm *CacheManager2) PathAdaptor() path.IntegerPathAdaptor {
 	return cm.pathAdaptor
 }
 

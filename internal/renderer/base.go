@@ -544,15 +544,19 @@ func (r *RendererBase[PF, C]) CopyFrom(src PixelFormat[C], rectSrcPtr *basics.Re
 		return
 	}
 
-	row := make([]C, rc.X2)
+	rows := make([][]C, rc.Y2)
 	for rowOfs := 0; rowOfs < rc.Y2; rowOfs++ {
 		sy := srcRect.Y1 + rowOfs
-		dy2 := dstRect.Y1 + rowOfs
-
+		row := make([]C, rc.X2)
 		for i := 0; i < rc.X2; i++ {
 			sx := srcRect.X1 + i
 			row[i] = src.Pixel(sx, sy)
 		}
+		rows[rowOfs] = row
+	}
+
+	for rowOfs, row := range rows {
+		dy2 := dstRect.Y1 + rowOfs
 		r.pixfmt.CopyColorHspan(dstRect.X1, dy2, rc.X2, row)
 	}
 }
@@ -583,16 +587,19 @@ func (r *RendererBase[PF, C]) BlendFrom(src PixelFormat[C], rectSrcPtr *basics.R
 		return
 	}
 
-	row := make([]C, rc.X2)
+	rows := make([][]C, rc.Y2)
 	for rowOfs := 0; rowOfs < rc.Y2; rowOfs++ {
 		sy := srcRect.Y1 + rowOfs
-		dy2 := dstRect.Y1 + rowOfs
-
+		row := make([]C, rc.X2)
 		for i := 0; i < rc.X2; i++ {
 			sx := srcRect.X1 + i
 			row[i] = src.Pixel(sx, sy)
 		}
-		// No per-pixel covers (nil); use uniform "cover".
+		rows[rowOfs] = row
+	}
+
+	for rowOfs, row := range rows {
+		dy2 := dstRect.Y1 + rowOfs
 		r.pixfmt.BlendColorHspan(dstRect.X1, dy2, rc.X2, row, nil, cover)
 	}
 }
