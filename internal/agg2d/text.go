@@ -5,8 +5,10 @@ package agg2d
 import (
 	"agg_go/internal/basics"
 	"agg_go/internal/color"
+	"agg_go/internal/conv"
 	"agg_go/internal/font"
 	"agg_go/internal/font/freetype"
+	"agg_go/internal/gsv"
 	"agg_go/internal/path"
 	renscan "agg_go/internal/renderer/scanline"
 	"agg_go/internal/transform"
@@ -62,6 +64,25 @@ func (agg2d *Agg2D) Font(fileName string, height float64, bold, italic bool,
 	return nil
 }
 
+// FontGSV configures the built-in AGG GSV stroke-vector font as the active text
+// backend.  This is a WASM-safe alternative to Font() because it uses no cgo
+// and requires no font file.
+//
+// TODO(Path B): This is a temporary solution.  Replace with a pure-Go TTF
+// engine (Path A) once one is integrated, and remove this method.
+func (agg2d *Agg2D) FontGSV(height float64) {
+	if agg2d.gsvText == nil {
+		agg2d.gsvText = gsv.NewGSVText()
+	}
+	// In standard screen coordinates (Y increases downward) GSV must flip its
+	// Y axis so that characters are rendered right-side up.
+	// C++ equivalent: agg2d.flipText(true) when the render buffer is NOT flipped.
+	agg2d.gsvText.SetFlip(true)
+	agg2d.gsvText.SetSize(height, 0) // width=0 → proportional
+	agg2d.fontHeight = height
+	agg2d.gsvFontMode = true
+}
+
 // FontHeight returns the current font height.
 func (agg2d *Agg2D) FontHeight() float64 {
 	return agg2d.fontHeight
@@ -93,6 +114,16 @@ func (agg2d *Agg2D) GetTextHints() bool {
 // TextWidth calculates the width of the given text string in current units.
 // This matches the C++ Agg2D::textWidth() method.
 func (agg2d *Agg2D) TextWidth(str string) float64 {
+	// TODO(Path B): GSV path — approximate width, replace with accurate
+	// measurement once a proper TTF engine is available.
+	if agg2d.gsvFontMode && agg2d.gsvText != nil {
+		saved := agg2d.gsvText // preserve current text
+		agg2d.gsvText.SetText(str)
+		w := agg2d.gsvText.TextWidth()
+		agg2d.gsvText = saved
+		return w
+	}
+
 	fcm := agg2d.fontCacheManager
 	if fcm == nil {
 		return 0.0
@@ -125,9 +156,103 @@ func (agg2d *Agg2D) TextWidth(str string) float64 {
 	return x
 }
 
+// textGSV renders text using the built-in AGG GSV stroke-vector font.
+// The stroked glyph outlines are painted with the current fill color so that
+// callers can simply set FillColor and call Text() without worrying about
+// which underlying backend is active.
+//
+// TODO(Path B): Temporary GSV fallback — remove when a proper TTF engine
+// (Path A) is integrated.
+func (agg2d *Agg2D) textGSV(x, y float64, str string, roundOff bool, dx, dy float64) {
+	if agg2d.gsvText == nil || str == "" {
+		return
+	}
+	t := agg2d.gsvText
+	t.SetText(str)
+
+	// Alignment offsets (approximate using GSV TextWidth)
+	alignDx := 0.0
+	alignDy := 0.0
+	switch agg2d.textAlignX {
+	case AlignCenter:
+		alignDx = -agg2d.TextWidth(str) * 0.5
+	case AlignRight:
+		alignDx = -agg2d.TextWidth(str)
+	}
+	switch agg2d.textAlignY {
+	case AlignCenter:
+		alignDy = agg2d.fontHeight * 0.5
+	case AlignTop:
+		alignDy = agg2d.fontHeight
+	}
+
+	startX := x + alignDx + dx
+	startY := y - alignDy + dy // GSV Y grows down; subtract to shift baseline
+	if roundOff {
+		startX = float64(int(startX))
+		startY = float64(int(startY))
+	}
+
+	t.SetStartPoint(startX, startY)
+
+	// Collect all GSV vertices into agg2d.path so the standard transform
+	// pipeline (convCurve → ConvTransform) picks them up automatically.
+	agg2d.path.RemoveAll()
+	t.Rewind(0)
+	for {
+		vx, vy, cmd := t.Vertex()
+		switch cmd {
+		case basics.PathCmdMoveTo:
+			agg2d.path.MoveTo(vx, vy)
+		case basics.PathCmdLineTo:
+			agg2d.path.LineTo(vx, vy)
+		case basics.PathCmdStop:
+			goto vertexLoopDone
+		default:
+			// GSV does not emit end-poly or curve commands; ignore.
+		}
+	}
+vertexLoopDone:
+
+	// Stroke the skeleton paths to produce legible characters.
+	// Use a thin fixed stroke width (1 px at current scale) so that the glyphs
+	// look like the original AGG gsv_text examples rather than being as thick
+	// as the document line width.
+	// TODO(Path B): expose stroke width as a parameter of FontGSV().
+	pathAdapter := path.NewPathStorageStlVertexSourceAdapter(agg2d.path)
+	curvesAdapter := conv.NewConvCurve(pathAdapter)
+	strokeAdapter := conv.NewConvStroke(curvesAdapter)
+	strokeAdapter.SetWidth(agg2d.fontHeight * 0.08) // ~8 % of glyph height
+	strokeAdapter.SetLineCap(basics.RoundCap)
+	strokeAdapter.SetLineJoin(basics.RoundJoin)
+
+	// Apply the global affine transform so text respects Viewport(), Rotate(), etc.
+	transformedStroke := conv.NewConvTransform(strokeAdapter, agg2d.transform)
+
+	agg2d.rasterizer.Reset()
+	agg2d.rasterizer.FillingRule(basics.FillNonZero)
+	transformedStroke.Rewind(0)
+	for {
+		x, y, cmd := transformedStroke.Vertex()
+		if cmd == basics.PathCmdStop {
+			break
+		}
+		agg2d.rasterizer.AddVertex(x, y, uint32(cmd))
+	}
+
+	// Paint using fill color (mirrors FreeType path: fill color = text color).
+	agg2d.renderSolidFillWithColor(agg2d.fillColor)
+}
+
 // Text renders text at the specified position with optional positioning adjustments.
 // This closely matches the C++ Agg2D::text() method implementation.
 func (agg2d *Agg2D) Text(x, y float64, str string, roundOff bool, dx, dy float64) {
+	// TODO(Path B): Route through GSV when no FreeType font is loaded.
+	if agg2d.gsvFontMode {
+		agg2d.textGSV(x, y, str, roundOff, dx, dy)
+		return
+	}
+
 	fcm := agg2d.fontCacheManager
 	if fcm == nil || str == "" {
 		return

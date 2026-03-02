@@ -654,6 +654,15 @@ func (a *Agg2D) FontHeight() float64 {
 	return a.impl.FontHeight()
 }
 
+// FontGSV configures the built-in AGG GSV stroke-vector font as the active
+// text backend.  No external font file is required; it works in WASM builds
+// where cgo/FreeType is unavailable.
+//
+// TODO(Path B): Temporary — replace with a pure-Go TTF engine (Path A).
+func (a *Agg2D) FontGSV(height float64) {
+	a.impl.FontGSV(height)
+}
+
 func (a *Agg2D) FlipText(flip bool) {
 	a.impl.FlipText(flip)
 }

@@ -9,6 +9,7 @@ import (
 	"agg_go/internal/conv"
 	"agg_go/internal/font"
 	"agg_go/internal/font/freetype"
+	"agg_go/internal/gsv"
 	aggimage "agg_go/internal/image"
 	"agg_go/internal/path"
 	"agg_go/internal/pixfmt"
@@ -151,6 +152,12 @@ type Agg2D struct {
 	// does not need runtime type assertions on the text path.
 	fontEngine       *freetype.FontEngineFreetype
 	fontCacheManager *font.FontCacheManager
+
+	// TODO(Path B): Temporary GSV stroke-font fallback — replace with a proper
+	// pure-Go TTF engine (Path A) once one is available.
+	// GSV is used in WASM builds where cgo/FreeType is unavailable.
+	gsvText     *gsv.GSVText // Non-nil when FontGSV() has been called
+	gsvFontMode bool         // True when the active font backend is GSV
 
 	// Image filtering
 	imageFilter    ImageFilter

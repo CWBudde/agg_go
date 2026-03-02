@@ -150,4 +150,46 @@ func drawAgg2DDemo() {
 	// Restore state
 	g.MasterAlpha(1.0)
 	g.BlendMode(agg.BlendAlpha)
+
+	// --- Text (GSV stroke font — Path B temporary fallback) ---
+	// NOTE: rendered via the built-in AGG GSV stroke-vector font because
+	// FreeType (cgo) is not available in the WASM environment.
+	// Replace this with FontGSV → Font() once a pure-Go TTF engine is available.
+	g.FillColor(c8(0, 0, 0, 255))
+
+	// Small label at top
+	g.TextAlignment(agg.AlignLeft, agg.AlignBottom)
+	g.FontGSV(14.0)
+	g.Text(10, 580, "AGG Go Web Demo (GSV stroke font)", false, 0, 0)
+
+	// Text alignment examples — mirror the original C++ demo layout
+	g.FontGSV(20.0)
+	g.FillColor(c8(0, 50, 120, 220))
+
+	g.TextAlignment(agg.AlignLeft, agg.AlignBottom)
+	g.Text(250.0, 150.0, "Left-Bottom", true, 0, 0)
+
+	g.TextAlignment(agg.AlignCenter, agg.AlignBottom)
+	g.Text(250.0, 200.0, "Center-Bottom", true, 0, 0)
+
+	g.TextAlignment(agg.AlignRight, agg.AlignBottom)
+	g.Text(250.0, 250.0, "Right-Bottom", true, 0, 0)
+
+	g.TextAlignment(agg.AlignLeft, agg.AlignCenter)
+	g.Text(250.0, 300.0, "Left-Center", true, 0, 0)
+
+	g.TextAlignment(agg.AlignCenter, agg.AlignCenter)
+	g.Text(250.0, 350.0, "Center-Center", true, 0, 0)
+
+	g.TextAlignment(agg.AlignRight, agg.AlignCenter)
+	g.Text(250.0, 400.0, "Right-Center", true, 0, 0)
+
+	g.TextAlignment(agg.AlignLeft, agg.AlignTop)
+	g.Text(250.0, 450.0, "Left-Top", true, 0, 0)
+
+	g.TextAlignment(agg.AlignCenter, agg.AlignTop)
+	g.Text(250.0, 500.0, "Center-Top", true, 0, 0)
+
+	g.TextAlignment(agg.AlignRight, agg.AlignTop)
+	g.Text(250.0, 550.0, "Right-Top", true, 0, 0)
 }
