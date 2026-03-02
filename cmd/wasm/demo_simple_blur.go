@@ -103,8 +103,7 @@ func drawLionToAgg2D(agg2d *agg.Agg2D, scale float64) {
 	baseDY := (lionY2 - lionY1) / 2.0
 
 	agg2d.Translate(-baseDX, -baseDY)
-	agg2d.Scale(scale, scale)
-	agg2d.Rotate(math.Pi)
+	agg2d.Scale(scale, -scale)
 	agg2d.Translate(float64(width)/4.0, float64(height)/2.0)
 
 	for _, lp := range lionPaths {
