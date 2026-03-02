@@ -60,6 +60,11 @@ func main() {
 	js.Global().Set("setGammaThickness", js.FuncOf(setGammaThickness))
 	js.Global().Set("setGammaContrast", js.FuncOf(setGammaContrast))
 	js.Global().Set("setLionOutlineWidth", js.FuncOf(setLionOutlineWidth))
+	js.Global().Set("setRRRadius", js.FuncOf(setRRRadius))
+	js.Global().Set("setRROffset", js.FuncOf(setRROffset))
+	js.Global().Set("setRRDarkBg", js.FuncOf(setRRDarkBg))
+	js.Global().Set("getRRNodes", js.FuncOf(getRRNodes))
+	js.Global().Set("setRRNodes", js.FuncOf(setRRNodes))
 
 	// Keep the Go program running
 	select {}
@@ -95,6 +100,9 @@ func onMouseDown(this js.Value, args []js.Value) interface{} {
 		right := len(args) >= 4 && args[3].Bool()
 		return handleLionOutlineMouseDown(x, y, right)
 	}
+	if demoType == "roundedrect" {
+		return handleRoundedRectMouseDown(x, y)
+	}
 	return false
 }
 
@@ -128,6 +136,9 @@ func onMouseMove(this js.Value, args []js.Value) interface{} {
 		right := len(args) >= 4 && args[3].Bool()
 		return handleLionOutlineMouseMove(x, y, right)
 	}
+	if demoType == "roundedrect" {
+		return handleRoundedRectMouseMove(x, y)
+	}
 	return false
 }
 
@@ -153,6 +164,9 @@ func onMouseUp(this js.Value, args []js.Value) interface{} {
 	}
 	if demoType == "lionoutline" {
 		handleLionOutlineMouseUp()
+	}
+	if demoType == "roundedrect" {
+		handleRoundedRectMouseUp()
 	}
 	return nil
 }
@@ -312,6 +326,44 @@ func setGammaContrast(this js.Value, args []js.Value) interface{} {
 func setLionOutlineWidth(this js.Value, args []js.Value) interface{} {
 	if len(args) > 0 {
 		lionOutlineWidth = args[0].Float()
+	}
+	return nil
+}
+
+func setRRRadius(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		rrRadius = args[0].Float()
+	}
+	return nil
+}
+
+func setRROffset(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		rrOffset = args[0].Float()
+	}
+	return nil
+}
+
+func setRRDarkBg(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		rrDarkBg = args[0].Bool()
+	}
+	return nil
+}
+
+func getRRNodes(this js.Value, args []js.Value) interface{} {
+	return map[string]interface{}{
+		"x0": rrPts[0][0], "y0": rrPts[0][1],
+		"x1": rrPts[1][0], "y1": rrPts[1][1],
+	}
+}
+
+func setRRNodes(this js.Value, args []js.Value) interface{} {
+	if len(args) >= 4 {
+		rrPts[0][0] = args[0].Float()
+		rrPts[0][1] = args[1].Float()
+		rrPts[1][0] = args[2].Float()
+		rrPts[1][1] = args[3].Float()
 	}
 	return nil
 }
@@ -494,6 +546,8 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 		drawGammaCorrectionDemo()
 	case "lionoutline":
 		drawLionOutlineDemo()
+	case "roundedrect":
+		drawRoundedRectDemo()
 	default:
 		logStatus("unknown demo type: " + demoType)
 		return nil

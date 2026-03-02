@@ -96,6 +96,14 @@ const ALL_DEMO_PARAMS = [
   "ccad",
   // lionoutline
   "low",
+  // roundedrect
+  "rrr",
+  "rro",
+  "rrd",
+  "rrx0",
+  "rry0",
+  "rrx1",
+  "rry1",
 ];
 
 function clearDemoParams() {
@@ -381,6 +389,45 @@ const demoURLHandlers = {
       }
     },
   },
+
+  roundedrect: {
+    persist() {
+      const n = getRRNodes();
+      updateURL({
+        rrr: parseFloat(document.getElementById("rrRadiusSlider").value),
+        rro: parseFloat(document.getElementById("rrOffsetSlider").value),
+        rrd: document.getElementById("rrDarkBg").checked ? "1" : "0",
+        rrx0: n.x0.toFixed(1),
+        rry0: n.y0.toFixed(1),
+        rrx1: n.x1.toFixed(1),
+        rry1: n.y1.toFixed(1),
+      });
+    },
+    restore(p) {
+      if (p.has("rrr")) {
+        const val = parseFloat(p.get("rrr"));
+        setRRRadius(val);
+        document.getElementById("rrRadiusSlider").value = val;
+        document.getElementById("rrRadiusValue").textContent = val.toFixed(1);
+      }
+      if (p.has("rro")) {
+        const val = parseFloat(p.get("rro"));
+        setRROffset(val);
+        document.getElementById("rrOffsetSlider").value = val;
+        document.getElementById("rrOffsetValue").textContent = val.toFixed(1);
+      }
+      if (p.has("rrd")) {
+        const checked = p.get("rrd") === "1";
+        setRRDarkBg(checked);
+        document.getElementById("rrDarkBg").checked = checked;
+      }
+      const keys = ["rrx0", "rry0", "rrx1", "rry1"];
+      if (keys.every((k) => p.has(k))) {
+        const vals = keys.map((k) => parseFloat(p.get(k)));
+        setRRNodes(...vals);
+      }
+    },
+  },
 };
 
 function persistDemoParams(demoType) {
@@ -635,6 +682,27 @@ async function init() {
         renderSelectedDemo();
       });
 
+    // roundedrect controls
+    document.getElementById("rrRadiusSlider").addEventListener("input", () => {
+      const val = parseFloat(document.getElementById("rrRadiusSlider").value);
+      document.getElementById("rrRadiusValue").textContent = val.toFixed(1);
+      setRRRadius(val);
+      persistDemoParams("roundedrect");
+      renderSelectedDemo();
+    });
+    document.getElementById("rrOffsetSlider").addEventListener("input", () => {
+      const val = parseFloat(document.getElementById("rrOffsetSlider").value);
+      document.getElementById("rrOffsetValue").textContent = val.toFixed(1);
+      setRROffset(val);
+      persistDemoParams("roundedrect");
+      renderSelectedDemo();
+    });
+    document.getElementById("rrDarkBg").addEventListener("change", () => {
+      setRRDarkBg(document.getElementById("rrDarkBg").checked);
+      persistDemoParams("roundedrect");
+      renderSelectedDemo();
+    });
+
     // Mouse events for draggable-point demos
     let isDragging = false;
 
@@ -697,6 +765,8 @@ function syncControlVisibility(demoType) {
     demoType === "gamma" ? "flex" : "none";
   document.getElementById("lionoutlineControls").style.display =
     demoType === "lionoutline" ? "flex" : "none";
+  document.getElementById("roundedrectControls").style.display =
+    demoType === "roundedrect" ? "flex" : "none";
 }
 
 const demoDescriptions = {
@@ -733,6 +803,8 @@ const demoDescriptions = {
     "Gamma correction showcase. Port of AGG's gamma_correction demo. Renders colored ellipses over a four-quadrant background (dark, light, reddish) to demonstrate how the anti-aliasing gamma affects line quality. Click and drag on the canvas to resize the ellipses. Adjust gamma, line thickness, and background contrast with the sliders.",
   lionoutline:
     "Lion outline rendering. Port of AGG's lion_outline demo. The classic lion vector art is rendered as stroked outlines instead of filled polygons. Left-drag to rotate and scale the lion; right-drag to apply shear. Adjust the line width with the slider.",
+  roundedrect:
+    "Rounded rectangle demo. Port of AGG's rounded_rect demo. Drag the two corner control points to resize the rectangle. Adjust the corner radius and sub-pixel offset with sliders; toggle white-on-black rendering with the checkbox.",
 };
 
 function renderSelectedDemo() {
