@@ -30,7 +30,7 @@ func main() {
 			"lines", "circles", "starburst", "rects",
 			"lion", "gradients", "aa", "blend",
 			"bspline", "dash", "gouraud", "imagefilters",
-			"sbool", "aatest", "convstroke", "convcontour", "gamma",
+			"sbool", "aatest", "convstroke", "convcontour", "gamma", "lionoutline",
 		}
 	}
 
@@ -58,7 +58,7 @@ func main() {
 }
 
 func renderDemoToFile(demoType, outDir string) error {
-	if demoType != "lion" {
+	if demoType != "lion" && demoType != "lionoutline" {
 		lionPaths = nil
 	}
 	if demoType != "imagefilters" {
@@ -102,6 +102,8 @@ func renderDemoToFile(demoType, outDir string) error {
 		drawConvContourDemo()
 	case "gamma":
 		drawGammaCorrectionDemo()
+	case "lionoutline":
+		drawLionOutlineDemo()
 	default:
 		return fmt.Errorf("unknown demo: %q", demoType)
 	}

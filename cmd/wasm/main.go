@@ -59,6 +59,7 @@ func main() {
 	js.Global().Set("setGammaValue", js.FuncOf(setGammaValue))
 	js.Global().Set("setGammaThickness", js.FuncOf(setGammaThickness))
 	js.Global().Set("setGammaContrast", js.FuncOf(setGammaContrast))
+	js.Global().Set("setLionOutlineWidth", js.FuncOf(setLionOutlineWidth))
 
 	// Keep the Go program running
 	select {}
@@ -90,6 +91,10 @@ func onMouseDown(this js.Value, args []js.Value) interface{} {
 	if demoType == "gamma" {
 		return handleGammaCorrectionMouseDown(x, y)
 	}
+	if demoType == "lionoutline" {
+		right := len(args) >= 4 && args[3].Bool()
+		return handleLionOutlineMouseDown(x, y, right)
+	}
 	return false
 }
 
@@ -119,6 +124,10 @@ func onMouseMove(this js.Value, args []js.Value) interface{} {
 	if demoType == "gamma" {
 		return handleGammaCorrectionMouseMove(x, y)
 	}
+	if demoType == "lionoutline" {
+		right := len(args) >= 4 && args[3].Bool()
+		return handleLionOutlineMouseMove(x, y, right)
+	}
 	return false
 }
 
@@ -141,6 +150,9 @@ func onMouseUp(this js.Value, args []js.Value) interface{} {
 	}
 	if demoType == "convstroke" {
 		handleConvStrokeMouseUp()
+	}
+	if demoType == "lionoutline" {
+		handleLionOutlineMouseUp()
 	}
 	return nil
 }
@@ -297,6 +309,13 @@ func setGammaContrast(this js.Value, args []js.Value) interface{} {
 	return nil
 }
 
+func setLionOutlineWidth(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		lionOutlineWidth = args[0].Float()
+	}
+	return nil
+}
+
 // --- Node getters/setters for URL persistence ---
 
 func getDashNodes(this js.Value, args []js.Value) interface{} {
@@ -429,7 +448,7 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 	logStatus("Rendering " + demoType + "...")
 
 	// Release cached demo state when switching away from a demo.
-	if demoType != "lion" {
+	if demoType != "lion" && demoType != "lionoutline" {
 		lionPaths = nil
 	}
 	if demoType != "imagefilters" {
@@ -473,6 +492,8 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 		drawConvContourDemo()
 	case "gamma":
 		drawGammaCorrectionDemo()
+	case "lionoutline":
+		drawLionOutlineDemo()
 	default:
 		logStatus("unknown demo type: " + demoType)
 		return nil

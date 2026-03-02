@@ -94,6 +94,8 @@ const ALL_DEMO_PARAMS = [
   "ccw",
   "ccm",
   "ccad",
+  // lionoutline
+  "low",
 ];
 
 function clearDemoParams() {
@@ -360,6 +362,25 @@ const demoURLHandlers = {
       }
     },
   },
+
+  lionoutline: {
+    persist() {
+      updateURL({
+        low: parseFloat(
+          document.getElementById("lionOutlineWidthSlider").value,
+        ),
+      });
+    },
+    restore(p) {
+      if (p.has("low")) {
+        const val = parseFloat(p.get("low"));
+        setLionOutlineWidth(val);
+        document.getElementById("lionOutlineWidthSlider").value = val;
+        document.getElementById("lionOutlineWidthValue").textContent =
+          val.toFixed(1);
+      }
+    },
+  },
 };
 
 function persistDemoParams(demoType) {
@@ -600,14 +621,31 @@ async function init() {
         renderSelectedDemo();
       });
 
+    // lionoutline width slider
+    document
+      .getElementById("lionOutlineWidthSlider")
+      .addEventListener("input", () => {
+        const val = parseFloat(
+          document.getElementById("lionOutlineWidthSlider").value,
+        );
+        document.getElementById("lionOutlineWidthValue").textContent =
+          val.toFixed(1);
+        setLionOutlineWidth(val);
+        persistDemoParams("lionoutline");
+        renderSelectedDemo();
+      });
+
     // Mouse events for draggable-point demos
     let isDragging = false;
+
+    canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 
     canvas.addEventListener("mousedown", (e) => {
       const rect = canvas.getBoundingClientRect();
       const x = (e.clientX - rect.left) * (canvas.width / rect.width);
       const y = (e.clientY - rect.top) * (canvas.height / rect.height);
-      if (onMouseDown(selector.value, x, y)) {
+      const right = e.button === 2;
+      if (onMouseDown(selector.value, x, y, right)) {
         isDragging = true;
         renderSelectedDemo();
       }
@@ -618,7 +656,8 @@ async function init() {
       const rect = canvas.getBoundingClientRect();
       const x = (e.clientX - rect.left) * (canvas.width / rect.width);
       const y = (e.clientY - rect.top) * (canvas.height / rect.height);
-      if (onMouseMove(selector.value, x, y)) {
+      const right = (e.buttons & 2) !== 0;
+      if (onMouseMove(selector.value, x, y, right)) {
         renderSelectedDemo();
       }
     });
@@ -656,6 +695,8 @@ function syncControlVisibility(demoType) {
     demoType === "convcontour" ? "flex" : "none";
   document.getElementById("gammaControls").style.display =
     demoType === "gamma" ? "flex" : "none";
+  document.getElementById("lionoutlineControls").style.display =
+    demoType === "lionoutline" ? "flex" : "none";
 }
 
 const demoDescriptions = {
@@ -690,6 +731,8 @@ const demoDescriptions = {
     "Contour tool and polygon orientation. Port of AGG's conv_contour demo. Expands or shrinks a closed path by a given width using the contour converter. The glyph is defined with quadratic bezier curves, processed through conv_curve → conv_transform → conv_contour. Adjust the width slider and orientation flags to see the effect.",
   gamma:
     "Gamma correction showcase. Port of AGG's gamma_correction demo. Renders colored ellipses over a four-quadrant background (dark, light, reddish) to demonstrate how the anti-aliasing gamma affects line quality. Click and drag on the canvas to resize the ellipses. Adjust gamma, line thickness, and background contrast with the sliders.",
+  lionoutline:
+    "Lion outline rendering. Port of AGG's lion_outline demo. The classic lion vector art is rendered as stroked outlines instead of filled polygons. Left-drag to rotate and scale the lion; right-drag to apply shear. Adjust the line width with the slider.",
 };
 
 function renderSelectedDemo() {
