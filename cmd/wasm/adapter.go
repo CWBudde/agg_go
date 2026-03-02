@@ -2,6 +2,7 @@ package main
 
 import (
 	"agg_go/internal/path"
+	"agg_go/internal/scanline"
 )
 
 // pathSourceAdapter bridges PathStorageStl (uint Rewind) to the rasterizer's
@@ -20,3 +21,16 @@ func (a *pathSourceAdapter) Vertex(x, y *float64) uint32 {
 	*y = vy
 	return cmd
 }
+
+// rasScanlineAdapter adapts scanline.ScanlineU8 to rasterizer.ScanlineInterface
+type rasScanlineAdapter struct {
+	sl *scanline.ScanlineU8
+}
+
+func (a *rasScanlineAdapter) ResetSpans()                 { a.sl.ResetSpans() }
+func (a *rasScanlineAdapter) AddCell(x int, cover uint32) { a.sl.AddCell(x, uint(cover)) }
+func (a *rasScanlineAdapter) AddSpan(x, length int, cover uint32) {
+	a.sl.AddSpan(x, length, uint(cover))
+}
+func (a *rasScanlineAdapter) Finalize(y int) { a.sl.Finalize(y) }
+func (a *rasScanlineAdapter) NumSpans() int  { return a.sl.NumSpans() }

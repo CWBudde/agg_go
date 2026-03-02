@@ -5,8 +5,6 @@ import (
 	"math"
 	"math/rand"
 
-	agg "agg_go"
-	"agg_go/internal/array"
 	"agg_go/internal/basics"
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
@@ -14,7 +12,6 @@ import (
 	"agg_go/internal/rasterizer"
 	"agg_go/internal/renderer"
 	"agg_go/internal/scanline"
-	"agg_go/internal/span"
 )
 
 var (
@@ -66,13 +63,13 @@ type compoundNoClip struct {
 	x1, y1 float64
 }
 
-func (c *compoundNoClip) ResetClipping() {}
+func (c *compoundNoClip) ResetClipping()                 {}
 func (c *compoundNoClip) ClipBox(x1, y1, x2, y2 float64) {}
 func (c *compoundNoClip) MoveTo(x, y float64) {
 	c.x1, c.y1 = x, y
 }
 func (c *compoundNoClip) LineTo(outline *rasterizer.RasterizerCellsAAStyled, x, y float64) {
-	outline.LineTo(basics.IRound(c.x1*basics.PolySubpixelScale), basics.IRound(c.y1*basics.PolySubpixelScale),
+	outline.Line(basics.IRound(c.x1*basics.PolySubpixelScale), basics.IRound(c.y1*basics.PolySubpixelScale),
 		basics.IRound(x*basics.PolySubpixelScale), basics.IRound(y*basics.PolySubpixelScale))
 	c.x1, c.y1 = x, y
 }
@@ -95,15 +92,15 @@ func initFlashDemo() {
 
 	// Create some overlapping shapes
 	for i := 0; i < 15; i++ {
-		cx := rand.Float64()*float64(width)
-		cy := rand.Float64()*float64(height)
+		cx := rand.Float64() * float64(width)
+		cy := rand.Float64() * float64(height)
 		r := 20.0 + rand.Float64()*80.0
-		
+
 		path := flashPath{
 			leftFill:  rand.Intn(len(flashColors)),
 			rightFill: -1,
 		}
-		
+
 		// Create a star-like polygon
 		numPoints := 5 + rand.Intn(5)
 		for j := 0; j < numPoints*2; j++ {
@@ -142,7 +139,7 @@ func drawFlashRasterizerDemo() {
 	// Create compound rasterizer
 	clipper := &compoundNoClip{}
 	rasc := rasterizer.NewRasterizerCompoundAA(clipper)
-	
+
 	for _, p := range flashShapes {
 		rasc.Styles(p.leftFill, p.rightFill)
 		for _, v := range p.vertices {
@@ -160,13 +157,15 @@ func drawFlashRasterizerDemo() {
 	slBin := scanline.NewScanlineU8()
 	adapterAA := &flashScanlineAdapter{sl: slAA}
 	adapterBin := &flashScanlineAdapter{sl: slBin}
-	
+
 	styleHandler := &flashStyleHandler{colors: flashColors}
 
 	minX := rasc.MinX()
 	maxX := rasc.MaxX()
 	length := maxX - minX + 2
-	if length < 0 { length = 0 }
+	if length < 0 {
+		length = 0
+	}
 	colorSpan := make([]color.RGBA8[color.Linear], length*2)
 	mixBuffer := colorSpan[length:]
 
@@ -180,7 +179,7 @@ func drawFlashRasterizerDemo() {
 			if rasc.SweepScanline(adapterAA, 0) {
 				style := int(rasc.Style(0))
 				c := styleHandler.Color(style)
-				
+
 				y := slAA.Y()
 				for _, spanData := range slAA.Spans() {
 					if spanData.Len > 0 {
@@ -191,7 +190,7 @@ func drawFlashRasterizerDemo() {
 		} else {
 			if rasc.SweepScanline(adapterBin, -1) {
 				y := slBin.Y()
-				
+
 				for _, spanData := range slBin.Spans() {
 					for j := 0; j < int(spanData.Len); j++ {
 						mixBuffer[int(spanData.X)-minX+j] = color.RGBA8[color.Linear]{}

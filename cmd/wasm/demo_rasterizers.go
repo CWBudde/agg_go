@@ -4,7 +4,6 @@ package main
 import (
 	"math"
 
-	agg "agg_go"
 	"agg_go/internal/basics"
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
@@ -13,7 +12,6 @@ import (
 	"agg_go/internal/pixfmt"
 	"agg_go/internal/rasterizer"
 	"agg_go/internal/renderer"
-	renscan "agg_go/internal/renderer/scanline"
 	"agg_go/internal/scanline"
 )
 
@@ -47,19 +45,31 @@ func drawRasterizersDemo() {
 	ps.ClosePolygon(basics.PathFlagsNone)
 
 	cAA := color.RGBA8[color.Linear]{R: 178, G: 127, B: 25, A: uint8(255 * rasterizersAlpha)}
-	
+
 	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
-		rasterizer.RasConvInt{}, 
+		rasterizer.RasConvInt{},
 		rasterizer.NewRasterizerSlNoClip(),
 	)
-	
+
 	// Set gamma for AA
 	gPower := gamma.NewGammaPower(rasterizersGamma * 2.0)
 	ras.SetGamma(gPower.Apply)
-	
+
 	adapter := &pathSourceAdapter{ps: ps}
 	ras.AddPath(adapter, 0)
-	renscan.RenderScanlinesAASolid(ras, sl, renBase, cAA)
+
+	// Use manual sweep loop to avoid interface mismatches
+	if ras.RewindScanlines() {
+		sl.Reset(ras.MinX(), ras.MaxX())
+		for ras.SweepScanline(&rasScanlineAdapter{sl: sl}) {
+			y := sl.Y()
+			for _, spanData := range sl.Spans() {
+				if spanData.Len > 0 {
+					renBase.BlendSolidHspan(int(spanData.X), y, int(spanData.Len), cAA, spanData.Covers)
+				}
+			}
+		}
+	}
 
 	// 2. Draw aliased triangle (shifted by -200)
 	psAliased := path.NewPathStorageStl()
@@ -69,21 +79,30 @@ func drawRasterizersDemo() {
 	psAliased.ClosePolygon(basics.PathFlagsNone)
 
 	cAliased := color.RGBA8[color.Linear]{R: 25, G: 127, B: 178, A: uint8(255 * rasterizersAlpha)}
-	
+
 	ras.Reset()
 	// Set gamma threshold for aliased rendering
 	gThreshold := gamma.NewGammaThreshold(rasterizersGamma)
 	ras.SetGamma(gThreshold.Apply)
-	
+
 	adapterAliased := &pathSourceAdapter{ps: psAliased}
 	ras.AddPath(adapterAliased, 0)
-	renscan.RenderScanlinesAASolid(ras, sl, renBase, cAliased)
+
+	if ras.RewindScanlines() {
+		sl.Reset(ras.MinX(), ras.MaxX())
+		for ras.SweepScanline(&rasScanlineAdapter{sl: sl}) {
+			y := sl.Y()
+			for _, spanData := range sl.Spans() {
+				if spanData.Len > 0 {
+					renBase.BlendSolidHspan(int(spanData.X), y, int(spanData.Len), cAliased, spanData.Covers)
+				}
+			}
+		}
+	}
 
 	// 3. Draw interactive handles
 	for i := 0; i < 3; i++ {
-		// Handles for AA triangle
 		drawHandle(rasterizersX[i], rasterizersY[i])
-		// Handles for aliased triangle
 		drawHandle(rasterizersX[i]-200, rasterizersY[i])
 	}
 }
@@ -91,7 +110,6 @@ func drawRasterizersDemo() {
 func handleRasterizersMouseDown(x, y float64) bool {
 	rasterizersSelected = -1
 	for i := 0; i < 3; i++ {
-		// Check AA triangle handles
 		dist := math.Sqrt(math.Pow(x-rasterizersX[i], 2) + math.Pow(y-rasterizersY[i], 2))
 		if dist < 10 {
 			rasterizersSelected = i
@@ -99,7 +117,6 @@ func handleRasterizersMouseDown(x, y float64) bool {
 			rasterizersDragDY = y - rasterizersY[i]
 			return true
 		}
-		// Check aliased triangle handles
 		dist = math.Sqrt(math.Pow(x-(rasterizersX[i]-200), 2) + math.Pow(y-rasterizersY[i], 2))
 		if dist < 10 {
 			rasterizersSelected = i

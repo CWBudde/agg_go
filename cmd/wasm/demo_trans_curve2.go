@@ -36,15 +36,12 @@ func initTransCurve2Demo() {
 }
 
 type transDoubleAdapter struct {
-	source interface {
-		Rewind(uint)
-		NextVertex() (float64, float64, uint32)
-	}
+	source *conv.ConvBSpline
 }
 
 func (a *transDoubleAdapter) Rewind(id uint) { a.source.Rewind(id) }
-func (a *transDoubleAdapter) Vertex() (float64, float64, uint32) {
-	return a.source.NextVertex()
+func (a *transDoubleAdapter) Vertex() (float64, float64, basics.PathCommand) {
+	return a.source.Vertex()
 }
 
 func drawTransCurve2Demo() {
@@ -76,8 +73,8 @@ func drawTransCurve2Demo() {
 		ps2.LineTo(transCurve2Points2[i*2], transCurve2Points2[i*2+1])
 	}
 
-	bs1 := conv.NewConvBSpline(ps1)
-	bs2 := conv.NewConvBSpline(ps2)
+	bs1 := conv.NewConvBSpline(path.NewPathStorageStlVertexSourceAdapter(ps1))
+	bs2 := conv.NewConvBSpline(path.NewPathStorageStlVertexSourceAdapter(ps2))
 	bs1.SetInterpolationStep(1.0 / 40.0)
 	bs2.SetInterpolationStep(1.0 / 40.0)
 
@@ -133,8 +130,8 @@ func drawTransCurve2Demo() {
 		bs.Rewind(0)
 		first := true
 		for {
-			vx, vy, cmd := bs.NextVertex()
-			if basics.IsStop(basics.PathCommand(cmd)) { break }
+			vx, vy, cmd := bs.Vertex()
+			if basics.IsStop(cmd) { break }
 			if first { agg2d.MoveTo(vx, vy); first = false } else { agg2d.LineTo(vx, vy) }
 		}
 		agg2d.DrawPath(agg.StrokeOnly)

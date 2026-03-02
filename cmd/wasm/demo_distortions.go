@@ -69,6 +69,13 @@ func (p *imagePixFmt) PixPtr(x, y int) []basics.Int8u {
 	return row[x*4:]
 }
 
+type distortionsSource struct {
+	*image.ImageAccessorClip[imagePixFmt]
+}
+
+func (s *distortionsSource) ColorType() string { return "RGBA8" }
+func (s *distortionsSource) OrderType() color.ColorOrder { return color.OrderRGBA }
+
 // --- Demo state ---
 
 var (
@@ -149,9 +156,10 @@ func drawDistortionsDemo() {
 	
 	// Accessor
 	accessor := image.NewImageAccessorClip(ipf, []basics.Int8u{255, 255, 255, 255})
+	source := &distortionsSource{accessor}
 	
 	// Span generator - using bilinear clip
-	sg := span.NewSpanImageFilterRGBABilinearClipWithParams(accessor, color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255}, interpolator)
+	sg := span.NewSpanImageFilterRGBABilinearClipWithParams(source, color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255}, interpolator)
 
 	// Rasterizer
 	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
@@ -181,8 +189,8 @@ func drawDistortionsDemo() {
 	p.ClosePolygon(basics.PathFlagsNone)
 	
 	// Manual rendering
-	adapter := &pathSourceAdapter{ps: p}
-	ras.AddPath(adapter, 0)
+	psAdapter := &pathSourceAdapter{ps: p}
+	ras.AddPath(psAdapter, 0)
 	renscan.RenderScanlinesAA(ras, sl, renBase, alloc, sg)
 
 	// Draw interactive handle

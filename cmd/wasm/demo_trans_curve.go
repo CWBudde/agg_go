@@ -30,17 +30,14 @@ func initTransCurveDemo() {
 	}
 }
 
+// transSingleAdapter adapts bspline to transform.VertexSource
 type transSingleAdapter struct {
-	source interface {
-		Rewind(uint)
-		NextVertex() (float64, float64, uint32)
-	}
+	source *conv.ConvBSpline
 }
 
 func (a *transSingleAdapter) Rewind(id uint) { a.source.Rewind(id) }
 func (a *transSingleAdapter) Vertex() (float64, float64, basics.PathCommand) {
-	x, y, cmd := a.source.NextVertex()
-	return x, y, basics.PathCommand(cmd)
+	return a.source.Vertex()
 }
 
 func drawTransCurveDemo() {
@@ -66,12 +63,13 @@ func drawTransCurveDemo() {
 	}
 
 	// 2. Smooth it with B-Spline
-	bspline := conv.NewConvBSpline(ps)
+	psAdapter := path.NewPathStorageStlVertexSourceAdapter(ps)
+	bspline := conv.NewConvBSpline(psAdapter)
 	bspline.SetInterpolationStep(1.0 / 40.0)
 
 	// 3. Create the transformation
 	tcurve := transform.NewTransSinglePath()
-	tcurve.AddPath(&transSingleAdapter{bspline})
+	tcurve.AddPath(&transSingleAdapter{bspline}, 0)
 
 	// 4. Transform the lion along the curve
 	lx1, ly1, lx2, ly2 := 1e9, 1e9, -1e9, -1e9
@@ -123,8 +121,8 @@ func drawTransCurveDemo() {
 	bspline.Rewind(0)
 	first := true
 	for {
-		vx, vy, cmd := bspline.NextVertex()
-		if basics.IsStop(basics.PathCommand(cmd)) { break }
+		vx, vy, cmd := bspline.Vertex()
+		if basics.IsStop(cmd) { break }
 		if first {
 			agg2d.MoveTo(vx, vy)
 			first = false
