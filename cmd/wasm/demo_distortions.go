@@ -13,7 +13,6 @@ import (
 	"agg_go/internal/pixfmt"
 	"agg_go/internal/rasterizer"
 	"agg_go/internal/renderer"
-	renscan "agg_go/internal/renderer/scanline"
 	"agg_go/internal/scanline"
 	"agg_go/internal/span"
 	"agg_go/internal/transform"
@@ -61,20 +60,53 @@ type imagePixFmt struct {
 	rbuf *buffer.RenderingBufferU8
 }
 
-func (p *imagePixFmt) Width() int { return p.rbuf.Width() }
-func (p *imagePixFmt) Height() int { return p.rbuf.Height() }
-func (p *imagePixFmt) PixWidth() int { return 4 }
-func (p *imagePixFmt) PixPtr(x, y int) []basics.Int8u {
+func (p imagePixFmt) Width() int { return p.rbuf.Width() }
+func (p imagePixFmt) Height() int { return p.rbuf.Height() }
+func (p imagePixFmt) PixWidth() int { return 4 }
+func (p imagePixFmt) PixPtr(x, y int) []basics.Int8u {
 	row := buffer.RowU8(p.rbuf, y)
 	return row[x*4:]
 }
 
 type distortionsSource struct {
-	*image.ImageAccessorClip[imagePixFmt]
+	accessor *image.ImageAccessorClip[imagePixFmt]
+	ipf      *imagePixFmt
 }
 
+func (s *distortionsSource) Width() int { return s.ipf.Width() }
+func (s *distortionsSource) Height() int { return s.ipf.Height() }
 func (s *distortionsSource) ColorType() string { return "RGBA8" }
 func (s *distortionsSource) OrderType() color.ColorOrder { return color.OrderRGBA }
+
+// Delegate SpanInterpolatorInterface methods to accessor
+func (s *distortionsSource) Span(x, y, length int) []basics.Int8u {
+	return s.accessor.Span(x, y, length)
+}
+func (s *distortionsSource) NextX() []basics.Int8u {
+	return s.accessor.NextX()
+}
+func (s *distortionsSource) NextY() []basics.Int8u {
+	return s.accessor.NextY()
+}
+func (s *distortionsSource) RowPtr(y int) []basics.Int8u {
+	return s.ipf.PixPtr(0, y)
+}
+
+// spanGeneratorAdapter bridges signature mismatch
+type spanGeneratorAdapter struct {
+	sg *span.SpanImageFilterRGBABilinearClip[*distortionsSource, *span.SpanInterpolatorAdaptor[*span.SpanInterpolatorLinear[*transform.TransAffine], span.Distortion]]
+}
+
+func (a *spanGeneratorAdapter) Prepare() {
+	// Prepare is not implemented in SpanImageFilterRGBABilinearClip
+}
+
+func (a *spanGeneratorAdapter) Generate(colors []color.RGBA8[color.Linear], x, y, length int) {
+	if length > len(colors) {
+		length = len(colors)
+	}
+	a.sg.Generate(colors[:length], x, y)
+}
 
 // --- Demo state ---
 
@@ -150,16 +182,17 @@ func drawDistortionsDemo() {
 	// Image span generator
 	imgRbuf := buffer.NewRenderingBufferU8()
 	imgRbuf.Attach(distortionsImage.Data, distortionsImage.Width(), distortionsImage.Height(), distortionsImage.Width()*4)
-	ipf := &imagePixFmt{rbuf: imgRbuf}
+	ipf := imagePixFmt{rbuf: imgRbuf}
 	
 	alloc := span.NewSpanAllocator[color.RGBA8[color.Linear]]()
 	
 	// Accessor
-	accessor := image.NewImageAccessorClip(ipf, []basics.Int8u{255, 255, 255, 255})
-	source := &distortionsSource{accessor}
+	accessor := image.NewImageAccessorClip(&ipf, []basics.Int8u{255, 255, 255, 255})
+	source := &distortionsSource{accessor: accessor, ipf: &ipf}
 	
 	// Span generator - using bilinear clip
 	sg := span.NewSpanImageFilterRGBABilinearClipWithParams(source, color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255}, interpolator)
+	adapterSG := &spanGeneratorAdapter{sg: sg}
 
 	// Rasterizer
 	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
@@ -188,10 +221,23 @@ func drawDistortionsDemo() {
 	}
 	p.ClosePolygon(basics.PathFlagsNone)
 	
-	// Manual rendering
+	// Manual rendering loop
 	psAdapter := &pathSourceAdapter{ps: p}
 	ras.AddPath(psAdapter, 0)
-	renscan.RenderScanlinesAA(ras, sl, renBase, alloc, sg)
+	
+	if ras.RewindScanlines() {
+		sl.Reset(ras.MinX(), ras.MaxX())
+		for ras.SweepScanline(&rasScanlineAdapter{sl: sl}) {
+			y := sl.Y()
+			for _, spanData := range sl.Spans() {
+				if spanData.Len > 0 {
+					colors := alloc.Allocate(int(spanData.Len))
+					adapterSG.Generate(colors, int(spanData.X), y, int(spanData.Len))
+					renBase.BlendColorHspan(int(spanData.X), y, int(spanData.Len), colors, spanData.Covers, basics.CoverFull)
+				}
+			}
+		}
+	}
 
 	// Draw interactive handle
 	drawHandle(distortionsCenterX, distortionsCenterY)
