@@ -50,11 +50,11 @@ func drawLionOutlineDemo() {
 	//   skew(skewX/1000, skewY/1000)
 	//   translate(w/2, h/2)          → centre on canvas
 	a.ResetTransformations()
-	a.Translate(float64(width)/2, float64(height)/2)
-	a.Skew(lionSkewX/1000.0, lionSkewY/1000.0)
-	a.Rotate(lionAngle + math.Pi)
-	a.Scale(lionScale, lionScale)
 	a.Translate(-lionBaseDX, -lionBaseDY)
+	a.Scale(lionScale, lionScale)
+	a.Rotate(lionAngle + math.Pi)
+	a.Skew(lionSkewX/1000.0, lionSkewY/1000.0)
+	a.Translate(float64(width)/2, float64(height)/2)
 
 	a.LineWidth(lionOutlineWidth)
 	a.NoFill()
