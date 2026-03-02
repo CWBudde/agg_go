@@ -44,6 +44,18 @@ func main() {
 	js.Global().Set("setStrokeCap", js.FuncOf(setStrokeCap))
 	js.Global().Set("setStrokeWidth", js.FuncOf(setStrokeWidth))
 	js.Global().Set("setStrokeMiterLimit", js.FuncOf(setStrokeMiterLimit))
+	js.Global().Set("setContourWidth", js.FuncOf(setContourWidth))
+	js.Global().Set("setContourCloseMode", js.FuncOf(setContourCloseMode))
+	js.Global().Set("setContourAutoDetect", js.FuncOf(setContourAutoDetect))
+	// Node getters/setters for URL persistence
+	js.Global().Set("getDashNodes", js.FuncOf(getDashNodes))
+	js.Global().Set("setDashNodes", js.FuncOf(setDashNodes))
+	js.Global().Set("getGouraudNodes", js.FuncOf(getGouraudNodes))
+	js.Global().Set("setGouraudNodes", js.FuncOf(setGouraudNodes))
+	js.Global().Set("getSBoolNodes", js.FuncOf(getSBoolNodes))
+	js.Global().Set("setSBoolNodes", js.FuncOf(setSBoolNodes))
+	js.Global().Set("getStrokeNodes", js.FuncOf(getStrokeNodes))
+	js.Global().Set("setStrokeNodes", js.FuncOf(setStrokeNodes))
 
 	// Keep the Go program running
 	select {}
@@ -234,6 +246,124 @@ func setStrokeMiterLimit(this js.Value, args []js.Value) interface{} {
 	return nil
 }
 
+func setContourWidth(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		contourWidth = args[0].Float()
+	}
+	return nil
+}
+
+func setContourCloseMode(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		contourCloseMode = args[0].Int()
+	}
+	return nil
+}
+
+func setContourAutoDetect(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		contourAutoDetect = args[0].Bool()
+	}
+	return nil
+}
+
+// --- Node getters/setters for URL persistence ---
+
+func getDashNodes(this js.Value, args []js.Value) interface{} {
+	return map[string]interface{}{
+		"x0": dashTriangleX[0], "y0": dashTriangleY[0],
+		"x1": dashTriangleX[1], "y1": dashTriangleY[1],
+		"x2": dashTriangleX[2], "y2": dashTriangleY[2],
+	}
+}
+
+func setDashNodes(this js.Value, args []js.Value) interface{} {
+	if len(args) >= 6 {
+		dashTriangleX[0] = args[0].Float()
+		dashTriangleY[0] = args[1].Float()
+		dashTriangleX[1] = args[2].Float()
+		dashTriangleY[1] = args[3].Float()
+		dashTriangleX[2] = args[4].Float()
+		dashTriangleY[2] = args[5].Float()
+	}
+	return nil
+}
+
+func getGouraudNodes(this js.Value, args []js.Value) interface{} {
+	return map[string]interface{}{
+		"x0": gouraudX[0], "y0": gouraudY[0],
+		"x1": gouraudX[1], "y1": gouraudY[1],
+		"x2": gouraudX[2], "y2": gouraudY[2],
+	}
+}
+
+func setGouraudNodes(this js.Value, args []js.Value) interface{} {
+	if len(args) >= 6 {
+		gouraudX[0] = args[0].Float()
+		gouraudY[0] = args[1].Float()
+		gouraudX[1] = args[2].Float()
+		gouraudY[1] = args[3].Float()
+		gouraudX[2] = args[4].Float()
+		gouraudY[2] = args[5].Float()
+	}
+	return nil
+}
+
+func getSBoolNodes(this js.Value, args []js.Value) interface{} {
+	return map[string]interface{}{
+		"p1x0": sboolPoly1X[0], "p1y0": sboolPoly1Y[0],
+		"p1x1": sboolPoly1X[1], "p1y1": sboolPoly1Y[1],
+		"p1x2": sboolPoly1X[2], "p1y2": sboolPoly1Y[2],
+		"p1x3": sboolPoly1X[3], "p1y3": sboolPoly1Y[3],
+		"p2x0": sboolPoly2X[0], "p2y0": sboolPoly2Y[0],
+		"p2x1": sboolPoly2X[1], "p2y1": sboolPoly2Y[1],
+		"p2x2": sboolPoly2X[2], "p2y2": sboolPoly2Y[2],
+		"p2x3": sboolPoly2X[3], "p2y3": sboolPoly2Y[3],
+	}
+}
+
+func setSBoolNodes(this js.Value, args []js.Value) interface{} {
+	if len(args) >= 16 {
+		sboolPoly1X[0] = args[0].Float()
+		sboolPoly1Y[0] = args[1].Float()
+		sboolPoly1X[1] = args[2].Float()
+		sboolPoly1Y[1] = args[3].Float()
+		sboolPoly1X[2] = args[4].Float()
+		sboolPoly1Y[2] = args[5].Float()
+		sboolPoly1X[3] = args[6].Float()
+		sboolPoly1Y[3] = args[7].Float()
+		sboolPoly2X[0] = args[8].Float()
+		sboolPoly2Y[0] = args[9].Float()
+		sboolPoly2X[1] = args[10].Float()
+		sboolPoly2Y[1] = args[11].Float()
+		sboolPoly2X[2] = args[12].Float()
+		sboolPoly2Y[2] = args[13].Float()
+		sboolPoly2X[3] = args[14].Float()
+		sboolPoly2Y[3] = args[15].Float()
+	}
+	return nil
+}
+
+func getStrokeNodes(this js.Value, args []js.Value) interface{} {
+	return map[string]interface{}{
+		"x0": strokePts[0][0], "y0": strokePts[0][1],
+		"x1": strokePts[1][0], "y1": strokePts[1][1],
+		"x2": strokePts[2][0], "y2": strokePts[2][1],
+	}
+}
+
+func setStrokeNodes(this js.Value, args []js.Value) interface{} {
+	if len(args) >= 6 {
+		strokePts[0][0] = args[0].Float()
+		strokePts[0][1] = args[1].Float()
+		strokePts[1][0] = args[2].Float()
+		strokePts[1][1] = args[3].Float()
+		strokePts[2][0] = args[4].Float()
+		strokePts[2][1] = args[5].Float()
+	}
+	return nil
+}
+
 func getCanvasDimensions(this js.Value, args []js.Value) interface{} {
 	return map[string]interface{}{
 		"width":  width,
@@ -309,6 +439,8 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 		drawAATestDemo()
 	case "convstroke":
 		drawConvStrokeDemo()
+	case "convcontour":
+		drawConvContourDemo()
 	default:
 		logStatus("unknown demo type: " + demoType)
 		return nil

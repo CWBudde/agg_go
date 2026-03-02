@@ -147,6 +147,28 @@ async function init() {
       renderSelectedDemo();
     });
 
+    const contourWidthSlider = document.getElementById("contourWidthSlider");
+    contourWidthSlider.addEventListener("input", () => {
+      const val = parseFloat(contourWidthSlider.value);
+      document.getElementById("contourWidthValue").textContent = val;
+      setContourWidth(val);
+      renderSelectedDemo();
+    });
+
+    const contourCloseModeSelector = document.getElementById(
+      "contourCloseModeSelector",
+    );
+    contourCloseModeSelector.addEventListener("change", () => {
+      setContourCloseMode(parseInt(contourCloseModeSelector.value));
+      renderSelectedDemo();
+    });
+
+    const contourAutoDetectBox = document.getElementById("contourAutoDetect");
+    contourAutoDetectBox.addEventListener("change", () => {
+      setContourAutoDetect(contourAutoDetectBox.checked);
+      renderSelectedDemo();
+    });
+
     const strokeJoinSelector = document.getElementById("strokeJoinSelector");
     strokeJoinSelector.addEventListener("change", () => {
       setStrokeJoin(parseInt(strokeJoinSelector.value));
@@ -247,6 +269,8 @@ function syncControlVisibility(demoType) {
     demoType === "sbool" ? "flex" : "none";
   document.getElementById("convstrokeControls").style.display =
     demoType === "convstroke" ? "flex" : "none";
+  document.getElementById("convcontourControls").style.display =
+    demoType === "convcontour" ? "flex" : "none";
 }
 
 function restoreAANodesFromURL(params) {
@@ -296,6 +320,8 @@ const demoDescriptions = {
     "Comprehensive anti-aliasing precision test. Renders radial lines, various ellipse sizes, and gradient-filled triangles at fractional offsets to verify the rasterizer's quality.",
   convstroke:
     "Line join and cap style showcase. Port of AGG's classic conv_stroke demo. Drag the three control points to reshape the path; use the controls to change join style (Miter/Round/Bevel), cap style (Butt/Square/Round), stroke width, and miter limit.",
+  convcontour:
+    "Contour tool and polygon orientation. Port of AGG's conv_contour demo. Expands or shrinks a closed path by a given width using the contour converter. The glyph is defined with quadratic bezier curves, processed through conv_curve → conv_transform → conv_contour. Adjust the width slider and orientation flags to see the effect.",
 };
 
 function renderSelectedDemo() {

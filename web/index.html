@@ -103,6 +103,9 @@
         <option value="sbool">Boolean Operations (XOR/Union)</option>
         <option value="aatest">Anti-Aliasing Test (Sub-pixel Precision)</option>
         <option value="convstroke">Line Join &amp; Cap Styles</option>
+        <option value="convcontour">
+          Contour Tool &amp; Polygon Orientation
+        </option>
       </select>
       <button id="renderBtn">Refresh / Reset</button>
     </div>
@@ -224,6 +227,29 @@
         step="0.5"
       />
       <span id="strokeMiterValue">4</span>
+    </div>
+
+    <div class="controls" id="convcontourControls" style="display: none">
+      <label for="contourWidthSlider">Width:</label>
+      <input
+        type="range"
+        id="contourWidthSlider"
+        min="-60"
+        max="60"
+        value="0"
+        step="1"
+      />
+      <span id="contourWidthValue">0</span>
+      <label for="contourCloseModeSelector">Close Mode:</label>
+      <select id="contourCloseModeSelector">
+        <option value="0">Close</option>
+        <option value="1">Close CW</option>
+        <option value="2">Close CCW</option>
+      </select>
+      <label
+        ><input type="checkbox" id="contourAutoDetect" /> Auto-detect
+        Orientation</label
+      >
     </div>
 
     <canvas id="aggCanvas"></canvas>
