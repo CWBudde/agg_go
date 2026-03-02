@@ -106,6 +106,13 @@ const ALL_DEMO_PARAMS = [
   "rry1",
   // component
   "ca",
+  // alphagrad
+  "agx0",
+  "agy0",
+  "agx1",
+  "agy1",
+  "agx2",
+  "agy2",
 ];
 
 function clearDemoParams() {
@@ -443,6 +450,27 @@ const demoURLHandlers = {
         setCompAlpha(val);
         document.getElementById("compAlphaSlider").value = val;
         document.getElementById("compAlphaValue").textContent = val;
+      }
+    },
+  },
+
+  alphagrad: {
+    persist() {
+      const n = getAlphaGradNodes();
+      updateURL({
+        agx0: n.x0.toFixed(1),
+        agy0: n.y0.toFixed(1),
+        agx1: n.x1.toFixed(1),
+        agy1: n.y1.toFixed(1),
+        agx2: n.x2.toFixed(1),
+        agy2: n.y2.toFixed(1),
+      });
+    },
+    restore(p) {
+      const keys = ["agx0", "agy0", "agx1", "agy1", "agx2", "agy2"];
+      if (keys.every((k) => p.has(k))) {
+        const vals = keys.map((k) => parseFloat(p.get(k)));
+        setAlphaGradNodes(...vals);
       }
     },
   },
@@ -796,6 +824,7 @@ function syncControlVisibility(demoType) {
     demoType === "roundedrect" ? "flex" : "none";
   document.getElementById("componentControls").style.display =
     demoType === "component" ? "flex" : "none";
+  // alphagrad has no extra controls – all interaction is via mouse drag
 }
 
 const demoDescriptions = {
@@ -828,6 +857,8 @@ const demoDescriptions = {
     "Lion outline rendering. Port of AGG's lion_outline demo. The classic lion vector art is rendered as stroked outlines instead of filled polygons. Left-drag to rotate and scale the lion; right-drag to apply shear. Adjust the line width with the slider.",
   roundedrect:
     "Rounded rectangle demo. Port of AGG's rounded_rect demo. Drag the two corner control points to resize the rectangle. Adjust the corner radius and sub-pixel offset with sliders; toggle white-on-black rendering with the checkbox.",
+  alphagrad:
+    "Alpha channel gradient. Port of AGG's alpha_gradient demo. A circle is filled with a circular colour gradient (dark teal → yellow-green → dark red); its alpha channel is independently modulated by an XY-product gradient mapped over a draggable parallelogram. Drag the three teal control points to reshape the parallelogram and watch the transparency pattern change. Dragging inside the triangle moves all three together.",
   component:
     "Component (channel) rendering. Port of AGG's component_rendering demo. Three large circles are each rendered into an individual color channel using Multiply blend mode, producing classic CMY subtractive color mixing: Cyan darkens the Red channel, Magenta the Green, Yellow the Blue. Where all three overlap the result is black. The Alpha slider controls how strongly each channel is darkened.",
 };

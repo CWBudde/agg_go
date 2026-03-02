@@ -318,6 +318,21 @@ func (agg2d *Agg2D) renderGradientFillWithLineGradient() {
 	}
 }
 
+// RenderScanlinesAAWithSpanGen renders the rasterizer using a custom span generator.
+// This enables advanced effects like combining color gradients with alpha gradients.
+func (agg2d *Agg2D) RenderScanlinesAAWithSpanGen(
+	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
+	spanGen renscan.SpanGeneratorInterface[color.RGBA8[color.Linear]],
+) {
+	renderer := agg2d.currentRenderer()
+	if renderer == nil || agg2d.spanAllocator == nil {
+		return
+	}
+	rasAdapter := rasterizerAdapter{ras: ras}
+	slAdapter := &scanlineWrapper{sl: agg2d.scanline}
+	renscan.RenderScanlinesAA(rasAdapter, slAdapter, renderer, agg2d.spanAllocator, spanGen)
+}
+
 // scanlineRender is a helper function to render scanlines using a renderer
 func scanlineRender(ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip], sl *scanline.ScanlineU8, renderer renscan.RendererInterface[color.RGBA8[color.Linear]]) {
 	// Create adapters to bridge interface differences

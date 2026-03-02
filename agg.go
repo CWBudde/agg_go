@@ -855,6 +855,15 @@ func (a *Agg2D) ScanlineRender(ras *rasterizer.RasterizerScanlineAA[int, rasteri
 	a.impl.ScanlineRender(ras, renderer)
 }
 
+// RenderScanlinesAAWithSpanGen renders the rasterizer using a custom span generator.
+// This enables advanced effects such as combining color gradients with alpha gradients.
+func (a *Agg2D) RenderScanlinesAAWithSpanGen(
+	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
+	spanGen renscan.SpanGeneratorInterface[color.RGBA8[color.Linear]],
+) {
+	a.impl.RenderScanlinesAAWithSpanGen(ras, spanGen)
+}
+
 // GouraudTriangle renders a Gouraud-shaded triangle.
 func (a *Agg2D) GouraudTriangle(x1, y1, x2, y2, x3, y3 float64, c1, c2, c3 Color, d float64) {
 	internalC1 := [4]uint8{c1.R, c1.G, c1.B, c1.A}

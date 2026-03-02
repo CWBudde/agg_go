@@ -66,6 +66,8 @@ func main() {
 	js.Global().Set("setRRDarkBg", js.FuncOf(setRRDarkBg))
 	js.Global().Set("getRRNodes", js.FuncOf(getRRNodes))
 	js.Global().Set("setRRNodes", js.FuncOf(setRRNodes))
+	js.Global().Set("getAlphaGradNodes", js.FuncOf(getAlphaGradNodes))
+	js.Global().Set("setAlphaGradNodes", js.FuncOf(setAlphaGradNodes))
 
 	// Keep the Go program running
 	select {}
@@ -104,6 +106,9 @@ func onMouseDown(this js.Value, args []js.Value) interface{} {
 	if demoType == "roundedrect" {
 		return handleRoundedRectMouseDown(x, y)
 	}
+	if demoType == "alphagrad" {
+		return handleAlphaGradMouseDown(x, y)
+	}
 	return false
 }
 
@@ -140,6 +145,9 @@ func onMouseMove(this js.Value, args []js.Value) interface{} {
 	if demoType == "roundedrect" {
 		return handleRoundedRectMouseMove(x, y)
 	}
+	if demoType == "alphagrad" {
+		return handleAlphaGradMouseMove(x, y)
+	}
 	return false
 }
 
@@ -168,6 +176,9 @@ func onMouseUp(this js.Value, args []js.Value) interface{} {
 	}
 	if demoType == "roundedrect" {
 		handleRoundedRectMouseUp()
+	}
+	if demoType == "alphagrad" {
+		handleAlphaGradMouseUp()
 	}
 	return nil
 }
@@ -479,6 +490,26 @@ func setStrokeNodes(this js.Value, args []js.Value) interface{} {
 	return nil
 }
 
+func getAlphaGradNodes(this js.Value, args []js.Value) interface{} {
+	return map[string]interface{}{
+		"x0": alphaGradPts[0][0], "y0": alphaGradPts[0][1],
+		"x1": alphaGradPts[1][0], "y1": alphaGradPts[1][1],
+		"x2": alphaGradPts[2][0], "y2": alphaGradPts[2][1],
+	}
+}
+
+func setAlphaGradNodes(this js.Value, args []js.Value) interface{} {
+	if len(args) >= 6 {
+		alphaGradPts[0][0] = args[0].Float()
+		alphaGradPts[0][1] = args[1].Float()
+		alphaGradPts[1][0] = args[2].Float()
+		alphaGradPts[1][1] = args[3].Float()
+		alphaGradPts[2][0] = args[4].Float()
+		alphaGradPts[2][1] = args[5].Float()
+	}
+	return nil
+}
+
 func getCanvasDimensions(this js.Value, args []js.Value) interface{} {
 	return map[string]interface{}{
 		"width":  width,
@@ -558,6 +589,8 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 		drawRoundedRectDemo()
 	case "component":
 		drawComponentRenderingDemo()
+	case "alphagrad":
+		drawAlphaGradientDemo()
 	default:
 		logStatus("unknown demo type: " + demoType)
 		return nil
