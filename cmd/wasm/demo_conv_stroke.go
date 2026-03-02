@@ -1,5 +1,3 @@
-//go:build js && wasm
-
 // Port of AGG C++ conv_stroke.cpp – "Line Join" interactive demo.
 package main
 

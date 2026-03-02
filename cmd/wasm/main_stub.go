@@ -30,7 +30,7 @@ func main() {
 			"lines", "circles", "starburst", "rects",
 			"lion", "gradients", "aa", "blend",
 			"bspline", "dash", "gouraud", "imagefilters",
-			"sbool", "aatest",
+			"sbool", "aatest", "convstroke", "convcontour",
 		}
 	}
 
@@ -96,6 +96,10 @@ func renderDemoToFile(demoType, outDir string) error {
 		drawSBoolDemo()
 	case "aatest":
 		drawAATestDemo()
+	case "convstroke":
+		drawConvStrokeDemo()
+	case "convcontour":
+		drawConvContourDemo()
 	default:
 		return fmt.Errorf("unknown demo: %q", demoType)
 	}
