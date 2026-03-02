@@ -33,7 +33,8 @@ func main() {
 			"sbool", "aatest", "convstroke", "convcontour", "gamma", "lionoutline",
 			"roundedrect", "component", "alphagrad",
 			"rasterizers", "flash_rasterizer", "perspective", "bezier_div",
-			"gouraud_mesh", "trans_curve",
+			"gouraud_mesh", "trans_curve", "distortions", "trans_polar",
+			"trans_curve2",
 		}
 	}
 
@@ -119,6 +120,12 @@ func renderDemoToFile(demoType, outDir string) error {
 		drawGouraudMeshDemo()
 	case "trans_curve":
 		drawTransCurveDemo()
+	case "distortions":
+		drawDistortionsDemo()
+	case "trans_polar":
+		drawTransPolarDemo()
+	case "trans_curve2":
+		drawTransCurve2Demo()
 	default:
 		return fmt.Errorf("unknown demo: %q", demoType)
 	}

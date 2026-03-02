@@ -85,23 +85,19 @@ func initMesh() {
 			meshTriangles = append(meshTriangles, meshTriangle{p3, p4, p1})
 
 			currCell := i*(meshCols-1) + j
-			leftCell := -1
-			if j > 0 { leftCell = currCell - 1 }
 			bottCell := -1
 			if i > 0 { bottCell = currCell - (meshCols - 1) }
+			leftCell := -1
+			if j > 0 { leftCell = currCell - 1 }
 
 			currT1 := currCell * 2
 			currT2 := currT1 + 1
 
 			leftT1 := -1
 			if leftCell >= 0 { leftT1 = leftCell * 2 }
-			leftT2 := -1
-			if leftCell >= 0 { leftT2 = leftT1 + 1 }
-
-			bottT1 := -1
-			if bottCell >= 0 { bottT1 = bottCell * 2 }
+			
 			bottT2 := -1
-			if bottCell >= 0 { bottT2 = bottT1 + 1 }
+			if bottCell >= 0 { bottT2 = (bottCell * 2) + 1 }
 
 			meshEdges = append(meshEdges, meshEdge{p1, p2, currT1, bottT2})
 			meshEdges = append(meshEdges, meshEdge{p1, p3, currT2, currT1})
@@ -119,16 +115,25 @@ func initMesh() {
 }
 
 type meshStyleHandler struct {
-	triangles []*span.SpanGouraudRGBA[color.Linear]
+	triangles []*span.SpanGouraudRGBA
 }
 
 func (h *meshStyleHandler) IsSolid(style int) bool { return false }
 func (h *meshStyleHandler) Color(style int) color.RGBA8[color.Linear] {
 	return color.RGBA8[color.Linear]{}
 }
-func (h *meshStyleHandler) GenerateSpan(colors []color.RGBA8[color.Linear], x, y, len, style int) {
+func (h *meshStyleHandler) GenerateSpan(colors []color.RGBA8[color.Linear], x, y, length, style int) {
 	if style >= 0 && style < len(h.triangles) {
-		h.triangles[style].Generate(colors, x, y, len)
+		temp := make([]span.RGBAColor, length)
+		h.triangles[style].Generate(temp, x, y, uint(length))
+		for i := 0; i < length; i++ {
+			colors[i] = color.RGBA8[color.Linear]{
+				R: uint8(temp[i].R >> 8),
+				G: uint8(temp[i].G >> 8),
+				B: uint8(temp[i].B >> 8),
+				A: uint8(temp[i].A >> 8),
+			}
+		}
 	}
 }
 
@@ -141,11 +146,9 @@ func drawGouraudMeshDemo() {
 		p.x += p.dx
 		p.y += p.dy
 		
-		// Boundary check (simplified)
 		if p.x < 0 || p.x > float64(width) { p.dx = -p.dx }
 		if p.y < 0 || p.y > float64(height) { p.dy = -p.dy }
 
-		// Rotate colors
 		c := &p.color
 		updateChan := func(val *basics.Int8u, dir *int) {
 			v := int(*val)
@@ -164,29 +167,31 @@ func drawGouraudMeshDemo() {
 
 	img := ctx.GetImage()
 	rbuf := buffer.NewRenderingBufferU8()
-	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Stride())
+	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Width()*4)
 
 	pixFmt := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
 	renBase := renderer.NewRendererBaseWithPixfmt[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](pixFmt)
 	
-	// Prepare Gouraud spans
 	styles := &meshStyleHandler{}
 	for _, t := range meshTriangles {
 		p1 := meshVertices[t.p1]
 		p2 := meshVertices[t.p2]
 		p3 := meshVertices[t.p3]
 		
-		g := span.NewSpanGouraudRGBA[color.Linear](
-			p1.color, p2.color, p3.color,
+		c1 := span.RGBAColor{R: int(p1.color.R) << 8, G: int(p1.color.G) << 8, B: int(p1.color.B) << 8, A: int(p1.color.A) << 8}
+		c2 := span.RGBAColor{R: int(p2.color.R) << 8, G: int(p2.color.G) << 8, B: int(p2.color.B) << 8, A: int(p2.color.A) << 8}
+		c3 := span.RGBAColor{R: int(p3.color.R) << 8, G: int(p3.color.G) << 8, B: int(p3.color.B) << 8, A: int(p3.color.A) << 8}
+
+		g := span.NewSpanGouraudRGBAWithTriangle(
+			c1, c2, c3,
 			p1.x, p1.y, p2.x, p2.y, p3.x, p3.y,
-			0, // dilation
+			0,
 		)
 		g.Prepare()
 		styles.triangles = append(styles.triangles, g)
 	}
 
-	// Create compound rasterizer
-	clipper := rasterizer.NewRasterizerSlClip[float64, rasterizer.DblConv](rasterizer.DblConv{})
+	clipper := &compoundNoClip{}
 	rasc := rasterizer.NewRasterizerCompoundAA(clipper)
 	
 	for _, e := range meshEdges {
@@ -207,11 +212,12 @@ func drawGouraudMeshDemo() {
 	adapterAA := &flashScanlineAdapter{sl: slAA}
 	adapterBin := &flashScanlineAdapter{sl: slBin}
 	
-	alloc := renscan.NewSpanAllocator[color.RGBA8[color.Linear]]()
+	alloc := span.NewSpanAllocator[color.RGBA8[color.Linear]]()
 
 	minX := rasc.MinX()
 	maxX := rasc.MaxX()
 	length := maxX - minX + 2
+	if length < 0 { length = 0 }
 	colorSpan := make([]color.RGBA8[color.Linear], length*2)
 	mixBuffer := colorSpan[length:]
 
@@ -225,40 +231,40 @@ func drawGouraudMeshDemo() {
 			if rasc.SweepScanline(adapterAA, 0) {
 				style := int(rasc.Style(0))
 				y := slAA.Y()
-				for _, span := range slAA.Spans() {
-					if span.Len > 0 {
-						colors := alloc.Allocate(int(span.Len))
-						styles.GenerateSpan(colors, int(span.X), y, int(span.Len), style)
-						renBase.BlendColorHspan(int(span.X), y, int(span.Len), colors, span.Covers, 255)
+				for _, spanData := range slAA.Spans() {
+					if spanData.Len > 0 {
+						colors := alloc.Allocate(int(spanData.Len))
+						styles.GenerateSpan(colors, int(spanData.X), y, int(spanData.Len), style)
+						renBase.BlendColorHspan(int(spanData.X), y, int(spanData.Len), colors, spanData.Covers, 255)
 					}
 				}
 			}
 		} else {
 			if rasc.SweepScanline(adapterBin, -1) {
 				y := slBin.Y()
-				for _, span := range slBin.Spans() {
-					for j := 0; j < int(span.Len); j++ {
-						mixBuffer[int(span.X)-minX+j] = color.RGBA8[color.Linear]{}
+				for _, spanData := range slBin.Spans() {
+					for j := 0; j < int(spanData.Len); j++ {
+						mixBuffer[int(spanData.X)-minX+j] = color.RGBA8[color.Linear]{}
 					}
 				}
 
 				for i := uint32(0); i < numStyles; i++ {
 					style := int(rasc.Style(i))
 					if rasc.SweepScanline(adapterAA, int(i)) {
-						colors := alloc.Allocate(int(maxX - minX + 1)) // large enough
-						for _, span := range slAA.Spans() {
-							styles.GenerateSpan(colors, int(span.X), y, int(span.Len), style)
-							for j := 0; j < int(span.Len); j++ {
-								ptr := &mixBuffer[int(span.X)-minX+j]
-								cover := span.Covers[j]
+						for _, spanData := range slAA.Spans() {
+							colors := alloc.Allocate(int(spanData.Len))
+							styles.GenerateSpan(colors, int(spanData.X), y, int(spanData.Len), style)
+							for j := 0; j < int(spanData.Len); j++ {
+								ptr := &mixBuffer[int(spanData.X)-minX+j]
+								cover := spanData.Covers[j]
 								ptr.AddWithCover(colors[j], cover)
 							}
 						}
 					}
 				}
 
-				for _, span := range slBin.Spans() {
-					renBase.BlendColorHspan(int(span.X), y, int(span.Len), mixBuffer[int(span.X)-minX:], nil, basics.CoverFull)
+				for _, spanData := range slBin.Spans() {
+					renBase.BlendColorHspan(int(spanData.X), y, int(spanData.Len), mixBuffer[int(spanData.X)-minX:], nil, basics.CoverFull)
 				}
 			}
 		}

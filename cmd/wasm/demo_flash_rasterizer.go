@@ -10,13 +10,11 @@ import (
 	"agg_go/internal/basics"
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
-	"agg_go/internal/order"
 	"agg_go/internal/pixfmt"
-	"agg_go/internal/pixfmt/blender"
 	"agg_go/internal/rasterizer"
 	"agg_go/internal/renderer"
-	renscan "agg_go/internal/renderer/scanline"
 	"agg_go/internal/scanline"
+	"agg_go/internal/span"
 )
 
 var (
@@ -34,15 +32,6 @@ type flashPath struct {
 type flashVertex struct {
 	x, y float64
 	cmd  uint32
-}
-
-func (p *flashPath) Rewind(pathID uint32) {
-	// Not used for our simple manual adding
-}
-
-func (p *flashPath) Vertex(x, y *float64) uint32 {
-	// Not used
-	return uint32(basics.PathCmdStop)
 }
 
 type flashStyleHandler struct {
@@ -72,6 +61,21 @@ func (a *flashScanlineAdapter) AddSpan(x, len int, cover basics.Int8u) {
 }
 func (a *flashScanlineAdapter) Finalize(y int) { a.sl.Finalize(y) }
 func (a *flashScanlineAdapter) NumSpans() int  { return a.sl.NumSpans() }
+
+type compoundNoClip struct {
+	x1, y1 float64
+}
+
+func (c *compoundNoClip) ResetClipping() {}
+func (c *compoundNoClip) ClipBox(x1, y1, x2, y2 float64) {}
+func (c *compoundNoClip) MoveTo(x, y float64) {
+	c.x1, c.y1 = x, y
+}
+func (c *compoundNoClip) LineTo(outline *rasterizer.RasterizerCellsAAStyled, x, y float64) {
+	outline.LineTo(basics.IRound(c.x1*basics.PolySubpixelScale), basics.IRound(c.y1*basics.PolySubpixelScale),
+		basics.IRound(x*basics.PolySubpixelScale), basics.IRound(y*basics.PolySubpixelScale))
+	c.x1, c.y1 = x, y
+}
 
 func initFlashDemo() {
 	if flashShapes != nil {
@@ -127,21 +131,17 @@ func drawFlashRasterizerDemo() {
 	agg2d := ctx.GetAgg2D()
 	agg2d.ResetTransformations()
 
-	// Use internal components for compound rendering
 	img := ctx.GetImage()
 	rbuf := buffer.NewRenderingBufferU8()
-	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Stride())
+	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Width()*4)
 
-	// Create pixel format and renderer base
-	// Using RGBA32Pre to match Agg2D's internal rendering
 	pixFmt := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
 	renBase := renderer.NewRendererBaseWithPixfmt[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](pixFmt)
 	renBase.ClipBox(0, 0, img.Width(), img.Height())
 
 	// Create compound rasterizer
-	clipper := rasterizer.NewRasterizerSlClip[float64, rasterizer.DblConv](rasterizer.DblConv{})
+	clipper := &compoundNoClip{}
 	rasc := rasterizer.NewRasterizerCompoundAA(clipper)
-	rasc.ClipBox(0, 0, float64(img.Width()), float64(img.Height()))
 	
 	for _, p := range flashShapes {
 		rasc.Styles(p.leftFill, p.rightFill)
@@ -150,7 +150,7 @@ func drawFlashRasterizerDemo() {
 		}
 	}
 
-	// We'll use our own RenderScanlinesCompound-like loop because of interface mismatches
+	// We'll use our own RenderScanlinesCompound-like loop
 	rasc.Sort()
 	if !rasc.RewindScanlines() {
 		return
@@ -162,11 +162,11 @@ func drawFlashRasterizerDemo() {
 	adapterBin := &flashScanlineAdapter{sl: slBin}
 	
 	styleHandler := &flashStyleHandler{colors: flashColors}
-	alloc := renscan.NewSpanAllocator[color.RGBA8[color.Linear]]()
 
 	minX := rasc.MinX()
 	maxX := rasc.MaxX()
 	length := maxX - minX + 2
+	if length < 0 { length = 0 }
 	colorSpan := make([]color.RGBA8[color.Linear], length*2)
 	mixBuffer := colorSpan[length:]
 
@@ -181,24 +181,20 @@ func drawFlashRasterizerDemo() {
 				style := int(rasc.Style(0))
 				c := styleHandler.Color(style)
 				
-				// Replicate RenderScanlineAASolid
-				iter := slAA.Spans()
 				y := slAA.Y()
-				for _, span := range iter {
-					if span.Len > 0 {
-						renBase.BlendSolidHspan(int(span.X), y, int(span.Len), c, span.Covers)
+				for _, spanData := range slAA.Spans() {
+					if spanData.Len > 0 {
+						renBase.BlendSolidHspan(int(spanData.X), y, int(spanData.Len), c, spanData.Covers)
 					}
 				}
 			}
 		} else {
 			if rasc.SweepScanline(adapterBin, -1) {
-				// Replicate multiple styles rendering
 				y := slBin.Y()
 				
-				// Clear mix buffer for spans in slBin
-				for _, span := range slBin.Spans() {
-					for j := 0; j < int(span.Len); j++ {
-						mixBuffer[int(span.X)-minX+j] = color.RGBA8[color.Linear]{}
+				for _, spanData := range slBin.Spans() {
+					for j := 0; j < int(spanData.Len); j++ {
+						mixBuffer[int(spanData.X)-minX+j] = color.RGBA8[color.Linear]{}
 					}
 				}
 
@@ -206,20 +202,18 @@ func drawFlashRasterizerDemo() {
 					style := int(rasc.Style(i))
 					if rasc.SweepScanline(adapterAA, int(i)) {
 						c := styleHandler.Color(style)
-						for _, span := range slAA.Spans() {
-							for j := 0; j < int(span.Len); j++ {
-								ptr := &mixBuffer[int(span.X)-minX+j]
-								cover := span.Covers[j]
-								// AddWithCover logic from internal/color
+						for _, spanData := range slAA.Spans() {
+							for j := 0; j < int(spanData.Len); j++ {
+								ptr := &mixBuffer[int(spanData.X)-minX+j]
+								cover := spanData.Covers[j]
 								ptr.AddWithCover(c, cover)
 							}
 						}
 					}
 				}
 
-				// Finally blend the mixBuffer to renBase
-				for _, span := range slBin.Spans() {
-					renBase.BlendColorHspan(int(span.X), y, int(span.Len), mixBuffer[int(span.X)-minX:], nil, basics.CoverFull)
+				for _, spanData := range slBin.Spans() {
+					renBase.BlendColorHspan(int(spanData.X), y, int(spanData.Len), mixBuffer[int(spanData.X)-minX:], nil, basics.CoverFull)
 				}
 			}
 		}

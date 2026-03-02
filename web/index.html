@@ -5,80 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AGG Go - Web Demo</title>
 
-    <style>
-      body {
-        font-family:
-          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
-          Arial, sans-serif;
-        background-color: #f5f5f7;
-        color: #1d1d1f;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding: 2rem;
-        margin: 0;
-      }
-      h1 {
-        margin-bottom: 1.5rem;
-        font-weight: 600;
-      }
-      .controls {
-        margin-bottom: 1rem;
-        display: flex;
-        gap: 1rem;
-        align-items: center;
-        flex-wrap: wrap;
-        justify-content: center;
-      }
-      select,
-      button {
-        padding: 0.5rem 1rem;
-        font-size: 1rem;
-        border-radius: 8px;
-        border: 1px solid #d2d2d7;
-        background-color: white;
-        cursor: pointer;
-      }
-      select:focus,
-      button:focus {
-        outline: none;
-        border-color: #0071e3;
-        box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.1);
-      }
-      canvas {
-        background-color: white;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-        border-radius: 12px;
-        max-width: 100%;
-        height: auto;
-        cursor: crosshair;
-      }
-      .status {
-        margin-top: 1rem;
-        font-size: 0.9rem;
-        color: #86868b;
-      }
-      .description {
-        margin-top: 1.5rem;
-        max-width: 600px;
-        text-align: center;
-        line-height: 1.5;
-        color: #424245;
-      }
-      #loading {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: white;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 100;
-        font-weight: 500;
-      }
-    </style>
+    <link rel="stylesheet" href="style.css" />
   </head>
   <body>
     <div id="loading">Loading WASM...</div>
@@ -114,6 +41,9 @@
         <option value="bezier_div">Bezier Subdivision</option>
         <option value="gouraud_mesh">Gouraud Mesh (Compound)</option>
         <option value="trans_curve">Along-a-Curve Transformer</option>
+        <option value="trans_curve2">Double Path Transformer</option>
+        <option value="distortions">Image Distortions</option>
+        <option value="trans_polar">Polar Transformations</option>
       </select>
       <button id="renderBtn">Refresh / Reset</button>
     </div>
@@ -360,6 +290,10 @@
 
     <div class="controls" id="transCurveControls" style="display: none">
       <label><input type="checkbox" id="transCurveAnimate" /> Animate</label>
+    </div>
+
+    <div class="controls" id="transCurve2Controls" style="display: none">
+      <label><input type="checkbox" id="transCurve2Animate" /> Animate</label>
     </div>
 
     <canvas id="aggCanvas"></canvas>

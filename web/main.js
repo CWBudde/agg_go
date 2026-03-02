@@ -621,6 +621,12 @@ async function init() {
       toggleTransCurveAnimate();
       renderSelectedDemo();
     });
+    
+    // trans_curve2 controls
+    document.getElementById("transCurve2Animate").addEventListener("change", () => {
+      toggleTransCurve2Animate();
+      renderSelectedDemo();
+    });
 
     // Mouse events for draggable-point demos
     let isDragging = false;
@@ -661,7 +667,10 @@ async function init() {
     // Animation loop for demos that need it (gouraud_mesh, trans_curve)
     function animate() {
       const demoType = selector.value;
-      if (demoType === "gouraud_mesh" || (demoType === "trans_curve" && document.getElementById("transCurveAnimate").checked)) {
+      if (demoType === "gouraud_mesh" || 
+          (demoType === "trans_curve" && document.getElementById("transCurveAnimate").checked) ||
+          (demoType === "trans_curve2" && document.getElementById("transCurve2Animate").checked) ||
+          demoType === "distortions") {
         renderSelectedDemo();
       }
       requestAnimationFrame(animate);
@@ -689,6 +698,7 @@ function syncControlVisibility(demoType) {
   document.getElementById("componentControls").style.display = (demoType === "component" ? "flex" : "none");
   document.getElementById("perspectiveControls").style.display = (demoType === "perspective" ? "flex" : "none");
   document.getElementById("transCurveControls").style.display = (demoType === "trans_curve" ? "flex" : "none");
+  document.getElementById("transCurve2Controls").style.display = (demoType === "trans_curve2" ? "flex" : "none");
 }
 
 const demoDescriptions = {
@@ -716,6 +726,9 @@ const demoDescriptions = {
   bezier_div: "Bezier curve subdivision comparison. Shows two methods of rendering cubic Bezier curves: Subdivision (Green) and Incremental (Red). Drag the four control points to see how both algorithms handle various curve shapes and cusps.",
   gouraud_mesh: "Animated Gouraud-shaded mesh. A grid of triangles with varying colors and positions, rendered efficiently using compound rasterization and smooth Gouraud shading. Drag points to manually distort the mesh.",
   trans_curve: "Along-a-curve transformation. Bends complex vector shapes (the lion) along an interactive B-Spline path. Drag the six control points to reshape the path. Toggle animation to watch the lion flow along the moving curve.",
+  trans_curve2: "Double path transformation. Bends vector shapes (the lion) between two interactive B-Spline curves. Drag the 12 control points to reshape the envelope. Toggle animation to watch the lion morph between the moving curves.",
+  distortions: "Animated image distortions. Applies Wave and Swirl effects to a procedurally generated image using custom coordinate distortion interpolators. Click and drag to move the distortion center.",
+  trans_polar: "Polar coordinate transformations. Bends the lion vector art into a circular or spiral shape using a non-linear polar transformer. Click and drag to adjust the radius and spiral intensity.",
 };
 
 function renderSelectedDemo() {

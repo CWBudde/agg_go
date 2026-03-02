@@ -8,6 +8,8 @@ import (
 	"agg_go/internal/basics"
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
+	"agg_go/internal/image"
+	"agg_go/internal/path"
 	"agg_go/internal/pixfmt"
 	"agg_go/internal/rasterizer"
 	"agg_go/internal/renderer"
@@ -55,6 +57,18 @@ func (d *distortionSwirl) Calculate(x, y *int) {
 	*y = int((xd*sa + yd*ca + d.cy) * float64(basics.PolySubpixelScale))
 }
 
+type imagePixFmt struct {
+	rbuf *buffer.RenderingBufferU8
+}
+
+func (p *imagePixFmt) Width() int { return p.rbuf.Width() }
+func (p *imagePixFmt) Height() int { return p.rbuf.Height() }
+func (p *imagePixFmt) PixWidth() int { return 4 }
+func (p *imagePixFmt) PixPtr(x, y int) []basics.Int8u {
+	row := buffer.RowU8(p.rbuf, y)
+	return row[x*4:]
+}
+
 // --- Demo state ---
 
 var (
@@ -89,7 +103,7 @@ func drawDistortionsDemo() {
 
 	img := ctx.GetImage()
 	rbuf := buffer.NewRenderingBufferU8()
-	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Stride())
+	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Width()*4)
 
 	pixFmt := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
 	renBase := renderer.NewRendererBaseWithPixfmt[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](pixFmt)
@@ -97,15 +111,10 @@ func drawDistortionsDemo() {
 	// Image matrices
 	imgW, imgH := float64(distortionsImage.Width()), float64(distortionsImage.Height())
 	
-	srcMtx := transform.NewTransAffine()
-	srcMtx.Translate(-imgW/2, -imgH/2)
-	srcMtx.Rotate(distortionsAngle * math.Pi / 180.0)
-	srcMtx.Translate(imgW/2+10, imgH/2+50)
-
 	imgMtx := transform.NewTransAffine()
 	imgMtx.Translate(-imgW/2, -imgH/2)
 	imgMtx.Rotate(distortionsAngle * math.Pi / 180.0)
-	imgMtx.Scale(distortionsScale, distortionsScale)
+	imgMtx.Scale(distortionsScale)
 	imgMtx.Translate(imgW/2+10, imgH/2+50)
 	imgMtx.Invert()
 
@@ -128,36 +137,52 @@ func drawDistortionsDemo() {
 	}
 
 	// Interpolator
-	li := span.NewSpanInterpolatorLinearWithTransformer(imgMtx)
-	interpolator := span.NewSpanInterpolatorAdaptor(li, dist)
+	li := span.NewSpanInterpolatorLinear[*transform.TransAffine](imgMtx, 8)
+	interpolator := span.NewSpanInterpolatorAdaptor[*span.SpanInterpolatorLinear[*transform.TransAffine], span.Distortion](li, dist)
 
 	// Image span generator
 	imgRbuf := buffer.NewRenderingBufferU8()
-	imgRbuf.Attach(distortionsImage.Data, distortionsImage.Width(), distortionsImage.Height(), distortionsImage.Stride())
-	imgPixFmt := pixfmt.NewPixFmtRGBA32PreLinear(imgRbuf)
+	imgRbuf.Attach(distortionsImage.Data, distortionsImage.Width(), distortionsImage.Height(), distortionsImage.Width()*4)
+	ipf := &imagePixFmt{rbuf: imgRbuf}
 	
-	// We use SpanImageFilterRGBA to draw the distorted image
 	alloc := span.NewSpanAllocator[color.RGBA8[color.Linear]]()
 	
 	// Accessor
-	accessor := span.NewImageAccessorClip[pixfmt.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](imgPixFmt, color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
+	accessor := image.NewImageAccessorClip(ipf, []basics.Int8u{255, 255, 255, 255})
 	
-	// Span generator
-	filter := span.NewImageFilterBilinearRGBA8()
-	sg := span.NewSpanImageFilterRGBA[span.ImageAccessorInterface[color.RGBA8[color.Linear]], *span.SpanInterpolatorAdaptor[*span.SpanInterpolatorLinear, span.Distortion]](accessor, interpolator, filter)
+	// Span generator - using bilinear clip
+	sg := span.NewSpanImageFilterRGBABilinearClipWithParams(accessor, color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255}, interpolator)
 
 	// Rasterizer
-	ras := rasterizer.NewRasterizerScanlineAA()
+	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{}, 
+		rasterizer.NewRasterizerSlNoClip(),
+	)
 	sl := scanline.NewScanlineU8()
 
 	// Draw an ellipse with distorted image fill
 	r := imgW
 	if imgH < r { r = imgH }
-	agg2d.ResetPath()
-	agg2d.Ellipse(imgW/2, imgH/2, r/2-20, r/2-20)
+	
+	p := path.NewPathStorageStl()
+	
+	// Basic circle path for the ellipse
+	numPoints := 100
+	for i := 0; i < numPoints; i++ {
+		angle := 2.0 * math.Pi * float64(i) / float64(numPoints)
+		x := imgW/2 + (r/2-20)*math.Cos(angle)
+		y := imgH/2 + (r/2-20)*math.Sin(angle)
+		if i == 0 {
+			p.MoveTo(x, y)
+		} else {
+			p.LineTo(x, y)
+		}
+	}
+	p.ClosePolygon(basics.PathFlagsNone)
 	
 	// Manual rendering
-	ras.AddPath(agg2d.GetInternalPath(), 0)
+	adapter := &pathSourceAdapter{ps: p}
+	ras.AddPath(adapter, 0)
 	renscan.RenderScanlinesAA(ras, sl, renBase, alloc, sg)
 
 	// Draw interactive handle

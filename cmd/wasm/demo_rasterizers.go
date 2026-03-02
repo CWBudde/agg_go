@@ -6,8 +6,15 @@ import (
 
 	agg "agg_go"
 	"agg_go/internal/basics"
+	"agg_go/internal/buffer"
+	"agg_go/internal/color"
 	"agg_go/internal/gamma"
 	"agg_go/internal/path"
+	"agg_go/internal/pixfmt"
+	"agg_go/internal/rasterizer"
+	"agg_go/internal/renderer"
+	renscan "agg_go/internal/renderer/scanline"
+	"agg_go/internal/scanline"
 )
 
 var (
@@ -24,6 +31,14 @@ func drawRasterizersDemo() {
 	agg2d := ctx.GetAgg2D()
 	agg2d.ResetTransformations()
 
+	img := ctx.GetImage()
+	rbuf := buffer.NewRenderingBufferU8()
+	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Width()*4)
+
+	pixFmt := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
+	renBase := renderer.NewRendererBaseWithPixfmt[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](pixFmt)
+	sl := scanline.NewScanlineU8()
+
 	// 1. Draw anti-aliased triangle
 	ps := path.NewPathStorageStl()
 	ps.MoveTo(rasterizersX[0], rasterizersY[0])
@@ -31,18 +46,20 @@ func drawRasterizersDemo() {
 	ps.LineTo(rasterizersX[2], rasterizersY[2])
 	ps.ClosePolygon(basics.PathFlagsNone)
 
-	agg2d.SetFillColor(agg.NewColorRGBA8(agg.SRGBA8(178, 127, 25, uint8(255*rasterizersAlpha))))
+	cAA := color.RGBA8[color.Linear]{R: 178, G: 127, B: 25, A: uint8(255 * rasterizersAlpha)}
 	
-	ras := agg2d.GetInternalRasterizer()
-	ras.Reset()
+	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{}, 
+		rasterizer.NewRasterizerSlNoClip(),
+	)
 	
 	// Set gamma for AA
 	gPower := gamma.NewGammaPower(rasterizersGamma * 2.0)
-	ras.SetGamma(&gPower)
+	ras.SetGamma(gPower.Apply)
 	
 	adapter := &pathSourceAdapter{ps: ps}
 	ras.AddPath(adapter, 0)
-	agg2d.DrawPath(ras)
+	renscan.RenderScanlinesAASolid(ras, sl, renBase, cAA)
 
 	// 2. Draw aliased triangle (shifted by -200)
 	psAliased := path.NewPathStorageStl()
@@ -51,16 +68,16 @@ func drawRasterizersDemo() {
 	psAliased.LineTo(rasterizersX[2]-200, rasterizersY[2])
 	psAliased.ClosePolygon(basics.PathFlagsNone)
 
-	agg2d.SetFillColor(agg.NewColorRGBA8(agg.SRGBA8(25, 127, 178, uint8(255*rasterizersAlpha))))
+	cAliased := color.RGBA8[color.Linear]{R: 25, G: 127, B: 178, A: uint8(255 * rasterizersAlpha)}
 	
 	ras.Reset()
 	// Set gamma threshold for aliased rendering
 	gThreshold := gamma.NewGammaThreshold(rasterizersGamma)
-	ras.SetGamma(&gThreshold)
+	ras.SetGamma(gThreshold.Apply)
 	
 	adapterAliased := &pathSourceAdapter{ps: psAliased}
 	ras.AddPath(adapterAliased, 0)
-	agg2d.DrawPath(ras)
+	renscan.RenderScanlinesAASolid(ras, sl, renBase, cAliased)
 
 	// 3. Draw interactive handles
 	for i := 0; i < 3; i++ {
@@ -69,13 +86,6 @@ func drawRasterizersDemo() {
 		// Handles for aliased triangle
 		drawHandle(rasterizersX[i]-200, rasterizersY[i])
 	}
-}
-
-func drawHandle(x, y float64) {
-	ctx.SetColor(agg.RGBA(0.8, 0.2, 0.1, 0.6))
-	ctx.FillCircle(x, y, 5)
-	ctx.SetColor(agg.Black)
-	ctx.DrawCircle(x, y, 5)
 }
 
 func handleRasterizersMouseDown(x, y float64) bool {

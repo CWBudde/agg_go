@@ -30,6 +30,19 @@ func initTransCurveDemo() {
 	}
 }
 
+type transSingleAdapter struct {
+	source interface {
+		Rewind(uint)
+		NextVertex() (float64, float64, uint32)
+	}
+}
+
+func (a *transSingleAdapter) Rewind(id uint) { a.source.Rewind(id) }
+func (a *transSingleAdapter) Vertex() (float64, float64, basics.PathCommand) {
+	x, y, cmd := a.source.NextVertex()
+	return x, y, basics.PathCommand(cmd)
+}
+
 func drawTransCurveDemo() {
 	initTransCurveDemo()
 
@@ -58,11 +71,9 @@ func drawTransCurveDemo() {
 
 	// 3. Create the transformation
 	tcurve := transform.NewTransSinglePath()
-	tcurve.AddPath(bspline)
-	// tcurve.PreserveXScale(true)
+	tcurve.AddPath(&transSingleAdapter{bspline})
 
 	// 4. Transform the lion along the curve
-	// Find bounding box of the lion to normalize it
 	lx1, ly1, lx2, ly2 := 1e9, 1e9, -1e9, -1e9
 	for _, lp := range lionPaths {
 		lp.Path.Rewind(0)
@@ -77,9 +88,6 @@ func drawTransCurveDemo() {
 	}
 	
 	lionW := lx2 - lx1
-	lionH := ly2 - ly1
-	
-	// Scale lion to fit curve length
 	scaleX := tcurve.TotalLength() / lionW * 0.8
 	scaleY := 0.5 // flatten it a bit
 
@@ -93,11 +101,8 @@ func drawTransCurveDemo() {
 			x, y, cmd := lp.Path.NextVertex()
 			if basics.IsStop(basics.PathCommand(cmd)) { break }
 
-			// Normalize and scale lion
 			tx := (x - lx1) * scaleX
 			ty := (y - (ly1+ly2)/2.0) * scaleY
-			
-			// Transform along curve
 			tcurve.Transform(&tx, &ty)
 
 			if basics.IsMoveTo(basics.PathCommand(cmd)) {

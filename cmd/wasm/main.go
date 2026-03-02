@@ -70,6 +70,7 @@ func main() {
 	js.Global().Set("setAlphaGradNodes", js.FuncOf(setAlphaGradNodes))
 	js.Global().Set("setPerspectiveType", js.FuncOf(setPerspectiveTypeJS))
 	js.Global().Set("toggleTransCurveAnimate", js.FuncOf(toggleTransCurveAnimateJS))
+	js.Global().Set("toggleTransCurve2Animate", js.FuncOf(toggleTransCurve2AnimateJS))
 
 	// Keep the Go program running
 	select {}
@@ -135,6 +136,15 @@ func onMouseDown(this js.Value, args []js.Value) interface{} {
 	if demoType == "trans_curve" {
 		return handleTransCurveMouseDown(x, y)
 	}
+	if demoType == "distortions" {
+		return handleDistortionsMouseDown(x, y)
+	}
+	if demoType == "trans_polar" {
+		return handleTransPolarMouseDown(x, y)
+	}
+	if demoType == "trans_curve2" {
+		return handleTransCurve2MouseDown(x, y)
+	}
 	return false
 }
 
@@ -186,6 +196,15 @@ func onMouseMove(this js.Value, args []js.Value) interface{} {
 	if demoType == "trans_curve" {
 		return handleTransCurveMouseMove(x, y)
 	}
+	if demoType == "distortions" {
+		return handleDistortionsMouseMove(x, y)
+	}
+	if demoType == "trans_polar" {
+		return handleTransPolarMouseMove(x, y)
+	}
+	if demoType == "trans_curve2" {
+		return handleTransCurve2MouseMove(x, y)
+	}
 	return false
 }
 
@@ -229,6 +248,15 @@ func onMouseUp(this js.Value, args []js.Value) interface{} {
 	}
 	if demoType == "trans_curve" {
 		handleTransCurveMouseUp()
+	}
+	if demoType == "distortions" {
+		handleDistortionsMouseUp()
+	}
+	if demoType == "trans_polar" {
+		handleTransPolarMouseUp()
+	}
+	if demoType == "trans_curve2" {
+		handleTransCurve2MouseUp()
 	}
 	return nil
 }
@@ -653,6 +681,12 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 		drawGouraudMeshDemo()
 	case "trans_curve":
 		drawTransCurveDemo()
+	case "distortions":
+		drawDistortionsDemo()
+	case "trans_polar":
+		drawTransPolarDemo()
+	case "trans_curve2":
+		drawTransCurve2Demo()
 	default:
 		logStatus("unknown demo type: " + demoType)
 		return nil
@@ -665,4 +699,16 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 	}
 
 	return nil
+}
+
+func toggleTransCurve2AnimateJS(this js.Value, args []js.Value) interface{} {
+	toggleTransCurve2Animate()
+	return nil
+}
+
+func drawHandle(x, y float64) {
+	ctx.SetColor(agg.RGBA(0.8, 0.2, 0.1, 0.6))
+	ctx.FillCircle(x, y, 5)
+	ctx.SetColor(agg.Black)
+	ctx.DrawCircle(x, y, 5)
 }
