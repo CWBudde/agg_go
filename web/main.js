@@ -394,11 +394,18 @@ function restoreDemoParams(demoType, params) {
 // --- Theme Management ---
 
 function initTheme() {
-  const themeAutoBtn = document.getElementById("themeAuto");
-  const themeLightBtn = document.getElementById("themeLight");
-  const themeDarkBtn = document.getElementById("themeDark");
+  const themeBtn = document.getElementById("themeCycle");
+  const themeIcon = document.getElementById("themeIcon");
+  const themeLabel = document.getElementById("themeLabel");
   
-  const savedTheme = localStorage.getItem("agg-theme") || "auto";
+  const themes = ["auto", "light", "dark"];
+  const themeInfo = {
+    auto:  { icon: "🌓", label: "Auto" },
+    light: { icon: "☀️", label: "Light" },
+    dark:  { icon: "🌑", label: "Dark" }
+  };
+
+  let currentTheme = localStorage.getItem("agg-theme") || "auto";
   
   const applyTheme = (theme) => {
     const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -407,27 +414,31 @@ function initTheme() {
     document.body.setAttribute("data-theme", theme);
     document.body.setAttribute("data-effective-theme", effectiveTheme);
     
-    // Update active button state
-    [themeAutoBtn, themeLightBtn, themeDarkBtn].forEach(btn => btn.classList.remove("active"));
-    if (theme === "auto") themeAutoBtn.classList.add("active");
-    else if (theme === "light") themeLightBtn.classList.add("active");
-    else if (theme === "dark") themeDarkBtn.classList.add("active");
+    // Update button content
+    themeIcon.textContent = themeInfo[theme].icon;
+    let label = themeInfo[theme].label;
+    if (theme === "auto") {
+      label += ` (${effectiveTheme === "dark" ? "Dark" : "Light"})`;
+    }
+    themeLabel.textContent = label;
     
     localStorage.setItem("agg-theme", theme);
+    currentTheme = theme;
   };
 
-  themeAutoBtn.addEventListener("click", () => applyTheme("auto"));
-  themeLightBtn.addEventListener("click", () => applyTheme("light"));
-  themeDarkBtn.addEventListener("click", () => applyTheme("dark"));
+  themeBtn.addEventListener("click", () => {
+    const nextIndex = (themes.indexOf(currentTheme) + 1) % themes.length;
+    applyTheme(themes[nextIndex]);
+  });
 
   // Listen for system theme changes
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
-    if (localStorage.getItem("agg-theme") === "auto") {
+    if (currentTheme === "auto") {
       applyTheme("auto");
     }
   });
 
-  applyTheme(savedTheme);
+  applyTheme(currentTheme);
 }
 
 // --- Initialization ---

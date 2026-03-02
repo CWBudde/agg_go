@@ -11,7 +11,8 @@
   --loading-bg: white;
 }
 
-[data-theme="dark"] {
+/* Use data-effective-theme for the actual color application */
+[data-effective-theme="dark"] {
   --bg-color: #161617;
   --text-color: #f5f5f7;
   --text-secondary: #a1a1a6;
@@ -20,16 +21,6 @@
   --control-border: #424245;
   --canvas-shadow: rgba(0, 0, 0, 0.5);
   --loading-bg: #161617;
-}
-
-/* Auto mode state detection styles */
-.theme-state-icon::after {
-  content: " (Light)";
-  font-size: 0.8rem;
-  opacity: 0.7;
-}
-[data-effective-theme="dark"] .theme-state-icon::after {
-  content: " (Dark)";
 }
 
 body {
@@ -47,8 +38,42 @@ body {
 }
 
 h1 {
+  margin-top: 1rem;
   margin-bottom: 1.5rem;
   font-weight: 600;
+}
+
+.theme-container {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+}
+
+.theme-cycle-btn {
+  background: var(--control-bg);
+  border: 1px solid var(--control-border);
+  padding: 0.5rem 0.8rem;
+  border-radius: 12px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  transition: all 0.2s;
+  color: var(--text-color);
+}
+
+.theme-cycle-btn:hover {
+  border-color: var(--accent-color);
+  transform: translateY(-1px);
+}
+
+.theme-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .controls {
@@ -80,7 +105,7 @@ button:focus {
 }
 
 canvas {
-  background-color: white; /* AGG renders to white usually */
+  background-color: white; 
   box-shadow: 0 10px 30px var(--canvas-shadow);
   border-radius: 12px;
   max-width: 100%;
@@ -115,36 +140,4 @@ canvas {
   align-items: center;
   z-index: 100;
   font-weight: 500;
-}
-
-.theme-toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: var(--control-bg);
-  border: 1px solid var(--control-border);
-  padding: 0.25rem;
-  border-radius: 10px;
-}
-
-.theme-btn {
-  background: none;
-  border: none;
-  padding: 0.4rem 0.6rem;
-  border-radius: 6px;
-  font-size: 1.1rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color 0.2s;
-}
-
-.theme-btn:hover {
-  background-color: var(--accent-focus);
-}
-
-.theme-btn.active {
-  background-color: var(--accent-color);
-  color: white;
 }

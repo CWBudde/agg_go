@@ -71,6 +71,11 @@ func main() {
 	js.Global().Set("setPerspectiveType", js.FuncOf(setPerspectiveTypeJS))
 	js.Global().Set("toggleTransCurveAnimate", js.FuncOf(toggleTransCurveAnimateJS))
 	js.Global().Set("toggleTransCurve2Animate", js.FuncOf(toggleTransCurve2AnimateJS))
+	js.Global().Set("setBlurRadius", js.FuncOf(setBlurRadius))
+	js.Global().Set("setBlurMethod", js.FuncOf(setBlurMethod))
+	js.Global().Set("setCirclesSelectivity", js.FuncOf(setCirclesSelectivity))
+	js.Global().Set("setCirclesSize", js.FuncOf(setCirclesSize))
+	js.Global().Set("setCirclesZRange", js.FuncOf(setCirclesZRange))
 
 	// Keep the Go program running
 	select {}
@@ -145,6 +150,15 @@ func onMouseDown(this js.Value, args []js.Value) interface{} {
 	if demoType == "trans_curve2" {
 		return handleTransCurve2MouseDown(x, y)
 	}
+	if demoType == "circles" {
+		generateCircles()
+		return true
+	}
+	if demoType == "simple_blur" {
+		simpleBlurCX = x
+		simpleBlurCY = y
+		return true
+	}
 	return false
 }
 
@@ -204,6 +218,11 @@ func onMouseMove(this js.Value, args []js.Value) interface{} {
 	}
 	if demoType == "trans_curve2" {
 		return handleTransCurve2MouseMove(x, y)
+	}
+	if demoType == "simple_blur" {
+		simpleBlurCX = x
+		simpleBlurCY = y
+		return true
 	}
 	return false
 }
@@ -687,6 +706,12 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 		drawTransPolarDemo()
 	case "trans_curve2":
 		drawTransCurve2Demo()
+	case "circles":
+		drawCirclesScatterDemo()
+	case "blur":
+		drawBlurDemo()
+	case "simple_blur":
+		drawSimpleBlurDemo()
 	default:
 		logStatus("unknown demo type: " + demoType)
 		return nil
@@ -703,6 +728,42 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 
 func toggleTransCurve2AnimateJS(this js.Value, args []js.Value) interface{} {
 	toggleTransCurve2Animate()
+	return nil
+}
+
+func setBlurRadius(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		blurRadius = args[0].Float()
+	}
+	return nil
+}
+
+func setBlurMethod(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		blurMethod = args[0].Int()
+	}
+	return nil
+}
+
+func setCirclesSelectivity(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		selectivity = args[0].Float()
+	}
+	return nil
+}
+
+func setCirclesSize(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		sizeScale = args[0].Float()
+	}
+	return nil
+}
+
+func setCirclesZRange(this js.Value, args []js.Value) interface{} {
+	if len(args) >= 2 {
+		zRangeLow = args[0].Float()
+		zRangeHigh = args[1].Float()
+	}
 	return nil
 }
 

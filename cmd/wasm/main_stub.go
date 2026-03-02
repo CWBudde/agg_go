@@ -34,7 +34,7 @@ func main() {
 			"roundedrect", "component", "alphagrad",
 			"rasterizers", "flash_rasterizer", "perspective", "bezier_div",
 			"gouraud_mesh", "trans_curve", "distortions", "trans_polar",
-			"trans_curve2",
+			"trans_curve2", "circles", "blur", "simple_blur",
 		}
 	}
 
@@ -126,6 +126,12 @@ func renderDemoToFile(demoType, outDir string) error {
 		drawTransPolarDemo()
 	case "trans_curve2":
 		drawTransCurve2Demo()
+	case "circles":
+		drawCirclesScatterDemo()
+	case "blur":
+		drawBlurDemo()
+	case "simple_blur":
+		drawSimpleBlurDemo()
 	default:
 		return fmt.Errorf("unknown demo: %q", demoType)
 	}
@@ -136,4 +142,11 @@ func renderDemoToFile(demoType, outDir string) error {
 	}
 	fmt.Printf("saved: %s\n", out)
 	return nil
+}
+
+func drawHandle(x, y float64) {
+	ctx.SetColor(agg.RGBA(0.8, 0.2, 0.1, 0.6))
+	ctx.FillCircle(x, y, 5)
+	ctx.SetColor(agg.Black)
+	ctx.DrawCircle(x, y, 5)
 }

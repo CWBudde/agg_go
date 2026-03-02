@@ -10,6 +10,13 @@
   <body>
     <div id="loading">Loading WASM...</div>
 
+    <div class="theme-container">
+      <button class="theme-cycle-btn" id="themeCycle">
+        <span id="themeIcon">🌓</span>
+        <span class="theme-label" id="themeLabel">Auto</span>
+      </button>
+    </div>
+
     <h1>AGG Go Web Demo</h1>
 
     <div class="controls">
@@ -46,12 +53,6 @@
         <option value="trans_polar">Polar Transformations</option>
       </select>
       <button id="renderBtn">Refresh / Reset</button>
-      
-      <div class="theme-toggle">
-        <button class="theme-btn" id="themeAuto" title="Auto (System)">🌓<span class="theme-state-icon"></span></button>
-        <button class="theme-btn" id="themeLight" title="Light Mode">☀️</button>
-        <button class="theme-btn" id="themeDark" title="Dark Mode">🌑</button>
-      </div>
     </div>
 
     <div class="controls" id="aaControls" style="display: none">

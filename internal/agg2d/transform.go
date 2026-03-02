@@ -130,6 +130,16 @@ func (agg2d *Agg2D) worldToScreenScalar(scalar float64) float64 {
 
 // Transform stack management
 
+// PushTransformations is an alias for PushTransform to match the C++ API.
+func (agg2d *Agg2D) PushTransformations() {
+	agg2d.PushTransform()
+}
+
+// PopTransformations is an alias for PopTransform to match the C++ API.
+func (agg2d *Agg2D) PopTransformations() {
+	agg2d.PopTransform()
+}
+
 // PushTransform saves the current transformation state.
 func (agg2d *Agg2D) PushTransform() {
 	if agg2d.transformStack == nil {

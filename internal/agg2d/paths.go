@@ -93,6 +93,11 @@ func (agg2d *Agg2D) QuadricCurveTo(xCtrl, yCtrl, xTo, yTo float64) {
 	agg2d.hasLastCtrl = true
 }
 
+// Curve3 is an alias for QuadricCurveTo to match the C++ API.
+func (agg2d *Agg2D) Curve3(xCtrl, yCtrl, xTo, yTo float64) {
+	agg2d.QuadricCurveTo(xCtrl, yCtrl, xTo, yTo)
+}
+
 // QuadricCurveRel adds a quadratic Bézier curve to the path using relative coordinates.
 // This matches the C++ Agg2D::quadricCurveRel method.
 func (agg2d *Agg2D) QuadricCurveRel(dxCtrl, dyCtrl, dxTo, dyTo float64) {
@@ -103,6 +108,11 @@ func (agg2d *Agg2D) QuadricCurveRel(dxCtrl, dyCtrl, dxTo, dyTo float64) {
 	agg2d.lastCtrlX = currentX + dxCtrl
 	agg2d.lastCtrlY = currentY + dyCtrl
 	agg2d.hasLastCtrl = true
+}
+
+// Curve3Rel is an alias for QuadricCurveRel to match the C++ API.
+func (agg2d *Agg2D) Curve3Rel(dxCtrl, dyCtrl, dxTo, dyTo float64) {
+	agg2d.QuadricCurveRel(dxCtrl, dyCtrl, dxTo, dyTo)
 }
 
 // QuadricCurveToSmooth adds a smooth quadratic Bézier curve.
@@ -130,6 +140,11 @@ func (agg2d *Agg2D) QuadricCurveToSmooth(xTo, yTo float64) {
 	agg2d.lastCtrlX = ctrlX
 	agg2d.lastCtrlY = ctrlY
 	agg2d.hasLastCtrl = true
+}
+
+// Curve3Smooth is an alias for QuadricCurveToSmooth to match the C++ API.
+func (agg2d *Agg2D) Curve3Smooth(xTo, yTo float64) {
+	agg2d.QuadricCurveToSmooth(xTo, yTo)
 }
 
 // QuadricCurveRelSmooth adds a smooth quadratic Bézier curve using relative coordinates.
@@ -160,6 +175,11 @@ func (agg2d *Agg2D) QuadricCurveRelSmooth(dxTo, dyTo float64) {
 	agg2d.hasLastCtrl = true
 }
 
+// Curve3RelSmooth is an alias for QuadricCurveRelSmooth to match the C++ API.
+func (agg2d *Agg2D) Curve3RelSmooth(dxTo, dyTo float64) {
+	agg2d.QuadricCurveRelSmooth(dxTo, dyTo)
+}
+
 // CubicCurveTo adds a cubic Bézier curve to the path.
 // This matches the C++ Agg2D::cubicCurveTo method.
 func (agg2d *Agg2D) CubicCurveTo(xCtrl1, yCtrl1, xCtrl2, yCtrl2, xTo, yTo float64) {
@@ -168,6 +188,11 @@ func (agg2d *Agg2D) CubicCurveTo(xCtrl1, yCtrl1, xCtrl2, yCtrl2, xTo, yTo float6
 	agg2d.lastCtrlX = xCtrl2
 	agg2d.lastCtrlY = yCtrl2
 	agg2d.hasLastCtrl = true
+}
+
+// Curve4To is an alias for CubicCurveTo to match the C++ curve4 semantics.
+func (agg2d *Agg2D) Curve4To(xCtrl1, yCtrl1, xCtrl2, yCtrl2, xTo, yTo float64) {
+	agg2d.CubicCurveTo(xCtrl1, yCtrl1, xCtrl2, yCtrl2, xTo, yTo)
 }
 
 // CubicCurveRel adds a cubic Bézier curve to the path using relative coordinates.
@@ -180,6 +205,11 @@ func (agg2d *Agg2D) CubicCurveRel(dxCtrl1, dyCtrl1, dxCtrl2, dyCtrl2, dxTo, dyTo
 	agg2d.lastCtrlX = currentX + dxCtrl2
 	agg2d.lastCtrlY = currentY + dyCtrl2
 	agg2d.hasLastCtrl = true
+}
+
+// Curve4RelTo is an alias for CubicCurveRel to match the C++ API.
+func (agg2d *Agg2D) Curve4RelTo(dxCtrl1, dyCtrl1, dxCtrl2, dyCtrl2, dxTo, dyTo float64) {
+	agg2d.CubicCurveRel(dxCtrl1, dyCtrl1, dxCtrl2, dyCtrl2, dxTo, dyTo)
 }
 
 // CubicCurveToSmooth adds a smooth cubic Bézier curve.
@@ -205,6 +235,11 @@ func (agg2d *Agg2D) CubicCurveToSmooth(xCtrl2, yCtrl2, xTo, yTo float64) {
 	agg2d.lastCtrlX = xCtrl2
 	agg2d.lastCtrlY = yCtrl2
 	agg2d.hasLastCtrl = true
+}
+
+// Curve4SmoothTo is an alias for CubicCurveToSmooth to match the C++ API.
+func (agg2d *Agg2D) Curve4SmoothTo(xCtrl2, yCtrl2, xTo, yTo float64) {
+	agg2d.CubicCurveToSmooth(xCtrl2, yCtrl2, xTo, yTo)
 }
 
 // CubicCurveRelSmooth adds a smooth cubic Bézier curve using relative coordinates.
@@ -233,6 +268,11 @@ func (agg2d *Agg2D) CubicCurveRelSmooth(dxCtrl2, dyCtrl2, dxTo, dyTo float64) {
 	agg2d.lastCtrlX = currentX + dxCtrl2
 	agg2d.lastCtrlY = currentY + dyCtrl2
 	agg2d.hasLastCtrl = true
+}
+
+// Curve4RelSmoothTo is an alias for CubicCurveRelSmooth to match the C++ API.
+func (agg2d *Agg2D) Curve4RelSmoothTo(dxCtrl2, dyCtrl2, dxTo, dyTo float64) {
+	agg2d.CubicCurveRelSmooth(dxCtrl2, dyCtrl2, dxTo, dyTo)
 }
 
 // AddEllipse adds an ellipse to the path.
