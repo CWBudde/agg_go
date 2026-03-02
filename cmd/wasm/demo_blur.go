@@ -66,8 +66,8 @@ func drawBlurDemo() {
 	agg2d.QuadricCurveTo(22.41, 4.74, 28.47, 9.62)
 	agg2d.ClosePolygon()
 
-	agg2d.Scale(4.0, 4.0)
-	agg2d.Translate(150, 100)
+	agg2d.Translate(150, 400)
+	agg2d.Scale(4.0, -4.0)
 
 	// Draw shadow
 	agg2d.FillColor(agg.NewColor(25, 25, 25, 255))
