@@ -30,29 +30,46 @@ func (r *EnlargedRenderer) SetColor(c color.RGBA8[color.Linear]) {
 
 func (r *EnlargedRenderer) Render(sl renscan.ScanlineInterface) {
 	y := sl.Y()
+	numSpans := sl.NumSpans()
 	it := sl.Begin()
-	for {
+
+	for i := 0; i < numSpans; i++ {
 		span := it.GetSpan()
 		x := span.X
 		numPix := span.Len
 		covers := span.Covers
 
-		for i := 0; i < numPix; i++ {
-			cover := covers[i]
+		// Handle solid spans (negative len means solid with single cover value)
+		if numPix < 0 {
+			numPix = -numPix
+			cover := covers[0]
 			alpha := (uint16(cover) * uint16(r.color.A)) >> 8
-
-			// Draw the "enlarged pixel" square
-			r.ctx.SetColor(agg.NewColor(r.color.R, r.color.G, r.color.B, uint8(alpha)))
-			r.ctx.FillRectangle(
-				float64(x+i)*r.pixelSize,
-				float64(y)*r.pixelSize,
-				r.pixelSize,
-				r.pixelSize,
-			)
+			c := agg.NewColor(r.color.R, r.color.G, r.color.B, uint8(alpha))
+			for j := 0; j < numPix; j++ {
+				r.ctx.SetColor(c)
+				r.ctx.FillRectangle(
+					float64(x+j)*r.pixelSize,
+					float64(y)*r.pixelSize,
+					r.pixelSize,
+					r.pixelSize,
+				)
+			}
+		} else {
+			for j := 0; j < numPix; j++ {
+				cover := covers[j]
+				alpha := (uint16(cover) * uint16(r.color.A)) >> 8
+				r.ctx.SetColor(agg.NewColor(r.color.R, r.color.G, r.color.B, uint8(alpha)))
+				r.ctx.FillRectangle(
+					float64(x+j)*r.pixelSize,
+					float64(y)*r.pixelSize,
+					r.pixelSize,
+					r.pixelSize,
+				)
+			}
 		}
 
-		if !it.Next() {
-			break
+		if i < numSpans-1 {
+			it.Next()
 		}
 	}
 }
