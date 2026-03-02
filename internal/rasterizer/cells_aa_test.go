@@ -128,6 +128,31 @@ func TestRasterizerCellsAA_HorizontalLine(t *testing.T) {
 	}
 }
 
+// TestRasterizerCellsAA_RepeatedResetDoesNotDropCells verifies that repeated Reset+render
+// cycles do not exhaust the block pool and silently drop cells.
+// Before the fix, numBlocks was never reset, so after enough Reset cycles it would hit
+// cellBlockLimit and all cells would be silently dropped.
+func TestRasterizerCellsAA_RepeatedResetDoesNotDropCells(t *testing.T) {
+	// Use a small block limit to quickly expose the bug
+	r := NewRasterizerCellsAASimple(4)
+
+	x1 := 10 << basics.PolySubpixelShift
+	y1 := 10 << basics.PolySubpixelShift
+	x2 := 20 << basics.PolySubpixelShift
+	y2 := 20 << basics.PolySubpixelShift
+
+	// Simulate 10 render cycles (each adds a diagonal line, resets in between).
+	// With the old code, numBlocks would grow by ~1 per cycle and hit the limit of 4.
+	for i := range 10 {
+		r.Reset()
+		r.Line(x1, y1, x2, y2)
+		r.SortCells()
+		if r.TotalCells() == 0 {
+			t.Fatalf("cycle %d: all cells were dropped (numBlocks exhaustion bug)", i)
+		}
+	}
+}
+
 func TestRasterizerCellsAA_SortPreservesDuplicateXCells(t *testing.T) {
 	rasterizer := NewRasterizerCellsAASimple(1024)
 

@@ -74,3 +74,6 @@ Thumbs.db
 *.pprof
 cpu.prof
 mem.prof
+
+# AI Agents
+.claude/
