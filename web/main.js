@@ -104,6 +104,8 @@ const ALL_DEMO_PARAMS = [
   "rry0",
   "rrx1",
   "rry1",
+  // component
+  "ca",
 ];
 
 function clearDemoParams() {
@@ -428,6 +430,22 @@ const demoURLHandlers = {
       }
     },
   },
+
+  component: {
+    persist() {
+      updateURL({
+        ca: parseInt(document.getElementById("compAlphaSlider").value),
+      });
+    },
+    restore(p) {
+      if (p.has("ca")) {
+        const val = parseInt(p.get("ca"));
+        setCompAlpha(val);
+        document.getElementById("compAlphaSlider").value = val;
+        document.getElementById("compAlphaValue").textContent = val;
+      }
+    },
+  },
 };
 
 function persistDemoParams(demoType) {
@@ -703,6 +721,17 @@ async function init() {
       renderSelectedDemo();
     });
 
+    // component controls
+    document
+      .getElementById("compAlphaSlider")
+      .addEventListener("input", () => {
+        const val = parseInt(document.getElementById("compAlphaSlider").value);
+        document.getElementById("compAlphaValue").textContent = val;
+        setCompAlpha(val);
+        persistDemoParams("component");
+        renderSelectedDemo();
+      });
+
     // Mouse events for draggable-point demos
     let isDragging = false;
 
@@ -767,6 +796,8 @@ function syncControlVisibility(demoType) {
     demoType === "lionoutline" ? "flex" : "none";
   document.getElementById("roundedrectControls").style.display =
     demoType === "roundedrect" ? "flex" : "none";
+  document.getElementById("componentControls").style.display =
+    demoType === "component" ? "flex" : "none";
 }
 
 const demoDescriptions = {
@@ -805,6 +836,8 @@ const demoDescriptions = {
     "Lion outline rendering. Port of AGG's lion_outline demo. The classic lion vector art is rendered as stroked outlines instead of filled polygons. Left-drag to rotate and scale the lion; right-drag to apply shear. Adjust the line width with the slider.",
   roundedrect:
     "Rounded rectangle demo. Port of AGG's rounded_rect demo. Drag the two corner control points to resize the rectangle. Adjust the corner radius and sub-pixel offset with sliders; toggle white-on-black rendering with the checkbox.",
+  component:
+    "Component (channel) rendering. Port of AGG's component_rendering demo. Three large circles are each rendered into an individual color channel using Multiply blend mode, producing classic CMY subtractive color mixing: Cyan darkens the Red channel, Magenta the Green, Yellow the Blue. Where all three overlap the result is black. The Alpha slider controls how strongly each channel is darkened.",
 };
 
 function renderSelectedDemo() {

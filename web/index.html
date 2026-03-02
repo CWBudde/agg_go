@@ -109,6 +109,7 @@
         <option value="gamma">Gamma Correction</option>
         <option value="lionoutline">Lion Outline (Rotate/Scale/Skew)</option>
         <option value="roundedrect">Rounded Rectangle</option>
+        <option value="component">Component Rendering (CMY Mixing)</option>
       </select>
       <button id="renderBtn">Refresh / Reset</button>
     </div>
@@ -328,6 +329,19 @@
       <label style="margin-left: 1rem"
         ><input type="checkbox" id="rrDarkBg" /> White on black</label
       >
+    </div>
+
+    <div class="controls" id="componentControls" style="display: none">
+      <label for="compAlphaSlider">Alpha:</label>
+      <input
+        type="range"
+        id="compAlphaSlider"
+        min="0"
+        max="255"
+        value="255"
+        step="1"
+      />
+      <span id="compAlphaValue">255</span>
     </div>
 
     <canvas id="aggCanvas"></canvas>

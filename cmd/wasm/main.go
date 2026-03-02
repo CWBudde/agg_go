@@ -60,6 +60,7 @@ func main() {
 	js.Global().Set("setGammaThickness", js.FuncOf(setGammaThickness))
 	js.Global().Set("setGammaContrast", js.FuncOf(setGammaContrast))
 	js.Global().Set("setLionOutlineWidth", js.FuncOf(setLionOutlineWidth))
+	js.Global().Set("setCompAlpha", js.FuncOf(setCompAlpha))
 	js.Global().Set("setRRRadius", js.FuncOf(setRRRadius))
 	js.Global().Set("setRROffset", js.FuncOf(setRROffset))
 	js.Global().Set("setRRDarkBg", js.FuncOf(setRRDarkBg))
@@ -330,6 +331,19 @@ func setLionOutlineWidth(this js.Value, args []js.Value) interface{} {
 	return nil
 }
 
+func setCompAlpha(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		v := args[0].Int()
+		if v < 0 {
+			v = 0
+		} else if v > 255 {
+			v = 255
+		}
+		compAlpha = v
+	}
+	return nil
+}
+
 func setRRRadius(this js.Value, args []js.Value) interface{} {
 	if len(args) > 0 {
 		rrRadius = args[0].Float()
@@ -548,6 +562,8 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 		drawLionOutlineDemo()
 	case "roundedrect":
 		drawRoundedRectDemo()
+	case "component":
+		drawComponentRenderingDemo()
 	default:
 		logStatus("unknown demo type: " + demoType)
 		return nil

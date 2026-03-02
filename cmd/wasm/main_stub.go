@@ -30,7 +30,8 @@ func main() {
 			"lines", "circles", "starburst", "rects",
 			"lion", "gradients", "aa", "blend",
 			"bspline", "dash", "gouraud", "imagefilters",
-			"sbool", "aatest", "convstroke", "convcontour", "gamma", "lionoutline", "roundedrect",
+			"sbool", "aatest", "convstroke", "convcontour", "gamma", "lionoutline",
+			"roundedrect", "component", "roundedrect",
 		}
 	}
 
@@ -106,6 +107,8 @@ func renderDemoToFile(demoType, outDir string) error {
 		drawLionOutlineDemo()
 	case "roundedrect":
 		drawRoundedRectDemo()
+	case "component":
+		drawComponentRenderingDemo()
 	default:
 		return fmt.Errorf("unknown demo: %q", demoType)
 	}
