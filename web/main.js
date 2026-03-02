@@ -391,6 +391,45 @@ function restoreDemoParams(demoType, params) {
   demoURLHandlers[demoType]?.restore(params);
 }
 
+// --- Theme Management ---
+
+function initTheme() {
+  const themeAutoBtn = document.getElementById("themeAuto");
+  const themeLightBtn = document.getElementById("themeLight");
+  const themeDarkBtn = document.getElementById("themeDark");
+  
+  const savedTheme = localStorage.getItem("agg-theme") || "auto";
+  
+  const applyTheme = (theme) => {
+    const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const effectiveTheme = (theme === "auto") ? (isDark ? "dark" : "light") : theme;
+    
+    document.body.setAttribute("data-theme", theme);
+    document.body.setAttribute("data-effective-theme", effectiveTheme);
+    
+    // Update active button state
+    [themeAutoBtn, themeLightBtn, themeDarkBtn].forEach(btn => btn.classList.remove("active"));
+    if (theme === "auto") themeAutoBtn.classList.add("active");
+    else if (theme === "light") themeLightBtn.classList.add("active");
+    else if (theme === "dark") themeDarkBtn.classList.add("active");
+    
+    localStorage.setItem("agg-theme", theme);
+  };
+
+  themeAutoBtn.addEventListener("click", () => applyTheme("auto"));
+  themeLightBtn.addEventListener("click", () => applyTheme("light"));
+  themeDarkBtn.addEventListener("click", () => applyTheme("dark"));
+
+  // Listen for system theme changes
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+    if (localStorage.getItem("agg-theme") === "auto") {
+      applyTheme("auto");
+    }
+  });
+
+  applyTheme(savedTheme);
+}
+
 // --- Initialization ---
 
 async function init() {
@@ -409,6 +448,8 @@ async function init() {
       console.error("WASM Runtime Error:", err);
       updateStatus("WASM Error: " + err.message);
     });
+
+    initTheme();
 
     // Hide loading screen
     document.getElementById("loading").style.display = "none";

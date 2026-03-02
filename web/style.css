@@ -1,19 +1,56 @@
+:root {
+  --bg-color: #f5f5f7;
+  --text-color: #1d1d1f;
+  --text-secondary: #86868b;
+  --text-description: #424245;
+  --control-bg: white;
+  --control-border: #d2d2d7;
+  --canvas-shadow: rgba(0, 0, 0, 0.1);
+  --accent-color: #0071e3;
+  --accent-focus: rgba(0, 113, 227, 0.1);
+  --loading-bg: white;
+}
+
+[data-theme="dark"] {
+  --bg-color: #161617;
+  --text-color: #f5f5f7;
+  --text-secondary: #a1a1a6;
+  --text-description: #d2d2d7;
+  --control-bg: #2d2d2f;
+  --control-border: #424245;
+  --canvas-shadow: rgba(0, 0, 0, 0.5);
+  --loading-bg: #161617;
+}
+
+/* Auto mode state detection styles */
+.theme-state-icon::after {
+  content: " (Light)";
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+[data-effective-theme="dark"] .theme-state-icon::after {
+  content: " (Dark)";
+}
+
 body {
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
     sans-serif;
-  background-color: #f5f5f7;
-  color: #1d1d1f;
+  background-color: var(--bg-color);
+  color: var(--text-color);
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 2rem;
   margin: 0;
+  transition: background-color 0.3s, color 0.3s;
 }
+
 h1 {
   margin-bottom: 1.5rem;
   font-weight: 600;
 }
+
 .controls {
   margin-bottom: 1rem;
   display: flex;
@@ -22,51 +59,92 @@ h1 {
   flex-wrap: wrap;
   justify-content: center;
 }
+
 select,
-button {
+button,
+input[type="range"] {
   padding: 0.5rem 1rem;
   font-size: 1rem;
   border-radius: 8px;
-  border: 1px solid #d2d2d7;
-  background-color: white;
+  border: 1px solid var(--control-border);
+  background-color: var(--control-bg);
+  color: var(--text-color);
   cursor: pointer;
 }
+
 select:focus,
 button:focus {
   outline: none;
-  border-color: #0071e3;
-  box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.1);
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 4px var(--accent-focus);
 }
+
 canvas {
-  background-color: white;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  background-color: white; /* AGG renders to white usually */
+  box-shadow: 0 10px 30px var(--canvas-shadow);
   border-radius: 12px;
   max-width: 100%;
   height: auto;
   cursor: crosshair;
 }
+
 .status {
   margin-top: 1rem;
   font-size: 0.9rem;
-  color: #86868b;
+  color: var(--text-secondary);
 }
+
 .description {
   margin-top: 1.5rem;
   max-width: 600px;
   text-align: center;
   line-height: 1.5;
-  color: #424245;
+  color: var(--text-description);
 }
+
 #loading {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: white;
+  background: var(--loading-bg);
+  color: var(--text-color);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 100;
   font-weight: 500;
+}
+
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--control-bg);
+  border: 1px solid var(--control-border);
+  padding: 0.25rem;
+  border-radius: 10px;
+}
+
+.theme-btn {
+  background: none;
+  border: none;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.theme-btn:hover {
+  background-color: var(--accent-focus);
+}
+
+.theme-btn.active {
+  background-color: var(--accent-color);
+  color: white;
 }
