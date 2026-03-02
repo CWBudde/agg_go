@@ -106,6 +106,7 @@
         <option value="convcontour">
           Contour Tool &amp; Polygon Orientation
         </option>
+        <option value="gamma">Gamma Correction</option>
       </select>
       <button id="renderBtn">Refresh / Reset</button>
     </div>
@@ -250,6 +251,39 @@
         ><input type="checkbox" id="contourAutoDetect" /> Auto-detect
         Orientation</label
       >
+    </div>
+
+    <div class="controls" id="gammaControls" style="display: none">
+      <label for="gammaSlider">Gamma:</label>
+      <input
+        type="range"
+        id="gammaSlider"
+        min="0.5"
+        max="3.0"
+        value="1.0"
+        step="0.05"
+      />
+      <span id="gammaValue">1.0</span>
+      <label for="gammaThickSlider">Thickness:</label>
+      <input
+        type="range"
+        id="gammaThickSlider"
+        min="0.1"
+        max="3.0"
+        value="1.0"
+        step="0.1"
+      />
+      <span id="gammaThickValue">1.0</span>
+      <label for="gammaContrastSlider">Contrast:</label>
+      <input
+        type="range"
+        id="gammaContrastSlider"
+        min="0"
+        max="1"
+        value="1.0"
+        step="0.05"
+      />
+      <span id="gammaContrastValue">1.0</span>
     </div>
 
     <canvas id="aggCanvas"></canvas>

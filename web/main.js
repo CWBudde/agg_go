@@ -571,6 +571,35 @@ async function init() {
         renderSelectedDemo();
       });
 
+    // gamma controls
+    document.getElementById("gammaSlider").addEventListener("input", () => {
+      const val = parseFloat(document.getElementById("gammaSlider").value);
+      document.getElementById("gammaValue").textContent = val.toFixed(2);
+      setGammaValue(val);
+      renderSelectedDemo();
+    });
+    document
+      .getElementById("gammaThickSlider")
+      .addEventListener("input", () => {
+        const val = parseFloat(
+          document.getElementById("gammaThickSlider").value,
+        );
+        document.getElementById("gammaThickValue").textContent = val.toFixed(1);
+        setGammaThickness(val);
+        renderSelectedDemo();
+      });
+    document
+      .getElementById("gammaContrastSlider")
+      .addEventListener("input", () => {
+        const val = parseFloat(
+          document.getElementById("gammaContrastSlider").value,
+        );
+        document.getElementById("gammaContrastValue").textContent =
+          val.toFixed(2);
+        setGammaContrast(val);
+        renderSelectedDemo();
+      });
+
     // Mouse events for draggable-point demos
     let isDragging = false;
 
@@ -625,6 +654,8 @@ function syncControlVisibility(demoType) {
     demoType === "convstroke" ? "flex" : "none";
   document.getElementById("convcontourControls").style.display =
     demoType === "convcontour" ? "flex" : "none";
+  document.getElementById("gammaControls").style.display =
+    demoType === "gamma" ? "flex" : "none";
 }
 
 const demoDescriptions = {
@@ -657,6 +688,8 @@ const demoDescriptions = {
     "Line join and cap style showcase. Port of AGG's classic conv_stroke demo. Drag the three control points to reshape the path; use the controls to change join style (Miter/Round/Bevel), cap style (Butt/Square/Round), stroke width, and miter limit.",
   convcontour:
     "Contour tool and polygon orientation. Port of AGG's conv_contour demo. Expands or shrinks a closed path by a given width using the contour converter. The glyph is defined with quadratic bezier curves, processed through conv_curve → conv_transform → conv_contour. Adjust the width slider and orientation flags to see the effect.",
+  gamma:
+    "Gamma correction showcase. Port of AGG's gamma_correction demo. Renders colored ellipses over a four-quadrant background (dark, light, reddish) to demonstrate how the anti-aliasing gamma affects line quality. Click and drag on the canvas to resize the ellipses. Adjust gamma, line thickness, and background contrast with the sliders.",
 };
 
 function renderSelectedDemo() {

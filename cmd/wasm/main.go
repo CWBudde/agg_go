@@ -56,6 +56,9 @@ func main() {
 	js.Global().Set("setSBoolNodes", js.FuncOf(setSBoolNodes))
 	js.Global().Set("getStrokeNodes", js.FuncOf(getStrokeNodes))
 	js.Global().Set("setStrokeNodes", js.FuncOf(setStrokeNodes))
+	js.Global().Set("setGammaValue", js.FuncOf(setGammaValue))
+	js.Global().Set("setGammaThickness", js.FuncOf(setGammaThickness))
+	js.Global().Set("setGammaContrast", js.FuncOf(setGammaContrast))
 
 	// Keep the Go program running
 	select {}
@@ -84,6 +87,9 @@ func onMouseDown(this js.Value, args []js.Value) interface{} {
 	if demoType == "convstroke" {
 		return handleConvStrokeMouseDown(x, y)
 	}
+	if demoType == "gamma" {
+		return handleGammaCorrectionMouseDown(x, y)
+	}
 	return false
 }
 
@@ -109,6 +115,9 @@ func onMouseMove(this js.Value, args []js.Value) interface{} {
 	}
 	if demoType == "convstroke" {
 		return handleConvStrokeMouseMove(x, y)
+	}
+	if demoType == "gamma" {
+		return handleGammaCorrectionMouseMove(x, y)
 	}
 	return false
 }
@@ -263,6 +272,27 @@ func setContourCloseMode(this js.Value, args []js.Value) interface{} {
 func setContourAutoDetect(this js.Value, args []js.Value) interface{} {
 	if len(args) > 0 {
 		contourAutoDetect = args[0].Bool()
+	}
+	return nil
+}
+
+func setGammaValue(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		gammaValue = args[0].Float()
+	}
+	return nil
+}
+
+func setGammaThickness(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		gammaThick = args[0].Float()
+	}
+	return nil
+}
+
+func setGammaContrast(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		gammaContrast = args[0].Float()
 	}
 	return nil
 }
@@ -441,6 +471,8 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 		drawConvStrokeDemo()
 	case "convcontour":
 		drawConvContourDemo()
+	case "gamma":
+		drawGammaCorrectionDemo()
 	default:
 		logStatus("unknown demo type: " + demoType)
 		return nil
