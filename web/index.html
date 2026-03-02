@@ -108,6 +108,12 @@
         <option value="roundedrect">Rounded Rectangle</option>
         <option value="component">Component Rendering (CMY Mixing)</option>
         <option value="alphagrad">Alpha Channel Gradient</option>
+        <option value="rasterizers">Aliased vs AA Rasterizer</option>
+        <option value="flash_rasterizer">Flash (Compound) Rasterizer</option>
+        <option value="perspective">Perspective Transformations</option>
+        <option value="bezier_div">Bezier Subdivision</option>
+        <option value="gouraud_mesh">Gouraud Mesh (Compound)</option>
+        <option value="trans_curve">Along-a-Curve Transformer</option>
       </select>
       <button id="renderBtn">Refresh / Reset</button>
     </div>
@@ -342,6 +348,18 @@
         step="1"
       />
       <span id="compAlphaValue">255</span>
+    </div>
+
+    <div class="controls" id="perspectiveControls" style="display: none">
+      <label for="perspectiveTypeSelector">Type:</label>
+      <select id="perspectiveTypeSelector">
+        <option value="0">Bilinear</option>
+        <option value="1">Perspective</option>
+      </select>
+    </div>
+
+    <div class="controls" id="transCurveControls" style="display: none">
+      <label><input type="checkbox" id="transCurveAnimate" /> Animate</label>
     </div>
 
     <canvas id="aggCanvas"></canvas>

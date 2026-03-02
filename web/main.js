@@ -34,85 +34,29 @@ function updateURL(params) {
 // When switching demos, all of these are cleared so each demo starts clean.
 const ALL_DEMO_PARAMS = [
   // aa
-  "zoom",
-  "x0",
-  "y0",
-  "x1",
-  "y1",
-  "x2",
-  "y2",
+  "zoom", "x0", "y0", "x1", "y1", "x2", "y2",
   // dash
-  "dw",
-  "dc",
-  "dx0",
-  "dy0",
-  "dx1",
-  "dy1",
-  "dx2",
-  "dy2",
+  "dw", "dc", "dx0", "dy0", "dx1", "dy1", "dx2", "dy2",
   // gouraud
-  "dil",
-  "gx0",
-  "gy0",
-  "gx1",
-  "gy1",
-  "gx2",
-  "gy2",
+  "dil", "gx0", "gy0", "gx1", "gy1", "gx2", "gy2",
   // imagefilters
-  "flt",
-  "frad",
+  "flt", "frad",
   // sbool
-  "sop",
-  "p1x0",
-  "p1y0",
-  "p1x1",
-  "p1y1",
-  "p1x2",
-  "p1y2",
-  "p1x3",
-  "p1y3",
-  "p2x0",
-  "p2y0",
-  "p2x1",
-  "p2y1",
-  "p2x2",
-  "p2y2",
-  "p2x3",
-  "p2y3",
+  "sop", "p1x0", "p1y0", "p1x1", "p1y1", "p1x2", "p1y2", "p1x3", "p1y3", "p2x0", "p2y0", "p2x1", "p2y1", "p2x2", "p2y2", "p2x3", "p2y3",
   // convstroke
-  "sj",
-  "sc",
-  "sw",
-  "sml",
-  "sx0",
-  "sy0",
-  "sx1",
-  "sy1",
-  "sx2",
-  "sy2",
+  "sj", "sc", "sw", "sml", "sx0", "sy0", "sx1", "sy1", "sx2", "sy2",
   // convcontour
-  "ccw",
-  "ccm",
-  "ccad",
+  "ccw", "ccm", "ccad",
   // lionoutline
   "low",
   // roundedrect
-  "rrr",
-  "rro",
-  "rrd",
-  "rrx0",
-  "rry0",
-  "rrx1",
-  "rry1",
+  "rrr", "rro", "rrd", "rrx0", "rry0", "rrx1", "rry1",
   // component
   "ca",
   // alphagrad
-  "agx0",
-  "agy0",
-  "agx1",
-  "agy1",
-  "agx2",
-  "agy2",
+  "agx0", "agy0", "agx1", "agy1", "agx2", "agy2",
+  // perspective
+  "pt",
 ];
 
 function clearDemoParams() {
@@ -130,12 +74,9 @@ const demoURLHandlers = {
       const zoom = parseFloat(document.getElementById("zoomSlider").value);
       updateURL({
         zoom,
-        x0: n.x0.toFixed(1),
-        y0: n.y0.toFixed(1),
-        x1: n.x1.toFixed(1),
-        y1: n.y1.toFixed(1),
-        x2: n.x2.toFixed(1),
-        y2: n.y2.toFixed(1),
+        x0: n.x0.toFixed(1), y0: n.y0.toFixed(1),
+        x1: n.x1.toFixed(1), y1: n.y1.toFixed(1),
+        x2: n.x2.toFixed(1), y2: n.y2.toFixed(1),
       });
     },
     restore(p) {
@@ -159,12 +100,9 @@ const demoURLHandlers = {
       updateURL({
         dw: parseFloat(document.getElementById("dashWidthSlider").value),
         dc: document.getElementById("dashClosed").checked ? "1" : "0",
-        dx0: n.x0.toFixed(1),
-        dy0: n.y0.toFixed(1),
-        dx1: n.x1.toFixed(1),
-        dy1: n.y1.toFixed(1),
-        dx2: n.x2.toFixed(1),
-        dy2: n.y2.toFixed(1),
+        dx0: n.x0.toFixed(1), dy0: n.y0.toFixed(1),
+        dx1: n.x1.toFixed(1), dy1: n.y1.toFixed(1),
+        dx2: n.x2.toFixed(1), dy2: n.y2.toFixed(1),
       });
     },
     restore(p) {
@@ -192,12 +130,9 @@ const demoURLHandlers = {
       const n = getGouraudNodes();
       updateURL({
         dil: parseFloat(document.getElementById("dilationSlider").value),
-        gx0: n.x0.toFixed(1),
-        gy0: n.y0.toFixed(1),
-        gx1: n.x1.toFixed(1),
-        gy1: n.y1.toFixed(1),
-        gx2: n.x2.toFixed(1),
-        gy2: n.y2.toFixed(1),
+        gx0: n.x0.toFixed(1), gy0: n.y0.toFixed(1),
+        gx1: n.x1.toFixed(1), gy1: n.y1.toFixed(1),
+        gx2: n.x2.toFixed(1), gy2: n.y2.toFixed(1),
       });
     },
     restore(p) {
@@ -218,9 +153,7 @@ const demoURLHandlers = {
   imagefilters: {
     persist() {
       const flt = parseInt(document.getElementById("filterSelector").value);
-      const frad = parseFloat(
-        document.getElementById("filterRadiusSlider").value,
-      );
+      const frad = parseFloat(document.getElementById("filterRadiusSlider").value);
       updateURL({ flt, frad });
     },
     restore(p) {
@@ -228,16 +161,10 @@ const demoURLHandlers = {
         const val = parseInt(p.get("flt"));
         setImageFilter(val);
         document.getElementById("filterSelector").value = val;
-        const hasRadius = val >= 12;
-        document.getElementById("radiusLabel").style.display = hasRadius
-          ? "inline"
-          : "none";
-        document.getElementById("filterRadiusSlider").style.display = hasRadius
-          ? "inline"
-          : "none";
-        document.getElementById("filterRadiusValue").style.display = hasRadius
-          ? "inline"
-          : "none";
+        const hasRadius = (val >= 12);
+        document.getElementById("radiusLabel").style.display = hasRadius ? "inline" : "none";
+        document.getElementById("filterRadiusSlider").style.display = hasRadius ? "inline" : "none";
+        document.getElementById("filterRadiusValue").style.display = hasRadius ? "inline" : "none";
       }
       if (p.has("frad")) {
         const val = parseFloat(p.get("frad"));
@@ -254,22 +181,14 @@ const demoURLHandlers = {
       const n = getSBoolNodes();
       updateURL({
         sop: parseInt(document.getElementById("sboolOpSelector").value),
-        p1x0: n.p1x0.toFixed(1),
-        p1y0: n.p1y0.toFixed(1),
-        p1x1: n.p1x1.toFixed(1),
-        p1y1: n.p1y1.toFixed(1),
-        p1x2: n.p1x2.toFixed(1),
-        p1y2: n.p1y2.toFixed(1),
-        p1x3: n.p1x3.toFixed(1),
-        p1y3: n.p1y3.toFixed(1),
-        p2x0: n.p2x0.toFixed(1),
-        p2y0: n.p2y0.toFixed(1),
-        p2x1: n.p2x1.toFixed(1),
-        p2y1: n.p2y1.toFixed(1),
-        p2x2: n.p2x2.toFixed(1),
-        p2y2: n.p2y2.toFixed(1),
-        p2x3: n.p2x3.toFixed(1),
-        p2y3: n.p2y3.toFixed(1),
+        p1x0: n.p1x0.toFixed(1), p1y0: n.p1y0.toFixed(1),
+        p1x1: n.p1x1.toFixed(1), p1y1: n.p1y1.toFixed(1),
+        p1x2: n.p1x2.toFixed(1), p1y2: n.p1y2.toFixed(1),
+        p1x3: n.p1x3.toFixed(1), p1y3: n.p1y3.toFixed(1),
+        p2x0: n.p2x0.toFixed(1), p2y0: n.p2y0.toFixed(1),
+        p2x1: n.p2x1.toFixed(1), p2y1: n.p2y1.toFixed(1),
+        p2x2: n.p2x2.toFixed(1), p2y2: n.p2y2.toFixed(1),
+        p2x3: n.p2x3.toFixed(1), p2y3: n.p2y3.toFixed(1),
       });
     },
     restore(p) {
@@ -279,22 +198,8 @@ const demoURLHandlers = {
         document.getElementById("sboolOpSelector").value = val;
       }
       const keys = [
-        "p1x0",
-        "p1y0",
-        "p1x1",
-        "p1y1",
-        "p1x2",
-        "p1y2",
-        "p1x3",
-        "p1y3",
-        "p2x0",
-        "p2y0",
-        "p2x1",
-        "p2y1",
-        "p2x2",
-        "p2y2",
-        "p2x3",
-        "p2y3",
+        "p1x0", "p1y0", "p1x1", "p1y1", "p1x2", "p1y2", "p1x3", "p1y3",
+        "p2x0", "p2y0", "p2x1", "p2y1", "p2x2", "p2y2", "p2x3", "p2y3",
       ];
       if (keys.every((k) => p.has(k))) {
         const vals = keys.map((k) => parseFloat(p.get(k)));
@@ -311,12 +216,9 @@ const demoURLHandlers = {
         sc: parseInt(document.getElementById("strokeCapSelector").value),
         sw: parseFloat(document.getElementById("strokeWidthSlider").value),
         sml: parseFloat(document.getElementById("strokeMiterSlider").value),
-        sx0: n.x0.toFixed(1),
-        sy0: n.y0.toFixed(1),
-        sx1: n.x1.toFixed(1),
-        sy1: n.y1.toFixed(1),
-        sx2: n.x2.toFixed(1),
-        sy2: n.y2.toFixed(1),
+        sx0: n.x0.toFixed(1), sy0: n.y0.toFixed(1),
+        sx1: n.x1.toFixed(1), sy1: n.y1.toFixed(1),
+        sx2: n.x2.toFixed(1), sy2: n.y2.toFixed(1),
       });
     },
     restore(p) {
@@ -354,9 +256,7 @@ const demoURLHandlers = {
     persist() {
       updateURL({
         ccw: parseFloat(document.getElementById("contourWidthSlider").value),
-        ccm: parseInt(
-          document.getElementById("contourCloseModeSelector").value,
-        ),
+        ccm: parseInt(document.getElementById("contourCloseModeSelector").value),
         ccad: document.getElementById("contourAutoDetect").checked ? "1" : "0",
       });
     },
@@ -383,9 +283,7 @@ const demoURLHandlers = {
   lionoutline: {
     persist() {
       updateURL({
-        low: parseFloat(
-          document.getElementById("lionOutlineWidthSlider").value,
-        ),
+        low: parseFloat(document.getElementById("lionOutlineWidthSlider").value),
       });
     },
     restore(p) {
@@ -393,8 +291,7 @@ const demoURLHandlers = {
         const val = parseFloat(p.get("low"));
         setLionOutlineWidth(val);
         document.getElementById("lionOutlineWidthSlider").value = val;
-        document.getElementById("lionOutlineWidthValue").textContent =
-          val.toFixed(1);
+        document.getElementById("lionOutlineWidthValue").textContent = val.toFixed(1);
       }
     },
   },
@@ -406,10 +303,8 @@ const demoURLHandlers = {
         rrr: parseFloat(document.getElementById("rrRadiusSlider").value),
         rro: parseFloat(document.getElementById("rrOffsetSlider").value),
         rrd: document.getElementById("rrDarkBg").checked ? "1" : "0",
-        rrx0: n.x0.toFixed(1),
-        rry0: n.y0.toFixed(1),
-        rrx1: n.x1.toFixed(1),
-        rry1: n.y1.toFixed(1),
+        rrx0: n.x0.toFixed(1), rry0: n.y0.toFixed(1),
+        rrx1: n.x1.toFixed(1), rry1: n.y1.toFixed(1),
       });
     },
     restore(p) {
@@ -458,12 +353,9 @@ const demoURLHandlers = {
     persist() {
       const n = getAlphaGradNodes();
       updateURL({
-        agx0: n.x0.toFixed(1),
-        agy0: n.y0.toFixed(1),
-        agx1: n.x1.toFixed(1),
-        agy1: n.y1.toFixed(1),
-        agx2: n.x2.toFixed(1),
-        agy2: n.y2.toFixed(1),
+        agx0: n.x0.toFixed(1), agy0: n.y0.toFixed(1),
+        agx1: n.x1.toFixed(1), agy1: n.y1.toFixed(1),
+        agx2: n.x2.toFixed(1), agy2: n.y2.toFixed(1),
       });
     },
     restore(p) {
@@ -471,6 +363,21 @@ const demoURLHandlers = {
       if (keys.every((k) => p.has(k))) {
         const vals = keys.map((k) => parseFloat(p.get(k)));
         setAlphaGradNodes(...vals);
+      }
+    },
+  },
+  
+  perspective: {
+    persist() {
+      updateURL({
+        pt: parseInt(document.getElementById("perspectiveTypeSelector").value),
+      });
+    },
+    restore(p) {
+      if (p.has("pt")) {
+        const val = parseInt(p.get("pt"));
+        setPerspectiveType(val);
+        document.getElementById("perspectiveTypeSelector").value = val;
       }
     },
   },
@@ -537,9 +444,7 @@ async function init() {
       renderSelectedDemo();
     });
 
-    document
-      .getElementById("renderBtn")
-      .addEventListener("click", renderSelectedDemo);
+    document.getElementById("renderBtn").addEventListener("click", renderSelectedDemo);
 
     // aa controls
     document.getElementById("zoomSlider").addEventListener("input", () => {
@@ -578,112 +483,72 @@ async function init() {
     filterSelector.addEventListener("change", () => {
       const val = parseInt(filterSelector.value);
       setImageFilter(val);
-      const hasRadius = val >= 12;
-      document.getElementById("radiusLabel").style.display = hasRadius
-        ? "inline"
-        : "none";
-      document.getElementById("filterRadiusSlider").style.display = hasRadius
-        ? "inline"
-        : "none";
-      document.getElementById("filterRadiusValue").style.display = hasRadius
-        ? "inline"
-        : "none";
+      const hasRadius = (val >= 12);
+      document.getElementById("radiusLabel").style.display = hasRadius ? "inline" : "none";
+      document.getElementById("filterRadiusSlider").style.display = hasRadius ? "inline" : "none";
+      document.getElementById("filterRadiusValue").style.display = hasRadius ? "inline" : "none";
       persistDemoParams("imagefilters");
       renderSelectedDemo();
     });
-    document
-      .getElementById("filterRadiusSlider")
-      .addEventListener("input", () => {
-        const val = parseFloat(
-          document.getElementById("filterRadiusSlider").value,
-        );
-        document.getElementById("filterRadiusValue").textContent = val;
-        setImageFilterRadius(parseInt(filterSelector.value), val);
-        persistDemoParams("imagefilters");
-        renderSelectedDemo();
-      });
+    document.getElementById("filterRadiusSlider").addEventListener("input", () => {
+      const val = parseFloat(document.getElementById("filterRadiusSlider").value);
+      document.getElementById("filterRadiusValue").textContent = val;
+      setImageFilterRadius(parseInt(filterSelector.value), val);
+      persistDemoParams("imagefilters");
+      renderSelectedDemo();
+    });
 
     // sbool controls
-    document
-      .getElementById("sboolOpSelector")
-      .addEventListener("change", () => {
-        setSBoolOp(parseInt(document.getElementById("sboolOpSelector").value));
-        persistDemoParams("sbool");
-        renderSelectedDemo();
-      });
+    document.getElementById("sboolOpSelector").addEventListener("change", () => {
+      setSBoolOp(parseInt(document.getElementById("sboolOpSelector").value));
+      persistDemoParams("sbool");
+      renderSelectedDemo();
+    });
 
     // convstroke controls
-    document
-      .getElementById("strokeJoinSelector")
-      .addEventListener("change", () => {
-        setStrokeJoin(
-          parseInt(document.getElementById("strokeJoinSelector").value),
-        );
-        persistDemoParams("convstroke");
-        renderSelectedDemo();
-      });
-    document
-      .getElementById("strokeCapSelector")
-      .addEventListener("change", () => {
-        setStrokeCap(
-          parseInt(document.getElementById("strokeCapSelector").value),
-        );
-        persistDemoParams("convstroke");
-        renderSelectedDemo();
-      });
-    document
-      .getElementById("strokeWidthSlider")
-      .addEventListener("input", () => {
-        const val = parseFloat(
-          document.getElementById("strokeWidthSlider").value,
-        );
-        document.getElementById("strokeWidthValue").textContent = val;
-        setStrokeWidth(val);
-        persistDemoParams("convstroke");
-        renderSelectedDemo();
-      });
-    document
-      .getElementById("strokeMiterSlider")
-      .addEventListener("input", () => {
-        const val = parseFloat(
-          document.getElementById("strokeMiterSlider").value,
-        );
-        document.getElementById("strokeMiterValue").textContent = val;
-        setStrokeMiterLimit(val);
-        persistDemoParams("convstroke");
-        renderSelectedDemo();
-      });
+    document.getElementById("strokeJoinSelector").addEventListener("change", () => {
+      setStrokeJoin(parseInt(document.getElementById("strokeJoinSelector").value));
+      persistDemoParams("convstroke");
+      renderSelectedDemo();
+    });
+    document.getElementById("strokeCapSelector").addEventListener("change", () => {
+      setStrokeCap(parseInt(document.getElementById("strokeCapSelector").value));
+      persistDemoParams("convstroke");
+      renderSelectedDemo();
+    });
+    document.getElementById("strokeWidthSlider").addEventListener("input", () => {
+      const val = parseFloat(document.getElementById("strokeWidthSlider").value);
+      document.getElementById("strokeWidthValue").textContent = val;
+      setStrokeWidth(val);
+      persistDemoParams("convstroke");
+      renderSelectedDemo();
+    });
+    document.getElementById("strokeMiterSlider").addEventListener("input", () => {
+      const val = parseFloat(document.getElementById("strokeMiterSlider").value);
+      document.getElementById("strokeMiterValue").textContent = val;
+      setStrokeMiterLimit(val);
+      persistDemoParams("convstroke");
+      renderSelectedDemo();
+    });
 
     // convcontour controls
-    document
-      .getElementById("contourWidthSlider")
-      .addEventListener("input", () => {
-        const val = parseFloat(
-          document.getElementById("contourWidthSlider").value,
-        );
-        document.getElementById("contourWidthValue").textContent = val;
-        setContourWidth(val);
-        persistDemoParams("convcontour");
-        renderSelectedDemo();
-      });
-    document
-      .getElementById("contourCloseModeSelector")
-      .addEventListener("change", () => {
-        setContourCloseMode(
-          parseInt(document.getElementById("contourCloseModeSelector").value),
-        );
-        persistDemoParams("convcontour");
-        renderSelectedDemo();
-      });
-    document
-      .getElementById("contourAutoDetect")
-      .addEventListener("change", () => {
-        setContourAutoDetect(
-          document.getElementById("contourAutoDetect").checked,
-        );
-        persistDemoParams("convcontour");
-        renderSelectedDemo();
-      });
+    document.getElementById("contourWidthSlider").addEventListener("input", () => {
+      const val = parseFloat(document.getElementById("contourWidthSlider").value);
+      document.getElementById("contourWidthValue").textContent = val;
+      setContourWidth(val);
+      persistDemoParams("convcontour");
+      renderSelectedDemo();
+    });
+    document.getElementById("contourCloseModeSelector").addEventListener("change", () => {
+      setContourCloseMode(parseInt(document.getElementById("contourCloseModeSelector").value));
+      persistDemoParams("convcontour");
+      renderSelectedDemo();
+    });
+    document.getElementById("contourAutoDetect").addEventListener("change", () => {
+      setContourAutoDetect(document.getElementById("contourAutoDetect").checked);
+      persistDemoParams("convcontour");
+      renderSelectedDemo();
+    });
 
     // gamma controls
     document.getElementById("gammaSlider").addEventListener("input", () => {
@@ -692,41 +557,27 @@ async function init() {
       setGammaValue(val);
       renderSelectedDemo();
     });
-    document
-      .getElementById("gammaThickSlider")
-      .addEventListener("input", () => {
-        const val = parseFloat(
-          document.getElementById("gammaThickSlider").value,
-        );
-        document.getElementById("gammaThickValue").textContent = val.toFixed(1);
-        setGammaThickness(val);
-        renderSelectedDemo();
-      });
-    document
-      .getElementById("gammaContrastSlider")
-      .addEventListener("input", () => {
-        const val = parseFloat(
-          document.getElementById("gammaContrastSlider").value,
-        );
-        document.getElementById("gammaContrastValue").textContent =
-          val.toFixed(2);
-        setGammaContrast(val);
-        renderSelectedDemo();
-      });
+    document.getElementById("gammaThickSlider").addEventListener("input", () => {
+      const val = parseFloat(document.getElementById("gammaThickSlider").value);
+      document.getElementById("gammaThickValue").textContent = val.toFixed(1);
+      setGammaThickness(val);
+      renderSelectedDemo();
+    });
+    document.getElementById("gammaContrastSlider").addEventListener("input", () => {
+      const val = parseFloat(document.getElementById("gammaContrastSlider").value);
+      document.getElementById("gammaContrastValue").textContent = val.toFixed(2);
+      setGammaContrast(val);
+      renderSelectedDemo();
+    });
 
     // lionoutline width slider
-    document
-      .getElementById("lionOutlineWidthSlider")
-      .addEventListener("input", () => {
-        const val = parseFloat(
-          document.getElementById("lionOutlineWidthSlider").value,
-        );
-        document.getElementById("lionOutlineWidthValue").textContent =
-          val.toFixed(1);
-        setLionOutlineWidth(val);
-        persistDemoParams("lionoutline");
-        renderSelectedDemo();
-      });
+    document.getElementById("lionOutlineWidthSlider").addEventListener("input", () => {
+      const val = parseFloat(document.getElementById("lionOutlineWidthSlider").value);
+      document.getElementById("lionOutlineWidthValue").textContent = val.toFixed(1);
+      setLionOutlineWidth(val);
+      persistDemoParams("lionoutline");
+      renderSelectedDemo();
+    });
 
     // roundedrect controls
     document.getElementById("rrRadiusSlider").addEventListener("input", () => {
@@ -757,6 +608,19 @@ async function init() {
       persistDemoParams("component");
       renderSelectedDemo();
     });
+    
+    // perspective controls
+    document.getElementById("perspectiveTypeSelector").addEventListener("change", () => {
+      setPerspectiveType(parseInt(document.getElementById("perspectiveTypeSelector").value));
+      persistDemoParams("perspective");
+      renderSelectedDemo();
+    });
+    
+    // trans_curve controls
+    document.getElementById("transCurveAnimate").addEventListener("change", () => {
+      toggleTransCurveAnimate();
+      renderSelectedDemo();
+    });
 
     // Mouse events for draggable-point demos
     let isDragging = false;
@@ -767,7 +631,7 @@ async function init() {
       const rect = canvas.getBoundingClientRect();
       const x = (e.clientX - rect.left) * (canvas.width / rect.width);
       const y = (e.clientY - rect.top) * (canvas.height / rect.height);
-      const right = e.button === 2;
+      const right = (e.button === 2);
       if (onMouseDown(selector.value, x, y, right)) {
         isDragging = true;
         renderSelectedDemo();
@@ -793,6 +657,16 @@ async function init() {
       // Persist node positions after drag for all interactive demos
       persistDemoParams(selector.value);
     });
+    
+    // Animation loop for demos that need it (gouraud_mesh, trans_curve)
+    function animate() {
+      const demoType = selector.value;
+      if (demoType === "gouraud_mesh" || (demoType === "trans_curve" && document.getElementById("transCurveAnimate").checked)) {
+        renderSelectedDemo();
+      }
+      requestAnimationFrame(animate);
+    }
+    requestAnimationFrame(animate);
 
     updateStatus("Ready");
   } catch (err) {
@@ -802,65 +676,46 @@ async function init() {
 }
 
 function syncControlVisibility(demoType) {
-  document.getElementById("aaControls").style.display =
-    demoType === "aa" ? "flex" : "none";
-  document.getElementById("dashControls").style.display =
-    demoType === "dash" ? "flex" : "none";
-  document.getElementById("gouraudControls").style.display =
-    demoType === "gouraud" ? "flex" : "none";
-  document.getElementById("imageFilterControls").style.display =
-    demoType === "imagefilters" ? "flex" : "none";
-  document.getElementById("sboolControls").style.display =
-    demoType === "sbool" ? "flex" : "none";
-  document.getElementById("convstrokeControls").style.display =
-    demoType === "convstroke" ? "flex" : "none";
-  document.getElementById("convcontourControls").style.display =
-    demoType === "convcontour" ? "flex" : "none";
-  document.getElementById("gammaControls").style.display =
-    demoType === "gamma" ? "flex" : "none";
-  document.getElementById("lionoutlineControls").style.display =
-    demoType === "lionoutline" ? "flex" : "none";
-  document.getElementById("roundedrectControls").style.display =
-    demoType === "roundedrect" ? "flex" : "none";
-  document.getElementById("componentControls").style.display =
-    demoType === "component" ? "flex" : "none";
-  // alphagrad has no extra controls – all interaction is via mouse drag
+  document.getElementById("aaControls").style.display = (demoType === "aa" ? "flex" : "none");
+  document.getElementById("dashControls").style.display = (demoType === "dash" ? "flex" : "none");
+  document.getElementById("gouraudControls").style.display = (demoType === "gouraud" ? "flex" : "none");
+  document.getElementById("imageFilterControls").style.display = (demoType === "imagefilters" ? "flex" : "none");
+  document.getElementById("sboolControls").style.display = (demoType === "sbool" ? "flex" : "none");
+  document.getElementById("convstrokeControls").style.display = (demoType === "convstroke" ? "flex" : "none");
+  document.getElementById("convcontourControls").style.display = (demoType === "convcontour" ? "flex" : "none");
+  document.getElementById("gammaControls").style.display = (demoType === "gamma" ? "flex" : "none");
+  document.getElementById("lionoutlineControls").style.display = (demoType === "lionoutline" ? "flex" : "none");
+  document.getElementById("roundedrectControls").style.display = (demoType === "roundedrect" ? "flex" : "none");
+  document.getElementById("componentControls").style.display = (demoType === "component" ? "flex" : "none");
+  document.getElementById("perspectiveControls").style.display = (demoType === "perspective" ? "flex" : "none");
+  document.getElementById("transCurveControls").style.display = (demoType === "trans_curve" ? "flex" : "none");
 }
 
 const demoDescriptions = {
-  agg2d:
-    "Port of the original agg2d_demo.cpp. Showcases the high-level Agg2D API: viewport mapping, aqua-style gradient buttons with rounded rectangles, filled ellipses, arc-based path construction, blend modes (Add, Overlay), and radial gradient fills.",
+  agg2d: "Port of the original agg2d_demo.cpp. Showcases the high-level Agg2D API: viewport mapping, aqua-style gradient buttons with rounded rectangles, filled ellipses, arc-based path construction, blend modes (Add, Overlay), and radial gradient fills.",
   lion: "The classic AGG signature demo. High-quality vector graphics consisting of hundreds of paths parsed from the original AGG lion data.",
-  gradients:
-    "Linear and radial gradient fills. Demonstrates the advanced span generation and multi-stop color interpolation.",
+  gradients: "Linear and radial gradient fills. Demonstrates the advanced span generation and multi-stop color interpolation.",
   aa: "Anti-aliasing showcase. Lines and circles drawn at sub-pixel offsets to demonstrate the precision and smoothness of AGG's rasterizer.",
-  blend:
-    "Compositing and blend modes. Showcases how different layers can be combined using standard and advanced blend modes like Multiply, Screen, and Overlay.",
-  bspline:
-    "B-Spline curve smoothing. Demonstrates the creation of smooth, continuous curves from a set of control points.",
+  blend: "Compositing and blend modes. Showcases how different layers can be combined using standard and advanced blend modes like Multiply, Screen, and Overlay.",
+  bspline: "B-Spline curve smoothing. Demonstrates the creation of smooth, continuous curves from a set of control points.",
   dash: "Advanced line styling. Showcases various dash patterns and line thicknesses applied to both simple lines and complex paths.",
-  gouraud:
-    "Smooth color interpolation across triangles. Demonstrates AGG's capability to render gradient-shaded meshes with sub-pixel precision and adjustable dilation.",
-  imagefilters:
-    "Comparison of different image interpolation filters. Rotates and scales a procedurally generated image using filters like Bilinear, Bicubic, Sinc, and Lanczos to showcase quality vs. performance.",
-  sbool:
-    "Boolean operations on vector shapes. Demonstrates combining multiple paths using filling rules to achieve Union and XOR-like effects with interactive polygons.",
-  aatest:
-    "Comprehensive anti-aliasing precision test. Renders radial lines, various ellipse sizes, and gradient-filled triangles at fractional offsets to verify the rasterizer's quality.",
-  convstroke:
-    "Line join and cap style showcase. Port of AGG's classic conv_stroke demo. Drag the three control points to reshape the path; use the controls to change join style (Miter/Round/Bevel), cap style (Butt/Square/Round), stroke width, and miter limit.",
-  convcontour:
-    "Contour tool and polygon orientation. Port of AGG's conv_contour demo. Expands or shrinks a closed path by a given width using the contour converter. The glyph is defined with quadratic bezier curves, processed through conv_curve → conv_transform → conv_contour. Adjust the width slider and orientation flags to see the effect.",
-  gamma:
-    "Gamma correction showcase. Port of AGG's gamma_correction demo. Renders colored ellipses over a four-quadrant background (dark, light, reddish) to demonstrate how the anti-aliasing gamma affects line quality. Click and drag on the canvas to resize the ellipses. Adjust gamma, line thickness, and background contrast with the sliders.",
-  lionoutline:
-    "Lion outline rendering. Port of AGG's lion_outline demo. The classic lion vector art is rendered as stroked outlines instead of filled polygons. Left-drag to rotate and scale the lion; right-drag to apply shear. Adjust the line width with the slider.",
-  roundedrect:
-    "Rounded rectangle demo. Port of AGG's rounded_rect demo. Drag the two corner control points to resize the rectangle. Adjust the corner radius and sub-pixel offset with sliders; toggle white-on-black rendering with the checkbox.",
-  alphagrad:
-    "Alpha channel gradient. Port of AGG's alpha_gradient demo. A circle is filled with a circular colour gradient (dark teal → yellow-green → dark red); its alpha channel is independently modulated by an XY-product gradient mapped over a draggable parallelogram. Drag the three teal control points to reshape the parallelogram and watch the transparency pattern change. Dragging inside the triangle moves all three together.",
-  component:
-    "Component (channel) rendering. Port of AGG's component_rendering demo. Three large circles are each rendered into an individual color channel using Multiply blend mode, producing classic CMY subtractive color mixing: Cyan darkens the Red channel, Magenta the Green, Yellow the Blue. Where all three overlap the result is black. The Alpha slider controls how strongly each channel is darkened.",
+  gouraud: "Smooth color interpolation across triangles. Demonstrates AGG's capability to render gradient-shaded meshes with sub-pixel precision and adjustable dilation.",
+  imagefilters: "Comparison of different image interpolation filters. Rotates and scales a procedurally generated image using filters like Bilinear, Bicubic, Sinc, and Lanczos to showcase quality vs. performance.",
+  sbool: "Boolean operations on vector shapes. Demonstrates combining multiple paths using filling rules to achieve Union and XOR-like effects with interactive polygons.",
+  aatest: "Comprehensive anti-aliasing precision test. Renders radial lines, various ellipse sizes, and gradient-filled triangles at fractional offsets to verify the rasterizer's quality.",
+  convstroke: "Line join and cap style showcase. Port of AGG's classic conv_stroke demo. Drag the three control points to reshape the path; use the controls to change join style (Miter/Round/Bevel), cap style (Butt/Square/Round), stroke width, and miter limit.",
+  convcontour: "Contour tool and polygon orientation. Port of AGG's conv_contour demo. Expands or shrinks a closed path by a given width using the contour converter. The glyph is defined with quadratic bezier curves, processed through conv_curve → conv_transform → conv_contour. Adjust the width slider and orientation flags to see the effect.",
+  gamma: "Gamma correction showcase. Port of AGG's gamma_correction demo. Renders colored ellipses over a four-quadrant background (dark, light, reddish) to demonstrate how the anti-aliasing gamma affects line quality. Click and drag on the canvas to resize the ellipses. Adjust gamma, line thickness, and background contrast with the sliders.",
+  lionoutline: "Lion outline rendering. Port of AGG's lion_outline demo. The classic lion vector art is rendered as stroked outlines instead of filled polygons. Left-drag to rotate and scale the lion; right-drag to apply shear. Adjust the line width with the slider.",
+  roundedrect: "Rounded rectangle demo. Port of AGG's rounded_rect demo. Drag the two corner control points to resize the rectangle. Adjust the corner radius and sub-pixel offset with sliders; toggle white-on-black rendering with the checkbox.",
+  alphagrad: "Alpha channel gradient. Port of AGG's alpha_gradient demo. A circle is filled with a circular colour gradient (dark teal → yellow-green → dark red); its alpha channel is independently modulated by an XY-product gradient mapped over a draggable parallelogram. Drag the three teal control points to reshape the parallelogram and watch the transparency pattern change. Dragging inside the triangle moves all three together.",
+  component: "Component (channel) rendering. Port of AGG's component_rendering demo. Three large circles are each rendered into an individual color channel using Multiply blend mode, producing classic CMY subtractive color mixing: Cyan darkens the Red channel, Magenta the Green, Yellow the Blue. Where all three overlap the result is black. The Alpha slider controls how strongly each channel is darkened.",
+  rasterizers: "Aliased vs Anti-Aliased rasterization. Comparison between the standard AA rasterizer and aliased (threshold-based) rendering. Drag the triangle nodes to see how edges behave under different rendering modes and gamma settings.",
+  flash_rasterizer: "Compound rasterization. Demonstrates AGG's ability to render overlapping shapes with multiple styles in a single pass using the compound rasterizer. This is highly efficient for complex vector scenes with many layers.",
+  perspective: "Perspective and Bilinear transformations. Apply non-linear distortions to the lion vector art by dragging the four corners of the control quadrilateral. Switch between Bilinear and Perspective modes to see the difference in projection.",
+  bezier_div: "Bezier curve subdivision comparison. Shows two methods of rendering cubic Bezier curves: Subdivision (Green) and Incremental (Red). Drag the four control points to see how both algorithms handle various curve shapes and cusps.",
+  gouraud_mesh: "Animated Gouraud-shaded mesh. A grid of triangles with varying colors and positions, rendered efficiently using compound rasterization and smooth Gouraud shading. Drag points to manually distort the mesh.",
+  trans_curve: "Along-a-curve transformation. Bends complex vector shapes (the lion) along an interactive B-Spline path. Drag the six control points to reshape the path. Toggle animation to watch the lion flow along the moving curve.",
 };
 
 function renderSelectedDemo() {
@@ -868,8 +723,7 @@ function renderSelectedDemo() {
   const demoType = selector.value;
 
   updateStatus("Rendering " + demoType + "...");
-  document.getElementById("demoDesc").textContent =
-    demoDescriptions[demoType] || "";
+  document.getElementById("demoDesc").textContent = demoDescriptions[demoType] || "";
 
   try {
     renderDemo(demoType, pixels);

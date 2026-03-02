@@ -68,9 +68,23 @@ func main() {
 	js.Global().Set("setRRNodes", js.FuncOf(setRRNodes))
 	js.Global().Set("getAlphaGradNodes", js.FuncOf(getAlphaGradNodes))
 	js.Global().Set("setAlphaGradNodes", js.FuncOf(setAlphaGradNodes))
+	js.Global().Set("setPerspectiveType", js.FuncOf(setPerspectiveTypeJS))
+	js.Global().Set("toggleTransCurveAnimate", js.FuncOf(toggleTransCurveAnimateJS))
 
 	// Keep the Go program running
 	select {}
+}
+
+func setPerspectiveTypeJS(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		setPerspectiveType(args[0].Int())
+	}
+	return nil
+}
+
+func toggleTransCurveAnimateJS(this js.Value, args []js.Value) interface{} {
+	toggleTransCurveAnimate()
+	return nil
 }
 
 func onMouseDown(this js.Value, args []js.Value) interface{} {
@@ -108,6 +122,18 @@ func onMouseDown(this js.Value, args []js.Value) interface{} {
 	}
 	if demoType == "alphagrad" {
 		return handleAlphaGradMouseDown(x, y)
+	}
+	if demoType == "rasterizers" {
+		return handleRasterizersMouseDown(x, y)
+	}
+	if demoType == "perspective" {
+		return handlePerspectiveMouseDown(x, y)
+	}
+	if demoType == "bezier_div" {
+		return handleBezierDivMouseDown(x, y)
+	}
+	if demoType == "trans_curve" {
+		return handleTransCurveMouseDown(x, y)
 	}
 	return false
 }
@@ -148,6 +174,18 @@ func onMouseMove(this js.Value, args []js.Value) interface{} {
 	if demoType == "alphagrad" {
 		return handleAlphaGradMouseMove(x, y)
 	}
+	if demoType == "rasterizers" {
+		return handleRasterizersMouseMove(x, y)
+	}
+	if demoType == "perspective" {
+		return handlePerspectiveMouseMove(x, y)
+	}
+	if demoType == "bezier_div" {
+		return handleBezierDivMouseMove(x, y)
+	}
+	if demoType == "trans_curve" {
+		return handleTransCurveMouseMove(x, y)
+	}
 	return false
 }
 
@@ -179,6 +217,18 @@ func onMouseUp(this js.Value, args []js.Value) interface{} {
 	}
 	if demoType == "alphagrad" {
 		handleAlphaGradMouseUp()
+	}
+	if demoType == "rasterizers" {
+		handleRasterizersMouseUp()
+	}
+	if demoType == "perspective" {
+		handlePerspectiveMouseUp()
+	}
+	if demoType == "bezier_div" {
+		handleBezierDivMouseUp()
+	}
+	if demoType == "trans_curve" {
+		handleTransCurveMouseUp()
 	}
 	return nil
 }
@@ -591,6 +641,18 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 		drawComponentRenderingDemo()
 	case "alphagrad":
 		drawAlphaGradientDemo()
+	case "rasterizers":
+		drawRasterizersDemo()
+	case "flash_rasterizer":
+		drawFlashRasterizerDemo()
+	case "perspective":
+		drawPerspectiveDemo()
+	case "bezier_div":
+		drawBezierDivDemo()
+	case "gouraud_mesh":
+		drawGouraudMeshDemo()
+	case "trans_curve":
+		drawTransCurveDemo()
 	default:
 		logStatus("unknown demo type: " + demoType)
 		return nil

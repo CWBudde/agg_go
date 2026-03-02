@@ -31,7 +31,9 @@ func main() {
 			"lion", "gradients", "aa", "blend",
 			"bspline", "dash", "gouraud", "imagefilters",
 			"sbool", "aatest", "convstroke", "convcontour", "gamma", "lionoutline",
-			"roundedrect", "component",
+			"roundedrect", "component", "alphagrad",
+			"rasterizers", "flash_rasterizer", "perspective", "bezier_div",
+			"gouraud_mesh", "trans_curve",
 		}
 	}
 
@@ -103,6 +105,20 @@ func renderDemoToFile(demoType, outDir string) error {
 		drawRoundedRectDemo()
 	case "component":
 		drawComponentRenderingDemo()
+	case "alphagrad":
+		drawAlphaGradientDemo()
+	case "rasterizers":
+		drawRasterizersDemo()
+	case "flash_rasterizer":
+		drawFlashRasterizerDemo()
+	case "perspective":
+		drawPerspectiveDemo()
+	case "bezier_div":
+		drawBezierDivDemo()
+	case "gouraud_mesh":
+		drawGouraudMeshDemo()
+	case "trans_curve":
+		drawTransCurveDemo()
 	default:
 		return fmt.Errorf("unknown demo: %q", demoType)
 	}
