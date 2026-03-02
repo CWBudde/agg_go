@@ -3,10 +3,12 @@
 // Three large circles are each rendered into an individual color channel
 // (Red, Green, Blue) by using Multiply blend mode with the complementary
 // color (Cyan/Magenta/Yellow). The effect shows subtractive CMY mixing:
-//   Red ∩ Green  → Blue   (Cyan × Magenta)
-//   Red ∩ Blue   → Green  (Cyan × Yellow)
-//   Green ∩ Blue → Red    (Magenta × Yellow)
-//   All three    → Black
+//
+//	Red ∩ Green  → Blue   (Cyan × Magenta)
+//	Red ∩ Blue   → Green  (Cyan × Yellow)
+//	Green ∩ Blue → Red    (Magenta × Yellow)
+//	All three    → Black
+//
 // An alpha slider controls how strongly each channel is darkened.
 package main
 

@@ -30,8 +30,8 @@ var (
 // Lion bounding box centre, matching the original parse_lion data.
 // Computed once from the lion path data (approx. bbox 7..557 × 8..520).
 const (
-	lionBaseDX = (557.0 - 7.0) / 2.0  // ≈ 275
-	lionBaseDY = (520.0 - 8.0) / 2.0  // ≈ 256
+	lionBaseDX = (557.0 - 7.0) / 2.0 // ≈ 275
+	lionBaseDY = (520.0 - 8.0) / 2.0 // ≈ 256
 )
 
 // --- Drawing ---

@@ -524,14 +524,8 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 	ctx.Clear(agg.White)
 
 	switch demoType {
-	case "lines":
-		drawLinesDemo()
-	case "circles":
-		drawCirclesDemo()
-	case "starburst":
-		drawStarburstDemo()
-	case "rects":
-		drawRectsDemo()
+	case "agg2d":
+		drawAgg2DDemo()
 	case "lion":
 		drawLionDemo()
 	case "gradients":

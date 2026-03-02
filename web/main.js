@@ -722,15 +722,13 @@ async function init() {
     });
 
     // component controls
-    document
-      .getElementById("compAlphaSlider")
-      .addEventListener("input", () => {
-        const val = parseInt(document.getElementById("compAlphaSlider").value);
-        document.getElementById("compAlphaValue").textContent = val;
-        setCompAlpha(val);
-        persistDemoParams("component");
-        renderSelectedDemo();
-      });
+    document.getElementById("compAlphaSlider").addEventListener("input", () => {
+      const val = parseInt(document.getElementById("compAlphaSlider").value);
+      document.getElementById("compAlphaValue").textContent = val;
+      setCompAlpha(val);
+      persistDemoParams("component");
+      renderSelectedDemo();
+    });
 
     // Mouse events for draggable-point demos
     let isDragging = false;
@@ -801,14 +799,8 @@ function syncControlVisibility(demoType) {
 }
 
 const demoDescriptions = {
-  lines:
-    "Basic line drawing with different thicknesses. Showcases the core rendering pipeline and anti-aliased lines.",
-  circles:
-    "Simple concentric circles. Demonstrates basic shape primitive rendering.",
-  starburst:
-    "A collection of lines radiating from a center point. Showcases line rendering at various angles.",
-  rects:
-    "Filled and stroked rectangles, including rounded rectangles. Demonstrates alpha blending and semi-transparent fills.",
+  agg2d:
+    "Port of the original agg2d_demo.cpp. Showcases the high-level Agg2D API: viewport mapping, aqua-style gradient buttons with rounded rectangles, filled ellipses, arc-based path construction, blend modes (Add, Overlay), and radial gradient fills.",
   lion: "The classic AGG signature demo. High-quality vector graphics consisting of hundreds of paths parsed from the original AGG lion data.",
   gradients:
     "Linear and radial gradient fills. Demonstrates the advanced span generation and multi-stop color interpolation.",

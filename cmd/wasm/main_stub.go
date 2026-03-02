@@ -27,11 +27,11 @@ func main() {
 	demos := os.Args[1:]
 	if len(demos) == 0 {
 		demos = []string{
-			"lines", "circles", "starburst", "rects",
+			"agg2d",
 			"lion", "gradients", "aa", "blend",
 			"bspline", "dash", "gouraud", "imagefilters",
 			"sbool", "aatest", "convstroke", "convcontour", "gamma", "lionoutline",
-			"roundedrect", "component", "roundedrect",
+			"roundedrect", "component",
 		}
 	}
 
@@ -69,14 +69,8 @@ func renderDemoToFile(demoType, outDir string) error {
 	ctx.Clear(agg.White)
 
 	switch demoType {
-	case "lines":
-		drawLinesDemo()
-	case "circles":
-		drawCirclesDemo()
-	case "starburst":
-		drawStarburstDemo()
-	case "rects":
-		drawRectsDemo()
+	case "agg2d":
+		drawAgg2DDemo()
 	case "lion":
 		drawLionDemo()
 	case "gradients":
