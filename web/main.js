@@ -12,6 +12,26 @@ window.onerror = function (message, source, lineno, colno, error) {
   updateStatus("JS Error: " + message);
 };
 
+// --- URL parameter helpers ---
+
+function getURLParams() {
+  return new URLSearchParams(window.location.search);
+}
+
+function updateURL(params) {
+  const url = new URL(window.location);
+  for (const [key, value] of Object.entries(params)) {
+    if (value === null || value === undefined) {
+      url.searchParams.delete(key);
+    } else {
+      url.searchParams.set(key, value);
+    }
+  }
+  history.replaceState(null, "", url);
+}
+
+// --- Initialization ---
+
 async function init() {
   console.log("Initializing AGG Go Web Demo...");
   try {
@@ -42,27 +62,33 @@ async function init() {
     imageData = ctx.createImageData(dims.width, dims.height);
     pixels = new Uint8ClampedArray(dims.width * dims.height * 4);
 
+    // Restore state from URL params
+    const params = getURLParams();
+
+    const selector = document.getElementById("demoSelector");
+    if (params.has("demo")) {
+      selector.value = params.get("demo");
+    }
+    syncControlVisibility(selector.value);
+
+    if (selector.value === "aa") {
+      restoreAANodesFromURL(params);
+      const zoom = params.get("zoom");
+      if (zoom !== null) {
+        const val = parseFloat(zoom);
+        setAAZoom(val);
+        document.getElementById("zoomSlider").value = val;
+        document.getElementById("zoomValue").textContent = val;
+      }
+    }
+
     // Initial render
     renderSelectedDemo();
 
     // Setup event listeners
-    const selector = document.getElementById("demoSelector");
     selector.addEventListener("change", () => {
-      const aaControls = document.getElementById("aaControls");
-      const dashControls = document.getElementById("dashControls");
-      const gouraudControls = document.getElementById("gouraudControls");
-      const imageFilterControls = document.getElementById(
-        "imageFilterControls",
-      );
-      const sboolControls = document.getElementById("sboolControls");
-      aaControls.style.display = selector.value === "aa" ? "flex" : "none";
-      dashControls.style.display = selector.value === "dash" ? "flex" : "none";
-      gouraudControls.style.display =
-        selector.value === "gouraud" ? "flex" : "none";
-      imageFilterControls.style.display =
-        selector.value === "imagefilters" ? "flex" : "none";
-      sboolControls.style.display =
-        selector.value === "sbool" ? "flex" : "none";
+      syncControlVisibility(selector.value);
+      updateURL({ demo: selector.value });
       renderSelectedDemo();
     });
 
@@ -109,6 +135,7 @@ async function init() {
       const val = parseFloat(zoomSlider.value);
       document.getElementById("zoomValue").textContent = val;
       setAAZoom(val);
+      updateURL({ zoom: val });
       renderSelectedDemo();
     });
 
@@ -165,6 +192,11 @@ async function init() {
       isDragging = false;
       onMouseUp(selector.value);
       renderSelectedDemo();
+
+      // Persist AA node positions to URL after drag
+      if (selector.value === "aa") {
+        persistAANodesToURL();
+      }
     });
 
     updateStatus("Ready");
@@ -172,6 +204,38 @@ async function init() {
     console.error("Failed to load WASM:", err);
     updateStatus("Error: " + err.message);
   }
+}
+
+function syncControlVisibility(demoType) {
+  document.getElementById("aaControls").style.display =
+    demoType === "aa" ? "flex" : "none";
+  document.getElementById("dashControls").style.display =
+    demoType === "dash" ? "flex" : "none";
+  document.getElementById("gouraudControls").style.display =
+    demoType === "gouraud" ? "flex" : "none";
+  document.getElementById("imageFilterControls").style.display =
+    demoType === "imagefilters" ? "flex" : "none";
+  document.getElementById("sboolControls").style.display =
+    demoType === "sbool" ? "flex" : "none";
+}
+
+function restoreAANodesFromURL(params) {
+  const keys = ["x0", "y0", "x1", "y1", "x2", "y2"];
+  if (!keys.every((k) => params.has(k))) return;
+  const vals = keys.map((k) => parseFloat(params.get(k)));
+  setAANodes(...vals);
+}
+
+function persistAANodesToURL() {
+  const n = getAANodes();
+  updateURL({
+    x0: n.x0.toFixed(1),
+    y0: n.y0.toFixed(1),
+    x1: n.x1.toFixed(1),
+    y1: n.y1.toFixed(1),
+    x2: n.x2.toFixed(1),
+    y2: n.y2.toFixed(1),
+  });
 }
 
 const demoDescriptions = {

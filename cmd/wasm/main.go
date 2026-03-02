@@ -31,6 +31,8 @@ func main() {
 	js.Global().Set("onMouseMove", js.FuncOf(onMouseMove))
 	js.Global().Set("onMouseUp", js.FuncOf(onMouseUp))
 	js.Global().Set("setAAZoom", js.FuncOf(setAAZoom))
+	js.Global().Set("setAANodes", js.FuncOf(setAANodes))
+	js.Global().Set("getAANodes", js.FuncOf(getAANodes))
 	js.Global().Set("setDashWidth", js.FuncOf(setDashWidth))
 	js.Global().Set("setDashClosed", js.FuncOf(setDashClosed))
 	js.Global().Set("setGouraudDilation", js.FuncOf(setGouraudDilation))
@@ -114,6 +116,26 @@ func setAAZoom(this js.Value, args []js.Value) interface{} {
 		aaPixelSize = args[0].Float()
 	}
 	return nil
+}
+
+func setAANodes(this js.Value, args []js.Value) interface{} {
+	if len(args) >= 6 {
+		aaTriangleX[0] = args[0].Float()
+		aaTriangleY[0] = args[1].Float()
+		aaTriangleX[1] = args[2].Float()
+		aaTriangleY[1] = args[3].Float()
+		aaTriangleX[2] = args[4].Float()
+		aaTriangleY[2] = args[5].Float()
+	}
+	return nil
+}
+
+func getAANodes(this js.Value, args []js.Value) interface{} {
+	return map[string]interface{}{
+		"x0": aaTriangleX[0], "y0": aaTriangleY[0],
+		"x1": aaTriangleX[1], "y1": aaTriangleY[1],
+		"x2": aaTriangleX[2], "y2": aaTriangleY[2],
+	}
 }
 
 func setDashWidth(this js.Value, args []js.Value) interface{} {
