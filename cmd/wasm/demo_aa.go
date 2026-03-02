@@ -14,15 +14,25 @@ import (
 	renscan "agg_go/internal/renderer/scanline"
 )
 
+// enlargedPixel holds a single pixel to be drawn after the scanline sweep.
+type enlargedPixel struct {
+	x, y  float64
+	color agg.Color
+}
+
 // EnlargedRenderer implements the AGG Scanline Renderer interface.
 // It draws a "zoomed in" view where each physical pixel is rendered as a large square.
+//
+// Drawing via ctx.FillRectangle goes through the shared rasterizer, which would
+// corrupt the ongoing sweep. So Render only collects pixels; Flush draws them.
 type EnlargedRenderer struct {
 	ctx       *agg.Context
 	pixelSize float64
 	color     agg.Color
+	pixels    []enlargedPixel
 }
 
-func (r *EnlargedRenderer) Prepare() {}
+func (r *EnlargedRenderer) Prepare() { r.pixels = r.pixels[:0] }
 
 func (r *EnlargedRenderer) SetColor(c color.RGBA8[color.Linear]) {
 	r.color = agg.NewColorRGBA8(c)
@@ -47,31 +57,35 @@ func (r *EnlargedRenderer) Render(sl renscan.ScanlineInterface) {
 			alpha := (uint16(cover) * uint16(r.color.A)) >> 8
 			c := agg.NewColor(r.color.R, r.color.G, r.color.B, uint8(alpha))
 			for j := 0; j < numPix; j++ {
-				r.ctx.SetColor(c)
-				r.ctx.FillRectangle(
-					float64(x+j)*r.pixelSize,
-					float64(y)*r.pixelSize,
-					r.pixelSize,
-					r.pixelSize,
-				)
+				r.pixels = append(r.pixels, enlargedPixel{
+					x:     float64(x+j) * r.pixelSize,
+					y:     float64(y) * r.pixelSize,
+					color: c,
+				})
 			}
 		} else {
 			for j := 0; j < numPix; j++ {
 				cover := covers[j]
 				alpha := (uint16(cover) * uint16(r.color.A)) >> 8
-				r.ctx.SetColor(agg.NewColor(r.color.R, r.color.G, r.color.B, uint8(alpha)))
-				r.ctx.FillRectangle(
-					float64(x+j)*r.pixelSize,
-					float64(y)*r.pixelSize,
-					r.pixelSize,
-					r.pixelSize,
-				)
+				r.pixels = append(r.pixels, enlargedPixel{
+					x:     float64(x+j) * r.pixelSize,
+					y:     float64(y) * r.pixelSize,
+					color: agg.NewColor(r.color.R, r.color.G, r.color.B, uint8(alpha)),
+				})
 			}
 		}
 
 		if i < numSpans-1 {
 			it.Next()
 		}
+	}
+}
+
+// Flush draws all collected pixels. Must be called after ScanlineRender returns.
+func (r *EnlargedRenderer) Flush() {
+	for _, p := range r.pixels {
+		r.ctx.SetColor(p.color)
+		r.ctx.FillRectangle(p.x, p.y, r.pixelSize, r.pixelSize)
 	}
 }
 
@@ -109,8 +123,10 @@ func drawAADemo() {
 	ras.Reset()
 	ras.AddPath(adapter, 0)
 
-	// Use our custom renderer to "zoom in" on the pixels
+	// Collect pixel data during sweep (drawing would reset the shared rasterizer)
 	agg2d.ScanlineRender(ras, enlargedRen)
+	// Now flush: draw all collected enlarged pixels
+	enlargedRen.Flush()
 
 	// 2. Draw the "real size" triangle outline for comparison
 	ctx.SetColor(agg.NewColor(0, 150, 160, 200))
