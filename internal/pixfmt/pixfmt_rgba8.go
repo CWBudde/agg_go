@@ -445,12 +445,7 @@ func (pf *PixFmtAlphaBlendRGBA[S, B]) CopyFrom(src interface {
 		if !ok {
 			continue
 		}
-		pf.CopyPixel(xdst+i, ydst, color.RGBA8[S]{
-			R: srcColor.R,
-			G: srcColor.G,
-			B: srcColor.B,
-			A: srcColor.A,
-		})
+		pf.CopyPixel(xdst+i, ydst, color.RGBA8[S](srcColor))
 	}
 }
 

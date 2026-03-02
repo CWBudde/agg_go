@@ -33,6 +33,7 @@ func (r *EnlargedRenderer) Render(sl renscan.ScanlineInterface) {
 	numSpans := sl.NumSpans()
 	it := sl.Begin()
 
+	//nolint:intrange
 	for i := 0; i < numSpans; i++ {
 		span := it.GetSpan()
 		x := span.X

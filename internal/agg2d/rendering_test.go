@@ -98,10 +98,10 @@ func TestGradientAPI(t *testing.T) {
 	if a1 == 0 || a2 == 0 {
 		t.Fatalf("expected gradient-filled pixels to be opaque enough, got a1=%d a2=%d", a1, a2)
 	}
-	if !(r1 > b1) {
+	if r1 <= b1 {
 		t.Fatalf("expected gradient near start to skew red, got (%d,%d,%d,%d)", r1, g1, b1, a1)
 	}
-	if !(b2 > r2) {
+	if b2 <= r2 {
 		t.Fatalf("expected gradient near end to skew blue, got (%d,%d,%d,%d)", r2, g2, b2, a2)
 	}
 
@@ -200,7 +200,7 @@ func TestClipBoxClipsStrokedPaths(t *testing.T) {
 	agg2d.DrawPath(StrokeOnly)
 
 	r, g, b, a := pixelAt(buffer, width, 15, 15)
-	if !(r < 255 || g < 255 || b < 255) || a == 0 {
+	if (r >= 255 && g >= 255 && b >= 255) || a == 0 {
 		t.Fatalf("stroked pixel inside clip = (%d,%d,%d,%d), want visible clipped stroke coverage", r, g, b, a)
 	}
 

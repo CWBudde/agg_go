@@ -126,7 +126,7 @@ func (bl CompositeBlenderPre[S, O]) BlendPix(dst []basics.Int8u, r, g, b, a, cov
 		a: float64(a) / 255.0,
 	}
 
-	res := CompositeBlender[S, O]{op: bl.op}.blendOperation(d, s)
+	res := CompositeBlender[S, O](bl).blendOperation(d, s)
 	dst[o.IdxR()] = to8(res.r)
 	dst[o.IdxG()] = to8(res.g)
 	dst[o.IdxB()] = to8(res.b)
