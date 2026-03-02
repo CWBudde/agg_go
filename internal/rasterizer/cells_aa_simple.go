@@ -274,14 +274,14 @@ func (r *RasterizerCellsAASimple) SortCells() {
 	h := r.maxY - r.minY + 1
 	counts := make([]uint32, h)
 
-	for b := uint32(0); b < r.numBlocks; b++ {
+	// Only iterate blocks that belong to the current render.
+	// numBlocks is never reset, so blocks beyond lastBlock contain stale
+	// cell pointers from previous renders that must not be included.
+	lastBlock := (r.numCells - 1) >> CellBlockShift
+	for b := uint32(0); b <= lastBlock; b++ {
 		block := r.cells[b]
-		// compute number of valid entries in this block
 		limit := CellBlockSize
-		// if last (possibly partial) block:
-		lastBlock := (r.numCells - 1) >> CellBlockShift
 		if b == lastBlock {
-			// entries in last block = (numCells - fullBlocks*BlockSize)
 			used := int(r.numCells - (lastBlock << CellBlockShift))
 			if used < limit {
 				limit = used
@@ -317,10 +317,9 @@ func (r *RasterizerCellsAASimple) SortCells() {
 	// per-Y write cursors (offset inside each run)
 	write := make([]uint32, h)
 
-	for b := uint32(0); b < r.numBlocks; b++ {
+	for b := uint32(0); b <= lastBlock; b++ {
 		block := r.cells[b]
 		limit := CellBlockSize
-		lastBlock := (r.numCells - 1) >> CellBlockShift
 		if b == lastBlock {
 			used := int(r.numCells - (lastBlock << CellBlockShift))
 			if used < limit {

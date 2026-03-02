@@ -87,8 +87,8 @@ func (r *EnlargedRenderer) Flush() {
 }
 
 var (
-	aaTriangleX = [3]float64{20, 500, 143}
-	aaTriangleY = [3]float64{100, 50, 310}
+	aaTriangleX = [3]float64{20, 728, 170}
+	aaTriangleY = [3]float64{100, 75, 547}
 	aaPixelSize = 32.0
 	aaSelected  = -1
 	aaDragDX    = 0.0

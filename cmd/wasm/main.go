@@ -40,6 +40,10 @@ func main() {
 	js.Global().Set("setImageFilterRadius", js.FuncOf(setImageFilterRadius))
 	js.Global().Set("setImageFilterAngle", js.FuncOf(setImageFilterAngle))
 	js.Global().Set("setSBoolOp", js.FuncOf(setSBoolOp))
+	js.Global().Set("setStrokeJoin", js.FuncOf(setStrokeJoin))
+	js.Global().Set("setStrokeCap", js.FuncOf(setStrokeCap))
+	js.Global().Set("setStrokeWidth", js.FuncOf(setStrokeWidth))
+	js.Global().Set("setStrokeMiterLimit", js.FuncOf(setStrokeMiterLimit))
 
 	// Keep the Go program running
 	select {}
@@ -65,6 +69,9 @@ func onMouseDown(this js.Value, args []js.Value) interface{} {
 	if demoType == "sbool" {
 		return handleSBoolMouseDown(x, y)
 	}
+	if demoType == "convstroke" {
+		return handleConvStrokeMouseDown(x, y)
+	}
 	return false
 }
 
@@ -88,6 +95,9 @@ func onMouseMove(this js.Value, args []js.Value) interface{} {
 	if demoType == "sbool" {
 		return handleSBoolMouseMove(x, y)
 	}
+	if demoType == "convstroke" {
+		return handleConvStrokeMouseMove(x, y)
+	}
 	return false
 }
 
@@ -107,6 +117,9 @@ func onMouseUp(this js.Value, args []js.Value) interface{} {
 	}
 	if demoType == "sbool" {
 		handleSBoolMouseUp()
+	}
+	if demoType == "convstroke" {
+		handleConvStrokeMouseUp()
 	}
 	return nil
 }
@@ -187,6 +200,40 @@ func setSBoolOp(this js.Value, args []js.Value) interface{} {
 	return nil
 }
 
+func setStrokeJoin(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		v := args[0].Int()
+		if v >= 0 && v < len(strokeJoins) {
+			strokeJoin = v
+		}
+	}
+	return nil
+}
+
+func setStrokeCap(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		v := args[0].Int()
+		if v >= 0 && v < len(strokeCaps) {
+			strokeCap = v
+		}
+	}
+	return nil
+}
+
+func setStrokeWidth(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		strokeWidth = args[0].Float()
+	}
+	return nil
+}
+
+func setStrokeMiterLimit(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		strokeMiterLimit = args[0].Float()
+	}
+	return nil
+}
+
 func getCanvasDimensions(this js.Value, args []js.Value) interface{} {
 	return map[string]interface{}{
 		"width":  width,
@@ -260,6 +307,8 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 		drawSBoolDemo()
 	case "aatest":
 		drawAATestDemo()
+	case "convstroke":
+		drawConvStrokeDemo()
 	default:
 		logStatus("unknown demo type: " + demoType)
 		return nil

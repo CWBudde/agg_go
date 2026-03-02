@@ -102,6 +102,7 @@
         <option value="imagefilters">Image Interpolation Filters</option>
         <option value="sbool">Boolean Operations (XOR/Union)</option>
         <option value="aatest">Anti-Aliasing Test (Sub-pixel Precision)</option>
+        <option value="convstroke">Line Join &amp; Cap Styles</option>
       </select>
       <button id="renderBtn">Refresh / Reset</button>
     </div>
@@ -188,6 +189,41 @@
         <option value="0">Union (Non-Zero)</option>
         <option value="2">XOR (Even-Odd)</option>
       </select>
+    </div>
+
+    <div class="controls" id="convstrokeControls" style="display: none">
+      <label for="strokeJoinSelector">Join:</label>
+      <select id="strokeJoinSelector">
+        <option value="0">Miter</option>
+        <option value="1">Round</option>
+        <option value="2">Bevel</option>
+      </select>
+      <label for="strokeCapSelector">Cap:</label>
+      <select id="strokeCapSelector">
+        <option value="0">Butt</option>
+        <option value="1">Square</option>
+        <option value="2">Round</option>
+      </select>
+      <label for="strokeWidthSlider">Width:</label>
+      <input
+        type="range"
+        id="strokeWidthSlider"
+        min="3"
+        max="40"
+        value="20"
+        step="1"
+      />
+      <span id="strokeWidthValue">20</span>
+      <label for="strokeMiterSlider">Miter Limit:</label>
+      <input
+        type="range"
+        id="strokeMiterSlider"
+        min="1"
+        max="10"
+        value="4"
+        step="0.5"
+      />
+      <span id="strokeMiterValue">4</span>
     </div>
 
     <canvas id="aggCanvas"></canvas>

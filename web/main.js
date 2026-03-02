@@ -147,6 +147,34 @@ async function init() {
       renderSelectedDemo();
     });
 
+    const strokeJoinSelector = document.getElementById("strokeJoinSelector");
+    strokeJoinSelector.addEventListener("change", () => {
+      setStrokeJoin(parseInt(strokeJoinSelector.value));
+      renderSelectedDemo();
+    });
+
+    const strokeCapSelector = document.getElementById("strokeCapSelector");
+    strokeCapSelector.addEventListener("change", () => {
+      setStrokeCap(parseInt(strokeCapSelector.value));
+      renderSelectedDemo();
+    });
+
+    const strokeWidthSlider = document.getElementById("strokeWidthSlider");
+    strokeWidthSlider.addEventListener("input", () => {
+      const val = parseFloat(strokeWidthSlider.value);
+      document.getElementById("strokeWidthValue").textContent = val;
+      setStrokeWidth(val);
+      renderSelectedDemo();
+    });
+
+    const strokeMiterSlider = document.getElementById("strokeMiterSlider");
+    strokeMiterSlider.addEventListener("input", () => {
+      const val = parseFloat(strokeMiterSlider.value);
+      document.getElementById("strokeMiterValue").textContent = val;
+      setStrokeMiterLimit(val);
+      renderSelectedDemo();
+    });
+
     const dashWidthSlider = document.getElementById("dashWidthSlider");
     dashWidthSlider.addEventListener("input", () => {
       const val = parseFloat(dashWidthSlider.value);
@@ -217,6 +245,8 @@ function syncControlVisibility(demoType) {
     demoType === "imagefilters" ? "flex" : "none";
   document.getElementById("sboolControls").style.display =
     demoType === "sbool" ? "flex" : "none";
+  document.getElementById("convstrokeControls").style.display =
+    demoType === "convstroke" ? "flex" : "none";
 }
 
 function restoreAANodesFromURL(params) {
@@ -264,6 +294,8 @@ const demoDescriptions = {
     "Boolean operations on vector shapes. Demonstrates combining multiple paths using filling rules to achieve Union and XOR-like effects with interactive polygons.",
   aatest:
     "Comprehensive anti-aliasing precision test. Renders radial lines, various ellipse sizes, and gradient-filled triangles at fractional offsets to verify the rasterizer's quality.",
+  convstroke:
+    "Line join and cap style showcase. Port of AGG's classic conv_stroke demo. Drag the three control points to reshape the path; use the controls to change join style (Miter/Round/Bevel), cap style (Butt/Square/Round), stroke width, and miter limit.",
 };
 
 function renderSelectedDemo() {
