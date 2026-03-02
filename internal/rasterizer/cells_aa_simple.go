@@ -401,10 +401,15 @@ func (r *RasterizerCellsAASimple) setCurrCell(x, y int) {
 func (r *RasterizerCellsAASimple) addCurrCell() {
 	if r.currCell.GetArea() != 0 || r.currCell.GetCover() != 0 {
 		if (r.numCells & CellBlockMask) == 0 {
-			if r.numBlocks >= r.cellBlockLimit {
-				return
+			blockNeeded := r.numCells >> CellBlockShift
+			if blockNeeded >= r.numBlocks {
+				// Need a new block
+				if r.numBlocks >= r.cellBlockLimit {
+					return
+				}
+				r.allocateBlock()
 			}
-			r.allocateBlock()
+			// else: block already allocated from a previous render, reuse it
 		}
 
 		// Store cell in current block
