@@ -16,6 +16,18 @@ import (
 	"agg_go/internal/transform"
 )
 
+// gradientColorsToLUT converts the internal [256]Color table to a RGBA8 slice
+// suitable for GradientPrebuiltColorRGBA8. This matches the C++ path where
+// m_fillGradient (a pod_auto_array<ColorType,256>) is passed directly as the
+// color function, giving every pixel a direct table lookup by gradient index.
+func gradientColorsToLUT(gradientColors [256]Color) []color.RGBA8[color.Linear] {
+	lut := make([]color.RGBA8[color.Linear], 256)
+	for i, c := range gradientColors {
+		lut[i] = color.RGBA8[color.Linear]{R: c[0], G: c[1], B: c[2], A: c[3]}
+	}
+	return lut
+}
+
 // Rendering methods
 
 func (agg2d *Agg2D) currentRenderer() *baseRendererAdapter[color.RGBA8[color.Linear]] {
@@ -224,23 +236,17 @@ func (agg2d *Agg2D) renderLinearGradientFill(useFillGradient bool) {
 		d2 = agg2d.lineGradientD2
 	}
 
+	// Build full 256-entry LUT — matches AGG C++ which passes m_fillGradient directly
+	// as the color function, so every pixel maps its distance index to a table entry.
+	lut := gradientColorsToLUT(gradientColors)
+
 	// Create span interpolator with the gradient transformation matrix
 	spanInterpolator := span.NewSpanInterpolatorLinearDefault(gradientMatrix)
 
-	// Convert first and last gradient colors to RGBA8 for span generator
-	startColor := color.RGBA8[color.Linear]{R: gradientColors[0][0], G: gradientColors[0][1], B: gradientColors[0][2], A: gradientColors[0][3]}
-	endColor := color.RGBA8[color.Linear]{R: gradientColors[255][0], G: gradientColors[255][1], B: gradientColors[255][2], A: gradientColors[255][3]}
-
-	// Create linear gradient span generator
-	spanGenerator := span.NewLinearGradientRGBA8(
-		spanInterpolator,
-		startColor, endColor,
-		d1, d2,
-		256, // gradient size
-	)
+	// Create linear gradient span generator using the full LUT
+	spanGenerator := span.NewLinearGradientFromLUT(spanInterpolator, lut, d1, d2)
 
 	// Render scanlines using the span generator directly
-	// Create adapters to bridge interface differences
 	rasAdapter := rasterizerAdapter{ras: agg2d.rasterizer}
 	slAdapter := &scanlineWrapper{sl: agg2d.scanline}
 	renscan.RenderScanlinesAA(rasAdapter, slAdapter, renderer, agg2d.spanAllocator, spanGenerator)
@@ -270,23 +276,17 @@ func (agg2d *Agg2D) renderRadialGradientFill(useFillGradient bool) {
 		d2 = agg2d.lineGradientD2
 	}
 
+	// Build full 256-entry LUT — matches AGG C++ which passes m_fillGradient directly
+	// as the color function, so every pixel maps its distance index to a table entry.
+	lut := gradientColorsToLUT(gradientColors)
+
 	// Create span interpolator with the gradient transformation matrix
 	spanInterpolator := span.NewSpanInterpolatorLinearDefault(gradientMatrix)
 
-	// Convert first and last gradient colors to RGBA8 for span generator
-	startColor := color.RGBA8[color.Linear]{R: gradientColors[0][0], G: gradientColors[0][1], B: gradientColors[0][2], A: gradientColors[0][3]}
-	endColor := color.RGBA8[color.Linear]{R: gradientColors[255][0], G: gradientColors[255][1], B: gradientColors[255][2], A: gradientColors[255][3]}
-
-	// Create radial gradient span generator
-	spanGenerator := span.NewRadialGradientRGBA8(
-		spanInterpolator,
-		startColor, endColor,
-		d1, d2,
-		256, // gradient size
-	)
+	// Create radial gradient span generator using the full LUT
+	spanGenerator := span.NewRadialGradientFromLUT(spanInterpolator, lut, d1, d2)
 
 	// Render scanlines using the span generator directly
-	// Create adapters to bridge interface differences
 	rasAdapter := rasterizerAdapter{ras: agg2d.rasterizer}
 	slAdapter := &scanlineWrapper{sl: agg2d.scanline}
 	renscan.RenderScanlinesAA(rasAdapter, slAdapter, renderer, agg2d.spanAllocator, spanGenerator)

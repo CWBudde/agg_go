@@ -474,3 +474,52 @@ func NewRadialGradientRGBA8[InterpolatorT SpanInterpolatorInterface](
 	return NewSpanGradient[color.RGBA8[color.Linear], InterpolatorT, GradientRadial, *GradientLinearColorRGBA8[color.Linear]](
 		interpolator, gradientFunc, colorFunc, d1, d2)
 }
+
+// GradientPrebuiltColorRGBA8 is a color function backed by a pre-built lookup table.
+// This matches the AGG C++ pattern where a pod_auto_array<ColorType, 256> is passed
+// directly as the color function — every pixel maps its gradient index directly to a
+// table entry, enabling non-linear profiles and multi-stop gradients.
+type GradientPrebuiltColorRGBA8[CS color.Space] struct {
+	table []color.RGBA8[CS]
+}
+
+// NewGradientPrebuiltColorRGBA8 creates a color function wrapping an existing LUT slice.
+func NewGradientPrebuiltColorRGBA8[CS color.Space](table []color.RGBA8[CS]) *GradientPrebuiltColorRGBA8[CS] {
+	return &GradientPrebuiltColorRGBA8[CS]{table: table}
+}
+
+// Size returns the number of entries in the lookup table.
+func (g *GradientPrebuiltColorRGBA8[CS]) Size() int {
+	return len(g.table)
+}
+
+// ColorAt returns the color at the given index via direct table lookup.
+func (g *GradientPrebuiltColorRGBA8[CS]) ColorAt(index int) color.RGBA8[CS] {
+	return g.table[index]
+}
+
+// NewLinearGradientFromLUT creates a linear gradient span generator using a pre-built
+// 256-entry color lookup table, matching AGG's C++ gradient rendering path.
+func NewLinearGradientFromLUT[InterpolatorT SpanInterpolatorInterface](
+	interpolator InterpolatorT,
+	lut []color.RGBA8[color.Linear],
+	d1, d2 float64,
+) *SpanGradient[color.RGBA8[color.Linear], InterpolatorT, GradientLinearX, *GradientPrebuiltColorRGBA8[color.Linear]] {
+	colorFunc := NewGradientPrebuiltColorRGBA8[color.Linear](lut)
+	gradientFunc := GradientLinearX{}
+	return NewSpanGradient[color.RGBA8[color.Linear], InterpolatorT, GradientLinearX, *GradientPrebuiltColorRGBA8[color.Linear]](
+		interpolator, gradientFunc, colorFunc, d1, d2)
+}
+
+// NewRadialGradientFromLUT creates a radial gradient span generator using a pre-built
+// 256-entry color lookup table, matching AGG's C++ gradient rendering path.
+func NewRadialGradientFromLUT[InterpolatorT SpanInterpolatorInterface](
+	interpolator InterpolatorT,
+	lut []color.RGBA8[color.Linear],
+	d1, d2 float64,
+) *SpanGradient[color.RGBA8[color.Linear], InterpolatorT, GradientRadial, *GradientPrebuiltColorRGBA8[color.Linear]] {
+	colorFunc := NewGradientPrebuiltColorRGBA8[color.Linear](lut)
+	gradientFunc := GradientRadial{}
+	return NewSpanGradient[color.RGBA8[color.Linear], InterpolatorT, GradientRadial, *GradientPrebuiltColorRGBA8[color.Linear]](
+		interpolator, gradientFunc, colorFunc, d1, d2)
+}

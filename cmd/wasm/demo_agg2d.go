@@ -42,7 +42,7 @@ func drawAgg2DDemo() {
 	g.LineColor(c8(0, 0, 0, 0))
 	g.FillLinearGradient(xb1, yb1, xb1, yb1+30,
 		c8(100, 200, 255, 255), c8(255, 255, 255, 0), 1.0)
-	g.RoundedRectVariableRadii(xb1+3, yb1+2.5, xb2-3, yb1+30, 1, 1, 9, 18)
+	g.RoundedRectVariableRadii(xb1+3, yb1+2.5, xb2-3, yb1+30, 9, 18, 1, 1)
 
 	g.FillLinearGradient(xb1, yb2-20, xb1, yb2-3,
 		c8(0, 0, 255, 0), c8(100, 255, 255, 255), 1.0)
@@ -115,6 +115,18 @@ func drawAgg2DDemo() {
 
 	// --- Master alpha: everything below is slightly translucent ---
 	g.MasterAlpha(0.85)
+
+	// --- Procedural background replacing spheres.bmp ---
+	// The C++ demo renders a loaded image here via transformImagePath; we draw
+	// three gradient spheres so the subsequent blend-mode ellipses have colourful
+	// content to compose against, matching the intent of the original demo.
+	g.NoLine()
+	g.FillRadialGradient(505, 265, 55, c8(255, 220, 100, 255), c8(180, 60, 0, 200), 1.0)
+	g.Ellipse(505, 265, 55, 55)
+	g.FillRadialGradient(545, 295, 45, c8(120, 200, 255, 255), c8(0, 40, 180, 200), 1.0)
+	g.Ellipse(545, 295, 45, 45)
+	g.FillRadialGradient(520, 310, 40, c8(180, 255, 140, 255), c8(0, 120, 20, 200), 1.0)
+	g.Ellipse(520, 310, 40, 40)
 
 	// --- Blend mode ellipses ---
 	g.NoLine()
