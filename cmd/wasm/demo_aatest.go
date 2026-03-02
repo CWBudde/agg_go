@@ -1,7 +1,4 @@
 // Based on the original AGG examples: aa_test.cpp.
-//go:build js && wasm
-// +build js,wasm
-
 package main
 
 import (

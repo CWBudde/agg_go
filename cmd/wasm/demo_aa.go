@@ -1,7 +1,4 @@
 // Based on the original AGG examples: aa_demo.cpp.
-//go:build js && wasm
-// +build js,wasm
-
 package main
 
 import (
@@ -116,7 +113,7 @@ func drawAADemo() {
 	}
 
 	// Use adapter to fix Rewind(uint) vs Rewind(uint32) mismatch
-	adapter := &WasmAdapter{ps: ps}
+	adapter := &pathSourceAdapter{ps: ps}
 
 	// Set up the rasterizer
 	ras := agg2d.GetInternalRasterizer()

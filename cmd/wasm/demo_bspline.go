@@ -1,7 +1,4 @@
 // Based on the original AGG examples: bspline.cpp.
-//go:build js && wasm
-// +build js,wasm
-
 package main
 
 import (

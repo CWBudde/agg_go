@@ -1,7 +1,4 @@
 // Based on the original AGG examples: lion.cpp and parse_lion.cpp.
-//go:build js && wasm
-// +build js,wasm
-
 package main
 
 import (
