@@ -34,7 +34,9 @@ body {
   align-items: center;
   padding: 2rem;
   margin: 0;
-  transition: background-color 0.3s, color 0.3s;
+  transition:
+    background-color 0.3s,
+    color 0.3s;
 }
 
 h1 {
@@ -59,7 +61,7 @@ h1 {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
   transition: all 0.2s;
   color: var(--text-color);
 }
@@ -97,6 +99,24 @@ input[type="range"] {
   cursor: pointer;
 }
 
+#demoSelector {
+  position: relative;
+  z-index: 10;
+}
+
+#demoSelector[size]:not([size="1"]) {
+  position: absolute;
+  top: 0;
+  width: auto;
+  height: auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.controls {
+  position: relative;
+  min-height: 2.5rem; /* Ensure space for the select even when absolute */
+}
+
 select:focus,
 button:focus {
   outline: none;
@@ -105,7 +125,7 @@ button:focus {
 }
 
 canvas {
-  background-color: white; 
+  background-color: white;
   box-shadow: 0 10px 30px var(--canvas-shadow);
   border-radius: 12px;
   max-width: 100%;

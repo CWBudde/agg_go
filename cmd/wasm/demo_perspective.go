@@ -11,41 +11,56 @@ import (
 )
 
 var (
-	perspectiveQuad         = [8]float64{100, 100, 500, 100, 500, 500, 100, 500}
-	perspectiveSelectedNode = -1
-	perspectiveType         = 0 // 0: Bilinear, 1: Perspective
+	perspectiveQuad                                                            = [8]float64{100, 100, 500, 100, 500, 500, 100, 500}
+	perspectiveSelectedNode                                                    = -1
+	perspectiveType                                                            = 0 // 0: Bilinear, 1: Perspective
 	perspectiveLionX1, perspectiveLionY1, perspectiveLionX2, perspectiveLionY2 float64
+	perspectiveInitialized                                                     = false
 )
 
 func initPerspectiveDemo() {
 	if lionPaths == nil {
 		lionPaths = liondemo.Parse()
-		
-		// Find bounding box of the lion
-		x1, y1, x2, y2 := 1e9, 1e9, -1e9, -1e9
-		for _, lp := range lionPaths {
-			lp.Path.Rewind(0)
-			for {
-				x, y, cmd := lp.Path.NextVertex()
-				if basics.IsStop(basics.PathCommand(cmd)) {
-					break
-				}
-				if x < x1 { x1 = x }
-				if x > x2 { x2 = x }
-				if y < y1 { y1 = y }
-				if y > y2 { y2 = y }
+	}
+
+	if perspectiveInitialized {
+		return
+	}
+
+	// Find bounding box of the lion
+	x1, y1, x2, y2 := 1e9, 1e9, -1e9, -1e9
+	for _, lp := range lionPaths {
+		lp.Path.Rewind(0)
+		for {
+			x, y, cmd := lp.Path.NextVertex()
+			if basics.IsStop(basics.PathCommand(cmd)) {
+				break
+			}
+			if x < x1 {
+				x1 = x
+			}
+			if x > x2 {
+				x2 = x
+			}
+			if y < y1 {
+				y1 = y
+			}
+			if y > y2 {
+				y2 = y
 			}
 		}
-		perspectiveLionX1, perspectiveLionY1, perspectiveLionX2, perspectiveLionY2 = x1, y1, x2, y2
-		
-		// Initialize quad to center the lion
-		cx, cy := float64(width)/2, float64(height)/2
-		w, h := (x2 - x1), (y2 - y1)
-		perspectiveQuad[0], perspectiveQuad[1] = cx-w/2, cy-h/2
-		perspectiveQuad[2], perspectiveQuad[3] = cx+w/2, cy-h/2
-		perspectiveQuad[4], perspectiveQuad[5] = cx+w/2, cy+h/2
-		perspectiveQuad[6], perspectiveQuad[7] = cx-w/2, cy+h/2
 	}
+	perspectiveLionX1, perspectiveLionY1, perspectiveLionX2, perspectiveLionY2 = x1, y1, x2, y2
+
+	// Initialize quad to center the lion
+	cx, cy := float64(width)/2, float64(height)/2
+	w, h := (x2 - x1), (y2 - y1)
+	perspectiveQuad[0], perspectiveQuad[1] = cx-w/2, cy-h/2
+	perspectiveQuad[2], perspectiveQuad[3] = cx+w/2, cy-h/2
+	perspectiveQuad[4], perspectiveQuad[5] = cx+w/2, cy+h/2
+	perspectiveQuad[6], perspectiveQuad[7] = cx-w/2, cy+h/2
+
+	perspectiveInitialized = true
 }
 
 func drawPerspectiveDemo() {

@@ -13,14 +13,14 @@ import (
 )
 
 var (
-	transCurve2Points1   = [12]float64{60, 40, 170, 130, 230, 270, 370, 330, 430, 470, 550, 550}
-	transCurve2Points2   = [12]float64{40, 60, 150, 170, 210, 290, 350, 350, 410, 490, 530, 570}
-	transCurve2Selected  = -1
-	transCurve2Animate   = false
-	transCurve2DX1       [6]float64
-	transCurve2DY1       [6]float64
-	transCurve2DX2       [6]float64
-	transCurve2DY2       [6]float64
+	transCurve2Points1  = [12]float64{60, 40, 170, 130, 230, 270, 370, 330, 430, 470, 550, 550}
+	transCurve2Points2  = [12]float64{40, 60, 150, 170, 210, 290, 350, 350, 410, 490, 530, 570}
+	transCurve2Selected = -1
+	transCurve2Animate  = false
+	transCurve2DX1      [6]float64
+	transCurve2DY1      [6]float64
+	transCurve2DX2      [6]float64
+	transCurve2DY2      [6]float64
 )
 
 func initTransCurve2Demo() {
@@ -89,11 +89,21 @@ func drawTransCurve2Demo() {
 		lp.Path.Rewind(0)
 		for {
 			x, y, cmd := lp.Path.NextVertex()
-			if basics.IsStop(basics.PathCommand(cmd)) { break }
-			if x < lx1 { lx1 = x }
-			if x > lx2 { lx2 = x }
-			if y < ly1 { ly1 = y }
-			if y > ly2 { ly2 = y }
+			if basics.IsStop(basics.PathCommand(cmd)) {
+				break
+			}
+			if x < lx1 {
+				lx1 = x
+			}
+			if x > lx2 {
+				lx2 = x
+			}
+			if y < ly1 {
+				ly1 = y
+			}
+			if y > ly2 {
+				ly2 = y
+			}
 		}
 	}
 	lionW := lx2 - lx1
@@ -106,7 +116,9 @@ func drawTransCurve2Demo() {
 		lp.Path.Rewind(0)
 		for {
 			x, y, cmd := lp.Path.NextVertex()
-			if basics.IsStop(basics.PathCommand(cmd)) { break }
+			if basics.IsStop(basics.PathCommand(cmd)) {
+				break
+			}
 			tx := (x - lx1) * scaleX
 			ty := (y - (ly1+ly2)/2.0)
 			tcurve.Transform(&tx, &ty)
@@ -124,15 +136,22 @@ func drawTransCurve2Demo() {
 	agg2d.NoFill()
 	agg2d.LineWidth(1.0)
 	agg2d.LineColor(agg.NewColor(170, 50, 20, 100))
-	
+
 	for _, bs := range []*conv.ConvBSpline{bs1, bs2} {
 		agg2d.ResetPath()
 		bs.Rewind(0)
 		first := true
 		for {
 			vx, vy, cmd := bs.Vertex()
-			if basics.IsStop(cmd) { break }
-			if first { agg2d.MoveTo(vx, vy); first = false } else { agg2d.LineTo(vx, vy) }
+			if basics.IsStop(cmd) {
+				break
+			}
+			if first {
+				agg2d.MoveTo(vx, vy)
+				first = false
+			} else {
+				agg2d.LineTo(vx, vy)
+			}
 		}
 		agg2d.DrawPath(agg.StrokeOnly)
 	}
@@ -147,8 +166,12 @@ func drawTransCurve2Demo() {
 func moveTransCurve2Point(x, y, dx, dy *float64) {
 	*x += *dx
 	*y += *dy
-	if *x < 0 || *x > float64(width) { *dx = -*dx }
-	if *y < 0 || *y > float64(height) { *dy = -*dy }
+	if *x < 0 || *x > float64(width) {
+		*dx = -*dx
+	}
+	if *y < 0 || *y > float64(height) {
+		*dy = -*dy
+	}
 }
 
 func handleTransCurve2MouseDown(x, y float64) bool {

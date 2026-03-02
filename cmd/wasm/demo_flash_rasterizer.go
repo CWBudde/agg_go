@@ -53,6 +53,7 @@ func (a *flashScanlineAdapter) ResetSpans() { a.sl.ResetSpans() }
 func (a *flashScanlineAdapter) AddCell(x int, cover basics.Int8u) {
 	a.sl.AddCell(x, uint(cover))
 }
+
 func (a *flashScanlineAdapter) AddSpan(x, len int, cover basics.Int8u) {
 	a.sl.AddSpan(x, len, uint(cover))
 }
@@ -68,6 +69,7 @@ func (c *compoundNoClip) ClipBox(x1, y1, x2, y2 float64) {}
 func (c *compoundNoClip) MoveTo(x, y float64) {
 	c.x1, c.y1 = x, y
 }
+
 func (c *compoundNoClip) LineTo(outline *rasterizer.RasterizerCellsAAStyled, x, y float64) {
 	outline.Line(basics.IRound(c.x1*basics.PolySubpixelScale), basics.IRound(c.y1*basics.PolySubpixelScale),
 		basics.IRound(x*basics.PolySubpixelScale), basics.IRound(y*basics.PolySubpixelScale))
@@ -79,30 +81,30 @@ func initFlashDemo() {
 		return
 	}
 
-	rand.Seed(1234)
+	rng := rand.New(rand.NewSource(1234))
 	flashColors = make([]color.RGBA8[color.Linear], 20)
 	for i := range flashColors {
 		flashColors[i] = color.RGBA8[color.Linear]{
-			R: uint8(rand.Intn(256)),
-			G: uint8(rand.Intn(256)),
-			B: uint8(rand.Intn(256)),
+			R: uint8(rng.Intn(256)),
+			G: uint8(rng.Intn(256)),
+			B: uint8(rng.Intn(256)),
 			A: 200,
 		}
 	}
 
 	// Create some overlapping shapes
 	for i := 0; i < 15; i++ {
-		cx := rand.Float64() * float64(width)
-		cy := rand.Float64() * float64(height)
-		r := 20.0 + rand.Float64()*80.0
+		cx := rng.Float64() * float64(width)
+		cy := rng.Float64() * float64(height)
+		r := 20.0 + rng.Float64()*80.0
 
 		path := flashPath{
-			leftFill:  rand.Intn(len(flashColors)),
+			leftFill:  rng.Intn(len(flashColors)),
 			rightFill: -1,
 		}
 
 		// Create a star-like polygon
-		numPoints := 5 + rand.Intn(5)
+		numPoints := 5 + rng.Intn(5)
 		for j := 0; j < numPoints*2; j++ {
 			angle := 2.0 * math.Pi * float64(j) / float64(numPoints*2)
 			dist := r

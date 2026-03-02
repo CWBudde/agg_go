@@ -43,28 +43,28 @@ func initMesh() {
 	if meshInited {
 		return
 	}
-	rand.Seed(1234)
-	
+	rng := rand.New(rand.NewSource(1234))
+
 	cellW := float64(width-80) / float64(meshCols-1)
 	cellH := float64(height-80) / float64(meshRows-1)
 	startX, startY := 40.0, 40.0
 
 	meshVertices = nil
-	for i := 0; i < meshRows; i++ {
+	for i := range meshRows {
 		y := startY + float64(i)*cellH
 		for j := 0; j < meshCols; j++ {
 			x := startX + float64(j)*cellW
 			meshVertices = append(meshVertices, meshPoint{
 				x: x, y: y,
-				dx: (rand.Float64() - 0.5) * 2.0,
-				dy: (rand.Float64() - 0.5) * 2.0,
+				dx: (rng.Float64() - 0.5) * 2.0,
+				dy: (rng.Float64() - 0.5) * 2.0,
 				color: color.RGBA8[color.Linear]{
-					R: uint8(rand.Intn(256)),
-					G: uint8(rand.Intn(256)),
-					B: uint8(rand.Intn(256)),
+					R: uint8(rng.Intn(256)),
+					G: uint8(rng.Intn(256)),
+					B: uint8(rng.Intn(256)),
 					A: 255,
 				},
-				dc: [3]int{rand.Intn(2), rand.Intn(2), rand.Intn(2)},
+				dc: [3]int{rng.Intn(2), rng.Intn(2), rng.Intn(2)},
 			})
 		}
 	}
@@ -77,24 +77,32 @@ func initMesh() {
 			p2 := p1 + 1
 			p3 := p2 + uint32(meshCols)
 			p4 := p1 + uint32(meshCols)
-			
+
 			meshTriangles = append(meshTriangles, meshTriangle{p1, p2, p3})
 			meshTriangles = append(meshTriangles, meshTriangle{p3, p4, p1})
 
 			currCell := i*(meshCols-1) + j
 			bottCell := -1
-			if i > 0 { bottCell = currCell - (meshCols - 1) }
+			if i > 0 {
+				bottCell = currCell - (meshCols - 1)
+			}
 			leftCell := -1
-			if j > 0 { leftCell = currCell - 1 }
+			if j > 0 {
+				leftCell = currCell - 1
+			}
 
 			currT1 := currCell * 2
 			currT2 := currT1 + 1
 
 			leftT1 := -1
-			if leftCell >= 0 { leftT1 = leftCell * 2 }
-			
+			if leftCell >= 0 {
+				leftT1 = leftCell * 2
+			}
+
 			bottT2 := -1
-			if bottCell >= 0 { bottT2 = (bottCell * 2) + 1 }
+			if bottCell >= 0 {
+				bottT2 = (bottCell * 2) + 1
+			}
 
 			meshEdges = append(meshEdges, meshEdge{p1, p2, currT1, bottT2})
 			meshEdges = append(meshEdges, meshEdge{p1, p3, currT2, currT1})
@@ -119,6 +127,7 @@ func (h *meshStyleHandler) IsSolid(style int) bool { return false }
 func (h *meshStyleHandler) Color(style int) color.RGBA8[color.Linear] {
 	return color.RGBA8[color.Linear]{}
 }
+
 func (h *meshStyleHandler) GenerateSpan(colors []color.RGBA8[color.Linear], x, y, length, style int) {
 	if style >= 0 && style < len(h.triangles) {
 		temp := make([]span.RGBAColor, length)
@@ -142,16 +151,30 @@ func drawGouraudMeshDemo() {
 		p := &meshVertices[i]
 		p.x += p.dx
 		p.y += p.dy
-		
-		if p.x < 0 || p.x > float64(width) { p.dx = -p.dx }
-		if p.y < 0 || p.y > float64(height) { p.dy = -p.dy }
+
+		if p.x < 0 || p.x > float64(width) {
+			p.dx = -p.dx
+		}
+		if p.y < 0 || p.y > float64(height) {
+			p.dy = -p.dy
+		}
 
 		c := &p.color
 		updateChan := func(val *basics.Int8u, dir *int) {
 			v := int(*val)
-			if *dir != 0 { v += 2 } else { v -= 2 }
-			if v < 0 { v = 0; *dir = 1 }
-			if v > 255 { v = 255; *dir = 0 }
+			if *dir != 0 {
+				v += 2
+			} else {
+				v -= 2
+			}
+			if v < 0 {
+				v = 0
+				*dir = 1
+			}
+			if v > 255 {
+				v = 255
+				*dir = 0
+			}
 			*val = basics.Int8u(v)
 		}
 		updateChan(&c.R, &p.dc[0])
@@ -168,13 +191,13 @@ func drawGouraudMeshDemo() {
 
 	pixFmt := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
 	renBase := renderer.NewRendererBaseWithPixfmt[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](pixFmt)
-	
+
 	styles := &meshStyleHandler{}
 	for _, t := range meshTriangles {
 		p1 := meshVertices[t.p1]
 		p2 := meshVertices[t.p2]
 		p3 := meshVertices[t.p3]
-		
+
 		c1 := span.RGBAColor{R: int(p1.color.R) << 8, G: int(p1.color.G) << 8, B: int(p1.color.B) << 8, A: int(p1.color.A) << 8}
 		c2 := span.RGBAColor{R: int(p2.color.R) << 8, G: int(p2.color.G) << 8, B: int(p2.color.B) << 8, A: int(p2.color.A) << 8}
 		c3 := span.RGBAColor{R: int(p3.color.R) << 8, G: int(p3.color.G) << 8, B: int(p3.color.B) << 8, A: int(p3.color.A) << 8}
@@ -190,7 +213,7 @@ func drawGouraudMeshDemo() {
 
 	clipper := &compoundNoClip{}
 	rasc := rasterizer.NewRasterizerCompoundAA(clipper)
-	
+
 	for _, e := range meshEdges {
 		p1 := meshVertices[e.p1]
 		p2 := meshVertices[e.p2]
@@ -208,13 +231,15 @@ func drawGouraudMeshDemo() {
 	slBin := scanline.NewScanlineU8()
 	adapterAA := &flashScanlineAdapter{sl: slAA}
 	adapterBin := &flashScanlineAdapter{sl: slBin}
-	
+
 	alloc := span.NewSpanAllocator[color.RGBA8[color.Linear]]()
 
 	minX := rasc.MinX()
 	maxX := rasc.MaxX()
 	length := maxX - minX + 2
-	if length < 0 { length = 0 }
+	if length < 0 {
+		length = 0
+	}
 	colorSpan := make([]color.RGBA8[color.Linear], length*2)
 	mixBuffer := colorSpan[length:]
 

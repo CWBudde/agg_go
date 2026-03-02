@@ -4,7 +4,6 @@ package main
 import (
 	"math"
 	"math/rand"
-	"time"
 
 	agg "agg_go"
 	"agg_go/internal/curves"
@@ -33,8 +32,6 @@ func initCircles() {
 	if len(circlesPoints) > 0 {
 		return
 	}
-
-	rand.Seed(time.Now().UnixNano())
 
 	splineRX := []float64{0.000000, 0.200000, 0.400000, 0.910484, 0.957258, 1.000000}
 	splineRY := []float64{1.000000, 0.800000, 0.600000, 0.066667, 0.169697, 0.600000}

@@ -51,6 +51,9 @@
         <option value="trans_curve2">Double Path Transformer</option>
         <option value="distortions">Image Distortions</option>
         <option value="trans_polar">Polar Transformations</option>
+        <option value="circles">Random Circles (Scatter Plot)</option>
+        <option value="blur">Gaussian & Stack Blur</option>
+        <option value="simple_blur">Simple 3x3 Blur</option>
       </select>
       <button id="renderBtn">Refresh / Reset</button>
     </div>
@@ -301,6 +304,47 @@
 
     <div class="controls" id="transCurve2Controls" style="display: none">
       <label><input type="checkbox" id="transCurve2Animate" /> Animate</label>
+    </div>
+
+    <div class="controls" id="blurControls" style="display: none">
+      <label for="blurRadiusSlider">Radius:</label>
+      <input
+        type="range"
+        id="blurRadiusSlider"
+        min="0"
+        max="40"
+        value="15"
+        step="1"
+      />
+      <span id="blurRadiusValue">15</span>
+      <label for="blurMethodSelector" style="margin-left: 1rem">Method:</label>
+      <select id="blurMethodSelector">
+        <option value="0">Stack Blur (Fast)</option>
+        <option value="1">Recursive Blur (High Quality)</option>
+      </select>
+    </div>
+
+    <div class="controls" id="circlesControls" style="display: none">
+      <label for="circlesSelectivitySlider">Selectivity:</label>
+      <input
+        type="range"
+        id="circlesSelectivitySlider"
+        min="0.01"
+        max="0.5"
+        value="0.1"
+        step="0.01"
+      />
+      <span id="circlesSelectivityValue">0.10</span>
+      <label for="circlesSizeSlider" style="margin-left: 1rem">Size:</label>
+      <input
+        type="range"
+        id="circlesSizeSlider"
+        min="0.1"
+        max="2.0"
+        value="0.5"
+        step="0.1"
+      />
+      <span id="circlesSizeValue">0.5</span>
     </div>
 
     <canvas id="aggCanvas"></canvas>

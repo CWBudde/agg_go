@@ -10,10 +10,10 @@ import (
 )
 
 var (
-	bezierDivPoints    = [8]float64{170, 424, 13, 87, 488, 423, 26, 333}
-	bezierDivSelected  = -1
+	bezierDivPoints             = [8]float64{170, 424, 13, 87, 488, 423, 26, 333}
+	bezierDivSelected           = -1
 	bezierDivApproximationScale = 1.0
-	bezierDivAngleTolerance = 15.0 // degrees
+	bezierDivAngleTolerance     = 15.0 // degrees
 )
 
 func drawBezierDivDemo() {
@@ -34,7 +34,7 @@ func drawBezierDivDemo() {
 	agg2d.NoFill()
 	agg2d.LineColor(agg.NewColor(0, 150, 0, 150))
 	agg2d.LineWidth(2.0)
-	
+
 	agg2d.ResetPath()
 	for {
 		vx, vy, cmd := curveDiv.Vertex()

@@ -60,8 +60,8 @@ type imagePixFmt struct {
 	rbuf *buffer.RenderingBufferU8
 }
 
-func (p imagePixFmt) Width() int { return p.rbuf.Width() }
-func (p imagePixFmt) Height() int { return p.rbuf.Height() }
+func (p imagePixFmt) Width() int    { return p.rbuf.Width() }
+func (p imagePixFmt) Height() int   { return p.rbuf.Height() }
 func (p imagePixFmt) PixWidth() int { return 4 }
 func (p imagePixFmt) PixPtr(x, y int) []basics.Int8u {
 	row := buffer.RowU8(p.rbuf, y)
@@ -73,21 +73,24 @@ type distortionsSource struct {
 	ipf      *imagePixFmt
 }
 
-func (s *distortionsSource) Width() int { return s.ipf.Width() }
-func (s *distortionsSource) Height() int { return s.ipf.Height() }
-func (s *distortionsSource) ColorType() string { return "RGBA8" }
+func (s *distortionsSource) Width() int                  { return s.ipf.Width() }
+func (s *distortionsSource) Height() int                 { return s.ipf.Height() }
+func (s *distortionsSource) ColorType() string           { return "RGBA8" }
 func (s *distortionsSource) OrderType() color.ColorOrder { return color.OrderRGBA }
 
 // Delegate SpanInterpolatorInterface methods to accessor
 func (s *distortionsSource) Span(x, y, length int) []basics.Int8u {
 	return s.accessor.Span(x, y, length)
 }
+
 func (s *distortionsSource) NextX() []basics.Int8u {
 	return s.accessor.NextX()
 }
+
 func (s *distortionsSource) NextY() []basics.Int8u {
 	return s.accessor.NextY()
 }
+
 func (s *distortionsSource) RowPtr(y int) []basics.Int8u {
 	return s.ipf.PixPtr(0, y)
 }
@@ -149,7 +152,7 @@ func drawDistortionsDemo() {
 
 	// Image matrices
 	imgW, imgH := float64(distortionsImage.Width()), float64(distortionsImage.Height())
-	
+
 	imgMtx := transform.NewTransAffine()
 	imgMtx.Translate(-imgW/2, -imgH/2)
 	imgMtx.Rotate(distortionsAngle * math.Pi / 180.0)
@@ -164,7 +167,7 @@ func drawDistortionsDemo() {
 		amplitude: 1.0 / distortionsAmplitude,
 		phase:     distortionsPhase,
 	}
-	
+
 	cx, cy := distortionsCenterX, distortionsCenterY
 	imgMtx.Transform(&cx, &cy)
 	db.cx, db.cy = cx, cy
@@ -183,30 +186,32 @@ func drawDistortionsDemo() {
 	imgRbuf := buffer.NewRenderingBufferU8()
 	imgRbuf.Attach(distortionsImage.Data, distortionsImage.Width(), distortionsImage.Height(), distortionsImage.Width()*4)
 	ipf := imagePixFmt{rbuf: imgRbuf}
-	
+
 	alloc := span.NewSpanAllocator[color.RGBA8[color.Linear]]()
-	
+
 	// Accessor
 	accessor := image.NewImageAccessorClip(&ipf, []basics.Int8u{255, 255, 255, 255})
 	source := &distortionsSource{accessor: accessor, ipf: &ipf}
-	
+
 	// Span generator - using bilinear clip
 	sg := span.NewSpanImageFilterRGBABilinearClipWithParams(source, color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255}, interpolator)
 	adapterSG := &spanGeneratorAdapter{sg: sg}
 
 	// Rasterizer
 	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
-		rasterizer.RasConvInt{}, 
+		rasterizer.RasConvInt{},
 		rasterizer.NewRasterizerSlNoClip(),
 	)
 	sl := scanline.NewScanlineU8()
 
 	// Draw an ellipse with distorted image fill
 	r := imgW
-	if imgH < r { r = imgH }
-	
+	if imgH < r {
+		r = imgH
+	}
+
 	p := path.NewPathStorageStl()
-	
+
 	// Basic circle path for the ellipse
 	numPoints := 100
 	for i := 0; i < numPoints; i++ {
@@ -220,11 +225,11 @@ func drawDistortionsDemo() {
 		}
 	}
 	p.ClosePolygon(basics.PathFlagsNone)
-	
+
 	// Manual rendering loop
 	psAdapter := &pathSourceAdapter{ps: p}
 	ras.AddPath(psAdapter, 0)
-	
+
 	if ras.RewindScanlines() {
 		sl.Reset(ras.MinX(), ras.MaxX())
 		for ras.SweepScanline(&rasScanlineAdapter{sl: sl}) {

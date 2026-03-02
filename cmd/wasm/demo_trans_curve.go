@@ -13,11 +13,11 @@ import (
 )
 
 var (
-	transCurvePoints    = [12]float64{50, 50, 170, 130, 230, 270, 370, 330, 430, 470, 550, 550}
-	transCurveSelected  = -1
-	transCurveAnimate   = false
-	transCurveDX        [6]float64
-	transCurveDY        [6]float64
+	transCurvePoints   = [12]float64{50, 50, 170, 130, 230, 270, 370, 330, 430, 470, 550, 550}
+	transCurveSelected = -1
+	transCurveAnimate  = false
+	transCurveDX       [6]float64
+	transCurveDY       [6]float64
 )
 
 func initTransCurveDemo() {
@@ -47,8 +47,12 @@ func drawTransCurveDemo() {
 		for i := 0; i < 6; i++ {
 			transCurvePoints[i*2] += transCurveDX[i]
 			transCurvePoints[i*2+1] += transCurveDY[i]
-			if transCurvePoints[i*2] < 0 || transCurvePoints[i*2] > float64(width) { transCurveDX[i] = -transCurveDX[i] }
-			if transCurvePoints[i*2+1] < 0 || transCurvePoints[i*2+1] > float64(height) { transCurveDY[i] = -transCurveDY[i] }
+			if transCurvePoints[i*2] < 0 || transCurvePoints[i*2] > float64(width) {
+				transCurveDX[i] = -transCurveDX[i]
+			}
+			if transCurvePoints[i*2+1] < 0 || transCurvePoints[i*2+1] > float64(height) {
+				transCurveDY[i] = -transCurveDY[i]
+			}
 		}
 	}
 
@@ -77,14 +81,24 @@ func drawTransCurveDemo() {
 		lp.Path.Rewind(0)
 		for {
 			x, y, cmd := lp.Path.NextVertex()
-			if basics.IsStop(basics.PathCommand(cmd)) { break }
-			if x < lx1 { lx1 = x }
-			if x > lx2 { lx2 = x }
-			if y < ly1 { ly1 = y }
-			if y > ly2 { ly2 = y }
+			if basics.IsStop(basics.PathCommand(cmd)) {
+				break
+			}
+			if x < lx1 {
+				lx1 = x
+			}
+			if x > lx2 {
+				lx2 = x
+			}
+			if y < ly1 {
+				ly1 = y
+			}
+			if y > ly2 {
+				ly2 = y
+			}
 		}
 	}
-	
+
 	lionW := lx2 - lx1
 	scaleX := tcurve.TotalLength() / lionW * 0.8
 	scaleY := 0.5 // flatten it a bit
@@ -97,7 +111,9 @@ func drawTransCurveDemo() {
 		lp.Path.Rewind(0)
 		for {
 			x, y, cmd := lp.Path.NextVertex()
-			if basics.IsStop(basics.PathCommand(cmd)) { break }
+			if basics.IsStop(basics.PathCommand(cmd)) {
+				break
+			}
 
 			tx := (x - lx1) * scaleX
 			ty := (y - (ly1+ly2)/2.0) * scaleY
@@ -122,7 +138,9 @@ func drawTransCurveDemo() {
 	first := true
 	for {
 		vx, vy, cmd := bspline.Vertex()
-		if basics.IsStop(cmd) { break }
+		if basics.IsStop(cmd) {
+			break
+		}
 		if first {
 			agg2d.MoveTo(vx, vy)
 			first = false
