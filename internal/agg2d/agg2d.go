@@ -309,10 +309,10 @@ func (agg2d *Agg2D) ScanlineRender(ras *rasterizer.RasterizerScanlineAA[int, ras
 func (agg2d *Agg2D) GouraudTriangle(x1, y1, x2, y2, x3, y3 float64, c1, c2, c3 Color, d float64) {
 	agg2d.rasterizer.Reset()
 
-	// Convert colors to SpanGouraudRGBA expected format
-	gc1 := span.RGBAColor{R: int(c1[0]) << 8, G: int(c1[1]) << 8, B: int(c1[2]) << 8, A: int(c1[3]) << 8}
-	gc2 := span.RGBAColor{R: int(c2[0]) << 8, G: int(c2[1]) << 8, B: int(c2[2]) << 8, A: int(c2[3]) << 8}
-	gc3 := span.RGBAColor{R: int(c3[0]) << 8, G: int(c3[1]) << 8, B: int(c3[2]) << 8, A: int(c3[3]) << 8}
+	// Convert colors to SpanGouraudRGBA expected format (0-255 range, matching C++ rgba8)
+	gc1 := span.RGBAColor{R: int(c1[0]), G: int(c1[1]), B: int(c1[2]), A: int(c1[3])}
+	gc2 := span.RGBAColor{R: int(c2[0]), G: int(c2[1]), B: int(c2[2]), A: int(c2[3])}
+	gc3 := span.RGBAColor{R: int(c3[0]), G: int(c3[1]), B: int(c3[2]), A: int(c3[3])}
 
 	spanGen := span.NewSpanGouraudRGBAWithTriangle(gc1, gc2, gc3, x1, y1, x2, y2, x3, y3, d)
 
@@ -359,10 +359,10 @@ func (r *gouraudRenderer) Render(sl renscan.ScanlineInterface) {
 		baseColors := make([]color.RGBA8[color.Linear], length)
 		for i := 0; i < length; i++ {
 			baseColors[i] = color.RGBA8[color.Linear]{
-				R: uint8(colors[i].R >> 8),
-				G: uint8(colors[i].G >> 8),
-				B: uint8(colors[i].B >> 8),
-				A: uint8(colors[i].A >> 8),
+				R: uint8(colors[i].R),
+				G: uint8(colors[i].G),
+				B: uint8(colors[i].B),
+				A: uint8(colors[i].A),
 			}
 		}
 

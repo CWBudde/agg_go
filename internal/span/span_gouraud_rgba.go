@@ -165,77 +165,78 @@ func (sg *SpanGouraudRGBA) Generate(span []RGBAColor, x, y int, length uint) {
 	b := NewGouraudDDAInterpolator(pc1.b, pc2.b, uint(nlen), 14)
 	a := NewGouraudDDAInterpolator(pc1.a, pc2.a, uint(nlen), 14)
 
-	// Calculate starting point with subpixel accuracy
+	// Calculate starting point with subpixel accuracy.
+	// If start > 0: roll back the interpolators (they were initialised at the
+	//   left triangle edge, which lies to the right of x).  The beginning loop
+	//   then walks forward until start reaches 0.
+	// If start <= 0: roll the interpolators forward to reach x (left-clip).
 	start := pc1.x - (x << SubpixelShift)
 
-	// Safety: prevent massive underflow if start is negative or too small
-	if start < 0 {
-		// If start is negative, it means we're beginning before the span's x
-		// We'll skip the "beginning part" logic
-		start = 0
+	if start >= 0 {
+		r.Sub(uint(start))
+		g.Sub(uint(start))
+		b.Sub(uint(start))
+		a.Sub(uint(start))
+	} else {
+		r.Add(uint(-start))
+		g.Add(uint(-start))
+		b.Add(uint(-start))
+		a.Add(uint(-start))
 	}
-
-	r.Sub(uint(start))
-	g.Sub(uint(start))
-	b.Sub(uint(start))
-	a.Sub(uint(start))
 	nlen += start
 
-	spanIdx := 0
-	len := int(length)
+	i := 0
+	lim := int(length)
 
-	// Beginning part - check for overflow since we rolled back interpolators
-	// Added hard limit to prevent infinite loops if start is corrupted
-	for len > 0 && start > 0 && spanIdx < int(length) {
-		span[spanIdx] = RGBAColor{
+	// Beginning part: interpolators were rolled back, so values may overflow [0,255].
+	// Runs while start > 0 (typically 1-2 pixels).
+	for lim > 0 && start > 0 {
+		span[i] = RGBAColor{
 			R: clampRGBAComponent(r.Y()),
 			G: clampRGBAComponent(g.Y()),
 			B: clampRGBAComponent(b.Y()),
 			A: clampRGBAComponent(a.Y()),
 		}
-
 		r.Add(SubpixelScale)
 		g.Add(SubpixelScale)
 		b.Add(SubpixelScale)
 		a.Add(SubpixelScale)
 		nlen -= SubpixelScale
 		start -= SubpixelScale
-		spanIdx++
-		len--
+		i++
+		lim--
 	}
 
-	// Middle part - no overflow checking needed
-	for len > 0 && nlen > 0 && spanIdx < int(length) {
-		span[spanIdx] = RGBAColor{
-			R: clampRGBAComponent(r.Y()),
-			G: clampRGBAComponent(g.Y()),
-			B: clampRGBAComponent(b.Y()),
-			A: clampRGBAComponent(a.Y()),
+	// Middle part: no overflow checking needed while nlen > 0.
+	for lim > 0 && nlen > 0 {
+		span[i] = RGBAColor{
+			R: r.Y(),
+			G: g.Y(),
+			B: b.Y(),
+			A: a.Y(),
 		}
-
 		r.Add(SubpixelScale)
 		g.Add(SubpixelScale)
 		b.Add(SubpixelScale)
 		a.Add(SubpixelScale)
 		nlen -= SubpixelScale
-		spanIdx++
-		len--
+		i++
+		lim--
 	}
 
-	// Ending part - check for overflow again
-	for len > 0 && spanIdx < int(length) {
-		span[spanIdx] = RGBAColor{
+	// Ending part: interpolators may overflow again (anti-aliasing pixels).
+	for lim > 0 {
+		span[i] = RGBAColor{
 			R: clampRGBAComponent(r.Y()),
 			G: clampRGBAComponent(g.Y()),
 			B: clampRGBAComponent(b.Y()),
 			A: clampRGBAComponent(a.Y()),
 		}
-
 		r.Add(SubpixelScale)
 		g.Add(SubpixelScale)
 		b.Add(SubpixelScale)
 		a.Add(SubpixelScale)
-		spanIdx++
-		len--
+		i++
+		lim--
 	}
 }
