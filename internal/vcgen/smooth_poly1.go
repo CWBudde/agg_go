@@ -5,23 +5,24 @@ import (
 	"agg_go/internal/basics"
 )
 
-// SmoothPolyStatus represents the state of smooth polygon generation
+// SmoothPolyStatus represents the state of smooth polygon generation.
+// States mirror the C++ vcgen_smooth_poly1 exactly.
 type SmoothPolyStatus int
 
 const (
 	SmoothPolyInitial SmoothPolyStatus = iota
 	SmoothPolyReady
 	SmoothPolyPolygon
-	SmoothPolyCtrlB
-	SmoothPolyCtrlE
-	SmoothPolyCtrl1
-	SmoothPolyCtrl2
-	SmoothPolyVertex
+	SmoothPolyCtrlB  // beginning control point for open path (Curve3)
+	SmoothPolyCtrlE  // ending control point for open path (Curve3)
+	SmoothPolyCtrl1  // first control point for interior segments (Curve4)
+	SmoothPolyCtrl2  // second control point for interior segments (Curve4)
 	SmoothPolyEndPoly
 	SmoothPolyStop
 )
 
-// VCGenSmoothPoly1 generates vertices for smooth polygon corners using cubic Bezier curves
+// VCGenSmoothPoly1 generates smooth polygon corners using cubic/quadratic Bezier curves.
+// Port of AGG's vcgen_smooth_poly1.
 type VCGenSmoothPoly1 struct {
 	srcVertices *array.VertexCmdSequence
 	smoothValue float64
@@ -34,7 +35,7 @@ type VCGenSmoothPoly1 struct {
 	ctrl2Y      float64
 }
 
-// NewVCGenSmoothPoly1 creates a new smooth polygon vertex generator
+// NewVCGenSmoothPoly1 creates a new smooth polygon vertex generator.
 func NewVCGenSmoothPoly1() *VCGenSmoothPoly1 {
 	return &VCGenSmoothPoly1{
 		srcVertices: array.NewVertexCmdSequence(),
@@ -45,46 +46,42 @@ func NewVCGenSmoothPoly1() *VCGenSmoothPoly1 {
 	}
 }
 
-// SetSmoothValue sets the smoothing value (0.0 to 1.0)
-// Higher values create more rounded corners
+// SetSmoothValue sets the smoothing value.
+// The C++ internal representation is value*0.5, so SetSmoothValue(1.0) → smoothValue=0.5.
 func (v *VCGenSmoothPoly1) SetSmoothValue(value float64) {
 	v.smoothValue = value * 0.5
 }
 
-// SmoothValue returns the current smooth value
+// SmoothValue returns the external smooth value (multiply internal by 2).
 func (v *VCGenSmoothPoly1) SmoothValue() float64 {
 	return v.smoothValue * 2.0
 }
 
-// RemoveAll clears all vertices
+// RemoveAll clears all vertices.
 func (v *VCGenSmoothPoly1) RemoveAll() {
 	v.srcVertices.RemoveAll()
 	v.closed = false
 	v.status = SmoothPolyInitial
 }
 
-// AddVertex adds a vertex to the polygon
+// AddVertex adds a vertex to the polygon (called by ConvAdaptorVCGen).
 func (v *VCGenSmoothPoly1) AddVertex(x, y float64, cmd basics.PathCommand) {
 	v.status = SmoothPolyInitial
 
 	if basics.IsMoveTo(cmd) {
-		v.srcVertices.ModifyLast(array.VertexDistCmd{X: x, Y: y, Dist: 0, Cmd: cmd})
+		v.srcVertices.ModifyLast(array.VertexDistCmd{X: x, Y: y})
+	} else if basics.IsVertex(cmd) {
+		v.srcVertices.Add(array.VertexDistCmd{X: x, Y: y})
 	} else {
-		if basics.IsVertex(cmd) {
-			v.srcVertices.Add(array.VertexDistCmd{X: x, Y: y, Dist: 0, Cmd: cmd})
-		} else {
-			v.closed = basics.IsClosed(uint32(cmd))
-		}
+		v.closed = basics.IsClosed(uint32(cmd))
 	}
 }
 
-// PrepareSrc prepares the smooth polygon for vertex generation
-func (v *VCGenSmoothPoly1) PrepareSrc() {
-	// This method is called by conv_adaptor_vcgen
-}
+// PrepareSrc is called by ConvAdaptorVCGen before vertex generation starts.
+func (v *VCGenSmoothPoly1) PrepareSrc() {}
 
-// Rewind rewinds the smooth polygon generator
-func (v *VCGenSmoothPoly1) Rewind(pathID uint) {
+// Rewind resets the generator. Distances are computed on the first rewind.
+func (v *VCGenSmoothPoly1) Rewind(_ uint) {
 	if v.status == SmoothPolyInitial {
 		v.srcVertices.Close(v.closed)
 	}
@@ -92,76 +89,114 @@ func (v *VCGenSmoothPoly1) Rewind(pathID uint) {
 	v.srcVertex = 0
 }
 
-// Vertex returns the next vertex in the smoothed polygon
+// Vertex returns the next vertex, exactly matching the C++ state machine.
+//
+// For a closed polygon or an open path with ≥3 points, the emitted sequence is:
+//
+//	Open path (n points):
+//	  MoveTo(P0),
+//	  Curve3(ctrl2_for_P0_P1),          // ctrl_b: quadratic start
+//	  Curve4(P1), Curve4(ctrl1), Curve4(ctrl2),   // interior cubics …
+//	  …
+//	  Curve3(Pk), Curve3(ctrl1_for_Pk_Pn-1),       // ctrl_e: quadratic end
+//	  Curve3(Pn-1), EndPoly
+//
+//	Closed polygon:
+//	  MoveTo(P0),
+//	  Curve4(ctrl1), Curve4(ctrl2), Curve4(P1),
+//	  …
+//	  Curve4(ctrl1), Curve4(ctrl2), Curve4(P0), EndPoly|Close
 func (v *VCGenSmoothPoly1) Vertex() (x, y float64, cmd basics.PathCommand) {
 	cmd = basics.PathCmdLineTo
 
-	for {
+	for !basics.IsStop(cmd) {
 		switch v.status {
 		case SmoothPolyInitial:
 			v.Rewind(0)
-			continue
+			continue // fall through to ready
 
 		case SmoothPolyReady:
-			if v.srcVertices.Size() < 2 {
+			n := v.srcVertices.Size()
+			if n < 2 {
 				return 0, 0, basics.PathCmdStop
 			}
-
-			if v.srcVertices.Size() == 2 {
-				// Handle line segments (2 vertices) properly
-				if v.srcVertex >= 2 {
+			if n == 2 {
+				// Two-point degenerate: plain line segment
+				if v.srcVertex >= n {
 					return 0, 0, basics.PathCmdStop
 				}
-				vertex := v.srcVertices.At(v.srcVertex)
-				x, y = vertex.X, vertex.Y
+				vx := v.srcVertices.At(v.srcVertex)
+				x, y = vx.X, vx.Y
 				v.srcVertex++
-				if v.srcVertex == 1 {
+				switch v.srcVertex {
+				case 1:
 					return x, y, basics.PathCmdMoveTo
-				}
-				if v.srcVertex == 2 {
+				case 2:
 					return x, y, basics.PathCmdLineTo
 				}
 				return 0, 0, basics.PathCmdStop
 			}
-
+			// ≥3 points: start the smooth polygon
 			cmd = basics.PathCmdMoveTo
 			v.status = SmoothPolyPolygon
 			v.srcVertex = 0
-			continue
+			continue // fall through to polygon
 
 		case SmoothPolyPolygon:
+			n := v.srcVertices.Size()
 			if v.closed {
-				if v.srcVertex >= v.srcVertices.Size() {
-					// Generate control points for the final segment back to start
-					v.calculate(v.srcVertex - 1) // Calculate for the last actual vertex
-					vertex := v.srcVertices.At(0)
-					x, y = vertex.X, vertex.Y
-					v.srcVertex++              // Increment to prevent re-entry
-					v.status = SmoothPolyCtrl1 // Go through control point states
+				if v.srcVertex >= n {
+					// Emit the closing vertex (back to P0) as Curve4 endpoint
+					p0 := v.srcVertices.At(0)
+					x, y = p0.X, p0.Y
+					v.status = SmoothPolyEndPoly
 					return x, y, basics.PathCmdCurve4
 				}
 			} else {
-				if v.srcVertex >= v.srcVertices.Size()-1 {
-					vertex := v.srcVertices.At(v.srcVertices.Size() - 1)
-					x, y = vertex.X, vertex.Y
+				if v.srcVertex >= n-1 {
+					// Emit the final endpoint as Curve3 endpoint
+					last := v.srcVertices.At(n - 1)
+					x, y = last.X, last.Y
 					v.status = SmoothPolyEndPoly
-					return x, y, basics.PathCmdLineTo
+					return x, y, basics.PathCmdCurve3
 				}
 			}
 
 			v.calculate(v.srcVertex)
-			vertex := v.srcVertices.At(v.srcVertex)
-			x, y = vertex.X, vertex.Y
+			curr := v.srcVertices.At(v.srcVertex)
+			x, y = curr.X, curr.Y
 			v.srcVertex++
 
-			if v.srcVertex == 1 {
-				return x, y, basics.PathCmdMoveTo
-			} else {
-				// For subsequent vertices, first output the control points, then the vertex as LineTo
+			if v.closed {
 				v.status = SmoothPolyCtrl1
-				// Don't return the vertex as Curve4, return it after control points
-				continue
+				if v.srcVertex == 1 {
+					return x, y, basics.PathCmdMoveTo
+				}
+				return x, y, basics.PathCmdCurve4
 			}
+			// Open path boundary logic
+			if v.srcVertex == 1 {
+				v.status = SmoothPolyCtrlB
+				return x, y, basics.PathCmdMoveTo
+			}
+			if v.srcVertex >= n-1 {
+				v.status = SmoothPolyCtrlE
+				return x, y, basics.PathCmdCurve3
+			}
+			v.status = SmoothPolyCtrl1
+			return x, y, basics.PathCmdCurve4
+
+		case SmoothPolyCtrlB:
+			// Beginning quadratic control point (ctrl2 of first segment)
+			x, y = v.ctrl2X, v.ctrl2Y
+			v.status = SmoothPolyPolygon
+			return x, y, basics.PathCmdCurve3
+
+		case SmoothPolyCtrlE:
+			// Ending quadratic control point (ctrl1 of last segment)
+			x, y = v.ctrl1X, v.ctrl1Y
+			v.status = SmoothPolyPolygon
+			return x, y, basics.PathCmdCurve3
 
 		case SmoothPolyCtrl1:
 			x, y = v.ctrl1X, v.ctrl1Y
@@ -170,31 +205,15 @@ func (v *VCGenSmoothPoly1) Vertex() (x, y float64, cmd basics.PathCommand) {
 
 		case SmoothPolyCtrl2:
 			x, y = v.ctrl2X, v.ctrl2Y
-			v.status = SmoothPolyVertex
+			v.status = SmoothPolyPolygon
 			return x, y, basics.PathCmdCurve4
-
-		case SmoothPolyVertex:
-			// Return the vertex position that was calculated in SmoothPolyPolygon
-			if v.closed && v.srcVertex > v.srcVertices.Size() {
-				// This is the final segment return, go to EndPoly
-				vertex := v.srcVertices.At(0) // Return to start vertex
-				x, y = vertex.X, vertex.Y
-				v.status = SmoothPolyEndPoly
-				return x, y, basics.PathCmdCurve4
-			} else {
-				vertex := v.srcVertices.At(v.srcVertex - 1) // srcVertex was already incremented
-				x, y = vertex.X, vertex.Y
-				v.status = SmoothPolyPolygon
-				return x, y, basics.PathCmdLineTo
-			}
 
 		case SmoothPolyEndPoly:
 			v.status = SmoothPolyStop
 			if v.closed {
 				return 0, 0, basics.PathCmdEndPoly | basics.PathFlagClose
-			} else {
-				return 0, 0, basics.PathCmdEndPoly
 			}
+			return 0, 0, basics.PathCmdEndPoly
 
 		case SmoothPolyStop:
 			return 0, 0, basics.PathCmdStop
@@ -203,68 +222,57 @@ func (v *VCGenSmoothPoly1) Vertex() (x, y float64, cmd basics.PathCommand) {
 			return 0, 0, basics.PathCmdStop
 		}
 	}
+	return x, y, cmd
 }
 
-// calculate computes the control points for smooth corners
+// calculate computes the Bezier control points for the segment ending at srcVertices[idx+1].
+// Matches the C++ calculate(prev, curr, next, next+1).
 func (v *VCGenSmoothPoly1) calculate(idx int) {
-	size := v.srcVertices.Size()
-
-	if size < 3 {
-		// Not enough points for proper smoothing
-		v.ctrl1X = 0
-		v.ctrl1Y = 0
-		v.ctrl2X = 0
-		v.ctrl2Y = 0
+	n := v.srcVertices.Size()
+	if n < 3 {
+		v.ctrl1X, v.ctrl1Y = 0, 0
+		v.ctrl2X, v.ctrl2Y = 0, 0
 		return
 	}
 
-	// Get four consecutive vertices for smoothing calculation
-	// matching the C++ prev/curr/next/next logic
 	var v0, v1, v2, v3 array.VertexDistCmd
 
-	// v0 = prev(idx)
+	// v0 = prev(idx): clamp to 0 for open, wrap for closed
 	if idx == 0 {
-		if v.closed && size > 1 {
-			v0 = v.srcVertices.At(size - 1)
+		if v.closed {
+			v0 = v.srcVertices.At(n - 1)
 		} else {
-			v0 = v.srcVertices.At(0) // Use same vertex if no previous
+			v0 = v.srcVertices.At(0)
 		}
 	} else {
 		v0 = v.srcVertices.At(idx - 1)
 	}
 
-	// v1 = curr(idx)
 	v1 = v.srcVertices.At(idx)
 
 	// v2 = next(idx)
-	if idx >= size-1 {
+	if idx >= n-1 {
 		if v.closed {
 			v2 = v.srcVertices.At(0)
 		} else {
-			v2 = v.srcVertices.At(size - 1) // Use same vertex if no next
+			v2 = v.srcVertices.At(n - 1)
 		}
 	} else {
 		v2 = v.srcVertices.At(idx + 1)
 	}
 
-	// v3 = next(idx + 1)
-	if idx >= size-2 {
+	// v3 = next(idx+1)
+	if idx >= n-2 {
 		if v.closed {
-			if size > 1 {
-				v3 = v.srcVertices.At((idx + 2) % size)
-			} else {
-				v3 = v2 // Fallback
-			}
+			v3 = v.srcVertices.At((idx + 2) % n)
 		} else {
-			v3 = v2 // Use same as v2 if no next-next
+			v3 = v.srcVertices.At(n - 1)
 		}
 	} else {
 		v3 = v.srcVertices.At(idx + 2)
 	}
 
-	// Use the distances from the vertex_dist structures (C++ version uses v0.dist, v1.dist, v2.dist)
-	// The C++ algorithm uses the distance to the NEXT vertex, stored in the vertex_dist.dist field
-	// Ensure distances are valid and non-zero
+	// Use stored distances (set by VertexCmdSequence.Close); fall back to computed.
 	dist0 := v0.Dist
 	dist1 := v1.Dist
 	dist2 := v2.Dist
