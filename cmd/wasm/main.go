@@ -104,6 +104,9 @@ func onMouseDown(this js.Value, args []js.Value) interface{} {
 	if demoType == "aa" {
 		return handleAAMouseDown(x, y)
 	}
+	if demoType == "bspline" {
+		return handleBSplineMouseDown(x, y)
+	}
 	if demoType == "dash" {
 		return handleDashMouseDown(x, y)
 	}
@@ -182,6 +185,9 @@ func onMouseMove(this js.Value, args []js.Value) interface{} {
 	if demoType == "aa" {
 		return handleAAMouseMove(x, y)
 	}
+	if demoType == "bspline" {
+		return handleBSplineMouseMove(x, y)
+	}
 	if demoType == "dash" {
 		return handleDashMouseMove(x, y)
 	}
@@ -252,6 +258,9 @@ func onMouseUp(this js.Value, args []js.Value) interface{} {
 	demoType := args[0].String()
 	if demoType == "aa" {
 		handleAAMouseUp()
+	}
+	if demoType == "bspline" {
+		handleBSplineMouseUp()
 	}
 	if demoType == "dash" {
 		handleDashMouseUp()
