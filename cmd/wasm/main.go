@@ -150,6 +150,15 @@ func onMouseDown(this js.Value, args []js.Value) interface{} {
 	if demoType == "trans_curve2" {
 		return handleTransCurve2MouseDown(x, y)
 	}
+	if demoType == "gamma_ctrl" {
+		return handleGammaCtrlMouseDown(x, y)
+	}
+	if demoType == "gamma_tuner" {
+		return handleGammaTunerMouseDown(x, y)
+	}
+	if demoType == "lion_lens" {
+		return handleLionLensMouseDown(x, y)
+	}
 	if demoType == "circles" {
 		generateCircles()
 		return true
@@ -219,6 +228,15 @@ func onMouseMove(this js.Value, args []js.Value) interface{} {
 	if demoType == "trans_curve2" {
 		return handleTransCurve2MouseMove(x, y)
 	}
+	if demoType == "gamma_ctrl" {
+		return handleGammaCtrlMouseMove(x, y)
+	}
+	if demoType == "gamma_tuner" {
+		return handleGammaTunerMouseMove(x, y)
+	}
+	if demoType == "lion_lens" {
+		return handleLionLensMouseMove(x, y)
+	}
 	if demoType == "simple_blur" {
 		simpleBlurCX = x
 		simpleBlurCY = y
@@ -276,6 +294,15 @@ func onMouseUp(this js.Value, args []js.Value) interface{} {
 	}
 	if demoType == "trans_curve2" {
 		handleTransCurve2MouseUp()
+	}
+	if demoType == "gamma_ctrl" {
+		handleGammaCtrlMouseUp()
+	}
+	if demoType == "gamma_tuner" {
+		handleGammaTunerMouseUp()
+	}
+	if demoType == "lion_lens" {
+		handleLionLensMouseUp()
 	}
 	return nil
 }
@@ -706,6 +733,12 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 		drawTransPolarDemo()
 	case "trans_curve2":
 		drawTransCurve2Demo()
+	case "gamma_ctrl":
+		drawGammaCtrlDemo()
+	case "gamma_tuner":
+		drawGammaTunerDemo()
+	case "lion_lens":
+		drawLionLensDemo()
 	case "circles":
 		drawCirclesScatterDemo()
 	case "blur":
