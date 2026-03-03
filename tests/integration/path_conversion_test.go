@@ -84,6 +84,54 @@ func TestPathConversionStrokeToDash(t *testing.T) {
 	}
 }
 
+func TestPathConversionDashedRoundCapsCloseDashEnds(t *testing.T) {
+	width, height := 180, 80
+	stride := width * 4
+	bufferButt := make([]uint8, height*stride)
+	bufferRound := make([]uint8, height*stride)
+
+	renderDashedLine := func(buffer []uint8, cap agg2d.LineCap) {
+		ctx := agg2d.NewAgg2D()
+		ctx.Attach(buffer, width, height, stride)
+		ctx.ClearAll(agg2d.Color{255, 255, 255, 255})
+		ctx.LineColor(agg2d.Color{0, 0, 0, 255})
+		ctx.LineWidth(12.0)
+		ctx.LineCap(cap)
+		ctx.AddDash(20.0, 12.0)
+		ctx.ResetPath()
+		ctx.MoveTo(20, 40)
+		ctx.LineTo(140, 40)
+		ctx.DrawPath(agg2d.StrokeOnly)
+	}
+
+	renderDashedLine(bufferButt, agg2d.CapButt)
+	renderDashedLine(bufferRound, agg2d.CapRound)
+
+	// The first dash ends at x=40. These two points lie inside the expected
+	// round end cap centered at (40,40) with radius 6, but outside a butt cap.
+	roundOnlyPoints := []struct {
+		x, y int
+	}{
+		{43, 37},
+		{43, 43},
+	}
+
+	for _, pt := range roundOnlyPoints {
+		butt := getPixel(bufferButt, stride, pt.x, pt.y)
+		round := getPixel(bufferRound, stride, pt.x, pt.y)
+
+		if !(butt[0] > 230 && butt[1] > 230 && butt[2] > 230) {
+			t.Fatalf("butt cap control pixel at (%d,%d) should stay in the gap, got RGB(%d,%d,%d)",
+				pt.x, pt.y, butt[0], butt[1], butt[2])
+		}
+
+		if !(round[0] < 220 && round[1] < 220 && round[2] < 220) {
+			t.Fatalf("round cap pixel at (%d,%d) should be covered by the dash end cap, got RGB(%d,%d,%d)",
+				pt.x, pt.y, round[0], round[1], round[2])
+		}
+	}
+}
+
 // TestPathConversionCurveApproximation tests curve to line approximation
 func TestPathConversionCurveApproximation(t *testing.T) {
 	width, height := 200, 200
