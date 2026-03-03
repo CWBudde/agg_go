@@ -34,7 +34,10 @@ func main() {
 	js.Global().Set("setAANodes", js.FuncOf(setAANodes))
 	js.Global().Set("getAANodes", js.FuncOf(getAANodes))
 	js.Global().Set("setDashWidth", js.FuncOf(setDashWidth))
+	js.Global().Set("setDashSmooth", js.FuncOf(setDashSmooth))
+	js.Global().Set("setDashCap", js.FuncOf(setDashCap))
 	js.Global().Set("setDashClosed", js.FuncOf(setDashClosed))
+	js.Global().Set("setDashEvenOdd", js.FuncOf(setDashEvenOdd))
 	js.Global().Set("setGouraudDilation", js.FuncOf(setGouraudDilation))
 	js.Global().Set("setImageFilter", js.FuncOf(setImageFilter))
 	js.Global().Set("setImageFilterRadius", js.FuncOf(setImageFilterRadius))
@@ -107,7 +110,7 @@ func onMouseDown(this js.Value, args []js.Value) interface{} {
 	if demoType == "bspline" {
 		return handleBSplineMouseDown(x, y)
 	}
-	if demoType == "dash" {
+	if demoType == "conv_dash_marker" {
 		return handleDashMouseDown(x, y)
 	}
 	if demoType == "gouraud" {
@@ -188,7 +191,7 @@ func onMouseMove(this js.Value, args []js.Value) interface{} {
 	if demoType == "bspline" {
 		return handleBSplineMouseMove(x, y)
 	}
-	if demoType == "dash" {
+	if demoType == "conv_dash_marker" {
 		return handleDashMouseMove(x, y)
 	}
 	if demoType == "gouraud" {
@@ -262,7 +265,7 @@ func onMouseUp(this js.Value, args []js.Value) interface{} {
 	if demoType == "bspline" {
 		handleBSplineMouseUp()
 	}
-	if demoType == "dash" {
+	if demoType == "conv_dash_marker" {
 		handleDashMouseUp()
 	}
 	if demoType == "gouraud" {
@@ -350,9 +353,30 @@ func setDashWidth(this js.Value, args []js.Value) interface{} {
 	return nil
 }
 
+func setDashSmooth(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		dashSmooth = args[0].Float()
+	}
+	return nil
+}
+
+func setDashCap(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		dashCap = args[0].Int()
+	}
+	return nil
+}
+
 func setDashClosed(this js.Value, args []js.Value) interface{} {
 	if len(args) > 0 {
 		dashClosed = args[0].Bool()
+	}
+	return nil
+}
+
+func setDashEvenOdd(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		dashEvenOdd = args[0].Bool()
 	}
 	return nil
 }
@@ -700,7 +724,7 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 		drawBlendModesDemo()
 	case "bspline":
 		drawBSplineDemo()
-	case "dash":
+	case "conv_dash_marker":
 		drawDashDemo()
 	case "gouraud":
 		drawGouraudDemo()

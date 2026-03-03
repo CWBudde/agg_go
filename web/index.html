@@ -28,7 +28,7 @@
         <option value="aa">Anti-Aliasing Demo (Zoom)</option>
         <option value="blend">Blend Modes Demo</option>
         <option value="bspline">B-Spline Demo</option>
-        <option value="dash">Dashed Lines Demo</option>
+        <option value="conv_dash_marker">Conv Dash Marker</option>
         <option value="gouraud">Gouraud Shading (Interpolation)</option>
         <option value="imagefilters">Image Interpolation Filters</option>
         <option value="sbool">Boolean Operations (XOR/Union)</option>
@@ -75,7 +75,7 @@
     </div>
 
     <div class="controls" id="dashControls" style="display: none">
-      <label for="dashWidthSlider">Line Width:</label>
+      <label for="dashWidthSlider">Width:</label>
       <input
         type="range"
         id="dashWidthSlider"
@@ -85,8 +85,27 @@
         step="0.5"
       />
       <span id="dashWidthValue">3</span>
+      <label for="dashSmoothSlider" style="margin-left: 1rem">Smooth:</label>
+      <input
+        type="range"
+        id="dashSmoothSlider"
+        min="0"
+        max="2"
+        value="1"
+        step="0.05"
+      />
+      <span id="dashSmoothValue">1.00</span>
+      <label for="dashCapSelector" style="margin-left: 1rem">Cap:</label>
+      <select id="dashCapSelector">
+        <option value="0">Butt</option>
+        <option value="1">Square</option>
+        <option value="2">Round</option>
+      </select>
       <label style="margin-left: 1rem"
-        ><input type="checkbox" id="dashClosed" checked /> Closed</label
+        ><input type="checkbox" id="dashClosed" /> Close Polygons</label
+      >
+      <label style="margin-left: 0.5rem"
+        ><input type="checkbox" id="dashEvenOdd" /> Even-Odd Fill</label
       >
     </div>
 

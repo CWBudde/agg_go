@@ -25,10 +25,11 @@ var (
 	dashX = [3]float64{157, 469, 243}
 	dashY = [3]float64{60, 170, 310}
 
-	dashWidth  = 3.0 // m_width default
-	dashSmooth = 1.0 // m_smooth default
-	dashClosed = false
-	dashCap    = 0 // 0=butt, 1=square, 2=round
+	dashWidth   = 3.0  // m_width default
+	dashSmooth  = 1.0  // m_smooth default (range 0.0–2.0)
+	dashClosed  = false
+	dashCap     = 0    // 0=butt, 1=square, 2=round
+	dashEvenOdd = false // m_even_odd
 
 	dashIdx = -1
 	dashDX  = 0.0
@@ -124,6 +125,8 @@ func drawDashDemo() {
 	ps := buildDashPath()
 	rawSrc := &pathToConvSource{ps: ps}
 
+	a.FillEvenOdd(dashEvenOdd)
+
 	// === Layer 1: raw fill (amber rgba(0.7, 0.5, 0.1, 0.5)) ===
 	a.ResetPath()
 	dashAddToPath(a, rawSrc)
@@ -139,6 +142,8 @@ func drawDashDemo() {
 	a.FillColor(agg.RGBA(0.1, 0.5, 0.7, 0.1))
 	a.NoLine()
 	a.DrawPath(agg.FillOnly)
+
+	a.FillEvenOdd(false) // reset to non-zero for subsequent draws
 
 	// === Layer 3: smooth poly stroke outline (green rgba(0.0, 0.6, 0.0, 0.8)) ===
 	smooth2 := conv.NewConvSmoothPoly1Curve(rawSrc)
