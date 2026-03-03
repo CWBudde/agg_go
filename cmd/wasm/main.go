@@ -81,6 +81,7 @@ func main() {
 	js.Global().Set("setCirclesZRange", js.FuncOf(setCirclesZRange))
 	js.Global().Set("setCompOp", js.FuncOf(setCompOpJS))
 	js.Global().Set("setCompAlphaSrc", js.FuncOf(setCompAlphaSrcJS))
+	js.Global().Set("setCompAlphaDst", js.FuncOf(setCompAlphaDstJS))
 	js.Global().Set("setMultiClipN", js.FuncOf(setMultiClipNJS))
 
 	// Keep the Go program running
