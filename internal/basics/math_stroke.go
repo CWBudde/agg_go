@@ -312,15 +312,15 @@ func (ms *MathStroke) CalcCap(vc VertexConsumer, v0, v1 VertexDist, length float
 			dx2 = dy1 * float64(ms.widthSign)
 			dy2 = dx1 * float64(ms.widthSign)
 		}
-		ms.addVertex(vc, v0.X+dx1-dx2, v0.Y-dy1-dy2)
 		ms.addVertex(vc, v0.X-dx1-dx2, v0.Y+dy1-dy2)
+		ms.addVertex(vc, v0.X+dx1-dx2, v0.Y-dy1-dy2)
 	} else {
 		// Round cap
 		da := math.Acos(ms.widthAbs/(ms.widthAbs+0.125/ms.approxScale)) * 2
 		n := int(Pi / da)
 		da = Pi / float64(n+1)
 
-		ms.addVertex(vc, v0.X+dx1, v0.Y-dy1)
+		ms.addVertex(vc, v0.X-dx1, v0.Y+dy1)
 
 		if ms.widthSign > 0 {
 			a1 := math.Atan2(dy1, -dx1)
@@ -337,7 +337,7 @@ func (ms *MathStroke) CalcCap(vc VertexConsumer, v0, v1 VertexDist, length float
 				a1 -= da
 			}
 		}
-		ms.addVertex(vc, v0.X-dx1, v0.Y+dy1)
+		ms.addVertex(vc, v0.X+dx1, v0.Y-dy1)
 	}
 }
 

@@ -1,6 +1,7 @@
 package agg2d
 
 import (
+	"math"
 	"testing"
 
 	"agg_go/internal/basics"
@@ -117,6 +118,44 @@ func TestLineAttributes(t *testing.T) {
 	ctx.LineJoin(JoinBevel)
 	if ctx.lineJoin != JoinBevel {
 		t.Errorf("Expected line join JoinBevel, got %v", ctx.lineJoin)
+	}
+}
+
+func TestInitializeDashingPreservesStrokeAttributes(t *testing.T) {
+	ctx := NewAgg2D()
+
+	ctx.LineWidth(7.0)
+	ctx.LineCap(CapSquare)
+	ctx.LineJoin(JoinBevel)
+	ctx.MiterLimit(6.5)
+	ctx.InnerMiterLimit(1.75)
+	ctx.Shorten(2.25)
+	ctx.ApproximationScale(3.5)
+	ctx.AddDash(10, 5)
+
+	if ctx.convDash == nil {
+		t.Fatal("expected AddDash to initialize convDash")
+	}
+	if got := ctx.convStroke.Width(); got != 7.0 {
+		t.Fatalf("stroke width = %f, want 7.0", got)
+	}
+	if got := ctx.convStroke.LineCap(); got != basics.SquareCap {
+		t.Fatalf("line cap = %v, want %v", got, basics.SquareCap)
+	}
+	if got := ctx.convStroke.LineJoin(); got != basics.BevelJoin {
+		t.Fatalf("line join = %v, want %v", got, basics.BevelJoin)
+	}
+	if got := ctx.convStroke.MiterLimit(); math.Abs(got-6.5) > 1e-10 {
+		t.Fatalf("miter limit = %f, want 6.5", got)
+	}
+	if got := ctx.convStroke.InnerMiterLimit(); math.Abs(got-1.75) > 1e-10 {
+		t.Fatalf("inner miter limit = %f, want 1.75", got)
+	}
+	if got := ctx.convStroke.Shorten(); math.Abs(got-2.25) > 1e-10 {
+		t.Fatalf("shorten = %f, want 2.25", got)
+	}
+	if got := ctx.convStroke.ApproximationScale(); math.Abs(got-3.5) > 1e-10 {
+		t.Fatalf("approximation scale = %f, want 3.5", got)
 	}
 }
 

@@ -114,8 +114,8 @@ func TestMathStrokeButtCap(t *testing.T) {
 		return
 	}
 
-	// For butt cap on horizontal line, should get vertices at (0,-1) and (0,1)
-	expected := []PointD{{X: 0, Y: -1}, {X: 0, Y: 1}}
+	// Match AGG ordering: upper edge first, lower edge second.
+	expected := []PointD{{X: 0, Y: 1}, {X: 0, Y: -1}}
 	for i, v := range vertices {
 		if math.Abs(v.X-expected[i].X) > 1e-10 || math.Abs(v.Y-expected[i].Y) > 1e-10 {
 			t.Errorf("Vertex %d: expected (%f,%f), got (%f,%f)", i, expected[i].X, expected[i].Y, v.X, v.Y)
@@ -142,9 +142,8 @@ func TestMathStrokeSquareCap(t *testing.T) {
 		return
 	}
 
-	// For square cap on horizontal line, should extend by width in the perpendicular direction
-	// Expected vertices should be at (-1,-1) and (-1,1)
-	expected := []PointD{{X: -1, Y: -1}, {X: -1, Y: 1}}
+	// Match AGG ordering: upper-left first, lower-left second.
+	expected := []PointD{{X: -1, Y: 1}, {X: -1, Y: -1}}
 	for i, v := range vertices {
 		if math.Abs(v.X-expected[i].X) > 1e-10 || math.Abs(v.Y-expected[i].Y) > 1e-10 {
 			t.Errorf("Vertex %d: expected (%f,%f), got (%f,%f)", i, expected[i].X, expected[i].Y, v.X, v.Y)
@@ -173,15 +172,15 @@ func TestMathStrokeRoundCap(t *testing.T) {
 		return
 	}
 
-	// First vertex should be at (0,-1)
-	if math.Abs(vertices[0].X-0) > 1e-10 || math.Abs(vertices[0].Y-(-1)) > 1e-10 {
-		t.Errorf("First vertex: expected (0,-1), got (%f,%f)", vertices[0].X, vertices[0].Y)
+	// AGG emits the upper endpoint first and traverses the back-facing semicircle.
+	if math.Abs(vertices[0].X-0) > 1e-10 || math.Abs(vertices[0].Y-1) > 1e-10 {
+		t.Errorf("First vertex: expected (0,1), got (%f,%f)", vertices[0].X, vertices[0].Y)
 	}
 
-	// Last vertex should be at (0,1)
+	// Last vertex should be at the lower endpoint.
 	last := vertices[len(vertices)-1]
-	if math.Abs(last.X-0) > 1e-10 || math.Abs(last.Y-1) > 1e-10 {
-		t.Errorf("Last vertex: expected (0,1), got (%f,%f)", last.X, last.Y)
+	if math.Abs(last.X-0) > 1e-10 || math.Abs(last.Y-(-1)) > 1e-10 {
+		t.Errorf("Last vertex: expected (0,-1), got (%f,%f)", last.X, last.Y)
 	}
 
 	// All vertices should be approximately on a circle of radius 1 centered at (0,0)
@@ -189,6 +188,14 @@ func TestMathStrokeRoundCap(t *testing.T) {
 		distance := math.Sqrt(v.X*v.X + v.Y*v.Y)
 		if math.Abs(distance-1.0) > 1e-2 { // Allow some tolerance for approximation
 			t.Errorf("Vertex %d at (%f,%f) is not on unit circle, distance = %f", i, v.X, v.Y, distance)
+		}
+	}
+
+	// A start cap for a left-to-right horizontal line must bulge backwards,
+	// so the arc stays on the x <= 0 side.
+	for i, v := range vertices[1 : len(vertices)-1] {
+		if v.X > 1e-10 {
+			t.Errorf("Arc vertex %d should remain on the back-facing semicircle, got (%f,%f)", i+1, v.X, v.Y)
 		}
 	}
 }

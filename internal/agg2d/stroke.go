@@ -122,6 +122,15 @@ func (agg2d *Agg2D) initializeDashing() {
 		return // Already initialized
 	}
 
+	// Recreating the stroke stage must preserve the current stroke state.
+	width := agg2d.lineWidth
+	lineCap := agg2d.lineCap
+	lineJoin := agg2d.lineJoin
+	miterLimit := agg2d.GetMiterLimit()
+	innerMiterLimit := agg2d.GetInnerMiterLimit()
+	approximationScale := agg2d.GetApproximationScale()
+	shorten := agg2d.GetShorten()
+
 	// Create dash converter that operates on the curve converter
 	pathAdapter := path.NewPathStorageStlVertexSourceAdapter(agg2d.path)
 	agg2d.convCurve = conv.NewConvCurve(pathAdapter)
@@ -131,9 +140,13 @@ func (agg2d *Agg2D) initializeDashing() {
 	agg2d.convStroke = conv.NewConvStroke(agg2d.convDash)
 
 	// Restore current line attributes
-	agg2d.convStroke.SetWidth(agg2d.lineWidth)
-	agg2d.LineCap(agg2d.lineCap)
-	agg2d.LineJoin(agg2d.lineJoin)
+	agg2d.convStroke.SetWidth(width)
+	agg2d.LineCap(lineCap)
+	agg2d.LineJoin(lineJoin)
+	agg2d.convStroke.SetMiterLimit(miterLimit)
+	agg2d.convStroke.SetInnerMiterLimit(innerMiterLimit)
+	agg2d.convStroke.SetApproximationScale(approximationScale)
+	agg2d.convStroke.SetShorten(shorten)
 }
 
 // ApproximationScale sets the approximation scale for curved segments.
