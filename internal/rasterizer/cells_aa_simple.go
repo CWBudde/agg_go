@@ -484,69 +484,12 @@ func (r *RasterizerCellsAASimple) sortCellsByX() {
 		}
 
 		// Sort by X coordinate using the same quicksort/insertion-sort shape as AGG.
-		r.quickSortCellsByX(cells)
+		qsortCellsByX(cells)
 
 		for j, cell := range cells {
 			r.sortedCells.Set(start+j, cell)
 		}
 	}
-}
-
-// quickSortCellsByX implements a quicksort algorithm for cell pointers by X coordinate
-// This mirrors the C++ qsort_cells implementation
-func (r *RasterizerCellsAASimple) quickSortCellsByX(cells []*CellAA) {
-	const qsortThreshold = 9
-
-	if len(cells) <= 1 {
-		return
-	}
-
-	// For small arrays, use insertion sort
-	if len(cells) <= qsortThreshold {
-		r.insertionSortCellsByX(cells)
-		return
-	}
-
-	// Quicksort partition
-	pivot := r.partitionCells(cells)
-
-	// Recursively sort partitions
-	r.quickSortCellsByX(cells[:pivot])
-	r.quickSortCellsByX(cells[pivot+1:])
-}
-
-// insertionSortCellsByX performs insertion sort on cells by X coordinate
-func (r *RasterizerCellsAASimple) insertionSortCellsByX(cells []*CellAA) {
-	for i := 1; i < len(cells); i++ {
-		key := cells[i]
-		keyX := key.GetX()
-		j := i - 1
-
-		for j >= 0 && cells[j].GetX() > keyX {
-			cells[j+1] = cells[j]
-			j--
-		}
-		cells[j+1] = key
-	}
-}
-
-// partitionCells partitions the cell array for quicksort
-func (r *RasterizerCellsAASimple) partitionCells(cells []*CellAA) int {
-	// Use last element as pivot
-	pivotIdx := len(cells) - 1
-	pivot := cells[pivotIdx]
-	pivotX := pivot.GetX()
-
-	i := -1
-	for j := 0; j < pivotIdx; j++ {
-		if cells[j].GetX() <= pivotX {
-			i++
-			cells[i], cells[j] = cells[j], cells[i]
-		}
-	}
-
-	cells[i+1], cells[pivotIdx] = cells[pivotIdx], cells[i+1]
-	return i + 1
 }
 
 // renderHLine renders a horizontal line segment within a single scanline

@@ -118,6 +118,12 @@ const ALL_DEMO_PARAMS = [
   "agy2",
   // perspective
   "pt",
+  // compositing
+  "compop",
+  "cas",
+  "cad",
+  // multi_clip
+  "mcn",
 ];
 
 function clearDemoParams() {
@@ -510,6 +516,53 @@ const demoURLHandlers = {
         const val = parseInt(p.get("pt"));
         setPerspectiveType(val);
         document.getElementById("perspectiveTypeSelector").value = val;
+      }
+    },
+  },
+
+  compositing: {
+    persist() {
+      updateURL({
+        compop: document.getElementById("compOpSelector").value,
+        cas: parseFloat(document.getElementById("compAlphaSrcSlider").value),
+        cad: parseFloat(document.getElementById("compAlphaDstSlider").value),
+      });
+    },
+    restore(p) {
+      if (p.has("compop")) {
+        const val = parseInt(p.get("compop"));
+        setCompOp(val);
+        document.getElementById("compOpSelector").value = val;
+      }
+      if (p.has("cas")) {
+        const val = parseFloat(p.get("cas"));
+        setCompAlphaSrc(val);
+        document.getElementById("compAlphaSrcSlider").value = val;
+        document.getElementById("compAlphaSrcValue").textContent =
+          val.toFixed(2);
+      }
+      if (p.has("cad")) {
+        const val = parseFloat(p.get("cad"));
+        setCompAlphaDst(val);
+        document.getElementById("compAlphaDstSlider").value = val;
+        document.getElementById("compAlphaDstValue").textContent =
+          val.toFixed(2);
+      }
+    },
+  },
+
+  multi_clip: {
+    persist() {
+      updateURL({
+        mcn: parseFloat(document.getElementById("multiClipNSlider").value),
+      });
+    },
+    restore(p) {
+      if (p.has("mcn")) {
+        const val = parseFloat(p.get("mcn"));
+        setMultiClipN(val);
+        document.getElementById("multiClipNSlider").value = val;
+        document.getElementById("multiClipNValue").textContent = val;
       }
     },
   },
@@ -940,6 +993,50 @@ async function init() {
         renderSelectedDemo();
       });
 
+    // compositing controls
+    document.getElementById("compOpSelector").addEventListener("change", () => {
+      setCompOp(parseInt(document.getElementById("compOpSelector").value));
+      persistDemoParams("compositing");
+      renderSelectedDemo();
+    });
+    document
+      .getElementById("compAlphaSrcSlider")
+      .addEventListener("input", () => {
+        const val = parseFloat(
+          document.getElementById("compAlphaSrcSlider").value,
+        );
+        document.getElementById("compAlphaSrcValue").textContent =
+          val.toFixed(2);
+        setCompAlphaSrc(val);
+        persistDemoParams("compositing");
+        renderSelectedDemo();
+      });
+    document
+      .getElementById("compAlphaDstSlider")
+      .addEventListener("input", () => {
+        const val = parseFloat(
+          document.getElementById("compAlphaDstSlider").value,
+        );
+        document.getElementById("compAlphaDstValue").textContent =
+          val.toFixed(2);
+        setCompAlphaDst(val);
+        persistDemoParams("compositing");
+        renderSelectedDemo();
+      });
+
+    // multi_clip controls
+    document
+      .getElementById("multiClipNSlider")
+      .addEventListener("input", () => {
+        const val = parseFloat(
+          document.getElementById("multiClipNSlider").value,
+        );
+        document.getElementById("multiClipNValue").textContent = val;
+        setMultiClipN(val);
+        persistDemoParams("multi_clip");
+        renderSelectedDemo();
+      });
+
     // Mouse events for draggable-point demos
     let isDragging = false;
 
@@ -1033,6 +1130,10 @@ function syncControlVisibility(demoType) {
     demoType === "blur" ? "flex" : "none";
   document.getElementById("circlesControls").style.display =
     demoType === "circles" ? "flex" : "none";
+  document.getElementById("compositingControls").style.display =
+    demoType === "compositing" ? "flex" : "none";
+  document.getElementById("multiClipControls").style.display =
+    demoType === "multi_clip" ? "flex" : "none";
 }
 
 const demoDescriptions = {
@@ -1098,6 +1199,12 @@ const demoDescriptions = {
   blur: "Gaussian and Stack blur demonstration. Renders a complex path with a shadow and applies recursive or stack blur to the entire canvas. Use the controls to adjust radius and method.",
   simple_blur:
     "Simple 3x3 box blur. Renders the classic lion and then applies a simple box blur inside a draggable elliptical region. Click and drag to move the blurred area.",
+  alpha_mask:
+    "Alpha masking showcase. Port of AGG's alpha_mask demo. Renders the classic lion vector art through a dynamic alpha mask generated from overlapping random ellipses. Demonstrates the PixFmtAMaskAdaptor's ability to apply transparency patterns to any rendering operation.",
+  compositing:
+    "Porter-Duff and SVG compositing operations. Port of AGG's compositing demo. Demonstrates various rules for combining source and destination shapes, such as SrcOver, Multiply, Screen, and Xor. Adjust the source and destination opacity and select different operations to see how they affect the overlapping regions.",
+  multi_clip:
+    "Multi-region clipping. Port of AGG's multi_clip demo. Showcases the RendererMClip which allows restricting all rendering operations to a set of multiple rectangular regions. Adjust the grid size slider to change the number of clipping boxes and watch the lion art being clipped into a grid.",
 };
 
 function renderSelectedDemo() {

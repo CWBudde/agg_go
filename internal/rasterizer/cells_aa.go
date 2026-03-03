@@ -78,13 +78,17 @@ func (c *CellAA) AddArea(area int) { c.Area += area }
 // This removal eliminates problematic runtime type assertions (any() casts) that
 // violated the project's design principles.
 
-// qsortCells implements quicksort for cell pointers, sorting by X coordinate
-// This is a shared helper function used by both RasterizerCellsAASimple and RasterizerCellsAAStyled
-func qsortCells[Cell CellInterface](start []*Cell, num int) {
+type cellWithX interface {
+	GetX() int
+}
+
+// qsortCellsByX mirrors AGG's non-recursive qsort_cells implementation.
+// It sorts cells in-place by X coordinate and uses insertion sort for short spans.
+func qsortCellsByX[Cell cellWithX](cells []Cell) {
 	const qsortThreshold = 9
 	var stack [80][2]int
 	top := 0
-	limit := num
+	limit := len(cells)
 	base := 0
 
 	for {
@@ -93,39 +97,39 @@ func qsortCells[Cell CellInterface](start []*Cell, num int) {
 		if length > qsortThreshold {
 			// Use base + len/2 as pivot
 			pivot := base + length/2
-			start[base], start[pivot] = start[pivot], start[base]
+			cells[base], cells[pivot] = cells[pivot], cells[base]
 
 			i := base + 1
 			j := limit - 1
 
 			// Ensure *i <= *base <= *j
-			if (*start[j]).GetX() < (*start[i]).GetX() {
-				start[i], start[j] = start[j], start[i]
+			if cells[j].GetX() < cells[i].GetX() {
+				cells[i], cells[j] = cells[j], cells[i]
 			}
 
-			if (*start[base]).GetX() < (*start[i]).GetX() {
-				start[base], start[i] = start[i], start[base]
+			if cells[base].GetX() < cells[i].GetX() {
+				cells[base], cells[i] = cells[i], cells[base]
 			}
 
-			if (*start[j]).GetX() < (*start[base]).GetX() {
-				start[base], start[j] = start[j], start[base]
+			if cells[j].GetX() < cells[base].GetX() {
+				cells[base], cells[j] = cells[j], cells[base]
 			}
 
 			for {
-				x := (*start[base]).GetX()
-				for i++; (*start[i]).GetX() < x; i++ {
+				x := cells[base].GetX()
+				for i++; cells[i].GetX() < x; i++ {
 				}
-				for j--; x < (*start[j]).GetX(); j-- {
+				for j--; x < cells[j].GetX(); j-- {
 				}
 
 				if i > j {
 					break
 				}
 
-				start[i], start[j] = start[j], start[i]
+				cells[i], cells[j] = cells[j], cells[i]
 			}
 
-			start[base], start[j] = start[j], start[base]
+			cells[base], cells[j] = cells[j], cells[base]
 
 			// Push largest sub-array
 			if j-base > limit-i {
@@ -142,8 +146,8 @@ func qsortCells[Cell CellInterface](start []*Cell, num int) {
 			// Insertion sort for small arrays
 			for i := base + 1; i < limit; i++ {
 				j := i
-				for j > base && (*start[j]).GetX() < (*start[j-1]).GetX() {
-					start[j], start[j-1] = start[j-1], start[j]
+				for j > base && cells[j].GetX() < cells[j-1].GetX() {
+					cells[j], cells[j-1] = cells[j-1], cells[j]
 					j--
 				}
 			}

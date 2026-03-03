@@ -92,6 +92,22 @@ func (m *AlphaMaskU8) MaskFunction() MaskFunction {
 	return m.maskFunc
 }
 
+// Width returns the width of the alpha mask
+func (m *AlphaMaskU8) Width() int {
+	if m.rbuf == nil {
+		return 0
+	}
+	return m.rbuf.Width()
+}
+
+// Height returns the height of the alpha mask
+func (m *AlphaMaskU8) Height() int {
+	if m.rbuf == nil {
+		return 0
+	}
+	return m.rbuf.Height()
+}
+
 // Pixel returns the mask value at the given coordinates
 func (m *AlphaMaskU8) Pixel(x, y int) basics.Int8u {
 	if m.rbuf == nil {
@@ -420,6 +436,22 @@ func (m *AMaskNoClipU8) Attach(rbuf *buffer.RenderingBufferU8) {
 // MaskFunction returns the mask function
 func (m *AMaskNoClipU8) MaskFunction() MaskFunction {
 	return m.maskFunc
+}
+
+// Width returns the width of the alpha mask
+func (m *AMaskNoClipU8) Width() int {
+	if m.rbuf == nil {
+		return 0
+	}
+	return m.rbuf.Width()
+}
+
+// Height returns the height of the alpha mask
+func (m *AMaskNoClipU8) Height() int {
+	if m.rbuf == nil {
+		return 0
+	}
+	return m.rbuf.Height()
 }
 
 // Pixel returns the mask value at the given coordinates (no bounds checking)

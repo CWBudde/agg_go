@@ -134,10 +134,10 @@ func (h *meshStyleHandler) GenerateSpan(colors []color.RGBA8[color.Linear], x, y
 		h.triangles[style].Generate(temp, x, y, uint(length))
 		for i := 0; i < length; i++ {
 			colors[i] = color.RGBA8[color.Linear]{
-				R: uint8(temp[i].R >> 8),
-				G: uint8(temp[i].G >> 8),
-				B: uint8(temp[i].B >> 8),
-				A: uint8(temp[i].A >> 8),
+				R: uint8(temp[i].R),
+				G: uint8(temp[i].G),
+				B: uint8(temp[i].B),
+				A: uint8(temp[i].A),
 			}
 		}
 	}
@@ -198,9 +198,9 @@ func drawGouraudMeshDemo() {
 		p2 := meshVertices[t.p2]
 		p3 := meshVertices[t.p3]
 
-		c1 := span.RGBAColor{R: int(p1.color.R) << 8, G: int(p1.color.G) << 8, B: int(p1.color.B) << 8, A: int(p1.color.A) << 8}
-		c2 := span.RGBAColor{R: int(p2.color.R) << 8, G: int(p2.color.G) << 8, B: int(p2.color.B) << 8, A: int(p2.color.A) << 8}
-		c3 := span.RGBAColor{R: int(p3.color.R) << 8, G: int(p3.color.G) << 8, B: int(p3.color.B) << 8, A: int(p3.color.A) << 8}
+		c1 := span.RGBAColor{R: int(p1.color.R), G: int(p1.color.G), B: int(p1.color.B), A: int(p1.color.A)}
+		c2 := span.RGBAColor{R: int(p2.color.R), G: int(p2.color.G), B: int(p2.color.B), A: int(p2.color.A)}
+		c3 := span.RGBAColor{R: int(p3.color.R), G: int(p3.color.G), B: int(p3.color.B), A: int(p3.color.A)}
 
 		g := span.NewSpanGouraudRGBAWithTriangle(
 			c1, c2, c3,
@@ -257,7 +257,7 @@ func drawGouraudMeshDemo() {
 					if spanData.Len > 0 {
 						colors := alloc.Allocate(int(spanData.Len))
 						styles.GenerateSpan(colors, int(spanData.X), y, int(spanData.Len), style)
-						renBase.BlendSolidHspan(int(spanData.X), y, int(spanData.Len), styles.Color(style), spanData.Covers)
+						renBase.BlendColorHspan(int(spanData.X), y, int(spanData.Len), colors, spanData.Covers, basics.CoverFull)
 					}
 				}
 			}

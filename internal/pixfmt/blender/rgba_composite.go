@@ -50,6 +50,26 @@ func NewCompositeBlender[S color.Space, O order.RGBAOrder](op CompOp) CompositeB
 
 func (bl CompositeBlender[S, O]) GetOp() CompOp { return bl.op }
 
+func (bl CompositeBlender[S, O]) GetPlain(px []basics.Int8u) (r, g, b, a basics.Int8u) {
+	var o O
+	a = px[o.IdxA()]
+	if a == 0 {
+		return 0, 0, 0, 0
+	}
+	r = basics.Int8u((int(px[o.IdxR()]) * 255) / int(a))
+	g = basics.Int8u((int(px[o.IdxG()]) * 255) / int(a))
+	b = basics.Int8u((int(px[o.IdxB()]) * 255) / int(a))
+	return
+}
+
+func (bl CompositeBlender[S, O]) SetPlain(px []basics.Int8u, r, g, b, a basics.Int8u) {
+	var o O
+	px[o.IdxR()] = color.RGBA8Multiply(r, a)
+	px[o.IdxG()] = color.RGBA8Multiply(g, a)
+	px[o.IdxB()] = color.RGBA8Multiply(b, a)
+	px[o.IdxA()] = a
+}
+
 // BlendPix:
 //   - Interprets dst as *premultiplied* RGBA (Dca, Da) in order O
 //   - Builds premultiplied source Sca/Sa from (r,g,b,a) and coverage
@@ -100,6 +120,14 @@ func NewCompositeBlenderPre[S color.Space, O order.RGBAOrder](op CompOp) Composi
 }
 
 func (bl CompositeBlenderPre[S, O]) GetOp() CompOp { return bl.op }
+
+func (bl CompositeBlenderPre[S, O]) GetPlain(px []basics.Int8u) (r, g, b, a basics.Int8u) {
+	return CompositeBlender[S, O](bl).GetPlain(px)
+}
+
+func (bl CompositeBlenderPre[S, O]) SetPlain(px []basics.Int8u, r, g, b, a basics.Int8u) {
+	CompositeBlender[S, O](bl).SetPlain(px, r, g, b, a)
+}
 
 func (bl CompositeBlenderPre[S, O]) BlendPix(dst []basics.Int8u, r, g, b, a, cover basics.Int8u) {
 	if cover != 255 {
