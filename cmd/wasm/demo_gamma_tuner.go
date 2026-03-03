@@ -55,8 +55,7 @@ func drawGammaTunerDemo() {
 
 	agg2d := ctx.GetAgg2D()
 	agg2d.ResetTransformations()
-	agg2d.ClearAll(agg.White)
-
+	
 	g := sliderGamma.Value()
 	r := sliderR.Value()
 	gg := sliderG.Value()
@@ -67,41 +66,60 @@ func drawGammaTunerDemo() {
 		verStrips  = 5
 	)
 
-	// Draw vertical gradient
-	w, h := float64(width), float64(height)
-	for i := 0.0; i < h; i++ {
-		k := (i - 80) / (squareSize - 1)
-		if i < 80 {
+	// Pre-calculate colors for the gradient
+	invG := 1.0 / g
+	
+	// 1. Draw vertical gradient directly into canvasBuf
+	for y := 0; y < height; y++ {
+		k := (float64(y) - 80) / (squareSize - 1)
+		if y < 80 {
 			k = 0.0
-		}
-		if i >= 80+squareSize {
+		} else if y >= 80+squareSize {
 			k = 1.0
 		}
 
-		k = 1.0 - math.Pow(k/2.0, 1.0/g)
+		k = 1.0 - math.Pow(k/2.0, invG)
 		
-		cr := uint8(math.Round(r * 255.0 * (1.0 - k)))
-		cg := uint8(math.Round(gg * 255.0 * (1.0 - k)))
-		cb := uint8(math.Round(b * 255.0 * (1.0 - k)))
+		cr := uint8(r * 255.0 * (1.0 - k) + 0.5)
+		cg := uint8(gg * 255.0 * (1.0 - k) + 0.5)
+		cb := uint8(b * 255.0 * (1.0 - k) + 0.5)
 
-		agg2d.LineColor(agg.NewColor(cr, cg, cb, 255))
-		agg2d.Line(0, i, w-1, i)
+		rowOffset := y * width * 4
+		for x := 0; x < width; x++ {
+			idx := rowOffset + x*4
+			canvasBuf[idx] = cr
+			canvasBuf[idx+1] = cg
+			canvasBuf[idx+2] = cb
+			canvasBuf[idx+3] = 255
+		}
 	}
 
-	// Clear the area
-	agg2d.FillColor(agg.Black)
-	agg2d.NoLine()
-	agg2d.Rectangle(50, 80, 50+squareSize-1, 80+squareSize-1)
+	// 2. Clear square area to black
+	for y := 80; y < 80+squareSize; y++ {
+		rowOffset := y * width * 4
+		for x := 50; x < 50+squareSize; x++ {
+			idx := rowOffset + x*4
+			canvasBuf[idx] = 0
+			canvasBuf[idx+1] = 0
+			canvasBuf[idx+2] = 0
+			canvasBuf[idx+3] = 255
+		}
+	}
 
-	// Draw the pattern
+	// 3. Draw pattern directly into canvasBuf
 	curPattern := patternRBox.CurItem()
 	for i := 0; i < squareSize; i += 2 {
 		k := float64(i) / (squareSize - 1)
-		k = 1.0 - math.Pow(k, 1.0/g)
+		k = 1.0 - math.Pow(k, invG)
 
-		cr := r * 255.0 * (1.0 - k)
-		cg := gg * 255.0 * (1.0 - k)
-		cb := b * 255.0 * (1.0 - k)
+		pcr := r * 255.0 * (1.0 - k)
+		pcg := gg * 255.0 * (1.0 - k)
+		pcb := b * 255.0 * (1.0 - k)
+
+		y1 := 80 + i
+		y2 := 80 + i + 1
+		row1 := y1 * width * 4
+		row2 := y2 * width * 4
 
 		for j := 0; j < squareSize; j++ {
 			var alpha1, alpha2 float64
@@ -109,51 +127,64 @@ func drawGammaTunerDemo() {
 
 			switch curPattern {
 			case 0: // Horizontal
-				alpha1 = kj * 255.0
-				alpha2 = 255.0 - alpha1
+				alpha1 = kj
+				alpha2 = 1.0 - kj
 			case 1: // Vertical
 				if j&1 != 0 {
-					alpha1 = kj * 255.0
+					alpha1 = kj
 					alpha2 = alpha1
 				} else {
-					alpha1 = 255.0 - kj*255.0
+					alpha1 = 1.0 - kj
 					alpha2 = alpha1
 				}
 			case 2: // Checkered
 				if j&1 != 0 {
-					alpha1 = kj * 255.0
-					alpha2 = 255.0 - alpha1
+					alpha1 = kj
+					alpha2 = 1.0 - kj
 				} else {
-					alpha2 = kj * 255.0
-					alpha1 = 255.0 - alpha2
+					alpha2 = kj
+					alpha1 = 1.0 - alpha2
 				}
 			}
 
-			agg2d.FillColor(agg.NewColor(uint8(math.Round(cr)), uint8(math.Round(cg)), uint8(math.Round(cb)), uint8(math.Round(alpha1))))
-			agg2d.Rectangle(50+float64(j), 80+float64(i), 51+float64(j), 81+float64(i))
-			
-			agg2d.FillColor(agg.NewColor(uint8(math.Round(cr)), uint8(math.Round(cg)), uint8(math.Round(cb)), uint8(math.Round(alpha2))))
-			agg2d.Rectangle(50+float64(j), 80+float64(i+1), 51+float64(j), 81+float64(i+1))
+			idx1 := row1 + (50+j)*4
+			canvasBuf[idx1] = uint8(pcr * alpha1 + 0.5)
+			canvasBuf[idx1+1] = uint8(pcg * alpha1 + 0.5)
+			canvasBuf[idx1+2] = uint8(pcb * alpha1 + 0.5)
+
+			idx2 := row2 + (50+j)*4
+			canvasBuf[idx2] = uint8(pcr * alpha2 + 0.5)
+			canvasBuf[idx2+1] = uint8(pcg * alpha2 + 0.5)
+			canvasBuf[idx2+2] = uint8(pcb * alpha2 + 0.5)
 		}
 	}
 
-	// Draw vertical strips
-	for i := 0.0; i < squareSize; i++ {
-		k := i / (squareSize - 1)
-		k = 1.0 - math.Pow(k/2.0, 1.0/g)
+	// 4. Draw vertical strips
+	for i := 0; i < squareSize; i++ {
+		k := float64(i) / (squareSize - 1)
+		k = 1.0 - math.Pow(k/2.0, invG)
 		
-		cr := uint8(math.Round(r * 255.0 * (1.0 - k)))
-		cg := uint8(math.Round(gg * 255.0 * (1.0 - k)))
-		cb := uint8(math.Round(b * 255.0 * (1.0 - k)))
-		agg2d.LineColor(agg.NewColor(cr, cg, cb, 255))
-
+		cr := uint8(r * 255.0 * (1.0 - k) + 0.5)
+		cg := uint8(gg * 255.0 * (1.0 - k) + 0.5)
+		cb := uint8(b * 255.0 * (1.0 - k) + 0.5)
+		
+		y := 80 + i
+		rowOffset := y * width * 4
 		for j := 0; j < verStrips; j++ {
-			xc := float64(squareSize * (j + 1) / (verStrips + 1))
-			agg2d.Line(50+xc-10, i+80, 50+xc+10, i+80)
+			xc := squareSize * (j + 1) / (verStrips + 1)
+			for dx := -10; dx <= 10; dx++ {
+				x := 50 + xc + dx
+				if x >= 0 && x < width {
+					idx := rowOffset + x*4
+					canvasBuf[idx] = cr
+					canvasBuf[idx+1] = cg
+					canvasBuf[idx+2] = cb
+				}
+			}
 		}
 	}
 
-	// Render controls
+	// 5. Render controls
 	renderSlider(agg2d, sliderR)
 	renderSlider(agg2d, sliderG)
 	renderSlider(agg2d, sliderB)

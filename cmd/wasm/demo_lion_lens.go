@@ -15,7 +15,20 @@ var (
 	lionLensRadiusSlider *slider.SliderCtrl
 	lionLensX, lionLensY float64
 	lionLensInitialized  bool
+
+	// Reusable pipeline components to reduce allocations
+	lionLensPipelines []lionLensPipeline
 )
+
+type lionLensPipeline struct {
+	pathSource *pathConvAdapter
+	segm       *conv.ConvSegmentator
+	segmSource *segmConvAdapter
+	transMtx   *conv.ConvTransform[*segmConvAdapter, *transform.TransAffine]
+	transMtxS  *transConvAdapter
+	transLens  *conv.ConvTransform[*transConvAdapter, *transform.TransWarpMagnifier]
+	final      *finalLensAdapter
+}
 
 func initLionLensDemo() {
 	if lionLensInitialized {
@@ -36,8 +49,26 @@ func initLionLensDemo() {
 	lionLensRadiusSlider.SetValue(70.0)
 	lionLensRadiusSlider.SetLabel("Radius=%3.2f")
 
-	lionLensX = 200
-	lionLensY = 150
+	lionLensX = float64(width) / 2.0
+	lionLensY = float64(height) / 2.0
+
+	// Initialize pipelines for each path
+	lionLensPipelines = make([]lionLensPipeline, len(lionPaths))
+	mtx := transform.NewTransAffine() // Dummy
+	lens := transform.NewTransWarpMagnifier() // Dummy
+
+	for i := range lionPaths {
+		p := &lionLensPipelines[i]
+		p.pathSource = &pathConvAdapter{ps: &lionPaths[i]}
+		p.segm = conv.NewConvSegmentator(p.pathSource)
+		p.segm.ApproximationScale(1.0)
+		p.segmSource = &segmConvAdapter{segm: p.segm}
+		p.transMtx = conv.NewConvTransform(p.segmSource, mtx)
+		p.transMtxS = &transConvAdapter{ct: p.transMtx}
+		p.transLens = conv.NewConvTransform(p.transMtxS, lens)
+		p.final = &finalLensAdapter{ct: p.transLens}
+	}
+
 	lionLensInitialized = true
 }
 
@@ -64,29 +95,27 @@ func drawLionLensDemo() {
 	mtx.Rotate(agg.Pi)
 	mtx.Translate(float64(width)/2.0, float64(height)/2.0)
 
-	ras := agg2d.GetInternalRasterizer()
-
 	for i := range lionPaths {
 		lp := &lionPaths[i]
-		// Pipeline: Path -> Segmentator -> Transform (Affine) -> Transform (Lens)
-		// We need to segment the path because the lens transform is non-linear
+		pipe := &lionLensPipelines[i]
 		
-		// Use adapter for PathStorageStl to satisfy conv.VertexSource
-		pathSource := &pathConvAdapter{ps: lp}
-		segm := conv.NewConvSegmentator(pathSource)
+		// Update shared transformers in existing pipeline
+		pipe.transMtx.SetTransformer(mtx)
+		pipe.transLens.SetTransformer(lens)
 
-		// Segm adapter to satisfy conv.VertexSource for ConvTransform
-		segmSource := &segmConvAdapter{segm: segm}
-		transMtx := conv.NewConvTransform(segmSource, mtx)
-
-		// TransMtx adapter to satisfy conv.VertexSource for the second ConvTransform
-		transMtxSource := &transConvAdapter{ct: transMtx}
-		transLens := conv.NewConvTransform(transMtxSource, lens)
-
-		ras.Reset()
-		// Final adapter for the rasterizer
-		adapter := &finalLensAdapter{ct: transLens}
-		ras.AddPath(adapter, 0)
+		agg2d.ResetPath()
+		pipe.final.Rewind(0)
+		for {
+			x, y, cmd := pipe.final.ct.Vertex() // Direct access
+			if basics.IsStop(cmd) {
+				break
+			}
+			if basics.IsMoveTo(cmd) {
+				agg2d.MoveTo(x, y)
+			} else if basics.IsLineTo(cmd) {
+				agg2d.LineTo(x, y)
+			}
+		}
 		
 		agg2d.FillColor(agg.NewColor(lp.Color[0], lp.Color[1], lp.Color[2], 255))
 		agg2d.NoLine()

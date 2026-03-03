@@ -100,9 +100,7 @@ type spanGeneratorAdapter struct {
 	sg *span.SpanImageFilterRGBABilinearClip[*distortionsSource, *span.SpanInterpolatorAdaptor[*span.SpanInterpolatorLinear[*transform.TransAffine], span.Distortion]]
 }
 
-func (a *spanGeneratorAdapter) Prepare() {
-	// Prepare is not implemented in SpanImageFilterRGBABilinearClip
-}
+func (a *spanGeneratorAdapter) Prepare() {}
 
 func (a *spanGeneratorAdapter) Generate(colors []color.RGBA8[color.Linear], x, y, length int) {
 	if length > len(colors) {
@@ -123,12 +121,39 @@ var (
 	distortionsPeriod    = 1.0
 	distortionsType      = 0 // 0: Wave, 1: Swirl
 	distortionsImage     *agg.Image
+
+	// Reusable components
+	distortionsRbuf      *buffer.RenderingBufferU8
+	distortionsPixFmt    *pixfmt.PixFmtRGBA32Pre[color.Linear]
+	distortionsRenBase   *renderer.RendererBase[*pixfmt.PixFmtRGBA32Pre[color.Linear], color.RGBA8[color.Linear]]
+	distortionsAlloc     *span.SpanAllocator[color.RGBA8[color.Linear]]
+	distortionsRas       *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
+	distortionsSl        *scanline.ScanlineU8
+	distortionsPath      *path.PathStorageStl
+	distortionsInitialized bool
 )
 
 func initDistortionsDemo() {
+	if distortionsInitialized {
+		return
+	}
+
 	if distortionsImage == nil {
 		distortionsImage = createTestImage(width/2, height/2)
 	}
+
+	distortionsRbuf = buffer.NewRenderingBufferU8()
+	distortionsPixFmt = pixfmt.NewPixFmtRGBA32PreLinear(distortionsRbuf)
+	distortionsRenBase = renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32Pre[color.Linear], color.RGBA8[color.Linear]](distortionsPixFmt)
+	distortionsAlloc = span.NewSpanAllocator[color.RGBA8[color.Linear]]()
+	distortionsRas = rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{},
+		rasterizer.NewRasterizerSlNoClip(),
+	)
+	distortionsSl = scanline.NewScanlineU8()
+	distortionsPath = path.NewPathStorageStl()
+
+	distortionsInitialized = true
 }
 
 func drawDistortionsDemo() {
@@ -144,11 +169,7 @@ func drawDistortionsDemo() {
 	agg2d.ResetTransformations()
 
 	img := ctx.GetImage()
-	rbuf := buffer.NewRenderingBufferU8()
-	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Width()*4)
-
-	pixFmt := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
-	renBase := renderer.NewRendererBaseWithPixfmt[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](pixFmt)
+	distortionsRbuf.Attach(img.Data, img.Width(), img.Height(), img.Width()*4)
 
 	// Image matrices
 	imgW, imgH := float64(distortionsImage.Width()), float64(distortionsImage.Height())
@@ -187,8 +208,6 @@ func drawDistortionsDemo() {
 	imgRbuf.Attach(distortionsImage.Data, distortionsImage.Width(), distortionsImage.Height(), distortionsImage.Width()*4)
 	ipf := imagePixFmt{rbuf: imgRbuf}
 
-	alloc := span.NewSpanAllocator[color.RGBA8[color.Linear]]()
-
 	// Accessor
 	accessor := image.NewImageAccessorClip(&ipf, []basics.Int8u{255, 255, 255, 255})
 	source := &distortionsSource{accessor: accessor, ipf: &ipf}
@@ -197,48 +216,40 @@ func drawDistortionsDemo() {
 	sg := span.NewSpanImageFilterRGBABilinearClipWithParams(source, color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255}, interpolator)
 	adapterSG := &spanGeneratorAdapter{sg: sg}
 
-	// Rasterizer
-	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
-		rasterizer.RasConvInt{},
-		rasterizer.NewRasterizerSlNoClip(),
-	)
-	sl := scanline.NewScanlineU8()
-
 	// Draw an ellipse with distorted image fill
 	r := imgW
 	if imgH < r {
 		r = imgH
 	}
 
-	p := path.NewPathStorageStl()
-
-	// Basic circle path for the ellipse
+	distortionsPath.RemoveAll()
 	numPoints := 100
 	for i := 0; i < numPoints; i++ {
 		angle := 2.0 * math.Pi * float64(i) / float64(numPoints)
 		x := imgW/2 + (r/2-20)*math.Cos(angle)
 		y := imgH/2 + (r/2-20)*math.Sin(angle)
 		if i == 0 {
-			p.MoveTo(x, y)
+			distortionsPath.MoveTo(x, y)
 		} else {
-			p.LineTo(x, y)
+			distortionsPath.LineTo(x, y)
 		}
 	}
-	p.ClosePolygon(basics.PathFlagsNone)
+	distortionsPath.ClosePolygon(basics.PathFlagsNone)
 
 	// Manual rendering loop
-	psAdapter := &pathSourceAdapter{ps: p}
-	ras.AddPath(psAdapter, 0)
+	psAdapter := &pathSourceAdapter{ps: distortionsPath}
+	distortionsRas.Reset()
+	distortionsRas.AddPath(psAdapter, 0)
 
-	if ras.RewindScanlines() {
-		sl.Reset(ras.MinX(), ras.MaxX())
-		for ras.SweepScanline(&rasScanlineAdapter{sl: sl}) {
-			y := sl.Y()
-			for _, spanData := range sl.Spans() {
+	if distortionsRas.RewindScanlines() {
+		distortionsSl.Reset(distortionsRas.MinX(), distortionsRas.MaxX())
+		for distortionsRas.SweepScanline(&rasScanlineAdapter{sl: distortionsSl}) {
+			y := distortionsSl.Y()
+			for _, spanData := range distortionsSl.Spans() {
 				if spanData.Len > 0 {
-					colors := alloc.Allocate(int(spanData.Len))
+					colors := distortionsAlloc.Allocate(int(spanData.Len))
 					adapterSG.Generate(colors, int(spanData.X), y, int(spanData.Len))
-					renBase.BlendColorHspan(int(spanData.X), y, int(spanData.Len), colors, spanData.Covers, basics.CoverFull)
+					distortionsRenBase.BlendColorHspan(int(spanData.X), y, int(spanData.Len), colors, spanData.Covers, basics.CoverFull)
 				}
 			}
 		}

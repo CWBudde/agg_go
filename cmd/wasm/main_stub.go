@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	agg "agg_go"
 )
@@ -15,6 +16,7 @@ import (
 var (
 	width, height = 800, 600
 	ctx           *agg.Context
+	canvasBuf     []uint8
 	lionPaths     []LionPath
 )
 
@@ -39,8 +41,7 @@ func main() {
 	}
 
 	ctx = agg.NewContext(width, height)
-	canvasBuf := ctx.GetImage().Data
-	_ = canvasBuf
+	canvasBuf = ctx.GetImage().Data
 
 	outDir := "."
 	if dir := os.Getenv("AGG_OUT"); dir != "" {
@@ -49,9 +50,12 @@ func main() {
 
 	var failed []string
 	for _, demo := range demos {
+		start := time.Now()
 		if err := renderDemoToFile(demo, outDir); err != nil {
 			fmt.Fprintf(os.Stderr, "error rendering %s: %v\n", demo, err)
 			failed = append(failed, demo)
+		} else {
+			fmt.Printf("Rendered %s in %v\n", demo, time.Since(start))
 		}
 	}
 

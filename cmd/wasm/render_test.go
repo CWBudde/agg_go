@@ -1,0 +1,120 @@
+package main
+
+import (
+	"os"
+	"testing"
+
+	agg "agg_go"
+)
+
+func BenchmarkDemos(b *testing.B) {
+	width, height = 800, 600
+	ctx = agg.NewContext(width, height)
+	canvasBuf = ctx.GetImage().Data
+
+	demos := []string{
+		"agg2d", "lion", "gradients", "aa", "blend",
+		"bspline", "dash", "gouraud", "imagefilters",
+		"sbool", "aatest", "convstroke", "convcontour", "gamma", "lionoutline",
+		"roundedrect", "component", "alphagrad",
+		"rasterizers", "flash_rasterizer", "perspective", "bezier_div",
+		"gouraud_mesh", "trans_curve", "distortions", "trans_polar",
+		"trans_curve2", "circles", "blur", "simple_blur",
+		"gamma_ctrl", "gamma_tuner", "lion_lens",
+	}
+
+	for _, demo := range demos {
+		b.Run(demo, func(b *testing.B) {
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				renderDemoForBenchmark(demo)
+			}
+		})
+	}
+}
+
+func renderDemoForBenchmark(demoType string) {
+	if demoType != "lion" && demoType != "lionoutline" {
+		lionPaths = nil
+	}
+	if demoType != "imagefilters" {
+		testImage = nil
+	}
+
+	ctx.Clear(agg.White)
+
+	switch demoType {
+	case "agg2d":
+		drawAgg2DDemo()
+	case "lion":
+		drawLionDemo()
+	case "gradients":
+		drawGradientsDemo()
+	case "aa":
+		drawAADemo()
+	case "blend":
+		drawBlendModesDemo()
+	case "bspline":
+		drawBSplineDemo()
+	case "dash":
+		drawDashDemo()
+	case "gouraud":
+		drawGouraudDemo()
+	case "imagefilters":
+		drawImageFiltersDemo()
+	case "sbool":
+		drawSBoolDemo()
+	case "aatest":
+		drawAATestDemo()
+	case "convstroke":
+		drawConvStrokeDemo()
+	case "convcontour":
+		drawConvContourDemo()
+	case "gamma":
+		drawGammaCorrectionDemo()
+	case "lionoutline":
+		drawLionOutlineDemo()
+	case "roundedrect":
+		drawRoundedRectDemo()
+	case "component":
+		drawComponentRenderingDemo()
+	case "alphagrad":
+		drawAlphaGradientDemo()
+	case "rasterizers":
+		drawRasterizersDemo()
+	case "flash_rasterizer":
+		drawFlashRasterizerDemo()
+	case "perspective":
+		drawPerspectiveDemo()
+	case "bezier_div":
+		drawBezierDivDemo()
+	case "gouraud_mesh":
+		drawGouraudMeshDemo()
+	case "trans_curve":
+		drawTransCurveDemo()
+	case "distortions":
+		drawDistortionsDemo()
+	case "trans_polar":
+		drawTransPolarDemo()
+	case "trans_curve2":
+		drawTransCurve2Demo()
+	case "circles":
+		drawCirclesScatterDemo()
+	case "blur":
+		drawBlurDemo()
+	case "simple_blur":
+		drawSimpleBlurDemo()
+	case "gamma_ctrl":
+		drawGammaCtrlDemo()
+	case "gamma_tuner":
+		drawGammaTunerDemo()
+	case "lion_lens":
+		drawLionLensDemo()
+	}
+}
+
+func TestMain(m *testing.M) {
+	// Initialize things needed for demos
+	// We might need to mock some JS things if any, but main_stub.go should be fine.
+	os.Exit(m.Run())
+}

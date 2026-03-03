@@ -7,6 +7,7 @@ import (
 
 	agg "agg_go"
 	"agg_go/internal/curves"
+	"agg_go/internal/shapes"
 )
 
 type scatterPoint struct {
@@ -26,10 +27,15 @@ var (
 	sizeScale   = 0.5
 	zRangeLow   = 0.2
 	zRangeHigh  = 0.8
+
+	// Reusable components
+	circlesEllipse *shapes.Ellipse
+	circlesAdapter *ellipseVS
+	circlesInitialized bool
 )
 
 func initCircles() {
-	if len(circlesPoints) > 0 {
+	if circlesInitialized {
 		return
 	}
 
@@ -44,7 +50,11 @@ func initCircles() {
 	splineG = curves.NewBSplineFromPoints(splineGX, splineGY)
 	splineB = curves.NewBSplineFromPoints(splineBX, splineBY)
 
+	circlesEllipse = shapes.NewEllipse()
+	circlesAdapter = &ellipseVS{circlesEllipse}
+
 	generateCircles()
+	circlesInitialized = true
 }
 
 func generateCircles() {
@@ -78,6 +88,9 @@ func drawCirclesScatterDemo() {
 	agg2d.ResetTransformations()
 	agg2d.NoLine()
 
+	ras := agg2d.GetInternalRasterizer()
+	radius := sizeScale * 5.0
+
 	for _, p := range circlesPoints {
 		z := p.z
 		alpha := 1.0
@@ -90,17 +103,18 @@ func drawCirclesScatterDemo() {
 
 		if alpha > 1.0 {
 			alpha = 1.0
-		}
-		if alpha < 0.0 {
-			alpha = 0.0
+		} else if alpha <= 0.0 {
+			continue
 		}
 
-		if alpha > 0.0 {
-			color := p.color.WithAlphaF(alpha)
-			agg2d.FillColor(color)
-			radius := sizeScale * 5.0
-			agg2d.FillCircle(p.x, p.y, radius)
-		}
+		color := p.color.WithAlphaF(alpha)
+		agg2d.FillColor(color)
+		
+		// Optimization: Use internal rasterizer directly to avoid repeated overhead
+		circlesEllipse.Init(p.x, p.y, radius, radius, 8, false) // Fewer steps for small circles
+		ras.Reset()
+		ras.AddPath(circlesAdapter, 0)
+		agg2d.DrawPath(agg.FillOnly)
 	}
 
 	// Update for animation (idle loop in original)
@@ -110,8 +124,7 @@ func drawCirclesScatterDemo() {
 		circlesPoints[i].z += rand.Float64()*selectivity*0.01 - selectivity*0.005
 		if circlesPoints[i].z < 0.0 {
 			circlesPoints[i].z = 0.0
-		}
-		if circlesPoints[i].z > 1.0 {
+		} else if circlesPoints[i].z > 1.0 {
 			circlesPoints[i].z = 1.0
 		}
 	}
