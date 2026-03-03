@@ -1055,6 +1055,12 @@ const demoDescriptions = {
     "Along-a-curve transformation. Bends complex vector shapes (the lion) along an interactive B-Spline path. Drag the six control points to reshape the path. Toggle animation to watch the lion flow along the moving curve.",
   trans_curve2:
     "Double path transformation. Bends vector shapes (the lion) between two interactive B-Spline curves. Drag the 12 control points to reshape the envelope. Toggle animation to watch the lion morph between the moving curves.",
+  gamma_ctrl:
+    "Interactive gamma correction control. Port of AGG's gamma_ctrl demo. Use the spline control points to adjust the gamma curve and see its effect on various primitives, text, and rotated shapes.",
+  gamma_tuner:
+    "RGB gamma tuning tool. Port of AGG's gamma_tuner demo. Calibrate gamma for R, G, and B channels independently using horizontal, vertical, and checkered test patterns.",
+  lion_lens:
+    "Dynamic lens magnification effect. Port of AGG's lion_lens demo. Applies a TransWarpMagnifier to the lion vector art. Click and drag to move the lens; use the sliders to adjust scale and radius.",
   distortions:
     "Animated image distortions. Applies Wave and Swirl effects to a procedurally generated image using custom coordinate distortion interpolators. Click and drag to move the distortion center.",
   trans_polar:

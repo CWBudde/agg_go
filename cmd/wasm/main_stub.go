@@ -34,7 +34,7 @@ func main() {
 			"roundedrect", "component", "alphagrad",
 			"rasterizers", "flash_rasterizer", "perspective", "bezier_div",
 			"gouraud_mesh", "trans_curve", "distortions", "trans_polar",
-			"trans_curve2", "circles", "blur", "simple_blur",
+			"trans_curve2", "gamma_ctrl", "gamma_tuner", "lion_lens", "circles", "blur", "simple_blur",
 		}
 	}
 
@@ -126,6 +126,12 @@ func renderDemoToFile(demoType, outDir string) error {
 		drawTransPolarDemo()
 	case "trans_curve2":
 		drawTransCurve2Demo()
+	case "gamma_ctrl":
+		drawGammaCtrlDemo()
+	case "gamma_tuner":
+		drawGammaTunerDemo()
+	case "lion_lens":
+		drawLionLensDemo()
 	case "circles":
 		drawCirclesScatterDemo()
 	case "blur":
