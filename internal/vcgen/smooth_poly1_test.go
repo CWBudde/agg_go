@@ -454,16 +454,22 @@ func TestVCGenSmoothPoly1_CornerCalculation(t *testing.T) {
 		}
 	}
 
-	// Should have generated control points for the corner
+	// Should have generated Curve4 vertices (polygon endpoints + control points).
 	if len(curve4Points) == 0 {
-		t.Error("Right angle corner should generate Curve4 control points")
+		t.Error("Right angle corner should generate Curve4 vertices")
 	}
 
-	// Control points should be reasonable (not at original corner position)
+	// At least one Curve4 vertex should be offset from the corner (50,50),
+	// i.e. there are non-trivial control points in addition to the endpoint.
+	hasOffset := false
 	for _, pt := range curve4Points {
-		if pt.x == 50 && pt.y == 50 {
-			t.Error("Control points should be offset from original corner")
+		if pt.x != 50 || pt.y != 50 {
+			hasOffset = true
+			break
 		}
+	}
+	if !hasOffset {
+		t.Error("Expected at least one Curve4 control point offset from the corner (50,50)")
 	}
 }
 
