@@ -217,17 +217,17 @@ func TestConvSmoothPoly1_Triangle(t *testing.T) {
 		t.Errorf("First vertex should be MoveTo, got %v", vertices_result[0].Cmd)
 	}
 
-	// Should have Curve4 commands for corner smoothing
-	hasCurve4 := false
+	// An open 3-point path uses Curve3 (quadratic) at boundaries, not Curve4.
+	hasCurve := false
 	for _, v := range vertices_result {
-		if v.Cmd == basics.PathCmdCurve4 {
-			hasCurve4 = true
+		if v.Cmd == basics.PathCmdCurve3 || v.Cmd == basics.PathCmdCurve4 {
+			hasCurve = true
 			break
 		}
 	}
 
-	if !hasCurve4 {
-		t.Error("Triangle smoothing should generate Curve4 commands")
+	if !hasCurve {
+		t.Error("Triangle smoothing should generate Curve3 or Curve4 commands")
 	}
 }
 
