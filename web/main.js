@@ -41,9 +41,12 @@ const ALL_DEMO_PARAMS = [
   "y1",
   "x2",
   "y2",
-  // dash
+  // conv_dash_marker
   "dw",
+  "ds",
+  "dcap",
   "dc",
+  "deo",
   "dx0",
   "dy0",
   "dx1",
@@ -155,12 +158,15 @@ const demoURLHandlers = {
     },
   },
 
-  dash: {
+  conv_dash_marker: {
     persist() {
       const n = getDashNodes();
       updateURL({
         dw: parseFloat(document.getElementById("dashWidthSlider").value),
+        ds: parseFloat(document.getElementById("dashSmoothSlider").value),
+        dcap: document.getElementById("dashCapSelector").value,
         dc: document.getElementById("dashClosed").checked ? "1" : "0",
+        deo: document.getElementById("dashEvenOdd").checked ? "1" : "0",
         dx0: n.x0.toFixed(1),
         dy0: n.y0.toFixed(1),
         dx1: n.x1.toFixed(1),
@@ -176,10 +182,26 @@ const demoURLHandlers = {
         document.getElementById("dashWidthSlider").value = val;
         document.getElementById("dashWidthValue").textContent = val;
       }
+      if (p.has("ds")) {
+        const val = parseFloat(p.get("ds"));
+        setDashSmooth(val);
+        document.getElementById("dashSmoothSlider").value = val;
+        document.getElementById("dashSmoothValue").textContent = val.toFixed(2);
+      }
+      if (p.has("dcap")) {
+        const val = parseInt(p.get("dcap"));
+        setDashCap(val);
+        document.getElementById("dashCapSelector").value = val;
+      }
       if (p.has("dc")) {
         const checked = p.get("dc") === "1";
         setDashClosed(checked);
         document.getElementById("dashClosed").checked = checked;
+      }
+      if (p.has("deo")) {
+        const checked = p.get("deo") === "1";
+        setDashEvenOdd(checked);
+        document.getElementById("dashEvenOdd").checked = checked;
       }
       const keys = ["dx0", "dy0", "dx1", "dy1", "dx2", "dy2"];
       if (keys.every((k) => p.has(k))) {
@@ -622,17 +644,34 @@ async function init() {
       renderSelectedDemo();
     });
 
-    // dash controls
+    // conv_dash_marker controls
     document.getElementById("dashWidthSlider").addEventListener("input", () => {
       const val = parseFloat(document.getElementById("dashWidthSlider").value);
       document.getElementById("dashWidthValue").textContent = val;
       setDashWidth(val);
-      persistDemoParams("dash");
+      persistDemoParams("conv_dash_marker");
+      renderSelectedDemo();
+    });
+    document.getElementById("dashSmoothSlider").addEventListener("input", () => {
+      const val = parseFloat(document.getElementById("dashSmoothSlider").value);
+      document.getElementById("dashSmoothValue").textContent = val.toFixed(2);
+      setDashSmooth(val);
+      persistDemoParams("conv_dash_marker");
+      renderSelectedDemo();
+    });
+    document.getElementById("dashCapSelector").addEventListener("change", () => {
+      setDashCap(parseInt(document.getElementById("dashCapSelector").value));
+      persistDemoParams("conv_dash_marker");
       renderSelectedDemo();
     });
     document.getElementById("dashClosed").addEventListener("change", () => {
       setDashClosed(document.getElementById("dashClosed").checked);
-      persistDemoParams("dash");
+      persistDemoParams("conv_dash_marker");
+      renderSelectedDemo();
+    });
+    document.getElementById("dashEvenOdd").addEventListener("change", () => {
+      setDashEvenOdd(document.getElementById("dashEvenOdd").checked);
+      persistDemoParams("conv_dash_marker");
       renderSelectedDemo();
     });
 
@@ -965,7 +1004,7 @@ function syncControlVisibility(demoType) {
   document.getElementById("aaControls").style.display =
     demoType === "aa" ? "flex" : "none";
   document.getElementById("dashControls").style.display =
-    demoType === "dash" ? "flex" : "none";
+    demoType === "conv_dash_marker" ? "flex" : "none";
   document.getElementById("gouraudControls").style.display =
     demoType === "gouraud" ? "flex" : "none";
   document.getElementById("imageFilterControls").style.display =
@@ -1007,7 +1046,7 @@ const demoDescriptions = {
     "Compositing and blend modes. Showcases how different layers can be combined using standard and advanced blend modes like Multiply, Screen, and Overlay.",
   bspline:
     "B-Spline curve smoothing. Demonstrates the creation of smooth, continuous curves from a set of control points.",
-  dash: "Advanced line styling. Showcases various dash patterns and line thicknesses applied to both simple lines and complex paths.",
+  conv_dash_marker: "Port of AGG's conv_dash_marker demo. Applies conv_smooth_poly1 to soften corners, then conv_dash to create dash patterns, and conv_marker to place arrowheads at line endpoints. Adjust smoothness, stroke width, cap style, and fill rule. Drag the three control points to reshape the paths.",
   gouraud:
     "Smooth color interpolation across triangles. Demonstrates AGG's capability to render gradient-shaded meshes with sub-pixel precision and adjustable dilation.",
   imagefilters:
