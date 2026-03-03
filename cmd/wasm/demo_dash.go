@@ -1,4 +1,4 @@
-// Based on the original AGG examples: conv_dash_marker.cpp.
+// Port of AGG C++ conv_dash_marker.cpp – dash/marker interactive demo.
 package main
 
 import (
@@ -6,137 +6,277 @@ import (
 
 	agg "agg_go"
 	"agg_go/internal/basics"
+	"agg_go/internal/buffer"
+	"agg_go/internal/color"
+	"agg_go/internal/conv"
 	"agg_go/internal/path"
+	"agg_go/internal/pixfmt"
+	"agg_go/internal/rasterizer"
+	"agg_go/internal/renderer"
+	"agg_go/internal/scanline"
+	"agg_go/internal/shapes"
+	"agg_go/internal/vcgen"
 )
+
+// --- State ---
 
 var (
-	dashTriangleX = [3]float64{157, 469, 243}
-	dashTriangleY = [3]float64{160, 270, 410}
-	dashWidth     = 3.0
-	dashClosed    = true
-	dashSelected  = -1
-	dashDragDX    = 0.0
-	dashDragDY    = 0.0
+	// Control points matching C++ constructor: m_x[i] = 57/369/143 + 100, m_y[i] = 60/170/310.
+	dashX = [3]float64{157, 469, 243}
+	dashY = [3]float64{60, 170, 310}
+
+	dashWidth  = 3.0 // m_width default
+	dashSmooth = 1.0 // m_smooth default
+	dashClosed = false
+	dashCap    = 0 // 0=butt, 1=square, 2=round
+
+	dashIdx = -1
+	dashDX  = 0.0
+	dashDY  = 0.0
 )
 
-func drawDashDemo() {
-	agg2d := ctx.GetAgg2D()
-	agg2d.ResetTransformations()
+// --- Path builder ---
 
-	// 1. Static patterns preview (at the top)
-	agg2d.LineColor(agg.NewColor(100, 100, 100, 255))
-	agg2d.NoFill()
-	patterns := [][]float64{
-		{10, 5},
-		{20, 10, 5, 5},
-		{5, 10},
-	}
-	for i, p := range patterns {
-		y := 30.0 + float64(i)*30.0
-		agg2d.LineWidth(2.0)
-		agg2d.RemoveAllDashes()
-		for j := 0; j < len(p); j += 2 {
-			agg2d.AddDash(p[j], p[j+1])
-		}
-		agg2d.Line(50, y, 750, y)
-	}
+// buildDashPath creates the two-sub-path storage matching the C++ on_draw path.
+func buildDashPath() *path.PathStorageStl {
+	cx := (dashX[0] + dashX[1] + dashX[2]) / 3
+	cy := (dashY[0] + dashY[1] + dashY[2]) / 3
 
-	// 2. Interactive Polygon
 	ps := path.NewPathStorageStl()
-	ps.MoveTo(dashTriangleX[0], dashTriangleY[0])
-	ps.LineTo(dashTriangleX[1], dashTriangleY[1])
-	// Add a middle point like in the original demo
-	midX := (dashTriangleX[0] + dashTriangleX[1] + dashTriangleX[2]) / 3.0
-	midY := (dashTriangleY[0] + dashTriangleY[1] + dashTriangleY[2]) / 3.0
-	ps.LineTo(midX, midY)
-	ps.LineTo(dashTriangleX[2], dashTriangleY[2])
 
+	// Sub-path 1: P0 → P1 → centroid → P2
+	ps.MoveTo(dashX[0], dashY[0])
+	ps.LineTo(dashX[1], dashY[1])
+	ps.LineTo(cx, cy)
+	ps.LineTo(dashX[2], dashY[2])
 	if dashClosed {
 		ps.ClosePolygon(basics.PathFlagsNone)
 	}
 
-	// 3. Draw filled semi-transparent background
-	agg2d.FillColor(agg.NewColor(200, 150, 50, 100))
-	agg2d.NoLine()
-	agg2d.ResetPath()
-	// Manual copy from PathStorage to Agg2D path
-	ps.Rewind(0)
+	// Sub-path 2: mid01 → mid12 → mid20
+	ps.MoveTo((dashX[0]+dashX[1])/2, (dashY[0]+dashY[1])/2)
+	ps.LineTo((dashX[1]+dashX[2])/2, (dashY[1]+dashY[2])/2)
+	ps.LineTo((dashX[2]+dashX[0])/2, (dashY[2]+dashY[0])/2)
+	if dashClosed {
+		ps.ClosePolygon(basics.PathFlagsNone)
+	}
+
+	return ps
+}
+
+// --- Vertex source adapters ---
+
+// pathToConvSource adapts path.PathStorageStl (NextVertex uint32) → conv.VertexSource.
+type pathToConvSource struct{ ps *path.PathStorageStl }
+
+func (a *pathToConvSource) Rewind(pathID uint) { a.ps.Rewind(pathID) }
+func (a *pathToConvSource) Vertex() (x, y float64, cmd basics.PathCommand) {
+	vx, vy, c := a.ps.NextVertex()
+	return vx, vy, basics.PathCommand(c)
+}
+
+// convToRasSource adapts conv.VertexSource → rasterizer.VertexSource.
+type convToRasSource struct{ src conv.VertexSource }
+
+func (a *convToRasSource) Rewind(pathID uint32) { a.src.Rewind(uint(pathID)) }
+func (a *convToRasSource) Vertex(x, y *float64) uint32 {
+	vx, vy, cmd := a.src.Vertex()
+	*x, *y = vx, vy
+	return uint32(cmd)
+}
+
+// arrowheadShapes adapts shapes.Arrowhead → conv.MarkerShapes.
+type arrowheadShapes struct{ ah *shapes.Arrowhead }
+
+func (a *arrowheadShapes) Rewind(shapeIndex uint) { a.ah.Rewind(uint32(shapeIndex)) }
+func (a *arrowheadShapes) Vertex() (x, y float64, cmd basics.PathCommand) {
+	var vx, vy float64
+	c := a.ah.Vertex(&vx, &vy)
+	return vx, vy, c
+}
+
+// --- addPath helper: feeds a conv.VertexSource into agg2d via MoveTo/LineTo ---
+
+func dashAddToPath(a *agg.Agg2D, src conv.VertexSource) {
+	src.Rewind(0)
 	for {
-		x, y, cmd := ps.NextVertex()
-		if basics.IsStop(basics.PathCommand(cmd)) {
+		x, y, cmd := src.Vertex()
+		if basics.IsStop(cmd) {
 			break
 		}
-		if basics.IsMoveTo(basics.PathCommand(cmd)) {
-			agg2d.MoveTo(x, y)
-		} else {
-			agg2d.LineTo(x, y)
+		switch {
+		case basics.IsMoveTo(cmd):
+			a.MoveTo(x, y)
+		case basics.IsLineTo(cmd):
+			a.LineTo(x, y)
+		case basics.IsClosed(uint32(cmd)):
+			a.ClosePolygon()
 		}
-	}
-	if dashClosed {
-		agg2d.ClosePolygon()
-	}
-	agg2d.DrawPath(agg.FillOnly)
-
-	// 4. Draw dashed outline
-	agg2d.NoFill()
-	agg2d.LineColor(agg.Black)
-	agg2d.LineWidth(dashWidth)
-	agg2d.RemoveAllDashes()
-	agg2d.AddDash(20, 5)
-	agg2d.AddDash(5, 5)
-
-	agg2d.ResetPath()
-	ps.Rewind(0)
-	for {
-		x, y, cmd := ps.NextVertex()
-		if basics.IsStop(basics.PathCommand(cmd)) {
-			break
-		}
-		if basics.IsMoveTo(basics.PathCommand(cmd)) {
-			agg2d.MoveTo(x, y)
-		} else {
-			agg2d.LineTo(x, y)
-		}
-	}
-	if dashClosed {
-		agg2d.ClosePolygon()
-	}
-	agg2d.DrawPath(agg.StrokeOnly)
-
-	// 5. Draw interactive handles
-	for i := 0; i < 3; i++ {
-		agg2d.FillColor(agg.NewColor(200, 50, 20, 150))
-		agg2d.NoLine()
-		agg2d.FillCircle(dashTriangleX[i], dashTriangleY[i], 6)
-		agg2d.LineColor(agg.Black)
-		agg2d.LineWidth(1.0)
-		agg2d.DrawCircle(dashTriangleX[i], dashTriangleY[i], 6)
 	}
 }
 
-func handleDashMouseDown(x, y float64) bool {
-	dashSelected = -1
+// --- Drawing ---
+
+func drawDashDemo() {
+	a := ctx.GetAgg2D()
+	a.ResetTransformations()
+
+	ps := buildDashPath()
+	rawSrc := &pathToConvSource{ps: ps}
+
+	// === Layer 1: raw fill (amber rgba(0.7, 0.5, 0.1, 0.5)) ===
+	a.ResetPath()
+	dashAddToPath(a, rawSrc)
+	a.FillColor(agg.RGBA(0.7, 0.5, 0.1, 0.5))
+	a.NoLine()
+	a.DrawPath(agg.FillOnly)
+
+	// === Layer 2: smooth poly fill (light blue rgba(0.1, 0.5, 0.7, 0.1)) ===
+	smooth1 := conv.NewConvSmoothPoly1Curve(rawSrc)
+	smooth1.SetSmoothValue(dashSmooth)
+	a.ResetPath()
+	dashAddToPath(a, smooth1)
+	a.FillColor(agg.RGBA(0.1, 0.5, 0.7, 0.1))
+	a.NoLine()
+	a.DrawPath(agg.FillOnly)
+
+	// === Layer 3: smooth poly stroke outline (green rgba(0.0, 0.6, 0.0, 0.8)) ===
+	smooth2 := conv.NewConvSmoothPoly1Curve(rawSrc)
+	smooth2.SetSmoothValue(dashSmooth)
+	a.ResetPath()
+	dashAddToPath(a, smooth2)
+	a.LineColor(agg.RGBA(0, 0.6, 0, 0.8))
+	a.LineWidth(1.0)
+	a.NoFill()
+	a.DrawPath(agg.StrokeOnly)
+
+	// === Layer 4: dashed smooth stroke + arrowhead markers (black) ===
+	// Requires internal rasterizer to wire VCGenMarkersTerm → ConvMarker → Arrowhead.
+	img := ctx.GetImage()
+	rbuf := buffer.NewRenderingBufferU8()
+	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Width()*4)
+	pixFmt := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
+	renBase := renderer.NewRendererBaseWithPixfmt[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](pixFmt)
+	sl := scanline.NewScanlineU8()
+	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{},
+		rasterizer.NewRasterizerSlNoClip(),
+	)
+
+	// Smooth + curve-flatten source for dashing
+	curve := conv.NewConvSmoothPoly1Curve(rawSrc)
+	curve.SetSmoothValue(dashSmooth)
+
+	// Markers terminal (collects start/end positions for arrowhead placement)
+	markers := vcgen.NewVCGenMarkersTerm()
+
+	// Dash on smooth curve, feeding marker positions to markers terminal
+	dash := conv.NewConvDashWithMarkers(curve, markers)
+	dash.AddDash(20, 5)
+	dash.AddDash(5, 5)
+	dash.AddDash(5, 5)
+	dash.DashStart(10)
+
+	// Stroke the dash
+	stroke := conv.NewConvStroke(dash)
+	stroke.SetWidth(dashWidth)
+	switch dashCap {
+	case 1:
+		stroke.SetLineCap(basics.SquareCap)
+	case 2:
+		stroke.SetLineCap(basics.RoundCap)
+	default:
+		stroke.SetLineCap(basics.ButtCap)
+	}
+
+	// Arrowhead geometry (k = pow(width, 0.7) as in C++)
+	k := math.Pow(dashWidth, 0.7)
+	ah := shapes.NewArrowhead()
+	ah.Head(4*k, 4*k, 3*k, 2*k)
+	if !dashClosed {
+		ah.Tail(1*k, 1.5*k, 3*k, 5*k)
+	}
+
+	// ConvMarker places the arrowhead at each line endpoint recorded by markers
+	arrow := conv.NewConvMarker(markers, &arrowheadShapes{ah: ah})
+
+	// Add stroked dash path and arrowhead markers to rasterizer
+	ras.AddPath(&convToRasSource{src: stroke}, 0)
+	ras.AddPath(&convToRasSource{src: arrow}, 0)
+
+	black := color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255}
+	if ras.RewindScanlines() {
+		sl.Reset(ras.MinX(), ras.MaxX())
+		for ras.SweepScanline(&rasScanlineAdapter{sl: sl}) {
+			y := sl.Y()
+			for _, span := range sl.Spans() {
+				if span.Len > 0 {
+					renBase.BlendSolidHspan(int(span.X), y, int(span.Len), black, span.Covers)
+				}
+			}
+		}
+	}
+
+	// === Handles ===
 	for i := 0; i < 3; i++ {
-		dist := math.Sqrt(math.Pow(x-dashTriangleX[i], 2) + math.Pow(y-dashTriangleY[i], 2))
-		if dist < 15 {
-			dashSelected = i
-			dashDragDX = x - dashTriangleX[i]
-			dashDragDY = y - dashTriangleY[i]
+		drawHandle(dashX[i], dashY[i])
+	}
+}
+
+// --- Mouse handlers ---
+
+// dashPointInTriangle returns true if (px, py) is inside the triangle.
+func dashPointInTriangle(ax, ay, bx, by, cx, cy, px, py float64) bool {
+	d1 := (px-bx)*(ay-by) - (ax-bx)*(py-by)
+	d2 := (px-cx)*(by-cy) - (bx-cx)*(py-cy)
+	d3 := (px-ax)*(cy-ay) - (cx-ax)*(py-ay)
+	hasNeg := (d1 < 0) || (d2 < 0) || (d3 < 0)
+	hasPos := (d1 > 0) || (d2 > 0) || (d3 > 0)
+	return !(hasNeg && hasPos)
+}
+
+func handleDashMouseDown(x, y float64) bool {
+	dashIdx = -1
+	// Hit-test individual control points first (radius 20 px, matching C++).
+	for i := 0; i < 3; i++ {
+		if math.Sqrt((x-dashX[i])*(x-dashX[i])+(y-dashY[i])*(y-dashY[i])) < 20 {
+			dashDX = x - dashX[i]
+			dashDY = y - dashY[i]
+			dashIdx = i
 			return true
 		}
+	}
+	// Click inside the triangle → move all three points together.
+	if dashPointInTriangle(dashX[0], dashY[0], dashX[1], dashY[1], dashX[2], dashY[2], x, y) {
+		dashDX = x - dashX[0]
+		dashDY = y - dashY[0]
+		dashIdx = 3
+		return true
 	}
 	return false
 }
 
 func handleDashMouseMove(x, y float64) bool {
-	if dashSelected != -1 {
-		dashTriangleX[dashSelected] = x - dashDragDX
-		dashTriangleY[dashSelected] = y - dashDragDY
+	if dashIdx == 3 {
+		// Move whole polygon: new position of P0 is (x-dashDX, y-dashDY).
+		dx := x - dashDX
+		dy := y - dashDY
+		dashX[1] -= dashX[0] - dx
+		dashY[1] -= dashY[0] - dy
+		dashX[2] -= dashX[0] - dx
+		dashY[2] -= dashY[0] - dy
+		dashX[0] = dx
+		dashY[0] = dy
+		return true
+	}
+	if dashIdx >= 0 {
+		dashX[dashIdx] = x - dashDX
+		dashY[dashIdx] = y - dashDY
 		return true
 	}
 	return false
 }
 
 func handleDashMouseUp() {
-	dashSelected = -1
+	dashIdx = -1
 }

@@ -530,20 +530,20 @@ func setRRNodes(this js.Value, args []js.Value) interface{} {
 
 func getDashNodes(this js.Value, args []js.Value) interface{} {
 	return map[string]interface{}{
-		"x0": dashTriangleX[0], "y0": dashTriangleY[0],
-		"x1": dashTriangleX[1], "y1": dashTriangleY[1],
-		"x2": dashTriangleX[2], "y2": dashTriangleY[2],
+		"x0": dashX[0], "y0": dashY[0],
+		"x1": dashX[1], "y1": dashY[1],
+		"x2": dashX[2], "y2": dashY[2],
 	}
 }
 
 func setDashNodes(this js.Value, args []js.Value) interface{} {
 	if len(args) >= 6 {
-		dashTriangleX[0] = args[0].Float()
-		dashTriangleY[0] = args[1].Float()
-		dashTriangleX[1] = args[2].Float()
-		dashTriangleY[1] = args[3].Float()
-		dashTriangleX[2] = args[4].Float()
-		dashTriangleY[2] = args[5].Float()
+		dashX[0] = args[0].Float()
+		dashY[0] = args[1].Float()
+		dashX[1] = args[2].Float()
+		dashY[1] = args[3].Float()
+		dashX[2] = args[4].Float()
+		dashY[2] = args[5].Float()
 	}
 	return nil
 }
