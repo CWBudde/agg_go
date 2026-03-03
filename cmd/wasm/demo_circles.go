@@ -29,8 +29,8 @@ var (
 	zRangeHigh  = 0.8
 
 	// Reusable components
-	circlesEllipse *shapes.Ellipse
-	circlesAdapter *ellipseVS
+	circlesEllipse     *shapes.Ellipse
+	circlesAdapter     *ellipseVS
 	circlesInitialized bool
 )
 
@@ -109,7 +109,7 @@ func drawCirclesScatterDemo() {
 
 		color := p.color.WithAlphaF(alpha)
 		agg2d.FillColor(color)
-		
+
 		// Optimization: Use internal rasterizer directly to avoid repeated overhead
 		circlesEllipse.Init(p.x, p.y, radius, radius, 8, false) // Fewer steps for small circles
 		ras.Reset()

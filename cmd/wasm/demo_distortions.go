@@ -123,13 +123,13 @@ var (
 	distortionsImage     *agg.Image
 
 	// Reusable components
-	distortionsRbuf      *buffer.RenderingBufferU8
-	distortionsPixFmt    *pixfmt.PixFmtRGBA32Pre[color.Linear]
-	distortionsRenBase   *renderer.RendererBase[*pixfmt.PixFmtRGBA32Pre[color.Linear], color.RGBA8[color.Linear]]
-	distortionsAlloc     *span.SpanAllocator[color.RGBA8[color.Linear]]
-	distortionsRas       *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
-	distortionsSl        *scanline.ScanlineU8
-	distortionsPath      *path.PathStorageStl
+	distortionsRbuf        *buffer.RenderingBufferU8
+	distortionsPixFmt      *pixfmt.PixFmtRGBA32Pre[color.Linear]
+	distortionsRenBase     *renderer.RendererBase[*pixfmt.PixFmtRGBA32Pre[color.Linear], color.RGBA8[color.Linear]]
+	distortionsAlloc       *span.SpanAllocator[color.RGBA8[color.Linear]]
+	distortionsRas         *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
+	distortionsSl          *scanline.ScanlineU8
+	distortionsPath        *path.PathStorageStl
 	distortionsInitialized bool
 )
 

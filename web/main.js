@@ -602,22 +602,11 @@ async function init() {
 
     // --- Event listeners ---
 
-    // Limit demo selector height to 10 items
-    selector.addEventListener("mousedown", () => {
-      if (selector.options.length > 10) {
-        selector.size = 10;
-      }
-    });
     selector.addEventListener("change", () => {
-      selector.size = 1;
-
       clearDemoParams();
       updateURL({ demo: selector.value });
       syncControlVisibility(selector.value);
       renderSelectedDemo();
-    });
-    selector.addEventListener("blur", () => {
-      selector.size = 1;
     });
 
     document

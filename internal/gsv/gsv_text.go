@@ -5,7 +5,6 @@ package gsv
 import (
 	"encoding/binary"
 	"os"
-	"unsafe"
 
 	"agg_go/internal/basics"
 )
@@ -41,9 +40,8 @@ type GSVText struct {
 	loadedFont []byte // Font data loaded from file
 
 	// Rendering state
-	status    Status
-	bigEndian bool
-	flip      bool // Flip Y coordinate
+	status Status
+	flip   bool // Flip Y coordinate
 
 	// Font parsing data
 	indices     []byte  // Character index table
@@ -56,22 +54,15 @@ type GSVText struct {
 
 // NewGSVText creates a new GSV text renderer with default settings.
 func NewGSVText() *GSVText {
-	gsv := &GSVText{
-		x:         0.0,
-		y:         0.0,
-		startX:    0.0,
-		width:     10.0,
-		height:    0.0,
-		space:     0.0,
-		lineSpace: 0.0,
-		text:      "",
-		curChar:   0,
-		font:      GSVDefaultFont,
-		status:    StatusInitial,
-		bigEndian: isBigEndian(),
-		flip:      false,
+	return &GSVText{
+		x:      0.0,
+		y:      0.0,
+		startX: 0.0,
+		width:  10.0,
+		height: 0.0,
+		font:   GSVDefaultFont,
+		status: StatusInitial,
 	}
-	return gsv
 }
 
 // SetFont sets the font data to use for rendering.
@@ -131,34 +122,72 @@ func (gsv *GSVText) SetText(text string) {
 	gsv.text = text
 }
 
-// TextWidth calculates the width of the current text when rendered.
-// This uses a simplified calculation based on the font's base dimensions.
+// TextWidth calculates the rendered width of the current text using actual bounding rect.
+// This matches the C++ text_width() which calls bounding_rect_single internally.
+// Note: this method modifies the internal rendering state (same as C++).
 func (gsv *GSVText) TextWidth() float64 {
 	if gsv.text == "" || len(gsv.font) == 0 {
 		return 0.0
 	}
 
-	// Parse font header to get base height
-	baseHeight := gsv.getValue16(gsv.font[4:])
-	if baseHeight == 0 {
+	// Save state that gets modified during vertex generation
+	savedX, savedY := gsv.x, gsv.y
+	savedCurChar := gsv.curChar
+	savedStatus := gsv.status
+	savedGlyphOffset := gsv.glyphOffset
+	savedBeginGlyph := gsv.beginGlyph
+	savedEndGlyph := gsv.endGlyph
+	savedIndices := gsv.indices
+	savedGlyphs := gsv.glyphs
+	savedW, savedH := gsv.w, gsv.h
+
+	gsv.Rewind(0)
+
+	var x1, y1, x2, y2 float64
+	first := true
+
+	for {
+		x, y, cmd := gsv.Vertex()
+		if basics.IsStop(cmd) {
+			break
+		}
+		if basics.IsVertex(cmd) {
+			if first {
+				x1, y1, x2, y2 = x, y, x, y
+				first = false
+			} else {
+				if x < x1 {
+					x1 = x
+				}
+				if y < y1 {
+					y1 = y
+				}
+				if x > x2 {
+					x2 = x
+				}
+				if y > y2 {
+					y2 = y
+				}
+			}
+		}
+	}
+
+	// Restore state
+	gsv.x, gsv.y = savedX, savedY
+	gsv.curChar = savedCurChar
+	gsv.status = savedStatus
+	gsv.glyphOffset = savedGlyphOffset
+	gsv.beginGlyph = savedBeginGlyph
+	gsv.endGlyph = savedEndGlyph
+	gsv.indices = savedIndices
+	gsv.glyphs = savedGlyphs
+	gsv.w, gsv.h = savedW, savedH
+
+	if first {
 		return 0.0
 	}
-
-	// Calculate scaling factors
-	h := gsv.height / float64(baseHeight)
-	w := gsv.width
-	if w == 0.0 {
-		w = h
-	} else {
-		w = w / float64(baseHeight)
-	}
-
-	// Estimate width based on character count and average character width
-	// This is a simplified calculation - AGG does full vertex traversal
-	avgCharWidth := w * float64(baseHeight) * 0.6 // Approximate average character width
-	totalSpacing := gsv.space * float64(len(gsv.text)-1)
-
-	return avgCharWidth*float64(len(gsv.text)) + totalSpacing
+	_ = y1 // suppress unused warning
+	return x2 - x1
 }
 
 // Rewind resets the renderer to begin generating vertices for the current text.
@@ -168,17 +197,19 @@ func (gsv *GSVText) Rewind(pathID uint) {
 		return
 	}
 
-	// Parse font header
-	gsv.indices = gsv.font[gsv.getValue16(gsv.font):] // Skip to index table
-	baseHeight := gsv.getValue16(gsv.font[4:])
-	gsv.glyphs = gsv.indices[257*2:] // Skip 256 character indices + null terminator
+	// Parse font header:
+	// font[0:2] = uint16 offset to index table
+	// font[4:6] = uint16 base height
+	baseHeight := float64(gsv.getValue16(gsv.font[4:]))
+	gsv.indices = gsv.font[gsv.getValue16(gsv.font):]
+	gsv.glyphs = gsv.indices[257*2:]
 
 	// Calculate scaling factors
-	gsv.h = gsv.height / float64(baseHeight)
+	gsv.h = gsv.height / baseHeight
 	if gsv.width == 0.0 {
 		gsv.w = gsv.h
 	} else {
-		gsv.w = gsv.width / float64(baseHeight)
+		gsv.w = gsv.width / baseHeight
 	}
 
 	if gsv.flip {
@@ -198,6 +229,7 @@ func (gsv *GSVText) Vertex() (x, y float64, cmd basics.PathCommand) {
 				return 0, 0, basics.PathCmdStop
 			}
 			gsv.status = StatusNextChar
+			// fall through to StatusNextChar
 
 		case StatusNextChar:
 			if gsv.curChar >= len(gsv.text) {
@@ -208,27 +240,27 @@ func (gsv *GSVText) Vertex() (x, y float64, cmd basics.PathCommand) {
 			gsv.curChar++
 
 			if char == '\n' {
-				// Handle newline
 				gsv.x = gsv.startX
+				// C++: m_y -= m_flip ? -m_height - m_line_space : m_height + m_line_space
 				if gsv.flip {
-					gsv.y -= -(gsv.height + gsv.lineSpace)
-				} else {
 					gsv.y += gsv.height + gsv.lineSpace
+				} else {
+					gsv.y -= gsv.height + gsv.lineSpace
 				}
 				continue
 			}
 
-			// Get character index (0-255)
-			charIndex := int(char) & 0xFF
-
-			// Get glyph data offsets from index table
-			startOffset := gsv.getValue16(gsv.indices[charIndex*2:])
-			endOffset := gsv.getValue16(gsv.indices[charIndex*2+2:])
+			// idx is the char value, shifted left by 1 to get the byte offset into
+			// the 16-bit index table (each entry is 2 bytes).
+			idx := int(char&0xFF) << 1
+			startOffset := gsv.getValue16(gsv.indices[idx:])
+			endOffset := gsv.getValue16(gsv.indices[idx+2:])
 
 			gsv.beginGlyph = gsv.glyphs[startOffset:]
 			gsv.endGlyph = gsv.glyphs[endOffset:]
 			gsv.glyphOffset = 0
 			gsv.status = StatusStartGlyph
+			// fall through to StatusStartGlyph
 
 		case StatusStartGlyph:
 			x = gsv.x
@@ -237,64 +269,44 @@ func (gsv *GSVText) Vertex() (x, y float64, cmd basics.PathCommand) {
 			return x, y, basics.PathCmdMoveTo
 
 		case StatusGlyph:
-			// Check if we've processed all glyph data
-			if gsv.glyphOffset >= len(gsv.beginGlyph) ||
-				(len(gsv.endGlyph) > 0 && gsv.glyphOffset >= (len(gsv.beginGlyph)-len(gsv.endGlyph))) {
+			// Check if we've consumed all bytes for this glyph.
+			// beginGlyph starts at startOffset; endGlyph starts at endOffset.
+			// len(beginGlyph) - len(endGlyph) = endOffset - startOffset = glyph byte count.
+			if gsv.glyphOffset >= len(gsv.beginGlyph)-len(gsv.endGlyph) {
 				gsv.status = StatusNextChar
 				gsv.x += gsv.space
 				continue
 			}
 
-			// Read coordinate delta (dx, dy) from glyph data
-			if gsv.glyphOffset+1 >= len(gsv.beginGlyph) {
-				gsv.status = StatusNextChar
-				gsv.x += gsv.space
-				continue
-			}
-
-			dx := int8(gsv.beginGlyph[gsv.glyphOffset])
+			// Read signed delta x and y. Each glyph vertex is 2 bytes: (dx, yc).
+			// The high bit of yc is the pen-up/move flag; the remaining 7 bits
+			// form a signed value via arithmetic shift (matches C++ int8 behavior).
+			dx := int(int8(gsv.beginGlyph[gsv.glyphOffset]))
 			yc := int8(gsv.beginGlyph[gsv.glyphOffset+1])
 			gsv.glyphOffset += 2
 
-			// Check move/line flag (high bit of Y coordinate)
-			yf := (yc & -128) != 0 // -128 is 0x80 as int8
-			yc = (yc << 1) >> 1    // Sign extend after clearing flag bit
+			yf := yc & -128     // 0x80: pen-up (move) flag
+			yc = (yc << 1) >> 1 // sign-extend 7-bit value
 			dy := int(yc)
 
-			// Apply deltas with scaling
 			gsv.x += float64(dx) * gsv.w
 			gsv.y += float64(dy) * gsv.h
-
 			x = gsv.x
 			y = gsv.y
 
-			if yf {
+			if yf != 0 {
 				return x, y, basics.PathCmdMoveTo
-			} else {
-				return x, y, basics.PathCmdLineTo
 			}
+			return x, y, basics.PathCmdLineTo
 		}
 	}
 }
 
-// getValue16 reads a 16-bit value from font data, handling endianness.
+// getValue16 reads a 16-bit little-endian value from font data.
+// The GSV font format always stores 16-bit values in little-endian byte order.
 func (gsv *GSVText) getValue16(data []byte) uint16 {
 	if len(data) < 2 {
 		return 0
 	}
-
-	if gsv.bigEndian {
-		return binary.BigEndian.Uint16(data)
-	} else {
-		return binary.LittleEndian.Uint16(data)
-	}
-}
-
-// isBigEndian detects system endianness.
-func isBigEndian() bool {
-	var i int32 = 0x01020304
-	u := unsafe.Pointer(&i)
-	pb := (*byte)(u)
-	b := *pb
-	return b == 0x01
+	return binary.LittleEndian.Uint16(data)
 }

@@ -10,11 +10,11 @@ import (
 )
 
 var (
-	sliderR       *slider.SliderCtrl
-	sliderG       *slider.SliderCtrl
-	sliderB       *slider.SliderCtrl
-	sliderGamma   *slider.SliderCtrl
-	patternRBox   *rbox.RboxCtrl[agg.Color]
+	sliderR          *slider.SliderCtrl
+	sliderG          *slider.SliderCtrl
+	sliderB          *slider.SliderCtrl
+	sliderGamma      *slider.SliderCtrl
+	patternRBox      *rbox.RboxCtrl[agg.Color]
 	tunerInitialized bool
 )
 
@@ -55,7 +55,7 @@ func drawGammaTunerDemo() {
 
 	agg2d := ctx.GetAgg2D()
 	agg2d.ResetTransformations()
-	
+
 	g := sliderGamma.Value()
 	r := sliderR.Value()
 	gg := sliderG.Value()
@@ -68,7 +68,7 @@ func drawGammaTunerDemo() {
 
 	// Pre-calculate colors for the gradient
 	invG := 1.0 / g
-	
+
 	// 1. Draw vertical gradient directly into canvasBuf
 	for y := 0; y < height; y++ {
 		k := (float64(y) - 80) / (squareSize - 1)
@@ -79,10 +79,10 @@ func drawGammaTunerDemo() {
 		}
 
 		k = 1.0 - math.Pow(k/2.0, invG)
-		
-		cr := uint8(r * 255.0 * (1.0 - k) + 0.5)
-		cg := uint8(gg * 255.0 * (1.0 - k) + 0.5)
-		cb := uint8(b * 255.0 * (1.0 - k) + 0.5)
+
+		cr := uint8(r*255.0*(1.0-k) + 0.5)
+		cg := uint8(gg*255.0*(1.0-k) + 0.5)
+		cb := uint8(b*255.0*(1.0-k) + 0.5)
 
 		rowOffset := y * width * 4
 		for x := 0; x < width; x++ {
@@ -148,14 +148,14 @@ func drawGammaTunerDemo() {
 			}
 
 			idx1 := row1 + (50+j)*4
-			canvasBuf[idx1] = uint8(pcr * alpha1 + 0.5)
-			canvasBuf[idx1+1] = uint8(pcg * alpha1 + 0.5)
-			canvasBuf[idx1+2] = uint8(pcb * alpha1 + 0.5)
+			canvasBuf[idx1] = uint8(pcr*alpha1 + 0.5)
+			canvasBuf[idx1+1] = uint8(pcg*alpha1 + 0.5)
+			canvasBuf[idx1+2] = uint8(pcb*alpha1 + 0.5)
 
 			idx2 := row2 + (50+j)*4
-			canvasBuf[idx2] = uint8(pcr * alpha2 + 0.5)
-			canvasBuf[idx2+1] = uint8(pcg * alpha2 + 0.5)
-			canvasBuf[idx2+2] = uint8(pcb * alpha2 + 0.5)
+			canvasBuf[idx2] = uint8(pcr*alpha2 + 0.5)
+			canvasBuf[idx2+1] = uint8(pcg*alpha2 + 0.5)
+			canvasBuf[idx2+2] = uint8(pcb*alpha2 + 0.5)
 		}
 	}
 
@@ -163,11 +163,11 @@ func drawGammaTunerDemo() {
 	for i := 0; i < squareSize; i++ {
 		k := float64(i) / (squareSize - 1)
 		k = 1.0 - math.Pow(k/2.0, invG)
-		
-		cr := uint8(r * 255.0 * (1.0 - k) + 0.5)
-		cg := uint8(gg * 255.0 * (1.0 - k) + 0.5)
-		cb := uint8(b * 255.0 * (1.0 - k) + 0.5)
-		
+
+		cr := uint8(r*255.0*(1.0-k) + 0.5)
+		cg := uint8(gg*255.0*(1.0-k) + 0.5)
+		cb := uint8(b*255.0*(1.0-k) + 0.5)
+
 		y := 80 + i
 		rowOffset := y * width * 4
 		for j := 0; j < verStrips; j++ {
@@ -253,11 +253,21 @@ func handleGammaTunerMouseDown(x, y float64) bool {
 	if !tunerInitialized {
 		return false
 	}
-	if sliderR.OnMouseButtonDown(x, y) { return true }
-	if sliderG.OnMouseButtonDown(x, y) { return true }
-	if sliderB.OnMouseButtonDown(x, y) { return true }
-	if sliderGamma.OnMouseButtonDown(x, y) { return true }
-	if patternRBox.OnMouseButtonDown(x, y) { return true }
+	if sliderR.OnMouseButtonDown(x, y) {
+		return true
+	}
+	if sliderG.OnMouseButtonDown(x, y) {
+		return true
+	}
+	if sliderB.OnMouseButtonDown(x, y) {
+		return true
+	}
+	if sliderGamma.OnMouseButtonDown(x, y) {
+		return true
+	}
+	if patternRBox.OnMouseButtonDown(x, y) {
+		return true
+	}
 	return false
 }
 
@@ -265,11 +275,21 @@ func handleGammaTunerMouseMove(x, y float64) bool {
 	if !tunerInitialized {
 		return false
 	}
-	if sliderR.OnMouseMove(x, y, true) { return true }
-	if sliderG.OnMouseMove(x, y, true) { return true }
-	if sliderB.OnMouseMove(x, y, true) { return true }
-	if sliderGamma.OnMouseMove(x, y, true) { return true }
-	if patternRBox.OnMouseMove(x, y, true) { return true }
+	if sliderR.OnMouseMove(x, y, true) {
+		return true
+	}
+	if sliderG.OnMouseMove(x, y, true) {
+		return true
+	}
+	if sliderB.OnMouseMove(x, y, true) {
+		return true
+	}
+	if sliderGamma.OnMouseMove(x, y, true) {
+		return true
+	}
+	if patternRBox.OnMouseMove(x, y, true) {
+		return true
+	}
 	return false
 }
 

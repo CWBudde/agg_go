@@ -54,7 +54,7 @@ func initLionLensDemo() {
 
 	// Initialize pipelines for each path
 	lionLensPipelines = make([]lionLensPipeline, len(lionPaths))
-	mtx := transform.NewTransAffine() // Dummy
+	mtx := transform.NewTransAffine()         // Dummy
 	lens := transform.NewTransWarpMagnifier() // Dummy
 
 	for i := range lionPaths {
@@ -98,7 +98,7 @@ func drawLionLensDemo() {
 	for i := range lionPaths {
 		lp := &lionPaths[i]
 		pipe := &lionLensPipelines[i]
-		
+
 		// Update shared transformers in existing pipeline
 		pipe.transMtx.SetTransformer(mtx)
 		pipe.transLens.SetTransformer(lens)
@@ -116,7 +116,7 @@ func drawLionLensDemo() {
 				agg2d.LineTo(x, y)
 			}
 		}
-		
+
 		agg2d.FillColor(agg.NewColor(lp.Color[0], lp.Color[1], lp.Color[2], 255))
 		agg2d.NoLine()
 		agg2d.DrawPath(agg.FillOnly)
@@ -142,10 +142,18 @@ func getLionBoundingRect(paths []liondemo.Path) (x1, y1, x2, y2 float64) {
 					x1, y1, x2, y2 = x, y, x, y
 					first = false
 				} else {
-					if x < x1 { x1 = x }
-					if y < y1 { y1 = y }
-					if x > x2 { x2 = x }
-					if y > y2 { y2 = y }
+					if x < x1 {
+						x1 = x
+					}
+					if y < y1 {
+						y1 = y
+					}
+					if x > x2 {
+						x2 = x
+					}
+					if y > y2 {
+						y2 = y
+					}
 				}
 			}
 		}
@@ -210,9 +218,13 @@ func handleLionLensMouseDown(x, y float64) bool {
 	if !lionLensInitialized {
 		return false
 	}
-	if lionLensMagnSlider.OnMouseButtonDown(x, y) { return true }
-	if lionLensRadiusSlider.OnMouseButtonDown(x, y) { return true }
-	
+	if lionLensMagnSlider.OnMouseButtonDown(x, y) {
+		return true
+	}
+	if lionLensRadiusSlider.OnMouseButtonDown(x, y) {
+		return true
+	}
+
 	lionLensX = x
 	lionLensY = y
 	return true
@@ -222,9 +234,13 @@ func handleLionLensMouseMove(x, y float64) bool {
 	if !lionLensInitialized {
 		return false
 	}
-	if lionLensMagnSlider.OnMouseMove(x, y, true) { return true }
-	if lionLensRadiusSlider.OnMouseMove(x, y, true) { return true }
-	
+	if lionLensMagnSlider.OnMouseMove(x, y, true) {
+		return true
+	}
+	if lionLensRadiusSlider.OnMouseMove(x, y, true) {
+		return true
+	}
+
 	lionLensX = x
 	lionLensY = y
 	return true

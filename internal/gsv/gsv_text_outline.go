@@ -9,7 +9,10 @@ import (
 )
 
 // GSVTextOutline wraps GSVText with stroke and transformation support.
-// This is equivalent to AGG's gsv_text_outline template class.
+// This is equivalent to AGG's gsv_text_outline template class:
+//
+//	conv_stroke<gsv_text>                         m_polyline
+//	conv_transform<conv_stroke<gsv_text>, Trans>  m_trans
 type GSVTextOutline struct {
 	text      *GSVText
 	stroke    *conv.ConvStroke
@@ -18,7 +21,7 @@ type GSVTextOutline struct {
 }
 
 // NewGSVTextOutline creates a new GSV text outline renderer.
-// It combines vector text rendering with stroke conversion and optional transformation.
+// GSVText is used directly as the source for ConvStroke, matching the C++ design.
 func NewGSVTextOutline(text *GSVText) *GSVTextOutline {
 	if text == nil {
 		text = NewGSVText()
@@ -26,8 +29,8 @@ func NewGSVTextOutline(text *GSVText) *GSVTextOutline {
 
 	return &GSVTextOutline{
 		text:      text,
-		stroke:    conv.NewConvStroke(&gsvTextAdapter{text: text}),
-		transform: transform.NewTransAffine(), // Identity transform
+		stroke:    conv.NewConvStroke(text),
+		transform: transform.NewTransAffine(),
 		width:     1.0,
 	}
 }
@@ -75,92 +78,21 @@ func (gto *GSVTextOutline) Stroke() *conv.ConvStroke {
 }
 
 // Rewind resets the outline renderer to begin generating stroked text vertices.
+// Matches C++ gsv_text_outline::rewind which sets round join/cap then rewinds.
 func (gto *GSVTextOutline) Rewind(pathID uint) {
-	// Configure stroke properties
 	gto.stroke.SetWidth(gto.width)
 	gto.stroke.SetLineJoin(basics.RoundJoin)
 	gto.stroke.SetLineCap(basics.RoundCap)
-
-	// Start the stroke conversion - this will internally rewind the source
 	gto.stroke.Rewind(pathID)
 }
 
 // Vertex generates the next vertex in the stroked and transformed text path.
 func (gto *GSVTextOutline) Vertex() (x, y float64, cmd basics.PathCommand) {
-	// Get the next stroked vertex
 	x, y, cmd = gto.stroke.Vertex()
-
-	// Apply transformation if not identity
 	if !gto.transform.IsIdentity(transform.AffineEpsilon) {
 		gto.transform.Transform(&x, &y)
 	}
-
 	return x, y, cmd
-}
-
-// gsvTextAdapter adapts GSVText to work with ConvStroke by implementing VertexSource.
-// It converts individual line segments (MoveTo + LineTo) into continuous paths suitable for stroking.
-type gsvTextAdapter struct {
-	text      *GSVText
-	vertices  []VertexCmd
-	vertexIdx int
-	processed bool
-}
-
-// VertexCmd holds a vertex with its command
-type VertexCmd struct {
-	X, Y float64
-	Cmd  basics.PathCommand
-}
-
-// Rewind implements the VertexSource interface.
-func (adapter *gsvTextAdapter) Rewind(pathID uint) {
-	if !adapter.processed {
-		adapter.processVertices()
-	}
-	adapter.vertexIdx = 0
-}
-
-// processVertices converts GSV text line segments into paths suitable for stroking
-func (adapter *gsvTextAdapter) processVertices() {
-	adapter.vertices = nil
-	adapter.text.Rewind(0)
-
-	var pendingMoveX, pendingMoveY float64
-	var hasPendingMove bool
-
-	for {
-		x, y, cmd := adapter.text.Vertex()
-		if basics.IsStop(cmd) {
-			break
-		}
-
-		if basics.IsMoveTo(cmd) {
-			// Store the MoveTo for when we get the LineTo
-			pendingMoveX, pendingMoveY = x, y
-			hasPendingMove = true
-		} else if basics.IsLineTo(cmd) && hasPendingMove {
-			// We have a MoveTo-LineTo pair, create a complete path
-			adapter.vertices = append(adapter.vertices, VertexCmd{X: pendingMoveX, Y: pendingMoveY, Cmd: basics.PathCmdMoveTo})
-			adapter.vertices = append(adapter.vertices, VertexCmd{X: x, Y: y, Cmd: basics.PathCmdLineTo})
-			// Add EndPoly to mark end of this sub-path
-			adapter.vertices = append(adapter.vertices, VertexCmd{X: 0, Y: 0, Cmd: basics.PathCmdEndPoly})
-			hasPendingMove = false
-		}
-	}
-
-	adapter.processed = true
-}
-
-// Vertex implements the VertexSource interface.
-func (adapter *gsvTextAdapter) Vertex() (x, y float64, cmd basics.PathCommand) {
-	if adapter.vertexIdx >= len(adapter.vertices) {
-		return 0, 0, basics.PathCmdStop
-	}
-
-	vertex := adapter.vertices[adapter.vertexIdx]
-	adapter.vertexIdx++
-	return vertex.X, vertex.Y, vertex.Cmd
 }
 
 // GSVTextSimple provides a simplified interface for common text rendering tasks.
@@ -177,7 +109,7 @@ func NewGSVTextSimple() *GSVTextSimple {
 
 	return &GSVTextSimple{
 		outline: outline,
-		filled:  false, // Default to stroked text
+		filled:  false,
 	}
 }
 
@@ -220,10 +152,8 @@ func (gts *GSVTextSimple) SetSpacing(charSpace, lineSpace float64) {
 // Rewind resets the renderer for vertex generation.
 func (gts *GSVTextSimple) Rewind(pathID uint) {
 	if gts.filled {
-		// For filled text, use the raw GSVText output
 		gts.outline.text.Rewind(pathID)
 	} else {
-		// For stroked text, use the outline
 		gts.outline.Rewind(pathID)
 	}
 }
@@ -232,19 +162,15 @@ func (gts *GSVTextSimple) Rewind(pathID uint) {
 func (gts *GSVTextSimple) Vertex() (x, y float64, cmd basics.PathCommand) {
 	if gts.filled {
 		x, y, cmd = gts.outline.text.Vertex()
-
-		// Apply transformation if not identity
 		if !gts.outline.transform.IsIdentity(transform.AffineEpsilon) {
 			gts.outline.transform.Transform(&x, &y)
 		}
-
 		return x, y, cmd
-	} else {
-		return gts.outline.Vertex()
 	}
+	return gts.outline.Vertex()
 }
 
-// EstimateWidth estimates the rendered width of the current text.
+// EstimateWidth returns the rendered width of the current text.
 func (gts *GSVTextSimple) EstimateWidth() float64 {
 	return gts.outline.text.TextWidth()
 }

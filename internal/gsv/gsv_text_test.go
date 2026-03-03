@@ -457,13 +457,23 @@ func TestGSVTextFontDataIntegrity(t *testing.T) {
 	}
 }
 
-func TestEndianness(t *testing.T) {
-	// Test that endianness detection works
-	bigEndian := isBigEndian()
+func TestGetValue16(t *testing.T) {
+	// Test that getValue16 reads little-endian 16-bit values correctly.
+	gsv := NewGSVText()
 
-	// This test mainly ensures the function doesn't panic
-	// The actual value depends on the system architecture
-	_ = bigEndian // Prevent unused variable warning
+	// 0x0015 = 21 in little-endian: bytes [0x15, 0x00]
+	data := []byte{0x15, 0x00}
+	v := gsv.getValue16(data)
+	if v != 21 {
+		t.Errorf("Expected getValue16([0x15, 0x00]) = 21, got %d", v)
+	}
+
+	// 0x0040 = 64 in little-endian: bytes [0x40, 0x00]
+	data2 := []byte{0x40, 0x00}
+	v2 := gsv.getValue16(data2)
+	if v2 != 64 {
+		t.Errorf("Expected getValue16([0x40, 0x00]) = 64, got %d", v2)
+	}
 }
 
 func BenchmarkGSVTextVertexGeneration(b *testing.B) {

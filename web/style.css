@@ -99,27 +99,6 @@ input[type="range"] {
   cursor: pointer;
 }
 
-#demoSelector {
-  position: relative;
-  z-index: 10;
-}
-
-#demoSelector[size]:not([size="1"]) {
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  width: auto;
-  min-width: 300px;
-  height: auto;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-}
-
-.controls {
-  position: relative;
-  min-height: 2.5rem; /* Ensure space for the select even when absolute */
-}
-
 select:focus,
 button:focus {
   outline: none;

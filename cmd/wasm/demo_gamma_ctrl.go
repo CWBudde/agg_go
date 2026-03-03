@@ -6,9 +6,7 @@ import (
 	"agg_go/internal/ctrl/gamma"
 )
 
-var (
-	gammaControl *gamma.GammaCtrl
-)
+var gammaControl *gamma.GammaCtrl
 
 type GammaControl = gamma.GammaCtrl
 
