@@ -784,6 +784,12 @@ func (a *Agg2D) NoLine() {
 	a.impl.NoLine()
 }
 
+// ResetStyle resets all style settings to their defaults (colors, line width, caps, joins).
+// Use this between independent rendering operations to avoid style state leaking.
+func (a *Agg2D) ResetStyle() {
+	a.impl.ResetStyle()
+}
+
 func (a *Agg2D) SaveImagePPM(filename string) error {
 	if a.attachedBuffer == nil || a.attachedWidth <= 0 || a.attachedHeight <= 0 || a.attachedStride <= 0 {
 		return fmt.Errorf("no attached RGBA buffer")

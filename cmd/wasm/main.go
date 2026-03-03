@@ -764,6 +764,7 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 	}
 
 	ctx.Clear(agg.White)
+	ctx.GetAgg2D().ResetStyle()
 
 	switch demoType {
 	case "agg2d":

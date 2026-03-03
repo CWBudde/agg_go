@@ -74,6 +74,7 @@ func renderDemoToFile(demoType, outDir string) error {
 	}
 
 	ctx.Clear(agg.White)
+	ctx.GetAgg2D().ResetStyle()
 
 	switch demoType {
 	case "agg2d":

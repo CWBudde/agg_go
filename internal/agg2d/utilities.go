@@ -5,6 +5,7 @@ package agg2d
 import (
 	"math"
 
+	"agg_go/internal/basics"
 	"agg_go/internal/color"
 )
 
@@ -83,6 +84,26 @@ func (agg2d *Agg2D) NoFill() {
 func (agg2d *Agg2D) NoLine() {
 	agg2d.lineColor = Color{0, 0, 0, 0} // Transparent line
 	agg2d.lineGradientFlag = Solid
+}
+
+// ResetStyle resets all style settings to their default values.
+// Use this to avoid style state leaking between independent rendering operations.
+func (agg2d *Agg2D) ResetStyle() {
+	agg2d.fillColor = White
+	agg2d.fillGradientFlag = Solid
+	agg2d.lineColor = Black
+	agg2d.lineGradientFlag = Solid
+	agg2d.lineWidth = 1.0
+	agg2d.lineCap = CapRound
+	agg2d.lineJoin = JoinRound
+	agg2d.masterAlpha = 1.0
+	agg2d.evenOddFlag = false
+	if agg2d.convStroke != nil {
+		agg2d.convStroke.SetWidth(1.0)
+		agg2d.convStroke.SetLineCap(basics.LineCap(CapRound))
+		agg2d.convStroke.SetLineJoin(basics.LineJoin(JoinRound))
+	}
+	agg2d.NoDashes()
 }
 
 // ClearClipBox clears the current clipping box with the specified color.
