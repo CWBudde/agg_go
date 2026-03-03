@@ -52,9 +52,10 @@ func TestPathConversionStrokeToDash(t *testing.T) {
 			solidPixel[0], solidPixel[1], solidPixel[2])
 	}
 
-	// Check that dashed line has gaps (some pixels should be white)
+	// Check that dashed line has gaps. With a 10-on/5-off pattern starting at x=20,
+	// the first gap runs from x=30 to x=35. Check the center of that gap (x=31..34).
 	gapFound := false
-	for x := 30; x < 170; x += 5 {
+	for x := 31; x <= 34; x++ {
 		pixel := getPixel(buffer2, stride, x, 50)
 		if pixel[0] > 200 && pixel[1] > 200 && pixel[2] > 200 { // White-ish (gap)
 			gapFound = true
