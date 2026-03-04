@@ -272,9 +272,11 @@ func (c *CheckboxCtrl[C]) generateTextVertices() {
 		return
 	}
 
-	// Position text to the right of the checkbox with some spacing
+	// Position text to the right of the checkbox, centered vertically.
+	// With SetFlip(true), GSVText draws upward from the baseline (start_y),
+	// so baseline = visual_center + textHeight/2.
 	textX := c.X1() + c.textHeight*2.0
-	textY := c.Y1() + c.textHeight/5.0
+	textY := c.Y1() + (c.Y2()-c.Y1())/2.0 + c.textHeight/2.0
 
 	// Configure text renderer
 	c.textRenderer.SetText(c.label)
