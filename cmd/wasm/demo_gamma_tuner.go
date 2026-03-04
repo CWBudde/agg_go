@@ -197,12 +197,10 @@ func renderSlider(agg2d *agg.Agg2D, s *slider.SliderCtrl) {
 	numPaths := s.NumPaths()
 	for i := uint(0); i < numPaths; i++ {
 		ras.Reset()
-		s.Rewind(i)
 		adapter := &sliderAdapter{s: s}
-		ras.AddPath(adapter, 0)
+		ras.AddPath(adapter, uint32(i))
 		c := s.Color(i)
-		agg2d.FillColor(agg.RGBA(c.R, c.G, c.B, c.A))
-		agg2d.DrawPath(agg.FillOnly)
+		agg2d.RenderRasterizerWithColor(agg.RGBA(c.R, c.G, c.B, c.A))
 	}
 }
 
@@ -226,11 +224,9 @@ func renderRBox(agg2d *agg.Agg2D, r *rbox.RboxCtrl[agg.Color]) {
 	numPaths := r.NumPaths()
 	for i := uint(0); i < numPaths; i++ {
 		ras.Reset()
-		r.Rewind(i)
 		adapter := &rboxAdapter{r: r}
-		ras.AddPath(adapter, 0)
-		agg2d.FillColor(r.Color(i))
-		agg2d.DrawPath(agg.FillOnly)
+		ras.AddPath(adapter, uint32(i))
+		agg2d.RenderRasterizerWithColor(r.Color(i))
 	}
 }
 
