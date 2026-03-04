@@ -57,7 +57,6 @@ type GammaCtrlImpl[C any] struct {
 	curveStroke  *conv.ConvStroke
 	ellipse      *shapes.Ellipse
 	textRenderer *text.SimpleText
-	textStroke   *conv.ConvStroke
 
 	// Vertex generation state
 	currentPath uint
@@ -103,12 +102,6 @@ func NewGammaCtrlImpl[C any](x1, y1, x2, y2 float64, flipY bool) *GammaCtrlImpl[
 	// Initialize curve stroke
 	ctrl.curveStroke = conv.NewConvStroke(ctrl.gammaSpline)
 	ctrl.curveStroke.SetWidth(ctrl.curveWidth)
-
-	// Initialize text stroke
-	ctrl.textStroke = conv.NewConvStroke(ctrl.textRenderer)
-	ctrl.textStroke.SetWidth(ctrl.textThickness)
-	ctrl.textStroke.SetLineCap(basics.RoundCap)
-	ctrl.textStroke.SetLineJoin(basics.RoundJoin)
 
 	ctrl.calcSplineBox()
 	return ctrl
@@ -176,7 +169,7 @@ func (gc *GammaCtrlImpl[C]) SetGridWidth(width float64) {
 // SetTextThickness sets the thickness of text rendering.
 func (gc *GammaCtrlImpl[C]) SetTextThickness(thickness float64) {
 	gc.textThickness = thickness
-	gc.textStroke.SetWidth(thickness)
+	gc.textRenderer.SetThickness(thickness)
 }
 
 // SetTextSize sets the text size.
@@ -383,8 +376,8 @@ func (gc *GammaCtrlImpl[C]) Vertex() (x, y float64, cmd basics.PathCommand) {
 		var x, y float64
 		cmd := gc.ellipse.Vertex(&x, &y)
 		return x, y, cmd
-	case 6: // Text - use text stroke
-		return gc.textStroke.Vertex()
+	case 6: // Text
+		return gc.textRenderer.Vertex()
 	default:
 		return 0, 0, basics.PathCmdStop
 	}
@@ -547,10 +540,8 @@ func (gc *GammaCtrlImpl[C]) setupTextPath() {
 	gc.textRenderer.SetSize(gc.textHeight)
 	gc.textRenderer.SetPosition(gc.xt1+gc.borderWidth*2.0, (gc.yt1+gc.yt2)*0.5-gc.textHeight*0.5)
 
-	gc.textStroke.SetWidth(gc.textThickness)
-	gc.textStroke.SetLineCap(basics.RoundCap)
-	gc.textStroke.SetLineJoin(basics.RoundJoin)
-	gc.textStroke.Rewind(0)
+	gc.textRenderer.SetThickness(gc.textThickness)
+	gc.textRenderer.Rewind(0)
 }
 
 // getPreCalculatedVertex returns the next pre-calculated vertex.

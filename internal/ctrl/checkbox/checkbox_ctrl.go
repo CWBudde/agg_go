@@ -281,6 +281,7 @@ func (c *CheckboxCtrl[C]) generateTextVertices() {
 	c.textRenderer.SetPosition(textX, textY)
 	c.textRenderer.SetSize(c.textHeight)
 	c.textRenderer.SetThickness(c.textThickness)
+	c.textRenderer.Rewind(0)
 }
 
 func (c *CheckboxCtrl[C]) getTextVertex() (x, y float64, cmd basics.PathCommand) {
