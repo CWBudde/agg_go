@@ -81,7 +81,9 @@ func drawLionLensDemo() {
 
 	mtx := transform.NewTransAffine()
 	mtx.Translate(-base_dx, -base_dy)
-	mtx.Rotate(agg.Pi)
+	// Go has no flip_y rendering; ScaleXY(-1,1) mirrors X to reproduce
+	// the same visual as C++ rotate(Pi) + flip_y=true.
+	mtx.ScaleXY(-1, 1)
 	mtx.Translate(float64(width)/2.0, float64(height)/2.0)
 
 	for i := range lionPaths {
