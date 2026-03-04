@@ -999,6 +999,24 @@ async function init() {
         renderSelectedDemo();
       });
 
+    // gouraud_mesh controls
+    document
+      .getElementById("meshColsSlider")
+      .addEventListener("input", () => {
+        const cols = parseInt(document.getElementById("meshColsSlider").value);
+        const rows = parseInt(document.getElementById("meshRowsSlider").value);
+        document.getElementById("meshColsValue").textContent = cols;
+        setMeshSize(cols, rows);
+      });
+    document
+      .getElementById("meshRowsSlider")
+      .addEventListener("input", () => {
+        const cols = parseInt(document.getElementById("meshColsSlider").value);
+        const rows = parseInt(document.getElementById("meshRowsSlider").value);
+        document.getElementById("meshRowsValue").textContent = rows;
+        setMeshSize(cols, rows);
+      });
+
     // compositing controls
     document.getElementById("compOpSelector").addEventListener("change", () => {
       setCompOp(parseInt(document.getElementById("compOpSelector").value));
@@ -1110,6 +1128,8 @@ function syncControlVisibility(demoType) {
     demoType === "conv_dash_marker" ? "flex" : "none";
   document.getElementById("gouraudControls").style.display =
     demoType === "gouraud" ? "flex" : "none";
+  document.getElementById("gouraudMeshControls").style.display =
+    demoType === "gouraud_mesh" ? "flex" : "none";
   document.getElementById("imageFilterControls").style.display =
     demoType === "imagefilters" ? "flex" : "none";
   document.getElementById("sboolControls").style.display =

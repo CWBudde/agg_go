@@ -203,6 +203,29 @@
       <span id="dilationValue">0.5</span>
     </div>
 
+    <div class="controls" id="gouraudMeshControls" style="display: none">
+      <label for="meshColsSlider">Columns:</label>
+      <input
+        type="range"
+        id="meshColsSlider"
+        min="2"
+        max="30"
+        value="10"
+        step="1"
+      />
+      <span id="meshColsValue">10</span>
+      <label for="meshRowsSlider" style="margin-left: 1rem">Rows:</label>
+      <input
+        type="range"
+        id="meshRowsSlider"
+        min="2"
+        max="30"
+        value="10"
+        step="1"
+      />
+      <span id="meshRowsValue">10</span>
+    </div>
+
     <div class="controls" id="imageFilterControls" style="display: none">
       <label for="filterSelector">Filter:</label>
       <select id="filterSelector">

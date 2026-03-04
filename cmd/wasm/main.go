@@ -83,6 +83,7 @@ func main() {
 	js.Global().Set("setCompAlphaSrc", js.FuncOf(setCompAlphaSrcJS))
 	js.Global().Set("setCompAlphaDst", js.FuncOf(setCompAlphaDstJS))
 	js.Global().Set("setMultiClipN", js.FuncOf(setMultiClipNJS))
+	js.Global().Set("setMeshSize", js.FuncOf(setMeshSizeJS))
 
 	// Keep the Go program running
 	select {}
@@ -853,6 +854,13 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 
 func toggleTransCurve2AnimateJS(this js.Value, args []js.Value) interface{} {
 	toggleTransCurve2Animate()
+	return nil
+}
+
+func setMeshSizeJS(this js.Value, args []js.Value) interface{} {
+	if len(args) >= 2 {
+		setMeshSize(args[0].Int(), args[1].Int())
+	}
 	return nil
 }
 

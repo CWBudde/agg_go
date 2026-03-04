@@ -39,6 +39,21 @@ var (
 	meshInited    = false
 )
 
+func setMeshSize(cols, rows int) {
+	if cols < 2 {
+		cols = 2
+	}
+	if rows < 2 {
+		rows = 2
+	}
+	if cols == meshCols && rows == meshRows {
+		return
+	}
+	meshCols = cols
+	meshRows = rows
+	meshInited = false
+}
+
 func initMesh() {
 	if meshInited {
 		return
@@ -228,15 +243,18 @@ func drawGouraudMeshDemo() {
 		return
 	}
 
+	minX := rasc.MinX()
+	maxX := rasc.MaxX()
+
 	slAA := scanline.NewScanlineU8()
 	slBin := scanline.NewScanlineU8()
+	slAA.Reset(minX, maxX)
+	slBin.Reset(minX, maxX)
 	adapterAA := &flashScanlineAdapter{sl: slAA}
 	adapterBin := &flashScanlineAdapter{sl: slBin}
 
 	alloc := span.NewSpanAllocator[color.RGBA8[color.Linear]]()
 
-	minX := rasc.MinX()
-	maxX := rasc.MaxX()
 	length := maxX - minX + 2
 	if length < 0 {
 		length = 0

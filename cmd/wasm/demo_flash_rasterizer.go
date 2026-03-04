@@ -156,15 +156,17 @@ func drawFlashRasterizerDemo() {
 		return
 	}
 
+	minX := rasc.MinX()
+	maxX := rasc.MaxX()
+
 	slAA := scanline.NewScanlineU8()
 	slBin := scanline.NewScanlineU8()
+	slAA.Reset(minX, maxX)
+	slBin.Reset(minX, maxX)
 	adapterAA := &flashScanlineAdapter{sl: slAA}
 	adapterBin := &flashScanlineAdapter{sl: slBin}
 
 	styleHandler := &flashStyleHandler{colors: flashColors}
-
-	minX := rasc.MinX()
-	maxX := rasc.MaxX()
 	length := maxX - minX + 2
 	if length < 0 {
 		length = 0

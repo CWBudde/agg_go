@@ -37,6 +37,7 @@ func main() {
 			"rasterizers", "flash_rasterizer", "perspective", "bezier_div",
 			"gouraud_mesh", "trans_curve", "distortions", "trans_polar",
 			"trans_curve2", "gamma_ctrl", "gamma_tuner", "lion_lens", "circles", "blur", "simple_blur",
+			"alpha_mask2", "alpha_mask3", "compositing2",
 		}
 	}
 
@@ -143,6 +144,12 @@ func renderDemoToFile(demoType, outDir string) error {
 		drawBlurDemo()
 	case "simple_blur":
 		drawSimpleBlurDemo()
+	case "alpha_mask2":
+		drawAlphaMask2Demo()
+	case "alpha_mask3":
+		drawAlphaMask3Demo()
+	case "compositing2":
+		drawCompositing2Demo()
 	default:
 		return fmt.Errorf("unknown demo: %q", demoType)
 	}
