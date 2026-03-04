@@ -87,6 +87,17 @@ func main() {
 	js.Global().Set("setAlphaMask2NumEllipses", js.FuncOf(setAlphaMask2NumEllipsesJS))
 	js.Global().Set("setLionLensScale", js.FuncOf(setLionLensScaleJS))
 	js.Global().Set("setLionLensRadius", js.FuncOf(setLionLensRadiusJS))
+	js.Global().Set("setImg1Angle", js.FuncOf(setImg1AngleJS))
+	js.Global().Set("setImg1Scale", js.FuncOf(setImg1ScaleJS))
+	js.Global().Set("setImgTransPolygonAngle", js.FuncOf(setImgTransPolygonAngleJS))
+	js.Global().Set("setImgTransPolygonScale", js.FuncOf(setImgTransPolygonScaleJS))
+	js.Global().Set("setImgTransImageAngle", js.FuncOf(setImgTransImageAngleJS))
+	js.Global().Set("setImgTransImageScale", js.FuncOf(setImgTransImageScaleJS))
+	js.Global().Set("setImgTransExample", js.FuncOf(setImgTransExampleJS))
+	js.Global().Set("setPatFillPolygonAngle", js.FuncOf(setPatFillPolygonAngleJS))
+	js.Global().Set("setPatFillPolygonScale", js.FuncOf(setPatFillPolygonScaleJS))
+	js.Global().Set("setPatFillPatternAngle", js.FuncOf(setPatFillPatternAngleJS))
+	js.Global().Set("setPatFillPatternSize", js.FuncOf(setPatFillPatternSizeJS))
 
 	// Keep the Go program running
 	select {}
@@ -227,6 +238,9 @@ func onMouseDown(this js.Value, args []js.Value) interface{} {
 	if demoType == "multi_clip" {
 		return handleMultiClipMouseDown(x, y)
 	}
+	if demoType == "image_transforms" {
+		return handleImgTransMouseDown(x, y)
+	}
 	return false
 }
 
@@ -320,6 +334,9 @@ func onMouseMove(this js.Value, args []js.Value) interface{} {
 	}
 	if demoType == "multi_clip" {
 		return handleMultiClipMouseDown(x, y)
+	}
+	if demoType == "image_transforms" {
+		return handleImgTransMouseMove(x, y)
 	}
 	return false
 }
@@ -737,6 +754,78 @@ func setAlphaGradNodes(this js.Value, args []js.Value) interface{} {
 	return nil
 }
 
+// --- image1 JS setters ---
+func setImg1AngleJS(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		img1Angle = args[0].Float()
+	}
+	return nil
+}
+func setImg1ScaleJS(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		img1Scale = args[0].Float()
+	}
+	return nil
+}
+
+// --- image_transforms JS setters ---
+func setImgTransPolygonAngleJS(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		setImgTransPolygonAngle(args[0].Float())
+	}
+	return nil
+}
+func setImgTransPolygonScaleJS(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		setImgTransPolygonScale(args[0].Float())
+	}
+	return nil
+}
+func setImgTransImageAngleJS(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		setImgTransImageAngle(args[0].Float())
+	}
+	return nil
+}
+func setImgTransImageScaleJS(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		setImgTransImageScale(args[0].Float())
+	}
+	return nil
+}
+func setImgTransExampleJS(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		setImgTransExample(args[0].Int())
+	}
+	return nil
+}
+
+// --- pattern_fill JS setters ---
+func setPatFillPolygonAngleJS(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		setPatFillPolygonAngle(args[0].Float())
+	}
+	return nil
+}
+func setPatFillPolygonScaleJS(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		setPatFillPolygonScale(args[0].Float())
+	}
+	return nil
+}
+func setPatFillPatternAngleJS(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		setPatFillPatternAngle(args[0].Float())
+	}
+	return nil
+}
+func setPatFillPatternSizeJS(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		setPatFillPatternSize(args[0].Float())
+	}
+	return nil
+}
+
 func getCanvasDimensions(this js.Value, args []js.Value) interface{} {
 	return map[string]interface{}{
 		"width":  width,
@@ -853,10 +942,22 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 		drawAlphaMaskDemo()
 	case "alpha_mask2":
 		drawAlphaMask2Demo()
+	case "alpha_mask3":
+		drawAlphaMask3Demo()
 	case "compositing":
 		drawCompositingDemo()
+	case "compositing2":
+		drawCompositing2Demo()
 	case "multi_clip":
 		drawMultiClipDemo()
+	case "image1":
+		drawImage1Demo()
+	case "image_transforms":
+		drawImageTransformsDemo()
+	case "image_alpha":
+		drawImageAlphaDemo()
+	case "pattern_fill":
+		drawPatternFillDemo()
 	default:
 		logStatus("unknown demo type: " + demoType)
 		return nil

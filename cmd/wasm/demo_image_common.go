@@ -2,8 +2,6 @@
 package main
 
 import (
-	"math"
-
 	agg "agg_go"
 	"agg_go/internal/basics"
 	"agg_go/internal/color"
@@ -57,21 +55,6 @@ func createSpheresImage(w, h int) *agg.Image {
 		imgCtx.SetColor(agg.RGBA(0, 0, 0, 0.35))
 		imgCtx.FillCircle(sp.x+sp.r*0.15, sp.y+sp.r*0.15, sp.r)
 
-		// Sphere body
-		n := 16
-		for i := 0; i < n; i++ {
-			t := float64(i) / float64(n-1) // 0..1 from highlight to shadow
-			fac := 1.0 - t
-			ri := sp.r * (1.0 - t*0.0) // same radius, we just change fill color
-			// Highlight: lighter color at top-left
-			cr := sp.r0*fac + 0.05*(1-fac)
-			cg := sp.g0*fac + 0.05*(1-fac)
-			cb := sp.b0*fac + 0.05*(1-fac)
-			alpha := 1.0 / float64(n) * 2.0
-			imgCtx.SetColor(agg.RGBA(cr, cg, cb, alpha))
-			imgCtx.FillCircle(sp.x, sp.y, ri)
-			_ = ri
-		}
 		// Simple radial fill approximation with a filled circle
 		imgCtx.SetColor(agg.RGBA(sp.r0, sp.g0, sp.b0, 0.85))
 		imgCtx.FillCircle(sp.x, sp.y, sp.r)
@@ -87,30 +70,3 @@ func createSpheresImage(w, h int) *agg.Image {
 	return img
 }
 
-// createStarPath fills a path with a star (n-pointed) centered at (cx,cy)
-// with outer radius r1 and inner radius r2. startAngle is in degrees.
-func createStarPath(ps interface {
-	MoveTo(x, y float64)
-	LineTo(x, y float64)
-	ClosePolygon()
-}, cx, cy, r1, r2 float64, n int, startAngleDeg float64) {
-	start := startAngleDeg * math.Pi / 180.0
-	for i := 0; i < n; i++ {
-		a := math.Pi*2.0*float64(i)/float64(n) - math.Pi/2.0 + start
-		var dx, dy float64
-		if i&1 != 0 {
-			dx = math.Cos(a) * r1
-			dy = math.Sin(a) * r1
-			ps.LineTo(cx+dx, cy+dy)
-		} else {
-			dx = math.Cos(a) * r2
-			dy = math.Sin(a) * r2
-			if i == 0 {
-				ps.MoveTo(cx+dx, cy+dy)
-			} else {
-				ps.LineTo(cx+dx, cy+dy)
-			}
-		}
-	}
-	ps.ClosePolygon()
-}

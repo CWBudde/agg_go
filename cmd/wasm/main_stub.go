@@ -38,6 +38,7 @@ func main() {
 			"gouraud_mesh", "trans_curve", "distortions", "trans_polar",
 			"trans_curve2", "gamma_ctrl", "gamma_tuner", "lion_lens", "circles", "blur", "simple_blur",
 			"alpha_mask2", "alpha_mask3", "compositing2",
+			"image1", "image_transforms", "image_alpha", "pattern_fill",
 		}
 	}
 
@@ -150,6 +151,14 @@ func renderDemoToFile(demoType, outDir string) error {
 		drawAlphaMask3Demo()
 	case "compositing2":
 		drawCompositing2Demo()
+	case "image1":
+		drawImage1Demo()
+	case "image_transforms":
+		drawImageTransformsDemo()
+	case "image_alpha":
+		drawImageAlphaDemo()
+	case "pattern_fill":
+		drawPatternFillDemo()
 	default:
 		return fmt.Errorf("unknown demo: %q", demoType)
 	}

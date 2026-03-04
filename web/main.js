@@ -1133,6 +1133,77 @@ async function init() {
         renderSelectedDemo();
       });
 
+    // image1 controls
+    document.getElementById("img1AngleSlider").addEventListener("input", () => {
+      const val = parseFloat(document.getElementById("img1AngleSlider").value);
+      document.getElementById("img1AngleValue").textContent = val + "°";
+      setImg1Angle(val);
+      renderSelectedDemo();
+    });
+    document.getElementById("img1ScaleSlider").addEventListener("input", () => {
+      const val = parseFloat(document.getElementById("img1ScaleSlider").value);
+      document.getElementById("img1ScaleValue").textContent = val.toFixed(2);
+      setImg1Scale(val);
+      renderSelectedDemo();
+    });
+
+    // image_transforms controls
+    document.getElementById("imgTransExampleSelector").addEventListener("change", () => {
+      const val = parseInt(document.getElementById("imgTransExampleSelector").value);
+      setImgTransExample(val);
+      renderSelectedDemo();
+    });
+    document.getElementById("imgTransPolyAngleSlider").addEventListener("input", () => {
+      const val = parseFloat(document.getElementById("imgTransPolyAngleSlider").value);
+      document.getElementById("imgTransPolyAngleValue").textContent = val + "°";
+      setImgTransPolygonAngle(val);
+      renderSelectedDemo();
+    });
+    document.getElementById("imgTransPolyScaleSlider").addEventListener("input", () => {
+      const val = parseFloat(document.getElementById("imgTransPolyScaleSlider").value);
+      document.getElementById("imgTransPolyScaleValue").textContent = val.toFixed(2);
+      setImgTransPolygonScale(val);
+      renderSelectedDemo();
+    });
+    document.getElementById("imgTransImgAngleSlider").addEventListener("input", () => {
+      const val = parseFloat(document.getElementById("imgTransImgAngleSlider").value);
+      document.getElementById("imgTransImgAngleValue").textContent = val + "°";
+      setImgTransImageAngle(val);
+      renderSelectedDemo();
+    });
+    document.getElementById("imgTransImgScaleSlider").addEventListener("input", () => {
+      const val = parseFloat(document.getElementById("imgTransImgScaleSlider").value);
+      document.getElementById("imgTransImgScaleValue").textContent = val.toFixed(2);
+      setImgTransImageScale(val);
+      renderSelectedDemo();
+    });
+
+    // pattern_fill controls
+    document.getElementById("patFillPolyAngleSlider").addEventListener("input", () => {
+      const val = parseFloat(document.getElementById("patFillPolyAngleSlider").value);
+      document.getElementById("patFillPolyAngleValue").textContent = val + "°";
+      setPatFillPolygonAngle(val);
+      renderSelectedDemo();
+    });
+    document.getElementById("patFillPolyScaleSlider").addEventListener("input", () => {
+      const val = parseFloat(document.getElementById("patFillPolyScaleSlider").value);
+      document.getElementById("patFillPolyScaleValue").textContent = val.toFixed(2);
+      setPatFillPolygonScale(val);
+      renderSelectedDemo();
+    });
+    document.getElementById("patFillPatAngleSlider").addEventListener("input", () => {
+      const val = parseFloat(document.getElementById("patFillPatAngleSlider").value);
+      document.getElementById("patFillPatAngleValue").textContent = val + "°";
+      setPatFillPatternAngle(val);
+      renderSelectedDemo();
+    });
+    document.getElementById("patFillPatSizeSlider").addEventListener("input", () => {
+      const val = parseFloat(document.getElementById("patFillPatSizeSlider").value);
+      document.getElementById("patFillPatSizeValue").textContent = val;
+      setPatFillPatternSize(val);
+      renderSelectedDemo();
+    });
+
     // Mouse events for draggable-point demos
     let isDragging = false;
 
@@ -1236,6 +1307,12 @@ function syncControlVisibility(demoType) {
     demoType === "multi_clip" ? "flex" : "none";
   document.getElementById("alphaMask2Controls").style.display =
     demoType === "alpha_mask2" ? "flex" : "none";
+  document.getElementById("image1Controls").style.display =
+    demoType === "image1" ? "flex" : "none";
+  document.getElementById("imageTransformsControls").style.display =
+    demoType === "image_transforms" ? "flex" : "none";
+  document.getElementById("patternFillControls").style.display =
+    demoType === "pattern_fill" ? "flex" : "none";
 }
 
 const demoDescriptions = {
@@ -1310,6 +1387,14 @@ const demoDescriptions = {
     "Porter-Duff and SVG compositing operations. Port of AGG's compositing demo. Demonstrates various rules for combining source and destination shapes, such as SrcOver, Multiply, Screen, and Xor. Adjust the source and destination opacity and select different operations to see how they affect the overlapping regions.",
   multi_clip:
     "Multi-region clipping. Port of AGG's multi_clip demo. Showcases the RendererMClip which allows restricting all rendering operations to a set of multiple rectangular regions. Adjust the grid size slider to change the number of clipping boxes and watch the lion art being clipped into a grid.",
+  image1:
+    "Image affine transformation. Port of AGG's image1.cpp. A large ellipse is filled with a bilinear-filtered image that rotates and scales with the ellipse. Use the angle and scale sliders to transform the image.",
+  image_transforms:
+    "Image transform examples. Port of AGG's image_transforms.cpp. A 14-pointed star polygon is filled with an affine-filtered image. Choose between 7 different examples showing how the image matrix can be set independently from the polygon matrix. Drag the image center point (red handle) to reposition it.",
+  image_alpha:
+    "Image alpha from brightness. Port of AGG's image_alpha.cpp. A background of random colored ellipses is overlaid by a large rotated ellipse filled with an image. The alpha of each image pixel is derived from its brightness via a piecewise linear lookup table, making bright areas more transparent.",
+  pattern_fill:
+    "Pattern fill (tiled star). Port of AGG's pattern_fill.cpp. A 14-pointed star polygon is filled with a small repeating star pattern rendered into an offscreen buffer. Use the sliders to rotate and scale both the polygon and the pattern tile.",
 };
 
 function renderSelectedDemo() {

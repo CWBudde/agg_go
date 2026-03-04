@@ -45,10 +45,10 @@ type patternPixFmt struct {
 	w, h, stride int
 }
 
-func (p *patternPixFmt) Width() int    { return p.w }
-func (p *patternPixFmt) Height() int   { return p.h }
-func (p *patternPixFmt) PixWidth() int { return 4 }
-func (p *patternPixFmt) PixPtr(x, y int) []basics.Int8u {
+func (p patternPixFmt) Width() int    { return p.w }
+func (p patternPixFmt) Height() int   { return p.h }
+func (p patternPixFmt) PixWidth() int { return 4 }
+func (p patternPixFmt) PixPtr(x, y int) []basics.Int8u {
 	if y < 0 || y >= p.h || x < 0 || x >= p.w {
 		return p.data[0:]
 	}
@@ -59,7 +59,7 @@ func (p *patternPixFmt) PixPtr(x, y int) []basics.Int8u {
 // span.RGBASourceInterface so it can be used with SpanPatternRGBA.
 type patternSource struct {
 	accessor *imageacc.ImageAccessorWrap[patternPixFmt, *imageacc.WrapModeRepeatAutoPow2, *imageacc.WrapModeRepeatAutoPow2]
-	pf       *patternPixFmt
+	pf       patternPixFmt
 }
 
 func (s *patternSource) Width() int                  { return s.pf.w }
@@ -95,8 +95,8 @@ func initPatFillDemo() {
 }
 
 // generatePattern renders a small star shape into a patternPixFmt buffer.
-func generatePattern(size int, patternAngleDeg float64) *patternPixFmt {
-	pf := &patternPixFmt{
+func generatePattern(size int, patternAngleDeg float64) patternPixFmt {
+	pf := patternPixFmt{
 		w:      size,
 		h:      size,
 		stride: size * 4,
@@ -151,13 +151,12 @@ func generatePattern(size int, patternAngleDeg float64) *patternPixFmt {
 			}
 		}
 	}
-	tmpCtx.Close()
+	tmpCtx.ClosePath()
 	tmpCtx.Fill()
 
 	// Star outline
 	tmpCtx.SetColor(agg.RGBA(0.0, 0.20, 0.31, 1.0))
-	tmpCtx.SetStrokeWidth(float64(size) / 15.0)
-	tmpCtx.MoveTo(0, 0)
+	tmpCtx.SetLineWidth(float64(size) / 15.0)
 	for i := 0; i < n; i++ {
 		a := math.Pi*2.0*float64(i)/float64(n) - math.Pi/2.0 + startRad
 		var px, py float64
@@ -175,8 +174,8 @@ func generatePattern(size int, patternAngleDeg float64) *patternPixFmt {
 			}
 		}
 	}
-	tmpCtx.Close()
-	tmpCtx.DrawPath()
+	tmpCtx.ClosePath()
+	tmpCtx.Stroke()
 
 	// Copy tmpImg RGBA data into pf
 	copy(pf.data, tmpImg.Data)
@@ -201,7 +200,7 @@ func drawPatternFillDemo() {
 	// Wrap mode for tiling
 	wrapX := imageacc.NewWrapModeRepeatAutoPow2(basics.Int32u(size))
 	wrapY := imageacc.NewWrapModeRepeatAutoPow2(basics.Int32u(size))
-	accessor := imageacc.NewImageAccessorWrap[patternPixFmt, *imageacc.WrapModeRepeatAutoPow2, *imageacc.WrapModeRepeatAutoPow2](pf, wrapX, wrapY)
+	accessor := imageacc.NewImageAccessorWrap[patternPixFmt, *imageacc.WrapModeRepeatAutoPow2, *imageacc.WrapModeRepeatAutoPow2](&pf, wrapX, wrapY)
 	src := &patternSource{accessor: accessor, pf: pf}
 	sg := span.NewSpanPatternRGBAWithParams[*patternSource](src, 0, 0)
 
@@ -232,14 +231,15 @@ func drawPatternFillDemo() {
 			}
 		}
 	}
-	patFillPath.ClosePolygon()
+	patFillPath.ClosePolygon(basics.PathFlagsNone)
 
 	// Apply polygon rotation/scale
 	rotated := path.NewPathStorageStl()
 	patFillPath.Rewind(0)
 	for {
-		vx, vy, cmd := patFillPath.NextVertex()
-		if cmd == basics.PathCmdStop {
+		vx, vy, rawCmd := patFillPath.NextVertex()
+		cmd := basics.PathCommand(rawCmd)
+		if basics.IsStop(cmd) {
 			break
 		}
 		// Rotate around polygon center
@@ -254,7 +254,7 @@ func drawPatternFillDemo() {
 		} else if basics.IsLineTo(cmd) {
 			rotated.LineTo(vx, vy)
 		} else if basics.IsEndPoly(cmd) {
-			rotated.ClosePolygon()
+			rotated.ClosePolygon(basics.PathFlagsNone)
 		}
 	}
 
