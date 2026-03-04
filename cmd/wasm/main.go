@@ -772,7 +772,7 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 	logStatus("Rendering " + demoType + "...")
 
 	// Release cached demo state when switching away from a demo.
-	if demoType != "lion" && demoType != "lionoutline" {
+	if demoType != "lion" && demoType != "lionoutline" && demoType != "lion_lens" {
 		lionPaths = nil
 	}
 	if demoType != "imagefilters" {
