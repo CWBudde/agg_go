@@ -1061,6 +1061,16 @@ async function init() {
         renderSelectedDemo();
       });
 
+    // alpha_mask2 controls
+    document
+      .getElementById("am2EllipsesSlider")
+      .addEventListener("input", () => {
+        const val = parseInt(document.getElementById("am2EllipsesSlider").value);
+        document.getElementById("am2EllipsesValue").textContent = val;
+        setAlphaMask2NumEllipses(val);
+        renderSelectedDemo();
+      });
+
     // Mouse events for draggable-point demos
     let isDragging = false;
 
@@ -1160,6 +1170,8 @@ function syncControlVisibility(demoType) {
     demoType === "compositing" ? "flex" : "none";
   document.getElementById("multiClipControls").style.display =
     demoType === "multi_clip" ? "flex" : "none";
+  document.getElementById("alphaMask2Controls").style.display =
+    demoType === "alpha_mask2" ? "flex" : "none";
 }
 
 const demoDescriptions = {
@@ -1228,6 +1240,8 @@ const demoDescriptions = {
     "Simple 3x3 box blur. Renders the classic lion and then applies a simple box blur inside a draggable elliptical region. Click and drag to move the blurred area.",
   alpha_mask:
     "Alpha masking showcase. Port of AGG's alpha_mask demo. Renders the classic lion vector art through a dynamic alpha mask generated from overlapping random ellipses. Demonstrates the PixFmtAMaskAdaptor's ability to apply transparency patterns to any rendering operation.",
+  alpha_mask2:
+    "Alpha Mask 2 — Lion with ellipse mask. Renders the classic lion vector art through a grayscale alpha mask built from random semi-transparent ellipses. Left-drag to rotate and scale the lion; right-drag to skew. Adjust the Ellipses slider to change the mask density.",
   compositing:
     "Porter-Duff and SVG compositing operations. Port of AGG's compositing demo. Demonstrates various rules for combining source and destination shapes, such as SrcOver, Multiply, Screen, and Xor. Adjust the source and destination opacity and select different operations to see how they affect the overlapping regions.",
   multi_clip:

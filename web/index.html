@@ -55,6 +55,7 @@
         <optgroup label="── Compositing &amp; Masking ──">
           <option value="compositing">Compositing Demo</option>
           <option value="alpha_mask">Alpha Mask Demo</option>
+          <option value="alpha_mask2">Alpha Mask 2 (Lion)</option>
           <option value="multi_clip">Multi-Clip Demo</option>
         </optgroup>
         <optgroup label="── Transformations ──">
@@ -76,6 +77,19 @@
         </optgroup>
       </select>
       <button id="renderBtn">Refresh / Reset</button>
+    </div>
+
+    <div class="controls" id="alphaMask2Controls" style="display: none">
+      <label for="am2EllipsesSlider">Ellipses:</label>
+      <input
+        type="range"
+        id="am2EllipsesSlider"
+        min="1"
+        max="100"
+        value="10"
+        step="1"
+      />
+      <span id="am2EllipsesValue">10</span>
     </div>
 
     <div class="controls" id="compositingControls" style="display: none">

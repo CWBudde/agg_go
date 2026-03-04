@@ -84,6 +84,7 @@ func main() {
 	js.Global().Set("setCompAlphaDst", js.FuncOf(setCompAlphaDstJS))
 	js.Global().Set("setMultiClipN", js.FuncOf(setMultiClipNJS))
 	js.Global().Set("setMeshSize", js.FuncOf(setMeshSizeJS))
+	js.Global().Set("setAlphaMask2NumEllipses", js.FuncOf(setAlphaMask2NumEllipsesJS))
 
 	// Keep the Go program running
 	select {}
@@ -214,6 +215,13 @@ func onMouseDown(this js.Value, args []js.Value) interface{} {
 		}
 		return handleAlphaMaskMouseDown(x, y, 0)
 	}
+	if demoType == "alpha_mask2" {
+		right := len(args) >= 4 && args[3].Bool()
+		if right {
+			return handleAlphaMask2RightMouseDown(x, y)
+		}
+		return handleAlphaMask2MouseDown(x, y, 0)
+	}
 	if demoType == "multi_clip" {
 		return handleMultiClipMouseDown(x, y)
 	}
@@ -300,6 +308,13 @@ func onMouseMove(this js.Value, args []js.Value) interface{} {
 			return handleAlphaMaskRightMouseDown(x, y)
 		}
 		return handleAlphaMaskMouseDown(x, y, 0)
+	}
+	if demoType == "alpha_mask2" {
+		right := len(args) >= 4 && args[3].Bool()
+		if right {
+			return handleAlphaMask2RightMouseDown(x, y)
+		}
+		return handleAlphaMask2MouseDown(x, y, 0)
 	}
 	if demoType == "multi_clip" {
 		return handleMultiClipMouseDown(x, y)
@@ -834,6 +849,8 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 		drawSimpleBlurDemo()
 	case "alpha_mask":
 		drawAlphaMaskDemo()
+	case "alpha_mask2":
+		drawAlphaMask2Demo()
 	case "compositing":
 		drawCompositingDemo()
 	case "multi_clip":
@@ -860,6 +877,13 @@ func toggleTransCurve2AnimateJS(this js.Value, args []js.Value) interface{} {
 func setMeshSizeJS(this js.Value, args []js.Value) interface{} {
 	if len(args) >= 2 {
 		setMeshSize(args[0].Int(), args[1].Int())
+	}
+	return nil
+}
+
+func setAlphaMask2NumEllipsesJS(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		setAlphaMask2NumEllipses(args[0].Float())
 	}
 	return nil
 }
