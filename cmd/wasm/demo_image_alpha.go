@@ -150,11 +150,10 @@ func drawImageAlphaDemo() {
 	imgAlphaRbuf.Attach(img.Data, img.Width(), img.Height(), img.Width()*4)
 
 	// Render background ellipses using the public API
-	agg2d := ctx.GetAgg2D()
-	agg2d.ResetTransformations()
+	ctx.GetAgg2D().ResetTransformations()
 	for _, e := range imgAlphaEllipses {
-		agg2d.SetColor(agg.RGBA(float64(e.r)/255, float64(e.g)/255, float64(e.b)/255, float64(e.a)/255))
-		agg2d.FillEllipse(e.x, e.y, e.rx, e.ry)
+		ctx.SetColor(agg.RGBA(float64(e.r)/255, float64(e.g)/255, float64(e.b)/255, float64(e.a)/255))
+		ctx.FillEllipse(e.x, e.y, e.rx, e.ry)
 	}
 
 	// Image transform: 10° rotation around image center, then placed at screen center
@@ -204,7 +203,7 @@ func drawImageAlphaDemo() {
 			imgAlphaPath.LineTo(px, py)
 		}
 	}
-	imgAlphaPath.ClosePolygon()
+	imgAlphaPath.ClosePolygon(basics.PathFlagsNone)
 
 	imgAlphaRas.Reset()
 	imgAlphaRas.ClipBox(0, 0, float64(width), float64(height))

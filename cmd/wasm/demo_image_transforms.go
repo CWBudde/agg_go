@@ -105,7 +105,7 @@ func drawImgTransStar(cx, cy float64) {
 			}
 		}
 	}
-	imgTransPath.ClosePolygon()
+	imgTransPath.ClosePolygon(basics.PathFlagsNone)
 }
 
 func drawImageTransformsDemo() {
@@ -197,8 +197,9 @@ func drawImageTransformsDemo() {
 	transformed := path.NewPathStorageStl()
 	imgTransPath.Rewind(0)
 	for {
-		vx, vy, cmd := imgTransPath.NextVertex()
-		if cmd == basics.PathCmdStop {
+		vx, vy, rawCmd := imgTransPath.NextVertex()
+		cmd := basics.PathCommand(rawCmd)
+		if basics.IsStop(cmd) {
 			break
 		}
 		polyMtx.Transform(&vx, &vy)
@@ -207,7 +208,7 @@ func drawImageTransformsDemo() {
 		} else if basics.IsLineTo(cmd) {
 			transformed.LineTo(vx, vy)
 		} else if basics.IsEndPoly(cmd) {
-			transformed.ClosePolygon()
+			transformed.ClosePolygon(basics.PathFlagsNone)
 		}
 	}
 
