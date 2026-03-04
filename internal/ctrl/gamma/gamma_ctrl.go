@@ -62,7 +62,7 @@ type GammaCtrlImpl[C any] struct {
 	// Vertex generation state
 	currentPath uint
 	vertexIndex uint
-	vertices    [32]float64 // Pre-calculated vertices for current path
+	vertices    [40]float64 // Pre-calculated vertices for current path (grid needs 20*2=40)
 	vertexCount uint
 }
 
@@ -122,21 +122,36 @@ func (gc *GammaCtrlImpl[C]) calcSplineBox() {
 	gc.ys2 = gc.yc2 - gc.borderWidth*0.5
 }
 
+// splineYBounds returns (yBottom, yTop) for spline/point calculations.
+// The original C++ uses math-Y (ys1=bottom, ys2=top) with the rendering buffer
+// handling flip_y. In screen-Y-down (flipY=false) we swap the references so the
+// identity gamma curve runs from bottom-left to top-right as expected.
+func (gc *GammaCtrlImpl[C]) splineYBounds() (yBottom, yTop float64) {
+	if gc.FlipY() {
+		return gc.ys1, gc.ys2 // math-Y: ys1 is the low (bottom) value
+	}
+	return gc.ys2, gc.ys1 // screen-Y: ys2 is the large (bottom) value
+}
+
 // calcPoints calculates the screen coordinates of the control points.
 func (gc *GammaCtrlImpl[C]) calcPoints() {
 	kx1, ky1, kx2, ky2 := gc.gammaSpline.GetValues()
+	yBottom, yTop := gc.splineYBounds()
+	span := math.Abs(yTop - yBottom)
 	gc.xp1 = gc.xs1 + (gc.xs2-gc.xs1)*kx1*0.25
-	gc.yp1 = gc.ys1 + (gc.ys2-gc.ys1)*ky1*0.25
+	gc.yp1 = yBottom + (yTop-yBottom)*ky1*0.25
 	gc.xp2 = gc.xs2 - (gc.xs2-gc.xs1)*kx2*0.25
-	gc.yp2 = gc.ys2 - (gc.ys2-gc.ys1)*ky2*0.25
+	gc.yp2 = yBottom + (yTop-yBottom)*(1-ky2*0.25)
+	_ = span
 }
 
 // calcValues calculates the control point values from screen coordinates.
 func (gc *GammaCtrlImpl[C]) calcValues() {
+	yBottom, yTop := gc.splineYBounds()
 	kx1 := (gc.xp1 - gc.xs1) * 4.0 / (gc.xs2 - gc.xs1)
-	ky1 := (gc.yp1 - gc.ys1) * 4.0 / (gc.ys2 - gc.ys1)
+	ky1 := (gc.yp1 - yBottom) * 4.0 / (yTop - yBottom)
 	kx2 := (gc.xs2 - gc.xp2) * 4.0 / (gc.xs2 - gc.xs1)
-	ky2 := (gc.ys2 - gc.yp2) * 4.0 / (gc.ys2 - gc.ys1)
+	ky2 := (1 - (gc.yp2-yBottom)/(yTop-yBottom)) * 4.0
 	gc.gammaSpline.Values(kx1, ky1, kx2, ky2)
 }
 
@@ -436,46 +451,71 @@ func (gc *GammaCtrlImpl[C]) setupCurvePath() {
 	if gc.xs2 <= gc.xs1 || gc.ys2 <= gc.ys1 {
 		return // Invalid bounds, skip setup
 	}
-	gc.gammaSpline.Box(gc.xs1, gc.ys1, gc.xs2, gc.ys2)
+	// Pass (yBottom, yTop) so the identity curve runs from bottom-left to top-right.
+	yBottom, yTop := gc.splineYBounds()
+	gc.gammaSpline.Box(gc.xs1, yBottom, gc.xs2, yTop)
 	gc.curveStroke.SetWidth(gc.curveWidth)
 	gc.curveStroke.Rewind(0)
 }
 
 // setupGridPath prepares vertices for the grid lines.
+// Layout matches the C++ gamma_ctrl_impl: 20 vertices, 4 sub-paths.
 func (gc *GammaCtrlImpl[C]) setupGridPath() {
 	gc.calcPoints()
+	yBottom, yTop := gc.splineYBounds()
+	w := gc.gridWidth * 0.5
+	mid := (gc.ys1 + gc.ys2) * 0.5
+	xmid := (gc.xs1 + gc.xs2) * 0.5
 
-	// Horizontal center line
+	// Sub-path 0 (verts 0-3): horizontal center line
 	gc.vertices[0] = gc.xs1
-	gc.vertices[1] = (gc.ys1+gc.ys2)*0.5 - gc.gridWidth*0.5
+	gc.vertices[1] = mid - w
 	gc.vertices[2] = gc.xs2
-	gc.vertices[3] = (gc.ys1+gc.ys2)*0.5 - gc.gridWidth*0.5
+	gc.vertices[3] = mid - w
 	gc.vertices[4] = gc.xs2
-	gc.vertices[5] = (gc.ys1+gc.ys2)*0.5 + gc.gridWidth*0.5
+	gc.vertices[5] = mid + w
 	gc.vertices[6] = gc.xs1
-	gc.vertices[7] = (gc.ys1+gc.ys2)*0.5 + gc.gridWidth*0.5
+	gc.vertices[7] = mid + w
 
-	// Vertical center line
-	gc.vertices[8] = (gc.xs1+gc.xs2)*0.5 - gc.gridWidth*0.5
+	// Sub-path 1 (verts 4-7): vertical center line
+	gc.vertices[8] = xmid - w
 	gc.vertices[9] = gc.ys1
-	gc.vertices[10] = (gc.xs1+gc.xs2)*0.5 - gc.gridWidth*0.5
+	gc.vertices[10] = xmid - w
 	gc.vertices[11] = gc.ys2
-	gc.vertices[12] = (gc.xs1+gc.xs2)*0.5 + gc.gridWidth*0.5
+	gc.vertices[12] = xmid + w
 	gc.vertices[13] = gc.ys2
-	gc.vertices[14] = (gc.xs1+gc.xs2)*0.5 + gc.gridWidth*0.5
+	gc.vertices[14] = xmid + w
 	gc.vertices[15] = gc.ys1
 
-	// Control point guide lines (simplified)
+	// Sub-path 2 (verts 8-13): L-guide from left edge to p1, then to yBottom
 	gc.vertices[16] = gc.xs1
-	gc.vertices[17] = gc.yp1 - gc.gridWidth*0.5
-	gc.vertices[18] = gc.xp1 - gc.gridWidth*0.5
-	gc.vertices[19] = gc.yp1 - gc.gridWidth*0.5
-	gc.vertices[20] = gc.xp1 - gc.gridWidth*0.5
-	gc.vertices[21] = gc.ys1
-	gc.vertices[22] = gc.xp1 + gc.gridWidth*0.5
-	gc.vertices[23] = gc.ys1
+	gc.vertices[17] = gc.yp1 - w
+	gc.vertices[18] = gc.xp1 - w
+	gc.vertices[19] = gc.yp1 - w
+	gc.vertices[20] = gc.xp1 - w
+	gc.vertices[21] = yBottom
+	gc.vertices[22] = gc.xp1 + w
+	gc.vertices[23] = yBottom
+	gc.vertices[24] = gc.xp1 + w
+	gc.vertices[25] = gc.yp1 + w
+	gc.vertices[26] = gc.xs1
+	gc.vertices[27] = gc.yp1 + w
 
-	gc.vertexCount = 12
+	// Sub-path 3 (verts 14-19): L-guide from right edge to p2, then to yTop
+	gc.vertices[28] = gc.xs2
+	gc.vertices[29] = gc.yp2 + w
+	gc.vertices[30] = gc.xp2 + w
+	gc.vertices[31] = gc.yp2 + w
+	gc.vertices[32] = gc.xp2 + w
+	gc.vertices[33] = yTop
+	gc.vertices[34] = gc.xp2 - w
+	gc.vertices[35] = yTop
+	gc.vertices[36] = gc.xp2 - w
+	gc.vertices[37] = gc.yp2 - w
+	gc.vertices[38] = gc.xs2
+	gc.vertices[39] = gc.yp2 - w
+
+	gc.vertexCount = 20
 }
 
 // setupPoint1Path prepares the inactive control point.
@@ -524,13 +564,13 @@ func (gc *GammaCtrlImpl[C]) getPreCalculatedVertex() (x, y float64, cmd basics.P
 		cmd = basics.PathCmdMoveTo
 	}
 
-	// Handle multi-path border case
+	// Border: 3 sub-paths, moves at 0, 4, 8
 	if gc.currentPath == 1 && (gc.vertexIndex == 4 || gc.vertexIndex == 8) {
 		cmd = basics.PathCmdMoveTo
 	}
 
-	// Handle multi-path grid case
-	if gc.currentPath == 3 && (gc.vertexIndex == 4 || gc.vertexIndex == 8) {
+	// Grid: 4 sub-paths, moves at 0, 4, 8, 14 (matching C++ gamma_ctrl_impl)
+	if gc.currentPath == 3 && (gc.vertexIndex == 4 || gc.vertexIndex == 8 || gc.vertexIndex == 14) {
 		cmd = basics.PathCmdMoveTo
 	}
 
