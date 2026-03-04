@@ -108,13 +108,13 @@ func drawCirclesScatterDemo() {
 		}
 
 		color := p.color.WithAlphaF(alpha)
-		agg2d.FillColor(color)
 
-		// Optimization: Use internal rasterizer directly to avoid repeated overhead
+		// Manually populate rasterizer then render — DrawPath would reset the rasterizer
+		// before reading agg2d.path (which is empty), discarding the ellipse we just added.
 		circlesEllipse.Init(p.x, p.y, radius, radius, 8, false) // Fewer steps for small circles
 		ras.Reset()
 		ras.AddPath(circlesAdapter, 0)
-		agg2d.DrawPath(agg.FillOnly)
+		agg2d.RenderRasterizerWithColor(color)
 	}
 
 	// Update for animation (idle loop in original)
