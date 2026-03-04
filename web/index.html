@@ -373,6 +373,32 @@
       <span id="gammaContrastValue">1.0</span>
     </div>
 
+    <div class="controls" id="lionLensControls" style="display: none">
+      <label for="lionLensScaleSlider">Scale:</label>
+      <input
+        type="range"
+        id="lionLensScaleSlider"
+        min="0.01"
+        max="4.0"
+        value="3.0"
+        step="0.01"
+      />
+      <span id="lionLensScaleValue">3.00</span>
+      <label for="lionLensRadiusSlider" style="margin-left: 1rem">Radius:</label>
+      <input
+        type="range"
+        id="lionLensRadiusSlider"
+        min="0"
+        max="100"
+        value="70"
+        step="1"
+      />
+      <span id="lionLensRadiusValue">70</span>
+      <span style="font-size: 0.85rem; color: #86868b; margin-left: 0.5rem"
+        >Drag to move lens</span
+      >
+    </div>
+
     <div class="controls" id="lionoutlineControls" style="display: none">
       <label for="lionOutlineWidthSlider">Line Width:</label>
       <input
@@ -485,6 +511,26 @@
         step="0.1"
       />
       <span id="circlesSizeValue">0.5</span>
+      <label for="circlesZLowSlider" style="margin-left: 1rem">Z Min:</label>
+      <input
+        type="range"
+        id="circlesZLowSlider"
+        min="0"
+        max="1"
+        value="0.2"
+        step="0.01"
+      />
+      <span id="circlesZLowValue">0.20</span>
+      <label for="circlesZHighSlider" style="margin-left: 1rem">Z Max:</label>
+      <input
+        type="range"
+        id="circlesZHighSlider"
+        min="0"
+        max="1"
+        value="0.8"
+        step="0.01"
+      />
+      <span id="circlesZHighValue">0.80</span>
     </div>
 
     <canvas id="aggCanvas"></canvas>

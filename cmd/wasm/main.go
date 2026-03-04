@@ -85,6 +85,8 @@ func main() {
 	js.Global().Set("setMultiClipN", js.FuncOf(setMultiClipNJS))
 	js.Global().Set("setMeshSize", js.FuncOf(setMeshSizeJS))
 	js.Global().Set("setAlphaMask2NumEllipses", js.FuncOf(setAlphaMask2NumEllipsesJS))
+	js.Global().Set("setLionLensScale", js.FuncOf(setLionLensScaleJS))
+	js.Global().Set("setLionLensRadius", js.FuncOf(setLionLensRadiusJS))
 
 	// Keep the Go program running
 	select {}
@@ -884,6 +886,20 @@ func setMeshSizeJS(this js.Value, args []js.Value) interface{} {
 func setAlphaMask2NumEllipsesJS(this js.Value, args []js.Value) interface{} {
 	if len(args) > 0 {
 		setAlphaMask2NumEllipses(args[0].Float())
+	}
+	return nil
+}
+
+func setLionLensScaleJS(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		setLionLensScale(args[0].Float())
+	}
+	return nil
+}
+
+func setLionLensRadiusJS(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		setLionLensRadius(args[0].Float())
 	}
 	return nil
 }

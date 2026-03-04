@@ -898,6 +898,29 @@ async function init() {
         renderSelectedDemo();
       });
 
+    // lion_lens controls
+    document
+      .getElementById("lionLensScaleSlider")
+      .addEventListener("input", () => {
+        const val = parseFloat(
+          document.getElementById("lionLensScaleSlider").value,
+        );
+        document.getElementById("lionLensScaleValue").textContent =
+          val.toFixed(2);
+        setLionLensScale(val);
+        renderSelectedDemo();
+      });
+    document
+      .getElementById("lionLensRadiusSlider")
+      .addEventListener("input", () => {
+        const val = parseFloat(
+          document.getElementById("lionLensRadiusSlider").value,
+        );
+        document.getElementById("lionLensRadiusValue").textContent = val;
+        setLionLensRadius(val);
+        renderSelectedDemo();
+      });
+
     // roundedrect controls
     document.getElementById("rrRadiusSlider").addEventListener("input", () => {
       const val = parseFloat(document.getElementById("rrRadiusSlider").value);
@@ -996,6 +1019,35 @@ async function init() {
         document.getElementById("circlesSizeValue").textContent =
           val.toFixed(1);
         setCirclesSize(val);
+        renderSelectedDemo();
+      });
+
+    document
+      .getElementById("circlesZLowSlider")
+      .addEventListener("input", () => {
+        const low = parseFloat(document.getElementById("circlesZLowSlider").value);
+        let high = parseFloat(document.getElementById("circlesZHighSlider").value);
+        if (low > high) {
+          high = low;
+          document.getElementById("circlesZHighSlider").value = high;
+          document.getElementById("circlesZHighValue").textContent = high.toFixed(2);
+        }
+        document.getElementById("circlesZLowValue").textContent = low.toFixed(2);
+        setCirclesZRange(low, high);
+        renderSelectedDemo();
+      });
+    document
+      .getElementById("circlesZHighSlider")
+      .addEventListener("input", () => {
+        let low = parseFloat(document.getElementById("circlesZLowSlider").value);
+        const high = parseFloat(document.getElementById("circlesZHighSlider").value);
+        if (high < low) {
+          low = high;
+          document.getElementById("circlesZLowSlider").value = low;
+          document.getElementById("circlesZLowValue").textContent = low.toFixed(2);
+        }
+        document.getElementById("circlesZHighValue").textContent = high.toFixed(2);
+        setCirclesZRange(low, high);
         renderSelectedDemo();
       });
 
@@ -1152,6 +1204,8 @@ function syncControlVisibility(demoType) {
     demoType === "gamma" ? "flex" : "none";
   document.getElementById("lionoutlineControls").style.display =
     demoType === "lionoutline" ? "flex" : "none";
+  document.getElementById("lionLensControls").style.display =
+    demoType === "lion_lens" ? "flex" : "none";
   document.getElementById("roundedrectControls").style.display =
     demoType === "roundedrect" ? "flex" : "none";
   document.getElementById("componentControls").style.display =

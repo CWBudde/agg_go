@@ -5,14 +5,13 @@ import (
 	agg "agg_go"
 	"agg_go/internal/basics"
 	"agg_go/internal/conv"
-	"agg_go/internal/ctrl/slider"
 	liondemo "agg_go/internal/demo/lion"
 	"agg_go/internal/transform"
 )
 
 var (
-	lionLensMagnSlider   *slider.SliderCtrl
-	lionLensRadiusSlider *slider.SliderCtrl
+	lionLensScale        = 3.0
+	lionLensRadius       = 70.0
 	lionLensX, lionLensY float64
 	lionLensInitialized  bool
 
@@ -38,16 +37,6 @@ func initLionLensDemo() {
 	if lionPaths == nil {
 		lionPaths = liondemo.Parse()
 	}
-
-	lionLensMagnSlider = slider.NewSliderCtrl(5, 5, 495, 17, false)
-	lionLensMagnSlider.SetRange(0.01, 4.0)
-	lionLensMagnSlider.SetValue(3.0)
-	lionLensMagnSlider.SetLabel("Scale=%3.2f")
-
-	lionLensRadiusSlider = slider.NewSliderCtrl(5, 20, 495, 32, false)
-	lionLensRadiusSlider.SetRange(0.0, 100.0)
-	lionLensRadiusSlider.SetValue(70.0)
-	lionLensRadiusSlider.SetLabel("Radius=%3.2f")
 
 	lionLensX = float64(width) / 2.0
 	lionLensY = float64(height) / 2.0
@@ -82,8 +71,8 @@ func drawLionLensDemo() {
 	// Set up the lens
 	lens := transform.NewTransWarpMagnifier()
 	lens.SetCenter(lionLensX, lionLensY)
-	lens.SetMagnification(lionLensMagnSlider.Value())
-	lens.SetRadius(lionLensRadiusSlider.Value() / lionLensMagnSlider.Value())
+	lens.SetMagnification(lionLensScale)
+	lens.SetRadius(lionLensRadius / lionLensScale)
 
 	// Set up the base transformation for the lion
 	g_x1, g_y1, g_x2, g_y2 := getLionBoundingRect(lionPaths)
@@ -122,9 +111,6 @@ func drawLionLensDemo() {
 		agg2d.DrawPath(agg.FillOnly)
 	}
 
-	// Render controls
-	renderSlider(agg2d, lionLensMagnSlider)
-	renderSlider(agg2d, lionLensRadiusSlider)
 }
 
 func getLionBoundingRect(paths []liondemo.Path) (x1, y1, x2, y2 float64) {
@@ -214,42 +200,19 @@ func (a *finalLensAdapter) Vertex(x, y *float64) uint32 {
 	return uint32(vcmd)
 }
 
-func handleLionLensMouseDown(x, y float64) bool {
-	if !lionLensInitialized {
-		return false
-	}
-	if lionLensMagnSlider.OnMouseButtonDown(x, y) {
-		return true
-	}
-	if lionLensRadiusSlider.OnMouseButtonDown(x, y) {
-		return true
-	}
+func setLionLensScale(v float64) { lionLensScale = v }
+func setLionLensRadius(v float64) { lionLensRadius = v }
 
+func handleLionLensMouseDown(x, y float64) bool {
 	lionLensX = x
 	lionLensY = y
 	return true
 }
 
 func handleLionLensMouseMove(x, y float64) bool {
-	if !lionLensInitialized {
-		return false
-	}
-	if lionLensMagnSlider.OnMouseMove(x, y, true) {
-		return true
-	}
-	if lionLensRadiusSlider.OnMouseMove(x, y, true) {
-		return true
-	}
-
 	lionLensX = x
 	lionLensY = y
 	return true
 }
 
-func handleLionLensMouseUp() {
-	if !lionLensInitialized {
-		return
-	}
-	lionLensMagnSlider.OnMouseButtonUp(0, 0)
-	lionLensRadiusSlider.OnMouseButtonUp(0, 0)
-}
+func handleLionLensMouseUp() {}
