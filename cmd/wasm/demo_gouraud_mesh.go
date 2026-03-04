@@ -191,6 +191,7 @@ func drawGouraudMeshDemo() {
 
 	pixFmt := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
 	renBase := renderer.NewRendererBaseWithPixfmt[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](pixFmt)
+	renBase.Clear(color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255}) // rgba(0, 0, 0)
 
 	styles := &meshStyleHandler{}
 	for _, t := range meshTriangles {

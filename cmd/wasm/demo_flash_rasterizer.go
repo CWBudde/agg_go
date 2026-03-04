@@ -137,6 +137,7 @@ func drawFlashRasterizerDemo() {
 	pixFmt := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
 	renBase := renderer.NewRendererBaseWithPixfmt[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](pixFmt)
 	renBase.ClipBox(0, 0, img.Width(), img.Height())
+	renBase.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 242, A: 255}) // rgba(1.0, 1.0, 0.95)
 
 	// Create compound rasterizer
 	clipper := &compoundNoClip{}
