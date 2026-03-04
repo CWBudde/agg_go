@@ -112,7 +112,6 @@ func drawLionLensDemo() {
 		agg2d.NoLine()
 		agg2d.DrawPath(agg.FillOnly)
 	}
-
 }
 
 func getLionBoundingRect(paths []liondemo.Path) (x1, y1, x2, y2 float64) {
@@ -202,7 +201,7 @@ func (a *finalLensAdapter) Vertex(x, y *float64) uint32 {
 	return uint32(vcmd)
 }
 
-func setLionLensScale(v float64) { lionLensScale = v }
+func setLionLensScale(v float64)  { lionLensScale = v }
 func setLionLensRadius(v float64) { lionLensRadius = v }
 
 func handleLionLensMouseDown(x, y float64) bool {

@@ -1025,49 +1025,57 @@ async function init() {
     document
       .getElementById("circlesZLowSlider")
       .addEventListener("input", () => {
-        const low = parseFloat(document.getElementById("circlesZLowSlider").value);
-        let high = parseFloat(document.getElementById("circlesZHighSlider").value);
+        const low = parseFloat(
+          document.getElementById("circlesZLowSlider").value,
+        );
+        let high = parseFloat(
+          document.getElementById("circlesZHighSlider").value,
+        );
         if (low > high) {
           high = low;
           document.getElementById("circlesZHighSlider").value = high;
-          document.getElementById("circlesZHighValue").textContent = high.toFixed(2);
+          document.getElementById("circlesZHighValue").textContent =
+            high.toFixed(2);
         }
-        document.getElementById("circlesZLowValue").textContent = low.toFixed(2);
+        document.getElementById("circlesZLowValue").textContent =
+          low.toFixed(2);
         setCirclesZRange(low, high);
         renderSelectedDemo();
       });
     document
       .getElementById("circlesZHighSlider")
       .addEventListener("input", () => {
-        let low = parseFloat(document.getElementById("circlesZLowSlider").value);
-        const high = parseFloat(document.getElementById("circlesZHighSlider").value);
+        let low = parseFloat(
+          document.getElementById("circlesZLowSlider").value,
+        );
+        const high = parseFloat(
+          document.getElementById("circlesZHighSlider").value,
+        );
         if (high < low) {
           low = high;
           document.getElementById("circlesZLowSlider").value = low;
-          document.getElementById("circlesZLowValue").textContent = low.toFixed(2);
+          document.getElementById("circlesZLowValue").textContent =
+            low.toFixed(2);
         }
-        document.getElementById("circlesZHighValue").textContent = high.toFixed(2);
+        document.getElementById("circlesZHighValue").textContent =
+          high.toFixed(2);
         setCirclesZRange(low, high);
         renderSelectedDemo();
       });
 
     // gouraud_mesh controls
-    document
-      .getElementById("meshColsSlider")
-      .addEventListener("input", () => {
-        const cols = parseInt(document.getElementById("meshColsSlider").value);
-        const rows = parseInt(document.getElementById("meshRowsSlider").value);
-        document.getElementById("meshColsValue").textContent = cols;
-        setMeshSize(cols, rows);
-      });
-    document
-      .getElementById("meshRowsSlider")
-      .addEventListener("input", () => {
-        const cols = parseInt(document.getElementById("meshColsSlider").value);
-        const rows = parseInt(document.getElementById("meshRowsSlider").value);
-        document.getElementById("meshRowsValue").textContent = rows;
-        setMeshSize(cols, rows);
-      });
+    document.getElementById("meshColsSlider").addEventListener("input", () => {
+      const cols = parseInt(document.getElementById("meshColsSlider").value);
+      const rows = parseInt(document.getElementById("meshRowsSlider").value);
+      document.getElementById("meshColsValue").textContent = cols;
+      setMeshSize(cols, rows);
+    });
+    document.getElementById("meshRowsSlider").addEventListener("input", () => {
+      const cols = parseInt(document.getElementById("meshColsSlider").value);
+      const rows = parseInt(document.getElementById("meshRowsSlider").value);
+      document.getElementById("meshRowsValue").textContent = rows;
+      setMeshSize(cols, rows);
+    });
 
     // compositing controls
     document.getElementById("compOpSelector").addEventListener("change", () => {
@@ -1117,7 +1125,9 @@ async function init() {
     document
       .getElementById("am2EllipsesSlider")
       .addEventListener("input", () => {
-        const val = parseInt(document.getElementById("am2EllipsesSlider").value);
+        const val = parseInt(
+          document.getElementById("am2EllipsesSlider").value,
+        );
         document.getElementById("am2EllipsesValue").textContent = val;
         setAlphaMask2NumEllipses(val);
         renderSelectedDemo();

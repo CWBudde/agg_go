@@ -48,10 +48,10 @@ func radialShape2(rb renscan.BaseRendererInterface[color.RGBA8[color.Linear]], c
 
 	inter := span.NewSpanInterpolatorLinearDefault(mtx)
 	grad := span.GradientRadial{}
-	
+
 	// Create a color function that uses the ramp
 	colorFunc := &colorRampFunc{ramp: colors}
-	
+
 	sg := span.NewSpanGradient[color.RGBA8[color.Linear]](inter, grad, colorFunc, 0, 100)
 	sa := span.NewSpanAllocator[color.RGBA8[color.Linear]]()
 
