@@ -705,18 +705,24 @@ async function init() {
       persistDemoParams("conv_dash_marker");
       renderSelectedDemo();
     });
-    document.getElementById("dashSmoothSlider").addEventListener("input", () => {
-      const val = parseFloat(document.getElementById("dashSmoothSlider").value);
-      document.getElementById("dashSmoothValue").textContent = val.toFixed(2);
-      setDashSmooth(val);
-      persistDemoParams("conv_dash_marker");
-      renderSelectedDemo();
-    });
-    document.getElementById("dashCapSelector").addEventListener("change", () => {
-      setDashCap(parseInt(document.getElementById("dashCapSelector").value));
-      persistDemoParams("conv_dash_marker");
-      renderSelectedDemo();
-    });
+    document
+      .getElementById("dashSmoothSlider")
+      .addEventListener("input", () => {
+        const val = parseFloat(
+          document.getElementById("dashSmoothSlider").value,
+        );
+        document.getElementById("dashSmoothValue").textContent = val.toFixed(2);
+        setDashSmooth(val);
+        persistDemoParams("conv_dash_marker");
+        renderSelectedDemo();
+      });
+    document
+      .getElementById("dashCapSelector")
+      .addEventListener("change", () => {
+        setDashCap(parseInt(document.getElementById("dashCapSelector").value));
+        persistDemoParams("conv_dash_marker");
+        renderSelectedDemo();
+      });
     document.getElementById("dashClosed").addEventListener("change", () => {
       setDashClosed(document.getElementById("dashClosed").checked);
       persistDemoParams("conv_dash_marker");
@@ -1147,7 +1153,8 @@ const demoDescriptions = {
     "Compositing and blend modes. Showcases how different layers can be combined using standard and advanced blend modes like Multiply, Screen, and Overlay.",
   bspline:
     "B-Spline curve smoothing. Demonstrates the creation of smooth, continuous curves from a set of control points.",
-  conv_dash_marker: "Port of AGG's conv_dash_marker demo. Applies conv_smooth_poly1 to soften corners, then conv_dash to create dash patterns, and conv_marker to place arrowheads at line endpoints. Adjust smoothness, stroke width, cap style, and fill rule. Drag the three control points to reshape the paths.",
+  conv_dash_marker:
+    "Port of AGG's conv_dash_marker demo. Applies conv_smooth_poly1 to soften corners, then conv_dash to create dash patterns, and conv_marker to place arrowheads at line endpoints. Adjust smoothness, stroke width, cap style, and fill rule. Drag the three control points to reshape the paths.",
   gouraud:
     "Smooth color interpolation across triangles. Demonstrates AGG's capability to render gradient-shaded meshes with sub-pixel precision and adjustable dilation.",
   imagefilters:

@@ -25,10 +25,10 @@ var (
 	dashX = [3]float64{157, 469, 243}
 	dashY = [3]float64{60, 170, 310}
 
-	dashWidth   = 3.0  // m_width default
-	dashSmooth  = 1.0  // m_smooth default (range 0.0–2.0)
+	dashWidth   = 3.0 // m_width default
+	dashSmooth  = 1.0 // m_smooth default (range 0.0–2.0)
 	dashClosed  = false
-	dashCap     = 0    // 0=butt, 1=square, 2=round
+	dashCap     = 0     // 0=butt, 1=square, 2=round
 	dashEvenOdd = false // m_even_odd
 
 	dashIdx = -1

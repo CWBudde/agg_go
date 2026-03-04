@@ -8,17 +8,15 @@ import (
 	agg "agg_go"
 	"agg_go/internal/basics"
 	"agg_go/internal/buffer"
+	"agg_go/internal/color"
 	liondemo "agg_go/internal/demo/lion"
+	"agg_go/internal/pixfmt"
 	"agg_go/internal/renderer"
 	renscan "agg_go/internal/renderer/scanline"
 	"agg_go/internal/scanline"
-	"agg_go/internal/color"
-	"agg_go/internal/pixfmt"
 )
 
-var (
-	multiClipN = 3.0
-)
+var multiClipN = 3.0
 
 func drawMultiClipDemo() {
 	w, h := ctx.GetImage().Width(), ctx.GetImage().Height()
@@ -52,10 +50,10 @@ func drawMultiClipDemo() {
 	// Use RendererMClip
 	tempRbuf := buffer.NewRenderingBufferWithData[uint8](ctx.GetImage().Data, w, h, w*4)
 	imgPixf := pixfmt.NewPixFmtRGBA32[color.Linear](tempRbuf)
-	
+
 	// Use the generic renderer
 	mclip := renderer.NewRendererMClip(imgPixf)
-	
+
 	mclip.ResetClipping(false) // Visibility: false means "no visible regions"
 	n := multiClipN
 	for x := 0.0; x < n; x++ {
@@ -76,7 +74,7 @@ func drawMultiClipDemo() {
 
 	for _, lp := range lionPaths {
 		c := color.RGBA8[color.Linear]{R: lp.Color[0], G: lp.Color[1], B: lp.Color[2], A: 255}
-		
+
 		ras.Reset()
 		lp.Path.Rewind(0)
 		for {
@@ -103,12 +101,12 @@ func drawMultiClipDemo() {
 		x1, y1 := float64(rand.Intn(w)), float64(rand.Intn(h))
 		x2, y2 := float64(rand.Intn(w)), float64(rand.Intn(h))
 		c := color.RGBA8[color.Linear]{
-			R: uint8(rand.Intn(128)), 
-			G: uint8(rand.Intn(128)), 
-			B: uint8(rand.Intn(128)), 
-			A: uint8(rand.Intn(128)+127),
+			R: uint8(rand.Intn(128)),
+			G: uint8(rand.Intn(128)),
+			B: uint8(rand.Intn(128)),
+			A: uint8(rand.Intn(128) + 127),
 		}
-		
+
 		ras.Reset()
 		ras.AddVertex(x1, y1, uint32(basics.PathCmdMoveTo))
 		ras.AddVertex(x2, y2, uint32(basics.PathCmdLineTo))

@@ -13,10 +13,10 @@ const (
 	SmoothPolyInitial SmoothPolyStatus = iota
 	SmoothPolyReady
 	SmoothPolyPolygon
-	SmoothPolyCtrlB  // beginning control point for open path (Curve3)
-	SmoothPolyCtrlE  // ending control point for open path (Curve3)
-	SmoothPolyCtrl1  // first control point for interior segments (Curve4)
-	SmoothPolyCtrl2  // second control point for interior segments (Curve4)
+	SmoothPolyCtrlB // beginning control point for open path (Curve3)
+	SmoothPolyCtrlE // ending control point for open path (Curve3)
+	SmoothPolyCtrl1 // first control point for interior segments (Curve4)
+	SmoothPolyCtrl2 // second control point for interior segments (Curve4)
 	SmoothPolyEndPoly
 	SmoothPolyStop
 )

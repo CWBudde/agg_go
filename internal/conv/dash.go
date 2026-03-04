@@ -65,3 +65,9 @@ func (c *ConvDash) GetShorten() float64 {
 func (c *ConvDash) DashGenerator() *vcgen.VCGenDash {
 	return c.dashGen
 }
+
+// NumDashes returns the number of active dash elements (pairs of dash+gap = 2 each).
+// Returns 0 when no dash pattern is set (solid line mode).
+func (c *ConvDash) NumDashes() uint {
+	return c.dashGen.NumDashes()
+}

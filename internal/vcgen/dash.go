@@ -63,6 +63,12 @@ func (d *VCGenDash) RemoveAllDashes() {
 	d.currDash = 0
 }
 
+// NumDashes returns the number of active dash array elements.
+// Each AddDash call adds 2 elements (dash + gap).
+func (d *VCGenDash) NumDashes() uint {
+	return d.numDashes
+}
+
 // AddDash adds a dash pattern (dash length + gap length)
 func (d *VCGenDash) AddDash(dashLen, gapLen float64) {
 	if d.numDashes < MaxDashes {

@@ -86,39 +86,37 @@ func main() {
 
 	// Keep the Go program running
 	select {}
-	}
+}
 
-	func setMultiClipNJS(this js.Value, args []js.Value) interface{} {
+func setMultiClipNJS(this js.Value, args []js.Value) interface{} {
 	if len(args) > 0 {
-	        setMultiClipN(args[0].Float())
+		setMultiClipN(args[0].Float())
 	}
 	return nil
-	}
+}
 
-	func setCompOpJS(this js.Value, args []js.Value) interface{} {
-
+func setCompOpJS(this js.Value, args []js.Value) interface{} {
 	if len(args) > 0 {
-	        setCompOp(args[0].Int())
+		setCompOp(args[0].Int())
 	}
 	return nil
-	}
+}
 
-	func setCompAlphaSrcJS(this js.Value, args []js.Value) interface{} {
+func setCompAlphaSrcJS(this js.Value, args []js.Value) interface{} {
 	if len(args) > 0 {
-	        setCompAlphaSrc(args[0].Float())
+		setCompAlphaSrc(args[0].Float())
 	}
 	return nil
-	}
+}
 
-	func setCompAlphaDstJS(this js.Value, args []js.Value) interface{} {
+func setCompAlphaDstJS(this js.Value, args []js.Value) interface{} {
 	if len(args) > 0 {
-	        setCompAlphaDst(args[0].Float())
+		setCompAlphaDst(args[0].Float())
 	}
 	return nil
-	}
+}
 
-	func setPerspectiveTypeJS(this js.Value, args []js.Value) interface{} {
-
+func setPerspectiveTypeJS(this js.Value, args []js.Value) interface{} {
 	if len(args) > 0 {
 		setPerspectiveType(args[0].Int())
 	}
@@ -204,109 +202,109 @@ func onMouseDown(this js.Value, args []js.Value) interface{} {
 		return true
 	}
 	if demoType == "simple_blur" {
-	        simpleBlurCX = x
-	        simpleBlurCY = y
-	        return true
+		simpleBlurCX = x
+		simpleBlurCY = y
+		return true
 	}
 	if demoType == "alpha_mask" {
-	        right := len(args) >= 4 && args[3].Bool()
-	        if right {
-	                return handleAlphaMaskRightMouseDown(x, y)
-	        }
-	        return handleAlphaMaskMouseDown(x, y, 0)
+		right := len(args) >= 4 && args[3].Bool()
+		if right {
+			return handleAlphaMaskRightMouseDown(x, y)
+		}
+		return handleAlphaMaskMouseDown(x, y, 0)
 	}
 	if demoType == "multi_clip" {
-	        return handleMultiClipMouseDown(x, y)
+		return handleMultiClipMouseDown(x, y)
 	}
 	return false
-	}
+}
 
-	func onMouseMove(this js.Value, args []js.Value) interface{} {
+func onMouseMove(this js.Value, args []js.Value) interface{} {
 	if len(args) < 3 {
-	        return nil
+		return nil
 	}
 	demoType := args[0].String()
 	x := args[1].Float()
 	y := args[2].Float()
 
 	if demoType == "aa" {
-	        return handleAAMouseMove(x, y)
+		return handleAAMouseMove(x, y)
 	}
 	if demoType == "bspline" {
-	        return handleBSplineMouseMove(x, y)
+		return handleBSplineMouseMove(x, y)
 	}
 	if demoType == "conv_dash_marker" {
-	        return handleDashMouseMove(x, y)
+		return handleDashMouseMove(x, y)
 	}
 	if demoType == "gouraud" {
-	        return handleGouraudMouseMove(x, y)
+		return handleGouraudMouseMove(x, y)
 	}
 	if demoType == "sbool" {
-	        return handleSBoolMouseMove(x, y)
+		return handleSBoolMouseMove(x, y)
 	}
 	if demoType == "convstroke" {
-	        return handleConvStrokeMouseMove(x, y)
+		return handleConvStrokeMouseMove(x, y)
 	}
 	if demoType == "gamma" {
-	        return handleGammaCorrectionMouseMove(x, y)
+		return handleGammaCorrectionMouseMove(x, y)
 	}
 	if demoType == "lionoutline" {
-	        right := len(args) >= 4 && args[3].Bool()
-	        return handleLionOutlineMouseMove(x, y, right)
+		right := len(args) >= 4 && args[3].Bool()
+		return handleLionOutlineMouseMove(x, y, right)
 	}
 	if demoType == "roundedrect" {
-	        return handleRoundedRectMouseMove(x, y)
+		return handleRoundedRectMouseMove(x, y)
 	}
 	if demoType == "alphagrad" {
-	        return handleAlphaGradMouseMove(x, y)
+		return handleAlphaGradMouseMove(x, y)
 	}
 	if demoType == "rasterizers" {
-	        return handleRasterizersMouseMove(x, y)
+		return handleRasterizersMouseMove(x, y)
 	}
 	if demoType == "perspective" {
-	        return handlePerspectiveMouseMove(x, y)
+		return handlePerspectiveMouseMove(x, y)
 	}
 	if demoType == "bezier_div" {
-	        return handleBezierDivMouseMove(x, y)
+		return handleBezierDivMouseMove(x, y)
 	}
 	if demoType == "trans_curve" {
-	        return handleTransCurveMouseMove(x, y)
+		return handleTransCurveMouseMove(x, y)
 	}
 	if demoType == "distortions" {
-	        return handleDistortionsMouseMove(x, y)
+		return handleDistortionsMouseMove(x, y)
 	}
 	if demoType == "trans_polar" {
-	        return handleTransPolarMouseMove(x, y)
+		return handleTransPolarMouseMove(x, y)
 	}
 	if demoType == "trans_curve2" {
-	        return handleTransCurve2MouseMove(x, y)
+		return handleTransCurve2MouseMove(x, y)
 	}
 	if demoType == "gamma_ctrl" {
-	        return handleGammaCtrlMouseMove(x, y)
+		return handleGammaCtrlMouseMove(x, y)
 	}
 	if demoType == "gamma_tuner" {
-	        return handleGammaTunerMouseMove(x, y)
+		return handleGammaTunerMouseMove(x, y)
 	}
 	if demoType == "lion_lens" {
-	        return handleLionLensMouseMove(x, y)
+		return handleLionLensMouseMove(x, y)
 	}
 	if demoType == "simple_blur" {
-	        simpleBlurCX = x
-	        simpleBlurCY = y
-	        return true
+		simpleBlurCX = x
+		simpleBlurCY = y
+		return true
 	}
 	if demoType == "alpha_mask" {
-	        right := len(args) >= 4 && args[3].Bool()
-	        if right {
-	                return handleAlphaMaskRightMouseDown(x, y)
-	        }
-	        return handleAlphaMaskMouseDown(x, y, 0)
+		right := len(args) >= 4 && args[3].Bool()
+		if right {
+			return handleAlphaMaskRightMouseDown(x, y)
+		}
+		return handleAlphaMaskMouseDown(x, y, 0)
 	}
 	if demoType == "multi_clip" {
-	        return handleMultiClipMouseDown(x, y)
+		return handleMultiClipMouseDown(x, y)
 	}
 	return false
-	}
+}
 
 func onMouseUp(this js.Value, args []js.Value) interface{} {
 	if len(args) < 1 {
@@ -826,21 +824,21 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 	case "gamma_tuner":
 		drawGammaTunerDemo()
 	case "lion_lens":
-	        drawLionLensDemo()
+		drawLionLensDemo()
 	case "circles":
-	        drawCirclesScatterDemo()
+		drawCirclesScatterDemo()
 	case "blur":
-	        drawBlurDemo()
+		drawBlurDemo()
 	case "simple_blur":
-	        drawSimpleBlurDemo()
+		drawSimpleBlurDemo()
 	case "alpha_mask":
-	        drawAlphaMaskDemo()
+		drawAlphaMaskDemo()
 	case "compositing":
-	        drawCompositingDemo()
+		drawCompositingDemo()
 	case "multi_clip":
-	        drawMultiClipDemo()
+		drawMultiClipDemo()
 	default:
-	        logStatus("unknown demo type: " + demoType)
+		logStatus("unknown demo type: " + demoType)
 		return nil
 	}
 

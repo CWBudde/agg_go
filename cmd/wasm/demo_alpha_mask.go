@@ -18,12 +18,12 @@ import (
 )
 
 var (
-	amAlphaMaskBuf  *buffer.RenderingBuffer[uint8]
-	amAlphaMask     *pixfmt.AlphaMaskU8
-	amLionAngle     = 0.0
-	amLionScale     = 1.0
-	amLionSkewX     = 0.0
-	amLionSkewY     = 0.0
+	amAlphaMaskBuf *buffer.RenderingBuffer[uint8]
+	amAlphaMask    *pixfmt.AlphaMaskU8
+	amLionAngle    = 0.0
+	amLionScale    = 1.0
+	amLionSkewX    = 0.0
+	amLionSkewY    = 0.0
 )
 
 func generateAlphaMask(w, h int) {
@@ -65,7 +65,7 @@ func generateAlphaMask(w, h int) {
 		c := uint8(rand.Intn(256))
 		opacity := uint8(rand.Intn(256))
 		gray := color.Gray8[color.Linear]{V: c, A: opacity}
-		
+
 		renscan.RenderScanlinesAASolid(rasAdapter, slAdapter, maskRb, gray)
 	}
 
@@ -132,7 +132,7 @@ func drawAlphaMaskDemo() {
 
 	for _, lp := range lionPaths {
 		c := color.RGBA8[color.Linear]{R: lp.Color[0], G: lp.Color[1], B: lp.Color[2], A: 255}
-		
+
 		ras.Reset()
 		lp.Path.Rewind(0)
 		for {

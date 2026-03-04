@@ -93,18 +93,14 @@ func (agg2d *Agg2D) renderStroke() {
 	// Always use non-zero fill rule for strokes
 	agg2d.rasterizer.FillingRule(basics.FillNonZero)
 
-	// The stroke converter already wraps the dashed source when dashing is enabled,
-	// matching AGG2D's path -> curve -> dash -> stroke -> transform pipeline.
-	strokeSource := conv.NewConvTransform(agg2d.convStroke, agg2d.transform)
-
-	// Add stroked path vertices to rasterizer
-	strokeSource.Rewind(0)
-	for {
-		x, y, cmd := strokeSource.Vertex()
-		if cmd == basics.PathCmdStop {
-			break
-		}
-		agg2d.rasterizer.AddVertex(x, y, uint32(cmd))
+	// When convDash is in the pipeline but has no active dashes, bypass it and
+	// stroke convCurve directly. This matches AGG C++ which uses separate
+	// conv_stroke and conv_stroke<conv_dash> pipelines: when no dashes are set,
+	// the plain conv_stroke<conv_curve> is used rather than the dashed one.
+	if agg2d.convDash != nil && agg2d.convDash.NumDashes() == 0 {
+		agg2d.addStrokeToRasterizer(conv.NewConvStroke(agg2d.convCurve))
+	} else {
+		agg2d.addStrokeToRasterizer(agg2d.convStroke)
 	}
 
 	// Render with appropriate color/gradient
@@ -112,6 +108,23 @@ func (agg2d *Agg2D) renderStroke() {
 		agg2d.renderSolidStroke()
 	} else {
 		agg2d.renderGradientStroke()
+	}
+}
+
+// addStrokeToRasterizer applies the given stroke converter (with current settings)
+// through the world transform and feeds vertices into the rasterizer.
+func (agg2d *Agg2D) addStrokeToRasterizer(stroke *conv.ConvStroke) {
+	stroke.SetWidth(agg2d.lineWidth)
+	stroke.SetLineCap(basics.LineCap(agg2d.lineCap))
+	stroke.SetLineJoin(basics.LineJoin(agg2d.lineJoin))
+	strokeSource := conv.NewConvTransform(stroke, agg2d.transform)
+	strokeSource.Rewind(0)
+	for {
+		x, y, cmd := strokeSource.Vertex()
+		if cmd == basics.PathCmdStop {
+			break
+		}
+		agg2d.rasterizer.AddVertex(x, y, uint32(cmd))
 	}
 }
 
@@ -155,6 +168,13 @@ func (agg2d *Agg2D) renderFillWithLineColor() {
 // renderSolidFill renders solid fill using current fill color
 func (agg2d *Agg2D) renderSolidFill() {
 	agg2d.renderSolidFillWithColor(agg2d.fillColor)
+}
+
+// RenderRasterizerWithColor renders whatever is currently accumulated in the rasterizer
+// using the provided solid color, without resetting it first.
+// Use this after manually populating the rasterizer via GetInternalRasterizer().AddPath().
+func (agg2d *Agg2D) RenderRasterizerWithColor(c Color) {
+	agg2d.renderSolidFillWithColor(c)
 }
 
 // renderSolidFillWithColor renders solid fill using specified color

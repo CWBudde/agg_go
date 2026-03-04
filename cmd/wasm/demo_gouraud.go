@@ -10,13 +10,13 @@ import (
 )
 
 var (
-	gouraudX            = [3]float64{100, 500, 300}
-	gouraudY            = [3]float64{100, 150, 500}
-	gouraudDilation     = 0.5
-	gouraudSelected     = -1
-	gouraudDragDX       = 0.0
-	gouraudDragDY       = 0.0
-	gouraudAlphaSlider  *slider.SliderCtrl
+	gouraudX           = [3]float64{100, 500, 300}
+	gouraudY           = [3]float64{100, 150, 500}
+	gouraudDilation    = 0.5
+	gouraudSelected    = -1
+	gouraudDragDX      = 0.0
+	gouraudDragDY      = 0.0
+	gouraudAlphaSlider *slider.SliderCtrl
 )
 
 func initGouraudDemo() {
@@ -51,9 +51,9 @@ func drawGouraudDemo() {
 	x3 := (gouraudX[0]+gouraudX[2])*0.5 - (xc - (gouraudX[0]+gouraudX[2])*0.5)
 	y3 := (gouraudY[0]+gouraudY[2])*0.5 - (yc - (gouraudY[0]+gouraudY[2])*0.5)
 
-	cRed   := agg.NewColor(255, 0, 0, alpha)
+	cRed := agg.NewColor(255, 0, 0, alpha)
 	cGreen := agg.NewColor(0, 255, 0, alpha)
-	cBlue  := agg.NewColor(0, 0, 255, alpha)
+	cBlue := agg.NewColor(0, 0, 255, alpha)
 	cWhite := agg.NewColor(255, 255, 255, alpha)
 	cBlack := agg.NewColor(0, 0, 0, alpha)
 

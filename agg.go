@@ -865,6 +865,12 @@ func (a *Agg2D) GetInternalRasterizer() *rasterizer.RasterizerScanlineAA[int, ra
 	return a.impl.GetInternalRasterizer()
 }
 
+// RenderRasterizerWithColor renders whatever is currently in the rasterizer with the given color,
+// without resetting it. Use after GetInternalRasterizer().AddPath() to render custom vertex sources.
+func (a *Agg2D) RenderRasterizerWithColor(c Color) {
+	a.impl.RenderRasterizerWithColor([4]uint8{c.R, c.G, c.B, c.A})
+}
+
 // ScanlineRender renders the current rasterizer data using a custom renderer.
 func (a *Agg2D) ScanlineRender(ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip], renderer renscan.RendererInterface[color.RGBA8[color.Linear]]) {
 	a.impl.ScanlineRender(ras, renderer)

@@ -11,9 +11,9 @@ import (
 	"agg_go/internal/order"
 	"agg_go/internal/pixfmt"
 	"agg_go/internal/pixfmt/blender"
+	"agg_go/internal/rasterizer"
 	"agg_go/internal/renderer"
 	renscan "agg_go/internal/renderer/scanline"
-	"agg_go/internal/rasterizer"
 	"agg_go/internal/scanline"
 	"agg_go/internal/shapes"
 )
@@ -47,11 +47,11 @@ func drawCompositingDemo() {
 	// 1. Draw Destination Shape (Yellow circle)
 	// We draw it directly to the context using normal alpha blending first
 	agg2d.ResetTransformations()
-	
+
 	// Create a temporary buffer for compositing
 	tempBuf := make([]uint8, w*h*4)
 	tempRbuf := buffer.NewRenderingBufferWithData[uint8](tempBuf, w, h, w*4)
-	
+
 	// We need to use RGBA32 (premultiplied) for compositing
 	pixf := pixfmt.NewPixFmtRGBA32[color.Linear](tempRbuf)
 	rb := renderer.NewRendererBaseWithPixfmt(pixf)
@@ -62,7 +62,7 @@ func drawCompositingDemo() {
 	rb.BlendFrom(srcPixf, &basics.RectI{X1: 0, Y1: 0, X2: 200, Y2: 200}, 0, 250, basics.Int8u(compAlphaDst*255))
 
 	// Draw destination circle
-	drawCircleComp(rb, 
+	drawCircleComp(rb,
 		color.RGBA8[color.Linear]{0xFD, 0xF0, 0x6F, uint8(compAlphaDst * 255)},
 		color.RGBA8[color.Linear]{0xFE, 0x9F, 0x34, uint8(compAlphaDst * 255)},
 		70*3, 100+24*3, 37*3, 100+79*3)
@@ -90,15 +90,15 @@ func drawCompositingDemo() {
 func drawCircleComp(rb renscan.BaseRendererInterface[color.RGBA8[color.Linear]], c1, c2 color.RGBA8[color.Linear], x1, y1, x2, y2 float64) {
 	r := math.Hypot(x2-x1, y2-y1) / 2
 	cx, cy := (x1+x2)/2, (y1+y2)/2
-	
+
 	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip())
 	rasAdapter := &rasterizerAdapter{ras: ras}
 	sl := scanline.NewScanlineU8()
 	slAdapter := &scanlineWrapperU8{sl: sl}
-	
+
 	// Shadow
 	circle := shapes.NewEllipseWithParams(cx+5, cy-3, r, r, 0, false)
-	
+
 	circle.Rewind(0)
 	for {
 		var x, y float64
@@ -109,7 +109,7 @@ func drawCircleComp(rb renscan.BaseRendererInterface[color.RGBA8[color.Linear]],
 		ras.AddVertex(x, y, uint32(cmd))
 	}
 	renscan.RenderScanlinesAASolid(rasAdapter, slAdapter, rb, color.RGBA8[color.Linear]{153, 153, 153, uint8(0.7 * float64(c1.A))})
-	
+
 	ras.Reset()
 	circle.Init(cx, cy, r, r, 0, false)
 	circle.Rewind(0)
@@ -121,7 +121,7 @@ func drawCircleComp(rb renscan.BaseRendererInterface[color.RGBA8[color.Linear]],
 		}
 		ras.AddVertex(x, y, uint32(cmd))
 	}
-	
+
 	renscan.RenderScanlinesAASolid(rasAdapter, slAdapter, rb, c1)
 }
 
@@ -130,13 +130,13 @@ func drawSourceShapeComp(rb renscan.BaseRendererInterface[color.RGBA8[color.Line
 	rasAdapter := &rasterizerAdapter{ras: ras}
 	sl := scanline.NewScanlineU8()
 	slAdapter := &scanlineWrapperU8{sl: sl}
-	
+
 	// Just use a rectangle for now since we don't have a path helper here
 	ras.AddVertex(x1, y1, uint32(basics.PathCmdMoveTo))
 	ras.AddVertex(x2, y1, uint32(basics.PathCmdLineTo))
 	ras.AddVertex(x2, y2, uint32(basics.PathCmdLineTo))
 	ras.AddVertex(x1, y2, uint32(basics.PathCmdLineTo))
-	
+
 	renscan.RenderScanlinesAASolid(rasAdapter, slAdapter, rb, c1)
 }
 
