@@ -6,37 +6,24 @@ import (
 	"math"
 
 	agg "agg_go"
-	"agg_go/internal/ctrl/slider"
 )
 
 var (
-	gouraudX           = [3]float64{100, 500, 300}
-	gouraudY           = [3]float64{100, 150, 500}
-	gouraudDilation    = 0.5
-	gouraudSelected    = -1
-	gouraudDragDX      = 0.0
-	gouraudDragDY      = 0.0
-	gouraudAlphaSlider *slider.SliderCtrl
+	gouraudX        = [3]float64{100, 500, 300}
+	gouraudY        = [3]float64{100, 150, 500}
+	gouraudDilation = 0.5
+	gouraudOpacity  = 1.0
+	gouraudSelected = -1
+	gouraudDragDX   = 0.0
+	gouraudDragDY   = 0.0
 )
 
-func initGouraudDemo() {
-	if gouraudAlphaSlider != nil {
-		return
-	}
-	gouraudAlphaSlider = slider.NewSliderCtrl(5, 5, 495, 17, false)
-	gouraudAlphaSlider.SetRange(0.0, 1.0)
-	gouraudAlphaSlider.SetValue(1.0)
-	gouraudAlphaSlider.SetLabel("Opacity=%.2f")
-}
-
 func drawGouraudDemo() {
-	initGouraudDemo()
-
 	agg2d := ctx.GetAgg2D()
 	agg2d.ResetTransformations()
 
-	alpha := uint8(gouraudAlphaSlider.Value() * 255)
-	logStatus(fmt.Sprintf("Gouraud Dilation: %.2f  Opacity: %.2f", gouraudDilation, gouraudAlphaSlider.Value()))
+	alpha := uint8(gouraudOpacity * 255)
+	logStatus(fmt.Sprintf("Gouraud Dilation: %.2f  Opacity: %.2f", gouraudDilation, gouraudOpacity))
 
 	// Subdivision into 6 triangles as in original gouraud.cpp
 	xc := (gouraudX[0] + gouraudX[1] + gouraudX[2]) / 3.0
@@ -76,15 +63,9 @@ func drawGouraudDemo() {
 		agg2d.LineWidth(1.0)
 		agg2d.DrawCircle(gouraudX[i], gouraudY[i], 8)
 	}
-
-	renderSlider(agg2d, gouraudAlphaSlider)
 }
 
 func handleGouraudMouseDown(x, y float64) bool {
-	initGouraudDemo()
-	if gouraudAlphaSlider.OnMouseButtonDown(x, y) {
-		return true
-	}
 	gouraudSelected = -1
 	for i := 0; i < 3; i++ {
 		dist := math.Sqrt(math.Pow(x-gouraudX[i], 2) + math.Pow(y-gouraudY[i], 2))
@@ -99,9 +80,6 @@ func handleGouraudMouseDown(x, y float64) bool {
 }
 
 func handleGouraudMouseMove(x, y float64) bool {
-	if gouraudAlphaSlider.OnMouseMove(x, y, true) {
-		return true
-	}
 	if gouraudSelected != -1 {
 		gouraudX[gouraudSelected] = x - gouraudDragDX
 		gouraudY[gouraudSelected] = y - gouraudDragDY
@@ -111,6 +89,5 @@ func handleGouraudMouseMove(x, y float64) bool {
 }
 
 func handleGouraudMouseUp() {
-	gouraudAlphaSlider.OnMouseButtonUp(0, 0)
 	gouraudSelected = -1
 }

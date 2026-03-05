@@ -55,6 +55,7 @@ const ALL_DEMO_PARAMS = [
   "dy2",
   // gouraud
   "dil",
+  "gopa",
   "gx0",
   "gy0",
   "gx1",
@@ -222,6 +223,7 @@ const demoURLHandlers = {
       const n = getGouraudNodes();
       updateURL({
         dil: parseFloat(document.getElementById("dilationSlider").value),
+        gopa: parseFloat(document.getElementById("gouraudOpacitySlider").value),
         gx0: n.x0.toFixed(1),
         gy0: n.y0.toFixed(1),
         gx1: n.x1.toFixed(1),
@@ -236,6 +238,13 @@ const demoURLHandlers = {
         setGouraudDilation(val);
         document.getElementById("dilationSlider").value = val;
         document.getElementById("dilationValue").textContent = val;
+      }
+      if (p.has("gopa")) {
+        const val = parseFloat(p.get("gopa"));
+        setGouraudOpacity(val);
+        document.getElementById("gouraudOpacitySlider").value = val;
+        document.getElementById("gouraudOpacityValue").textContent =
+          val.toFixed(2);
       }
       const keys = ["gx0", "gy0", "gx1", "gy1", "gx2", "gy2"];
       if (keys.every((k) => p.has(k))) {
@@ -1246,6 +1255,177 @@ async function init() {
         renderSelectedDemo();
       });
 
+    // gouraud opacity slider
+    document
+      .getElementById("gouraudOpacitySlider")
+      .addEventListener("input", () => {
+        const val = parseFloat(
+          document.getElementById("gouraudOpacitySlider").value,
+        );
+        document.getElementById("gouraudOpacityValue").textContent =
+          val.toFixed(2);
+        setGouraudOpacity(val);
+        persistDemoParams("gouraud");
+        renderSelectedDemo();
+      });
+
+    // gamma_tuner controls
+    document.getElementById("gtRSlider").addEventListener("input", () => {
+      const val = parseFloat(document.getElementById("gtRSlider").value);
+      document.getElementById("gtRValue").textContent = val.toFixed(2);
+      setGammaTunerR(val);
+      renderSelectedDemo();
+    });
+    document.getElementById("gtGSlider").addEventListener("input", () => {
+      const val = parseFloat(document.getElementById("gtGSlider").value);
+      document.getElementById("gtGValue").textContent = val.toFixed(2);
+      setGammaTunerG(val);
+      renderSelectedDemo();
+    });
+    document.getElementById("gtBSlider").addEventListener("input", () => {
+      const val = parseFloat(document.getElementById("gtBSlider").value);
+      document.getElementById("gtBValue").textContent = val.toFixed(2);
+      setGammaTunerB(val);
+      renderSelectedDemo();
+    });
+    document.getElementById("gtGammaSlider").addEventListener("input", () => {
+      const val = parseFloat(document.getElementById("gtGammaSlider").value);
+      document.getElementById("gtGammaValue").textContent = val.toFixed(2);
+      setGammaTunerGamma(val);
+      renderSelectedDemo();
+    });
+    document
+      .getElementById("gtPatternSelector")
+      .addEventListener("change", () => {
+        setGammaTunerPattern(
+          parseInt(document.getElementById("gtPatternSelector").value),
+        );
+        renderSelectedDemo();
+      });
+
+    // bezier_div controls
+    document
+      .getElementById("bdAngleTolSlider")
+      .addEventListener("input", () => {
+        const val = parseFloat(
+          document.getElementById("bdAngleTolSlider").value,
+        );
+        document.getElementById("bdAngleTolValue").textContent = val + "°";
+        setBDAngleTol(val);
+        renderSelectedDemo();
+      });
+    document
+      .getElementById("bdApproxScaleSlider")
+      .addEventListener("input", () => {
+        const val = parseFloat(
+          document.getElementById("bdApproxScaleSlider").value,
+        );
+        document.getElementById("bdApproxScaleValue").textContent =
+          val.toFixed(3);
+        setBDApproxScale(val);
+        renderSelectedDemo();
+      });
+    document
+      .getElementById("bdCuspLimitSlider")
+      .addEventListener("input", () => {
+        const val = parseFloat(
+          document.getElementById("bdCuspLimitSlider").value,
+        );
+        document.getElementById("bdCuspLimitValue").textContent = val + "°";
+        setBDCuspLimit(val);
+        renderSelectedDemo();
+      });
+    document.getElementById("bdWidthSlider").addEventListener("input", () => {
+      const val = parseFloat(document.getElementById("bdWidthSlider").value);
+      document.getElementById("bdWidthValue").textContent = val.toFixed(2);
+      setBDWidth(val);
+      renderSelectedDemo();
+    });
+    document.getElementById("bdShowPoints").addEventListener("change", () => {
+      setBDShowPoints(document.getElementById("bdShowPoints").checked);
+      renderSelectedDemo();
+    });
+    document.getElementById("bdShowOutline").addEventListener("change", () => {
+      setBDShowOutline(document.getElementById("bdShowOutline").checked);
+      renderSelectedDemo();
+    });
+    document
+      .getElementById("bdCurveTypeSelector")
+      .addEventListener("change", () => {
+        setBDCurveType(
+          parseInt(document.getElementById("bdCurveTypeSelector").value),
+        );
+        renderSelectedDemo();
+      });
+    document
+      .getElementById("bdCaseTypeSelector")
+      .addEventListener("change", () => {
+        const val = parseInt(
+          document.getElementById("bdCaseTypeSelector").value,
+        );
+        setBDCaseType(val);
+        // Sync width slider with Go's updated value (Go may change width for certain cases)
+        const newWidth = getBDWidth();
+        document.getElementById("bdWidthSlider").value = newWidth;
+        document.getElementById("bdWidthValue").textContent =
+          newWidth.toFixed(2);
+        renderSelectedDemo();
+      });
+    document
+      .getElementById("bdInnerJoinSelector")
+      .addEventListener("change", () => {
+        setBDInnerJoin(
+          parseInt(document.getElementById("bdInnerJoinSelector").value),
+        );
+        renderSelectedDemo();
+      });
+    document
+      .getElementById("bdLineJoinSelector")
+      .addEventListener("change", () => {
+        setBDLineJoin(
+          parseInt(document.getElementById("bdLineJoinSelector").value),
+        );
+        renderSelectedDemo();
+      });
+    document
+      .getElementById("bdLineCapSelector")
+      .addEventListener("change", () => {
+        setBDLineCap(
+          parseInt(document.getElementById("bdLineCapSelector").value),
+        );
+        renderSelectedDemo();
+      });
+
+    // rasterizers controls
+    document.getElementById("rastGammaSlider").addEventListener("input", () => {
+      const val = parseFloat(document.getElementById("rastGammaSlider").value);
+      document.getElementById("rastGammaValue").textContent = val.toFixed(2);
+      setRasterizersGamma(val);
+      renderSelectedDemo();
+    });
+    document.getElementById("rastAlphaSlider").addEventListener("input", () => {
+      const val = parseFloat(document.getElementById("rastAlphaSlider").value);
+      document.getElementById("rastAlphaValue").textContent = val.toFixed(2);
+      setRasterizersAlpha(val);
+      renderSelectedDemo();
+    });
+
+    // bspline controls
+    document
+      .getElementById("bsplineNumPointsSlider")
+      .addEventListener("input", () => {
+        const val = parseFloat(
+          document.getElementById("bsplineNumPointsSlider").value,
+        );
+        document.getElementById("bsplineNumPointsValue").textContent = val;
+        setBSplineNumPoints(val);
+        renderSelectedDemo();
+      });
+    document.getElementById("bsplineClosed").addEventListener("change", () => {
+      setBSplineClosed(document.getElementById("bsplineClosed").checked);
+      renderSelectedDemo();
+    });
+
     // Mouse events for draggable-point demos
     let isDragging = false;
 
@@ -1355,6 +1535,16 @@ function syncControlVisibility(demoType) {
     demoType === "image_transforms" ? "flex" : "none";
   document.getElementById("patternFillControls").style.display =
     demoType === "pattern_fill" ? "flex" : "none";
+  document.getElementById("gammaTunerControls").style.display =
+    demoType === "gamma_tuner" ? "flex" : "none";
+  document.getElementById("bezierDivControls").style.display =
+    demoType === "bezier_div" ? "flex" : "none";
+  document.getElementById("bezierDivControls2").style.display =
+    demoType === "bezier_div" ? "flex" : "none";
+  document.getElementById("rasterizersControls").style.display =
+    demoType === "rasterizers" ? "flex" : "none";
+  document.getElementById("bsplineControls").style.display =
+    demoType === "bspline" ? "flex" : "none";
 }
 
 const demoDescriptions = {

@@ -99,6 +99,146 @@ func main() {
 	js.Global().Set("setPatFillPatternAngle", js.FuncOf(setPatFillPatternAngleJS))
 	js.Global().Set("setPatFillPatternSize", js.FuncOf(setPatFillPatternSizeJS))
 
+	// gamma_tuner setters
+	js.Global().Set("setGammaTunerR", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			gammaTunerR = args[0].Float()
+		}
+		return nil
+	}))
+	js.Global().Set("setGammaTunerG", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			gammaTunerG = args[0].Float()
+		}
+		return nil
+	}))
+	js.Global().Set("setGammaTunerB", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			gammaTunerB = args[0].Float()
+		}
+		return nil
+	}))
+	js.Global().Set("setGammaTunerGamma", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			gammaTunerGamma = args[0].Float()
+		}
+		return nil
+	}))
+	js.Global().Set("setGammaTunerPattern", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			gammaTunerPattern = args[0].Int()
+		}
+		return nil
+	}))
+
+	// gouraud opacity setter
+	js.Global().Set("setGouraudOpacity", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			gouraudOpacity = args[0].Float()
+		}
+		return nil
+	}))
+
+	// bezier_div setters
+	js.Global().Set("setBDAngleTol", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			bdAngleTolVal = args[0].Float()
+		}
+		return nil
+	}))
+	js.Global().Set("setBDApproxScale", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			bdApproxScaleVal = args[0].Float()
+		}
+		return nil
+	}))
+	js.Global().Set("setBDCuspLimit", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			bdCuspLimitVal = args[0].Float()
+		}
+		return nil
+	}))
+	js.Global().Set("setBDWidth", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			bdWidthVal = args[0].Float()
+		}
+		return nil
+	}))
+	js.Global().Set("setBDShowPoints", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			bdShowPointsVal = args[0].Bool()
+		}
+		return nil
+	}))
+	js.Global().Set("setBDShowOutline", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			bdShowOutlineVal = args[0].Bool()
+		}
+		return nil
+	}))
+	js.Global().Set("setBDCurveType", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			bdCurveTypeVal = args[0].Int()
+		}
+		return nil
+	}))
+	js.Global().Set("setBDCaseType", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			bdCaseTypeVal = args[0].Int()
+			bdHandleCaseTypeChange()
+		}
+		return nil
+	}))
+	js.Global().Set("setBDInnerJoin", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			bdInnerJoinVal = args[0].Int()
+		}
+		return nil
+	}))
+	js.Global().Set("setBDLineJoin", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			bdLineJoinVal = args[0].Int()
+		}
+		return nil
+	}))
+	js.Global().Set("setBDLineCap", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			bdLineCapVal = args[0].Int()
+		}
+		return nil
+	}))
+	js.Global().Set("getBDWidth", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		return bdWidthVal
+	}))
+
+	// rasterizers setters
+	js.Global().Set("setRasterizersGamma", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			rasterizersGamma = args[0].Float()
+		}
+		return nil
+	}))
+	js.Global().Set("setRasterizersAlpha", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			rasterizersAlpha = args[0].Float()
+		}
+		return nil
+	}))
+
+	// bspline setters
+	js.Global().Set("setBSplineNumPoints", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			bsplineNumPoints = args[0].Float()
+		}
+		return nil
+	}))
+	js.Global().Set("setBSplineClosed", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			bsplineClosed = args[0].Bool()
+		}
+		return nil
+	}))
+
 	// Keep the Go program running
 	select {}
 }
@@ -206,9 +346,7 @@ func onMouseDown(this js.Value, args []js.Value) interface{} {
 	if demoType == "gamma_ctrl" {
 		return handleGammaCtrlMouseDown(x, y)
 	}
-	if demoType == "gamma_tuner" {
-		return handleGammaTunerMouseDown(x, y)
-	}
+	// gamma_tuner no longer has canvas-based widgets
 	if demoType == "lion_lens" {
 		return handleLionLensMouseDown(x, y)
 	}
@@ -307,9 +445,7 @@ func onMouseMove(this js.Value, args []js.Value) interface{} {
 	if demoType == "gamma_ctrl" {
 		return handleGammaCtrlMouseMove(x, y)
 	}
-	if demoType == "gamma_tuner" {
-		return handleGammaTunerMouseMove(x, y)
-	}
+	// gamma_tuner no longer has canvas-based widgets
 	if demoType == "lion_lens" {
 		return handleLionLensMouseMove(x, y)
 	}
@@ -397,9 +533,7 @@ func onMouseUp(this js.Value, args []js.Value) interface{} {
 	if demoType == "gamma_ctrl" {
 		handleGammaCtrlMouseUp()
 	}
-	if demoType == "gamma_tuner" {
-		handleGammaTunerMouseUp()
-	}
+	// gamma_tuner no longer has canvas-based widgets
 	if demoType == "lion_lens" {
 		handleLionLensMouseUp()
 	}
