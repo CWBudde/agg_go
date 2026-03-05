@@ -10,9 +10,6 @@ import (
 	"agg_go/internal/basics"
 	"agg_go/internal/conv"
 	"agg_go/internal/ctrl/bezier"
-	"agg_go/internal/ctrl/checkbox"
-	"agg_go/internal/ctrl/rbox"
-	"agg_go/internal/ctrl/slider"
 	"agg_go/internal/curves"
 	"agg_go/internal/path"
 )
@@ -25,21 +22,22 @@ var (
 	bdInnerJoins = []basics.InnerJoin{basics.InnerBevel, basics.InnerMiter, basics.InnerJag, basics.InnerRound}
 )
 
-// --- Controls ---
+// --- Controls: plain variables set from JavaScript ---
 
 var (
-	bdCurve1      *bezier.BezierCtrl[agg.Color]
-	bdAngleTol    *slider.SliderCtrl
-	bdApproxScale *slider.SliderCtrl
-	bdCuspLimit   *slider.SliderCtrl
-	bdWidth       *slider.SliderCtrl
-	bdShowPoints  *checkbox.CheckboxCtrl[agg.Color]
-	bdShowOutline *checkbox.CheckboxCtrl[agg.Color]
-	bdCurveType   *rbox.RboxCtrl[agg.Color]
-	bdCaseType    *rbox.RboxCtrl[agg.Color]
-	bdInnerJoin   *rbox.RboxCtrl[agg.Color]
-	bdLineJoin    *rbox.RboxCtrl[agg.Color]
-	bdLineCap     *rbox.RboxCtrl[agg.Color]
+	bdCurve1 *bezier.BezierCtrl[agg.Color]
+
+	bdAngleTolVal    = 15.0 // 0–90 degrees
+	bdApproxScaleVal = 1.0  // 0.1–5
+	bdCuspLimitVal   = 0.0  // 0–90 degrees
+	bdWidthVal       = 50.0 // -50–100
+	bdShowPointsVal  = true
+	bdShowOutlineVal = true
+	bdCurveTypeVal   = 1 // 0=Incremental, 1=Subdiv
+	bdCaseTypeVal    = 0 // 0=Random, 1–8=presets
+	bdInnerJoinVal   = 3 // 0–3
+	bdLineJoinVal    = 1 // 0–4
+	bdLineCapVal     = 0 // 0–2
 
 	bdInitialized bool
 	bdCurCaseType = -1
@@ -55,91 +53,12 @@ func initBezierDivDemo() {
 	bdCurve1 = bezier.NewBezierCtrl[agg.Color](ctrlColor)
 	bdCurve1.SetCurve(170, 424, 13, 87, 488, 423, 26, 333)
 
-	bdAngleTol = slider.NewSliderCtrl(5, 5, 240, 12, false)
-	bdAngleTol.SetRange(0, 90)
-	bdAngleTol.SetValue(15)
-	bdAngleTol.SetLabel("Angle Tolerance=%.0f deg")
-
-	bdApproxScale = slider.NewSliderCtrl(5, 22, 240, 29, false)
-	bdApproxScale.SetRange(0.1, 5)
-	bdApproxScale.SetValue(1.0)
-	bdApproxScale.SetLabel("Approximation Scale=%.3f")
-
-	bdCuspLimit = slider.NewSliderCtrl(5, 39, 240, 46, false)
-	bdCuspLimit.SetRange(0, 90)
-	bdCuspLimit.SetValue(0)
-	bdCuspLimit.SetLabel("Cusp Limit=%.0f deg")
-
-	bdWidth = slider.NewSliderCtrl(245, 5, 495, 12, false)
-	bdWidth.SetRange(-50, 100)
-	bdWidth.SetValue(50)
-	bdWidth.SetLabel("Width=%.2f")
-
-	inact := agg.NewColor(0, 0, 0, 255)
-	txtC := agg.NewColor(0, 0, 0, 255)
-	act := agg.NewColor(102, 0, 0, 255)
-
-	bdShowPoints = checkbox.NewCheckboxCtrl[agg.Color](250, 20, "Show Points", false, inact, txtC, act)
-	bdShowPoints.SetChecked(true)
-
-	bdShowOutline = checkbox.NewCheckboxCtrl[agg.Color](250, 35, "Show Stroke Outline", false, inact, txtC, act)
-	bdShowOutline.SetChecked(true)
-
-	bg := agg.RGBA(1, 1, 1, 0.5)
-	border := agg.NewColor(0, 0, 0, 255)
-	txtRb := agg.NewColor(0, 0, 0, 255)
-	inactRb := agg.NewColor(0, 0, 0, 255)
-	actRb := agg.NewColor(102, 0, 0, 255)
-
-	bdCurveType = rbox.NewRboxCtrl[agg.Color](535, 5, 650, 55, false, bg, border, txtRb, inactRb, actRb)
-	bdCurveType.AddItem("Incremental")
-	bdCurveType.AddItem("Subdiv")
-	bdCurveType.SetCurItem(1)
-
-	bdCaseType = rbox.NewRboxCtrl[agg.Color](535, 60, 650, 195, false, bg, border, txtRb, inactRb, actRb)
-	bdCaseType.SetTextSize(7, 0)
-	bdCaseType.SetTextThickness(1.0)
-	bdCaseType.AddItem("Random")
-	bdCaseType.AddItem("13---24")
-	bdCaseType.AddItem("Smooth Cusp 1")
-	bdCaseType.AddItem("Smooth Cusp 2")
-	bdCaseType.AddItem("Real Cusp 1")
-	bdCaseType.AddItem("Real Cusp 2")
-	bdCaseType.AddItem("Fancy Stroke")
-	bdCaseType.AddItem("Jaw")
-	bdCaseType.AddItem("Ugly Jaw")
-	bdCaseType.SetCurItem(0)
-
-	bdInnerJoin = rbox.NewRboxCtrl[agg.Color](535, 200, 650, 290, false, bg, border, txtRb, inactRb, actRb)
-	bdInnerJoin.SetTextSize(8, 0)
-	bdInnerJoin.AddItem("Inner Bevel")
-	bdInnerJoin.AddItem("Inner Miter")
-	bdInnerJoin.AddItem("Inner Jag")
-	bdInnerJoin.AddItem("Inner Round")
-	bdInnerJoin.SetCurItem(3)
-
-	bdLineJoin = rbox.NewRboxCtrl[agg.Color](535, 295, 650, 385, false, bg, border, txtRb, inactRb, actRb)
-	bdLineJoin.SetTextSize(8, 0)
-	bdLineJoin.AddItem("Miter Join")
-	bdLineJoin.AddItem("Miter Revert")
-	bdLineJoin.AddItem("Round Join")
-	bdLineJoin.AddItem("Bevel Join")
-	bdLineJoin.AddItem("Miter Round")
-	bdLineJoin.SetCurItem(1)
-
-	bdLineCap = rbox.NewRboxCtrl[agg.Color](535, 395, 650, 455, false, bg, border, txtRb, inactRb, actRb)
-	bdLineCap.SetTextSize(8, 0)
-	bdLineCap.AddItem("Butt Cap")
-	bdLineCap.AddItem("Square Cap")
-	bdLineCap.AddItem("Round Cap")
-	bdLineCap.SetCurItem(0)
-
 	bdInitialized = true
 }
 
 // bdHandleCaseTypeChange updates the curve to a preset when the case type changes.
 func bdHandleCaseTypeChange() {
-	item := bdCaseType.CurItem()
+	item := bdCaseTypeVal
 	if item == bdCurCaseType {
 		return
 	}
@@ -157,7 +76,7 @@ func bdHandleCaseTypeChange() {
 		bdCurve1.SetCurve(475, 157, 200, 100, 453, 100, 222, 157)
 	case 6:
 		bdCurve1.SetCurve(129, 233, 32, 283, 258, 285, 159, 232)
-		bdWidth.SetValue(100)
+		bdWidthVal = 100
 	case 7:
 		bdCurve1.SetCurve(100, 100, 300, 200, 264, 286, 264, 284)
 	case 8:
@@ -394,28 +313,6 @@ func bdIterPath(a *agg.Agg2D, src conv.VertexSource) {
 	}
 }
 
-// renderCheckbox renders a CheckboxCtrl via the internal rasterizer.
-func renderCheckbox(agg2d *agg.Agg2D, c *checkbox.CheckboxCtrl[agg.Color]) {
-	ras := agg2d.GetInternalRasterizer()
-	for i := uint(0); i < c.NumPaths(); i++ {
-		ras.Reset()
-		adapter := &checkboxAdapter{c: c}
-		ras.AddPath(adapter, uint32(i))
-		agg2d.RenderRasterizerWithColor(c.Color(i))
-	}
-}
-
-type checkboxAdapter struct {
-	c *checkbox.CheckboxCtrl[agg.Color]
-}
-
-func (a *checkboxAdapter) Rewind(pathID uint32) { a.c.Rewind(uint(pathID)) }
-func (a *checkboxAdapter) Vertex(x, y *float64) uint32 {
-	vx, vy, cmd := a.c.Vertex()
-	*x, *y = vx, vy
-	return uint32(cmd)
-}
-
 // renderBezierCtrl renders a BezierCtrl via the internal rasterizer.
 func renderBezierCtrl(agg2d *agg.Agg2D, b *bezier.BezierCtrl[agg.Color]) {
 	ras := agg2d.GetInternalRasterizer()
@@ -462,11 +359,25 @@ func drawBezierDivDemo() {
 	x3, y3 := bdCurve1.X3(), bdCurve1.Y3()
 	x4, y4 := bdCurve1.X4(), bdCurve1.Y4()
 
-	approxScale := bdApproxScale.Value()
-	angleTol := bdAngleTol.Value() * math.Pi / 180.0
-	cuspLimit := bdCuspLimit.Value() * math.Pi / 180.0
-	strokeWidth := bdWidth.Value()
-	incremental := bdCurveType.CurItem() == 0
+	approxScale := bdApproxScaleVal
+	angleTol := bdAngleTolVal * math.Pi / 180.0
+	cuspLimit := bdCuspLimitVal * math.Pi / 180.0
+	strokeWidth := bdWidthVal
+	incremental := bdCurveTypeVal == 0
+
+	// Clamp line join/cap/inner join indices
+	lineJoinIdx := bdLineJoinVal
+	if lineJoinIdx < 0 || lineJoinIdx >= len(bdLineJoins) {
+		lineJoinIdx = 0
+	}
+	lineCapIdx := bdLineCapVal
+	if lineCapIdx < 0 || lineCapIdx >= len(bdLineCaps) {
+		lineCapIdx = 0
+	}
+	innerJoinIdx := bdInnerJoinVal
+	if innerJoinIdx < 0 || innerJoinIdx >= len(bdInnerJoins) {
+		innerJoinIdx = 0
+	}
 
 	// Build curve path
 	curvePath := bdBuildCurvePath(x1, y1, x2, y2, x3, y3, x4, y4, approxScale, angleTol, cuspLimit, incremental)
@@ -488,9 +399,9 @@ func drawBezierDivDemo() {
 	curveAdapter := path.NewPathStorageStlVertexSourceAdapter(curvePath)
 	stroke := conv.NewConvStroke(curveAdapter)
 	stroke.SetWidth(strokeWidth)
-	stroke.SetLineJoin(bdLineJoins[bdLineJoin.CurItem()])
-	stroke.SetLineCap(bdLineCaps[bdLineCap.CurItem()])
-	stroke.SetInnerJoin(bdInnerJoins[bdInnerJoin.CurItem()])
+	stroke.SetLineJoin(bdLineJoins[lineJoinIdx])
+	stroke.SetLineCap(bdLineCaps[lineCapIdx])
+	stroke.SetInnerJoin(bdInnerJoins[innerJoinIdx])
 	stroke.SetInnerMiterLimit(1.01)
 
 	// Draw wide filled stroke (rgba(0, 0.5, 0, 0.5) = green semi-transparent)
@@ -502,7 +413,7 @@ func drawBezierDivDemo() {
 	a.DrawPath(agg.FillOnly)
 
 	// Show subdivision points as small dots (r=1.5)
-	if bdShowPoints.IsChecked() {
+	if bdShowPointsVal {
 		a.FillColor(agg.RGBA(0, 0, 0, 0.5))
 		a.NoLine()
 		curvePath.Rewind(0)
@@ -518,7 +429,7 @@ func drawBezierDivDemo() {
 	}
 
 	// Show stroke outline (stroke of stroke, thin black)
-	if bdShowOutline.IsChecked() {
+	if bdShowOutlineVal {
 		stroke2 := conv.NewConvStroke(stroke)
 		a.ResetPath()
 		stroke2.Rewind(0)
@@ -551,19 +462,8 @@ func drawBezierDivDemo() {
 	a.FontGSV(10)
 	a.Text(10, 445, statsText, false, 0, 0)
 
-	// Render all controls
+	// Render bezier control (interactive curve handles - kept on canvas)
 	renderBezierCtrl(a, bdCurve1)
-	renderSlider(a, bdAngleTol)
-	renderSlider(a, bdApproxScale)
-	renderSlider(a, bdCuspLimit)
-	renderSlider(a, bdWidth)
-	renderCheckbox(a, bdShowPoints)
-	renderCheckbox(a, bdShowOutline)
-	renderRBox(a, bdCurveType)
-	renderRBox(a, bdCaseType)
-	renderRBox(a, bdInnerJoin)
-	renderRBox(a, bdLineJoin)
-	renderRBox(a, bdLineCap)
 }
 
 // --- Mouse handlers ---
@@ -573,40 +473,6 @@ func handleBezierDivMouseDown(x, y float64) bool {
 		return false
 	}
 	if bdCurve1.OnMouseButtonDown(x, y) {
-		return true
-	}
-	if bdAngleTol.OnMouseButtonDown(x, y) {
-		return true
-	}
-	if bdApproxScale.OnMouseButtonDown(x, y) {
-		return true
-	}
-	if bdCuspLimit.OnMouseButtonDown(x, y) {
-		return true
-	}
-	if bdWidth.OnMouseButtonDown(x, y) {
-		return true
-	}
-	if bdShowPoints.OnMouseButtonDown(x, y) {
-		return true
-	}
-	if bdShowOutline.OnMouseButtonDown(x, y) {
-		return true
-	}
-	if bdCurveType.OnMouseButtonDown(x, y) {
-		return true
-	}
-	if bdCaseType.OnMouseButtonDown(x, y) {
-		bdHandleCaseTypeChange()
-		return true
-	}
-	if bdInnerJoin.OnMouseButtonDown(x, y) {
-		return true
-	}
-	if bdLineJoin.OnMouseButtonDown(x, y) {
-		return true
-	}
-	if bdLineCap.OnMouseButtonDown(x, y) {
 		return true
 	}
 	return false
@@ -619,18 +485,6 @@ func handleBezierDivMouseMove(x, y float64) bool {
 	if bdCurve1.OnMouseMove(x, y, true) {
 		return true
 	}
-	if bdAngleTol.OnMouseMove(x, y, true) {
-		return true
-	}
-	if bdApproxScale.OnMouseMove(x, y, true) {
-		return true
-	}
-	if bdCuspLimit.OnMouseMove(x, y, true) {
-		return true
-	}
-	if bdWidth.OnMouseMove(x, y, true) {
-		return true
-	}
 	return false
 }
 
@@ -639,8 +493,4 @@ func handleBezierDivMouseUp() {
 		return
 	}
 	bdCurve1.OnMouseButtonUp(0, 0)
-	bdAngleTol.OnMouseButtonUp(0, 0)
-	bdApproxScale.OnMouseButtonUp(0, 0)
-	bdCuspLimit.OnMouseButtonUp(0, 0)
-	bdWidth.OnMouseButtonUp(0, 0)
 }

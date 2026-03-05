@@ -223,6 +223,16 @@
         step="0.1"
       />
       <span id="dilationValue">0.5</span>
+      <label for="gouraudOpacitySlider" style="margin-left: 1rem">Opacity:</label>
+      <input
+        type="range"
+        id="gouraudOpacitySlider"
+        min="0"
+        max="1"
+        value="1"
+        step="0.01"
+      />
+      <span id="gouraudOpacityValue">1.00</span>
     </div>
 
     <div class="controls" id="gouraudMeshControls" style="display: none">
@@ -677,6 +687,104 @@
         step="1"
       />
       <span id="patFillPatSizeValue">30</span>
+    </div>
+
+    <!-- gamma_tuner controls -->
+    <div class="controls" id="gammaTunerControls" style="display: none">
+      <label for="gtRSlider">R:</label>
+      <input type="range" id="gtRSlider" min="0" max="1" value="1" step="0.01" />
+      <span id="gtRValue">1.00</span>
+      <label for="gtGSlider" style="margin-left: 0.5rem">G:</label>
+      <input type="range" id="gtGSlider" min="0" max="1" value="1" step="0.01" />
+      <span id="gtGValue">1.00</span>
+      <label for="gtBSlider" style="margin-left: 0.5rem">B:</label>
+      <input type="range" id="gtBSlider" min="0" max="1" value="1" step="0.01" />
+      <span id="gtBValue">1.00</span>
+      <label for="gtGammaSlider" style="margin-left: 0.5rem">Gamma:</label>
+      <input type="range" id="gtGammaSlider" min="0.5" max="4.0" value="2.2" step="0.05" />
+      <span id="gtGammaValue">2.20</span>
+      <label for="gtPatternSelector" style="margin-left: 0.5rem">Pattern:</label>
+      <select id="gtPatternSelector">
+        <option value="0">Horizontal</option>
+        <option value="1">Vertical</option>
+        <option value="2" selected>Checkered</option>
+      </select>
+    </div>
+
+    <!-- bezier_div controls -->
+    <div class="controls" id="bezierDivControls" style="display: none">
+      <label for="bdAngleTolSlider">Angle Tol:</label>
+      <input type="range" id="bdAngleTolSlider" min="0" max="90" value="15" step="1" />
+      <span id="bdAngleTolValue">15°</span>
+      <label for="bdApproxScaleSlider" style="margin-left: 0.5rem">Approx Scale:</label>
+      <input type="range" id="bdApproxScaleSlider" min="0.1" max="5" value="1" step="0.05" />
+      <span id="bdApproxScaleValue">1.000</span>
+      <label for="bdCuspLimitSlider" style="margin-left: 0.5rem">Cusp Limit:</label>
+      <input type="range" id="bdCuspLimitSlider" min="0" max="90" value="0" step="1" />
+      <span id="bdCuspLimitValue">0°</span>
+      <label for="bdWidthSlider" style="margin-left: 0.5rem">Width:</label>
+      <input type="range" id="bdWidthSlider" min="-50" max="100" value="50" step="1" />
+      <span id="bdWidthValue">50.00</span>
+    </div>
+    <div class="controls" id="bezierDivControls2" style="display: none">
+      <label><input type="checkbox" id="bdShowPoints" checked /> Show Points</label>
+      <label style="margin-left: 0.5rem"><input type="checkbox" id="bdShowOutline" checked /> Show Outline</label>
+      <label for="bdCurveTypeSelector" style="margin-left: 0.5rem">Curve:</label>
+      <select id="bdCurveTypeSelector">
+        <option value="0">Incremental</option>
+        <option value="1" selected>Subdiv</option>
+      </select>
+      <label for="bdCaseTypeSelector" style="margin-left: 0.5rem">Case:</label>
+      <select id="bdCaseTypeSelector">
+        <option value="0">Random</option>
+        <option value="1">13---24</option>
+        <option value="2">Smooth Cusp 1</option>
+        <option value="3">Smooth Cusp 2</option>
+        <option value="4">Real Cusp 1</option>
+        <option value="5">Real Cusp 2</option>
+        <option value="6">Fancy Stroke</option>
+        <option value="7">Jaw</option>
+        <option value="8">Ugly Jaw</option>
+      </select>
+      <label for="bdInnerJoinSelector" style="margin-left: 0.5rem">Inner:</label>
+      <select id="bdInnerJoinSelector">
+        <option value="0">Bevel</option>
+        <option value="1">Miter</option>
+        <option value="2">Jag</option>
+        <option value="3" selected>Round</option>
+      </select>
+      <label for="bdLineJoinSelector" style="margin-left: 0.5rem">Join:</label>
+      <select id="bdLineJoinSelector">
+        <option value="0">Miter</option>
+        <option value="1" selected>Miter Revert</option>
+        <option value="2">Round</option>
+        <option value="3">Bevel</option>
+        <option value="4">Miter Round</option>
+      </select>
+      <label for="bdLineCapSelector" style="margin-left: 0.5rem">Cap:</label>
+      <select id="bdLineCapSelector">
+        <option value="0">Butt</option>
+        <option value="1">Square</option>
+        <option value="2">Round</option>
+      </select>
+    </div>
+
+    <!-- rasterizers controls -->
+    <div class="controls" id="rasterizersControls" style="display: none">
+      <label for="rastGammaSlider">Gamma:</label>
+      <input type="range" id="rastGammaSlider" min="0" max="1" value="0.5" step="0.01" />
+      <span id="rastGammaValue">0.50</span>
+      <label for="rastAlphaSlider" style="margin-left: 1rem">Alpha:</label>
+      <input type="range" id="rastAlphaSlider" min="0" max="1" value="1" step="0.01" />
+      <span id="rastAlphaValue">1.00</span>
+    </div>
+
+    <!-- bspline controls -->
+    <div class="controls" id="bsplineControls" style="display: none">
+      <label for="bsplineNumPointsSlider">Interpolation:</label>
+      <input type="range" id="bsplineNumPointsSlider" min="1" max="40" value="20" step="1" />
+      <span id="bsplineNumPointsValue">20</span>
+      <label style="margin-left: 1rem"><input type="checkbox" id="bsplineClosed" /> Closed</label>
     </div>
 
     <canvas id="aggCanvas"></canvas>
