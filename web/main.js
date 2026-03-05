@@ -1364,11 +1364,10 @@ async function init() {
           document.getElementById("bdCaseTypeSelector").value,
         );
         setBDCaseType(val);
-        // When case 6 (Fancy Stroke) is selected, the width is set to 100 by Go
-        if (val === 6) {
-          document.getElementById("bdWidthSlider").value = 100;
-          document.getElementById("bdWidthValue").textContent = "100.00";
-        }
+        // Sync width slider with Go's updated value (Go may change width for certain cases)
+        const newWidth = getBDWidth();
+        document.getElementById("bdWidthSlider").value = newWidth;
+        document.getElementById("bdWidthValue").textContent = newWidth.toFixed(2);
         renderSelectedDemo();
       });
     document
