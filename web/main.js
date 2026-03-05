@@ -1367,7 +1367,8 @@ async function init() {
         // Sync width slider with Go's updated value (Go may change width for certain cases)
         const newWidth = getBDWidth();
         document.getElementById("bdWidthSlider").value = newWidth;
-        document.getElementById("bdWidthValue").textContent = newWidth.toFixed(2);
+        document.getElementById("bdWidthValue").textContent =
+          newWidth.toFixed(2);
         renderSelectedDemo();
       });
     document
