@@ -1148,61 +1148,103 @@ async function init() {
     });
 
     // image_transforms controls
-    document.getElementById("imgTransExampleSelector").addEventListener("change", () => {
-      const val = parseInt(document.getElementById("imgTransExampleSelector").value);
-      setImgTransExample(val);
-      renderSelectedDemo();
-    });
-    document.getElementById("imgTransPolyAngleSlider").addEventListener("input", () => {
-      const val = parseFloat(document.getElementById("imgTransPolyAngleSlider").value);
-      document.getElementById("imgTransPolyAngleValue").textContent = val + "°";
-      setImgTransPolygonAngle(val);
-      renderSelectedDemo();
-    });
-    document.getElementById("imgTransPolyScaleSlider").addEventListener("input", () => {
-      const val = parseFloat(document.getElementById("imgTransPolyScaleSlider").value);
-      document.getElementById("imgTransPolyScaleValue").textContent = val.toFixed(2);
-      setImgTransPolygonScale(val);
-      renderSelectedDemo();
-    });
-    document.getElementById("imgTransImgAngleSlider").addEventListener("input", () => {
-      const val = parseFloat(document.getElementById("imgTransImgAngleSlider").value);
-      document.getElementById("imgTransImgAngleValue").textContent = val + "°";
-      setImgTransImageAngle(val);
-      renderSelectedDemo();
-    });
-    document.getElementById("imgTransImgScaleSlider").addEventListener("input", () => {
-      const val = parseFloat(document.getElementById("imgTransImgScaleSlider").value);
-      document.getElementById("imgTransImgScaleValue").textContent = val.toFixed(2);
-      setImgTransImageScale(val);
-      renderSelectedDemo();
-    });
+    document
+      .getElementById("imgTransExampleSelector")
+      .addEventListener("change", () => {
+        const val = parseInt(
+          document.getElementById("imgTransExampleSelector").value,
+        );
+        setImgTransExample(val);
+        renderSelectedDemo();
+      });
+    document
+      .getElementById("imgTransPolyAngleSlider")
+      .addEventListener("input", () => {
+        const val = parseFloat(
+          document.getElementById("imgTransPolyAngleSlider").value,
+        );
+        document.getElementById("imgTransPolyAngleValue").textContent =
+          val + "°";
+        setImgTransPolygonAngle(val);
+        renderSelectedDemo();
+      });
+    document
+      .getElementById("imgTransPolyScaleSlider")
+      .addEventListener("input", () => {
+        const val = parseFloat(
+          document.getElementById("imgTransPolyScaleSlider").value,
+        );
+        document.getElementById("imgTransPolyScaleValue").textContent =
+          val.toFixed(2);
+        setImgTransPolygonScale(val);
+        renderSelectedDemo();
+      });
+    document
+      .getElementById("imgTransImgAngleSlider")
+      .addEventListener("input", () => {
+        const val = parseFloat(
+          document.getElementById("imgTransImgAngleSlider").value,
+        );
+        document.getElementById("imgTransImgAngleValue").textContent =
+          val + "°";
+        setImgTransImageAngle(val);
+        renderSelectedDemo();
+      });
+    document
+      .getElementById("imgTransImgScaleSlider")
+      .addEventListener("input", () => {
+        const val = parseFloat(
+          document.getElementById("imgTransImgScaleSlider").value,
+        );
+        document.getElementById("imgTransImgScaleValue").textContent =
+          val.toFixed(2);
+        setImgTransImageScale(val);
+        renderSelectedDemo();
+      });
 
     // pattern_fill controls
-    document.getElementById("patFillPolyAngleSlider").addEventListener("input", () => {
-      const val = parseFloat(document.getElementById("patFillPolyAngleSlider").value);
-      document.getElementById("patFillPolyAngleValue").textContent = val + "°";
-      setPatFillPolygonAngle(val);
-      renderSelectedDemo();
-    });
-    document.getElementById("patFillPolyScaleSlider").addEventListener("input", () => {
-      const val = parseFloat(document.getElementById("patFillPolyScaleSlider").value);
-      document.getElementById("patFillPolyScaleValue").textContent = val.toFixed(2);
-      setPatFillPolygonScale(val);
-      renderSelectedDemo();
-    });
-    document.getElementById("patFillPatAngleSlider").addEventListener("input", () => {
-      const val = parseFloat(document.getElementById("patFillPatAngleSlider").value);
-      document.getElementById("patFillPatAngleValue").textContent = val + "°";
-      setPatFillPatternAngle(val);
-      renderSelectedDemo();
-    });
-    document.getElementById("patFillPatSizeSlider").addEventListener("input", () => {
-      const val = parseFloat(document.getElementById("patFillPatSizeSlider").value);
-      document.getElementById("patFillPatSizeValue").textContent = val;
-      setPatFillPatternSize(val);
-      renderSelectedDemo();
-    });
+    document
+      .getElementById("patFillPolyAngleSlider")
+      .addEventListener("input", () => {
+        const val = parseFloat(
+          document.getElementById("patFillPolyAngleSlider").value,
+        );
+        document.getElementById("patFillPolyAngleValue").textContent =
+          val + "°";
+        setPatFillPolygonAngle(val);
+        renderSelectedDemo();
+      });
+    document
+      .getElementById("patFillPolyScaleSlider")
+      .addEventListener("input", () => {
+        const val = parseFloat(
+          document.getElementById("patFillPolyScaleSlider").value,
+        );
+        document.getElementById("patFillPolyScaleValue").textContent =
+          val.toFixed(2);
+        setPatFillPolygonScale(val);
+        renderSelectedDemo();
+      });
+    document
+      .getElementById("patFillPatAngleSlider")
+      .addEventListener("input", () => {
+        const val = parseFloat(
+          document.getElementById("patFillPatAngleSlider").value,
+        );
+        document.getElementById("patFillPatAngleValue").textContent = val + "°";
+        setPatFillPatternAngle(val);
+        renderSelectedDemo();
+      });
+    document
+      .getElementById("patFillPatSizeSlider")
+      .addEventListener("input", () => {
+        const val = parseFloat(
+          document.getElementById("patFillPatSizeSlider").value,
+        );
+        document.getElementById("patFillPatSizeValue").textContent = val;
+        setPatFillPatternSize(val);
+        renderSelectedDemo();
+      });
 
     // Mouse events for draggable-point demos
     let isDragging = false;

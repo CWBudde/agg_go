@@ -39,7 +39,7 @@ func createSpheresImage(w, h int) *agg.Image {
 	imgCtx.FillRectangle(0, 0, float64(w), float64(h))
 
 	type sphere struct {
-		x, y, r float64
+		x, y, r    float64
 		r0, g0, b0 float64
 	}
 	spheres := []sphere{
@@ -69,4 +69,3 @@ func createSpheresImage(w, h int) *agg.Image {
 
 	return img
 }
-

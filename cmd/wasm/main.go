@@ -761,6 +761,7 @@ func setImg1AngleJS(this js.Value, args []js.Value) interface{} {
 	}
 	return nil
 }
+
 func setImg1ScaleJS(this js.Value, args []js.Value) interface{} {
 	if len(args) > 0 {
 		img1Scale = args[0].Float()
@@ -775,24 +776,28 @@ func setImgTransPolygonAngleJS(this js.Value, args []js.Value) interface{} {
 	}
 	return nil
 }
+
 func setImgTransPolygonScaleJS(this js.Value, args []js.Value) interface{} {
 	if len(args) > 0 {
 		setImgTransPolygonScale(args[0].Float())
 	}
 	return nil
 }
+
 func setImgTransImageAngleJS(this js.Value, args []js.Value) interface{} {
 	if len(args) > 0 {
 		setImgTransImageAngle(args[0].Float())
 	}
 	return nil
 }
+
 func setImgTransImageScaleJS(this js.Value, args []js.Value) interface{} {
 	if len(args) > 0 {
 		setImgTransImageScale(args[0].Float())
 	}
 	return nil
 }
+
 func setImgTransExampleJS(this js.Value, args []js.Value) interface{} {
 	if len(args) > 0 {
 		setImgTransExample(args[0].Int())
@@ -807,18 +812,21 @@ func setPatFillPolygonAngleJS(this js.Value, args []js.Value) interface{} {
 	}
 	return nil
 }
+
 func setPatFillPolygonScaleJS(this js.Value, args []js.Value) interface{} {
 	if len(args) > 0 {
 		setPatFillPolygonScale(args[0].Float())
 	}
 	return nil
 }
+
 func setPatFillPatternAngleJS(this js.Value, args []js.Value) interface{} {
 	if len(args) > 0 {
 		setPatFillPatternAngle(args[0].Float())
 	}
 	return nil
 }
+
 func setPatFillPatternSizeJS(this js.Value, args []js.Value) interface{} {
 	if len(args) > 0 {
 		setPatFillPatternSize(args[0].Float())

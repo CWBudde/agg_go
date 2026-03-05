@@ -23,14 +23,14 @@ import (
 // --- Demo state ---
 
 var (
-	imgTransPolygonAngle = 0.0  // degrees, -180..180
-	imgTransPolygonScale = 1.0  // 0.1..5.0
-	imgTransImageAngle   = 0.0  // degrees, -180..180
-	imgTransImageScale   = 1.0  // 0.1..5.0
-	imgTransExample      = 0    // 0..6
-	imgTransImageCX      = 0.0  // image center (set on init)
+	imgTransPolygonAngle = 0.0 // degrees, -180..180
+	imgTransPolygonScale = 1.0 // 0.1..5.0
+	imgTransImageAngle   = 0.0 // degrees, -180..180
+	imgTransImageScale   = 1.0 // 0.1..5.0
+	imgTransExample      = 0   // 0..6
+	imgTransImageCX      = 0.0 // image center (set on init)
 	imgTransImageCY      = 0.0
-	imgTransPolygonCX    = 0.0  // polygon center (set on init)
+	imgTransPolygonCX    = 0.0 // polygon center (set on init)
 	imgTransPolygonCY    = 0.0
 	imgTransImageCenterX = 0.0
 	imgTransImageCenterY = 0.0

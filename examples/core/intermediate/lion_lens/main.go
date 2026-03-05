@@ -68,14 +68,14 @@ func main() {
 	// Base affine: centre lion on canvas.
 	mtx := transform.NewTransAffine()
 	mtx.Translate(-baseDX, -baseDY)
-	mtx.Scale(-1, 1) // mirror X (matches flip_y + rotate(Pi) in the original)
+	mtx.ScaleXY(-1, 1) // mirror X (matches flip_y + rotate(Pi) in the original)
 	mtx.Translate(float64(width)/2.0, float64(height)/2.0)
 
 	// Warp magnifier lens.
 	lens := transform.NewTransWarpMagnifier()
-	lens.Center(lensX, lensY)
-	lens.Magnification(lensScale)
-	lens.Radius(lensRadius / lensScale)
+	lens.SetCenter(lensX, lensY)
+	lens.SetMagnification(lensScale)
+	lens.SetRadius(lensRadius / lensScale)
 
 	for _, lp := range lionPaths {
 		a.FillColor(agg.NewColor(lp.Color[0], lp.Color[1], lp.Color[2], 255))
@@ -119,7 +119,8 @@ func main() {
 // Approximate lens outline helper.
 func drawCircle(a interface {
 	DrawCircle(x, y, r float64)
-}, cx, cy, r float64) {
+}, cx, cy, r float64,
+) {
 	_ = math.Pi // used above
 	a.DrawCircle(cx, cy, r)
 }

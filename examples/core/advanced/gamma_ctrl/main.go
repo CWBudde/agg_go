@@ -21,9 +21,9 @@ const (
 )
 
 type ellipseRow struct {
-	cy     float64
-	alpha  float64
-	color  agg.Color
+	cy    float64
+	alpha float64
+	color agg.Color
 }
 
 func drawEllipsePair(a *agg.Agg2D, cx, cy, wide, small, alpha float64, c agg.Color) {

@@ -32,7 +32,7 @@ const (
 
 // patPixFmt is a simple RGBA pixel format for the pattern tile.
 type patPixFmt struct {
-	data          []basics.Int8u
+	data         []basics.Int8u
 	w, h, stride int
 }
 

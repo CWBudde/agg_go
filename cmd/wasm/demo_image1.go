@@ -23,9 +23,9 @@ import (
 // --- Demo state ---
 
 var (
-	img1Angle  = 0.0 // degrees, -180..180
-	img1Scale  = 1.0 // 0.1..5.0
-	img1Image  *agg.Image
+	img1Angle = 0.0 // degrees, -180..180
+	img1Scale = 1.0 // 0.1..5.0
+	img1Image *agg.Image
 
 	// Reusable components
 	img1Rbuf        *buffer.RenderingBufferU8
@@ -163,5 +163,4 @@ func drawImage1Demo() {
 			}
 		}
 	}
-
 }

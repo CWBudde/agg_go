@@ -69,7 +69,9 @@
         </optgroup>
         <optgroup label="── Image Demos ──">
           <option value="image1">Image Affine Transform (Ellipse Fill)</option>
-          <option value="image_transforms">Image Transform Examples (Star)</option>
+          <option value="image_transforms">
+            Image Transform Examples (Star)
+          </option>
           <option value="image_alpha">Image Alpha from Brightness</option>
           <option value="pattern_fill">Pattern Fill (Tiled Star)</option>
         </optgroup>
@@ -544,10 +546,24 @@
     <!-- image1 controls -->
     <div class="controls" id="image1Controls" style="display: none">
       <label for="img1AngleSlider">Angle:</label>
-      <input type="range" id="img1AngleSlider" min="-180" max="180" value="0" step="1" />
+      <input
+        type="range"
+        id="img1AngleSlider"
+        min="-180"
+        max="180"
+        value="0"
+        step="1"
+      />
       <span id="img1AngleValue">0°</span>
       <label for="img1ScaleSlider" style="margin-left: 1rem">Scale:</label>
-      <input type="range" id="img1ScaleSlider" min="0.1" max="5" value="1" step="0.05" />
+      <input
+        type="range"
+        id="img1ScaleSlider"
+        min="0.1"
+        max="5"
+        value="1"
+        step="0.05"
+      />
       <span id="img1ScaleValue">1.00</span>
     </div>
 
@@ -563,33 +579,103 @@
         <option value="5">5 – Combined rotations</option>
         <option value="6">6 – Image-only rotation</option>
       </select>
-      <label for="imgTransPolyAngleSlider" style="margin-left: 1rem">Poly°:</label>
-      <input type="range" id="imgTransPolyAngleSlider" min="-180" max="180" value="0" step="1" />
+      <label for="imgTransPolyAngleSlider" style="margin-left: 1rem"
+        >Poly°:</label
+      >
+      <input
+        type="range"
+        id="imgTransPolyAngleSlider"
+        min="-180"
+        max="180"
+        value="0"
+        step="1"
+      />
       <span id="imgTransPolyAngleValue">0°</span>
-      <label for="imgTransPolyScaleSlider" style="margin-left: 0.5rem">Poly scale:</label>
-      <input type="range" id="imgTransPolyScaleSlider" min="0.1" max="3" value="1" step="0.05" />
+      <label for="imgTransPolyScaleSlider" style="margin-left: 0.5rem"
+        >Poly scale:</label
+      >
+      <input
+        type="range"
+        id="imgTransPolyScaleSlider"
+        min="0.1"
+        max="3"
+        value="1"
+        step="0.05"
+      />
       <span id="imgTransPolyScaleValue">1.00</span>
-      <label for="imgTransImgAngleSlider" style="margin-left: 0.5rem">Img°:</label>
-      <input type="range" id="imgTransImgAngleSlider" min="-180" max="180" value="0" step="1" />
+      <label for="imgTransImgAngleSlider" style="margin-left: 0.5rem"
+        >Img°:</label
+      >
+      <input
+        type="range"
+        id="imgTransImgAngleSlider"
+        min="-180"
+        max="180"
+        value="0"
+        step="1"
+      />
       <span id="imgTransImgAngleValue">0°</span>
-      <label for="imgTransImgScaleSlider" style="margin-left: 0.5rem">Img scale:</label>
-      <input type="range" id="imgTransImgScaleSlider" min="0.1" max="3" value="1" step="0.05" />
+      <label for="imgTransImgScaleSlider" style="margin-left: 0.5rem"
+        >Img scale:</label
+      >
+      <input
+        type="range"
+        id="imgTransImgScaleSlider"
+        min="0.1"
+        max="3"
+        value="1"
+        step="0.05"
+      />
       <span id="imgTransImgScaleValue">1.00</span>
     </div>
 
     <!-- pattern_fill controls -->
     <div class="controls" id="patternFillControls" style="display: none">
       <label for="patFillPolyAngleSlider">Poly°:</label>
-      <input type="range" id="patFillPolyAngleSlider" min="-180" max="180" value="0" step="1" />
+      <input
+        type="range"
+        id="patFillPolyAngleSlider"
+        min="-180"
+        max="180"
+        value="0"
+        step="1"
+      />
       <span id="patFillPolyAngleValue">0°</span>
-      <label for="patFillPolyScaleSlider" style="margin-left: 0.5rem">Poly scale:</label>
-      <input type="range" id="patFillPolyScaleSlider" min="0.1" max="3" value="1" step="0.05" />
+      <label for="patFillPolyScaleSlider" style="margin-left: 0.5rem"
+        >Poly scale:</label
+      >
+      <input
+        type="range"
+        id="patFillPolyScaleSlider"
+        min="0.1"
+        max="3"
+        value="1"
+        step="0.05"
+      />
       <span id="patFillPolyScaleValue">1.00</span>
-      <label for="patFillPatAngleSlider" style="margin-left: 0.5rem">Pat°:</label>
-      <input type="range" id="patFillPatAngleSlider" min="-180" max="180" value="0" step="1" />
+      <label for="patFillPatAngleSlider" style="margin-left: 0.5rem"
+        >Pat°:</label
+      >
+      <input
+        type="range"
+        id="patFillPatAngleSlider"
+        min="-180"
+        max="180"
+        value="0"
+        step="1"
+      />
       <span id="patFillPatAngleValue">0°</span>
-      <label for="patFillPatSizeSlider" style="margin-left: 0.5rem">Pat size:</label>
-      <input type="range" id="patFillPatSizeSlider" min="10" max="80" value="30" step="1" />
+      <label for="patFillPatSizeSlider" style="margin-left: 0.5rem"
+        >Pat size:</label
+      >
+      <input
+        type="range"
+        id="patFillPatSizeSlider"
+        min="10"
+        max="80"
+        value="30"
+        step="1"
+      />
       <span id="patFillPatSizeValue">30</span>
     </div>
 

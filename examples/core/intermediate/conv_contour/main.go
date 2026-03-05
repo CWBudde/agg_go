@@ -120,7 +120,7 @@ func main() {
 		contourWidth float64
 		color        agg.Color
 	}{
-		{100, 350, 4, 0, agg.Black},              // original (no contour)
+		{100, 350, 4, 0, agg.Black},                       // original (no contour)
 		{300, 350, 4, -3.0, agg.NewColor(0, 0, 150, 255)}, // shrunk
 		{500, 350, 4, 3.0, agg.NewColor(0, 150, 0, 255)},  // expanded
 		{700, 350, 4, 8.0, agg.NewColor(150, 0, 0, 200)},  // more expanded

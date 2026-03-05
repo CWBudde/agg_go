@@ -52,12 +52,12 @@ func main() {
 
 	// Define destination quadrilateral (slight perspective effect).
 	cx, cy := float64(width)/2, float64(height)/2
-	w, h := (x2 - x1) * 0.8, (y2 - y1) * 0.8
+	w, h := (x2-x1)*0.8, (y2-y1)*0.8
 	quad := [8]float64{
-		cx - w/2 + 30, cy - h/2,        // top-left (shifted in)
-		cx + w/2, cy - h/2,             // top-right
-		cx + w/2 - 30, cy + h/2,        // bottom-right (shifted in)
-		cx - w/2, cy + h/2,             // bottom-left
+		cx - w/2 + 30, cy - h/2, // top-left (shifted in)
+		cx + w/2, cy - h/2, // top-right
+		cx + w/2 - 30, cy + h/2, // bottom-right (shifted in)
+		cx - w/2, cy + h/2, // bottom-left
 	}
 
 	// Bilinear transform from lion bbox to quad.

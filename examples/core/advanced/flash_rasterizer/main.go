@@ -48,22 +48,23 @@ func (h *flashStyleHandler) Color(style int) color.RGBA8[color.Linear] {
 	}
 	return h.colors[style]
 }
+
 func (h *flashStyleHandler) GenerateSpan(colors []color.RGBA8[color.Linear], x, y, l, style int) {
 }
 
 type flashSLAdapter struct{ sl *scanline.ScanlineU8 }
 
-func (a *flashSLAdapter) ResetSpans()                 { a.sl.ResetSpans() }
+func (a *flashSLAdapter) ResetSpans()                      { a.sl.ResetSpans() }
 func (a *flashSLAdapter) AddCell(x int, c basics.Int8u)    { a.sl.AddCell(x, uint(c)) }
 func (a *flashSLAdapter) AddSpan(x, l int, c basics.Int8u) { a.sl.AddSpan(x, l, uint(c)) }
-func (a *flashSLAdapter) Finalize(y int)              { a.sl.Finalize(y) }
-func (a *flashSLAdapter) NumSpans() int               { return a.sl.NumSpans() }
+func (a *flashSLAdapter) Finalize(y int)                   { a.sl.Finalize(y) }
+func (a *flashSLAdapter) NumSpans() int                    { return a.sl.NumSpans() }
 
 type compoundNoClip struct{ x1, y1 float64 }
 
-func (c *compoundNoClip) ResetClipping()                  {}
+func (c *compoundNoClip) ResetClipping()                 {}
 func (c *compoundNoClip) ClipBox(x1, y1, x2, y2 float64) {}
-func (c *compoundNoClip) MoveTo(x, y float64)             { c.x1, c.y1 = x, y }
+func (c *compoundNoClip) MoveTo(x, y float64)            { c.x1, c.y1 = x, y }
 func (c *compoundNoClip) LineTo(outline *rasterizer.RasterizerCellsAAStyled, x, y float64) {
 	outline.Line(
 		basics.IRound(c.x1*basics.PolySubpixelScale), basics.IRound(c.y1*basics.PolySubpixelScale),

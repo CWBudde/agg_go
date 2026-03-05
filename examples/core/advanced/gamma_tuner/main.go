@@ -17,12 +17,12 @@ const (
 	width  = 500
 	height = 500
 
-	defaultR        = 1.0
-	defaultG        = 1.0
-	defaultB        = 1.0
-	defaultGamma    = 2.2
-	defaultPattern  = 2 // 0=Horizontal, 1=Vertical, 2=Checkered
-	squareSize      = 400
+	defaultR       = 1.0
+	defaultG       = 1.0
+	defaultB       = 1.0
+	defaultGamma   = 2.2
+	defaultPattern = 2 // 0=Horizontal, 1=Vertical, 2=Checkered
+	squareSize     = 400
 )
 
 func gammaCorrect(v, gamma float64) float64 {

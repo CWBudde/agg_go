@@ -91,7 +91,7 @@ func main() {
 	dp := transform.NewTransDoublePath()
 	dp.AddPaths(spline1, spline2, 0, 0)
 	dp.SetBaseLength(math.Abs(lx2-lx1) + 20)
-	dp.SetBaseHeight(math.Abs(ly2-ly1))
+	dp.SetBaseHeight(math.Abs(ly2 - ly1))
 
 	for _, lp := range lionPaths {
 		a.FillColor(agg.NewColor(lp.Color[0], lp.Color[1], lp.Color[2], 220))

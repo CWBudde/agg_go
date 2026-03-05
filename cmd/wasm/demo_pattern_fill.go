@@ -41,7 +41,7 @@ var (
 
 // patternPixFmt implements image.PixelFormat for an in-memory RGBA pattern buffer.
 type patternPixFmt struct {
-	data          []basics.Int8u
+	data         []basics.Int8u
 	w, h, stride int
 }
 
