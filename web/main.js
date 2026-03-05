@@ -1397,26 +1397,18 @@ async function init() {
       });
 
     // rasterizers controls
-    document
-      .getElementById("rastGammaSlider")
-      .addEventListener("input", () => {
-        const val = parseFloat(
-          document.getElementById("rastGammaSlider").value,
-        );
-        document.getElementById("rastGammaValue").textContent = val.toFixed(2);
-        setRasterizersGamma(val);
-        renderSelectedDemo();
-      });
-    document
-      .getElementById("rastAlphaSlider")
-      .addEventListener("input", () => {
-        const val = parseFloat(
-          document.getElementById("rastAlphaSlider").value,
-        );
-        document.getElementById("rastAlphaValue").textContent = val.toFixed(2);
-        setRasterizersAlpha(val);
-        renderSelectedDemo();
-      });
+    document.getElementById("rastGammaSlider").addEventListener("input", () => {
+      const val = parseFloat(document.getElementById("rastGammaSlider").value);
+      document.getElementById("rastGammaValue").textContent = val.toFixed(2);
+      setRasterizersGamma(val);
+      renderSelectedDemo();
+    });
+    document.getElementById("rastAlphaSlider").addEventListener("input", () => {
+      const val = parseFloat(document.getElementById("rastAlphaSlider").value);
+      document.getElementById("rastAlphaValue").textContent = val.toFixed(2);
+      setRasterizersAlpha(val);
+      renderSelectedDemo();
+    });
 
     // bspline controls
     document
