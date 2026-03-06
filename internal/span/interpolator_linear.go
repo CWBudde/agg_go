@@ -32,8 +32,8 @@ type SpanInterpolatorLinear[T TransformerInterface] struct {
 	transformer   T
 	subpixelShift int
 	subpixelScale int
-	liX           *Dda2LineInterpolator
-	liY           *Dda2LineInterpolator
+	liX           Dda2LineInterpolator
+	liY           Dda2LineInterpolator
 }
 
 // TransformerInterface defines the interface for coordinate transformers.
@@ -54,28 +54,31 @@ type Dda2LineInterpolator struct {
 // NewDda2LineInterpolator creates a new DDA2 line interpolator.
 // This implements the forward-adjusted line constructor from C++ AGG.
 func NewDda2LineInterpolator(y1, y2, count int) *Dda2LineInterpolator {
+	dda := &Dda2LineInterpolator{}
+	dda.Init(y1, y2, count)
+	return dda
+}
+
+// Init reinitializes the interpolator with a new range.
+func (d *Dda2LineInterpolator) Init(y1, y2, count int) {
 	if count <= 0 {
 		count = 1
 	}
 
 	dy := y2 - y1
-	dda := &Dda2LineInterpolator{
-		cnt: count,
-		lft: dy / count,
-		rem: dy % count,
-		mod: dy % count,
-		y:   y1,
-	}
+	d.cnt = count
+	d.lft = dy / count
+	d.rem = dy % count
+	d.mod = dy % count
+	d.y = y1
 
 	// Forward adjustment logic from C++ AGG
-	if dda.mod <= 0 {
-		dda.mod += count
-		dda.rem += count
-		dda.lft--
+	if d.mod <= 0 {
+		d.mod += count
+		d.rem += count
+		d.lft--
 	}
-	dda.mod -= count
-
-	return dda
+	d.mod -= count
 }
 
 // Y returns the current interpolated value.
@@ -127,8 +130,8 @@ func (s *SpanInterpolatorLinear[T]) Begin(x, y float64, length int) {
 	y2 := basics.IRound(ty * float64(s.subpixelScale))
 
 	// Create DDA interpolators for X and Y coordinates
-	s.liX = NewDda2LineInterpolator(x1, x2, length)
-	s.liY = NewDda2LineInterpolator(y1, y2, length)
+	s.liX.Init(x1, x2, length)
+	s.liY.Init(y1, y2, length)
 }
 
 // Resynchronize adjusts the interpolation to end at the specified coordinates.
@@ -137,8 +140,8 @@ func (s *SpanInterpolatorLinear[T]) Resynchronize(xe, ye float64, length int) {
 	s.transformer.Transform(&xe, &ye)
 
 	// Create new interpolators from current position to end point
-	s.liX = NewDda2LineInterpolator(s.liX.Y(), basics.IRound(xe*float64(s.subpixelScale)), length)
-	s.liY = NewDda2LineInterpolator(s.liY.Y(), basics.IRound(ye*float64(s.subpixelScale)), length)
+	s.liX.Init(s.liX.Y(), basics.IRound(xe*float64(s.subpixelScale)), length)
+	s.liY.Init(s.liY.Y(), basics.IRound(ye*float64(s.subpixelScale)), length)
 }
 
 // Coordinates returns the current transformed coordinates.
@@ -177,8 +180,8 @@ type SpanInterpolatorLinearSubdiv[T TransformerInterface] struct {
 	subdivShift   int // Subdivision shift (power of 2)
 	subdivSize    int // Subdivision size (1 << subdivShift)
 	subdivMask    int // Subdivision mask (subdivSize - 1)
-	liX           *Dda2LineInterpolator
-	liY           *Dda2LineInterpolator
+	liX           Dda2LineInterpolator
+	liY           Dda2LineInterpolator
 	srcX          int     // Source X in subpixel units
 	srcY          float64 // Source Y coordinate
 	pos           int     // Current position within subdivision
@@ -235,8 +238,8 @@ func (s *SpanInterpolatorLinearSubdiv[T]) Begin(x, y float64, length int) {
 	y2 := basics.IRound(ty * float64(s.subpixelScale))
 
 	// Create DDA interpolators for the subdivision
-	s.liX = NewDda2LineInterpolator(x1, x2, subdivLength)
-	s.liY = NewDda2LineInterpolator(y1, y2, subdivLength)
+	s.liX.Init(x1, x2, subdivLength)
+	s.liY.Init(y1, y2, subdivLength)
 }
 
 // Resynchronize adjusts the interpolation to end at the specified coordinates.
@@ -246,8 +249,8 @@ func (s *SpanInterpolatorLinearSubdiv[T]) Resynchronize(xe, ye float64, length i
 	s.transformer.Transform(&xe, &ye)
 
 	// Create new interpolators from current position to end point
-	s.liX = NewDda2LineInterpolator(s.liX.Y(), basics.IRound(xe*float64(s.subpixelScale)), length)
-	s.liY = NewDda2LineInterpolator(s.liY.Y(), basics.IRound(ye*float64(s.subpixelScale)), length)
+	s.liX.Init(s.liX.Y(), basics.IRound(xe*float64(s.subpixelScale)), length)
+	s.liY.Init(s.liY.Y(), basics.IRound(ye*float64(s.subpixelScale)), length)
 	s.length = length
 	s.pos = 1
 }
@@ -281,9 +284,9 @@ func (s *SpanInterpolatorLinearSubdiv[T]) Next() {
 		endY := ty
 		s.transformer.Transform(&endX, &endY)
 
-		// Create new DDA interpolators for this subdivision
-		s.liX = NewDda2LineInterpolator(s.liX.Y(), basics.IRound(endX*float64(s.subpixelScale)), subdivLength)
-		s.liY = NewDda2LineInterpolator(s.liY.Y(), basics.IRound(endY*float64(s.subpixelScale)), subdivLength)
+			// Reinitialize DDA interpolators for this subdivision.
+			s.liX.Init(s.liX.Y(), basics.IRound(endX*float64(s.subpixelScale)), subdivLength)
+			s.liY.Init(s.liY.Y(), basics.IRound(endY*float64(s.subpixelScale)), subdivLength)
 
 		s.pos = 0
 	}

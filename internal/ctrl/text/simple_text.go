@@ -43,10 +43,15 @@ func (st *SimpleText) SetPosition(x, y float64) {
 	st.gsvText.SetStartPoint(x, y)
 }
 
-// SetSize sets the text height.
-func (st *SimpleText) SetSize(size float64) {
+// SetSize sets the text height and optional width.
+// If width is omitted, proportional width (0) is used.
+func (st *SimpleText) SetSize(size float64, width ...float64) {
 	st.size = size
-	st.gsvText.SetSize(size, 0)
+	w := 0.0
+	if len(width) > 0 {
+		w = width[0]
+	}
+	st.gsvText.SetSize(size, w)
 }
 
 // SetThickness sets the stroke width used to render the text.

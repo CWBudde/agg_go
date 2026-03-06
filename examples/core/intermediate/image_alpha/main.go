@@ -1,21 +1,26 @@
 // Port of AGG C++ image_alpha.cpp – brightness-to-alpha image compositing.
 //
-// Renders a procedural spheres image into an ellipse where each pixel's
-// alpha is derived from its luminance via a lookup table. Coloured ellipses
-// are drawn underneath, then the image is composited on top so its dark
-// areas become transparent. Default LUT: linear ramp.
+// Loads spheres.ppm, draws random background ellipses, then composites the
+// transformed image through a transformed ellipse while converting RGB
+// brightness to output alpha via a 6-point spline LUT.
 package main
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"math"
 	"math/rand"
+	"os"
+	"path/filepath"
+	"strconv"
 
 	agg "agg_go"
 	"agg_go/examples/shared/renderutil"
 	"agg_go/internal/basics"
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
+	"agg_go/internal/ctrl/spline"
 	"agg_go/internal/image"
 	"agg_go/internal/path"
 	"agg_go/internal/pixfmt"
@@ -26,10 +31,7 @@ import (
 	"agg_go/internal/transform"
 )
 
-const (
-	canvasW = 800
-	canvasH = 600
-)
+const defaultImageName = "spheres"
 
 // imagePixFmt wraps a RenderingBufferU8 and implements image.PixelFormat.
 type imagePixFmt struct {
@@ -62,7 +64,7 @@ func (s *imageClipSource) RowPtr(y int) []basics.Int8u {
 	return s.ipf.PixPtr(0, y)
 }
 
-// imgAlphaSpanGen wraps bilinear and converts brightness → alpha.
+// imgAlphaSpanGen wraps bilinear and converts brightness to alpha.
 type imgAlphaSpanGen struct {
 	inner *span.SpanImageFilterRGBABilinearClip[*imageClipSource, *span.SpanInterpolatorLinear[*transform.TransAffine]]
 	lut   [256 * 3]uint8
@@ -76,10 +78,10 @@ func (g *imgAlphaSpanGen) Generate(colors []color.RGBA8[color.Linear], x, y, len
 	g.inner.Generate(colors[:length], x, y)
 	for i := 0; i < length; i++ {
 		c := &colors[i]
-		sum := int(c.R) + int(c.G) + int(c.B)
-		idx := sum
-		if idx >= 256*3 {
-			idx = 256*3 - 1
+		sum := int(c.R) + int(c.G) + int(c.B) // 0..765
+		idx := (sum * len(g.lut)) / (3 * 255) // match C++ scaling
+		if idx >= len(g.lut) {
+			idx = len(g.lut) - 1
 		}
 		c.A = g.lut[idx]
 	}
@@ -105,52 +107,142 @@ func (a *pathSourceAdapter) Vertex(x, y *float64) uint32 {
 	return cmd
 }
 
-func createSpheresImgAlpha(w, h int) *agg.Image {
-	img := agg.CreateImage(w, h)
-	imgCtx := agg.NewContextForImage(img)
-	imgCtx.SetColor(agg.RGBA(0.05, 0.05, 0.12, 1.0))
-	imgCtx.FillRectangle(0, 0, float64(w), float64(h))
-	type sphere struct{ x, y, r, r0, g0, b0 float64 }
-	spheres := []sphere{
-		{float64(w) * 0.22, float64(h) * 0.30, float64(w) * 0.18, 0.9, 0.2, 0.1},
-		{float64(w) * 0.65, float64(h) * 0.28, float64(w) * 0.15, 0.1, 0.4, 0.9},
-		{float64(w) * 0.45, float64(h) * 0.68, float64(w) * 0.20, 0.1, 0.8, 0.3},
+func loadPPMImage(filename string) (*agg.Image, error) {
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, err
 	}
-	for _, sp := range spheres {
-		imgCtx.SetColor(agg.RGBA(sp.r0, sp.g0, sp.b0, 0.9))
-		imgCtx.FillCircle(sp.x, sp.y, sp.r)
-		imgCtx.SetColor(agg.RGBA(1.0, 1.0, 1.0, 0.6))
-		imgCtx.FillCircle(sp.x-sp.r*0.30, sp.y-sp.r*0.30, sp.r*0.30)
+	if len(data) < 2 || data[0] != 'P' || data[1] != '6' {
+		return nil, errors.New("unsupported ppm format: expected P6")
 	}
-	return img
+
+	i := 2
+	readToken := func() (string, error) {
+		for i < len(data) {
+			b := data[i]
+			if b == '#' {
+				for i < len(data) && data[i] != '\n' {
+					i++
+				}
+				continue
+			}
+			if bytes.IndexByte([]byte{' ', '\t', '\n', '\r'}, b) >= 0 {
+				i++
+				continue
+			}
+			break
+		}
+		if i >= len(data) {
+			return "", errors.New("unexpected end of ppm header")
+		}
+		start := i
+		for i < len(data) {
+			b := data[i]
+			if bytes.IndexByte([]byte{' ', '\t', '\n', '\r', '#'}, b) >= 0 {
+				break
+			}
+			i++
+		}
+		return string(data[start:i]), nil
+	}
+
+	wTok, err := readToken()
+	if err != nil {
+		return nil, err
+	}
+	hTok, err := readToken()
+	if err != nil {
+		return nil, err
+	}
+	maxTok, err := readToken()
+	if err != nil {
+		return nil, err
+	}
+	w, err := strconv.Atoi(wTok)
+	if err != nil || w <= 0 {
+		return nil, errors.New("invalid ppm width")
+	}
+	h, err := strconv.Atoi(hTok)
+	if err != nil || h <= 0 {
+		return nil, errors.New("invalid ppm height")
+	}
+	maxV, err := strconv.Atoi(maxTok)
+	if err != nil || maxV != 255 {
+		return nil, errors.New("unsupported ppm max value")
+	}
+
+	for i < len(data) && (data[i] == ' ' || data[i] == '\t' || data[i] == '\n' || data[i] == '\r') {
+		i++
+	}
+	rgb := data[i:]
+	if len(rgb) < w*h*3 {
+		return nil, errors.New("ppm pixel data too short")
+	}
+
+	buf := make([]uint8, w*h*4)
+	for p := 0; p < w*h; p++ {
+		buf[p*4+0] = rgb[p*3+0]
+		buf[p*4+1] = rgb[p*3+1]
+		buf[p*4+2] = rgb[p*3+2]
+		buf[p*4+3] = 255
+	}
+
+	return agg.NewImage(buf, w, h, w*4), nil
+}
+
+func buildTransformedEllipsePath(w, h int, mtx *transform.TransAffine) *path.PathStorageStl {
+	cx := float64(w) / 2.0
+	cy := float64(h) / 2.0
+	rx := float64(w) / 1.9
+	ry := float64(h) / 1.9
+
+	ps := path.NewPathStorageStl()
+	const steps = 200
+	for i := 0; i <= steps; i++ {
+		a := 2 * math.Pi * float64(i) / float64(steps)
+		x := cx + rx*math.Cos(a)
+		y := cy + ry*math.Sin(a)
+		mtx.Transform(&x, &y)
+		if i == 0 {
+			ps.MoveTo(x, y)
+		} else {
+			ps.LineTo(x, y)
+		}
+	}
+	ps.ClosePolygon(basics.PathFlagsNone)
+	return ps
 }
 
 func main() {
-	ctx := agg.NewContext(canvasW, canvasH)
+	srcPath := filepath.Join("examples", "shared", "art", defaultImageName+".ppm")
+	srcImg, err := loadPPMImage(srcPath)
+	if err != nil {
+		panic(err)
+	}
 
+	canvasW := srcImg.Width()
+	canvasH := srcImg.Height()
+	ctx := agg.NewContext(canvasW, canvasH)
 	a := ctx.GetAgg2D()
 	a.ResetTransformations()
+	ctx.Clear(agg.RGBA(1, 1, 1, 1))
 
-	// Draw random coloured ellipses as background.
-	rng := rand.New(rand.NewSource(42))
+	// C++ on_init uses rand() with deterministic default seed semantics.
+	rng := rand.New(rand.NewSource(1))
 	for i := 0; i < 50; i++ {
 		x := float64(rng.Intn(canvasW))
 		y := float64(rng.Intn(canvasH))
 		rx := float64(rng.Intn(60) + 10)
+		ry := float64(rng.Intn(60) + 10)
 		a.FillColor(agg.NewColor(
 			uint8(rng.Intn(256)),
 			uint8(rng.Intn(256)),
 			uint8(rng.Intn(256)),
-			180,
+			uint8(rng.Intn(256)),
 		))
 		a.NoLine()
-		a.FillCircle(x, y, rx)
+		a.Ellipse(x, y, rx, ry)
 	}
-
-	// Composite the spheres image with brightness→alpha.
-	srcImg := createSpheresImgAlpha(400, 400)
-	imgW := float64(srcImg.Width())
-	imgH := float64(srcImg.Height())
 
 	dstImg := ctx.GetImage()
 	dstRbuf := buffer.NewRenderingBufferWithData[uint8](dstImg.Data, dstImg.Width(), dstImg.Height(), dstImg.Width()*4)
@@ -163,13 +255,16 @@ func main() {
 	)
 	sl := scanline.NewScanlineU8()
 
-	cx := float64(canvasW) / 2.0
-	cy := float64(canvasH) / 2.0
+	angle := 10.0 * math.Pi / 180.0
+	srcMtx := transform.NewTransAffine()
+	srcMtx.Translate(-float64(canvasW)/2.0, -float64(canvasH)/2.0)
+	srcMtx.Rotate(angle)
+	srcMtx.Translate(float64(canvasW)/2.0, float64(canvasH)/2.0)
 
 	imgMtx := transform.NewTransAffine()
-	imgMtx.Translate(-imgW/2, -imgH/2)
-	imgMtx.Rotate(0.3)
-	imgMtx.Translate(cx, cy)
+	imgMtx.Translate(-float64(canvasW)/2.0, -float64(canvasH)/2.0)
+	imgMtx.Rotate(angle)
+	imgMtx.Translate(float64(canvasW)/2.0, float64(canvasH)/2.0)
 	imgMtx.Invert()
 
 	imgRbuf := buffer.NewRenderingBufferU8()
@@ -180,48 +275,37 @@ func main() {
 
 	interp := span.NewSpanInterpolatorLinear[*transform.TransAffine](imgMtx, 8)
 	innerSG := span.NewSpanImageFilterRGBABilinearClipWithParams(src, color.RGBA8[color.Linear]{}, interp)
-
 	sg := &imgAlphaSpanGen{inner: innerSG}
-	// Build linear brightness→alpha LUT.
+
+	alphaCtrl := spline.NewSplineCtrlRGBA(2, 2, 200, 30, 6, false)
+	alphaCtrl.SetValue(0, 1.0)
+	alphaCtrl.SetValue(1, 1.0)
+	alphaCtrl.SetValue(2, 1.0)
+	alphaCtrl.SetValue(3, 0.5)
+	alphaCtrl.SetValue(4, 0.5)
+	alphaCtrl.SetValue(5, 1.0)
 	for i := range sg.lut {
-		sg.lut[i] = uint8(i * 255 / (256*3 - 1))
+		t := float64(i) / float64(len(sg.lut)-1)
+		sg.lut[i] = uint8(alphaCtrl.Value(t)*255.0 + 0.5)
 	}
 
-	// Ellipse clip region.
-	polyMtx := transform.NewTransAffine()
-	polyMtx.Translate(-imgW/2, -imgH/2)
-	polyMtx.Rotate(0.3)
-	polyMtx.Translate(cx, cy)
-
-	ps := path.NewPathStorageStl()
-	const steps = 200
-	for i := 0; i <= steps; i++ {
-		angle := 2 * math.Pi * float64(i) / float64(steps)
-		px := imgW/2.0 + 300*math.Cos(angle)
-		py := imgH/2.0 + 250*math.Sin(angle)
-		polyMtx.Transform(&px, &py)
-		if i == 0 {
-			ps.MoveTo(px, py)
-		} else {
-			ps.LineTo(px, py)
-		}
-	}
-	ps.ClosePolygon(basics.PathFlagsNone)
+	clipPath := buildTransformedEllipsePath(canvasW, canvasH, srcMtx)
 
 	ras.Reset()
 	ras.ClipBox(0, 0, float64(canvasW), float64(canvasH))
-	ras.AddPath(&pathSourceAdapter{ps: ps}, 0)
+	ras.AddPath(&pathSourceAdapter{ps: clipPath}, 0)
 
 	if ras.RewindScanlines() {
 		sl.Reset(ras.MinX(), ras.MaxX())
 		for ras.SweepScanline(&rasScanlineAdapter{sl: sl}) {
 			y := sl.Y()
 			for _, spanData := range sl.Spans() {
-				if spanData.Len > 0 {
-					colors := alloc.Allocate(int(spanData.Len))
-					sg.Generate(colors, int(spanData.X), y, int(spanData.Len))
-					renBase.BlendColorHspan(int(spanData.X), y, int(spanData.Len), colors, spanData.Covers, basics.CoverFull)
+				if spanData.Len <= 0 {
+					continue
 				}
+				colors := alloc.Allocate(int(spanData.Len))
+				sg.Generate(colors, int(spanData.X), y, int(spanData.Len))
+				renBase.BlendColorHspan(int(spanData.X), y, int(spanData.Len), colors, spanData.Covers, basics.CoverFull)
 			}
 		}
 	}

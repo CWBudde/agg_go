@@ -6,8 +6,13 @@
 package main
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"math"
+	"os"
+	"path/filepath"
+	"strconv"
 
 	agg "agg_go"
 	"agg_go/examples/shared/renderutil"
@@ -25,8 +30,7 @@ import (
 )
 
 const (
-	canvasW = 800
-	canvasH = 600
+	defaultImageName = "spheres"
 )
 
 // imagePixFmt wraps a RenderingBufferU8 and implements image.PixelFormat.
@@ -90,24 +94,87 @@ func (a *pathSourceAdapter) Vertex(x, y *float64) uint32 {
 	return cmd
 }
 
-func createSpheresIT(w, h int) *agg.Image {
-	img := agg.CreateImage(w, h)
-	imgCtx := agg.NewContextForImage(img)
-	imgCtx.SetColor(agg.RGBA(0.05, 0.05, 0.12, 1.0))
-	imgCtx.FillRectangle(0, 0, float64(w), float64(h))
-	type sphere struct{ x, y, r, r0, g0, b0 float64 }
-	spheres := []sphere{
-		{float64(w) * 0.25, float64(h) * 0.30, float64(w) * 0.18, 0.9, 0.2, 0.1},
-		{float64(w) * 0.65, float64(h) * 0.30, float64(w) * 0.15, 0.1, 0.4, 0.9},
-		{float64(w) * 0.45, float64(h) * 0.70, float64(w) * 0.20, 0.1, 0.8, 0.3},
+func loadPPMImage(filename string) (*agg.Image, error) {
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, err
 	}
-	for _, sp := range spheres {
-		imgCtx.SetColor(agg.RGBA(sp.r0, sp.g0, sp.b0, 0.9))
-		imgCtx.FillCircle(sp.x, sp.y, sp.r)
-		imgCtx.SetColor(agg.RGBA(1.0, 1.0, 1.0, 0.6))
-		imgCtx.FillCircle(sp.x-sp.r*0.30, sp.y-sp.r*0.30, sp.r*0.30)
+	if len(data) < 2 || data[0] != 'P' || data[1] != '6' {
+		return nil, errors.New("unsupported ppm format: expected P6")
 	}
-	return img
+
+	i := 2
+	readToken := func() (string, error) {
+		for i < len(data) {
+			b := data[i]
+			if b == '#' {
+				for i < len(data) && data[i] != '\n' {
+					i++
+				}
+				continue
+			}
+			if bytes.IndexByte([]byte{' ', '\t', '\n', '\r'}, b) >= 0 {
+				i++
+				continue
+			}
+			break
+		}
+		if i >= len(data) {
+			return "", errors.New("unexpected end of ppm header")
+		}
+		start := i
+		for i < len(data) {
+			b := data[i]
+			if bytes.IndexByte([]byte{' ', '\t', '\n', '\r', '#'}, b) >= 0 {
+				break
+			}
+			i++
+		}
+		return string(data[start:i]), nil
+	}
+
+	wTok, err := readToken()
+	if err != nil {
+		return nil, err
+	}
+	hTok, err := readToken()
+	if err != nil {
+		return nil, err
+	}
+	maxTok, err := readToken()
+	if err != nil {
+		return nil, err
+	}
+	w, err := strconv.Atoi(wTok)
+	if err != nil || w <= 0 {
+		return nil, errors.New("invalid ppm width")
+	}
+	h, err := strconv.Atoi(hTok)
+	if err != nil || h <= 0 {
+		return nil, errors.New("invalid ppm height")
+	}
+	maxV, err := strconv.Atoi(maxTok)
+	if err != nil || maxV != 255 {
+		return nil, errors.New("unsupported ppm max value")
+	}
+
+	for i < len(data) && (data[i] == ' ' || data[i] == '\t' || data[i] == '\n' || data[i] == '\r') {
+		i++
+	}
+	rgb := data[i:]
+	if len(rgb) < w*h*3 {
+		return nil, errors.New("ppm pixel data too short")
+	}
+
+	buf := make([]uint8, w*h*4)
+	for p := 0; p < w*h; p++ {
+		buf[p*4+0] = rgb[p*3+0]
+		buf[p*4+1] = rgb[p*3+1]
+		buf[p*4+2] = rgb[p*3+2]
+		buf[p*4+3] = 255
+	}
+
+	return agg.NewImage(buf, w, h, w*4), nil
 }
 
 func buildStarIT(cx, cy float64, w, h int) *path.PathStorageStl {
@@ -139,12 +206,15 @@ func buildStarIT(cx, cy float64, w, h int) *path.PathStorageStl {
 }
 
 func main() {
-	srcImg := createSpheresIT(400, 400)
-	imgW := float64(srcImg.Width())
-	imgH := float64(srcImg.Height())
-
+	srcPath := filepath.Join("examples", "shared", "art", defaultImageName+".ppm")
+	srcImg, err := loadPPMImage(srcPath)
+	if err != nil {
+		panic(err)
+	}
+	canvasW := srcImg.Width()
+	canvasH := srcImg.Height()
 	ctx := agg.NewContext(canvasW, canvasH)
-	ctx.Clear(agg.RGBA(0.1, 0.1, 0.1, 1.0))
+	ctx.Clear(agg.RGBA(1.0, 1.0, 1.0, 1.0))
 
 	dstImg := ctx.GetImage()
 	dstRbuf := buffer.NewRenderingBufferWithData[uint8](dstImg.Data, dstImg.Width(), dstImg.Height(), dstImg.Width()*4)
@@ -159,12 +229,8 @@ func main() {
 
 	cx, cy := float64(canvasW)/2, float64(canvasH)/2
 
-	// Build affine transform: image → polygon center, then invert for sampling.
+	// C++ default example=0 => identity image transform.
 	imgMtx := transform.NewTransAffine()
-	imgMtx.Translate(-imgW/2, -imgH/2)
-	imgMtx.Rotate(0)
-	imgMtx.Translate(cx, cy)
-	imgMtx.Invert()
 
 	// Image source.
 	imgRbuf := buffer.NewRenderingBufferU8()
@@ -197,6 +263,16 @@ func main() {
 			}
 		}
 	}
+
+	// Marker for image center (same visual helper as C++).
+	a := ctx.GetAgg2D()
+	a.ResetTransformations()
+	a.FillColor(agg.RGBA(0.7, 0.8, 0.0, 1.0))
+	a.NoLine()
+	a.FillCircle(cx, cy, 5.0)
+	a.FillColor(agg.Black)
+	a.NoLine()
+	a.FillCircle(cx, cy, 2.0)
 
 	const filename = "image_transforms.png"
 	if err := renderutil.SavePNG(ctx.GetImage(), filename); err != nil {

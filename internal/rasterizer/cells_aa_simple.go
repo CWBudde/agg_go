@@ -15,10 +15,11 @@ type RasterizerCellsAASimple struct {
 	currBlock      uint32
 	numCells       uint32
 	cellBlockLimit uint32
-	cells          [][]*CellAA               // 2D array of cell blocks
-	currCellPtr    *CellAA                   // Current cell pointer
+	cells          [][]CellAA                // 2D array of cell blocks
 	sortedCells    *array.PodVector[*CellAA] // Sorted cell pointers
 	sortedY        *array.PodVector[SortedY] // Y-coordinate ranges
+	countsScratch  []uint32                  // Reusable SortCells scratch: per-Y counts
+	writeScratch   []uint32                  // Reusable SortCells scratch: per-Y write cursors
 	currCell       CellAA                    // Current working cell
 	styleCell      CellAA                    // Style/template cell
 	minX, minY     int                       // Bounding box minimum
@@ -35,7 +36,6 @@ func NewRasterizerCellsAASimple(cellBlockLimit uint32) *RasterizerCellsAASimple 
 		numCells:       0,
 		cellBlockLimit: cellBlockLimit,
 		cells:          nil,
-		currCellPtr:    nil,
 		sortedCells:    array.NewPodVector[*CellAA](),
 		sortedY:        array.NewPodVector[SortedY](),
 		minX:           math.MaxInt32,
@@ -272,7 +272,13 @@ func (r *RasterizerCellsAASimple) SortCells() {
 
 	// 1) Count cells per Y
 	h := r.maxY - r.minY + 1
-	counts := make([]uint32, h)
+	if cap(r.countsScratch) < h {
+		r.countsScratch = make([]uint32, h)
+	}
+	counts := r.countsScratch[:h]
+	for i := range counts {
+		counts[i] = 0
+	}
 
 	// Only iterate blocks that belong to the current render.
 	// numBlocks is never reset, so blocks beyond lastBlock contain stale
@@ -288,10 +294,7 @@ func (r *RasterizerCellsAASimple) SortCells() {
 			}
 		}
 		for i := 0; i < limit; i++ {
-			c := block[i]
-			if c == nil {
-				continue
-			}
+			c := &block[i]
 			y := c.GetY()
 			if y < r.minY || y > r.maxY {
 				continue
@@ -315,7 +318,13 @@ func (r *RasterizerCellsAASimple) SortCells() {
 	r.sortedCells.Resize(int(total))
 
 	// per-Y write cursors (offset inside each run)
-	write := make([]uint32, h)
+	if cap(r.writeScratch) < h {
+		r.writeScratch = make([]uint32, h)
+	}
+	write := r.writeScratch[:h]
+	for i := range write {
+		write[i] = 0
+	}
 
 	for b := uint32(0); b <= lastBlock; b++ {
 		block := r.cells[b]
@@ -327,10 +336,7 @@ func (r *RasterizerCellsAASimple) SortCells() {
 			}
 		}
 		for i := 0; i < limit; i++ {
-			c := block[i]
-			if c == nil {
-				continue
-			}
+			c := &block[i]
 			y := c.GetY()
 			if y < r.minY || y > r.maxY {
 				continue
@@ -365,18 +371,23 @@ func (r *RasterizerCellsAASimple) ScanlineNumCells(y int) uint32 {
 
 // ScanlineCells returns the cells for the given scanline Y
 func (r *RasterizerCellsAASimple) ScanlineCells(y int) []*CellAA {
+	cells := r.ScanlineCellsView(y)
+	if cells == nil {
+		return nil
+	}
+	return cells
+}
+
+// ScanlineCellsView returns a non-owning view into sorted cells for the scanline.
+// Callers must treat the returned slice as read-only.
+func (r *RasterizerCellsAASimple) ScanlineCellsView(y int) []*CellAA {
 	if !r.sorted || y < r.minY || y > r.maxY {
 		return nil
 	}
-
 	sortedRange := r.sortedY.At(y - r.minY)
-	cells := make([]*CellAA, sortedRange.Num)
-
-	for i := uint32(0); i < sortedRange.Num; i++ {
-		cells[i] = r.sortedCells.At(int(sortedRange.Start + i))
-	}
-
-	return cells
+	start := int(sortedRange.Start)
+	end := start + int(sortedRange.Num)
+	return r.sortedCells.Data()[start:end]
 }
 
 // Sorted returns whether the cells have been sorted
@@ -415,9 +426,8 @@ func (r *RasterizerCellsAASimple) addCurrCell() {
 		blockIndex := r.numCells >> CellBlockShift
 		cellIndex := r.numCells & CellBlockMask
 
-		// Copy current cell to the allocated position
-		cellCopy := r.currCell
-		r.cells[blockIndex][cellIndex] = &cellCopy
+		// Copy current cell value into the allocated block slot.
+		r.cells[blockIndex][cellIndex] = r.currCell
 		r.numCells++
 
 		// Update bounding box
@@ -442,7 +452,7 @@ func (r *RasterizerCellsAASimple) allocateBlock() {
 	if r.numBlocks >= r.maxBlocks {
 		// Expand blocks array
 		newMaxBlocks := r.maxBlocks + CellBlockPool
-		newCells := make([][]*CellAA, newMaxBlocks)
+		newCells := make([][]CellAA, newMaxBlocks)
 
 		if r.cells != nil {
 			copy(newCells, r.cells)
@@ -453,7 +463,7 @@ func (r *RasterizerCellsAASimple) allocateBlock() {
 	}
 
 	// Allocate new block
-	r.cells[r.numBlocks] = make([]*CellAA, CellBlockSize)
+	r.cells[r.numBlocks] = make([]CellAA, CellBlockSize)
 	r.numBlocks++
 }
 
@@ -477,18 +487,9 @@ func (r *RasterizerCellsAASimple) sortCellsByX() {
 			continue // Single cell or empty - no need to sort
 		}
 
-		// Extract cells into a slice for sorting
-		cells := make([]*CellAA, length)
-		for j := 0; j < length; j++ {
-			cells[j] = r.sortedCells.At(start + j)
-		}
-
-		// Sort by X coordinate using the same quicksort/insertion-sort shape as AGG.
-		qsortCellsByX(cells)
-
-		for j, cell := range cells {
-			r.sortedCells.Set(start+j, cell)
-		}
+		// Sort by X coordinate in place using the backing slice.
+		sortedData := r.sortedCells.Data()
+		qsortCellsByX(sortedData[start : start+length])
 	}
 }
 

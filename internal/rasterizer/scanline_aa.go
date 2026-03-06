@@ -328,8 +328,8 @@ func (r *RasterizerScanlineAA[C, V, Clip]) SweepScanline(sl ScanlineInterface) b
 		}
 
 		sl.ResetSpans()
-		numCells := r.outline.ScanlineNumCells(r.scanY)
-		cells := r.outline.ScanlineCells(r.scanY)
+		cells := r.outline.ScanlineCellsView(r.scanY)
+		numCells := uint32(len(cells))
 		cover := 0
 
 		cellIndex := uint32(0)
@@ -385,8 +385,8 @@ func (r *RasterizerScanlineAA[C, V, Clip]) HitTest(tx, ty int) bool {
 		return false
 	}
 
-	numCells := r.outline.ScanlineNumCells(ty)
-	cells := r.outline.ScanlineCells(ty)
+	cells := r.outline.ScanlineCellsView(ty)
+	numCells := uint32(len(cells))
 	cover := 0
 
 	for i := uint32(0); i < numCells; i++ {

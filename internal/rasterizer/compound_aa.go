@@ -384,8 +384,8 @@ func (r *RasterizerCompoundAA[Clip]) SweepStyles() uint32 {
 			return 0
 		}
 
-		numCells := r.outline.ScanlineNumCells(r.scanY)
-		cells := r.outline.ScanlineCells(r.scanY)
+		cells := r.outline.ScanlineCellsView(r.scanY)
+		numCells := uint32(len(cells))
 		numStyles := r.maxStyle - r.minStyle + 2
 
 		r.cells.Allocate(int(numCells*2), 256) // Each cell can have two styles
@@ -402,14 +402,14 @@ func (r *RasterizerCompoundAA[Clip]) SweepStyles() uint32 {
 			style.NumCells = 0
 			style.LastX = math.MinInt32
 
-			r.slStart = (*cells[0]).GetX()
-			r.slLen = uint32((*cells[numCells-1]).GetX() - r.slStart + 1)
+			r.slStart = cells[0].GetX()
+			r.slLen = uint32(cells[numCells-1].GetX() - r.slStart + 1)
 
 			// Add all styles from cells
 			for i := 0; i < int(numCells); i++ {
 				currCell := cells[i]
-				r.addStyle(int((*currCell).Left))
-				r.addStyle(int((*currCell).Right))
+				r.addStyle(int(currCell.Left))
+				r.addStyle(int(currCell.Right))
 			}
 
 			// Convert Y-histogram into array of starting indexes
@@ -427,41 +427,41 @@ func (r *RasterizerCompoundAA[Clip]) SweepStyles() uint32 {
 
 				// Process left style
 				styleID := 0
-				if (*currCell).Left >= 0 {
-					styleID = int((*currCell).Left) - r.minStyle + 1
+				if currCell.Left >= 0 {
+					styleID = int(currCell.Left) - r.minStyle + 1
 				}
 
 				style := &r.styles.Data()[styleID]
-				if (*currCell).GetX() == style.LastX {
+				if currCell.GetX() == style.LastX {
 					cell := &r.cells.Data()[style.StartCell+style.NumCells-1]
-					cell.Area += (*currCell).GetArea()
-					cell.Cover += (*currCell).GetCover()
+					cell.Area += currCell.GetArea()
+					cell.Cover += currCell.GetCover()
 				} else {
 					cell := &r.cells.Data()[style.StartCell+style.NumCells]
-					cell.X = (*currCell).GetX()
-					cell.Area = (*currCell).GetArea()
-					cell.Cover = (*currCell).GetCover()
-					style.LastX = (*currCell).GetX()
+					cell.X = currCell.GetX()
+					cell.Area = currCell.GetArea()
+					cell.Cover = currCell.GetCover()
+					style.LastX = currCell.GetX()
 					style.NumCells++
 				}
 
 				// Process right style
 				styleID = 0
-				if (*currCell).Right >= 0 {
-					styleID = int((*currCell).Right) - r.minStyle + 1
+				if currCell.Right >= 0 {
+					styleID = int(currCell.Right) - r.minStyle + 1
 				}
 
 				style = &r.styles.Data()[styleID]
-				if (*currCell).GetX() == style.LastX {
+				if currCell.GetX() == style.LastX {
 					cell := &r.cells.Data()[style.StartCell+style.NumCells-1]
-					cell.Area -= (*currCell).GetArea()
-					cell.Cover -= (*currCell).GetCover()
+					cell.Area -= currCell.GetArea()
+					cell.Cover -= currCell.GetCover()
 				} else {
 					cell := &r.cells.Data()[style.StartCell+style.NumCells]
-					cell.X = (*currCell).GetX()
-					cell.Area = -(*currCell).GetArea()
-					cell.Cover = -(*currCell).GetCover()
-					style.LastX = (*currCell).GetX()
+					cell.X = currCell.GetX()
+					cell.Area = -currCell.GetArea()
+					cell.Cover = -currCell.GetCover()
+					style.LastX = currCell.GetX()
 					style.NumCells++
 				}
 			}

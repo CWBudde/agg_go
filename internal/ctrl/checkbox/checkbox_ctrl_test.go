@@ -338,8 +338,9 @@ func TestCheckboxTextVertices(t *testing.T) {
 		}
 		vertexCount++
 
-		// Verify command types
-		if cmd != basics.PathCmdMoveTo && cmd != basics.PathCmdLineTo {
+		// Verify command types.
+		// Stroked text can emit EndPoly commands with flags between contours.
+		if cmd != basics.PathCmdMoveTo && cmd != basics.PathCmdLineTo && !basics.IsEndPoly(cmd) {
 			t.Errorf("Text vertex %d has invalid command %v", vertexCount, cmd)
 		}
 	}

@@ -127,7 +127,7 @@ func (c *CheckboxCtrl[C]) SetTextThickness(thickness float64) {
 func (c *CheckboxCtrl[C]) SetTextSize(height, width float64) {
 	c.textHeight = height
 	c.textWidth = width
-	c.textRenderer.SetSize(height)
+	c.textRenderer.SetSize(height, width)
 }
 
 // Color Management Methods
@@ -272,16 +272,15 @@ func (c *CheckboxCtrl[C]) generateTextVertices() {
 		return
 	}
 
-	// Position text to the right of the checkbox, centered vertically.
-	// With SetFlip(true), GSVText draws upward from the baseline (start_y),
-	// so baseline = visual_center + textHeight/2.
+	// Match AGG cbox_ctrl_impl:
+	// start_point(x1 + text_height * 2.0, y1 + text_height / 5.0)
 	textX := c.X1() + c.textHeight*2.0
-	textY := c.Y1() + (c.Y2()-c.Y1())/2.0 + c.textHeight/2.0
+	textY := c.Y1() + c.textHeight/5.0
 
 	// Configure text renderer
 	c.textRenderer.SetText(c.label)
 	c.textRenderer.SetPosition(textX, textY)
-	c.textRenderer.SetSize(c.textHeight)
+	c.textRenderer.SetSize(c.textHeight, c.textWidth)
 	c.textRenderer.SetThickness(c.textThickness)
 	c.textRenderer.Rewind(0)
 }
