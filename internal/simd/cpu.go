@@ -225,3 +225,42 @@ func rgba8Lerp(p, q, a uint8) uint8 {
 func rgba8Prelerp(p, q, a uint8) uint8 {
 	return p + q - rgba8Multiply(p, a)
 }
+
+// blendSolidHspanRGBAWithRunFill is a hybrid blend strategy: it detects
+// runs of full-coverage (255) pixels and fills them with the provided SIMD
+// fill function, falling back to the generic scalar blend for partial
+// coverage. This is used by SSE2 and NEON paths where a full vectorized
+// per-pixel blend is not available.
+func blendSolidHspanRGBAWithRunFill(
+	dst []byte,
+	covers []byte,
+	r, g, b, a uint8,
+	premulSrc bool,
+	fill func(dst []byte, r, g, b, a uint8, count int),
+) {
+	if len(covers) == 0 {
+		return
+	}
+
+	if a != 255 {
+		blendSolidHspanRGBAGeneric(dst, covers, r, g, b, a, premulSrc)
+		return
+	}
+
+	for i := 0; i < len(covers); {
+		if covers[i] == 255 {
+			start := i
+			for i < len(covers) && covers[i] == 255 {
+				i++
+			}
+			fill(dst[start*4:], r, g, b, a, i-start)
+			continue
+		}
+
+		start := i
+		for i < len(covers) && covers[i] != 255 {
+			i++
+		}
+		blendSolidHspanRGBAGeneric(dst[start*4:i*4], covers[start:i], r, g, b, a, premulSrc)
+	}
+}

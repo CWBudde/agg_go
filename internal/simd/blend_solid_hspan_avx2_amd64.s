@@ -69,7 +69,6 @@ alpha_mode:
 
 alpha_loop8:
 	VMOVDQU (DI), X0
-	VMOVDQU 16(DI), X4
 
 	MOVL (SI), R13
 	VMOVD R13, X1
@@ -99,6 +98,7 @@ alpha_loop8:
 	VPACKUSWB X8, X7, X7
 	VMOVDQU X7, (DI)
 
+	VMOVDQU 16(DI), X4
 	MOVL 4(SI), R13
 	VMOVD R13, X5
 	VPSHUFB ·alphaDupMask4(SB), X5, X5
@@ -179,7 +179,6 @@ opaque_mode:
 
 opaque_loop8:
 	VMOVDQU (DI), X0
-	VMOVDQU 16(DI), X4
 
 	MOVL (SI), R13
 	VMOVD R13, X1
@@ -204,6 +203,7 @@ opaque_loop8:
 	VPACKUSWB X8, X7, X7
 	VMOVDQU X7, (DI)
 
+	VMOVDQU 16(DI), X4
 	MOVL 4(SI), R13
 	VMOVD R13, X5
 	VPSHUFB ·alphaDupMask4(SB), X5, X5
