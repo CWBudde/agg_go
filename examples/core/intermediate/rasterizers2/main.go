@@ -1,52 +1,84 @@
-// Rasterizers2 Demo - Simplified port from AGG C++ rasterizers2.cpp
-//
-// This example demonstrates different rasterization techniques:
-// 1. Aliased lines with pixel accuracy (Bresenham)
-// 2. Aliased lines with subpixel accuracy
-// 3. Anti-aliased outline rendering
-// 4. Anti-aliased scanline rendering with stroke
-// 5. Anti-aliased outline with image patterns (simplified)
-//
-// Note: This is a simplified version that demonstrates the rendering concepts
-// without using the full rasterizer pipeline (which has API inconsistencies).
-
 package main
 
 import (
 	"fmt"
 	"math"
 	"os"
-	"time"
 
 	"agg_go/internal/basics"
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
+	"agg_go/internal/conv"
+	ctrltext "agg_go/internal/ctrl/text"
 	"agg_go/internal/order"
 	"agg_go/internal/pixfmt"
 	"agg_go/internal/pixfmt/blender"
+	"agg_go/internal/primitives"
+	"agg_go/internal/rasterizer"
+	"agg_go/internal/renderer"
+	outline "agg_go/internal/renderer/outline"
+	rprimitives "agg_go/internal/renderer/primitives"
+	"agg_go/internal/scanline"
 )
 
 const (
 	frameWidth  = 500
 	frameHeight = 450
-	pixelSize   = 4 // RGBA
 )
 
-// Spiral generates a spiral path
-type Spiral struct {
-	x, y       float64
-	r1, r2     float64
-	step       float64
-	startAngle float64
-	angle      float64
-	currR      float64
-	da         float64
-	dr         float64
-	start      bool
+var pixmapChain = []uint32{
+	16, 7,
+	0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xb4c29999, 0xff9a5757, 0xff9a5757, 0xff9a5757, 0xff9a5757, 0xff9a5757, 0xff9a5757, 0xb4c29999, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff,
+	0x00ffffff, 0x00ffffff, 0x0cfbf9f9, 0xff9a5757, 0xff660000, 0xff660000, 0xff660000, 0xff660000, 0xff660000, 0xff660000, 0xff660000, 0xff660000, 0xb4c29999, 0x00ffffff, 0x00ffffff, 0x00ffffff,
+	0x00ffffff, 0x5ae0cccc, 0xffa46767, 0xff660000, 0xff975252, 0x7ed4b8b8, 0x5ae0cccc, 0x5ae0cccc, 0x5ae0cccc, 0x5ae0cccc, 0xa8c6a0a0, 0xff7f2929, 0xff670202, 0x9ecaa6a6, 0x5ae0cccc, 0x00ffffff,
+	0xff660000, 0xff660000, 0xff660000, 0xff660000, 0xff660000, 0xff660000, 0xa4c7a2a2, 0x3affff00, 0x3affff00, 0xff975151, 0xff660000, 0xff660000, 0xff660000, 0xff660000, 0xff660000, 0xff660000,
+	0x00ffffff, 0x5ae0cccc, 0xffa46767, 0xff660000, 0xff954f4f, 0x7ed4b8b8, 0x5ae0cccc, 0x5ae0cccc, 0x5ae0cccc, 0x5ae0cccc, 0xa8c6a0a0, 0xff7f2929, 0xff670202, 0x9ecaa6a6, 0x5ae0cccc, 0x00ffffff,
+	0x00ffffff, 0x00ffffff, 0x0cfbf9f9, 0xff9a5757, 0xff660000, 0xff660000, 0xff660000, 0xff660000, 0xff660000, 0xff660000, 0xff660000, 0xff660000, 0xb4c29999, 0x00ffffff, 0x00ffffff, 0x00ffffff,
+	0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xb4c29999, 0xff9a5757, 0xff9a5757, 0xff9a5757, 0xff9a5757, 0xff9a5757, 0xff9a5757, 0xb4c29999, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff,
 }
 
-func NewSpiral(x, y, r1, r2, step, startAngle float64) *Spiral {
-	return &Spiral{
+type convVertexSource interface {
+	Rewind(pathID uint)
+	Vertex() (x, y float64, cmd basics.PathCommand)
+}
+
+type convToRasAdapter struct {
+	src convVertexSource
+}
+
+func (a *convToRasAdapter) Rewind(pathID uint32) {
+	a.src.Rewind(uint(pathID))
+}
+
+func (a *convToRasAdapter) Vertex(x, y *float64) uint32 {
+	vx, vy, cmd := a.src.Vertex()
+	*x = vx
+	*y = vy
+	return uint32(cmd)
+}
+
+type rasScanlineAdapter struct {
+	sl *scanline.ScanlineU8
+}
+
+func (a *rasScanlineAdapter) ResetSpans()                 { a.sl.ResetSpans() }
+func (a *rasScanlineAdapter) AddCell(x int, cover uint32) { a.sl.AddCell(x, uint(cover)) }
+func (a *rasScanlineAdapter) AddSpan(x, length int, cover uint32) {
+	a.sl.AddSpan(x, length, uint(cover))
+}
+func (a *rasScanlineAdapter) Finalize(y int) { a.sl.Finalize(y) }
+func (a *rasScanlineAdapter) NumSpans() int  { return a.sl.NumSpans() }
+
+type spiral struct {
+	x, y                 float64
+	r1, r2               float64
+	step, startAngle     float64
+	angle, currR, da, dr float64
+	start                bool
+}
+
+func newSpiral(x, y, r1, r2, step, startAngle float64) *spiral {
+	return &spiral{
 		x:          x,
 		y:          y,
 		r1:         r1,
@@ -58,405 +90,289 @@ func NewSpiral(x, y, r1, r2, step, startAngle float64) *Spiral {
 	}
 }
 
-func (s *Spiral) Rewind() {
+func (s *spiral) Rewind(pathID uint) {
 	s.angle = s.startAngle
 	s.currR = s.r1
 	s.start = true
 }
 
-// NextPoint returns the next point in the spiral, returns false when done
-func (s *Spiral) NextPoint() (x, y float64, isStart bool, done bool) {
+func (s *spiral) Vertex() (x, y float64, cmd basics.PathCommand) {
 	if s.currR > s.r2 {
-		return 0, 0, false, true
+		return 0, 0, basics.PathCmdStop
 	}
 
 	x = s.x + math.Cos(s.angle)*s.currR
 	y = s.y + math.Sin(s.angle)*s.currR
-	isStart = s.start
 	s.currR += s.dr
 	s.angle += s.da
-
 	if s.start {
 		s.start = false
+		return x, y, basics.PathCmdMoveTo
 	}
-	return x, y, isStart, false
+	return x, y, basics.PathCmdLineTo
 }
 
-// Application holds the demo application state
-type Application struct {
-	rbuf       *buffer.RenderingBufferU8
-	pixf       *pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8[color.Linear, order.RGBA]]
-	imageData  []byte
-	step       float64
-	width      float64
-	startAngle float64
+type roundoffSource struct {
+	src convVertexSource
 }
 
-func NewApplication() *Application {
-	app := &Application{
-		imageData:  make([]byte, frameWidth*frameHeight*pixelSize),
-		step:       0.1,
-		width:      3.0,
-		startAngle: 0.0,
+func (r *roundoffSource) Rewind(pathID uint) {
+	r.src.Rewind(pathID)
+}
+
+func (r *roundoffSource) Vertex() (x, y float64, cmd basics.PathCommand) {
+	x, y, cmd = r.src.Vertex()
+	if basics.IsVertex(cmd) {
+		x = math.Floor(x)
+		y = math.Floor(y)
 	}
-
-	app.rbuf = buffer.NewRenderingBufferU8WithData(app.imageData, frameWidth, frameHeight, frameWidth*pixelSize)
-	b := blender.BlenderRGBA8[color.Linear, order.RGBA]{}
-	app.pixf = pixfmt.NewPixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8[color.Linear, order.RGBA]](app.rbuf, b)
-
-	return app
+	return x, y, cmd
 }
 
-// clearBuffer clears the buffer with a cream color
-func (app *Application) clearBuffer() {
-	cream := color.RGBA8[color.Linear]{R: 255, G: 255, B: 242, A: 255}
-	for y := 0; y < app.pixf.Height(); y++ {
-		for x := 0; x < app.pixf.Width(); x++ {
-			app.pixf.CopyPixel(x, y, cream)
+type chainPatternSource struct {
+	data []uint32
+}
+
+func (s *chainPatternSource) Width() float64  { return float64(s.data[0]) }
+func (s *chainPatternSource) Height() float64 { return float64(s.data[1]) }
+
+func (s *chainPatternSource) Pixel(x, y int) color.RGBA {
+	w := int(s.data[0])
+	idx := y*w + x + 2
+	if idx < 2 || idx >= len(s.data) {
+		return color.NewRGBA(0, 0, 0, 0)
+	}
+	p := s.data[idx]
+	c := color.NewRGBA(
+		float64((p>>16)&0xFF)/255.0,
+		float64((p>>8)&0xFF)/255.0,
+		float64(p&0xFF)/255.0,
+		float64((p>>24)&0xFF)/255.0,
+	)
+	c.Premultiply()
+	return c
+}
+
+type outlineAAAdapter struct {
+	ren *outline.RendererOutlineAA[*outlineBaseAdapter, color.RGBA8[color.Linear]]
+}
+
+func (a *outlineAAAdapter) AccurateJoinOnly() bool             { return a.ren.AccurateJoinOnly() }
+func (a *outlineAAAdapter) Color(c color.RGBA8[color.Linear])  { a.ren.Color(c) }
+func (a *outlineAAAdapter) Line0(lp primitives.LineParameters) { a.ren.Line0(&lp) }
+func (a *outlineAAAdapter) Line1(lp primitives.LineParameters, sx, sy int) {
+	a.ren.Line1(&lp, sx, sy)
+}
+func (a *outlineAAAdapter) Line2(lp primitives.LineParameters, ex, ey int) {
+	a.ren.Line2(&lp, ex, ey)
+}
+func (a *outlineAAAdapter) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) {
+	a.ren.Line3(&lp, sx, sy, ex, ey)
+}
+func (a *outlineAAAdapter) Pie(x, y, x1, y1, x2, y2 int) { a.ren.Pie(x, y, x1, y1, x2, y2) }
+func (a *outlineAAAdapter) Semidot(cmp func(int) bool, x, y, x1, y1 int) {
+	a.ren.Semidot(cmp, x, y, x1, y1)
+}
+
+type imageBaseAdapter struct {
+	renBase *renderer.RendererBase[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]]
+}
+
+type outlineBaseAdapter struct {
+	renBase *renderer.RendererBase[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]]
+}
+
+func (a *outlineBaseAdapter) Width() int { return a.renBase.Width() }
+
+func (a *outlineBaseAdapter) Height() int { return a.renBase.Height() }
+
+func (a *outlineBaseAdapter) BlendSolidHSpan(x, y, length int, c color.RGBA8[color.Linear], covers []basics.CoverType) {
+	convCovers := make([]basics.Int8u, len(covers))
+	for i := range covers {
+		convCovers[i] = basics.Int8u(covers[i])
+	}
+	a.renBase.BlendSolidHspan(x, y, length, c, convCovers)
+}
+
+func (a *outlineBaseAdapter) BlendSolidVSpan(x, y, length int, c color.RGBA8[color.Linear], covers []basics.CoverType) {
+	convCovers := make([]basics.Int8u, len(covers))
+	for i := range covers {
+		convCovers[i] = basics.Int8u(covers[i])
+	}
+	a.renBase.BlendSolidVspan(x, y, length, c, convCovers)
+}
+
+func rgbaToRGBA8(c color.RGBA) color.RGBA8[color.Linear] {
+	clamp := func(v float64) uint8 {
+		if v <= 0 {
+			return 0
 		}
+		if v >= 1 {
+			return 255
+		}
+		return uint8(v*255 + 0.5)
 	}
+	return color.RGBA8[color.Linear]{R: clamp(c.R), G: clamp(c.G), B: clamp(c.B), A: clamp(c.A)}
 }
 
-// drawPixel draws a single pixel with bounds checking
-func (app *Application) drawPixel(x, y int, c color.RGBA8[color.Linear]) {
-	if x >= 0 && y >= 0 && x < frameWidth && y < frameHeight {
-		app.pixf.BlendPixel(x, y, c, basics.CoverFull)
+func (a *imageBaseAdapter) BlendColorHSpan(x, y, length int, colors []color.RGBA, covers []basics.CoverType) {
+	buf := make([]color.RGBA8[color.Linear], len(colors))
+	for i := range colors {
+		buf[i] = rgbaToRGBA8(colors[i])
 	}
+	a.renBase.BlendColorHspan(x, y, length, buf, nil, basics.CoverFull)
 }
 
-// drawLine draws a simple Bresenham line
-func (app *Application) drawLine(x0, y0, x1, y1 int, c color.RGBA8[color.Linear]) {
-	dx := x1 - x0
-	if dx < 0 {
-		dx = -dx
+func (a *imageBaseAdapter) BlendColorVSpan(x, y, length int, colors []color.RGBA, covers []basics.CoverType) {
+	buf := make([]color.RGBA8[color.Linear], len(colors))
+	for i := range colors {
+		buf[i] = rgbaToRGBA8(colors[i])
 	}
-	dy := y1 - y0
-	if dy < 0 {
-		dy = -dy
-	}
-
-	sx, sy := 1, 1
-	if x0 > x1 {
-		sx = -1
-	}
-	if y0 > y1 {
-		sy = -1
-	}
-
-	err := dx - dy
-	x, y := x0, y0
-
-	for {
-		app.drawPixel(x, y, c)
-
-		if x == x1 && y == y1 {
-			break
-		}
-
-		e2 := 2 * err
-		if e2 > -dy {
-			err -= dy
-			x += sx
-		}
-		if e2 < dx {
-			err += dx
-			y += sy
-		}
-	}
+	a.renBase.BlendColorVspan(x, y, length, buf, nil, basics.CoverFull)
 }
 
-// drawThickLine draws a line with thickness
-func (app *Application) drawThickLine(x0, y0, x1, y1 float64, thickness int, c color.RGBA8[color.Linear]) {
-	for dy := -thickness / 2; dy <= thickness/2; dy++ {
-		for dx := -thickness / 2; dx <= thickness/2; dx++ {
-			app.drawLine(int(x0)+dx, int(y0)+dy, int(x1)+dx, int(y1)+dy, c)
-		}
-	}
+type outlineImageAdapter struct {
+	ren *outline.RendererOutlineImage
 }
 
-// drawAntiAliasedLine draws an anti-aliased line using Wu's algorithm (simplified)
-func (app *Application) drawAntiAliasedLine(x0, y0, x1, y1 float64, c color.RGBA8[color.Linear]) {
-	dx := x1 - x0
-	dy := y1 - y0
-	length := math.Sqrt(dx*dx + dy*dy)
+func (a *outlineImageAdapter) AccurateJoinOnly() bool                         { return a.ren.AccurateJoinOnly() }
+func (a *outlineImageAdapter) Color(c color.RGBA8[color.Linear])              {}
+func (a *outlineImageAdapter) Line0(lp primitives.LineParameters)             {}
+func (a *outlineImageAdapter) Line1(lp primitives.LineParameters, sx, sy int) {}
+func (a *outlineImageAdapter) Line2(lp primitives.LineParameters, ex, ey int) {}
+func (a *outlineImageAdapter) Pie(x, y, x1, y1, x2, y2 int)                   {}
+func (a *outlineImageAdapter) Semidot(cmp func(int) bool, x, y, x1, y1 int)   {}
+func (a *outlineImageAdapter) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) {
+	a.ren.Line3(&lp, sx, sy, ex, ey)
+}
 
-	if length < 1 {
+func renderSolidPath(
+	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
+	sl *scanline.ScanlineU8,
+	renBase *renderer.RendererBase[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]],
+	vs rasterizer.VertexSource,
+	col color.RGBA8[color.Linear],
+) {
+	ras.Reset()
+	ras.AddPath(vs, 0)
+	if !ras.RewindScanlines() {
 		return
 	}
-
-	steps := int(length * 2)
-	if steps < 2 {
-		steps = 2
-	}
-
-	for i := 0; i <= steps; i++ {
-		t := float64(i) / float64(steps)
-		x := x0 + t*dx
-		y := y0 + t*dy
-
-		// Simple anti-aliasing by blending with fractional coverage
-		ix, iy := int(x), int(y)
-		fx, fy := x-float64(ix), y-float64(iy)
-
-		// Blend the four surrounding pixels
-		app.blendPixelCoverage(ix, iy, c, (1-fx)*(1-fy))
-		app.blendPixelCoverage(ix+1, iy, c, fx*(1-fy))
-		app.blendPixelCoverage(ix, iy+1, c, (1-fx)*fy)
-		app.blendPixelCoverage(ix+1, iy+1, c, fx*fy)
-	}
-}
-
-func (app *Application) blendPixelCoverage(x, y int, c color.RGBA8[color.Linear], coverage float64) {
-	if x >= 0 && y >= 0 && x < frameWidth && y < frameHeight {
-		cover := basics.Int8u(coverage * 255)
-		if cover > 0 {
-			app.pixf.BlendPixel(x, y, c, cover)
+	sl.Reset(ras.MinX(), ras.MaxX())
+	for ras.SweepScanline(&rasScanlineAdapter{sl: sl}) {
+		y := sl.Y()
+		for _, spanData := range sl.Spans() {
+			if spanData.Len > 0 {
+				renBase.BlendSolidHspan(int(spanData.X), y, int(spanData.Len), col, spanData.Covers)
+			}
 		}
 	}
 }
 
-// drawSpiral draws a spiral using the specified drawing method
-func (app *Application) drawSpiral(centerX, centerY float64, c color.RGBA8[color.Linear], method int) {
-	spiral := NewSpiral(centerX, centerY, 5, 70, 16, app.startAngle)
-	spiral.Rewind()
-
-	var prevX, prevY float64
-	first := true
-	thickness := int(app.width + 0.5)
-	if thickness < 1 {
-		thickness = 1
-	}
-
-	for {
-		x, y, isStart, done := spiral.NextPoint()
-		if done {
-			break
-		}
-
-		if isStart {
-			prevX, prevY = x, y
-			first = true
+func drawText(
+	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
+	sl *scanline.ScanlineU8,
+	renBase *renderer.RendererBase[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]],
+	x, y float64,
+	lines []string,
+) {
+	for i, line := range lines {
+		if line == "" {
 			continue
 		}
-
-		if !first {
-			switch method {
-			case 0: // Aliased pixel accuracy (rounded)
-				app.drawLine(int(prevX+0.5), int(prevY+0.5), int(x+0.5), int(y+0.5), c)
-			case 1: // Aliased subpixel accuracy (fractional coordinates used directly)
-				app.drawLine(int(prevX), int(prevY), int(x), int(y), c)
-			case 2: // Anti-aliased outline
-				app.drawAntiAliasedLine(prevX, prevY, x, y, c)
-			case 3: // Anti-aliased with thickness
-				app.drawThickLine(prevX, prevY, x, y, thickness, c)
-			case 4: // Pattern (simplified - just uses colored pixels)
-				app.drawPatternLine(prevX, prevY, x, y, thickness)
-			}
-		}
-
-		prevX, prevY = x, y
-		first = false
+		t := ctrltext.NewSimpleText()
+		t.SetSize(8)
+		t.SetThickness(0.7)
+		t.SetText(line)
+		t.SetPosition(x, y+float64(i)*12)
+		renderSolidPath(ras, sl, renBase, &convToRasAdapter{src: t}, color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255})
 	}
 }
 
-// drawPatternLine draws a line with a simple chain-like pattern
-func (app *Application) drawPatternLine(x0, y0, x1, y1 float64, thickness int) {
-	dx := x1 - x0
-	dy := y1 - y0
-	length := math.Sqrt(dx*dx + dy*dy)
-
-	if length < 1 {
-		return
-	}
-
-	steps := int(length)
-	if steps < 2 {
-		steps = 2
-	}
-
-	// Chain link colors
-	colors := []color.RGBA8[color.Linear]{
-		{R: 102, G: 0, B: 0, A: 255},     // Dark red
-		{R: 154, G: 87, B: 87, A: 255},   // Light red
-		{R: 194, G: 153, B: 153, A: 180}, // Pink (semi-transparent)
-	}
-
-	for i := 0; i <= steps; i++ {
-		t := float64(i) / float64(steps)
-		x := x0 + t*dx
-		y := y0 + t*dy
-
-		// Choose color based on position in pattern
-		colorIdx := (i / 4) % len(colors)
-		c := colors[colorIdx]
-
-		// Draw circle at this position
-		for dy := -thickness; dy <= thickness; dy++ {
-			for dx := -thickness; dx <= thickness; dx++ {
-				if dx*dx+dy*dy <= thickness*thickness {
-					app.blendPixelCoverage(int(x)+dx, int(y)+dy, c, 0.7)
-				}
-			}
-		}
-	}
-}
-
-// drawText draws simple placeholder text
-func (app *Application) drawText(x, y float64, text string, c color.RGBA8[color.Linear]) {
-	for dy := 0; dy < 8; dy++ {
-		for dx := 0; dx < len(text)*6; dx++ {
-			px, py := int(x)+dx, int(y)+dy
-			app.blendPixelCoverage(px, py, c, 0.25)
-		}
-	}
-}
-
-func (app *Application) OnDraw() {
-	width := float64(frameWidth)
-	height := float64(frameHeight)
-
-	app.clearBuffer()
-
-	drawColor := color.RGBA8[color.Linear]{R: 102, G: 77, B: 26, A: 255} // Brown
-	textColor := color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255}
-
-	// Draw five spirals with different techniques
-	// 1. Aliased pixel accuracy (top left)
-	app.drawSpiral(width/5, height/4, drawColor, 0)
-	app.drawText(30, 60, "Bresenham (pixel)", textColor)
-
-	// 2. Aliased subpixel accuracy (top center)
-	app.drawSpiral(width/2, height/4, drawColor, 1)
-	app.drawText(width/2-50, 60, "Bresenham (subpixel)", textColor)
-
-	// 3. Anti-aliased outline (bottom left)
-	app.drawSpiral(width/5, height-height/4+20, drawColor, 2)
-	app.drawText(30, height/2+30, "Anti-aliased", textColor)
-
-	// 4. Anti-aliased with thickness (bottom center)
-	app.drawSpiral(width/2, height-height/4+20, drawColor, 3)
-	app.drawText(width/2-50, height/2+30, "AA with thickness", textColor)
-
-	// 5. Pattern line (bottom right)
-	app.drawSpiral(width-width/5, height-height/4+20, drawColor, 4)
-	app.drawText(width-width/5-50, height/2+30, "Pattern", textColor)
-}
-
-func (app *Application) saveImage(filename string) error {
-	file, err := os.Create(filename)
+func savePPM(filename string, imgData []uint8, width, height int) error {
+	f, err := os.Create(filename)
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer f.Close()
 
-	fmt.Fprintf(file, "P6\n%d %d\n255\n", frameWidth, frameHeight)
-
-	for i := 0; i < len(app.imageData); i += 4 {
-		file.Write([]byte{app.imageData[i], app.imageData[i+1], app.imageData[i+2]})
+	if _, err := fmt.Fprintf(f, "P6\n%d %d\n255\n", width, height); err != nil {
+		return err
 	}
 
+	for i := 0; i < len(imgData); i += 4 {
+		if _, err := f.Write([]byte{imgData[i], imgData[i+1], imgData[i+2]}); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
-func (app *Application) performanceTest() {
-	fmt.Println("Running performance test...")
-
-	drawColor := color.RGBA8[color.Linear]{R: 102, G: 77, B: 26, A: 255}
-	width := float64(frameWidth)
-	height := float64(frameHeight)
-
-	// Test aliased subpixel accuracy
-	fmt.Print("Testing aliased subpixel accuracy...")
-	start := time.Now()
-	for i := 0; i < 200; i++ {
-		app.drawSpiral(width/2, height/4, drawColor, 1)
-		app.startAngle += basics.Deg2RadF(app.step)
-	}
-	elapsed1 := time.Since(start)
-	fmt.Printf(" %.2f ms\n", float64(elapsed1.Nanoseconds())/1e6)
-
-	// Test anti-aliased outline
-	fmt.Print("Testing anti-aliased outline...")
-	start = time.Now()
-	for i := 0; i < 200; i++ {
-		app.drawSpiral(width/5, height-height/4+20, drawColor, 2)
-		app.startAngle += basics.Deg2RadF(app.step)
-	}
-	elapsed2 := time.Since(start)
-	fmt.Printf(" %.2f ms\n", float64(elapsed2.Nanoseconds())/1e6)
-
-	// Test anti-aliased with thickness
-	fmt.Print("Testing anti-aliased with thickness...")
-	start = time.Now()
-	for i := 0; i < 200; i++ {
-		app.drawSpiral(width/2, height-height/4+20, drawColor, 3)
-		app.startAngle += basics.Deg2RadF(app.step)
-	}
-	elapsed3 := time.Since(start)
-	fmt.Printf(" %.2f ms\n", float64(elapsed3.Nanoseconds())/1e6)
-
-	// Test pattern line
-	fmt.Print("Testing pattern line...")
-	start = time.Now()
-	for i := 0; i < 200; i++ {
-		app.drawSpiral(width-width/5, height-height/4+20, drawColor, 4)
-		app.startAngle += basics.Deg2RadF(app.step)
-	}
-	elapsed4 := time.Since(start)
-	fmt.Printf(" %.2f ms\n", float64(elapsed4.Nanoseconds())/1e6)
-
-	totalTime := elapsed1 + elapsed2 + elapsed3 + elapsed4
-	fmt.Printf("\nPerformance Test Results:\n")
-	fmt.Printf("  Aliased subpixel accuracy:     %8.2f ms\n", float64(elapsed1.Nanoseconds())/1e6)
-	fmt.Printf("  Anti-aliased outline:          %8.2f ms\n", float64(elapsed2.Nanoseconds())/1e6)
-	fmt.Printf("  Anti-aliased + thickness:      %8.2f ms\n", float64(elapsed3.Nanoseconds())/1e6)
-	fmt.Printf("  Pattern line:                  %8.2f ms\n", float64(elapsed4.Nanoseconds())/1e6)
-	fmt.Printf("  Total time:                    %8.2f ms\n", float64(totalTime.Nanoseconds())/1e6)
-	fmt.Println("Performance test completed!")
-}
-
 func main() {
-	fmt.Println("AGG Rasterizers2 Demo (Simplified)")
-	fmt.Println("===================================")
-	fmt.Println("This demo shows different rasterization techniques:")
-	fmt.Println("- Bresenham lines (pixel and subpixel accuracy)")
-	fmt.Println("- Anti-aliased rendering")
-	fmt.Println("- Thick line rendering")
-	fmt.Println("- Pattern line rendering")
+	imgData := make([]uint8, frameWidth*frameHeight*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(imgData, frameWidth, frameHeight, frameWidth*4)
 
-	app := NewApplication()
+	pf := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
+	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]](pf)
+	renBase.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 242, A: 255})
 
-	// Draw initial frame
-	app.OnDraw()
+	rasAA := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{},
+		rasterizer.NewRasterizerSlNoClip(),
+	)
+	sl := scanline.NewScanlineU8()
 
-	// Save the result
-	err := app.saveImage("rasterizers2_demo.ppm")
-	if err != nil {
-		fmt.Printf("Error saving image: %v\n", err)
-		return
+	renPrim := rprimitives.NewRendererPrimitives[*renderer.RendererBase[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](renBase)
+	rasAliased := rasterizer.NewRasterizerOutline[*rprimitives.RendererPrimitives[*renderer.RendererBase[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]], color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](renPrim)
+
+	profile := outline.NewLineProfileAA()
+	profile.Width(3.0)
+	renOutlineAA := outline.NewRendererOutlineAA[*outlineBaseAdapter, color.RGBA8[color.Linear]](&outlineBaseAdapter{renBase: renBase}, profile)
+	rasOutlineAA := rasterizer.NewRasterizerOutlineAA[*outlineAAAdapter, color.RGBA8[color.Linear]](&outlineAAAdapter{ren: renOutlineAA})
+	rasOutlineAA.SetRoundCap(true)
+	rasOutlineAA.SetLineJoin(rasterizer.OutlineRoundJoin)
+
+	patternSource := &chainPatternSource{data: pixmapChain}
+	filter := outline.NewPatternFilterRGBAAdapter()
+	scaledSrc := outline.NewLineImageScale(patternSource, 3.0)
+	pattern := outline.NewLineImagePatternPow2(filter)
+	pattern.Create(scaledSrc)
+	renImg := outline.NewRendererOutlineImage(&imageBaseAdapter{renBase: renBase}, pattern)
+	renImg.SetScaleX(3.0 / patternSource.Height())
+	rasImg := rasterizer.NewRasterizerOutlineAA[*outlineImageAdapter, color.RGBA8[color.Linear]](&outlineImageAdapter{ren: renImg})
+
+	brown := color.RGBA8[color.Linear]{R: 102, G: 77, B: 26, A: 255}
+
+	s1 := &roundoffSource{src: newSpiral(float64(frameWidth)/5, float64(frameHeight)/4+50, 5, 70, 16, 0)}
+	renPrim.LineColor(brown)
+	rasAliased.AddPath(&convToRasAdapter{src: s1}, 0)
+
+	s2 := newSpiral(float64(frameWidth)/2, float64(frameHeight)/4+50, 5, 70, 16, 0)
+	renPrim.LineColor(brown)
+	rasAliased.AddPath(&convToRasAdapter{src: s2}, 0)
+
+	s3 := newSpiral(float64(frameWidth)/5, float64(frameHeight)-float64(frameHeight)/4+20, 5, 70, 16, 0)
+	renOutlineAA.Color(brown)
+	rasOutlineAA.AddPath(&convToRasAdapter{src: s3}, 0)
+
+	s4 := newSpiral(float64(frameWidth)/2, float64(frameHeight)-float64(frameHeight)/4+20, 5, 70, 16, 0)
+	stroke := conv.NewConvStroke(s4)
+	stroke.SetWidth(3.0)
+	stroke.SetLineCap(basics.RoundCap)
+	renderSolidPath(rasAA, sl, renBase, &convToRasAdapter{src: stroke}, brown)
+
+	s5 := newSpiral(float64(frameWidth)-float64(frameWidth)/5, float64(frameHeight)-float64(frameHeight)/4+20, 5, 70, 16, 0)
+	rasImg.AddPath(&convToRasAdapter{src: s5}, 0)
+
+	drawText(rasAA, sl, renBase, 50, 80, []string{"Bresenham lines,", "regular accuracy"})
+	drawText(rasAA, sl, renBase, float64(frameWidth)/2-50, 80, []string{"Bresenham lines,", "subpixel accuracy"})
+	drawText(rasAA, sl, renBase, 50, float64(frameHeight)/2+50, []string{"Anti-aliased lines"})
+	drawText(rasAA, sl, renBase, float64(frameWidth)/2-50, float64(frameHeight)/2+50, []string{"Scanline rasterizer"})
+	drawText(rasAA, sl, renBase, float64(frameWidth)-float64(frameWidth)/5-50, float64(frameHeight)/2+50, []string{"Arbitrary Image Pattern"})
+
+	if err := savePPM("rasterizers2_demo.ppm", imgData, frameWidth, frameHeight); err != nil {
+		panic(err)
 	}
 
-	fmt.Println("\nDemo image saved as 'rasterizers2_demo.ppm'")
-
-	// Test animation frames
-	fmt.Println("\nGenerating animation frames...")
-	for i := 0; i < 5; i++ {
-		app.startAngle += basics.Deg2RadF(15.0)
-		app.OnDraw()
-		filename := fmt.Sprintf("rasterizers2_frame_%d.ppm", i)
-		err := app.saveImage(filename)
-		if err != nil {
-			fmt.Printf("Error saving %s: %v\n", filename, err)
-		} else {
-			fmt.Printf("Saved %s\n", filename)
-		}
-	}
-
-	// Run performance test
-	fmt.Println()
-	app.performanceTest()
-
-	fmt.Println("\nExample completed successfully!")
-	fmt.Println("\nNote: This is a simplified version demonstrating core rendering concepts.")
-	fmt.Println("The full rasterizer pipeline has API inconsistencies being resolved.")
+	fmt.Println("rasterizers2_demo.ppm")
 }
