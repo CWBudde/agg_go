@@ -5,6 +5,9 @@ package simd
 //go:noescape
 func fillRGBAAVX2Asm(dst []byte, pixel uint32, count int)
 
+//go:noescape
+func fillRGBASSE2Asm(dst []byte, pixel uint32, count int)
+
 func selectImplementationArch(features Features) implementation {
 	if features.ForceGeneric {
 		return genericImplementation()
@@ -30,5 +33,6 @@ func fillRGBAAVX2(dst []byte, r, g, b, a uint8, count int) {
 }
 
 func fillRGBASSE2(dst []byte, r, g, b, a uint8, count int) {
-	fillRGBAGeneric(dst, r, g, b, a, count)
+	pixel := uint32(r) | uint32(g)<<8 | uint32(b)<<16 | uint32(a)<<24
+	fillRGBASSE2Asm(dst, pixel, count)
 }

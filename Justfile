@@ -160,6 +160,11 @@ test-simd:
     go test ./internal/simd -count=1
     go build ./internal/pixfmt
 
+# Benchmark SIMD fill dispatch paths
+bench-simd:
+    @echo "Benchmarking SIMD fill paths..."
+    go test ./internal/simd -bench BenchmarkFillRGBA -run '^$' -count=1
+
 # Run tests on ARM64 using QEMU (requires qemu-user-static)
 test-arm64:
     #!/usr/bin/env bash
