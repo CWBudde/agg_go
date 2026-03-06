@@ -98,6 +98,13 @@ type Agg2D struct {
 	scanline   *scanline.ScanlineU8
 	rasterizer *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
 
+	// Cached adapters that bridge the internal scanline/rasterizer types to
+	// the renderer/scanline interfaces. Stored as fields (like C++ stores
+	// m_renSolid, m_scanline, m_rasterizer by value) to avoid per-call
+	// heap allocations in the hot rendering path.
+	rasAdapter rasterizerAdapter
+	slAdapter  scanlineWrapper
+
 	// Rendering components (now properly typed)
 	pixfmt         *pixfmt.PixFmtRGBA32[color.Linear]
 	pixfmtPre      *pixfmt.PixFmtRGBA32Pre[color.Linear]
@@ -305,6 +312,10 @@ func NewAgg2D() *Agg2D {
 	clipper := rasterizer.NewRasterizerSlNoClip()
 	conv := rasterizer.RasConvInt{}
 	agg2d.rasterizer = rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](conv, clipper)
+
+	// Initialize cached adapters
+	agg2d.rasAdapter.ras = agg2d.rasterizer
+	agg2d.slAdapter.sl = agg2d.scanline
 
 	// Initialize span allocator for gradient rendering
 	agg2d.spanAllocator = span.NewSpanAllocator[color.RGBA8[color.Linear]]()

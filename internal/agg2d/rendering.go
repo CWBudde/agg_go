@@ -279,9 +279,7 @@ func (agg2d *Agg2D) renderLinearGradientFill(useFillGradient bool) {
 	}
 
 	// Render scanlines using the span generator directly
-	rasAdapter := &rasterizerAdapter{ras: agg2d.rasterizer}
-	slAdapter := &scanlineWrapper{sl: agg2d.scanline}
-	renscan.RenderScanlinesAA(rasAdapter, slAdapter, renderer, agg2d.spanAllocator, spanGenerator)
+	renscan.RenderScanlinesAA(&agg2d.rasAdapter, &agg2d.slAdapter, renderer, agg2d.spanAllocator, spanGenerator)
 }
 
 // renderRadialGradientFill renders radial gradient fill
@@ -321,9 +319,7 @@ func (agg2d *Agg2D) renderRadialGradientFill(useFillGradient bool) {
 	}
 
 	// Render scanlines using the span generator directly
-	rasAdapter := &rasterizerAdapter{ras: agg2d.rasterizer}
-	slAdapter := &scanlineWrapper{sl: agg2d.scanline}
-	renscan.RenderScanlinesAA(rasAdapter, slAdapter, renderer, agg2d.spanAllocator, spanGenerator)
+	renscan.RenderScanlinesAA(&agg2d.rasAdapter, &agg2d.slAdapter, renderer, agg2d.spanAllocator, spanGenerator)
 }
 
 // renderGradientStroke renders gradient stroke using line gradient settings
@@ -362,30 +358,24 @@ func (agg2d *Agg2D) RenderScanlinesAAWithSpanGen(
 	if renderer == nil || agg2d.spanAllocator == nil {
 		return
 	}
-	rasAdapter := &rasterizerAdapter{ras: ras}
-	slAdapter := &scanlineWrapper{sl: agg2d.scanline}
-	renscan.RenderScanlinesAA(rasAdapter, slAdapter, renderer, agg2d.spanAllocator, spanGen)
+	ra := rasterizerAdapter{ras: ras}
+	renscan.RenderScanlinesAA(&ra, &agg2d.slAdapter, renderer, agg2d.spanAllocator, spanGen)
 }
 
-// scanlineRender is a helper function to render scanlines using a renderer
-func scanlineRender(ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip], sl *scanline.ScanlineU8, renderer renscan.RendererInterface[color.RGBA8[color.Linear]]) {
-	// Create adapters to bridge interface differences
-	rasAdapter := &rasterizerAdapter{ras: ras}
-	slAdapter := &scanlineWrapper{sl: sl}
+// scanlineRender renders scanlines from the rasterizer using the cached adapters.
+func (agg2d *Agg2D) scanlineRender(renderer renscan.RendererInterface[color.RGBA8[color.Linear]]) {
+	ra := &agg2d.rasAdapter
+	sl := &agg2d.slAdapter
 
-	if !rasAdapter.RewindScanlines() {
+	if !ra.RewindScanlines() {
 		return
 	}
 
-	// Reset scanline for the rasterizer bounds
-	slAdapter.Reset(rasAdapter.MinX(), rasAdapter.MaxX())
-
-	// Prepare the renderer
+	sl.Reset(ra.MinX(), ra.MaxX())
 	renderer.Prepare()
 
-	// Sweep through all scanlines
-	for rasAdapter.SweepScanline(slAdapter) {
-		renderer.Render(slAdapter)
+	for ra.SweepScanline(sl) {
+		renderer.Render(sl)
 	}
 }
 
