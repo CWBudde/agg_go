@@ -46,6 +46,21 @@ func (m *mockAMaskPixfmt) BlendSolidHspan(x, y, length int, c color.RGBA8[color.
 
 func (m *mockAMaskPixfmt) BlendSolidVspan(x, y, length int, c color.RGBA8[color.Linear], covers []basics.Int8u) {
 }
+func (m *mockAMaskPixfmt) CopyBar(x1, y1, x2, y2 int, c color.RGBA8[color.Linear]) {}
+func (m *mockAMaskPixfmt) BlendBar(x1, y1, x2, y2 int, c color.RGBA8[color.Linear], cover basics.Int8u) {
+}
+func (m *mockAMaskPixfmt) CopyColorHspan(x, y, length int, colors []color.RGBA8[color.Linear]) {}
+func (m *mockAMaskPixfmt) CopyColorVspan(x, y, length int, colors []color.RGBA8[color.Linear]) {}
+func (m *mockAMaskPixfmt) BlendColorHspan(x, y, length int, colors []color.RGBA8[color.Linear], covers []basics.Int8u, cover basics.Int8u) {
+}
+func (m *mockAMaskPixfmt) BlendColorVspan(x, y, length int, colors []color.RGBA8[color.Linear], covers []basics.Int8u, cover basics.Int8u) {
+}
+func (m *mockAMaskPixfmt) Clear(c color.RGBA8[color.Linear]) {}
+func (m *mockAMaskPixfmt) Fill(c color.RGBA8[color.Linear])  {}
+func (m *mockAMaskPixfmt) Pixel(x, y int) color.RGBA8[color.Linear] {
+	return m.pixels[[2]int{x, y}]
+}
+func (m *mockAMaskPixfmt) PixWidth() int { return 4 }
 
 type zeroAlphaMask struct{}
 

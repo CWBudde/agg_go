@@ -163,7 +163,7 @@ test-simd:
 # Benchmark SIMD fill dispatch paths
 bench-simd:
     @echo "Benchmarking SIMD fill paths..."
-    go test ./internal/simd -bench BenchmarkFillRGBA -run '^$' -count=1
+    go test ./internal/simd -bench 'Benchmark(FillRGBA|BlendSolidHspanRGBA)' -run '^$' -count=1
 
 # Run tests on ARM64 using QEMU (requires qemu-user-static)
 test-arm64:

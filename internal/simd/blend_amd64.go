@@ -8,20 +8,25 @@ func fillRGBAAVX2Asm(dst []byte, pixel uint32, count int)
 //go:noescape
 func fillRGBASSE2Asm(dst []byte, pixel uint32, count int)
 
+//go:noescape
+func blendSolidHspanRGBAAVX2Asm(dst []byte, covers []byte, pixelOpaque uint32, srcA uint8, count int)
+
 func selectImplementationArch(features Features) implementation {
 	if features.ForceGeneric {
 		return genericImplementation()
 	}
 	if features.HasAVX2 {
 		return implementation{
-			name:     "avx2",
-			fillRGBA: fillRGBAAVX2,
+			name:                "avx2",
+			fillRGBA:            fillRGBAAVX2,
+			blendSolidHspanRGBA: blendSolidHspanRGBAAVX2,
 		}
 	}
 	if features.HasSSE2 {
 		return implementation{
-			name:     "sse2",
-			fillRGBA: fillRGBASSE2,
+			name:                "sse2",
+			fillRGBA:            fillRGBASSE2,
+			blendSolidHspanRGBA: blendSolidHspanRGBASSE2,
 		}
 	}
 	return genericImplementation()
@@ -35,4 +40,51 @@ func fillRGBAAVX2(dst []byte, r, g, b, a uint8, count int) {
 func fillRGBASSE2(dst []byte, r, g, b, a uint8, count int) {
 	pixel := uint32(r) | uint32(g)<<8 | uint32(b)<<16 | uint32(a)<<24
 	fillRGBASSE2Asm(dst, pixel, count)
+}
+
+func blendSolidHspanRGBAAVX2(dst []byte, covers []byte, r, g, b, a uint8, premulSrc bool) {
+	if premulSrc {
+		blendSolidHspanRGBAGeneric(dst, covers, r, g, b, a, premulSrc)
+		return
+	}
+	pixelOpaque := uint32(r) | uint32(g)<<8 | uint32(b)<<16 | uint32(0xFF)<<24
+	blendSolidHspanRGBAAVX2Asm(dst, covers, pixelOpaque, a, len(covers))
+}
+
+func blendSolidHspanRGBASSE2(dst []byte, covers []byte, r, g, b, a uint8, premulSrc bool) {
+	blendSolidHspanRGBAWithRunFill(dst, covers, r, g, b, a, premulSrc, fillRGBASSE2)
+}
+
+func blendSolidHspanRGBAWithRunFill(
+	dst []byte,
+	covers []byte,
+	r, g, b, a uint8,
+	premulSrc bool,
+	fill func(dst []byte, r, g, b, a uint8, count int),
+) {
+	if len(covers) == 0 {
+		return
+	}
+
+	if a != 255 {
+		blendSolidHspanRGBAGeneric(dst, covers, r, g, b, a, premulSrc)
+		return
+	}
+
+	for i := 0; i < len(covers); {
+		if covers[i] == 255 {
+			start := i
+			for i < len(covers) && covers[i] == 255 {
+				i++
+			}
+			fill(dst[start*4:], r, g, b, a, i-start)
+			continue
+		}
+
+		start := i
+		for i < len(covers) && covers[i] != 255 {
+			i++
+		}
+		blendSolidHspanRGBAGeneric(dst[start*4:i*4], covers[start:i], r, g, b, a, premulSrc)
+	}
 }

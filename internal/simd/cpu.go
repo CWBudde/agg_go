@@ -21,8 +21,9 @@ type Features struct {
 }
 
 type implementation struct {
-	name     string
-	fillRGBA func(dst []byte, r, g, b, a uint8, count int)
+	name                string
+	fillRGBA            func(dst []byte, r, g, b, a uint8, count int)
+	blendSolidHspanRGBA func(dst []byte, covers []byte, r, g, b, a uint8, premulSrc bool)
 }
 
 var (
@@ -125,8 +126,9 @@ func selectImplementation(features Features) implementation {
 
 func genericImplementation() implementation {
 	return implementation{
-		name:     "generic",
-		fillRGBA: fillRGBAGeneric,
+		name:                "generic",
+		fillRGBA:            fillRGBAGeneric,
+		blendSolidHspanRGBA: blendSolidHspanRGBAGeneric,
 	}
 }
 
@@ -138,4 +140,81 @@ func fillRGBAGeneric(dst []byte, r, g, b, a uint8, count int) {
 		dst[p+2] = b
 		dst[p+3] = a
 	}
+}
+
+// BlendSolidHspanRGBA blends a solid color into tightly packed RGBA pixels.
+// dst must contain one 4-byte pixel per cover entry.
+func BlendSolidHspanRGBA(dst []byte, covers []byte, r, g, b, a uint8, premulSrc bool) {
+	if len(covers) == 0 || len(dst) < 4 {
+		return
+	}
+	maxPixels := len(dst) / 4
+	if len(covers) > maxPixels {
+		covers = covers[:maxPixels]
+	}
+	currentImplementation().blendSolidHspanRGBA(dst, covers, r, g, b, a, premulSrc)
+}
+
+func blendSolidHspanRGBAGeneric(dst []byte, covers []byte, r, g, b, a uint8, premulSrc bool) {
+	for i, cv := range covers {
+		if cv == 0 {
+			continue
+		}
+		p := i * 4
+		if a == 0 && !premulSrc {
+			continue
+		}
+		if a == 255 && cv == 255 {
+			dst[p+0] = r
+			dst[p+1] = g
+			dst[p+2] = b
+			dst[p+3] = a
+			continue
+		}
+
+		if premulSrc {
+			rr, gg, bb, aa := r, g, b, a
+			if cv != 255 {
+				rr = rgba8Multiply(rr, cv)
+				gg = rgba8Multiply(gg, cv)
+				bb = rgba8Multiply(bb, cv)
+				aa = rgba8Multiply(aa, cv)
+			}
+			if aa == 0 && rr == 0 && gg == 0 && bb == 0 {
+				continue
+			}
+			dst[p+0] = rgba8Prelerp(dst[p+0], rr, aa)
+			dst[p+1] = rgba8Prelerp(dst[p+1], gg, aa)
+			dst[p+2] = rgba8Prelerp(dst[p+2], bb, aa)
+			dst[p+3] = rgba8Prelerp(dst[p+3], aa, aa)
+			continue
+		}
+
+		alpha := rgba8Multiply(a, cv)
+		if alpha == 0 {
+			continue
+		}
+		dst[p+0] = rgba8Lerp(dst[p+0], r, alpha)
+		dst[p+1] = rgba8Lerp(dst[p+1], g, alpha)
+		dst[p+2] = rgba8Lerp(dst[p+2], b, alpha)
+		dst[p+3] = rgba8Prelerp(dst[p+3], alpha, alpha)
+	}
+}
+
+func rgba8Multiply(a, b uint8) uint8 {
+	t := uint32(a)*uint32(b) + 128
+	return uint8(((t >> 8) + t) >> 8)
+}
+
+func rgba8Lerp(p, q, a uint8) uint8 {
+	var greater int32
+	if p > q {
+		greater = 1
+	}
+	t := (int32(q)-int32(p))*int32(a) + 128 - greater
+	return uint8(int32(p) + (((t >> 8) + t) >> 8))
+}
+
+func rgba8Prelerp(p, q, a uint8) uint8 {
+	return p + q - rgba8Multiply(p, a)
 }

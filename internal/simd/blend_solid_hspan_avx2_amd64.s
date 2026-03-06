@@ -1,0 +1,262 @@
+//go:build amd64 && !purego
+
+#include "textflag.h"
+
+DATA ·alphaDupMask4+0(SB)/1, $0
+DATA ·alphaDupMask4+1(SB)/1, $0
+DATA ·alphaDupMask4+2(SB)/1, $0
+DATA ·alphaDupMask4+3(SB)/1, $0
+DATA ·alphaDupMask4+4(SB)/1, $1
+DATA ·alphaDupMask4+5(SB)/1, $1
+DATA ·alphaDupMask4+6(SB)/1, $1
+DATA ·alphaDupMask4+7(SB)/1, $1
+DATA ·alphaDupMask4+8(SB)/1, $2
+DATA ·alphaDupMask4+9(SB)/1, $2
+DATA ·alphaDupMask4+10(SB)/1, $2
+DATA ·alphaDupMask4+11(SB)/1, $2
+DATA ·alphaDupMask4+12(SB)/1, $3
+DATA ·alphaDupMask4+13(SB)/1, $3
+DATA ·alphaDupMask4+14(SB)/1, $3
+DATA ·alphaDupMask4+15(SB)/1, $3
+GLOBL ·alphaDupMask4(SB), RODATA|NOPTR, $16
+
+DATA ·bias128W+0(SB)/2, $128
+DATA ·bias128W+2(SB)/2, $128
+DATA ·bias128W+4(SB)/2, $128
+DATA ·bias128W+6(SB)/2, $128
+DATA ·bias128W+8(SB)/2, $128
+DATA ·bias128W+10(SB)/2, $128
+DATA ·bias128W+12(SB)/2, $128
+DATA ·bias128W+14(SB)/2, $128
+DATA ·bias128W+16(SB)/2, $128
+DATA ·bias128W+18(SB)/2, $128
+DATA ·bias128W+20(SB)/2, $128
+DATA ·bias128W+22(SB)/2, $128
+DATA ·bias128W+24(SB)/2, $128
+DATA ·bias128W+26(SB)/2, $128
+DATA ·bias128W+28(SB)/2, $128
+DATA ·bias128W+30(SB)/2, $128
+GLOBL ·bias128W(SB), RODATA|NOPTR, $32
+
+// func blendSolidHspanRGBAAVX2Asm(dst []byte, covers []byte, pixelOpaque uint32, srcA uint8, count int)
+TEXT ·blendSolidHspanRGBAAVX2Asm(SB), NOSPLIT, $0-64
+	MOVQ dst_base+0(FP), DI
+	MOVQ covers_base+24(FP), SI
+	MOVL pixelOpaque+48(FP), AX
+	MOVBLZX srcA+52(FP), BX
+	MOVQ count+56(FP), CX
+
+	TESTQ CX, CX
+	JLE done
+
+	VPXOR X15, X15, X15
+	VMOVD AX, X10
+	PSHUFD $0, X10, X10
+	VPMOVZXBW X10, Y10
+	VMOVDQU ·bias128W(SB), Y14
+
+	MOVL BX, DX
+	CMPQ CX, $4
+	JB tail
+
+loop_dispatch:
+	CMPQ DX, $255
+	JE loop_opaque
+
+	MOVD DX, X11
+	VPBROADCASTW X11, Y11
+
+loop_alpha:
+	VMOVDQU (DI), X0
+	MOVL (SI), R13
+	VMOVD R13, X1
+	VPSHUFB ·alphaDupMask4(SB), X1, X1
+	VPMOVZXBW X0, Y0
+	VPMOVZXBW X1, Y1
+	VPMULLW Y1, Y11, Y2
+	VPADDW Y14, Y2, Y2
+	VPSRLW $8, Y2, Y3
+	VPADDW Y3, Y2, Y2
+	VPSRLW $8, Y2, Y2
+	JMP blend_words
+
+loop_opaque:
+	VMOVDQU (DI), X0
+	MOVL (SI), R13
+	VMOVD R13, X1
+	VPSHUFB ·alphaDupMask4(SB), X1, X1
+	VPMOVZXBW X0, Y0
+	VPMOVZXBW X1, Y2
+
+blend_words:
+	VPMAXUW Y10, Y0, Y3
+	VPMINUW Y10, Y0, Y4
+	VPSUBW Y4, Y3, Y5
+	VPMULLW Y2, Y5, Y6
+	VPADDW Y14, Y6, Y6
+	VPSRLW $8, Y6, Y7
+	VPADDW Y7, Y6, Y6
+	VPSRLW $8, Y6, Y6
+	VPADDW Y6, Y0, Y7
+	VPSUBW Y6, Y0, Y8
+	VPCMPEQW Y10, Y3, Y9
+	VPAND Y9, Y7, Y7
+	VPANDN Y8, Y9, Y8
+	VPOR Y8, Y7, Y7
+	VEXTRACTI128 $1, Y7, X8
+	VPACKUSWB X8, X7, X7
+	VMOVDQU X7, (DI)
+	ADDQ $16, DI
+	ADDQ $4, SI
+	SUBQ $4, CX
+	CMPQ CX, $4
+	JGE loop_dispatch
+
+tail:
+	TESTQ CX, CX
+	JLE done
+
+tail_loop:
+	MOVBLZX (SI), R8
+	TESTQ R8, R8
+	JZ tail_next
+
+	CMPQ BX, $255
+	JNE tail_alpha
+	CMPQ R8, $255
+	JNE tail_use_cover
+	MOVL AX, (DI)
+	JMP tail_next
+
+tail_alpha:
+	IMULQ BX, R8
+	ADDQ $128, R8
+	MOVQ R8, R9
+	SHRQ $8, R9
+	ADDQ R9, R8
+	SHRQ $8, R8
+	JMP tail_have_alpha
+
+tail_use_cover:
+	// alpha = cover for opaque source.
+tail_have_alpha:
+	MOVBLZX AX, R9
+	MOVBLZX (DI), R10
+	CMPQ R9, R10
+	JAE tail_r_add
+	SUBQ R9, R10
+	MOVQ R10, R11
+	IMULQ R8, R11
+	ADDQ $128, R11
+	MOVQ R11, R12
+	SHRQ $8, R12
+	ADDQ R12, R11
+	SHRQ $8, R11
+	MOVBLZX (DI), R10
+	SUBQ R11, R10
+	MOVB R10, (DI)
+	JMP tail_g
+
+tail_r_add:
+	SUBQ R10, R9
+	MOVQ R9, R11
+	IMULQ R8, R11
+	ADDQ $128, R11
+	MOVQ R11, R12
+	SHRQ $8, R12
+	ADDQ R12, R11
+	SHRQ $8, R11
+	MOVBLZX (DI), R10
+	ADDQ R11, R10
+	MOVB R10, (DI)
+
+tail_g:
+	MOVQ AX, R9
+	SHRQ $8, R9
+	ANDQ $0xFF, R9
+	MOVBLZX 1(DI), R10
+	CMPQ R9, R10
+	JAE tail_g_add
+	SUBQ R9, R10
+	MOVQ R10, R11
+	IMULQ R8, R11
+	ADDQ $128, R11
+	MOVQ R11, R12
+	SHRQ $8, R12
+	ADDQ R12, R11
+	SHRQ $8, R11
+	MOVBLZX 1(DI), R10
+	SUBQ R11, R10
+	MOVB R10, 1(DI)
+	JMP tail_b
+
+tail_g_add:
+	SUBQ R10, R9
+	MOVQ R9, R11
+	IMULQ R8, R11
+	ADDQ $128, R11
+	MOVQ R11, R12
+	SHRQ $8, R12
+	ADDQ R12, R11
+	SHRQ $8, R11
+	MOVBLZX 1(DI), R10
+	ADDQ R11, R10
+	MOVB R10, 1(DI)
+
+tail_b:
+	MOVQ AX, R9
+	SHRQ $16, R9
+	ANDQ $0xFF, R9
+	MOVBLZX 2(DI), R10
+	CMPQ R9, R10
+	JAE tail_b_add
+	SUBQ R9, R10
+	MOVQ R10, R11
+	IMULQ R8, R11
+	ADDQ $128, R11
+	MOVQ R11, R12
+	SHRQ $8, R12
+	ADDQ R12, R11
+	SHRQ $8, R11
+	MOVBLZX 2(DI), R10
+	SUBQ R11, R10
+	MOVB R10, 2(DI)
+	JMP tail_a
+
+tail_b_add:
+	SUBQ R10, R9
+	MOVQ R9, R11
+	IMULQ R8, R11
+	ADDQ $128, R11
+	MOVQ R11, R12
+	SHRQ $8, R12
+	ADDQ R12, R11
+	SHRQ $8, R11
+	MOVBLZX 2(DI), R10
+	ADDQ R11, R10
+	MOVB R10, 2(DI)
+
+tail_a:
+	MOVQ $255, R9
+	MOVBLZX 3(DI), R10
+	SUBQ R10, R9
+	MOVQ R9, R11
+	IMULQ R8, R11
+	ADDQ $128, R11
+	MOVQ R11, R12
+	SHRQ $8, R12
+	ADDQ R12, R11
+	SHRQ $8, R11
+	MOVBLZX 3(DI), R10
+	ADDQ R11, R10
+	MOVB R10, 3(DI)
+
+tail_next:
+	ADDQ $4, DI
+	INCQ SI
+	DECQ CX
+	JNZ tail_loop
+
+done:
+	VZEROUPPER
+	RET

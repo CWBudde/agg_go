@@ -171,14 +171,18 @@ func (pf *PixFmtAlphaBlendRGBA[S, B]) BlendHline(x, y, length int, c color.RGBA8
 		}
 		_ = row[spanEnd]
 
+		// Mask indices so the compiler knows they are in [0,3] (BCE).
+		ir, ig, ib, ia = ir&3, ig&3, ib&3, ia&3
+
 		// C++ optimization: opaque + full cover → just copy.
 		if c.IsOpaque() && cover == basics.CoverFull {
 			p := x * 4
 			for range length {
-				row[p+ir] = c.R
-				row[p+ig] = c.G
-				row[p+ib] = c.B
-				row[p+ia] = c.A
+				px := row[p : p+4 : p+4] // BCE
+				px[ir] = c.R
+				px[ig] = c.G
+				px[ib] = c.B
+				px[ia] = c.A
 				p += 4
 			}
 			return
@@ -213,12 +217,14 @@ func blendHlinePlain(
 	if alpha == 0 {
 		return
 	}
+	ir, ig, ib, ia = ir&3, ig&3, ib&3, ia&3 // BCE: constrain to [0,3]
 	p := x * 4
 	for range length {
-		row[p+ir] = color.RGBA8Lerp(row[p+ir], sr, alpha)
-		row[p+ig] = color.RGBA8Lerp(row[p+ig], sg, alpha)
-		row[p+ib] = color.RGBA8Lerp(row[p+ib], sb, alpha)
-		row[p+ia] = color.RGBA8Prelerp(row[p+ia], alpha, alpha)
+		px := row[p : p+4 : p+4] // BCE: one check per pixel, not four
+		px[ir] = color.RGBA8Lerp(px[ir], sr, alpha)
+		px[ig] = color.RGBA8Lerp(px[ig], sg, alpha)
+		px[ib] = color.RGBA8Lerp(px[ib], sb, alpha)
+		px[ia] = color.RGBA8Prelerp(px[ia], alpha, alpha)
 		p += 4
 	}
 }
@@ -240,12 +246,14 @@ func blendHlinePre(
 	if a == 0 && r == 0 && g == 0 && b == 0 {
 		return
 	}
+	ir, ig, ib, ia = ir&3, ig&3, ib&3, ia&3 // BCE: constrain to [0,3]
 	p := x * 4
 	for range length {
-		row[p+ir] = color.RGBA8Prelerp(row[p+ir], r, a)
-		row[p+ig] = color.RGBA8Prelerp(row[p+ig], g, a)
-		row[p+ib] = color.RGBA8Prelerp(row[p+ib], b, a)
-		row[p+ia] = color.RGBA8Prelerp(row[p+ia], a, a)
+		px := row[p : p+4 : p+4] // BCE: one check per pixel, not four
+		px[ir] = color.RGBA8Prelerp(px[ir], r, a)
+		px[ig] = color.RGBA8Prelerp(px[ig], g, a)
+		px[ib] = color.RGBA8Prelerp(px[ib], b, a)
+		px[ia] = color.RGBA8Prelerp(px[ia], a, a)
 		p += 4
 	}
 }
@@ -340,6 +348,11 @@ func (pf *PixFmtAlphaBlendRGBA[S, B]) BlendSolidHspan(x, y, length int, c color.
 		}
 		_ = row[spanEnd] // prove to the compiler the span is in bounds
 
+		if ir == 0 && ig == 1 && ib == 2 && ia == 3 && covers != nil {
+			simd.BlendSolidHspanRGBA(row[x*4:], covers[:length], c.R, c.G, c.B, c.A, fb.PremulSrc())
+			return
+		}
+
 		if fb.PremulSrc() {
 			blendSolidHspanPre(row, x, length, c.R, c.G, c.B, c.A, ir, ig, ib, ia, c.IsOpaque(), covers)
 		} else {
@@ -377,30 +390,34 @@ func blendSolidHspanPlain(
 	opaque bool,
 	covers []byte,
 ) {
+	ir, ig, ib, ia = ir&3, ig&3, ib&3, ia&3 // BCE: constrain to [0,3]
 	p := x * 4
 	if covers == nil {
 		// Uniform full coverage — use c.a directly as alpha.
 		for range length {
-			row[p+ir] = color.RGBA8Lerp(row[p+ir], sr, sa)
-			row[p+ig] = color.RGBA8Lerp(row[p+ig], sg, sa)
-			row[p+ib] = color.RGBA8Lerp(row[p+ib], sb, sa)
-			row[p+ia] = color.RGBA8Prelerp(row[p+ia], sa, sa)
+			px := row[p : p+4 : p+4] // BCE: one check per pixel, not four
+			px[ir] = color.RGBA8Lerp(px[ir], sr, sa)
+			px[ig] = color.RGBA8Lerp(px[ig], sg, sa)
+			px[ib] = color.RGBA8Lerp(px[ib], sb, sa)
+			px[ia] = color.RGBA8Prelerp(px[ia], sa, sa)
 			p += 4
 		}
 		return
 	}
+	covers = covers[:length] // BCE: prove covers in bounds
 	for i := range length {
 		cv := covers[i]
 		if cv == 0 {
 			p += 4
 			continue
 		}
+		px := row[p : p+4 : p+4] // BCE: one check per pixel, not four
 		// C++ optimization: opaque color + full coverage → direct copy.
 		if opaque && cv == basics.CoverFull {
-			row[p+ir] = sr
-			row[p+ig] = sg
-			row[p+ib] = sb
-			row[p+ia] = sa
+			px[ir] = sr
+			px[ig] = sg
+			px[ib] = sb
+			px[ia] = sa
 			p += 4
 			continue
 		}
@@ -409,10 +426,10 @@ func blendSolidHspanPlain(
 			p += 4
 			continue
 		}
-		row[p+ir] = color.RGBA8Lerp(row[p+ir], sr, alpha)
-		row[p+ig] = color.RGBA8Lerp(row[p+ig], sg, alpha)
-		row[p+ib] = color.RGBA8Lerp(row[p+ib], sb, alpha)
-		row[p+ia] = color.RGBA8Prelerp(row[p+ia], alpha, alpha)
+		px[ir] = color.RGBA8Lerp(px[ir], sr, alpha)
+		px[ig] = color.RGBA8Lerp(px[ig], sg, alpha)
+		px[ib] = color.RGBA8Lerp(px[ib], sb, alpha)
+		px[ia] = color.RGBA8Prelerp(px[ia], alpha, alpha)
 		p += 4
 	}
 }
@@ -426,30 +443,34 @@ func blendSolidHspanPre(
 	opaque bool,
 	covers []byte,
 ) {
+	ir, ig, ib, ia = ir&3, ig&3, ib&3, ia&3 // BCE: constrain to [0,3]
 	p := x * 4
 	if covers == nil {
 		// Uniform full coverage — no scaling needed.
 		for range length {
-			row[p+ir] = color.RGBA8Prelerp(row[p+ir], sr, sa)
-			row[p+ig] = color.RGBA8Prelerp(row[p+ig], sg, sa)
-			row[p+ib] = color.RGBA8Prelerp(row[p+ib], sb, sa)
-			row[p+ia] = color.RGBA8Prelerp(row[p+ia], sa, sa)
+			px := row[p : p+4 : p+4] // BCE: one check per pixel, not four
+			px[ir] = color.RGBA8Prelerp(px[ir], sr, sa)
+			px[ig] = color.RGBA8Prelerp(px[ig], sg, sa)
+			px[ib] = color.RGBA8Prelerp(px[ib], sb, sa)
+			px[ia] = color.RGBA8Prelerp(px[ia], sa, sa)
 			p += 4
 		}
 		return
 	}
+	covers = covers[:length] // BCE: prove covers in bounds
 	for i := range length {
 		cv := covers[i]
 		if cv == 0 {
 			p += 4
 			continue
 		}
+		px := row[p : p+4 : p+4] // BCE: one check per pixel, not four
 		// C++ optimization: opaque color + full coverage → direct copy.
 		if opaque && cv == basics.CoverFull {
-			row[p+ir] = sr
-			row[p+ig] = sg
-			row[p+ib] = sb
-			row[p+ia] = sa
+			px[ir] = sr
+			px[ig] = sg
+			px[ib] = sb
+			px[ia] = sa
 			p += 4
 			continue
 		}
@@ -464,10 +485,10 @@ func blendSolidHspanPre(
 			p += 4
 			continue
 		}
-		row[p+ir] = color.RGBA8Prelerp(row[p+ir], r, a)
-		row[p+ig] = color.RGBA8Prelerp(row[p+ig], g, a)
-		row[p+ib] = color.RGBA8Prelerp(row[p+ib], b, a)
-		row[p+ia] = color.RGBA8Prelerp(row[p+ia], a, a)
+		px[ir] = color.RGBA8Prelerp(px[ir], r, a)
+		px[ig] = color.RGBA8Prelerp(px[ig], g, a)
+		px[ib] = color.RGBA8Prelerp(px[ib], b, a)
+		px[ia] = color.RGBA8Prelerp(px[ia], a, a)
 		p += 4
 	}
 }
