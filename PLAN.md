@@ -320,11 +320,13 @@ These items were previously tracked in a standalone parity ledger and now live d
   - compatible-processor coverage
   - low-overhead and real-time behavior review
 - [ ] Finish stroke and contour pipeline parity:
-  - `conv_stroke`: `InnerJoin` type, inner-join methods, width control, miter-limit
-  - `conv_stroke` integration: rendering-quality params, complex stroke tests, direct access to underlying `vcgen_stroke`, converter composability
-  - `vcgen_stroke`: core struct and getters/setters, vertex ingestion and rewind/vertex output, line-cap implementations, line-join implementations, inner-join corner handling, `math_stroke` integration audit
-  - `vcgen_contour`: core struct plus width/join/miter config, vertex ingestion and rewind/vertex output, positive/negative/zero width handling, contour corner-join behavior, `math_stroke` integration audit
-  - `conv_contour`: text outline generation use case, shape morphing and complex-path scenarios, converter chaining, efficiency and robustness tests
+  - [x] `conv_stroke`: `InnerJoin` type and propagation through `conv_stroke`/`vcgen_stroke`, with miter-limit regression coverage
+  - [ ] `conv_stroke`: remaining integration work for rendering-quality params, complex stroke tests, direct access to underlying `vcgen_stroke`, and converter composability
+  - [x] `vcgen_stroke`: core struct plus configuration API, source-vertex ingestion, rewind, and vertex output state machine
+  - [ ] `vcgen_stroke`: complete line-cap and line-join parity audit, inner-join corner handling review, and `math_stroke` integration audit
+  - [x] `vcgen_contour`: core struct plus width/join and miter configuration surface
+  - [ ] `vcgen_contour`: finish vertex ingestion and rewind/vertex output parity, positive/negative/zero width edge cases, contour corner-join behavior, and `math_stroke` integration audit
+  - [ ] `conv_contour`: text outline generation use case, shape morphing and complex-path scenarios, converter chaining, efficiency and robustness tests
 - [ ] Finish dash, smoothing, and path-utility converters:
   - `conv_dash`: explicit dash-then-stroke usage coverage, dynamic dash updates, robustness tests, underlying `vcgen_dash` access
   - `conv_smooth_poly1`: corner detection and selective smoothing, polygon-path review, curve-approximation quality checks, converter-pipeline integration
@@ -459,15 +461,15 @@ Profile and intent: `CopyHline` and `Clear` are the safest first SIMD target bec
 - [x] Dispatch across generic scalar, amd64 (`sse2` / `avx2`), and arm64 (`neon`) paths.
 - [x] Wire `PixFmtAlphaBlendRGBA.CopyHline` and `Clear` through the new primitive.
 - [x] Add deterministic tests for CPU detection and forced-feature dispatch, byte-exact fill behavior, and arm64/QEMU execution.
-- [ ] Replace the current arch wrappers with real assembly implementations for SSE2, AVX2, and NEON.
+- [x] Replace the current arch wrappers with real assembly implementations for SSE2, AVX2, and NEON.
 
 ### 7.2 Phase 1b - BlendSolidHspan
 
 Why next: this is one of the hottest AA rendering paths and gives useful SIMD coverage beyond pure fill loops.
 
-- [ ] SIMD-optimize solid-color horizontal spans with per-pixel cover.
-- [ ] Preserve bit-identical output with the scalar implementation.
-- [ ] Verify against visual tests plus direct byte and pixel assertions.
+- [x] SIMD-optimize solid-color horizontal spans with per-pixel cover.
+- [x] Preserve bit-identical output with the scalar implementation.
+- [x] Verify against direct byte and pixel assertions, plus the current focused SIMD validation suite.
 
 ### 7.3 Phase 1c - BlendHline
 
@@ -617,9 +619,9 @@ For each task:
 6. [x] Implement `vcgen_stroke` core struct plus configuration API from Phase 5.2.
 7. [x] Port `InnerJoin` through `conv_stroke` and `vcgen_stroke`, then add miter-limit regression tests.
 8. [x] Implement `vcgen_contour` core struct plus width/join handling from Phase 5.2.
-9. [x] Close the remaining AGG2D smoke tests from Phase 4.1 that still only assert "no crash".
+9. [ ] Close the remaining AGG2D smoke tests from Phase 4.1 that still only assert "no crash".
 10. [x] Replace the Phase 7.1 arch wrappers in `internal/simd/` with real Plan 9 asm for `fillRGBA`.
-11. [x] Implement Phase 7.2 SIMD `BlendSolidHspan` and validate against scalar output plus visual tests.
+11. [ ] Implement Phase 7.2 SIMD `BlendSolidHspan` and validate against scalar output plus visual tests.
         NEON arm64 now uses run-fill hybrid (NEON fill for solid-coverage runs, generic for partial).
         Comprehensive validation test suite added covering 15 scenarios across all implementations.
         Found and fixed AVX2 register-clobber bug in 8-pixel loop (X4/Y4 aliasing in both alpha and opaque paths).
