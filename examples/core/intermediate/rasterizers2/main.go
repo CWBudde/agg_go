@@ -9,6 +9,7 @@ import (
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
 	"agg_go/internal/conv"
+	"agg_go/internal/ctrl/checkbox"
 	ctrltext "agg_go/internal/ctrl/text"
 	"agg_go/internal/order"
 	"agg_go/internal/pixfmt"
@@ -68,6 +69,22 @@ func (a *rasScanlineAdapter) AddSpan(x, length int, cover uint32) {
 }
 func (a *rasScanlineAdapter) Finalize(y int) { a.sl.Finalize(y) }
 func (a *rasScanlineAdapter) NumSpans() int  { return a.sl.NumSpans() }
+
+type controlPathAdapter struct {
+	rewindFn func(pathID uint)
+	vertexFn func() (x, y float64, cmd uint32)
+}
+
+func (a *controlPathAdapter) Rewind(pathID uint32) {
+	a.rewindFn(uint(pathID))
+}
+
+func (a *controlPathAdapter) Vertex(x, y *float64) uint32 {
+	vx, vy, cmd := a.vertexFn()
+	*x = vx
+	*y = vy
+	return cmd
+}
 
 type spiral struct {
 	x, y                 float64
@@ -308,6 +325,38 @@ func savePPM(filename string, imgData []uint8, width, height int) error {
 	return nil
 }
 
+func renderControl(
+	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
+	sl *scanline.ScanlineU8,
+	renBase *renderer.RendererBase[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]],
+	numPaths uint,
+	rewindFn func(pathID uint),
+	vertexFn func() (x, y float64, cmd uint32),
+	colorFn func(pathID uint) color.RGBA,
+) {
+	adapter := &controlPathAdapter{
+		rewindFn: rewindFn,
+		vertexFn: vertexFn,
+	}
+	for pathID := uint(0); pathID < numPaths; pathID++ {
+		ras.Reset()
+		ras.AddPath(adapter, uint32(pathID))
+		col := rgbaToRGBA8(colorFn(pathID))
+		if !ras.RewindScanlines() {
+			continue
+		}
+		sl.Reset(ras.MinX(), ras.MaxX())
+		for ras.SweepScanline(&rasScanlineAdapter{sl: sl}) {
+			y := sl.Y()
+			for _, spanData := range sl.Spans() {
+				if spanData.Len > 0 {
+					renBase.BlendSolidHspan(int(spanData.X), y, int(spanData.Len), col, spanData.Covers)
+				}
+			}
+		}
+	}
+}
+
 func main() {
 	imgData := make([]uint8, frameWidth*frameHeight*4)
 	rbuf := buffer.NewRenderingBufferU8WithData(imgData, frameWidth, frameHeight, frameWidth*4)
@@ -369,6 +418,65 @@ func main() {
 	drawText(rasAA, sl, renBase, 50, float64(frameHeight)/2+50, []string{"Anti-aliased lines"})
 	drawText(rasAA, sl, renBase, float64(frameWidth)/2-50, float64(frameHeight)/2+50, []string{"Scanline rasterizer"})
 	drawText(rasAA, sl, renBase, float64(frameWidth)-float64(frameWidth)/5-50, float64(frameHeight)/2+50, []string{"Arbitrary Image Pattern"})
+
+	testPerf := checkbox.NewDefaultCheckboxCtrl(10, 30, "Test Performance", false)
+	testPerf.SetTextSize(9.0, 7.0)
+	rotate := checkbox.NewDefaultCheckboxCtrl(140, 30, "Rotate", false)
+	rotate.SetTextSize(9.0, 7.0)
+	accurateJoins := checkbox.NewDefaultCheckboxCtrl(210, 30, "Accurate Joins", false)
+	accurateJoins.SetTextSize(9.0, 7.0)
+	scalePattern := checkbox.NewDefaultCheckboxCtrl(320, 30, "Scale Pattern", false)
+	scalePattern.SetTextSize(9.0, 7.0)
+	scalePattern.SetChecked(true)
+
+	renderControl(
+		rasAA,
+		sl,
+		renBase,
+		testPerf.NumPaths(),
+		testPerf.Rewind,
+		func() (x, y float64, cmd uint32) {
+			vx, vy, c := testPerf.Vertex()
+			return vx, vy, uint32(c)
+		},
+		testPerf.Color,
+	)
+	renderControl(
+		rasAA,
+		sl,
+		renBase,
+		rotate.NumPaths(),
+		rotate.Rewind,
+		func() (x, y float64, cmd uint32) {
+			vx, vy, c := rotate.Vertex()
+			return vx, vy, uint32(c)
+		},
+		rotate.Color,
+	)
+	renderControl(
+		rasAA,
+		sl,
+		renBase,
+		accurateJoins.NumPaths(),
+		accurateJoins.Rewind,
+		func() (x, y float64, cmd uint32) {
+			vx, vy, c := accurateJoins.Vertex()
+			return vx, vy, uint32(c)
+		},
+		accurateJoins.Color,
+	)
+	renderControl(
+		rasAA,
+		sl,
+		renBase,
+		scalePattern.NumPaths(),
+		scalePattern.Rewind,
+		func() (x, y float64, cmd uint32) {
+			vx, vy, c := scalePattern.Vertex()
+			return vx, vy, uint32(c)
+		},
+		scalePattern.Color,
+	)
 
 	if err := savePPM("rasterizers2_demo.ppm", imgData, frameWidth, frameHeight); err != nil {
 		panic(err)
