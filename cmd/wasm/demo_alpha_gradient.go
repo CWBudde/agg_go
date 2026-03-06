@@ -8,6 +8,9 @@
 //
 // Three draggable control points define the parallelogram; dragging inside the
 // triangle moves all three together.
+//
+// A spline control at the bottom-left lets the user adjust the alpha curve
+// (matching the C++ m_alpha spline_ctrl widget).
 package main
 
 import (
@@ -17,6 +20,7 @@ import (
 	agg "agg_go"
 	"agg_go/internal/basics"
 	"agg_go/internal/color"
+	ctrlspline "agg_go/internal/ctrl/spline"
 	"agg_go/internal/shapes"
 	"agg_go/internal/span"
 	"agg_go/internal/transform"
@@ -35,7 +39,39 @@ var (
 	alphaGradDragDX   = 0.0
 	alphaGradDragDY   = 0.0
 	alphaGradDragAll  = false
+
+	// Spline control for the alpha curve (bottom-left widget).
+	alphaGradSplineCtrl *ctrlspline.SplineCtrl[color.RGBA]
 )
+
+func getAlphaGradSplineCtrl() *ctrlspline.SplineCtrl[color.RGBA] {
+	if alphaGradSplineCtrl == nil {
+		// Match C++: m_alpha(2, 2, 200, 30, 6, !flip_y)
+		// In C++ with flip_y=true, y=2 appears near the BOTTOM of the window.
+		// We replicate that position at the bottom-left of the 800×600 canvas.
+		y1 := float64(height) - 35
+		y2 := float64(height) - 5
+		ctrl := ctrlspline.NewSplineCtrl[color.RGBA](2, y1, 200, y2, 6, false)
+
+		// C++ initial points: a straight diagonal from (0,0) to (1,1).
+		ctrl.SetPoint(0, 0.0, 0.0)
+		ctrl.SetPoint(1, 1.0/5.0, 1.0-4.0/5.0) // = (0.2, 0.2)
+		ctrl.SetPoint(2, 2.0/5.0, 1.0-3.0/5.0) // = (0.4, 0.4)
+		ctrl.SetPoint(3, 3.0/5.0, 1.0-2.0/5.0) // = (0.6, 0.6)
+		ctrl.SetPoint(4, 4.0/5.0, 1.0-1.0/5.0) // = (0.8, 0.8)
+		ctrl.SetPoint(5, 1.0, 1.0)
+
+		// Default colors matching AGG's spline_ctrl defaults.
+		ctrl.SetBackgroundColor(color.NewRGBA(1.0, 1.0, 0.9, 1.0))
+		ctrl.SetBorderColor(color.NewRGBA(0.0, 0.0, 0.0, 1.0))
+		ctrl.SetCurveColor(color.NewRGBA(0.0, 0.0, 0.0, 1.0))
+		ctrl.SetInactivePointColor(color.NewRGBA(0.0, 0.0, 0.0, 1.0))
+		ctrl.SetActivePointColor(color.NewRGBA(1.0, 0.0, 0.0, 1.0))
+
+		alphaGradSplineCtrl = ctrl
+	}
+	return alphaGradSplineCtrl
+}
 
 // --- Color-array type (implements span.ColorFunction) ---
 
@@ -168,11 +204,34 @@ func (a *ellipseVS) Rewind(pathID uint32) { a.ell.Rewind(pathID) }
 
 func (a *ellipseVS) Vertex(x, y *float64) uint32 { return uint32(a.ell.Vertex(x, y)) }
 
+// --- Spline control rendering ---
+
+// renderAlphaSplineCtrl renders the spline control widget using Agg2D's rasterizer.
+func renderAlphaSplineCtrl(a *agg.Agg2D, ctrl *ctrlspline.SplineCtrl[color.RGBA]) {
+	ras := a.GetInternalRasterizer()
+	numPaths := ctrl.NumPaths()
+	for i := uint(0); i < numPaths; i++ {
+		ras.Reset()
+		ctrl.Rewind(i)
+		for {
+			x, y, cmd := ctrl.Vertex()
+			if cmd == basics.PathCmdStop {
+				break
+			}
+			ras.AddVertex(x, y, uint32(cmd))
+		}
+		c := ctrl.Color(i)
+		a.RenderRasterizerWithColor(agg.RGBA(c.R, c.G, c.B, c.A))
+	}
+}
+
 // --- Drawing ---
 
 func drawAlphaGradientDemo() {
 	a := ctx.GetAgg2D()
 	a.ResetTransformations()
+
+	alphaCtrl := getAlphaGradSplineCtrl()
 
 	cx := float64(width) / 2
 	cy := float64(height) / 2
@@ -190,6 +249,7 @@ func drawAlphaGradientDemo() {
 		b := uint8(rng.Intn(256))
 		al := uint8(rng.Intn(128))
 		a.FillColor(agg.NewColor(r, g, b, al))
+		a.ResetPath() // C++ AGG2D resets path before each shape call.
 		a.AddEllipse(ex, ey, rx, ry, agg.CCW)
 		a.DrawPath(agg.FillOnly)
 	}
@@ -217,10 +277,10 @@ func drawAlphaGradientDemo() {
 		agg.RGBA(0.31, 0, 0, 1),
 	)
 
-	// 5. Alpha LUT: linear 0→255 (matches the C++ default straight-line spline).
+	// 5. Alpha LUT from spline control.
 	var alphaArr [256]basics.Int8u
 	for i := range alphaArr {
-		alphaArr[i] = basics.Int8u(i)
+		alphaArr[i] = basics.Int8u(alphaCtrl.Value(float64(i)/255.0) * 255)
 	}
 
 	// 6. Render the 150-px circle with the combined span generator.
@@ -252,11 +312,21 @@ func drawAlphaGradientDemo() {
 	a.LineTo(p3x, p3y)
 	a.ClosePolygon()
 	a.DrawPath(agg.StrokeOnly)
+
+	// 9. Spline control widget (bottom-left, matching C++ render_ctrl call).
+	renderAlphaSplineCtrl(a, alphaCtrl)
 }
 
 // --- Mouse handlers ---
 
 func handleAlphaGradMouseDown(x, y float64) bool {
+	alphaCtrl := getAlphaGradSplineCtrl()
+
+	// Let the spline control handle the event first.
+	if alphaCtrl.OnMouseButtonDown(x, y) {
+		return true
+	}
+
 	alphaGradSelected = -1
 	alphaGradDragAll = false
 
@@ -289,6 +359,11 @@ func handleAlphaGradMouseDown(x, y float64) bool {
 }
 
 func handleAlphaGradMouseMove(x, y float64) bool {
+	alphaCtrl := getAlphaGradSplineCtrl()
+	if alphaCtrl.OnMouseMove(x, y, true) {
+		return true
+	}
+
 	if alphaGradDragAll {
 		dx := x - alphaGradDragDX
 		dy := y - alphaGradDragDY
@@ -309,6 +384,8 @@ func handleAlphaGradMouseMove(x, y float64) bool {
 }
 
 func handleAlphaGradMouseUp() {
+	alphaCtrl := getAlphaGradSplineCtrl()
+	alphaCtrl.OnMouseButtonUp(0, 0)
 	alphaGradSelected = -1
 	alphaGradDragAll = false
 }

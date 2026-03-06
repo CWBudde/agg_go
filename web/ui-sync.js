@@ -1,0 +1,144 @@
+// --- Control visibility and demo descriptions ---
+
+export function syncControlVisibility(demoType) {
+  document.getElementById("aaControls").style.display =
+    demoType === "aa" ? "flex" : "none";
+  document.getElementById("dashControls").style.display =
+    demoType === "conv_dash_marker" ? "flex" : "none";
+  document.getElementById("gouraudControls").style.display =
+    demoType === "gouraud" ? "flex" : "none";
+  document.getElementById("gouraudMeshControls").style.display =
+    demoType === "gouraud_mesh" ? "flex" : "none";
+  document.getElementById("imageFilterControls").style.display =
+    demoType === "imagefilters" ? "flex" : "none";
+  document.getElementById("sboolControls").style.display =
+    demoType === "sbool" ? "flex" : "none";
+  document.getElementById("convstrokeControls").style.display =
+    demoType === "convstroke" ? "flex" : "none";
+  document.getElementById("convcontourControls").style.display =
+    demoType === "convcontour" ? "flex" : "none";
+  document.getElementById("gammaControls").style.display =
+    demoType === "gamma" ? "flex" : "none";
+  document.getElementById("lionoutlineControls").style.display =
+    demoType === "lionoutline" ? "flex" : "none";
+  document.getElementById("lionLensControls").style.display =
+    demoType === "lion_lens" ? "flex" : "none";
+  document.getElementById("roundedrectControls").style.display =
+    demoType === "roundedrect" ? "flex" : "none";
+  document.getElementById("componentControls").style.display =
+    demoType === "component" ? "flex" : "none";
+  document.getElementById("perspectiveControls").style.display =
+    demoType === "perspective" ? "flex" : "none";
+  document.getElementById("transCurveControls").style.display =
+    demoType === "trans_curve" ? "flex" : "none";
+  document.getElementById("transCurve2Controls").style.display =
+    demoType === "trans_curve2" ? "flex" : "none";
+  document.getElementById("blurControls").style.display =
+    demoType === "blur" ? "flex" : "none";
+  document.getElementById("circlesControls").style.display =
+    demoType === "circles" ? "flex" : "none";
+  document.getElementById("compositingControls").style.display =
+    demoType === "compositing" ? "flex" : "none";
+  document.getElementById("multiClipControls").style.display =
+    demoType === "multi_clip" ? "flex" : "none";
+  document.getElementById("alphaMask2Controls").style.display =
+    demoType === "alpha_mask2" ? "flex" : "none";
+  document.getElementById("image1Controls").style.display =
+    demoType === "image1" ? "flex" : "none";
+  document.getElementById("imageTransformsControls").style.display =
+    demoType === "image_transforms" ? "flex" : "none";
+  document.getElementById("patternFillControls").style.display =
+    demoType === "pattern_fill" ? "flex" : "none";
+  document.getElementById("gammaTunerControls").style.display =
+    demoType === "gamma_tuner" ? "flex" : "none";
+  document.getElementById("bezierDivControls").style.display =
+    demoType === "bezier_div" ? "flex" : "none";
+  document.getElementById("bezierDivControls2").style.display =
+    demoType === "bezier_div" ? "flex" : "none";
+  document.getElementById("rasterizersControls").style.display =
+    demoType === "rasterizers" ? "flex" : "none";
+  document.getElementById("bsplineControls").style.display =
+    demoType === "bspline" ? "flex" : "none";
+}
+
+export const demoDescriptions = {
+  agg2d:
+    "Port of the original agg2d_demo.cpp. Showcases the high-level Agg2D API: viewport mapping, aqua-style gradient buttons with rounded rectangles, filled ellipses, arc-based path construction, blend modes (Add, Overlay), and radial gradient fills.",
+  lion: "The classic AGG signature demo. High-quality vector graphics consisting of hundreds of paths parsed from the original AGG lion data.",
+  gradients:
+    "Linear and radial gradient fills. Demonstrates the advanced span generation and multi-stop color interpolation.",
+  aa: "Anti-aliasing showcase. Lines and circles drawn at sub-pixel offsets to demonstrate the precision and smoothness of AGG's rasterizer.",
+  blend:
+    "Compositing and blend modes. Showcases how different layers can be combined using standard and advanced blend modes like Multiply, Screen, and Overlay.",
+  bspline:
+    "B-Spline curve smoothing. Demonstrates the creation of smooth, continuous curves from a set of control points.",
+  conv_dash_marker:
+    "Port of AGG's conv_dash_marker demo. Applies conv_smooth_poly1 to soften corners, then conv_dash to create dash patterns, and conv_marker to place arrowheads at line endpoints. Adjust smoothness, stroke width, cap style, and fill rule. Drag the three control points to reshape the paths.",
+  gouraud:
+    "Smooth color interpolation across triangles. Demonstrates AGG's capability to render gradient-shaded meshes with sub-pixel precision and adjustable dilation.",
+  imagefilters:
+    "Comparison of different image interpolation filters. Rotates and scales a procedurally generated image using filters like Bilinear, Bicubic, Sinc, and Lanczos to showcase quality vs. performance.",
+  sbool:
+    "Boolean operations on vector shapes. Demonstrates combining multiple paths using filling rules to achieve Union and XOR-like effects with interactive polygons.",
+  aatest:
+    "Comprehensive anti-aliasing precision test. Renders radial lines, various ellipse sizes, and gradient-filled triangles at fractional offsets to verify the rasterizer's quality.",
+  convstroke:
+    "Line join and cap style showcase. Port of AGG's classic conv_stroke demo. Drag the three control points to reshape the path; use the controls to change join style (Miter/Round/Bevel), cap style (Butt/Square/Round), stroke width, and miter limit.",
+  convcontour:
+    "Contour tool and polygon orientation. Port of AGG's conv_contour demo. Expands or shrinks a closed path by a given width using the contour converter. The glyph is defined with quadratic bezier curves, processed through conv_curve → conv_transform → conv_contour. Adjust the width slider and orientation flags to see the effect.",
+  gamma:
+    "Gamma correction showcase. Port of AGG's gamma_correction demo. Renders colored ellipses over a four-quadrant background (dark, light, reddish) to demonstrate how the anti-aliasing gamma affects line quality. Click and drag on the canvas to resize the ellipses. Adjust gamma, line thickness, and background contrast with the sliders.",
+  lionoutline:
+    "Lion outline rendering. Port of AGG's lion_outline demo. The classic lion vector art is rendered as stroked outlines instead of filled polygons. Left-drag to rotate and scale the lion; right-drag to apply shear. Adjust the line width with the slider.",
+  roundedrect:
+    "Rounded rectangle demo. Port of AGG's rounded_rect demo. Drag the two corner control points to resize the rectangle. Adjust the corner radius and sub-pixel offset with sliders; toggle white-on-black rendering with the checkbox.",
+  alphagrad:
+    "Alpha channel gradient. Port of AGG's alpha_gradient demo. A circle is filled with a circular colour gradient (dark teal → yellow-green → dark red); its alpha channel is independently modulated by an XY-product gradient mapped over a draggable parallelogram. Drag the three teal control points to reshape the parallelogram and watch the transparency pattern change. Dragging inside the triangle moves all three together.",
+  component:
+    "Component (channel) rendering. Port of AGG's component_rendering demo. Three large circles are each rendered into an individual color channel using Multiply blend mode, producing classic CMY subtractive color mixing: Cyan darkens the Red channel, Magenta the Green, Yellow the Blue. Where all three overlap the result is black. The Alpha slider controls how strongly each channel is darkened.",
+  rasterizers:
+    "Aliased vs Anti-Aliased rasterization. Comparison between the standard AA rasterizer and aliased (threshold-based) rendering. Drag the triangle nodes to see how edges behave under different rendering modes and gamma settings.",
+  flash_rasterizer:
+    "Compound rasterization. Demonstrates AGG's ability to render overlapping shapes with multiple styles in a single pass using the compound rasterizer. This is highly efficient for complex vector scenes with many layers.",
+  perspective:
+    "Perspective and Bilinear transformations. Apply non-linear distortions to the lion vector art by dragging the four corners of the control quadrilateral. Switch between Bilinear and Perspective modes to see the difference in projection.",
+  bezier_div:
+    "Bezier curve subdivision comparison. Shows two methods of rendering cubic Bezier curves: Subdivision (Green) and Incremental (Red). Drag the four control points to see how both algorithms handle various curve shapes and cusps.",
+  gouraud_mesh:
+    "Animated Gouraud-shaded mesh. A grid of triangles with varying colors and positions, rendered efficiently using compound rasterization and smooth Gouraud shading. Drag points to manually distort the mesh.",
+  trans_curve:
+    "Along-a-curve transformation. Bends complex vector shapes (the lion) along an interactive B-Spline path. Drag the six control points to reshape the path. Toggle animation to watch the lion flow along the moving curve.",
+  trans_curve2:
+    "Double path transformation. Bends vector shapes (the lion) between two interactive B-Spline curves. Drag the 12 control points to reshape the envelope. Toggle animation to watch the lion morph between the moving curves.",
+  gamma_ctrl:
+    "Interactive gamma correction control. Port of AGG's gamma_ctrl demo. Use the spline control points to adjust the gamma curve and see its effect on various primitives, text, and rotated shapes.",
+  gamma_tuner:
+    "RGB gamma tuning tool. Port of AGG's gamma_tuner demo. Calibrate gamma for R, G, and B channels independently using horizontal, vertical, and checkered test patterns.",
+  lion_lens:
+    "Dynamic lens magnification effect. Port of AGG's lion_lens demo. Applies a TransWarpMagnifier to the lion vector art. Click and drag to move the lens; use the sliders to adjust scale and radius.",
+  distortions:
+    "Animated image distortions. Applies Wave and Swirl effects to a procedurally generated image using custom coordinate distortion interpolators. Click and drag to move the distortion center.",
+  trans_polar:
+    "Polar coordinate transformations. Bends the lion vector art into a circular or spiral shape using a non-linear polar transformer. Click and drag to adjust the radius and spiral intensity.",
+  circles:
+    "Random circles demo. A scatter plot prototype using B-Spline color interpolation. Renders thousands of small circles with colors controlled by splines. Click to regenerate the points.",
+  blur: "Gaussian and Stack blur demonstration. Renders a complex path with a shadow and applies recursive or stack blur to the entire canvas. Use the controls to adjust radius and method.",
+  simple_blur:
+    "Simple 3x3 box blur. Renders the classic lion and then applies a simple box blur inside a draggable elliptical region. Click and drag to move the blurred area.",
+  alpha_mask:
+    "Alpha masking showcase. Port of AGG's alpha_mask demo. Renders the classic lion vector art through a dynamic alpha mask generated from overlapping random ellipses. Demonstrates the PixFmtAMaskAdaptor's ability to apply transparency patterns to any rendering operation.",
+  alpha_mask2:
+    "Alpha Mask 2 — Lion with ellipse mask. Renders the classic lion vector art through a grayscale alpha mask built from random semi-transparent ellipses. Left-drag to rotate and scale the lion; right-drag to skew. Adjust the Ellipses slider to change the mask density.",
+  compositing:
+    "Porter-Duff and SVG compositing operations. Port of AGG's compositing demo. Demonstrates various rules for combining source and destination shapes, such as SrcOver, Multiply, Screen, and Xor. Adjust the source and destination opacity and select different operations to see how they affect the overlapping regions.",
+  multi_clip:
+    "Multi-region clipping. Port of AGG's multi_clip demo. Showcases the RendererMClip which allows restricting all rendering operations to a set of multiple rectangular regions. Adjust the grid size slider to change the number of clipping boxes and watch the lion art being clipped into a grid.",
+  image1:
+    "Image affine transformation. Port of AGG's image1.cpp. A large ellipse is filled with a bilinear-filtered image that rotates and scales with the ellipse. Use the angle and scale sliders to transform the image.",
+  image_transforms:
+    "Image transform examples. Port of AGG's image_transforms.cpp. A 14-pointed star polygon is filled with an affine-filtered image. Choose between 7 different examples showing how the image matrix can be set independently from the polygon matrix. Drag the image center point (red handle) to reposition it.",
+  image_alpha:
+    "Image alpha from brightness. Port of AGG's image_alpha.cpp. A background of random colored ellipses is overlaid by a large rotated ellipse filled with an image. The alpha of each image pixel is derived from its brightness via a piecewise linear lookup table, making bright areas more transparent.",
+  pattern_fill:
+    "Pattern fill (tiled star). Port of AGG's pattern_fill.cpp. A 14-pointed star polygon is filled with a small repeating star pattern rendered into an offscreen buffer. Use the sliders to rotate and scale both the polygon and the pattern tile.",
+};

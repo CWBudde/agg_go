@@ -1,0 +1,801 @@
+// --- Event handlers for all demo controls ---
+
+import { syncControlVisibility } from "./ui-sync.js";
+import { clearDemoParams, updateURL } from "./url-state.js";
+
+export function setupEventHandlers(
+  canvas,
+  selector,
+  renderSelectedDemo,
+  persistDemoParams,
+) {
+  selector.addEventListener("change", () => {
+    clearDemoParams();
+    updateURL({ demo: selector.value });
+    syncControlVisibility(selector.value);
+    renderSelectedDemo();
+  });
+
+  document
+    .getElementById("renderBtn")
+    .addEventListener("click", renderSelectedDemo);
+
+  // aa controls
+  document.getElementById("zoomSlider").addEventListener("input", () => {
+    const val = parseFloat(document.getElementById("zoomSlider").value);
+    document.getElementById("zoomValue").textContent = val;
+    setAAZoom(val);
+    persistDemoParams("aa");
+    renderSelectedDemo();
+  });
+
+  // conv_dash_marker controls
+  document.getElementById("dashWidthSlider").addEventListener("input", () => {
+    const val = parseFloat(document.getElementById("dashWidthSlider").value);
+    document.getElementById("dashWidthValue").textContent = val;
+    setDashWidth(val);
+    persistDemoParams("conv_dash_marker");
+    renderSelectedDemo();
+  });
+  document
+    .getElementById("dashSmoothSlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("dashSmoothSlider").value,
+      );
+      document.getElementById("dashSmoothValue").textContent = val.toFixed(2);
+      setDashSmooth(val);
+      persistDemoParams("conv_dash_marker");
+      renderSelectedDemo();
+    });
+  document
+    .getElementById("dashCapSelector")
+    .addEventListener("change", () => {
+      setDashCap(parseInt(document.getElementById("dashCapSelector").value));
+      persistDemoParams("conv_dash_marker");
+      renderSelectedDemo();
+    });
+  document.getElementById("dashClosed").addEventListener("change", () => {
+    setDashClosed(document.getElementById("dashClosed").checked);
+    persistDemoParams("conv_dash_marker");
+    renderSelectedDemo();
+  });
+  document.getElementById("dashEvenOdd").addEventListener("change", () => {
+    setDashEvenOdd(document.getElementById("dashEvenOdd").checked);
+    persistDemoParams("conv_dash_marker");
+    renderSelectedDemo();
+  });
+
+  // gouraud controls
+  document.getElementById("dilationSlider").addEventListener("input", () => {
+    const val = parseFloat(document.getElementById("dilationSlider").value);
+    document.getElementById("dilationValue").textContent = val;
+    setGouraudDilation(val);
+    persistDemoParams("gouraud");
+    renderSelectedDemo();
+  });
+
+  // imagefilters controls
+  const filterSelector = document.getElementById("filterSelector");
+  filterSelector.addEventListener("change", () => {
+    const val = parseInt(filterSelector.value);
+    setImageFilter(val);
+    const hasRadius = val >= 12;
+    document.getElementById("radiusLabel").style.display = hasRadius
+      ? "inline"
+      : "none";
+    document.getElementById("filterRadiusSlider").style.display = hasRadius
+      ? "inline"
+      : "none";
+    document.getElementById("filterRadiusValue").style.display = hasRadius
+      ? "inline"
+      : "none";
+    persistDemoParams("imagefilters");
+    renderSelectedDemo();
+  });
+  document
+    .getElementById("filterRadiusSlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("filterRadiusSlider").value,
+      );
+      document.getElementById("filterRadiusValue").textContent = val;
+      setImageFilterRadius(parseInt(filterSelector.value), val);
+      persistDemoParams("imagefilters");
+      renderSelectedDemo();
+    });
+
+  // sbool controls
+  document
+    .getElementById("sboolOpSelector")
+    .addEventListener("change", () => {
+      setSBoolOp(parseInt(document.getElementById("sboolOpSelector").value));
+      persistDemoParams("sbool");
+      renderSelectedDemo();
+    });
+
+  // convstroke controls
+  document
+    .getElementById("strokeJoinSelector")
+    .addEventListener("change", () => {
+      setStrokeJoin(
+        parseInt(document.getElementById("strokeJoinSelector").value),
+      );
+      persistDemoParams("convstroke");
+      renderSelectedDemo();
+    });
+  document
+    .getElementById("strokeCapSelector")
+    .addEventListener("change", () => {
+      setStrokeCap(
+        parseInt(document.getElementById("strokeCapSelector").value),
+      );
+      persistDemoParams("convstroke");
+      renderSelectedDemo();
+    });
+  document
+    .getElementById("strokeWidthSlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("strokeWidthSlider").value,
+      );
+      document.getElementById("strokeWidthValue").textContent = val;
+      setStrokeWidth(val);
+      persistDemoParams("convstroke");
+      renderSelectedDemo();
+    });
+  document
+    .getElementById("strokeMiterSlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("strokeMiterSlider").value,
+      );
+      document.getElementById("strokeMiterValue").textContent = val;
+      setStrokeMiterLimit(val);
+      persistDemoParams("convstroke");
+      renderSelectedDemo();
+    });
+
+  // convcontour controls
+  document
+    .getElementById("contourWidthSlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("contourWidthSlider").value,
+      );
+      document.getElementById("contourWidthValue").textContent = val;
+      setContourWidth(val);
+      persistDemoParams("convcontour");
+      renderSelectedDemo();
+    });
+  document
+    .getElementById("contourCloseModeSelector")
+    .addEventListener("change", () => {
+      setContourCloseMode(
+        parseInt(document.getElementById("contourCloseModeSelector").value),
+      );
+      persistDemoParams("convcontour");
+      renderSelectedDemo();
+    });
+  document
+    .getElementById("contourAutoDetect")
+    .addEventListener("change", () => {
+      setContourAutoDetect(
+        document.getElementById("contourAutoDetect").checked,
+      );
+      persistDemoParams("convcontour");
+      renderSelectedDemo();
+    });
+
+  // gamma controls
+  document.getElementById("gammaSlider").addEventListener("input", () => {
+    const val = parseFloat(document.getElementById("gammaSlider").value);
+    document.getElementById("gammaValue").textContent = val.toFixed(2);
+    setGammaValue(val);
+    renderSelectedDemo();
+  });
+  document
+    .getElementById("gammaThickSlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("gammaThickSlider").value,
+      );
+      document.getElementById("gammaThickValue").textContent = val.toFixed(1);
+      setGammaThickness(val);
+      renderSelectedDemo();
+    });
+  document
+    .getElementById("gammaContrastSlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("gammaContrastSlider").value,
+      );
+      document.getElementById("gammaContrastValue").textContent =
+        val.toFixed(2);
+      setGammaContrast(val);
+      renderSelectedDemo();
+    });
+
+  // lionoutline width slider
+  document
+    .getElementById("lionOutlineWidthSlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("lionOutlineWidthSlider").value,
+      );
+      document.getElementById("lionOutlineWidthValue").textContent =
+        val.toFixed(1);
+      setLionOutlineWidth(val);
+      persistDemoParams("lionoutline");
+      renderSelectedDemo();
+    });
+
+  // lion_lens controls
+  document
+    .getElementById("lionLensScaleSlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("lionLensScaleSlider").value,
+      );
+      document.getElementById("lionLensScaleValue").textContent =
+        val.toFixed(2);
+      setLionLensScale(val);
+      renderSelectedDemo();
+    });
+  document
+    .getElementById("lionLensRadiusSlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("lionLensRadiusSlider").value,
+      );
+      document.getElementById("lionLensRadiusValue").textContent = val;
+      setLionLensRadius(val);
+      renderSelectedDemo();
+    });
+
+  // roundedrect controls
+  document.getElementById("rrRadiusSlider").addEventListener("input", () => {
+    const val = parseFloat(document.getElementById("rrRadiusSlider").value);
+    document.getElementById("rrRadiusValue").textContent = val.toFixed(1);
+    setRRRadius(val);
+    persistDemoParams("roundedrect");
+    renderSelectedDemo();
+  });
+  document.getElementById("rrOffsetSlider").addEventListener("input", () => {
+    const val = parseFloat(document.getElementById("rrOffsetSlider").value);
+    document.getElementById("rrOffsetValue").textContent = val.toFixed(1);
+    setRROffset(val);
+    persistDemoParams("roundedrect");
+    renderSelectedDemo();
+  });
+  document.getElementById("rrDarkBg").addEventListener("change", () => {
+    setRRDarkBg(document.getElementById("rrDarkBg").checked);
+    persistDemoParams("roundedrect");
+    renderSelectedDemo();
+  });
+
+  // component controls
+  document.getElementById("compAlphaSlider").addEventListener("input", () => {
+    const val = parseInt(document.getElementById("compAlphaSlider").value);
+    document.getElementById("compAlphaValue").textContent = val;
+    setCompAlpha(val);
+    persistDemoParams("component");
+    renderSelectedDemo();
+  });
+
+  // perspective controls
+  document
+    .getElementById("perspectiveTypeSelector")
+    .addEventListener("change", () => {
+      setPerspectiveType(
+        parseInt(document.getElementById("perspectiveTypeSelector").value),
+      );
+      persistDemoParams("perspective");
+      renderSelectedDemo();
+    });
+
+  // trans_curve controls
+  document
+    .getElementById("transCurveAnimate")
+    .addEventListener("change", () => {
+      toggleTransCurveAnimate();
+      renderSelectedDemo();
+    });
+
+  // trans_curve2 controls
+  document
+    .getElementById("transCurve2Animate")
+    .addEventListener("change", () => {
+      toggleTransCurve2Animate();
+      renderSelectedDemo();
+    });
+
+  // blur controls
+  document
+    .getElementById("blurRadiusSlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("blurRadiusSlider").value,
+      );
+      document.getElementById("blurRadiusValue").textContent = val;
+      setBlurRadius(val);
+      renderSelectedDemo();
+    });
+  document
+    .getElementById("blurMethodSelector")
+    .addEventListener("change", () => {
+      setBlurMethod(
+        parseInt(document.getElementById("blurMethodSelector").value),
+      );
+      renderSelectedDemo();
+    });
+
+  // circles controls
+  document
+    .getElementById("circlesSelectivitySlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("circlesSelectivitySlider").value,
+      );
+      document.getElementById("circlesSelectivityValue").textContent =
+        val.toFixed(2);
+      setCirclesSelectivity(val);
+      renderSelectedDemo();
+    });
+  document
+    .getElementById("circlesSizeSlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("circlesSizeSlider").value,
+      );
+      document.getElementById("circlesSizeValue").textContent = val.toFixed(1);
+      setCirclesSize(val);
+      renderSelectedDemo();
+    });
+
+  document
+    .getElementById("circlesZLowSlider")
+    .addEventListener("input", () => {
+      const low = parseFloat(
+        document.getElementById("circlesZLowSlider").value,
+      );
+      let high = parseFloat(
+        document.getElementById("circlesZHighSlider").value,
+      );
+      if (low > high) {
+        high = low;
+        document.getElementById("circlesZHighSlider").value = high;
+        document.getElementById("circlesZHighValue").textContent =
+          high.toFixed(2);
+      }
+      document.getElementById("circlesZLowValue").textContent =
+        low.toFixed(2);
+      setCirclesZRange(low, high);
+      renderSelectedDemo();
+    });
+  document
+    .getElementById("circlesZHighSlider")
+    .addEventListener("input", () => {
+      let low = parseFloat(
+        document.getElementById("circlesZLowSlider").value,
+      );
+      const high = parseFloat(
+        document.getElementById("circlesZHighSlider").value,
+      );
+      if (high < low) {
+        low = high;
+        document.getElementById("circlesZLowSlider").value = low;
+        document.getElementById("circlesZLowValue").textContent =
+          low.toFixed(2);
+      }
+      document.getElementById("circlesZHighValue").textContent =
+        high.toFixed(2);
+      setCirclesZRange(low, high);
+      renderSelectedDemo();
+    });
+
+  // gouraud_mesh controls
+  document.getElementById("meshColsSlider").addEventListener("input", () => {
+    const cols = parseInt(document.getElementById("meshColsSlider").value);
+    const rows = parseInt(document.getElementById("meshRowsSlider").value);
+    document.getElementById("meshColsValue").textContent = cols;
+    setMeshSize(cols, rows);
+  });
+  document.getElementById("meshRowsSlider").addEventListener("input", () => {
+    const cols = parseInt(document.getElementById("meshColsSlider").value);
+    const rows = parseInt(document.getElementById("meshRowsSlider").value);
+    document.getElementById("meshRowsValue").textContent = rows;
+    setMeshSize(cols, rows);
+  });
+
+  // compositing controls
+  document.getElementById("compOpSelector").addEventListener("change", () => {
+    setCompOp(parseInt(document.getElementById("compOpSelector").value));
+    persistDemoParams("compositing");
+    renderSelectedDemo();
+  });
+  document
+    .getElementById("compAlphaSrcSlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("compAlphaSrcSlider").value,
+      );
+      document.getElementById("compAlphaSrcValue").textContent =
+        val.toFixed(2);
+      setCompAlphaSrc(val);
+      persistDemoParams("compositing");
+      renderSelectedDemo();
+    });
+  document
+    .getElementById("compAlphaDstSlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("compAlphaDstSlider").value,
+      );
+      document.getElementById("compAlphaDstValue").textContent =
+        val.toFixed(2);
+      setCompAlphaDst(val);
+      persistDemoParams("compositing");
+      renderSelectedDemo();
+    });
+
+  // multi_clip controls
+  document
+    .getElementById("multiClipNSlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("multiClipNSlider").value,
+      );
+      document.getElementById("multiClipNValue").textContent = val;
+      setMultiClipN(val);
+      persistDemoParams("multi_clip");
+      renderSelectedDemo();
+    });
+
+  // alpha_mask2 controls
+  document
+    .getElementById("am2EllipsesSlider")
+    .addEventListener("input", () => {
+      const val = parseInt(
+        document.getElementById("am2EllipsesSlider").value,
+      );
+      document.getElementById("am2EllipsesValue").textContent = val;
+      setAlphaMask2NumEllipses(val);
+      renderSelectedDemo();
+    });
+
+  // image1 controls
+  document.getElementById("img1AngleSlider").addEventListener("input", () => {
+    const val = parseFloat(document.getElementById("img1AngleSlider").value);
+    document.getElementById("img1AngleValue").textContent = val + "°";
+    setImg1Angle(val);
+    renderSelectedDemo();
+  });
+  document.getElementById("img1ScaleSlider").addEventListener("input", () => {
+    const val = parseFloat(document.getElementById("img1ScaleSlider").value);
+    document.getElementById("img1ScaleValue").textContent = val.toFixed(2);
+    setImg1Scale(val);
+    renderSelectedDemo();
+  });
+
+  // image_transforms controls
+  document
+    .getElementById("imgTransExampleSelector")
+    .addEventListener("change", () => {
+      const val = parseInt(
+        document.getElementById("imgTransExampleSelector").value,
+      );
+      setImgTransExample(val);
+      renderSelectedDemo();
+    });
+  document
+    .getElementById("imgTransPolyAngleSlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("imgTransPolyAngleSlider").value,
+      );
+      document.getElementById("imgTransPolyAngleValue").textContent =
+        val + "°";
+      setImgTransPolygonAngle(val);
+      renderSelectedDemo();
+    });
+  document
+    .getElementById("imgTransPolyScaleSlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("imgTransPolyScaleSlider").value,
+      );
+      document.getElementById("imgTransPolyScaleValue").textContent =
+        val.toFixed(2);
+      setImgTransPolygonScale(val);
+      renderSelectedDemo();
+    });
+  document
+    .getElementById("imgTransImgAngleSlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("imgTransImgAngleSlider").value,
+      );
+      document.getElementById("imgTransImgAngleValue").textContent = val + "°";
+      setImgTransImageAngle(val);
+      renderSelectedDemo();
+    });
+  document
+    .getElementById("imgTransImgScaleSlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("imgTransImgScaleSlider").value,
+      );
+      document.getElementById("imgTransImgScaleValue").textContent =
+        val.toFixed(2);
+      setImgTransImageScale(val);
+      renderSelectedDemo();
+    });
+
+  // pattern_fill controls
+  document
+    .getElementById("patFillPolyAngleSlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("patFillPolyAngleSlider").value,
+      );
+      document.getElementById("patFillPolyAngleValue").textContent = val + "°";
+      setPatFillPolygonAngle(val);
+      renderSelectedDemo();
+    });
+  document
+    .getElementById("patFillPolyScaleSlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("patFillPolyScaleSlider").value,
+      );
+      document.getElementById("patFillPolyScaleValue").textContent =
+        val.toFixed(2);
+      setPatFillPolygonScale(val);
+      renderSelectedDemo();
+    });
+  document
+    .getElementById("patFillPatAngleSlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("patFillPatAngleSlider").value,
+      );
+      document.getElementById("patFillPatAngleValue").textContent = val + "°";
+      setPatFillPatternAngle(val);
+      renderSelectedDemo();
+    });
+  document
+    .getElementById("patFillPatSizeSlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("patFillPatSizeSlider").value,
+      );
+      document.getElementById("patFillPatSizeValue").textContent = val;
+      setPatFillPatternSize(val);
+      renderSelectedDemo();
+    });
+
+  // gouraud opacity slider
+  document
+    .getElementById("gouraudOpacitySlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("gouraudOpacitySlider").value,
+      );
+      document.getElementById("gouraudOpacityValue").textContent =
+        val.toFixed(2);
+      setGouraudOpacity(val);
+      persistDemoParams("gouraud");
+      renderSelectedDemo();
+    });
+
+  // gamma_tuner controls
+  document.getElementById("gtRSlider").addEventListener("input", () => {
+    const val = parseFloat(document.getElementById("gtRSlider").value);
+    document.getElementById("gtRValue").textContent = val.toFixed(2);
+    setGammaTunerR(val);
+    renderSelectedDemo();
+  });
+  document.getElementById("gtGSlider").addEventListener("input", () => {
+    const val = parseFloat(document.getElementById("gtGSlider").value);
+    document.getElementById("gtGValue").textContent = val.toFixed(2);
+    setGammaTunerG(val);
+    renderSelectedDemo();
+  });
+  document.getElementById("gtBSlider").addEventListener("input", () => {
+    const val = parseFloat(document.getElementById("gtBSlider").value);
+    document.getElementById("gtBValue").textContent = val.toFixed(2);
+    setGammaTunerB(val);
+    renderSelectedDemo();
+  });
+  document.getElementById("gtGammaSlider").addEventListener("input", () => {
+    const val = parseFloat(document.getElementById("gtGammaSlider").value);
+    document.getElementById("gtGammaValue").textContent = val.toFixed(2);
+    setGammaTunerGamma(val);
+    renderSelectedDemo();
+  });
+  document
+    .getElementById("gtPatternSelector")
+    .addEventListener("change", () => {
+      setGammaTunerPattern(
+        parseInt(document.getElementById("gtPatternSelector").value),
+      );
+      renderSelectedDemo();
+    });
+
+  // bezier_div controls
+  document
+    .getElementById("bdAngleTolSlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("bdAngleTolSlider").value,
+      );
+      document.getElementById("bdAngleTolValue").textContent = val + "°";
+      setBDAngleTol(val);
+      renderSelectedDemo();
+    });
+  document
+    .getElementById("bdApproxScaleSlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("bdApproxScaleSlider").value,
+      );
+      document.getElementById("bdApproxScaleValue").textContent =
+        val.toFixed(3);
+      setBDApproxScale(val);
+      renderSelectedDemo();
+    });
+  document
+    .getElementById("bdCuspLimitSlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("bdCuspLimitSlider").value,
+      );
+      document.getElementById("bdCuspLimitValue").textContent = val + "°";
+      setBDCuspLimit(val);
+      renderSelectedDemo();
+    });
+  document.getElementById("bdWidthSlider").addEventListener("input", () => {
+    const val = parseFloat(document.getElementById("bdWidthSlider").value);
+    document.getElementById("bdWidthValue").textContent = val.toFixed(2);
+    setBDWidth(val);
+    renderSelectedDemo();
+  });
+  document.getElementById("bdShowPoints").addEventListener("change", () => {
+    setBDShowPoints(document.getElementById("bdShowPoints").checked);
+    renderSelectedDemo();
+  });
+  document.getElementById("bdShowOutline").addEventListener("change", () => {
+    setBDShowOutline(document.getElementById("bdShowOutline").checked);
+    renderSelectedDemo();
+  });
+  document
+    .getElementById("bdCurveTypeSelector")
+    .addEventListener("change", () => {
+      setBDCurveType(
+        parseInt(document.getElementById("bdCurveTypeSelector").value),
+      );
+      renderSelectedDemo();
+    });
+  document
+    .getElementById("bdCaseTypeSelector")
+    .addEventListener("change", () => {
+      const val = parseInt(
+        document.getElementById("bdCaseTypeSelector").value,
+      );
+      setBDCaseType(val);
+      // Sync width slider with Go's updated value (Go may change width for certain cases)
+      const newWidth = getBDWidth();
+      document.getElementById("bdWidthSlider").value = newWidth;
+      document.getElementById("bdWidthValue").textContent =
+        newWidth.toFixed(2);
+      renderSelectedDemo();
+    });
+  document
+    .getElementById("bdInnerJoinSelector")
+    .addEventListener("change", () => {
+      setBDInnerJoin(
+        parseInt(document.getElementById("bdInnerJoinSelector").value),
+      );
+      renderSelectedDemo();
+    });
+  document
+    .getElementById("bdLineJoinSelector")
+    .addEventListener("change", () => {
+      setBDLineJoin(
+        parseInt(document.getElementById("bdLineJoinSelector").value),
+      );
+      renderSelectedDemo();
+    });
+  document
+    .getElementById("bdLineCapSelector")
+    .addEventListener("change", () => {
+      setBDLineCap(
+        parseInt(document.getElementById("bdLineCapSelector").value),
+      );
+      renderSelectedDemo();
+    });
+
+  // rasterizers controls
+  document.getElementById("rastGammaSlider").addEventListener("input", () => {
+    const val = parseFloat(document.getElementById("rastGammaSlider").value);
+    document.getElementById("rastGammaValue").textContent = val.toFixed(2);
+    setRasterizersGamma(val);
+    renderSelectedDemo();
+  });
+  document.getElementById("rastAlphaSlider").addEventListener("input", () => {
+    const val = parseFloat(document.getElementById("rastAlphaSlider").value);
+    document.getElementById("rastAlphaValue").textContent = val.toFixed(2);
+    setRasterizersAlpha(val);
+    renderSelectedDemo();
+  });
+
+  // bspline controls
+  document
+    .getElementById("bsplineNumPointsSlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("bsplineNumPointsSlider").value,
+      );
+      document.getElementById("bsplineNumPointsValue").textContent = val;
+      setBSplineNumPoints(val);
+      renderSelectedDemo();
+    });
+  document.getElementById("bsplineClosed").addEventListener("change", () => {
+    setBSplineClosed(document.getElementById("bsplineClosed").checked);
+    renderSelectedDemo();
+  });
+
+  // Mouse events for draggable-point demos
+  let isDragging = false;
+
+  canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+
+  canvas.addEventListener("mousedown", (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+    const right = e.button === 2;
+    if (onMouseDown(selector.value, x, y, right)) {
+      isDragging = true;
+      renderSelectedDemo();
+    }
+  });
+
+  window.addEventListener("mousemove", (e) => {
+    if (!isDragging) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+    const right = (e.buttons & 2) !== 0;
+    if (onMouseMove(selector.value, x, y, right)) {
+      renderSelectedDemo();
+    }
+  });
+
+  window.addEventListener("mouseup", () => {
+    if (!isDragging) return;
+    isDragging = false;
+    onMouseUp(selector.value);
+    renderSelectedDemo();
+    // Persist node positions after drag for all interactive demos
+    persistDemoParams(selector.value);
+  });
+
+  // Animation loop for demos that need it (gouraud_mesh, trans_curve)
+  function animate() {
+    const demoType = selector.value;
+    if (
+      demoType === "gouraud_mesh" ||
+      (demoType === "trans_curve" &&
+        document.getElementById("transCurveAnimate").checked) ||
+      (demoType === "trans_curve2" &&
+        document.getElementById("transCurve2Animate").checked) ||
+      demoType === "distortions"
+    ) {
+      renderSelectedDemo();
+    }
+    requestAnimationFrame(animate);
+  }
+  requestAnimationFrame(animate);
+}
