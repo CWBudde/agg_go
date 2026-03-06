@@ -10,6 +10,8 @@ import (
 
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
+	"agg_go/internal/ctrl/checkbox"
+	"agg_go/internal/ctrl/slider"
 	"agg_go/internal/gamma"
 	"agg_go/internal/order"
 	"agg_go/internal/path"
@@ -43,6 +45,22 @@ func (a *pathStorageAdapter) Vertex(x, y *float64) uint32 {
 	*x = vx
 	*y = vy
 	return uint32(cmd)
+}
+
+type controlPathAdapter struct {
+	rewindFn func(pathID uint)
+	vertexFn func() (x, y float64, cmd uint32)
+}
+
+func (a *controlPathAdapter) Rewind(pathID uint32) {
+	a.rewindFn(uint(pathID))
+}
+
+func (a *controlPathAdapter) Vertex(x, y *float64) uint32 {
+	vx, vy, cmd := a.vertexFn()
+	*x = vx
+	*y = vy
+	return cmd
 }
 
 func renderSolidPath(
@@ -102,6 +120,56 @@ func savePPM(filename string, imgData []uint8, width, height int) error {
 	return nil
 }
 
+func rgbaToRGBA8(c color.RGBA) color.RGBA8[color.Linear] {
+	clamp := func(v float64) uint8 {
+		if v <= 0 {
+			return 0
+		}
+		if v >= 1 {
+			return 255
+		}
+		return uint8(v*255 + 0.5)
+	}
+	return color.RGBA8[color.Linear]{
+		R: clamp(c.R),
+		G: clamp(c.G),
+		B: clamp(c.B),
+		A: clamp(c.A),
+	}
+}
+
+func renderControl(
+	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
+	sl *scanline.ScanlineU8,
+	renBase *renderer.RendererBase[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]],
+	numPaths uint,
+	rewindFn func(pathID uint),
+	vertexFn func() (x, y float64, cmd uint32),
+	colorFn func(pathID uint) color.RGBA,
+) {
+	adapter := &controlPathAdapter{
+		rewindFn: rewindFn,
+		vertexFn: vertexFn,
+	}
+	for pathID := uint(0); pathID < numPaths; pathID++ {
+		ras.Reset()
+		ras.AddPath(adapter, uint32(pathID))
+		col := rgbaToRGBA8(colorFn(pathID))
+		if !ras.RewindScanlines() {
+			continue
+		}
+		sl.Reset(ras.MinX(), ras.MaxX())
+		for ras.SweepScanline(&rasScanlineAdapter{sl: sl}) {
+			y := sl.Y()
+			for _, spanData := range sl.Spans() {
+				if spanData.Len > 0 {
+					renBase.BlendSolidHspan(int(spanData.X), y, int(spanData.Len), col, spanData.Covers)
+				}
+			}
+		}
+	}
+}
+
 func main() {
 	imgData := make([]uint8, frameWidth*frameHeight*4)
 	rbuf := buffer.NewRenderingBufferU8WithData(imgData, frameWidth, frameHeight, frameWidth*4)
@@ -144,6 +212,56 @@ func main() {
 		renBase,
 		&pathStorageAdapter{ps: pathAliased},
 		color.RGBA8[color.Linear]{R: 25, G: 127, B: 178, A: 255},
+	)
+
+	gammaSlider := slider.NewSliderCtrl(140, 14, 280, 22, false)
+	gammaSlider.SetRange(0.0, 1.0)
+	gammaSlider.SetValue(0.5)
+	gammaSlider.SetLabel("Gamma=%1.2f")
+
+	alphaSlider := slider.NewSliderCtrl(290, 14, 490, 22, false)
+	alphaSlider.SetRange(0.0, 1.0)
+	alphaSlider.SetValue(1.0)
+	alphaSlider.SetLabel("Alpha=%1.2f")
+
+	testPerf := checkbox.NewDefaultCheckboxCtrl(140, 30, "Test Performance", false)
+	testPerf.SetChecked(false)
+
+	renderControl(
+		ras,
+		sl,
+		renBase,
+		gammaSlider.NumPaths(),
+		gammaSlider.Rewind,
+		func() (x, y float64, cmd uint32) {
+			vx, vy, c := gammaSlider.Vertex()
+			return vx, vy, uint32(c)
+		},
+		gammaSlider.Color,
+	)
+	renderControl(
+		ras,
+		sl,
+		renBase,
+		alphaSlider.NumPaths(),
+		alphaSlider.Rewind,
+		func() (x, y float64, cmd uint32) {
+			vx, vy, c := alphaSlider.Vertex()
+			return vx, vy, uint32(c)
+		},
+		alphaSlider.Color,
+	)
+	renderControl(
+		ras,
+		sl,
+		renBase,
+		testPerf.NumPaths(),
+		testPerf.Rewind,
+		func() (x, y float64, cmd uint32) {
+			vx, vy, c := testPerf.Vertex()
+			return vx, vy, uint32(c)
+		},
+		testPerf.Color,
 	)
 
 	if err := savePPM("rasterizers_demo.ppm", imgData, frameWidth, frameHeight); err != nil {
