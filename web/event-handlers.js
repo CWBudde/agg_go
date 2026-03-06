@@ -37,24 +37,18 @@ export function setupEventHandlers(
     persistDemoParams("conv_dash_marker");
     renderSelectedDemo();
   });
-  document
-    .getElementById("dashSmoothSlider")
-    .addEventListener("input", () => {
-      const val = parseFloat(
-        document.getElementById("dashSmoothSlider").value,
-      );
-      document.getElementById("dashSmoothValue").textContent = val.toFixed(2);
-      setDashSmooth(val);
-      persistDemoParams("conv_dash_marker");
-      renderSelectedDemo();
-    });
-  document
-    .getElementById("dashCapSelector")
-    .addEventListener("change", () => {
-      setDashCap(parseInt(document.getElementById("dashCapSelector").value));
-      persistDemoParams("conv_dash_marker");
-      renderSelectedDemo();
-    });
+  document.getElementById("dashSmoothSlider").addEventListener("input", () => {
+    const val = parseFloat(document.getElementById("dashSmoothSlider").value);
+    document.getElementById("dashSmoothValue").textContent = val.toFixed(2);
+    setDashSmooth(val);
+    persistDemoParams("conv_dash_marker");
+    renderSelectedDemo();
+  });
+  document.getElementById("dashCapSelector").addEventListener("change", () => {
+    setDashCap(parseInt(document.getElementById("dashCapSelector").value));
+    persistDemoParams("conv_dash_marker");
+    renderSelectedDemo();
+  });
   document.getElementById("dashClosed").addEventListener("change", () => {
     setDashClosed(document.getElementById("dashClosed").checked);
     persistDemoParams("conv_dash_marker");
@@ -106,13 +100,11 @@ export function setupEventHandlers(
     });
 
   // sbool controls
-  document
-    .getElementById("sboolOpSelector")
-    .addEventListener("change", () => {
-      setSBoolOp(parseInt(document.getElementById("sboolOpSelector").value));
-      persistDemoParams("sbool");
-      renderSelectedDemo();
-    });
+  document.getElementById("sboolOpSelector").addEventListener("change", () => {
+    setSBoolOp(parseInt(document.getElementById("sboolOpSelector").value));
+    persistDemoParams("sbool");
+    renderSelectedDemo();
+  });
 
   // convstroke controls
   document
@@ -133,28 +125,20 @@ export function setupEventHandlers(
       persistDemoParams("convstroke");
       renderSelectedDemo();
     });
-  document
-    .getElementById("strokeWidthSlider")
-    .addEventListener("input", () => {
-      const val = parseFloat(
-        document.getElementById("strokeWidthSlider").value,
-      );
-      document.getElementById("strokeWidthValue").textContent = val;
-      setStrokeWidth(val);
-      persistDemoParams("convstroke");
-      renderSelectedDemo();
-    });
-  document
-    .getElementById("strokeMiterSlider")
-    .addEventListener("input", () => {
-      const val = parseFloat(
-        document.getElementById("strokeMiterSlider").value,
-      );
-      document.getElementById("strokeMiterValue").textContent = val;
-      setStrokeMiterLimit(val);
-      persistDemoParams("convstroke");
-      renderSelectedDemo();
-    });
+  document.getElementById("strokeWidthSlider").addEventListener("input", () => {
+    const val = parseFloat(document.getElementById("strokeWidthSlider").value);
+    document.getElementById("strokeWidthValue").textContent = val;
+    setStrokeWidth(val);
+    persistDemoParams("convstroke");
+    renderSelectedDemo();
+  });
+  document.getElementById("strokeMiterSlider").addEventListener("input", () => {
+    const val = parseFloat(document.getElementById("strokeMiterSlider").value);
+    document.getElementById("strokeMiterValue").textContent = val;
+    setStrokeMiterLimit(val);
+    persistDemoParams("convstroke");
+    renderSelectedDemo();
+  });
 
   // convcontour controls
   document
@@ -194,16 +178,12 @@ export function setupEventHandlers(
     setGammaValue(val);
     renderSelectedDemo();
   });
-  document
-    .getElementById("gammaThickSlider")
-    .addEventListener("input", () => {
-      const val = parseFloat(
-        document.getElementById("gammaThickSlider").value,
-      );
-      document.getElementById("gammaThickValue").textContent = val.toFixed(1);
-      setGammaThickness(val);
-      renderSelectedDemo();
-    });
+  document.getElementById("gammaThickSlider").addEventListener("input", () => {
+    const val = parseFloat(document.getElementById("gammaThickSlider").value);
+    document.getElementById("gammaThickValue").textContent = val.toFixed(1);
+    setGammaThickness(val);
+    renderSelectedDemo();
+  });
   document
     .getElementById("gammaContrastSlider")
     .addEventListener("input", () => {
@@ -311,16 +291,12 @@ export function setupEventHandlers(
     });
 
   // blur controls
-  document
-    .getElementById("blurRadiusSlider")
-    .addEventListener("input", () => {
-      const val = parseFloat(
-        document.getElementById("blurRadiusSlider").value,
-      );
-      document.getElementById("blurRadiusValue").textContent = val;
-      setBlurRadius(val);
-      renderSelectedDemo();
-    });
+  document.getElementById("blurRadiusSlider").addEventListener("input", () => {
+    const val = parseFloat(document.getElementById("blurRadiusSlider").value);
+    document.getElementById("blurRadiusValue").textContent = val;
+    setBlurRadius(val);
+    renderSelectedDemo();
+  });
   document
     .getElementById("blurMethodSelector")
     .addEventListener("change", () => {
@@ -342,43 +318,30 @@ export function setupEventHandlers(
       setCirclesSelectivity(val);
       renderSelectedDemo();
     });
-  document
-    .getElementById("circlesSizeSlider")
-    .addEventListener("input", () => {
-      const val = parseFloat(
-        document.getElementById("circlesSizeSlider").value,
-      );
-      document.getElementById("circlesSizeValue").textContent = val.toFixed(1);
-      setCirclesSize(val);
-      renderSelectedDemo();
-    });
+  document.getElementById("circlesSizeSlider").addEventListener("input", () => {
+    const val = parseFloat(document.getElementById("circlesSizeSlider").value);
+    document.getElementById("circlesSizeValue").textContent = val.toFixed(1);
+    setCirclesSize(val);
+    renderSelectedDemo();
+  });
 
-  document
-    .getElementById("circlesZLowSlider")
-    .addEventListener("input", () => {
-      const low = parseFloat(
-        document.getElementById("circlesZLowSlider").value,
-      );
-      let high = parseFloat(
-        document.getElementById("circlesZHighSlider").value,
-      );
-      if (low > high) {
-        high = low;
-        document.getElementById("circlesZHighSlider").value = high;
-        document.getElementById("circlesZHighValue").textContent =
-          high.toFixed(2);
-      }
-      document.getElementById("circlesZLowValue").textContent =
-        low.toFixed(2);
-      setCirclesZRange(low, high);
-      renderSelectedDemo();
-    });
+  document.getElementById("circlesZLowSlider").addEventListener("input", () => {
+    const low = parseFloat(document.getElementById("circlesZLowSlider").value);
+    let high = parseFloat(document.getElementById("circlesZHighSlider").value);
+    if (low > high) {
+      high = low;
+      document.getElementById("circlesZHighSlider").value = high;
+      document.getElementById("circlesZHighValue").textContent =
+        high.toFixed(2);
+    }
+    document.getElementById("circlesZLowValue").textContent = low.toFixed(2);
+    setCirclesZRange(low, high);
+    renderSelectedDemo();
+  });
   document
     .getElementById("circlesZHighSlider")
     .addEventListener("input", () => {
-      let low = parseFloat(
-        document.getElementById("circlesZLowSlider").value,
-      );
+      let low = parseFloat(document.getElementById("circlesZLowSlider").value);
       const high = parseFloat(
         document.getElementById("circlesZHighSlider").value,
       );
@@ -420,8 +383,7 @@ export function setupEventHandlers(
       const val = parseFloat(
         document.getElementById("compAlphaSrcSlider").value,
       );
-      document.getElementById("compAlphaSrcValue").textContent =
-        val.toFixed(2);
+      document.getElementById("compAlphaSrcValue").textContent = val.toFixed(2);
       setCompAlphaSrc(val);
       persistDemoParams("compositing");
       renderSelectedDemo();
@@ -432,37 +394,28 @@ export function setupEventHandlers(
       const val = parseFloat(
         document.getElementById("compAlphaDstSlider").value,
       );
-      document.getElementById("compAlphaDstValue").textContent =
-        val.toFixed(2);
+      document.getElementById("compAlphaDstValue").textContent = val.toFixed(2);
       setCompAlphaDst(val);
       persistDemoParams("compositing");
       renderSelectedDemo();
     });
 
   // multi_clip controls
-  document
-    .getElementById("multiClipNSlider")
-    .addEventListener("input", () => {
-      const val = parseFloat(
-        document.getElementById("multiClipNSlider").value,
-      );
-      document.getElementById("multiClipNValue").textContent = val;
-      setMultiClipN(val);
-      persistDemoParams("multi_clip");
-      renderSelectedDemo();
-    });
+  document.getElementById("multiClipNSlider").addEventListener("input", () => {
+    const val = parseFloat(document.getElementById("multiClipNSlider").value);
+    document.getElementById("multiClipNValue").textContent = val;
+    setMultiClipN(val);
+    persistDemoParams("multi_clip");
+    renderSelectedDemo();
+  });
 
   // alpha_mask2 controls
-  document
-    .getElementById("am2EllipsesSlider")
-    .addEventListener("input", () => {
-      const val = parseInt(
-        document.getElementById("am2EllipsesSlider").value,
-      );
-      document.getElementById("am2EllipsesValue").textContent = val;
-      setAlphaMask2NumEllipses(val);
-      renderSelectedDemo();
-    });
+  document.getElementById("am2EllipsesSlider").addEventListener("input", () => {
+    const val = parseInt(document.getElementById("am2EllipsesSlider").value);
+    document.getElementById("am2EllipsesValue").textContent = val;
+    setAlphaMask2NumEllipses(val);
+    renderSelectedDemo();
+  });
 
   // image1 controls
   document.getElementById("img1AngleSlider").addEventListener("input", () => {
@@ -494,8 +447,7 @@ export function setupEventHandlers(
       const val = parseFloat(
         document.getElementById("imgTransPolyAngleSlider").value,
       );
-      document.getElementById("imgTransPolyAngleValue").textContent =
-        val + "°";
+      document.getElementById("imgTransPolyAngleValue").textContent = val + "°";
       setImgTransPolygonAngle(val);
       renderSelectedDemo();
     });
@@ -624,16 +576,12 @@ export function setupEventHandlers(
     });
 
   // bezier_div controls
-  document
-    .getElementById("bdAngleTolSlider")
-    .addEventListener("input", () => {
-      const val = parseFloat(
-        document.getElementById("bdAngleTolSlider").value,
-      );
-      document.getElementById("bdAngleTolValue").textContent = val + "°";
-      setBDAngleTol(val);
-      renderSelectedDemo();
-    });
+  document.getElementById("bdAngleTolSlider").addEventListener("input", () => {
+    const val = parseFloat(document.getElementById("bdAngleTolSlider").value);
+    document.getElementById("bdAngleTolValue").textContent = val + "°";
+    setBDAngleTol(val);
+    renderSelectedDemo();
+  });
   document
     .getElementById("bdApproxScaleSlider")
     .addEventListener("input", () => {
@@ -645,16 +593,12 @@ export function setupEventHandlers(
       setBDApproxScale(val);
       renderSelectedDemo();
     });
-  document
-    .getElementById("bdCuspLimitSlider")
-    .addEventListener("input", () => {
-      const val = parseFloat(
-        document.getElementById("bdCuspLimitSlider").value,
-      );
-      document.getElementById("bdCuspLimitValue").textContent = val + "°";
-      setBDCuspLimit(val);
-      renderSelectedDemo();
-    });
+  document.getElementById("bdCuspLimitSlider").addEventListener("input", () => {
+    const val = parseFloat(document.getElementById("bdCuspLimitSlider").value);
+    document.getElementById("bdCuspLimitValue").textContent = val + "°";
+    setBDCuspLimit(val);
+    renderSelectedDemo();
+  });
   document.getElementById("bdWidthSlider").addEventListener("input", () => {
     const val = parseFloat(document.getElementById("bdWidthSlider").value);
     document.getElementById("bdWidthValue").textContent = val.toFixed(2);
@@ -680,15 +624,12 @@ export function setupEventHandlers(
   document
     .getElementById("bdCaseTypeSelector")
     .addEventListener("change", () => {
-      const val = parseInt(
-        document.getElementById("bdCaseTypeSelector").value,
-      );
+      const val = parseInt(document.getElementById("bdCaseTypeSelector").value);
       setBDCaseType(val);
       // Sync width slider with Go's updated value (Go may change width for certain cases)
       const newWidth = getBDWidth();
       document.getElementById("bdWidthSlider").value = newWidth;
-      document.getElementById("bdWidthValue").textContent =
-        newWidth.toFixed(2);
+      document.getElementById("bdWidthValue").textContent = newWidth.toFixed(2);
       renderSelectedDemo();
     });
   document
