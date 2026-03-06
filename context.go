@@ -3,7 +3,8 @@
 package agg
 
 import (
-	"math"
+	"agg_go/internal/basics"
+	"agg_go/internal/shapes"
 )
 
 // Context provides a high-level, user-friendly interface for 2D graphics rendering.
@@ -174,62 +175,33 @@ func (ctx *Context) FillRoundedRectangle(x, y, width, height, radius float64) {
 
 // Helper method to create a rounded rectangle path
 func (ctx *Context) drawRoundedRectPath(x1, y1, x2, y2, radius float64) {
-	// Ensure proper ordering
-	if x1 > x2 {
-		x1, x2 = x2, x1
+	roundedRect := shapes.NewRoundedRectEmpty()
+	roundedRect.SetRect(x1, y1, x2, y2)
+	roundedRect.SetRadius(radius)
+	roundedRect.NormalizeRadius()
+	roundedRect.Rewind(0)
+
+	first := true
+	for {
+		var x, y float64
+		cmd := roundedRect.Vertex(&x, &y)
+		if cmd == basics.PathCmdStop {
+			break
+		}
+
+		if first {
+			ctx.agg2d.MoveTo(x, y)
+			first = false
+			continue
+		}
+		if cmd == basics.PathCmdLineTo {
+			ctx.agg2d.LineTo(x, y)
+			continue
+		}
+		if cmd&basics.PathCmdMask == basics.PathCmdEndPoly {
+			ctx.agg2d.ClosePolygon()
+		}
 	}
-	if y1 > y2 {
-		y1, y2 = y2, y1
-	}
-
-	// Clamp radius to half of width/height
-	w := x2 - x1
-	h := y2 - y1
-	radius = math.Min(radius, math.Min(w/2, h/2))
-
-	if radius <= 0 {
-		// No rounding, draw regular rectangle
-		ctx.agg2d.MoveTo(x1, y1)
-		ctx.agg2d.LineTo(x2, y1)
-		ctx.agg2d.LineTo(x2, y2)
-		ctx.agg2d.LineTo(x1, y2)
-		ctx.agg2d.ClosePolygon()
-		return
-	}
-
-	// Start from top-left, going clockwise
-	ctx.agg2d.MoveTo(x1+radius, y1)
-	ctx.agg2d.LineTo(x2-radius, y1)                     // Top edge
-	ctx.addCornerArc(x2-radius, y1+radius, radius, 0)   // Top-right corner
-	ctx.agg2d.LineTo(x2, y2-radius)                     // Right edge
-	ctx.addCornerArc(x2-radius, y2-radius, radius, 90)  // Bottom-right corner
-	ctx.agg2d.LineTo(x1+radius, y2)                     // Bottom edge
-	ctx.addCornerArc(x1+radius, y2-radius, radius, 180) // Bottom-left corner
-	ctx.agg2d.LineTo(x1, y1+radius)                     // Left edge
-	ctx.addCornerArc(x1+radius, y1+radius, radius, 270) // Top-left corner
-	ctx.agg2d.ClosePolygon()
-}
-
-// Helper method to add a 90-degree corner arc
-func (ctx *Context) addCornerArc(cx, cy, radius float64, startAngle float64) {
-	// Use bezier curve to approximate 90-degree arc
-	const kappa = 0.5522847498307936 // (4/3)*tan(pi/8)
-
-	startRad := startAngle * math.Pi / 180
-	endRad := (startAngle + 90) * math.Pi / 180
-
-	x1 := cx + radius*math.Cos(startRad)
-	y1 := cy + radius*math.Sin(startRad)
-	x4 := cx + radius*math.Cos(endRad)
-	y4 := cy + radius*math.Sin(endRad)
-
-	// Calculate control points
-	x2 := x1 - kappa*radius*math.Sin(startRad)
-	y2 := y1 + kappa*radius*math.Cos(startRad)
-	x3 := x4 + kappa*radius*math.Sin(endRad)
-	y3 := y4 - kappa*radius*math.Cos(endRad)
-
-	ctx.agg2d.CubicCurveTo(x2, y2, x3, y3, x4, y4)
 }
 
 // Fill fills the current path with the current color.

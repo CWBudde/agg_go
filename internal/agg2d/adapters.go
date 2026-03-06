@@ -11,29 +11,28 @@ import (
 	"agg_go/internal/scanline"
 )
 
-// baseRendererAdapter adapts renderer base functionality
+// baseRendererAdapter adapts renderer base functionality.
+// It caches a RendererBase instance, matching the C++ design where
+// renderer_base is stored as a value member of Agg2D and reused across
+// all rendering calls. The cached instance is rebuilt only when the
+// pixel format or clip box changes.
 type baseRendererAdapter[C any] struct {
-	pf      renderer.PixelFormat[C]
-	clipBox basics.RectI
-	hasClip bool
+	pf  renderer.PixelFormat[C]
+	ren *renderer.RendererBase[renderer.PixelFormat[C], C]
 }
 
 func newBaseRendererAdapter[C any](pf renderer.PixelFormat[C]) *baseRendererAdapter[C] {
-	return &baseRendererAdapter[C]{pf: pf}
+	b := &baseRendererAdapter[C]{pf: pf}
+	b.ren = renderer.NewRendererBaseWithPixfmt[renderer.PixelFormat[C], C](pf)
+	return b
 }
 
 func (b *baseRendererAdapter[C]) rendererBase() *renderer.RendererBase[renderer.PixelFormat[C], C] {
-	ren := renderer.NewRendererBaseWithPixfmt[renderer.PixelFormat[C], C](b.pf)
-	if b.hasClip {
-		ren.ClipBox(b.clipBox.X1, b.clipBox.Y1, b.clipBox.X2, b.clipBox.Y2)
-	}
-	return ren
+	return b.ren
 }
 
 func (b *baseRendererAdapter[C]) ClipBox(x1, y1, x2, y2 int) bool {
-	b.clipBox = basics.RectI{X1: x1, Y1: y1, X2: x2, Y2: y2}
-	b.hasClip = true
-	return true
+	return b.ren.ClipBox(x1, y1, x2, y2)
 }
 
 func (b *baseRendererAdapter[C]) Width() int  { return b.pf.Width() }
@@ -73,8 +72,14 @@ func (b *baseRendererAdapter[C]) CopyFrom(src renderer.PixelFormat[C], rectSrcPt
 	b.rendererBase().CopyFrom(src, rectSrcPtr, dx, dy)
 }
 
-// scanlineWrapper adapts internal/scanline.ScanlineU8 to renderer/scanline.ScanlineInterface
-type scanlineWrapper struct{ sl *scanline.ScanlineU8 }
+// scanlineWrapper adapts internal/scanline.ScanlineU8 to renderer/scanline.ScanlineInterface.
+// The embedded spanIter avoids a heap allocation per Begin() call. In C++,
+// begin() returns a raw pointer into the span array (zero cost); here we
+// reuse an embedded iterator that is reset on each Begin() call.
+type scanlineWrapper struct {
+	sl   *scanline.ScanlineU8
+	iter spanIter
+}
 
 // Reset implements ResettableScanline
 func (w *scanlineWrapper) Reset(minX, maxX int) { w.sl.Reset(minX, maxX) }
@@ -94,21 +99,22 @@ func (it *spanIter) GetSpan() renscan.SpanData {
 func (it *spanIter) Next() bool { it.idx++; return it.idx < len(it.spans) }
 
 func (w *scanlineWrapper) Begin() renscan.ScanlineIterator {
-	spans := w.sl.Spans()
-	if len(spans) == 0 {
-		return &spanIter{spans: nil, idx: 0}
-	}
-	return &spanIter{spans: spans, idx: 0}
+	w.iter.spans = w.sl.Spans()
+	w.iter.idx = 0
+	return &w.iter
 }
 
-// rasterizerAdapter adapts internal rasterizer to renderer/scanline.RasterizerInterface
+// rasterizerAdapter adapts internal rasterizer to renderer/scanline.RasterizerInterface.
+// The embedded rasScanlineAdapter avoids a heap allocation per SweepScanline() call,
+// matching C++ where sweep_scanline takes a reference to the caller's scanline object.
 type rasterizerAdapter struct {
-	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
+	ras     *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
+	slAdapt rasScanlineAdapter
 }
 
-func (r rasterizerAdapter) RewindScanlines() bool { return r.ras.RewindScanlines() }
-func (r rasterizerAdapter) MinX() int             { return r.ras.MinX() }
-func (r rasterizerAdapter) MaxX() int             { return r.ras.MaxX() }
+func (r *rasterizerAdapter) RewindScanlines() bool { return r.ras.RewindScanlines() }
+func (r *rasterizerAdapter) MinX() int             { return r.ras.MinX() }
+func (r *rasterizerAdapter) MaxX() int             { return r.ras.MaxX() }
 
 // rasScanlineAdapter adapts scanline.ScanlineU8 to rasterizer.ScanlineInterface
 type rasScanlineAdapter struct{ sl *scanline.ScanlineU8 }
@@ -121,9 +127,10 @@ func (a *rasScanlineAdapter) AddSpan(x, length int, cover uint32) {
 func (a *rasScanlineAdapter) Finalize(y int) { a.sl.Finalize(y) }
 func (a *rasScanlineAdapter) NumSpans() int  { return a.sl.NumSpans() }
 
-func (r rasterizerAdapter) SweepScanline(sl renscan.ScanlineInterface) bool {
+func (r *rasterizerAdapter) SweepScanline(sl renscan.ScanlineInterface) bool {
 	if w, ok := sl.(*scanlineWrapper); ok {
-		return r.ras.SweepScanline(&rasScanlineAdapter{sl: w.sl})
+		r.slAdapt.sl = w.sl
+		return r.ras.SweepScanline(&r.slAdapt)
 	}
 	return false
 }

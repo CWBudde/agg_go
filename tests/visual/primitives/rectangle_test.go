@@ -3,6 +3,7 @@ package primitives
 
 import (
 	"image"
+	"math"
 	"os"
 	"path/filepath"
 	"testing"
@@ -83,6 +84,15 @@ func getRectangleTests() map[string]func() (image.Image, error) {
 		"multiple_rectangles":         testMultipleRectangles,
 		"rectangle_transparency":      testRectangleTransparency,
 		"overlapping_rectangles":      testOverlappingRectangles,
+		"hairline_rectangle_outline":  testHairlineRectangleOutline,
+		"rectangle_negative_dimensions": testRectangleNegativeDimensions,
+		"clipped_rectangles":            testClippedRectangles,
+		"rounded_rectangle_fill":        testRoundedRectangleFill,
+		"rounded_rectangle_outline":     testRoundedRectangleOutline,
+		"transformed_rectangles_rotate": testTransformedRectanglesRotate,
+		"transformed_rectangles_scale":  testTransformedRectanglesScale,
+		"nested_transform_rectangles":   testNestedTransformRectangles,
+		"thin_stroke_rectangle_grid":    testThinStrokeRectangleGrid,
 	}
 }
 
@@ -219,6 +229,181 @@ func testOverlappingRectangles() (image.Image, error) {
 
 	ctx.SetColor(agg.Blue)
 	ctx.FillRectangle(70, 90, 80, 80)
+
+	return ctx.GetImage().ToGoImage(), nil
+}
+
+func testHairlineRectangleOutline() (image.Image, error) {
+	ctx := agg.NewContext(240, 180)
+	ctx.Clear(agg.White)
+	ctx.SetColor(agg.Black)
+	// Hairline width 0 can be backend-dependent; use a very thin explicit width
+	// so the visual test remains meaningful and stable across environments.
+	ctx.SetLineWidth(0.6)
+
+	for i := 0; i < 5; i++ {
+		off := float64(i * 12)
+		ctx.DrawRectangle(20+off, 20+off, 180-2*off, 120-2*off)
+	}
+
+	ctx.SetLineWidth(1.0)
+	return ctx.GetImage().ToGoImage(), nil
+}
+
+func testRectangleNegativeDimensions() (image.Image, error) {
+	ctx := agg.NewContext(280, 200)
+	ctx.Clear(agg.White)
+
+	ctx.SetColor(agg.Red)
+	ctx.FillRectangle(200, 40, -90, 70)
+
+	ctx.SetColor(agg.Blue)
+	ctx.FillRectangle(90, 150, 120, -60)
+
+	ctx.SetColor(agg.Black)
+	ctx.SetLineWidth(2)
+	ctx.DrawRectangle(250, 170, -160, -120)
+
+	return ctx.GetImage().ToGoImage(), nil
+}
+
+func testClippedRectangles() (image.Image, error) {
+	ctx := agg.NewContext(300, 220)
+	ctx.Clear(agg.White)
+
+	a := ctx.GetAgg2D()
+	a.ClipBox(60, 40, 240, 180)
+
+	ctx.SetColor(agg.Red)
+	ctx.FillRectangle(10, 10, 160, 160)
+
+	ctx.SetColor(agg.Blue)
+	ctx.FillRectangle(140, 70, 150, 130)
+
+	ctx.SetColor(agg.Black)
+	ctx.SetLineWidth(3)
+	ctx.DrawRectangle(40, 30, 220, 160)
+
+	// Reset clip to full canvas for border indicator.
+	a.ClipBox(0, 0, 300, 220)
+	ctx.SetColor(agg.DarkGray)
+	ctx.SetLineWidth(1)
+	ctx.DrawRectangle(60, 40, 180, 140)
+
+	return ctx.GetImage().ToGoImage(), nil
+}
+
+func testRoundedRectangleFill() (image.Image, error) {
+	ctx := agg.NewContext(300, 220)
+	ctx.Clear(agg.White)
+
+	ctx.SetColor(agg.Cyan)
+	ctx.FillRoundedRectangle(25, 25, 110, 80, 6)
+
+	ctx.SetColor(agg.Green)
+	ctx.FillRoundedRectangle(155, 30, 120, 70, 20)
+
+	ctx.SetColor(agg.Orange)
+	ctx.FillRoundedRectangle(70, 120, 170, 75, 34)
+
+	return ctx.GetImage().ToGoImage(), nil
+}
+
+func testRoundedRectangleOutline() (image.Image, error) {
+	ctx := agg.NewContext(320, 220)
+	ctx.Clear(agg.White)
+
+	ctx.SetLineWidth(4)
+
+	ctx.SetColor(agg.Red)
+	ctx.DrawRoundedRectangle(25, 25, 120, 90, 10)
+
+	ctx.SetColor(agg.Blue)
+	ctx.DrawRoundedRectangle(170, 30, 125, 80, 22)
+
+	ctx.SetColor(agg.Black)
+	ctx.DrawRoundedRectangle(60, 125, 210, 70, 30)
+
+	return ctx.GetImage().ToGoImage(), nil
+}
+
+func testTransformedRectanglesRotate() (image.Image, error) {
+	ctx := agg.NewContext(320, 220)
+	ctx.Clear(agg.White)
+
+	ctx.SetColor(agg.DarkGray)
+	ctx.FillRectangle(135, 85, 50, 50)
+
+	angles := []float64{-25, -10, 15, 35}
+	colors := []agg.Color{agg.Red, agg.Green, agg.Blue, agg.Orange}
+	for i, angle := range angles {
+		ctx.PushTransform()
+		ctx.Translate(160, 110)
+		ctx.RotateDegrees(angle)
+		ctx.Translate(-160, -110)
+		ctx.SetColor(colors[i])
+		ctx.FillRectangle(120, 90, 80, 40)
+		ctx.PopTransform()
+	}
+
+	return ctx.GetImage().ToGoImage(), nil
+}
+
+func testTransformedRectanglesScale() (image.Image, error) {
+	ctx := agg.NewContext(320, 220)
+	ctx.Clear(agg.White)
+
+	for i := 0; i < 5; i++ {
+		s := 0.6 + float64(i)*0.18
+		ctx.PushTransform()
+		ctx.Translate(160, 110)
+		ctx.Scale(s, 1.0+(float64(i)*0.1))
+		ctx.Translate(-160, -110)
+		ctx.SetColor(agg.RGBA(0.0, 0.2+float64(i)*0.15, 0.8-float64(i)*0.12, 0.75))
+		ctx.FillRectangle(95, 70, 130, 80)
+		ctx.PopTransform()
+	}
+
+	return ctx.GetImage().ToGoImage(), nil
+}
+
+func testNestedTransformRectangles() (image.Image, error) {
+	ctx := agg.NewContext(320, 240)
+	ctx.Clear(agg.White)
+	ctx.SetLineWidth(2.0)
+
+	ctx.PushTransform()
+	ctx.Translate(160, 120)
+	for i := 0; i < 8; i++ {
+		theta := float64(i) * (math.Pi / 8)
+		ctx.PushTransform()
+		ctx.Rotate(theta)
+		ctx.SetColor(agg.RGBA(0.1+float64(i)*0.1, 0.3, 0.9-float64(i)*0.09, 0.7))
+		ctx.DrawRectangle(20, -18, 95, 36)
+		ctx.PopTransform()
+	}
+	ctx.PopTransform()
+
+	return ctx.GetImage().ToGoImage(), nil
+}
+
+func testThinStrokeRectangleGrid() (image.Image, error) {
+	ctx := agg.NewContext(300, 220)
+	ctx.Clear(agg.White)
+	ctx.SetColor(agg.Black)
+
+	widths := []float64{0.25, 0.5, 0.75, 1.0, 1.5, 2.0}
+	idx := 0
+	for row := 0; row < 2; row++ {
+		for col := 0; col < 3; col++ {
+			w := widths[idx]
+			idx++
+			x := float64(20 + col*95)
+			y := float64(25 + row*95)
+			ctx.SetLineWidth(w)
+			ctx.DrawRectangle(x+0.5, y+0.5, 70, 70)
+		}
+	}
 
 	return ctx.GetImage().ToGoImage(), nil
 }

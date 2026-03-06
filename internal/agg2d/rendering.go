@@ -279,7 +279,7 @@ func (agg2d *Agg2D) renderLinearGradientFill(useFillGradient bool) {
 	}
 
 	// Render scanlines using the span generator directly
-	rasAdapter := rasterizerAdapter{ras: agg2d.rasterizer}
+	rasAdapter := &rasterizerAdapter{ras: agg2d.rasterizer}
 	slAdapter := &scanlineWrapper{sl: agg2d.scanline}
 	renscan.RenderScanlinesAA(rasAdapter, slAdapter, renderer, agg2d.spanAllocator, spanGenerator)
 }
@@ -321,7 +321,7 @@ func (agg2d *Agg2D) renderRadialGradientFill(useFillGradient bool) {
 	}
 
 	// Render scanlines using the span generator directly
-	rasAdapter := rasterizerAdapter{ras: agg2d.rasterizer}
+	rasAdapter := &rasterizerAdapter{ras: agg2d.rasterizer}
 	slAdapter := &scanlineWrapper{sl: agg2d.scanline}
 	renscan.RenderScanlinesAA(rasAdapter, slAdapter, renderer, agg2d.spanAllocator, spanGenerator)
 }
@@ -362,7 +362,7 @@ func (agg2d *Agg2D) RenderScanlinesAAWithSpanGen(
 	if renderer == nil || agg2d.spanAllocator == nil {
 		return
 	}
-	rasAdapter := rasterizerAdapter{ras: ras}
+	rasAdapter := &rasterizerAdapter{ras: ras}
 	slAdapter := &scanlineWrapper{sl: agg2d.scanline}
 	renscan.RenderScanlinesAA(rasAdapter, slAdapter, renderer, agg2d.spanAllocator, spanGen)
 }
@@ -370,7 +370,7 @@ func (agg2d *Agg2D) RenderScanlinesAAWithSpanGen(
 // scanlineRender is a helper function to render scanlines using a renderer
 func scanlineRender(ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip], sl *scanline.ScanlineU8, renderer renscan.RendererInterface[color.RGBA8[color.Linear]]) {
 	// Create adapters to bridge interface differences
-	rasAdapter := rasterizerAdapter{ras: ras}
+	rasAdapter := &rasterizerAdapter{ras: ras}
 	slAdapter := &scanlineWrapper{sl: sl}
 
 	if !rasAdapter.RewindScanlines() {
