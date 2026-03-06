@@ -11,7 +11,6 @@ import (
 	aggimage "agg_go/internal/image"
 	"agg_go/internal/rasterizer"
 	renscan "agg_go/internal/renderer/scanline"
-	"agg_go/internal/scanline"
 	"agg_go/internal/transform"
 )
 
@@ -205,7 +204,7 @@ func (agg2d *Agg2D) renderSolidFillWithColor(c Color) {
 	renSolid := renscan.NewRendererScanlineAASolidWithColor(renderer, internalColor)
 
 	// Render scanlines
-	scanlineRender(agg2d.rasterizer, agg2d.scanline, renSolid)
+	agg2d.scanlineRender(renSolid)
 }
 
 // renderSolidStroke renders solid stroke using current line color
@@ -226,7 +225,7 @@ func (agg2d *Agg2D) renderSolidStroke() {
 	renSolid := renscan.NewRendererScanlineAASolidWithColor(renderer, internalColor)
 
 	// Render scanlines
-	scanlineRender(agg2d.rasterizer, agg2d.scanline, renSolid)
+	agg2d.scanlineRender(renSolid)
 }
 
 // renderGradientFill renders gradient fill using the appropriate gradient type

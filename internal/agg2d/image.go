@@ -292,9 +292,7 @@ func (agg2d *Agg2D) renderImage(img *Image, x1, y1, x2, y2 int, parallelogram []
 		return nil
 	}
 
-	rasAdapter := &rasterizerAdapter{ras: agg2d.rasterizer}
-	slAdapter := &scanlineWrapper{sl: agg2d.scanline}
-	renscan.RenderScanlinesAA(rasAdapter, slAdapter, renderer, agg2d.spanAllocator, spanGenerator)
+	renscan.RenderScanlinesAA(&agg2d.rasAdapter, &agg2d.slAdapter, renderer, agg2d.spanAllocator, spanGenerator)
 
 	return nil
 }

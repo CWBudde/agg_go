@@ -559,7 +559,7 @@ func (agg2d *Agg2D) renderGlyphScanlines(adaptor font.SerializedScanlinesAdaptor
 		return
 	}
 
-	agg2d.renderScanlines(ras, &scanlineWrapper{sl: agg2d.scanline}, glyph.DataType == font.GlyphDataMono)
+	agg2d.renderScanlines(ras, &agg2d.slAdapter, glyph.DataType == font.GlyphDataMono)
 }
 
 // renderScanlines renders scanlines using the provided rasterizer and scanline adaptors.

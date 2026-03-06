@@ -381,9 +381,21 @@ func (agg2d *Agg2D) GetInternalRasterizer() *rasterizer.RasterizerScanlineAA[int
 	return agg2d.rasterizer
 }
 
-// ScanlineRender renders the current rasterizer data using a custom renderer.
+// ScanlineRender renders the given rasterizer data using a custom renderer.
 func (agg2d *Agg2D) ScanlineRender(ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip], renderer renscan.RendererInterface[color.RGBA8[color.Linear]]) {
-	scanlineRender(ras, agg2d.scanline, renderer)
+	ra := rasterizerAdapter{ras: ras}
+	sl := &agg2d.slAdapter
+
+	if !ra.RewindScanlines() {
+		return
+	}
+
+	sl.Reset(ra.MinX(), ra.MaxX())
+	renderer.Prepare()
+
+	for ra.SweepScanline(sl) {
+		renderer.Render(sl)
+	}
 }
 
 // GouraudTriangle renders a Gouraud-shaded triangle.
@@ -410,7 +422,7 @@ func (agg2d *Agg2D) GouraudTriangle(x1, y1, x2, y2, x3, y3 float64, c1, c2, c3 C
 	// For now, let's use a simple anonymous adapter.
 	adapter := &gouraudRasAdapter{sg: spanGen}
 	agg2d.rasterizer.AddPath(adapter, 0)
-	scanlineRender(agg2d.rasterizer, agg2d.scanline, renderer)
+	agg2d.scanlineRender(renderer)
 }
 
 type gouraudRenderer struct {
