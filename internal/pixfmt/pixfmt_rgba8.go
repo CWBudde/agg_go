@@ -375,11 +375,55 @@ func (pf *PixFmtAlphaBlendRGBA[S, B]) BlendColorVspan(x, y, length int, colors [
 	}
 }
 
-// Clear clears the entire buffer with the given color
+// Clear clears the entire buffer with the given color.
+// Uses bulk copy for contiguous buffers with positive stride.
 func (pf *PixFmtAlphaBlendRGBA[S, B]) Clear(c color.RGBA8[S]) {
-	for y := 0; y < pf.Height(); y++ {
+	w, h := pf.Width(), pf.Height()
+	if w <= 0 || h <= 0 {
+		return
+	}
+
+	stride := pf.rbuf.Stride()
+	rowBytes := w * 4
+
+	// Fast path: contiguous buffer with positive stride — fill first row,
+	// then replicate via copy() which the compiler maps to memcpy.
+	if stride >= rowBytes {
+		buf := pf.rbuf.Buf()
+		if len(buf) < h*stride {
+			goto slow
+		}
+
+		// Resolve channel order once and fill the first pixel.
+		var pixel [4]byte
+		if ro, ok := any(pf.blender).(blender.RawRGBAOrder); ok {
+			pixel[ro.IdxR()] = c.R
+			pixel[ro.IdxG()] = c.G
+			pixel[ro.IdxB()] = c.B
+			pixel[ro.IdxA()] = c.A
+		} else {
+			pixel[0], pixel[1], pixel[2], pixel[3] = c.R, c.G, c.B, c.A
+		}
+
+		// Fill first row by doubling: 1→2→4→8→...
+		row0 := buf[:rowBytes]
+		copy(row0[0:4], pixel[:])
+		for filled := 4; filled < rowBytes; filled *= 2 {
+			copy(row0[filled:], row0[:filled])
+		}
+
+		// Replicate first row to all subsequent rows.
+		for y := 1; y < h; y++ {
+			copy(buf[y*stride:y*stride+rowBytes], row0)
+		}
+		return
+	}
+
+slow:
+	// Fallback for negative stride (bottom-up) or unusual layouts.
+	for y := 0; y < h; y++ {
 		row := buffer.RowU8(pf.rbuf, y)
-		for x := 0; x < pf.Width(); x++ {
+		for x := 0; x < w; x++ {
 			off := x * 4
 			if off+3 >= len(row) {
 				break

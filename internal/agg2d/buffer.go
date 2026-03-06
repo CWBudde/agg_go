@@ -102,13 +102,14 @@ func (agg2d *Agg2D) initializeRendering() {
 }
 
 // ClearAll fills the entire buffer with the specified color.
+// Bypasses RendererBase and calls the pixfmt directly for bulk fill.
 func (agg2d *Agg2D) ClearAll(c Color) {
-	if agg2d.renBase == nil {
+	if agg2d.pixfmt == nil {
 		return
 	}
 
 	clearColor := color.RGBA8[color.Linear]{R: c[0], G: c[1], B: c[2], A: c[3]}
-	agg2d.renBase.Clear(clearColor)
+	agg2d.pixfmt.Clear(clearColor)
 }
 
 // ClipBox sets the clipping rectangle.
