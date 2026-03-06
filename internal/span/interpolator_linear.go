@@ -284,9 +284,9 @@ func (s *SpanInterpolatorLinearSubdiv[T]) Next() {
 		endY := ty
 		s.transformer.Transform(&endX, &endY)
 
-			// Reinitialize DDA interpolators for this subdivision.
-			s.liX.Init(s.liX.Y(), basics.IRound(endX*float64(s.subpixelScale)), subdivLength)
-			s.liY.Init(s.liY.Y(), basics.IRound(endY*float64(s.subpixelScale)), subdivLength)
+		// Reinitialize DDA interpolators for this subdivision.
+		s.liX.Init(s.liX.Y(), basics.IRound(endX*float64(s.subpixelScale)), subdivLength)
+		s.liY.Init(s.liY.Y(), basics.IRound(endY*float64(s.subpixelScale)), subdivLength)
 
 		s.pos = 0
 	}
