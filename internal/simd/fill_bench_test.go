@@ -86,6 +86,15 @@ func benchmarkCases() []struct {
 			name:     "sse2",
 			features: Features{Architecture: "amd64", HasSSE2: true},
 		})
+		if DetectFeatures().HasSSSE3 && DetectFeatures().HasSSE41 {
+			cases = append(cases, struct {
+				name     string
+				features Features
+			}{
+				name:     "sse41",
+				features: Features{Architecture: "amd64", HasSSE2: true, HasSSSE3: true, HasSSE41: true},
+			})
+		}
 		if DetectFeatures().HasAVX2 {
 			cases = append(cases, struct {
 				name     string

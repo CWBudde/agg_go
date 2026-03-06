@@ -49,6 +49,13 @@ func TestImplementationNameWithForcedFeatures(t *testing.T) {
 			t.Fatalf("ImplementationName() = %q, want sse2", got)
 		}
 
+		if actual.HasSSSE3 && actual.HasSSE41 {
+			SetForcedFeatures(Features{Architecture: "amd64", HasSSE2: true, HasSSSE3: true, HasSSE41: true})
+			if got := ImplementationName(); got != "sse41" {
+				t.Fatalf("ImplementationName() = %q, want sse41", got)
+			}
+		}
+
 		if actual.HasAVX2 {
 			SetForcedFeatures(Features{Architecture: "amd64", HasSSE2: true, HasAVX2: true})
 			if got := ImplementationName(); got != "avx2" {
@@ -106,6 +113,17 @@ func TestFillRGBAForcedPaths(t *testing.T) {
 				wantImpl: "sse2",
 			},
 		)
+		if actual.HasSSSE3 && actual.HasSSE41 {
+			cases = append(cases, struct {
+				name     string
+				features Features
+				wantImpl string
+			}{
+				name:     "sse41",
+				features: Features{Architecture: "amd64", HasSSE2: true, HasSSSE3: true, HasSSE41: true},
+				wantImpl: "sse41",
+			})
+		}
 		if actual.HasAVX2 {
 			cases = append(cases, struct {
 				name     string
@@ -180,6 +198,9 @@ func TestBlendSolidHspanRGBAForcedPaths(t *testing.T) {
 	actual := DetectFeatures()
 	if runtime.GOARCH == "amd64" {
 		cases = append(cases, tc{name: "sse2_plain", features: Features{Architecture: "amd64", HasSSE2: true}, wantImpl: "sse2"})
+		if actual.HasSSSE3 && actual.HasSSE41 {
+			cases = append(cases, tc{name: "sse41_plain", features: Features{Architecture: "amd64", HasSSE2: true, HasSSSE3: true, HasSSE41: true}, wantImpl: "sse41"})
+		}
 		if actual.HasAVX2 {
 			cases = append(cases, tc{name: "avx2_plain", features: Features{Architecture: "amd64", HasSSE2: true, HasAVX2: true}, wantImpl: "avx2"})
 		}

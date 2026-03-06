@@ -133,12 +133,19 @@ func genericImplementation() implementation {
 }
 
 func fillRGBAGeneric(dst []byte, r, g, b, a uint8, count int) {
-	for i := 0; i < count; i++ {
-		p := i * 4
-		dst[p+0] = r
-		dst[p+1] = g
-		dst[p+2] = b
-		dst[p+3] = a
+	// Write the first pixel.
+	dst[0] = r
+	dst[1] = g
+	dst[2] = b
+	dst[3] = a
+
+	// Use copy() doubling to fill the rest — the compiler maps copy() to
+	// memcpy/memmove which is significantly faster than a scalar loop for
+	// large spans.
+	totalBytes := count * 4
+	filled := 4
+	for filled < totalBytes {
+		filled += copy(dst[filled:totalBytes], dst[:filled])
 	}
 }
 

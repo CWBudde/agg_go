@@ -9,6 +9,9 @@ func fillRGBAAVX2Asm(dst []byte, pixel uint32, count int)
 func fillRGBASSE2Asm(dst []byte, pixel uint32, count int)
 
 //go:noescape
+func blendSolidHspanRGBASSE41Asm(dst []byte, covers []byte, pixelOpaque uint32, srcA uint8, count int)
+
+//go:noescape
 func blendSolidHspanRGBAAVX2Asm(dst []byte, covers []byte, pixelOpaque uint32, srcA uint8, count int)
 
 func selectImplementationArch(features Features) implementation {
@@ -20,6 +23,13 @@ func selectImplementationArch(features Features) implementation {
 			name:                "avx2",
 			fillRGBA:            fillRGBAAVX2,
 			blendSolidHspanRGBA: blendSolidHspanRGBAAVX2,
+		}
+	}
+	if features.HasSSE2 && features.HasSSSE3 && features.HasSSE41 {
+		return implementation{
+			name:                "sse41",
+			fillRGBA:            fillRGBASSE2,
+			blendSolidHspanRGBA: blendSolidHspanRGBASSE41,
 		}
 	}
 	if features.HasSSE2 {
@@ -49,6 +59,15 @@ func blendSolidHspanRGBAAVX2(dst []byte, covers []byte, r, g, b, a uint8, premul
 	}
 	pixelOpaque := uint32(r) | uint32(g)<<8 | uint32(b)<<16 | uint32(0xFF)<<24
 	blendSolidHspanRGBAAVX2Asm(dst, covers, pixelOpaque, a, len(covers))
+}
+
+func blendSolidHspanRGBASSE41(dst []byte, covers []byte, r, g, b, a uint8, premulSrc bool) {
+	if premulSrc {
+		blendSolidHspanRGBAGeneric(dst, covers, r, g, b, a, premulSrc)
+		return
+	}
+	pixelOpaque := uint32(r) | uint32(g)<<8 | uint32(b)<<16 | uint32(0xFF)<<24
+	blendSolidHspanRGBASSE41Asm(dst, covers, pixelOpaque, a, len(covers))
 }
 
 func blendSolidHspanRGBASSE2(dst []byte, covers []byte, r, g, b, a uint8, premulSrc bool) {
