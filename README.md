@@ -14,13 +14,13 @@ Important: Work in progress. This repository may be deleted or merged into the a
 
 - In development: Most internals exist; examples and some APIs are stabilizing; minor inconsistencies/bugs expected.
 - Public API: Being finalized; a redesign is planned.
-- Docs: See `docs/` for architecture, roadmap, and areas in progress.
+- Docs: See `PLAN.md` for the unified roadmap and `docs/` for architecture and supporting notes.
 
 References:
 
+- Unified roadmap and phase plan: `PLAN.md`
 - Implementation roadmap: `docs/TASKS.md`
 - Completed items: `docs/TASKS-COMPLETED.md`
-- Example tracking: `docs/TASKS-EXAMPLES.md`
 
 ## Web Demo
 
@@ -132,7 +132,7 @@ Note: Some examples require optional dependencies (X11/SDL2, FreeType) and may b
 
 ## Roadmap & Tasks
 
-Follow `docs/TASKS.md` for the full porting plan, `docs/TASKS-COMPLETED.md` for what’s done, and `docs/TASKS-EXAMPLES.md` for example parity. Please keep these up to date during development.
+Follow `PLAN.md` for the consolidated roadmap and phased backlog, `docs/TASKS.md` for the detailed file-level implementation inventory, and `docs/TASKS-COMPLETED.md` for completed items. Please keep these up to date during development.
 
 ## License
 

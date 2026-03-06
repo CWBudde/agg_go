@@ -8,6 +8,8 @@ Port AGG 2.6 to Go so that:
 2. Go code remains idiomatic, maintainable, and testable.
 3. Deviations from AGG are explicit, justified, and tested.
 
+This is the single authoritative project plan. SIMD optimization work is tracked here as later phases; there is no separate `docs/PLAN.md`.
+
 ## Non-Negotiables
 
 - [ ] Every major behavior maps to a C++ source reference (file + method).
@@ -28,11 +30,12 @@ Port AGG 2.6 to Go so that:
 
 ### 0.1 Parity ledger
 
-- [x] Create `docs/PARITY_LEDGER.md` with one row per `Agg2D` method.
+- [x] Create a parity ledger with one row per `Agg2D` method.
 - [x] Columns: C++ source method, Go method, status (`exact`, `close`, `placeholder`, `missing`), test reference, notes.
 - [x] Add source anchors for key AGG2D methods in:
   - `../agg-2.6/agg-src/agg2d/agg2d.h`
   - `../agg-2.6/agg-src/agg2d/agg2d.cpp`
+- [x] Fold the remaining open parity rows into Phase 4 so parity tracking lives in the main plan rather than a separate ledger file.
 
 ### 0.2 Placeholder inventory
 
@@ -167,7 +170,7 @@ Files:
 
 - [x] Replace broad `interface{}` in AGG2D font fields with explicit interfaces.
 - [x] Keep runtime dispatch only where build-tag boundaries require it, and document it.
-- [x] Re-audit `docs/GENERICS_AUDIT.md` and related notes so they reflect the current typed state of the font subsystem.
+- [x] Re-audit the generics-related review notes so they reflect the current typed state of the font subsystem.
 - [x] Check FreeType2/CGO-adjacent font code for any remaining avoidable dynamic dispatch or stale comments claiming broader type erasure than the code now uses.
 - [x] Keep the remaining signature mismatches between neighboring internal interfaces localized behind narrow adapters rather than widening the font API surface.
       The old FreeType2 adaptor bundle has been removed; CacheManager2 now depends on narrow per-adaptor methods plus package-local wrappers instead of a broader concrete-type aggregate.
@@ -191,6 +194,15 @@ Files:
 - [x] Add deterministic checks for transform-image, clipping, blend modes, gradients, and text bounds.
 - [ ] Continue replacing remaining AGG2D smoke/integration tests with output assertions where they still only verify "no crash" behavior.
       Remaining likely targets include broader path/image integration cases in `internal/agg2d/rendering_fixes_test.go` and any text rendering paths that still depend on loose FreeType/system-font checks rather than deterministic bounds or pixel contracts.
+- [ ] Expand contract coverage for currently weaker packages:
+  - `internal/effects`
+  - `internal/platform`
+  - `internal/primitives`
+  - `internal/pixfmt/blender`
+  - any other package below the desired coverage floor after parity-critical work
+- [ ] Re-audit tests that primarily verify mocks or package-private state:
+  - keep package-private assertions only where they are the clearest contract
+  - prefer observable behavior or public API assertions where practical
 
 ### 4.2 Visual regression tests
 
@@ -199,28 +211,211 @@ Files:
 - [x] Store references under `tests/visual/reference`.
 - [x] Add automated diff thresholding and report generation.
       `tests/visual/framework` now supports diff-threshold pass/fail rules (`VISUAL_DIFF_TOLERANCE`, `VISUAL_MAX_DIFFERENT_PIXELS`, `VISUAL_MAX_DIFFERENT_RATIO`, `VISUAL_IGNORE_ALPHA`, `VISUAL_GENERATE_DIFFS`) and emits HTML reports with per-test diff statistics.
+- [ ] Expand the C++-generated visual reference set to cover:
+  - basic shapes and AA edge cases
+  - gradients
+  - text rendering
+  - other parity-critical scenarios before less critical demos
+- [ ] Expand visual coverage by category until parity-critical rendering areas are represented:
+  - primitives
+  - path stroke/fill variations
+  - anti-aliasing quality cases
+  - transformations
+  - color/blend-mode cases
+  - gradients and patterns
+  - clipping
+  - image operations
+  - advanced and edge-case scenes
+- [ ] Add reference-management workflow for the visual suite:
+  - controlled regeneration and update flow for references
+  - clear review surface for approving intended visual changes
+  - keep reference categories organized under `tests/visual/reference`
+- [ ] Extend visual reporting where it adds signal:
+  - retain diff images and HTML reports
+  - add summary metrics only if they help triage regressions without hiding pixel-level failures
+- [ ] Keep visual-suite runtime practical:
+  - preserve parallel execution where safe
+  - separate parity-critical coverage from exhaustive scenarios if the full suite becomes too slow
 
 ### 4.3 C++ parity checks
 
-- [ ] For each parity-ledger row marked `exact`, include at least one source-linked test case.
+- [ ] For each parity row marked `exact`, include at least one source-linked test case.
 - [ ] For rows marked `close`, include documented rationale.
+
+### 4.4 Test-suite cleanup and failing-test closure
+
+- [ ] Remove or convert debug-style integration tests that only log state:
+  - `tests/integration/debug_test.go`
+  - `tests/integration/debug2_test.go`
+  - `tests/integration/debug3_test.go`
+  - `tests/integration/minimal_debug_test.go`
+  - `tests/integration/alternative_debug_test.go`
+- [ ] Convert any useful debug coverage into proper contract or regression tests with assertions.
+- [ ] Triage and close the currently known failing or build-broken test areas:
+  - `agg2d`
+  - `color`
+  - `conv`
+  - `fonts`
+  - `pixfmt`
+  - `pixfmt/blender`
+  - `pixfmt/gamma`
+  - `platform`
+- [ ] Investigate unusually slow passing test suites and reduce runtime where possible, especially in rasterizer-heavy packages.
+
+### 4.5 Remaining AGG2D parity rows
+
+These items were previously tracked in a standalone parity ledger and now live directly in the phased plan.
+
+- [ ] Audit `Attach` parity for the C++ `attach(Image&)` shape:
+  - confirm behavior parity for image-backed attach flows
+  - document any intentional Go API delta if the method shape differs
+  - add a source-linked attach/image contract test
+- [ ] Finish `TextWidth` parity:
+  - close remaining kerning and metrics gaps vs `agg2d.cpp`
+  - add deterministic width assertions tied to source-linked behavior
+- [ ] Finish `Text` parity:
+  - remove any remaining simplified raster-glyph behavior
+  - verify glyph placement, raster cache behavior, and text output contracts
+  - promote status to `close` only after deterministic output checks exist
+
+### 4.6 Optional property tests
+
+- [ ] Add property-style tests for transformations where invertibility and composition laws are stable enough to assert.
+- [ ] Add property-style tests for color math where round-trip and monotonicity expectations are well-defined.
+- [ ] Use `testing/quick` or equivalent lightweight property tooling only where it improves confidence without making failures opaque.
 
 ### Exit criteria
 
 - [ ] `go test ./...` passes.
 - [ ] Visual regression suite passes in CI.
-- [ ] Parity ledger has no untriaged `placeholder` entries.
+- [ ] No AGG2D parity row remains untriaged or placeholder-level.
+- [ ] The remaining debug-only tests are either deleted or converted to assertion-based coverage.
+- [ ] Visual references and approval workflow are centralized under the existing `tests/visual/` framework rather than separate ad hoc docs.
 
 ---
 
-## Phase 5 - API and Documentation Finalization
+## Phase 5 - Remaining Port Inventory from docs/TASKS.md
 
-### 5.1 API cleanup
+### 5.1 Transformation backlog
+
+- [ ] Finish perspective and viewport follow-ups:
+  - `TransPerspective`: 3D projection simulation, perspective correction, division optimization review, numerical stability review
+  - `TransViewport`: multi-viewport support, zoom/pan flow, cached matrix handling, batch transforms
+  - connect viewport transforms cleanly to renderer and path-processing call sites
+- [ ] Finish path-based transform follow-ups:
+  - `TransSinglePath`: preprocessing, quality control, modification hooks, caching
+  - `TransSinglePath` integration: vertex-source compatibility, path-converter integration, animation workflow
+  - `TransDoublePath`: width calculation, path-relationship metrics, mismatch handling, boundary conditions
+  - `TransDoublePath` preprocessing helpers: dual-path preprocessing, batch transformation, later envelope-distortion and flow-field follow-ups
+- [ ] Finish warp magnifier follow-ups:
+  - lens shape control, dynamic properties, multiple zones
+  - edge handling, renderer compatibility, AA integration
+  - distortion-math review, coordinate handling, caching, real-time performance
+
+### 5.2 Converter and generator backlog
+
+- [ ] Finish adaptor cleanup:
+  - `ConvAdaptorVPGen` processor-conformance interface
+  - simpler state-model validation
+  - compatible-processor coverage
+  - low-overhead and real-time behavior review
+- [ ] Finish stroke and contour pipeline parity:
+  - `conv_stroke`: `InnerJoin` type, inner-join methods, width control, miter-limit
+  - `conv_stroke` integration: rendering-quality params, complex stroke tests, direct access to underlying `vcgen_stroke`, converter composability
+  - `vcgen_stroke`: core struct and getters/setters, vertex ingestion and rewind/vertex output, line-cap implementations, line-join implementations, inner-join corner handling, `math_stroke` integration audit
+  - `vcgen_contour`: core struct plus width/join/miter config, vertex ingestion and rewind/vertex output, positive/negative/zero width handling, contour corner-join behavior, `math_stroke` integration audit
+  - `conv_contour`: text outline generation use case, shape morphing and complex-path scenarios, converter chaining, efficiency and robustness tests
+- [ ] Finish dash, smoothing, and path-utility converters:
+  - `conv_dash`: explicit dash-then-stroke usage coverage, dynamic dash updates, robustness tests, underlying `vcgen_dash` access
+  - `conv_smooth_poly1`: corner detection and selective smoothing, polygon-path review, curve-approximation quality checks, converter-pipeline integration
+  - smaller path utility converters:
+    - `conv_close_polygon`: path analysis, path modification, efficient closure
+    - `conv_unclose_polygon`: path integrity, open-path creation, usage coverage
+    - `conv_concat`: complex path construction, concatenation efficiency
+    - `conv_shorten_path`: arc-length handling, boundary conditions, efficient shortening
+    - `conv_segmentator`: segment control, uniform output, quality control
+    - `conv_marker` and `conv_marker_adaptor`: path processing, marker extensibility, efficiency
+    - `conv_transform`: streaming-transform behavior, command integrity, renderer compatibility
+  - lower-priority converter items: `conv_gpc` advanced polygon features and compatibility notes
+- [ ] Carry over unresolved placeholder-inventory items:
+  - recheck rasterizer cell-run compaction behavior in `RasterizerCellsAASimple` and `RasterizerCellsAAStyled`, then add regression tests
+  - tighten `RenderAllPaths` typing in `internal/renderer/scanline/helpers.go`
+
+### 5.3 Span, interpolator, and image-processing backlog
+
+- [ ] Finish contour and image span generators:
+  - `span_gradient_contour`: distance-field preprocessing, contour input methods, multi-contour support, edge handling
+  - `span_gradient_image`: pixel-sampling interface, image-coordinate mapping, image-transformation path, caching and memory-management strategy
+- [ ] Recheck image-filter edge behavior against AGG:
+  - bilinear clip partial-overlap weighted edge sampling
+  - background fallback only where AGG does so
+- [ ] Finish Gouraud shading completeness:
+  - grayscale setup
+  - RGBA alpha interpolation and compositing
+  - integration coverage
+- [ ] Complete contour-gradient parity review:
+  - confirm the current outline-rasterizer path matches AGG intent closely enough
+  - document or fix remaining deltas in contour creation and distance mapping
+- [ ] Finish image-filter and interpolator follow-ups:
+  - remaining RGBA image-filter work: four-channel review, alpha optimization, RGBA pixfmt coverage, memory-access-pattern audit
+  - perspective interpolator follow-ups: flexible mapping, high-accuracy mode, adaptive accuracy, complex projection coverage
+  - transform interpolator follow-ups: transformation-overhead management, non-linear transformation support
+- [ ] Finish utility math follow-ups:
+  - transformed bounding rectangle
+  - `shorten_path` edge cases, vertex-sequence compatibility, stroke integration
+
+### 5.4 Font and utility backlog
+
+- [ ] Resolve the `RowPtr` bridge decision in `internal/agg2d/adapters.go`.
+- [ ] Finish embedded raster-font integration:
+  - document font-data format
+  - simplify glyph-access interfaces where justified
+  - recheck rendering integration
+- [ ] Decide whether to implement the FreeType custom memory-management hook or document it as unsupported.
+- [ ] Port remaining color-conversion surfaces:
+  - `agg_color_conv.h`
+  - `agg_color_conv_rgb8.h`
+  - `agg_color_conv_rgb16.h`
+
+### 5.5 Generics and pixfmt refactoring backlog
+
+These items were previously tracked in separate generics TODO and audit notes and now live directly in the phased plan.
+
+- [ ] Complete the RGBA16 pixfmt generics refactor:
+  - apply the RGBA8 blender-interface pattern to `pixfmt_rgba16.go`
+  - finish method-signature cleanup
+  - restore deterministic tests
+- [ ] Resolve generics-related example compatibility:
+  - update examples using older pixfmt generic signatures
+  - verify constructors and type aliases compile cleanly
+- [ ] Decide whether to expand `color.Space` beyond `Linear` and `SRGB`.
+- [ ] Validate generics fast-path performance claims:
+  - profile interface-based blender dispatch vs direct access
+  - keep `RawRGBAOrder` only where measurable
+- [ ] Retire deprecated generic-era sequence shims:
+  - ensure callers use `VertexDistSequence` / `LineAAVertexSequence`
+  - remove compatibility-only paths once no callers remain
+- [ ] Re-audit remaining `any()`-based generic dispatch and classify each site:
+  - keep legitimate optimization or boundary-adaptation checks
+  - convert true type-dispatch cases into concrete or typed APIs
+  - explicitly review serialized scanline storage and span color-conversion boundaries
+
+### Exit criteria
+
+- [ ] Every unfinished `docs/TASKS.md` item is either completed, explicitly deferred, or linked to one of the grouped tasks above.
+- [ ] Remaining generator and converter gaps no longer block AGG feature parity.
+- [ ] Utility and font leftovers are either implemented or documented as intentional deltas.
+
+---
+
+## Phase 6 - API and Documentation Finalization
+
+### 6.1 API cleanup
 
 - [ ] Keep high-level `Context` ergonomic and clearly separated from low-level AGG2D behavior.
 - [ ] Ensure naming is idiomatic Go without losing AGG traceability in docs.
 
-### 5.2 Documentation hygiene
+### 6.2 Documentation hygiene
 
 - [ ] Keep `docs/TASKS.md` and `docs/TASKS-COMPLETED.md` synchronized with completed items.
 - [ ] Update architecture docs after each completed phase.
@@ -230,6 +425,172 @@ Files:
 
 - [ ] Public API docs and examples align with actual behavior.
 - [ ] All completed tasks marked in `docs/TASKS.md`.
+
+---
+
+## Phase 7 - SIMD Infrastructure and Bulk Pixel Paths
+
+Primary goal: accelerate hot rendering paths without changing rendering semantics.
+
+### 7.0 Architecture and constraints
+
+- [x] Add a separate `internal/simd/` package with runtime CPU detection and scalar fallback.
+- [x] Reuse the `algo-fft` pattern: cached feature detection, build-tagged arch dispatch, and test overrides.
+- [x] Respect `purego` as a reliable scalar baseline.
+- [ ] Add real Plan 9 assembly entry points under `internal/simd/asm_amd64/` and `internal/simd/asm_arm64/`.
+
+Planned package layout:
+
+- `cpu.go`
+- `detect_amd64.go`
+- `detect_arm64.go`
+- `detect_generic.go`
+- `blend_amd64.go`
+- `blend_arm64.go`
+- `blend_generic.go`
+- `asm_amd64/`
+- `asm_arm64/`
+
+### 7.1 Phase 1a - CopyHline / Clear
+
+Profile and intent: `CopyHline` and `Clear` are the safest first SIMD target because they are bulk fill operations with straightforward byte-exact validation.
+
+- [x] Introduce a packed-RGBA fill primitive.
+- [x] Dispatch across generic scalar, amd64 (`sse2` / `avx2`), and arm64 (`neon`) paths.
+- [x] Wire `PixFmtAlphaBlendRGBA.CopyHline` and `Clear` through the new primitive.
+- [x] Add deterministic tests for CPU detection and forced-feature dispatch, byte-exact fill behavior, and arm64/QEMU execution.
+- [ ] Replace the current arch wrappers with real assembly implementations for SSE2, AVX2, and NEON.
+
+### 7.2 Phase 1b - BlendSolidHspan
+
+Why next: this is one of the hottest AA rendering paths and gives useful SIMD coverage beyond pure fill loops.
+
+- [ ] SIMD-optimize solid-color horizontal spans with per-pixel cover.
+- [ ] Preserve bit-identical output with the scalar implementation.
+- [ ] Verify against visual tests plus direct byte and pixel assertions.
+
+### 7.3 Phase 1c - BlendHline
+
+- [ ] SIMD-optimize uniform-coverage horizontal blending.
+- [ ] Share structure with the `BlendSolidHspan` implementation where it stays readable.
+
+### 7.4 Phase 1d - BlendColorHspan
+
+- [ ] SIMD-optimize per-pixel color plus coverage blending for gradients and image rendering.
+
+### Exit criteria
+
+- [ ] Generic, amd64, and arm64 paths are all present.
+- [ ] `purego` remains a reliable scalar baseline.
+- [ ] QEMU-backed arm64 correctness checks are part of the regular workflow.
+- [ ] SIMD paths have deterministic correctness coverage before any benchmarking claims.
+
+---
+
+## Phase 8 - SIMD Expansion Targets
+
+### 8.1 Premultiply / Demultiply
+
+- [ ] SIMD-optimize whole-buffer RGBA premultiplication.
+- [ ] SIMD-optimize demultiplication with correct zero-alpha handling.
+
+### 8.2 Composite blend modes
+
+- [ ] Optimize the important Porter-Duff and SVG composite operators.
+- [ ] Prioritize modes used by compositing demos and common `SrcOver`-adjacent paths.
+
+### 8.3 Gradient and image span generation
+
+- [ ] Optimize gradient span generation where interpolation and LUT access make this worthwhile.
+- [ ] Optimize image-filter and resampling kernels after the earlier bulk pixel paths land.
+
+### 8.4 Alpha-mask helpers
+
+- [ ] SIMD-optimize alpha-mask fill operations.
+- [ ] SIMD-optimize RGB-to-gray mask conversion helpers where they remain hot.
+
+### 8.5 Gamma / LUT application
+
+- [ ] Only pursue gamma and LUT SIMD work if profiling still shows it matters after earlier SIMD phases.
+
+### Recommended SIMD implementation order
+
+1. AVX2 on amd64
+2. SSE2 on amd64
+3. NEON on arm64
+
+Rationale:
+
+- AVX2 is the most practical development target and usually offers the highest immediate payoff.
+- SSE2 is the amd64 baseline that keeps older CPUs covered.
+- NEON matters for Apple Silicon and Linux arm64; QEMU or native validation keeps that path honest.
+
+---
+
+## Phase 9 - Example and Demo Parity
+
+Primary goal: keep the example surface close to the upstream AGG demo set while remaining idiomatic in Go and supporting both standalone examples and the web demo where it makes sense.
+
+The remaining backlog is smaller than the old example ledger suggested because several demos have already been ported since that file was written.
+
+### 9.1 Example parity infrastructure
+
+- [ ] Keep one authoritative example-parity list in `PLAN.md`.
+- [ ] For each newly ported upstream demo:
+  - record the C++ source
+  - decide whether it belongs in standalone examples, the web demo, or both
+  - add a minimal verification path so the demo does not silently rot
+- [ ] Reuse shared helpers and assets where possible so new examples do not fragment the example surface.
+
+### 9.2 High-priority remaining demo ports
+
+- [ ] Port the remaining high-value text, image, and stroke demos:
+  - `raster_text.cpp`
+  - `image_resample.cpp`
+  - `gradient_focal.cpp`
+  - `line_patterns.cpp`
+  - `line_patterns_clip.cpp`
+  - `line_thickness.cpp`
+- [ ] Port the remaining high-value rendering-pipeline demos:
+  - `rasterizer_compound.cpp`
+  - `scanline_boolean2.cpp`
+  - `pattern_perspective.cpp`
+  - `pattern_resample.cpp`
+  - `image_perspective.cpp`
+
+### 9.3 Medium-priority interactive and advanced demo ports
+
+- [ ] Port the remaining interactive and geometry-heavy demos:
+  - `interactive_polygon.cpp`
+  - `graph_test.cpp`
+  - `gpc_test.cpp`
+  - `gradients_contour.cpp`
+- [ ] Port the remaining advanced rendering and math demos:
+  - `flash_rasterizer2.cpp`
+  - `polymorphic_renderer.cpp`
+  - `blend_color.cpp`
+  - `image_filters2.cpp`
+  - `image_fltr_graph.cpp`
+
+### 9.4 Lower-priority or support-heavy upstream demos
+
+- [ ] Triage the remaining support-heavy demos case by case:
+  - `freetype_test.cpp`
+  - `truetype_test.cpp`
+  - `trans_curve1.cpp`
+  - `trans_curve1_ft.cpp`
+  - `trans_curve2_ft.cpp`
+  - `make_arrows.cpp`
+  - `make_gb_poly.cpp`
+  - `mol_view.cpp`
+  - `idea.cpp`
+- [ ] Decide for each whether it should be fully ported, replaced by a Go-idiomatic equivalent, or explicitly deferred with rationale.
+
+### 9.5 Exit criteria
+
+- [ ] Every remaining upstream demo is either ported as a standalone example or web demo, replaced by a documented Go-idiomatic equivalent, or explicitly deferred with rationale.
+- [ ] Example coverage reflects current repository reality rather than a stale external ledger.
+- [ ] Newly added demos build and run through the existing example workflows.
 
 ---
 
