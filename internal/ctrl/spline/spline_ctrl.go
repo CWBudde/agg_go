@@ -7,6 +7,7 @@ import (
 
 	"agg_go/internal/basics"
 	"agg_go/internal/color"
+	"agg_go/internal/conv"
 	"agg_go/internal/ctrl"
 	"agg_go/internal/curves"
 	"agg_go/internal/path"
@@ -51,8 +52,10 @@ type SplineCtrlImpl[C any] struct {
 	xs1, ys1, xs2, ys2 float64 // Inner spline area bounds
 
 	// Rendering components
-	curvePath *path.PathStorage // Path for the spline curve
-	ellipse   *shapes.Ellipse   // For drawing control points
+	curvePath  *path.PathStorage // Raw polyline for the spline curve (path 2 source)
+	strokePath *path.PathStorage // Stroked outline of the curve (path 2 output)
+	pointsPath *path.PathStorage // Concatenated ellipses for control points (paths 3 & 4)
+	ellipse    *shapes.Ellipse   // For drawing control points
 
 	// Vertex generation state
 	currentPath uint        // Current path being rendered (0-4)
@@ -88,15 +91,14 @@ func NewSplineCtrlImpl[C any](x1, y1, x2, y2 float64, numPnt uint, flipY bool) *
 		pointSize:   3.0,
 		spline:      curves.NewBSpline(),
 		curvePath:   path.NewPathStorage(),
+		strokePath:  path.NewPathStorage(),
+		pointsPath:  path.NewPathStorage(),
 		ellipse:     shapes.NewEllipse(),
 		activePnt:   -1,
 		movePnt:     -1,
 		pdx:         0.0,
 		pdy:         0.0,
 	}
-
-	// Initialize stroke converter for curve rendering
-	// Note: We'll initialize this later when needed since we need to handle interface properly
 
 	// Initialize control points with default values
 	// Points are evenly spaced horizontally at y=0.5
@@ -356,27 +358,73 @@ func (s *SplineCtrlImpl[C]) Rewind(pathID uint) {
 		s.vertices[14] = s.X2() - s.borderWidth
 		s.vertices[15] = s.Y1() + s.borderWidth
 
-	case 2: // Spline curve
+	case 2: // Spline curve — stroke the polyline into strokePath (matches C++ conv_stroke)
 		s.calcCurve()
-		s.curvePath.Rewind(0)
+		s.strokePath.RemoveAll()
+		adapter := path.NewPathStorageVertexSourceAdapter(s.curvePath)
+		stroke := conv.NewConvStroke(adapter)
+		stroke.SetWidth(s.curveWidth)
+		stroke.Rewind(0)
+		for {
+			var sx, sy float64
+			sx, sy, sc := stroke.Vertex()
+			if basics.IsStop(sc) {
+				break
+			}
+			if basics.IsMoveTo(sc) {
+				s.strokePath.MoveTo(sx, sy)
+			} else {
+				s.strokePath.LineTo(sx, sy)
+			}
+		}
+		s.strokePath.Rewind(0)
 
-	case 3: // Inactive control points
-		if int(s.vertexIndex) < int(s.numPnt) && int(s.vertexIndex) != s.activePnt {
-			cx := s.calcXP(s.vertexIndex)
-			cy := s.calcYP(s.vertexIndex)
+	case 3: // Inactive control points — concatenate all inactive ellipses into pointsPath
+		s.pointsPath.RemoveAll()
+		for i := uint(0); i < s.numPnt; i++ {
+			if int(i) == s.activePnt {
+				continue
+			}
+			cx := s.calcXP(i)
+			cy := s.calcYP(i)
 			s.ellipse.Init(cx, cy, s.pointSize, s.pointSize, 32, false)
 			s.ellipse.Rewind(0)
-		} else {
-			s.vertexIndex = s.numPnt // No more points
+			for {
+				var ex, ey float64
+				ec := s.ellipse.Vertex(&ex, &ey)
+				if ec == basics.PathCmdStop {
+					break
+				}
+				if basics.IsMoveTo(ec) {
+					s.pointsPath.MoveTo(ex, ey)
+				} else {
+					s.pointsPath.LineTo(ex, ey)
+				}
+			}
 		}
+		s.pointsPath.Rewind(0)
 
-	case 4: // Active control point
+	case 4: // Active control point — single ellipse into pointsPath
+		s.pointsPath.RemoveAll()
 		if s.activePnt >= 0 && s.activePnt < int(s.numPnt) {
 			cx := s.calcXP(uint(s.activePnt))
 			cy := s.calcYP(uint(s.activePnt))
 			s.ellipse.Init(cx, cy, s.pointSize, s.pointSize, 32, false)
 			s.ellipse.Rewind(0)
+			for {
+				var ex, ey float64
+				ec := s.ellipse.Vertex(&ex, &ey)
+				if ec == basics.PathCmdStop {
+					break
+				}
+				if basics.IsMoveTo(ec) {
+					s.pointsPath.MoveTo(ex, ey)
+				} else {
+					s.pointsPath.LineTo(ex, ey)
+				}
+			}
 		}
+		s.pointsPath.Rewind(0)
 	}
 }
 
@@ -415,38 +463,13 @@ func (s *SplineCtrlImpl[C]) Vertex() (x, y float64, cmd basics.PathCommand) {
 			s.vertexIndex++
 		}
 
-	case 2: // Spline curve
-		x, y, cmdUint = s.curvePath.NextVertex()
+	case 2: // Spline curve (stroked, pre-computed in Rewind)
+		x, y, cmdUint = s.strokePath.NextVertex()
 		cmd = basics.PathCommand(cmdUint)
 
-	case 3: // Inactive control points
-		if int(s.vertexIndex) < int(s.numPnt) {
-			// Find next inactive point
-			for int(s.vertexIndex) < int(s.numPnt) && int(s.vertexIndex) == s.activePnt {
-				s.vertexIndex++
-			}
-
-			if int(s.vertexIndex) < int(s.numPnt) {
-				cx := s.calcXP(s.vertexIndex)
-				cy := s.calcYP(s.vertexIndex)
-				s.ellipse.Init(cx, cy, s.pointSize, s.pointSize, 32, false)
-				s.ellipse.Rewind(0)
-				s.vertexIndex++
-			}
-		}
-
-		if int(s.vertexIndex) <= int(s.numPnt) {
-			cmd = s.ellipse.Vertex(&x, &y)
-		} else {
-			cmd = basics.PathCmdStop
-		}
-
-	case 4: // Active control point
-		if s.activePnt >= 0 && s.activePnt < int(s.numPnt) {
-			cmd = s.ellipse.Vertex(&x, &y)
-		} else {
-			cmd = basics.PathCmdStop
-		}
+	case 3, 4: // Control points (pre-computed in Rewind)
+		x, y, cmdUint = s.pointsPath.NextVertex()
+		cmd = basics.PathCommand(cmdUint)
 
 	default:
 		cmd = basics.PathCmdStop
