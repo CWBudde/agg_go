@@ -6,6 +6,7 @@ import (
 	"agg_go/internal/color"
 	"agg_go/internal/order"
 	"agg_go/internal/pixfmt/blender"
+	"agg_go/internal/simd"
 )
 
 // RGBA pixel type for internal operations
@@ -127,17 +128,12 @@ func (pf *PixFmtAlphaBlendRGBA[S, B]) CopyHline(x, y, length int, c color.RGBA8[
 	row := buffer.RowU8(pf.rbuf, y)
 	off := x * 4
 	if ro, ok := any(pf.blender).(blender.RawRGBAOrder); ok {
-		// Fast path: direct index access
-		ir, ig, ib, ia := ro.IdxR(), ro.IdxG(), ro.IdxB(), ro.IdxA()
-		for i := 0; i < length; i++ {
-			p := off + i*4
-			if p+3 < len(row) {
-				row[p+ir] = c.R
-				row[p+ig] = c.G
-				row[p+ib] = c.B
-				row[p+ia] = c.A
-			}
-		}
+		var pixel [4]byte
+		pixel[ro.IdxR()] = c.R
+		pixel[ro.IdxG()] = c.G
+		pixel[ro.IdxB()] = c.B
+		pixel[ro.IdxA()] = c.A
+		simd.FillRGBA(row[off:], pixel[0], pixel[1], pixel[2], pixel[3], length)
 	} else {
 		// Safe path: use blender SetPlain
 		for i := 0; i < length; i++ {
@@ -149,7 +145,10 @@ func (pf *PixFmtAlphaBlendRGBA[S, B]) CopyHline(x, y, length int, c color.RGBA8[
 	}
 }
 
-// BlendHline blends a horizontal line
+// BlendHline blends a horizontal line with uniform coverage.
+//
+// Mirrors C++ AGG's blend_hline optimizations: opaque+full-cover → direct
+// copy, full-cover → blend with c.a, partial cover → blend with scaled alpha.
 func (pf *PixFmtAlphaBlendRGBA[S, B]) BlendHline(x, y, length int, c color.RGBA8[S], cover basics.Int8u) {
 	if y < 0 || y >= pf.Height() || length <= 0 || c.IsTransparent() {
 		return
@@ -161,11 +160,93 @@ func (pf *PixFmtAlphaBlendRGBA[S, B]) BlendHline(x, y, length int, c color.RGBA8
 	}
 
 	row := buffer.RowU8(pf.rbuf, y)
+
+	// Fast path: resolve order and blend mode once.
+	if fb, ok := any(pf.blender).(blender.RGBAFastBlender); ok {
+		ir, ig, ib, ia := fb.IdxR(), fb.IdxG(), fb.IdxB(), fb.IdxA()
+
+		spanEnd := (x+length-1)*4 + 3
+		if spanEnd >= len(row) {
+			goto slow
+		}
+		_ = row[spanEnd]
+
+		// C++ optimization: opaque + full cover → just copy.
+		if c.IsOpaque() && cover == basics.CoverFull {
+			p := x * 4
+			for range length {
+				row[p+ir] = c.R
+				row[p+ig] = c.G
+				row[p+ib] = c.B
+				row[p+ia] = c.A
+				p += 4
+			}
+			return
+		}
+
+		if fb.PremulSrc() {
+			blendHlinePre(row, x, length, c.R, c.G, c.B, c.A, ir, ig, ib, ia, cover)
+		} else {
+			blendHlinePlain(row, x, length, c.R, c.G, c.B, c.A, ir, ig, ib, ia, cover)
+		}
+		return
+	}
+
+slow:
 	for i := 0; i < length; i++ {
 		pixelOffset := (x + i) * 4
 		if pixelOffset+3 < len(row) {
 			pf.blender.BlendPix(row[pixelOffset:pixelOffset+4], c.R, c.G, c.B, c.A, cover)
 		}
+	}
+}
+
+// blendHlinePlain implements the plain→premul blend loop for uniform coverage.
+func blendHlinePlain(
+	row []byte, x, length int,
+	sr, sg, sb, sa byte,
+	ir, ig, ib, ia int,
+	cover byte,
+) {
+	// Pre-compute the effective alpha once (same for every pixel).
+	alpha := color.RGBA8MultCover(sa, cover)
+	if alpha == 0 {
+		return
+	}
+	p := x * 4
+	for range length {
+		row[p+ir] = color.RGBA8Lerp(row[p+ir], sr, alpha)
+		row[p+ig] = color.RGBA8Lerp(row[p+ig], sg, alpha)
+		row[p+ib] = color.RGBA8Lerp(row[p+ib], sb, alpha)
+		row[p+ia] = color.RGBA8Prelerp(row[p+ia], alpha, alpha)
+		p += 4
+	}
+}
+
+// blendHlinePre implements the premul→premul blend loop for uniform coverage.
+func blendHlinePre(
+	row []byte, x, length int,
+	sr, sg, sb, sa byte,
+	ir, ig, ib, ia int,
+	cover byte,
+) {
+	r, g, b, a := sr, sg, sb, sa
+	if cover != 255 {
+		r = color.RGBA8MultCover(r, cover)
+		g = color.RGBA8MultCover(g, cover)
+		b = color.RGBA8MultCover(b, cover)
+		a = color.RGBA8MultCover(a, cover)
+	}
+	if a == 0 && r == 0 && g == 0 && b == 0 {
+		return
+	}
+	p := x * 4
+	for range length {
+		row[p+ir] = color.RGBA8Prelerp(row[p+ir], r, a)
+		row[p+ig] = color.RGBA8Prelerp(row[p+ig], g, a)
+		row[p+ib] = color.RGBA8Prelerp(row[p+ib], b, a)
+		row[p+ia] = color.RGBA8Prelerp(row[p+ia], a, a)
+		p += 4
 	}
 }
 
@@ -230,7 +311,12 @@ func (pf *PixFmtAlphaBlendRGBA[S, B]) BlendBar(x1, y1, x2, y2 int, c color.RGBA8
 	}
 }
 
-// BlendSolidHspan blends a horizontal span with varying coverage
+// BlendSolidHspan blends a horizontal span with varying coverage.
+//
+// This is the single hottest path in AA rendering (~43% cumulative CPU in the
+// lion benchmark). The fast path resolves channel order and blend formula once,
+// eliminates per-pixel bounds checks, and inlines the color arithmetic —
+// mirroring C++ AGG's template monomorphization of blend_pix.
 func (pf *PixFmtAlphaBlendRGBA[S, B]) BlendSolidHspan(x, y, length int, c color.RGBA8[S], covers []basics.Int8u) {
 	if y < 0 || y >= pf.Height() || length <= 0 || c.IsTransparent() {
 		return
@@ -242,8 +328,28 @@ func (pf *PixFmtAlphaBlendRGBA[S, B]) BlendSolidHspan(x, y, length int, c color.
 	}
 
 	row := buffer.RowU8(pf.rbuf, y)
+
+	// Fast path: resolve order and blend mode once, then loop with inlined math.
+	if fb, ok := any(pf.blender).(blender.RGBAFastBlender); ok {
+		ir, ig, ib, ia := fb.IdxR(), fb.IdxG(), fb.IdxB(), fb.IdxA()
+
+		// Single upfront bounds check for the entire span (BCE).
+		spanEnd := (x+length-1)*4 + 3
+		if spanEnd >= len(row) {
+			goto slow
+		}
+		_ = row[spanEnd] // prove to the compiler the span is in bounds
+
+		if fb.PremulSrc() {
+			blendSolidHspanPre(row, x, length, c.R, c.G, c.B, c.A, ir, ig, ib, ia, c.IsOpaque(), covers)
+		} else {
+			blendSolidHspanPlain(row, x, length, c.R, c.G, c.B, c.A, ir, ig, ib, ia, c.IsOpaque(), covers)
+		}
+		return
+	}
+
+slow:
 	if covers == nil {
-		// Uniform coverage
 		for i := 0; i < length; i++ {
 			pixelOffset := (x + i) * 4
 			if pixelOffset+3 < len(row) {
@@ -251,7 +357,6 @@ func (pf *PixFmtAlphaBlendRGBA[S, B]) BlendSolidHspan(x, y, length int, c color.
 			}
 		}
 	} else {
-		// Varying coverage
 		for i := 0; i < length && i < len(covers); i++ {
 			if covers[i] > 0 {
 				pixelOffset := (x + i) * 4
@@ -260,6 +365,110 @@ func (pf *PixFmtAlphaBlendRGBA[S, B]) BlendSolidHspan(x, y, length int, c color.
 				}
 			}
 		}
+	}
+}
+
+// blendSolidHspanPlain implements the plain→premul blend loop (blender_rgba).
+// Channel indices and bounds are resolved by the caller.
+func blendSolidHspanPlain(
+	row []byte, x, length int,
+	sr, sg, sb, sa byte,
+	ir, ig, ib, ia int,
+	opaque bool,
+	covers []byte,
+) {
+	p := x * 4
+	if covers == nil {
+		// Uniform full coverage — use c.a directly as alpha.
+		for range length {
+			row[p+ir] = color.RGBA8Lerp(row[p+ir], sr, sa)
+			row[p+ig] = color.RGBA8Lerp(row[p+ig], sg, sa)
+			row[p+ib] = color.RGBA8Lerp(row[p+ib], sb, sa)
+			row[p+ia] = color.RGBA8Prelerp(row[p+ia], sa, sa)
+			p += 4
+		}
+		return
+	}
+	for i := range length {
+		cv := covers[i]
+		if cv == 0 {
+			p += 4
+			continue
+		}
+		// C++ optimization: opaque color + full coverage → direct copy.
+		if opaque && cv == basics.CoverFull {
+			row[p+ir] = sr
+			row[p+ig] = sg
+			row[p+ib] = sb
+			row[p+ia] = sa
+			p += 4
+			continue
+		}
+		alpha := color.RGBA8MultCover(sa, cv)
+		if alpha == 0 {
+			p += 4
+			continue
+		}
+		row[p+ir] = color.RGBA8Lerp(row[p+ir], sr, alpha)
+		row[p+ig] = color.RGBA8Lerp(row[p+ig], sg, alpha)
+		row[p+ib] = color.RGBA8Lerp(row[p+ib], sb, alpha)
+		row[p+ia] = color.RGBA8Prelerp(row[p+ia], alpha, alpha)
+		p += 4
+	}
+}
+
+// blendSolidHspanPre implements the premul→premul blend loop (blender_rgba_pre).
+// Channel indices and bounds are resolved by the caller.
+func blendSolidHspanPre(
+	row []byte, x, length int,
+	sr, sg, sb, sa byte,
+	ir, ig, ib, ia int,
+	opaque bool,
+	covers []byte,
+) {
+	p := x * 4
+	if covers == nil {
+		// Uniform full coverage — no scaling needed.
+		for range length {
+			row[p+ir] = color.RGBA8Prelerp(row[p+ir], sr, sa)
+			row[p+ig] = color.RGBA8Prelerp(row[p+ig], sg, sa)
+			row[p+ib] = color.RGBA8Prelerp(row[p+ib], sb, sa)
+			row[p+ia] = color.RGBA8Prelerp(row[p+ia], sa, sa)
+			p += 4
+		}
+		return
+	}
+	for i := range length {
+		cv := covers[i]
+		if cv == 0 {
+			p += 4
+			continue
+		}
+		// C++ optimization: opaque color + full coverage → direct copy.
+		if opaque && cv == basics.CoverFull {
+			row[p+ir] = sr
+			row[p+ig] = sg
+			row[p+ib] = sb
+			row[p+ia] = sa
+			p += 4
+			continue
+		}
+		r, g, b, a := sr, sg, sb, sa
+		if cv != 255 {
+			r = color.RGBA8MultCover(r, cv)
+			g = color.RGBA8MultCover(g, cv)
+			b = color.RGBA8MultCover(b, cv)
+			a = color.RGBA8MultCover(a, cv)
+		}
+		if a == 0 && r == 0 && g == 0 && b == 0 {
+			p += 4
+			continue
+		}
+		row[p+ir] = color.RGBA8Prelerp(row[p+ir], r, a)
+		row[p+ig] = color.RGBA8Prelerp(row[p+ig], g, a)
+		row[p+ib] = color.RGBA8Prelerp(row[p+ib], b, a)
+		row[p+ia] = color.RGBA8Prelerp(row[p+ia], a, a)
+		p += 4
 	}
 }
 
@@ -405,12 +614,8 @@ func (pf *PixFmtAlphaBlendRGBA[S, B]) Clear(c color.RGBA8[S]) {
 			pixel[0], pixel[1], pixel[2], pixel[3] = c.R, c.G, c.B, c.A
 		}
 
-		// Fill first row by doubling: 1→2→4→8→...
 		row0 := buf[:rowBytes]
-		copy(row0[0:4], pixel[:])
-		for filled := 4; filled < rowBytes; filled *= 2 {
-			copy(row0[filled:], row0[:filled])
-		}
+		simd.FillRGBA(row0, pixel[0], pixel[1], pixel[2], pixel[3], w)
 
 		// Replicate first row to all subsequent rows.
 		for y := 1; y < h; y++ {
@@ -421,6 +626,19 @@ func (pf *PixFmtAlphaBlendRGBA[S, B]) Clear(c color.RGBA8[S]) {
 
 slow:
 	// Fallback for negative stride (bottom-up) or unusual layouts.
+	if ro, ok := any(pf.blender).(blender.RawRGBAOrder); ok {
+		var pixel [4]byte
+		pixel[ro.IdxR()] = c.R
+		pixel[ro.IdxG()] = c.G
+		pixel[ro.IdxB()] = c.B
+		pixel[ro.IdxA()] = c.A
+		for y := 0; y < h; y++ {
+			row := buffer.RowU8(pf.rbuf, y)
+			simd.FillRGBA(row, pixel[0], pixel[1], pixel[2], pixel[3], w)
+		}
+		return
+	}
+
 	for y := 0; y < h; y++ {
 		row := buffer.RowU8(pf.rbuf, y)
 		for x := 0; x < w; x++ {

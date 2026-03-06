@@ -154,6 +154,23 @@ test-visual:
     @echo "Running visual tests..."
     go test ./tests/visual/...
 
+# Run SIMD-focused tests
+test-simd:
+    @echo "Running SIMD dispatch tests..."
+    go test ./internal/simd -count=1
+    go build ./internal/pixfmt
+
+# Run tests on ARM64 using QEMU (requires qemu-user-static)
+test-arm64:
+    #!/usr/bin/env bash
+    if ! command -v qemu-aarch64-static &> /dev/null; then
+        echo "Error: qemu-aarch64-static not found"
+        echo "Install with: sudo apt-get install qemu-user-static binfmt-support"
+        exit 1
+    fi
+    GOOS=linux GOARCH=arm64 go test -exec="qemu-aarch64-static" -count=1 ./internal/simd
+    GOOS=linux GOARCH=arm64 go build ./internal/pixfmt
+
 # Run freetype tests
 test-freetype:
     @echo "Running freetype tests..."

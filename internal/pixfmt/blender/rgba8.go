@@ -36,6 +36,21 @@ type RawRGBAOrder interface {
 	IdxA() int
 }
 
+// RGBAFastBlender extends RawRGBAOrder with blend-mode information, enabling
+// pixfmt methods to inline the blend math directly instead of dispatching
+// through the generic BlendPix interface per pixel.
+//
+// This mirrors C++ AGG's template monomorphization: the blend formula is
+// resolved once at the top of the span loop, then the inner loop uses
+// concrete (inlinable) color arithmetic.
+type RGBAFastBlender interface {
+	RawRGBAOrder
+	// PremulSrc returns true when the source color is premultiplied.
+	//   false → plain→premul (blender_rgba):     lerp for RGB, prelerp for A
+	//   true  → premul→premul (blender_rgba_pre): prelerp for all channels
+	PremulSrc() bool
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Plain (non-premultiplied) source -> Premultiplied destination
 ////////////////////////////////////////////////////////////////////////////////
@@ -73,10 +88,11 @@ func (BlenderRGBA8[S, O]) GetPlain(src []basics.Int8u) (r, g, b, a basics.Int8u)
 }
 
 // RawRGBAOrder interface implementation for fast path access
-func (BlenderRGBA8[S, O]) IdxR() int { var o O; return o.IdxR() }
-func (BlenderRGBA8[S, O]) IdxG() int { var o O; return o.IdxG() }
-func (BlenderRGBA8[S, O]) IdxB() int { var o O; return o.IdxB() }
-func (BlenderRGBA8[S, O]) IdxA() int { var o O; return o.IdxA() }
+func (BlenderRGBA8[S, O]) IdxR() int      { var o O; return o.IdxR() }
+func (BlenderRGBA8[S, O]) IdxG() int      { var o O; return o.IdxG() }
+func (BlenderRGBA8[S, O]) IdxB() int      { var o O; return o.IdxB() }
+func (BlenderRGBA8[S, O]) IdxA() int      { var o O; return o.IdxA() }
+func (BlenderRGBA8[S, O]) PremulSrc() bool { return false }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Premultiplied source -> Premultiplied destination
@@ -114,10 +130,11 @@ func (BlenderRGBA8Pre[S, O]) GetPlain(src []basics.Int8u) (r, g, b, a basics.Int
 }
 
 // RawRGBAOrder interface implementation for fast path access
-func (BlenderRGBA8Pre[S, O]) IdxR() int { var o O; return o.IdxR() }
-func (BlenderRGBA8Pre[S, O]) IdxG() int { var o O; return o.IdxG() }
-func (BlenderRGBA8Pre[S, O]) IdxB() int { var o O; return o.IdxB() }
-func (BlenderRGBA8Pre[S, O]) IdxA() int { var o O; return o.IdxA() }
+func (BlenderRGBA8Pre[S, O]) IdxR() int      { var o O; return o.IdxR() }
+func (BlenderRGBA8Pre[S, O]) IdxG() int      { var o O; return o.IdxG() }
+func (BlenderRGBA8Pre[S, O]) IdxB() int      { var o O; return o.IdxB() }
+func (BlenderRGBA8Pre[S, O]) IdxA() int      { var o O; return o.IdxA() }
+func (BlenderRGBA8Pre[S, O]) PremulSrc() bool { return true }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Plain (non-premultiplied) source -> Plain destination

@@ -6,6 +6,7 @@ import (
 	"agg_go/internal/basics"
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
+	"agg_go/internal/simd"
 )
 
 type grayRowSource struct {
@@ -215,6 +216,35 @@ func TestPixFmtRGBA32Clear(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestPixFmtRGBA32CopyHlineSIMDDispatch(t *testing.T) {
+	t.Cleanup(simd.ResetDetection)
+	simd.SetForcedFeatures(simd.Features{
+		Architecture: runtimeGOARCHForSIMDTest(),
+		HasAVX2:      runtimeGOARCHForSIMDTest() == "amd64",
+		HasSSE2:      runtimeGOARCHForSIMDTest() == "amd64",
+		HasNEON:      runtimeGOARCHForSIMDTest() == "arm64",
+	})
+
+	width, height := 8, 1
+	buf := make([]basics.Int8u, width*height*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, width, height, width*4)
+	pf := NewPixFmtRGBA32[color.Linear](rbuf)
+
+	c := color.NewRGBA8[color.Linear](9, 8, 7, 6)
+	pf.CopyHline(0, 0, width, c)
+
+	for i := 0; i < width; i++ {
+		p := i * 4
+		if got := buf[p : p+4]; got[0] != 9 || got[1] != 8 || got[2] != 7 || got[3] != 6 {
+			t.Fatalf("pixel %d = %v, want [9 8 7 6]", i, got)
+		}
+	}
+}
+
+func runtimeGOARCHForSIMDTest() string {
+	return simd.DetectFeatures().Architecture
 }
 
 func TestPixFmtRGBA32Bounds(t *testing.T) {

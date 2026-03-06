@@ -17,7 +17,7 @@ func BenchmarkLionSmall(b *testing.B) {
 	benchLion(b, "400x300", 400, 300)
 }
 
-func benchLion(b *testing.B, name string, width, height int, ) {
+func benchLion(b *testing.B, name string, width, height int) {
 	b.Helper()
 	b.Run(name, func(b *testing.B) {
 		stride := width * 4
