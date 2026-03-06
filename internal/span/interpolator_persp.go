@@ -17,8 +17,8 @@ type SpanInterpolatorPerspectiveExact struct {
 	transformDir  *transform.TransPerspective
 	transformInv  *transform.TransPerspective
 	iterator      *transform.PerspectiveIteratorX
-	scaleX        *Dda2LineInterpolator
-	scaleY        *Dda2LineInterpolator
+	scaleX        Dda2LineInterpolator
+	scaleY        Dda2LineInterpolator
 	subpixelShift int
 	subpixelScale int
 }
@@ -128,8 +128,8 @@ func (s *SpanInterpolatorPerspectiveExact) Begin(x, y float64, length int) {
 	sy2 := int(basics.URound(float64(s.subpixelScale)/math.Sqrt(dx*dx+dy*dy))) >> s.subpixelShift
 
 	// Initialize scale interpolators
-	s.scaleX = NewDda2LineInterpolator(sx1, sx2, length)
-	s.scaleY = NewDda2LineInterpolator(sy1, sy2, length)
+	s.scaleX.Init(sx1, sx2, length)
+	s.scaleY.Init(sy1, sy2, length)
 }
 
 // Resynchronize adjusts the interpolation to end at specified coordinates.
@@ -162,8 +162,8 @@ func (s *SpanInterpolatorPerspectiveExact) Resynchronize(xe, ye float64, length 
 	sy2 := int(basics.URound(float64(s.subpixelScale)/math.Sqrt(dx*dx+dy*dy))) >> s.subpixelShift
 
 	// Initialize the interpolators
-	s.scaleX = NewDda2LineInterpolator(sx1, sx2, length)
-	s.scaleY = NewDda2LineInterpolator(sy1, sy2, length)
+	s.scaleX.Init(sx1, sx2, length)
+	s.scaleY.Init(sy1, sy2, length)
 }
 
 // Next advances the interpolator to the next position.
@@ -201,10 +201,10 @@ func (s *SpanInterpolatorPerspectiveExact) SubpixelShift() int {
 type SpanInterpolatorPerspectiveLerp struct {
 	transformDir  *transform.TransPerspective
 	transformInv  *transform.TransPerspective
-	coordX        *Dda2LineInterpolator
-	coordY        *Dda2LineInterpolator
-	scaleX        *Dda2LineInterpolator
-	scaleY        *Dda2LineInterpolator
+	coordX        Dda2LineInterpolator
+	coordY        Dda2LineInterpolator
+	scaleX        Dda2LineInterpolator
+	scaleY        Dda2LineInterpolator
 	subpixelShift int
 	subpixelScale int
 }
@@ -319,10 +319,10 @@ func (s *SpanInterpolatorPerspectiveLerp) Begin(x, y float64, length int) {
 	sy2 := int(basics.URound(float64(s.subpixelScale)/math.Sqrt(dx*dx+dy*dy))) >> s.subpixelShift
 
 	// Initialize the interpolators
-	s.coordX = NewDda2LineInterpolator(x1, x2, length)
-	s.coordY = NewDda2LineInterpolator(y1, y2, length)
-	s.scaleX = NewDda2LineInterpolator(sx1, sx2, length)
-	s.scaleY = NewDda2LineInterpolator(sy1, sy2, length)
+	s.coordX.Init(x1, x2, length)
+	s.coordY.Init(y1, y2, length)
+	s.scaleX.Init(sx1, sx2, length)
+	s.scaleY.Init(sy1, sy2, length)
 }
 
 // Resynchronize adjusts the interpolation to end at specified coordinates.
@@ -359,10 +359,10 @@ func (s *SpanInterpolatorPerspectiveLerp) Resynchronize(xe, ye float64, length i
 	sy2 := int(basics.URound(float64(s.subpixelScale)/math.Sqrt(dx*dx+dy*dy))) >> s.subpixelShift
 
 	// Initialize the interpolators
-	s.coordX = NewDda2LineInterpolator(x1, x2, length)
-	s.coordY = NewDda2LineInterpolator(y1, y2, length)
-	s.scaleX = NewDda2LineInterpolator(sx1, sx2, length)
-	s.scaleY = NewDda2LineInterpolator(sy1, sy2, length)
+	s.coordX.Init(x1, x2, length)
+	s.coordY.Init(y1, y2, length)
+	s.scaleX.Init(sx1, sx2, length)
+	s.scaleY.Init(sy1, sy2, length)
 }
 
 // Next advances the interpolator to the next position.
