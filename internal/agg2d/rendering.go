@@ -12,20 +12,30 @@ import (
 	"agg_go/internal/rasterizer"
 	renscan "agg_go/internal/renderer/scanline"
 	"agg_go/internal/scanline"
-	"agg_go/internal/span"
 	"agg_go/internal/transform"
 )
 
-// gradientColorsToLUT converts the internal [256]Color table to a RGBA8 slice
-// suitable for GradientPrebuiltColorRGBA8. This matches the C++ path where
-// m_fillGradient (a pod_auto_array<ColorType,256>) is passed directly as the
-// color function, giving every pixel a direct table lookup by gradient index.
-func gradientColorsToLUT(gradientColors [256]Color) []color.RGBA8[color.Linear] {
-	lut := make([]color.RGBA8[color.Linear], 256)
+// gradientColorsToLUTInPlace updates a preallocated 256-entry LUT from [256]Color.
+func gradientColorsToLUTInPlace(dst []color.RGBA8[color.Linear], gradientColors [256]Color) {
 	for i, c := range gradientColors {
-		lut[i] = color.RGBA8[color.Linear]{R: c[0], G: c[1], B: c[2], A: c[3]}
+		dst[i] = color.RGBA8[color.Linear]{R: c[0], G: c[1], B: c[2], A: c[3]}
 	}
-	return lut
+}
+
+func (agg2d *Agg2D) refreshFillGradientLUTIfDirty() {
+	if !agg2d.fillGradientLUTDirty {
+		return
+	}
+	gradientColorsToLUTInPlace(agg2d.fillGradientLUT, agg2d.fillGradient)
+	agg2d.fillGradientLUTDirty = false
+}
+
+func (agg2d *Agg2D) refreshLineGradientLUTIfDirty() {
+	if !agg2d.lineGradientLUTDirty {
+		return
+	}
+	gradientColorsToLUTInPlace(agg2d.lineGradientLUT, agg2d.lineGradient)
+	agg2d.lineGradientLUTDirty = false
 }
 
 // Rendering methods
@@ -241,30 +251,32 @@ func (agg2d *Agg2D) renderLinearGradientFill(useFillGradient bool) {
 
 	// Choose the appropriate gradient settings
 	var gradientMatrix *transform.TransAffine
-	var gradientColors [256]Color
 	var d1, d2 float64
 
 	if useFillGradient {
 		gradientMatrix = agg2d.fillGradientMatrix
-		gradientColors = agg2d.fillGradient
 		d1 = agg2d.fillGradientD1
 		d2 = agg2d.fillGradientD2
 	} else {
 		gradientMatrix = agg2d.lineGradientMatrix
-		gradientColors = agg2d.lineGradient
 		d1 = agg2d.lineGradientD1
 		d2 = agg2d.lineGradientD2
 	}
 
-	// Build full 256-entry LUT — matches AGG C++ which passes m_fillGradient directly
-	// as the color function, so every pixel maps its distance index to a table entry.
-	lut := gradientColorsToLUT(gradientColors)
-
-	// Create span interpolator with the gradient transformation matrix
-	spanInterpolator := span.NewSpanInterpolatorLinearDefault(gradientMatrix)
-
-	// Create linear gradient span generator using the full LUT
-	spanGenerator := span.NewLinearGradientFromLUT(spanInterpolator, lut, d1, d2)
+	var spanGenerator renscan.SpanGeneratorInterface[color.RGBA8[color.Linear]]
+	if useFillGradient {
+		agg2d.refreshFillGradientLUTIfDirty()
+		agg2d.fillLinearSpanInterpolator.SetTransformer(gradientMatrix)
+		agg2d.fillLinearSpanGenerator.SetD1(d1)
+		agg2d.fillLinearSpanGenerator.SetD2(d2)
+		spanGenerator = agg2d.fillLinearSpanGenerator
+	} else {
+		agg2d.refreshLineGradientLUTIfDirty()
+		agg2d.lineLinearSpanInterpolator.SetTransformer(gradientMatrix)
+		agg2d.lineLinearSpanGenerator.SetD1(d1)
+		agg2d.lineLinearSpanGenerator.SetD2(d2)
+		spanGenerator = agg2d.lineLinearSpanGenerator
+	}
 
 	// Render scanlines using the span generator directly
 	rasAdapter := rasterizerAdapter{ras: agg2d.rasterizer}
@@ -281,30 +293,32 @@ func (agg2d *Agg2D) renderRadialGradientFill(useFillGradient bool) {
 
 	// Choose the appropriate gradient settings
 	var gradientMatrix *transform.TransAffine
-	var gradientColors [256]Color
 	var d1, d2 float64
 
 	if useFillGradient {
 		gradientMatrix = agg2d.fillGradientMatrix
-		gradientColors = agg2d.fillGradient
 		d1 = agg2d.fillGradientD1
 		d2 = agg2d.fillGradientD2
 	} else {
 		gradientMatrix = agg2d.lineGradientMatrix
-		gradientColors = agg2d.lineGradient
 		d1 = agg2d.lineGradientD1
 		d2 = agg2d.lineGradientD2
 	}
 
-	// Build full 256-entry LUT — matches AGG C++ which passes m_fillGradient directly
-	// as the color function, so every pixel maps its distance index to a table entry.
-	lut := gradientColorsToLUT(gradientColors)
-
-	// Create span interpolator with the gradient transformation matrix
-	spanInterpolator := span.NewSpanInterpolatorLinearDefault(gradientMatrix)
-
-	// Create radial gradient span generator using the full LUT
-	spanGenerator := span.NewRadialGradientFromLUT(spanInterpolator, lut, d1, d2)
+	var spanGenerator renscan.SpanGeneratorInterface[color.RGBA8[color.Linear]]
+	if useFillGradient {
+		agg2d.refreshFillGradientLUTIfDirty()
+		agg2d.fillRadialSpanInterpolator.SetTransformer(gradientMatrix)
+		agg2d.fillRadialSpanGenerator.SetD1(d1)
+		agg2d.fillRadialSpanGenerator.SetD2(d2)
+		spanGenerator = agg2d.fillRadialSpanGenerator
+	} else {
+		agg2d.refreshLineGradientLUTIfDirty()
+		agg2d.lineRadialSpanInterpolator.SetTransformer(gradientMatrix)
+		agg2d.lineRadialSpanGenerator.SetD1(d1)
+		agg2d.lineRadialSpanGenerator.SetD2(d2)
+		spanGenerator = agg2d.lineRadialSpanGenerator
+	}
 
 	// Render scanlines using the span generator directly
 	rasAdapter := rasterizerAdapter{ras: agg2d.rasterizer}

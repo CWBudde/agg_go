@@ -178,7 +178,42 @@ type Agg2D struct {
 	convStroke *conv.ConvStroke
 
 	// Span rendering components for gradients and patterns
-	spanAllocator *span.SpanAllocator[color.RGBA8[color.Linear]]
+	spanAllocator   *span.SpanAllocator[color.RGBA8[color.Linear]]
+	fillGradientLUT []color.RGBA8[color.Linear]
+	lineGradientLUT []color.RGBA8[color.Linear]
+
+	fillLinearSpanInterpolator *span.SpanInterpolatorLinear[*transform.TransAffine]
+	lineLinearSpanInterpolator *span.SpanInterpolatorLinear[*transform.TransAffine]
+	fillRadialSpanInterpolator *span.SpanInterpolatorLinear[*transform.TransAffine]
+	lineRadialSpanInterpolator *span.SpanInterpolatorLinear[*transform.TransAffine]
+
+	fillLinearSpanGenerator *span.SpanGradient[
+		color.RGBA8[color.Linear],
+		*span.SpanInterpolatorLinear[*transform.TransAffine],
+		span.GradientLinearX,
+		*span.GradientPrebuiltColorRGBA8[color.Linear],
+	]
+	lineLinearSpanGenerator *span.SpanGradient[
+		color.RGBA8[color.Linear],
+		*span.SpanInterpolatorLinear[*transform.TransAffine],
+		span.GradientLinearX,
+		*span.GradientPrebuiltColorRGBA8[color.Linear],
+	]
+	fillRadialSpanGenerator *span.SpanGradient[
+		color.RGBA8[color.Linear],
+		*span.SpanInterpolatorLinear[*transform.TransAffine],
+		span.GradientRadial,
+		*span.GradientPrebuiltColorRGBA8[color.Linear],
+	]
+	lineRadialSpanGenerator *span.SpanGradient[
+		color.RGBA8[color.Linear],
+		*span.SpanInterpolatorLinear[*transform.TransAffine],
+		span.GradientRadial,
+		*span.GradientPrebuiltColorRGBA8[color.Linear],
+	]
+
+	fillGradientLUTDirty bool
+	lineGradientLUTDirty bool
 
 	// Control point tracking for smooth curves
 	lastCtrlX, lastCtrlY float64
@@ -273,6 +308,41 @@ func NewAgg2D() *Agg2D {
 
 	// Initialize span allocator for gradient rendering
 	agg2d.spanAllocator = span.NewSpanAllocator[color.RGBA8[color.Linear]]()
+	agg2d.fillGradientLUT = make([]color.RGBA8[color.Linear], 256)
+	agg2d.lineGradientLUT = make([]color.RGBA8[color.Linear], 256)
+
+	agg2d.fillLinearSpanInterpolator = span.NewSpanInterpolatorLinearDefault(agg2d.fillGradientMatrix)
+	agg2d.lineLinearSpanInterpolator = span.NewSpanInterpolatorLinearDefault(agg2d.lineGradientMatrix)
+	agg2d.fillRadialSpanInterpolator = span.NewSpanInterpolatorLinearDefault(agg2d.fillGradientMatrix)
+	agg2d.lineRadialSpanInterpolator = span.NewSpanInterpolatorLinearDefault(agg2d.lineGradientMatrix)
+
+	agg2d.fillLinearSpanGenerator = span.NewLinearGradientFromLUT(
+		agg2d.fillLinearSpanInterpolator,
+		agg2d.fillGradientLUT,
+		agg2d.fillGradientD1,
+		agg2d.fillGradientD2,
+	)
+	agg2d.lineLinearSpanGenerator = span.NewLinearGradientFromLUT(
+		agg2d.lineLinearSpanInterpolator,
+		agg2d.lineGradientLUT,
+		agg2d.lineGradientD1,
+		agg2d.lineGradientD2,
+	)
+	agg2d.fillRadialSpanGenerator = span.NewRadialGradientFromLUT(
+		agg2d.fillRadialSpanInterpolator,
+		agg2d.fillGradientLUT,
+		agg2d.fillGradientD1,
+		agg2d.fillGradientD2,
+	)
+	agg2d.lineRadialSpanGenerator = span.NewRadialGradientFromLUT(
+		agg2d.lineRadialSpanInterpolator,
+		agg2d.lineGradientLUT,
+		agg2d.lineGradientD1,
+		agg2d.lineGradientD2,
+	)
+
+	agg2d.fillGradientLUTDirty = true
+	agg2d.lineGradientLUTDirty = true
 
 	// Set default line cap and join
 	if agg2d.convStroke != nil {

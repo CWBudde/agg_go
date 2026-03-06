@@ -62,6 +62,7 @@ func (agg2d *Agg2D) setupWorldRadialGradient(matrix *transform.TransAffine, x, y
 // This matches the C++ Agg2D::fillLinearGradient method.
 func (agg2d *Agg2D) FillLinearGradient(x1, y1, x2, y2 float64, c1, c2 Color, profile float64) {
 	buildProfileGradient(&agg2d.fillGradient, c1, c2, 128-int(profile*127.0), 128+int(profile*127.0))
+	agg2d.fillGradientLUTDirty = true
 
 	// Calculate gradient angle and setup transformation matrix
 	angle := math.Atan2(y2-y1, x2-x1)
@@ -87,6 +88,7 @@ func (agg2d *Agg2D) FillLinearGradient(x1, y1, x2, y2 float64, c1, c2 Color, pro
 // This matches the C++ Agg2D::lineLinearGradient method.
 func (agg2d *Agg2D) LineLinearGradient(x1, y1, x2, y2 float64, c1, c2 Color, profile float64) {
 	buildProfileGradient(&agg2d.lineGradient, c1, c2, 128-int(profile*128.0), 128+int(profile*128.0))
+	agg2d.lineGradientLUTDirty = true
 
 	// Calculate gradient angle and setup transformation matrix
 	angle := math.Atan2(y2-y1, x2-x1)
@@ -118,6 +120,7 @@ func (agg2d *Agg2D) LineLinearGradient(x1, y1, x2, y2 float64, c1, c2 Color, pro
 // This matches the C++ Agg2D::fillRadialGradient method.
 func (agg2d *Agg2D) FillRadialGradient(x, y, r float64, c1, c2 Color, profile float64) {
 	buildProfileGradient(&agg2d.fillGradient, c1, c2, 128-int(profile*127.0), 128+int(profile*127.0))
+	agg2d.fillGradientLUTDirty = true
 	agg2d.fillGradientD1, agg2d.fillGradientD2 = agg2d.setupWorldRadialGradient(agg2d.fillGradientMatrix, x, y, r)
 	agg2d.fillGradientFlag = Radial
 	agg2d.fillColor = NewColor(0, 0, 0, 255)
@@ -128,6 +131,7 @@ func (agg2d *Agg2D) FillRadialGradient(x, y, r float64, c1, c2 Color, profile fl
 // This matches the C++ Agg2D::lineRadialGradient method.
 func (agg2d *Agg2D) LineRadialGradient(x, y, r float64, c1, c2 Color, profile float64) {
 	buildProfileGradient(&agg2d.lineGradient, c1, c2, 128-int(profile*128.0), 128+int(profile*128.0))
+	agg2d.lineGradientLUTDirty = true
 	agg2d.lineGradientD1, agg2d.lineGradientD2 = agg2d.setupWorldRadialGradient(agg2d.lineGradientMatrix, x, y, r)
 	agg2d.lineGradientFlag = Radial
 	agg2d.lineColor = NewColor(0, 0, 0, 255)
@@ -139,6 +143,7 @@ func (agg2d *Agg2D) LineRadialGradient(x, y, r float64, c1, c2 Color, profile fl
 // This matches the C++ Agg2D::fillRadialGradient(x, y, r, c1, c2, c3) method.
 func (agg2d *Agg2D) FillRadialGradientMultiStop(x, y, r float64, c1, c2, c3 Color) {
 	buildThreeColorGradient(&agg2d.fillGradient, c1, c2, c3)
+	agg2d.fillGradientLUTDirty = true
 	agg2d.fillGradientD1, agg2d.fillGradientD2 = agg2d.setupWorldRadialGradient(agg2d.fillGradientMatrix, x, y, r)
 	agg2d.fillGradientFlag = Radial
 	agg2d.fillColor = NewColor(0, 0, 0, 255)
@@ -148,6 +153,7 @@ func (agg2d *Agg2D) FillRadialGradientMultiStop(x, y, r float64, c1, c2, c3 Colo
 // This matches the C++ Agg2D::lineRadialGradient(x, y, r, c1, c2, c3) method.
 func (agg2d *Agg2D) LineRadialGradientMultiStop(x, y, r float64, c1, c2, c3 Color) {
 	buildThreeColorGradient(&agg2d.lineGradient, c1, c2, c3)
+	agg2d.lineGradientLUTDirty = true
 	agg2d.lineGradientD1, agg2d.lineGradientD2 = agg2d.setupWorldRadialGradient(agg2d.lineGradientMatrix, x, y, r)
 	agg2d.lineGradientFlag = Radial
 	agg2d.lineColor = NewColor(0, 0, 0, 255)
