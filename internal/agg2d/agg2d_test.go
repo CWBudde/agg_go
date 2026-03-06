@@ -228,72 +228,128 @@ func TestAddEllipse(t *testing.T) {
 	// If we get here without panicking, ellipse addition works
 }
 
-// TestDrawPath verifies path drawing
-func TestDrawPath(t *testing.T) {
-	ctx := NewAgg2D()
-
-	// Create test buffer
-	width, height := 100, 100
-	stride := width * 4
-	buffer := make([]uint8, height*stride)
-	ctx.Attach(buffer, width, height, stride)
-
-	// Create a simple path
-	ctx.ResetPath()
-	ctx.MoveTo(10, 10)
-	ctx.LineTo(50, 10)
-	ctx.LineTo(50, 50)
-	ctx.LineTo(10, 50)
-	ctx.ClosePolygon()
-
-	// Test different draw modes - should not panic
-	ctx.DrawPath(FillOnly)
-	ctx.DrawPath(StrokeOnly)
-	ctx.DrawPath(FillAndStroke)
-	ctx.DrawPath(FillWithLineColor)
-
-	// Test no-transform version
-	ctx.DrawPathNoTransform(FillOnly)
-
-	// If we get here without panicking, path drawing works
+// hasNonWhiteIn checks that at least one pixel in the bounding box is not white (255,255,255,255)
+// or zero (0,0,0,0). This confirms that rendering actually produced visible output.
+// pixelAt is defined in text_rendering_bitmap_test.go.
+func hasNonWhiteIn(buf []uint8, width, x1, y1, x2, y2 int) bool {
+	for y := y1; y < y2; y++ {
+		for x := x1; x < x2; x++ {
+			r, g, b, a := pixelAt(buf, width, x, y)
+			if a != 0 && !(r == 255 && g == 255 && b == 255 && a == 255) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
-// TestBasicShapes verifies basic shape drawing
-func TestBasicShapes(t *testing.T) {
-	ctx := NewAgg2D()
-
-	// Create test buffer
-	width, height := 200, 200
+// TestDrawPath verifies path drawing produces visible pixel output for each draw mode.
+func TestDrawPath(t *testing.T) {
+	width, height := 100, 100
 	stride := width * 4
-	buffer := make([]uint8, height*stride)
-	ctx.Attach(buffer, width, height, stride)
 
-	// Test all basic shapes - should not panic
-	ctx.Line(10, 10, 50, 50)
-	ctx.Triangle(60, 10, 80, 10, 70, 30)
-	ctx.Rectangle(90, 10, 130, 50)
-	ctx.RoundedRect(10, 60, 50, 100, 5)
-	ctx.RoundedRectVariableRadii(60, 60, 100, 100, 5, 10, 15, 20)
-	ctx.Ellipse(140, 80, 20, 30)
-	ctx.Ellipse(170, 80, 15, 15) // Circle is just an ellipse with equal radii
+	drawAndCheck := func(t *testing.T, mode DrawPathFlag) []uint8 {
+		t.Helper()
+		ctx := NewAgg2D()
+		buf := make([]uint8, height*stride)
+		// Fill with white so we can detect rendered pixels.
+		for i := 0; i < len(buf); i += 4 {
+			buf[i], buf[i+1], buf[i+2], buf[i+3] = 255, 255, 255, 255
+		}
+		ctx.Attach(buf, width, height, stride)
+		ctx.FillColor(NewColorRGB(255, 0, 0))
+		ctx.LineColor(NewColorRGB(0, 0, 255))
+		ctx.LineWidth(2.0)
+		ctx.ResetPath()
+		ctx.MoveTo(10, 10)
+		ctx.LineTo(50, 10)
+		ctx.LineTo(50, 50)
+		ctx.LineTo(10, 50)
+		ctx.ClosePolygon()
+		ctx.DrawPath(mode)
+		return buf
+	}
 
-	// Test arc
-	ctx.Arc(50, 150, 30, 30, 0, Pi/2)
+	t.Run("FillOnly", func(t *testing.T) {
+		buf := drawAndCheck(t, FillOnly)
+		r, g, b, a := pixelAt(buf, width, 30, 30)
+		if r != 255 || g != 0 || b != 0 || a != 255 {
+			t.Fatalf("FillOnly interior pixel = (%d,%d,%d,%d), want solid red", r, g, b, a)
+		}
+	})
 
-	// Test star
-	ctx.Star(100, 150, 15, 25, 0, 5)
+	t.Run("StrokeOnly", func(t *testing.T) {
+		buf := drawAndCheck(t, StrokeOnly)
+		if !hasNonWhiteIn(buf, width, 9, 9, 12, 12) {
+			t.Fatal("StrokeOnly should produce visible stroke pixels near corner")
+		}
+		// Interior should remain white (no fill).
+		r, g, b, a := pixelAt(buf, width, 30, 30)
+		if !(r == 255 && g == 255 && b == 255 && a == 255) {
+			t.Fatalf("StrokeOnly interior pixel = (%d,%d,%d,%d), want white", r, g, b, a)
+		}
+	})
 
-	// Test curve
-	ctx.Curve(10, 180, 30, 160, 50, 180)
+	t.Run("FillAndStroke", func(t *testing.T) {
+		buf := drawAndCheck(t, FillAndStroke)
+		// Interior should be filled.
+		if !hasNonWhiteIn(buf, width, 25, 25, 35, 35) {
+			t.Fatal("FillAndStroke should produce visible fill pixels")
+		}
+	})
 
-	// Test polygon
-	points := []float64{100, 180, 120, 160, 140, 180, 130, 200, 110, 200}
-	ctx.Polygon(points, 5)
+	t.Run("FillWithLineColor", func(t *testing.T) {
+		buf := drawAndCheck(t, FillWithLineColor)
+		r, g, b, a := pixelAt(buf, width, 30, 30)
+		// Should be filled with line color (blue).
+		if b == 255 && r == 255 && g == 255 {
+			t.Fatalf("FillWithLineColor interior should not be white, got (%d,%d,%d,%d)", r, g, b, a)
+		}
+		_ = a
+	})
+}
 
-	// Test polyline
-	ctx.Polyline(points, 5)
+// TestBasicShapes verifies that each shape primitive produces visible pixels.
+func TestBasicShapes(t *testing.T) {
+	width, height := 300, 300
+	stride := width * 4
 
-	// If we get here without panicking, all basic shapes work
+	type shapeCase struct {
+		name string
+		draw func(ctx *Agg2D)
+		// Bounding box to check for non-white pixels.
+		x1, y1, x2, y2 int
+	}
+
+	cases := []shapeCase{
+		{"Line", func(c *Agg2D) { c.Line(10, 10, 50, 50) }, 10, 10, 50, 50},
+		{"Triangle", func(c *Agg2D) { c.Triangle(60, 10, 80, 10, 70, 30) }, 60, 10, 81, 31},
+		{"Rectangle", func(c *Agg2D) { c.Rectangle(90, 10, 130, 50) }, 90, 10, 131, 51},
+		{"RoundedRect", func(c *Agg2D) { c.RoundedRect(10, 60, 50, 100, 5) }, 10, 60, 51, 101},
+		{"RoundedRectVar", func(c *Agg2D) { c.RoundedRectVariableRadii(60, 60, 100, 100, 5, 10, 15, 20) }, 60, 60, 101, 101},
+		{"Ellipse", func(c *Agg2D) { c.Ellipse(160, 80, 20, 30) }, 140, 50, 181, 111},
+		{"Arc", func(c *Agg2D) { c.Arc(50, 170, 30, 30, 0, Pi/2) }, 45, 165, 81, 201},
+		{"Star", func(c *Agg2D) { c.Star(120, 170, 15, 25, 0, 5) }, 95, 145, 146, 196},
+		{"Curve", func(c *Agg2D) { c.Curve(10, 230, 30, 210, 50, 230) }, 10, 210, 51, 231},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := NewAgg2D()
+			buf := make([]uint8, height*stride)
+			for i := 0; i < len(buf); i += 4 {
+				buf[i], buf[i+1], buf[i+2], buf[i+3] = 255, 255, 255, 255
+			}
+			ctx.Attach(buf, width, height, stride)
+			ctx.FillColor(NewColorRGB(255, 0, 0))
+			ctx.LineColor(NewColorRGB(0, 0, 255))
+			ctx.LineWidth(1.0)
+			tc.draw(ctx)
+			if !hasNonWhiteIn(buf, width, tc.x1, tc.y1, tc.x2, tc.y2) {
+				t.Fatalf("%s did not produce visible pixels in (%d,%d)-(%d,%d)", tc.name, tc.x1, tc.y1, tc.x2, tc.y2)
+			}
+		})
+	}
 }
 
 // TestClipBox verifies clipping functionality

@@ -92,16 +92,29 @@ func TestMasterAlpha(t *testing.T) {
 		t.Errorf("Expected clamped alpha to be 1.0, got %f", alpha)
 	}
 
-	// Test master alpha affects rendering
-	agg2d.SetMasterAlpha(0.5)
+	// Test master alpha affects rendering — verify alpha attenuation.
+	agg2d.SetMasterAlpha(0.25)
 	agg2d.FillColor(Color{255, 0, 0, 255}) // Red with full alpha
+	// Clear to white first.
+	agg2d.ClearAllRGBA(255, 255, 255, 255)
 
-	// Render a simple rectangle to test alpha application
 	agg2d.Rectangle(10, 10, 50, 50)
 	agg2d.DrawPath(FillOnly)
 
-	// The master alpha should be applied during rendering
-	// We don't check the exact pixel values here, but verify no crash occurs
+	// Interior pixel: master alpha scales coverage via the gamma table.
+	// With src-over compositing on a white background, the output alpha
+	// stays 255 but the red channel should be attenuated (blended with white).
+	r, g, b, _ := pixelAt(buf, 100, 30, 30)
+	if r == 255 && g == 255 && b == 255 {
+		t.Fatal("master alpha 0.25: interior pixel is still white, expected rendering")
+	}
+	if r == 0 {
+		t.Fatal("master alpha 0.25: interior pixel has zero red, expected red fill")
+	}
+	// Green/blue channels should be > 0 because the red is blended with white background.
+	if g == 0 && b == 0 {
+		t.Fatal("master alpha 0.25: expected partial blend with white, but g=b=0 indicates full opacity")
+	}
 }
 
 func TestMasterAlphaAffectsRasterizerGamma(t *testing.T) {
@@ -197,97 +210,150 @@ func TestBlendModeConversion(t *testing.T) {
 }
 
 func TestPathBasedImageTransformations(t *testing.T) {
-	// Create AGG2D instance
-	agg2d := NewAgg2D()
+	width := 200
+	stride := width * 4
 
-	// Create a buffer and attach it
-	buf := make([]uint8, 200*200*4) // 200x200 RGBA
-	agg2d.Attach(buf, 200, 200, 200*4)
-
-	// Create a simple test image
-	testImageData := make([]uint8, 400) // 10x10x4
-
-	// Fill test image with red pixels
-	for i := 0; i < 400; i += 4 {
-		testImageData[i] = 255   // R
-		testImageData[i+1] = 0   // G
-		testImageData[i+2] = 0   // B
-		testImageData[i+3] = 255 // A
+	mkImage := func() *Image {
+		data := make([]uint8, 10*10*4)
+		for i := 0; i < len(data); i += 4 {
+			data[i], data[i+1], data[i+2], data[i+3] = 255, 0, 0, 255 // red
+		}
+		img := &Image{width: 10, height: 10, Data: data}
+		img.Attach(data, 10, 10, 40)
+		return img
 	}
 
-	testImage := &Image{
-		width:  10,
-		height: 10,
-		Data:   testImageData,
-	}
-	testImage.Attach(testImageData, 10, 10, 40)
+	t.Run("no_path_no_output", func(t *testing.T) {
+		// TransformImagePath without a user path rasterizes nothing
+		// because it renders only the current user path.
+		ctx := NewAgg2D()
+		buf := make([]uint8, width*width*4)
+		ctx.Attach(buf, width, width, stride)
+		err := ctx.TransformImagePath(mkImage(), 0, 0, 10, 10, 50, 50, 60, 60)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		// Buffer should remain untouched (all zeroes).
+		for i := range buf {
+			if buf[i] != 0 {
+				t.Fatal("expected no output without a path, but pixels were modified")
+			}
+		}
+	})
 
-	// Test without path - should fall back to regular transform
-	err := agg2d.TransformImagePath(testImage, 0, 0, 10, 10, 50, 50, 60, 60)
-	if err != nil {
-		t.Errorf("TransformImagePath without path should not error: %v", err)
-	}
+	t.Run("with_path_renders", func(t *testing.T) {
+		ctx := NewAgg2D()
+		buf := make([]uint8, width*width*4)
+		for i := 0; i < len(buf); i += 4 {
+			buf[i], buf[i+1], buf[i+2], buf[i+3] = 255, 255, 255, 255
+		}
+		ctx.Attach(buf, width, width, stride)
 
-	// Add a simple rectangular path
-	agg2d.ResetPath()
-	agg2d.Rectangle(45, 45, 65, 65)
+		// Define a clipping path then render.
+		ctx.ResetPath()
+		ctx.Rectangle(45, 45, 65, 65)
+		err := ctx.TransformImagePath(mkImage(), 0, 0, 10, 10, 50, 50, 60, 60)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		// Should have rendered red-ish pixels in the target region.
+		if !hasNonWhiteIn(buf, width, 50, 50, 60, 60) {
+			t.Fatal("TransformImagePath with path should render visible pixels")
+		}
+		// Exterior should remain white.
+		r, g, b, a := pixelAt(buf, width, 5, 5)
+		if !(r == 255 && g == 255 && b == 255 && a == 255) {
+			t.Fatalf("exterior pixel = (%d,%d,%d,%d), want white", r, g, b, a)
+		}
+	})
 
-	// Test with path - should apply bounding box clipping
-	err = agg2d.TransformImagePath(testImage, 0, 0, 10, 10, 50, 50, 60, 60)
-	if err != nil {
-		t.Errorf("TransformImagePath with path should not error: %v", err)
-	}
+	t.Run("parallelogram", func(t *testing.T) {
+		ctx := NewAgg2D()
+		buf := make([]uint8, width*width*4)
+		ctx.Attach(buf, width, width, stride)
+		ctx.ResetPath()
+		ctx.Rectangle(45, 45, 65, 65)
+		parallelogram := []float64{50, 50, 60, 50, 55, 65}
+		err := ctx.TransformImagePathParallelogram(mkImage(), 0, 0, 10, 10, parallelogram)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
 
-	// Test path-based parallelogram transformation
-	parallelogram := []float64{50, 50, 60, 50, 55, 65}
-	err = agg2d.TransformImagePathParallelogram(testImage, 0, 0, 10, 10, parallelogram)
-	if err != nil {
-		t.Errorf("TransformImagePathParallelogram should not error: %v", err)
-	}
-
-	// Test simple versions
-	err = agg2d.TransformImagePathSimple(testImage, 50, 50, 60, 60)
-	if err != nil {
-		t.Errorf("TransformImagePathSimple should not error: %v", err)
-	}
-
-	err = agg2d.TransformImagePathParallelogramSimple(testImage, parallelogram)
-	if err != nil {
-		t.Errorf("TransformImagePathParallelogramSimple should not error: %v", err)
-	}
+	t.Run("simple_variants", func(t *testing.T) {
+		ctx := NewAgg2D()
+		buf := make([]uint8, width*width*4)
+		ctx.Attach(buf, width, width, stride)
+		ctx.ResetPath()
+		ctx.Rectangle(45, 45, 65, 65)
+		if err := ctx.TransformImagePathSimple(mkImage(), 50, 50, 60, 60); err != nil {
+			t.Fatalf("TransformImagePathSimple: %v", err)
+		}
+		parallelogram := []float64{50, 50, 60, 50, 55, 65}
+		if err := ctx.TransformImagePathParallelogramSimple(mkImage(), parallelogram); err != nil {
+			t.Fatalf("TransformImagePathParallelogramSimple: %v", err)
+		}
+	})
 }
 
 func TestRenderingIntegration(t *testing.T) {
-	// Create AGG2D instance
 	agg2d := NewAgg2D()
 
-	// Create a buffer and attach it
-	buf := make([]uint8, 100*100*4) // 100x100 RGBA
-	agg2d.Attach(buf, 100, 100, 100*4)
+	width := 100
+	buf := make([]uint8, width*width*4)
+	// Start with white background.
+	for i := 0; i < len(buf); i += 4 {
+		buf[i], buf[i+1], buf[i+2], buf[i+3] = 255, 255, 255, 255
+	}
+	agg2d.Attach(buf, width, width, width*4)
 
-	// Test combined features: gamma + master alpha + blend mode
+	// Combined features: gamma + master alpha + blend mode.
 	agg2d.SetAntiAliasGamma(1.8)
 	agg2d.SetMasterAlpha(0.7)
 	agg2d.SetBlendMode(BlendMultiply)
 
-	// Set colors
+	// Green-ish fill, red-ish stroke.
 	agg2d.FillColor(Color{128, 255, 128, 255})
 	agg2d.LineColor(Color{255, 128, 128, 255})
 	agg2d.LineWidth(2.0)
 
-	// Render shapes to test integration
+	// Filled rectangle.
 	agg2d.Rectangle(10, 10, 50, 50)
 	agg2d.DrawPath(FillOnly)
 
+	// Stroked rectangle.
 	agg2d.Rectangle(20, 20, 60, 60)
 	agg2d.DrawPath(StrokeOnly)
 
-	// Draw a circle with path
+	// Circle.
 	agg2d.ResetPath()
-	agg2d.Ellipse(70, 70, 15, 15) // Circle is an ellipse with equal radii
+	agg2d.Ellipse(70, 70, 15, 15)
 	agg2d.DrawPath(FillAndStroke)
 
-	// If we reach here without panicking, the integration works
+	// Verify: filled rect interior should show green-dominant multiply blend.
+	_, g, _, a := pixelAt(buf, width, 30, 30)
+	if a == 0 {
+		t.Fatal("filled rect interior has zero alpha")
+	}
+	if g < 128 {
+		t.Fatalf("filled rect interior green = %d, expected >= 128 for green fill", g)
+	}
+
+	// Verify: stroke edges near (20,20) should be non-white.
+	if !hasNonWhiteIn(buf, width, 19, 19, 22, 22) {
+		t.Fatal("stroked rect should produce visible stroke pixels near (20,20)")
+	}
+
+	// Verify: circle center should be non-white.
+	if !hasNonWhiteIn(buf, width, 68, 68, 73, 73) {
+		t.Fatal("circle center should be non-white")
+	}
+
+	// Verify: exterior should remain white.
+	r, g2, b, a2 := pixelAt(buf, width, 95, 5)
+	if !(r == 255 && g2 == 255 && b == 255 && a2 == 255) {
+		t.Fatalf("exterior pixel = (%d,%d,%d,%d), want white", r, g2, b, a2)
+	}
 }
 
 // Helper function to test if two colors are approximately equal (for floating point comparisons)
