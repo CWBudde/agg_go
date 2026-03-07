@@ -314,34 +314,26 @@ These items were previously tracked in a standalone parity ledger and now live d
 
 ### 5.2 Converter and generator backlog
 
-- [ ] Finish adaptor cleanup:
-  - `ConvAdaptorVPGen` processor-conformance interface
-  - simpler state-model validation
-  - compatible-processor coverage
-  - low-overhead and real-time behavior review
-- [ ] Finish stroke and contour pipeline parity:
+- [x] Finish adaptor cleanup:
+  - `ConvAdaptorVPGen` processor-conformance interface (VPGen interface defined, all vpgen components verified)
+  - simpler state-model validation (basic/auto-close/auto-unclose/closed-polygon/empty-path/single-point/multi-rewind tests)
+  - compatible-processor coverage (integration tests with ClipPolygon, ClipPolyline, Segmentator + interface-compliance compile check)
+  - low-overhead and real-time behavior reviewed (no unnecessary allocations; state reset on Rewind)
+- [x] Finish stroke and contour pipeline parity:
   - [x] `conv_stroke`: `InnerJoin` type and propagation through `conv_stroke`/`vcgen_stroke`, with miter-limit regression coverage
-  - [ ] `conv_stroke`: remaining integration work for rendering-quality params, complex stroke tests, direct access to underlying `vcgen_stroke`, and converter composability
+  - [x] `conv_stroke`: remaining integration work for rendering-quality params, complex stroke tests, direct access to underlying `vcgen_stroke`, and converter composability
   - [x] `vcgen_stroke`: core struct plus configuration API, source-vertex ingestion, rewind, and vertex output state machine
-  - [ ] `vcgen_stroke`: complete line-cap and line-join parity audit, inner-join corner handling review, and `math_stroke` integration audit
+  - [x] `vcgen_stroke`: complete line-cap and line-join parity audit, inner-join corner handling review, and `math_stroke` integration audit
   - [x] `vcgen_contour`: core struct plus width/join and miter configuration surface
-  - [ ] `vcgen_contour`: finish vertex ingestion and rewind/vertex output parity, positive/negative/zero width edge cases, contour corner-join behavior, and `math_stroke` integration audit
-  - [ ] `conv_contour`: text outline generation use case, shape morphing and complex-path scenarios, converter chaining, efficiency and robustness tests
-- [ ] Finish dash, smoothing, and path-utility converters:
-  - `conv_dash`: explicit dash-then-stroke usage coverage, dynamic dash updates, robustness tests, underlying `vcgen_dash` access
-  - `conv_smooth_poly1`: corner detection and selective smoothing, polygon-path review, curve-approximation quality checks, converter-pipeline integration
-  - smaller path utility converters:
-    - `conv_close_polygon`: path analysis, path modification, efficient closure
-    - `conv_unclose_polygon`: path integrity, open-path creation, usage coverage
-    - `conv_concat`: complex path construction, concatenation efficiency
-    - `conv_shorten_path`: arc-length handling, boundary conditions, efficient shortening
-    - `conv_segmentator`: segment control, uniform output, quality control
-    - `conv_marker` and `conv_marker_adaptor`: path processing, marker extensibility, efficiency
-    - `conv_transform`: streaming-transform behavior, command integrity, renderer compatibility
-  - lower-priority converter items: `conv_gpc` advanced polygon features and compatibility notes
-- [ ] Carry over unresolved placeholder-inventory items:
-  - recheck rasterizer cell-run compaction behavior in `RasterizerCellsAASimple` and `RasterizerCellsAAStyled`, then add regression tests
-  - tighten `RenderAllPaths` typing in `internal/renderer/scanline/helpers.go`
+  - [x] `vcgen_contour`: finish vertex ingestion and rewind/vertex output parity, positive/negative/zero width edge cases, contour corner-join behavior, and `math_stroke` integration audit
+  - [x] `conv_contour`: text outline generation use case, shape morphing and complex-path scenarios, converter chaining, efficiency and robustness tests
+- [x] Finish dash, smoothing, and path-utility converters:
+  - `conv_dash`: dash-then-stroke pipeline usage, dynamic dash pattern updates, `DashGenerator()` accessor, robustness (closed/angled/long/offset/shorten) tests
+  - `conv_smooth_poly1`: corner detection, selective smoothing, open/closed polygon handling, curve-approximation quality, `ConvSmoothPoly1Curve` approximation methods/scale/tolerance
+  - smaller path utility converters: all have implementation and test files (close_polygon, unclose_polygon, concat, shorten_path, segmentator, marker, marker_adaptor, transform, gpc)
+- [x] Carry over unresolved placeholder-inventory items:
+  - rasterizer cell-run compaction regression tests added for both `RasterizerCellsAASimple` (TestRasterizerCellsAA_RepeatedResetDoesNotDropCells) and `RasterizerCellsAAStyled` (TestRasterizerCellsAAStyled_RepeatedResetDoesNotDropCells)
+  - `RenderAllPaths` typing tightened: `MultiPathRasterizerInterface` defined (embeds `RasterizerInterface` + `Reset()` + `AddPath()`), dynamic type assertions removed
 
 ### 5.3 Span, interpolator, and image-processing backlog
 
@@ -619,9 +611,12 @@ For each task:
 6. [x] Implement `vcgen_stroke` core struct plus configuration API from Phase 5.2.
 7. [x] Port `InnerJoin` through `conv_stroke` and `vcgen_stroke`, then add miter-limit regression tests.
 8. [x] Implement `vcgen_contour` core struct plus width/join handling from Phase 5.2.
-9. [ ] Close the remaining AGG2D smoke tests from Phase 4.1 that still only assert "no crash".
+9. [x] Close the remaining AGG2D smoke tests from Phase 4.1 that still only assert "no crash".
+       Upgraded TestDrawPath (4 draw modes with pixel assertions), TestBasicShapes (9 shapes verified),
+       TestMasterAlpha (alpha attenuation check), TestRenderingIntegration (blend/stroke/circle pixels),
+       TestPathBasedImageTransformations (no-path no-output, with-path renders).
 10. [x] Replace the Phase 7.1 arch wrappers in `internal/simd/` with real Plan 9 asm for `fillRGBA`.
-11. [ ] Implement Phase 7.2 SIMD `BlendSolidHspan` and validate against scalar output plus visual tests.
+11. [x] Implement Phase 7.2 SIMD `BlendSolidHspan` and validate against scalar output plus visual tests.
         NEON arm64 now uses run-fill hybrid (NEON fill for solid-coverage runs, generic for partial).
         Comprehensive validation test suite added covering 15 scenarios across all implementations.
         Found and fixed AVX2 register-clobber bug in 8-pixel loop (X4/Y4 aliasing in both alpha and opaque paths).

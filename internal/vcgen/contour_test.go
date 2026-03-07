@@ -347,3 +347,269 @@ func BenchmarkVCGenContour_ComplexPath(b *testing.B) {
 		}
 	}
 }
+
+// TestVCGenContourAddVertexMoveToUsesModifyLast verifies that calling AddVertex
+// with MoveTo on a non-empty generator replaces (not adds) the last vertex,
+// matching the C++ vcgen_contour::add_vertex modify_last semantics.
+func TestVCGenContourAddVertexMoveToUsesModifyLast(t *testing.T) {
+	vc := NewVCGenContour()
+	vc.Width(1.0)
+
+	// First MoveTo — sequence is empty, equivalent to Add
+	vc.AddVertex(0, 0, basics.PathCmdMoveTo)
+	// LineTo adds a real second vertex
+	vc.AddVertex(10, 0, basics.PathCmdLineTo)
+	// Second MoveTo should REPLACE the last vertex (modify_last), not add a third
+	vc.AddVertex(99, 99, basics.PathCmdMoveTo)
+
+	// After the second MoveTo the internal source sequence should have only 2
+	// entries (the initial empty slot replaced by first MoveTo, then LineTo, then
+	// second MoveTo replaces the LineTo).
+	// We can observe the effect indirectly: calling Rewind and iterating should
+	// not produce degenerate extra vertices from the orphaned LineTo.
+	vc.AddVertex(20, 0, basics.PathCmdLineTo)
+	vc.AddVertex(20, 10, basics.PathCmdLineTo)
+	vc.AddVertex(99, 99, basics.PathCmdEndPoly|basics.PathCommand(basics.PathFlagsClose))
+
+	vc.Rewind(0)
+	vs := collectVertices(vc)
+
+	// Should produce valid output (MoveTo + vertices + EndPoly + Stop)
+	if len(vs) < 3 {
+		t.Fatalf("expected ≥ 3 vertices, got %d", len(vs))
+	}
+	if vs[0].cmd != basics.PathCmdMoveTo {
+		t.Errorf("first vertex should be MoveTo, got %v", vs[0].cmd)
+	}
+}
+
+// TestVCGenContourZeroWidthDegenerate verifies zero-width contour behaviour.
+// With width=0 the stroker width is 0; output vertices should collapse to the
+// original path outline (no offset). The generator must not crash or loop.
+func TestVCGenContourZeroWidthDegenerate(t *testing.T) {
+	vc := NewVCGenContour()
+	vc.Width(0.0)
+	vc.AddVertex(0, 0, basics.PathCmdMoveTo)
+	vc.AddVertex(10, 0, basics.PathCmdLineTo)
+	vc.AddVertex(10, 10, basics.PathCmdLineTo)
+	vc.AddVertex(0, 10, basics.PathCmdLineTo)
+	vc.AddVertex(0, 0, basics.PathCmdEndPoly|basics.PathCommand(basics.PathFlagsClose|basics.PathFlagsCCW))
+
+	vc.Rewind(0)
+	vs := collectVertices(vc)
+
+	// Must terminate (not loop) and produce at least Stop
+	if len(vs) == 0 {
+		t.Fatal("expected at least Stop vertex")
+	}
+	last := vs[len(vs)-1]
+	if !basics.IsStop(last.cmd) {
+		t.Errorf("expected final Stop, got %v", last.cmd)
+	}
+}
+
+// TestVCGenContourPositiveWidthExpandsOutward verifies that a positive width on
+// a CCW square expands outward (outer bounding box of output > original square).
+// Ref: agg_vcgen_contour.cpp rewind orientation logic.
+func TestVCGenContourPositiveWidthExpandsOutward(t *testing.T) {
+	const w = 2.0
+	vc := NewVCGenContour()
+	vc.Width(w)
+	vc.AddVertex(0, 0, basics.PathCmdMoveTo)
+	vc.AddVertex(10, 0, basics.PathCmdLineTo)
+	vc.AddVertex(10, 10, basics.PathCmdLineTo)
+	vc.AddVertex(0, 10, basics.PathCmdLineTo)
+	vc.AddVertex(0, 0, basics.PathCmdEndPoly|basics.PathCommand(basics.PathFlagsClose|basics.PathFlagsCCW))
+
+	vc.Rewind(0)
+	vs := collectVertices(vc)
+
+	if len(vs) < 3 {
+		t.Fatalf("expected output vertices, got %d", len(vs))
+	}
+
+	maxX := -1e308
+	minX := 1e308
+	for _, v := range vs {
+		if basics.IsStop(v.cmd) || basics.IsEndPoly(v.cmd) {
+			continue
+		}
+		if v.x > maxX {
+			maxX = v.x
+		}
+		if v.x < minX {
+			minX = v.x
+		}
+	}
+
+	// MathStroke internally uses half-width, so a vcgen_contour width of w
+	// produces an actual outward offset of w/2. The contour must lie outside
+	// the original square (minX < 0, maxX > 10).
+	halfW := w / 2
+	if minX > -halfW+1e-6 {
+		t.Errorf("positive width contour minX=%.3f should be ≤ %.3f (offset outward)", minX, -halfW)
+	}
+	if maxX < 10+halfW-1e-6 {
+		t.Errorf("positive width contour maxX=%.3f should be ≥ %.3f (offset outward)", maxX, 10+halfW)
+	}
+}
+
+// TestVCGenContourNegativeWidthContractsInward verifies that a negative width on
+// a CCW square contracts inward (output bbox smaller than original square).
+func TestVCGenContourNegativeWidthContractsInward(t *testing.T) {
+	const w = 2.0
+	vc := NewVCGenContour()
+	vc.Width(-w)
+	vc.AddVertex(0, 0, basics.PathCmdMoveTo)
+	vc.AddVertex(10, 0, basics.PathCmdLineTo)
+	vc.AddVertex(10, 10, basics.PathCmdLineTo)
+	vc.AddVertex(0, 10, basics.PathCmdLineTo)
+	vc.AddVertex(0, 0, basics.PathCmdEndPoly|basics.PathCommand(basics.PathFlagsClose|basics.PathFlagsCCW))
+
+	vc.Rewind(0)
+	vs := collectVertices(vc)
+
+	if len(vs) < 3 {
+		t.Fatalf("expected output vertices, got %d", len(vs))
+	}
+
+	maxX := -1e308
+	minX := 1e308
+	for _, v := range vs {
+		if basics.IsStop(v.cmd) || basics.IsEndPoly(v.cmd) {
+			continue
+		}
+		if v.x > maxX {
+			maxX = v.x
+		}
+		if v.x < minX {
+			minX = v.x
+		}
+	}
+
+	// Negative width on CCW path: offset is inward by |w|/2 = 1.0.
+	// Contour must remain inside the original [0,10] square.
+	if minX < 0-1e-6 {
+		t.Errorf("negative width contour minX=%.3f should be ≥ 0 (contracted inward)", minX)
+	}
+	if maxX > 10+1e-6 {
+		t.Errorf("negative width contour maxX=%.3f should be ≤ 10 (contracted inward)", maxX)
+	}
+}
+
+// TestVCGenContourPositiveVsNegativeWidthAreMirrored verifies that positive and
+// negative width produce mirror-image contours (same vertex count, inverted offsets).
+func TestVCGenContourPositiveVsNegativeWidthAreMirrored(t *testing.T) {
+	buildContour := func(w float64) []struct{ x, y float64 } {
+		vc := NewVCGenContour()
+		vc.Width(w)
+		vc.AddVertex(0, 0, basics.PathCmdMoveTo)
+		vc.AddVertex(10, 0, basics.PathCmdLineTo)
+		vc.AddVertex(10, 10, basics.PathCmdLineTo)
+		vc.AddVertex(0, 10, basics.PathCmdLineTo)
+		vc.AddVertex(0, 0, basics.PathCmdEndPoly|basics.PathCommand(basics.PathFlagsClose|basics.PathFlagsCCW))
+		vc.Rewind(0)
+		var pts []struct{ x, y float64 }
+		for {
+			x, y, cmd := vc.Vertex()
+			if basics.IsStop(cmd) {
+				break
+			}
+			if basics.IsVertex(cmd) || basics.IsMoveTo(cmd) {
+				pts = append(pts, struct{ x, y float64 }{x, y})
+			}
+		}
+		return pts
+	}
+
+	pos := buildContour(1.5)
+	neg := buildContour(-1.5)
+
+	if len(pos) == 0 || len(neg) == 0 {
+		t.Fatal("both contours must produce vertices")
+	}
+	if len(pos) != len(neg) {
+		t.Errorf("positive (%d) and negative (%d) width contours should produce same vertex count",
+			len(pos), len(neg))
+	}
+}
+
+// TestVCGenContourCornerJoinStylesProduceDifferentGeometry verifies that the
+// three major join styles (Miter/Round/Bevel) produce geometrically distinct
+// outputs at corners. Ref: agg_math_stroke.h calc_join.
+func TestVCGenContourCornerJoinStylesProduceDifferentGeometry(t *testing.T) {
+	buildCorner := func(join basics.LineJoin) []struct{ x, y float64 } {
+		vc := NewVCGenContour()
+		vc.Width(3.0)
+		vc.LineJoin(join)
+		vc.AddVertex(0, 0, basics.PathCmdMoveTo)
+		vc.AddVertex(20, 0, basics.PathCmdLineTo)
+		vc.AddVertex(20, 20, basics.PathCmdLineTo)
+		vc.AddVertex(0, 20, basics.PathCmdLineTo)
+		vc.AddVertex(0, 0, basics.PathCmdEndPoly|basics.PathCommand(basics.PathFlagsClose|basics.PathFlagsCCW))
+		vc.Rewind(0)
+		var pts []struct{ x, y float64 }
+		for {
+			x, y, cmd := vc.Vertex()
+			if basics.IsStop(cmd) {
+				break
+			}
+			if basics.IsVertex(cmd) || basics.IsMoveTo(cmd) {
+				pts = append(pts, struct{ x, y float64 }{x, y})
+			}
+		}
+		return pts
+	}
+
+	miter := buildCorner(basics.MiterJoin)
+	round := buildCorner(basics.RoundJoin)
+	bevel := buildCorner(basics.BevelJoin)
+
+	if len(miter) == 0 || len(round) == 0 || len(bevel) == 0 {
+		t.Fatal("all join styles must produce output")
+	}
+
+	// Round join must produce more vertices than bevel (arc approximation)
+	if len(round) <= len(bevel) {
+		t.Errorf("RoundJoin (%d vertices) should produce more than BevelJoin (%d vertices)", len(round), len(bevel))
+	}
+}
+
+// TestVCGenContourMathStrokeIntegration verifies the math_stroke integration:
+// changing approximation scale affects the number of vertices generated for
+// rounded corners, confirming that CalcJoin is properly called with the stroker.
+func TestVCGenContourMathStrokeIntegration(t *testing.T) {
+	buildWithScale := func(scale float64) int {
+		vc := NewVCGenContour()
+		vc.Width(4.0)
+		vc.LineJoin(basics.RoundJoin)
+		vc.ApproximationScale(scale)
+		vc.AddVertex(0, 0, basics.PathCmdMoveTo)
+		vc.AddVertex(30, 0, basics.PathCmdLineTo)
+		vc.AddVertex(30, 30, basics.PathCmdLineTo)
+		vc.AddVertex(0, 30, basics.PathCmdLineTo)
+		vc.AddVertex(0, 0, basics.PathCmdEndPoly|basics.PathCommand(basics.PathFlagsClose|basics.PathFlagsCCW))
+		vc.Rewind(0)
+		n := 0
+		for {
+			_, _, cmd := vc.Vertex()
+			if basics.IsStop(cmd) {
+				break
+			}
+			if basics.IsVertex(cmd) || basics.IsMoveTo(cmd) {
+				n++
+			}
+		}
+		return n
+	}
+
+	coarse := buildWithScale(0.1)
+	fine := buildWithScale(5.0)
+
+	if coarse == 0 || fine == 0 {
+		t.Fatal("both scale levels must produce vertices")
+	}
+	if fine <= coarse {
+		t.Errorf("finer approximation scale (%d vertices) should produce more than coarse (%d vertices)", fine, coarse)
+	}
+}

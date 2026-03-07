@@ -371,3 +371,254 @@ func TestVCGenStrokeShortenReducesExtent(t *testing.T) {
 		t.Fatalf("expected shortened stroke max X < base (got %.3f vs %.3f)", maxXShort, maxXBase)
 	}
 }
+
+// collectStrokeVertices drains all vertices from the stroke generator and returns them.
+func collectStrokeVertices(vg *VCGenStroke) []struct {
+	x, y float64
+	cmd  basics.PathCommand
+} {
+	var out []struct {
+		x, y float64
+		cmd  basics.PathCommand
+	}
+	for {
+		x, y, cmd := vg.Vertex()
+		out = append(out, struct {
+			x, y float64
+			cmd  basics.PathCommand
+		}{x, y, cmd})
+		if basics.IsStop(cmd) {
+			break
+		}
+	}
+	return out
+}
+
+// TestVCGenStrokeButtCapGeometry verifies that ButtCap does not extend beyond
+// the endpoints of the path (no overshoot). Ref: agg_vcgen_stroke.cpp calc_cap.
+func TestVCGenStrokeButtCapGeometry(t *testing.T) {
+	vg := NewVCGenStroke()
+	vg.SetWidth(4.0)
+	vg.SetLineCap(basics.ButtCap)
+	vg.AddVertex(0, 0, basics.PathCmdMoveTo)
+	vg.AddVertex(20, 0, basics.PathCmdLineTo)
+	vg.Rewind(0)
+
+	vs := collectStrokeVertices(vg)
+
+	maxX := -1e308
+	minX := 1e308
+	for _, v := range vs {
+		if basics.IsStop(v.cmd) {
+			continue
+		}
+		if v.x > maxX {
+			maxX = v.x
+		}
+		if v.x < minX {
+			minX = v.x
+		}
+	}
+
+	// ButtCap must not extend beyond path endpoints (within floating-point tolerance)
+	if minX < -1e-9 {
+		t.Errorf("ButtCap: min X %.6f < 0, cap overshoots start endpoint", minX)
+	}
+	if maxX > 20+1e-9 {
+		t.Errorf("ButtCap: max X %.6f > 20, cap overshoots end endpoint", maxX)
+	}
+}
+
+// TestVCGenStrokeSquareCapGeometry verifies that SquareCap extends exactly
+// half-width beyond each endpoint. Ref: agg_math_stroke.h calc_cap.
+func TestVCGenStrokeSquareCapGeometry(t *testing.T) {
+	const halfW = 2.0
+	vg := NewVCGenStroke()
+	vg.SetWidth(2 * halfW)
+	vg.SetLineCap(basics.SquareCap)
+	vg.AddVertex(0, 0, basics.PathCmdMoveTo)
+	vg.AddVertex(20, 0, basics.PathCmdLineTo)
+	vg.Rewind(0)
+
+	vs := collectStrokeVertices(vg)
+
+	maxX := -1e308
+	minX := 1e308
+	for _, v := range vs {
+		if basics.IsStop(v.cmd) {
+			continue
+		}
+		if v.x > maxX {
+			maxX = v.x
+		}
+		if v.x < minX {
+			minX = v.x
+		}
+	}
+
+	// SquareCap must extend by exactly half-width = 2.0 beyond each endpoint
+	if minX > -halfW+1e-6 {
+		t.Errorf("SquareCap: min X %.6f should be ≈ %.6f (half-width extension at start)", minX, -halfW)
+	}
+	if maxX < 20+halfW-1e-6 {
+		t.Errorf("SquareCap: max X %.6f should be ≈ %.6f (half-width extension at end)", maxX, 20+halfW)
+	}
+}
+
+// TestVCGenStrokeRoundCapMoreVerticesThanButt verifies that RoundCap generates
+// more outline vertices than ButtCap for the same geometry (arc approximation).
+func TestVCGenStrokeRoundCapMoreVerticesThanButt(t *testing.T) {
+	countLineVertices := func(cap basics.LineCap) int {
+		vg := NewVCGenStroke()
+		vg.SetWidth(4.0)
+		vg.SetLineCap(cap)
+		vg.AddVertex(0, 0, basics.PathCmdMoveTo)
+		vg.AddVertex(20, 0, basics.PathCmdLineTo)
+		vg.Rewind(0)
+		n := 0
+		for {
+			_, _, cmd := vg.Vertex()
+			if basics.IsStop(cmd) {
+				break
+			}
+			if basics.IsVertex(cmd) || basics.IsMoveTo(cmd) {
+				n++
+			}
+		}
+		return n
+	}
+
+	buttCount := countLineVertices(basics.ButtCap)
+	roundCount := countLineVertices(basics.RoundCap)
+
+	if roundCount <= buttCount {
+		t.Errorf("RoundCap (%d vertices) should generate more than ButtCap (%d vertices)", roundCount, buttCount)
+	}
+}
+
+// TestVCGenStrokeMiterLimitClipping verifies that the miter limit affects join
+// geometry. For a 90° turn with width 4:
+//   - miter distance = sqrt(2) * half-width ≈ 2.83 (ratio ≈ 1.41)
+//   - limit 1.1 clips to bevel (2 outer vertices per join)
+//   - limit 4.0 keeps the miter point (1 outer vertex per join)
+//
+// Both must produce output; differing limits must produce different geometry.
+// Ref: agg_math_stroke.h calc_join miter-limit branch.
+func TestVCGenStrokeMiterLimitClipping(t *testing.T) {
+	buildAngle := func(miterLimit float64) int {
+		vg := NewVCGenStroke()
+		vg.SetWidth(4.0)
+		vg.SetLineJoin(basics.MiterJoin)
+		vg.SetMiterLimit(miterLimit)
+		vg.AddVertex(0, 0, basics.PathCmdMoveTo)
+		vg.AddVertex(10, 0, basics.PathCmdLineTo)
+		vg.AddVertex(10, 10, basics.PathCmdLineTo) // 90° turn
+		vg.Rewind(0)
+		n := 0
+		for {
+			_, _, cmd := vg.Vertex()
+			if basics.IsStop(cmd) {
+				break
+			}
+			if basics.IsVertex(cmd) || basics.IsMoveTo(cmd) {
+				n++
+			}
+		}
+		return n
+	}
+
+	// For a 90° join: miter ratio ≈ 1.41; limit 1.1 clips to bevel, limit 4.0 keeps miter.
+	// Bevel (clipped) uses 2 outer-side vertices; miter uses 1. They must differ.
+	lowLimit := buildAngle(1.1)  // clips to bevel → 2 outer vertices
+	highLimit := buildAngle(4.0) // keeps miter tip → 1 outer vertex
+
+	if lowLimit == 0 || highLimit == 0 {
+		t.Fatalf("both miter limits must produce vertices (low=%d, high=%d)", lowLimit, highLimit)
+	}
+	if lowLimit == highLimit {
+		t.Errorf("different miter limits should produce different vertex counts (both gave %d)", lowLimit)
+	}
+}
+
+// TestVCGenStrokeInnerJoinCornerHandling verifies that all four InnerJoin modes
+// successfully render a concave corner (inner side of an acute-angle bend).
+// Ref: agg_math_stroke.h calc_join inner-join branch.
+func TestVCGenStrokeInnerJoinCornerHandling(t *testing.T) {
+	innerJoins := []struct {
+		name string
+		ij   basics.InnerJoin
+	}{
+		{"InnerBevel", basics.InnerBevel},
+		{"InnerMiter", basics.InnerMiter},
+		{"InnerJag", basics.InnerJag},
+		{"InnerRound", basics.InnerRound},
+	}
+
+	for _, tc := range innerJoins {
+		t.Run(tc.name, func(t *testing.T) {
+			// Acute V-shape: inner side gets a concave corner
+			vg := NewVCGenStroke()
+			vg.SetWidth(6.0)
+			vg.SetLineJoin(basics.MiterJoin)
+			vg.SetInnerJoin(tc.ij)
+			vg.AddVertex(0, 0, basics.PathCmdMoveTo)
+			vg.AddVertex(10, 0, basics.PathCmdLineTo)
+			vg.AddVertex(5, 4, basics.PathCmdLineTo) // shallow V
+
+			vg.Rewind(0)
+			vs := collectStrokeVertices(vg)
+
+			// Must produce at least MoveTo + a few vertices + Stop
+			nonStop := 0
+			for _, v := range vs {
+				if !basics.IsStop(v.cmd) {
+					nonStop++
+				}
+			}
+			if nonStop < 4 {
+				t.Errorf("%s: expected ≥ 4 non-stop vertices, got %d", tc.name, nonStop)
+			}
+		})
+	}
+}
+
+// TestVCGenStrokeClosedPathWidthSymmetry verifies that for a closed square path
+// the stroke outline is symmetric around the original edges (equal offsets on
+// both sides). Ref: agg_vcgen_stroke.cpp outline1 / outline2 paths.
+func TestVCGenStrokeClosedPathWidthSymmetry(t *testing.T) {
+	const halfW = 1.5
+	vg := NewVCGenStroke()
+	vg.SetWidth(2 * halfW)
+	vg.SetLineJoin(basics.BevelJoin)
+	vg.AddVertex(0, 0, basics.PathCmdMoveTo)
+	vg.AddVertex(10, 0, basics.PathCmdLineTo)
+	vg.AddVertex(10, 10, basics.PathCmdLineTo)
+	vg.AddVertex(0, 10, basics.PathCmdLineTo)
+	vg.AddVertex(0, 0, basics.PathCommand(uint32(basics.PathCmdEndPoly)|uint32(basics.PathFlagsClose)))
+	vg.Rewind(0)
+
+	vs := collectStrokeVertices(vg)
+
+	// Collect Y coords on the bottom edge (where Y should cluster near ±halfW)
+	minY := 1e308
+	maxY := -1e308
+	for _, v := range vs {
+		if basics.IsStop(v.cmd) {
+			continue
+		}
+		if v.y < minY {
+			minY = v.y
+		}
+		if v.y > maxY {
+			maxY = v.y
+		}
+	}
+
+	// Outer edge should extend beyond 10 and inner below 0
+	if maxY < 10+halfW-1.0 {
+		t.Errorf("Outer edge maxY %.3f, expected ≥ %.3f", maxY, 10+halfW-1.0)
+	}
+	if minY > -halfW+1.0 {
+		t.Errorf("Inner edge minY %.3f, expected ≤ %.3f", minY, -halfW+1.0)
+	}
+}

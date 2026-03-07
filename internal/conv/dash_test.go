@@ -286,6 +286,107 @@ func TestConvDashAngledLine(t *testing.T) {
 	}
 }
 
+// TestConvDashThenStrokeUsage tests the canonical dash-then-stroke pipeline.
+// ConvDash should produce open line segments, and ConvStroke should cap each segment.
+func TestConvDashThenStrokeUsage(t *testing.T) {
+	vertices := []Vertex{
+		{X: 0, Y: 0, Cmd: basics.PathCmdMoveTo},
+		{X: 100, Y: 0, Cmd: basics.PathCmdLineTo},
+	}
+	source := NewMockVertexSource(vertices)
+
+	dash := NewConvDash(source)
+	dash.AddDash(20.0, 10.0) // 20-unit dash, 10-unit gap → ~4 dashes on 100-unit line
+
+	stroke := NewConvStroke(dash)
+	stroke.SetWidth(4.0)
+	stroke.SetLineCap(basics.ButtCap)
+
+	strokeVertices := collectVertices(stroke)
+
+	if len(strokeVertices) < 4 {
+		t.Errorf("Expected stroke vertices for dashed line, got %d", len(strokeVertices))
+	}
+
+	// Stroke output must start with a MoveTo
+	if strokeVertices[0].Cmd != basics.PathCmdMoveTo {
+		t.Errorf("Expected first stroke vertex to be MoveTo, got %v", strokeVertices[0].Cmd)
+	}
+
+	// All X coordinates must stay within [0, 100] for ButtCap on a horizontal line
+	for _, v := range strokeVertices {
+		if v.X < -0.5 || v.X > 100.5 {
+			t.Errorf("Stroke vertex x=%.2f outside path bounds for ButtCap", v.X)
+		}
+	}
+}
+
+// TestConvDashDynamicUpdate tests that the dash pattern can be changed between rewinds.
+func TestConvDashDynamicUpdate(t *testing.T) {
+	vertices := []Vertex{
+		{X: 0, Y: 0, Cmd: basics.PathCmdMoveTo},
+		{X: 90, Y: 0, Cmd: basics.PathCmdLineTo},
+	}
+	source := NewMockVertexSource(vertices)
+
+	dash := NewConvDash(source)
+	dash.AddDash(10.0, 5.0) // pattern: 10 dash, 5 gap
+	first := collectVertices(dash)
+
+	// Replace pattern and re-collect
+	dash.RemoveAllDashes()
+	dash.AddDash(30.0, 5.0) // longer dashes → fewer segments
+	second := collectVertices(dash)
+
+	if len(first) == 0 || len(second) == 0 {
+		t.Fatal("Both dash patterns should produce vertices")
+	}
+
+	// Shorter dashes produce more move_to events
+	firstMoveTos := 0
+	for _, v := range first {
+		if v.Cmd == basics.PathCmdMoveTo {
+			firstMoveTos++
+		}
+	}
+	secondMoveTos := 0
+	for _, v := range second {
+		if v.Cmd == basics.PathCmdMoveTo {
+			secondMoveTos++
+		}
+	}
+	if firstMoveTos <= secondMoveTos {
+		t.Errorf("Shorter dashes (10+5) should create more segments than longer (30+5): got %d vs %d move-tos",
+			firstMoveTos, secondMoveTos)
+	}
+}
+
+// TestConvDashGeneratorAccess verifies the DashGenerator accessor returns the live generator.
+func TestConvDashGeneratorAccess(t *testing.T) {
+	source := NewMockVertexSource([]Vertex{
+		{X: 0, Y: 0, Cmd: basics.PathCmdMoveTo},
+		{X: 60, Y: 0, Cmd: basics.PathCmdLineTo},
+	})
+
+	dash := NewConvDash(source)
+	gen := dash.DashGenerator()
+	if gen == nil {
+		t.Fatal("DashGenerator() returned nil")
+	}
+
+	// Mutations through the generator must be visible in the dash converter output
+	gen.AddDash(10.0, 5.0)
+	verts := collectVertices(dash)
+	if len(verts) == 0 {
+		t.Error("Expected vertices after adding dash via generator accessor")
+	}
+
+	// NumDashes should match: 1 pattern = 2 entries (dash+gap)
+	if dash.NumDashes() != 2 {
+		t.Errorf("Expected NumDashes=2 (one dash+gap pair), got %d", dash.NumDashes())
+	}
+}
+
 // OutputVertex represents a vertex with coordinates and command for output
 type OutputVertex struct {
 	X, Y float64

@@ -79,8 +79,7 @@ func (vc *VCGenContour) AddVertex(x, y float64, cmd basics.PathCommand) {
 	vc.status = contourInitial
 
 	if basics.IsMoveTo(cmd) {
-		// For MoveTo, start a new path by adding the vertex
-		vc.srcVertices.Add(array.VertexDist{X: x, Y: y, Dist: 0})
+		vc.srcVertices.ModifyLast(array.VertexDist{X: x, Y: y})
 	} else if basics.IsVertex(cmd) {
 		vc.srcVertices.Add(array.VertexDist{X: x, Y: y, Dist: 0})
 	} else if basics.IsEndPoly(cmd) {
@@ -141,7 +140,11 @@ func (vc *VCGenContour) Vertex() (x, y float64, cmd basics.PathCommand) {
 			vc.Rewind(0)
 
 		case contourReady:
-			if vc.srcVertices.Size() < 2+int(vc.closed) {
+			closedCount := 0
+			if vc.closed != 0 {
+				closedCount = 1
+			}
+			if vc.srcVertices.Size() < 2+closedCount {
 				cmd = basics.PathCmdStop
 				break
 			}
@@ -156,19 +159,10 @@ func (vc *VCGenContour) Vertex() (x, y float64, cmd basics.PathCommand) {
 				break
 			}
 
-			// Calculate join for current vertex
-			vc.outVertices = vc.outVertices[:0] // Clear the slice but keep capacity
+			vc.outVertices = vc.outVertices[:0]
 			prev := vc.prev(vc.srcVertex)
 			curr := vc.curr(vc.srcVertex)
 			next := vc.next(vc.srcVertex)
-
-			// Ensure distances are calculated
-			vc.srcVertices.CalculateDistances()
-
-			// Update prev/curr/next after distance calculation
-			prev = vc.prev(vc.srcVertex)
-			curr = vc.curr(vc.srcVertex)
-			next = vc.next(vc.srcVertex)
 
 			vc.stroker.CalcJoin(
 				vc.consumer,

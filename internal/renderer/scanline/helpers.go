@@ -41,30 +41,24 @@ type PathIDStorage interface {
 	GetPathID(index int) uint32
 }
 
+// MultiPathRasterizerInterface extends RasterizerInterface for multi-path rendering.
+// RenderAllPaths requires a rasterizer that can be reset and accept individual paths.
+type MultiPathRasterizerInterface interface {
+	RasterizerInterface
+	Reset()
+	AddPath(vs rasterizer.VertexSource, pathID uint32)
+}
+
 // RenderAllPaths renders multiple paths with different colors.
 // This corresponds to AGG's render_all_paths function.
-func RenderAllPaths[C any](ras RasterizerInterface, sl ScanlineInterface, renderer RendererInterface[C],
+func RenderAllPaths[C any](ras MultiPathRasterizerInterface, sl ScanlineInterface, renderer RendererInterface[C],
 	vertexSource rasterizer.VertexSource, colorStorage PathColorStorage[C],
 	pathIDStorage PathIDStorage, numPaths int,
 ) {
 	for i := 0; i < numPaths; i++ {
-		if resettable, ok := ras.(Resettable); ok {
-			resettable.Reset()
-		}
-
-		pathID := pathIDStorage.GetPathID(i)
-		if addPathInterface, ok := ras.(interface {
-			AddPath(vs rasterizer.VertexSource, pathID uint32)
-		}); ok {
-			addPathInterface.AddPath(vertexSource, pathID)
-		}
-
-		color := colorStorage.GetColor(i)
-		if colorSetter, ok := renderer.(ColorSetter[C]); ok {
-			colorSetter.SetColor(color)
-		}
-
-		// Render the scanlines
+		ras.Reset()
+		ras.AddPath(vertexSource, pathIDStorage.GetPathID(i))
+		renderer.SetColor(colorStorage.GetColor(i))
 		RenderScanlines(ras, sl, renderer)
 	}
 }

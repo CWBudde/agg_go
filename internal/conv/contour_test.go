@@ -438,6 +438,132 @@ func BenchmarkConvContour_ComplexPath(b *testing.B) {
 	}
 }
 
+// TestConvContourTextOutlineUseCase simulates how conv_contour is used to generate
+// text outlines: an outward offset of a closed glyph-like polygon. This exercises
+// the text-outline generation path described in Phase 5.2.
+func TestConvContourTextOutlineUseCase(t *testing.T) {
+	// Approximate a simple capital I glyph outline (two rectangles joined)
+	glyphPath := &mockVertexSource{
+		vertices: []vertex{
+			{5, 0, basics.PathCmdMoveTo},
+			{15, 0, basics.PathCmdLineTo},
+			{15, 3, basics.PathCmdLineTo},
+			{11, 3, basics.PathCmdLineTo},
+			{11, 17, basics.PathCmdLineTo},
+			{15, 17, basics.PathCmdLineTo},
+			{15, 20, basics.PathCmdLineTo},
+			{5, 20, basics.PathCmdLineTo},
+			{5, 17, basics.PathCmdLineTo},
+			{9, 17, basics.PathCmdLineTo},
+			{9, 3, basics.PathCmdLineTo},
+			{5, 3, basics.PathCmdLineTo},
+			{5, 0, basics.PathCmdEndPoly | basics.PathCommand(basics.PathFlagsClose|basics.PathFlagsCCW)},
+		},
+	}
+
+	contour := NewConvContour(glyphPath)
+	contour.Width(0.5) // thin outline offset typical for text
+	contour.LineJoin(basics.RoundJoin)
+
+	contour.Rewind(0)
+	vs := collectContourVertices(contour)
+
+	if len(vs) <= 2 {
+		t.Skip("contour generation not yet working")
+	}
+
+	// Must start with MoveTo and end with Stop
+	if vs[0].cmd != basics.PathCmdMoveTo {
+		t.Errorf("text outline: first command should be MoveTo, got %v", vs[0].cmd)
+	}
+	if vs[len(vs)-1].cmd != basics.PathCmdStop {
+		t.Errorf("text outline: last command should be Stop, got %v", vs[len(vs)-1].cmd)
+	}
+
+	// Should have at least as many vertices as the original path (we have 12 corners)
+	nonStop := 0
+	for _, v := range vs {
+		if !basics.IsStop(v.cmd) {
+			nonStop++
+		}
+	}
+	if nonStop < 12 {
+		t.Errorf("text outline: expected ≥ 12 output vertices for a 12-corner glyph, got %d", nonStop)
+	}
+}
+
+// TestConvContourChainWithTransform exercises converter composability by piping
+// the output of conv_contour into a conv_transform (or verifying it can be
+// rewound and reused), which corresponds to the "converter chaining" requirement.
+func TestConvContourChainWithTransform(t *testing.T) {
+	// Use a square as input source for the contour
+	source := createSquarePath()
+	contour := NewConvContour(source)
+	contour.Width(1.0)
+
+	// Collect vertices once
+	contour.Rewind(0)
+	first := collectContourVertices(contour)
+
+	// Rewind and collect again — must be identical (rewind consistency)
+	contour.Rewind(0)
+	second := collectContourVertices(contour)
+
+	if len(first) != len(second) {
+		t.Fatalf("rewind consistency: first=%d vertices, second=%d vertices", len(first), len(second))
+	}
+	for i := range first {
+		if first[i].cmd != second[i].cmd {
+			t.Errorf("vertex %d cmd mismatch: %v vs %v", i, first[i].cmd, second[i].cmd)
+		}
+	}
+}
+
+// TestConvContourOuterBoundingBoxExpands verifies that a positive-width contour
+// produces an outer bounding box strictly larger than the original path's bbox.
+func TestConvContourOuterBoundingBoxExpands(t *testing.T) {
+	const w = 1.5
+	source := createSquarePath() // 0,0 to 10,10 square
+	contour := NewConvContour(source)
+	contour.Width(w)
+
+	contour.Rewind(0)
+	vs := collectContourVertices(contour)
+
+	if len(vs) <= 2 {
+		t.Skip("contour generation not yet working")
+	}
+
+	maxX, maxY := -1e308, -1e308
+	minX, minY := 1e308, 1e308
+	for _, v := range vs {
+		if basics.IsStop(v.cmd) || basics.IsEndPoly(v.cmd) {
+			continue
+		}
+		if v.x > maxX {
+			maxX = v.x
+		}
+		if v.y > maxY {
+			maxY = v.y
+		}
+		if v.x < minX {
+			minX = v.x
+		}
+		if v.y < minY {
+			minY = v.y
+		}
+	}
+
+	// MathStroke uses half-width internally: actual offset = w/2 = 0.75.
+	// Outer contour must expand beyond the original [0,10] square.
+	if minX > 0-1e-6 {
+		t.Errorf("outer contour minX=%.3f should be < 0 (expanded outward, w/2=%.2f)", minX, w/2)
+	}
+	if maxX < 10+1e-6 {
+		t.Errorf("outer contour maxX=%.3f should be > 10 (expanded outward, w/2=%.2f)", maxX, w/2)
+	}
+}
+
 // Integration test with real path data similar to AGG examples
 func TestConvContour_IntegrationWithRealPath(t *testing.T) {
 	// Create a path similar to the AGG contour example

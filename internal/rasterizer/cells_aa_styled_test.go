@@ -1,6 +1,30 @@
 package rasterizer
 
-import "testing"
+import (
+	"testing"
+
+	"agg_go/internal/basics"
+)
+
+// TestRasterizerCellsAAStyled_RepeatedResetDoesNotDropCells mirrors the simple variant's
+// regression test: repeated Reset+render cycles must not exhaust the block pool.
+func TestRasterizerCellsAAStyled_RepeatedResetDoesNotDropCells(t *testing.T) {
+	r := NewRasterizerCellsAAStyled(4)
+
+	x1 := 10 << basics.PolySubpixelShift
+	y1 := 10 << basics.PolySubpixelShift
+	x2 := 20 << basics.PolySubpixelShift
+	y2 := 20 << basics.PolySubpixelShift
+
+	for i := range 10 {
+		r.Reset()
+		r.Line(x1, y1, x2, y2)
+		r.SortCells()
+		if r.TotalCells() == 0 {
+			t.Fatalf("cycle %d: all cells were dropped (numBlocks exhaustion bug)", i)
+		}
+	}
+}
 
 func TestRasterizerCellsAAStyled_SortPreservesDuplicateStyledCells(t *testing.T) {
 	rasterizer := NewRasterizerCellsAAStyled(1024)
