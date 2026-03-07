@@ -88,10 +88,10 @@ func (BlenderRGBA8[S, O]) GetPlain(src []basics.Int8u) (r, g, b, a basics.Int8u)
 }
 
 // RawRGBAOrder interface implementation for fast path access
-func (BlenderRGBA8[S, O]) IdxR() int      { var o O; return o.IdxR() }
-func (BlenderRGBA8[S, O]) IdxG() int      { var o O; return o.IdxG() }
-func (BlenderRGBA8[S, O]) IdxB() int      { var o O; return o.IdxB() }
-func (BlenderRGBA8[S, O]) IdxA() int      { var o O; return o.IdxA() }
+func (BlenderRGBA8[S, O]) IdxR() int       { var o O; return o.IdxR() }
+func (BlenderRGBA8[S, O]) IdxG() int       { var o O; return o.IdxG() }
+func (BlenderRGBA8[S, O]) IdxB() int       { var o O; return o.IdxB() }
+func (BlenderRGBA8[S, O]) IdxA() int       { var o O; return o.IdxA() }
 func (BlenderRGBA8[S, O]) PremulSrc() bool { return false }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -130,10 +130,10 @@ func (BlenderRGBA8Pre[S, O]) GetPlain(src []basics.Int8u) (r, g, b, a basics.Int
 }
 
 // RawRGBAOrder interface implementation for fast path access
-func (BlenderRGBA8Pre[S, O]) IdxR() int      { var o O; return o.IdxR() }
-func (BlenderRGBA8Pre[S, O]) IdxG() int      { var o O; return o.IdxG() }
-func (BlenderRGBA8Pre[S, O]) IdxB() int      { var o O; return o.IdxB() }
-func (BlenderRGBA8Pre[S, O]) IdxA() int      { var o O; return o.IdxA() }
+func (BlenderRGBA8Pre[S, O]) IdxR() int       { var o O; return o.IdxR() }
+func (BlenderRGBA8Pre[S, O]) IdxG() int       { var o O; return o.IdxG() }
+func (BlenderRGBA8Pre[S, O]) IdxB() int       { var o O; return o.IdxB() }
+func (BlenderRGBA8Pre[S, O]) IdxA() int       { var o O; return o.IdxA() }
 func (BlenderRGBA8Pre[S, O]) PremulSrc() bool { return true }
 
 ////////////////////////////////////////////////////////////////////////////////

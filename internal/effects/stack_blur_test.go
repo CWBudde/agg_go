@@ -76,6 +76,7 @@ func (m *mockGrayImage) Stride() int { return m.w }
 func (m *mockGrayImage) PixPtr(x, y int) *basics.Int8u {
 	return &m.data[y*m.w+x]
 }
+
 func (m *mockGrayImage) NextPixPtr(ptr *basics.Int8u) *basics.Int8u {
 	base := uintptr(unsafe.Pointer(&m.data[0]))
 	cur := uintptr(unsafe.Pointer(ptr))
@@ -85,6 +86,7 @@ func (m *mockGrayImage) NextPixPtr(ptr *basics.Int8u) *basics.Int8u {
 	}
 	return &m.data[idx]
 }
+
 func (m *mockGrayImage) PixPtrOffset(ptr *basics.Int8u, offset int) *basics.Int8u {
 	base := uintptr(unsafe.Pointer(&m.data[0]))
 	cur := uintptr(unsafe.Pointer(ptr))
@@ -139,6 +141,7 @@ func (m *mockRGBImage) Height() int { return m.h }
 func (m *mockRGBImage) PixPtr(x, y int) *[3]byte {
 	return &m.data[y*m.w+x]
 }
+
 func (m *mockRGBImage) NextPixPtr(ptr *[3]byte) *[3]byte {
 	base := uintptr(unsafe.Pointer(&m.data[0]))
 	cur := uintptr(unsafe.Pointer(ptr))
@@ -148,9 +151,11 @@ func (m *mockRGBImage) NextPixPtr(ptr *[3]byte) *[3]byte {
 	}
 	return &m.data[idx+1]
 }
+
 func (m *mockRGBImage) GetRGB(ptr *[3]byte) color.RGB8[color.Linear] {
 	return color.RGB8[color.Linear]{R: ptr[0], G: ptr[1], B: ptr[2]}
 }
+
 func (m *mockRGBImage) SetRGB(ptr *[3]byte, rgb color.RGB8[color.Linear]) {
 	ptr[0] = rgb.R
 	ptr[1] = rgb.G
@@ -191,6 +196,7 @@ func (m *mockRGBAImage) Height() int { return m.h }
 func (m *mockRGBAImage) PixPtr(x, y int) *[4]byte {
 	return &m.data[y*m.w+x]
 }
+
 func (m *mockRGBAImage) NextPixPtr(ptr *[4]byte) *[4]byte {
 	base := uintptr(unsafe.Pointer(&m.data[0]))
 	cur := uintptr(unsafe.Pointer(ptr))
@@ -200,9 +206,11 @@ func (m *mockRGBAImage) NextPixPtr(ptr *[4]byte) *[4]byte {
 	}
 	return &m.data[idx+1]
 }
+
 func (m *mockRGBAImage) GetRGBA(ptr *[4]byte) color.RGBA8[color.Linear] {
 	return color.RGBA8[color.Linear]{R: ptr[0], G: ptr[1], B: ptr[2], A: ptr[3]}
 }
+
 func (m *mockRGBAImage) SetRGBA(ptr *[4]byte, rgba color.RGBA8[color.Linear]) {
 	ptr[0] = rgba.R
 	ptr[1] = rgba.G

@@ -98,6 +98,38 @@ func (m *MockPixFmt) BlendSolidVspan(x, y, length int, c color.RGBA8[color.Linea
 	}
 }
 
+type MockColorSpanPixFmt struct {
+	*MockPixFmt
+	lastHspan struct {
+		x, y, length int
+		cover        basics.Int8u
+		colors       []color.RGBA8[color.Linear]
+		covers       []basics.Int8u
+	}
+	lastVspan struct {
+		x, y, length int
+		cover        basics.Int8u
+		colors       []color.RGBA8[color.Linear]
+		covers       []basics.Int8u
+	}
+}
+
+func NewMockColorSpanPixFmt(width, height int) *MockColorSpanPixFmt {
+	return &MockColorSpanPixFmt{MockPixFmt: NewMockPixFmt(width, height)}
+}
+
+func (m *MockColorSpanPixFmt) BlendColorHspan(x, y, length int, colors []color.RGBA8[color.Linear], covers []basics.Int8u, cover basics.Int8u) {
+	m.lastHspan.x, m.lastHspan.y, m.lastHspan.length, m.lastHspan.cover = x, y, length, cover
+	m.lastHspan.colors = append([]color.RGBA8[color.Linear](nil), colors...)
+	m.lastHspan.covers = append([]basics.Int8u(nil), covers...)
+}
+
+func (m *MockColorSpanPixFmt) BlendColorVspan(x, y, length int, colors []color.RGBA8[color.Linear], covers []basics.Int8u, cover basics.Int8u) {
+	m.lastVspan.x, m.lastVspan.y, m.lastVspan.length, m.lastVspan.cover = x, y, length, cover
+	m.lastVspan.colors = append([]color.RGBA8[color.Linear](nil), colors...)
+	m.lastVspan.covers = append([]basics.Int8u(nil), covers...)
+}
+
 // MockRenderBuffer implements a rendering buffer interface for testing CopyFrom
 type MockRenderBuffer struct {
 	width, height int
@@ -280,6 +312,57 @@ func TestPixFmtTransposer_CopyFrom_Fallback(t *testing.T) {
 	}
 	if copied2 != testColor2 {
 		t.Errorf("Expected copied pixel 2 to be %+v, got %+v", testColor2, copied2)
+	}
+}
+
+func TestPixFmtTransposer_BlendColorSpanDelegatesToUnderlyingColorSpans(t *testing.T) {
+	mock := NewMockColorSpanPixFmt(4, 4)
+	transposer := NewPixFmtTransposer(mock)
+
+	colors := []color.RGBA8[color.Linear]{
+		{R: 10, G: 20, B: 30, A: 255},
+		{R: 40, G: 50, B: 60, A: 255},
+	}
+	covers := []basics.Int8u{255, 128}
+
+	transposer.BlendColorHspan(1, 2, len(colors), colors, covers, 200)
+	if mock.lastVspan.x != 2 || mock.lastVspan.y != 1 || mock.lastVspan.length != len(colors) || mock.lastVspan.cover != 200 {
+		t.Fatalf("BlendColorHspan delegated Vspan args = (%d,%d,%d,%d), want (2,1,%d,200)",
+			mock.lastVspan.x, mock.lastVspan.y, mock.lastVspan.length, mock.lastVspan.cover, len(colors))
+	}
+
+	transposer.BlendColorVspan(0, 1, len(colors), colors, covers, 180)
+	if mock.lastHspan.x != 1 || mock.lastHspan.y != 0 || mock.lastHspan.length != len(colors) || mock.lastHspan.cover != 180 {
+		t.Fatalf("BlendColorVspan delegated Hspan args = (%d,%d,%d,%d), want (1,0,%d,180)",
+			mock.lastHspan.x, mock.lastHspan.y, mock.lastHspan.length, mock.lastHspan.cover, len(colors))
+	}
+}
+
+func TestPixFmtTransposer_BlendColorSpanFallback(t *testing.T) {
+	mock := NewMockPixFmt(4, 4)
+	transposer := NewPixFmtTransposer(mock)
+
+	colors := []color.RGBA8[color.Linear]{
+		{R: 255, G: 0, B: 0, A: 255},
+		{R: 0, G: 255, B: 0, A: 255},
+		{R: 0, G: 0, B: 255, A: 255},
+	}
+	covers := []basics.Int8u{255, 128, 0}
+
+	transposer.BlendColorHspan(0, 1, len(colors), colors, covers, 255)
+	if got := mock.GetPixel(1, 0); got.R == 0 && got.G == 0 && got.B == 0 {
+		t.Fatal("BlendColorHspan fallback did not touch first transposed pixel")
+	}
+	if got := mock.GetPixel(1, 2); got != (color.RGBA8[color.Linear]{}) {
+		t.Fatalf("BlendColorHspan fallback should skip zero-coverage pixel, got %+v", got)
+	}
+
+	transposer.BlendColorVspan(2, 0, len(colors), colors, nil, 255)
+	if got := mock.GetPixel(0, 2); got != colors[0] {
+		t.Fatalf("BlendColorVspan fallback first pixel = %+v, want %+v", got, colors[0])
+	}
+	if got := mock.GetPixel(2, 2); got != colors[2] {
+		t.Fatalf("BlendColorVspan fallback last pixel = %+v, want %+v", got, colors[2])
 	}
 }
 

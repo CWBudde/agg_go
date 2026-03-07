@@ -279,11 +279,11 @@ func TestBlendSolidHspanRGBAComprehensive(t *testing.T) {
 
 	// Test scenarios covering edge cases and common patterns
 	type scenario struct {
-		name   string
+		name       string
 		r, g, b, a uint8
-		premul bool
-		covers []byte
-		base   []byte // per-pixel dst, len must be len(covers)*4
+		premul     bool
+		covers     []byte
+		base       []byte // per-pixel dst, len must be len(covers)*4
 	}
 
 	mkBase := func(n int, val byte) []byte {

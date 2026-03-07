@@ -38,7 +38,9 @@ func TestGammaCorrection(t *testing.T) {
 	// Test gamma correction is applied to rasterizer
 	agg2d.SetAntiAliasGamma(1.5)
 	agg2d.updateRasterizerGamma()
-	// If we get here without panic, the gamma function was applied successfully
+	if got := agg2d.rasterizer.ApplyGamma(64); got == 64 {
+		t.Fatalf("expected non-identity gamma mapping after updateRasterizerGamma, got %d", got)
+	}
 }
 
 func TestAttachResetsRasterizerGamma(t *testing.T) {

@@ -26,162 +26,49 @@ This is the single authoritative project plan. SIMD optimization work is tracked
 
 ---
 
-## Phase 0 - Baseline and Traceability
+## Phase 0 - Baseline and Traceability ✅
 
-### 0.1 Parity ledger
+Project-wide tracking and auditability are in place:
 
-- [x] Create a parity ledger with one row per `Agg2D` method.
-- [x] Columns: C++ source method, Go method, status (`exact`, `close`, `placeholder`, `missing`), test reference, notes.
-- [x] Add source anchors for key AGG2D methods in:
-  - `../agg-2.6/agg-src/agg2d/agg2d.h`
-  - `../agg-2.6/agg-src/agg2d/agg2d.cpp`
-- [x] Fold the remaining open parity rows into Phase 4 so parity tracking lives in the main plan rather than a separate ledger file.
-
-### 0.2 Placeholder inventory
-
-- [x] Record all placeholder/simplified paths in rendering-critical packages:
-  - `internal/agg2d`
-  - `internal/rasterizer`
-  - `internal/scanline`
-  - `internal/renderer`
-  - `internal/span`
-- [x] Classify each as `must-fix`, `acceptable temporary`, or `low-priority`.
-
-### Exit criteria
-
-- [x] Ledger exists and covers all `Agg2D` public operations.
-- [x] Placeholder inventory is complete and prioritized.
+- **Parity ledger**: One row per `Agg2D` method with C++ source reference, Go method mapping, status (`exact`/`close`/`placeholder`/`missing`), test reference, and notes. Key anchors are in `../agg-2.6/agg-src/agg2d/agg2d.h` and `../agg-2.6/agg-src/agg2d/agg2d.cpp`. Remaining open parity rows are tracked in Phase 4.
+- **Placeholder inventory**: All simplified/placeholder paths in rendering-critical packages (`internal/agg2d`, `internal/rasterizer`, `internal/scanline`, `internal/renderer`, `internal/span`) are recorded and prioritized (`must-fix` / `acceptable temporary` / `low-priority`).
 
 ---
 
-## Phase 1 - AGG2D Behavioral Parity (Highest Priority)
+## Phase 1 - AGG2D Behavioral Parity
 
 Primary target: `internal/agg2d/*` against `agg2d.cpp`.
 
-### 1.1 Image pipeline parity (critical)
+Core `Agg2D` rendering behavior is aligned:
 
-- [x] Replace simplified `renderImage*` implementation with AGG-style scanline/span pipeline:
-  - interpolator-based sampling
-  - filter LUT integration
-  - resample mode behavior (`NoResample`, `ResampleAlways`, `ResampleOnZoomOut`)
-  - blend-color conversion path equivalent to AGG behavior
-- [x] Remove nearest-neighbor-only fallback for transformed image rendering.
-- [x] Align transform usage with AGG matrix flow (`parl->world->invert` then interpolator).
+- **Image pipeline**: `renderImage*` uses the AGG-style scanline/span pipeline (interpolator sampling, filter LUT integration, resample-mode behavior, blend-color conversion) with correct transform flow and no nearest-neighbor-only fallback for transformed images.
+- **Gradients**: Linear/radial matrix construction, transform/scalar conversion, and distance (`d1/d2`) handling match AGG ordering.
+- **Text**: Glyph rendering runs through the real rasterizer/scanline pipeline (no rectangle fallback) and matches the vector vs raster cache contract. Kerning in `TextWidth`/`Text` uses glyph indices.
+- **Clipping & state**: `ClipBox` propagation and clip-sensitive image ops match AGG semantics, covered by pixel-asserting tests. Attach-time and state-update behavior (fill rule, gamma, master alpha) is aligned.
 
-Files:
+Remaining:
 
-- `internal/agg2d/image.go`
-- `internal/span/*` as needed
-- `internal/renderer/scanline/*` as needed
-
-### 1.2 Gradient parity
-
-- [x] Ensure linear/radial gradient matrix construction matches AGG ordering.
-- [x] Remove no-op world/screen helper placeholders and use real transform/scalar conversion.
-- [x] Verify gradient distance (`d1/d2`) handling matches C++ path.
-
-Files:
-
-- `internal/agg2d/gradient.go`
-- `internal/agg2d/utilities.go`
-
-### 1.3 Text parity (minimum acceptable)
-
-- [x] Remove rectangle fallback glyph rendering.
-- [x] Render glyph scanlines/paths through real rasterizer/scanline pipeline.
-- [x] Match vector vs raster cache behavior contract from AGG2D.
-
-Files:
-
-- `internal/agg2d/text.go`
-- `internal/font/*` and/or `internal/fonts/*`
-
-Notes:
-
-- Raster glyph rendering now routes through scanline renderers (`RenderScanlinesAASolid`/`RenderScanlinesBinSolid`) via a glyph rasterizer adapter instead of direct per-row blending.
-- Outline glyph positioning now follows AGG2D's embedded-adaptor contract (per-glyph translation + text-angle transform path).
-- Kerning in `TextWidth`/`Text` now uses glyph indices, and outline cache hits refresh engine outline state before adaptor initialization.
-
-### 1.4 Clipping and renderer-state parity
-
-- [x] Ensure `ClipBox` updates all relevant renderer and rasterizer states consistently.
-- [x] Verify `clearClipBox`, `copyImage`, `blendImage`, transformed image operations obey clip box identically to AGG semantics.
-      Verified by dedicated pixel-asserting tests in `internal/agg2d/{agg2d,image,utilities}_test.go`.
-- [x] Align `clearAll`, `inBox`, `alignPoint`, fill-rule updates, attach-time gamma reset, and master-alpha/gamma rasterizer behavior with `agg2d.cpp`.
-
-Files:
-
-- `internal/agg2d/buffer.go`
-- `internal/agg2d/utilities.go`
-- `internal/agg2d/image.go`
-- `internal/agg2d/rendering.go`
-- `internal/agg2d/fill_rules.go`
-
-### Exit criteria
-
-- [x] No `simplified`/`for now` rendering paths in `internal/agg2d` critical methods.
-- [x] AGG2D image, gradient, text, clipping contract tests pass.
-- [ ] Visual tests for AGG2D demos pass against reference thresholds.
+- Visual tests for AGG2D demos still need to pass against reference thresholds.
 
 ---
 
-## Phase 2 - Core Pipeline Parity (Rasterizer -> Scanline -> Renderer -> Pixfmt)
+## Phase 2 - Core Pipeline Parity ✅
 
-### 2.1 Rasterizer and scanline correctness
+Rasterizer → scanline → renderer → pixfmt behavior is aligned with AGG:
 
-- [x] Align fill rules, clipping edge cases, cell accumulation, and sweep indexing with AGG reference in the core AA rasterizers.
-- [x] Preserve AGG duplicate-cell behavior in sorted cell stores and compound scanline handling.
-- [x] Resolve known integration inconsistencies caused by non-AGG test-driver assumptions (`Rectangle()+DrawPath()`, missing even-odd enablement, invalid star geometry).
-- [x] Continue auditing `compound_aa` and related rasterizer paths for any remaining source-level edge cases not yet covered by direct parity tests.
-
-### 2.2 Renderer and pixfmt semantics
-
-- [x] Confirm copy/blend overlap behavior aligns with `agg_renderer_base` semantics in renderer base and concrete RGB/RGBA pixfmts.
-- [x] Align premultiplied vs straight-alpha behavior for Agg2D image rendering and composite image paths.
-- [x] Port the core `copy_from` / `blend_from` helper surface needed by RGBA, RGB, Gray, transposer, amask, and composite pixfmts.
-- [x] Expand parity coverage for Porter-Duff and non-`BlendAlpha` composite behavior against C++ reference outputs, especially outside the currently covered image-path cases.
-
-### 2.3 Converters (conv/vcgen/vpgen) chain fidelity
-
-- [x] Restore AGG2D stroke/dash/transform ordering and line cap/join enum parity.
-- [x] Align viewport, gradient, and related transform/scalar propagation with AGG2D behavior.
-- [x] Audit lower-level converter/vcgen/vpgen state machines beyond the Agg2D call sites, especially stroke/dash/curve/contour behavior and approximation-scale propagation.
-
-### Exit criteria
-
-- [x] Integration tests for full pipeline pass without known behavioral exceptions.
-- [x] Golden image diffs are within agreed threshold.
+- **Rasterizer/scanline**: Fill rules, clipping edge cases, cell accumulation, sweep indexing, and duplicate-cell behavior match AGG expectations.
+- **Renderer/pixfmt**: Copy/blend overlap and premultiplied vs straight-alpha behavior are aligned. The needed `copy_from` / `blend_from` helpers are ported across RGBA/RGB/Gray plus transposer/amask/composite pixfmts, with expanded Porter-Duff/composite coverage.
+- **Converters**: Stroke/dash/transform ordering, line cap/join enum parity, and viewport/gradient/scalar propagation are aligned; key converter/vcgen/vpgen state machines are audited beyond just Agg2D call sites.
 
 ---
 
-## Phase 3 - Font Subsystem Consolidation and Type Safety
+## Phase 3 - Font Subsystem Consolidation and Type Safety ✅
 
-### 3.1 Consolidate `internal/font` vs `internal/fonts`
+One coherent font stack with a tighter, type-safe surface:
 
-- [x] Define a single authoritative font/cache architecture.
-- [x] Remove duplicated concepts and adapters where possible.
-- [x] Audit remaining `internal/font/freetype2` convenience wrappers against `agg_font_freetype2.h/.cpp` and keep only the abstractions that are justified in Go.
-      The former exported FontManager is now package-local, CacheManager2 has been reduced to a thin adaptor-facing wrapper over `internal/fonts.FmanCachedFont`, concrete gray8/mono adaptor wrapper types are no longer exposed, and test-only engine-selection/path-storage helpers are no longer exported. The remaining gray8/mono wrappers are retained as the minimal package boundary because `internal/scanline` exposes concrete serialized-scanline iteration APIs while `internal/fonts` expects generic adaptor/span interfaces.
-- [x] Finish separating "Agg2D text path" vs "standalone `fman`/embedded-font support" in remaining docs/review notes.
-- [x] Continue rechecking FreeType2 face/engine lifetime behavior against AGG, especially around multi-face ownership beyond the now-fixed unload/close ownership semantics.
-      Engine-driven multi-face close now releases all tracked faces correctly. The explicit `maxFaces` cap is documented as an intentional Go-only policy delta, and `engine.Close()` actively closes tracked faces before freeing the library, which is safer than AGG's looser caller-owned loaded_face lifetime model but not a direct behavior match.
-
-### 3.2 Replace runtime `interface{}` where feasible
-
-- [x] Replace broad `interface{}` in AGG2D font fields with explicit interfaces.
-- [x] Keep runtime dispatch only where build-tag boundaries require it, and document it.
-- [x] Re-audit the generics-related review notes so they reflect the current typed state of the font subsystem.
-- [x] Check FreeType2/CGO-adjacent font code for any remaining avoidable dynamic dispatch or stale comments claiming broader type erasure than the code now uses.
-- [x] Keep the remaining signature mismatches between neighboring internal interfaces localized behind narrow adapters rather than widening the font API surface.
-      The old FreeType2 adaptor bundle has been removed; CacheManager2 now depends on narrow per-adaptor methods plus package-local wrappers instead of a broader concrete-type aggregate.
-
-### Exit criteria
-
-- [x] One coherent font stack is used by AGG2D.
-- [x] No avoidable runtime type assertions in text-critical path.
-- [x] `internal/font/freetype2` is either brought closer to AGG's `fman` API surface or its remaining Go-only convenience APIs (`FontManager`, engine-selection helpers, thin adaptor wrappers) are explicitly documented as intentional deltas.
-- [x] Embedded raster font data and cache behavior are rechecked against AGG/review notes so Phase 3 closes without known font-subsystem placeholders.
-- [x] FreeType2 glyph-cache tests cover native and AGG gray/mono plus outline serialization paths for a real font when available.
+- **Architecture**: A single authoritative font/cache architecture is used by Agg2D. `internal/font/freetype2` is reduced to minimal, justified wrappers (with documented Go-only deltas where applicable).
+- **Type safety**: Broad runtime `interface{}` usage in text-critical paths is replaced with explicit interfaces; build-tag boundaries remain the only intentional runtime dispatch.
+- **Lifecycle**: FreeType2 face/engine lifetime behavior is rechecked; multi-face close releases tracked faces correctly. The `maxFaces` cap is documented as an intentional Go-only policy delta.
 
 ---
 
@@ -192,14 +79,21 @@ Files:
 - [x] Expand AGG2D tests to assert outputs, not just `err == nil`, for the currently covered rendering paths.
       `internal/agg2d/rendering_test.go`, `internal/agg2d/image_test.go`, and `internal/agg2d/text_phase1_test.go` now use deterministic output assertions for solid fill, gradient fill, translated rendering output, clipped fill/stroke rendering, blend-mode compositing, transformed image placement/color coverage, and vector-text alignment/bounds.
 - [x] Add deterministic checks for transform-image, clipping, blend modes, gradients, and text bounds.
-- [ ] Continue replacing remaining AGG2D smoke/integration tests with output assertions where they still only verify "no crash" behavior.
-      Remaining likely targets include broader path/image integration cases in `internal/agg2d/rendering_fixes_test.go` and any text rendering paths that still depend on loose FreeType/system-font checks rather than deterministic bounds or pixel contracts.
-- [ ] Expand contract coverage for currently weaker packages:
+- [x] Replace the remaining AGG2D smoke/integration tests in `internal/agg2d` with output or state assertions.
+      `internal/agg2d/agg2d_test.go` now asserts concrete path storage results for path commands and ellipse generation, and `internal/agg2d/rendering_fixes_test.go` now verifies the rasterizer gamma mapping rather than only asserting "no panic".
+- [x] Expand contract coverage for the currently identified weaker packages:
   - `internal/effects`
   - `internal/platform`
   - `internal/primitives`
   - `internal/pixfmt/blender`
-  - any other package below the desired coverage floor after parity-critical work
+  - targeted additions now cover platform backend-factory/image-format contracts plus packed-RGB and RGBA16 blender surfaces
+- [x] Re-audit the remaining internal packages against the current coverage floor.
+  - the next priority gaps are now `internal/pixfmt`, `internal/pixfmt/gamma`, and `internal/color`
+  - support-only or demo-oriented low-coverage packages such as `internal/order`, `internal/gamma`, `internal/ctrl/text`, and `internal/demo/lion` are not Phase 4.1 blockers
+- [ ] Raise the next priority coverage gaps identified by the re-audit:
+  - `internal/pixfmt` (currently around 36%)
+  - `internal/pixfmt/gamma` (currently around 65%)
+  - `internal/color` (currently around 66%)
 - [ ] Re-audit tests that primarily verify mocks or package-private state:
   - keep package-private assertions only where they are the clearest contract
   - prefer observable behavior or public API assertions where practical
@@ -620,4 +514,8 @@ For each task:
         NEON arm64 now uses run-fill hybrid (NEON fill for solid-coverage runs, generic for partial).
         Comprehensive validation test suite added covering 15 scenarios across all implementations.
         Found and fixed AVX2 register-clobber bug in 8-pixel loop (X4/Y4 aliasing in both alpha and opaque paths).
-12. [ ] Port one high-value missing demo from Phase 9.2, preferring `raster_text.cpp` or `image_resample.cpp`.
+12. [x] Port one high-value missing demo from Phase 9.2, preferring `raster_text.cpp` or `image_resample.cpp`.
+        Ported `raster_text.cpp` as `examples/core/intermediate/raster_text/main.go`. Renders all 34 embedded
+        fonts with sample text, plus a sine-repeat circular gradient text line (red→green) at the bottom,
+        matching the C++ original. Uses `RendererRasterHTextSolid` for solid text and `RendererRasterHText`
+        with a custom `ScanlineRendererInterface` for per-pixel gradient coloring.

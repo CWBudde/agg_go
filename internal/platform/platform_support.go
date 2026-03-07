@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"image"
 	"image/png"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -509,17 +510,25 @@ func (ps *PlatformSupport) loadPPM(filename string) ([]uint8, int, int, error) {
 		return nil, 0, 0, fmt.Errorf("unsupported PPM max value: %d (only 255 supported)", maxVal)
 	}
 
-	// Skip whitespace after header
-	var dummy byte
-	file.Read([]byte{dummy})
-
 	// Calculate target stride and allocate buffer
 	targetStride := width * ps.bpp / 8
 	buffer := make([]uint8, height*targetStride)
 
 	// Read pixel data (PPM is RGB)
 	pixelData := make([]uint8, width*height*3)
-	if _, err := file.Read(pixelData); err != nil {
+	var first [1]byte
+	if _, err := io.ReadFull(file, first[:]); err != nil {
+		return nil, 0, 0, fmt.Errorf("failed to read first PPM pixel byte: %v", err)
+	}
+	offset := 0
+	switch first[0] {
+	case ' ', '\t', '\n', '\r':
+		// Header separator consumed here; pixel data starts with the next byte.
+	default:
+		pixelData[0] = first[0]
+		offset = 1
+	}
+	if _, err := io.ReadFull(file, pixelData[offset:]); err != nil {
 		return nil, 0, 0, fmt.Errorf("failed to read PPM pixel data: %v", err)
 	}
 

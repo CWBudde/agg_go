@@ -190,7 +190,6 @@ func TestTransformations(t *testing.T) {
 func TestPathCommands(t *testing.T) {
 	ctx := NewAgg2D()
 
-	// Test basic path commands - these should not panic
 	ctx.ResetPath()
 	ctx.MoveTo(10, 20)
 	ctx.LineTo(30, 40)
@@ -214,18 +213,88 @@ func TestPathCommands(t *testing.T) {
 	// Test close polygon
 	ctx.ClosePolygon()
 
-	// If we get here without panicking, the basic path commands work
+	if got := ctx.path.TotalVertices(); got <= 8 {
+		t.Fatalf("expected curve and arc commands to add vertices, got %d", got)
+	}
+
+	wantPrefix := []struct {
+		x, y float64
+		cmd  basics.PathCommand
+	}{
+		{10, 20, basics.PathCmdMoveTo},
+		{30, 40, basics.PathCmdLineTo},
+		{35, 45, basics.PathCmdMoveTo},
+		{45, 55, basics.PathCmdLineTo},
+		{50, 55, basics.PathCmdLineTo},
+		{55, 55, basics.PathCmdLineTo},
+		{55, 60, basics.PathCmdLineTo},
+		{55, 65, basics.PathCmdLineTo},
+	}
+	for i, want := range wantPrefix {
+		x, y, cmd := ctx.path.Vertex(uint(i))
+		if x != want.x || y != want.y || basics.PathCommand(cmd) != want.cmd {
+			t.Fatalf("vertex %d: got (%v,%v,%v), want (%v,%v,%v)", i, x, y, basics.PathCommand(cmd), want.x, want.y, want.cmd)
+		}
+	}
+
+	lastX, lastY, lastCmd := ctx.path.Vertex(ctx.path.TotalVertices() - 1)
+	if !basics.IsEndPoly(basics.PathCommand(lastCmd)) {
+		t.Fatalf("expected ClosePolygon to append EndPoly, got %v at (%v,%v)", basics.PathCommand(lastCmd), lastX, lastY)
+	}
+	if !ctx.hasLastCtrl {
+		t.Fatal("expected curve commands to leave control-point tracking enabled")
+	}
 }
 
 // TestAddEllipse verifies ellipse addition
 func TestAddEllipse(t *testing.T) {
 	ctx := NewAgg2D()
 
-	// Test ellipse addition - should not panic
 	ctx.AddEllipse(100, 100, 50, 30, CW)
-	ctx.AddEllipse(200, 200, 75, 75, CCW)
+	cwArea := signedPathArea(ctx.path)
+	if got := ctx.path.TotalVertices(); got < 8 {
+		t.Fatalf("expected ellipse path to contain multiple vertices, got %d", got)
+	}
+	if cwArea >= 0 {
+		t.Fatalf("expected CW ellipse to have negative signed area, got %v", cwArea)
+	}
+	if _, _, cmd := ctx.path.Vertex(ctx.path.TotalVertices() - 1); !basics.IsEndPoly(basics.PathCommand(cmd)) {
+		t.Fatalf("expected CW ellipse path to end with EndPoly, got %v", basics.PathCommand(cmd))
+	}
 
-	// If we get here without panicking, ellipse addition works
+	ctx.ResetPath()
+	ctx.AddEllipse(200, 200, 75, 75, CCW)
+	ccwArea := signedPathArea(ctx.path)
+	if ccwArea <= 0 {
+		t.Fatalf("expected CCW ellipse to have positive signed area, got %v", ccwArea)
+	}
+	if got := math.Abs(ccwArea); got == 0 {
+		t.Fatal("expected CCW ellipse to enclose non-zero area")
+	}
+}
+
+func signedPathArea(ps interface {
+	TotalVertices() uint
+	Vertex(idx uint) (x, y float64, cmd uint32)
+},
+) float64 {
+	points := make([][2]float64, 0, ps.TotalVertices())
+	for i := uint(0); i < ps.TotalVertices(); i++ {
+		x, y, cmd := ps.Vertex(i)
+		if basics.IsVertex(basics.PathCommand(cmd)) {
+			points = append(points, [2]float64{x, y})
+		}
+	}
+	if len(points) < 3 {
+		return 0
+	}
+
+	area := 0.0
+	for i := range points {
+		j := (i + 1) % len(points)
+		area += points[i][0]*points[j][1] - points[j][0]*points[i][1]
+	}
+	return area / 2
 }
 
 // hasNonWhiteIn checks that at least one pixel in the bounding box is not white (255,255,255,255)
