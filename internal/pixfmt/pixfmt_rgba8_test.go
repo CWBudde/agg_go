@@ -356,6 +356,436 @@ func TestPixFmtRGBA32BlendFromColor(t *testing.T) {
 	}
 }
 
+func TestRGBAPixelTypeSetColor(t *testing.T) {
+	p := &RGBAPixelType{}
+	c := color.NewRGBA8[color.Linear](10, 20, 30, 40)
+	p.SetColor(c)
+	if p.R != 10 || p.G != 20 || p.B != 30 || p.A != 40 {
+		t.Errorf("SetColor failed: got (%d,%d,%d,%d)", p.R, p.G, p.B, p.A)
+	}
+}
+
+func TestPixFmtRGBA32Pixel(t *testing.T) {
+	buf := make([]basics.Int8u, 4*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, 1, 1, 4)
+	pf := NewPixFmtRGBA32[color.Linear](rbuf)
+	c := color.NewRGBA8[color.Linear](7, 8, 9, 255)
+	pf.CopyPixel(0, 0, c)
+	if got := pf.Pixel(0, 0); got != c {
+		t.Errorf("Pixel alias mismatch: got %+v want %+v", got, c)
+	}
+}
+
+func TestPixFmtRGBA32BlendHlineOpaqueFull(t *testing.T) {
+	// opaque + CoverFull → direct copy fast path
+	width, height := 8, 1
+	buf := make([]basics.Int8u, width*height*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, width, height, width*4)
+	pf := NewPixFmtRGBA32[color.Linear](rbuf)
+
+	c := color.NewRGBA8[color.Linear](200, 100, 50, 255)
+	pf.BlendHline(1, 0, 5, c, basics.CoverFull)
+
+	for x := 1; x < 6; x++ {
+		if got := pf.GetPixel(x, 0); got != c {
+			t.Errorf("BlendHline opaque at x=%d: got %+v want %+v", x, got, c)
+		}
+	}
+	// pixels outside the span unchanged
+	if got := pf.GetPixel(0, 0); got.R != 0 {
+		t.Errorf("pixel before span should be zero")
+	}
+}
+
+func TestPixFmtRGBA32BlendHlinePartialAlpha(t *testing.T) {
+	width, height := 4, 1
+	buf := make([]basics.Int8u, width*height*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, width, height, width*4)
+	pf := NewPixFmtRGBA32[color.Linear](rbuf)
+
+	// pre-fill with opaque white
+	white := color.NewRGBA8[color.Linear](255, 255, 255, 255)
+	pf.CopyHline(0, 0, width, white)
+
+	src := color.NewRGBA8[color.Linear](0, 0, 0, 128) // semi-transparent black
+	pf.BlendHline(0, 0, width, src, basics.CoverFull)
+
+	for x := 0; x < width; x++ {
+		p := pf.GetPixel(x, 0)
+		if p.R >= 255 || p.R == 0 {
+			t.Errorf("BlendHline partial alpha at x=%d: red=%d should be between 0 and 255", x, p.R)
+		}
+	}
+}
+
+func TestPixFmtRGBA32BlendHlineTransparent(t *testing.T) {
+	// transparent color → no-op
+	buf := make([]basics.Int8u, 4*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, 4, 1, 4*4)
+	pf := NewPixFmtRGBA32[color.Linear](rbuf)
+	transparent := color.NewRGBA8[color.Linear](255, 0, 0, 0)
+	pf.BlendHline(0, 0, 4, transparent, 255)
+	for x := 0; x < 4; x++ {
+		if got := pf.GetPixel(x, 0); got.R != 0 {
+			t.Errorf("transparent BlendHline should not modify pixel at x=%d", x)
+		}
+	}
+}
+
+func TestPixFmtRGBA32BlendVline(t *testing.T) {
+	width, height := 1, 8
+	buf := make([]basics.Int8u, width*height*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, width, height, width*4)
+	pf := NewPixFmtRGBA32[color.Linear](rbuf)
+
+	c := color.NewRGBA8[color.Linear](0, 255, 0, 255)
+	pf.BlendVline(0, 2, 4, c, basics.CoverFull)
+
+	for y := 2; y <= 4; y++ {
+		if got := pf.GetPixel(0, y); got != c {
+			t.Errorf("BlendVline at y=%d: got %+v want %+v", y, got, c)
+		}
+	}
+	// before span
+	if got := pf.GetPixel(0, 1); got.G != 0 {
+		t.Errorf("pixel before BlendVline span should be zero")
+	}
+}
+
+func TestPixFmtRGBA32BlendBar(t *testing.T) {
+	width, height := 8, 8
+	buf := make([]basics.Int8u, width*height*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, width, height, width*4)
+	pf := NewPixFmtRGBA32[color.Linear](rbuf)
+
+	// pre-fill white
+	white := color.NewRGBA8[color.Linear](255, 255, 255, 255)
+	pf.CopyBar(0, 0, width-1, height-1, white)
+
+	src := color.NewRGBA8[color.Linear](0, 0, 255, 128)
+	pf.BlendBar(2, 2, 5, 5, src, basics.CoverFull)
+
+	for y := 2; y <= 5; y++ {
+		for x := 2; x <= 5; x++ {
+			p := pf.GetPixel(x, y)
+			if p.B <= 128 {
+				t.Errorf("BlendBar at (%d,%d): blue=%d should be > 128 after blending", x, y, p.B)
+			}
+		}
+	}
+}
+
+func TestPixFmtRGBA32BlendSolidVspan(t *testing.T) {
+	width, height := 1, 6
+	buf := make([]basics.Int8u, width*height*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, width, height, width*4)
+	pf := NewPixFmtRGBA32[color.Linear](rbuf)
+
+	c := color.NewRGBA8[color.Linear](0, 200, 100, 255)
+
+	// nil covers → uniform full coverage
+	pf.BlendSolidVspan(0, 0, height, c, nil)
+	for y := 0; y < height; y++ {
+		if got := pf.GetPixel(0, y); got != c {
+			t.Errorf("BlendSolidVspan(nil) at y=%d: got %+v want %+v", y, got, c)
+		}
+	}
+
+	// varying covers
+	buf2 := make([]basics.Int8u, 1*4*4)
+	rbuf2 := buffer.NewRenderingBufferU8WithData(buf2, 1, 4, 1*4)
+	pf2 := NewPixFmtRGBA32[color.Linear](rbuf2)
+	covers := []basics.Int8u{255, 128, 64, 0}
+	pf2.BlendSolidVspan(0, 0, 4, c, covers)
+
+	// full cover → full color
+	if got := pf2.GetPixel(0, 0); got != c {
+		t.Errorf("BlendSolidVspan cover=255 should produce full color")
+	}
+	// zero cover → unchanged (black)
+	if got := pf2.GetPixel(0, 3); got.G != 0 {
+		t.Errorf("BlendSolidVspan cover=0 should leave pixel unchanged")
+	}
+}
+
+func TestPixFmtRGBA32CopyColorHspan(t *testing.T) {
+	width, height := 4, 1
+	buf := make([]basics.Int8u, width*height*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, width, height, width*4)
+	pf := NewPixFmtRGBA32[color.Linear](rbuf)
+
+	colors := []color.RGBA8[color.Linear]{
+		color.NewRGBA8[color.Linear](10, 0, 0, 255),
+		color.NewRGBA8[color.Linear](20, 0, 0, 255),
+		color.NewRGBA8[color.Linear](30, 0, 0, 255),
+		color.NewRGBA8[color.Linear](40, 0, 0, 255),
+	}
+	pf.CopyColorHspan(0, 0, 4, colors)
+
+	for x, want := range colors {
+		if got := pf.GetPixel(x, 0); got != want {
+			t.Errorf("CopyColorHspan x=%d: got %+v want %+v", x, got, want)
+		}
+	}
+}
+
+func TestPixFmtRGBA32CopyColorVspan(t *testing.T) {
+	width, height := 1, 4
+	buf := make([]basics.Int8u, width*height*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, width, height, width*4)
+	pf := NewPixFmtRGBA32[color.Linear](rbuf)
+
+	colors := []color.RGBA8[color.Linear]{
+		color.NewRGBA8[color.Linear](10, 0, 0, 255),
+		color.NewRGBA8[color.Linear](20, 0, 0, 255),
+		color.NewRGBA8[color.Linear](30, 0, 0, 255),
+		color.NewRGBA8[color.Linear](40, 0, 0, 255),
+	}
+	pf.CopyColorVspan(0, 0, 4, colors)
+
+	for y, want := range colors {
+		if got := pf.GetPixel(0, y); got != want {
+			t.Errorf("CopyColorVspan y=%d: got %+v want %+v", y, got, want)
+		}
+	}
+}
+
+func TestPixFmtRGBA32BlendColorHspan(t *testing.T) {
+	width, height := 4, 1
+	buf := make([]basics.Int8u, width*height*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, width, height, width*4)
+	pf := NewPixFmtRGBA32[color.Linear](rbuf)
+
+	colors := []color.RGBA8[color.Linear]{
+		color.NewRGBA8[color.Linear](255, 0, 0, 255),
+		color.NewRGBA8[color.Linear](0, 255, 0, 255),
+		color.NewRGBA8[color.Linear](0, 0, 255, 255),
+		color.NewRGBA8[color.Linear](100, 100, 100, 255),
+	}
+	// blend with full cover, no covers slice
+	pf.BlendColorHspan(0, 0, 4, colors, nil, basics.CoverFull)
+
+	for x, want := range colors {
+		if got := pf.GetPixel(x, 0); got != want {
+			t.Errorf("BlendColorHspan x=%d: got %+v want %+v", x, got, want)
+		}
+	}
+
+	// blend with varying covers
+	buf2 := make([]basics.Int8u, 2*4)
+	rbuf2 := buffer.NewRenderingBufferU8WithData(buf2, 2, 1, 2*4)
+	pf2 := NewPixFmtRGBA32[color.Linear](rbuf2)
+	covers2 := []basics.Int8u{255, 0}
+	pf2.BlendColorHspan(0, 0, 2, colors[:2], covers2, basics.CoverFull)
+	if got := pf2.GetPixel(0, 0); got != colors[0] {
+		t.Errorf("BlendColorHspan cover=255 x=0: got %+v want %+v", got, colors[0])
+	}
+	if got := pf2.GetPixel(1, 0); got.R != 0 || got.G != 0 {
+		t.Errorf("BlendColorHspan cover=0 x=1: should be black/unchanged, got %+v", got)
+	}
+}
+
+func TestPixFmtRGBA32BlendColorVspan(t *testing.T) {
+	width, height := 1, 3
+	buf := make([]basics.Int8u, width*height*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, width, height, width*4)
+	pf := NewPixFmtRGBA32[color.Linear](rbuf)
+
+	colors := []color.RGBA8[color.Linear]{
+		color.NewRGBA8[color.Linear](255, 0, 0, 255),
+		color.NewRGBA8[color.Linear](0, 255, 0, 255),
+		color.NewRGBA8[color.Linear](0, 0, 255, 255),
+	}
+	pf.BlendColorVspan(0, 0, 3, colors, nil, basics.CoverFull)
+
+	for y, want := range colors {
+		if got := pf.GetPixel(0, y); got != want {
+			t.Errorf("BlendColorVspan y=%d: got %+v want %+v", y, got, want)
+		}
+	}
+}
+
+func TestPixFmtRGBA32Fill(t *testing.T) {
+	width, height := 4, 4
+	buf := make([]basics.Int8u, width*height*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, width, height, width*4)
+	pf := NewPixFmtRGBA32[color.Linear](rbuf)
+
+	c := color.NewRGBA8[color.Linear](10, 20, 30, 255)
+	pf.Fill(c)
+
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			if got := pf.GetPixel(x, y); got != c {
+				t.Errorf("Fill at (%d,%d): got %+v want %+v", x, y, got, c)
+			}
+		}
+	}
+}
+
+func TestPixFmtRGBA32Premultiply(t *testing.T) {
+	buf := make([]basics.Int8u, 1*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, 1, 1, 4)
+	pf := NewPixFmtRGBA32[color.Linear](rbuf)
+
+	// pixel with R=200, A=128 → premultiplied R ≈ 100
+	pf.CopyPixel(0, 0, color.NewRGBA8[color.Linear](200, 0, 0, 128))
+	pf.Premultiply()
+
+	got := pf.GetPixel(0, 0)
+	// R should be ~100 (200 * 128/255 ≈ 100)
+	if got.R > 105 || got.R < 95 {
+		t.Errorf("Premultiply: expected R≈100, got %d", got.R)
+	}
+}
+
+func TestPixFmtRGBA32Demultiply(t *testing.T) {
+	buf := make([]basics.Int8u, 1*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, 1, 1, 4)
+	pf := NewPixFmtRGBA32[color.Linear](rbuf)
+
+	// Start with premultiplied: R=100, A=128 → demultiplied R≈199
+	pf.CopyPixel(0, 0, color.NewRGBA8[color.Linear](100, 0, 0, 128))
+	pf.Demultiply()
+
+	got := pf.GetPixel(0, 0)
+	if got.R < 195 || got.R > 204 {
+		t.Errorf("Demultiply: expected R≈199, got %d", got.R)
+	}
+}
+
+func TestPixFmtRGBA32DemultiplyZeroAlpha(t *testing.T) {
+	buf := make([]basics.Int8u, 1*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, 1, 1, 4)
+	pf := NewPixFmtRGBA32[color.Linear](rbuf)
+
+	pf.CopyPixel(0, 0, color.NewRGBA8[color.Linear](100, 50, 25, 0))
+	pf.Demultiply() // zero alpha → R,G,B should be zeroed
+
+	got := pf.GetPixel(0, 0)
+	if got.R != 0 || got.G != 0 || got.B != 0 {
+		t.Errorf("Demultiply zero alpha: expected RGB=0, got %+v", got)
+	}
+}
+
+func TestPixFmtRGBA32ApplyGammaDir(t *testing.T) {
+	buf := make([]basics.Int8u, 1*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, 1, 1, 4)
+	pf := NewPixFmtRGBA32[color.Linear](rbuf)
+
+	pf.CopyPixel(0, 0, color.NewRGBA8[color.Linear](100, 150, 200, 255))
+
+	// identity gamma → no change
+	identity := func(v basics.Int8u) basics.Int8u { return v }
+	pf.ApplyGammaDir(identity)
+	if got := pf.GetPixel(0, 0); got.R != 100 || got.G != 150 || got.B != 200 || got.A != 255 {
+		t.Errorf("identity gamma changed pixel: %+v", got)
+	}
+
+	// double gamma → clamp at 255
+	double := func(v basics.Int8u) basics.Int8u {
+		if v > 127 {
+			return 255
+		}
+		return v * 2
+	}
+	pf.ApplyGammaDir(double)
+	got := pf.GetPixel(0, 0)
+	if got.R != 200 || got.G != 255 || got.B != 255 {
+		t.Errorf("double gamma failed: got R=%d G=%d B=%d", got.R, got.G, got.B)
+	}
+	// alpha should be unchanged
+	if got.A != 255 {
+		t.Errorf("gamma modified alpha: got %d", got.A)
+	}
+}
+
+func TestPixFmtRGBA32ApplyGammaInv(t *testing.T) {
+	buf := make([]basics.Int8u, 1*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, 1, 1, 4)
+	pf := NewPixFmtRGBA32[color.Linear](rbuf)
+	pf.CopyPixel(0, 0, color.NewRGBA8[color.Linear](50, 100, 150, 128))
+
+	// ApplyGammaInv calls ApplyGammaDir, so just verify it runs without panic
+	pf.ApplyGammaInv(func(v basics.Int8u) basics.Int8u { return v })
+	if got := pf.GetPixel(0, 0); got.A != 128 {
+		t.Errorf("ApplyGammaInv modified alpha: got %d", got.A)
+	}
+}
+
+func TestPixFmtRGBA32PreConstructors(t *testing.T) {
+	buf := make([]basics.Int8u, 4*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, 1, 1, 4)
+
+	_ = NewPixFmtRGBA32Pre[color.Linear](rbuf)
+	_ = NewPixFmtBGRA32Pre[color.Linear](rbuf)
+	_ = NewPixFmtARGB32Pre[color.Linear](rbuf)
+	_ = NewPixFmtABGR32Pre[color.Linear](rbuf)
+}
+
+func TestPixFmtRGBA32PlainConstructors(t *testing.T) {
+	buf := make([]basics.Int8u, 4*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, 1, 1, 4)
+
+	_ = NewPixFmtRGBA32Plain[color.Linear](rbuf)
+	_ = NewPixFmtBGRA32Plain[color.Linear](rbuf)
+	_ = NewPixFmtARGB32Plain[color.Linear](rbuf)
+	_ = NewPixFmtABGR32Plain[color.Linear](rbuf)
+}
+
+func TestPixFmtRGBA32LinearConstructors(t *testing.T) {
+	buf := make([]basics.Int8u, 4*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, 1, 1, 4)
+
+	_ = NewPixFmtRGBA32Linear(rbuf)
+	_ = NewPixFmtBGRA32Linear(rbuf)
+	_ = NewPixFmtARGB32Linear(rbuf)
+	_ = NewPixFmtABGR32Linear(rbuf)
+	_ = NewPixFmtRGBA32PreLinear(rbuf)
+	_ = NewPixFmtBGRA32PreLinear(rbuf)
+	_ = NewPixFmtARGB32PreLinear(rbuf)
+	_ = NewPixFmtABGR32PreLinear(rbuf)
+	_ = NewPixFmtRGBA32PlainLinear(rbuf)
+	_ = NewPixFmtBGRA32PlainLinear(rbuf)
+	_ = NewPixFmtARGB32PlainLinear(rbuf)
+	_ = NewPixFmtABGR32PlainLinear(rbuf)
+}
+
+func TestPixFmtRGBA32BlendHlinePre(t *testing.T) {
+	// Test BlendHline with a premultiplied blender
+	buf := make([]basics.Int8u, 8*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, 8, 1, 8*4)
+	pf := NewPixFmtRGBA32Pre[color.Linear](rbuf)
+
+	c := color.NewRGBA8[color.Linear](128, 64, 32, 128)
+	pf.BlendHline(0, 0, 4, c, basics.CoverFull)
+
+	// After blending onto black background, pixels should have non-zero values
+	for x := 0; x < 4; x++ {
+		p := pf.GetPixel(x, 0)
+		if p.R == 0 && p.G == 0 && p.B == 0 && p.A == 0 {
+			t.Errorf("BlendHline Pre at x=%d: pixel is still zero after blend", x)
+		}
+	}
+}
+
+func TestPixFmtRGBA32RowData(t *testing.T) {
+	buf := make([]basics.Int8u, 4*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, 1, 1, 4)
+	pf := NewPixFmtRGBA32[color.Linear](rbuf)
+
+	row := pf.RowData(0)
+	if len(row) == 0 {
+		t.Error("RowData(0) should return non-empty slice")
+	}
+	if pf.RowData(-1) != nil {
+		t.Error("RowData(-1) should return nil")
+	}
+	if pf.RowData(1) != nil {
+		t.Error("RowData(out of bounds) should return nil")
+	}
+}
+
 func TestPixFmtRGBA32BlendFromLUT(t *testing.T) {
 	buf := make([]basics.Int8u, 3*4)
 	rbuf := buffer.NewRenderingBufferU8WithData(buf, 3, 1, 3*4)

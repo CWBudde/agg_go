@@ -8,7 +8,7 @@ import (
 )
 
 // PixFmtAlphaBlendGray32 implements alpha blending for 32-bit float grayscale pixel formats
-type PixFmtAlphaBlendGray32[B any, CS color.Space] struct {
+type PixFmtAlphaBlendGray32[B blender.Gray32Blender[CS], CS color.Space] struct {
 	rbuf     *buffer.RenderingBufferF32
 	blender  B
 	category PixFmtGrayTag
@@ -25,7 +25,7 @@ func (p *Gray32PixelType) Set(v float32) {
 }
 
 // NewPixFmtAlphaBlendGray32 creates a new 32-bit float grayscale pixel format
-func NewPixFmtAlphaBlendGray32[B any, CS color.Space](rbuf *buffer.RenderingBufferF32, blender B) *PixFmtAlphaBlendGray32[B, CS] {
+func NewPixFmtAlphaBlendGray32[B blender.Gray32Blender[CS], CS color.Space](rbuf *buffer.RenderingBufferF32, blender B) *PixFmtAlphaBlendGray32[B, CS] {
 	return &PixFmtAlphaBlendGray32[B, CS]{
 		rbuf:    rbuf,
 		blender: blender,
@@ -85,11 +85,8 @@ func (pf *PixFmtAlphaBlendGray32[B, CS]) BlendPixel(x, y int, c color.Gray32[CS]
 	if InBounds(x, y, pf.Width(), pf.Height()) && c.A > 0.0 {
 		pixel := pf.PixPtr(x, y)
 		if pixel != nil {
-			if blender, ok := any(pf.blender).(blender.BlenderGray32Linear); ok {
-				// Convert Int8u cover to float32 (0-255 -> 0.0-1.0)
-				floatCover := float32(cover) / 255.0
-				blender.BlendPix(pixel, c.V, c.A, floatCover)
-			}
+			floatCover := float32(cover) / 255.0
+			pf.blender.BlendPix(pixel, c.V, c.A, floatCover)
 		}
 	}
 }
@@ -139,13 +136,9 @@ func (pf *PixFmtAlphaBlendGray32[B, CS]) BlendHline(x, y, length int, c color.Gr
 	}
 
 	row := pf.RowPtr(y)
-	if blender, ok := any(pf.blender).(blender.BlenderGray32Linear); ok {
-		floatCover := float32(cover) / 255.0
-		for i := 0; i < length; i++ {
-			if c.A > 0.0 {
-				blender.BlendPix(&row[x+i], c.V, c.A, floatCover)
-			}
-		}
+	floatCover := float32(cover) / 255.0
+	for i := 0; i < length; i++ {
+		pf.blender.BlendPix(&row[x+i], c.V, c.A, floatCover)
 	}
 }
 
@@ -245,15 +238,11 @@ func (pf *PixFmtAlphaBlendGray32[B, CS]) BlendSolidHspan(x, y, length int, c col
 		coverOffset := Max(0, -x)
 		effectiveLength := x2 - x1 + 1
 
-		if blender, ok := any(pf.blender).(blender.BlenderGray32Linear); ok {
-			// Blend each pixel with its corresponding coverage
-			for i := 0; i < effectiveLength; i++ {
-				coverIndex := coverOffset + i
-				if coverIndex < len(covers) && covers[coverIndex] > 0 && c.A > 0.0 {
-					// Convert Int8u cover to float32 (0-255 -> 0.0-1.0)
-					floatCover := float32(covers[coverIndex]) / 255.0
-					blender.BlendPix(&row[x1+i], c.V, c.A, floatCover)
-				}
+		for i := 0; i < effectiveLength; i++ {
+			coverIndex := coverOffset + i
+			if coverIndex < len(covers) && covers[coverIndex] > 0 {
+				floatCover := float32(covers[coverIndex]) / 255.0
+				pf.blender.BlendPix(&row[x1+i], c.V, c.A, floatCover)
 			}
 		}
 	}

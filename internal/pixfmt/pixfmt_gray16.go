@@ -8,7 +8,7 @@ import (
 )
 
 // PixFmtAlphaBlendGray16 implements alpha blending for 16-bit grayscale pixel formats
-type PixFmtAlphaBlendGray16[B any, CS color.Space] struct {
+type PixFmtAlphaBlendGray16[B blender.Gray16Blender[CS], CS color.Space] struct {
 	rbuf     *buffer.RenderingBufferU16
 	blender  B
 	category PixFmtGrayTag
@@ -25,7 +25,7 @@ func (p *Gray16PixelType) Set(v basics.Int16u) {
 }
 
 // NewPixFmtAlphaBlendGray16 creates a new 16-bit grayscale pixel format
-func NewPixFmtAlphaBlendGray16[B any, CS color.Space](rbuf *buffer.RenderingBufferU16, blender B) *PixFmtAlphaBlendGray16[B, CS] {
+func NewPixFmtAlphaBlendGray16[B blender.Gray16Blender[CS], CS color.Space](rbuf *buffer.RenderingBufferU16, blender B) *PixFmtAlphaBlendGray16[B, CS] {
 	return &PixFmtAlphaBlendGray16[B, CS]{
 		rbuf:    rbuf,
 		blender: blender,
@@ -85,9 +85,7 @@ func (pf *PixFmtAlphaBlendGray16[B, CS]) BlendPixel(x, y int, c color.Gray16[CS]
 	if InBounds(x, y, pf.Width(), pf.Height()) && c.A > 0 {
 		pixel := pf.PixPtr(x, y)
 		if pixel != nil {
-			if blender, ok := any(pf.blender).(blender.BlenderGray16Linear); ok {
-				blender.BlendPix(pixel, c.V, c.A, cover)
-			}
+			pf.blender.BlendPix(pixel, c.V, c.A, cover)
 		}
 	}
 }
@@ -137,12 +135,8 @@ func (pf *PixFmtAlphaBlendGray16[B, CS]) BlendHline(x, y, length int, c color.Gr
 	}
 
 	row := pf.RowPtr(y)
-	if blender, ok := any(pf.blender).(blender.BlenderGray16Linear); ok {
-		for i := 0; i < length; i++ {
-			if c.A > 0 {
-				blender.BlendPix(&row[x+i], c.V, c.A, cover)
-			}
-		}
+	for i := 0; i < length; i++ {
+		pf.blender.BlendPix(&row[x+i], c.V, c.A, cover)
 	}
 }
 
@@ -238,13 +232,10 @@ func (pf *PixFmtAlphaBlendGray16[B, CS]) BlendSolidHspan(x, y, length int, c col
 		coverOffset := Max(0, -x)
 		effectiveLength := x2 - x1 + 1
 
-		if blender, ok := any(pf.blender).(blender.BlenderGray16Linear); ok {
-			// Blend each pixel with its corresponding coverage
-			for i := 0; i < effectiveLength; i++ {
-				coverIndex := coverOffset + i
-				if coverIndex < len(covers) && covers[coverIndex] > 0 && c.A > 0 {
-					blender.BlendPix(&row[x1+i], c.V, c.A, covers[coverIndex])
-				}
+		for i := 0; i < effectiveLength; i++ {
+			coverIndex := coverOffset + i
+			if coverIndex < len(covers) && covers[coverIndex] > 0 {
+				pf.blender.BlendPix(&row[x1+i], c.V, c.A, covers[coverIndex])
 			}
 		}
 	}

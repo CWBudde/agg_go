@@ -291,6 +291,207 @@ func TestPixFmtGray8BlendFromColor(t *testing.T) {
 	}
 }
 
+func TestPixFmtGray8Stride(t *testing.T) {
+	buf := make([]basics.Int8u, 10*5)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, 10, 5, 10)
+	pf := NewPixFmtGray8(rbuf)
+	if pf.Stride() != 10 {
+		t.Errorf("Stride() expected 10, got %d", pf.Stride())
+	}
+}
+
+func TestPixFmtGray8BlendHline(t *testing.T) {
+	width, height := 8, 2
+	buf := make([]basics.Int8u, width*height)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, width, height, width)
+	pf := NewPixFmtGray8(rbuf)
+
+	// fill row with mid-gray background
+	bg := color.NewGray8WithAlpha[color.Linear](128, 255)
+	pf.CopyHline(0, 0, width, bg)
+
+	// blend white with half alpha onto gray background
+	white := color.NewGray8WithAlpha[color.Linear](255, 128)
+	pf.BlendHline(1, 0, 5, white, basics.CoverFull)
+
+	for x := 1; x < 6; x++ {
+		p := pf.GetPixel(x, 0)
+		if p.V <= 128 || p.V >= 255 {
+			t.Errorf("BlendHline at x=%d: V=%d should be between 128 and 255", x, p.V)
+		}
+	}
+	// outside span unchanged
+	if pf.GetPixel(0, 0).V != 128 {
+		t.Errorf("pixel before BlendHline span should be unchanged")
+	}
+}
+
+func TestPixFmtGray8BlendVline(t *testing.T) {
+	width, height := 2, 8
+	buf := make([]basics.Int8u, width*height)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, width, height, width)
+	pf := NewPixFmtGray8(rbuf)
+
+	bg := color.NewGray8WithAlpha[color.Linear](64, 255)
+	pf.CopyBar(0, 0, 1, 7, bg)
+
+	white := color.NewGray8WithAlpha[color.Linear](255, 255)
+	pf.BlendVline(0, 2, 5, white, basics.CoverFull)
+
+	for y := 2; y <= 5; y++ {
+		if pf.GetPixel(0, y).V != 255 {
+			t.Errorf("BlendVline at y=%d: expected 255, got %d", y, pf.GetPixel(0, y).V)
+		}
+	}
+	if pf.GetPixel(0, 1).V != 64 {
+		t.Errorf("pixel before BlendVline span should be unchanged (64)")
+	}
+}
+
+func TestPixFmtGray8BlendBar(t *testing.T) {
+	width, height := 8, 8
+	buf := make([]basics.Int8u, width*height)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, width, height, width)
+	pf := NewPixFmtGray8(rbuf)
+
+	bg := color.NewGray8WithAlpha[color.Linear](100, 255)
+	pf.CopyBar(0, 0, width-1, height-1, bg)
+
+	white := color.NewGray8WithAlpha[color.Linear](255, 255)
+	pf.BlendBar(2, 2, 5, 5, white, basics.CoverFull)
+
+	for y := 2; y <= 5; y++ {
+		for x := 2; x <= 5; x++ {
+			if pf.GetPixel(x, y).V != 255 {
+				t.Errorf("BlendBar at (%d,%d): expected 255, got %d", x, y, pf.GetPixel(x, y).V)
+			}
+		}
+	}
+}
+
+func TestPixFmtGray8BlendSolidVspan(t *testing.T) {
+	width, height := 1, 5
+	buf := make([]basics.Int8u, width*height)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, width, height, width)
+	pf := NewPixFmtGray8(rbuf)
+
+	c := color.NewGray8WithAlpha[color.Linear](200, 255)
+
+	// nil covers → uniform full coverage
+	pf.BlendSolidVspan(0, 0, height, c, nil)
+	for y := 0; y < height; y++ {
+		if pf.GetPixel(0, y).V != 200 {
+			t.Errorf("BlendSolidVspan nil at y=%d: got %d", y, pf.GetPixel(0, y).V)
+		}
+	}
+
+	// varying covers
+	buf2 := make([]basics.Int8u, 3)
+	rbuf2 := buffer.NewRenderingBufferU8WithData(buf2, 1, 3, 1)
+	pf2 := NewPixFmtGray8(rbuf2)
+	covers := []basics.Int8u{255, 128, 0}
+	pf2.BlendSolidVspan(0, 0, 3, c, covers)
+	if pf2.GetPixel(0, 0).V != 200 {
+		t.Errorf("BlendSolidVspan cover=255: expected 200, got %d", pf2.GetPixel(0, 0).V)
+	}
+	if pf2.GetPixel(0, 2).V != 0 {
+		t.Errorf("BlendSolidVspan cover=0: expected 0, got %d", pf2.GetPixel(0, 2).V)
+	}
+}
+
+func TestPixFmtGray8CopyColorHspan(t *testing.T) {
+	buf := make([]basics.Int8u, 4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, 4, 1, 4)
+	pf := NewPixFmtGray8(rbuf)
+
+	colors := []color.Gray8[color.Linear]{
+		{V: 10, A: 255}, {V: 20, A: 255}, {V: 30, A: 255}, {V: 40, A: 255},
+	}
+	pf.CopyColorHspan(0, 0, 4, colors)
+
+	for x, want := range colors {
+		if got := pf.GetPixel(x, 0).V; got != want.V {
+			t.Errorf("CopyColorHspan x=%d: got %d want %d", x, got, want.V)
+		}
+	}
+}
+
+func TestPixFmtGray8CopyColorVspan(t *testing.T) {
+	buf := make([]basics.Int8u, 4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, 1, 4, 1)
+	pf := NewPixFmtGray8(rbuf)
+
+	colors := []color.Gray8[color.Linear]{
+		{V: 10, A: 255}, {V: 20, A: 255}, {V: 30, A: 255}, {V: 40, A: 255},
+	}
+	pf.CopyColorVspan(0, 0, 4, colors)
+
+	for y, want := range colors {
+		if got := pf.GetPixel(0, y).V; got != want.V {
+			t.Errorf("CopyColorVspan y=%d: got %d want %d", y, got, want.V)
+		}
+	}
+}
+
+func TestPixFmtGray8BlendColorHspan(t *testing.T) {
+	buf := make([]basics.Int8u, 4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, 4, 1, 4)
+	pf := NewPixFmtGray8(rbuf)
+
+	colors := []color.Gray8[color.Linear]{
+		{V: 50, A: 255}, {V: 100, A: 255}, {V: 150, A: 255}, {V: 200, A: 255},
+	}
+	pf.BlendColorHspan(0, 0, 4, colors, nil, basics.CoverFull)
+
+	for x, want := range colors {
+		if got := pf.GetPixel(x, 0).V; got != want.V {
+			t.Errorf("BlendColorHspan x=%d: got %d want %d", x, got, want.V)
+		}
+	}
+}
+
+func TestPixFmtGray8BlendColorVspan(t *testing.T) {
+	buf := make([]basics.Int8u, 4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, 1, 4, 1)
+	pf := NewPixFmtGray8(rbuf)
+
+	colors := []color.Gray8[color.Linear]{
+		{V: 50, A: 255}, {V: 100, A: 255}, {V: 150, A: 255}, {V: 200, A: 255},
+	}
+	pf.BlendColorVspan(0, 0, 4, colors, nil, basics.CoverFull)
+
+	for y, want := range colors {
+		if got := pf.GetPixel(0, y).V; got != want.V {
+			t.Errorf("BlendColorVspan y=%d: got %d want %d", y, got, want.V)
+		}
+	}
+}
+
+func TestPixFmtGray8Fill(t *testing.T) {
+	buf := make([]basics.Int8u, 4*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, 4, 4, 4)
+	pf := NewPixFmtGray8(rbuf)
+
+	c := color.NewGray8WithAlpha[color.Linear](77, 255)
+	pf.Fill(c)
+
+	for y := 0; y < 4; y++ {
+		for x := 0; x < 4; x++ {
+			if pf.GetPixel(x, y).V != 77 {
+				t.Errorf("Fill at (%d,%d): expected 77, got %d", x, y, pf.GetPixel(x, y).V)
+			}
+		}
+	}
+}
+
+func TestPixFmtGray8Constructors(t *testing.T) {
+	buf := make([]basics.Int8u, 4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, 1, 1, 1)
+	_ = NewPixFmtSGray8(rbuf)
+	_ = NewPixFmtGray8Pre(rbuf)
+	_ = NewPixFmtSGray8Pre(rbuf)
+}
+
 func TestPixFmtGray8BlendFromLUT(t *testing.T) {
 	buf := make([]basics.Int8u, 3)
 	rbuf := buffer.NewRenderingBufferU8WithData(buf, 3, 1, 3)

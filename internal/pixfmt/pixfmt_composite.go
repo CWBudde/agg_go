@@ -228,8 +228,14 @@ func (pf *PixFmtCompositeRGBA[CS, O]) BlendBar(x1, y1, x2, y2 int, c color.RGBA8
 
 // BlendSolidVspan blends a vertical span with solid color
 func (pf *PixFmtCompositeRGBA[CS, O]) BlendSolidVspan(x, y, length int, c color.RGBA8[CS], covers []basics.Int8u) {
-	for i := 0; i < length && i < len(covers); i++ {
-		pf.BlendPixel(x, y+i, c, covers[i])
+	if covers == nil {
+		for i := 0; i < length; i++ {
+			pf.BlendPixel(x, y+i, c, basics.CoverFull)
+		}
+	} else {
+		for i := 0; i < length && i < len(covers); i++ {
+			pf.BlendPixel(x, y+i, c, covers[i])
+		}
 	}
 }
 

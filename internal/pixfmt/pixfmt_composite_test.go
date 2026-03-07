@@ -247,6 +247,215 @@ func TestPixFmtCompositeRGBA32PreBlendFromCompositeOpsMatchManualBlend(t *testin
 	}
 }
 
+func TestPixFmtCompositeRGBA32PixWidth(t *testing.T) {
+	buf := make([]basics.Int8u, 4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, 1, 1, 4)
+	pf := NewPixFmtCompositeRGBA32(rbuf, blender.CompOpSrcOver)
+	if pf.PixWidth() != 4 {
+		t.Errorf("PixWidth() expected 4, got %d", pf.PixWidth())
+	}
+}
+
+func TestPixFmtCompositeRGBA32Pixel(t *testing.T) {
+	buf := make([]basics.Int8u, 4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, 1, 1, 4)
+	pf := NewPixFmtCompositeRGBA32(rbuf, blender.CompOpSrc)
+	c := color.RGBA8[color.Linear]{R: 10, G: 20, B: 30, A: 255}
+	pf.CopyPixel(0, 0, c)
+	if got := pf.GetPixel(0, 0); got != c {
+		t.Errorf("GetPixel after CopyPixel: got %+v want %+v", got, c)
+	}
+}
+
+func TestPixFmtCompositeRGBA32GetCompOp(t *testing.T) {
+	buf := make([]basics.Int8u, 4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, 1, 1, 4)
+	pf := NewPixFmtCompositeRGBA32(rbuf, blender.CompOpSrcOver)
+	if pf.GetCompOp() != blender.CompOpSrcOver {
+		t.Errorf("GetCompOp() expected CompOpSrcOver")
+	}
+}
+
+func TestPixFmtCompositeRGBA32BlendHline(t *testing.T) {
+	buf := make([]basics.Int8u, 4*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, 4, 1, 4*4)
+	pf := NewPixFmtCompositeRGBA32(rbuf, blender.CompOpSrc)
+
+	c := color.RGBA8[color.Linear]{R: 100, G: 150, B: 200, A: 255}
+	pf.BlendHline(0, 0, 4, c, basics.CoverFull)
+
+	for x := 0; x < 4; x++ {
+		if got := pf.GetPixel(x, 0); got != c {
+			t.Errorf("BlendHline x=%d: got %+v want %+v", x, got, c)
+		}
+	}
+}
+
+func TestPixFmtCompositeRGBA32BlendVline(t *testing.T) {
+	buf := make([]basics.Int8u, 1*4*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, 1, 4, 1*4)
+	pf := NewPixFmtCompositeRGBA32(rbuf, blender.CompOpSrc)
+
+	c := color.RGBA8[color.Linear]{R: 50, G: 100, B: 150, A: 255}
+	pf.BlendVline(0, 0, 4, c, basics.CoverFull)
+
+	for y := 0; y < 4; y++ {
+		if got := pf.GetPixel(0, y); got != c {
+			t.Errorf("BlendVline y=%d: got %+v want %+v", y, got, c)
+		}
+	}
+}
+
+func TestPixFmtCompositeRGBA32BlendSolidHspan(t *testing.T) {
+	buf := make([]basics.Int8u, 4*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, 4, 1, 4*4)
+	pf := NewPixFmtCompositeRGBA32(rbuf, blender.CompOpSrc)
+
+	c := color.RGBA8[color.Linear]{R: 200, G: 100, B: 50, A: 255}
+	covers := []basics.Int8u{255, 255, 128, 0}
+	pf.BlendSolidHspan(0, 0, 4, c, covers)
+
+	if got := pf.GetPixel(0, 0); got != c {
+		t.Errorf("BlendSolidHspan full cover x=0: got %+v want %+v", got, c)
+	}
+	// zero cover → no change
+	if got := pf.GetPixel(3, 0); got.R != 0 {
+		t.Errorf("BlendSolidHspan zero cover x=3: should be zero, got %+v", got)
+	}
+}
+
+func TestPixFmtCompositeRGBA32CopyHlineVline(t *testing.T) {
+	buf := make([]basics.Int8u, 4*4*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, 4, 4, 4*4)
+	pf := NewPixFmtCompositeRGBA32(rbuf, blender.CompOpSrc)
+
+	c := color.RGBA8[color.Linear]{R: 77, G: 88, B: 99, A: 255}
+	pf.CopyHline(0, 1, 4, c)
+	for x := 0; x < 4; x++ {
+		if got := pf.GetPixel(x, 1); got != c {
+			t.Errorf("CopyHline x=%d: got %+v want %+v", x, got, c)
+		}
+	}
+
+	pf.CopyVline(2, 0, 4, c)
+	for y := 0; y < 4; y++ {
+		if got := pf.GetPixel(2, y); got != c {
+			t.Errorf("CopyVline y=%d: got %+v want %+v", y, got, c)
+		}
+	}
+}
+
+func TestPixFmtCompositeRGBA32CopyAndBlendBar(t *testing.T) {
+	buf := make([]basics.Int8u, 6*6*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, 6, 6, 6*4)
+	pf := NewPixFmtCompositeRGBA32(rbuf, blender.CompOpSrc)
+
+	c := color.RGBA8[color.Linear]{R: 111, G: 222, B: 33, A: 255}
+	pf.CopyBar(1, 1, 4, 4, c)
+
+	for y := 1; y <= 4; y++ {
+		for x := 1; x <= 4; x++ {
+			if got := pf.GetPixel(x, y); got != c {
+				t.Errorf("CopyBar (%d,%d): got %+v want %+v", x, y, got, c)
+			}
+		}
+	}
+
+	d := color.RGBA8[color.Linear]{R: 0, G: 0, B: 255, A: 255}
+	pf.BlendBar(1, 1, 2, 2, d, basics.CoverFull)
+	if got := pf.GetPixel(1, 1); got != d {
+		t.Errorf("BlendBar (%d,%d): got %+v want %+v", 1, 1, got, d)
+	}
+}
+
+func TestPixFmtCompositeRGBA32CopyColorSpans(t *testing.T) {
+	buf := make([]basics.Int8u, 3*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, 3, 1, 3*4)
+	pf := NewPixFmtCompositeRGBA32(rbuf, blender.CompOpSrc)
+
+	colors := []color.RGBA8[color.Linear]{
+		{R: 10, A: 255}, {R: 20, A: 255}, {R: 30, A: 255},
+	}
+	pf.CopyColorHspan(0, 0, 3, colors)
+	for x, want := range colors {
+		if got := pf.GetPixel(x, 0); got != want {
+			t.Errorf("CopyColorHspan x=%d: got %+v want %+v", x, got, want)
+		}
+	}
+
+	buf2 := make([]basics.Int8u, 1*3*4)
+	rbuf2 := buffer.NewRenderingBufferU8WithData(buf2, 1, 3, 1*4)
+	pf2 := NewPixFmtCompositeRGBA32(rbuf2, blender.CompOpSrc)
+	pf2.CopyColorVspan(0, 0, 3, colors)
+	for y, want := range colors {
+		if got := pf2.GetPixel(0, y); got != want {
+			t.Errorf("CopyColorVspan y=%d: got %+v want %+v", y, got, want)
+		}
+	}
+}
+
+func TestPixFmtCompositeRGBA32BlendColorSpans(t *testing.T) {
+	buf := make([]basics.Int8u, 3*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, 3, 1, 3*4)
+	pf := NewPixFmtCompositeRGBA32(rbuf, blender.CompOpSrc)
+
+	colors := []color.RGBA8[color.Linear]{
+		{R: 50, A: 255}, {R: 100, A: 255}, {R: 150, A: 255},
+	}
+	pf.BlendColorHspan(0, 0, 3, colors, nil, basics.CoverFull)
+	for x, want := range colors {
+		if got := pf.GetPixel(x, 0); got != want {
+			t.Errorf("BlendColorHspan x=%d: got %+v want %+v", x, got, want)
+		}
+	}
+
+	buf2 := make([]basics.Int8u, 1*3*4)
+	rbuf2 := buffer.NewRenderingBufferU8WithData(buf2, 1, 3, 1*4)
+	pf2 := NewPixFmtCompositeRGBA32(rbuf2, blender.CompOpSrc)
+	pf2.BlendColorVspan(0, 0, 3, colors, nil, basics.CoverFull)
+	for y, want := range colors {
+		if got := pf2.GetPixel(0, y); got != want {
+			t.Errorf("BlendColorVspan y=%d: got %+v want %+v", y, got, want)
+		}
+	}
+}
+
+func TestPixFmtCompositeRGBA32SolidVspan(t *testing.T) {
+	buf := make([]basics.Int8u, 1*4*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, 1, 4, 1*4)
+	pf := NewPixFmtCompositeRGBA32(rbuf, blender.CompOpSrc)
+
+	c := color.RGBA8[color.Linear]{R: 180, G: 90, B: 45, A: 255}
+	pf.BlendSolidVspan(0, 0, 4, c, nil)
+	for y := 0; y < 4; y++ {
+		if got := pf.GetPixel(0, y); got != c {
+			t.Errorf("BlendSolidVspan y=%d: got %+v want %+v", y, got, c)
+		}
+	}
+}
+
+func TestPixFmtCompositeRGBA32ClearAndFill(t *testing.T) {
+	buf := make([]basics.Int8u, 2*2*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, 2, 2, 2*4)
+	pf := NewPixFmtCompositeRGBA32(rbuf, blender.CompOpSrc)
+
+	c := color.RGBA8[color.Linear]{R: 55, G: 66, B: 77, A: 255}
+	pf.Clear(c)
+	for y := 0; y < 2; y++ {
+		for x := 0; x < 2; x++ {
+			if got := pf.GetPixel(x, y); got != c {
+				t.Errorf("Clear (%d,%d): got %+v want %+v", x, y, got, c)
+			}
+		}
+	}
+
+	zero := color.RGBA8[color.Linear]{}
+	pf.Fill(zero)
+	if got := pf.GetPixel(0, 0); got != zero {
+		t.Errorf("Fill zero: got %+v", got)
+	}
+}
+
 func TestPixFmtCompositeRGBA32SetCompOpAffectsSubsequentBlends(t *testing.T) {
 	buf := []basics.Int8u{20, 30, 40, 50}
 	rbuf := buffer.NewRenderingBufferU8WithData(buf, 1, 1, 4)

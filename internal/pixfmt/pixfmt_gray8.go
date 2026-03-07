@@ -428,9 +428,15 @@ func (pf *PixFmtAlphaBlendGray[CS, B]) BlendSolidVspan(x, y, length int, c color
 	y2 := Min(pf.Height()-1, y+length-1)
 	coverOffset := Max(0, -y)
 
-	for i, currentY := 0, y1; currentY <= y2; i, currentY = i+1, currentY+1 {
-		if coverOffset+i < len(covers) && covers[coverOffset+i] > 0 {
-			pf.BlendPixel(x, currentY, c, covers[coverOffset+i])
+	if covers == nil {
+		for currentY := y1; currentY <= y2; currentY++ {
+			pf.BlendPixel(x, currentY, c, basics.CoverFull)
+		}
+	} else {
+		for i, currentY := 0, y1; currentY <= y2; i, currentY = i+1, currentY+1 {
+			if coverOffset+i < len(covers) && covers[coverOffset+i] > 0 {
+				pf.BlendPixel(x, currentY, c, covers[coverOffset+i])
+			}
 		}
 	}
 }
