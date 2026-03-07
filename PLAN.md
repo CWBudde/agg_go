@@ -491,31 +491,3 @@ For each task:
 3. Add or update contract tests.
 4. Add/update visual regression if rendering-visible.
 5. Mark ledger status and `docs/TASKS.md`.
-
----
-
-## Immediate Execution Queue (Start Here)
-
-1. [x] Rebuild `internal/agg2d/image.go` around AGG span-interpolator pipeline.
-2. [x] Fix `internal/agg2d/gradient.go` transform/scalar parity (remove no-op helpers).
-3. [x] Replace text rectangle fallback in `internal/agg2d/text.go`.
-4. [x] Align clip propagation across rasterizer and renderer bases in `internal/agg2d/buffer.go`.
-5. [x] Add pixel-asserting AGG2D tests for the above before moving to lower-priority items.
-       Current coverage includes clip/copy assertions and deterministic image sampling assertions; broader end-to-end render-output parity remains tracked in Phase `4.1`.
-6. [x] Implement `vcgen_stroke` core struct plus configuration API from Phase 5.2.
-7. [x] Port `InnerJoin` through `conv_stroke` and `vcgen_stroke`, then add miter-limit regression tests.
-8. [x] Implement `vcgen_contour` core struct plus width/join handling from Phase 5.2.
-9. [x] Close the remaining AGG2D smoke tests from Phase 4.1 that still only assert "no crash".
-       Upgraded TestDrawPath (4 draw modes with pixel assertions), TestBasicShapes (9 shapes verified),
-       TestMasterAlpha (alpha attenuation check), TestRenderingIntegration (blend/stroke/circle pixels),
-       TestPathBasedImageTransformations (no-path no-output, with-path renders).
-10. [x] Replace the Phase 7.1 arch wrappers in `internal/simd/` with real Plan 9 asm for `fillRGBA`.
-11. [x] Implement Phase 7.2 SIMD `BlendSolidHspan` and validate against scalar output plus visual tests.
-        NEON arm64 now uses run-fill hybrid (NEON fill for solid-coverage runs, generic for partial).
-        Comprehensive validation test suite added covering 15 scenarios across all implementations.
-        Found and fixed AVX2 register-clobber bug in 8-pixel loop (X4/Y4 aliasing in both alpha and opaque paths).
-12. [x] Port one high-value missing demo from Phase 9.2, preferring `raster_text.cpp` or `image_resample.cpp`.
-        Ported `raster_text.cpp` as `examples/core/intermediate/raster_text/main.go`. Renders all 34 embedded
-        fonts with sample text, plus a sine-repeat circular gradient text line (red→green) at the bottom,
-        matching the C++ original. Uses `RendererRasterHTextSolid` for solid text and `RendererRasterHText`
-        with a custom `ScanlineRendererInterface` for per-pixel gradient coloring.

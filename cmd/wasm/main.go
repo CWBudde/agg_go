@@ -1100,6 +1100,8 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 		drawImageAlphaDemo()
 	case "pattern_fill":
 		drawPatternFillDemo()
+	case "raster_text":
+		drawRasterTextDemo()
 	default:
 		logStatus("unknown demo type: " + demoType)
 		return nil

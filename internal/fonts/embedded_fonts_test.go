@@ -306,7 +306,7 @@ func TestGSE5x7CharacterBitmaps(t *testing.T) {
 	}
 
 	// Test that 'A' has the expected bitmap pattern (5x7)
-	expectedA := []byte{0x00, 0x20, 0x50, 0x88, 0xf8, 0x88, 0x00}
+	expectedA := []byte{0x00, 0x60, 0x90, 0xf0, 0x90, 0x90, 0x00}
 	actualA := font[aOffset+1 : aOffset+1+7] // width byte + 7 rows
 
 	if !bytes.Equal(expectedA, actualA) {
@@ -373,16 +373,8 @@ func TestAllFontAccessors(t *testing.T) {
 				t.Errorf("%s should start at space (32), got %d", name, startChar)
 			}
 
-			// MCS proportional fonts have 128 chars, others have 96
+			// All fonts have 96 chars (ASCII 32-127)
 			expectedChars := byte(96)
-			if len(name) >= 3 && name[:3] == "MCS" {
-				// Check if it's a proportional font (ends with "Prop" or "PropCondensed")
-				if len(name) >= 4 && name[len(name)-4:] == "Prop" {
-					expectedChars = 128
-				} else if len(name) >= 13 && name[len(name)-13:] == "PropCondensed" {
-					expectedChars = 128
-				}
-			}
 
 			if numChars != expectedChars {
 				t.Errorf("%s should have %d chars, got %d", name, expectedChars, numChars)
@@ -498,7 +490,7 @@ func TestMCS5x10MonoCharacterBitmaps(t *testing.T) {
 	}
 
 	// Test that 'A' has the expected bitmap pattern (5x10)
-	expectedA := []byte{0x00, 0x70, 0x88, 0x88, 0x88, 0x88, 0xF8, 0x88, 0x88, 0x00}
+	expectedA := []byte{0x00, 0x60, 0x90, 0x90, 0x90, 0xf0, 0x90, 0x90, 0x90, 0x00}
 	actualA := font[aOffset+1 : aOffset+1+10] // width byte + 10 rows
 
 	if !bytes.Equal(expectedA, actualA) {
@@ -754,15 +746,10 @@ func TestFontFamiliesCoverage(t *testing.T) {
 				t.Errorf("%s family font %d is too short: %d bytes", family, i, len(font))
 			}
 
-			// MCS proportional fonts have 128 chars, others have 96 (ASCII 32-127)
+			// All fonts cover 96 chars (ASCII 32-127, i.e. 128-32).
 			numChars := int(font[3])
-			expectedChars := 96
-			// MCS family: index 0 is MCS5x10Mono (96 chars), index 1 is MCS11Prop (128 chars)
-			if family == "MCS" && i == 1 {
-				expectedChars = 128
-			}
-			if numChars != expectedChars {
-				t.Errorf("%s family font %d should have %d chars, got %d", family, i, expectedChars, numChars)
+			if numChars != 96 {
+				t.Errorf("%s family font %d should have 96 chars, got %d", family, i, numChars)
 			}
 		}
 	}
