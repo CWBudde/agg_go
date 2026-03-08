@@ -427,37 +427,6 @@ export const demoURLHandlers = {
     },
   },
 
-  blend: {
-    persist() {
-      updateURL({
-        compop: document.getElementById("compOpSelector").value,
-        cas: parseFloat(document.getElementById("compAlphaSrcSlider").value),
-        cad: parseFloat(document.getElementById("compAlphaDstSlider").value),
-      });
-    },
-    restore(p) {
-      if (p.has("compop")) {
-        const val = parseInt(p.get("compop"));
-        setCompOp(val);
-        document.getElementById("compOpSelector").value = val;
-      }
-      if (p.has("cas")) {
-        const val = parseFloat(p.get("cas"));
-        setCompAlphaSrc(val);
-        document.getElementById("compAlphaSrcSlider").value = val;
-        document.getElementById("compAlphaSrcValue").textContent =
-          val.toFixed(2);
-      }
-      if (p.has("cad")) {
-        const val = parseFloat(p.get("cad"));
-        setCompAlphaDst(val);
-        document.getElementById("compAlphaDstSlider").value = val;
-        document.getElementById("compAlphaDstValue").textContent =
-          val.toFixed(2);
-      }
-    },
-  },
-
   multi_clip: {
     persist() {
       updateURL({
