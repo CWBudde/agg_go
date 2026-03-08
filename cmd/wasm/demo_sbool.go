@@ -109,7 +109,7 @@ func handleSBoolMouseDown(x, y float64) bool {
 	sboolSelected = -1
 	// Check poly1
 	for i := 0; i < 4; i++ {
-		if math.Sqrt(math.Pow(x-sboolPoly1X[i], 2)+math.Pow(y-sboolPoly1Y[i], 2)) < 15 {
+		if math.Sqrt((x-sboolPoly1X[i])*(x-sboolPoly1X[i])+(y-sboolPoly1Y[i])*(y-sboolPoly1Y[i])) < 15 {
 			sboolSelected = i
 			sboolPolyIdx = 0
 			sboolDragDX = x - sboolPoly1X[i]
@@ -119,7 +119,7 @@ func handleSBoolMouseDown(x, y float64) bool {
 	}
 	// Check poly2
 	for i := 0; i < 4; i++ {
-		if math.Sqrt(math.Pow(x-sboolPoly2X[i], 2)+math.Pow(y-sboolPoly2Y[i], 2)) < 15 {
+		if math.Sqrt((x-sboolPoly2X[i])*(x-sboolPoly2X[i])+(y-sboolPoly2Y[i])*(y-sboolPoly2Y[i])) < 15 {
 			sboolSelected = i
 			sboolPolyIdx = 1
 			sboolDragDX = x - sboolPoly2X[i]

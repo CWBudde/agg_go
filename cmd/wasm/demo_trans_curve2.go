@@ -52,7 +52,7 @@ func drawTransCurve2Demo() {
 			moveTransCurve2Point(&transCurve2Points1[i*2], &transCurve2Points1[i*2+1], &transCurve2DX1[i], &transCurve2DY1[i])
 			moveTransCurve2Point(&transCurve2Points2[i*2], &transCurve2Points2[i*2+1], &transCurve2DX2[i], &transCurve2DY2[i])
 			// normalize distance
-			d := math.Sqrt(math.Pow(transCurve2Points1[i*2]-transCurve2Points2[i*2], 2) + math.Pow(transCurve2Points1[i*2+1]-transCurve2Points2[i*2+1], 2))
+			d := math.Sqrt((transCurve2Points1[i*2]-transCurve2Points2[i*2])*(transCurve2Points1[i*2]-transCurve2Points2[i*2]) + (transCurve2Points1[i*2+1]-transCurve2Points2[i*2+1])*(transCurve2Points1[i*2+1]-transCurve2Points2[i*2+1]))
 			if d > 100 {
 				transCurve2Points2[i*2] = transCurve2Points1[i*2] + (transCurve2Points2[i*2]-transCurve2Points1[i*2])*100/d
 				transCurve2Points2[i*2+1] = transCurve2Points1[i*2+1] + (transCurve2Points2[i*2+1]-transCurve2Points1[i*2+1])*100/d
@@ -177,11 +177,11 @@ func moveTransCurve2Point(x, y, dx, dy *float64) {
 func handleTransCurve2MouseDown(x, y float64) bool {
 	transCurve2Selected = -1
 	for i := 0; i < 6; i++ {
-		if math.Sqrt(math.Pow(x-transCurve2Points1[i*2], 2)+math.Pow(y-transCurve2Points1[i*2+1], 2)) < 15 {
+		if math.Sqrt((x-transCurve2Points1[i*2])*(x-transCurve2Points1[i*2])+(y-transCurve2Points1[i*2+1])*(y-transCurve2Points1[i*2+1])) < 15 {
 			transCurve2Selected = i
 			return true
 		}
-		if math.Sqrt(math.Pow(x-transCurve2Points2[i*2], 2)+math.Pow(y-transCurve2Points2[i*2+1], 2)) < 15 {
+		if math.Sqrt((x-transCurve2Points2[i*2])*(x-transCurve2Points2[i*2])+(y-transCurve2Points2[i*2+1])*(y-transCurve2Points2[i*2+1])) < 15 {
 			transCurve2Selected = i + 6
 			return true
 		}

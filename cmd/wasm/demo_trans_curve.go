@@ -159,7 +159,7 @@ func drawTransCurveDemo() {
 func handleTransCurveMouseDown(x, y float64) bool {
 	transCurveSelected = -1
 	for i := 0; i < 6; i++ {
-		dist := math.Sqrt(math.Pow(x-transCurvePoints[i*2], 2) + math.Pow(y-transCurvePoints[i*2+1], 2))
+		dist := math.Sqrt((x-transCurvePoints[i*2])*(x-transCurvePoints[i*2]) + (y-transCurvePoints[i*2+1])*(y-transCurvePoints[i*2+1]))
 		if dist < 15 {
 			transCurveSelected = i
 			return true

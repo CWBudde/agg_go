@@ -264,7 +264,7 @@ func TestPathBasedImageTransformations(t *testing.T) {
 		}
 		// Exterior should remain white.
 		r, g, b, a := pixelAt(buf, width, 5, 5)
-		if !(r == 255 && g == 255 && b == 255 && a == 255) {
+		if r != 255 || g != 255 || b != 255 || a != 255 {
 			t.Fatalf("exterior pixel = (%d,%d,%d,%d), want white", r, g, b, a)
 		}
 	})
@@ -353,7 +353,7 @@ func TestRenderingIntegration(t *testing.T) {
 
 	// Verify: exterior should remain white.
 	r, g2, b, a2 := pixelAt(buf, width, 95, 5)
-	if !(r == 255 && g2 == 255 && b == 255 && a2 == 255) {
+	if r != 255 || g2 != 255 || b != 255 || a2 != 255 {
 		t.Fatalf("exterior pixel = (%d,%d,%d,%d), want white", r, g2, b, a2)
 	}
 }

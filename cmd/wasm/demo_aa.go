@@ -147,7 +147,7 @@ func drawAADemo() {
 func handleAAMouseDown(x, y float64) bool {
 	aaSelected = -1
 	for i := 0; i < 3; i++ {
-		dist := math.Sqrt(math.Pow(x-aaTriangleX[i], 2) + math.Pow(y-aaTriangleY[i], 2))
+		dist := math.Sqrt((x-aaTriangleX[i])*(x-aaTriangleX[i]) + (y-aaTriangleY[i])*(y-aaTriangleY[i]))
 		if dist < 10 {
 			aaSelected = i
 			aaDragDX = x - aaTriangleX[i]

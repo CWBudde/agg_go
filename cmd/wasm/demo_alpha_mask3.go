@@ -125,7 +125,7 @@ func drawAlphaMask3Demo() {
 			}
 			ras.AddVertex(x, y, uint32(cmd))
 		}
-		renscan.RenderScanlinesAASolid(rasAdapter, slAdapter, rbBase, color.RGBA8[color.Linear]{127, 127, 0, 25})
+		renscan.RenderScanlinesAASolid(rasAdapter, slAdapter, rbBase, color.RGBA8[color.Linear]{R: 127, G: 127, B: 0, A: 25})
 
 		// Draw GB stroke
 		strokeGB := conv.NewConvStroke(transGB)
@@ -139,7 +139,7 @@ func drawAlphaMask3Demo() {
 			}
 			ras.AddVertex(x, y, uint32(cmd))
 		}
-		renscan.RenderScanlinesAASolid(rasAdapter, slAdapter, rbBase, color.RGBA8[color.Linear]{0, 0, 0, 255})
+		renscan.RenderScanlinesAASolid(rasAdapter, slAdapter, rbBase, color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255})
 
 		// Spiral
 		// We'd need a spiral generator here. For now let's just use a circle as a placeholder

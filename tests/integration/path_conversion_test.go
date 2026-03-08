@@ -120,12 +120,12 @@ func TestPathConversionDashedRoundCapsCloseDashEnds(t *testing.T) {
 		butt := getPixel(bufferButt, stride, pt.x, pt.y)
 		round := getPixel(bufferRound, stride, pt.x, pt.y)
 
-		if !(butt[0] > 230 && butt[1] > 230 && butt[2] > 230) {
+		if butt[0] <= 230 || butt[1] <= 230 || butt[2] <= 230 {
 			t.Fatalf("butt cap control pixel at (%d,%d) should stay in the gap, got RGB(%d,%d,%d)",
 				pt.x, pt.y, butt[0], butt[1], butt[2])
 		}
 
-		if !(round[0] < 220 && round[1] < 220 && round[2] < 220) {
+		if round[0] >= 220 || round[1] >= 220 || round[2] >= 220 {
 			t.Fatalf("round cap pixel at (%d,%d) should be covered by the dash end cap, got RGB(%d,%d,%d)",
 				pt.x, pt.y, round[0], round[1], round[2])
 		}

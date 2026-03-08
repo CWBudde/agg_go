@@ -237,7 +237,7 @@ func dashPointInTriangle(ax, ay, bx, by, cx, cy, px, py float64) bool {
 	d3 := (px-ax)*(cy-ay) - (cx-ax)*(py-ay)
 	hasNeg := (d1 < 0) || (d2 < 0) || (d3 < 0)
 	hasPos := (d1 > 0) || (d2 > 0) || (d3 > 0)
-	return !(hasNeg && hasPos)
+	return !hasNeg || !hasPos
 }
 
 func handleDashMouseDown(x, y float64) bool {

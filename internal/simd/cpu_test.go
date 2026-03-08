@@ -1,6 +1,7 @@
 package simd
 
 import (
+	"bytes"
 	"runtime"
 	"testing"
 )
@@ -233,7 +234,7 @@ func TestBlendSolidHspanRGBAForcedPaths(t *testing.T) {
 			want := append([]byte(nil), base...)
 			BlendSolidHspanRGBA(got, covers, 20, 40, 60, 255, tc.premulSrc)
 			blendSolidHspanRGBAGeneric(want, covers, 20, 40, 60, 255, tc.premulSrc)
-			if string(got) != string(want) {
+			if !bytes.Equal(got, want) {
 				t.Fatalf("BlendSolidHspanRGBA mismatch:\n got=%v\nwant=%v", got, want)
 			}
 		})
@@ -289,7 +290,7 @@ func TestBlendHlineRGBAForcedPaths(t *testing.T) {
 			want := append([]byte(nil), base...)
 			BlendHlineRGBA(got, 20, 40, 60, 200, 128, len(base)/4, tc.premulSrc)
 			blendHlineRGBAGeneric(want, 20, 40, 60, 200, 128, len(base)/4, tc.premulSrc)
-			if string(got) != string(want) {
+			if !bytes.Equal(got, want) {
 				t.Fatalf("BlendHlineRGBA mismatch:\n got=%v\nwant=%v", got, want)
 			}
 		})
@@ -402,7 +403,7 @@ func TestBlendHlineRGBAComprehensive(t *testing.T) {
 					BlendHlineRGBA(got, sc.r, sc.g, sc.b, sc.a, sc.cover, sc.count, sc.premul)
 					blendHlineRGBAGeneric(want, sc.r, sc.g, sc.b, sc.a, sc.cover, sc.count, sc.premul)
 
-					if string(got) != string(want) {
+					if !bytes.Equal(got, want) {
 						for i := 0; i < sc.count; i++ {
 							p := i * 4
 							if got[p] != want[p] || got[p+1] != want[p+1] || got[p+2] != want[p+2] || got[p+3] != want[p+3] {
@@ -468,7 +469,7 @@ func TestBlendColorHspanRGBAForcedPaths(t *testing.T) {
 			want := append([]byte(nil), dst...)
 			BlendColorHspanRGBA(got, srcColors, covers, len(covers), false)
 			blendColorHspanRGBAGeneric(want, srcColors, covers, len(covers), false)
-			if string(got) != string(want) {
+			if !bytes.Equal(got, want) {
 				t.Fatalf("BlendColorHspanRGBA mismatch:\n got=%v\nwant=%v", got, want)
 			}
 		})
@@ -649,7 +650,7 @@ func TestBlendColorHspanRGBAComprehensive(t *testing.T) {
 					BlendColorHspanRGBA(got, sc.srcColors, sc.covers, sc.count, sc.premul)
 					blendColorHspanRGBAGeneric(want, sc.srcColors, sc.covers, sc.count, sc.premul)
 
-					if string(got) != string(want) {
+					if !bytes.Equal(got, want) {
 						for i := 0; i < sc.count; i++ {
 							p := i * 4
 							if got[p] != want[p] || got[p+1] != want[p+1] || got[p+2] != want[p+2] || got[p+3] != want[p+3] {
@@ -814,7 +815,7 @@ func TestBlendSolidHspanRGBAComprehensive(t *testing.T) {
 					BlendSolidHspanRGBA(got, sc.covers, sc.r, sc.g, sc.b, sc.a, sc.premul)
 					blendSolidHspanRGBAGeneric(want, sc.covers, sc.r, sc.g, sc.b, sc.a, sc.premul)
 
-					if string(got) != string(want) {
+					if !bytes.Equal(got, want) {
 						// Find first mismatch pixel for diagnostics
 						for i := 0; i < len(sc.covers); i++ {
 							p := i * 4
@@ -1181,10 +1182,10 @@ func TestCompSrcOverHspanRGBAComprehensive(t *testing.T) {
 	t.Cleanup(ResetDetection)
 
 	type scenario struct {
-		name        string
-		dst         []byte
-		r, g, b, a  byte
-		covers      []byte
+		name       string
+		dst        []byte
+		r, g, b, a byte
+		covers     []byte
 	}
 
 	mkDst := func(pixels [][4]byte) []byte {
@@ -1199,43 +1200,43 @@ func TestCompSrcOverHspanRGBAComprehensive(t *testing.T) {
 		{
 			name: "transparent_src",
 			dst:  mkDst([][4]byte{{128, 64, 32, 200}}),
-			r: 255, g: 0, b: 0, a: 0,
+			r:    255, g: 0, b: 0, a: 0,
 		},
 		{
 			name: "opaque_src_over_transparent_dst",
 			dst:  mkDst([][4]byte{{0, 0, 0, 0}}),
-			r: 200, g: 100, b: 50, a: 255,
+			r:    200, g: 100, b: 50, a: 255,
 		},
 		{
 			name: "opaque_src_over_opaque_dst",
 			dst:  mkDst([][4]byte{{80, 80, 80, 255}}),
-			r: 200, g: 100, b: 50, a: 255,
+			r:    200, g: 100, b: 50, a: 255,
 		},
 		{
 			name: "half_alpha_2px",
 			dst:  mkDst([][4]byte{{100, 150, 200, 200}, {50, 50, 50, 128}}),
-			r: 200, g: 50, b: 100, a: 128,
+			r:    200, g: 50, b: 100, a: 128,
 		},
 		{
 			name: "4_pixels_simd_boundary",
 			dst:  mkDst([][4]byte{{10, 20, 30, 40}, {50, 60, 70, 80}, {90, 100, 110, 120}, {130, 140, 150, 160}}),
-			r: 200, g: 100, b: 50, a: 180,
+			r:    200, g: 100, b: 50, a: 180,
 		},
 		{
 			name: "5_pixels_tail",
 			dst:  mkDst([][4]byte{{10, 20, 30, 40}, {50, 60, 70, 80}, {90, 100, 110, 120}, {130, 140, 150, 160}, {170, 180, 190, 200}}),
-			r: 100, g: 150, b: 200, a: 200,
+			r:    100, g: 150, b: 200, a: 200,
 		},
 		{
-			name:   "variable_covers",
-			dst:    mkDst([][4]byte{{100, 100, 100, 255}, {100, 100, 100, 255}, {100, 100, 100, 255}}),
-			r: 200, g: 50, b: 50, a: 200,
+			name: "variable_covers",
+			dst:  mkDst([][4]byte{{100, 100, 100, 255}, {100, 100, 100, 255}, {100, 100, 100, 255}}),
+			r:    200, g: 50, b: 50, a: 200,
 			covers: []byte{0, 128, 255},
 		},
 		{
-			name:   "zero_cover_skips_pixel",
-			dst:    mkDst([][4]byte{{200, 200, 200, 255}}),
-			r: 0, g: 0, b: 0, a: 255,
+			name: "zero_cover_skips_pixel",
+			dst:  mkDst([][4]byte{{200, 200, 200, 255}}),
+			r:    0, g: 0, b: 0, a: 255,
 			covers: []byte{0},
 		},
 		{

@@ -274,7 +274,7 @@ func TestPixFmtRGBA64_BlendSolidHspan(t *testing.T) {
 	r4 := pf.Pixel(4, 5) // cover=128 (50%)
 	r6 := pf.Pixel(6, 5) // cover=0, should be untouched
 
-	if !(r2.R > r3.R && r3.R > r4.R) {
+	if r2.R <= r3.R || r3.R <= r4.R {
 		t.Errorf("Coverage blending wrong. R: %04x > %04x > %04x expected", r2.R, r3.R, r4.R)
 	}
 	if r6.R != bg.R || r6.G != bg.G || r6.B != bg.B {

@@ -110,14 +110,14 @@ func drawRasterizersDemo() {
 func handleRasterizersMouseDown(x, y float64) bool {
 	rasterizersSelected = -1
 	for i := 0; i < 3; i++ {
-		dist := math.Sqrt(math.Pow(x-rasterizersX[i], 2) + math.Pow(y-rasterizersY[i], 2))
+		dist := math.Sqrt((x-rasterizersX[i])*(x-rasterizersX[i]) + (y-rasterizersY[i])*(y-rasterizersY[i]))
 		if dist < 10 {
 			rasterizersSelected = i
 			rasterizersDragDX = x - rasterizersX[i]
 			rasterizersDragDY = y - rasterizersY[i]
 			return true
 		}
-		dist = math.Sqrt(math.Pow(x-(rasterizersX[i]-200), 2) + math.Pow(y-rasterizersY[i], 2))
+		dist = math.Sqrt((x-rasterizersX[i]-200)*(x-rasterizersX[i]-200) + (y-rasterizersY[i])*(y-rasterizersY[i]))
 		if dist < 10 {
 			rasterizersSelected = i
 			rasterizersDragDX = x - (rasterizersX[i] - 200)

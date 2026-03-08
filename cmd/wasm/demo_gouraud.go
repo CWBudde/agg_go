@@ -68,7 +68,7 @@ func drawGouraudDemo() {
 func handleGouraudMouseDown(x, y float64) bool {
 	gouraudSelected = -1
 	for i := 0; i < 3; i++ {
-		dist := math.Sqrt(math.Pow(x-gouraudX[i], 2) + math.Pow(y-gouraudY[i], 2))
+		dist := math.Sqrt((x-gouraudX[i])*(x-gouraudX[i]) + (y-gouraudY[i])*(y-gouraudY[i]))
 		if dist < 20 {
 			gouraudSelected = i
 			gouraudDragDX = x - gouraudX[i]

@@ -21,14 +21,14 @@ type Features struct {
 }
 
 type implementation struct {
-	name                    string
-	fillRGBA                func(dst []byte, r, g, b, a uint8, count int)
-	blendSolidHspanRGBA     func(dst []byte, covers []byte, r, g, b, a uint8, premulSrc bool)
-	blendHlineRGBA          func(dst []byte, r, g, b, a, cover uint8, count int, premulSrc bool)
-	blendColorHspanRGBA     func(dst, srcColors, covers []byte, count int, premulSrc bool)
-	premultiplyRGBA         func(buf []byte, count int)
-	demultiplyRGBA          func(buf []byte, count int)
-	compSrcOverHspanRGBA    func(dst, covers []byte, r, g, b, a uint8, count int)
+	name                 string
+	fillRGBA             func(dst []byte, r, g, b, a uint8, count int)
+	blendSolidHspanRGBA  func(dst []byte, covers []byte, r, g, b, a uint8, premulSrc bool)
+	blendHlineRGBA       func(dst []byte, r, g, b, a, cover uint8, count int, premulSrc bool)
+	blendColorHspanRGBA  func(dst, srcColors, covers []byte, count int, premulSrc bool)
+	premultiplyRGBA      func(buf []byte, count int)
+	demultiplyRGBA       func(buf []byte, count int)
+	compSrcOverHspanRGBA func(dst, covers []byte, r, g, b, a uint8, count int)
 }
 
 var (

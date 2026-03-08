@@ -119,16 +119,16 @@ func drawCompositing2Demo() {
 	aSrc := uint8(comp2AlphaSrc * 255)
 
 	generateColorRamp(ramp1,
-		color.RGBA8[color.Linear]{0, 0, 0, aDst},
-		color.RGBA8[color.Linear]{0, 0, 255, aDst},
-		color.RGBA8[color.Linear]{0, 255, 0, aDst},
-		color.RGBA8[color.Linear]{255, 0, 0, 0})
+		color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: aDst},
+		color.RGBA8[color.Linear]{R: 0, G: 0, B: 255, A: aDst},
+		color.RGBA8[color.Linear]{R: 0, G: 255, B: 0, A: aDst},
+		color.RGBA8[color.Linear]{R: 255, G: 0, B: 0, A: 0})
 
 	generateColorRamp(ramp2,
-		color.RGBA8[color.Linear]{0, 0, 0, aSrc},
-		color.RGBA8[color.Linear]{0, 0, 255, aSrc},
-		color.RGBA8[color.Linear]{0, 255, 0, aSrc},
-		color.RGBA8[color.Linear]{255, 0, 0, 0})
+		color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: aSrc},
+		color.RGBA8[color.Linear]{R: 0, G: 0, B: 255, A: aSrc},
+		color.RGBA8[color.Linear]{R: 0, G: 255, B: 0, A: aSrc},
+		color.RGBA8[color.Linear]{R: 255, G: 0, B: 0, A: 0})
 
 	// Temporary buffer for compositing
 	tempBuf := make([]uint8, w*h*4)
@@ -137,7 +137,7 @@ func drawCompositing2Demo() {
 	// Draw destination
 	pixf1 := pixfmt.NewPixFmtRGBA32[color.Linear](tempRbuf)
 	rb1 := renderer.NewRendererBaseWithPixfmt(pixf1)
-	rb1.Clear(color.RGBA8[color.Linear]{0, 0, 0, 0})
+	rb1.Clear(color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 0})
 
 	// Difference mode for destination background as in C++ example
 	compBlenderDiff := blender.NewCompositeBlender[color.Linear, order.RGBA](blender.CompOpDifference)

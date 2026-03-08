@@ -122,7 +122,7 @@ func drawPerspectiveDemo() {
 func handlePerspectiveMouseDown(x, y float64) bool {
 	perspectiveSelectedNode = -1
 	for i := 0; i < 4; i++ {
-		dist := math.Sqrt(math.Pow(x-perspectiveQuad[i*2], 2) + math.Pow(y-perspectiveQuad[i*2+1], 2))
+		dist := math.Sqrt((x-perspectiveQuad[i*2])*(x-perspectiveQuad[i*2]) + (y-perspectiveQuad[i*2+1])*(y-perspectiveQuad[i*2+1]))
 		if dist < 10 {
 			perspectiveSelectedNode = i
 			return true

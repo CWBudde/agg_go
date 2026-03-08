@@ -304,7 +304,7 @@ func hasNonWhiteIn(buf []uint8, width, x1, y1, x2, y2 int) bool {
 	for y := y1; y < y2; y++ {
 		for x := x1; x < x2; x++ {
 			r, g, b, a := pixelAt(buf, width, x, y)
-			if a != 0 && !(r == 255 && g == 255 && b == 255 && a == 255) {
+			if a != 0 && (r != 255 || g != 255 || b != 255 || a != 255) {
 				return true
 			}
 		}
@@ -354,7 +354,7 @@ func TestDrawPath(t *testing.T) {
 		}
 		// Interior should remain white (no fill).
 		r, g, b, a := pixelAt(buf, width, 30, 30)
-		if !(r == 255 && g == 255 && b == 255 && a == 255) {
+		if r != 255 || g != 255 || b != 255 || a != 255 {
 			t.Fatalf("StrokeOnly interior pixel = (%d,%d,%d,%d), want white", r, g, b, a)
 		}
 	})

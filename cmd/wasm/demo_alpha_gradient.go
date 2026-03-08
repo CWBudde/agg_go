@@ -400,5 +400,5 @@ func pointInTriangle(x1, y1, x2, y2, x3, y3, px, py float64) bool {
 	d3 := sign(px, py, x3, y3, x1, y1)
 	hasNeg := (d1 < 0) || (d2 < 0) || (d3 < 0)
 	hasPos := (d1 > 0) || (d2 > 0) || (d3 > 0)
-	return !(hasNeg && hasPos)
+	return !hasNeg || !hasPos
 }

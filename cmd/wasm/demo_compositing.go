@@ -55,7 +55,7 @@ func drawCompositingDemo() {
 	// We need to use RGBA32 (premultiplied) for compositing
 	pixf := pixfmt.NewPixFmtRGBA32[color.Linear](tempRbuf)
 	rb := renderer.NewRendererBaseWithPixfmt(pixf)
-	rb.Clear(color.RGBA8[color.Linear]{0, 0, 0, 0})
+	rb.Clear(color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 0})
 
 	// Draw destination image from the test image
 	srcPixf := pixfmt.NewPixFmtRGBA32[color.Linear](buffer.NewRenderingBufferWithData[uint8](compImage.Data, 200, 200, 200*4))
@@ -63,8 +63,8 @@ func drawCompositingDemo() {
 
 	// Draw destination circle
 	drawCircleComp(rb,
-		color.RGBA8[color.Linear]{0xFD, 0xF0, 0x6F, uint8(compAlphaDst * 255)},
-		color.RGBA8[color.Linear]{0xFE, 0x9F, 0x34, uint8(compAlphaDst * 255)},
+		color.RGBA8[color.Linear]{R: 0xFD, G: 0xF0, B: 0x6F, A: uint8(compAlphaDst * 255)},
+		color.RGBA8[color.Linear]{R: 0xFE, G: 0x9F, B: 0x34, A: uint8(compAlphaDst * 255)},
 		70*3, 100+24*3, 37*3, 100+79*3)
 
 	// 2. Draw Source Shape (Blue rounded rect) with Compositing Op
@@ -74,8 +74,8 @@ func drawCompositingDemo() {
 	compRb := renderer.NewRendererBaseWithPixfmt(compPixf)
 
 	drawSourceShapeComp(compRb,
-		color.RGBA8[color.Linear]{0x7F, 0xC1, 0xFF, uint8(compAlphaSrc * 255)},
-		color.RGBA8[color.Linear]{0x05, 0x00, 0x5F, uint8(compAlphaSrc * 255)},
+		color.RGBA8[color.Linear]{R: 0x7F, G: 0xC1, B: 0xFF, A: uint8(compAlphaSrc * 255)},
+		color.RGBA8[color.Linear]{R: 0x05, G: 0x00, B: 0x5F, A: uint8(compAlphaSrc * 255)},
 		300+50, 100+24*3, 107+50, 100+79*3)
 
 	// Final step: blend the temp buffer back to the main context
@@ -108,7 +108,7 @@ func drawCircleComp(rb renscan.BaseRendererInterface[color.RGBA8[color.Linear]],
 		}
 		ras.AddVertex(x, y, uint32(cmd))
 	}
-	renscan.RenderScanlinesAASolid(rasAdapter, slAdapter, rb, color.RGBA8[color.Linear]{153, 153, 153, uint8(0.7 * float64(c1.A))})
+	renscan.RenderScanlinesAASolid(rasAdapter, slAdapter, rb, color.RGBA8[color.Linear]{R: 153, G: 153, B: 153, A: uint8(0.7 * float64(c1.A))})
 
 	ras.Reset()
 	circle.Init(cx, cy, r, r, 0, false)
