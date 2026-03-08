@@ -104,6 +104,8 @@ func (agg2d *Agg2D) ResetStyle() {
 		agg2d.convStroke.SetLineJoin(basics.LineJoin(JoinRound))
 	}
 	agg2d.NoDashes()
+	agg2d.textAlignX = AlignLeft
+	agg2d.textAlignY = AlignBottom
 }
 
 // ClearClipBox clears the current clipping box with the specified color.

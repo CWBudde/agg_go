@@ -57,7 +57,6 @@ func drawGammaCtrlDemo() {
 	ras.SetGamma(func(x float64) float64 { return x })
 
 	// Draw text in lower-right, matching original start_point(320,10) after flip_y.
-	agg2d.TextAlignment(agg.AlignLeft, agg.AlignBottom)
 	agg2d.FontGSV(50)
 	agg2d.FillColor(agg.NewColor(0, 127, 0, 255))
 	agg2d.Text(370, 555, "Text 2345", false, 0, 0)

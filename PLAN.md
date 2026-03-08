@@ -402,8 +402,9 @@ idiomatic in Go.
 - [ ] `pattern_fill` (web): fix empty output; verify offscreen pattern generation and final blend spans.
 - [x] `pattern_perspective` (web): add/fix draggable quad handles and mouse interaction wiring.
 - [x] `pattern_resample` (web): add/fix draggable quad handles and mouse interaction wiring.
-- [ ] `rasterizer_compound` (web): fix upside-down/odd glyph “a” rendering; audit Y-orientation and
-      path winding/order parity with upstream C++.
+- [x] `rasterizer_compound` (web): fixed upside-down/odd glyph rendering by applying
+      upstream `flip_y` parity (reference-frame Y mirror) and centering the original 440x330
+      scene in web canvas for closer standalone/C++ visual alignment.
 - [ ] For all above: add per-demo parity notes (standalone vs web), plus a minimal verification
       path (render smoke and, where practical, non-empty/image-hash threshold checks).
 
