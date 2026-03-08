@@ -24,6 +24,11 @@ var (
 	compoundInvert = false
 )
 
+const (
+	compoundRefW = 440.0
+	compoundRefH = 330.0
+)
+
 func setCompoundWidth(v float64) { compoundWidth = v }
 func setCompoundAlpha1(v float64) {
 	if v < 0 {
@@ -219,16 +224,27 @@ func drawRasterizerCompoundDemo() {
 	ps := path.NewPathStorageStl()
 	composeCompoundPath(ps)
 	psAdapter := path.NewPathStorageStlVertexSourceAdapter(ps)
+	offX := (float64(w) - compoundRefW) * 0.5
+	offY := (float64(h) - compoundRefH) * 0.5
+	// C++ demo runs with flip_y=true in a 440x330 window. Mirror Y in that
+	// reference frame, then center the whole scene in the web canvas.
+	sceneMtx := transform.NewTransAffine()
+	sceneMtx.Multiply(transform.NewTransAffineScalingXY(1.0, -1.0))
+	sceneMtx.Multiply(transform.NewTransAffineTranslation(0.0, compoundRefH))
+	sceneMtx.Multiply(transform.NewTransAffineTranslation(offX, offY))
+
 	mtx := transform.NewTransAffine()
 	mtx.Multiply(transform.NewTransAffineScaling(4.0))
 	mtx.Multiply(transform.NewTransAffineTranslation(150, 100))
+	mtx.Multiply(sceneMtx)
 	transPath := conv.NewConvTransform(psAdapter, mtx)
 	curve := conv.NewConvCurve(transPath)
 	stroke := conv.NewConvStroke(curve)
 	stroke.SetWidth(compoundWidth)
 
 	ell := shapes.NewEllipseWithParams(220.0, 180.0, 120.0, 10.0, 128, false)
-	ellStroke := conv.NewConvStroke(&rcEllipseConvAdapter{ell: ell})
+	ellTrans := conv.NewConvTransform(&rcEllipseConvAdapter{ell: ell}, sceneMtx)
+	ellStroke := conv.NewConvStroke(ellTrans)
 	ellStroke.SetWidth(compoundWidth * 0.5)
 
 	styles := []color.RGBA8[color.Linear]{
@@ -256,7 +272,7 @@ func drawRasterizerCompoundDemo() {
 	rasc.Styles(3, -1)
 	rasc.AddPath(&rcConvVSAdapter{vs: ellStroke}, 0)
 	rasc.Styles(2, -1)
-	rasc.AddPath(&rcEllipseVSAdapter{ell: ell}, 0)
+	rasc.AddPath(&rcConvVSAdapter{vs: ellTrans}, 0)
 	rasc.Styles(1, -1)
 	rasc.AddPath(&rcConvVSAdapter{vs: stroke}, 0)
 	rasc.Styles(0, -1)
