@@ -5,6 +5,7 @@ import (
 
 	"agg_go/internal/buffer"
 	"agg_go/internal/platform/types"
+
 	"github.com/veandco/go-sdl2/sdl"
 )
 
@@ -65,7 +66,7 @@ func (s *SDL2Backend) copyBufferToSurface(buffer *buffer.RenderingBuffer[uint8])
 }
 
 // copyRGBA32ToSurface converts RGBA32 to SDL2 surface format
-func (s *SDL2Backend) copyRGBA32ToSurface(src []byte, dst []byte, srcStride, dstStride int) error {
+func (s *SDL2Backend) copyRGBA32ToSurface(src, dst []byte, srcStride, dstStride int) error {
 	for y := 0; y < s.height; y++ {
 		srcRow := y * srcStride
 		dstRow := y * dstStride
@@ -87,7 +88,7 @@ func (s *SDL2Backend) copyRGBA32ToSurface(src []byte, dst []byte, srcStride, dst
 }
 
 // copyBGRA32ToSurface converts BGRA32 to SDL2 surface format
-func (s *SDL2Backend) copyBGRA32ToSurface(src []byte, dst []byte, srcStride, dstStride int) error {
+func (s *SDL2Backend) copyBGRA32ToSurface(src, dst []byte, srcStride, dstStride int) error {
 	for y := 0; y < s.height; y++ {
 		srcRow := y * srcStride
 		dstRow := y * dstStride
@@ -109,7 +110,7 @@ func (s *SDL2Backend) copyBGRA32ToSurface(src []byte, dst []byte, srcStride, dst
 }
 
 // copyARGB32ToSurface converts ARGB32 to SDL2 surface format
-func (s *SDL2Backend) copyARGB32ToSurface(src []byte, dst []byte, srcStride, dstStride int) error {
+func (s *SDL2Backend) copyARGB32ToSurface(src, dst []byte, srcStride, dstStride int) error {
 	for y := 0; y < s.height; y++ {
 		srcRow := y * srcStride
 		dstRow := y * dstStride

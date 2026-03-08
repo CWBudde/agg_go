@@ -121,9 +121,7 @@ func (vbs *VertexBlockStorage[T]) SwapVertices(v1, v2 uint) {
 	pv1[1], pv2[1] = pv2[1], pv1[1]
 
 	// Swap commands
-	cmd1 := vbs.cmdBlocks[b1][o1]
-	vbs.cmdBlocks[b1][o1] = vbs.cmdBlocks[b2][o2]
-	vbs.cmdBlocks[b2][o2] = cmd1
+	vbs.cmdBlocks[b1][o1], vbs.cmdBlocks[b2][o2] = vbs.cmdBlocks[b2][o2], vbs.cmdBlocks[b1][o1]
 }
 
 // LastCommand returns the command of the last vertex, or PathCmdStop if empty.

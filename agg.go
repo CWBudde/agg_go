@@ -154,6 +154,19 @@ func (a *Agg2D) Attach(buf []uint8, width, height, stride int) {
 	a.attachedStride = stride
 }
 
+// AttachImage attaches the rendering context to an existing Image.
+// This matches the C++ Agg2D::attach(Image& img) overload:
+//
+//	void Agg2D::attach(Image& img) {
+//	    attach(img.renBuf.buf(), img.renBuf.width(), img.renBuf.height(), img.renBuf.stride());
+//	}
+func (a *Agg2D) AttachImage(img *Image) {
+	if img == nil || img.renBuf == nil {
+		return
+	}
+	a.Attach(img.Data, img.width, img.height, img.renBuf.Stride())
+}
+
 // ClipBox sets the clipping rectangle.
 func (a *Agg2D) ClipBox(x1, y1, x2, y2 float64) {
 	a.impl.ClipBox(x1, y1, x2, y2)

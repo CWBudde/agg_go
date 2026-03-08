@@ -44,10 +44,8 @@ func PathLength(vs VertexSource, pathID uint) float64 {
 			x1 = x2
 			y1 = y2
 			first = false
-		} else {
-			if basics.IsClose(cmd) && !first {
-				length += basics.CalcDistance(x1, y1, startX, startY)
-			}
+		} else if basics.IsClose(cmd) && !first {
+			length += basics.CalcDistance(x1, y1, startX, startY)
 		}
 	}
 

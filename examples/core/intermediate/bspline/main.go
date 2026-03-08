@@ -46,10 +46,10 @@ func main() {
 	agg2d.ResetPath()
 	agg2d.MoveTo(points[0].x, points[0].y)
 	for i := 0; i < len(points)-1; i++ {
-		p0 := points[max(0, i-1)]
+		p0 := points[maxInt(0, i-1)]
 		p1 := points[i]
 		p2 := points[i+1]
-		p3 := points[min(len(points)-1, i+2)]
+		p3 := points[minInt(len(points)-1, i+2)]
 		cp1x := p1.x + (p2.x-p0.x)/6.0
 		cp1y := p1.y + (p2.y-p0.y)/6.0
 		cp2x := p2.x - (p3.x-p1.x)/6.0
@@ -71,14 +71,14 @@ func main() {
 	fmt.Println(filename)
 }
 
-func min(a, b int) int {
+func minInt(a, b int) int {
 	if a < b {
 		return a
 	}
 	return b
 }
 
-func max(a, b int) int {
+func maxInt(a, b int) int {
 	if a > b {
 		return a
 	}

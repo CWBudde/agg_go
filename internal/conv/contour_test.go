@@ -350,7 +350,7 @@ func TestConvContour_MultipleRewinds(t *testing.T) {
 	}
 
 	// Compare first few vertices
-	for i := 0; i < min(3, len(vertices1), len(vertices2)); i++ {
+	for i := 0; i < min3(3, len(vertices1), len(vertices2)); i++ {
 		v1, v2 := vertices1[i], vertices2[i]
 		if v1.cmd != v2.cmd || math.Abs(v1.x-v2.x) > 1e-10 || math.Abs(v1.y-v2.y) > 1e-10 {
 			t.Errorf("Vertex %d differs on rewind: (%f,%f,%v) vs (%f,%f,%v)",
@@ -376,7 +376,7 @@ func collectContourVertices(contour *ConvContour) []vertex {
 }
 
 // Helper function for min
-func min(a, b, c int) int {
+func min3(a, b, c int) int {
 	if a < b {
 		if a < c {
 			return a

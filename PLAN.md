@@ -72,9 +72,135 @@ One coherent font stack with a tighter, type-safe surface:
 
 ---
 
-## Phase 4 - Test Strategy for Port Fidelity
+## Phase 4 - Remaining Port Inventory from docs/TASKS.md ✅
 
-### 4.1 Contract tests (API behavior)
+All port inventory items from `docs/TASKS.md` are complete, explicitly deferred as out-of-C++-AGG-2.6-scope,
+or documented as intentional Go deltas. `go test ./internal/...` passes (44 packages).
+
+**4.1 Transformations**: All 7 types at C++ parity (TransAffine, TransPerspective, TransBilinear,
+TransSinglePath, TransDoublePath, TransWarpMagnifier, TransViewport). `PerspectiveIteratorX` avoids
+per-pixel divide; determinant check in `Invert()` for stability; `ViewportManager` handles multi-viewport;
+`ConvTransform.Transformer()` getter added, duplicate setter removed. `SpanInterpolatorPerspectiveExact`
+and `SpanInterpolatorPerspectiveLerp` verified against `agg_span_interpolator_persp.h` at full parity.
+Out of scope: TransPolar (example-only in C++, no `agg_trans_polar.h`), WarpMagnifier multiple zones
+(not in C++ AGG 2.6).
+
+**4.2 Converters and generators**: `ConvAdaptorVPGen` + all vpgen components verified. Stroke/contour
+pipeline complete: `conv_stroke`, `vcgen_stroke` (InnerJoin, all cap/join types), `vcgen_contour`,
+`conv_contour` all at C++ parity. Dash, smooth-poly, and all smaller path-utility converters complete
+with tests. Rasterizer cell-run compaction regression tests added; `RenderAllPaths` typed via
+`MultiPathRasterizerInterface`.
+
+**4.3 Span / image-processing**: `GradientContour.Calculate()` formula fixed to match C++
+(`buffer*(d2/256)+d1`, not linear lerp). Bilinear filter spurious premultiplied-alpha clamping removed
+(not in C++ AGG); clip variant implements all three C++ boundary cases. Gouraud shading complete:
+`SpanGouraudGray` and `SpanGouraudRGBA` at C++ parity. `BoundingRect`, `ConvShortenPath`,
+`VCGenVertexSequence` all implemented and tested.
+
+**4.4 Fonts and utilities**: `RowPtr` bridge resolved (direct slice for plain, on-demand cache for pre).
+GSV embedded font complete (`GSVText`, `GSVTextOutline`, `font_data.go`). FreeType custom memory hook
+unsupported by design (`FT_Init_FreeType` used; `ftMemory` ignored with `_ = ftMemory`). Color
+conversion: all three C++ headers ported (`agg_color_conv.h`, `agg_color_conv_rgb8.h`,
+`agg_color_conv_rgb16.h`) to `internal/color/conv/`.
+
+**4.5 Generics / pixfmt**: RGBA16 pixfmt refactored to blender-interface pattern; tests restored. `any()`
+assertions eliminated from Gray16/Gray32 pixfmts; `RawRGB/RGBAOrder` fast paths retained as legitimate.
+`VertexFilter` shims removed from `array/vertex_sequence.go` and `basics/math_stroke.go`. Color space
+kept at Linear + SRGB only.
+
+**Note**: `TestTransformImageUsesPremultipliedRenderer` updated to use premultiplied source input —
+C++ AGG routes image rendering through `m_renBasePre` (`agg2d.cpp:1738`) which expects premultiplied
+values; no automatic straight→premultiplied conversion occurs in the span path.
+
+---
+
+## Phase 5 - API and Documentation Finalization ✅
+
+- [x] `Context` / `Agg2D` separation documented; package doc in `agg.go` corrected.
+- [x] `docs/TASKS.md` synchronized; architecture overview updated to 35 internal packages.
+- [x] `docs/AGG_DELTAS.md` created — documents all intentional deviations from C++ AGG 2.6.
+
+---
+
+## Phase 6 - SIMD Infrastructure and Bulk Pixel Paths ✅
+
+`internal/simd/` package with runtime CPU detection, build-tagged arch dispatch, and `purego` scalar baseline.
+Four pixel operations each have generic, amd64 (SSE2/SSE4.1/AVX2), and arm64 (NEON/generic) paths.
+Assembly in flat `internal/simd/*.s` files (idiomatic Go layout).
+
+- [x] **FillRGBA** — packed-RGBA bulk fill; wired to `CopyHline` / `Clear`.
+- [x] **BlendSolidHspanRGBA** — solid-color AA spans with per-pixel cover (SSE4.1 PMAXUW/PMINUW lerp).
+- [x] **BlendHlineRGBA** — uniform-coverage hline blend; alpha==255 routes to FillRGBA.
+- [x] **BlendColorHspanRGBA** — per-pixel color+cover (scalar IMULQ alpha, SIMD lerp for 8 channels).
+- [x] `pixfmt_rgba8.go` fast paths wired for all four operations; RGBA byte order uses SIMD, others fall back to scalar.
+- [x] Table-driven tests verify bit-identical output across all forced implementation paths.
+- [x] QEMU arm64 correctness checks in regular workflow (`just test-arm64`).
+
+---
+
+## Phase 7 - SIMD Expansion Targets
+
+Each section follows the same three-tier pattern as Phase 7: generic Go → SSE4.1 → AVX2 on amd64; generic fallback → NEON on arm64.
+
+### 7.1 Premultiply / Demultiply
+
+Whole-buffer pre/demultiplication is called on every image load and compositing operation.
+
+- [x] **Generic** — correct scalar baseline with zero-alpha guard on demultiply.
+- [x] **SSE4.1 (amd64)** — process 4 pixels/iter: PMULLW × α/255 (AGG rounding); PACKUSWB clamp; alpha channel restored from saved original.
+- [x] **AVX2 (amd64)** — delegates to SSE4.1 kernel (bottleneck is memory bandwidth, not arithmetic).
+- [x] **NEON (arm64)** — generic fallback (NEON assembly deferred; generic path is correct and tested via QEMU).
+- [x] Wire into `pixfmt_rgba8.go` premultiply / demultiply call sites; SIMD fast path for standard RGBA byte order, scalar for BGRA/ARGB/ABGR.
+- [x] Table-driven tests: bit-identical output vs. scalar across all paths, including zero-alpha row, boundary alphas, and round-trip precision check.
+
+### 7.2 Composite Blend Modes ✅
+
+Porter-Duff operators beyond `SrcOver` (used by the compositing demos and advanced rendering paths).
+
+- [x] **Generic** — integer-arithmetic scalar for `SrcOver`, `DstOver`, `SrcIn`, `DstIn`, `SrcOut`, `DstOut`, `Xor`, `Clear` in `internal/simd/cpu.go`.
+- [x] **SSE4.1 (amd64)** — `SrcOver` 2 pixels/iter via `compSrcOverHspanRGBASSE41Asm` (`comp_src_over_sse41_amd64.s`); formula: `Dca' = Dca + Sca - mul(Dca, Sa)` using PMOVZXBW/PMULLW/PADDW/PSUBW.
+- [x] **AVX2 (amd64)** — delegates to SSE4.1 kernel (memory-bandwidth bound, not arithmetic).
+- [x] **NEON (arm64)** — generic integer-arithmetic fallback (NEON assembly deferred; correct and tested via QEMU).
+- [x] Wire into `pixfmt_composite.go` `BlendHline` and `BlendSolidHspan` fast paths for SrcOver, DstOver, SrcIn, DstIn, SrcOut, DstOut, Xor, Clear with standard RGBA byte order.
+- [x] Tests: `TestCompSrcOverHspanRGBAComprehensive` verifies bit-exact (±1) output vs. float64 reference across all forced paths; `TestCompOtherOpsGeneric` covers all 6 non-SIMD ops; `TestCompClearHspanRGBA` covers Clear.
+
+### 7.3 Gradient and Image Span Generation
+
+Span generators feed pixel data into `BlendColorHspan`; their inner loops can be hot for complex scenes.
+
+- [ ] **Generic** — baseline already exists in `internal/span/`; profile before committing to SIMD.
+- [ ] **SSE4.1 (amd64)** — linear gradient interpolation: PADDD step accumulation + PSHUFB color lookup if LUT stays hot.
+- [ ] **AVX2 (amd64)** — double-width linear interpolation if the SSE4.1 path proves worthwhile.
+- [ ] **NEON (arm64)** — `vaddq_s32` step accumulation; generic LUT access (cache-miss bound, may not benefit).
+- [ ] Image-filter / resampling kernels: SSE4.1 `PMADDUBSW` dot-product for bilinear tap accumulation.
+- [ ] Only implement tiers that show measurable gain in profiling; skip otherwise.
+
+### 7.4 Alpha-Mask Helpers
+
+Alpha-mask operations sit on the scanline-rendering hot path when masks are active.
+
+- [ ] **Generic** — correct scalar baseline for mask fill and RGB-to-gray conversion.
+- [ ] **SSE4.1 (amd64)** — mask fill: 16 bytes/iter with MOVDQU store; RGB→gray: `PMADDUBSW` with `[77,150,29,0]` weights (BT.601, scaled).
+- [ ] **AVX2 (amd64)** — 32 bytes/iter mask fill; 256-bit RGB→gray with same weight vector.
+- [ ] **NEON (arm64)** — `vst1q_u8` mask fill; `vdotq_u32` or manual `vmull`/`vadd` for RGB→gray.
+- [ ] Wire into alpha-mask fill and conversion call sites in `internal/pixfmt/`.
+- [ ] Tests: byte-exact mask fill across sizes; gray values within ±1 of scalar (rounding may differ by ISA).
+
+### 7.5 Gamma / LUT Application
+
+256-entry LUT lookups are inherently gather-bound; SIMD benefit is limited but worth one profiling pass.
+
+- [ ] Profile gamma application in a representative scene before writing any SIMD code.
+- [ ] **SSE4.1 (amd64)** — `PSHUFB`-based 16-entry partial LUT or scalar gather; implement only if profiling justifies.
+- [ ] **AVX2 (amd64)** — `VPGATHERDD` gather if available and beneficial; otherwise skip.
+- [ ] **NEON (arm64)** — `vtbl` / `vqtbl1q_u8` for 16-entry segments; skip if not hot.
+- [ ] If none of the tiers show meaningful gain, mark 8.5 as "profiled, skipped" and close.
+
+---
+
+## Phase 8 - Test Strategy for Port Fidelity
+
+### 8.1 Contract tests (API behavior)
 
 - [x] Expand AGG2D tests to assert outputs, not just `err == nil`, for the currently covered rendering paths.
       `internal/agg2d/rendering_test.go`, `internal/agg2d/image_test.go`, and `internal/agg2d/text_phase1_test.go` now use deterministic output assertions for solid fill, gradient fill, translated rendering output, clipped fill/stroke rendering, blend-mode compositing, transformed image placement/color coverage, and vector-text alignment/bounds.
@@ -98,7 +224,7 @@ One coherent font stack with a tighter, type-safe surface:
   - keep package-private assertions only where they are the clearest contract
   - prefer observable behavior or public API assertions where practical
 
-### 4.2 Visual regression tests
+### 8.2 Visual regression tests
 
 - [ ] Generate canonical references from C++ AGG for core scenarios.
       `tests/visual/reference` already exists for the current Go-side visual suite, but the remaining parity step is to replace or supplement those images with canonical outputs generated from the original C++ AGG implementation.
@@ -131,12 +257,12 @@ One coherent font stack with a tighter, type-safe surface:
   - preserve parallel execution where safe
   - separate parity-critical coverage from exhaustive scenarios if the full suite becomes too slow
 
-### 4.3 C++ parity checks
+### 8.3 C++ parity checks
 
 - [ ] For each parity row marked `exact`, include at least one source-linked test case.
 - [ ] For rows marked `close`, include documented rationale.
 
-### 4.4 Test-suite cleanup and failing-test closure
+### 8.4 Test-suite cleanup and failing-test closure
 
 - [ ] Remove or convert debug-style integration tests that only log state:
   - `tests/integration/debug_test.go`
@@ -156,7 +282,7 @@ One coherent font stack with a tighter, type-safe surface:
   - `platform`
 - [ ] Investigate unusually slow passing test suites and reduce runtime where possible, especially in rasterizer-heavy packages.
 
-### 4.5 Remaining AGG2D parity rows
+### 8.5 Remaining AGG2D parity rows
 
 These items were previously tracked in a standalone parity ledger and now live directly in the phased plan.
 
@@ -172,145 +298,19 @@ These items were previously tracked in a standalone parity ledger and now live d
   - verify glyph placement, raster cache behavior, and text output contracts
   - promote status to `close` only after deterministic output checks exist
 
-### 4.6 Optional property tests
+### 8.6 Optional property tests
 
 - [ ] Add property-style tests for transformations where invertibility and composition laws are stable enough to assert.
 - [ ] Add property-style tests for color math where round-trip and monotonicity expectations are well-defined.
 - [ ] Use `testing/quick` or equivalent lightweight property tooling only where it improves confidence without making failures opaque.
 
-### Exit criteria
+### 8.7 Exit criteria
 
 - [ ] `go test ./...` passes.
 - [ ] Visual regression suite passes in CI.
 - [ ] No AGG2D parity row remains untriaged or placeholder-level.
 - [ ] The remaining debug-only tests are either deleted or converted to assertion-based coverage.
 - [ ] Visual references and approval workflow are centralized under the existing `tests/visual/` framework rather than separate ad hoc docs.
-
----
-
-## Phase 5 - Remaining Port Inventory from docs/TASKS.md ✅
-
-All port inventory items from `docs/TASKS.md` are complete, explicitly deferred as out-of-C++-AGG-2.6-scope,
-or documented as intentional Go deltas. `go test ./internal/...` passes (44 packages).
-
-**5.1 Transformations**: All 7 types at C++ parity (TransAffine, TransPerspective, TransBilinear,
-TransSinglePath, TransDoublePath, TransWarpMagnifier, TransViewport). `PerspectiveIteratorX` avoids
-per-pixel divide; determinant check in `Invert()` for stability; `ViewportManager` handles multi-viewport;
-`ConvTransform.Transformer()` getter added, duplicate setter removed. `SpanInterpolatorPerspectiveExact`
-and `SpanInterpolatorPerspectiveLerp` verified against `agg_span_interpolator_persp.h` at full parity.
-Out of scope: TransPolar (example-only in C++, no `agg_trans_polar.h`), WarpMagnifier multiple zones
-(not in C++ AGG 2.6).
-
-**5.2 Converters and generators**: `ConvAdaptorVPGen` + all vpgen components verified. Stroke/contour
-pipeline complete: `conv_stroke`, `vcgen_stroke` (InnerJoin, all cap/join types), `vcgen_contour`,
-`conv_contour` all at C++ parity. Dash, smooth-poly, and all smaller path-utility converters complete
-with tests. Rasterizer cell-run compaction regression tests added; `RenderAllPaths` typed via
-`MultiPathRasterizerInterface`.
-
-**5.3 Span / image-processing**: `GradientContour.Calculate()` formula fixed to match C++
-(`buffer*(d2/256)+d1`, not linear lerp). Bilinear filter spurious premultiplied-alpha clamping removed
-(not in C++ AGG); clip variant implements all three C++ boundary cases. Gouraud shading complete:
-`SpanGouraudGray` and `SpanGouraudRGBA` at C++ parity. `BoundingRect`, `ConvShortenPath`,
-`VCGenVertexSequence` all implemented and tested.
-
-**5.4 Fonts and utilities**: `RowPtr` bridge resolved (direct slice for plain, on-demand cache for pre).
-GSV embedded font complete (`GSVText`, `GSVTextOutline`, `font_data.go`). FreeType custom memory hook
-unsupported by design (`FT_Init_FreeType` used; `ftMemory` ignored with `_ = ftMemory`). Color
-conversion: all three C++ headers ported (`agg_color_conv.h`, `agg_color_conv_rgb8.h`,
-`agg_color_conv_rgb16.h`) to `internal/color/conv/`.
-
-**5.5 Generics / pixfmt**: RGBA16 pixfmt refactored to blender-interface pattern; tests restored. `any()`
-assertions eliminated from Gray16/Gray32 pixfmts; `RawRGB/RGBAOrder` fast paths retained as legitimate.
-`VertexFilter` shims removed from `array/vertex_sequence.go` and `basics/math_stroke.go`. Color space
-kept at Linear + SRGB only.
-
-**Note**: `TestTransformImageUsesPremultipliedRenderer` updated to use premultiplied source input —
-C++ AGG routes image rendering through `m_renBasePre` (`agg2d.cpp:1738`) which expects premultiplied
-values; no automatic straight→premultiplied conversion occurs in the span path.
-
----
-
-## Phase 6 - API and Documentation Finalization ✅
-
-- [x] `Context` / `Agg2D` separation documented; package doc in `agg.go` corrected.
-- [x] `docs/TASKS.md` synchronized; architecture overview updated to 35 internal packages.
-- [x] `docs/AGG_DELTAS.md` created — documents all intentional deviations from C++ AGG 2.6.
-
----
-
-## Phase 7 - SIMD Infrastructure and Bulk Pixel Paths ✅
-
-`internal/simd/` package with runtime CPU detection, build-tagged arch dispatch, and `purego` scalar baseline.
-Four pixel operations each have generic, amd64 (SSE2/SSE4.1/AVX2), and arm64 (NEON/generic) paths.
-Assembly in flat `internal/simd/*.s` files (idiomatic Go layout).
-
-- [x] **FillRGBA** — packed-RGBA bulk fill; wired to `CopyHline` / `Clear`.
-- [x] **BlendSolidHspanRGBA** — solid-color AA spans with per-pixel cover (SSE4.1 PMAXUW/PMINUW lerp).
-- [x] **BlendHlineRGBA** — uniform-coverage hline blend; alpha==255 routes to FillRGBA.
-- [x] **BlendColorHspanRGBA** — per-pixel color+cover (scalar IMULQ alpha, SIMD lerp for 8 channels).
-- [x] `pixfmt_rgba8.go` fast paths wired for all four operations; RGBA byte order uses SIMD, others fall back to scalar.
-- [x] Table-driven tests verify bit-identical output across all forced implementation paths.
-- [x] QEMU arm64 correctness checks in regular workflow (`just test-arm64`).
-
----
-
-## Phase 8 - SIMD Expansion Targets
-
-Each section follows the same three-tier pattern as Phase 7: generic Go → SSE4.1 → AVX2 on amd64; generic fallback → NEON on arm64.
-
-### 8.1 Premultiply / Demultiply
-
-Whole-buffer pre/demultiplication is called on every image load and compositing operation.
-
-- [x] **Generic** — correct scalar baseline with zero-alpha guard on demultiply.
-- [x] **SSE4.1 (amd64)** — process 4 pixels/iter: PMULLW × α/255 (AGG rounding); PACKUSWB clamp; alpha channel restored from saved original.
-- [x] **AVX2 (amd64)** — delegates to SSE4.1 kernel (bottleneck is memory bandwidth, not arithmetic).
-- [x] **NEON (arm64)** — generic fallback (NEON assembly deferred; generic path is correct and tested via QEMU).
-- [x] Wire into `pixfmt_rgba8.go` premultiply / demultiply call sites; SIMD fast path for standard RGBA byte order, scalar for BGRA/ARGB/ABGR.
-- [x] Table-driven tests: bit-identical output vs. scalar across all paths, including zero-alpha row, boundary alphas, and round-trip precision check.
-
-### 8.2 Composite Blend Modes ✅
-
-Porter-Duff operators beyond `SrcOver` (used by the compositing demos and advanced rendering paths).
-
-- [x] **Generic** — integer-arithmetic scalar for `SrcOver`, `DstOver`, `SrcIn`, `DstIn`, `SrcOut`, `DstOut`, `Xor`, `Clear` in `internal/simd/cpu.go`.
-- [x] **SSE4.1 (amd64)** — `SrcOver` 2 pixels/iter via `compSrcOverHspanRGBASSE41Asm` (`comp_src_over_sse41_amd64.s`); formula: `Dca' = Dca + Sca - mul(Dca, Sa)` using PMOVZXBW/PMULLW/PADDW/PSUBW.
-- [x] **AVX2 (amd64)** — delegates to SSE4.1 kernel (memory-bandwidth bound, not arithmetic).
-- [x] **NEON (arm64)** — generic integer-arithmetic fallback (NEON assembly deferred; correct and tested via QEMU).
-- [x] Wire into `pixfmt_composite.go` `BlendHline` and `BlendSolidHspan` fast paths for SrcOver, DstOver, SrcIn, DstIn, SrcOut, DstOut, Xor, Clear with standard RGBA byte order.
-- [x] Tests: `TestCompSrcOverHspanRGBAComprehensive` verifies bit-exact (±1) output vs. float64 reference across all forced paths; `TestCompOtherOpsGeneric` covers all 6 non-SIMD ops; `TestCompClearHspanRGBA` covers Clear.
-
-### 8.3 Gradient and Image Span Generation
-
-Span generators feed pixel data into `BlendColorHspan`; their inner loops can be hot for complex scenes.
-
-- [ ] **Generic** — baseline already exists in `internal/span/`; profile before committing to SIMD.
-- [ ] **SSE4.1 (amd64)** — linear gradient interpolation: PADDD step accumulation + PSHUFB color lookup if LUT stays hot.
-- [ ] **AVX2 (amd64)** — double-width linear interpolation if the SSE4.1 path proves worthwhile.
-- [ ] **NEON (arm64)** — `vaddq_s32` step accumulation; generic LUT access (cache-miss bound, may not benefit).
-- [ ] Image-filter / resampling kernels: SSE4.1 `PMADDUBSW` dot-product for bilinear tap accumulation.
-- [ ] Only implement tiers that show measurable gain in profiling; skip otherwise.
-
-### 8.4 Alpha-Mask Helpers
-
-Alpha-mask operations sit on the scanline-rendering hot path when masks are active.
-
-- [ ] **Generic** — correct scalar baseline for mask fill and RGB-to-gray conversion.
-- [ ] **SSE4.1 (amd64)** — mask fill: 16 bytes/iter with MOVDQU store; RGB→gray: `PMADDUBSW` with `[77,150,29,0]` weights (BT.601, scaled).
-- [ ] **AVX2 (amd64)** — 32 bytes/iter mask fill; 256-bit RGB→gray with same weight vector.
-- [ ] **NEON (arm64)** — `vst1q_u8` mask fill; `vdotq_u32` or manual `vmull`/`vadd` for RGB→gray.
-- [ ] Wire into alpha-mask fill and conversion call sites in `internal/pixfmt/`.
-- [ ] Tests: byte-exact mask fill across sizes; gray values within ±1 of scalar (rounding may differ by ISA).
-
-### 8.5 Gamma / LUT Application
-
-256-entry LUT lookups are inherently gather-bound; SIMD benefit is limited but worth one profiling pass.
-
-- [ ] Profile gamma application in a representative scene before writing any SIMD code.
-- [ ] **SSE4.1 (amd64)** — `PSHUFB`-based 16-entry partial LUT or scalar gather; implement only if profiling justifies.
-- [ ] **AVX2 (amd64)** — `VPGATHERDD` gather if available and beneficial; otherwise skip.
-- [ ] **NEON (arm64)** — `vtbl` / `vqtbl1q_u8` for 16-entry segments; skip if not hot.
-- [ ] If none of the tiers show meaningful gain, mark 8.5 as "profiled, skipped" and close.
 
 ---
 

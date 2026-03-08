@@ -374,20 +374,22 @@ func TestCircleComponentPipeline(t *testing.T) {
 	// Check for diagonal artifact (should NOT exist)
 	diagonalArtifacts := 0
 	for i := 0; i < 100; i++ { // Check diagonal from (0,0) to (100,100)
-		if i < width && i < height {
-			pixel := pixfmt.Pixel(i, i)
-			// Calculate distance from circle center
-			dx := float64(i) - centerX
-			dy := float64(i) - centerY
-			distance := math.Sqrt(dx*dx + dy*dy)
+		if i >= width || i >= height {
+			continue
+		}
 
-			// If this diagonal pixel is red but should be outside circle, it's an artifact
-			if distance > radius+2 && pixel.R > 200 && pixel.G < 50 && pixel.B < 50 {
-				diagonalArtifacts++
-				if diagonalArtifacts <= 3 { // Log first few
-					t.Logf("Diagonal artifact detected at (%d,%d): RGB(%d,%d,%d), distance=%.1f",
-						i, i, pixel.R, pixel.G, pixel.B, distance)
-				}
+		pixel := pixfmt.Pixel(i, i)
+		// Calculate distance from circle center
+		dx := float64(i) - centerX
+		dy := float64(i) - centerY
+		distance := math.Sqrt(dx*dx + dy*dy)
+
+		// If this diagonal pixel is red but should be outside circle, it's an artifact
+		if distance > radius+2 && pixel.R > 200 && pixel.G < 50 && pixel.B < 50 {
+			diagonalArtifacts++
+			if diagonalArtifacts <= 3 { // Log first few
+				t.Logf("Diagonal artifact detected at (%d,%d): RGB(%d,%d,%d), distance=%.1f",
+					i, i, pixel.R, pixel.G, pixel.B, distance)
 			}
 		}
 	}

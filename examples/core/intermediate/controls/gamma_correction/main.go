@@ -240,19 +240,19 @@ func demonstrateGammaTable() {
 
 		// Calculate some statistics
 		var sum int
-		min, max := gammaTable[0], gammaTable[0]
+		minVal, maxVal := gammaTable[0], gammaTable[0]
 		for _, val := range gammaTable {
 			sum += int(val)
-			if val < min {
-				min = val
+			if val < minVal {
+				minVal = val
 			}
-			if val > max {
-				max = val
+			if val > maxVal {
+				maxVal = val
 			}
 		}
 		avg := float64(sum) / 256.0
 
-		fmt.Printf("Statistics: min=%d, max=%d, avg=%.1f\n", min, max, avg)
+		fmt.Printf("Statistics: min=%d, max=%d, avg=%.1f\n", minVal, maxVal, avg)
 		fmt.Println()
 	}
 }

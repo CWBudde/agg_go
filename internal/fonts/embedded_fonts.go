@@ -4070,6 +4070,7 @@ func GetVerdana18Bold() []byte {
 }
 
 // GetSimple4x6Font returns the simple 4x6 bitmap font data
+//
 // Deprecated: Use GetGSE4x6() instead for full AGG compatibility
 func GetSimple4x6Font() []byte {
 	// Return a minimal compatible font for backward compatibility

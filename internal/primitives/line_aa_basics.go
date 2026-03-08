@@ -90,7 +90,7 @@ var (
 )
 
 // NewLineParameters creates a new LineParameters struct with calculated values.
-func NewLineParameters(x1, y1, x2, y2, len int) LineParameters {
+func NewLineParameters(x1, y1, x2, y2, length int) LineParameters {
 	dx := basics.Abs(x2 - x1)
 	dy := basics.Abs(y2 - y1)
 	sx := 1
@@ -126,7 +126,7 @@ func NewLineParameters(x1, y1, x2, y2, len int) LineParameters {
 		SX: sx, SY: sy,
 		Vertical: vertical,
 		Inc:      inc,
-		Len:      len,
+		Len:      length,
 		Octant:   octant,
 	}
 }

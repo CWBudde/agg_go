@@ -9,16 +9,16 @@ func fillRGBAAVX2Asm(dst []byte, pixel uint32, count int)
 func fillRGBASSE2Asm(dst []byte, pixel uint32, count int)
 
 //go:noescape
-func blendSolidHspanRGBASSE41Asm(dst []byte, covers []byte, pixelOpaque uint32, srcA uint8, count int)
+func blendSolidHspanRGBASSE41Asm(dst, covers []byte, pixelOpaque uint32, srcA uint8, count int)
 
 //go:noescape
-func blendSolidHspanRGBAAVX2Asm(dst []byte, covers []byte, pixelOpaque uint32, srcA uint8, count int)
+func blendSolidHspanRGBAAVX2Asm(dst, covers []byte, pixelOpaque uint32, srcA uint8, count int)
 
 //go:noescape
 func blendHlineRGBASSE41Asm(dst []byte, pixelOpaque uint32, alpha uint8, count int)
 
 //go:noescape
-func blendColorHspanRGBASSE41Asm(dst []byte, srcColors []byte, covers []byte, count int)
+func blendColorHspanRGBASSE41Asm(dst, srcColors, covers []byte, count int)
 
 //go:noescape
 func premultiplyRGBASSE41Asm(buf []byte, count int)
@@ -79,7 +79,7 @@ func fillRGBASSE2(dst []byte, r, g, b, a uint8, count int) {
 	fillRGBASSE2Asm(dst, pixel, count)
 }
 
-func blendSolidHspanRGBAAVX2(dst []byte, covers []byte, r, g, b, a uint8, premulSrc bool) {
+func blendSolidHspanRGBAAVX2(dst, covers []byte, r, g, b, a uint8, premulSrc bool) {
 	if premulSrc {
 		blendSolidHspanRGBAGeneric(dst, covers, r, g, b, a, premulSrc)
 		return
@@ -88,7 +88,7 @@ func blendSolidHspanRGBAAVX2(dst []byte, covers []byte, r, g, b, a uint8, premul
 	blendSolidHspanRGBAAVX2Asm(dst, covers, pixelOpaque, a, len(covers))
 }
 
-func blendSolidHspanRGBASSE41(dst []byte, covers []byte, r, g, b, a uint8, premulSrc bool) {
+func blendSolidHspanRGBASSE41(dst, covers []byte, r, g, b, a uint8, premulSrc bool) {
 	if premulSrc {
 		blendSolidHspanRGBAGeneric(dst, covers, r, g, b, a, premulSrc)
 		return
@@ -97,7 +97,7 @@ func blendSolidHspanRGBASSE41(dst []byte, covers []byte, r, g, b, a uint8, premu
 	blendSolidHspanRGBASSE41Asm(dst, covers, pixelOpaque, a, len(covers))
 }
 
-func blendSolidHspanRGBASSE2(dst []byte, covers []byte, r, g, b, a uint8, premulSrc bool) {
+func blendSolidHspanRGBASSE2(dst, covers []byte, r, g, b, a uint8, premulSrc bool) {
 	blendSolidHspanRGBAWithRunFill(dst, covers, r, g, b, a, premulSrc, fillRGBASSE2)
 }
 

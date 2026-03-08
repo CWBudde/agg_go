@@ -388,10 +388,8 @@ func TestCheckboxCheckmarkVertices(t *testing.T) {
 				t.Errorf("First checkmark vertex should be MoveTo, got %v", cmd)
 			}
 			firstVertexSeen = true
-		} else {
-			if cmd != basics.PathCmdLineTo {
-				t.Errorf("Checkmark vertex %d should be LineTo, got %v", vertexCount, cmd)
-			}
+		} else if cmd != basics.PathCmdLineTo {
+			t.Errorf("Checkmark vertex %d should be LineTo, got %v", vertexCount, cmd)
 		}
 
 		// Verify coordinates are reasonable

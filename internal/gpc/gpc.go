@@ -281,7 +281,8 @@ func ReadPolygon(reader io.Reader, readHoleFlags bool) (*GPCPolygon, error) {
 		}
 	}
 
-	return polygon, polygon.Validate()
+	validateErr := polygon.Validate()
+	return polygon, validateErr
 }
 
 // WritePolygon writes a polygon to an io.Writer
@@ -1780,21 +1781,21 @@ func buildLocalMinimaTable(lmt **lmtNode, sbtree **sbTree, sbtEntries *int,
 		}
 
 		// Process forward local minima
-		for min := 0; min < numVertices; min++ {
-			if fwdMin(optimalVertices, min, numVertices) {
+		for minIdx := 0; minIdx < numVertices; minIdx++ {
+			if fwdMin(optimalVertices, minIdx, numVertices) {
 				// Find next local maximum
 				numEdges := 1
-				max := nextIndex(min, numVertices)
-				for notFMax(optimalVertices, max, numVertices) {
+				maxIdx := nextIndex(minIdx, numVertices)
+				for notFMax(optimalVertices, maxIdx, numVertices) {
 					numEdges++
-					max = nextIndex(max, numVertices)
+					maxIdx = nextIndex(maxIdx, numVertices)
 				}
 
 				// Build edge list for this minimum
 				if edgeIndex+numEdges <= len(edgeTable) {
 					e := edgeTable[edgeIndex : edgeIndex+numEdges]
 					edgeIndex += numEdges
-					v := min
+					v := minIdx
 
 					for i := 0; i < numEdges; i++ {
 						e[i].Bot = optimalVertices[v]
@@ -1830,27 +1831,27 @@ func buildLocalMinimaTable(lmt **lmtNode, sbtree **sbTree, sbtEntries *int,
 					}
 
 					// Insert into bound list
-					insertBound(boundList(lmt, optimalVertices[min].Y), e[0])
+					insertBound(boundList(lmt, optimalVertices[minIdx].Y), e[0])
 				}
 			}
 		}
 
 		// Process reverse local minima
-		for min := 0; min < numVertices; min++ {
-			if revMin(optimalVertices, min, numVertices) {
+		for minIdx := 0; minIdx < numVertices; minIdx++ {
+			if revMin(optimalVertices, minIdx, numVertices) {
 				// Find previous local maximum
 				numEdges := 1
-				max := prevIndex(min, numVertices)
-				for notRMax(optimalVertices, max, numVertices) {
+				maxIdx := prevIndex(minIdx, numVertices)
+				for notRMax(optimalVertices, maxIdx, numVertices) {
 					numEdges++
-					max = prevIndex(max, numVertices)
+					maxIdx = prevIndex(maxIdx, numVertices)
 				}
 
 				// Build edge list for this minimum
 				if edgeIndex+numEdges <= len(edgeTable) {
 					e := edgeTable[edgeIndex : edgeIndex+numEdges]
 					edgeIndex += numEdges
-					v := min
+					v := minIdx
 
 					for i := 0; i < numEdges; i++ {
 						e[i].Bot = optimalVertices[v]
@@ -1886,7 +1887,7 @@ func buildLocalMinimaTable(lmt **lmtNode, sbtree **sbTree, sbtEntries *int,
 					}
 
 					// Insert into bound list
-					insertBound(boundList(lmt, optimalVertices[min].Y), e[0])
+					insertBound(boundList(lmt, optimalVertices[minIdx].Y), e[0])
 				}
 			}
 		}
@@ -1896,7 +1897,7 @@ func buildLocalMinimaTable(lmt **lmtNode, sbtree **sbTree, sbtEntries *int,
 }
 
 // addEdgeToAET adds an edge to the Active Edge Table, maintaining X-coordinate order
-func addEdgeToAET(aet **edgeNode, edge *edgeNode, prev *edgeNode) {
+func addEdgeToAET(aet **edgeNode, edge, prev *edgeNode) {
 	if *aet == nil {
 		// Append edge onto the tail end of the AET
 		*aet = edge
@@ -2073,7 +2074,7 @@ func addRight(p *polygonNode, x, y float64) {
 }
 
 // mergeLeft merges left polygon chains and labels contour as hole
-func mergeLeft(p, q *polygonNode, list *polygonNode) {
+func mergeLeft(p, q, list *polygonNode) {
 	// Label contour as a hole
 	q.Proxy.Hole = true
 
@@ -2096,7 +2097,7 @@ func mergeLeft(p, q *polygonNode, list *polygonNode) {
 }
 
 // mergeRight merges right polygon chains and labels contour as external
-func mergeRight(p, q *polygonNode, list *polygonNode) {
+func mergeRight(p, q, list *polygonNode) {
 	// Label contour as external
 	q.Proxy.Hole = false
 

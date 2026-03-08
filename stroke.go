@@ -16,7 +16,7 @@ func (ctx *Context) SetStrokeWidth(width float64) { ctx.agg2d.LineWidth(width) }
 func (ctx *Context) GetLineWidth() float64 { return ctx.agg2d.impl.GetLineWidth() }
 
 // SetLineCap sets the line cap style.
-func (ctx *Context) SetLineCap(cap LineCap) { ctx.agg2d.LineCap(cap) }
+func (ctx *Context) SetLineCap(lineCap LineCap) { ctx.agg2d.LineCap(lineCap) }
 
 // GetLineCap returns the current line cap style.
 func (ctx *Context) GetLineCap() LineCap { return LineCap(ctx.agg2d.impl.GetLineCap()) }
@@ -99,9 +99,9 @@ func (ctx *Context) GetApproximationScale() float64 { return ctx.agg2d.impl.GetA
 // Convenience methods for common stroke styles
 
 // SetStrokeStyle sets multiple stroke properties at once.
-func (ctx *Context) SetStrokeStyle(width float64, cap LineCap, join LineJoin) {
+func (ctx *Context) SetStrokeStyle(width float64, lineCap LineCap, join LineJoin) {
 	ctx.SetLineWidth(width)
-	ctx.SetLineCap(cap)
+	ctx.SetLineCap(lineCap)
 	ctx.SetLineJoin(join)
 }
 
@@ -176,7 +176,11 @@ func (ctx *Context) GetContextStrokeAttributes() ContextStrokeAttributes {
 }
 
 // SetContextStrokeAttributes sets multiple stroke attributes at once.
-func (ctx *Context) SetContextStrokeAttributes(attrs ContextStrokeAttributes) {
+func (ctx *Context) SetContextStrokeAttributes(attrs *ContextStrokeAttributes) {
+	if attrs == nil {
+		return
+	}
+
 	iaAttrs := ia.StrokeAttributes{
 		Width:              attrs.Width,
 		MiterLimit:         attrs.MiterLimit,
@@ -198,7 +202,7 @@ func (ctx *Context) SaveContextStrokeAttributes() ContextStrokeAttributes {
 	return ctx.GetContextStrokeAttributes()
 }
 
-func (ctx *Context) RestoreContextStrokeAttributes(attrs ContextStrokeAttributes) {
+func (ctx *Context) RestoreContextStrokeAttributes(attrs *ContextStrokeAttributes) {
 	ctx.SetContextStrokeAttributes(attrs)
 }
 

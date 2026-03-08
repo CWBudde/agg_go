@@ -357,10 +357,8 @@ func (pb *PathBase[VC]) JoinPath(vs VertexSource) {
 			} else {
 				if basics.IsStop(basics.PathCommand(cmd0)) {
 					cmd = uint32(basics.PathCmdMoveTo)
-				} else {
-					if basics.IsMoveTo(basics.PathCommand(cmd)) {
-						cmd = uint32(basics.PathCmdLineTo)
-					}
+				} else if basics.IsMoveTo(basics.PathCommand(cmd)) {
+					cmd = uint32(basics.PathCmdLineTo)
 				}
 				pb.vertices.AddVertex(x, y, cmd)
 			}

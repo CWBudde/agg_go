@@ -44,11 +44,12 @@ func (c *RGBA) Transparent() *RGBA {
 
 // Opacity sets the alpha channel
 func (c *RGBA) Opacity(a float64) *RGBA {
-	if a < 0 {
+	switch {
+	case a < 0:
 		c.A = 0
-	} else if a > 1 {
+	case a > 1:
 		c.A = 1
-	} else {
+	default:
 		c.A = a
 	}
 	return c

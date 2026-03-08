@@ -55,16 +55,18 @@ func loadSystemFont(agg2d *agg.Agg2D) error {
 	}
 
 	for _, fontPath := range fontPaths {
-		if _, err := os.Stat(fontPath); err == nil {
-			fmt.Printf("Attempting to load font: %s\n", fontPath)
-			err := agg2d.Font(fontPath, 16.0, false, false, agg.RasterFontCache, 0.0)
-			if err != nil {
-				fmt.Printf("Failed to load %s: %v\n", fontPath, err)
-				continue
-			}
-			fmt.Printf("Successfully loaded font: %s\n", filepath.Base(fontPath))
-			return nil
+		if _, err := os.Stat(fontPath); err != nil {
+			continue
 		}
+
+		fmt.Printf("Attempting to load font: %s\n", fontPath)
+		err := agg2d.Font(fontPath, 16.0, false, false, agg.RasterFontCache, 0.0)
+		if err != nil {
+			fmt.Printf("Failed to load %s: %v\n", fontPath, err)
+			continue
+		}
+		fmt.Printf("Successfully loaded font: %s\n", filepath.Base(fontPath))
+		return nil
 	}
 
 	return fmt.Errorf("no suitable fonts found in common system locations")

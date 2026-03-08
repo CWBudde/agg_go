@@ -331,8 +331,8 @@ func NewPodVector[T any]() *PodVector[T] {
 }
 
 // NewPodVectorWithCapacity creates a new vector with the specified capacity.
-func NewPodVectorWithCapacity[T any](cap int, extraTail int) *PodVector[T] {
-	totalCap := cap + extraTail
+func NewPodVectorWithCapacity[T any](capacity int, extraTail int) *PodVector[T] {
+	totalCap := capacity + extraTail
 	var array []T
 	if totalCap > 0 {
 		array = make([]T, totalCap)

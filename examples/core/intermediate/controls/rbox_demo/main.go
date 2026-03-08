@@ -13,7 +13,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 
 	"agg_go/internal/basics"
 	"agg_go/internal/color"
@@ -315,13 +314,4 @@ func demonstrateRealWorldUsage() {
 	// 6. Read the current selection to apply the chosen setting
 
 	fmt.Println("In a real application, this would be rendered graphically and be interactive.")
-}
-
-func init() {
-	// Ensure we can create controls without panicking
-	defer func() {
-		if r := recover(); r != nil {
-			log.Fatalf("Demo failed with panic: %v", r)
-		}
-	}()
 }

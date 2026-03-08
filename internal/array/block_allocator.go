@@ -91,7 +91,7 @@ func (ba *BlockAllocator) allocateBlock(size int) {
 
 // Allocate allocates memory of the specified size with optional alignment.
 // Returns a byte slice pointing to the allocated memory.
-func (ba *BlockAllocator) Allocate(size int, alignment int) []byte {
+func (ba *BlockAllocator) Allocate(size, alignment int) []byte {
 	if size == 0 {
 		return nil
 	}
@@ -139,7 +139,7 @@ func (ba *BlockAllocator) AllocateBytes(size int) []byte {
 }
 
 // AllocateAligned allocates memory with the specified alignment.
-func (ba *BlockAllocator) AllocateAligned(size int, alignment int) []byte {
+func (ba *BlockAllocator) AllocateAligned(size, alignment int) []byte {
 	return ba.Allocate(size, alignment)
 }
 

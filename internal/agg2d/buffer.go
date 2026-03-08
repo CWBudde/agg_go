@@ -69,6 +69,19 @@ func (agg2d *Agg2D) Attach(buf []uint8, width, height, stride int) {
 	agg2d.updateRasterizerGamma()
 }
 
+// AttachImage attaches a rendering context to an existing Image.
+// This matches the C++ Agg2D::attach(Image& img) overload:
+//
+//	void Agg2D::attach(Image& img) {
+//	    attach(img.renBuf.buf(), img.renBuf.width(), img.renBuf.height(), img.renBuf.stride());
+//	}
+func (agg2d *Agg2D) AttachImage(img *Image) {
+	if img == nil || img.renBuf == nil {
+		return
+	}
+	agg2d.Attach(img.renBuf.Buf(), img.renBuf.Width(), img.renBuf.Height(), img.renBuf.Stride())
+}
+
 // initializeRendering sets up the rendering pipeline
 func (agg2d *Agg2D) initializeRendering() {
 	// Initialize pixel format with the attached buffer

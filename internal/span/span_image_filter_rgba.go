@@ -888,13 +888,11 @@ func (sirg *SpanImageResampleRGBA[Source, Interpolator]) Generate(span []color.R
 
 		rx := image.ImageSubpixelScale
 		ry := image.ImageSubpixelScale
-		rxInv := image.ImageSubpixelScale
-		ryInv := image.ImageSubpixelScale
 
 		sirg.base.AdjustScale(&rx, &ry)
 
-		rxInv = image.ImageSubpixelScale * image.ImageSubpixelScale / rx
-		ryInv = image.ImageSubpixelScale * image.ImageSubpixelScale / ry
+		rxInv := image.ImageSubpixelScale * image.ImageSubpixelScale / rx
+		ryInv := image.ImageSubpixelScale * image.ImageSubpixelScale / ry
 
 		radiusX := (diameter * rx) >> 1
 		radiusY := (diameter * ry) >> 1

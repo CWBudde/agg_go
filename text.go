@@ -45,7 +45,7 @@ func (ctx *Context) SetTextAlignment(alignX, alignY TextAlignment) {
 
 // DrawText renders text at the specified position.
 func (ctx *Context) DrawText(text string, x, y float64) error {
-	if len(text) == 0 {
+	if text == "" {
 		return errors.New("text is empty")
 	}
 	ctx.agg2d.impl.Text(x, y, text, true, 0, 0)
@@ -54,7 +54,7 @@ func (ctx *Context) DrawText(text string, x, y float64) error {
 
 // DrawTextAligned renders text aligned relative to (x,y).
 func (ctx *Context) DrawTextAligned(text string, x, y float64, alignment TextAlignment) error {
-	if len(text) == 0 {
+	if text == "" {
 		return errors.New("text is empty")
 	}
 
@@ -75,7 +75,7 @@ func (ctx *Context) FillText(text string, x, y float64) error { return ctx.DrawT
 
 // StrokeText renders outlined text (uses current stroke settings).
 func (ctx *Context) StrokeText(text string, x, y float64) error {
-	if len(text) == 0 {
+	if text == "" {
 		return errors.New("text is empty")
 	}
 	ctx.agg2d.impl.Text(x, y, text, true, 0, 0)
@@ -102,7 +102,7 @@ func (ctx *Context) GetTextBounds(text string) (x, y, width, height float64) {
 
 // DrawTextOnPath placeholder until path integration is implemented.
 func (ctx *Context) DrawTextOnPath(text string, curved bool) error {
-	if len(text) == 0 {
+	if text == "" {
 		return errors.New("text is empty")
 	}
 	return errors.New("text on path not yet implemented - requires path integration")
@@ -167,7 +167,7 @@ func splitWords(text string) []string {
 	cur := ""
 	for _, ch := range text {
 		if ch == ' ' || ch == '\n' || ch == '\t' {
-			if len(cur) > 0 {
+			if cur != "" {
 				words = append(words, cur)
 				cur = ""
 			}
@@ -175,7 +175,7 @@ func splitWords(text string) []string {
 			cur += string(ch)
 		}
 	}
-	if len(cur) > 0 {
+	if cur != "" {
 		words = append(words, cur)
 	}
 	return words
@@ -189,20 +189,20 @@ func wrapWords(ctx *Context, words []string, maxWidth float64) []string {
 	line := ""
 	for _, w := range words {
 		test := line
-		if len(test) > 0 {
+		if test != "" {
 			test += " "
 		}
 		test += w
 		if ctx.GetTextWidth(test) <= maxWidth {
 			line = test
 		} else {
-			if len(line) > 0 {
+			if line != "" {
 				lines = append(lines, line)
 			}
 			line = w
 		}
 	}
-	if len(line) > 0 {
+	if line != "" {
 		lines = append(lines, line)
 	}
 	return lines

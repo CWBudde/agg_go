@@ -61,13 +61,11 @@ func (m *VCGenMarkersTerm) AddVertex(x, y float64, cmd basics.PathCommand) {
 			m.markers.Add(last)
 			third := m.markers.At(m.markers.Size() - 3)
 			m.markers.Add(third)
-		} else {
-			if m.markers.Size() > 0 {
-				// Replace two last points: 0,1,1,0 -> 0,1,2,1
-				prev := m.markers.At(m.markers.Size() - 2)
-				m.markers.Set(m.markers.Size()-1, prev)
-				m.markers.Set(m.markers.Size()-2, NewCoordType(x, y))
-			}
+		} else if m.markers.Size() > 0 {
+			// Replace two last points: 0,1,1,0 -> 0,1,2,1
+			prev := m.markers.At(m.markers.Size() - 2)
+			m.markers.Set(m.markers.Size()-1, prev)
+			m.markers.Set(m.markers.Size()-2, NewCoordType(x, y))
 		}
 	}
 }

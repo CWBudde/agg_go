@@ -357,13 +357,13 @@ func TestPolyAdaptors(t *testing.T) {
 		}
 
 		// Should get EndPoly with Close flag
-		x, y, cmd = adaptor.NextVertex()
+		_, _, cmd = adaptor.NextVertex()
 		if cmd != uint32(basics.PathCmdEndPoly)|uint32(basics.PathFlagsClose) {
 			t.Errorf("Expected EndPoly|Close, got %d", cmd)
 		}
 
 		// Should get Stop
-		x, y, cmd = adaptor.NextVertex()
+		_, _, cmd = adaptor.NextVertex()
 		if cmd != uint32(basics.PathCmdStop) {
 			t.Errorf("Expected Stop, got %d", cmd)
 		}

@@ -8,9 +8,7 @@ const QuickSortThreshold = 9
 // SwapElements swaps two elements.
 // This is equivalent to AGG's swap_elements<T> function.
 func SwapElements[T any](a, b *T) {
-	temp := *a
-	*a = *b
-	*b = temp
+	*a, *b = *b, *a
 }
 
 // LessFunc is a function type for comparison operations.

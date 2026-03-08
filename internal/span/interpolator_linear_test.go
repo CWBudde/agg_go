@@ -76,7 +76,7 @@ func TestSpanInterpolatorLinear(t *testing.T) {
 		prevX := x
 		for i := 0; i < 5; i++ {
 			interp.Next()
-			x, y = interp.Coordinates()
+			x, _ = interp.Coordinates()
 			if x <= prevX {
 				t.Errorf("X coordinate should increase, got %d (prev %d)", x, prevX)
 			}

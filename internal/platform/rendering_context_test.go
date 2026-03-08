@@ -208,7 +208,7 @@ func TestBlendPixel(t *testing.T) {
 	rc.SetPixel(60, 60, 255, 255, 255, 255) // White
 	rc.BlendPixel(60, 60, 0, 0, 0, 128)     // Semi-transparent black
 
-	r, g, b, a, ok = rc.GetPixel(60, 60)
+	r, g, b, _, ok = rc.GetPixel(60, 60)
 	if !ok {
 		t.Fatal("GetPixel should succeed")
 	}

@@ -82,7 +82,7 @@ func (app *Application) clearBuffer() {
 }
 
 // isPointInTriangle checks if a point is inside a triangle using barycentric coordinates
-func (app *Application) isPointInTriangle(px, py float64, offsetX float64) bool {
+func (app *Application) isPointInTriangle(px, py, offsetX float64) bool {
 	// Adjust triangle coordinates with offset
 	x1, y1 := app.x[0]+offsetX, app.y[0]
 	x2, y2 := app.x[1]+offsetX, app.y[1]
@@ -102,7 +102,7 @@ func (app *Application) isPointInTriangle(px, py float64, offsetX float64) bool 
 }
 
 // calculateCoverage calculates anti-aliased coverage for a pixel
-func (app *Application) calculateCoverage(px, py float64, offsetX float64, useAntiAliasing bool) float64 {
+func (app *Application) calculateCoverage(px, py, offsetX float64, useAntiAliasing bool) float64 {
 	if !useAntiAliasing {
 		// Binary coverage - either fully inside or outside
 		if app.isPointInTriangle(px+0.5, py+0.5, offsetX) {

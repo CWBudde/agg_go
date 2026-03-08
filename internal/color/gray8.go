@@ -80,11 +80,12 @@ func (g *Gray8[CS]) Transparent() {
 
 // Opacity sets the alpha channel (0.0 to 1.0)
 func (g *Gray8[CS]) Opacity(a float64) {
-	if a < 0 {
+	switch {
+	case a < 0:
 		g.A = 0
-	} else if a > 1 {
+	case a > 1:
 		g.A = Gray8BaseMask
-	} else {
+	default:
 		g.A = basics.Int8u(a*float64(Gray8BaseMask) + 0.5)
 	}
 }

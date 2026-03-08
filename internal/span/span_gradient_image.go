@@ -116,7 +116,7 @@ func (gi *GradientImageRGBA8) Calculate(x, y, d2 int) int {
 			px += gi.width
 		}
 
-		py = py % gi.height
+		py %= gi.height
 		if py < 0 {
 			py += gi.height
 		}
