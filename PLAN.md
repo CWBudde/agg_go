@@ -264,23 +264,17 @@ Alpha-mask operations sit on the scanline-rendering hot path when masks are acti
 
 ### 8.4 Test-suite cleanup and failing-test closure
 
-- [ ] Remove or convert debug-style integration tests that only log state:
-  - `tests/integration/debug_test.go`
-  - `tests/integration/debug2_test.go`
-  - `tests/integration/debug3_test.go`
-  - `tests/integration/minimal_debug_test.go`
-  - `tests/integration/alternative_debug_test.go`
-- [ ] Convert any useful debug coverage into proper contract or regression tests with assertions.
-- [ ] Triage and close the currently known failing or build-broken test areas:
-  - `agg2d`
-  - `color`
-  - `conv`
-  - `fonts`
-  - `pixfmt`
-  - `pixfmt/blender`
-  - `pixfmt/gamma`
-  - `platform`
-- [ ] Investigate unusually slow passing test suites and reduce runtime where possible, especially in rasterizer-heavy packages.
+- [x] Remove or convert debug-style integration tests that only log state:
+  - removed `tests/integration/debug_test.go` (duplicated by TestRenderingPipelineBasic/PixelPerfect)
+  - removed `tests/integration/debug2_test.go` (log-only, no assertions, coverage duplicated)
+  - converted `tests/integration/debug3_test.go` → `context_api_test.go` (unique public API coverage)
+  - removed `tests/integration/minimal_debug_test.go` (duplicated by TestRenderingPipelineBasic)
+  - removed `tests/integration/alternative_debug_test.go` (log-only "assertions" via t.Log)
+- [x] Convert any useful debug coverage into proper contract or regression tests with assertions:
+  - `TestContextAPIClear` and `TestContextAPIFillRectangle` in `context_api_test.go`
+- [x] Triage and close the currently known failing or build-broken test areas:
+  - all listed packages (`agg2d`, `color`, `conv`, `fonts`, `pixfmt`, `pixfmt/blender`, `pixfmt/gamma`, `platform`) now pass `go test`
+- [x] Investigate unusually slow passing test suites: no rasterizer-heavy outliers; slowest tests are ~100ms timing/visual tests which are expected.
 
 ### 8.5 Remaining AGG2D parity rows
 

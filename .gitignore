@@ -60,6 +60,9 @@ Thumbs.db
 # Documentation build artifacts
 /docs/build/
 
+# Visual test reports (generated, not tracked)
+tests/visual/reports/*.html
+
 # Example binaries (if built)
 /examples/*/main
 /examples/*/*/main
