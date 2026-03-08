@@ -35,12 +35,28 @@ import (
 
 var (
 	flash2ShapeIdx = 0
+	flash2Zoom     = 1.0  // zoom factor (centered on flash2ZoomX/Y)
+	flash2ZoomX    = 0.0  // zoom center X (canvas coords)
+	flash2ZoomY    = 0.0  // zoom center Y (canvas coords)
 
 	flash2Shapes []shapesdata.RawShape
 	flash2Colors []color.RGBA8[color.Linear] // 100 random colours
 )
 
 func setFlash2ShapeIdx(v int) { flash2ShapeIdx = v }
+
+// applyFlash2Wheel applies mouse-wheel zoom centered at (mx, my).
+// deltaY > 0 means zoom out, < 0 means zoom in (standard browser convention).
+func applyFlash2Wheel(mx, my, deltaY float64) {
+	factor := 1.0 / 1.1
+	if deltaY < 0 {
+		factor = 1.1
+	}
+	// Translate so (mx,my) is origin, scale, translate back.
+	flash2ZoomX = mx - (mx-flash2ZoomX)*factor
+	flash2ZoomY = my - (my-flash2ZoomY)*factor
+	flash2Zoom *= factor
+}
 
 // --- Initialisation ---
 
@@ -107,6 +123,11 @@ func drawFlashRasterizer2Demo() {
 	// simplified: x' = x*sc + (ox - bx1*sc)
 	tx := ox - bx1*sc
 	ty := oy - by1*sc
+
+	// Apply interactive zoom: translate+scale around zoom center.
+	sc *= flash2Zoom
+	tx = tx*flash2Zoom + flash2ZoomX
+	ty = ty*flash2Zoom + flash2ZoomY
 
 	// Pre-flatten all paths in screen coordinates.
 	flatPaths := make([][]shapesdata.FlatVertex, len(shape.Paths))
@@ -234,7 +255,7 @@ func drawFlashRasterizer2Demo() {
 		totalFPS = int(1000.0 / ttotalMs)
 	}
 
-	txt := fmt.Sprintf("Fill=%.2fms (%dFPS) Stroke=%.2fms (%dFPS) Total=%.2fms (%dFPS)\n\nSpace: Next Shape\n\n+/- : ZoomIn/ZoomOut (with respect to the mouse pointer)",
+	txt := fmt.Sprintf("Fill=%.2fms (%dFPS) Stroke=%.2fms (%dFPS) Total=%.2fms (%dFPS)",
 		tfillMs, fillFPS, tstrokeMs, strokeFPS, ttotalMs, totalFPS)
 
 	t := gsv.NewGSVText()

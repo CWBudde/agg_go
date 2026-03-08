@@ -209,7 +209,7 @@ func (d *demo) Render(ctx *agg.Context) {
 		totalFPS = int(1000.0 / ttotalMs)
 	}
 
-	txt := fmt.Sprintf("Fill=%.2fms (%dFPS) Stroke=%.2fms (%dFPS) Total=%.2fms (%dFPS)\n\nSpace: Next Shape\n\n+/- : ZoomIn/ZoomOut (with respect to the mouse pointer)",
+	txt := fmt.Sprintf("Fill=%.2fms (%dFPS) Stroke=%.2fms (%dFPS) Total=%.2fms (%dFPS)",
 		tfillMs, fillFPS, tstrokeMs, strokeFPS, ttotalMs, totalFPS)
 
 	gsvT := gsv.NewGSVText()

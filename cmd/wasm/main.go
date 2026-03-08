@@ -549,6 +549,12 @@ func main() {
 		}
 		return nil
 	}))
+	js.Global().Set("applyFlash2Wheel", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) >= 3 {
+			applyFlash2Wheel(args[0].Float(), args[1].Float(), args[2].Float())
+		}
+		return nil
+	}))
 
 	// Keep the Go program running
 	select {}
