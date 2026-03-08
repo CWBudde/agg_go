@@ -39,7 +39,7 @@ func clampInt(v, lo, hi int) int {
 func Draw(ctx *agg.Context, cfg Config) {
 	w := float64(ctx.GetImage().Width())
 	h := float64(ctx.GetImage().Height())
-	if cfg.CenterX == 0 && cfg.CenterY == 0 {
+	if math.IsNaN(cfg.CenterX) || math.IsNaN(cfg.CenterY) {
 		cfg.CenterX = w / 2
 		cfg.CenterY = h / 2
 	}

@@ -609,6 +609,13 @@ func onMouseDown(this js.Value, args []js.Value) interface{} {
 	if demoType == "pattern_resample" {
 		return handlePatternResampleMouseDown(x, y)
 	}
+	if demoType == "scanline_boolean2" {
+		right := len(args) >= 4 && args[3].Bool()
+		if right {
+			return false
+		}
+		return handleScanlineBoolean2MouseDown(x, y)
+	}
 	return false
 }
 
@@ -716,6 +723,13 @@ func onMouseMove(this js.Value, args []js.Value) interface{} {
 	if demoType == "pattern_resample" {
 		return handlePatternResampleMouseMove(x, y)
 	}
+	if demoType == "scanline_boolean2" {
+		right := len(args) >= 4 && args[3].Bool()
+		if right {
+			return false
+		}
+		return handleScanlineBoolean2MouseMove(x, y)
+	}
 	return false
 }
 
@@ -790,6 +804,9 @@ func onMouseUp(this js.Value, args []js.Value) interface{} {
 	}
 	if demoType == "pattern_resample" {
 		handlePatternResampleMouseUp()
+	}
+	if demoType == "scanline_boolean2" {
+		handleScanlineBoolean2MouseUp()
 	}
 	return nil
 }

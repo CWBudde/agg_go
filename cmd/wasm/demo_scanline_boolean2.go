@@ -1,6 +1,10 @@
 package main
 
-import "agg_go/internal/demo/scanlineboolean2"
+import (
+	"math"
+
+	"agg_go/internal/demo/scanlineboolean2"
+)
 
 // Port of AGG C++ scanline_boolean2.cpp (web variant).
 var (
@@ -8,8 +12,8 @@ var (
 	sb2Fill    = 1
 	sb2Scan    = 1
 	sb2Op      = 2
-	sb2CenterX = 0.0
-	sb2CenterY = 0.0
+	sb2CenterX = math.NaN()
+	sb2CenterY = math.NaN()
 )
 
 func setScanlineBoolean2Mode(v int)      { sb2Mode = v }
@@ -21,13 +25,30 @@ func setScanlineBoolean2Center(x, y float64) {
 	sb2CenterY = y
 }
 
+func handleScanlineBoolean2MouseDown(x, y float64) bool {
+	setScanlineBoolean2Center(x, y)
+	return true
+}
+
+func handleScanlineBoolean2MouseMove(x, y float64) bool {
+	setScanlineBoolean2Center(x, y)
+	return true
+}
+
+func handleScanlineBoolean2MouseUp() {}
+
 func drawScanlineBoolean2Demo() {
+	cx, cy := sb2CenterX, sb2CenterY
+	if math.IsNaN(cx) || math.IsNaN(cy) {
+		cx = float64(width) / 2.0
+		cy = float64(height) / 2.0
+	}
 	scanlineboolean2.Draw(ctx, scanlineboolean2.Config{
 		Mode:         sb2Mode,
 		FillRule:     sb2Fill,
 		ScanlineType: sb2Scan,
 		Operation:    sb2Op,
-		CenterX:      sb2CenterX,
-		CenterY:      sb2CenterY,
+		CenterX:      cx,
+		CenterY:      cy,
 	})
 }
