@@ -170,6 +170,7 @@ func drawDistortionsDemo() {
 
 	img := ctx.GetImage()
 	distortionsRbuf.Attach(img.Data, img.Width(), img.Height(), img.Width()*4)
+	distortionsRenBase.Attach(distortionsPixFmt)
 
 	// Image matrices
 	imgW, imgH := float64(distortionsImage.Width()), float64(distortionsImage.Height())
