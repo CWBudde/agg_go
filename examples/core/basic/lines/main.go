@@ -3,21 +3,16 @@
 package main
 
 import (
-	"fmt"
-	"image"
-	"image/png"
 	"math"
-	"os"
 
 	agg "agg_go"
+	"agg_go/examples/shared/demorunner"
 )
 
-func main() {
-	const width, height = 640, 480
-	fmt.Println("AGG Go - Lines Demo")
-	fmt.Printf("Creating %dx%d canvas and drawing lines...\n", width, height)
+type demo struct{}
 
-	ctx := agg.NewContext(width, height)
+func (d *demo) Render(ctx *agg.Context) {
+	const width, height = 640, 480
 	ctx.Clear(agg.White)
 
 	// Axes
@@ -54,24 +49,8 @@ func main() {
 	ctx.DrawThickLine(60, 360, 260, 360, 8) // width 8
 	ctx.SetColor(agg.RGB(0.4, 0.7, 0.2))
 	ctx.DrawThickLine(320, 360, 540, 420, 10) // slanted thick line
-
-	// Save PNG
-	out := "lines_demo.png"
-	if err := saveAsPNG(ctx.GetImage(), out); err != nil {
-		fmt.Printf("Error saving PNG: %v\n", err)
-		return
-	}
-	fmt.Printf("Lines demo saved to: %s\n", out)
 }
 
-// saveAsPNG converts the AGG image to PNG format and writes it to filename.
-func saveAsPNG(img *agg.Image, filename string) error {
-	goImg := image.NewRGBA(image.Rect(0, 0, img.Width(), img.Height()))
-	copy(goImg.Pix, img.Data)
-	f, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	return png.Encode(f, goImg)
+func main() {
+	demorunner.Run(demorunner.Config{Title: "Lines Demo", Width: 640, Height: 480}, &demo{})
 }

@@ -9,11 +9,10 @@
 package main
 
 import (
-	"fmt"
 	"math"
 
 	agg "agg_go"
-	"agg_go/examples/shared/renderutil"
+	"agg_go/examples/shared/demorunner"
 	"agg_go/internal/basics"
 	"agg_go/internal/conv"
 	"agg_go/internal/curves"
@@ -35,9 +34,9 @@ const (
 	defaultWidth       = 50.0
 )
 
-func main() {
-	ctx := agg.NewContext(width, height)
+type demo struct{}
 
+func (d *demo) Render(ctx *agg.Context) {
 	a := ctx.GetAgg2D()
 	a.ResetTransformations()
 
@@ -74,19 +73,6 @@ func main() {
 			curvePath.MoveTo(x, y)
 		} else if basics.IsVertex(cmd) {
 			curvePath.LineTo(x, y)
-		}
-	}
-
-	// Count vertices.
-	numPoints := 0
-	curvePath.Rewind(0)
-	for {
-		_, _, cmd := curvePath.NextVertex()
-		if basics.IsStop(basics.PathCommand(cmd)) {
-			break
-		}
-		if basics.IsVertex(basics.PathCommand(cmd)) {
-			numPoints++
 		}
 	}
 
@@ -171,12 +157,8 @@ func main() {
 		a.NoLine()
 		a.FillCircle(pt[0], pt[1], 5)
 	}
+}
 
-	fmt.Printf("Num Points=%d\n", numPoints)
-
-	const filename = "bezier_div.png"
-	if err := renderutil.SavePNG(ctx.GetImage(), filename); err != nil {
-		panic(err)
-	}
-	fmt.Println(filename)
+func main() {
+	demorunner.Run(demorunner.Config{Title: "Bezier Div", Width: width, Height: height}, &demo{})
 }

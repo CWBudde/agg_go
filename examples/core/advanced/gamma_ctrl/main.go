@@ -7,11 +7,10 @@
 package main
 
 import (
-	"fmt"
 	"math"
 
 	agg "agg_go"
-	"agg_go/examples/shared/renderutil"
+	"agg_go/examples/shared/demorunner"
 	"agg_go/internal/ctrl/gamma"
 )
 
@@ -51,8 +50,9 @@ func drawEllipsePair(a *agg.Agg2D, cx, cy, wide, small, alpha float64, c agg.Col
 	a.DrawCircle(cx, cy, small/2)
 }
 
-func main() {
-	ctx := agg.NewContext(width, height)
+type demo struct{}
+
+func (d *demo) Render(ctx *agg.Context) {
 	ctx.Clear(agg.White)
 
 	a := ctx.GetAgg2D()
@@ -99,10 +99,12 @@ func main() {
 	a.LineTo(10, 585)
 	a.ClosePolygon()
 	a.DrawPath(agg.StrokeOnly)
+}
 
-	const filename = "gamma_ctrl.png"
-	if err := renderutil.SavePNG(ctx.GetImage(), filename); err != nil {
-		panic(err)
-	}
-	fmt.Println(filename)
+func main() {
+	demorunner.Run(demorunner.Config{
+		Title:  "Gamma Ctrl",
+		Width:  width,
+		Height: height,
+	}, &demo{})
 }

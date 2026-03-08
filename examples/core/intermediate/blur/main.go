@@ -3,10 +3,8 @@
 package main
 
 import (
-	"fmt"
-
 	agg "agg_go"
-	"agg_go/examples/shared/renderutil"
+	"agg_go/examples/shared/demorunner"
 	"agg_go/internal/color"
 	"agg_go/internal/effects"
 )
@@ -16,9 +14,9 @@ const (
 	blurMethod = 0 // 0: Stack blur, 1: Recursive blur
 )
 
-func main() {
-	const width, height = 800, 600
-	ctx := agg.NewContext(width, height)
+type demo struct{}
+
+func (d *demo) Render(ctx *agg.Context) {
 	ctx.Clear(agg.White)
 	agg2d := ctx.GetAgg2D()
 	agg2d.ResetTransformations()
@@ -83,12 +81,6 @@ func main() {
 	// Draw the shape itself on top
 	agg2d.FillColor(agg.NewColor(153, 230, 179, 204)) // rgba(0.6, 0.9, 0.7, 0.8)
 	agg2d.DrawPath(agg.FillOnly)
-
-	const filename = "blur.png"
-	if err := renderutil.SavePNG(ctx.GetImage(), filename); err != nil {
-		panic(err)
-	}
-	fmt.Println(filename)
 }
 
 func blurImage(img *agg.Image, radius float64, method int) {
@@ -153,4 +145,8 @@ func transposePixels(pixels [][]color.RGBA8[color.Linear]) [][]color.RGBA8[color
 		}
 	}
 	return newPixels
+}
+
+func main() {
+	demorunner.Run(demorunner.Config{Title: "Blur", Width: 800, Height: 600}, &demo{})
 }

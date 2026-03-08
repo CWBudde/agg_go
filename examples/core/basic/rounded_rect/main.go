@@ -3,24 +3,13 @@
 package main
 
 import (
-	"fmt"
-	"image"
-	"image/png"
-	"os"
-
 	agg "agg_go"
+	"agg_go/examples/shared/demorunner"
 )
 
-func main() {
-	// Canvas dimensions
-	const width, height = 640, 480
+type demo struct{}
 
-	fmt.Println("AGG Go - Simplified Rounded Rectangle Demo")
-	fmt.Printf("Creating %dx%d canvas with rounded rectangles...\n", width, height)
-
-	// Create rendering context using the high-level API
-	ctx := agg.NewContext(width, height)
-
+func (d *demo) Render(ctx *agg.Context) {
 	// Clear background to white
 	ctx.Clear(agg.White)
 
@@ -43,43 +32,8 @@ func main() {
 	// Demo 5: Orange very rounded rectangle (pill shape)
 	ctx.SetColor(agg.RGB(1.0, 0.6, 0.0)) // Orange
 	ctx.FillRoundedRectangle(220, 400, 200, 70, 35)
-
-	// Get the image and save as PNG
-	img := ctx.GetImage()
-	outputFile := "rounded_rect_demo.png"
-
-	if err := saveAsPNG(img, outputFile); err != nil {
-		fmt.Printf("Error saving PNG: %v\n", err)
-		return
-	}
-
-	fmt.Printf("Demo completed! Output saved to: %s\n", outputFile)
-	fmt.Println("The demo shows:")
-	fmt.Println("  - Blue filled rounded rectangle")
-	fmt.Println("  - Red outlined rounded rectangle")
-	fmt.Println("  - Green filled rounded rectangle")
-	fmt.Println("  - Purple outlined rounded rectangle")
-	fmt.Println("  - Orange filled pill-shaped rounded rectangle")
-
-	fmt.Println("\nNote: This example uses pixel-level rendering for rounded rectangles.")
-	fmt.Println("It does not yet use the full scanline/rasterizer pipeline.")
 }
 
-// saveAsPNG converts the AGG image to PNG format
-func saveAsPNG(img *agg.Image, filename string) error {
-	// Create Go image from AGG image
-	goImg := image.NewRGBA(image.Rect(0, 0, img.Width(), img.Height()))
-
-	// Copy pixel data from AGG buffer to Go image
-	copy(goImg.Pix, img.Data)
-
-	// Create output file
-	file, err := os.Create(filename)
-	if err != nil {
-		return fmt.Errorf("failed to create file: %v", err)
-	}
-	defer file.Close()
-
-	// Encode as PNG
-	return png.Encode(file, goImg)
+func main() {
+	demorunner.Run(demorunner.Config{Title: "Rounded Rectangle Demo", Width: 640, Height: 480}, &demo{})
 }

@@ -1,20 +1,15 @@
 package main
 
 import (
-	"fmt"
 	"math"
 
 	agg "agg_go"
-	"agg_go/examples/shared/renderutil"
+	"agg_go/examples/shared/demorunner"
 )
 
-const (
-	width  = 800
-	height = 600
-)
+type demo struct{}
 
-func main() {
-	ctx := agg.NewContext(width, height)
+func (d *demo) Render(ctx *agg.Context) {
 	ctx.Clear(agg.RGB(0.08, 0.08, 0.08))
 
 	agg2d := ctx.GetAgg2D()
@@ -73,10 +68,8 @@ func main() {
 		agg2d.ClosePolygon()
 		agg2d.DrawPath(agg.FillOnly)
 	}
+}
 
-	const filename = "aa_test.png"
-	if err := renderutil.SavePNG(ctx.GetImage(), filename); err != nil {
-		panic(err)
-	}
-	fmt.Println(filename)
+func main() {
+	demorunner.Run(demorunner.Config{Title: "AA Test", Width: 800, Height: 600}, &demo{})
 }

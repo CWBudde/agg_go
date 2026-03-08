@@ -1,13 +1,12 @@
 // Port of AGG C++ rasterizers.cpp.
 //
-// This standalone version renders the default frame to rasterizers_demo.ppm.
+// This standalone version renders the default frame to a PNG via demorunner.
 // Widget controls are represented by fixed defaults (gamma=0.5, alpha=1.0).
 package main
 
 import (
-	"fmt"
-	"os"
-
+	agg "agg_go"
+	"agg_go/examples/shared/demorunner"
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
 	"agg_go/internal/ctrl/checkbox"
@@ -100,26 +99,6 @@ func (a *rasScanlineAdapter) AddSpan(x, length int, cover uint32) {
 func (a *rasScanlineAdapter) Finalize(y int) { a.sl.Finalize(y) }
 func (a *rasScanlineAdapter) NumSpans() int  { return a.sl.NumSpans() }
 
-func savePPM(filename string, imgData []uint8, width, height int) error {
-	f, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	if _, err := fmt.Fprintf(f, "P6\n%d %d\n255\n", width, height); err != nil {
-		return err
-	}
-
-	for i := 0; i < len(imgData); i += 4 {
-		if _, err := f.Write([]byte{imgData[i], imgData[i+1], imgData[i+2]}); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 func rgbaToRGBA8(c color.RGBA) color.RGBA8[color.Linear] {
 	clamp := func(v float64) uint8 {
 		if v <= 0 {
@@ -170,8 +149,10 @@ func renderControl(
 	}
 }
 
-func main() {
-	imgData := make([]uint8, frameWidth*frameHeight*4)
+type demo struct{}
+
+func (d *demo) Render(ctx *agg.Context) {
+	imgData := ctx.GetImage().Data
 	rbuf := buffer.NewRenderingBufferU8WithData(imgData, frameWidth, frameHeight, frameWidth*4)
 
 	pf := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
@@ -263,9 +244,12 @@ func main() {
 		},
 		testPerf.Color,
 	)
+}
 
-	if err := savePPM("rasterizers_demo.ppm", imgData, frameWidth, frameHeight); err != nil {
-		panic(err)
-	}
-	fmt.Println("rasterizers_demo.ppm")
+func main() {
+	demorunner.Run(demorunner.Config{
+		Title:  "Rasterizers",
+		Width:  frameWidth,
+		Height: frameHeight,
+	}, &demo{})
 }

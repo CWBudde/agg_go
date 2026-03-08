@@ -8,14 +8,13 @@ package main
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"math"
 	"os"
 	"path/filepath"
 	"strconv"
 
 	agg "agg_go"
-	"agg_go/examples/shared/renderutil"
+	"agg_go/examples/shared/demorunner"
 	"agg_go/internal/basics"
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
@@ -205,15 +204,18 @@ func buildStarIT(cx, cy float64, w, h int) *path.PathStorageStl {
 	return ps
 }
 
-func main() {
-	srcPath := filepath.Join("examples", "shared", "art", defaultImageName+".ppm")
-	srcImg, err := loadPPMImage(srcPath)
-	if err != nil {
-		panic(err)
+type demo struct {
+	srcImg *agg.Image
+}
+
+func (d *demo) Render(ctx *agg.Context) {
+	if d.srcImg == nil {
+		return
 	}
-	canvasW := srcImg.Width()
-	canvasH := srcImg.Height()
-	ctx := agg.NewContext(canvasW, canvasH)
+
+	canvasW := ctx.GetImage().Width()
+	canvasH := ctx.GetImage().Height()
+
 	ctx.Clear(agg.RGBA(1.0, 1.0, 1.0, 1.0))
 
 	dstImg := ctx.GetImage()
@@ -234,7 +236,7 @@ func main() {
 
 	// Image source.
 	imgRbuf := buffer.NewRenderingBufferU8()
-	imgRbuf.Attach(srcImg.Data, srcImg.Width(), srcImg.Height(), srcImg.Width()*4)
+	imgRbuf.Attach(d.srcImg.Data, d.srcImg.Width(), d.srcImg.Height(), d.srcImg.Width()*4)
 	ipf := imagePixFmt{rbuf: imgRbuf}
 	accessor := image.NewImageAccessorClip(&ipf, []basics.Int8u{0, 0, 0, 0})
 	src := &imageClipSource{accessor: accessor, ipf: &ipf}
@@ -273,10 +275,18 @@ func main() {
 	a.FillColor(agg.Black)
 	a.NoLine()
 	a.FillCircle(cx, cy, 2.0)
+}
 
-	const filename = "image_transforms.png"
-	if err := renderutil.SavePNG(ctx.GetImage(), filename); err != nil {
+func main() {
+	srcPath := filepath.Join("examples", "shared", "art", defaultImageName+".ppm")
+	srcImg, err := loadPPMImage(srcPath)
+	if err != nil {
 		panic(err)
 	}
-	fmt.Println(filename)
+
+	demorunner.Run(demorunner.Config{
+		Title:  "Image Transforms",
+		Width:  srcImg.Width(),
+		Height: srcImg.Height(),
+	}, &demo{srcImg: srcImg})
 }

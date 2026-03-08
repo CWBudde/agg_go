@@ -6,11 +6,10 @@
 package main
 
 import (
-	"fmt"
 	"math/rand"
 
 	agg "agg_go"
-	"agg_go/examples/shared/renderutil"
+	"agg_go/examples/shared/demorunner"
 	"agg_go/internal/basics"
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
@@ -85,9 +84,9 @@ func (w *scanlineWrapperP8) Begin() renscan.ScanlineIterator {
 	return &spanIterP8{spans, 0}
 }
 
-func main() {
-	ctx := agg.NewContext(width, height)
+type demo struct{}
 
+func (d *demo) Render(ctx *agg.Context) {
 	img := ctx.GetImage()
 
 	// --- Generate grayscale alpha mask ---
@@ -172,10 +171,8 @@ func main() {
 		}
 		renscan.RenderScanlinesAASolid(rasAdapter, slAdapter, rbAMask, c)
 	}
+}
 
-	const filename = "alpha_mask.png"
-	if err := renderutil.SavePNG(ctx.GetImage(), filename); err != nil {
-		panic(err)
-	}
-	fmt.Println(filename)
+func main() {
+	demorunner.Run(demorunner.Config{Title: "Alpha Mask", Width: width, Height: height}, &demo{})
 }

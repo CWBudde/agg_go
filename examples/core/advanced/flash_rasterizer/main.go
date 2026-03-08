@@ -6,12 +6,11 @@
 package main
 
 import (
-	"fmt"
 	"math"
 	"math/rand"
 
 	agg "agg_go"
-	"agg_go/examples/shared/renderutil"
+	"agg_go/examples/shared/demorunner"
 	"agg_go/internal/basics"
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
@@ -73,7 +72,9 @@ func (c *compoundNoClip) LineTo(outline *rasterizer.RasterizerCellsAAStyled, x, 
 	c.x1, c.y1 = x, y
 }
 
-func main() {
+type demo struct{}
+
+func (d *demo) Render(ctx *agg.Context) {
 	rng := rand.New(rand.NewSource(1234))
 
 	// Random fill colours.
@@ -120,7 +121,6 @@ func main() {
 	}
 
 	// Setup rendering pipeline.
-	ctx := agg.NewContext(width, height)
 	img := ctx.GetImage()
 	rbuf := buffer.NewRenderingBufferU8()
 	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Width()*4)
@@ -142,11 +142,6 @@ func main() {
 
 	rasc.Sort()
 	if !rasc.RewindScanlines() {
-		const filename = "flash_rasterizer.png"
-		if err := renderutil.SavePNG(ctx.GetImage(), filename); err != nil {
-			panic(err)
-		}
-		fmt.Println(filename)
 		return
 	}
 
@@ -211,10 +206,12 @@ func main() {
 			}
 		}
 	}
+}
 
-	const filename = "flash_rasterizer.png"
-	if err := renderutil.SavePNG(ctx.GetImage(), filename); err != nil {
-		panic(err)
-	}
-	fmt.Println(filename)
+func main() {
+	demorunner.Run(demorunner.Config{
+		Title:  "Flash Rasterizer",
+		Width:  width,
+		Height: height,
+	}, &demo{})
 }

@@ -2,19 +2,19 @@
 package main
 
 import (
-	"fmt"
-
 	agg "agg_go"
+	"agg_go/examples/shared/demorunner"
 	"agg_go/internal/demo/scanlineboolean2"
 )
 
-func main() {
-	const (
-		w       = 655
-		h       = 520
-		outFile = "scanline_boolean2.png"
-	)
-	ctx := agg.NewContext(w, h)
+const (
+	w = 655
+	h = 520
+)
+
+type demo struct{}
+
+func (d *demo) Render(ctx *agg.Context) {
 	scanlineboolean2.Draw(ctx, scanlineboolean2.Config{
 		Mode:      3,
 		FillRule:  1,
@@ -22,9 +22,12 @@ func main() {
 		CenterX:   float64(w) / 2,
 		CenterY:   float64(h) / 2,
 	})
-	if err := ctx.GetImage().SaveToPNG(outFile); err != nil {
-		fmt.Printf("error writing %s: %v\n", outFile, err)
-		return
-	}
-	fmt.Printf("wrote %s (%dx%d)\n", outFile, w, h)
+}
+
+func main() {
+	demorunner.Run(demorunner.Config{
+		Title:  "Scanline Boolean 2",
+		Width:  w,
+		Height: h,
+	}, &demo{})
 }

@@ -1,14 +1,13 @@
 package main
 
 import (
-	"fmt"
-
 	agg "agg_go"
-	"agg_go/examples/shared/renderutil"
+	"agg_go/examples/shared/demorunner"
 )
 
-func main() {
-	ctx := agg.NewContext(800, 600)
+type demo struct{}
+
+func (d *demo) Render(ctx *agg.Context) {
 	ctx.Clear(agg.White)
 	agg2d := ctx.GetAgg2D()
 	agg2d.ResetTransformations()
@@ -71,10 +70,8 @@ func main() {
 		agg2d.LineWidth(1.0)
 		agg2d.DrawCircle(p[0], p[1], 6)
 	}
+}
 
-	const filename = "conv_dash_marker.png"
-	if err := renderutil.SavePNG(ctx.GetImage(), filename); err != nil {
-		panic(err)
-	}
-	fmt.Println(filename)
+func main() {
+	demorunner.Run(demorunner.Config{Title: "Conv Dash Marker", Width: 800, Height: 600}, &demo{})
 }

@@ -4,10 +4,10 @@
 package main
 
 import (
-	"fmt"
 	"math"
 
 	agg "agg_go"
+	"agg_go/examples/shared/demorunner"
 	"agg_go/internal/basics"
 	"agg_go/internal/color"
 	"agg_go/internal/effects"
@@ -44,30 +44,28 @@ func (p *imagePixFmtAdapter) CopyPixel(x, y int, c color.RGBA8[color.Linear]) {
 	p.img.Data[i+3] = uint8(c.A)
 }
 
-func main() {
-	const (
-		w          = 640
-		h          = 480
-		factor     = 1.0
-		blurRadius = 1.5
-		mono       = true
-		invert     = false
-		out        = "line_thickness.png"
-	)
+const (
+	ltFactor     = 1.0
+	ltBlurRadius = 1.5
+	ltMono       = true
+	ltInvert     = false
+)
 
-	ctx := agg.NewContext(w, h)
+type demo struct{}
+
+func (d *demo) Render(ctx *agg.Context) {
 	a := ctx.GetAgg2D()
 	a.ResetTransformations()
 
 	clr1 := agg.RGBA(1, 1, 1, 1)
 	clr2 := agg.RGBA(0, 0, 0, 1)
-	if !mono {
+	if !ltMono {
 		clr1 = agg.RGBA(1, 0, 1, 1)
 		clr2 = agg.RGBA(0, 1, 0, 1)
 	}
 	foreground := clr2
 	background := clr1
-	if invert {
+	if ltInvert {
 		foreground = clr1
 		background = clr2
 	}
@@ -76,7 +74,7 @@ func main() {
 	ctx.SetColor(foreground)
 
 	for i := 0; i < 20; i++ {
-		a.LineWidth(factor * 0.3 * float64(i+1))
+		a.LineWidth(ltFactor * 0.3 * float64(i+1))
 		a.ResetPath()
 		a.MoveTo(20+30*float64(i), 310)
 		a.LineTo(40+30*float64(i), 460)
@@ -85,18 +83,20 @@ func main() {
 
 	for i := 0; i < 40; i++ {
 		ang := float64(i) * math.Pi / 20.0
-		a.LineWidth(factor)
+		a.LineWidth(ltFactor)
 		a.ResetPath()
 		a.MoveTo(320+20*math.Sin(ang), 180+20*math.Cos(ang))
 		a.LineTo(320+100*math.Sin(ang), 180+100*math.Cos(ang))
 		a.DrawPath(agg.StrokeOnly)
 	}
 
-	effects.ApplySlightBlurFull(&imagePixFmtAdapter{img: ctx.GetImage()}, blurRadius)
+	effects.ApplySlightBlurFull(&imagePixFmtAdapter{img: ctx.GetImage()}, ltBlurRadius)
+}
 
-	if err := ctx.GetImage().SaveToPNG(out); err != nil {
-		fmt.Printf("error writing %s: %v\n", out, err)
-		return
-	}
-	fmt.Printf("wrote %s (%dx%d)\n", out, w, h)
+func main() {
+	demorunner.Run(demorunner.Config{
+		Title:  "Line Thickness",
+		Width:  640,
+		Height: 480,
+	}, &demo{})
 }

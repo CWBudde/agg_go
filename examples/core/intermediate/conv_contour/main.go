@@ -6,10 +6,8 @@
 package main
 
 import (
-	"fmt"
-
 	agg "agg_go"
-	"agg_go/examples/shared/renderutil"
+	"agg_go/examples/shared/demorunner"
 	"agg_go/internal/basics"
 	"agg_go/internal/conv"
 	"agg_go/internal/path"
@@ -73,12 +71,12 @@ func buildGlyphPath() *path.PathStorageStl {
 	return ps
 }
 
-func renderContour(a *agg.Agg2D, ps *path.PathStorageStl, mtx *transform.TransAffine, width float64, fillColor agg.Color) {
+func renderContour(a *agg.Agg2D, ps *path.PathStorageStl, mtx *transform.TransAffine, w float64, fillColor agg.Color) {
 	adapter := path.NewPathStorageStlVertexSourceAdapter(ps)
 	trans := conv.NewConvTransform(adapter, mtx)
 	curve := conv.NewConvCurve(trans)
 	contour := conv.NewConvContour(curve)
-	contour.Width(width)
+	contour.Width(w)
 	contour.AutoDetectOrientation(true)
 
 	a.ResetPath()
@@ -104,8 +102,9 @@ done:
 	a.DrawPath(agg.FillOnly)
 }
 
-func main() {
-	ctx := agg.NewContext(width, height)
+type demo struct{}
+
+func (d *demo) Render(ctx *agg.Context) {
 	ctx.Clear(agg.White)
 
 	a := ctx.GetAgg2D()
@@ -131,10 +130,8 @@ func main() {
 		mtx := transform.NewTransAffineFromValues(v.scale, 0, 0, -v.scale, v.tx, v.ty)
 		renderContour(a, ps, mtx, v.contourWidth, v.color)
 	}
+}
 
-	const filename = "conv_contour.png"
-	if err := renderutil.SavePNG(ctx.GetImage(), filename); err != nil {
-		panic(err)
-	}
-	fmt.Println(filename)
+func main() {
+	demorunner.Run(demorunner.Config{Title: "Conv Contour", Width: width, Height: height}, &demo{})
 }

@@ -1,15 +1,15 @@
 package main
 
 import (
-	"fmt"
 	"path/filepath"
 
 	agg "agg_go"
-	"agg_go/examples/shared/renderutil"
+	"agg_go/examples/shared/demorunner"
 )
 
-func main() {
-	ctx := agg.NewContext(600, 400)
+type demo struct{}
+
+func (d *demo) Render(ctx *agg.Context) {
 	a := ctx.GetAgg2D()
 	a.ResetTransformations()
 
@@ -64,10 +64,8 @@ func main() {
 	a.NoLine()
 	a.RoundedRect(350, 172, 157, 337, 40)
 	a.DrawPath(agg.FillOnly)
+}
 
-	const filename = "compositing.png"
-	if err := renderutil.SavePNG(ctx.GetImage(), filename); err != nil {
-		panic(err)
-	}
-	fmt.Println(filename)
+func main() {
+	demorunner.Run(demorunner.Config{Title: "Compositing", Width: 600, Height: 400}, &demo{})
 }

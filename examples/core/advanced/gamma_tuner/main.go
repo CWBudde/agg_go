@@ -6,11 +6,10 @@
 package main
 
 import (
-	"fmt"
 	"math"
 
 	agg "agg_go"
-	"agg_go/examples/shared/renderutil"
+	"agg_go/examples/shared/demorunner"
 )
 
 const (
@@ -24,13 +23,6 @@ const (
 	defaultPattern = 2 // 0=Horizontal, 1=Vertical, 2=Checkered
 	squareSize     = 400
 )
-
-func gammaCorrect(v, gamma float64) float64 {
-	if v <= 0 {
-		return 0
-	}
-	return math.Pow(v, 1.0/gamma)
-}
 
 func renderCheckered(img *agg.Image, rScale, gScale, bScale, gamma float64) {
 	w, h := img.Width(), img.Height()
@@ -111,8 +103,9 @@ func renderCheckered(img *agg.Image, rScale, gScale, bScale, gamma float64) {
 	}
 }
 
-func main() {
-	ctx := agg.NewContext(width, height)
+type demo struct{}
+
+func (d *demo) Render(ctx *agg.Context) {
 	ctx.Clear(agg.White)
 
 	renderCheckered(ctx.GetImage(), defaultR, defaultG, defaultB, defaultGamma)
@@ -132,10 +125,12 @@ func main() {
 	a.LineTo(offsetX, offsetY+squareSize)
 	a.ClosePolygon()
 	a.DrawPath(agg.StrokeOnly)
+}
 
-	const filename = "gamma_tuner.png"
-	if err := renderutil.SavePNG(ctx.GetImage(), filename); err != nil {
-		panic(err)
-	}
-	fmt.Println(filename)
+func main() {
+	demorunner.Run(demorunner.Config{
+		Title:  "Gamma Tuner",
+		Width:  width,
+		Height: height,
+	}, &demo{})
 }

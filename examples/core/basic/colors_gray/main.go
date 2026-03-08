@@ -3,15 +3,18 @@ package main
 
 import (
 	"fmt"
-	"os"
 
+	agg "agg_go"
+	"agg_go/examples/shared/demorunner"
 	"agg_go/internal/basics"
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
 	"agg_go/internal/pixfmt"
 )
 
-func main() {
+type demo struct{}
+
+func (d *demo) Render(ctx *agg.Context) {
 	fmt.Println("AGG Go - Grayscale Color Example")
 	fmt.Println("=================================")
 
@@ -43,6 +46,9 @@ func main() {
 	demonstrateBlending(pf)
 
 	fmt.Println("\nGrayscale example completed successfully!")
+
+	// Render a simple visual indicator into the context
+	ctx.Clear(agg.RGB(0.8, 0.8, 0.8))
 }
 
 func drawGrayscalePatterns(pf *pixfmt.PixFmtGray8) {
@@ -192,10 +198,6 @@ func demonstrateBlending(pf *pixfmt.PixFmtGray8) {
 	}
 }
 
-// Check if this is being run as main
-func init() {
-	if len(os.Args) > 0 && os.Args[0] != "go" {
-		// This is likely being run directly, not through go test
-		// You can add any initialization here if needed
-	}
+func main() {
+	demorunner.Run(demorunner.Config{Title: "Colors Gray", Width: 400, Height: 300}, &demo{})
 }

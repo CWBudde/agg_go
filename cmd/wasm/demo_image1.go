@@ -86,6 +86,7 @@ func drawImage1Demo() {
 	// Attach rendering target
 	img := ctx.GetImage()
 	img1Rbuf.Attach(img.Data, img.Width(), img.Height(), img.Width()*4)
+	img1RenBase.Attach(img1PixFmt)
 
 	// Image transform: translate to center, rotate, scale, then translate to screen center
 	// Then invert so we can map screen -> image coords.

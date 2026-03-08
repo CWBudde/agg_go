@@ -11,23 +11,20 @@
 package main
 
 import (
-	"fmt"
-
 	agg "agg_go"
-	"agg_go/examples/shared/renderutil"
+	"agg_go/examples/shared/demorunner"
 )
 
-func main() {
-	const width, height = 800, 600
+type demo struct{}
 
-	ctx := agg.NewContext(width, height)
+func (d *demo) Render(ctx *agg.Context) {
 	ctx.Clear(agg.White)
 
 	a := ctx.GetAgg2D()
 	a.ResetTransformations()
 
-	w := float64(width)
-	h := float64(height)
+	w := float64(ctx.Width())
+	h := float64(ctx.Height())
 	cx := w / 2
 	cy := h / 2
 
@@ -55,10 +52,8 @@ func main() {
 
 	// Restore normal blending.
 	a.BlendMode(agg.BlendAlpha)
+}
 
-	const filename = "component_rendering.png"
-	if err := renderutil.SavePNG(ctx.GetImage(), filename); err != nil {
-		panic(err)
-	}
-	fmt.Println(filename)
+func main() {
+	demorunner.Run(demorunner.Config{Title: "Component Rendering", Width: 800, Height: 600}, &demo{})
 }

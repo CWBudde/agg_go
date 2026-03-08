@@ -210,16 +210,43 @@ run-examples-basic:
             fi; \
         done'
 
-# Run X11 demo (requires X11 headers and running X server)
+# Run a named core demo interactively (SDL2 window). Usage: just run-demo hello_world
+# The EXAMPLE name is the binary name from bin/ (same as build-demos output).
+# Finds the matching examples/core/**/EXAMPLE/ directory automatically.
+run-demo EXAMPLE:
+    #!/usr/bin/env bash
+    set -e
+    dir=$(find examples/core -mindepth 2 -type d -name "{{EXAMPLE}}" | head -1)
+    if [ -z "$dir" ]; then
+        echo "Demo '{{EXAMPLE}}' not found. Run 'just list-demos' to see available demos."
+        exit 1
+    fi
+    echo "Running {{EXAMPLE}} (SDL2 interactive) from $dir"
+    go run -tags sdl2 "./$dir"
+
+# Same as run-demo but using X11 backend
+run-demo-x11 EXAMPLE:
+    #!/usr/bin/env bash
+    set -e
+    dir=$(find examples/core -mindepth 2 -type d -name "{{EXAMPLE}}" | head -1)
+    if [ -z "$dir" ]; then
+        echo "Demo '{{EXAMPLE}}' not found. Run 'just list-demos' to see available demos."
+        exit 1
+    fi
+    echo "Running {{EXAMPLE}} (X11 interactive) from $dir"
+    go run -tags x11 "./$dir"
+
+# List all available demos
+list-demos:
+    @find examples/core -mindepth 2 -name "main.go" -exec dirname {} \; | sort | \
+        sed 's|examples/core/[a-z]*/||; s|examples/core/[a-z]*/controls/|controls_|' | sort
+
+# Run the interactive platform showcase demo (SDL2)
 run-x11-demo:
-    @echo "Running X11 demo..."
-    @echo "Note: Requires X11 headers and running X server"
     go run -tags x11 examples/platform/x11/main.go
 
 # Run SDL2 demo (requires SDL2 dependencies)
 run-sdl2-demo:
-    @echo "Running SDL2 demo..."
-    @echo "Note: Requires SDL2 development libraries"
     go run -tags sdl2 examples/platform/sdl2/main.go
 
 # Run intermediate examples

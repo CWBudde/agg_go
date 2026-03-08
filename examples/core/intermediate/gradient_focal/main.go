@@ -6,10 +6,10 @@
 package main
 
 import (
-	"fmt"
 	"math"
 
 	agg "agg_go"
+	"agg_go/examples/shared/demorunner"
 	"agg_go/internal/basics"
 	"agg_go/internal/color"
 	"agg_go/internal/gamma"
@@ -93,18 +93,19 @@ func applyGammaInv(img *agg.Image, g float64) {
 	}
 }
 
-func main() {
-	const (
-		w     = 600
-		h     = 400
-		r     = 100.0
-		fx    = 40.0
-		fy    = -10.0
-		gamma = 1.0
-		out   = "gradient_focal.png"
-	)
+const (
+	gradR     = 100.0
+	gradFX    = 40.0
+	gradFY    = -10.0
+	gradGamma = 1.0
+)
 
-	ctx := agg.NewContext(w, h)
+type demo struct{}
+
+func (d *demo) Render(ctx *agg.Context) {
+	w := ctx.GetImage().Width()
+	h := ctx.GetImage().Height()
+
 	ctx.Clear(agg.White)
 	a := ctx.GetAgg2D()
 	a.ResetTransformations()
@@ -117,29 +118,31 @@ func main() {
 	gradientMtx.Invert()
 
 	interpolator := span.NewSpanInterpolatorLinearDefault(gradientMtx)
-	gradientFunc := span.NewGradientRadialFocus(r, fx, fy)
+	gradientFunc := span.NewGradientRadialFocus(gradR, gradFX, gradFY)
 	gradientReflect := span.NewGradientReflectAdaptor(gradientFunc)
-	colorFn := span.NewGradientPrebuiltColorRGBA8[color.Linear](buildGradientFocalLUT(gamma, 1024))
-	spanGen := span.NewSpanGradient(interpolator, gradientReflect, colorFn, 0, r)
+	colorFn := span.NewGradientPrebuiltColorRGBA8[color.Linear](buildGradientFocalLUT(gradGamma, 1024))
+	spanGen := span.NewSpanGradient(interpolator, gradientReflect, colorFn, 0, gradR)
 
 	ras := a.GetInternalRasterizer()
 	ras.Reset()
 	ras.MoveToD(0, 0)
-	ras.LineToD(w, 0)
-	ras.LineToD(w, h)
-	ras.LineToD(0, h)
+	ras.LineToD(float64(w), 0)
+	ras.LineToD(float64(w), float64(h))
+	ras.LineToD(0, float64(h))
 	ras.LineToD(0, 0)
 	a.RenderScanlinesAAWithSpanGen(ras, spanGen)
 
 	ctx.SetColor(agg.White)
 	ctx.SetLineWidth(1.0)
-	ctx.DrawCircle(cx, cy, r)
+	ctx.DrawCircle(cx, cy, gradR)
 
-	applyGammaInv(ctx.GetImage(), gamma)
+	applyGammaInv(ctx.GetImage(), gradGamma)
+}
 
-	if err := ctx.GetImage().SaveToPNG(out); err != nil {
-		fmt.Printf("error writing %s: %v\n", out, err)
-		return
-	}
-	fmt.Printf("wrote %s (%dx%d)\n", out, w, h)
+func main() {
+	demorunner.Run(demorunner.Config{
+		Title:  "Gradient Focal",
+		Width:  600,
+		Height: 400,
+	}, &demo{})
 }

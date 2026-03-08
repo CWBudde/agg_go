@@ -5,63 +5,48 @@ package main
 
 import (
 	"fmt"
-	"image/png"
 	"os"
 	"path/filepath"
 
 	agg "agg_go"
+	"agg_go/examples/shared/demorunner"
 )
 
 // findSystemFont attempts to locate a usable system font
 func findSystemFont() string {
-	// Common font paths on Linux systems
 	fontPaths := []string{
-		// Ubuntu/Debian paths
 		"/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
 		"/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
 		"/usr/share/fonts/TTF/DejaVuSans.ttf",
 		"/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
-
-		// Fedora/Red Hat paths
 		"/usr/share/fonts/liberation-sans/LiberationSans-Regular.ttf",
 		"/usr/share/fonts/dejavu-sans-fonts/DejaVuSans.ttf",
-
-		// Arch Linux paths
 		"/usr/share/fonts/TTF/liberation/LiberationSans-Regular.ttf",
-
-		// Generic fallbacks
 		"/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
 		"/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-
-		// Look for any TTF font as last resort
 	}
 
-	// Check if any of the known paths exist
 	for _, path := range fontPaths {
 		if _, err := os.Stat(path); err == nil {
-			fmt.Printf("Using font: %s\n", path)
 			return path
 		}
 	}
 
-	// Try to find any TTF font in common directories
 	fontDirs := []string{
 		"/usr/share/fonts/",
 		"/usr/local/share/fonts/",
-		"/System/Library/Fonts/", // macOS
-		"C:/Windows/Fonts/",      // Windows
+		"/System/Library/Fonts/",
+		"C:/Windows/Fonts/",
 	}
 
 	for _, dir := range fontDirs {
 		if fonts := findTTFFonts(dir); len(fonts) > 0 {
-			fmt.Printf("Using font: %s\n", fonts[0])
 			return fonts[0]
 		}
 	}
 
-	// Fallback - this will likely fail but provides a clear error message
 	fmt.Println("Warning: No system fonts found. Install liberation-fonts or dejavu-fonts package.")
-	return "Arial" // Will fail, but with a clear error
+	return "Arial"
 }
 
 // findTTFFonts searches for TTF fonts in a directory
@@ -74,12 +59,11 @@ func findTTFFonts(dir string) []string {
 
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			return nil // Continue walking despite errors
+			return nil
 		}
-
 		if filepath.Ext(path) == ".ttf" && !info.IsDir() {
 			fonts = append(fonts, path)
-			if len(fonts) >= 5 { // Limit search to avoid scanning too many fonts
+			if len(fonts) >= 5 {
 				return filepath.SkipDir
 			}
 		}
@@ -94,65 +78,53 @@ func findTTFFonts(dir string) []string {
 
 // createImageFromFile creates a test image (since we don't have spheres.bmp)
 func createImageFromFile() *agg.Image {
-	// Create a simple test pattern image
 	width, height := 100, 100
 	stride := width * 4
 	buf := make([]uint8, height*stride)
 
-	// Create a simple gradient pattern
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
 			idx := y*stride + x*4
-			buf[idx] = uint8((x * 255) / width)    // R
-			buf[idx+1] = uint8((y * 255) / height) // G
-			buf[idx+2] = 128                       // B
-			buf[idx+3] = 255                       // A
+			buf[idx] = uint8((x * 255) / width)
+			buf[idx+1] = uint8((y * 255) / height)
+			buf[idx+2] = 128
+			buf[idx+3] = 255
 		}
 	}
 
 	return agg.NewImage(buf, width, height, stride)
 }
 
-func main() {
-	fmt.Println("AGG2D Demo - Go Port")
-	fmt.Println("====================")
+type demo struct {
+	fontPath string
+}
 
-	// Create rendering context
-	width, height := 600, 600
-	ctx := agg.NewContext(width, height)
+func (d *demo) Render(ctx *agg.Context) {
 	agg2d := ctx.GetAgg2D()
 
-	// Clear background to white
 	ctx.Clear(agg.White)
 
-	// Set viewport - scale 0,0,600,600 to the actual window size
-	// preserving aspect ratio and placing the viewport in the center
-	agg2d.Viewport(0, 0, 600, 600, 0, 0, float64(width), float64(height), agg.XMidYMid)
+	agg2d.Viewport(0, 0, 600, 600, 0, 0, 600, 600, agg.XMidYMid)
 
-	// Rounded rectangle border
 	agg2d.LineColor(agg.Black)
 	agg2d.NoFill()
 	agg2d.RoundedRect(0.5, 0.5, 599.5, 599.5, 20.0)
 
-	// Regular Text - try to find a system font
-	fontPath := findSystemFont()
-	if err := agg2d.Font(fontPath, 14.0, false, false, agg.RasterFontCache, 0.0); err != nil {
-		fmt.Printf("Warning: Could not load font %s: %v\n", fontPath, err)
+	if err := agg2d.Font(d.fontPath, 14.0, false, false, agg.RasterFontCache, 0.0); err != nil {
+		fmt.Printf("Warning: Could not load font %s: %v\n", d.fontPath, err)
 	}
 	agg2d.FillColor(agg.Black)
 	agg2d.NoLine()
 	agg2d.Text(100, 20, "Regular Raster Text -- Fast, but can't be rotated", false, 0, 0)
 
-	// Outlined Text
-	if err := agg2d.Font(fontPath, 50.0, false, false, agg.VectorFontCache, 0.0); err != nil {
-		fmt.Printf("Warning: Could not load font %s: %v\n", fontPath, err)
+	if err := agg2d.Font(d.fontPath, 50.0, false, false, agg.VectorFontCache, 0.0); err != nil {
+		fmt.Printf("Warning: Could not load font %s: %v\n", d.fontPath, err)
 	}
 	agg2d.LineColor(agg.RGB(50.0/255, 0, 0))
 	agg2d.FillColor(agg.RGB(180.0/255, 200.0/255, 100.0/255))
 	agg2d.LineWidth(1.0)
 	agg2d.Text(100.5, 50.5, "Outlined Text", false, 0, 0)
 
-	// Text Alignment demonstration with reference lines
 	drawAlignmentLines := func(x, y float64) {
 		agg2d.LineColor(agg.RGB(0.7, 0.7, 0.7))
 		agg2d.LineWidth(0.5)
@@ -160,9 +132,8 @@ func main() {
 		agg2d.Line(x, y-20, x, y+20)
 	}
 
-	// Set font for alignment demos
-	if err := agg2d.Font(fontPath, 40.0, false, false, agg.VectorFontCache, 0.0); err != nil {
-		fmt.Printf("Warning: Could not load font %s: %v\n", fontPath, err)
+	if err := agg2d.Font(d.fontPath, 40.0, false, false, agg.VectorFontCache, 0.0); err != nil {
+		fmt.Printf("Warning: Could not load font %s: %v\n", d.fontPath, err)
 	}
 	agg2d.FillColor(agg.RGB(100.0/255, 50.0/255, 50.0/255))
 	agg2d.NoLine()
@@ -189,12 +160,10 @@ func main() {
 		agg2d.Text(pos.x, pos.y, pos.text, true, 0, 0)
 	}
 
-	// Gradients (Aqua Buttons)
-	if err := agg2d.Font(fontPath, 20.0, false, false, agg.VectorFontCache, 0.0); err != nil {
-		fmt.Printf("Warning: Could not load font %s: %v\n", fontPath, err)
+	if err := agg2d.Font(d.fontPath, 20.0, false, false, agg.VectorFontCache, 0.0); err != nil {
+		fmt.Printf("Warning: Could not load font %s: %v\n", d.fontPath, err)
 	}
 
-	// Aqua Button Normal
 	xb1, yb1 := 400.0, 80.0
 	xb2, yb2 := xb1+150, yb1+36
 
@@ -219,7 +188,6 @@ func main() {
 		agg.RGBA(100, 255, 255, 255), 1.0)
 	agg2d.RoundedRect(xb1+3, yb2-20, xb2-3, yb2-2, 9)
 
-	// Aqua Button Pressed
 	xb1, yb1 = 400, 30
 	xb2, yb2 = xb1+150, yb1+36
 
@@ -244,13 +212,11 @@ func main() {
 		agg.RGBA(0, 200, 255, 255), 1.0)
 	agg2d.RoundedRect(xb1+3, yb2-25, xb2-3, yb2-2, 9)
 
-	// Basic Shapes -- Ellipse
 	agg2d.LineWidth(3.5)
 	agg2d.LineColor(agg.RGB(20.0/255, 80.0/255, 80.0/255))
 	agg2d.FillColor(agg.RGBA(200, 255, 80, 200))
 	agg2d.Ellipse(450, 200, 50, 90)
 
-	// Paths - Arc demonstrations
 	agg2d.ResetPath()
 	agg2d.FillColor(agg.RGBA(255, 0, 0, 100))
 	agg2d.LineColor(agg.RGBA(0, 0, 255, 100))
@@ -271,7 +237,6 @@ func main() {
 	agg2d.ClosePolygon()
 	agg2d.DrawPath(agg.FillAndStroke)
 
-	// Complex path with multiple arcs
 	agg2d.ResetPath()
 	agg2d.NoFill()
 	agg2d.LineColor(agg.RGB(127.0/255, 0, 0))
@@ -288,13 +253,10 @@ func main() {
 	agg2d.LineRel(50/2, -25/2)
 	agg2d.DrawPath(agg.StrokeOnly)
 
-	// Master Alpha - from now on everything will be translucent
 	agg2d.MasterAlpha(0.85)
 
-	// Create a test image for transformations
 	img := createImageFromFile()
 
-	// Transform image to destination path
 	agg2d.ResetPath()
 	agg2d.MoveTo(450, 200)
 	agg2d.CubicCurveTo(595, 220, 575, 350, 595, 350)
@@ -304,7 +266,6 @@ func main() {
 		fmt.Printf("Warning: Image transformation failed: %v\n", err)
 	}
 
-	// Add/Sub/Contrast Blending Modes
 	agg2d.NoLine()
 	agg2d.FillColor(agg.RGB(70.0/255, 70.0/255, 0))
 	agg2d.BlendMode(agg.BlendAdd)
@@ -314,47 +275,14 @@ func main() {
 	agg2d.BlendMode(agg.BlendOverlay)
 	agg2d.Ellipse(500+40, 280, 20, 40)
 
-	// Radial gradient
 	agg2d.BlendMode(agg.BlendAlpha)
 	agg2d.FillRadialGradient(400, 500, 40,
 		agg.RGBA(255, 255, 0, 0),
 		agg.RGBA(0, 0, 127, 255), 1.0)
 	agg2d.Ellipse(400, 500, 40, 40)
-
-	// Get the final image and save
-	finalImg := ctx.GetImage()
-	outputFile := "agg2d_demo.png"
-
-	if err := saveAsPNG(finalImg, outputFile); err != nil {
-		fmt.Printf("Error saving PNG: %v\n", err)
-		return
-	}
-
-	fmt.Printf("AGG2D Demo completed successfully!\n")
-	fmt.Printf("Output saved to: %s\n", outputFile)
-	fmt.Println()
-	fmt.Println("This demo demonstrates:")
-	fmt.Println("  ✓ Viewport transformations and coordinate mapping")
-	fmt.Println("  ✓ Text rendering with different alignments")
-	fmt.Println("  ✓ Linear and radial gradients")
-	fmt.Println("  ✓ Rounded rectangles and complex shapes")
-	fmt.Println("  ✓ Path operations with arcs and curves")
-	fmt.Println("  ✓ Blend modes (Add, Overlay, Alpha)")
-	fmt.Println("  ✓ Master alpha for global transparency")
-	fmt.Println("  ✓ Image transformations along paths")
 }
 
-// saveAsPNG saves an AGG image as PNG
-func saveAsPNG(aggImg *agg.Image, filename string) error {
-	file, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	// Convert AGG image to Go image
-	goImg := aggImg.ToGoImage()
-
-	// Save as PNG
-	return png.Encode(file, goImg)
+func main() {
+	fontPath := findSystemFont()
+	demorunner.Run(demorunner.Config{Title: "AGG2D Demo", Width: 600, Height: 600}, &demo{fontPath: fontPath})
 }

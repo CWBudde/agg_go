@@ -7,18 +7,17 @@
 package main
 
 import (
-	"fmt"
 	"math"
 
 	agg "agg_go"
-	"agg_go/examples/shared/renderutil"
+	"agg_go/examples/shared/demorunner"
 	"agg_go/internal/basics"
 	liondemo "agg_go/internal/demo/lion"
 )
 
 const (
-	width  = 800
-	height = 600
+	loWidth  = 800
+	loHeight = 600
 
 	// Default values matching the WASM demo initial state.
 	outlineWidth = 1.0
@@ -33,8 +32,9 @@ const (
 	lionBaseDY = (520.0 - 8.0) / 2.0 // ≈ 256
 )
 
-func main() {
-	ctx := agg.NewContext(width, height)
+type demo struct{}
+
+func (d *demo) Render(ctx *agg.Context) {
 	ctx.Clear(agg.White)
 
 	a := ctx.GetAgg2D()
@@ -50,7 +50,7 @@ func main() {
 	a.Scale(lionScale, lionScale)
 	a.Rotate(lionAngle + math.Pi)
 	a.Skew(lionSkewX/1000.0, lionSkewY/1000.0)
-	a.Translate(float64(width)/2, float64(height)/2)
+	a.Translate(float64(loWidth)/2, float64(loHeight)/2)
 
 	a.LineWidth(outlineWidth)
 	a.NoFill()
@@ -76,10 +76,12 @@ func main() {
 	}
 
 	a.ResetTransformations()
+}
 
-	const filename = "lion_outline.png"
-	if err := renderutil.SavePNG(ctx.GetImage(), filename); err != nil {
-		panic(err)
-	}
-	fmt.Println(filename)
+func main() {
+	demorunner.Run(demorunner.Config{
+		Title:  "Lion Outline",
+		Width:  loWidth,
+		Height: loHeight,
+	}, &demo{})
 }

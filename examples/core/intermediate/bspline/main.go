@@ -1,10 +1,8 @@
 package main
 
 import (
-	"fmt"
-
 	agg "agg_go"
-	"agg_go/examples/shared/renderutil"
+	"agg_go/examples/shared/demorunner"
 )
 
 type point struct {
@@ -12,8 +10,9 @@ type point struct {
 	y float64
 }
 
-func main() {
-	ctx := agg.NewContext(800, 600)
+type demo struct{}
+
+func (d *demo) Render(ctx *agg.Context) {
 	ctx.Clear(agg.White)
 	agg2d := ctx.GetAgg2D()
 	agg2d.ResetTransformations()
@@ -63,12 +62,6 @@ func main() {
 	for _, p := range points {
 		agg2d.FillCircle(p.x, p.y, 5)
 	}
-
-	const filename = "bspline.png"
-	if err := renderutil.SavePNG(ctx.GetImage(), filename); err != nil {
-		panic(err)
-	}
-	fmt.Println(filename)
 }
 
 func minInt(a, b int) int {
@@ -83,4 +76,8 @@ func maxInt(a, b int) int {
 		return a
 	}
 	return b
+}
+
+func main() {
+	demorunner.Run(demorunner.Config{Title: "B-Spline", Width: 800, Height: 600}, &demo{})
 }

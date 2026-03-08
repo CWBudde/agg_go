@@ -2,9 +2,8 @@
 package main
 
 import (
-	"fmt"
-
 	agg "agg_go"
+	"agg_go/examples/shared/demorunner"
 	"agg_go/internal/basics"
 	"agg_go/internal/color"
 	"agg_go/internal/conv"
@@ -139,7 +138,9 @@ func composeCompoundPath(ps *path.PathStorageStl) {
 	ps.ClosePolygon(basics.PathFlagsNone)
 }
 
-func main() {
+type demo struct{}
+
+func (d *demo) Render(ctx *agg.Context) {
 	const (
 		w      = 440
 		h      = 330
@@ -148,10 +149,8 @@ func main() {
 		alpha2 = 1.0
 		alpha3 = 1.0
 		alpha4 = 1.0
-		out    = "rasterizer_compound.png"
 	)
 
-	ctx := agg.NewContext(w, h)
 	a := ctx.GetAgg2D()
 
 	img := ctx.GetImage()
@@ -295,10 +294,12 @@ func main() {
 			}
 		}
 	}
+}
 
-	if err := img.SaveToPNG(out); err != nil {
-		fmt.Printf("error writing %s: %v\n", out, err)
-		return
-	}
-	fmt.Printf("wrote %s (%dx%d)\n", out, w, h)
+func main() {
+	demorunner.Run(demorunner.Config{
+		Title:  "Rasterizer Compound",
+		Width:  440,
+		Height: 330,
+	}, &demo{})
 }

@@ -2,9 +2,8 @@
 package main
 
 import (
-	"fmt"
-
 	agg "agg_go"
+	"agg_go/examples/shared/demorunner"
 	"agg_go/internal/basics"
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
@@ -110,20 +109,21 @@ func (a *lineOutlineImageAdapter) Line1(lp primitives.LineParameters, sx, sy int
 func (a *lineOutlineImageAdapter) Line2(lp primitives.LineParameters, ex, ey int) {} //nolint:gocritic // Interface requires value parameter.
 func (a *lineOutlineImageAdapter) Pie(x, y, x1, y1, x2, y2 int)                   {}
 func (a *lineOutlineImageAdapter) Semidot(cmp func(int) bool, x, y, x1, y1 int)   {}
-func (a *lineOutlineImageAdapter) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) {
+func (a *lineOutlineImageAdapter) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) { //nolint:gocritic // Interface requires value parameter.
 	a.ren.Line3(&lp, sx, sy, ex, ey)
 }
 
-func main() {
+type demo struct{}
+
+func (d *demo) Render(ctx *agg.Context) {
 	const (
-		w       = 500
-		h       = 500
-		scaleX  = 1.0
-		startX  = 0.0
-		outFile = "line_patterns_clip.png"
+		scaleX = 1.0
+		startX = 0.0
 	)
 
-	ctx := agg.NewContext(w, h)
+	w := ctx.GetImage().Width()
+	h := ctx.GetImage().Height()
+
 	img := ctx.GetImage()
 	rbuf := buffer.NewRenderingBufferU8()
 	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Width()*4)
@@ -155,10 +155,12 @@ func main() {
 	rasImg.AddPath(&pathSourceAdapter{ps: ps}, 0)
 
 	renBase.ResetClipping(true)
+}
 
-	if err := img.SaveToPNG(outFile); err != nil {
-		fmt.Printf("error writing %s: %v\n", outFile, err)
-		return
-	}
-	fmt.Printf("wrote %s (%dx%d)\n", outFile, w, h)
+func main() {
+	demorunner.Run(demorunner.Config{
+		Title:  "Line Patterns Clip",
+		Width:  500,
+		Height: 500,
+	}, &demo{})
 }

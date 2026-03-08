@@ -6,29 +6,27 @@
 package main
 
 import (
-	"fmt"
-	"math"
-
 	agg "agg_go"
-	"agg_go/examples/shared/renderutil"
+	"agg_go/examples/shared/demorunner"
 	"agg_go/internal/basics"
 	liondemo "agg_go/internal/demo/lion"
 	"agg_go/internal/transform"
 )
 
 const (
-	width  = 800
-	height = 600
+	llWidth  = 800
+	llHeight = 600
 
 	// Default lens parameters.
 	lensScale  = 5.0
 	lensRadius = 70.0
-	lensX      = float64(width) / 2.0
-	lensY      = float64(height) / 2.0
+	lensX      = float64(llWidth) / 2.0
+	lensY      = float64(llHeight) / 2.0
 )
 
-func main() {
-	ctx := agg.NewContext(width, height)
+type demo struct{}
+
+func (d *demo) Render(ctx *agg.Context) {
 	ctx.Clear(agg.White)
 
 	a := ctx.GetAgg2D()
@@ -69,7 +67,7 @@ func main() {
 	mtx := transform.NewTransAffine()
 	mtx.Translate(-baseDX, -baseDY)
 	mtx.ScaleXY(-1, 1) // mirror X (matches flip_y + rotate(Pi) in the original)
-	mtx.Translate(float64(width)/2.0, float64(height)/2.0)
+	mtx.Translate(float64(llWidth)/2.0, float64(llHeight)/2.0)
 
 	// Warp magnifier lens.
 	lens := transform.NewTransWarpMagnifier()
@@ -108,19 +106,12 @@ func main() {
 	a.LineColor(agg.NewColor(80, 80, 80, 180))
 	a.LineWidth(1.0)
 	a.DrawCircle(lensX, lensY, lensRadius)
-
-	const filename = "lion_lens.png"
-	if err := renderutil.SavePNG(ctx.GetImage(), filename); err != nil {
-		panic(err)
-	}
-	fmt.Println(filename)
 }
 
-// Approximate lens outline helper.
-func drawCircle(a interface {
-	DrawCircle(x, y, r float64)
-}, cx, cy, r float64,
-) {
-	_ = math.Pi // used above
-	a.DrawCircle(cx, cy, r)
+func main() {
+	demorunner.Run(demorunner.Config{
+		Title:  "Lion Lens",
+		Width:  llWidth,
+		Height: llHeight,
+	}, &demo{})
 }

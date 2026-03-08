@@ -58,7 +58,7 @@ func (p patternPixFmt) PixPtr(x, y int) []basics.Int8u {
 // patternSource wraps an ImageAccessorWrap over patternPixFmt to satisfy
 // span.RGBASourceInterface so it can be used with SpanPatternRGBA.
 type patternSource struct {
-	accessor *imageacc.ImageAccessorWrap[patternPixFmt, *imageacc.WrapModeRepeatAutoPow2, *imageacc.WrapModeRepeatAutoPow2]
+	accessor *imageacc.ImageAccessorWrap[patternPixFmt, *imageacc.WrapModeReflectAutoPow2, *imageacc.WrapModeReflectAutoPow2]
 	pf       patternPixFmt
 }
 
@@ -188,6 +188,8 @@ func drawPatternFillDemo() {
 	// Attach rendering target
 	img := ctx.GetImage()
 	patFillRbuf.Attach(img.Data, img.Width(), img.Height(), img.Width()*4)
+	// Keep renderer clip box in sync after dynamic buffer attach.
+	patFillRenBase.Attach(patFillPixFmt)
 
 	size := int(patFillPatternSize)
 	if size < 4 {
@@ -198,9 +200,9 @@ func drawPatternFillDemo() {
 	pf := generatePattern(size, patFillPatternAngle)
 
 	// Wrap mode for tiling
-	wrapX := imageacc.NewWrapModeRepeatAutoPow2(basics.Int32u(size))
-	wrapY := imageacc.NewWrapModeRepeatAutoPow2(basics.Int32u(size))
-	accessor := imageacc.NewImageAccessorWrap[patternPixFmt, *imageacc.WrapModeRepeatAutoPow2, *imageacc.WrapModeRepeatAutoPow2](&pf, wrapX, wrapY)
+	wrapX := imageacc.NewWrapModeReflectAutoPow2(basics.Int32u(size))
+	wrapY := imageacc.NewWrapModeReflectAutoPow2(basics.Int32u(size))
+	accessor := imageacc.NewImageAccessorWrap[patternPixFmt, *imageacc.WrapModeReflectAutoPow2, *imageacc.WrapModeReflectAutoPow2](&pf, wrapX, wrapY)
 	src := &patternSource{accessor: accessor, pf: pf}
 	sg := span.NewSpanPatternRGBAWithParams[*patternSource](src, 0, 0)
 

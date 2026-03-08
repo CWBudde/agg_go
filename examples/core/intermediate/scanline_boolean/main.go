@@ -1,14 +1,13 @@
 package main
 
 import (
-	"fmt"
-
 	agg "agg_go"
-	"agg_go/examples/shared/renderutil"
+	"agg_go/examples/shared/demorunner"
 )
 
-func main() {
-	ctx := agg.NewContext(900, 420)
+type demo struct{}
+
+func (d *demo) Render(ctx *agg.Context) {
 	ctx.Clear(agg.White)
 	agg2d := ctx.GetAgg2D()
 	agg2d.ResetTransformations()
@@ -24,12 +23,6 @@ func main() {
 	rightX2 := []float64{580, 760, 720, 550}
 	rightY2 := []float64{40, 150, 340, 260}
 	drawBooleanPanel(agg2d, rightX1, rightY1, rightX2, rightY2, true)
-
-	const filename = "scanline_boolean.png"
-	if err := renderutil.SavePNG(ctx.GetImage(), filename); err != nil {
-		panic(err)
-	}
-	fmt.Println(filename)
 }
 
 func drawBooleanPanel(agg2d *agg.Agg2D, x1, y1, x2, y2 []float64, evenOdd bool) {
@@ -71,4 +64,12 @@ func drawHandles(agg2d *agg.Agg2D, x, y []float64, c agg.Color) {
 		agg2d.LineWidth(1.0)
 		agg2d.DrawCircle(x[i], y[i], 6)
 	}
+}
+
+func main() {
+	demorunner.Run(demorunner.Config{
+		Title:  "Scanline Boolean",
+		Width:  900,
+		Height: 420,
+	}, &demo{})
 }

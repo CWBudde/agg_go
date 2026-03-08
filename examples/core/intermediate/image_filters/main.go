@@ -1,15 +1,15 @@
 package main
 
 import (
-	"fmt"
 	"math"
 
 	agg "agg_go"
-	"agg_go/examples/shared/renderutil"
+	"agg_go/examples/shared/demorunner"
 )
 
-func main() {
-	ctx := agg.NewContext(1100, 820)
+type demo struct{}
+
+func (d *demo) Render(ctx *agg.Context) {
 	ctx.Clear(agg.White)
 	agg2d := ctx.GetAgg2D()
 	agg2d.ResetTransformations()
@@ -40,12 +40,6 @@ func main() {
 			panic(err)
 		}
 	}
-
-	const filename = "image_filters.png"
-	if err := renderutil.SavePNG(ctx.GetImage(), filename); err != nil {
-		panic(err)
-	}
-	fmt.Println(filename)
 }
 
 func buildParallelogram(imgW, imgH, x, y, scale, angleDeg float64) []float64 {
@@ -91,4 +85,12 @@ func createTestImage(w, h int) *agg.Image {
 	}
 
 	return img
+}
+
+func main() {
+	demorunner.Run(demorunner.Config{
+		Title:  "Image Filters",
+		Width:  1100,
+		Height: 820,
+	}, &demo{})
 }

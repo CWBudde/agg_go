@@ -6,11 +6,10 @@
 package main
 
 import (
-	"fmt"
 	"math"
 
 	agg "agg_go"
-	"agg_go/examples/shared/renderutil"
+	"agg_go/examples/shared/demorunner"
 )
 
 const (
@@ -43,8 +42,9 @@ func drawRadialGradientCircle(a *agg.Agg2D, cx, cy, r float64, c1, c2 agg.Color)
 	}
 }
 
-func main() {
-	ctx := agg.NewContext(width, height)
+type demo struct{}
+
+func (d *demo) Render(ctx *agg.Context) {
 	ctx.Clear(agg.RGBA(0.5, 0.5, 0.5, 1.0))
 
 	a := ctx.GetAgg2D()
@@ -111,10 +111,8 @@ func main() {
 	}
 
 	a.BlendMode(agg.BlendAlpha)
+}
 
-	const filename = "compositing2.png"
-	if err := renderutil.SavePNG(ctx.GetImage(), filename); err != nil {
-		panic(err)
-	}
-	fmt.Println(filename)
+func main() {
+	demorunner.Run(demorunner.Config{Title: "Compositing 2", Width: width, Height: height}, &demo{})
 }

@@ -7,11 +7,10 @@
 package main
 
 import (
-	"fmt"
 	"math"
 
 	agg "agg_go"
-	"agg_go/examples/shared/renderutil"
+	"agg_go/examples/shared/demorunner"
 )
 
 const (
@@ -62,8 +61,9 @@ func drawGammaCurve(a *agg.Agg2D, xStart, yTop, gamma float64) {
 	a.DrawPath(agg.StrokeOnly)
 }
 
-func main() {
-	ctx := agg.NewContext(width, height)
+type demo struct{}
+
+func (d *demo) Render(ctx *agg.Context) {
 	a := ctx.GetAgg2D()
 	a.ResetTransformations()
 
@@ -118,10 +118,12 @@ func main() {
 	// Thicker ellipse offset slightly.
 	drawEllipseStroked(a, cx, cy, gammaRX*0.8, gammaRY*0.8, gammaThick*3,
 		agg.NewColor(255, 80, 80, 200))
+}
 
-	const filename = "gamma_correction.png"
-	if err := renderutil.SavePNG(ctx.GetImage(), filename); err != nil {
-		panic(err)
-	}
-	fmt.Println(filename)
+func main() {
+	demorunner.Run(demorunner.Config{
+		Title:  "Gamma Correction",
+		Width:  width,
+		Height: height,
+	}, &demo{})
 }

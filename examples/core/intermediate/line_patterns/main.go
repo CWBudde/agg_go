@@ -2,27 +2,26 @@
 package main
 
 import (
-	"fmt"
-
 	agg "agg_go"
+	"agg_go/examples/shared/demorunner"
 	"agg_go/internal/demo/linepatterns"
 )
 
+const (
+	lpScaleX = 1.0
+	lpStartX = 0.0
+)
+
+type demo struct{}
+
+func (d *demo) Render(ctx *agg.Context) {
+	linepatterns.Draw(ctx.GetImage(), lpScaleX, lpStartX)
+}
+
 func main() {
-	const (
-		w       = 500
-		h       = 450
-		scaleX  = 1.0
-		startX  = 0.0
-		outFile = "line_patterns.png"
-	)
-
-	ctx := agg.NewContext(w, h)
-	linepatterns.Draw(ctx.GetImage(), scaleX, startX)
-
-	if err := ctx.GetImage().SaveToPNG(outFile); err != nil {
-		fmt.Printf("error writing %s: %v\n", outFile, err)
-		return
-	}
-	fmt.Printf("wrote %s (%dx%d)\n", outFile, w, h)
+	demorunner.Run(demorunner.Config{
+		Title:  "Line Patterns",
+		Width:  500,
+		Height: 450,
+	}, &demo{})
 }

@@ -5,11 +5,10 @@
 package main
 
 import (
-	"fmt"
 	"math"
 
 	agg "agg_go"
-	"agg_go/examples/shared/renderutil"
+	"agg_go/examples/shared/demorunner"
 	"agg_go/internal/basics"
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
@@ -163,8 +162,9 @@ func buildLargeStarPath(cx, cy float64, w, h int, angleDeg float64) *path.PathSt
 	return ps
 }
 
-func main() {
-	ctx := agg.NewContext(canvasW, canvasH)
+type demo struct{}
+
+func (d *demo) Render(ctx *agg.Context) {
 	ctx.Clear(agg.RGBA(0.95, 0.95, 0.9, 1.0))
 
 	// Generate pattern tile.
@@ -230,10 +230,12 @@ func main() {
 	}
 	a.ClosePolygon()
 	a.DrawPath(agg.StrokeOnly)
+}
 
-	const filename = "pattern_fill.png"
-	if err := renderutil.SavePNG(ctx.GetImage(), filename); err != nil {
-		panic(err)
-	}
-	fmt.Println(filename)
+func main() {
+	demorunner.Run(demorunner.Config{
+		Title:  "Pattern Fill",
+		Width:  canvasW,
+		Height: canvasH,
+	}, &demo{})
 }

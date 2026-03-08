@@ -2,20 +2,16 @@
 package main
 
 import (
-	"fmt"
-
 	agg "agg_go"
+	"agg_go/examples/shared/demorunner"
 )
 
-func main() {
-	const (
-		w       = 600
-		h       = 600
-		mode    = 4
-		blur    = 1.0
-		outFile = "image_resample.png"
-	)
+const resampleMode = 4
+const resampleBlur = 1.0
 
+type demo struct{}
+
+func (d *demo) Render(ctx *agg.Context) {
 	img := createSpheresImage(320, 320)
 	quad := [4][2]float64{
 		{140, 140},
@@ -23,12 +19,11 @@ func main() {
 		{460, 460},
 		{140, 460},
 	}
-	if mode < 2 {
+	if resampleMode < 2 {
 		quad[3][0] = quad[0][0] + (quad[2][0] - quad[1][0])
 		quad[3][1] = quad[0][1] + (quad[2][1] - quad[1][1])
 	}
 
-	ctx := agg.NewContext(w, h)
 	ctx.Clear(agg.White)
 	a := ctx.GetAgg2D()
 	a.ResetTransformations()
@@ -50,8 +45,8 @@ func main() {
 	a.LineTo(quad[3][0], quad[3][1])
 	a.ClosePolygon()
 
-	a.SetImageFilterRadius(agg.FilterBilinear, blur)
-	if mode == 1 || mode == 4 || mode == 5 {
+	a.SetImageFilterRadius(agg.FilterBilinear, resampleBlur)
+	if resampleMode == 1 || resampleMode == 4 || resampleMode == 5 {
 		a.ImageResample(agg.ResampleBilinear)
 	} else {
 		a.ImageResample(agg.ResampleNearest)
@@ -79,12 +74,6 @@ func main() {
 	for i := 0; i < 4; i++ {
 		ctx.FillCircle(quad[i][0], quad[i][1], 4.0)
 	}
-
-	if err := ctx.GetImage().SaveToPNG(outFile); err != nil {
-		fmt.Printf("error writing %s: %v\n", outFile, err)
-		return
-	}
-	fmt.Printf("wrote %s (%dx%d)\n", outFile, w, h)
 }
 
 func createSpheresImage(w, h int) *agg.Image {
@@ -115,4 +104,12 @@ func createSpheresImage(w, h int) *agg.Image {
 		imgCtx.FillCircle(sp.x-sp.r*0.30, sp.y-sp.r*0.30, sp.r*0.30)
 	}
 	return img
+}
+
+func main() {
+	demorunner.Run(demorunner.Config{
+		Title:  "Image Resample",
+		Width:  600,
+		Height: 600,
+	}, &demo{})
 }

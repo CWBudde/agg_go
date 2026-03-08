@@ -6,11 +6,10 @@
 package main
 
 import (
-	"fmt"
 	"math"
 
 	agg "agg_go"
-	"agg_go/examples/shared/renderutil"
+	"agg_go/examples/shared/demorunner"
 	"agg_go/internal/basics"
 	"agg_go/internal/conv"
 	liondemo "agg_go/internal/demo/lion"
@@ -24,10 +23,9 @@ var (
 	points2 = [12]float64{40, 60, 150, 170, 210, 290, 350, 350, 410, 490, 530, 570}
 )
 
-func main() {
-	const width, height = 600, 600
+type demo struct{}
 
-	ctx := agg.NewContext(width, height)
+func (d *demo) Render(ctx *agg.Context) {
 	ctx.Clear(agg.RGBA(1.0, 1.0, 0.95, 1.0))
 
 	a := ctx.GetAgg2D()
@@ -129,10 +127,12 @@ func main() {
 		}
 		a.DrawPath(agg.StrokeOnly)
 	}
+}
 
-	const filename = "trans_curve2.png"
-	if err := renderutil.SavePNG(ctx.GetImage(), filename); err != nil {
-		panic(err)
-	}
-	fmt.Println(filename)
+func main() {
+	demorunner.Run(demorunner.Config{
+		Title:  "Trans Curve 2",
+		Width:  600,
+		Height: 600,
+	}, &demo{})
 }

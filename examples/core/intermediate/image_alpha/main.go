@@ -8,7 +8,6 @@ package main
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"math"
 	"math/rand"
 	"os"
@@ -16,7 +15,7 @@ import (
 	"strconv"
 
 	agg "agg_go"
-	"agg_go/examples/shared/renderutil"
+	"agg_go/examples/shared/demorunner"
 	"agg_go/internal/basics"
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
@@ -213,16 +212,18 @@ func buildTransformedEllipsePath(w, h int, mtx *transform.TransAffine) *path.Pat
 	return ps
 }
 
-func main() {
-	srcPath := filepath.Join("examples", "shared", "art", defaultImageName+".ppm")
-	srcImg, err := loadPPMImage(srcPath)
-	if err != nil {
-		panic(err)
+type demo struct {
+	srcImg *agg.Image
+}
+
+func (d *demo) Render(ctx *agg.Context) {
+	if d.srcImg == nil {
+		return
 	}
 
-	canvasW := srcImg.Width()
-	canvasH := srcImg.Height()
-	ctx := agg.NewContext(canvasW, canvasH)
+	canvasW := ctx.GetImage().Width()
+	canvasH := ctx.GetImage().Height()
+
 	a := ctx.GetAgg2D()
 	a.ResetTransformations()
 	ctx.Clear(agg.RGBA(1, 1, 1, 1))
@@ -268,7 +269,7 @@ func main() {
 	imgMtx.Invert()
 
 	imgRbuf := buffer.NewRenderingBufferU8()
-	imgRbuf.Attach(srcImg.Data, srcImg.Width(), srcImg.Height(), srcImg.Width()*4)
+	imgRbuf.Attach(d.srcImg.Data, d.srcImg.Width(), d.srcImg.Height(), d.srcImg.Width()*4)
 	ipf := imagePixFmt{rbuf: imgRbuf}
 	accessor := image.NewImageAccessorClip(&ipf, []basics.Int8u{0, 0, 0, 0})
 	src := &imageClipSource{accessor: accessor, ipf: &ipf}
@@ -309,10 +310,18 @@ func main() {
 			}
 		}
 	}
+}
 
-	const filename = "image_alpha.png"
-	if err := renderutil.SavePNG(ctx.GetImage(), filename); err != nil {
+func main() {
+	srcPath := filepath.Join("examples", "shared", "art", defaultImageName+".ppm")
+	srcImg, err := loadPPMImage(srcPath)
+	if err != nil {
 		panic(err)
 	}
-	fmt.Println(filename)
+
+	demorunner.Run(demorunner.Config{
+		Title:  "Image Alpha",
+		Width:  srcImg.Width(),
+		Height: srcImg.Height(),
+	}, &demo{srcImg: srcImg})
 }

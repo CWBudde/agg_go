@@ -6,16 +6,13 @@
 package main
 
 import (
-	"fmt"
-
 	agg "agg_go"
-	"agg_go/examples/shared/renderutil"
+	"agg_go/examples/shared/demorunner"
 )
 
-func main() {
-	const width, height = 800, 600
+type demo struct{}
 
-	ctx := agg.NewContext(width, height)
+func (d *demo) Render(ctx *agg.Context) {
 	ctx.Clear(agg.RGBA(0.9, 0.9, 0.9, 1.0))
 
 	a := ctx.GetAgg2D()
@@ -75,10 +72,8 @@ func main() {
 
 	// Restore.
 	a.BlendMode(agg.BlendAlpha)
+}
 
-	const filename = "blend_modes.png"
-	if err := renderutil.SavePNG(ctx.GetImage(), filename); err != nil {
-		panic(err)
-	}
-	fmt.Println(filename)
+func main() {
+	demorunner.Run(demorunner.Config{Title: "Blend Modes", Width: 800, Height: 600}, &demo{})
 }

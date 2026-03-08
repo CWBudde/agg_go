@@ -1,10 +1,10 @@
 package main
 
 import (
-	"fmt"
 	"math"
-	"os"
 
+	agg "agg_go"
+	"agg_go/examples/shared/demorunner"
 	"agg_go/internal/basics"
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
@@ -313,25 +313,6 @@ func drawText(
 	}
 }
 
-func savePPM(filename string, imgData []uint8, width, height int) error {
-	f, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	if _, err := fmt.Fprintf(f, "P6\n%d %d\n255\n", width, height); err != nil {
-		return err
-	}
-
-	for i := 0; i < len(imgData); i += 4 {
-		if _, err := f.Write([]byte{imgData[i], imgData[i+1], imgData[i+2]}); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func renderControl(
 	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
 	sl *scanline.ScanlineU8,
@@ -364,8 +345,10 @@ func renderControl(
 	}
 }
 
-func main() {
-	imgData := make([]uint8, frameWidth*frameHeight*4)
+type demo struct{}
+
+func (d *demo) Render(ctx *agg.Context) {
+	imgData := ctx.GetImage().Data
 	rbuf := buffer.NewRenderingBufferU8WithData(imgData, frameWidth, frameHeight, frameWidth*4)
 
 	pf := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
@@ -484,10 +467,12 @@ func main() {
 		},
 		scalePattern.Color,
 	)
+}
 
-	if err := savePPM("rasterizers2_demo.ppm", imgData, frameWidth, frameHeight); err != nil {
-		panic(err)
-	}
-
-	fmt.Println("rasterizers2_demo.ppm")
+func main() {
+	demorunner.Run(demorunner.Config{
+		Title:  "Rasterizers 2",
+		Width:  frameWidth,
+		Height: frameHeight,
+	}, &demo{})
 }

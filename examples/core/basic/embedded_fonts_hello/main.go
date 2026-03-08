@@ -1,15 +1,11 @@
 // Package main demonstrates rendering text using embedded bitmap fonts.
 // It uses the raster text renderer with a tiny span renderer shim
-// to blend spans directly into the Context image buffer, then saves a PNG.
+// to blend spans directly into the Context image buffer.
 package main
 
 import (
-	"fmt"
-	"image"
-	"image/png"
-	"os"
-
 	agg "agg_go"
+	"agg_go/examples/shared/demorunner"
 	"agg_go/internal/basics"
 	"agg_go/internal/fonts"
 	"agg_go/internal/glyph"
@@ -132,26 +128,13 @@ func (s *simpleSpanRenderer[C]) BlendSolidVspan(x, y, length int, c C, covers []
 	}
 }
 
-func saveAsPNG(img *agg.Image, filename string) error {
-	goImg := image.NewRGBA(image.Rect(0, 0, img.Width(), img.Height()))
-	copy(goImg.Pix, img.Data)
-	f, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	return png.Encode(f, goImg)
-}
+type demo struct{}
 
-func main() {
-	const W, H = 640, 220
-	ctx := agg.NewContext(W, H)
+func (d *demo) Render(ctx *agg.Context) {
 	// Background
 	ctx.Clear(agg.RGB(0.97, 0.97, 1.0))
 
 	// Prepare text rendering pipeline
-	// Use a compact readable embedded font (5x7 or 4x6)
-	// Choose different fonts to demonstrate variety
 	fontSmall := fonts.GetGSE4x6()
 	fontMedium := fonts.GetGSE5x7()
 	fontMono := fonts.GetMCS5x10Mono()
@@ -161,6 +144,8 @@ func main() {
 	gMedium := glyph.NewGlyphRasterBin(fontMedium)
 	gMono := glyph.NewGlyphRasterBin(fontMono)
 	gVerdana := glyph.NewGlyphRasterBin(fontVerdana)
+
+	W := ctx.Width()
 
 	// Bridge spans into the context image
 	// Unscaled renderer (1x)
@@ -196,12 +181,8 @@ func main() {
 	// Verdana12 at 3x
 	text3x.SetColor(agg.NewRGBA8(30, 80, 60, 255))
 	text3x.RenderText(20, 185, "Verdana12 @3x", false)
+}
 
-	// Save PNG (when using `just run-examples-basic`, this lands in examples/basic/_out)
-	out := "embedded_fonts_hello.png"
-	if err := saveAsPNG(ctx.GetImage(), out); err != nil {
-		fmt.Printf("Error saving PNG: %v\n", err)
-		return
-	}
-	fmt.Printf("Wrote %s (%dx%d)\n", out, W, H)
+func main() {
+	demorunner.Run(demorunner.Config{Title: "Embedded Fonts Hello", Width: 640, Height: 220}, &demo{})
 }

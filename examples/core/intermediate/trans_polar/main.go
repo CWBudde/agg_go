@@ -6,11 +6,10 @@
 package main
 
 import (
-	"fmt"
 	"math"
 
 	agg "agg_go"
-	"agg_go/examples/shared/renderutil"
+	"agg_go/examples/shared/demorunner"
 	"agg_go/internal/basics"
 	liondemo "agg_go/internal/demo/lion"
 )
@@ -39,8 +38,9 @@ func (p *transPolar) Transform(x, y *float64) {
 	*y = math.Sin(x1)*y1 + p.transY
 }
 
-func main() {
-	ctx := agg.NewContext(width, height)
+type demo struct{}
+
+func (d *demo) Render(ctx *agg.Context) {
 	ctx.Clear(agg.White)
 
 	a := ctx.GetAgg2D()
@@ -108,10 +108,12 @@ func main() {
 		a.ClosePolygon()
 		a.DrawPath(agg.FillOnly)
 	}
+}
 
-	const filename = "trans_polar.png"
-	if err := renderutil.SavePNG(ctx.GetImage(), filename); err != nil {
-		panic(err)
-	}
-	fmt.Println(filename)
+func main() {
+	demorunner.Run(demorunner.Config{
+		Title:  "Trans Polar",
+		Width:  width,
+		Height: height,
+	}, &demo{})
 }

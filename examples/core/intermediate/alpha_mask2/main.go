@@ -5,11 +5,10 @@
 package main
 
 import (
-	"fmt"
 	"math/rand"
 
 	agg "agg_go"
-	"agg_go/examples/shared/renderutil"
+	"agg_go/examples/shared/demorunner"
 	"agg_go/internal/basics"
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
@@ -85,8 +84,9 @@ func (w *scanlineWrapperP8v2) Begin() renscan.ScanlineIterator {
 	return &spanIterP8v2{spans, 0}
 }
 
-func main() {
-	ctx := agg.NewContext(width, height)
+type demo struct{}
+
+func (d *demo) Render(ctx *agg.Context) {
 	img := ctx.GetImage()
 	agg2d := ctx.GetAgg2D()
 	ras := agg2d.GetInternalRasterizer()
@@ -176,10 +176,8 @@ func main() {
 		}
 		renscan.RenderScanlinesAASolid(rasAdapter, slAdapter, rbAMask, c)
 	}
+}
 
-	const filename = "alpha_mask2.png"
-	if err := renderutil.SavePNG(ctx.GetImage(), filename); err != nil {
-		panic(err)
-	}
-	fmt.Println(filename)
+func main() {
+	demorunner.Run(demorunner.Config{Title: "Alpha Mask 2", Width: width, Height: height}, &demo{})
 }

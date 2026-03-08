@@ -3,50 +3,17 @@
 package main
 
 import (
-	"fmt"
-	"image"
-	"image/png"
-	"os"
-
 	agg "agg_go"
+	"agg_go/examples/shared/demorunner"
 )
 
-const (
-	width  = 800
-	height = 600
-)
+type demo struct{}
 
-// saveToImage saves an AGG image as a PNG file
-func saveToImage(img *agg.Image, filename string) error {
-	// Create Go image from AGG image
-	goImg := image.NewRGBA(image.Rect(0, 0, img.Width(), img.Height()))
-
-	// Copy pixel data from AGG buffer to Go image
-	copy(goImg.Pix, img.Data)
-
-	// Create output file
-	file, err := os.Create(filename)
-	if err != nil {
-		return fmt.Errorf("failed to create file: %v", err)
-	}
-	defer file.Close()
-
-	// Encode as PNG
-	return png.Encode(file, goImg)
-}
-
-// renderGradientDemo renders various gradient examples
-func renderGradientDemo() error {
-	fmt.Println("AGG Gradient Rendering Demo")
-
-	// Create rendering context using high-level API
-	ctx := agg.NewContext(width, height)
-
+func (d *demo) Render(ctx *agg.Context) {
 	// Clear background to black
 	ctx.Clear(agg.Black)
 
 	// Demo 1: Linear gradients
-	fmt.Println("Rendering linear gradients...")
 
 	// Horizontal linear gradient (red to blue)
 	ctx.SetLinearGradient(50, 75, 200, 75, agg.Red, agg.Blue)
@@ -61,7 +28,6 @@ func renderGradientDemo() error {
 	ctx.FillRectangle(300, 50, 120, 100)
 
 	// Demo 2: Linear Gradient with Profile
-	fmt.Println("Rendering linear gradients with different profiles...")
 
 	// Sharp profile gradient (profile = 0.5)
 	ctx.SetLinearGradientWithProfile(480, 50, 630, 50, agg.Red, agg.Blue, 0.5)
@@ -72,7 +38,6 @@ func renderGradientDemo() error {
 	ctx.FillRectangle(450, 100, 180, 50)
 
 	// Demo 3: Radial gradients
-	fmt.Println("Rendering radial gradients...")
 
 	// Simple radial gradient (white center to black edge)
 	ctx.SetRadialGradient(100, 250, 60, agg.White, agg.Black)
@@ -87,7 +52,6 @@ func renderGradientDemo() error {
 	ctx.FillEllipse(400, 250, 60, 60)
 
 	// Demo 4: Multi-stop Radial Gradients
-	fmt.Println("Rendering multi-stop radial gradients...")
 
 	// Three-color radial gradient (red -> green -> blue)
 	ctx.SetRadialGradientMultiStop(100, 400, 50, agg.Red, agg.Green, agg.Blue)
@@ -98,7 +62,6 @@ func renderGradientDemo() error {
 	ctx.FillEllipse(250, 400, 50, 50)
 
 	// Demo 5: Stroke/Line gradients
-	fmt.Println("Rendering line gradients...")
 
 	// Linear stroke gradient
 	ctx.SetLineWidth(8.0)
@@ -113,7 +76,6 @@ func renderGradientDemo() error {
 	ctx.DrawEllipse(550, 300, 40, 40)
 
 	// Demo 6: Mixed shapes with gradients
-	fmt.Println("Rendering mixed shapes with gradients...")
 
 	// Rounded rectangle with linear gradient
 	ctx.SetLinearGradient(450, 380, 650, 480, agg.RGB(1.0, 0.5, 0.0), agg.RGB(0.5, 0.0, 1.0))
@@ -125,7 +87,6 @@ func renderGradientDemo() error {
 	ctx.DrawRoundedRectangle(50, 480, 150, 100, 15)
 
 	// Demo 7: Color interpolation test
-	fmt.Println("Testing color interpolation...")
 
 	// Create a series of rectangles showing color interpolation
 	red := agg.Red
@@ -138,28 +99,12 @@ func renderGradientDemo() error {
 		ctx.SetColor(interpolatedColor)
 		ctx.FillRectangle(50+float64(i)*20, 15, 18, 25)
 	}
-
-	// Get the image and save as PNG
-	img := ctx.GetImage()
-	fmt.Println("Saving gradient demo to gradient_demo.png...")
-	return saveToImage(img, "gradient_demo.png")
 }
 
 func main() {
-	if err := renderGradientDemo(); err != nil {
-		fmt.Printf("Error rendering gradients: %v\n", err)
-		os.Exit(1)
-	}
-
-	fmt.Println("Gradient demo completed successfully!")
-	fmt.Println("Output saved to gradient_demo.png")
-	fmt.Println()
-	fmt.Println("Demo features:")
-	fmt.Println("✓ Linear gradients (horizontal, vertical, diagonal)")
-	fmt.Println("✓ Linear gradients with profile parameter")
-	fmt.Println("✓ Radial gradients (simple and with profile)")
-	fmt.Println("✓ Multi-stop radial gradients (3-color)")
-	fmt.Println("✓ Stroke gradients (linear and radial)")
-	fmt.Println("✓ Mixed shapes with gradients")
-	fmt.Println("✓ Color interpolation")
+	demorunner.Run(demorunner.Config{
+		Title:  "Gradients",
+		Width:  800,
+		Height: 600,
+	}, &demo{})
 }

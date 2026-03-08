@@ -394,8 +394,8 @@ idiomatic in Go.
 - [ ] `image_transforms` (web): fix empty output with single node; validate star path generation,
       image matrix setup, and initial control point placement.
 - [ ] `pattern_fill` (web): fix empty output; verify offscreen pattern generation and final blend spans.
-- [ ] `pattern_perspective` (web): add/fix draggable quad handles and mouse interaction wiring.
-- [ ] `pattern_resample` (web): add/fix draggable quad handles and mouse interaction wiring.
+- [x] `pattern_perspective` (web): add/fix draggable quad handles and mouse interaction wiring.
+- [x] `pattern_resample` (web): add/fix draggable quad handles and mouse interaction wiring.
 - [ ] `rasterizer_compound` (web): fix upside-down/odd glyph “a” rendering; audit Y-orientation and
       path winding/order parity with upstream C++.
 - [ ] For all above: add per-demo parity notes (standalone vs web), plus a minimal verification

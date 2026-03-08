@@ -6,11 +6,10 @@
 package main
 
 import (
-	"fmt"
 	"math"
 
 	agg "agg_go"
-	"agg_go/examples/shared/renderutil"
+	"agg_go/examples/shared/demorunner"
 	"agg_go/internal/basics"
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
@@ -153,7 +152,9 @@ func createTestImage(w, h int) *agg.Image {
 	return img
 }
 
-func main() {
+type demo struct{}
+
+func (d *demo) Render(ctx *agg.Context) {
 	const (
 		canvasW, canvasH = 800, 600
 		// Default control values matching WASM demo defaults
@@ -166,7 +167,6 @@ func main() {
 		period    = 1.0
 	)
 
-	ctx := agg.NewContext(canvasW, canvasH)
 	ctx.Clear(agg.White)
 
 	testImage := createTestImage(canvasW/2, canvasH/2)
@@ -257,10 +257,12 @@ func main() {
 			}
 		}
 	}
+}
 
-	const filename = "distortions.png"
-	if err := renderutil.SavePNG(ctx.GetImage(), filename); err != nil {
-		panic(err)
-	}
-	fmt.Println(filename)
+func main() {
+	demorunner.Run(demorunner.Config{
+		Title:  "Distortions",
+		Width:  800,
+		Height: 600,
+	}, &demo{})
 }

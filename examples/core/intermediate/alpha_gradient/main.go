@@ -5,18 +5,13 @@
 // XY-product alpha gradient mapped over a parallelogram defined by three
 // control points. The combined effect reveals how the two gradients interact:
 // colours show through fully only where both gradients are non-zero.
-//
-// This is a standalone PNG-output version of the demo_alpha_gradient.go WASM demo.
-// Default control-point positions match the WASM demo defaults.
 package main
 
 import (
-	"fmt"
-	"math"
 	"math/rand"
 
 	agg "agg_go"
-	"agg_go/examples/shared/renderutil"
+	"agg_go/examples/shared/demorunner"
 	"agg_go/internal/basics"
 	"agg_go/internal/color"
 	"agg_go/internal/shapes"
@@ -159,8 +154,9 @@ func (a *ellipseVS) Rewind(pathID uint32) { a.ell.Rewind(pathID) }
 
 func (a *ellipseVS) Vertex(x, y *float64) uint32 { return uint32(a.ell.Vertex(x, y)) }
 
-func main() {
-	ctx := agg.NewContext(width, height)
+type demo struct{}
+
+func (d *demo) Render(ctx *agg.Context) {
 	ctx.Clear(agg.White)
 
 	a := ctx.GetAgg2D()
@@ -189,7 +185,7 @@ func main() {
 	// 2. Gradient matrix: scale(0.75, 1.2) × rotate(-π/3) × translate(cx, cy), inverted.
 	gradMtx := transform.NewTransAffine()
 	gradMtx.Multiply(transform.NewTransAffineScalingXY(0.75, 1.2))
-	gradMtx.Multiply(transform.NewTransAffineRotation(-math.Pi / 3.0))
+	gradMtx.Multiply(transform.NewTransAffineRotation(-3.14159265358979323846 / 3.0))
 	gradMtx.Multiply(transform.NewTransAffineTranslation(cx, cy))
 	gradMtx.Invert()
 
@@ -251,10 +247,8 @@ func main() {
 	a.LineTo(p3x, p3y)
 	a.ClosePolygon()
 	a.DrawPath(agg.StrokeOnly)
+}
 
-	const filename = "alpha_gradient.png"
-	if err := renderutil.SavePNG(ctx.GetImage(), filename); err != nil {
-		panic(err)
-	}
-	fmt.Println(filename)
+func main() {
+	demorunner.Run(demorunner.Config{Title: "Alpha Gradient", Width: width, Height: height}, &demo{})
 }

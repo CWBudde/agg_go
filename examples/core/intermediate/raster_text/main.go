@@ -5,13 +5,10 @@
 package main
 
 import (
-	"fmt"
-	"image"
-	"image/png"
 	"math"
-	"os"
 
 	agg "agg_go"
+	"agg_go/examples/shared/demorunner"
 	"agg_go/internal/basics"
 	"agg_go/internal/fonts"
 	"agg_go/internal/glyph"
@@ -62,33 +59,24 @@ func (s *spanRenderer) BlendSolidVspan(x, y, length int, c agg.RGBA8, covers []b
 }
 
 // ---------------------------------------------------------------------------
-// Gradient span renderer  (mirrors gradient_sine_repeat_adaptor<gradient_circle>
-// with gradient_linear_color from rgba(1,0,0) to rgba(0,0.5,0))
+// Gradient span renderer
 // ---------------------------------------------------------------------------
 
-// gradientRenderer implements rtext.ScanlineRendererInterface so it can be
-// used with RendererRasterHText (the non-solid variant).
 type gradientRenderer struct {
 	img     *agg.Image
-	periods float64 // number of sine periods (5 in the C++ demo)
-	d       float64 // gradient diameter / scale (150 in the C++ demo)
+	periods float64
+	d       float64
 }
 
 func newGradientRenderer(img *agg.Image) *gradientRenderer {
 	return &gradientRenderer{img: img, periods: 5.0, d: 150.0}
 }
 
-// Prepare satisfies ScanlineRendererInterface – nothing to set up per glyph.
 func (g *gradientRenderer) Prepare() {}
 
-// gradientColor computes the interpolated color at canvas position (x, y).
-// Matches:  gradient_sine_repeat_adaptor<gradient_circle> with
-//
-//	gradient_linear_color from rgba(1,0,0) to rgba(0,0.5,0)
 func (g *gradientRenderer) gradientColor(x, y int) (r, gr, b uint8) {
 	dist := math.Sqrt(float64(x*x + y*y))
 	t := (1.0 + math.Sin(dist*g.periods/g.d)) / 2.0
-	// color1 = red (1,0,0), color2 = dark-green (0,0.5,0)
 	rf := 1.0 - t
 	gf := 0.5 * t
 	return uint8(rf * 255), uint8(gf * 255), 0
@@ -109,7 +97,6 @@ func (g *gradientRenderer) blendPixel(x, y int, cover uint8) {
 	d[off+3] = uint8(alpha + uint32(d[off+3])*inv/255)
 }
 
-// Render satisfies ScanlineRendererInterface.
 func (g *gradientRenderer) Render(sl rtext.ScanlineInterface) {
 	y := sl.Y()
 	it := sl.Begin()
@@ -126,31 +113,15 @@ func (g *gradientRenderer) Render(sl rtext.ScanlineInterface) {
 }
 
 // ---------------------------------------------------------------------------
-// Helper
+// Demo
 // ---------------------------------------------------------------------------
 
-func saveAsPNG(img *agg.Image, filename string) error {
-	goImg := image.NewRGBA(image.Rect(0, 0, img.Width(), img.Height()))
-	copy(goImg.Pix, img.Data)
-	f, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	return png.Encode(f, goImg)
-}
+type demo struct{}
 
-// ---------------------------------------------------------------------------
-// main
-// ---------------------------------------------------------------------------
-
-func main() {
-	const W, H = 640, 480
-	ctx := agg.NewContext(W, H)
+func (d *demo) Render(ctx *agg.Context) {
 	ctx.Clear(agg.RGB(1, 1, 1))
 	img := ctx.GetImage()
 
-	// All embedded fonts in the same order as the C++ raster_text.cpp demo.
 	type fontEntry struct {
 		data []byte
 		name string
@@ -192,7 +163,6 @@ func main() {
 		{fonts.GetVerdana18Bold(), "verdana18_bold"},
 	}
 
-	// Solid-color text renderer
 	ren := &spanRenderer{img: img}
 	g := glyph.NewGlyphRasterBin(fontList[0].data)
 	textRen := rtext.NewRendererRasterHTextSolid[*spanRenderer, *glyph.GlyphRasterBin, agg.RGBA8](ren, g)
@@ -209,19 +179,16 @@ func main() {
 		y += g.Height() + 1
 	}
 
-	// Gradient text at the bottom – uses RendererRasterHText (non-solid) with
-	// a custom span renderer that computes gradient colors per pixel.
-	// Matches the C++ demo's radial sine-repeat gradient from red to dark-green.
-	// Use Verdana12 which has correct font data in the Go port.
 	gradRen := newGradientRenderer(img)
 	g.SetFont(fonts.GetVerdana12())
 	gradTextRen := rtext.NewRendererRasterHText[*gradientRenderer, *glyph.GlyphRasterBin](gradRen, g)
 	gradTextRen.RenderText(5, 465, "RADIAL REPEATING GRADIENT: A quick brown fox jumps over the lazy dog", false)
+}
 
-	out := "raster_text.png"
-	if err := saveAsPNG(img, out); err != nil {
-		fmt.Printf("Error saving PNG: %v\n", err)
-		return
-	}
-	fmt.Printf("Wrote %s (%dx%d)\n", out, W, H)
+func main() {
+	demorunner.Run(demorunner.Config{
+		Title:  "Raster Text",
+		Width:  640,
+		Height: 480,
+	}, &demo{})
 }

@@ -6,16 +6,13 @@ import (
 	"path/filepath"
 
 	agg "agg_go"
+	"agg_go/examples/shared/demorunner"
 )
 
-func main() {
-	// Create a new AGG2D context
-	agg2d := agg.NewAgg2D()
+type demo struct{}
 
-	// Set up a rendering buffer
-	width, height := 800, 600
-	buf := make([]byte, width*height*4) // RGBA8 format
-	agg2d.Attach(buf, width, height, width*4)
+func (d *demo) Render(ctx *agg.Context) {
+	agg2d := ctx.GetAgg2D()
 
 	// Clear background to white
 	agg2d.ClearAll(agg.White)
@@ -28,18 +25,11 @@ func main() {
 		fmt.Println("To enable full text support, build with: go build -tags freetype")
 	}
 
+	width := ctx.GetImage().Width()
+	height := ctx.GetImage().Height()
+
 	// Render text examples
 	renderTextExamples(agg2d, width, height)
-
-	// Save the rendered image (this would require image encoding in a real implementation)
-	fmt.Println("Text rendering example completed")
-	fmt.Printf("Rendered %dx%d image with text examples\n", width, height)
-
-	// In a real implementation, you might save to PNG:
-	// err = saveToPNG(buf, width, height, "text_example.png")
-	// if err != nil {
-	//     log.Fatal(err)
-	// }
 }
 
 // loadSystemFont attempts to load a system font for demonstration.
@@ -220,18 +210,10 @@ func renderUnicodeExamples(agg2d *agg.Agg2D, width, height int) {
 	}
 }
 
-// In a real implementation, you might include functions like:
-/*
-func saveToPNG(buf []byte, width, height int, filename string) error {
-	img := image.NewRGBA(image.Rect(0, 0, width, height))
-	copy(img.Pix, buf)
-
-	file, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	return png.Encode(file, img)
+func main() {
+	demorunner.Run(demorunner.Config{
+		Title:  "Text Rendering",
+		Width:  800,
+		Height: 600,
+	}, &demo{})
 }
-*/

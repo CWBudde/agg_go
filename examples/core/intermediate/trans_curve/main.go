@@ -3,10 +3,8 @@
 package main
 
 import (
-	"fmt"
-
 	agg "agg_go"
-	"agg_go/examples/shared/renderutil"
+	"agg_go/examples/shared/demorunner"
 	"agg_go/internal/basics"
 	"agg_go/internal/conv"
 	liondemo "agg_go/internal/demo/lion"
@@ -31,13 +29,12 @@ func drawHandle(ctx *agg.Context, x, y float64) {
 	ctx.DrawCircle(x, y, 5)
 }
 
-func main() {
-	const width, height = 800, 600
+type demo struct{}
 
+func (d *demo) Render(ctx *agg.Context) {
 	// Default control polygon (from WASM demo defaults)
 	points := [12]float64{50, 50, 170, 130, 230, 270, 370, 330, 430, 470, 550, 550}
 
-	ctx := agg.NewContext(width, height)
 	ctx.Clear(agg.White)
 	agg2d := ctx.GetAgg2D()
 	agg2d.ResetTransformations()
@@ -139,10 +136,12 @@ func main() {
 	for i := 0; i < 6; i++ {
 		drawHandle(ctx, points[i*2], points[i*2+1])
 	}
+}
 
-	const filename = "trans_curve.png"
-	if err := renderutil.SavePNG(ctx.GetImage(), filename); err != nil {
-		panic(err)
-	}
-	fmt.Println(filename)
+func main() {
+	demorunner.Run(demorunner.Config{
+		Title:  "Trans Curve",
+		Width:  800,
+		Height: 600,
+	}, &demo{})
 }

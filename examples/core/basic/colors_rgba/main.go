@@ -3,15 +3,18 @@ package main
 
 import (
 	"fmt"
-	"os"
 
+	agg "agg_go"
+	"agg_go/examples/shared/demorunner"
 	"agg_go/internal/basics"
 	"agg_go/internal/color"
 	"agg_go/internal/order"
 	"agg_go/internal/pixfmt/blender"
 )
 
-func main() {
+type demo struct{}
+
+func (d *demo) Render(ctx *agg.Context) {
 	fmt.Println("AGG Go - RGBA Color Example")
 	fmt.Println("============================")
 
@@ -34,6 +37,9 @@ func main() {
 	demonstrateColorOrders()
 
 	fmt.Println("\nRGBA example completed successfully!")
+
+	// Render a simple visual indicator into the context
+	ctx.Clear(agg.RGB(0.9, 0.9, 1.0))
 }
 
 func demonstrateRGBA8Colors() {
@@ -195,11 +201,11 @@ func demonstratePremultiplication() {
 	alphas := []basics.Int8u{255, 200, 150, 100, 50, 0}
 	for _, alpha := range alphas {
 		test := color.NewRGBA8[color.Linear](200, 150, 100, alpha)
-		original := test
+		orig := test
 		test.Premultiply()
 		fmt.Printf("Alpha %3d: (%3d,%3d,%3d) → (%3d,%3d,%3d) [%.1f%% reduction]\n",
-			alpha, original.R, original.G, original.B, test.R, test.G, test.B,
-			(1.0-float64(test.R)/float64(original.R))*100)
+			alpha, orig.R, orig.G, orig.B, test.R, test.G, test.B,
+			(1.0-float64(test.R)/float64(orig.R))*100)
 	}
 }
 
@@ -236,10 +242,6 @@ func demonstrateColorOrders() {
 	fmt.Println("commonly used in different graphics systems and platforms.")
 }
 
-// Check if this is being run as main
-func init() {
-	if len(os.Args) > 0 && os.Args[0] != "go" {
-		// This is likely being run directly, not through go test
-		// You can add any initialization here if needed
-	}
+func main() {
+	demorunner.Run(demorunner.Config{Title: "Colors RGBA", Width: 400, Height: 300}, &demo{})
 }

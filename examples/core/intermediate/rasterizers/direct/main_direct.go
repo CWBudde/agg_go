@@ -100,58 +100,6 @@ func (app *Application) isPointInTriangle(px, py, offsetX float64) bool {
 	return a >= 0 && b >= 0 && c >= 0
 }
 
-// getEdgeDistance calculates the distance from a point to the nearest triangle edge
-func (app *Application) getEdgeDistance(px, py, offsetX float64) float64 {
-	// Adjust triangle coordinates with offset
-	x1, y1 := app.x[0]+offsetX, app.y[0]
-	x2, y2 := app.x[1]+offsetX, app.y[1]
-	x3, y3 := app.x[2]+offsetX, app.y[2]
-
-	// Calculate distance to each edge and return minimum
-	edges := [][4]float64{
-		{x1, y1, x2, y2},
-		{x2, y2, x3, y3},
-		{x3, y3, x1, y1},
-	}
-
-	minDist := math.Inf(1)
-	for _, edge := range edges {
-		ex1, ey1, ex2, ey2 := edge[0], edge[1], edge[2], edge[3]
-
-		// Distance from point to line segment
-		A := px - ex1
-		B := py - ey1
-		C := ex2 - ex1
-		D := ey2 - ey1
-
-		dot := A*C + B*D
-		lenSq := C*C + D*D
-
-		var param float64 = -1
-		if lenSq != 0 {
-			param = dot / lenSq
-		}
-
-		var xx, yy float64
-		switch {
-		case param < 0:
-			xx, yy = ex1, ey1
-		case param > 1:
-			xx, yy = ex2, ey2
-		default:
-			xx, yy = ex1+param*C, ey1+param*D
-		}
-
-		dx := px - xx
-		dy := py - yy
-		dist := math.Sqrt(dx*dx + dy*dy)
-		if dist < minDist {
-			minDist = dist
-		}
-	}
-
-	return minDist
-}
 
 // calculateCoverage calculates anti-aliased coverage for a pixel
 func (app *Application) calculateCoverage(px, py, offsetX float64, useAntiAliasing bool) float64 {

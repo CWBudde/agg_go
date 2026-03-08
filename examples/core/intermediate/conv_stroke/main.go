@@ -9,11 +9,10 @@
 package main
 
 import (
-	"fmt"
 	"math"
 
 	agg "agg_go"
-	"agg_go/examples/shared/renderutil"
+	"agg_go/examples/shared/demorunner"
 )
 
 // drawStrokeDemo draws the conv_stroke demo for a single join/cap combination
@@ -97,26 +96,27 @@ func drawCellBorder(a *agg.Agg2D, x, y, w, h float64) {
 	a.DrawPath(agg.StrokeOnly)
 }
 
-func main() {
-	const (
-		cols    = 3 // join styles
-		rows    = 3 // cap styles
-		cellW   = 220.0
-		cellH   = 180.0
-		margin  = 6.0
-		headerH = 22.0 // space for column headers at the top
-	)
+const (
+	cols    = 3 // join styles
+	rows    = 3 // cap styles
+	cellW   = 220.0
+	cellH   = 180.0
+	margin  = 6.0
+	headerH = 22.0 // space for column headers at the top
 
-	joins := []agg.LineJoin{agg.JoinMiter, agg.JoinRound, agg.JoinBevel}
-	caps := []agg.LineCap{agg.CapButt, agg.CapSquare, agg.CapRound}
+	totalW = float64(cols)*cellW + float64(cols+1)*margin
+	totalH = float64(rows)*cellH + float64(rows+1)*margin + headerH
+)
 
-	totalW := float64(cols)*cellW + float64(cols+1)*margin
-	totalH := float64(rows)*cellH + float64(rows+1)*margin + headerH
+type demo struct{}
 
-	ctx := agg.NewContext(int(totalW), int(totalH))
+func (d *demo) Render(ctx *agg.Context) {
 	ctx.Clear(agg.White)
 	a := ctx.GetAgg2D()
 	a.ResetTransformations()
+
+	joins := []agg.LineJoin{agg.JoinMiter, agg.JoinRound, agg.JoinBevel}
+	caps := []agg.LineCap{agg.CapButt, agg.CapSquare, agg.CapRound}
 
 	strokeWidth := 20.0
 	miterLimit := 4.0
@@ -129,13 +129,12 @@ func main() {
 			drawStrokeDemo(a, ox, oy, cellW, cellH, join, cap, strokeWidth, miterLimit)
 		}
 	}
+}
 
-	const filename = "conv_stroke.png"
-	if err := renderutil.SavePNG(ctx.GetImage(), filename); err != nil {
-		panic(err)
-	}
-	fmt.Printf("Saved %s (%dx%d)\n", filename, int(totalW), int(totalH))
-	fmt.Println("Grid layout:")
-	fmt.Println("  Columns: Miter Join | Round Join | Bevel Join")
-	fmt.Println("  Rows:    Butt Cap   | Square Cap | Round Cap")
+func main() {
+	demorunner.Run(demorunner.Config{
+		Title:  "Conv Stroke",
+		Width:  int(totalW),
+		Height: int(totalH),
+	}, &demo{})
 }

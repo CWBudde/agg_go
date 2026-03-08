@@ -6,28 +6,22 @@
 package main
 
 import (
-	"fmt"
-
 	agg "agg_go"
-	"agg_go/examples/shared/renderutil"
+	"agg_go/examples/shared/demorunner"
 	"agg_go/internal/basics"
 	liondemo "agg_go/internal/demo/lion"
 )
 
-const (
-	width  = 800
-	height = 600
-)
+type demo struct{}
 
-func main() {
-	ctx := agg.NewContext(width, height)
+func (d *demo) Render(ctx *agg.Context) {
 	ctx.Clear(agg.White)
 
 	agg2d := ctx.GetAgg2D()
 	agg2d.ResetTransformations()
 
 	// Draw the lion centered on the canvas.
-	drawLion(agg2d)
+	drawLion(agg2d, ctx.Width(), ctx.Height())
 
 	// Blur parameters — default values from the WASM demo.
 	cx, cy := 400.0, 300.0
@@ -35,7 +29,7 @@ func main() {
 
 	// Snapshot the background before the ellipse outline is drawn so the
 	// blur samples the clean lion pixels.
-	bgImg := agg.CreateImage(width, height)
+	bgImg := agg.CreateImage(ctx.Width(), ctx.Height())
 	copy(bgImg.Data, ctx.GetImage().Data)
 
 	// Draw the ellipse outline over the lion.
@@ -48,16 +42,10 @@ func main() {
 
 	// Apply 3x3 box-blur inside the ellipse using the pre-outline snapshot.
 	applyBlurInsideEllipse(ctx.GetImage(), bgImg, cx, cy, rx, ry)
-
-	const filename = "simple_blur.png"
-	if err := renderutil.SavePNG(ctx.GetImage(), filename); err != nil {
-		panic(err)
-	}
-	fmt.Println(filename)
 }
 
 // drawLion renders the AGG lion demo into agg2d, centered in the canvas.
-func drawLion(agg2d *agg.Agg2D) {
+func drawLion(agg2d *agg.Agg2D, width, height int) {
 	const (
 		lionX1, lionY1 = 21.0, 9.0
 		lionX2, lionY2 = 478.0, 442.0
@@ -134,4 +122,8 @@ func applyBlurInsideEllipse(dst, src *agg.Image, cx, cy, rx, ry float64) {
 			dstData[dstIdx+3] = uint8(a / 9)
 		}
 	}
+}
+
+func main() {
+	demorunner.Run(demorunner.Config{Title: "Simple Blur", Width: 800, Height: 600}, &demo{})
 }

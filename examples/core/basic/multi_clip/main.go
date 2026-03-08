@@ -5,10 +5,8 @@
 package main
 
 import (
-	"fmt"
-
 	agg "agg_go"
-	"agg_go/examples/shared/renderutil"
+	"agg_go/examples/shared/demorunner"
 	"agg_go/internal/basics"
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
@@ -20,11 +18,7 @@ import (
 	"agg_go/internal/scanline"
 )
 
-const (
-	width  = 800
-	height = 600
-	clipN  = 3
-)
+const clipN = 3
 
 // Scanline/rasterizer adapters.
 
@@ -81,8 +75,11 @@ func (w *mcSlWrapP8) Begin() renscan.ScanlineIterator {
 	return &mcSpanIter{spans, 0}
 }
 
-func main() {
-	ctx := agg.NewContext(width, height)
+type demo struct{}
+
+func (d *demo) Render(ctx *agg.Context) {
+	width := ctx.Width()
+	height := ctx.Height()
 	img := ctx.GetImage()
 	agg2d := ctx.GetAgg2D()
 
@@ -137,10 +134,8 @@ func main() {
 		}
 		renscan.RenderScanlinesAASolid(rasAdp, slAdp, mclip, c)
 	}
+}
 
-	const filename = "multi_clip.png"
-	if err := renderutil.SavePNG(ctx.GetImage(), filename); err != nil {
-		panic(err)
-	}
-	fmt.Println(filename)
+func main() {
+	demorunner.Run(demorunner.Config{Title: "Multi Clip", Width: 800, Height: 600}, &demo{})
 }

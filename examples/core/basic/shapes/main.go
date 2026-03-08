@@ -1,16 +1,13 @@
 package main
 
 import (
-	"fmt"
-	"os"
-
-	"agg_go"
+	agg "agg_go"
+	"agg_go/examples/shared/demorunner"
 )
 
-func main() {
-	// Create a 400x300 context
-	ctx := agg.NewContext(400, 300)
+type demo struct{}
 
+func (d *demo) Render(ctx *agg.Context) {
 	// Clear with white background
 	ctx.Clear(agg.White)
 
@@ -28,27 +25,8 @@ func main() {
 
 	ctx.SetColor(agg.Yellow)
 	ctx.FillEllipse(300, 200, 25, 40)
+}
 
-	// Get the image and write to a simple PPM file for verification
-	img := ctx.GetImage()
-
-	// Write PPM file
-	file, err := os.Create("ellipse_test.ppm")
-	if err != nil {
-		fmt.Printf("Error creating file: %v\n", err)
-		return
-	}
-	defer file.Close()
-
-	// PPM header
-	fmt.Fprintf(file, "P6\n%d %d\n255\n", img.Width(), img.Height())
-
-	// Write pixel data (convert RGBA to RGB)
-	for i := 0; i < len(img.Data); i += 4 {
-		// Write RGB, skip A
-		file.Write([]byte{img.Data[i], img.Data[i+1], img.Data[i+2]})
-	}
-
-	fmt.Println("Ellipse test image written to ellipse_test.ppm")
-	fmt.Println("You can view this with any image viewer that supports PPM format")
+func main() {
+	demorunner.Run(demorunner.Config{Title: "Shapes", Width: 400, Height: 300}, &demo{})
 }

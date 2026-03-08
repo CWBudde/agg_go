@@ -6,16 +6,13 @@
 package main
 
 import (
-	"fmt"
 	"math/rand"
 
 	agg "agg_go"
-	"agg_go/examples/shared/renderutil"
+	"agg_go/examples/shared/demorunner"
 )
 
 const (
-	width    = 800
-	height   = 600
 	meshCols = 10
 	meshRows = 10
 )
@@ -25,8 +22,11 @@ type meshPoint struct {
 	color agg.Color
 }
 
-func main() {
-	ctx := agg.NewContext(width, height)
+type demo struct{}
+
+func (d *demo) Render(ctx *agg.Context) {
+	w := ctx.GetImage().Width()
+	h := ctx.GetImage().Height()
 	ctx.Clear(agg.Black)
 
 	a := ctx.GetAgg2D()
@@ -34,8 +34,8 @@ func main() {
 
 	rng := rand.New(rand.NewSource(1234))
 
-	cellW := float64(width-80) / float64(meshCols-1)
-	cellH := float64(height-80) / float64(meshRows-1)
+	cellW := float64(w-80) / float64(meshCols-1)
+	cellH := float64(h-80) / float64(meshRows-1)
 	startX, startY := 40.0, 40.0
 
 	// Build mesh vertices.
@@ -84,10 +84,12 @@ func main() {
 			)
 		}
 	}
+}
 
-	const filename = "gouraud_mesh.png"
-	if err := renderutil.SavePNG(ctx.GetImage(), filename); err != nil {
-		panic(err)
-	}
-	fmt.Println(filename)
+func main() {
+	demorunner.Run(demorunner.Config{
+		Title:  "Gouraud Mesh",
+		Width:  800,
+		Height: 600,
+	}, &demo{})
 }
