@@ -1,8 +1,6 @@
 package patternresample
 
 import (
-	"math"
-
 	agg "agg_go"
 	"agg_go/internal/demo/imageassets"
 	"agg_go/internal/demo/quadwarp"
@@ -50,9 +48,6 @@ func Draw(ctx *agg.Context, cfg Config) {
 	}
 
 	src := quadwarp.CopyWithGammaDir(cachedAgg, gamma)
-	if (mode == 1 || mode == 4 || mode == 5) && blur > 1.0 {
-		src = blurApprox(src, blur)
-	}
 
 	ctx.Clear(agg.White)
 
@@ -112,61 +107,4 @@ func Draw(ctx *agg.Context, cfg Config) {
 	})
 
 	quadwarp.ApplyGammaInv(ctx.GetImage(), gamma)
-}
-
-func blurApprox(src *agg.Image, blur float64) *agg.Image {
-	if src == nil || blur <= 1.0 {
-		return src
-	}
-	iterations := int(math.Round((blur - 1.0) * 4.0))
-	if iterations < 1 {
-		iterations = 1
-	}
-	w := src.Width()
-	h := src.Height()
-	cur := append([]byte(nil), src.Data...)
-	tmp := make([]byte, len(cur))
-
-	for it := 0; it < iterations; it++ {
-		for y := 0; y < h; y++ {
-			y0 := maxInt(y-1, 0)
-			y1 := minInt(y+1, h-1)
-			for x := 0; x < w; x++ {
-				x0 := maxInt(x-1, 0)
-				x1 := minInt(x+1, w-1)
-				var rs, gs, bs int
-				n := 0
-				for yy := y0; yy <= y1; yy++ {
-					for xx := x0; xx <= x1; xx++ {
-						i := (yy*w + xx) * 4
-						rs += int(cur[i+0])
-						gs += int(cur[i+1])
-						bs += int(cur[i+2])
-						n++
-					}
-				}
-				o := (y*w + x) * 4
-				tmp[o+0] = uint8(rs / n)
-				tmp[o+1] = uint8(gs / n)
-				tmp[o+2] = uint8(bs / n)
-				tmp[o+3] = cur[o+3]
-			}
-		}
-		cur, tmp = tmp, cur
-	}
-	return agg.NewImage(cur, w, h, w*4)
-}
-
-func minInt(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-func maxInt(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }

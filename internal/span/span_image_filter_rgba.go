@@ -719,6 +719,11 @@ func (sirga *SpanImageResampleRGBAAffine[Source]) Prepare() {
 	sirga.base.Prepare()
 }
 
+// Blur sets isotropic blur for affine RGBA resampling.
+func (sirga *SpanImageResampleRGBAAffine[Source]) Blur(v float64) {
+	sirga.base.Blur(v)
+}
+
 // Generate generates a span of RGBA pixels using affine resampling.
 func (sirga *SpanImageResampleRGBAAffine[Source]) Generate(span []color.RGBA8[color.Linear], x, y int) {
 	length := len(span)
@@ -860,6 +865,11 @@ func NewSpanImageResampleRGBAWithParams[Source RGBASourceInterface, Interpolator
 
 // Prepare is a compatibility no-op for the general resampler.
 func (sirg *SpanImageResampleRGBA[Source, Interpolator]) Prepare() {}
+
+// Blur sets isotropic blur for general RGBA resampling.
+func (sirg *SpanImageResampleRGBA[Source, Interpolator]) Blur(v float64) {
+	sirg.base.Blur(v)
+}
 
 // Generate generates a span of RGBA pixels using general resampling.
 func (sirg *SpanImageResampleRGBA[Source, Interpolator]) Generate(span []color.RGBA8[color.Linear], x, y int) {

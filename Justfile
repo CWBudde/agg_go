@@ -35,92 +35,41 @@ serve-web: build-wasm
     @echo "Serving AGG Go web demo on http://localhost:8080"
     @go run -e "package main; import ('net/http'; 'log'); func main() { log.Println('Serving on :8080'); log.Fatal(http.ListenAndServe(':8080', http.FileServer(http.Dir('web')))) }"
 
-# Build all examples
-build-examples:
-    @echo "Building core examples..."
-    @cd examples/core/basic/hello_world && go build -o /tmp/example-test . || echo "Failed: hello_world"
-    @cd examples/core/basic/shapes && go build -o /tmp/example-test . || echo "Failed: shapes" 
-    @cd examples/core/basic/lines && go build -o /tmp/example-test . || echo "Failed: lines"
-    @cd examples/core/basic/rounded_rect && go build -o /tmp/example-test . || echo "Failed: rounded_rect"
-    @cd examples/core/basic/colors_gray && go build -o /tmp/example-test . || echo "Failed: colors_gray"
-    @cd examples/core/basic/colors_rgba && go build -o /tmp/example-test . || echo "Failed: colors_rgba"
-    @cd examples/core/basic/embedded_fonts_hello && go build -o /tmp/example-test . || echo "Failed: embedded_fonts_hello"
-    @cd examples/core/basic/basic_demo && go build -o /tmp/example-test . || echo "Failed: basic_demo"
-    @cd examples/core/intermediate/gradients && go build -o /tmp/example-test . || echo "Failed: gradients"
-    @cd examples/core/intermediate/text_rendering && go build -o /tmp/example-test . || echo "Failed: text_rendering"
-    @cd examples/core/intermediate/controls/gamma_correction && go build -o /tmp/example-test . || echo "Failed: gamma_correction"
-    @cd examples/core/intermediate/controls/slider_demo && go build -o /tmp/example-test . || echo "Failed: slider_demo"
-    @cd examples/core/intermediate/controls/rbox_demo && go build -o /tmp/example-test . || echo "Failed: rbox_demo"
-    @cd examples/core/intermediate/controls/spline_demo && go build -o /tmp/example-test . || echo "Failed: spline_demo"
-    @cd examples/core/advanced/advanced_rendering && go build -o /tmp/example-test . || echo "Failed: advanced_rendering"
-    @echo "Building platform examples (with build tags)..."
-    @cd examples/platform/sdl2 && go build -tags sdl2 -o /tmp/example-test . || echo "SDL2 dependencies missing (optional)"
-    @cd examples/platform/x11 && go build -tags x11 -o /tmp/example-test . || echo "X11 dependencies missing (optional)"
-    @rm -f /tmp/example-test
+# Build all demo executables into ./bin/ (auto-discovers all examples/core/**/main.go)
+build-demos:
+    #!/usr/bin/env bash
+    set -e
+    mkdir -p bin
+    ok=0; fail=0
+    while IFS= read -r dir; do
+        # Path relative to examples/core/, e.g. "basic/hello_world"
+        relpath="${dir#examples/core/}"
+        # Strip the tier prefix (basic/ intermediate/ advanced/)
+        name="${relpath#basic/}"
+        name="${name#intermediate/}"
+        name="${name#advanced/}"
+        # Replace remaining slashes (e.g. controls/gamma_correction -> controls_gamma_correction)
+        name="${name//\//_}"
+        errfile=$(mktemp)
+        if go build -o "bin/${name}{{bin_ext}}" "./${dir}" 2>"$errfile"; then
+            echo "  ✓ ${name}"
+            ok=$((ok+1))
+        else
+            echo "  ✗ ${name}: $(head -1 "$errfile")"
+            fail=$((fail+1))
+        fi
+        rm -f "$errfile"
+    done < <(find examples/core -mindepth 2 -name "main.go" -exec dirname {} \; | sort)
+    echo ""
+    echo "${ok} built, ${fail} failed — executables in bin/"
 
-# Build specific example
+# Alias for backward compatibility
+build-examples: build-demos
+
+# Build specific example by path relative to examples/ (e.g. core/basic/shapes)
 build-example EXAMPLE:
     @echo "Building example: {{EXAMPLE}}"
-    go build -o /tmp/agg-example examples/{{EXAMPLE}}/main.go
-
-# Build all examples for current platform with organized output
-build-all-examples:
-    @echo "Building all examples for {{platform}} platform in bin/{{platform}}/"
-    @mkdir -p bin/{{platform}}
-    @echo "Building core examples..."
-    @go build -o bin/{{platform}}/hello_world{{bin_ext}} examples/core/basic/hello_world/main.go && echo "  ✓ hello_world" || echo "  ✗ hello_world"
-    @go build -o bin/{{platform}}/shapes{{bin_ext}} examples/core/basic/shapes/main.go && echo "  ✓ shapes" || echo "  ✗ shapes"
-    @go build -o bin/{{platform}}/lines{{bin_ext}} examples/core/basic/lines/main.go && echo "  ✓ lines" || echo "  ✗ lines"
-    @go build -o bin/{{platform}}/rounded_rect{{bin_ext}} examples/core/basic/rounded_rect/main.go && echo "  ✓ rounded_rect" || echo "  ✗ rounded_rect"
-    @go build -o bin/{{platform}}/colors_gray{{bin_ext}} examples/core/basic/colors_gray/main.go && echo "  ✓ colors_gray" || echo "  ✗ colors_gray"
-    @go build -o bin/{{platform}}/colors_rgba{{bin_ext}} examples/core/basic/colors_rgba/main.go && echo "  ✓ colors_rgba" || echo "  ✗ colors_rgba"
-    @go build -o bin/{{platform}}/embedded_fonts_hello{{bin_ext}} examples/core/basic/embedded_fonts_hello/main.go && echo "  ✓ embedded_fonts_hello" || echo "  ✗ embedded_fonts_hello"
-    @go build -o bin/{{platform}}/basic_demo{{bin_ext}} examples/core/basic/basic_demo/main.go && echo "  ✓ basic_demo" || echo "  ✗ basic_demo"
-    @go build -o bin/{{platform}}/gradients{{bin_ext}} examples/core/intermediate/gradients/main.go && echo "  ✓ gradients" || echo "  ✗ gradients"
-    @go build -o bin/{{platform}}/text_rendering{{bin_ext}} examples/core/intermediate/text_rendering/main.go && echo "  ✓ text_rendering" || echo "  ✗ text_rendering"
-    @go build -o bin/{{platform}}/advanced_rendering{{bin_ext}} examples/core/advanced/advanced_rendering/main.go && echo "  ✓ advanced_rendering" || echo "  ✗ advanced_rendering"
-    @echo "Building platform-specific examples..."
-    @go build -tags x11 -o bin/{{platform}}/x11_demo{{bin_ext}} examples/platform/x11/main.go && echo "  ✓ x11_demo" || echo "  ✗ x11_demo (X11 dependencies missing)"
-    @go build -tags sdl2 -o bin/{{platform}}/sdl2_demo{{bin_ext}} examples/platform/sdl2/main.go && echo "  ✓ sdl2_demo" || echo "  ✗ sdl2_demo (SDL2 dependencies missing)"
-    @echo "All examples built in bin/{{platform}}/"
-
-# Build core examples for multiple platforms (cross-compile)
-build-all-examples-multi:
-    @echo "Building core examples for multiple platforms..."
-    @mkdir -p bin/linux bin/darwin bin/windows
-    @echo "Cross-compiling for Linux..."
-    @GOOS=linux go build -o bin/linux/hello_world examples/core/basic/hello_world/main.go && echo "  ✓ linux/hello_world" || echo "  ✗ linux/hello_world"
-    @GOOS=linux go build -o bin/linux/shapes examples/core/basic/shapes/main.go && echo "  ✓ linux/shapes" || echo "  ✗ linux/shapes"
-    @echo "Cross-compiling for macOS..."
-    @GOOS=darwin go build -o bin/darwin/hello_world examples/core/basic/hello_world/main.go && echo "  ✓ darwin/hello_world" || echo "  ✗ darwin/hello_world"
-    @GOOS=darwin go build -o bin/darwin/shapes examples/core/basic/shapes/main.go && echo "  ✓ darwin/shapes" || echo "  ✗ darwin/shapes"
-    @echo "Cross-compiling for Windows..."
-    @GOOS=windows go build -o bin/windows/hello_world.exe examples/core/basic/hello_world/main.go && echo "  ✓ windows/hello_world.exe" || echo "  ✗ windows/hello_world.exe"
-    @GOOS=windows go build -o bin/windows/shapes.exe examples/core/basic/shapes/main.go && echo "  ✓ windows/shapes.exe" || echo "  ✗ windows/shapes.exe"
-    @echo "Cross-compilation complete (selected examples)"
-
-# Build only core examples (platform-independent, but organized by platform)
-build-core-examples:
-    @echo "Building core examples for {{platform}} platform in bin/{{platform}}/"
-    @mkdir -p bin/{{platform}}
-    @go build -o bin/{{platform}}/hello_world{{bin_ext}} examples/core/basic/hello_world/main.go && echo "  ✓ hello_world" || echo "  ✗ hello_world"
-    @go build -o bin/{{platform}}/shapes{{bin_ext}} examples/core/basic/shapes/main.go && echo "  ✓ shapes" || echo "  ✗ shapes"
-    @go build -o bin/{{platform}}/lines{{bin_ext}} examples/core/basic/lines/main.go && echo "  ✓ lines" || echo "  ✗ lines"
-    @go build -o bin/{{platform}}/rounded_rect{{bin_ext}} examples/core/basic/rounded_rect/main.go && echo "  ✓ rounded_rect" || echo "  ✗ rounded_rect"
-    @go build -o bin/{{platform}}/colors_gray{{bin_ext}} examples/core/basic/colors_gray/main.go && echo "  ✓ colors_gray" || echo "  ✗ colors_gray"
-    @go build -o bin/{{platform}}/colors_rgba{{bin_ext}} examples/core/basic/colors_rgba/main.go && echo "  ✓ colors_rgba" || echo "  ✗ colors_rgba"
-    @go build -o bin/{{platform}}/embedded_fonts_hello{{bin_ext}} examples/core/basic/embedded_fonts_hello/main.go && echo "  ✓ embedded_fonts_hello" || echo "  ✗ embedded_fonts_hello"
-    @go build -o bin/{{platform}}/basic_demo{{bin_ext}} examples/core/basic/basic_demo/main.go && echo "  ✓ basic_demo" || echo "  ✗ basic_demo"
-    @go build -o bin/{{platform}}/gradients{{bin_ext}} examples/core/intermediate/gradients/main.go && echo "  ✓ gradients" || echo "  ✗ gradients"
-    @go build -o bin/{{platform}}/text_rendering{{bin_ext}} examples/core/intermediate/text_rendering/main.go && echo "  ✓ text_rendering" || echo "  ✗ text_rendering"
-    @go build -o bin/{{platform}}/advanced_rendering{{bin_ext}} examples/core/advanced/advanced_rendering/main.go && echo "  ✓ advanced_rendering" || echo "  ✗ advanced_rendering"
-
-# Build only platform-specific examples
-build-platform-examples:
-    @echo "Building platform-specific examples for {{platform}}..."
-    @mkdir -p bin/{{platform}}
-    @go build -tags x11 -o bin/{{platform}}/x11_demo{{bin_ext}} examples/platform/x11/main.go && echo "  ✓ x11_demo" || echo "  ✗ x11_demo (X11 dependencies missing)"
-    @go build -tags sdl2 -o bin/{{platform}}/sdl2_demo{{bin_ext}} examples/platform/sdl2/main.go && echo "  ✓ sdl2_demo" || echo "  ✗ sdl2_demo (SDL2 dependencies missing)"
+    go build -o bin/$(basename {{EXAMPLE}}){{bin_ext}} ./examples/{{EXAMPLE}}
 
 # Test commands
 
