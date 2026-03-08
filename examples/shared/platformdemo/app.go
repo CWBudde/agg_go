@@ -12,11 +12,11 @@ import (
 
 // shape represents a single animated drawable shape.
 type shape struct {
-	x, y   float64
-	vx, vy float64
+	x, y       float64
+	vx, vy     float64
 	r, g, b, a uint8
-	size   float64
-	kind   string // "circle", "rect", "line", "triangle"
+	size       float64
+	kind       string // "circle", "rect", "line", "triangle"
 }
 
 // App is the shared interactive demo application.
@@ -116,8 +116,8 @@ func (app *App) OnMouseButtonDown(x, y int, flags platform.InputFlags) {
 		s := shape{
 			x:    float64(x),
 			y:    float64(y),
-			vx:   float64((x%300) - 150),
-			vy:   float64((y%300) - 150),
+			vx:   float64((x % 300) - 150),
+			vy:   float64((y % 300) - 150),
 			r:    uint8((app.frameCount + x) % 256),
 			g:    uint8((app.frameCount + y) % 256),
 			b:    uint8((app.frameCount + x + y) % 256),

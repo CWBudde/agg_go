@@ -100,7 +100,6 @@ func (app *Application) isPointInTriangle(px, py, offsetX float64) bool {
 	return a >= 0 && b >= 0 && c >= 0
 }
 
-
 // calculateCoverage calculates anti-aliased coverage for a pixel
 func (app *Application) calculateCoverage(px, py, offsetX float64, useAntiAliasing bool) float64 {
 	if !useAntiAliasing {

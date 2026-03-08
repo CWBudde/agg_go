@@ -619,8 +619,12 @@ export const demoURLHandlers = {
           document.getElementById("patternResampleTypeSelector").value,
           10,
         ),
-        prg: parseFloat(document.getElementById("patternResampleGammaSlider").value),
-        prb: parseFloat(document.getElementById("patternResampleBlurSlider").value),
+        prg: parseFloat(
+          document.getElementById("patternResampleGammaSlider").value,
+        ),
+        prb: parseFloat(
+          document.getElementById("patternResampleBlurSlider").value,
+        ),
       });
     },
     restore(p) {

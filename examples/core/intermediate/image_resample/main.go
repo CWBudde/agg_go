@@ -6,8 +6,10 @@ import (
 	"agg_go/examples/shared/demorunner"
 )
 
-const resampleMode = 4
-const resampleBlur = 1.0
+const (
+	resampleMode = 4
+	resampleBlur = 1.0
+)
 
 type demo struct{}
 
