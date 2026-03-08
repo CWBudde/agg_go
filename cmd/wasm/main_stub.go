@@ -24,6 +24,14 @@ var (
 	_             func(int)                                                                    = setImageResampleType
 	_             func(float64)                                                                = setImageResampleBlur
 	_             func(float64, float64, float64, float64, float64, float64, float64, float64) = setImageResampleQuad
+	_             func(int)                                                                    = setPatternPerspectiveType
+	_             func(float64, float64, float64, float64, float64, float64, float64, float64) = setPatternPerspectiveQuad
+	_             func(int)                                                                    = setPatternResampleType
+	_             func(float64)                                                                = setPatternResampleGamma
+	_             func(float64)                                                                = setPatternResampleBlur
+	_             func(float64, float64, float64, float64, float64, float64, float64, float64) = setPatternResampleQuad
+	_             func(int)                                                                    = setImagePerspectiveType
+	_             func(float64, float64, float64, float64, float64, float64, float64, float64) = setImagePerspectiveQuad
 	_             func(float64)                                                                = setLinePatternScaleX
 	_             func(float64)                                                                = setLinePatternStartX
 	_             func(float64)                                                                = setLinePatternClipScaleX
@@ -65,6 +73,7 @@ func main() {
 			"alpha_mask2", "alpha_mask3", "compositing2",
 			"image1", "image_transforms", "image_alpha", "pattern_fill",
 			"gradient_focal", "line_thickness", "rasterizer_compound", "image_resample", "line_patterns_clip", "line_patterns", "scanline_boolean2",
+			"pattern_perspective", "pattern_resample", "image_perspective",
 		}
 	}
 
@@ -193,6 +202,12 @@ func renderDemoToFile(demoType, outDir string) error {
 		drawRasterizerCompoundDemo()
 	case "image_resample":
 		drawImageResampleDemo()
+	case "pattern_perspective":
+		drawPatternPerspectiveDemo()
+	case "pattern_resample":
+		drawPatternResampleDemo()
+	case "image_perspective":
+		drawImagePerspectiveDemo()
 	case "line_patterns_clip":
 		drawLinePatternsClipDemo()
 	case "line_patterns":

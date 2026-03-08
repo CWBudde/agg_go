@@ -149,6 +149,12 @@ export const demoDescriptions = {
     "Image affine transformation. Port of AGG's image1.cpp. A large ellipse is filled with a bilinear-filtered image that rotates and scales with the ellipse. Use the angle and scale sliders to transform the image.",
   image_resample:
     "Port of AGG's image_resample demo (closest current affine equivalent). Renders a clipped transformed image inside a 4-point quad; affine modes and resample blur are URL-driven: irt, irb, irx0..iry3.",
+  image_perspective:
+    "Port of AGG's image_perspective demo. Modes and quad are URL-driven: ipt (0..2), ipx0..ipy3.",
+  pattern_perspective:
+    "Port of AGG's pattern_perspective demo. Reflect-wrapped AGG pattern warped through affine/bilinear/perspective; URL params: ppt (0..2), ppx0..ppy3.",
+  pattern_resample:
+    "Port of AGG's pattern_resample demo. Includes perspective lerp/exact and resample paths with gamma+blur controls via URL: prt (0..5), prg, prb, prx0..pry3.",
   image_transforms:
     "Image transform examples. Port of AGG's image_transforms.cpp. A 14-pointed star polygon is filled with an affine-filtered image. Choose between 7 different examples showing how the image matrix can be set independently from the polygon matrix. Drag the image center point (red handle) to reposition it.",
   image_alpha:

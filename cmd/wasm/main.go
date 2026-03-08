@@ -199,6 +199,69 @@ func main() {
 		}
 		return nil
 	}))
+	js.Global().Set("setPatternPerspectiveType", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setPatternPerspectiveType(args[0].Int())
+		}
+		return nil
+	}))
+	js.Global().Set("setPatternPerspectiveQuad", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) >= 8 {
+			setPatternPerspectiveQuad(
+				args[0].Float(), args[1].Float(),
+				args[2].Float(), args[3].Float(),
+				args[4].Float(), args[5].Float(),
+				args[6].Float(), args[7].Float(),
+			)
+		}
+		return nil
+	}))
+	js.Global().Set("setPatternResampleType", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setPatternResampleType(args[0].Int())
+		}
+		return nil
+	}))
+	js.Global().Set("setPatternResampleGamma", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setPatternResampleGamma(args[0].Float())
+		}
+		return nil
+	}))
+	js.Global().Set("setPatternResampleBlur", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setPatternResampleBlur(args[0].Float())
+		}
+		return nil
+	}))
+	js.Global().Set("setPatternResampleQuad", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) >= 8 {
+			setPatternResampleQuad(
+				args[0].Float(), args[1].Float(),
+				args[2].Float(), args[3].Float(),
+				args[4].Float(), args[5].Float(),
+				args[6].Float(), args[7].Float(),
+			)
+		}
+		return nil
+	}))
+	js.Global().Set("setImagePerspectiveType", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setImagePerspectiveType(args[0].Int())
+		}
+		return nil
+	}))
+	js.Global().Set("setImagePerspectiveQuad", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) >= 8 {
+			setImagePerspectiveQuad(
+				args[0].Float(), args[1].Float(),
+				args[2].Float(), args[3].Float(),
+				args[4].Float(), args[5].Float(),
+				args[6].Float(), args[7].Float(),
+			)
+		}
+		return nil
+	}))
 	js.Global().Set("setLinePatternClipScaleX", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
 		if len(args) > 0 {
 			setLinePatternClipScaleX(args[0].Float())
@@ -1265,6 +1328,12 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 		drawRasterizerCompoundDemo()
 	case "image_resample":
 		drawImageResampleDemo()
+	case "pattern_perspective":
+		drawPatternPerspectiveDemo()
+	case "pattern_resample":
+		drawPatternResampleDemo()
+	case "image_perspective":
+		drawImagePerspectiveDemo()
 	case "line_patterns_clip":
 		drawLinePatternsClipDemo()
 	case "line_patterns":

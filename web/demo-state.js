@@ -541,6 +541,108 @@ export const demoURLHandlers = {
       }
     },
   },
+  image_perspective: {
+    persist() {
+      // URL-only controls (no visible widget panel).
+    },
+    restore(p) {
+      if (p.has("ipt")) {
+        setImagePerspectiveType(parseInt(p.get("ipt"), 10));
+      }
+      const keys = [
+        "ipx0",
+        "ipy0",
+        "ipx1",
+        "ipy1",
+        "ipx2",
+        "ipy2",
+        "ipx3",
+        "ipy3",
+      ];
+      if (keys.every((k) => p.has(k))) {
+        setImagePerspectiveQuad(
+          parseFloat(p.get("ipx0")),
+          parseFloat(p.get("ipy0")),
+          parseFloat(p.get("ipx1")),
+          parseFloat(p.get("ipy1")),
+          parseFloat(p.get("ipx2")),
+          parseFloat(p.get("ipy2")),
+          parseFloat(p.get("ipx3")),
+          parseFloat(p.get("ipy3")),
+        );
+      }
+    },
+  },
+  pattern_perspective: {
+    persist() {
+      // URL-only controls (no visible widget panel).
+    },
+    restore(p) {
+      if (p.has("ppt")) {
+        setPatternPerspectiveType(parseInt(p.get("ppt"), 10));
+      }
+      const keys = [
+        "ppx0",
+        "ppy0",
+        "ppx1",
+        "ppy1",
+        "ppx2",
+        "ppy2",
+        "ppx3",
+        "ppy3",
+      ];
+      if (keys.every((k) => p.has(k))) {
+        setPatternPerspectiveQuad(
+          parseFloat(p.get("ppx0")),
+          parseFloat(p.get("ppy0")),
+          parseFloat(p.get("ppx1")),
+          parseFloat(p.get("ppy1")),
+          parseFloat(p.get("ppx2")),
+          parseFloat(p.get("ppy2")),
+          parseFloat(p.get("ppx3")),
+          parseFloat(p.get("ppy3")),
+        );
+      }
+    },
+  },
+  pattern_resample: {
+    persist() {
+      // URL-only controls (no visible widget panel).
+    },
+    restore(p) {
+      if (p.has("prt")) {
+        setPatternResampleType(parseInt(p.get("prt"), 10));
+      }
+      if (p.has("prg")) {
+        setPatternResampleGamma(parseFloat(p.get("prg")));
+      }
+      if (p.has("prb")) {
+        setPatternResampleBlur(parseFloat(p.get("prb")));
+      }
+      const keys = [
+        "prx0",
+        "pry0",
+        "prx1",
+        "pry1",
+        "prx2",
+        "pry2",
+        "prx3",
+        "pry3",
+      ];
+      if (keys.every((k) => p.has(k))) {
+        setPatternResampleQuad(
+          parseFloat(p.get("prx0")),
+          parseFloat(p.get("pry0")),
+          parseFloat(p.get("prx1")),
+          parseFloat(p.get("pry1")),
+          parseFloat(p.get("prx2")),
+          parseFloat(p.get("pry2")),
+          parseFloat(p.get("prx3")),
+          parseFloat(p.get("pry3")),
+        );
+      }
+    },
+  },
 
   line_patterns_clip: {
     persist() {

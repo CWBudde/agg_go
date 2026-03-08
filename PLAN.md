@@ -343,7 +343,20 @@ idiomatic in Go.
 - [x] `line_patterns.cpp`
 - [x] `rasterizer_compound.cpp`
 - [x] `scanline_boolean2.cpp`
-- [ ] `pattern_perspective.cpp`, `pattern_resample.cpp`, `image_perspective.cpp`
+- [x] `pattern_perspective.cpp`, `pattern_resample.cpp`, `image_perspective.cpp`
+      source `../agg-2.6/agg-src/examples/pattern_perspective.cpp`,
+      `../agg-2.6/agg-src/examples/pattern_resample.cpp`,
+      `../agg-2.6/agg-src/examples/image_perspective.cpp`,
+      standalone `examples/core/intermediate/pattern_perspective/main.go`,
+      `examples/core/intermediate/pattern_resample/main.go`,
+      `examples/core/intermediate/image_perspective/main.go`,
+      web `cmd/wasm/demo_pattern_perspective.go`,
+      `cmd/wasm/demo_pattern_resample.go`,
+      `cmd/wasm/demo_image_perspective.go` + `web/index.html`,
+      shared rendering in `internal/demo/quadwarp/draw.go`,
+      assets from `examples/shared/art/{agg.ppm,spheres.ppm}` embedded via
+      `internal/demo/imageassets/assets.go`,
+      verification via `cmd/wasm/main_stub.go`/`cmd/wasm/render_test.go` demo switch paths.
 
 ### 9.3 Medium-priority demo ports
 
