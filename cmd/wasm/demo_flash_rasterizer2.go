@@ -313,12 +313,17 @@ func (v *flatVertexSource) Vertex(x, y *float64) uint32 {
 }
 
 // invertedFlatVS iterates FlatVertex slices with polygon winding inverted.
-// This mirrors C++ path_storage::invert_polygon:
+// This mirrors C++ path_storage::invert_polygon exactly:
 //
-//	commands are shifted by one position (the leading MoveTo shifts to the last vertex),
-//	and the coordinate sequence is reversed.
+//  1. Commands are shifted left by one position.
+//  2. The original first command (MoveTo) moves to the last position.
+//  3. Coordinates are reversed.
 //
-// The resulting order is: LineTo(xN), LineTo(xN-1), …, LineTo(x1), MoveTo(x0).
+// Result: LineTo(pN), LineTo(pN-1), …, LineTo(p1), MoveTo(p0).
+//
+// The first vertex being LineTo (not MoveTo) is intentional — with auto_close(false),
+// it draws a stitching edge from the previous sub-path's endpoint, which is how the
+// C++ flash_rasterizer2 demo achieves proper compound-shape fill stitching.
 type invertedFlatVS struct {
 	verts []shapesdata.FlatVertex
 	pos   int
@@ -330,19 +335,18 @@ func (v *invertedFlatVS) Vertex(x, y *float64) uint32 {
 	if v.pos >= n {
 		return uint32(basics.PathCmdStop)
 	}
-	// reversed index into verts
-	i := n - 1 - v.pos
-	fv := v.verts[i]
+	// Reversed coordinate index.
+	fv := v.verts[n-1-v.pos]
 	*x, *y = fv.X, fv.Y
 
-	// First emitted vertex gets MoveTo (sets pen position without spurious edge).
-	// Last emitted vertex also gets MoveTo (original start point, same as C++ invert_polygon).
-	// All intermediate vertices get LineTo.
+	// Shifted command: cmd[pos] = original_cmd[pos+1], except last gets original_cmd[0].
+	// Since flat verts are [MoveTo, LineTo, …, LineTo], this yields
+	// [LineTo, LineTo, …, LineTo, MoveTo].
 	var cmd uint32
-	if v.pos == 0 || v.pos == n-1 {
-		cmd = shapesdata.PathCmdMoveTo
+	if v.pos < n-1 {
+		cmd = v.verts[v.pos+1].Cmd
 	} else {
-		cmd = shapesdata.PathCmdLineTo
+		cmd = v.verts[0].Cmd // MoveTo
 	}
 	v.pos++
 	return cmd

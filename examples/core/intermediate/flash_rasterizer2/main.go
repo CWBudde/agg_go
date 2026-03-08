@@ -285,6 +285,10 @@ func (v *flatVertexSource) Vertex(x, y *float64) uint32 {
 	return fv.Cmd
 }
 
+// invertedFlatVS iterates FlatVertex slices with polygon winding inverted,
+// matching C++ path_storage::invert_polygon exactly:
+// commands shifted left by one, original MoveTo goes to last, coordinates reversed.
+// Result: LineTo(pN), LineTo(pN-1), …, LineTo(p1), MoveTo(p0).
 type invertedFlatVS struct {
 	verts []shapesdata.FlatVertex
 	pos   int
@@ -296,17 +300,15 @@ func (v *invertedFlatVS) Vertex(x, y *float64) uint32 {
 	if v.pos >= n {
 		return uint32(basics.PathCmdStop)
 	}
-	i := n - 1 - v.pos
-	fv := v.verts[i]
+	fv := v.verts[n-1-v.pos]
 	*x, *y = fv.X, fv.Y
-	// First emitted vertex gets MoveTo (sets pen position without spurious edge).
-	// Last emitted vertex also gets MoveTo (original start point, same as C++ invert_polygon).
-	// All intermediate vertices get LineTo.
+
+	// Shifted command: cmd[pos] = original_cmd[pos+1], last gets original_cmd[0].
 	var cmd uint32
-	if v.pos == 0 || v.pos == n-1 {
-		cmd = shapesdata.PathCmdMoveTo
+	if v.pos < n-1 {
+		cmd = v.verts[v.pos+1].Cmd
 	} else {
-		cmd = shapesdata.PathCmdLineTo
+		cmd = v.verts[0].Cmd // MoveTo
 	}
 	v.pos++
 	return cmd
