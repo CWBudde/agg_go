@@ -851,6 +851,17 @@ export function setupEventHandlers(
     renderSelectedDemo();
   });
 
+  // Mouse wheel zoom for flash_rasterizer2
+  canvas.addEventListener("wheel", (e) => {
+    if (selector.value !== "flash_rasterizer2") return;
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const my = (e.clientY - rect.top) * (canvas.height / rect.height);
+    applyFlash2Wheel(mx, my, e.deltaY);
+    renderSelectedDemo();
+  }, { passive: false });
+
   // gpc_test controls
   document.getElementById("gpcSceneSelector").addEventListener("change", () => {
     const val = parseInt(document.getElementById("gpcSceneSelector").value, 10);
