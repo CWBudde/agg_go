@@ -274,19 +274,12 @@ func (s *SpanInterpolatorLinearSubdiv[T]) Next() {
 			subdivLength = s.subdivSize
 		}
 
-		// Calculate next subdivision start point
-		tx := float64(s.srcX) / float64(s.subpixelScale)
+		// AGG parity: transform only (src_x/subpixel + len, src_y) once.
+		tx := float64(s.srcX)/float64(s.subpixelScale) + float64(subdivLength)
 		ty := s.srcY
 		s.transformer.Transform(&tx, &ty)
-
-		// Calculate subdivision end point
-		endX := tx + float64(subdivLength)
-		endY := ty
-		s.transformer.Transform(&endX, &endY)
-
-		// Reinitialize DDA interpolators for this subdivision.
-		s.liX.Init(s.liX.Y(), basics.IRound(endX*float64(s.subpixelScale)), subdivLength)
-		s.liY.Init(s.liY.Y(), basics.IRound(endY*float64(s.subpixelScale)), subdivLength)
+		s.liX.Init(s.liX.Y(), basics.IRound(tx*float64(s.subpixelScale)), subdivLength)
+		s.liY.Init(s.liY.Y(), basics.IRound(ty*float64(s.subpixelScale)), subdivLength)
 
 		s.pos = 0
 	}
