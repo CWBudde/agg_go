@@ -20,7 +20,7 @@ func BenchmarkDemos(b *testing.B) {
 		"rasterizers", "flash_rasterizer", "perspective", "bezier_div",
 		"gouraud_mesh", "trans_curve", "distortions", "trans_polar",
 		"trans_curve2", "circles", "blur", "simple_blur",
-		"gamma_ctrl", "gamma_tuner", "lion_lens", "gradient_focal", "line_thickness", "rasterizer_compound", "image_resample", "line_patterns_clip", "line_patterns",
+		"gamma_ctrl", "gamma_tuner", "lion_lens", "gradient_focal", "line_thickness", "rasterizer_compound", "image_resample", "line_patterns_clip", "line_patterns", "scanline_boolean2",
 	}
 
 	for _, demo := range demos {
@@ -122,6 +122,8 @@ func renderDemoForBenchmark(demoType string) {
 		drawLinePatternsClipDemo()
 	case "line_patterns":
 		drawLinePatternsDemo()
+	case "scanline_boolean2":
+		drawScanlineBoolean2Demo()
 	}
 }
 

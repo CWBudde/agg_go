@@ -34,6 +34,7 @@ func setCompoundAlpha1(v float64) {
 	}
 	compoundAlpha1 = v
 }
+
 func setCompoundAlpha2(v float64) {
 	if v < 0 {
 		v = 0
@@ -43,6 +44,7 @@ func setCompoundAlpha2(v float64) {
 	}
 	compoundAlpha2 = v
 }
+
 func setCompoundAlpha3(v float64) {
 	if v < 0 {
 		v = 0
@@ -52,6 +54,7 @@ func setCompoundAlpha3(v float64) {
 	}
 	compoundAlpha3 = v
 }
+
 func setCompoundAlpha4(v float64) {
 	if v < 0 {
 		v = 0

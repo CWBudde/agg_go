@@ -223,6 +223,36 @@ func main() {
 		}
 		return nil
 	}))
+	js.Global().Set("setScanlineBoolean2Mode", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setScanlineBoolean2Mode(args[0].Int())
+		}
+		return nil
+	}))
+	js.Global().Set("setScanlineBoolean2FillRule", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setScanlineBoolean2FillRule(args[0].Int())
+		}
+		return nil
+	}))
+	js.Global().Set("setScanlineBoolean2Scanline", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setScanlineBoolean2Scanline(args[0].Int())
+		}
+		return nil
+	}))
+	js.Global().Set("setScanlineBoolean2Operation", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setScanlineBoolean2Operation(args[0].Int())
+		}
+		return nil
+	}))
+	js.Global().Set("setScanlineBoolean2Center", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) >= 2 {
+			setScanlineBoolean2Center(args[0].Float(), args[1].Float())
+		}
+		return nil
+	}))
 
 	// gamma_tuner setters
 	js.Global().Set("setGammaTunerR", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
@@ -1239,6 +1269,8 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 		drawLinePatternsClipDemo()
 	case "line_patterns":
 		drawLinePatternsDemo()
+	case "scanline_boolean2":
+		drawScanlineBoolean2Demo()
 	default:
 		logStatus("unknown demo type: " + demoType)
 		return nil

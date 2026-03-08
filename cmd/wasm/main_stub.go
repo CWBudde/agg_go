@@ -18,6 +18,31 @@ var (
 	ctx           *agg.Context
 	canvasBuf     []uint8
 	lionPaths     []LionPath
+	_             func(float64)                                                                = setGradientFocalGamma
+	_             func(float64)                                                                = setGradientFocalFX
+	_             func(float64)                                                                = setGradientFocalFY
+	_             func(int)                                                                    = setImageResampleType
+	_             func(float64)                                                                = setImageResampleBlur
+	_             func(float64, float64, float64, float64, float64, float64, float64, float64) = setImageResampleQuad
+	_             func(float64)                                                                = setLinePatternScaleX
+	_             func(float64)                                                                = setLinePatternStartX
+	_             func(float64)                                                                = setLinePatternClipScaleX
+	_             func(float64)                                                                = setLinePatternClipStartX
+	_             func(float64)                                                                = setLineThicknessFactor
+	_             func(float64)                                                                = setLineThicknessBlur
+	_             func(bool)                                                                   = setLineThicknessMono
+	_             func(bool)                                                                   = setLineThicknessInvert
+	_             func(float64)                                                                = setCompoundWidth
+	_             func(float64)                                                                = setCompoundAlpha1
+	_             func(float64)                                                                = setCompoundAlpha2
+	_             func(float64)                                                                = setCompoundAlpha3
+	_             func(float64)                                                                = setCompoundAlpha4
+	_             func(bool)                                                                   = setCompoundInvert
+	_             func(int)                                                                    = setScanlineBoolean2Mode
+	_             func(int)                                                                    = setScanlineBoolean2FillRule
+	_             func(int)                                                                    = setScanlineBoolean2Scanline
+	_             func(int)                                                                    = setScanlineBoolean2Operation
+	_             func(float64, float64)                                                       = setScanlineBoolean2Center
 )
 
 // logStatus prints a status message to stdout (replaces the JS DOM update in main.go).
@@ -39,7 +64,7 @@ func main() {
 			"trans_curve2", "gamma_ctrl", "gamma_tuner", "lion_lens", "circles", "blur", "simple_blur",
 			"alpha_mask2", "alpha_mask3", "compositing2",
 			"image1", "image_transforms", "image_alpha", "pattern_fill",
-			"gradient_focal", "line_thickness", "rasterizer_compound", "image_resample", "line_patterns_clip", "line_patterns",
+			"gradient_focal", "line_thickness", "rasterizer_compound", "image_resample", "line_patterns_clip", "line_patterns", "scanline_boolean2",
 		}
 	}
 
@@ -172,6 +197,8 @@ func renderDemoToFile(demoType, outDir string) error {
 		drawLinePatternsClipDemo()
 	case "line_patterns":
 		drawLinePatternsDemo()
+	case "scanline_boolean2":
+		drawScanlineBoolean2Demo()
 	default:
 		return fmt.Errorf("unknown demo: %q", demoType)
 	}

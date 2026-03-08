@@ -25,6 +25,7 @@ type pathSourceAdapter struct {
 func (a *pathSourceAdapter) Rewind(pathID uint32) {
 	a.ps.Rewind(uint(pathID))
 }
+
 func (a *pathSourceAdapter) Vertex(x, y *float64) uint32 {
 	vx, vy, cmd := a.ps.NextVertex()
 	*x, *y = vx, vy
@@ -104,9 +105,9 @@ type lineOutlineImageAdapter struct {
 
 func (a *lineOutlineImageAdapter) AccurateJoinOnly() bool                         { return a.ren.AccurateJoinOnly() }
 func (a *lineOutlineImageAdapter) Color(c color.RGBA8[color.Linear])              {}
-func (a *lineOutlineImageAdapter) Line0(lp primitives.LineParameters)             {}
-func (a *lineOutlineImageAdapter) Line1(lp primitives.LineParameters, sx, sy int) {}
-func (a *lineOutlineImageAdapter) Line2(lp primitives.LineParameters, ex, ey int) {}
+func (a *lineOutlineImageAdapter) Line0(lp primitives.LineParameters)             {} //nolint:gocritic // Interface requires value parameter.
+func (a *lineOutlineImageAdapter) Line1(lp primitives.LineParameters, sx, sy int) {} //nolint:gocritic // Interface requires value parameter.
+func (a *lineOutlineImageAdapter) Line2(lp primitives.LineParameters, ex, ey int) {} //nolint:gocritic // Interface requires value parameter.
 func (a *lineOutlineImageAdapter) Pie(x, y, x1, y1, x2, y2 int)                   {}
 func (a *lineOutlineImageAdapter) Semidot(cmp func(int) bool, x, y, x1, y1 int)   {}
 func (a *lineOutlineImageAdapter) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) {

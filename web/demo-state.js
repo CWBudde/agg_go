@@ -569,6 +569,32 @@ export const demoURLHandlers = {
       }
     },
   },
+
+  scanline_boolean2: {
+    persist() {
+      // URL-only controls (no visible widget panel).
+    },
+    restore(p) {
+      if (p.has("sb2m")) {
+        setScanlineBoolean2Mode(parseInt(p.get("sb2m"), 10));
+      }
+      if (p.has("sb2f")) {
+        setScanlineBoolean2FillRule(parseInt(p.get("sb2f"), 10));
+      }
+      if (p.has("sb2s")) {
+        setScanlineBoolean2Scanline(parseInt(p.get("sb2s"), 10));
+      }
+      if (p.has("sb2o")) {
+        setScanlineBoolean2Operation(parseInt(p.get("sb2o"), 10));
+      }
+      if (p.has("sb2x") && p.has("sb2y")) {
+        setScanlineBoolean2Center(
+          parseFloat(p.get("sb2x")),
+          parseFloat(p.get("sb2y")),
+        );
+      }
+    },
+  },
 };
 
 export function persistDemoParams(demoType) {

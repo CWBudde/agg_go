@@ -144,6 +144,13 @@ export const ALL_DEMO_PARAMS = [
   // line_patterns
   "lpsx",
   "lpst",
+  // scanline_boolean2
+  "sb2m",
+  "sb2f",
+  "sb2s",
+  "sb2o",
+  "sb2x",
+  "sb2y",
 ];
 
 export function clearDemoParams() {

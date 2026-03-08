@@ -325,6 +325,12 @@ idiomatic in Go.
       assets copied from `../agg-2.6/agg-src/examples/line_patterns.bmp.zip` into
       `examples/shared/art/1.bmp..9.bmp` and published for web in `.github/workflows/deploy-wasm.yml`,
       verification via `cmd/wasm/main_stub.go`/`cmd/wasm/render_test.go` demo switch paths.
+- [x] `scanline_boolean2.cpp` recorded and wired:
+      source `../agg-2.6/agg-src/examples/scanline_boolean2.cpp`,
+      standalone `examples/core/intermediate/scanline_boolean2/main.go`,
+      web `cmd/wasm/demo_scanline_boolean2.go` + `web/index.html`,
+      shared shape assets/code reused via `internal/demo/aggshapes/shapes.go`,
+      verification via `cmd/wasm/main_stub.go`/`cmd/wasm/render_test.go` demo switch paths.
 
 ### 9.2 High-priority remaining demo ports
 
@@ -336,7 +342,7 @@ idiomatic in Go.
 - [x] `line_patterns_clip.cpp` (remaining in this cluster: none)
 - [x] `line_patterns.cpp`
 - [x] `rasterizer_compound.cpp`
-- [ ] `scanline_boolean2.cpp`
+- [x] `scanline_boolean2.cpp`
 - [ ] `pattern_perspective.cpp`, `pattern_resample.cpp`, `image_perspective.cpp`
 
 ### 9.3 Medium-priority demo ports

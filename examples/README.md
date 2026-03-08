@@ -27,6 +27,7 @@ Core examples use only the internal Go implementation and are guaranteed to buil
 - **rasterizer_compound/** - Layered compound rasterizer demo (port of AGG `rasterizer_compound.cpp`)
 - **image_resample/** - Image resampling transform demo (port of AGG `image_resample.cpp`)
 - **line_patterns_clip/** - Patterned line clipping demo (port of AGG `line_patterns_clip.cpp`)
+- **scanline_boolean2/** - Boolean operations benchmark/demo (port of AGG `scanline_boolean2.cpp`)
 - **controls/** - Interactive UI controls (sliders, checkboxes, etc.)
 - **text_rendering/** - Advanced text rendering features
 - **paths/** - Complex path operations and curves

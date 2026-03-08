@@ -82,6 +82,8 @@ export const demoDescriptions = {
     "Port of AGG's line_patterns demo core. Draws nine patterned Bezier curves using the original line pattern assets. URL parameters: lpsx (scale_x), lpst (start_x).",
   line_patterns_clip:
     "Port of AGG's line_patterns_clip demo core. Image-patterned polyline clipped to an inner rectangle. URL parameters: lpcsx (scale_x), lpcst (start_x).",
+  scanline_boolean2:
+    "Port of AGG's scanline_boolean2 demo core using polygon clipping-backed boolean operations. URL parameters: sb2m (mode 0..4), sb2f (fill rule 0/1), sb2s (scanline type 0..2), sb2o (operation 0..6), sb2x/sb2y (center).",
   gouraud:
     "Smooth color interpolation across triangles. Demonstrates AGG's capability to render gradient-shaded meshes with sub-pixel precision and adjustable dilation.",
   imagefilters:
