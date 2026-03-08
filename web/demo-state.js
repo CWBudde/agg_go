@@ -750,6 +750,68 @@ export const demoURLHandlers = {
     },
   },
 
+  gradients_contour: {
+    persist() {
+      updateURL({
+        gcp: parseInt(document.getElementById("gcPolygonSelector").value, 10),
+        gcg: parseInt(document.getElementById("gcGradientSelector").value, 10),
+        gcr: document.getElementById("gcReflect").checked ? 1 : 0,
+        gcc: parseInt(document.getElementById("gcColorsSlider").value, 10),
+        gc1: parseFloat(document.getElementById("gcC1Slider").value),
+        gc2: parseFloat(document.getElementById("gcC2Slider").value),
+        gd1: parseFloat(document.getElementById("gcD1Slider").value),
+        gd2: parseFloat(document.getElementById("gcD2Slider").value),
+      });
+    },
+    restore(p) {
+      if (p.has("gcp")) {
+        const val = parseInt(p.get("gcp"), 10);
+        setGradientsContourPolygon(val);
+        document.getElementById("gcPolygonSelector").value = String(val);
+      }
+      if (p.has("gcg")) {
+        const val = parseInt(p.get("gcg"), 10);
+        setGradientsContourGradient(val);
+        document.getElementById("gcGradientSelector").value = String(val);
+      }
+      if (p.has("gcr")) {
+        const val = p.get("gcr") === "1";
+        setGradientsContourReflect(val);
+        document.getElementById("gcReflect").checked = val;
+      }
+      if (p.has("gcc")) {
+        const val = parseInt(p.get("gcc"), 10);
+        setGradientsContourColors(val);
+        document.getElementById("gcColorsSlider").value = String(val);
+        document.getElementById("gcColorsValue").textContent = String(val);
+      }
+      if (p.has("gc1")) {
+        const val = parseFloat(p.get("gc1"));
+        setGradientsContourC1(val);
+        document.getElementById("gcC1Slider").value = String(val);
+        document.getElementById("gcC1Value").textContent = String(val);
+      }
+      if (p.has("gc2")) {
+        const val = parseFloat(p.get("gc2"));
+        setGradientsContourC2(val);
+        document.getElementById("gcC2Slider").value = String(val);
+        document.getElementById("gcC2Value").textContent = String(val);
+      }
+      if (p.has("gd1")) {
+        const val = parseFloat(p.get("gd1"));
+        setGradientsContourD1(val);
+        document.getElementById("gcD1Slider").value = String(val);
+        document.getElementById("gcD1Value").textContent = String(val);
+      }
+      if (p.has("gd2")) {
+        const val = parseFloat(p.get("gd2"));
+        setGradientsContourD2(val);
+        document.getElementById("gcD2Slider").value = String(val);
+        document.getElementById("gcD2Value").textContent = String(val);
+      }
+    },
+  },
+
   distortions: {
     persist() {
       updateURL({

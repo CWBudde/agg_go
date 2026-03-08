@@ -31,8 +31,16 @@ func drawBlendModesDemo() {
 		{"Exclusion", agg.BlendExclusion},
 	}
 
-	const cellW, cellH = 200.0, 150.0
 	const cols = 4
+	rows := (len(modes) + cols - 1) / cols
+	canvasW := float64(ctx.GetImage().Width())
+	canvasH := float64(ctx.GetImage().Height())
+	const (
+		gapX = 8.0
+		gapY = 8.0
+	)
+	cellW := (canvasW - float64(cols-1)*gapX) / float64(cols)
+	cellH := (canvasH - float64(rows-1)*gapY) / float64(rows)
 	const (
 		r   = 40.0
 		c1x = 70.0
@@ -48,11 +56,13 @@ func drawBlendModesDemo() {
 	groupMinY := min3(c1y-r, c2y-r, c3y-r)
 	groupMaxY := max3(c1y+r, c2y+r, c3y+r)
 	shiftX := (cellW-(groupMaxX-groupMinX))*0.5 - groupMinX
-	shiftY := (cellH-(groupMaxY-groupMinY))*0.5 - groupMinY
+	const labelBandH = 20.0
+	drawAreaH := cellH - labelBandH
+	shiftY := (drawAreaH-(groupMaxY-groupMinY))*0.5 - groupMinY
 
 	for i, m := range modes {
-		x := float64(i%cols) * cellW
-		y := float64(i/cols) * cellH
+		x := float64(i%cols) * (cellW + gapX)
+		y := float64(i/cols) * (cellH + gapY)
 
 		agg2d.BlendMode(agg.BlendAlpha)
 		agg2d.FillColor(agg.RGBA(1.0, 1.0, 1.0, 0.6))
@@ -76,7 +86,7 @@ func drawBlendModesDemo() {
 
 		agg2d.BlendMode(agg.BlendAlpha)
 		agg2d.FillColor(agg.NewColor(20, 20, 20, 255))
-		agg2d.Text(x+cellW*0.5, y+cellH-18, m.name, false, 0, 0)
+		agg2d.Text(x+cellW*0.5, y+drawAreaH+4, m.name, false, 0, 0)
 	}
 
 	agg2d.BlendMode(agg.BlendAlpha)

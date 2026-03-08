@@ -53,6 +53,7 @@
         <optgroup label="── Color &amp; Shading ──">
           <option value="gradients">Gradients Demo</option>
           <option value="gradient_focal">Focal Gradient</option>
+          <option value="gradients_contour">Gradients Contour (Distance Transform)</option>
           <option value="gouraud">Gouraud Shading (Interpolation)</option>
           <option value="gouraud_mesh">Gouraud Mesh (Compound)</option>
           <option value="alphagrad">Alpha Channel Gradient</option>
@@ -988,6 +989,42 @@
         <option value="4">A-B</option>
         <option value="5">B-A</option>
       </select>
+    </div>
+
+    <div class="controls" id="gradientsContourControls" style="display: none">
+      <label for="gcPolygonSelector">Shape:</label>
+      <select id="gcPolygonSelector">
+        <option value="0" selected>Star</option>
+        <option value="1">Great Britain</option>
+        <option value="2">Spiral</option>
+        <option value="3">Glyph</option>
+      </select>
+      <label for="gcGradientSelector" style="margin-left: 1rem">Gradient:</label>
+      <select id="gcGradientSelector">
+        <option value="0">Contour (Star DT)</option>
+        <option value="1" selected>Auto Contour</option>
+        <option value="2">Conic (Angle)</option>
+        <option value="3">Flat Fill</option>
+      </select>
+      <label for="gcReflect" style="margin-left: 1rem">
+        <input type="checkbox" id="gcReflect" checked /> Reflect
+      </label>
+      <label for="gcColorsSlider" style="margin-left: 1rem">Colors:</label>
+      <input type="range" id="gcColorsSlider" min="2" max="11" step="1" value="2" />
+      <span id="gcColorsValue">2</span>
+      <br />
+      <label for="gcC1Slider">C1:</label>
+      <input type="range" id="gcC1Slider" min="0" max="512" step="1" value="0" />
+      <span id="gcC1Value">0</span>
+      <label for="gcC2Slider" style="margin-left: 1rem">C2:</label>
+      <input type="range" id="gcC2Slider" min="0" max="512" step="1" value="512" />
+      <span id="gcC2Value">512</span>
+      <label for="gcD1Slider" style="margin-left: 1rem">D1:</label>
+      <input type="range" id="gcD1Slider" min="0" max="512" step="1" value="0" />
+      <span id="gcD1Value">0</span>
+      <label for="gcD2Slider" style="margin-left: 1rem">D2:</label>
+      <input type="range" id="gcD2Slider" min="0" max="512" step="1" value="100" />
+      <span id="gcD2Value">100</span>
     </div>
 
     <canvas id="aggCanvas"></canvas>

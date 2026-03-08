@@ -341,6 +341,54 @@ func main() {
 		}
 		return nil
 	}))
+	js.Global().Set("setGradientsContourPolygon", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setGradientsContourPolygon(args[0].Int())
+		}
+		return nil
+	}))
+	js.Global().Set("setGradientsContourGradient", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setGradientsContourGradient(args[0].Int())
+		}
+		return nil
+	}))
+	js.Global().Set("setGradientsContourReflect", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setGradientsContourReflect(args[0].Bool())
+		}
+		return nil
+	}))
+	js.Global().Set("setGradientsContourC1", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setGradientsContourC1(args[0].Float())
+		}
+		return nil
+	}))
+	js.Global().Set("setGradientsContourC2", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setGradientsContourC2(args[0].Float())
+		}
+		return nil
+	}))
+	js.Global().Set("setGradientsContourD1", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setGradientsContourD1(args[0].Float())
+		}
+		return nil
+	}))
+	js.Global().Set("setGradientsContourD2", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setGradientsContourD2(args[0].Float())
+		}
+		return nil
+	}))
+	js.Global().Set("setGradientsContourColors", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setGradientsContourColors(args[0].Int())
+		}
+		return nil
+	}))
 
 	// gamma_tuner setters
 	js.Global().Set("setGammaTunerR", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
@@ -1476,6 +1524,8 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 		drawScanlineBoolean2Demo()
 	case "gpc_test":
 		drawGPCTestDemo()
+	case "gradients_contour":
+		drawGradientsContourDemo()
 	default:
 		logStatus("unknown demo type: " + demoType)
 		return nil

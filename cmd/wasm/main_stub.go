@@ -54,6 +54,14 @@ var (
 	_             func(int)                                                                    = setGPCTestScene
 	_             func(int)                                                                    = setGPCTestOperation
 	_             func(float64, float64)                                                       = setGPCTestCenter
+	_             func(int)                                                                    = setGradientsContourPolygon
+	_             func(int)                                                                    = setGradientsContourGradient
+	_             func(bool)                                                                   = setGradientsContourReflect
+	_             func(float64)                                                                = setGradientsContourC1
+	_             func(float64)                                                                = setGradientsContourC2
+	_             func(float64)                                                                = setGradientsContourD1
+	_             func(float64)                                                                = setGradientsContourD2
+	_             func(int)                                                                    = setGradientsContourColors
 )
 
 // logStatus prints a status message to stdout (replaces the JS DOM update in main.go).
@@ -76,7 +84,7 @@ func main() {
 			"alpha_mask2", "alpha_mask3", "compositing2",
 			"image1", "image_transforms", "image_alpha", "pattern_fill",
 			"gradient_focal", "line_thickness", "rasterizer_compound", "image_resample", "line_patterns_clip", "line_patterns", "scanline_boolean2", "gpc_test",
-			"pattern_perspective", "pattern_resample", "image_perspective",
+			"pattern_perspective", "pattern_resample", "image_perspective", "gradients_contour",
 		}
 	}
 
@@ -223,6 +231,8 @@ func renderDemoToFile(demoType, outDir string) error {
 		drawScanlineBoolean2Demo()
 	case "gpc_test":
 		drawGPCTestDemo()
+	case "gradients_contour":
+		drawGradientsContourDemo()
 	default:
 		return fmt.Errorf("unknown demo: %q", demoType)
 	}

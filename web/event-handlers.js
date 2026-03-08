@@ -756,6 +756,58 @@ export function setupEventHandlers(
     renderSelectedDemo();
   });
 
+  // gradients_contour controls
+  document.getElementById("gcPolygonSelector").addEventListener("change", () => {
+    setGradientsContourPolygon(parseInt(document.getElementById("gcPolygonSelector").value, 10));
+    persistDemoParams("gradients_contour");
+    renderSelectedDemo();
+  });
+  document.getElementById("gcGradientSelector").addEventListener("change", () => {
+    setGradientsContourGradient(parseInt(document.getElementById("gcGradientSelector").value, 10));
+    persistDemoParams("gradients_contour");
+    renderSelectedDemo();
+  });
+  document.getElementById("gcReflect").addEventListener("change", () => {
+    setGradientsContourReflect(document.getElementById("gcReflect").checked);
+    persistDemoParams("gradients_contour");
+    renderSelectedDemo();
+  });
+  document.getElementById("gcColorsSlider").addEventListener("input", () => {
+    const val = parseInt(document.getElementById("gcColorsSlider").value, 10);
+    document.getElementById("gcColorsValue").textContent = String(val);
+    setGradientsContourColors(val);
+    persistDemoParams("gradients_contour");
+    renderSelectedDemo();
+  });
+  document.getElementById("gcC1Slider").addEventListener("input", () => {
+    const val = parseFloat(document.getElementById("gcC1Slider").value);
+    document.getElementById("gcC1Value").textContent = String(val);
+    setGradientsContourC1(val);
+    persistDemoParams("gradients_contour");
+    renderSelectedDemo();
+  });
+  document.getElementById("gcC2Slider").addEventListener("input", () => {
+    const val = parseFloat(document.getElementById("gcC2Slider").value);
+    document.getElementById("gcC2Value").textContent = String(val);
+    setGradientsContourC2(val);
+    persistDemoParams("gradients_contour");
+    renderSelectedDemo();
+  });
+  document.getElementById("gcD1Slider").addEventListener("input", () => {
+    const val = parseFloat(document.getElementById("gcD1Slider").value);
+    document.getElementById("gcD1Value").textContent = String(val);
+    setGradientsContourD1(val);
+    persistDemoParams("gradients_contour");
+    renderSelectedDemo();
+  });
+  document.getElementById("gcD2Slider").addEventListener("input", () => {
+    const val = parseFloat(document.getElementById("gcD2Slider").value);
+    document.getElementById("gcD2Value").textContent = String(val);
+    setGradientsContourD2(val);
+    persistDemoParams("gradients_contour");
+    renderSelectedDemo();
+  });
+
   // gpc_test controls
   document.getElementById("gpcSceneSelector").addEventListener("change", () => {
     const val = parseInt(document.getElementById("gpcSceneSelector").value, 10);

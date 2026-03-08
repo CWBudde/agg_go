@@ -69,6 +69,8 @@ export function syncControlVisibility(demoType) {
     demoType === "bspline" ? "flex" : "none";
   document.getElementById("gpcTestControls").style.display =
     demoType === "gpc_test" ? "flex" : "none";
+  document.getElementById("gradientsContourControls").style.display =
+    demoType === "gradients_contour" ? "flex" : "none";
 }
 
 export const demoDescriptions = {
@@ -98,6 +100,8 @@ export const demoDescriptions = {
     "Port of AGG's scanline_boolean2 demo core using polygon clipping-backed boolean operations. URL parameters: sb2m (mode 0..4), sb2f (fill rule 0/1), sb2s (scanline type 0..2), sb2o (operation 0..6), sb2x/sb2y (center).",
   gpc_test:
     "Port of AGG's gpc_test demo core using general polygon clipping operations. Drag with left mouse to move the scene center.",
+  gradients_contour:
+    "Port of AGG's gradients_contour demo. Contour-based gradients using Distance Transform — colors follow the shape of an arbitrary path. Supports star, Great Britain outline, spiral, and glyph shapes with four gradient modes (Contour, Auto-Contour, Conic/Angle, Flat) and 2–11 color stops.",
   gouraud:
     "Smooth color interpolation across triangles. Demonstrates AGG's capability to render gradient-shaded meshes with sub-pixel precision and adjustable dilation.",
   imagefilters:
