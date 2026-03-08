@@ -529,6 +529,13 @@ func onMouseDown(this js.Value, args []js.Value) interface{} {
 	if demoType == "bspline" {
 		return handleBSplineMouseDown(x, y)
 	}
+	if demoType == "interactive_polygon" {
+		right := len(args) >= 4 && args[3].Bool()
+		if right {
+			return false
+		}
+		return handleInteractivePolygonMouseDown(x, y)
+	}
 	if demoType == "conv_dash_marker" {
 		return handleDashMouseDown(x, y)
 	}
@@ -651,6 +658,13 @@ func onMouseMove(this js.Value, args []js.Value) interface{} {
 	if demoType == "bspline" {
 		return handleBSplineMouseMove(x, y)
 	}
+	if demoType == "interactive_polygon" {
+		right := len(args) >= 4 && args[3].Bool()
+		if right {
+			return false
+		}
+		return handleInteractivePolygonMouseMove(x, y)
+	}
 	if demoType == "conv_dash_marker" {
 		return handleDashMouseMove(x, y)
 	}
@@ -765,6 +779,9 @@ func onMouseUp(this js.Value, args []js.Value) interface{} {
 	}
 	if demoType == "bspline" {
 		handleBSplineMouseUp()
+	}
+	if demoType == "interactive_polygon" {
+		handleInteractivePolygonMouseUp()
 	}
 	if demoType == "conv_dash_marker" {
 		handleDashMouseUp()
@@ -1322,6 +1339,8 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 		drawBlendModesDemo()
 	case "bspline":
 		drawBSplineDemo()
+	case "interactive_polygon":
+		drawInteractivePolygonDemo()
 	case "conv_dash_marker":
 		drawDashDemo()
 	case "gouraud":

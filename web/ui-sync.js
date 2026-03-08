@@ -82,6 +82,8 @@ export const demoDescriptions = {
     "Compositing and blend modes. Showcases how different layers can be combined using standard and advanced blend modes like Multiply, Screen, and Overlay.",
   bspline:
     "B-Spline curve smoothing. Demonstrates the creation of smooth, continuous curves from a set of control points.",
+  interactive_polygon:
+    "Port of AGG's interactive_polygon.cpp helper. Drag a vertex to move one point, drag an edge to move the adjacent segment, or drag inside the shape to move the whole polygon.",
   conv_dash_marker:
     "Port of AGG's conv_dash_marker demo. Applies conv_smooth_poly1 to soften corners, then conv_dash to create dash patterns, and conv_marker to place arrowheads at line endpoints. Adjust smoothness, stroke width, cap style, and fill rule. Drag the three control points to reshape the paths.",
   line_thickness:
