@@ -300,10 +300,12 @@ These items were previously tracked in a standalone parity ledger and now live d
   - add deterministic width assertions tied to source-linked behavior
   - fixed GSV path state-corruption bug (MeasureText now saves/restores text)
   - added 7 deterministic mock-based tests + 3 GSV-mode tests covering kerning, glyph-index lookup, missing glyphs, empty string, idempotency, and monotonicity
-- [ ] Finish `Text` parity:
-  - remove any remaining simplified raster-glyph behavior
-  - verify glyph placement, raster cache behavior, and text output contracts
-  - promote status to `close` only after deterministic output checks exist
+- [x] Finish `Text` parity:
+  - `GlyphDataMono` in Text() documented as Go extension (C++ text() only handles outline + gray8); comment added
+  - kerning placement contract verified: `TestTextKerningAdjustsGlyphPlacement` asserts that kerning returned by the font engine shifts the second glyph's start_x, matching agg2d.cpp:1059
+  - viewport/world-to-screen conversion verified: `TestTextRasterFontCacheWorldToScreenConversion` asserts that a 2× viewport scale produces coverage at the correct screen position
+  - raster glyph placement (gray8/mono) covered by `TestRenderGlyphScanlinesGray8UsesCoverage` and `TestRenderGlyphScanlinesMonoDecodesBits`
+  - all deterministic output checks exist; status promoted to close
 
 ### 8.6 Optional property tests
 

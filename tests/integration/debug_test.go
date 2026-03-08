@@ -59,13 +59,14 @@ func TestBasicRendering(t *testing.T) {
 		line := ""
 		for x := 0; x < width; x++ {
 			p := getPixel(buffer, stride, x, y)
-			if p[0] > 200 && p[1] < 50 && p[2] < 50 {
+			switch {
+			case p[0] > 200 && p[1] < 50 && p[2] < 50:
 				line += "R" // Red
-			} else if p[1] > 200 && p[0] < 50 && p[2] < 50 {
+			case p[1] > 200 && p[0] < 50 && p[2] < 50:
 				line += "G" // Green
-			} else if p[0] > 200 && p[1] > 200 && p[2] > 200 {
+			case p[0] > 200 && p[1] > 200 && p[2] > 200:
 				line += "W" // White
-			} else {
+			default:
 				line += "?" // Other
 			}
 		}

@@ -357,14 +357,15 @@ func TestCircleComponentPipeline(t *testing.T) {
 	for _, test := range edgeTests {
 		pixel := pixfmt.Pixel(test.x, test.y)
 		// Anti-aliased pixels should have intermediate red values (not pure red or white)
-		if pixel.R > 50 && pixel.R < 200 && pixel.G < 100 && pixel.B < 100 {
+		switch {
+		case pixel.R > 50 && pixel.R < 200 && pixel.G < 100 && pixel.B < 100:
 			antiAliasedCount++
 			t.Logf("✓ Anti-aliasing at %s (%d,%d): RGB(%d,%d,%d)", test.desc, test.x, test.y, pixel.R, pixel.G, pixel.B)
-		} else if pixel.R == 255 && pixel.G == 0 && pixel.B == 0 {
+		case pixel.R == 255 && pixel.G == 0 && pixel.B == 0:
 			t.Logf("  Solid fill at %s (%d,%d): RGB(%d,%d,%d)", test.desc, test.x, test.y, pixel.R, pixel.G, pixel.B)
-		} else if pixel.R == 255 && pixel.G == 255 && pixel.B == 255 {
+		case pixel.R == 255 && pixel.G == 255 && pixel.B == 255:
 			t.Logf("  Background at %s (%d,%d): RGB(%d,%d,%d)", test.desc, test.x, test.y, pixel.R, pixel.G, pixel.B)
-		} else {
+		default:
 			t.Logf("  Unexpected color at %s (%d,%d): RGB(%d,%d,%d)", test.desc, test.x, test.y, pixel.R, pixel.G, pixel.B)
 		}
 	}

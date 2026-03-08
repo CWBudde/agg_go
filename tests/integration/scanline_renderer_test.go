@@ -90,13 +90,14 @@ func TestScanlineAntiAliasing(t *testing.T) {
 		isPureGreen := (pixel[0] < 50 && pixel[1] > 200 && pixel[2] < 50)
 		isPureWhite := (pixel[0] > 200 && pixel[1] > 200 && pixel[2] > 200)
 
-		if isPureGreen {
+		switch {
+		case isPureGreen:
 			t.Logf("Edge pixel at %s (%d,%d) is pure green - may indicate hard edge",
 				test.desc, test.x, test.y)
-		} else if isPureWhite {
+		case isPureWhite:
 			t.Logf("Edge pixel at %s (%d,%d) is pure white - may be outside circle",
 				test.desc, test.x, test.y)
-		} else {
+		default:
 			// This is expected - anti-aliased blend
 			t.Logf("Edge pixel at %s (%d,%d) is anti-aliased: RGB(%d,%d,%d)",
 				test.desc, test.x, test.y, pixel[0], pixel[1], pixel[2])

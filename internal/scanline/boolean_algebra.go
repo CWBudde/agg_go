@@ -764,7 +764,8 @@ func IntersectScanlines(sl1, sl2, sl BooleanScanlineInterface, combineSpansFunc 
 		}
 
 		// Advance spans
-		if advanceBoth {
+		switch {
+		case advanceBoth:
 			num1--
 			num2--
 			if num1 > 0 {
@@ -773,12 +774,12 @@ func IntersectScanlines(sl1, sl2, sl BooleanScanlineInterface, combineSpansFunc 
 			if num2 > 0 {
 				span2.Next()
 			}
-		} else if advanceSpan1 {
+		case advanceSpan1:
 			num1--
 			if num1 > 0 {
 				span1.Next()
 			}
-		} else {
+		default:
 			num2--
 			if num2 > 0 {
 				span2.Next()
@@ -916,15 +917,16 @@ func UniteScanlines(sl1, sl2, sl BooleanScanlineInterface,
 			combineSpansFunc(span1Iter, span2Iter, xb, uint(length), sl)
 
 			// Invalidate processed spans
-			if xe1 < xe2 {
+			switch {
+			case xe1 < xe2:
 				xb1 = invalidB
 				xe1 = invalidE
 				xb2 += length
-			} else if xe2 < xe1 {
+			case xe2 < xe1:
 				xb2 = invalidB
 				xe2 = invalidE
 				xb1 += length
-			} else {
+			default:
 				xb1 = invalidB
 				xb2 = invalidB
 				xe1 = invalidE
@@ -1073,7 +1075,8 @@ func UniteShapes(sg1, sg2 RasterizerInterface, sl1, sl2, sl BooleanScanlineInter
 	// Main loop
 	for flag1 || flag2 {
 		if flag1 && flag2 {
-			if sl1.Y() == sl2.Y() {
+			switch {
+			case sl1.Y() == sl2.Y():
 				// Same Y coordinate - unite scanlines
 				UniteScanlines(sl1, sl2, sl, addSpan1Func, addSpan2Func, combineSpansFunc)
 				if sl.NumSpans() > 0 {
@@ -1082,10 +1085,10 @@ func UniteShapes(sg1, sg2 RasterizerInterface, sl1, sl2, sl BooleanScanlineInter
 				}
 				flag1 = sg1.SweepScanline(sl1)
 				flag2 = sg2.SweepScanline(sl2)
-			} else if sl1.Y() < sl2.Y() {
+			case sl1.Y() < sl2.Y():
 				AddSpansAndRender(sl1, sl, ren, addSpan1Func)
 				flag1 = sg1.SweepScanline(sl1)
-			} else {
+			default:
 				AddSpansAndRender(sl2, sl, ren, addSpan2Func)
 				flag2 = sg2.SweepScanline(sl2)
 			}

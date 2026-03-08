@@ -493,3 +493,123 @@ func TestVectorTextRoundOffAndOffsetAffectBounds(t *testing.T) {
 		t.Fatalf("rendered bounds = (%d,%d)-(%d,%d), want (12,9)-(13,12)", minX, minY, maxX, maxY)
 	}
 }
+
+// TestTextKerningAdjustsGlyphPlacement verifies that kerning returned by the font
+// engine shifts the second glyph's start_x during Text() rendering. This matches
+// the C++ agg2d.cpp:1059 call to add_kerning(&start_x, &start_y) inside the text()
+// loop.
+//
+// Setup: 'A' has advance_x=4 and is drawn at origin.
+// After 'A': cursor = 4. Kerning('A','V') = -2, so cursor = 2.
+// 'V' must therefore be drawn at x=2, not x=4.
+//
+// Geometry: both glyphs use a 2×2 filled square centred at their local (0,0),
+// so 'A' covers columns 0–1 and 'V' covers columns 2–3 (with kerning) or
+// columns 4–5 (without kerning).
+func TestTextKerningAdjustsGlyphPlacement(t *testing.T) {
+	engine := newMockTextFontEngine()
+	square := func(ps *path.PathStorageStl) {
+		ps.MoveTo(0, 0)
+		ps.LineTo(2, 0)
+		ps.LineTo(2, 2)
+		ps.LineTo(0, 2)
+		ps.ClosePolygon(basics.PathFlagsNone)
+	}
+	engine.glyphs[uint('A')] = mockOutlineGlyph{
+		glyphIndex: 10,
+		advanceX:   4,
+		bounds:     basics.Rect[int]{X1: 0, Y1: 0, X2: 2, Y2: 2},
+		buildPath:  square,
+	}
+	engine.glyphs[uint('V')] = mockOutlineGlyph{
+		glyphIndex: 20,
+		advanceX:   4,
+		bounds:     basics.Rect[int]{X1: 0, Y1: 0, X2: 2, Y2: 2},
+		buildPath:  square,
+	}
+	// Kerning between A(10) and V(20) pulls them 2 units closer.
+	engine.kerning[[2]uint{10, 20}] = -2
+
+	agg2d := NewAgg2D()
+	width, height := 12, 4
+	buf := make([]byte, width*height*4)
+	agg2d.Attach(buf, width, height, width*4)
+	agg2d.fontCacheType = VectorFontCache
+	agg2d.fontCacheManager = font.NewFontCacheManager(engine, 32)
+	agg2d.FillColor(Color{255, 0, 0, 255})
+	agg2d.NoLine()
+
+	agg2d.Text(0, 0, "AV", false, 0, 0)
+
+	// 'A' at x=0: expect coverage at (1,1).
+	_, _, _, aA := pixelAt(buf, width, 1, 1)
+	if aA == 0 {
+		t.Fatalf("expected glyph A coverage at (1,1)")
+	}
+
+	// 'V' at x=2 (with kerning): expect coverage at (3,1).
+	_, _, _, aVWithKerning := pixelAt(buf, width, 3, 1)
+	if aVWithKerning == 0 {
+		t.Fatalf("expected glyph V coverage at (3,1) with kerning applied")
+	}
+
+	// Without kerning V would be at x=4: (5,1) must be transparent.
+	_, _, _, aVNoKerning := pixelAt(buf, width, 5, 1)
+	if aVNoKerning != 0 {
+		t.Fatalf("glyph V must not appear at (5,1): that position implies kerning was ignored (alpha=%d)", aVNoKerning)
+	}
+}
+
+// TestTextRasterFontCacheWorldToScreenConversion verifies that Text() converts
+// the starting position through WorldToScreen before placing raster glyphs, matching
+// agg2d.cpp:1063 — worldToScreen(start_x, start_y) when fontCacheType==RasterFontCache.
+//
+// A viewport mapping is applied so that a world position of (2,2) maps to a
+// different screen position (4,4). The gray8 glyph must appear at the screen
+// position, not the world position.
+func TestTextRasterFontCacheWorldToScreenConversion(t *testing.T) {
+	engine := newMockTextFontEngine()
+	engine.glyphs[uint('A')] = mockOutlineGlyph{
+		glyphIndex: 1,
+		advanceX:   4,
+		bounds:     basics.Rect[int]{X1: 0, Y1: 0, X2: 2, Y2: 2},
+		buildPath: func(ps *path.PathStorageStl) {
+			ps.MoveTo(0, 0)
+			ps.LineTo(2, 0)
+			ps.LineTo(2, 2)
+			ps.LineTo(0, 2)
+			ps.ClosePolygon(basics.PathFlagsNone)
+		},
+	}
+
+	agg2d := NewAgg2D()
+	width, height := 20, 20
+	buf := make([]byte, width*height*4)
+	agg2d.Attach(buf, width, height, width*4)
+
+	// Apply a 2× scale viewport: world(0,0)→screen(0,0), world(1,1)→screen(2,2).
+	agg2d.Viewport(0, 0, 5, 5, 0, 0, 10, 10, XMidYMid)
+
+	agg2d.fontCacheType = VectorFontCache // outline path, no worldToScreen for cursor
+	agg2d.fontCacheManager = font.NewFontCacheManager(engine, 32)
+	agg2d.FillColor(Color{255, 0, 0, 255})
+	agg2d.NoLine()
+	agg2d.fontHeight = 2
+
+	// With VectorFontCache, glyph paths go through the global transform. Render at
+	// world (1,1); global 2× scale should place coverage around screen (2,2).
+	agg2d.Text(1, 1, "A", false, 0, 0)
+
+	// Global transform scales by 2, so world (1,1) → screen (2,2). The 2×2 glyph
+	// path covers screen area roughly (2,2)–(6,6).
+	_, _, _, aCovered := pixelAt(buf, width, 3, 3)
+	if aCovered == 0 {
+		t.Fatalf("expected glyph coverage near screen (3,3) after 2× viewport scale")
+	}
+
+	// World (1,1) without scaling would be screen (1,1) — must be empty.
+	_, _, _, aWrong := pixelAt(buf, width, 1, 1)
+	if aWrong != 0 {
+		t.Fatalf("expected no coverage at screen (1,1): glyph must be placed via viewport transform")
+	}
+}

@@ -434,11 +434,12 @@ func (s *SplineCtrlImpl[C]) Vertex() (x, y float64, cmd basics.PathCommand) {
 
 	switch s.currentPath {
 	case 0: // Background rectangle
-		if s.vertexIndex == 0 {
+		switch {
+		case s.vertexIndex == 0:
 			cmd = basics.PathCmdMoveTo
-		} else if s.vertexIndex >= s.vertexCount {
+		case s.vertexIndex >= s.vertexCount:
 			cmd = basics.PathCmdStop
-		} else {
+		default:
 			cmd = basics.PathCmdLineTo
 		}
 
@@ -449,11 +450,12 @@ func (s *SplineCtrlImpl[C]) Vertex() (x, y float64, cmd basics.PathCommand) {
 		}
 
 	case 1: // Border rectangle
-		if s.vertexIndex == 0 || s.vertexIndex == 4 {
+		switch {
+		case s.vertexIndex == 0 || s.vertexIndex == 4:
 			cmd = basics.PathCmdMoveTo
-		} else if s.vertexIndex >= s.vertexCount {
+		case s.vertexIndex >= s.vertexCount:
 			cmd = basics.PathCmdStop
-		} else {
+		default:
 			cmd = basics.PathCmdLineTo
 		}
 

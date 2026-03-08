@@ -352,6 +352,9 @@ func (agg2d *Agg2D) Text(x, y float64, str string, roundOff bool, dx, dy float64
 				agg2d.renderGlyphScanlines(adaptor, glyph, currentX, currentY)
 			}
 
+		// GlyphDataMono: Go extension — C++ agg2d.cpp text() only handles outline and
+		// gray8; mono is rendered here for completeness when a font engine is configured
+		// for binary (non-AA) rasterization.
 		case font.GlyphDataMono:
 			if adaptor := fcm.MonoAdaptor(); adaptor != nil {
 				agg2d.renderGlyphScanlines(adaptor, glyph, currentX, currentY)
