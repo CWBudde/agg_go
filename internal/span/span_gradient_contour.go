@@ -443,9 +443,8 @@ func (gc *GradientContour) Calculate(x, y, d int) int {
 		py += gc.height
 	}
 
-	// Sample buffer and scale to gradient range
+	// Scale buffer value to gradient range.
+	// Matches C++ AGG: iround(buffer * (d2/256) + d1) << gradient_subpixel_shift
 	sample := float64(gc.buffer[py*gc.width+px])
-	result := gc.d1 + (sample/255.0)*(gc.d2-gc.d1)
-
-	return basics.IRound(result) << GradientSubpixelShift
+	return basics.IRound(sample*(gc.d2/256.0)+gc.d1) << GradientSubpixelShift
 }

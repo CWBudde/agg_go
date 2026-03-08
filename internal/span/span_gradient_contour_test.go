@@ -211,9 +211,11 @@ func TestGradientContourCalculateWithBuffer(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			result := gc.Calculate(tc.x, tc.y, tc.d)
 
-			// Result should be within reasonable range based on d1 and d2
-			minExpected := int(gc.d1) << GradientSubpixelShift
-			maxExpected := int(gc.d2) << GradientSubpixelShift
+			// Result should be within reasonable range.
+			// C++ formula: iround(buffer * d2/256 + d1) << shift
+			// buffer in [0,255], so range is [d1, d1 + 255*d2/256]
+			minExpected := basics.IRound(gc.d1) << GradientSubpixelShift
+			maxExpected := basics.IRound(255.0*(gc.d2/256.0)+gc.d1) << GradientSubpixelShift
 
 			if result < minExpected || result > maxExpected {
 				t.Errorf("Calculate result %d outside expected range [%d, %d]",

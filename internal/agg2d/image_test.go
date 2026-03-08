@@ -779,8 +779,13 @@ func TestTransformImageUsesPremultipliedRenderer(t *testing.T) {
 	agg2d.ImageFilter(Bilinear)
 	agg2d.ImageResample(NoResample)
 
+	// Source image is already premultiplied (R=128, A=128 means 50% red at 50% opacity).
+	// The image pipeline routes through renBasePre (premultiplied renderer), matching C++ AGG
+	// which uses m_renBasePre for image rendering (agg2d.cpp:1738). Premultiplied input must
+	// pass through unchanged; straight-alpha input would be treated as premultiplied by the
+	// renderer (C++ AGG has no automatic straight→premultiplied conversion in the span path).
 	src := []uint8{
-		255, 0, 0, 128,
+		128, 0, 0, 128,
 	}
 	img := NewImage(src, 1, 1, 4)
 

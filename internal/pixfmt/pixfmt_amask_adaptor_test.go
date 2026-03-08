@@ -53,6 +53,7 @@ func (m *mockAMaskPixfmt) CopyColorHspan(x, y, length int, colors []color.RGBA8[
 func (m *mockAMaskPixfmt) CopyColorVspan(x, y, length int, colors []color.RGBA8[color.Linear]) {}
 func (m *mockAMaskPixfmt) BlendColorHspan(x, y, length int, colors []color.RGBA8[color.Linear], covers []basics.Int8u, cover basics.Int8u) {
 }
+
 func (m *mockAMaskPixfmt) BlendColorVspan(x, y, length int, colors []color.RGBA8[color.Linear], covers []basics.Int8u, cover basics.Int8u) {
 }
 func (m *mockAMaskPixfmt) Clear(c color.RGBA8[color.Linear]) {}
@@ -105,9 +106,9 @@ func (m *mockRowSource) PixWidth() int                { return 4 }
 // fullAlphaMask always returns full alpha (255).
 type fullAlphaMask struct{ w, h int }
 
-func (m fullAlphaMask) Width() int  { return m.w }
-func (m fullAlphaMask) Height() int { return m.h }
-func (m fullAlphaMask) Pixel(x, y int) basics.Int8u { return 255 }
+func (m fullAlphaMask) Width() int                                             { return m.w }
+func (m fullAlphaMask) Height() int                                            { return m.h }
+func (m fullAlphaMask) Pixel(x, y int) basics.Int8u                            { return 255 }
 func (m fullAlphaMask) CombinePixel(x, y int, cover basics.Int8u) basics.Int8u { return cover }
 func (m fullAlphaMask) FillHspan(x, y int, dst []basics.Int8u, length int) {
 	for i := range dst[:length] {
@@ -142,6 +143,7 @@ func newTrackingMock(w, h int) *newMockTrackingPixfmt {
 func (m *newMockTrackingPixfmt) BlendSolidHspan(x, y, length int, c color.RGBA8[color.Linear], covers []basics.Int8u) {
 	m.blendSolidHspanCalled = true
 }
+
 func (m *newMockTrackingPixfmt) BlendSolidVspan(x, y, length int, c color.RGBA8[color.Linear], covers []basics.Int8u) {
 	m.blendSolidVspanCalled = true
 }

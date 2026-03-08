@@ -192,17 +192,6 @@ func (sif *SpanImageFilterRGBABilinear[Source, Interpolator]) Generate(span []co
 			a = 0
 		}
 
-		// Apply alpha channel constraints - RGB components should not exceed alpha
-		if r > a {
-			r = a
-		}
-		if g > a {
-			g = a
-		}
-		if b > a {
-			b = a
-		}
-
 		span[i] = color.RGBA8[color.Linear]{
 			R: basics.Int8u(r),
 			G: basics.Int8u(g),

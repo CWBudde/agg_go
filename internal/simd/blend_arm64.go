@@ -11,9 +11,14 @@ func selectImplementationArch(features Features) implementation {
 	}
 	if features.HasNEON {
 		return implementation{
-			name:                "neon",
-			fillRGBA:            fillRGBANEON,
-			blendSolidHspanRGBA: blendSolidHspanRGBANEON,
+			name:                 "neon",
+			fillRGBA:             fillRGBANEON,
+			blendSolidHspanRGBA:  blendSolidHspanRGBANEON,
+			blendHlineRGBA:       blendHlineRGBANEON,
+			blendColorHspanRGBA:  blendColorHspanRGBANEON,
+			premultiplyRGBA:      premultiplyRGBAGeneric,
+			demultiplyRGBA:       demultiplyRGBAGeneric,
+			compSrcOverHspanRGBA: compSrcOverHspanRGBAGeneric,
 		}
 	}
 	return genericImplementation()
@@ -26,4 +31,19 @@ func fillRGBANEON(dst []byte, r, g, b, a uint8, count int) {
 
 func blendSolidHspanRGBANEON(dst []byte, covers []byte, r, g, b, a uint8, premulSrc bool) {
 	blendSolidHspanRGBAWithRunFill(dst, covers, r, g, b, a, premulSrc, fillRGBANEON)
+}
+
+func blendHlineRGBANEON(dst []byte, r, g, b, a, cover uint8, count int, premulSrc bool) {
+	if !premulSrc {
+		alpha := rgba8Multiply(a, cover)
+		if alpha == 255 {
+			fillRGBANEON(dst, r, g, b, a, count)
+			return
+		}
+	}
+	blendHlineRGBAGeneric(dst, r, g, b, a, cover, count, premulSrc)
+}
+
+func blendColorHspanRGBANEON(dst, srcColors, covers []byte, count int, premulSrc bool) {
+	blendColorHspanRGBAGeneric(dst, srcColors, covers, count, premulSrc)
 }

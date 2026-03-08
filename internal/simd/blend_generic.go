@@ -6,3 +6,4 @@ func selectImplementationArch(features Features) implementation {
 	_ = features
 	return genericImplementation()
 }
+

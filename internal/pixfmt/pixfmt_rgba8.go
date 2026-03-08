@@ -1,6 +1,8 @@
 package pixfmt
 
 import (
+	"unsafe"
+
 	"agg_go/internal/basics"
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
@@ -174,7 +176,15 @@ func (pf *PixFmtAlphaBlendRGBA[S, B]) BlendHline(x, y, length int, c color.RGBA8
 		// Mask indices so the compiler knows they are in [0,3] (BCE).
 		ir, ig, ib, ia = ir&3, ig&3, ib&3, ia&3
 
-		// C++ optimization: opaque + full cover → just copy.
+		// SIMD fast path: standard RGBA byte order — handles all coverage cases
+		// (opaque+full-cover routes to FillRGBA inside BlendHlineRGBA).
+		if ir == 0 && ig == 1 && ib == 2 && ia == 3 {
+			simd.BlendHlineRGBA(row[x*4:], c.R, c.G, c.B, c.A, cover, length, fb.PremulSrc())
+			return
+		}
+
+		// Scalar path for non-RGBA byte-order blenders (e.g., BGRA).
+		// C++ optimization: opaque + full cover → direct copy.
 		if c.IsOpaque() && cover == basics.CoverFull {
 			p := x * 4
 			for range length {
@@ -546,14 +556,82 @@ func (pf *PixFmtAlphaBlendRGBA[S, B]) BlendColorHspan(x, y, length int, colors [
 	if x+length > pf.Width() {
 		length = pf.Width() - x
 	}
+	if length > len(colors) {
+		length = len(colors)
+	}
 
+	row := buffer.RowU8(pf.rbuf, y)
+
+	if fb, ok := any(pf.blender).(blender.RGBAFastBlender); ok {
+		ir, ig, ib, ia := fb.IdxR(), fb.IdxG(), fb.IdxB(), fb.IdxA()
+
+		spanEnd := (x+length-1)*4 + 3
+		if spanEnd >= len(row) {
+			goto slow
+		}
+		_ = row[spanEnd]
+
+		// SIMD fast path: RGBA byte order and per-pixel covers provided.
+		if ir == 0 && ig == 1 && ib == 2 && ia == 3 && covers != nil && len(covers) >= length {
+			srcBytes := unsafe.Slice((*byte)(unsafe.Pointer(&colors[0])), length*4)
+			simd.BlendColorHspanRGBA(row[x*4:], srcBytes, covers[:length], length, fb.PremulSrc())
+			return
+		}
+
+		// Fast scalar for RGBA order with nil/uniform covers, or any non-RGBA blender.
+		ir, ig, ib, ia = ir&3, ig&3, ib&3, ia&3
+		p := x * 4
+		premul := fb.PremulSrc()
+		for i := range length {
+			c := colors[i]
+			if c.A == 0 {
+				p += 4
+				continue
+			}
+			cvr := cover
+			if covers != nil && i < len(covers) {
+				cvr = covers[i]
+			}
+			if cvr == 0 {
+				p += 4
+				continue
+			}
+			px := row[p : p+4 : p+4]
+			if premul {
+				sr := color.RGBA8MultCover(c.R, cvr)
+				sg := color.RGBA8MultCover(c.G, cvr)
+				sb := color.RGBA8MultCover(c.B, cvr)
+				sa := color.RGBA8MultCover(c.A, cvr)
+				if sa == 0 && sr == 0 && sg == 0 && sb == 0 {
+					p += 4
+					continue
+				}
+				px[ir] = color.RGBA8Prelerp(px[ir], sr, sa)
+				px[ig] = color.RGBA8Prelerp(px[ig], sg, sa)
+				px[ib] = color.RGBA8Prelerp(px[ib], sb, sa)
+				px[ia] = color.RGBA8Prelerp(px[ia], sa, sa)
+			} else {
+				alpha := color.RGBA8MultCover(c.A, cvr)
+				if alpha == 0 {
+					p += 4
+					continue
+				}
+				px[ir] = color.RGBA8Lerp(px[ir], c.R, alpha)
+				px[ig] = color.RGBA8Lerp(px[ig], c.G, alpha)
+				px[ib] = color.RGBA8Lerp(px[ib], c.B, alpha)
+				px[ia] = color.RGBA8Prelerp(px[ia], alpha, alpha)
+			}
+			p += 4
+		}
+		return
+	}
+
+slow:
 	for i := 0; i < length; i++ {
-		colorIdx := i % len(colors)
-		c := colors[colorIdx]
+		c := colors[i]
 		if c.IsTransparent() {
 			continue
 		}
-
 		cvr := cover
 		if covers != nil && i < len(covers) {
 			cvr = covers[i]
@@ -935,44 +1013,58 @@ func (pf *PixFmtAlphaBlendRGBA[S, B]) BlendFromLUT(src interface {
 	}
 }
 
-// Premultiply converts the entire buffer from plain to premultiplied alpha
+// Premultiply converts the entire buffer from plain to premultiplied alpha.
+// For standard RGBA byte-order blenders the hot path delegates to SIMD.
 func (pf *PixFmtAlphaBlendRGBA[S, B]) Premultiply() {
+	w := pf.Width()
 	for y := 0; y < pf.Height(); y++ {
 		row := buffer.RowU8(pf.rbuf, y)
 		if ro, ok := any(pf.blender).(blender.RawRGBAOrder); ok {
-			// Fast path: direct index access
 			ir, ig, ib, ia := ro.IdxR(), ro.IdxG(), ro.IdxB(), ro.IdxA()
-			for x := 0; x < pf.Width(); x++ {
+			// SIMD fast path: standard R,G,B,A byte order.
+			if ir == 0 && ig == 1 && ib == 2 && ia == 3 {
+				simd.PremultiplyRGBA(row, w)
+				continue
+			}
+			// Non-standard order (e.g. BGRA): scalar loop with direct indexing.
+			ir, ig, ib, ia = ir&3, ig&3, ib&3, ia&3
+			for x := 0; x < w; x++ {
 				off := x * 4
 				if off+3 < len(row) {
 					r, g, b, a := row[off+ir], row[off+ig], row[off+ib], row[off+ia]
 					row[off+ir] = color.RGBA8Multiply(r, a)
 					row[off+ig] = color.RGBA8Multiply(g, a)
 					row[off+ib] = color.RGBA8Multiply(b, a)
-					row[off+ia] = a
 				}
 			}
 		} else {
-			// Safe path: read as plain, write as premultiplied
-			for x := 0; x < pf.Width(); x++ {
+			for x := 0; x < w; x++ {
 				off := x * 4
 				if off+3 < len(row) {
 					r, g, b, a := pf.blender.GetPlain(row[off : off+4])
-					pf.blender.SetPlain(row[off:off+4], r, g, b, a)
+					pf.blender.SetPlain(row[off:off+4], color.RGBA8Multiply(r, a), color.RGBA8Multiply(g, a), color.RGBA8Multiply(b, a), a)
 				}
 			}
 		}
 	}
 }
 
-// Demultiply converts the entire buffer from premultiplied to plain alpha
+// Demultiply converts the entire buffer from premultiplied to plain alpha.
+// For standard RGBA byte-order blenders the hot path delegates to SIMD.
 func (pf *PixFmtAlphaBlendRGBA[S, B]) Demultiply() {
+	w := pf.Width()
 	for y := 0; y < pf.Height(); y++ {
 		row := buffer.RowU8(pf.rbuf, y)
 		if ro, ok := any(pf.blender).(blender.RawRGBAOrder); ok {
-			// Fast path: direct index access
 			ir, ig, ib, ia := ro.IdxR(), ro.IdxG(), ro.IdxB(), ro.IdxA()
-			for x := 0; x < pf.Width(); x++ {
+			// SIMD fast path: standard R,G,B,A byte order.
+			if ir == 0 && ig == 1 && ib == 2 && ia == 3 {
+				simd.DemultiplyRGBA(row, w)
+				continue
+			}
+			// Non-standard order: scalar loop.
+			ir, ig, ib, ia = ir&3, ig&3, ib&3, ia&3
+			for x := 0; x < w; x++ {
 				off := x * 4
 				if off+3 < len(row) {
 					a := row[off+ia]
@@ -988,12 +1080,11 @@ func (pf *PixFmtAlphaBlendRGBA[S, B]) Demultiply() {
 				}
 			}
 		} else {
-			// Safe path: use blender methods
-			for x := 0; x < pf.Width(); x++ {
+			for x := 0; x < w; x++ {
 				off := x * 4
 				if off+3 < len(row) {
 					r, g, b, a := pf.blender.GetPlain(row[off : off+4])
-					pf.blender.SetPlain(row[off:off+4], r, g, b, a)
+					pf.blender.SetPlain(row[off:off+4], demul8(r, a), demul8(g, a), demul8(b, a), a)
 				}
 			}
 		}

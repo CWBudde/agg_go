@@ -29,15 +29,13 @@ func (ct *ConvTransform[VS, T]) Attach(source VS) {
 	ct.source = source
 }
 
-// SetTransformer sets a new transformer for the converter.
-// This is an idiomatic Go method name for setting the transformer.
-func (ct *ConvTransform[VS, T]) SetTransformer(transformer T) {
-	ct.transformer = transformer
+// Transformer returns the current transformer.
+func (ct *ConvTransform[VS, T]) Transformer() T {
+	return ct.transformer
 }
 
-// Transformer sets a new transformer for the converter.
-// This method name matches the AGG C++ API exactly.
-func (ct *ConvTransform[VS, T]) Transformer(transformer T) {
+// SetTransformer sets a new transformer for the converter.
+func (ct *ConvTransform[VS, T]) SetTransformer(transformer T) {
 	ct.transformer = transformer
 }
 

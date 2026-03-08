@@ -64,14 +64,15 @@ func NewFontEngine(flag32 bool, maxFaces uint32, ftMemory unsafe.Pointer) (*Font
 		return nil, errors.New("failed to allocate FreeType library handle")
 	}
 
+	// Custom FreeType memory management (FT_Memory) is intentionally unsupported.
+	// C++ AGG passes an FT_Memory handle to FT_New_Library when provided; that
+	// interface requires unsafe CGo memory-allocator wrappers and is only needed
+	// for embedded/special-memory environments. Go uses the system allocator via
+	// FT_Init_FreeType, which is correct for all standard use cases.
+	// ftMemory is accepted as a parameter for API compatibility but is ignored.
+	_ = ftMemory
 	var err C.FT_Error
-	if ftMemory != nil {
-		// TODO: Support custom memory management if needed
-		// This would require implementing FreeType's memory interface
-		err = C.FT_Init_FreeType(engine.library)
-	} else {
-		err = C.FT_Init_FreeType(engine.library)
-	}
+	err = C.FT_Init_FreeType(engine.library)
 
 	if err != 0 {
 		C.free_library(engine.library)

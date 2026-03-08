@@ -263,28 +263,10 @@ func (ms *MathStroke) calcMiter(vc VertexConsumer, v0, v1, v2 VertexDist,
 	}
 }
 
-// VertexFilter represents a vertex type that can validate itself against another vertex.
-type VertexFilter interface {
-	// Validate checks if this vertex should be kept when the given vertex is being added.
-	// Returns true if the vertex meets the criteria, false if it should be filtered.
-	Validate(val VertexFilter) bool
-}
-
 // VertexDist represents a vertex with distance information for stroke calculations
 type VertexDist struct {
 	X, Y float64 // Vertex coordinates
 	Dist float64 // Distance to the next vertex
-}
-
-// Validate implements the VertexFilter interface for VertexDist.
-func (v VertexDist) Validate(val VertexFilter) bool {
-	other, ok := val.(VertexDist)
-	if !ok {
-		return false
-	}
-
-	distance := CalcDistance(v.X, v.Y, other.X, other.Y)
-	return distance > VertexDistEpsilon
 }
 
 // CalculateDistance calculates and sets the distance to another vertex.

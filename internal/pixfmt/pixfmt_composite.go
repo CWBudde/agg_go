@@ -6,6 +6,7 @@ import (
 	"agg_go/internal/color"
 	"agg_go/internal/order"
 	"agg_go/internal/pixfmt/blender"
+	"agg_go/internal/simd"
 )
 
 type compositeRGBABlender[CS color.Space, O order.RGBAOrder] interface {
@@ -116,12 +117,45 @@ func (pf *PixFmtCompositeRGBA[CS, O]) BlendHline(x, y, length int, c color.RGBA8
 
 	startX := max(0, x)
 	endX := min(x+length, pf.Width())
-
 	if startX >= endX {
 		return
 	}
+	length = endX - startX
 
 	row := buffer.RowU8(pf.rbuf, y)
+	spanStart := startX * 4
+
+	// SIMD fast paths for standard RGBA byte order.
+	var o O
+	if o.IdxR() == 0 && o.IdxG() == 1 && o.IdxB() == 2 && o.IdxA() == 3 && !pf.premultiplied {
+		dst := row[spanStart:]
+		switch pf.blender.GetOp() {
+		case blender.CompOpSrcOver:
+			simd.CompSrcOverHspanRGBA(dst, nil, c.R, c.G, c.B, c.A, length)
+			return
+		case blender.CompOpDstOver:
+			simd.CompDstOverHspanRGBA(dst, nil, c.R, c.G, c.B, c.A, length)
+			return
+		case blender.CompOpSrcIn:
+			simd.CompSrcInHspanRGBA(dst, nil, c.R, c.G, c.B, c.A, length)
+			return
+		case blender.CompOpDstIn:
+			simd.CompDstInHspanRGBA(dst, nil, c.R, c.G, c.B, c.A, length)
+			return
+		case blender.CompOpSrcOut:
+			simd.CompSrcOutHspanRGBA(dst, nil, c.R, c.G, c.B, c.A, length)
+			return
+		case blender.CompOpDstOut:
+			simd.CompDstOutHspanRGBA(dst, nil, c.R, c.G, c.B, c.A, length)
+			return
+		case blender.CompOpXor:
+			simd.CompXorHspanRGBA(dst, nil, c.R, c.G, c.B, c.A, length)
+			return
+		case blender.CompOpClear:
+			simd.CompClearHspanRGBA(dst, length)
+			return
+		}
+	}
 
 	for i := startX; i < endX; i++ {
 		pixelOffset := i * 4
@@ -162,12 +196,53 @@ func (pf *PixFmtCompositeRGBA[CS, O]) BlendSolidHspan(x, y, length int, c color.
 
 	startX := max(0, x)
 	endX := min(x+length, pf.Width())
-
 	if startX >= endX {
 		return
 	}
+	length = endX - startX
 
 	row := buffer.RowU8(pf.rbuf, y)
+	spanStart := startX * 4
+	var cvSlice []byte
+	if covers != nil {
+		off := startX - x
+		cvSlice = covers[off:]
+		if len(cvSlice) > length {
+			cvSlice = cvSlice[:length]
+		}
+	}
+
+	// SIMD fast paths for standard RGBA byte order.
+	var o O
+	if o.IdxR() == 0 && o.IdxG() == 1 && o.IdxB() == 2 && o.IdxA() == 3 && !pf.premultiplied {
+		dst := row[spanStart:]
+		switch pf.blender.GetOp() {
+		case blender.CompOpSrcOver:
+			simd.CompSrcOverHspanRGBA(dst, cvSlice, c.R, c.G, c.B, c.A, length)
+			return
+		case blender.CompOpDstOver:
+			simd.CompDstOverHspanRGBA(dst, cvSlice, c.R, c.G, c.B, c.A, length)
+			return
+		case blender.CompOpSrcIn:
+			simd.CompSrcInHspanRGBA(dst, cvSlice, c.R, c.G, c.B, c.A, length)
+			return
+		case blender.CompOpDstIn:
+			simd.CompDstInHspanRGBA(dst, cvSlice, c.R, c.G, c.B, c.A, length)
+			return
+		case blender.CompOpSrcOut:
+			simd.CompSrcOutHspanRGBA(dst, cvSlice, c.R, c.G, c.B, c.A, length)
+			return
+		case blender.CompOpDstOut:
+			simd.CompDstOutHspanRGBA(dst, cvSlice, c.R, c.G, c.B, c.A, length)
+			return
+		case blender.CompOpXor:
+			simd.CompXorHspanRGBA(dst, cvSlice, c.R, c.G, c.B, c.A, length)
+			return
+		case blender.CompOpClear:
+			simd.CompClearHspanRGBA(dst, length)
+			return
+		}
+	}
 
 	for i := startX; i < endX; i++ {
 		pixelOffset := i * 4

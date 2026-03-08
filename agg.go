@@ -14,8 +14,7 @@
 //   - text.go        - Text rendering and typography
 //   - stroke.go      - Stroke attributes and line styling
 //   - blending.go    - Blend modes and alpha compositing
-//   - paths.go       - Path operations and manipulation
-//   - shapes.go      - Shape drawing primitives
+//   - fill_rules.go  - Fill rule constants (even-odd, non-zero winding)
 //   - context.go     - Main rendering context (primary interface)
 //
 // Basic usage:
@@ -25,7 +24,7 @@
 //	ctx.FillRectangle(100, 100, 200, 150)
 //	ctx.SetStrokeWidth(2.0)
 //	ctx.DrawCircle(400, 300, 50)
-//	ctx.SaveToPNG("output.png")
+//	ctx.GetImage().SaveToPNG("output.png")
 //
 // The Context interface provides a high-level, user-friendly API that wraps
 // the lower-level AGG2D functionality. For advanced usage, you can access

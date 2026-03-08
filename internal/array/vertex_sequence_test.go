@@ -33,12 +33,12 @@ func TestLineAAVertexValidate(t *testing.T) {
 	v3 := NewLineAAVertex(1, 1)       // Too close, should fail validation
 
 	// Test validation - vertices far apart should validate
-	if !v1.Validate(v2) {
+	if !validateLineAAVertex(v1, v2) {
 		t.Errorf("Expected distant vertices to validate")
 	}
 
 	// Test validation - vertices close together should not validate
-	if v1.Validate(v3) {
+	if validateLineAAVertex(v1, v3) {
 		t.Errorf("Expected close vertices to not validate")
 	}
 }
@@ -195,12 +195,12 @@ func TestVertexDist(t *testing.T) {
 	v3 := NewVertexDist(1e-15, 1e-15) // Very close, below epsilon (1e-14)
 
 	// Test validation - distant vertices should validate
-	if !v1.Validate(v2) {
+	if !validateVertexDist(v1, v2) {
 		t.Errorf("Expected distant VertexDist to validate")
 	}
 
 	// Test validation - very close vertices should not validate
-	if v1.Validate(v3) {
+	if validateVertexDist(v1, v3) {
 		t.Errorf("Expected close VertexDist to not validate")
 	}
 }
@@ -247,15 +247,6 @@ func TestVertexSequenceWithVertexDist(t *testing.T) {
 	if v0.X != 0.0 || v0.Y != 0.0 {
 		t.Errorf("Get(0) = (%f, %f), want (0.0, 0.0)", v0.X, v0.Y)
 	}
-}
-
-// Test type constraint - this should compile if VertexFilter is implemented correctly
-func TestVertexFilterConstraint(t *testing.T) {
-	// Test that LineAAVertex implements VertexFilter
-	var _ VertexFilter = LineAAVertex{}
-
-	// Test that VertexDist implements VertexFilter
-	var _ VertexFilter = VertexDist{}
 }
 
 func BenchmarkVertexSequenceAdd(b *testing.B) {
@@ -317,7 +308,7 @@ func BenchmarkLineAAVertexValidate(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		v1.Validate(v2)
+		validateLineAAVertex(v1, v2)
 	}
 }
 
@@ -327,7 +318,7 @@ func BenchmarkVertexDistValidate(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		v1.Validate(v2)
+		validateVertexDist(v1, v2)
 	}
 }
 

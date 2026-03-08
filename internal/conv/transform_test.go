@@ -302,7 +302,7 @@ func TestConvTransform_Rewind(t *testing.T) {
 	}
 }
 
-// Test Transformer method (AGG-compatible name)
+// Test Transformer getter and SetTransformer setter
 func TestConvTransform_Transformer(t *testing.T) {
 	vertices := []Vertex{
 		{1, 1, basics.PathCmdMoveTo},
@@ -321,12 +321,15 @@ func TestConvTransform_Transformer(t *testing.T) {
 		t.Errorf("First transformer: expected (11, 11, MoveTo), got (%v, %v, %v)", x, y, cmd)
 	}
 
-	// Use AGG-compatible Transformer method
-	conv.Transformer(transformer2)
+	// Use SetTransformer to change transformer, and verify Transformer() getter
+	if conv.Transformer() != transformer1 {
+		t.Errorf("Transformer() getter should return current transformer")
+	}
+	conv.SetTransformer(transformer2)
 	conv.Rewind(0)
 	x, y, cmd = conv.Vertex()
 	if x != 3 || y != 3 || cmd != basics.PathCmdMoveTo {
-		t.Errorf("After Transformer method: expected (3, 3, MoveTo), got (%v, %v, %v)", x, y, cmd)
+		t.Errorf("After SetTransformer: expected (3, 3, MoveTo), got (%v, %v, %v)", x, y, cmd)
 	}
 }
 

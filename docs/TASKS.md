@@ -17,6 +17,8 @@ This checklist tracks remaining TODO items and missing features in the AGG Go po
 
 Previously completed tasks have been moved to TASKS-COMPLETED.md
 
+**Note on open checklist items below**: All core struct implementations (`[x]`) are complete at C++ AGG 2.6 parity. The remaining open `[ ]` items are speculative sub-features (animation, multi-zone, batch ops, caching, etc.) that are not present in C++ AGG 2.6 and are explicitly out-of-scope for this port. See `docs/AGG_DELTAS.md` for full rationale.
+
 ---
 
 ### Transformations
@@ -412,47 +414,47 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 - [x] Places markers at path start/end points
 - [x] Calculates marker orientation based on path direction
 
-#### agg_vcgen_stroke.h - Stroke generator ❌ **PENDING**
+#### agg_vcgen_stroke.h - Stroke generator ✅ **COMPLETED**
 
-- [ ] **Core Stroke Generation**
-  - [ ] `vcgen_stroke` struct implementation
-  - [ ] `width()` and `miter_limit()` setters and getters
-  - [ ] `line_cap()` and `line_join()` setters and getters
-  - [ ] `inner_join()` setter and getter
-- [ ] **Vertex Processing**
-  - [ ] `remove_all()` to clear stroke state
-  - [ ] `add_vertex()` to process input path vertices
-  - [ ] `rewind()` and `vertex()` to output stroked path
-- [ ] **Line Cap Styles**
-  - [ ] `butt_cap` implementation
-  - [ ] `square_cap` implementation
-  - [ ] `round_cap` implementation
-- [ ] **Line Join Styles**
-  - [ ] `miter_join` with miter limit logic
-  - [ ] `round_join` implementation
-  - [ ] `bevel_join` implementation
-  - [ ] `inner_join` handling for sharp corners
-- [ ] **Dependencies**
-  - [ ] Integration with `math_stroke` for geometric calculations
+- [x] **Core Stroke Generation**
+  - [x] `vcgen_stroke` struct implementation
+  - [x] `width()` and `miter_limit()` setters and getters
+  - [x] `line_cap()` and `line_join()` setters and getters
+  - [x] `inner_join()` setter and getter
+- [x] **Vertex Processing**
+  - [x] `remove_all()` to clear stroke state
+  - [x] `add_vertex()` to process input path vertices
+  - [x] `rewind()` and `vertex()` to output stroked path
+- [x] **Line Cap Styles**
+  - [x] `butt_cap` implementation
+  - [x] `square_cap` implementation
+  - [x] `round_cap` implementation
+- [x] **Line Join Styles**
+  - [x] `miter_join` with miter limit logic
+  - [x] `round_join` implementation
+  - [x] `bevel_join` implementation
+  - [x] `inner_join` handling for sharp corners
+- [x] **Dependencies**
+  - [x] Integration with `math_stroke` for geometric calculations
 
-#### agg_vcgen_contour.h - Contour generator ❌ **PENDING**
+#### agg_vcgen_contour.h - Contour generator ✅ **COMPLETED**
 
-- [ ] **Core Contour Generation**
-  - [ ] `vcgen_contour` struct implementation
-  - [ ] `width()` setter and getter for offset distance
-  - [ ] `line_join()` and `miter_limit()` for contour corners
-- [ ] **Vertex Processing**
-  - [ ] `remove_all()` to clear contour state
-  - [ ] `add_vertex()` to process input path vertices
-  - [ ] `rewind()` and `vertex()` to output contour path
-- [ ] **Offset Calculation**
-  - [ ] Positive width for path expansion
-  - [ ] Negative width for path contraction
-  - [ ] Zero width handling (pass-through)
-- [ ] **Corner Handling**
-  - [ ] Miter, round, and bevel join implementations for contours
-- [ ] **Dependencies**
-  - [ ] Integration with `math_stroke` for offset calculations
+- [x] **Core Contour Generation**
+  - [x] `vcgen_contour` struct implementation
+  - [x] `width()` setter and getter for offset distance
+  - [x] `line_join()` and `miter_limit()` for contour corners
+- [x] **Vertex Processing**
+  - [x] `remove_all()` to clear contour state
+  - [x] `add_vertex()` to process input path vertices
+  - [x] `rewind()` and `vertex()` to output contour path
+- [x] **Offset Calculation**
+  - [x] Positive width for path expansion
+  - [x] Negative width for path contraction
+  - [x] Zero width handling (pass-through)
+- [x] **Corner Handling**
+  - [x] Miter, round, and bevel join implementations for contours
+- [x] **Dependencies**
+  - [x] Integration with `math_stroke` for offset calculations
 
 ---
 
@@ -570,27 +572,27 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 - [x] Triangle configuration
 - [x] Performance optimization
 
-#### agg_span_gouraud_gray.h - Grayscale Gouraud shading
+#### agg_span_gouraud_gray.h - Grayscale Gouraud shading ✅ **COMPLETED**
 
 - [x] span_gouraud_gray → SpanGouraudGray struct - Optimized grayscale Gouraud shading
-- [ ] Single channel processing
-- [ ] Grayscale interpolation
-- [ ] Grayscale vertex setup
-- [ ] Monochrome rendering
-- [ ] Performance-critical applications
-- [ ] Grayscale rendering pipeline
+- [x] Single channel processing
+- [x] Grayscale interpolation
+- [x] Grayscale vertex setup
+- [x] Monochrome rendering
+- [x] Performance-critical applications
+- [x] Grayscale rendering pipeline
 
-#### agg_span_gouraud_rgba.h - RGBA Gouraud shading
+#### agg_span_gouraud_rgba.h - RGBA Gouraud shading ✅ **COMPLETED**
 
 - [x] span_gouraud_rgba → SpanGouraudRGBA struct - Full-color RGBA Gouraud shading
-- [ ] Multi-channel interpolation
-- [ ] Advanced color handling
-- [ ] Alpha interpolation
-- [ ] Alpha compositing
-- [ ] Multi-channel optimization
-- [ ] Quality vs. performance trade-offs
-- [ ] Complex shading effects
-- [ ] Integration capabilities
+- [x] Multi-channel interpolation
+- [x] Advanced color handling
+- [x] Alpha interpolation
+- [x] Alpha compositing
+- [x] Multi-channel optimization
+- [x] Quality vs. performance trade-offs
+- [x] Complex shading effects
+- [x] Integration capabilities
 
 ---
 
@@ -1031,11 +1033,11 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 
 ---
 
-### Utilities (util/) ❌ **PENDING**
+### Utilities (util/) ✅ **COMPLETED**
 
-- [ ] agg_color_conv.h - Color conversion utilities
-- [ ] agg_color_conv_rgb16.h - 16-bit RGB color conversion
-- [ ] agg_color_conv_rgb8.h - 8-bit RGB color conversion
+- [x] agg_color_conv.h - Color conversion utilities (`internal/color/conv/`)
+- [x] agg_color_conv_rgb16.h - 16-bit RGB color conversion (`internal/color/conv/color_conv_rgb16.go`)
+- [x] agg_color_conv_rgb8.h - 8-bit RGB color conversion (`internal/color/conv/color_conv_rgb8.go`)
 
 ---
 
@@ -1045,10 +1047,10 @@ Previously completed tasks have been moved to TASKS-COMPLETED.md
 
 ---
 
-## AGG2D High-Level Interface ⚠️ **PARTIALLY COMPLETED**
+## AGG2D High-Level Interface ✅ **COMPLETED**
 
 - [x] `agg2d.h` - API ported to Go
-- [-] `agg2d.cpp` - API ported but rendering pipeline incomplete
+- [x] `agg2d.cpp` - Full rendering pipeline ported; image pipeline uses premultiplied renderer matching C++ `m_renBasePre` (see `docs/AGG_DELTAS.md`)
 
 ---
 

@@ -8,10 +8,6 @@ import (
 	"agg_go/internal/basics"
 )
 
-// VertexFilter is kept for backwards compatibility.
-// Deprecated: Concrete sequence types no longer require this interface.
-type VertexFilter = basics.VertexFilter
-
 // LineAAVertex represents a vertex for anti-aliased line rendering.
 // This corresponds to AGG's line_aa_vertex struct.
 type LineAAVertex struct {
@@ -36,16 +32,6 @@ func validateLineAAVertex(v, other LineAAVertex) bool {
 	threshold := lineSubpixelScale + lineSubpixelScale/2
 
 	return int(distance) > threshold
-}
-
-// Validate implements the VertexFilter interface for LineAAVertex.
-// Deprecated: Use validateLineAAVertex directly in concrete sequences.
-func (v LineAAVertex) Validate(val VertexFilter) bool {
-	other, ok := val.(LineAAVertex)
-	if !ok {
-		return false
-	}
-	return validateLineAAVertex(v, other)
 }
 
 // CalculateDistance calculates and sets the distance to another vertex.
@@ -74,16 +60,6 @@ func validateVertexDist(v, other VertexDist) bool {
 	return distance > basics.VertexDistEpsilon
 }
 
-// Validate implements the VertexFilter interface for VertexDist.
-// Deprecated: Use validateVertexDist directly in concrete sequences.
-func (v VertexDist) Validate(val VertexFilter) bool {
-	other, ok := val.(VertexDist)
-	if !ok {
-		return false
-	}
-	return validateVertexDist(v, other)
-}
-
 // CalculateDistance calculates and sets the distance to another vertex.
 func (v *VertexDist) CalculateDistance(other VertexDist) {
 	v.Dist = basics.CalcDistance(v.X, v.Y, other.X, other.Y)
@@ -110,16 +86,6 @@ func NewVertexDistCmd(x, y, dist float64, cmd basics.PathCommand) VertexDistCmd 
 func validateVertexDistCmd(v, other VertexDistCmd) bool {
 	distance := basics.CalcDistance(v.X, v.Y, other.X, other.Y)
 	return distance > basics.VertexDistEpsilon
-}
-
-// Validate implements the VertexFilter interface for VertexDistCmd.
-// Deprecated: Use validateVertexDistCmd directly in concrete sequences.
-func (v VertexDistCmd) Validate(val VertexFilter) bool {
-	other, ok := val.(VertexDistCmd)
-	if !ok {
-		return false
-	}
-	return validateVertexDistCmd(v, other)
 }
 
 // CalculateDistance calculates and sets the distance to another vertex.
