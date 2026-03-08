@@ -654,6 +654,9 @@ func onMouseDown(this js.Value, args []js.Value) interface{} {
 	if demoType == "rasterizers" {
 		return handleRasterizersMouseDown(x, y)
 	}
+	if demoType == "polymorphic_renderer" {
+		return handlePolyRenMouseDown(x, y)
+	}
 	if demoType == "perspective" {
 		return handlePerspectiveMouseDown(x, y)
 	}
@@ -790,6 +793,9 @@ func onMouseMove(this js.Value, args []js.Value) interface{} {
 	if demoType == "rasterizers" {
 		return handleRasterizersMouseMove(x, y)
 	}
+	if demoType == "polymorphic_renderer" {
+		return handlePolyRenMouseMove(x, y)
+	}
 	if demoType == "perspective" {
 		return handlePerspectiveMouseMove(x, y)
 	}
@@ -909,6 +915,9 @@ func onMouseUp(this js.Value, args []js.Value) interface{} {
 	}
 	if demoType == "rasterizers" {
 		handleRasterizersMouseUp()
+	}
+	if demoType == "polymorphic_renderer" {
+		handlePolyRenMouseUp()
 	}
 	if demoType == "perspective" {
 		handlePerspectiveMouseUp()
@@ -1474,6 +1483,8 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 		drawAlphaGradientDemo()
 	case "rasterizers":
 		drawRasterizersDemo()
+	case "polymorphic_renderer":
+		drawPolymorphicRendererDemo()
 	case "flash_rasterizer":
 		drawFlashRasterizerDemo()
 	case "flash_rasterizer2":

@@ -208,11 +208,11 @@ type FlatVertex struct {
 
 // FlattenPath flattens a RawPath (applies quadratic bezier subdivision and affine) into FlatVertex slices.
 // The affine is specified as [a, b, c, d, e, f] where x' = a*x + c*y + e, y' = b*x + d*y + f.
-func FlattenPath(p *RawPath, sx, sy, tx, ty float64) []FlatVertex {
+// approxScale controls curve subdivision quality (use the viewport scale for zoom-aware flattening).
+func FlattenPath(p *RawPath, sx, sy, tx, ty, approxScale float64) []FlatVertex {
 	if len(p.Vertices) == 0 {
 		return nil
 	}
-	const approxScale = 1.0
 	result := make([]FlatVertex, 0, len(p.Vertices)*2)
 
 	// First vertex is always MoveTo

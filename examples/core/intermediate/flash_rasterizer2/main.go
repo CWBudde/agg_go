@@ -18,6 +18,7 @@ import (
 	"agg_go/internal/basics"
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
+	"agg_go/internal/conv"
 	"agg_go/internal/demo/shapesdata"
 	"agg_go/internal/pixfmt"
 	"agg_go/internal/rasterizer"
@@ -43,6 +44,7 @@ func newDemo() *demo {
 			B: uint8(rng.Intn(256)),
 			A: 230,
 		}
+		colors[i].Premultiply()
 	}
 	return &demo{shapes: shapes, colors: colors}
 }
@@ -85,7 +87,7 @@ func (d *demo) Render(ctx *agg.Context) {
 	// Pre-flatten all paths in screen coordinates.
 	flatPaths := make([][]shapesdata.FlatVertex, len(shape.Paths))
 	for i := range shape.Paths {
-		flatPaths[i] = shapesdata.FlattenPath(&shape.Paths[i], sc, sc, tx, ty)
+		flatPaths[i] = shapesdata.FlattenPath(&shape.Paths[i], sc, sc, tx, ty, sc)
 	}
 
 	// Set up raw renderer pipeline.
@@ -141,13 +143,21 @@ func (d *demo) Render(ctx *agg.Context) {
 		}
 	}
 
-	// Stroke pass.
+	// Stroke pass (using conv_stroke with round joins/caps, matching C++).
 	ras.AutoClose(true)
 	strokeColor := color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 128}
 	strokeW := math.Sqrt(sc)
 	if strokeW < 0.5 {
 		strokeW = 0.5
 	}
+
+	flatSrc := &flatConvVS{}
+	stroke := conv.NewConvStroke(flatSrc)
+	stroke.SetWidth(strokeW)
+	stroke.SetLineJoin(basics.RoundJoin)
+	stroke.SetLineCap(basics.RoundCap)
+
+	strokeRasVS := &convStrokeRasVS{stroke: stroke}
 
 	for i, p := range shape.Paths {
 		if p.Line < 0 {
@@ -158,7 +168,8 @@ func (d *demo) Render(ctx *agg.Context) {
 			continue
 		}
 		ras.Reset()
-		strokeFlatPath(ras, flat, strokeW)
+		flatSrc.verts = flat
+		ras.AddPath(strokeRasVS, 0)
 		if !ras.RewindScanlines() {
 			continue
 		}
@@ -245,34 +256,33 @@ func (v *invertedFlatVS) Vertex(x, y *float64) uint32 {
 	return cmd
 }
 
-// --- Stroke helper ---
+// --- conv.VertexSource adapter for flat vertices (feeds into ConvStroke) ---
 
-func strokeFlatPath(
-	ras *rasterizer.RasterizerScanlineAA[float64, rasterizer.DblConv, *rasterizer.RasterizerSlClip[float64, rasterizer.DblConv]],
-	flat []shapesdata.FlatVertex,
-	w float64,
-) {
-	if len(flat) < 2 {
-		return
+type flatConvVS struct {
+	verts []shapesdata.FlatVertex
+	pos   int
+}
+
+func (v *flatConvVS) Rewind(_ uint) { v.pos = 0 }
+func (v *flatConvVS) Vertex() (x, y float64, cmd basics.PathCommand) {
+	if v.pos >= len(v.verts) {
+		return 0, 0, basics.PathCmdStop
 	}
-	hw := w * 0.5
-	for i := 1; i < len(flat); i++ {
-		if flat[i].Cmd != shapesdata.PathCmdLineTo {
-			continue
-		}
-		x1, y1 := flat[i-1].X, flat[i-1].Y
-		x2, y2 := flat[i].X, flat[i].Y
-		dx, dy := x2-x1, y2-y1
-		d := math.Sqrt(dx*dx + dy*dy)
-		if d < 1e-6 {
-			continue
-		}
-		nx, ny := -dy/d*hw, dx/d*hw
-		ras.MoveToD(x1+nx, y1+ny)
-		ras.LineToD(x2+nx, y2+ny)
-		ras.LineToD(x2-nx, y2-ny)
-		ras.LineToD(x1-nx, y1-ny)
-	}
+	fv := v.verts[v.pos]
+	v.pos++
+	return fv.X, fv.Y, basics.PathCommand(fv.Cmd)
+}
+
+// convStrokeRasVS adapts conv.ConvStroke to the rasterizer's VertexSource interface.
+type convStrokeRasVS struct {
+	stroke *conv.ConvStroke
+}
+
+func (a *convStrokeRasVS) Rewind(pathID uint32) { a.stroke.Rewind(uint(pathID)) }
+func (a *convStrokeRasVS) Vertex(x, y *float64) uint32 {
+	vx, vy, cmd := a.stroke.Vertex()
+	*x, *y = vx, vy
+	return uint32(cmd)
 }
 
 // --- Scanline adapters (mirrors cmd/wasm/adapter.go) ---

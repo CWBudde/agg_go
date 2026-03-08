@@ -108,6 +108,8 @@ export const demoDescriptions = {
     "Port of AGG's gradients_contour demo. Contour-based gradients using Distance Transform — colors follow the shape of an arbitrary path. Supports star, Great Britain outline, spiral, and glyph shapes with four gradient modes (Contour, Auto-Contour, Conic/Angle, Flat) and 2–11 color stops.",
   flash_rasterizer2:
     "Port of AGG's flash_rasterizer2.cpp. Alternative Flash compound-shape rasterization: decomposes each shape into per-fill-style sub-shapes. For each style, paths with a matching left-fill are added forward and paths with a matching right-fill are added reversed (inverted polygon winding). A clipping rasterizer discards the spurious edge from the clipper origin. Select any of the 24 shape frames with the slider.",
+  polymorphic_renderer:
+    "Port of AGG's polymorphic_renderer.cpp. Demonstrates how Go interfaces provide natural polymorphic rendering — the same scanline rendering code works uniformly across any pixel-format backend without virtual dispatch. In C++ this required a virtual base class and an explicit factory switch; in Go a single interface value suffices. Drag the three corner handles to reshape the filled triangle.",
   gouraud:
     "Smooth color interpolation across triangles. Demonstrates AGG's capability to render gradient-shaded meshes with sub-pixel precision and adjustable dilation.",
   imagefilters:

@@ -87,7 +87,7 @@ func main() {
 			"image1", "image_transforms", "image_alpha", "pattern_fill",
 			"gradient_focal", "line_thickness", "rasterizer_compound", "image_resample", "line_patterns_clip", "line_patterns", "scanline_boolean2", "gpc_test",
 			"pattern_perspective", "pattern_resample", "image_perspective", "gradients_contour",
-			"flash_rasterizer2",
+			"flash_rasterizer2", "polymorphic_renderer",
 		}
 	}
 
@@ -240,6 +240,8 @@ func renderDemoToFile(demoType, outDir string) error {
 		drawGradientsContourDemo()
 	case "flash_rasterizer2":
 		drawFlashRasterizer2Demo()
+	case "polymorphic_renderer":
+		drawPolymorphicRendererDemo()
 	default:
 		return fmt.Errorf("unknown demo: %q", demoType)
 	}

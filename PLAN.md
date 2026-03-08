@@ -365,8 +365,6 @@ idiomatic in Go.
 - [x] `gpc_test.cpp`
 - [x] `gradients_contour.cpp` — recorded and wired (cmd/wasm/demo_gradients_contour.go + examples/core/intermediate/gradients_contour/main.go)
 - [x] `flash_rasterizer2.cpp` — recorded and wired (cmd/wasm/demo_flash_rasterizer2.go + examples/core/intermediate/flash_rasterizer2/main.go)
-- [ ] `polymorphic_renderer.cpp`, `blend_color.cpp`
-- [ ] `image_filters2.cpp`
 - [x] `image_fltr_graph.cpp` — source `../agg-2.6/agg-src/examples/image_fltr_graph.cpp`,
       standalone `examples/core/intermediate/image_fltr_graph/main.go`,
       web `cmd/wasm/demo_image_fltr_graph.go` + `web/index.html`,
@@ -374,6 +372,9 @@ idiomatic in Go.
       URL/HTML controls (no AGG widgets in web) via
       `web/{event-handlers.js,demo-state.js,url-state.js}`,
       verification wiring via `cmd/wasm/{main.go,main_stub.go,render_test.go}` switches/lists.
+- [x] `polymorphic_renderer.cpp` — recorded and wired (cmd/wasm/demo_polymorphic_renderer.go + examples/core/intermediate/polymorphic_renderer/main.go)
+- [ ] `blend_color.cpp`
+- [ ] `image_filters2.cpp`
 
 ### 9.4 Lower-priority or support-heavy demos
 
