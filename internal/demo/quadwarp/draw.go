@@ -268,7 +268,10 @@ func Draw(ctx *agg.Context, cfg Config) {
 				return
 			}
 			if cfg.Sampling == SampleResample {
-				rg := span.NewSpanImageResampleRGBAWithParams[*rgbaSource, *span.SpanInterpolatorPerspectiveLerp](source, interp, filter)
+				// Match AGG: perspective-resample uses a subdiv adaptor over the
+				// perspective interpolator to keep local-scale resampling stable.
+				subdiv := span.NewSpanSubdivAdaptor(interp)
+				rg := span.NewSpanImageResampleRGBAWithParams[*rgbaSource, *span.SpanSubdivAdaptor[*span.SpanInterpolatorPerspectiveLerp]](source, subdiv, filter)
 				gen = rg
 			} else if cfg.Sampling == SampleNearest {
 				gen = span.NewSpanImageFilterRGBANNWithParams[*rgbaSource, *span.SpanInterpolatorPerspectiveLerp](source, interp)
@@ -281,7 +284,10 @@ func Draw(ctx *agg.Context, cfg Config) {
 				return
 			}
 			if cfg.Sampling == SampleResample {
-				rg := span.NewSpanImageResampleRGBAWithParams[*rgbaSource, *span.SpanInterpolatorPerspectiveExact](source, interp, filter)
+				// Match AGG: perspective-resample uses a subdiv adaptor over the
+				// perspective interpolator to keep local-scale resampling stable.
+				subdiv := span.NewSpanSubdivAdaptor(interp)
+				rg := span.NewSpanImageResampleRGBAWithParams[*rgbaSource, *span.SpanSubdivAdaptor[*span.SpanInterpolatorPerspectiveExact]](source, subdiv, filter)
 				gen = rg
 			} else if cfg.Sampling == SampleNearest {
 				gen = span.NewSpanImageFilterRGBANNWithParams[*rgbaSource, *span.SpanInterpolatorPerspectiveExact](source, interp)

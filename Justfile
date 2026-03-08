@@ -17,8 +17,8 @@ default:
 
 # Build commands
 
-# Build everything (library + examples)
-build: build-lib build-examples
+# Build everything (library + demos)
+build: build-lib build-demos
 
 # Build the library
 build-lib:
