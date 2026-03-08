@@ -726,6 +726,30 @@ export const demoURLHandlers = {
     },
   },
 
+  gpc_test: {
+    persist() {
+      updateURL({
+        gsc: parseInt(document.getElementById("gpcSceneSelector").value, 10),
+        gop: parseInt(document.getElementById("gpcOpSelector").value, 10),
+      });
+    },
+    restore(p) {
+      if (p.has("gsc")) {
+        const val = parseInt(p.get("gsc"), 10);
+        setGPCTestScene(val);
+        document.getElementById("gpcSceneSelector").value = String(val);
+      }
+      if (p.has("gop")) {
+        const val = parseInt(p.get("gop"), 10);
+        setGPCTestOperation(val);
+        document.getElementById("gpcOpSelector").value = String(val);
+      }
+      if (p.has("gcx") && p.has("gcy")) {
+        setGPCTestCenter(parseFloat(p.get("gcx")), parseFloat(p.get("gcy")));
+      }
+    },
+  },
+
   distortions: {
     persist() {
       updateURL({

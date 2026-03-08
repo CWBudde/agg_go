@@ -40,6 +40,7 @@
           <option value="line_patterns">Line Patterns</option>
           <option value="line_patterns_clip">Line Patterns Clip</option>
           <option value="scanline_boolean2">Scanline Boolean 2</option>
+          <option value="gpc_test">GPC Test</option>
           <option value="convstroke">Line Join &amp; Cap Styles</option>
           <option value="convcontour">
             Contour Tool &amp; Polygon Orientation
@@ -967,6 +968,26 @@
       <label style="margin-left: 1rem"
         ><input type="checkbox" id="bsplineClosed" /> Closed</label
       >
+    </div>
+
+    <div class="controls" id="gpcTestControls" style="display: none">
+      <label for="gpcSceneSelector">Scene:</label>
+      <select id="gpcSceneSelector">
+        <option value="0">Two Simple Paths</option>
+        <option value="1">Closed Stroke</option>
+        <option value="2">Great Britain + Arrows</option>
+        <option value="3" selected>Great Britain + Spiral</option>
+        <option value="4">Spiral + Glyph</option>
+      </select>
+      <label for="gpcOpSelector" style="margin-left: 1rem">Operation:</label>
+      <select id="gpcOpSelector">
+        <option value="0">None</option>
+        <option value="1">OR</option>
+        <option value="2" selected>AND</option>
+        <option value="3">XOR</option>
+        <option value="4">A-B</option>
+        <option value="5">B-A</option>
+      </select>
     </div>
 
     <canvas id="aggCanvas"></canvas>

@@ -756,6 +756,20 @@ export function setupEventHandlers(
     renderSelectedDemo();
   });
 
+  // gpc_test controls
+  document.getElementById("gpcSceneSelector").addEventListener("change", () => {
+    const val = parseInt(document.getElementById("gpcSceneSelector").value, 10);
+    setGPCTestScene(val);
+    persistDemoParams("gpc_test");
+    renderSelectedDemo();
+  });
+  document.getElementById("gpcOpSelector").addEventListener("change", () => {
+    const val = parseInt(document.getElementById("gpcOpSelector").value, 10);
+    setGPCTestOperation(val);
+    persistDemoParams("gpc_test");
+    renderSelectedDemo();
+  });
+
   // Mouse events for draggable-point demos
   let isDragging = false;
 

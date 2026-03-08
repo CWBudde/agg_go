@@ -51,6 +51,9 @@ var (
 	_             func(int)                                                                    = setScanlineBoolean2Scanline
 	_             func(int)                                                                    = setScanlineBoolean2Operation
 	_             func(float64, float64)                                                       = setScanlineBoolean2Center
+	_             func(int)                                                                    = setGPCTestScene
+	_             func(int)                                                                    = setGPCTestOperation
+	_             func(float64, float64)                                                       = setGPCTestCenter
 )
 
 // logStatus prints a status message to stdout (replaces the JS DOM update in main.go).
@@ -72,7 +75,7 @@ func main() {
 			"trans_curve2", "gamma_ctrl", "gamma_tuner", "lion_lens", "circles", "blur", "simple_blur",
 			"alpha_mask2", "alpha_mask3", "compositing2",
 			"image1", "image_transforms", "image_alpha", "pattern_fill",
-			"gradient_focal", "line_thickness", "rasterizer_compound", "image_resample", "line_patterns_clip", "line_patterns", "scanline_boolean2",
+			"gradient_focal", "line_thickness", "rasterizer_compound", "image_resample", "line_patterns_clip", "line_patterns", "scanline_boolean2", "gpc_test",
 			"pattern_perspective", "pattern_resample", "image_perspective",
 		}
 	}
@@ -218,6 +221,8 @@ func renderDemoToFile(demoType, outDir string) error {
 		drawLinePatternsDemo()
 	case "scanline_boolean2":
 		drawScanlineBoolean2Demo()
+	case "gpc_test":
+		drawGPCTestDemo()
 	default:
 		return fmt.Errorf("unknown demo: %q", demoType)
 	}

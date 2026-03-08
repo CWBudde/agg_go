@@ -323,6 +323,24 @@ func main() {
 		}
 		return nil
 	}))
+	js.Global().Set("setGPCTestScene", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setGPCTestScene(args[0].Int())
+		}
+		return nil
+	}))
+	js.Global().Set("setGPCTestOperation", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setGPCTestOperation(args[0].Int())
+		}
+		return nil
+	}))
+	js.Global().Set("setGPCTestCenter", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) >= 2 {
+			setGPCTestCenter(args[0].Float(), args[1].Float())
+		}
+		return nil
+	}))
 
 	// gamma_tuner setters
 	js.Global().Set("setGammaTunerR", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
@@ -641,6 +659,13 @@ func onMouseDown(this js.Value, args []js.Value) interface{} {
 		}
 		return handleScanlineBoolean2MouseDown(x, y)
 	}
+	if demoType == "gpc_test" {
+		right := len(args) >= 4 && args[3].Bool()
+		if right {
+			return false
+		}
+		return handleGPCTestMouseDown(x, y)
+	}
 	return false
 }
 
@@ -766,6 +791,13 @@ func onMouseMove(this js.Value, args []js.Value) interface{} {
 		}
 		return handleScanlineBoolean2MouseMove(x, y)
 	}
+	if demoType == "gpc_test" {
+		right := len(args) >= 4 && args[3].Bool()
+		if right {
+			return false
+		}
+		return handleGPCTestMouseMove(x, y)
+	}
 	return false
 }
 
@@ -849,6 +881,9 @@ func onMouseUp(this js.Value, args []js.Value) interface{} {
 	}
 	if demoType == "scanline_boolean2" {
 		handleScanlineBoolean2MouseUp()
+	}
+	if demoType == "gpc_test" {
+		handleGPCTestMouseUp()
 	}
 	return nil
 }
@@ -1439,6 +1474,8 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 		drawLinePatternsDemo()
 	case "scanline_boolean2":
 		drawScanlineBoolean2Demo()
+	case "gpc_test":
+		drawGPCTestDemo()
 	default:
 		logStatus("unknown demo type: " + demoType)
 		return nil
