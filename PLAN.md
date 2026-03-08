@@ -379,11 +379,14 @@ idiomatic in Go.
       generation setup in wasm; add a non-empty render check in demo benchmark/smoke path.
 - [x] `line_patterns_clip` (web): fix empty output; verify clip-box/path and pattern source wiring;
       add non-empty render check.
-- [ ] `scanline_boolean2` (web): correct map polygon orientation (upside-down) and centering;
-      reconcile coordinate transform with upstream C++ and standalone output.
+- [x] `scanline_boolean2` (web): corrected map orientation, centered the original 655x520
+      reference frame in web canvas, and fixed mouse Y mapping so drag direction matches
+      on-screen movement while preserving upstream `flip_y` parity.
 - [ ] `trans_curve` (web): evaluate source bitmap choice; if better upstream-compatible bitmap is
       available in shared assets, switch and keep parity with standalone.
+      Note: reference-frame centering parity fix applied (original 600x600 frame centered in web canvas).
 - [ ] `trans_curve2` (web): same as `trans_curve` bitmap/task; ensure visual parity after asset update.
+      Note: reference-frame centering parity fix applied (original 600x600 frame centered in web canvas).
 - [x] `distortions` (web): fixed mostly-empty output by correcting wave-distortion amplitude math,
       switching to spheres source image for parity, and matching upstream-style default center init.
 - [ ] `image1` (web): fix fully white output; verify span interpolator, source accessor, and raster

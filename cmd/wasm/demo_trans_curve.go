@@ -20,6 +20,15 @@ var (
 	transCurveDY       [6]float64
 )
 
+const (
+	transCurveRefW = 600.0
+	transCurveRefH = 600.0
+)
+
+func transCurveFrameOffset() (float64, float64) {
+	return (float64(width) - transCurveRefW) * 0.5, (float64(height) - transCurveRefH) * 0.5
+}
+
 func initTransCurveDemo() {
 	if lionPaths == nil {
 		lionPaths = liondemo.Parse()
@@ -42,15 +51,16 @@ func (a *transSingleAdapter) Vertex() (float64, float64, basics.PathCommand) {
 
 func drawTransCurveDemo() {
 	initTransCurveDemo()
+	offX, offY := transCurveFrameOffset()
 
 	if transCurveAnimate {
 		for i := 0; i < 6; i++ {
 			transCurvePoints[i*2] += transCurveDX[i]
 			transCurvePoints[i*2+1] += transCurveDY[i]
-			if transCurvePoints[i*2] < 0 || transCurvePoints[i*2] > float64(width) {
+			if transCurvePoints[i*2] < 0 || transCurvePoints[i*2] > transCurveRefW {
 				transCurveDX[i] = -transCurveDX[i]
 			}
-			if transCurvePoints[i*2+1] < 0 || transCurvePoints[i*2+1] > float64(height) {
+			if transCurvePoints[i*2+1] < 0 || transCurvePoints[i*2+1] > transCurveRefH {
 				transCurveDY[i] = -transCurveDY[i]
 			}
 		}
@@ -118,6 +128,8 @@ func drawTransCurveDemo() {
 			tx := (x - lx1) * scaleX
 			ty := (y - (ly1+ly2)*0.5) * scaleY
 			tcurve.Transform(&tx, &ty)
+			tx += offX
+			ty += offY
 
 			if basics.IsMoveTo(basics.PathCommand(cmd)) {
 				agg2d.MoveTo(tx, ty)
@@ -142,21 +154,24 @@ func drawTransCurveDemo() {
 			break
 		}
 		if first {
-			agg2d.MoveTo(vx, vy)
+			agg2d.MoveTo(vx+offX, vy+offY)
 			first = false
 		} else {
-			agg2d.LineTo(vx, vy)
+			agg2d.LineTo(vx+offX, vy+offY)
 		}
 	}
 	agg2d.DrawPath(agg.StrokeOnly)
 
 	// 6. Draw handles
 	for i := 0; i < 6; i++ {
-		drawHandle(transCurvePoints[i*2], transCurvePoints[i*2+1])
+		drawHandle(transCurvePoints[i*2]+offX, transCurvePoints[i*2+1]+offY)
 	}
 }
 
 func handleTransCurveMouseDown(x, y float64) bool {
+	offX, offY := transCurveFrameOffset()
+	x -= offX
+	y -= offY
 	transCurveSelected = -1
 	for i := 0; i < 6; i++ {
 		dist := math.Sqrt((x-transCurvePoints[i*2])*(x-transCurvePoints[i*2]) + (y-transCurvePoints[i*2+1])*(y-transCurvePoints[i*2+1]))
@@ -169,6 +184,9 @@ func handleTransCurveMouseDown(x, y float64) bool {
 }
 
 func handleTransCurveMouseMove(x, y float64) bool {
+	offX, offY := transCurveFrameOffset()
+	x -= offX
+	y -= offY
 	if transCurveSelected != -1 {
 		transCurvePoints[transCurveSelected*2] = x
 		transCurvePoints[transCurveSelected*2+1] = y

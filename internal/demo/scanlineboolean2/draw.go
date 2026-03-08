@@ -19,6 +19,11 @@ type Config struct {
 	CenterY      float64
 }
 
+const (
+	referenceWidth  = 655.0
+	referenceHeight = 520.0
+)
+
 type pt struct {
 	x float64
 	y float64
@@ -39,20 +44,29 @@ func clampInt(v, lo, hi int) int {
 func Draw(ctx *agg.Context, cfg Config) {
 	w := float64(ctx.GetImage().Width())
 	h := float64(ctx.GetImage().Height())
+	frameOffX := (w - referenceWidth) * 0.5
+	frameOffY := (h - referenceHeight) * 0.5
 	if math.IsNaN(cfg.CenterX) || math.IsNaN(cfg.CenterY) {
 		cfg.CenterX = w / 2
 		cfg.CenterY = h / 2
 	}
+	// The original demo runs in a 655x520 window with flip_y=true. Keep that
+	// reference frame centered in larger canvases and convert mouse Y so drag
+	// direction matches screen-space movement after vertical mirroring.
+	centerRefX := cfg.CenterX - frameOffX
+	centerRefY := referenceHeight - (cfg.CenterY - frameOffY)
 	cfg.Mode = clampInt(cfg.Mode, 0, 4)
 	cfg.FillRule = clampInt(cfg.FillRule, 0, 1)
 	cfg.ScanlineType = clampInt(cfg.ScanlineType, 0, 2)
 	cfg.Operation = clampInt(cfg.Operation, 0, 6)
 
-	a, b := buildShapes(cfg, w, h)
+	cfg.CenterX = centerRefX
+	cfg.CenterY = centerRefY
+	a, b := buildShapes(cfg, referenceWidth, referenceHeight)
 	// AGG's original demo runs with flip_y=true; mirror geometry in Y to match
 	// the reference orientation in this top-left-origin framebuffer.
-	a = mirrorContoursY(a, h)
-	b = mirrorContoursY(b, h)
+	a = transformContours(mirrorContoursY(a, referenceHeight), 0, 0, 1, 1, frameOffX, frameOffY)
+	b = transformContours(mirrorContoursY(b, referenceHeight), 0, 0, 1, 1, frameOffX, frameOffY)
 	agg2d := ctx.GetAgg2D()
 	agg2d.ResetTransformations()
 	agg2d.ClearAll(agg.White)
