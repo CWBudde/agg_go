@@ -8,12 +8,13 @@
 //   - Flat Fill: simple solid fill for comparison.
 //
 // Controls (HTML/URL):
-//   polygon  (0-3): Star, Great Britain, Spiral, Glyph
-//   gradient (0-3): Contour, Auto Contour, Conic, Flat Fill
-//   reflect  (bool): mirror the gradient past d2
-//   c1, c2   (0-512): contour DT sampling range
-//   d1, d2   (0-512): gradient mapping range
-//   colors   (2-11): number of color stops in the LUT
+//
+//	polygon  (0-3): Star, Great Britain, Spiral, Glyph
+//	gradient (0-3): Contour, Auto Contour, Conic, Flat Fill
+//	reflect  (bool): mirror the gradient past d2
+//	c1, c2   (0-512): contour DT sampling range
+//	d1, d2   (0-512): gradient mapping range
+//	colors   (2-11): number of color stops in the LUT
 package main
 
 import (
@@ -176,7 +177,7 @@ func (s *gradSpiral) Vertex() (x, y float64, cmd basics.PathCommand) {
 // --- Color palette builder (matches C++ demo exactly) ---
 
 type gradContourStop struct {
-	t    float64
+	t       float64
 	r, g, b uint8
 }
 
@@ -398,10 +399,8 @@ func drawGradientsContourDemo() {
 
 	// Build the main vertex source based on polygon selector.
 	// All shapes live in their natural coordinate space; we scale them to fit.
-	var mainVS conv.VertexSource      // shape to draw
-	var contourSrc *path.PathStorage  // always the star (for mode 0)
-
-	contourSrc = buildStarPath() // used as contour source for gradient mode 0
+	var mainVS conv.VertexSource  // shape to draw
+	contourSrc := buildStarPath() // used as contour source for gradient mode 0
 
 	starPS := buildStarPath() // also used for rendering in polygon mode 0
 

@@ -99,6 +99,32 @@ export function setupEventHandlers(
       renderSelectedDemo();
     });
 
+  // image_fltr_graph controls
+  const buildIfgMask = () => {
+    let mask = 0;
+    document.querySelectorAll(".ifg-filter").forEach((el) => {
+      const idx = parseInt(el.dataset.index);
+      if (el.checked) {
+        mask |= 1 << idx;
+      }
+    });
+    return mask >>> 0;
+  };
+  document.getElementById("ifgRadiusSlider").addEventListener("input", () => {
+    const val = parseFloat(document.getElementById("ifgRadiusSlider").value);
+    document.getElementById("ifgRadiusValue").textContent = val.toFixed(1);
+    setImageFltrGraphRadius(val);
+    persistDemoParams("image_fltr_graph");
+    renderSelectedDemo();
+  });
+  document.querySelectorAll(".ifg-filter").forEach((el) => {
+    el.addEventListener("change", () => {
+      setImageFltrGraphMask(buildIfgMask());
+      persistDemoParams("image_fltr_graph");
+      renderSelectedDemo();
+    });
+  });
+
   // sbool controls
   document.getElementById("sboolOpSelector").addEventListener("change", () => {
     setSBoolOp(parseInt(document.getElementById("sboolOpSelector").value));
@@ -757,16 +783,24 @@ export function setupEventHandlers(
   });
 
   // gradients_contour controls
-  document.getElementById("gcPolygonSelector").addEventListener("change", () => {
-    setGradientsContourPolygon(parseInt(document.getElementById("gcPolygonSelector").value, 10));
-    persistDemoParams("gradients_contour");
-    renderSelectedDemo();
-  });
-  document.getElementById("gcGradientSelector").addEventListener("change", () => {
-    setGradientsContourGradient(parseInt(document.getElementById("gcGradientSelector").value, 10));
-    persistDemoParams("gradients_contour");
-    renderSelectedDemo();
-  });
+  document
+    .getElementById("gcPolygonSelector")
+    .addEventListener("change", () => {
+      setGradientsContourPolygon(
+        parseInt(document.getElementById("gcPolygonSelector").value, 10),
+      );
+      persistDemoParams("gradients_contour");
+      renderSelectedDemo();
+    });
+  document
+    .getElementById("gcGradientSelector")
+    .addEventListener("change", () => {
+      setGradientsContourGradient(
+        parseInt(document.getElementById("gcGradientSelector").value, 10),
+      );
+      persistDemoParams("gradients_contour");
+      renderSelectedDemo();
+    });
   document.getElementById("gcReflect").addEventListener("change", () => {
     setGradientsContourReflect(document.getElementById("gcReflect").checked);
     persistDemoParams("gradients_contour");
@@ -805,6 +839,15 @@ export function setupEventHandlers(
     document.getElementById("gcD2Value").textContent = String(val);
     setGradientsContourD2(val);
     persistDemoParams("gradients_contour");
+    renderSelectedDemo();
+  });
+
+  // flash_rasterizer2 controls
+  document.getElementById("fr2ShapeSlider").addEventListener("input", () => {
+    const val = parseInt(document.getElementById("fr2ShapeSlider").value, 10);
+    document.getElementById("fr2ShapeValue").textContent = String(val);
+    setFlash2ShapeIdx(val);
+    persistDemoParams("flash_rasterizer2");
     renderSelectedDemo();
   });
 

@@ -14,7 +14,7 @@ func BenchmarkDemos(b *testing.B) {
 
 	demos := []string{
 		"agg2d", "lion", "gradients", "aa", "blend", "interactive_polygon", "graph_test",
-		"bspline", "conv_dash_marker", "gouraud", "imagefilters",
+		"bspline", "conv_dash_marker", "gouraud", "imagefilters", "image_fltr_graph",
 		"sbool", "aatest", "convstroke", "convcontour", "gamma", "lionoutline",
 		"roundedrect", "component", "alphagrad",
 		"rasterizers", "flash_rasterizer", "perspective", "bezier_div",
@@ -67,6 +67,8 @@ func renderDemoForBenchmark(demoType string) {
 		drawGouraudDemo()
 	case "imagefilters":
 		drawImageFiltersDemo()
+	case "image_fltr_graph":
+		drawImageFltrGraphDemo()
 	case "sbool":
 		drawSBoolDemo()
 	case "aatest":

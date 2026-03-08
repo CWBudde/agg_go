@@ -155,6 +155,53 @@ export const demoURLHandlers = {
     },
   },
 
+  image_fltr_graph: {
+    persist() {
+      let mask = 0;
+      document.querySelectorAll(".ifg-filter").forEach((el) => {
+        const idx = parseInt(el.dataset.index);
+        if (el.checked) {
+          mask |= 1 << idx;
+        }
+      });
+      updateURL({
+        ifgr: parseFloat(document.getElementById("ifgRadiusSlider").value),
+        ifgm: mask >>> 0,
+      });
+    },
+    restore(p) {
+      if (p.has("ifgr")) {
+        const val = parseFloat(p.get("ifgr"));
+        setImageFltrGraphRadius(val);
+        document.getElementById("ifgRadiusSlider").value = val;
+        document.getElementById("ifgRadiusValue").textContent = val.toFixed(1);
+      } else {
+        const val = parseFloat(
+          document.getElementById("ifgRadiusSlider").value,
+        );
+        setImageFltrGraphRadius(val);
+        document.getElementById("ifgRadiusValue").textContent = val.toFixed(1);
+      }
+
+      if (p.has("ifgm")) {
+        const mask = parseInt(p.get("ifgm")) >>> 0;
+        document.querySelectorAll(".ifg-filter").forEach((el) => {
+          const idx = parseInt(el.dataset.index);
+          el.checked = ((mask >> idx) & 1) !== 0;
+        });
+      }
+
+      let mask = 0;
+      document.querySelectorAll(".ifg-filter").forEach((el) => {
+        const idx = parseInt(el.dataset.index);
+        if (el.checked) {
+          mask |= 1 << idx;
+        }
+      });
+      setImageFltrGraphMask(mask >>> 0);
+    },
+  },
+
   sbool: {
     persist() {
       const n = getSBoolNodes();
@@ -808,6 +855,22 @@ export const demoURLHandlers = {
         setGradientsContourD2(val);
         document.getElementById("gcD2Slider").value = String(val);
         document.getElementById("gcD2Value").textContent = String(val);
+      }
+    },
+  },
+
+  flash_rasterizer2: {
+    persist() {
+      updateURL({
+        fr2s: parseInt(document.getElementById("fr2ShapeSlider").value, 10),
+      });
+    },
+    restore(p) {
+      if (p.has("fr2s")) {
+        const val = parseInt(p.get("fr2s"), 10);
+        setFlash2ShapeIdx(val);
+        document.getElementById("fr2ShapeSlider").value = String(val);
+        document.getElementById("fr2ShapeValue").textContent = String(val);
       }
     },
   },

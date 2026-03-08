@@ -51,6 +51,9 @@ export const ALL_DEMO_PARAMS = [
   // imagefilters
   "flt",
   "frad",
+  // image_fltr_graph
+  "ifgr",
+  "ifgm",
   // sbool
   "sop",
   "p1x0",

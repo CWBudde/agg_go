@@ -53,7 +53,9 @@
         <optgroup label="── Color &amp; Shading ──">
           <option value="gradients">Gradients Demo</option>
           <option value="gradient_focal">Focal Gradient</option>
-          <option value="gradients_contour">Gradients Contour (Distance Transform)</option>
+          <option value="gradients_contour">
+            Gradients Contour (Distance Transform)
+          </option>
           <option value="gouraud">Gouraud Shading (Interpolation)</option>
           <option value="gouraud_mesh">Gouraud Mesh (Compound)</option>
           <option value="alphagrad">Alpha Channel Gradient</option>
@@ -89,10 +91,14 @@
         </optgroup>
         <optgroup label="── Filters &amp; Rasterization ──">
           <option value="imagefilters">Image Interpolation Filters</option>
+          <option value="image_fltr_graph">Image Filter Graph</option>
           <option value="blur">Gaussian &amp; Stack Blur</option>
           <option value="simple_blur">Simple 3×3 Blur</option>
           <option value="rasterizers">Aliased vs AA Rasterizer</option>
           <option value="flash_rasterizer">Flash (Compound) Rasterizer</option>
+          <option value="flash_rasterizer2">
+            Flash Rasterizer 2 (Style Decomposition)
+          </option>
           <option value="rasterizer_compound">Compound Rasterizer</option>
           <option value="graph_test">Graph Test</option>
           <option value="circles">Random Circles (Scatter Plot)</option>
@@ -317,6 +323,88 @@
         style="display: none"
       />
       <span id="filterRadiusValue" style="display: none">4</span>
+    </div>
+
+    <div class="controls" id="imageFltrGraphControls" style="display: none">
+      <label for="ifgRadiusSlider">Radius:</label>
+      <input
+        type="range"
+        id="ifgRadiusSlider"
+        min="2"
+        max="8"
+        value="4"
+        step="0.1"
+      />
+      <span id="ifgRadiusValue">4.0</span>
+      <span style="font-size: 0.85rem; color: #86868b; margin-left: 0.5rem"
+        >Select filters to compare</span
+      >
+      <div style="width: 100%; margin-top: 0.25rem; font-size: 0.9rem">
+        <label
+          ><input type="checkbox" class="ifg-filter" data-index="0" checked />
+          bilinear</label
+        >
+        <label
+          ><input type="checkbox" class="ifg-filter" data-index="1" />
+          bicubic</label
+        >
+        <label
+          ><input type="checkbox" class="ifg-filter" data-index="2" />
+          spline16</label
+        >
+        <label
+          ><input type="checkbox" class="ifg-filter" data-index="3" />
+          spline36</label
+        >
+        <label
+          ><input type="checkbox" class="ifg-filter" data-index="4" />
+          hanning</label
+        >
+        <label
+          ><input type="checkbox" class="ifg-filter" data-index="5" />
+          hamming</label
+        >
+        <label
+          ><input type="checkbox" class="ifg-filter" data-index="6" />
+          hermite</label
+        >
+        <label
+          ><input type="checkbox" class="ifg-filter" data-index="7" />
+          kaiser</label
+        >
+        <label
+          ><input type="checkbox" class="ifg-filter" data-index="8" />
+          quadric</label
+        >
+        <label
+          ><input type="checkbox" class="ifg-filter" data-index="9" />
+          catrom</label
+        >
+        <label
+          ><input type="checkbox" class="ifg-filter" data-index="10" />
+          gaussian</label
+        >
+        <label
+          ><input type="checkbox" class="ifg-filter" data-index="11" />
+          bessel</label
+        >
+        <label
+          ><input type="checkbox" class="ifg-filter" data-index="12" />
+          mitchell</label
+        >
+        <label
+          ><input type="checkbox" class="ifg-filter" data-index="13" />
+          sinc</label
+        >
+        <label
+          ><input type="checkbox" class="ifg-filter" data-index="14" />
+          lanczos</label
+        >
+        <label
+          ><input type="checkbox" class="ifg-filter" data-index="15" />
+          blackman</label
+        >
+      </div>
     </div>
 
     <div class="controls" id="sboolControls" style="display: none">
@@ -999,7 +1087,9 @@
         <option value="2">Spiral</option>
         <option value="3">Glyph</option>
       </select>
-      <label for="gcGradientSelector" style="margin-left: 1rem">Gradient:</label>
+      <label for="gcGradientSelector" style="margin-left: 1rem"
+        >Gradient:</label
+      >
       <select id="gcGradientSelector">
         <option value="0">Contour (Star DT)</option>
         <option value="1" selected>Auto Contour</option>
@@ -1010,21 +1100,69 @@
         <input type="checkbox" id="gcReflect" checked /> Reflect
       </label>
       <label for="gcColorsSlider" style="margin-left: 1rem">Colors:</label>
-      <input type="range" id="gcColorsSlider" min="2" max="11" step="1" value="2" />
+      <input
+        type="range"
+        id="gcColorsSlider"
+        min="2"
+        max="11"
+        step="1"
+        value="2"
+      />
       <span id="gcColorsValue">2</span>
       <br />
       <label for="gcC1Slider">C1:</label>
-      <input type="range" id="gcC1Slider" min="0" max="512" step="1" value="0" />
+      <input
+        type="range"
+        id="gcC1Slider"
+        min="0"
+        max="512"
+        step="1"
+        value="0"
+      />
       <span id="gcC1Value">0</span>
       <label for="gcC2Slider" style="margin-left: 1rem">C2:</label>
-      <input type="range" id="gcC2Slider" min="0" max="512" step="1" value="512" />
+      <input
+        type="range"
+        id="gcC2Slider"
+        min="0"
+        max="512"
+        step="1"
+        value="512"
+      />
       <span id="gcC2Value">512</span>
       <label for="gcD1Slider" style="margin-left: 1rem">D1:</label>
-      <input type="range" id="gcD1Slider" min="0" max="512" step="1" value="0" />
+      <input
+        type="range"
+        id="gcD1Slider"
+        min="0"
+        max="512"
+        step="1"
+        value="0"
+      />
       <span id="gcD1Value">0</span>
       <label for="gcD2Slider" style="margin-left: 1rem">D2:</label>
-      <input type="range" id="gcD2Slider" min="0" max="512" step="1" value="100" />
+      <input
+        type="range"
+        id="gcD2Slider"
+        min="0"
+        max="512"
+        step="1"
+        value="100"
+      />
       <span id="gcD2Value">100</span>
+    </div>
+
+    <div class="controls" id="flashRasterizer2Controls" style="display: none">
+      <label for="fr2ShapeSlider">Shape (0–23):</label>
+      <input
+        type="range"
+        id="fr2ShapeSlider"
+        min="0"
+        max="23"
+        step="1"
+        value="0"
+      />
+      <span id="fr2ShapeValue">0</span>
     </div>
 
     <canvas id="aggCanvas"></canvas>

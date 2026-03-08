@@ -62,6 +62,7 @@ var (
 	_             func(float64)                                                                = setGradientsContourD1
 	_             func(float64)                                                                = setGradientsContourD2
 	_             func(int)                                                                    = setGradientsContourColors
+	_             func(int)                                                                    = setFlash2ShapeIdx
 )
 
 // logStatus prints a status message to stdout (replaces the JS DOM update in main.go).
@@ -76,6 +77,7 @@ func main() {
 			"agg2d",
 			"lion", "gradients", "aa", "blend", "interactive_polygon", "graph_test",
 			"bspline", "conv_dash_marker", "gouraud", "imagefilters",
+			"image_fltr_graph",
 			"sbool", "aatest", "convstroke", "convcontour", "gamma", "lionoutline",
 			"roundedrect", "component", "alphagrad",
 			"rasterizers", "flash_rasterizer", "perspective", "bezier_div",
@@ -85,6 +87,7 @@ func main() {
 			"image1", "image_transforms", "image_alpha", "pattern_fill",
 			"gradient_focal", "line_thickness", "rasterizer_compound", "image_resample", "line_patterns_clip", "line_patterns", "scanline_boolean2", "gpc_test",
 			"pattern_perspective", "pattern_resample", "image_perspective", "gradients_contour",
+			"flash_rasterizer2",
 		}
 	}
 
@@ -147,6 +150,8 @@ func renderDemoToFile(demoType, outDir string) error {
 		drawGouraudDemo()
 	case "imagefilters":
 		drawImageFiltersDemo()
+	case "image_fltr_graph":
+		drawImageFltrGraphDemo()
 	case "sbool":
 		drawSBoolDemo()
 	case "aatest":
@@ -233,6 +238,8 @@ func renderDemoToFile(demoType, outDir string) error {
 		drawGPCTestDemo()
 	case "gradients_contour":
 		drawGradientsContourDemo()
+	case "flash_rasterizer2":
+		drawFlashRasterizer2Demo()
 	default:
 		return fmt.Errorf("unknown demo: %q", demoType)
 	}

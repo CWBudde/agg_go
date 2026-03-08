@@ -42,6 +42,18 @@ func main() {
 	js.Global().Set("setImageFilter", js.FuncOf(setImageFilter))
 	js.Global().Set("setImageFilterRadius", js.FuncOf(setImageFilterRadius))
 	js.Global().Set("setImageFilterAngle", js.FuncOf(setImageFilterAngle))
+	js.Global().Set("setImageFltrGraphRadius", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setImageFltrGraphRadius(args[0].Float())
+		}
+		return nil
+	}))
+	js.Global().Set("setImageFltrGraphMask", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setImageFltrGraphMask(uint32(args[0].Int()))
+		}
+		return nil
+	}))
 	js.Global().Set("setSBoolOp", js.FuncOf(setSBoolOp))
 	js.Global().Set("setStrokeJoin", js.FuncOf(setStrokeJoin))
 	js.Global().Set("setStrokeCap", js.FuncOf(setStrokeCap))
@@ -526,6 +538,14 @@ func main() {
 	js.Global().Set("setBSplineClosed", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
 		if len(args) > 0 {
 			bsplineClosed = args[0].Bool()
+		}
+		return nil
+	}))
+
+	// flash_rasterizer2 setters
+	js.Global().Set("setFlash2ShapeIdx", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setFlash2ShapeIdx(args[0].Int())
 		}
 		return nil
 	}))
@@ -1432,6 +1452,8 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 		drawGouraudDemo()
 	case "imagefilters":
 		drawImageFiltersDemo()
+	case "image_fltr_graph":
+		drawImageFltrGraphDemo()
 	case "sbool":
 		drawSBoolDemo()
 	case "aatest":
@@ -1454,6 +1476,8 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 		drawRasterizersDemo()
 	case "flash_rasterizer":
 		drawFlashRasterizerDemo()
+	case "flash_rasterizer2":
+		drawFlashRasterizer2Demo()
 	case "perspective":
 		drawPerspectiveDemo()
 	case "bezier_div":

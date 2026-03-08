@@ -11,6 +11,8 @@ export function syncControlVisibility(demoType) {
     demoType === "gouraud_mesh" ? "flex" : "none";
   document.getElementById("imageFilterControls").style.display =
     demoType === "imagefilters" ? "flex" : "none";
+  document.getElementById("imageFltrGraphControls").style.display =
+    demoType === "image_fltr_graph" ? "flex" : "none";
   document.getElementById("sboolControls").style.display =
     demoType === "sbool" ? "flex" : "none";
   document.getElementById("convstrokeControls").style.display =
@@ -71,6 +73,8 @@ export function syncControlVisibility(demoType) {
     demoType === "gpc_test" ? "flex" : "none";
   document.getElementById("gradientsContourControls").style.display =
     demoType === "gradients_contour" ? "flex" : "none";
+  document.getElementById("flashRasterizer2Controls").style.display =
+    demoType === "flash_rasterizer2" ? "flex" : "none";
 }
 
 export const demoDescriptions = {
@@ -102,10 +106,14 @@ export const demoDescriptions = {
     "Port of AGG's gpc_test demo core using general polygon clipping operations. Drag with left mouse to move the scene center.",
   gradients_contour:
     "Port of AGG's gradients_contour demo. Contour-based gradients using Distance Transform — colors follow the shape of an arbitrary path. Supports star, Great Britain outline, spiral, and glyph shapes with four gradient modes (Contour, Auto-Contour, Conic/Angle, Flat) and 2–11 color stops.",
+  flash_rasterizer2:
+    "Port of AGG's flash_rasterizer2.cpp. Alternative Flash compound-shape rasterization: decomposes each shape into per-fill-style sub-shapes. For each style, paths with a matching left-fill are added forward and paths with a matching right-fill are added reversed (inverted polygon winding). A clipping rasterizer discards the spurious edge from the clipper origin. Select any of the 24 shape frames with the slider.",
   gouraud:
     "Smooth color interpolation across triangles. Demonstrates AGG's capability to render gradient-shaded meshes with sub-pixel precision and adjustable dilation.",
   imagefilters:
     "Comparison of different image interpolation filters. Rotates and scales a procedurally generated image using filters like Bilinear, Bicubic, Sinc, and Lanczos to showcase quality vs. performance.",
+  image_fltr_graph:
+    "Port of AGG's image_fltr_graph demo. Plots raw filter shape (red), unnormalized discrete accumulation (green), and normalized LUT weights (blue). Use HTML controls/URL params: ifgr (radius), ifgm (bitmask of enabled filters).",
   sbool:
     "Boolean operations on vector shapes. Demonstrates combining multiple paths using filling rules to achieve Union and XOR-like effects with interactive polygons.",
   aatest:
