@@ -344,7 +344,7 @@ func (ps *PlatformSupport) ImageBuffer(idx int) *buffer.RenderingBuffer[uint8] {
 
 // CreateImage creates an image buffer with the specified dimensions.
 // If width or height is 0, uses the current window dimensions.
-func (ps *PlatformSupport) CreateImage(idx int, width, height int) bool {
+func (ps *PlatformSupport) CreateImage(idx, width, height int) bool {
 	if idx < 0 || idx >= maxImages {
 		return false
 	}

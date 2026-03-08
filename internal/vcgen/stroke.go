@@ -60,11 +60,12 @@ func (vg *VCGenStroke) RemoveAll() {
 func (vg *VCGenStroke) AddVertex(x, y float64, cmd basics.PathCommand) {
 	vg.status = Initial
 
-	if basics.IsMoveTo(cmd) {
+	switch {
+	case basics.IsMoveTo(cmd):
 		vg.srcVertices.ModifyLast(array.VertexDist{X: x, Y: y})
-	} else if basics.IsVertex(cmd) {
+	case basics.IsVertex(cmd):
 		vg.srcVertices.Add(array.VertexDist{X: x, Y: y})
-	} else {
+	default:
 		vg.closed = basics.GetCloseFlag(uint32(cmd)) != 0
 	}
 }

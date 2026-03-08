@@ -664,7 +664,7 @@ func SubtractSpansAA(span1, span2 IteratorInterface, x int, length uint, sl Bool
 // ==============================================================================
 
 // AddSpansAndRender adds spans from a scanline to output using the provided functor
-func AddSpansAndRender(sl1 BooleanScanlineInterface, sl BooleanScanlineInterface, ren RendererInterface, addSpanFunc AddSpanAAFunc) {
+func AddSpansAndRender(sl1, sl BooleanScanlineInterface, ren RendererInterface, addSpanFunc AddSpanAAFunc) {
 	sl.ResetSpans()
 	spanIterator := sl1.Begin()
 	numSpans := sl1.NumSpans()

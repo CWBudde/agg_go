@@ -173,13 +173,15 @@ func TestGSVTextMultipleCharacters(t *testing.T) {
 	moveToCount := 0
 	lineToCount := 0
 
+loop:
 	for {
 		_, _, cmd := gsv.Vertex()
-		if cmd == basics.PathCmdStop {
-			break
-		} else if cmd == basics.PathCmdMoveTo {
+		switch cmd {
+		case basics.PathCmdStop:
+			break loop
+		case basics.PathCmdMoveTo:
 			moveToCount++
-		} else if cmd == basics.PathCmdLineTo {
+		case basics.PathCmdLineTo:
 			lineToCount++
 		}
 	}

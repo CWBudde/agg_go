@@ -174,18 +174,23 @@ type outlineAAAdapter struct {
 	ren *outline.RendererOutlineAA[*outlineBaseAdapter, color.RGBA8[color.Linear]]
 }
 
-func (a *outlineAAAdapter) AccurateJoinOnly() bool             { return a.ren.AccurateJoinOnly() }
-func (a *outlineAAAdapter) Color(c color.RGBA8[color.Linear])  { a.ren.Color(c) }
-func (a *outlineAAAdapter) Line0(lp primitives.LineParameters) { a.ren.Line0(&lp) }
-func (a *outlineAAAdapter) Line1(lp primitives.LineParameters, sx, sy int) {
+func (a *outlineAAAdapter) AccurateJoinOnly() bool            { return a.ren.AccurateJoinOnly() }
+func (a *outlineAAAdapter) Color(c color.RGBA8[color.Linear]) { a.ren.Color(c) }
+
+//nolint:gocritic // The adapter must match the renderer interface, which passes line parameters by value.
+func (a *outlineAAAdapter) Line0(lp primitives.LineParameters) { //nolint:gocritic // Interface compatibility requires a by-value parameter here.
+	a.ren.Line0(&lp)
+}
+
+func (a *outlineAAAdapter) Line1(lp primitives.LineParameters, sx, sy int) { //nolint:gocritic // Interface compatibility requires a by-value parameter here.
 	a.ren.Line1(&lp, sx, sy)
 }
 
-func (a *outlineAAAdapter) Line2(lp primitives.LineParameters, ex, ey int) {
+func (a *outlineAAAdapter) Line2(lp primitives.LineParameters, ex, ey int) { //nolint:gocritic // Interface compatibility requires a by-value parameter here.
 	a.ren.Line2(&lp, ex, ey)
 }
 
-func (a *outlineAAAdapter) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) {
+func (a *outlineAAAdapter) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) { //nolint:gocritic // Interface compatibility requires a by-value parameter here.
 	a.ren.Line3(&lp, sx, sy, ex, ey)
 }
 func (a *outlineAAAdapter) Pie(x, y, x1, y1, x2, y2 int) { a.ren.Pie(x, y, x1, y1, x2, y2) }
@@ -256,12 +261,12 @@ type outlineImageAdapter struct {
 
 func (a *outlineImageAdapter) AccurateJoinOnly() bool                         { return a.ren.AccurateJoinOnly() }
 func (a *outlineImageAdapter) Color(c color.RGBA8[color.Linear])              {}
-func (a *outlineImageAdapter) Line0(lp primitives.LineParameters)             {}
-func (a *outlineImageAdapter) Line1(lp primitives.LineParameters, sx, sy int) {}
-func (a *outlineImageAdapter) Line2(lp primitives.LineParameters, ex, ey int) {}
+func (a *outlineImageAdapter) Line0(lp primitives.LineParameters)             {} //nolint:gocritic // Interface compatibility requires a by-value parameter here.
+func (a *outlineImageAdapter) Line1(lp primitives.LineParameters, sx, sy int) {} //nolint:gocritic // Interface compatibility requires a by-value parameter here.
+func (a *outlineImageAdapter) Line2(lp primitives.LineParameters, ex, ey int) {} //nolint:gocritic // Interface compatibility requires a by-value parameter here.
 func (a *outlineImageAdapter) Pie(x, y, x1, y1, x2, y2 int)                   {}
 func (a *outlineImageAdapter) Semidot(cmp func(int) bool, x, y, x1, y1 int)   {}
-func (a *outlineImageAdapter) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) {
+func (a *outlineImageAdapter) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) { //nolint:gocritic // Interface compatibility requires a by-value parameter here.
 	a.ren.Line3(&lp, sx, sy, ex, ey)
 }
 

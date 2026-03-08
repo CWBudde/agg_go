@@ -124,12 +124,12 @@ func (agg2d *Agg2D) ClearClipBoxRGBA(r, g, b, a uint8) {
 }
 
 // Clamp clamps a value between min and max
-func Clamp(value, min, max float64) float64 {
-	if value < min {
-		return min
+func Clamp(value, lowerBound, upperBound float64) float64 {
+	if value < lowerBound {
+		return lowerBound
 	}
-	if value > max {
-		return max
+	if value > upperBound {
+		return upperBound
 	}
 	return value
 }

@@ -150,11 +150,11 @@ func TestScanlineCellStorage_CopyConstructor(t *testing.T) {
 	extraIdx := original.AddCells(extraCells, len(extraCells))
 
 	// Create a copy
-	copy := NewScanlineCellStorageCopy(original)
+	storageCopy := NewScanlineCellStorageCopy(original)
 
 	// Verify the copy has the same data
-	copyMain := copy.Get(mainIdx)
-	copyExtra := copy.Get(extraIdx)
+	copyMain := storageCopy.Get(mainIdx)
+	copyExtra := storageCopy.Get(extraIdx)
 
 	if copyMain == nil || copyExtra == nil {
 		t.Fatal("Copy failed to preserve data")
@@ -163,7 +163,7 @@ func TestScanlineCellStorage_CopyConstructor(t *testing.T) {
 	// Verify main storage data
 	for i := 0; i < len(mainCells); i++ {
 		expected := mainCells[i]
-		actual := copy.cells.At(mainIdx + i)
+		actual := storageCopy.cells.At(mainIdx + i)
 		if actual != expected {
 			t.Errorf("Copy main cell %d: expected %d, got %d", i, expected, actual)
 		}
@@ -184,8 +184,8 @@ func TestScanlineCellStorage_CopyConstructor(t *testing.T) {
 	original.RemoveAll()
 
 	// Copy should still have the data
-	copyMainAfter := copy.Get(mainIdx)
-	copyExtraAfter := copy.Get(extraIdx)
+	copyMainAfter := storageCopy.Get(mainIdx)
+	copyExtraAfter := storageCopy.Get(extraIdx)
 
 	if copyMainAfter == nil || copyExtraAfter == nil {
 		t.Error("Deep copy failed - data was lost when original was cleared")

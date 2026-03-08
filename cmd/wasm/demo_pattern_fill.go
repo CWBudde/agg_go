@@ -249,11 +249,12 @@ func drawPatternFillDemo() {
 		rdy := dx*math.Sin(polyAngleRad) + dy*math.Cos(polyAngleRad)
 		vx = patFillPolygonCX + rdx*patFillPolygonScale
 		vy = patFillPolygonCY + rdy*patFillPolygonScale
-		if basics.IsMoveTo(cmd) {
+		switch {
+		case basics.IsMoveTo(cmd):
 			rotated.MoveTo(vx, vy)
-		} else if basics.IsLineTo(cmd) {
+		case basics.IsLineTo(cmd):
 			rotated.LineTo(vx, vy)
-		} else if basics.IsEndPoly(cmd) {
+		case basics.IsEndPoly(cmd):
 			rotated.ClosePolygon(basics.PathFlagsNone)
 		}
 	}

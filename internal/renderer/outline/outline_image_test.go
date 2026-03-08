@@ -104,7 +104,7 @@ func NewMockImageBaseRenderer() *MockImageBaseRenderer {
 	}
 }
 
-func (mbr *MockImageBaseRenderer) BlendColorHSpan(x, y int, length int, colors []color.RGBA, covers []basics.CoverType) {
+func (mbr *MockImageBaseRenderer) BlendColorHSpan(x, y, length int, colors []color.RGBA, covers []basics.CoverType) {
 	colorsCopy := make([]color.RGBA, len(colors))
 	copy(colorsCopy, colors)
 	mbr.blendHCalls = append(mbr.blendHCalls, ImageBlendCall{
@@ -112,7 +112,7 @@ func (mbr *MockImageBaseRenderer) BlendColorHSpan(x, y int, length int, colors [
 	})
 }
 
-func (mbr *MockImageBaseRenderer) BlendColorVSpan(x, y int, length int, colors []color.RGBA, covers []basics.CoverType) {
+func (mbr *MockImageBaseRenderer) BlendColorVSpan(x, y, length int, colors []color.RGBA, covers []basics.CoverType) {
 	colorsCopy := make([]color.RGBA, len(colors))
 	copy(colorsCopy, colors)
 	mbr.blendVCalls = append(mbr.blendVCalls, ImageBlendCall{

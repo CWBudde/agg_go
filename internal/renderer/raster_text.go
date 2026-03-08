@@ -174,12 +174,12 @@ type ScanlineSingleSpan struct {
 }
 
 // NewScanlineSingleSpan creates a new single-span scanline
-func NewScanlineSingleSpan(x, y int, len int, covers []basics.CoverType) *ScanlineSingleSpan {
+func NewScanlineSingleSpan(x, y, length int, covers []basics.CoverType) *ScanlineSingleSpan {
 	return &ScanlineSingleSpan{
 		y: y,
 		span: Span{
 			X:      x,
-			Len:    len,
+			Len:    length,
 			Covers: covers,
 		},
 	}

@@ -85,7 +85,7 @@ func (rb *RenderingBuffer[T]) StrideAbs() int {
 
 // RowPtr returns a slice to the beginning of the specified row with length checking.
 // x is the starting x coordinate, y is the row, length is the number of elements needed.
-func (rb *RenderingBuffer[T]) RowPtr(x, y int, length int) []T {
+func (rb *RenderingBuffer[T]) RowPtr(x, y, length int) []T {
 	if y < 0 || y >= rb.height {
 		return nil
 	}

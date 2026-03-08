@@ -32,16 +32,16 @@ func (s *ScanlineHitTest) AddCell(x int, cover basics.Int8u) {
 
 // AddSpan adds a span of consecutive pixels to the scanline.
 // If our test X coordinate falls within this span, mark as hit.
-func (s *ScanlineHitTest) AddSpan(x, len int, cover basics.Int8u) {
-	if cover > 0 && s.x >= x && s.x < x+len {
+func (s *ScanlineHitTest) AddSpan(x, length int, cover basics.Int8u) {
+	if cover > 0 && s.x >= x && s.x < x+length {
 		s.hit = true
 	}
 }
 
 // AddCells adds multiple cells with individual coverage values.
 // If our test X coordinate matches any cell position with coverage, mark as hit.
-func (s *ScanlineHitTest) AddCells(x, len int, covers []basics.Int8u) {
-	for i := 0; i < len; i++ {
+func (s *ScanlineHitTest) AddCells(x, length int, covers []basics.Int8u) {
+	for i := 0; i < length; i++ {
 		if covers[i] > 0 && x+i == s.x {
 			s.hit = true
 			return

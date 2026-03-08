@@ -114,14 +114,8 @@ func (agg2d *Agg2D) GetTextHints() bool {
 // TextWidth calculates the width of the given text string in current units.
 // This matches the C++ Agg2D::textWidth() method.
 func (agg2d *Agg2D) TextWidth(str string) float64 {
-	// TODO(Path B): GSV path — approximate width, replace with accurate
-	// measurement once a proper TTF engine is available.
 	if agg2d.gsvFontMode && agg2d.gsvText != nil {
-		saved := agg2d.gsvText // preserve current text
-		agg2d.gsvText.SetText(str)
-		w := agg2d.gsvText.TextWidth()
-		agg2d.gsvText = saved
-		return w
+		return agg2d.gsvText.MeasureText(str)
 	}
 
 	fcm := agg2d.fontCacheManager

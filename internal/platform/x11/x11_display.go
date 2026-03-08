@@ -196,7 +196,8 @@ func (x *X11Backend) loadBMP(filename string) (*X11ImageSurface, error) {
 
 	// Read BMP file header
 	fileHeader := make([]byte, 14)
-	if _, readErr := io.ReadFull(file, fileHeader); readErr != nil {
+	_, readErr := io.ReadFull(file, fileHeader)
+	if readErr != nil {
 		return nil, fmt.Errorf("failed to read BMP file header: %w", readErr)
 	}
 
@@ -206,7 +207,8 @@ func (x *X11Backend) loadBMP(filename string) (*X11ImageSurface, error) {
 
 	// Read DIB header size
 	var dibHeaderSize uint32
-	if readErr := binary.Read(file, binary.LittleEndian, &dibHeaderSize); readErr != nil {
+	readErr = binary.Read(file, binary.LittleEndian, &dibHeaderSize)
+	if readErr != nil {
 		return nil, fmt.Errorf("failed to read DIB header size: %w", readErr)
 	}
 
@@ -216,7 +218,8 @@ func (x *X11Backend) loadBMP(filename string) (*X11ImageSurface, error) {
 	}
 
 	dibHeader := make([]byte, 36) // 40 - 4 bytes for size
-	if _, readErr := io.ReadFull(file, dibHeader); readErr != nil {
+	_, readErr = io.ReadFull(file, dibHeader)
+	if readErr != nil {
 		return nil, fmt.Errorf("failed to read DIB header: %w", readErr)
 	}
 
@@ -231,14 +234,16 @@ func (x *X11Backend) loadBMP(filename string) (*X11ImageSurface, error) {
 
 	// Move to pixel data
 	pixelDataOffset := binary.LittleEndian.Uint32(fileHeader[10:14])
-	if _, seekErr := file.Seek(int64(pixelDataOffset), 0); seekErr != nil {
+	_, seekErr := file.Seek(int64(pixelDataOffset), 0)
+	if seekErr != nil {
 		return nil, fmt.Errorf("failed to seek to pixel data: %w", seekErr)
 	}
 
 	// Read pixel data
 	rowSize := (width*3 + 3) &^ 3 // 24-bit BMP rows are padded to 4 bytes
 	pixelData := make([]byte, rowSize*height)
-	if _, readErr := io.ReadFull(file, pixelData); readErr != nil {
+	_, readErr = io.ReadFull(file, pixelData)
+	if readErr != nil {
 		return nil, fmt.Errorf("failed to read pixel data: %w", readErr)
 	}
 
@@ -288,7 +293,8 @@ func (x *X11Backend) saveBMP(surface *X11ImageSurface, filename string) error {
 	binary.LittleEndian.PutUint16(fileHeader[8:10], 0)               // Reserved
 	binary.LittleEndian.PutUint32(fileHeader[10:14], 54)             // Pixel data offset
 
-	if _, writeErr := file.Write(fileHeader); writeErr != nil {
+	_, writeErr := file.Write(fileHeader)
+	if writeErr != nil {
 		return fmt.Errorf("failed to write BMP file header: %w", writeErr)
 	}
 
@@ -306,7 +312,8 @@ func (x *X11Backend) saveBMP(surface *X11ImageSurface, filename string) error {
 	binary.LittleEndian.PutUint32(dibHeader[32:36], 0)                 // Colors used
 	binary.LittleEndian.PutUint32(dibHeader[36:40], 0)                 // Important colors
 
-	if _, writeErr := file.Write(dibHeader); writeErr != nil {
+	_, writeErr = file.Write(dibHeader)
+	if writeErr != nil {
 		return fmt.Errorf("failed to write DIB header: %w", writeErr)
 	}
 
@@ -333,7 +340,8 @@ func (x *X11Backend) saveBMP(surface *X11ImageSurface, filename string) error {
 			rowBuffer[i] = 0
 		}
 
-		if _, writeErr := file.Write(rowBuffer); writeErr != nil {
+		_, writeErr = file.Write(rowBuffer)
+		if writeErr != nil {
 			return fmt.Errorf("failed to write pixel row %d: %w", y, writeErr)
 		}
 	}

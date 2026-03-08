@@ -30,21 +30,21 @@ func NewMockBaseRenderer[C any]() *MockBaseRenderer[C] {
 	return &MockBaseRenderer[C]{}
 }
 
-func (m *MockBaseRenderer[C]) BlendSolidHspan(x, y, len int, c C, covers []basics.CoverType) {
+func (m *MockBaseRenderer[C]) BlendSolidHspan(x, y, length int, c C, covers []basics.CoverType) {
 	// Make a copy of covers to avoid sharing slice references
-	coversCopy := make([]basics.CoverType, len)
+	coversCopy := make([]basics.CoverType, length)
 	copy(coversCopy, covers)
 	m.blendHSpanCalls = append(m.blendHSpanCalls, BlendHSpanCall[C]{
-		X: x, Y: y, Len: len, Color: c, Covers: coversCopy,
+		X: x, Y: y, Len: length, Color: c, Covers: coversCopy,
 	})
 }
 
-func (m *MockBaseRenderer[C]) BlendSolidVspan(x, y, len int, c C, covers []basics.CoverType) {
+func (m *MockBaseRenderer[C]) BlendSolidVspan(x, y, length int, c C, covers []basics.CoverType) {
 	// Make a copy of covers to avoid sharing slice references
-	coversCopy := make([]basics.CoverType, len)
+	coversCopy := make([]basics.CoverType, length)
 	copy(coversCopy, covers)
 	m.blendVSpanCalls = append(m.blendVSpanCalls, BlendVSpanCall[C]{
-		X: x, Y: y, Len: len, Color: c, Covers: coversCopy,
+		X: x, Y: y, Len: length, Color: c, Covers: coversCopy,
 	})
 }
 

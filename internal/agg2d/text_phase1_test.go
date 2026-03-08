@@ -293,6 +293,172 @@ func TestVectorTextAlignmentProducesExpectedBounds(t *testing.T) {
 	}
 }
 
+// TestTextWidthEmptyStringIsZero mirrors the C++ textWidth guard: an empty
+// string always returns 0 regardless of font state. Source: agg2d.cpp:960-978.
+func TestTextWidthEmptyStringIsZero(t *testing.T) {
+	engine := newMockTextFontEngine()
+	engine.glyphs[uint('A')] = mockOutlineGlyph{glyphIndex: 1, advanceX: 10}
+
+	agg2d := NewAgg2D()
+	buf := make([]byte, 32*16*4)
+	agg2d.Attach(buf, 32, 16, 32*4)
+	agg2d.fontCacheType = VectorFontCache
+	agg2d.fontCacheManager = font.NewFontCacheManager(engine, 32)
+
+	if got := agg2d.TextWidth(""); got != 0 {
+		t.Fatalf("TextWidth(\"\") = %v, want 0", got)
+	}
+}
+
+// TestTextWidthSingleCharNoKerning verifies that a single character produces
+// exactly advance_x with zero kerning calls. Source: agg2d.cpp:960-978 (first==true
+// branch skips add_kerning).
+func TestTextWidthSingleCharNoKerning(t *testing.T) {
+	engine := newMockTextFontEngine()
+	engine.glyphs[uint('A')] = mockOutlineGlyph{glyphIndex: 42, advanceX: 8}
+
+	agg2d := NewAgg2D()
+	buf := make([]byte, 32*16*4)
+	agg2d.Attach(buf, 32, 16, 32*4)
+	agg2d.fontCacheType = VectorFontCache
+	agg2d.fontCacheManager = font.NewFontCacheManager(engine, 32)
+
+	got := agg2d.TextWidth("A")
+	if got != 8 {
+		t.Fatalf("TextWidth(\"A\") = %v, want 8", got)
+	}
+	if len(engine.lastKerning) != 0 {
+		t.Fatalf("expected no kerning calls for single char, got %d", len(engine.lastKerning))
+	}
+}
+
+// TestTextWidthTwoCharsNoKerning verifies plain advance accumulation when no
+// kerning pair is registered (add_kerning returns 0,0 in C++).
+func TestTextWidthTwoCharsNoKerning(t *testing.T) {
+	engine := newMockTextFontEngine()
+	engine.glyphs[uint('A')] = mockOutlineGlyph{glyphIndex: 1, advanceX: 8}
+	engine.glyphs[uint('B')] = mockOutlineGlyph{glyphIndex: 2, advanceX: 6}
+	// no kerning entry → AddKerning returns (0,0)
+
+	agg2d := NewAgg2D()
+	buf := make([]byte, 32*16*4)
+	agg2d.Attach(buf, 32, 16, 32*4)
+	agg2d.fontCacheType = VectorFontCache
+	agg2d.fontCacheManager = font.NewFontCacheManager(engine, 32)
+
+	got := agg2d.TextWidth("AB")
+	if got != 14 {
+		t.Fatalf("TextWidth(\"AB\") = %v, want 14 (8+6)", got)
+	}
+}
+
+// TestTextWidthMissingGlyphSkipped verifies that characters absent from the font
+// do not contribute advance and do not cause a kerning call (matches C++ null-glyph
+// guard: the inner if(glyph) block is simply skipped).
+func TestTextWidthMissingGlyphSkipped(t *testing.T) {
+	engine := newMockTextFontEngine()
+	engine.glyphs[uint('A')] = mockOutlineGlyph{glyphIndex: 1, advanceX: 10}
+	// 'B' has no glyph
+
+	agg2d := NewAgg2D()
+	buf := make([]byte, 32*16*4)
+	agg2d.Attach(buf, 32, 16, 32*4)
+	agg2d.fontCacheType = VectorFontCache
+	agg2d.fontCacheManager = font.NewFontCacheManager(engine, 32)
+
+	// Width of "AB" with missing B should equal width of just "A".
+	got := agg2d.TextWidth("AB")
+	if got != 10 {
+		t.Fatalf("TextWidth(\"AB\") with missing B = %v, want 10", got)
+	}
+	// No kerning should be called because 'B' had no glyph and is the only
+	// candidate for a second position.
+	if len(engine.lastKerning) != 0 {
+		t.Fatalf("expected no kerning calls when second char missing, got %v", engine.lastKerning)
+	}
+}
+
+// TestTextWidthKerningUsesGlyphIndicesNotCharCodes verifies that kerning is
+// looked up by glyph index (as returned by the font engine), not by the raw
+// Unicode code point. This matches the C++ glyph_cache::glyph_index field.
+func TestTextWidthKerningUsesGlyphIndicesNotCharCodes(t *testing.T) {
+	engine := newMockTextFontEngine()
+	// 'A' (char 65) maps to glyph index 500; 'V' (char 86) maps to glyph index 501.
+	// Kerning is keyed on glyph indices 500,501, not on char codes 65,86.
+	engine.glyphs[uint('A')] = mockOutlineGlyph{glyphIndex: 500, advanceX: 10}
+	engine.glyphs[uint('V')] = mockOutlineGlyph{glyphIndex: 501, advanceX: 10}
+	engine.kerning[[2]uint{500, 501}] = -4
+	// Ensure wrong key (char codes) has no entry.
+	engine.kerning[[2]uint{65, 86}] = 999 // must NOT be used
+
+	agg2d := NewAgg2D()
+	buf := make([]byte, 32*16*4)
+	agg2d.Attach(buf, 32, 16, 32*4)
+	agg2d.fontCacheType = VectorFontCache
+	agg2d.fontCacheManager = font.NewFontCacheManager(engine, 32)
+
+	got := agg2d.TextWidth("AV")
+	// 10 + 10 - 4 = 16 (glyph-index kerning applied)
+	if got != 16 {
+		t.Fatalf("TextWidth(\"AV\") = %v, want 16 (kerning by glyph index)", got)
+	}
+}
+
+// TestTextWidthGSVModeIdempotent verifies that repeated TextWidth calls return
+// the same result and do not corrupt gsvText internal state between calls.
+// This is the state-preservation regression test for the MeasureText fix.
+func TestTextWidthGSVModeIdempotent(t *testing.T) {
+	agg2d := NewAgg2D()
+	buf := make([]byte, 400*100*4)
+	agg2d.Attach(buf, 400, 100, 400*4)
+	agg2d.FontGSV(20)
+
+	w1 := agg2d.TextWidth("Hello")
+	_  = agg2d.TextWidth("XXXXXXXXXXXXXXXX") // should not affect Hello width
+	w2 := agg2d.TextWidth("Hello")
+
+	if w1 != w2 {
+		t.Fatalf("TextWidth(\"Hello\") is not idempotent: first=%v, second=%v", w1, w2)
+	}
+	if w1 <= 0 {
+		t.Fatalf("expected positive TextWidth for non-empty string, got %v", w1)
+	}
+}
+
+// TestTextWidthGSVEmptyString verifies that the GSV path returns 0 for empty
+// input without panicking.
+func TestTextWidthGSVEmptyString(t *testing.T) {
+	agg2d := NewAgg2D()
+	buf := make([]byte, 400*100*4)
+	agg2d.Attach(buf, 400, 100, 400*4)
+	agg2d.FontGSV(20)
+
+	if got := agg2d.TextWidth(""); got != 0 {
+		t.Fatalf("GSV TextWidth(\"\") = %v, want 0", got)
+	}
+}
+
+// TestTextWidthGSVMonotonic verifies that TextWidth grows (weakly) as more
+// characters are appended, matching the C++ advance accumulation model.
+func TestTextWidthGSVMonotonic(t *testing.T) {
+	agg2d := NewAgg2D()
+	buf := make([]byte, 800*100*4)
+	agg2d.Attach(buf, 800, 100, 800*4)
+	agg2d.FontGSV(20)
+
+	prev := agg2d.TextWidth("A")
+	if prev <= 0 {
+		t.Fatal("expected positive width for single GSV char")
+	}
+	for _, s := range []string{"AB", "ABC", "ABCD", "ABCDE"} {
+		w := agg2d.TextWidth(s)
+		if w < prev {
+			t.Fatalf("TextWidth(%q)=%v < TextWidth(shorter)=%v: width must not decrease", s, w, prev)
+		}
+		prev = w
+	}
+}
+
 func TestVectorTextRoundOffAndOffsetAffectBounds(t *testing.T) {
 	engine := newMockTextFontEngine()
 	engine.glyphs[uint('H')] = mockOutlineGlyph{

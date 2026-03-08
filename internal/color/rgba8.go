@@ -113,11 +113,12 @@ func (c RGBA8[CS]) IsOpaque() bool {
 
 // Opacity sets the alpha channel (0.0 to 1.0)
 func (c *RGBA8[CS]) Opacity(a float64) {
-	if a < 0 {
+	switch {
+	case a < 0:
 		c.A = 0
-	} else if a > 1 {
+	case a > 1:
 		c.A = 255
-	} else {
+	default:
 		c.A = basics.Int8u(a*255 + 0.5)
 	}
 }

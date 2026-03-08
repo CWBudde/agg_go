@@ -125,10 +125,10 @@ func (pt *PixFmtTransposer) BlendColorHspan(x, y, length int, colors []color.RGB
 	} else {
 		// Fallback: blend pixel by pixel
 		for i := 0; i < length; i++ {
-			if covers != nil && covers[i] > 0 {
+			if len(covers) > i && covers[i] > 0 {
 				actualCover := basics.Int8u((uint32(covers[i]) * uint32(cover)) / 255)
 				pt.BlendPixel(x+i, y, colors[i], actualCover)
-			} else if covers == nil {
+			} else if len(covers) == 0 {
 				pt.BlendPixel(x+i, y, colors[i], cover)
 			}
 		}
@@ -144,10 +144,10 @@ func (pt *PixFmtTransposer) BlendColorVspan(x, y, length int, colors []color.RGB
 	} else {
 		// Fallback: blend pixel by pixel
 		for i := 0; i < length; i++ {
-			if covers != nil && covers[i] > 0 {
+			if len(covers) > i && covers[i] > 0 {
 				actualCover := basics.Int8u((uint32(covers[i]) * uint32(cover)) / 255)
 				pt.BlendPixel(x, y+i, colors[i], actualCover)
-			} else if covers == nil {
+			} else if len(covers) == 0 {
 				pt.BlendPixel(x, y+i, colors[i], cover)
 			}
 		}

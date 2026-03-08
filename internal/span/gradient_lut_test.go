@@ -127,9 +127,7 @@ func TestGradientLUTBasic(t *testing.T) {
 	lut.AddColor(1.0, white)
 
 	// Build the LUT
-	lut.BuildLUT(func(c1, c2 color.RGBA8[color.Linear], length uint) *ColorInterpolatorRGBA8[color.Linear] {
-		return NewColorInterpolatorRGBA8(c1, c2, length)
-	})
+	lut.BuildLUT(NewColorInterpolatorRGBA8[color.Linear])
 
 	// Check size
 	if lut.Size() != 256 {
@@ -182,9 +180,7 @@ func TestGradientLUTMultiStop(t *testing.T) {
 	lut.AddColor(1.0, blue)
 
 	// Build the LUT
-	lut.BuildLUT(func(c1, c2 color.RGBA8[color.Linear], length uint) *ColorInterpolatorRGBA8[color.Linear] {
-		return NewColorInterpolatorRGBA8(c1, c2, length)
-	})
+	lut.BuildLUT(NewColorInterpolatorRGBA8[color.Linear])
 
 	// Check first color (red)
 	first := lut.At(0)
@@ -219,9 +215,7 @@ func TestGradientLUTGrayscale(t *testing.T) {
 	lut.AddColor(1.0, white)
 
 	// Build the LUT
-	lut.BuildLUT(func(c1, c2 color.Gray8[color.Linear], length uint) *ColorInterpolatorGray8[color.Linear] {
-		return NewColorInterpolatorGray8(c1, c2, length)
-	})
+	lut.BuildLUT(NewColorInterpolatorGray8[color.Linear])
 
 	// Check first color (black)
 	first := lut.At(0)
@@ -246,18 +240,14 @@ func TestGradientLUTEdgeCases(t *testing.T) {
 	lut := NewGradientLUT[color.RGBA8[color.Linear], *ColorInterpolatorRGBA8[color.Linear]](256)
 
 	// Test empty gradient
-	lut.BuildLUT(func(c1, c2 color.RGBA8[color.Linear], length uint) *ColorInterpolatorRGBA8[color.Linear] {
-		return NewColorInterpolatorRGBA8(c1, c2, length)
-	})
+	lut.BuildLUT(NewColorInterpolatorRGBA8[color.Linear])
 	// Should not crash
 
 	// Test single color
 	lut.RemoveAll()
 	red := color.NewRGBA8[color.Linear](255, 0, 0, 255)
 	lut.AddColor(0.5, red)
-	lut.BuildLUT(func(c1, c2 color.RGBA8[color.Linear], length uint) *ColorInterpolatorRGBA8[color.Linear] {
-		return NewColorInterpolatorRGBA8(c1, c2, length)
-	})
+	lut.BuildLUT(NewColorInterpolatorRGBA8[color.Linear])
 	// Should not crash
 
 	// Test duplicate offsets
@@ -270,9 +260,7 @@ func TestGradientLUTEdgeCases(t *testing.T) {
 	lut.AddColor(0.0, red2) // duplicate offset
 	lut.AddColor(1.0, blue)
 
-	lut.BuildLUT(func(c1, c2 color.RGBA8[color.Linear], length uint) *ColorInterpolatorRGBA8[color.Linear] {
-		return NewColorInterpolatorRGBA8(c1, c2, length)
-	})
+	lut.BuildLUT(NewColorInterpolatorRGBA8[color.Linear])
 
 	// Should handle duplicates gracefully
 	first := lut.At(0)
@@ -294,9 +282,7 @@ func TestGradientLUTDifferentSizes(t *testing.T) {
 			lut.AddColor(0.0, black)
 			lut.AddColor(1.0, white)
 
-			lut.BuildLUT(func(c1, c2 color.RGBA8[color.Linear], length uint) *ColorInterpolatorRGBA8[color.Linear] {
-				return NewColorInterpolatorRGBA8(c1, c2, length)
-			})
+			lut.BuildLUT(NewColorInterpolatorRGBA8[color.Linear])
 
 			if lut.Size() != size {
 				t.Errorf("Expected size %d, got %d", size, lut.Size())
@@ -351,9 +337,7 @@ func BenchmarkGradientLUTBuild(b *testing.B) {
 		lut := NewGradientLUT[color.RGBA8[color.Linear], *ColorInterpolatorRGBA8[color.Linear]](256)
 		lut.AddColor(0.0, black)
 		lut.AddColor(1.0, white)
-		lut.BuildLUT(func(c1, c2 color.RGBA8[color.Linear], length uint) *ColorInterpolatorRGBA8[color.Linear] {
-			return NewColorInterpolatorRGBA8(c1, c2, length)
-		})
+		lut.BuildLUT(NewColorInterpolatorRGBA8[color.Linear])
 	}
 }
 
@@ -365,9 +349,7 @@ func BenchmarkGradientLUTAccess(b *testing.B) {
 
 	lut.AddColor(0.0, black)
 	lut.AddColor(1.0, white)
-	lut.BuildLUT(func(c1, c2 color.RGBA8[color.Linear], length uint) *ColorInterpolatorRGBA8[color.Linear] {
-		return NewColorInterpolatorRGBA8(c1, c2, length)
-	})
+	lut.BuildLUT(NewColorInterpolatorRGBA8[color.Linear])
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

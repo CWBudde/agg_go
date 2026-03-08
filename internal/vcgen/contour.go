@@ -78,11 +78,12 @@ func (vc *VCGenContour) RemoveAll() {
 func (vc *VCGenContour) AddVertex(x, y float64, cmd basics.PathCommand) {
 	vc.status = contourInitial
 
-	if basics.IsMoveTo(cmd) {
+	switch {
+	case basics.IsMoveTo(cmd):
 		vc.srcVertices.ModifyLast(array.VertexDist{X: x, Y: y})
-	} else if basics.IsVertex(cmd) {
+	case basics.IsVertex(cmd):
 		vc.srcVertices.Add(array.VertexDist{X: x, Y: y, Dist: 0})
-	} else if basics.IsEndPoly(cmd) {
+	case basics.IsEndPoly(cmd):
 		vc.closed = basics.GetCloseFlag(uint32(cmd))
 		if vc.orientation == uint32(basics.PathFlagsNone) {
 			vc.orientation = basics.GetOrientation(uint32(cmd))

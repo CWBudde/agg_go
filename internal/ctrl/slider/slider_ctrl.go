@@ -111,9 +111,9 @@ func (s *SliderCtrl) SetBorderWidth(width, extra float64) {
 }
 
 // SetRange sets the value range of the slider.
-func (s *SliderCtrl) SetRange(min, max float64) {
-	s.minValue = min
-	s.maxValue = max
+func (s *SliderCtrl) SetRange(lowerBound, upperBound float64) {
+	s.minValue = lowerBound
+	s.maxValue = upperBound
 }
 
 // SetNumSteps sets the number of discrete steps (0 for continuous).

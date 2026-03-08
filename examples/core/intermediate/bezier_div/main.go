@@ -105,11 +105,12 @@ func main() {
 		if basics.IsStop(cmd) {
 			break
 		}
-		if basics.IsMoveTo(cmd) {
+		switch {
+		case basics.IsMoveTo(cmd):
 			a.MoveTo(x, y)
-		} else if basics.IsLineTo(cmd) {
+		case basics.IsLineTo(cmd):
 			a.LineTo(x, y)
-		} else if basics.IsEndPoly(cmd) && basics.IsClose(uint32(cmd)) {
+		case basics.IsEndPoly(cmd) && basics.IsClose(uint32(cmd)):
 			a.ClosePolygon()
 		}
 	}
@@ -127,11 +128,12 @@ func main() {
 		if basics.IsStop(cmd) {
 			break
 		}
-		if basics.IsMoveTo(cmd) {
+		switch {
+		case basics.IsMoveTo(cmd):
 			a.MoveTo(x, y)
-		} else if basics.IsLineTo(cmd) {
+		case basics.IsLineTo(cmd):
 			a.LineTo(x, y)
-		} else if basics.IsEndPoly(cmd) && basics.IsClose(uint32(cmd)) {
+		case basics.IsEndPoly(cmd) && basics.IsClose(uint32(cmd)):
 			a.ClosePolygon()
 		}
 	}

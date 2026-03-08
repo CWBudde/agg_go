@@ -76,7 +76,7 @@ func (sl *ScanlineBin) AddCell(x int, _ uint) {
 }
 
 // AddSpan adds a span of pixels to the scanline. The coverage value is ignored.
-func (sl *ScanlineBin) AddSpan(x int, length int, _ uint) {
+func (sl *ScanlineBin) AddSpan(x, length int, _ uint) {
 	if x == sl.lastX+1 && sl.curSpan > 0 {
 		// Extend current span
 		currentSpan := sl.spans.ValueAt(sl.curSpan)
@@ -99,7 +99,7 @@ func (sl *ScanlineBin) AddSpan(x int, length int, _ uint) {
 }
 
 // AddCells adds multiple cells to the scanline. The covers pointer is ignored.
-func (sl *ScanlineBin) AddCells(x int, length int, _ []CoverType) {
+func (sl *ScanlineBin) AddCells(x, length int, _ []CoverType) {
 	sl.AddSpan(x, length, 0)
 }
 
@@ -197,7 +197,7 @@ func (sl *Scanline32Bin) AddCell(x int, _ uint) {
 }
 
 // AddSpan adds a span of pixels to the scanline. The coverage value is ignored.
-func (sl *Scanline32Bin) AddSpan(x int, length int, _ uint) {
+func (sl *Scanline32Bin) AddSpan(x, length int, _ uint) {
 	if x == sl.lastX+1 && sl.spans.Size() > 0 {
 		// Extend last span
 		lastIdx := sl.spans.Size() - 1
@@ -212,7 +212,7 @@ func (sl *Scanline32Bin) AddSpan(x int, length int, _ uint) {
 }
 
 // AddCells adds multiple cells to the scanline. The covers pointer is ignored.
-func (sl *Scanline32Bin) AddCells(x int, length int, _ []CoverType) {
+func (sl *Scanline32Bin) AddCells(x, length int, _ []CoverType) {
 	sl.AddSpan(x, length, 0)
 }
 

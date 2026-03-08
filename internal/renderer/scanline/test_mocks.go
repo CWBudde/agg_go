@@ -75,9 +75,9 @@ type ColorHspanCall[C any] struct {
 	Cover     basics.Int8u
 }
 
-func (m *MockBaseRenderer[C]) BlendSolidHspan(x, y, len int, color C, covers []basics.Int8u) {
+func (m *MockBaseRenderer[C]) BlendSolidHspan(x, y, length int, color C, covers []basics.Int8u) {
 	m.solidHspanCalls = append(m.solidHspanCalls, SolidHspanCall[C]{
-		X: x, Y: y, Len: len, Color: color, Covers: covers,
+		X: x, Y: y, Len: length, Color: color, Covers: covers,
 	})
 }
 
@@ -87,9 +87,9 @@ func (m *MockBaseRenderer[C]) BlendHline(x, y, x2 int, color C, cover basics.Int
 	})
 }
 
-func (m *MockBaseRenderer[C]) BlendColorHspan(x, y, len int, colors []C, covers []basics.Int8u, cover basics.Int8u) {
+func (m *MockBaseRenderer[C]) BlendColorHspan(x, y, length int, colors []C, covers []basics.Int8u, cover basics.Int8u) {
 	m.colorHspanCalls = append(m.colorHspanCalls, ColorHspanCall[C]{
-		X: x, Y: y, Len: len, Colors: colors, Covers: covers, Cover: cover,
+		X: x, Y: y, Len: length, Colors: colors, Covers: covers, Cover: cover,
 	})
 }
 
@@ -119,12 +119,12 @@ func (m *MockSpanGenerator[C]) Prepare() {
 	m.prepareCalled = true
 }
 
-func (m *MockSpanGenerator[C]) Generate(colors []C, x, y, len int) {
+func (m *MockSpanGenerator[C]) Generate(colors []C, x, y, length int) {
 	m.generateCalls = append(m.generateCalls, GenerateCall[C]{
-		X: x, Y: y, Len: len, Colors: colors,
+		X: x, Y: y, Len: length, Colors: colors,
 	})
 	// Fill with some test data
-	for i := 0; i < len; i++ {
+	for i := 0; i < length; i++ {
 		var testColor C
 		colors[i] = testColor
 	}
@@ -274,8 +274,8 @@ func (m *MockCompoundRasterizer) Style(index int) int {
 
 func (m *MockCompoundRasterizer) ScanlineStart() int  { return m.minX }
 func (m *MockCompoundRasterizer) ScanlineLength() int { return m.maxX - m.minX + 1 }
-func (m *MockCompoundRasterizer) AllocateCoverBuffer(len int) []basics.Int8u {
-	return make([]basics.Int8u, len)
+func (m *MockCompoundRasterizer) AllocateCoverBuffer(length int) []basics.Int8u {
+	return make([]basics.Int8u, length)
 }
 
 // MockStyleHandler for testing compound rendering
@@ -337,14 +337,14 @@ func (m *MockStyleHandler[C]) Color(style int) C {
 	return zero
 }
 
-func (m *MockStyleHandler[C]) GenerateSpan(colors []C, x, y, len, style int) {
+func (m *MockStyleHandler[C]) GenerateSpan(colors []C, x, y, length, style int) {
 	m.generateCalls = append(m.generateCalls, GenerateSpanCall[C]{
 		Colors: colors,
-		X:      x, Y: y, Len: len,
+		X:      x, Y: y, Len: length,
 		Style: style,
 	})
 	fill := m.Color(style)
-	for i := 0; i < len; i++ {
+	for i := 0; i < length; i++ {
 		colors[i] = fill
 	}
 }

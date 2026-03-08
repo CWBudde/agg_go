@@ -98,7 +98,7 @@ func (ctx *Context) DrawLine(x1, y1, x2, y2 float64) {
 }
 
 // DrawThickLine draws a line with specified thickness.
-func (ctx *Context) DrawThickLine(x1, y1, x2, y2 float64, width float64) {
+func (ctx *Context) DrawThickLine(x1, y1, x2, y2, width float64) {
 	oldWidth := ctx.lineWidth
 	ctx.agg2d.LineWidth(width)
 	ctx.agg2d.Line(x1, y1, x2, y2)

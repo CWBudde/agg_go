@@ -49,9 +49,9 @@ func (sg *SolidSpanGenerator[C]) Prepare() {
 }
 
 // Generate fills the colors array with the solid color.
-func (sg *SolidSpanGenerator[C]) Generate(colors []C, x, y, len int) {
+func (sg *SolidSpanGenerator[C]) Generate(colors []C, x, y, length int) {
 	// Fill all positions with the solid color
-	for i := 0; i < len; i++ {
+	for i := 0; i < length; i++ {
 		colors[i] = sg.color
 	}
 }

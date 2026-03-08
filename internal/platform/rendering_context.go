@@ -433,7 +433,7 @@ func (rc *RenderingContext) GetBufferInfo() (width, height, stride, bpp int, for
 }
 
 // GetImageInfo returns information about the specified image buffer.
-func (rc *RenderingContext) GetImageInfo(idx int) (width, height, stride, bpp int, format PixelFormat, ok bool) {
+func (rc *RenderingContext) GetImageInfo(idx int) (width, height, stride, bpp int, format PixelFormat, ok bool) { //nolint:gocritic // Callers expect the individual buffer fields as separate return values.
 	buf := rc.ImageBuffer(idx)
 	if buf == nil || buf.Buf() == nil {
 		return 0, 0, 0, 0, PixelFormatUndefined, false

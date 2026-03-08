@@ -142,10 +142,10 @@ func (sg *SpanGouraudGray) Generate(span []GrayColor, x, y int, length uint) {
 	nlen += start
 
 	spanIdx := 0
-	len := int(length)
+	remaining := int(length)
 
 	// Beginning part - check for overflow since we rolled back interpolators
-	for len > 0 && start > 0 {
+	for remaining > 0 && start > 0 {
 		vv := v.Y()
 		va := a.Y()
 
@@ -168,11 +168,11 @@ func (sg *SpanGouraudGray) Generate(span []GrayColor, x, y int, length uint) {
 		nlen -= SubpixelScale
 		start -= SubpixelScale
 		spanIdx++
-		len--
+		remaining--
 	}
 
 	// Middle part - no overflow checking needed
-	for len > 0 && nlen > 0 {
+	for remaining > 0 && nlen > 0 {
 		span[spanIdx] = GrayColor{
 			V: v.Y(),
 			A: a.Y(),
@@ -182,11 +182,11 @@ func (sg *SpanGouraudGray) Generate(span []GrayColor, x, y int, length uint) {
 		a.Add(SubpixelScale)
 		nlen -= SubpixelScale
 		spanIdx++
-		len--
+		remaining--
 	}
 
 	// Ending part - check for overflow again
-	for len > 0 {
+	for remaining > 0 {
 		vv := v.Y()
 		va := a.Y()
 
@@ -207,6 +207,6 @@ func (sg *SpanGouraudGray) Generate(span []GrayColor, x, y int, length uint) {
 		v.Add(SubpixelScale)
 		a.Add(SubpixelScale)
 		spanIdx++
-		len--
+		remaining--
 	}
 }

@@ -15,7 +15,7 @@ import (
 )
 
 // gradientColorsToLUTInPlace updates a preallocated 256-entry LUT from [256]Color.
-func gradientColorsToLUTInPlace(dst []color.RGBA8[color.Linear], gradientColors [256]Color) {
+func gradientColorsToLUTInPlace(dst []color.RGBA8[color.Linear], gradientColors *[256]Color) {
 	for i, c := range gradientColors {
 		dst[i] = color.RGBA8[color.Linear]{R: c[0], G: c[1], B: c[2], A: c[3]}
 	}
@@ -25,7 +25,7 @@ func (agg2d *Agg2D) refreshFillGradientLUTIfDirty() {
 	if !agg2d.fillGradientLUTDirty {
 		return
 	}
-	gradientColorsToLUTInPlace(agg2d.fillGradientLUT, agg2d.fillGradient)
+	gradientColorsToLUTInPlace(agg2d.fillGradientLUT, &agg2d.fillGradient)
 	agg2d.fillGradientLUTDirty = false
 }
 
@@ -33,7 +33,7 @@ func (agg2d *Agg2D) refreshLineGradientLUTIfDirty() {
 	if !agg2d.lineGradientLUTDirty {
 		return
 	}
-	gradientColorsToLUTInPlace(agg2d.lineGradientLUT, agg2d.lineGradient)
+	gradientColorsToLUTInPlace(agg2d.lineGradientLUT, &agg2d.lineGradient)
 	agg2d.lineGradientLUTDirty = false
 }
 
@@ -434,10 +434,10 @@ func (agg2d *Agg2D) LineWidth(w float64) {
 }
 
 // LineCap sets the line cap style.
-func (agg2d *Agg2D) LineCap(cap LineCap) {
-	agg2d.lineCap = cap
+func (agg2d *Agg2D) LineCap(lineCap LineCap) {
+	agg2d.lineCap = lineCap
 	if agg2d.convStroke != nil {
-		agg2d.convStroke.SetLineCap(basics.LineCap(cap))
+		agg2d.convStroke.SetLineCap(basics.LineCap(lineCap))
 	}
 }
 

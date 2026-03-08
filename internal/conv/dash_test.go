@@ -247,11 +247,9 @@ func TestConvDashLongLine(t *testing.T) {
 				if v.Cmd == basics.PathCmdMoveTo {
 					prevWasDash = false
 				}
-			} else {
+			} else if v.Cmd == basics.PathCmdMoveTo {
 				// After a gap, should have move_to (start of next dash)
-				if v.Cmd == basics.PathCmdMoveTo {
-					prevWasDash = true
-				}
+				prevWasDash = true
 			}
 		}
 	}

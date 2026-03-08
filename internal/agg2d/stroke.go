@@ -210,7 +210,11 @@ func (agg2d *Agg2D) GetStrokeAttributes() StrokeAttributes {
 
 // SetStrokeAttributes sets all stroke attributes at once.
 // This is useful for quickly switching between different stroke styles.
-func (agg2d *Agg2D) SetStrokeAttributes(attrs StrokeAttributes) {
+func (agg2d *Agg2D) SetStrokeAttributes(attrs *StrokeAttributes) {
+	if attrs == nil {
+		return
+	}
+
 	agg2d.LineWidth(attrs.Width)
 	agg2d.MiterLimit(attrs.MiterLimit)
 	agg2d.InnerMiterLimit(attrs.InnerMiterLimit)

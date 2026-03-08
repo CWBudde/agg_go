@@ -86,7 +86,7 @@ func (sl *Scanline32U8) AddCell(x int, cover uint) {
 
 // AddCells adds multiple cells with individual coverage values to the scanline.
 // X coordinates must be provided in increasing order.
-func (sl *Scanline32U8) AddCells(x int, length int, covers []CoverType) {
+func (sl *Scanline32U8) AddCells(x, length int, covers []CoverType) {
 	x -= sl.minX
 	if x < 0 {
 		diff := -x
@@ -130,7 +130,7 @@ func (sl *Scanline32U8) AddCells(x int, length int, covers []CoverType) {
 
 // AddSpan adds a span of pixels all with the same coverage value.
 // X coordinates must be provided in increasing order.
-func (sl *Scanline32U8) AddSpan(x int, length int, cover uint) {
+func (sl *Scanline32U8) AddSpan(x, length int, cover uint) {
 	x -= sl.minX
 	if x < 0 {
 		diff := -x

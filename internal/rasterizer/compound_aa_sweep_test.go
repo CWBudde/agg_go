@@ -22,8 +22,8 @@ func (s *compoundScanlineRecorder) AddCell(x int, cover basics.Int8u) {
 	}
 }
 
-func (s *compoundScanlineRecorder) AddSpan(x, len int, cover basics.Int8u) {
-	if len > 0 && cover > 0 {
+func (s *compoundScanlineRecorder) AddSpan(x, length int, cover basics.Int8u) {
+	if length > 0 && cover > 0 {
 		s.numSpans++
 	}
 }
@@ -126,8 +126,8 @@ func TestCompoundAAPointerDerefFix(t *testing.T) {
 			// This was failing before due to **CellStyleAA vs *CellStyleAA issues
 			x := (*cells[0]).GetX()
 			y := (*cells[0]).GetY()
-			left := (*cells[0]).Left
-			right := (*cells[0]).Right
+			left := cells[0].Left
+			right := cells[0].Right
 
 			t.Logf("Successfully accessed cell: x=%d, y=%d, left=%d, right=%d", x, y, left, right)
 		}

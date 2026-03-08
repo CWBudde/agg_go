@@ -89,7 +89,7 @@ func (rb *RenderingBufferDynarow) ByteWidth() int {
 // RowPtr returns a pointer to the beginning of the specified row with dynamic allocation.
 // Memory for the row is allocated as needed and x1/x2 bounds are tracked automatically.
 // This is the main function used for rendering.
-func (rb *RenderingBufferDynarow) RowPtr(x, y int, length int) []basics.Int8u {
+func (rb *RenderingBufferDynarow) RowPtr(x, y, length int) []basics.Int8u {
 	if y < 0 || y >= rb.height {
 		return nil
 	}

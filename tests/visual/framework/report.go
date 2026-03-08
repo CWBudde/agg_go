@@ -67,20 +67,22 @@ func reportTemplateFuncs() template.FuncMap {
 			return fmt.Sprintf("%.2f%%", ratio*100.0)
 		},
 		"statusClass": func(result TestResult) string {
-			if result.Error != nil {
+			switch {
+			case result.Error != nil:
 				return "error"
-			} else if result.Passed {
+			case result.Passed:
 				return "pass"
-			} else {
+			default:
 				return "fail"
 			}
 		},
 		"statusText": func(result TestResult) string {
-			if result.Error != nil {
+			switch {
+			case result.Error != nil:
 				return "ERROR"
-			} else if result.Passed {
+			case result.Passed:
 				return "PASS"
-			} else {
+			default:
 				return "FAIL"
 			}
 		},
@@ -100,11 +102,12 @@ func reportTemplateFuncs() template.FuncMap {
 			stats := map[string]int{"total": 0, "passed": 0, "failed": 0, "errors": 0}
 			for _, result := range suite.Results {
 				stats["total"]++
-				if result.Error != nil {
+				switch {
+				case result.Error != nil:
 					stats["errors"]++
-				} else if result.Passed {
+				case result.Passed:
 					stats["passed"]++
-				} else {
+				default:
 					stats["failed"]++
 				}
 			}

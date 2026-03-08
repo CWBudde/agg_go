@@ -149,11 +149,11 @@ func (agg2d *Agg2D) PushTransform() {
 	}
 
 	// Create a copy of the current transformation
-	copy := transform.NewTransAffineFromValues(
+	transformCopy := transform.NewTransAffineFromValues(
 		agg2d.transform.SX, agg2d.transform.SHY, agg2d.transform.SHX,
 		agg2d.transform.SY, agg2d.transform.TX, agg2d.transform.TY)
 
-	agg2d.transformStack.stack = append(agg2d.transformStack.stack, copy)
+	agg2d.transformStack.stack = append(agg2d.transformStack.stack, transformCopy)
 }
 
 // PopTransform restores the most recently saved transformation state.

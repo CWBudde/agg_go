@@ -70,8 +70,8 @@ func (s *ScanlineHitTest) AddCell(x int, cover basics.Int8u) {
 
 // AddSpan adds a span of consecutive pixels to the scanline.
 // If our test X coordinate falls within this span, mark as hit.
-func (s *ScanlineHitTest) AddSpan(x, len int, cover basics.Int8u) {
-	if cover > 0 && s.x >= x && s.x < x+len {
+func (s *ScanlineHitTest) AddSpan(x, length int, cover basics.Int8u) {
+	if cover > 0 && s.x >= x && s.x < x+length {
 		s.hit = true
 	}
 }
@@ -572,7 +572,7 @@ func (r *RasterizerCompoundAA[Clip]) SweepScanline(sl CompoundScanlineInterface,
 }
 
 // AllocateCoverBuffer allocates a cover buffer of the specified length
-func (r *RasterizerCompoundAA[Clip]) AllocateCoverBuffer(len int) []uint8 {
-	r.coverBuf.Allocate(len, 256)
+func (r *RasterizerCompoundAA[Clip]) AllocateCoverBuffer(length int) []uint8 {
+	r.coverBuf.Allocate(length, 256)
 	return r.coverBuf.Data()
 }

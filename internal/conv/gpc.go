@@ -211,12 +211,10 @@ func (c *ConvGPC[VSA, VSB]) addToPolygon(vs VertexSource, polygon *gpc.GPCPolygo
 			}
 			c.addVertex(x, y)
 			lineTo = true
-		} else {
-			if basics.IsEndPoly(cmd) {
-				orientation = uint(basics.GetOrientation(uint32(cmd)))
-				if lineTo && basics.IsClosed(uint32(cmd)) {
-					c.addVertex(startX, startY)
-				}
+		} else if basics.IsEndPoly(cmd) {
+			orientation = uint(basics.GetOrientation(uint32(cmd)))
+			if lineTo && basics.IsClosed(uint32(cmd)) {
+				c.addVertex(startX, startY)
 			}
 		}
 	}
@@ -265,11 +263,9 @@ func (c *ConvGPC[VSA, VSB]) endContour(orientation uint) {
 		// Copy vertices
 		header.vertices = make([]gpc.GPCVertex, len(normalizedVertices))
 		copy(header.vertices, normalizedVertices)
-	} else {
+	} else if len(c.contourAccumulator) > 0 {
 		// Remove incomplete contour (equivalent to C++ remove_last)
-		if len(c.contourAccumulator) > 0 {
-			c.contourAccumulator = c.contourAccumulator[:len(c.contourAccumulator)-1]
-		}
+		c.contourAccumulator = c.contourAccumulator[:len(c.contourAccumulator)-1]
 	}
 }
 

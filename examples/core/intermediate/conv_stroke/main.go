@@ -18,7 +18,7 @@ import (
 
 // drawStrokeDemo draws the conv_stroke demo for a single join/cap combination
 // at the given offset (ox, oy) in a cell of size cellW × cellH.
-func drawStrokeDemo(a *agg.Agg2D, ox, oy, cellW, cellH float64, join agg.LineJoin, cap agg.LineCap, strokeWidth, miterLimit float64) {
+func drawStrokeDemo(a *agg.Agg2D, ox, oy, cellW, cellH float64, join agg.LineJoin, capStyle agg.LineCap, strokeWidth, miterLimit float64) {
 	// Original points from conv_stroke.cpp on a 500×330 canvas (offset +100 on x).
 	// We scale them to fit within the cell.
 	const origW, origH = 500.0, 330.0
@@ -60,7 +60,7 @@ func drawStrokeDemo(a *agg.Agg2D, ox, oy, cellW, cellH float64, join agg.LineJoi
 	a.ResetPath()
 	buildPaths()
 	a.LineJoin(join)
-	a.LineCap(cap)
+	a.LineCap(capStyle)
 	a.MiterLimit(miterLimit)
 	a.LineWidth(strokeWidth * scale)
 	a.LineColor(agg.NewColor(204, 178, 153, 255))

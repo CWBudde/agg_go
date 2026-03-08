@@ -331,7 +331,7 @@ func NewPodVector[T any]() *PodVector[T] {
 }
 
 // NewPodVectorWithCapacity creates a new vector with the specified capacity.
-func NewPodVectorWithCapacity[T any](capacity int, extraTail int) *PodVector[T] {
+func NewPodVectorWithCapacity[T any](capacity, extraTail int) *PodVector[T] {
 	totalCap := capacity + extraTail
 	var array []T
 	if totalCap > 0 {
@@ -404,9 +404,9 @@ func (pv *PodVector[T]) ValueAt(i int) T {
 }
 
 // SetCapacity sets new capacity. All data is lost, size is set to zero.
-func (pv *PodVector[T]) SetCapacity(cap int, extraTail int) {
+func (pv *PodVector[T]) SetCapacity(capacity, extraTail int) {
 	pv.size = 0
-	newCap := cap + extraTail
+	newCap := capacity + extraTail
 
 	if newCap > pv.capacity {
 		pv.capacity = newCap
@@ -419,7 +419,7 @@ func (pv *PodVector[T]) SetCapacity(cap int, extraTail int) {
 }
 
 // Allocate allocates n elements. All data is lost, but elements can be accessed.
-func (pv *PodVector[T]) Allocate(size int, extraTail int) {
+func (pv *PodVector[T]) Allocate(size, extraTail int) {
 	pv.SetCapacity(size, extraTail)
 	pv.size = size
 }
@@ -454,9 +454,11 @@ func (pv *PodVector[T]) Zero() {
 func (pv *PodVector[T]) Add(v T) {
 	if pv.size >= pv.capacity {
 		// Auto-grow capacity
-		newCap := pv.capacity * 2
-		if newCap == 0 {
-			newCap = 16 // Initial capacity
+		if pv.capacity == 0 {
+			pv.SetCapacity(16, 0)
+			pv.size = 1
+			pv.array[0] = v
+			return
 		}
 		pv.Resize(pv.size + 1) // This will handle capacity growth
 		pv.array[pv.size-1] = v

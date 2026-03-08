@@ -254,7 +254,7 @@ func TestRenderingPipelineCurves(t *testing.T) {
 }
 
 // Helper function to get RGBA values at a specific pixel
-func getPixel(buffer []uint8, stride int, x, y int) [4]uint8 {
+func getPixel(buffer []uint8, stride, x, y int) [4]uint8 {
 	offset := y*stride + x*4
 	if offset+3 >= len(buffer) {
 		return [4]uint8{0, 0, 0, 0} // Return black if out of bounds
@@ -263,7 +263,7 @@ func getPixel(buffer []uint8, stride int, x, y int) [4]uint8 {
 }
 
 // Helper function to set RGBA values at a specific pixel
-func setPixel(buffer []uint8, stride int, x, y int, rgba [4]uint8) {
+func setPixel(buffer []uint8, stride, x, y int, rgba [4]uint8) {
 	offset := y*stride + x*4
 	if offset+3 < len(buffer) {
 		buffer[offset] = rgba[0]

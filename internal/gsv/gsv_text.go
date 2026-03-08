@@ -68,11 +68,12 @@ func NewGSVText() *GSVText {
 // SetFont sets the font data to use for rendering.
 // If font is nil, the default embedded font is used.
 func (gsv *GSVText) SetFont(font []byte) {
-	if font != nil {
+	switch {
+	case font != nil:
 		gsv.font = font
-	} else if len(gsv.loadedFont) > 0 {
+	case len(gsv.loadedFont) > 0:
 		gsv.font = gsv.loadedFont
-	} else {
+	default:
 		gsv.font = GSVDefaultFont
 	}
 }
@@ -120,6 +121,16 @@ func (gsv *GSVText) SetStartPoint(x, y float64) {
 // SetText sets the text string to be rendered.
 func (gsv *GSVText) SetText(text string) {
 	gsv.text = text
+}
+
+// MeasureText returns the rendered width of str without modifying the current text state.
+// Unlike TextWidth, this is safe to call at any time without affecting gsv.text.
+func (gsv *GSVText) MeasureText(str string) float64 {
+	saved := gsv.text
+	gsv.text = str
+	w := gsv.TextWidth()
+	gsv.text = saved
+	return w
 }
 
 // TextWidth calculates the rendered width of the current text using actual bounding rect.

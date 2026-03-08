@@ -55,13 +55,13 @@ func drawConvStrokeDemo() {
 	}
 
 	join := strokeJoins[strokeJoin]
-	cap := strokeCaps[strokeCap]
+	lineCap := strokeCaps[strokeCap]
 
 	// (1) Wide stroked path with selected join/cap.
 	a.ResetPath()
 	buildPaths()
 	a.LineJoin(join)
-	a.LineCap(cap)
+	a.LineCap(lineCap)
 	a.MiterLimit(strokeMiterLimit)
 	a.LineWidth(strokeWidth)
 	a.LineColor(agg.NewColor(204, 178, 153, 255))
@@ -81,7 +81,7 @@ func drawConvStrokeDemo() {
 	a.ResetPath()
 	buildPaths()
 	a.LineJoin(join)
-	a.LineCap(cap)
+	a.LineCap(lineCap)
 	a.LineWidth(strokeWidth / 5.0)
 	a.RemoveAllDashes()
 	a.AddDash(20, strokeWidth/2.5)

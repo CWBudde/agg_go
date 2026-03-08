@@ -101,7 +101,7 @@ func (app *Application) isPointInTriangle(px, py, offsetX float64) bool {
 }
 
 // getEdgeDistance calculates the distance from a point to the nearest triangle edge
-func (app *Application) getEdgeDistance(px, py float64, offsetX float64) float64 {
+func (app *Application) getEdgeDistance(px, py, offsetX float64) float64 {
 	// Adjust triangle coordinates with offset
 	x1, y1 := app.x[0]+offsetX, app.y[0]
 	x2, y2 := app.x[1]+offsetX, app.y[1]

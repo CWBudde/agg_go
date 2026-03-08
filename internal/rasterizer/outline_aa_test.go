@@ -79,11 +79,11 @@ func (m *MockOutlineAARenderer[C]) Color(c C) {
 	m.ColorCalls = append(m.ColorCalls, c)
 }
 
-func (m *MockOutlineAARenderer[C]) Line0(lp primitives.LineParameters) {
+func (m *MockOutlineAARenderer[C]) Line0(lp primitives.LineParameters) { //nolint:gocritic // Test double matches the outline renderer interface.
 	m.Line0Calls = append(m.Line0Calls, lp)
 }
 
-func (m *MockOutlineAARenderer[C]) Line1(lp primitives.LineParameters, sx, sy int) {
+func (m *MockOutlineAARenderer[C]) Line1(lp primitives.LineParameters, sx, sy int) { //nolint:gocritic // Test double matches the outline renderer interface.
 	m.Line1Calls = append(m.Line1Calls, struct {
 		LP primitives.LineParameters
 		SX int
@@ -91,7 +91,7 @@ func (m *MockOutlineAARenderer[C]) Line1(lp primitives.LineParameters, sx, sy in
 	}{lp, sx, sy})
 }
 
-func (m *MockOutlineAARenderer[C]) Line2(lp primitives.LineParameters, ex, ey int) {
+func (m *MockOutlineAARenderer[C]) Line2(lp primitives.LineParameters, ex, ey int) { //nolint:gocritic // Test double matches the outline renderer interface.
 	m.Line2Calls = append(m.Line2Calls, struct {
 		LP primitives.LineParameters
 		EX int
@@ -99,7 +99,7 @@ func (m *MockOutlineAARenderer[C]) Line2(lp primitives.LineParameters, ex, ey in
 	}{lp, ex, ey})
 }
 
-func (m *MockOutlineAARenderer[C]) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) {
+func (m *MockOutlineAARenderer[C]) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) { //nolint:gocritic // Test double matches the outline renderer interface.
 	m.Line3Calls = append(m.Line3Calls, struct {
 		LP     primitives.LineParameters
 		SX, SY int

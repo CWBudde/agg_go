@@ -264,11 +264,12 @@ func PrintableConfig() string {
 			result += "    - Using int32 for 64-bit operations (overflow possible)\n"
 		}
 		if coordCfg := cfg.IntegerOverrides.CustomCoordType; coordCfg != nil {
-			if coordCfg.UseFloat {
+			switch {
+			case coordCfg.UseFloat:
 				result += "    - Coordinates: float64\n"
-			} else if coordCfg.Use16Bit {
+			case coordCfg.Use16Bit:
 				result += "    - Coordinates: int16\n"
-			} else {
+			default:
 				result += "    - Coordinates: int32 (default)\n"
 			}
 		}

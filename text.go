@@ -153,7 +153,7 @@ func (ctx *Context) DrawTextLines(lines []string, x, y, lineHeight float64) erro
 }
 
 func (ctx *Context) DrawTextWrapped(text string, x, y, maxWidth, lineHeight float64) error {
-	if len(text) == 0 {
+	if text == "" {
 		return errors.New("text is empty")
 	}
 	words := splitWords(text)

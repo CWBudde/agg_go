@@ -42,7 +42,9 @@ func (h *flashStyleHandler) Color(style int) color.RGBA8[color.Linear] {
 	}
 	return h.colors[style]
 }
-func (h *flashStyleHandler) GenerateSpan(colors []color.RGBA8[color.Linear], x, y, len, style int) {}
+
+func (h *flashStyleHandler) GenerateSpan(colors []color.RGBA8[color.Linear], x, y, length, style int) {
+}
 
 // flashScanlineAdapter adapts ScanlineU8 to CompoundScanlineInterface
 type flashScanlineAdapter struct {
@@ -54,8 +56,8 @@ func (a *flashScanlineAdapter) AddCell(x int, cover basics.Int8u) {
 	a.sl.AddCell(x, uint(cover))
 }
 
-func (a *flashScanlineAdapter) AddSpan(x, len int, cover basics.Int8u) {
-	a.sl.AddSpan(x, len, uint(cover))
+func (a *flashScanlineAdapter) AddSpan(x, length int, cover basics.Int8u) {
+	a.sl.AddSpan(x, length, uint(cover))
 }
 func (a *flashScanlineAdapter) Finalize(y int) { a.sl.Finalize(y) }
 func (a *flashScanlineAdapter) NumSpans() int  { return a.sl.NumSpans() }

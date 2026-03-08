@@ -104,8 +104,7 @@ func drawAlphaMask3Demo() {
 	sl := scanline.NewScanlineP8()
 	slAdapter := &scanlineWrapperP8{sl: sl}
 
-	switch am3Polygon {
-	case 3: // Great Britain and Spiral
+	if am3Polygon == 3 { // Great Britain and Spiral
 		psGB := path.NewPathStorageStl()
 		makeGBPoly(psGB)
 

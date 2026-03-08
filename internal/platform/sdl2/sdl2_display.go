@@ -132,7 +132,7 @@ func (s *SDL2Backend) copyARGB32ToSurface(src, dst []byte, srcStride, dstStride 
 }
 
 // copyABGR32ToSurface converts ABGR32 to SDL2 surface format
-func (s *SDL2Backend) copyABGR32ToSurface(src []byte, dst []byte, srcStride, dstStride int) error {
+func (s *SDL2Backend) copyABGR32ToSurface(src, dst []byte, srcStride, dstStride int) error {
 	for y := 0; y < s.height; y++ {
 		srcRow := y * srcStride
 		dstRow := y * dstStride
@@ -154,7 +154,7 @@ func (s *SDL2Backend) copyABGR32ToSurface(src []byte, dst []byte, srcStride, dst
 }
 
 // copyRGB24ToSurface converts RGB24 to SDL2 surface format
-func (s *SDL2Backend) copyRGB24ToSurface(src []byte, dst []byte, srcStride, dstStride int) error {
+func (s *SDL2Backend) copyRGB24ToSurface(src, dst []byte, srcStride, dstStride int) error {
 	for y := 0; y < s.height; y++ {
 		srcRow := y * srcStride
 		dstRow := y * dstStride
@@ -175,7 +175,7 @@ func (s *SDL2Backend) copyRGB24ToSurface(src []byte, dst []byte, srcStride, dstS
 }
 
 // copyBGR24ToSurface converts BGR24 to SDL2 surface format
-func (s *SDL2Backend) copyBGR24ToSurface(src []byte, dst []byte, srcStride, dstStride int) error {
+func (s *SDL2Backend) copyBGR24ToSurface(src, dst []byte, srcStride, dstStride int) error {
 	for y := 0; y < s.height; y++ {
 		srcRow := y * srcStride
 		dstRow := y * dstStride
@@ -196,7 +196,7 @@ func (s *SDL2Backend) copyBGR24ToSurface(src []byte, dst []byte, srcStride, dstS
 }
 
 // copyGray8ToSurface converts Gray8 to SDL2 surface format
-func (s *SDL2Backend) copyGray8ToSurface(src []byte, dst []byte, srcStride, dstStride int) error {
+func (s *SDL2Backend) copyGray8ToSurface(src, dst []byte, srcStride, dstStride int) error {
 	// Convert grayscale to RGB (3 bytes per pixel in surface)
 	for y := 0; y < s.height; y++ {
 		srcRow := y * srcStride
@@ -218,7 +218,7 @@ func (s *SDL2Backend) copyGray8ToSurface(src []byte, dst []byte, srcStride, dstS
 }
 
 // copyRGB565ToSurface converts RGB565 to SDL2 surface format
-func (s *SDL2Backend) copyRGB565ToSurface(src []byte, dst []byte, srcStride, dstStride int) error {
+func (s *SDL2Backend) copyRGB565ToSurface(src, dst []byte, srcStride, dstStride int) error {
 	for y := 0; y < s.height; y++ {
 		srcRow := y * srcStride
 		dstRow := y * dstStride
@@ -238,7 +238,7 @@ func (s *SDL2Backend) copyRGB565ToSurface(src []byte, dst []byte, srcStride, dst
 }
 
 // copyRGB555ToSurface converts RGB555 to SDL2 surface format
-func (s *SDL2Backend) copyRGB555ToSurface(src []byte, dst []byte, srcStride, dstStride int) error {
+func (s *SDL2Backend) copyRGB555ToSurface(src, dst []byte, srcStride, dstStride int) error {
 	for y := 0; y < s.height; y++ {
 		srcRow := y * srcStride
 		dstRow := y * dstStride
@@ -258,7 +258,7 @@ func (s *SDL2Backend) copyRGB555ToSurface(src []byte, dst []byte, srcStride, dst
 }
 
 // copyRawToSurface does a raw memory copy (fallback for unsupported formats)
-func (s *SDL2Backend) copyRawToSurface(src []byte, dst []byte, srcStride, dstStride int) error {
+func (s *SDL2Backend) copyRawToSurface(src, dst []byte, srcStride, dstStride int) error {
 	minStride := srcStride
 	if dstStride < srcStride {
 		minStride = dstStride

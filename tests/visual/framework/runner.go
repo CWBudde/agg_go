@@ -170,11 +170,12 @@ func (r *TestRunner) GetTestSummary(suite *TestSuite) string {
 	errors := 0
 
 	for _, result := range suite.Results {
-		if result.Error != nil {
+		switch {
+		case result.Error != nil:
 			errors++
-		} else if result.Passed {
+		case result.Passed:
 			passed++
-		} else {
+		default:
 			failed++
 		}
 	}

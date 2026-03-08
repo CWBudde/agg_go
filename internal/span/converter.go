@@ -6,7 +6,6 @@ import (
 	"reflect"
 
 	"agg_go/internal/basics"
-	"agg_go/internal/color"
 )
 
 // SpanConverterInterface defines the interface for span converters.
@@ -71,15 +70,15 @@ func (sc *SpanConverter[C, SG, SC]) Prepare() {
 // Generate performs two-stage span processing:
 // 1. First, the generator fills the colors array
 // 2. Then, the converter applies its transformation to the colors
-func (sc *SpanConverter[C, SG, SC]) Generate(colors []C, x, y, len int) {
+func (sc *SpanConverter[C, SG, SC]) Generate(colors []C, x, y, length int) {
 	// Stage 1: Generate colors using the span generator
 	if !reflect.ValueOf(sc.spanGen).IsZero() {
-		sc.spanGen.Generate(colors, x, y, len)
+		sc.spanGen.Generate(colors, x, y, length)
 	}
 
 	// Stage 2: Apply conversion to the generated colors
 	if !reflect.ValueOf(sc.spanCnv).IsZero() {
-		sc.spanCnv.Generate(colors, x, y, len)
+		sc.spanCnv.Generate(colors, x, y, length)
 	}
 }
 
@@ -126,9 +125,9 @@ func (ac *AlphaConverterSpan[C]) Prepare() {
 
 // Generate applies alpha blending to the colors array.
 // This implementation uses type assertion to handle different color types.
-func (ac *AlphaConverterSpan[C]) Generate(colors []C, x, y, len int) {
+func (ac *AlphaConverterSpan[C]) Generate(colors []C, x, y, length int) {
 	// Apply alpha to each color in the span
-	for i := 0; i < len; i++ {
+	for i := 0; i < length; i++ {
 		ac.applyAlphaToColor(&colors[i])
 	}
 }
@@ -165,7 +164,7 @@ func (ac *AlphaConverterSpan[C]) applyAlphaToColor(c *C) {
 		color.A = float32(float64(color.A) * ac.alpha)
 	case *color.RGBA:
 		// For floating-point RGBA (64-bit)
-		color.A = color.A * ac.alpha
+		color.A *= ac.alpha
 	default:
 		// For color types without alpha channel, alpha conversion is not possible
 		// This matches AGG's behavior - alpha conversion only works with RGBA types
@@ -202,8 +201,8 @@ func (bac *BrightnessAlphaConverter[C]) Prepare() {
 
 // Generate applies brightness-based alpha conversion to the colors array.
 // This matches the C++ implementation from the image_alpha.cpp example.
-func (bac *BrightnessAlphaConverter[C]) Generate(colors []C, x, y, len int) {
-	for i := 0; i < len; i++ {
+func (bac *BrightnessAlphaConverter[C]) Generate(colors []C, x, y, length int) {
+	for i := 0; i < length; i++ {
 		bac.applyBrightnessAlpha(&colors[i])
 	}
 }

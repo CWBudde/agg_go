@@ -116,7 +116,7 @@ func CalcOrthogonal(thickness, x1, y1, x2, y2 float64) (x, y float64) {
 }
 
 // Dilate triangle
-func DilateTriangle(x1, y1, x2, y2, x3, y3, d float64) (x1o, y1o, x2o, y2o, x3o, y3o float64) {
+func DilateTriangle(x1, y1, x2, y2, x3, y3, d float64) (x1o, y1o, x2o, y2o, x3o, y3o float64) { //nolint:gocritic // Mirrors the original AGG API and its direct multi-value return contract.
 	dx1, dy1 := CalcOrthogonal(d, x1, y1, x2, y2)
 	dx2, dy2 := CalcOrthogonal(d, x2, y2, x3, y3)
 	dx3, dy3 := CalcOrthogonal(d, x3, y3, x1, y1)

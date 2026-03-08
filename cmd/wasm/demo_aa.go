@@ -40,7 +40,7 @@ func (r *EnlargedRenderer) Render(sl renscan.ScanlineInterface) {
 	numSpans := sl.NumSpans()
 	it := sl.Begin()
 
-	//nolint:intrange
+	//nolint:intrange // Scanline spans expose an int count; keep loop variable compatible with the renderer API.
 	for i := 0; i < numSpans; i++ {
 		span := it.GetSpan()
 		x := span.X

@@ -286,13 +286,20 @@ Alpha-mask operations sit on the scanline-rendering hot path when masks are acti
 
 These items were previously tracked in a standalone parity ledger and now live directly in the phased plan.
 
-- [ ] Audit `Attach` parity for the C++ `attach(Image&)` shape:
-  - confirm behavior parity for image-backed attach flows
-  - document any intentional Go API delta if the method shape differs
-  - add a source-linked attach/image contract test
-- [ ] Finish `TextWidth` parity:
+- [x] Audit `Attach` parity for the C++ `attach(Image&)` shape:
+  - `AttachImage(*Image)` added to `internal/agg2d/Agg2D` and public `agg.Agg2D` — delegates to
+    `Attach(img.renBuf.Buf(), width, height, stride)`, matching `agg2d.cpp:153-157`
+  - State reset order (reset_clipping → state fields → clip box) verified equivalent: Go creates
+    fresh renderers in `initializeRendering()` with full-buffer clip, then re-applies stored clip
+  - `Image.Attach` in Go also updates `Data`/`width`/`height` fields — intentional Go delta
+    (richer than C++ which only updates `renBuf`)
+  - Contract tests in `internal/agg2d/attach_test.go`: state reset, re-attach to new buffer,
+    AttachImage delegation, nil safety, state reset parity vs Attach
+- [x] Finish `TextWidth` parity:
   - close remaining kerning and metrics gaps vs `agg2d.cpp`
   - add deterministic width assertions tied to source-linked behavior
+  - fixed GSV path state-corruption bug (MeasureText now saves/restores text)
+  - added 7 deterministic mock-based tests + 3 GSV-mode tests covering kerning, glyph-index lookup, missing glyphs, empty string, idempotency, and monotonicity
 - [ ] Finish `Text` parity:
   - remove any remaining simplified raster-glyph behavior
   - verify glyph placement, raster cache behavior, and text output contracts

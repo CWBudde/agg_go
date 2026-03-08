@@ -194,7 +194,7 @@ func (ctx *Context) SetContextStrokeAttributes(attrs *ContextStrokeAttributes) {
 		Shorten:            attrs.PathShorten,
 		ApproximationScale: attrs.Approximation,
 	}
-	ctx.agg2d.impl.SetStrokeAttributes(iaAttrs)
+	ctx.agg2d.impl.SetStrokeAttributes(&iaAttrs)
 }
 
 // Save/Restore helpers for stroke attributes

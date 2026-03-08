@@ -461,7 +461,7 @@ func (r *RendererBase[PF, C]) BlendColorVspan(x, y, length int, colors []C, cove
 
 // ClipRectArea clips rectangles for copying/blending operations (typed version).
 // Returns the actual area (width/height) that can be processed in rc.X2/rc.Y2.
-func (r *RendererBase[PF, C]) ClipRectArea(dst *basics.RectI, src *basics.RectI, wsrc, hsrc int) basics.RectI {
+func (r *RendererBase[PF, C]) ClipRectArea(dst, src *basics.RectI, wsrc, hsrc int) basics.RectI {
 	rc := basics.RectI{X1: 0, Y1: 0, X2: 0, Y2: 0}
 	cb := r.clipBox
 	cb.X2++

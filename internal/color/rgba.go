@@ -177,22 +177,23 @@ func NoColor() RGBA {
 func FromWavelength(wl, gamma float64) RGBA {
 	t := RGBA{0.0, 0.0, 0.0, 1.0}
 
-	if wl >= 380.0 && wl <= 440.0 {
+	switch {
+	case wl >= 380.0 && wl <= 440.0:
 		t.R = -1.0 * (wl - 440.0) / (440.0 - 380.0)
 		t.B = 1.0
-	} else if wl >= 440.0 && wl <= 490.0 {
+	case wl >= 440.0 && wl <= 490.0:
 		t.G = (wl - 440.0) / (490.0 - 440.0)
 		t.B = 1.0
-	} else if wl >= 490.0 && wl <= 510.0 {
+	case wl >= 490.0 && wl <= 510.0:
 		t.G = 1.0
 		t.B = -1.0 * (wl - 510.0) / (510.0 - 490.0)
-	} else if wl >= 510.0 && wl <= 580.0 {
+	case wl >= 510.0 && wl <= 580.0:
 		t.R = (wl - 510.0) / (580.0 - 510.0)
 		t.G = 1.0
-	} else if wl >= 580.0 && wl <= 645.0 {
+	case wl >= 580.0 && wl <= 645.0:
 		t.R = 1.0
 		t.G = -1.0 * (wl - 645.0) / (645.0 - 580.0)
-	} else if wl >= 645.0 && wl <= 780.0 {
+	case wl >= 645.0 && wl <= 780.0:
 		t.R = 1.0
 	}
 

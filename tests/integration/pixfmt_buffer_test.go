@@ -316,7 +316,7 @@ func TestPixelFormatColorAccuracy(t *testing.T) {
 			diff := float64(pixel[c]) - float64(color[c])
 			colorDistance += diff * diff
 		}
-		colorDistance = colorDistance / 3 // Average
+		colorDistance /= 3 // Average
 
 		if colorDistance > 25.0 { // Allow small tolerance for anti-aliasing
 			t.Errorf("Color accuracy test failed for RGBA(%d,%d,%d,%d): got RGBA(%d,%d,%d,%d), distance=%.2f",
@@ -369,7 +369,7 @@ func TestPixelFormatMemoryLayout(t *testing.T) {
 }
 
 // Helper function to get pixel with custom stride
-func getPixelWithStride(buffer []uint8, stride int, x, y int) [4]uint8 {
+func getPixelWithStride(buffer []uint8, stride, x, y int) [4]uint8 {
 	offset := y*stride + x*4
 	if offset+3 >= len(buffer) {
 		return [4]uint8{0, 0, 0, 0}

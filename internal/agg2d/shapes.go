@@ -75,12 +75,13 @@ func (agg2d *Agg2D) RoundedRectVariableRadii(x1, y1, x2, y2, rxBottom, ryBottom,
 			break
 		}
 
-		if first {
+		switch {
+		case first:
 			agg2d.MoveTo(x, y)
 			first = false
-		} else if cmd == basics.PathCmdLineTo {
+		case cmd == basics.PathCmdLineTo:
 			agg2d.LineTo(x, y)
-		} else if cmd&basics.PathCmdMask == basics.PathCmdEndPoly {
+		case cmd&basics.PathCmdMask == basics.PathCmdEndPoly:
 			agg2d.ClosePolygon()
 		}
 	}

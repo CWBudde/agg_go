@@ -52,11 +52,12 @@ func (v *VCGenBSpline) SetInterpolationStep(step float64) {
 	const minStep = 1e-3 // Minimum step to prevent excessive vertex generation
 	const maxStep = 1.0  // Maximum step for reasonable interpolation
 
-	if step < minStep {
+	switch {
+	case step < minStep:
 		v.interpolationStep = minStep
-	} else if step > maxStep {
+	case step > maxStep:
 		v.interpolationStep = maxStep
-	} else {
+	default:
 		v.interpolationStep = step
 	}
 }
@@ -78,7 +79,8 @@ func (v *VCGenBSpline) RemoveAll() {
 func (v *VCGenBSpline) AddVertex(x, y float64, cmd basics.PathCommand) {
 	v.status = BSplineInitial
 
-	if basics.IsMoveTo(cmd) {
+	switch {
+	case basics.IsMoveTo(cmd):
 		// In C++, MoveTo calls modify_last which replaces the last point
 		// Only modify if we have points, otherwise add as first point
 		if v.srcVertices.Size() > 0 {
@@ -86,9 +88,9 @@ func (v *VCGenBSpline) AddVertex(x, y float64, cmd basics.PathCommand) {
 		} else {
 			v.srcVertices.Add(basics.Point[float64]{X: x, Y: y})
 		}
-	} else if basics.IsVertex(cmd) {
+	case basics.IsVertex(cmd):
 		v.srcVertices.Add(basics.Point[float64]{X: x, Y: y})
-	} else if basics.IsEndPoly(cmd) {
+	case basics.IsEndPoly(cmd):
 		v.closed = basics.IsClosed(uint32(cmd))
 	}
 }

@@ -32,8 +32,8 @@ func (ms *MockScanline) AddCell(x int, cover uint32) {
 	ms.cells = append(ms.cells, MockCell{x: x, cover: cover})
 }
 
-func (ms *MockScanline) AddSpan(x, len int, cover uint32) {
-	ms.spans = append(ms.spans, MockSpan{x: x, len: len, cover: cover})
+func (ms *MockScanline) AddSpan(x, length int, cover uint32) {
+	ms.spans = append(ms.spans, MockSpan{x: x, len: length, cover: cover})
 }
 
 func (ms *MockScanline) Finalize(y int) {
@@ -144,12 +144,12 @@ func TestRasterizerScanlineAA_SetGamma(t *testing.T) {
 
 	// Check a few values
 	expected0 := basics.URound(0.0 * AAMask)
-	if r.gamma[0] != uint8(expected0) {
+	if uint32(r.gamma[0]) != expected0 {
 		t.Errorf("Expected gamma[0] = %d, got %d", expected0, r.gamma[0])
 	}
 
 	expected255 := basics.URound(1.0 * AAMask)
-	if r.gamma[255] != uint8(expected255) {
+	if uint32(r.gamma[255]) != expected255 {
 		t.Errorf("Expected gamma[255] = %d, got %d", expected255, r.gamma[255])
 	}
 }

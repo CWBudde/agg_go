@@ -51,14 +51,14 @@ type contourGrayRenderer struct {
 	height int
 }
 
-func (r *contourGrayRenderer) BlendPixel(x, y int, c basics.Int8u, cover basics.Int8u) {
+func (r *contourGrayRenderer) BlendPixel(x, y int, c, cover basics.Int8u) {
 	if cover == 0 || x < 0 || y < 0 || x >= r.width || y >= r.height {
 		return
 	}
 	r.buffer[y*r.width+x] = uint8(c)
 }
 
-func (r *contourGrayRenderer) BlendHline(x1, y, x2 int, c basics.Int8u, cover basics.Int8u) {
+func (r *contourGrayRenderer) BlendHline(x1, y, x2 int, c, cover basics.Int8u) {
 	if cover == 0 || y < 0 || y >= r.height {
 		return
 	}
@@ -76,7 +76,7 @@ func (r *contourGrayRenderer) BlendHline(x1, y, x2 int, c basics.Int8u, cover ba
 	}
 }
 
-func (r *contourGrayRenderer) BlendVline(x, y1, y2 int, c basics.Int8u, cover basics.Int8u) {
+func (r *contourGrayRenderer) BlendVline(x, y1, y2 int, c, cover basics.Int8u) {
 	if cover == 0 || x < 0 || x >= r.width {
 		return
 	}
@@ -94,7 +94,7 @@ func (r *contourGrayRenderer) BlendVline(x, y1, y2 int, c basics.Int8u, cover ba
 	}
 }
 
-func (r *contourGrayRenderer) BlendBar(x1, y1, x2, y2 int, c basics.Int8u, cover basics.Int8u) {
+func (r *contourGrayRenderer) BlendBar(x1, y1, x2, y2 int, c, cover basics.Int8u) {
 	if cover == 0 {
 		return
 	}
@@ -309,33 +309,33 @@ func (gc *GradientContour) performDistanceTransform(bwBuffer []uint8, width, hei
 	}
 
 	// Take square roots and find min/max
-	var min, max float32
+	var minValue, maxValue float32
 	for i := range image {
 		image[i] = float32(math.Sqrt(float64(image[i])))
 		if i == 0 {
-			min = image[i]
-			max = image[i]
+			minValue = image[i]
+			maxValue = image[i]
 		} else {
-			if image[i] < min {
-				min = image[i]
+			if image[i] < minValue {
+				minValue = image[i]
 			}
-			if image[i] > max {
-				max = image[i]
+			if image[i] > maxValue {
+				maxValue = image[i]
 			}
 		}
 	}
 
 	// Convert to grayscale
 	result := make([]uint8, width*height)
-	if min == max {
+	if minValue == maxValue {
 		// All values are the same, set to black
 		for i := range result {
 			result[i] = 0
 		}
 	} else {
-		scale := 255.0 / (max - min)
+		scale := 255.0 / (maxValue - minValue)
 		for i := range image {
-			result[i] = uint8(int((image[i]-min)*scale + 0.5))
+			result[i] = uint8(int((image[i]-minValue)*scale + 0.5))
 		}
 	}
 

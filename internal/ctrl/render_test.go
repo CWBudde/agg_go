@@ -397,9 +397,9 @@ type blendColorHspanCall struct {
 	cover     basics.Int8u
 }
 
-func (mbr *mockBaseRenderer) BlendSolidHspan(x, y, len int, color string, covers []basics.Int8u) {
+func (mbr *mockBaseRenderer) BlendSolidHspan(x, y, length int, color string, covers []basics.Int8u) {
 	mbr.blendSolidHspanCalls = append(mbr.blendSolidHspanCalls, blendSolidHspanCall{
-		x: x, y: y, len: len, color: color, covers: covers,
+		x: x, y: y, len: length, color: color, covers: covers,
 	})
 }
 
@@ -409,9 +409,9 @@ func (mbr *mockBaseRenderer) BlendHline(x, y, x2 int, color string, cover basics
 	})
 }
 
-func (mbr *mockBaseRenderer) BlendColorHspan(x, y, len int, colors []string, covers []basics.Int8u, cover basics.Int8u) {
+func (mbr *mockBaseRenderer) BlendColorHspan(x, y, length int, colors []string, covers []basics.Int8u, cover basics.Int8u) {
 	mbr.blendColorHspanCalls = append(mbr.blendColorHspanCalls, blendColorHspanCall{
-		x: x, y: y, len: len, colors: colors, covers: covers, cover: cover,
+		x: x, y: y, len: length, colors: colors, covers: covers, cover: cover,
 	})
 }
 

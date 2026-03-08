@@ -189,11 +189,12 @@ func (r *RasterizerScanlineAA[C, V, Clip]) ClosePolygon() {
 func (r *RasterizerScanlineAA[C, V, Clip]) AddVertex(x, y float64, cmd uint32) {
 	pathCmd := basics.PathCommand(cmd & uint32(basics.PathCmdMask))
 
-	if basics.IsMoveTo(pathCmd) {
+	switch {
+	case basics.IsMoveTo(pathCmd):
 		r.MoveToD(x, y)
-	} else if basics.IsVertex(pathCmd) {
+	case basics.IsVertex(pathCmd):
 		r.LineToD(x, y)
-	} else if basics.IsClose(cmd) {
+	case basics.IsClose(cmd):
 		r.ClosePolygon()
 	}
 }

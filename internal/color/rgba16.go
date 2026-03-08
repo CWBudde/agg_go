@@ -172,11 +172,12 @@ func (c RGBA16[CS]) IsOpaque() bool {
 
 // Opacity sets the alpha channel (0.0 to 1.0)
 func (c *RGBA16[CS]) Opacity(a float64) *RGBA16[CS] {
-	if a < 0 {
+	switch {
+	case a < 0:
 		c.A = 0
-	} else if a > 1 {
+	case a > 1:
 		c.A = 65535
-	} else {
+	default:
 		c.A = basics.Int16u(a*65535 + 0.5)
 	}
 	return c

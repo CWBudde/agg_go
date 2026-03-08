@@ -111,7 +111,7 @@ func (gi *GradientImageRGBA8) Calculate(x, y, d2 int) int {
 		py := y >> GradientSubpixelShift
 
 		// Wrap coordinates for tiling behavior
-		px = px % gi.width
+		px %= gi.width
 		if px < 0 {
 			px += gi.width
 		}
@@ -230,12 +230,12 @@ func (gi *GradientImage[ColorT]) Calculate(x, y, d2 int) int {
 		py := y >> GradientSubpixelShift
 
 		// Wrap coordinates for tiling behavior
-		px = px % gi.width
+		px %= gi.width
 		if px < 0 {
 			px += gi.width
 		}
 
-		py = py % gi.height
+		py %= gi.height
 		if py < 0 {
 			py += gi.height
 		}

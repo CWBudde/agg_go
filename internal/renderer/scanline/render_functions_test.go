@@ -57,11 +57,11 @@ type MockSpanGeneratorWithColor[C any] struct {
 	color C
 }
 
-func (m *MockSpanGeneratorWithColor[C]) Generate(colors []C, x, y, len int) {
+func (m *MockSpanGeneratorWithColor[C]) Generate(colors []C, x, y, length int) {
 	m.generateCalls = append(m.generateCalls, GenerateCall[C]{
-		X: x, Y: y, Len: len, Colors: colors,
+		X: x, Y: y, Len: length, Colors: colors,
 	})
-	for i := 0; i < len; i++ {
+	for i := 0; i < length; i++ {
 		colors[i] = m.color
 	}
 }

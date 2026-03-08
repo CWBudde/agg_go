@@ -126,8 +126,8 @@ type alphaGradSpanGen struct {
 
 func newAlphaGradSpanGen(
 	gradMtx, alphaMtx *transform.TransAffine,
-	colorArr gradColorArray,
-	alphaArr [256]basics.Int8u,
+	colorArr *gradColorArray,
+	alphaArr *[256]basics.Int8u,
 ) *alphaGradSpanGen {
 	gi := span.NewSpanInterpolatorLinearDefault(gradMtx)
 	ai := span.NewSpanInterpolatorLinearDefault(alphaMtx)
@@ -140,8 +140,8 @@ func newAlphaGradSpanGen(
 	return &alphaGradSpanGen{
 		gradInterp:  gi,
 		alphaInterp: ai,
-		colorArray:  colorArr,
-		alphaArray:  alphaArr,
+		colorArray:  *colorArr,
+		alphaArray:  *alphaArr,
 		d1c:         0,
 		d2c:         basics.IRound(150 * span.GradientSubpixelScale),
 		d1a:         0,
@@ -284,7 +284,7 @@ func drawAlphaGradientDemo() {
 	}
 
 	// 6. Render the 150-px circle with the combined span generator.
-	spanGen := newAlphaGradSpanGen(gradMtx, alphaMtx, colorArr, alphaArr)
+	spanGen := newAlphaGradSpanGen(gradMtx, alphaMtx, &colorArr, &alphaArr)
 	ras := a.GetInternalRasterizer()
 	ras.Reset()
 	ell := shapes.NewEllipseWithParams(cx, cy, 150, 150, 100, false)

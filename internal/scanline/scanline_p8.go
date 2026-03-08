@@ -99,7 +99,7 @@ func (sl *ScanlineP8) AddCell(x int, cover uint) {
 
 // AddCells adds multiple cells with individual coverage values to the scanline.
 // X coordinates must be provided in increasing order.
-func (sl *ScanlineP8) AddCells(x int, length int, covers []CoverType) {
+func (sl *ScanlineP8) AddCells(x, length int, covers []CoverType) {
 	// Copy coverage values to our internal array
 	coverData := sl.covers.Data()
 
@@ -130,7 +130,7 @@ func (sl *ScanlineP8) AddCells(x int, length int, covers []CoverType) {
 // AddSpan adds a span of pixels all with the same coverage value.
 // This creates a "solid" span with negative length for efficiency.
 // X coordinates must be provided in increasing order.
-func (sl *ScanlineP8) AddSpan(x int, length int, cover uint) {
+func (sl *ScanlineP8) AddSpan(x, length int, cover uint) {
 	coverData := sl.covers.Data()
 
 	// Check if we can merge with the previous solid span

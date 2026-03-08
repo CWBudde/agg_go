@@ -161,7 +161,7 @@ func fillRGBAGeneric(dst []byte, r, g, b, a uint8, count int) {
 
 // BlendSolidHspanRGBA blends a solid color into tightly packed RGBA pixels.
 // dst must contain one 4-byte pixel per cover entry.
-func BlendSolidHspanRGBA(dst []byte, covers []byte, r, g, b, a uint8, premulSrc bool) {
+func BlendSolidHspanRGBA(dst, covers []byte, r, g, b, a uint8, premulSrc bool) {
 	if len(covers) == 0 || len(dst) < 4 {
 		return
 	}
@@ -172,7 +172,7 @@ func BlendSolidHspanRGBA(dst []byte, covers []byte, r, g, b, a uint8, premulSrc 
 	currentImplementation().blendSolidHspanRGBA(dst, covers, r, g, b, a, premulSrc)
 }
 
-func blendSolidHspanRGBAGeneric(dst []byte, covers []byte, r, g, b, a uint8, premulSrc bool) {
+func blendSolidHspanRGBAGeneric(dst, covers []byte, r, g, b, a uint8, premulSrc bool) {
 	for i, cv := range covers {
 		if cv == 0 {
 			continue

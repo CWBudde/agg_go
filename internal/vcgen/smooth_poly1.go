@@ -68,11 +68,12 @@ func (v *VCGenSmoothPoly1) RemoveAll() {
 func (v *VCGenSmoothPoly1) AddVertex(x, y float64, cmd basics.PathCommand) {
 	v.status = SmoothPolyInitial
 
-	if basics.IsMoveTo(cmd) {
+	switch {
+	case basics.IsMoveTo(cmd):
 		v.srcVertices.ModifyLast(array.VertexDistCmd{X: x, Y: y})
-	} else if basics.IsVertex(cmd) {
+	case basics.IsVertex(cmd):
 		v.srcVertices.Add(array.VertexDistCmd{X: x, Y: y})
-	} else {
+	default:
 		v.closed = basics.IsClosed(uint32(cmd))
 	}
 }

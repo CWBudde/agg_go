@@ -64,15 +64,16 @@ func (r *RendererEnlargedT[Ren, C]) Render(sl scanline_renderer.ScanlineInterfac
 		n := sp.Len
 
 		for j := 0; j < n; j++ {
-			if j < len(covers) {
-				cover := covers[j]
-				c := r.color
-				if r.modAlpha != nil {
-					c = r.modAlpha(c, cover)
-				}
-				cx := x + j
-				r.drawMagnifiedPixel(float64(cx), float64(y), c)
+			if j >= len(covers) {
+				continue
 			}
+			cover := covers[j]
+			c := r.color
+			if r.modAlpha != nil {
+				c = r.modAlpha(c, cover)
+			}
+			cx := x + j
+			r.drawMagnifiedPixel(float64(cx), float64(y), c)
 		}
 		if i < numSpans-1 {
 			it.Next()

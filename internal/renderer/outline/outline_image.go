@@ -104,14 +104,15 @@ func (lis *LineImageScale) Pixel(x, y int) color.RGBA {
 		}
 
 		for y := y1 + 1; y < y2; y++ {
-			if y <= h {
-				pix := lis.source.Pixel(x, y)
-				c.R += pix.R
-				c.G += pix.G
-				c.B += pix.B
-				c.A += pix.A
-				weight += 1.0
+			if y > h {
+				continue
 			}
+			pix := lis.source.Pixel(x, y)
+			c.R += pix.R
+			c.G += pix.G
+			c.B += pix.B
+			c.A += pix.A
+			weight += 1.0
 		}
 
 		if y2 <= h {
@@ -1054,12 +1055,12 @@ func (roi *RendererOutlineImage) Pixel(p *color.RGBA, x, y int) {
 }
 
 // BlendColorHSpan blends a horizontal color span.
-func (roi *RendererOutlineImage) BlendColorHSpan(x, y int, length int, colors []color.RGBA) {
+func (roi *RendererOutlineImage) BlendColorHSpan(x, y, length int, colors []color.RGBA) {
 	roi.ren.BlendColorHSpan(x, y, length, colors, nil)
 }
 
 // BlendColorVSpan blends a vertical color span.
-func (roi *RendererOutlineImage) BlendColorVSpan(x, y int, length int, colors []color.RGBA) {
+func (roi *RendererOutlineImage) BlendColorVSpan(x, y, length int, colors []color.RGBA) {
 	roi.ren.BlendColorVSpan(x, y, length, colors, nil)
 }
 

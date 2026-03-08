@@ -344,15 +344,13 @@ func TestConvMarkerAdaptor_ShorteningEdgeCases(t *testing.T) {
 			if test.shouldHaveVerts {
 				if len(vertices) == 0 {
 					t.Errorf("Expected vertices but got none")
-				} else {
+				} else if test.shortenAmount > 0 && test.shortenAmount < test.pathLength {
 					// Check last vertex position for partial shortening
-					if test.shortenAmount > 0 && test.shortenAmount < test.pathLength {
-						lastVertex := vertices[len(vertices)-1]
-						tolerance := 0.001
-						if abs(lastVertex.X-test.expectedLastX) > tolerance {
-							t.Errorf("Expected last vertex X to be %.3f, got %.3f",
-								test.expectedLastX, lastVertex.X)
-						}
+					lastVertex := vertices[len(vertices)-1]
+					tolerance := 0.001
+					if abs(lastVertex.X-test.expectedLastX) > tolerance {
+						t.Errorf("Expected last vertex X to be %.3f, got %.3f",
+							test.expectedLastX, lastVertex.X)
 					}
 				}
 			} else {

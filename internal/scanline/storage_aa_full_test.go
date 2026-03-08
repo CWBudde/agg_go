@@ -115,16 +115,18 @@ func TestScanlineStorageAA_StoreSingleScanline(t *testing.T) {
 	mockScanline := NewMockScanline(100)
 
 	// Add some spans to the mock scanline
-	mockScanline.spans = append(mockScanline.spans, MockSpan{
-		X:      10,
-		Len:    5,
-		Covers: []basics.Int8u{255, 200, 150, 100, 50},
-	})
-	mockScanline.spans = append(mockScanline.spans, MockSpan{
-		X:      20,
-		Len:    -3,                  // Solid span
-		Covers: []basics.Int8u{128}, // Single coverage value for solid span
-	})
+	mockScanline.spans = append(mockScanline.spans,
+		MockSpan{
+			X:      10,
+			Len:    5,
+			Covers: []basics.Int8u{255, 200, 150, 100, 50},
+		},
+		MockSpan{
+			X:      20,
+			Len:    -3,                  // Solid span
+			Covers: []basics.Int8u{128}, // Single coverage value for solid span
+		},
+	)
 
 	// Store the scanline
 	storage.Render(mockScanline)
@@ -238,16 +240,18 @@ func TestScanlineStorageAA_EmbeddedScanline(t *testing.T) {
 
 	// Store a scanline
 	mockScanline := NewMockScanline(300)
-	mockScanline.spans = append(mockScanline.spans, MockSpan{
-		X:      50,
-		Len:    2,
-		Covers: []basics.Int8u{255, 128},
-	})
-	mockScanline.spans = append(mockScanline.spans, MockSpan{
-		X:      60,
-		Len:    -4, // Solid span
-		Covers: []basics.Int8u{200},
-	})
+	mockScanline.spans = append(mockScanline.spans,
+		MockSpan{
+			X:      50,
+			Len:    2,
+			Covers: []basics.Int8u{255, 128},
+		},
+		MockSpan{
+			X:      60,
+			Len:    -4, // Solid span
+			Covers: []basics.Int8u{200},
+		},
+	)
 	storage.Render(mockScanline)
 
 	// Create embedded scanline

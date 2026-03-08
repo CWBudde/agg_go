@@ -22,14 +22,14 @@ type SimplePolygonVertexSource struct {
 // polygon: coordinate array where each pair represents (x, y)
 // numPoints: number of points in the polygon
 // roundoff: whether to apply floor+0.5 rounding to coordinates
-// close: whether to close the polygon path
-func NewSimplePolygonVertexSource(polygon []float64, numPoints uint, roundoff, close bool) *SimplePolygonVertexSource {
+// isClosed: whether to close the polygon path
+func NewSimplePolygonVertexSource(polygon []float64, numPoints uint, roundoff, isClosed bool) *SimplePolygonVertexSource {
 	return &SimplePolygonVertexSource{
 		polygon:   polygon,
 		numPoints: numPoints,
 		vertex:    0,
 		roundoff:  roundoff,
-		close:     close,
+		close:     isClosed,
 	}
 }
 

@@ -1577,12 +1577,13 @@ func insertBound(b **edgeNode, e *edgeNode) {
 	}
 
 	// Do primary sort on the x field
-	if e.Bot.X < (*b).Bot.X {
+	switch {
+	case e.Bot.X < (*b).Bot.X:
 		// Insert a new node at the head
 		existing := *b
 		*b = e
 		(*b).NextBound = existing
-	} else if e.Bot.X == (*b).Bot.X {
+	case e.Bot.X == (*b).Bot.X:
 		// Do secondary sort on the dx field
 		if e.DX < (*b).DX {
 			// Insert a new node at the head
@@ -1593,7 +1594,7 @@ func insertBound(b **edgeNode, e *edgeNode) {
 			// Head further down the list
 			insertBound(&((*b).NextBound), e)
 		}
-	} else {
+	default:
 		// Head further down the list
 		insertBound(&((*b).NextBound), e)
 	}
@@ -1907,13 +1908,14 @@ func addEdgeToAET(aet **edgeNode, edge, prev *edgeNode) {
 	}
 
 	// Do primary sort on the xb field
-	if edge.XB < (*aet).XB {
+	switch {
+	case edge.XB < (*aet).XB:
 		// Insert edge here (before the AET edge)
 		edge.Prev = prev
 		edge.Next = *aet
 		(*aet).Prev = edge
 		*aet = edge
-	} else if edge.XB == (*aet).XB {
+	case edge.XB == (*aet).XB:
 		// Do secondary sort on the dx field
 		if edge.DX < (*aet).DX {
 			// Insert edge here (before the AET edge)
@@ -1925,7 +1927,7 @@ func addEdgeToAET(aet **edgeNode, edge, prev *edgeNode) {
 			// Head further into the AET
 			addEdgeToAET(&((*aet).Next), edge, *aet)
 		}
-	} else {
+	default:
 		// Head further into the AET
 		addEdgeToAET(&((*aet).Next), edge, *aet)
 	}

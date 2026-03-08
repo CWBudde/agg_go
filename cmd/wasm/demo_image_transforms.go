@@ -203,11 +203,12 @@ func drawImageTransformsDemo() {
 			break
 		}
 		polyMtx.Transform(&vx, &vy)
-		if basics.IsMoveTo(cmd) {
+		switch {
+		case basics.IsMoveTo(cmd):
 			transformed.MoveTo(vx, vy)
-		} else if basics.IsLineTo(cmd) {
+		case basics.IsLineTo(cmd):
 			transformed.LineTo(vx, vy)
-		} else if basics.IsEndPoly(cmd) {
+		case basics.IsEndPoly(cmd):
 			transformed.ClosePolygon(basics.PathFlagsNone)
 		}
 	}
