@@ -121,6 +121,7 @@ var (
 	distortionsAmplitude = 10.0
 	distortionsPeriod    = 1.0
 	distortionsType      = 0 // 0: Wave, 1: Swirl
+	distortionsImageType = 0 // 0: spheres, 1: test-grid
 	distortionsImage     *agg.Image
 
 	// Reusable components
@@ -140,8 +141,7 @@ func initDistortionsDemo() {
 	}
 
 	if distortionsImage == nil {
-		// Original AGG demo uses "spheres" image; procedural spheres gives much closer visual parity.
-		distortionsImage = createSpheresImage(width/2, height/2)
+		distortionsImage = createDistortionsSourceImage(distortionsImageType)
 	}
 
 	distortionsRbuf = buffer.NewRenderingBufferU8()
@@ -156,6 +156,27 @@ func initDistortionsDemo() {
 	distortionsPath = path.NewPathStorageStl()
 
 	distortionsInitialized = true
+}
+
+func createDistortionsSourceImage(imageType int) *agg.Image {
+	switch imageType {
+	case 1:
+		return createTestImage(width/2, height/2)
+	default:
+		// Original AGG demo uses "spheres" image; procedural spheres gives much closer visual parity.
+		return createSpheresImage(width/2, height/2)
+	}
+}
+
+func setDistortionsImageType(t int) {
+	if t < 0 || t > 1 || distortionsImageType == t {
+		return
+	}
+	distortionsImageType = t
+	distortionsImage = createDistortionsSourceImage(distortionsImageType)
+	// Reinitialize default center for the new source dimensions until user drags again.
+	distortionsCenterX = math.NaN()
+	distortionsCenterY = math.NaN()
 }
 
 func drawDistortionsDemo() {

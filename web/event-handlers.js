@@ -417,6 +417,19 @@ export function setupEventHandlers(
     renderSelectedDemo();
   });
 
+  // distortions controls
+  document
+    .getElementById("distortionsImageSelector")
+    .addEventListener("change", () => {
+      const val = parseInt(
+        document.getElementById("distortionsImageSelector").value,
+        10,
+      );
+      setDistortionsImage(val);
+      persistDemoParams("distortions");
+      renderSelectedDemo();
+    });
+
   // alpha_mask2 controls
   document.getElementById("am2EllipsesSlider").addEventListener("input", () => {
     const val = parseInt(document.getElementById("am2EllipsesSlider").value);

@@ -78,6 +78,7 @@ func main() {
 	js.Global().Set("getAlphaGradNodes", js.FuncOf(getAlphaGradNodes))
 	js.Global().Set("setAlphaGradNodes", js.FuncOf(setAlphaGradNodes))
 	js.Global().Set("setPerspectiveType", js.FuncOf(setPerspectiveTypeJS))
+	js.Global().Set("setDistortionsImage", js.FuncOf(setDistortionsImageJS))
 	js.Global().Set("toggleTransCurveAnimate", js.FuncOf(toggleTransCurveAnimateJS))
 	js.Global().Set("toggleTransCurve2Animate", js.FuncOf(toggleTransCurve2AnimateJS))
 	js.Global().Set("setBlurRadius", js.FuncOf(setBlurRadius))
@@ -498,6 +499,13 @@ func setCompAlphaDstJS(this js.Value, args []js.Value) interface{} {
 func setPerspectiveTypeJS(this js.Value, args []js.Value) interface{} {
 	if len(args) > 0 {
 		setPerspectiveType(args[0].Int())
+	}
+	return nil
+}
+
+func setDistortionsImageJS(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		setDistortionsImageType(args[0].Int())
 	}
 	return nil
 }

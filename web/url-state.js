@@ -183,6 +183,8 @@ export const ALL_DEMO_PARAMS = [
   "sb2o",
   "sb2x",
   "sb2y",
+  // distortions
+  "dimg",
 ];
 
 export function clearDemoParams() {

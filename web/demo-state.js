@@ -725,6 +725,24 @@ export const demoURLHandlers = {
       }
     },
   },
+
+  distortions: {
+    persist() {
+      updateURL({
+        dimg: parseInt(
+          document.getElementById("distortionsImageSelector").value,
+          10,
+        ),
+      });
+    },
+    restore(p) {
+      if (p.has("dimg")) {
+        const val = parseInt(p.get("dimg"), 10);
+        setDistortionsImage(val);
+        document.getElementById("distortionsImageSelector").value = String(val);
+      }
+    },
+  },
 };
 
 export function persistDemoParams(demoType) {

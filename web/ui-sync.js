@@ -43,6 +43,8 @@ export function syncControlVisibility(demoType) {
     demoType === "compositing" ? "flex" : "none";
   document.getElementById("multiClipControls").style.display =
     demoType === "multi_clip" ? "flex" : "none";
+  document.getElementById("distortionsControls").style.display =
+    demoType === "distortions" ? "flex" : "none";
   document.getElementById("alphaMask2Controls").style.display =
     demoType === "alpha_mask2" ? "flex" : "none";
   document.getElementById("image1Controls").style.display =
@@ -135,7 +137,7 @@ export const demoDescriptions = {
   lion_lens:
     "Dynamic lens magnification effect. Port of AGG's lion_lens demo. Applies a TransWarpMagnifier to the lion vector art. Click and drag to move the lens; use the sliders to adjust scale and radius.",
   distortions:
-    "Animated image distortions. Applies Wave and Swirl effects to a procedurally generated image using custom coordinate distortion interpolators. Click and drag to move the distortion center.",
+    "Animated image distortions. Applies Wave and Swirl effects to the selected source image (Spheres/Test Grid) using custom coordinate distortion interpolators. Click and drag to move the distortion center. URL parameter: dimg (0/1).",
   trans_polar:
     "Polar coordinate transformations. Bends the lion vector art into a circular or spiral shape using a non-linear polar transformer. Click and drag to adjust the radius and spiral intensity.",
   circles:
