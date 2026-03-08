@@ -90,9 +90,11 @@ func drawImgTransStar(cx, cy float64) {
 	r2 := r1 / 1.45
 	nr := 14
 
+	const twoPi = 2.0 * math.Pi
+
 	imgTransPath.RemoveAll()
-	for i := 0; i < nr; i++ {
-		a := math.Pi*2.0*float64(i)/float64(nr) - math.Pi/2.0
+	for i := range nr {
+		a := twoPi*float64(i)/float64(nr) - math.Pi*0.5
 		dx := math.Cos(a)
 		dy := math.Sin(a)
 		if i&1 != 0 {
@@ -113,8 +115,8 @@ func drawImageTransformsDemo() {
 
 	if imgTransImage == nil {
 		imgTransImage = createSpheresImage(400, 300)
-		imgTransImageCenterX = float64(imgTransImage.Width()) / 2.0
-		imgTransImageCenterY = float64(imgTransImage.Height()) / 2.0
+		imgTransImageCenterX = float64(imgTransImage.Width()) * 0.5
+		imgTransImageCenterY = float64(imgTransImage.Height()) * 0.5
 	}
 
 	// Attach rendering target

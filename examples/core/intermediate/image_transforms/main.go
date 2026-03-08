@@ -187,7 +187,7 @@ func buildStarIT(cx, cy float64, w, h int) *path.PathStorageStl {
 
 	ps := path.NewPathStorageStl()
 	for i := 0; i < nr; i++ {
-		a := math.Pi*2.0*float64(i)/float64(nr) - math.Pi/2.0
+		a := math.Pi*2.0*float64(i)/float64(nr) - math.Pi*0.5
 		dx := math.Cos(a)
 		dy := math.Sin(a)
 		if i&1 != 0 {

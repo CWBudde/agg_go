@@ -103,8 +103,8 @@ func drawAlphaMaskDemo() {
 	// Get bounding box for lion
 	if len(lionPaths) > 0 {
 		x1, y1, x2, y2 := 20.0, 20.0, 480.0, 380.0
-		baseDX = (x2 - x1) / 2.0
-		baseDY = (y2 - y1) / 2.0
+		baseDX = (x2 - x1) * 0.5
+		baseDY = (y2 - y1) * 0.5
 	}
 
 	agg2d.ResetTransformations()

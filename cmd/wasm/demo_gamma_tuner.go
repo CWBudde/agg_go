@@ -36,7 +36,7 @@ func drawGammaTunerDemo() {
 			k = 1.0
 		}
 
-		k = 1.0 - math.Pow(k/2.0, invG)
+		k = 1.0 - math.Pow(k*0.5, invG)
 
 		cr := uint8(r*255.0*(1.0-k) + 0.5)
 		cg := uint8(gg*255.0*(1.0-k) + 0.5)
@@ -120,7 +120,7 @@ func drawGammaTunerDemo() {
 	// 4. Draw vertical strips
 	for i := 0; i < squareSize; i++ {
 		k := float64(i) / (squareSize - 1)
-		k = 1.0 - math.Pow(k/2.0, invG)
+		k = 1.0 - math.Pow(k*0.5, invG)
 
 		cr := uint8(r*255.0*(1.0-k) + 0.5)
 		cg := uint8(gg*255.0*(1.0-k) + 0.5)

@@ -102,7 +102,7 @@ func drawTransPolarDemo() {
 
 			// Normalize and scale lion
 			tx := (x-lx1)*scaleX - 300.0 // Center it horizontally
-			ty := (y - (ly1+ly2)/2.0)
+			ty := (y - (ly1+ly2)*0.5)
 
 			// Transform to polar
 			trans.Transform(&tx, &ty)
@@ -119,13 +119,13 @@ func drawTransPolarDemo() {
 }
 
 func handleTransPolarMouseDown(x, y float64) bool {
-	polarBaseY = y - float64(height)/2.0 + 120.0
+	polarBaseY = y - float64(height)*0.5 + 120.0
 	return true
 }
 
 func handleTransPolarMouseMove(x, y float64) bool {
-	polarBaseY = y - float64(height)/2.0 + 120.0
-	polarSpiral = (x - float64(width)/2.0) / 1000.0
+	polarBaseY = y - float64(height)*0.5 + 120.0
+	polarSpiral = (x - float64(width)*0.5) / 1000.0
 	return true
 }
 

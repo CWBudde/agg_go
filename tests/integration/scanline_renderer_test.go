@@ -139,8 +139,8 @@ func TestScanlineComplexShape(t *testing.T) {
 			radius = innerRadius
 		}
 
-		x := cx + radius*math.Cos(angle-math.Pi/2.0)
-		y := cy + radius*math.Sin(angle-math.Pi/2.0)
+		x := cx + radius*math.Cos(angle-math.Pi*0.5)
+		y := cy + radius*math.Sin(angle-math.Pi*0.5)
 
 		if i == 0 {
 			ctx.MoveTo(x, y)

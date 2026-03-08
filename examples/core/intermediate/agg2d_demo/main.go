@@ -181,7 +181,7 @@ func (d *demo) Render(ctx *agg.Context) {
 	agg2d.FillColor(agg.RGBA(0, 0, 50, 200))
 	agg2d.NoLine()
 	agg2d.TextAlignment(agg.AlignCenter, agg.AlignCenter)
-	agg2d.Text((xb1+xb2)/2.0, (yb1+yb2)/2.0, "Aqua Button", true, 0.0, 0.0)
+	agg2d.Text((xb1+xb2)*0.5, (yb1+yb2)*0.5, "Aqua Button", true, 0.0, 0.0)
 
 	agg2d.FillLinearGradient(xb1, yb2-20, xb1, yb2-3,
 		agg.RGBA(0, 0, 255, 0),
@@ -205,7 +205,7 @@ func (d *demo) Render(ctx *agg.Context) {
 	agg2d.FillColor(agg.RGBA(0, 0, 50, 255))
 	agg2d.NoLine()
 	agg2d.TextAlignment(agg.AlignCenter, agg.AlignCenter)
-	agg2d.Text((xb1+xb2)/2.0, (yb1+yb2)/2.0, "Aqua Pressed", false, 0.0, 0.0)
+	agg2d.Text((xb1+xb2)*0.5, (yb1+yb2)*0.5, "Aqua Pressed", false, 0.0, 0.0)
 
 	agg2d.FillLinearGradient(xb1, yb2-25, xb1, yb2-5,
 		agg.RGBA(0, 180, 255, 0),

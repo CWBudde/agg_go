@@ -43,15 +43,15 @@ func (d *demo) Render(ctx *agg.Context) {
 	// Destination radial circle.
 	a.BlendMode(agg.BlendAlpha)
 	a.FillRadialGradient(
-		(70*3+37*3)/2.0,
-		(100+24*3+100+79*3)/2.0,
+		(70*3+37*3)*0.5,
+		(100+24*3+100+79*3)*0.5,
 		70,
 		agg.NewColor(0xFD, 0xF0, 0x6F, 255),
 		agg.NewColor(0xFE, 0x9F, 0x34, 255),
 		1.0,
 	)
 	a.NoLine()
-	a.FillCircle((70*3+37*3)/2.0, (100+24*3+100+79*3)/2.0, 63)
+	a.FillCircle((70*3+37*3)*0.5, (100+24*3+100+79*3)*0.5, 63)
 
 	// Source shape composited with default operator from C++ (src-over).
 	a.BlendMode(agg.BlendSrcOver)

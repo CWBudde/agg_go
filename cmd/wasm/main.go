@@ -62,6 +62,12 @@ func main() {
 	js.Global().Set("setGammaValue", js.FuncOf(setGammaValue))
 	js.Global().Set("setGammaThickness", js.FuncOf(setGammaThickness))
 	js.Global().Set("setGammaContrast", js.FuncOf(setGammaContrast))
+	js.Global().Set("setLionAlpha", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			lionFillAlpha = args[0].Float()
+		}
+		return nil
+	}))
 	js.Global().Set("setLionOutlineWidth", js.FuncOf(setLionOutlineWidth))
 	js.Global().Set("setCompAlpha", js.FuncOf(setCompAlpha))
 	js.Global().Set("setRRRadius", js.FuncOf(setRRRadius))
@@ -530,6 +536,10 @@ func onMouseDown(this js.Value, args []js.Value) interface{} {
 	if demoType == "gamma" {
 		return handleGammaCorrectionMouseDown(x, y)
 	}
+	if demoType == "lion" {
+		right := len(args) >= 4 && args[3].Bool()
+		return handleLionMouseDown(x, y, right)
+	}
 	if demoType == "lionoutline" {
 		right := len(args) >= 4 && args[3].Bool()
 		return handleLionOutlineMouseDown(x, y, right)
@@ -648,6 +658,10 @@ func onMouseMove(this js.Value, args []js.Value) interface{} {
 	if demoType == "gamma" {
 		return handleGammaCorrectionMouseMove(x, y)
 	}
+	if demoType == "lion" {
+		right := len(args) >= 4 && args[3].Bool()
+		return handleLionMouseMove(x, y, right)
+	}
 	if demoType == "lionoutline" {
 		right := len(args) >= 4 && args[3].Bool()
 		return handleLionOutlineMouseMove(x, y, right)
@@ -755,6 +769,9 @@ func onMouseUp(this js.Value, args []js.Value) interface{} {
 	}
 	if demoType == "convstroke" {
 		handleConvStrokeMouseUp()
+	}
+	if demoType == "lion" {
+		handleLionMouseUp()
 	}
 	if demoType == "lionoutline" {
 		handleLionOutlineMouseUp()

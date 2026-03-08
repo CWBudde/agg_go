@@ -67,7 +67,7 @@ func (d *demo) Render(ctx *agg.Context) {
 	mtx := transform.NewTransAffine()
 	mtx.Translate(-baseDX, -baseDY)
 	mtx.ScaleXY(-1, 1) // mirror X (matches flip_y + rotate(Pi) in the original)
-	mtx.Translate(float64(llWidth)/2.0, float64(llHeight)/2.0)
+	mtx.Translate(float64(llWidth)*0.5, float64(llHeight)*0.5)
 
 	// Warp magnifier lens.
 	lens := transform.NewTransWarpMagnifier()

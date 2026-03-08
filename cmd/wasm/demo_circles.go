@@ -62,17 +62,19 @@ func generateCircles() {
 	rx := float64(width) / 3.5
 	ry := float64(height) / 3.5
 
+	const twoPi = 2.0 * math.Pi
+
 	for i := 0; i < numPoints; i++ {
 		z := rand.Float64()
-		x := math.Cos(z*2.0*math.Pi) * rx
-		y := math.Sin(z*2.0*math.Pi) * ry
+		x := math.Cos(z*twoPi) * rx
+		y := math.Sin(z*twoPi) * ry
 
-		dist := rand.Float64() * (rx / 2.0)
+		dist := rand.Float64() * (rx * 0.5)
 		angle := rand.Float64() * (math.Pi * 2.0)
 
 		circlesPoints[i].z = z
-		circlesPoints[i].x = float64(width)/2.0 + x + math.Cos(angle)*dist
-		circlesPoints[i].y = float64(height)/2.0 + y + math.Sin(angle)*dist
+		circlesPoints[i].x = float64(width)*0.5 + x + math.Cos(angle)*dist
+		circlesPoints[i].y = float64(height)*0.5 + y + math.Sin(angle)*dist
 
 		r := splineR.Get(z) * 0.8
 		g := splineG.Get(z) * 0.8

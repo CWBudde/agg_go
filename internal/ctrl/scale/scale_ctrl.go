@@ -239,9 +239,9 @@ func (s *ScaleCtrl) OnMouseButtonDown(x, y float64) bool {
 		// Horizontal orientation
 		xp1 = s.xs1 + (s.xs2-s.xs1)*s.value1
 		xp2 = s.xs1 + (s.xs2-s.xs1)*s.value2
-		ys1 = s.Y1() - s.borderExtra/2.0
-		ys2 = s.Y2() + s.borderExtra/2.0
-		yp = (s.ys1 + s.ys2) / 2.0
+		ys1 = s.Y1() - s.borderExtra*0.5
+		ys2 = s.Y2() + s.borderExtra*0.5
+		yp = (s.ys1 + s.ys2) * 0.5
 
 		// Check if clicking on the slider bar (between pointers)
 		if x > xp1 && y > ys1 && x < xp2 && y < ys2 {
@@ -265,11 +265,11 @@ func (s *ScaleCtrl) OnMouseButtonDown(x, y float64) bool {
 		}
 	} else {
 		// Vertical orientation
-		xp1 = s.X1() - s.borderExtra/2.0
-		xp2 = s.X2() + s.borderExtra/2.0
+		xp1 = s.X1() - s.borderExtra*0.5
+		xp2 = s.X2() + s.borderExtra*0.5
 		ys1 = s.ys1 + (s.ys2-s.ys1)*s.value1
 		ys2 = s.ys1 + (s.ys2-s.ys1)*s.value2
-		xp = (s.xs1 + s.xs2) / 2.0
+		xp = (s.xs1 + s.xs2) * 0.5
 
 		// Check if clicking on the slider bar (between pointers)
 		if x > xp1 && y > ys1 && x < xp2 && y < ys2 {
@@ -434,20 +434,20 @@ func (s *ScaleCtrl) Rewind(pathID uint) {
 		if math.Abs(s.X2()-s.X1()) > math.Abs(s.Y2()-s.Y1()) {
 			// Horizontal orientation
 			s.vx[0] = s.xs1 + (s.xs2-s.xs1)*s.value1
-			s.vy[0] = s.Y1() - s.borderExtra/2.0
+			s.vy[0] = s.Y1() - s.borderExtra*0.5
 			s.vx[1] = s.xs1 + (s.xs2-s.xs1)*s.value2
 			s.vy[1] = s.vy[0]
 			s.vx[2] = s.vx[1]
-			s.vy[2] = s.Y2() + s.borderExtra/2.0
+			s.vy[2] = s.Y2() + s.borderExtra*0.5
 			s.vx[3] = s.vx[0]
 			s.vy[3] = s.vy[2]
 		} else {
 			// Vertical orientation
-			s.vx[0] = s.X1() - s.borderExtra/2.0
+			s.vx[0] = s.X1() - s.borderExtra*0.5
 			s.vy[0] = s.ys1 + (s.ys2-s.ys1)*s.value1
 			s.vx[1] = s.vx[0]
 			s.vy[1] = s.ys1 + (s.ys2-s.ys1)*s.value2
-			s.vx[2] = s.X2() + s.borderExtra/2.0
+			s.vx[2] = s.X2() + s.borderExtra*0.5
 			s.vy[2] = s.vy[1]
 			s.vx[3] = s.vx[2]
 			s.vy[3] = s.vy[0]

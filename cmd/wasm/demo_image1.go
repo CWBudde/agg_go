@@ -128,10 +128,10 @@ func drawImage1Demo() {
 
 	img1Path.RemoveAll()
 	numPoints := 200
-	ellCx := imgW/2.0 + 10
-	ellCy := imgH/2.0 + 20 + 10
-	ellRx := r/2.0 + 16.0
-	ellRy := r/2.0 + 16.0
+	ellCx := imgW*0.5 + 10
+	ellCy := imgH*0.5 + 20 + 10
+	ellRx := r*0.5 + 16.0
+	ellRy := r*0.5 + 16.0
 	for i := 0; i < numPoints; i++ {
 		a := 2.0 * math.Pi * float64(i) / float64(numPoints)
 		px := ellCx + ellRx*math.Cos(a)

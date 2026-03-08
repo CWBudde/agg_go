@@ -12,16 +12,19 @@ func drawAATestDemo() {
 	agg2d.ResetTransformations()
 	agg2d.ClearAll(agg.Black)
 
-	cx, cy := float64(width)/2.0, float64(height)/2.0
+	cx, cy := float64(width)*0.5, float64(height)*0.5
 
 	// 1. Radial Line Test
 	agg2d.NoFill()
 	agg2d.LineColor(agg.RGBA(1.0, 1.0, 1.0, 0.2))
+
 	agg2d.LineWidth(1.0)
+
+	const deg2rad = 2.0 * math.Pi / 180.0
 
 	radius := math.Min(cx, cy)
 	for i := 180; i > 0; i-- {
-		n := 2.0 * math.Pi * float64(i) / 180.0
+		n := float64(i) * deg2rad
 		x2 := cx + radius*math.Sin(n)
 		y2 := cy + radius*math.Cos(n)
 
@@ -40,7 +43,7 @@ func drawAATestDemo() {
 
 		// Integral point sizes 1..20
 		x := 20.0 + float64(i*(i+1)) + 0.5
-		agg2d.FillCircle(x, 20.5, float64(i)/2.0)
+		agg2d.FillCircle(x, 20.5, float64(i)*0.5)
 
 		// Fractional point sizes 0..2
 		agg2d.FillCircle(18.0+float64(i)*4.0+0.5, 33.5, float64(i)/20.0)
@@ -90,7 +93,7 @@ func drawAATestDemo() {
 		agg2d.LineColor(agg.White)
 		agg2d.LineWidth(1.0)
 		if i <= 10 {
-			agg2d.Line(125.5, 119.5+float64(i+2)*float64(i)/2.0, 135.5, 119.5+float64(i+2)*float64(i)/2.0)
+			agg2d.Line(125.5, 119.5+float64(i+2)*float64(i)*0.5, 135.5, 119.5+float64(i+2)*float64(i)*0.5)
 		}
 
 		// Fractional line width 0..2, 1px H

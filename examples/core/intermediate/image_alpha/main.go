@@ -258,14 +258,14 @@ func (d *demo) Render(ctx *agg.Context) {
 
 	angle := 10.0 * math.Pi / 180.0
 	srcMtx := transform.NewTransAffine()
-	srcMtx.Translate(-float64(canvasW)/2.0, -float64(canvasH)/2.0)
+	srcMtx.Translate(-float64(canvasW)*0.5, -float64(canvasH)*0.5)
 	srcMtx.Rotate(angle)
-	srcMtx.Translate(float64(canvasW)/2.0, float64(canvasH)/2.0)
+	srcMtx.Translate(float64(canvasW)*0.5, float64(canvasH)*0.5)
 
 	imgMtx := transform.NewTransAffine()
-	imgMtx.Translate(-float64(canvasW)/2.0, -float64(canvasH)/2.0)
+	imgMtx.Translate(-float64(canvasW)*0.5, -float64(canvasH)*0.5)
 	imgMtx.Rotate(angle)
-	imgMtx.Translate(float64(canvasW)/2.0, float64(canvasH)/2.0)
+	imgMtx.Translate(float64(canvasW)*0.5, float64(canvasH)*0.5)
 	imgMtx.Invert()
 
 	imgRbuf := buffer.NewRenderingBufferU8()

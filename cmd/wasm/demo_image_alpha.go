@@ -190,12 +190,14 @@ func drawImageAlphaDemo() {
 	if imgH*0.9 < r {
 		r = imgH * 0.9
 	}
+
 	imgAlphaPath.RemoveAll()
 	numPoints := 200
-	for i := 0; i < numPoints; i++ {
+
+	for i := range numPoints {
 		a := 2.0 * math.Pi * float64(i) / float64(numPoints)
-		px := imgW/2.0 + r/2.0*math.Cos(a)
-		py := imgH/2.0 + r/2.0*math.Sin(a)
+		px := imgW*0.5 + r*0.5*math.Cos(a)
+		py := imgH*0.5 + r*0.5*math.Sin(a)
 		polyMtx.Transform(&px, &py)
 		if i == 0 {
 			imgAlphaPath.MoveTo(px, py)

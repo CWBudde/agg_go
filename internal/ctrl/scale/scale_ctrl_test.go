@@ -288,7 +288,7 @@ func TestVertexGenerationVertical(t *testing.T) {
 	}
 
 	// In vertical mode, slider should span horizontally across the control
-	expectedMinX := scale.X1() - scale.borderExtra/2.0
+	expectedMinX := scale.X1() - scale.borderExtra*0.5
 	if math.Abs(x1-expectedMinX) > 1.0 {
 		t.Errorf("Expected slider X coordinate near %.1f, got %.1f", expectedMinX, x1)
 	}

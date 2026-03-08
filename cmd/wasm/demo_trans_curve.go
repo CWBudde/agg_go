@@ -116,7 +116,7 @@ func drawTransCurveDemo() {
 			}
 
 			tx := (x - lx1) * scaleX
-			ty := (y - (ly1+ly2)/2.0) * scaleY
+			ty := (y - (ly1+ly2)*0.5) * scaleY
 			tcurve.Transform(&tx, &ty)
 
 			if basics.IsMoveTo(basics.PathCommand(cmd)) {

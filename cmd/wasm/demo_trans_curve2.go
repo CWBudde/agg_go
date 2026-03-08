@@ -120,7 +120,7 @@ func drawTransCurve2Demo() {
 				break
 			}
 			tx := (x - lx1) * scaleX
-			ty := (y - (ly1+ly2)/2.0)
+			ty := (y - (ly1+ly2)*0.5)
 			tcurve.Transform(&tx, &ty)
 			if basics.IsMoveTo(basics.PathCommand(cmd)) {
 				agg2d.MoveTo(tx, ty)

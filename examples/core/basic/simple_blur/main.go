@@ -59,7 +59,7 @@ func drawLion(agg2d *agg.Agg2D, width, height int) {
 
 	agg2d.Translate(-baseDX, -baseDY)
 	agg2d.Scale(1.0, 1.0)
-	agg2d.Translate(float64(width)/2.0, float64(height)/2.0)
+	agg2d.Translate(float64(width)*0.5, float64(height)*0.5)
 
 	for _, lp := range liondemo.Parse() {
 		agg2d.FillColor(agg.NewColor(lp.Color[0], lp.Color[1], lp.Color[2], 255))

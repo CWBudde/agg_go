@@ -36,8 +36,8 @@ func ArcToBezier(cx, cy, rx, ry, startAngle, sweepAngle float64) []float64 {
 	curve := make([]float64, 8)
 
 	// Calculate the halfway point parameters
-	x0 := math.Cos(sweepAngle / 2.0)
-	y0 := math.Sin(sweepAngle / 2.0)
+	x0 := math.Cos(sweepAngle * 0.5)
+	y0 := math.Sin(sweepAngle * 0.5)
 
 	// Calculate control point offsets using the magic number 4/3
 	// This is the standard formula for converting circular arcs to Bezier curves
@@ -49,8 +49,8 @@ func ArcToBezier(cx, cy, rx, ry, startAngle, sweepAngle float64) []float64 {
 	py := [4]float64{-y0, -ty, ty, y0}
 
 	// Calculate rotation parameters for the final transformation
-	sn := math.Sin(startAngle + sweepAngle/2.0)
-	cs := math.Cos(startAngle + sweepAngle/2.0)
+	sn := math.Sin(startAngle + sweepAngle*0.5)
+	cs := math.Cos(startAngle + sweepAngle*0.5)
 
 	// Transform control points to global coordinates
 	for i := 0; i < 4; i++ {

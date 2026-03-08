@@ -19,6 +19,8 @@ export function syncControlVisibility(demoType) {
     demoType === "convcontour" ? "flex" : "none";
   document.getElementById("gammaControls").style.display =
     demoType === "gamma" ? "flex" : "none";
+  document.getElementById("lionControls").style.display =
+    demoType === "lion" ? "flex" : "none";
   document.getElementById("lionoutlineControls").style.display =
     demoType === "lionoutline" ? "flex" : "none";
   document.getElementById("lionLensControls").style.display =
@@ -68,7 +70,7 @@ export function syncControlVisibility(demoType) {
 export const demoDescriptions = {
   agg2d:
     "Port of the original agg2d_demo.cpp. Showcases the high-level Agg2D API: viewport mapping, aqua-style gradient buttons with rounded rectangles, filled ellipses, arc-based path construction, blend modes (Add, Overlay), and radial gradient fills.",
-  lion: "The classic AGG signature demo. High-quality vector graphics consisting of hundreds of paths parsed from the original AGG lion data.",
+  lion: "Port of AGG's lion.cpp. The classic AGG signature demo rendered as filled paths. Left-drag to rotate and scale; right-drag to skew. Adjust the Alpha slider to control global opacity.",
   gradients:
     "Linear and radial gradient fills. Demonstrates the advanced span generation and multi-stop color interpolation.",
   gradient_focal:

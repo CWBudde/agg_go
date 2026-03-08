@@ -101,8 +101,8 @@ func generatePatternTile(size int, angleDeg float64) patPixFmt {
 	tc := agg.NewContextForImage(tmpImg)
 	tc.Clear(agg.RGBA(0.4, 0.0, 0.1, 0.8))
 
-	cx, cy := float64(size)/2.0, float64(size)/2.0
-	r1 := float64(size)/2.0 - 1
+	cx, cy := float64(size)*0.5, float64(size)*0.5
+	r1 := float64(size)*0.5 - 1
 	r2 := r1 / 2.5
 	n := 6
 	startRad := angleDeg * math.Pi / 180.0
@@ -111,7 +111,7 @@ func generatePatternTile(size int, angleDeg float64) patPixFmt {
 	tc.SetColor(agg.RGBA(0.43, 0.51, 0.20, 1.0))
 	first := true
 	for i := 0; i < n*2; i++ {
-		a := math.Pi*2.0*float64(i)/float64(n*2) - math.Pi/2.0 + startRad
+		a := math.Pi*2.0*float64(i)/float64(n*2) - math.Pi*0.5 + startRad
 		r := r2
 		if i%2 == 0 {
 			r = r1
@@ -145,7 +145,7 @@ func buildLargeStarPath(cx, cy float64, w, h int, angleDeg float64) *path.PathSt
 
 	ps := path.NewPathStorageStl()
 	for i := 0; i < nr; i++ {
-		a := math.Pi*2.0*float64(i)/float64(nr) - math.Pi/2.0 + startRad
+		a := math.Pi*2.0*float64(i)/float64(nr) - math.Pi*0.5 + startRad
 		dx := math.Cos(a)
 		dy := math.Sin(a)
 		if i&1 != 0 {

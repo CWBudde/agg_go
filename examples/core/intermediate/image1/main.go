@@ -185,10 +185,10 @@ func buildTransformedEllipsePath(canvasW, canvasH int, mtx *transform.TransAffin
 	if initialH-60.0 < r {
 		r = initialH - 60.0
 	}
-	rx := r/2.0 + 16.0
-	ry := r/2.0 + 16.0
-	cx := initialW/2.0 + 10.0
-	cy := initialH/2.0 + 30.0
+	rx := r*0.5 + 16.0
+	ry := r*0.5 + 16.0
+	cx := initialW*0.5 + 10.0
+	cy := initialH*0.5 + 30.0
 
 	ps := path.NewPathStorageStl()
 	const steps = 200
@@ -238,16 +238,16 @@ func (d *demo) Render(ctx *agg.Context) {
 	initialH := float64(canvasH)
 
 	srcMtx := transform.NewTransAffine()
-	srcMtx.Translate(-initialW/2.0-10.0, -initialH/2.0-30.0)
+	srcMtx.Translate(-initialW*0.5-10.0, -initialH*0.5-30.0)
 	srcMtx.Rotate(angle * math.Pi / 180.0)
 	srcMtx.Scale(scale)
-	srcMtx.Translate(initialW/2.0, initialH/2.0+20.0)
+	srcMtx.Translate(initialW*0.5, initialH*0.5+20.0)
 
 	imgMtx := transform.NewTransAffine()
-	imgMtx.Translate(-initialW/2.0+10.0, -initialH/2.0+30.0)
+	imgMtx.Translate(-initialW*0.5+10.0, -initialH*0.5+30.0)
 	imgMtx.Rotate(angle * math.Pi / 180.0)
 	imgMtx.Scale(scale)
-	imgMtx.Translate(initialW/2.0, initialH/2.0+20.0)
+	imgMtx.Translate(initialW*0.5, initialH*0.5+20.0)
 	imgMtx.Invert()
 
 	imgRbuf := buffer.NewRenderingBufferU8()

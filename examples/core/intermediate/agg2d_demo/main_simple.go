@@ -81,7 +81,7 @@ func main() {
 	// Text placeholder for button
 	agg2d.FillColor(agg.RGBA(0, 0, 50, 200))
 	agg2d.NoLine()
-	agg2d.Rectangle((xb1+xb2)/2.0-30, (yb1+yb2)/2.0-5, (xb1+xb2)/2.0+30, (yb1+yb2)/2.0+5)
+	agg2d.Rectangle((xb1+xb2)*0.5-30, (yb1+yb2)*0.5-5, (xb1+xb2)*0.5+30, (yb1+yb2)*0.5+5)
 
 	agg2d.FillLinearGradient(xb1, yb2-20, xb1, yb2-3,
 		agg.RGBA(0, 0, 255, 0),
@@ -106,7 +106,7 @@ func main() {
 	// Text placeholder for pressed button
 	agg2d.FillColor(agg.RGBA(0, 0, 50, 255))
 	agg2d.NoLine()
-	agg2d.Rectangle((xb1+xb2)/2.0-35, (yb1+yb2)/2.0-5, (xb1+xb2)/2.0+35, (yb1+yb2)/2.0+5)
+	agg2d.Rectangle((xb1+xb2)*0.5-35, (yb1+yb2)*0.5-5, (xb1+xb2)*0.5+35, (yb1+yb2)*0.5+5)
 
 	agg2d.FillLinearGradient(xb1, yb2-25, xb1, yb2-5,
 		agg.RGBA(0, 180, 255, 0),

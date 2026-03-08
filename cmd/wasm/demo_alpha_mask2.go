@@ -116,8 +116,8 @@ func drawAlphaMask2Demo() {
 	baseDX, baseDY := 0.0, 0.0
 	if len(lionPaths) > 0 {
 		x1, y1, x2, y2 := 20.0, 20.0, 480.0, 380.0
-		baseDX = (x2 - x1) / 2.0
-		baseDY = (y2 - y1) / 2.0
+		baseDX = (x2 - x1) * 0.5
+		baseDY = (y2 - y1) * 0.5
 	}
 
 	mtx := transform.NewTransAffine()

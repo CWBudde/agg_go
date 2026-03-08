@@ -126,16 +126,18 @@ func generatePattern(size int, patternAngleDeg float64) patternPixFmt {
 	// Star fill
 	tmpCtx.SetColor(agg.RGBA(0.43, 0.51, 0.20, 1.0))
 	tmpCtx.MoveTo(0, 0) // will be overwritten by star
-	cx := float64(size) / 2.0
-	cy := float64(size) / 2.0
-	r1 := float64(size)/2.0 - 1
+	cx := float64(size) * 0.5
+	cy := float64(size) * 0.5
+	r1 := float64(size)*0.5 - 1
 	r2 := r1 / 2.5
 	n := 6
 	startRad := patternAngleDeg * math.Pi / 180.0
 
+	const twoPi = 2.0 * math.Pi
+
 	// Build star path in tmpCtx
 	for i := 0; i < n; i++ {
-		a := math.Pi*2.0*float64(i)/float64(n) - math.Pi/2.0 + startRad
+		a := twoPi*float64(i)/float64(n) - math.Pi*0.5 + startRad
 		var px, py float64
 		if i&1 != 0 {
 			px = cx + math.Cos(a)*r1
@@ -158,7 +160,7 @@ func generatePattern(size int, patternAngleDeg float64) patternPixFmt {
 	tmpCtx.SetColor(agg.RGBA(0.0, 0.20, 0.31, 1.0))
 	tmpCtx.SetLineWidth(float64(size) / 15.0)
 	for i := 0; i < n; i++ {
-		a := math.Pi*2.0*float64(i)/float64(n) - math.Pi/2.0 + startRad
+		a := twoPi*float64(i)/float64(n) - math.Pi*0.5 + startRad
 		var px, py float64
 		if i&1 != 0 {
 			px = cx + math.Cos(a)*r1
@@ -213,9 +215,11 @@ func drawPatternFillDemo() {
 	r2 := r1 / 1.45
 	n := 14
 
+	const twoPi = 2.0 * math.Pi
+
 	patFillPath.RemoveAll()
 	for i := 0; i < n; i++ {
-		a := math.Pi*2.0*float64(i)/float64(n) - math.Pi/2.0
+		a := twoPi*float64(i)/float64(n) - math.Pi*0.5
 		dx := math.Cos(a)
 		dy := math.Sin(a)
 		var px, py float64

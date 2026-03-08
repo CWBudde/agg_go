@@ -196,6 +196,14 @@ export function setupEventHandlers(
       renderSelectedDemo();
     });
 
+  // lion alpha slider
+  document.getElementById("lionAlphaSlider").addEventListener("input", () => {
+    const val = parseFloat(document.getElementById("lionAlphaSlider").value);
+    document.getElementById("lionAlphaValue").textContent = val.toFixed(2);
+    setLionAlpha(val);
+    renderSelectedDemo();
+  });
+
   // lionoutline width slider
   document
     .getElementById("lionOutlineWidthSlider")
