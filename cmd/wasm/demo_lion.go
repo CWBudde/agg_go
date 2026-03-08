@@ -2,6 +2,11 @@
 //
 // Left-drag rotates and scales; right-drag applies shear.
 // An alpha slider controls global opacity of all paths.
+//
+// Note on coordinate systems: AGG's original example uses flip_y=true (y-up
+// rendering). In Go's y-down canvas, rotate(angle+Pi)+flip_y is replaced by
+// Scale(-1,1)+Rotate(angle), which produces the same visual result.
+// Centering uses the actual bounding-box centre, not just the half-extents.
 package main
 
 import (
@@ -13,12 +18,6 @@ import (
 )
 
 type LionPath = liondemo.Path
-
-// Lion bounding box centre derived from the parse_lion data (bbox ≈ 7..557 × 8..520).
-const (
-	lionFillBaseDX = (557.0 - 7.0) * 0.5 // ≈ 275
-	lionFillBaseDY = (520.0 - 8.0) * 0.5 // ≈ 256
-)
 
 var (
 	lionFillAlpha         = 1.0
@@ -37,18 +36,26 @@ func drawLionDemo() {
 
 	a := ctx.GetAgg2D()
 
-	// Set up the affine transform matching the C++ matrix composition:
-	//   translate(-baseDX, -baseDY)  → centre lion on origin
-	//   scale(scale)
-	//   rotate(angle + π)            → +π corrects y-down orientation
-	//   skew(skewX/1000, skewY/1000)
-	//   translate(w/2, h/2)          → centre on canvas
+	// Compute the true bounding-box centre so the lion rotates around its own
+	// centre and is centred on the canvas in the default (angle=0) state.
+	x1, y1, x2, y2 := getLionBoundingRect(lionPaths)
+	cx := (x1 + x2) * 0.5
+	cy := (y1 + y2) * 0.5
+
+	// Transform chain (mirrors the C++ compose order):
+	//   translate(-cx, -cy)   – move lion centre to origin
+	//   scale(s, s)           – uniform scale
+	//   scale(-1, 1)          – x-mirror: equivalent to C++ rotate(Pi)+flip_y
+	//   rotate(angle)         – interactive rotation
+	//   skew(sx/1000, sy/1000)
+	//   translate(W/2, H/2)   – move to canvas centre
 	a.ResetTransformations()
-	a.Translate(-lionFillBaseDX, -lionFillBaseDY)
+	a.Translate(-cx, -cy)
 	a.Scale(lionFillScale, lionFillScale)
-	a.Rotate(lionFillAngle + math.Pi)
+	a.Scale(-1, 1)
+	a.Rotate(lionFillAngle)
 	a.Skew(lionFillSkewX/1000.0, lionFillSkewY/1000.0)
-	a.Translate(float64(width)/2, float64(height)/2)
+	a.Translate(float64(width)*0.5, float64(height)*0.5)
 
 	alpha := uint8(lionFillAlpha * 255)
 	a.NoLine()

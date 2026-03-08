@@ -3,6 +3,10 @@
 // The lion vector art is rendered as stroked outlines rather than filled
 // polygons. Left-drag rotates and scales; right-drag applies shear.
 // A slider controls outline width.
+//
+// Note on coordinate systems: AGG's original uses flip_y=true (y-up rendering).
+// In Go's y-down canvas, rotate(angle+Pi)+flip_y is replaced by
+// Scale(-1,1)+Rotate(angle). Centering uses the actual bounding-box centre.
 package main
 
 import (
@@ -27,13 +31,6 @@ var (
 	lionRightDragging = false
 )
 
-// Lion bounding box centre, matching the original parse_lion data.
-// Computed once from the lion path data (approx. bbox 7..557 × 8..520).
-const (
-	lionBaseDX = (557.0 - 7.0) * 0.5 // ≈ 275
-	lionBaseDY = (520.0 - 8.0) * 0.5 // ≈ 256
-)
-
 // --- Drawing ---
 
 func drawLionOutlineDemo() {
@@ -43,18 +40,17 @@ func drawLionOutlineDemo() {
 
 	a := ctx.GetAgg2D()
 
-	// Set up the affine transform matching the C++ matrix composition:
-	//   translate(-baseDX, -baseDY)  → centre lion on origin
-	//   scale(scale)
-	//   rotate(angle + π)            → +π corrects y-down orientation
-	//   skew(skewX/1000, skewY/1000)
-	//   translate(w/2, h/2)          → centre on canvas
+	x1, y1, x2, y2 := getLionBoundingRect(lionPaths)
+	cx := (x1 + x2) * 0.5
+	cy := (y1 + y2) * 0.5
+
 	a.ResetTransformations()
-	a.Translate(-lionBaseDX, -lionBaseDY)
+	a.Translate(-cx, -cy)
 	a.Scale(lionScale, lionScale)
-	a.Rotate(lionAngle + math.Pi)
+	a.Scale(-1, 1)
+	a.Rotate(lionAngle)
 	a.Skew(lionSkewX/1000.0, lionSkewY/1000.0)
-	a.Translate(float64(width)/2, float64(height)/2)
+	a.Translate(float64(width)*0.5, float64(height)*0.5)
 
 	a.LineWidth(lionOutlineWidth)
 	a.NoFill()
