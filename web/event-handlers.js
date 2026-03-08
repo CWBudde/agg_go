@@ -380,9 +380,13 @@ export function setupEventHandlers(
   });
 
   // compositing controls
+  const persistCompositingLike = () => {
+    const demo = selector.value === "blend" ? "blend" : "compositing";
+    persistDemoParams(demo);
+  };
   document.getElementById("compOpSelector").addEventListener("change", () => {
     setCompOp(parseInt(document.getElementById("compOpSelector").value));
-    persistDemoParams("compositing");
+    persistCompositingLike();
     renderSelectedDemo();
   });
   document
@@ -393,7 +397,7 @@ export function setupEventHandlers(
       );
       document.getElementById("compAlphaSrcValue").textContent = val.toFixed(2);
       setCompAlphaSrc(val);
-      persistDemoParams("compositing");
+      persistCompositingLike();
       renderSelectedDemo();
     });
   document
@@ -404,7 +408,7 @@ export function setupEventHandlers(
       );
       document.getElementById("compAlphaDstValue").textContent = val.toFixed(2);
       setCompAlphaDst(val);
-      persistDemoParams("compositing");
+      persistCompositingLike();
       renderSelectedDemo();
     });
 

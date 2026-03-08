@@ -40,7 +40,7 @@ export function syncControlVisibility(demoType) {
   document.getElementById("circlesControls").style.display =
     demoType === "circles" ? "flex" : "none";
   document.getElementById("compositingControls").style.display =
-    demoType === "compositing" ? "flex" : "none";
+    demoType === "compositing" || demoType === "blend" ? "flex" : "none";
   document.getElementById("multiClipControls").style.display =
     demoType === "multi_clip" ? "flex" : "none";
   document.getElementById("distortionsControls").style.display =
@@ -81,7 +81,7 @@ export const demoDescriptions = {
     "Port of AGG's gradient_focal demo. Renders a reflected radial-focus gradient (focal offset inside the circle) using a gamma-aware 4-stop LUT. Web parameters are URL-driven: gfg (gamma), gfx (focus-x), gfy (focus-y).",
   aa: "Anti-aliasing showcase. Lines and circles drawn at sub-pixel offsets to demonstrate the precision and smoothness of AGG's rasterizer.",
   blend:
-    "Compositing and blend modes. Showcases how different layers can be combined using standard and advanced blend modes like Multiply, Screen, and Overlay.",
+    "Alias of the Compositing demo (same renderer/controls). Kept for compatibility with older demo links.",
   bspline:
     "B-Spline curve smoothing. Demonstrates the creation of smooth, continuous curves from a set of control points.",
   interactive_polygon:
@@ -158,7 +158,7 @@ export const demoDescriptions = {
   alpha_mask2:
     "Alpha Mask 2 — Lion with ellipse mask. Renders the classic lion vector art through a grayscale alpha mask built from random semi-transparent ellipses. Left-drag to rotate and scale the lion; right-drag to skew. Adjust the Ellipses slider to change the mask density.",
   compositing:
-    "Porter-Duff and SVG compositing operations. Port of AGG's compositing demo. Demonstrates various rules for combining source and destination shapes, such as SrcOver, Multiply, Screen, and Xor. Adjust the source and destination opacity and select different operations to see how they affect the overlapping regions.",
+    "Primary port of AGG's compositing.cpp demo. Demonstrates Porter-Duff/SVG compositing operations with source/destination alpha controls and operation selector.",
   multi_clip:
     "Multi-region clipping. Port of AGG's multi_clip demo. Showcases the RendererMClip which allows restricting all rendering operations to a set of multiple rectangular regions. Adjust the grid size slider to change the number of clipping boxes and watch the lion art being clipped into a grid.",
   image1:
