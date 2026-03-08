@@ -111,6 +111,39 @@ export const ALL_DEMO_PARAMS = [
   "cad",
   // multi_clip
   "mcn",
+  // gradient_focal
+  "gfg",
+  "gfx",
+  "gfy",
+  // line_thickness
+  "ltf",
+  "ltb",
+  "ltm",
+  "lti",
+  // rasterizer_compound
+  "rcw",
+  "rca1",
+  "rca2",
+  "rca3",
+  "rca4",
+  "rcio",
+  // image_resample
+  "irt",
+  "irb",
+  "irx0",
+  "iry0",
+  "irx1",
+  "iry1",
+  "irx2",
+  "iry2",
+  "irx3",
+  "iry3",
+  // line_patterns_clip
+  "lpcsx",
+  "lpcst",
+  // line_patterns
+  "lpsx",
+  "lpst",
 ];
 
 export function clearDemoParams() {

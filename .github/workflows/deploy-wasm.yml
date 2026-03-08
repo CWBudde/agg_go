@@ -32,6 +32,14 @@ jobs:
       - name: Build web wasm assets
         run: ./web/build-wasm.sh
 
+      - name: Publish line pattern assets
+        run: |
+          mkdir -p web/assets/line_patterns
+          if [ ! -f examples/shared/art/1.bmp ]; then
+            unzip -o examples/shared/art/line_patterns.bmp.zip -d examples/shared/art
+          fi
+          cp -f examples/shared/art/[1-9].bmp web/assets/line_patterns/
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 

@@ -442,6 +442,133 @@ export const demoURLHandlers = {
       }
     },
   },
+
+  gradient_focal: {
+    persist() {
+      // URL-only controls (no visible widget panel).
+    },
+    restore(p) {
+      if (p.has("gfg")) {
+        setGradientFocalGamma(parseFloat(p.get("gfg")));
+      }
+      if (p.has("gfx")) {
+        setGradientFocalFX(parseFloat(p.get("gfx")));
+      }
+      if (p.has("gfy")) {
+        setGradientFocalFY(parseFloat(p.get("gfy")));
+      }
+    },
+  },
+
+  line_thickness: {
+    persist() {
+      // URL-only controls (no visible widget panel).
+    },
+    restore(p) {
+      if (p.has("ltf")) {
+        setLineThicknessFactor(parseFloat(p.get("ltf")));
+      }
+      if (p.has("ltb")) {
+        setLineThicknessBlur(parseFloat(p.get("ltb")));
+      }
+      if (p.has("ltm")) {
+        setLineThicknessMono(p.get("ltm") === "1");
+      }
+      if (p.has("lti")) {
+        setLineThicknessInvert(p.get("lti") === "1");
+      }
+    },
+  },
+
+  rasterizer_compound: {
+    persist() {
+      // URL-only controls (no visible widget panel).
+    },
+    restore(p) {
+      if (p.has("rcw")) {
+        setCompoundWidth(parseFloat(p.get("rcw")));
+      }
+      if (p.has("rca1")) {
+        setCompoundAlpha1(parseFloat(p.get("rca1")));
+      }
+      if (p.has("rca2")) {
+        setCompoundAlpha2(parseFloat(p.get("rca2")));
+      }
+      if (p.has("rca3")) {
+        setCompoundAlpha3(parseFloat(p.get("rca3")));
+      }
+      if (p.has("rca4")) {
+        setCompoundAlpha4(parseFloat(p.get("rca4")));
+      }
+      if (p.has("rcio")) {
+        setCompoundInvert(p.get("rcio") === "1");
+      }
+    },
+  },
+
+  image_resample: {
+    persist() {
+      // URL-only controls (no visible widget panel).
+    },
+    restore(p) {
+      if (p.has("irt")) {
+        setImageResampleType(parseInt(p.get("irt"), 10));
+      }
+      if (p.has("irb")) {
+        setImageResampleBlur(parseFloat(p.get("irb")));
+      }
+      const keys = [
+        "irx0",
+        "iry0",
+        "irx1",
+        "iry1",
+        "irx2",
+        "iry2",
+        "irx3",
+        "iry3",
+      ];
+      if (keys.every((k) => p.has(k))) {
+        setImageResampleQuad(
+          parseFloat(p.get("irx0")),
+          parseFloat(p.get("iry0")),
+          parseFloat(p.get("irx1")),
+          parseFloat(p.get("iry1")),
+          parseFloat(p.get("irx2")),
+          parseFloat(p.get("iry2")),
+          parseFloat(p.get("irx3")),
+          parseFloat(p.get("iry3")),
+        );
+      }
+    },
+  },
+
+  line_patterns_clip: {
+    persist() {
+      // URL-only controls (no visible widget panel).
+    },
+    restore(p) {
+      if (p.has("lpcsx")) {
+        setLinePatternClipScaleX(parseFloat(p.get("lpcsx")));
+      }
+      if (p.has("lpcst")) {
+        setLinePatternClipStartX(parseFloat(p.get("lpcst")));
+      }
+    },
+  },
+
+  line_patterns: {
+    persist() {
+      // URL-only controls (no visible widget panel).
+    },
+    restore(p) {
+      if (p.has("lpsx")) {
+        setLinePatternScaleX(parseFloat(p.get("lpsx")));
+      }
+      if (p.has("lpst")) {
+        setLinePatternStartX(parseFloat(p.get("lpst")));
+      }
+    },
+  },
 };
 
 export function persistDemoParams(demoType) {

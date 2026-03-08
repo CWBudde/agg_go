@@ -39,6 +39,7 @@ func main() {
 			"trans_curve2", "gamma_ctrl", "gamma_tuner", "lion_lens", "circles", "blur", "simple_blur",
 			"alpha_mask2", "alpha_mask3", "compositing2",
 			"image1", "image_transforms", "image_alpha", "pattern_fill",
+			"gradient_focal", "line_thickness", "rasterizer_compound", "image_resample", "line_patterns_clip", "line_patterns",
 		}
 	}
 
@@ -159,6 +160,18 @@ func renderDemoToFile(demoType, outDir string) error {
 		drawImageAlphaDemo()
 	case "pattern_fill":
 		drawPatternFillDemo()
+	case "gradient_focal":
+		drawGradientFocalDemo()
+	case "line_thickness":
+		drawLineThicknessDemo()
+	case "rasterizer_compound":
+		drawRasterizerCompoundDemo()
+	case "image_resample":
+		drawImageResampleDemo()
+	case "line_patterns_clip":
+		drawLinePatternsClipDemo()
+	case "line_patterns":
+		drawLinePatternsDemo()
 	default:
 		return fmt.Errorf("unknown demo: %q", demoType)
 	}

@@ -67,6 +67,8 @@ export const demoDescriptions = {
   lion: "The classic AGG signature demo. High-quality vector graphics consisting of hundreds of paths parsed from the original AGG lion data.",
   gradients:
     "Linear and radial gradient fills. Demonstrates the advanced span generation and multi-stop color interpolation.",
+  gradient_focal:
+    "Port of AGG's gradient_focal demo. Renders a reflected radial-focus gradient (focal offset inside the circle) using a gamma-aware 4-stop LUT. Web parameters are URL-driven: gfg (gamma), gfx (focus-x), gfy (focus-y).",
   aa: "Anti-aliasing showcase. Lines and circles drawn at sub-pixel offsets to demonstrate the precision and smoothness of AGG's rasterizer.",
   blend:
     "Compositing and blend modes. Showcases how different layers can be combined using standard and advanced blend modes like Multiply, Screen, and Overlay.",
@@ -74,6 +76,12 @@ export const demoDescriptions = {
     "B-Spline curve smoothing. Demonstrates the creation of smooth, continuous curves from a set of control points.",
   conv_dash_marker:
     "Port of AGG's conv_dash_marker demo. Applies conv_smooth_poly1 to soften corners, then conv_dash to create dash patterns, and conv_marker to place arrowheads at line endpoints. Adjust smoothness, stroke width, cap style, and fill rule. Drag the three control points to reshape the paths.",
+  line_thickness:
+    "Port of AGG's line_thickness demo. Renders variable-thickness anti-aliased line sets and applies slight blur. Web parameters are URL-driven: ltf (thickness factor), ltb (blur radius), ltm (monochrome 0/1), lti (invert 0/1).",
+  line_patterns:
+    "Port of AGG's line_patterns demo core. Draws nine patterned Bezier curves using the original line pattern assets. URL parameters: lpsx (scale_x), lpst (start_x).",
+  line_patterns_clip:
+    "Port of AGG's line_patterns_clip demo core. Image-patterned polyline clipped to an inner rectangle. URL parameters: lpcsx (scale_x), lpcst (start_x).",
   gouraud:
     "Smooth color interpolation across triangles. Demonstrates AGG's capability to render gradient-shaded meshes with sub-pixel precision and adjustable dilation.",
   imagefilters:
@@ -100,6 +108,8 @@ export const demoDescriptions = {
     "Aliased vs Anti-Aliased rasterization. Comparison between the standard AA rasterizer and aliased (threshold-based) rendering. Drag the triangle nodes to see how edges behave under different rendering modes and gamma settings.",
   flash_rasterizer:
     "Compound rasterization. Demonstrates AGG's ability to render overlapping shapes with multiple styles in a single pass using the compound rasterizer. This is highly efficient for complex vector scenes with many layers.",
+  rasterizer_compound:
+    "Port of AGG's rasterizer_compound demo. Shows layered compound AA rasterization (direct/inverse layer order) over a yellow→cyan gradient background. URL params: rcw, rca1..rca4, rcio.",
   perspective:
     "Perspective and Bilinear transformations. Apply non-linear distortions to the lion vector art by dragging the four corners of the control quadrilateral. Switch between Bilinear and Perspective modes to see the difference in projection.",
   bezier_div:
@@ -135,6 +145,8 @@ export const demoDescriptions = {
     "Multi-region clipping. Port of AGG's multi_clip demo. Showcases the RendererMClip which allows restricting all rendering operations to a set of multiple rectangular regions. Adjust the grid size slider to change the number of clipping boxes and watch the lion art being clipped into a grid.",
   image1:
     "Image affine transformation. Port of AGG's image1.cpp. A large ellipse is filled with a bilinear-filtered image that rotates and scales with the ellipse. Use the angle and scale sliders to transform the image.",
+  image_resample:
+    "Port of AGG's image_resample demo (closest current affine equivalent). Renders a clipped transformed image inside a 4-point quad; affine modes and resample blur are URL-driven: irt, irb, irx0..iry3.",
   image_transforms:
     "Image transform examples. Port of AGG's image_transforms.cpp. A 14-pointed star polygon is filled with an affine-filtered image. Choose between 7 different examples showing how the image matrix can be set independently from the polygon matrix. Drag the image center point (red handle) to reposition it.",
   image_alpha:

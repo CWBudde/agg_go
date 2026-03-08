@@ -98,6 +98,131 @@ func main() {
 	js.Global().Set("setPatFillPolygonScale", js.FuncOf(setPatFillPolygonScaleJS))
 	js.Global().Set("setPatFillPatternAngle", js.FuncOf(setPatFillPatternAngleJS))
 	js.Global().Set("setPatFillPatternSize", js.FuncOf(setPatFillPatternSizeJS))
+	js.Global().Set("setGradientFocalGamma", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setGradientFocalGamma(args[0].Float())
+		}
+		return nil
+	}))
+	js.Global().Set("setGradientFocalFX", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setGradientFocalFX(args[0].Float())
+		}
+		return nil
+	}))
+	js.Global().Set("setGradientFocalFY", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setGradientFocalFY(args[0].Float())
+		}
+		return nil
+	}))
+	js.Global().Set("setLineThicknessFactor", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setLineThicknessFactor(args[0].Float())
+		}
+		return nil
+	}))
+	js.Global().Set("setLineThicknessBlur", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setLineThicknessBlur(args[0].Float())
+		}
+		return nil
+	}))
+	js.Global().Set("setLineThicknessMono", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setLineThicknessMono(args[0].Bool())
+		}
+		return nil
+	}))
+	js.Global().Set("setLineThicknessInvert", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setLineThicknessInvert(args[0].Bool())
+		}
+		return nil
+	}))
+	js.Global().Set("setCompoundWidth", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setCompoundWidth(args[0].Float())
+		}
+		return nil
+	}))
+	js.Global().Set("setCompoundAlpha1", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setCompoundAlpha1(args[0].Float())
+		}
+		return nil
+	}))
+	js.Global().Set("setCompoundAlpha2", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setCompoundAlpha2(args[0].Float())
+		}
+		return nil
+	}))
+	js.Global().Set("setCompoundAlpha3", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setCompoundAlpha3(args[0].Float())
+		}
+		return nil
+	}))
+	js.Global().Set("setCompoundAlpha4", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setCompoundAlpha4(args[0].Float())
+		}
+		return nil
+	}))
+	js.Global().Set("setCompoundInvert", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setCompoundInvert(args[0].Bool())
+		}
+		return nil
+	}))
+	js.Global().Set("setImageResampleType", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setImageResampleType(args[0].Int())
+		}
+		return nil
+	}))
+	js.Global().Set("setImageResampleBlur", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setImageResampleBlur(args[0].Float())
+		}
+		return nil
+	}))
+	js.Global().Set("setImageResampleQuad", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) >= 8 {
+			setImageResampleQuad(
+				args[0].Float(), args[1].Float(),
+				args[2].Float(), args[3].Float(),
+				args[4].Float(), args[5].Float(),
+				args[6].Float(), args[7].Float(),
+			)
+		}
+		return nil
+	}))
+	js.Global().Set("setLinePatternClipScaleX", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setLinePatternClipScaleX(args[0].Float())
+		}
+		return nil
+	}))
+	js.Global().Set("setLinePatternClipStartX", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setLinePatternClipStartX(args[0].Float())
+		}
+		return nil
+	}))
+	js.Global().Set("setLinePatternScaleX", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setLinePatternScaleX(args[0].Float())
+		}
+		return nil
+	}))
+	js.Global().Set("setLinePatternStartX", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setLinePatternStartX(args[0].Float())
+		}
+		return nil
+	}))
 
 	// gamma_tuner setters
 	js.Global().Set("setGammaTunerR", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
@@ -1102,6 +1227,18 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 		drawPatternFillDemo()
 	case "raster_text":
 		drawRasterTextDemo()
+	case "gradient_focal":
+		drawGradientFocalDemo()
+	case "line_thickness":
+		drawLineThicknessDemo()
+	case "rasterizer_compound":
+		drawRasterizerCompoundDemo()
+	case "image_resample":
+		drawImageResampleDemo()
+	case "line_patterns_clip":
+		drawLinePatternsClipDemo()
+	case "line_patterns":
+		drawLinePatternsDemo()
 	default:
 		logStatus("unknown demo type: " + demoType)
 		return nil

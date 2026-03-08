@@ -21,6 +21,12 @@ Core examples use only the internal Go implementation and are guaranteed to buil
 #### Intermediate Examples (`core/intermediate/`)
 
 - **gradients/** - Gradient fills and color interpolation
+- **gradient_focal/** - Focal radial gradient (port of AGG `gradient_focal.cpp`)
+- **line_thickness/** - Line thickness and slight blur (port of AGG `line_thickness.cpp`)
+- **line_patterns/** - Patterned Bezier lines (port of AGG `line_patterns.cpp`)
+- **rasterizer_compound/** - Layered compound rasterizer demo (port of AGG `rasterizer_compound.cpp`)
+- **image_resample/** - Image resampling transform demo (port of AGG `image_resample.cpp`)
+- **line_patterns_clip/** - Patterned line clipping demo (port of AGG `line_patterns_clip.cpp`)
 - **controls/** - Interactive UI controls (sliders, checkboxes, etc.)
 - **text_rendering/** - Advanced text rendering features
 - **paths/** - Complex path operations and curves

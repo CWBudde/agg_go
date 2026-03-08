@@ -293,14 +293,49 @@ idiomatic in Go.
 - [ ] For each newly ported upstream demo: record the C++ source, decide placement (standalone
       vs web demo), add a minimal verification path so the demo does not silently rot.
 - [ ] Reuse shared helpers and assets where possible.
+- [x] `gradient_focal.cpp` recorded and wired:
+      source `../agg-2.6/agg-src/examples/gradient_focal.cpp`,
+      standalone `examples/core/intermediate/gradient_focal/main.go`,
+      web `cmd/wasm/demo_gradient_focal.go` + `web/index.html`,
+      verification via `cmd/wasm/main_stub.go`/`cmd/wasm/render_test.go` demo switch paths.
+- [x] `line_thickness.cpp` recorded and wired:
+      source `../agg-2.6/agg-src/examples/line_thickness.cpp`,
+      standalone `examples/core/intermediate/line_thickness/main.go`,
+      web `cmd/wasm/demo_line_thickness.go` + `web/index.html`,
+      verification via `cmd/wasm/main_stub.go`/`cmd/wasm/render_test.go` demo switch paths.
+- [x] `rasterizer_compound.cpp` recorded and wired:
+      source `../agg-2.6/agg-src/examples/rasterizer_compound.cpp`,
+      standalone `examples/core/intermediate/rasterizer_compound/main.go`,
+      web `cmd/wasm/demo_rasterizer_compound.go` + `web/index.html`,
+      verification via `cmd/wasm/main_stub.go`/`cmd/wasm/render_test.go` demo switch paths.
+- [x] `image_resample.cpp` recorded and wired:
+      source `../agg-2.6/agg-src/examples/image_resample.cpp`,
+      standalone `examples/core/intermediate/image_resample/main.go`,
+      web `cmd/wasm/demo_image_resample.go` + `web/index.html`,
+      verification via `cmd/wasm/main_stub.go`/`cmd/wasm/render_test.go` demo switch paths.
+- [x] `line_patterns_clip.cpp` recorded and wired:
+      source `../agg-2.6/agg-src/examples/line_patterns_clip.cpp`,
+      standalone `examples/core/intermediate/line_patterns_clip/main.go`,
+      web `cmd/wasm/demo_line_patterns_clip.go` + `web/index.html`,
+      verification via `cmd/wasm/main_stub.go`/`cmd/wasm/render_test.go` demo switch paths.
+- [x] `line_patterns.cpp` recorded and wired:
+      source `../agg-2.6/agg-src/examples/line_patterns.cpp`,
+      standalone `examples/core/intermediate/line_patterns/main.go`,
+      web `cmd/wasm/demo_line_patterns.go` + `web/index.html`,
+      assets copied from `../agg-2.6/agg-src/examples/line_patterns.bmp.zip` into
+      `examples/shared/art/1.bmp..9.bmp` and published for web in `.github/workflows/deploy-wasm.yml`,
+      verification via `cmd/wasm/main_stub.go`/`cmd/wasm/render_test.go` demo switch paths.
 
 ### 9.2 High-priority remaining demo ports
 
-- [ ] `raster_text.cpp`
-- [ ] `image_resample.cpp`
-- [ ] `gradient_focal.cpp`
-- [ ] `line_patterns.cpp`, `line_patterns_clip.cpp`, `line_thickness.cpp`
-- [ ] `rasterizer_compound.cpp`
+- [x] `raster_text.cpp`
+- [x] `image_resample.cpp`
+- [x] `gradient_focal.cpp`
+- [x] `line_patterns.cpp`, `line_patterns_clip.cpp`, `line_thickness.cpp`
+- [x] `line_thickness.cpp` (remaining in this cluster: none)
+- [x] `line_patterns_clip.cpp` (remaining in this cluster: none)
+- [x] `line_patterns.cpp`
+- [x] `rasterizer_compound.cpp`
 - [ ] `scanline_boolean2.cpp`
 - [ ] `pattern_perspective.cpp`, `pattern_resample.cpp`, `image_perspective.cpp`
 
