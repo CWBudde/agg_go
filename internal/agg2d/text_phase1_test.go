@@ -414,7 +414,7 @@ func TestTextWidthGSVModeIdempotent(t *testing.T) {
 	agg2d.FontGSV(20)
 
 	w1 := agg2d.TextWidth("Hello")
-	_  = agg2d.TextWidth("XXXXXXXXXXXXXXXX") // should not affect Hello width
+	_ = agg2d.TextWidth("XXXXXXXXXXXXXXXX") // should not affect Hello width
 	w2 := agg2d.TextWidth("Hello")
 
 	if w1 != w2 {

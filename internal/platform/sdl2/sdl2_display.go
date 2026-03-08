@@ -5,7 +5,6 @@ import (
 
 	"agg_go/internal/buffer"
 	"agg_go/internal/platform/types"
-
 	"github.com/veandco/go-sdl2/sdl"
 )
 
