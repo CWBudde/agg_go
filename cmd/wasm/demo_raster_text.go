@@ -76,7 +76,7 @@ func (g *rasterTextGradientRenderer) Prepare() {}
 
 func (g *rasterTextGradientRenderer) gradientColor(x, y int) (r, gr uint8) {
 	dist := math.Sqrt(float64(x*x + y*y))
-	t := (1.0 + math.Sin(dist*g.periods/g.d)) / 2.0
+	t := (1.0 + math.Sin(dist*g.periods/g.d)) * 0.5
 	return uint8((1.0 - t) * 255), uint8(0.5 * t * 255)
 }
 

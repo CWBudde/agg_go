@@ -52,8 +52,8 @@ func (rc *RenderingContext) SetupResizeTransform(width, height int) {
 		scale := math.Min(scaleX, scaleY)
 
 		// Calculate centering offsets
-		offsetX := (float64(width) - float64(rc.platformSupport.initialWidth)*scale) / 2.0
-		offsetY := (float64(height) - float64(rc.platformSupport.initialHeight)*scale) / 2.0
+		offsetX := (float64(width) - float64(rc.platformSupport.initialWidth)*scale) * 0.5
+		offsetY := (float64(height) - float64(rc.platformSupport.initialHeight)*scale) * 0.5
 
 		// Create transformation matrix: translate then scale
 		rc.resizeMatrix = transform.NewTransAffineTranslation(offsetX, offsetY)

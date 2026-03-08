@@ -77,8 +77,8 @@ func drawImage1Demo() {
 
 	imgW := float64(img1Image.Width())
 	imgH := float64(img1Image.Height())
-	cx := float64(width) / 2.0
-	cy := float64(height) / 2.0
+	cx := float64(width) * 0.5
+	cy := float64(height) * 0.5
 
 	agg2d := ctx.GetAgg2D()
 	agg2d.ResetTransformations()

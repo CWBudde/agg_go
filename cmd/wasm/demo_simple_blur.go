@@ -97,8 +97,8 @@ func drawLionToAgg2D(agg2d *agg.Agg2D, scale float64) {
 		lionX2, lionY2 = 478, 442
 	)
 
-	baseDX := (lionX2 - lionX1) / 2.0
-	baseDY := (lionY2 - lionY1) / 2.0
+	baseDX := (lionX2 - lionX1) * 0.5
+	baseDY := (lionY2 - lionY1) * 0.5
 
 	agg2d.Translate(-baseDX, -baseDY)
 	agg2d.Scale(scale, scale)

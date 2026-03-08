@@ -64,7 +64,7 @@ func NewSliderCtrl(x1, y1, x2, y2 float64, flipY bool) *SliderCtrl {
 	slider := &SliderCtrl{
 		BaseCtrl:      ctrl.NewBaseCtrl(x1, y1, x2, y2, flipY),
 		borderWidth:   1.0,
-		borderExtra:   (y2 - y1) / 2.0,
+		borderExtra:   (y2 - y1) * 0.5,
 		textThickness: 1.0,
 		value:         0.5,
 		previewValue:  0.5,
@@ -188,7 +188,7 @@ func (s *SliderCtrl) OnMouseButtonDown(x, y float64) bool {
 
 	// Calculate current pointer position
 	pointerX := s.xs1 + (s.xs2-s.xs1)*s.value
-	pointerY := (s.ys1 + s.ys2) / 2.0
+	pointerY := (s.ys1 + s.ys2) * 0.5
 
 	// Check if click is on the pointer (within radius)
 	pointerRadius := s.Y2() - s.Y1()
@@ -442,7 +442,7 @@ func (s *SliderCtrl) generateTextPath() {
 func (s *SliderCtrl) generatePointerPreviewPath() {
 	// Ellipse at preview position
 	centerX := s.xs1 + (s.xs2-s.xs1)*s.previewValue
-	centerY := (s.ys1 + s.ys2) / 2.0
+	centerY := (s.ys1 + s.ys2) * 0.5
 	radius := s.Y2() - s.Y1()
 
 	s.ellipse.Init(centerX, centerY, radius, radius, 32, false)
@@ -453,7 +453,7 @@ func (s *SliderCtrl) generatePointerPath() {
 	// Ellipse at actual value position
 	s.normalizeValue(false)
 	centerX := s.xs1 + (s.xs2-s.xs1)*s.value
-	centerY := (s.ys1 + s.ys2) / 2.0
+	centerY := (s.ys1 + s.ys2) * 0.5
 	radius := s.Y2() - s.Y1()
 
 	s.ellipse.Init(centerX, centerY, radius, radius, 32, false)

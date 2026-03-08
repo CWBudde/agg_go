@@ -79,10 +79,10 @@ func NewScaleCtrl(x1, y1, x2, y2 float64, flipY bool) *ScaleCtrl {
 	// Set border extra based on control orientation
 	if math.Abs(x2-x1) > math.Abs(y2-y1) {
 		// Horizontal orientation
-		scale.borderExtra = (y2 - y1) / 2.0
+		scale.borderExtra = (y2 - y1) * 0.5
 	} else {
 		// Vertical orientation
-		scale.borderExtra = (x2 - x1) / 2.0
+		scale.borderExtra = (x2 - x1) * 0.5
 	}
 
 	// Initialize default colors matching C++ AGG defaults
@@ -118,9 +118,9 @@ func (s *ScaleCtrl) Resize(x1, y1, x2, y2 float64) {
 
 	// Recalculate border extra based on new orientation
 	if math.Abs(x2-x1) > math.Abs(y2-y1) {
-		s.borderExtra = (y2 - y1) / 2.0
+		s.borderExtra = (y2 - y1) * 0.5
 	} else {
-		s.borderExtra = (x2 - x1) / 2.0
+		s.borderExtra = (x2 - x1) * 0.5
 	}
 }
 
@@ -460,12 +460,12 @@ func (s *ScaleCtrl) setupPointerEllipse(value float64) {
 	if math.Abs(s.X2()-s.X1()) > math.Abs(s.Y2()-s.Y1()) {
 		// Horizontal orientation
 		centerX := s.xs1 + (s.xs2-s.xs1)*value
-		centerY := (s.ys1 + s.ys2) / 2.0
+		centerY := (s.ys1 + s.ys2) * 0.5
 		radius := s.Y2() - s.Y1()
 		s.ellipse.Init(centerX, centerY, radius, radius, 32, false)
 	} else {
 		// Vertical orientation
-		centerX := (s.xs1 + s.xs2) / 2.0
+		centerX := (s.xs1 + s.xs2) * 0.5
 		centerY := s.ys1 + (s.ys2-s.ys1)*value
 		radius := s.X2() - s.X1()
 		s.ellipse.Init(centerX, centerY, radius, radius, 32, false)

@@ -30,8 +30,8 @@ var (
 // Lion bounding box centre, matching the original parse_lion data.
 // Computed once from the lion path data (approx. bbox 7..557 × 8..520).
 const (
-	lionBaseDX = (557.0 - 7.0) / 2.0 // ≈ 275
-	lionBaseDY = (520.0 - 8.0) / 2.0 // ≈ 256
+	lionBaseDX = (557.0 - 7.0) * 0.5 // ≈ 275
+	lionBaseDY = (520.0 - 8.0) * 0.5 // ≈ 256
 )
 
 // --- Drawing ---
@@ -115,8 +115,8 @@ func handleLionOutlineMouseUp() {
 }
 
 func applyLionTransform(x, y float64) {
-	cx := float64(width) / 2.0
-	cy := float64(height) / 2.0
+	cx := float64(width) * 0.5
+	cy := float64(height) * 0.5
 	dx := x - cx
 	dy := y - cy
 	lionAngle = math.Atan2(dy, dx)

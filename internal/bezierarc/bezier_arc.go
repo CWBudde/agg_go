@@ -230,8 +230,8 @@ func (bas *BezierArcSVG) Init(x0, y0, rx, ry, angle float64, largeArcFlag, sweep
 	}
 
 	// Calculate the middle point between current and final points
-	dx2 := (x0 - x2) / 2.0
-	dy2 := (y0 - y2) / 2.0
+	dx2 := (x0 - x2) * 0.5
+	dy2 := (y0 - y2) * 0.5
 
 	cosA := math.Cos(angle)
 	sinA := math.Sin(angle)
@@ -275,8 +275,8 @@ func (bas *BezierArcSVG) Init(x0, y0, rx, ry, angle float64, largeArcFlag, sweep
 	cy1 := coef * -((ry * x1) / rx)
 
 	// Calculate (cx, cy) - the center in original coordinates
-	sx2 := (x0 + x2) / 2.0
-	sy2 := (y0 + y2) / 2.0
+	sx2 := (x0 + x2) * 0.5
+	sy2 := (y0 + y2) * 0.5
 	cx := sx2 + (cosA*cx1 - sinA*cy1)
 	cy := sy2 + (sinA*cx1 + cosA*cy1)
 

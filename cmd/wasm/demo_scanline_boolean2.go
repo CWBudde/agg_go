@@ -40,8 +40,8 @@ func handleScanlineBoolean2MouseUp() {}
 func drawScanlineBoolean2Demo() {
 	cx, cy := sb2CenterX, sb2CenterY
 	if math.IsNaN(cx) || math.IsNaN(cy) {
-		cx = float64(width) / 2.0
-		cy = float64(height) / 2.0
+		cx = float64(width) * 0.5
+		cy = float64(height) * 0.5
 	}
 	scanlineboolean2.Draw(ctx, scanlineboolean2.Config{
 		Mode:         sb2Mode,

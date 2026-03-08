@@ -43,8 +43,8 @@ func (d *demo) Render(ctx *agg.Context) {
 }
 
 func buildParallelogram(imgW, imgH, x, y, scale, angleDeg float64) []float64 {
-	halfW := (imgW * scale) / 2.0
-	halfH := (imgH * scale) / 2.0
+	halfW := (imgW * scale) * 0.5
+	halfH := (imgH * scale) * 0.5
 	angleRad := angleDeg * math.Pi / 180.0
 	cosA := math.Cos(angleRad)
 	sinA := math.Sin(angleRad)

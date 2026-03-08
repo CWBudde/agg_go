@@ -29,7 +29,7 @@ func TestNewScaleCtrl(t *testing.T) {
 	}
 
 	// Test border extra calculation for horizontal control
-	expectedExtra := (50 - 20) / 2.0 // (y2 - y1) / 2
+	expectedExtra := (50 - 20) * 0.5 // (y2 - y1) / 2
 	if scale.borderExtra != expectedExtra {
 		t.Errorf("Expected borderExtra %.1f for horizontal control, got %.1f",
 			expectedExtra, scale.borderExtra)
@@ -41,7 +41,7 @@ func TestScaleCtrlVertical(t *testing.T) {
 	scale := NewScaleCtrl(10, 20, 40, 200, false)
 
 	// Test border extra calculation for vertical control
-	expectedExtra := (40 - 10) / 2.0 // (x2 - x1) / 2
+	expectedExtra := (40 - 10) * 0.5 // (x2 - x1) / 2
 	if scale.borderExtra != expectedExtra {
 		t.Errorf("Expected borderExtra %.1f for vertical control, got %.1f",
 			expectedExtra, scale.borderExtra)
@@ -159,7 +159,7 @@ func TestMouseInteractionHorizontal(t *testing.T) {
 
 	// Calculate pointer positions
 	pointer1X := scale.xs1 + (scale.xs2-scale.xs1)*scale.Value1()
-	pointerY := (scale.ys1 + scale.ys2) / 2.0
+	pointerY := (scale.ys1 + scale.ys2) * 0.5
 
 	// Test clicking on pointer 1
 	result := scale.OnMouseButtonDown(pointer1X, pointerY)
@@ -196,7 +196,7 @@ func TestMouseInteractionSlider(t *testing.T) {
 
 	// Click in the middle of the slider bar
 	sliderX := scale.xs1 + (scale.xs2-scale.xs1)*0.5 // Middle of range
-	sliderY := (scale.ys1 + scale.ys2) / 2.0
+	sliderY := (scale.ys1 + scale.ys2) * 0.5
 
 	result := scale.OnMouseButtonDown(sliderX, sliderY)
 	if !result {
@@ -332,7 +332,7 @@ func TestResize(t *testing.T) {
 		t.Error("Border extra should change when orientation changes")
 	}
 
-	expectedBorderExtra := (20 - 0) / 2.0 // (x2 - x1) / 2 for vertical = 10
+	expectedBorderExtra := (20 - 0) * 0.5 // (x2 - x1) / 2 for vertical = 10
 	if math.Abs(scale.borderExtra-expectedBorderExtra) > 0.001 {
 		t.Errorf("Expected borderExtra %.1f for vertical orientation, got %.1f",
 			expectedBorderExtra, scale.borderExtra)

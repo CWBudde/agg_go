@@ -194,7 +194,7 @@ func (d *demo) Render(ctx *agg.Context) {
 
 	ell := shapes.NewEllipseWithParams(220.0, 180.0, 120.0, 10.0, 128, false)
 	ellStroke := conv.NewConvStroke(&rcEllipseConvAdapter{ell: ell})
-	ellStroke.SetWidth(width / 2.0)
+	ellStroke.SetWidth(width * 0.5)
 
 	styles := []color.RGBA8[color.Linear]{
 		{R: 0, G: 0, B: 255, A: 255},

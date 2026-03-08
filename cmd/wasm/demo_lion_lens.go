@@ -38,8 +38,8 @@ func initLionLensDemo() {
 		lionPaths = liondemo.Parse()
 	}
 
-	lionLensX = float64(width) / 2.0
-	lionLensY = float64(height) / 2.0
+	lionLensX = float64(width) * 0.5
+	lionLensY = float64(height) * 0.5
 
 	// Initialize pipelines for each path
 	lionLensPipelines = make([]lionLensPipeline, len(lionPaths))
@@ -76,8 +76,8 @@ func drawLionLensDemo() {
 
 	// Set up the base transformation for the lion
 	g_x1, g_y1, g_x2, g_y2 := getLionBoundingRect(lionPaths)
-	base_dx := (g_x2 - g_x1) / 2.0
-	base_dy := (g_y2 - g_y1) / 2.0
+	base_dx := (g_x2 - g_x1) * 0.5
+	base_dy := (g_y2 - g_y1) * 0.5
 
 	mtx := transform.NewTransAffine()
 	mtx.Translate(-base_dx, -base_dy)

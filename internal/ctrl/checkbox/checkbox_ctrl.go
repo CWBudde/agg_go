@@ -305,7 +305,7 @@ func (c *CheckboxCtrl[C]) getTextVertex() (x, y float64, cmd basics.PathCommand)
 func (c *CheckboxCtrl[C]) generateCheckmarkVertices() {
 	x1, y1, x2, y2 := c.X1(), c.Y1(), c.X2(), c.Y2()
 	t := c.textThickness * 1.5
-	d2 := (y2 - y1) / 2.0 // Half height for center calculation
+	d2 := (y2 - y1) * 0.5 // Half height for center calculation
 
 	// Generate X-shaped checkmark vertices following C++ implementation
 	c.vertices[0], c.vertices[1] = x1+c.textThickness, y1+c.textThickness   // 0

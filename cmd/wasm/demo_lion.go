@@ -16,8 +16,8 @@ type LionPath = liondemo.Path
 
 // Lion bounding box centre derived from the parse_lion data (bbox ≈ 7..557 × 8..520).
 const (
-	lionFillBaseDX = (557.0 - 7.0) / 2.0 // ≈ 275
-	lionFillBaseDY = (520.0 - 8.0) / 2.0 // ≈ 256
+	lionFillBaseDX = (557.0 - 7.0) * 0.5 // ≈ 275
+	lionFillBaseDY = (520.0 - 8.0) * 0.5 // ≈ 256
 )
 
 var (

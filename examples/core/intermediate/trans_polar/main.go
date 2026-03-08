@@ -79,8 +79,8 @@ func (d *demo) Render(ctx *agg.Context) {
 		baseScale: 1.0,
 		baseX:     -lx1,
 		baseY:     polarBaseY,
-		transX:    float64(width) / 2.0,
-		transY:    float64(height) / 2.0,
+		transX:    float64(width) * 0.5,
+		transY:    float64(height) * 0.5,
 		spiral:    polarSpiral,
 	}
 

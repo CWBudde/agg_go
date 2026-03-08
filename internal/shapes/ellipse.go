@@ -132,7 +132,7 @@ func (e *Ellipse) Vertex(x, y *float64) basics.PathCommand {
 // with minimal vertex count.
 func (e *Ellipse) calcNumSteps() {
 	// Use average radius for step calculation
-	ra := (math.Abs(e.rx) + math.Abs(e.ry)) / 2.0
+	ra := (math.Abs(e.rx) + math.Abs(e.ry)) * 0.5
 
 	// Calculate angular step based on chord error tolerance
 	// The formula ensures the approximation error is proportional to 1/scale

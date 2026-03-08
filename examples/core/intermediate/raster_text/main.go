@@ -76,7 +76,7 @@ func (g *gradientRenderer) Prepare() {}
 
 func (g *gradientRenderer) gradientColor(x, y int) (r, gr, b uint8) {
 	dist := math.Sqrt(float64(x*x + y*y))
-	t := (1.0 + math.Sin(dist*g.periods/g.d)) / 2.0
+	t := (1.0 + math.Sin(dist*g.periods/g.d)) * 0.5
 	rf := 1.0 - t
 	gf := 0.5 * t
 	return uint8(rf * 255), uint8(gf * 255), 0

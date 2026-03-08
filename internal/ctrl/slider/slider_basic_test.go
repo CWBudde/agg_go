@@ -105,7 +105,7 @@ func TestSliderCtrlMouseInteraction(t *testing.T) {
 
 	// Calculate expected pointer position
 	pointerX := slider.xs1 + (slider.xs2-slider.xs1)*slider.value
-	pointerY := (slider.ys1 + slider.ys2) / 2.0
+	pointerY := (slider.ys1 + slider.ys2) * 0.5
 
 	// Test mouse button down on pointer
 	result := slider.OnMouseButtonDown(pointerX, pointerY)

@@ -384,8 +384,8 @@ idiomatic in Go.
 - [ ] `trans_curve` (web): evaluate source bitmap choice; if better upstream-compatible bitmap is
       available in shared assets, switch and keep parity with standalone.
 - [ ] `trans_curve2` (web): same as `trans_curve` bitmap/task; ensure visual parity after asset update.
-- [ ] `distortions` (web): fix mostly-empty output / single-node symptom; validate initialization,
-      image source dimensions, and interaction state defaults.
+- [x] `distortions` (web): fixed mostly-empty output by correcting wave-distortion amplitude math,
+      switching to spheres source image for parity, and matching upstream-style default center init.
 - [ ] `image1` (web): fix fully white output; verify span interpolator, source accessor, and raster
       sweep execution path.
 - [ ] `image_resample` (web): restore draggable quad handles (mouse interaction wiring); ensure

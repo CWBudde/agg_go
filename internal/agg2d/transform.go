@@ -197,7 +197,7 @@ func (agg2d *Agg2D) GetTransformStackDepth() int {
 func (agg2d *Agg2D) GetScaling() float64 {
 	sx, sy := agg2d.transform.GetScaling()
 	// Return average scaling factor
-	return (sx + sy) / 2.0
+	return (sx + sy) * 0.5
 }
 
 // GetRotation returns the rotation component of the current transformation in radians.

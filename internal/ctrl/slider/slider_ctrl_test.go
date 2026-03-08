@@ -67,7 +67,7 @@ func TestSliderCtrlAdvancedMouseDrag(t *testing.T) {
 
 	// Calculate pointer position
 	pointerX := slider.xs1 + (slider.xs2-slider.xs1)*slider.value
-	pointerY := (slider.ys1 + slider.ys2) / 2.0
+	pointerY := (slider.ys1 + slider.ys2) * 0.5
 
 	// Start drag
 	result := slider.OnMouseButtonDown(pointerX, pointerY)

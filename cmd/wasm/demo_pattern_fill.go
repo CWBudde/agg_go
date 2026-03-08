@@ -89,8 +89,8 @@ func initPatFillDemo() {
 	)
 	patFillSl = scanline.NewScanlineU8()
 	patFillPath = path.NewPathStorageStl()
-	patFillPolygonCX = float64(width) / 2.0
-	patFillPolygonCY = float64(height) / 2.0
+	patFillPolygonCX = float64(width) * 0.5
+	patFillPolygonCY = float64(height) * 0.5
 	patFillInitialized = true
 }
 

@@ -28,8 +28,8 @@ const (
 
 	// Lion bounding box centre, matching the original parse_lion data.
 	// Computed from bbox 7..557 x 8..520.
-	lionBaseDX = (557.0 - 7.0) / 2.0 // ≈ 275
-	lionBaseDY = (520.0 - 8.0) / 2.0 // ≈ 256
+	lionBaseDX = (557.0 - 7.0) * 0.5 // ≈ 275
+	lionBaseDY = (520.0 - 8.0) * 0.5 // ≈ 256
 )
 
 type demo struct{}

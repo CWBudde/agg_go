@@ -74,8 +74,8 @@ func initImgTransDemo() {
 	imgTransSl = scanline.NewScanlineU8()
 	imgTransPath = path.NewPathStorageStl()
 
-	imgTransPolygonCX = float64(width) / 2.0
-	imgTransPolygonCY = float64(height) / 2.0
+	imgTransPolygonCX = float64(width) * 0.5
+	imgTransPolygonCY = float64(height) * 0.5
 	imgTransImageCX = imgTransPolygonCX
 	imgTransImageCY = imgTransPolygonCY
 	imgTransInitialized = true

@@ -123,7 +123,7 @@ func (a *Arc) Vertex(x, y *float64) basics.PathCommand {
 // is calculated based on the approximation scale to ensure smooth curves.
 func (a *Arc) normalize(a1, a2 float64, ccw bool) {
 	// Calculate average radius for step size computation
-	ra := (math.Abs(a.rx) + math.Abs(a.ry)) / 2.0
+	ra := (math.Abs(a.rx) + math.Abs(a.ry)) * 0.5
 
 	// Calculate angular step based on approximation scale
 	// This formula ensures that the chord error is proportional to 1/scale

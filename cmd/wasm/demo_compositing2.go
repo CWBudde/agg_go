@@ -37,8 +37,8 @@ func generateColorRamp(c []color.RGBA8[color.Linear], c1, c2, c3, c4 color.RGBA8
 }
 
 func radialShape2(rb renscan.BaseRendererInterface[color.RGBA8[color.Linear]], colors []color.RGBA8[color.Linear], x1, y1, x2, y2 float64) {
-	cx := (x1 + x2) / 2.0
-	cy := (y1 + y2) / 2.0
+	cx := (x1 + x2) * 0.5
+	cy := (y1 + y2) * 0.5
 	r := 0.5 * mathMin(x2-x1, y2-y1)
 
 	mtx := transform.NewTransAffine()

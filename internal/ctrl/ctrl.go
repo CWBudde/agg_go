@@ -117,7 +117,7 @@ func (bc *BaseCtrl) Scale() float64 {
 	if bc.mtx != nil {
 		sx := bc.mtx.SX
 		sy := bc.mtx.SY
-		return (sx + sy) / 2.0 // Average scaling
+		return (sx + sy) * 0.5 // Average scaling
 	}
 	return 1.0
 }

@@ -229,7 +229,7 @@ func drawRasterizerCompoundDemo() {
 
 	ell := shapes.NewEllipseWithParams(220.0, 180.0, 120.0, 10.0, 128, false)
 	ellStroke := conv.NewConvStroke(&rcEllipseConvAdapter{ell: ell})
-	ellStroke.SetWidth(compoundWidth / 2.0)
+	ellStroke.SetWidth(compoundWidth * 0.5)
 
 	styles := []color.RGBA8[color.Linear]{
 		{R: 0, G: 0, B: 255, A: 255},   // 0

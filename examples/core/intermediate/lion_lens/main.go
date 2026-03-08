@@ -20,8 +20,8 @@ const (
 	// Default lens parameters.
 	lensScale  = 5.0
 	lensRadius = 70.0
-	lensX      = float64(llWidth) / 2.0
-	lensY      = float64(llHeight) / 2.0
+	lensX      = float64(llWidth) * 0.5
+	lensY      = float64(llHeight) * 0.5
 )
 
 type demo struct{}
@@ -60,8 +60,8 @@ func (d *demo) Render(ctx *agg.Context) {
 		}
 	}
 
-	baseDX := (bx2 - bx1) / 2.0
-	baseDY := (by2 - by1) / 2.0
+	baseDX := (bx2 - bx1) * 0.5
+	baseDY := (by2 - by1) * 0.5
 
 	// Base affine: centre lion on canvas.
 	mtx := transform.NewTransAffine()

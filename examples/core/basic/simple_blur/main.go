@@ -51,8 +51,8 @@ func drawLion(agg2d *agg.Agg2D, width, height int) {
 		lionX2, lionY2 = 478.0, 442.0
 	)
 
-	baseDX := (lionX2 - lionX1) / 2.0
-	baseDY := (lionY2 - lionY1) / 2.0
+	baseDX := (lionX2 - lionX1) * 0.5
+	baseDY := (lionY2 - lionY1) * 0.5
 
 	agg2d.PushTransform()
 	defer agg2d.PopTransform()

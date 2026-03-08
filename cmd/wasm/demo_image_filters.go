@@ -56,8 +56,8 @@ func drawImageFiltersDemo() {
 		// We'll use TransformImageParallelogram for maximum flexibility
 		// although Agg2D has simpler methods, this showcases AGG's power.
 
-		halfW := (imgW * s) / 2.0
-		halfH := (imgH * s) / 2.0
+		halfW := (imgW * s) * 0.5
+		halfH := (imgH * s) * 0.5
 
 		cosA := math.Cos(angleRad)
 		sinA := math.Sin(angleRad)

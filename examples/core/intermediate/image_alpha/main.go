@@ -190,8 +190,8 @@ func loadPPMImage(filename string) (*agg.Image, error) {
 }
 
 func buildTransformedEllipsePath(w, h int, mtx *transform.TransAffine) *path.PathStorageStl {
-	cx := float64(w) / 2.0
-	cy := float64(h) / 2.0
+	cx := float64(w) * 0.5
+	cy := float64(h) * 0.5
 	rx := float64(w) / 1.9
 	ry := float64(h) / 1.9
 

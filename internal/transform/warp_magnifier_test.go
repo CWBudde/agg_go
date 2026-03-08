@@ -183,7 +183,7 @@ func TestInverseTransformSpecificCases(t *testing.T) {
 	x, y := 15.0, 0.0 // This is < radius * magnification (10 * 2 = 20)
 	m.InverseTransform(&x, &y)
 
-	expectedX := 15.0 / 2.0 // 7.5
+	expectedX := 15.0 * 0.5 // 7.5
 	expectedY := 0.0
 
 	if math.Abs(x-expectedX) > warpMagnifierTestEpsilon || math.Abs(y-expectedY) > warpMagnifierTestEpsilon {

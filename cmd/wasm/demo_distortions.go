@@ -36,7 +36,8 @@ func (d *distortionWave) Calculate(x, y *int) {
 	yd := float64(*y)/float64(basics.PolySubpixelScale) - d.cy
 	dist := math.Sqrt(xd*xd + yd*yd)
 	if dist > 1 {
-		a := math.Cos(dist/(16.0*d.period)-d.phase)*(1.0/(d.amplitude*dist)) + 1.0
+		// C++ parity: a = cos(...)*(amplitude/dist) + 1, with amplitude already inverted at setup.
+		a := math.Cos(dist/(16.0*d.period)-d.phase)*(d.amplitude/dist) + 1.0
 		*x = int((xd*a + d.cx) * float64(basics.PolySubpixelScale))
 		*y = int((yd*a + d.cy) * float64(basics.PolySubpixelScale))
 	}
@@ -112,8 +113,8 @@ func (a *spanGeneratorAdapter) Generate(colors []color.RGBA8[color.Linear], x, y
 // --- Demo state ---
 
 var (
-	distortionsCenterX   = 400.0
-	distortionsCenterY   = 300.0
+	distortionsCenterX   = math.NaN()
+	distortionsCenterY   = math.NaN()
 	distortionsPhase     = 0.0
 	distortionsAngle     = 20.0
 	distortionsScale     = 1.0
@@ -139,7 +140,8 @@ func initDistortionsDemo() {
 	}
 
 	if distortionsImage == nil {
-		distortionsImage = createTestImage(width/2, height/2)
+		// Original AGG demo uses "spheres" image; procedural spheres gives much closer visual parity.
+		distortionsImage = createSpheresImage(width/2, height/2)
 	}
 
 	distortionsRbuf = buffer.NewRenderingBufferU8()
@@ -174,8 +176,18 @@ func drawDistortionsDemo() {
 
 	// Image matrices
 	imgW, imgH := float64(distortionsImage.Width()), float64(distortionsImage.Height())
+	if math.IsNaN(distortionsCenterX) || math.IsNaN(distortionsCenterY) {
+		// Match original on_init default center: image center plus demo offset.
+		distortionsCenterX = imgW/2 + 10
+		distortionsCenterY = imgH/2 + 50
+	}
 
 	imgMtx := transform.NewTransAffine()
+	srcMtx := transform.NewTransAffine()
+	srcMtx.Translate(-imgW/2, -imgH/2)
+	srcMtx.Rotate(distortionsAngle * math.Pi / 180.0)
+	srcMtx.Translate(imgW/2+10, imgH/2+50)
+
 	imgMtx.Translate(-imgW/2, -imgH/2)
 	imgMtx.Rotate(distortionsAngle * math.Pi / 180.0)
 	imgMtx.Scale(distortionsScale)
@@ -229,6 +241,7 @@ func drawDistortionsDemo() {
 		angle := 2.0 * math.Pi * float64(i) / float64(numPoints)
 		x := imgW/2 + (r/2-20)*math.Cos(angle)
 		y := imgH/2 + (r/2-20)*math.Sin(angle)
+		srcMtx.Transform(&x, &y)
 		if i == 0 {
 			distortionsPath.MoveTo(x, y)
 		} else {

@@ -135,7 +135,7 @@ func TestAspectRatioSlice(t *testing.T) {
 	}
 
 	// Scale should be determined by the larger dimension ratio
-	expectedScale := 200.0 / 100.0 // 2.0 (limited by X)
+	expectedScale := 2.0 // (limited by X)
 	if math.Abs(v.ScaleX()-expectedScale) > viewportTestEpsilon {
 		t.Errorf("AspectRatioSlice scale should be %g, got %g", expectedScale, v.ScaleX())
 	}
@@ -148,8 +148,8 @@ func TestAspectRatioStretch(t *testing.T) {
 	v.PreserveAspectRatio(0.5, 0.5, AspectRatioStretch)
 
 	// With AspectRatioStretch, scales can be different
-	expectedScaleX := 200.0 / 100.0 // 2.0
-	expectedScaleY := 1.0           // 100.0 / 100.0
+	expectedScaleX := 2.0
+	expectedScaleY := 1.0
 
 	if math.Abs(v.ScaleX()-expectedScaleX) > viewportTestEpsilon {
 		t.Errorf("AspectRatioStretch ScaleX should be %g, got %g", expectedScaleX, v.ScaleX())

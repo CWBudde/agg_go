@@ -157,8 +157,8 @@ func drawImageAlphaDemo() {
 	}
 
 	// Image transform: 10° rotation around image center, then placed at screen center
-	cx := float64(width) / 2.0
-	cy := float64(height) / 2.0
+	cx := float64(width) * 0.5
+	cy := float64(height) * 0.5
 	imgMtx := transform.NewTransAffine()
 	imgMtx.Translate(-imgW/2, -imgH/2)
 	imgMtx.Rotate(10.0 * math.Pi / 180.0)
