@@ -120,6 +120,8 @@ export const demoDescriptions = {
     "Aliased vs Anti-Aliased rasterization. Comparison between the standard AA rasterizer and aliased (threshold-based) rendering. Drag the triangle nodes to see how edges behave under different rendering modes and gamma settings.",
   flash_rasterizer:
     "Compound rasterization. Demonstrates AGG's ability to render overlapping shapes with multiple styles in a single pass using the compound rasterizer. This is highly efficient for complex vector scenes with many layers.",
+  graph_test:
+    "Port of AGG's graph_test demo core. Renders a deterministic random graph with curved, arrowed edges and radial node markers.",
   rasterizer_compound:
     "Port of AGG's rasterizer_compound demo. Shows layered compound AA rasterization (direct/inverse layer order) over a yellow→cyan gradient background. URL params: rcw, rca1..rca4, rcio.",
   perspective:

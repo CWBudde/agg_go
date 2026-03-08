@@ -1337,6 +1337,8 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 		drawAADemo()
 	case "blend":
 		drawBlendModesDemo()
+	case "graph_test":
+		drawGraphTestDemo()
 	case "bspline":
 		drawBSplineDemo()
 	case "interactive_polygon":

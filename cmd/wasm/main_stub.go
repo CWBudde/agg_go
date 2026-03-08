@@ -63,7 +63,7 @@ func main() {
 	if len(demos) == 0 {
 		demos = []string{
 			"agg2d",
-			"lion", "gradients", "aa", "blend", "interactive_polygon",
+			"lion", "gradients", "aa", "blend", "interactive_polygon", "graph_test",
 			"bspline", "conv_dash_marker", "gouraud", "imagefilters",
 			"sbool", "aatest", "convstroke", "convcontour", "gamma", "lionoutline",
 			"roundedrect", "component", "alphagrad",
@@ -124,6 +124,8 @@ func renderDemoToFile(demoType, outDir string) error {
 		drawAADemo()
 	case "blend":
 		drawBlendModesDemo()
+	case "graph_test":
+		drawGraphTestDemo()
 	case "bspline":
 		drawBSplineDemo()
 	case "interactive_polygon":

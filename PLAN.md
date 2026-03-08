@@ -361,7 +361,8 @@ idiomatic in Go.
 ### 9.3 Medium-priority demo ports
 
 - [x] `interactive_polygon.cpp`
-- [ ] `graph_test.cpp`, `gpc_test.cpp`, `gradients_contour.cpp`
+- [x] `graph_test.cpp`
+- [ ] `gpc_test.cpp`, `gradients_contour.cpp`
 - [ ] `flash_rasterizer2.cpp`, `polymorphic_renderer.cpp`, `blend_color.cpp`
 - [ ] `image_filters2.cpp`, `image_fltr_graph.cpp`
 

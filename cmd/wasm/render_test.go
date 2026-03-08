@@ -13,7 +13,7 @@ func BenchmarkDemos(b *testing.B) {
 	canvasBuf = ctx.GetImage().Data
 
 	demos := []string{
-		"agg2d", "lion", "gradients", "aa", "blend", "interactive_polygon",
+		"agg2d", "lion", "gradients", "aa", "blend", "interactive_polygon", "graph_test",
 		"bspline", "conv_dash_marker", "gouraud", "imagefilters",
 		"sbool", "aatest", "convstroke", "convcontour", "gamma", "lionoutline",
 		"roundedrect", "component", "alphagrad",
@@ -55,6 +55,8 @@ func renderDemoForBenchmark(demoType string) {
 		drawAADemo()
 	case "blend":
 		drawBlendModesDemo()
+	case "graph_test":
+		drawGraphTestDemo()
 	case "bspline":
 		drawBSplineDemo()
 	case "interactive_polygon":
