@@ -10,8 +10,10 @@
 package main
 
 import (
+	"fmt"
 	"math"
 	"math/rand"
+	"time"
 
 	agg "agg_go"
 	"agg_go/examples/shared/demorunner"
@@ -20,6 +22,7 @@ import (
 	"agg_go/internal/color"
 	"agg_go/internal/conv"
 	"agg_go/internal/demo/shapesdata"
+	"agg_go/internal/gsv"
 	"agg_go/internal/pixfmt"
 	"agg_go/internal/rasterizer"
 	"agg_go/internal/renderer"
@@ -110,6 +113,7 @@ func (d *demo) Render(ctx *agg.Context) {
 	slRas := &rasScanlineAdapter{sl: sl}
 
 	// Fill pass (flash2 method).
+	tFillStart := time.Now()
 	for s := shape.MinStyle; s <= shape.MaxStyle; s++ {
 		ras.Reset()
 		for i, p := range shape.Paths {
@@ -143,7 +147,10 @@ func (d *demo) Render(ctx *agg.Context) {
 		}
 	}
 
+	tFill := time.Since(tFillStart)
+
 	// Stroke pass (using conv_stroke with round joins/caps, matching C++).
+	tStrokeStart := time.Now()
 	ras.AutoClose(true)
 	strokeColor := color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 128}
 	strokeW := math.Sqrt(sc)
@@ -179,6 +186,52 @@ func (d *demo) Render(ctx *agg.Context) {
 				&scanlineWrapperU8{sl: sl},
 				renBase,
 				strokeColor,
+			)
+		}
+	}
+
+	tStroke := time.Since(tStrokeStart)
+	tTotal := tFill + tStroke
+
+	// Text overlay (timing info, matching C++ gsv_text output).
+	ras.AutoClose(true)
+	tfillMs := float64(tFill.Microseconds()) / 1000.0
+	tstrokeMs := float64(tStroke.Microseconds()) / 1000.0
+	ttotalMs := float64(tTotal.Microseconds()) / 1000.0
+	fillFPS, strokeFPS, totalFPS := 0, 0, 0
+	if tfillMs > 0 {
+		fillFPS = int(1000.0 / tfillMs)
+	}
+	if tstrokeMs > 0 {
+		strokeFPS = int(1000.0 / tstrokeMs)
+	}
+	if ttotalMs > 0 {
+		totalFPS = int(1000.0 / ttotalMs)
+	}
+
+	txt := fmt.Sprintf("Fill=%.2fms (%dFPS) Stroke=%.2fms (%dFPS) Total=%.2fms (%dFPS)\n\nSpace: Next Shape\n\n+/- : ZoomIn/ZoomOut (with respect to the mouse pointer)",
+		tfillMs, fillFPS, tstrokeMs, strokeFPS, ttotalMs, totalFPS)
+
+	gsvT := gsv.NewGSVText()
+	gsvT.SetSize(8.0, 0)
+	gsvT.SetFlip(true)
+	gsvT.SetStartPoint(10.0, 20.0)
+	gsvT.SetText(txt)
+
+	gsvTS := gsv.NewGSVTextOutline(gsvT)
+	gsvTS.SetWidth(1.6)
+
+	textRasVS := &convVertexSourceRasVS{src: gsvTS}
+	ras.Reset()
+	ras.AddPath(textRasVS, 0)
+	if ras.RewindScanlines() {
+		sl.Reset(ras.MinX(), ras.MaxX())
+		textColor := color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255}
+		for ras.SweepScanline(slRas) {
+			renscan.RenderScanlineAASolid(
+				&scanlineWrapperU8{sl: sl},
+				renBase,
+				textColor,
 			)
 		}
 	}
@@ -284,6 +337,18 @@ type convStrokeRasVS struct {
 func (a *convStrokeRasVS) Rewind(pathID uint32) { a.stroke.Rewind(uint(pathID)) }
 func (a *convStrokeRasVS) Vertex(x, y *float64) uint32 {
 	vx, vy, cmd := a.stroke.Vertex()
+	*x, *y = vx, vy
+	return uint32(cmd)
+}
+
+// convVertexSourceRasVS adapts any conv.VertexSource to the rasterizer's VertexSource interface.
+type convVertexSourceRasVS struct {
+	src conv.VertexSource
+}
+
+func (a *convVertexSourceRasVS) Rewind(pathID uint32) { a.src.Rewind(uint(pathID)) }
+func (a *convVertexSourceRasVS) Vertex(x, y *float64) uint32 {
+	vx, vy, cmd := a.src.Vertex()
 	*x, *y = vx, vy
 	return uint32(cmd)
 }
