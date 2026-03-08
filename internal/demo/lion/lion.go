@@ -62,7 +62,91 @@ func Parse() []Path {
 		}
 	}
 
+	// Match C++ parse_lion.cpp: arrange_orientations_all_paths(path_flags_cw).
+	// CW is defined as signed area < 0 in the shoelace formula (standard y-up
+	// convention used by AGG). Sub-paths that are CCW are inverted so that the
+	// non-zero winding fill rule produces consistent results across all paths.
+	for i := range result {
+		arrangeOrientationsCW(&result[i])
+	}
+
 	return result
+}
+
+// arrangeOrientationsCW normalizes every sub-path in lp to clockwise orientation
+// (shoelace area < 0), mirroring parse_lion.cpp's arrange_orientations_all_paths.
+func arrangeOrientationsCW(lp *Path) {
+	// Collect all vertex coordinates, dropping EndPoly markers.
+	type pt struct{ x, y float64 }
+
+	// Split into sub-paths at each MoveTo boundary.
+	var subpaths [][]pt
+	var cur []pt
+
+	lp.Path.Rewind(0)
+	for {
+		x, y, cmd := lp.Path.NextVertex()
+		pathCmd := basics.PathCommand(cmd)
+		if basics.IsStop(pathCmd) {
+			break
+		}
+		if basics.IsMoveTo(pathCmd) {
+			if len(cur) > 0 {
+				subpaths = append(subpaths, cur)
+				cur = nil
+			}
+			cur = append(cur, pt{x, y})
+		} else if basics.IsLineTo(pathCmd) {
+			cur = append(cur, pt{x, y})
+		}
+		// EndPoly commands are skipped – sub-path boundaries are handled by MoveTo.
+	}
+	if len(cur) > 0 {
+		subpaths = append(subpaths, cur)
+	}
+
+	// Normalize each sub-path and rebuild the path storage.
+	newPath := path.NewPathStorageStl()
+	for _, sp := range subpaths {
+		if len(sp) < 3 {
+			// Degenerate – just emit as-is.
+			newPath.ClosePolygon(basics.PathFlagsNone)
+			for j, p := range sp {
+				if j == 0 {
+					newPath.MoveTo(p.x, p.y)
+				} else {
+					newPath.LineTo(p.x, p.y)
+				}
+			}
+			continue
+		}
+
+		// Shoelace signed area.
+		n := len(sp)
+		area := 0.0
+		for j := range n {
+			k := (j + 1) % n
+			area += sp[j].x*sp[k].y - sp[k].x*sp[j].y
+		}
+
+		// area < 0  →  CW in y-up convention  →  already correct.
+		// area >= 0 →  CCW in y-up convention  →  reverse to make CW.
+		if area >= 0 {
+			for l, r := 0, n-1; l < r; l, r = l+1, r-1 {
+				sp[l], sp[r] = sp[r], sp[l]
+			}
+		}
+
+		newPath.ClosePolygon(basics.PathFlagsNone)
+		for j, p := range sp {
+			if j == 0 {
+				newPath.MoveTo(p.x, p.y)
+			} else {
+				newPath.LineTo(p.x, p.y)
+			}
+		}
+	}
+	lp.Path = newPath
 }
 
 func parseColor(s string) [3]uint8 {

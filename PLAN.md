@@ -389,8 +389,10 @@ idiomatic in Go.
       Note: reference-frame centering parity fix applied (original 600x600 frame centered in web canvas).
 - [x] `distortions` (web): fixed mostly-empty output by correcting wave-distortion amplitude math,
       switching to spheres source image for parity, and matching upstream-style default center init.
-- [ ] `image1` (web): fix fully white output; verify span interpolator, source accessor, and raster
-      sweep execution path.
+- [x] `image1` (web): aligned transform/math to upstream `image1.cpp` reference frame
+      (`initial_w=src_w+20`, `initial_h=src_h+60`) and centered that frame in web canvas;
+      switched source to embedded `spheres.ppm` (fallback to procedural image), and added
+      safe scale sanitization to prevent NaN/invalid input from blanking output.
 - [ ] `image_resample` (web): restore draggable quad handles (mouse interaction wiring); ensure
       down/move/up handlers map to this demo as for perspective demos.
 - [ ] `image_perspective` (web): add/fix draggable quad handles and mouse interaction wiring.

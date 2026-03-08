@@ -10,6 +10,7 @@ import (
 	"agg_go/internal/basics"
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
+	"agg_go/internal/demo/imageassets"
 	"agg_go/internal/image"
 	"agg_go/internal/path"
 	"agg_go/internal/pixfmt"
@@ -72,16 +73,23 @@ func drawImage1Demo() {
 	initImg1Demo()
 
 	if img1Image == nil {
-		img1Image = createSpheresImage(400, 400)
+		if src, err := imageassets.Spheres(); err == nil && src != nil {
+			img1Image = src
+		} else {
+			img1Image = createSpheresImage(400, 400)
+		}
 	}
 
 	imgW := float64(img1Image.Width())
 	imgH := float64(img1Image.Height())
-	cx := float64(width) * 0.5
-	cy := float64(height) * 0.5
+	initialW := imgW + 20.0
+	initialH := imgH + 60.0
+	offX := (float64(width) - initialW) * 0.5
+	offY := (float64(height) - initialH) * 0.5
 
 	agg2d := ctx.GetAgg2D()
 	agg2d.ResetTransformations()
+	agg2d.ClearAll(agg.White)
 
 	// Attach rendering target
 	img := ctx.GetImage()
@@ -91,19 +99,22 @@ func drawImage1Demo() {
 	// Image transform: translate to center, rotate, scale, then translate to screen center
 	// Then invert so we can map screen -> image coords.
 	angleRad := img1Angle * math.Pi / 180.0
+	if !isFinitePositive(img1Scale) {
+		img1Scale = 1.0
+	}
 	imgMtx := transform.NewTransAffine()
-	imgMtx.Translate(-imgW/2-10, -imgH/2-20-10)
+	imgMtx.Translate(-initialW/2.0+10.0, -initialH/2.0+30.0)
 	imgMtx.Rotate(angleRad)
 	imgMtx.Scale(img1Scale)
-	imgMtx.Translate(cx, cy+20)
+	imgMtx.Translate(initialW*0.5+offX, initialH*0.5+20.0+offY)
 	imgMtx.Invert()
 
 	// Polygon transform for the ellipse (same rotation/scale, not inverted)
 	polyMtx := transform.NewTransAffine()
-	polyMtx.Translate(-imgW/2+10, -imgH/2+20+10)
+	polyMtx.Translate(-initialW/2.0-10.0, -initialH/2.0-30.0)
 	polyMtx.Rotate(angleRad)
 	polyMtx.Scale(img1Scale)
-	polyMtx.Translate(cx, cy+20)
+	polyMtx.Translate(initialW*0.5+offX, initialH*0.5+20.0+offY)
 
 	// Span interpolator over the image matrix
 	interp := span.NewSpanInterpolatorLinear[*transform.TransAffine](imgMtx, 8)
@@ -121,15 +132,15 @@ func drawImage1Demo() {
 	adapterSG := &img1SpanGenAdapter{sg: sg}
 
 	// Ellipse path (no transformation - we'll apply polyMtx manually)
-	r := imgW
-	if imgH-60 < r {
-		r = imgH - 60
+	r := initialW
+	if initialH-60.0 < r {
+		r = initialH - 60.0
 	}
 
 	img1Path.RemoveAll()
 	numPoints := 200
-	ellCx := imgW*0.5 + 10
-	ellCy := imgH*0.5 + 20 + 10
+	ellCx := initialW*0.5 + 10.0
+	ellCy := initialH*0.5 + 30.0
 	ellRx := r*0.5 + 16.0
 	ellRy := r*0.5 + 16.0
 	for i := 0; i < numPoints; i++ {
@@ -164,4 +175,8 @@ func drawImage1Demo() {
 			}
 		}
 	}
+}
+
+func isFinitePositive(v float64) bool {
+	return !math.IsNaN(v) && !math.IsInf(v, 0) && v > 0.0
 }
