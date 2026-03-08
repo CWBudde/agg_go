@@ -10,6 +10,7 @@ import (
 	"agg_go/internal/basics"
 	"agg_go/internal/buffer"
 	"agg_go/internal/color"
+	"agg_go/internal/demo/imageassets"
 	"agg_go/internal/image"
 	"agg_go/internal/path"
 	"agg_go/internal/pixfmt"
@@ -81,10 +82,10 @@ func initImgTransDemo() {
 	imgTransInitialized = true
 }
 
-func drawImgTransStar(cx, cy float64) {
-	r := float64(width)
-	if float64(height) < r {
-		r = float64(height)
+func drawImgTransStar(cx, cy, frameW, frameH float64) {
+	r := frameW
+	if frameH < r {
+		r = frameH
 	}
 	r1 := r/3 - 8.0
 	r2 := r1 / 1.45
@@ -114,18 +115,33 @@ func drawImageTransformsDemo() {
 	initImgTransDemo()
 
 	if imgTransImage == nil {
-		imgTransImage = createSpheresImage(400, 300)
+		if src, err := imageassets.Spheres(); err == nil && src != nil {
+			imgTransImage = src
+		} else {
+			imgTransImage = createSpheresImage(400, 300)
+		}
 		imgTransImageCenterX = float64(imgTransImage.Width()) * 0.5
 		imgTransImageCenterY = float64(imgTransImage.Height()) * 0.5
 	}
+	frameW := float64(imgTransImage.Width())
+	frameH := float64(imgTransImage.Height())
+	frameOffX := (float64(width) - frameW) * 0.5
+	frameOffY := (float64(height) - frameH) * 0.5
 
 	// Attach rendering target
 	img := ctx.GetImage()
 	imgTransRbuf.Attach(img.Data, img.Width(), img.Height(), img.Width()*4)
 	imgTransRenBase.Attach(imgTransPixFmt)
+	ctx.GetAgg2D().ClearAll(agg.White)
 
 	polyAngleRad := imgTransPolygonAngle * math.Pi / 180.0
 	imgAngleRad := imgTransImageAngle * math.Pi / 180.0
+	if !imgTransIsFinitePositive(imgTransPolygonScale) {
+		imgTransPolygonScale = 1.0
+	}
+	if !imgTransIsFinitePositive(imgTransImageScale) {
+		imgTransImageScale = 1.0
+	}
 
 	// Build polygon transform
 	polyMtx := transform.NewTransAffine()
@@ -178,6 +194,9 @@ func drawImageTransformsDemo() {
 		imageMtx.Translate(imgTransImageCX, imgTransImageCY)
 		imageMtx.Invert()
 	}
+	// The original demo window equals source image size. In web canvases larger
+	// than the source, map screen coordinates back into that centered frame.
+	imageMtx.Translate(-frameOffX, -frameOffY)
 
 	// Span interpolator
 	interp := span.NewSpanInterpolatorLinear[*transform.TransAffine](imageMtx, 8)
@@ -194,7 +213,7 @@ func drawImageTransformsDemo() {
 	adapterSG := &imgTransSpanGenAdapter{sg: sg}
 
 	// Build star polygon with polygon transform applied
-	drawImgTransStar(imgTransPolygonCX, imgTransPolygonCY)
+	drawImgTransStar(imgTransPolygonCX, imgTransPolygonCY, frameW, frameH)
 
 	// Apply polygon matrix to path vertices manually
 	transformed := path.NewPathStorageStl()
@@ -237,6 +256,10 @@ func drawImageTransformsDemo() {
 
 	// Draw image center handle (interactive point)
 	drawHandle(imgTransImageCX, imgTransImageCY)
+}
+
+func imgTransIsFinitePositive(v float64) bool {
+	return !math.IsNaN(v) && !math.IsInf(v, 0) && v > 0.0
 }
 
 func handleImgTransMouseDown(x, y float64) bool {

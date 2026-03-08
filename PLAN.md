@@ -396,8 +396,9 @@ idiomatic in Go.
 - [ ] `image_resample` (web): restore draggable quad handles (mouse interaction wiring); ensure
       down/move/up handlers map to this demo as for perspective demos.
 - [ ] `image_perspective` (web): add/fix draggable quad handles and mouse interaction wiring.
-- [ ] `image_transforms` (web): fix empty output with single node; validate star path generation,
-      image matrix setup, and initial control point placement.
+- [x] `image_transforms` (web): fixed near-empty output by mapping screen sampling into a
+      centered source-image reference frame (as in upstream window-size assumption), sizing the
+      star from source dimensions, and switching to embedded `spheres.ppm` with finite-scale guards.
 - [ ] `pattern_fill` (web): fix empty output; verify offscreen pattern generation and final blend spans.
 - [x] `pattern_perspective` (web): add/fix draggable quad handles and mouse interaction wiring.
 - [x] `pattern_resample` (web): add/fix draggable quad handles and mouse interaction wiring.
