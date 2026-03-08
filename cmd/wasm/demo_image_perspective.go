@@ -6,8 +6,21 @@ import (
 
 var (
 	imagePerspectiveType = 2
+	imagePerspectiveNode = -1
 	imagePerspectiveQuad = [4][2]float64{{100, 100}, {700, 100}, {700, 500}, {100, 500}}
 )
+
+func handleImagePerspectiveMouseDown(x, y float64) bool {
+	return handleQuadMouseDown(x, y, &imagePerspectiveQuad, &imagePerspectiveNode)
+}
+
+func handleImagePerspectiveMouseMove(x, y float64) bool {
+	return handleQuadMouseMove(x, y, &imagePerspectiveQuad, &imagePerspectiveNode)
+}
+
+func handleImagePerspectiveMouseUp() {
+	handleQuadMouseUp(&imagePerspectiveNode)
+}
 
 func setImagePerspectiveType(v int) {
 	if v < 0 {

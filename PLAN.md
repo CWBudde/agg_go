@@ -371,7 +371,37 @@ idiomatic in Go.
   - `trans_curve1.cpp`, `trans_curve1_ft.cpp`, `trans_curve2_ft.cpp`
   - `make_arrows.cpp`, `make_gb_poly.cpp`, `mol_view.cpp`, `idea.cpp`
 
-### 9.5 Exit criteria
+### 9.5 Bug fixing
+
+- [ ] `line_thickness` (web): investigate framing/centering mismatch against standalone render
+      (`main_stub.go` reference output), then align canvas transform/placement to C++ intent.
+- [ ] `line_patterns` (web): fix empty output; verify pattern asset decode/load path and span
+      generation setup in wasm; add a non-empty render check in demo benchmark/smoke path.
+- [ ] `line_patterns_clip` (web): fix empty output; verify clip-box/path and pattern source wiring;
+      add non-empty render check.
+- [ ] `scanline_boolean2` (web): correct map polygon orientation (upside-down) and centering;
+      reconcile coordinate transform with upstream C++ and standalone output.
+- [ ] `trans_curve` (web): evaluate source bitmap choice; if better upstream-compatible bitmap is
+      available in shared assets, switch and keep parity with standalone.
+- [ ] `trans_curve2` (web): same as `trans_curve` bitmap/task; ensure visual parity after asset update.
+- [ ] `distortions` (web): fix mostly-empty output / single-node symptom; validate initialization,
+      image source dimensions, and interaction state defaults.
+- [ ] `image1` (web): fix fully white output; verify span interpolator, source accessor, and raster
+      sweep execution path.
+- [ ] `image_resample` (web): restore draggable quad handles (mouse interaction wiring); ensure
+      down/move/up handlers map to this demo as for perspective demos.
+- [ ] `image_perspective` (web): add/fix draggable quad handles and mouse interaction wiring.
+- [ ] `image_transforms` (web): fix empty output with single node; validate star path generation,
+      image matrix setup, and initial control point placement.
+- [ ] `pattern_fill` (web): fix empty output; verify offscreen pattern generation and final blend spans.
+- [ ] `pattern_perspective` (web): add/fix draggable quad handles and mouse interaction wiring.
+- [ ] `pattern_resample` (web): add/fix draggable quad handles and mouse interaction wiring.
+- [ ] `rasterizer_compound` (web): fix upside-down/odd glyph “a” rendering; audit Y-orientation and
+      path winding/order parity with upstream C++.
+- [ ] For all above: add per-demo parity notes (standalone vs web), plus a minimal verification
+      path (render smoke and, where practical, non-empty/image-hash threshold checks).
+
+### 9.6 Exit criteria
 
 - [ ] Every remaining upstream demo is ported, replaced by a documented equivalent, or deferred.
 - [ ] Newly added demos build and run through the existing example workflows.

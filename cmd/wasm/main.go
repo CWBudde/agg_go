@@ -597,6 +597,18 @@ func onMouseDown(this js.Value, args []js.Value) interface{} {
 	if demoType == "image_transforms" {
 		return handleImgTransMouseDown(x, y)
 	}
+	if demoType == "image_resample" {
+		return handleImageResampleMouseDown(x, y)
+	}
+	if demoType == "image_perspective" {
+		return handleImagePerspectiveMouseDown(x, y)
+	}
+	if demoType == "pattern_perspective" {
+		return handlePatternPerspectiveMouseDown(x, y)
+	}
+	if demoType == "pattern_resample" {
+		return handlePatternResampleMouseDown(x, y)
+	}
 	return false
 }
 
@@ -692,6 +704,18 @@ func onMouseMove(this js.Value, args []js.Value) interface{} {
 	if demoType == "image_transforms" {
 		return handleImgTransMouseMove(x, y)
 	}
+	if demoType == "image_resample" {
+		return handleImageResampleMouseMove(x, y)
+	}
+	if demoType == "image_perspective" {
+		return handleImagePerspectiveMouseMove(x, y)
+	}
+	if demoType == "pattern_perspective" {
+		return handlePatternPerspectiveMouseMove(x, y)
+	}
+	if demoType == "pattern_resample" {
+		return handlePatternResampleMouseMove(x, y)
+	}
 	return false
 }
 
@@ -754,6 +778,18 @@ func onMouseUp(this js.Value, args []js.Value) interface{} {
 	// gamma_tuner no longer has canvas-based widgets
 	if demoType == "lion_lens" {
 		handleLionLensMouseUp()
+	}
+	if demoType == "image_resample" {
+		handleImageResampleMouseUp()
+	}
+	if demoType == "image_perspective" {
+		handleImagePerspectiveMouseUp()
+	}
+	if demoType == "pattern_perspective" {
+		handlePatternPerspectiveMouseUp()
+	}
+	if demoType == "pattern_resample" {
+		handlePatternResampleMouseUp()
 	}
 	return nil
 }

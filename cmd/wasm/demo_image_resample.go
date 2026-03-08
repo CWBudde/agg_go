@@ -11,6 +11,7 @@ import (
 var (
 	imageResampleType = 4   // C++ default: Perspective Resample LERP
 	imageResampleBlur = 1.0 // C++ slider default
+	imageResampleNode = -1
 	imageResampleQuad = [4][2]float64{
 		{140, 140},
 		{460, 140},
@@ -19,6 +20,18 @@ var (
 	}
 	imageResampleImg *agg.Image
 )
+
+func handleImageResampleMouseDown(x, y float64) bool {
+	return handleQuadMouseDown(x, y, &imageResampleQuad, &imageResampleNode)
+}
+
+func handleImageResampleMouseMove(x, y float64) bool {
+	return handleQuadMouseMove(x, y, &imageResampleQuad, &imageResampleNode)
+}
+
+func handleImageResampleMouseUp() {
+	handleQuadMouseUp(&imageResampleNode)
+}
 
 func setImageResampleType(v int) {
 	if v < 0 {

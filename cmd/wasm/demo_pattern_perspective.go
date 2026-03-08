@@ -6,8 +6,21 @@ import (
 
 var (
 	patternPerspectiveType = 2
+	patternPerspectiveNode = -1
 	patternPerspectiveQuad = [4][2]float64{{200, 100}, {600, 100}, {600, 500}, {200, 500}}
 )
+
+func handlePatternPerspectiveMouseDown(x, y float64) bool {
+	return handleQuadMouseDown(x, y, &patternPerspectiveQuad, &patternPerspectiveNode)
+}
+
+func handlePatternPerspectiveMouseMove(x, y float64) bool {
+	return handleQuadMouseMove(x, y, &patternPerspectiveQuad, &patternPerspectiveNode)
+}
+
+func handlePatternPerspectiveMouseUp() {
+	handleQuadMouseUp(&patternPerspectiveNode)
+}
 
 func setPatternPerspectiveType(v int) {
 	if v < 0 {
