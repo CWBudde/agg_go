@@ -538,7 +538,18 @@ func (gc *GammaCtrlImpl[C]) setupTextPath() {
 
 	gc.textRenderer.SetText(text)
 	gc.textRenderer.SetSize(gc.textHeight)
-	gc.textRenderer.SetPosition(gc.xt1+gc.borderWidth*2.0, (gc.yt1+gc.yt2)*0.5-gc.textHeight*0.5)
+
+	// SimpleText always renders upward from the start point (SetFlip=true for screen coords).
+	// In Y-up coords (flipY=true): center = startY + textHeight/2  → startY = center - textHeight/2
+	// In Y-down coords (flipY=false): center = startY - textHeight/2 → startY = center + textHeight/2
+	centerY := (gc.yt1 + gc.yt2) * 0.5
+	var textY float64
+	if gc.FlipY() {
+		textY = centerY - gc.textHeight*0.5
+	} else {
+		textY = centerY + gc.textHeight*0.5
+	}
+	gc.textRenderer.SetPosition(gc.xt1+gc.borderWidth*2.0, textY)
 
 	gc.textRenderer.SetThickness(gc.textThickness)
 	gc.textRenderer.Rewind(0)
