@@ -12,8 +12,10 @@
 package main
 
 import (
+	"fmt"
 	"math"
 	"math/rand"
+	"time"
 
 	agg "agg_go"
 	"agg_go/internal/basics"
@@ -21,6 +23,7 @@ import (
 	"agg_go/internal/color"
 	"agg_go/internal/conv"
 	"agg_go/internal/demo/shapesdata"
+	"agg_go/internal/gsv"
 	"agg_go/internal/pixfmt"
 	"agg_go/internal/rasterizer"
 	"agg_go/internal/renderer"
@@ -108,7 +111,7 @@ func drawFlashRasterizer2Demo() {
 	// Pre-flatten all paths in screen coordinates.
 	flatPaths := make([][]shapesdata.FlatVertex, len(shape.Paths))
 	for i := range shape.Paths {
-		flatPaths[i] = shapesdata.FlattenPath(&shape.Paths[i], sc, sc, tx, ty, sc)
+		flatPaths[i] = shapesdata.FlattenPath(&shape.Paths[i], sc, sc, tx, ty, 1.0)
 	}
 
 	// Set up raw renderer pipeline (bypass Agg2D for direct scanline access).
@@ -132,6 +135,7 @@ func drawFlashRasterizer2Demo() {
 	slRas := &rasScanlineAdapter{sl: sl}
 
 	// --- Fill pass (flash2 method) ---
+	tFillStart := time.Now()
 	for s := shape.MinStyle; s <= shape.MaxStyle; s++ {
 		ras.Reset()
 		for i, p := range shape.Paths {
@@ -167,7 +171,10 @@ func drawFlashRasterizer2Demo() {
 		}
 	}
 
+	tFill := time.Since(tFillStart)
+
 	// --- Stroke pass (using conv_stroke with round joins/caps, matching C++) ---
+	tStrokeStart := time.Now()
 	ras.AutoClose(true)
 
 	strokeColor := color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 128}
@@ -208,8 +215,52 @@ func drawFlashRasterizer2Demo() {
 		}
 	}
 
-	// Blit the rendered buffer into the canvas via the Agg2D context.
-	// (The pixel data is already in img.Data which is the canvas buffer.)
+	tStroke := time.Since(tStrokeStart)
+	tTotal := tFill + tStroke
+
+	// --- Text overlay (timing info, matching C++ gsv_text output) ---
+	ras.AutoClose(true)
+	tfillMs := float64(tFill.Microseconds()) / 1000.0
+	tstrokeMs := float64(tStroke.Microseconds()) / 1000.0
+	ttotalMs := float64(tTotal.Microseconds()) / 1000.0
+	fillFPS, strokeFPS, totalFPS := 0, 0, 0
+	if tfillMs > 0 {
+		fillFPS = int(1000.0 / tfillMs)
+	}
+	if tstrokeMs > 0 {
+		strokeFPS = int(1000.0 / tstrokeMs)
+	}
+	if ttotalMs > 0 {
+		totalFPS = int(1000.0 / ttotalMs)
+	}
+
+	txt := fmt.Sprintf("Fill=%.2fms (%dFPS) Stroke=%.2fms (%dFPS) Total=%.2fms (%dFPS)\n\nSpace: Next Shape\n\n+/- : ZoomIn/ZoomOut (with respect to the mouse pointer)",
+		tfillMs, fillFPS, tstrokeMs, strokeFPS, ttotalMs, totalFPS)
+
+	t := gsv.NewGSVText()
+	t.SetSize(8.0, 0)
+	t.SetFlip(true)
+	t.SetStartPoint(10.0, 20.0)
+	t.SetText(txt)
+
+	ts := gsv.NewGSVTextOutline(t)
+	ts.SetWidth(1.6)
+
+	textRasVS := &convVertexSourceRasVS{src: ts}
+	ras.Reset()
+	ras.AddPath(textRasVS, 0)
+	if ras.RewindScanlines() {
+		sl.Reset(ras.MinX(), ras.MaxX())
+		textColor := color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255}
+		for ras.SweepScanline(slRas) {
+			renscan.RenderScanlineAASolid(
+				&scanlineWrapperU8{sl: sl},
+				renBase,
+				textColor,
+			)
+		}
+	}
+
 	_ = agg.RGBA(0, 0, 0, 0) // keep agg import live
 }
 
@@ -263,11 +314,11 @@ func (v *invertedFlatVS) Vertex(x, y *float64) uint32 {
 	fv := v.verts[i]
 	*x, *y = fv.X, fv.Y
 
-	// Command shifting: the original MoveTo (at index 0) becomes the last vertex's command.
-	// All other vertices keep PathCmdLineTo.
+	// First emitted vertex gets MoveTo (sets pen position without spurious edge).
+	// Last emitted vertex also gets MoveTo (original start point, same as C++ invert_polygon).
+	// All intermediate vertices get LineTo.
 	var cmd uint32
-	if v.pos == n-1 {
-		// last emitted vertex → gets the original MoveTo command
+	if v.pos == 0 || v.pos == n-1 {
 		cmd = shapesdata.PathCmdMoveTo
 	} else {
 		cmd = shapesdata.PathCmdLineTo
@@ -302,6 +353,18 @@ type convStrokeRasVS struct {
 func (a *convStrokeRasVS) Rewind(pathID uint32) { a.stroke.Rewind(uint(pathID)) }
 func (a *convStrokeRasVS) Vertex(x, y *float64) uint32 {
 	vx, vy, cmd := a.stroke.Vertex()
+	*x, *y = vx, vy
+	return uint32(cmd)
+}
+
+// convVertexSourceRasVS adapts any conv.VertexSource to the rasterizer's VertexSource interface.
+type convVertexSourceRasVS struct {
+	src conv.VertexSource
+}
+
+func (a *convVertexSourceRasVS) Rewind(pathID uint32) { a.src.Rewind(uint(pathID)) }
+func (a *convVertexSourceRasVS) Vertex(x, y *float64) uint32 {
+	vx, vy, cmd := a.src.Vertex()
 	*x, *y = vx, vy
 	return uint32(cmd)
 }

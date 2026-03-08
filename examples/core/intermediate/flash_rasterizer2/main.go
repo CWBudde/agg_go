@@ -87,7 +87,7 @@ func (d *demo) Render(ctx *agg.Context) {
 	// Pre-flatten all paths in screen coordinates.
 	flatPaths := make([][]shapesdata.FlatVertex, len(shape.Paths))
 	for i := range shape.Paths {
-		flatPaths[i] = shapesdata.FlattenPath(&shape.Paths[i], sc, sc, tx, ty, sc)
+		flatPaths[i] = shapesdata.FlattenPath(&shape.Paths[i], sc, sc, tx, ty, 1.0)
 	}
 
 	// Set up raw renderer pipeline.
@@ -246,8 +246,11 @@ func (v *invertedFlatVS) Vertex(x, y *float64) uint32 {
 	i := n - 1 - v.pos
 	fv := v.verts[i]
 	*x, *y = fv.X, fv.Y
+	// First emitted vertex gets MoveTo (sets pen position without spurious edge).
+	// Last emitted vertex also gets MoveTo (original start point, same as C++ invert_polygon).
+	// All intermediate vertices get LineTo.
 	var cmd uint32
-	if v.pos == n-1 {
+	if v.pos == 0 || v.pos == n-1 {
 		cmd = shapesdata.PathCmdMoveTo
 	} else {
 		cmd = shapesdata.PathCmdLineTo

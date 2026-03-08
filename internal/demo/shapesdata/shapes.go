@@ -73,19 +73,19 @@ func ParseShapes(data []byte) []RawShape {
 			curPath = nil
 
 		case 'P':
-			// Path: P left right line ax ay
+			// Path left right line ax ay
 			if cur == nil {
 				continue
 			}
-			fields := strings.Fields(line[1:])
-			if len(fields) < 5 {
+			fields := strings.Fields(line)
+			if len(fields) < 6 {
 				continue
 			}
-			lf := parseInt(fields[0])
-			rf := parseInt(fields[1])
-			ln := parseInt(fields[2])
-			ax := parseFloat(fields[3])
-			ay := parseFloat(fields[4])
+			lf := parseInt(fields[1])
+			rf := parseInt(fields[2])
+			ln := parseInt(fields[3])
+			ax := parseFloat(fields[4])
+			ay := parseFloat(fields[5])
 
 			cur.Paths = append(cur.Paths, RawPath{
 				LeftFill:  lf,
@@ -98,34 +98,34 @@ func ParseShapes(data []byte) []RawShape {
 			updateStyleRange(cur, lf, rf)
 
 		case 'C':
-			// Curve: C cx cy ax ay
+			// Curve cx cy ax ay
 			if curPath == nil {
 				continue
 			}
-			fields := strings.Fields(line[1:])
-			if len(fields) < 4 {
+			fields := strings.Fields(line)
+			if len(fields) < 5 {
 				continue
 			}
 			curPath.Vertices = append(curPath.Vertices, RawVertex{
-				CX:      parseFloat(fields[0]),
-				CY:      parseFloat(fields[1]),
-				X:       parseFloat(fields[2]),
-				Y:       parseFloat(fields[3]),
+				CX:      parseFloat(fields[1]),
+				CY:      parseFloat(fields[2]),
+				X:       parseFloat(fields[3]),
+				Y:       parseFloat(fields[4]),
 				IsCurve: true,
 			})
 
 		case 'L':
-			// Line: L ax ay
+			// Line ax ay
 			if curPath == nil {
 				continue
 			}
-			fields := strings.Fields(line[1:])
-			if len(fields) < 2 {
+			fields := strings.Fields(line)
+			if len(fields) < 3 {
 				continue
 			}
 			curPath.Vertices = append(curPath.Vertices, RawVertex{
-				X: parseFloat(fields[0]),
-				Y: parseFloat(fields[1]),
+				X: parseFloat(fields[1]),
+				Y: parseFloat(fields[2]),
 			})
 
 		case '<':
