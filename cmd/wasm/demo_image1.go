@@ -143,7 +143,7 @@ func drawImage1Demo() {
 			img1Path.LineTo(px, py)
 		}
 	}
-	img1Path.ClosePolygon(basics.PathFlagsNone)
+	img1Path.ClosePolygon(basics.PathFlagsClose)
 
 	// Render
 	img1Ras.Reset()

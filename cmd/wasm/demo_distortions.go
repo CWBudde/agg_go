@@ -234,7 +234,7 @@ func drawDistortionsDemo() {
 			distortionsPath.LineTo(x, y)
 		}
 	}
-	distortionsPath.ClosePolygon(basics.PathFlagsNone)
+	distortionsPath.ClosePolygon(basics.PathFlagsClose)
 
 	// Manual rendering loop
 	psAdapter := &pathSourceAdapter{ps: distortionsPath}

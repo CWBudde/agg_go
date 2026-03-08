@@ -231,7 +231,7 @@ func drawPatternFillDemo() {
 			}
 		}
 	}
-	patFillPath.ClosePolygon(basics.PathFlagsNone)
+	patFillPath.ClosePolygon(basics.PathFlagsClose)
 
 	// Apply polygon rotation/scale
 	rotated := path.NewPathStorageStl()
@@ -255,7 +255,7 @@ func drawPatternFillDemo() {
 		case basics.IsLineTo(cmd):
 			rotated.LineTo(vx, vy)
 		case basics.IsEndPoly(cmd):
-			rotated.ClosePolygon(basics.PathFlagsNone)
+			rotated.ClosePolygon(basics.PathFlagsClose)
 		}
 	}
 

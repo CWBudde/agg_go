@@ -105,7 +105,7 @@ func drawImgTransStar(cx, cy float64) {
 			}
 		}
 	}
-	imgTransPath.ClosePolygon(basics.PathFlagsNone)
+	imgTransPath.ClosePolygon(basics.PathFlagsClose)
 }
 
 func drawImageTransformsDemo() {
@@ -209,7 +209,7 @@ func drawImageTransformsDemo() {
 		case basics.IsLineTo(cmd):
 			transformed.LineTo(vx, vy)
 		case basics.IsEndPoly(cmd):
-			transformed.ClosePolygon(basics.PathFlagsNone)
+			transformed.ClosePolygon(basics.PathFlagsClose)
 		}
 	}
 

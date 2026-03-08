@@ -49,6 +49,10 @@ func Draw(ctx *agg.Context, cfg Config) {
 	cfg.Operation = clampInt(cfg.Operation, 0, 6)
 
 	a, b := buildShapes(cfg, w, h)
+	// AGG's original demo runs with flip_y=true; mirror geometry in Y to match
+	// the reference orientation in this top-left-origin framebuffer.
+	a = mirrorContoursY(a, h)
+	b = mirrorContoursY(b, h)
 	agg2d := ctx.GetAgg2D()
 	agg2d.ResetTransformations()
 	agg2d.ClearAll(agg.White)
@@ -68,6 +72,17 @@ func Draw(ctx *agg.Context, cfg Config) {
 			drawContours(agg2d, result, agg.RGBA(0.5, 0.0, 0.0, 0.5), agg.RGBA(0, 0, 0, 0.55))
 		}
 	}
+}
+
+func mirrorContoursY(cs []contour, h float64) []contour {
+	out := make([]contour, len(cs))
+	for i := range cs {
+		out[i] = make(contour, len(cs[i]))
+		for j := range cs[i] {
+			out[i][j] = pt{x: cs[i][j].x, y: h - cs[i][j].y}
+		}
+	}
+	return out
 }
 
 func mapOperation(op int) gpc.GPCOp {
