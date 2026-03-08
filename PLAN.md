@@ -377,7 +377,7 @@ idiomatic in Go.
       (`main_stub.go` reference output), then align canvas transform/placement to C++ intent.
 - [x] `line_patterns` (web): fix empty output; verify pattern asset decode/load path and span
       generation setup in wasm; add a non-empty render check in demo benchmark/smoke path.
-- [ ] `line_patterns_clip` (web): fix empty output; verify clip-box/path and pattern source wiring;
+- [x] `line_patterns_clip` (web): fix empty output; verify clip-box/path and pattern source wiring;
       add non-empty render check.
 - [ ] `scanline_boolean2` (web): correct map polygon orientation (upside-down) and centering;
       reconcile coordinate transform with upstream C++ and standalone output.
