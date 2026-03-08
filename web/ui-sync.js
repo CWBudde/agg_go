@@ -49,6 +49,10 @@ export function syncControlVisibility(demoType) {
     demoType === "image_transforms" ? "flex" : "none";
   document.getElementById("patternFillControls").style.display =
     demoType === "pattern_fill" ? "flex" : "none";
+  document.getElementById("patternPerspectiveControls").style.display =
+    demoType === "pattern_perspective" ? "flex" : "none";
+  document.getElementById("patternResampleControls").style.display =
+    demoType === "pattern_resample" ? "flex" : "none";
   document.getElementById("gammaTunerControls").style.display =
     demoType === "gamma_tuner" ? "flex" : "none";
   document.getElementById("bezierDivControls").style.display =

@@ -704,6 +704,53 @@
       <span id="patFillPatSizeValue">30</span>
     </div>
 
+    <!-- pattern_perspective controls -->
+    <div class="controls" id="patternPerspectiveControls" style="display: none">
+      <label for="patternPerspectiveTypeSelector">Transform:</label>
+      <select id="patternPerspectiveTypeSelector">
+        <option value="0">Affine</option>
+        <option value="1">Bilinear</option>
+        <option value="2" selected>Perspective</option>
+      </select>
+    </div>
+
+    <!-- pattern_resample controls -->
+    <div class="controls" id="patternResampleControls" style="display: none">
+      <label for="patternResampleTypeSelector">Mode:</label>
+      <select id="patternResampleTypeSelector">
+        <option value="0">Affine No Resample</option>
+        <option value="1">Affine Resample</option>
+        <option value="2">Persp No Resample LERP</option>
+        <option value="3">Persp No Resample Exact</option>
+        <option value="4" selected>Persp Resample LERP</option>
+        <option value="5">Persp Resample Exact</option>
+      </select>
+      <label for="patternResampleGammaSlider" style="margin-left: 0.5rem"
+        >Gamma:</label
+      >
+      <input
+        type="range"
+        id="patternResampleGammaSlider"
+        min="0.5"
+        max="3.0"
+        value="2.0"
+        step="0.05"
+      />
+      <span id="patternResampleGammaValue">2.00</span>
+      <label for="patternResampleBlurSlider" style="margin-left: 0.5rem"
+        >Blur:</label
+      >
+      <input
+        type="range"
+        id="patternResampleBlurSlider"
+        min="0.5"
+        max="2.0"
+        value="1.0"
+        step="0.05"
+      />
+      <span id="patternResampleBlurValue">1.00</span>
+    </div>
+
     <!-- gamma_tuner controls -->
     <div class="controls" id="gammaTunerControls" style="display: none">
       <label for="gtRSlider">R:</label>

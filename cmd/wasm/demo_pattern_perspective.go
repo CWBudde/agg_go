@@ -7,7 +7,8 @@ import (
 var (
 	patternPerspectiveType = 2
 	patternPerspectiveNode = -1
-	patternPerspectiveQuad = [4][2]float64{{200, 100}, {600, 100}, {600, 500}, {200, 500}}
+	// Start with a non-rectangular quad so perspective mode is visible immediately.
+	patternPerspectiveQuad = [4][2]float64{{200, 100}, {600, 100}, {560, 500}, {240, 500}}
 )
 
 func handlePatternPerspectiveMouseDown(x, y float64) bool {

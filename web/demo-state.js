@@ -575,11 +575,18 @@ export const demoURLHandlers = {
   },
   pattern_perspective: {
     persist() {
-      // URL-only controls (no visible widget panel).
+      updateURL({
+        ppt: parseInt(
+          document.getElementById("patternPerspectiveTypeSelector").value,
+          10,
+        ),
+      });
     },
     restore(p) {
       if (p.has("ppt")) {
-        setPatternPerspectiveType(parseInt(p.get("ppt"), 10));
+        const val = parseInt(p.get("ppt"), 10);
+        setPatternPerspectiveType(val);
+        document.getElementById("patternPerspectiveTypeSelector").value = val;
       }
       const keys = [
         "ppx0",
@@ -607,17 +614,34 @@ export const demoURLHandlers = {
   },
   pattern_resample: {
     persist() {
-      // URL-only controls (no visible widget panel).
+      updateURL({
+        prt: parseInt(
+          document.getElementById("patternResampleTypeSelector").value,
+          10,
+        ),
+        prg: parseFloat(document.getElementById("patternResampleGammaSlider").value),
+        prb: parseFloat(document.getElementById("patternResampleBlurSlider").value),
+      });
     },
     restore(p) {
       if (p.has("prt")) {
-        setPatternResampleType(parseInt(p.get("prt"), 10));
+        const val = parseInt(p.get("prt"), 10);
+        setPatternResampleType(val);
+        document.getElementById("patternResampleTypeSelector").value = val;
       }
       if (p.has("prg")) {
-        setPatternResampleGamma(parseFloat(p.get("prg")));
+        const val = parseFloat(p.get("prg"));
+        setPatternResampleGamma(val);
+        document.getElementById("patternResampleGammaSlider").value = val;
+        document.getElementById("patternResampleGammaValue").textContent =
+          val.toFixed(2);
       }
       if (p.has("prb")) {
-        setPatternResampleBlur(parseFloat(p.get("prb")));
+        const val = parseFloat(p.get("prb"));
+        setPatternResampleBlur(val);
+        document.getElementById("patternResampleBlurSlider").value = val;
+        document.getElementById("patternResampleBlurValue").textContent =
+          val.toFixed(2);
       }
       const keys = [
         "prx0",

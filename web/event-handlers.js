@@ -527,6 +527,54 @@ export function setupEventHandlers(
       renderSelectedDemo();
     });
 
+  // pattern_perspective controls
+  document
+    .getElementById("patternPerspectiveTypeSelector")
+    .addEventListener("change", () => {
+      const val = parseInt(
+        document.getElementById("patternPerspectiveTypeSelector").value,
+      );
+      setPatternPerspectiveType(val);
+      persistDemoParams("pattern_perspective");
+      renderSelectedDemo();
+    });
+
+  // pattern_resample controls
+  document
+    .getElementById("patternResampleTypeSelector")
+    .addEventListener("change", () => {
+      const val = parseInt(
+        document.getElementById("patternResampleTypeSelector").value,
+      );
+      setPatternResampleType(val);
+      persistDemoParams("pattern_resample");
+      renderSelectedDemo();
+    });
+  document
+    .getElementById("patternResampleGammaSlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("patternResampleGammaSlider").value,
+      );
+      document.getElementById("patternResampleGammaValue").textContent =
+        val.toFixed(2);
+      setPatternResampleGamma(val);
+      persistDemoParams("pattern_resample");
+      renderSelectedDemo();
+    });
+  document
+    .getElementById("patternResampleBlurSlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("patternResampleBlurSlider").value,
+      );
+      document.getElementById("patternResampleBlurValue").textContent =
+        val.toFixed(2);
+      setPatternResampleBlur(val);
+      persistDemoParams("pattern_resample");
+      renderSelectedDemo();
+    });
+
   // gouraud opacity slider
   document
     .getElementById("gouraudOpacitySlider")
