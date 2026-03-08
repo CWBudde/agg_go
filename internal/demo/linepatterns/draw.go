@@ -92,13 +92,31 @@ type lineOutlineImageAdapter struct {
 	ren *outline.RendererOutlineImage
 }
 
-func (a *lineOutlineImageAdapter) AccurateJoinOnly() bool                         { return a.ren.AccurateJoinOnly() }
-func (a *lineOutlineImageAdapter) Color(c color.RGBA8[color.Linear])              {}
-func (a *lineOutlineImageAdapter) Line0(lp primitives.LineParameters)             {}
-func (a *lineOutlineImageAdapter) Line1(lp primitives.LineParameters, sx, sy int) {}
-func (a *lineOutlineImageAdapter) Line2(lp primitives.LineParameters, ex, ey int) {}
-func (a *lineOutlineImageAdapter) Pie(x, y, x1, y1, x2, y2 int)                   {}
-func (a *lineOutlineImageAdapter) Semidot(cmp func(int) bool, x, y, x1, y1 int)   {}
+func (a *lineOutlineImageAdapter) AccurateJoinOnly() bool            { return a.ren.AccurateJoinOnly() }
+func (a *lineOutlineImageAdapter) Color(c color.RGBA8[color.Linear]) {}
+
+func lineNormals(lp primitives.LineParameters) (sx, sy, ex, ey int) {
+	sx = lp.X1 + (lp.Y2 - lp.Y1)
+	sy = lp.Y1 - (lp.X2 - lp.X1)
+	ex = lp.X2 + (lp.Y2 - lp.Y1)
+	ey = lp.Y2 - (lp.X2 - lp.X1)
+	return
+}
+
+func (a *lineOutlineImageAdapter) Line0(lp primitives.LineParameters) {
+	sx, sy, ex, ey := lineNormals(lp)
+	a.ren.Line3(&lp, sx, sy, ex, ey)
+}
+func (a *lineOutlineImageAdapter) Line1(lp primitives.LineParameters, sx, sy int) {
+	_, _, ex, ey := lineNormals(lp)
+	a.ren.Line3(&lp, sx, sy, ex, ey)
+}
+func (a *lineOutlineImageAdapter) Line2(lp primitives.LineParameters, ex, ey int) {
+	sx, sy, _, _ := lineNormals(lp)
+	a.ren.Line3(&lp, sx, sy, ex, ey)
+}
+func (a *lineOutlineImageAdapter) Pie(x, y, x1, y1, x2, y2 int)                 {}
+func (a *lineOutlineImageAdapter) Semidot(cmp func(int) bool, x, y, x1, y1 int) {}
 func (a *lineOutlineImageAdapter) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) {
 	a.ren.Line3(&lp, sx, sy, ex, ey)
 }

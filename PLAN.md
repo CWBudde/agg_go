@@ -373,9 +373,9 @@ idiomatic in Go.
 
 ### 9.5 Bug fixing
 
-- [ ] `line_thickness` (web): investigate framing/centering mismatch against standalone render
+- [x] `line_thickness` (web): investigate framing/centering mismatch against standalone render
       (`main_stub.go` reference output), then align canvas transform/placement to C++ intent.
-- [ ] `line_patterns` (web): fix empty output; verify pattern asset decode/load path and span
+- [x] `line_patterns` (web): fix empty output; verify pattern asset decode/load path and span
       generation setup in wasm; add a non-empty render check in demo benchmark/smoke path.
 - [ ] `line_patterns_clip` (web): fix empty output; verify clip-box/path and pattern source wiring;
       add non-empty render check.

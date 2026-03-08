@@ -79,6 +79,11 @@ func drawLineThicknessScene(ctx *agg.Context, factor, blurRadius float64, mono, 
 	a := ctx.GetAgg2D()
 	a.ResetTransformations()
 
+	// Keep AGG's original 640x480 framing centered in the web canvas.
+	const baseW, baseH = 640.0, 480.0
+	offX := (float64(ctx.GetImage().Width()) - baseW) * 0.5
+	offY := (float64(ctx.GetImage().Height()) - baseH) * 0.5
+
 	clr1 := agg.RGBA(1, 1, 1, 1)
 	clr2 := agg.RGBA(0, 0, 0, 1)
 	if !mono {
@@ -99,8 +104,8 @@ func drawLineThicknessScene(ctx *agg.Context, factor, blurRadius float64, mono, 
 	for i := 0; i < 20; i++ {
 		a.LineWidth(factor * 0.3 * float64(i+1))
 		a.ResetPath()
-		a.MoveTo(20+30*float64(i), 310)
-		a.LineTo(40+30*float64(i), 460)
+		a.MoveTo(offX+20+30*float64(i), offY+310)
+		a.LineTo(offX+40+30*float64(i), offY+460)
 		a.DrawPath(agg.StrokeOnly)
 	}
 
@@ -109,8 +114,8 @@ func drawLineThicknessScene(ctx *agg.Context, factor, blurRadius float64, mono, 
 		ang := float64(i) * math.Pi / 20.0
 		a.LineWidth(factor)
 		a.ResetPath()
-		a.MoveTo(320+20*math.Sin(ang), 180+20*math.Cos(ang))
-		a.LineTo(320+100*math.Sin(ang), 180+100*math.Cos(ang))
+		a.MoveTo(offX+320+20*math.Sin(ang), offY+180+20*math.Cos(ang))
+		a.LineTo(offX+320+100*math.Sin(ang), offY+180+100*math.Cos(ang))
 		a.DrawPath(agg.StrokeOnly)
 	}
 

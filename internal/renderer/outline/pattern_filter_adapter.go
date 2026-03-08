@@ -26,8 +26,10 @@ func (pfa *PatternFilterRGBAAdapter) Dilation() int {
 
 // PixelHighRes performs high-resolution pixel sampling with type conversion.
 func (pfa *PatternFilterRGBAAdapter) PixelHighRes(rows [][]color.RGBA, p *color.RGBA, x, y int) {
-	// Convert [][]color.RGBA to [][]color.RGBA8[Linear] for the filter
-	if len(rows) == 0 || y < 0 || y >= len(rows) {
+	// Convert [][]color.RGBA to [][]color.RGBA8[Linear] for the filter.
+	// Note: x/y are in high-resolution subpixel space; bounds checks must be
+	// done inside the underlying filter after coordinate normalization.
+	if len(rows) == 0 {
 		*p = color.NewRGBA(0, 0, 0, 0)
 		return
 	}
