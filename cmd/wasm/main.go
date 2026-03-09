@@ -95,6 +95,14 @@ func main() {
 	js.Global().Set("toggleTransCurve2Animate", js.FuncOf(toggleTransCurve2AnimateJS))
 	js.Global().Set("setBlurRadius", js.FuncOf(setBlurRadius))
 	js.Global().Set("setBlurMethod", js.FuncOf(setBlurMethod))
+	js.Global().Set("setBlendColorMethod", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		blendColorMethod = args[0].Int()
+		return nil
+	}))
+	js.Global().Set("setBlendColorRadius", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		blendColorRadius = args[0].Float()
+		return nil
+	}))
 	js.Global().Set("setCirclesSelectivity", js.FuncOf(setCirclesSelectivity))
 	js.Global().Set("setCirclesSize", js.FuncOf(setCirclesSize))
 	js.Global().Set("setCirclesZRange", js.FuncOf(setCirclesZRange))
@@ -666,6 +674,9 @@ func onMouseDown(this js.Value, args []js.Value) interface{} {
 	if demoType == "perspective" {
 		return handlePerspectiveMouseDown(x, y)
 	}
+	if demoType == "blend_color" {
+		return handleBlendColorMouseDown(x, y)
+	}
 	if demoType == "bezier_div" {
 		return handleBezierDivMouseDown(x, y)
 	}
@@ -805,6 +816,9 @@ func onMouseMove(this js.Value, args []js.Value) interface{} {
 	if demoType == "perspective" {
 		return handlePerspectiveMouseMove(x, y)
 	}
+	if demoType == "blend_color" {
+		return handleBlendColorMouseMove(x, y)
+	}
 	if demoType == "bezier_div" {
 		return handleBezierDivMouseMove(x, y)
 	}
@@ -927,6 +941,9 @@ func onMouseUp(this js.Value, args []js.Value) interface{} {
 	}
 	if demoType == "perspective" {
 		handlePerspectiveMouseUp()
+	}
+	if demoType == "blend_color" {
+		handleBlendColorMouseUp()
 	}
 	if demoType == "bezier_div" {
 		handleBezierDivMouseUp()
@@ -1521,6 +1538,8 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 		drawBlurDemo()
 	case "simple_blur":
 		drawSimpleBlurDemo()
+	case "blend_color":
+		drawBlendColorDemo()
 	case "alpha_mask":
 		drawAlphaMaskDemo()
 	case "alpha_mask2":
