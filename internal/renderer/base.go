@@ -571,13 +571,28 @@ type GraySource interface {
 }
 
 // blendFromColorCapable is checked via type assertion on the pixfmt.
+// NOTE: The src parameter uses an anonymous interface identical to GraySource
+// rather than the named GraySource type. This is necessary because the pixfmt
+// implementations declare their methods with an anonymous interface (to avoid
+// importing this package). Go type assertions require exact type identity in
+// method signatures, and a named interface is not the same type as a
+// structurally identical anonymous interface.
 type blendFromColorCapable[C any] interface {
-	BlendFromColor(src GraySource, c C, xdst, ydst, xsrc, ysrc, length int, cover basics.Int8u)
+	BlendFromColor(src interface {
+		RowData(y int) []basics.Int8u
+		Width() int
+		Height() int
+	}, c C, xdst, ydst, xsrc, ysrc, length int, cover basics.Int8u)
 }
 
 // blendFromLUTCapable is checked via type assertion on the pixfmt.
+// See blendFromColorCapable for why an anonymous interface is used here.
 type blendFromLUTCapable[C any] interface {
-	BlendFromLUT(src GraySource, colorLUT []C, xdst, ydst, xsrc, ysrc, length int, cover basics.Int8u)
+	BlendFromLUT(src interface {
+		RowData(y int) []basics.Int8u
+		Width() int
+		Height() int
+	}, colorLUT []C, xdst, ydst, xsrc, ysrc, length int, cover basics.Int8u)
 }
 
 // BlendFromColor blends from a grayscale source using a single color, where the

@@ -280,6 +280,7 @@ func Draw(ctx *agg.Context, cfg Config) Result {
 	outRbuf.Attach(outImg.Data, w, h, w*4)
 	outPixFmt := pixfmt.NewPixFmtRGBA32PreLinear(outRbuf)
 	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32Pre[color.Linear], color.RGBA8[color.Linear]](outPixFmt)
+	renBase.Clear(color.RGBA8[color.Linear]{R: 255, G: 242, B: 242, A: 255})
 
 	// Create gray8 buffer for shadow rendering.
 	grayBuf := make([]basics.Int8u, w*h)
@@ -338,10 +339,19 @@ func Draw(ctx *agg.Context, cfg Config) Result {
 		}
 
 		// Blend the shadow onto the main RGBA canvas.
+		// The shadow is rendered at correct canvas coordinates in the full gray8
+		// buffer, so we use dx=0, dy=0 with a srcRect limiting the source to the
+		// bbox region. (The C++ version uses a sub-view pixfmt attached to bbox,
+		// then passes dx=bbox.X1, dy=bbox.Y1. We achieve the same effect with
+		// a source rect and zero offset.)
+		srcRect := &basics.RectI{
+			X1: int(bbox.X1), Y1: int(bbox.Y1),
+			X2: int(bbox.X2), Y2: int(bbox.Y2),
+		}
 		if cfg.Method == 0 {
 			// Single color method: green shadow.
 			greenColor := color.RGBA8[color.Linear]{R: 0, G: 100, B: 0, A: 255}
-			renBase.BlendFromColor(grayPixFmt, greenColor, nil, int(bbox.X1), int(bbox.Y1), 255)
+			renBase.BlendFromColor(grayPixFmt, greenColor, srcRect, 0, 0, 255)
 		} else {
 			// Color LUT method: gradient shadow.
 			colorLUT := buildColorLUT()
@@ -350,12 +360,13 @@ func Draw(ctx *agg.Context, cfg Config) Result {
 			for i, c := range colorLUT {
 				linearLUT[i] = color.RGBA8[color.Linear]{R: c.R, G: c.G, B: c.B, A: c.A}
 			}
-			renBase.BlendFromLUT(grayPixFmt, linearLUT, nil, int(bbox.X1), int(bbox.Y1), 255)
+			renBase.BlendFromLUT(grayPixFmt, linearLUT, srcRect, 0, 0, 255)
 		}
 	}
 
 	// Render timing text using GsvText + ConvStroke.
 	t := gsv.NewGSVText()
+	t.SetFlip(true) // Our canvas is Y-down; GsvText font data is Y-up.
 	t.SetSize(10.0, 0)
 	t.SetStartPoint(140.0, 30.0)
 	t.SetText(fmt.Sprintf("Blend Color Demo (radius=%.1f)", cfg.Radius))

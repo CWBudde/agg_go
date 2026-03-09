@@ -373,7 +373,13 @@ func (m *blendPixFmt) Clear(c testColor) {
 func (m *blendPixFmt) Fill(c testColor) { m.Clear(c) }
 
 // BlendFromColor scales the color's alpha by the gray source value and writes it.
-func (m *blendPixFmt) BlendFromColor(src GraySource, c testColor, xdst, ydst, xsrc, ysrc, length int, cover basics.Int8u) {
+// NOTE: The src parameter uses an anonymous interface (not the named GraySource type)
+// to match the blendFromColorCapable constraint used by RendererBase type assertions.
+func (m *blendPixFmt) BlendFromColor(src interface {
+	RowData(y int) []basics.Int8u
+	Width() int
+	Height() int
+}, c testColor, xdst, ydst, xsrc, ysrc, length int, cover basics.Int8u) {
 	row := src.RowData(ysrc)
 	if row == nil {
 		return
@@ -392,7 +398,13 @@ func (m *blendPixFmt) BlendFromColor(src GraySource, c testColor, xdst, ydst, xs
 }
 
 // BlendFromLUT uses the gray source value as an index into colorLUT.
-func (m *blendPixFmt) BlendFromLUT(src GraySource, colorLUT []testColor, xdst, ydst, xsrc, ysrc, length int, cover basics.Int8u) {
+// NOTE: The src parameter uses an anonymous interface (not the named GraySource type)
+// to match the blendFromLUTCapable constraint used by RendererBase type assertions.
+func (m *blendPixFmt) BlendFromLUT(src interface {
+	RowData(y int) []basics.Int8u
+	Width() int
+	Height() int
+}, colorLUT []testColor, xdst, ydst, xsrc, ysrc, length int, cover basics.Int8u) {
 	row := src.RowData(ysrc)
 	if row == nil {
 		return
