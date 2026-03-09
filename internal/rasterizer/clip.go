@@ -184,25 +184,37 @@ func (r *Rect[C]) Normalize() {
 	}
 }
 
-// Clipping flags (like AGG)
+// Clipping flags — bit layout must match C++ AGG exactly so that the
+// switch expression ((f1 & (ClpX1|ClpX2)) << 1) | (f2 & (ClpX1|ClpX2))
+// produces non-overlapping bits for the 4 independent X-flag combinations.
+//
+// C++ AGG layout (agg_rasterizer_sl_clip.h → clipping_flags):
+//
+//	bit 0 (1): x > clip.x2
+//	bit 1 (2): y > clip.y2
+//	bit 2 (4): x < clip.x1
+//	bit 3 (8): y < clip.y1
+//
+// X-flag mask = ClpX2|ClpX1 = 1|4 = 5 (bits {0,2}), shifted <<1 → bits {1,3}.
+// No overlap with f2's bits {0,2}.
 const (
-	ClpX1 = 1
-	ClpX2 = 2
-	ClpY1 = 4
-	ClpY2 = 8
+	ClpX2 = 1 // x > clip.x2  (bit 0)
+	ClpY2 = 2 // y > clip.y2  (bit 1)
+	ClpX1 = 4 // x < clip.x1  (bit 2)
+	ClpY1 = 8 // y < clip.y1  (bit 3)
 )
 
 func clippingFlags[C basics.CoordType](x, y C, rc Rect[C]) uint {
 	var f uint
-	if x < rc.X1 {
-		f |= ClpX1
-	} else if x > rc.X2 {
+	if x > rc.X2 {
 		f |= ClpX2
+	} else if x < rc.X1 {
+		f |= ClpX1
 	}
-	if y < rc.Y1 {
-		f |= ClpY1
-	} else if y > rc.Y2 {
+	if y > rc.Y2 {
 		f |= ClpY2
+	} else if y < rc.Y1 {
+		f |= ClpY1
 	}
 	return f
 }
