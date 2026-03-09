@@ -94,6 +94,7 @@
           <option value="image_fltr_graph">Image Filter Graph</option>
           <option value="blur">Gaussian &amp; Stack Blur</option>
           <option value="simple_blur">Simple 3×3 Blur</option>
+          <option value="blend_color">Blend Color (Shadow)</option>
           <option value="rasterizers">Aliased vs AA Rasterizer</option>
           <option value="flash_rasterizer">Flash (Compound) Rasterizer</option>
           <option value="flash_rasterizer2">
@@ -640,6 +641,28 @@
         <option value="0">Stack Blur (Fast)</option>
         <option value="1">Recursive Blur (High Quality)</option>
       </select>
+    </div>
+
+    <div class="controls" id="blendColorControls" style="display: none">
+      <label>Method:</label>
+      <select
+        id="blendColorMethod"
+        onchange="setBlendColorMethod(parseInt(this.value)); renderCurrentDemo()"
+      >
+        <option value="0">Single Color</option>
+        <option value="1" selected>Color LUT</option>
+      </select>
+      <label>Blur Radius:</label>
+      <input
+        type="range"
+        id="blendColorRadius"
+        min="0"
+        max="40"
+        step="0.5"
+        value="15"
+        oninput="setBlendColorRadius(parseFloat(this.value)); renderCurrentDemo(); document.getElementById('blendColorRadiusValue').textContent = parseFloat(this.value).toFixed(1)"
+      />
+      <span id="blendColorRadiusValue">15.0</span>
     </div>
 
     <div class="controls" id="circlesControls" style="display: none">

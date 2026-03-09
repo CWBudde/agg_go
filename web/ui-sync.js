@@ -75,6 +75,8 @@ export function syncControlVisibility(demoType) {
     demoType === "gradients_contour" ? "flex" : "none";
   document.getElementById("flashRasterizer2Controls").style.display =
     demoType === "flash_rasterizer2" ? "flex" : "none";
+  document.getElementById("blendColorControls").style.display =
+    demoType === "blend_color" ? "flex" : "none";
 }
 
 export const demoDescriptions = {
@@ -167,6 +169,8 @@ export const demoDescriptions = {
   blur: "Gaussian and Stack blur demonstration. Renders a complex path with a shadow and applies recursive or stack blur to the entire canvas. Use the controls to adjust radius and method.",
   simple_blur:
     "Simple 3x3 box blur. Renders the classic lion and then applies a simple box blur inside a draggable elliptical region. Click and drag to move the blurred area.",
+  blend_color:
+    "Blend color (shadow) demo. Renders shapes with colored shadow effects using stack blur and color blending. Choose between single-color and color-LUT methods; adjust the blur radius to control shadow softness.",
   alpha_mask:
     "Alpha masking showcase. Port of AGG's alpha_mask demo. Renders the classic lion vector art through a dynamic alpha mask generated from overlapping random ellipses. Demonstrates the PixFmtAMaskAdaptor's ability to apply transparency patterns to any rendering operation.",
   alpha_mask2:
