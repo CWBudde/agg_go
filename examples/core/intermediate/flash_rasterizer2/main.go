@@ -15,7 +15,7 @@ import (
 	"math/rand"
 	"time"
 
-	agg "agg_go"
+	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
@@ -285,10 +285,10 @@ func (v *flatVertexSource) Vertex(x, y *float64) uint32 {
 	return fv.Cmd
 }
 
-// invertedFlatVS iterates FlatVertex slices with polygon winding inverted,
-// matching C++ path_storage::invert_polygon exactly:
-// commands shifted left by one, original MoveTo goes to last, coordinates reversed.
-// Result: LineTo(pN), LineTo(pN-1), …, LineTo(p1), MoveTo(p0).
+// invertedFlatVS iterates FlatVertex slices with polygon winding inverted.
+// Mirrors C++ path_storage::invert_polygon: shift commands left, then
+// reverse all vertices (coordinates AND commands together).
+// Result: MoveTo(pN), LineTo(pN-1), …, LineTo(p1), LineTo(p0).
 type invertedFlatVS struct {
 	verts []shapesdata.FlatVertex
 	pos   int
@@ -303,12 +303,14 @@ func (v *invertedFlatVS) Vertex(x, y *float64) uint32 {
 	fv := v.verts[n-1-v.pos]
 	*x, *y = fv.X, fv.Y
 
-	// Shifted command: cmd[pos] = original_cmd[pos+1], last gets original_cmd[0].
+	// After shift-left then full reversal:
+	//   pos 0   → original cmd[0] (MoveTo)
+	//   pos i>0 → original cmd[n-i]
 	var cmd uint32
-	if v.pos < n-1 {
-		cmd = v.verts[v.pos+1].Cmd
+	if v.pos == 0 {
+		cmd = v.verts[0].Cmd
 	} else {
-		cmd = v.verts[0].Cmd // MoveTo
+		cmd = v.verts[n-v.pos].Cmd
 	}
 	v.pos++
 	return cmd

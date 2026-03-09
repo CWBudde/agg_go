@@ -1,7 +1,7 @@
 package main
 
 import (
-	agg "agg_go"
+	agg "github.com/MeKo-Christian/agg_go"
 )
 
 // Port of AGG C++ image_resample.cpp.

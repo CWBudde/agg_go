@@ -17,7 +17,7 @@ import (
 	"math/rand"
 	"time"
 
-	agg "agg_go"
+	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
@@ -315,15 +315,16 @@ func (v *flatVertexSource) Vertex(x, y *float64) uint32 {
 // invertedFlatVS iterates FlatVertex slices with polygon winding inverted.
 // This mirrors C++ path_storage::invert_polygon exactly:
 //
-//  1. Commands are shifted left by one position.
-//  2. The original first command (MoveTo) moves to the last position.
-//  3. Coordinates are reversed.
+//  1. Commands are shifted left by one position (cmd[0] saved, cmd[i] = cmd[i+1],
+//     cmd[n-1] = saved).
+//  2. Then ALL vertices are reversed (coordinates AND commands together).
 //
-// Result: LineTo(pN), LineTo(pN-1), …, LineTo(p1), MoveTo(p0).
+// Result: MoveTo(pN), LineTo(pN-1), …, LineTo(p1), LineTo(p0).
 //
-// The first vertex being LineTo (not MoveTo) is intentional — with auto_close(false),
-// it draws a stitching edge from the previous sub-path's endpoint, which is how the
-// C++ flash_rasterizer2 demo achieves proper compound-shape fill stitching.
+// The output position i has:
+//   - Coordinates from original position n-1-i (reversed)
+//   - Command: for i=0 the original first command (MoveTo);
+//     for i>0 the command from original position n-i (after shift+reverse).
 type invertedFlatVS struct {
 	verts []shapesdata.FlatVertex
 	pos   int
@@ -339,14 +340,14 @@ func (v *invertedFlatVS) Vertex(x, y *float64) uint32 {
 	fv := v.verts[n-1-v.pos]
 	*x, *y = fv.X, fv.Y
 
-	// Shifted command: cmd[pos] = original_cmd[pos+1], except last gets original_cmd[0].
-	// Since flat verts are [MoveTo, LineTo, …, LineTo], this yields
-	// [LineTo, LineTo, …, LineTo, MoveTo].
+	// After shift-left then full reversal:
+	//   pos 0   → original cmd[0] (MoveTo)
+	//   pos i>0 → original cmd[n-i]
 	var cmd uint32
-	if v.pos < n-1 {
-		cmd = v.verts[v.pos+1].Cmd
+	if v.pos == 0 {
+		cmd = v.verts[0].Cmd // Original first command (MoveTo)
 	} else {
-		cmd = v.verts[0].Cmd // MoveTo
+		cmd = v.verts[n-v.pos].Cmd
 	}
 	v.pos++
 	return cmd

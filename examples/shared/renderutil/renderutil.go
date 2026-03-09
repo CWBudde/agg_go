@@ -1,6 +1,6 @@
 package renderutil
 
-import agg "agg_go"
+import agg "github.com/MeKo-Christian/agg_go"
 
 // SavePNG persists an AGG image as a PNG file.
 func SavePNG(img *agg.Image, filename string) error {

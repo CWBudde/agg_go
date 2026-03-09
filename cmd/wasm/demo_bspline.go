@@ -4,7 +4,7 @@ package main
 import (
 	"math"
 
-	agg "agg_go"
+	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/conv"
 	"github.com/MeKo-Christian/agg_go/internal/ctrl/polygon"

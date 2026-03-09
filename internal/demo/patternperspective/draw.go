@@ -1,7 +1,7 @@
 package patternperspective
 
 import (
-	agg "agg_go"
+	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/internal/demo/imageassets"
 	"github.com/MeKo-Christian/agg_go/internal/demo/quadwarp"
 	imgacc "github.com/MeKo-Christian/agg_go/internal/image"

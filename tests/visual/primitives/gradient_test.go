@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	agg "agg_go"
+	agg "github.com/MeKo-Christian/agg_go"
 )
 
 // TestGradients runs visual tests for gradient rendering.

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	agg "agg_go"
+	agg "github.com/MeKo-Christian/agg_go"
 )
 
 var (

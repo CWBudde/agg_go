@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	agg "agg_go"
+	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/tests/visual/framework"
 )
 

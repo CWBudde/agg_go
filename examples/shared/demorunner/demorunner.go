@@ -10,7 +10,7 @@
 // type assertions, so static demos only need to implement Render.
 package demorunner
 
-import agg "agg_go"
+import agg "github.com/MeKo-Christian/agg_go"
 
 // Config holds the configuration for a demo window / PNG output.
 type Config struct {

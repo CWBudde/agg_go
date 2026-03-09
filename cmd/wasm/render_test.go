@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	agg "agg_go"
+	agg "github.com/MeKo-Christian/agg_go"
 )
 
 func BenchmarkDemos(b *testing.B) {

@@ -9,7 +9,7 @@ package main
 import (
 	"math"
 
-	agg "agg_go"
+	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
 )
 

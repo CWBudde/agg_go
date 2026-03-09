@@ -5,7 +5,7 @@ package main
 import (
 	"fmt"
 
-	"agg_go"
+	"github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
 )
 

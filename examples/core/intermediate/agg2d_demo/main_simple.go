@@ -10,7 +10,7 @@ import (
 	"image/png"
 	"os"
 
-	agg "agg_go"
+	agg "github.com/MeKo-Christian/agg_go"
 )
 
 // createImageFromFile creates a test image (since we don't have spheres.bmp)

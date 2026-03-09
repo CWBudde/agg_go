@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"syscall/js"
 
-	agg "agg_go"
+	agg "github.com/MeKo-Christian/agg_go"
 )
 
 var (

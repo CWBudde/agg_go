@@ -8,7 +8,7 @@ package main
 import (
 	"math"
 
-	agg "agg_go"
+	agg "github.com/MeKo-Christian/agg_go"
 )
 
 // c8 is a shorthand for NewColor with uint8 components (0-255).

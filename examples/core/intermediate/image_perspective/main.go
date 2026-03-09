@@ -5,7 +5,7 @@ import (
 	"flag"
 	"math"
 
-	agg "agg_go"
+	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
 	"github.com/MeKo-Christian/agg_go/internal/demo/imageperspective"
 )

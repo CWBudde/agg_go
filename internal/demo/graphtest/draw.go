@@ -4,7 +4,7 @@ import (
 	"math"
 	"math/rand"
 
-	agg "agg_go"
+	agg "github.com/MeKo-Christian/agg_go"
 )
 
 type Config struct {
