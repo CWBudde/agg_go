@@ -1,6 +1,8 @@
 package pixfmt
 
 import (
+	"unsafe"
+
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
@@ -61,6 +63,18 @@ func (pf *PixFmtAlphaBlendGray[CS, B]) PixPtr(x, y int) *basics.Int8u {
 		return &row[x]
 	}
 	return nil
+}
+
+// NextPixPtr returns a pointer to the next pixel in memory (1 byte forward).
+// This is used by StackBlurGray8 for efficient sequential pixel traversal.
+func (pf *PixFmtAlphaBlendGray[CS, B]) NextPixPtr(ptr *basics.Int8u) *basics.Int8u {
+	return (*basics.Int8u)(unsafe.Add(unsafe.Pointer(ptr), 1))
+}
+
+// PixPtrOffset returns a pointer offset by the given number of bytes from ptr.
+// This is used by StackBlurGray8 for vertical traversal (offset = stride).
+func (pf *PixFmtAlphaBlendGray[CS, B]) PixPtrOffset(ptr *basics.Int8u, offset int) *basics.Int8u {
+	return (*basics.Int8u)(unsafe.Add(unsafe.Pointer(ptr), offset))
 }
 
 // MakePix creates a pixel value from grayscale components

@@ -6,7 +6,52 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/effects"
 )
+
+// Compile-time check that *PixFmtGray8 satisfies effects.GrayImageInterface.
+var _ effects.GrayImageInterface = (*PixFmtGray8)(nil)
+
+func TestPixFmtGray8_SatisfiesGrayImageInterface(t *testing.T) {
+	width, height := 8, 4
+	buf := make([]basics.Int8u, width*height)
+	for i := range buf {
+		buf[i] = basics.Int8u(i)
+	}
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, width, height, width)
+	pf := NewPixFmtGray8(rbuf)
+
+	// Test NextPixPtr: walk forward from (0,0) and verify sequential values
+	ptr := pf.PixPtr(0, 0)
+	if *ptr != 0 {
+		t.Fatalf("PixPtr(0,0) expected 0, got %d", *ptr)
+	}
+	for i := 1; i < width; i++ {
+		ptr = pf.NextPixPtr(ptr)
+		if *ptr != basics.Int8u(i) {
+			t.Fatalf("NextPixPtr step %d: expected %d, got %d", i, i, *ptr)
+		}
+	}
+
+	// Test PixPtrOffset: jump by stride (vertical traversal)
+	stride := pf.Stride()
+	ptr = pf.PixPtr(2, 0)
+	if *ptr != 2 {
+		t.Fatalf("PixPtr(2,0) expected 2, got %d", *ptr)
+	}
+	ptr = pf.PixPtrOffset(ptr, stride)
+	// After one stride jump from (2,0) we should be at (2,1) = index 10
+	expected := basics.Int8u(2 + width)
+	if *ptr != expected {
+		t.Fatalf("PixPtrOffset by stride: expected %d, got %d", expected, *ptr)
+	}
+
+	// Test negative offset (go back one row)
+	ptr = pf.PixPtrOffset(ptr, -stride)
+	if *ptr != 2 {
+		t.Fatalf("PixPtrOffset by -stride: expected 2, got %d", *ptr)
+	}
+}
 
 func TestGrayPixelType(t *testing.T) {
 	p := &GrayPixelType{}
