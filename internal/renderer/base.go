@@ -563,6 +563,127 @@ func (r *RendererBase[PF, C]) CopyFrom(src PixelFormat[C], rectSrcPtr *basics.Re
 	}
 }
 
+// GraySource is a grayscale image used as coverage source in BlendFromColor/BlendFromLUT.
+type GraySource interface {
+	RowData(y int) []basics.Int8u
+	Width() int
+	Height() int
+}
+
+// blendFromColorCapable is checked via type assertion on the pixfmt.
+type blendFromColorCapable[C any] interface {
+	BlendFromColor(src GraySource, c C, xdst, ydst, xsrc, ysrc, length int, cover basics.Int8u)
+}
+
+// blendFromLUTCapable is checked via type assertion on the pixfmt.
+type blendFromLUTCapable[C any] interface {
+	BlendFromLUT(src GraySource, colorLUT []C, xdst, ydst, xsrc, ysrc, length int, cover basics.Int8u)
+}
+
+// BlendFromColor blends from a grayscale source using a single color, where the
+// gray values modulate the coverage. The pixfmt must support BlendFromColor via
+// type assertion; otherwise this is a no-op.
+func (r *RendererBase[PF, C]) BlendFromColor(src GraySource, c C, rectSrcPtr *basics.RectI, dx, dy int, cover basics.Int8u) {
+	pf, ok := any(r.pixfmt).(blendFromColorCapable[C])
+	if !ok {
+		return
+	}
+
+	wsrc, hsrc := src.Width(), src.Height()
+	if wsrc <= 0 || hsrc <= 0 || r.Width() <= 0 || r.Height() <= 0 {
+		return
+	}
+
+	var srcRect basics.RectI
+	if rectSrcPtr == nil {
+		srcRect = basics.RectI{X1: 0, Y1: 0, X2: wsrc - 1, Y2: hsrc - 1}
+	} else {
+		srcRect = *rectSrcPtr
+	}
+
+	dstRect := basics.RectI{
+		X1: srcRect.X1 + dx,
+		Y1: srcRect.Y1 + dy,
+		X2: dx + (srcRect.X2 - srcRect.X1),
+		Y2: dy + (srcRect.Y2 - srcRect.Y1),
+	}
+	dstRect.X2 += srcRect.X1
+	dstRect.Y2 += srcRect.Y1
+
+	rc := r.ClipRectArea(&dstRect, &srcRect, wsrc, hsrc)
+	if rc.X2 <= 0 || rc.Y2 <= 0 {
+		return
+	}
+
+	incy := 1
+	if dstRect.Y1 > srcRect.Y1 {
+		srcRect.Y1 += rc.Y2 - 1
+		dstRect.Y1 += rc.Y2 - 1
+		incy = -1
+	}
+	for rc.Y2 > 0 {
+		rw := src.RowData(srcRect.Y1)
+		if rw != nil {
+			pf.BlendFromColor(src, c, dstRect.X1, dstRect.Y1, srcRect.X1, srcRect.Y1, rc.X2, cover)
+		}
+		dstRect.Y1 += incy
+		srcRect.Y1 += incy
+		rc.Y2--
+	}
+}
+
+// BlendFromLUT blends from a grayscale source using a color lookup table, where
+// the gray values index into the LUT. The pixfmt must support BlendFromLUT via
+// type assertion; otherwise this is a no-op.
+func (r *RendererBase[PF, C]) BlendFromLUT(src GraySource, colorLUT []C, rectSrcPtr *basics.RectI, dx, dy int, cover basics.Int8u) {
+	pf, ok := any(r.pixfmt).(blendFromLUTCapable[C])
+	if !ok {
+		return
+	}
+
+	wsrc, hsrc := src.Width(), src.Height()
+	if wsrc <= 0 || hsrc <= 0 || r.Width() <= 0 || r.Height() <= 0 {
+		return
+	}
+
+	var srcRect basics.RectI
+	if rectSrcPtr == nil {
+		srcRect = basics.RectI{X1: 0, Y1: 0, X2: wsrc - 1, Y2: hsrc - 1}
+	} else {
+		srcRect = *rectSrcPtr
+	}
+
+	dstRect := basics.RectI{
+		X1: srcRect.X1 + dx,
+		Y1: srcRect.Y1 + dy,
+		X2: dx + (srcRect.X2 - srcRect.X1),
+		Y2: dy + (srcRect.Y2 - srcRect.Y1),
+	}
+	dstRect.X2 += srcRect.X1
+	dstRect.Y2 += srcRect.Y1
+
+	rc := r.ClipRectArea(&dstRect, &srcRect, wsrc, hsrc)
+	if rc.X2 <= 0 || rc.Y2 <= 0 {
+		return
+	}
+
+	incy := 1
+	if dstRect.Y1 > srcRect.Y1 {
+		srcRect.Y1 += rc.Y2 - 1
+		dstRect.Y1 += rc.Y2 - 1
+		incy = -1
+	}
+	for rc.Y2 > 0 {
+		rw := src.RowData(srcRect.Y1)
+		if rw != nil {
+			pf.BlendFromLUT(src, colorLUT, dstRect.X1, dstRect.Y1, srcRect.X1, srcRect.Y1, rc.X2, cover)
+		}
+		dstRect.Y1 += incy
+		srcRect.Y1 += incy
+		rc.Y2--
+	}
+}
+
 // BlendFrom blends from another typed pixel format into this renderer with uniform coverage.
 func (r *RendererBase[PF, C]) BlendFrom(src PixelFormat[C], rectSrcPtr *basics.RectI, dx, dy int, cover basics.Int8u) {
 	wsrc, hsrc := src.Width(), src.Height()
