@@ -1,6 +1,6 @@
 package array
 
-import "agg_go/internal/basics"
+import "github.com/MeKo-Christian/agg_go/internal/basics"
 
 // PodBVectorConsumer adapts PodBVector to implement VertexConsumer
 type PodBVectorConsumer struct {

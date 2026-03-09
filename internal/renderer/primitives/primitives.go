@@ -4,8 +4,8 @@
 package primitives
 
 import (
-	"agg_go/internal/basics"
-	"agg_go/internal/primitives"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/primitives"
 )
 
 // BaseRenderer defines the interface that a base renderer must implement

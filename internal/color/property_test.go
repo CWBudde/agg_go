@@ -7,7 +7,7 @@ import (
 	"testing"
 	"testing/quick"
 
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // unitFloat is a float64 in [0, 1] used to test color conversion functions

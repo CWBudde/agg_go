@@ -12,7 +12,7 @@ import (
 	"math"
 
 	agg "agg_go"
-	"agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
 )
 
 // drawStrokeDemo draws the conv_stroke demo for a single join/cap combination

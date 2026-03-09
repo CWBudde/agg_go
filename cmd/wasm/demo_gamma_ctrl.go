@@ -3,7 +3,7 @@ package main
 
 import (
 	agg "agg_go"
-	"agg_go/internal/ctrl/gamma"
+	"github.com/MeKo-Christian/agg_go/internal/ctrl/gamma"
 )
 
 var gammaControl *gamma.GammaCtrl

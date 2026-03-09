@@ -4,9 +4,9 @@
 package renderer
 
 import (
-	"agg_go/internal/basics"
-	aggcolor "agg_go/internal/color"
-	scanline_renderer "agg_go/internal/renderer/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	aggcolor "github.com/MeKo-Christian/agg_go/internal/color"
+	scanline_renderer "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
 )
 
 // BaseRendererTWithCopyBar defines the minimal typed base renderer surface

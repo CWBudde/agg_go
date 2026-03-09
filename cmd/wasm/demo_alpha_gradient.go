@@ -18,12 +18,12 @@ import (
 	"math/rand"
 
 	agg "agg_go"
-	"agg_go/internal/basics"
-	"agg_go/internal/color"
-	ctrlspline "agg_go/internal/ctrl/spline"
-	"agg_go/internal/shapes"
-	"agg_go/internal/span"
-	"agg_go/internal/transform"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/color"
+	ctrlspline "github.com/MeKo-Christian/agg_go/internal/ctrl/spline"
+	"github.com/MeKo-Christian/agg_go/internal/shapes"
+	"github.com/MeKo-Christian/agg_go/internal/span"
+	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
 
 // --- State ---

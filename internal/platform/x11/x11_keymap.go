@@ -6,7 +6,7 @@ package x11
 import "C"
 
 import (
-	"agg_go/internal/platform/types"
+	"github.com/MeKo-Christian/agg_go/internal/platform/types"
 )
 
 // initKeymap initializes the X11 key symbol to AGG key code mapping

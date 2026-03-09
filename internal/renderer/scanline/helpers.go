@@ -2,8 +2,8 @@
 package scanline
 
 import (
-	"agg_go/internal/basics"
-	"agg_go/internal/rasterizer"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
 )
 
 // RenderScanlines is a generic scanline rendering function that works with any renderer.

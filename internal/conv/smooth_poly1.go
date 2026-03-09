@@ -1,9 +1,9 @@
 package conv
 
 import (
-	"agg_go/internal/basics"
-	"agg_go/internal/curves"
-	"agg_go/internal/vcgen"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/curves"
+	"github.com/MeKo-Christian/agg_go/internal/vcgen"
 )
 
 // ConvSmoothPoly1 converts polygon vertices to smooth corners using cubic Bezier curves

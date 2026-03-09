@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	"agg_go/internal/basics"
-	"agg_go/internal/path"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/path"
 )
 
 // Example demonstrating how to use ConvGPC for polygon boolean operations

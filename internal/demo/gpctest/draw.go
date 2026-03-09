@@ -4,7 +4,7 @@ import (
 	"math"
 
 	agg "agg_go"
-	"agg_go/internal/demo/scanlineboolean2"
+	"github.com/MeKo-Christian/agg_go/internal/demo/scanlineboolean2"
 )
 
 type Config struct {

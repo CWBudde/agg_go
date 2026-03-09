@@ -7,7 +7,7 @@ import (
 	"math"
 	"time"
 
-	"agg_go/internal/platform"
+	"github.com/MeKo-Christian/agg_go/internal/platform"
 )
 
 // shape represents a single animated drawable shape.

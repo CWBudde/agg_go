@@ -3,8 +3,8 @@
 package span
 
 import (
-	"agg_go/internal/basics"
-	"agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/color"
 )
 
 // RGBASourceInterface defines the interface for RGBA image sources used in pattern spans.

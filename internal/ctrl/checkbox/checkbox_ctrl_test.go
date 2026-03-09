@@ -3,8 +3,8 @@ package checkbox
 import (
 	"testing"
 
-	"agg_go/internal/basics"
-	"agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/color"
 )
 
 func TestNewDefaultCheckboxCtrl(t *testing.T) {

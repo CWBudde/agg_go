@@ -5,7 +5,7 @@ package conv
 import (
 	"encoding/binary"
 
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // Standard RGB8 conversion functors

@@ -5,7 +5,7 @@ package agg2d
 import (
 	"math"
 
-	"agg_go/internal/transform"
+	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
 
 func buildProfileGradient(dst *[256]Color, c1, c2 Color, startGradient, endGradient int) {

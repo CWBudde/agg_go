@@ -3,8 +3,8 @@
 package span
 
 import (
-	"agg_go/internal/color"
-	"agg_go/internal/primitives"
+	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/primitives"
 )
 
 // PatternFilterNN implements nearest neighbor pattern filtering.

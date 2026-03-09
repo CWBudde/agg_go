@@ -3,7 +3,7 @@
 package agg
 
 import (
-	"agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/color"
 )
 
 // Color represents an SRGBA8 color (0-255 range) matching AGG's srgba8.

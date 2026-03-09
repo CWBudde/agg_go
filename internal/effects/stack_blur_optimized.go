@@ -1,8 +1,8 @@
 package effects
 
 import (
-	"agg_go/internal/basics"
-	"agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/color"
 )
 
 // StackBlurGray8 applies stack blur to 8-bit grayscale images.

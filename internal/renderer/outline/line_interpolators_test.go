@@ -5,7 +5,7 @@ package outline
 import (
 	"testing"
 
-	"agg_go/internal/primitives"
+	"github.com/MeKo-Christian/agg_go/internal/primitives"
 )
 
 // TestLineInterpolatorAABaseComprehensive tests the base functionality.

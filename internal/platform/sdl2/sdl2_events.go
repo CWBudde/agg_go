@@ -1,7 +1,7 @@
 package sdl2
 
 import (
-	"agg_go/internal/platform/types"
+	"github.com/MeKo-Christian/agg_go/internal/platform/types"
 	"github.com/veandco/go-sdl2/sdl"
 )
 

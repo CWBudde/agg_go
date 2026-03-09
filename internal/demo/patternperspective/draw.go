@@ -2,9 +2,9 @@ package patternperspective
 
 import (
 	agg "agg_go"
-	"agg_go/internal/demo/imageassets"
-	"agg_go/internal/demo/quadwarp"
-	imgacc "agg_go/internal/image"
+	"github.com/MeKo-Christian/agg_go/internal/demo/imageassets"
+	"github.com/MeKo-Christian/agg_go/internal/demo/quadwarp"
+	imgacc "github.com/MeKo-Christian/agg_go/internal/image"
 )
 
 type Config struct {

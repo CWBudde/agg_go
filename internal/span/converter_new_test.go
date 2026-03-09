@@ -3,7 +3,7 @@ package span
 import (
 	"testing"
 
-	"agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/color"
 )
 
 // TestColorForSpan is a simple color type for testing span converters

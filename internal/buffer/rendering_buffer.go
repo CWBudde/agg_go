@@ -5,7 +5,7 @@ package buffer
 import (
 	"unsafe"
 
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // RenderingBuffer provides access to a pixel buffer with configurable stride.

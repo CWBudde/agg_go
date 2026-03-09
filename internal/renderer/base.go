@@ -2,7 +2,7 @@
 package renderer
 
 import (
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // PixelFormat defines the required methods for a pixel format that can be

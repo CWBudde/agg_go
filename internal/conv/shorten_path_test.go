@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // TestVertexSource implements a simple vertex source for testing

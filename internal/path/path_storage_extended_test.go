@@ -3,7 +3,7 @@ package path
 import (
 	"testing"
 
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // Tests for STL-based vertex storage

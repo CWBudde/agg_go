@@ -7,8 +7,8 @@ package freetype2
 import (
 	"fmt"
 
-	"agg_go/internal/fonts"
-	"agg_go/internal/path"
+	"github.com/MeKo-Christian/agg_go/internal/fonts"
+	"github.com/MeKo-Christian/agg_go/internal/path"
 )
 
 // CacheManager2 integrates the FreeType2 engine with the separate fman cache path.

@@ -8,8 +8,8 @@ import (
 	"image/color"
 
 	agg "agg_go"
-	"agg_go/examples/shared/demorunner"
-	"agg_go/internal/ctrl/gamma"
+	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/internal/ctrl/gamma"
 )
 
 // createSampleImage creates a test image with gradients for gamma correction demonstration.

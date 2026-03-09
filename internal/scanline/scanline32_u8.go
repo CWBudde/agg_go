@@ -4,7 +4,7 @@
 package scanline
 
 import (
-	"agg_go/internal/array"
+	"github.com/MeKo-Christian/agg_go/internal/array"
 )
 
 // Span32U8 represents a horizontal span of pixels with 32-bit coordinates.

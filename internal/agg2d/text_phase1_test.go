@@ -3,9 +3,9 @@ package agg2d
 import (
 	"testing"
 
-	"agg_go/internal/basics"
-	"agg_go/internal/font"
-	"agg_go/internal/path"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/font"
+	"github.com/MeKo-Christian/agg_go/internal/path"
 )
 
 func alphaBounds(buf []byte, width, height int) (minX, minY, maxX, maxY int, ok bool) {

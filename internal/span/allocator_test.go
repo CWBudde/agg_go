@@ -3,8 +3,8 @@ package span
 import (
 	"testing"
 
-	"agg_go/internal/color"
-	"agg_go/internal/renderer/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
 )
 
 // Compile-time verification that SpanAllocator implements SpanAllocatorInterface

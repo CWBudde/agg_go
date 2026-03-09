@@ -4,8 +4,8 @@ package font
 import (
 	"unsafe"
 
-	"agg_go/internal/basics"
-	"agg_go/internal/path"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/path"
 )
 
 // Block allocator parameters, matching C++ implementation.

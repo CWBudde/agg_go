@@ -3,8 +3,8 @@
 package agg
 
 import (
-	"agg_go/internal/basics"
-	"agg_go/internal/shapes"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/shapes"
 )
 
 // Context provides a high-level, user-friendly interface for 2D graphics rendering.

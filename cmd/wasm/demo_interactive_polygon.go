@@ -1,6 +1,6 @@
 package main
 
-import "agg_go/internal/demo/interactivepolygon"
+import "github.com/MeKo-Christian/agg_go/internal/demo/interactivepolygon"
 
 var interactivePolygonState *interactivepolygon.State
 

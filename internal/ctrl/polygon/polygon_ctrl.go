@@ -3,12 +3,12 @@ package polygon
 import (
 	"math"
 
-	"agg_go/internal/array"
-	"agg_go/internal/basics"
-	"agg_go/internal/color"
-	"agg_go/internal/conv"
-	"agg_go/internal/ctrl"
-	"agg_go/internal/shapes"
+	"github.com/MeKo-Christian/agg_go/internal/array"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/conv"
+	"github.com/MeKo-Christian/agg_go/internal/ctrl"
+	"github.com/MeKo-Christian/agg_go/internal/shapes"
 )
 
 // PolygonCtrl implements an interactive polygon control with draggable points.

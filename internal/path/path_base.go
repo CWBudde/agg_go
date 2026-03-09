@@ -3,8 +3,8 @@ package path
 import (
 	"math"
 
-	"agg_go/internal/basics"
-	"agg_go/internal/bezierarc"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/bezierarc"
 )
 
 // PathBase is the main path container that stores vertices with their commands.

@@ -3,9 +3,9 @@
 package outline
 
 import (
-	"agg_go/internal/array"
-	"agg_go/internal/basics"
-	"agg_go/internal/primitives"
+	"github.com/MeKo-Christian/agg_go/internal/array"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/primitives"
 )
 
 // Subpixel scale constants for line profiles

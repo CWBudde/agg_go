@@ -5,7 +5,7 @@ package polygon
 import (
 	"math"
 
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // SimplePolygonVertexSource generates vertices for a simple polygon.

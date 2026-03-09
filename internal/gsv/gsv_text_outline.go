@@ -3,9 +3,9 @@
 package gsv
 
 import (
-	"agg_go/internal/basics"
-	"agg_go/internal/conv"
-	"agg_go/internal/transform"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/conv"
+	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
 
 // GSVTextOutline wraps GSVText with stroke and transformation support.

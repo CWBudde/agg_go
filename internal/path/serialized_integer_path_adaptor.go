@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // IntegerPathAdaptor is the interface common to all precision variants of

@@ -3,8 +3,8 @@ package platform
 import (
 	"math"
 
-	"agg_go/internal/buffer"
-	"agg_go/internal/transform"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
+	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
 
 // RenderingContext provides enhanced rendering capabilities for platform support.

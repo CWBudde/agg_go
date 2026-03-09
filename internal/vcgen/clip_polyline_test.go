@@ -3,7 +3,7 @@ package vcgen
 import (
 	"testing"
 
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 func TestVPGenClipPolyline_Basic(t *testing.T) {

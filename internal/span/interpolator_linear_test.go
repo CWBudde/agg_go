@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"agg_go/internal/transform"
+	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
 
 func TestDda2LineInterpolator(t *testing.T) {

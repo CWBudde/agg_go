@@ -9,13 +9,13 @@
 package freetype2
 
 import (
-	"agg_go/internal/basics"
-	"agg_go/internal/conv"
-	"agg_go/internal/fonts"
-	"agg_go/internal/path"
-	"agg_go/internal/pixfmt/gamma"
-	"agg_go/internal/scanline"
-	"agg_go/internal/transform"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/conv"
+	"github.com/MeKo-Christian/agg_go/internal/fonts"
+	"github.com/MeKo-Christian/agg_go/internal/path"
+	"github.com/MeKo-Christian/agg_go/internal/pixfmt/gamma"
+	"github.com/MeKo-Christian/agg_go/internal/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
 
 // GlyphRendering defines the rendering mode for glyphs in the v2 engine.

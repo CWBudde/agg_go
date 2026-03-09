@@ -2,18 +2,18 @@ package linepatterns
 
 import (
 	agg "agg_go"
-	"agg_go/internal/basics"
-	"agg_go/internal/buffer"
-	"agg_go/internal/color"
-	"agg_go/internal/curves"
-	"agg_go/internal/order"
-	"agg_go/internal/path"
-	"agg_go/internal/pixfmt"
-	"agg_go/internal/pixfmt/blender"
-	"agg_go/internal/primitives"
-	"agg_go/internal/rasterizer"
-	"agg_go/internal/renderer"
-	outline "agg_go/internal/renderer/outline"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
+	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/curves"
+	"github.com/MeKo-Christian/agg_go/internal/order"
+	"github.com/MeKo-Christian/agg_go/internal/path"
+	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
+	"github.com/MeKo-Christian/agg_go/internal/pixfmt/blender"
+	"github.com/MeKo-Christian/agg_go/internal/primitives"
+	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
+	"github.com/MeKo-Christian/agg_go/internal/renderer"
+	outline "github.com/MeKo-Christian/agg_go/internal/renderer/outline"
 )
 
 type pathSourceAdapter struct {

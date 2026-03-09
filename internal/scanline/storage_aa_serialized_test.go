@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 func buildSerializedAAData(t *testing.T) []byte {

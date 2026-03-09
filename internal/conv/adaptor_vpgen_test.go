@@ -3,7 +3,7 @@ package conv
 import (
 	"testing"
 
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // MockVPGen implements VPGen for testing

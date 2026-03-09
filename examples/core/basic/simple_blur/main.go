@@ -7,9 +7,9 @@ package main
 
 import (
 	agg "agg_go"
-	"agg_go/examples/shared/demorunner"
-	"agg_go/internal/basics"
-	liondemo "agg_go/internal/demo/lion"
+	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	liondemo "github.com/MeKo-Christian/agg_go/internal/demo/lion"
 )
 
 type demo struct{}

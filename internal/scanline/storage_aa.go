@@ -6,8 +6,8 @@ import (
 	"math"
 	"unsafe"
 
-	"agg_go/internal/array"
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/array"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // ScanlineInterface defines the interface for scanline containers.

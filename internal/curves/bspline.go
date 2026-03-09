@@ -1,7 +1,7 @@
 package curves
 
 import (
-	"agg_go/internal/array"
+	"github.com/MeKo-Christian/agg_go/internal/array"
 )
 
 // BSpline implements bi-cubic spline interpolation.

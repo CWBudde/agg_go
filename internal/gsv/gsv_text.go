@@ -6,7 +6,7 @@ import (
 	"encoding/binary"
 	"os"
 
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // Status represents the internal state of the GSV text renderer.

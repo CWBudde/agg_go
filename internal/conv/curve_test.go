@@ -4,8 +4,8 @@ import (
 	"math"
 	"testing"
 
-	"agg_go/internal/basics"
-	"agg_go/internal/curves"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/curves"
 )
 
 // Test vertex source that can generate curve commands

@@ -3,7 +3,7 @@
 package transform
 
 import (
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // ViewportVertexSource wraps a vertex source to apply viewport transformations.

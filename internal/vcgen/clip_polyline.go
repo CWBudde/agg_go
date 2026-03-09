@@ -1,7 +1,7 @@
 package vcgen
 
 import (
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // VPGenClipPolyline generates vertices for polyline clipping using the Liang-Barsky algorithm.

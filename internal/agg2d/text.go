@@ -3,15 +3,15 @@
 package agg2d
 
 import (
-	"agg_go/internal/basics"
-	"agg_go/internal/color"
-	"agg_go/internal/conv"
-	"agg_go/internal/font"
-	"agg_go/internal/font/freetype"
-	"agg_go/internal/gsv"
-	"agg_go/internal/path"
-	renscan "agg_go/internal/renderer/scanline"
-	"agg_go/internal/transform"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/conv"
+	"github.com/MeKo-Christian/agg_go/internal/font"
+	"github.com/MeKo-Christian/agg_go/internal/font/freetype"
+	"github.com/MeKo-Christian/agg_go/internal/gsv"
+	"github.com/MeKo-Christian/agg_go/internal/path"
+	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
 
 // Font loads and configures a font for text rendering.

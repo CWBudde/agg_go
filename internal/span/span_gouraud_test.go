@@ -3,7 +3,7 @@ package span
 import (
 	"testing"
 
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // TestColor is a simple color type for testing.

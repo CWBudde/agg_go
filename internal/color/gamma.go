@@ -3,7 +3,7 @@
 package color
 
 import (
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // lut8Like defines the minimal interface for 8-bit gamma lookup tables.

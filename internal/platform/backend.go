@@ -3,8 +3,8 @@ package platform
 import (
 	"fmt"
 
-	"agg_go/internal/buffer"
-	types "agg_go/internal/platform/types"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
+	types "github.com/MeKo-Christian/agg_go/internal/platform/types"
 )
 
 // PlatformBackend defines the interface that platform-specific implementations must satisfy.

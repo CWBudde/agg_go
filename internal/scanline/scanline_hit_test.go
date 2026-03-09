@@ -1,6 +1,6 @@
 package scanline
 
-import "agg_go/internal/basics"
+import "github.com/MeKo-Christian/agg_go/internal/basics"
 
 // ScanlineHitTest is a simple scanline implementation for hit testing.
 // It checks if a specific X coordinate is covered by any rendered spans.

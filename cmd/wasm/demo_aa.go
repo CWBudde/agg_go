@@ -5,10 +5,10 @@ import (
 	"math"
 
 	agg "agg_go"
-	"agg_go/internal/basics"
-	"agg_go/internal/color"
-	"agg_go/internal/path"
-	renscan "agg_go/internal/renderer/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/path"
+	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
 )
 
 // enlargedPixel holds a single pixel to be drawn after the scanline sweep.

@@ -5,9 +5,9 @@ import (
 	"math"
 
 	agg "agg_go"
-	"agg_go/internal/basics"
-	liondemo "agg_go/internal/demo/lion"
-	"agg_go/internal/transform"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	liondemo "github.com/MeKo-Christian/agg_go/internal/demo/lion"
+	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
 
 var (

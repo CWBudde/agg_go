@@ -2,7 +2,7 @@
 package scanline
 
 import (
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // RenderScanlineAASolid renders a single anti-aliased scanline with solid color.

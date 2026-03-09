@@ -1,6 +1,6 @@
 package agg
 
-import "agg_go/internal/agg2d"
+import "github.com/MeKo-Christian/agg_go/internal/agg2d"
 
 type FillRuleExamples = agg2d.FillRuleExamples
 

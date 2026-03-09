@@ -1,8 +1,8 @@
 package conv
 
 import (
-	"agg_go/internal/basics"
-	"agg_go/internal/curves"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/curves"
 )
 
 // ConvCurve converts Bezier curves in a path to line segments

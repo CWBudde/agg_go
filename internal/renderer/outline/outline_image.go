@@ -5,10 +5,10 @@ package outline
 import (
 	"math"
 
-	"agg_go/internal/basics"
-	"agg_go/internal/buffer"
-	"agg_go/internal/color"
-	"agg_go/internal/primitives"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
+	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/primitives"
 )
 
 // Source interface defines methods needed by LineImageScale.

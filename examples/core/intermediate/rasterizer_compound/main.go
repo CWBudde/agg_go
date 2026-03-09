@@ -3,15 +3,15 @@ package main
 
 import (
 	agg "agg_go"
-	"agg_go/examples/shared/demorunner"
-	"agg_go/internal/basics"
-	"agg_go/internal/color"
-	"agg_go/internal/conv"
-	"agg_go/internal/path"
-	"agg_go/internal/rasterizer"
-	"agg_go/internal/scanline"
-	"agg_go/internal/shapes"
-	"agg_go/internal/transform"
+	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/conv"
+	"github.com/MeKo-Christian/agg_go/internal/path"
+	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
+	"github.com/MeKo-Christian/agg_go/internal/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/shapes"
+	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
 
 type compoundNoClip struct{ x1, y1 float64 }

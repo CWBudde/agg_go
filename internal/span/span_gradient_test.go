@@ -4,8 +4,8 @@ import (
 	"math"
 	"testing"
 
-	"agg_go/internal/color"
-	"agg_go/internal/transform"
+	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
 
 // Test gradient shape functions

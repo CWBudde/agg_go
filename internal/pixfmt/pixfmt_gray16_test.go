@@ -3,9 +3,9 @@ package pixfmt
 import (
 	"testing"
 
-	"agg_go/internal/basics"
-	"agg_go/internal/buffer"
-	"agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
+	"github.com/MeKo-Christian/agg_go/internal/color"
 )
 
 func TestGray16PixelType(t *testing.T) {

@@ -10,7 +10,7 @@ package bezierarc
 import (
 	"math"
 
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // Constants for bezier arc calculations

@@ -3,7 +3,7 @@
 package fonts
 
 import (
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // PathAdaptorType defines the interface for path adaptors used in font rendering.

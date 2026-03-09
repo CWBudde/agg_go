@@ -1,4 +1,4 @@
-module agg_go
+module github.com/MeKo-Christian/agg_go
 
 go 1.24.0
 

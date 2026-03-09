@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // Integration tests that combine multiple converters together

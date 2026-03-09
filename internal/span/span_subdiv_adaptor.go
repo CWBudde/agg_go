@@ -1,8 +1,8 @@
 package span
 
 import (
-	"agg_go/internal/basics"
-	"agg_go/internal/transform"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
 
 // LocalScaler defines the interface for interpolators that support local scaling.

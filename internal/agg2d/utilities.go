@@ -5,8 +5,8 @@ package agg2d
 import (
 	"math"
 
-	"agg_go/internal/basics"
-	"agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/color"
 )
 
 // Note: Mathematical constants Pi, Deg2Rad, Rad2Deg functions are defined in constants.go

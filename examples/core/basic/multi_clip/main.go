@@ -6,16 +6,16 @@ package main
 
 import (
 	agg "agg_go"
-	"agg_go/examples/shared/demorunner"
-	"agg_go/internal/basics"
-	"agg_go/internal/buffer"
-	"agg_go/internal/color"
-	liondemo "agg_go/internal/demo/lion"
-	"agg_go/internal/pixfmt"
-	"agg_go/internal/rasterizer"
-	"agg_go/internal/renderer"
-	renscan "agg_go/internal/renderer/scanline"
-	"agg_go/internal/scanline"
+	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
+	"github.com/MeKo-Christian/agg_go/internal/color"
+	liondemo "github.com/MeKo-Christian/agg_go/internal/demo/lion"
+	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
+	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
+	"github.com/MeKo-Christian/agg_go/internal/renderer"
+	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/scanline"
 )
 
 const clipN = 3

@@ -3,9 +3,9 @@ package main
 
 import (
 	agg "agg_go"
-	"agg_go/internal/basics"
-	"agg_go/internal/color"
-	"agg_go/internal/image"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/image"
 )
 
 // imageClipSource wraps imagePixFmt + ImageAccessorClip to implement the

@@ -1,6 +1,6 @@
 package gamma
 
-import "agg_go/internal/basics"
+import "github.com/MeKo-Christian/agg_go/internal/basics"
 
 // Keep a tiny interface (exactly what you need)
 type LUT8 interface {

@@ -2,7 +2,7 @@
 // This file contains rectangles, points, and geometric utilities.
 package agg
 
-import "agg_go/internal/transform"
+import "github.com/MeKo-Christian/agg_go/internal/transform"
 
 // Rect represents an integer rectangle.
 type Rect struct {

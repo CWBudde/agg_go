@@ -4,7 +4,7 @@ package main
 
 import (
 	agg "agg_go"
-	"agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
 )
 
 type demo struct{}

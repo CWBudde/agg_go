@@ -3,7 +3,7 @@
 package font
 
 import (
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // GlyphDataType defines the type of glyph data stored in a cache entry.

@@ -3,8 +3,8 @@ package image
 import (
 	"math"
 
-	"agg_go/internal/array"
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/array"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // Image filter scale constants

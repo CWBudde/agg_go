@@ -1,7 +1,7 @@
 package color
 
 import (
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // BT.709 integer weights (AGG-compatible; 55+184+18 = 257, >>8)

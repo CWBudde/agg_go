@@ -1,7 +1,7 @@
 package rasterizer
 
 import (
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // AA scale constants are defined in compound_aa.go

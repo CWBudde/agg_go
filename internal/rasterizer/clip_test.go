@@ -3,7 +3,7 @@ package rasterizer
 import (
 	"testing"
 
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // MockRasterizer for testing

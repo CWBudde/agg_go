@@ -4,8 +4,8 @@
 package scanline
 
 import (
-	"agg_go/internal/array"
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/array"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // Coord32Type represents 32-bit coordinate values for scanline32_p8

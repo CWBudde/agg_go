@@ -1,6 +1,6 @@
 package blender
 
-import "agg_go/internal/color"
+import "github.com/MeKo-Christian/agg_go/internal/color"
 
 // ConvertRGBAToRGB converts an RGBA8 color to RGB8 by dropping the alpha channel.
 func ConvertRGBAToRGB[S color.Space](rgba color.RGBA8[S]) color.RGB8[S] {

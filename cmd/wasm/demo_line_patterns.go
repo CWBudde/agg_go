@@ -1,6 +1,6 @@
 package main
 
-import "agg_go/internal/demo/linepatterns"
+import "github.com/MeKo-Christian/agg_go/internal/demo/linepatterns"
 
 // Port of AGG C++ line_patterns.cpp (web variant).
 var (

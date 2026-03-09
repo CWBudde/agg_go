@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"agg_go/internal/transform"
+	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
 
 // TestColorGradient tests the Color.Gradient method for color interpolation

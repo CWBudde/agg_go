@@ -3,8 +3,8 @@
 package agg2d
 
 import (
-	"agg_go/internal/conv"
-	"agg_go/internal/path"
+	"github.com/MeKo-Christian/agg_go/internal/conv"
+	"github.com/MeKo-Christian/agg_go/internal/path"
 )
 
 // MiterLimit sets the miter limit for line joins.

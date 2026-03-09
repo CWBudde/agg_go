@@ -1,9 +1,9 @@
 package vcgen
 
 import (
-	"agg_go/internal/array"
-	"agg_go/internal/basics"
-	"agg_go/internal/curves"
+	"github.com/MeKo-Christian/agg_go/internal/array"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/curves"
 )
 
 // BSplineStatus represents the state of B-spline generation

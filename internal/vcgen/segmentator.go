@@ -3,7 +3,7 @@ package vcgen
 import (
 	"math"
 
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // VPGenSegmentator is the segmentator vertex processor generator.

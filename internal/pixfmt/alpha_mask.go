@@ -3,8 +3,8 @@
 package pixfmt
 
 import (
-	"agg_go/internal/basics"
-	"agg_go/internal/buffer"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
 )
 
 // MaskFunction defines the interface for mask calculation functions

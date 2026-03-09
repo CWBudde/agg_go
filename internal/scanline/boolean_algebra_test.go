@@ -3,8 +3,8 @@ package scanline
 import (
 	"testing"
 
-	"agg_go/internal/basics"
-	"agg_go/internal/renderer/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
 )
 
 // BooleanMockScanline implements BooleanScanlineInterface for testing

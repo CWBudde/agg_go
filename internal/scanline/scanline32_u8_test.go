@@ -3,7 +3,7 @@ package scanline
 import (
 	"testing"
 
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 func TestScanline32U8_NewScanline32U8(t *testing.T) {

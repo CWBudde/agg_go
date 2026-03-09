@@ -3,8 +3,8 @@ package main
 
 import (
 	agg "agg_go"
-	"agg_go/examples/shared/demorunner"
-	"agg_go/internal/demo/scanlineboolean2"
+	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/internal/demo/scanlineboolean2"
 )
 
 const (

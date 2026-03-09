@@ -1,10 +1,10 @@
 package main
 
 import (
-	"agg_go/internal/path"
-	"agg_go/internal/rasterizer"
-	renscan "agg_go/internal/renderer/scanline"
-	"agg_go/internal/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/path"
+	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
+	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/scanline"
 )
 
 // pathSourceAdapter bridges PathStorageStl (uint Rewind) to the rasterizer's

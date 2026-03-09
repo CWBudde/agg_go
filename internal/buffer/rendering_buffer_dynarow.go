@@ -3,7 +3,7 @@
 package buffer
 
 import (
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // RenderingBufferDynarow provides a rendering buffer with dynamic allocation of rows.

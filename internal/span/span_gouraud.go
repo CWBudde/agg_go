@@ -3,7 +3,7 @@ package span
 import (
 	"math"
 
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // CoordType represents a coordinate with an associated color.

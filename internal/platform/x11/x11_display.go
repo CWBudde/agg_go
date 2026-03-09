@@ -15,8 +15,8 @@ import (
 	"os"
 	"time"
 
-	"agg_go/internal/buffer"
-	"agg_go/internal/platform/types"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
+	"github.com/MeKo-Christian/agg_go/internal/platform/types"
 )
 
 // copyBufferToXImage copies the AGG rendering buffer to XImage, handling pixel format conversion

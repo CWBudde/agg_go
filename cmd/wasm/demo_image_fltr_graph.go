@@ -1,7 +1,7 @@
 package main
 
 import (
-	"agg_go/internal/demo/imagefltrgraph"
+	"github.com/MeKo-Christian/agg_go/internal/demo/imagefltrgraph"
 )
 
 var imageFltrGraphState = imagefltrgraph.DefaultState()

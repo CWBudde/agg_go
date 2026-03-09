@@ -5,13 +5,13 @@ package agg2d
 import (
 	"math"
 
-	"agg_go/internal/basics"
-	"agg_go/internal/color"
-	"agg_go/internal/conv"
-	aggimage "agg_go/internal/image"
-	"agg_go/internal/rasterizer"
-	renscan "agg_go/internal/renderer/scanline"
-	"agg_go/internal/transform"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/conv"
+	aggimage "github.com/MeKo-Christian/agg_go/internal/image"
+	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
+	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
 
 // gradientColorsToLUTInPlace updates a preallocated 256-entry LUT from [256]Color.

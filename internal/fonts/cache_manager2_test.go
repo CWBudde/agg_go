@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // MockLoadedFace implements LoadedFace for testing

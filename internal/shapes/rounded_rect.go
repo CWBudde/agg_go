@@ -4,7 +4,7 @@ package shapes
 import (
 	"math"
 
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // RoundedRect generates vertices for a rectangle with rounded corners.

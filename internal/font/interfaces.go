@@ -1,6 +1,6 @@
 package font
 
-import "agg_go/internal/basics"
+import "github.com/MeKo-Christian/agg_go/internal/basics"
 
 // IntegerPathStorage defines the common interface for integer-based path storage.
 // Both PathStorageInteger[int16] and PathStorageInteger[int32] implement this.

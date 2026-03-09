@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	agg "agg_go"
-	"agg_go/internal/platform"
+	"github.com/MeKo-Christian/agg_go/internal/platform"
 )
 
 // Run opens a platform window (SDL2 preferred, X11 fallback) and runs the

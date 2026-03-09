@@ -4,9 +4,9 @@ import (
 	"runtime"
 	"testing"
 
-	"agg_go/internal/agg2d"
-	"agg_go/internal/basics"
-	liondemo "agg_go/internal/demo/lion"
+	"github.com/MeKo-Christian/agg_go/internal/agg2d"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	liondemo "github.com/MeKo-Christian/agg_go/internal/demo/lion"
 )
 
 func BenchmarkLionFull(b *testing.B) {

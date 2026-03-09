@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"log"
 
-	"agg_go/examples/shared/platformdemo"
-	"agg_go/internal/platform"
+	"github.com/MeKo-Christian/agg_go/examples/shared/platformdemo"
+	"github.com/MeKo-Christian/agg_go/internal/platform"
 )
 
 func main() {

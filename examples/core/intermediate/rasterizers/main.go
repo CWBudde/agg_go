@@ -6,19 +6,19 @@ package main
 
 import (
 	agg "agg_go"
-	"agg_go/examples/shared/demorunner"
-	"agg_go/internal/buffer"
-	"agg_go/internal/color"
-	"agg_go/internal/ctrl/checkbox"
-	"agg_go/internal/ctrl/slider"
-	"agg_go/internal/gamma"
-	"agg_go/internal/order"
-	"agg_go/internal/path"
-	"agg_go/internal/pixfmt"
-	"agg_go/internal/pixfmt/blender"
-	"agg_go/internal/rasterizer"
-	"agg_go/internal/renderer"
-	"agg_go/internal/scanline"
+	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
+	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/ctrl/checkbox"
+	"github.com/MeKo-Christian/agg_go/internal/ctrl/slider"
+	"github.com/MeKo-Christian/agg_go/internal/gamma"
+	"github.com/MeKo-Christian/agg_go/internal/order"
+	"github.com/MeKo-Christian/agg_go/internal/path"
+	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
+	"github.com/MeKo-Christian/agg_go/internal/pixfmt/blender"
+	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
+	"github.com/MeKo-Christian/agg_go/internal/renderer"
+	"github.com/MeKo-Christian/agg_go/internal/scanline"
 )
 
 const (

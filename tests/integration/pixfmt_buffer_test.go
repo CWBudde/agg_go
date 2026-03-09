@@ -3,7 +3,7 @@ package integration
 import (
 	"testing"
 
-	"agg_go/internal/agg2d"
+	"github.com/MeKo-Christian/agg_go/internal/agg2d"
 )
 
 // TestPixelFormatBufferBasic tests basic pixel format and buffer interaction

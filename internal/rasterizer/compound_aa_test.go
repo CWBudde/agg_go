@@ -3,7 +3,7 @@ package rasterizer
 import (
 	"testing"
 
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // MockCompoundClipper provides a simple implementation for testing that generates basic cells

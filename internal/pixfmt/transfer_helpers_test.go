@@ -3,7 +3,7 @@ package pixfmt
 import (
 	"testing"
 
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 type mockRowDataSource struct {

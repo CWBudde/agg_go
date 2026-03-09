@@ -1,6 +1,6 @@
 package main
 
-import "agg_go/internal/demo/graphtest"
+import "github.com/MeKo-Christian/agg_go/internal/demo/graphtest"
 
 var graphTestGraph = graphtest.NewGraph(200, 100)
 

@@ -1,7 +1,7 @@
 package color
 
 import (
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // Gray16 represents a 16-bit grayscale color

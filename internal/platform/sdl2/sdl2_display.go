@@ -3,8 +3,8 @@ package sdl2
 import (
 	"fmt"
 
-	"agg_go/internal/buffer"
-	"agg_go/internal/platform/types"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
+	"github.com/MeKo-Christian/agg_go/internal/platform/types"
 	"github.com/veandco/go-sdl2/sdl"
 )
 

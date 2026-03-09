@@ -7,9 +7,9 @@ import (
 	"fmt"
 
 	agg "agg_go"
-	"agg_go/examples/shared/demorunner"
-	"agg_go/internal/color"
-	"agg_go/internal/ctrl/slider"
+	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/ctrl/slider"
 )
 
 type demo struct{}

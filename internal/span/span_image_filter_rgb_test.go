@@ -3,9 +3,9 @@ package span
 import (
 	"testing"
 
-	"agg_go/internal/basics"
-	"agg_go/internal/color"
-	"agg_go/internal/image"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/image"
 )
 
 // MockRGBSource provides a simple RGB image source for testing

@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"agg_go/internal/agg2d"
+	"github.com/MeKo-Christian/agg_go/internal/agg2d"
 )
 
 // TestTransformationWithRendering tests transformation matrices with actual rendering

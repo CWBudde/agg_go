@@ -3,9 +3,9 @@
 package freetype2
 
 import (
-	"agg_go/internal/basics"
-	"agg_go/internal/fonts"
-	"agg_go/internal/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/fonts"
+	"github.com/MeKo-Christian/agg_go/internal/scanline"
 )
 
 // gray8AdaptorWrapper is a thin Go adapter from the scanline package's

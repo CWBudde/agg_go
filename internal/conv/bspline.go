@@ -1,8 +1,8 @@
 package conv
 
 import (
-	"agg_go/internal/basics"
-	"agg_go/internal/vcgen"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/vcgen"
 )
 
 // ConvBSpline converts path vertices to smooth B-spline curves

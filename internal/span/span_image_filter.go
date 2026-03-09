@@ -3,9 +3,9 @@
 package span
 
 import (
-	"agg_go/internal/basics"
-	"agg_go/internal/image"
-	"agg_go/internal/transform"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/image"
+	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
 
 // SourceInterface defines the interface for image sources used in span filtering.

@@ -5,8 +5,8 @@ package span
 import (
 	"reflect"
 
-	"agg_go/internal/basics"
-	"agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/color"
 )
 
 // SpanConverterInterface defines the interface for span converters.

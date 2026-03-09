@@ -8,7 +8,7 @@ import (
 	"math"
 
 	agg "agg_go"
-	"agg_go/internal/image"
+	"github.com/MeKo-Christian/agg_go/internal/image"
 )
 
 const (

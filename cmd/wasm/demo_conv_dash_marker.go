@@ -5,17 +5,17 @@ import (
 	"math"
 
 	agg "agg_go"
-	"agg_go/internal/basics"
-	"agg_go/internal/buffer"
-	"agg_go/internal/color"
-	"agg_go/internal/conv"
-	"agg_go/internal/path"
-	"agg_go/internal/pixfmt"
-	"agg_go/internal/rasterizer"
-	"agg_go/internal/renderer"
-	"agg_go/internal/scanline"
-	"agg_go/internal/shapes"
-	"agg_go/internal/vcgen"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
+	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/conv"
+	"github.com/MeKo-Christian/agg_go/internal/path"
+	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
+	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
+	"github.com/MeKo-Christian/agg_go/internal/renderer"
+	"github.com/MeKo-Christian/agg_go/internal/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/shapes"
+	"github.com/MeKo-Christian/agg_go/internal/vcgen"
 )
 
 // --- State ---

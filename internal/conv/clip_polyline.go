@@ -1,7 +1,7 @@
 package conv
 
 import (
-	"agg_go/internal/vcgen"
+	"github.com/MeKo-Christian/agg_go/internal/vcgen"
 )
 
 // ConvClipPolyline is a converter that clips polylines using the Liang-Barsky algorithm.

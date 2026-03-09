@@ -2,8 +2,8 @@
 package outline
 
 import (
-	"agg_go/internal/color"
-	"agg_go/internal/span"
+	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/span"
 )
 
 // PatternFilterRGBAAdapter adapts span pattern filters to work with outline renderer Filter interface.

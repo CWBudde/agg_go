@@ -1,7 +1,7 @@
 package path
 
 import (
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // VertexInteger represents a vertex with integer coordinates and embedded command bits.

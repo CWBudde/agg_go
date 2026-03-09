@@ -3,7 +3,7 @@ package platform
 import (
 	"testing"
 
-	"agg_go/internal/buffer"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
 )
 
 // TestMockBackend tests the mock backend implementation

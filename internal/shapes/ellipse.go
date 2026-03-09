@@ -3,7 +3,7 @@ package shapes
 import (
 	"math"
 
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // Ellipse generates vertices for a complete ellipse.

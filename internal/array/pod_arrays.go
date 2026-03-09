@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"unsafe"
 
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // PodArrayAdaptor wraps an existing slice with AGG-compatible interface.

@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 	"testing"
 
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 func TestColorConvRGB24(t *testing.T) {

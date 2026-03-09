@@ -5,7 +5,7 @@ package array
 import (
 	"math"
 
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // LineAAVertex represents a vertex for anti-aliased line rendering.

@@ -3,7 +3,7 @@ package conv
 import (
 	"testing"
 
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 func TestConvClosePolygon_NewConvClosePolygon(t *testing.T) {

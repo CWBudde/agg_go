@@ -3,8 +3,8 @@ package span
 import (
 	"testing"
 
-	"agg_go/internal/basics"
-	"agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/color"
 )
 
 // MockRGBAPatternSource implements RGBASourceInterface for pattern testing

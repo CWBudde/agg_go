@@ -2,8 +2,8 @@
 package conv
 
 import (
-	"agg_go/internal/basics"
-	"agg_go/internal/transform"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
 
 // ConvTransform applies coordinate transformations to vertex sources.

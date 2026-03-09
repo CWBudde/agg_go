@@ -1,6 +1,6 @@
 package effects
 
-import "agg_go/internal/basics"
+import "github.com/MeKo-Christian/agg_go/internal/basics"
 
 // StackBlurTables contains precomputed multiplication and shift tables
 // for optimizing stack blur operations on 8-bit values.

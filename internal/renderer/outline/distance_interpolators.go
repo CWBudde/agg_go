@@ -3,7 +3,7 @@
 package outline
 
 import (
-	"agg_go/internal/primitives"
+	"github.com/MeKo-Christian/agg_go/internal/primitives"
 )
 
 // DistanceInterpolator0 provides basic distance interpolation for anti-aliased lines.

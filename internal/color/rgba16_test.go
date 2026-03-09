@@ -3,8 +3,8 @@ package color
 import (
 	"testing"
 
-	"agg_go/internal/basics"
-	"agg_go/internal/gamma"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/gamma"
 )
 
 // Test arithmetic functions

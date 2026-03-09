@@ -4,8 +4,8 @@
 package renderer
 
 import (
-	"agg_go/internal/basics"
-	"agg_go/internal/glyph"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/glyph"
 )
 
 // BaseRendererInterface defines the methods required by solid text renderers

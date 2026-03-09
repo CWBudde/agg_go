@@ -7,11 +7,11 @@ import (
 	"time"
 
 	agg "agg_go"
-	"agg_go/internal/basics"
-	"agg_go/internal/conv"
-	"agg_go/internal/ctrl/bezier"
-	"agg_go/internal/curves"
-	"agg_go/internal/path"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/conv"
+	"github.com/MeKo-Christian/agg_go/internal/ctrl/bezier"
+	"github.com/MeKo-Christian/agg_go/internal/curves"
+	"github.com/MeKo-Christian/agg_go/internal/path"
 )
 
 // --- Enum mappings (matching C++ line_cap_e, line_join_e, inner_join_e) ---

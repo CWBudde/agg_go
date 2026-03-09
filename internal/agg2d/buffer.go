@@ -3,10 +3,10 @@
 package agg2d
 
 import (
-	"agg_go/internal/buffer"
-	"agg_go/internal/color"
-	"agg_go/internal/pixfmt"
-	"agg_go/internal/pixfmt/blender"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
+	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
+	"github.com/MeKo-Christian/agg_go/internal/pixfmt/blender"
 )
 
 // Image represents a raster image that can be used as a rendering target.

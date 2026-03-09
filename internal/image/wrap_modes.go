@@ -2,7 +2,7 @@
 // This package handles various pixel access patterns and boundary conditions.
 package image
 
-import "agg_go/internal/basics"
+import "github.com/MeKo-Christian/agg_go/internal/basics"
 
 // WrapModeRepeat implements texture wrapping with repeat (tile) mode.
 // Uses modulo arithmetic to wrap coordinates.

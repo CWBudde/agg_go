@@ -5,9 +5,9 @@ import (
 	"math"
 
 	agg "agg_go"
-	"agg_go/internal/basics"
-	"agg_go/internal/conv"
-	"agg_go/internal/ctrl/polygon"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/conv"
+	"github.com/MeKo-Christian/agg_go/internal/ctrl/polygon"
 )
 
 // --- State ---

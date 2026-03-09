@@ -1,7 +1,7 @@
 package vpgen
 
 import (
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // VPGenClipPolyline clips polylines to a rectangular clipping region.

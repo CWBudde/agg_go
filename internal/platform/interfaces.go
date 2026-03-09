@@ -2,7 +2,7 @@
 // This package defines interfaces for backend implementations, event handling, and platform abstraction.
 package platform
 
-import "agg_go/internal/platform/types"
+import "github.com/MeKo-Christian/agg_go/internal/platform/types"
 
 // EventCallbackSetter defines the interface for platform backends that support event callbacks.
 // This interface replaces the duck-typing pattern used in platform backend code.

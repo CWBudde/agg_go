@@ -3,8 +3,8 @@ package main
 
 import (
 	agg "agg_go"
-	"agg_go/internal/color"
-	"agg_go/internal/effects"
+	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/effects"
 )
 
 var (

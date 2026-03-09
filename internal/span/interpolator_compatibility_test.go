@@ -3,7 +3,7 @@ package span
 import (
 	"testing"
 
-	"agg_go/internal/transform"
+	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
 
 // TestDda2LineInterpolatorCompatibility tests the DDA2 interpolator against known C++ AGG outputs.

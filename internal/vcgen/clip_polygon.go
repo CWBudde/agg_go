@@ -1,7 +1,7 @@
 package vcgen
 
 import (
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // VPGenClipPolygon generates vertices for polygon clipping using the Liang-Barsky algorithm.

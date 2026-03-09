@@ -3,8 +3,8 @@
 package span
 
 import (
-	"agg_go/internal/basics"
-	"agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/color"
 )
 
 // SpanPatternGray generates spans from a grayscale source with offset and alpha support.

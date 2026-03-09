@@ -3,8 +3,8 @@
 package agg2d
 
 import (
-	"agg_go/internal/basics"
-	"agg_go/internal/shapes"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/shapes"
 )
 
 // resetPath clears all path data.

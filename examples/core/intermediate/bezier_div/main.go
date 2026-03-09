@@ -12,11 +12,11 @@ import (
 	"math"
 
 	agg "agg_go"
-	"agg_go/examples/shared/demorunner"
-	"agg_go/internal/basics"
-	"agg_go/internal/conv"
-	"agg_go/internal/curves"
-	"agg_go/internal/path"
+	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/conv"
+	"github.com/MeKo-Christian/agg_go/internal/curves"
+	"github.com/MeKo-Christian/agg_go/internal/path"
 )
 
 const (

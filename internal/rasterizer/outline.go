@@ -3,7 +3,7 @@
 package rasterizer
 
 import (
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // OutlineRenderer defines the interface that a renderer must implement

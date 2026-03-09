@@ -41,8 +41,8 @@ import (
 	"time"
 	"unsafe"
 
-	"agg_go/internal/buffer"
-	"agg_go/internal/platform/types"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
+	"github.com/MeKo-Christian/agg_go/internal/platform/types"
 )
 
 // X11Backend implements PlatformBackend for X11

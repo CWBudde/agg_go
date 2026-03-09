@@ -4,8 +4,8 @@
 package scanline
 
 import (
-	"agg_go/internal/basics"
-	"agg_go/internal/renderer/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
 )
 
 // Constants for coverage calculations

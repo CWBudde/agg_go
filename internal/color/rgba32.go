@@ -3,7 +3,7 @@
 package color
 
 import (
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // RGBA32 represents a 32-bit floating-point RGBA color

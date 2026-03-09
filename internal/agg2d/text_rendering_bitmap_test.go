@@ -3,8 +3,8 @@ package agg2d
 import (
 	"testing"
 
-	"agg_go/internal/basics"
-	"agg_go/internal/font"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/font"
 )
 
 func pixelAt(buf []byte, width, x, y int) (r, g, b, a uint8) {

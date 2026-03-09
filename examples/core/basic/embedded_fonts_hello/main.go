@@ -5,11 +5,11 @@ package main
 
 import (
 	agg "agg_go"
-	"agg_go/examples/shared/demorunner"
-	"agg_go/internal/basics"
-	"agg_go/internal/fonts"
-	"agg_go/internal/glyph"
-	rtext "agg_go/internal/renderer"
+	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/fonts"
+	"github.com/MeKo-Christian/agg_go/internal/glyph"
+	rtext "github.com/MeKo-Christian/agg_go/internal/renderer"
 )
 
 // ColorRGBA8 defines the constraint for colors that can be converted to RGBA8.

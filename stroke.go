@@ -4,7 +4,7 @@
 package agg
 
 import (
-	ia "agg_go/internal/agg2d"
+	ia "github.com/MeKo-Christian/agg_go/internal/agg2d"
 )
 
 // Stroke properties

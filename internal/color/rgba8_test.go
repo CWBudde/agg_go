@@ -4,8 +4,8 @@ import (
 	"math"
 	"testing"
 
-	"agg_go/internal/basics"
-	"agg_go/internal/gamma"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/gamma"
 )
 
 func TestRGBA8Arithmetic(t *testing.T) {

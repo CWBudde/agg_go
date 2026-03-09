@@ -1,10 +1,10 @@
 package pixfmt
 
 import (
-	"agg_go/internal/basics"
-	"agg_go/internal/buffer"
-	"agg_go/internal/color"
-	"agg_go/internal/pixfmt/blender"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
+	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/pixfmt/blender"
 )
 
 // PixFmtAlphaBlendGray16 implements alpha blending for 16-bit grayscale pixel formats

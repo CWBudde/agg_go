@@ -6,8 +6,8 @@ import (
 	"math/rand"
 
 	agg "agg_go"
-	"agg_go/internal/curves"
-	"agg_go/internal/shapes"
+	"github.com/MeKo-Christian/agg_go/internal/curves"
+	"github.com/MeKo-Christian/agg_go/internal/shapes"
 )
 
 type scatterPoint struct {

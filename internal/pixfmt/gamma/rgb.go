@@ -1,10 +1,10 @@
 package gamma
 
 import (
-	"agg_go/internal/basics"
-	"agg_go/internal/color"
-	"agg_go/internal/order"
-	"agg_go/internal/pixfmt"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/order"
+	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
 )
 
 // ApplyGammaDirectRGB applies direct gamma correction to RGB pixels

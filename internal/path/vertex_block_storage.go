@@ -4,7 +4,7 @@
 package path
 
 import (
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // VertexBlockStorage provides efficient storage for vertices using block-based allocation.

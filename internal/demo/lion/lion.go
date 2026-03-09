@@ -4,8 +4,8 @@ import (
 	"strconv"
 	"strings"
 
-	"agg_go/internal/basics"
-	"agg_go/internal/path"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/path"
 )
 
 type Path struct {

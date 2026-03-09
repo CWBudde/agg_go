@@ -1,7 +1,7 @@
 package span
 
 import (
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // GouraudDDAInterpolator implements a DDA (Digital Differential Analyzer) line interpolator.

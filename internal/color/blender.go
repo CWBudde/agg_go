@@ -1,6 +1,6 @@
 package color
 
-import "agg_go/internal/basics"
+import "github.com/MeKo-Christian/agg_go/internal/basics"
 
 // Blendable is a constraint for colors that can blend with cover values.
 // This uses the "Self type" pattern where Self is the implementing type itself.

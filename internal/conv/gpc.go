@@ -1,8 +1,8 @@
 package conv
 
 import (
-	"agg_go/internal/basics"
-	"agg_go/internal/gpc"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/gpc"
 )
 
 // GPCOp represents the type of boolean operation to perform

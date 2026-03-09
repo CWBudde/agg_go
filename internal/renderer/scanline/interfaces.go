@@ -4,7 +4,7 @@
 package scanline
 
 import (
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // ScanlineInterface defines the interface for scanline containers.

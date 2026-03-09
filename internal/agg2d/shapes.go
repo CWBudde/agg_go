@@ -5,8 +5,8 @@ package agg2d
 import (
 	"math"
 
-	"agg_go/internal/basics"
-	"agg_go/internal/shapes"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/shapes"
 )
 
 // Line draws a straight line between two points.

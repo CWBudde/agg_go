@@ -1,7 +1,7 @@
 package conv
 
 import (
-	"agg_go/internal/vcgen"
+	"github.com/MeKo-Christian/agg_go/internal/vcgen"
 )
 
 // ConvDash is a dash converter that uses VCGenDash as the vertex generator.

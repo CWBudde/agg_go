@@ -3,10 +3,10 @@ package main
 
 import (
 	agg "agg_go"
-	"agg_go/internal/basics"
-	"agg_go/internal/conv"
-	"agg_go/internal/path"
-	"agg_go/internal/transform"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/conv"
+	"github.com/MeKo-Christian/agg_go/internal/path"
+	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
 
 // --- State ---

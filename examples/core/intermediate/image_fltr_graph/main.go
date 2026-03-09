@@ -8,8 +8,8 @@ package main
 
 import (
 	agg "agg_go"
-	"agg_go/examples/shared/demorunner"
-	"agg_go/internal/demo/imagefltrgraph"
+	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/internal/demo/imagefltrgraph"
 )
 
 type demo struct {

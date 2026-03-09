@@ -3,9 +3,9 @@
 package pixfmt
 
 import (
-	"agg_go/internal/basics"
-	"agg_go/internal/color"
-	"agg_go/internal/order"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/order"
 )
 
 // Re-export order types for convenience.

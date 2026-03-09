@@ -3,7 +3,7 @@
 package span
 
 import (
-	"agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/color"
 )
 
 // OneColorFunction is a simple color function that holds a single mutable color.

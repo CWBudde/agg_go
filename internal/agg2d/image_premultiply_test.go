@@ -3,7 +3,7 @@ package agg2d
 import (
 	"testing"
 
-	"agg_go/internal/buffer"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
 )
 
 func TestImagePremultiplyDemultiplyEnhanced(t *testing.T) {

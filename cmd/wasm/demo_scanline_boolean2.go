@@ -3,7 +3,7 @@ package main
 import (
 	"math"
 
-	"agg_go/internal/demo/scanlineboolean2"
+	"github.com/MeKo-Christian/agg_go/internal/demo/scanlineboolean2"
 )
 
 // Port of AGG C++ scanline_boolean2.cpp (web variant).

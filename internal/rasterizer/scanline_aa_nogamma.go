@@ -1,7 +1,7 @@
 package rasterizer
 
 import (
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // RasterizerScanlineAANoGamma is a polygon rasterizer optimized for high-quality

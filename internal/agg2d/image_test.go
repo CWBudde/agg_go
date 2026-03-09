@@ -4,9 +4,9 @@ package agg2d
 import (
 	"testing"
 
-	"agg_go/internal/color"
-	"agg_go/internal/span"
-	"agg_go/internal/transform"
+	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/span"
+	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
 
 // TestTransformImage tests the primary TransformImage method.

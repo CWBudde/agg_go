@@ -1,7 +1,7 @@
 package conv
 
 import (
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // VPGen interface defines the contract for vertex processor generators

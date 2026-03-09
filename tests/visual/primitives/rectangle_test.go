@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	agg "agg_go"
-	"agg_go/tests/visual/framework"
+	"github.com/MeKo-Christian/agg_go/tests/visual/framework"
 )
 
 // TestRectangles runs all rectangle-related visual tests.

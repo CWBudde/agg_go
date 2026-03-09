@@ -4,8 +4,8 @@ import (
 	"math"
 	"testing"
 
-	"agg_go/internal/array"
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/array"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 func TestVCGenVertexSequence_Basic(t *testing.T) {

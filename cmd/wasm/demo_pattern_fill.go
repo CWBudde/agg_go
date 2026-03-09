@@ -7,16 +7,16 @@ import (
 	"math"
 
 	agg "agg_go"
-	"agg_go/internal/basics"
-	"agg_go/internal/buffer"
-	"agg_go/internal/color"
-	imageacc "agg_go/internal/image"
-	"agg_go/internal/path"
-	"agg_go/internal/pixfmt"
-	"agg_go/internal/rasterizer"
-	"agg_go/internal/renderer"
-	"agg_go/internal/scanline"
-	"agg_go/internal/span"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
+	"github.com/MeKo-Christian/agg_go/internal/color"
+	imageacc "github.com/MeKo-Christian/agg_go/internal/image"
+	"github.com/MeKo-Christian/agg_go/internal/path"
+	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
+	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
+	"github.com/MeKo-Christian/agg_go/internal/renderer"
+	"github.com/MeKo-Christian/agg_go/internal/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/span"
 )
 
 // --- Demo state ---

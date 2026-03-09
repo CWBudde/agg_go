@@ -3,7 +3,7 @@ package gamma
 import (
 	"math"
 
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // Unsigned constraint for gamma LUT types - only supports unsigned integer types

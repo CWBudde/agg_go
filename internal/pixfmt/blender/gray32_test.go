@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/color"
 )
 
 func TestBlenderGray32BlendPix(t *testing.T) {

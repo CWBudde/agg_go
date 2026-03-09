@@ -3,12 +3,12 @@ package pixfmt
 import (
 	"unsafe"
 
-	"agg_go/internal/basics"
-	"agg_go/internal/buffer"
-	"agg_go/internal/color"
-	"agg_go/internal/order"
-	"agg_go/internal/pixfmt/blender"
-	"agg_go/internal/simd"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
+	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/order"
+	"github.com/MeKo-Christian/agg_go/internal/pixfmt/blender"
+	"github.com/MeKo-Christian/agg_go/internal/simd"
 )
 
 // RGBA pixel type for internal operations

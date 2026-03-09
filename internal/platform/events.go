@@ -1,6 +1,6 @@
 package platform
 
-import "agg_go/internal/platform/types"
+import "github.com/MeKo-Christian/agg_go/internal/platform/types"
 
 // MouseEvent represents a mouse event.
 type MouseEvent struct {

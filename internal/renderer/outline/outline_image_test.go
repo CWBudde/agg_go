@@ -3,9 +3,9 @@ package outline
 import (
 	"testing"
 
-	"agg_go/internal/basics"
-	"agg_go/internal/color"
-	"agg_go/internal/primitives"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/primitives"
 )
 
 // MockSource implements the Source interface for testing.

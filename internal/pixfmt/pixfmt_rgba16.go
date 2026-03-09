@@ -1,11 +1,11 @@
 package pixfmt
 
 import (
-	"agg_go/internal/basics"
-	"agg_go/internal/buffer"
-	"agg_go/internal/color"
-	"agg_go/internal/order"
-	"agg_go/internal/pixfmt/blender"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
+	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/order"
+	"github.com/MeKo-Christian/agg_go/internal/pixfmt/blender"
 )
 
 // pixWidth16 is bytes per pixel for RGBA16 (4 channels × 2 bytes).

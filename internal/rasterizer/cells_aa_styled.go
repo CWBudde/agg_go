@@ -3,8 +3,8 @@ package rasterizer
 import (
 	"math"
 
-	"agg_go/internal/array"
-	"agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/array"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // RasterizerCellsAAStyled implements the main rasterization algorithm with concrete CellStyleAA type.
