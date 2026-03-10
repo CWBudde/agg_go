@@ -135,7 +135,7 @@ func buildGlyphPath() *path.PathStorageStl {
 	// Apply scale(4.0) then translate(150, 100) to all vertices in-place.
 	mtx := transform.NewTransAffine().Scale(4.0).Translate(150, 100)
 	n := p.TotalVertices()
-	for i := uint(0); i < n; i++ {
+	for i := range n {
 		x, y, cmd := p.Vertex(i)
 		if basics.IsVertex(basics.PathCommand(cmd)) {
 			mtx.Transform(&x, &y)
@@ -219,15 +219,11 @@ var gradientColorsRGB = [256][3]uint8{
 // Alpha is: i*4 for i<64, else 255 (matching C++ line 426).
 func buildColorLUT() []color.RGBA8[color.SRGB] {
 	lut := make([]color.RGBA8[color.SRGB], 256)
-	for i := 0; i < 256; i++ {
+	for i := range 256 {
 		rgb := gradientColorsRGB[i]
 		a := uint8(255)
 		if i <= 63 {
-			v := i * 4
-			if v > 255 {
-				v = 255
-			}
-			a = uint8(v)
+			a = uint8(min(i*4, 255))
 		}
 		lut[i] = color.RGBA8[color.SRGB]{R: basics.Int8u(rgb[0]), G: basics.Int8u(rgb[1]), B: basics.Int8u(rgb[2]), A: basics.Int8u(a)}
 	}
@@ -237,7 +233,7 @@ func buildColorLUT() []color.RGBA8[color.SRGB] {
 // Draw renders the blend color demo onto the given context.
 // Returns the (potentially initialized) quad and shape bounds so
 // the caller can track the draggable quad across frames.
-func Draw(ctx *agg.Context, cfg Config) Result {
+func Draw(ctx *agg.Context, cfg *Config) Result {
 	if ctx == nil {
 		return Result{}
 	}
@@ -279,7 +275,7 @@ func Draw(ctx *agg.Context, cfg Config) Result {
 	outRbuf := buffer.NewRenderingBufferU8()
 	outRbuf.Attach(outImg.Data, w, h, w*4)
 	outPixFmt := pixfmt.NewPixFmtRGBA32PreLinear(outRbuf)
-	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32Pre[color.Linear], color.RGBA8[color.Linear]](outPixFmt)
+	renBase := renderer.NewRendererBaseWithPixfmt(outPixFmt)
 	renBase.Clear(color.RGBA8[color.Linear]{R: 255, G: 242, B: 242, A: 255})
 
 	// Create gray8 buffer for shadow rendering.
@@ -287,7 +283,7 @@ func Draw(ctx *agg.Context, cfg Config) Result {
 	grayRbuf := buffer.NewRenderingBufferU8()
 	grayRbuf.Attach(grayBuf, w, h, w)
 	grayPixFmt := pixfmt.NewPixFmtSGray8(grayRbuf)
-	grayRendBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtSGray8, color.Gray8[color.SRGB]](grayPixFmt)
+	grayRendBase := renderer.NewRendererBaseWithPixfmt(grayPixFmt)
 	grayRendBase.Clear(color.Gray8[color.SRGB]{V: 0, A: 255})
 
 	// Build perspective transform from shape bounds to quad.
@@ -298,7 +294,7 @@ func Draw(ctx *agg.Context, cfg Config) Result {
 	)
 
 	// Apply perspective transform to the curved shape.
-	shadowTrans := conv.NewConvTransform[*conv.ConvCurve, *transform.TransPerspective](shape, shadowPersp)
+	shadowTrans := conv.NewConvTransform(shape, shadowPersp)
 
 	// Create rasterizer and scanline.
 	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
@@ -358,7 +354,7 @@ func Draw(ctx *agg.Context, cfg Config) Result {
 			// Convert SRGB LUT to Linear for the linear renderer.
 			linearLUT := make([]color.RGBA8[color.Linear], len(colorLUT))
 			for i, c := range colorLUT {
-				linearLUT[i] = color.RGBA8[color.Linear]{R: c.R, G: c.G, B: c.B, A: c.A}
+				linearLUT[i] = color.RGBA8[color.Linear](c)
 			}
 			renBase.BlendFromLUT(grayPixFmt, linearLUT, srcRect, 0, 0, 255)
 		}
