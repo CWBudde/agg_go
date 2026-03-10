@@ -288,8 +288,8 @@ type mockGraySource struct {
 	rows [][]basics.Int8u // rows[y] is the full row data
 }
 
-func (s *mockGraySource) Width() int                    { return s.w }
-func (s *mockGraySource) Height() int                   { return s.h }
+func (s *mockGraySource) Width() int                   { return s.w }
+func (s *mockGraySource) Height() int                  { return s.h }
 func (s *mockGraySource) RowData(y int) []basics.Int8u { return s.rows[y] }
 
 // blendPixFmt is a mock pixel format that also supports BlendFromColor and BlendFromLUT.
@@ -306,8 +306,10 @@ func (m *blendPixFmt) Width() int    { return m.width }
 func (m *blendPixFmt) Height() int   { return m.height }
 func (m *blendPixFmt) PixWidth() int { return 4 }
 
-func (m *blendPixFmt) CopyPixel(x, y int, c testColor)                      { m.pixels[[2]int{x, y}] = c }
-func (m *blendPixFmt) BlendPixel(x, y int, c testColor, cover basics.Int8u) { m.pixels[[2]int{x, y}] = c }
+func (m *blendPixFmt) CopyPixel(x, y int, c testColor) { m.pixels[[2]int{x, y}] = c }
+func (m *blendPixFmt) BlendPixel(x, y int, c testColor, cover basics.Int8u) {
+	m.pixels[[2]int{x, y}] = c
+}
 func (m *blendPixFmt) Pixel(x, y int) testColor {
 	if p, ok := m.pixels[[2]int{x, y}]; ok {
 		return p
@@ -320,39 +322,49 @@ func (m *blendPixFmt) CopyHline(x, y, length int, c testColor) {
 		m.pixels[[2]int{x + i, y}] = c
 	}
 }
+
 func (m *blendPixFmt) BlendHline(x, y, length int, c testColor, cover basics.Int8u) {
 	m.CopyHline(x, y, length, c)
 }
+
 func (m *blendPixFmt) CopyVline(x, y, length int, c testColor) {
 	for i := 0; i < length; i++ {
 		m.pixels[[2]int{x, y + i}] = c
 	}
 }
+
 func (m *blendPixFmt) BlendVline(x, y, length int, c testColor, cover basics.Int8u) {
 	m.CopyVline(x, y, length, c)
 }
+
 func (m *blendPixFmt) BlendSolidHspan(x, y, length int, c testColor, covers []basics.Int8u) {
 	m.CopyHline(x, y, length, c)
 }
+
 func (m *blendPixFmt) BlendSolidVspan(x, y, length int, c testColor, covers []basics.Int8u) {
 	m.CopyVline(x, y, length, c)
 }
+
 func (m *blendPixFmt) CopyColorHspan(x, y, length int, colors []testColor) {
 	for i := 0; i < length && i < len(colors); i++ {
 		m.pixels[[2]int{x + i, y}] = colors[i]
 	}
 }
+
 func (m *blendPixFmt) BlendColorHspan(x, y, length int, colors []testColor, covers []basics.Int8u, cover basics.Int8u) {
 	m.CopyColorHspan(x, y, length, colors)
 }
+
 func (m *blendPixFmt) CopyColorVspan(x, y, length int, colors []testColor) {
 	for i := 0; i < length && i < len(colors); i++ {
 		m.pixels[[2]int{x, y + i}] = colors[i]
 	}
 }
+
 func (m *blendPixFmt) BlendColorVspan(x, y, length int, colors []testColor, covers []basics.Int8u, cover basics.Int8u) {
 	m.CopyColorVspan(x, y, length, colors)
 }
+
 func (m *blendPixFmt) CopyBar(x1, y1, x2, y2 int, c testColor) {
 	for y := y1; y <= y2; y++ {
 		for x := x1; x <= x2; x++ {
@@ -360,9 +372,11 @@ func (m *blendPixFmt) CopyBar(x1, y1, x2, y2 int, c testColor) {
 		}
 	}
 }
+
 func (m *blendPixFmt) BlendBar(x1, y1, x2, y2 int, c testColor, cover basics.Int8u) {
 	m.CopyBar(x1, y1, x2, y2, c)
 }
+
 func (m *blendPixFmt) Clear(c testColor) {
 	for y := 0; y < m.height; y++ {
 		for x := 0; x < m.width; x++ {
@@ -379,7 +393,8 @@ func (m *blendPixFmt) BlendFromColor(src interface {
 	RowData(y int) []basics.Int8u
 	Width() int
 	Height() int
-}, c testColor, xdst, ydst, xsrc, ysrc, length int, cover basics.Int8u) {
+}, c testColor, xdst, ydst, xsrc, ysrc, length int, cover basics.Int8u,
+) {
 	row := src.RowData(ysrc)
 	if row == nil {
 		return
@@ -404,7 +419,8 @@ func (m *blendPixFmt) BlendFromLUT(src interface {
 	RowData(y int) []basics.Int8u
 	Width() int
 	Height() int
-}, colorLUT []testColor, xdst, ydst, xsrc, ysrc, length int, cover basics.Int8u) {
+}, colorLUT []testColor, xdst, ydst, xsrc, ysrc, length int, cover basics.Int8u,
+) {
 	row := src.RowData(ysrc)
 	if row == nil {
 		return
@@ -435,8 +451,8 @@ func TestRendererBase_BlendFromColor(t *testing.T) {
 	src := &mockGraySource{
 		w: 3, h: 2,
 		rows: [][]basics.Int8u{
-			{128, 255, 0},   // row 0
-			{64, 192, 255},  // row 1
+			{128, 255, 0},  // row 0
+			{64, 192, 255}, // row 1
 		},
 	}
 

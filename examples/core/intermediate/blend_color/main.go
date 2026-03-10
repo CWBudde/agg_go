@@ -30,14 +30,14 @@ type demo struct {
 
 func newDemo() *demo {
 	return &demo{
-		method:   1,    // Color LUT
+		method:   1, // Color LUT
 		radius:   15.0,
 		selected: -1,
 	}
 }
 
 func (d *demo) Render(ctx *agg.Context) {
-	result := blendcolor.Draw(ctx, blendcolor.Config{
+	result := blendcolor.Draw(ctx, &blendcolor.Config{
 		Method: d.method,
 		Radius: d.radius,
 		Quad:   d.quad,

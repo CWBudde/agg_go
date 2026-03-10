@@ -17,7 +17,7 @@ var (
 )
 
 func drawBlendColorDemo() {
-	result := blendcolor.Draw(ctx, blendcolor.Config{
+	result := blendcolor.Draw(ctx, &blendcolor.Config{
 		Method: blendColorMethod,
 		Radius: blendColorRadius,
 		Quad:   blendColorQuad,

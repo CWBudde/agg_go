@@ -373,7 +373,7 @@ idiomatic in Go.
       `web/{event-handlers.js,demo-state.js,url-state.js}`,
       verification wiring via `cmd/wasm/{main.go,main_stub.go,render_test.go}` switches/lists.
 - [x] `polymorphic_renderer.cpp` — recorded and wired (cmd/wasm/demo_polymorphic_renderer.go + examples/core/intermediate/polymorphic_renderer/main.go)
-- [ ] `blend_color.cpp`
+- [x] `blend_color.cpp` — shared draw in `internal/demo/blendcolor/draw.go`, standalone `examples/core/intermediate/blend_color/main.go`, web `cmd/wasm/demo_blend_color.go` + `web/index.html` controls, infrastructure: `RendererBase.BlendFromColor`/`BlendFromLUT` + gray8 `GrayImageInterface` compliance
 - [ ] `image_filters2.cpp`
 
 ### 9.4 Lower-priority or support-heavy demos
