@@ -43,13 +43,16 @@ func drawGammaTunerDemo() {
 
 	// Pre-calculate colors for the gradient
 	invG := 1.0 / g
+	gradientKForScreenY := func(y int) float64 {
+		srcY := float64(height-1-y) / float64(height-1)
+		return 1.0 - math.Pow(srcY*0.5, invG)
+	}
 
 	// 1. Draw vertical gradient directly into canvasBuf.
 	// The upstream demo uses flip_y=true, so evaluate the gradient from the
 	// mirrored Y coordinate to match the original orientation.
 	for y := 0; y < height; y++ {
-		srcY := float64(height-1-y) / float64(height-1)
-		k := 1.0 - math.Pow(srcY*0.5, invG)
+		k := gradientKForScreenY(y)
 
 		cr := uint8(r*255.0*(1.0-k) + 0.5)
 		cg := uint8(gg*255.0*(1.0-k) + 0.5)
@@ -132,14 +135,12 @@ func drawGammaTunerDemo() {
 
 	// 4. Draw vertical strips
 	for i := 0; i < squareSize; i++ {
-		k := float64(squareSize-1-i) / float64(squareSize-1)
-		k = 1.0 - math.Pow(k*0.5, invG)
-
+		y := squareY + i
+		k := gradientKForScreenY(y)
 		cr := uint8(r*255.0*(1.0-k) + 0.5)
 		cg := uint8(gg*255.0*(1.0-k) + 0.5)
 		cb := uint8(b*255.0*(1.0-k) + 0.5)
 
-		y := squareY + i
 		rowOffset := y * width * 4
 		for j := 0; j < verStrips; j++ {
 			xc := squareSize * (j + 1) / (verStrips + 1)
