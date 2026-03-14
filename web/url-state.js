@@ -58,6 +58,12 @@ export const ALL_DEMO_PARAMS = [
   "if2f",
   "if2r",
   "if2n",
+  // idea
+  "idr",
+  "ideo",
+  "idd",
+  "idro",
+  "ids",
   // sbool
   "sop",
   "p1x0",

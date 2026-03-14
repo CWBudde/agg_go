@@ -15,6 +15,8 @@ export function syncControlVisibility(demoType) {
     demoType === "image_fltr_graph" ? "flex" : "none";
   document.getElementById("imageFilters2Controls").style.display =
     demoType === "image_filters2" ? "flex" : "none";
+  document.getElementById("ideaControls").style.display =
+    demoType === "idea" ? "flex" : "none";
   document.getElementById("sboolControls").style.display =
     demoType === "sbool" ? "flex" : "none";
   document.getElementById("convstrokeControls").style.display =
@@ -122,6 +124,8 @@ export const demoDescriptions = {
     "Port of AGG's image_fltr_graph demo. Plots raw filter shape (red), unnormalized discrete accumulation (green), and normalized LUT weights (blue). Use HTML controls/URL params: ifgr (radius), ifgm (bitmask of enabled filters).",
   image_filters2:
     "Port of AGG's image_filters2.cpp. Renders the original 4x4 color source enlarged through the selected interpolation kernel and plots the current discrete LUT response. HTML controls/URL params: if2f (filter), if2r (radius for sinc/lanczos/blackman), if2n (normalize 0/1).",
+  idea:
+    "Port of AGG's idea.cpp. Renders the original rotating light-bulb logo from grouped polygons, with toggles for rotate, even-odd filling, draft threshold rendering, roundoff, and step size. URL params: idr, ideo, idd, idro, ids.",
   sbool:
     "Boolean operations on vector shapes. Demonstrates combining multiple paths using filling rules to achieve Union and XOR-like effects with interactive polygons.",
   aatest:
@@ -155,7 +159,7 @@ export const demoDescriptions = {
   gouraud_mesh:
     "Animated Gouraud-shaded mesh. A grid of triangles with varying colors and positions, rendered efficiently using compound rasterization and smooth Gouraud shading. Drag points to manually distort the mesh.",
   trans_curve:
-    "Along-a-curve transformation. Bends complex vector shapes (the lion) along an interactive B-Spline path. Drag the six control points to reshape the path. Toggle animation to watch the lion flow along the moving curve.",
+    "Along-a-curve transformation. Go-idiomatic equivalent of AGG's trans_curve1.cpp: an embedded vector-font paragraph is stroked and bent along an interactive B-spline path. Drag the six control points to reshape the path; use the controls for closure, X-scale preservation, fixed base length, subdivision count, and animation.",
   trans_curve2:
     "Double path transformation. Bends vector shapes (the lion) between two interactive B-Spline curves. Drag the 12 control points to reshape the envelope. Toggle animation to watch the lion morph between the moving curves.",
   gamma_ctrl:

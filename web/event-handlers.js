@@ -160,6 +160,35 @@ export function setupEventHandlers(
   });
   syncIf2RadiusVisibility();
 
+  // idea controls
+  document.getElementById("ideaRotate").addEventListener("change", () => {
+    setIdeaRotate(document.getElementById("ideaRotate").checked);
+    persistDemoParams("idea");
+    renderSelectedDemo();
+  });
+  document.getElementById("ideaEvenOdd").addEventListener("change", () => {
+    setIdeaEvenOdd(document.getElementById("ideaEvenOdd").checked);
+    persistDemoParams("idea");
+    renderSelectedDemo();
+  });
+  document.getElementById("ideaDraft").addEventListener("change", () => {
+    setIdeaDraft(document.getElementById("ideaDraft").checked);
+    persistDemoParams("idea");
+    renderSelectedDemo();
+  });
+  document.getElementById("ideaRoundoff").addEventListener("change", () => {
+    setIdeaRoundoff(document.getElementById("ideaRoundoff").checked);
+    persistDemoParams("idea");
+    renderSelectedDemo();
+  });
+  document.getElementById("ideaStepSlider").addEventListener("input", () => {
+    const val = parseFloat(document.getElementById("ideaStepSlider").value);
+    document.getElementById("ideaStepValue").textContent = val.toFixed(3);
+    setIdeaAngleDelta(val);
+    persistDemoParams("idea");
+    renderSelectedDemo();
+  });
+
   // sbool controls
   document.getElementById("sboolOpSelector").addEventListener("change", () => {
     setSBoolOp(parseInt(document.getElementById("sboolOpSelector").value));
@@ -345,9 +374,45 @@ export function setupEventHandlers(
 
   // trans_curve controls
   document
+    .getElementById("transCurveNumPointsSlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("transCurveNumPointsSlider").value,
+      );
+      document.getElementById("transCurveNumPointsValue").textContent =
+        val.toFixed(0);
+      setTransCurveNumPoints(val);
+      persistDemoParams("trans_curve");
+      renderSelectedDemo();
+    });
+  document.getElementById("transCurveClose").addEventListener("change", () => {
+    setTransCurveClose(document.getElementById("transCurveClose").checked);
+    persistDemoParams("trans_curve");
+    renderSelectedDemo();
+  });
+  document
+    .getElementById("transCurvePreserveXScale")
+    .addEventListener("change", () => {
+      setTransCurvePreserveXScale(
+        document.getElementById("transCurvePreserveXScale").checked,
+      );
+      persistDemoParams("trans_curve");
+      renderSelectedDemo();
+    });
+  document
+    .getElementById("transCurveFixedLen")
+    .addEventListener("change", () => {
+      setTransCurveFixedLen(
+        document.getElementById("transCurveFixedLen").checked,
+      );
+      persistDemoParams("trans_curve");
+      renderSelectedDemo();
+    });
+  document
     .getElementById("transCurveAnimate")
     .addEventListener("change", () => {
       toggleTransCurveAnimate();
+      persistDemoParams("trans_curve");
       renderSelectedDemo();
     });
 
@@ -956,6 +1021,7 @@ export function setupEventHandlers(
         document.getElementById("transCurveAnimate").checked) ||
       (demoType === "trans_curve2" &&
         document.getElementById("transCurve2Animate").checked) ||
+      (demoType === "idea" && document.getElementById("ideaRotate").checked) ||
       demoType === "distortions"
     ) {
       renderSelectedDemo();

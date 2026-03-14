@@ -72,6 +72,36 @@ func main() {
 		}
 		return nil
 	}))
+	js.Global().Set("setIdeaRotate", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setIdeaRotate(args[0].Bool())
+		}
+		return nil
+	}))
+	js.Global().Set("setIdeaEvenOdd", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setIdeaEvenOdd(args[0].Bool())
+		}
+		return nil
+	}))
+	js.Global().Set("setIdeaDraft", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setIdeaDraft(args[0].Bool())
+		}
+		return nil
+	}))
+	js.Global().Set("setIdeaRoundoff", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setIdeaRoundoff(args[0].Bool())
+		}
+		return nil
+	}))
+	js.Global().Set("setIdeaAngleDelta", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setIdeaAngleDelta(args[0].Float())
+		}
+		return nil
+	}))
 	js.Global().Set("setSBoolOp", js.FuncOf(setSBoolOp))
 	js.Global().Set("setStrokeJoin", js.FuncOf(setStrokeJoin))
 	js.Global().Set("setStrokeCap", js.FuncOf(setStrokeCap))
@@ -1538,6 +1568,8 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 		drawImageFltrGraphDemo()
 	case "image_filters2":
 		drawImageFilters2Demo()
+	case "idea":
+		drawIdeaDemo()
 	case "sbool":
 		drawSBoolDemo()
 	case "aatest":

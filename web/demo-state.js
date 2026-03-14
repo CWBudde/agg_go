@@ -256,6 +256,40 @@ export const demoURLHandlers = {
     },
   },
 
+  idea: {
+    persist() {
+      updateURL({
+        idr: document.getElementById("ideaRotate").checked ? "1" : "0",
+        ideo: document.getElementById("ideaEvenOdd").checked ? "1" : "0",
+        idd: document.getElementById("ideaDraft").checked ? "1" : "0",
+        idro: document.getElementById("ideaRoundoff").checked ? "1" : "0",
+        ids: parseFloat(document.getElementById("ideaStepSlider").value),
+      });
+    },
+    restore(p) {
+      const rotate = p.get("idr") === "1";
+      const evenOdd = p.get("ideo") === "1";
+      const draft = p.get("idd") === "1";
+      const roundoff = p.get("idro") === "1";
+      const step = p.has("ids")
+        ? parseFloat(p.get("ids"))
+        : parseFloat(document.getElementById("ideaStepSlider").value);
+
+      document.getElementById("ideaRotate").checked = rotate;
+      document.getElementById("ideaEvenOdd").checked = evenOdd;
+      document.getElementById("ideaDraft").checked = draft;
+      document.getElementById("ideaRoundoff").checked = roundoff;
+      document.getElementById("ideaStepSlider").value = step;
+      document.getElementById("ideaStepValue").textContent = step.toFixed(3);
+
+      setIdeaRotate(rotate);
+      setIdeaEvenOdd(evenOdd);
+      setIdeaDraft(draft);
+      setIdeaRoundoff(roundoff);
+      setIdeaAngleDelta(step);
+    },
+  },
+
   sbool: {
     persist() {
       const n = getSBoolNodes();

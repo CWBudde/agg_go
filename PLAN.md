@@ -428,13 +428,16 @@ idiomatic in Go.
 
 Triage each: fully port, replace with Go-idiomatic equivalent, or defer with rationale:
 
-- [ ] `trans_curve1.cpp`
+- [x] `trans_curve1.cpp` — Go-idiomatic equivalent using embedded GSV vector text in `internal/demo/transcurve/draw.go`, standalone `examples/core/intermediate/trans_curve/main.go`, and interactive web demo wiring in `cmd/wasm/demo_trans_curve.go`
 - [ ] `trans_curve1_ft.cpp`
 - [ ] `trans_curve2_ft.cpp`
 - [ ] `make_arrows.cpp`
 - [ ] `make_gb_poly.cpp`
 - [ ] `mol_view.cpp`
-- [ ] `idea.cpp`
+- [x] `idea.cpp` — shared renderer in `internal/demo/idea/draw.go`,
+      standalone `examples/core/intermediate/idea/main.go`,
+      web `cmd/wasm/demo_idea.go` + `web/index.html` controls/animation wiring,
+      verification wiring via `cmd/wasm/{main.go,main_stub.go,render_test.go}` switches/lists.
 - [ ] `truetype_test.cpp`
 
 ### 9.5 Bug fixing

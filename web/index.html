@@ -93,6 +93,7 @@
           <option value="imagefilters">Image Interpolation Filters</option>
           <option value="image_fltr_graph">Image Filter Graph</option>
           <option value="image_filters2">Image Filters 2</option>
+          <option value="idea">Idea</option>
           <option value="blur">Gaussian &amp; Stack Blur</option>
           <option value="simple_blur">Simple 3×3 Blur</option>
           <option value="blend_color">Blend Color (Shadow)</option>
@@ -449,6 +450,23 @@
       >
     </div>
 
+    <div class="controls" id="ideaControls" style="display: none">
+      <label><input type="checkbox" id="ideaRotate" /> Rotate</label>
+      <label><input type="checkbox" id="ideaEvenOdd" /> Even-Odd</label>
+      <label><input type="checkbox" id="ideaDraft" /> Draft</label>
+      <label><input type="checkbox" id="ideaRoundoff" /> Roundoff</label>
+      <label for="ideaStepSlider" style="margin-left: 1rem">Step:</label>
+      <input
+        type="range"
+        id="ideaStepSlider"
+        min="0"
+        max="1"
+        value="0.01"
+        step="0.001"
+      />
+      <span id="ideaStepValue">0.010</span>
+    </div>
+
     <div class="controls" id="sboolControls" style="display: none">
       <label for="sboolOpSelector">Operation:</label>
       <select id="sboolOpSelector">
@@ -658,6 +676,25 @@
     </div>
 
     <div class="controls" id="transCurveControls" style="display: none">
+      <label for="transCurveNumPointsSlider">Intermediate Points:</label>
+      <input
+        type="range"
+        id="transCurveNumPointsSlider"
+        min="10"
+        max="400"
+        value="200"
+        step="1"
+      />
+      <span id="transCurveNumPointsValue">200</span>
+      <label><input type="checkbox" id="transCurveClose" /> Close</label>
+      <label
+        ><input type="checkbox" id="transCurvePreserveXScale" checked />
+        Preserve X Scale</label
+      >
+      <label
+        ><input type="checkbox" id="transCurveFixedLen" checked /> Fixed
+        Length</label
+      >
       <label><input type="checkbox" id="transCurveAnimate" /> Animate</label>
     </div>
 

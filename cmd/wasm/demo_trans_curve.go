@@ -8,14 +8,14 @@ import (
 )
 
 var (
-	transCurvePoints          = transcurve.DefaultPoints
-	transCurveSelected        = -1
-	transCurveAnimate         = false
-	transCurveClose           = false
-	transCurvePreserveXScale  = true
-	transCurveFixedLen        = true
-	transCurveNumPoints       = 200.0
-	transCurveAnimation       = transcurve.NewAnimationState()
+	transCurvePoints         = transcurve.DefaultPoints
+	transCurveSelected       = -1
+	transCurveAnimate        = false
+	transCurveClose          = false
+	transCurvePreserveXScale = true
+	transCurveFixedLen       = true
+	transCurveNumPoints      = 200.0
+	transCurveAnimation      = transcurve.NewAnimationState()
 )
 
 const (
@@ -24,7 +24,7 @@ const (
 )
 
 func transCurveFrameOffset() (float64, float64) {
-	return (float64(width)-transCurveRefW)*0.5, (float64(height)-transCurveRefH)*0.5
+	return (float64(width) - transCurveRefW) * 0.5, (float64(height) - transCurveRefH) * 0.5
 }
 
 func drawTransCurveDemo() {

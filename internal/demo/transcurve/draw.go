@@ -40,17 +40,17 @@ type AnimationState struct {
 }
 
 type Config struct {
-	Points           [ControlPointCount * 2]float64
-	NumIntermediate  float64
-	Close            bool
-	PreserveXScale   bool
-	FixedLength      bool
-	BaseLength       float64
-	Text             string
-	OffsetX          float64
-	OffsetY          float64
-	TextHeight       float64
-	TextStrokeWidth  float64
+	Points          [ControlPointCount * 2]float64
+	NumIntermediate float64
+	Close           bool
+	PreserveXScale  bool
+	FixedLength     bool
+	BaseLength      float64
+	Text            string
+	OffsetX         float64
+	OffsetY         float64
+	TextHeight      float64
+	TextStrokeWidth float64
 }
 
 func NewAnimationState() AnimationState {
@@ -124,7 +124,7 @@ func Draw(ctx *agg.Context, cfg Config) {
 	segm := conv.NewConvSegmentator(outline)
 	segm.ApproximationScale(3.0)
 
-	transformedText := conv.NewConvTransform(segm, tcurve)
+	transformedText := conv.NewConvTransform(&segmentatorAdapter{source: segm}, tcurve)
 
 	a.FillColor(agg.Black)
 	a.NoLine()
@@ -180,4 +180,17 @@ func drawHandle(ctx *agg.Context, x, y float64) {
 	ctx.FillCircle(x, y, 5)
 	ctx.SetColor(agg.Black)
 	ctx.DrawCircle(x, y, 5)
+}
+
+type segmentatorAdapter struct {
+	source *conv.ConvSegmentator
+}
+
+func (a *segmentatorAdapter) Rewind(pathID uint) {
+	a.source.Rewind(pathID)
+}
+
+func (a *segmentatorAdapter) Vertex() (x, y float64, cmd basics.PathCommand) {
+	x, y, raw := a.source.Vertex()
+	return x, y, basics.PathCommand(raw)
 }
