@@ -193,7 +193,9 @@ export function setupEventHandlers(
   document
     .getElementById("molViewMoleculeSlider")
     .addEventListener("input", () => {
-      const val = parseInt(document.getElementById("molViewMoleculeSlider").value);
+      const val = parseInt(
+        document.getElementById("molViewMoleculeSlider").value,
+      );
       document.getElementById("molViewMoleculeValue").textContent = val;
       setMolViewMolecule(val);
       persistDemoParams("mol_view");
@@ -214,18 +216,24 @@ export function setupEventHandlers(
   document
     .getElementById("molViewTextSizeSlider")
     .addEventListener("input", () => {
-      const val = parseFloat(document.getElementById("molViewTextSizeSlider").value);
+      const val = parseFloat(
+        document.getElementById("molViewTextSizeSlider").value,
+      );
       document.getElementById("molViewTextSizeValue").textContent =
         val.toFixed(1);
       setMolViewTextSize(val);
       persistDemoParams("mol_view");
       renderSelectedDemo();
     });
-  document.getElementById("molViewAutoRotate").addEventListener("change", () => {
-    setMolViewAutoRotate(document.getElementById("molViewAutoRotate").checked);
-    persistDemoParams("mol_view");
-    renderSelectedDemo();
-  });
+  document
+    .getElementById("molViewAutoRotate")
+    .addEventListener("change", () => {
+      setMolViewAutoRotate(
+        document.getElementById("molViewAutoRotate").checked,
+      );
+      persistDemoParams("mol_view");
+      renderSelectedDemo();
+    });
 
   // sbool controls
   document.getElementById("sboolOpSelector").addEventListener("change", () => {
@@ -990,15 +998,19 @@ export function setupEventHandlers(
   });
 
   // Mouse wheel zoom for flash_rasterizer2
-  canvas.addEventListener("wheel", (e) => {
-    if (selector.value !== "flash_rasterizer2") return;
-    e.preventDefault();
-    const rect = canvas.getBoundingClientRect();
-    const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
-    const my = (e.clientY - rect.top) * (canvas.height / rect.height);
-    applyFlash2Wheel(mx, my, e.deltaY);
-    renderSelectedDemo();
-  }, { passive: false });
+  canvas.addEventListener(
+    "wheel",
+    (e) => {
+      if (selector.value !== "flash_rasterizer2") return;
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
+      const my = (e.clientY - rect.top) * (canvas.height / rect.height);
+      applyFlash2Wheel(mx, my, e.deltaY);
+      renderSelectedDemo();
+    },
+    { passive: false },
+  );
 
   // gpc_test controls
   document.getElementById("gpcSceneSelector").addEventListener("change", () => {

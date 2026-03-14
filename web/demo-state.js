@@ -294,7 +294,9 @@ export const demoURLHandlers = {
     persist() {
       updateURL({
         mvm: parseInt(document.getElementById("molViewMoleculeSlider").value),
-        mvt: parseFloat(document.getElementById("molViewThicknessSlider").value),
+        mvt: parseFloat(
+          document.getElementById("molViewThicknessSlider").value,
+        ),
         mvz: parseFloat(document.getElementById("molViewTextSizeSlider").value),
         mvr: document.getElementById("molViewAutoRotate").checked ? "1" : "0",
       });

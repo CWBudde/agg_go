@@ -27,8 +27,10 @@ type RGBA struct {
 	R, G, B, A float64
 }
 
-const rgba8FloatScale = 1.0 / 255.0
-const rgba16FloatScale = 1.0 / 65535.0
+const (
+	rgba8FloatScale  = 1.0 / 255.0
+	rgba16FloatScale = 1.0 / 65535.0
+)
 
 // NewRGBA creates a new RGBA color
 func NewRGBA(r, g, b, a float64) RGBA {

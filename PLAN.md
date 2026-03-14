@@ -188,72 +188,72 @@ generic fallback → NEON on arm64.
 Span generators feed pixel data into `BlendColorHspan`; profile before committing to SIMD.
 
 - [x] Profile baseline in `internal/span/` before writing any SIMD code.
-  Added length-scaled span benchmarks for `BenchmarkSpanGradientGenerate` and
-  `BenchmarkSpanImageFilterRGBAGenerate` on 2026-03-14.
+      Added length-scaled span benchmarks for `BenchmarkSpanGradientGenerate` and
+      `BenchmarkSpanImageFilterRGBAGenerate` on 2026-03-14.
 - [x] SSE4.1 (amd64) — linear gradient: PADDD step accumulation + PSHUFB color lookup.
-  Profiled and skipped on 2026-03-14. Baseline throughput was already ~180-245 MB/s
-  for linear gradients, and the representative `BenchmarkAgg2DSceneGradientClip/800x600`
-  run still spent ~24.3 ms/op outside any demonstrated span-generation hotspot.
+      Profiled and skipped on 2026-03-14. Baseline throughput was already ~180-245 MB/s
+      for linear gradients, and the representative `BenchmarkAgg2DSceneGradientClip/800x600`
+      run still spent ~24.3 ms/op outside any demonstrated span-generation hotspot.
 - [x] AVX2 (amd64) — double-width linear interpolation if SSE4.1 proves worthwhile.
-  Skipped on 2026-03-14 because the SSE4.1 path was not justified by profiling.
+      Skipped on 2026-03-14 because the SSE4.1 path was not justified by profiling.
 - [x] NEON (arm64) — `vaddq_s32` step accumulation; skip if not hot.
-  Skipped on 2026-03-14 because the generic path is not yet a demonstrated hotspot.
+      Skipped on 2026-03-14 because the generic path is not yet a demonstrated hotspot.
 - [x] Image-filter / resampling kernels: SSE4.1 `PMADDUBSW` for bilinear tap accumulation.
-  Profiled and skipped on 2026-03-14. Bilinear RGBA generation measured ~155-206 MB/s
-  with zero allocations in the focused benchmark, which was not enough evidence to
-  justify assembly without a profile showing it dominates scene time.
+      Profiled and skipped on 2026-03-14. Bilinear RGBA generation measured ~155-206 MB/s
+      with zero allocations in the focused benchmark, which was not enough evidence to
+      justify assembly without a profile showing it dominates scene time.
 - [x] Only implement tiers that show measurable gain in profiling.
 
 ### 7.4 Alpha-Mask Helpers
 
 - [x] Generic — correct scalar baseline for mask fill and RGB-to-gray conversion.
-  Added shared horizontal-span helpers on 2026-03-14 for contiguous one-component
-  masks, stepped component extraction, and RGB24-to-gray conversion. Current
-  microbenchmarks: `BenchmarkAlphaMaskU8FillHspan` 11.4 ns/op and
-  `BenchmarkAlphaMaskU8FillHspanRGBToGray` 227.3 ns/op, both with 0 allocs/op.
+      Added shared horizontal-span helpers on 2026-03-14 for contiguous one-component
+      masks, stepped component extraction, and RGB24-to-gray conversion. Current
+      microbenchmarks: `BenchmarkAlphaMaskU8FillHspan` 11.4 ns/op and
+      `BenchmarkAlphaMaskU8FillHspanRGBToGray` 227.3 ns/op, both with 0 allocs/op.
 - [x] SSE4.1 (amd64) — mask fill: 16 bytes/iter; RGB→gray: `PMADDUBSW` with BT.601 weights.
-  Added `internal/simd` SSE4.1 kernels on 2026-03-14 for short one-byte mask copies
-  and exact RGB24→gray conversion. Gray conversion uses three `PMADDUBSW` passes to
-  preserve the scalar `(77*r + 150*g + 29*b) >> 8` result without saturation.
-  Current microbenchmarks: `RGB24ToGrayU8` improved from ~4.0 GB/s generic to
-  ~15.4 GB/s SSE4.1 at 1024 pixels; one-byte mask fill uses SSE4.1 for short spans
-  and falls back to `copy()` on longer spans where the runtime memmove path is faster.
+      Added `internal/simd` SSE4.1 kernels on 2026-03-14 for short one-byte mask copies
+      and exact RGB24→gray conversion. Gray conversion uses three `PMADDUBSW` passes to
+      preserve the scalar `(77*r + 150*g + 29*b) >> 8` result without saturation.
+      Current microbenchmarks: `RGB24ToGrayU8` improved from ~4.0 GB/s generic to
+      ~15.4 GB/s SSE4.1 at 1024 pixels; one-byte mask fill uses SSE4.1 for short spans
+      and falls back to `copy()` on longer spans where the runtime memmove path is faster.
 - [x] AVX2 (amd64) — 32 bytes/iter mask fill; 256-bit RGB→gray.
-  Added AVX2 kernels on 2026-03-14 for 32-byte mask copies and 8-pixel RGB24→gray
-  conversion using two 128-bit lane-aligned loads per block. Current microbenchmarks:
-  `CopyMask1U8` at 256 pixels improved from 22.60 ns/op (SSE4.1) to 21.86 ns/op
-  (AVX2), and `RGB24ToGrayU8` at 4096 pixels improved from 1093 ns/op (SSE4.1) to
-  673.1 ns/op (AVX2).
+      Added AVX2 kernels on 2026-03-14 for 32-byte mask copies and 8-pixel RGB24→gray
+      conversion using two 128-bit lane-aligned loads per block. Current microbenchmarks:
+      `CopyMask1U8` at 256 pixels improved from 22.60 ns/op (SSE4.1) to 21.86 ns/op
+      (AVX2), and `RGB24ToGrayU8` at 4096 pixels improved from 1093 ns/op (SSE4.1) to
+      673.1 ns/op (AVX2).
 - [x] NEON (arm64) — `vst1q_u8` mask fill; `vmull`/`vadd` for RGB→gray.
-  Added NEON kernels on 2026-03-14 for one-byte mask copy and 8-pixel RGB24→gray
-  conversion using `VTBL` channel extraction plus `VPMULL`/`VADD` accumulation.
-  Verified via `just test-arm64` under QEMU for `internal/simd`, plus
-  `GOOS=linux GOARCH=arm64 go build ./internal/pixfmt`.
+      Added NEON kernels on 2026-03-14 for one-byte mask copy and 8-pixel RGB24→gray
+      conversion using `VTBL` channel extraction plus `VPMULL`/`VADD` accumulation.
+      Verified via `just test-arm64` under QEMU for `internal/simd`, plus
+      `GOOS=linux GOARCH=arm64 go build ./internal/pixfmt`.
 - [x] Wire into alpha-mask call sites in `internal/pixfmt/`.
-  `AlphaMaskU8` and `AMaskNoClipU8` horizontal span paths now dispatch through
-  the shared helpers instead of per-pixel `RowPtr` lookups.
+      `AlphaMaskU8` and `AMaskNoClipU8` horizontal span paths now dispatch through
+      the shared helpers instead of per-pixel `RowPtr` lookups.
 - [x] Tests: byte-exact mask fill; gray values within ±1 of scalar.
-  Added exact-output tests for contiguous one-component fill plus RGB→gray fill
-  and combine paths.
+      Added exact-output tests for contiguous one-component fill plus RGB→gray fill
+      and combine paths.
 
 ### 7.5 Gamma / LUT Application
 
 - [x] Profile gamma application in a representative scene before writing any SIMD code.
-  Added focused benchmarks on 2026-03-14 for whole-buffer RGBA gamma application
-  and RGBA `BlendFromLUT`, plus a representative `blend_color` demo benchmark for
-  the LUT path. Current microbenchmarks: `BenchmarkPixFmtRGBA32ApplyGammaDir`
-  measured ~338-341 MB/s, and `BenchmarkPixFmtRGBA32BlendFromLUT` measured
-  ~425-489 MB/s with 0 allocs/op. Representative scene:
-  `BenchmarkBlendColorLUT/800x600` measured 7536388 ns/op with 680156 B/op and
-  1029 allocs/op, which does not support gamma/LUT SIMD as the next clear
-  bottleneck.
+      Added focused benchmarks on 2026-03-14 for whole-buffer RGBA gamma application
+      and RGBA `BlendFromLUT`, plus a representative `blend_color` demo benchmark for
+      the LUT path. Current microbenchmarks: `BenchmarkPixFmtRGBA32ApplyGammaDir`
+      measured ~338-341 MB/s, and `BenchmarkPixFmtRGBA32BlendFromLUT` measured
+      ~425-489 MB/s with 0 allocs/op. Representative scene:
+      `BenchmarkBlendColorLUT/800x600` measured 7536388 ns/op with 680156 B/op and
+      1029 allocs/op, which does not support gamma/LUT SIMD as the next clear
+      bottleneck.
 - [x] SSE4.1 (amd64) — `PSHUFB`-based partial LUT; implement only if profiling justifies.
-  Profiled and skipped on 2026-03-14. The measured baseline did not justify a
-  partial-table SIMD path over the existing scalar LUT walk.
+      Profiled and skipped on 2026-03-14. The measured baseline did not justify a
+      partial-table SIMD path over the existing scalar LUT walk.
 - [x] AVX2 (amd64) — `VPGATHERDD` gather if available and beneficial; otherwise skip.
-  Skipped on 2026-03-14 because profiling did not justify gather-based LUT work.
+      Skipped on 2026-03-14 because profiling did not justify gather-based LUT work.
 - [x] NEON (arm64) — `vtbl`/`vqtbl1q_u8` for 16-entry segments; skip if not hot.
-  Skipped on 2026-03-14 because the generic path is not yet a demonstrated hotspot.
+      Skipped on 2026-03-14 because the generic path is not yet a demonstrated hotspot.
 - [x] If none of the tiers show meaningful gain, mark as "profiled, skipped" and close.
 
 ---
@@ -435,7 +435,10 @@ Triage each: fully port, replace with Go-idiomatic equivalent, or defer with rat
       `internal/demo/aggshapes/shapes.go` (`MakeArrows`) and reused by
       `scanline_boolean2`; duplicate wasm-local copy removed and shared path
       coverage added in `internal/demo/aggshapes/shapes_test.go`.
-- [ ] `make_gb_poly.cpp`
+- [x] `make_gb_poly.cpp` — shared Great Britain polygon asset exposed via
+      `internal/demo/aggshapes/shapes.go` (`MakeGBPoly`) and reused by
+      `scanline_boolean2`, `gradients_contour`, and `alpha_mask3`; regression
+      coverage added in `internal/demo/aggshapes/shapes_test.go`.
 - [x] `mol_view.cpp` — shared renderer in `internal/demo/molview/draw.go`,
       standalone `examples/core/intermediate/mol_view/main.go`,
       web `cmd/wasm/demo_mol_view.go` + `web/index.html` controls/mouse wiring,
@@ -444,7 +447,7 @@ Triage each: fully port, replace with Go-idiomatic equivalent, or defer with rat
       standalone `examples/core/intermediate/idea/main.go`,
       web `cmd/wasm/demo_idea.go` + `web/index.html` controls/animation wiring,
       verification wiring via `cmd/wasm/{main.go,main_stub.go,render_test.go}` switches/lists.
-- [ ] `truetype_test.cpp`
+- [x] `truetype_test.cpp` — classic standalone FreeType showcase in `examples/core/intermediate/truetype_test/main.go` with gray8, outline, and mono text panels plus runtime fallback when FreeType/font files are unavailable
 
 ### 9.5 Bug fixing
 

@@ -310,6 +310,7 @@ func (m *blendPixFmt) CopyPixel(x, y int, c testColor) { m.pixels[[2]int{x, y}] 
 func (m *blendPixFmt) BlendPixel(x, y int, c testColor, cover basics.Int8u) {
 	m.pixels[[2]int{x, y}] = c
 }
+
 func (m *blendPixFmt) Pixel(x, y int) testColor {
 	if p, ok := m.pixels[[2]int{x, y}]; ok {
 		return p

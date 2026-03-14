@@ -62,7 +62,50 @@ func TestMakeArrows(t *testing.T) {
 func TestMakeGBPolyPopulatesPath(t *testing.T) {
 	ps := path.NewPathStorageStl()
 	MakeGBPoly(ps)
-	if got := ps.TotalVertices(); got == 0 {
-		t.Fatal("expected Great Britain polygon path to contain vertices")
+	if got := ps.TotalVertices(); got != 1859 {
+		t.Fatalf("expected 1859 vertices for the two closed GB contours, got %d", got)
+	}
+
+	ps.Rewind(0)
+	moveCount := 0
+	endPolyCount := 0
+	minX, minY := 1e9, 1e9
+	maxX, maxY := -1e9, -1e9
+
+	for {
+		x, y, cmd := ps.NextVertex()
+		pc := basics.PathCommand(cmd)
+		if basics.IsStop(pc) {
+			break
+		}
+		if basics.IsMoveTo(pc) {
+			moveCount++
+		}
+		if basics.IsEndPoly(pc) {
+			endPolyCount++
+			continue
+		}
+		if x < minX {
+			minX = x
+		}
+		if y < minY {
+			minY = y
+		}
+		if x > maxX {
+			maxX = x
+		}
+		if y > maxY {
+			maxY = y
+		}
+	}
+
+	if moveCount != 2 {
+		t.Fatalf("expected 2 move_to commands, got %d", moveCount)
+	}
+	if endPolyCount != 2 {
+		t.Fatalf("expected 2 end_poly commands, got %d", endPolyCount)
+	}
+	if minX != 1200.0 || minY != 1188.8 || maxX != 1378.0 || maxY != 1396.8 {
+		t.Fatalf("unexpected bounds: got [%0.1f,%0.1f]-[%0.1f,%0.1f]", minX, minY, maxX, maxY)
 	}
 }

@@ -19,8 +19,10 @@ type Config struct {
 	Quad  [4][2]float64
 }
 
-var cachedAgg *agg.Image
-var gammaImageCache sync.Map
+var (
+	cachedAgg       *agg.Image
+	gammaImageCache sync.Map
+)
 
 func Draw(ctx *agg.Context, cfg Config) {
 	if cachedAgg == nil {

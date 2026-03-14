@@ -35,9 +35,9 @@ import (
 
 var (
 	flash2ShapeIdx = 0
-	flash2Zoom     = 1.0  // zoom factor (centered on flash2ZoomX/Y)
-	flash2ZoomX    = 0.0  // zoom center X (canvas coords)
-	flash2ZoomY    = 0.0  // zoom center Y (canvas coords)
+	flash2Zoom     = 1.0 // zoom factor (centered on flash2ZoomX/Y)
+	flash2ZoomX    = 0.0 // zoom center X (canvas coords)
+	flash2ZoomY    = 0.0 // zoom center Y (canvas coords)
 
 	flash2Shapes []shapesdata.RawShape
 	flash2Colors []color.RGBA8[color.Linear] // 100 random colours

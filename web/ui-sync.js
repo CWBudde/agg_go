@@ -126,8 +126,7 @@ export const demoDescriptions = {
     "Port of AGG's image_fltr_graph demo. Plots raw filter shape (red), unnormalized discrete accumulation (green), and normalized LUT weights (blue). Use HTML controls/URL params: ifgr (radius), ifgm (bitmask of enabled filters).",
   image_filters2:
     "Port of AGG's image_filters2.cpp. Renders the original 4x4 color source enlarged through the selected interpolation kernel and plots the current discrete LUT response. HTML controls/URL params: if2f (filter), if2r (radius for sinc/lanczos/blackman), if2n (normalize 0/1).",
-  idea:
-    "Port of AGG's idea.cpp. Renders the original rotating light-bulb logo from grouped polygons, with toggles for rotate, even-odd filling, draft threshold rendering, roundoff, and step size. URL params: idr, ideo, idd, idro, ids.",
+  idea: "Port of AGG's idea.cpp. Renders the original rotating light-bulb logo from grouped polygons, with toggles for rotate, even-odd filling, draft threshold rendering, roundoff, and step size. URL params: idr, ideo, idd, idro, ids.",
   mol_view:
     "Port of AGG's mol_view.cpp. Parses the original SDF molecule set, renders bond geometry plus colored atom labels, and supports molecule selection, bond thickness, label size, and idle rotation. Left-drag rotates/scales, right-drag pans. URL params: mvm, mvt, mvz, mvr.",
   sbool:
