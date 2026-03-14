@@ -28,6 +28,7 @@ type RGBA struct {
 }
 
 const rgba8FloatScale = 1.0 / 255.0
+const rgba16FloatScale = 1.0 / 65535.0
 
 // NewRGBA creates a new RGBA color
 func NewRGBA(r, g, b, a float64) RGBA {
@@ -41,6 +42,26 @@ func NewRGBAFromRGBA8(r, g, b, a basics.Int8u) RGBA {
 		G: float64(g) * rgba8FloatScale,
 		B: float64(b) * rgba8FloatScale,
 		A: float64(a) * rgba8FloatScale,
+	}
+}
+
+// NewRGBAFromGray8 creates a floating-point RGBA color from 8-bit grayscale and alpha.
+func NewRGBAFromGray8(v, a basics.Int8u) RGBA {
+	return RGBA{
+		R: float64(v) * rgba8FloatScale,
+		G: float64(v) * rgba8FloatScale,
+		B: float64(v) * rgba8FloatScale,
+		A: float64(a) * rgba8FloatScale,
+	}
+}
+
+// NewRGBAFromGray16 creates a floating-point RGBA color from 16-bit grayscale and alpha.
+func NewRGBAFromGray16(v, a basics.Int16u) RGBA {
+	return RGBA{
+		R: float64(v) * rgba16FloatScale,
+		G: float64(v) * rgba16FloatScale,
+		B: float64(v) * rgba16FloatScale,
+		A: float64(a) * rgba16FloatScale,
 	}
 }
 

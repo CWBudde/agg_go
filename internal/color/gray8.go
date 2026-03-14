@@ -51,9 +51,7 @@ func ConvertGray8SRGBFromRGBA8(c RGBA8[SRGB]) Gray8[SRGB] {
 
 // ConvertToRGBA converts grayscale to floating-point RGBA
 func (g Gray8[CS]) ConvertToRGBA() RGBA {
-	v := float64(g.V) / 255.0
-	a := float64(g.A) / 255.0
-	return RGBA{R: v, G: v, B: v, A: a}
+	return NewRGBAFromGray8(g.V, g.A)
 }
 
 // ConvertToRGBA8 converts grayscale to 8-bit RGBA

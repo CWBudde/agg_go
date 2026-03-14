@@ -45,9 +45,7 @@ func NewGray16SRGBA(v, a basics.Int16u) Gray16[SRGB] {
 
 // ConvertToRGBA converts to floating-point RGBA
 func (g Gray16[CS]) ConvertToRGBA() RGBA {
-	v := float64(g.V) / 65535.0
-	a := float64(g.A) / 65535.0
-	return RGBA{R: v, G: v, B: v, A: a}
+	return NewRGBAFromGray16(g.V, g.A)
 }
 
 // ConvertToRGBA16 converts to 16-bit RGBA
