@@ -1,6 +1,7 @@
 package span
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/MeKo-Christian/agg_go/internal/basics"
@@ -428,5 +429,144 @@ func TestRGBATransparentPixelHandling(t *testing.T) {
 	// Second pixel should be opaque black
 	if span[1] != (color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255}) {
 		t.Errorf("Expected {0, 0, 0, 255}, got %+v", span[1])
+	}
+}
+
+type benchmarkRGBASource struct {
+	width       int
+	height      int
+	data        []basics.Int8u
+	order       color.ColorOrder
+	lastX       int
+	lastY       int
+	lastLength  int
+	nextXOffset int
+}
+
+func newBenchmarkRGBASource(width, height int) *benchmarkRGBASource {
+	data := make([]basics.Int8u, width*height*4)
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			offset := (y*width + x) * 4
+			data[offset+0] = basics.Int8u((x*13 + y*7) & 0xFF)
+			data[offset+1] = basics.Int8u((x*5 + y*11) & 0xFF)
+			data[offset+2] = basics.Int8u((x*17 + y*3) & 0xFF)
+			data[offset+3] = basics.Int8u(192 + ((x + y) & 0x3F))
+		}
+	}
+	return &benchmarkRGBASource{
+		width:  width,
+		height: height,
+		data:   data,
+		order:  color.OrderRGBA,
+	}
+}
+
+func (s *benchmarkRGBASource) Width() int  { return s.width }
+func (s *benchmarkRGBASource) Height() int { return s.height }
+func (s *benchmarkRGBASource) ColorType() string {
+	return "RGBA8"
+}
+
+func (s *benchmarkRGBASource) OrderType() color.ColorOrder {
+	return s.order
+}
+
+func (s *benchmarkRGBASource) Span(x, y, length int) []basics.Int8u {
+	if y < 0 || y >= s.height {
+		return nil
+	}
+	if x < 0 {
+		x = 0
+	}
+	if x >= s.width {
+		return nil
+	}
+	if length < 1 {
+		length = 1
+	}
+	maxLen := s.width - x
+	if length > maxLen {
+		length = maxLen
+	}
+	s.lastX = x
+	s.lastY = y
+	s.lastLength = length
+	s.nextXOffset = 1
+	start := (y*s.width + x) * 4
+	end := start + length*4
+	return s.data[start:end]
+}
+
+func (s *benchmarkRGBASource) NextX() []basics.Int8u {
+	x := s.lastX + s.nextXOffset
+	if x < 0 || x >= s.width || s.lastY < 0 || s.lastY >= s.height {
+		return nil
+	}
+	s.nextXOffset++
+	start := (s.lastY*s.width + x) * 4
+	return s.data[start : start+4]
+}
+
+func (s *benchmarkRGBASource) NextY() []basics.Int8u {
+	y := s.lastY + 1
+	if s.lastX < 0 || s.lastX >= s.width || y < 0 || y >= s.height {
+		return nil
+	}
+	s.lastY = y
+	s.nextXOffset = 0
+	start := (y*s.width + s.lastX) * 4
+	return s.data[start : start+4]
+}
+
+func (s *benchmarkRGBASource) RowPtr(y int) []basics.Int8u {
+	if y < 0 || y >= s.height {
+		return nil
+	}
+	start := y * s.width * 4
+	end := start + s.width*4
+	return s.data[start:end]
+}
+
+func BenchmarkSpanImageFilterRGBAGenerate(b *testing.B) {
+	source := newBenchmarkRGBASource(512, 512)
+	background := color.RGBA8[color.Linear]{R: 16, G: 32, B: 48, A: 255}
+
+	for _, length := range []int{64, 256, 1024} {
+		b.Run("NN/Len_"+strconv.Itoa(length), func(b *testing.B) {
+			interpolator := NewMockInterpolator()
+			filter := NewSpanImageFilterRGBANNWithParams[RGBASourceInterface, *MockInterpolator](source, interpolator)
+			span := make([]color.RGBA8[color.Linear], length)
+			b.ReportAllocs()
+			b.SetBytes(int64(length * 4))
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				filter.Generate(span, i&255, (i>>2)&255)
+			}
+		})
+
+		b.Run("Bilinear/Len_"+strconv.Itoa(length), func(b *testing.B) {
+			interpolator := NewMockInterpolator()
+			filter := NewSpanImageFilterRGBABilinearWithParams[RGBASourceInterface, *MockInterpolator](source, interpolator)
+			span := make([]color.RGBA8[color.Linear], length)
+			b.ReportAllocs()
+			b.SetBytes(int64(length * 4))
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				filter.Generate(span, i&255, (i>>2)&255)
+			}
+		})
+
+		b.Run("BilinearClip/Len_"+strconv.Itoa(length), func(b *testing.B) {
+			interpolator := NewMockInterpolator()
+			filter := NewSpanImageFilterRGBABilinearClipWithParams[RGBASourceInterface, *MockInterpolator](source, background, interpolator)
+			span := make([]color.RGBA8[color.Linear], length)
+			b.ReportAllocs()
+			b.SetBytes(int64(length * 4))
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				filter.Generate(span, i&255, (i>>2)&255)
+			}
+		})
 	}
 }

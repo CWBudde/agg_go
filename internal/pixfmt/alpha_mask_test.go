@@ -451,6 +451,89 @@ func TestRGBToGrayAlphaMask(t *testing.T) {
 	}
 }
 
+func TestAlphaMaskU8FillHspanContiguousOneComponent(t *testing.T) {
+	width, height := 6, 2
+	maskData := []basics.Int8u{
+		10, 20, 30, 40, 50, 60,
+		70, 80, 90, 100, 110, 120,
+	}
+
+	rbuf := buffer.NewRenderingBufferU8WithData(maskData, width, height, width)
+	mask := NewAlphaMaskU8(1, 0, OneComponentMaskU8{})
+	mask.Attach(rbuf)
+
+	dst := make([]basics.Int8u, 4)
+	mask.FillHspan(1, 1, dst, len(dst))
+
+	expected := []basics.Int8u{80, 90, 100, 110}
+	for i := range expected {
+		if dst[i] != expected[i] {
+			t.Fatalf("FillHspan contiguous[%d]: got %d want %d", i, dst[i], expected[i])
+		}
+	}
+}
+
+func TestAlphaMaskU8FillHspanRGBToGray(t *testing.T) {
+	width, height := 4, 1
+	rgbData := []basics.Int8u{
+		255, 0, 0,
+		0, 255, 0,
+		0, 0, 255,
+		64, 128, 192,
+	}
+
+	rbuf := buffer.NewRenderingBufferU8WithData(rgbData, width, height, width*3)
+	mask := NewAlphaMaskU8(3, 0, NewRGBToGrayMaskU8(0, 1, 2))
+	mask.Attach(rbuf)
+
+	dst := make([]basics.Int8u, width)
+	mask.FillHspan(0, 0, dst, width)
+
+	expected := []basics.Int8u{
+		basics.Int8u((255 * 77) >> 8),
+		basics.Int8u((255 * 150) >> 8),
+		basics.Int8u((255 * 29) >> 8),
+		basics.Int8u((64*77 + 128*150 + 192*29) >> 8),
+	}
+	for i := range expected {
+		if dst[i] != expected[i] {
+			t.Fatalf("FillHspan RGBToGray[%d]: got %d want %d", i, dst[i], expected[i])
+		}
+	}
+}
+
+func TestAlphaMaskU8CombineHspanRGBToGray(t *testing.T) {
+	width, height := 3, 1
+	rgbData := []basics.Int8u{
+		255, 0, 0,
+		0, 255, 0,
+		0, 0, 255,
+	}
+
+	rbuf := buffer.NewRenderingBufferU8WithData(rgbData, width, height, width*3)
+	mask := NewAlphaMaskU8(3, 0, NewRGBToGrayMaskU8(0, 1, 2))
+	mask.Attach(rbuf)
+
+	dst := []basics.Int8u{255, 128, 64}
+	mask.CombineHspan(0, 0, dst, len(dst))
+
+	grays := []int{
+		(255 * 77) >> 8,
+		(255 * 150) >> 8,
+		(255 * 29) >> 8,
+	}
+	expected := []basics.Int8u{
+		basics.Int8u((CoverFull + 255*grays[0]) >> CoverShift),
+		basics.Int8u((CoverFull + 128*grays[1]) >> CoverShift),
+		basics.Int8u((CoverFull + 64*grays[2]) >> CoverShift),
+	}
+	for i := range expected {
+		if dst[i] != expected[i] {
+			t.Fatalf("CombineHspan RGBToGray[%d]: got %d want %d", i, dst[i], expected[i])
+		}
+	}
+}
+
 // TestPredefinedConstructors tests the predefined constructor functions
 func TestPredefinedConstructors(t *testing.T) {
 	// Test grayscale constructor
@@ -583,6 +666,25 @@ func BenchmarkAlphaMaskU8FillHspan(b *testing.B) {
 	mask.Attach(rbuf)
 
 	dst := make([]basics.Int8u, 100)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		mask.FillHspan(0, i%height, dst, len(dst))
+	}
+}
+
+func BenchmarkAlphaMaskU8FillHspanRGBToGray(b *testing.B) {
+	width, height := 1000, 100
+	maskData := make([]basics.Int8u, width*height*3)
+	for i := range maskData {
+		maskData[i] = basics.Int8u(i % 251)
+	}
+
+	rbuf := buffer.NewRenderingBufferU8WithData(maskData, width, height, width*3)
+	mask := NewAlphaMaskU8(3, 0, NewRGBToGrayMaskU8(0, 1, 2))
+	mask.Attach(rbuf)
+
+	dst := make([]basics.Int8u, 128)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

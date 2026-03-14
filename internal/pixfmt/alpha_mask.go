@@ -7,6 +7,149 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 )
 
+func zeroCovers(dst []basics.Int8u, count int) {
+	for i := 0; i < count && i < len(dst); i++ {
+		dst[i] = 0
+	}
+}
+
+func fillMaskSpan(dst, src []basics.Int8u, step, offset, count int, maskFunc MaskFunction) {
+	if count <= 0 || len(dst) < count {
+		return
+	}
+
+	switch fn := maskFunc.(type) {
+	case OneComponentMaskU8:
+		fillOneComponentMaskSpan(dst, src, step, offset, count)
+	case RGBToGrayMaskU8:
+		fillRGBToGrayMaskSpan(dst, src, step, offset, count, fn)
+	default:
+		fillGenericMaskSpan(dst, src, step, offset, count, maskFunc)
+	}
+}
+
+func combineMaskSpan(dst, src []basics.Int8u, step, offset, count int, maskFunc MaskFunction) {
+	if count <= 0 || len(dst) < count {
+		return
+	}
+
+	switch fn := maskFunc.(type) {
+	case OneComponentMaskU8:
+		combineOneComponentMaskSpan(dst, src, step, offset, count)
+	case RGBToGrayMaskU8:
+		combineRGBToGrayMaskSpan(dst, src, step, offset, count, fn)
+	default:
+		combineGenericMaskSpan(dst, src, step, offset, count, maskFunc)
+	}
+}
+
+func fillOneComponentMaskSpan(dst, src []basics.Int8u, step, offset, count int) {
+	if count <= 0 || len(dst) < count || offset < 0 {
+		return
+	}
+	if step == 1 {
+		if offset >= len(src) {
+			zeroCovers(dst, count)
+			return
+		}
+		end := offset + count
+		if end > len(src) {
+			copyCount := len(src) - offset
+			if copyCount > 0 {
+				copy(dst[:copyCount], src[offset:])
+			}
+			zeroCovers(dst[copyCount:], count-copyCount)
+			return
+		}
+		copy(dst[:count], src[offset:end])
+		return
+	}
+	for i := 0; i < count; i++ {
+		idx := offset + i*step
+		if idx >= 0 && idx < len(src) {
+			dst[i] = src[idx]
+			continue
+		}
+		dst[i] = 0
+	}
+}
+
+func combineOneComponentMaskSpan(dst, src []basics.Int8u, step, offset, count int) {
+	if count <= 0 || len(dst) < count || offset < 0 {
+		return
+	}
+	for i := 0; i < count; i++ {
+		idx := offset + i*step
+		if idx >= 0 && idx < len(src) {
+			dst[i] = basics.Int8u((CoverFull + int(dst[i])*int(src[idx])) >> CoverShift)
+			continue
+		}
+		dst[i] = 0
+	}
+}
+
+func fillRGBToGrayMaskSpan(dst, src []basics.Int8u, step, offset, count int, fn RGBToGrayMaskU8) {
+	if count <= 0 || len(dst) < count {
+		return
+	}
+	for i := 0; i < count; i++ {
+		base := offset + i*step
+		if base < 0 {
+			dst[i] = 0
+			continue
+		}
+		maxOffset := base + basics.IMax(basics.IMax(fn.ROffset, fn.GOffset), fn.BOffset)
+		if maxOffset >= len(src) {
+			dst[i] = 0
+			continue
+		}
+		dst[i] = basics.Int8u((int(src[base+fn.ROffset])*77 + int(src[base+fn.GOffset])*150 + int(src[base+fn.BOffset])*29) >> 8)
+	}
+}
+
+func combineRGBToGrayMaskSpan(dst, src []basics.Int8u, step, offset, count int, fn RGBToGrayMaskU8) {
+	if count <= 0 || len(dst) < count {
+		return
+	}
+	for i := 0; i < count; i++ {
+		base := offset + i*step
+		if base < 0 {
+			dst[i] = 0
+			continue
+		}
+		maxOffset := base + basics.IMax(basics.IMax(fn.ROffset, fn.GOffset), fn.BOffset)
+		if maxOffset >= len(src) {
+			dst[i] = 0
+			continue
+		}
+		gray := (int(src[base+fn.ROffset])*77 + int(src[base+fn.GOffset])*150 + int(src[base+fn.BOffset])*29) >> 8
+		dst[i] = basics.Int8u((CoverFull + int(dst[i])*gray) >> CoverShift)
+	}
+}
+
+func fillGenericMaskSpan(dst, src []basics.Int8u, step, offset, count int, maskFunc MaskFunction) {
+	for i := 0; i < count; i++ {
+		base := offset + i*step
+		if base < 0 || base >= len(src) {
+			dst[i] = 0
+			continue
+		}
+		dst[i] = maskFunc.Calculate(src[base:])
+	}
+}
+
+func combineGenericMaskSpan(dst, src []basics.Int8u, step, offset, count int, maskFunc MaskFunction) {
+	for i := 0; i < count; i++ {
+		base := offset + i*step
+		if base < 0 || base >= len(src) {
+			dst[i] = 0
+			continue
+		}
+		maskVal := maskFunc.Calculate(src[base:])
+		dst[i] = basics.Int8u((CoverFull + int(dst[i])*int(maskVal)) >> CoverShift)
+	}
+}
+
 // MaskFunction defines the interface for mask calculation functions
 type MaskFunction interface {
 	Calculate(p []basics.Int8u) basics.Int8u
@@ -157,9 +300,7 @@ func (m *AlphaMaskU8) FillHspan(x, y int, dst []basics.Int8u, numPix int) {
 
 	// Check if y is out of bounds
 	if y < 0 || y > ymax {
-		for i := 0; i < numPix; i++ {
-			dst[i] = 0
-		}
+		zeroCovers(dst, numPix)
 		return
 	}
 
@@ -167,15 +308,10 @@ func (m *AlphaMaskU8) FillHspan(x, y int, dst []basics.Int8u, numPix int) {
 	if x < 0 {
 		count += x
 		if count <= 0 {
-			for i := 0; i < numPix; i++ {
-				dst[i] = 0
-			}
+			zeroCovers(dst, numPix)
 			return
 		}
-		// Fill negative portion with zeros
-		for i := 0; i < -x; i++ {
-			covers[i] = 0
-		}
+		zeroCovers(covers, -x)
 		covers = covers[-x:]
 		x = 0
 	}
@@ -185,26 +321,18 @@ func (m *AlphaMaskU8) FillHspan(x, y int, dst []basics.Int8u, numPix int) {
 		rest := x + count - xmax - 1
 		count -= rest
 		if count <= 0 {
-			for i := 0; i < numPix; i++ {
-				dst[i] = 0
-			}
+			zeroCovers(dst, numPix)
 			return
 		}
-		// Fill overflow portion with zeros
-		for i := count; i < count+rest && i < len(covers); i++ {
-			covers[i] = 0
-		}
+		zeroCovers(covers[count:], rest)
 	}
 
-	// Fill the valid portion
-	for i := 0; i < count; i++ {
-		maskPtr := m.rbuf.RowPtr((x+i)*m.step+m.offset, y, m.step)
-		if maskPtr != nil && len(maskPtr) > 0 {
-			covers[i] = m.maskFunc.Calculate(maskPtr)
-		} else {
-			covers[i] = 0
-		}
+	maskRow := m.rbuf.Row(y)
+	if maskRow == nil {
+		zeroCovers(covers, count)
+		return
 	}
+	fillMaskSpan(covers, maskRow, m.step, x*m.step+m.offset, count, m.maskFunc)
 }
 
 // CombineHspan combines coverage values with mask alpha for a horizontal span
@@ -221,9 +349,7 @@ func (m *AlphaMaskU8) CombineHspan(x, y int, dst []basics.Int8u, numPix int) {
 
 	// Check if y is out of bounds
 	if y < 0 || y > ymax {
-		for i := 0; i < numPix; i++ {
-			dst[i] = 0
-		}
+		zeroCovers(dst, numPix)
 		return
 	}
 
@@ -231,15 +357,10 @@ func (m *AlphaMaskU8) CombineHspan(x, y int, dst []basics.Int8u, numPix int) {
 	if x < 0 {
 		count += x
 		if count <= 0 {
-			for i := 0; i < numPix; i++ {
-				dst[i] = 0
-			}
+			zeroCovers(dst, numPix)
 			return
 		}
-		// Set negative portion to zero
-		for i := 0; i < -x; i++ {
-			covers[i] = 0
-		}
+		zeroCovers(covers, -x)
 		covers = covers[-x:]
 		x = 0
 	}
@@ -249,27 +370,18 @@ func (m *AlphaMaskU8) CombineHspan(x, y int, dst []basics.Int8u, numPix int) {
 		rest := x + count - xmax - 1
 		count -= rest
 		if count <= 0 {
-			for i := 0; i < numPix; i++ {
-				dst[i] = 0
-			}
+			zeroCovers(dst, numPix)
 			return
 		}
-		// Set overflow portion to zero
-		for i := count; i < count+rest && i < len(covers); i++ {
-			covers[i] = 0
-		}
+		zeroCovers(covers[count:], rest)
 	}
 
-	// Combine the valid portion
-	for i := 0; i < count; i++ {
-		maskPtr := m.rbuf.RowPtr((x+i)*m.step+m.offset, y, m.step)
-		if maskPtr != nil && len(maskPtr) > 0 {
-			maskVal := m.maskFunc.Calculate(maskPtr)
-			covers[i] = basics.Int8u((CoverFull + int(covers[i])*int(maskVal)) >> CoverShift)
-		} else {
-			covers[i] = 0
-		}
+	maskRow := m.rbuf.Row(y)
+	if maskRow == nil {
+		zeroCovers(covers, count)
+		return
 	}
+	combineMaskSpan(covers, maskRow, m.step, x*m.step+m.offset, count, m.maskFunc)
 }
 
 // FillVspan fills a vertical span with mask alpha values
@@ -486,15 +598,12 @@ func (m *AMaskNoClipU8) FillHspan(x, y int, dst []basics.Int8u, numPix int) {
 	if m.rbuf == nil || numPix <= 0 || len(dst) < numPix {
 		return
 	}
-
-	for i := 0; i < numPix; i++ {
-		maskPtr := m.rbuf.RowPtr((x+i)*m.step+m.offset, y, m.step)
-		if maskPtr != nil && len(maskPtr) > 0 {
-			dst[i] = m.maskFunc.Calculate(maskPtr)
-		} else {
-			dst[i] = 0
-		}
+	maskRow := m.rbuf.Row(y)
+	if maskRow == nil {
+		zeroCovers(dst, numPix)
+		return
 	}
+	fillMaskSpan(dst, maskRow, m.step, x*m.step+m.offset, numPix, m.maskFunc)
 }
 
 // CombineHspan combines coverage values with mask alpha for a horizontal span (no bounds checking)
@@ -502,16 +611,12 @@ func (m *AMaskNoClipU8) CombineHspan(x, y int, dst []basics.Int8u, numPix int) {
 	if m.rbuf == nil || numPix <= 0 || len(dst) < numPix {
 		return
 	}
-
-	for i := 0; i < numPix; i++ {
-		maskPtr := m.rbuf.RowPtr((x+i)*m.step+m.offset, y, m.step)
-		if maskPtr != nil && len(maskPtr) > 0 {
-			maskVal := m.maskFunc.Calculate(maskPtr)
-			dst[i] = basics.Int8u((CoverFull + int(dst[i])*int(maskVal)) >> CoverShift)
-		} else {
-			dst[i] = 0
-		}
+	maskRow := m.rbuf.Row(y)
+	if maskRow == nil {
+		zeroCovers(dst, numPix)
+		return
 	}
+	combineMaskSpan(dst, maskRow, m.step, x*m.step+m.offset, numPix, m.maskFunc)
 }
 
 // FillVspan fills a vertical span with mask alpha values (no bounds checking)

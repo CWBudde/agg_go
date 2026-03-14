@@ -187,21 +187,39 @@ generic fallback → NEON on arm64.
 
 Span generators feed pixel data into `BlendColorHspan`; profile before committing to SIMD.
 
-- [ ] Profile baseline in `internal/span/` before writing any SIMD code.
-- [ ] SSE4.1 (amd64) — linear gradient: PADDD step accumulation + PSHUFB color lookup.
-- [ ] AVX2 (amd64) — double-width linear interpolation if SSE4.1 proves worthwhile.
-- [ ] NEON (arm64) — `vaddq_s32` step accumulation; skip if not hot.
-- [ ] Image-filter / resampling kernels: SSE4.1 `PMADDUBSW` for bilinear tap accumulation.
-- [ ] Only implement tiers that show measurable gain in profiling.
+- [x] Profile baseline in `internal/span/` before writing any SIMD code.
+  Added length-scaled span benchmarks for `BenchmarkSpanGradientGenerate` and
+  `BenchmarkSpanImageFilterRGBAGenerate` on 2026-03-14.
+- [x] SSE4.1 (amd64) — linear gradient: PADDD step accumulation + PSHUFB color lookup.
+  Profiled and skipped on 2026-03-14. Baseline throughput was already ~180-245 MB/s
+  for linear gradients, and the representative `BenchmarkAgg2DSceneGradientClip/800x600`
+  run still spent ~24.3 ms/op outside any demonstrated span-generation hotspot.
+- [x] AVX2 (amd64) — double-width linear interpolation if SSE4.1 proves worthwhile.
+  Skipped on 2026-03-14 because the SSE4.1 path was not justified by profiling.
+- [x] NEON (arm64) — `vaddq_s32` step accumulation; skip if not hot.
+  Skipped on 2026-03-14 because the generic path is not yet a demonstrated hotspot.
+- [x] Image-filter / resampling kernels: SSE4.1 `PMADDUBSW` for bilinear tap accumulation.
+  Profiled and skipped on 2026-03-14. Bilinear RGBA generation measured ~155-206 MB/s
+  with zero allocations in the focused benchmark, which was not enough evidence to
+  justify assembly without a profile showing it dominates scene time.
+- [x] Only implement tiers that show measurable gain in profiling.
 
 ### 7.4 Alpha-Mask Helpers
 
-- [ ] Generic — correct scalar baseline for mask fill and RGB-to-gray conversion.
+- [x] Generic — correct scalar baseline for mask fill and RGB-to-gray conversion.
+  Added shared horizontal-span helpers on 2026-03-14 for contiguous one-component
+  masks, stepped component extraction, and RGB24-to-gray conversion. Current
+  microbenchmarks: `BenchmarkAlphaMaskU8FillHspan` 11.4 ns/op and
+  `BenchmarkAlphaMaskU8FillHspanRGBToGray` 227.3 ns/op, both with 0 allocs/op.
 - [ ] SSE4.1 (amd64) — mask fill: 16 bytes/iter; RGB→gray: `PMADDUBSW` with BT.601 weights.
 - [ ] AVX2 (amd64) — 32 bytes/iter mask fill; 256-bit RGB→gray.
 - [ ] NEON (arm64) — `vst1q_u8` mask fill; `vmull`/`vadd` for RGB→gray.
-- [ ] Wire into alpha-mask call sites in `internal/pixfmt/`.
-- [ ] Tests: byte-exact mask fill; gray values within ±1 of scalar.
+- [x] Wire into alpha-mask call sites in `internal/pixfmt/`.
+  `AlphaMaskU8` and `AMaskNoClipU8` horizontal span paths now dispatch through
+  the shared helpers instead of per-pixel `RowPtr` lookups.
+- [x] Tests: byte-exact mask fill; gray values within ±1 of scalar.
+  Added exact-output tests for contiguous one-component fill plus RGB→gray fill
+  and combine paths.
 
 ### 7.5 Gamma / LUT Application
 

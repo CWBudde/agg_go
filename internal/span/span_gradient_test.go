@@ -2,6 +2,7 @@ package span
 
 import (
 	"math"
+	"strconv"
 	"testing"
 
 	"github.com/MeKo-Christian/agg_go/internal/color"
@@ -399,12 +400,17 @@ func BenchmarkSpanGradientGenerate(b *testing.B) {
 	black := color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255}
 	white := color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255}
 
-	spanGrad := NewLinearGradientRGBA8(interp, black, white, 0.0, 100.0, 256)
-	span := make([]color.RGBA8[color.Linear], 100)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		spanGrad.Generate(span, i%100, i%100, 100)
+	for _, length := range []int{64, 256, 1024} {
+		b.Run("Len_"+strconv.Itoa(length), func(b *testing.B) {
+			spanGrad := NewLinearGradientRGBA8(interp, black, white, 0.0, float64(length), 256)
+			span := make([]color.RGBA8[color.Linear], length)
+			b.ReportAllocs()
+			b.SetBytes(int64(length * 4))
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				spanGrad.Generate(span, i%257, i%131, length)
+			}
+		})
 	}
 }
 
