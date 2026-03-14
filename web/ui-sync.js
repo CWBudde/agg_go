@@ -3,6 +3,8 @@
 export function syncControlVisibility(demoType) {
   document.getElementById("aaControls").style.display =
     demoType === "aa" ? "flex" : "none";
+  document.getElementById("lineThicknessControls").style.display =
+    demoType === "line_thickness" ? "flex" : "none";
   document.getElementById("dashControls").style.display =
     demoType === "conv_dash_marker" ? "flex" : "none";
   document.getElementById("gouraudControls").style.display =
@@ -103,7 +105,7 @@ export const demoDescriptions = {
   conv_dash_marker:
     "Port of AGG's conv_dash_marker demo. Applies conv_smooth_poly1 to soften corners, then conv_dash to create dash patterns, and conv_marker to place arrowheads at line endpoints. Adjust smoothness, stroke width, cap style, and fill rule. Drag the three control points to reshape the paths.",
   line_thickness:
-    "Port of AGG's line_thickness demo. Renders variable-thickness anti-aliased line sets and applies slight blur. Web parameters are URL-driven: ltf (thickness factor), ltb (blur radius), ltm (monochrome 0/1), lti (invert 0/1).",
+    "Port of AGG's line_thickness demo. Renders the upstream line row above the radial line wheel, using butt caps and the original flipped-Y scene layout. Use the HTML controls for line thickness, blur radius, monochrome, and invert; URL params remain ltf, ltb, ltm, lti.",
   line_patterns:
     "Port of AGG's line_patterns demo core. Draws nine patterned Bezier curves using the original line pattern assets. URL parameters: lpsx (scale_x), lpst (start_x).",
   line_patterns_clip:

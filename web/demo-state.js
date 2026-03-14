@@ -639,21 +639,42 @@ export const demoURLHandlers = {
 
   line_thickness: {
     persist() {
-      // URL-only controls (no visible widget panel).
+      updateURL({
+        ltf: parseFloat(
+          document.getElementById("lineThicknessFactorSlider").value,
+        ),
+        ltb: parseFloat(document.getElementById("lineThicknessBlurSlider").value),
+        ltm: document.getElementById("lineThicknessMono").checked ? "1" : "0",
+        lti: document.getElementById("lineThicknessInvert").checked ? "1" : "0",
+      });
     },
     restore(p) {
-      if (p.has("ltf")) {
-        setLineThicknessFactor(parseFloat(p.get("ltf")));
-      }
-      if (p.has("ltb")) {
-        setLineThicknessBlur(parseFloat(p.get("ltb")));
-      }
-      if (p.has("ltm")) {
-        setLineThicknessMono(p.get("ltm") === "1");
-      }
-      if (p.has("lti")) {
-        setLineThicknessInvert(p.get("lti") === "1");
-      }
+      const thickness = p.has("ltf")
+        ? parseFloat(p.get("ltf"))
+        : parseFloat(document.getElementById("lineThicknessFactorSlider").value);
+      const blur = p.has("ltb")
+        ? parseFloat(p.get("ltb"))
+        : parseFloat(document.getElementById("lineThicknessBlurSlider").value);
+      const mono = p.has("ltm")
+        ? p.get("ltm") === "1"
+        : document.getElementById("lineThicknessMono").checked;
+      const invert = p.has("lti")
+        ? p.get("lti") === "1"
+        : document.getElementById("lineThicknessInvert").checked;
+
+      document.getElementById("lineThicknessFactorSlider").value = thickness;
+      document.getElementById("lineThicknessFactorValue").textContent =
+        thickness.toFixed(2);
+      document.getElementById("lineThicknessBlurSlider").value = blur;
+      document.getElementById("lineThicknessBlurValue").textContent =
+        blur.toFixed(2);
+      document.getElementById("lineThicknessMono").checked = mono;
+      document.getElementById("lineThicknessInvert").checked = invert;
+
+      setLineThicknessFactor(thickness);
+      setLineThicknessBlur(blur);
+      setLineThicknessMono(mono);
+      setLineThicknessInvert(invert);
     },
   },
 

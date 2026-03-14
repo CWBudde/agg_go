@@ -1,102 +1,208 @@
-// Package main ports AGG's line_thickness.cpp demo.
-//
-// It renders variable-width anti-aliased lines, applies slight blur, and saves PNG.
 package main
 
 import (
-	"math"
-
 	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
-	"github.com/MeKo-Christian/agg_go/internal/effects"
+	"github.com/MeKo-Christian/agg_go/internal/ctrl/checkbox"
+	"github.com/MeKo-Christian/agg_go/internal/ctrl/slider"
+	"github.com/MeKo-Christian/agg_go/internal/demo/linethickness"
+	"github.com/MeKo-Christian/agg_go/internal/order"
+	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
+	"github.com/MeKo-Christian/agg_go/internal/pixfmt/blender"
+	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
+	"github.com/MeKo-Christian/agg_go/internal/renderer"
+	"github.com/MeKo-Christian/agg_go/internal/scanline"
 )
-
-type imagePixFmtAdapter struct {
-	img *agg.Image
-}
-
-func (p *imagePixFmtAdapter) Width() int  { return p.img.Width() }
-func (p *imagePixFmtAdapter) Height() int { return p.img.Height() }
-
-func (p *imagePixFmtAdapter) GetPixel(x, y int) color.RGBA8[color.Linear] {
-	if x < 0 || y < 0 || x >= p.img.Width() || y >= p.img.Height() {
-		return color.RGBA8[color.Linear]{}
-	}
-	i := (y*p.img.Width() + x) * 4
-	return color.RGBA8[color.Linear]{
-		R: basics.Int8u(p.img.Data[i+0]),
-		G: basics.Int8u(p.img.Data[i+1]),
-		B: basics.Int8u(p.img.Data[i+2]),
-		A: basics.Int8u(p.img.Data[i+3]),
-	}
-}
-
-func (p *imagePixFmtAdapter) CopyPixel(x, y int, c color.RGBA8[color.Linear]) {
-	if x < 0 || y < 0 || x >= p.img.Width() || y >= p.img.Height() {
-		return
-	}
-	i := (y*p.img.Width() + x) * 4
-	p.img.Data[i+0] = uint8(c.R)
-	p.img.Data[i+1] = uint8(c.G)
-	p.img.Data[i+2] = uint8(c.B)
-	p.img.Data[i+3] = uint8(c.A)
-}
 
 const (
-	ltFactor     = 1.0
-	ltBlurRadius = 1.5
-	ltMono       = true
-	ltInvert     = false
+	frameWidth  = 640
+	frameHeight = 480
 )
 
-type demo struct{}
+type control interface {
+	InRect(x, y float64) bool
+	OnMouseButtonDown(x, y float64) bool
+	OnMouseButtonUp(x, y float64) bool
+	OnMouseMove(x, y float64, buttonPressed bool) bool
+	NumPaths() uint
+	Rewind(pathID uint)
+	Vertex() (x, y float64, cmd basics.PathCommand)
+	Color(pathID uint) color.RGBA
+}
+
+type controlPathAdapter struct {
+	rewindFn func(pathID uint)
+	vertexFn func() (x, y float64, cmd basics.PathCommand)
+}
+
+func (a *controlPathAdapter) Rewind(pathID uint32) { a.rewindFn(uint(pathID)) }
+func (a *controlPathAdapter) Vertex(x, y *float64) uint32 {
+	vx, vy, cmd := a.vertexFn()
+	*x = vx
+	*y = vy
+	return uint32(cmd)
+}
+
+type rasScanlineAdapter struct {
+	sl *scanline.ScanlineU8
+}
+
+func (a *rasScanlineAdapter) ResetSpans()                 { a.sl.ResetSpans() }
+func (a *rasScanlineAdapter) AddCell(x int, cover uint32) { a.sl.AddCell(x, uint(cover)) }
+func (a *rasScanlineAdapter) AddSpan(x, length int, cover uint32) {
+	a.sl.AddSpan(x, length, uint(cover))
+}
+func (a *rasScanlineAdapter) Finalize(y int) { a.sl.Finalize(y) }
+func (a *rasScanlineAdapter) NumSpans() int  { return a.sl.NumSpans() }
+
+func rgbaToRGBA8(c color.RGBA) color.RGBA8[color.Linear] {
+	clamp := func(v float64) uint8 {
+		if v <= 0 {
+			return 0
+		}
+		if v >= 1 {
+			return 255
+		}
+		return uint8(v*255 + 0.5)
+	}
+	return color.RGBA8[color.Linear]{
+		R: clamp(c.R),
+		G: clamp(c.G),
+		B: clamp(c.B),
+		A: clamp(c.A),
+	}
+}
+
+func renderControl(
+	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
+	sl *scanline.ScanlineU8,
+	renBase *renderer.RendererBase[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]],
+	ctrl control,
+) {
+	adapter := &controlPathAdapter{
+		rewindFn: ctrl.Rewind,
+		vertexFn: ctrl.Vertex,
+	}
+	for pathID := uint(0); pathID < ctrl.NumPaths(); pathID++ {
+		ras.Reset()
+		ras.AddPath(adapter, uint32(pathID))
+		col := rgbaToRGBA8(ctrl.Color(pathID))
+		if !ras.RewindScanlines() {
+			continue
+		}
+		sl.Reset(ras.MinX(), ras.MaxX())
+		for ras.SweepScanline(&rasScanlineAdapter{sl: sl}) {
+			y := sl.Y()
+			for _, spanData := range sl.Spans() {
+				if spanData.Len > 0 {
+					renBase.BlendSolidHspan(int(spanData.X), y, int(spanData.Len), col, spanData.Covers)
+				}
+			}
+		}
+	}
+}
+
+type demo struct {
+	state     linethickness.State
+	thickness *slider.SliderCtrl
+	blur      *slider.SliderCtrl
+	mono      *checkbox.CheckboxCtrl[color.RGBA]
+	invert    *checkbox.CheckboxCtrl[color.RGBA]
+	controls  []control
+}
+
+func newDemo() *demo {
+	d := &demo{
+		state: linethickness.DefaultState(),
+	}
+
+	d.thickness = slider.NewSliderCtrl(10, 480-19, 640-10, 480-10, false)
+	d.thickness.SetRange(0.0, 5.0)
+	d.thickness.SetValue(d.state.Thickness)
+	d.thickness.SetLabel("Line thickness=%1.2f")
+
+	d.blur = slider.NewSliderCtrl(10, 480-39, 640-10, 480-30, false)
+	d.blur.SetRange(0.0, 2.0)
+	d.blur.SetValue(d.state.Blur)
+	d.blur.SetLabel("Blur radius=%1.2f")
+
+	d.mono = checkbox.NewDefaultCheckboxCtrl(10, 480-64, "Monochrome", false)
+	d.mono.SetChecked(d.state.Mono)
+
+	d.invert = checkbox.NewDefaultCheckboxCtrl(10, 480-84, "Invert", false)
+	d.invert.SetChecked(d.state.Invert)
+
+	d.controls = []control{d.thickness, d.blur, d.mono, d.invert}
+	return d
+}
+
+func (d *demo) syncState() {
+	d.state.Thickness = d.thickness.Value()
+	d.state.Blur = d.blur.Value()
+	d.state.Mono = d.mono.IsChecked()
+	d.state.Invert = d.invert.IsChecked()
+	d.state.Clamp()
+}
 
 func (d *demo) Render(ctx *agg.Context) {
-	a := ctx.GetAgg2D()
-	a.ResetTransformations()
+	d.syncState()
+	linethickness.Draw(ctx, d.state)
 
-	clr1 := agg.RGBA(1, 1, 1, 1)
-	clr2 := agg.RGBA(0, 0, 0, 1)
-	if !ltMono {
-		clr1 = agg.RGBA(1, 0, 1, 1)
-		clr2 = agg.RGBA(0, 1, 0, 1)
+	imgData := ctx.GetImage().Data
+	rbuf := buffer.NewRenderingBufferU8WithData(imgData, frameWidth, frameHeight, frameWidth*4)
+	pf := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
+	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]](pf)
+	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{},
+		rasterizer.NewRasterizerSlNoClip(),
+	)
+	sl := scanline.NewScanlineU8()
+
+	for _, ctrl := range d.controls {
+		renderControl(ras, sl, renBase, ctrl)
 	}
-	foreground := clr2
-	background := clr1
-	if ltInvert {
-		foreground = clr1
-		background = clr2
+}
+
+func (d *demo) OnMouseDown(x, y int, btn demorunner.Buttons) bool {
+	if !btn.Left {
+		return false
 	}
-
-	ctx.Clear(background)
-	ctx.SetColor(foreground)
-
-	for i := 0; i < 20; i++ {
-		a.LineWidth(ltFactor * 0.3 * float64(i+1))
-		a.ResetPath()
-		a.MoveTo(20+30*float64(i), 310)
-		a.LineTo(40+30*float64(i), 460)
-		a.DrawPath(agg.StrokeOnly)
+	for _, ctrl := range d.controls {
+		if ctrl.OnMouseButtonDown(float64(x), float64(y)) {
+			return true
+		}
 	}
+	return false
+}
 
-	for i := 0; i < 40; i++ {
-		ang := float64(i) * math.Pi / 20.0
-		a.LineWidth(ltFactor)
-		a.ResetPath()
-		a.MoveTo(320+20*math.Sin(ang), 180+20*math.Cos(ang))
-		a.LineTo(320+100*math.Sin(ang), 180+100*math.Cos(ang))
-		a.DrawPath(agg.StrokeOnly)
+func (d *demo) OnMouseMove(x, y int, btn demorunner.Buttons) bool {
+	redraw := false
+	for _, ctrl := range d.controls {
+		if ctrl.OnMouseMove(float64(x), float64(y), btn.Left) {
+			redraw = true
+		}
 	}
+	return redraw
+}
 
-	effects.ApplySlightBlurFull(&imagePixFmtAdapter{img: ctx.GetImage()}, ltBlurRadius)
+func (d *demo) OnMouseUp(x, y int, btn demorunner.Buttons) bool {
+	_ = btn
+	redraw := false
+	for _, ctrl := range d.controls {
+		if ctrl.OnMouseButtonUp(float64(x), float64(y)) {
+			redraw = true
+		}
+	}
+	return redraw
 }
 
 func main() {
 	demorunner.Run(demorunner.Config{
 		Title:  "Line Thickness",
-		Width:  640,
-		Height: 480,
-	}, &demo{})
+		Width:  frameWidth,
+		Height: frameHeight,
+	}, newDemo())
 }

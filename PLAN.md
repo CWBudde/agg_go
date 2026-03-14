@@ -335,9 +335,9 @@ idiomatic in Go.
 
 ### 9.1 Example parity infrastructure
 
-- [ ] For each newly ported upstream demo: record the C++ source, decide placement (standalone
+- [x] For each newly ported upstream demo: record the C++ source, decide placement (standalone
       vs web demo), add a minimal verification path so the demo does not silently rot.
-- [ ] Reuse shared helpers and assets where possible.
+- [x] Reuse shared helpers and assets where possible.
 - [x] `gradient_focal.cpp` recorded and wired:
       source `../agg-2.6/agg-src/examples/gradient_focal.cpp`,
       standalone `examples/core/intermediate/gradient_focal/main.go`,

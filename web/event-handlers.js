@@ -29,6 +29,46 @@ export function setupEventHandlers(
     renderSelectedDemo();
   });
 
+  // line_thickness controls
+  document
+    .getElementById("lineThicknessFactorSlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("lineThicknessFactorSlider").value,
+      );
+      document.getElementById("lineThicknessFactorValue").textContent =
+        val.toFixed(2);
+      setLineThicknessFactor(val);
+      persistDemoParams("line_thickness");
+      renderSelectedDemo();
+    });
+  document
+    .getElementById("lineThicknessBlurSlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("lineThicknessBlurSlider").value,
+      );
+      document.getElementById("lineThicknessBlurValue").textContent =
+        val.toFixed(2);
+      setLineThicknessBlur(val);
+      persistDemoParams("line_thickness");
+      renderSelectedDemo();
+    });
+  document.getElementById("lineThicknessMono").addEventListener("change", () => {
+    setLineThicknessMono(document.getElementById("lineThicknessMono").checked);
+    persistDemoParams("line_thickness");
+    renderSelectedDemo();
+  });
+  document
+    .getElementById("lineThicknessInvert")
+    .addEventListener("change", () => {
+      setLineThicknessInvert(
+        document.getElementById("lineThicknessInvert").checked,
+      );
+      persistDemoParams("line_thickness");
+      renderSelectedDemo();
+    });
+
   // conv_dash_marker controls
   document.getElementById("dashWidthSlider").addEventListener("input", () => {
     const val = parseFloat(document.getElementById("dashWidthSlider").value);
