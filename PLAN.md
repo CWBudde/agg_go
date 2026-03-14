@@ -224,7 +224,11 @@ Span generators feed pixel data into `BlendColorHspan`; profile before committin
   `CopyMask1U8` at 256 pixels improved from 22.60 ns/op (SSE4.1) to 21.86 ns/op
   (AVX2), and `RGB24ToGrayU8` at 4096 pixels improved from 1093 ns/op (SSE4.1) to
   673.1 ns/op (AVX2).
-- [ ] NEON (arm64) — `vst1q_u8` mask fill; `vmull`/`vadd` for RGB→gray.
+- [x] NEON (arm64) — `vst1q_u8` mask fill; `vmull`/`vadd` for RGB→gray.
+  Added NEON kernels on 2026-03-14 for one-byte mask copy and 8-pixel RGB24→gray
+  conversion using `VTBL` channel extraction plus `VPMULL`/`VADD` accumulation.
+  Verified via `just test-arm64` under QEMU for `internal/simd`, plus
+  `GOOS=linux GOARCH=arm64 go build ./internal/pixfmt`.
 - [x] Wire into alpha-mask call sites in `internal/pixfmt/`.
   `AlphaMaskU8` and `AMaskNoClipU8` horizontal span paths now dispatch through
   the shared helpers instead of per-pixel `RowPtr` lookups.
