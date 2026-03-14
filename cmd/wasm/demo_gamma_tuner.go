@@ -40,6 +40,8 @@ func drawGammaTunerDemo() {
 	}
 	squareX := (width - squareSize) / 2
 	squareY := (height - squareSize) / 2
+	span1 := make([]float64, squareSize)
+	span2 := make([]float64, squareSize)
 
 	// Pre-calculate colors for the gradient
 	invG := 1.0 / g
@@ -80,8 +82,39 @@ func drawGammaTunerDemo() {
 		}
 	}
 
-	// 3. Draw pattern directly into canvasBuf
-	curPattern := gammaTunerPattern
+	// 3. Build the original AGG horizontal alpha spans.
+	switch gammaTunerPattern {
+	case 0: // Horizontal
+		for i := 0; i < squareSize; i++ {
+			a := float64(i) / float64(squareSize)
+			span1[i] = a
+			span2[i] = 1.0 - a
+		}
+	case 1: // Vertical
+		for i := 0; i < squareSize; i++ {
+			a := float64(i) / float64(squareSize)
+			if i&1 != 0 {
+				span1[i] = a
+				span2[i] = a
+			} else {
+				span1[i] = 1.0 - a
+				span2[i] = 1.0 - a
+			}
+		}
+	default: // Checkered
+		for i := 0; i < squareSize; i++ {
+			a := float64(i) / float64(squareSize)
+			if i&1 != 0 {
+				span1[i] = a
+				span2[i] = 1.0 - a
+			} else {
+				span1[i] = 1.0 - a
+				span2[i] = a
+			}
+		}
+	}
+
+	// 4. Draw pattern directly into canvasBuf
 	for i := 0; i < squareSize; i += 2 {
 		k := float64(squareSize-1-i) / float64(squareSize-1)
 		k = 1.0 - math.Pow(k, invG)
@@ -96,44 +129,19 @@ func drawGammaTunerDemo() {
 		row2 := y2 * width * 4
 
 		for j := 0; j < squareSize; j++ {
-			var alpha1, alpha2 float64
-			kj := float64(j) / float64(squareSize-1)
-
-			switch curPattern {
-			case 0: // Horizontal
-				alpha1 = kj
-				alpha2 = 1.0 - kj
-			case 1: // Vertical
-				if j&1 != 0 {
-					alpha1 = kj
-					alpha2 = alpha1
-				} else {
-					alpha1 = 1.0 - kj
-					alpha2 = alpha1
-				}
-			case 2: // Checkered
-				if j&1 != 0 {
-					alpha1 = kj
-					alpha2 = 1.0 - kj
-				} else {
-					alpha2 = kj
-					alpha1 = 1.0 - alpha2
-				}
-			}
-
 			idx1 := row1 + (squareX+j)*4
-			canvasBuf[idx1] = uint8(pcr*alpha1 + 0.5)
-			canvasBuf[idx1+1] = uint8(pcg*alpha1 + 0.5)
-			canvasBuf[idx1+2] = uint8(pcb*alpha1 + 0.5)
+			canvasBuf[idx1] = uint8(pcr*span1[j] + 0.5)
+			canvasBuf[idx1+1] = uint8(pcg*span1[j] + 0.5)
+			canvasBuf[idx1+2] = uint8(pcb*span1[j] + 0.5)
 
 			idx2 := row2 + (squareX+j)*4
-			canvasBuf[idx2] = uint8(pcr*alpha2 + 0.5)
-			canvasBuf[idx2+1] = uint8(pcg*alpha2 + 0.5)
-			canvasBuf[idx2+2] = uint8(pcb*alpha2 + 0.5)
+			canvasBuf[idx2] = uint8(pcr*span2[j] + 0.5)
+			canvasBuf[idx2+1] = uint8(pcg*span2[j] + 0.5)
+			canvasBuf[idx2+2] = uint8(pcb*span2[j] + 0.5)
 		}
 	}
 
-	// 4. Draw vertical strips
+	// 5. Draw vertical strips
 	for i := 0; i < squareSize; i++ {
 		y := squareY + i
 		k := gradientKForScreenY(y)
