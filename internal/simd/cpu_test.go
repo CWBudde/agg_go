@@ -171,6 +171,134 @@ func TestFillRGBAForcedPaths(t *testing.T) {
 	}
 }
 
+func TestCopyMask1U8ForcedPaths(t *testing.T) {
+	t.Cleanup(ResetDetection)
+
+	cases := []struct {
+		name     string
+		features Features
+		wantImpl string
+	}{
+		{
+			name:     "generic",
+			features: Features{Architecture: runtime.GOARCH, ForceGeneric: true},
+			wantImpl: "generic",
+		},
+	}
+
+	actual := DetectFeatures()
+	if runtime.GOARCH == "amd64" && actual.HasSSSE3 && actual.HasSSE41 {
+		cases = append(cases, struct {
+			name     string
+			features Features
+			wantImpl string
+		}{
+			name:     "sse41",
+			features: Features{Architecture: "amd64", HasSSE2: true, HasSSSE3: true, HasSSE41: true},
+			wantImpl: "sse41",
+		})
+	}
+	if runtime.GOARCH == "amd64" && actual.HasAVX2 {
+		cases = append(cases, struct {
+			name     string
+			features Features
+			wantImpl string
+		}{
+			name:     "avx2",
+			features: Features{Architecture: "amd64", HasSSE2: true, HasAVX2: true},
+			wantImpl: "avx2",
+		})
+	}
+
+	src := make([]byte, 257)
+	for i := range src {
+		src[i] = byte((i * 37) & 0xFF)
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ResetDetection()
+			SetForcedFeatures(tc.features)
+			if got := ImplementationName(); got != tc.wantImpl {
+				t.Fatalf("ImplementationName() = %q, want %q", got, tc.wantImpl)
+			}
+
+			got := make([]byte, len(src))
+			want := make([]byte, len(src))
+			CopyMask1U8(got, src, len(src))
+			copyMask1U8Generic(want, src, len(src))
+			if !bytes.Equal(got, want) {
+				t.Fatalf("CopyMask1U8 mismatch:\n got=%v\nwant=%v", got, want)
+			}
+		})
+	}
+}
+
+func TestRGB24ToGrayU8ForcedPaths(t *testing.T) {
+	t.Cleanup(ResetDetection)
+
+	cases := []struct {
+		name     string
+		features Features
+		wantImpl string
+	}{
+		{
+			name:     "generic",
+			features: Features{Architecture: runtime.GOARCH, ForceGeneric: true},
+			wantImpl: "generic",
+		},
+	}
+
+	actual := DetectFeatures()
+	if runtime.GOARCH == "amd64" && actual.HasSSSE3 && actual.HasSSE41 {
+		cases = append(cases, struct {
+			name     string
+			features Features
+			wantImpl string
+		}{
+			name:     "sse41",
+			features: Features{Architecture: "amd64", HasSSE2: true, HasSSSE3: true, HasSSE41: true},
+			wantImpl: "sse41",
+		})
+	}
+	if runtime.GOARCH == "amd64" && actual.HasAVX2 {
+		cases = append(cases, struct {
+			name     string
+			features Features
+			wantImpl string
+		}{
+			name:     "avx2",
+			features: Features{Architecture: "amd64", HasSSE2: true, HasAVX2: true},
+			wantImpl: "avx2",
+		})
+	}
+
+	src := make([]byte, 67*3)
+	for i := 0; i < 67; i++ {
+		src[i*3+0] = byte((i*11 + 7) & 0xFF)
+		src[i*3+1] = byte((i*17 + 13) & 0xFF)
+		src[i*3+2] = byte((i*23 + 3) & 0xFF)
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ResetDetection()
+			SetForcedFeatures(tc.features)
+			if got := ImplementationName(); got != tc.wantImpl {
+				t.Fatalf("ImplementationName() = %q, want %q", got, tc.wantImpl)
+			}
+
+			got := make([]byte, 67)
+			want := make([]byte, 67)
+			RGB24ToGrayU8(got, src, len(got))
+			rgb24ToGrayU8Generic(want, src, len(want))
+			if !bytes.Equal(got, want) {
+				t.Fatalf("RGB24ToGrayU8 mismatch:\n got=%v\nwant=%v", got, want)
+			}
+		})
+	}
+}
+
 func TestBlendSolidHspanRGBAForcedPaths(t *testing.T) {
 	t.Cleanup(ResetDetection)
 

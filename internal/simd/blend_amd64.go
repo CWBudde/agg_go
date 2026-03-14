@@ -9,6 +9,18 @@ func fillRGBAAVX2Asm(dst []byte, pixel uint32, count int)
 func fillRGBASSE2Asm(dst []byte, pixel uint32, count int)
 
 //go:noescape
+func copyMask1U8SSE41Asm(dst, src []byte, count int)
+
+//go:noescape
+func copyMask1U8AVX2Asm(dst, src []byte, count int)
+
+//go:noescape
+func rgb24ToGrayU8SSE41Asm(dst, src []byte, blocks int)
+
+//go:noescape
+func rgb24ToGrayU8AVX2Asm(dst, src []byte, blocks int)
+
+//go:noescape
 func blendSolidHspanRGBASSE41Asm(dst, covers []byte, pixelOpaque uint32, srcA uint8, count int)
 
 //go:noescape
@@ -34,6 +46,8 @@ func selectImplementationArch(features Features) implementation {
 		return implementation{
 			name:                 "avx2",
 			fillRGBA:             fillRGBAAVX2,
+			copyMask1U8:          copyMask1U8AVX2,
+			rgb24ToGrayU8:        rgb24ToGrayU8AVX2,
 			blendSolidHspanRGBA:  blendSolidHspanRGBAAVX2,
 			blendHlineRGBA:       blendHlineRGBAAVX2,
 			blendColorHspanRGBA:  blendColorHspanRGBAAVX2,
@@ -46,6 +60,8 @@ func selectImplementationArch(features Features) implementation {
 		return implementation{
 			name:                 "sse41",
 			fillRGBA:             fillRGBASSE2,
+			copyMask1U8:          copyMask1U8SSE41,
+			rgb24ToGrayU8:        rgb24ToGrayU8SSE41,
 			blendSolidHspanRGBA:  blendSolidHspanRGBASSE41,
 			blendHlineRGBA:       blendHlineRGBASSE41,
 			blendColorHspanRGBA:  blendColorHspanRGBASSE41,
@@ -58,6 +74,8 @@ func selectImplementationArch(features Features) implementation {
 		return implementation{
 			name:                 "sse2",
 			fillRGBA:             fillRGBASSE2,
+			copyMask1U8:          copyMask1U8Generic,
+			rgb24ToGrayU8:        rgb24ToGrayU8Generic,
 			blendSolidHspanRGBA:  blendSolidHspanRGBASSE2,
 			blendHlineRGBA:       blendHlineRGBASSE2,
 			blendColorHspanRGBA:  blendColorHspanRGBASSE2,
@@ -77,6 +95,58 @@ func fillRGBAAVX2(dst []byte, r, g, b, a uint8, count int) {
 func fillRGBASSE2(dst []byte, r, g, b, a uint8, count int) {
 	pixel := uint32(r) | uint32(g)<<8 | uint32(b)<<16 | uint32(a)<<24
 	fillRGBASSE2Asm(dst, pixel, count)
+}
+
+func copyMask1U8SSE41(dst, src []byte, count int) {
+	if count > 128 {
+		copyMask1U8Generic(dst, src, count)
+		return
+	}
+	copyMask1U8SSE41Asm(dst, src, count)
+}
+
+func copyMask1U8AVX2(dst, src []byte, count int) {
+	if count > 128 {
+		copyMask1U8Generic(dst, src, count)
+		return
+	}
+	copyMask1U8AVX2Asm(dst, src, count)
+}
+
+func rgb24ToGrayU8SSE41(dst, src []byte, count int) {
+	blocks := 0
+	if len(src) >= 16 {
+		blocks = (len(src)-16)/12 + 1
+		maxBlocks := count / 4
+		if blocks > maxBlocks {
+			blocks = maxBlocks
+		}
+	}
+	if blocks > 0 {
+		rgb24ToGrayU8SSE41Asm(dst, src, blocks)
+	}
+	processed := blocks * 4
+	if processed < count {
+		rgb24ToGrayU8Generic(dst[processed:], src[processed*3:], count-processed)
+	}
+}
+
+func rgb24ToGrayU8AVX2(dst, src []byte, count int) {
+	blocks := 0
+	if len(src) >= 28 {
+		blocks = (len(src)-28)/24 + 1
+		maxBlocks := count / 8
+		if blocks > maxBlocks {
+			blocks = maxBlocks
+		}
+	}
+	if blocks > 0 {
+		rgb24ToGrayU8AVX2Asm(dst, src, blocks)
+	}
+	processed := blocks * 8
+	if processed < count {
+		rgb24ToGrayU8SSE41(dst[processed:], src[processed*3:], count-processed)
+	}
 }
 
 func blendSolidHspanRGBAAVX2(dst, covers []byte, r, g, b, a uint8, premulSrc bool) {

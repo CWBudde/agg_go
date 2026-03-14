@@ -13,6 +13,8 @@ func selectImplementationArch(features Features) implementation {
 		return implementation{
 			name:                 "neon",
 			fillRGBA:             fillRGBANEON,
+			copyMask1U8:          copyMask1U8Generic,
+			rgb24ToGrayU8:        rgb24ToGrayU8Generic,
 			blendSolidHspanRGBA:  blendSolidHspanRGBANEON,
 			blendHlineRGBA:       blendHlineRGBANEON,
 			blendColorHspanRGBA:  blendColorHspanRGBANEON,

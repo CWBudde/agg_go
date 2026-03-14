@@ -5,6 +5,7 @@ package pixfmt
 import (
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
+	"github.com/MeKo-Christian/agg_go/internal/simd"
 )
 
 func zeroCovers(dst []basics.Int8u, count int) {
@@ -56,12 +57,12 @@ func fillOneComponentMaskSpan(dst, src []basics.Int8u, step, offset, count int) 
 		if end > len(src) {
 			copyCount := len(src) - offset
 			if copyCount > 0 {
-				copy(dst[:copyCount], src[offset:])
+				simd.CopyMask1U8(dst[:copyCount], src[offset:], copyCount)
 			}
 			zeroCovers(dst[copyCount:], count-copyCount)
 			return
 		}
-		copy(dst[:count], src[offset:end])
+		simd.CopyMask1U8(dst[:count], src[offset:end], count)
 		return
 	}
 	for i := 0; i < count; i++ {
@@ -90,6 +91,24 @@ func combineOneComponentMaskSpan(dst, src []basics.Int8u, step, offset, count in
 
 func fillRGBToGrayMaskSpan(dst, src []basics.Int8u, step, offset, count int, fn RGBToGrayMaskU8) {
 	if count <= 0 || len(dst) < count {
+		return
+	}
+	if step == 3 && offset >= 0 && fn.ROffset == 0 && fn.GOffset == 1 && fn.BOffset == 2 {
+		if offset >= len(src) {
+			zeroCovers(dst, count)
+			return
+		}
+		available := len(src) - offset
+		maxCount := available / 3
+		if maxCount > count {
+			maxCount = count
+		}
+		if maxCount > 0 {
+			simd.RGB24ToGrayU8(dst[:maxCount], src[offset:], maxCount)
+		}
+		if maxCount < count {
+			zeroCovers(dst[maxCount:], count-maxCount)
+		}
 		return
 	}
 	for i := 0; i < count; i++ {

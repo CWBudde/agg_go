@@ -211,8 +211,19 @@ Span generators feed pixel data into `BlendColorHspan`; profile before committin
   masks, stepped component extraction, and RGB24-to-gray conversion. Current
   microbenchmarks: `BenchmarkAlphaMaskU8FillHspan` 11.4 ns/op and
   `BenchmarkAlphaMaskU8FillHspanRGBToGray` 227.3 ns/op, both with 0 allocs/op.
-- [ ] SSE4.1 (amd64) — mask fill: 16 bytes/iter; RGB→gray: `PMADDUBSW` with BT.601 weights.
-- [ ] AVX2 (amd64) — 32 bytes/iter mask fill; 256-bit RGB→gray.
+- [x] SSE4.1 (amd64) — mask fill: 16 bytes/iter; RGB→gray: `PMADDUBSW` with BT.601 weights.
+  Added `internal/simd` SSE4.1 kernels on 2026-03-14 for short one-byte mask copies
+  and exact RGB24→gray conversion. Gray conversion uses three `PMADDUBSW` passes to
+  preserve the scalar `(77*r + 150*g + 29*b) >> 8` result without saturation.
+  Current microbenchmarks: `RGB24ToGrayU8` improved from ~4.0 GB/s generic to
+  ~15.4 GB/s SSE4.1 at 1024 pixels; one-byte mask fill uses SSE4.1 for short spans
+  and falls back to `copy()` on longer spans where the runtime memmove path is faster.
+- [x] AVX2 (amd64) — 32 bytes/iter mask fill; 256-bit RGB→gray.
+  Added AVX2 kernels on 2026-03-14 for 32-byte mask copies and 8-pixel RGB24→gray
+  conversion using two 128-bit lane-aligned loads per block. Current microbenchmarks:
+  `CopyMask1U8` at 256 pixels improved from 22.60 ns/op (SSE4.1) to 21.86 ns/op
+  (AVX2), and `RGB24ToGrayU8` at 4096 pixels improved from 1093 ns/op (SSE4.1) to
+  673.1 ns/op (AVX2).
 - [ ] NEON (arm64) — `vst1q_u8` mask fill; `vmull`/`vadd` for RGB→gray.
 - [x] Wire into alpha-mask call sites in `internal/pixfmt/`.
   `AlphaMaskU8` and `AMaskNoClipU8` horizontal span paths now dispatch through

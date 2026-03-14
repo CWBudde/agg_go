@@ -63,6 +63,60 @@ func BenchmarkBlendSolidHspanRGBA(b *testing.B) {
 	}
 }
 
+func BenchmarkCopyMask1U8(b *testing.B) {
+	sizes := []int{64, 256, 1024, 4096}
+
+	for _, tc := range benchmarkCases() {
+		b.Run(tc.name, func(b *testing.B) {
+			for _, pixels := range sizes {
+				b.Run(pixelBenchName(pixels), func(b *testing.B) {
+					dst := make([]byte, pixels)
+					src := make([]byte, pixels)
+					for i := range src {
+						src[i] = byte((i * 29) & 0xFF)
+					}
+
+					ResetDetection()
+					SetForcedFeatures(tc.features)
+					b.Cleanup(ResetDetection)
+					b.SetBytes(int64(len(dst) + len(src)))
+					b.ResetTimer()
+					for i := 0; i < b.N; i++ {
+						CopyMask1U8(dst, src, pixels)
+					}
+				})
+			}
+		})
+	}
+}
+
+func BenchmarkRGB24ToGrayU8(b *testing.B) {
+	sizes := []int{64, 256, 1024, 4096}
+
+	for _, tc := range benchmarkCases() {
+		b.Run(tc.name, func(b *testing.B) {
+			for _, pixels := range sizes {
+				b.Run(pixelBenchName(pixels), func(b *testing.B) {
+					dst := make([]byte, pixels)
+					src := make([]byte, pixels*3)
+					for i := range src {
+						src[i] = byte((i * 13) & 0xFF)
+					}
+
+					ResetDetection()
+					SetForcedFeatures(tc.features)
+					b.Cleanup(ResetDetection)
+					b.SetBytes(int64(len(dst) + len(src)))
+					b.ResetTimer()
+					for i := 0; i < b.N; i++ {
+						RGB24ToGrayU8(dst, src, pixels)
+					}
+				})
+			}
+		})
+	}
+}
+
 func benchmarkCases() []struct {
 	name     string
 	features Features

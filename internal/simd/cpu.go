@@ -23,6 +23,8 @@ type Features struct {
 type implementation struct {
 	name                 string
 	fillRGBA             func(dst []byte, r, g, b, a uint8, count int)
+	copyMask1U8          func(dst, src []byte, count int)
+	rgb24ToGrayU8        func(dst, src []byte, count int)
 	blendSolidHspanRGBA  func(dst []byte, covers []byte, r, g, b, a uint8, premulSrc bool)
 	blendHlineRGBA       func(dst []byte, r, g, b, a, cover uint8, count int, premulSrc bool)
 	blendColorHspanRGBA  func(dst, srcColors, covers []byte, count int, premulSrc bool)
@@ -108,6 +110,42 @@ func FillRGBA(dst []byte, r, g, b, a uint8, count int) {
 	currentImplementation().fillRGBA(dst, r, g, b, a, count)
 }
 
+// CopyMask1U8 copies one-byte mask values from src to dst.
+func CopyMask1U8(dst, src []byte, count int) {
+	if count <= 0 || len(dst) == 0 || len(src) == 0 {
+		return
+	}
+	if count > len(dst) {
+		count = len(dst)
+	}
+	if count > len(src) {
+		count = len(src)
+	}
+	if count <= 0 {
+		return
+	}
+	currentImplementation().copyMask1U8(dst, src, count)
+}
+
+// RGB24ToGrayU8 converts packed RGB24 pixels to 8-bit grayscale using
+// the integer BT.601 weights (77, 150, 29) >> 8.
+func RGB24ToGrayU8(dst, src []byte, count int) {
+	if count <= 0 || len(dst) == 0 || len(src) < 3 {
+		return
+	}
+	if count > len(dst) {
+		count = len(dst)
+	}
+	maxCount := len(src) / 3
+	if count > maxCount {
+		count = maxCount
+	}
+	if count <= 0 {
+		return
+	}
+	currentImplementation().rgb24ToGrayU8(dst, src, count)
+}
+
 func currentImplementation() implementation {
 	implMutex.Lock()
 	implOnce.Do(func() {
@@ -133,6 +171,8 @@ func genericImplementation() implementation {
 	return implementation{
 		name:                 "generic",
 		fillRGBA:             fillRGBAGeneric,
+		copyMask1U8:          copyMask1U8Generic,
+		rgb24ToGrayU8:        rgb24ToGrayU8Generic,
 		blendSolidHspanRGBA:  blendSolidHspanRGBAGeneric,
 		blendHlineRGBA:       blendHlineRGBAGeneric,
 		blendColorHspanRGBA:  blendColorHspanRGBAGeneric,
