@@ -37,6 +37,8 @@ type Scene struct {
 	filterState imagefltrgraph.State
 	aggImage    *agg.Image
 	spheres     *agg.Image
+	backdrop    *agg.Image
+	overlay     *agg.Image
 }
 
 func New(width, height int) *Scene {
@@ -56,6 +58,7 @@ func New(width, height int) *Scene {
 	scene.aggImage, _ = imageassets.Agg()
 	scene.spheres, _ = imageassets.Spheres()
 	scene.initTiles()
+	scene.initLayers()
 
 	return scene
 }
@@ -166,6 +169,102 @@ func (s *Scene) DrawFilterGraphTile() {
 }
 
 func (s *Scene) DrawOverlay(ctx *agg.Context) error {
+	if ctx == nil {
+		return nil
+	}
+
+	a := ctx.GetAgg2D()
+	a.ResetTransformations()
+	a.ClipBox(0, 0, float64(s.width), float64(s.height))
+	if err := a.CopyImageSimple(s.blendTile.img, s.blendTile.x, s.blendTile.y); err != nil {
+		return err
+	}
+	if err := a.CopyImageSimple(s.patternTile.img, s.patternTile.x, s.patternTile.y); err != nil {
+		return err
+	}
+	if err := a.CopyImageSimple(s.gpcTile.img, s.gpcTile.x, s.gpcTile.y); err != nil {
+		return err
+	}
+	if err := a.CopyImageSimple(s.lineTile.img, s.lineTile.x, s.lineTile.y); err != nil {
+		return err
+	}
+	if err := a.CopyImageSimple(s.graphTile.img, s.graphTile.x, s.graphTile.y); err != nil {
+		return err
+	}
+	if err := a.CopyImageSimple(s.filterTile.img, s.filterTile.x, s.filterTile.y); err != nil {
+		return err
+	}
+	if s.overlay != nil {
+		if err := a.BlendImageSimple(s.overlay, 0, 0, 255); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Scene) drawBackdrop(ctx *agg.Context) {
+	if s.backdrop != nil {
+		ctx.GetAgg2D().CopyImageSimple(s.backdrop, 0, 0)
+		return
+	}
+	ctx.Clear(agg.RGBA(0.985, 0.985, 0.97, 1.0))
+	a := ctx.GetAgg2D()
+	a.ResetTransformations()
+	a.FillLinearGradient(0, 0, 0, float64(s.height),
+		agg.RGBA(0.97, 0.975, 0.985, 1.0),
+		agg.RGBA(0.91, 0.93, 0.95, 1.0), 1.0)
+	a.NoLine()
+	a.Rectangle(0, 0, float64(s.width), float64(s.height))
+}
+
+func (s *Scene) initLayers() {
+	s.backdrop = newLayerImage(s.width, s.height)
+	if s.backdrop != nil {
+		s.renderBackdropLayer(agg.NewContextForImage(s.backdrop))
+	}
+
+	s.overlay = newLayerImage(s.width, s.height)
+	if s.overlay != nil {
+		s.renderOverlayLayer(agg.NewContextForImage(s.overlay))
+	}
+}
+
+func newLayerImage(width, height int) *agg.Image {
+	buf := make([]uint8, width*height*4)
+	return agg.NewImage(buf, width, height, width*4)
+}
+
+func (s *Scene) renderBackdropLayer(ctx *agg.Context) {
+	if ctx == nil {
+		return
+	}
+	ctx.Clear(agg.RGBA(0.985, 0.985, 0.97, 1.0))
+	a := ctx.GetAgg2D()
+	a.ResetTransformations()
+	a.FillLinearGradient(0, 0, 0, float64(s.height),
+		agg.RGBA(0.97, 0.975, 0.985, 1.0),
+		agg.RGBA(0.91, 0.93, 0.95, 1.0), 1.0)
+	a.NoLine()
+	a.Rectangle(0, 0, float64(s.width), float64(s.height))
+}
+
+func (s *Scene) renderOverlayLayer(ctx *agg.Context) {
+	if ctx == nil {
+		return
+	}
+	ctx.Clear(agg.RGBA(0, 0, 0, 0))
+	if err := s.drawOverlayDecor(ctx); err != nil {
+		return
+	}
+	s.drawTileBorder(ctx, s.blendTile)
+	s.drawTileBorder(ctx, s.patternTile)
+	s.drawTileBorder(ctx, s.gpcTile)
+	s.drawTileBorder(ctx, s.lineTile)
+	s.drawTileBorder(ctx, s.graphTile)
+	s.drawTileBorder(ctx, s.filterTile)
+}
+
+func (s *Scene) drawOverlayDecor(ctx *agg.Context) error {
 	a := ctx.GetAgg2D()
 	a.ResetTransformations()
 	a.ClipBox(0, 0, float64(s.width), float64(s.height))
@@ -209,12 +308,6 @@ func (s *Scene) DrawOverlay(ctx *agg.Context) error {
 	a.FillColor(agg.RGBA(0.20, 0.24, 0.28, 0.95))
 	a.Text(24, 52, "tiles: masks, LUTs, warped resampling, polygon clipping, line patterns, graphs, filter curves", false, 0, 0)
 
-	for _, t := range []tile{s.blendTile, s.patternTile, s.gpcTile, s.lineTile, s.graphTile, s.filterTile} {
-		if err := s.drawTileFrame(ctx, t); err != nil {
-			return err
-		}
-	}
-
 	if s.spheres != nil {
 		a.ImageFilter(agg.Bilinear)
 		a.ImageResample(agg.ResampleAlways)
@@ -241,18 +334,7 @@ func (s *Scene) DrawOverlay(ctx *agg.Context) error {
 	return nil
 }
 
-func (s *Scene) drawBackdrop(ctx *agg.Context) {
-	ctx.Clear(agg.RGBA(0.985, 0.985, 0.97, 1.0))
-	a := ctx.GetAgg2D()
-	a.ResetTransformations()
-	a.FillLinearGradient(0, 0, 0, float64(s.height),
-		agg.RGBA(0.97, 0.975, 0.985, 1.0),
-		agg.RGBA(0.91, 0.93, 0.95, 1.0), 1.0)
-	a.NoLine()
-	a.Rectangle(0, 0, float64(s.width), float64(s.height))
-}
-
-func (s *Scene) drawTileFrame(ctx *agg.Context, t tile) error {
+func (s *Scene) drawTileBorder(ctx *agg.Context, t tile) {
 	a := ctx.GetAgg2D()
 	x1, y1 := t.x-4, t.y-4
 	x2, y2 := t.x+float64(t.w)+4, t.y+float64(t.h)+4
@@ -262,9 +344,4 @@ func (s *Scene) drawTileFrame(ctx *agg.Context, t tile) error {
 	a.LineWidth(1.2)
 	a.RoundedRect(x1, y1, x2, y2, 8)
 	a.DrawPath(agg.FillAndStroke)
-
-	a.ClipBox(t.x, t.y, t.x+float64(t.w), t.y+float64(t.h))
-	err := a.CopyImageSimple(t.img, t.x, t.y)
-	a.ClipBox(0, 0, float64(s.width), float64(s.height))
-	return err
 }
