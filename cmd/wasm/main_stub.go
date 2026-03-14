@@ -32,6 +32,10 @@ var (
 	_             func(bool)                                                                   = setIdeaDraft
 	_             func(bool)                                                                   = setIdeaRoundoff
 	_             func(float64)                                                                = setIdeaAngleDelta
+	_             func(int)                                                                    = setMolViewMolecule
+	_             func(float64)                                                                = setMolViewThickness
+	_             func(float64)                                                                = setMolViewTextSize
+	_             func(bool)                                                                   = setMolViewAutoRotate
 	_             func(int)                                                                    = setPatternPerspectiveType
 	_             func(float64, float64, float64, float64, float64, float64, float64, float64) = setPatternPerspectiveQuad
 	_             func(int)                                                                    = setPatternResampleType
@@ -85,7 +89,7 @@ func main() {
 			"agg2d",
 			"lion", "gradients", "aa", "blend", "interactive_polygon", "graph_test",
 			"bspline", "conv_dash_marker", "gouraud", "imagefilters",
-			"image_fltr_graph", "image_filters2", "idea",
+			"image_fltr_graph", "image_filters2", "idea", "mol_view",
 			"sbool", "aatest", "convstroke", "convcontour", "gamma", "lionoutline",
 			"roundedrect", "component", "alphagrad",
 			"rasterizers", "flash_rasterizer", "perspective", "bezier_div",
@@ -164,6 +168,8 @@ func renderDemoToFile(demoType, outDir string) error {
 		drawImageFilters2Demo()
 	case "idea":
 		drawIdeaDemo()
+	case "mol_view":
+		drawMolViewDemo()
 	case "sbool":
 		drawSBoolDemo()
 	case "aatest":

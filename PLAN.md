@@ -429,11 +429,14 @@ idiomatic in Go.
 Triage each: fully port, replace with Go-idiomatic equivalent, or defer with rationale:
 
 - [x] `trans_curve1.cpp` — Go-idiomatic equivalent using embedded GSV vector text in `internal/demo/transcurve/draw.go`, standalone `examples/core/intermediate/trans_curve/main.go`, and interactive web demo wiring in `cmd/wasm/demo_trans_curve.go`
-- [ ] `trans_curve1_ft.cpp`
+- [x] `trans_curve1_ft.cpp` — standalone FreeType-outline variant in `examples/core/intermediate/trans_curve1_ft/main.go` with runtime fallback when FreeType or a serif italic font is unavailable
 - [ ] `trans_curve2_ft.cpp`
 - [ ] `make_arrows.cpp`
 - [ ] `make_gb_poly.cpp`
-- [ ] `mol_view.cpp`
+- [x] `mol_view.cpp` — shared renderer in `internal/demo/molview/draw.go`,
+      standalone `examples/core/intermediate/mol_view/main.go`,
+      web `cmd/wasm/demo_mol_view.go` + `web/index.html` controls/mouse wiring,
+      embedded original `1.sdf` dataset and SDF parser.
 - [x] `idea.cpp` — shared renderer in `internal/demo/idea/draw.go`,
       standalone `examples/core/intermediate/idea/main.go`,
       web `cmd/wasm/demo_idea.go` + `web/index.html` controls/animation wiring,

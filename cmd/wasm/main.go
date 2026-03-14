@@ -102,6 +102,30 @@ func main() {
 		}
 		return nil
 	}))
+	js.Global().Set("setMolViewMolecule", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setMolViewMolecule(args[0].Int())
+		}
+		return nil
+	}))
+	js.Global().Set("setMolViewThickness", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setMolViewThickness(args[0].Float())
+		}
+		return nil
+	}))
+	js.Global().Set("setMolViewTextSize", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setMolViewTextSize(args[0].Float())
+		}
+		return nil
+	}))
+	js.Global().Set("setMolViewAutoRotate", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setMolViewAutoRotate(args[0].Bool())
+		}
+		return nil
+	}))
 	js.Global().Set("setSBoolOp", js.FuncOf(setSBoolOp))
 	js.Global().Set("setStrokeJoin", js.FuncOf(setStrokeJoin))
 	js.Global().Set("setStrokeCap", js.FuncOf(setStrokeCap))
@@ -772,6 +796,10 @@ func onMouseDown(this js.Value, args []js.Value) interface{} {
 	if demoType == "trans_curve2" {
 		return handleTransCurve2MouseDown(x, y)
 	}
+	if demoType == "mol_view" {
+		right := len(args) >= 4 && args[3].Bool()
+		return handleMolViewMouseDown(x, y, right)
+	}
 	if demoType == "gamma_ctrl" {
 		return handleGammaCtrlMouseDown(x, y)
 	}
@@ -914,6 +942,10 @@ func onMouseMove(this js.Value, args []js.Value) interface{} {
 	if demoType == "trans_curve2" {
 		return handleTransCurve2MouseMove(x, y)
 	}
+	if demoType == "mol_view" {
+		right := len(args) >= 4 && args[3].Bool()
+		return handleMolViewMouseMove(x, y, right)
+	}
 	if demoType == "gamma_ctrl" {
 		return handleGammaCtrlMouseMove(x, y)
 	}
@@ -1039,6 +1071,9 @@ func onMouseUp(this js.Value, args []js.Value) interface{} {
 	}
 	if demoType == "trans_curve2" {
 		handleTransCurve2MouseUp()
+	}
+	if demoType == "mol_view" {
+		handleMolViewMouseUp()
 	}
 	if demoType == "gamma_ctrl" {
 		handleGammaCtrlMouseUp()
@@ -1570,6 +1605,8 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 		drawImageFilters2Demo()
 	case "idea":
 		drawIdeaDemo()
+	case "mol_view":
+		drawMolViewDemo()
 	case "sbool":
 		drawSBoolDemo()
 	case "aatest":

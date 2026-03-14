@@ -189,6 +189,44 @@ export function setupEventHandlers(
     renderSelectedDemo();
   });
 
+  // mol_view controls
+  document
+    .getElementById("molViewMoleculeSlider")
+    .addEventListener("input", () => {
+      const val = parseInt(document.getElementById("molViewMoleculeSlider").value);
+      document.getElementById("molViewMoleculeValue").textContent = val;
+      setMolViewMolecule(val);
+      persistDemoParams("mol_view");
+      renderSelectedDemo();
+    });
+  document
+    .getElementById("molViewThicknessSlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("molViewThicknessSlider").value,
+      );
+      document.getElementById("molViewThicknessValue").textContent =
+        val.toFixed(1);
+      setMolViewThickness(val);
+      persistDemoParams("mol_view");
+      renderSelectedDemo();
+    });
+  document
+    .getElementById("molViewTextSizeSlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(document.getElementById("molViewTextSizeSlider").value);
+      document.getElementById("molViewTextSizeValue").textContent =
+        val.toFixed(1);
+      setMolViewTextSize(val);
+      persistDemoParams("mol_view");
+      renderSelectedDemo();
+    });
+  document.getElementById("molViewAutoRotate").addEventListener("change", () => {
+    setMolViewAutoRotate(document.getElementById("molViewAutoRotate").checked);
+    persistDemoParams("mol_view");
+    renderSelectedDemo();
+  });
+
   // sbool controls
   document.getElementById("sboolOpSelector").addEventListener("change", () => {
     setSBoolOp(parseInt(document.getElementById("sboolOpSelector").value));
@@ -1022,6 +1060,8 @@ export function setupEventHandlers(
       (demoType === "trans_curve2" &&
         document.getElementById("transCurve2Animate").checked) ||
       (demoType === "idea" && document.getElementById("ideaRotate").checked) ||
+      (demoType === "mol_view" &&
+        document.getElementById("molViewAutoRotate").checked) ||
       demoType === "distortions"
     ) {
       renderSelectedDemo();

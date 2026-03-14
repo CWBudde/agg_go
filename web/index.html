@@ -94,6 +94,7 @@
           <option value="image_fltr_graph">Image Filter Graph</option>
           <option value="image_filters2">Image Filters 2</option>
           <option value="idea">Idea</option>
+          <option value="mol_view">Mol View</option>
           <option value="blur">Gaussian &amp; Stack Blur</option>
           <option value="simple_blur">Simple 3×3 Blur</option>
           <option value="blend_color">Blend Color (Shadow)</option>
@@ -465,6 +466,46 @@
         step="0.001"
       />
       <span id="ideaStepValue">0.010</span>
+    </div>
+
+    <div class="controls" id="molViewControls" style="display: none">
+      <label for="molViewMoleculeSlider">Molecule:</label>
+      <input
+        type="range"
+        id="molViewMoleculeSlider"
+        min="0"
+        max="99"
+        value="0"
+        step="1"
+      />
+      <span id="molViewMoleculeValue">0</span>
+      <label for="molViewThicknessSlider" style="margin-left: 1rem"
+        >Thickness:</label
+      >
+      <input
+        type="range"
+        id="molViewThicknessSlider"
+        min="0.1"
+        max="3"
+        value="1"
+        step="0.1"
+      />
+      <span id="molViewThicknessValue">1.0</span>
+      <label for="molViewTextSizeSlider" style="margin-left: 1rem"
+        >Label Size:</label
+      >
+      <input
+        type="range"
+        id="molViewTextSizeSlider"
+        min="0.5"
+        max="5"
+        value="2.5"
+        step="0.1"
+      />
+      <span id="molViewTextSizeValue">2.5</span>
+      <label style="margin-left: 1rem"
+        ><input type="checkbox" id="molViewAutoRotate" checked /> Rotate</label
+      >
     </div>
 
     <div class="controls" id="sboolControls" style="display: none">

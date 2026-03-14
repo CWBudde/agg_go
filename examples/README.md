@@ -28,6 +28,7 @@ Core examples use only the internal Go implementation and are guaranteed to buil
 - **image_resample/** - Image resampling transform demo (port of AGG `image_resample.cpp`)
 - **image_filters2/** - Image filter LUT demo (port of AGG `image_filters2.cpp`)
 - **idea/** - Rotating logo/path fill demo (port of AGG `idea.cpp`)
+- **mol_view/** - Molecule viewer demo with SDF dataset and interactive transforms (port of AGG `mol_view.cpp`)
 - **line_patterns_clip/** - Patterned line clipping demo (port of AGG `line_patterns_clip.cpp`)
 - **scanline_boolean2/** - Boolean operations benchmark/demo (port of AGG `scanline_boolean2.cpp`)
 - **pattern_perspective/** - Pattern perspective warp demo (port of AGG `pattern_perspective.cpp`)

@@ -290,6 +290,46 @@ export const demoURLHandlers = {
     },
   },
 
+  mol_view: {
+    persist() {
+      updateURL({
+        mvm: parseInt(document.getElementById("molViewMoleculeSlider").value),
+        mvt: parseFloat(document.getElementById("molViewThicknessSlider").value),
+        mvz: parseFloat(document.getElementById("molViewTextSizeSlider").value),
+        mvr: document.getElementById("molViewAutoRotate").checked ? "1" : "0",
+      });
+    },
+    restore(p) {
+      const molecule = p.has("mvm")
+        ? parseInt(p.get("mvm"))
+        : parseInt(document.getElementById("molViewMoleculeSlider").value);
+      const thickness = p.has("mvt")
+        ? parseFloat(p.get("mvt"))
+        : parseFloat(document.getElementById("molViewThicknessSlider").value);
+      const textSize = p.has("mvz")
+        ? parseFloat(p.get("mvz"))
+        : parseFloat(document.getElementById("molViewTextSizeSlider").value);
+      const rotate = p.has("mvr")
+        ? p.get("mvr") === "1"
+        : document.getElementById("molViewAutoRotate").checked;
+
+      document.getElementById("molViewMoleculeSlider").value = molecule;
+      document.getElementById("molViewMoleculeValue").textContent = molecule;
+      document.getElementById("molViewThicknessSlider").value = thickness;
+      document.getElementById("molViewThicknessValue").textContent =
+        thickness.toFixed(1);
+      document.getElementById("molViewTextSizeSlider").value = textSize;
+      document.getElementById("molViewTextSizeValue").textContent =
+        textSize.toFixed(1);
+      document.getElementById("molViewAutoRotate").checked = rotate;
+
+      setMolViewMolecule(molecule);
+      setMolViewThickness(thickness);
+      setMolViewTextSize(textSize);
+      setMolViewAutoRotate(rotate);
+    },
+  },
+
   sbool: {
     persist() {
       const n = getSBoolNodes();

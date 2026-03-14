@@ -64,6 +64,11 @@ export const ALL_DEMO_PARAMS = [
   "idd",
   "idro",
   "ids",
+  // mol_view
+  "mvm",
+  "mvt",
+  "mvz",
+  "mvr",
   // sbool
   "sop",
   "p1x0",
