@@ -46,8 +46,16 @@ func drawGammaTunerDemo() {
 	// Pre-calculate colors for the gradient
 	invG := 1.0 / g
 	gradientKForScreenY := func(y int) float64 {
-		srcY := float64(height-1-y) / float64(height-1)
-		return 1.0 - math.Pow(srcY*0.5, invG)
+		var t float64
+		switch {
+		case y <= squareY:
+			t = 1.0
+		case y >= squareY+squareSize-1:
+			t = 0.0
+		default:
+			t = float64(squareY+squareSize-1-y) / float64(squareSize-1)
+		}
+		return 1.0 - math.Pow(t*0.5, invG)
 	}
 
 	// 1. Draw vertical gradient directly into canvasBuf.
