@@ -17,6 +17,8 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
 
+const rgba8Inv = 1.0 / 255.0
+
 type TransformMode int
 
 const (
@@ -371,9 +373,9 @@ func ApplyGammaInv(img *agg.Image, gamma float64) {
 	}
 	inv := 1.0 / gamma
 	for i := 0; i+3 < len(img.Data); i += 4 {
-		r := math.Pow(float64(img.Data[i])/255.0, inv)
-		g := math.Pow(float64(img.Data[i+1])/255.0, inv)
-		b := math.Pow(float64(img.Data[i+2])/255.0, inv)
+		r := math.Pow(float64(img.Data[i])*rgba8Inv, inv)
+		g := math.Pow(float64(img.Data[i+1])*rgba8Inv, inv)
+		b := math.Pow(float64(img.Data[i+2])*rgba8Inv, inv)
 		img.Data[i] = uint8(r*255.0 + 0.5)
 		img.Data[i+1] = uint8(g*255.0 + 0.5)
 		img.Data[i+2] = uint8(b*255.0 + 0.5)
@@ -390,9 +392,9 @@ func CopyWithGammaDir(src *agg.Image, gamma float64) *agg.Image {
 		return out
 	}
 	for i := 0; i+3 < len(out.Data); i += 4 {
-		r := math.Pow(float64(out.Data[i])/255.0, gamma)
-		g := math.Pow(float64(out.Data[i+1])/255.0, gamma)
-		b := math.Pow(float64(out.Data[i+2])/255.0, gamma)
+		r := math.Pow(float64(out.Data[i])*rgba8Inv, gamma)
+		g := math.Pow(float64(out.Data[i+1])*rgba8Inv, gamma)
+		b := math.Pow(float64(out.Data[i+2])*rgba8Inv, gamma)
 		out.Data[i] = uint8(r*255.0 + 0.5)
 		out.Data[i+1] = uint8(g*255.0 + 0.5)
 		out.Data[i+2] = uint8(b*255.0 + 0.5)

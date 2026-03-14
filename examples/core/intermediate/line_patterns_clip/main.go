@@ -55,11 +55,11 @@ func (s *lineChainPatternSource) Pixel(x, y int) color.RGBA {
 		return color.NewRGBA(0, 0, 0, 0)
 	}
 	p := s.data[idx]
-	c := color.NewRGBA(
-		float64((p>>16)&0xFF)/255.0,
-		float64((p>>8)&0xFF)/255.0,
-		float64(p&0xFF)/255.0,
-		float64((p>>24)&0xFF)/255.0,
+	c := color.NewRGBAFromRGBA8(
+		uint8((p>>16)&0xFF),
+		uint8((p>>8)&0xFF),
+		uint8(p&0xFF),
+		uint8((p>>24)&0xFF),
 	)
 	c.Premultiply()
 	return c

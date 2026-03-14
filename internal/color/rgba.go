@@ -4,6 +4,8 @@ package color
 
 import (
 	"math"
+
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
 // ColorOrder defines component ordering for different pixel formats
@@ -25,9 +27,21 @@ type RGBA struct {
 	R, G, B, A float64
 }
 
+const rgba8FloatScale = 1.0 / 255.0
+
 // NewRGBA creates a new RGBA color
 func NewRGBA(r, g, b, a float64) RGBA {
 	return RGBA{R: r, G: g, B: b, A: a}
+}
+
+// NewRGBAFromRGBA8 creates a floating-point RGBA color from 8-bit channels.
+func NewRGBAFromRGBA8(r, g, b, a basics.Int8u) RGBA {
+	return RGBA{
+		R: float64(r) * rgba8FloatScale,
+		G: float64(g) * rgba8FloatScale,
+		B: float64(b) * rgba8FloatScale,
+		A: float64(a) * rgba8FloatScale,
+	}
 }
 
 // Clear sets the color to transparent black

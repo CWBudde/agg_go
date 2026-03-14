@@ -151,8 +151,9 @@ func drawImageAlphaDemo() {
 
 	// Render background ellipses using the public API
 	ctx.GetAgg2D().ResetTransformations()
+	const oneTwoHundredFiftyFifth = 1.0 / 255.0
 	for _, e := range imgAlphaEllipses {
-		ctx.SetColor(agg.RGBA(float64(e.r)/255, float64(e.g)/255, float64(e.b)/255, float64(e.a)/255))
+		ctx.SetColor(agg.RGBA(float64(e.r)*oneTwoHundredFiftyFifth, float64(e.g)*oneTwoHundredFiftyFifth, float64(e.b)*oneTwoHundredFiftyFifth, float64(e.a)*oneTwoHundredFiftyFifth))
 		ctx.FillEllipse(e.x, e.y, e.rx, e.ry)
 	}
 

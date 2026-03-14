@@ -279,8 +279,9 @@ func drawAlphaGradientDemo() {
 
 	// 5. Alpha LUT from spline control.
 	var alphaArr [256]basics.Int8u
+	const oneTwoHundredFiftyFifth = 1.0 / 255.0
 	for i := range alphaArr {
-		alphaArr[i] = basics.Int8u(alphaCtrl.Value(float64(i)/255.0) * 255)
+		alphaArr[i] = basics.Int8u(alphaCtrl.Value(float64(i)*oneTwoHundredFiftyFifth) * 255)
 	}
 
 	// 6. Render the 150-px circle with the combined span generator.

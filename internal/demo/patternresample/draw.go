@@ -1,11 +1,16 @@
 package patternresample
 
 import (
+	"math"
+	"sync"
+
 	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/internal/demo/imageassets"
 	"github.com/MeKo-Christian/agg_go/internal/demo/quadwarp"
 	imgacc "github.com/MeKo-Christian/agg_go/internal/image"
 )
+
+const rgbaByteScale = 1.0 / 255.0
 
 type Config struct {
 	Mode  int
@@ -15,6 +20,7 @@ type Config struct {
 }
 
 var cachedAgg *agg.Image
+var gammaImageCache sync.Map
 
 func Draw(ctx *agg.Context, cfg Config) {
 	if cachedAgg == nil {
@@ -47,7 +53,7 @@ func Draw(ctx *agg.Context, cfg Config) {
 		blur = 2.0
 	}
 
-	src := quadwarp.CopyWithGammaDir(cachedAgg, gamma)
+	src := gammaAdjustedSource(gamma)
 
 	ctx.Clear(agg.White)
 
@@ -106,5 +112,46 @@ func Draw(ctx *agg.Context, cfg Config) {
 		QuadLineColor:      agg.RGBA(0, 0.25, 0.35, 0.9),
 	})
 
-	quadwarp.ApplyGammaInv(ctx.GetImage(), gamma)
+	applyGammaInvLUT(ctx.GetImage(), gamma)
+}
+
+func gammaCacheKey(gamma float64) int {
+	return int(math.Round(gamma * 1000))
+}
+
+func gammaAdjustedSource(gamma float64) *agg.Image {
+	if cachedAgg == nil {
+		return nil
+	}
+	if gamma <= 0 || math.Abs(gamma-1.0) < 1e-9 {
+		return cachedAgg
+	}
+
+	key := gammaCacheKey(gamma)
+	if cached, ok := gammaImageCache.Load(key); ok {
+		return cached.(*agg.Image)
+	}
+
+	src := quadwarp.CopyWithGammaDir(cachedAgg, gamma)
+	actual, _ := gammaImageCache.LoadOrStore(key, src)
+	return actual.(*agg.Image)
+}
+
+func applyGammaInvLUT(img *agg.Image, gamma float64) {
+	if img == nil || gamma <= 0 || math.Abs(gamma-1.0) < 1e-9 {
+		return
+	}
+
+	inv := 1.0 / gamma
+	var lut [256]byte
+	for i := range lut {
+		v := math.Pow(float64(i)*rgbaByteScale, inv)
+		lut[i] = byte(v*255.0 + 0.5)
+	}
+
+	for i := 0; i+3 < len(img.Data); i += 4 {
+		img.Data[i] = lut[img.Data[i]]
+		img.Data[i+1] = lut[img.Data[i+1]]
+		img.Data[i+2] = lut[img.Data[i+2]]
+	}
 }

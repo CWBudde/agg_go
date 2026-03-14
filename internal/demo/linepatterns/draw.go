@@ -1,6 +1,8 @@
 package linepatterns
 
 import (
+	"sync"
+
 	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
@@ -50,13 +52,14 @@ func (s *imagePatternSource) Pixel(x, y int) color.RGBA {
 	if a < 0 {
 		a = 0
 	}
-	c := color.NewRGBA(float64(r)/255.0, float64(g)/255.0, float64(b)/255.0, float64(a)/255.0)
+	c := color.NewRGBAFromRGBA8(r, g, b, uint8(a))
 	c.Premultiply()
 	return c
 }
 
 type lineImageBaseAdapter struct {
-	renBase *renderer.RendererBase[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]]
+	renBase  *renderer.RendererBase[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]]
+	scratch8 []color.RGBA8[color.Linear]
 }
 
 func rgbaToRGBA8(c color.RGBA) color.RGBA8[color.Linear] {
@@ -72,8 +75,15 @@ func rgbaToRGBA8(c color.RGBA) color.RGBA8[color.Linear] {
 	return color.RGBA8[color.Linear]{R: clamp(c.R), G: clamp(c.G), B: clamp(c.B), A: clamp(c.A)}
 }
 
+func (a *lineImageBaseAdapter) spanBuffer(length int) []color.RGBA8[color.Linear] {
+	if cap(a.scratch8) < length {
+		a.scratch8 = make([]color.RGBA8[color.Linear], length)
+	}
+	return a.scratch8[:length]
+}
+
 func (a *lineImageBaseAdapter) BlendColorHSpan(x, y, length int, colors []color.RGBA, covers []basics.CoverType) {
-	buf := make([]color.RGBA8[color.Linear], len(colors))
+	buf := a.spanBuffer(len(colors))
 	for i := range colors {
 		buf[i] = rgbaToRGBA8(colors[i])
 	}
@@ -81,7 +91,7 @@ func (a *lineImageBaseAdapter) BlendColorHSpan(x, y, length int, colors []color.
 }
 
 func (a *lineImageBaseAdapter) BlendColorVSpan(x, y, length int, colors []color.RGBA, covers []basics.CoverType) {
-	buf := make([]color.RGBA8[color.Linear], len(colors))
+	buf := a.spanBuffer(len(colors))
 	for i := range colors {
 		buf[i] = rgbaToRGBA8(colors[i])
 	}
@@ -142,6 +152,12 @@ var linePatternCurves = []curveDef{
 	{143, 147, 11, 45, 83, 427, 132, 197},
 }
 
+var (
+	preparedLinePatternOnce     sync.Once
+	preparedLinePatternPaths    []*path.PathStorageStl
+	preparedLinePatternPatterns []outline.Pattern
+)
+
 func bezierPolyline(c curveDef) *path.PathStorageStl {
 	cv := curves.NewCurve4Div()
 	cv.Init(c.x1, c.y1, c.x2, c.y2, c.x3, c.y3, c.x4, c.y4)
@@ -160,6 +176,21 @@ func bezierPolyline(c curveDef) *path.PathStorageStl {
 	return ps
 }
 
+func prepareLinePatternResources() {
+	preparedLinePatternPaths = make([]*path.PathStorageStl, len(linePatternCurves))
+	for i, curve := range linePatternCurves {
+		preparedLinePatternPaths[i] = bezierPolyline(curve)
+	}
+
+	preparedLinePatternPatterns = make([]outline.Pattern, len(Images))
+	for i := range Images {
+		filter := outline.NewPatternFilterRGBAAdapter()
+		pattern := outline.NewLineImagePattern(filter)
+		pattern.Create(&imagePatternSource{img: Images[i]})
+		preparedLinePatternPatterns[i] = pattern
+	}
+}
+
 func clamp(v, lo, hi float64) float64 {
 	if v < lo {
 		return lo
@@ -171,22 +202,22 @@ func clamp(v, lo, hi float64) float64 {
 }
 
 func Draw(img *agg.Image, scaleX, startX float64) {
+	preparedLinePatternOnce.Do(prepareLinePatternResources)
+
 	rbuf := buffer.NewRenderingBufferU8()
 	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Width()*4)
 	pf := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
 	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]](pf)
 	renBase.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 242, A: 255})
 
-	filter := outline.NewPatternFilterRGBAAdapter()
-	pattern := outline.NewLineImagePattern(filter)
-	renImg := outline.NewRendererOutlineImage(&lineImageBaseAdapter{renBase: renBase}, pattern)
+	baseAdapter := &lineImageBaseAdapter{renBase: renBase}
+	renImg := outline.NewRendererOutlineImage(baseAdapter, preparedLinePatternPatterns[0])
 	renImg.SetScaleX(clamp(scaleX, 0.2, 3.0))
 	renImg.SetStartX(clamp(startX, 0.0, 10.0))
 	rasImg := rasterizer.NewRasterizerOutlineAA[*lineOutlineImageAdapter, color.RGBA8[color.Linear]](&lineOutlineImageAdapter{ren: renImg})
 
-	for i, curve := range linePatternCurves {
-		src := &imagePatternSource{img: Images[i%len(Images)]}
-		pattern.Create(src)
-		rasImg.AddPath(&pathSourceAdapter{ps: bezierPolyline(curve)}, 0)
+	for i, ps := range preparedLinePatternPaths {
+		renImg.SetPattern(preparedLinePatternPatterns[i%len(preparedLinePatternPatterns)])
+		rasImg.AddPath(&pathSourceAdapter{ps: ps}, 0)
 	}
 }

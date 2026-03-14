@@ -175,7 +175,7 @@ func TestColorOrders(t *testing.T) {
 
 func TestRGBAConversions(t *testing.T) {
 	// Test ConvertRGBAToRGB8
-	rgba := NewRGBA(100.0/255.0, 150.0/255.0, 200.0/255.0, 128.0/255.0) // Alpha should be ignored
+	rgba := NewRGBAFromRGBA8(100, 150, 200, 128) // Alpha should be ignored
 	rgb := ConvertRGBAToRGB8[Linear](rgba)
 	if rgb.R != 100 || rgb.G != 150 || rgb.B != 200 {
 		t.Errorf("ConvertFromRGBA failed: got %v, want {100, 150, 200}", rgb)
