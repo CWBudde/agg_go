@@ -238,11 +238,23 @@ Span generators feed pixel data into `BlendColorHspan`; profile before committin
 
 ### 7.5 Gamma / LUT Application
 
-- [ ] Profile gamma application in a representative scene before writing any SIMD code.
-- [ ] SSE4.1 (amd64) — `PSHUFB`-based partial LUT; implement only if profiling justifies.
-- [ ] AVX2 (amd64) — `VPGATHERDD` gather if available and beneficial; otherwise skip.
-- [ ] NEON (arm64) — `vtbl`/`vqtbl1q_u8` for 16-entry segments; skip if not hot.
-- [ ] If none of the tiers show meaningful gain, mark as "profiled, skipped" and close.
+- [x] Profile gamma application in a representative scene before writing any SIMD code.
+  Added focused benchmarks on 2026-03-14 for whole-buffer RGBA gamma application
+  and RGBA `BlendFromLUT`, plus a representative `blend_color` demo benchmark for
+  the LUT path. Current microbenchmarks: `BenchmarkPixFmtRGBA32ApplyGammaDir`
+  measured ~338-341 MB/s, and `BenchmarkPixFmtRGBA32BlendFromLUT` measured
+  ~425-489 MB/s with 0 allocs/op. Representative scene:
+  `BenchmarkBlendColorLUT/800x600` measured 7536388 ns/op with 680156 B/op and
+  1029 allocs/op, which does not support gamma/LUT SIMD as the next clear
+  bottleneck.
+- [x] SSE4.1 (amd64) — `PSHUFB`-based partial LUT; implement only if profiling justifies.
+  Profiled and skipped on 2026-03-14. The measured baseline did not justify a
+  partial-table SIMD path over the existing scalar LUT walk.
+- [x] AVX2 (amd64) — `VPGATHERDD` gather if available and beneficial; otherwise skip.
+  Skipped on 2026-03-14 because profiling did not justify gather-based LUT work.
+- [x] NEON (arm64) — `vtbl`/`vqtbl1q_u8` for 16-entry segments; skip if not hot.
+  Skipped on 2026-03-14 because the generic path is not yet a demonstrated hotspot.
+- [x] If none of the tiers show meaningful gain, mark as "profiled, skipped" and close.
 
 ---
 
