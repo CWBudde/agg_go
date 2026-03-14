@@ -2,6 +2,8 @@
 // This implements RGB colors without alpha channel (24-bit RGB).
 package color
 
+import "github.com/MeKo-Christian/agg_go/internal/basics"
+
 // RGB represents a floating-point RGB color (base type, no alpha)
 type RGB struct {
 	R, G, B float64
@@ -10,6 +12,15 @@ type RGB struct {
 // NewRGB creates a new RGB color
 func NewRGB(r, g, b float64) RGB {
 	return RGB{R: r, G: g, B: b}
+}
+
+// NewRGBFromRGB8 creates a floating-point RGB color from 8-bit channels.
+func NewRGBFromRGB8(r, g, b basics.Int8u) RGB {
+	return RGB{
+		R: float64(r) * rgba8FloatScale,
+		G: float64(g) * rgba8FloatScale,
+		B: float64(b) * rgba8FloatScale,
+	}
 }
 
 // Clear sets the color to black

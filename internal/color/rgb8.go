@@ -25,23 +25,12 @@ func (c RGB8[CS]) Convert() RGB8[CS] {
 
 // ConvertToRGB converts to floating-point RGB
 func (c RGB8[CS]) ConvertToRGB() RGB {
-	const scale = 1.0 / 255.0
-	return RGB{
-		R: float64(c.R) * scale,
-		G: float64(c.G) * scale,
-		B: float64(c.B) * scale,
-	}
+	return NewRGBFromRGB8(c.R, c.G, c.B)
 }
 
 // ConvertToRGBA converts to floating-point RGBA with alpha = 1.0
 func (c RGB8[CS]) ConvertToRGBA() RGBA {
-	const scale = 1.0 / 255.0
-	return RGBA{
-		R: float64(c.R) * scale,
-		G: float64(c.G) * scale,
-		B: float64(c.B) * scale,
-		A: 1.0,
-	}
+	return NewRGBAFromRGBA8(c.R, c.G, c.B, 255)
 }
 
 // ConvertFromRGB converts from floating-point RGB

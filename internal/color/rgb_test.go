@@ -46,4 +46,10 @@ func TestRGB(t *testing.T) {
 	if rgba.R != 0.3 || rgba.G != 0.6 || rgba.B != 0.9 || rgba.A != 1.0 {
 		t.Errorf("ToRGBA failed: got %v, want {0.3, 0.6, 0.9, 1.0}", rgba)
 	}
+
+	// Test NewRGBFromRGB8
+	rgb = NewRGBFromRGB8(128, 64, 192)
+	if rgb.R != 128.0/255.0 || rgb.G != 64.0/255.0 || rgb.B != 192.0/255.0 {
+		t.Errorf("NewRGBFromRGB8 failed: got %v", rgb)
+	}
 }
