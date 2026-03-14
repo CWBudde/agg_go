@@ -20,23 +20,36 @@ func drawGammaTunerDemo() {
 	b := gammaTunerB
 
 	const (
-		squareSize = 400
-		verStrips  = 5
+		verStrips = 5
 	)
+
+	padX := width / 10
+	if padX < 24 {
+		padX = 24
+	}
+	padY := height / 20
+	if padY < 24 {
+		padY = 24
+	}
+	squareSize := width - 2*padX
+	if alt := height - 2*padY; alt < squareSize {
+		squareSize = alt
+	}
+	if squareSize < 2 {
+		squareSize = 2
+	}
+	squareX := (width - squareSize) / 2
+	squareY := (height - squareSize) / 2
 
 	// Pre-calculate colors for the gradient
 	invG := 1.0 / g
 
-	// 1. Draw vertical gradient directly into canvasBuf
+	// 1. Draw vertical gradient directly into canvasBuf.
+	// The upstream demo uses flip_y=true, so evaluate the gradient from the
+	// mirrored Y coordinate to match the original orientation.
 	for y := 0; y < height; y++ {
-		k := (float64(y) - 80) / (squareSize - 1)
-		if y < 80 {
-			k = 0.0
-		} else if y >= 80+squareSize {
-			k = 1.0
-		}
-
-		k = 1.0 - math.Pow(k*0.5, invG)
+		srcY := float64(height-1-y) / float64(height-1)
+		k := 1.0 - math.Pow(srcY*0.5, invG)
 
 		cr := uint8(r*255.0*(1.0-k) + 0.5)
 		cg := uint8(gg*255.0*(1.0-k) + 0.5)
@@ -53,9 +66,9 @@ func drawGammaTunerDemo() {
 	}
 
 	// 2. Clear square area to black
-	for y := 80; y < 80+squareSize; y++ {
+	for y := squareY; y < squareY+squareSize; y++ {
 		rowOffset := y * width * 4
-		for x := 50; x < 50+squareSize; x++ {
+		for x := squareX; x < squareX+squareSize; x++ {
 			idx := rowOffset + x*4
 			canvasBuf[idx] = 0
 			canvasBuf[idx+1] = 0
@@ -67,21 +80,21 @@ func drawGammaTunerDemo() {
 	// 3. Draw pattern directly into canvasBuf
 	curPattern := gammaTunerPattern
 	for i := 0; i < squareSize; i += 2 {
-		k := float64(i) / (squareSize - 1)
+		k := float64(squareSize-1-i) / float64(squareSize-1)
 		k = 1.0 - math.Pow(k, invG)
 
 		pcr := r * 255.0 * (1.0 - k)
 		pcg := gg * 255.0 * (1.0 - k)
 		pcb := b * 255.0 * (1.0 - k)
 
-		y1 := 80 + i
-		y2 := 80 + i + 1
+		y1 := squareY + i
+		y2 := squareY + i + 1
 		row1 := y1 * width * 4
 		row2 := y2 * width * 4
 
 		for j := 0; j < squareSize; j++ {
 			var alpha1, alpha2 float64
-			kj := float64(j) / (squareSize - 1)
+			kj := float64(j) / float64(squareSize-1)
 
 			switch curPattern {
 			case 0: // Horizontal
@@ -105,12 +118,12 @@ func drawGammaTunerDemo() {
 				}
 			}
 
-			idx1 := row1 + (50+j)*4
+			idx1 := row1 + (squareX+j)*4
 			canvasBuf[idx1] = uint8(pcr*alpha1 + 0.5)
 			canvasBuf[idx1+1] = uint8(pcg*alpha1 + 0.5)
 			canvasBuf[idx1+2] = uint8(pcb*alpha1 + 0.5)
 
-			idx2 := row2 + (50+j)*4
+			idx2 := row2 + (squareX+j)*4
 			canvasBuf[idx2] = uint8(pcr*alpha2 + 0.5)
 			canvasBuf[idx2+1] = uint8(pcg*alpha2 + 0.5)
 			canvasBuf[idx2+2] = uint8(pcb*alpha2 + 0.5)
@@ -119,19 +132,19 @@ func drawGammaTunerDemo() {
 
 	// 4. Draw vertical strips
 	for i := 0; i < squareSize; i++ {
-		k := float64(i) / (squareSize - 1)
+		k := float64(squareSize-1-i) / float64(squareSize-1)
 		k = 1.0 - math.Pow(k*0.5, invG)
 
 		cr := uint8(r*255.0*(1.0-k) + 0.5)
 		cg := uint8(gg*255.0*(1.0-k) + 0.5)
 		cb := uint8(b*255.0*(1.0-k) + 0.5)
 
-		y := 80 + i
+		y := squareY + i
 		rowOffset := y * width * 4
 		for j := 0; j < verStrips; j++ {
 			xc := squareSize * (j + 1) / (verStrips + 1)
 			for dx := -10; dx <= 10; dx++ {
-				x := 50 + xc + dx
+				x := squareX + xc + dx
 				if x >= 0 && x < width {
 					idx := rowOffset + x*4
 					canvasBuf[idx] = cr
