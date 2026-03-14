@@ -430,8 +430,11 @@ Triage each: fully port, replace with Go-idiomatic equivalent, or defer with rat
 
 - [x] `trans_curve1.cpp` — Go-idiomatic equivalent using embedded GSV vector text in `internal/demo/transcurve/draw.go`, standalone `examples/core/intermediate/trans_curve/main.go`, and interactive web demo wiring in `cmd/wasm/demo_trans_curve.go`
 - [x] `trans_curve1_ft.cpp` — standalone FreeType-outline variant in `examples/core/intermediate/trans_curve1_ft/main.go` with runtime fallback when FreeType or a serif italic font is unavailable
-- [ ] `trans_curve2_ft.cpp`
-- [ ] `make_arrows.cpp`
+- [x] `trans_curve2_ft.cpp` — standalone FreeType outline port in `examples/core/intermediate/trans_curve2_ft/main.go` using `TransDoublePath` with runtime fallback when FreeType or a serif italic font is unavailable
+- [x] `make_arrows.cpp` — shared arrow shape asset exposed via
+      `internal/demo/aggshapes/shapes.go` (`MakeArrows`) and reused by
+      `scanline_boolean2`; duplicate wasm-local copy removed and shared path
+      coverage added in `internal/demo/aggshapes/shapes_test.go`.
 - [ ] `make_gb_poly.cpp`
 - [x] `mol_view.cpp` — shared renderer in `internal/demo/molview/draw.go`,
       standalone `examples/core/intermediate/mol_view/main.go`,

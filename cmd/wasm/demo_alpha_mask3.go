@@ -8,6 +8,7 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
 	"github.com/MeKo-Christian/agg_go/internal/conv"
+	"github.com/MeKo-Christian/agg_go/internal/demo/aggshapes"
 	"github.com/MeKo-Christian/agg_go/internal/path"
 	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
 	"github.com/MeKo-Christian/agg_go/internal/renderer"
@@ -106,7 +107,7 @@ func drawAlphaMask3Demo() {
 
 	if am3Polygon == 3 { // Great Britain and Spiral
 		psGB := path.NewPathStorageStl()
-		makeGBPoly(psGB)
+		aggshapes.MakeGBPoly(psGB)
 
 		mtx := transform.NewTransAffine()
 		mtx.Translate(-1150, -1150)
