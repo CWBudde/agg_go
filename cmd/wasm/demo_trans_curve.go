@@ -1,23 +1,21 @@
-// Based on the original AGG examples: trans_curve1.cpp.
+// Go-idiomatic equivalent of AGG's trans_curve1.cpp using the embedded GSV font.
 package main
 
 import (
 	"math"
 
-	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/conv"
-	liondemo "github.com/MeKo-Christian/agg_go/internal/demo/lion"
-	"github.com/MeKo-Christian/agg_go/internal/path"
-	"github.com/MeKo-Christian/agg_go/internal/transform"
+	"github.com/MeKo-Christian/agg_go/internal/demo/transcurve"
 )
 
 var (
-	transCurvePoints   = [12]float64{50, 50, 170, 130, 230, 270, 370, 330, 430, 470, 550, 550}
-	transCurveSelected = -1
-	transCurveAnimate  = false
-	transCurveDX       [6]float64
-	transCurveDY       [6]float64
+	transCurvePoints          = transcurve.DefaultPoints
+	transCurveSelected        = -1
+	transCurveAnimate         = false
+	transCurveClose           = false
+	transCurvePreserveXScale  = true
+	transCurveFixedLen        = true
+	transCurveNumPoints       = 200.0
+	transCurveAnimation       = transcurve.NewAnimationState()
 )
 
 const (
@@ -26,146 +24,26 @@ const (
 )
 
 func transCurveFrameOffset() (float64, float64) {
-	return (float64(width) - transCurveRefW) * 0.5, (float64(height) - transCurveRefH) * 0.5
-}
-
-func initTransCurveDemo() {
-	if lionPaths == nil {
-		lionPaths = liondemo.Parse()
-	}
-	for i := 0; i < 6; i++ {
-		transCurveDX[i] = (math.Mod(float64(i*1234), 10.0) - 5.0) * 0.5
-		transCurveDY[i] = (math.Mod(float64(i*5678), 10.0) - 5.0) * 0.5
-	}
-}
-
-// transSingleAdapter adapts bspline to transform.VertexSource
-type transSingleAdapter struct {
-	source *conv.ConvBSpline
-}
-
-func (a *transSingleAdapter) Rewind(id uint) { a.source.Rewind(id) }
-func (a *transSingleAdapter) Vertex() (float64, float64, basics.PathCommand) {
-	return a.source.Vertex()
+	return (float64(width)-transCurveRefW)*0.5, (float64(height)-transCurveRefH)*0.5
 }
 
 func drawTransCurveDemo() {
-	initTransCurveDemo()
-	offX, offY := transCurveFrameOffset()
-
 	if transCurveAnimate {
-		for i := 0; i < 6; i++ {
-			transCurvePoints[i*2] += transCurveDX[i]
-			transCurvePoints[i*2+1] += transCurveDY[i]
-			if transCurvePoints[i*2] < 0 || transCurvePoints[i*2] > transCurveRefW {
-				transCurveDX[i] = -transCurveDX[i]
-			}
-			if transCurvePoints[i*2+1] < 0 || transCurvePoints[i*2+1] > transCurveRefH {
-				transCurveDY[i] = -transCurveDY[i]
-			}
-		}
+		transcurve.AnimatePoints(&transCurvePoints, &transCurveAnimation, transCurveRefW, transCurveRefH)
 	}
 
-	agg2d := ctx.GetAgg2D()
-	agg2d.ResetTransformations()
-
-	// 1. Create the base path (control polygon)
-	ps := path.NewPathStorageStl()
-	ps.MoveTo(transCurvePoints[0], transCurvePoints[1])
-	for i := 1; i < 6; i++ {
-		ps.LineTo(transCurvePoints[i*2], transCurvePoints[i*2+1])
-	}
-
-	// 2. Smooth it with B-Spline
-	psAdapter := path.NewPathStorageStlVertexSourceAdapter(ps)
-	bspline := conv.NewConvBSpline(psAdapter)
-	bspline.SetInterpolationStep(1.0 / 40.0)
-
-	// 3. Create the transformation
-	tcurve := transform.NewTransSinglePath()
-	tcurve.AddPath(&transSingleAdapter{bspline}, 0)
-
-	// 4. Transform the lion along the curve
-	lx1, ly1, lx2, ly2 := 1e9, 1e9, -1e9, -1e9
-	for _, lp := range lionPaths {
-		lp.Path.Rewind(0)
-		for {
-			x, y, cmd := lp.Path.NextVertex()
-			if basics.IsStop(basics.PathCommand(cmd)) {
-				break
-			}
-			if x < lx1 {
-				lx1 = x
-			}
-			if x > lx2 {
-				lx2 = x
-			}
-			if y < ly1 {
-				ly1 = y
-			}
-			if y > ly2 {
-				ly2 = y
-			}
-		}
-	}
-
-	lionW := lx2 - lx1
-	scaleX := tcurve.TotalLength() / lionW * 0.8
-	scaleY := 0.5 // flatten it a bit
-
-	for _, lp := range lionPaths {
-		agg2d.FillColor(agg.NewColor(lp.Color[0], lp.Color[1], lp.Color[2], 200))
-		agg2d.NoLine()
-
-		agg2d.ResetPath()
-		lp.Path.Rewind(0)
-		for {
-			x, y, cmd := lp.Path.NextVertex()
-			if basics.IsStop(basics.PathCommand(cmd)) {
-				break
-			}
-
-			tx := (x - lx1) * scaleX
-			ty := (y - (ly1+ly2)*0.5) * scaleY
-			tcurve.Transform(&tx, &ty)
-			tx += offX
-			ty += offY
-
-			if basics.IsMoveTo(basics.PathCommand(cmd)) {
-				agg2d.MoveTo(tx, ty)
-			} else if basics.IsLineTo(basics.PathCommand(cmd)) {
-				agg2d.LineTo(tx, ty)
-			}
-		}
-		agg2d.ClosePolygon()
-		agg2d.DrawPath(agg.FillOnly)
-	}
-
-	// 5. Draw the curve itself
-	agg2d.LineColor(agg.NewColor(170, 50, 20, 100))
-	agg2d.LineWidth(2.0)
-	agg2d.NoFill()
-	agg2d.ResetPath()
-	bspline.Rewind(0)
-	first := true
-	for {
-		vx, vy, cmd := bspline.Vertex()
-		if basics.IsStop(cmd) {
-			break
-		}
-		if first {
-			agg2d.MoveTo(vx+offX, vy+offY)
-			first = false
-		} else {
-			agg2d.LineTo(vx+offX, vy+offY)
-		}
-	}
-	agg2d.DrawPath(agg.StrokeOnly)
-
-	// 6. Draw handles
-	for i := 0; i < 6; i++ {
-		drawHandle(transCurvePoints[i*2]+offX, transCurvePoints[i*2+1]+offY)
-	}
+	offX, offY := transCurveFrameOffset()
+	transcurve.Draw(ctx, transcurve.Config{
+		Points:          transCurvePoints,
+		NumIntermediate: transCurveNumPoints,
+		Close:           transCurveClose,
+		PreserveXScale:  transCurvePreserveXScale,
+		FixedLength:     transCurveFixedLen,
+		BaseLength:      transcurve.DefaultBaseLength,
+		Text:            transcurve.DefaultText,
+		OffsetX:         offX,
+		OffsetY:         offY,
+	})
 }
 
 func handleTransCurveMouseDown(x, y float64) bool {
@@ -173,9 +51,10 @@ func handleTransCurveMouseDown(x, y float64) bool {
 	x -= offX
 	y -= offY
 	transCurveSelected = -1
-	for i := 0; i < 6; i++ {
-		dist := math.Sqrt((x-transCurvePoints[i*2])*(x-transCurvePoints[i*2]) + (y-transCurvePoints[i*2+1])*(y-transCurvePoints[i*2+1]))
-		if dist < 15 {
+	for i := 0; i < transcurve.ControlPointCount; i++ {
+		dx := x - transCurvePoints[i*2]
+		dy := y - transCurvePoints[i*2+1]
+		if math.Hypot(dx, dy) < 15 {
 			transCurveSelected = i
 			return true
 		}
@@ -187,12 +66,12 @@ func handleTransCurveMouseMove(x, y float64) bool {
 	offX, offY := transCurveFrameOffset()
 	x -= offX
 	y -= offY
-	if transCurveSelected != -1 {
-		transCurvePoints[transCurveSelected*2] = x
-		transCurvePoints[transCurveSelected*2+1] = y
-		return true
+	if transCurveSelected == -1 {
+		return false
 	}
-	return false
+	transCurvePoints[transCurveSelected*2] = x
+	transCurvePoints[transCurveSelected*2+1] = y
+	return true
 }
 
 func handleTransCurveMouseUp() {
@@ -201,4 +80,20 @@ func handleTransCurveMouseUp() {
 
 func toggleTransCurveAnimate() {
 	transCurveAnimate = !transCurveAnimate
+}
+
+func setTransCurveNumPoints(v float64) {
+	transCurveNumPoints = v
+}
+
+func setTransCurveClose(v bool) {
+	transCurveClose = v
+}
+
+func setTransCurvePreserveXScale(v bool) {
+	transCurvePreserveXScale = v
+}
+
+func setTransCurveFixedLen(v bool) {
+	transCurveFixedLen = v
 }

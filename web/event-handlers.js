@@ -125,6 +125,41 @@ export function setupEventHandlers(
     });
   });
 
+  // image_filters2 controls
+  const if2Selector = document.getElementById("if2FilterSelector");
+  const syncIf2RadiusVisibility = () => {
+    const hasRadius = parseInt(if2Selector.value) >= 14;
+    document.getElementById("if2RadiusLabel").style.display = hasRadius
+      ? "inline"
+      : "none";
+    document.getElementById("if2RadiusSlider").style.display = hasRadius
+      ? "inline"
+      : "none";
+    document.getElementById("if2RadiusValue").style.display = hasRadius
+      ? "inline"
+      : "none";
+  };
+  if2Selector.addEventListener("change", () => {
+    const val = parseInt(if2Selector.value);
+    setImageFilters2Filter(val);
+    syncIf2RadiusVisibility();
+    persistDemoParams("image_filters2");
+    renderSelectedDemo();
+  });
+  document.getElementById("if2RadiusSlider").addEventListener("input", () => {
+    const val = parseFloat(document.getElementById("if2RadiusSlider").value);
+    document.getElementById("if2RadiusValue").textContent = val.toFixed(1);
+    setImageFilters2Radius(val);
+    persistDemoParams("image_filters2");
+    renderSelectedDemo();
+  });
+  document.getElementById("if2Normalize").addEventListener("change", () => {
+    setImageFilters2Normalize(document.getElementById("if2Normalize").checked);
+    persistDemoParams("image_filters2");
+    renderSelectedDemo();
+  });
+  syncIf2RadiusVisibility();
+
   // sbool controls
   document.getElementById("sboolOpSelector").addEventListener("change", () => {
     setSBoolOp(parseInt(document.getElementById("sboolOpSelector").value));

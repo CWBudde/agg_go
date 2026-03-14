@@ -24,6 +24,9 @@ var (
 	_             func(int)                                                                    = setImageResampleType
 	_             func(float64)                                                                = setImageResampleBlur
 	_             func(float64, float64, float64, float64, float64, float64, float64, float64) = setImageResampleQuad
+	_             func(int)                                                                    = setImageFilters2Filter
+	_             func(float64)                                                                = setImageFilters2Radius
+	_             func(bool)                                                                   = setImageFilters2Normalize
 	_             func(int)                                                                    = setPatternPerspectiveType
 	_             func(float64, float64, float64, float64, float64, float64, float64, float64) = setPatternPerspectiveQuad
 	_             func(int)                                                                    = setPatternResampleType
@@ -77,7 +80,7 @@ func main() {
 			"agg2d",
 			"lion", "gradients", "aa", "blend", "interactive_polygon", "graph_test",
 			"bspline", "conv_dash_marker", "gouraud", "imagefilters",
-			"image_fltr_graph",
+			"image_fltr_graph", "image_filters2",
 			"sbool", "aatest", "convstroke", "convcontour", "gamma", "lionoutline",
 			"roundedrect", "component", "alphagrad",
 			"rasterizers", "flash_rasterizer", "perspective", "bezier_div",
@@ -152,6 +155,8 @@ func renderDemoToFile(demoType, outDir string) error {
 		drawImageFiltersDemo()
 	case "image_fltr_graph":
 		drawImageFltrGraphDemo()
+	case "image_filters2":
+		drawImageFilters2Demo()
 	case "sbool":
 		drawSBoolDemo()
 	case "aatest":

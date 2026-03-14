@@ -13,6 +13,8 @@ export function syncControlVisibility(demoType) {
     demoType === "imagefilters" ? "flex" : "none";
   document.getElementById("imageFltrGraphControls").style.display =
     demoType === "image_fltr_graph" ? "flex" : "none";
+  document.getElementById("imageFilters2Controls").style.display =
+    demoType === "image_filters2" ? "flex" : "none";
   document.getElementById("sboolControls").style.display =
     demoType === "sbool" ? "flex" : "none";
   document.getElementById("convstrokeControls").style.display =
@@ -118,6 +120,8 @@ export const demoDescriptions = {
     "Comparison of different image interpolation filters. Rotates and scales a procedurally generated image using filters like Bilinear, Bicubic, Sinc, and Lanczos to showcase quality vs. performance.",
   image_fltr_graph:
     "Port of AGG's image_fltr_graph demo. Plots raw filter shape (red), unnormalized discrete accumulation (green), and normalized LUT weights (blue). Use HTML controls/URL params: ifgr (radius), ifgm (bitmask of enabled filters).",
+  image_filters2:
+    "Port of AGG's image_filters2.cpp. Renders the original 4x4 color source enlarged through the selected interpolation kernel and plots the current discrete LUT response. HTML controls/URL params: if2f (filter), if2r (radius for sinc/lanczos/blackman), if2n (normalize 0/1).",
   sbool:
     "Boolean operations on vector shapes. Demonstrates combining multiple paths using filling rules to achieve Union and XOR-like effects with interactive polygons.",
   aatest:

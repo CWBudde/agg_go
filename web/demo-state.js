@@ -202,6 +202,60 @@ export const demoURLHandlers = {
     },
   },
 
+  image_filters2: {
+    persist() {
+      updateURL({
+        if2f: parseInt(document.getElementById("if2FilterSelector").value),
+        if2r: parseFloat(document.getElementById("if2RadiusSlider").value),
+        if2n: document.getElementById("if2Normalize").checked ? "1" : "0",
+      });
+    },
+    restore(p) {
+      const syncRadiusVisibility = () => {
+        const hasRadius =
+          parseInt(document.getElementById("if2FilterSelector").value) >= 14;
+        document.getElementById("if2RadiusLabel").style.display = hasRadius
+          ? "inline"
+          : "none";
+        document.getElementById("if2RadiusSlider").style.display = hasRadius
+          ? "inline"
+          : "none";
+        document.getElementById("if2RadiusValue").style.display = hasRadius
+          ? "inline"
+          : "none";
+      };
+      if (p.has("if2f")) {
+        const val = parseInt(p.get("if2f"));
+        setImageFilters2Filter(val);
+        document.getElementById("if2FilterSelector").value = val;
+      } else {
+        setImageFilters2Filter(
+          parseInt(document.getElementById("if2FilterSelector").value),
+        );
+      }
+      if (p.has("if2r")) {
+        const val = parseFloat(p.get("if2r"));
+        setImageFilters2Radius(val);
+        document.getElementById("if2RadiusSlider").value = val;
+        document.getElementById("if2RadiusValue").textContent = val.toFixed(1);
+      } else {
+        document.getElementById("if2RadiusValue").textContent = parseFloat(
+          document.getElementById("if2RadiusSlider").value,
+        ).toFixed(1);
+      }
+      if (p.has("if2n")) {
+        const checked = p.get("if2n") === "1";
+        setImageFilters2Normalize(checked);
+        document.getElementById("if2Normalize").checked = checked;
+      } else {
+        setImageFilters2Normalize(
+          document.getElementById("if2Normalize").checked,
+        );
+      }
+      syncRadiusVisibility();
+    },
+  },
+
   sbool: {
     persist() {
       const n = getSBoolNodes();

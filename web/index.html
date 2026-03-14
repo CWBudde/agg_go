@@ -92,6 +92,7 @@
         <optgroup label="── Filters &amp; Rasterization ──">
           <option value="imagefilters">Image Interpolation Filters</option>
           <option value="image_fltr_graph">Image Filter Graph</option>
+          <option value="image_filters2">Image Filters 2</option>
           <option value="blur">Gaussian &amp; Stack Blur</option>
           <option value="simple_blur">Simple 3×3 Blur</option>
           <option value="blend_color">Blend Color (Shadow)</option>
@@ -407,6 +408,45 @@
           blackman</label
         >
       </div>
+    </div>
+
+    <div class="controls" id="imageFilters2Controls" style="display: none">
+      <label for="if2FilterSelector">Filter:</label>
+      <select id="if2FilterSelector">
+        <option value="0">simple (NN)</option>
+        <option value="1">bilinear</option>
+        <option value="2">bicubic</option>
+        <option value="3">spline16</option>
+        <option value="4">spline36</option>
+        <option value="5">hanning</option>
+        <option value="6">hamming</option>
+        <option value="7">hermite</option>
+        <option value="8">kaiser</option>
+        <option value="9">quadric</option>
+        <option value="10">catrom</option>
+        <option value="11">gaussian</option>
+        <option value="12">bessel</option>
+        <option value="13">mitchell</option>
+        <option value="14">sinc</option>
+        <option value="15">lanczos</option>
+        <option value="16">blackman</option>
+      </select>
+      <label for="if2RadiusSlider" id="if2RadiusLabel" style="display: none"
+        >Radius:</label
+      >
+      <input
+        type="range"
+        id="if2RadiusSlider"
+        min="2"
+        max="8"
+        value="4"
+        step="0.1"
+        style="display: none"
+      />
+      <span id="if2RadiusValue" style="display: none">4.0</span>
+      <label style="margin-left: 1rem"
+        ><input type="checkbox" id="if2Normalize" checked /> Normalize</label
+      >
     </div>
 
     <div class="controls" id="sboolControls" style="display: none">

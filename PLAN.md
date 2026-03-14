@@ -419,14 +419,23 @@ idiomatic in Go.
       verification wiring via `cmd/wasm/{main.go,main_stub.go,render_test.go}` switches/lists.
 - [x] `polymorphic_renderer.cpp` — recorded and wired (cmd/wasm/demo_polymorphic_renderer.go + examples/core/intermediate/polymorphic_renderer/main.go)
 - [x] `blend_color.cpp` — shared draw in `internal/demo/blendcolor/draw.go`, standalone `examples/core/intermediate/blend_color/main.go`, web `cmd/wasm/demo_blend_color.go` + `web/index.html` controls, infrastructure: `RendererBase.BlendFromColor`/`BlendFromLUT` + gray8 `GrayImageInterface` compliance
-- [ ] `image_filters2.cpp`
+- [x] `image_filters2.cpp` — shared renderer in `internal/demo/imagefilters2/draw.go`,
+      standalone `examples/core/intermediate/image_filters2/main.go`,
+      web `cmd/wasm/demo_image_filters2.go` + `web/index.html` controls/URL state,
+      verification wiring via `cmd/wasm/{main.go,main_stub.go,render_test.go}` switches/lists.
 
 ### 9.4 Lower-priority or support-heavy demos
 
-- [ ] Triage each: fully port, replace with Go-idiomatic equivalent, or defer with rationale:
-  - `freetype_test.cpp`, `truetype_test.cpp`
-  - `trans_curve1.cpp`, `trans_curve1_ft.cpp`, `trans_curve2_ft.cpp`
-  - `make_arrows.cpp`, `make_gb_poly.cpp`, `mol_view.cpp`, `idea.cpp`
+Triage each: fully port, replace with Go-idiomatic equivalent, or defer with rationale:
+
+- [ ] `trans_curve1.cpp`
+- [ ] `trans_curve1_ft.cpp`
+- [ ] `trans_curve2_ft.cpp`
+- [ ] `make_arrows.cpp`
+- [ ] `make_gb_poly.cpp`
+- [ ] `mol_view.cpp`
+- [ ] `idea.cpp`
+- [ ] `truetype_test.cpp`
 
 ### 9.5 Bug fixing
 

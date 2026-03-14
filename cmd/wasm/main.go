@@ -54,6 +54,24 @@ func main() {
 		}
 		return nil
 	}))
+	js.Global().Set("setImageFilters2Filter", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setImageFilters2Filter(args[0].Int())
+		}
+		return nil
+	}))
+	js.Global().Set("setImageFilters2Radius", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setImageFilters2Radius(args[0].Float())
+		}
+		return nil
+	}))
+	js.Global().Set("setImageFilters2Normalize", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setImageFilters2Normalize(args[0].Bool())
+		}
+		return nil
+	}))
 	js.Global().Set("setSBoolOp", js.FuncOf(setSBoolOp))
 	js.Global().Set("setStrokeJoin", js.FuncOf(setStrokeJoin))
 	js.Global().Set("setStrokeCap", js.FuncOf(setStrokeCap))
@@ -91,6 +109,10 @@ func main() {
 	js.Global().Set("setAlphaGradNodes", js.FuncOf(setAlphaGradNodes))
 	js.Global().Set("setPerspectiveType", js.FuncOf(setPerspectiveTypeJS))
 	js.Global().Set("setDistortionsImage", js.FuncOf(setDistortionsImageJS))
+	js.Global().Set("setTransCurveNumPoints", js.FuncOf(setTransCurveNumPointsJS))
+	js.Global().Set("setTransCurveClose", js.FuncOf(setTransCurveCloseJS))
+	js.Global().Set("setTransCurvePreserveXScale", js.FuncOf(setTransCurvePreserveXScaleJS))
+	js.Global().Set("setTransCurveFixedLen", js.FuncOf(setTransCurveFixedLenJS))
 	js.Global().Set("toggleTransCurveAnimate", js.FuncOf(toggleTransCurveAnimateJS))
 	js.Global().Set("toggleTransCurve2Animate", js.FuncOf(toggleTransCurve2AnimateJS))
 	js.Global().Set("setBlurRadius", js.FuncOf(setBlurRadius))
@@ -612,6 +634,34 @@ func setDistortionsImageJS(this js.Value, args []js.Value) interface{} {
 
 func toggleTransCurveAnimateJS(this js.Value, args []js.Value) interface{} {
 	toggleTransCurveAnimate()
+	return nil
+}
+
+func setTransCurveNumPointsJS(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		setTransCurveNumPoints(args[0].Float())
+	}
+	return nil
+}
+
+func setTransCurveCloseJS(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		setTransCurveClose(args[0].Bool())
+	}
+	return nil
+}
+
+func setTransCurvePreserveXScaleJS(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		setTransCurvePreserveXScale(args[0].Bool())
+	}
+	return nil
+}
+
+func setTransCurveFixedLenJS(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		setTransCurveFixedLen(args[0].Bool())
+	}
 	return nil
 }
 
@@ -1486,6 +1536,8 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 		drawImageFiltersDemo()
 	case "image_fltr_graph":
 		drawImageFltrGraphDemo()
+	case "image_filters2":
+		drawImageFilters2Demo()
 	case "sbool":
 		drawSBoolDemo()
 	case "aatest":
