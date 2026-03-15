@@ -95,7 +95,7 @@ func (a *Arrowhead) DisableTail() {
 // Rewind prepares the arrowhead for vertex generation.
 // pathID 0 = tail, pathID 1 = head
 func (a *Arrowhead) Rewind(pathID uint32) {
-	a.currID = pathID & 1
+	a.currID = pathID
 	a.currCoord = 0
 
 	if a.currID == 0 {

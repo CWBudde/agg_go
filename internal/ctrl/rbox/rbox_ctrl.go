@@ -434,10 +434,7 @@ func (r *RboxCtrl[C]) generateBackgroundVertex() (x, y float64, cmd basics.PathC
 	x = r.vertices[r.vertexIndex*2]
 	y = r.vertices[r.vertexIndex*2+1]
 	r.vertexIndex++
-
-	if r.vertexIndex < 4 {
-		r.TransformXY(&x, &y)
-	}
+	r.TransformXY(&x, &y)
 	return x, y, cmd
 }
 
@@ -455,10 +452,7 @@ func (r *RboxCtrl[C]) generateBorderVertex() (x, y float64, cmd basics.PathComma
 	x = r.vertices[r.vertexIndex*2]
 	y = r.vertices[r.vertexIndex*2+1]
 	r.vertexIndex++
-
-	if r.vertexIndex < 8 {
-		r.TransformXY(&x, &y)
-	}
+	r.TransformXY(&x, &y)
 	return x, y, cmd
 }
 

@@ -177,10 +177,14 @@ func TestVCGenMarkersTerm_OnlyMoveTo(t *testing.T) {
 
 	gen.Rewind(0)
 
-	// Should stop because there's no complete line segment
-	_, _, cmd := gen.Vertex()
+	// AGG exposes the initial point as a move_to even if the segment is incomplete.
+	x, y, cmd := gen.Vertex()
+	if cmd != basics.PathCmdMoveTo || x != 10 || y != 20 {
+		t.Fatalf("Expected initial MoveTo at (10,20), got (%v,%v,%v)", x, y, cmd)
+	}
+	_, _, cmd = gen.Vertex()
 	if cmd != basics.PathCmdStop {
-		t.Errorf("Expected PathCmdStop for incomplete path, got %v", cmd)
+		t.Errorf("Expected PathCmdStop after incomplete path start, got %v", cmd)
 	}
 }
 
@@ -219,36 +223,57 @@ func TestVCGenMarkersTerm_MultipleSubpaths(t *testing.T) {
 	gen.AddVertex(20, 0, basics.PathCmdMoveTo)
 	gen.AddVertex(30, 0, basics.PathCmdLineTo)
 
-	tests := []struct {
-		pathID      uint
-		wantX1      float64
-		wantY1      float64
-		wantX2      float64
-		wantY2      float64
-		description string
-	}{
-		{0, 0, 0, 10, 0, "start marker of first subpath"},
-		{1, 10, 0, 0, 0, "end marker of first subpath"},
-		{2, 20, 0, 30, 0, "start marker of second subpath"},
-		{3, 30, 0, 20, 0, "end marker of second subpath"},
+	gen.Rewind(0)
+	starts := [][3]float64{}
+	for {
+		x, y, cmd := gen.Vertex()
+		if cmd == basics.PathCmdStop {
+			break
+		}
+		starts = append(starts, [3]float64{x, y, float64(cmd)})
+	}
+	wantStarts := [][3]float64{
+		{0, 0, float64(basics.PathCmdMoveTo)},
+		{10, 0, float64(basics.PathCmdLineTo)},
+		{20, 0, float64(basics.PathCmdMoveTo)},
+		{30, 0, float64(basics.PathCmdLineTo)},
+	}
+	if len(starts) != len(wantStarts) {
+		t.Fatalf("pathID 0 produced %d vertices, want %d", len(starts), len(wantStarts))
+	}
+	for i := range wantStarts {
+		if starts[i] != wantStarts[i] {
+			t.Fatalf("pathID 0 vertex %d = %v, want %v", i, starts[i], wantStarts[i])
+		}
 	}
 
-	for _, tc := range tests {
-		gen.Rewind(tc.pathID)
+	gen.Rewind(1)
+	ends := [][3]float64{}
+	for {
 		x, y, cmd := gen.Vertex()
-		if cmd != basics.PathCmdMoveTo || x != tc.wantX1 || y != tc.wantY1 {
-			t.Fatalf("%s first vertex = (%v,%v,%v), want (%v,%v,MoveTo)",
-				tc.description, x, y, cmd, tc.wantX1, tc.wantY1)
+		if cmd == basics.PathCmdStop {
+			break
 		}
-		x, y, cmd = gen.Vertex()
-		if cmd != basics.PathCmdLineTo || x != tc.wantX2 || y != tc.wantY2 {
-			t.Fatalf("%s second vertex = (%v,%v,%v), want (%v,%v,LineTo)",
-				tc.description, x, y, cmd, tc.wantX2, tc.wantY2)
+		ends = append(ends, [3]float64{x, y, float64(cmd)})
+	}
+	wantEnds := [][3]float64{
+		{10, 0, float64(basics.PathCmdMoveTo)},
+		{0, 0, float64(basics.PathCmdLineTo)},
+		{30, 0, float64(basics.PathCmdMoveTo)},
+		{20, 0, float64(basics.PathCmdLineTo)},
+	}
+	if len(ends) != len(wantEnds) {
+		t.Fatalf("pathID 1 produced %d vertices, want %d", len(ends), len(wantEnds))
+	}
+	for i := range wantEnds {
+		if ends[i] != wantEnds[i] {
+			t.Fatalf("pathID 1 vertex %d = %v, want %v", i, ends[i], wantEnds[i])
 		}
-		x, y, cmd = gen.Vertex()
-		if cmd != basics.PathCmdStop {
-			t.Fatalf("%s third vertex = (%v,%v,%v), want stop", tc.description, x, y, cmd)
-		}
+	}
+
+	gen.Rewind(2)
+	if _, _, cmd := gen.Vertex(); cmd != basics.PathCmdStop {
+		t.Fatalf("pathID 2 should stop, got %v", cmd)
 	}
 }
 

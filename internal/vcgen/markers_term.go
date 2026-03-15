@@ -15,13 +15,13 @@ func NewCoordType(x, y float64) CoordType {
 	return CoordType{X: x, Y: y}
 }
 
-// VCGenMarkersTerm is a terminal markers generator (arrowhead/arrowtail)
-// This class generates markers at the start and end points of paths.
-// It stores coordinate pairs and provides them as move_to/line_to commands.
+// VCGenMarkersTerm is a terminal markers generator (arrowhead/arrowtail).
+// This follows AGG's vcgen_markers_term behavior exactly: pathID 0 iterates all
+// start markers, pathID 1 iterates all end markers, and larger path IDs stop.
 type VCGenMarkersTerm struct {
 	markers array.PodBVector[CoordType] // Storage for marker coordinates
-	currID  uint                        // Current path ID for rewind
-	currIdx uint                        // 0=move_to, 1=line_to, 2=stop
+	currID  uint
+	currIdx uint
 }
 
 // NewVCGenMarkersTerm creates a new terminal markers generator
@@ -78,30 +78,21 @@ func (m *VCGenMarkersTerm) PrepareSrc() {
 // Rewind rewinds the marker generator to the beginning (Vertex Source Interface)
 func (m *VCGenMarkersTerm) Rewind(pathID uint) {
 	m.currID = pathID * 2
-	m.currIdx = 0
+	m.currIdx = m.currID
 }
 
-// Vertex returns the next marker vertex (Vertex Source Interface)
-// Returns marker coordinates as move_to/line_to commands for rendering
+// Vertex returns the next marker vertex (Vertex Source Interface).
 func (m *VCGenMarkersTerm) Vertex() (x, y float64, cmd basics.PathCommand) {
-	// Each path contributes one marker pair: move_to at index pathID*2,
-	// line_to at index pathID*2+1.
-	if m.markers.Size() < 2 || int(m.currID+1) >= m.markers.Size() {
+	if m.currID > 2 || int(m.currIdx) >= m.markers.Size() {
 		return 0, 0, basics.PathCmdStop
 	}
 
-	switch m.currIdx {
-	case 0:
-		coord := m.markers.At(int(m.currID))
-		x, y = coord.X, coord.Y
-		m.currIdx = 1
-		return x, y, basics.PathCmdMoveTo
-	case 1:
-		coord := m.markers.At(int(m.currID + 1))
-		x, y = coord.X, coord.Y
-		m.currIdx = 2
+	coord := m.markers.At(int(m.currIdx))
+	x, y = coord.X, coord.Y
+	if (m.currIdx & 1) != 0 {
+		m.currIdx += 3
 		return x, y, basics.PathCmdLineTo
-	default:
-		return 0, 0, basics.PathCmdStop
 	}
+	m.currIdx++
+	return x, y, basics.PathCmdMoveTo
 }

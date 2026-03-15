@@ -169,13 +169,6 @@ func (c *ConvAdaptorVCGen) Vertex() (x, y float64, cmd basics.PathCommand) {
 		case StatusGenerate:
 			x, y, cmd = c.generator.Vertex()
 			if basics.IsStop(cmd) {
-				// When the inner loop broke on a MoveTo (pen-up), the new sub-path
-				// start is already saved in c.startX/c.startY — don't consume another
-				// vertex. For EndPoly-terminated paths the MoveTo of the next sub-path
-				// hasn't been read yet, so we do need to advance the source.
-				if !basics.IsMoveTo(c.lastCmd) {
-					c.startX, c.startY, c.lastCmd = c.source.Vertex()
-				}
 				c.status = StatusAccumulate
 				continue
 			}

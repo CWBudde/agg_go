@@ -148,7 +148,7 @@ func newDemo() *demo {
 		idx: -1,
 	}
 
-	d.capCtrl = rbox.NewDefaultRboxCtrl(10, 10, 130, 80, false)
+	d.capCtrl = rbox.NewDefaultRboxCtrl(10, 250, 130, 320, false)
 	_ = d.capCtrl.AddItem("Butt Cap")
 	_ = d.capCtrl.AddItem("Square Cap")
 	_ = d.capCtrl.AddItem("Round Cap")
