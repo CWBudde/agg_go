@@ -828,8 +828,11 @@ func (lii *LineInterpolatorImage) StepHor() bool {
 		lii.ren.BlendColorVSpan(lii.x, lii.y-dy+1, spanLength, lii.colors[p0Index:p1Index])
 	}
 
+	if npix == 0 {
+		return false
+	}
 	lii.step++
-	return npix > 0 && lii.step < lii.count
+	return lii.step < lii.count
 }
 
 // StepVer performs vertical stepping.
@@ -920,8 +923,11 @@ func (lii *LineInterpolatorImage) StepVer() bool {
 		lii.ren.BlendColorHSpan(lii.x-dx+1, lii.y, spanLength, lii.colors[p0Index:p1Index])
 	}
 
+	if npix == 0 {
+		return false
+	}
 	lii.step++
-	return npix > 0 && lii.step < lii.count
+	return lii.step < lii.count
 }
 
 // PatternEnd returns the pattern end position.
