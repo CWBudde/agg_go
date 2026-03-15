@@ -166,6 +166,7 @@ canvas {
   max-width: 100%;
   height: auto;
   cursor: crosshair;
+  touch-action: none;
 }
 
 .status {
