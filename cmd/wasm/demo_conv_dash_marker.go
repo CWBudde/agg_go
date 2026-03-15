@@ -176,8 +176,6 @@ func drawDashDemo() {
 	a.NoLine()
 	a.DrawPath(agg.FillOnly)
 
-	a.FillEvenOdd(false) // reset to non-zero for subsequent draws
-
 	// === Layer 3: smooth poly stroke outline (green rgba(0.0, 0.6, 0.0, 0.8)) ===
 	smooth2 := conv.NewConvSmoothPoly1(rawSrc)
 	smooth2.SetSmoothValue(dashSmooth)
@@ -187,6 +185,11 @@ func drawDashDemo() {
 		rasterizer.RasConvInt{},
 		rasterizer.NewRasterizerSlNoClip(),
 	)
+	if dashEvenOdd {
+		rasGreen.FillingRule(basics.FillEvenOdd)
+	} else {
+		rasGreen.FillingRule(basics.FillNonZero)
+	}
 	slGreen := scanline.NewScanlineU8()
 	imgGreen := ctx.GetImage()
 	rbufGreen := buffer.NewRenderingBufferU8()
@@ -219,6 +222,11 @@ func drawDashDemo() {
 		rasterizer.RasConvInt{},
 		rasterizer.NewRasterizerSlNoClip(),
 	)
+	if dashEvenOdd {
+		ras.FillingRule(basics.FillEvenOdd)
+	} else {
+		ras.FillingRule(basics.FillNonZero)
+	}
 
 	// Smooth + curve-flatten source for dashing
 	curve := conv.NewConvSmoothPoly1Curve(rawSrc)
@@ -273,6 +281,8 @@ func drawDashDemo() {
 			}
 		}
 	}
+
+	a.FillEvenOdd(false)
 
 	// === Handles ===
 	for i := 0; i < 3; i++ {

@@ -255,8 +255,6 @@ func (d *demo) Render(ctx *agg.Context) {
 	a.NoLine()
 	a.DrawPath(agg.FillOnly)
 
-	a.FillEvenOdd(false)
-
 	smoothOutline := conv.NewConvSmoothPoly1(rawSrc)
 	smoothOutline.SetSmoothValue(d.smoothCtrl.Value())
 	greenStroke := conv.NewConvStroke(smoothOutline)
@@ -270,6 +268,11 @@ func (d *demo) Render(ctx *agg.Context) {
 		rasterizer.RasConvInt{},
 		rasterizer.NewRasterizerSlNoClip(),
 	)
+	if d.evenOddCtrl.IsChecked() {
+		ras.FillingRule(basics.FillEvenOdd)
+	} else {
+		ras.FillingRule(basics.FillNonZero)
+	}
 	sl := scanline.NewScanlineU8()
 	ras.AddPath(&convToRasSource{src: greenStroke}, 0)
 	green := color.RGBA8[color.Linear]{R: 0, G: 153, B: 0, A: 204}
@@ -328,6 +331,9 @@ func (d *demo) Render(ctx *agg.Context) {
 			}
 		}
 	}
+
+	a.FillEvenOdd(false)
+	ras.FillingRule(basics.FillNonZero)
 
 	d.drawHandles(ctx)
 
