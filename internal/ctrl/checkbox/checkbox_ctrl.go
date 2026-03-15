@@ -273,7 +273,7 @@ func (c *CheckboxCtrl[C]) generateTextVertices() {
 	}
 
 	textX := c.X1() + c.textHeight*2.0
-	textY := c.Y1() + c.textHeight*0.9
+	textY := c.Y1() + c.textHeight
 
 	// Configure text renderer
 	c.textRenderer.SetText(c.label)
