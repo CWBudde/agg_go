@@ -1207,6 +1207,54 @@ export function setupEventHandlers(
     persistDemoParams(selector.value);
   });
 
+  // Touch events — map single-touch to mouse events for draggable-point demos
+  canvas.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    const x = (touch.clientX - rect.left) * (canvas.width / rect.width);
+    const y = (touch.clientY - rect.top) * (canvas.height / rect.height);
+    if (selector.value === "gpc_test" || selector.value === "scanline_boolean2") {
+      setTrackedDemoCenter(selector.value, x, y);
+    }
+    if (onMouseDown(selector.value, x, y, false)) {
+      isDragging = true;
+      renderSelectedDemo();
+    }
+  }, { passive: false });
+
+  canvas.addEventListener("touchmove", (e) => {
+    if (!isDragging) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    const x = (touch.clientX - rect.left) * (canvas.width / rect.width);
+    const y = (touch.clientY - rect.top) * (canvas.height / rect.height);
+    if (selector.value === "gpc_test" || selector.value === "scanline_boolean2") {
+      setTrackedDemoCenter(selector.value, x, y);
+    }
+    if (onMouseMove(selector.value, x, y, false)) {
+      renderSelectedDemo();
+    }
+  }, { passive: false });
+
+  canvas.addEventListener("touchend", (e) => {
+    if (!isDragging) return;
+    e.preventDefault();
+    isDragging = false;
+    onMouseUp(selector.value);
+    renderSelectedDemo();
+    persistDemoParams(selector.value);
+  }, { passive: false });
+
+  canvas.addEventListener("touchcancel", () => {
+    if (!isDragging) return;
+    isDragging = false;
+    onMouseUp(selector.value);
+    renderSelectedDemo();
+    persistDemoParams(selector.value);
+  });
+
   // Animation loop for demos that need it (gouraud_mesh, trans_curve)
   function animate() {
     const demoType = selector.value;
