@@ -56,7 +56,8 @@ func Draw(ctx *agg.Context, st State) {
 
 	scale, offX, offY := fitFrame(ctx.Width(), ctx.Height())
 	mapX := func(x float64) float64 { return offX + x*scale }
-	mapY := func(y float64) float64 { return offY + (BaseHeight-y)*scale }
+	linesTop, wheelCenterY := verticalLayout()
+	mapY := func(y float64) float64 { return offY + y*scale }
 
 	a := ctx.GetAgg2D()
 	a.ResetTransformations()
@@ -65,8 +66,8 @@ func Draw(ctx *agg.Context, st State) {
 	for i := 0; i < 20; i++ {
 		a.LineWidth(st.Thickness * 0.3 * float64(i+1) * scale)
 		a.ResetPath()
-		a.MoveTo(mapX(20+30*float64(i)), mapY(310))
-		a.LineTo(mapX(40+30*float64(i)), mapY(460))
+		a.MoveTo(mapX(20+30*float64(i)), mapY(linesTop+150))
+		a.LineTo(mapX(40+30*float64(i)), mapY(linesTop))
 		a.DrawPath(agg.StrokeOnly)
 	}
 
@@ -74,14 +75,29 @@ func Draw(ctx *agg.Context, st State) {
 		ang := float64(i) * math.Pi / 20.0
 		a.LineWidth(st.Thickness * scale)
 		a.ResetPath()
-		a.MoveTo(mapX(320+20*math.Sin(ang)), mapY(180+20*math.Cos(ang)))
-		a.LineTo(mapX(320+100*math.Sin(ang)), mapY(180+100*math.Cos(ang)))
+		a.MoveTo(mapX(320+20*math.Sin(ang)), mapY(wheelCenterY-20*math.Cos(ang)))
+		a.LineTo(mapX(320+100*math.Sin(ang)), mapY(wheelCenterY-100*math.Cos(ang)))
 		a.DrawPath(agg.StrokeOnly)
 	}
 
 	if st.Blur > 0 {
 		effects.ApplySlightBlurFull(&imagePixFmtAdapter{img: ctx.GetImage()}, st.Blur)
 	}
+}
+
+func verticalLayout() (linesTop, wheelCenterY float64) {
+	const (
+		linesHeight = 150.0
+		wheelRadius = 100.0
+		wheelHeight = wheelRadius * 2.0
+	)
+
+	remaining := BaseHeight - linesHeight - wheelHeight
+	spaceUnit := remaining / 2.0
+	linesTop = spaceUnit * 0.5
+	wheelTop := linesTop + linesHeight + spaceUnit
+	wheelCenterY = wheelTop + wheelRadius
+	return linesTop, wheelCenterY
 }
 
 func colorsForState(st State) (foreground, background agg.Color) {
