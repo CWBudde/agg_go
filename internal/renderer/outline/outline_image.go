@@ -629,14 +629,15 @@ func NewLineInterpolatorImage(ren ImageRenderer, lp *primitives.LineParameters,
 	}
 
 	stop := li.width + primitives.LineSubpixelScale*2
-	for i := 0; i < MaxHalfWidthImage; i++ {
+	i := 0
+	for ; i < MaxHalfWidthImage; i++ {
 		li.distPos[i] = subLi.Y()
 		if li.distPos[i] >= stop {
 			break
 		}
 		subLi.Inc()
 	}
-	li.distPos[MaxHalfWidthImage] = 0x7FFF0000
+	li.distPos[i] = 0x7FFF0000
 
 	// Pre-position for rendering
 	li.preposition(lp)
