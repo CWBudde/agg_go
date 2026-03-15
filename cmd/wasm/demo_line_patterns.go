@@ -111,10 +111,10 @@ func stretchLinePatternCurves(w, h int) []linepatterns.Curve {
 	out := make([]linepatterns.Curve, len(curves))
 	for i, c := range curves {
 		out[i] = linepatterns.Curve{
-			X1: offX + c.X1*scale, Y1: offY + c.Y1*scale,
-			X2: offX + c.X2*scale, Y2: offY + c.Y2*scale,
-			X3: offX + c.X3*scale, Y3: offY + c.Y3*scale,
-			X4: offX + c.X4*scale, Y4: offY + c.Y4*scale,
+			X1: offX + (c.X1-minX)*scale, Y1: offY + (maxY-c.Y1)*scale,
+			X2: offX + (c.X2-minX)*scale, Y2: offY + (maxY-c.Y2)*scale,
+			X3: offX + (c.X3-minX)*scale, Y3: offY + (maxY-c.Y3)*scale,
+			X4: offX + (c.X4-minX)*scale, Y4: offY + (maxY-c.Y4)*scale,
 		}
 	}
 	return out
