@@ -20,6 +20,11 @@ import (
 
 // --- State ---
 
+const (
+	dashBaseWidth  = 500.0
+	dashBaseHeight = 330.0
+)
+
 var (
 	// Control points matching C++ constructor: m_x[i] = 57/369/143 + 100, m_y[i] = 60/170/310.
 	dashX = [3]float64{157, 469, 243}
@@ -39,25 +44,25 @@ var (
 // --- Path builder ---
 
 // buildDashPath creates the two-sub-path storage matching the C++ on_draw path.
-func buildDashPath() *path.PathStorageStl {
+func buildDashPath(mapX, mapY func(float64) float64) *path.PathStorageStl {
 	cx := (dashX[0] + dashX[1] + dashX[2]) / 3
 	cy := (dashY[0] + dashY[1] + dashY[2]) / 3
 
 	ps := path.NewPathStorageStl()
 
 	// Sub-path 1: P0 → P1 → centroid → P2
-	ps.MoveTo(dashX[0], dashY[0])
-	ps.LineTo(dashX[1], dashY[1])
-	ps.LineTo(cx, cy)
-	ps.LineTo(dashX[2], dashY[2])
+	ps.MoveTo(mapX(dashX[0]), mapY(dashY[0]))
+	ps.LineTo(mapX(dashX[1]), mapY(dashY[1]))
+	ps.LineTo(mapX(cx), mapY(cy))
+	ps.LineTo(mapX(dashX[2]), mapY(dashY[2]))
 	if dashClosed {
 		ps.ClosePolygon(basics.PathFlagsNone)
 	}
 
 	// Sub-path 2: mid01 → mid12 → mid20
-	ps.MoveTo((dashX[0]+dashX[1])/2, (dashY[0]+dashY[1])/2)
-	ps.LineTo((dashX[1]+dashX[2])/2, (dashY[1]+dashY[2])/2)
-	ps.LineTo((dashX[2]+dashX[0])/2, (dashY[2]+dashY[0])/2)
+	ps.MoveTo(mapX((dashX[0]+dashX[1])/2), mapY((dashY[0]+dashY[1])/2))
+	ps.LineTo(mapX((dashX[1]+dashX[2])/2), mapY((dashY[1]+dashY[2])/2))
+	ps.LineTo(mapX((dashX[2]+dashX[0])/2), mapY((dashY[2]+dashY[0])/2))
 	if dashClosed {
 		ps.ClosePolygon(basics.PathFlagsNone)
 	}
@@ -116,13 +121,135 @@ func dashAddToPath(a *agg.Agg2D, src conv.VertexSource) {
 	}
 }
 
+func fitDashFrame(w, h int) (scale, offX, offY float64) {
+	sx := float64(w) / dashBaseWidth
+	sy := float64(h) / dashBaseHeight
+	scale = math.Min(sx, sy)
+	if scale > 1.0 {
+		scale = 1.0
+	}
+	if scale <= 0 {
+		scale = 1.0
+	}
+	offX = (float64(w) - dashBaseWidth*scale) * 0.5
+	offY = (float64(h) - dashBaseHeight*scale) * 0.5
+	return scale, offX, offY
+}
+
+func dashMapPoint(scale, offX, offY, x, y float64) (float64, float64) {
+	return offX + x*scale, offY + (dashBaseHeight-y)*scale
+}
+
+func dashUnmapPoint(scale, offX, offY, x, y float64) (float64, float64) {
+	return (x - offX) / scale, dashBaseHeight - (y-offY)/scale
+}
+
+func drawConstructionLines(a *agg.Agg2D, scale, offX, offY float64) {
+	cx := (dashX[0] + dashX[1] + dashX[2]) / 3
+	cy := (dashY[0] + dashY[1] + dashY[2]) / 3
+
+	a.LineColor(agg.RGBA(0.0, 0.6, 0.0, 0.8))
+	a.LineWidth(max(1.0, scale))
+	a.NoFill()
+
+	x, y := dashMapPoint(scale, offX, offY, dashX[0], dashY[0])
+	a.ResetPath()
+	a.MoveTo(x, y)
+	x, y = dashMapPoint(scale, offX, offY, dashX[1], dashY[1])
+	a.LineTo(x, y)
+	x, y = dashMapPoint(scale, offX, offY, cx, cy)
+	a.LineTo(x, y)
+	x, y = dashMapPoint(scale, offX, offY, dashX[2], dashY[2])
+	a.LineTo(x, y)
+	if dashClosed {
+		a.ClosePolygon()
+	}
+	a.DrawPath(agg.StrokeOnly)
+
+	x, y = dashMapPoint(scale, offX, offY, (dashX[0]+dashX[1])/2, (dashY[0]+dashY[1])/2)
+	a.ResetPath()
+	a.MoveTo(x, y)
+	x, y = dashMapPoint(scale, offX, offY, (dashX[1]+dashX[2])/2, (dashY[1]+dashY[2])/2)
+	a.LineTo(x, y)
+	x, y = dashMapPoint(scale, offX, offY, (dashX[2]+dashX[0])/2, (dashY[2]+dashY[0])/2)
+	a.LineTo(x, y)
+	if dashClosed {
+		a.ClosePolygon()
+	}
+	a.DrawPath(agg.StrokeOnly)
+}
+
+func renderTerminalArrow(
+	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
+	sl *scanline.ScanlineU8,
+	renBase *renderer.RendererBase[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]],
+	markers *vcgen.VCGenMarkersTerm,
+	ah *shapes.Arrowhead,
+	markerPathID uint,
+	shapeID uint32,
+) {
+	markers.Rewind(markerPathID)
+	x1, y1, cmd := markers.Vertex()
+	if basics.IsStop(cmd) {
+		return
+	}
+	x2, y2, cmd := markers.Vertex()
+	if basics.IsStop(cmd) {
+		return
+	}
+
+	angle := math.Atan2(y2-y1, x2-x1)
+	cosA := math.Cos(angle)
+	sinA := math.Sin(angle)
+
+	ps := path.NewPathStorageStl()
+	ah.Rewind(shapeID)
+	for {
+		x, y := 0.0, 0.0
+		cmd := ah.Vertex(&x, &y)
+		if basics.IsStop(cmd) {
+			break
+		}
+		tx := x*cosA - y*sinA + x1
+		ty := x*sinA + y*cosA + y1
+		switch {
+		case basics.IsMoveTo(cmd):
+			ps.MoveTo(tx, ty)
+		case basics.IsLineTo(cmd):
+			ps.LineTo(tx, ty)
+		case basics.IsClosed(uint32(cmd)):
+			ps.ClosePolygon(basics.PathFlagsNone)
+		}
+	}
+
+	ras.AddPath(&pathSourceAdapter{ps: ps}, 0)
+	if !ras.RewindScanlines() {
+		return
+	}
+	sl.Reset(ras.MinX(), ras.MaxX())
+	black := color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255}
+	for ras.SweepScanline(&rasScanlineAdapter{sl: sl}) {
+		y := sl.Y()
+		for _, span := range sl.Spans() {
+			if span.Len > 0 {
+				renBase.BlendSolidHspan(int(span.X), y, int(span.Len), black, span.Covers)
+			}
+		}
+	}
+}
+
 // --- Drawing ---
 
 func drawDashDemo() {
 	a := ctx.GetAgg2D()
 	a.ResetTransformations()
+	a.ClearAll(agg.White)
 
-	ps := buildDashPath()
+	scale, offX, offY := fitDashFrame(ctx.Width(), ctx.Height())
+	mapX := func(x float64) float64 { return offX + x*scale }
+	mapY := func(y float64) float64 { return offY + (dashBaseHeight-y)*scale }
+
+	ps := buildDashPath(mapX, mapY)
 	rawSrc := &pathToConvSource{ps: ps}
 
 	a.FillEvenOdd(dashEvenOdd)
@@ -145,15 +272,8 @@ func drawDashDemo() {
 
 	a.FillEvenOdd(false) // reset to non-zero for subsequent draws
 
-	// === Layer 3: smooth poly stroke outline (green rgba(0.0, 0.6, 0.0, 0.8)) ===
-	smooth2 := conv.NewConvSmoothPoly1Curve(rawSrc)
-	smooth2.SetSmoothValue(dashSmooth)
-	a.ResetPath()
-	dashAddToPath(a, smooth2)
-	a.LineColor(agg.RGBA(0, 0.6, 0, 0.8))
-	a.LineWidth(1.0)
-	a.NoFill()
-	a.DrawPath(agg.StrokeOnly)
+	// === Layer 3: construction polylines ===
+	drawConstructionLines(a, scale, offX, offY)
 
 	// === Layer 4: dashed smooth stroke + arrowhead markers (black) ===
 	// Requires internal rasterizer to wire VCGenMarkersTerm → ConvMarker → Arrowhead.
@@ -202,12 +322,8 @@ func drawDashDemo() {
 		ah.Tail(1*k, 1.5*k, 3*k, 5*k)
 	}
 
-	// ConvMarker places the arrowhead at each line endpoint recorded by markers
-	arrow := conv.NewConvMarker(markers, &arrowheadShapes{ah: ah})
-
-	// Add stroked dash path and arrowhead markers to rasterizer
+	// Add stroked dash path to rasterizer
 	ras.AddPath(&convToRasSource{src: stroke}, 0)
-	ras.AddPath(&convToRasSource{src: arrow}, 0)
 
 	black := color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255}
 	if ras.RewindScanlines() {
@@ -221,10 +337,19 @@ func drawDashDemo() {
 			}
 		}
 	}
+	ras.Reset()
+
+	// Render tail and head markers explicitly from the terminal marker positions.
+	if !dashClosed {
+		renderTerminalArrow(ras, sl, renBase, markers, ah, 0, 0)
+	}
+	ras.Reset()
+	renderTerminalArrow(ras, sl, renBase, markers, ah, 1, 1)
 
 	// === Handles ===
 	for i := 0; i < 3; i++ {
-		drawHandle(dashX[i], dashY[i])
+		x, y := dashMapPoint(scale, offX, offY, dashX[i], dashY[i])
+		drawHandle(x, y)
 	}
 }
 
@@ -241,6 +366,8 @@ func dashPointInTriangle(ax, ay, bx, by, cx, cy, px, py float64) bool {
 }
 
 func handleDashMouseDown(x, y float64) bool {
+	scale, offX, offY := fitDashFrame(ctx.Width(), ctx.Height())
+	x, y = dashUnmapPoint(scale, offX, offY, x, y)
 	dashIdx = -1
 	// Hit-test individual control points first (radius 20 px, matching C++).
 	for i := 0; i < 3; i++ {
@@ -262,6 +389,8 @@ func handleDashMouseDown(x, y float64) bool {
 }
 
 func handleDashMouseMove(x, y float64) bool {
+	scale, offX, offY := fitDashFrame(ctx.Width(), ctx.Height())
+	x, y = dashUnmapPoint(scale, offX, offY, x, y)
 	if dashIdx == 3 {
 		// Move whole polygon: new position of P0 is (x-dashDX, y-dashDY).
 		dx := x - dashDX
