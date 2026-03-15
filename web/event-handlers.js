@@ -69,6 +69,58 @@ export function setupEventHandlers(
       renderSelectedDemo();
     });
 
+  // line_patterns controls
+  document
+    .getElementById("linePatternsScaleSlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("linePatternsScaleSlider").value,
+      );
+      document.getElementById("linePatternsScaleValue").textContent =
+        val.toFixed(2);
+      setLinePatternScaleX(val);
+      persistDemoParams("line_patterns");
+      renderSelectedDemo();
+    });
+  document
+    .getElementById("linePatternsStartSlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("linePatternsStartSlider").value,
+      );
+      document.getElementById("linePatternsStartValue").textContent =
+        val.toFixed(2);
+      setLinePatternStartX(val);
+      persistDemoParams("line_patterns");
+      renderSelectedDemo();
+    });
+
+  // line_patterns_clip controls
+  document
+    .getElementById("linePatternsClipScaleSlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("linePatternsClipScaleSlider").value,
+      );
+      document.getElementById("linePatternsClipScaleValue").textContent =
+        val.toFixed(2);
+      setLinePatternClipScaleX(val);
+      persistDemoParams("line_patterns_clip");
+      renderSelectedDemo();
+    });
+  document
+    .getElementById("linePatternsClipStartSlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("linePatternsClipStartSlider").value,
+      );
+      document.getElementById("linePatternsClipStartValue").textContent =
+        val.toFixed(2);
+      setLinePatternClipStartX(val);
+      persistDemoParams("line_patterns_clip");
+      renderSelectedDemo();
+    });
+
   // conv_dash_marker controls
   document.getElementById("dashWidthSlider").addEventListener("input", () => {
     const val = parseFloat(document.getElementById("dashWidthSlider").value);
