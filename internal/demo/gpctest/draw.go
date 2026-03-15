@@ -20,6 +20,11 @@ type Config struct {
 	CenterY   float64
 }
 
+const (
+	referenceWidth  = 655.0
+	referenceHeight = 520.0
+)
+
 type pt struct {
 	x float64
 	y float64
@@ -30,6 +35,8 @@ type contour []pt
 func Draw(ctx *agg.Context, cfg Config) {
 	w := float64(ctx.GetImage().Width())
 	h := float64(ctx.GetImage().Height())
+	frameOffX := (w - referenceWidth) * 0.5
+	frameOffY := (h - referenceHeight) * 0.5
 	if math.IsNaN(cfg.CenterX) || math.IsNaN(cfg.CenterY) {
 		cfg.CenterX = w * 0.5
 		cfg.CenterY = h * 0.5
@@ -37,8 +44,12 @@ func Draw(ctx *agg.Context, cfg Config) {
 
 	cfg.Scene = clampInt(cfg.Scene, 0, 4)
 	cfg.Operation = clampInt(cfg.Operation, 0, 5)
+	cfg.CenterX = cfg.CenterX - frameOffX
+	cfg.CenterY = referenceHeight - (cfg.CenterY - frameOffY)
 
-	a, b := buildScene(cfg, w, h)
+	a, b := buildScene(cfg, referenceWidth, referenceHeight)
+	a = transformContours(mirrorContoursY(a, referenceHeight), 0, 0, 1, 1, frameOffX, frameOffY)
+	b = transformContours(mirrorContoursY(b, referenceHeight), 0, 0, 1, 1, frameOffX, frameOffY)
 
 	agg2d := ctx.GetAgg2D()
 	agg2d.ResetTransformations()
@@ -52,7 +63,11 @@ func Draw(ctx *agg.Context, cfg Config) {
 	}
 
 	clipStart := time.Now()
-	resultPoly, err := gpc.PolygonClip(mapOperation(cfg.Operation), toPolygon(a), toPolygon(b))
+	subject, clip := toPolygon(a), toPolygon(b)
+	if cfg.Operation == 5 {
+		subject, clip = clip, subject
+	}
+	resultPoly, err := gpc.PolygonClip(mapOperation(cfg.Operation), subject, clip)
 	clipTime := time.Since(clipStart)
 
 	renderStart := time.Now()
@@ -66,7 +81,7 @@ func Draw(ctx *agg.Context, cfg Config) {
 	}
 	renderTime := time.Since(renderStart)
 
-	overlayStats(agg2d, resultPoly, err, clipTime, renderTime)
+	overlayStats(agg2d, frameOffX, frameOffY, resultPoly, err, clipTime, renderTime)
 }
 
 func buildScene(cfg Config, w, h float64) ([]contour, []contour) {
@@ -278,6 +293,17 @@ func mapOperation(op int) gpc.GPCOp {
 	}
 }
 
+func mirrorContoursY(cs []contour, h float64) []contour {
+	out := make([]contour, len(cs))
+	for i := range cs {
+		out[i] = make(contour, len(cs[i]))
+		for j := range cs[i] {
+			out[i][j] = pt{x: cs[i][j].x, y: h - cs[i][j].y}
+		}
+	}
+	return out
+}
+
 func toPolygon(cs []contour) *gpc.GPCPolygon {
 	p := gpc.NewGPCPolygon()
 	for _, c := range cs {
@@ -397,7 +423,7 @@ func drawContours(a *agg.Agg2D, cs []contour, fill, line agg.Color) {
 	}
 }
 
-func overlayStats(a *agg.Agg2D, result *gpc.GPCPolygon, err error, clipTime, renderTime time.Duration) {
+func overlayStats(a *agg.Agg2D, offX, offY float64, result *gpc.GPCPolygon, err error, clipTime, renderTime time.Duration) {
 	contours, points := polygonStats(result)
 	line1 := fmt.Sprintf("Contours: %d   Points: %d", contours, points)
 	line2 := fmt.Sprintf(
@@ -412,8 +438,8 @@ func overlayStats(a *agg.Agg2D, result *gpc.GPCPolygon, err error, clipTime, ren
 	a.FontGSV(10)
 	a.FillColor(agg.Black)
 	a.NoLine()
-	a.Text(250, 15, line1, false, 0, 0)
-	a.Text(250, 30, line2, false, 0, 0)
+	a.Text(250+offX, 15+offY, line1, false, 0, 0)
+	a.Text(250+offX, 30+offY, line2, false, 0, 0)
 }
 
 func polygonStats(p *gpc.GPCPolygon) (int, int) {
