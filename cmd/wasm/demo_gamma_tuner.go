@@ -3,6 +3,8 @@ package main
 
 import (
 	"math"
+
+	pfgamma "github.com/MeKo-Christian/agg_go/internal/pixfmt/gamma"
 )
 
 var (
@@ -40,8 +42,9 @@ func drawGammaTunerDemo() {
 	}
 	squareX := (width - squareSize) / 2
 	squareY := (height - squareSize) / 2
-	span1 := make([]float64, squareSize)
-	span2 := make([]float64, squareSize)
+	span1 := make([]uint8, squareSize)
+	span2 := make([]uint8, squareSize)
+	gammaLUT := pfgamma.NewSimpleGammaLut(g)
 
 	// Pre-calculate colors for the gradient
 	invG := 1.0 / g
@@ -94,29 +97,29 @@ func drawGammaTunerDemo() {
 	switch gammaTunerPattern {
 	case 0: // Horizontal
 		for i := 0; i < squareSize; i++ {
-			a := float64(i) / float64(squareSize)
+			a := uint8((i * 255) / squareSize)
 			span1[i] = a
-			span2[i] = 1.0 - a
+			span2[i] = 255 - a
 		}
 	case 1: // Vertical
 		for i := 0; i < squareSize; i++ {
-			a := float64(i) / float64(squareSize)
+			a := uint8((i * 255) / squareSize)
 			if i&1 != 0 {
 				span1[i] = a
 				span2[i] = a
 			} else {
-				span1[i] = 1.0 - a
-				span2[i] = 1.0 - a
+				span1[i] = 255 - a
+				span2[i] = 255 - a
 			}
 		}
 	default: // Checkered
 		for i := 0; i < squareSize; i++ {
-			a := float64(i) / float64(squareSize)
+			a := uint8((i * 255) / squareSize)
 			if i&1 != 0 {
 				span1[i] = a
-				span2[i] = 1.0 - a
+				span2[i] = 255 - a
 			} else {
-				span1[i] = 1.0 - a
+				span1[i] = 255 - a
 				span2[i] = a
 			}
 		}
@@ -138,14 +141,14 @@ func drawGammaTunerDemo() {
 
 		for j := 0; j < squareSize; j++ {
 			idx1 := row1 + (squareX+j)*4
-			canvasBuf[idx1] = uint8(pcr*span1[j] + 0.5)
-			canvasBuf[idx1+1] = uint8(pcg*span1[j] + 0.5)
-			canvasBuf[idx1+2] = uint8(pcb*span1[j] + 0.5)
+			canvasBuf[idx1] = gammaBlendOverBlack(uint8(pcr+0.5), span1[j], gammaLUT)
+			canvasBuf[idx1+1] = gammaBlendOverBlack(uint8(pcg+0.5), span1[j], gammaLUT)
+			canvasBuf[idx1+2] = gammaBlendOverBlack(uint8(pcb+0.5), span1[j], gammaLUT)
 
 			idx2 := row2 + (squareX+j)*4
-			canvasBuf[idx2] = uint8(pcr*span2[j] + 0.5)
-			canvasBuf[idx2+1] = uint8(pcg*span2[j] + 0.5)
-			canvasBuf[idx2+2] = uint8(pcb*span2[j] + 0.5)
+			canvasBuf[idx2] = gammaBlendOverBlack(uint8(pcr+0.5), span2[j], gammaLUT)
+			canvasBuf[idx2+1] = gammaBlendOverBlack(uint8(pcg+0.5), span2[j], gammaLUT)
+			canvasBuf[idx2+2] = gammaBlendOverBlack(uint8(pcb+0.5), span2[j], gammaLUT)
 		}
 	}
 
@@ -171,4 +174,16 @@ func drawGammaTunerDemo() {
 			}
 		}
 	}
+}
+
+func gammaBlendOverBlack(src, alpha uint8, lut *pfgamma.SimpleGammaLut) uint8 {
+	if alpha == 0 || src == 0 {
+		return 0
+	}
+	if alpha == 255 {
+		return src
+	}
+	dir := uint32(lut.Dir(src))
+	v := (dir * uint32(alpha)) >> 8
+	return uint8(lut.Inv(uint8(v)))
 }
