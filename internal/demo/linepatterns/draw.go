@@ -8,28 +8,24 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
 	"github.com/MeKo-Christian/agg_go/internal/curves"
-	"github.com/MeKo-Christian/agg_go/internal/order"
-	"github.com/MeKo-Christian/agg_go/internal/path"
 	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
-	"github.com/MeKo-Christian/agg_go/internal/pixfmt/blender"
 	"github.com/MeKo-Christian/agg_go/internal/primitives"
 	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
-	"github.com/MeKo-Christian/agg_go/internal/renderer"
 	outline "github.com/MeKo-Christian/agg_go/internal/renderer/outline"
 )
 
-type pathSourceAdapter struct {
-	ps *path.PathStorageStl
+type curveSourceAdapter struct {
+	cv *curves.Curve4
 }
 
-func (a *pathSourceAdapter) Rewind(pathID uint32) {
-	a.ps.Rewind(uint(pathID))
+func (a *curveSourceAdapter) Rewind(pathID uint32) {
+	a.cv.Rewind(uint(pathID))
 }
 
-func (a *pathSourceAdapter) Vertex(x, y *float64) uint32 {
-	vx, vy, cmd := a.ps.NextVertex()
+func (a *curveSourceAdapter) Vertex(x, y *float64) uint32 {
+	vx, vy, cmd := a.cv.Vertex()
 	*x, *y = vx, vy
-	return cmd
+	return uint32(cmd)
 }
 
 type imagePatternSource struct {
@@ -52,11 +48,10 @@ func (s *imagePatternSource) Pixel(x, y int) color.RGBA {
 }
 
 type lineImageBaseAdapter struct {
-	renBase  *renderer.RendererBase[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]]
-	scratch8 []color.RGBA8[color.Linear]
+	pf *pixfmt.PixFmtBGR24
 }
 
-func rgbaToRGBA8(c color.RGBA) color.RGBA8[color.Linear] {
+func rgbaToRGB8(c color.RGBA) color.RGB8[color.Linear] {
 	clamp := func(v float64) uint8 {
 		if v <= 0 {
 			return 0
@@ -66,32 +61,27 @@ func rgbaToRGBA8(c color.RGBA) color.RGBA8[color.Linear] {
 		}
 		return uint8(v*255 + 0.5)
 	}
-	out := color.RGBA8[color.Linear]{R: clamp(c.R), G: clamp(c.G), B: clamp(c.B), A: clamp(c.A)}
-	out.Premultiply()
-	return out
-}
-
-func (a *lineImageBaseAdapter) spanBuffer(length int) []color.RGBA8[color.Linear] {
-	if cap(a.scratch8) < length {
-		a.scratch8 = make([]color.RGBA8[color.Linear], length)
-	}
-	return a.scratch8[:length]
+	return color.RGB8[color.Linear]{R: clamp(c.R), G: clamp(c.G), B: clamp(c.B)}
 }
 
 func (a *lineImageBaseAdapter) BlendColorHSpan(x, y, length int, colors []color.RGBA, covers []basics.CoverType) {
-	buf := a.spanBuffer(len(colors))
-	for i := range colors {
-		buf[i] = rgbaToRGBA8(colors[i])
+	if a.pf == nil {
+		return
 	}
-	a.renBase.BlendColorHspan(x, y, length, buf, nil, basics.CoverFull)
+	for i := 0; i < length && i < len(colors); i++ {
+		c := colors[i]
+		a.pf.BlendPixel(x+i, y, rgbaToRGB8(c), uint8(c.A*255+0.5), basics.CoverFull)
+	}
 }
 
 func (a *lineImageBaseAdapter) BlendColorVSpan(x, y, length int, colors []color.RGBA, covers []basics.CoverType) {
-	buf := a.spanBuffer(len(colors))
-	for i := range colors {
-		buf[i] = rgbaToRGBA8(colors[i])
+	if a.pf == nil {
+		return
 	}
-	a.renBase.BlendColorVspan(x, y, length, buf, nil, basics.CoverFull)
+	for i := 0; i < length && i < len(colors); i++ {
+		c := colors[i]
+		a.pf.BlendPixel(x, y+i, rgbaToRGB8(c), uint8(c.A*255+0.5), basics.CoverFull)
+	}
 }
 
 type lineOutlineImageAdapter struct {
@@ -156,35 +146,10 @@ func DefaultCurves() []Curve {
 
 var (
 	preparedLinePatternOnce     sync.Once
-	preparedLinePatternPaths    []*path.PathStorageStl
 	preparedLinePatternPatterns []outline.Pattern
 )
 
-func bezierPolyline(c curveDef, approximationScale float64) *path.PathStorageStl {
-	cv := curves.NewCurve4()
-	cv.SetApproximationScale(approximationScale)
-	cv.Init(c.x1, c.y1, c.x2, c.y2, c.x3, c.y3, c.x4, c.y4)
-	ps := path.NewPathStorageStl()
-	for {
-		x, y, cmd := cv.Vertex()
-		if basics.IsStop(cmd) {
-			break
-		}
-		if basics.IsMoveTo(cmd) {
-			ps.MoveTo(x, y)
-		} else {
-			ps.LineTo(x, y)
-		}
-	}
-	return ps
-}
-
 func prepareLinePatternResources() {
-	preparedLinePatternPaths = make([]*path.PathStorageStl, len(linePatternCurves))
-	for i, curve := range linePatternCurves {
-		preparedLinePatternPaths[i] = bezierPolyline(curve, 1.0)
-	}
-
 	preparedLinePatternPatterns = make([]outline.Pattern, len(Images))
 	for i := range Images {
 		filter := outline.NewPatternFilterRGBAAdapter()
@@ -206,54 +171,56 @@ func clamp(v, lo, hi float64) float64 {
 
 func Draw(img *agg.Image, scaleX, startX float64) {
 	preparedLinePatternOnce.Do(prepareLinePatternResources)
-	drawPaths(img, scaleX, startX, preparedLinePatternPaths)
+	curves := DefaultCurves()
+	drawCurves(img, scaleX, startX, curves)
 }
 
 func DrawCurves(img *agg.Image, scaleX, startX float64, curves []Curve) {
 	preparedLinePatternOnce.Do(prepareLinePatternResources)
 
 	if len(curves) == 0 {
-		drawPaths(img, scaleX, startX, preparedLinePatternPaths)
+		drawCurves(img, scaleX, startX, DefaultCurves())
 		return
 	}
-
-	approximationScale := max(
-		1.0,
-		max(
-			float64(img.Width())/500.0,
-			float64(img.Height())/450.0,
-		),
-	)
-	paths := make([]*path.PathStorageStl, len(curves))
-	for i, c := range curves {
-		paths[i] = bezierPolyline(curveDef{
-			x1: c.X1, y1: c.Y1,
-			x2: c.X2, y2: c.Y2,
-			x3: c.X3, y3: c.Y3,
-			x4: c.X4, y4: c.Y4,
-		}, approximationScale)
-	}
-
-	drawPaths(img, scaleX, startX, paths)
+	drawCurves(img, scaleX, startX, curves)
 }
 
-func drawPaths(img *agg.Image, scaleX, startX float64, paths []*path.PathStorageStl) {
+func drawCurves(img *agg.Image, scaleX, startX float64, curvesData []Curve) {
 	preparedLinePatternOnce.Do(prepareLinePatternResources)
 
+	rgbData := make([]uint8, img.Width()*img.Height()*3)
 	rbuf := buffer.NewRenderingBufferU8()
-	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Width()*4)
-	pf := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
-	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]](pf)
-	renBase.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 242, A: 255})
+	rbuf.Attach(rgbData, img.Width(), img.Height(), img.Width()*3)
+	pf := pixfmt.NewPixFmtBGR24(rbuf)
+	pf.Clear(color.RGB8[color.Linear]{R: 255, G: 255, B: 242})
 
-	baseAdapter := &lineImageBaseAdapter{renBase: renBase}
+	baseAdapter := &lineImageBaseAdapter{pf: pf}
 	renImg := outline.NewRendererOutlineImage(baseAdapter, preparedLinePatternPatterns[0])
-	renImg.SetScaleX(clamp(scaleX, 0.2, 3.0))
-	renImg.SetStartX(clamp(startX, 0.0, 10.0))
 	rasImg := rasterizer.NewRasterizerOutlineAA[*lineOutlineImageAdapter, color.RGBA8[color.Linear]](&lineOutlineImageAdapter{ren: renImg})
 
-	for i, ps := range paths {
+	clampedScaleX := clamp(scaleX, 0.2, 3.0)
+	clampedStartX := clamp(startX, 0.0, 10.0)
+	for i, c := range curvesData {
+		cv := curves.NewCurve4()
+		cv.SetApproximationScale(1.0)
+		cv.Init(c.X1, c.Y1, c.X2, c.Y2, c.X3, c.Y3, c.X4, c.Y4)
 		renImg.SetPattern(preparedLinePatternPatterns[i%len(preparedLinePatternPatterns)])
-		rasImg.AddPath(&pathSourceAdapter{ps: ps}, 0)
+		renImg.SetScaleX(clampedScaleX)
+		renImg.SetStartX(clampedStartX)
+		rasImg.AddPath(&curveSourceAdapter{cv: cv}, 0)
+	}
+
+	for y := 0; y < img.Height(); y++ {
+		srcOff := y * img.Width() * 3
+		dstOff := y * img.Width() * 4
+		for x := 0; x < img.Width(); x++ {
+			b := rgbData[srcOff+x*3+0]
+			g := rgbData[srcOff+x*3+1]
+			r := rgbData[srcOff+x*3+2]
+			img.Data[dstOff+x*4+0] = r
+			img.Data[dstOff+x*4+1] = g
+			img.Data[dstOff+x*4+2] = b
+			img.Data[dstOff+x*4+3] = 255
+		}
 	}
 }
