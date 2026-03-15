@@ -5,6 +5,10 @@ export function syncControlVisibility(demoType) {
     demoType === "aa" ? "flex" : "none";
   document.getElementById("lineThicknessControls").style.display =
     demoType === "line_thickness" ? "flex" : "none";
+  document.getElementById("linePatternsControls").style.display =
+    demoType === "line_patterns" ? "flex" : "none";
+  document.getElementById("linePatternsClipControls").style.display =
+    demoType === "line_patterns_clip" ? "flex" : "none";
   document.getElementById("dashControls").style.display =
     demoType === "conv_dash_marker" ? "flex" : "none";
   document.getElementById("gouraudControls").style.display =
@@ -107,9 +111,9 @@ export const demoDescriptions = {
   line_thickness:
     "Port of AGG's line_thickness demo. Renders the upstream line row above the radial line wheel, using butt caps and the original flipped-Y scene layout. Use the HTML controls for line thickness, blur radius, monochrome, and invert; URL params remain ltf, ltb, ltm, lti.",
   line_patterns:
-    "Port of AGG's line_patterns demo core. Draws nine patterned Bezier curves using the original line pattern assets. URL parameters: lpsx (scale_x), lpst (start_x).",
+    "Port of AGG's line_patterns demo. Draws nine patterned Bezier curves using the original assets, with Scale X and Start X controls. Drag a hidden control point to reshape one handle, or drag near a curve to move the whole curve. URL parameters: lpsx, lpst, lpp.",
   line_patterns_clip:
-    "Port of AGG's line_patterns_clip demo core. Image-patterned polyline clipped to an inner rectangle. URL parameters: lpcsx (scale_x), lpcst (start_x).",
+    "Port of AGG's line_patterns_clip demo. Shows both the unclipped and clipped patterned polyline passes with Scale X and Start X controls. Drag a hidden vertex to reshape the polyline, or drag near a segment to move the whole chain. URL parameters: lpcsx, lpcst, lpcp.",
   scanline_boolean2:
     "Port of AGG's scanline_boolean2 demo core using polygon clipping-backed boolean operations. URL parameters: sb2m (mode 0..4), sb2f (fill rule 0/1), sb2s (scanline type 0..2), sb2o (operation 0..6), sb2x/sb2y (center).",
   gpc_test:
