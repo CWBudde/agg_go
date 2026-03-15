@@ -55,9 +55,12 @@ func BrightnessToAlpha(sum int) uint8 {
 	if sum <= 0 {
 		return brightnessToAlpha[0]
 	}
-	if sum >= 255*3 {
-		return brightnessToAlpha[len(brightnessToAlpha)-1]
+	idx := sum * len(brightnessToAlpha) / (255 * 3)
+	if idx < 0 {
+		idx = 0
 	}
-	idx := sum * (len(brightnessToAlpha) - 1) / (255 * 3)
+	if idx >= len(brightnessToAlpha) {
+		idx = len(brightnessToAlpha) - 1
+	}
 	return brightnessToAlpha[idx]
 }
