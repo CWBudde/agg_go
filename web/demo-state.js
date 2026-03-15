@@ -872,20 +872,27 @@ export const demoURLHandlers = {
 
   line_patterns_clip: {
     persist() {
-      const params = getURLParams();
       updateURL({
-        lpcsx: params.get("lpcsx"),
-        lpcst: params.get("lpcst"),
+        lpcsx: parseFloat(
+          document.getElementById("linePatternsClipScaleSlider").value,
+        ).toFixed(2),
+        lpcst: parseFloat(
+          document.getElementById("linePatternsClipStartSlider").value,
+        ).toFixed(2),
         lpcp: getLinePatternClipNodesEncoded(),
       });
     },
     restore(p) {
-      if (p.has("lpcsx")) {
-        setLinePatternClipScaleX(parseFloat(p.get("lpcsx")));
-      }
-      if (p.has("lpcst")) {
-        setLinePatternClipStartX(parseFloat(p.get("lpcst")));
-      }
+      const scale = p.has("lpcsx") ? parseFloat(p.get("lpcsx")) : 1.0;
+      setLinePatternClipScaleX(scale);
+      document.getElementById("linePatternsClipScaleSlider").value = scale;
+      document.getElementById("linePatternsClipScaleValue").textContent =
+        scale.toFixed(2);
+      const start = p.has("lpcst") ? parseFloat(p.get("lpcst")) : 0.0;
+      setLinePatternClipStartX(start);
+      document.getElementById("linePatternsClipStartSlider").value = start;
+      document.getElementById("linePatternsClipStartValue").textContent =
+        start.toFixed(2);
       if (p.has("lpcp")) {
         setLinePatternClipNodesEncoded(p.get("lpcp"));
       }
@@ -894,20 +901,27 @@ export const demoURLHandlers = {
 
   line_patterns: {
     persist() {
-      const params = getURLParams();
       updateURL({
-        lpsx: params.get("lpsx"),
-        lpst: params.get("lpst"),
+        lpsx: parseFloat(
+          document.getElementById("linePatternsScaleSlider").value,
+        ).toFixed(2),
+        lpst: parseFloat(
+          document.getElementById("linePatternsStartSlider").value,
+        ).toFixed(2),
         lpp: getLinePatternNodesEncoded(),
       });
     },
     restore(p) {
-      if (p.has("lpsx")) {
-        setLinePatternScaleX(parseFloat(p.get("lpsx")));
-      }
-      if (p.has("lpst")) {
-        setLinePatternStartX(parseFloat(p.get("lpst")));
-      }
+      const scale = p.has("lpsx") ? parseFloat(p.get("lpsx")) : 1.0;
+      setLinePatternScaleX(scale);
+      document.getElementById("linePatternsScaleSlider").value = scale;
+      document.getElementById("linePatternsScaleValue").textContent =
+        scale.toFixed(2);
+      const start = p.has("lpst") ? parseFloat(p.get("lpst")) : 0.0;
+      setLinePatternStartX(start);
+      document.getElementById("linePatternsStartSlider").value = start;
+      document.getElementById("linePatternsStartValue").textContent =
+        start.toFixed(2);
       if (p.has("lpp")) {
         setLinePatternNodesEncoded(p.get("lpp"));
       }

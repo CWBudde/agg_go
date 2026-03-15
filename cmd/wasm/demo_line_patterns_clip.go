@@ -116,6 +116,10 @@ type lineClipImageBaseAdapter struct {
 	renBase *renderer.RendererBase[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]]
 }
 
+type lineClipSolidBaseAdapter struct {
+	renBase *renderer.RendererBase[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]]
+}
+
 func rgbaToRGBA8(c color.RGBA) color.RGBA8[color.Linear] {
 	clamp := func(v float64) uint8 {
 		if v <= 0 {
@@ -143,6 +147,15 @@ func (a *lineClipImageBaseAdapter) BlendColorVSpan(x, y, length int, colors []co
 		buf[i] = rgbaToRGBA8(colors[i])
 	}
 	a.renBase.BlendColorVspan(x, y, length, buf, nil, basics.CoverFull)
+}
+
+func (a *lineClipSolidBaseAdapter) Width() int  { return a.renBase.Width() }
+func (a *lineClipSolidBaseAdapter) Height() int { return a.renBase.Height() }
+func (a *lineClipSolidBaseAdapter) BlendSolidHSpan(x, y, length int, c color.RGBA8[color.Linear], covers []basics.CoverType) {
+	a.renBase.BlendSolidHspan(x, y, length, c, covers)
+}
+func (a *lineClipSolidBaseAdapter) BlendSolidVSpan(x, y, length int, c color.RGBA8[color.Linear], covers []basics.CoverType) {
+	a.renBase.BlendSolidVspan(x, y, length, c, covers)
 }
 
 type lineClipOutlineImageAdapter struct {
@@ -177,6 +190,27 @@ func (a *lineClipOutlineImageAdapter) Line2(lp primitives.LineParameters, ex, ey
 func (a *lineClipOutlineImageAdapter) Pie(x, y, x1, y1, x2, y2 int)                 {}
 func (a *lineClipOutlineImageAdapter) Semidot(cmp func(int) bool, x, y, x1, y1 int) {}
 func (a *lineClipOutlineImageAdapter) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) {
+	a.ren.Line3(&lp, sx, sy, ex, ey)
+}
+
+type lineClipOutlineAAAdapter struct {
+	ren *outline.RendererOutlineAA[*lineClipSolidBaseAdapter, color.RGBA8[color.Linear]]
+}
+
+func (a *lineClipOutlineAAAdapter) AccurateJoinOnly() bool            { return a.ren.AccurateJoinOnly() }
+func (a *lineClipOutlineAAAdapter) Color(c color.RGBA8[color.Linear]) { a.ren.Color(c) }
+func (a *lineClipOutlineAAAdapter) Pie(x, y, x1, y1, x2, y2 int)      { a.ren.Pie(x, y, x1, y1, x2, y2) }
+func (a *lineClipOutlineAAAdapter) Semidot(cmp func(int) bool, x, y, x1, y1 int) {
+	a.ren.Semidot(cmp, x, y, x1, y1)
+}
+func (a *lineClipOutlineAAAdapter) Line0(lp primitives.LineParameters) { a.ren.Line0(&lp) }
+func (a *lineClipOutlineAAAdapter) Line1(lp primitives.LineParameters, sx, sy int) {
+	a.ren.Line1(&lp, sx, sy)
+}
+func (a *lineClipOutlineAAAdapter) Line2(lp primitives.LineParameters, ex, ey int) {
+	a.ren.Line2(&lp, ex, ey)
+}
+func (a *lineClipOutlineAAAdapter) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) {
 	a.ren.Line3(&lp, sx, sy, ex, ey)
 }
 
@@ -382,6 +416,15 @@ func handleLinePatternsClipMouseUp() {
 	linePatternClipSelectedPoint = -1
 }
 
+func buildLinePatternsClipPath() *path.PathStorageStl {
+	ps := path.NewPathStorageStl()
+	ps.MoveTo(linePatternClipPoints[0][0], linePatternClipPoints[0][1])
+	for i := 1; i < len(linePatternClipPoints); i++ {
+		ps.LineTo(linePatternClipPoints[i][0], linePatternClipPoints[i][1])
+	}
+	return ps
+}
+
 func drawLinePatternsClipDemo() {
 	ensureLinePatternClipPoints()
 
@@ -402,6 +445,15 @@ func drawLinePatternsClipDemo() {
 	renImg.SetScaleX(linePatternClipScaleX)
 	renImg.SetStartX(linePatternClipStartX)
 	rasImg := rasterizer.NewRasterizerOutlineAA[*lineClipOutlineImageAdapter, color.RGBA8[color.Linear]](&lineClipOutlineImageAdapter{ren: renImg})
+	rasImg.SetRoundCap(true)
+
+	profile := outline.NewLineProfileAA()
+	profile.SmootherWidth(10.0)
+	profile.Width(8.0)
+	renLine := outline.NewRendererOutlineAA[*lineClipSolidBaseAdapter, color.RGBA8[color.Linear]](&lineClipSolidBaseAdapter{renBase: renBase}, profile)
+	renLine.Color(color.RGBA8[color.Linear]{R: 0, G: 0, B: 127, A: 255})
+	rasLine := rasterizer.NewRasterizerOutlineAA[*lineClipOutlineAAAdapter, color.RGBA8[color.Linear]](&lineClipOutlineAAAdapter{ren: renLine})
+	rasLine.SetRoundCap(true)
 
 	clipInset := int(math.Round(linePatternClipPadding(width, height)))
 	clipPad := 9.0
@@ -411,13 +463,29 @@ func drawLinePatternsClipDemo() {
 		float64(width-clipInset)+clipPad,
 		float64(height-clipInset)+clipPad,
 	)
-	renBase.ClipBox(clipInset, clipInset, width-clipInset, height-clipInset)
+	renLine.ClipBox(
+		float64(clipInset)-clipPad,
+		float64(clipInset)-clipPad,
+		float64(width-clipInset)+clipPad,
+		float64(height-clipInset)+clipPad,
+	)
 
-	ps := path.NewPathStorageStl()
-	ps.MoveTo(linePatternClipPoints[0][0], linePatternClipPoints[0][1])
-	for i := 1; i < len(linePatternClipPoints); i++ {
-		ps.LineTo(linePatternClipPoints[i][0], linePatternClipPoints[i][1])
-	}
+	ps := buildLinePatternsClipPath()
+	rasLine.AddPath(&pathSourceAdapter{ps: ps}, 0)
+	rasImg.AddPath(&pathSourceAdapter{ps: ps}, 0)
+
+	renBase.BlendBar(
+		0,
+		0,
+		width-1,
+		height-1,
+		color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255},
+		200,
+	)
+
+	renBase.ClipBox(clipInset, clipInset, width-clipInset, height-clipInset)
+	ps = buildLinePatternsClipPath()
+	rasLine.AddPath(&pathSourceAdapter{ps: ps}, 0)
 	rasImg.AddPath(&pathSourceAdapter{ps: ps}, 0)
 
 	renBase.ResetClipping(true)
