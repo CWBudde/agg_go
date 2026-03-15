@@ -51,22 +51,19 @@ func NewLineInterpolatorAABase(ren OutlineRenderer, lp *primitives.LineParameter
 	base.oldX = base.x
 	base.oldY = base.y
 
+	base.len = lp.Len
+	if lp.Vertical == (lp.Inc > 0) {
+		base.len = -lp.Len
+	}
+
 	if lp.Vertical {
 		base.count = basics.Abs((lp.Y2 >> primitives.LineSubpixelShift) - base.y)
-		base.len = -lp.Len
-		if lp.Inc > 0 {
-			base.len = lp.Len
-		}
 		base.li = primitives.NewDda2LineInterpolator(
 			0,
 			primitives.LineDblHR(lp.X2-lp.X1),
 			basics.Abs(lp.Y2-lp.Y1)+1)
 	} else {
 		base.count = basics.Abs((lp.X2 >> primitives.LineSubpixelShift) - base.x)
-		base.len = -lp.Len
-		if lp.Inc > 0 {
-			base.len = lp.Len
-		}
 		base.li = primitives.NewDda2LineInterpolator(
 			0,
 			primitives.LineDblHR(lp.Y2-lp.Y1),
@@ -76,7 +73,12 @@ func NewLineInterpolatorAABase(ren OutlineRenderer, lp *primitives.LineParameter
 	base.maxExtent = (base.width + primitives.LineSubpixelMask) >> primitives.LineSubpixelShift
 
 	// Initialize distance array
-	li := primitives.NewDda2LineInterpolator(0, lp.Len, lp.Len)
+	li := primitives.NewDda2LineInterpolator(0, 0, lp.Len)
+	if lp.Vertical {
+		li = primitives.NewDda2LineInterpolator(0, lp.DY<<primitives.LineSubpixelShift, lp.Len)
+	} else {
+		li = primitives.NewDda2LineInterpolator(0, lp.DX<<primitives.LineSubpixelShift, lp.Len)
+	}
 	stop := base.width + primitives.LineSubpixelScale*2
 	for i := 0; i < MaxHalfWidth; i++ {
 		base.dist[i] = li.Y()
@@ -242,7 +244,7 @@ func NewLineInterpolatorAA1(ren OutlineRenderer, lp *primitives.LineParameters, 
 	npix := 1
 	if lp.Vertical {
 		for {
-			base.li.Inc() // Dec() equivalent by going backward
+			base.li.Dec()
 			base.y -= lp.Inc
 			base.x = (lp.X1 + base.li.Y()) >> primitives.LineSubpixelShift
 
@@ -283,7 +285,7 @@ func NewLineInterpolatorAA1(ren OutlineRenderer, lp *primitives.LineParameters, 
 		}
 	} else {
 		for {
-			base.li.Inc() // Dec() equivalent
+			base.li.Dec()
 			base.x -= lp.Inc
 			base.y = (lp.Y1 + base.li.Y()) >> primitives.LineSubpixelShift
 
@@ -537,7 +539,91 @@ func NewLineInterpolatorAA3(ren OutlineRenderer, lp *primitives.LineParameters, 
 			lp.X1&^primitives.LineSubpixelMask, lp.Y1&^primitives.LineSubpixelMask),
 	}
 
-	// Similar backward adjustment logic as AA1 (simplified for brevity)
+	npix := 1
+	if lp.Vertical {
+		for {
+			base.li.Dec()
+			base.y -= lp.Inc
+			base.x = (lp.X1 + base.li.Y()) >> primitives.LineSubpixelShift
+
+			if lp.Inc > 0 {
+				li.di.DecYWithDX(base.x - base.oldX)
+			} else {
+				li.di.IncYWithDX(base.x - base.oldX)
+			}
+
+			base.oldX = base.x
+
+			dist1Start := li.di.DistStart()
+			dist2Start := dist1Start
+
+			dx := 0
+			if dist1Start < 0 {
+				npix++
+			}
+			for base.dist[dx] <= base.width {
+				dist1Start += li.di.DYStart()
+				dist2Start -= li.di.DYStart()
+				if dist1Start < 0 {
+					npix++
+				}
+				if dist2Start < 0 {
+					npix++
+				}
+				dx++
+			}
+			if npix == 0 {
+				break
+			}
+			npix = 0
+			base.step--
+			if base.step < -base.maxExtent {
+				break
+			}
+		}
+	} else {
+		for {
+			base.li.Dec()
+			base.x -= lp.Inc
+			base.y = (lp.Y1 + base.li.Y()) >> primitives.LineSubpixelShift
+
+			if lp.Inc > 0 {
+				li.di.DecXWithDY(base.y - base.oldY)
+			} else {
+				li.di.IncXWithDY(base.y - base.oldY)
+			}
+
+			base.oldY = base.y
+
+			dist1Start := li.di.DistStart()
+			dist2Start := dist1Start
+
+			dy := 0
+			if dist1Start < 0 {
+				npix++
+			}
+			for base.dist[dy] <= base.width {
+				dist1Start -= li.di.DXStart()
+				dist2Start += li.di.DXStart()
+				if dist1Start < 0 {
+					npix++
+				}
+				if dist2Start < 0 {
+					npix++
+				}
+				dy++
+			}
+			if npix == 0 {
+				break
+			}
+			npix = 0
+			base.step--
+			if base.step < -base.maxExtent {
+				break
+			}
+		}
+	}
+
 	base.li.AdjustForward()
 	base.step -= base.maxExtent
 	return li

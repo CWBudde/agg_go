@@ -38,20 +38,29 @@ func NewDda2LineInterpolator(y1, y2, count int) *Dda2LineInterpolator {
 		count = 1
 	}
 
-	return &Dda2LineInterpolator{
+	d := &Dda2LineInterpolator{
 		cnt: count,
 		lft: (y2 - y1) / count,
 		rem: (y2 - y1) % count,
 		mod: (y2 - y1) % count,
 		y:   y1,
 	}
+
+	if d.mod <= 0 {
+		d.mod += count
+		d.rem += count
+		d.lft--
+	}
+	d.mod -= count
+
+	return d
 }
 
 // Inc increments the interpolator (equivalent to operator++).
 func (d *Dda2LineInterpolator) Inc() {
 	d.mod += d.rem
 	d.y += d.lft
-	if d.mod >= d.cnt {
+	if d.mod > 0 {
 		d.mod -= d.cnt
 		d.y++
 	}
@@ -59,7 +68,7 @@ func (d *Dda2LineInterpolator) Inc() {
 
 // Dec decrements the interpolator (equivalent to operator--).
 func (d *Dda2LineInterpolator) Dec() {
-	if d.mod < d.rem {
+	if d.mod <= d.rem {
 		d.mod += d.cnt
 		d.y--
 	}
