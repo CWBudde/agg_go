@@ -3,12 +3,15 @@ package linethickness
 
 import (
 	"math"
+	"time"
 
 	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/color"
 	"github.com/MeKo-Christian/agg_go/internal/effects"
 )
+
+var lastBlurMS float64
 
 const (
 	BaseWidth  = 640.0
@@ -81,8 +84,16 @@ func Draw(ctx *agg.Context, st State) {
 	}
 
 	if st.Blur > 0 {
+		start := time.Now()
 		effects.ApplySlightBlurFull(&imagePixFmtAdapter{img: ctx.GetImage()}, st.Blur)
+		lastBlurMS = time.Since(start).Seconds() * 1000
+	} else {
+		lastBlurMS = 0
 	}
+}
+
+func LastBlurMS() float64 {
+	return lastBlurMS
 }
 
 func verticalLayout() (linesTop, wheelCenterY float64) {

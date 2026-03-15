@@ -24,6 +24,8 @@ func setLineThicknessMono(v bool) { lineThicknessState.Mono = v }
 
 func setLineThicknessInvert(v bool) { lineThicknessState.Invert = v }
 
+func getLineThicknessBlurTime() float64 { return linethickness.LastBlurMS() }
+
 func drawLineThicknessDemo() {
 	linethickness.Draw(ctx, lineThicknessState)
 }

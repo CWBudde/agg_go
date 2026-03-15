@@ -86,10 +86,21 @@ function renderSelectedDemo() {
     renderDemo(demoType, pixels);
     imageData.data.set(pixels);
     ctx.putImageData(imageData, 0, 0);
+    updateDemoReadouts(demoType);
     updateStatus("Rendered " + demoType);
   } catch (err) {
     console.error("Render Error:", err);
     updateStatus("Render Error: " + err.message);
+  }
+}
+
+function updateDemoReadouts(demoType) {
+  if (demoType === "line_thickness") {
+    const el = document.getElementById("lineThicknessBlurTime");
+    if (el && typeof getLineThicknessBlurTime === "function") {
+      const ms = Number(getLineThicknessBlurTime()) || 0;
+      el.textContent = `Blur: ${ms.toFixed(2)} ms`;
+    }
   }
 }
 

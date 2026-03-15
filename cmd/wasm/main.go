@@ -243,6 +243,9 @@ func main() {
 		}
 		return nil
 	}))
+	js.Global().Set("getLineThicknessBlurTime", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		return getLineThicknessBlurTime()
+	}))
 	js.Global().Set("setCompoundWidth", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
 		if len(args) > 0 {
 			setCompoundWidth(args[0].Float())

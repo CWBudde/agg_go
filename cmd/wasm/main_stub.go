@@ -52,6 +52,7 @@ var (
 	_             func(float64)                                                                = setLineThicknessBlur
 	_             func(bool)                                                                   = setLineThicknessMono
 	_             func(bool)                                                                   = setLineThicknessInvert
+	_             func() float64                                                               = getLineThicknessBlurTime
 	_             func(float64)                                                                = setCompoundWidth
 	_             func(float64)                                                                = setCompoundAlpha1
 	_             func(float64)                                                                = setCompoundAlpha2
