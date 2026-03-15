@@ -47,12 +47,8 @@ func (s *imagePatternSource) Pixel(x, y int) color.RGBA {
 	r := uint8((p >> 16) & 0xFF)
 	g := uint8((p >> 8) & 0xFF)
 	b := uint8(p & 0xFF)
-	brightness := (int(r) + int(g) + int(b)) / 3
-	a := 255 - brightness
-	if a < 0 {
-		a = 0
-	}
-	c := color.NewRGBAFromRGBA8(r, g, b, uint8(a))
+	a := BrightnessToAlpha(int(r) + int(g) + int(b))
+	c := color.NewRGBAFromRGBA8(r, g, b, a)
 	c.Premultiply()
 	return c
 }

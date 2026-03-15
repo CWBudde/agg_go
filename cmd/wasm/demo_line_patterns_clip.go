@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
@@ -93,18 +94,11 @@ func (s *lineChainPatternSource) Pixel(x, y int) color.RGBA {
 	r := uint8((p >> 16) & 0xFF)
 	g := uint8((p >> 8) & 0xFF)
 	b := uint8(p & 0xFF)
-	brightness := int(r) + int(g) + int(b)
-	alpha := 255
-	if brightness >= 750 {
-		alpha = 0
-	} else if brightness > 540 {
-		alpha = int(math.Round(float64(765-brightness) * 255.0 / float64(765-540)))
-	}
 	c := color.NewRGBAFromRGBA8(
 		r,
 		g,
 		b,
-		uint8(alpha),
+		linepatterns.BrightnessToAlpha(int(r)+int(g)+int(b)),
 	)
 	c.Premultiply()
 	return c
@@ -423,6 +417,26 @@ func buildLinePatternsClipPath() *path.PathStorageStl {
 	return ps
 }
 
+func renderLinePatternsClipGuides() {
+	a := ctx.GetAgg2D()
+	a.ResetTransformations()
+	a.LineColor(agg.NewColor(0, 77, 128, 76))
+	a.LineWidth(1.0)
+	a.NoFill()
+	a.ResetPath()
+	a.MoveTo(linePatternClipPoints[0][0], linePatternClipPoints[0][1])
+	for i := 1; i < len(linePatternClipPoints); i++ {
+		a.LineTo(linePatternClipPoints[i][0], linePatternClipPoints[i][1])
+	}
+	a.DrawPath(agg.StrokeOnly)
+
+	a.NoLine()
+	a.FillColor(agg.NewColor(0, 77, 128, 102))
+	for _, pt := range linePatternClipPoints {
+		a.FillCircle(pt[0], pt[1], 5.0)
+	}
+}
+
 func drawLinePatternsClipDemo() {
 	ensureLinePatternClipPoints()
 
@@ -493,4 +507,5 @@ func drawLinePatternsClipDemo() {
 	rasImg.AddPath(&pathSourceAdapter{ps: ps}, 0)
 
 	renBase.ResetClipping(true)
+	renderLinePatternsClipGuides()
 }
