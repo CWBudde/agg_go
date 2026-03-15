@@ -178,8 +178,9 @@ var (
 	preparedLinePatternPatterns []outline.Pattern
 )
 
-func bezierPolyline(c curveDef) *path.PathStorageStl {
-	cv := curves.NewCurve4Div()
+func bezierPolyline(c curveDef, approximationScale float64) *path.PathStorageStl {
+	cv := curves.NewCurve4()
+	cv.SetApproximationScale(approximationScale)
 	cv.Init(c.x1, c.y1, c.x2, c.y2, c.x3, c.y3, c.x4, c.y4)
 	ps := path.NewPathStorageStl()
 	for {
@@ -199,7 +200,7 @@ func bezierPolyline(c curveDef) *path.PathStorageStl {
 func prepareLinePatternResources() {
 	preparedLinePatternPaths = make([]*path.PathStorageStl, len(linePatternCurves))
 	for i, curve := range linePatternCurves {
-		preparedLinePatternPaths[i] = bezierPolyline(curve)
+		preparedLinePatternPaths[i] = bezierPolyline(curve, 1.0)
 	}
 
 	preparedLinePatternPatterns = make([]outline.Pattern, len(Images))
@@ -234,6 +235,13 @@ func DrawCurves(img *agg.Image, scaleX, startX float64, curves []Curve) {
 		return
 	}
 
+	approximationScale := max(
+		1.0,
+		max(
+			float64(img.Width())/500.0,
+			float64(img.Height())/450.0,
+		),
+	)
 	paths := make([]*path.PathStorageStl, len(curves))
 	for i, c := range curves {
 		paths[i] = bezierPolyline(curveDef{
@@ -241,7 +249,7 @@ func DrawCurves(img *agg.Image, scaleX, startX float64, curves []Curve) {
 			x2: c.X2, y2: c.Y2,
 			x3: c.X3, y3: c.Y3,
 			x4: c.X4, y4: c.Y4,
-		})
+		}, approximationScale)
 	}
 
 	drawPaths(img, scaleX, startX, paths)
