@@ -272,10 +272,8 @@ func (c *CheckboxCtrl[C]) generateTextVertices() {
 		return
 	}
 
-	// Match AGG cbox_ctrl_impl:
-	// start_point(x1 + text_height * 2.0, y1 + text_height / 5.0)
 	textX := c.X1() + c.textHeight*2.0
-	textY := c.Y1() + c.textHeight/5.0
+	textY := c.Y1() + (c.Y2()-c.Y1())*0.5 - c.textHeight*0.5
 
 	// Configure text renderer
 	c.textRenderer.SetText(c.label)

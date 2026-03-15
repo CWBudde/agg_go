@@ -179,14 +179,33 @@ func drawDashDemo() {
 	a.FillEvenOdd(false) // reset to non-zero for subsequent draws
 
 	// === Layer 3: smooth poly stroke outline (green rgba(0.0, 0.6, 0.0, 0.8)) ===
-	smooth2 := conv.NewConvSmoothPoly1Curve(rawSrc)
+	smooth2 := conv.NewConvSmoothPoly1(rawSrc)
 	smooth2.SetSmoothValue(dashSmooth)
-	a.ResetPath()
-	dashAddToPath(a, smooth2)
-	a.LineColor(agg.RGBA(0, 0.6, 0, 0.8))
-	a.LineWidth(max(1.0, scale))
-	a.NoFill()
-	a.DrawPath(agg.StrokeOnly)
+	smoothOutline := conv.NewConvStroke(smooth2)
+	smoothOutline.SetWidth(max(1.0, scale))
+	rasGreen := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{},
+		rasterizer.NewRasterizerSlNoClip(),
+	)
+	slGreen := scanline.NewScanlineU8()
+	imgGreen := ctx.GetImage()
+	rbufGreen := buffer.NewRenderingBufferU8()
+	rbufGreen.Attach(imgGreen.Data, imgGreen.Width(), imgGreen.Height(), imgGreen.Width()*4)
+	pixFmtGreen := pixfmt.NewPixFmtRGBA32PreLinear(rbufGreen)
+	renBaseGreen := renderer.NewRendererBaseWithPixfmt[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](pixFmtGreen)
+	rasGreen.AddPath(&convToRasSource{src: smoothOutline}, 0)
+	green := color.RGBA8[color.Linear]{R: 0, G: 153, B: 0, A: 204}
+	if rasGreen.RewindScanlines() {
+		slGreen.Reset(rasGreen.MinX(), rasGreen.MaxX())
+		for rasGreen.SweepScanline(&rasScanlineAdapter{sl: slGreen}) {
+			y := slGreen.Y()
+			for _, span := range slGreen.Spans() {
+				if span.Len > 0 {
+					renBaseGreen.BlendSolidHspan(int(span.X), y, int(span.Len), green, span.Covers)
+				}
+			}
+		}
+	}
 
 	// === Layer 4: dashed smooth stroke + arrowhead markers (black) ===
 	// Requires internal rasterizer to wire VCGenMarkersTerm → ConvMarker → Arrowhead.

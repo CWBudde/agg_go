@@ -95,10 +95,10 @@ func (a *Arrowhead) DisableTail() {
 // Rewind prepares the arrowhead for vertex generation.
 // pathID 0 = tail, pathID 1 = head
 func (a *Arrowhead) Rewind(pathID uint32) {
-	a.currID = pathID
+	a.currID = pathID & 1
 	a.currCoord = 0
 
-	if pathID == 0 {
+	if a.currID == 0 {
 		// Generate tail coordinates
 		if !a.tailFlag {
 			a.cmd[0] = basics.PathCmdStop
@@ -131,7 +131,7 @@ func (a *Arrowhead) Rewind(pathID uint32) {
 		return
 	}
 
-	if pathID == 1 {
+	if a.currID == 1 {
 		// Generate head coordinates
 		if !a.headFlag {
 			a.cmd[0] = basics.PathCmdStop

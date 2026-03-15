@@ -386,26 +386,25 @@ func (r *RboxCtrl[C]) setupBorderPath() {
 func (r *RboxCtrl[C]) setupTextPath() {
 	if r.numItems > 0 {
 		r.textRenderer.SetText(r.items[0])
-		r.textRenderer.SetPosition(r.xs1+r.dy*1.5, r.ys1+r.dy/1.3+r.textHeight*0.5)
+		r.textRenderer.SetPosition(r.xs1+r.dy*1.5, r.ys1+r.dy/2.0)
 		r.textRenderer.SetSize(r.textHeight)
+		r.textRenderer.SetThickness(r.textThickness)
 		r.textRenderer.Rewind(0)
 	}
 }
 
 // setupInactiveCirclesPath prepares the first inactive circle.
-// Using smaller filled circles instead of stroked circles as workaround
 func (r *RboxCtrl[C]) setupInactiveCirclesPath() {
 	if r.numItems > 0 {
-		radius := r.textHeight / 2.5 // Smaller than active circles
 		r.ellipse.Init(
 			r.xs1+r.dy/1.3,
 			r.ys1+r.dy/1.3,
-			radius,
-			radius,
+			r.textHeight/1.5,
+			r.textHeight/1.5,
 			32, false)
-		r.ellipse.Rewind(0)
+		r.ellipseStroke.SetWidth(r.textThickness)
+		r.ellipseStroke.Rewind(0)
 	}
-	// If no items, the ellipse won't be initialized and will return stop immediately
 }
 
 // setupActiveCirclePath prepares the active circle (filled).
@@ -478,7 +477,8 @@ func (r *RboxCtrl[C]) generateTextVertex() (x, y float64, cmd basics.PathCommand
 		r.textRenderer.SetText(r.items[r.drawItem])
 		r.textRenderer.SetPosition(
 			r.xs1+r.dy*1.5,
-			r.ys1+r.dy*float64(r.drawItem)+r.dy/1.3+r.textHeight*0.5)
+			r.ys1+r.dy*float64(r.drawItem+1)-r.dy/2.0)
+		r.textRenderer.SetThickness(r.textThickness)
 		r.textRenderer.Rewind(0)
 		x, y, cmd = r.textRenderer.Vertex()
 	}
@@ -490,14 +490,13 @@ func (r *RboxCtrl[C]) generateTextVertex() (x, y float64, cmd basics.PathCommand
 }
 
 // generateInactiveCirclesVertex generates vertices for inactive radio circles.
-// Note: Using filled circles instead of stroked circles due to ConvStroke issue
 func (r *RboxCtrl[C]) generateInactiveCirclesVertex() (x, y float64, cmd basics.PathCommand) {
 	// If no items, return stop immediately
 	if r.numItems == 0 {
 		return 0, 0, basics.PathCmdStop
 	}
 
-	cmd = r.ellipse.Vertex(&x, &y)
+	x, y, cmd = r.ellipseStroke.Vertex()
 
 	if cmd == basics.PathCmdStop {
 		r.drawItem++
@@ -505,16 +504,15 @@ func (r *RboxCtrl[C]) generateInactiveCirclesVertex() (x, y float64, cmd basics.
 			return 0, 0, basics.PathCmdStop
 		}
 
-		// Setup next inactive circle - using smaller radius to show as outline
-		radius := r.textHeight / 2.5 // Smaller than active circles
 		r.ellipse.Init(
 			r.xs1+r.dy/1.3,
 			r.ys1+r.dy*float64(r.drawItem)+r.dy/1.3,
-			radius,
-			radius,
+			r.textHeight/1.5,
+			r.textHeight/1.5,
 			32, false)
-		r.ellipse.Rewind(0)
-		cmd = r.ellipse.Vertex(&x, &y)
+		r.ellipseStroke.SetWidth(r.textThickness)
+		r.ellipseStroke.Rewind(0)
+		x, y, cmd = r.ellipseStroke.Vertex()
 	}
 
 	if cmd != basics.PathCmdStop {
