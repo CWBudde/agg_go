@@ -250,7 +250,6 @@ func TestConvMarkerAdaptor_CustomMarkers(t *testing.T) {
 	adaptor.Rewind(0)
 
 	pathVertexCount := 0
-	markerVertexCount := 0
 
 	for {
 		_, _, cmd := adaptor.Vertex()
@@ -259,11 +258,7 @@ func TestConvMarkerAdaptor_CustomMarkers(t *testing.T) {
 		}
 
 		// Count vertices - first comes the path, then markers
-		if pathVertexCount < 3 { // Original path has 3 vertices (move + 2 lines)
-			pathVertexCount++
-		} else {
-			markerVertexCount++
-		}
+		pathVertexCount++
 	}
 
 	// Should have processed original path vertices
@@ -271,9 +266,9 @@ func TestConvMarkerAdaptor_CustomMarkers(t *testing.T) {
 		t.Errorf("Expected 3 path vertices, got %d", pathVertexCount)
 	}
 
-	// Should have marker vertices (4 vertices per marker point, 3 points = 12 vertices)
-	if markerVertexCount != 12 {
-		t.Errorf("Expected 12 marker vertices, got %d", markerVertexCount)
+	// Markers are collected as a side channel, not emitted in the main path stream.
+	if len(markers.vertices) != 12 {
+		t.Errorf("Expected 12 stored marker vertices, got %d", len(markers.vertices))
 	}
 }
 

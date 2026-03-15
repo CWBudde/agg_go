@@ -11,7 +11,6 @@ const (
 	StatusInitial Status = iota
 	StatusAccumulate
 	StatusGenerate
-	StatusMarkers
 )
 
 // VertexSource interface for providing vertices
@@ -169,17 +168,6 @@ func (c *ConvAdaptorVCGen) Vertex() (x, y float64, cmd basics.PathCommand) {
 
 		case StatusGenerate:
 			x, y, cmd = c.generator.Vertex()
-			if basics.IsStop(cmd) {
-				// After generator finishes, prepare and output markers
-				c.markers.PrepareSrc()
-				c.markers.Rewind(0)
-				c.status = StatusMarkers
-				continue // Continue to markers state
-			}
-			done = true
-
-		case StatusMarkers:
-			x, y, cmd = c.markers.Vertex()
 			if basics.IsStop(cmd) {
 				// When the inner loop broke on a MoveTo (pen-up), the new sub-path
 				// start is already saved in c.startX/c.startY — don't consume another
