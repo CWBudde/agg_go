@@ -55,8 +55,8 @@ func Draw(ctx *agg.Context, cfg Config) {
 	agg2d.ResetTransformations()
 	agg2d.ClearAll(agg.White)
 
-	drawContours(agg2d, a, sceneAColor(cfg.Scene), sceneALineColor(cfg.Scene))
-	drawContours(agg2d, b, sceneBColor(cfg.Scene), agg.Transparent)
+	drawContoursWithLineWidth(agg2d, a, sceneAColor(cfg.Scene), sceneALineColor(cfg.Scene), sceneALineWidth(cfg.Scene))
+	drawContoursWithLineWidth(agg2d, b, sceneBColor(cfg.Scene), agg.Transparent, 1.0)
 
 	if cfg.Operation == 0 {
 		return
@@ -76,7 +76,7 @@ func Draw(ctx *agg.Context, cfg Config) {
 			agg2d,
 			fromPolygon(resultPoly),
 			agg.RGBA(0.5, 0.0, 0.0, 0.5),
-			agg.RGBA(0.0, 0.0, 0.0, 0.7),
+			agg.Transparent,
 		)
 	}
 	renderTime := time.Since(renderStart)
@@ -310,8 +310,12 @@ func toPolygon(cs []contour) *gpc.GPCPolygon {
 		if len(c) < 3 {
 			continue
 		}
-		vl := gpc.NewGPCVertexList(len(c))
-		for _, q := range c {
+		trimmed := trimClosingVertex(c)
+		if len(trimmed) < 3 {
+			continue
+		}
+		vl := gpc.NewGPCVertexList(len(trimmed))
+		for _, q := range trimmed {
 			vl.AddVertex(q.x, q.y)
 		}
 		_ = p.AddContour(vl, false)
@@ -401,6 +405,10 @@ func transformContours(cs []contour, tx1, ty1, sx, sy, tx2, ty2 float64) []conto
 }
 
 func drawContours(a *agg.Agg2D, cs []contour, fill, line agg.Color) {
+	drawContoursWithLineWidth(a, cs, fill, line, 1.0)
+}
+
+func drawContoursWithLineWidth(a *agg.Agg2D, cs []contour, fill, line agg.Color, lineWidth float64) {
 	for _, c := range cs {
 		if len(c) < 3 {
 			continue
@@ -414,7 +422,7 @@ func drawContours(a *agg.Agg2D, cs []contour, fill, line agg.Color) {
 		a.FillColor(fill)
 		if line.A > 0 {
 			a.LineColor(line)
-			a.LineWidth(1)
+			a.LineWidth(lineWidth)
 			a.DrawPath(agg.FillAndStroke)
 		} else {
 			a.NoLine()
@@ -478,6 +486,13 @@ func sceneBColor(scene int) agg.Color {
 	return agg.RGBA(0.0, 0.6, 0.0, 0.1)
 }
 
+func sceneALineWidth(scene int) float64 {
+	if scene == 2 || scene == 3 {
+		return 0.1
+	}
+	return 1.0
+}
+
 func clampInt(v, lo, hi int) int {
 	if v < lo {
 		return lo
@@ -486,4 +501,16 @@ func clampInt(v, lo, hi int) int {
 		return hi
 	}
 	return v
+}
+
+func trimClosingVertex(c contour) contour {
+	if len(c) < 2 {
+		return c
+	}
+	first := c[0]
+	last := c[len(c)-1]
+	if math.Abs(first.x-last.x) <= 1e-9 && math.Abs(first.y-last.y) <= 1e-9 {
+		return c[:len(c)-1]
+	}
+	return c
 }

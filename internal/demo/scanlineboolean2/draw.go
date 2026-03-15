@@ -446,6 +446,7 @@ func combineAndRenderP8(
 	sl2 := newBoolScanlineP8()
 	slOut := newBoolScanlineP8()
 	ren := &boolRenderer{}
+	prepareBoolScanlinesAA(sg1, sg2, sl1.sl, sl2.sl, slOut.sl)
 
 	start := time.Now()
 	for i := 0; i < 10; i++ {
@@ -476,6 +477,7 @@ func combineAndRenderU8(
 	sl2 := newBoolScanlineU8()
 	slOut := newBoolScanlineU8()
 	ren := &boolRenderer{}
+	prepareBoolScanlinesAA(sg1, sg2, sl1.sl, sl2.sl, slOut.sl)
 
 	start := time.Now()
 	for i := 0; i < 10; i++ {
@@ -506,6 +508,7 @@ func combineAndRenderBin(
 	sl2 := newBoolScanlineBin()
 	slOut := newBoolScanlineBin()
 	ren := &boolRenderer{}
+	prepareBoolScanlinesBin(sg1, sg2, sl1.sl, sl2.sl, slOut.sl)
 
 	start := time.Now()
 	for i := 0; i < 10; i++ {
@@ -593,6 +596,49 @@ func renderCollectedScanlines(img *agg.Image, scanlines []boolRenderedScanline) 
 		}
 	}
 	return numSpans
+}
+
+func prepareBoolScanlinesAA(
+	sg1, sg2 interface {
+		MinX() int
+		MaxX() int
+	},
+	sl1, sl2, slOut interface{ Reset(minX, maxX int) },
+) {
+	minX, maxX := boolScanlineBounds(sg1, sg2)
+	sl1.Reset(minX, maxX)
+	sl2.Reset(minX, maxX)
+	slOut.Reset(minX, maxX)
+}
+
+func prepareBoolScanlinesBin(
+	sg1, sg2 interface {
+		MinX() int
+		MaxX() int
+	},
+	sl1, sl2, slOut *isc.ScanlineBin,
+) {
+	minX, maxX := boolScanlineBounds(sg1, sg2)
+	sl1.Reset(minX, maxX)
+	sl2.Reset(minX, maxX)
+	slOut.Reset(minX, maxX)
+}
+
+func boolScanlineBounds(
+	sg1, sg2 interface {
+		MinX() int
+		MaxX() int
+	},
+) (int, int) {
+	minX := sg1.MinX()
+	if sg2.MinX() < minX {
+		minX = sg2.MinX()
+	}
+	maxX := sg1.MaxX()
+	if sg2.MaxX() > maxX {
+		maxX = sg2.MaxX()
+	}
+	return minX, maxX
 }
 
 func blendPixel(img *agg.Image, x, y int, c colorDef, cover uint8) {
