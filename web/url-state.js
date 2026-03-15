@@ -194,6 +194,7 @@ export const ALL_DEMO_PARAMS = [
   // line_patterns
   "lpsx",
   "lpst",
+  "lpp",
   // scanline_boolean2
   "sb2m",
   "sb2f",

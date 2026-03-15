@@ -140,6 +140,13 @@ type curveDef struct {
 	x4, y4 float64
 }
 
+type Curve struct {
+	X1, Y1 float64
+	X2, Y2 float64
+	X3, Y3 float64
+	X4, Y4 float64
+}
+
 var linePatternCurves = []curveDef{
 	{64, 19, 14, 126, 118, 266, 19, 265},
 	{112, 113, 178, 32, 200, 132, 125, 438},
@@ -150,6 +157,19 @@ var linePatternCurves = []curveDef{
 	{301, 398, 355, 231, 209, 211, 170, 353},
 	{484, 101, 222, 33, 486, 435, 487, 138},
 	{143, 147, 11, 45, 83, 427, 132, 197},
+}
+
+func DefaultCurves() []Curve {
+	curves := make([]Curve, len(linePatternCurves))
+	for i, c := range linePatternCurves {
+		curves[i] = Curve{
+			X1: c.x1, Y1: c.y1,
+			X2: c.x2, Y2: c.y2,
+			X3: c.x3, Y3: c.y3,
+			X4: c.x4, Y4: c.y4,
+		}
+	}
+	return curves
 }
 
 var (
@@ -203,6 +223,32 @@ func clamp(v, lo, hi float64) float64 {
 
 func Draw(img *agg.Image, scaleX, startX float64) {
 	preparedLinePatternOnce.Do(prepareLinePatternResources)
+	drawPaths(img, scaleX, startX, preparedLinePatternPaths)
+}
+
+func DrawCurves(img *agg.Image, scaleX, startX float64, curves []Curve) {
+	preparedLinePatternOnce.Do(prepareLinePatternResources)
+
+	if len(curves) == 0 {
+		drawPaths(img, scaleX, startX, preparedLinePatternPaths)
+		return
+	}
+
+	paths := make([]*path.PathStorageStl, len(curves))
+	for i, c := range curves {
+		paths[i] = bezierPolyline(curveDef{
+			x1: c.X1, y1: c.Y1,
+			x2: c.X2, y2: c.Y2,
+			x3: c.X3, y3: c.Y3,
+			x4: c.X4, y4: c.Y4,
+		})
+	}
+
+	drawPaths(img, scaleX, startX, paths)
+}
+
+func drawPaths(img *agg.Image, scaleX, startX float64, paths []*path.PathStorageStl) {
+	preparedLinePatternOnce.Do(prepareLinePatternResources)
 
 	rbuf := buffer.NewRenderingBufferU8()
 	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Width()*4)
@@ -216,7 +262,7 @@ func Draw(img *agg.Image, scaleX, startX float64) {
 	renImg.SetStartX(clamp(startX, 0.0, 10.0))
 	rasImg := rasterizer.NewRasterizerOutlineAA[*lineOutlineImageAdapter, color.RGBA8[color.Linear]](&lineOutlineImageAdapter{ren: renImg})
 
-	for i, ps := range preparedLinePatternPaths {
+	for i, ps := range paths {
 		renImg.SetPattern(preparedLinePatternPatterns[i%len(preparedLinePatternPatterns)])
 		rasImg.AddPath(&pathSourceAdapter{ps: ps}, 0)
 	}

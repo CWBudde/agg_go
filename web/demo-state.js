@@ -886,7 +886,12 @@ export const demoURLHandlers = {
 
   line_patterns: {
     persist() {
-      // URL-only controls (no visible widget panel).
+      const params = getURLParams();
+      updateURL({
+        lpsx: params.get("lpsx"),
+        lpst: params.get("lpst"),
+        lpp: getLinePatternNodesEncoded(),
+      });
     },
     restore(p) {
       if (p.has("lpsx")) {
@@ -894,6 +899,9 @@ export const demoURLHandlers = {
       }
       if (p.has("lpst")) {
         setLinePatternStartX(parseFloat(p.get("lpst")));
+      }
+      if (p.has("lpp")) {
+        setLinePatternNodesEncoded(p.get("lpp"));
       }
     },
   },

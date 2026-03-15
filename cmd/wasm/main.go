@@ -392,6 +392,15 @@ func main() {
 		}
 		return nil
 	}))
+	js.Global().Set("getLinePatternNodesEncoded", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		return encodeLinePatternCurves()
+	}))
+	js.Global().Set("setLinePatternNodesEncoded", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			return setLinePatternCurvesEncoded(args[0].String())
+		}
+		return false
+	}))
 	js.Global().Set("setScanlineBoolean2Mode", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
 		if len(args) > 0 {
 			setScanlineBoolean2Mode(args[0].Int())
@@ -851,6 +860,13 @@ func onMouseDown(this js.Value, args []js.Value) interface{} {
 	if demoType == "pattern_resample" {
 		return handlePatternResampleMouseDown(x, y)
 	}
+	if demoType == "line_patterns" {
+		right := len(args) >= 4 && args[3].Bool()
+		if right {
+			return false
+		}
+		return handleLinePatternsMouseDown(x, y)
+	}
 	if demoType == "scanline_boolean2" {
 		right := len(args) >= 4 && args[3].Bool()
 		if right {
@@ -993,6 +1009,13 @@ func onMouseMove(this js.Value, args []js.Value) interface{} {
 	if demoType == "pattern_resample" {
 		return handlePatternResampleMouseMove(x, y)
 	}
+	if demoType == "line_patterns" {
+		right := len(args) >= 4 && args[3].Bool()
+		if right {
+			return false
+		}
+		return handleLinePatternsMouseMove(x, y)
+	}
 	if demoType == "scanline_boolean2" {
 		right := len(args) >= 4 && args[3].Bool()
 		if right {
@@ -1096,6 +1119,9 @@ func onMouseUp(this js.Value, args []js.Value) interface{} {
 	}
 	if demoType == "pattern_resample" {
 		handlePatternResampleMouseUp()
+	}
+	if demoType == "line_patterns" {
+		handleLinePatternsMouseUp()
 	}
 	if demoType == "scanline_boolean2" {
 		handleScanlineBoolean2MouseUp()
