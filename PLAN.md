@@ -335,156 +335,56 @@ idiomatic in Go.
 
 ### 9.1 Example parity infrastructure
 
-- [x] For each newly ported upstream demo: record the C++ source, decide placement (standalone
-      vs web demo), add a minimal verification path so the demo does not silently rot.
+- [x] For each newly ported upstream demo: record the C++ source, decide placement (standalone vs web demo), and add a minimal verification path so the demo does not silently rot.
 - [x] Reuse shared helpers and assets where possible.
-- [x] `gradient_focal.cpp` recorded and wired:
-      source `../agg-2.6/agg-src/examples/gradient_focal.cpp`,
-      standalone `examples/core/intermediate/gradient_focal/main.go`,
-      web `cmd/wasm/demo_gradient_focal.go` + `web/index.html`,
-      verification via `cmd/wasm/main_stub.go`/`cmd/wasm/render_test.go` demo switch paths.
-- [x] `line_thickness.cpp` recorded and wired:
-      source `../agg-2.6/agg-src/examples/line_thickness.cpp`,
-      standalone `examples/core/intermediate/line_thickness/main.go`,
-      web `cmd/wasm/demo_line_thickness.go` + `web/index.html`,
-      verification via `cmd/wasm/main_stub.go`/`cmd/wasm/render_test.go` demo switch paths.
-- [x] `rasterizer_compound.cpp` recorded and wired:
-      source `../agg-2.6/agg-src/examples/rasterizer_compound.cpp`,
-      standalone `examples/core/intermediate/rasterizer_compound/main.go`,
-      web `cmd/wasm/demo_rasterizer_compound.go` + `web/index.html`,
-      verification via `cmd/wasm/main_stub.go`/`cmd/wasm/render_test.go` demo switch paths.
-- [x] `image_resample.cpp` recorded and wired:
-      source `../agg-2.6/agg-src/examples/image_resample.cpp`,
-      standalone `examples/core/intermediate/image_resample/main.go`,
-      web `cmd/wasm/demo_image_resample.go` + `web/index.html`,
-      verification via `cmd/wasm/main_stub.go`/`cmd/wasm/render_test.go` demo switch paths.
-- [x] `line_patterns_clip.cpp` recorded and wired:
-      source `../agg-2.6/agg-src/examples/line_patterns_clip.cpp`,
-      standalone `examples/core/intermediate/line_patterns_clip/main.go`,
-      web `cmd/wasm/demo_line_patterns_clip.go` + `web/index.html`,
-      verification via `cmd/wasm/main_stub.go`/`cmd/wasm/render_test.go` demo switch paths.
-- [x] `line_patterns.cpp` recorded and wired:
-      source `../agg-2.6/agg-src/examples/line_patterns.cpp`,
-      standalone `examples/core/intermediate/line_patterns/main.go`,
-      web `cmd/wasm/demo_line_patterns.go` + `web/index.html`,
-      assets copied from `../agg-2.6/agg-src/examples/line_patterns.bmp.zip` into
-      `examples/shared/art/1.bmp..9.bmp` and published for web in `.github/workflows/deploy-wasm.yml`,
-      verification via `cmd/wasm/main_stub.go`/`cmd/wasm/render_test.go` demo switch paths.
-- [x] `scanline_boolean2.cpp` recorded and wired:
-      source `../agg-2.6/agg-src/examples/scanline_boolean2.cpp`,
-      standalone `examples/core/intermediate/scanline_boolean2/main.go`,
-      web `cmd/wasm/demo_scanline_boolean2.go` + `web/index.html`,
-      shared shape assets/code reused via `internal/demo/aggshapes/shapes.go`,
-      verification via `cmd/wasm/main_stub.go`/`cmd/wasm/render_test.go` demo switch paths.
+- [x] Recorded and wired: `gradient_focal.cpp`, `line_thickness.cpp`, `rasterizer_compound.cpp`, `image_resample.cpp`, `line_patterns_clip.cpp`, `line_patterns.cpp`, `scanline_boolean2.cpp`.
+      Sources: `../agg-2.6/agg-src/examples/{gradient_focal.cpp,line_thickness.cpp,rasterizer_compound.cpp,image_resample.cpp,line_patterns_clip.cpp,line_patterns.cpp,scanline_boolean2.cpp}`.
+      Standalone: `examples/core/intermediate/{gradient_focal,line_thickness,rasterizer_compound,image_resample,line_patterns_clip,line_patterns,scanline_boolean2}/main.go`.
+      Web: `cmd/wasm/{demo_gradient_focal.go,demo_line_thickness.go,demo_rasterizer_compound.go,demo_image_resample.go,demo_line_patterns_clip.go,demo_line_patterns.go,demo_scanline_boolean2.go}` + `web/index.html`.
+      Verification: `cmd/wasm/{main_stub.go,render_test.go}` demo switch paths.
+      Extras: `line_patterns.cpp` publishes `examples/shared/art/1.bmp..9.bmp` from `line_patterns.bmp.zip`; `scanline_boolean2.cpp` reuses `internal/demo/aggshapes/shapes.go`.
 
 ### 9.2 High-priority remaining demo ports
 
-- [x] `raster_text.cpp`
-- [x] `image_resample.cpp`
-- [x] `gradient_focal.cpp`
-- [x] `line_patterns.cpp`, `line_patterns_clip.cpp`, `line_thickness.cpp`
-- [x] `line_thickness.cpp` (remaining in this cluster: none)
-- [x] `line_patterns_clip.cpp` (remaining in this cluster: none)
-- [x] `line_patterns.cpp`
-- [x] `rasterizer_compound.cpp`
-- [x] `scanline_boolean2.cpp`
-- [x] `pattern_perspective.cpp`, `pattern_resample.cpp`, `image_perspective.cpp`
-      source `../agg-2.6/agg-src/examples/pattern_perspective.cpp`,
-      `../agg-2.6/agg-src/examples/pattern_resample.cpp`,
-      `../agg-2.6/agg-src/examples/image_perspective.cpp`,
-      standalone `examples/core/intermediate/pattern_perspective/main.go`,
-      `examples/core/intermediate/pattern_resample/main.go`,
-      `examples/core/intermediate/image_perspective/main.go`,
-      web `cmd/wasm/demo_pattern_perspective.go`,
-      `cmd/wasm/demo_pattern_resample.go`,
-      `cmd/wasm/demo_image_perspective.go` + `web/index.html`,
-      shared rendering in `internal/demo/quadwarp/draw.go`,
-      assets from `examples/shared/art/{agg.ppm,spheres.ppm}` embedded via
-      `internal/demo/imageassets/assets.go`,
-      verification via `cmd/wasm/main_stub.go`/`cmd/wasm/render_test.go` demo switch paths.
+- [x] Completed: `raster_text.cpp`, `image_resample.cpp`, `gradient_focal.cpp`, `line_patterns.cpp`, `line_patterns_clip.cpp`, `line_thickness.cpp`, `rasterizer_compound.cpp`, `scanline_boolean2.cpp`.
+- [x] Quad-warp cluster: `pattern_perspective.cpp`, `pattern_resample.cpp`, `image_perspective.cpp`.
+      Sources `../agg-2.6/agg-src/examples/{pattern_perspective.cpp,pattern_resample.cpp,image_perspective.cpp}`; standalone `examples/core/intermediate/{pattern_perspective,pattern_resample,image_perspective}/main.go`; web `cmd/wasm/{demo_pattern_perspective.go,demo_pattern_resample.go,demo_image_perspective.go}` + `web/index.html`; shared rendering `internal/demo/quadwarp/draw.go`; embedded assets `examples/shared/art/{agg.ppm,spheres.ppm}` via `internal/demo/imageassets/assets.go`; verification `cmd/wasm/{main_stub.go,render_test.go}`.
 
 ### 9.3 Medium-priority demo ports
 
-- [x] `interactive_polygon.cpp`
-- [x] `graph_test.cpp`
-- [x] `gpc_test.cpp`
-- [x] `gradients_contour.cpp` — recorded and wired (cmd/wasm/demo_gradients_contour.go + examples/core/intermediate/gradients_contour/main.go)
-- [x] `flash_rasterizer2.cpp` — recorded and wired (cmd/wasm/demo_flash_rasterizer2.go + examples/core/intermediate/flash_rasterizer2/main.go)
-- [x] `image_fltr_graph.cpp` — source `../agg-2.6/agg-src/examples/image_fltr_graph.cpp`,
-      standalone `examples/core/intermediate/image_fltr_graph/main.go`,
-      web `cmd/wasm/demo_image_fltr_graph.go` + `web/index.html`,
-      shared rendering in `internal/demo/imagefltrgraph/draw.go`,
-      URL/HTML controls (no AGG widgets in web) via
-      `web/{event-handlers.js,demo-state.js,url-state.js}`,
-      verification wiring via `cmd/wasm/{main.go,main_stub.go,render_test.go}` switches/lists.
-- [x] `polymorphic_renderer.cpp` — recorded and wired (cmd/wasm/demo_polymorphic_renderer.go + examples/core/intermediate/polymorphic_renderer/main.go)
-- [x] `blend_color.cpp` — shared draw in `internal/demo/blendcolor/draw.go`, standalone `examples/core/intermediate/blend_color/main.go`, web `cmd/wasm/demo_blend_color.go` + `web/index.html` controls, infrastructure: `RendererBase.BlendFromColor`/`BlendFromLUT` + gray8 `GrayImageInterface` compliance
-- [x] `image_filters2.cpp` — shared renderer in `internal/demo/imagefilters2/draw.go`,
-      standalone `examples/core/intermediate/image_filters2/main.go`,
-      web `cmd/wasm/demo_image_filters2.go` + `web/index.html` controls/URL state,
-      verification wiring via `cmd/wasm/{main.go,main_stub.go,render_test.go}` switches/lists.
+- [x] Completed: `interactive_polygon.cpp`, `graph_test.cpp`, `gpc_test.cpp`, `gradients_contour.cpp`, `flash_rasterizer2.cpp`, `polymorphic_renderer.cpp`.
+- [x] `image_fltr_graph.cpp`: source `../agg-2.6/agg-src/examples/image_fltr_graph.cpp`; standalone `examples/core/intermediate/image_fltr_graph/main.go`; web `cmd/wasm/demo_image_fltr_graph.go` + `web/index.html`; shared rendering `internal/demo/imagefltrgraph/draw.go`; URL/HTML controls `web/{event-handlers.js,demo-state.js,url-state.js}`; verification `cmd/wasm/{main.go,main_stub.go,render_test.go}`.
+- [x] `blend_color.cpp`: shared draw `internal/demo/blendcolor/draw.go`; standalone `examples/core/intermediate/blend_color/main.go`; web `cmd/wasm/demo_blend_color.go` + `web/index.html`; infrastructure `RendererBase.BlendFromColor`/`BlendFromLUT` + gray8 `GrayImageInterface` compliance.
+- [x] `image_filters2.cpp`: shared renderer `internal/demo/imagefilters2/draw.go`; standalone `examples/core/intermediate/image_filters2/main.go`; web `cmd/wasm/demo_image_filters2.go` + `web/index.html`; verification `cmd/wasm/{main.go,main_stub.go,render_test.go}`.
 
 ### 9.4 Lower-priority or support-heavy demos
 
 Triage each: fully port, replace with Go-idiomatic equivalent, or defer with rationale:
 
-- [x] `trans_curve1.cpp` — Go-idiomatic equivalent using embedded GSV vector text in `internal/demo/transcurve/draw.go`, standalone `examples/core/intermediate/trans_curve/main.go`, and interactive web demo wiring in `cmd/wasm/demo_trans_curve.go`
-- [x] `trans_curve1_ft.cpp` — standalone FreeType-outline variant in `examples/core/intermediate/trans_curve1_ft/main.go` with runtime fallback when FreeType or a serif italic font is unavailable
-- [x] `trans_curve2_ft.cpp` — standalone FreeType outline port in `examples/core/intermediate/trans_curve2_ft/main.go` using `TransDoublePath` with runtime fallback when FreeType or a serif italic font is unavailable
-- [x] `make_arrows.cpp` — shared arrow shape asset exposed via
-      `internal/demo/aggshapes/shapes.go` (`MakeArrows`) and reused by
-      `scanline_boolean2`; duplicate wasm-local copy removed and shared path
-      coverage added in `internal/demo/aggshapes/shapes_test.go`.
-- [x] `make_gb_poly.cpp` — shared Great Britain polygon asset exposed via
-      `internal/demo/aggshapes/shapes.go` (`MakeGBPoly`) and reused by
-      `scanline_boolean2`, `gradients_contour`, and `alpha_mask3`; regression
-      coverage added in `internal/demo/aggshapes/shapes_test.go`.
-- [x] `mol_view.cpp` — shared renderer in `internal/demo/molview/draw.go`,
-      standalone `examples/core/intermediate/mol_view/main.go`,
-      web `cmd/wasm/demo_mol_view.go` + `web/index.html` controls/mouse wiring,
-      embedded original `1.sdf` dataset and SDF parser.
-- [x] `idea.cpp` — shared renderer in `internal/demo/idea/draw.go`,
-      standalone `examples/core/intermediate/idea/main.go`,
-      web `cmd/wasm/demo_idea.go` + `web/index.html` controls/animation wiring,
-      verification wiring via `cmd/wasm/{main.go,main_stub.go,render_test.go}` switches/lists.
-- [x] `truetype_test.cpp` — classic standalone FreeType showcase in `examples/core/intermediate/truetype_test/main.go` with gray8, outline, and mono text panels plus runtime fallback when FreeType/font files are unavailable
+- [x] `trans_curve1.cpp`, `trans_curve1_ft.cpp`, `trans_curve2_ft.cpp`: Go-idiomatic/vector-text and FreeType-outline variants wired via `internal/demo/transcurve/draw.go` and `examples/core/intermediate/{trans_curve,trans_curve1_ft,trans_curve2_ft}/main.go`, with runtime fallback where FreeType or fonts are unavailable.
+- [x] Shared shape assets: `make_arrows.cpp` and `make_gb_poly.cpp` live in `internal/demo/aggshapes/shapes.go` (`MakeArrows`, `MakeGBPoly`), are reused across demos, and are covered by `internal/demo/aggshapes/shapes_test.go`.
+- [x] `mol_view.cpp`: shared renderer `internal/demo/molview/draw.go`; standalone `examples/core/intermediate/mol_view/main.go`; web `cmd/wasm/demo_mol_view.go` + `web/index.html`; embedded original `1.sdf` dataset and SDF parser.
+- [x] `idea.cpp`: shared renderer `internal/demo/idea/draw.go`; standalone `examples/core/intermediate/idea/main.go`; web `cmd/wasm/demo_idea.go` + `web/index.html`; verification `cmd/wasm/{main.go,main_stub.go,render_test.go}`.
+- [x] `truetype_test.cpp`: standalone FreeType showcase in `examples/core/intermediate/truetype_test/main.go` with gray8, outline, and mono panels plus runtime fallback when FreeType/font files are unavailable.
 
 ### 9.5 Bug fixing
 
-- [x] `line_thickness` (web): investigate framing/centering mismatch against standalone render
-      (`main_stub.go` reference output), then align canvas transform/placement to C++ intent.
-- [x] `line_patterns` (web): fix empty output; verify pattern asset decode/load path and span
-      generation setup in wasm; add a non-empty render check in demo benchmark/smoke path.
-- [x] `line_patterns_clip` (web): fix empty output; verify clip-box/path and pattern source wiring;
-      add non-empty render check.
-- [x] `scanline_boolean2` (web): corrected map orientation, centered the original 655x520
-      reference frame in web canvas, and fixed mouse Y mapping so drag direction matches
-      on-screen movement while preserving upstream `flip_y` parity.
-- [ ] `trans_curve` (web): evaluate source bitmap choice; if better upstream-compatible bitmap is
-      available in shared assets, switch and keep parity with standalone.
-      Note: reference-frame centering parity fix applied (original 600x600 frame centered in web canvas).
-- [ ] `trans_curve2` (web): same as `trans_curve` bitmap/task; ensure visual parity after asset update.
-      Note: reference-frame centering parity fix applied (original 600x600 frame centered in web canvas).
-- [x] `distortions` (web): fixed mostly-empty output by correcting wave-distortion amplitude math,
-      switching to spheres source image for parity, and matching upstream-style default center init.
-- [x] `image1` (web): aligned transform/math to upstream `image1.cpp` reference frame
-      (`initial_w=src_w+20`, `initial_h=src_h+60`) and centered that frame in web canvas;
-      switched source to embedded `spheres.ppm` (fallback to procedural image), and added
-      safe scale sanitization to prevent NaN/invalid input from blanking output.
-- [ ] `image_resample` (web): restore draggable quad handles (mouse interaction wiring); ensure
-      down/move/up handlers map to this demo as for perspective demos.
-- [ ] `image_perspective` (web): add/fix draggable quad handles and mouse interaction wiring.
-- [x] `image_transforms` (web): fixed near-empty output by mapping screen sampling into a
-      centered source-image reference frame (as in upstream window-size assumption), sizing the
-      star from source dimensions, and switching to embedded `spheres.ppm` with finite-scale guards.
+- [x] `line_thickness` (web): aligned framing/centering against standalone render and C++ intent.
+- [x] `line_patterns` (web): fixed empty output; verified pattern asset decode/load and span generation; added a non-empty render check in the demo benchmark/smoke path.
+- [x] `line_patterns_clip` (web): fixed empty output; verified clip-box/path and pattern source wiring; added a non-empty render check.
+- [x] `scanline_boolean2` (web): corrected map orientation, centered the original 655x520 reference frame, and fixed mouse Y mapping while preserving upstream `flip_y` parity.
+- [ ] `trans_curve` (web): evaluate source bitmap choice and switch to a better upstream-compatible shared asset if available; centering parity fix already applied for the original 600x600 frame.
+- [ ] `trans_curve2` (web): same bitmap/parity task as `trans_curve`; centering parity fix already applied for the original 600x600 frame.
+- [x] `distortions` (web): fixed mostly-empty output by correcting wave-distortion amplitude math, switching to spheres source image, and matching upstream-style default center init.
+- [x] `image1` (web): aligned transform/math to the upstream `image1.cpp` reference frame (`initial_w=src_w+20`, `initial_h=src_h+60`), centered that frame, switched to embedded `spheres.ppm` with procedural fallback, and sanitized invalid scale input.
+- [ ] `image_resample` (web): restore draggable quad handles and ensure down/move/up handlers map to this demo as they do for perspective demos.
+- [ ] `image_perspective` (web): add or fix draggable quad handles and mouse interaction wiring.
+- [x] `image_transforms` (web): fixed near-empty output by mapping screen sampling into a centered source-image reference frame, sizing the star from source dimensions, and switching to embedded `spheres.ppm` with finite-scale guards.
 - [ ] `pattern_fill` (web): fix empty output; verify offscreen pattern generation and final blend spans.
-- [x] `pattern_perspective` (web): add/fix draggable quad handles and mouse interaction wiring.
-- [x] `pattern_resample` (web): add/fix draggable quad handles and mouse interaction wiring.
-- [x] `rasterizer_compound` (web): fixed upside-down/odd glyph rendering by applying
-      upstream `flip_y` parity (reference-frame Y mirror) and centering the original 440x330
-      scene in web canvas for closer standalone/C++ visual alignment.
-- [ ] For all above: add per-demo parity notes (standalone vs web), plus a minimal verification
-      path (render smoke and, where practical, non-empty/image-hash threshold checks).
+- [x] `pattern_perspective` (web): added or fixed draggable quad handles and mouse interaction wiring.
+- [x] `pattern_resample` (web): added or fixed draggable quad handles and mouse interaction wiring.
+- [x] `rasterizer_compound` (web): fixed upside-down/odd glyph rendering by applying upstream `flip_y` parity and centering the original 440x330 scene for closer standalone/C++ alignment.
+- [ ] For all above: add per-demo parity notes (standalone vs web) plus a minimal verification path (render smoke and, where practical, non-empty or image-hash threshold checks).
 
 ### 9.6 Exit criteria
 
