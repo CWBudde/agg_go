@@ -2,6 +2,18 @@
 
 import { getURLParams, updateURL } from "./url-state.js";
 
+const trackedDemoCenters = {
+  gpc_test: null,
+  scanline_boolean2: null,
+};
+
+export function setTrackedDemoCenter(demoType, x, y) {
+  if (!(demoType in trackedDemoCenters)) {
+    return;
+  }
+  trackedDemoCenters[demoType] = { x, y };
+}
+
 export const demoURLHandlers = {
   aa: {
     persist() {
@@ -930,26 +942,62 @@ export const demoURLHandlers = {
 
   scanline_boolean2: {
     persist() {
-      // URL-only controls (no visible widget panel).
+      const scene = parseInt(
+        document.getElementById("scanlineBoolean2SceneSelector").value,
+        10,
+      );
+      const fillRule = parseInt(
+        document.getElementById("scanlineBoolean2FillRuleSelector").value,
+        10,
+      );
+      const scanlineType = parseInt(
+        document.getElementById("scanlineBoolean2ScanlineSelector").value,
+        10,
+      );
+      const operation = parseInt(
+        document.getElementById("scanlineBoolean2OpSelector").value,
+        10,
+      );
+      const center = trackedDemoCenters.scanline_boolean2;
+      updateURL({
+        sb2m: scene,
+        sb2f: fillRule,
+        sb2s: scanlineType,
+        sb2o: operation,
+        sb2x: center ? center.x.toFixed(1) : null,
+        sb2y: center ? center.y.toFixed(1) : null,
+      });
     },
     restore(p) {
       if (p.has("sb2m")) {
-        setScanlineBoolean2Mode(parseInt(p.get("sb2m"), 10));
+        const val = parseInt(p.get("sb2m"), 10);
+        setScanlineBoolean2Mode(val);
+        document.getElementById("scanlineBoolean2SceneSelector").value =
+          String(val);
       }
       if (p.has("sb2f")) {
-        setScanlineBoolean2FillRule(parseInt(p.get("sb2f"), 10));
+        const val = parseInt(p.get("sb2f"), 10);
+        setScanlineBoolean2FillRule(val);
+        document.getElementById("scanlineBoolean2FillRuleSelector").value =
+          String(val);
       }
       if (p.has("sb2s")) {
-        setScanlineBoolean2Scanline(parseInt(p.get("sb2s"), 10));
+        const val = parseInt(p.get("sb2s"), 10);
+        setScanlineBoolean2Scanline(val);
+        document.getElementById("scanlineBoolean2ScanlineSelector").value =
+          String(val);
       }
       if (p.has("sb2o")) {
-        setScanlineBoolean2Operation(parseInt(p.get("sb2o"), 10));
+        const val = parseInt(p.get("sb2o"), 10);
+        setScanlineBoolean2Operation(val);
+        document.getElementById("scanlineBoolean2OpSelector").value =
+          String(val);
       }
       if (p.has("sb2x") && p.has("sb2y")) {
-        setScanlineBoolean2Center(
-          parseFloat(p.get("sb2x")),
-          parseFloat(p.get("sb2y")),
-        );
+        const x = parseFloat(p.get("sb2x"));
+        const y = parseFloat(p.get("sb2y"));
+        setScanlineBoolean2Center(x, y);
+        setTrackedDemoCenter("scanline_boolean2", x, y);
       }
     },
   },
@@ -959,6 +1007,12 @@ export const demoURLHandlers = {
       updateURL({
         gsc: parseInt(document.getElementById("gpcSceneSelector").value, 10),
         gop: parseInt(document.getElementById("gpcOpSelector").value, 10),
+        gcx: trackedDemoCenters.gpc_test
+          ? trackedDemoCenters.gpc_test.x.toFixed(1)
+          : null,
+        gcy: trackedDemoCenters.gpc_test
+          ? trackedDemoCenters.gpc_test.y.toFixed(1)
+          : null,
       });
     },
     restore(p) {
@@ -973,7 +1027,10 @@ export const demoURLHandlers = {
         document.getElementById("gpcOpSelector").value = String(val);
       }
       if (p.has("gcx") && p.has("gcy")) {
-        setGPCTestCenter(parseFloat(p.get("gcx")), parseFloat(p.get("gcy")));
+        const x = parseFloat(p.get("gcx"));
+        const y = parseFloat(p.get("gcy"));
+        setGPCTestCenter(x, y);
+        setTrackedDemoCenter("gpc_test", x, y);
       }
     },
   },

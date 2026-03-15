@@ -1,5 +1,6 @@
 // --- Event handlers for all demo controls ---
 
+import { setTrackedDemoCenter } from "./demo-state.js";
 import { syncControlVisibility } from "./ui-sync.js";
 import { clearDemoParams, updateURL } from "./url-state.js";
 
@@ -1118,6 +1119,52 @@ export function setupEventHandlers(
     renderSelectedDemo();
   });
 
+  // scanline_boolean2 controls
+  document
+    .getElementById("scanlineBoolean2SceneSelector")
+    .addEventListener("change", () => {
+      const val = parseInt(
+        document.getElementById("scanlineBoolean2SceneSelector").value,
+        10,
+      );
+      setScanlineBoolean2Mode(val);
+      persistDemoParams("scanline_boolean2");
+      renderSelectedDemo();
+    });
+  document
+    .getElementById("scanlineBoolean2FillRuleSelector")
+    .addEventListener("change", () => {
+      const val = parseInt(
+        document.getElementById("scanlineBoolean2FillRuleSelector").value,
+        10,
+      );
+      setScanlineBoolean2FillRule(val);
+      persistDemoParams("scanline_boolean2");
+      renderSelectedDemo();
+    });
+  document
+    .getElementById("scanlineBoolean2ScanlineSelector")
+    .addEventListener("change", () => {
+      const val = parseInt(
+        document.getElementById("scanlineBoolean2ScanlineSelector").value,
+        10,
+      );
+      setScanlineBoolean2Scanline(val);
+      persistDemoParams("scanline_boolean2");
+      renderSelectedDemo();
+    });
+  document
+    .getElementById("scanlineBoolean2OpSelector")
+    .addEventListener("change", () => {
+      const val = parseInt(
+        document.getElementById("scanlineBoolean2OpSelector").value,
+        10,
+      );
+      setScanlineBoolean2Operation(val);
+      persistDemoParams("scanline_boolean2");
+      renderSelectedDemo();
+    });
+
   // Mouse events for draggable-point demos
   let isDragging = false;
 
@@ -1128,6 +1175,9 @@ export function setupEventHandlers(
     const x = (e.clientX - rect.left) * (canvas.width / rect.width);
     const y = (e.clientY - rect.top) * (canvas.height / rect.height);
     const right = e.button === 2;
+    if (selector.value === "gpc_test" || selector.value === "scanline_boolean2") {
+      setTrackedDemoCenter(selector.value, x, y);
+    }
     if (onMouseDown(selector.value, x, y, right)) {
       isDragging = true;
       renderSelectedDemo();
@@ -1140,6 +1190,9 @@ export function setupEventHandlers(
     const x = (e.clientX - rect.left) * (canvas.width / rect.width);
     const y = (e.clientY - rect.top) * (canvas.height / rect.height);
     const right = (e.buttons & 2) !== 0;
+    if (selector.value === "gpc_test" || selector.value === "scanline_boolean2") {
+      setTrackedDemoCenter(selector.value, x, y);
+    }
     if (onMouseMove(selector.value, x, y, right)) {
       renderSelectedDemo();
     }

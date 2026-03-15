@@ -81,6 +81,8 @@ export function syncControlVisibility(demoType) {
     demoType === "rasterizers" ? "flex" : "none";
   document.getElementById("bsplineControls").style.display =
     demoType === "bspline" ? "flex" : "none";
+  document.getElementById("scanlineBoolean2Controls").style.display =
+    demoType === "scanline_boolean2" ? "flex" : "none";
   document.getElementById("gpcTestControls").style.display =
     demoType === "gpc_test" ? "flex" : "none";
   document.getElementById("gradientsContourControls").style.display =
@@ -115,7 +117,7 @@ export const demoDescriptions = {
   line_patterns_clip:
     "Port of AGG's line_patterns_clip demo. Shows both the unclipped and clipped patterned polyline passes with Scale X and Start X controls. Drag a hidden vertex to reshape the polyline, or drag near a segment to move the whole chain. URL parameters: lpcsx, lpcst, lpcp.",
   scanline_boolean2:
-    "Port of AGG's scanline_boolean2 demo core using polygon clipping-backed boolean operations. URL parameters: sb2m (mode 0..4), sb2f (fill rule 0/1), sb2s (scanline type 0..2), sb2o (operation 0..6), sb2x/sb2y (center).",
+    "Port of AGG's scanline_boolean2 demo core using polygon clipping-backed boolean operations. Includes scene, fill-rule, scanline-type, and operation selectors; drag to move the scene center. URL parameters: sb2m (mode 0..4), sb2f (fill rule 0/1), sb2s (scanline type 0..2), sb2o (operation 0..6), sb2x/sb2y (center).",
   gpc_test:
     "Port of AGG's gpc_test demo core using general polygon clipping operations. Drag with left mouse to move the scene center.",
   gradients_contour:
