@@ -15,6 +15,8 @@ const (
 	linePatternControlHitDist  = 20.0
 	linePatternCurveHitDist    = 14.0
 	linePatternCurveSampleStep = 48
+	linePatternBaseWidth       = 500
+	linePatternBaseHeight      = 450
 )
 
 const (
@@ -74,6 +76,9 @@ func linePatternPadding(w, h int) float64 {
 func stretchLinePatternCurves(w, h int) []linepatterns.Curve {
 	curves := linepatterns.DefaultCurves()
 	if len(curves) == 0 || w <= 0 || h <= 0 {
+		return curves
+	}
+	if w == linePatternBaseWidth && h == linePatternBaseHeight {
 		return curves
 	}
 

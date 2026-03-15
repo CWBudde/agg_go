@@ -48,9 +48,7 @@ func (s *imagePatternSource) Pixel(x, y int) color.RGBA {
 	g := uint8((p >> 8) & 0xFF)
 	b := uint8(p & 0xFF)
 	a := BrightnessToAlpha(int(r) + int(g) + int(b))
-	c := color.NewRGBAFromRGBA8(r, g, b, a)
-	c.Premultiply()
-	return c
+	return color.NewRGBAFromRGBA8(r, g, b, a)
 }
 
 type lineImageBaseAdapter struct {
@@ -68,7 +66,9 @@ func rgbaToRGBA8(c color.RGBA) color.RGBA8[color.Linear] {
 		}
 		return uint8(v*255 + 0.5)
 	}
-	return color.RGBA8[color.Linear]{R: clamp(c.R), G: clamp(c.G), B: clamp(c.B), A: clamp(c.A)}
+	out := color.RGBA8[color.Linear]{R: clamp(c.R), G: clamp(c.G), B: clamp(c.B), A: clamp(c.A)}
+	out.Premultiply()
+	return out
 }
 
 func (a *lineImageBaseAdapter) spanBuffer(length int) []color.RGBA8[color.Linear] {
@@ -100,31 +100,17 @@ type lineOutlineImageAdapter struct {
 
 func (a *lineOutlineImageAdapter) AccurateJoinOnly() bool            { return a.ren.AccurateJoinOnly() }
 func (a *lineOutlineImageAdapter) Color(c color.RGBA8[color.Linear]) {}
-
-func lineNormals(lp primitives.LineParameters) (sx, sy, ex, ey int) {
-	sx = lp.X1 + (lp.Y2 - lp.Y1)
-	sy = lp.Y1 - (lp.X2 - lp.X1)
-	ex = lp.X2 + (lp.Y2 - lp.Y1)
-	ey = lp.Y2 - (lp.X2 - lp.X1)
-	return
+func (a *lineOutlineImageAdapter) Pie(x, y, x1, y1, x2, y2 int)      { a.ren.Pie(x, y, x1, y1, x2, y2) }
+func (a *lineOutlineImageAdapter) Semidot(cmp func(int) bool, x, y, x1, y1 int) {
+	a.ren.Semidot(cmp, x, y, x1, y1)
 }
-
-func (a *lineOutlineImageAdapter) Line0(lp primitives.LineParameters) {
-	sx, sy, ex, ey := lineNormals(lp)
-	a.ren.Line3(&lp, sx, sy, ex, ey)
-}
-
+func (a *lineOutlineImageAdapter) Line0(lp primitives.LineParameters) { a.ren.Line0(&lp) }
 func (a *lineOutlineImageAdapter) Line1(lp primitives.LineParameters, sx, sy int) {
-	_, _, ex, ey := lineNormals(lp)
-	a.ren.Line3(&lp, sx, sy, ex, ey)
+	a.ren.Line1(&lp, sx, sy)
 }
-
 func (a *lineOutlineImageAdapter) Line2(lp primitives.LineParameters, ex, ey int) {
-	sx, sy, _, _ := lineNormals(lp)
-	a.ren.Line3(&lp, sx, sy, ex, ey)
+	a.ren.Line2(&lp, ex, ey)
 }
-func (a *lineOutlineImageAdapter) Pie(x, y, x1, y1, x2, y2 int)                 {}
-func (a *lineOutlineImageAdapter) Semidot(cmp func(int) bool, x, y, x1, y1 int) {}
 func (a *lineOutlineImageAdapter) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) {
 	a.ren.Line3(&lp, sx, sy, ex, ey)
 }

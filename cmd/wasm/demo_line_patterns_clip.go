@@ -100,7 +100,6 @@ func (s *lineChainPatternSource) Pixel(x, y int) color.RGBA {
 		b,
 		linepatterns.BrightnessToAlpha(int(r)+int(g)+int(b)),
 	)
-	c.Premultiply()
 	return c
 }
 
@@ -122,7 +121,9 @@ func rgbaToRGBA8(c color.RGBA) color.RGBA8[color.Linear] {
 		}
 		return uint8(v*255 + 0.5)
 	}
-	return color.RGBA8[color.Linear]{R: clamp(c.R), G: clamp(c.G), B: clamp(c.B), A: clamp(c.A)}
+	out := color.RGBA8[color.Linear]{R: clamp(c.R), G: clamp(c.G), B: clamp(c.B), A: clamp(c.A)}
+	out.Premultiply()
+	return out
 }
 
 func (a *lineClipImageBaseAdapter) BlendColorHSpan(x, y, length int, colors []color.RGBA, covers []basics.CoverType) {
@@ -156,31 +157,17 @@ type lineClipOutlineImageAdapter struct {
 
 func (a *lineClipOutlineImageAdapter) AccurateJoinOnly() bool            { return a.ren.AccurateJoinOnly() }
 func (a *lineClipOutlineImageAdapter) Color(c color.RGBA8[color.Linear]) {}
-
-func lineNormals(lp primitives.LineParameters) (sx, sy, ex, ey int) {
-	sx = lp.X1 + (lp.Y2 - lp.Y1)
-	sy = lp.Y1 - (lp.X2 - lp.X1)
-	ex = lp.X2 + (lp.Y2 - lp.Y1)
-	ey = lp.Y2 - (lp.X2 - lp.X1)
-	return
+func (a *lineClipOutlineImageAdapter) Pie(x, y, x1, y1, x2, y2 int)      { a.ren.Pie(x, y, x1, y1, x2, y2) }
+func (a *lineClipOutlineImageAdapter) Semidot(cmp func(int) bool, x, y, x1, y1 int) {
+	a.ren.Semidot(cmp, x, y, x1, y1)
 }
-
-func (a *lineClipOutlineImageAdapter) Line0(lp primitives.LineParameters) {
-	sx, sy, ex, ey := lineNormals(lp)
-	a.ren.Line3(&lp, sx, sy, ex, ey)
-}
-
+func (a *lineClipOutlineImageAdapter) Line0(lp primitives.LineParameters) { a.ren.Line0(&lp) }
 func (a *lineClipOutlineImageAdapter) Line1(lp primitives.LineParameters, sx, sy int) {
-	_, _, ex, ey := lineNormals(lp)
-	a.ren.Line3(&lp, sx, sy, ex, ey)
+	a.ren.Line1(&lp, sx, sy)
 }
-
 func (a *lineClipOutlineImageAdapter) Line2(lp primitives.LineParameters, ex, ey int) {
-	sx, sy, _, _ := lineNormals(lp)
-	a.ren.Line3(&lp, sx, sy, ex, ey)
+	a.ren.Line2(&lp, ex, ey)
 }
-func (a *lineClipOutlineImageAdapter) Pie(x, y, x1, y1, x2, y2 int)                 {}
-func (a *lineClipOutlineImageAdapter) Semidot(cmp func(int) bool, x, y, x1, y1 int) {}
 func (a *lineClipOutlineImageAdapter) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) {
 	a.ren.Line3(&lp, sx, sy, ex, ey)
 }
@@ -218,6 +205,12 @@ func linePatternClipPadding(w, h int) float64 {
 }
 
 func stretchLinePatternClipPoints(w, h int) [][2]float64 {
+	if w == int(linePatternClipBaseWidth) && h == int(linePatternClipBaseHeight) {
+		points := make([][2]float64, len(linePatternClipDefaultPoints))
+		copy(points, linePatternClipDefaultPoints)
+		return points
+	}
+
 	pad := linePatternClipPadding(w, h)
 	availW := math.Max(1, float64(w)-2*pad)
 	availH := math.Max(1, float64(h)-2*pad)
@@ -420,8 +413,8 @@ func buildLinePatternsClipPath() *path.PathStorageStl {
 func renderLinePatternsClipGuides() {
 	a := ctx.GetAgg2D()
 	a.ResetTransformations()
-	a.LineColor(agg.NewColor(0, 77, 128, 76))
-	a.LineWidth(1.0)
+	a.LineColor(agg.NewColor(0, 77, 128, 92))
+	a.LineWidth(1.35)
 	a.NoFill()
 	a.ResetPath()
 	a.MoveTo(linePatternClipPoints[0][0], linePatternClipPoints[0][1])
@@ -431,9 +424,9 @@ func renderLinePatternsClipGuides() {
 	a.DrawPath(agg.StrokeOnly)
 
 	a.NoLine()
-	a.FillColor(agg.NewColor(0, 77, 128, 102))
+	a.FillColor(agg.NewColor(0, 77, 128, 122))
 	for _, pt := range linePatternClipPoints {
-		a.FillCircle(pt[0], pt[1], 5.0)
+		a.FillCircle(pt[0], pt[1], 6.0)
 	}
 }
 

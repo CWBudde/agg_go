@@ -224,22 +224,17 @@ func (lip *LineImagePattern) Create(src Source) {
 			continue
 		}
 
-		// Copy edge pixels for side dilation
 		for x := 0; x < lip.dilation; x++ {
-			// Left side
-			if lip.dilation < len(row) {
-				leftIdx := lip.dilation - x - 1
-				srcIdx := lip.dilation
-				if leftIdx >= 0 && leftIdx < len(row) && srcIdx < len(row) {
-					row[leftIdx] = row[srcIdx]
-				}
-			}
-
-			// Right side
+			leftIdx := lip.dilation - x - 1
+			leftSrcIdx := lip.dilation + x
 			rightIdx := lip.dilation + lip.width + x
-			srcIdx := lip.dilation + lip.width - 1
-			if rightIdx < len(row) && srcIdx >= 0 && srcIdx < len(row) {
-				row[rightIdx] = row[srcIdx]
+			rightSrcIdx := lip.dilation + lip.width - x - 1
+
+			if leftIdx >= 0 && leftIdx < len(row) && leftSrcIdx >= 0 && leftSrcIdx < len(row) {
+				row[leftIdx] = row[leftSrcIdx]
+			}
+			if rightIdx < len(row) && rightSrcIdx >= 0 && rightSrcIdx < len(row) {
+				row[rightIdx] = row[rightSrcIdx]
 			}
 		}
 	}
