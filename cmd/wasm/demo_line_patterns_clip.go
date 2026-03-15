@@ -8,6 +8,7 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/demo/linepatterns"
 	"github.com/MeKo-Christian/agg_go/internal/order"
 	"github.com/MeKo-Christian/agg_go/internal/path"
 	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
@@ -78,35 +79,32 @@ func setLinePatternClipStartX(v float64) {
 	linePatternClipStartX = v
 }
 
-var linePatternChain = []uint32{
-	16, 7,
-	0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xb4c29999, 0xff9a5757, 0xff9a5757, 0xff9a5757, 0xff9a5757, 0xff9a5757, 0xff9a5757, 0xb4c29999, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff,
-	0x00ffffff, 0x00ffffff, 0x0cfbf9f9, 0xff9a5757, 0xff660000, 0xff660000, 0xff660000, 0xff660000, 0xff660000, 0xff660000, 0xff660000, 0xff660000, 0xb4c29999, 0x00ffffff, 0x00ffffff, 0x00ffffff,
-	0x00ffffff, 0x5ae0cccc, 0xffa46767, 0xff660000, 0xff975252, 0x7ed4b8b8, 0x5ae0cccc, 0x5ae0cccc, 0x5ae0cccc, 0x5ae0cccc, 0xa8c6a0a0, 0xff7f2929, 0xff670202, 0x9ecaa6a6, 0x5ae0cccc, 0x00ffffff,
-	0xff660000, 0xff660000, 0xff660000, 0xff660000, 0xff660000, 0xff660000, 0xa4c7a2a2, 0x3affff00, 0x3affff00, 0xff975151, 0xff660000, 0xff660000, 0xff660000, 0xff660000, 0xff660000, 0xff660000,
-	0x00ffffff, 0x5ae0cccc, 0xffa46767, 0xff660000, 0xff954f4f, 0x7ed4b8b8, 0x5ae0cccc, 0x5ae0cccc, 0x5ae0cccc, 0x5ae0cccc, 0xa8c6a0a0, 0xff7f2929, 0xff670202, 0x9ecaa6a6, 0x5ae0cccc, 0x00ffffff,
-	0x00ffffff, 0x00ffffff, 0x0cfbf9f9, 0xff9a5757, 0xff660000, 0xff660000, 0xff660000, 0xff660000, 0xff660000, 0xff660000, 0xff660000, 0xff660000, 0xb4c29999, 0x00ffffff, 0x00ffffff, 0x00ffffff,
-	0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xb4c29999, 0xff9a5757, 0xff9a5757, 0xff9a5757, 0xff9a5757, 0xff9a5757, 0xff9a5757, 0xb4c29999, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff,
-}
-
 type lineChainPatternSource struct {
-	data []uint32
+	img linepatterns.PatternImage
 }
 
-func (s *lineChainPatternSource) Width() float64  { return float64(s.data[0]) }
-func (s *lineChainPatternSource) Height() float64 { return float64(s.data[1]) }
+func (s *lineChainPatternSource) Width() float64  { return float64(s.img.Width) }
+func (s *lineChainPatternSource) Height() float64 { return float64(s.img.Height) }
 func (s *lineChainPatternSource) Pixel(x, y int) color.RGBA {
-	w := int(s.data[0])
-	idx := y*w + x + 2
-	if idx < 2 || idx >= len(s.data) {
+	if x < 0 || y < 0 || x >= s.img.Width || y >= s.img.Height {
 		return color.NewRGBA(0, 0, 0, 0)
 	}
-	p := s.data[idx]
+	p := s.img.Pixels[y*s.img.Width+x]
+	r := uint8((p >> 16) & 0xFF)
+	g := uint8((p >> 8) & 0xFF)
+	b := uint8(p & 0xFF)
+	brightness := int(r) + int(g) + int(b)
+	alpha := 255
+	if brightness >= 750 {
+		alpha = 0
+	} else if brightness > 540 {
+		alpha = int(math.Round(float64(765-brightness) * 255.0 / float64(765-540)))
+	}
 	c := color.NewRGBAFromRGBA8(
-		uint8((p>>16)&0xFF),
-		uint8((p>>8)&0xFF),
-		uint8(p&0xFF),
-		uint8((p>>24)&0xFF),
+		r,
+		g,
+		b,
+		uint8(alpha),
 	)
 	c.Premultiply()
 	return c
@@ -435,11 +433,10 @@ func drawLinePatternsClipDemo() {
 	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]](pf)
 	renBase.Clear(color.RGBA8[color.Linear]{R: 128, G: 191, B: 217, A: 255})
 
-	patternSource := &lineChainPatternSource{data: linePatternChain}
+	patternSource := &lineChainPatternSource{img: linepatterns.Images[0]}
 	filter := outline.NewPatternFilterRGBAAdapter()
-	scaledSrc := outline.NewLineImageScale(patternSource, 3.0)
-	pattern := outline.NewLineImagePatternPow2(filter)
-	pattern.Create(scaledSrc)
+	pattern := outline.NewLineImagePattern(filter)
+	pattern.Create(patternSource)
 
 	renImg := outline.NewRendererOutlineImage(&lineClipImageBaseAdapter{renBase: renBase}, pattern)
 	renImg.SetScaleX(linePatternClipScaleX)
@@ -484,6 +481,13 @@ func drawLinePatternsClipDemo() {
 	)
 
 	renBase.ClipBox(clipInset, clipInset, width-clipInset, height-clipInset)
+	renBase.CopyBar(
+		0,
+		0,
+		width-1,
+		height-1,
+		color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255},
+	)
 	ps = buildLinePatternsClipPath()
 	rasLine.AddPath(&pathSourceAdapter{ps: ps}, 0)
 	rasImg.AddPath(&pathSourceAdapter{ps: ps}, 0)

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -84,6 +85,17 @@ func logStatus(msg string) {
 }
 
 func main() {
+	if w := os.Getenv("AGG_WIDTH"); w != "" {
+		if parsed, err := strconv.Atoi(w); err == nil && parsed > 0 {
+			width = parsed
+		}
+	}
+	if h := os.Getenv("AGG_HEIGHT"); h != "" {
+		if parsed, err := strconv.Atoi(h); err == nil && parsed > 0 {
+			height = parsed
+		}
+	}
+
 	demos := os.Args[1:]
 	if len(demos) == 0 {
 		demos = []string{
