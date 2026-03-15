@@ -1,6 +1,10 @@
 package main
 
 import (
+	"math"
+	"strconv"
+	"strings"
+
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
@@ -15,9 +19,43 @@ import (
 )
 
 // Port of AGG C++ line_patterns_clip.cpp (web variant).
+const (
+	linePatternClipPadMin     = 36.0
+	linePatternClipPadMax     = 84.0
+	linePatternClipPointHit   = 20.0
+	linePatternClipSegmentHit = 14.0
+	linePatternClipBaseWidth  = 500.0
+	linePatternClipBaseHeight = 500.0
+)
+
+const (
+	linePatternClipDragNone = iota
+	linePatternClipDragPoint
+	linePatternClipDragChain
+)
+
 var (
 	linePatternClipScaleX = 1.0
 	linePatternClipStartX = 0.0
+
+	linePatternClipDefaultPoints = [][2]float64{
+		{20, 20},
+		{480, 480},
+		{440, 20},
+		{40, 460},
+		{100, 300},
+	}
+
+	linePatternClipPoints            [][2]float64
+	linePatternClipPointsInitialized bool
+	linePatternClipPointsCustomized  bool
+	linePatternClipCanvasW           int
+	linePatternClipCanvasH           int
+
+	linePatternClipDragMode      = linePatternClipDragNone
+	linePatternClipSelectedPoint = -1
+	linePatternClipDragLastX     float64
+	linePatternClipDragLastY     float64
 )
 
 func setLinePatternClipScaleX(v float64) {
@@ -74,7 +112,7 @@ func (s *lineChainPatternSource) Pixel(x, y int) color.RGBA {
 	return c
 }
 
-type lineImageBaseAdapter struct {
+type lineClipImageBaseAdapter struct {
 	renBase *renderer.RendererBase[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]]
 }
 
@@ -91,7 +129,7 @@ func rgbaToRGBA8(c color.RGBA) color.RGBA8[color.Linear] {
 	return color.RGBA8[color.Linear]{R: clamp(c.R), G: clamp(c.G), B: clamp(c.B), A: clamp(c.A)}
 }
 
-func (a *lineImageBaseAdapter) BlendColorHSpan(x, y, length int, colors []color.RGBA, covers []basics.CoverType) {
+func (a *lineClipImageBaseAdapter) BlendColorHSpan(x, y, length int, colors []color.RGBA, covers []basics.CoverType) {
 	buf := make([]color.RGBA8[color.Linear], len(colors))
 	for i := range colors {
 		buf[i] = rgbaToRGBA8(colors[i])
@@ -99,7 +137,7 @@ func (a *lineImageBaseAdapter) BlendColorHSpan(x, y, length int, colors []color.
 	a.renBase.BlendColorHspan(x, y, length, buf, nil, basics.CoverFull)
 }
 
-func (a *lineImageBaseAdapter) BlendColorVSpan(x, y, length int, colors []color.RGBA, covers []basics.CoverType) {
+func (a *lineClipImageBaseAdapter) BlendColorVSpan(x, y, length int, colors []color.RGBA, covers []basics.CoverType) {
 	buf := make([]color.RGBA8[color.Linear], len(colors))
 	for i := range colors {
 		buf[i] = rgbaToRGBA8(colors[i])
@@ -107,12 +145,12 @@ func (a *lineImageBaseAdapter) BlendColorVSpan(x, y, length int, colors []color.
 	a.renBase.BlendColorVspan(x, y, length, buf, nil, basics.CoverFull)
 }
 
-type lineOutlineImageAdapter struct {
+type lineClipOutlineImageAdapter struct {
 	ren *outline.RendererOutlineImage
 }
 
-func (a *lineOutlineImageAdapter) AccurateJoinOnly() bool            { return a.ren.AccurateJoinOnly() }
-func (a *lineOutlineImageAdapter) Color(c color.RGBA8[color.Linear]) {}
+func (a *lineClipOutlineImageAdapter) AccurateJoinOnly() bool            { return a.ren.AccurateJoinOnly() }
+func (a *lineClipOutlineImageAdapter) Color(c color.RGBA8[color.Linear]) {}
 
 func lineNormals(lp primitives.LineParameters) (sx, sy, ex, ey int) {
 	sx = lp.X1 + (lp.Y2 - lp.Y1)
@@ -122,27 +160,231 @@ func lineNormals(lp primitives.LineParameters) (sx, sy, ex, ey int) {
 	return
 }
 
-func (a *lineOutlineImageAdapter) Line0(lp primitives.LineParameters) {
+func (a *lineClipOutlineImageAdapter) Line0(lp primitives.LineParameters) {
 	sx, sy, ex, ey := lineNormals(lp)
 	a.ren.Line3(&lp, sx, sy, ex, ey)
 }
 
-func (a *lineOutlineImageAdapter) Line1(lp primitives.LineParameters, sx, sy int) {
+func (a *lineClipOutlineImageAdapter) Line1(lp primitives.LineParameters, sx, sy int) {
 	_, _, ex, ey := lineNormals(lp)
 	a.ren.Line3(&lp, sx, sy, ex, ey)
 }
 
-func (a *lineOutlineImageAdapter) Line2(lp primitives.LineParameters, ex, ey int) {
+func (a *lineClipOutlineImageAdapter) Line2(lp primitives.LineParameters, ex, ey int) {
 	sx, sy, _, _ := lineNormals(lp)
 	a.ren.Line3(&lp, sx, sy, ex, ey)
 }
-func (a *lineOutlineImageAdapter) Pie(x, y, x1, y1, x2, y2 int)                 {}
-func (a *lineOutlineImageAdapter) Semidot(cmp func(int) bool, x, y, x1, y1 int) {}
-func (a *lineOutlineImageAdapter) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) {
+func (a *lineClipOutlineImageAdapter) Pie(x, y, x1, y1, x2, y2 int)                 {}
+func (a *lineClipOutlineImageAdapter) Semidot(cmp func(int) bool, x, y, x1, y1 int) {}
+func (a *lineClipOutlineImageAdapter) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) {
 	a.ren.Line3(&lp, sx, sy, ex, ey)
 }
 
+func linePatternClipPadding(w, h int) float64 {
+	pad := math.Min(float64(w), float64(h)) * 0.1
+	if pad < linePatternClipPadMin {
+		return linePatternClipPadMin
+	}
+	if pad > linePatternClipPadMax {
+		return linePatternClipPadMax
+	}
+	return pad
+}
+
+func stretchLinePatternClipPoints(w, h int) [][2]float64 {
+	pad := linePatternClipPadding(w, h)
+	availW := math.Max(1, float64(w)-2*pad)
+	availH := math.Max(1, float64(h)-2*pad)
+	scale := math.Min(availW/linePatternClipBaseWidth, availH/linePatternClipBaseHeight)
+	offX := (float64(w) - linePatternClipBaseWidth*scale) * 0.5
+	offY := (float64(h) - linePatternClipBaseHeight*scale) * 0.5
+
+	points := make([][2]float64, len(linePatternClipDefaultPoints))
+	for i, pt := range linePatternClipDefaultPoints {
+		points[i] = [2]float64{
+			offX + pt[0]*scale,
+			offY + pt[1]*scale,
+		}
+	}
+	return points
+}
+
+func ensureLinePatternClipPoints() {
+	w, h := ctx.Width(), ctx.Height()
+	if !linePatternClipPointsInitialized ||
+		(!linePatternClipPointsCustomized && (linePatternClipCanvasW != w || linePatternClipCanvasH != h)) {
+		linePatternClipPoints = stretchLinePatternClipPoints(w, h)
+		linePatternClipPointsInitialized = true
+		linePatternClipCanvasW = w
+		linePatternClipCanvasH = h
+	}
+}
+
+func linePatternClipClamp(v, lo, hi float64) float64 {
+	if v < lo {
+		return lo
+	}
+	if v > hi {
+		return hi
+	}
+	return v
+}
+
+func clampLinePatternClipPoint(x, y float64) (float64, float64) {
+	if ctx == nil {
+		return x, y
+	}
+	pad := math.Max(8, linePatternClipPadding(ctx.Width(), ctx.Height())*0.2)
+	maxX := math.Max(pad, float64(ctx.Width())-pad)
+	maxY := math.Max(pad, float64(ctx.Height())-pad)
+	return linePatternClipClamp(x, pad, maxX), linePatternClipClamp(y, pad, maxY)
+}
+
+func linePatternClipDistanceSquared(x1, y1, x2, y2 float64) float64 {
+	dx := x2 - x1
+	dy := y2 - y1
+	return dx*dx + dy*dy
+}
+
+func linePatternClipSegmentDistanceSquared(px, py, ax, ay, bx, by float64) float64 {
+	abx := bx - ax
+	aby := by - ay
+	den := abx*abx + aby*aby
+	if den <= 0 {
+		return linePatternClipDistanceSquared(px, py, ax, ay)
+	}
+	t := ((px-ax)*abx + (py-ay)*aby) / den
+	t = linePatternClipClamp(t, 0, 1)
+	cx := ax + abx*t
+	cy := ay + aby*t
+	return linePatternClipDistanceSquared(px, py, cx, cy)
+}
+
+func linePatternClipNearestSegment(x, y float64) (int, float64) {
+	bestIdx := -1
+	bestDist2 := math.MaxFloat64
+	for i := 0; i+1 < len(linePatternClipPoints); i++ {
+		a := linePatternClipPoints[i]
+		b := linePatternClipPoints[i+1]
+		d2 := linePatternClipSegmentDistanceSquared(x, y, a[0], a[1], b[0], b[1])
+		if d2 < bestDist2 {
+			bestDist2 = d2
+			bestIdx = i
+		}
+	}
+	return bestIdx, bestDist2
+}
+
+func encodeLinePatternClipPoints() string {
+	ensureLinePatternClipPoints()
+	parts := make([]string, len(linePatternClipPoints))
+	for i, pt := range linePatternClipPoints {
+		parts[i] = strings.Join([]string{
+			strconv.FormatFloat(pt[0], 'f', 1, 64),
+			strconv.FormatFloat(pt[1], 'f', 1, 64),
+		}, ",")
+	}
+	return strings.Join(parts, ";")
+}
+
+func setLinePatternClipPointsEncoded(encoded string) bool {
+	chunks := strings.Split(encoded, ";")
+	if len(chunks) != len(linePatternClipDefaultPoints) {
+		return false
+	}
+
+	points := make([][2]float64, len(linePatternClipDefaultPoints))
+	for i, chunk := range chunks {
+		fields := strings.Split(chunk, ",")
+		if len(fields) != 2 {
+			return false
+		}
+		x, err := strconv.ParseFloat(fields[0], 64)
+		if err != nil {
+			return false
+		}
+		y, err := strconv.ParseFloat(fields[1], 64)
+		if err != nil {
+			return false
+		}
+		points[i] = [2]float64{x, y}
+	}
+
+	linePatternClipPoints = points
+	linePatternClipPointsInitialized = true
+	linePatternClipPointsCustomized = true
+	if ctx != nil {
+		linePatternClipCanvasW = ctx.Width()
+		linePatternClipCanvasH = ctx.Height()
+	}
+	return true
+}
+
+func handleLinePatternsClipMouseDown(x, y float64) bool {
+	ensureLinePatternClipPoints()
+
+	bestIdx := -1
+	bestDist2 := linePatternClipPointHit * linePatternClipPointHit
+	for i, pt := range linePatternClipPoints {
+		d2 := linePatternClipDistanceSquared(x, y, pt[0], pt[1])
+		if d2 <= bestDist2 {
+			bestDist2 = d2
+			bestIdx = i
+		}
+	}
+	if bestIdx >= 0 {
+		linePatternClipDragMode = linePatternClipDragPoint
+		linePatternClipSelectedPoint = bestIdx
+		linePatternClipPointsCustomized = true
+		return true
+	}
+
+	if _, dist2 := linePatternClipNearestSegment(x, y); dist2 <= linePatternClipSegmentHit*linePatternClipSegmentHit {
+		linePatternClipDragMode = linePatternClipDragChain
+		linePatternClipSelectedPoint = -1
+		linePatternClipDragLastX = x
+		linePatternClipDragLastY = y
+		linePatternClipPointsCustomized = true
+		return true
+	}
+
+	return false
+}
+
+func handleLinePatternsClipMouseMove(x, y float64) bool {
+	switch linePatternClipDragMode {
+	case linePatternClipDragPoint:
+		if linePatternClipSelectedPoint < 0 {
+			return false
+		}
+		linePatternClipPoints[linePatternClipSelectedPoint][0], linePatternClipPoints[linePatternClipSelectedPoint][1] =
+			clampLinePatternClipPoint(x, y)
+		return true
+	case linePatternClipDragChain:
+		dx := x - linePatternClipDragLastX
+		dy := y - linePatternClipDragLastY
+		for i := range linePatternClipPoints {
+			linePatternClipPoints[i][0] += dx
+			linePatternClipPoints[i][1] += dy
+			linePatternClipPoints[i][0], linePatternClipPoints[i][1] =
+				clampLinePatternClipPoint(linePatternClipPoints[i][0], linePatternClipPoints[i][1])
+		}
+		linePatternClipDragLastX = x
+		linePatternClipDragLastY = y
+		return true
+	default:
+		return false
+	}
+}
+
+func handleLinePatternsClipMouseUp() {
+	linePatternClipDragMode = linePatternClipDragNone
+	linePatternClipSelectedPoint = -1
+}
+
 func drawLinePatternsClipDemo() {
+	ensureLinePatternClipPoints()
+
 	img := ctx.GetImage()
 	rbuf := buffer.NewRenderingBufferU8()
 	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Width()*4)
@@ -156,21 +398,26 @@ func drawLinePatternsClipDemo() {
 	pattern := outline.NewLineImagePatternPow2(filter)
 	pattern.Create(scaledSrc)
 
-	renImg := outline.NewRendererOutlineImage(&lineImageBaseAdapter{renBase: renBase}, pattern)
+	renImg := outline.NewRendererOutlineImage(&lineClipImageBaseAdapter{renBase: renBase}, pattern)
 	renImg.SetScaleX(linePatternClipScaleX)
 	renImg.SetStartX(linePatternClipStartX)
-	rasImg := rasterizer.NewRasterizerOutlineAA[*lineOutlineImageAdapter, color.RGBA8[color.Linear]](&lineOutlineImageAdapter{ren: renImg})
+	rasImg := rasterizer.NewRasterizerOutlineAA[*lineClipOutlineImageAdapter, color.RGBA8[color.Linear]](&lineClipOutlineImageAdapter{ren: renImg})
 
+	clipInset := int(math.Round(linePatternClipPadding(width, height)))
 	clipPad := 9.0
-	renImg.ClipBox(50-clipPad, 50-clipPad, float64(width)-50+clipPad, float64(height)-50+clipPad)
-	renBase.ClipBox(50, 50, width-50, height-50)
+	renImg.ClipBox(
+		float64(clipInset)-clipPad,
+		float64(clipInset)-clipPad,
+		float64(width-clipInset)+clipPad,
+		float64(height-clipInset)+clipPad,
+	)
+	renBase.ClipBox(clipInset, clipInset, width-clipInset, height-clipInset)
 
 	ps := path.NewPathStorageStl()
-	ps.MoveTo(20, 20)
-	ps.LineTo(float64(width)-20, float64(height)-20)
-	ps.LineTo(float64(width)-60, 20)
-	ps.LineTo(40, float64(height)-40)
-	ps.LineTo(100, 300)
+	ps.MoveTo(linePatternClipPoints[0][0], linePatternClipPoints[0][1])
+	for i := 1; i < len(linePatternClipPoints); i++ {
+		ps.LineTo(linePatternClipPoints[i][0], linePatternClipPoints[i][1])
+	}
 	rasImg.AddPath(&pathSourceAdapter{ps: ps}, 0)
 
 	renBase.ResetClipping(true)

@@ -872,7 +872,12 @@ export const demoURLHandlers = {
 
   line_patterns_clip: {
     persist() {
-      // URL-only controls (no visible widget panel).
+      const params = getURLParams();
+      updateURL({
+        lpcsx: params.get("lpcsx"),
+        lpcst: params.get("lpcst"),
+        lpcp: getLinePatternClipNodesEncoded(),
+      });
     },
     restore(p) {
       if (p.has("lpcsx")) {
@@ -880,6 +885,9 @@ export const demoURLHandlers = {
       }
       if (p.has("lpcst")) {
         setLinePatternClipStartX(parseFloat(p.get("lpcst")));
+      }
+      if (p.has("lpcp")) {
+        setLinePatternClipNodesEncoded(p.get("lpcp"));
       }
     },
   },

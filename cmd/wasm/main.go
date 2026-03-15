@@ -380,6 +380,15 @@ func main() {
 		}
 		return nil
 	}))
+	js.Global().Set("getLinePatternClipNodesEncoded", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		return encodeLinePatternClipPoints()
+	}))
+	js.Global().Set("setLinePatternClipNodesEncoded", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			return setLinePatternClipPointsEncoded(args[0].String())
+		}
+		return false
+	}))
 	js.Global().Set("setLinePatternScaleX", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
 		if len(args) > 0 {
 			setLinePatternScaleX(args[0].Float())
@@ -860,6 +869,13 @@ func onMouseDown(this js.Value, args []js.Value) interface{} {
 	if demoType == "pattern_resample" {
 		return handlePatternResampleMouseDown(x, y)
 	}
+	if demoType == "line_patterns_clip" {
+		right := len(args) >= 4 && args[3].Bool()
+		if right {
+			return false
+		}
+		return handleLinePatternsClipMouseDown(x, y)
+	}
 	if demoType == "line_patterns" {
 		right := len(args) >= 4 && args[3].Bool()
 		if right {
@@ -1009,6 +1025,13 @@ func onMouseMove(this js.Value, args []js.Value) interface{} {
 	if demoType == "pattern_resample" {
 		return handlePatternResampleMouseMove(x, y)
 	}
+	if demoType == "line_patterns_clip" {
+		right := len(args) >= 4 && args[3].Bool()
+		if right {
+			return false
+		}
+		return handleLinePatternsClipMouseMove(x, y)
+	}
 	if demoType == "line_patterns" {
 		right := len(args) >= 4 && args[3].Bool()
 		if right {
@@ -1119,6 +1142,9 @@ func onMouseUp(this js.Value, args []js.Value) interface{} {
 	}
 	if demoType == "pattern_resample" {
 		handlePatternResampleMouseUp()
+	}
+	if demoType == "line_patterns_clip" {
+		handleLinePatternsClipMouseUp()
 	}
 	if demoType == "line_patterns" {
 		handleLinePatternsMouseUp()

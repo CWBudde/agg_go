@@ -191,6 +191,7 @@ export const ALL_DEMO_PARAMS = [
   // line_patterns_clip
   "lpcsx",
   "lpcst",
+  "lpcp",
   // line_patterns
   "lpsx",
   "lpst",
