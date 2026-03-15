@@ -21,7 +21,7 @@ func NewCoordType(x, y float64) CoordType {
 type VCGenMarkersTerm struct {
 	markers array.PodBVector[CoordType] // Storage for marker coordinates
 	currID  uint                        // Current path ID for rewind
-	currIdx uint                        // Current index in markers array
+	currIdx uint                        // 0=move_to, 1=line_to, 2=stop
 }
 
 // NewVCGenMarkersTerm creates a new terminal markers generator
@@ -78,27 +78,30 @@ func (m *VCGenMarkersTerm) PrepareSrc() {
 // Rewind rewinds the marker generator to the beginning (Vertex Source Interface)
 func (m *VCGenMarkersTerm) Rewind(pathID uint) {
 	m.currID = pathID * 2
-	m.currIdx = m.currID
+	m.currIdx = 0
 }
 
 // Vertex returns the next marker vertex (Vertex Source Interface)
 // Returns marker coordinates as move_to/line_to commands for rendering
 func (m *VCGenMarkersTerm) Vertex() (x, y float64, cmd basics.PathCommand) {
-	// Need at least 4 coordinates for complete marker pairs, and curr_id must be <= 2
-	if m.currID > 2 || int(m.currIdx) >= m.markers.Size() || m.markers.Size() < 4 {
+	// Each path contributes one marker pair: move_to at index pathID*2,
+	// line_to at index pathID*2+1.
+	if m.markers.Size() < 2 || int(m.currID+1) >= m.markers.Size() {
 		return 0, 0, basics.PathCmdStop
 	}
 
-	coord := m.markers.At(int(m.currIdx))
-	x, y = coord.X, coord.Y
-
-	if m.currIdx&1 != 0 {
-		// Odd index: return line_to and skip ahead
-		m.currIdx += 3
+	switch m.currIdx {
+	case 0:
+		coord := m.markers.At(int(m.currID))
+		x, y = coord.X, coord.Y
+		m.currIdx = 1
+		return x, y, basics.PathCmdMoveTo
+	case 1:
+		coord := m.markers.At(int(m.currID + 1))
+		x, y = coord.X, coord.Y
+		m.currIdx = 2
 		return x, y, basics.PathCmdLineTo
+	default:
+		return 0, 0, basics.PathCmdStop
 	}
-
-	// Even index: return move_to and advance
-	m.currIdx++
-	return x, y, basics.PathCmdMoveTo
 }

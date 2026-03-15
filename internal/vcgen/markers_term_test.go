@@ -211,6 +211,47 @@ func TestVCGenMarkersTerm_PathID(t *testing.T) {
 	}
 }
 
+func TestVCGenMarkersTerm_MultipleSubpaths(t *testing.T) {
+	gen := NewVCGenMarkersTerm()
+
+	gen.AddVertex(0, 0, basics.PathCmdMoveTo)
+	gen.AddVertex(10, 0, basics.PathCmdLineTo)
+	gen.AddVertex(20, 0, basics.PathCmdMoveTo)
+	gen.AddVertex(30, 0, basics.PathCmdLineTo)
+
+	tests := []struct {
+		pathID      uint
+		wantX1      float64
+		wantY1      float64
+		wantX2      float64
+		wantY2      float64
+		description string
+	}{
+		{0, 0, 0, 10, 0, "start marker of first subpath"},
+		{1, 10, 0, 0, 0, "end marker of first subpath"},
+		{2, 20, 0, 30, 0, "start marker of second subpath"},
+		{3, 30, 0, 20, 0, "end marker of second subpath"},
+	}
+
+	for _, tc := range tests {
+		gen.Rewind(tc.pathID)
+		x, y, cmd := gen.Vertex()
+		if cmd != basics.PathCmdMoveTo || x != tc.wantX1 || y != tc.wantY1 {
+			t.Fatalf("%s first vertex = (%v,%v,%v), want (%v,%v,MoveTo)",
+				tc.description, x, y, cmd, tc.wantX1, tc.wantY1)
+		}
+		x, y, cmd = gen.Vertex()
+		if cmd != basics.PathCmdLineTo || x != tc.wantX2 || y != tc.wantY2 {
+			t.Fatalf("%s second vertex = (%v,%v,%v), want (%v,%v,LineTo)",
+				tc.description, x, y, cmd, tc.wantX2, tc.wantY2)
+		}
+		x, y, cmd = gen.Vertex()
+		if cmd != basics.PathCmdStop {
+			t.Fatalf("%s third vertex = (%v,%v,%v), want stop", tc.description, x, y, cmd)
+		}
+	}
+}
+
 func TestVCGenMarkersTerm_ComplexPath(t *testing.T) {
 	gen := NewVCGenMarkersTerm()
 

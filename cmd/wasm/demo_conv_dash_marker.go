@@ -144,100 +144,6 @@ func dashUnmapPoint(scale, offX, offY, x, y float64) (float64, float64) {
 	return (x - offX) / scale, dashBaseHeight - (y-offY)/scale
 }
 
-func drawConstructionLines(a *agg.Agg2D, scale, offX, offY float64) {
-	cx := (dashX[0] + dashX[1] + dashX[2]) / 3
-	cy := (dashY[0] + dashY[1] + dashY[2]) / 3
-
-	a.LineColor(agg.RGBA(0.0, 0.6, 0.0, 0.8))
-	a.LineWidth(max(1.0, scale))
-	a.NoFill()
-
-	x, y := dashMapPoint(scale, offX, offY, dashX[0], dashY[0])
-	a.ResetPath()
-	a.MoveTo(x, y)
-	x, y = dashMapPoint(scale, offX, offY, dashX[1], dashY[1])
-	a.LineTo(x, y)
-	x, y = dashMapPoint(scale, offX, offY, cx, cy)
-	a.LineTo(x, y)
-	x, y = dashMapPoint(scale, offX, offY, dashX[2], dashY[2])
-	a.LineTo(x, y)
-	if dashClosed {
-		a.ClosePolygon()
-	}
-	a.DrawPath(agg.StrokeOnly)
-
-	x, y = dashMapPoint(scale, offX, offY, (dashX[0]+dashX[1])/2, (dashY[0]+dashY[1])/2)
-	a.ResetPath()
-	a.MoveTo(x, y)
-	x, y = dashMapPoint(scale, offX, offY, (dashX[1]+dashX[2])/2, (dashY[1]+dashY[2])/2)
-	a.LineTo(x, y)
-	x, y = dashMapPoint(scale, offX, offY, (dashX[2]+dashX[0])/2, (dashY[2]+dashY[0])/2)
-	a.LineTo(x, y)
-	if dashClosed {
-		a.ClosePolygon()
-	}
-	a.DrawPath(agg.StrokeOnly)
-}
-
-func renderTerminalArrow(
-	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
-	sl *scanline.ScanlineU8,
-	renBase *renderer.RendererBase[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]],
-	markers *vcgen.VCGenMarkersTerm,
-	ah *shapes.Arrowhead,
-	markerPathID uint,
-	shapeID uint32,
-) {
-	markers.Rewind(markerPathID)
-	x1, y1, cmd := markers.Vertex()
-	if basics.IsStop(cmd) {
-		return
-	}
-	x2, y2, cmd := markers.Vertex()
-	if basics.IsStop(cmd) {
-		return
-	}
-
-	angle := math.Atan2(y2-y1, x2-x1)
-	cosA := math.Cos(angle)
-	sinA := math.Sin(angle)
-
-	ps := path.NewPathStorageStl()
-	ah.Rewind(shapeID)
-	for {
-		x, y := 0.0, 0.0
-		cmd := ah.Vertex(&x, &y)
-		if basics.IsStop(cmd) {
-			break
-		}
-		tx := x*cosA - y*sinA + x1
-		ty := x*sinA + y*cosA + y1
-		switch {
-		case basics.IsMoveTo(cmd):
-			ps.MoveTo(tx, ty)
-		case basics.IsLineTo(cmd):
-			ps.LineTo(tx, ty)
-		case basics.IsClosed(uint32(cmd)):
-			ps.ClosePolygon(basics.PathFlagsNone)
-		}
-	}
-
-	ras.AddPath(&pathSourceAdapter{ps: ps}, 0)
-	if !ras.RewindScanlines() {
-		return
-	}
-	sl.Reset(ras.MinX(), ras.MaxX())
-	black := color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255}
-	for ras.SweepScanline(&rasScanlineAdapter{sl: sl}) {
-		y := sl.Y()
-		for _, span := range sl.Spans() {
-			if span.Len > 0 {
-				renBase.BlendSolidHspan(int(span.X), y, int(span.Len), black, span.Covers)
-			}
-		}
-	}
-}
-
 // --- Drawing ---
 
 func drawDashDemo() {
@@ -272,8 +178,15 @@ func drawDashDemo() {
 
 	a.FillEvenOdd(false) // reset to non-zero for subsequent draws
 
-	// === Layer 3: construction polylines ===
-	drawConstructionLines(a, scale, offX, offY)
+	// === Layer 3: smooth poly stroke outline (green rgba(0.0, 0.6, 0.0, 0.8)) ===
+	smooth2 := conv.NewConvSmoothPoly1Curve(rawSrc)
+	smooth2.SetSmoothValue(dashSmooth)
+	a.ResetPath()
+	dashAddToPath(a, smooth2)
+	a.LineColor(agg.RGBA(0, 0.6, 0, 0.8))
+	a.LineWidth(max(1.0, scale))
+	a.NoFill()
+	a.DrawPath(agg.StrokeOnly)
 
 	// === Layer 4: dashed smooth stroke + arrowhead markers (black) ===
 	// Requires internal rasterizer to wire VCGenMarkersTerm → ConvMarker → Arrowhead.
@@ -322,8 +235,12 @@ func drawDashDemo() {
 		ah.Tail(1*k, 1.5*k, 3*k, 5*k)
 	}
 
-	// Add stroked dash path to rasterizer
+	// ConvMarker places the arrowhead at each line endpoint recorded by markers.
+	arrow := conv.NewConvMarker(markers, &arrowheadShapes{ah: ah})
+
+	// Add stroked dash path and arrowhead markers to rasterizer.
 	ras.AddPath(&convToRasSource{src: stroke}, 0)
+	ras.AddPath(&convToRasSource{src: arrow}, 0)
 
 	black := color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255}
 	if ras.RewindScanlines() {
@@ -337,14 +254,6 @@ func drawDashDemo() {
 			}
 		}
 	}
-	ras.Reset()
-
-	// Render tail and head markers explicitly from the terminal marker positions.
-	if !dashClosed {
-		renderTerminalArrow(ras, sl, renBase, markers, ah, 0, 0)
-	}
-	ras.Reset()
-	renderTerminalArrow(ras, sl, renBase, markers, ah, 1, 1)
 
 	// === Handles ===
 	for i := 0; i < 3; i++ {
