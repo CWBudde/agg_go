@@ -95,6 +95,7 @@ func (c *ConvMarker) Vertex() (x, y float64, cmd basics.PathCommand) {
 			x1, y1, cmd = (*c.markerLocator).Vertex()
 			if basics.IsStop(cmd) {
 				c.status = MarkerStatusInitial
+				cmd = basics.PathCmdMoveTo
 				break
 			}
 
@@ -102,6 +103,7 @@ func (c *ConvMarker) Vertex() (x, y float64, cmd basics.PathCommand) {
 			x2, y2, cmd = (*c.markerLocator).Vertex()
 			if basics.IsStop(cmd) {
 				c.status = MarkerStatusInitial
+				cmd = basics.PathCmdMoveTo
 				break
 			}
 
