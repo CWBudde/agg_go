@@ -1,5 +1,3 @@
-// Package agg provides geometric types and operations for 2D graphics.
-// This file contains rectangles, points, and geometric utilities.
 package agg
 
 import "github.com/MeKo-Christian/agg_go/internal/transform"

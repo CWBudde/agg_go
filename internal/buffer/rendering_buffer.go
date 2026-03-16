@@ -1,5 +1,3 @@
-// Package buffer provides rendering buffer implementations for AGG.
-// This package handles the low-level memory management for pixel data.
 package buffer
 
 import (
@@ -8,9 +6,11 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
-// RenderingBuffer provides access to a pixel buffer with configurable stride.
-// This is equivalent to AGG's row_accessor template class.
-// Stride represents bytes per row, not elements per row.
+// RenderingBuffer wraps a raw pixel slice with AGG-style width, height, stride,
+// and row-access semantics.
+//
+// Stride is stored in bytes, not elements, and may be negative for bottom-up
+// buffers.
 type RenderingBuffer[T any] struct {
 	buf    []T
 	start  []T
@@ -209,8 +209,8 @@ func (rb *RenderingBuffer[T]) ClearZero() {
 	rb.Clear(zero)
 }
 
-// RenderingBufferCache provides cached row pointers for faster access.
-// This is equivalent to AGG's row_ptr_cache template class.
+// RenderingBufferCache adds AGG-style cached row pointers on top of
+// RenderingBuffer for call sites that repeatedly access rows by index.
 type RenderingBufferCache[T any] struct {
 	RenderingBuffer[T]
 	rows [][]T

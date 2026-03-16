@@ -1,6 +1,7 @@
 //go:build !freetype
 
-// Package freetype provides a stub implementation when FreeType is not available.
+// Package freetype provides the build-tagged FreeType font engine wrapper used
+// by Agg2D text rendering.
 package freetype
 
 import (
@@ -12,12 +13,14 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
 
-// FontEngineFreetype is a stub implementation when FreeType is not available.
+// FontEngineFreetype is the no-freetype stub returned in builds without the
+// freetype tag.
 type FontEngineFreetype struct {
 	signature string
 }
 
-// GlyphRenderingType defines how glyphs should be rendered.
+// GlyphRenderingType mirrors the rendering modes exposed by the real FreeType
+// engine so callers can compile without the freetype tag.
 type GlyphRenderingType int
 
 const (
@@ -30,12 +33,14 @@ const (
 
 // Use GlyphDataType from font package to avoid duplication
 
-// NewFontEngineFreetype returns an error indicating FreeType is not available.
+// NewFontEngineFreetype reports that the build was compiled without FreeType
+// support.
 func NewFontEngineFreetype(flag32 bool, maxFaces uint) (*FontEngineFreetype, error) {
 	return nil, errors.New("FreeType support not compiled in - rebuild with 'freetype' build tag")
 }
 
-// Stub methods to satisfy the FontEngine interface
+// The remaining methods satisfy the same interface as the CGO-backed engine
+// while reporting that FreeType support is unavailable.
 
 func (fe *FontEngineFreetype) Close() error {
 	return errors.New("FreeType not available")

@@ -4,7 +4,8 @@ import (
 	"sync"
 )
 
-// Features describes the CPU capabilities relevant to SIMD dispatch.
+// Features describes the CPU capabilities relevant to SIMD dispatch and test
+// forcing.
 type Features struct {
 	HasSSE    bool
 	HasSSE2   bool
@@ -88,7 +89,8 @@ func ResetDetection() {
 	resetImplementation()
 }
 
-// ImplementationName returns the currently selected fill implementation name.
+// ImplementationName returns the name of the currently selected implementation
+// tier.
 func ImplementationName() string {
 	return currentImplementation().name
 }

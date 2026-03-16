@@ -1,5 +1,3 @@
-// Package agg provides image operations for 2D graphics.
-// This file contains image loading, transformation, and rendering functionality.
 package agg
 
 import (

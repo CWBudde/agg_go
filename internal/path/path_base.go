@@ -7,15 +7,19 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/bezierarc"
 )
 
-// PathBase is the main path container that stores vertices with their commands.
-// A path consists of contours separated by "move_to" commands.
-// This is a direct port of AGG's path_base template class.
+// PathBase is AGG's primary mutable path container.
+//
+// It stores vertex coordinates plus command bytes in a pluggable backing store,
+// and exposes the same command-building model as agg::path_base: contours are
+// started with MoveTo, extended with line and curve commands, and optionally
+// terminated with EndPoly/ClosePolygon.
 type PathBase[VertexContainer VertexStorageInterface] struct {
 	vertices VertexContainer
 	iterator uint
 }
 
-// VertexStorageInterface defines the interface that vertex storage must implement.
+// VertexStorageInterface is the storage contract required by PathBase.
+// It abstracts AGG's block and STL-style vertex stores behind one path builder.
 type VertexStorageInterface interface {
 	RemoveAll()
 	FreeAll()
@@ -34,7 +38,7 @@ type VertexStorageInterface interface {
 	Command(idx uint) uint32
 }
 
-// NewPathBase creates a new path base.
+// NewPathBase wraps a vertex storage implementation in a PathBase builder.
 func NewPathBase[VertexContainer VertexStorageInterface](vertices VertexContainer) *PathBase[VertexContainer] {
 	return &PathBase[VertexContainer]{
 		vertices: vertices,

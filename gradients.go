@@ -1,26 +1,30 @@
-// Package agg provides gradient functionality for 2D graphics.
-// This file contains gradient types and operations.
 package agg
 
 import (
 	"math"
 )
 
-// Gradient represents gradient types.
+// Gradient identifies the underlying Agg2D gradient mode.
 type Gradient int
 
 const (
-	Solid  Gradient = iota // Solid color
-	Linear                 // Linear gradient
-	Radial                 // Radial gradient
+	// Solid disables gradient rendering and uses a flat color.
+	Solid Gradient = iota // Solid color
+	// Linear selects a linear gradient.
+	Linear
+	// Radial selects a radial gradient.
+	Radial
 )
 
-// Gradient types for different gradient modes
+// GradientType identifies the higher-level gradient configuration on Context.
 type GradientType int
 
 const (
-	SolidGradient  GradientType = 0
+	// SolidGradient means no gradient is active.
+	SolidGradient GradientType = 0
+	// LinearGradient means a linear gradient is active.
 	LinearGradient GradientType = 1
+	// RadialGradient means a radial gradient is active.
 	RadialGradient GradientType = 2
 )
 

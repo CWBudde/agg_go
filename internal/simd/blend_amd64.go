@@ -2,6 +2,9 @@
 
 package simd
 
+// amd64 assembly entry points. The Go wrappers keep the public contracts in one
+// place and choose when to fall back to scalar code for unsupported cases.
+
 //go:noescape
 func fillRGBAAVX2Asm(dst []byte, pixel uint32, count int)
 
@@ -38,6 +41,8 @@ func premultiplyRGBASSE41Asm(buf []byte, count int)
 //go:noescape
 func compSrcOverHspanRGBASSE41Asm(dst []byte, sca uint32, sa uint8, count int)
 
+// selectImplementationArch chooses the highest-priority amd64 implementation
+// that satisfies the detected feature set.
 func selectImplementationArch(features Features) implementation {
 	if features.ForceGeneric {
 		return genericImplementation()

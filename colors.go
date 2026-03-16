@@ -1,5 +1,3 @@
-// Package agg provides color types and color management functionality.
-// This file contains all color-related types and operations.
 package agg
 
 import (

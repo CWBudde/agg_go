@@ -1,6 +1,6 @@
 package basics
 
-// Path command enumeration
+// PathCommand encodes AGG path verbs in the low bits of a uint32 command word.
 type PathCommand uint32
 
 const (
@@ -16,7 +16,7 @@ const (
 	PathCmdMask = 0x0F
 )
 
-// Path flags enumeration
+// PathFlag encodes AGG path flags such as winding orientation and close state.
 type PathFlag uint32
 
 const (
@@ -27,12 +27,12 @@ const (
 	PathFlagsMask  PathFlag = 0xF0
 )
 
-// PathCommand constants with flags
+// PathCommand constants with flags.
 const (
 	PathFlagClose = PathCommand(PathFlagsClose)
 )
 
-// Path utility functions
+// Path utility functions.
 func IsVertex(c PathCommand) bool {
 	return c >= PathCmdMoveTo && c < PathCmdEndPoly
 }

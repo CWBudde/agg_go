@@ -1,15 +1,14 @@
 package path
 
-// PathStorageStl is an alternative path storage using slice-based storage.
-// This is equivalent to AGG's stl_path_storage typedef.
-// Use this for smaller paths or when you need simpler memory management.
+// PathStorageStl is the slice-backed equivalent of AGG's stl_path_storage
+// typedef.
 type PathStorageStl = PathBase[*VertexStlStorage[float64]]
 
-// PathStorageF32 is a path storage using 32-bit floating point coordinates.
-// Use this when memory is limited and reduced precision is acceptable.
+// PathStorageF32 is the block-backed path storage variant with 32-bit
+// coordinates.
 type PathStorageF32 = PathBase[*VertexBlockStorage[float32]]
 
-// PathStorageStlF32 combines STL storage with 32-bit precision.
+// PathStorageStlF32 combines slice-backed storage with 32-bit coordinates.
 type PathStorageStlF32 = PathBase[*VertexStlStorage[float32]]
 
 // NewPathStorageStl creates a new path storage using slice-based storage.
@@ -42,7 +41,7 @@ func NewPathStorageStlF32() *PathStorageStlF32 {
 	)
 }
 
-// Storage type enumeration for documentation and benchmarking
+// StorageType identifies the available backing-store strategies for paths.
 type StorageType int
 
 const (
@@ -52,14 +51,14 @@ const (
 	StorageSlice
 )
 
-// StorageInfo provides information about different storage types
+// StorageInfo describes one available path-storage strategy.
 type StorageInfo struct {
 	Type        StorageType
 	Description string
 	BestUseCase string
 }
 
-// GetStorageInfo returns information about available storage types
+// GetStorageInfo reports the intended tradeoffs of the available storage types.
 func GetStorageInfo() []StorageInfo {
 	return []StorageInfo{
 		{

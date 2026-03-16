@@ -7,7 +7,7 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
-// Constants from AGG curves implementation
+// Constants from AGG's curve approximation implementation.
 const (
 	CurveDistanceEpsilon            = 1e-30
 	CurveCollinearityEpsilon        = 1e-30
@@ -15,7 +15,8 @@ const (
 	CurveRecursionLimit        uint = 32
 )
 
-// CurveApproximationMethod defines the curve approximation algorithm
+// CurveApproximationMethod selects between AGG's incremental and recursive
+// subdivision curve approximators.
 type CurveApproximationMethod uint
 
 const (
@@ -23,7 +24,7 @@ const (
 	CurveDiv                                 // Recursive subdivision
 )
 
-// Curve3Inc implements incremental quadratic Bezier curve approximation
+// Curve3Inc implements AGG's incremental quadratic Bezier approximation.
 type Curve3Inc struct {
 	numSteps int
 	step     int
@@ -191,7 +192,8 @@ func (c *Curve3Inc) Vertex() (x, y float64, cmd basics.PathCommand) {
 	return c.fx, c.fy, basics.PathCmdLineTo
 }
 
-// Curve3Div implements recursive subdivision quadratic Bezier curve approximation
+// Curve3Div implements AGG's recursive-subdivision quadratic Bezier
+// approximation.
 type Curve3Div struct {
 	approximationScale float64
 	angleTolerance     float64

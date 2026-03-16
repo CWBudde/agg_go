@@ -1,16 +1,15 @@
-// Package path provides path storage functionality for AGG.
-// This is a port of AGG's agg_path_storage.h which implements efficient
-// vertex storage using block-based memory allocation.
 package path
 
 import (
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
-// VertexBlockStorage provides efficient storage for vertices using block-based allocation.
-// This is a direct port of AGG's vertex_block_storage template class.
-// T is the coordinate type (typically float64), BlockShift determines block size (2^BlockShift),
-// and BlockPool determines how many blocks to allocate at once.
+// VertexBlockStorage is the block-allocated vertex container used by AGG's
+// default path_storage implementation.
+//
+// T is the stored coordinate type. The blockShift and blockPool settings mirror
+// AGG's block_size and block_pool parameters and control amortized allocation
+// behavior for large paths.
 type VertexBlockStorage[T ~int | ~int32 | ~float32 | ~float64] struct {
 	totalVertices uint
 	totalBlocks   uint
@@ -42,7 +41,8 @@ func NewVertexBlockStorageWithParams[T ~int | ~int32 | ~float32 | ~float64](bloc
 	}
 }
 
-// Copy constructor equivalent
+// NewVertexBlockStorageFromCopy clones another storage by replaying its
+// vertices into a new block store.
 func NewVertexBlockStorageFromCopy[T ~int | ~int32 | ~float32 | ~float64](other *VertexBlockStorage[T]) *VertexBlockStorage[T] {
 	vbs := NewVertexBlockStorageWithParams[T](other.blockShift, other.blockPool)
 	// Copy all vertices

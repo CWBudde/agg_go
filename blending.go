@@ -1,5 +1,3 @@
-// Package agg provides blending and compositing functionality for 2D graphics.
-// This file exposes blend modes and alpha/composite controls, backed by internal/agg2d.
 package agg
 
 import (
@@ -73,33 +71,65 @@ func (ctx *Context) GetGlobalAlpha() float64 {
 	return float64(fc[3]) / 255.0
 }
 
-// Compositing operations (aliases)
+// SetCompositeOperation is an alias for SetBlendMode.
 func (ctx *Context) SetCompositeOperation(operation BlendMode) { ctx.SetBlendMode(operation) }
-func (ctx *Context) GetCompositeOperation() BlendMode          { return ctx.GetBlendMode() }
 
-// Master alpha (overall context multiplier)
+// GetCompositeOperation is an alias for GetBlendMode.
+func (ctx *Context) GetCompositeOperation() BlendMode { return ctx.GetBlendMode() }
+
+// SetMasterAlpha sets the context-wide alpha multiplier applied during rendering.
 func (ctx *Context) SetMasterAlpha(alpha float64) { ctx.agg2d.impl.SetMasterAlpha(alpha) }
-func (ctx *Context) GetMasterAlpha() float64      { return ctx.agg2d.impl.GetMasterAlpha() }
 
-// Convenience blend mode setters
-func (ctx *Context) SetBlendNormal()     { ctx.SetBlendMode(BlendSrcOver) }
-func (ctx *Context) SetBlendMultiply()   { ctx.SetBlendMode(BlendMultiply) }
-func (ctx *Context) SetBlendScreen()     { ctx.SetBlendMode(BlendScreen) }
-func (ctx *Context) SetBlendOverlay()    { ctx.SetBlendMode(BlendOverlay) }
-func (ctx *Context) SetBlendDarken()     { ctx.SetBlendMode(BlendDarken) }
-func (ctx *Context) SetBlendLighten()    { ctx.SetBlendMode(BlendLighten) }
+// GetMasterAlpha returns the context-wide alpha multiplier.
+func (ctx *Context) GetMasterAlpha() float64 { return ctx.agg2d.impl.GetMasterAlpha() }
+
+// SetBlendNormal selects the standard source-over blend mode.
+func (ctx *Context) SetBlendNormal() { ctx.SetBlendMode(BlendSrcOver) }
+
+// SetBlendMultiply selects multiply blending.
+func (ctx *Context) SetBlendMultiply() { ctx.SetBlendMode(BlendMultiply) }
+
+// SetBlendScreen selects screen blending.
+func (ctx *Context) SetBlendScreen() { ctx.SetBlendMode(BlendScreen) }
+
+// SetBlendOverlay selects overlay blending.
+func (ctx *Context) SetBlendOverlay() { ctx.SetBlendMode(BlendOverlay) }
+
+// SetBlendDarken selects darken blending.
+func (ctx *Context) SetBlendDarken() { ctx.SetBlendMode(BlendDarken) }
+
+// SetBlendLighten selects lighten blending.
+func (ctx *Context) SetBlendLighten() { ctx.SetBlendMode(BlendLighten) }
+
+// SetBlendDifference selects difference blending.
 func (ctx *Context) SetBlendDifference() { ctx.SetBlendMode(BlendDifference) }
-func (ctx *Context) SetBlendExclusion()  { ctx.SetBlendMode(BlendExclusion) }
 
-// Porter-Duff helpers
-func (ctx *Context) SetBlendClear()  { ctx.SetBlendMode(BlendClear) }
-func (ctx *Context) SetBlendSrc()    { ctx.SetBlendMode(BlendSrc) }
-func (ctx *Context) SetBlendDst()    { ctx.SetBlendMode(BlendDst) }
-func (ctx *Context) SetBlendSrcIn()  { ctx.SetBlendMode(BlendSrcIn) }
-func (ctx *Context) SetBlendDstIn()  { ctx.SetBlendMode(BlendDstIn) }
+// SetBlendExclusion selects exclusion blending.
+func (ctx *Context) SetBlendExclusion() { ctx.SetBlendMode(BlendExclusion) }
+
+// SetBlendClear selects the Porter-Duff clear operator.
+func (ctx *Context) SetBlendClear() { ctx.SetBlendMode(BlendClear) }
+
+// SetBlendSrc selects the Porter-Duff src operator.
+func (ctx *Context) SetBlendSrc() { ctx.SetBlendMode(BlendSrc) }
+
+// SetBlendDst selects the Porter-Duff dst operator.
+func (ctx *Context) SetBlendDst() { ctx.SetBlendMode(BlendDst) }
+
+// SetBlendSrcIn selects the Porter-Duff src-in operator.
+func (ctx *Context) SetBlendSrcIn() { ctx.SetBlendMode(BlendSrcIn) }
+
+// SetBlendDstIn selects the Porter-Duff dst-in operator.
+func (ctx *Context) SetBlendDstIn() { ctx.SetBlendMode(BlendDstIn) }
+
+// SetBlendSrcOut selects the Porter-Duff src-out operator.
 func (ctx *Context) SetBlendSrcOut() { ctx.SetBlendMode(BlendSrcOut) }
+
+// SetBlendDstOut selects the Porter-Duff dst-out operator.
 func (ctx *Context) SetBlendDstOut() { ctx.SetBlendMode(BlendDstOut) }
-func (ctx *Context) SetBlendXor()    { ctx.SetBlendMode(BlendXor) }
+
+// SetBlendXor selects the Porter-Duff xor operator.
+func (ctx *Context) SetBlendXor() { ctx.SetBlendMode(BlendXor) }
 
 // Utilities
 

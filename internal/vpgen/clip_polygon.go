@@ -1,14 +1,11 @@
-// Package vpgen provides vertex processor generators for path processing.
-// These components transform input vertices according to specific algorithms.
 package vpgen
 
 import (
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
-// VPGenClipPolygon clips polygons to a rectangular clipping region.
-// It implements the Sutherland-Hodgman polygon clipping algorithm
-// adapted for vertex streaming.
+// VPGenClipPolygon clips streamed polygon vertices to a rectangular clip box,
+// following the AGG vpgen_clip_polygon contract.
 type VPGenClipPolygon struct {
 	clipBox     basics.RectD
 	x1, y1      float64

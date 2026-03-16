@@ -1,5 +1,3 @@
-// Package agg provides transformation functionality for 2D graphics.
-// This file contains transformation matrices and operations, wired to internal/agg2d.
 package agg
 
 import (

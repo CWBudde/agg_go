@@ -2,13 +2,8 @@ package font
 
 import "github.com/MeKo-Christian/agg_go/internal/basics"
 
-// IntegerPathStorage defines the common interface for integer-based path storage.
-// Both PathStorageInteger[int16] and PathStorageInteger[int32] implement this.
-// This eliminates the need for interface{} when handling dual-precision paths.
-//
-// The interface uses int64 parameters which are wide enough to accommodate both
-// int16 and int32 values without loss of precision. Implementations convert to
-// their specific integer type as needed.
+// IntegerPathStorage abstracts the integer outline storages used by the
+// FreeType-backed engines for 16-bit and 32-bit glyph coordinate paths.
 type IntegerPathStorage interface {
 	// Core path commands
 	RemoveAll()
@@ -24,14 +19,8 @@ type IntegerPathStorage interface {
 	Vertex(idx uint32) (float64, float64, basics.PathCommand)
 }
 
-// SerializedScanlinesAdaptor defines the common interface for scanline adaptors.
-// Both SerializedScanlinesAdaptorAA and SerializedScanlinesAdaptorBin implement this.
-// This eliminates the need for interface{} in text rendering.
-//
-// The interface provides read-only access to serialized scanline data which can
-// be used for rendering glyphs. Different implementations may store anti-aliased
-// or binary scanline data, but both expose the same interface for accessing the
-// raw data and bounds.
+// SerializedScanlinesAdaptor is the common read-only view over serialized AA and
+// binary glyph scanlines.
 type SerializedScanlinesAdaptor interface {
 	Bounds() basics.Rect[int]
 	Data() []byte

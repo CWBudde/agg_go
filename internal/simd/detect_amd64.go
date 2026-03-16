@@ -8,6 +8,7 @@ import (
 	"golang.org/x/sys/cpu"
 )
 
+// detectFeaturesImpl reads amd64 SIMD capabilities from x/sys/cpu.
 func detectFeaturesImpl() Features {
 	return Features{
 		HasSSE:       true,

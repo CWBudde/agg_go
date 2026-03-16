@@ -1,5 +1,3 @@
-// Package color provides color types and conversion functions for AGG.
-// This package implements RGBA, grayscale, and color space conversions.
 package color
 
 import (
@@ -8,11 +6,12 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
-// ColorOrder defines component ordering for different pixel formats
+// ColorOrder identifies channel positions inside packed pixel layouts.
 type ColorOrder struct {
 	R, G, B, A int
 }
 
+// Common packed-channel orders used by pixel formats and row converters.
 var (
 	OrderRGB  = ColorOrder{R: 0, G: 1, B: 2, A: 3}
 	OrderBGR  = ColorOrder{R: 2, G: 1, B: 0, A: 3}
@@ -22,7 +21,9 @@ var (
 	OrderBGRA = ColorOrder{R: 2, G: 1, B: 0, A: 3}
 )
 
-// RGBA represents a floating-point RGBA color (base type)
+// RGBA is the floating-point base color type used by AGG-style color math.
+// Most fixed-width color families provide ConvertToRGBA/ConvertFromRGBA around
+// this representation.
 type RGBA struct {
 	R, G, B, A float64
 }
@@ -32,12 +33,12 @@ const (
 	rgba16FloatScale = 1.0 / 65535.0
 )
 
-// NewRGBA creates a new RGBA color
+// NewRGBA creates a floating-point RGBA color in normalized 0..1 units.
 func NewRGBA(r, g, b, a float64) RGBA {
 	return RGBA{R: r, G: g, B: b, A: a}
 }
 
-// NewRGBAFromRGBA8 creates a floating-point RGBA color from 8-bit channels.
+// NewRGBAFromRGBA8 expands 8-bit RGBA channels into normalized floats.
 func NewRGBAFromRGBA8(r, g, b, a basics.Int8u) RGBA {
 	return RGBA{
 		R: float64(r) * rgba8FloatScale,
@@ -47,7 +48,7 @@ func NewRGBAFromRGBA8(r, g, b, a basics.Int8u) RGBA {
 	}
 }
 
-// NewRGBAFromGray8 creates a floating-point RGBA color from 8-bit grayscale and alpha.
+// NewRGBAFromGray8 expands 8-bit grayscale plus alpha into normalized RGBA.
 func NewRGBAFromGray8(v, a basics.Int8u) RGBA {
 	return RGBA{
 		R: float64(v) * rgba8FloatScale,
@@ -57,7 +58,7 @@ func NewRGBAFromGray8(v, a basics.Int8u) RGBA {
 	}
 }
 
-// NewRGBAFromGray16 creates a floating-point RGBA color from 16-bit grayscale and alpha.
+// NewRGBAFromGray16 expands 16-bit grayscale plus alpha into normalized RGBA.
 func NewRGBAFromGray16(v, a basics.Int16u) RGBA {
 	return RGBA{
 		R: float64(v) * rgba16FloatScale,
@@ -67,19 +68,19 @@ func NewRGBAFromGray16(v, a basics.Int16u) RGBA {
 	}
 }
 
-// Clear sets the color to transparent black
+// Clear resets the color to transparent black.
 func (c *RGBA) Clear() *RGBA {
 	c.R, c.G, c.B, c.A = 0, 0, 0, 0
 	return c
 }
 
-// Transparent sets the color to transparent with the same RGB
+// Transparent preserves RGB but clears alpha.
 func (c *RGBA) Transparent() *RGBA {
 	c.A = 0
 	return c
 }
 
-// Opacity sets the alpha channel
+// Opacity clamps and sets the alpha channel.
 func (c *RGBA) Opacity(a float64) *RGBA {
 	switch {
 	case a < 0:
@@ -92,12 +93,12 @@ func (c *RGBA) Opacity(a float64) *RGBA {
 	return c
 }
 
-// GetOpacity returns the current alpha value
+// GetOpacity returns the current alpha value.
 func (c RGBA) GetOpacity() float64 {
 	return c.A
 }
 
-// Premultiply premultiplies the color by alpha
+// Premultiply converts the RGB channels to premultiplied-alpha form.
 func (c *RGBA) Premultiply() *RGBA {
 	if c.A <= 0 {
 		c.R, c.G, c.B = 0, 0, 0
@@ -109,7 +110,7 @@ func (c *RGBA) Premultiply() *RGBA {
 	return c
 }
 
-// PremultiplyAlpha premultiplies the color by a specific alpha value
+// PremultiplyAlpha premultiplies RGB using a caller-provided target alpha.
 func (c *RGBA) PremultiplyAlpha(a float64) *RGBA {
 	if c.A <= 0 || a <= 0 {
 		c.R, c.G, c.B, c.A = 0, 0, 0, 0
@@ -123,7 +124,7 @@ func (c *RGBA) PremultiplyAlpha(a float64) *RGBA {
 	return c
 }
 
-// Demultiply demultiplies the color by alpha
+// Demultiply converts premultiplied RGB back to straight-alpha form.
 func (c *RGBA) Demultiply() *RGBA {
 	if c.A == 0 {
 		c.R, c.G, c.B = 0, 0, 0
@@ -136,7 +137,7 @@ func (c *RGBA) Demultiply() *RGBA {
 	return c
 }
 
-// Gradient performs linear interpolation between two colors
+// Gradient linearly interpolates between the receiver and c2.
 func (c RGBA) Gradient(c2 RGBA, k float64) RGBA {
 	return RGBA{
 		R: c.R + k*(c2.R-c.R),
@@ -146,7 +147,7 @@ func (c RGBA) Gradient(c2 RGBA, k float64) RGBA {
 	}
 }
 
-// Add adds another color
+// Add adds channel values component-wise.
 func (c RGBA) Add(c2 RGBA) RGBA {
 	return RGBA{
 		R: c.R + c2.R,
@@ -156,7 +157,7 @@ func (c RGBA) Add(c2 RGBA) RGBA {
 	}
 }
 
-// Subtract subtracts another color
+// Subtract subtracts channel values component-wise.
 func (c RGBA) Subtract(c2 RGBA) RGBA {
 	return RGBA{
 		R: c.R - c2.R,
@@ -166,7 +167,7 @@ func (c RGBA) Subtract(c2 RGBA) RGBA {
 	}
 }
 
-// Multiply multiplies by another color
+// Multiply multiplies channel values component-wise.
 func (c RGBA) Multiply(c2 RGBA) RGBA {
 	return RGBA{
 		R: c.R * c2.R,
@@ -176,7 +177,7 @@ func (c RGBA) Multiply(c2 RGBA) RGBA {
 	}
 }
 
-// Scale multiplies by a scalar
+// Scale multiplies all channels by k.
 func (c RGBA) Scale(k float64) RGBA {
 	return RGBA{
 		R: c.R * k,
@@ -186,7 +187,7 @@ func (c RGBA) Scale(k float64) RGBA {
 	}
 }
 
-// AddAssign adds another color (equivalent to C++ +=)
+// AddAssign performs in-place component-wise addition.
 func (c *RGBA) AddAssign(c2 RGBA) *RGBA {
 	c.R += c2.R
 	c.G += c2.G
@@ -195,7 +196,7 @@ func (c *RGBA) AddAssign(c2 RGBA) *RGBA {
 	return c
 }
 
-// MultiplyAssign multiplies by a scalar (equivalent to C++ *=)
+// MultiplyAssign scales the color in place.
 func (c *RGBA) MultiplyAssign(k float64) *RGBA {
 	c.R *= k
 	c.G *= k
@@ -204,13 +205,13 @@ func (c *RGBA) MultiplyAssign(k float64) *RGBA {
 	return c
 }
 
-// NoColor returns transparent black
+// NoColor returns transparent black.
 func NoColor() RGBA {
 	return RGBA{0, 0, 0, 0}
 }
 
-// FromWavelength creates an RGB color from a wavelength (380-780 nm)
-// This follows the C++ AGG implementation exactly
+// FromWavelength reproduces AGG's visible-spectrum helper for wavelengths in
+// roughly the 380-780nm range.
 func FromWavelength(wl, gamma float64) RGBA {
 	t := RGBA{0.0, 0.0, 0.0, 1.0}
 
@@ -247,12 +248,12 @@ func FromWavelength(wl, gamma float64) RGBA {
 	return t
 }
 
-// NewRGBAFromWavelength creates an RGBA color from wavelength (constructor equivalent)
+// NewRGBAFromWavelength is the constructor-style alias for FromWavelength.
 func NewRGBAFromWavelength(wl, gamma float64) RGBA {
 	return FromWavelength(wl, gamma)
 }
 
-// RGBAPre creates a premultiplied RGBA color
+// RGBAPre creates a premultiplied floating-point RGBA color.
 func RGBAPre(r, g, b, a float64) RGBA {
 	c := NewRGBA(r, g, b, a)
 	c.Premultiply()

@@ -268,11 +268,11 @@ Span generators feed pixel data into `BlendColorHspan`; profile before committin
 - [x] Expand contract coverage for weaker packages: `effects`, `platform`, `primitives`,
       `pixfmt/blender`.
 - [x] Re-audit internal packages against the current coverage floor.
-- [ ] Raise coverage for the next priority gaps:
-  - `internal/pixfmt` (currently ~36%)
-  - `internal/pixfmt/gamma` (currently ~65%)
-  - `internal/color` (currently ~66%)
-- [ ] Re-audit tests that verify mocks or package-private state; prefer observable behavior.
+- [x] Raise coverage for the next priority gaps:
+  - `internal/pixfmt` improved to 57.5% with additional constructor/accessor and generic-mask-path tests.
+  - `internal/pixfmt/gamma` improved to 77.1% with RGBA gamma/multiplier behavior tests.
+  - `internal/color` improved to 76.6% with floating-point RGBA math and conversion-helper tests.
+- [x] Re-audit tests that verify mocks or package-private state; prefer observable behavior.
 
 ### 8.2 Visual regression tests
 
@@ -390,76 +390,6 @@ Triage each: fully port, replace with Go-idiomatic equivalent, or defer with rat
 
 - [ ] Every remaining upstream demo is ported, replaced by a documented equivalent, or deferred.
 - [ ] Newly added demos build and run through the existing example workflows.
-
----
-
-## Phase 10.0 - Public Agg2D Interface Parity Layer
-
-Before the broader documentation pass, the exported `Agg2D` wrapper should stay
-close enough to `../agg-2.6/agg-src/agg2d/agg2d.h` that the upstream docs and
-examples remain directly useful.
-
-### 10.0.1 Public wrapper parity
-
-- [x] Root-level `Agg2D` documentation explains the intentional C++ → Go naming
-      translations (`Get...`, `...Simple`, `...MultiStop`, `...Pos`).
-- [x] Missing parity helpers from `agg2d.h` are exposed on the public wrapper
-      where Go can represent them directly (`Parallelogram`,
-      RGBA-component color overloads, radial-gradient position overloads).
-- [x] Public wrapper audit records remaining unavoidable differences from the
-      C++ interface (mainly overload-related naming) for the migration guide.
-
-### 10.0.2 Exit criteria
-
-- [x] A reader comparing the public Go `Agg2D` API to `agg2d.h` can map every
-      major method family without reading internal code.
-- [x] New parity aliases are covered by public-wrapper tests.
-
-## Phase 10 - Public API and Internal Package Documentation
-
-Documentation is the final gap before the port can be considered production-ready.
-
-### 10.1 Public API Go doc and guides
-
-- [x] `agg2d.go` — complete Go doc: Context creation, lifecycle, drawing methods, state management.
-- [x] `context.go` — Context state management, buffer handling, coordinate systems.
-- [x] Core public types documentation (`colors.go`, `geometry.go`, `images.go`, `transforms.go`) — Point, Rect, Color, path entry points, and the public/internal generics split.
-- [x] Getting started guide (`docs/guides/getting-started.md`) — runnable end-to-end.
-- [x] Basic shapes tutorial.
-- [x] Text rendering guide.
-- [x] Image compositing examples.
-- [x] Performance optimization guide.
-
-### 10.2 Internal package Go doc comments
-
-Priority order matches functional importance:
-
-- [x] `internal/rasterizer/` — vector-to-pixel conversion, anti-aliasing, cell-based coverage.
-- [x] `internal/renderer/` — rendering pipeline architecture, scanline/outline/text rendering.
-- [x] `internal/pixfmt/` — pixel format architecture, blender interface, supported formats.
-- [x] `internal/span/` — span generation: gradients, image filtering, patterns, Gouraud shading.
-- [x] `internal/conv/` — path converters: stroke, dash, contour, B-spline, polygon clipping.
-- [ ] `internal/color/` — color space handling, RGB/RGBA/Gray variants, gamma correction.
-- [x] `internal/scanline/` — scanline storage, boolean algebra, packed vs unpacked formats.
-- [x] `internal/transform/` — affine, perspective, bilinear, viewport, warp math.
-- [ ] `internal/font/` — font rendering architecture, FreeType integration, glyph caching.
-- [ ] `internal/agg2d/` — high-level rendering pipeline, state machine, method contracts.
-- [ ] `internal/path/` — path storage, vertex block storage, path length calculation.
-- [ ] `internal/effects/` — blur algorithms (stack, recursive, slight), performance notes.
-- [ ] `internal/simd/` — SIMD dispatch, CPU detection, assembly contracts.
-- [ ] Remaining packages: `array`, `basics`, `buffer`, `curves`, `gsv`, `glyph`, `vcgen`, `vpgen`.
-
-### 10.3 Migration and integration guide
-
-- [x] API mapping reference from C++ AGG to Go port.
-- [x] Common patterns translation with runnable examples.
-- [x] Build system integration, dependency management, cross-compilation, WASM/no-cgo notes.
-
-### 10.4 Exit criteria
-
-- [ ] All public API types and methods have Go doc comments.
-- [ ] Getting started guide is runnable end-to-end.
-- [ ] `go doc` output is clean with no blank exported symbols.
 
 ---
 

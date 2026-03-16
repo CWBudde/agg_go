@@ -1,5 +1,3 @@
-// Package gsv provides Gouraud Shaded Vector text rendering support.
-// This is a direct port of AGG's gsv_text functionality with vector font support.
 package gsv
 
 import (
@@ -9,7 +7,7 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
-// Status represents the internal state of the GSV text renderer.
+// Status is the internal vertex-generation state machine for GSVText.
 type Status int
 
 const (
@@ -19,9 +17,8 @@ const (
 	StatusGlyph
 )
 
-// GSVText implements AGG's gsv_text class - a vector-based text renderer.
-// It supports ASCII characters 32-127 using embedded vector font data.
-// Text is rendered as path vertices that can be stroked or filled.
+// GSVText implements AGG's gsv_text path source for the embedded vector font
+// format.
 type GSVText struct {
 	// Current position and configuration
 	x, y      float64 // Current cursor position

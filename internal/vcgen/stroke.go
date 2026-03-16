@@ -5,7 +5,7 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
-// Status represents the state of the stroke generator
+// Status is the internal state machine for VCGenStroke.
 type Status int
 
 const (
@@ -22,7 +22,8 @@ const (
 	Stop
 )
 
-// VCGenStroke generates stroke vertices from input path vertices
+// VCGenStroke is AGG's stroke vertex generator: it consumes a source polyline
+// and emits the outline polygon of the stroked path.
 type VCGenStroke struct {
 	stroker     *basics.MathStroke
 	srcVertices *array.VertexDistSequence

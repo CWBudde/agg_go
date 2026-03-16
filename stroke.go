@@ -1,6 +1,3 @@
-// Package agg provides stroke attribute functionality for 2D graphics.
-// This file exposes stroke width, caps/joins, dashes, and related utilities
-// by wiring the public Context API to internal/agg2d.
 package agg
 
 import (
@@ -128,9 +125,14 @@ func (ctx *Context) SetSolidStroke(width float64) {
 
 // Predefined dash patterns
 
-func (ctx *Context) SetDashPatternSmall()  { ctx.SetDashPattern([]float64{3, 3}) }
+// SetDashPatternSmall applies a short equal dash-gap pattern.
+func (ctx *Context) SetDashPatternSmall() { ctx.SetDashPattern([]float64{3, 3}) }
+
+// SetDashPatternMedium applies a medium equal dash-gap pattern.
 func (ctx *Context) SetDashPatternMedium() { ctx.SetDashPattern([]float64{6, 6}) }
-func (ctx *Context) SetDashPatternLarge()  { ctx.SetDashPattern([]float64{12, 12}) }
+
+// SetDashPatternLarge applies a long equal dash-gap pattern.
+func (ctx *Context) SetDashPatternLarge() { ctx.SetDashPattern([]float64{12, 12}) }
 
 // SetDashPatternDotted sets a dotted pattern.
 func (ctx *Context) SetDashPatternDotted() {
@@ -197,11 +199,12 @@ func (ctx *Context) SetContextStrokeAttributes(attrs *ContextStrokeAttributes) {
 	ctx.agg2d.impl.SetStrokeAttributes(&iaAttrs)
 }
 
-// Save/Restore helpers for stroke attributes
+// SaveContextStrokeAttributes snapshots the current stroke settings.
 func (ctx *Context) SaveContextStrokeAttributes() ContextStrokeAttributes {
 	return ctx.GetContextStrokeAttributes()
 }
 
+// RestoreContextStrokeAttributes restores a stroke-settings snapshot.
 func (ctx *Context) RestoreContextStrokeAttributes(attrs *ContextStrokeAttributes) {
 	ctx.SetContextStrokeAttributes(attrs)
 }

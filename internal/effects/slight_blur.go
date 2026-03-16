@@ -17,7 +17,7 @@ type SlightBlur struct {
 	buf    []basics.Int8u
 }
 
-// PixFmtInterface defines the interface for pixel formats that can be blurred.
+// PixFmtInterface is the minimal pixel-format surface needed by SlightBlur.
 type PixFmtInterface interface {
 	Width() int
 	Height() int

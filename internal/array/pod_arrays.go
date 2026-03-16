@@ -7,8 +7,8 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
-// PodArrayAdaptor wraps an existing slice with AGG-compatible interface.
-// This is equivalent to AGG's pod_array_adaptor<T> template class.
+// PodArrayAdaptor wraps an existing slice behind the pod_array_adaptor-style
+// interface used by AGG.
 type PodArrayAdaptor[T any] struct {
 	array []T
 	size  int
@@ -48,9 +48,8 @@ func (pa *PodArrayAdaptor[T]) ValueAt(i int) T {
 	return pa.array[i]
 }
 
-// PodAutoArray is a fixed-size array with compile-time size.
-// This is equivalent to AGG's pod_auto_array<T, Size> template class.
-// In Go, we simulate the compile-time size with a runtime size parameter.
+// PodAutoArray is the Go analogue of AGG's pod_auto_array: fixed length after
+// construction, but still backed by ordinary Go storage.
 type PodAutoArray[T any] struct {
 	array []T
 	size  int
@@ -117,8 +116,8 @@ func (pa *PodAutoArray[T]) Data() []T {
 	return pa.array[:pa.size]
 }
 
-// PodAutoVector is a fixed-capacity vector with dynamic size.
-// This is equivalent to AGG's pod_auto_vector<T, Size> template class.
+// PodAutoVector mirrors AGG's pod_auto_vector with fixed capacity and dynamic
+// logical length.
 type PodAutoVector[T any] struct {
 	array []T
 	size  int
@@ -203,8 +202,7 @@ func (pv *PodAutoVector[T]) Data() []T {
 	return pv.array[:pv.size]
 }
 
-// PodArray is a dynamic array with explicit memory management.
-// This is equivalent to AGG's pod_array<T> template class.
+// PodArray is the dynamic pod-style array counterpart to AGG's pod_array.
 type PodArray[T any] struct {
 	array []T
 	size  int

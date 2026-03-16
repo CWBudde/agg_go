@@ -1,5 +1,3 @@
-// Package agg2d provides the internal AGG2D high-level interface implementation.
-// This is a Go port of the C++ Agg2D class from AGG 2.6.
 package agg2d
 
 import (
@@ -21,10 +19,11 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
 
-// Color represents a RGBA color with 8-bit components.
+// Color is the user-facing 8-bit RGBA color carried through the internal Agg2D
+// state machine, matching the C++ Agg2D::Color role.
 type Color [4]uint8
 
-// Type aliases for the different enums and constants
+// Type aliases for the Agg2D-style enums exposed across the package.
 type (
 	BlendMode      = int
 	Gradient       = int
@@ -37,7 +36,7 @@ type (
 	ViewportOption = int
 )
 
-// Core constants
+// Core constants mirror the enum values exposed by the C++ Agg2D interface.
 const (
 	// Gradients
 	Solid  Gradient = 0
@@ -80,8 +79,13 @@ const (
 	XMaxYMax
 )
 
-// Agg2D is the main high-level rendering interface.
-// This matches the C++ Agg2D class from the original AGG library.
+// Agg2D is the internal stateful rendering facade that coordinates the AGG
+// path, transform, rasterizer, span, image, and text subsystems.
+//
+// Like the original C++ Agg2D class, it is configured through mutable drawing
+// state. Operations update that state, populate the current path or image
+// parameters, and then render through the scanline pipeline into the currently
+// attached buffer.
 type Agg2D struct {
 	// Rendering buffer
 	rbuf *buffer.RenderingBuffer[uint8]
@@ -234,11 +238,13 @@ var (
 	White = Color{255, 255, 255, 255}
 )
 
+// NewColor constructs an explicit RGBA color value.
 func NewColor(r, g, b, a uint8) Color {
 	return Color{r, g, b, a}
 }
 
-// TransformStack manages a stack of transformation matrices
+// TransformStack stores saved world transforms for PushTransform/PopTransform-
+// style workflows.
 type TransformStack struct {
 	stack []*transform.TransAffine
 }

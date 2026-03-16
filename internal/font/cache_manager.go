@@ -1,4 +1,3 @@
-// Package font provides font rendering capabilities for the AGG graphics library.
 package font
 
 import (
@@ -11,8 +10,11 @@ import (
 // Block allocator parameters, matching C++ implementation.
 const blockSize = 16384 - 16
 
-// FontEngine defines the interface that font engines must implement
-// to work with the cache manager.
+// FontEngine matches the glyph-facing contract that AGG's font_cache_manager
+// expects from a font engine.
+//
+// The engine owns glyph preparation and outline-path storage, while the cache
+// manager owns per-font glyph caching and adaptor setup.
 type FontEngine interface {
 	// Font identification and management
 	FontSignature() string
@@ -33,15 +35,16 @@ type FontEngine interface {
 	PathAdaptor() *path.PathStorageStl
 }
 
-// FontCache stores glyphs for a single font with efficient two-level indexing.
-// This mirrors the C++ font_cache class structure.
+// FontCache stores glyphs for one font signature using the same two-level
+// [msb][lsb] lookup shape as AGG's font_cache.
 type FontCache struct {
 	allocator     *blockAllocator
 	fontSignature string
 	glyphs        [256]*[256]*GlyphCache // Two-level array: [MSB][LSB]
 }
 
-// blockAllocator provides efficient memory allocation for font data.
+// blockAllocator mirrors AGG's block allocator used by font_cache to keep glyph
+// entries and serialized glyph payloads in stable backing storage.
 type blockAllocator struct {
 	blocks       [][]byte
 	currentBlock int
@@ -76,26 +79,26 @@ func (ba *blockAllocator) allocate(size int) []byte {
 	return result
 }
 
-// NewFontCache creates a new font cache.
+// NewFontCache creates an empty cache for one font signature.
 func NewFontCache() *FontCache {
 	return &FontCache{
 		allocator: newBlockAllocator(),
 	}
 }
 
-// SetSignature sets the font signature for this cache.
+// SetSignature binds the cache to a font signature and clears prior glyph data.
 func (fc *FontCache) SetSignature(fontSignature string) {
 	fc.fontSignature = fontSignature
 	// Clear existing glyphs when signature changes
 	fc.glyphs = [256]*[256]*GlyphCache{}
 }
 
-// FontIs checks if this cache belongs to the specified font.
+// FontIs reports whether the cache belongs to fontSignature.
 func (fc *FontCache) FontIs(fontSignature string) bool {
 	return fc.fontSignature == fontSignature
 }
 
-// FindGlyph finds a cached glyph by character code.
+// FindGlyph returns the cached glyph for glyphCode, or nil if it is absent.
 func (fc *FontCache) FindGlyph(glyphCode uint) *GlyphCache {
 	msb := (glyphCode >> 8) & 0xFF
 	lsb := glyphCode & 0xFF
@@ -106,7 +109,7 @@ func (fc *FontCache) FindGlyph(glyphCode uint) *GlyphCache {
 	return nil
 }
 
-// CacheGlyph stores a glyph in the cache.
+// CacheGlyph allocates and stores one glyph entry and its serialized payload.
 func (fc *FontCache) CacheGlyph(glyphCode, glyphIndex uint, dataSize uint,
 	dataType GlyphDataType, bounds basics.Rect[int], advanceX, advanceY float64,
 ) *GlyphCache {
@@ -148,8 +151,8 @@ func (fc *FontCache) CacheGlyph(glyphCode, glyphIndex uint, dataSize uint,
 	return glyph
 }
 
-// FontCacheManager manages multiple font caches and coordinates with font engines.
-// This is the main interface for font rendering, similar to the C++ font_cache_manager template.
+// FontCacheManager coordinates the active font engine with a bounded set of
+// per-font caches, following AGG's font_cache_manager template.
 type FontCacheManager struct {
 	fontEngine   FontEngine
 	fontCaches   []*FontCache
@@ -161,8 +164,8 @@ type FontCacheManager struct {
 	lastError    error
 }
 
-// translatedPathSource applies a static translation to every vertex from a source path.
-// This mirrors AGG's embedded path adaptor behavior used by init_embedded_adaptors().
+// translatedPathSource applies a static translation to every vertex from src.
+// It mirrors the embedded path adaptor AGG initializes for outline glyphs.
 type translatedPathSource struct {
 	src    path.VertexSource
 	dx, dy float64
@@ -187,7 +190,10 @@ func (t *translatedPathSource) NextVertex() (x, y float64, cmd uint32) {
 	return x, y, cmd
 }
 
-// NewFontCacheManager creates a new font cache manager with the given font engine.
+// NewFontCacheManager creates a cache manager for fontEngine.
+//
+// maxFonts limits the number of cached font signatures before the oldest cache
+// entry is dropped, matching the bounded-cache policy used by AGG.
 func NewFontCacheManager(fontEngine FontEngine, maxFonts int) *FontCacheManager {
 	if maxFonts <= 0 {
 		maxFonts = 32 // Default value from C++ implementation
@@ -226,7 +232,8 @@ func (fcm *FontCacheManager) findFontCache() *FontCache {
 	return newCache
 }
 
-// Glyph retrieves a glyph from the cache, loading it from the font engine if necessary.
+// Glyph returns the cached glyph for charCode, loading it through the engine on
+// a miss and refreshing outline-engine state on outline hits.
 func (fcm *FontCacheManager) Glyph(charCode uint) *GlyphCache {
 	fcm.currentCache = fcm.findFontCache()
 
@@ -264,19 +271,20 @@ func (fcm *FontCacheManager) Glyph(charCode uint) *GlyphCache {
 	return glyph
 }
 
-// AddKerning adds kerning adjustment between two glyph indices.
+// AddKerning applies the kerning adjustment for the given glyph pair to x and y.
 func (fcm *FontCacheManager) AddKerning(x, y *float64, first, second uint) {
 	dx, dy := fcm.fontEngine.AddKerning(first, second)
 	*x += dx
 	*y += dy
 }
 
-// PathAdaptor returns the path adaptor for vector font rendering.
+// PathAdaptor returns the path storage populated for outline glyph rendering.
 func (fcm *FontCacheManager) PathAdaptor() *path.PathStorageStl {
 	return fcm.pathAdaptor
 }
 
-// InitEmbeddedAdaptors initializes the glyph adaptors for rendering at the specified position.
+// InitEmbeddedAdaptors prepares the translated outline path and serialized
+// scanline adaptors for a cached glyph, matching AGG's init_embedded_adaptors().
 func (fcm *FontCacheManager) InitEmbeddedAdaptors(glyph *GlyphCache, x, y float64) {
 	if glyph == nil {
 		return
@@ -304,12 +312,14 @@ func (fcm *FontCacheManager) InitEmbeddedAdaptors(glyph *GlyphCache, x, y float6
 	}
 }
 
-// Gray8Adaptor returns the gray8 scanline adaptor.
+// Gray8Adaptor returns the anti-aliased scanline adaptor prepared by
+// InitEmbeddedAdaptors.
 func (fcm *FontCacheManager) Gray8Adaptor() *SerializedScanlinesAdaptorAA {
 	return fcm.gray8Adaptor
 }
 
-// MonoAdaptor returns the mono scanline adaptor.
+// MonoAdaptor returns the binary scanline adaptor prepared by
+// InitEmbeddedAdaptors.
 func (fcm *FontCacheManager) MonoAdaptor() *SerializedScanlinesAdaptorBin {
 	return fcm.monoAdaptor
 }

@@ -1,7 +1,7 @@
 //go:build freetype
 
-// Package freetype provides FreeType font engine integration for AGG graphics library.
-// This requires FreeType library to be installed and uses CGO for integration.
+// Package freetype provides the build-tagged CGO wrapper around FreeType used by
+// AGG's font-cache pipeline.
 package freetype
 
 /*
@@ -159,7 +159,8 @@ func calcCRC32(data []byte) uint32 {
 	return ^crc
 }
 
-// FontEngineFreetype implements the FontEngine interface using FreeType.
+// FontEngineFreetype implements font.FontEngine on top of a FreeType library
+// instance, closely following AGG's font_engine_freetype_* classes.
 type FontEngineFreetype struct {
 	// Configuration
 	flag32             bool
@@ -199,7 +200,7 @@ type FontEngineFreetype struct {
 	pathStorage *path.PathStorageStl
 }
 
-// GlyphRenderingType defines how glyphs should be rendered.
+// GlyphRenderingType selects the glyph representation requested from FreeType.
 type GlyphRenderingType int
 
 const (
@@ -210,7 +211,7 @@ const (
 	GlyphRenderingMono
 )
 
-// NewFontEngineFreetype creates a new FreeType font engine.
+// NewFontEngineFreetype creates a FreeType engine with a bounded face cache.
 func NewFontEngineFreetype(flag32 bool, maxFaces uint) (*FontEngineFreetype, error) {
 	if maxFaces == 0 {
 		maxFaces = 32

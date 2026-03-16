@@ -4,8 +4,8 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
-// PathLength calculates the total length of a path.
-// This is a direct port of AGG's path_length template function.
+// PathLength calculates the geometric length of a path source using the same
+// move/line/close traversal contract as AGG's path_length helper.
 //
 // The function iterates through all vertices in the path, calculating
 // the cumulative distance between consecutive points. When a close

@@ -1,6 +1,3 @@
-// Package agg provides high-level convenience functions for 2D graphics rendering.
-// This file implements the public Context API, which wraps the lower-level Agg2D
-// interface with a simpler immediate-mode surface plus explicit path commands.
 package agg
 
 import (

@@ -5,8 +5,8 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/color"
 )
 
-// StackBlurGray8 applies stack blur to 8-bit grayscale images.
-// This is an optimized version for the most common grayscale format.
+// StackBlurGray8 applies AGG-style stack blur to 8-bit grayscale images using
+// the precomputed mul/shift tables from agg_blur.h.
 func StackBlurGray8[Img GrayImageInterface](img Img, rx, ry int) {
 	w := img.Width()
 	h := img.Height()
@@ -163,7 +163,8 @@ func StackBlurGray8[Img GrayImageInterface](img Img, rx, ry int) {
 	}
 }
 
-// StackBlurRGB24 applies stack blur to 24-bit RGB images.
+// StackBlurRGB24 applies stack blur to packed RGB images through a pointer-like
+// image adaptor.
 func StackBlurRGB24[Img RGBImageInterface[PtrType], PtrType any](img Img, rx, ry int) {
 	w := img.Width()
 	h := img.Height()
@@ -276,14 +277,15 @@ func StackBlurRGB24[Img RGBImageInterface[PtrType], PtrType any](img Img, rx, ry
 	_ = ry // Avoid unused parameter warning
 }
 
-// StackBlurRGBA32 applies stack blur to 32-bit RGBA images.
+// StackBlurRGBA32 is the RGBA analogue of StackBlurRGB24.
 func StackBlurRGBA32[Img RGBAImageInterface[PtrType], PtrType any](img Img, rx, ry int) {
 	// Similar to RGB24 but with alpha channel
 	// Implementation follows the same pattern as StackBlurRGB24
 	// but includes alpha channel processing
 }
 
-// GrayImageInterface defines the interface for grayscale images that support optimized blur.
+// GrayImageInterface is the low-level image contract for the optimized gray8
+// stack blur path.
 type GrayImageInterface interface {
 	Width() int
 	Height() int
@@ -293,7 +295,7 @@ type GrayImageInterface interface {
 	PixPtrOffset(ptr *basics.Int8u, offset int) *basics.Int8u
 }
 
-// RGBImageInterface defines the interface for RGB images that support optimized blur.
+// RGBImageInterface is the adaptor contract for optimized RGB stack blur.
 type RGBImageInterface[PtrType any] interface {
 	Width() int
 	Height() int
@@ -303,7 +305,7 @@ type RGBImageInterface[PtrType any] interface {
 	SetRGB(ptr PtrType, rgb color.RGB8[color.Linear])
 }
 
-// RGBAImageInterface defines the interface for RGBA images that support optimized blur.
+// RGBAImageInterface is the adaptor contract for optimized RGBA stack blur.
 type RGBAImageInterface[PtrType any] interface {
 	Width() int
 	Height() int

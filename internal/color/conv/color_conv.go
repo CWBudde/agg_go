@@ -1,30 +1,25 @@
-// Package conv provides color conversion utilities for AGG.
-// This package implements color space and pixel format conversions
-// corresponding to agg_color_conv.h from the original AGG library.
+// Package conv implements AGG's row-oriented pixel-format conversion helpers.
+// It is the Go equivalent of agg_color_conv.h plus the rgb8/rgb16 conversion
+// header families.
 package conv
 
 import (
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
-// RenderingBuffer interface represents the minimum required interface
-// for color conversion operations, compatible with existing buffer types.
-// This matches the C++ AGG rendering_buffer interface.
+// RenderingBuffer is the minimal buffer contract required by row converters.
 type RenderingBuffer interface {
 	Width() int
 	Height() int
 	RowPtr(x, y, length int) []basics.Int8u
 }
 
-// CopyRowFunctor defines the interface for row copying operations.
-// Implementations of this interface handle the actual pixel format conversion.
+// CopyRowFunctor is the AGG-style row-conversion functor contract.
 type CopyRowFunctor interface {
 	CopyRow(dst, src []basics.Int8u, width int)
 }
 
-// ColorConv performs color conversion between two rendering buffers using
-// the provided copy row functor. This is the main conversion function.
-// It corresponds to the template function color_conv() in AGG.
+// ColorConv is the main AGG-style buffer-to-buffer row conversion entry point.
 func ColorConv(dst, src RenderingBuffer, copyRowFunctor CopyRowFunctor) {
 	width := src.Width()
 	height := src.Height()
@@ -50,25 +45,23 @@ func ColorConv(dst, src RenderingBuffer, copyRowFunctor CopyRowFunctor) {
 	}
 }
 
-// ColorConvRow performs color conversion on a single row of pixels.
-// This function is useful for converting individual scanlines.
+// ColorConvRow applies one row-conversion functor to one row.
 func ColorConvRow(dst, src []basics.Int8u, width int, copyRowFunctor CopyRowFunctor) {
 	copyRowFunctor.CopyRow(dst, src, width)
 }
 
-// ColorConvSame implements a copy row functor that performs a direct memory copy.
-// This is used when source and destination formats are identical.
-// The BPP parameter specifies bytes per pixel.
+// ColorConvSame is the AGG fast path for identical source and destination
+// formats.
 type ColorConvSame struct {
 	BPP int // Bytes per pixel
 }
 
-// NewColorConvSame creates a new same-format copy functor.
+// NewColorConvSame creates a same-format row copier.
 func NewColorConvSame(bpp int) *ColorConvSame {
 	return &ColorConvSame{BPP: bpp}
 }
 
-// CopyRow implements direct memory copy for identical pixel formats.
+// CopyRow performs a direct byte copy.
 func (c *ColorConvSame) CopyRow(dst, src []basics.Int8u, width int) {
 	if width <= 0 {
 		return
@@ -82,21 +75,19 @@ func (c *ColorConvSame) CopyRow(dst, src []basics.Int8u, width int) {
 	copy(dst[:bytesToCopy], src[:bytesToCopy])
 }
 
-// Generic pixel converter interface for format-specific conversions.
-// This replaces the C++ template conv_pixel<DstFormat, SrcFormat>.
+// PixelConverter is the per-pixel converter contract used by the generic row adapter.
 type PixelConverter interface {
 	ConvertPixel(dst, src []basics.Int8u)
 }
 
-// Generic row converter that uses a pixel converter for individual pixels.
-// This replaces the C++ template conv_row<DstFormat, SrcFormat>.
+// ConvRow is the generic row adapter around a per-pixel converter.
 type ConvRow struct {
 	PixelConverter PixelConverter
 	DstPixWidth    int // Destination pixel width in bytes
 	SrcPixWidth    int // Source pixel width in bytes
 }
 
-// NewConvRow creates a new generic row converter.
+// NewConvRow creates a generic row converter.
 func NewConvRow(pixelConverter PixelConverter, dstPixWidth, srcPixWidth int) *ConvRow {
 	return &ConvRow{
 		PixelConverter: pixelConverter,
@@ -105,7 +96,7 @@ func NewConvRow(pixelConverter PixelConverter, dstPixWidth, srcPixWidth int) *Co
 	}
 }
 
-// CopyRow converts a row of pixels using the pixel converter.
+// CopyRow converts one row pixel-by-pixel.
 func (c *ConvRow) CopyRow(dst, src []basics.Int8u, width int) {
 	if width <= 0 || c.PixelConverter == nil {
 		return
@@ -126,9 +117,8 @@ func (c *ConvRow) CopyRow(dst, src []basics.Int8u, width int) {
 	}
 }
 
-// Convert provides a high-level conversion function that automatically
-// creates the appropriate row converter and performs the conversion.
-// This corresponds to the template function convert() in AGG.
+// Convert is the high-level entry point that selects same-format copy or
+// generic row conversion.
 func Convert(dst, src RenderingBuffer, dstPixWidth, srcPixWidth int, pixelConverter PixelConverter) {
 	// Use ColorConvSame for identical formats
 	if dstPixWidth == srcPixWidth && pixelConverter == nil {

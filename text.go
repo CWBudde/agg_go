@@ -1,5 +1,3 @@
-// Package agg provides text rendering functionality for 2D graphics.
-// This file wires public text APIs to internal/agg2d font and text rendering.
 package agg
 
 import (
@@ -12,7 +10,9 @@ import (
 type FontCacheType = ia.FontCacheType
 
 const (
+	// RasterFontCache selects raster glyph caching.
 	RasterFontCache FontCacheType = ia.RasterFontCache
+	// VectorFontCache selects vector-outline glyph caching.
 	VectorFontCache FontCacheType = ia.VectorFontCache
 )
 
@@ -114,30 +114,35 @@ func (ctx *Context) SetTextRotation(angle float64) { ctx.PushTransform(); ctx.Ro
 // ResetTextRotation restores the previous transform.
 func (ctx *Context) ResetTextRotation() { ctx.PopTransform() }
 
-// Styling placeholders
+// SetBold is currently a placeholder for future font-style handling.
 func (ctx *Context) SetBold(bold bool) {}
 
+// SetItalic applies a simple skew-based italic transform when italic is true.
 func (ctx *Context) SetItalic(italic bool) {
 	if italic {
 		ctx.Skew(0.2, 0)
 	}
 }
+
+// SetUnderline is currently a placeholder for future underline support.
 func (ctx *Context) SetUnderline(u bool) {}
 
-// Alignment helpers
+// DrawTextCentered draws text centered on x.
 func (ctx *Context) DrawTextCentered(text string, x, y float64) error {
 	return ctx.DrawTextAligned(text, x, y, AlignCenter)
 }
 
+// DrawTextRight draws text right-aligned to x.
 func (ctx *Context) DrawTextRight(text string, x, y float64) error {
 	return ctx.DrawTextAligned(text, x, y, AlignRight)
 }
 
+// DrawTextLeft draws text left-aligned to x.
 func (ctx *Context) DrawTextLeft(text string, x, y float64) error {
 	return ctx.DrawTextAligned(text, x, y, AlignLeft)
 }
 
-// Multi-line and wrapping
+// DrawTextLines draws multiple lines with a fixed line advance.
 func (ctx *Context) DrawTextLines(lines []string, x, y, lineHeight float64) error {
 	if len(lines) == 0 {
 		return errors.New("no lines provided")
@@ -152,6 +157,7 @@ func (ctx *Context) DrawTextLines(lines []string, x, y, lineHeight float64) erro
 	return nil
 }
 
+// DrawTextWrapped wraps text to maxWidth and renders the resulting lines.
 func (ctx *Context) DrawTextWrapped(text string, x, y, maxWidth, lineHeight float64) error {
 	if text == "" {
 		return errors.New("text is empty")

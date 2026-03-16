@@ -7,9 +7,8 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
-//
-// sRGB <-> Linear scalar helpers (double precision)
-//
+// Scalar sRGB <-> linear helpers follow the standard sRGB transfer curve used
+// by AGG gamma conversion code.
 
 const (
 	srgbBreak   = 0.04045           // sRGB-domain breakpoint
@@ -17,6 +16,7 @@ const (
 	invGamma    = 1.0 / 2.4
 )
 
+// ConvertFromSRGB converts one normalized sRGB channel to linear-light space.
 func ConvertFromSRGB(v float64) float64 {
 	if v <= srgbBreak {
 		return v / 12.92
@@ -24,6 +24,7 @@ func ConvertFromSRGB(v float64) float64 {
 	return math.Pow((v+0.055)/1.055, 2.4)
 }
 
+// ConvertToSRGB converts one normalized linear-light channel to sRGB space.
 func ConvertToSRGB(v float64) float64 {
 	if v <= linearBreak {
 		return v * 12.92
@@ -31,9 +32,8 @@ func ConvertToSRGB(v float64) float64 {
 	return 1.055*math.Pow(v, invGamma) - 0.055
 }
 
-//
-// Small, cache-once lookup tables for 8-bit sRGB <-> linear
-//
+// Cache-once lookup tables provide the fast 8-bit path used by channel and
+// luminance conversion helpers.
 
 var (
 	onceTables      sync.Once
@@ -59,27 +59,26 @@ func initSRGBTables() {
 	})
 }
 
-// Fast 8-bit helpers
+// Fast 8-bit helpers.
 func srgb8ToLinear8(v basics.Int8u) basics.Int8u { initSRGBTables(); return srgbToLinearU8[v] }
 func linear8ToSrgb8(v basics.Int8u) basics.Int8u { initSRGBTables(); return linearToSrgbU8[v] }
 
-// Fast float helpers (indexed from U8 when going sRGB->linear; computed for linear->sRGB)
+// Fast float helpers.
 func srgb8ToLinearF32(v basics.Int8u) float32 { initSRGBTables(); return srgbToLinearF32[v] }
 
 func linearF32ToSrgb8(v float32) basics.Int8u {
 	return basics.Int8u(ConvertToSRGB(float64(v))*255 + 0.5)
 }
 
-// Alpha passthrough (no gamma on alpha in AGG)
+// Alpha passthrough helpers preserve AGG's rule that gamma is never applied to alpha.
 func alphaU8FromSRGB(a basics.Int8u) basics.Int8u { return a }
 func alphaU8ToSRGB(a basics.Int8u) basics.Int8u   { return a }
 func alphaF32FromSRGB(a basics.Int8u) float32     { return float32(a) / 255.0 }
 func alphaF32ToSRGB(a float32) basics.Int8u       { return basics.Int8u(a*255 + 0.5) }
 
-//
-// RGBA8 <-> RGBA8 colorspace conversions
-//
+// RGBA8 <-> RGBA8 colorspace conversions.
 
+// ConvertRGBA8LinearToSRGB converts an RGBA8 color from linear space to sRGB.
 func ConvertRGBA8LinearToSRGB(c RGBA8[Linear]) RGBA8[SRGB] {
 	return RGBA8[SRGB]{
 		R: linear8ToSrgb8(c.R),
@@ -89,6 +88,7 @@ func ConvertRGBA8LinearToSRGB(c RGBA8[Linear]) RGBA8[SRGB] {
 	}
 }
 
+// ConvertRGBA8SRGBToLinear converts an RGBA8 color from sRGB to linear space.
 func ConvertRGBA8SRGBToLinear(c RGBA8[SRGB]) RGBA8[Linear] {
 	return RGBA8[Linear]{
 		R: srgb8ToLinear8(c.R),
@@ -98,10 +98,9 @@ func ConvertRGBA8SRGBToLinear(c RGBA8[SRGB]) RGBA8[Linear] {
 	}
 }
 
-//
-// RGB8 (no alpha)
-//
+// RGB8 (no alpha).
 
+// ConvertRGB8LinearToSRGB converts an RGB8 color from linear space to sRGB.
 func ConvertRGB8LinearToSRGB(c RGB8[Linear]) RGB8[SRGB] {
 	return RGB8[SRGB]{
 		R: linear8ToSrgb8(c.R),
@@ -110,6 +109,7 @@ func ConvertRGB8LinearToSRGB(c RGB8[Linear]) RGB8[SRGB] {
 	}
 }
 
+// ConvertRGB8SRGBToLinear converts an RGB8 color from sRGB to linear space.
 func ConvertRGB8SRGBToLinear(c RGB8[SRGB]) RGB8[Linear] {
 	return RGB8[Linear]{
 		R: srgb8ToLinear8(c.R),
@@ -118,15 +118,14 @@ func ConvertRGB8SRGBToLinear(c RGB8[SRGB]) RGB8[Linear] {
 	}
 }
 
-//
-// Gray8
-// Prefer table-based conversions to avoid per-pixel pow.
-//
+// Gray8 conversion helpers use the same table-driven strategy to avoid per-pixel pow calls.
 
+// ConvertGray8LinearToSRGB converts Gray8 from linear space to sRGB.
 func ConvertGray8LinearToSRGB(g Gray8[Linear]) Gray8[SRGB] {
 	return Gray8[SRGB]{V: linear8ToSrgb8(g.V), A: alphaU8ToSRGB(g.A)}
 }
 
+// ConvertGray8SRGBToLinear converts Gray8 from sRGB to linear space.
 func ConvertGray8SRGBToLinear(g Gray8[SRGB]) Gray8[Linear] {
 	return Gray8[Linear]{V: srgb8ToLinear8(g.V), A: alphaU8FromSRGB(g.A)}
 }

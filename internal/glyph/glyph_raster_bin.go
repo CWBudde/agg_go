@@ -1,6 +1,3 @@
-// Package glyph provides glyph rasterization functionality for AGG.
-// This package implements binary glyph rasterizers that can render text
-// from embedded font data.
 package glyph
 
 import (
@@ -9,13 +6,14 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
-// GlyphRect represents the bounding rectangle and positioning information for a glyph
+// GlyphRect describes the prepared glyph bounds plus the advance vector to the
+// next glyph origin.
 type GlyphRect struct {
 	X1, Y1, X2, Y2 int     // Bounding rectangle
 	DX, DY         float64 // Advance vector
 }
 
-// GlyphGenerator defines the interface for glyph generation
+// GlyphGenerator is the common interface for prepared glyph raster sources.
 type GlyphGenerator interface {
 	// Prepare sets up rendering for a specific glyph at the given position
 	Prepare(r *GlyphRect, x, y float64, glyph rune, flip bool)
@@ -33,8 +31,7 @@ type GlyphGenerator interface {
 	Width(str string) float64
 }
 
-// GlyphRasterBin implements binary glyph rasterization from embedded font data.
-// This is the Go equivalent of AGG's glyph_raster_bin template class.
+// GlyphRasterBin implements AGG's binary embedded-font rasterizer.
 type GlyphRasterBin struct {
 	font      []byte                // Font data
 	bigEndian bool                  // Byte order flag

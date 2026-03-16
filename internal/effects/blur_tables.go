@@ -2,13 +2,12 @@ package effects
 
 import "github.com/MeKo-Christian/agg_go/internal/basics"
 
-// StackBlurTables contains precomputed multiplication and shift tables
-// for optimizing stack blur operations on 8-bit values.
-// These tables replace division with multiplication and bit shifting.
+// StackBlurTables names the AGG-derived lookup-table family used by the stack
+// blur implementations.
 type StackBlurTables struct{}
 
-// StackBlur8Mul contains multiplication factors for stack blur optimization.
-// Index represents blur radius (1-254), value is multiplication factor.
+// StackBlur8Mul contains AGG's precomputed multiplication factors for 8-bit
+// stack blur radii.
 var StackBlur8Mul = [255]basics.Int16u{
 	512, 512, 456, 512, 328, 456, 335, 512, 405, 328, 271, 456, 388, 335, 292, 512,
 	454, 405, 364, 328, 298, 271, 496, 456, 420, 388, 360, 335, 312, 292, 273, 512,
@@ -28,8 +27,8 @@ var StackBlur8Mul = [255]basics.Int16u{
 	289, 287, 285, 282, 280, 278, 275, 273, 271, 269, 267, 265, 263, 261, 259,
 }
 
-// StackBlur8Shr contains bit shift amounts for stack blur optimization.
-// Index represents blur radius (1-254), value is right shift amount.
+// StackBlur8Shr contains AGG's paired right-shift values for 8-bit stack blur
+// radii.
 var StackBlur8Shr = [255]basics.Int8u{
 	9, 11, 12, 13, 13, 14, 14, 15, 15, 15, 15, 16, 16, 16, 16, 17,
 	17, 17, 17, 17, 17, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18, 19,

@@ -8,7 +8,8 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/color"
 )
 
-// StackBlurCalcRGBA implements the calculator interface for RGBA colors.
+// StackBlurCalcRGBA is the RGBA accumulator used by the generic stack-blur
+// implementation, mirroring AGG's stack_blur_calc_rgba helper.
 type StackBlurCalcRGBA[T ~uint32 | ~uint64] struct {
 	r, g, b, a T
 }
@@ -77,7 +78,9 @@ func (calc *StackBlurCalcRGBA[T]) CalcPixMulShr(result *color.RGBA8[color.Linear
 	result.A = basics.Int8u((calc.a * m) >> shr)
 }
 
-// SimpleStackBlur provides a straightforward stack blur implementation for RGBA images.
+// SimpleStackBlur is a direct, reusable two-pass stack blur for RGBA images.
+// It keeps AGG-style temporary buffers between calls to avoid repeated
+// allocations when the same instance is reused.
 type SimpleStackBlur struct {
 	buf   *array.PodVector[color.RGBA8[color.Linear]]
 	stack *array.PodVector[color.RGBA8[color.Linear]]
