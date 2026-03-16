@@ -4,30 +4,20 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
-// VPGen interface defines the contract for vertex processor generators
-// This matches the expected interface from the C++ AGG implementation
+// VPGen is the contract implemented by vpgen-style streaming processors such as
+// clip_polygon, clip_polyline, and segmentator.
 type VPGen interface {
-	// Reset resets the vertex processor state
 	Reset()
-
-	// MoveTo starts a new path at the given coordinates
 	MoveTo(x, y float64)
-
-	// LineTo adds a line segment to the current path
 	LineTo(x, y float64)
-
-	// Vertex returns the next processed vertex
 	Vertex() (x, y float64, cmd basics.PathCommand)
-
-	// AutoClose returns true if polygons should be automatically closed
 	AutoClose() bool
-
-	// AutoUnclose returns true if polygons should be automatically unclosed
 	AutoUnclose() bool
 }
 
-// ConvAdaptorVPGen is a generic adaptor that connects vertex sources with vertex processor generators
-// This is equivalent to conv_adaptor_vpgen<VertexSource, VPGen> in the C++ implementation
+// ConvAdaptorVPGen is the Go equivalent of AGG's conv_adaptor_vpgen. It streams
+// source vertices through a vpgen processor while preserving AGG's auto-close
+// and end_poly handling.
 type ConvAdaptorVPGen[VPG VPGen] struct {
 	source    VertexSource
 	vpgen     VPG
@@ -37,7 +27,7 @@ type ConvAdaptorVPGen[VPG VPGen] struct {
 	vertices  int
 }
 
-// NewConvAdaptorVPGen creates a new vertex processor adaptor
+// NewConvAdaptorVPGen creates a vpgen adaptor.
 func NewConvAdaptorVPGen[VPG VPGen](source VertexSource, vpgen VPG) *ConvAdaptorVPGen[VPG] {
 	return &ConvAdaptorVPGen[VPG]{
 		source: source,
@@ -45,17 +35,17 @@ func NewConvAdaptorVPGen[VPG VPGen](source VertexSource, vpgen VPG) *ConvAdaptor
 	}
 }
 
-// Attach sets a new vertex source
+// Attach replaces the wrapped source.
 func (c *ConvAdaptorVPGen[VPG]) Attach(source VertexSource) {
 	c.source = source
 }
 
-// VPGen returns a reference to the vertex processor generator
+// VPGen returns the wrapped vpgen object.
 func (c *ConvAdaptorVPGen[VPG]) VPGen() VPG {
 	return c.vpgen
 }
 
-// Rewind resets the adaptor to start reading from the beginning of the path
+// Rewind resets both the source and the vpgen state for a new path walk.
 func (c *ConvAdaptorVPGen[VPG]) Rewind(pathID uint) {
 	c.source.Rewind(pathID)
 	c.vpgen.Reset()
@@ -65,7 +55,9 @@ func (c *ConvAdaptorVPGen[VPG]) Rewind(pathID uint) {
 	c.vertices = 0
 }
 
-// Vertex returns the next vertex from the processed path
+// Vertex advances the streaming conversion state machine, following AGG's
+// conv_adaptor_vpgen logic for auto-closing polygons and replaying end_poly
+// flags after vpgen output is drained.
 func (c *ConvAdaptorVPGen[VPG]) Vertex() (x, y float64, cmd basics.PathCommand) {
 	cmd = basics.PathCmdStop
 

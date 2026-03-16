@@ -1,5 +1,3 @@
-// Package transform provides affine transformation functionality for AGG.
-// This implements a port of AGG's trans_affine class.
 package transform
 
 import (
@@ -14,10 +12,11 @@ var (
 	_ InverseTransformer = (*TransAffine)(nil)
 )
 
-// AffineEpsilon is the default epsilon for affine transformation comparisons
+// AffineEpsilon matches AGG's affine_epsilon constant.
 const AffineEpsilon = 1e-14
 
-// TransAffine represents a 2x3 affine transformation matrix.
+// TransAffine is the Go equivalent of AGG's trans_affine. It represents a 2x3
+// affine matrix stored in the same six-coefficient layout as the C++ class.
 // The matrix components are:
 //
 //	sx  shx tx
@@ -33,7 +32,7 @@ type TransAffine struct {
 	SX, SHY, SHX, SY, TX, TY float64
 }
 
-// NewTransAffine creates a new identity transformation matrix.
+// NewTransAffine creates the identity matrix.
 func NewTransAffine() *TransAffine {
 	return &TransAffine{
 		SX: 1.0, SHY: 0.0, SHX: 0.0,
@@ -57,29 +56,29 @@ func NewTransAffineFromArray(m [6]float64) *TransAffine {
 	}
 }
 
-// NewTransAffineRectToParl creates a transformation from rectangle to parallelogram.
+// NewTransAffineRectToParl creates the AGG rectangle-to-parallelogram mapping.
 func NewTransAffineRectToParl(x1, y1, x2, y2 float64, parl [6]float64) *TransAffine {
 	t := NewTransAffine()
 	t.RectToParl(x1, y1, x2, y2, parl)
 	return t
 }
 
-// NewTransAffineParlToRect creates a transformation from parallelogram to rectangle.
+// NewTransAffineParlToRect creates the inverse parallelogram-to-rectangle mapping.
 func NewTransAffineParlToRect(parl [6]float64, x1, y1, x2, y2 float64) *TransAffine {
 	t := NewTransAffine()
 	t.ParlToRect(parl, x1, y1, x2, y2)
 	return t
 }
 
-// NewTransAffineParlToParl creates a transformation from one parallelogram to another.
+// NewTransAffineParlToParl maps one parallelogram basis to another.
 func NewTransAffineParlToParl(src, dst [6]float64) *TransAffine {
 	t := NewTransAffine()
 	t.ParlToParl(src, dst)
 	return t
 }
 
-// NewTransAffineFromTransformer creates a TransAffine by copying another transformer.
-// This is useful when working with span interpolators that need TransAffine specifically.
+// NewTransAffineFromTransformer approximates another Transformer as an affine
+// transform by sampling the transformed unit basis.
 func NewTransAffineFromTransformer(transformer Transformer) *TransAffine {
 	// Transform a unit square to extract the transformation matrix
 	x1, y1 := 0.0, 0.0

@@ -1,4 +1,3 @@
-// Package scanline provides scanline containers for the AGG rendering pipeline.
 package scanline
 
 import (
@@ -6,20 +5,15 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
-// SpanBin represents a binary horizontal span without coverage values.
-// This is used when only pixel presence matters, not anti-aliasing coverage.
-// Corresponds to the span struct in AGG's scanline_bin class.
+// SpanBin is the Go equivalent of AGG's scanline_bin::span.
 type SpanBin struct {
 	X   basics.Int16 // Starting X coordinate
 	Len basics.Int16 // Length of the span
 }
 
-// ScanlineBin is a binary scanline container which supports the interface
-// used in the rasterizer. This is used when anti-aliasing is not needed.
-// It only stores which pixels are covered, not their coverage values.
-//
-// This is equivalent to AGG's scanline_bin class.
-// IMPORTANT: Following AGG convention, spans are stored starting at index 1 (index 0 is unused).
+// ScanlineBin is the Go equivalent of AGG's scanline_bin. It stores only pixel
+// coverage presence, not per-pixel AA covers, and keeps AGG's sentinel layout
+// where span slot 0 is unused.
 type ScanlineBin struct {
 	lastX   int                      // Last X coordinate processed (sentinel: 0x7FFFFFF0)
 	y       int                      // Y coordinate of current scanline
@@ -27,7 +21,7 @@ type ScanlineBin struct {
 	curSpan int                      // Index of current span being built (starts at 1)
 }
 
-// NewScanlineBin creates a new binary scanline container.
+// NewScanlineBin creates a binary scanline container.
 func NewScanlineBin() *ScanlineBin {
 	spans := array.NewPodArray[SpanBin]()
 	// Ensure we have space for the dummy element at index 0
@@ -41,7 +35,7 @@ func NewScanlineBin() *ScanlineBin {
 	}
 }
 
-// Reset prepares the scanline for a new row between min_x and max_x coordinates.
+// Reset prepares the scanline for a new row.
 func (sl *ScanlineBin) Reset(minX, maxX int) {
 	maxLen := maxX - minX + 3
 	// Ensure we have space for at least the dummy element at index 0 plus the calculated spans
@@ -52,7 +46,7 @@ func (sl *ScanlineBin) Reset(minX, maxX int) {
 	sl.curSpan = 0        // Will start at index 1 when first span is added
 }
 
-// AddCell adds a single cell to the scanline. The coverage value is ignored.
+// AddCell adds one covered pixel. The cover parameter is ignored.
 func (sl *ScanlineBin) AddCell(x int, _ uint) {
 	if x == sl.lastX+1 && sl.curSpan > 0 {
 		// Extend current span
@@ -75,7 +69,7 @@ func (sl *ScanlineBin) AddCell(x int, _ uint) {
 	sl.lastX = x
 }
 
-// AddSpan adds a span of pixels to the scanline. The coverage value is ignored.
+// AddSpan adds a covered run. The cover parameter is ignored.
 func (sl *ScanlineBin) AddSpan(x, length int, _ uint) {
 	if x == sl.lastX+1 && sl.curSpan > 0 {
 		// Extend current span
@@ -98,35 +92,34 @@ func (sl *ScanlineBin) AddSpan(x, length int, _ uint) {
 	sl.lastX = x + length - 1
 }
 
-// AddCells adds multiple cells to the scanline. The covers pointer is ignored.
+// AddCells adds a run of covered pixels. The covers slice is ignored.
 func (sl *ScanlineBin) AddCells(x, length int, _ []CoverType) {
 	sl.AddSpan(x, length, 0)
 }
 
-// Finalize finalizes the scanline and sets its Y coordinate.
+// Finalize records the row y after accumulation.
 func (sl *ScanlineBin) Finalize(y int) {
 	sl.y = y
 }
 
-// ResetSpans prepares the scanline for accumulating a new set of spans.
+// ResetSpans clears the accumulated row while reusing buffers.
 func (sl *ScanlineBin) ResetSpans() {
 	sl.lastX = 0x7FFFFFF0 // Reset to sentinel value
 	sl.curSpan = 0        // Will start at index 1 when first span is added
 }
 
-// Y returns the Y coordinate of the current scanline.
+// Y returns the row coordinate.
 func (sl *ScanlineBin) Y() int {
 	return sl.y
 }
 
-// NumSpans returns the number of spans in the current scanline.
-// Following AGG convention: spans start at index 1, so curSpan is the count.
+// NumSpans returns the number of accumulated spans.
 func (sl *ScanlineBin) NumSpans() int {
 	return sl.curSpan // curSpan is already the count since we start from 1
 }
 
-// Begin returns an iterator (slice) to the spans.
-// The returned slice starts from index 1, as index 0 is unused (following AGG convention).
+// Begin returns the span slice starting at index 1, preserving AGG's sentinel
+// convention that slot 0 is unused.
 func (sl *ScanlineBin) Begin() []SpanBin {
 	if sl.curSpan == 0 {
 		return nil
@@ -135,30 +128,26 @@ func (sl *ScanlineBin) Begin() []SpanBin {
 	return sl.spans.Data()[1 : sl.curSpan+1]
 }
 
-// Spans returns all valid spans as a slice for iteration.
-// This is a Go-idiomatic way to iterate over spans.
+// Spans is a Go-friendly alias for Begin.
 func (sl *ScanlineBin) Spans() []SpanBin {
 	return sl.Begin()
 }
 
 // =============================================================scanline32_bin
 
-// Span32Bin represents a binary horizontal span with 32-bit coordinates.
-// This is used for larger coordinate spaces.
+// Span32Bin is the Go equivalent of AGG's scanline32_bin::span.
 type Span32Bin struct {
 	X   basics.Int32 // Starting X coordinate
 	Len basics.Int32 // Length of the span
 }
 
-// NewSpan32Bin creates a new 32-bit span with the specified coordinates.
+// NewSpan32Bin constructs a 32-bit binary span.
 func NewSpan32Bin(x, length basics.Int32) Span32Bin {
 	return Span32Bin{X: x, Len: length}
 }
 
-// Scanline32Bin is a binary scanline container with 32-bit coordinates.
-// It uses a block vector for efficient memory management of spans.
-//
-// This is equivalent to AGG's scanline32_bin class.
+// Scanline32Bin is the 32-bit-coordinate variant of ScanlineBin, mirroring
+// AGG's scanline32_bin.
 type Scanline32Bin struct {
 	lastX int                          // Last X coordinate processed (sentinel: 0x7FFFFFF0)
 	y     int                          // Y coordinate of current scanline

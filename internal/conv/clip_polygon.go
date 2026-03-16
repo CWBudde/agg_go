@@ -4,40 +4,41 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/vcgen"
 )
 
-// ConvClipPolygon is a converter that clips polygons using the Liang-Barsky algorithm.
-// This is equivalent to conv_clip_polygon<VertexSource> in the C++ AGG implementation.
+// ConvClipPolygon is the Go equivalent of AGG's conv_clip_polygon. It wraps
+// VPGenClipPolygon behind ConvAdaptorVPGen so closed paths are clipped against a
+// rectangle while preserving polygon semantics.
 type ConvClipPolygon struct {
 	*ConvAdaptorVPGen[*vcgen.VPGenClipPolygon]
 }
 
-// NewConvClipPolygon creates a new polygon clipping converter
+// NewConvClipPolygon creates a polygon clipping converter.
 func NewConvClipPolygon(source VertexSource) *ConvClipPolygon {
 	vpgen := vcgen.NewVPGenClipPolygon()
 	adaptor := NewConvAdaptorVPGen(source, vpgen)
 	return &ConvClipPolygon{adaptor}
 }
 
-// ClipBox sets the clipping rectangle
+// ClipBox sets the clipping rectangle.
 func (c *ConvClipPolygon) ClipBox(x1, y1, x2, y2 float64) {
 	c.VPGen().ClipBox(x1, y1, x2, y2)
 }
 
-// X1 returns the left edge of the clipping box
+// X1 returns the left edge of the clipping box.
 func (c *ConvClipPolygon) X1() float64 {
 	return c.VPGen().X1()
 }
 
-// Y1 returns the bottom edge of the clipping box
+// Y1 returns the bottom edge of the clipping box.
 func (c *ConvClipPolygon) Y1() float64 {
 	return c.VPGen().Y1()
 }
 
-// X2 returns the right edge of the clipping box
+// X2 returns the right edge of the clipping box.
 func (c *ConvClipPolygon) X2() float64 {
 	return c.VPGen().X2()
 }
 
-// Y2 returns the top edge of the clipping box
+// Y2 returns the top edge of the clipping box.
 func (c *ConvClipPolygon) Y2() float64 {
 	return c.VPGen().Y2()
 }

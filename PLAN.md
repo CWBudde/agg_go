@@ -438,10 +438,10 @@ Priority order matches functional importance:
 - [x] `internal/renderer/` — rendering pipeline architecture, scanline/outline/text rendering.
 - [x] `internal/pixfmt/` — pixel format architecture, blender interface, supported formats.
 - [x] `internal/span/` — span generation: gradients, image filtering, patterns, Gouraud shading.
-- [ ] `internal/conv/` — path converters: stroke, dash, contour, B-spline, polygon clipping.
+- [x] `internal/conv/` — path converters: stroke, dash, contour, B-spline, polygon clipping.
 - [ ] `internal/color/` — color space handling, RGB/RGBA/Gray variants, gamma correction.
-- [ ] `internal/scanline/` — scanline storage, boolean algebra, packed vs unpacked formats.
-- [ ] `internal/transform/` — affine, perspective, bilinear, viewport, warp math.
+- [x] `internal/scanline/` — scanline storage, boolean algebra, packed vs unpacked formats.
+- [x] `internal/transform/` — affine, perspective, bilinear, viewport, warp math.
 - [ ] `internal/font/` — font rendering architecture, FreeType integration, glyph caching.
 - [ ] `internal/agg2d/` — high-level rendering pipeline, state machine, method contracts.
 - [ ] `internal/path/` — path storage, vertex block storage, path length calculation.
@@ -451,9 +451,9 @@ Priority order matches functional importance:
 
 ### 10.3 Migration and integration guide
 
-- [ ] API mapping reference from C++ AGG to Go port.
-- [ ] Common patterns translation with runnable examples.
-- [ ] Build system integration, dependency management, cross-compilation, WASM/no-cgo notes.
+- [x] API mapping reference from C++ AGG to Go port.
+- [x] Common patterns translation with runnable examples.
+- [x] Build system integration, dependency management, cross-compilation, WASM/no-cgo notes.
 
 ### 10.4 Exit criteria
 

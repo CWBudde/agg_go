@@ -1,5 +1,3 @@
-// Package scanline provides scanline storage containers for the AGG rendering pipeline.
-// This file implements the scanline_cell_storage and scanline_storage_aa classes from AGG's agg_scanline_storage_aa.h
 package scanline
 
 import (
@@ -10,52 +8,48 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
-// ScanlineInterface defines the interface for scanline containers.
-// This is a local copy to avoid circular imports. Using basics.Int8u for simplicity.
+// ScanlineInterface is the local scanline contract used by storage helpers to
+// avoid circular imports with renderer packages.
 type ScanlineInterface interface {
 	Y() int
 	NumSpans() int
 	Begin() ScanlineIterator
-	// Optional methods for modifying scanlines
 	ResetSpans()
 	AddSpan(x, len int, cover basics.Int8u)
 	AddCells(x, len int, covers []basics.Int8u)
 	Finalize(y int)
 }
 
-// ScanlineIterator provides iteration over spans in a scanline.
+// ScanlineIterator iterates stored scanline spans.
 type ScanlineIterator interface {
 	GetSpan() SpanInfo
 	Next() bool
 }
 
-// SpanInfo represents span data for iteration.
+// SpanInfo is the normalized span record exposed by ScanlineIterator.
 type SpanInfo struct {
 	X      int
 	Len    int
 	Covers []basics.Int8u
 }
 
-// ExtraSpan represents a dynamically allocated span of cells.
-// This corresponds to the extra_span struct in AGG's scanline_cell_storage.
+// ExtraSpan mirrors AGG's scanline_cell_storage::extra_span and holds overflow
+// cells that do not fit in the main block storage.
 type ExtraSpan[T any] struct {
 	Len int // Number of cells in this span
 	Ptr []T // Slice containing the cells
 }
 
-// ScanlineCellStorage is a storage container for scanline cell data.
-// It uses block-based storage for efficiency with fallback to dynamic allocation
-// for spans that don't fit in the main storage blocks.
-//
-// This is equivalent to AGG's scanline_cell_storage<T> template class.
+// ScanlineCellStorage is the Go equivalent of AGG's scanline_cell_storage<T>.
+// It keeps most cover data in block storage and spills unusually large spans to
+// separately allocated slices.
 type ScanlineCellStorage[T any] struct {
 	cells        *array.PodBVector[T]            // Primary block-based storage
 	extraStorage *array.PodBVector[ExtraSpan[T]] // Overflow storage for large spans (pod_bvector<extra_span, 6>)
 	allocator    basics.PodAllocator[T]          // Allocator for extra spans
 }
 
-// NewScanlineCellStorage creates a new scanline cell storage container.
-// The initial block size is set to match AGG's default: pod_bvector<T, 12> with increment 128-2.
+// NewScanlineCellStorage creates a cell store with AGG-style block sizing.
 func NewScanlineCellStorage[T any]() *ScanlineCellStorage[T] {
 	// Create PodBVector with custom block size to match C++: pod_bvector<T, 12>
 	// The 12 is the block scale (2^12 = 4096), and 128-2 = 126 is the block increment
@@ -68,8 +62,7 @@ func NewScanlineCellStorage[T any]() *ScanlineCellStorage[T] {
 	}
 }
 
-// NewScanlineCellStorageCopy creates a new storage as a copy of another.
-// This implements the copy constructor behavior from AGG.
+// NewScanlineCellStorageCopy clones another cell store.
 func NewScanlineCellStorageCopy[T any](other *ScanlineCellStorage[T]) *ScanlineCellStorage[T] {
 	if other == nil {
 		return NewScanlineCellStorage[T]()
@@ -85,8 +78,7 @@ func NewScanlineCellStorageCopy[T any](other *ScanlineCellStorage[T]) *ScanlineC
 	return storage
 }
 
-// RemoveAll clears all stored data and releases extra storage.
-// This corresponds to AGG's remove_all() method.
+// RemoveAll clears both block storage and overflow allocations.
 func (s *ScanlineCellStorage[T]) RemoveAll() {
 	// Clear extra storage and deallocate pod_allocator blocks (matching C++ behavior)
 	for i := s.extraStorage.Size() - 1; i >= 0; i-- {
@@ -101,10 +93,8 @@ func (s *ScanlineCellStorage[T]) RemoveAll() {
 	s.cells.RemoveAll()
 }
 
-// AddCells adds a sequence of cells to the storage.
-// Returns the index where the cells were stored. Positive indices indicate
-// storage in the main cells array, negative indices indicate extra storage.
-// This corresponds to AGG's add_cells() method.
+// AddCells stores one contiguous run of cells and returns an AGG-style index:
+// non-negative for the main block store, negative for overflow storage.
 func (s *ScanlineCellStorage[T]) AddCells(cells []T, numCells int) int {
 	if numCells <= 0 || len(cells) < numCells {
 		return -1
@@ -136,10 +126,7 @@ func (s *ScanlineCellStorage[T]) AddCells(cells []T, numCells int) int {
 	return -s.extraStorage.Size()
 }
 
-// Get returns a pointer to the cells at the specified index.
-// Positive indices access the main storage, negative indices access extra storage.
-// Returns nil if the index is invalid.
-// This corresponds to AGG's operator[] const overload.
+// Get resolves an AGG-style cell-storage index back to the stored slice.
 func (s *ScanlineCellStorage[T]) Get(idx int) []T {
 	if idx >= 0 {
 		// Positive index - access main storage
@@ -181,14 +168,12 @@ func (s *ScanlineCellStorage[T]) getBlockSlice(startIdx int) []T {
 	return result
 }
 
-// GetMutable returns a mutable reference to cells at the specified index.
-// This corresponds to AGG's operator[] non-const overload.
+// GetMutable is an alias for Get.
 func (s *ScanlineCellStorage[T]) GetMutable(idx int) []T {
 	return s.Get(idx) // In Go, slices are already mutable references
 }
 
-// Assign copies data from another ScanlineCellStorage instance.
-// This corresponds to AGG's operator= method.
+// Assign replaces the receiver contents with a deep copy of other.
 func (s *ScanlineCellStorage[T]) Assign(other *ScanlineCellStorage[T]) {
 	if other == nil || s == other {
 		return
@@ -223,25 +208,22 @@ func (s *ScanlineCellStorage[T]) copyExtraStorage(other *ScanlineCellStorage[T])
 	}
 }
 
-// SpanData represents a span within a scanline for storage.
-// This corresponds to the span_data struct in AGG's scanline_storage_aa.
+// SpanData is the Go equivalent of AGG's scanline_storage_aa::span_data.
 type SpanData struct {
 	X        basics.Int32 // Starting X coordinate
 	Len      basics.Int32 // Length (if negative, it's a solid span)
 	CoversID int          // Index of cells in the ScanlineCellStorage
 }
 
-// ScanlineData represents metadata for a complete scanline.
-// This corresponds to the scanline_data struct in AGG's scanline_storage_aa.
+// ScanlineData is the Go equivalent of AGG's scanline_storage_aa::scanline_data.
 type ScanlineData struct {
 	Y         int // Y coordinate of the scanline
 	NumSpans  int // Number of spans in this scanline
 	StartSpan int // Starting index in the spans array
 }
 
-// ScanlineStorageAA is a storage container for anti-aliased scanlines.
-// It stores complete scanlines with coverage data for later rendering.
-// This corresponds to AGG's scanline_storage_aa<T> template class.
+// ScanlineStorageAA is the Go equivalent of AGG's scanline_storage_aa<T>. It
+// records whole AA scanline streams so they can be replayed later or serialized.
 type ScanlineStorageAA[T any] struct {
 	covers       *ScanlineCellStorage[T]         // Storage for coverage data
 	spans        *array.PodBVector[SpanData]     // Storage for span data
@@ -255,7 +237,7 @@ type ScanlineStorageAA[T any] struct {
 	curScanline  int                             // Current scanline index for iteration
 }
 
-// NewScanlineStorageAA creates a new anti-aliased scanline storage container.
+// NewScanlineStorageAA creates an AA scanline store.
 func NewScanlineStorageAA[T any]() *ScanlineStorageAA[T] {
 	// Create storage components with initial block sizes matching AGG
 	spans := array.NewPodBVectorWithIncrement[SpanData](array.NewBlockScale(10), 256-2) // pod_bvector<span_data, 10>

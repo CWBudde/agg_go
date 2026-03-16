@@ -1,6 +1,3 @@
-// Package scanline provides boolean algebra operations for scanline containers.
-// This implements the functionality from AGG's agg_scanline_boolean_algebra.h
-// allowing intersection, union, XOR, and subtraction operations on scanlines.
 package scanline
 
 import (
@@ -8,7 +5,7 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
 )
 
-// Constants for coverage calculations
+// Coverage constants are re-exported here for scanline boolean formulas.
 const (
 	CoverShift = basics.CoverShift
 	CoverSize  = basics.CoverSize
@@ -16,16 +13,13 @@ const (
 	CoverFull  = basics.CoverFull
 )
 
-// BooleanScanlineInterface represents any scanline container that can be used
-// in boolean operations. This includes the core scanline interface methods
-// and additional methods needed for boolean algebra.
+// BooleanScanlineInterface is the scanline contract required by the boolean
+// combinators. It matches the scanline methods AGG's boolean algebra helpers
+// need to write combined output.
 type BooleanScanlineInterface interface {
-	// Core scanline interface methods
 	Y() int
 	NumSpans() int
 	Begin() scanline.ScanlineIterator
-
-	// Boolean algebra specific methods
 	ResetSpans()
 	AddCell(x int, cover uint)
 	AddCells(x, length int, covers []basics.Int8u)
@@ -33,7 +27,8 @@ type BooleanScanlineInterface interface {
 	Finalize(y int)
 }
 
-// RasterizerInterface represents scanline generators used in shape operations
+// RasterizerInterface is the rasterizer contract consumed by the shape-combine
+// helpers.
 type RasterizerInterface interface {
 	RewindScanlines() bool
 	SweepScanline(sl BooleanScanlineInterface) bool
@@ -43,13 +38,14 @@ type RasterizerInterface interface {
 	MaxY() int
 }
 
-// RendererInterface represents a renderer that can render scanlines
+// RendererInterface is the renderer contract consumed by the shape-combine
+// helpers.
 type RendererInterface interface {
 	Prepare()
 	Render(sl BooleanScanlineInterface)
 }
 
-// IteratorInterface represents a scanline span iterator
+// IteratorInterface abstracts over AA and binary scanline iterators.
 type IteratorInterface interface {
 	X() int
 	Len() int

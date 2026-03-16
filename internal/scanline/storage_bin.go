@@ -1,5 +1,3 @@
-// Package scanline provides scanline storage containers for the AGG rendering pipeline.
-// This file implements the scanline_storage_bin class from AGG's agg_scanline_storage_bin.h
 package scanline
 
 import (
@@ -10,38 +8,35 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
-// SpanDataBin represents a span of binary pixels without coverage information.
-// This corresponds to the span_data struct in AGG's scanline_storage_bin class.
+// SpanDataBin is the Go equivalent of AGG's scanline_storage_bin::span_data.
 type SpanDataBin struct {
 	X   basics.Int32 // Starting X coordinate
 	Len basics.Int32 // Length of the span
 }
 
-// ScanlineDataBin represents metadata for a binary scanline.
-// This corresponds to the scanline_data struct in AGG's scanline_storage_bin class.
+// ScanlineDataBin is the Go equivalent of AGG's scanline_storage_bin::scanline_data.
 type ScanlineDataBin struct {
 	Y         int // Y coordinate of the scanline
 	NumSpans  int // Number of spans in this scanline
 	StartSpan int // Index of first span in spans array
 }
 
-// EmbeddedScanlineBin is an embedded scanline that references data in ScanlineStorageBin.
-// This corresponds to the embedded_scanline class in AGG's scanline_storage_bin.
+// EmbeddedScanlineBin is the Go equivalent of AGG's
+// scanline_storage_bin::embedded_scanline.
 type EmbeddedScanlineBin struct {
 	storage     *ScanlineStorageBin // Reference to parent storage
 	scanline    ScanlineDataBin     // Current scanline metadata
 	scanlineIdx int                 // Index of current scanline
 }
 
-// EmbeddedScanlineBinIterator provides iteration over spans in an embedded scanline.
-// This corresponds to the const_iterator class in AGG's embedded_scanline.
+// EmbeddedScanlineBinIterator walks spans inside an EmbeddedScanlineBin.
 type EmbeddedScanlineBinIterator struct {
 	storage *ScanlineStorageBin // Reference to parent storage
 	spanIdx int                 // Current span index
 	span    SpanDataBin         // Current span data
 }
 
-// NewEmbeddedScanlineBin creates a new embedded scanline for the given storage.
+// NewEmbeddedScanlineBin creates an embedded scanline view over storage.
 func NewEmbeddedScanlineBin(storage *ScanlineStorageBin) *EmbeddedScanlineBin {
 	sl := &EmbeddedScanlineBin{
 		storage: storage,
@@ -50,7 +45,7 @@ func NewEmbeddedScanlineBin(storage *ScanlineStorageBin) *EmbeddedScanlineBin {
 	return sl
 }
 
-// Reset is provided for interface compatibility but does nothing for embedded scanlines.
+// Reset is a no-op kept for scanline interface compatibility.
 func (sl *EmbeddedScanlineBin) Reset(_, _ int) {}
 
 // NumSpans returns the number of spans in the current scanline.
@@ -63,7 +58,7 @@ func (sl *EmbeddedScanlineBin) Y() int {
 	return sl.scanline.Y
 }
 
-// Begin returns an iterator for the spans in this scanline.
+// Begin returns an iterator for the current stored scanline.
 func (sl *EmbeddedScanlineBin) Begin() *EmbeddedScanlineBinIterator {
 	return &EmbeddedScanlineBinIterator{
 		storage: sl.storage,
@@ -72,29 +67,25 @@ func (sl *EmbeddedScanlineBin) Begin() *EmbeddedScanlineBinIterator {
 	}
 }
 
-// Setup configures the embedded scanline to reference the specified scanline index.
+// Setup switches the embedded view to another stored scanline.
 func (sl *EmbeddedScanlineBin) Setup(scanlineIdx int) {
 	sl.scanlineIdx = scanlineIdx
 	sl.scanline = sl.storage.ScanlineByIndex(scanlineIdx)
 }
 
-// Span returns the current span data.
+// Span returns the iterator's current span.
 func (it *EmbeddedScanlineBinIterator) Span() SpanDataBin {
 	return it.span
 }
 
-// Next advances to the next span.
-// This corresponds to AGG's operator++() for the const_iterator.
-// Note: AGG doesn't return a value from operator++, it just advances the iterator.
-// The caller is responsible for checking bounds via the parent scanline's num_spans.
+// Next advances to the next stored span.
 func (it *EmbeddedScanlineBinIterator) Next() {
 	it.spanIdx++
 	it.span = it.storage.SpanByIndex(it.spanIdx)
 }
 
-// ScanlineStorageBin is a storage container for binary scanlines.
-// It stores scanlines without anti-aliasing information, only indicating
-// which pixels are covered. This corresponds to AGG's scanline_storage_bin class.
+// ScanlineStorageBin is the Go equivalent of AGG's scanline_storage_bin. It
+// records binary scanlines without per-pixel cover data.
 type ScanlineStorageBin struct {
 	spans        *array.PodBVector[SpanDataBin]     // Storage for span data
 	scanlines    *array.PodBVector[ScanlineDataBin] // Storage for scanline metadata
@@ -107,7 +98,7 @@ type ScanlineStorageBin struct {
 	curScanline  int                                // Current scanline index for iteration
 }
 
-// NewScanlineStorageBin creates a new binary scanline storage container.
+// NewScanlineStorageBin creates a binary scanline store.
 func NewScanlineStorageBin() *ScanlineStorageBin {
 	// Use block increment size of 256-2 = 254 to match AGG default exactly
 	// AGG uses pod_bvector<span_data, 10> which gives 1024 elements per block, but with increment of 254
@@ -135,8 +126,7 @@ func NewScanlineStorageBin() *ScanlineStorageBin {
 	return storage
 }
 
-// Prepare clears the storage and resets bounds for new rendering.
-// This corresponds to AGG's prepare() method.
+// Prepare clears stored scanlines and resets bounds.
 func (s *ScanlineStorageBin) Prepare() {
 	s.scanlines.RemoveAll()
 	s.spans.RemoveAll()
@@ -147,8 +137,7 @@ func (s *ScanlineStorageBin) Prepare() {
 	s.curScanline = 0
 }
 
-// Render processes a scanline and stores its span data.
-// This corresponds to AGG's template render() method.
+// Render copies a generic scanline into storage.
 func (s *ScanlineStorageBin) Render(sl ScanlineInterface) {
 	var slThis ScanlineDataBin
 
@@ -194,8 +183,7 @@ func (s *ScanlineStorageBin) Render(sl ScanlineInterface) {
 	s.scanlines.Add(slThis)
 }
 
-// RenderBinScanline processes a binary scanline and stores its span data.
-// This is a specialized version for binary scanlines.
+// RenderBinScanline copies a binary scanline into storage.
 func (s *ScanlineStorageBin) RenderBinScanline(sl *ScanlineBin) {
 	var slThis ScanlineDataBin
 
@@ -253,8 +241,7 @@ func (s *ScanlineStorageBin) MaxY() int {
 	return s.maxY
 }
 
-// RewindScanlines resets the iterator to the beginning and returns true if there are scanlines.
-// This corresponds to AGG's rewind_scanlines() method.
+// RewindScanlines resets iteration to the first stored scanline.
 func (s *ScanlineStorageBin) RewindScanlines() bool {
 	s.curScanline = 0
 	return s.scanlines.Size() > 0

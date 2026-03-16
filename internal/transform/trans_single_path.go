@@ -1,5 +1,3 @@
-// Package transform provides coordinate transformation functionality for AGG.
-// This implements transformation along a single curved path.
 package transform
 
 import (
@@ -9,7 +7,7 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
-// Status represents the state of path construction.
+// Status tracks the construction/readiness state of the path transforms.
 type Status int
 
 const (
@@ -18,15 +16,14 @@ const (
 	StatusReady
 )
 
-// VertexSource interface for adding paths from external sources.
-// This corresponds to AGG's template parameter VertexSource in add_path.
+// VertexSource is the local path-source contract used by AddPath methods.
 type VertexSource interface {
 	Rewind(pathID uint)
 	Vertex() (x, y float64, cmd basics.PathCommand)
 }
 
-// TransSinglePath transforms coordinates along a single curved path.
-// This corresponds to AGG's trans_single_path class.
+// TransSinglePath is the Go equivalent of AGG's trans_single_path. It maps x to
+// distance along a prepared path and y to perpendicular offset from that path.
 type TransSinglePath struct {
 	// Source vertices with distance information (exported for testing)
 	SrcVertices *array.VertexDistSequence
@@ -44,7 +41,7 @@ type TransSinglePath struct {
 	preserveXScale bool
 }
 
-// NewTransSinglePath creates a new single path transformation.
+// NewTransSinglePath creates an empty single-path transform.
 func NewTransSinglePath() *TransSinglePath {
 	return &TransSinglePath{
 		SrcVertices:    array.NewVertexDistSequenceWithScale(array.NewBlockScale(6)),
@@ -100,7 +97,8 @@ func (t *TransSinglePath) LineTo(x, y float64) {
 	}
 }
 
-// FinalizePath completes path construction and prepares for transformation.
+// FinalizePath computes cumulative distances and lookup state, matching AGG's
+// path-finalization step before transform() is used.
 func (t *TransSinglePath) FinalizePath() {
 	if t.Status == StatusMakingPath && t.SrcVertices.Size() > 1 {
 		// Close the sequence (not as a closed path)
@@ -156,8 +154,7 @@ func (t *TransSinglePath) FinalizePath() {
 	}
 }
 
-// AddPath adds vertices from a vertex source to the path.
-// This is the template method equivalent from AGG.
+// AddPath appends one source path and finalizes it for transformation.
 func (t *TransSinglePath) AddPath(vs VertexSource, pathID uint) {
 	vs.Rewind(pathID)
 
@@ -191,9 +188,7 @@ func (t *TransSinglePath) TotalLength() float64 {
 	return 0.0
 }
 
-// Transform transforms coordinates along the path.
-// The input x coordinate represents distance along the path,
-// and y represents perpendicular offset from the path.
+// Transform maps distance/offset coordinates onto the prepared path.
 func (t *TransSinglePath) Transform(x, y *float64) {
 	if t.Status != StatusReady {
 		return

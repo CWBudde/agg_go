@@ -1,5 +1,3 @@
-// Package transform provides warp magnifier transformation functionality for AGG.
-// This implements a port of AGG's trans_warp_magnifier class.
 package transform
 
 import (
@@ -12,9 +10,9 @@ var (
 	_ InverseTransformer = (*TransWarpMagnifier)(nil)
 )
 
-// TransWarpMagnifier implements a lens-like magnification transformation that creates
-// a circular area of magnification with smooth falloff outside the radius.
-// This is useful for creating magnifying glass effects in graphics applications.
+// TransWarpMagnifier is the Go equivalent of AGG's trans_warp_magnifier. It
+// applies a radial magnification field with a linear falloff outside the core
+// radius.
 type TransWarpMagnifier struct {
 	xc     float64 // center x coordinate
 	yc     float64 // center y coordinate
@@ -22,8 +20,7 @@ type TransWarpMagnifier struct {
 	radius float64 // radius of magnified area
 }
 
-// NewTransWarpMagnifier creates a new warp magnifier transformation with default values.
-// The magnifier is initially centered at origin (0,0) with magnification 1.0 and radius 1.0.
+// NewTransWarpMagnifier creates a warp magnifier with AGG's default values.
 func NewTransWarpMagnifier() *TransWarpMagnifier {
 	return &TransWarpMagnifier{
 		xc:     0.0,
@@ -33,7 +30,7 @@ func NewTransWarpMagnifier() *TransWarpMagnifier {
 	}
 }
 
-// NewTransWarpMagnifierWithParams creates a new warp magnifier with specified parameters.
+// NewTransWarpMagnifierWithParams creates a configured warp magnifier.
 func NewTransWarpMagnifierWithParams(xc, yc, magnification, radius float64) *TransWarpMagnifier {
 	return &TransWarpMagnifier{
 		xc:     xc,

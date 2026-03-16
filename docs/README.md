@@ -10,6 +10,7 @@ port.
 - [guides/basic-shapes.md](./guides/basic-shapes.md) for the `Context` shape API
 - [TEXT_RENDERING.md](./TEXT_RENDERING.md) for the current text-rendering workflow
 - [guides/image-compositing.md](./guides/image-compositing.md) for image drawing and blending
+- [guides/migrating-from-cpp-agg.md](./guides/migrating-from-cpp-agg.md) for C++ AGG to Go migration
 - [guides/performance-optimization.md](./guides/performance-optimization.md) for practical performance advice
 - [AGG2D_PARITY.md](./AGG2D_PARITY.md) for C++ `Agg2D` to Go API mapping
 

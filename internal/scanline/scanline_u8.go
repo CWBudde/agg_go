@@ -1,6 +1,3 @@
-// Package scanline provides scanline containers for the AGG rendering pipeline.
-// This package implements unpacked scanline containers that store horizontal
-// spans with coverage values for anti-aliased rendering.
 package scanline
 
 import (
@@ -8,27 +5,22 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
-// CoverType represents coverage values for anti-aliasing (0-255)
+// CoverType is the per-pixel coverage type used by anti-aliased scanlines.
 type CoverType = basics.Int8u
 
-// Coord16Type represents 16-bit coordinate values for scanline_u8
+// Coord16Type is the 16-bit coordinate type used by ScanlineU8 spans.
 type Coord16Type = basics.Int16
 
-// Span represents a horizontal span of pixels with coverage values.
-// This corresponds to the span struct in AGG's scanline_u8 class.
+// Span is the Go equivalent of AGG's scanline_u8::span.
 type Span struct {
 	X      Coord16Type // Starting X coordinate
 	Len    Coord16Type // Length of the span
 	Covers []CoverType // Pointer to coverage values array
 }
 
-// ScanlineU8 is an unpacked scanline container class.
-// This class is used to transfer data from a scanline rasterizer
-// to the rendering buffer. It stores information of horizontal spans
-// to render into a pixel-map buffer. Each span has starting X, length,
-// and an array of bytes that determine the cover-values for each pixel.
-//
-// This is equivalent to AGG's scanline_u8 class.
+// ScanlineU8 is the Go equivalent of AGG's scanline_u8. It stores one row as
+// explicit spans plus one cover byte per covered pixel, which makes iteration
+// simple at the cost of more memory than the packed variants.
 type ScanlineU8 struct {
 	minX    int                        // Minimum X coordinate for current scanline
 	lastX   int                        // Last X coordinate processed (sentinel: 0x7FFFFFF0)
@@ -38,7 +30,7 @@ type ScanlineU8 struct {
 	curSpan int                        // Index of current span being built
 }
 
-// NewScanlineU8 creates a new scanline container.
+// NewScanlineU8 creates an unpacked AA scanline container.
 func NewScanlineU8() *ScanlineU8 {
 	return &ScanlineU8{
 		minX:    0,
@@ -49,8 +41,8 @@ func NewScanlineU8() *ScanlineU8 {
 	}
 }
 
-// Reset prepares the scanline for a new row between min_x and max_x coordinates.
-// This method must be called before adding any cells or spans to a new scanline.
+// Reset prepares the scanline for a new row. As in AGG, callers must then add
+// cells/spans with monotonically increasing x coordinates.
 func (sl *ScanlineU8) Reset(minX, maxX int) {
 	maxLen := maxX - minX + 2
 
@@ -65,8 +57,7 @@ func (sl *ScanlineU8) Reset(minX, maxX int) {
 	sl.curSpan = 0
 }
 
-// AddCell adds a single cell with coverage value to the scanline.
-// X coordinates must be provided in increasing order.
+// AddCell adds one covered pixel. x must not go backwards within the row.
 func (sl *ScanlineU8) AddCell(x int, cover uint) {
 	x -= sl.minX
 	if x < 0 || x >= sl.covers.Size() {
@@ -95,8 +86,7 @@ func (sl *ScanlineU8) AddCell(x int, cover uint) {
 	sl.lastX = x
 }
 
-// AddCells adds multiple cells with individual coverage values to the scanline.
-// X coordinates must be provided in increasing order.
+// AddCells adds a run of per-pixel covers. x must not go backwards within the row.
 func (sl *ScanlineU8) AddCells(x, length int, covers []CoverType) {
 	x -= sl.minX
 	if x < 0 {
@@ -142,8 +132,7 @@ func (sl *ScanlineU8) AddCells(x, length int, covers []CoverType) {
 	sl.lastX = x + length - 1
 }
 
-// AddSpan adds a span of pixels all with the same coverage value.
-// X coordinates must be provided in increasing order.
+// AddSpan adds a solid-coverage run. x must not go backwards within the row.
 func (sl *ScanlineU8) AddSpan(x, length int, cover uint) {
 	x -= sl.minX
 	if x < 0 {
@@ -190,32 +179,29 @@ func (sl *ScanlineU8) AddSpan(x, length int, cover uint) {
 	sl.lastX = x + length - 1
 }
 
-// Finalize finalizes the scanline and sets its Y coordinate.
-// This should be called after all cells/spans have been added.
+// Finalize records the row y after all spans have been accumulated.
 func (sl *ScanlineU8) Finalize(y int) {
 	sl.y = y
 }
 
-// ResetSpans prepares the scanline for accumulating a new set of spans.
-// This should be called after rendering the current scanline.
+// ResetSpans clears the accumulated row while reusing the allocated buffers.
 func (sl *ScanlineU8) ResetSpans() {
 	sl.lastX = 0x7FFFFFF0 // Reset to sentinel value
 	sl.curSpan = 0
 }
 
-// Y returns the Y coordinate of the current scanline.
+// Y returns the row coordinate.
 func (sl *ScanlineU8) Y() int {
 	return sl.y
 }
 
-// NumSpans returns the number of spans in the current scanline.
-// This is guaranteed to be greater than 0 if any cells/spans were added.
+// NumSpans returns the number of accumulated spans.
 func (sl *ScanlineU8) NumSpans() int {
 	return sl.curSpan
 }
 
-// Begin returns an iterator (slice) to the spans.
-// The returned slice starts from index 1, as index 0 is unused (following AGG convention).
+// Begin returns the span slice starting at index 1, preserving AGG's sentinel
+// convention that slot 0 is unused.
 func (sl *ScanlineU8) Begin() []Span {
 	if sl.curSpan == 0 {
 		return nil
@@ -223,8 +209,7 @@ func (sl *ScanlineU8) Begin() []Span {
 	return sl.spans.Data()[1 : sl.curSpan+1]
 }
 
-// Spans returns all valid spans as a slice for iteration.
-// This is a Go-idiomatic way to iterate over spans.
+// Spans is a Go-friendly alias for Begin.
 func (sl *ScanlineU8) Spans() []Span {
 	return sl.Begin()
 }

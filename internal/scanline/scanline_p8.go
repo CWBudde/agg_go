@@ -1,6 +1,3 @@
-// Package scanline provides scanline containers for the AGG rendering pipeline.
-// This file implements the packed scanline container that stores horizontal
-// spans with coverage values in a more memory-efficient packed format.
 package scanline
 
 import (
@@ -8,22 +5,16 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
-// SpanP8 represents a packed horizontal span of pixels.
-// This corresponds to the span struct in AGG's scanline_p8 class.
-// If Len is negative, it's a solid span where all pixels have the same coverage value.
+// SpanP8 is the Go equivalent of AGG's scanline_p8::span. A negative Len marks
+// a solid span that stores only one cover value.
 type SpanP8 struct {
 	X      basics.Int32   // Starting X coordinate (32-bit)
 	Len    basics.Int32   // Length of span (negative = solid span with single cover value)
 	Covers []basics.Int8u // Coverage values in the coverage array
 }
 
-// ScanlineP8 is a packed scanline container class.
-// This class is used to transfer data from a scanline rasterizer
-// to the rendering buffer. Unlike ScanlineU8, it uses a more compact
-// representation where solid spans (all pixels with same coverage)
-// are stored with negative length values.
-//
-// This is equivalent to AGG's scanline_p8 class.
+// ScanlineP8 is the Go equivalent of AGG's scanline_p8. It uses the packed
+// solid-span encoding to reduce cover storage compared with ScanlineU8.
 type ScanlineP8 struct {
 	lastX     int                        // Last X coordinate processed (sentinel: 0x7FFFFFF0)
 	y         int                        // Y coordinate of current scanline
@@ -35,7 +26,7 @@ type ScanlineP8 struct {
 	spanIndex int                        // Index of current span
 }
 
-// NewScanlineP8 creates a new packed scanline container.
+// NewScanlineP8 creates a packed AA scanline container.
 func NewScanlineP8() *ScanlineP8 {
 	sl := &ScanlineP8{
 		lastX:  0x7FFFFFF0, // Sentinel value indicating no previous X
@@ -45,8 +36,7 @@ func NewScanlineP8() *ScanlineP8 {
 	return sl
 }
 
-// Reset prepares the scanline for a new row between min_x and max_x coordinates.
-// This method must be called before adding any cells or spans to a new scanline.
+// Reset prepares the scanline for a new row.
 func (sl *ScanlineP8) Reset(minX, maxX int) {
 	maxLen := maxX - minX + 3 // Extra space for safety
 
@@ -70,8 +60,7 @@ func (sl *ScanlineP8) Reset(minX, maxX int) {
 	}
 }
 
-// AddCell adds a single cell with coverage value to the scanline.
-// X coordinates must be provided in increasing order.
+// AddCell adds one covered pixel. x must not go backwards within the row.
 func (sl *ScanlineP8) AddCell(x int, cover uint) {
 	coverData := sl.covers.Data()
 
@@ -97,8 +86,7 @@ func (sl *ScanlineP8) AddCell(x int, cover uint) {
 	sl.coverIdx++
 }
 
-// AddCells adds multiple cells with individual coverage values to the scanline.
-// X coordinates must be provided in increasing order.
+// AddCells adds a run of per-pixel covers.
 func (sl *ScanlineP8) AddCells(x, length int, covers []CoverType) {
 	// Copy coverage values to our internal array
 	coverData := sl.covers.Data()
@@ -127,9 +115,8 @@ func (sl *ScanlineP8) AddCells(x, length int, covers []CoverType) {
 	sl.lastX = x + length - 1
 }
 
-// AddSpan adds a span of pixels all with the same coverage value.
-// This creates a "solid" span with negative length for efficiency.
-// X coordinates must be provided in increasing order.
+// AddSpan adds a solid-coverage run, reusing the packed negative-length encoding
+// from AGG's scanline_p8.
 func (sl *ScanlineP8) AddSpan(x, length int, cover uint) {
 	coverData := sl.covers.Data()
 
@@ -160,14 +147,12 @@ func (sl *ScanlineP8) AddSpan(x, length int, cover uint) {
 	sl.lastX = x + length - 1
 }
 
-// Finalize finalizes the scanline and sets its Y coordinate.
-// This should be called after all cells/spans have been added.
+// Finalize records the row y after accumulation.
 func (sl *ScanlineP8) Finalize(y int) {
 	sl.y = y
 }
 
-// ResetSpans prepares the scanline for accumulating a new set of spans.
-// This should be called after rendering the current scanline.
+// ResetSpans clears the accumulated row while reusing buffers.
 func (sl *ScanlineP8) ResetSpans() {
 	sl.lastX = 0x7FFFFFF0 // Reset to sentinel value
 
@@ -183,19 +168,18 @@ func (sl *ScanlineP8) ResetSpans() {
 	}
 }
 
-// Y returns the Y coordinate of the current scanline.
+// Y returns the row coordinate.
 func (sl *ScanlineP8) Y() int {
 	return sl.y
 }
 
-// NumSpans returns the number of spans in the current scanline.
-// This is guaranteed to be greater than 0 if any cells/spans were added.
+// NumSpans returns the number of accumulated spans.
 func (sl *ScanlineP8) NumSpans() int {
 	return sl.spanIndex
 }
 
-// Begin returns an iterator (slice) to the spans.
-// The returned slice starts from index 1, as index 0 is unused (following AGG convention).
+// Begin returns the span slice starting at index 1, preserving AGG's sentinel
+// convention that slot 0 is unused.
 func (sl *ScanlineP8) Begin() []SpanP8 {
 	if sl.spanIndex == 0 {
 		return nil
@@ -204,19 +188,17 @@ func (sl *ScanlineP8) Begin() []SpanP8 {
 	return spanData[1 : sl.spanIndex+1]
 }
 
-// Spans returns all valid spans as a slice for iteration.
-// This is a Go-idiomatic way to iterate over spans.
+// Spans is a Go-friendly alias for Begin.
 func (sl *ScanlineP8) Spans() []SpanP8 {
 	return sl.Begin()
 }
 
-// IsSolid returns true if the span is solid (all pixels have same coverage).
-// This is indicated by a negative length value.
+// IsSolid reports whether the span uses the packed solid-span encoding.
 func (span *SpanP8) IsSolid() bool {
 	return span.Len < 0
 }
 
-// ActualLen returns the actual length of the span (absolute value of Len).
+// ActualLen returns the absolute pixel count represented by Len.
 func (span *SpanP8) ActualLen() int {
 	if span.Len < 0 {
 		return int(-span.Len)
@@ -224,9 +206,8 @@ func (span *SpanP8) ActualLen() int {
 	return int(span.Len)
 }
 
-// GetCovers returns the coverage values for this span.
-// For solid spans, this returns a slice with a single repeated value.
-// For non-solid spans, this returns the actual coverage array slice.
+// GetCovers returns the stored cover slice. Solid spans expose the one-value
+// backing slice used by the packed representation.
 func (span *SpanP8) GetCovers() []CoverType {
 	if len(span.Covers) == 0 {
 		return nil

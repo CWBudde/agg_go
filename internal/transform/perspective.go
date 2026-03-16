@@ -1,5 +1,3 @@
-// Package transform provides perspective transformation functionality for AGG.
-// This implements a port of AGG's trans_perspective class.
 package transform
 
 import (
@@ -14,8 +12,9 @@ var (
 	_ InverseTransformer = (*TransPerspective)(nil)
 )
 
-// TransPerspective represents a 3x3 perspective transformation matrix.
-// The matrix components are:
+// TransPerspective is the Go equivalent of AGG's trans_perspective. It stores a
+// full 3x3 projective transform for quadrilateral mappings and homogeneous
+// coordinate evaluation. The matrix components are:
 //
 //	sx  shy w0
 //	shx sy  w1
@@ -29,7 +28,7 @@ type TransPerspective struct {
 	TX, TY, W2  float64 // Third row
 }
 
-// NewTransPerspective creates a new identity perspective transformation matrix.
+// NewTransPerspective creates the identity projective transform.
 func NewTransPerspective() *TransPerspective {
 	return &TransPerspective{
 		SX: 1.0, SHY: 0.0, W0: 0.0,
@@ -56,7 +55,7 @@ func NewTransPerspectiveFromArray(m [9]float64) *TransPerspective {
 	}
 }
 
-// NewTransPerspectiveFromAffine creates a perspective transformation from an affine transformation.
+// NewTransPerspectiveFromAffine embeds an affine transform into projective form.
 func NewTransPerspectiveFromAffine(a *TransAffine) *TransPerspective {
 	return &TransPerspective{
 		SX: a.SX, SHY: a.SHY, W0: 0.0,
@@ -100,8 +99,7 @@ func (t *TransPerspective) Reset() *TransPerspective {
 	return t
 }
 
-// SquareToQuad maps the unit square (0,0,1,1) to the quadrilateral.
-// The quadrilateral is represented as [x0,y0, x1,y1, x2,y2, x3,y3].
+// SquareToQuad matches AGG's square_to_quad solver for the unit square.
 func (t *TransPerspective) SquareToQuad(q [8]float64) bool {
 	dx := q[0] - q[2] + q[4] - q[6]
 	dy := q[1] - q[3] + q[5] - q[7]
@@ -154,8 +152,7 @@ func (t *TransPerspective) SquareToQuad(q [8]float64) bool {
 	return true
 }
 
-// QuadToSquare maps the quadrilateral to the unit square (0,0,1,1).
-// The quadrilateral is represented as [x0,y0, x1,y1, x2,y2, x3,y3].
+// QuadToSquare inverts SquareToQuad for the given quadrilateral.
 func (t *TransPerspective) QuadToSquare(q [8]float64) bool {
 	if !t.SquareToQuad(q) {
 		return false
@@ -163,8 +160,7 @@ func (t *TransPerspective) QuadToSquare(q [8]float64) bool {
 	return t.Invert()
 }
 
-// QuadToQuad maps one quadrilateral to another.
-// Both quadrilaterals are represented as [x0,y0, x1,y1, x2,y2, x3,y3].
+// QuadToQuad maps one arbitrary quadrilateral to another.
 func (t *TransPerspective) QuadToQuad(src, dst [8]float64) bool {
 	p := NewTransPerspective()
 	if !t.QuadToSquare(src) {
@@ -177,15 +173,13 @@ func (t *TransPerspective) QuadToQuad(src, dst [8]float64) bool {
 	return true
 }
 
-// RectToQuad maps rectangle to quadrilateral.
-// The quadrilateral is represented as [x0,y0, x1,y1, x2,y2, x3,y3].
+// RectToQuad maps an axis-aligned rectangle to a quadrilateral.
 func (t *TransPerspective) RectToQuad(x1, y1, x2, y2 float64, q [8]float64) bool {
 	r := [8]float64{x1, y1, x2, y1, x2, y2, x1, y2}
 	return t.QuadToQuad(r, q)
 }
 
-// QuadToRect maps quadrilateral to rectangle.
-// The quadrilateral is represented as [x0,y0, x1,y1, x2,y2, x3,y3].
+// QuadToRect maps a quadrilateral back to an axis-aligned rectangle.
 func (t *TransPerspective) QuadToRect(q [8]float64, x1, y1, x2, y2 float64) bool {
 	r := [8]float64{x1, y1, x2, y1, x2, y2, x1, y2}
 	return t.QuadToQuad(q, r)

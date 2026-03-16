@@ -139,6 +139,7 @@ Note: Some examples require optional dependencies (X11/SDL2, FreeType) and may b
 ## Documentation
 
 - Start here: `docs/README.md`
+- C++ migration guide: `docs/guides/migrating-from-cpp-agg.md`
 - Architecture and status: `docs/architecture/`, `docs/REVIEW_STATUS.md`
 - Text rendering and FreeType notes: `docs/TEXT_RENDERING.md`
 - SIMD and performance notes: `docs/SIMD_OPTIMIZATIONS.md`

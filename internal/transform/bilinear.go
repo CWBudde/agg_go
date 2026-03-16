@@ -6,40 +6,42 @@ var (
 	_ InverseTransformer = (*TransBilinear)(nil)
 )
 
-// TransBilinear represents a bilinear transformation for quadrilateral mapping
+// TransBilinear is the Go equivalent of AGG's trans_bilinear. It fits a
+// bilinear quad-to-quad mapping and also exposes the horizontal iterator style
+// used by AGG span interpolators.
 type TransBilinear struct {
 	mtx   [4][2]float64 // Transformation matrix coefficients
 	valid bool          // Whether the transformation is valid
 }
 
-// NewTransBilinear creates a new invalid bilinear transformation
+// NewTransBilinear creates an invalid bilinear transform that must be
+// initialized with one of the quad/rect mapping methods.
 func NewTransBilinear() *TransBilinear {
 	return &TransBilinear{valid: false}
 }
 
-// NewTransBilinearQuadToQuad creates a bilinear transformation from arbitrary quadrilateral to quadrilateral
+// NewTransBilinearQuadToQuad creates a bilinear mapping between two arbitrary quadrilaterals.
 func NewTransBilinearQuadToQuad(src, dst [8]float64) *TransBilinear {
 	tb := NewTransBilinear()
 	tb.QuadToQuad(src, dst)
 	return tb
 }
 
-// NewTransBilinearRectToQuad creates a bilinear transformation from rectangle to quadrilateral
+// NewTransBilinearRectToQuad maps an axis-aligned rectangle to a quadrilateral.
 func NewTransBilinearRectToQuad(x1, y1, x2, y2 float64, quad [8]float64) *TransBilinear {
 	tb := NewTransBilinear()
 	tb.RectToQuad(x1, y1, x2, y2, quad)
 	return tb
 }
 
-// NewTransBilinearQuadToRect creates a bilinear transformation from quadrilateral to rectangle
+// NewTransBilinearQuadToRect maps a quadrilateral back to an axis-aligned rectangle.
 func NewTransBilinearQuadToRect(quad [8]float64, x1, y1, x2, y2 float64) *TransBilinear {
 	tb := NewTransBilinear()
 	tb.QuadToRect(quad, x1, y1, x2, y2)
 	return tb
 }
 
-// QuadToQuad sets the transformation using two arbitrary quadrilaterals
-// Each quadrilateral is represented as [x0,y0, x1,y1, x2,y2, x3,y3]
+// QuadToQuad solves the bilinear coefficients for two quadrilaterals.
 func (tb *TransBilinear) QuadToQuad(src, dst [8]float64) {
 	var left [4][4]float64
 	var right [4][2]float64
@@ -59,8 +61,7 @@ func (tb *TransBilinear) QuadToQuad(src, dst [8]float64) {
 	tb.valid = solve4x2(&left, right, &tb.mtx)
 }
 
-// RectToQuad sets the direct transformation from rectangle to quadrilateral
-// Matches C++ AGG implementation: src[0,6]=x1, src[2,4]=x2, src[1,3]=y1, src[5,7]=y2
+// RectToQuad is the rectangle-to-quad convenience wrapper used by AGG.
 func (tb *TransBilinear) RectToQuad(x1, y1, x2, y2 float64, quad [8]float64) {
 	src := [8]float64{
 		x1, y1, // 0,1: bottom-left
@@ -71,8 +72,7 @@ func (tb *TransBilinear) RectToQuad(x1, y1, x2, y2 float64, quad [8]float64) {
 	tb.QuadToQuad(src, quad)
 }
 
-// QuadToRect sets the reverse transformation from quadrilateral to rectangle
-// Matches C++ AGG implementation: dst[0,6]=x1, dst[2,4]=x2, dst[1,3]=y1, dst[5,7]=y2
+// QuadToRect is the quad-to-rectangle convenience wrapper used by AGG.
 func (tb *TransBilinear) QuadToRect(quad [8]float64, x1, y1, x2, y2 float64) {
 	dst := [8]float64{
 		x1, y1, // 0,1: bottom-left
@@ -83,12 +83,12 @@ func (tb *TransBilinear) QuadToRect(quad [8]float64, x1, y1, x2, y2 float64) {
 	tb.QuadToQuad(quad, dst)
 }
 
-// IsValid returns true if the transformation matrix was computed successfully
+// IsValid reports whether the coefficient solve succeeded.
 func (tb *TransBilinear) IsValid() bool {
 	return tb.valid
 }
 
-// Transform applies the bilinear transformation to a point (implements Transformer interface)
+// Transform applies the bilinear mapping in place.
 func (tb *TransBilinear) Transform(x, y *float64) {
 	if !tb.valid {
 		return
@@ -189,9 +189,7 @@ func (tb *TransBilinear) InverseTransformValues(dx, dy float64) (float64, float6
 	return x, y
 }
 
-// IteratorX provides efficient iteration along horizontal lines
-// Note: The C++ AGG version has public x,y fields and operator++.
-// This Go version uses methods for better encapsulation, which is idiomatic Go.
+// IteratorX is the Go form of AGG's trans_bilinear::iterator_x helper.
 type IteratorX struct {
 	x, y float64 // Current transformed coordinates
 	incX float64 // X increment per step

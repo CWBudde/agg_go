@@ -1,5 +1,3 @@
-// Package transform provides viewport transformation functionality for AGG.
-// This implements a port of AGG's trans_viewport class.
 package transform
 
 import (
@@ -13,7 +11,7 @@ var (
 	_ InverseTransformer = (*TransViewport)(nil)
 )
 
-// AspectRatio defines how aspect ratio is preserved during viewport transformations.
+// AspectRatio matches AGG's viewport aspect-ratio policy options.
 type AspectRatio int
 
 const (
@@ -25,9 +23,9 @@ const (
 	AspectRatioSlice
 )
 
-// TransViewport represents a viewport transformation system for converting
-// between world coordinates and device (screen) coordinates.
-// It provides orthogonal conversions with optional aspect ratio preservation.
+// TransViewport is the Go equivalent of AGG's trans_viewport. It maps a world
+// rectangle to a device rectangle with optional aspect-ratio preservation and
+// alignment.
 type TransViewport struct {
 	// Original viewport bounds
 	worldX1, worldY1, worldX2, worldY2     float64
@@ -45,8 +43,7 @@ type TransViewport struct {
 	isValid            bool    // Whether the transformation is valid
 }
 
-// NewTransViewport creates a new viewport transformation with default settings.
-// Initially maps world coordinates (0,0)-(1,1) to device coordinates (0,0)-(1,1).
+// NewTransViewport creates an identity-style viewport mapper.
 func NewTransViewport() *TransViewport {
 	v := &TransViewport{
 		worldX1:  0.0,
@@ -73,9 +70,8 @@ func NewTransViewport() *TransViewport {
 	return v
 }
 
-// PreserveAspectRatio sets the aspect ratio preservation mode and alignment.
-// alignX and alignY specify how to align the preserved aspect ratio (0.0 to 1.0).
-// 0.0 = left/bottom, 0.5 = center, 1.0 = right/top
+// PreserveAspectRatio sets the aspect-ratio mode and alignment parameters used
+// by AGG's trans_viewport logic.
 func (v *TransViewport) PreserveAspectRatio(alignX, alignY float64, aspect AspectRatio) {
 	v.alignX = alignX
 	v.alignY = alignY
@@ -83,7 +79,7 @@ func (v *TransViewport) PreserveAspectRatio(alignX, alignY float64, aspect Aspec
 	v.update()
 }
 
-// DeviceViewport sets the device (screen) coordinate bounds.
+// DeviceViewport sets the destination rectangle in device coordinates.
 func (v *TransViewport) DeviceViewport(x1, y1, x2, y2 float64) {
 	v.deviceX1 = x1
 	v.deviceY1 = y1
@@ -92,7 +88,7 @@ func (v *TransViewport) DeviceViewport(x1, y1, x2, y2 float64) {
 	v.update()
 }
 
-// WorldViewport sets the world coordinate bounds.
+// WorldViewport sets the source rectangle in world coordinates.
 func (v *TransViewport) WorldViewport(x1, y1, x2, y2 float64) {
 	v.worldX1 = x1
 	v.worldY1 = y1
@@ -111,7 +107,7 @@ func (v *TransViewport) GetWorldViewport() (x1, y1, x2, y2 float64) {
 	return v.worldX1, v.worldY1, v.worldX2, v.worldY2
 }
 
-// GetWorldViewportActual returns the actual world bounds after aspect ratio adjustment.
+// GetWorldViewportActual returns the adjusted world rectangle after aspect-ratio handling.
 func (v *TransViewport) GetWorldViewportActual() (x1, y1, x2, y2 float64) {
 	return v.wx1, v.wy1, v.wx2, v.wy2
 }
@@ -136,7 +132,7 @@ func (v *TransViewport) AspectRatio() AspectRatio {
 	return v.aspect
 }
 
-// Transform converts world coordinates to device coordinates.
+// Transform maps world coordinates into device coordinates.
 func (v *TransViewport) Transform(x, y *float64) {
 	*x = (*x-v.wx1)*v.kx + v.dx1
 	*y = (*y-v.wy1)*v.ky + v.dy1
@@ -148,7 +144,7 @@ func (v *TransViewport) TransformScaleOnly(x, y *float64) {
 	*y *= v.ky
 }
 
-// InverseTransform converts device coordinates to world coordinates.
+// InverseTransform maps device coordinates back into world coordinates.
 func (v *TransViewport) InverseTransform(x, y *float64) {
 	*x = (*x-v.dx1)/v.kx + v.wx1
 	*y = (*y-v.dy1)/v.ky + v.wy1
