@@ -171,8 +171,8 @@ Enables or disables hinting for the FreeType path.
 ### `FlipText(bool)`
 
 Controls the Y-direction convention used by the font engine. This exists in the
- original AGG2D API and is still relevant when matching AGG coordinate
- conventions.
+original AGG2D API and is still relevant when matching AGG coordinate
+conventions.
 
 ## GSV fallback
 

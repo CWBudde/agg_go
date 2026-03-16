@@ -1,6 +1,7 @@
 package gamma
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/MeKo-Christian/agg_go/internal/basics"
@@ -32,12 +33,12 @@ func TestApplyGammaRGBAIgnoresShortBuffers(t *testing.T) {
 	orig := append([]basics.Int8u(nil), pixel...)
 
 	NewApplyGammaDirRGBA[color.Linear](gamma).Apply(pixel)
-	if string(pixel) != string(orig) {
+	if !bytes.Equal(pixel, orig) {
 		t.Fatalf("short direct buffer changed: %v -> %v", orig, pixel)
 	}
 
 	NewApplyGammaInvRGBA[color.Linear](gamma).Apply(pixel)
-	if string(pixel) != string(orig) {
+	if !bytes.Equal(pixel, orig) {
 		t.Fatalf("short inverse buffer changed: %v -> %v", orig, pixel)
 	}
 }

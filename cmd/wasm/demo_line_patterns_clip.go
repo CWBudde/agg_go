@@ -303,10 +303,7 @@ func encodeLinePatternClipPoints() string {
 	ensureLinePatternClipPoints()
 	parts := make([]string, len(linePatternClipPoints))
 	for i, pt := range linePatternClipPoints {
-		parts[i] = strings.Join([]string{
-			strconv.FormatFloat(pt[0], 'f', 1, 64),
-			strconv.FormatFloat(pt[1], 'f', 1, 64),
-		}, ",")
+		parts[i] = strconv.FormatFloat(pt[0], 'f', 1, 64) + "," + strconv.FormatFloat(pt[1], 'f', 1, 64)
 	}
 	return strings.Join(parts, ";")
 }

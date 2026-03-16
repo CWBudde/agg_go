@@ -9,10 +9,10 @@
 //
 // The package follows AGG's original separation of concerns:
 //
-// - blenders define per-pixel math and channel ordering
-// - pixel formats expose span-oriented drawing operations over a rendering buffer
-// - adaptors extend an existing pixel format with masking, transposition, or
-//   alternate blending semantics
+//   - blenders define per-pixel math and channel ordering
+//   - pixel formats expose span-oriented drawing operations over a rendering buffer
+//   - adaptors extend an existing pixel format with masking, transposition, or
+//     alternate blending semantics
 //
 // Supported format families in this package include:
 //

@@ -4,6 +4,7 @@ These PNGs are generated artifacts, not golden references. The demo-parity test
 regenerates them on each run, and they are intentionally ignored by Git.
 
 Capture details:
+
 - Captured on 2026-03-16.
 - Demos were rendered through the default headless `demorunner` path, which
   renders one frame to PNG and exits.
@@ -13,6 +14,7 @@ Capture details:
   process working directory.
 
 Current scope:
+
 - 40 example screenshots imported successfully.
 - The set mirrors the current initial C++ screenshot corpus under
   `tests/visual/reference/cpp/examples/`.
@@ -20,6 +22,7 @@ Current scope:
   against the C++ captures.
 
 Next work:
+
 - Compare these images directly against the C++ corpus and record scenario
   mappings.
 - Normalize demo asset loading so examples like `image1` and `image_alpha` do

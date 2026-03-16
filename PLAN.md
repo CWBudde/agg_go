@@ -294,16 +294,16 @@ Span generators feed pixel data into `BlendColorHspan`; profile before committin
       Current status on 2026-03-16: all 40 imported demo pairs fail parity, split into
       dimension mismatches and same-size visual mismatches.
   - [ ] Fix demo frame/dimension mismatches against C++ output:
-    `aa_demo`, `alpha_mask`, `alpha_mask2`, `alpha_mask3`, `bezier_div`, `blur`,
-    `bspline`, `circles`, `component_rendering`, `compositing`, `compositing2`,
-    `conv_contour`, `conv_stroke`, `distortions`, `flash_rasterizer`,
-    `flash_rasterizer2`, `gamma_correction`, `gamma_ctrl`, `gouraud`,
-    `gouraud_mesh`, `gradients`, `gradients_contour`, `image1`, `image_alpha`,
-    `image_filters`, `image_filters2`, `image_fltr_graph`, `image_perspective`,
-    `image_resample`, `line_patterns`, `lion`, `lion_lens`, `lion_outline`.
+        `aa_demo`, `alpha_mask`, `alpha_mask2`, `alpha_mask3`, `bezier_div`, `blur`,
+        `bspline`, `circles`, `component_rendering`, `compositing`, `compositing2`,
+        `conv_contour`, `conv_stroke`, `distortions`, `flash_rasterizer`,
+        `flash_rasterizer2`, `gamma_correction`, `gamma_ctrl`, `gouraud`,
+        `gouraud_mesh`, `gradients`, `gradients_contour`, `image1`, `image_alpha`,
+        `image_filters`, `image_filters2`, `image_fltr_graph`, `image_perspective`,
+        `image_resample`, `line_patterns`, `lion`, `lion_lens`, `lion_outline`.
   - [ ] Fix same-size but visually divergent demo outputs:
-    `blend_color`, `conv_dash_marker`, `gamma_tuner`, `gradient_focal`,
-    `graph_test`, `idea`, `line_patterns_clip`.
+        `blend_color`, `conv_dash_marker`, `gamma_tuner`, `gradient_focal`,
+        `graph_test`, `idea`, `line_patterns_clip`.
 - [ ] Expand C++-generated visual reference set:
   - basic shapes and AA edge cases
   - gradients, text rendering, other parity-critical scenarios

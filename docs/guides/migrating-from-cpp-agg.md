@@ -30,36 +30,36 @@ Use `agg.Context` when:
 
 ### High-level API
 
-| C++ AGG | Go port | Notes |
-| --- | --- | --- |
-| `Agg2D` | `agg.Agg2D` | Closest public parity surface |
-| `Agg2D::Image` | `agg.Image` | RGBA image wrapper |
-| `Agg2D::Color` / `rgba8` usage in Agg2D | `agg.Color` | Root-level public color type |
-| no direct equivalent | `agg.Context` | Go convenience wrapper over `Agg2D` |
+| C++ AGG                                 | Go port       | Notes                               |
+| --------------------------------------- | ------------- | ----------------------------------- |
+| `Agg2D`                                 | `agg.Agg2D`   | Closest public parity surface       |
+| `Agg2D::Image`                          | `agg.Image`   | RGBA image wrapper                  |
+| `Agg2D::Color` / `rgba8` usage in Agg2D | `agg.Color`   | Root-level public color type        |
+| no direct equivalent                    | `agg.Context` | Go convenience wrapper over `Agg2D` |
 
 ### Core geometry and transforms
 
-| C++ AGG | Go port | Notes |
-| --- | --- | --- |
-| `agg::rect_i` / `rect_d` | `agg.Rect` | Root-level integer rectangle helper |
-| point-like `double x, y` pairs | `agg.Point` / `agg.PointI` | Explicit structs in public API |
-| `agg::trans_affine` | `internal/transform.TransAffine` | Public wrapper helpers in `agg.Transformations` and `agg.Affine` |
-| `agg::trans_perspective` | `internal/transform.TransPerspective` | Internal package, close header parity |
-| `agg::trans_bilinear` | `internal/transform.TransBilinear` | Internal package, close header parity |
-| `agg::trans_viewport` | `internal/transform.TransViewport` | Internal package, close header parity |
+| C++ AGG                        | Go port                               | Notes                                                            |
+| ------------------------------ | ------------------------------------- | ---------------------------------------------------------------- |
+| `agg::rect_i` / `rect_d`       | `agg.Rect`                            | Root-level integer rectangle helper                              |
+| point-like `double x, y` pairs | `agg.Point` / `agg.PointI`            | Explicit structs in public API                                   |
+| `agg::trans_affine`            | `internal/transform.TransAffine`      | Public wrapper helpers in `agg.Transformations` and `agg.Affine` |
+| `agg::trans_perspective`       | `internal/transform.TransPerspective` | Internal package, close header parity                            |
+| `agg::trans_bilinear`          | `internal/transform.TransBilinear`    | Internal package, close header parity                            |
+| `agg::trans_viewport`          | `internal/transform.TransViewport`    | Internal package, close header parity                            |
 
 ### Pipeline package mapping
 
-| C++ header family | Go package |
-| --- | --- |
-| `agg_rasterizer_scanline_aa*.h` | `internal/rasterizer` |
-| `agg_scanline_*.h` | `internal/scanline` |
-| `agg_renderer_*.h` | `internal/renderer` |
-| `agg_pixfmt_*.h` | `internal/pixfmt` |
-| `agg_span_*.h` | `internal/span` |
-| `agg_conv_*.h` | `internal/conv` |
-| `agg_trans_*.h` | `internal/transform` |
-| `agg_font_*` / `agg_gsv_text*` | `internal/font`, `internal/gsv`, `agg` text helpers |
+| C++ header family               | Go package                                          |
+| ------------------------------- | --------------------------------------------------- |
+| `agg_rasterizer_scanline_aa*.h` | `internal/rasterizer`                               |
+| `agg_scanline_*.h`              | `internal/scanline`                                 |
+| `agg_renderer_*.h`              | `internal/renderer`                                 |
+| `agg_pixfmt_*.h`                | `internal/pixfmt`                                   |
+| `agg_span_*.h`                  | `internal/span`                                     |
+| `agg_conv_*.h`                  | `internal/conv`                                     |
+| `agg_trans_*.h`                 | `internal/transform`                                |
+| `agg_font_*` / `agg_gsv_text*`  | `internal/font`, `internal/gsv`, `agg` text helpers |
 
 ## Method Translation Rules
 
