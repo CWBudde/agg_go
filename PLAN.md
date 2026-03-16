@@ -281,6 +281,10 @@ Span generators feed pixel data into `BlendColorHspan`; profile before committin
 - [x] Extract and centralize the current Go golden-test screenshots as a bootstrap reference corpus.
       Snapshot stored under `tests/visual/reference/bootstrap/go-golden/` on 2026-03-16
       (56 PNGs copied from `tests/visual/reference/primitives/`).
+- [x] Import an initial canonical C++ screenshot corpus from precompiled AGG demos.
+      Stored under `tests/visual/reference/cpp/examples/` on 2026-03-16
+      (40 PNGs captured from `../agg-2.6/build/examples/` via the upstream X11
+      `F2` screenshot path).
 - [ ] Generate canonical references from C++ AGG for core scenarios and replace Go-side
       references where C++ output is the ground truth.
 - [ ] Expand C++-generated visual reference set:
