@@ -655,7 +655,9 @@ export const demoURLHandlers = {
         ltf: parseFloat(
           document.getElementById("lineThicknessFactorSlider").value,
         ),
-        ltb: parseFloat(document.getElementById("lineThicknessBlurSlider").value),
+        ltb: parseFloat(
+          document.getElementById("lineThicknessBlurSlider").value,
+        ),
         ltm: document.getElementById("lineThicknessMono").checked ? "1" : "0",
         lti: document.getElementById("lineThicknessInvert").checked ? "1" : "0",
       });
@@ -663,7 +665,9 @@ export const demoURLHandlers = {
     restore(p) {
       const thickness = p.has("ltf")
         ? parseFloat(p.get("ltf"))
-        : parseFloat(document.getElementById("lineThicknessFactorSlider").value);
+        : parseFloat(
+            document.getElementById("lineThicknessFactorSlider").value,
+          );
       const blur = p.has("ltb")
         ? parseFloat(p.get("ltb"))
         : parseFloat(document.getElementById("lineThicknessBlurSlider").value);

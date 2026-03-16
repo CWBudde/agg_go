@@ -393,6 +393,28 @@ Triage each: fully port, replace with Go-idiomatic equivalent, or defer with rat
 
 ---
 
+## Phase 10.0 - Public Agg2D Interface Parity Layer
+
+Before the broader documentation pass, the exported `Agg2D` wrapper should stay
+close enough to `../agg-2.6/agg-src/agg2d/agg2d.h` that the upstream docs and
+examples remain directly useful.
+
+### 10.0.1 Public wrapper parity
+
+- [x] Root-level `Agg2D` documentation explains the intentional C++ → Go naming
+      translations (`Get...`, `...Simple`, `...MultiStop`, `...Pos`).
+- [x] Missing parity helpers from `agg2d.h` are exposed on the public wrapper
+      where Go can represent them directly (`Parallelogram`,
+      RGBA-component color overloads, radial-gradient position overloads).
+- [x] Public wrapper audit records remaining unavoidable differences from the
+      C++ interface (mainly overload-related naming) for the migration guide.
+
+### 10.0.2 Exit criteria
+
+- [x] A reader comparing the public Go `Agg2D` API to `agg2d.h` can map every
+      major method family without reading internal code.
+- [x] New parity aliases are covered by public-wrapper tests.
+
 ## Phase 10 - Public API and Internal Package Documentation
 
 Documentation is the final gap before the port can be considered production-ready.

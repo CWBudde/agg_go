@@ -147,6 +147,7 @@ func (a *lineClipSolidBaseAdapter) Height() int { return a.renBase.Height() }
 func (a *lineClipSolidBaseAdapter) BlendSolidHSpan(x, y, length int, c color.RGBA8[color.Linear], covers []basics.CoverType) {
 	a.renBase.BlendSolidHspan(x, y, length, c, covers)
 }
+
 func (a *lineClipSolidBaseAdapter) BlendSolidVSpan(x, y, length int, c color.RGBA8[color.Linear], covers []basics.CoverType) {
 	a.renBase.BlendSolidVspan(x, y, length, c, covers)
 }
@@ -165,9 +166,11 @@ func (a *lineClipOutlineImageAdapter) Line0(lp primitives.LineParameters) { a.re
 func (a *lineClipOutlineImageAdapter) Line1(lp primitives.LineParameters, sx, sy int) {
 	a.ren.Line1(&lp, sx, sy)
 }
+
 func (a *lineClipOutlineImageAdapter) Line2(lp primitives.LineParameters, ex, ey int) {
 	a.ren.Line2(&lp, ex, ey)
 }
+
 func (a *lineClipOutlineImageAdapter) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) {
 	a.ren.Line3(&lp, sx, sy, ex, ey)
 }
@@ -186,9 +189,11 @@ func (a *lineClipOutlineAAAdapter) Line0(lp primitives.LineParameters) { a.ren.L
 func (a *lineClipOutlineAAAdapter) Line1(lp primitives.LineParameters, sx, sy int) {
 	a.ren.Line1(&lp, sx, sy)
 }
+
 func (a *lineClipOutlineAAAdapter) Line2(lp primitives.LineParameters, ex, ey int) {
 	a.ren.Line2(&lp, ex, ey)
 }
+
 func (a *lineClipOutlineAAAdapter) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) {
 	a.ren.Line3(&lp, sx, sy, ex, ey)
 }
@@ -376,8 +381,7 @@ func handleLinePatternsClipMouseMove(x, y float64) bool {
 		if linePatternClipSelectedPoint < 0 {
 			return false
 		}
-		linePatternClipPoints[linePatternClipSelectedPoint][0], linePatternClipPoints[linePatternClipSelectedPoint][1] =
-			clampLinePatternClipPoint(x, y)
+		linePatternClipPoints[linePatternClipSelectedPoint][0], linePatternClipPoints[linePatternClipSelectedPoint][1] = clampLinePatternClipPoint(x, y)
 		return true
 	case linePatternClipDragChain:
 		dx := x - linePatternClipDragLastX
@@ -385,8 +389,7 @@ func handleLinePatternsClipMouseMove(x, y float64) bool {
 		for i := range linePatternClipPoints {
 			linePatternClipPoints[i][0] += dx
 			linePatternClipPoints[i][1] += dy
-			linePatternClipPoints[i][0], linePatternClipPoints[i][1] =
-				clampLinePatternClipPoint(linePatternClipPoints[i][0], linePatternClipPoints[i][1])
+			linePatternClipPoints[i][0], linePatternClipPoints[i][1] = clampLinePatternClipPoint(linePatternClipPoints[i][0], linePatternClipPoints[i][1])
 		}
 		linePatternClipDragLastX = x
 		linePatternClipDragLastY = y

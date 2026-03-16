@@ -1,6 +1,9 @@
 package agg
 
-import "testing"
+import (
+	"math"
+	"testing"
+)
 
 func TestAgg2DPublicWrappers(t *testing.T) {
 	a := NewAgg2D()
@@ -44,15 +47,32 @@ func TestAgg2DPublicWrappers(t *testing.T) {
 	if a.GetImageBlendMode() != BlendMultiply {
 		t.Fatalf("GetImageBlendMode() = %v, want %v", a.GetImageBlendMode(), BlendMultiply)
 	}
+	a.FillColorRGBA(90, 91, 92, 93)
+	if gotColor := a.GetFillColor(); gotColor != (Color{R: 90, G: 91, B: 92, A: 93}) {
+		t.Fatalf("GetFillColor() = %#v", gotColor)
+	}
+	a.LineColorRGBA(40, 41, 42, 43)
+	if gotColor := a.GetLineColor(); gotColor != (Color{R: 40, G: 41, B: 42, A: 43}) {
+		t.Fatalf("GetLineColor() = %#v", gotColor)
+	}
 	blendColor := Color{R: 10, G: 20, B: 30, A: 40}
 	a.ImageBlendColor(blendColor)
 	if gotColor := a.GetImageBlendColor(); gotColor != blendColor {
 		t.Fatalf("GetImageBlendColor() = %#v, want %#v", gotColor, blendColor)
 	}
+	a.ImageBlendColorRGBA(11, 21, 31, 41)
+	if gotColor := a.GetImageBlendColor(); gotColor != (Color{R: 11, G: 21, B: 31, A: 41}) {
+		t.Fatalf("ImageBlendColorRGBA() stored %#v", gotColor)
+	}
 
 	a.AntiAliasGamma(2.0)
 	if gotGamma := a.GetAntiAliasGamma(); gotGamma != 2.0 {
 		t.Fatalf("GetAntiAliasGamma() = %v, want 2.0", gotGamma)
+	}
+
+	a.ClearAllRGBA(1, 2, 3, 4)
+	if got := buf[:4]; got[0] != 1 || got[1] != 2 || got[2] != 3 || got[3] != 4 {
+		t.Fatalf("ClearAllRGBA() pixel = %#v, want [1 2 3 4]", got)
 	}
 
 	a.MoveTo(1, 1)
@@ -80,4 +100,24 @@ func TestAgg2DPublicWrappers(t *testing.T) {
 	a.Curve4(0, 0, 2, 3, 4, 5, 6, 7)
 	a.Polygon([]float64{1, 1, 4, 1, 4, 4}, 3)
 	a.Polyline([]float64{1, 1, 2, 2, 3, 3}, 3)
+
+	a.FillRadialGradient(2, 2, 3, Red, Blue, 1.0)
+	a.FillRadialGradientPos(4, 5, 6)
+	if got := a.FillGradientD2(); math.Abs(got-6) > 1e-9 {
+		t.Fatalf("FillRadialGradientPos() radius = %v, want 6", got)
+	}
+
+	a.LineRadialGradient(2, 2, 3, Red, Blue, 1.0)
+	a.LineRadialGradientPos(7, 8, 9)
+	if got := a.LineGradientD2(); math.Abs(got-9) > 1e-9 {
+		t.Fatalf("LineRadialGradientPos() radius = %v, want 9", got)
+	}
+
+	a.ResetTransformations()
+	a.Parallelogram(10, 20, 14, 20, 10, 26)
+	got = a.GetTransformations()
+	want := [6]float64{4, 0, 0, 6, 10, 20}
+	if got == nil || got.AffineMatrix != want {
+		t.Fatalf("Parallelogram() = %#v, want %#v", got, want)
+	}
 }

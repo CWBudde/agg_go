@@ -349,7 +349,8 @@ func pathToContours(ps *path.PathStorageStl) []contour {
 func vertexSourceToContours(vs interface {
 	Rewind(pathID uint)
 	Vertex() (x, y float64, cmd basics.PathCommand)
-}) []contour {
+},
+) []contour {
 	var out []contour
 	var cur contour
 

@@ -55,11 +55,15 @@ export function setupEventHandlers(
       persistDemoParams("line_thickness");
       renderSelectedDemo();
     });
-  document.getElementById("lineThicknessMono").addEventListener("change", () => {
-    setLineThicknessMono(document.getElementById("lineThicknessMono").checked);
-    persistDemoParams("line_thickness");
-    renderSelectedDemo();
-  });
+  document
+    .getElementById("lineThicknessMono")
+    .addEventListener("change", () => {
+      setLineThicknessMono(
+        document.getElementById("lineThicknessMono").checked,
+      );
+      persistDemoParams("line_thickness");
+      renderSelectedDemo();
+    });
   document
     .getElementById("lineThicknessInvert")
     .addEventListener("change", () => {
@@ -1175,7 +1179,10 @@ export function setupEventHandlers(
     const x = (e.clientX - rect.left) * (canvas.width / rect.width);
     const y = (e.clientY - rect.top) * (canvas.height / rect.height);
     const right = e.button === 2;
-    if (selector.value === "gpc_test" || selector.value === "scanline_boolean2") {
+    if (
+      selector.value === "gpc_test" ||
+      selector.value === "scanline_boolean2"
+    ) {
       setTrackedDemoCenter(selector.value, x, y);
     }
     if (onMouseDown(selector.value, x, y, right)) {
@@ -1190,7 +1197,10 @@ export function setupEventHandlers(
     const x = (e.clientX - rect.left) * (canvas.width / rect.width);
     const y = (e.clientY - rect.top) * (canvas.height / rect.height);
     const right = (e.buttons & 2) !== 0;
-    if (selector.value === "gpc_test" || selector.value === "scanline_boolean2") {
+    if (
+      selector.value === "gpc_test" ||
+      selector.value === "scanline_boolean2"
+    ) {
       setTrackedDemoCenter(selector.value, x, y);
     }
     if (onMouseMove(selector.value, x, y, right)) {

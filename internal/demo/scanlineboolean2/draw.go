@@ -105,6 +105,7 @@ func (s *storageScanlineU8) ResetSpans()   { s.sl.ResetSpans() }
 func (s *storageScanlineU8) AddSpan(x, length int, cover basics.Int8u) {
 	s.sl.AddSpan(x, length, uint(cover))
 }
+
 func (s *storageScanlineU8) AddCells(x, length int, covers []basics.Int8u) {
 	s.sl.AddCells(x, length, covers)
 }
@@ -114,10 +115,12 @@ func (s *storageScanlineU8) Begin() isc.ScanlineIterator {
 	s.iter.idx = 0
 	return &s.iter
 }
+
 func (it *storageScanlineU8Iter) GetSpan() isc.SpanInfo {
 	span := it.spans[it.idx]
 	return isc.SpanInfo{X: int(span.X), Len: int(span.Len), Covers: span.Covers}
 }
+
 func (it *storageScanlineU8Iter) Next() bool {
 	it.idx++
 	return it.idx < len(it.spans)
@@ -139,6 +142,7 @@ func (s *storageScanlineP8) ResetSpans()   { s.sl.ResetSpans() }
 func (s *storageScanlineP8) AddSpan(x, length int, cover basics.Int8u) {
 	s.sl.AddSpan(x, length, uint(cover))
 }
+
 func (s *storageScanlineP8) AddCells(x, length int, covers []basics.Int8u) {
 	s.sl.AddCells(x, length, covers)
 }
@@ -148,10 +152,12 @@ func (s *storageScanlineP8) Begin() isc.ScanlineIterator {
 	s.iter.idx = 0
 	return &s.iter
 }
+
 func (it *storageScanlineP8Iter) GetSpan() isc.SpanInfo {
 	span := it.spans[it.idx]
 	return isc.SpanInfo{X: int(span.X), Len: int(span.Len), Covers: span.Covers}
 }
+
 func (it *storageScanlineP8Iter) Next() bool {
 	it.idx++
 	return it.idx < len(it.spans)
@@ -174,9 +180,11 @@ func (s *boolScanlineU8) ResetSpans()    { s.sl.ResetSpans() }
 func (s *boolScanlineU8) AddCell(x int, cover uint) {
 	s.sl.AddCell(x, cover)
 }
+
 func (s *boolScanlineU8) AddCells(x, length int, covers []basics.Int8u) {
 	s.sl.AddCells(x, length, covers)
 }
+
 func (s *boolScanlineU8) AddSpan(x, length int, cover basics.Int8u) {
 	s.sl.AddSpan(x, length, uint(cover))
 }
@@ -186,10 +194,12 @@ func (s *boolScanlineU8) Begin() renscan.ScanlineIterator {
 	s.iter.idx = 0
 	return &s.iter
 }
+
 func (it *boolScanlineU8Iter) GetSpan() renscan.SpanData {
 	span := it.spans[it.idx]
 	return renscan.SpanData{X: int(span.X), Len: int(span.Len), Covers: span.Covers}
 }
+
 func (it *boolScanlineU8Iter) Next() bool {
 	it.idx++
 	return it.idx < len(it.spans)
@@ -212,9 +222,11 @@ func (s *boolScanlineP8) ResetSpans()    { s.sl.ResetSpans() }
 func (s *boolScanlineP8) AddCell(x int, cover uint) {
 	s.sl.AddCell(x, cover)
 }
+
 func (s *boolScanlineP8) AddCells(x, length int, covers []basics.Int8u) {
 	s.sl.AddCells(x, length, covers)
 }
+
 func (s *boolScanlineP8) AddSpan(x, length int, cover basics.Int8u) {
 	s.sl.AddSpan(x, length, uint(cover))
 }
@@ -224,10 +236,12 @@ func (s *boolScanlineP8) Begin() renscan.ScanlineIterator {
 	s.iter.idx = 0
 	return &s.iter
 }
+
 func (it *boolScanlineP8Iter) GetSpan() renscan.SpanData {
 	span := it.spans[it.idx]
 	return renscan.SpanData{X: int(span.X), Len: int(span.Len), Covers: span.Covers}
 }
+
 func (it *boolScanlineP8Iter) Next() bool {
 	it.idx++
 	return it.idx < len(it.spans)
@@ -250,9 +264,11 @@ func (s *boolScanlineBin) ResetSpans()     { s.sl.ResetSpans() }
 func (s *boolScanlineBin) AddCell(x int, cover uint) {
 	s.sl.AddCell(x, cover)
 }
+
 func (s *boolScanlineBin) AddCells(x, length int, covers []basics.Int8u) {
 	s.sl.AddCells(x, length, covers)
 }
+
 func (s *boolScanlineBin) AddSpan(x, length int, cover basics.Int8u) {
 	s.sl.AddSpan(x, length, uint(cover))
 }
@@ -262,10 +278,12 @@ func (s *boolScanlineBin) Begin() renscan.ScanlineIterator {
 	s.iter.idx = 0
 	return &s.iter
 }
+
 func (it *boolScanlineBinIter) GetSpan() renscan.SpanData {
 	span := it.spans[it.idx]
 	return renscan.SpanData{X: int(span.X), Len: int(span.Len), Covers: []basics.Int8u{255}}
 }
+
 func (it *boolScanlineBinIter) Next() bool {
 	it.idx++
 	return it.idx < len(it.spans)
@@ -972,7 +990,8 @@ func drawContours(a *agg.Agg2D, cs []contour, fill, line agg.Color) {
 func vertexSourceToContours(vs interface {
 	Rewind(pathID uint)
 	Vertex() (x, y float64, cmd basics.PathCommand)
-}) []contour {
+},
+) []contour {
 	var out []contour
 	var cur contour
 	vs.Rewind(0)

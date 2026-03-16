@@ -128,8 +128,14 @@ const (
 	AlignBottom TextAlignment = agg2d.AlignBottom
 )
 
-// Agg2D provides the public interface to the AGG2D rendering engine.
-// It wraps the internal implementation and exposes only the necessary methods.
+// Agg2D provides the public high-level drawing interface that mirrors the
+// original AGG 2.6 `Agg2D` class as closely as Go allows.
+//
+// The wrapper intentionally preserves upstream naming and behavior where
+// possible so `../agg-2.6/agg-src/agg2d/agg2d.h` remains a useful reference.
+// Where C++ relies on overloads, the Go API uses explicit names:
+// `Get...` for getter overloads, `...Simple` for whole-image overloads, and a
+// few descriptive suffixes such as `...MultiStop` or `...Pos`.
 type Agg2D struct {
 	impl           *agg2d.Agg2D
 	attachedBuffer []uint8
