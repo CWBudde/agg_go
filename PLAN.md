@@ -278,6 +278,9 @@ Span generators feed pixel data into `BlendColorHspan`; profile before committin
 
 - [x] Store references under `tests/visual/reference`.
 - [x] Automated diff thresholding and HTML report generation in `tests/visual/framework`.
+- [x] Extract and centralize the current Go golden-test screenshots as a bootstrap reference corpus.
+      Snapshot stored under `tests/visual/reference/bootstrap/go-golden/` on 2026-03-16
+      (56 PNGs copied from `tests/visual/reference/primitives/`).
 - [ ] Generate canonical references from C++ AGG for core scenarios and replace Go-side
       references where C++ output is the ground truth.
 - [ ] Expand C++-generated visual reference set:
@@ -294,6 +297,8 @@ Span generators feed pixel data into `BlendColorHspan`; profile before committin
   - image operations (pending)
   - advanced and edge-case scenes (pending)
 - [ ] Add reference-management workflow: controlled regeneration, approval surface.
+      Bootstrap note recorded in `tests/visual/reference/bootstrap/README.md`, but no
+      canonical C++ import/regeneration workflow exists yet.
 
 ### 8.3 C++ parity checks
 
