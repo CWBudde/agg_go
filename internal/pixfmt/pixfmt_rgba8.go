@@ -11,54 +11,60 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/simd"
 )
 
-// RGBA pixel type for internal operations
+// RGBAPixelType is a lightweight scratch pixel used by span/pixfmt helpers.
 type RGBAPixelType struct {
 	R, G, B, A basics.Int8u
 }
 
-// Set sets all RGBA components
+// Set writes all four components.
 func (p *RGBAPixelType) Set(r, g, b, a basics.Int8u) {
 	p.R, p.G, p.B, p.A = r, g, b, a
 }
 
-// SetColor sets from a color type
+// SetColor copies the channels from c.
 func (p *RGBAPixelType) SetColor(c color.RGBA8[color.Linear]) {
 	p.R, p.G, p.B, p.A = c.R, c.G, c.B, c.A
 }
 
-// GetColor returns as color type
+// GetColor returns the stored channels as a linear RGBA8 color.
 func (p *RGBAPixelType) GetColor() color.RGBA8[color.Linear] {
 	return color.RGBA8[color.Linear]{R: p.R, G: p.G, B: p.B, A: p.A}
 }
 
-// PixFmtAlphaBlendRGBA represents the main RGBA pixel format with alpha blending
+// PixFmtAlphaBlendRGBA is the Go equivalent of AGG's pixfmt_alpha_blend_rgba.
+//
+// It binds a rendering buffer to an RGBA blender, so channel ordering and
+// premultiplied-vs-plain source semantics come from the blender while the pixfmt
+// supplies AGG's span-oriented drawing operations.
 type PixFmtAlphaBlendRGBA[S color.Space, B blender.RGBABlender[S]] struct {
 	rbuf     *buffer.RenderingBufferU8
 	blender  B
 	category PixFmtRGBATag
 }
 
-// NewPixFmtAlphaBlendRGBA creates a new RGBA pixel format
+// NewPixFmtAlphaBlendRGBA creates an RGBA pixfmt over rbuf using blender b.
 func NewPixFmtAlphaBlendRGBA[S color.Space, B blender.RGBABlender[S]](rbuf *buffer.RenderingBufferU8, b B) *PixFmtAlphaBlendRGBA[S, B] {
 	return &PixFmtAlphaBlendRGBA[S, B]{rbuf: rbuf, blender: b}
 }
 
-// Width returns the buffer width
+// Width returns the attached buffer width in pixels.
 func (pf *PixFmtAlphaBlendRGBA[S, B]) Width() int {
 	return pf.rbuf.Width()
 }
 
-// Height returns the buffer height
+// Height returns the attached buffer height in pixels.
 func (pf *PixFmtAlphaBlendRGBA[S, B]) Height() int {
 	return pf.rbuf.Height()
 }
 
-// PixWidth returns bytes per pixel (4 for RGBA)
+// PixWidth returns the storage width of one pixel in bytes.
 func (pf *PixFmtAlphaBlendRGBA[S, B]) PixWidth() int {
 	return 4
 }
 
-// GetPixel returns the pixel at the given coordinates
+// GetPixel reads a pixel back through the blender's plain-color accessor.
+// That matches AGG's convention that premultiplied buffers are demultiplied for
+// pixel() reads when the blender stores plain colors.
 func (pf *PixFmtAlphaBlendRGBA[S, B]) GetPixel(x, y int) color.RGBA8[S] {
 	if !InBounds(x, y, pf.Width(), pf.Height()) {
 		return color.RGBA8[S]{}
@@ -73,12 +79,12 @@ func (pf *PixFmtAlphaBlendRGBA[S, B]) GetPixel(x, y int) color.RGBA8[S] {
 	return color.RGBA8[S]{R: r, G: g, B: b, A: a}
 }
 
-// Pixel returns the pixel at the given coordinates (alias for GetPixel)
+// Pixel is an alias for GetPixel.
 func (pf *PixFmtAlphaBlendRGBA[S, B]) Pixel(x, y int) color.RGBA8[S] {
 	return pf.GetPixel(x, y)
 }
 
-// RowData returns the raw row bytes for transfer operations.
+// RowData returns the raw storage row used by copy_from and similar bulk paths.
 func (pf *PixFmtAlphaBlendRGBA[S, B]) RowData(y int) []basics.Int8u {
 	if y < 0 || y >= pf.Height() {
 		return nil
@@ -86,7 +92,7 @@ func (pf *PixFmtAlphaBlendRGBA[S, B]) RowData(y int) []basics.Int8u {
 	return buffer.RowU8(pf.rbuf, y)
 }
 
-// CopyPixel copies a pixel without blending
+// CopyPixel writes c directly, bypassing alpha compositing.
 func (pf *PixFmtAlphaBlendRGBA[S, B]) CopyPixel(x, y int, c color.RGBA8[S]) {
 	if !InBounds(x, y, pf.Width(), pf.Height()) {
 		return
@@ -101,7 +107,7 @@ func (pf *PixFmtAlphaBlendRGBA[S, B]) CopyPixel(x, y int, c color.RGBA8[S]) {
 	pf.blender.SetPlain(row[off:off+4], c.R, c.G, c.B, c.A)
 }
 
-// BlendPixel blends a pixel with the given coverage
+// BlendPixel applies the blender's per-pixel compositing rule with cover.
 func (pf *PixFmtAlphaBlendRGBA[S, B]) BlendPixel(x, y int, c color.RGBA8[S], cover basics.Int8u) {
 	if !InBounds(x, y, pf.Width(), pf.Height()) || c.IsTransparent() {
 		return
@@ -117,7 +123,7 @@ func (pf *PixFmtAlphaBlendRGBA[S, B]) BlendPixel(x, y int, c color.RGBA8[S], cov
 	pf.blender.BlendPix(row[off:off+4], c.R, c.G, c.B, c.A, cover)
 }
 
-// CopyHline copies a horizontal line
+// CopyHline writes a solid horizontal run without blending.
 func (pf *PixFmtAlphaBlendRGBA[S, B]) CopyHline(x, y, length int, c color.RGBA8[S]) {
 	if y < 0 || y >= pf.Height() || length <= 0 {
 		return
@@ -268,7 +274,7 @@ func blendHlinePre(
 	}
 }
 
-// CopyVline copies a vertical line
+// CopyVline writes a solid vertical run without blending.
 func (pf *PixFmtAlphaBlendRGBA[S, B]) CopyVline(x, y, length int, c color.RGBA8[S]) {
 	if x < 0 || x >= pf.Width() || length <= 0 {
 		return
@@ -284,7 +290,7 @@ func (pf *PixFmtAlphaBlendRGBA[S, B]) CopyVline(x, y, length int, c color.RGBA8[
 	}
 }
 
-// BlendVline blends a vertical line
+// BlendVline blends a solid vertical run with uniform coverage.
 func (pf *PixFmtAlphaBlendRGBA[S, B]) BlendVline(x, y, length int, c color.RGBA8[S], cover basics.Int8u) {
 	if x < 0 || x >= pf.Width() || length <= 0 || c.IsTransparent() {
 		return

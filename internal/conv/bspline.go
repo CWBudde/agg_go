@@ -5,14 +5,14 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/vcgen"
 )
 
-// ConvBSpline converts path vertices to smooth B-spline curves
-// This is equivalent to agg::conv_bspline in the original AGG library
+// ConvBSpline is the Go equivalent of AGG's conv_bspline. It converts the
+// source polyline into a sampled B-spline curve using VCGenBSpline.
 type ConvBSpline struct {
 	*ConvAdaptorVCGen
 	generator *vcgen.VCGenBSpline
 }
 
-// NewConvBSpline creates a new B-spline converter
+// NewConvBSpline creates a B-spline converter.
 func NewConvBSpline(source VertexSource) *ConvBSpline {
 	generator := vcgen.NewVCGenBSpline()
 	adaptor := NewConvAdaptorVCGen(source, generator)
@@ -23,23 +23,22 @@ func NewConvBSpline(source VertexSource) *ConvBSpline {
 	}
 }
 
-// SetInterpolationStep sets the interpolation step size
-// Smaller values create smoother curves with more vertices
+// SetInterpolationStep sets the distance between generated spline samples.
 func (c *ConvBSpline) SetInterpolationStep(step float64) {
 	c.generator.SetInterpolationStep(step)
 }
 
-// InterpolationStep returns the current interpolation step
+// InterpolationStep returns the current spline sampling step.
 func (c *ConvBSpline) InterpolationStep() float64 {
 	return c.generator.InterpolationStep()
 }
 
-// Rewind rewinds the B-spline converter
+// Rewind resets the converter to the start of the requested path.
 func (c *ConvBSpline) Rewind(pathID uint) {
 	c.ConvAdaptorVCGen.Rewind(pathID)
 }
 
-// Vertex returns the next vertex in the B-spline approximation
+// Vertex returns the next sampled spline vertex.
 func (c *ConvBSpline) Vertex() (x, y float64, cmd basics.PathCommand) {
 	return c.ConvAdaptorVCGen.Vertex()
 }

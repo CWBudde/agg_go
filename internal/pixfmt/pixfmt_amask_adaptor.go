@@ -5,7 +5,10 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/color"
 )
 
-// AlphaMaskInterface defines the interface for alpha masks
+// AlphaMaskInterface is the Go equivalent of AGG alpha-mask classes used by
+// pixfmt_amask_adaptor. It supplies per-pixel or per-span coverage that is
+// combined with renderer-generated coverage before pixels reach the underlying
+// pixfmt.
 type AlphaMaskInterface interface {
 	// Width returns the width of the alpha mask
 	Width() int
@@ -25,7 +28,9 @@ type AlphaMaskInterface interface {
 	CombineVspan(x, y int, dst []basics.Int8u, length int)
 }
 
-// PixFmtInterface defines the required methods for the underlying pixel format
+// PixFmtInterface is the subset of pixfmt operations required by the alpha-mask
+// adaptor. It intentionally matches AGG's span-oriented pixfmt surface rather
+// than a minimal draw-pixel API.
 type PixFmtInterface interface {
 	Width() int
 	Height() int
@@ -49,17 +54,22 @@ type PixFmtInterface interface {
 	Fill(c color.RGBA8[color.Linear])
 }
 
-// PixFmtAMaskAdaptor wraps a pixel format and applies an alpha mask to all operations
+// PixFmtAMaskAdaptor is the Go equivalent of AGG's pixfmt_amask_adaptor.
+//
+// It leaves pixel reads unchanged but routes write coverage through an external
+// alpha mask, which is how AGG composes clip masks and similar coverage maps
+// without changing renderer code.
 type PixFmtAMaskAdaptor struct {
 	pixfmt PixFmtInterface
 	amask  AlphaMaskInterface
 	span   []basics.Int8u // Reusable span buffer
 }
 
-// SpanExtraTail is the extra space allocated for span buffers to avoid frequent reallocations
+// SpanExtraTail matches AGG's span_extra_tail slack used to reduce span-buffer
+// reallocations during many short masked draws.
 const SpanExtraTail = 256
 
-// NewPixFmtAMaskAdaptor creates a new alpha mask adaptor
+// NewPixFmtAMaskAdaptor creates a masked view over pixfmt using amask.
 func NewPixFmtAMaskAdaptor(pixfmt PixFmtInterface, amask AlphaMaskInterface) *PixFmtAMaskAdaptor {
 	return &PixFmtAMaskAdaptor{
 		pixfmt: pixfmt,
@@ -68,24 +78,24 @@ func NewPixFmtAMaskAdaptor(pixfmt PixFmtInterface, amask AlphaMaskInterface) *Pi
 	}
 }
 
-// AttachPixfmt attaches a new pixel format
+// AttachPixfmt replaces the wrapped pixel format.
 func (pa *PixFmtAMaskAdaptor) AttachPixfmt(pixfmt PixFmtInterface) {
 	pa.pixfmt = pixfmt
 }
 
-// AttachAlphaMask attaches a new alpha mask
+// AttachAlphaMask replaces the alpha mask used for subsequent writes.
 func (pa *PixFmtAMaskAdaptor) AttachAlphaMask(amask AlphaMaskInterface) {
 	pa.amask = amask
 }
 
-// reallocSpan reallocates the span buffer if needed
+// reallocSpan ensures the reusable span buffer can hold length covers.
 func (pa *PixFmtAMaskAdaptor) reallocSpan(length int) {
 	if length > len(pa.span) {
 		pa.span = make([]basics.Int8u, length+SpanExtraTail)
 	}
 }
 
-// initSpan initializes the span buffer with full coverage
+// initSpan fills the reusable span buffer with cover-full values.
 func (pa *PixFmtAMaskAdaptor) initSpan(length int) {
 	pa.reallocSpan(length)
 	for i := 0; i < length; i++ {
@@ -93,73 +103,73 @@ func (pa *PixFmtAMaskAdaptor) initSpan(length int) {
 	}
 }
 
-// initSpanWithCovers initializes the span buffer with given coverage values
+// initSpanWithCovers copies the caller-provided covers into the reusable span.
 func (pa *PixFmtAMaskAdaptor) initSpanWithCovers(length int, covers []basics.Int8u) {
 	pa.reallocSpan(length)
 	copy(pa.span[:length], covers[:length])
 }
 
-// Width returns the width of the pixel format
+// Width returns the wrapped pixfmt width.
 func (pa *PixFmtAMaskAdaptor) Width() int {
 	return pa.pixfmt.Width()
 }
 
-// Height returns the height of the pixel format
+// Height returns the wrapped pixfmt height.
 func (pa *PixFmtAMaskAdaptor) Height() int {
 	return pa.pixfmt.Height()
 }
 
-// PixWidth returns the pixel width in bytes
+// PixWidth returns the wrapped pixfmt storage width in bytes.
 func (pa *PixFmtAMaskAdaptor) PixWidth() int {
 	return pa.pixfmt.PixWidth()
 }
 
-// Pixel returns the color at the given coordinates (unaffected by mask)
+// Pixel reads through to the wrapped pixfmt; the alpha mask only affects writes.
 func (pa *PixFmtAMaskAdaptor) Pixel(x, y int) color.RGBA8[color.Linear] {
 	return pa.pixfmt.Pixel(x, y)
 }
 
-// CopyPixel copies a pixel with mask applied as coverage
+// CopyPixel writes c using the mask value as coverage.
 func (pa *PixFmtAMaskAdaptor) CopyPixel(x, y int, c color.RGBA8[color.Linear]) {
 	cover := pa.amask.Pixel(x, y)
 	pa.pixfmt.BlendPixel(x, y, c, cover)
 }
 
-// BlendPixel blends a pixel with mask combined with coverage
+// BlendPixel combines the caller's cover with the mask before blending.
 func (pa *PixFmtAMaskAdaptor) BlendPixel(x, y int, c color.RGBA8[color.Linear], cover basics.Int8u) {
 	combinedCover := pa.amask.CombinePixel(x, y, cover)
 	pa.pixfmt.BlendPixel(x, y, c, combinedCover)
 }
 
-// CopyHline copies a horizontal line with mask applied
+// CopyHline writes a solid horizontal run using mask coverage.
 func (pa *PixFmtAMaskAdaptor) CopyHline(x, y, length int, c color.RGBA8[color.Linear]) {
 	pa.reallocSpan(length)
 	pa.amask.FillHspan(x, y, pa.span[:length], length)
 	pa.pixfmt.BlendSolidHspan(x, y, length, c, pa.span[:length])
 }
 
-// BlendHline blends a horizontal line with mask combined with coverage
+// BlendHline combines uniform input coverage with the mask across one row.
 func (pa *PixFmtAMaskAdaptor) BlendHline(x, y, length int, c color.RGBA8[color.Linear], cover basics.Int8u) {
 	pa.initSpan(length)
 	pa.amask.CombineHspan(x, y, pa.span[:length], length)
 	pa.pixfmt.BlendSolidHspan(x, y, length, c, pa.span[:length])
 }
 
-// CopyVline copies a vertical line with mask applied
+// CopyVline writes a solid vertical run using mask coverage.
 func (pa *PixFmtAMaskAdaptor) CopyVline(x, y, length int, c color.RGBA8[color.Linear]) {
 	pa.reallocSpan(length)
 	pa.amask.FillVspan(x, y, pa.span[:length], length)
 	pa.pixfmt.BlendSolidVspan(x, y, length, c, pa.span[:length])
 }
 
-// BlendVline blends a vertical line with mask combined with coverage
+// BlendVline combines uniform input coverage with the mask down one column.
 func (pa *PixFmtAMaskAdaptor) BlendVline(x, y, length int, c color.RGBA8[color.Linear], cover basics.Int8u) {
 	pa.initSpan(length)
 	pa.amask.CombineVspan(x, y, pa.span[:length], length)
 	pa.pixfmt.BlendSolidVspan(x, y, length, c, pa.span[:length])
 }
 
-// BlendSolidHspan blends a horizontal span with mask applied
+// BlendSolidHspan combines AA covers with the mask across a horizontal span.
 func (pa *PixFmtAMaskAdaptor) BlendSolidHspan(x, y, length int, c color.RGBA8[color.Linear], covers []basics.Int8u) {
 	if covers != nil {
 		pa.initSpanWithCovers(length, covers)
@@ -170,7 +180,7 @@ func (pa *PixFmtAMaskAdaptor) BlendSolidHspan(x, y, length int, c color.RGBA8[co
 	}
 }
 
-// BlendSolidVspan blends a vertical span with mask applied
+// BlendSolidVspan combines AA covers with the mask across a vertical span.
 func (pa *PixFmtAMaskAdaptor) BlendSolidVspan(x, y, length int, c color.RGBA8[color.Linear], covers []basics.Int8u) {
 	if covers != nil {
 		pa.initSpanWithCovers(length, covers)
@@ -181,41 +191,46 @@ func (pa *PixFmtAMaskAdaptor) BlendSolidVspan(x, y, length int, c color.RGBA8[co
 	}
 }
 
-// CopyBar copies a bar with mask applied
+// CopyBar writes a solid rectangle using mask coverage.
 func (pa *PixFmtAMaskAdaptor) CopyBar(x1, y1, x2, y2 int, c color.RGBA8[color.Linear]) {
 	for y := y1; y <= y2; y++ {
 		pa.CopyHline(x1, y, x2-x1+1, c)
 	}
 }
 
-// BlendBar blends a bar with mask applied
+// BlendBar combines uniform rectangle coverage with the mask.
 func (pa *PixFmtAMaskAdaptor) BlendBar(x1, y1, x2, y2 int, c color.RGBA8[color.Linear], cover basics.Int8u) {
 	for y := y1; y <= y2; y++ {
 		pa.BlendHline(x1, y, x2-x1+1, c, cover)
 	}
 }
 
-// CopyColorHspan copies a color horizontal span
+// CopyColorHspan delegates directly to the wrapped pixfmt.
+// This is a current Go-port simplification; AGG's adaptor routes this through
+// mask-derived covers before calling blend_color_hspan.
 func (pa *PixFmtAMaskAdaptor) CopyColorHspan(x, y, length int, colors []color.RGBA8[color.Linear]) {
 	pa.pixfmt.CopyColorHspan(x, y, length, colors)
 }
 
-// CopyColorVspan copies a color vertical span
+// CopyColorVspan delegates directly to the wrapped pixfmt.
+// This is a current Go-port simplification; AGG's adaptor routes this through
+// mask-derived covers before calling blend_color_vspan.
 func (pa *PixFmtAMaskAdaptor) CopyColorVspan(x, y, length int, colors []color.RGBA8[color.Linear]) {
 	pa.pixfmt.CopyColorVspan(x, y, length, colors)
 }
 
-// Clear clears the pixel format (unaffected by mask)
+// Clear fills the wrapped pixfmt directly; the alpha mask does not participate.
 func (pa *PixFmtAMaskAdaptor) Clear(c color.RGBA8[color.Linear]) {
 	pa.pixfmt.Clear(c)
 }
 
-// Fill fills the pixel format (unaffected by mask)
+// Fill is an alias for Clear.
 func (pa *PixFmtAMaskAdaptor) Fill(c color.RGBA8[color.Linear]) {
 	pa.pixfmt.Fill(c)
 }
 
-// BlendColorHspan blends a horizontal span with varying colors and mask applied
+// BlendColorHspan combines either per-pixel covers or a uniform cover with the
+// mask, then blends the span one pixel at a time.
 func (pa *PixFmtAMaskAdaptor) BlendColorHspan(x, y, length int, colors []color.RGBA8[color.Linear], covers []basics.Int8u, cover basics.Int8u) {
 	if covers != nil {
 		pa.initSpanWithCovers(length, covers)
@@ -237,7 +252,8 @@ func (pa *PixFmtAMaskAdaptor) BlendColorHspan(x, y, length int, colors []color.R
 	}
 }
 
-// BlendColorVspan blends a vertical span with varying colors and mask applied
+// BlendColorVspan combines either per-pixel covers or a uniform cover with the
+// mask, then blends the span one pixel at a time.
 func (pa *PixFmtAMaskAdaptor) BlendColorVspan(x, y, length int, colors []color.RGBA8[color.Linear], covers []basics.Int8u, cover basics.Int8u) {
 	if covers != nil {
 		pa.initSpanWithCovers(length, covers)

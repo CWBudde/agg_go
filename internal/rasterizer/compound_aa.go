@@ -17,21 +17,21 @@ const (
 	AAMask2  = AAScale2 - 1 // 511
 )
 
-// StyleInfo contains information about a rendering style during compound rasterization
+// StyleInfo tracks the cell run belonging to one active style on a scanline.
 type StyleInfo struct {
 	StartCell uint32 // Starting index in the cell array
 	NumCells  uint32 // Number of cells for this style
 	LastX     int    // Last X coordinate processed for this style
 }
 
-// CellInfo represents a simplified cell for compound rasterization processing
+// CellInfo stores the reduced per-cell data used during styled scanline sweeping.
 type CellInfo struct {
 	X     int // X coordinate
 	Area  int // Area value
 	Cover int // Coverage value
 }
 
-// CompoundScanlineInterface defines the interface for scanlines used with compound rasterization
+// CompoundScanlineInterface is the scanline contract used by styled compound rasterization.
 type CompoundScanlineInterface interface {
 	ResetSpans()
 	AddCell(x int, cover basics.Int8u)
@@ -94,7 +94,7 @@ func (s *ScanlineHitTest) NumSpans() int {
 	return 0
 }
 
-// CompoundClipInterface defines the interface for clipping implementations used with compound rasterization
+// CompoundClipInterface defines the clipper required by RasterizerCompoundAA.
 type CompoundClipInterface interface {
 	ResetClipping()
 	ClipBox(x1, y1, x2, y2 float64)
@@ -102,9 +102,10 @@ type CompoundClipInterface interface {
 	LineTo(outline *RasterizerCellsAAStyled, x, y float64)
 }
 
-// RasterizerCompoundAA implements compound anti-aliased rasterization.
-// This allows rendering multiple styles (fill colors, patterns, etc.) in a single pass.
-// The Clip type parameter allows for different clipping implementations.
+// RasterizerCompoundAA implements AGG's styled/compound anti-aliased rasterizer.
+//
+// It extends the basic cell-sweep rasterizer with left/right style tracking so
+// multiple fills or layers can be resolved from one geometry pass.
 type RasterizerCompoundAA[Clip CompoundClipInterface] struct {
 	// Core rasterization components
 	outline     *RasterizerCellsAAStyled // Cell rasterizer with style support
@@ -131,7 +132,7 @@ type RasterizerCompoundAA[Clip CompoundClipInterface] struct {
 	slLen   uint32 // Scanline length
 }
 
-// NewRasterizerCompoundAA creates a new compound anti-aliased rasterizer
+// NewRasterizerCompoundAA creates the styled scanline rasterizer.
 func NewRasterizerCompoundAA[Clip CompoundClipInterface](clipper Clip) *RasterizerCompoundAA[Clip] {
 	return &RasterizerCompoundAA[Clip]{
 		outline:     NewRasterizerCellsAAStyled(1024),

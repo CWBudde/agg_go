@@ -421,23 +421,23 @@ Documentation is the final gap before the port can be considered production-read
 
 ### 10.1 Public API Go doc and guides
 
-- [ ] `agg2d.go` — complete Go doc: Context creation, lifecycle, drawing methods, state management.
-- [ ] `context.go` — Context state management, buffer handling, coordinate systems.
-- [ ] `types.go` — Core types: Point, Rect, Color, Path; generic type parameter explanation.
-- [ ] Getting started guide (`docs/guides/getting-started.md`) — runnable end-to-end.
-- [ ] Basic shapes tutorial.
-- [ ] Text rendering guide.
-- [ ] Image compositing examples.
-- [ ] Performance optimization guide.
+- [x] `agg2d.go` — complete Go doc: Context creation, lifecycle, drawing methods, state management.
+- [x] `context.go` — Context state management, buffer handling, coordinate systems.
+- [x] Core public types documentation (`colors.go`, `geometry.go`, `images.go`, `transforms.go`) — Point, Rect, Color, path entry points, and the public/internal generics split.
+- [x] Getting started guide (`docs/guides/getting-started.md`) — runnable end-to-end.
+- [x] Basic shapes tutorial.
+- [x] Text rendering guide.
+- [x] Image compositing examples.
+- [x] Performance optimization guide.
 
 ### 10.2 Internal package Go doc comments
 
 Priority order matches functional importance:
 
-- [ ] `internal/rasterizer/` — vector-to-pixel conversion, anti-aliasing, cell-based coverage.
-- [ ] `internal/renderer/` — rendering pipeline architecture, scanline/outline/text rendering.
-- [ ] `internal/pixfmt/` — pixel format architecture, blender interface, supported formats.
-- [ ] `internal/span/` — span generation: gradients, image filtering, patterns, Gouraud shading.
+- [x] `internal/rasterizer/` — vector-to-pixel conversion, anti-aliasing, cell-based coverage.
+- [x] `internal/renderer/` — rendering pipeline architecture, scanline/outline/text rendering.
+- [x] `internal/pixfmt/` — pixel format architecture, blender interface, supported formats.
+- [x] `internal/span/` — span generation: gradients, image filtering, patterns, Gouraud shading.
 - [ ] `internal/conv/` — path converters: stroke, dash, contour, B-spline, polygon clipping.
 - [ ] `internal/color/` — color space handling, RGB/RGBA/Gray variants, gamma correction.
 - [ ] `internal/scanline/` — scanline storage, boolean algebra, packed vs unpacked formats.

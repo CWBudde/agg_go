@@ -13,16 +13,20 @@ func (d *demo) Render(ctx *agg.Context) {
 	// Clear the background to a light blue color
 	ctx.Clear(agg.RGB(0.7, 0.8, 1.0))
 
-	// Set drawing color to red
+	// Immediate-mode convenience helpers render right away.
 	ctx.SetColor(agg.Red)
+	ctx.FillRectangle(100, 100, 200, 150)
 
-	// Draw a simple rectangle
-	ctx.DrawRectangle(100, 100, 200, 150)
-	ctx.Fill()
-
-	// Draw a circle
 	ctx.SetColor(agg.RGB(0, 0.8, 0)) // Green
 	ctx.DrawCircle(400, 300, 80)
+
+	// Explicit path mode is still available for custom shapes.
+	ctx.SetColor(agg.Black)
+	ctx.BeginPath()
+	ctx.MoveTo(560, 180)
+	ctx.LineTo(700, 340)
+	ctx.LineTo(520, 340)
+	ctx.ClosePath()
 	ctx.Fill()
 }
 

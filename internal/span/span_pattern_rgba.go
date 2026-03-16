@@ -1,5 +1,3 @@
-// Package span provides RGBA pattern span generation functionality for AGG.
-// This implements a port of AGG's agg_span_pattern_rgba.h functionality.
 package span
 
 import (
@@ -7,42 +5,34 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/color"
 )
 
-// RGBASourceInterface defines the interface for RGBA image sources used in pattern spans.
-// This extends the basic SourceInterface with RGBA-specific methods.
+// RGBASourceInterface is the source contract for AGG-style RGBA pattern spans.
+// It exposes row/span stepping methods so the generator can mirror AGG's
+// pointer-based next_x/next_y traversal without copying the whole source row.
 type RGBASourceInterface interface {
 	SourceInterface
-	// ColorType returns the RGBA color type identifier
 	ColorType() string
-	// OrderType returns the color component ordering (RGBA, BGRA, ARGB, etc.)
 	OrderType() color.ColorOrder
-	// Span returns RGBA pixel data starting at (x, y) with given length
-	// Returns raw byte data where each RGBA pixel is 4 consecutive bytes
 	Span(x, y, length int) []basics.Int8u
-	// NextX advances to the next pixel in current span and returns its RGBA data
 	NextX() []basics.Int8u
-	// NextY advances to the next row at original x position
 	NextY() []basics.Int8u
-	// RowPtr returns pointer to row data starting at specified row
 	RowPtr(y int) []basics.Int8u
 }
 
-// SpanPatternRGBA generates spans from an RGBA source with offset support.
-// This is a port of AGG's span_pattern_rgba template class.
-// It provides pattern-based rendering where a source image is used as a repeating pattern
-// with configurable offset. Unlike the RGB version, this doesn't have a separate alpha
-// parameter since alpha is part of the RGBA data.
+// SpanPatternRGBA is the Go equivalent of AGG's span_pattern_rgba template. It
+// reads source pixels with an x/y offset and emits them directly into the
+// destination span, including per-pixel alpha.
 type SpanPatternRGBA[Source RGBASourceInterface] struct {
 	source  Source
 	offsetX uint
 	offsetY uint
 }
 
-// NewSpanPatternRGBA creates a new RGBA pattern span generator.
+// NewSpanPatternRGBA creates an unattached RGBA pattern generator.
 func NewSpanPatternRGBA[Source RGBASourceInterface]() *SpanPatternRGBA[Source] {
 	return &SpanPatternRGBA[Source]{}
 }
 
-// NewSpanPatternRGBAWithParams creates a new RGBA pattern span generator with parameters.
+// NewSpanPatternRGBAWithParams creates an attached RGBA pattern generator.
 func NewSpanPatternRGBAWithParams[Source RGBASourceInterface](
 	src Source,
 	offsetX, offsetY uint,
@@ -54,7 +44,7 @@ func NewSpanPatternRGBAWithParams[Source RGBASourceInterface](
 	}
 }
 
-// Attach attaches a source to the pattern generator.
+// Attach replaces the pattern source.
 func (sp *SpanPatternRGBA[Source]) Attach(src Source) {
 	sp.source = src
 }
@@ -64,50 +54,44 @@ func (sp *SpanPatternRGBA[Source]) Source() Source {
 	return sp.source
 }
 
-// SetOffsetX sets the X offset for the pattern.
+// SetOffsetX sets the x offset applied before sampling.
 func (sp *SpanPatternRGBA[Source]) SetOffsetX(offset uint) {
 	sp.offsetX = offset
 }
 
-// SetOffsetY sets the Y offset for the pattern.
+// SetOffsetY sets the y offset applied before sampling.
 func (sp *SpanPatternRGBA[Source]) SetOffsetY(offset uint) {
 	sp.offsetY = offset
 }
 
-// OffsetX returns the current X offset.
+// OffsetX returns the current x offset.
 func (sp *SpanPatternRGBA[Source]) OffsetX() uint {
 	return sp.offsetX
 }
 
-// OffsetY returns the current Y offset.
+// OffsetY returns the current y offset.
 func (sp *SpanPatternRGBA[Source]) OffsetY() uint {
 	return sp.offsetY
 }
 
-// SetAlpha sets the alpha value. For RGBA patterns, this is a no-op since
-// alpha comes from the source data itself. This method exists for compatibility
-// with the C++ AGG interface.
+// SetAlpha exists for API compatibility with the RGB pattern family, but it is
+// a no-op because RGBA patterns already carry alpha in the source pixels.
 func (sp *SpanPatternRGBA[Source]) SetAlpha(alpha basics.Int8u) {
-	// No-op: RGBA patterns use alpha from source data, not a global alpha
 }
 
-// Alpha returns the alpha value. For RGBA patterns, this always returns 0
-// since alpha comes from the source data, not a global value.
-// This method exists for compatibility with the C++ AGG interface.
+// Alpha returns 0, matching AGG's convention that RGBA pattern generators do
+// not carry a separate global alpha value.
 func (sp *SpanPatternRGBA[Source]) Alpha() basics.Int8u {
-	return 0 // Always 0 as per C++ implementation
+	return 0
 }
 
-// Prepare prepares the span generator for rendering.
-// For pattern generators, this is typically a no-op as no setup is required.
+// Prepare is a no-op for pattern generators.
 func (sp *SpanPatternRGBA[Source]) Prepare() {
-	// No preparation needed for pattern spans
 }
 
-// Generate generates a span of RGBA colors with applied pattern offset.
-// The generated span contains RGBA values from the source with the configured
-// offset applied. This follows the C++ AGG implementation where RGBA values
-// are copied directly from source, including the alpha channel.
+// Generate copies one run of source pixels into span after applying the stored
+// offset, following the same first-pixel/next_x stepping structure as AGG's
+// span_pattern_rgba.
 func (sp *SpanPatternRGBA[Source]) Generate(span []color.RGBA8[color.Linear], x, y int, length uint) {
 	if length == 0 {
 		return

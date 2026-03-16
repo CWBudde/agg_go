@@ -6,17 +6,16 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
-// CoordType represents a coordinate with an associated color.
-// This is equivalent to AGG's coord_type struct in span_gouraud.
+// CoordType is the Go equivalent of span_gouraud::coord_type.
 type CoordType[C any] struct {
 	X     float64
 	Y     float64
 	Color C
 }
 
-// SpanGouraud implements Gouraud shading for triangles.
-// This is the base class for smooth color interpolation across triangular regions.
-// It's equivalent to AGG's span_gouraud template class.
+// SpanGouraud is the Go equivalent of AGG's span_gouraud base class. It stores
+// the triangle geometry, optional dilation polygon, and vertex-source state
+// shared by the concrete RGBA and grayscale Gouraud generators.
 type SpanGouraud[C any] struct {
 	coord  [3]CoordType[C]       // Triangle vertices with colors
 	x      [8]float64            // Dilated triangle x coordinates
@@ -25,7 +24,7 @@ type SpanGouraud[C any] struct {
 	vertex int                   // Current vertex index for path iteration
 }
 
-// NewSpanGouraud creates a new Gouraud span generator.
+// NewSpanGouraud creates an empty Gouraud helper.
 func NewSpanGouraud[C any]() *SpanGouraud[C] {
 	sg := &SpanGouraud[C]{
 		vertex: 0,
@@ -34,7 +33,8 @@ func NewSpanGouraud[C any]() *SpanGouraud[C] {
 	return sg
 }
 
-// NewSpanGouraudWithTriangle creates a new Gouraud span generator with initial triangle.
+// NewSpanGouraudWithTriangle creates a Gouraud helper with initial colors and
+// triangle geometry.
 func NewSpanGouraudWithTriangle[C any](c1, c2, c3 C, x1, y1, x2, y2, x3, y3, d float64) *SpanGouraud[C] {
 	sg := NewSpanGouraud[C]()
 	sg.Colors(c1, c2, c3)
@@ -42,17 +42,16 @@ func NewSpanGouraudWithTriangle[C any](c1, c2, c3 C, x1, y1, x2, y2, x3, y3, d f
 	return sg
 }
 
-// Colors sets the colors for the three triangle vertices.
+// Colors assigns the three vertex colors.
 func (sg *SpanGouraud[C]) Colors(c1, c2, c3 C) {
 	sg.coord[0].Color = c1
 	sg.coord[1].Color = c2
 	sg.coord[2].Color = c3
 }
 
-// Triangle sets the triangle coordinates and optionally dilates it.
-// The dilation parameter d is used to achieve numerical stability by creating
-// beveled joins in the vertices. The actual color interpolation coordinates
-// are calculated as miter joins.
+// Triangle sets the triangle geometry and optionally dilates it, matching the
+// AGG trick of rasterizing a beveled 6-vertex polygon while keeping the color
+// interpolation coordinates on the miter-join intersections for stability.
 func (sg *SpanGouraud[C]) Triangle(x1, y1, x2, y2, x3, y3, d float64) {
 	sg.coord[0].X = x1
 	sg.coord[0].Y = y1
@@ -106,8 +105,8 @@ func (sg *SpanGouraud[C]) Triangle(x1, y1, x2, y2, x3, y3, d float64) {
 	}
 }
 
-// dilateTriangle performs triangle dilation for numerical stability.
-// This creates a 6-vertex polygon with beveled joins.
+// dilateTriangle expands the input triangle into the beveled 6-vertex polygon
+// AGG uses for numerically stable Gouraud rasterization.
 func (sg *SpanGouraud[C]) dilateTriangle(x1, y1, x2, y2, x3, y3, d float64) {
 	loc := basics.CrossProduct(x1, y1, x2, y2, x3, y3)
 
@@ -137,12 +136,12 @@ func (sg *SpanGouraud[C]) dilateTriangle(x1, y1, x2, y2, x3, y3, d float64) {
 	}
 }
 
-// Rewind resets the vertex iterator (implements vertex source interface).
+// Rewind resets the vertex-source cursor.
 func (sg *SpanGouraud[C]) Rewind(pathID uint) {
 	sg.vertex = 0
 }
 
-// Vertex returns the next vertex in the path (implements vertex source interface).
+// Vertex returns the next polygon vertex for rasterization.
 func (sg *SpanGouraud[C]) Vertex() (x, y float64, cmd basics.PathCommand) {
 	if sg.vertex >= len(sg.cmd) {
 		return 0, 0, basics.PathCmdStop
@@ -156,8 +155,8 @@ func (sg *SpanGouraud[C]) Vertex() (x, y float64, cmd basics.PathCommand) {
 	return x, y, cmd
 }
 
-// ArrangeVertices sorts the triangle vertices by Y coordinate (bottom to top).
-// This is used by derived classes for proper scan-line generation.
+// ArrangeVertices returns the three interpolation vertices sorted by ascending
+// Y, which is the order expected by the concrete Gouraud generators.
 func (sg *SpanGouraud[C]) ArrangeVertices() [3]CoordType[C] {
 	coord := [3]CoordType[C]{
 		sg.coord[0],
@@ -181,7 +180,7 @@ func (sg *SpanGouraud[C]) ArrangeVertices() [3]CoordType[C] {
 	return coord
 }
 
-// Coord returns the triangle coordinates for direct access.
+// Coord returns the current interpolation vertices.
 func (sg *SpanGouraud[C]) Coord() [3]CoordType[C] {
 	return sg.coord
 }

@@ -178,6 +178,7 @@ func (a *Agg2D) ClipBox(x1, y1, x2, y2 float64) {
 	a.impl.ClipBox(x1, y1, x2, y2)
 }
 
+// GetClipBox returns the current clipping rectangle in world coordinates.
 func (a *Agg2D) GetClipBox() (x1, y1, x2, y2 float64) {
 	return a.impl.GetClipBox()
 }
@@ -190,6 +191,7 @@ func (a *Agg2D) ClearAll(c Color) {
 	a.impl.ResetPath()
 }
 
+// ClearClipBox fills only the current clip box with c.
 func (a *Agg2D) ClearClipBox(c Color) {
 	internalColor := [4]uint8{c.R, c.G, c.B, c.A}
 	a.impl.ClearClipBox(internalColor)
@@ -205,18 +207,22 @@ func (a *Agg2D) ScreenToWorld(x, y *float64) {
 	a.impl.ScreenToWorld(x, y)
 }
 
+// WorldToScreenScalar converts a world-space distance using the current transform.
 func (a *Agg2D) WorldToScreenScalar(scalar float64) float64 {
 	return a.impl.WorldToScreenScalar(scalar)
 }
 
+// ScreenToWorldScalar converts a screen-space distance back to world units.
 func (a *Agg2D) ScreenToWorldScalar(scalar float64) float64 {
 	return a.impl.ScreenToWorldScalar(scalar)
 }
 
+// AlignPoint snaps a point to pixel-aligned screen coordinates and maps it back.
 func (a *Agg2D) AlignPoint(x, y *float64) {
 	a.impl.AlignPoint(x, y)
 }
 
+// InBox reports whether the world-space point falls inside the current clip box.
 func (a *Agg2D) InBox(worldX, worldY float64) bool {
 	return a.impl.InBox(worldX, worldY)
 }
@@ -238,14 +244,17 @@ func (a *Agg2D) LineWidth(w float64) {
 	a.impl.LineWidth(w)
 }
 
+// GetLineWidth returns the current stroke width.
 func (a *Agg2D) GetLineWidth() float64 {
 	return a.impl.GetLineWidth()
 }
 
+// GetLineCap returns the current line-cap style.
 func (a *Agg2D) GetLineCap() LineCap {
 	return a.impl.GetLineCap()
 }
 
+// GetLineJoin returns the current line-join style.
 func (a *Agg2D) GetLineJoin() LineJoin {
 	return a.impl.GetLineJoin()
 }
@@ -349,6 +358,7 @@ func (a *Agg2D) TransformImageParallelogram(img *Image, imgX1, imgY1, imgX2, img
 	return a.impl.TransformImageParallelogram(img.ToInternalImage(), imgX1, imgY1, imgX2, imgY2, parallelogram)
 }
 
+// TransformImageParallelogramSimple maps the whole image into the destination parallelogram.
 func (a *Agg2D) TransformImageParallelogramSimple(img *Image, parallelogram []float64) error {
 	return a.impl.TransformImageParallelogramSimple(img.ToInternalImage(), parallelogram)
 }
@@ -358,46 +368,57 @@ func (a *Agg2D) ResetTransformations() {
 	a.impl.ResetTransformations()
 }
 
+// GetTransformations returns the current affine transform as a public matrix wrapper.
 func (a *Agg2D) GetTransformations() *Transformations {
 	return fromInternalTransformations(a.impl.GetTransformations())
 }
 
+// SetTransformations replaces the current affine transform.
 func (a *Agg2D) SetTransformations(tr *Transformations) {
 	a.impl.SetTransformations(toInternalTransformations(tr))
 }
 
+// Affine post-multiplies the current transform by tr.
 func (a *Agg2D) Affine(tr *Transformations) {
 	a.impl.AffineFromMatrix(toInternalTransformations(tr))
 }
 
+// Rotate applies a rotation in radians to the current transform.
 func (a *Agg2D) Rotate(angle float64) {
 	a.impl.Rotate(angle)
 }
 
+// Scale applies non-uniform scaling to the current transform.
 func (a *Agg2D) Scale(sx, sy float64) {
 	a.impl.Scale(sx, sy)
 }
 
+// Skew applies an affine skew in radians to the current transform.
 func (a *Agg2D) Skew(sx, sy float64) {
 	a.impl.Skew(sx, sy)
 }
 
+// Translate applies a translation to the current transform.
 func (a *Agg2D) Translate(x, y float64) {
 	a.impl.Translate(x, y)
 }
 
+// PushTransform saves the current transform on the Agg2D transform stack.
 func (a *Agg2D) PushTransform() {
 	a.impl.PushTransform()
 }
 
+// PopTransform restores the last pushed transform and reports whether one existed.
 func (a *Agg2D) PopTransform() bool {
 	return a.impl.PopTransform()
 }
 
+// WorldToScreenDistance converts a scalar distance using the current transform scale.
 func (a *Agg2D) WorldToScreenDistance(worldDistance float64) float64 {
 	return a.impl.WorldToScreenDistance(worldDistance)
 }
 
+// ScreenToWorldDistance converts a screen-space distance back to world units.
 func (a *Agg2D) ScreenToWorldDistance(screenDistance float64) (float64, bool) {
 	return a.impl.ScreenToWorldDistance(screenDistance)
 }
@@ -502,79 +523,97 @@ func (a *Agg2D) TextAlignment(alignX, alignY TextAlignment) {
 	a.impl.TextAlignment(int(alignX), int(alignY))
 }
 
-// Path methods
+// ResetPath clears the current path storage before new path commands are added.
 func (a *Agg2D) ResetPath() {
 	a.impl.ResetPath()
 }
 
+// MoveTo starts a new subpath at x, y.
 func (a *Agg2D) MoveTo(x, y float64) {
 	a.impl.MoveTo(x, y)
 }
 
+// MoveRel starts a new subpath relative to the current point.
 func (a *Agg2D) MoveRel(dx, dy float64) {
 	a.impl.MoveRel(dx, dy)
 }
 
+// LineTo appends a straight segment to x, y.
 func (a *Agg2D) LineTo(x, y float64) {
 	a.impl.LineTo(x, y)
 }
 
+// HorLineTo appends a horizontal segment to x.
 func (a *Agg2D) HorLineTo(x float64) {
 	a.impl.HorLineTo(x)
 }
 
+// AddEllipse appends an ellipse contour with the requested winding direction.
 func (a *Agg2D) AddEllipse(cx, cy, rx, ry float64, dir Direction) {
 	a.impl.AddEllipse(cx, cy, rx, ry, dir)
 }
 
+// VerLineTo appends a vertical segment to y.
 func (a *Agg2D) VerLineTo(y float64) {
 	a.impl.VerLineTo(y)
 }
 
+// ArcTo appends an SVG-style elliptical arc segment.
 func (a *Agg2D) ArcTo(rx, ry, angle float64, largeArcFlag, sweepFlag bool, x, y float64) {
 	a.impl.ArcTo(rx, ry, angle, largeArcFlag, sweepFlag, x, y)
 }
 
+// QuadricCurveTo appends a quadratic Bezier segment with an explicit control point.
 func (a *Agg2D) QuadricCurveTo(xCtrl, yCtrl, xTo, yTo float64) {
 	a.impl.QuadricCurveTo(xCtrl, yCtrl, xTo, yTo)
 }
 
+// QuadricCurveRel appends a relative quadratic Bezier segment.
 func (a *Agg2D) QuadricCurveRel(dxCtrl, dyCtrl, dxTo, dyTo float64) {
 	a.impl.QuadricCurveRel(dxCtrl, dyCtrl, dxTo, dyTo)
 }
 
+// QuadricCurveToSmooth appends a smooth quadratic Bezier using the reflected control point.
 func (a *Agg2D) QuadricCurveToSmooth(xTo, yTo float64) {
 	a.impl.QuadricCurveToSmooth(xTo, yTo)
 }
 
+// QuadricCurveRelSmooth appends a relative smooth quadratic Bezier segment.
 func (a *Agg2D) QuadricCurveRelSmooth(dxTo, dyTo float64) {
 	a.impl.QuadricCurveRelSmooth(dxTo, dyTo)
 }
 
+// CubicCurveTo appends a cubic Bezier segment with two explicit control points.
 func (a *Agg2D) CubicCurveTo(xCtrl1, yCtrl1, xCtrl2, yCtrl2, xTo, yTo float64) {
 	a.impl.CubicCurveTo(xCtrl1, yCtrl1, xCtrl2, yCtrl2, xTo, yTo)
 }
 
+// CubicCurveRel appends a relative cubic Bezier segment.
 func (a *Agg2D) CubicCurveRel(dxCtrl1, dyCtrl1, dxCtrl2, dyCtrl2, dxTo, dyTo float64) {
 	a.impl.CubicCurveRel(dxCtrl1, dyCtrl1, dxCtrl2, dyCtrl2, dxTo, dyTo)
 }
 
+// CubicCurveToSmooth appends a smooth cubic Bezier using a reflected first control point.
 func (a *Agg2D) CubicCurveToSmooth(xCtrl2, yCtrl2, xTo, yTo float64) {
 	a.impl.CubicCurveToSmooth(xCtrl2, yCtrl2, xTo, yTo)
 }
 
+// CubicCurveRelSmooth appends a relative smooth cubic Bezier segment.
 func (a *Agg2D) CubicCurveRelSmooth(dxCtrl2, dyCtrl2, dxTo, dyTo float64) {
 	a.impl.CubicCurveRelSmooth(dxCtrl2, dyCtrl2, dxTo, dyTo)
 }
 
+// ClosePolygon closes the current contour.
 func (a *Agg2D) ClosePolygon() {
 	a.impl.ClosePolygon()
 }
 
+// DrawPath rasterizes the current path using the requested fill/stroke mode.
 func (a *Agg2D) DrawPath(flag DrawPathFlag) {
 	a.impl.DrawPath(flag)
 }
 
+// DrawPathNoTransform rasterizes the current path without applying the world transform.
 func (a *Agg2D) DrawPathNoTransform(flag DrawPathFlag) {
 	a.impl.DrawPathNoTransform(flag)
 }
@@ -584,14 +623,17 @@ func (a *Agg2D) Line(x1, y1, x2, y2 float64) {
 	a.impl.Line(x1, y1, x2, y2)
 }
 
+// Triangle renders a triangle immediately.
 func (a *Agg2D) Triangle(x1, y1, x2, y2, x3, y3 float64) {
 	a.impl.Triangle(x1, y1, x2, y2, x3, y3)
 }
 
+// Rectangle renders an axis-aligned rectangle immediately.
 func (a *Agg2D) Rectangle(x1, y1, x2, y2 float64) {
 	a.impl.Rectangle(x1, y1, x2, y2)
 }
 
+// Ellipse renders an ellipse immediately.
 func (a *Agg2D) Ellipse(cx, cy, rx, ry float64) {
 	a.impl.Ellipse(cx, cy, rx, ry)
 }
@@ -601,59 +643,72 @@ func (a *Agg2D) RoundedRect(x1, y1, x2, y2, r float64) {
 	a.impl.RoundedRect(x1, y1, x2, y2, r)
 }
 
+// RoundedRectXY renders a rounded rectangle with separate x and y corner radii.
 func (a *Agg2D) RoundedRectXY(x1, y1, x2, y2, rx, ry float64) {
 	a.impl.RoundedRectXY(x1, y1, x2, y2, rx, ry)
 }
 
+// RoundedRectVariableRadii renders a rounded rectangle with distinct top and bottom radii.
 func (a *Agg2D) RoundedRectVariableRadii(x1, y1, x2, y2, rxBottom, ryBottom, rxTop, ryTop float64) {
 	a.impl.RoundedRectVariableRadii(x1, y1, x2, y2, rxBottom, ryBottom, rxTop, ryTop)
 }
 
+// Arc appends and renders an elliptical arc described by center, radii, start, and sweep angles.
 func (a *Agg2D) Arc(cx, cy, rx, ry, start, sweep float64) {
 	a.impl.Arc(cx, cy, rx, ry, start, sweep)
 }
 
+// Star renders a star polygon centered at cx, cy.
 func (a *Agg2D) Star(cx, cy, r1, r2, startAngle float64, numRays int) {
 	a.impl.Star(cx, cy, r1, r2, startAngle, numRays)
 }
 
+// Curve renders a quadratic Bezier convenience shape.
 func (a *Agg2D) Curve(x1, y1, x2, y2, x3, y3 float64) {
 	a.impl.Curve(x1, y1, x2, y2, x3, y3)
 }
 
+// Curve4 renders a cubic Bezier convenience shape.
 func (a *Agg2D) Curve4(x1, y1, x2, y2, x3, y3, x4, y4 float64) {
 	a.impl.Curve4(x1, y1, x2, y2, x3, y3, x4, y4)
 }
 
+// Polygon renders a polygon from xy as alternating x,y coordinates.
 func (a *Agg2D) Polygon(xy []float64, numPoints int) {
 	a.impl.Polygon(xy, numPoints)
 }
 
+// Polyline renders an open polyline from xy as alternating x,y coordinates.
 func (a *Agg2D) Polyline(xy []float64, numPoints int) {
 	a.impl.Polyline(xy, numPoints)
 }
 
+// DrawCircle renders a stroked circle convenience shape.
 func (a *Agg2D) DrawCircle(cx, cy, radius float64) {
 	a.impl.DrawCircle(cx, cy, radius)
 }
 
+// FillCircle renders a filled circle convenience shape.
 func (a *Agg2D) FillCircle(cx, cy, radius float64) {
 	a.impl.FillCircle(cx, cy, radius)
 }
 
-// Path relative methods
+// LineRel appends a relative line segment.
 func (a *Agg2D) LineRel(dx, dy float64) {
 	a.impl.LineRel(dx, dy)
 }
 
+// HorLineRel appends a relative horizontal segment.
 func (a *Agg2D) HorLineRel(dx float64) {
 	a.impl.HorLineRel(dx)
 }
 
+// VerLineRel appends a relative vertical segment.
 func (a *Agg2D) VerLineRel(dy float64) {
 	a.impl.VerLineRel(dy)
 }
 
+// ArcRel appends a relative SVG-style elliptical arc segment.
 func (a *Agg2D) ArcRel(rx, ry, angle float64, largeArcFlag, sweepFlag bool, dx, dy float64) {
 	a.impl.ArcRel(rx, ry, angle, largeArcFlag, sweepFlag, dx, dy)
 }
@@ -663,11 +718,12 @@ func (a *Agg2D) Viewport(worldX1, worldY1, worldX2, worldY2, screenX1, screenY1,
 	a.impl.Viewport(worldX1, worldY1, worldX2, worldY2, screenX1, screenY1, screenX2, screenY2, int(opt))
 }
 
-// Text methods
+// Font loads and activates a font file for subsequent text rendering.
 func (a *Agg2D) Font(fontName string, height float64, bold, italic bool, cacheType FontCacheType, angle float64) error {
 	return a.impl.Font(fontName, height, bold, italic, cacheType, angle)
 }
 
+// FontHeight returns the configured font height in world units.
 func (a *Agg2D) FontHeight() float64 {
 	return a.impl.FontHeight()
 }
@@ -681,70 +737,87 @@ func (a *Agg2D) FontGSV(height float64) {
 	a.impl.FontGSV(height)
 }
 
+// FlipText toggles the AGG text-direction convention used by the font engine.
 func (a *Agg2D) FlipText(flip bool) {
 	a.impl.FlipText(flip)
 }
 
+// TextHints enables or disables font hinting.
 func (a *Agg2D) TextHints(hints bool) {
 	a.impl.TextHints(hints)
 }
 
+// GetTextHints reports whether text hinting is enabled.
 func (a *Agg2D) GetTextHints() bool {
 	return a.impl.GetTextHints()
 }
 
+// MiterLimit sets the stroke miter limit.
 func (a *Agg2D) MiterLimit(ml float64) {
 	a.impl.MiterLimit(ml)
 }
 
+// GetMiterLimit returns the current stroke miter limit.
 func (a *Agg2D) GetMiterLimit() float64 {
 	return a.impl.GetMiterLimit()
 }
 
+// AddDash appends one dash-gap pair to the current dash pattern.
 func (a *Agg2D) AddDash(dashLen, gapLen float64) {
 	a.impl.AddDash(dashLen, gapLen)
 }
 
+// RemoveAllDashes clears every dash pattern segment.
 func (a *Agg2D) RemoveAllDashes() {
 	a.impl.RemoveAllDashes()
 }
 
+// DashStart sets the dash-phase offset.
 func (a *Agg2D) DashStart(offset float64) {
 	a.impl.DashStart(offset)
 }
 
+// GetDashStart returns the current dash-phase offset.
 func (a *Agg2D) GetDashStart() float64 {
 	return a.impl.GetDashStart()
 }
 
+// NoDashes disables dashed stroke rendering.
 func (a *Agg2D) NoDashes() {
 	a.impl.NoDashes()
 }
 
+// FillEvenOdd switches between even-odd and non-zero fill rules.
 func (a *Agg2D) FillEvenOdd(evenOddFlag bool) {
 	a.impl.FillEvenOdd(evenOddFlag)
 }
 
+// GetFillEvenOdd reports whether the even-odd fill rule is active.
 func (a *Agg2D) GetFillEvenOdd() bool {
 	return a.impl.GetFillEvenOdd()
 }
 
+// IsEvenOddFillRule is a convenience alias for GetFillEvenOdd.
 func (a *Agg2D) IsEvenOddFillRule() bool {
 	return a.impl.IsEvenOddFillRule()
 }
 
+// IsNonZeroFillRule reports whether the non-zero winding rule is active.
 func (a *Agg2D) IsNonZeroFillRule() bool {
 	return a.impl.IsNonZeroFillRule()
 }
 
+// FillRuleDescription returns a human-readable description of the active fill rule.
 func (a *Agg2D) FillRuleDescription() string {
 	return a.impl.FillRuleDescription()
 }
 
+// Text renders str at x, y with optional rounding and offset adjustments.
 func (a *Agg2D) Text(x, y float64, str string, roundOff bool, dx, dy float64) {
 	a.impl.Text(x, y, str, roundOff, dx, dy)
 }
 
+// TextWidth measures str using the active font backend and cache mode.
 func (a *Agg2D) TextWidth(str string) float64 {
 	return a.impl.TextWidth(str)
 }
@@ -754,23 +827,28 @@ func (a *Agg2D) BlendMode(mode BlendMode) {
 	a.impl.SetBlendMode(mode)
 }
 
+// GetBlendMode returns the current general blend/composite mode.
 func (a *Agg2D) GetBlendMode() BlendMode {
 	return a.impl.GetBlendMode()
 }
 
+// ImageBlendMode sets the mode used by image drawing operations.
 func (a *Agg2D) ImageBlendMode(mode BlendMode) {
 	a.impl.SetImageBlendMode(mode)
 }
 
+// GetImageBlendMode returns the current image blend mode.
 func (a *Agg2D) GetImageBlendMode() BlendMode {
 	return a.impl.GetImageBlendMode()
 }
 
+// ImageBlendColor sets the additional blend color used by image operations.
 func (a *Agg2D) ImageBlendColor(c Color) {
 	internalColor := [4]uint8{c.R, c.G, c.B, c.A}
 	a.impl.SetImageBlendColor(internalColor)
 }
 
+// GetImageBlendColor returns the current image blend color.
 func (a *Agg2D) GetImageBlendColor() Color {
 	c := a.impl.GetImageBlendColor()
 	return Color{R: c[0], G: c[1], B: c[2], A: c[3]}
@@ -781,14 +859,17 @@ func (a *Agg2D) MasterAlpha(alpha float64) {
 	a.impl.SetMasterAlpha(alpha)
 }
 
+// GetMasterAlpha returns the current master alpha multiplier.
 func (a *Agg2D) GetMasterAlpha() float64 {
 	return a.impl.GetMasterAlpha()
 }
 
+// AntiAliasGamma sets the gamma applied to scanline coverage values.
 func (a *Agg2D) AntiAliasGamma(gamma float64) {
 	a.impl.SetAntiAliasGamma(gamma)
 }
 
+// GetAntiAliasGamma returns the current anti-alias gamma value.
 func (a *Agg2D) GetAntiAliasGamma() float64 {
 	return a.impl.GetAntiAliasGamma()
 }
@@ -798,6 +879,7 @@ func (a *Agg2D) NoFill() {
 	a.impl.NoFill()
 }
 
+// NoLine disables stroke rendering by making the stroke fully transparent.
 func (a *Agg2D) NoLine() {
 	a.impl.NoLine()
 }
@@ -808,6 +890,7 @@ func (a *Agg2D) ResetStyle() {
 	a.impl.ResetStyle()
 }
 
+// SaveImagePPM writes the currently attached RGBA buffer as a binary PPM file.
 func (a *Agg2D) SaveImagePPM(filename string) error {
 	if a.attachedBuffer == nil || a.attachedWidth <= 0 || a.attachedHeight <= 0 || a.attachedStride <= 0 {
 		return fmt.Errorf("no attached RGBA buffer")
@@ -844,36 +927,43 @@ func (a *Agg2D) SaveImagePPM(filename string) error {
 	return nil
 }
 
-// Image transformation methods
+// TransformImagePath rasterizes the current path as an image-mapped destination.
 func (a *Agg2D) TransformImagePath(img *Image, imgX1, imgY1, imgX2, imgY2 int, dstX1, dstY1, dstX2, dstY2 float64) error {
 	internalImg := img.ToInternalImage()
 	return a.impl.TransformImagePath(internalImg, imgX1, imgY1, imgX2, imgY2, dstX1, dstY1, dstX2, dstY2)
 }
 
+// TransformImagePathSimple maps the whole image into the current path rectangle.
 func (a *Agg2D) TransformImagePathSimple(img *Image, dstX1, dstY1, dstX2, dstY2 float64) error {
 	return a.impl.TransformImagePathSimple(img.ToInternalImage(), dstX1, dstY1, dstX2, dstY2)
 }
 
+// TransformImagePathParallelogram maps an image region into the current path using a parallelogram.
 func (a *Agg2D) TransformImagePathParallelogram(img *Image, imgX1, imgY1, imgX2, imgY2 int, parallelogram []float64) error {
 	return a.impl.TransformImagePathParallelogram(img.ToInternalImage(), imgX1, imgY1, imgX2, imgY2, parallelogram)
 }
 
+// TransformImagePathParallelogramSimple maps the whole image into the current path using a parallelogram.
 func (a *Agg2D) TransformImagePathParallelogramSimple(img *Image, parallelogram []float64) error {
 	return a.impl.TransformImagePathParallelogramSimple(img.ToInternalImage(), parallelogram)
 }
 
+// BlendImage blends an image region directly onto the target without geometric transformation.
 func (a *Agg2D) BlendImage(img *Image, imgX1, imgY1, imgX2, imgY2 int, dstX, dstY float64, alpha uint) error {
 	return a.impl.BlendImage(img.ToInternalImage(), imgX1, imgY1, imgX2, imgY2, dstX, dstY, alpha)
 }
 
+// BlendImageSimple blends the whole image directly onto the target without transformation.
 func (a *Agg2D) BlendImageSimple(img *Image, dstX, dstY float64, alpha uint) error {
 	return a.impl.BlendImageSimple(img.ToInternalImage(), dstX, dstY, alpha)
 }
 
+// CopyImage copies an image region directly, including alpha, without blending.
 func (a *Agg2D) CopyImage(img *Image, imgX1, imgY1, imgX2, imgY2 int, dstX, dstY float64) error {
 	return a.impl.CopyImage(img.ToInternalImage(), imgX1, imgY1, imgX2, imgY2, dstX, dstY)
 }
 
+// CopyImageSimple copies the whole image directly, including alpha, without blending.
 func (a *Agg2D) CopyImageSimple(img *Image, dstX, dstY float64) error {
 	return a.impl.CopyImageSimple(img.ToInternalImage(), dstX, dstY)
 }

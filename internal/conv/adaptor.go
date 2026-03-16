@@ -4,7 +4,9 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
-// Status represents the state of the conv_adaptor_vcgen
+// Status tracks the internal state machine of ConvAdaptorVCGen while it
+// alternates between accumulating a source subpath and emitting generated
+// vertices.
 type Status int
 
 const (
@@ -13,13 +15,15 @@ const (
 	StatusGenerate
 )
 
-// VertexSource interface for providing vertices
+// VertexSource is the common path-source contract used across AGG's converter
+// layer.
 type VertexSource interface {
 	Rewind(pathID uint)
 	Vertex() (x, y float64, cmd basics.PathCommand)
 }
 
-// VertexGenerator interface for generating vertices from accumulated path data
+// VertexGenerator is the contract implemented by vcgen-style generators such as
+// stroke, dash, contour, and B-spline.
 type VertexGenerator interface {
 	RemoveAll()
 	AddVertex(x, y float64, cmd basics.PathCommand)
@@ -28,27 +32,28 @@ type VertexGenerator interface {
 	Vertex() (x, y float64, cmd basics.PathCommand)
 }
 
-// NullMarkers is a default marker implementation that does nothing
+// NullMarkers is the default no-op terminal-marker implementation.
 type NullMarkers struct{}
 
-// RemoveAll removes all markers (no-op)
+// RemoveAll is a no-op.
 func (m *NullMarkers) RemoveAll() {}
 
-// AddVertex adds a vertex marker (no-op)
+// AddVertex is a no-op.
 func (m *NullMarkers) AddVertex(x, y float64, cmd basics.PathCommand) {}
 
-// PrepareSrc prepares source for marker processing (no-op)
+// PrepareSrc is a no-op.
 func (m *NullMarkers) PrepareSrc() {}
 
-// Rewind rewinds the marker iterator (no-op)
+// Rewind is a no-op.
 func (m *NullMarkers) Rewind(pathID uint) {}
 
-// Vertex returns the next marker vertex (always stops)
+// Vertex always reports stop.
 func (m *NullMarkers) Vertex() (x, y float64, cmd basics.PathCommand) {
 	return 0, 0, basics.PathCmdStop
 }
 
-// Markers interface for terminal markers
+// Markers is the optional terminal-marker contract used by converters such as
+// stroked paths with arrowheads.
 type Markers interface {
 	RemoveAll()
 	AddVertex(x, y float64, cmd basics.PathCommand)
@@ -57,7 +62,9 @@ type Markers interface {
 	Vertex() (x, y float64, cmd basics.PathCommand)
 }
 
-// ConvAdaptorVCGen is the base class for vertex converter generators
+// ConvAdaptorVCGen is the Go equivalent of AGG's conv_adaptor_vcgen. It
+// accumulates one source subpath, feeds it into a vcgen-style generator, and
+// then exposes the generated outline as a new VertexSource.
 type ConvAdaptorVCGen struct {
 	source    VertexSource
 	generator VertexGenerator
@@ -68,7 +75,7 @@ type ConvAdaptorVCGen struct {
 	startY    float64
 }
 
-// NewConvAdaptorVCGen creates a new converter adaptor with vertex generator
+// NewConvAdaptorVCGen creates a vcgen adaptor without terminal markers.
 func NewConvAdaptorVCGen(source VertexSource, generator VertexGenerator) *ConvAdaptorVCGen {
 	return &ConvAdaptorVCGen{
 		source:    source,
@@ -78,7 +85,8 @@ func NewConvAdaptorVCGen(source VertexSource, generator VertexGenerator) *ConvAd
 	}
 }
 
-// NewConvAdaptorVCGenWithMarkers creates a new converter adaptor with vertex generator and markers
+// NewConvAdaptorVCGenWithMarkers creates a vcgen adaptor with terminal-marker
+// support.
 func NewConvAdaptorVCGenWithMarkers(source VertexSource, generator VertexGenerator, markers Markers) *ConvAdaptorVCGen {
 	return &ConvAdaptorVCGen{
 		source:    source,
@@ -88,38 +96,40 @@ func NewConvAdaptorVCGenWithMarkers(source VertexSource, generator VertexGenerat
 	}
 }
 
-// Attach attaches a new vertex source
+// Attach replaces the wrapped source.
 func (c *ConvAdaptorVCGen) Attach(source VertexSource) {
 	c.source = source
 }
 
-// Generator returns the vertex generator
+// Generator returns the wrapped vcgen object.
 func (c *ConvAdaptorVCGen) Generator() VertexGenerator {
 	return c.generator
 }
 
-// Markers returns the markers
+// Markers returns the terminal-marker implementation.
 func (c *ConvAdaptorVCGen) Markers() Markers {
 	return c.markers
 }
 
-// GetGenerator returns the vertex generator (read-only access)
+// GetGenerator is an alias for Generator.
 func (c *ConvAdaptorVCGen) GetGenerator() VertexGenerator {
 	return c.generator
 }
 
-// GetMarkers returns the markers (read-only access)
+// GetMarkers is an alias for Markers.
 func (c *ConvAdaptorVCGen) GetMarkers() Markers {
 	return c.markers
 }
 
-// Rewind rewinds the converter
+// Rewind resets the adaptor to the start of the requested path.
 func (c *ConvAdaptorVCGen) Rewind(pathID uint) {
 	c.source.Rewind(pathID)
 	c.status = StatusInitial
 }
 
-// Vertex returns the next vertex in the converted sequence
+// Vertex advances the adaptor state machine and returns the next generated
+// vertex. The logic mirrors AGG's conv_adaptor_vcgen flow: accumulate one
+// subpath, rewind the generator, then drain generated output.
 func (c *ConvAdaptorVCGen) Vertex() (x, y float64, cmd basics.PathCommand) {
 	cmd = basics.PathCmdStop
 	done := false

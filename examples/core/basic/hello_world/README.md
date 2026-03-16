@@ -6,35 +6,31 @@ This is the most basic AGG Go example that demonstrates fundamental library usag
 
 - Creates an 800x600 rendering context
 - Clears the background with a light blue color
-- Draws a red rectangle
-- Draws a green circle
-- Outputs the rendered image data
+- Fills a red rectangle
+- Draws a green stroked circle
+- Fills a custom triangle using the explicit path API
 
 ## AGG Concepts Demonstrated
 
 - **Context Creation**: Using `agg.NewContext()` to set up a rendering surface
 - **Color Management**: Setting colors with `agg.RGB()` and predefined colors like `agg.Red`
-- **Basic Shapes**: Drawing rectangles and circles with `DrawRectangle()` and `DrawCircle()`
-- **Filling**: Using `Fill()` to render filled shapes
-- **Image Output**: Getting the final rendered image with `GetImage()`
+- **Immediate-Mode Helpers**: Using `FillRectangle()` and `DrawCircle()` for common shapes
+- **Path Construction**: Using `BeginPath()`, `MoveTo()`, `LineTo()`, `ClosePath()`, and `Fill()`
+- **Image Output**: Rendering into the Context-owned backing image
 
 ## How to Run
 
 ```bash
-cd examples/core/basic/hello_world
-go run main.go
+just run-example basic/hello_world
 ```
 
 ## Expected Output
 
-The program will print:
+An interactive demo window showing:
 
-- Context creation confirmation
-- Image dimensions and byte size
-- Sample pixel values from the rendered image
-- Success confirmation message
-
-Since this is a console example, no image file is saved, but the rendered data is verified through pixel sampling.
+- A red filled rectangle on a light blue background
+- A green stroked circle
+- A black filled triangle built from manual path commands
 
 ## Related Examples
 

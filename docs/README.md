@@ -1,60 +1,29 @@
 # AGG Go Documentation
 
-This directory contains documentation for the AGG Go port.
+This directory contains the user and developer documentation for the AGG Go
+port.
 
-## Current Status
+## Start Here
 
-The project is in early development. The following foundation has been established:
+- [guides/getting-started.md](./guides/getting-started.md) for the first runnable example
+- [guides/core-types.md](./guides/core-types.md) for the public root-level types
+- [guides/basic-shapes.md](./guides/basic-shapes.md) for the `Context` shape API
+- [TEXT_RENDERING.md](./TEXT_RENDERING.md) for the current text-rendering workflow
+- [guides/image-compositing.md](./guides/image-compositing.md) for image drawing and blending
+- [guides/performance-optimization.md](./guides/performance-optimization.md) for practical performance advice
+- [AGG2D_PARITY.md](./AGG2D_PARITY.md) for C++ `Agg2D` to Go API mapping
 
-### ✅ Completed
+## Reference Material
 
-- Basic project structure with clean public API design
-- Core types and constants (`internal/basics/`)
-- Color handling framework (`internal/color/`)
-- Rendering buffer implementation (`internal/buffer/`)
-- Public API scaffolding (`agg.go`, `types.go`)
-- Example program structure
+- `architecture/` for package and pipeline overviews
+- `concepts/` for translation and architectural notes
+- `AGG_DELTAS.md` for intentional deviations from original AGG
+- `SIMD_OPTIMIZATIONS.md` for performance and SIMD notes
 
-### 🚧 In Progress
+## Project Tracking
 
-- Color space conversions (minor import issues to fix)
-- Example programs (basic structure created)
+- `PLAN.md` in the repository root is the authoritative phased plan
+- `docs/TASKS.md` tracks file-level implementation inventory
 
-### 📋 Next Steps (High Priority)
-
-Based on TASKS.md Phase 1 priorities:
-
-1. **Pixel Formats** (`internal/pixfmt/`)
-   - Base pixel format interfaces
-   - RGB24/RGB32 implementations
-   - RGBA32 implementations
-   - Grayscale implementations
-
-2. **Scanlines** (`internal/scanline/`)
-   - Scanline U8 implementation
-   - Scanline P8 implementation
-   - Binary scanline implementation
-   - Storage implementations
-
-3. **Rasterizers** (`internal/rasterizer/`)
-   - Anti-aliased cell rasterizer
-   - Scanline rasterizer
-   - Clipping implementations
-
-4. **Renderers** (`internal/renderer/`)
-   - Base renderer
-   - Scanline renderer
-   - Primitive renderer
-
-### 📚 Documentation Structure
-
-- `architecture/` - System architecture and design decisions
-- `tutorials/` - Step-by-step usage guides
-- `migration/` - Guide for C++ AGG users
-- `api/` - Auto-generated API documentation
-
-## For Developers
-
-See [TASKS.md](./TASKS.md) for the complete implementation roadmap with all files to be ported from the original AGG C++ codebase.
-
-The project follows Go idioms while maintaining AGG's core functionality and performance characteristics.
+The public API is centered on `Context` for the simplest workflow and `Agg2D`
+for closer parity with the original C++ high-level interface.

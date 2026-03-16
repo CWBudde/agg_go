@@ -1,6 +1,3 @@
-// Package renderer provides raster text rendering functionality for AGG.
-// This package implements text renderers that can render text using
-// glyph rasterizers with solid colors or scanline renderers.
 package renderer
 
 import (
@@ -8,7 +5,7 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/glyph"
 )
 
-// BaseRendererInterface defines the methods required by solid text renderers
+// BaseRendererInterface is the base-renderer contract needed by solid raster-text renderers.
 type BaseRendererInterface[C any] interface {
 	// BlendSolidHspan blends a horizontal span with solid color
 	BlendSolidHspan(x, y, len int, c C, covers []basics.CoverType)
@@ -16,7 +13,7 @@ type BaseRendererInterface[C any] interface {
 	BlendSolidVspan(x, y, len int, c C, covers []basics.CoverType)
 }
 
-// ScanlineRendererInterface defines the methods required by scanline text renderers
+// ScanlineRendererInterface is the minimal scanline-renderer contract used by raster text.
 type ScanlineRendererInterface interface {
 	// Prepare prepares the renderer for scanline rendering
 	Prepare()
@@ -24,20 +21,20 @@ type ScanlineRendererInterface interface {
 	Render(scanline ScanlineInterface)
 }
 
-// ScanlineInterface defines the interface for scanlines
+// ScanlineInterface is the subset of scanline behavior needed by text renderers.
 type ScanlineInterface interface {
 	Y() int
 	NumSpans() int
 	Begin() SpanIterator
 }
 
-// SpanIterator defines the interface for span iteration
+// SpanIterator iterates over the spans contained in one scanline.
 type SpanIterator interface {
 	Next() *Span
 	HasNext() bool
 }
 
-// Span represents a single span with coverage data
+// Span stores one contiguous glyph-coverage run.
 type Span struct {
 	X      int
 	Len    int
@@ -52,7 +49,7 @@ type RendererRasterHTextSolid[BR BaseRendererInterface[C], GG glyph.GlyphGenerat
 	color C
 }
 
-// NewRendererRasterHTextSolid creates a new horizontal solid text renderer
+// NewRendererRasterHTextSolid creates the horizontal solid raster-text renderer.
 func NewRendererRasterHTextSolid[BR BaseRendererInterface[C], GG glyph.GlyphGenerator, C any](ren BR, glyphGen GG) *RendererRasterHTextSolid[BR, GG, C] {
 	return &RendererRasterHTextSolid[BR, GG, C]{
 		ren:   ren,
@@ -107,15 +104,14 @@ func (r *RendererRasterHTextSolid[BR, GG, C]) RenderText(x, y float64, str strin
 	}
 }
 
-// RendererRasterVTextSolid renders vertical text with solid colors.
-// This is the Go equivalent of AGG's renderer_raster_vtext_solid template class.
+// RendererRasterVTextSolid renders vertical glyph rasters using solid-color spans.
 type RendererRasterVTextSolid[BR BaseRendererInterface[C], GG glyph.GlyphGenerator, C any] struct {
 	ren   BR
 	glyph GG
 	color C
 }
 
-// NewRendererRasterVTextSolid creates a new vertical solid text renderer
+// NewRendererRasterVTextSolid creates the vertical solid raster-text renderer.
 func NewRendererRasterVTextSolid[BR BaseRendererInterface[C], GG glyph.GlyphGenerator, C any](ren BR, glyphGen GG) *RendererRasterVTextSolid[BR, GG, C] {
 	return &RendererRasterVTextSolid[BR, GG, C]{
 		ren:   ren,
@@ -167,13 +163,13 @@ func (r *RendererRasterVTextSolid[BR, GG, C]) RenderText(x, y float64, str strin
 	}
 }
 
-// ScanlineSingleSpan implements a scanline with a single span for text rendering
+// ScanlineSingleSpan adapts a single glyph span to the scanline interface.
 type ScanlineSingleSpan struct {
 	y    int
 	span Span
 }
 
-// NewScanlineSingleSpan creates a new single-span scanline
+// NewScanlineSingleSpan creates the single-span scanline used by raster text.
 func NewScanlineSingleSpan(x, y, length int, covers []basics.CoverType) *ScanlineSingleSpan {
 	return &ScanlineSingleSpan{
 		y: y,
@@ -200,7 +196,7 @@ func (s *ScanlineSingleSpan) Begin() SpanIterator {
 	return &SingleSpanIterator{span: &s.span, hasNext: true}
 }
 
-// SingleSpanIterator implements SpanIterator for a single span
+// SingleSpanIterator iterates over the one span contained in ScanlineSingleSpan.
 type SingleSpanIterator struct {
 	span    *Span
 	hasNext bool
@@ -220,14 +216,14 @@ func (it *SingleSpanIterator) HasNext() bool {
 	return it.hasNext
 }
 
-// RendererRasterHText renders horizontal text with scanline renderers (for gradients/patterns).
-// This is the Go equivalent of AGG's renderer_raster_htext template class.
+// RendererRasterHText renders horizontal glyph rasters through an abstract
+// scanline renderer, which is useful for generated spans such as gradients.
 type RendererRasterHText[SR ScanlineRendererInterface, GG glyph.GlyphGenerator] struct {
 	ren   SR
 	glyph GG
 }
 
-// NewRendererRasterHText creates a new horizontal scanline text renderer
+// NewRendererRasterHText creates the scanline-based horizontal raster-text renderer.
 func NewRendererRasterHText[SR ScanlineRendererInterface, GG glyph.GlyphGenerator](ren SR, glyphGen GG) *RendererRasterHText[SR, GG] {
 	return &RendererRasterHText[SR, GG]{
 		ren:   ren,

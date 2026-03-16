@@ -6,7 +6,7 @@ import (
 
 // AA scale constants are defined in compound_aa.go
 
-// Status enumeration for rasterizer state
+// Status tracks the current polygon-construction state of RasterizerScanlineAA.
 type Status uint32
 
 const (
@@ -37,7 +37,8 @@ type RasterizerScanlineAA[C basics.CoordType, V Conv[C], Clip any] struct {
 	scanY       int                // Current scanline Y coordinate
 }
 
-// NewRasterizerScanlineAA creates a new anti-aliased scanline rasterizer
+// NewRasterizerScanlineAA creates the standard AGG-style anti-aliased polygon
+// rasterizer backed by cell accumulation and scanline sweeping.
 func NewRasterizerScanlineAA[C basics.CoordType, V Conv[C], Clip any](conv V, clipper interface {
 	ResetClipping()
 	ClipBox(x1, y1, x2, y2 C)
@@ -63,7 +64,8 @@ func NewRasterizerScanlineAA[C basics.CoordType, V Conv[C], Clip any](conv V, cl
 	return r
 }
 
-// NewRasterizerScanlineAAWithGamma creates a new rasterizer with custom gamma function
+// NewRasterizerScanlineAAWithGamma creates a rasterizer with a preconfigured
+// coverage gamma table.
 func NewRasterizerScanlineAAWithGamma[C basics.CoordType, V Conv[C], Clip any](conv V, clipper interface {
 	ResetClipping()
 	ClipBox(x1, y1, x2, y2 C)
@@ -76,25 +78,25 @@ func NewRasterizerScanlineAAWithGamma[C basics.CoordType, V Conv[C], Clip any](c
 	return r
 }
 
-// Reset clears the rasterizer and prepares it for new geometry
+// Reset clears accumulated cells and restarts polygon assembly.
 func (r *RasterizerScanlineAA[C, V, Clip]) Reset() {
 	r.outline.Reset()
 	r.status = StatusInitial
 }
 
-// ResetClipping resets the clipping settings
+// ResetClipping clears both accumulated geometry and the active clip box state.
 func (r *RasterizerScanlineAA[C, V, Clip]) ResetClipping() {
 	r.Reset()
 	r.clipper.ResetClipping()
 }
 
-// ClipBox sets the clipping rectangle
+// ClipBox sets the active clip rectangle in world coordinates.
 func (r *RasterizerScanlineAA[C, V, Clip]) ClipBox(x1, y1, x2, y2 float64) {
 	r.Reset()
 	r.clipper.ClipBox(r.conv.Upscale(x1), r.conv.Upscale(y1), r.conv.Upscale(x2), r.conv.Upscale(y2))
 }
 
-// FillingRule sets the polygon filling rule
+// FillingRule selects the fill rule used during scanline sweeping.
 func (r *RasterizerScanlineAA[C, V, Clip]) FillingRule(rule basics.FillingRule) {
 	r.fillingRule = rule
 }
@@ -104,12 +106,12 @@ func (r *RasterizerScanlineAA[C, V, Clip]) GetFillingRule() basics.FillingRule {
 	return r.fillingRule
 }
 
-// AutoClose sets whether polygons should be automatically closed
+// AutoClose controls whether a new MoveTo implicitly closes the previous contour.
 func (r *RasterizerScanlineAA[C, V, Clip]) AutoClose(flag bool) {
 	r.autoClose = flag
 }
 
-// SetGamma sets the gamma correction function
+// SetGamma rebuilds the coverage gamma table used when converting area to alpha.
 func (r *RasterizerScanlineAA[C, V, Clip]) SetGamma(gammaFunc func(float64) float64) {
 	for i := 0; i < AAScale; i++ {
 		val := gammaFunc(float64(i)/float64(AAMask)) * float64(AAMask)
@@ -123,7 +125,7 @@ func (r *RasterizerScanlineAA[C, V, Clip]) SetGamma(gammaFunc func(float64) floa
 	}
 }
 
-// ApplyGamma applies gamma correction to a coverage value
+// ApplyGamma maps a raw coverage value through the configured gamma table.
 func (r *RasterizerScanlineAA[C, V, Clip]) ApplyGamma(cover int) uint8 {
 	if cover > AAMask {
 		cover = AAMask
@@ -131,7 +133,7 @@ func (r *RasterizerScanlineAA[C, V, Clip]) ApplyGamma(cover int) uint8 {
 	return r.gamma[cover]
 }
 
-// MoveTo starts a new contour at the specified integer coordinates
+// MoveTo starts a new contour at integer coordinates expressed in pixel units.
 func (r *RasterizerScanlineAA[C, V, Clip]) MoveTo(x, y int) {
 	if r.outline.Sorted() {
 		r.Reset()
@@ -146,7 +148,7 @@ func (r *RasterizerScanlineAA[C, V, Clip]) MoveTo(x, y int) {
 	r.status = StatusMoveTo
 }
 
-// LineTo draws a line to the specified integer coordinates
+// LineTo appends an integer-coordinate edge to the current contour.
 func (r *RasterizerScanlineAA[C, V, Clip]) LineTo(x, y int) {
 	xCoord := r.conv.Downscale(x * basics.PolySubpixelScale)
 	yCoord := r.conv.Downscale(y * basics.PolySubpixelScale)
@@ -154,7 +156,7 @@ func (r *RasterizerScanlineAA[C, V, Clip]) LineTo(x, y int) {
 	r.status = StatusLineTo
 }
 
-// MoveToD starts a new contour at the specified double coordinates
+// MoveToD starts a new contour at floating-point coordinates.
 func (r *RasterizerScanlineAA[C, V, Clip]) MoveToD(x, y float64) {
 	if r.outline.Sorted() {
 		r.Reset()
@@ -169,7 +171,7 @@ func (r *RasterizerScanlineAA[C, V, Clip]) MoveToD(x, y float64) {
 	r.status = StatusMoveTo
 }
 
-// LineToD draws a line to the specified double coordinates
+// LineToD appends a floating-point edge to the current contour.
 func (r *RasterizerScanlineAA[C, V, Clip]) LineToD(x, y float64) {
 	xCoord := r.conv.Upscale(x)
 	yCoord := r.conv.Upscale(y)
@@ -177,7 +179,7 @@ func (r *RasterizerScanlineAA[C, V, Clip]) LineToD(x, y float64) {
 	r.status = StatusLineTo
 }
 
-// ClosePolygon closes the current polygon
+// ClosePolygon closes the current contour by connecting back to the start point.
 func (r *RasterizerScanlineAA[C, V, Clip]) ClosePolygon() {
 	if r.status == StatusLineTo || r.status == StatusMoveTo {
 		r.clipper.LineTo(r.outline, r.startX, r.startY)
@@ -185,7 +187,7 @@ func (r *RasterizerScanlineAA[C, V, Clip]) ClosePolygon() {
 	}
 }
 
-// AddVertex adds a vertex with the specified command
+// AddVertex consumes AGG-style path commands from a vertex source.
 func (r *RasterizerScanlineAA[C, V, Clip]) AddVertex(x, y float64, cmd uint32) {
 	pathCmd := basics.PathCommand(cmd & uint32(basics.PathCmdMask))
 
@@ -199,7 +201,7 @@ func (r *RasterizerScanlineAA[C, V, Clip]) AddVertex(x, y float64, cmd uint32) {
 	}
 }
 
-// Edge adds a single edge from (x1,y1) to (x2,y2) with integer coordinates
+// Edge rasterizes a single edge given integer endpoint coordinates.
 func (r *RasterizerScanlineAA[C, V, Clip]) Edge(x1, y1, x2, y2 int) {
 	if r.outline.Sorted() {
 		r.Reset()
@@ -212,7 +214,7 @@ func (r *RasterizerScanlineAA[C, V, Clip]) Edge(x1, y1, x2, y2 int) {
 	r.clipper.LineTo(r.outline, x2Coord, y2Coord)
 }
 
-// EdgeD adds a single edge from (x1,y1) to (x2,y2) with double coordinates
+// EdgeD rasterizes a single edge given floating-point endpoint coordinates.
 func (r *RasterizerScanlineAA[C, V, Clip]) EdgeD(x1, y1, x2, y2 float64) {
 	if r.outline.Sorted() {
 		r.Reset()

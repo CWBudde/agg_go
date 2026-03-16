@@ -1,5 +1,3 @@
-// Package span provides gradient span generation functionality for AGG.
-// This implements a port of AGG's span_gradient classes and functions.
 package span
 
 import (
@@ -9,32 +7,31 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/color"
 )
 
-// Gradient subpixel precision constants
+// Gradient subpixel precision constants match AGG's
+// gradient_subpixel_shift/scale/mask values.
 const (
 	GradientSubpixelShift = 4                          // 4 bits of precision
 	GradientSubpixelScale = 1 << GradientSubpixelShift // 16x precision
 	GradientSubpixelMask  = GradientSubpixelScale - 1  // Masking value (15)
 )
 
-// GradientFunction defines the interface for gradient shape functions.
-// These functions calculate the gradient distance for given coordinates.
+// GradientFunction models AGG gradient shape functions such as linear, radial,
+// and radial-focus distance evaluators.
 type GradientFunction interface {
-	// Calculate computes gradient distance at coordinates (x, y) with maximum distance d2
 	Calculate(x, y, d2 int) int
 }
 
-// ColorFunction defines the interface for gradient color functions.
-// These functions provide color lookup based on gradient position.
+// ColorFunction maps a normalized gradient position to a concrete color source,
+// usually a LUT or a simple two-color interpolator.
 type ColorFunction[ColorT any] interface {
-	// Size returns the number of colors in the gradient
 	Size() int
-
-	// ColorAt returns the color at the specified index
 	ColorAt(index int) ColorT
 }
 
-// SpanGradient generates gradient-filled pixel spans.
-// This is a port of AGG's span_gradient template class.
+// SpanGradient is the Go equivalent of AGG's span_gradient template. It uses an
+// interpolator to obtain transformed coordinates, a gradient function to turn
+// those coordinates into a distance, and a color function to map that distance
+// into the output span.
 type SpanGradient[ColorT any, InterpolatorT SpanInterpolatorInterface, GradientT GradientFunction, ColorT2 ColorFunction[ColorT]] struct {
 	interpolator     InterpolatorT
 	gradientFunction GradientT
@@ -44,7 +41,8 @@ type SpanGradient[ColorT any, InterpolatorT SpanInterpolatorInterface, GradientT
 	downscaleShift   int // Calculated as interpolator.SubpixelShift - GradientSubpixelShift
 }
 
-// NewSpanGradient creates a new gradient span generator.
+// NewSpanGradient creates a gradient span generator with AGG-style d1/d2
+// distances expressed in user-space units.
 func NewSpanGradient[ColorT any, InterpolatorT SpanInterpolatorInterface, GradientT GradientFunction, ColorT2 ColorFunction[ColorT]](
 	interpolator InterpolatorT,
 	gradientFunction GradientT,
@@ -66,32 +64,33 @@ func NewSpanGradient[ColorT any, InterpolatorT SpanInterpolatorInterface, Gradie
 	}
 }
 
-// Interpolator returns the current interpolator.
+// Interpolator returns the coordinate interpolator.
 func (sg *SpanGradient[ColorT, InterpolatorT, GradientT, ColorT2]) Interpolator() InterpolatorT {
 	return sg.interpolator
 }
 
-// GradientFunction returns the current gradient function.
+// GradientFunction returns the distance function.
 func (sg *SpanGradient[ColorT, InterpolatorT, GradientT, ColorT2]) GradientFunction() GradientT {
 	return sg.gradientFunction
 }
 
-// ColorFunction returns the current color function.
+// ColorFunction returns the color lookup source.
 func (sg *SpanGradient[ColorT, InterpolatorT, GradientT, ColorT2]) ColorFunction() ColorT2 {
 	return sg.colorFunction
 }
 
-// D1 returns the start distance as a float value.
+// D1 returns the lower gradient distance bound in user-space units.
 func (sg *SpanGradient[ColorT, InterpolatorT, GradientT, ColorT2]) D1() float64 {
 	return float64(sg.d1) / GradientSubpixelScale
 }
 
-// D2 returns the end distance as a float value.
+// D2 returns the upper gradient distance bound in user-space units.
 func (sg *SpanGradient[ColorT, InterpolatorT, GradientT, ColorT2]) D2() float64 {
 	return float64(sg.d2) / GradientSubpixelScale
 }
 
-// SetInterpolator sets a new interpolator.
+// SetInterpolator replaces the coordinate interpolator and recomputes the
+// downscale step between interpolator precision and gradient precision.
 func (sg *SpanGradient[ColorT, InterpolatorT, GradientT, ColorT2]) SetInterpolator(interpolator InterpolatorT) {
 	sg.interpolator = interpolator
 	sg.downscaleShift = interpolator.SubpixelShift() - GradientSubpixelShift
@@ -100,33 +99,32 @@ func (sg *SpanGradient[ColorT, InterpolatorT, GradientT, ColorT2]) SetInterpolat
 	}
 }
 
-// SetGradientFunction sets a new gradient function.
+// SetGradientFunction replaces the distance function.
 func (sg *SpanGradient[ColorT, InterpolatorT, GradientT, ColorT2]) SetGradientFunction(gradientFunction GradientT) {
 	sg.gradientFunction = gradientFunction
 }
 
-// SetColorFunction sets a new color function.
+// SetColorFunction replaces the color lookup source.
 func (sg *SpanGradient[ColorT, InterpolatorT, GradientT, ColorT2]) SetColorFunction(colorFunction ColorT2) {
 	sg.colorFunction = colorFunction
 }
 
-// SetD1 sets the start distance.
+// SetD1 updates the lower gradient distance bound.
 func (sg *SpanGradient[ColorT, InterpolatorT, GradientT, ColorT2]) SetD1(d1 float64) {
 	sg.d1 = basics.IRound(d1 * GradientSubpixelScale)
 }
 
-// SetD2 sets the end distance.
+// SetD2 updates the upper gradient distance bound.
 func (sg *SpanGradient[ColorT, InterpolatorT, GradientT, ColorT2]) SetD2(d2 float64) {
 	sg.d2 = basics.IRound(d2 * GradientSubpixelScale)
 }
 
-// Prepare is called before rendering begins (no-op for basic gradients).
+// Prepare is a no-op for the base gradient generator.
 func (sg *SpanGradient[ColorT, InterpolatorT, GradientT, ColorT2]) Prepare() {
-	// No preparation needed for basic gradients
 }
 
-// Generate fills a span with gradient colors.
-// This is the core method that produces gradient-filled spans.
+// Generate expands one horizontal run using the same d1/d2 and index-clamping
+// flow as AGG's span_gradient::generate.
 func (sg *SpanGradient[ColorT, InterpolatorT, GradientT, ColorT2]) Generate(span []ColorT, x, y, length int) {
 	// Calculate distance range
 	dd := sg.d2 - sg.d1
@@ -164,37 +162,35 @@ func (sg *SpanGradient[ColorT, InterpolatorT, GradientT, ColorT2]) Generate(span
 	}
 }
 
-// Gradient shape functions
-
-// GradientLinearX implements a horizontal linear gradient.
+// GradientLinearX returns the x coordinate as the distance term.
 type GradientLinearX struct{}
 
 func (g GradientLinearX) Calculate(x, y, d2 int) int {
 	return x
 }
 
-// GradientLinearY implements a vertical linear gradient.
+// GradientLinearY returns the y coordinate as the distance term.
 type GradientLinearY struct{}
 
 func (g GradientLinearY) Calculate(x, y, d2 int) int {
 	return y
 }
 
-// GradientRadial implements a circular/radial gradient.
+// GradientRadial is AGG's fast integer radial distance function.
 type GradientRadial struct{}
 
 func (g GradientRadial) Calculate(x, y, d2 int) int {
 	return int(basics.FastSqrt(uint32(x*x + y*y)))
 }
 
-// GradientRadialDouble implements a radial gradient with double precision.
+// GradientRadialDouble is AGG's floating-point radial distance function.
 type GradientRadialDouble struct{}
 
 func (g GradientRadialDouble) Calculate(x, y, d2 int) int {
 	return int(basics.URound(math.Sqrt(float64(x)*float64(x) + float64(y)*float64(y))))
 }
 
-// GradientRadialFocus implements a radial gradient with a focal point.
+// GradientRadialFocus is the Go equivalent of AGG's gradient_radial_focus.
 type GradientRadialFocus struct {
 	r   int     // Radius (subpixel precision)
 	fx  int     // Focus X (subpixel precision)
@@ -205,14 +201,14 @@ type GradientRadialFocus struct {
 	mul float64 // multiplier (cache)
 }
 
-// NewGradientRadialFocus creates a new radial focus gradient.
+// NewGradientRadialFocus creates a focused radial distance function.
 func NewGradientRadialFocus(r, fx, fy float64) *GradientRadialFocus {
 	g := &GradientRadialFocus{}
 	g.Init(r, fx, fy)
 	return g
 }
 
-// Init initializes the radial focus gradient parameters.
+// Init resets the radius and focus point in user-space units.
 func (g *GradientRadialFocus) Init(r, fx, fy float64) {
 	g.r = basics.IRound(r * GradientSubpixelScale)
 	g.fx = basics.IRound(fx * GradientSubpixelScale)

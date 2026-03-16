@@ -14,14 +14,18 @@ type compositeRGBABlender[CS color.Space, O order.RGBAOrder] interface {
 	GetOp() blender.CompOp
 }
 
-// PixFmtCompositeRGBA represents an RGBA pixel format with composite blending
+// PixFmtCompositeRGBA is the Go equivalent of AGG's pixfmt_custom_blend_rgba.
+//
+// Instead of hard-wiring SrcOver semantics, it delegates each write to a
+// Porter-Duff style composite operator selected by the embedded blender.
 type PixFmtCompositeRGBA[CS color.Space, O order.RGBAOrder] struct {
 	rbuf          *buffer.RenderingBufferU8
 	blender       compositeRGBABlender[CS, O]
 	premultiplied bool
 }
 
-// NewPixFmtCompositeRGBA creates a new composite RGBA pixel format
+// NewPixFmtCompositeRGBA creates a composite pixfmt that expects straight-alpha
+// source colors, like AGG's custom_blender_rgba.
 func NewPixFmtCompositeRGBA[CS color.Space, O order.RGBAOrder](rbuf *buffer.RenderingBufferU8, op blender.CompOp) *PixFmtCompositeRGBA[CS, O] {
 	return &PixFmtCompositeRGBA[CS, O]{
 		rbuf:    rbuf,
@@ -38,22 +42,22 @@ func NewPixFmtCompositeRGBAPre[CS color.Space, O order.RGBAOrder](rbuf *buffer.R
 	}
 }
 
-// Width returns the buffer width
+// Width returns the attached buffer width in pixels.
 func (pf *PixFmtCompositeRGBA[CS, O]) Width() int {
 	return pf.rbuf.Width()
 }
 
-// Height returns the buffer height
+// Height returns the attached buffer height in pixels.
 func (pf *PixFmtCompositeRGBA[CS, O]) Height() int {
 	return pf.rbuf.Height()
 }
 
-// PixWidth returns bytes per pixel (4 for RGBA)
+// PixWidth returns the storage width of one pixel in bytes.
 func (pf *PixFmtCompositeRGBA[CS, O]) PixWidth() int {
 	return 4
 }
 
-// GetPixel returns the pixel at the given coordinates
+// GetPixel reads the stored pixel using the byte order encoded by O.
 func (pf *PixFmtCompositeRGBA[CS, O]) GetPixel(x, y int) color.RGBA8[CS] {
 	if !InBounds(x, y, pf.Width(), pf.Height()) {
 		return color.RGBA8[CS]{}
@@ -74,7 +78,7 @@ func (pf *PixFmtCompositeRGBA[CS, O]) GetPixel(x, y int) color.RGBA8[CS] {
 	}
 }
 
-// CopyPixel copies a pixel without blending
+// CopyPixel writes c directly, bypassing the composite operator.
 func (pf *PixFmtCompositeRGBA[CS, O]) CopyPixel(x, y int, c color.RGBA8[CS]) {
 	if !InBounds(x, y, pf.Width(), pf.Height()) {
 		return
@@ -93,7 +97,7 @@ func (pf *PixFmtCompositeRGBA[CS, O]) CopyPixel(x, y int, c color.RGBA8[CS]) {
 	row[pixelOffset+order.IdxA()] = c.A
 }
 
-// BlendPixel blends a pixel using composite blending
+// BlendPixel applies the active composite operator to a single pixel.
 func (pf *PixFmtCompositeRGBA[CS, O]) BlendPixel(x, y int, c color.RGBA8[CS], cover basics.Int8u) {
 	if !InBounds(x, y, pf.Width(), pf.Height()) {
 		return
@@ -109,7 +113,7 @@ func (pf *PixFmtCompositeRGBA[CS, O]) BlendPixel(x, y int, c color.RGBA8[CS], co
 	pf.blender.BlendPix(row[pixelOffset:pixelOffset+4], c.R, c.G, c.B, c.A, cover)
 }
 
-// BlendHline blends a horizontal line of pixels (interface method)
+// BlendHline applies the active composite operator across a solid horizontal run.
 func (pf *PixFmtCompositeRGBA[CS, O]) BlendHline(x, y, length int, c color.RGBA8[CS], cover basics.Int8u) {
 	if y < 0 || y >= pf.Height() {
 		return
@@ -165,7 +169,7 @@ func (pf *PixFmtCompositeRGBA[CS, O]) BlendHline(x, y, length int, c color.RGBA8
 	}
 }
 
-// BlendVline blends a vertical line of pixels (interface method)
+// BlendVline applies the active composite operator across a solid vertical run.
 func (pf *PixFmtCompositeRGBA[CS, O]) BlendVline(x, y, length int, c color.RGBA8[CS], cover basics.Int8u) {
 	if x < 0 || x >= pf.Width() {
 		return
@@ -188,7 +192,7 @@ func (pf *PixFmtCompositeRGBA[CS, O]) BlendVline(x, y, length int, c color.RGBA8
 	}
 }
 
-// BlendSolidHspan blends a horizontal span with solid color (interface method)
+// BlendSolidHspan blends a horizontal AA span with per-pixel covers.
 func (pf *PixFmtCompositeRGBA[CS, O]) BlendSolidHspan(x, y, length int, c color.RGBA8[CS], covers []basics.Int8u) {
 	if y < 0 || y >= pf.Height() {
 		return
@@ -253,7 +257,8 @@ func (pf *PixFmtCompositeRGBA[CS, O]) BlendSolidHspan(x, y, length int, c color.
 	}
 }
 
-// SetCompOp changes the composite operation
+// SetCompOp switches the active composite operator while preserving the source
+// alpha convention chosen at construction time.
 func (pf *PixFmtCompositeRGBA[CS, O]) SetCompOp(op blender.CompOp) {
 	if pf.premultiplied {
 		pf.blender = blender.NewCompositeBlenderPre[CS, O](op)
@@ -262,46 +267,45 @@ func (pf *PixFmtCompositeRGBA[CS, O]) SetCompOp(op blender.CompOp) {
 	pf.blender = blender.NewCompositeBlender[CS, O](op)
 }
 
-// GetCompOp returns the current composite operation
+// GetCompOp returns the current composite operator.
 func (pf *PixFmtCompositeRGBA[CS, O]) GetCompOp() blender.CompOp {
 	return pf.blender.GetOp()
 }
 
-// Pixel returns the pixel at the given coordinates (alias for GetPixel)
+// Pixel is an alias for GetPixel.
 func (pf *PixFmtCompositeRGBA[CS, O]) Pixel(x, y int) color.RGBA8[CS] {
 	return pf.GetPixel(x, y)
 }
 
-// CopyHline copies a horizontal line of pixels without blending
+// CopyHline writes a solid horizontal run without compositing.
 func (pf *PixFmtCompositeRGBA[CS, O]) CopyHline(x, y, length int, c color.RGBA8[CS]) {
 	for i := 0; i < length; i++ {
 		pf.CopyPixel(x+i, y, c)
 	}
 }
 
-// CopyVline copies a vertical line of pixels without blending
+// CopyVline writes a solid vertical run without compositing.
 func (pf *PixFmtCompositeRGBA[CS, O]) CopyVline(x, y, length int, c color.RGBA8[CS]) {
 	for i := 0; i < length; i++ {
 		pf.CopyPixel(x, y+i, c)
 	}
 }
 
-// BlendVline blends a vertical line of pixels (already implemented above)
-// CopyBar copies a rectangular area with solid color
+// CopyBar writes a solid rectangle without compositing.
 func (pf *PixFmtCompositeRGBA[CS, O]) CopyBar(x1, y1, x2, y2 int, c color.RGBA8[CS]) {
 	for y := y1; y <= y2; y++ {
 		pf.CopyHline(x1, y, x2-x1+1, c)
 	}
 }
 
-// BlendBar blends a rectangular area with solid color
+// BlendBar composites a solid rectangle with uniform coverage.
 func (pf *PixFmtCompositeRGBA[CS, O]) BlendBar(x1, y1, x2, y2 int, c color.RGBA8[CS], cover basics.Int8u) {
 	for y := y1; y <= y2; y++ {
 		pf.BlendHline(x1, y, x2-x1+1, c, cover)
 	}
 }
 
-// BlendSolidVspan blends a vertical span with solid color
+// BlendSolidVspan blends a vertical AA span with per-pixel covers.
 func (pf *PixFmtCompositeRGBA[CS, O]) BlendSolidVspan(x, y, length int, c color.RGBA8[CS], covers []basics.Int8u) {
 	if covers == nil {
 		for i := 0; i < length; i++ {
@@ -314,14 +318,14 @@ func (pf *PixFmtCompositeRGBA[CS, O]) BlendSolidVspan(x, y, length int, c color.
 	}
 }
 
-// CopyColorHspan copies a horizontal span with varying colors
+// CopyColorHspan writes a horizontal span of already-expanded colors.
 func (pf *PixFmtCompositeRGBA[CS, O]) CopyColorHspan(x, y, length int, colors []color.RGBA8[CS]) {
 	for i := 0; i < length && i < len(colors); i++ {
 		pf.CopyPixel(x+i, y, colors[i])
 	}
 }
 
-// BlendColorHspan blends a horizontal span with varying colors
+// BlendColorHspan composites a horizontal span of per-pixel colors.
 func (pf *PixFmtCompositeRGBA[CS, O]) BlendColorHspan(x, y, length int, colors []color.RGBA8[CS], covers []basics.Int8u, cover basics.Int8u) {
 	for i := 0; i < length && i < len(colors); i++ {
 		actualCover := cover
@@ -338,7 +342,9 @@ type compositeBlendFromSource[CS color.Space] interface {
 	Height() int
 }
 
-// BlendFrom blends a single scanline from another RGBA surface.
+// BlendFrom composites one scanline from another RGBA surface, clipping source
+// and destination bounds in the same spirit as AGG's copy_from/blend_from
+// helpers on pixfmt classes.
 func (pf *PixFmtCompositeRGBA[CS, O]) BlendFrom(src compositeBlendFromSource[CS], xdst, ydst, xsrc, ysrc, length int, cover basics.Int8u) {
 	if ydst < 0 || ydst >= pf.Height() || ysrc < 0 || ysrc >= src.Height() || length <= 0 {
 		return
@@ -394,14 +400,14 @@ func (pf *PixFmtCompositeRGBA[CS, O]) BlendFrom(src compositeBlendFromSource[CS]
 	}
 }
 
-// CopyColorVspan copies a vertical span with varying colors
+// CopyColorVspan writes a vertical span of already-expanded colors.
 func (pf *PixFmtCompositeRGBA[CS, O]) CopyColorVspan(x, y, length int, colors []color.RGBA8[CS]) {
 	for i := 0; i < length && i < len(colors); i++ {
 		pf.CopyPixel(x, y+i, colors[i])
 	}
 }
 
-// BlendColorVspan blends a vertical span with varying colors
+// BlendColorVspan composites a vertical span of per-pixel colors.
 func (pf *PixFmtCompositeRGBA[CS, O]) BlendColorVspan(x, y, length int, colors []color.RGBA8[CS], covers []basics.Int8u, cover basics.Int8u) {
 	for i := 0; i < length && i < len(colors); i++ {
 		actualCover := cover
@@ -412,7 +418,7 @@ func (pf *PixFmtCompositeRGBA[CS, O]) BlendColorVspan(x, y, length int, colors [
 	}
 }
 
-// Clear fills the entire buffer with the specified color
+// Clear fills the entire buffer with c without compositing.
 func (pf *PixFmtCompositeRGBA[CS, O]) Clear(c color.RGBA8[CS]) {
 	// Fill entire buffer
 	width := pf.Width()
@@ -424,14 +430,14 @@ func (pf *PixFmtCompositeRGBA[CS, O]) Clear(c color.RGBA8[CS]) {
 	}
 }
 
-// Fill fills the entire buffer with the specified color (alias for Clear)
+// Fill is an alias for Clear.
 func (pf *PixFmtCompositeRGBA[CS, O]) Fill(c color.RGBA8[CS]) {
 	pf.Clear(c)
 }
 
 // Note: max and min functions are already defined in pixfmt_rgba64.go, so we don't redefine them here
 
-// Concrete composite pixel format types for convenience
+// Concrete composite pixel format aliases mirror AGG's convenience typedefs.
 type (
 	PixFmtCompositeRGBA32     = PixFmtCompositeRGBA[color.Linear, order.RGBA]
 	PixFmtCompositeARGB32     = PixFmtCompositeRGBA[color.Linear, order.ARGB]
@@ -444,11 +450,14 @@ type (
 	PixFmtCompositeABGR32SRGB = PixFmtCompositeRGBA[color.SRGB, order.ABGR]
 )
 
-// NewPixFmtCompositeRGBA32 creates a new composite RGBA32 pixel format
+// NewPixFmtCompositeRGBA32 creates an RGBA32 pixfmt with a configurable
+// composite operator and straight-alpha source input.
 func NewPixFmtCompositeRGBA32(rbuf *buffer.RenderingBufferU8, op blender.CompOp) *PixFmtCompositeRGBA32 {
 	return NewPixFmtCompositeRGBA[color.Linear, order.RGBA](rbuf, op)
 }
 
+// NewPixFmtCompositeRGBA32Pre creates an RGBA32 pixfmt whose source input is
+// already premultiplied before the selected composite operator is applied.
 func NewPixFmtCompositeRGBA32Pre(rbuf *buffer.RenderingBufferU8, op blender.CompOp) *PixFmtCompositeRGBA32Pre {
 	return NewPixFmtCompositeRGBAPre[color.Linear, order.RGBA](rbuf, op)
 }

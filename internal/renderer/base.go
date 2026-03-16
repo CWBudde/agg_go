@@ -5,8 +5,10 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 )
 
-// PixelFormat defines the required methods for a pixel format that can be
-// used with RendererBase, parameterized by a concrete color type C.
+// PixelFormat is the minimal pixel-format contract required by RendererBase.
+//
+// It intentionally mirrors the operations AGG base renderers expect to perform:
+// pixel writes, clipped line/bar writes, and horizontal/vertical span blending.
 type PixelFormat[C any] interface {
 	// Basic properties
 	Width() int
@@ -43,13 +45,10 @@ type PixelFormat[C any] interface {
 	Fill(c C)
 }
 
-// RendererBase provides the foundational structure for all rendering operations.
-// It is a generic type that works with any pixel format (PF) and color type (C).
+// RendererBase is the clipped pixel-write core used by higher-level renderers.
 //
-// The RendererBase manages the core rendering state including the pixel format
-// for drawing operations and the clipping boundaries that constrain where
-// pixels can be rendered. This serves as the base for more specialized
-// renderer implementations.
+// It wraps a pixel format with AGG-style clip-box management and exposes the
+// primitive operations that scanline, outline, and text renderers build on.
 //
 // Type parameters:
 //   - PF: The pixel format type that must implement PixelFormat[C]

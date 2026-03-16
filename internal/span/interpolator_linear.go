@@ -1,5 +1,3 @@
-// Package span provides span interpolation functionality for AGG.
-// This implements a port of AGG's span interpolator classes.
 package span
 
 import (
@@ -7,27 +5,20 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
 
-// SpanInterpolatorInterface defines the interface for span interpolators.
-// This is used by span generators that need coordinate transformation during iteration.
+// SpanInterpolatorInterface is the common contract for AGG span interpolators.
+// Generators use it to walk one destination span while sampling in transformed
+// source-space coordinates.
 type SpanInterpolatorInterface interface {
-	// Begin starts interpolation for a span of pixels
 	Begin(x, y float64, length int)
-
-	// Resynchronize adjusts the interpolation to end at the specified coordinates
 	Resynchronize(xe, ye float64, length int)
-
-	// Coordinates returns the current transformed coordinates
 	Coordinates() (x, y int)
-
-	// Next advances to the next pixel (equivalent to operator++)
 	Next()
-
-	// SubpixelShift returns the subpixel precision shift
 	SubpixelShift() int
 }
 
-// SpanInterpolatorLinear implements linear span interpolation with affine transformation.
-// This is a port of AGG's span_interpolator_linear template class.
+// SpanInterpolatorLinear is the Go equivalent of AGG's
+// span_interpolator_linear. It transforms the span start and end once, then
+// uses DDA interpolation to step between them at fixed-point precision.
 type SpanInterpolatorLinear[T TransformerInterface] struct {
 	transformer   T
 	subpixelShift int
@@ -36,7 +27,8 @@ type SpanInterpolatorLinear[T TransformerInterface] struct {
 	liY           Dda2LineInterpolator
 }
 
-// TransformerInterface defines the interface for coordinate transformers.
+// TransformerInterface is the minimal transform contract required by the linear
+// interpolators.
 type TransformerInterface interface {
 	Transform(x, y *float64)
 }
@@ -97,7 +89,8 @@ func (d *Dda2LineInterpolator) Inc() {
 	}
 }
 
-// NewSpanInterpolatorLinear creates a new linear span interpolator.
+// NewSpanInterpolatorLinear creates a linear span interpolator with the
+// requested fixed-point precision.
 func NewSpanInterpolatorLinear[T TransformerInterface](transformer T, subpixelShift int) *SpanInterpolatorLinear[T] {
 	if subpixelShift == 0 {
 		subpixelShift = 8 // Default subpixel shift from AGG
@@ -110,12 +103,13 @@ func NewSpanInterpolatorLinear[T TransformerInterface](transformer T, subpixelSh
 	}
 }
 
-// NewSpanInterpolatorLinearDefault creates a linear span interpolator with TransAffine.
+// NewSpanInterpolatorLinearDefault creates the standard affine interpolator used
+// by AGG image-filter and gradient paths.
 func NewSpanInterpolatorLinearDefault(transformer *transform.TransAffine) *SpanInterpolatorLinear[*transform.TransAffine] {
 	return NewSpanInterpolatorLinear(transformer, 8)
 }
 
-// Begin starts interpolation for a span of pixels from (x,y) with specified length.
+// Begin starts interpolation for a destination span beginning at x,y.
 func (s *SpanInterpolatorLinear[T]) Begin(x, y float64, length int) {
 	// Transform start point
 	tx, ty := x, y
@@ -134,7 +128,7 @@ func (s *SpanInterpolatorLinear[T]) Begin(x, y float64, length int) {
 	s.liY.Init(y1, y2, length)
 }
 
-// Resynchronize adjusts the interpolation to end at the specified coordinates.
+// Resynchronize retargets the current DDA state toward a new end point.
 func (s *SpanInterpolatorLinear[T]) Resynchronize(xe, ye float64, length int) {
 	// Transform end point
 	s.transformer.Transform(&xe, &ye)
@@ -144,18 +138,18 @@ func (s *SpanInterpolatorLinear[T]) Resynchronize(xe, ye float64, length int) {
 	s.liY.Init(s.liY.Y(), basics.IRound(ye*float64(s.subpixelScale)), length)
 }
 
-// Coordinates returns the current transformed coordinates.
+// Coordinates returns the current source-space coordinate in subpixel units.
 func (s *SpanInterpolatorLinear[T]) Coordinates() (x, y int) {
 	return s.liX.Y(), s.liY.Y()
 }
 
-// Next advances the interpolator to the next pixel position.
+// Next advances to the next pixel in the span.
 func (s *SpanInterpolatorLinear[T]) Next() {
 	s.liX.Inc()
 	s.liY.Inc()
 }
 
-// SubpixelShift returns the subpixel precision shift value.
+// SubpixelShift returns the fixed-point precision used by Coordinates.
 func (s *SpanInterpolatorLinear[T]) SubpixelShift() int {
 	return s.subpixelShift
 }
@@ -165,14 +159,14 @@ func (s *SpanInterpolatorLinear[T]) Transformer() T {
 	return s.transformer
 }
 
-// SetTransformer sets a new transformer.
+// SetTransformer replaces the current transformer.
 func (s *SpanInterpolatorLinear[T]) SetTransformer(transformer T) {
 	s.transformer = transformer
 }
 
-// SpanInterpolatorLinearSubdiv implements subdivided linear span interpolation.
-// This is a port of AGG's span_interpolator_linear_subdiv template class.
-// It subdivides long spans and resynchronizes periodically to prevent error accumulation.
+// SpanInterpolatorLinearSubdiv is the Go equivalent of AGG's
+// span_interpolator_linear_subdiv. It periodically resynchronizes long spans so
+// transform error does not accumulate across the whole run.
 type SpanInterpolatorLinearSubdiv[T TransformerInterface] struct {
 	transformer   T
 	subpixelShift int

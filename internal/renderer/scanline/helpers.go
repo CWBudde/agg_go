@@ -1,4 +1,3 @@
-// Package scanline provides helper rendering functions for AGG scanline rendering.
 package scanline
 
 import (
@@ -6,8 +5,8 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
 )
 
-// RenderScanlines is a generic scanline rendering function that works with any renderer.
-// This corresponds to AGG's render_scanlines function.
+// RenderScanlines is the canonical AGG-style helper that sweeps a rasterizer
+// and feeds every produced scanline to a renderer.
 func RenderScanlines[C any](ras RasterizerInterface, sl ScanlineInterface, renderer RendererInterface[C]) {
 	if !ras.RewindScanlines() {
 		return
@@ -27,30 +26,27 @@ func RenderScanlines[C any](ras RasterizerInterface, sl ScanlineInterface, rende
 	}
 }
 
-// PathColorStorage represents a storage interface for path colors.
-// This is used by RenderAllPaths to access colors by index.
+// PathColorStorage provides per-path colors to RenderAllPaths.
 type PathColorStorage[C any] interface {
 	// GetColor returns the color at the specified index
 	GetColor(index int) C
 }
 
-// PathIDStorage represents a storage interface for path IDs.
-// This is used by RenderAllPaths to access path IDs by index.
+// PathIDStorage provides the path IDs paired with colors in RenderAllPaths.
 type PathIDStorage interface {
 	// GetPathID returns the path ID at the specified index.
 	GetPathID(index int) uint32
 }
 
-// MultiPathRasterizerInterface extends RasterizerInterface for multi-path rendering.
-// RenderAllPaths requires a rasterizer that can be reset and accept individual paths.
+// MultiPathRasterizerInterface extends RasterizerInterface with path ingestion.
 type MultiPathRasterizerInterface interface {
 	RasterizerInterface
 	Reset()
 	AddPath(vs rasterizer.VertexSource, pathID uint32)
 }
 
-// RenderAllPaths renders multiple paths with different colors.
-// This corresponds to AGG's render_all_paths function.
+// RenderAllPaths renders multiple paths by repeatedly resetting the rasterizer,
+// adding one path, setting its color, and invoking RenderScanlines.
 func RenderAllPaths[C any](ras MultiPathRasterizerInterface, sl ScanlineInterface, renderer RendererInterface[C],
 	vertexSource rasterizer.VertexSource, colorStorage PathColorStorage[C],
 	pathIDStorage PathIDStorage, numPaths int,
@@ -63,9 +59,9 @@ func RenderAllPaths[C any](ras MultiPathRasterizerInterface, sl ScanlineInterfac
 	}
 }
 
-// RenderScanlinesCompound renders scanlines using compound rasterizer with multiple styles.
-// This corresponds to AGG's render_scanlines_compound function.
-// PC is the pointer type constraint that ensures *C has AddWithCover method for color blending.
+// RenderScanlinesCompound sweeps a style-aware rasterizer and resolves each
+// style either as a solid fill or as generated span data before blending the
+// composed result.
 func RenderScanlinesCompound[C any, PC interface {
 	*C
 	AddWithCover(src C, cover basics.Int8u)

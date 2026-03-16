@@ -1,38 +1,33 @@
-// Package span provides span generation functionality for AGG rendering.
 package span
 
-// SpanColorType defines the constraint for color types used in span operations.
-// This ensures type safety while allowing different color representations.
+// SpanColorType is the color constraint used by generic span allocators and
+// generators.
 type SpanColorType interface {
-	// Any type can be used as a span color type
-	// This allows struct types, but also other types for compatibility
 	any
 }
 
-// SpanGenerator provides the interface for generating colors across a span.
-// This is the base interface that specific span generators should implement.
+// SpanGenerator is the common contract shared by AGG-style span generators.
+// Prepare lets generators cache state before rasterization starts, and Generate
+// expands one horizontal run into concrete colors.
 type SpanGenerator[C SpanColorType] interface {
-	// Prepare is called before rendering begins
 	Prepare()
-
-	// Generate fills the colors array with generated colors for the given span
 	Generate(colors []C, x, y, len int)
 }
 
-// SolidSpanGenerator generates solid colors for spans.
-// This is the simplest span generator that fills all pixels with the same color.
+// SolidSpanGenerator is the trivial span generator that emits the same color for
+// every pixel in the span.
 type SolidSpanGenerator[C SpanColorType] struct {
-	color C // The solid color to generate
+	color C
 }
 
-// NewSolidSpanGenerator creates a new solid span generator.
+// NewSolidSpanGenerator creates a solid-color span generator.
 func NewSolidSpanGenerator[C SpanColorType](color C) *SolidSpanGenerator[C] {
 	return &SolidSpanGenerator[C]{
 		color: color,
 	}
 }
 
-// SetColor sets the solid color for this generator.
+// SetColor replaces the emitted solid color.
 func (sg *SolidSpanGenerator[C]) SetColor(color C) {
 	sg.color = color
 }
@@ -42,15 +37,12 @@ func (sg *SolidSpanGenerator[C]) Color() C {
 	return sg.color
 }
 
-// Prepare is called before rendering begins.
-// For solid color generation, no preparation is needed.
+// Prepare is a no-op for solid spans.
 func (sg *SolidSpanGenerator[C]) Prepare() {
-	// Nothing to prepare for solid colors
 }
 
-// Generate fills the colors array with the solid color.
+// Generate fills the requested run with the solid color.
 func (sg *SolidSpanGenerator[C]) Generate(colors []C, x, y, length int) {
-	// Fill all positions with the solid color
 	for i := 0; i < length; i++ {
 		colors[i] = sg.color
 	}

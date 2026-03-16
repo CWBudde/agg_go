@@ -37,7 +37,7 @@ just serve-web
 
 ## Repository Structure
 
-- Public API: `agg.go`, `types.go`, plus high‑level helpers (colors, geometry, context).
+- Public API: `agg.go` plus high-level helpers such as `colors.go`, `geometry.go`, `context.go`, `images.go`, and `transforms.go`.
 - Internals (hidden): `internal/<pkg>/` (e.g., `basics`, `pixfmt`, `rasterizer`, `scanline`, `renderer`, `transform`, `conv`).
 - Examples: `examples/<group>/<name>/` (e.g., `examples/core/basic/hello_world`).
 - Tests: `tests/{unit,integration,benchmark,visual}`.
@@ -62,31 +62,44 @@ Platform/example tags:
 
 ## Quickstart
 
-Minimal “hello world” using the high‑level Context API:
+Minimal example using the high-level `Context` API:
 
 ```go
 package main
 
 import (
-    "fmt"
-    agg "agg_go"
+	"log"
+
+	agg "github.com/MeKo-Christian/agg_go"
 )
 
 func main() {
-    ctx := agg.NewContext(800, 600)
-    ctx.Clear(agg.RGB(0.7, 0.8, 1.0))
-    ctx.SetColor(agg.Red)
-    ctx.DrawRectangle(100, 100, 200, 150)
-    ctx.Fill()
-    ctx.SetColor(agg.RGB(0, 0.8, 0))
-    ctx.DrawCircle(400, 300, 80)
-    ctx.Fill()
-    img := ctx.GetImage()
-    fmt.Printf("%dx%d image, %d bytes\n", img.Width, img.Height, len(img.Data))
+	ctx := agg.NewContext(800, 600)
+	ctx.Clear(agg.White)
+
+	ctx.SetColor(agg.NewColor(220, 70, 50, 255))
+	ctx.FillRectangle(80, 80, 220, 140)
+
+	ctx.SetColor(agg.NewColor(30, 90, 180, 255))
+	ctx.SetLineWidth(6)
+	ctx.DrawCircle(500, 280, 90)
+
+	ctx.SetColor(agg.Black)
+	ctx.BeginPath()
+	ctx.MoveTo(120, 320)
+	ctx.LineTo(260, 500)
+	ctx.LineTo(60, 500)
+	ctx.ClosePath()
+	ctx.Fill()
+
+	if err := ctx.GetImage().SaveToPNG("output.png"); err != nil {
+		log.Fatal(err)
+	}
 }
 ```
 
-Or run the example: `just run-hello` or `just run-example core/basic/hello_world`.
+For a fuller walkthrough, see [docs/guides/getting-started.md](docs/guides/getting-started.md).
+You can also run `just run-example basic/hello_world`.
 
 ## Development Notes
 
@@ -105,7 +118,7 @@ Or run the example: `just run-hello` or `just run-example core/basic/hello_world
 
 ### Rendering Pipeline
 
-1. Path definition (`types.go`)
+1. Path definition (`context.go` + `Agg2D` path methods)
 2. Transformation (`internal/transform`)
 3. Conversion (`internal/conv`: stroke, dash, contour)
 4. Rasterization (`internal/rasterizer`)

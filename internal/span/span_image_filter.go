@@ -1,5 +1,3 @@
-// Package span provides image filtering span generation functionality for AGG.
-// This implements a port of AGG's span_image_filter.h functionality.
 package span
 
 import (
@@ -8,17 +6,16 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
 
-// SourceInterface defines the interface for image sources used in span filtering.
-// This corresponds to the Source template parameter in AGG's span_image_filter.
+// SourceInterface is the minimal source contract used by the base image-filter
+// generators before format-specific accessors add sampling methods.
 type SourceInterface interface {
-	// Width returns the source image width
 	Width() int
-	// Height returns the source image height
 	Height() int
 }
 
-// SpanImageFilter is the base class for image filtering span generators.
-// This is a port of AGG's span_image_filter template class.
+// SpanImageFilter is the Go equivalent of AGG's span_image_filter base class.
+// It stores the source, coordinate interpolator, filter LUT, and the
+// half-pixel sampling offsets shared by the concrete image-filter generators.
 type SpanImageFilter[Source SourceInterface, Interpolator SpanInterpolatorInterface] struct {
 	source       Source
 	interpolator Interpolator
@@ -29,7 +26,8 @@ type SpanImageFilter[Source SourceInterface, Interpolator SpanInterpolatorInterf
 	dyInt        int
 }
 
-// NewSpanImageFilter creates a new span image filter.
+// NewSpanImageFilter creates an unattached image-filter base with AGG's default
+// half-pixel filter offsets.
 func NewSpanImageFilter[Source SourceInterface, Interpolator SpanInterpolatorInterface]() *SpanImageFilter[Source, Interpolator] {
 	return &SpanImageFilter[Source, Interpolator]{
 		dxDbl: 0.5,
@@ -39,7 +37,7 @@ func NewSpanImageFilter[Source SourceInterface, Interpolator SpanInterpolatorInt
 	}
 }
 
-// NewSpanImageFilterWithParams creates a new span image filter with parameters.
+// NewSpanImageFilterWithParams creates an attached image-filter base.
 func NewSpanImageFilterWithParams[Source SourceInterface, Interpolator SpanInterpolatorInterface](
 	src Source,
 	interpolator Interpolator,
@@ -56,7 +54,7 @@ func NewSpanImageFilterWithParams[Source SourceInterface, Interpolator SpanInter
 	}
 }
 
-// Attach attaches a new source image to this filter.
+// Attach replaces the source image.
 func (sif *SpanImageFilter[Source, Interpolator]) Attach(src Source) {
 	sif.source = src
 }
@@ -66,42 +64,42 @@ func (sif *SpanImageFilter[Source, Interpolator]) Source() Source {
 	return sif.source
 }
 
-// Filter returns the image filter lookup table.
+// Filter returns the attached filter LUT.
 func (sif *SpanImageFilter[Source, Interpolator]) Filter() *image.ImageFilterLUT {
 	return sif.filter
 }
 
-// FilterDxInt returns the integer X filter offset.
+// FilterDxInt returns the X offset in image-subpixel units.
 func (sif *SpanImageFilter[Source, Interpolator]) FilterDxInt() int {
 	return sif.dxInt
 }
 
-// FilterDyInt returns the integer Y filter offset.
+// FilterDyInt returns the Y offset in image-subpixel units.
 func (sif *SpanImageFilter[Source, Interpolator]) FilterDyInt() int {
 	return sif.dyInt
 }
 
-// FilterDxDbl returns the floating-point X filter offset.
+// FilterDxDbl returns the X offset in user-space units.
 func (sif *SpanImageFilter[Source, Interpolator]) FilterDxDbl() float64 {
 	return sif.dxDbl
 }
 
-// FilterDyDbl returns the floating-point Y filter offset.
+// FilterDyDbl returns the Y offset in user-space units.
 func (sif *SpanImageFilter[Source, Interpolator]) FilterDyDbl() float64 {
 	return sif.dyDbl
 }
 
-// SetInterpolator sets the interpolator for coordinate transformation.
+// SetInterpolator replaces the coordinate interpolator.
 func (sif *SpanImageFilter[Source, Interpolator]) SetInterpolator(interpolator Interpolator) {
 	sif.interpolator = interpolator
 }
 
-// SetFilter sets the image filter lookup table.
+// SetFilter replaces the filter LUT.
 func (sif *SpanImageFilter[Source, Interpolator]) SetFilter(filter *image.ImageFilterLUT) {
 	sif.filter = filter
 }
 
-// FilterOffset sets the filter offset values.
+// FilterOffset sets the shared sampling offset used by the concrete generators.
 func (sif *SpanImageFilter[Source, Interpolator]) FilterOffset(dx, dy float64) {
 	sif.dxDbl = dx
 	sif.dyDbl = dy
@@ -109,23 +107,23 @@ func (sif *SpanImageFilter[Source, Interpolator]) FilterOffset(dx, dy float64) {
 	sif.dyInt = basics.IRound(dy * float64(image.ImageSubpixelScale))
 }
 
-// FilterOffsetUniform sets both X and Y filter offsets to the same value.
+// FilterOffsetUniform sets the same sampling offset on both axes.
 func (sif *SpanImageFilter[Source, Interpolator]) FilterOffsetUniform(d float64) {
 	sif.FilterOffset(d, d)
 }
 
-// Interpolator returns the interpolator.
+// Interpolator returns the attached coordinate interpolator.
 func (sif *SpanImageFilter[Source, Interpolator]) Interpolator() Interpolator {
 	return sif.interpolator
 }
 
-// Prepare prepares the filter for rendering (base implementation does nothing).
+// Prepare is a no-op on the base type.
 func (sif *SpanImageFilter[Source, Interpolator]) Prepare() {
-	// Base implementation is empty
 }
 
-// SpanImageResampleAffine provides affine resampling with automatic scale detection.
-// This is a port of AGG's span_image_resample_affine template class.
+// SpanImageResampleAffine is the Go equivalent of AGG's
+// span_image_resample_affine. It inspects the affine transform to derive kernel
+// radii and inverse scale factors for image resampling.
 type SpanImageResampleAffine[Source SourceInterface] struct {
 	base       *SpanImageFilter[Source, *SpanInterpolatorLinear[*transform.TransAffine]]
 	scaleLimit float64
@@ -137,7 +135,7 @@ type SpanImageResampleAffine[Source SourceInterface] struct {
 	ryInv      int
 }
 
-// NewSpanImageResampleAffine creates a new affine resampling span filter.
+// NewSpanImageResampleAffine creates an unattached affine resampler.
 func NewSpanImageResampleAffine[Source SourceInterface]() *SpanImageResampleAffine[Source] {
 	baseFilter := NewSpanImageFilter[Source, *SpanInterpolatorLinear[*transform.TransAffine]]()
 	return &SpanImageResampleAffine[Source]{
@@ -148,7 +146,7 @@ func NewSpanImageResampleAffine[Source SourceInterface]() *SpanImageResampleAffi
 	}
 }
 
-// NewSpanImageResampleAffineWithParams creates a new affine resampling filter with parameters.
+// NewSpanImageResampleAffineWithParams creates an attached affine resampler.
 func NewSpanImageResampleAffineWithParams[Source SourceInterface](
 	src Source,
 	interpolator *SpanInterpolatorLinear[*transform.TransAffine],
@@ -171,12 +169,12 @@ func NewSpanImageResampleAffineWithParams[Source SourceInterface](
 	}
 }
 
-// ScaleLimit returns the current scale limit.
+// ScaleLimit returns the current clamp applied to derived scale factors.
 func (sira *SpanImageResampleAffine[Source]) ScaleLimit() int {
 	return int(basics.URound(sira.scaleLimit))
 }
 
-// SetScaleLimit sets the scale limit.
+// SetScaleLimit updates the scale clamp.
 func (sira *SpanImageResampleAffine[Source]) SetScaleLimit(v int) {
 	sira.scaleLimit = float64(v)
 }
@@ -201,33 +199,35 @@ func (sira *SpanImageResampleAffine[Source]) SetBlurY(v float64) {
 	sira.blurY = v
 }
 
-// Blur sets both X and Y blur factors to the same value.
+// Blur sets the same blur factor on both axes.
 func (sira *SpanImageResampleAffine[Source]) Blur(v float64) {
 	sira.blurX = v
 	sira.blurY = v
 }
 
-// SetInterpolator sets the interpolator for the base filter.
+// SetInterpolator replaces the affine interpolator.
 func (sira *SpanImageResampleAffine[Source]) SetInterpolator(interpolator *SpanInterpolatorLinear[*transform.TransAffine]) {
 	sira.base.SetInterpolator(interpolator)
 }
 
-// Source returns the source from the base filter.
+// Source returns the current source image.
 func (sira *SpanImageResampleAffine[Source]) Source() Source {
 	return sira.base.Source()
 }
 
-// Filter returns the filter from the base filter.
+// Filter returns the current filter LUT.
 func (sira *SpanImageResampleAffine[Source]) Filter() *image.ImageFilterLUT {
 	return sira.base.Filter()
 }
 
-// Interpolator returns the interpolator from the base filter.
+// Interpolator returns the affine coordinate interpolator.
 func (sira *SpanImageResampleAffine[Source]) Interpolator() *SpanInterpolatorLinear[*transform.TransAffine] {
 	return sira.base.Interpolator()
 }
 
-// Prepare prepares the filter by calculating scaling factors from the affine transformation.
+// Prepare mirrors AGG's span_image_resample_affine::prepare by extracting the
+// absolute affine scale, clamping it, applying blur, and caching fixed-point
+// radii and inverse radii for the concrete resamplers.
 func (sira *SpanImageResampleAffine[Source]) Prepare() {
 	if sira.base.interpolator == nil {
 		return

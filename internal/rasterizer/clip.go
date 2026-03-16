@@ -7,7 +7,8 @@ import (
 // Maximum coordinate value for polygon clipping
 const PolyMaxCoord = (1 << 30) - 1
 
-// Conv defines the conversion policy interface (mirrors AGG's ras_conv_* "static" API)
+// Conv defines the coordinate conversion policy used by rasterizer/clipping code.
+// It mirrors AGG's ras_conv_* helper family.
 type Conv[C basics.CoordType] interface {
 	// MulDiv returns round(a*b/c) for the coordinate type
 	MulDiv(a, b, c float64) C
@@ -164,17 +165,17 @@ func (Dbl3xConv) Downscale(v int) float64 {
 	return float64(v) / basics.PolySubpixelScale
 }
 
-// LineSink defines the interface implemented by the rasterizer/cell-sink
+// LineSink receives clipped integer line segments from the clipping stage.
 type LineSink interface {
 	Line(x1, y1, x2, y2 int)
 }
 
-// Rect represents a clipping rectangle for generic coordinate types
+// Rect is a generic clipping rectangle in the converter's coordinate domain.
 type Rect[C basics.CoordType] struct {
 	X1, Y1, X2, Y2 C
 }
 
-// Normalize ensures the rectangle coordinates are in the correct order
+// Normalize swaps rectangle bounds so X1<=X2 and Y1<=Y2.
 func (r *Rect[C]) Normalize() {
 	if r.X2 < r.X1 {
 		r.X1, r.X2 = r.X2, r.X1
@@ -231,6 +232,8 @@ func clippingFlagsY[C basics.CoordType](y C, rc Rect[C]) uint {
 
 // RasterizerSlClip implements the scanline clipping rasterizer.
 // Equivalent to AGG's rasterizer_sl_clip<Conv> template class.
+// RasterizerSlClip clips incoming line segments to the active clip box before
+// forwarding them into a cell sink.
 type RasterizerSlClip[C basics.CoordType, V Conv[C]] struct {
 	conv     V
 	clipBox  Rect[C]
@@ -240,6 +243,7 @@ type RasterizerSlClip[C basics.CoordType, V Conv[C]] struct {
 }
 
 // NewRasterizerSlClip creates a new scanline clipping rasterizer
+// NewRasterizerSlClip creates the clipping helper used by scanline rasterizers.
 func NewRasterizerSlClip[C basics.CoordType, V Conv[C]](conv V) *RasterizerSlClip[C, V] {
 	return &RasterizerSlClip[C, V]{
 		conv:     conv,
@@ -375,11 +379,13 @@ func (r *RasterizerSlClip[C, V]) LineTo(sink LineSink, x2, y2 C) {
 
 // RasterizerSlNoClip provides a no-clipping implementation.
 // Equivalent to AGG's rasterizer_sl_no_clip class.
+// RasterizerSlNoClip forwards line segments directly without clipping.
 type RasterizerSlNoClip struct {
 	x1, y1 int
 }
 
 // NewRasterizerSlNoClip creates a new no-clip rasterizer
+// NewRasterizerSlNoClip creates the pass-through clipper used when clipping is disabled.
 func NewRasterizerSlNoClip() *RasterizerSlNoClip {
 	return &RasterizerSlNoClip{}
 }
