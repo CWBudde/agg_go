@@ -102,7 +102,8 @@ func (d *demo) Render(ctx *agg.Context) {
 	slAdapter := &scanlineWrapperP8{sl: sl}
 	rasAdapter := &rasterizerAdapter{ras: ras}
 
-	rng := rand.New(rand.NewSource(42))
+	// Use seed 1 to match C++'s implicit srand(1) default.
+	rng := rand.New(rand.NewSource(1))
 	for i := 0; i < 10; i++ {
 		cx := float64(rng.Intn(width))
 		cy := float64(rng.Intn(height))
@@ -120,21 +121,17 @@ func (d *demo) Render(ctx *agg.Context) {
 			}
 			ras.AddVertex(x, y, uint32(cmd))
 		}
-		c := uint8(rng.Intn(200) + 55)
-		gray := color.Gray8[color.Linear]{V: c, A: 255}
+		// Match C++: sgray8(rand() & 0xFF, rand() & 0xFF) — both value and alpha are random.
+		v := uint8(rng.Intn(256))
+		a := uint8(rng.Intn(256))
+		gray := color.Gray8[color.Linear]{V: v, A: a}
 		renscan.RenderScanlinesAASolid(rasAdapter, slAdapter, maskRb, gray)
 	}
 
 	mask := pixfmt.NewAlphaMaskU8WithBuffer(maskBuf, 1, 0, pixfmt.OneComponentMaskU8{})
 
-	// --- Draw checkered background (shows through where mask is transparent) ---
-	for y := 0; y < height; y += 8 {
-		for x := ((y >> 3) & 1) << 3; x < width; x += 16 {
-			agg2d.FillColor(agg.NewColor(0xdf, 0xdf, 0xdf, 0xff))
-			agg2d.Rectangle(float64(x), float64(y), float64(x+7), float64(y+7))
-		}
-	}
-	agg2d.DrawPath(agg.FillOnly)
+	// --- White background (matching C++ rb.clear(srgba8(255,255,255))) ---
+	ctx.Clear(agg.White)
 
 	// --- Render lion through alpha mask ---
 	mainBuf := buffer.NewRenderingBufferWithData[uint8](img.Data, width, height, width*4)
@@ -144,10 +141,45 @@ func (d *demo) Render(ctx *agg.Context) {
 
 	lionPaths := liondemo.Parse()
 
+	// Compute lion bounding rect from vertex data (MoveTo/LineTo only, skip EndPoly).
+	// Matches C++'s agg::bounding_rect used to derive g_base_dx and g_base_dy.
+	minX, minY := 1e9, 1e9
+	maxX, maxY := -1e9, -1e9
+	for _, lp := range lionPaths {
+		lp.Path.Rewind(0)
+		for {
+			x, y, cmd := lp.Path.NextVertex()
+			pathCmd := basics.PathCommand(cmd)
+			if basics.IsStop(pathCmd) {
+				break
+			}
+			if basics.IsMoveTo(pathCmd) || basics.IsLineTo(pathCmd) {
+				if x < minX {
+					minX = x
+				}
+				if y < minY {
+					minY = y
+				}
+				if x > maxX {
+					maxX = x
+				}
+				if y > maxY {
+					maxY = y
+				}
+			}
+		}
+	}
+	baseDX := (maxX - minX) / 2.0
+	baseDY := (maxY - minY) / 2.0
+
+	// Build transform matching C++ alpha_mask with flip_y=true at default angle=0, scale=1:
+	//   C++: translate(-baseDX,-baseDY) → scale(1,1) → rotate(pi) → translate(w/2,h/2)
+	// C++ uses flip_y=true (Y-up coords). In Go (Y-down), replace rotate(pi) with
+	// Scale(-1,1) which flips X only — the Y-up↔Y-down difference cancels the Y flip
+	// from rotate(pi), leaving just the horizontal mirror that the C++ transform intends.
 	agg2d.ResetTransformations()
-	agg2d.Translate(-250, -250)
-	agg2d.Scale(1.0, 1.0)
-	agg2d.Rotate(basics.Pi)
+	agg2d.Translate(-baseDX, -baseDY)
+	agg2d.Scale(-1.0, 1.0)
 	agg2d.Translate(float64(width)/2, float64(height)/2)
 
 	mtx := agg2d.GetTransformations()
@@ -159,13 +191,14 @@ func (d *demo) Render(ctx *agg.Context) {
 		lp.Path.Rewind(0)
 		for {
 			x, y, cmd := lp.Path.NextVertex()
-			if basics.IsStop(basics.PathCommand(cmd)) {
+			pathCmd := basics.PathCommand(cmd)
+			if basics.IsStop(pathCmd) {
 				break
 			}
 			tx, ty := mtx.Transform(x, y)
-			if basics.IsMoveTo(basics.PathCommand(cmd)) {
+			if basics.IsMoveTo(pathCmd) {
 				ras.AddVertex(tx, ty, uint32(basics.PathCmdMoveTo))
-			} else if basics.IsLineTo(basics.PathCommand(cmd)) {
+			} else if basics.IsLineTo(pathCmd) {
 				ras.AddVertex(tx, ty, uint32(basics.PathCmdLineTo))
 			}
 		}
