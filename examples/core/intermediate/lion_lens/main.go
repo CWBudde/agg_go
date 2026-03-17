@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	llWidth  = 800
+	llWidth  = 500
 	llHeight = 600
 
 	// Default lens parameters.

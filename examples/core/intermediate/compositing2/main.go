@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	width  = 800
-	height = 600
+	width  = 400
+	height = 320
 )
 
 // drawRadialGradientCircle draws a circle filled with a radial gradient from c1 to c2.

@@ -156,10 +156,10 @@ type demo struct{}
 
 func (d *demo) Render(ctx *agg.Context) {
 	const (
-		canvasW, canvasH = 800, 600
+		canvasW, canvasH = 700, 530
 		// Default control values matching WASM demo defaults
-		centerX   = 400.0
-		centerY   = 300.0
+		centerX   = 350.0
+		centerY   = 265.0
 		phase     = 0.0
 		angle     = 20.0
 		scale     = 1.0
@@ -262,7 +262,7 @@ func (d *demo) Render(ctx *agg.Context) {
 func main() {
 	demorunner.Run(demorunner.Config{
 		Title:  "Distortions",
-		Width:  800,
-		Height: 600,
+		Width:  700,
+		Height: 530,
 	}, &demo{})
 }

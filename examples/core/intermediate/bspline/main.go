@@ -79,5 +79,5 @@ func maxInt(a, b int) int {
 }
 
 func main() {
-	demorunner.Run(demorunner.Config{Title: "B-Spline", Width: 800, Height: 600}, &demo{})
+	demorunner.Run(demorunner.Config{Title: "B-Spline", Width: 655, Height: 520}, &demo{})
 }

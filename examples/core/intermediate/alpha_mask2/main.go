@@ -23,8 +23,8 @@ import (
 )
 
 const (
-	width  = 800
-	height = 600
+	width  = 440
+	height = 330
 
 	numEllipses = 10
 )

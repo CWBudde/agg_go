@@ -21,8 +21,8 @@ import (
 )
 
 const (
-	width  = 800
-	height = 600
+	width  = 655
+	height = 520
 )
 
 type flashVertex struct {

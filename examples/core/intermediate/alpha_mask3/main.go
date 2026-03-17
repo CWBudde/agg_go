@@ -22,8 +22,8 @@ import (
 )
 
 const (
-	width  = 800
-	height = 600
+	width  = 512
+	height = 400
 )
 
 // Scanline/rasterizer bridge types.

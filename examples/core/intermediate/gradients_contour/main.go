@@ -434,7 +434,7 @@ func main() {
 	d := &demo{polygon: 0, gradient: 1}
 	demorunner.Run(demorunner.Config{
 		Title:  "Gradients Contour (Distance Transform)",
-		Width:  800,
-		Height: 600,
+		Width:  520,
+		Height: 520,
 	}, d)
 }

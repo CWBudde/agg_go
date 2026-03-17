@@ -99,9 +99,9 @@ func drawCellBorder(a *agg.Agg2D, x, y, w, h float64) {
 const (
 	cols    = 3 // join styles
 	rows    = 3 // cap styles
-	cellW   = 220.0
-	cellH   = 180.0
-	margin  = 6.0
+	cellW   = 160.0
+	cellH   = 96.0
+	margin  = 5.0
 	headerH = 22.0 // space for column headers at the top
 
 	totalW = float64(cols)*cellW + float64(cols+1)*margin
@@ -118,7 +118,7 @@ func (d *demo) Render(ctx *agg.Context) {
 	joins := []agg.LineJoin{agg.JoinMiter, agg.JoinRound, agg.JoinBevel}
 	caps := []agg.LineCap{agg.CapButt, agg.CapSquare, agg.CapRound}
 
-	strokeWidth := 20.0
+	strokeWidth := 12.0
 	miterLimit := 4.0
 
 	for row, cap := range caps {

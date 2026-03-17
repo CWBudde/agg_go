@@ -20,8 +20,8 @@ import (
 )
 
 const (
-	width  = 655
-	height = 520
+	width  = 500
+	height = 330
 
 	cx1, cy1 = 170.0, 424.0
 	cx2, cy2 = 13.0, 87.0

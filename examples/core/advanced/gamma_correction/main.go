@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	width  = 800
-	height = 600
+	width  = 400
+	height = 320
 
 	gammaValue    = 1.0
 	gammaThick    = 1.0

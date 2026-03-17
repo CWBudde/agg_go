@@ -112,6 +112,6 @@ func main() {
 	demorunner.Run(demorunner.Config{
 		Title:  "Image Resample",
 		Width:  600,
-		Height: 600,
+		Height: 400,
 	}, &demo{})
 }

@@ -288,23 +288,51 @@ Span generators feed pixel data into `BlendColorHspan`; profile before committin
 - [x] Generate the matching Go-port screenshot corpus for direct demo-level comparison.
       Stored under `tests/visual/reference/go/examples/` on 2026-03-16
       (40 PNGs rendered through the default headless demo runner path).
-- [ ] Generate canonical references from C++ AGG for core scenarios and replace Go-side
+- [x] Generate canonical references from C++ AGG for core scenarios and replace Go-side
       references where C++ output is the ground truth.
 - [ ] Drive the new `tests/visual/demo_parity_test.go` corpus to green.
-      Current status on 2026-03-16: all 40 imported demo pairs fail parity, split into
-      dimension mismatches and same-size visual mismatches.
-  - [ ] Fix demo frame/dimension mismatches against C++ output:
-        `aa_demo`, `alpha_mask`, `alpha_mask2`, `alpha_mask3`, `bezier_div`, `blur`,
-        `bspline`, `circles`, `component_rendering`, `compositing`, `compositing2`,
-        `conv_contour`, `conv_stroke`, `distortions`, `flash_rasterizer`,
-        `flash_rasterizer2`, `gamma_correction`, `gamma_ctrl`, `gouraud`,
-        `gouraud_mesh`, `gradients`, `gradients_contour`, `image1`, `image_alpha`,
-        `image_filters`, `image_filters2`, `image_fltr_graph`, `image_perspective`,
-        `image_resample`, `line_patterns`, `lion`, `lion_lens`, `lion_outline`.
-  - [ ] Fix same-size but visually divergent demo outputs:
-        `blend_color`, `conv_dash_marker`, `gamma_tuner`, `gradient_focal`,
-        `graph_test`, `idea`, `line_patterns_clip`.
-- [ ] Expand C++-generated visual reference set:
+  - Fix demo frame mismatches against C++ output:
+    - [ ] `aa_demo`
+    - [ ] `alpha_mask`
+    - [ ] `alpha_mask2`
+    - [ ] `alpha_mask3`
+    - [ ] `bezier_div`
+    - [ ] `blur`
+    - [ ] `bspline`
+    - [ ] `circles`
+    - [ ] `component_rendering`
+    - [ ] `compositing`
+    - [ ] `compositing2`
+    - [ ] `conv_contour`
+    - [ ] `conv_stroke`
+    - [ ] `distortions`
+    - [ ] `flash_rasterizer`
+    - [ ] `flash_rasterizer2`
+    - [ ] `gamma_correction`
+    - [ ] `gamma_ctrl`
+    - [ ] `gouraud`
+    - [ ] `gouraud_mesh`
+    - [ ] `gradients`
+    - [ ] `gradients_contour`
+    - [ ] `image1`
+    - [ ] `image_alpha`
+    - [ ] `image_filters`
+    - [ ] `image_filters2`
+    - [ ] `image_fltr_graph`
+    - [ ] `image_perspective`
+    - [ ] `image_resample`
+    - [ ] `line_patterns`
+    - [ ] `lion`
+    - [ ] `lion_lens`
+    - [ ] `lion_outline`
+    - [ ] `blend_color`
+    - [ ] `conv_dash_marker`
+    - [ ] `gamma_tuner`
+    - [ ] `gradient_focal`
+    - [ ] `graph_test`
+    - [ ] `idea`
+    - [ ] `line_patterns_clip`
+- [x] Expand C++-generated visual reference set:
   - basic shapes and AA edge cases
   - gradients, text rendering, other parity-critical scenarios
 - [x] Expand visual coverage by category (partial — parity-critical areas done):
@@ -411,6 +439,21 @@ Triage each: fully port, replace with Go-idiomatic equivalent, or defer with rat
 - [x] `pattern_resample` (web): added or fixed draggable quad handles and mouse interaction wiring.
 - [x] `rasterizer_compound` (web): fixed upside-down/odd glyph rendering by applying upstream `flip_y` parity and centering the original 440x330 scene for closer standalone/C++ alignment.
 - [ ] For all above: add per-demo parity notes (standalone vs web) plus a minimal verification path (render smoke and, where practical, non-empty or image-hash threshold checks).
+- [ ] **FreeType raster glyph vertical baseline bug**: When using `RasterFontCache` with FreeType,
+      glyphs with small vertical extent (e.g. `.`, `,`, `-`) are rendered at the wrong Y position —
+      the period in "0.2" appears at cap-height instead of the baseline. The issue is in the glyph
+      bitmap positioning pipeline: `InitEmbeddedAdaptors` passes `glyph.Bounds` to
+      `NewSerializedScanlinesAdaptorAA`, and `glyphBitmapRasterizer.SweepScanline` computes
+      `scanY = bounds.Y1 + offsetY + row`. If `Bounds.Y1` does not correctly encode the glyph's
+      Y-bearing relative to the baseline (as set by the FreeType engine in
+      `internal/font/freetype/engine.go` during glyph caching), short glyphs get vertically
+      misplaced. Compare with how C++ AGG's `font_cache_manager::init_embedded_adaptors` uses
+      `glyph->bounds` for gray8 data — the Go port may be computing or storing `Bounds.Y1/Y2`
+      differently from the C++ original.
+      **Tests needed**: Add a pixel-level regression test that renders a string containing mixed-height
+      glyphs (e.g. "0.2 H,x-y") with `RasterFontCache` and asserts that the period/comma/hyphen
+      pixels fall within the baseline-to-descender band, not above x-height. A visual golden-image
+      test comparing against C++ AGG output for the same string and font size would be ideal.
 
 ### 9.6 Exit criteria
 

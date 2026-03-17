@@ -5,6 +5,10 @@ import (
 	"math"
 
 	agg "github.com/MeKo-Christian/agg_go"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	icolor "github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/ctrl/checkbox"
+	"github.com/MeKo-Christian/agg_go/internal/ctrl/slider"
 	"github.com/MeKo-Christian/agg_go/internal/gamma"
 )
 
@@ -64,9 +68,85 @@ func (s *State) Advance() {
 	s.Clamp()
 }
 
+// ctrlIface is the minimal vertex-source interface shared by checkbox and slider controls.
+type ctrlIface interface {
+	NumPaths() uint
+	Rewind(pathID uint)
+	Vertex() (x, y float64, cmd basics.PathCommand)
+	Color(pathID uint) icolor.RGBA
+}
+
+// ctrlPathAdapter bridges ctrlIface to the rasterizer's vertex-source interface.
+type ctrlPathAdapter struct {
+	ctrl ctrlIface
+}
+
+func (a *ctrlPathAdapter) Rewind(pathID uint32) { a.ctrl.Rewind(uint(pathID)) }
+func (a *ctrlPathAdapter) Vertex(x, y *float64) uint32 {
+	vx, vy, cmd := a.ctrl.Vertex()
+	*x, *y = vx, vy
+	return uint32(cmd)
+}
+
+// linearToSRGB converts a linear float color component to an sRGB-encoded uint8,
+// matching the conversion C++ AGG applies when constructing srgba8 from rgba.
+func linearToSRGB(v float64) uint8 {
+	if v <= 0 {
+		return 0
+	}
+	if v >= 1 {
+		return 255
+	}
+	var s float64
+	if v <= 0.0031308 {
+		s = 12.92 * v
+	} else {
+		s = 1.055*math.Pow(v, 1.0/2.4) - 0.055
+	}
+	return uint8(s*255 + 0.5)
+}
+
+func renderCtrl(ag *agg.Agg2D, ctrl ctrlIface) {
+	ras := ag.GetInternalRasterizer()
+	adapter := &ctrlPathAdapter{ctrl: ctrl}
+	for pathID := uint(0); pathID < ctrl.NumPaths(); pathID++ {
+		ras.Reset()
+		ras.AddPath(adapter, uint32(pathID))
+		c := ctrl.Color(pathID)
+		// Alpha stays linear (sRGB does not gamma-encode alpha).
+		var a uint8
+		if c.A <= 0 {
+			a = 0
+		} else if c.A >= 1 {
+			a = 255
+		} else {
+			a = uint8(c.A*255 + 0.5)
+		}
+		ag.RenderRasterizerWithColor(agg.NewColor(linearToSRGB(c.R), linearToSRGB(c.G), linearToSRGB(c.B), a))
+	}
+}
+
 func Draw(ctx *agg.Context, st State) {
 	st.Clamp()
 	ctx.Clear(agg.White)
+
+	a := ctx.GetAgg2D()
+
+	// Render UI controls (matching C++ on_draw initial render_ctrl calls).
+	rotateCb := checkbox.NewDefaultCheckboxCtrl(10, 3, "Rotate", false)
+	rotateCb.SetChecked(st.Rotate)
+	evenOddCb := checkbox.NewDefaultCheckboxCtrl(60, 3, "Even-Odd", false)
+	evenOddCb.SetChecked(st.EvenOdd)
+	draftCb := checkbox.NewDefaultCheckboxCtrl(130, 3, "Draft", false)
+	draftCb.SetChecked(st.Draft)
+	roundoffCb := checkbox.NewDefaultCheckboxCtrl(175, 3, "Roundoff", false)
+	roundoffCb.SetChecked(st.Roundoff)
+	angleSlider := slider.NewSliderCtrl(10, 21, 240, 27, false)
+	angleSlider.SetLabel("Step=%4.3f degree")
+	angleSlider.SetValue(st.AngleDelta)
+	for _, c := range []ctrlIface{rotateCb, evenOddCb, draftCb, roundoffCb, angleSlider} {
+		renderCtrl(a, c)
+	}
 
 	scale, offX, offY := fitFrame(ctx.Width(), ctx.Height())
 	angle := st.Angle * math.Pi / 180.0
@@ -75,7 +155,6 @@ func Draw(ctx *agg.Context, st State) {
 	centerX := offX + (baseWidth*0.5)*scale
 	centerY := offY + (baseHeight*0.5+10.0)*scale
 
-	a := ctx.GetAgg2D()
 	a.FillEvenOdd(st.EvenOdd)
 
 	ras := a.GetInternalRasterizer()

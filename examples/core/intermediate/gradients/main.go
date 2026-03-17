@@ -104,7 +104,7 @@ func (d *demo) Render(ctx *agg.Context) {
 func main() {
 	demorunner.Run(demorunner.Config{
 		Title:  "Gradients",
-		Width:  800,
-		Height: 600,
+		Width:  500,
+		Height: 330,
 	}, &demo{})
 }

@@ -69,7 +69,7 @@ func (d *demo) Render(ctx *agg.Context) {
 	agg2d.ClosePolygon()
 
 	agg2d.Scale(4.0, -4.0)
-	agg2d.Translate(150, 400)
+	agg2d.Translate(150, 230)
 
 	// Draw shadow (dark fill)
 	agg2d.FillColor(agg.NewColor(25, 25, 25, 255))
@@ -148,5 +148,5 @@ func transposePixels(pixels [][]color.RGBA8[color.Linear]) [][]color.RGBA8[color
 }
 
 func main() {
-	demorunner.Run(demorunner.Config{Title: "Blur", Width: 800, Height: 600}, &demo{})
+	demorunner.Run(demorunner.Config{Title: "Blur", Width: 440, Height: 330}, &demo{})
 }

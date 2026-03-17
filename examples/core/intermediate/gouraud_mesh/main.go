@@ -89,7 +89,7 @@ func (d *demo) Render(ctx *agg.Context) {
 func main() {
 	demorunner.Run(demorunner.Config{
 		Title:  "Gouraud Mesh",
-		Width:  800,
-		Height: 600,
+		Width:  400,
+		Height: 400,
 	}, &demo{})
 }

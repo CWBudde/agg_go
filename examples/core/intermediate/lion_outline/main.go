@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	loWidth  = 800
-	loHeight = 600
+	loWidth  = 512
+	loHeight = 512
 
 	// Default values matching the WASM demo initial state.
 	outlineWidth = 1.0

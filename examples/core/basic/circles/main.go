@@ -43,5 +43,5 @@ func (d *demo) Render(ctx *agg.Context) {
 }
 
 func main() {
-	demorunner.Run(demorunner.Config{Title: "Circles", Width: 320, Height: 200}, &demo{})
+	demorunner.Run(demorunner.Config{Title: "Circles", Width: 400, Height: 320}, &demo{})
 }

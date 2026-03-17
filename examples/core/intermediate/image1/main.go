@@ -292,12 +292,9 @@ func main() {
 		panic(err)
 	}
 
-	canvasW := srcImg.Width() + 20
-	canvasH := srcImg.Height() + 60
-
 	demorunner.Run(demorunner.Config{
 		Title:  "Image1",
-		Width:  canvasW,
-		Height: canvasH,
+		Width:  655,
+		Height: 520,
 	}, &demo{srcImg: srcImg})
 }

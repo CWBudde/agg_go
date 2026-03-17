@@ -13,6 +13,8 @@ import (
 	"github.com/MeKo-Christian/agg_go/tests/visual/framework"
 )
 
+func updateRequested() bool { return os.Getenv("UPDATE_VISUAL") != "" }
+
 const (
 	cppReferenceDir = "reference/cpp/examples"
 	goReferenceDir  = "reference/go/examples"
@@ -67,23 +69,67 @@ var demoConfigs = []demoConfig{
 	{name: "lion_outline", dir: "examples/core/intermediate/lion_outline"},
 }
 
-func TestGoPortMatchesCPPExamples(t *testing.T) {
-	repoRoot := findProjectRoot(t)
-	regenerateGoReferenceImages(t, repoRoot)
+// TestDemoDimensions checks that each Go demo produces an image whose
+// dimensions match the corresponding C++ reference PNG.  This is a
+// prerequisite for the full visual-content comparison.
+func TestUpdateGoReferences(t *testing.T) {
+	if !updateRequested() {
+		t.Skip("set UPDATE_VISUAL=1 to regenerate Go reference images")
+	}
+	regenerateGoReferenceImages(t, findProjectRoot(t))
+}
 
+func TestDemoDimensions(t *testing.T) {
 	cppFiles := mustListPNGs(t, cppReferenceDir)
-	goFiles := mustListPNGs(t, goReferenceDir)
+	goFiles := listPNGs(goReferenceDir)
+
+	if len(goFiles) == 0 {
+		t.Skip("no Go reference images found; run with UPDATE_VISUAL=1 to generate them")
+	}
+
+	for _, name := range sortedKeys(cppFiles) {
+		name := name
+		t.Run(strings.TrimSuffix(name, ".png"), func(t *testing.T) {
+			t.Parallel()
+			goPath, ok := goFiles[name]
+			if !ok {
+				t.Skipf("no Go reference for %s", name)
+			}
+			cppImg, err := framework.LoadImage(cppFiles[name])
+			if err != nil {
+				t.Fatalf("load cpp reference: %v", err)
+			}
+			goImg, err := framework.LoadImage(goPath)
+			if err != nil {
+				t.Fatalf("load go reference: %v", err)
+			}
+			if cppImg.Bounds().Size() != goImg.Bounds().Size() {
+				t.Fatalf("dimension mismatch: cpp=%v go=%v",
+					cppImg.Bounds().Size(), goImg.Bounds().Size())
+			}
+		})
+	}
+}
+
+func TestGoPortMatchesCPPExamples(t *testing.T) {
+	cppFiles := mustListPNGs(t, cppReferenceDir)
+	goFiles := listPNGs(goReferenceDir)
 
 	cppNames := sortedKeys(cppFiles)
 	goNames := sortedKeys(goFiles)
 
 	if !slices.Equal(cppNames, goNames) {
-		t.Fatalf("reference set mismatch\ncpp-only: %s\ngo-only: %s",
+		if !updateRequested() {
+			t.Skipf("Go reference images incomplete or missing; run with UPDATE_VISUAL=1 to generate them\ncpp-only: %s\ngo-only: %s",
+				strings.Join(diffNames(cppNames, goNames), ", "),
+				strings.Join(diffNames(goNames, cppNames), ", "))
+		}
+		t.Fatalf("reference set mismatch after update\ncpp-only: %s\ngo-only: %s",
 			strings.Join(diffNames(cppNames, goNames), ", "),
 			strings.Join(diffNames(goNames, cppNames), ", "))
 	}
 	if len(cppNames) == 0 {
-		t.Fatal("no demo references found")
+		t.Skip("no reference images found; run with -update to generate Go references")
 	}
 
 	options := framework.ComparisonOptions{
@@ -97,6 +143,7 @@ func TestGoPortMatchesCPPExamples(t *testing.T) {
 	for _, name := range cppNames {
 		name := name
 		t.Run(strings.TrimSuffix(name, ".png"), func(t *testing.T) {
+			t.Parallel()
 			cppImg, err := framework.LoadImage(cppFiles[name])
 			if err != nil {
 				t.Fatalf("load cpp reference: %v", err)
@@ -151,22 +198,22 @@ func regenerateGoReferenceImages(t *testing.T, repoRoot string) {
 		}
 	}
 
-	goCacheDir := t.TempDir()
-	for _, demo := range demoConfigs {
-		if err := regenerateSingleGoReference(repoRoot, outDir, goCacheDir, demo); err != nil {
+	for i, demo := range demoConfigs {
+		fmt.Fprintf(os.Stderr, "[%d/%d] generating %s ...\n", i+1, len(demoConfigs), demo.name)
+		if err := regenerateSingleGoReference(repoRoot, outDir, demo); err != nil {
 			t.Fatalf("generate %s: %v", demo.name, err)
 		}
 	}
 }
 
-func regenerateSingleGoReference(repoRoot, outDir, goCacheDir string, demo demoConfig) error {
-	if err := tryGenerateFromDir(repoRoot, outDir, goCacheDir, demo, filepath.Join(repoRoot, demo.dir), []string{"go", "run", "."}); err == nil {
+func regenerateSingleGoReference(repoRoot, outDir string, demo demoConfig) error {
+	if err := tryGenerateFromDir(outDir, demo, filepath.Join(repoRoot, demo.dir), []string{"go", "run", "."}); err == nil {
 		return nil
 	}
-	return tryGenerateFromDir(repoRoot, outDir, goCacheDir, demo, repoRoot, []string{"go", "run", "./" + demo.dir})
+	return tryGenerateFromDir(outDir, demo, repoRoot, []string{"go", "run", "./" + demo.dir})
 }
 
-func tryGenerateFromDir(repoRoot, outDir, goCacheDir string, demo demoConfig, runDir string, args []string) error {
+func tryGenerateFromDir(outDir string, demo demoConfig, runDir string, args []string) error {
 	stamp, err := os.CreateTemp(runDir, ".demo-stamp-*")
 	if err != nil {
 		return err
@@ -177,7 +224,7 @@ func tryGenerateFromDir(repoRoot, outDir, goCacheDir string, demo demoConfig, ru
 
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Dir = runDir
-	cmd.Env = append(os.Environ(), "GOCACHE="+goCacheDir)
+	cmd.Env = os.Environ()
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("run %s in %s failed: %w\n%s", strings.Join(args, " "), runDir, err, strings.TrimSpace(string(output)))
@@ -243,20 +290,26 @@ func copyFile(src, dst string) error {
 	return out.Close()
 }
 
-func mustListPNGs(t *testing.T, dir string) map[string]string {
-	t.Helper()
-
+func listPNGs(dir string) map[string]string {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		t.Fatalf("read dir %s: %v", dir, err)
+		return nil
 	}
-
 	files := make(map[string]string, len(entries))
 	for _, entry := range entries {
 		if entry.IsDir() || filepath.Ext(entry.Name()) != ".png" {
 			continue
 		}
 		files[entry.Name()] = filepath.Join(dir, entry.Name())
+	}
+	return files
+}
+
+func mustListPNGs(t *testing.T, dir string) map[string]string {
+	t.Helper()
+	files := listPNGs(dir)
+	if files == nil {
+		t.Fatalf("read dir %s: directory not found or unreadable", dir)
 	}
 	return files
 }

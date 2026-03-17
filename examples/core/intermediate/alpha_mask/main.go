@@ -23,8 +23,8 @@ import (
 )
 
 const (
-	width  = 800
-	height = 600
+	width  = 512
+	height = 400
 )
 
 // Adapters to bridge internal rasterizer/scanline to renderer/scanline interfaces.

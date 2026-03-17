@@ -301,7 +301,11 @@ func (s *SliderCtrl) Rewind(pathID uint) {
 func (s *SliderCtrl) Vertex() (x, y float64, cmd basics.PathCommand) {
 	switch s.currentPath {
 	case 2: // Text path
-		return s.textRenderer.Vertex()
+		x, y, cmd = s.textRenderer.Vertex()
+		if !basics.IsStop(cmd) {
+			s.TransformXY(&x, &y)
+		}
+		return x, y, cmd
 
 	case 3, 4: // Ellipse paths (pointer preview and pointer)
 		cmd = s.ellipse.Vertex(&x, &y)
@@ -400,25 +404,28 @@ func (s *SliderCtrl) generateBackgroundPath() {
 }
 
 func (s *SliderCtrl) generateTrianglePath() {
-	// Triangle shape indicating slider direction
+	// Triangle shape indicating slider direction.
+	// C++ uses flipY=true so vertices at (x1,y1),(x2,y1),(x2,y2) become
+	// (x1,y2),(x2,y2),(x2,y1) after ctrl transform — i.e., the base is at y2.
+	// In Go (flipY=false) we emit the post-transform vertices directly.
 	if s.descending {
 		s.vertices[0] = s.X1()
-		s.vertices[1] = s.Y1()
+		s.vertices[1] = s.Y2()
 		s.vertices[2] = s.X2()
-		s.vertices[3] = s.Y1()
+		s.vertices[3] = s.Y2()
 		s.vertices[4] = s.X1()
-		s.vertices[5] = s.Y2()
+		s.vertices[5] = s.Y1()
 		s.vertices[6] = s.X1()
-		s.vertices[7] = s.Y1()
+		s.vertices[7] = s.Y2()
 	} else {
 		s.vertices[0] = s.X1()
-		s.vertices[1] = s.Y1()
+		s.vertices[1] = s.Y2()
 		s.vertices[2] = s.X2()
-		s.vertices[3] = s.Y1()
+		s.vertices[3] = s.Y2()
 		s.vertices[4] = s.X2()
-		s.vertices[5] = s.Y2()
+		s.vertices[5] = s.Y1()
 		s.vertices[6] = s.X1()
-		s.vertices[7] = s.Y1()
+		s.vertices[7] = s.Y2()
 	}
 	s.vertexCount = 4
 }
@@ -428,8 +435,10 @@ func (s *SliderCtrl) generateTextPath() {
 		// Format the label with current value (matching C++ behavior)
 		text := fmt.Sprintf(s.label, s.Value())
 		s.textRenderer.SetText(text)
-		// Position text at start of slider with proper size
-		s.textRenderer.SetPosition(s.X1(), s.Y1())
+		// C++ positions text at (x1, y1) then flipY=true ctrl moves it to y2.
+		// In Go (flipY=false) we position directly at y2 so text renders upward
+		// into the slider body, matching the C++ visual result.
+		s.textRenderer.SetPosition(s.X1(), s.Y2())
 		s.textRenderer.SetSize((s.Y2() - s.Y1()) * 1.2)
 		s.textRenderer.Rewind(0)
 	} else {

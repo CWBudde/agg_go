@@ -101,7 +101,12 @@ test-bench:
 # Run visual regression tests
 test-visual:
     @echo "Running visual tests..."
-    go test ./tests/visual/...
+    go test -timeout 5m ./tests/visual/...
+
+# Regenerate Go reference images, then run visual tests
+update-visual:
+    @echo "Regenerating Go reference images and running visual tests..."
+    UPDATE_VISUAL=1 go test -v -timeout 30m -run TestUpdateGoReferences ./tests/visual/
 
 # Run SIMD-focused tests
 test-simd:

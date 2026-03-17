@@ -262,8 +262,8 @@ func main() {
 	d := newDemo()
 	demorunner.Run(demorunner.Config{
 		Title:  "Flash Rasterizer 2 (Style Decomposition)",
-		Width:  800,
-		Height: 600,
+		Width:  655,
+		Height: 520,
 	}, d)
 }
 
