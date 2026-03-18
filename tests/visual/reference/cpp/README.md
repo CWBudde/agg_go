@@ -11,7 +11,7 @@ Capture details:
 
 Current scope:
 
-- 40 example screenshots imported successfully.
+- 60 example screenshots imported successfully.
 - This is an initial canonical C++ corpus, not yet a complete mirror of the
   entire AGG example set.
 - These files are intended to drive visual-parity work in Phase 8.2 and,

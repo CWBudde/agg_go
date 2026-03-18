@@ -69,7 +69,7 @@ func main() {
 
 	demorunner.Run(demorunner.Config{
 		Title:  "Pattern Perspective",
-		Width:  800,
+		Width:  600,
 		Height: 600,
 	}, d)
 }

@@ -28,6 +28,8 @@ type demoConfig struct {
 
 var demoConfigs = []demoConfig{
 	{name: "aa_demo", dir: "examples/core/intermediate/aa_demo"},
+	{name: "aa_test", dir: "examples/core/intermediate/aa_test"},
+	{name: "alpha_gradient", dir: "examples/core/intermediate/alpha_gradient"},
 	{name: "alpha_mask", dir: "examples/core/intermediate/alpha_mask"},
 	{name: "alpha_mask2", dir: "examples/core/intermediate/alpha_mask2"},
 	{name: "alpha_mask3", dir: "examples/core/intermediate/alpha_mask3"},
@@ -62,11 +64,29 @@ var demoConfigs = []demoConfig{
 	{name: "image_fltr_graph", dir: "examples/core/intermediate/image_fltr_graph"},
 	{name: "image_perspective", dir: "examples/core/intermediate/image_perspective"},
 	{name: "image_resample", dir: "examples/core/intermediate/image_resample"},
+	{name: "image_transforms", dir: "examples/core/intermediate/image_transforms"},
 	{name: "line_patterns", dir: "examples/core/intermediate/line_patterns"},
 	{name: "line_patterns_clip", dir: "examples/core/intermediate/line_patterns_clip"},
+	{name: "line_thickness", dir: "examples/core/intermediate/line_thickness"},
 	{name: "lion", dir: "examples/core/intermediate/lion"},
 	{name: "lion_lens", dir: "examples/core/intermediate/lion_lens"},
 	{name: "lion_outline", dir: "examples/core/intermediate/lion_outline"},
+	{name: "mol_view", dir: "examples/core/intermediate/mol_view"},
+	{name: "multi_clip", dir: "examples/core/basic/multi_clip"},
+	{name: "pattern_fill", dir: "examples/core/intermediate/pattern_fill"},
+	{name: "pattern_perspective", dir: "examples/core/intermediate/pattern_perspective"},
+	{name: "pattern_resample", dir: "examples/core/intermediate/pattern_resample"},
+	{name: "perspective", dir: "examples/core/advanced/perspective"},
+	{name: "polymorphic_renderer", dir: "examples/core/intermediate/polymorphic_renderer"},
+	{name: "raster_text", dir: "examples/core/intermediate/raster_text"},
+	{name: "rasterizer_compound", dir: "examples/core/intermediate/rasterizer_compound"},
+	{name: "rasterizers", dir: "examples/core/intermediate/rasterizers"},
+	{name: "rasterizers2", dir: "examples/core/intermediate/rasterizers2"},
+	{name: "rounded_rect", dir: "examples/core/basic/rounded_rect"},
+	{name: "scanline_boolean", dir: "examples/core/intermediate/scanline_boolean"},
+	{name: "scanline_boolean2", dir: "examples/core/intermediate/scanline_boolean2"},
+	{name: "simple_blur", dir: "examples/core/basic/simple_blur"},
+	{name: "trans_polar", dir: "examples/core/intermediate/trans_polar"},
 }
 
 // TestDemoDimensions checks that each Go demo produces an image whose

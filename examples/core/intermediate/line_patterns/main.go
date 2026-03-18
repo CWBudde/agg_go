@@ -21,7 +21,7 @@ func (d *demo) Render(ctx *agg.Context) {
 func main() {
 	demorunner.Run(demorunner.Config{
 		Title:  "Line Patterns",
-		Width:  520,
-		Height: 520,
+		Width:  500,
+		Height: 450,
 	}, &demo{})
 }

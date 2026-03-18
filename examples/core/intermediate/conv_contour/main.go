@@ -15,8 +15,8 @@ import (
 )
 
 const (
-	width  = 600
-	height = 400
+	width  = 440
+	height = 330
 )
 
 // buildGlyphPath constructs the "a" glyph from the original AGG example.

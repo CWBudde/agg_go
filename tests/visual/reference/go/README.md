@@ -15,7 +15,7 @@ Capture details:
 
 Current scope:
 
-- 40 example screenshots imported successfully.
+- 60 example screenshots imported successfully.
 - The set mirrors the current initial C++ screenshot corpus under
   `tests/visual/reference/cpp/examples/`.
 - These files are the current Go-port outputs for direct visual comparison

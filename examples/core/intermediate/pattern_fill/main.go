@@ -22,8 +22,8 @@ import (
 )
 
 const (
-	canvasW      = 800
-	canvasH      = 600
+	canvasW      = 640
+	canvasH      = 480
 	patternSize  = 30
 	patternAngle = 0.0 // degrees
 	polygonAngle = 0.0 // degrees

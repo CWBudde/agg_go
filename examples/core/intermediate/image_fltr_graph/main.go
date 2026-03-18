@@ -32,7 +32,7 @@ func (d *demo) Render(ctx *agg.Context) {
 func main() {
 	demorunner.Run(demorunner.Config{
 		Title:  "Image Filter Graph",
-		Width:  400,
-		Height: 320,
+		Width:  780,
+		Height: 300,
 	}, newDemo())
 }

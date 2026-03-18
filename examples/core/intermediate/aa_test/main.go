@@ -71,5 +71,5 @@ func (d *demo) Render(ctx *agg.Context) {
 }
 
 func main() {
-	demorunner.Run(demorunner.Config{Title: "AA Test", Width: 800, Height: 600}, &demo{})
+	demorunner.Run(demorunner.Config{Title: "AA Test", Width: 480, Height: 350}, &demo{})
 }

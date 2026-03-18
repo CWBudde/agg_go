@@ -69,7 +69,7 @@ func drawHandles(agg2d *agg.Agg2D, x, y []float64, c agg.Color) {
 func main() {
 	demorunner.Run(demorunner.Config{
 		Title:  "Scanline Boolean",
-		Width:  900,
-		Height: 420,
+		Width:  800,
+		Height: 600,
 	}, &demo{})
 }

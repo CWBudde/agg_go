@@ -35,5 +35,5 @@ func (d *demo) Render(ctx *agg.Context) {
 }
 
 func main() {
-	demorunner.Run(demorunner.Config{Title: "Rounded Rectangle Demo", Width: 640, Height: 480}, &demo{})
+	demorunner.Run(demorunner.Config{Title: "Rounded Rectangle Demo", Width: 600, Height: 400}, &demo{})
 }

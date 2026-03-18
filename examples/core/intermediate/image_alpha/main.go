@@ -321,7 +321,7 @@ func main() {
 
 	demorunner.Run(demorunner.Config{
 		Title:  "Image Alpha",
-		Width:  500,
-		Height: 600,
+		Width:  320,
+		Height: 300,
 	}, &demo{srcImg: srcImg})
 }

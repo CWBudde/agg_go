@@ -179,5 +179,5 @@ func (d *demo) Render(ctx *agg.Context) {
 }
 
 func main() {
-	demorunner.Run(demorunner.Config{Title: "Alpha Mask 2", Width: width, Height: height}, &demo{})
+	demorunner.Run(demorunner.Config{Title: "Alpha Mask 2", Width: 512, Height: 400}, &demo{})
 }

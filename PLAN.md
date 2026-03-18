@@ -283,20 +283,23 @@ Span generators feed pixel data into `BlendColorHspan`; profile before committin
       (56 PNGs copied from `tests/visual/reference/primitives/`).
 - [x] Import an initial canonical C++ screenshot corpus from precompiled AGG demos.
       Stored under `tests/visual/reference/cpp/examples/` on 2026-03-16
-      (40 PNGs captured from `../agg-2.6/build/examples/` via the upstream X11
+      (60 PNGs captured from `../agg-2.6/build/examples/` via the upstream X11
       `F2` screenshot path).
 - [x] Generate the matching Go-port screenshot corpus for direct demo-level comparison.
       Stored under `tests/visual/reference/go/examples/` on 2026-03-16
-      (40 PNGs rendered through the default headless demo runner path).
+      (60 PNGs rendered through the default headless demo runner path).
 - [x] Generate canonical references from C++ AGG for core scenarios and replace Go-side
       references where C++ output is the ground truth.
 - [ ] Drive the new `tests/visual/demo_parity_test.go` corpus to green.
   - Fix demo frame mismatches against C++ output:
     - [ ] `aa_demo`
+    - [ ] `aa_test`
+    - [ ] `alpha_gradient`
     - [ ] `alpha_mask`
     - [ ] `alpha_mask2`
     - [ ] `alpha_mask3`
     - [ ] `bezier_div`
+    - [ ] `blend_color`
     - [ ] `blur`
     - [ ] `bspline`
     - [ ] `circles`
@@ -304,34 +307,51 @@ Span generators feed pixel data into `BlendColorHspan`; profile before committin
     - [ ] `compositing`
     - [ ] `compositing2`
     - [ ] `conv_contour`
+    - [ ] `conv_dash_marker`
     - [ ] `conv_stroke`
     - [ ] `distortions`
     - [ ] `flash_rasterizer`
     - [ ] `flash_rasterizer2`
     - [ ] `gamma_correction`
     - [ ] `gamma_ctrl`
-    - [ ] `gouraud`
+    - [ ] `gamma_tuner`
     - [ ] `gouraud_mesh`
-    - [ ] `gradients`
+    - [ ] `gouraud`
+    - [ ] `gradient_focal`
     - [ ] `gradients_contour`
-    - [ ] `image1`
+    - [ ] `gradients`
+    - [ ] `graph_test`
+    - [ ] `idea`
     - [ ] `image_alpha`
     - [ ] `image_filters`
     - [ ] `image_filters2`
     - [ ] `image_fltr_graph`
     - [ ] `image_perspective`
     - [ ] `image_resample`
+    - [ ] `image_transforms`
+    - [ ] `image1`
+    - [ ] `line_patterns_clip`
     - [ ] `line_patterns`
-    - [ ] `lion`
+    - [ ] `line_thickness`
     - [ ] `lion_lens`
     - [ ] `lion_outline`
-    - [ ] `blend_color`
-    - [ ] `conv_dash_marker`
-    - [ ] `gamma_tuner`
-    - [ ] `gradient_focal`
-    - [ ] `graph_test`
-    - [ ] `idea`
-    - [ ] `line_patterns_clip`
+    - [ ] `lion`
+    - [ ] `mol_view`
+    - [ ] `multi_clip`
+    - [ ] `pattern_fill`
+    - [ ] `pattern_perspective`
+    - [ ] `pattern_resample`
+    - [ ] `perspective`
+    - [ ] `polymorphic_renderer`
+    - [ ] `raster_text`
+    - [ ] `rasterizer_compound`
+    - [ ] `rasterizers`
+    - [ ] `rasterizers2`
+    - [ ] `rounded_rect`
+    - [ ] `scanline_boolean`
+    - [ ] `scanline_boolean2`
+    - [ ] `simple_blur`
+    - [ ] `trans_polar`
 - [x] Expand C++-generated visual reference set:
   - basic shapes and AA edge cases
   - gradients, text rendering, other parity-critical scenarios

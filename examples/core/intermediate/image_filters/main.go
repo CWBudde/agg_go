@@ -90,7 +90,7 @@ func createTestImage(w, h int) *agg.Image {
 func main() {
 	demorunner.Run(demorunner.Config{
 		Title:  "Image Filters",
-		Width:  512,
-		Height: 512,
+		Width:  430,
+		Height: 340,
 	}, &demo{})
 }

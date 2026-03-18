@@ -23,6 +23,6 @@ func main() {
 	demorunner.Run(demorunner.Config{
 		Title:  "Image Filters 2",
 		Width:  500,
-		Height: 500,
+		Height: 340,
 	}, newDemo())
 }

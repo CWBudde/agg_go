@@ -20,8 +20,8 @@ import (
 )
 
 const (
-	width  = 500
-	height = 400
+	width  = 400
+	height = 320
 )
 
 // --- Color-array type (implements span.ColorFunction) ---

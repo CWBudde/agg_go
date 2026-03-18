@@ -125,5 +125,5 @@ func applyBlurInsideEllipse(dst, src *agg.Image, cx, cy, rx, ry float64) {
 }
 
 func main() {
-	demorunner.Run(demorunner.Config{Title: "Simple Blur", Width: 800, Height: 600}, &demo{})
+	demorunner.Run(demorunner.Config{Title: "Simple Blur", Width: 512, Height: 400}, &demo{})
 }

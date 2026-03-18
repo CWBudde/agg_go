@@ -25,7 +25,7 @@ type demo struct {
 }
 
 func newDemo() *demo {
-	const width, height = 800, 600
+	const width, height = 600, 600
 
 	lionPaths := liondemo.Parse()
 
@@ -168,7 +168,7 @@ func (d *demo) OnMouseMove(x, y int, btn demorunner.Buttons) bool {
 func main() {
 	demorunner.Run(demorunner.Config{
 		Title:  "Perspective",
-		Width:  800,
+		Width:  600,
 		Height: 600,
 	}, newDemo())
 }
