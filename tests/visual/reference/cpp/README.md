@@ -4,9 +4,8 @@ AGG examples in `../agg-2.6/build/examples/`.
 Capture details:
 
 - Captured on 2026-03-16.
-- Source binaries were run under `Xvfb`.
-- Screenshots were triggered with the upstream X11 `F2` handler, which writes
-  `screenshot.ppm`.
+- Source binaries were run with the direct `--screenshot` flag.
+- The X11 platform code renders offscreen and writes `screenshot.ppm`.
 - The captured `PPM` files were converted to `PNG` and copied into
   `examples/` here.
 

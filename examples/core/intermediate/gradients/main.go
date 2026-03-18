@@ -1,110 +1,231 @@
-// Package main demonstrates AGG gradients functionality with actual rendering.
-// This example creates various gradient-filled shapes and saves them to PNG files.
+// Package main ports AGG's gradients.cpp demo.
 package main
 
 import (
 	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	icol "github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/conv"
+	ctrlbase "github.com/MeKo-Christian/agg_go/internal/ctrl"
+	gammactrl "github.com/MeKo-Christian/agg_go/internal/ctrl/gamma"
+	rboxctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/rbox"
+	splinectrl "github.com/MeKo-Christian/agg_go/internal/ctrl/spline"
+	"github.com/MeKo-Christian/agg_go/internal/shapes"
+	"github.com/MeKo-Christian/agg_go/internal/span"
+	"github.com/MeKo-Christian/agg_go/internal/transform"
+)
+
+const (
+	gradientsWidth  = 512
+	gradientsHeight = 400
+	gradCenterX     = 350.0
+	gradCenterY     = 280.0
 )
 
 type demo struct{}
 
+type simpleVertexSource interface {
+	Rewind(pathID uint)
+	Vertex() (x, y float64, cmd basics.PathCommand)
+}
+
+type rasterVertexSourceAdapter struct {
+	src simpleVertexSource
+}
+
+func (a *rasterVertexSourceAdapter) Rewind(pathID uint32) {
+	a.src.Rewind(uint(pathID))
+}
+
+func (a *rasterVertexSourceAdapter) Vertex(x, y *float64) uint32 {
+	vx, vy, cmd := a.src.Vertex()
+	*x = vx
+	*y = vy
+	return uint32(cmd)
+}
+
+type ellipseSource struct {
+	ellipse *shapes.Ellipse
+}
+
+func (s *ellipseSource) Rewind(pathID uint) {
+	s.ellipse.Rewind(uint32(pathID))
+}
+
+func (s *ellipseSource) Vertex() (x, y float64, cmd basics.PathCommand) {
+	cmd = s.ellipse.Vertex(&x, &y)
+	return x, y, cmd
+}
+
+type gradientColorFunction struct {
+	colors  []icol.RGBA8[icol.Linear]
+	profile []uint8
+}
+
+func (g *gradientColorFunction) Size() int { return 256 }
+
+func (g *gradientColorFunction) ColorAt(index int) icol.RGBA8[icol.Linear] {
+	return g.colors[g.profile[index]]
+}
+
+func toAggColor(c icol.RGBA) agg.Color {
+	clamp := func(v float64) uint8 {
+		switch {
+		case v <= 0:
+			return 0
+		case v >= 1:
+			return 255
+		default:
+			return uint8(v*255.0 + 0.5)
+		}
+	}
+	return agg.NewColor(clamp(c.R), clamp(c.G), clamp(c.B), clamp(c.A))
+}
+
+func renderCtrl(a *agg.Agg2D, c ctrlbase.Ctrl[icol.RGBA]) {
+	ras := a.GetInternalRasterizer()
+	for i := uint(0); i < c.NumPaths(); i++ {
+		ras.Reset()
+		ras.AddPath(&rasterVertexSourceAdapter{src: c}, uint32(i))
+		a.RenderRasterizerWithColor(toAggColor(c.Color(i)))
+	}
+}
+
+func renderSimpleSource(a *agg.Agg2D, src simpleVertexSource, color agg.Color) {
+	ras := a.GetInternalRasterizer()
+	ras.Reset()
+	ras.AddPath(&rasterVertexSourceAdapter{src: src}, 0)
+	a.RenderRasterizerWithColor(color)
+}
+
+func buildColorProfile(
+	splineR, splineG, splineB, splineA *splinectrl.SplineCtrl[icol.RGBA],
+) []icol.RGBA8[icol.Linear] {
+	colors := make([]icol.RGBA8[icol.Linear], 256)
+	for i := 0; i < 256; i++ {
+		colors[i] = icol.RGBA8[icol.Linear]{
+			R: uint8(splineR.Spline()[i]*255.0 + 0.5),
+			G: uint8(splineG.Spline()[i]*255.0 + 0.5),
+			B: uint8(splineB.Spline()[i]*255.0 + 0.5),
+			A: uint8(splineA.Spline()[i]*255.0 + 0.5),
+		}
+	}
+	return colors
+}
+
+func newGammaControl() *gammactrl.GammaCtrl {
+	gc := gammactrl.NewGammaCtrl(10.0, 10.0, 200.0, 165.0, false)
+	gc.SetTextSize(8.0, 0.0)
+	return gc
+}
+
+func newSplineControls() (*splinectrl.SplineCtrl[icol.RGBA], *splinectrl.SplineCtrl[icol.RGBA], *splinectrl.SplineCtrl[icol.RGBA], *splinectrl.SplineCtrl[icol.RGBA]) {
+	splineR := splinectrl.NewSplineCtrlRGBA(210, 10, 460, 45, 6, false)
+	splineG := splinectrl.NewSplineCtrlRGBA(210, 50, 460, 85, 6, false)
+	splineB := splinectrl.NewSplineCtrlRGBA(210, 90, 460, 125, 6, false)
+	splineA := splinectrl.NewSplineCtrlRGBA(210, 130, 460, 165, 6, false)
+
+	splineR.SetBackgroundColor(icol.NewRGBA(1.0, 0.8, 0.8, 1.0))
+	splineG.SetBackgroundColor(icol.NewRGBA(0.8, 1.0, 0.8, 1.0))
+	splineB.SetBackgroundColor(icol.NewRGBA(0.8, 0.8, 1.0, 1.0))
+	splineA.SetBackgroundColor(icol.NewRGBA(1.0, 1.0, 1.0, 1.0))
+
+	splineR.BorderWidth(1.0, 2.0)
+	splineG.BorderWidth(1.0, 2.0)
+	splineB.BorderWidth(1.0, 2.0)
+	splineA.BorderWidth(1.0, 2.0)
+
+	for i := 0; i < 6; i++ {
+		x := float64(i) / 5.0
+		y := 1.0 - x
+		splineR.SetPoint(uint(i), x, y)
+		splineG.SetPoint(uint(i), x, y)
+		splineB.SetPoint(uint(i), x, y)
+		splineA.SetPoint(uint(i), x, 1.0)
+	}
+
+	return splineR, splineG, splineB, splineA
+}
+
+func newRboxControl() *rboxctrl.RboxCtrl[icol.RGBA] {
+	rbox := rboxctrl.NewDefaultRboxCtrl(10.0, 180.0, 200.0, 300.0, false)
+	rbox.SetBorderWidth(2.0, 2.0)
+	rbox.AddItem("Circular")
+	rbox.AddItem("Diamond")
+	rbox.AddItem("Linear")
+	rbox.AddItem("XY")
+	rbox.AddItem("sqrt(XY)")
+	rbox.AddItem("Conic")
+	rbox.SetCurItem(0)
+	return rbox
+}
+
 func (d *demo) Render(ctx *agg.Context) {
-	// Clear background to black
 	ctx.Clear(agg.Black)
 
-	// Demo 1: Linear gradients
+	a := ctx.GetAgg2D()
+	a.ResetTransformations()
 
-	// Horizontal linear gradient (red to blue)
-	ctx.SetLinearGradient(50, 75, 200, 75, agg.Red, agg.Blue)
-	ctx.FillRectangle(50, 50, 150, 50)
+	profileCtrl := newGammaControl()
+	splineR, splineG, splineB, splineA := newSplineControls()
+	rboxCtrl := newRboxControl()
 
-	// Vertical linear gradient (green to yellow)
-	ctx.SetLinearGradient(250, 50, 250, 150, agg.Green, agg.Yellow)
-	ctx.FillRectangle(225, 50, 50, 100)
+	renderCtrl(a, profileCtrl)
+	renderCtrl(a, splineR)
+	renderCtrl(a, splineG)
+	renderCtrl(a, splineB)
+	renderCtrl(a, splineA)
+	renderCtrl(a, rboxCtrl)
 
-	// Diagonal linear gradient (cyan to magenta)
-	ctx.SetLinearGradient(320, 50, 420, 150, agg.Cyan, agg.Magenta)
-	ctx.FillRectangle(300, 50, 120, 100)
-
-	// Demo 2: Linear Gradient with Profile
-
-	// Sharp profile gradient (profile = 0.5)
-	ctx.SetLinearGradientWithProfile(480, 50, 630, 50, agg.Red, agg.Blue, 0.5)
-	ctx.FillRectangle(450, 50, 180, 50)
-
-	// Normal profile gradient (profile = 1.0)
-	ctx.SetLinearGradientWithProfile(480, 120, 630, 120, agg.Red, agg.Blue, 1.0)
-	ctx.FillRectangle(450, 100, 180, 50)
-
-	// Demo 3: Radial gradients
-
-	// Simple radial gradient (white center to black edge)
-	ctx.SetRadialGradient(100, 250, 60, agg.White, agg.Black)
-	ctx.FillEllipse(100, 250, 60, 60)
-
-	// Colored radial gradient (red center to blue edge)
-	ctx.SetRadialGradient(250, 250, 60, agg.Red, agg.Blue)
-	ctx.FillEllipse(250, 250, 60, 60)
-
-	// Radial gradient with sharp profile
-	ctx.SetRadialGradientWithProfile(400, 250, 60, agg.Yellow, agg.Green, 0.3)
-	ctx.FillEllipse(400, 250, 60, 60)
-
-	// Demo 4: Multi-stop Radial Gradients
-
-	// Three-color radial gradient (red -> green -> blue)
-	ctx.SetRadialGradientMultiStop(100, 400, 50, agg.Red, agg.Green, agg.Blue)
-	ctx.FillEllipse(100, 400, 50, 50)
-
-	// Three-color radial gradient (yellow -> cyan -> magenta)
-	ctx.SetRadialGradientMultiStop(250, 400, 50, agg.Yellow, agg.Cyan, agg.Magenta)
-	ctx.FillEllipse(250, 400, 50, 50)
-
-	// Demo 5: Stroke/Line gradients
-
-	// Linear stroke gradient
-	ctx.SetLineWidth(8.0)
-	ctx.SetStrokeLinearGradient(450, 200, 650, 200, agg.Green, agg.Red)
-	ctx.MoveTo(450, 200)
-	ctx.LineTo(650, 200)
-	ctx.Stroke()
-
-	// Radial stroke gradient - draw a circle outline
-	ctx.SetLineWidth(6.0)
-	ctx.SetStrokeRadialGradient(550, 300, 40, agg.Blue, agg.Yellow)
-	ctx.DrawEllipse(550, 300, 40, 40)
-
-	// Demo 6: Mixed shapes with gradients
-
-	// Rounded rectangle with linear gradient
-	ctx.SetLinearGradient(450, 380, 650, 480, agg.RGB(1.0, 0.5, 0.0), agg.RGB(0.5, 0.0, 1.0))
-	ctx.FillRoundedRectangle(450, 380, 200, 100, 20)
-
-	// Rectangle outline with gradient
-	ctx.SetLineWidth(4.0)
-	ctx.SetStrokeLinearGradient(50, 480, 200, 580, agg.RGB(0.0, 1.0, 0.5), agg.RGB(1.0, 0.0, 0.5))
-	ctx.DrawRoundedRectangle(50, 480, 150, 100, 15)
-
-	// Demo 7: Color interpolation test
-
-	// Create a series of rectangles showing color interpolation
-	red := agg.Red
-	blue := agg.Blue
-
-	for i := 0; i < 10; i++ {
-		factor := float64(i) / 9.0
-		interpolatedColor := red.Gradient(blue, factor)
-
-		ctx.SetColor(interpolatedColor)
-		ctx.FillRectangle(50+float64(i)*20, 15, 18, 25)
+	colors := buildColorProfile(splineR, splineG, splineB, splineA)
+	colorFunc := &gradientColorFunction{
+		colors:  colors,
+		profile: profileCtrl.Gamma(),
 	}
+
+	mtx1 := transform.NewTransAffine()
+	mtx1.Multiply(transform.NewTransAffineScaling(1.0))
+	mtx1.Multiply(transform.NewTransAffineRotation(0.0))
+	mtx1.Multiply(transform.NewTransAffineTranslation(gradCenterX, gradCenterY))
+
+	mtxG1 := transform.NewTransAffine()
+	mtxG1.Multiply(transform.NewTransAffineScaling(1.0))
+	mtxG1.Multiply(transform.NewTransAffineScalingXY(1.0, 1.0))
+	mtxG1.Multiply(transform.NewTransAffineRotation(0.0))
+	mtxG1.Multiply(transform.NewTransAffineTranslation(gradCenterX, gradCenterY))
+	mtxG1.Invert()
+
+	ellipse := shapes.NewEllipseWithParams(0, 0, 110, 110, 64, false)
+	ellipsePath := conv.NewConvTransform(&ellipseSource{ellipse: ellipse}, mtx1)
+
+	var gradientFunc span.GradientFunction = span.GradientRadial{}
+	switch rboxCtrl.CurItem() {
+	case 1:
+		gradientFunc = span.GradientDiamond{}
+	case 2:
+		gradientFunc = span.GradientLinearX{}
+	case 3:
+		gradientFunc = span.GradientXY{}
+	case 4:
+		gradientFunc = span.GradientSqrtXY{}
+	case 5:
+		gradientFunc = span.GradientConic{}
+	}
+
+	interpolator := span.NewSpanInterpolatorLinearDefault(mtxG1)
+	spanGen := span.NewSpanGradient(interpolator, gradientFunc, colorFunc, 0, 150)
+
+	ras := a.GetInternalRasterizer()
+	ras.Reset()
+	ras.AddPath(&rasterVertexSourceAdapter{src: ellipsePath}, 0)
+	a.RenderScanlinesAAWithSpanGen(ras, spanGen)
 }
 
 func main() {
 	demorunner.Run(demorunner.Config{
-		Title:  "Gradients",
-		Width:  500,
-		Height: 330,
+		Title:  "AGG gradients with Mach bands compensation",
+		Width:  gradientsWidth,
+		Height: gradientsHeight,
 	}, &demo{})
 }
