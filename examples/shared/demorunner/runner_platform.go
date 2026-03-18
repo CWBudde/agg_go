@@ -162,8 +162,15 @@ func (h *handler) blit() {
 func (h *handler) saveScreenshot() {
 	filename := strings.ReplaceAll(strings.ToLower(h.cfg.Title), " ", "_") + ".png"
 	img := h.ctx.GetImage()
+	src := image.NewRGBA(image.Rect(0, 0, img.Width(), img.Height()))
+	copy(src.Pix, img.Data)
 	goImg := image.NewRGBA(image.Rect(0, 0, img.Width(), img.Height()))
-	copy(goImg.Pix, img.Data)
+	rowBytes := img.Width() * 4
+	for y := 0; y < img.Height(); y++ {
+		srcOff := (img.Height() - 1 - y) * src.Stride
+		dstOff := y * goImg.Stride
+		copy(goImg.Pix[dstOff:dstOff+rowBytes], src.Pix[srcOff:srcOff+rowBytes])
+	}
 	f, err := os.Create(filename)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "screenshot: %v\n", err)

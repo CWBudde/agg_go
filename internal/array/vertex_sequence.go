@@ -23,15 +23,7 @@ func NewLineAAVertex(x, y int) LineAAVertex {
 // validateLineAAVertex checks if the distance between two vertices exceeds the threshold.
 // This is used internally by LineAAVertexSequence without interface type assertions.
 func validateLineAAVertex(v, other LineAAVertex) bool {
-	dx := float64(other.X - v.X)
-	dy := float64(other.Y - v.Y)
-	distance := basics.URound(math.Sqrt(dx*dx + dy*dy))
-
-	// Line subpixel scale constants (from line_aa_basics)
-	const lineSubpixelScale = 256
-	threshold := lineSubpixelScale + lineSubpixelScale/2
-
-	return int(distance) > threshold
+	return (&v).Validate(other)
 }
 
 // CalculateDistance calculates and sets the distance to another vertex.
@@ -39,6 +31,21 @@ func (v *LineAAVertex) CalculateDistance(other LineAAVertex) {
 	dx := float64(other.X - v.X)
 	dy := float64(other.Y - v.Y)
 	v.Len = int(basics.URound(math.Sqrt(dx*dx + dy*dy)))
+}
+
+// Validate computes the distance to another vertex and returns whether the
+// vertex should be kept.
+func (v *LineAAVertex) Validate(other LineAAVertex) bool {
+	dx := float64(other.X - v.X)
+	dy := float64(other.Y - v.Y)
+	distance := basics.URound(math.Sqrt(dx*dx + dy*dy))
+	v.Len = int(distance)
+
+	// Line subpixel scale constants (from line_aa_basics)
+	const lineSubpixelScale = 256
+	threshold := lineSubpixelScale + lineSubpixelScale/2
+
+	return v.Len > threshold
 }
 
 // VertexDist represents a vertex with distance information for general use.
@@ -56,8 +63,7 @@ func NewVertexDist(x, y float64) VertexDist {
 // validateVertexDist checks if the distance between two vertices exceeds the epsilon.
 // This is used internally by VertexDistSequence without interface type assertions.
 func validateVertexDist(v, other VertexDist) bool {
-	distance := basics.CalcDistance(v.X, v.Y, other.X, other.Y)
-	return distance > basics.VertexDistEpsilon
+	return (&v).Validate(other)
 }
 
 // CalculateDistance calculates and sets the distance to another vertex.
@@ -66,6 +72,17 @@ func (v *VertexDist) CalculateDistance(other VertexDist) {
 	if v.Dist <= basics.VertexDistEpsilon {
 		v.Dist = 1.0 / basics.VertexDistEpsilon
 	}
+}
+
+// Validate computes the distance to another vertex and returns whether the
+// vertex should be kept.
+func (v *VertexDist) Validate(other VertexDist) bool {
+	v.Dist = basics.CalcDistance(v.X, v.Y, other.X, other.Y)
+	if v.Dist <= basics.VertexDistEpsilon {
+		v.Dist = 1.0 / basics.VertexDistEpsilon
+		return false
+	}
+	return true
 }
 
 // VertexDistCmd represents a vertex with distance information and command.
@@ -84,8 +101,7 @@ func NewVertexDistCmd(x, y, dist float64, cmd basics.PathCommand) VertexDistCmd 
 // validateVertexDistCmd checks if the distance between two vertices exceeds the epsilon.
 // This is used internally by VertexCmdSequence without interface type assertions.
 func validateVertexDistCmd(v, other VertexDistCmd) bool {
-	distance := basics.CalcDistance(v.X, v.Y, other.X, other.Y)
-	return distance > basics.VertexDistEpsilon
+	return (&v).Validate(other)
 }
 
 // CalculateDistance calculates and sets the distance to another vertex.
@@ -94,6 +110,17 @@ func (v *VertexDistCmd) CalculateDistance(other VertexDistCmd) {
 	if v.Dist <= basics.VertexDistEpsilon {
 		v.Dist = 1.0 / basics.VertexDistEpsilon
 	}
+}
+
+// Validate computes the distance to another vertex and returns whether the
+// vertex should be kept.
+func (v *VertexDistCmd) Validate(other VertexDistCmd) bool {
+	v.Dist = basics.CalcDistance(v.X, v.Y, other.X, other.Y)
+	if v.Dist <= basics.VertexDistEpsilon {
+		v.Dist = 1.0 / basics.VertexDistEpsilon
+		return false
+	}
+	return true
 }
 
 // ----------------------------------------------------------------------------
@@ -135,8 +162,10 @@ func (vs *VertexDistSequence) Add(val VertexDist) {
 	if vs.storage.Size() > 1 {
 		prev := vs.storage.At(vs.storage.Size() - 2)
 		curr := vs.storage.At(vs.storage.Size() - 1)
-		if !validateVertexDist(prev, curr) {
+		if !prev.Validate(curr) {
 			vs.storage.RemoveLast()
+		} else {
+			vs.storage.Set(vs.storage.Size()-2, prev)
 		}
 	}
 	vs.storage.Add(val)
@@ -150,11 +179,11 @@ func (vs *VertexDistSequence) ModifyLast(val VertexDist) {
 
 // Close processes the sequence for closure and removes invalid vertices.
 func (vs *VertexDistSequence) Close(closed bool) {
-	// Remove trailing vertices that don't validate
 	for vs.storage.Size() > 1 {
 		prev := vs.storage.At(vs.storage.Size() - 2)
 		curr := vs.storage.At(vs.storage.Size() - 1)
-		if validateVertexDist(prev, curr) {
+		if prev.Validate(curr) {
+			vs.storage.Set(vs.storage.Size()-2, prev)
 			break
 		}
 		last := vs.storage.At(vs.storage.Size() - 1)
@@ -162,21 +191,17 @@ func (vs *VertexDistSequence) Close(closed bool) {
 		vs.ModifyLast(last)
 	}
 
-	// If closed, validate the last vertex against the first
 	if closed {
 		for vs.storage.Size() > 1 {
 			last := vs.storage.At(vs.storage.Size() - 1)
 			first := vs.storage.At(0)
-			if validateVertexDist(last, first) {
-				last.CalculateDistance(first)
+			if last.Validate(first) {
 				vs.storage.Set(vs.storage.Size()-1, last)
 				break
 			}
 			vs.storage.RemoveLast()
 		}
 	}
-
-	vs.CalculateDistances()
 }
 
 // CalculateDistances calculates and stores distances between consecutive vertices.
@@ -248,8 +273,10 @@ func (vs *LineAAVertexSequence) Add(val LineAAVertex) {
 	if vs.storage.Size() > 1 {
 		prev := vs.storage.At(vs.storage.Size() - 2)
 		curr := vs.storage.At(vs.storage.Size() - 1)
-		if !validateLineAAVertex(prev, curr) {
+		if !prev.Validate(curr) {
 			vs.storage.RemoveLast()
+		} else {
+			vs.storage.Set(vs.storage.Size()-2, prev)
 		}
 	}
 	vs.storage.Add(val)
@@ -263,11 +290,11 @@ func (vs *LineAAVertexSequence) ModifyLast(val LineAAVertex) {
 
 // Close processes the sequence for closure and removes invalid vertices.
 func (vs *LineAAVertexSequence) Close(closed bool) {
-	// Remove trailing vertices that don't validate
 	for vs.storage.Size() > 1 {
 		prev := vs.storage.At(vs.storage.Size() - 2)
 		curr := vs.storage.At(vs.storage.Size() - 1)
-		if validateLineAAVertex(prev, curr) {
+		if prev.Validate(curr) {
+			vs.storage.Set(vs.storage.Size()-2, prev)
 			break
 		}
 		last := vs.storage.At(vs.storage.Size() - 1)
@@ -275,19 +302,17 @@ func (vs *LineAAVertexSequence) Close(closed bool) {
 		vs.ModifyLast(last)
 	}
 
-	// If closed, validate the last vertex against the first
 	if closed {
 		for vs.storage.Size() > 1 {
 			last := vs.storage.At(vs.storage.Size() - 1)
 			first := vs.storage.At(0)
-			if validateLineAAVertex(last, first) {
+			if last.Validate(first) {
+				vs.storage.Set(vs.storage.Size()-1, last)
 				break
 			}
 			vs.storage.RemoveLast()
 		}
 	}
-
-	vs.CalculateDistances()
 }
 
 // CalculateDistances calculates and stores distances between consecutive vertices.
@@ -359,8 +384,10 @@ func (vs *VertexCmdSequence) Add(val VertexDistCmd) {
 	if vs.storage.Size() > 1 {
 		prev := vs.storage.At(vs.storage.Size() - 2)
 		curr := vs.storage.At(vs.storage.Size() - 1)
-		if !validateVertexDistCmd(prev, curr) {
+		if !prev.Validate(curr) {
 			vs.storage.RemoveLast()
+		} else {
+			vs.storage.Set(vs.storage.Size()-2, prev)
 		}
 	}
 	vs.storage.Add(val)
@@ -374,11 +401,11 @@ func (vs *VertexCmdSequence) ModifyLast(val VertexDistCmd) {
 
 // Close processes the sequence for closure and removes invalid vertices.
 func (vs *VertexCmdSequence) Close(closed bool) {
-	// Remove trailing vertices that don't validate
 	for vs.storage.Size() > 1 {
 		prev := vs.storage.At(vs.storage.Size() - 2)
 		curr := vs.storage.At(vs.storage.Size() - 1)
-		if validateVertexDistCmd(prev, curr) {
+		if prev.Validate(curr) {
+			vs.storage.Set(vs.storage.Size()-2, prev)
 			break
 		}
 		last := vs.storage.At(vs.storage.Size() - 1)
@@ -386,19 +413,17 @@ func (vs *VertexCmdSequence) Close(closed bool) {
 		vs.ModifyLast(last)
 	}
 
-	// If closed, validate the last vertex against the first
 	if closed {
 		for vs.storage.Size() > 1 {
 			last := vs.storage.At(vs.storage.Size() - 1)
 			first := vs.storage.At(0)
-			if validateVertexDistCmd(last, first) {
+			if last.Validate(first) {
+				vs.storage.Set(vs.storage.Size()-1, last)
 				break
 			}
 			vs.storage.RemoveLast()
 		}
 	}
-
-	vs.CalculateDistances()
 }
 
 // CalculateDistances calculates and stores distances between consecutive vertices.
@@ -497,8 +522,10 @@ func ShortenPath(vs *VertexDistSequence, s float64, closed bool) {
 			vs.ModifyLast(newLast)
 
 			// Validate the vertex - if it fails validation, remove it
-			if !validateVertexDist(prev, newLast) {
+			if !prev.Validate(newLast) {
 				vs.RemoveLast()
+			} else {
+				vs.Set(n-1, prev)
 			}
 
 			vs.Close(closed)

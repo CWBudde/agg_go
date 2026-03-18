@@ -28,8 +28,15 @@ func Run(cfg Config, demo Demo) {
 
 func savePNG(ctx *agg.Context, filename string) error {
 	img := ctx.GetImage()
+	src := image.NewRGBA(image.Rect(0, 0, img.Width(), img.Height()))
+	copy(src.Pix, img.Data)
 	goImg := image.NewRGBA(image.Rect(0, 0, img.Width(), img.Height()))
-	copy(goImg.Pix, img.Data)
+	rowBytes := img.Width() * 4
+	for y := 0; y < img.Height(); y++ {
+		srcOff := (img.Height() - 1 - y) * src.Stride
+		dstOff := y * goImg.Stride
+		copy(goImg.Pix[dstOff:dstOff+rowBytes], src.Pix[srcOff:srcOff+rowBytes])
+	}
 	f, err := os.Create(filename)
 	if err != nil {
 		return err

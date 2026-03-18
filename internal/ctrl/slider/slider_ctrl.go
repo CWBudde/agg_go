@@ -435,11 +435,9 @@ func (s *SliderCtrl) generateTextPath() {
 		// Format the label with current value (matching C++ behavior)
 		text := fmt.Sprintf(s.label, s.Value())
 		s.textRenderer.SetText(text)
-		// C++ positions text at (x1, y1) then flipY=true ctrl moves it to y2.
-		// In Go (flipY=false) we position directly at y2 so text renders upward
-		// into the slider body, matching the C++ visual result.
-		s.textRenderer.SetPosition(s.X1(), s.Y2())
-		s.textRenderer.SetSize((s.Y2() - s.Y1()) * 1.2)
+		// Match AGG's slider_ctrl_impl::rewind path 2 exactly.
+		s.textRenderer.SetPosition(s.X1(), s.Y1())
+		s.textRenderer.SetSize((s.Y2()-s.Y1())*1.2, s.Y2()-s.Y1())
 		s.textRenderer.Rewind(0)
 	} else {
 		// Clear text if no label

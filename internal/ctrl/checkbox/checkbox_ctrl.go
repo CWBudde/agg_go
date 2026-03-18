@@ -273,10 +273,8 @@ func (c *CheckboxCtrl[C]) generateTextVertices() {
 	}
 
 	textX := c.X1() + c.textHeight*2.0
-	// C++ positions text at Y1+height/5 (top of bbox), then flipY=true ctrl flips it
-	// to appear at Y2-height/5 (bottom of bbox). In Go (flipY=false) we position
-	// directly at Y2-height/5 so text renders upward into the same screen region.
-	textY := c.Y2() - c.textHeight/5.0
+	// Match AGG's cbox_ctrl_impl::rewind path 1 exactly.
+	textY := c.Y1() + c.textHeight/5.0
 
 	// Configure text renderer
 	c.textRenderer.SetText(c.label)

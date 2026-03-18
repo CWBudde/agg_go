@@ -20,7 +20,6 @@ type SimpleText struct {
 // NewSimpleText creates a new text renderer backed by GSVText + ConvStroke.
 func NewSimpleText() *SimpleText {
 	t := gsv.NewGSVText()
-	t.SetFlip(true)
 	s := conv.NewConvStroke(t)
 	s.SetLineJoin(basics.RoundJoin)
 	s.SetLineCap(basics.RoundCap)
