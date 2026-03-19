@@ -1,14 +1,16 @@
 // Port of AGG C++ alpha_mask2.cpp – alpha-masked lion with affine-transformed mask.
 //
-// Like alpha_mask but the ellipses are drawn with an affine transform applied
-// so the mask rotates independently from the lion. Default: 10 ellipses, scale=1.
+// Generates an alpha mask from random ellipses (with affine transform), then
+// renders the lion through it. The C++ original also renders random lines,
+// markers, and gradient circles through the mask — those are not yet ported.
 package main
 
 import (
+	"math"
 	"math/rand"
 
 	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
@@ -23,140 +25,191 @@ import (
 )
 
 const (
-	width  = 440
-	height = 330
+	frameWidth  = 512
+	frameHeight = 400
 
-	numEllipses = 10
+	numEllipses = 10 // C++ default slider value
 )
 
-type rasterizerAdapter2 struct {
-	ras interface {
-		RewindScanlines() bool
-		SweepScanline(sl rasterizer.ScanlineInterface) bool
-		MinX() int
-		MaxX() int
+// ---------------------------------------------------------------------------
+// Rasterizer / scanline adapters
+// ---------------------------------------------------------------------------
+
+type rasterizerAdaptor struct {
+	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
+	sl  rasScanlineAdaptor
+}
+
+func newRasterizer() *rasterizerAdaptor {
+	return &rasterizerAdaptor{
+		ras: rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+			rasterizer.RasConvInt{},
+			rasterizer.NewRasterizerSlNoClip(),
+		),
+		sl: rasScanlineAdaptor{sl: scanline.NewScanlineP8()},
 	}
 }
 
-func (r *rasterizerAdapter2) RewindScanlines() bool { return r.ras.RewindScanlines() }
-func (r *rasterizerAdapter2) MinX() int             { return r.ras.MinX() }
-func (r *rasterizerAdapter2) MaxX() int             { return r.ras.MaxX() }
+func (r *rasterizerAdaptor) Reset()                { r.ras.Reset() }
+func (r *rasterizerAdaptor) RewindScanlines() bool { return r.ras.RewindScanlines() }
+func (r *rasterizerAdaptor) MinX() int             { return r.ras.MinX() }
+func (r *rasterizerAdaptor) MaxX() int             { return r.ras.MaxX() }
 
-type rasScanlineAdapterP8v2 struct{ sl *scanline.ScanlineP8 }
-
-func (a *rasScanlineAdapterP8v2) ResetSpans()                 { a.sl.ResetSpans() }
-func (a *rasScanlineAdapterP8v2) AddCell(x int, cover uint32) { a.sl.AddCell(x, uint(cover)) }
-func (a *rasScanlineAdapterP8v2) AddSpan(x, length int, cover uint32) {
-	a.sl.AddSpan(x, length, uint(cover))
+func (r *rasterizerAdaptor) AddPath(vs rasterizer.VertexSource, pathID uint32) {
+	r.ras.AddPath(vs, pathID)
 }
-func (a *rasScanlineAdapterP8v2) Finalize(y int) { a.sl.Finalize(y) }
-func (a *rasScanlineAdapterP8v2) NumSpans() int  { return a.sl.NumSpans() }
 
-func (r *rasterizerAdapter2) SweepScanline(sl renscan.ScanlineInterface) bool {
-	if w, ok := sl.(*scanlineWrapperP8v2); ok {
-		return r.ras.SweepScanline(&rasScanlineAdapterP8v2{sl: w.sl})
+func (r *rasterizerAdaptor) SweepScanline(sl renscan.ScanlineInterface) bool {
+	if w, ok := sl.(*scanlineWrapper); ok {
+		r.sl.sl = w.sl
+		return r.ras.SweepScanline(&r.sl)
 	}
 	return false
 }
 
-type scanlineWrapperP8v2 struct{ sl *scanline.ScanlineP8 }
+type rasScanlineAdaptor struct{ sl *scanline.ScanlineP8 }
 
-func (w *scanlineWrapperP8v2) Reset(minX, maxX int) { w.sl.Reset(minX, maxX) }
-func (w *scanlineWrapperP8v2) Y() int               { return w.sl.Y() }
-func (w *scanlineWrapperP8v2) NumSpans() int        { return w.sl.NumSpans() }
+func (a *rasScanlineAdaptor) ResetSpans()                 { a.sl.ResetSpans() }
+func (a *rasScanlineAdaptor) AddCell(x int, cover uint32) { a.sl.AddCell(x, uint(cover)) }
+func (a *rasScanlineAdaptor) AddSpan(x, length int, cover uint32) {
+	a.sl.AddSpan(x, length, uint(cover))
+}
+func (a *rasScanlineAdaptor) Finalize(y int) { a.sl.Finalize(y) }
+func (a *rasScanlineAdaptor) NumSpans() int  { return a.sl.NumSpans() }
 
-type spanIterP8v2 struct {
+type scanlineWrapper struct{ sl *scanline.ScanlineP8 }
+
+func (w *scanlineWrapper) Reset(minX, maxX int) { w.sl.Reset(minX, maxX) }
+func (w *scanlineWrapper) Y() int               { return w.sl.Y() }
+func (w *scanlineWrapper) NumSpans() int         { return w.sl.NumSpans() }
+
+func (w *scanlineWrapper) Begin() renscan.ScanlineIterator {
+	spans := w.sl.Spans()
+	if len(spans) == 0 {
+		return &spanIter{nil, 0}
+	}
+	return &spanIter{spans, 0}
+}
+
+type spanIter struct {
 	spans []scanline.SpanP8
 	idx   int
 }
 
-func (it *spanIterP8v2) GetSpan() renscan.SpanData {
+func (it *spanIter) GetSpan() renscan.SpanData {
 	s := it.spans[it.idx]
 	return renscan.SpanData{X: int(s.X), Len: int(s.Len), Covers: s.Covers}
 }
-func (it *spanIterP8v2) Next() bool { it.idx++; return it.idx < len(it.spans) }
+func (it *spanIter) Next() bool { it.idx++; return it.idx < len(it.spans) }
 
-func (w *scanlineWrapperP8v2) Begin() renscan.ScanlineIterator {
-	spans := w.sl.Spans()
-	if len(spans) == 0 {
-		return &spanIterP8v2{nil, 0}
-	}
-	return &spanIterP8v2{spans, 0}
+// ---------------------------------------------------------------------------
+// Vertex-source adapter for shapes.Ellipse
+// ---------------------------------------------------------------------------
+
+type ellipseVS struct{ e *shapes.Ellipse }
+
+func (ev *ellipseVS) Rewind(id uint32) { ev.e.Rewind(id) }
+func (ev *ellipseVS) Vertex(x, y *float64) uint32 {
+	var vx, vy float64
+	cmd := ev.e.Vertex(&vx, &vy)
+	*x, *y = vx, vy
+	return uint32(cmd)
 }
 
-type demo struct{}
+// ---------------------------------------------------------------------------
+// Demo
+// ---------------------------------------------------------------------------
 
-func (d *demo) Render(ctx *agg.Context) {
-	img := ctx.GetImage()
-	agg2d := ctx.GetAgg2D()
-	ras := agg2d.GetInternalRasterizer()
-	sl := scanline.NewScanlineP8()
-	slAdapter := &scanlineWrapperP8v2{sl: sl}
-	rasAdapter := &rasterizerAdapter2{ras: ras}
+type demo struct {
+	angle, scale   float64
+	skewX, skewY   float64
+}
 
-	// Generate alpha mask.
-	maskData := make([]uint8, width*height)
-	maskBuf := buffer.NewRenderingBufferU8WithData(maskData, width, height, width)
+func (d *demo) Render(img *agg.Image) {
+	w, h := img.Width(), img.Height()
+
+	workBuf := make([]uint8, w*h*4)
+	workRbuf := buffer.NewRenderingBufferU8WithData(workBuf, w, h, w*4)
+
+	ras := newRasterizer()
+	sl := &scanlineWrapper{sl: scanline.NewScanlineP8()}
+
+	// --- Generate alpha mask from ellipses ---
+	// C++ uses srand(1432).
+	maskData := make([]uint8, w*h)
+	maskBuf := buffer.NewRenderingBufferU8WithData(maskData, w, h, w)
 	maskPixf := pixfmt.NewPixFmtGray8(maskBuf)
 	maskRb := renderer.NewRendererBaseWithPixfmt(maskPixf)
 	maskRb.Clear(color.Gray8[color.Linear]{V: 0, A: 255})
 
 	rng := rand.New(rand.NewSource(1432))
-	// Affine transform for the mask ellipses (slight rotation).
-	maskMtx := transform.NewTransAffine()
-	maskMtx.Rotate(0.3)
-	maskMtx.Translate(float64(width)/2, float64(height)/2)
 
 	for i := 0; i < numEllipses; i++ {
-		cx := float64(rng.Intn(width)) - float64(width)/2
-		cy := float64(rng.Intn(height)) - float64(height)/2
-		rx := float64(rng.Intn(100) + 20)
-		ry := float64(rng.Intn(100) + 20)
-
-		// Transform centre.
-		tx, ty := cx, cy
-		maskMtx.Transform(&tx, &ty)
-
-		ell := shapes.NewEllipseWithParams(tx, ty, rx, ry, 100, false)
+		ell := shapes.NewEllipseWithParams(
+			float64(rng.Intn(w)),
+			float64(rng.Intn(h)),
+			float64(rng.Intn(100)+20),
+			float64(rng.Intn(100)+20),
+			100, false,
+		)
 		ras.Reset()
-		ell.Rewind(0)
-		for {
-			var x, y float64
-			cmd := ell.Vertex(&x, &y)
-			if basics.IsStop(cmd) {
-				break
-			}
-			ras.AddVertex(x, y, uint32(cmd))
-		}
-		c := uint8(rng.Intn(200) + 55)
-		gray := color.Gray8[color.Linear]{V: c, A: 255}
-		renscan.RenderScanlinesAASolid(rasAdapter, slAdapter, maskRb, gray)
+		ras.AddPath(&ellipseVS{e: ell}, 0)
+		// C++: sgray8((rand() & 127) + 128, (rand() & 127) + 128)
+		v := uint8(rng.Intn(128) + 128)
+		a := uint8(rng.Intn(128) + 128)
+		renscan.RenderScanlinesAASolid(ras, sl, maskRb, color.Gray8[color.Linear]{V: v, A: a})
 	}
 
 	mask := pixfmt.NewAlphaMaskU8WithBuffer(maskBuf, 1, 0, pixfmt.OneComponentMaskU8{})
 
-	// Checkered background.
-	agg2d.ResetTransformations()
-	for y := 0; y < height; y += 8 {
-		for x := ((y >> 3) & 1) << 3; x < width; x += 16 {
-			agg2d.FillColor(agg.NewColor(0xdf, 0xdf, 0xdf, 0xff))
-			agg2d.Rectangle(float64(x), float64(y), float64(x+7), float64(y+7))
-		}
-	}
-	agg2d.DrawPath(agg.FillOnly)
+	// --- White background ---
+	mainPixf := pixfmt.NewPixFmtRGBA32[color.Linear](workRbuf)
+	mainRb := renderer.NewRendererBaseWithPixfmt(mainPixf)
+	mainRb.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
 
-	// Render lion through mask.
-	mainBuf := buffer.NewRenderingBufferWithData[uint8](img.Data, width, height, width*4)
-	mainPixf := pixfmt.NewPixFmtRGBA32[color.Linear](mainBuf)
+	// --- Render lion through alpha mask ---
 	amaskAdaptor := pixfmt.NewPixFmtAMaskAdaptor(mainPixf, mask)
 	rbAMask := renderer.NewRendererBaseWithPixfmt(amaskAdaptor)
 
 	lionPaths := liondemo.Parse()
-	agg2d.ResetTransformations()
-	agg2d.Translate(-250, -250)
-	agg2d.Rotate(basics.Pi)
-	agg2d.Translate(float64(width)/2, float64(height)/2)
-	mtx := agg2d.GetTransformations()
+
+	// Compute lion bounding rect.
+	minX, minY := 1e9, 1e9
+	maxX, maxY := -1e9, -1e9
+	for _, lp := range lionPaths {
+		lp.Path.Rewind(0)
+		for {
+			x, y, cmd := lp.Path.NextVertex()
+			pathCmd := basics.PathCommand(cmd)
+			if basics.IsStop(pathCmd) {
+				break
+			}
+			if basics.IsMoveTo(pathCmd) || basics.IsLineTo(pathCmd) {
+				if x < minX {
+					minX = x
+				}
+				if y < minY {
+					minY = y
+				}
+				if x > maxX {
+					maxX = x
+				}
+				if y > maxY {
+					maxY = y
+				}
+			}
+		}
+	}
+	baseDX := (maxX - minX) / 2.0
+	baseDY := (maxY - minY) / 2.0
+
+	// C++ transform: translate(-baseDX,-baseDY) * scale(s,s) * rotate(angle+pi) * skew * translate(w/2,h/2)
+	mtx := transform.NewTransAffine()
+	mtx.Multiply(transform.NewTransAffineTranslation(-baseDX, -baseDY))
+	mtx.Multiply(transform.NewTransAffineScaling(d.scale))
+	mtx.Multiply(transform.NewTransAffineRotation(d.angle + math.Pi))
+	mtx.Multiply(transform.NewTransAffineSkewing(d.skewX/1000.0, d.skewY/1000.0))
+	mtx.Multiply(transform.NewTransAffineTranslation(float64(w)/2, float64(h)/2))
 
 	for _, lp := range lionPaths {
 		c := color.RGBA8[color.Linear]{R: lp.Color[0], G: lp.Color[1], B: lp.Color[2], A: 255}
@@ -164,20 +217,39 @@ func (d *demo) Render(ctx *agg.Context) {
 		lp.Path.Rewind(0)
 		for {
 			x, y, cmd := lp.Path.NextVertex()
-			if basics.IsStop(basics.PathCommand(cmd)) {
+			pathCmd := basics.PathCommand(cmd)
+			if basics.IsStop(pathCmd) {
 				break
 			}
-			tx, ty := mtx.Transform(x, y)
-			if basics.IsMoveTo(basics.PathCommand(cmd)) {
-				ras.AddVertex(tx, ty, uint32(basics.PathCmdMoveTo))
-			} else if basics.IsLineTo(basics.PathCommand(cmd)) {
-				ras.AddVertex(tx, ty, uint32(basics.PathCmdLineTo))
+			tx, ty := x, y
+			mtx.Transform(&tx, &ty)
+			if basics.IsMoveTo(pathCmd) {
+				ras.ras.AddVertex(tx, ty, uint32(basics.PathCmdMoveTo))
+			} else if basics.IsLineTo(pathCmd) {
+				ras.ras.AddVertex(tx, ty, uint32(basics.PathCmdLineTo))
 			}
 		}
-		renscan.RenderScanlinesAASolid(rasAdapter, slAdapter, rbAMask, c)
+		renscan.RenderScanlinesAASolid(ras, sl, rbAMask, c)
+	}
+
+	// Copy work buffer to output with y-flip.
+	copyFlipY(workBuf, img.Data, w, h)
+}
+
+func copyFlipY(src, dst []uint8, width, height int) {
+	stride := width * 4
+	for y := 0; y < height; y++ {
+		srcOff := (height - 1 - y) * stride
+		dstOff := y * stride
+		copy(dst[dstOff:dstOff+stride], src[srcOff:srcOff+stride])
 	}
 }
 
 func main() {
-	demorunner.Run(demorunner.Config{Title: "Alpha Mask 2", Width: 512, Height: 400}, &demo{})
+	d := &demo{scale: 1.0}
+	lowlevelrunner.Run(lowlevelrunner.Config{
+		Title:  "Alpha Mask2",
+		Width:  frameWidth,
+		Height: frameHeight,
+	}, d)
 }
