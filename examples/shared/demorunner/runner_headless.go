@@ -16,6 +16,9 @@ import (
 // The filename is derived from Config.Title (spaces → underscores, + ".png").
 func Run(cfg Config, demo Demo) {
 	ctx := agg.NewContext(cfg.Width, cfg.Height)
+	if initDemo, ok := demo.(InitHandler); ok {
+		initDemo.OnInit()
+	}
 	demo.Render(ctx)
 
 	filename := strings.ReplaceAll(strings.ToLower(cfg.Title), " ", "_") + ".png"

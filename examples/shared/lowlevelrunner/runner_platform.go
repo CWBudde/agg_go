@@ -1,6 +1,6 @@
 //go:build x11 || sdl2
 
-package demorunner
+package lowlevelrunner
 
 import (
 	"fmt"
@@ -26,14 +26,14 @@ func Run(cfg Config, demo Demo) {
 		false,
 	)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "demorunner: create backend: %v\n", err)
+		fmt.Fprintf(os.Stderr, "lowlevelrunner: create backend: %v\n", err)
 		os.Exit(1)
 	}
 
 	h := &handler{
 		backend: backend,
 		ps:      platform.NewPlatformSupport(platform.PixelFormatRGBA32, false),
-		ctx:     agg.NewContext(cfg.Width, cfg.Height),
+		img:     agg.NewImage(make([]uint8, cfg.Width*cfg.Height*4), cfg.Width, cfg.Height, cfg.Width*4),
 		cfg:     cfg,
 		demo:    demo,
 		running: true,
@@ -44,11 +44,11 @@ func Run(cfg Config, demo Demo) {
 		setter.SetEventCallback(h)
 	}
 	if err := h.ps.Init(cfg.Width, cfg.Height, platform.WindowResize); err != nil {
-		fmt.Fprintf(os.Stderr, "demorunner: platform support init: %v\n", err)
+		fmt.Fprintf(os.Stderr, "lowlevelrunner: platform support init: %v\n", err)
 		os.Exit(1)
 	}
 	if err := backend.Init(cfg.Width, cfg.Height, platform.WindowResize); err != nil {
-		fmt.Fprintf(os.Stderr, "demorunner: backend init: %v\n", err)
+		fmt.Fprintf(os.Stderr, "lowlevelrunner: backend init: %v\n", err)
 		os.Exit(1)
 	}
 	defer backend.Destroy()
@@ -66,7 +66,7 @@ type handler struct {
 	platform.BaseEventHandler
 	backend platform.PlatformBackend
 	ps      *platform.PlatformSupport
-	ctx     *agg.Context
+	img     *agg.Image
 	cfg     Config
 	demo    Demo
 	running bool
@@ -80,12 +80,12 @@ func (h *handler) OnInit() {
 }
 
 func (h *handler) OnDraw() {
-	h.demo.Render(h.ctx)
+	h.demo.Render(h.img)
 	h.blit()
 }
 
 func (h *handler) OnResize(width, height int) {
-	h.ctx = agg.NewContext(width, height)
+	h.img.Attach(make([]uint8, width*height*4), width, height, width*4)
 	h.backend.ForceRedraw()
 }
 
@@ -145,26 +145,27 @@ func (h *handler) onIdle() {
 	}
 }
 
-// blit copies the agg.Context pixel buffer into the platform window buffer
-// and presents it.
+// blit copies the raw image buffer into the platform window buffer and presents it.
 func (h *handler) blit() {
-	img := h.ctx.GetImage()
 	winBuf := h.ps.WindowBuffer()
-	src := img.Data
+	src := h.img.Data
 	dst := winBuf.Buf()
 
-	w := winBuf.Width()
-	if len(src) == len(dst) {
-		copy(dst, src)
-	} else {
-		// Stride mismatch: copy row by row.
-		srcStride := img.Width() * 4
-		dstStride := winBuf.Stride()
-		if dstStride < 0 {
-			dstStride = -dstStride
-		}
-		for y := range winBuf.Height() {
-			copy(dst[y*dstStride:y*dstStride+w*4], src[y*srcStride:y*srcStride+w*4])
+	srcStride := h.img.Width() * 4
+	dstStride := winBuf.Stride()
+	if dstStride < 0 {
+		dstStride = -dstStride
+	}
+	for y := 0; y < winBuf.Height(); y++ {
+		srcOff := y * srcStride
+		dstOff := y * dstStride
+		for x := 0; x < winBuf.Width(); x++ {
+			srcIdx := srcOff + x*4
+			dstIdx := dstOff + x*4
+			dst[dstIdx] = src[srcIdx]
+			dst[dstIdx+1] = src[srcIdx+1]
+			dst[dstIdx+2] = src[srcIdx+2]
+			dst[dstIdx+3] = 255
 		}
 	}
 	_ = h.backend.UpdateWindow(winBuf)
@@ -172,15 +173,19 @@ func (h *handler) blit() {
 
 func (h *handler) saveScreenshot() {
 	filename := strings.ReplaceAll(strings.ToLower(h.cfg.Title), " ", "_") + ".png"
-	img := h.ctx.GetImage()
-	src := image.NewRGBA(image.Rect(0, 0, img.Width(), img.Height()))
-	copy(src.Pix, img.Data)
-	goImg := image.NewRGBA(image.Rect(0, 0, img.Width(), img.Height()))
-	rowBytes := img.Width() * 4
-	for y := 0; y < img.Height(); y++ {
-		srcOff := (img.Height() - 1 - y) * src.Stride
+	goImg := image.NewRGBA(image.Rect(0, 0, h.img.Width(), h.img.Height()))
+	srcStride := h.img.Width() * 4
+	for y := 0; y < h.img.Height(); y++ {
+		srcOff := y * srcStride
 		dstOff := y * goImg.Stride
-		copy(goImg.Pix[dstOff:dstOff+rowBytes], src.Pix[srcOff:srcOff+rowBytes])
+		for x := 0; x < h.img.Width(); x++ {
+			srcIdx := srcOff + x*4
+			dstIdx := dstOff + x*4
+			goImg.Pix[dstIdx] = h.img.Data[srcIdx]
+			goImg.Pix[dstIdx+1] = h.img.Data[srcIdx+1]
+			goImg.Pix[dstIdx+2] = h.img.Data[srcIdx+2]
+			goImg.Pix[dstIdx+3] = 255
+		}
 	}
 	f, err := os.Create(filename)
 	if err != nil {
