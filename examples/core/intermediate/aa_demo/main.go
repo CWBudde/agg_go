@@ -3,23 +3,18 @@
 // Renders a triangle using the enlarged-pixel technique: each logical pixel
 // in the rasterized triangle is drawn as a large square coloured by its AA
 // coverage value, making the anti-aliasing algorithm visible.
-// A slider controls the zoom factor (pixel size). The triangle vertices can
-// be dragged with the mouse.
 package main
 
 import (
-	"math"
-
 	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
-	"github.com/MeKo-Christian/agg_go/internal/ctrl/slider"
-	"github.com/MeKo-Christian/agg_go/internal/order"
+	"github.com/MeKo-Christian/agg_go/internal/conv"
+
 	"github.com/MeKo-Christian/agg_go/internal/path"
 	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
-	"github.com/MeKo-Christian/agg_go/internal/pixfmt/blender"
 	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
 	"github.com/MeKo-Christian/agg_go/internal/renderer"
 	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
@@ -31,8 +26,77 @@ const (
 	frameHeight = 400
 )
 
-// pathSourceAdapter bridges PathStorageStl (uint Rewind) to the rasterizer
-// VertexSource interface (uint32 Rewind + pointer-based Vertex).
+// ---------------------------------------------------------------------------
+// Rasterizer / scanline adapters
+// ---------------------------------------------------------------------------
+
+type rasterizerAdaptor struct {
+	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
+	sl  rasScanlineAdaptor
+}
+
+func newRasterizer() *rasterizerAdaptor {
+	return &rasterizerAdaptor{
+		ras: rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+			rasterizer.RasConvInt{},
+			rasterizer.NewRasterizerSlNoClip(),
+		),
+		sl: rasScanlineAdaptor{sl: scanline.NewScanlineP8()},
+	}
+}
+
+func (r *rasterizerAdaptor) Reset()                { r.ras.Reset() }
+func (r *rasterizerAdaptor) RewindScanlines() bool { return r.ras.RewindScanlines() }
+func (r *rasterizerAdaptor) MinX() int             { return r.ras.MinX() }
+func (r *rasterizerAdaptor) MaxX() int             { return r.ras.MaxX() }
+
+func (r *rasterizerAdaptor) SweepScanline(sl renscan.ScanlineInterface) bool {
+	if w, ok := sl.(*scanlineWrapper); ok {
+		r.sl.sl = w.sl
+		return r.ras.SweepScanline(&r.sl)
+	}
+	return false
+}
+
+type rasScanlineAdaptor struct{ sl *scanline.ScanlineP8 }
+
+func (a *rasScanlineAdaptor) ResetSpans()                 { a.sl.ResetSpans() }
+func (a *rasScanlineAdaptor) AddCell(x int, cover uint32) { a.sl.AddCell(x, uint(cover)) }
+func (a *rasScanlineAdaptor) AddSpan(x, length int, cover uint32) {
+	a.sl.AddSpan(x, length, uint(cover))
+}
+func (a *rasScanlineAdaptor) Finalize(y int) { a.sl.Finalize(y) }
+func (a *rasScanlineAdaptor) NumSpans() int  { return a.sl.NumSpans() }
+
+type scanlineWrapper struct{ sl *scanline.ScanlineP8 }
+
+func (w *scanlineWrapper) Reset(minX, maxX int) { w.sl.Reset(minX, maxX) }
+func (w *scanlineWrapper) Y() int               { return w.sl.Y() }
+func (w *scanlineWrapper) NumSpans() int         { return w.sl.NumSpans() }
+
+func (w *scanlineWrapper) Begin() renscan.ScanlineIterator {
+	spans := w.sl.Spans()
+	if len(spans) == 0 {
+		return &spanIter{nil, 0}
+	}
+	return &spanIter{spans, 0}
+}
+
+type spanIter struct {
+	spans []scanline.SpanP8
+	idx   int
+}
+
+func (it *spanIter) GetSpan() renscan.SpanData {
+	s := it.spans[it.idx]
+	return renscan.SpanData{X: int(s.X), Len: int(s.Len), Covers: s.Covers}
+}
+func (it *spanIter) Next() bool { it.idx++; return it.idx < len(it.spans) }
+
+// ---------------------------------------------------------------------------
+// Vertex-source adapters
+// ---------------------------------------------------------------------------
+
 type pathSourceAdapter struct {
 	ps *path.PathStorageStl
 }
@@ -40,34 +104,58 @@ type pathSourceAdapter struct {
 func (a *pathSourceAdapter) Rewind(pathID uint32) { a.ps.Rewind(uint(pathID)) }
 func (a *pathSourceAdapter) Vertex(x, y *float64) uint32 {
 	vx, vy, cmd := a.ps.NextVertex()
-	*x = vx
-	*y = vy
+	*x, *y = vx, vy
 	return cmd
 }
 
-// enlargedPixel stores a single collected pixel for deferred rendering.
-type enlargedPixel struct {
-	x, y float64
-	col  agg.Color
+type convVS struct{ src conv.VertexSource }
+
+func (a *convVS) Rewind(id uint32) { a.src.Rewind(uint(id)) }
+func (a *convVS) Vertex(x, y *float64) uint32 {
+	vx, vy, cmd := a.src.Vertex()
+	*x, *y = vx, vy
+	return uint32(cmd)
 }
 
-// EnlargedRenderer implements renscan.RendererInterface.
-// During the scanline sweep it collects one square per logical pixel;
-// Flush then draws them all so the shared rasterizer is free for reuse.
-type EnlargedRenderer struct {
-	ctx       *agg.Context
-	pixelSize float64
-	col       agg.Color
-	pixels    []enlargedPixel
+// pathStlVS wraps PathStorageStl as a conv.VertexSource.
+type pathStlVS struct{ ps *path.PathStorageStl }
+
+func (a *pathStlVS) Rewind(id uint) { a.ps.Rewind(id) }
+func (a *pathStlVS) Vertex() (float64, float64, basics.PathCommand) {
+	x, y, cmd := a.ps.NextVertex()
+	return x, y, basics.PathCommand(cmd)
 }
 
-func (r *EnlargedRenderer) Prepare() { r.pixels = r.pixels[:0] }
+// ---------------------------------------------------------------------------
+// rendererEnlarged – C++ renderer_enlarged: draws each scanline pixel as
+// a large square via its own rasterizer, matching the C++ original exactly.
+// ---------------------------------------------------------------------------
 
-func (r *EnlargedRenderer) SetColor(c color.RGBA8[color.Linear]) {
-	r.col = agg.NewColorRGBA8(c)
+type rendererEnlarged struct {
+	ras   *rasterizerAdaptor
+	sl    *scanlineWrapper
+	renRb *renderer.RendererBase[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]]
+	size  float64
+	col   color.RGBA8[color.Linear]
 }
 
-func (r *EnlargedRenderer) Render(sl renscan.ScanlineInterface) {
+func newRendererEnlarged(
+	renRb *renderer.RendererBase[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]],
+	size float64,
+) *rendererEnlarged {
+	return &rendererEnlarged{
+		ras:   newRasterizer(),
+		sl:    &scanlineWrapper{sl: scanline.NewScanlineP8()},
+		renRb: renRb,
+		size:  size,
+	}
+}
+
+func (r *rendererEnlarged) Prepare() {}
+
+func (r *rendererEnlarged) SetColor(c color.RGBA8[color.Linear]) { r.col = c }
+
+func (r *rendererEnlarged) Render(sl renscan.ScanlineInterface) {
 	y := sl.Y()
 	it := sl.Begin()
 	for i, n := 0, sl.NumSpans(); i < n; i++ {
@@ -75,27 +163,18 @@ func (r *EnlargedRenderer) Render(sl renscan.ScanlineInterface) {
 		x := span.X
 		numPix := span.Len
 		covers := span.Covers
-		if numPix < 0 {
-			// Solid span: single cover value for all pixels.
+		solid := numPix < 0
+		if solid {
 			numPix = -numPix
-			alpha := (uint16(covers[0]) * uint16(r.col.A)) >> 8
-			c := agg.NewColor(r.col.R, r.col.G, r.col.B, uint8(alpha))
-			for j := 0; j < numPix; j++ {
-				r.pixels = append(r.pixels, enlargedPixel{
-					x:   float64(x+j) * r.pixelSize,
-					y:   float64(y) * r.pixelSize,
-					col: c,
-				})
+		}
+		for j := 0; j < numPix; j++ {
+			cover := covers[0]
+			if !solid {
+				cover = covers[j]
 			}
-		} else {
-			for j := 0; j < numPix; j++ {
-				alpha := (uint16(covers[j]) * uint16(r.col.A)) >> 8
-				r.pixels = append(r.pixels, enlargedPixel{
-					x:   float64(x+j) * r.pixelSize,
-					y:   float64(y) * r.pixelSize,
-					col: agg.NewColor(r.col.R, r.col.G, r.col.B, uint8(alpha)),
-				})
-			}
+			a := (uint16(cover) * uint16(r.col.A)) >> 8
+			r.drawSquare(float64(x+j), float64(y),
+				color.RGBA8[color.Linear]{R: r.col.R, G: r.col.G, B: r.col.B, A: uint8(a)})
 		}
 		if i < n-1 {
 			it.Next()
@@ -103,258 +182,90 @@ func (r *EnlargedRenderer) Render(sl renscan.ScanlineInterface) {
 	}
 }
 
-// Flush draws all collected enlarged pixels to the canvas.
-func (r *EnlargedRenderer) Flush() {
-	for _, p := range r.pixels {
-		r.ctx.SetColor(p.col)
-		r.ctx.FillRectangle(p.x, p.y, r.pixelSize, r.pixelSize)
-	}
+func (r *rendererEnlarged) drawSquare(x, y float64, c color.RGBA8[color.Linear]) {
+	r.ras.ras.Reset()
+	r.ras.ras.MoveToD(x*r.size, y*r.size)
+	r.ras.ras.LineToD(x*r.size+r.size, y*r.size)
+	r.ras.ras.LineToD(x*r.size+r.size, y*r.size+r.size)
+	r.ras.ras.LineToD(x*r.size, y*r.size+r.size)
+	renscan.RenderScanlinesAASolid(r.ras, r.sl, r.renRb, c)
 }
 
-// control is the interface required by renderControl.
-type control interface {
-	InRect(x, y float64) bool
-	OnMouseButtonDown(x, y float64) bool
-	OnMouseButtonUp(x, y float64) bool
-	OnMouseMove(x, y float64, buttonPressed bool) bool
-	NumPaths() uint
-	Rewind(pathID uint)
-	Vertex() (x, y float64, cmd basics.PathCommand)
-	Color(pathID uint) color.RGBA
-}
-
-type controlPathAdapter struct {
-	rewindFn func(pathID uint)
-	vertexFn func() (x, y float64, cmd basics.PathCommand)
-}
-
-func (a *controlPathAdapter) Rewind(pathID uint32) { a.rewindFn(uint(pathID)) }
-func (a *controlPathAdapter) Vertex(x, y *float64) uint32 {
-	vx, vy, cmd := a.vertexFn()
-	*x = vx
-	*y = vy
-	return uint32(cmd)
-}
-
-type rasScanlineAdapter struct{ sl *scanline.ScanlineU8 }
-
-func (a *rasScanlineAdapter) ResetSpans()                 { a.sl.ResetSpans() }
-func (a *rasScanlineAdapter) AddCell(x int, cover uint32) { a.sl.AddCell(x, uint(cover)) }
-func (a *rasScanlineAdapter) AddSpan(x, length int, cover uint32) {
-	a.sl.AddSpan(x, length, uint(cover))
-}
-func (a *rasScanlineAdapter) Finalize(y int) { a.sl.Finalize(y) }
-func (a *rasScanlineAdapter) NumSpans() int  { return a.sl.NumSpans() }
-
-func rgbaToRGBA8(c color.RGBA) color.RGBA8[color.Linear] {
-	clamp := func(v float64) uint8 {
-		if v <= 0 {
-			return 0
-		}
-		if v >= 1 {
-			return 255
-		}
-		return uint8(v*255 + 0.5)
-	}
-	return color.RGBA8[color.Linear]{R: clamp(c.R), G: clamp(c.G), B: clamp(c.B), A: clamp(c.A)}
-}
-
-func renderControl(
-	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
-	sl *scanline.ScanlineU8,
-	renBase *renderer.RendererBase[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]],
-	ctrl control,
-) {
-	adapter := &controlPathAdapter{rewindFn: ctrl.Rewind, vertexFn: ctrl.Vertex}
-	for pathID := uint(0); pathID < ctrl.NumPaths(); pathID++ {
-		ras.Reset()
-		ras.AddPath(adapter, uint32(pathID))
-		col := rgbaToRGBA8(ctrl.Color(pathID))
-		if !ras.RewindScanlines() {
-			continue
-		}
-		sl.Reset(ras.MinX(), ras.MaxX())
-		for ras.SweepScanline(&rasScanlineAdapter{sl: sl}) {
-			y := sl.Y()
-			for _, s := range sl.Spans() {
-				if s.Len > 0 {
-					renBase.BlendSolidHspan(int(s.X), y, int(s.Len), col, s.Covers)
-				}
-			}
-		}
-	}
-}
-
-// pointInTriangle reports whether (px, py) is inside the triangle.
-func pointInTriangle(x1, y1, x2, y2, x3, y3, px, py float64) bool {
-	cross := func(ax, ay, bx, by, cx, cy float64) float64 {
-		return (ax-cx)*(by-cy) - (bx-cx)*(ay-cy)
-	}
-	b1 := cross(px, py, x1, y1, x2, y2) < 0
-	b2 := cross(px, py, x2, y2, x3, y3) < 0
-	b3 := cross(px, py, x3, y3, x1, y1) < 0
-	return b1 == b2 && b2 == b3
-}
+// ---------------------------------------------------------------------------
+// Demo
+// ---------------------------------------------------------------------------
 
 type demo struct {
-	x, y   [3]float64 // Triangle vertices
-	dx, dy float64    // Mouse drag offset
-	idx    int        // Dragged vertex index (3 = whole triangle, -1 = none)
-
-	slider1 *slider.SliderCtrl
+	x, y [3]float64
 }
 
-func newDemo() *demo {
-	d := &demo{
-		idx: -1,
-		x:   [3]float64{57, 369, 143},
-		y:   [3]float64{100, 170, 310},
+func (d *demo) Render(img *agg.Image) {
+	w, h := img.Width(), img.Height()
+
+	workBuf := make([]uint8, w*h*4)
+	workRbuf := buffer.NewRenderingBufferU8WithData(workBuf, w, h, w*4)
+	mainPixf := pixfmt.NewPixFmtRGBA32[color.Linear](workRbuf)
+	mainRb := renderer.NewRendererBaseWithPixfmt(mainPixf)
+	mainRb.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
+
+	sizeMul := 32.0 // C++ default slider value
+
+	ras := newRasterizer()
+	sl := &scanlineWrapper{sl: scanline.NewScanlineP8()}
+
+	// 1. Enlarged-pixel rendering.
+	renEnlarged := newRendererEnlarged(mainRb, sizeMul)
+	renEnlarged.SetColor(color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255})
+
+	ras.ras.Reset()
+	ras.ras.MoveToD(d.x[0]/sizeMul, d.y[0]/sizeMul)
+	ras.ras.LineToD(d.x[1]/sizeMul, d.y[1]/sizeMul)
+	ras.ras.LineToD(d.x[2]/sizeMul, d.y[2]/sizeMul)
+	renscan.RenderScanlines(ras, sl, renEnlarged)
+
+	// 2. Actual-size solid black fill at scaled coordinates.
+	ras.ras.Reset()
+	ras.ras.MoveToD(d.x[0]/sizeMul, d.y[0]/sizeMul)
+	ras.ras.LineToD(d.x[1]/sizeMul, d.y[1]/sizeMul)
+	ras.ras.LineToD(d.x[2]/sizeMul, d.y[2]/sizeMul)
+	renscan.RenderScanlinesAASolid(ras, sl, mainRb,
+		color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255})
+
+	// 3. Full-scale triangle outline in teal via conv_stroke.
+	teal := color.RGBA8[color.Linear]{R: 0, G: 150, B: 160, A: 200}
+	edges := [3][2]int{{0, 1}, {1, 2}, {2, 0}}
+	for _, e := range edges {
+		ps := path.NewPathStorageStl()
+		ps.MoveTo(d.x[e[0]], d.y[e[0]])
+		ps.LineTo(d.x[e[1]], d.y[e[1]])
+		stroke := conv.NewConvStroke(&pathStlVS{ps: ps})
+		stroke.SetWidth(2.0)
+		ras.Reset()
+		ras.ras.AddPath(&convVS{src: stroke}, 0)
+		renscan.RenderScanlinesAASolid(ras, sl, mainRb, teal)
 	}
-	// Slider at bottom of window, matching C++ m_slider1(80, 10, 600-10, 19, !flip_y)
-	// with flip_y=true → y coords are from bottom → screen y = height - cpp_y.
-	d.slider1 = slider.NewSliderCtrl(80, frameHeight-19, frameWidth-10, frameHeight-10, false)
-	d.slider1.SetRange(8, 100)
-	d.slider1.SetNumSteps(23)
-	d.slider1.SetValue(32)
-	d.slider1.SetLabel("Pixel size=%1.0f")
-	return d
+
+	// Copy with y-flip.
+	copyFlipY(workBuf, img.Data, w, h)
 }
 
-func (d *demo) Render(ctx *agg.Context) {
-	ctx.Clear(agg.White)
-	a := ctx.GetAgg2D()
-	a.ResetTransformations()
-
-	pixelSize := d.slider1.Value()
-
-	// Build scaled triangle path (vertices / pixelSize).
-	ps := path.NewPathStorageStl()
-	ps.MoveTo(d.x[0]/pixelSize, d.y[0]/pixelSize)
-	ps.LineTo(d.x[1]/pixelSize, d.y[1]/pixelSize)
-	ps.LineTo(d.x[2]/pixelSize, d.y[2]/pixelSize)
-	ps.ClosePolygon(basics.PathFlagsNone)
-
-	// 1. Enlarged-pixel rendering: each rasterized pixel becomes a pixelSize×pixelSize square.
-	enlargedRen := &EnlargedRenderer{ctx: ctx, pixelSize: pixelSize, col: agg.Black}
-	ras := a.GetInternalRasterizer()
-	ras.Reset()
-	ras.AddPath(&pathSourceAdapter{ps: ps}, 0)
-	a.ScanlineRender(ras, enlargedRen)
-	enlargedRen.Flush()
-
-	// 2. Actual-size solid black fill at the scaled coordinates
-	//    (same as C++ render_scanlines_aa_solid after the enlarged pass).
-	a.FillColor(agg.Black)
-	a.NoLine()
-	a.ResetPath()
-	a.MoveTo(d.x[0]/pixelSize, d.y[0]/pixelSize)
-	a.LineTo(d.x[1]/pixelSize, d.y[1]/pixelSize)
-	a.LineTo(d.x[2]/pixelSize, d.y[2]/pixelSize)
-	a.ClosePolygon()
-	a.DrawPath(agg.FillOnly)
-
-	// 3. Full-scale triangle outline in teal (matching C++ conv_stroke edges).
-	teal := agg.NewColor(0, 150, 160, 200)
-	a.LineColor(teal)
-	a.NoFill()
-	a.LineWidth(2.0)
-
-	a.ResetPath()
-	a.MoveTo(d.x[0], d.y[0])
-	a.LineTo(d.x[1], d.y[1])
-	a.DrawPath(agg.StrokeOnly)
-
-	a.ResetPath()
-	a.MoveTo(d.x[1], d.y[1])
-	a.LineTo(d.x[2], d.y[2])
-	a.DrawPath(agg.StrokeOnly)
-
-	a.ResetPath()
-	a.MoveTo(d.x[2], d.y[2])
-	a.LineTo(d.x[0], d.y[0])
-	a.DrawPath(agg.StrokeOnly)
-
-	// 4. Render the slider control directly into the frame buffer.
-	imgData := ctx.GetImage().Data
-	rbuf := buffer.NewRenderingBufferU8WithData(imgData, frameWidth, frameHeight, frameWidth*4)
-	pf := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
-	renBase := renderer.NewRendererBaseWithPixfmt(pf)
-	ctrlRas := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
-		rasterizer.RasConvInt{},
-		rasterizer.NewRasterizerSlNoClip(),
-	)
-	ctrlSl := scanline.NewScanlineU8()
-	renderControl(ctrlRas, ctrlSl, renBase, d.slider1)
-}
-
-func (d *demo) OnMouseDown(x, y int, btn demorunner.Buttons) bool {
-	if !btn.Left {
-		return false
+func copyFlipY(src, dst []uint8, width, height int) {
+	stride := width * 4
+	for y := 0; y < height; y++ {
+		srcOff := (height - 1 - y) * stride
+		dstOff := y * stride
+		copy(dst[dstOff:dstOff+stride], src[srcOff:srcOff+stride])
 	}
-	fx, fy := float64(x), float64(y)
-
-	if d.slider1.InRect(fx, fy) {
-		return d.slider1.OnMouseButtonDown(fx, fy)
-	}
-
-	d.idx = -1
-	for i := range 3 {
-		dist := math.Sqrt((fx-d.x[i])*(fx-d.x[i]) + (fy-d.y[i])*(fy-d.y[i]))
-		if dist < 10 {
-			d.dx = fx - d.x[i]
-			d.dy = fy - d.y[i]
-			d.idx = i
-			return true
-		}
-	}
-	if pointInTriangle(d.x[0], d.y[0], d.x[1], d.y[1], d.x[2], d.y[2], fx, fy) {
-		d.dx = fx - d.x[0]
-		d.dy = fy - d.y[0]
-		d.idx = 3
-		return true
-	}
-	return false
-}
-
-func (d *demo) OnMouseMove(x, y int, btn demorunner.Buttons) bool {
-	fx, fy := float64(x), float64(y)
-	if d.slider1.OnMouseMove(fx, fy, btn.Left) {
-		return true
-	}
-	if !btn.Left {
-		d.idx = -1
-		return false
-	}
-	if d.idx == 3 {
-		dx := fx - d.dx
-		dy := fy - d.dy
-		d.x[1] -= d.x[0] - dx
-		d.y[1] -= d.y[0] - dy
-		d.x[2] -= d.x[0] - dx
-		d.y[2] -= d.y[0] - dy
-		d.x[0] = dx
-		d.y[0] = dy
-		return true
-	}
-	if d.idx >= 0 {
-		d.x[d.idx] = fx - d.dx
-		d.y[d.idx] = fy - d.dy
-		return true
-	}
-	return false
-}
-
-func (d *demo) OnMouseUp(x, y int, btn demorunner.Buttons) bool {
-	fx, fy := float64(x), float64(y)
-	d.slider1.OnMouseButtonUp(fx, fy)
-	d.idx = -1
-	return false
 }
 
 func main() {
-	demorunner.Run(demorunner.Config{
-		Title:  "AGG Example. Anti-Aliasing Demo",
+	d := &demo{
+		x: [3]float64{57, 369, 143},
+		y: [3]float64{100, 170, 310},
+	}
+	lowlevelrunner.Run(lowlevelrunner.Config{
+		Title:  "AA Demo",
 		Width:  frameWidth,
 		Height: frameHeight,
-	}, newDemo())
+	}, d)
 }
