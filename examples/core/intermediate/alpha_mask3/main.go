@@ -1,200 +1,283 @@
-// Port of AGG C++ alpha_mask3.cpp – polygon-masked rendering with spiral.
+// Port of AGG C++ alpha_mask3.cpp – alpha-mask as polygon clipper.
 //
-// Creates an alpha mask from a star/spiral polygon, then renders colored shapes
-// through it. Default: AND operation (mask shows interior), polygon type 3
-// (Great Britain + spiral shape).
+// Renders case 3 (default): Great Britain polygon as alpha mask, spiral stroke
+// as content rendered through the mask.  The C++ original has radio buttons to
+// select different polygon/operation combos — only the default is ported here.
 package main
 
 import (
 	"math"
 
 	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/conv"
+	"github.com/MeKo-Christian/agg_go/internal/demo/aggshapes"
 	"github.com/MeKo-Christian/agg_go/internal/path"
 	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
 	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
 	"github.com/MeKo-Christian/agg_go/internal/renderer"
 	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
 	"github.com/MeKo-Christian/agg_go/internal/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
 
 const (
-	width  = 512
-	height = 400
+	frameWidth  = 640
+	frameHeight = 520
 )
 
-// Scanline/rasterizer bridge types.
+// ---------------------------------------------------------------------------
+// Rasterizer / scanline adapters
+// ---------------------------------------------------------------------------
 
-type rasAdp3 struct {
-	ras interface {
-		RewindScanlines() bool
-		SweepScanline(sl rasterizer.ScanlineInterface) bool
-		MinX() int
-		MaxX() int
+type rasterizerAdaptor struct {
+	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
+	sl  rasScanlineAdaptor
+}
+
+func newRasterizer() *rasterizerAdaptor {
+	return &rasterizerAdaptor{
+		ras: rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+			rasterizer.RasConvInt{},
+			rasterizer.NewRasterizerSlNoClip(),
+		),
+		sl: rasScanlineAdaptor{sl: scanline.NewScanlineP8()},
 	}
 }
 
-func (r *rasAdp3) RewindScanlines() bool { return r.ras.RewindScanlines() }
-func (r *rasAdp3) MinX() int             { return r.ras.MinX() }
-func (r *rasAdp3) MaxX() int             { return r.ras.MaxX() }
+func (r *rasterizerAdaptor) Reset()                { r.ras.Reset() }
+func (r *rasterizerAdaptor) RewindScanlines() bool { return r.ras.RewindScanlines() }
+func (r *rasterizerAdaptor) MinX() int             { return r.ras.MinX() }
+func (r *rasterizerAdaptor) MaxX() int             { return r.ras.MaxX() }
 
-type slAdpP8v3 struct{ sl *scanline.ScanlineP8 }
+func (r *rasterizerAdaptor) AddPath(vs rasterizer.VertexSource, pathID uint32) {
+	r.ras.AddPath(vs, pathID)
+}
 
-func (a *slAdpP8v3) ResetSpans()                 { a.sl.ResetSpans() }
-func (a *slAdpP8v3) AddCell(x int, cover uint32) { a.sl.AddCell(x, uint(cover)) }
-func (a *slAdpP8v3) AddSpan(x, l int, c uint32)  { a.sl.AddSpan(x, l, uint(c)) }
-func (a *slAdpP8v3) Finalize(y int)              { a.sl.Finalize(y) }
-func (a *slAdpP8v3) NumSpans() int               { return a.sl.NumSpans() }
-
-func (r *rasAdp3) SweepScanline(sl renscan.ScanlineInterface) bool {
-	if w, ok := sl.(*slWrapP8v3); ok {
-		return r.ras.SweepScanline(&slAdpP8v3{sl: w.sl})
+func (r *rasterizerAdaptor) SweepScanline(sl renscan.ScanlineInterface) bool {
+	if w, ok := sl.(*scanlineWrapper); ok {
+		r.sl.sl = w.sl
+		return r.ras.SweepScanline(&r.sl)
 	}
 	return false
 }
 
-type slWrapP8v3 struct{ sl *scanline.ScanlineP8 }
+type rasScanlineAdaptor struct{ sl *scanline.ScanlineP8 }
 
-func (w *slWrapP8v3) Reset(minX, maxX int) { w.sl.Reset(minX, maxX) }
-func (w *slWrapP8v3) Y() int               { return w.sl.Y() }
-func (w *slWrapP8v3) NumSpans() int        { return w.sl.NumSpans() }
+func (a *rasScanlineAdaptor) ResetSpans()                 { a.sl.ResetSpans() }
+func (a *rasScanlineAdaptor) AddCell(x int, cover uint32) { a.sl.AddCell(x, uint(cover)) }
+func (a *rasScanlineAdaptor) AddSpan(x, length int, cover uint32) {
+	a.sl.AddSpan(x, length, uint(cover))
+}
+func (a *rasScanlineAdaptor) Finalize(y int) { a.sl.Finalize(y) }
+func (a *rasScanlineAdaptor) NumSpans() int  { return a.sl.NumSpans() }
 
-type spanIterP8v3 struct {
+type scanlineWrapper struct{ sl *scanline.ScanlineP8 }
+
+func (w *scanlineWrapper) Reset(minX, maxX int) { w.sl.Reset(minX, maxX) }
+func (w *scanlineWrapper) Y() int               { return w.sl.Y() }
+func (w *scanlineWrapper) NumSpans() int         { return w.sl.NumSpans() }
+
+func (w *scanlineWrapper) Begin() renscan.ScanlineIterator {
+	spans := w.sl.Spans()
+	if len(spans) == 0 {
+		return &spanIter{nil, 0}
+	}
+	return &spanIter{spans, 0}
+}
+
+type spanIter struct {
 	spans []scanline.SpanP8
 	idx   int
 }
 
-func (it *spanIterP8v3) GetSpan() renscan.SpanData {
+func (it *spanIter) GetSpan() renscan.SpanData {
 	s := it.spans[it.idx]
 	return renscan.SpanData{X: int(s.X), Len: int(s.Len), Covers: s.Covers}
 }
-func (it *spanIterP8v3) Next() bool { it.idx++; return it.idx < len(it.spans) }
+func (it *spanIter) Next() bool { it.idx++; return it.idx < len(it.spans) }
 
-func (w *slWrapP8v3) Begin() renscan.ScanlineIterator {
-	spans := w.sl.Spans()
-	if len(spans) == 0 {
-		return &spanIterP8v3{nil, 0}
-	}
-	return &spanIterP8v3{spans, 0}
+// ---------------------------------------------------------------------------
+// Spiral vertex source – matches C++ spiral class from alpha_mask3.cpp
+// ---------------------------------------------------------------------------
+
+type spiral struct {
+	x, y           float64
+	r1, r2         float64
+	step           float64
+	startAngle     float64
+	angle, currR   float64
+	da, dr         float64
+	start          bool
 }
 
-// buildSpiralPath creates a spiral polygon used as the mask shape.
-func buildSpiralPath(cx, cy, r1, r2 float64, numSteps int, startAngle float64) *path.PathStorageStl {
-	ps := path.NewPathStorageStl()
-	step := 2 * math.Pi / float64(numSteps)
-	for i := 0; i <= numSteps; i++ {
-		a := startAngle + float64(i)*step
-		t := float64(i) / float64(numSteps)
-		r := r1 + (r2-r1)*t
-		x := cx + r*math.Cos(a)
-		y := cy + r*math.Sin(a)
-		if i == 0 {
-			ps.MoveTo(x, y)
-		} else {
-			ps.LineTo(x, y)
-		}
+func newSpiral(x, y, r1, r2, step, startAngle float64) *spiral {
+	return &spiral{
+		x:          x,
+		y:          y,
+		r1:         r1,
+		r2:         r2,
+		step:       step,
+		startAngle: startAngle,
+		da:         4.0 * basics.Deg2Rad,
+		dr:         step / 90.0,
 	}
-	// Close with a straight line back to centre.
-	ps.LineTo(cx, cy)
-	ps.ClosePolygon(basics.PathFlagsNone)
-	return ps
 }
 
-// buildStarPath creates a star polygon used as the mask shape.
-func buildStarPath(cx, cy, r1, r2 float64, numPoints int) *path.PathStorageStl {
-	ps := path.NewPathStorageStl()
-	for i := 0; i <= numPoints*2; i++ {
-		a := -math.Pi/2 + math.Pi*float64(i)/float64(numPoints)
-		r := r2
-		if i%2 == 0 {
-			r = r1
-		}
-		x := cx + r*math.Cos(a)
-		y := cy + r*math.Sin(a)
-		if i == 0 {
-			ps.MoveTo(x, y)
-		} else {
-			ps.LineTo(x, y)
-		}
-	}
-	ps.ClosePolygon(basics.PathFlagsNone)
-	return ps
+func (s *spiral) Rewind(_ uint) {
+	s.angle = s.startAngle
+	s.currR = s.r1
+	s.start = true
 }
 
-type demo struct{}
+func (s *spiral) Vertex() (float64, float64, basics.PathCommand) {
+	if s.currR > s.r2 {
+		return 0, 0, basics.PathCmdStop
+	}
+	x := s.x + math.Cos(s.angle)*s.currR
+	y := s.y + math.Sin(s.angle)*s.currR
+	s.currR += s.dr
+	s.angle += s.da
+	if s.start {
+		s.start = false
+		return x, y, basics.PathCmdMoveTo
+	}
+	return x, y, basics.PathCmdLineTo
+}
 
-func (d *demo) Render(ctx *agg.Context) {
-	img := ctx.GetImage()
-	agg2d := ctx.GetAgg2D()
-	agg2d.ResetTransformations()
-	agg2d.ClearAll(agg.White)
+// ---------------------------------------------------------------------------
+// Adapter: conv.VertexSource wrapping a path + affine transform
+// ---------------------------------------------------------------------------
 
-	ras := agg2d.GetInternalRasterizer()
-	sl := scanline.NewScanlineP8()
-	slAdapter := &slWrapP8v3{sl: sl}
-	rasAdapter := &rasAdp3{ras: ras}
+type transformedPathVS struct {
+	ps  *path.PathStorageStl
+	mtx *transform.TransAffine
+}
 
-	cx, cy := float64(width)/2, float64(height)/2
+func (t *transformedPathVS) Rewind(id uint) { t.ps.Rewind(id) }
+func (t *transformedPathVS) Vertex() (float64, float64, basics.PathCommand) {
+	x, y, cmd := t.ps.NextVertex()
+	t.mtx.Transform(&x, &y)
+	return x, y, basics.PathCommand(cmd)
+}
 
-	// Build mask from spiral + star.
-	maskData := make([]uint8, width*height)
-	maskBuf := buffer.NewRenderingBufferU8WithData(maskData, width, height, width)
+// rasterVS wraps a conv.VertexSource as a rasterizer.VertexSource.
+type rasterVS struct{ src conv.VertexSource }
+
+func (a *rasterVS) Rewind(id uint32) { a.src.Rewind(uint(id)) }
+func (a *rasterVS) Vertex(x, y *float64) uint32 {
+	vx, vy, cmd := a.src.Vertex()
+	*x, *y = vx, vy
+	return uint32(cmd)
+}
+
+// ---------------------------------------------------------------------------
+// Demo
+// ---------------------------------------------------------------------------
+
+type demo struct {
+	mx, my float64 // spiral centre
+}
+
+func (d *demo) Render(img *agg.Image) {
+	w, h := img.Width(), img.Height()
+
+	workBuf := make([]uint8, w*h*4)
+	workRbuf := buffer.NewRenderingBufferU8WithData(workBuf, w, h, w*4)
+
+	ras := newRasterizer()
+	sl := &scanlineWrapper{sl: scanline.NewScanlineP8()}
+
+	// White background.
+	mainPixf := pixfmt.NewPixFmtRGBA32[color.Linear](workRbuf)
+	mainRb := renderer.NewRendererBaseWithPixfmt(mainPixf)
+	mainRb.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
+
+	// --- Case 3: Great Britain and Spiral ---
+
+	// Build transformed GB polygon.
+	psGB := path.NewPathStorageStl()
+	aggshapes.MakeGBPoly(psGB)
+	gbMtx := transform.NewTransAffine()
+	gbMtx.Translate(-1150, -1150)
+	gbMtx.Scale(2.0)
+	transGB := &transformedPathVS{ps: psGB, mtx: gbMtx}
+
+	// Draw GB fill (faint background).
+	ras.Reset()
+	ras.AddPath(&rasterVS{src: transGB}, 0)
+	renscan.RenderScanlinesAASolid(ras, sl, mainRb,
+		color.RGBA8[color.Linear]{R: 127, G: 127, B: 0, A: 25})
+
+	// Draw GB stroke.
+	strokeGB := conv.NewConvStroke(transGB)
+	strokeGB.SetWidth(0.1)
+	ras.Reset()
+	ras.AddPath(&rasterVS{src: strokeGB}, 0)
+	renscan.RenderScanlinesAASolid(ras, sl, mainRb,
+		color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255})
+
+	// Draw spiral stroke (faint preview).
+	sp := newSpiral(d.mx, d.my, 10, 150, 30, 0.0)
+	strokeSp := conv.NewConvStroke(sp)
+	strokeSp.SetWidth(15.0)
+	ras.Reset()
+	ras.AddPath(&rasterVS{src: strokeSp}, 0)
+	renscan.RenderScanlinesAASolid(ras, sl, mainRb,
+		color.RGBA8[color.Linear]{R: 0, G: 127, B: 127, A: 25})
+
+	// --- Generate alpha mask from GB polygon ---
+	maskData := make([]uint8, w*h)
+	maskBuf := buffer.NewRenderingBufferU8WithData(maskData, w, h, w)
 	maskPixf := pixfmt.NewPixFmtGray8(maskBuf)
 	maskRb := renderer.NewRendererBaseWithPixfmt(maskPixf)
+	// AND operation: clear black, render white.
 	maskRb.Clear(color.Gray8[color.Linear]{V: 0, A: 255})
 
-	// Spiral mask.
-	spiral := buildSpiralPath(cx, cy, 20, 280, 500, 0)
 	ras.Reset()
-	spiral.Rewind(0)
-	for {
-		x, y, cmd := spiral.NextVertex()
-		if basics.IsStop(basics.PathCommand(cmd)) {
-			break
-		}
-		ras.AddVertex(x, y, uint32(cmd))
-	}
-	renscan.RenderScanlinesAASolid(rasAdapter, slAdapter, maskRb, color.Gray8[color.Linear]{V: 255, A: 255})
+	ras.AddPath(&rasterVS{src: transGB}, 0)
+	renscan.RenderScanlinesAASolid(ras, sl, maskRb,
+		color.Gray8[color.Linear]{V: 255, A: 255})
 
 	mask := pixfmt.NewAlphaMaskU8WithBuffer(maskBuf, 1, 0, pixfmt.OneComponentMaskU8{})
 
-	// Render colored concentric rings through mask.
-	mainBuf := buffer.NewRenderingBufferWithData[uint8](img.Data, width, height, width*4)
-	mainPixf := pixfmt.NewPixFmtRGBA32[color.Linear](mainBuf)
+	// --- Render spiral stroke through mask ---
 	amaskAdaptor := pixfmt.NewPixFmtAMaskAdaptor(mainPixf, mask)
 	rbAMask := renderer.NewRendererBaseWithPixfmt(amaskAdaptor)
 
-	colors := []color.RGBA8[color.Linear]{
-		{R: 255, G: 0, B: 0, A: 200},
-		{R: 0, G: 180, B: 0, A: 200},
-		{R: 0, G: 0, B: 255, A: 200},
-		{R: 255, G: 180, B: 0, A: 200},
-		{R: 180, G: 0, B: 255, A: 200},
-		{R: 0, G: 200, B: 200, A: 200},
-	}
+	// Re-rasterize spiral stroke for masked rendering.
+	sp2 := newSpiral(d.mx, d.my, 10, 150, 30, 0.0)
+	strokeSp2 := conv.NewConvStroke(sp2)
+	strokeSp2.SetWidth(15.0)
+	ras.Reset()
+	ras.AddPath(&rasterVS{src: strokeSp2}, 0)
+	renscan.RenderScanlinesAASolid(ras, sl, rbAMask,
+		color.RGBA8[color.Linear]{R: 127, G: 0, B: 0, A: 127})
 
-	numRings := 6
-	for i := numRings; i >= 1; i-- {
-		r := float64(i) / float64(numRings) * 280.0
-		// Build a filled circle via star (full circle = many-pointed star).
-		ring := buildStarPath(cx, cy, r*0.6, r, 60)
-		ras.Reset()
-		ring.Rewind(0)
-		for {
-			x, y, cmd := ring.NextVertex()
-			if basics.IsStop(basics.PathCommand(cmd)) {
-				break
-			}
-			ras.AddVertex(x, y, uint32(cmd))
-		}
-		c := colors[(numRings-i)%len(colors)]
-		renscan.RenderScanlinesAASolid(rasAdapter, slAdapter, rbAMask, c)
+	// Copy with y-flip.
+	copyFlipY(workBuf, img.Data, w, h)
+}
+
+func copyFlipY(src, dst []uint8, width, height int) {
+	stride := width * 4
+	for y := 0; y < height; y++ {
+		srcOff := (height - 1 - y) * stride
+		dstOff := y * stride
+		copy(dst[dstOff:dstOff+stride], src[srcOff:srcOff+stride])
 	}
 }
 
 func main() {
-	demorunner.Run(demorunner.Config{Title: "Alpha Mask 3", Width: width, Height: height}, &demo{})
+	d := &demo{
+		mx: float64(frameWidth) / 2,
+		my: float64(frameHeight) / 2,
+	}
+	lowlevelrunner.Run(lowlevelrunner.Config{
+		Title:  "Alpha Mask3",
+		Width:  frameWidth,
+		Height: frameHeight,
+	}, d)
 }
