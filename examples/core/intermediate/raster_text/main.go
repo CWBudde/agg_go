@@ -25,12 +25,14 @@ type spanRenderer struct {
 }
 
 func (s *spanRenderer) blendPixel(x, y int, sr, sg, sb, sa, cover uint8) {
-	if x < 0 || y < 0 || x >= s.img.Width() || y >= s.img.Height() {
+	h := s.img.Height()
+	fy := h - 1 - y
+	if x < 0 || fy < 0 || x >= s.img.Width() || fy >= h {
 		return
 	}
 	alpha := uint32(sa) * uint32(cover) / 255
 	inv := 255 - alpha
-	off := (y*s.img.Width() + x) * 4
+	off := (fy*s.img.Width() + x) * 4
 	d := s.img.Data
 	d[off+0] = uint8((uint32(sr)*alpha + uint32(d[off+0])*inv) / 255)
 	d[off+1] = uint8((uint32(sg)*alpha + uint32(d[off+1])*inv) / 255)
@@ -69,7 +71,7 @@ type gradientRenderer struct {
 }
 
 func newGradientRenderer(img *agg.Image) *gradientRenderer {
-	return &gradientRenderer{img: img, periods: 5.0, d: 150.0}
+	return &gradientRenderer{img: img, periods: 5.0 * math.Pi * 2.0, d: 150.0}
 }
 
 func (g *gradientRenderer) Prepare() {}
@@ -83,13 +85,15 @@ func (g *gradientRenderer) gradientColor(x, y int) (r, gr, b uint8) {
 }
 
 func (g *gradientRenderer) blendPixel(x, y int, cover uint8) {
-	if x < 0 || y < 0 || x >= g.img.Width() || y >= g.img.Height() {
+	h := g.img.Height()
+	fy := h - 1 - y
+	if x < 0 || fy < 0 || x >= g.img.Width() || fy >= h {
 		return
 	}
 	cr, cg, _ := g.gradientColor(x, y)
 	alpha := uint32(cover)
 	inv := 255 - alpha
-	off := (y*g.img.Width() + x) * 4
+	off := (fy*g.img.Width() + x) * 4
 	d := g.img.Data
 	d[off+0] = uint8((uint32(cr)*alpha + uint32(d[off+0])*inv) / 255)
 	d[off+1] = uint8((uint32(cg)*alpha + uint32(d[off+1])*inv) / 255)

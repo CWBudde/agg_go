@@ -150,6 +150,7 @@ type Agg2D struct {
 	textAlignY    TextAlignment
 	textHints     bool
 	flipText      bool
+	resolution    uint
 	fontHeight    float64
 	fontAscent    float64
 	fontDescent   float64
@@ -291,6 +292,7 @@ func NewAgg2D() *Agg2D {
 		textAlignX:         AlignLeft,
 		textAlignY:         AlignBottom,
 		textHints:          true,
+		resolution:         72,
 		fontHeight:         0.0,
 		fontAscent:         0.0,
 		fontDescent:        0.0,

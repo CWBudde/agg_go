@@ -44,6 +44,7 @@ func (agg2d *Agg2D) Font(fileName string, height float64, bold, italic bool,
 
 	// Load the font
 	if agg2d.fontEngine != nil {
+		agg2d.fontEngine.SetResolution(agg2d.resolution)
 		agg2d.fontEngine.SetFlipY(agg2d.flipText)
 		err := agg2d.fontEngine.LoadFont(fileName, 0, renderingType, nil)
 		if err != nil {
@@ -83,9 +84,55 @@ func (agg2d *Agg2D) FontGSV(height float64) {
 	agg2d.gsvFontMode = true
 }
 
+// SetResolution sets the font rendering resolution in DPI for FreeType-backed text.
+func (agg2d *Agg2D) SetResolution(dpi uint) {
+	if dpi > 0 {
+		agg2d.resolution = dpi
+	}
+	if agg2d.fontEngine != nil {
+		agg2d.fontEngine.SetResolution(dpi)
+	}
+}
+
 // FontHeight returns the current font height.
 func (agg2d *Agg2D) FontHeight() float64 {
 	return agg2d.fontHeight
+}
+
+// GetAscender returns the configured font ascender in world units.
+func (agg2d *Agg2D) GetAscender() float64 {
+	if agg2d.fontEngine != nil {
+		return agg2d.fontEngine.GetAscender()
+	}
+	return 0
+}
+
+// GetDescender returns the configured font descender in world units.
+func (agg2d *Agg2D) GetDescender() float64 {
+	if agg2d.fontEngine != nil {
+		return agg2d.fontEngine.GetDescender()
+	}
+	return 0
+}
+
+// MeasureText returns width and height for the current font settings.
+func (agg2d *Agg2D) MeasureText(text string) (width, height float64) {
+	width = agg2d.TextWidth(text)
+	ascent := agg2d.GetAscender()
+	descent := -agg2d.GetDescender()
+	if ascent <= 0 && descent <= 0 {
+		return width, agg2d.FontHeight()
+	}
+	return width, ascent + descent
+}
+
+// GetTextHeight returns the nominal height of the current font.
+func (agg2d *Agg2D) GetTextHeight() float64 {
+	_, height := agg2d.MeasureText("X")
+	if height > 0 {
+		return height
+	}
+	return agg2d.FontHeight()
 }
 
 // FlipText sets whether to flip text rendering vertically.

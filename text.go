@@ -29,6 +29,15 @@ func (ctx *Context) LoadFont(fontFile string) error {
 // FontHeight returns the current font height.
 func (ctx *Context) FontHeight() float64 { return ctx.agg2d.impl.FontHeight() }
 
+// SetResolution sets the font rendering resolution in DPI.
+func (ctx *Context) SetResolution(dpi uint) { ctx.agg2d.impl.SetResolution(dpi) }
+
+// GetAscender returns the current font ascender in world units.
+func (ctx *Context) GetAscender() float64 { return ctx.agg2d.impl.GetAscender() }
+
+// GetDescender returns the current font descender in world units.
+func (ctx *Context) GetDescender() float64 { return ctx.agg2d.impl.GetDescender() }
+
 // FlipText flips text vertically.
 func (ctx *Context) FlipText(flip bool) { ctx.agg2d.impl.FlipText(flip) }
 
@@ -84,19 +93,31 @@ func (ctx *Context) StrokeText(text string, x, y float64) error {
 
 // MeasureText returns width and height of the text with current font settings.
 func (ctx *Context) MeasureText(text string) (width, height float64) {
-	return ctx.agg2d.impl.TextWidth(text), ctx.agg2d.impl.FontHeight()
+	width = ctx.agg2d.impl.TextWidth(text)
+	ascent := ctx.GetAscender()
+	descent := -ctx.GetDescender()
+	if ascent <= 0 && descent <= 0 {
+		return width, ctx.agg2d.impl.FontHeight()
+	}
+	return width, ascent + descent
 }
 
 // GetTextWidth returns the width of the text.
 func (ctx *Context) GetTextWidth(text string) float64 { return ctx.agg2d.impl.TextWidth(text) }
 
 // GetTextHeight returns the nominal text height.
-func (ctx *Context) GetTextHeight() float64 { return ctx.agg2d.impl.FontHeight() }
+func (ctx *Context) GetTextHeight() float64 {
+	ascent := ctx.GetAscender()
+	descent := -ctx.GetDescender()
+	if ascent > 0 || descent > 0 {
+		return ascent + descent
+	}
+	return ctx.agg2d.impl.FontHeight()
+}
 
 // GetTextBounds returns a simple bounds box for the text.
 func (ctx *Context) GetTextBounds(text string) (x, y, width, height float64) {
-	w := ctx.agg2d.impl.TextWidth(text)
-	h := ctx.agg2d.impl.FontHeight()
+	w, h := ctx.MeasureText(text)
 	return 0, 0, w, h
 }
 

@@ -99,6 +99,43 @@ func TestTextWidth(t *testing.T) {
 	testWithFreeType(t, agg2d)
 }
 
+func TestFontMetricsExposeAscenderDescender(t *testing.T) {
+	fontPath := findSystemFont()
+	if fontPath == "" {
+		t.Skip("No system font found for FreeType testing")
+		return
+	}
+
+	agg2d := NewAgg2D()
+	buf := make([]byte, 800*600*4)
+	agg2d.Attach(buf, 800, 600, 800*4)
+
+	if err := agg2d.Font(fontPath, 16.0, false, false, RasterFontCache, 0.0); err != nil {
+		t.Skip("FreeType not available or font load failed")
+		return
+	}
+
+	asc := agg2d.GetAscender()
+	desc := agg2d.GetDescender()
+	if asc <= 0 {
+		t.Fatalf("expected positive ascender, got %v", asc)
+	}
+	if desc >= 0 {
+		t.Fatalf("expected negative descender, got %v", desc)
+	}
+
+	width, height := agg2d.MeasureText("Value")
+	if width <= 0 {
+		t.Fatalf("expected positive text width, got %v", width)
+	}
+	if height <= 0 {
+		t.Fatalf("expected positive text height, got %v", height)
+	}
+	if got := agg2d.GetTextHeight(); got <= 0 {
+		t.Fatalf("expected positive GetTextHeight, got %v", got)
+	}
+}
+
 // TestTextRendering tests basic text rendering functionality.
 func TestTextRendering(t *testing.T) {
 	agg2d := NewAgg2D()

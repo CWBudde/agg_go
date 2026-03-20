@@ -1,4 +1,9 @@
 // Package main ports AGG's gradients.cpp demo.
+//
+// The image is rendered in a flipped work buffer and copied with y-flip,
+// matching the C++ original's flip_y=true coordinate system. This places
+// the gradient circle top-left, spline controls at the bottom, and the
+// radio-button selector on the left.
 package main
 
 import (
@@ -92,13 +97,6 @@ func renderCtrl(a *agg.Agg2D, c ctrlbase.Ctrl[icol.RGBA]) {
 	}
 }
 
-func renderSimpleSource(a *agg.Agg2D, src simpleVertexSource, color agg.Color) {
-	ras := a.GetInternalRasterizer()
-	ras.Reset()
-	ras.AddPath(&rasterVertexSourceAdapter{src: src}, 0)
-	a.RenderRasterizerWithColor(color)
-}
-
 func buildColorProfile(
 	splineR, splineG, splineB, splineA *splinectrl.SplineCtrl[icol.RGBA],
 ) []icol.RGBA8[icol.Linear] {
@@ -115,7 +113,10 @@ func buildColorProfile(
 }
 
 func newGammaControl() *gammactrl.GammaCtrl {
-	gc := gammactrl.NewGammaCtrl(10.0, 10.0, 200.0, 165.0, false)
+	// flipY=true matches the work buffer's coordinate system (y=0 at bottom),
+	// so the spline box is set as box(xs1, ys1, xs2, ys2) without swapping —
+	// identical to the C++ original with flip_y=true.
+	gc := gammactrl.NewGammaCtrl(10.0, 10.0, 200.0, 165.0, true)
 	gc.SetTextSize(8.0, 0.0)
 	return gc
 }
@@ -161,8 +162,24 @@ func newRboxControl() *rboxctrl.RboxCtrl[icol.RGBA] {
 	return rbox
 }
 
+// copyFlipY copies src to dst with vertical flip (y=0 at bottom → y=0 at top).
+func copyFlipY(src, dst []uint8, w, h int) {
+	stride := w * 4
+	for y := 0; y < h; y++ {
+		srcOff := (h - 1 - y) * stride
+		dstOff := y * stride
+		copy(dst[dstOff:dstOff+stride], src[srcOff:srcOff+stride])
+	}
+}
+
 func (d *demo) Render(img *agg.Image) {
-	ctx := agg.NewContextForImage(img)
+	w, h := img.Width(), img.Height()
+
+	// Work buffer: y=0 at bottom (flip_y=true convention), copied with y-flip.
+	// Control coordinates and center_x/center_y match the C++ original directly.
+	workBuf := make([]uint8, w*h*4)
+	workImg := agg.NewImage(workBuf, w, h, w*4)
+	ctx := agg.NewContextForImage(workImg)
 	ctx.Clear(agg.Black)
 
 	a := ctx.GetAgg2D()
@@ -221,6 +238,8 @@ func (d *demo) Render(img *agg.Image) {
 	ras.Reset()
 	ras.AddPath(&rasterVertexSourceAdapter{src: ellipsePath}, 0)
 	a.RenderScanlinesAAWithSpanGen(ras, spanGen)
+
+	copyFlipY(workBuf, img.Data, w, h)
 }
 
 func main() {
