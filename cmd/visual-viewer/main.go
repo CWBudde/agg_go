@@ -67,6 +67,9 @@ func absDiff8(a, b uint8) uint8 {
 	return b - a
 }
 
+// rawSubtractImage computes per-channel absolute difference.
+// Identical pixels are shown as green (#00aa00) so they are clearly distinguishable
+// from black difference pixels.
 func rawSubtractImage(ref, gen image.Image) *image.RGBA {
 	bounds := ref.Bounds()
 	w := bounds.Max.X - bounds.Min.X
@@ -81,7 +84,11 @@ func rawSubtractImage(ref, gen image.Image) *image.RGBA {
 			dr := absDiff8(uint8(rr>>8), uint8(gr>>8))
 			dg := absDiff8(uint8(rg>>8), uint8(gg>>8))
 			db := absDiff8(uint8(rb>>8), uint8(gb>>8))
-			out.Set(x, y, color.RGBA{R: dr, G: dg, B: db, A: 255})
+			if dr == 0 && dg == 0 && db == 0 {
+				out.Set(x, y, color.RGBA{R: 0, G: 0xaa, B: 0, A: 255})
+			} else {
+				out.Set(x, y, color.RGBA{R: dr, G: dg, B: db, A: 255})
+			}
 		}
 	}
 	return out
@@ -105,6 +112,20 @@ func buildEntry(name, cppPath, goPath string) (demoEntry, error) {
 	result := framework.CompareImages(cppImg, goImg, opts)
 
 	rawDiff := rawSubtractImage(cppImg, goImg)
+
+	// Recolor identical pixels in the amplified diff to green so they are
+	// visually distinct from black-difference pixels.
+	if result.DiffImage != nil {
+		ab := result.DiffImage.Bounds()
+		for y := ab.Min.Y; y < ab.Max.Y; y++ {
+			for x := ab.Min.X; x < ab.Max.X; x++ {
+				p := result.DiffImage.RGBAAt(x, y)
+				if p.R == 0 && p.G == p.B { // identical pixel: gray tint set by framework
+					result.DiffImage.SetRGBA(x, y, color.RGBA{R: 0, G: 0xaa, B: 0, A: 255})
+				}
+			}
+		}
+	}
 
 	// RMSE in [0,255] scale
 	bounds := cppImg.Bounds()
