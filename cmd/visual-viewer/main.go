@@ -247,20 +247,27 @@ body { background: #111; color: #ddd; font-family: monospace; font-size: 13px; }
 }
 .img-col { display: flex; flex-direction: column; gap: 4px; }
 .img-col label { font-size: 11px; color: #888; text-align: center; }
-.img-col img { width: 100%; display: block; image-rendering: pixelated; }
+.img-col { overflow: auto; }
+/* Stretch mode (default): images fill column width with bilinear resampling */
+.img-col img { display: block; image-rendering: auto; width: 100%; height: auto; }
+/* Original mode: images shown at native pixel size, column scrolls if needed */
+.original-size .img-col img { width: auto; height: auto; max-width: none; }
 .col-raw { display: none; }
 /* Slider */
 .slider-wrap {
   position: relative; overflow: hidden; width: 100%; cursor: col-resize;
 }
-.slider-wrap img.base { width: 100%; display: block; }
+.slider-wrap img.base { display: block; image-rendering: auto; width: 100%; height: auto; }
+.original-size .slider-wrap img.base { width: auto; height: auto; max-width: none; }
 .slider-overlay {
   position: absolute; top: 0; left: 0; height: 100%; overflow: hidden; width: 50%;
 }
 .slider-overlay img {
   display: block; position: absolute; top: 0; left: 0;
+  image-rendering: auto;
   width: 200%; /* will be updated by JS */
 }
+.original-size .slider-overlay img { width: auto !important; }
 .slider-divider {
   position: absolute; top: 0; left: 50%; height: 100%;
   width: 3px; background: #fff; cursor: col-resize; transform: translateX(-50%);
@@ -287,6 +294,9 @@ body { background: #111; color: #ddd; font-family: monospace; font-size: 13px; }
     <option value="raw">Diff: Raw</option>
     <option value="both">Diff: Both</option>
   </select>
+  <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer">
+    <input type="checkbox" id="original-size" onchange="setOriginalSize(this.checked)"> Original size
+  </label>
   <span id="summary"></span>
 </div>
 <div class="container" id="cards-container">
@@ -369,6 +379,15 @@ const pageFooter = `</div>
     wrap.addEventListener('click', function(e) { updateSlider(e.clientX); });
   });
 
+  function setOriginalSize(on) {
+    var container = document.getElementById('cards-container');
+    if (on) {
+      container.classList.add('original-size');
+    } else {
+      container.classList.remove('original-size');
+    }
+  }
+
   // Initial summary
   updateSummary();
 
@@ -392,7 +411,7 @@ func badgeClass(rmse float64) string {
 	return "badge-bad"
 }
 
-func renderCard(w io.Writer, d demoEntry) {
+func renderCard(w io.Writer, d *demoEntry) {
 	badge := badgeClass(d.RMSE)
 	pctDiff := d.DiffRatio * 100.0
 
@@ -455,8 +474,8 @@ func renderCard(w io.Writer, d demoEntry) {
 
 func renderPage(w io.Writer, demos []demoEntry) {
 	fmt.Fprint(w, pageHeader)
-	for _, d := range demos {
-		renderCard(w, d)
+	for i := range demos {
+		renderCard(w, &demos[i])
 	}
 	fmt.Fprint(w, pageFooter)
 }
