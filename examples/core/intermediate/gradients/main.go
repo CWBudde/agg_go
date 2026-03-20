@@ -3,7 +3,7 @@ package main
 
 import (
 	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	icol "github.com/MeKo-Christian/agg_go/internal/color"
 	"github.com/MeKo-Christian/agg_go/internal/conv"
@@ -161,7 +161,8 @@ func newRboxControl() *rboxctrl.RboxCtrl[icol.RGBA] {
 	return rbox
 }
 
-func (d *demo) Render(ctx *agg.Context) {
+func (d *demo) Render(img *agg.Image) {
+	ctx := agg.NewContextForImage(img)
 	ctx.Clear(agg.Black)
 
 	a := ctx.GetAgg2D()
@@ -223,7 +224,7 @@ func (d *demo) Render(ctx *agg.Context) {
 }
 
 func main() {
-	demorunner.Run(demorunner.Config{
+	lowlevelrunner.Run(lowlevelrunner.Config{
 		Title:  "AGG gradients with Mach bands compensation",
 		Width:  gradientsWidth,
 		Height: gradientsHeight,

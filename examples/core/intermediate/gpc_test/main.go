@@ -5,7 +5,7 @@ import (
 	"math"
 
 	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
 	"github.com/MeKo-Christian/agg_go/internal/demo/gpctest"
 )
 
@@ -14,7 +14,8 @@ type demo struct {
 	cy float64
 }
 
-func (d *demo) Render(ctx *agg.Context) {
+func (d *demo) Render(img *agg.Image) {
+	ctx := agg.NewContextForImage(img)
 	gpctest.Draw(ctx, gpctest.Config{
 		Scene:     3,
 		Operation: 2,
@@ -23,7 +24,7 @@ func (d *demo) Render(ctx *agg.Context) {
 	})
 }
 
-func (d *demo) OnMouseDown(x, y int, btn demorunner.Buttons) bool {
+func (d *demo) OnMouseDown(x, y int, btn lowlevelrunner.Buttons) bool {
 	if !btn.Left {
 		return false
 	}
@@ -31,7 +32,7 @@ func (d *demo) OnMouseDown(x, y int, btn demorunner.Buttons) bool {
 	return true
 }
 
-func (d *demo) OnMouseMove(x, y int, btn demorunner.Buttons) bool {
+func (d *demo) OnMouseMove(x, y int, btn lowlevelrunner.Buttons) bool {
 	if !btn.Left {
 		return false
 	}
@@ -39,13 +40,13 @@ func (d *demo) OnMouseMove(x, y int, btn demorunner.Buttons) bool {
 	return true
 }
 
-func (d *demo) OnMouseUp(x, y int, btn demorunner.Buttons) bool {
+func (d *demo) OnMouseUp(x, y int, btn lowlevelrunner.Buttons) bool {
 	return false
 }
 
 func main() {
 	d := &demo{cx: math.NaN(), cy: math.NaN()}
-	demorunner.Run(demorunner.Config{
+	lowlevelrunner.Run(lowlevelrunner.Config{
 		Title:  "GPC Test",
 		Width:  640,
 		Height: 520,

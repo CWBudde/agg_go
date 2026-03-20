@@ -10,7 +10,7 @@ import (
 	"math"
 
 	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/color"
 	"github.com/MeKo-Christian/agg_go/internal/conv"
@@ -271,13 +271,14 @@ func (d *demo) mainVS() conv.VertexSource {
 	}
 }
 
-func (d *demo) Render(ctx *agg.Context) {
+func (d *demo) Render(img *agg.Image) {
+	ctx := agg.NewContextForImage(img)
 	ctx.Clear(agg.White)
 	a := ctx.GetAgg2D()
 	a.ResetTransformations()
 
-	w := float64(ctx.GetImage().Width())
-	h := float64(ctx.GetImage().Height())
+	w := float64(img.Width())
+	h := float64(img.Height())
 
 	vs := d.mainVS()
 	x1, y1, x2, y2, ok := boundingRect(vs)
@@ -384,9 +385,9 @@ func (d *demo) Render(ctx *agg.Context) {
 	}
 }
 
-func (d *demo) OnMouseDown(x, y int, btn demorunner.Buttons) bool { return false }
-func (d *demo) OnMouseMove(x, y int, btn demorunner.Buttons) bool { return false }
-func (d *demo) OnMouseUp(x, y int, btn demorunner.Buttons) bool   { return false }
+func (d *demo) OnMouseDown(x, y int, btn lowlevelrunner.Buttons) bool { return false }
+func (d *demo) OnMouseMove(x, y int, btn lowlevelrunner.Buttons) bool { return false }
+func (d *demo) OnMouseUp(x, y int, btn lowlevelrunner.Buttons) bool   { return false }
 
 // --- Glyph path ---
 
@@ -432,7 +433,7 @@ func buildGlyph(ps *path.PathStorage) {
 
 func main() {
 	d := &demo{polygon: 0, gradient: 1}
-	demorunner.Run(demorunner.Config{
+	lowlevelrunner.Run(lowlevelrunner.Config{
 		Title:  "Gradients Contour (Distance Transform)",
 		Width:  520,
 		Height: 520,

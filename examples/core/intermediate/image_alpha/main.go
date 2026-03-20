@@ -15,7 +15,7 @@ import (
 	"strconv"
 
 	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
@@ -216,14 +216,15 @@ type demo struct {
 	srcImg *agg.Image
 }
 
-func (d *demo) Render(ctx *agg.Context) {
+func (d *demo) Render(img *agg.Image) {
 	if d.srcImg == nil {
 		return
 	}
 
-	canvasW := ctx.GetImage().Width()
-	canvasH := ctx.GetImage().Height()
+	canvasW := img.Width()
+	canvasH := img.Height()
 
+	ctx := agg.NewContextForImage(img)
 	a := ctx.GetAgg2D()
 	a.ResetTransformations()
 	ctx.Clear(agg.RGBA(1, 1, 1, 1))
@@ -245,8 +246,7 @@ func (d *demo) Render(ctx *agg.Context) {
 		a.Ellipse(x, y, rx, ry)
 	}
 
-	dstImg := ctx.GetImage()
-	dstRbuf := buffer.NewRenderingBufferWithData[uint8](dstImg.Data, dstImg.Width(), dstImg.Height(), dstImg.Width()*4)
+	dstRbuf := buffer.NewRenderingBufferWithData[uint8](img.Data, img.Width(), img.Height(), img.Width()*4)
 	dstPixf := pixfmt.NewPixFmtRGBA32Pre[color.Linear](dstRbuf)
 	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32Pre[color.Linear], color.RGBA8[color.Linear]](dstPixf)
 	alloc := span.NewSpanAllocator[color.RGBA8[color.Linear]]()
@@ -319,7 +319,7 @@ func main() {
 		panic(err)
 	}
 
-	demorunner.Run(demorunner.Config{
+	lowlevelrunner.Run(lowlevelrunner.Config{
 		Title:  "Image Alpha",
 		Width:  320,
 		Height: 300,

@@ -5,7 +5,7 @@ import (
 	"math"
 
 	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	icolor "github.com/MeKo-Christian/agg_go/internal/color"
 	"github.com/MeKo-Christian/agg_go/internal/ctrl/checkbox"
@@ -73,7 +73,8 @@ func newDemo() *demo {
 	return &demo{state: idea.DefaultState()}
 }
 
-func (d *demo) Render(ctx *agg.Context) {
+func (d *demo) Render(img *agg.Image) {
+	ctx := agg.NewContextForImage(img)
 	idea.Draw(ctx, d.state)
 
 	// Render UI controls on top (matching C++ on_draw render_ctrl calls).
@@ -99,7 +100,7 @@ func (d *demo) Render(ctx *agg.Context) {
 }
 
 func main() {
-	demorunner.Run(demorunner.Config{
+	lowlevelrunner.Run(lowlevelrunner.Config{
 		Title:  "Idea",
 		Width:  250,
 		Height: 280,

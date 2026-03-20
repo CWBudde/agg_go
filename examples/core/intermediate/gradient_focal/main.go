@@ -9,7 +9,7 @@ import (
 	"math"
 
 	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/color"
 	"github.com/MeKo-Christian/agg_go/internal/gamma"
@@ -102,9 +102,10 @@ const (
 
 type demo struct{}
 
-func (d *demo) Render(ctx *agg.Context) {
-	w := ctx.GetImage().Width()
-	h := ctx.GetImage().Height()
+func (d *demo) Render(img *agg.Image) {
+	ctx := agg.NewContextForImage(img)
+	w := img.Width()
+	h := img.Height()
 
 	ctx.Clear(agg.White)
 	a := ctx.GetAgg2D()
@@ -136,11 +137,11 @@ func (d *demo) Render(ctx *agg.Context) {
 	ctx.SetLineWidth(1.0)
 	ctx.DrawCircle(cx, cy, gradR)
 
-	applyGammaInv(ctx.GetImage(), gradGamma)
+	applyGammaInv(img, gradGamma)
 }
 
 func main() {
-	demorunner.Run(demorunner.Config{
+	lowlevelrunner.Run(lowlevelrunner.Config{
 		Title:  "Gradient Focal",
 		Width:  600,
 		Height: 400,
