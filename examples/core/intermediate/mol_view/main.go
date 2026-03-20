@@ -3,7 +3,7 @@ package main
 
 import (
 	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
 	"github.com/MeKo-Christian/agg_go/internal/demo/molview"
 )
 
@@ -16,12 +16,13 @@ func newDemo() *demo {
 	return &demo{state: molview.DefaultState()}
 }
 
-func (d *demo) Render(ctx *agg.Context) {
+func (d *demo) Render(img *agg.Image) {
+	ctx := agg.NewContextForImage(img)
 	d.state.Advance()
 	molview.Draw(ctx, d.state)
 }
 
-func (d *demo) OnMouseDown(x, y int, btn demorunner.Buttons) bool {
+func (d *demo) OnMouseDown(x, y int, btn lowlevelrunner.Buttons) bool {
 	if !btn.Left && !btn.Right {
 		return false
 	}
@@ -29,14 +30,14 @@ func (d *demo) OnMouseDown(x, y int, btn demorunner.Buttons) bool {
 	return true
 }
 
-func (d *demo) OnMouseMove(x, y int, btn demorunner.Buttons) bool {
+func (d *demo) OnMouseMove(x, y int, btn lowlevelrunner.Buttons) bool {
 	if !btn.Left && !btn.Right {
 		return false
 	}
 	return molview.UpdateDrag(&d.state, &d.drag, float64(x), float64(y), btn.Right)
 }
 
-func (d *demo) OnMouseUp(_, _ int, _ demorunner.Buttons) bool {
+func (d *demo) OnMouseUp(_, _ int, _ lowlevelrunner.Buttons) bool {
 	molview.EndDrag(&d.drag)
 	return true
 }
@@ -60,7 +61,7 @@ func (d *demo) IsAnimated() bool {
 }
 
 func main() {
-	demorunner.Run(demorunner.Config{
+	lowlevelrunner.Run(lowlevelrunner.Config{
 		Title:  "Mol View",
 		Width:  400,
 		Height: 400,

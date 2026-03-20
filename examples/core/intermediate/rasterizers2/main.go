@@ -4,7 +4,7 @@ import (
 	"math"
 
 	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
@@ -347,8 +347,8 @@ func renderControl(
 
 type demo struct{}
 
-func (d *demo) Render(ctx *agg.Context) {
-	imgData := ctx.GetImage().Data
+func (d *demo) Render(img *agg.Image) {
+	imgData := img.Data
 	rbuf := buffer.NewRenderingBufferU8WithData(imgData, frameWidth, frameHeight, frameWidth*4)
 
 	pf := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
@@ -470,7 +470,7 @@ func (d *demo) Render(ctx *agg.Context) {
 }
 
 func main() {
-	demorunner.Run(demorunner.Config{
+	lowlevelrunner.Run(lowlevelrunner.Config{
 		Title:  "Rasterizers 2",
 		Width:  frameWidth,
 		Height: frameHeight,

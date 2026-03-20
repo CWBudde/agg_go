@@ -3,7 +3,7 @@ package main
 
 import (
 	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
 	"github.com/MeKo-Christian/agg_go/internal/demo/transcurve"
 )
 
@@ -14,7 +14,8 @@ const (
 
 type demo struct{}
 
-func (d *demo) Render(ctx *agg.Context) {
+func (d *demo) Render(img *agg.Image) {
+	ctx := agg.NewContextForImage(img)
 	transcurve.Draw(ctx, transcurve.Config{
 		Points:          transcurve.DefaultPoints,
 		NumIntermediate: 200,
@@ -26,7 +27,7 @@ func (d *demo) Render(ctx *agg.Context) {
 }
 
 func main() {
-	demorunner.Run(demorunner.Config{
+	lowlevelrunner.Run(lowlevelrunner.Config{
 		Title:  "Trans Curve 1",
 		Width:  width,
 		Height: height,

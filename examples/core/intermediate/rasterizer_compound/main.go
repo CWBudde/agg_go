@@ -3,7 +3,7 @@ package main
 
 import (
 	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/color"
 	"github.com/MeKo-Christian/agg_go/internal/conv"
@@ -140,7 +140,7 @@ func composeCompoundPath(ps *path.PathStorageStl) {
 
 type demo struct{}
 
-func (d *demo) Render(ctx *agg.Context) {
+func (d *demo) Render(img *agg.Image) {
 	const (
 		w      = 440
 		h      = 330
@@ -151,9 +151,8 @@ func (d *demo) Render(ctx *agg.Context) {
 		alpha4 = 1.0
 	)
 
+	ctx := agg.NewContextForImage(img)
 	a := ctx.GetAgg2D()
-
-	img := ctx.GetImage()
 	for y := 0; y < h; y++ {
 		for x := 0; x < w; x++ {
 			t := float64(x) / float64(w-1)
@@ -297,7 +296,7 @@ func (d *demo) Render(ctx *agg.Context) {
 }
 
 func main() {
-	demorunner.Run(demorunner.Config{
+	lowlevelrunner.Run(lowlevelrunner.Config{
 		Title:  "Rasterizer Compound",
 		Width:  440,
 		Height: 330,

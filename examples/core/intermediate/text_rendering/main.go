@@ -6,12 +6,13 @@ import (
 	"path/filepath"
 
 	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
 )
 
 type demo struct{}
 
-func (d *demo) Render(ctx *agg.Context) {
+func (d *demo) Render(img *agg.Image) {
+	ctx := agg.NewContextForImage(img)
 	agg2d := ctx.GetAgg2D()
 
 	// Clear background to white
@@ -25,8 +26,8 @@ func (d *demo) Render(ctx *agg.Context) {
 		fmt.Println("To enable full text support, build with: go build -tags freetype")
 	}
 
-	width := ctx.GetImage().Width()
-	height := ctx.GetImage().Height()
+	width := img.Width()
+	height := img.Height()
 
 	// Render text examples
 	renderTextExamples(agg2d, width, height)
@@ -211,7 +212,7 @@ func renderUnicodeExamples(agg2d *agg.Agg2D, width, height int) {
 }
 
 func main() {
-	demorunner.Run(demorunner.Config{
+	lowlevelrunner.Run(lowlevelrunner.Config{
 		Title:  "Text Rendering",
 		Width:  800,
 		Height: 600,

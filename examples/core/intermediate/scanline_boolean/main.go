@@ -2,12 +2,13 @@ package main
 
 import (
 	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
 )
 
 type demo struct{}
 
-func (d *demo) Render(ctx *agg.Context) {
+func (d *demo) Render(img *agg.Image) {
+	ctx := agg.NewContextForImage(img)
 	ctx.Clear(agg.White)
 	agg2d := ctx.GetAgg2D()
 	agg2d.ResetTransformations()
@@ -67,7 +68,7 @@ func drawHandles(agg2d *agg.Agg2D, x, y []float64, c agg.Color) {
 }
 
 func main() {
-	demorunner.Run(demorunner.Config{
+	lowlevelrunner.Run(lowlevelrunner.Config{
 		Title:  "Scanline Boolean",
 		Width:  800,
 		Height: 600,

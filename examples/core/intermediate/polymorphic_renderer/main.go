@@ -14,7 +14,7 @@ import (
 	"math"
 
 	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
@@ -103,8 +103,7 @@ func newDemo() *demo {
 	}
 }
 
-func (d *demo) Render(ctx *agg.Context) {
-	img := ctx.GetImage()
+func (d *demo) Render(img *agg.Image) {
 	w, h := img.Width(), img.Height()
 
 	rbuf := buffer.NewRenderingBufferU8()
@@ -120,7 +119,7 @@ func (d *demo) Render(ctx *agg.Context) {
 	)
 }
 
-func (d *demo) OnMouseDown(x, y int, btn demorunner.Buttons) bool {
+func (d *demo) OnMouseDown(x, y int, btn lowlevelrunner.Buttons) bool {
 	d.selected = -1
 	for i := 0; i < 3; i++ {
 		dx := float64(x) - d.x[i]
@@ -135,7 +134,7 @@ func (d *demo) OnMouseDown(x, y int, btn demorunner.Buttons) bool {
 	return false
 }
 
-func (d *demo) OnMouseMove(x, y int, btn demorunner.Buttons) bool {
+func (d *demo) OnMouseMove(x, y int, btn lowlevelrunner.Buttons) bool {
 	if d.selected < 0 {
 		return false
 	}
@@ -144,13 +143,13 @@ func (d *demo) OnMouseMove(x, y int, btn demorunner.Buttons) bool {
 	return true
 }
 
-func (d *demo) OnMouseUp(x, y int, btn demorunner.Buttons) bool {
+func (d *demo) OnMouseUp(x, y int, btn lowlevelrunner.Buttons) bool {
 	d.selected = -1
 	return false
 }
 
 func main() {
-	demorunner.Run(demorunner.Config{
+	lowlevelrunner.Run(lowlevelrunner.Config{
 		Title:  "Polymorphic Renderer",
 		Width:  400,
 		Height: 330,

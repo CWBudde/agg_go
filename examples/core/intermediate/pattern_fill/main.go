@@ -8,7 +8,7 @@ import (
 	"math"
 
 	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
@@ -164,7 +164,8 @@ func buildLargeStarPath(cx, cy float64, w, h int, angleDeg float64) *path.PathSt
 
 type demo struct{}
 
-func (d *demo) Render(ctx *agg.Context) {
+func (d *demo) Render(img *agg.Image) {
+	ctx := agg.NewContextForImage(img)
 	ctx.Clear(agg.RGBA(0.95, 0.95, 0.9, 1.0))
 
 	// Generate pattern tile.
@@ -176,7 +177,7 @@ func (d *demo) Render(ctx *agg.Context) {
 	sg := span.NewSpanPatternRGBAWithParams[*patSource](src, 0, 0)
 
 	// Destination pipeline.
-	dstImg := ctx.GetImage()
+	dstImg := img
 	dstRbuf := buffer.NewRenderingBufferWithData[uint8](dstImg.Data, dstImg.Width(), dstImg.Height(), dstImg.Width()*4)
 	dstPixf := pixfmt.NewPixFmtRGBA32Pre[color.Linear](dstRbuf)
 	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32Pre[color.Linear], color.RGBA8[color.Linear]](dstPixf)
@@ -233,7 +234,7 @@ func (d *demo) Render(ctx *agg.Context) {
 }
 
 func main() {
-	demorunner.Run(demorunner.Config{
+	lowlevelrunner.Run(lowlevelrunner.Config{
 		Title:  "Pattern Fill",
 		Width:  canvasW,
 		Height: canvasH,

@@ -6,7 +6,7 @@ import (
 	"math"
 
 	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
 	"github.com/MeKo-Christian/agg_go/internal/demo/patternperspective"
 )
 
@@ -18,14 +18,15 @@ type demo struct {
 
 const handleRadius = 8.0
 
-func (d *demo) Render(ctx *agg.Context) {
+func (d *demo) Render(img *agg.Image) {
+	ctx := agg.NewContextForImage(img)
 	patternperspective.Draw(ctx, patternperspective.Config{
 		Mode: d.mode,
 		Quad: d.quad,
 	})
 }
 
-func (d *demo) OnMouseDown(x, y int, btn demorunner.Buttons) bool {
+func (d *demo) OnMouseDown(x, y int, btn lowlevelrunner.Buttons) bool {
 	if !btn.Left {
 		return false
 	}
@@ -41,7 +42,7 @@ func (d *demo) OnMouseDown(x, y int, btn demorunner.Buttons) bool {
 	return false
 }
 
-func (d *demo) OnMouseUp(x, y int, btn demorunner.Buttons) bool {
+func (d *demo) OnMouseUp(x, y int, btn lowlevelrunner.Buttons) bool {
 	if d.dragIdx >= 0 {
 		d.dragIdx = -1
 		return true
@@ -49,7 +50,7 @@ func (d *demo) OnMouseUp(x, y int, btn demorunner.Buttons) bool {
 	return false
 }
 
-func (d *demo) OnMouseMove(x, y int, btn demorunner.Buttons) bool {
+func (d *demo) OnMouseMove(x, y int, btn lowlevelrunner.Buttons) bool {
 	if d.dragIdx < 0 || !btn.Left {
 		return false
 	}
@@ -67,7 +68,7 @@ func main() {
 		dragIdx: -1,
 	}
 
-	demorunner.Run(demorunner.Config{
+	lowlevelrunner.Run(lowlevelrunner.Config{
 		Title:  "Pattern Perspective",
 		Width:  600,
 		Height: 600,
