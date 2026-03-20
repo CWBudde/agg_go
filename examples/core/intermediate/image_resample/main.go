@@ -3,7 +3,7 @@ package main
 
 import (
 	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
 )
 
 const (
@@ -13,8 +13,9 @@ const (
 
 type demo struct{}
 
-func (d *demo) Render(ctx *agg.Context) {
-	img := createSpheresImage(320, 320)
+func (d *demo) Render(img *agg.Image) {
+	ctx := agg.NewContextForImage(img)
+	srcImg := createSpheresImage(320, 320)
 	quad := [4][2]float64{
 		{140, 140},
 		{460, 140},
@@ -59,7 +60,7 @@ func (d *demo) Render(ctx *agg.Context) {
 		quad[1][0], quad[1][1],
 		quad[2][0], quad[2][1],
 	}
-	_ = a.TransformImagePathParallelogramSimple(img, par)
+	_ = a.TransformImagePathParallelogramSimple(srcImg, par)
 
 	ctx.SetColor(agg.RGBA(0, 0.2, 0.3, 0.9))
 	ctx.SetLineWidth(1.5)
@@ -109,7 +110,7 @@ func createSpheresImage(w, h int) *agg.Image {
 }
 
 func main() {
-	demorunner.Run(demorunner.Config{
+	lowlevelrunner.Run(lowlevelrunner.Config{
 		Title:  "Image Resample",
 		Width:  600,
 		Height: 600,

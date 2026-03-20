@@ -3,7 +3,7 @@ package main
 
 import (
 	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
 	"github.com/MeKo-Christian/agg_go/internal/demo/interactivepolygon"
 )
 
@@ -11,22 +11,23 @@ type demo struct {
 	state *interactivepolygon.State
 }
 
-func (d *demo) Render(ctx *agg.Context) {
+func (d *demo) Render(img *agg.Image) {
+	ctx := agg.NewContextForImage(img)
 	d.state.Draw(ctx)
 }
 
-func (d *demo) OnMouseDown(x, y int, btn demorunner.Buttons) bool {
+func (d *demo) OnMouseDown(x, y int, btn lowlevelrunner.Buttons) bool {
 	if !btn.Left {
 		return false
 	}
 	return d.state.MouseDown(float64(x), float64(y))
 }
 
-func (d *demo) OnMouseMove(x, y int, btn demorunner.Buttons) bool {
+func (d *demo) OnMouseMove(x, y int, btn lowlevelrunner.Buttons) bool {
 	return d.state.MouseMove(float64(x), float64(y), btn.Left)
 }
 
-func (d *demo) OnMouseUp(x, y int, btn demorunner.Buttons) bool {
+func (d *demo) OnMouseUp(x, y int, btn lowlevelrunner.Buttons) bool {
 	return d.state.MouseUp(float64(x), float64(y))
 }
 
@@ -37,7 +38,7 @@ func main() {
 	)
 
 	d := &demo{state: interactivepolygon.NewState(w, h)}
-	demorunner.Run(demorunner.Config{
+	lowlevelrunner.Run(lowlevelrunner.Config{
 		Title:  "Interactive Polygon",
 		Width:  w,
 		Height: h,

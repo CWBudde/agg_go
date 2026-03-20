@@ -9,7 +9,7 @@ package main
 
 import (
 	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	icolor "github.com/MeKo-Christian/agg_go/internal/color"
@@ -113,9 +113,9 @@ func (a *solidBaseAdaptor) BlendSolidVSpan(x, y, length int, c icolor.RGBA8[icol
 
 type imgOutlineAdaptor struct{ ren *outline.RendererOutlineImage }
 
-func (a *imgOutlineAdaptor) AccurateJoinOnly() bool            { return a.ren.AccurateJoinOnly() }
+func (a *imgOutlineAdaptor) AccurateJoinOnly() bool              { return a.ren.AccurateJoinOnly() }
 func (a *imgOutlineAdaptor) Color(_ icolor.RGBA8[icolor.Linear]) {}
-func (a *imgOutlineAdaptor) Pie(x, y, x1, y1, x2, y2 int)      { a.ren.Pie(x, y, x1, y1, x2, y2) }
+func (a *imgOutlineAdaptor) Pie(x, y, x1, y1, x2, y2 int)        { a.ren.Pie(x, y, x1, y1, x2, y2) }
 func (a *imgOutlineAdaptor) Semidot(cmp func(int) bool, x, y, x1, y1 int) {
 	a.ren.Semidot(cmp, x, y, x1, y1)
 }
@@ -136,9 +136,9 @@ type solidOutlineAdaptor struct {
 	ren *outline.RendererOutlineAA[*solidBaseAdaptor, icolor.RGBA8[icolor.Linear]]
 }
 
-func (a *solidOutlineAdaptor) AccurateJoinOnly() bool { return a.ren.AccurateJoinOnly() }
+func (a *solidOutlineAdaptor) AccurateJoinOnly() bool              { return a.ren.AccurateJoinOnly() }
 func (a *solidOutlineAdaptor) Color(c icolor.RGBA8[icolor.Linear]) { a.ren.Color(c) }
-func (a *solidOutlineAdaptor) Pie(x, y, x1, y1, x2, y2 int)      { a.ren.Pie(x, y, x1, y1, x2, y2) }
+func (a *solidOutlineAdaptor) Pie(x, y, x1, y1, x2, y2 int)        { a.ren.Pie(x, y, x1, y1, x2, y2) }
 func (a *solidOutlineAdaptor) Semidot(cmp func(int) bool, x, y, x1, y1 int) {
 	a.ren.Semidot(cmp, x, y, x1, y1)
 }
@@ -175,7 +175,7 @@ type ctrlIface interface {
 
 type ctrlVSAdaptor struct{ c ctrlIface }
 
-func (a *ctrlVSAdaptor) Rewind(id uint32)                    { a.c.Rewind(uint(id)) }
+func (a *ctrlVSAdaptor) Rewind(id uint32) { a.c.Rewind(uint(id)) }
 func (a *ctrlVSAdaptor) Vertex(x, y *float64) uint32 {
 	vx, vy, cmd := a.c.Vertex()
 	*x, *y = vx, vy
@@ -218,8 +218,7 @@ func buildPath(pts [][2]float64) *path.PathStorageStl {
 	return ps
 }
 
-func (d *demo) Render(ctx *agg.Context) {
-	img := ctx.GetImage()
+func (d *demo) Render(img *agg.Image) {
 	w := img.Width()
 	h := img.Height()
 
@@ -285,6 +284,7 @@ func (d *demo) Render(ctx *agg.Context) {
 	renBase.ResetClipping(true)
 
 	// ----- Agg2D: polygon-ctrl guide + slider controls -----
+	ctx := agg.NewContextForImage(img)
 	a := ctx.GetAgg2D()
 	a.ResetTransformations()
 
@@ -321,7 +321,7 @@ func (d *demo) Render(ctx *agg.Context) {
 }
 
 func main() {
-	demorunner.Run(demorunner.Config{
+	lowlevelrunner.Run(lowlevelrunner.Config{
 		Title:  "Line Patterns Clip",
 		Width:  500,
 		Height: 500,

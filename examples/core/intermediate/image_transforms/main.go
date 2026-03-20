@@ -14,7 +14,7 @@ import (
 	"strconv"
 
 	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
@@ -208,17 +208,18 @@ type demo struct {
 	srcImg *agg.Image
 }
 
-func (d *demo) Render(ctx *agg.Context) {
+func (d *demo) Render(img *agg.Image) {
 	if d.srcImg == nil {
 		return
 	}
 
-	canvasW := ctx.GetImage().Width()
-	canvasH := ctx.GetImage().Height()
+	ctx := agg.NewContextForImage(img)
+	canvasW := img.Width()
+	canvasH := img.Height()
 
 	ctx.Clear(agg.RGBA(1.0, 1.0, 1.0, 1.0))
 
-	dstImg := ctx.GetImage()
+	dstImg := img
 	dstRbuf := buffer.NewRenderingBufferWithData[uint8](dstImg.Data, dstImg.Width(), dstImg.Height(), dstImg.Width()*4)
 	dstPixf := pixfmt.NewPixFmtRGBA32Pre[color.Linear](dstRbuf)
 	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32Pre[color.Linear], color.RGBA8[color.Linear]](dstPixf)
@@ -284,7 +285,7 @@ func main() {
 		panic(err)
 	}
 
-	demorunner.Run(demorunner.Config{
+	lowlevelrunner.Run(lowlevelrunner.Config{
 		Title:  "Image Transforms",
 		Width:  srcImg.Width(),
 		Height: srcImg.Height(),

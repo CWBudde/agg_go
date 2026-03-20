@@ -2,7 +2,7 @@ package main
 
 import (
 	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
@@ -147,11 +147,12 @@ func (d *demo) syncState() {
 	d.state.Clamp()
 }
 
-func (d *demo) Render(ctx *agg.Context) {
+func (d *demo) Render(img *agg.Image) {
+	ctx := agg.NewContextForImage(img)
 	d.syncState()
 	linethickness.Draw(ctx, d.state)
 
-	imgData := ctx.GetImage().Data
+	imgData := img.Data
 	rbuf := buffer.NewRenderingBufferU8WithData(imgData, frameWidth, frameHeight, frameWidth*4)
 	pf := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
 	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]](pf)
@@ -166,7 +167,7 @@ func (d *demo) Render(ctx *agg.Context) {
 	}
 }
 
-func (d *demo) OnMouseDown(x, y int, btn demorunner.Buttons) bool {
+func (d *demo) OnMouseDown(x, y int, btn lowlevelrunner.Buttons) bool {
 	if !btn.Left {
 		return false
 	}
@@ -178,7 +179,7 @@ func (d *demo) OnMouseDown(x, y int, btn demorunner.Buttons) bool {
 	return false
 }
 
-func (d *demo) OnMouseMove(x, y int, btn demorunner.Buttons) bool {
+func (d *demo) OnMouseMove(x, y int, btn lowlevelrunner.Buttons) bool {
 	redraw := false
 	for _, ctrl := range d.controls {
 		if ctrl.OnMouseMove(float64(x), float64(y), btn.Left) {
@@ -188,7 +189,7 @@ func (d *demo) OnMouseMove(x, y int, btn demorunner.Buttons) bool {
 	return redraw
 }
 
-func (d *demo) OnMouseUp(x, y int, btn demorunner.Buttons) bool {
+func (d *demo) OnMouseUp(x, y int, btn lowlevelrunner.Buttons) bool {
 	_ = btn
 	redraw := false
 	for _, ctrl := range d.controls {
@@ -200,7 +201,7 @@ func (d *demo) OnMouseUp(x, y int, btn demorunner.Buttons) bool {
 }
 
 func main() {
-	demorunner.Run(demorunner.Config{
+	lowlevelrunner.Run(lowlevelrunner.Config{
 		Title:  "Line Thickness",
 		Width:  frameWidth,
 		Height: frameHeight,

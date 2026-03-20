@@ -4,12 +4,13 @@ import (
 	"math"
 
 	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
 )
 
 type demo struct{}
 
-func (d *demo) Render(ctx *agg.Context) {
+func (d *demo) Render(img *agg.Image) {
+	ctx := agg.NewContextForImage(img)
 	ctx.Clear(agg.White)
 	agg2d := ctx.GetAgg2D()
 	agg2d.ResetTransformations()
@@ -88,7 +89,7 @@ func createTestImage(w, h int) *agg.Image {
 }
 
 func main() {
-	demorunner.Run(demorunner.Config{
+	lowlevelrunner.Run(lowlevelrunner.Config{
 		Title:  "Image Filters",
 		Width:  430,
 		Height: 340,
