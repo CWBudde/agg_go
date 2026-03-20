@@ -2,7 +2,7 @@ package main
 
 import (
 	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	icolor "github.com/MeKo-Christian/agg_go/internal/color"
@@ -96,14 +96,13 @@ func (d *demo) initPolygon() {
 	d.poly.SetYn(5, frameHeight/3)
 }
 
-func (d *demo) Render(ctx *agg.Context) {
-	img := ctx.GetImage()
-	if img == nil {
-		return
-	}
+func (d *demo) Render(img *agg.Image) {
+	w, h := img.Width(), img.Height()
 
-	rbuf := buffer.NewRenderingBufferU8WithData(img.Data, img.Width(), img.Height(), img.Width()*4)
-	pf := pixfmt.NewPixFmtRGBA32Linear(rbuf)
+	// Work buffer + y-flip (flip_y=true in C++).
+	workBuf := make([]uint8, w*h*4)
+	workRbuf := buffer.NewRenderingBufferU8WithData(workBuf, w, h, w*4)
+	pf := pixfmt.NewPixFmtRGBA32Linear(workRbuf)
 	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32[icolor.Linear], icolor.RGBA8[icolor.Linear]](pf)
 	renBase.Clear(icolor.RGBA8[icolor.Linear]{R: 255, G: 255, B: 255, A: 255})
 
@@ -119,6 +118,8 @@ func (d *demo) Render(ctx *agg.Context) {
 	renderControl(ras, rasWrap, slWrap, renBase, d.poly)
 	renderControl(ras, rasWrap, slWrap, renBase, d.close)
 	renderControl(ras, rasWrap, slWrap, renBase, d.points)
+
+	copyFlipY(workBuf, img.Data, w, h)
 }
 
 func renderCurve(
@@ -268,7 +269,16 @@ func toRGBA8(c icolor.RGBA) icolor.RGBA8[icolor.Linear] {
 	}
 }
 
-func (d *demo) OnMouseDown(x, y int, btn demorunner.Buttons) bool {
+func copyFlipY(src, dst []uint8, width, height int) {
+	stride := width * 4
+	for y := 0; y < height; y++ {
+		srcOff := (height - 1 - y) * stride
+		dstOff := y * stride
+		copy(dst[dstOff:dstOff+stride], src[srcOff:srcOff+stride])
+	}
+}
+
+func (d *demo) OnMouseDown(x, y int, btn lowlevelrunner.Buttons) bool {
 	if !btn.Left {
 		return false
 	}
@@ -283,7 +293,7 @@ func (d *demo) OnMouseDown(x, y int, btn demorunner.Buttons) bool {
 	return changed
 }
 
-func (d *demo) OnMouseMove(x, y int, btn demorunner.Buttons) bool {
+func (d *demo) OnMouseMove(x, y int, btn lowlevelrunner.Buttons) bool {
 	changed := d.close.OnMouseMove(float64(x), float64(y), btn.Left)
 	if d.points.OnMouseMove(float64(x), float64(y), btn.Left) {
 		changed = true
@@ -300,7 +310,7 @@ func (d *demo) OnMouseMove(x, y int, btn demorunner.Buttons) bool {
 	return changed
 }
 
-func (d *demo) OnMouseUp(x, y int, btn demorunner.Buttons) bool {
+func (d *demo) OnMouseUp(x, y int, btn lowlevelrunner.Buttons) bool {
 	changed := d.close.OnMouseButtonUp(float64(x), float64(y))
 	if d.points.OnMouseButtonUp(float64(x), float64(y)) {
 		changed = true
@@ -322,7 +332,7 @@ func (d *demo) OnKey(key rune) bool {
 }
 
 func main() {
-	demorunner.Run(demorunner.Config{
+	lowlevelrunner.Run(lowlevelrunner.Config{
 		Title:  "AGG Example. BSpline Interpolator",
 		Width:  frameWidth,
 		Height: frameHeight,

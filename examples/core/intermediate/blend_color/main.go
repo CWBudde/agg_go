@@ -15,7 +15,7 @@ import (
 	"math"
 
 	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
 	blendcolor "github.com/MeKo-Christian/agg_go/internal/demo/blendcolor"
 )
 
@@ -36,7 +36,8 @@ func newDemo() *demo {
 	}
 }
 
-func (d *demo) Render(ctx *agg.Context) {
+func (d *demo) Render(img *agg.Image) {
+	ctx := agg.NewContextForImage(img)
 	result := blendcolor.Draw(ctx, &blendcolor.Config{
 		Method: d.method,
 		Radius: d.radius,
@@ -45,7 +46,7 @@ func (d *demo) Render(ctx *agg.Context) {
 	d.quad = result.Quad
 }
 
-func (d *demo) OnMouseDown(x, y int, btn demorunner.Buttons) bool {
+func (d *demo) OnMouseDown(x, y int, btn lowlevelrunner.Buttons) bool {
 	d.selected = -1
 	for i := 0; i < 4; i++ {
 		dx := float64(x) - d.quad[i*2]
@@ -60,7 +61,7 @@ func (d *demo) OnMouseDown(x, y int, btn demorunner.Buttons) bool {
 	return false
 }
 
-func (d *demo) OnMouseMove(x, y int, btn demorunner.Buttons) bool {
+func (d *demo) OnMouseMove(x, y int, btn lowlevelrunner.Buttons) bool {
 	if d.selected < 0 {
 		return false
 	}
@@ -69,7 +70,7 @@ func (d *demo) OnMouseMove(x, y int, btn demorunner.Buttons) bool {
 	return true
 }
 
-func (d *demo) OnMouseUp(x, y int, btn demorunner.Buttons) bool {
+func (d *demo) OnMouseUp(x, y int, btn lowlevelrunner.Buttons) bool {
 	d.selected = -1
 	return false
 }
@@ -94,7 +95,7 @@ func (d *demo) OnKey(key rune) bool {
 }
 
 func main() {
-	demorunner.Run(demorunner.Config{
+	lowlevelrunner.Run(lowlevelrunner.Config{
 		Title:  "AGG Blend Color",
 		Width:  440,
 		Height: 330,
