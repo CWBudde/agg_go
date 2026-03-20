@@ -65,13 +65,11 @@ func NewRasterizerScanlineAA[Clip ClipInterface, Conv ConverterInterface](cellBl
 The Go port has fundamental interface design issues:
 
 1. **Circular Dependencies**:
-
    - `rasterizer` package defines `RasterizerInterface` requiring `Line()` method
    - `renderer/scanline` package defines different `RasterizerInterface` requiring `SweepScanline()`
    - These interfaces are incompatible and create circular dependency issues
 
 2. **Scanline Interface Mismatches**:
-
    - `internal/scanline` package: `Begin() []SpanP8` or `Begin() []SpanBin`
    - `internal/renderer/scanline` package: `Begin() ScanlineIterator`
    - These cannot be reconciled without significant refactoring

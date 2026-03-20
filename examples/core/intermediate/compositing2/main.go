@@ -99,6 +99,7 @@ func (r *rasterizerAdaptor) MaxX() int             { return r.ras.MaxX() }
 func (r *rasterizerAdaptor) AddPath(vs rasterizer.VertexSource, pathID uint32) {
 	r.ras.AddPath(vs, pathID)
 }
+
 func (r *rasterizerAdaptor) SweepScanline(sl renscan.ScanlineInterface) bool {
 	if w, ok := sl.(*scanlineWrapper); ok {
 		r.sl.sl = w.sl
@@ -121,7 +122,7 @@ type scanlineWrapper struct{ sl *scanline.ScanlineU8 }
 
 func (w *scanlineWrapper) Reset(minX, maxX int) { w.sl.Reset(minX, maxX) }
 func (w *scanlineWrapper) Y() int               { return w.sl.Y() }
-func (w *scanlineWrapper) NumSpans() int         { return w.sl.NumSpans() }
+func (w *scanlineWrapper) NumSpans() int        { return w.sl.NumSpans() }
 func (w *scanlineWrapper) Begin() renscan.ScanlineIterator {
 	spans := w.sl.Spans()
 	if len(spans) == 0 {
@@ -171,7 +172,7 @@ func radialShape(
 	r := 0.5 * min(dx, dy)
 
 	// gradient_mtx = scale(r/100) * translate(cx,cy), then inverted
-	gradMtx := transform.NewTransAffineScaling(r/100.0)
+	gradMtx := transform.NewTransAffineScaling(r / 100.0)
 	gradMtx.Multiply(transform.NewTransAffineTranslation(cx, cy))
 	gradMtx.Invert()
 

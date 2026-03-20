@@ -9,7 +9,7 @@ import (
 	"math"
 
 	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
@@ -154,7 +154,7 @@ func createTestImage(w, h int) *agg.Image {
 
 type demo struct{}
 
-func (d *demo) Render(ctx *agg.Context) {
+func (d *demo) Render(img *agg.Image) {
 	const (
 		canvasW, canvasH = 620, 360
 		// Default control values matching WASM demo defaults
@@ -167,13 +167,18 @@ func (d *demo) Render(ctx *agg.Context) {
 		period    = 1.0
 	)
 
-	ctx.Clear(agg.White)
+	// Clear to white.
+	for i := 0; i < len(img.Data); i += 4 {
+		img.Data[i] = 255
+		img.Data[i+1] = 255
+		img.Data[i+2] = 255
+		img.Data[i+3] = 255
+	}
 
 	testImage := createTestImage(canvasW/2, canvasH/2)
 	imgW, imgH := float64(testImage.Width()), float64(testImage.Height())
 
 	// Attach canvas
-	img := ctx.GetImage()
 	rbuf := buffer.NewRenderingBufferU8()
 	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Width()*4)
 
@@ -260,7 +265,7 @@ func (d *demo) Render(ctx *agg.Context) {
 }
 
 func main() {
-	demorunner.Run(demorunner.Config{
+	lowlevelrunner.Run(lowlevelrunner.Config{
 		Title:  "Distortions",
 		Width:  620,
 		Height: 360,

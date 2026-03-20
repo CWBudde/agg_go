@@ -6,7 +6,7 @@ package main
 
 import (
 	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
@@ -77,10 +77,11 @@ func (w *mcSlWrapP8) Begin() renscan.ScanlineIterator {
 
 type demo struct{}
 
-func (d *demo) Render(ctx *agg.Context) {
-	width := ctx.Width()
-	height := ctx.Height()
-	img := ctx.GetImage()
+func (d *demo) Render(img *agg.Image) {
+	width := img.Width()
+	height := img.Height()
+
+	ctx := agg.NewContextForImage(img)
 	agg2d := ctx.GetAgg2D()
 
 	// White background.
@@ -137,5 +138,5 @@ func (d *demo) Render(ctx *agg.Context) {
 }
 
 func main() {
-	demorunner.Run(demorunner.Config{Title: "Multi Clip", Width: 512, Height: 400}, &demo{})
+	lowlevelrunner.Run(lowlevelrunner.Config{Title: "Multi Clip", Width: 512, Height: 400}, &demo{})
 }

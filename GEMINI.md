@@ -53,11 +53,14 @@ The project uses a `Justfile` for build orchestration.
 
 The original code can be found in ../agg-2.6 and the source code in particular is located at ../agg-2.6/agg-src/. If possible always refer to the original C++ implementation for guidance. If not otherwise denoted below, try to be as close as possible to the original source code.
 
-- **Templates → Generics**: C++ template classes become Go generic types (e.g., `Point[T]`, `Rect[T]`)
+- **Templates → Generics or Concrete Types**: C++ template classes become Go generic types or concrete types as appropriate (e.g., `Point[T]`, `Rect[T]`, `PointD`, `RectI`)
 - **Manual Memory → GC**: Replaces C++ new/delete with Go's garbage collector
 - **Inheritance → Interfaces**: C++ virtual methods become Go interfaces
 - **Enums → Typed Constants**: C++ enums become Go typed constants
-- **Avoid using interface{} (or any)**: Prefer constrained generics and explicit interfaces that model the required capabilities at compile time.
+- **Avoid using interface{} (or any)**: Prefer explicit interfaces and constrained generics that model the required capabilities at compile time.
+- **Use generics pragmatically**: Prefer generics for internal containers, algorithms, and compile-time type markers that preserve AGG template structure.
+- **Prefer concrete APIs where it helps**: Use concrete types or concrete aliases at the public API boundary, for the most common instantiations, and in measured hot paths.
+- **Benchmark first**: Do not replace generics with concrete types unless profiling or benchmarking shows a real performance benefit.
 
 ### Rendering Pipeline Flow
 

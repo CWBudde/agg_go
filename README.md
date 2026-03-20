@@ -111,10 +111,13 @@ You can also run `just run-example basic/hello_world`.
 
 ### C++ → Go Translation
 
-- Templates → Generics (e.g., `Point[T]`, `Rect[T]`).
+- Templates → Generics or concrete types as appropriate (e.g., `Point[T]`, `Rect[T]`).
 - Inheritance → Interfaces; virtuals → explicit interfaces.
 - Enums → typed constants.
-- Prefer constrained generics; avoid `any`/`interface{}` when possible.
+- Prefer explicit interfaces over `any`/`interface{}`.
+- Use constrained generics for internal containers, algorithms, and compile-time type markers where they preserve AGG template structure.
+- Prefer concrete types or concrete aliases in the root API, for common instantiations, and in measured hot paths.
+- Benchmark before replacing generics with concrete types purely for performance reasons.
 
 ### Rendering Pipeline
 

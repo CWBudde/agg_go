@@ -105,6 +105,7 @@ func (a *solidBaseAdaptor) Height() int { return a.rb.Height() }
 func (a *solidBaseAdaptor) BlendSolidHSpan(x, y, length int, c icolor.RGBA8[icolor.Linear], covers []basics.CoverType) {
 	a.rb.BlendSolidHspan(x, y, length, c, covers)
 }
+
 func (a *solidBaseAdaptor) BlendSolidVSpan(x, y, length int, c icolor.RGBA8[icolor.Linear], covers []basics.CoverType) {
 	a.rb.BlendSolidVspan(x, y, length, c, covers)
 }
@@ -123,9 +124,11 @@ func (a *imgOutlineAdaptor) Line0(lp primitives.LineParameters) { a.ren.Line0(&l
 func (a *imgOutlineAdaptor) Line1(lp primitives.LineParameters, sx, sy int) {
 	a.ren.Line1(&lp, sx, sy)
 }
+
 func (a *imgOutlineAdaptor) Line2(lp primitives.LineParameters, ex, ey int) {
 	a.ren.Line2(&lp, ex, ey)
 }
+
 func (a *imgOutlineAdaptor) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) {
 	a.ren.Line3(&lp, sx, sy, ex, ey)
 }
@@ -146,9 +149,11 @@ func (a *solidOutlineAdaptor) Line0(lp primitives.LineParameters) { a.ren.Line0(
 func (a *solidOutlineAdaptor) Line1(lp primitives.LineParameters, sx, sy int) {
 	a.ren.Line1(&lp, sx, sy)
 }
+
 func (a *solidOutlineAdaptor) Line2(lp primitives.LineParameters, ex, ey int) {
 	a.ren.Line2(&lp, ex, ey)
 }
+
 func (a *solidOutlineAdaptor) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) {
 	a.ren.Line3(&lp, sx, sy, ex, ey)
 }

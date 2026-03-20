@@ -3,6 +3,7 @@ package gsv_test
 import (
 	"fmt"
 	"testing"
+
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/gsv"
 )
@@ -19,9 +20,15 @@ func TestGSVDirection(t *testing.T) {
 		minY, maxY := 1e9, -1e9
 		for {
 			_, y, cmd := tx.Vertex()
-			if cmd == basics.PathCmdStop { break }
-			if y < minY { minY = y }
-			if y > maxY { maxY = y }
+			if cmd == basics.PathCmdStop {
+				break
+			}
+			if y < minY {
+				minY = y
+			}
+			if y > maxY {
+				maxY = y
+			}
 		}
 		fmt.Printf("  y range: %.1f..%.1f (start=100)\n", minY, maxY)
 	}

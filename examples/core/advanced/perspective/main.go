@@ -2,14 +2,14 @@
 //
 // Renders the lion vector art through a bilinear (default) or perspective
 // transform defined by a 4-corner quadrilateral. The quad defaults to a
-// slight perspective distortion centred on the 800×600 canvas.
+// slight perspective distortion centred on the 600×600 canvas.
 package main
 
 import (
 	"math"
 
 	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	liondemo "github.com/MeKo-Christian/agg_go/internal/demo/lion"
 	"github.com/MeKo-Christian/agg_go/internal/transform"
@@ -73,7 +73,8 @@ func newDemo() *demo {
 	}
 }
 
-func (d *demo) Render(ctx *agg.Context) {
+func (d *demo) Render(img *agg.Image) {
+	ctx := agg.NewContextForImage(img)
 	ctx.Clear(agg.RGBA(0.95, 0.95, 0.85, 1.0))
 
 	a := ctx.GetAgg2D()
@@ -125,14 +126,22 @@ func (d *demo) Render(ctx *agg.Context) {
 	// Draw drag handles at each corner.
 	for i := 0; i < 4; i++ {
 		hx, hy := d.quad[i*2], d.quad[i*2+1]
-		ctx.SetColor(agg.RGBA(0.8, 0.2, 0.1, 0.6))
-		ctx.FillCircle(hx, hy, handleRadius)
-		ctx.SetColor(agg.Black)
-		ctx.DrawCircle(hx, hy, handleRadius)
+		a.FillColor(agg.NewColor(204, 51, 26, 153))
+		a.NoLine()
+		a.ResetPath()
+		a.AddEllipse(hx, hy, handleRadius, handleRadius, agg.CCW)
+		a.DrawPath(agg.FillOnly)
+
+		a.NoFill()
+		a.LineColor(agg.NewColor(0, 0, 0, 255))
+		a.LineWidth(1.0)
+		a.ResetPath()
+		a.AddEllipse(hx, hy, handleRadius, handleRadius, agg.CCW)
+		a.DrawPath(agg.StrokeOnly)
 	}
 }
 
-func (d *demo) OnMouseDown(x, y int, btn demorunner.Buttons) bool {
+func (d *demo) OnMouseDown(x, y int, btn lowlevelrunner.Buttons) bool {
 	if !btn.Left {
 		return false
 	}
@@ -148,7 +157,7 @@ func (d *demo) OnMouseDown(x, y int, btn demorunner.Buttons) bool {
 	return false
 }
 
-func (d *demo) OnMouseUp(x, y int, btn demorunner.Buttons) bool {
+func (d *demo) OnMouseUp(x, y int, btn lowlevelrunner.Buttons) bool {
 	if d.dragIdx >= 0 {
 		d.dragIdx = -1
 		return true
@@ -156,7 +165,7 @@ func (d *demo) OnMouseUp(x, y int, btn demorunner.Buttons) bool {
 	return false
 }
 
-func (d *demo) OnMouseMove(x, y int, btn demorunner.Buttons) bool {
+func (d *demo) OnMouseMove(x, y int, btn lowlevelrunner.Buttons) bool {
 	if d.dragIdx < 0 || !btn.Left {
 		return false
 	}
@@ -166,7 +175,7 @@ func (d *demo) OnMouseMove(x, y int, btn demorunner.Buttons) bool {
 }
 
 func main() {
-	demorunner.Run(demorunner.Config{
+	lowlevelrunner.Run(lowlevelrunner.Config{
 		Title:  "Perspective",
 		Width:  600,
 		Height: 600,

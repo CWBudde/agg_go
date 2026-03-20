@@ -12,6 +12,8 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
 	"github.com/MeKo-Christian/agg_go/internal/conv"
+	ctrlbase "github.com/MeKo-Christian/agg_go/internal/ctrl"
+	sliderctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/slider"
 	"github.com/MeKo-Christian/agg_go/internal/path"
 	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
 	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
@@ -195,7 +197,8 @@ func (r *rendererEnlarged) drawSquare(x, y float64, c color.RGBA8[color.Linear])
 // ---------------------------------------------------------------------------
 
 type demo struct {
-	x, y [3]float64
+	x, y    [3]float64
+	slider1 *sliderctrl.SliderCtrl
 }
 
 func (d *demo) Render(img *agg.Image) {
@@ -207,7 +210,7 @@ func (d *demo) Render(img *agg.Image) {
 	mainRb := renderer.NewRendererBaseWithPixfmt(mainPixf)
 	mainRb.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
 
-	sizeMul := 32.0 // C++ default slider value
+	sizeMul := float64(int(d.slider1.Value()))
 
 	ras := newRasterizer()
 	sl := &scanlineWrapper{sl: scanline.NewScanlineP8()}
@@ -244,8 +247,69 @@ func (d *demo) Render(img *agg.Image) {
 		renscan.RenderScanlinesAASolid(ras, sl, mainRb, teal)
 	}
 
+	// 4. Render the slider control.
+	renderCtrl(ras, sl, mainRb, d.slider1)
+
 	// Copy with y-flip.
 	copyFlipY(workBuf, img.Data, w, h)
+}
+
+func (d *demo) OnMouseDown(x, y int, btn lowlevelrunner.Buttons) bool {
+	fx, fy := float64(x), float64(frameHeight-y)
+	if btn.Left {
+		return d.slider1.OnMouseButtonDown(fx, fy)
+	}
+	return false
+}
+
+func (d *demo) OnMouseMove(x, y int, btn lowlevelrunner.Buttons) bool {
+	fx, fy := float64(x), float64(frameHeight-y)
+	return d.slider1.OnMouseMove(fx, fy, btn.Left)
+}
+
+func (d *demo) OnMouseUp(x, y int, btn lowlevelrunner.Buttons) bool {
+	fx, fy := float64(x), float64(frameHeight-y)
+	return d.slider1.OnMouseButtonUp(fx, fy)
+}
+
+func renderCtrl(
+	ras *rasterizerAdaptor,
+	sl *scanlineWrapper,
+	renBase *renderer.RendererBase[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]],
+	ctrl ctrlbase.Ctrl[color.RGBA],
+) {
+	for pathID := uint(0); pathID < ctrl.NumPaths(); pathID++ {
+		ras.ras.Reset()
+		ras.ras.AddPath(&ctrlVS{ctrl: ctrl}, uint32(pathID))
+		c := ctrl.Color(pathID)
+		renscan.RenderScanlinesAASolid(ras, sl, renBase, color.RGBA8[color.Linear]{
+			R: clampU8(c.R),
+			G: clampU8(c.G),
+			B: clampU8(c.B),
+			A: clampU8(c.A),
+		})
+	}
+}
+
+type ctrlVS struct {
+	ctrl ctrlbase.Ctrl[color.RGBA]
+}
+
+func (a *ctrlVS) Rewind(id uint32) { a.ctrl.Rewind(uint(id)) }
+func (a *ctrlVS) Vertex(x, y *float64) uint32 {
+	vx, vy, cmd := a.ctrl.Vertex()
+	*x, *y = vx, vy
+	return uint32(cmd)
+}
+
+func clampU8(v float64) uint8 {
+	if v <= 0 {
+		return 0
+	}
+	if v >= 1 {
+		return 255
+	}
+	return uint8(v*255.0 + 0.5)
 }
 
 func copyFlipY(src, dst []uint8, width, height int) {
@@ -258,9 +322,18 @@ func copyFlipY(src, dst []uint8, width, height int) {
 }
 
 func main() {
+	// C++: m_slider1(80, 10, 600-10, 19, !flip_y)
+	// flip_y=true, so !flip_y=false
+	sl := sliderctrl.NewSliderCtrl(80, 10, frameWidth-10, 19, false)
+	sl.SetRange(8.0, 100.0)
+	sl.SetNumSteps(23)
+	sl.SetValue(32.0)
+	sl.SetLabel("Pixel size=%.0f")
+
 	d := &demo{
-		x: [3]float64{57, 369, 143},
-		y: [3]float64{100, 170, 310},
+		x:       [3]float64{57, 369, 143},
+		y:       [3]float64{100, 170, 310},
+		slider1: sl,
 	}
 	lowlevelrunner.Run(lowlevelrunner.Config{
 		Title:  "AA Demo",

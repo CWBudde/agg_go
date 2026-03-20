@@ -30,12 +30,14 @@ const (
 	defaultNPoints = 10000
 )
 
-var splineRX = []float64{0.000000, 0.200000, 0.400000, 0.910484, 0.957258, 1.000000}
-var splineRY = []float64{1.000000, 0.800000, 0.600000, 0.066667, 0.169697, 0.600000}
-var splineGX = []float64{0.000000, 0.292244, 0.485655, 0.564859, 0.795607, 1.000000}
-var splineGY = []float64{0.000000, 0.607260, 0.964065, 0.892558, 0.435571, 0.000000}
-var splineBX = []float64{0.000000, 0.055045, 0.143034, 0.433082, 0.764859, 1.000000}
-var splineBY = []float64{0.385480, 0.128493, 0.021416, 0.271507, 0.713974, 1.000000}
+var (
+	splineRX = []float64{0.000000, 0.200000, 0.400000, 0.910484, 0.957258, 1.000000}
+	splineRY = []float64{1.000000, 0.800000, 0.600000, 0.066667, 0.169697, 0.600000}
+	splineGX = []float64{0.000000, 0.292244, 0.485655, 0.564859, 0.795607, 1.000000}
+	splineGY = []float64{0.000000, 0.607260, 0.964065, 0.892558, 0.435571, 0.000000}
+	splineBX = []float64{0.000000, 0.055045, 0.143034, 0.433082, 0.764859, 1.000000}
+	splineBY = []float64{0.385480, 0.128493, 0.021416, 0.271507, 0.713974, 1.000000}
+)
 
 type scatterPoint struct {
 	x, y, z float64
@@ -340,11 +342,8 @@ func (d *demo) OnMouseMove(x, y int, btn lowlevelrunner.Buttons) bool {
 	d.prepareState()
 	fx, fy := float64(x), float64(y)
 	pressed := btn.Left
-	changed := false
+	changed := d.scaleCtrl.OnMouseMove(fx, fy, pressed)
 
-	if d.scaleCtrl.OnMouseMove(fx, fy, pressed) {
-		changed = true
-	}
 	if d.selCtrl.OnMouseMove(fx, fy, pressed) {
 		changed = true
 	}
@@ -358,11 +357,8 @@ func (d *demo) OnMouseMove(x, y int, btn lowlevelrunner.Buttons) bool {
 func (d *demo) OnMouseUp(x, y int, btn lowlevelrunner.Buttons) bool {
 	d.prepareState()
 	fx, fy := float64(x), float64(y)
-	changed := false
+	changed := d.scaleCtrl.OnMouseButtonUp(fx, fy)
 
-	if d.scaleCtrl.OnMouseButtonUp(fx, fy) {
-		changed = true
-	}
 	if d.selCtrl.OnMouseButtonUp(fx, fy) {
 		changed = true
 	}

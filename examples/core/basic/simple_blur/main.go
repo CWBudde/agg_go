@@ -7,42 +7,63 @@ package main
 
 import (
 	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	liondemo "github.com/MeKo-Christian/agg_go/internal/demo/lion"
 )
 
-type demo struct{}
+type demo struct {
+	cx, cy float64
+}
 
-func (d *demo) Render(ctx *agg.Context) {
+func (d *demo) Render(img *agg.Image) {
+	ctx := agg.NewContextForImage(img)
 	ctx.Clear(agg.White)
 
 	agg2d := ctx.GetAgg2D()
 	agg2d.ResetTransformations()
 
 	// Draw the lion centered on the canvas.
-	drawLion(agg2d, ctx.Width(), ctx.Height())
+	drawLion(agg2d, img.Width(), img.Height())
 
-	// Blur parameters — default values from the WASM demo.
-	cx, cy := 400.0, 300.0
 	rx, ry := 100.0, 100.0
 
 	// Snapshot the background before the ellipse outline is drawn so the
 	// blur samples the clean lion pixels.
-	bgImg := agg.CreateImage(ctx.Width(), ctx.Height())
-	copy(bgImg.Data, ctx.GetImage().Data)
+	bgImg := agg.CreateImage(img.Width(), img.Height())
+	copy(bgImg.Data, img.Data)
 
-	// Draw the ellipse outline over the lion.
+	// Draw the ellipse outline over the lion (double-stroked like C++).
 	agg2d.NoFill()
-	agg2d.LineColor(agg.NewColor(0, 51, 0, 255)) // dark green, ~rgba(0, 0.2, 0)
-	agg2d.LineWidth(2.0)
+	agg2d.LineColor(agg.NewColor(0, 51, 0, 255))
+	agg2d.LineWidth(6.0)
 	agg2d.ResetPath()
-	agg2d.AddEllipse(cx, cy, rx, ry, agg.CCW)
+	agg2d.AddEllipse(d.cx, d.cy, rx, ry, agg.CCW)
 	agg2d.DrawPath(agg.StrokeOnly)
 
 	// Apply 3x3 box-blur inside the ellipse using the pre-outline snapshot.
-	applyBlurInsideEllipse(ctx.GetImage(), bgImg, cx, cy, rx, ry)
+	applyBlurInsideEllipse(img, bgImg, d.cx, d.cy, rx, ry)
 }
+
+func (d *demo) OnMouseDown(x, y int, btn lowlevelrunner.Buttons) bool {
+	if btn.Left {
+		d.cx = float64(x)
+		d.cy = float64(y)
+		return true
+	}
+	return false
+}
+
+func (d *demo) OnMouseMove(x, y int, btn lowlevelrunner.Buttons) bool {
+	if btn.Left {
+		d.cx = float64(x)
+		d.cy = float64(y)
+		return true
+	}
+	return false
+}
+
+func (d *demo) OnMouseUp(_, _ int, _ lowlevelrunner.Buttons) bool { return false }
 
 // drawLion renders the AGG lion demo into agg2d, centered in the canvas.
 func drawLion(agg2d *agg.Agg2D, width, height int) {
@@ -59,7 +80,7 @@ func drawLion(agg2d *agg.Agg2D, width, height int) {
 
 	agg2d.Translate(-baseDX, -baseDY)
 	agg2d.Scale(1.0, 1.0)
-	agg2d.Translate(float64(width)*0.5, float64(height)*0.5)
+	agg2d.Translate(float64(width)*0.25, float64(height)*0.5)
 
 	for _, lp := range liondemo.Parse() {
 		agg2d.FillColor(agg.NewColor(lp.Color[0], lp.Color[1], lp.Color[2], 255))
@@ -125,5 +146,8 @@ func applyBlurInsideEllipse(dst, src *agg.Image, cx, cy, rx, ry float64) {
 }
 
 func main() {
-	demorunner.Run(demorunner.Config{Title: "Simple Blur", Width: 512, Height: 400}, &demo{})
+	lowlevelrunner.Run(lowlevelrunner.Config{Title: "Simple Blur", Width: 512, Height: 400}, &demo{
+		cx: 100,
+		cy: 102,
+	})
 }

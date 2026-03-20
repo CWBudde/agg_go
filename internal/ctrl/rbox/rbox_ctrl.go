@@ -386,8 +386,8 @@ func (r *RboxCtrl[C]) setupBorderPath() {
 func (r *RboxCtrl[C]) setupTextPath() {
 	if r.numItems > 0 {
 		r.textRenderer.SetText(r.items[0])
-		r.textRenderer.SetPosition(r.xs1+r.dy*1.5, r.ys1+r.dy/2.0+r.textHeight)
-		r.textRenderer.SetSize(r.textHeight)
+		r.textRenderer.SetPosition(r.xs1+r.dy*1.5, r.ys1+r.dy/2.0)
+		r.textRenderer.SetSize(r.textHeight, r.textWidth)
 		r.textRenderer.SetThickness(r.textThickness)
 		r.textRenderer.Rewind(0)
 	}
@@ -471,7 +471,7 @@ func (r *RboxCtrl[C]) generateTextVertex() (x, y float64, cmd basics.PathCommand
 		r.textRenderer.SetText(r.items[r.drawItem])
 		r.textRenderer.SetPosition(
 			r.xs1+r.dy*1.5,
-			r.ys1+r.dy*float64(r.drawItem+1)-r.dy/2.0+r.textHeight)
+			r.ys1+r.dy*float64(r.drawItem+1)-r.dy/2.0)
 		r.textRenderer.SetThickness(r.textThickness)
 		r.textRenderer.Rewind(0)
 		x, y, cmd = r.textRenderer.Vertex()

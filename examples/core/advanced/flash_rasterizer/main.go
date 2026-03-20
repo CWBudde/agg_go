@@ -10,7 +10,7 @@ import (
 	"math/rand"
 
 	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
@@ -74,7 +74,7 @@ func (c *compoundNoClip) LineTo(outline *rasterizer.RasterizerCellsAAStyled, x, 
 
 type demo struct{}
 
-func (d *demo) Render(ctx *agg.Context) {
+func (d *demo) Render(img *agg.Image) {
 	rng := rand.New(rand.NewSource(1234))
 
 	// Random fill colours.
@@ -121,7 +121,6 @@ func (d *demo) Render(ctx *agg.Context) {
 	}
 
 	// Setup rendering pipeline.
-	img := ctx.GetImage()
 	rbuf := buffer.NewRenderingBufferU8()
 	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Width()*4)
 
@@ -209,7 +208,7 @@ func (d *demo) Render(ctx *agg.Context) {
 }
 
 func main() {
-	demorunner.Run(demorunner.Config{
+	lowlevelrunner.Run(lowlevelrunner.Config{
 		Title:  "Flash Rasterizer",
 		Width:  width,
 		Height: height,
