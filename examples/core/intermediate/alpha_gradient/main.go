@@ -1,44 +1,139 @@
-// Package main demonstrates the alpha_gradient example from AGG.
+// Port of AGG C++ alpha_gradient.cpp – alpha channel gradient demo.
 //
-// A large ellipse is filled with a circular color gradient (dark teal →
-// yellow-green → dark red) whose alpha channel is modulated by a separate
-// XY-product alpha gradient mapped over a parallelogram defined by three
-// control points. The combined effect reveals how the two gradients interact:
-// colours show through fully only where both gradients are non-zero.
+// A large ellipse is filled with a circular color gradient whose alpha is
+// modulated by a separate XY-product alpha gradient mapped over a parallelogram.
+// Background is random colourful ellipses.
 package main
 
 import (
 	"math/rand"
 
 	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/path"
+	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
+	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
+	"github.com/MeKo-Christian/agg_go/internal/renderer"
+	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/scanline"
 	"github.com/MeKo-Christian/agg_go/internal/shapes"
 	"github.com/MeKo-Christian/agg_go/internal/span"
 	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
 
 const (
-	width  = 400
-	height = 320
+	frameWidth  = 400
+	frameHeight = 320
 )
 
-// --- Color-array type (implements span.ColorFunction) ---
+// ---------------------------------------------------------------------------
+// Rasterizer / scanline adapters
+// ---------------------------------------------------------------------------
+
+type rasterizerAdaptor struct {
+	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
+	sl  rasScanlineAdaptor
+}
+
+func newRasterizer() *rasterizerAdaptor {
+	return &rasterizerAdaptor{
+		ras: rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+			rasterizer.RasConvInt{},
+			rasterizer.NewRasterizerSlNoClip(),
+		),
+		sl: rasScanlineAdaptor{sl: scanline.NewScanlineP8()},
+	}
+}
+
+func (r *rasterizerAdaptor) Reset()                { r.ras.Reset() }
+func (r *rasterizerAdaptor) RewindScanlines() bool { return r.ras.RewindScanlines() }
+func (r *rasterizerAdaptor) MinX() int             { return r.ras.MinX() }
+func (r *rasterizerAdaptor) MaxX() int             { return r.ras.MaxX() }
+
+func (r *rasterizerAdaptor) SweepScanline(sl renscan.ScanlineInterface) bool {
+	if w, ok := sl.(*scanlineWrapper); ok {
+		r.sl.sl = w.sl
+		return r.ras.SweepScanline(&r.sl)
+	}
+	return false
+}
+
+type rasScanlineAdaptor struct{ sl *scanline.ScanlineP8 }
+
+func (a *rasScanlineAdaptor) ResetSpans()                 { a.sl.ResetSpans() }
+func (a *rasScanlineAdaptor) AddCell(x int, cover uint32) { a.sl.AddCell(x, uint(cover)) }
+func (a *rasScanlineAdaptor) AddSpan(x, length int, cover uint32) {
+	a.sl.AddSpan(x, length, uint(cover))
+}
+func (a *rasScanlineAdaptor) Finalize(y int) { a.sl.Finalize(y) }
+func (a *rasScanlineAdaptor) NumSpans() int  { return a.sl.NumSpans() }
+
+type scanlineWrapper struct{ sl *scanline.ScanlineP8 }
+
+func (w *scanlineWrapper) Reset(minX, maxX int) { w.sl.Reset(minX, maxX) }
+func (w *scanlineWrapper) Y() int               { return w.sl.Y() }
+func (w *scanlineWrapper) NumSpans() int         { return w.sl.NumSpans() }
+
+func (w *scanlineWrapper) Begin() renscan.ScanlineIterator {
+	spans := w.sl.Spans()
+	if len(spans) == 0 {
+		return &spanIter{nil, 0}
+	}
+	return &spanIter{spans, 0}
+}
+
+type spanIter struct {
+	spans []scanline.SpanP8
+	idx   int
+}
+
+func (it *spanIter) GetSpan() renscan.SpanData {
+	s := it.spans[it.idx]
+	return renscan.SpanData{X: int(s.X), Len: int(s.Len), Covers: s.Covers}
+}
+func (it *spanIter) Next() bool { it.idx++; return it.idx < len(it.spans) }
+
+// ---------------------------------------------------------------------------
+// Vertex-source adapters
+// ---------------------------------------------------------------------------
+
+type ellipseVS struct{ e *shapes.Ellipse }
+
+func (ev *ellipseVS) Rewind(id uint32) { ev.e.Rewind(id) }
+func (ev *ellipseVS) Vertex(x, y *float64) uint32 {
+	var vx, vy float64
+	cmd := ev.e.Vertex(&vx, &vy)
+	*x, *y = vx, vy
+	return uint32(cmd)
+}
+
+type vcgenStrokeVS struct {
+	ps *path.PathStorageStl
+}
+
+func (v *vcgenStrokeVS) Rewind(id uint) { v.ps.Rewind(id) }
+func (v *vcgenStrokeVS) Vertex() (float64, float64, basics.PathCommand) {
+	x, y, cmd := v.ps.NextVertex()
+	return x, y, basics.PathCommand(cmd)
+}
+
+// ---------------------------------------------------------------------------
+// Color array for gradient
+// ---------------------------------------------------------------------------
 
 type gradColorArray struct {
 	data [256]color.RGBA8[color.Linear]
 }
 
-func (a *gradColorArray) Size() int { return 256 }
-
+func (a *gradColorArray) Size() int                             { return 256 }
 func (a *gradColorArray) ColorAt(i int) color.RGBA8[color.Linear] { return a.data[i] }
 
-// fillColorArray populates a 256-entry LUT with a 3-stop gradient:
-// indices 0–127 interpolate begin→middle, indices 128–255 middle→end.
 func fillColorArray(arr *gradColorArray, begin, middle, end agg.Color) {
-	lerp := func(a, b uint8, t float64) basics.Int8u {
-		return basics.Int8u(float64(a)*(1-t) + float64(b)*t)
+	lerp := func(a, b uint8, t float64) uint8 {
+		return uint8(float64(a)*(1-t) + float64(b)*t)
 	}
 	for i := 0; i < 128; i++ {
 		t := float64(i) / 128.0
@@ -60,10 +155,10 @@ func fillColorArray(arr *gradColorArray, begin, middle, end agg.Color) {
 	}
 }
 
-// --- Combined span generator ---
+// ---------------------------------------------------------------------------
+// Combined color+alpha span generator
+// ---------------------------------------------------------------------------
 
-// alphaGradSpanGen combines a circular color gradient with an XY alpha gradient
-// in a single Generate pass.
 type alphaGradSpanGen struct {
 	gradInterp  *span.SpanInterpolatorLinear[*transform.TransAffine]
 	alphaInterp *span.SpanInterpolatorLinear[*transform.TransAffine]
@@ -81,12 +176,10 @@ func newAlphaGradSpanGen(
 ) *alphaGradSpanGen {
 	gi := span.NewSpanInterpolatorLinearDefault(gradMtx)
 	ai := span.NewSpanInterpolatorLinearDefault(alphaMtx)
-
 	ds := gi.SubpixelShift() - span.GradientSubpixelShift
 	if ds < 0 {
 		ds = 0
 	}
-
 	return &alphaGradSpanGen{
 		gradInterp:  gi,
 		alphaInterp: ai,
@@ -119,7 +212,6 @@ func (g *alphaGradSpanGen) Generate(colors []color.RGBA8[color.Linear], x, y, le
 	g.alphaInterp.Begin(float64(x)+0.5, float64(y)+0.5, length)
 
 	for i := 0; i < length; i++ {
-		// Color gradient (radial)
 		cx, cy := g.gradInterp.Coordinates()
 		d := colorGrad.Calculate(cx>>g.downscale, cy>>g.downscale, g.d2c)
 		ci := ((d - g.d1c) * 256) / ddc
@@ -130,7 +222,6 @@ func (g *alphaGradSpanGen) Generate(colors []color.RGBA8[color.Linear], x, y, le
 		}
 		colors[i] = g.colorArray.data[ci]
 
-		// Alpha gradient (XY product)
 		ax, ay := g.alphaInterp.Coordinates()
 		ad := alphaGrad.Calculate(ax>>g.downscale, ay>>g.downscale, g.d2a)
 		ai := ((ad - g.d1a) * 256) / dda
@@ -146,65 +237,59 @@ func (g *alphaGradSpanGen) Generate(colors []color.RGBA8[color.Linear], x, y, le
 	}
 }
 
-// --- Ellipse VertexSource adapter ---
-
-type ellipseVS struct{ ell *shapes.Ellipse }
-
-func (a *ellipseVS) Rewind(pathID uint32) { a.ell.Rewind(pathID) }
-
-func (a *ellipseVS) Vertex(x, y *float64) uint32 { return uint32(a.ell.Vertex(x, y)) }
+// ---------------------------------------------------------------------------
+// Demo
+// ---------------------------------------------------------------------------
 
 type demo struct{}
 
-func (d *demo) Render(ctx *agg.Context) {
-	ctx.Clear(agg.White)
+func (d *demo) Render(img *agg.Image) {
+	w, h := img.Width(), img.Height()
 
-	a := ctx.GetAgg2D()
-	a.ResetTransformations()
+	workBuf := make([]uint8, w*h*4)
+	workRbuf := buffer.NewRenderingBufferU8WithData(workBuf, w, h, w*4)
+	mainPixf := pixfmt.NewPixFmtRGBA32[color.Linear](workRbuf)
+	mainRb := renderer.NewRendererBaseWithPixfmt(mainPixf)
+	mainRb.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
 
-	cx := float64(width) / 2
-	cy := float64(height) / 2
+	ras := newRasterizer()
+	sl := &scanlineWrapper{sl: scanline.NewScanlineP8()}
 
-	// 1. Random colourful background ellipses (seed 1234, matches C++ srand(1234)).
+	cx := float64(w) / 2
+	cy := float64(h) / 2
+
+	// 1. Random background ellipses (seed 1234, matching C++ srand(1234)).
 	rng := rand.New(rand.NewSource(1234))
-	a.NoLine()
 	for i := 0; i < 100; i++ {
-		ex := float64(rng.Intn(width))
-		ey := float64(rng.Intn(height))
-		rx := float64(rng.Intn(60)) + 5
-		ry := float64(rng.Intn(60)) + 5
-		r := uint8(rng.Intn(256))
-		g := uint8(rng.Intn(256))
-		b := uint8(rng.Intn(256))
-		al := uint8(rng.Intn(128))
-		a.FillColor(agg.NewColor(r, g, b, al))
-		a.AddEllipse(ex, ey, rx, ry, agg.CCW)
-		a.DrawPath(agg.FillOnly)
+		ell := shapes.NewEllipseWithParams(
+			float64(rng.Intn(w)), float64(rng.Intn(h)),
+			float64(rng.Intn(60)+5), float64(rng.Intn(60)+5),
+			50, false,
+		)
+		ras.Reset()
+		ras.ras.AddPath(&ellipseVS{e: ell}, 0)
+		c := color.RGBA8[color.Linear]{
+			R: uint8(rng.Intn(256)),
+			G: uint8(rng.Intn(256)),
+			B: uint8(rng.Intn(256)),
+			A: uint8(rng.Intn(128)),
+		}
+		renscan.RenderScanlinesAASolid(ras, sl, mainRb, c)
 	}
 
-	// 2. Gradient matrix: scale(0.75, 1.2) × rotate(-π/3) × translate(cx, cy), inverted.
+	// 2. Gradient matrix.
 	gradMtx := transform.NewTransAffine()
 	gradMtx.Multiply(transform.NewTransAffineScalingXY(0.75, 1.2))
-	gradMtx.Multiply(transform.NewTransAffineRotation(-3.14159265358979323846 / 3.0))
+	gradMtx.Multiply(transform.NewTransAffineRotation(-basics.Pi / 3.0))
 	gradMtx.Multiply(transform.NewTransAffineTranslation(cx, cy))
 	gradMtx.Invert()
 
-	// 3. Default control points (from the WASM demo defaults).
-	alphaGradPts := [3][2]float64{
-		{257, 60},
-		{369, 170},
-		{143, 310},
-	}
-
-	// 4. Alpha matrix: parallelogram → rectangle (-100,-100, 100,100).
-	parl := [6]float64{
-		alphaGradPts[0][0], alphaGradPts[0][1],
-		alphaGradPts[1][0], alphaGradPts[1][1],
-		alphaGradPts[2][0], alphaGradPts[2][1],
-	}
+	// 3. Control points defining the alpha parallelogram.
+	pts := [3][2]float64{{257, 60}, {369, 170}, {143, 310}}
+	parl := [6]float64{pts[0][0], pts[0][1], pts[1][0], pts[1][1], pts[2][0], pts[2][1]}
 	alphaMtx := transform.NewTransAffineParlToRect(parl, -100, -100, 100, 100)
 
-	// 5. Color LUT: dark teal → yellow-green → dark red.
+	// 4. Color LUT: dark teal → yellow-green → dark red.
 	var colorArr gradColorArray
 	fillColorArray(&colorArr,
 		agg.RGBA(0, 0.19, 0.19, 1),
@@ -212,43 +297,69 @@ func (d *demo) Render(ctx *agg.Context) {
 		agg.RGBA(0.31, 0, 0, 1),
 	)
 
-	// 6. Alpha LUT: linear 0→255 (matches the C++ default straight-line spline).
+	// 5. Alpha LUT: linear 0→255 (matches C++ default spline).
 	var alphaArr [256]basics.Int8u
 	for i := range alphaArr {
 		alphaArr[i] = basics.Int8u(i)
 	}
 
-	// 7. Render the 150-px circle with the combined span generator.
+	// 6. Render gradient ellipse via span generator.
 	spanGen := newAlphaGradSpanGen(gradMtx, alphaMtx, &colorArr, &alphaArr)
-	ras := a.GetInternalRasterizer()
+	alloc := span.NewSpanAllocator[color.RGBA8[color.Linear]]()
 	ras.Reset()
 	ell := shapes.NewEllipseWithParams(cx, cy, 150, 150, 100, false)
-	ras.AddPath(&ellipseVS{ell}, 0)
-	a.RenderScanlinesAAWithSpanGen(ras, spanGen)
+	ras.ras.AddPath(&ellipseVS{e: ell}, 0)
+	renscan.RenderScanlinesAA(ras, sl, mainRb, alloc, spanGen)
 
-	// 8. Control points.
-	a.NoLine()
-	a.FillColor(agg.NewColor(0, 102, 102, 79))
+	// 7. Control point dots.
+	ctrlCol := color.RGBA8[color.Linear]{R: 0, G: 102, B: 102, A: 79}
 	for i := 0; i < 3; i++ {
-		a.FillCircle(alphaGradPts[i][0], alphaGradPts[i][1], 5)
+		dot := shapes.NewEllipseWithParams(pts[i][0], pts[i][1], 5, 5, 20, false)
+		ras.Reset()
+		ras.ras.AddPath(&ellipseVS{e: dot}, 0)
+		renscan.RenderScanlinesAASolid(ras, sl, mainRb, ctrlCol)
 	}
 
-	// 9. Parallelogram outline (4th point = p0 + p2 − p1).
-	p3x := alphaGradPts[0][0] + alphaGradPts[2][0] - alphaGradPts[1][0]
-	p3y := alphaGradPts[0][1] + alphaGradPts[2][1] - alphaGradPts[1][1]
+	// 8. Parallelogram outline.
+	p3x := pts[0][0] + pts[2][0] - pts[1][0]
+	p3y := pts[0][1] + pts[2][1] - pts[1][1]
+	ps := path.NewPathStorageStl()
+	ps.MoveTo(pts[0][0], pts[0][1])
+	ps.LineTo(pts[1][0], pts[1][1])
+	ps.LineTo(pts[2][0], pts[2][1])
+	ps.LineTo(p3x, p3y)
+	ps.ClosePolygon(basics.PathFlagsCW)
 
-	a.LineColor(agg.Black)
-	a.LineWidth(1.0)
-	a.NoFill()
-	a.ResetPath()
-	a.MoveTo(alphaGradPts[0][0], alphaGradPts[0][1])
-	a.LineTo(alphaGradPts[1][0], alphaGradPts[1][1])
-	a.LineTo(alphaGradPts[2][0], alphaGradPts[2][1])
-	a.LineTo(p3x, p3y)
-	a.ClosePolygon()
-	a.DrawPath(agg.StrokeOnly)
+	// Render as thin stroke using vcgen_stroke approach.
+	ras.Reset()
+	ps.Rewind(0)
+	for {
+		x, y, cmd := ps.NextVertex()
+		if basics.IsStop(basics.PathCommand(cmd)) {
+			break
+		}
+		ras.ras.AddVertex(x, y, cmd)
+	}
+	renscan.RenderScanlinesAASolid(ras, sl, mainRb,
+		color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255})
+
+	// Copy with y-flip (C++ uses flip_y=true).
+	copyFlipY(workBuf, img.Data, w, h)
+}
+
+func copyFlipY(src, dst []uint8, width, height int) {
+	stride := width * 4
+	for y := 0; y < height; y++ {
+		srcOff := (height - 1 - y) * stride
+		dstOff := y * stride
+		copy(dst[dstOff:dstOff+stride], src[srcOff:srcOff+stride])
+	}
 }
 
 func main() {
-	demorunner.Run(demorunner.Config{Title: "Alpha Gradient", Width: width, Height: height}, &demo{})
+	lowlevelrunner.Run(lowlevelrunner.Config{
+		Title:  "Alpha Gradient",
+		Width:  frameWidth,
+		Height: frameHeight,
+	}, &demo{})
 }
