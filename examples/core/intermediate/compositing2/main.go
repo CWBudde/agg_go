@@ -1,119 +1,243 @@
-// Port of AGG C++ compositing2.cpp – compositing with color ramps and blend modes.
+// Port of AGG C++ compositing2.cpp – compositing modes with radial gradient ramps.
 //
-// Shows source-over compositing of radial gradient circles using a variety of
-// Porter-Duff composition operators. Default: alpha_src=1.0, alpha_dst=1.0,
-// operator=SrcOver (displayed as a grid of all operators).
+// Renders one large radial gradient (ramp1, difference blend) and four smaller
+// radial gradients (ramp2, src-over) on a white background.
+// Default: alpha_dst=1.0, alpha_src=1.0, comp_op=src-over (item 3).
 package main
 
 import (
-	"math"
-
 	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
+	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
+	"github.com/MeKo-Christian/agg_go/internal/pixfmt/blender"
+	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
+	"github.com/MeKo-Christian/agg_go/internal/renderer"
+	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/shapes"
+	"github.com/MeKo-Christian/agg_go/internal/span"
+	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
 
 const (
-	width  = 400
-	height = 320
+	frameWidth  = 600
+	frameHeight = 400
 )
 
-// drawRadialGradientCircle draws a circle filled with a radial gradient from c1 to c2.
-func drawRadialGradientCircle(a *agg.Agg2D, cx, cy, r float64, c1, c2 agg.Color) {
-	steps := 64
-	for i := 0; i < steps; i++ {
-		t := float64(i) / float64(steps-1)
-		angle1 := 2 * math.Pi * float64(i) / float64(steps)
-		angle2 := 2 * math.Pi * float64(i+1) / float64(steps)
+// generateColorRamp fills a GradientLinearColorRGBA8 (256 entries) with a
+// 4-stop piecewise-linear ramp exactly as compositing2.cpp does.
+func generateColorRamp(alpha float64) [256]color.RGBA8[color.Linear] {
+	lerp := func(a, b color.RGBA8[color.Linear], t float64) color.RGBA8[color.Linear] {
+		lerp1 := func(x, y uint8, t float64) uint8 { return uint8(float64(x)*(1-t) + float64(y)*t + 0.5) }
+		return color.RGBA8[color.Linear]{
+			R: lerp1(a.R, b.R, t),
+			G: lerp1(a.G, b.G, t),
+			B: lerp1(a.B, b.B, t),
+			A: lerp1(a.A, b.A, t),
+		}
+	}
+	a8 := uint8(alpha * 255)
+	c1 := color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: a8}
+	c2 := color.RGBA8[color.Linear]{R: 0, G: 0, B: 255, A: a8}
+	c3 := color.RGBA8[color.Linear]{R: 0, G: 255, B: 0, A: a8}
+	c4 := color.RGBA8[color.Linear]{R: 255, G: 0, B: 0, A: 0}
 
-		// Interpolate color.
-		rc := uint8(float64(c1.R)*(1-t) + float64(c2.R)*t)
-		gc := uint8(float64(c1.G)*(1-t) + float64(c2.G)*t)
-		bc := uint8(float64(c1.B)*(1-t) + float64(c2.B)*t)
-		ac := uint8(float64(c1.A)*(1-t) + float64(c2.A)*t)
+	var ramp [256]color.RGBA8[color.Linear]
+	for i := 0; i < 85; i++ {
+		ramp[i] = lerp(c1, c2, float64(i)/85.0)
+	}
+	for i := 85; i < 170; i++ {
+		ramp[i] = lerp(c2, c3, float64(i-85)/85.0)
+	}
+	for i := 170; i < 256; i++ {
+		ramp[i] = lerp(c3, c4, float64(i-170)/85.0)
+	}
+	return ramp
+}
 
-		a.FillColor(agg.NewColor(rc, gc, bc, ac))
-		a.NoLine()
-		a.ResetPath()
-		a.MoveTo(cx, cy)
-		a.LineTo(cx+r*math.Cos(angle1), cy+r*math.Sin(angle1))
-		a.LineTo(cx+r*math.Cos(angle2), cy+r*math.Sin(angle2))
-		a.ClosePolygon()
-		a.DrawPath(agg.FillOnly)
+// arrayColorFunc wraps a [256]RGBA8 array so it satisfies span.ColorFunction.
+type arrayColorFunc struct {
+	data [256]color.RGBA8[color.Linear]
+}
+
+func (a *arrayColorFunc) Size() int { return 256 }
+func (a *arrayColorFunc) ColorAt(i int) color.RGBA8[color.Linear] {
+	if i < 0 {
+		return a.data[0]
+	}
+	if i >= 256 {
+		return a.data[255]
+	}
+	return a.data[i]
+}
+
+// ---------------------------------------------------------------------------
+// Rasterizer / scanline adapters
+// ---------------------------------------------------------------------------
+
+type rasterizerAdaptor struct {
+	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
+	sl  rasScanlineAdaptor
+}
+
+func newRasterizer() *rasterizerAdaptor {
+	return &rasterizerAdaptor{
+		ras: rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+			rasterizer.RasConvInt{},
+			rasterizer.NewRasterizerSlNoClip(),
+		),
+		sl: rasScanlineAdaptor{sl: scanline.NewScanlineU8()},
 	}
 }
+
+func (r *rasterizerAdaptor) Reset()                { r.ras.Reset() }
+func (r *rasterizerAdaptor) RewindScanlines() bool { return r.ras.RewindScanlines() }
+func (r *rasterizerAdaptor) MinX() int             { return r.ras.MinX() }
+func (r *rasterizerAdaptor) MaxX() int             { return r.ras.MaxX() }
+func (r *rasterizerAdaptor) AddPath(vs rasterizer.VertexSource, pathID uint32) {
+	r.ras.AddPath(vs, pathID)
+}
+func (r *rasterizerAdaptor) SweepScanline(sl renscan.ScanlineInterface) bool {
+	if w, ok := sl.(*scanlineWrapper); ok {
+		r.sl.sl = w.sl
+		return r.ras.SweepScanline(&r.sl)
+	}
+	return false
+}
+
+type rasScanlineAdaptor struct{ sl *scanline.ScanlineU8 }
+
+func (a *rasScanlineAdaptor) ResetSpans()                 { a.sl.ResetSpans() }
+func (a *rasScanlineAdaptor) AddCell(x int, cover uint32) { a.sl.AddCell(x, uint(cover)) }
+func (a *rasScanlineAdaptor) AddSpan(x, length int, cover uint32) {
+	a.sl.AddSpan(x, length, uint(cover))
+}
+func (a *rasScanlineAdaptor) Finalize(y int) { a.sl.Finalize(y) }
+func (a *rasScanlineAdaptor) NumSpans() int  { return a.sl.NumSpans() }
+
+type scanlineWrapper struct{ sl *scanline.ScanlineU8 }
+
+func (w *scanlineWrapper) Reset(minX, maxX int) { w.sl.Reset(minX, maxX) }
+func (w *scanlineWrapper) Y() int               { return w.sl.Y() }
+func (w *scanlineWrapper) NumSpans() int         { return w.sl.NumSpans() }
+func (w *scanlineWrapper) Begin() renscan.ScanlineIterator {
+	spans := w.sl.Spans()
+	if len(spans) == 0 {
+		return &spanIter{nil, 0}
+	}
+	return &spanIter{spans, 0}
+}
+
+type spanIter struct {
+	spans []scanline.Span
+	idx   int
+}
+
+func (it *spanIter) GetSpan() renscan.SpanData {
+	s := it.spans[it.idx]
+	return renscan.SpanData{X: int(s.X), Len: int(s.Len), Covers: s.Covers}
+}
+func (it *spanIter) Next() bool { it.idx++; return it.idx < len(it.spans) }
+
+// ellipseVS wraps shapes.Ellipse as rasterizer.VertexSource.
+type ellipseVS struct{ e *shapes.Ellipse }
+
+func (ev *ellipseVS) Rewind(id uint32) { ev.e.Rewind(id) }
+func (ev *ellipseVS) Vertex(x, y *float64) uint32 {
+	cmd := ev.e.Vertex(x, y)
+	return uint32(cmd)
+}
+
+// ---------------------------------------------------------------------------
 
 type demo struct{}
 
+// radialShape draws a radial gradient ellipse into rb using the given color ramp.
+// Matches C++ radial_shape(): gradient goes from center over radius r=100 units,
+// scaled by r/(100) and translated to (cx,cy).
+func radialShape(
+	compPixf *pixfmt.PixFmtCompositeRGBA32,
+	ras *rasterizerAdaptor,
+	sl *scanlineWrapper,
+	ramp *arrayColorFunc,
+	x1, y1, x2, y2 float64,
+) {
+	cx := (x1 + x2) / 2.0
+	cy := (y1 + y2) / 2.0
+	dx := x2 - x1
+	dy := y2 - y1
+	r := 0.5 * min(dx, dy)
+
+	// gradient_mtx = scale(r/100) * translate(cx,cy), then inverted
+	gradMtx := transform.NewTransAffineScaling(r/100.0)
+	gradMtx.Multiply(transform.NewTransAffineTranslation(cx, cy))
+	gradMtx.Invert()
+
+	interp := span.NewSpanInterpolatorLinearDefault(gradMtx)
+	gradFunc := span.GradientRadial{}
+	spanGen := span.NewSpanGradient[color.RGBA8[color.Linear]](interp, gradFunc, ramp, 0, 100)
+	alloc := span.NewSpanAllocator[color.RGBA8[color.Linear]]()
+
+	rb := renderer.NewRendererBaseWithPixfmt(compPixf)
+
+	// Ellipse at (cx,cy) with radius r
+	ell := shapes.NewEllipseWithParams(cx, cy, r, r, 100, false)
+	ras.Reset()
+	ras.AddPath(&ellipseVS{e: ell}, 0)
+	renscan.RenderScanlinesAA(ras, sl, rb, alloc, spanGen)
+}
+
 func (d *demo) Render(img *agg.Image) {
-	ctx := agg.NewContextForImage(img)
-	ctx.Clear(agg.RGBA(0.5, 0.5, 0.5, 1.0))
+	w, h := img.Width(), img.Height()
 
-	a := ctx.GetAgg2D()
-	a.ResetTransformations()
+	// Work buffer (y-down, flip at end since flip_y=true in C++)
+	workBuf := make([]uint8, w*h*4)
+	workRbuf := buffer.NewRenderingBufferU8WithData(workBuf, w, h, w*4)
 
-	// All compositing operators to demonstrate.
-	type opEntry struct {
-		name string
-		mode agg.BlendMode
+	// Primary pixfmt for clearing white
+	mainPixf := pixfmt.NewPixFmtRGBA32[color.Linear](workRbuf)
+	mainRb := renderer.NewRendererBaseWithPixfmt(mainPixf)
+	mainRb.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
+
+	// Composite pixfmt reusing same buffer
+	compPixf := pixfmt.NewPixFmtCompositeRGBA32(workRbuf, blender.CompOpDifference)
+
+	ras := newRasterizer()
+	sl := &scanlineWrapper{sl: scanline.NewScanlineU8()}
+
+	ramp1 := &arrayColorFunc{data: generateColorRamp(1.0)}
+	ramp2 := &arrayColorFunc{data: generateColorRamp(1.0)}
+
+	// Large background shape with difference blend
+	compPixf.SetCompOp(blender.CompOpDifference)
+	radialShape(compPixf, ras, sl, ramp1, 50, 50, 50+320, 50+320)
+
+	// Four small shapes with src-over (default cur_item=3)
+	compPixf.SetCompOp(blender.CompOpSrcOver)
+	cx, cy := 50.0, 50.0
+	radialShape(compPixf, ras, sl, ramp2, cx+120-70, cy+120-70, cx+120+70, cy+120+70)
+	radialShape(compPixf, ras, sl, ramp2, cx+200-70, cy+120-70, cx+200+70, cy+120+70)
+	radialShape(compPixf, ras, sl, ramp2, cx+120-70, cy+200-70, cx+120+70, cy+200+70)
+	radialShape(compPixf, ras, sl, ramp2, cx+200-70, cy+200-70, cx+200+70, cy+200+70)
+
+	copyFlipY(workBuf, img.Data, w, h)
+}
+
+func copyFlipY(src, dst []uint8, width, height int) {
+	stride := width * 4
+	for y := 0; y < height; y++ {
+		srcOff := (height - 1 - y) * stride
+		dstOff := y * stride
+		copy(dst[dstOff:dstOff+stride], src[srcOff:srcOff+stride])
 	}
-	ops := []opEntry{
-		{"Alpha", agg.BlendAlpha},
-		{"Multiply", agg.BlendMultiply},
-		{"Screen", agg.BlendScreen},
-		{"Overlay", agg.BlendOverlay},
-		{"Darken", agg.BlendDarken},
-		{"Lighten", agg.BlendLighten},
-		{"ColorDodge", agg.BlendColorDodge},
-		{"ColorBurn", agg.BlendColorBurn},
-		{"HardLight", agg.BlendHardLight},
-		{"SoftLight", agg.BlendSoftLight},
-		{"Difference", agg.BlendDifference},
-		{"Exclusion", agg.BlendExclusion},
-	}
-
-	const (
-		cols   = 4
-		cellW  = 200.0
-		cellH  = 150.0
-		radius = 50.0
-	)
-
-	for i, op := range ops {
-		col := i % cols
-		row := i / cols
-		cx := float64(col)*cellW + cellW/2
-		cy := float64(row)*cellH + cellH/2
-
-		// Background cell.
-		a.BlendMode(agg.BlendAlpha)
-		a.FillColor(agg.RGBA(0.8, 0.8, 0.8, 0.5))
-		a.NoLine()
-		a.ResetPath()
-		a.MoveTo(cx-cellW/2+3, cy-cellH/2+3)
-		a.LineTo(cx+cellW/2-3, cy-cellH/2+3)
-		a.LineTo(cx+cellW/2-3, cy+cellH/2-3)
-		a.LineTo(cx-cellW/2+3, cy+cellH/2-3)
-		a.ClosePolygon()
-		a.DrawPath(agg.FillOnly)
-
-		// Source circle (magenta→yellow radial gradient).
-		a.BlendMode(agg.BlendAlpha)
-		drawRadialGradientCircle(a, cx-15, cy, radius,
-			agg.NewColor(255, 0, 128, 255),
-			agg.NewColor(255, 255, 0, 64))
-
-		// Destination circle with the blend mode (cyan→transparent).
-		a.BlendMode(op.mode)
-		drawRadialGradientCircle(a, cx+15, cy, radius,
-			agg.NewColor(0, 128, 255, 255),
-			agg.NewColor(0, 255, 128, 64))
-
-		_ = op.name
-	}
-
-	a.BlendMode(agg.BlendAlpha)
 }
 
 func main() {
-	lowlevelrunner.Run(lowlevelrunner.Config{Title: "Compositing 2", Width: 600, Height: 400}, &demo{})
+	lowlevelrunner.Run(lowlevelrunner.Config{
+		Title:  "AGG Example. Compositing Modes",
+		Width:  frameWidth,
+		Height: frameHeight,
+	}, &demo{})
 }

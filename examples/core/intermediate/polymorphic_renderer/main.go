@@ -28,26 +28,28 @@ import (
 // SolidFiller is the Go equivalent of C++'s polymorphic_renderer_solid_rgba8_base.
 // Any pixel-format backend that implements these methods is a valid renderer.
 type SolidFiller interface {
-	Clear(c color.RGBA8[color.Linear])
-	SetColor(c color.RGBA8[color.Linear])
+	Clear(c color.RGBA8[color.SRGB])
+	SetColor(c color.RGBA8[color.SRGB])
 	RenderTriangle(x, y [3]float64)
 }
 
-// rgba32Filler is one concrete implementation backed by PixFmtRGBA32.
+// rgba32Filler is one concrete implementation backed by PixFmtRGBA32 (sRGB).
+// C++ uses srgba8 colors, so we match with color.SRGB so that byte values
+// like {80,30,20} are stored as-is and PNG viewers interpret them as sRGB.
 type rgba32Filler struct {
-	renBase   *renderer.RendererBase[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]]
-	fillColor color.RGBA8[color.Linear]
+	renBase   *renderer.RendererBase[renderer.PixelFormat[color.RGBA8[color.SRGB]], color.RGBA8[color.SRGB]]
+	fillColor color.RGBA8[color.SRGB]
 }
 
 func newRGBA32Filler(rbuf *buffer.RenderingBufferU8, w, h int) *rgba32Filler {
-	pf := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
-	rb := renderer.NewRendererBaseWithPixfmt[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](pf)
+	pf := pixfmt.NewPixFmtRGBA32[color.SRGB](rbuf)
+	rb := renderer.NewRendererBaseWithPixfmt[renderer.PixelFormat[color.RGBA8[color.SRGB]], color.RGBA8[color.SRGB]](pf)
 	rb.ClipBox(0, 0, w, h)
 	return &rgba32Filler{renBase: rb}
 }
 
-func (r *rgba32Filler) Clear(c color.RGBA8[color.Linear])    { r.renBase.Clear(c) }
-func (r *rgba32Filler) SetColor(c color.RGBA8[color.Linear]) { r.fillColor = c }
+func (r *rgba32Filler) Clear(c color.RGBA8[color.SRGB])    { r.renBase.Clear(c) }
+func (r *rgba32Filler) SetColor(c color.RGBA8[color.SRGB]) { r.fillColor = c }
 
 // RenderTriangle is the rendering routine — it operates identically regardless
 // of which concrete SolidFiller implementation is in use.
@@ -80,7 +82,7 @@ func (r *rgba32Filler) RenderTriangle(x, y [3]float64) {
 
 // drawFilled demonstrates the polymorphic dispatch: the same code works with
 // any SolidFiller, just as the C++ version worked with any PixFmt.
-func drawFilled(ren SolidFiller, x, y [3]float64, bg, fg color.RGBA8[color.Linear]) {
+func drawFilled(ren SolidFiller, x, y [3]float64, bg, fg color.RGBA8[color.SRGB]) {
 	ren.Clear(bg)
 	ren.SetColor(fg)
 	ren.RenderTriangle(x, y)
@@ -114,8 +116,8 @@ func (d *demo) Render(img *agg.Image) {
 	drawFilled(
 		ren,
 		d.x, d.y,
-		color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255}, // white bg
-		color.RGBA8[color.Linear]{R: 80, G: 30, B: 20, A: 255},    // dark red fill
+		color.RGBA8[color.SRGB]{R: 255, G: 255, B: 255, A: 255}, // white bg
+		color.RGBA8[color.SRGB]{R: 80, G: 30, B: 20, A: 255},    // srgba8 fill
 	)
 }
 
