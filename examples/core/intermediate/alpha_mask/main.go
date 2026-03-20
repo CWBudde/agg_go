@@ -47,10 +47,10 @@ func newRasterizer() *rasterizerAdaptor {
 	}
 }
 
-func (r *rasterizerAdaptor) Reset()              { r.ras.Reset() }
+func (r *rasterizerAdaptor) Reset()                { r.ras.Reset() }
 func (r *rasterizerAdaptor) RewindScanlines() bool { return r.ras.RewindScanlines() }
-func (r *rasterizerAdaptor) MinX() int           { return r.ras.MinX() }
-func (r *rasterizerAdaptor) MaxX() int           { return r.ras.MaxX() }
+func (r *rasterizerAdaptor) MinX() int             { return r.ras.MinX() }
+func (r *rasterizerAdaptor) MaxX() int             { return r.ras.MaxX() }
 
 func (r *rasterizerAdaptor) AddPath(vs rasterizer.VertexSource, pathID uint32) {
 	r.ras.AddPath(vs, pathID)
@@ -78,7 +78,7 @@ type scanlineWrapper struct{ sl *scanline.ScanlineP8 }
 
 func (w *scanlineWrapper) Reset(minX, maxX int) { w.sl.Reset(minX, maxX) }
 func (w *scanlineWrapper) Y() int               { return w.sl.Y() }
-func (w *scanlineWrapper) NumSpans() int         { return w.sl.NumSpans() }
+func (w *scanlineWrapper) NumSpans() int        { return w.sl.NumSpans() }
 
 func (w *scanlineWrapper) Begin() renscan.ScanlineIterator {
 	spans := w.sl.Spans()
@@ -118,8 +118,8 @@ func (ev *ellipseVS) Vertex(x, y *float64) uint32 {
 // ---------------------------------------------------------------------------
 
 type demo struct {
-	angle, scale   float64
-	skewX, skewY   float64
+	angle, scale float64
+	skewX, skewY float64
 }
 
 func (d *demo) Render(img *agg.Image) {

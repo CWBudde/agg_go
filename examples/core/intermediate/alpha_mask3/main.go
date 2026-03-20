@@ -79,7 +79,7 @@ type scanlineWrapper struct{ sl *scanline.ScanlineP8 }
 
 func (w *scanlineWrapper) Reset(minX, maxX int) { w.sl.Reset(minX, maxX) }
 func (w *scanlineWrapper) Y() int               { return w.sl.Y() }
-func (w *scanlineWrapper) NumSpans() int         { return w.sl.NumSpans() }
+func (w *scanlineWrapper) NumSpans() int        { return w.sl.NumSpans() }
 
 func (w *scanlineWrapper) Begin() renscan.ScanlineIterator {
 	spans := w.sl.Spans()
@@ -105,13 +105,13 @@ func (it *spanIter) Next() bool { it.idx++; return it.idx < len(it.spans) }
 // ---------------------------------------------------------------------------
 
 type spiral struct {
-	x, y           float64
-	r1, r2         float64
-	step           float64
-	startAngle     float64
-	angle, currR   float64
-	da, dr         float64
-	start          bool
+	x, y         float64
+	r1, r2       float64
+	step         float64
+	startAngle   float64
+	angle, currR float64
+	da, dr       float64
+	start        bool
 }
 
 func newSpiral(x, y, r1, r2, step, startAngle float64) *spiral {

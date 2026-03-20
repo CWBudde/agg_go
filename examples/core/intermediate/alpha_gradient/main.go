@@ -75,7 +75,7 @@ type scanlineWrapper struct{ sl *scanline.ScanlineP8 }
 
 func (w *scanlineWrapper) Reset(minX, maxX int) { w.sl.Reset(minX, maxX) }
 func (w *scanlineWrapper) Y() int               { return w.sl.Y() }
-func (w *scanlineWrapper) NumSpans() int         { return w.sl.NumSpans() }
+func (w *scanlineWrapper) NumSpans() int        { return w.sl.NumSpans() }
 
 func (w *scanlineWrapper) Begin() renscan.ScanlineIterator {
 	spans := w.sl.Spans()
@@ -128,7 +128,7 @@ type gradColorArray struct {
 	data [256]color.RGBA8[color.Linear]
 }
 
-func (a *gradColorArray) Size() int                             { return 256 }
+func (a *gradColorArray) Size() int                               { return 256 }
 func (a *gradColorArray) ColorAt(i int) color.RGBA8[color.Linear] { return a.data[i] }
 
 func fillColorArray(arr *gradColorArray, begin, middle, end agg.Color) {

@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	liondemo "github.com/MeKo-Christian/agg_go/internal/demo/lion"
+
 	"github.com/MeKo-Christian/agg_go/internal/basics"
+	liondemo "github.com/MeKo-Christian/agg_go/internal/demo/lion"
 )
 
 func main() {
@@ -16,10 +17,18 @@ func main() {
 			if basics.IsStop(basics.PathCommand(cmd)) {
 				break
 			}
-			if x < minX { minX = x }
-			if y < minY { minY = y }
-			if x > maxX { maxX = x }
-			if y > maxY { maxY = y }
+			if x < minX {
+				minX = x
+			}
+			if y < minY {
+				minY = y
+			}
+			if x > maxX {
+				maxX = x
+			}
+			if y > maxY {
+				maxY = y
+			}
 		}
 	}
 	fmt.Printf("Lion bounds: X=[%.1f, %.1f] Y=[%.1f, %.1f]\n", minX, maxX, minY, maxY)

@@ -12,7 +12,6 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
 	"github.com/MeKo-Christian/agg_go/internal/conv"
-
 	"github.com/MeKo-Christian/agg_go/internal/path"
 	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
 	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
@@ -72,7 +71,7 @@ type scanlineWrapper struct{ sl *scanline.ScanlineP8 }
 
 func (w *scanlineWrapper) Reset(minX, maxX int) { w.sl.Reset(minX, maxX) }
 func (w *scanlineWrapper) Y() int               { return w.sl.Y() }
-func (w *scanlineWrapper) NumSpans() int         { return w.sl.NumSpans() }
+func (w *scanlineWrapper) NumSpans() int        { return w.sl.NumSpans() }
 
 func (w *scanlineWrapper) Begin() renscan.ScanlineIterator {
 	spans := w.sl.Spans()
