@@ -108,6 +108,11 @@ update-visual:
     @echo "Regenerating Go reference images and running visual tests..."
     UPDATE_VISUAL=1 go test -v -timeout 30m -run TestUpdateGoReferences ./tests/visual/
 
+# Serve interactive visual comparison of C++ vs Go reference images
+show-visuals:
+    @echo "Visual comparison viewer on http://localhost:8080  (Ctrl+C to stop)"
+    go run ./cmd/visual-viewer/
+
 # Run SIMD-focused tests
 test-simd:
     @echo "Running SIMD dispatch tests..."
