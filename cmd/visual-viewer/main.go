@@ -8,7 +8,9 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"io"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -85,7 +87,6 @@ func rawSubtractImage(ref, gen image.Image) *image.RGBA {
 	return out
 }
 
-
 func buildEntry(name, cppPath, goPath string) (demoEntry, error) {
 	cppImg, err := loadPNG(cppPath)
 	if err != nil {
@@ -126,7 +127,7 @@ func buildEntry(name, cppPath, goPath string) (demoEntry, error) {
 	rmse := 0.0
 	if total > 0 {
 		meanSq := sumSq / float64(total*3)
-		rmse = mathSqrt(meanSq)
+		rmse = math.Sqrt(meanSq)
 	}
 
 	cppB64, err := pngToBase64(cppImg)
@@ -163,18 +164,6 @@ func buildEntry(name, cppPath, goPath string) (demoEntry, error) {
 		RawDiffB64:  rawB64,
 		AmpDiffB64:  ampB64,
 	}, nil
-}
-
-// mathSqrt is a simple Newton-Raphson sqrt to avoid importing math.
-func mathSqrt(x float64) float64 {
-	if x <= 0 {
-		return 0
-	}
-	z := x / 2.0
-	for i := 0; i < 50; i++ {
-		z -= (z*z - x) / (2 * z)
-	}
-	return z
 }
 
 func loadDemos(baseDir string) ([]demoEntry, error) {
@@ -254,7 +243,7 @@ body { background: #111; color: #ddd; font-family: monospace; font-size: 13px; }
 .badge-warn { background: #3a2a00; color: #fa0; border: 1px solid #6a5000; }
 .badge-bad { background: #3a0000; color: #f55; border: 1px solid #6a0000; }
 .img-grid {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;
 }
 .img-col { display: flex; flex-direction: column; gap: 4px; }
 .img-col label { font-size: 11px; color: #888; text-align: center; }
@@ -364,6 +353,8 @@ const pageFooter = `</div>
       divider.style.left = (pct * 100) + '%';
       if (pct > 0) {
         overlay.querySelector('img').style.width = (100 / pct) + '%';
+      } else {
+        overlay.querySelector('img').style.width = '100%';
       }
     }
 
@@ -401,7 +392,7 @@ func badgeClass(rmse float64) string {
 	return "badge-bad"
 }
 
-func renderCard(w http.ResponseWriter, d demoEntry) {
+func renderCard(w io.Writer, d demoEntry) {
 	badge := badgeClass(d.RMSE)
 	pctDiff := d.DiffRatio * 100.0
 
@@ -462,7 +453,7 @@ func renderCard(w http.ResponseWriter, d demoEntry) {
 	fmt.Fprintf(w, `</div>`) // card
 }
 
-func renderPage(w http.ResponseWriter, demos []demoEntry) {
+func renderPage(w io.Writer, demos []demoEntry) {
 	fmt.Fprint(w, pageHeader)
 	for _, d := range demos {
 		renderCard(w, d)
