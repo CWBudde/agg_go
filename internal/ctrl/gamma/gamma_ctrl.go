@@ -115,36 +115,23 @@ func (gc *GammaCtrlImpl[C]) calcSplineBox() {
 	gc.ys2 = gc.yc2 - gc.borderWidth*0.5
 }
 
-// splineYBounds returns (yBottom, yTop) for spline/point calculations.
-// The original C++ uses math-Y (ys1=bottom, ys2=top) with the rendering buffer
-// handling flip_y. In screen-Y-down (flipY=false) we swap the references so the
-// identity gamma curve runs from bottom-left to top-right as expected.
-func (gc *GammaCtrlImpl[C]) splineYBounds() (yBottom, yTop float64) {
-	if gc.FlipY() {
-		return gc.ys1, gc.ys2 // math-Y: ys1 is the low (bottom) value
-	}
-	return gc.ys2, gc.ys1 // screen-Y: ys2 is the large (bottom) value
-}
-
 // calcPoints calculates the screen coordinates of the control points.
+// Matches C++ gamma_ctrl_impl::calc_points() directly.
 func (gc *GammaCtrlImpl[C]) calcPoints() {
 	kx1, ky1, kx2, ky2 := gc.gammaSpline.GetValues()
-	yBottom, yTop := gc.splineYBounds()
-	span := math.Abs(yTop - yBottom)
 	gc.xp1 = gc.xs1 + (gc.xs2-gc.xs1)*kx1*0.25
-	gc.yp1 = yBottom + (yTop-yBottom)*ky1*0.25
+	gc.yp1 = gc.ys1 + (gc.ys2-gc.ys1)*ky1*0.25
 	gc.xp2 = gc.xs2 - (gc.xs2-gc.xs1)*kx2*0.25
-	gc.yp2 = yBottom + (yTop-yBottom)*(1-ky2*0.25)
-	_ = span
+	gc.yp2 = gc.ys2 - (gc.ys2-gc.ys1)*ky2*0.25
 }
 
 // calcValues calculates the control point values from screen coordinates.
+// Matches C++ gamma_ctrl_impl::calc_values() directly.
 func (gc *GammaCtrlImpl[C]) calcValues() {
-	yBottom, yTop := gc.splineYBounds()
 	kx1 := (gc.xp1 - gc.xs1) * 4.0 / (gc.xs2 - gc.xs1)
-	ky1 := (gc.yp1 - yBottom) * 4.0 / (yTop - yBottom)
+	ky1 := (gc.yp1 - gc.ys1) * 4.0 / (gc.ys2 - gc.ys1)
 	kx2 := (gc.xs2 - gc.xp2) * 4.0 / (gc.xs2 - gc.xs1)
-	ky2 := (1 - (gc.yp2-yBottom)/(yTop-yBottom)) * 4.0
+	ky2 := (gc.ys2 - gc.yp2) * 4.0 / (gc.ys2 - gc.ys1)
 	gc.gammaSpline.Values(kx1, ky1, kx2, ky2)
 }
 
@@ -439,23 +426,20 @@ func (gc *GammaCtrlImpl[C]) setupBorderPath() {
 }
 
 // setupCurvePath prepares the gamma curve for rendering.
+// Matches C++ case 2: m_gamma_spline.box(m_xs1, m_ys1, m_xs2, m_ys2).
 func (gc *GammaCtrlImpl[C]) setupCurvePath() {
-	// Ensure we have valid bounds before setting up the curve
 	if gc.xs2 <= gc.xs1 || gc.ys2 <= gc.ys1 {
-		return // Invalid bounds, skip setup
+		return
 	}
-	// Pass (yBottom, yTop) so the identity curve runs from bottom-left to top-right.
-	yBottom, yTop := gc.splineYBounds()
-	gc.gammaSpline.Box(gc.xs1, yBottom, gc.xs2, yTop)
+	gc.gammaSpline.Box(gc.xs1, gc.ys1, gc.xs2, gc.ys2)
 	gc.curveStroke.SetWidth(gc.curveWidth)
 	gc.curveStroke.Rewind(0)
 }
 
 // setupGridPath prepares vertices for the grid lines.
-// Layout matches the C++ gamma_ctrl_impl: 20 vertices, 4 sub-paths.
+// Matches C++ gamma_ctrl_impl case 3 exactly: 20 vertices, 4 sub-paths.
 func (gc *GammaCtrlImpl[C]) setupGridPath() {
 	gc.calcPoints()
-	yBottom, yTop := gc.splineYBounds()
 	w := gc.gridWidth * 0.5
 	mid := (gc.ys1 + gc.ys2) * 0.5
 	xmid := (gc.xs1 + gc.xs2) * 0.5
@@ -480,29 +464,29 @@ func (gc *GammaCtrlImpl[C]) setupGridPath() {
 	gc.vertices[14] = xmid + w
 	gc.vertices[15] = gc.ys1
 
-	// Sub-path 2 (verts 8-13): L-guide from left edge to p1, then to yBottom
+	// Sub-path 2 (verts 8-13): L-guide for p1 — left edge at yp1, down to ys1
 	gc.vertices[16] = gc.xs1
 	gc.vertices[17] = gc.yp1 - w
 	gc.vertices[18] = gc.xp1 - w
 	gc.vertices[19] = gc.yp1 - w
 	gc.vertices[20] = gc.xp1 - w
-	gc.vertices[21] = yBottom
+	gc.vertices[21] = gc.ys1
 	gc.vertices[22] = gc.xp1 + w
-	gc.vertices[23] = yBottom
+	gc.vertices[23] = gc.ys1
 	gc.vertices[24] = gc.xp1 + w
 	gc.vertices[25] = gc.yp1 + w
 	gc.vertices[26] = gc.xs1
 	gc.vertices[27] = gc.yp1 + w
 
-	// Sub-path 3 (verts 14-19): L-guide from right edge to p2, then to yTop
+	// Sub-path 3 (verts 14-19): L-guide for p2 — right edge at yp2, up to ys2
 	gc.vertices[28] = gc.xs2
 	gc.vertices[29] = gc.yp2 + w
 	gc.vertices[30] = gc.xp2 + w
 	gc.vertices[31] = gc.yp2 + w
 	gc.vertices[32] = gc.xp2 + w
-	gc.vertices[33] = yTop
+	gc.vertices[33] = gc.ys2
 	gc.vertices[34] = gc.xp2 - w
-	gc.vertices[35] = yTop
+	gc.vertices[35] = gc.ys2
 	gc.vertices[36] = gc.xp2 - w
 	gc.vertices[37] = gc.yp2 - w
 	gc.vertices[38] = gc.xs2
@@ -539,17 +523,9 @@ func (gc *GammaCtrlImpl[C]) setupTextPath() {
 	gc.textRenderer.SetText(text)
 	gc.textRenderer.SetSize(gc.textHeight)
 
-	// SimpleText always renders upward from the start point (SetFlip=true for screen coords).
-	// In Y-up coords (flipY=true): center = startY + textHeight/2  → startY = center - textHeight/2
-	// In Y-down coords (flipY=false): center = startY - textHeight/2 → startY = center + textHeight/2
+	// Matches C++: start_point(xt1 + borderWidth*2, (yt1+yt2)*0.5 - textHeight*0.5)
 	centerY := (gc.yt1 + gc.yt2) * 0.5
-	var textY float64
-	if gc.FlipY() {
-		textY = centerY - gc.textHeight*0.5
-	} else {
-		textY = centerY + gc.textHeight*0.5
-	}
-	gc.textRenderer.SetPosition(gc.xt1+gc.borderWidth*2.0, textY)
+	gc.textRenderer.SetPosition(gc.xt1+gc.borderWidth*2.0, centerY-gc.textHeight*0.5)
 
 	gc.textRenderer.SetThickness(gc.textThickness)
 	gc.textRenderer.Rewind(0)

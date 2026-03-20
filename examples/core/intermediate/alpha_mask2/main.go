@@ -7,7 +7,6 @@ package main
 
 import (
 	"math"
-	"math/rand"
 
 	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
@@ -30,6 +29,52 @@ const (
 
 	numEllipses = 10 // C++ default slider value
 )
+
+// ---------------------------------------------------------------------------
+// glibc rand() with default seed (no effective srand call = seed 1).
+// The C++ source calls srand(1432) but the compiler optimized the call away
+// (verified via objdump: no srand@plt in the binary). The binary therefore
+// runs with the default glibc state, which matches srand(1).
+// State pre-computed from glibc srand(1) initialization + 310 warmup cycles.
+// ---------------------------------------------------------------------------
+
+type clibcRand struct {
+	state [31]int32
+	fptr  int
+	rptr  int
+}
+
+func newClibcRandSeed1() *clibcRand {
+	return &clibcRand{
+		state: [31]int32{
+			-1726662223, 379960547, 1735697613, 1040273694, 1313901226,
+			1627687941, -179304937, -2073333483, 1780058412, -1989503057,
+			-615974602, 344556628, 939512070, -1249116260, 1507946756,
+			-812545463, 154635395, 1388815473, -1926676823, 525320961,
+			-1009028674, 968117788, -123449607, 1284210865, 435012392,
+			-2017506339, -911064859, -370259173, 1132637927, 1398500161, -205601318,
+		},
+		fptr: 3,
+		rptr: 0,
+	}
+}
+
+func (r *clibcRand) next() int32 {
+	r.state[r.fptr] += r.state[r.rptr]
+	result := int32(uint32(r.state[r.fptr]) >> 1)
+	r.fptr++
+	if r.fptr >= 31 {
+		r.fptr = 0
+	}
+	r.rptr++
+	if r.rptr >= 31 {
+		r.rptr = 0
+	}
+	return result
+}
+
+func (r *clibcRand) randN(n int) int   { return int(r.next()) % n }
+func (r *clibcRand) randAnd(mask int) int { return int(r.next()) & mask }
 
 // ---------------------------------------------------------------------------
 // Rasterizer / scanline adapters
@@ -142,21 +187,22 @@ func (d *demo) Render(img *agg.Image) {
 	maskRb := renderer.NewRendererBaseWithPixfmt(maskPixf)
 	maskRb.Clear(color.Gray8[color.Linear]{V: 0, A: 255})
 
-	rng := rand.New(rand.NewSource(1432))
+	rng := newClibcRandSeed1()
 
+	// C++ argument evaluation order (GCC x86, right-to-left):
+	// ell.init(rand()%w, rand()%h, rand()%100+20, rand()%100+20, 100) → ry, rx, y, x
+	// r.color(sgray8((rand()&127)+128, (rand()&127)+128)) → a, v  (alpha arg evaluated first)
 	for i := 0; i < numEllipses; i++ {
-		ell := shapes.NewEllipseWithParams(
-			float64(rng.Intn(w)),
-			float64(rng.Intn(h)),
-			float64(rng.Intn(100)+20),
-			float64(rng.Intn(100)+20),
-			100, false,
-		)
+		ry := float64(rng.randN(100) + 20)
+		rx := float64(rng.randN(100) + 20)
+		y := float64(rng.randN(h))
+		x := float64(rng.randN(w))
+		ell := shapes.NewEllipseWithParams(x, y, rx, ry, 100, false)
 		ras.Reset()
 		ras.AddPath(&ellipseVS{e: ell}, 0)
 		// C++: sgray8((rand() & 127) + 128, (rand() & 127) + 128)
-		v := uint8(rng.Intn(128) + 128)
-		a := uint8(rng.Intn(128) + 128)
+		a := uint8(rng.randAnd(127) + 128)
+		v := uint8(rng.randAnd(127) + 128)
 		renscan.RenderScanlinesAASolid(ras, sl, maskRb, color.Gray8[color.Linear]{V: v, A: a})
 	}
 

@@ -101,7 +101,7 @@ func buildColorProfile(
 	splineR, splineG, splineB, splineA *splinectrl.SplineCtrl[icol.RGBA],
 ) []icol.RGBA8[icol.Linear] {
 	colors := make([]icol.RGBA8[icol.Linear], 256)
-	for i := 0; i < 256; i++ {
+	for i := range 256 {
 		colors[i] = icol.RGBA8[icol.Linear]{
 			R: uint8(splineR.Spline()[i]*255.0 + 0.5),
 			G: uint8(splineG.Spline()[i]*255.0 + 0.5),
@@ -113,10 +113,7 @@ func buildColorProfile(
 }
 
 func newGammaControl() *gammactrl.GammaCtrl {
-	// flipY=true matches the work buffer's coordinate system (y=0 at bottom),
-	// so the spline box is set as box(xs1, ys1, xs2, ys2) without swapping —
-	// identical to the C++ original with flip_y=true.
-	gc := gammactrl.NewGammaCtrl(10.0, 10.0, 200.0, 165.0, true)
+	gc := gammactrl.NewGammaCtrl(10.0, 10.0, 200.0, 165.0, false)
 	gc.SetTextSize(8.0, 0.0)
 	return gc
 }

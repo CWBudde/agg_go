@@ -392,10 +392,12 @@ func (s *SplineCtrlImpl[C]) Rewind(pathID uint) {
 			for {
 				var ex, ey float64
 				ec := s.ellipse.Vertex(&ex, &ey)
-				if ec == basics.PathCmdStop {
+				if basics.IsStop(ec) {
 					break
 				}
-				if basics.IsMoveTo(ec) {
+				if basics.IsEndPoly(ec) {
+					s.pointsPath.ClosePolygon(basics.PathFlagsClose)
+				} else if basics.IsMoveTo(ec) {
 					s.pointsPath.MoveTo(ex, ey)
 				} else {
 					s.pointsPath.LineTo(ex, ey)
@@ -414,10 +416,12 @@ func (s *SplineCtrlImpl[C]) Rewind(pathID uint) {
 			for {
 				var ex, ey float64
 				ec := s.ellipse.Vertex(&ex, &ey)
-				if ec == basics.PathCmdStop {
+				if basics.IsStop(ec) {
 					break
 				}
-				if basics.IsMoveTo(ec) {
+				if basics.IsEndPoly(ec) {
+					s.pointsPath.ClosePolygon(basics.PathFlagsClose)
+				} else if basics.IsMoveTo(ec) {
 					s.pointsPath.MoveTo(ex, ey)
 				} else {
 					s.pointsPath.LineTo(ex, ey)

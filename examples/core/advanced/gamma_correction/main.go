@@ -62,11 +62,11 @@ func (r *rasterizerAdaptor) SweepScanline(sl renscan.ScanlineInterface) bool {
 
 type rasScanlineAdaptor struct{ sl *isl.ScanlineP8 }
 
-func (a *rasScanlineAdaptor) ResetSpans()                      { a.sl.ResetSpans() }
-func (a *rasScanlineAdaptor) AddCell(x int, cover uint32)      { a.sl.AddCell(x, uint(cover)) }
-func (a *rasScanlineAdaptor) AddSpan(x, length int, c uint32)  { a.sl.AddSpan(x, length, uint(c)) }
-func (a *rasScanlineAdaptor) Finalize(y int)                   { a.sl.Finalize(y) }
-func (a *rasScanlineAdaptor) NumSpans() int                    { return a.sl.NumSpans() }
+func (a *rasScanlineAdaptor) ResetSpans()                     { a.sl.ResetSpans() }
+func (a *rasScanlineAdaptor) AddCell(x int, cover uint32)     { a.sl.AddCell(x, uint(cover)) }
+func (a *rasScanlineAdaptor) AddSpan(x, length int, c uint32) { a.sl.AddSpan(x, length, uint(c)) }
+func (a *rasScanlineAdaptor) Finalize(y int)                  { a.sl.Finalize(y) }
+func (a *rasScanlineAdaptor) NumSpans() int                   { return a.sl.NumSpans() }
 
 type scanlineWrapper struct{ sl *isl.ScanlineP8 }
 
@@ -178,7 +178,8 @@ func fillRect(rb *renBase, x1, y1, x2, y2 int, col icolor.RGBA8[icolor.Linear]) 
 
 // renderStrokeEllipse strokes an ellipse.
 func renderStrokeEllipse(ras *rasterizerAdaptor, sl *scanlineWrapper, rb *renBase,
-	cx, cy, rx, ry float64, steps uint32, strokeWidth float64, col icolor.RGBA8[icolor.Linear]) {
+	cx, cy, rx, ry float64, steps uint32, strokeWidth float64, col icolor.RGBA8[icolor.Linear],
+) {
 	ell := shapes.NewEllipseWithParams(cx, cy, rx, ry, steps, false)
 	stroke := conv.NewConvStroke(&ellipseVertexSource{e: ell})
 	stroke.SetWidth(strokeWidth)
