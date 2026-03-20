@@ -9,7 +9,7 @@ import (
 	"math"
 
 	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
 )
 
 const (
@@ -44,7 +44,8 @@ func drawRadialGradientCircle(a *agg.Agg2D, cx, cy, r float64, c1, c2 agg.Color)
 
 type demo struct{}
 
-func (d *demo) Render(ctx *agg.Context) {
+func (d *demo) Render(img *agg.Image) {
+	ctx := agg.NewContextForImage(img)
 	ctx.Clear(agg.RGBA(0.5, 0.5, 0.5, 1.0))
 
 	a := ctx.GetAgg2D()
@@ -114,5 +115,5 @@ func (d *demo) Render(ctx *agg.Context) {
 }
 
 func main() {
-	demorunner.Run(demorunner.Config{Title: "Compositing 2", Width: 600, Height: 400}, &demo{})
+	lowlevelrunner.Run(lowlevelrunner.Config{Title: "Compositing 2", Width: 600, Height: 400}, &demo{})
 }

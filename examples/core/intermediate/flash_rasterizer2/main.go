@@ -16,7 +16,7 @@ import (
 	"time"
 
 	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
@@ -52,7 +52,7 @@ func newDemo() *demo {
 	return &demo{shapes: shapes, colors: colors}
 }
 
-func (d *demo) Render(ctx *agg.Context) {
+func (d *demo) Render(img *agg.Image) {
 	if len(d.shapes) == 0 {
 		return
 	}
@@ -69,7 +69,6 @@ func (d *demo) Render(ctx *agg.Context) {
 		return
 	}
 
-	img := ctx.GetImage()
 	w, h := img.Width(), img.Height()
 
 	// Viewport: fit shape bounding rect into canvas (aspect-ratio preserving, centred).
@@ -254,13 +253,13 @@ func (d *demo) OnKey(key rune) bool {
 	return false
 }
 
-func (d *demo) OnMouseDown(x, y int, btn demorunner.Buttons) bool { return false }
-func (d *demo) OnMouseMove(x, y int, btn demorunner.Buttons) bool { return false }
-func (d *demo) OnMouseUp(x, y int, btn demorunner.Buttons) bool   { return false }
+func (d *demo) OnMouseDown(x, y int, btn lowlevelrunner.Buttons) bool { return false }
+func (d *demo) OnMouseMove(x, y int, btn lowlevelrunner.Buttons) bool { return false }
+func (d *demo) OnMouseUp(x, y int, btn lowlevelrunner.Buttons) bool   { return false }
 
 func main() {
 	d := newDemo()
-	demorunner.Run(demorunner.Config{
+	lowlevelrunner.Run(lowlevelrunner.Config{
 		Title:  "Flash Rasterizer 2 (Style Decomposition)",
 		Width:  655,
 		Height: 520,

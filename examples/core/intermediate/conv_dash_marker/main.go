@@ -4,7 +4,7 @@ import (
 	"math"
 
 	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
@@ -232,7 +232,8 @@ func (d *demo) drawHandles(ctx *agg.Context) {
 	}
 }
 
-func (d *demo) Render(ctx *agg.Context) {
+func (d *demo) Render(img *agg.Image) {
+	ctx := agg.NewContextForImage(img)
 	ctx.Clear(agg.White)
 	a := ctx.GetAgg2D()
 	a.ResetTransformations()
@@ -260,8 +261,7 @@ func (d *demo) Render(ctx *agg.Context) {
 	greenStroke := conv.NewConvStroke(smoothOutline)
 	greenStroke.SetWidth(1.0)
 
-	imgData := ctx.GetImage().Data
-	rbuf := buffer.NewRenderingBufferU8WithData(imgData, frameWidth, frameHeight, frameWidth*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(img.Data, frameWidth, frameHeight, frameWidth*4)
 	pf := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
 	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]](pf)
 	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
@@ -401,7 +401,7 @@ func (d *demo) handleSceneMouseMove(x, y float64) bool {
 	return false
 }
 
-func (d *demo) OnMouseDown(x, y int, btn demorunner.Buttons) bool {
+func (d *demo) OnMouseDown(x, y int, btn lowlevelrunner.Buttons) bool {
 	if !btn.Left {
 		return false
 	}
@@ -415,7 +415,7 @@ func (d *demo) OnMouseDown(x, y int, btn demorunner.Buttons) bool {
 	return d.handleSceneMouseDown(float64(x), float64(y))
 }
 
-func (d *demo) OnMouseMove(x, y int, btn demorunner.Buttons) bool {
+func (d *demo) OnMouseMove(x, y int, btn lowlevelrunner.Buttons) bool {
 	if d.activeControl != nil {
 		return d.activeControl.OnMouseMove(float64(x), float64(y), btn.Left)
 	}
@@ -426,7 +426,7 @@ func (d *demo) OnMouseMove(x, y int, btn demorunner.Buttons) bool {
 	return false
 }
 
-func (d *demo) OnMouseUp(x, y int, btn demorunner.Buttons) bool {
+func (d *demo) OnMouseUp(x, y int, btn lowlevelrunner.Buttons) bool {
 	_ = btn
 	redraw := false
 	if d.activeControl != nil {
@@ -438,7 +438,7 @@ func (d *demo) OnMouseUp(x, y int, btn demorunner.Buttons) bool {
 }
 
 func main() {
-	demorunner.Run(demorunner.Config{
+	lowlevelrunner.Run(lowlevelrunner.Config{
 		Title:  "Conv Dash Marker",
 		Width:  frameWidth,
 		Height: frameHeight,

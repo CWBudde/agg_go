@@ -9,7 +9,7 @@ import (
 	"math/rand"
 
 	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
 )
 
 const (
@@ -24,9 +24,10 @@ type meshPoint struct {
 
 type demo struct{}
 
-func (d *demo) Render(ctx *agg.Context) {
-	w := ctx.GetImage().Width()
-	h := ctx.GetImage().Height()
+func (d *demo) Render(img *agg.Image) {
+	ctx := agg.NewContextForImage(img)
+	w := img.Width()
+	h := img.Height()
 	ctx.Clear(agg.Black)
 
 	a := ctx.GetAgg2D()
@@ -87,7 +88,7 @@ func (d *demo) Render(ctx *agg.Context) {
 }
 
 func main() {
-	demorunner.Run(demorunner.Config{
+	lowlevelrunner.Run(lowlevelrunner.Config{
 		Title:  "Gouraud Mesh",
 		Width:  400,
 		Height: 400,

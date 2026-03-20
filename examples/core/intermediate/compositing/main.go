@@ -4,12 +4,13 @@ import (
 	"path/filepath"
 
 	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
 )
 
 type demo struct{}
 
-func (d *demo) Render(ctx *agg.Context) {
+func (d *demo) Render(img *agg.Image) {
+	ctx := agg.NewContextForImage(img)
 	a := ctx.GetAgg2D()
 	a.ResetTransformations()
 
@@ -67,5 +68,5 @@ func (d *demo) Render(ctx *agg.Context) {
 }
 
 func main() {
-	demorunner.Run(demorunner.Config{Title: "Compositing", Width: 600, Height: 400}, &demo{})
+	lowlevelrunner.Run(lowlevelrunner.Config{Title: "Compositing", Width: 600, Height: 400}, &demo{})
 }
