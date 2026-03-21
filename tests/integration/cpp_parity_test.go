@@ -160,16 +160,16 @@ func TestCPPParity_Step3_AlphaMask(t *testing.T) {
 
 	maskData := make([]uint8, w*h)
 	maskBuf := buffer.NewRenderingBufferU8WithData(maskData, w, h, w)
-	maskPixf := pixfmt.NewPixFmtGray8(maskBuf)
+	maskPixf := pixfmt.NewPixFmtSGray8(maskBuf)
 	maskRb := renderer.NewRendererBaseWithPixfmt(maskPixf)
-	maskRb.Clear(color.Gray8[color.Linear]{V: 0, A: 255})
+	maskRb.Clear(color.Gray8[color.SRGB]{V: 0, A: 255})
 
 	ras := newRas()
 	sl := scanline.NewScanlineP8()
 
 	ell := shapes.NewEllipseWithParams(64, 64, 50, 50, 64, false)
 	ras.AddPath(&ellipseVS{e: ell}, 0)
-	renscan.RenderScanlinesAASolid(ras, sl, maskRb, color.Gray8[color.Linear]{V: 200, A: 200})
+	renscan.RenderScanlinesAASolid(ras, sl, maskRb, color.Gray8[color.SRGB]{V: 200, A: 200})
 
 	// Verify mask value at center.
 	if got := maskData[64*w+64]; got != 157 {
@@ -216,16 +216,16 @@ func TestCPPParity_Step4_SRGBLionColors(t *testing.T) {
 
 	maskData := make([]uint8, w*h)
 	maskBuf := buffer.NewRenderingBufferU8WithData(maskData, w, h, w)
-	maskPixf := pixfmt.NewPixFmtGray8(maskBuf)
+	maskPixf := pixfmt.NewPixFmtSGray8(maskBuf)
 	maskRb := renderer.NewRendererBaseWithPixfmt(maskPixf)
-	maskRb.Clear(color.Gray8[color.Linear]{V: 0, A: 255})
+	maskRb.Clear(color.Gray8[color.SRGB]{V: 0, A: 255})
 
 	ras := newRas()
 	sl := scanline.NewScanlineP8()
 
 	ell := shapes.NewEllipseWithParams(64, 64, 50, 50, 64, false)
 	ras.AddPath(&ellipseVS{e: ell}, 0)
-	renscan.RenderScanlinesAASolid(ras, sl, maskRb, color.Gray8[color.Linear]{V: 200, A: 200})
+	renscan.RenderScanlinesAASolid(ras, sl, maskRb, color.Gray8[color.SRGB]{V: 200, A: 200})
 
 	mask := pixfmt.NewAMaskNoClipU8WithBuffer(maskBuf, 1, 0, pixfmt.OneComponentMaskU8{})
 	amaskPf := pixfmt.NewPixFmtAMaskAdaptor(pf, mask)
@@ -250,9 +250,9 @@ func TestCPPParity_Step5_MaskGeneration(t *testing.T) {
 	const fw, fh = 512, 400
 	maskData := make([]uint8, fw*fh)
 	maskBuf := buffer.NewRenderingBufferU8WithData(maskData, fw, fh, fw)
-	maskPixf := pixfmt.NewPixFmtGray8(maskBuf)
+	maskPixf := pixfmt.NewPixFmtSGray8(maskBuf)
 	maskRb := renderer.NewRendererBaseWithPixfmt(maskPixf)
-	maskRb.Clear(color.Gray8[color.Linear]{V: 0, A: 255})
+	maskRb.Clear(color.Gray8[color.SRGB]{V: 0, A: 255})
 
 	ras := newRas()
 	sl := scanline.NewScanlineP8()
@@ -268,7 +268,7 @@ func TestCPPParity_Step5_MaskGeneration(t *testing.T) {
 		ras.AddPath(&ellipseVS{e: ell}, 0)
 		a := uint8(rng.randAnd(127) + 128)
 		v := uint8(rng.randAnd(127) + 128)
-		renscan.RenderScanlinesAASolid(ras, sl, maskRb, color.Gray8[color.Linear]{V: v, A: a})
+		renscan.RenderScanlinesAASolid(ras, sl, maskRb, color.Gray8[color.SRGB]{V: v, A: a})
 	}
 
 	tests := []struct {
@@ -308,9 +308,9 @@ func TestCPPParity_Step6_LionThroughMask(t *testing.T) {
 	// Mask buffer.
 	maskData := make([]uint8, fw*fh)
 	maskBuf := buffer.NewRenderingBufferU8WithData(maskData, fw, fh, fw)
-	maskPixf := pixfmt.NewPixFmtGray8(maskBuf)
+	maskPixf := pixfmt.NewPixFmtSGray8(maskBuf)
 	maskRb := renderer.NewRendererBaseWithPixfmt(maskPixf)
-	maskRb.Clear(color.Gray8[color.Linear]{V: 0, A: 255})
+	maskRb.Clear(color.Gray8[color.SRGB]{V: 0, A: 255})
 
 	ras := newRas()
 	sl := scanline.NewScanlineP8()
@@ -327,7 +327,7 @@ func TestCPPParity_Step6_LionThroughMask(t *testing.T) {
 		ras.AddPath(&ellipseVS{e: ell}, 0)
 		a := uint8(rng.randAnd(127) + 128)
 		v := uint8(rng.randAnd(127) + 128)
-		renscan.RenderScanlinesAASolid(ras, sl, maskRb, color.Gray8[color.Linear]{V: v, A: a})
+		renscan.RenderScanlinesAASolid(ras, sl, maskRb, color.Gray8[color.SRGB]{V: v, A: a})
 	}
 
 	if got := maskData[100*fw+300]; got != 192 {

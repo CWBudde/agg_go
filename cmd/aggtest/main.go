@@ -114,16 +114,16 @@ func step3() {
 
 	maskData := make([]uint8, W*H)
 	maskBuf := buffer.NewRenderingBufferU8WithData(maskData, W, H, W)
-	maskPixf := pixfmt.NewPixFmtGray8(maskBuf)
+	maskPixf := pixfmt.NewPixFmtSGray8(maskBuf)
 	maskRb := renderer.NewRendererBaseWithPixfmt(maskPixf)
-	maskRb.Clear(color.Gray8[color.Linear]{V: 0, A: 255})
+	maskRb.Clear(color.Gray8[color.SRGB]{V: 0, A: 255})
 
 	ras := newRas()
 	sl := scanline.NewScanlineP8()
 
 	ell := shapes.NewEllipseWithParams(64, 64, 50, 50, 64, false)
 	ras.AddPath(&ellipseVS{e: ell}, 0)
-	renscan.RenderScanlinesAASolid(ras, sl, maskRb, color.Gray8[color.Linear]{V: 200, A: 200})
+	renscan.RenderScanlinesAASolid(ras, sl, maskRb, color.Gray8[color.SRGB]{V: 200, A: 200})
 	fmt.Printf("  mask(64,64) = %d  [C++ expects 157]\n", maskData[64*W+64])
 
 	mask := pixfmt.NewAMaskNoClipU8WithBuffer(maskBuf, 1, 0, pixfmt.OneComponentMaskU8{})
@@ -152,16 +152,16 @@ func step4() {
 
 	maskData := make([]uint8, W*H)
 	maskBuf := buffer.NewRenderingBufferU8WithData(maskData, W, H, W)
-	maskPixf := pixfmt.NewPixFmtGray8(maskBuf)
+	maskPixf := pixfmt.NewPixFmtSGray8(maskBuf)
 	maskRb := renderer.NewRendererBaseWithPixfmt(maskPixf)
-	maskRb.Clear(color.Gray8[color.Linear]{V: 0, A: 255})
+	maskRb.Clear(color.Gray8[color.SRGB]{V: 0, A: 255})
 
 	ras := newRas()
 	sl := scanline.NewScanlineP8()
 
 	ell := shapes.NewEllipseWithParams(64, 64, 50, 50, 64, false)
 	ras.AddPath(&ellipseVS{e: ell}, 0)
-	renscan.RenderScanlinesAASolid(ras, sl, maskRb, color.Gray8[color.Linear]{V: 200, A: 200})
+	renscan.RenderScanlinesAASolid(ras, sl, maskRb, color.Gray8[color.SRGB]{V: 200, A: 200})
 
 	mask := pixfmt.NewAMaskNoClipU8WithBuffer(maskBuf, 1, 0, pixfmt.OneComponentMaskU8{})
 	amaskPf := pixfmt.NewPixFmtAMaskAdaptor(pf, mask)
@@ -261,9 +261,9 @@ func step6() {
 	// Mask buffer
 	maskData := make([]uint8, fw*fh)
 	maskBuf := buffer.NewRenderingBufferU8WithData(maskData, fw, fh, fw)
-	maskPixf := pixfmt.NewPixFmtGray8(maskBuf)
+	maskPixf := pixfmt.NewPixFmtSGray8(maskBuf)
 	maskRb := renderer.NewRendererBaseWithPixfmt(maskPixf)
-	maskRb.Clear(color.Gray8[color.Linear]{V: 0, A: 255})
+	maskRb.Clear(color.Gray8[color.SRGB]{V: 0, A: 255})
 
 	ras := newRas()
 	sl := scanline.NewScanlineP8()
@@ -280,7 +280,7 @@ func step6() {
 		ras.AddPath(&ellipseVS{e: ell}, 0)
 		a := uint8(rng.randAnd(127) + 128)
 		v := uint8(rng.randAnd(127) + 128)
-		renscan.RenderScanlinesAASolid(ras, sl, maskRb, color.Gray8[color.Linear]{V: v, A: a})
+		renscan.RenderScanlinesAASolid(ras, sl, maskRb, color.Gray8[color.SRGB]{V: v, A: a})
 	}
 	fmt.Printf("  mask(300,100) = %d  [C++ expects 192]\n", maskData[100*fw+300])
 
@@ -381,9 +381,9 @@ func step5() {
 	const fw, fh = 512, 400
 	maskData := make([]uint8, fw*fh)
 	maskBuf := buffer.NewRenderingBufferU8WithData(maskData, fw, fh, fw)
-	maskPixf := pixfmt.NewPixFmtGray8(maskBuf)
+	maskPixf := pixfmt.NewPixFmtSGray8(maskBuf)
 	maskRb := renderer.NewRendererBaseWithPixfmt(maskPixf)
-	maskRb.Clear(color.Gray8[color.Linear]{V: 0, A: 255})
+	maskRb.Clear(color.Gray8[color.SRGB]{V: 0, A: 255})
 
 	ras := newRas()
 	sl := scanline.NewScanlineP8()
@@ -399,7 +399,7 @@ func step5() {
 		ras.AddPath(&ellipseVS{e: ell}, 0)
 		a := uint8(rng.randAnd(127) + 128)
 		v := uint8(rng.randAnd(127) + 128)
-		renscan.RenderScanlinesAASolid(ras, sl, maskRb, color.Gray8[color.Linear]{V: v, A: a})
+		renscan.RenderScanlinesAASolid(ras, sl, maskRb, color.Gray8[color.SRGB]{V: v, A: a})
 	}
 
 	// Report mask values at pixels that differ between Go and C++ in alpha_mask2

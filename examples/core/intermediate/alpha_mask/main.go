@@ -121,9 +121,9 @@ func (d *demo) Render(img *agg.Image) {
 	// --- Generate grayscale alpha mask (10 random ellipses) ---
 	maskData := make([]uint8, w*h)
 	maskBuf := buffer.NewRenderingBufferU8WithData(maskData, w, h, w)
-	maskPixf := pixfmt.NewPixFmtGray8(maskBuf)
+	maskPixf := pixfmt.NewPixFmtSGray8(maskBuf)
 	maskRb := renderer.NewRendererBaseWithPixfmt(maskPixf)
-	maskRb.Clear(color.Gray8[color.Linear]{V: 0, A: 255})
+	maskRb.Clear(color.Gray8[color.SRGB]{V: 0, A: 255})
 
 	// C++ uses no srand call (= seed 1).
 	rng := newClibcRandSeed1()
@@ -140,7 +140,7 @@ func (d *demo) Render(img *agg.Image) {
 		ras.AddPath(&ellipseVS{e: ell}, 0)
 		a := uint8(rng.randAnd(0xFF))
 		v := uint8(rng.randAnd(0xFF))
-		renscan.RenderScanlinesAASolid(ras, sl, maskRb, color.Gray8[color.Linear]{V: v, A: a})
+		renscan.RenderScanlinesAASolid(ras, sl, maskRb, color.Gray8[color.SRGB]{V: v, A: a})
 	}
 
 	mask := pixfmt.NewAMaskNoClipU8WithBuffer(maskBuf, 1, 0, pixfmt.OneComponentMaskU8{})

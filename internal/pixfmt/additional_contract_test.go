@@ -5,6 +5,7 @@ import (
 
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
+	"github.com/MeKo-Christian/agg_go/internal/color"
 )
 
 type sumMask struct{}
@@ -193,6 +194,53 @@ func TestAlphaMaskClipNoClipEquivalence(t *testing.T) {
 		for i := range dst1 {
 			if dst1[i] != dst2[i] {
 				t.Errorf("CombineVspan x=%d i=%d: clip=%d, noclip=%d", x, i, dst1[i], dst2[i])
+			}
+		}
+	}
+}
+
+// TestGray8LinearSRGBMaskEquivalence documents that PixFmtGray8 (linear) and
+// PixFmtSGray8 (sRGB) produce identical mask bytes for all inputs. In C++ AGG,
+// the color space parameter only affects floating-point conversions (which never
+// happen in the mask generation path), so the 8-bit blending is identical.
+// This test ensures the switch from Gray8 to SGray8 in alpha_mask examples is safe.
+func TestGray8LinearSRGBMaskEquivalence(t *testing.T) {
+	w, h := 8, 8
+	for _, tc := range []struct {
+		clearV, clearA uint8
+		fillV, fillA   uint8
+		cover          uint8
+	}{
+		{0, 255, 200, 200, 255},
+		{0, 255, 128, 128, 255},
+		{0, 255, 255, 255, 128},
+		{255, 255, 0, 255, 255},
+		{100, 200, 50, 150, 200},
+		{0, 255, 1, 1, 1},
+	} {
+		bufLin := make([]basics.Int8u, w*h)
+		bufSRGB := make([]basics.Int8u, w*h)
+		rbufLin := buffer.NewRenderingBufferU8WithData(bufLin, w, h, w)
+		rbufSRGB := buffer.NewRenderingBufferU8WithData(bufSRGB, w, h, w)
+
+		pfLin := NewPixFmtGray8(rbufLin)
+		pfSRGB := NewPixFmtSGray8(rbufSRGB)
+
+		// Clear both with same value.
+		for i := range bufLin {
+			bufLin[i] = tc.clearV
+			bufSRGB[i] = tc.clearV
+		}
+
+		// Blend a pixel into both using same byte values.
+		pfLin.BlendPixel(3, 3, color.Gray8[color.Linear]{V: tc.fillV, A: tc.fillA}, tc.cover)
+		pfSRGB.BlendPixel(3, 3, color.Gray8[color.SRGB]{V: tc.fillV, A: tc.fillA}, tc.cover)
+
+		// Compare all bytes.
+		for i := range bufLin {
+			if bufLin[i] != bufSRGB[i] {
+				t.Errorf("clear=(%d,%d) fill=(%d,%d) cover=%d: idx=%d linear=%d srgb=%d",
+					tc.clearV, tc.clearA, tc.fillV, tc.fillA, tc.cover, i, bufLin[i], bufSRGB[i])
 			}
 		}
 	}

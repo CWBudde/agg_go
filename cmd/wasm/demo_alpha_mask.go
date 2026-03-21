@@ -33,10 +33,10 @@ func generateAlphaMask(w, h int) {
 	}
 
 	// Create a grayscale pixel format for the mask buffer
-	maskPixf := pixfmt.NewPixFmtGray8(amAlphaMaskBuf)
+	maskPixf := pixfmt.NewPixFmtSGray8(amAlphaMaskBuf)
 	maskRb := renderer.NewRendererBaseWithPixfmt(maskPixf)
 
-	maskRb.Clear(color.Gray8[color.Linear]{V: 0, A: 255})
+	maskRb.Clear(color.Gray8[color.SRGB]{V: 0, A: 255})
 
 	agg2d := ctx.GetAgg2D()
 	ras := agg2d.GetInternalRasterizer()
@@ -62,7 +62,7 @@ func generateAlphaMask(w, h int) {
 
 		c := uint8(rand.Intn(256))
 		opacity := uint8(rand.Intn(256))
-		gray := color.Gray8[color.Linear]{V: c, A: opacity}
+		gray := color.Gray8[color.SRGB]{V: c, A: opacity}
 
 		renscan.RenderScanlinesAASolid(ras, sl, maskRb, gray)
 	}

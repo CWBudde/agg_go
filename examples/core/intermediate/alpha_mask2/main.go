@@ -124,9 +124,9 @@ func (d *demo) Render(img *agg.Image) {
 	// C++ uses srand(1432).
 	maskData := make([]uint8, w*h)
 	maskBuf := buffer.NewRenderingBufferU8WithData(maskData, w, h, w)
-	maskPixf := pixfmt.NewPixFmtGray8(maskBuf)
+	maskPixf := pixfmt.NewPixFmtSGray8(maskBuf)
 	maskRb := renderer.NewRendererBaseWithPixfmt(maskPixf)
-	maskRb.Clear(color.Gray8[color.Linear]{V: 0, A: 255})
+	maskRb.Clear(color.Gray8[color.SRGB]{V: 0, A: 255})
 
 	rng := newClibcRandSeed1()
 
@@ -144,7 +144,7 @@ func (d *demo) Render(img *agg.Image) {
 		// C++: sgray8((rand() & 127) + 128, (rand() & 127) + 128)
 		a := uint8(rng.randAnd(127) + 128)
 		v := uint8(rng.randAnd(127) + 128)
-		renscan.RenderScanlinesAASolid(ras, sl, maskRb, color.Gray8[color.Linear]{V: v, A: a})
+		renscan.RenderScanlinesAASolid(ras, sl, maskRb, color.Gray8[color.SRGB]{V: v, A: a})
 	}
 
 	mask := pixfmt.NewAMaskNoClipU8WithBuffer(maskBuf, 1, 0, pixfmt.OneComponentMaskU8{})

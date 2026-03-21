@@ -213,16 +213,16 @@ func generateAlphaMask(
 ) (*pixfmt.AMaskNoClipU8, *buffer.RenderingBufferU8) {
 	maskData := make([]uint8, w*h)
 	maskBuf := buffer.NewRenderingBufferU8WithData(maskData, w, h, w)
-	maskPixf := pixfmt.NewPixFmtGray8(maskBuf)
+	maskPixf := pixfmt.NewPixFmtSGray8(maskBuf)
 	maskRb := renderer.NewRendererBaseWithPixfmt(maskPixf)
 
-	var clearColor, fillColor color.Gray8[color.Linear]
+	var clearColor, fillColor color.Gray8[color.SRGB]
 	if opAND {
-		clearColor = color.Gray8[color.Linear]{V: 0, A: 255}
-		fillColor = color.Gray8[color.Linear]{V: 255, A: 255}
+		clearColor = color.Gray8[color.SRGB]{V: 0, A: 255}
+		fillColor = color.Gray8[color.SRGB]{V: 255, A: 255}
 	} else {
-		clearColor = color.Gray8[color.Linear]{V: 255, A: 255}
-		fillColor = color.Gray8[color.Linear]{V: 0, A: 255}
+		clearColor = color.Gray8[color.SRGB]{V: 255, A: 255}
+		fillColor = color.Gray8[color.SRGB]{V: 0, A: 255}
 	}
 	maskRb.Clear(clearColor)
 	ras.Reset()

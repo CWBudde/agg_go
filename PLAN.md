@@ -623,36 +623,25 @@ cause unclosed paths or missed fills in some lion sub-paths.
 
 ---
 
-### 10.4 ⚠️ `sgray8` vs `gray8` for Alpha Mask Generation
+### 10.4 ✅ `sgray8` vs `gray8` for Alpha Mask Generation
 
-**Status**: PARTIALLY OPEN — C++ `alpha_mask2.cpp` uses `pixfmt_sgray8` (sRGB grayscale) for the
-mask pixel format and renders ellipses with `sgray8` color. Go uses `PixFmtGray8` (linear gray).
-
-**Root cause**: In C++, `pixfmt_sgray8` uses `blender_gray<sgray8>` where `mult_cover` applies
-sRGB conversion to the coverage-scaled value. For the mask generation path this produces subtly
-different intermediate mask byte values than the linear `gray8` path.
-
-However, the layer-by-layer test showed the mask values match between Go (linear `gray8`) and
-C++ (`sgray8`) for the ellipses in the test. This is likely because `sgray8.mult_cover(v, a)`
-and `gray8.mult_cover(v, a)` produce the same 8-bit result for most inputs. Needs verification
-for edge cases.
+**Status**: DONE — All alpha mask examples switched to `PixFmtSGray8` with `Gray8[SRGB]` colors
+to match C++ `pixfmt_sgray8` / `sgray8`. Output is byte-identical because the color space
+parameter only affects floating-point conversions (which never occur in the mask blending path).
 
 **C++ reference**:
 
-- `agg_color_gray.h`: `gray8T<sRGB>` vs `gray8T<linear>` — `mult_cover` differs
+- `agg_color_gray.h`: `gray8T<sRGB>` vs `gray8T<linear>` — `mult_cover` is the same 8-bit op
 - `examples/alpha_mask2.cpp` line 197: `pixfmt_sgray8 pixf(m_alpha_mask_rbuf)`
-
-**Go files**:
-
-- `examples/core/intermediate/alpha_mask2/main.go` line 187: `NewPixFmtGray8` (linear)
-- `internal/pixfmt/pixfmt_gray8.go`: `PixFmtGray8` / `PixFmtSGray8`
 
 **Tasks**:
 
-- [ ] Confirm whether `PixFmtSGray8` exists in Go; if not, add it following the `PixFmtGray8` pattern.
-- [ ] Switch `alpha_mask2` mask pixfmt to `PixFmtSGray8` to match C++ exactly.
-- [ ] Add a unit test comparing mask output byte-for-byte between `PixFmtGray8` and `PixFmtSGray8`
-      for representative inputs to document and bound any divergence.
+- [x] Confirm whether `PixFmtSGray8` exists in Go. Yes: `internal/pixfmt/pixfmt_gray8.go`.
+- [x] Switch `alpha_mask`, `alpha_mask2`, `alpha_mask3` mask pixfmt to `PixFmtSGray8`.
+      Also switched: `cmd/aggtest`, `tests/integration/cpp_parity_test.go`, and 3 wasm demos.
+- [x] Add a unit test comparing mask output byte-for-byte between `PixFmtGray8` and `PixFmtSGray8`.
+      `TestGray8LinearSRGBMaskEquivalence` in `internal/pixfmt/additional_contract_test.go` —
+      6 representative input combinations, all produce identical bytes.
 
 ---
 

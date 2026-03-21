@@ -45,7 +45,7 @@ func generateAlphaMask3(vs conv.VertexSource, w, h int) {
 		am3AlphaMaskBuf = buffer.NewRenderingBufferWithData[uint8](data, w, h, w)
 	}
 
-	maskPixf := pixfmt.NewPixFmtGray8(am3AlphaMaskBuf)
+	maskPixf := pixfmt.NewPixFmtSGray8(am3AlphaMaskBuf)
 	maskRb := renderer.NewRendererBaseWithPixfmt(maskPixf)
 
 	agg2d := ctx.GetAgg2D()
@@ -54,7 +54,7 @@ func generateAlphaMask3(vs conv.VertexSource, w, h int) {
 	
 
 	if am3Operation == 0 {
-		maskRb.Clear(color.Gray8[color.Linear]{V: 0, A: 255})
+		maskRb.Clear(color.Gray8[color.SRGB]{V: 0, A: 255})
 		ras.Reset()
 		vs.Rewind(0)
 		for {
@@ -64,9 +64,9 @@ func generateAlphaMask3(vs conv.VertexSource, w, h int) {
 			}
 			ras.AddVertex(x, y, uint32(cmd))
 		}
-		renscan.RenderScanlinesAASolid(ras, sl, maskRb, color.Gray8[color.Linear]{V: 255, A: 255})
+		renscan.RenderScanlinesAASolid(ras, sl, maskRb, color.Gray8[color.SRGB]{V: 255, A: 255})
 	} else {
-		maskRb.Clear(color.Gray8[color.Linear]{V: 255, A: 255})
+		maskRb.Clear(color.Gray8[color.SRGB]{V: 255, A: 255})
 		ras.Reset()
 		vs.Rewind(0)
 		for {
@@ -76,7 +76,7 @@ func generateAlphaMask3(vs conv.VertexSource, w, h int) {
 			}
 			ras.AddVertex(x, y, uint32(cmd))
 		}
-		renscan.RenderScanlinesAASolid(ras, sl, maskRb, color.Gray8[color.Linear]{V: 0, A: 255})
+		renscan.RenderScanlinesAASolid(ras, sl, maskRb, color.Gray8[color.SRGB]{V: 0, A: 255})
 	}
 
 	maskFunc := pixfmt.OneComponentMaskU8{}
