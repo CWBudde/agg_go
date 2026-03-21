@@ -721,21 +721,17 @@ forcing every example that called `RenderScanlinesAASolid` + `RasterizerScanline
 
 ---
 
-### 10.9 ⚠️ Output PNG Byte Encoding — Linear vs sRGB
+### 10.9 ✅ Output PNG Byte Encoding — Linear vs sRGB
 
-**Status**: OPEN — C++ examples write linear-encoded bytes to the display buffer and the platform
-screenshot captures them; PNG viewers treat bytes as sRGB (since PNG has no color profile embedded),
-making C++ output appear pale. Go writes the same linear bytes but the visual comparison target is
-the C++ screenshot (which is already "sRGB-interpreted linear"), so the comparison is valid.
-
-**However**: if Go ever switches to writing sRGB bytes to the output buffer (e.g. for display
-correctness), the reference images will need regeneration. This needs a documented policy.
+**Status**: DONE — Policy documented in `docs/AGG_DELTAS.md` under "Color Space".
 
 **Tasks**:
 
-- [ ] Document in `docs/AGG_DELTAS.md`: Go port writes linear bytes to output buffers, same as C++.
+- [x] Document in `docs/AGG_DELTAS.md`: Go port writes linear bytes to output buffers, same as C++.
       PNG files are not color-space tagged; viewers will interpret as sRGB (matches C++ behavior).
-- [ ] Add a note that reference PNG comparison is valid only when both sides use the same encoding.
+- [x] Add a note that reference PNG comparison is valid only when both sides use the same encoding.
+      Documented: any switch to sRGB output encoding would be a breaking change requiring
+      coordinated reference image updates.
 
 ---
 

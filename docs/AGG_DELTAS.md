@@ -115,6 +115,33 @@ covers the primary use cases. Additional color spaces (e.g., wide-gamut) are
 not in scope for the current port.
 **Files**: `internal/color/`
 
+### Output buffer byte encoding — linear, same as C++
+
+**C++**: The rendering pipeline operates in linear space. Output buffers
+(e.g., BGR24, RGBA32) contain linear-encoded byte values. When written to PNG
+or displayed via platform screenshot, no gamma or sRGB encoding is applied —
+the raw linear bytes are stored as-is. PNG viewers interpret these bytes as
+sRGB (since no ICC profile is embedded), which makes the output appear
+pale/washed-out. This is the standard AGG 2.6 behavior.
+
+**Go**: Same behavior — output buffers contain linear-encoded bytes, identical
+to C++. PNG files written from these buffers have no color-space tag and will
+be interpreted as sRGB by viewers, producing the same pale appearance.
+
+**Implications for visual comparison**: Because both C++ and Go write the same
+linear bytes, pixel-level parity tests (`tests/integration/cpp_parity_test.go`)
+compare identical byte encodings. If the Go port ever switches to writing
+sRGB-encoded bytes to the output buffer (e.g., for display correctness), all
+reference images and pixel-level comparisons would need regeneration.
+
+**Policy**: The Go port maintains linear byte encoding in output buffers to
+match C++ AGG 2.6. Any change to sRGB output encoding would be a breaking
+change requiring coordinated reference image updates.
+
+**C++ reference**: `agg_pixfmt_rgba.h` — blending always operates on the raw
+buffer bytes; no gamma/sRGB encoding pass exists between the blender and the
+buffer write.
+
 ---
 
 ## Public API Additions (Go-only, no C++ equivalent)
