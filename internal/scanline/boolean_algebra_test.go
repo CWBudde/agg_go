@@ -4,13 +4,12 @@ import (
 	"testing"
 
 	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
 )
 
 // BooleanMockScanline implements BooleanScanlineInterface for testing
 type BooleanMockScanline struct {
 	y       int
-	spans   []scanline.SpanData
+	spans   []SpanInfo
 	cells   map[int]basics.Int8u // Map of x coordinate to cover value
 	current int                  // Current span index for iteration
 }
@@ -18,14 +17,14 @@ type BooleanMockScanline struct {
 func NewBooleanMockScanline(y int) *BooleanMockScanline {
 	return &BooleanMockScanline{
 		y:     y,
-		spans: make([]scanline.SpanData, 0),
+		spans: make([]SpanInfo, 0),
 		cells: make(map[int]basics.Int8u),
 	}
 }
 
 func (ms *BooleanMockScanline) Y() int        { return ms.y }
 func (ms *BooleanMockScanline) NumSpans() int { return len(ms.spans) }
-func (ms *BooleanMockScanline) Begin() scanline.ScanlineIterator {
+func (ms *BooleanMockScanline) Begin() ScanlineIterator {
 	return &BooleanMockIterator{sl: ms, index: 0}
 }
 
@@ -52,7 +51,7 @@ func (ms *BooleanMockScanline) AddSpan(x, length int, cover basics.Int8u) {
 		covers[i] = cover
 	}
 
-	span := scanline.SpanData{
+	span := SpanInfo{
 		X:      x,
 		Len:    length,
 		Covers: covers,
@@ -76,11 +75,11 @@ type BooleanMockIterator struct {
 	index int
 }
 
-func (mi *BooleanMockIterator) GetSpan() scanline.SpanData {
+func (mi *BooleanMockIterator) GetSpan() SpanInfo {
 	if mi.index < len(mi.sl.spans) {
 		return mi.sl.spans[mi.index]
 	}
-	return scanline.SpanData{}
+	return SpanInfo{}
 }
 
 func (mi *BooleanMockIterator) Next() bool {

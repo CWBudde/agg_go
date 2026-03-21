@@ -160,76 +160,6 @@ func (g *gsvOutlineVS) Rewind(id uint) { g.o.Rewind(id) }
 func (g *gsvOutlineVS) Vertex() (float64, float64, basics.PathCommand) {
 	return g.o.Vertex()
 }
-
-type rasterScanlineAdapter struct{ sl *isc.ScanlineP8 }
-
-func (a *rasterScanlineAdapter) ResetSpans()                 { a.sl.ResetSpans() }
-func (a *rasterScanlineAdapter) AddCell(x int, cover uint32) { a.sl.AddCell(x, uint(cover)) }
-func (a *rasterScanlineAdapter) AddSpan(x, length int, cover uint32) {
-	a.sl.AddSpan(x, length, uint(cover))
-}
-func (a *rasterScanlineAdapter) Finalize(y int) { a.sl.Finalize(y) }
-func (a *rasterScanlineAdapter) NumSpans() int  { return a.sl.NumSpans() }
-
-type renderScanlineAdapter struct {
-	sl   *isc.ScanlineP8
-	iter renderScanlineIterator
-}
-
-type renderScanlineIterator struct {
-	spans []isc.SpanP8
-	idx   int
-}
-
-func (s *renderScanlineAdapter) Reset(minX, maxX int) { s.sl.Reset(minX, maxX) }
-func (s *renderScanlineAdapter) Y() int               { return s.sl.Y() }
-func (s *renderScanlineAdapter) NumSpans() int        { return s.sl.NumSpans() }
-
-func (s *renderScanlineAdapter) Begin() renscan.ScanlineIterator {
-	s.iter.spans = s.sl.Spans()
-	s.iter.idx = 0
-	return &s.iter
-}
-
-func (it *renderScanlineIterator) GetSpan() renscan.SpanData {
-	span := it.spans[it.idx]
-	return renscan.SpanData{
-		X:      int(span.X),
-		Len:    int(span.Len),
-		Covers: span.Covers,
-	}
-}
-
-func (it *renderScanlineIterator) Next() bool {
-	it.idx++
-	return it.idx < len(it.spans)
-}
-
-type rasterizerAdapter struct {
-	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
-	sl  rasterScanlineAdapter
-}
-
-func (r *rasterizerAdapter) Reset() { r.ras.Reset() }
-
-func (r *rasterizerAdapter) AddPath(vs rasterizer.VertexSource, pathID uint32) {
-	r.ras.AddPath(vs, pathID)
-}
-
-func (r *rasterizerAdapter) RewindScanlines() bool { return r.ras.RewindScanlines() }
-
-func (r *rasterizerAdapter) SweepScanline(sl renscan.ScanlineInterface) bool {
-	adapted, ok := sl.(*renderScanlineAdapter)
-	if !ok {
-		return false
-	}
-	r.sl.sl = adapted.sl
-	return r.ras.SweepScanline(&r.sl)
-}
-
-func (r *rasterizerAdapter) MinX() int { return r.ras.MinX() }
-func (r *rasterizerAdapter) MaxX() int { return r.ras.MaxX() }
-
 type bgr24Renderer struct {
 	pf *pixfmt.PixFmtBGR24
 }
@@ -431,14 +361,11 @@ func (d *demo) Render(img *agg.Image) {
 	renBase := &bgr24Renderer{pf: pf}
 	pf.Clear(icol.RGB8[icol.Linear]{R: 255, G: 255, B: 255})
 
-	ras := &rasterizerAdapter{
-		ras: rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
-			rasterizer.RasConvInt{},
-			rasterizer.NewRasterizerSlNoClip(),
-		),
-		sl: rasterScanlineAdapter{sl: isc.NewScanlineP8()},
-	}
-	sl := &renderScanlineAdapter{sl: isc.NewScanlineP8()}
+	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{},
+		rasterizer.NewRasterizerSlNoClip(),
+	)
+	sl := isc.NewScanlineP8()
 	ellipse := shapes.NewEllipse()
 
 	nDrawn := 0
@@ -517,9 +444,11 @@ func copyBGR24ToRGBA32(src, dst []uint8, width, height int) {
 	}
 }
 
+type rasType = rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
+
 func renderCtrl(
-	ras *rasterizerAdapter,
-	sl *renderScanlineAdapter,
+	ras *rasType,
+	sl *isc.ScanlineP8,
 	renBase *bgr24Renderer,
 	ctrl ctrlbase.Ctrl[icol.RGBA],
 ) {

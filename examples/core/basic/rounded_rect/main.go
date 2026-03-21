@@ -70,60 +70,6 @@ func (s *ellipseVertexSource) Vertex(x, y *float64) uint32 {
 }
 
 // Scanline/rasterizer adapters to bridge rasterizer ↔ renscan interfaces.
-
-type rrRasAdp struct {
-	ras interface {
-		RewindScanlines() bool
-		SweepScanline(sl rasterizer.ScanlineInterface) bool
-		MinX() int
-		MaxX() int
-	}
-}
-
-func (r *rrRasAdp) RewindScanlines() bool { return r.ras.RewindScanlines() }
-func (r *rrRasAdp) MinX() int             { return r.ras.MinX() }
-func (r *rrRasAdp) MaxX() int             { return r.ras.MaxX() }
-
-type rrSlAdpP8 struct{ sl *scanline.ScanlineP8 }
-
-func (a *rrSlAdpP8) ResetSpans()                 { a.sl.ResetSpans() }
-func (a *rrSlAdpP8) AddCell(x int, cover uint32) { a.sl.AddCell(x, uint(cover)) }
-func (a *rrSlAdpP8) AddSpan(x, l int, c uint32)  { a.sl.AddSpan(x, l, uint(c)) }
-func (a *rrSlAdpP8) Finalize(y int)              { a.sl.Finalize(y) }
-func (a *rrSlAdpP8) NumSpans() int               { return a.sl.NumSpans() }
-
-func (r *rrRasAdp) SweepScanline(sl renscan.ScanlineInterface) bool {
-	if w, ok := sl.(*rrSlWrapP8); ok {
-		return r.ras.SweepScanline(&rrSlAdpP8{sl: w.sl})
-	}
-	return false
-}
-
-type rrSlWrapP8 struct{ sl *scanline.ScanlineP8 }
-
-func (w *rrSlWrapP8) Reset(minX, maxX int) { w.sl.Reset(minX, maxX) }
-func (w *rrSlWrapP8) Y() int               { return w.sl.Y() }
-func (w *rrSlWrapP8) NumSpans() int        { return w.sl.NumSpans() }
-
-type rrSpanIter struct {
-	spans []scanline.SpanP8
-	idx   int
-}
-
-func (it *rrSpanIter) GetSpan() renscan.SpanData {
-	s := it.spans[it.idx]
-	return renscan.SpanData{X: int(s.X), Len: int(s.Len), Covers: s.Covers}
-}
-func (it *rrSpanIter) Next() bool { it.idx++; return it.idx < len(it.spans) }
-
-func (w *rrSlWrapP8) Begin() renscan.ScanlineIterator {
-	spans := w.sl.Spans()
-	if len(spans) == 0 {
-		return &rrSpanIter{nil, 0}
-	}
-	return &rrSpanIter{spans, 0}
-}
-
 type demo struct {
 	x      [2]float64
 	y      [2]float64
@@ -156,8 +102,6 @@ func (d *demo) Render(img *agg.Image) {
 		rasterizer.NewRasterizerSlNoClip(),
 	)
 	sl := scanline.NewScanlineP8()
-	rasW := &rrRasAdp{ras: ras}
-	slW := &rrSlWrapP8{sl: sl}
 
 	// Render two "control" circles.
 	gray := color.RGBA8[color.Linear]{R: 127, G: 127, B: 127, A: 255}
@@ -165,7 +109,7 @@ func (d *demo) Render(img *agg.Image) {
 		e := shapes.NewEllipseWithParams(d.x[i], d.y[i], 3, 3, 16, false)
 		ras.Reset()
 		ras.AddPath(&ellipseVertexSource{e: e}, 0)
-		renscan.RenderScanlinesAASolid[color.RGBA8[color.Linear]](rasW, slW, rb, gray)
+		renscan.RenderScanlinesAASolid[color.RGBA8[color.Linear]](ras, sl, rb, gray)
 	}
 
 	// Create rounded rectangle.
@@ -179,7 +123,7 @@ func (d *demo) Render(img *agg.Image) {
 	ras.Reset()
 	ras.AddPath(&strokeVertexSource{cs: stroke}, 0)
 	black := color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255}
-	renscan.RenderScanlinesAASolid[color.RGBA8[color.Linear]](rasW, slW, rb, black)
+	renscan.RenderScanlinesAASolid[color.RGBA8[color.Linear]](ras, sl, rb, black)
 }
 
 func (d *demo) OnMouseDown(x, y int, btn lowlevelrunner.Buttons) bool {

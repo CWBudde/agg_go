@@ -5,10 +5,7 @@ package agg2d
 import (
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/color"
-	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
 	"github.com/MeKo-Christian/agg_go/internal/renderer"
-	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
-	"github.com/MeKo-Christian/agg_go/internal/scanline"
 )
 
 // baseRendererAdapter adapts renderer base functionality.
@@ -70,69 +67,6 @@ func (b *baseRendererAdapter[C]) BlendFrom(src renderer.PixelFormat[C], rectSrcP
 // CopyFrom copies from another pixel format using the rendering pipeline
 func (b *baseRendererAdapter[C]) CopyFrom(src renderer.PixelFormat[C], rectSrcPtr *basics.RectI, dx, dy int) {
 	b.rendererBase().CopyFrom(src, rectSrcPtr, dx, dy)
-}
-
-// scanlineWrapper adapts internal/scanline.ScanlineU8 to renderer/scanline.ScanlineInterface.
-// The embedded spanIter avoids a heap allocation per Begin() call. In C++,
-// begin() returns a raw pointer into the span array (zero cost); here we
-// reuse an embedded iterator that is reset on each Begin() call.
-type scanlineWrapper struct {
-	sl   *scanline.ScanlineU8
-	iter spanIter
-}
-
-// Reset implements ResettableScanline
-func (w *scanlineWrapper) Reset(minX, maxX int) { w.sl.Reset(minX, maxX) }
-func (w *scanlineWrapper) Y() int               { return w.sl.Y() }
-func (w *scanlineWrapper) NumSpans() int        { return w.sl.NumSpans() }
-
-// spanIter implements renderer/scanline.ScanlineIterator over our scanline spans
-type spanIter struct {
-	spans []scanline.Span
-	idx   int
-}
-
-func (it *spanIter) GetSpan() renscan.SpanData {
-	s := it.spans[it.idx]
-	return renscan.SpanData{X: int(s.X), Len: int(s.Len), Covers: s.Covers}
-}
-func (it *spanIter) Next() bool { it.idx++; return it.idx < len(it.spans) }
-
-func (w *scanlineWrapper) Begin() renscan.ScanlineIterator {
-	w.iter.spans = w.sl.Spans()
-	w.iter.idx = 0
-	return &w.iter
-}
-
-// rasterizerAdapter adapts internal rasterizer to renderer/scanline.RasterizerInterface.
-// The embedded rasScanlineAdapter avoids a heap allocation per SweepScanline() call,
-// matching C++ where sweep_scanline takes a reference to the caller's scanline object.
-type rasterizerAdapter struct {
-	ras     *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
-	slAdapt rasScanlineAdapter
-}
-
-func (r *rasterizerAdapter) RewindScanlines() bool { return r.ras.RewindScanlines() }
-func (r *rasterizerAdapter) MinX() int             { return r.ras.MinX() }
-func (r *rasterizerAdapter) MaxX() int             { return r.ras.MaxX() }
-
-// rasScanlineAdapter adapts scanline.ScanlineU8 to rasterizer.ScanlineInterface
-type rasScanlineAdapter struct{ sl *scanline.ScanlineU8 }
-
-func (a *rasScanlineAdapter) ResetSpans()                 { a.sl.ResetSpans() }
-func (a *rasScanlineAdapter) AddCell(x int, cover uint32) { a.sl.AddCell(x, uint(cover)) }
-func (a *rasScanlineAdapter) AddSpan(x, length int, cover uint32) {
-	a.sl.AddSpan(x, length, uint(cover))
-}
-func (a *rasScanlineAdapter) Finalize(y int) { a.sl.Finalize(y) }
-func (a *rasScanlineAdapter) NumSpans() int  { return a.sl.NumSpans() }
-
-func (r *rasterizerAdapter) SweepScanline(sl renscan.ScanlineInterface) bool {
-	if w, ok := sl.(*scanlineWrapper); ok {
-		r.slAdapt.sl = w.sl
-		return r.ras.SweepScanline(&r.slAdapt)
-	}
-	return false
 }
 
 // imagePixelFormat exposes an Image through the source-side accessors used by

@@ -272,7 +272,7 @@ func drawPatternFillDemo() {
 
 	if patFillRas.RewindScanlines() {
 		patFillSl.Reset(patFillRas.MinX(), patFillRas.MaxX())
-		for patFillRas.SweepScanline(&rasScanlineAdapter{sl: patFillSl}) {
+		for patFillRas.SweepScanline(patFillSl) {
 			y := patFillSl.Y()
 			for _, spanData := range patFillSl.Spans() {
 				if spanData.Len > 0 {

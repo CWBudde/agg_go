@@ -76,71 +76,14 @@ func (a *arrayColorFunc) ColorAt(i int) color.RGBA8[color.Linear] {
 // ---------------------------------------------------------------------------
 // Rasterizer / scanline adapters
 // ---------------------------------------------------------------------------
+type rasType = rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
 
-type rasterizerAdaptor struct {
-	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
-	sl  rasScanlineAdaptor
+func newRasterizer() *rasType {
+	return rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{},
+		rasterizer.NewRasterizerSlNoClip(),
+	)
 }
-
-func newRasterizer() *rasterizerAdaptor {
-	return &rasterizerAdaptor{
-		ras: rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
-			rasterizer.RasConvInt{},
-			rasterizer.NewRasterizerSlNoClip(),
-		),
-		sl: rasScanlineAdaptor{sl: scanline.NewScanlineU8()},
-	}
-}
-
-func (r *rasterizerAdaptor) Reset()                { r.ras.Reset() }
-func (r *rasterizerAdaptor) RewindScanlines() bool { return r.ras.RewindScanlines() }
-func (r *rasterizerAdaptor) MinX() int             { return r.ras.MinX() }
-func (r *rasterizerAdaptor) MaxX() int             { return r.ras.MaxX() }
-func (r *rasterizerAdaptor) AddPath(vs rasterizer.VertexSource, pathID uint32) {
-	r.ras.AddPath(vs, pathID)
-}
-
-func (r *rasterizerAdaptor) SweepScanline(sl renscan.ScanlineInterface) bool {
-	if w, ok := sl.(*scanlineWrapper); ok {
-		r.sl.sl = w.sl
-		return r.ras.SweepScanline(&r.sl)
-	}
-	return false
-}
-
-type rasScanlineAdaptor struct{ sl *scanline.ScanlineU8 }
-
-func (a *rasScanlineAdaptor) ResetSpans()                 { a.sl.ResetSpans() }
-func (a *rasScanlineAdaptor) AddCell(x int, cover uint32) { a.sl.AddCell(x, uint(cover)) }
-func (a *rasScanlineAdaptor) AddSpan(x, length int, cover uint32) {
-	a.sl.AddSpan(x, length, uint(cover))
-}
-func (a *rasScanlineAdaptor) Finalize(y int) { a.sl.Finalize(y) }
-func (a *rasScanlineAdaptor) NumSpans() int  { return a.sl.NumSpans() }
-
-type scanlineWrapper struct{ sl *scanline.ScanlineU8 }
-
-func (w *scanlineWrapper) Reset(minX, maxX int) { w.sl.Reset(minX, maxX) }
-func (w *scanlineWrapper) Y() int               { return w.sl.Y() }
-func (w *scanlineWrapper) NumSpans() int        { return w.sl.NumSpans() }
-func (w *scanlineWrapper) Begin() renscan.ScanlineIterator {
-	spans := w.sl.Spans()
-	if len(spans) == 0 {
-		return &spanIter{nil, 0}
-	}
-	return &spanIter{spans, 0}
-}
-
-type spanIter struct {
-	spans []scanline.Span
-	idx   int
-}
-
-func (it *spanIter) GetSpan() renscan.SpanData {
-	s := it.spans[it.idx]
-	return renscan.SpanData{X: int(s.X), Len: int(s.Len), Covers: s.Covers}
-}
-func (it *spanIter) Next() bool { it.idx++; return it.idx < len(it.spans) }
 
 // ellipseVS wraps shapes.Ellipse as rasterizer.VertexSource.
 type ellipseVS struct{ e *shapes.Ellipse }
@@ -160,8 +103,8 @@ type demo struct{}
 // scaled by r/(100) and translated to (cx,cy).
 func radialShape(
 	compPixf *pixfmt.PixFmtCompositeRGBA32,
-	ras *rasterizerAdaptor,
-	sl *scanlineWrapper,
+	ras *rasType,
+	sl *scanline.ScanlineU8,
 	ramp *arrayColorFunc,
 	x1, y1, x2, y2 float64,
 ) {
@@ -206,7 +149,7 @@ func (d *demo) Render(img *agg.Image) {
 	compPixf := pixfmt.NewPixFmtCompositeRGBA32(workRbuf, blender.CompOpDifference)
 
 	ras := newRasterizer()
-	sl := &scanlineWrapper{sl: scanline.NewScanlineU8()}
+	sl := scanline.NewScanlineU8()
 
 	ramp1 := &arrayColorFunc{data: generateColorRamp(1.0)}
 	ramp2 := &arrayColorFunc{data: generateColorRamp(1.0)}

@@ -41,8 +41,6 @@ func generateAlphaMask(w, h int) {
 	agg2d := ctx.GetAgg2D()
 	ras := agg2d.GetInternalRasterizer()
 	sl := scanline.NewScanlineP8()
-	slAdapter := &scanlineWrapperP8{sl: sl}
-	rasAdapter := &rasterizerAdapter{ras: ras}
 
 	for i := 0; i < 10; i++ {
 		cx := float64(rand.Intn(w))
@@ -66,7 +64,7 @@ func generateAlphaMask(w, h int) {
 		opacity := uint8(rand.Intn(256))
 		gray := color.Gray8[color.Linear]{V: c, A: opacity}
 
-		renscan.RenderScanlinesAASolid(rasAdapter, slAdapter, maskRb, gray)
+		renscan.RenderScanlinesAASolid(ras, sl, maskRb, gray)
 	}
 
 	// Create the alpha mask
@@ -126,9 +124,7 @@ func drawAlphaMaskDemo() {
 	rbAMask := renderer.NewRendererBaseWithPixfmt(amaskAdaptor)
 
 	ras := agg2d.GetInternalRasterizer()
-	rasAdapter := &rasterizerAdapter{ras: ras}
 	sl := scanline.NewScanlineP8()
-	slAdapter := &scanlineWrapperP8{sl: sl}
 
 	for _, lp := range lionPaths {
 		c := color.RGBA8[color.Linear]{R: lp.Color.R, G: lp.Color.G, B: lp.Color.B, A: 255}
@@ -152,7 +148,7 @@ func drawAlphaMaskDemo() {
 			}
 		}
 
-		renscan.RenderScanlinesAASolid(rasAdapter, slAdapter, rbAMask, c)
+		renscan.RenderScanlinesAASolid(ras, sl, rbAMask, c)
 	}
 
 	logStatus(fmt.Sprintf("Alpha Mask Demo: Scale=%.2f, Angle=%.2f", amLionScale, amLionAngle))

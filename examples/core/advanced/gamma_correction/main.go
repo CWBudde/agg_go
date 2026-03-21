@@ -32,66 +32,17 @@ const (
 )
 
 // ---------------------------------------------------------------------------
-// Rasterizer / scanline adapters
+// Rasterizer / scanline type alias
 // ---------------------------------------------------------------------------
 
-type rasterizerAdaptor struct {
-	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
+type rasType = rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
+
+func newRasterizer() *rasType {
+	return rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{},
+		rasterizer.NewRasterizerSlNoClip(),
+	)
 }
-
-func newRasterizer() *rasterizerAdaptor {
-	return &rasterizerAdaptor{
-		ras: rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
-			rasterizer.RasConvInt{},
-			rasterizer.NewRasterizerSlNoClip(),
-		),
-	}
-}
-
-func (r *rasterizerAdaptor) Reset()                { r.ras.Reset() }
-func (r *rasterizerAdaptor) RewindScanlines() bool { return r.ras.RewindScanlines() }
-func (r *rasterizerAdaptor) MinX() int             { return r.ras.MinX() }
-func (r *rasterizerAdaptor) MaxX() int             { return r.ras.MaxX() }
-
-func (r *rasterizerAdaptor) SweepScanline(sl renscan.ScanlineInterface) bool {
-	if w, ok := sl.(*scanlineWrapper); ok {
-		return r.ras.SweepScanline(&rasScanlineAdaptor{sl: w.sl})
-	}
-	return false
-}
-
-type rasScanlineAdaptor struct{ sl *isl.ScanlineP8 }
-
-func (a *rasScanlineAdaptor) ResetSpans()                     { a.sl.ResetSpans() }
-func (a *rasScanlineAdaptor) AddCell(x int, cover uint32)     { a.sl.AddCell(x, uint(cover)) }
-func (a *rasScanlineAdaptor) AddSpan(x, length int, c uint32) { a.sl.AddSpan(x, length, uint(c)) }
-func (a *rasScanlineAdaptor) Finalize(y int)                  { a.sl.Finalize(y) }
-func (a *rasScanlineAdaptor) NumSpans() int                   { return a.sl.NumSpans() }
-
-type scanlineWrapper struct{ sl *isl.ScanlineP8 }
-
-func (w *scanlineWrapper) Reset(minX, maxX int) { w.sl.Reset(minX, maxX) }
-func (w *scanlineWrapper) Y() int               { return w.sl.Y() }
-func (w *scanlineWrapper) NumSpans() int        { return w.sl.NumSpans() }
-func (w *scanlineWrapper) Begin() renscan.ScanlineIterator {
-	spans := w.sl.Spans()
-	return &spanIter{spans: spans, idx: 0}
-}
-
-type spanIter struct {
-	spans []isl.SpanP8
-	idx   int
-}
-
-func (it *spanIter) GetSpan() renscan.SpanData {
-	s := it.spans[it.idx]
-	covers := make([]uint8, len(s.Covers))
-	for i := range s.Covers {
-		covers[i] = uint8(s.Covers[i])
-	}
-	return renscan.SpanData{X: int(s.X), Len: int(s.Len), Covers: covers}
-}
-func (it *spanIter) Next() bool { it.idx++; return it.idx < len(it.spans) }
 
 // ---------------------------------------------------------------------------
 // Vertex source adapters
@@ -158,16 +109,16 @@ func copyFlipY(src, dst []uint8, w, h int) {
 	}
 }
 
-func renderCtrl(ras *rasterizerAdaptor, sl *scanlineWrapper, rb *renBase, c ctrlbase.Ctrl[icolor.RGBA]) {
+func renderCtrl(ras *rasType, sl *isl.ScanlineP8, rb *renBase, c ctrlbase.Ctrl[icolor.RGBA]) {
 	for pathID := uint(0); pathID < c.NumPaths(); pathID++ {
 		ras.Reset()
-		ras.ras.AddPath(&ctrlRasAdapter{ctrl: c}, uint32(pathID))
+		ras.AddPath(&ctrlRasAdapter{ctrl: c}, uint32(pathID))
 		col := c.Color(pathID)
 		renscan.RenderScanlinesAASolid(ras, sl, rb, rgba8(clampU8(col.R), clampU8(col.G), clampU8(col.B), clampU8(col.A)))
 	}
 }
 
-func renderSolid(ras *rasterizerAdaptor, sl *scanlineWrapper, rb *renBase, col icolor.RGBA8[icolor.Linear]) {
+func renderSolid(ras *rasType, sl *isl.ScanlineP8, rb *renBase, col icolor.RGBA8[icolor.Linear]) {
 	renscan.RenderScanlinesAASolid(ras, sl, rb, col)
 }
 
@@ -177,14 +128,14 @@ func fillRect(rb *renBase, x1, y1, x2, y2 int, col icolor.RGBA8[icolor.Linear]) 
 }
 
 // renderStrokeEllipse strokes an ellipse.
-func renderStrokeEllipse(ras *rasterizerAdaptor, sl *scanlineWrapper, rb *renBase,
+func renderStrokeEllipse(ras *rasType, sl *isl.ScanlineP8, rb *renBase,
 	cx, cy, rx, ry float64, steps uint32, strokeWidth float64, col icolor.RGBA8[icolor.Linear],
 ) {
 	ell := shapes.NewEllipseWithParams(cx, cy, rx, ry, steps, false)
 	stroke := conv.NewConvStroke(&ellipseVertexSource{e: ell})
 	stroke.SetWidth(strokeWidth)
 	ras.Reset()
-	ras.ras.AddPath(&convRasAdapter{src: stroke}, 0)
+	ras.AddPath(&convRasAdapter{src: stroke}, 0)
 	renderSolid(ras, sl, rb, col)
 }
 
@@ -259,7 +210,7 @@ func (d *demo) Render(img *agg.Image) {
 	fillRect(rb, 0, h/2+1, w, h, rgba8(255, darkVal, darkVal, 255))
 
 	ras := newRasterizer()
-	sl := &scanlineWrapper{sl: isl.NewScanlineP8()}
+	sl := isl.NewScanlineP8()
 
 	// Gamma power curve (in work-buffer: y=50 at bottom area, going up).
 	// C++: x=(width-256)/2, y=50; for i: path.line_to(x+i, y + gp(v)*255)
@@ -282,7 +233,7 @@ func (d *demo) Render(img *agg.Image) {
 		stroke := conv.NewConvStroke(path.NewPathStorageVertexSourceAdapter(ps))
 		stroke.SetWidth(2.0)
 		ras.Reset()
-		ras.ras.AddPath(&convRasAdapter{src: stroke}, 0)
+		ras.AddPath(&convRasAdapter{src: stroke}, 0)
 		renderSolid(ras, sl, rb, rgba8(80, 127, 80, 255))
 	}
 

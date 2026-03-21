@@ -2,38 +2,22 @@ package scanline
 
 import (
 	"github.com/MeKo-Christian/agg_go/internal/basics"
+	sl "github.com/MeKo-Christian/agg_go/internal/scanline"
 )
 
-// ScanlineInterface is the core scanline container contract consumed by
-// renderer helpers and concrete scanline renderers.
-type ScanlineInterface interface {
-	// Y returns the current scanline's Y coordinate
-	Y() int
-
-	// NumSpans returns the number of spans in this scanline
-	NumSpans() int
-
-	// Begin returns an iterator to the first span
-	Begin() ScanlineIterator
-}
+// ScanlineInterface is the unified scanline contract. Concrete scanline types
+// (ScanlineP8, ScanlineU8, ScanlineBin, etc.) satisfy this interface directly,
+// eliminating the need for adapter boilerplate between rasterizer and renderer.
+type ScanlineInterface = sl.Scanline
 
 // ScanlineIterator iterates over the spans stored in one scanline.
-type ScanlineIterator interface {
-	// GetSpan returns the current span data
-	GetSpan() SpanData
-
-	// Next advances to the next span and returns true if valid
-	Next() bool
-}
+type ScanlineIterator = sl.ScanlineIterator
 
 // SpanData stores one contiguous coverage run within a scanline.
-type SpanData struct {
-	X      int            // Starting X coordinate
-	Len    int            // Length (positive) or end coordinate (negative for solid spans)
-	Covers []basics.Int8u // Coverage values (may be nil for solid spans)
-}
+type SpanData = sl.SpanInfo
 
 // RasterizerInterface is the sweep contract expected by AGG-style render helpers.
+// The rasterizer fills a Scanline during SweepScanline; the renderer reads it back.
 type RasterizerInterface interface {
 	// RewindScanlines prepares the rasterizer for scanline sweeping
 	// Returns true if there are scanlines to render
@@ -130,28 +114,8 @@ type CompoundRasterizerInterface interface {
 	AllocateCoverBuffer(len int) []basics.Int8u
 }
 
-// ResettableScanline describes scanlines that can be resized/reset for reuse.
-type ResettableScanline interface {
-	ScanlineInterface
-
-	// Reset resets the scanline for the given horizontal bounds.
-	// This prepares the scanline for a new rendering pass within the specified X range.
-	Reset(minX, maxX int)
-}
-
 // Resettable is the minimal reusable-state contract used by helper routines.
 type Resettable interface {
 	// Reset resets the object to its initial state
 	Reset()
 }
-
-// Compile-time interface checks
-// These ensure that expected types implement the required interfaces at compile time.
-// If a type doesn't implement an interface, the compilation will fail with a clear error.
-
-// Ensure common scanline types implement ResettableScanline
-// These checks should be added in the scanline package implementations to avoid import cycles:
-// var _ renderer.ResettableScanline = (*ScanlineU8)(nil)
-// var _ renderer.ResettableScanline = (*ScanlineP8)(nil)
-// var _ renderer.ResettableScanline = (*ScanlineBin)(nil)
-// var _ renderer.ResettableScanline = (*Scanline32U8)(nil)

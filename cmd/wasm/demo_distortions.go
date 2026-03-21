@@ -278,7 +278,7 @@ func drawDistortionsDemo() {
 
 	if distortionsRas.RewindScanlines() {
 		distortionsSl.Reset(distortionsRas.MinX(), distortionsRas.MaxX())
-		for distortionsRas.SweepScanline(&rasScanlineAdapter{sl: distortionsSl}) {
+		for distortionsRas.SweepScanline(distortionsSl) {
 			y := distortionsSl.Y()
 			for _, spanData := range distortionsSl.Spans() {
 				if spanData.Len > 0 {

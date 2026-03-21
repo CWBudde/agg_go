@@ -74,15 +74,6 @@ func (a *spanGenAdapter) Generate(colors []color.RGBA8[color.Linear], x, y, leng
 	}
 	a.sg.Generate(colors[:length], x, y)
 }
-
-type rasScanlineAdapter struct{ sl *scanline.ScanlineU8 }
-
-func (a *rasScanlineAdapter) ResetSpans()                { a.sl.ResetSpans() }
-func (a *rasScanlineAdapter) AddCell(x int, c uint32)    { a.sl.AddCell(x, uint(c)) }
-func (a *rasScanlineAdapter) AddSpan(x, l int, c uint32) { a.sl.AddSpan(x, l, uint(c)) }
-func (a *rasScanlineAdapter) Finalize(y int)             { a.sl.Finalize(y) }
-func (a *rasScanlineAdapter) NumSpans() int              { return a.sl.NumSpans() }
-
 type pathSourceAdapter struct{ ps *path.PathStorageStl }
 
 func (a *pathSourceAdapter) Rewind(id uint32) { a.ps.Rewind(uint(id)) }
@@ -255,7 +246,7 @@ func (d *demo) Render(img *agg.Image) {
 
 	if ras.RewindScanlines() {
 		sl.Reset(ras.MinX(), ras.MaxX())
-		for ras.SweepScanline(&rasScanlineAdapter{sl: sl}) {
+		for ras.SweepScanline(sl) {
 			y := sl.Y()
 			for _, spanData := range sl.Spans() {
 				if spanData.Len > 0 {

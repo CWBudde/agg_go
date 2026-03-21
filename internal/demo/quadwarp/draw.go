@@ -131,18 +131,6 @@ func (a *pathAdapter) Vertex(x, y *float64) uint32 {
 	return cmd
 }
 
-type scanlineAdapter struct {
-	sl *scanline.ScanlineU8
-}
-
-func (a *scanlineAdapter) ResetSpans()                 { a.sl.ResetSpans() }
-func (a *scanlineAdapter) AddCell(x int, cover uint32) { a.sl.AddCell(x, uint(cover)) }
-func (a *scanlineAdapter) AddSpan(x, length int, cover uint32) {
-	a.sl.AddSpan(x, length, uint(cover))
-}
-func (a *scanlineAdapter) Finalize(y int) { a.sl.Finalize(y) }
-func (a *scanlineAdapter) NumSpans() int  { return a.sl.NumSpans() }
-
 func Draw(ctx *agg.Context, cfg Config) {
 	if ctx == nil || cfg.Source == nil {
 		return
@@ -329,7 +317,7 @@ func Draw(ctx *agg.Context, cfg Config) {
 
 	if ras.RewindScanlines() {
 		sl.Reset(ras.MinX(), ras.MaxX())
-		for ras.SweepScanline(&scanlineAdapter{sl: sl}) {
+		for ras.SweepScanline(sl) {
 			y := sl.Y()
 			for _, spn := range sl.Spans() {
 				if spn.Len <= 0 {

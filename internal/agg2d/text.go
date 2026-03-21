@@ -502,8 +502,7 @@ func (r *glyphBitmapRasterizer) MaxX() int {
 }
 
 func (r *glyphBitmapRasterizer) SweepScanline(sl renscan.ScanlineInterface) bool {
-	w, ok := sl.(*scanlineWrapper)
-	if !ok || w.sl == nil {
+	if sl == nil {
 		return false
 	}
 
@@ -524,7 +523,7 @@ func (r *glyphBitmapRasterizer) SweepScanline(sl renscan.ScanlineInterface) bool
 		}
 		rowData := r.data[rowStart:rowEnd]
 
-		w.sl.ResetSpans()
+		sl.ResetSpans()
 		scanY := r.bounds.Y1 + r.offsetY + row
 		baseX := r.bounds.X1 + r.offsetX
 
@@ -546,12 +545,12 @@ func (r *glyphBitmapRasterizer) SweepScanline(sl renscan.ScanlineInterface) bool
 					continue
 				}
 				if runStart >= 0 {
-					w.sl.AddSpan(baseX+runStart, col-runStart, uint(basics.CoverFull))
+					sl.AddSpan(baseX+runStart, col-runStart, uint(basics.CoverFull))
 					runStart = -1
 				}
 			}
 			if runStart >= 0 {
-				w.sl.AddSpan(baseX+runStart, width-runStart, uint(basics.CoverFull))
+				sl.AddSpan(baseX+runStart, width-runStart, uint(basics.CoverFull))
 			}
 
 		default:
@@ -559,7 +558,7 @@ func (r *glyphBitmapRasterizer) SweepScanline(sl renscan.ScanlineInterface) bool
 			covers := make([]basics.Int8u, 0, width)
 			flush := func() {
 				if runStart >= 0 && len(covers) > 0 {
-					w.sl.AddCells(baseX+runStart, len(covers), covers)
+					addCellsToScanline(sl, baseX+runStart, covers)
 				}
 				runStart = -1
 				covers = covers[:0]
@@ -582,13 +581,20 @@ func (r *glyphBitmapRasterizer) SweepScanline(sl renscan.ScanlineInterface) bool
 			flush()
 		}
 
-		if w.sl.NumSpans() > 0 {
-			w.sl.Finalize(scanY)
+		if sl.NumSpans() > 0 {
+			sl.Finalize(scanY)
 			return true
 		}
 	}
 
 	return false
+}
+
+// addCellsToScanline adds multiple cells to a scanline via AddCell calls.
+func addCellsToScanline(sl renscan.ScanlineInterface, x int, covers []basics.Int8u) {
+	for i, c := range covers {
+		sl.AddCell(x+i, uint(c))
+	}
 }
 
 // renderGlyphScanlines renders a glyph using scanline data.
@@ -603,7 +609,7 @@ func (agg2d *Agg2D) renderGlyphScanlines(adaptor font.SerializedScanlinesAdaptor
 		return
 	}
 
-	agg2d.renderScanlines(ras, &agg2d.slAdapter, glyph.DataType == font.GlyphDataMono)
+	agg2d.renderScanlines(ras, agg2d.scanline, glyph.DataType == font.GlyphDataMono)
 }
 
 // renderScanlines renders scanlines using the provided rasterizer and scanline adaptors.

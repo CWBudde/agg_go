@@ -8,11 +8,12 @@ type VertexSource interface {
 }
 
 // ScanlineInterface is the span-accumulation contract expected during scanline
-// sweeping.
+// sweeping. The rasterizer writes coverage data; the renderer reads it back.
+// Deprecated: prefer scanline.Scanline for new code.
 type ScanlineInterface interface {
 	ResetSpans()
-	AddCell(x int, cover uint32)
-	AddSpan(x, len int, cover uint32)
+	AddCell(x int, cover uint)
+	AddSpan(x, len int, cover uint)
 	Finalize(y int)
 	NumSpans() int
 }

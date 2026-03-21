@@ -44,76 +44,20 @@ func px4(buf []uint8, x, y int) (r, g, b uint8) {
 	return buf[i], buf[i+1], buf[i+2]
 }
 
-// ---------------------------------------------------------------------------
-// Rasterizer/scanline adapters — same pattern as alpha_mask2/main.go
-// ---------------------------------------------------------------------------
+type rasType = rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
 
-type rasterizerAdaptor struct {
-	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
-	sl  rasScanlineAdaptor
+func newRas() *rasType {
+	return rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip())
 }
 
-func newRas() *rasterizerAdaptor {
-	return &rasterizerAdaptor{
-		ras: rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
-			rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip()),
-		sl: rasScanlineAdaptor{sl: scanline.NewScanlineP8()},
-	}
+func addRect(ras *rasType, x1, y1, x2, y2 float64) {
+	ras.AddVertex(x1, y1, uint32(basics.PathCmdMoveTo))
+	ras.AddVertex(x2, y1, uint32(basics.PathCmdLineTo))
+	ras.AddVertex(x2, y2, uint32(basics.PathCmdLineTo))
+	ras.AddVertex(x1, y2, uint32(basics.PathCmdLineTo))
+	ras.AddVertex(0, 0, uint32(basics.PathCmdEndPoly)|uint32(basics.PathFlagsClose))
 }
-
-func (r *rasterizerAdaptor) Reset()                { r.ras.Reset() }
-func (r *rasterizerAdaptor) RewindScanlines() bool { return r.ras.RewindScanlines() }
-func (r *rasterizerAdaptor) MinX() int             { return r.ras.MinX() }
-func (r *rasterizerAdaptor) MaxX() int             { return r.ras.MaxX() }
-func (r *rasterizerAdaptor) SweepScanline(sl renscan.ScanlineInterface) bool {
-	if w, ok := sl.(*scanlineWrapper); ok {
-		r.sl.sl = w.sl
-		return r.ras.SweepScanline(&r.sl)
-	}
-	return false
-}
-
-func (r *rasterizerAdaptor) addRect(x1, y1, x2, y2 float64) {
-	r.ras.AddVertex(x1, y1, uint32(basics.PathCmdMoveTo))
-	r.ras.AddVertex(x2, y1, uint32(basics.PathCmdLineTo))
-	r.ras.AddVertex(x2, y2, uint32(basics.PathCmdLineTo))
-	r.ras.AddVertex(x1, y2, uint32(basics.PathCmdLineTo))
-	r.ras.AddVertex(0, 0, uint32(basics.PathCmdEndPoly)|uint32(basics.PathFlagsClose))
-}
-
-type rasScanlineAdaptor struct{ sl *scanline.ScanlineP8 }
-
-func (a *rasScanlineAdaptor) ResetSpans()                 { a.sl.ResetSpans() }
-func (a *rasScanlineAdaptor) AddCell(x int, cover uint32) { a.sl.AddCell(x, uint(cover)) }
-func (a *rasScanlineAdaptor) AddSpan(x, length int, cover uint32) {
-	a.sl.AddSpan(x, length, uint(cover))
-}
-func (a *rasScanlineAdaptor) Finalize(y int) { a.sl.Finalize(y) }
-func (a *rasScanlineAdaptor) NumSpans() int  { return a.sl.NumSpans() }
-
-type scanlineWrapper struct{ sl *scanline.ScanlineP8 }
-
-func (w *scanlineWrapper) Reset(minX, maxX int) { w.sl.Reset(minX, maxX) }
-func (w *scanlineWrapper) Y() int               { return w.sl.Y() }
-func (w *scanlineWrapper) NumSpans() int        { return w.sl.NumSpans() }
-func (w *scanlineWrapper) Begin() renscan.ScanlineIterator {
-	spans := w.sl.Spans()
-	if len(spans) == 0 {
-		return &spanIter{nil, 0}
-	}
-	return &spanIter{spans, 0}
-}
-
-type spanIter struct {
-	spans []scanline.SpanP8
-	idx   int
-}
-
-func (it *spanIter) GetSpan() renscan.SpanData {
-	s := it.spans[it.idx]
-	return renscan.SpanData{X: int(s.X), Len: int(s.Len), Covers: s.Covers}
-}
-func (it *spanIter) Next() bool { it.idx++; return it.idx < len(it.spans) }
 
 type ellipseVS struct{ e *shapes.Ellipse }
 
@@ -148,8 +92,8 @@ func step2() {
 	rb.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
 
 	ras := newRas()
-	sl := &scanlineWrapper{sl: scanline.NewScanlineP8()}
-	ras.addRect(20, 20, 108, 108)
+	sl := scanline.NewScanlineP8()
+	addRect(ras, 20, 20, 108, 108)
 	renscan.RenderScanlinesAASolid(ras, sl, rb, color.RGBA8[color.Linear]{R: 200, G: 0, B: 0, A: 128})
 
 	savePNG4("/tmp/aggtest/step2_rect_go.png", buf, W, H)
@@ -175,10 +119,10 @@ func step3() {
 	maskRb.Clear(color.Gray8[color.Linear]{V: 0, A: 255})
 
 	ras := newRas()
-	sl := &scanlineWrapper{sl: scanline.NewScanlineP8()}
+	sl := scanline.NewScanlineP8()
 
 	ell := shapes.NewEllipseWithParams(64, 64, 50, 50, 64, false)
-	ras.ras.AddPath(&ellipseVS{e: ell}, 0)
+	ras.AddPath(&ellipseVS{e: ell}, 0)
 	renscan.RenderScanlinesAASolid(ras, sl, maskRb, color.Gray8[color.Linear]{V: 200, A: 200})
 	fmt.Printf("  mask(64,64) = %d  [C++ expects 157]\n", maskData[64*W+64])
 
@@ -187,7 +131,7 @@ func step3() {
 	rbMasked := renderer.NewRendererBaseWithPixfmt(amaskPf)
 
 	ras.Reset()
-	ras.addRect(20, 20, 108, 108)
+	addRect(ras, 20, 20, 108, 108)
 	renscan.RenderScanlinesAASolid(ras, sl, rbMasked, color.RGBA8[color.Linear]{R: 200, G: 0, B: 0, A: 255})
 
 	savePNG4("/tmp/aggtest/step3_amask_go.png", buf, W, H)
@@ -213,10 +157,10 @@ func step4() {
 	maskRb.Clear(color.Gray8[color.Linear]{V: 0, A: 255})
 
 	ras := newRas()
-	sl := &scanlineWrapper{sl: scanline.NewScanlineP8()}
+	sl := scanline.NewScanlineP8()
 
 	ell := shapes.NewEllipseWithParams(64, 64, 50, 50, 64, false)
-	ras.ras.AddPath(&ellipseVS{e: ell}, 0)
+	ras.AddPath(&ellipseVS{e: ell}, 0)
 	renscan.RenderScanlinesAASolid(ras, sl, maskRb, color.Gray8[color.Linear]{V: 200, A: 200})
 
 	mask := pixfmt.NewAlphaMaskU8WithBuffer(maskBuf, 1, 0, pixfmt.OneComponentMaskU8{})
@@ -227,14 +171,14 @@ func step4() {
 	c1 := color.ConvertRGBA8SRGBToLinear(color.RGBA8[color.SRGB]{R: 242, G: 204, B: 153, A: 255})
 	fmt.Printf("  sRGB(242,204,153)->linear(%d,%d,%d)  [C++ expects 226,154,81]\n", c1.R, c1.G, c1.B)
 	ras.Reset()
-	ras.addRect(10, 10, 118, 118)
+	addRect(ras, 10, 10, 118, 118)
 	renscan.RenderScanlinesAASolid(ras, sl, rbMasked, c1)
 
 	// sRGB(235,128,128) -> linear
 	c2 := color.ConvertRGBA8SRGBToLinear(color.RGBA8[color.SRGB]{R: 235, G: 128, B: 128, A: 255})
 	fmt.Printf("  sRGB(235,128,128)->linear(%d,%d,%d)  [C++ expects 212,55,55]\n", c2.R, c2.G, c2.B)
 	ras.Reset()
-	ras.addRect(10, 10, 118, 118)
+	addRect(ras, 10, 10, 118, 118)
 	renscan.RenderScanlinesAASolid(ras, sl, rbMasked, c2)
 
 	savePNG4("/tmp/aggtest/step4_lion_go.png", buf, W, H)
@@ -322,7 +266,7 @@ func step6() {
 	maskRb.Clear(color.Gray8[color.Linear]{V: 0, A: 255})
 
 	ras := newRas()
-	sl := &scanlineWrapper{sl: scanline.NewScanlineP8()}
+	sl := scanline.NewScanlineP8()
 	rng := newClibcRandSeed1()
 
 	// Generate mask
@@ -332,8 +276,8 @@ func step6() {
 		y := float64(rng.randN(fh))
 		x := float64(rng.randN(fw))
 		ell := shapes.NewEllipseWithParams(x, y, rx, ry, 100, false)
-		ras.ras.Reset()
-		ras.ras.AddPath(&ellipseVS{e: ell}, 0)
+		ras.Reset()
+		ras.AddPath(&ellipseVS{e: ell}, 0)
 		a := uint8(rng.randAnd(127) + 128)
 		v := uint8(rng.randAnd(127) + 128)
 		renscan.RenderScanlinesAASolid(ras, sl, maskRb, color.Gray8[color.Linear]{V: v, A: a})
@@ -409,11 +353,11 @@ func step6() {
 			tx, ty := x, y
 			mtx.Transform(&tx, &ty)
 			if basics.IsMoveTo(pathCmd) {
-				ras.ras.AddVertex(tx, ty, uint32(basics.PathCmdMoveTo))
+				ras.AddVertex(tx, ty, uint32(basics.PathCmdMoveTo))
 			} else if basics.IsLineTo(pathCmd) {
-				ras.ras.AddVertex(tx, ty, uint32(basics.PathCmdLineTo))
+				ras.AddVertex(tx, ty, uint32(basics.PathCmdLineTo))
 			} else if basics.IsEndPoly(pathCmd) {
-				ras.ras.AddVertex(0, 0, cmd)
+				ras.AddVertex(0, 0, cmd)
 			}
 		}
 		renscan.RenderScanlinesAASolid(ras, sl, amaskRb, c)
@@ -442,7 +386,7 @@ func step5() {
 	maskRb.Clear(color.Gray8[color.Linear]{V: 0, A: 255})
 
 	ras := newRas()
-	sl := &scanlineWrapper{sl: scanline.NewScanlineP8()}
+	sl := scanline.NewScanlineP8()
 	rng := newClibcRandSeed1()
 
 	for range 10 {
@@ -451,8 +395,8 @@ func step5() {
 		y := float64(rng.randN(fh))
 		x := float64(rng.randN(fw))
 		ell := shapes.NewEllipseWithParams(x, y, rx, ry, 100, false)
-		ras.ras.Reset()
-		ras.ras.AddPath(&ellipseVS{e: ell}, 0)
+		ras.Reset()
+		ras.AddPath(&ellipseVS{e: ell}, 0)
 		a := uint8(rng.randAnd(127) + 128)
 		v := uint8(rng.randAnd(127) + 128)
 		renscan.RenderScanlinesAASolid(ras, sl, maskRb, color.Gray8[color.Linear]{V: v, A: a})

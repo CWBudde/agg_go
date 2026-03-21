@@ -211,8 +211,8 @@ func renderOutlineGlyph(
 
 	sl := scanline.NewScanlineU8()
 	renscan.RenderScanlinesAASolid(
-		&rasterizerAdapter{ras: ras},
-		&scanlineWrapperU8{sl: sl},
+		ras,
+		sl,
 		renBase,
 		color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255},
 	)
@@ -235,7 +235,7 @@ func renderGrayGlyph(
 	}
 	renscan.RenderScanlinesAASolid(
 		ras,
-		&scanlineWrapperU8{sl: sl},
+		sl,
 		renBase,
 		color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255},
 	)
@@ -258,7 +258,7 @@ func renderMonoGlyph(
 	}
 	renscan.RenderScanlinesBinSolid(
 		ras,
-		&scanlineWrapperU8{sl: sl},
+		sl,
 		renBase,
 		color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255},
 	)
@@ -342,64 +342,6 @@ func (a *convToRasAdapter) Vertex(x, y *float64) uint32 {
 	return uint32(cmd)
 }
 
-type scanlineWrapperU8 struct {
-	sl   *scanline.ScanlineU8
-	iter spanIterU8
-}
-
-func (w *scanlineWrapperU8) Reset(minX, maxX int) { w.sl.Reset(minX, maxX) }
-func (w *scanlineWrapperU8) Y() int               { return w.sl.Y() }
-func (w *scanlineWrapperU8) NumSpans() int        { return w.sl.NumSpans() }
-
-func (w *scanlineWrapperU8) Begin() renscan.ScanlineIterator {
-	w.iter.spans = w.sl.Spans()
-	w.iter.idx = 0
-	return &w.iter
-}
-
-type spanIterU8 struct {
-	spans []scanline.Span
-	idx   int
-}
-
-func (it *spanIterU8) GetSpan() renscan.SpanData {
-	s := it.spans[it.idx]
-	return renscan.SpanData{X: int(s.X), Len: int(s.Len), Covers: s.Covers}
-}
-
-func (it *spanIterU8) Next() bool {
-	it.idx++
-	return it.idx < len(it.spans)
-}
-
-type rasterizerAdapter struct {
-	ras interface {
-		RewindScanlines() bool
-		SweepScanline(sl rasterizer.ScanlineInterface) bool
-		MinX() int
-		MaxX() int
-	}
-}
-
-func (r *rasterizerAdapter) RewindScanlines() bool { return r.ras.RewindScanlines() }
-func (r *rasterizerAdapter) MinX() int             { return r.ras.MinX() }
-func (r *rasterizerAdapter) MaxX() int             { return r.ras.MaxX() }
-
-func (r *rasterizerAdapter) SweepScanline(sl renscan.ScanlineInterface) bool {
-	if w, ok := sl.(*scanlineWrapperU8); ok {
-		return r.ras.SweepScanline(&rasScanlineAdapter{sl: w.sl})
-	}
-	return false
-}
-
-type rasScanlineAdapter struct{ sl *scanline.ScanlineU8 }
-
-func (a *rasScanlineAdapter) ResetSpans()                { a.sl.ResetSpans() }
-func (a *rasScanlineAdapter) AddCell(x int, c uint32)    { a.sl.AddCell(x, uint(c)) }
-func (a *rasScanlineAdapter) AddSpan(x, l int, c uint32) { a.sl.AddSpan(x, l, uint(c)) }
-func (a *rasScanlineAdapter) Finalize(y int)             { a.sl.Finalize(y) }
-func (a *rasScanlineAdapter) NumSpans() int              { return a.sl.NumSpans() }
-
 type glyphBitmapRasterizer struct {
 	data     []byte
 	bounds   basics.Rect[int]
@@ -419,8 +361,8 @@ func (r *glyphBitmapRasterizer) MinX() int { return r.bounds.X1 + r.offsetX }
 func (r *glyphBitmapRasterizer) MaxX() int { return r.bounds.X2 + r.offsetX - 1 }
 
 func (r *glyphBitmapRasterizer) SweepScanline(sl renscan.ScanlineInterface) bool {
-	w, ok := sl.(*scanlineWrapperU8)
-	if !ok || w.sl == nil {
+	slU8, ok := sl.(*scanline.ScanlineU8)
+	if !ok || slU8 == nil {
 		return false
 	}
 
@@ -441,7 +383,7 @@ func (r *glyphBitmapRasterizer) SweepScanline(sl renscan.ScanlineInterface) bool
 		}
 		rowData := r.data[rowStart:rowEnd]
 
-		w.sl.ResetSpans()
+		slU8.ResetSpans()
 		scanY := r.bounds.Y1 + r.offsetY + row
 		baseX := r.bounds.X1 + r.offsetX
 
@@ -461,19 +403,19 @@ func (r *glyphBitmapRasterizer) SweepScanline(sl renscan.ScanlineInterface) bool
 					continue
 				}
 				if runStart >= 0 {
-					w.sl.AddSpan(baseX+runStart, col-runStart, uint(basics.CoverFull))
+					slU8.AddSpan(baseX+runStart, col-runStart, uint(basics.CoverFull))
 					runStart = -1
 				}
 			}
 			if runStart >= 0 {
-				w.sl.AddSpan(baseX+runStart, width-runStart, uint(basics.CoverFull))
+				slU8.AddSpan(baseX+runStart, width-runStart, uint(basics.CoverFull))
 			}
 		} else {
 			runStart := -1
 			covers := make([]basics.Int8u, 0, width)
 			flush := func() {
 				if runStart >= 0 && len(covers) > 0 {
-					w.sl.AddCells(baseX+runStart, len(covers), covers)
+					slU8.AddCells(baseX+runStart, len(covers), covers)
 				}
 				runStart = -1
 				covers = covers[:0]
@@ -496,8 +438,8 @@ func (r *glyphBitmapRasterizer) SweepScanline(sl renscan.ScanlineInterface) bool
 			flush()
 		}
 
-		if w.sl.NumSpans() > 0 {
-			w.sl.Finalize(scanY)
+		if slU8.NumSpans() > 0 {
+			slU8.Finalize(scanY)
 			return true
 		}
 	}

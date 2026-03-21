@@ -13,9 +13,7 @@ func RenderScanlines[C any](ras RasterizerInterface, sl ScanlineInterface, rende
 	}
 
 	// Reset scanline for the rasterizer bounds
-	if resetScanline, ok := sl.(ResettableScanline); ok {
-		resetScanline.Reset(ras.MinX(), ras.MaxX())
-	}
+	sl.Reset(ras.MinX(), ras.MaxX())
 
 	// Prepare the renderer
 	renderer.Prepare()
@@ -78,12 +76,8 @@ func RenderScanlinesCompound[C any, PC interface {
 	length := maxX - minX + 2
 
 	// Reset scanlines
-	if resetScanline, ok := slAA.(ResettableScanline); ok {
-		resetScanline.Reset(minX, maxX)
-	}
-	if resetScanline, ok := slBin.(ResettableScanline); ok {
-		resetScanline.Reset(minX, maxX)
-	}
+	slAA.Reset(minX, maxX)
+	slBin.Reset(minX, maxX)
 
 	// Allocate buffers for compound rendering
 	colorSpan := alloc.Allocate(length * 2)
@@ -123,7 +117,7 @@ func RenderScanlinesCompound[C any, PC interface {
 func renderCompoundSpanGenerated[C any](sl ScanlineInterface, ren BaseRendererInterface[C],
 	alloc SpanAllocatorInterface[C], styleHandler StyleHandlerInterface[C], style int,
 ) {
-	iter := sl.Begin()
+	iter := sl.BeginIterator()
 	numSpans := sl.NumSpans()
 	y := sl.Y()
 
@@ -152,7 +146,7 @@ func renderCompoundMultipleStyles[C any, PC interface {
 	minX int, numStyles int,
 ) {
 	// Clear only the mix buffer spans, matching AGG's render_scanlines_compound.
-	iterBin := slBin.Begin()
+	iterBin := slBin.BeginIterator()
 	numSpansBin := slBin.NumSpans()
 
 	for i := 0; i < numSpansBin; i++ {
@@ -174,7 +168,7 @@ func renderCompoundMultipleStyles[C any, PC interface {
 		solid := styleHandler.IsSolid(style)
 
 		if ras.SweepScanlineWithStyle(slAA, styleIndex) {
-			iter := slAA.Begin()
+			iter := slAA.BeginIterator()
 			numSpans := slAA.NumSpans()
 
 			for i := 0; i < numSpans; i++ {
@@ -195,7 +189,7 @@ func renderCompoundMultipleStyles[C any, PC interface {
 	}
 
 	// Emit the blended result
-	iterBin = slBin.Begin()
+	iterBin = slBin.BeginIterator()
 	numSpansBin = slBin.NumSpans()
 	y := slBin.Y()
 

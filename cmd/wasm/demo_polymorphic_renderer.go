@@ -63,7 +63,7 @@ func drawPolymorphicRendererDemo() {
 	sl := scanline.NewScanlineU8()
 	if ras.RewindScanlines() {
 		sl.Reset(ras.MinX(), ras.MaxX())
-		for ras.SweepScanline(&rasScanlineAdapter{sl: sl}) {
+		for ras.SweepScanline(sl) {
 			y := sl.Y()
 			for _, sp := range sl.Spans() {
 				if sp.Len > 0 {

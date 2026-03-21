@@ -164,7 +164,7 @@ func drawImage1Demo() {
 
 	if img1Ras.RewindScanlines() {
 		img1Sl.Reset(img1Ras.MinX(), img1Ras.MaxX())
-		for img1Ras.SweepScanline(&rasScanlineAdapter{sl: img1Sl}) {
+		for img1Ras.SweepScanline(img1Sl) {
 			y := img1Sl.Y()
 			for _, spanData := range img1Sl.Spans() {
 				if spanData.Len > 0 {

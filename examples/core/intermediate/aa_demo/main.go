@@ -27,72 +27,14 @@ const (
 	frameHeight = 400
 )
 
-// ---------------------------------------------------------------------------
-// Rasterizer / scanline adapters
-// ---------------------------------------------------------------------------
+type rasType = rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
 
-type rasterizerAdaptor struct {
-	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
-	sl  rasScanlineAdaptor
+func newRasterizer() *rasType {
+	return rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{},
+		rasterizer.NewRasterizerSlNoClip(),
+	)
 }
-
-func newRasterizer() *rasterizerAdaptor {
-	return &rasterizerAdaptor{
-		ras: rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
-			rasterizer.RasConvInt{},
-			rasterizer.NewRasterizerSlNoClip(),
-		),
-		sl: rasScanlineAdaptor{sl: scanline.NewScanlineP8()},
-	}
-}
-
-func (r *rasterizerAdaptor) Reset()                { r.ras.Reset() }
-func (r *rasterizerAdaptor) RewindScanlines() bool { return r.ras.RewindScanlines() }
-func (r *rasterizerAdaptor) MinX() int             { return r.ras.MinX() }
-func (r *rasterizerAdaptor) MaxX() int             { return r.ras.MaxX() }
-
-func (r *rasterizerAdaptor) SweepScanline(sl renscan.ScanlineInterface) bool {
-	if w, ok := sl.(*scanlineWrapper); ok {
-		r.sl.sl = w.sl
-		return r.ras.SweepScanline(&r.sl)
-	}
-	return false
-}
-
-type rasScanlineAdaptor struct{ sl *scanline.ScanlineP8 }
-
-func (a *rasScanlineAdaptor) ResetSpans()                 { a.sl.ResetSpans() }
-func (a *rasScanlineAdaptor) AddCell(x int, cover uint32) { a.sl.AddCell(x, uint(cover)) }
-func (a *rasScanlineAdaptor) AddSpan(x, length int, cover uint32) {
-	a.sl.AddSpan(x, length, uint(cover))
-}
-func (a *rasScanlineAdaptor) Finalize(y int) { a.sl.Finalize(y) }
-func (a *rasScanlineAdaptor) NumSpans() int  { return a.sl.NumSpans() }
-
-type scanlineWrapper struct{ sl *scanline.ScanlineP8 }
-
-func (w *scanlineWrapper) Reset(minX, maxX int) { w.sl.Reset(minX, maxX) }
-func (w *scanlineWrapper) Y() int               { return w.sl.Y() }
-func (w *scanlineWrapper) NumSpans() int        { return w.sl.NumSpans() }
-
-func (w *scanlineWrapper) Begin() renscan.ScanlineIterator {
-	spans := w.sl.Spans()
-	if len(spans) == 0 {
-		return &spanIter{nil, 0}
-	}
-	return &spanIter{spans, 0}
-}
-
-type spanIter struct {
-	spans []scanline.SpanP8
-	idx   int
-}
-
-func (it *spanIter) GetSpan() renscan.SpanData {
-	s := it.spans[it.idx]
-	return renscan.SpanData{X: int(s.X), Len: int(s.Len), Covers: s.Covers}
-}
-func (it *spanIter) Next() bool { it.idx++; return it.idx < len(it.spans) }
 
 // ---------------------------------------------------------------------------
 // Vertex-source adapters
@@ -133,8 +75,8 @@ func (a *pathStlVS) Vertex() (float64, float64, basics.PathCommand) {
 // ---------------------------------------------------------------------------
 
 type rendererEnlarged struct {
-	ras   *rasterizerAdaptor
-	sl    *scanlineWrapper
+	ras   *rasType
+	sl    *scanline.ScanlineP8
 	renRb *renderer.RendererBase[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]]
 	size  float64
 	col   color.RGBA8[color.Linear]
@@ -146,7 +88,7 @@ func newRendererEnlarged(
 ) *rendererEnlarged {
 	return &rendererEnlarged{
 		ras:   newRasterizer(),
-		sl:    &scanlineWrapper{sl: scanline.NewScanlineP8()},
+		sl:    scanline.NewScanlineP8(),
 		renRb: renRb,
 		size:  size,
 	}
@@ -158,7 +100,7 @@ func (r *rendererEnlarged) SetColor(c color.RGBA8[color.Linear]) { r.col = c }
 
 func (r *rendererEnlarged) Render(sl renscan.ScanlineInterface) {
 	y := sl.Y()
-	it := sl.Begin()
+	it := sl.BeginIterator()
 	for i, n := 0, sl.NumSpans(); i < n; i++ {
 		span := it.GetSpan()
 		x := span.X
@@ -184,11 +126,11 @@ func (r *rendererEnlarged) Render(sl renscan.ScanlineInterface) {
 }
 
 func (r *rendererEnlarged) drawSquare(x, y float64, c color.RGBA8[color.Linear]) {
-	r.ras.ras.Reset()
-	r.ras.ras.MoveToD(x*r.size, y*r.size)
-	r.ras.ras.LineToD(x*r.size+r.size, y*r.size)
-	r.ras.ras.LineToD(x*r.size+r.size, y*r.size+r.size)
-	r.ras.ras.LineToD(x*r.size, y*r.size+r.size)
+	r.ras.Reset()
+	r.ras.MoveToD(x*r.size, y*r.size)
+	r.ras.LineToD(x*r.size+r.size, y*r.size)
+	r.ras.LineToD(x*r.size+r.size, y*r.size+r.size)
+	r.ras.LineToD(x*r.size, y*r.size+r.size)
 	renscan.RenderScanlinesAASolid(r.ras, r.sl, r.renRb, c)
 }
 
@@ -213,23 +155,23 @@ func (d *demo) Render(img *agg.Image) {
 	sizeMul := float64(int(d.slider1.Value()))
 
 	ras := newRasterizer()
-	sl := &scanlineWrapper{sl: scanline.NewScanlineP8()}
+	sl := scanline.NewScanlineP8()
 
 	// 1. Enlarged-pixel rendering.
 	renEnlarged := newRendererEnlarged(mainRb, sizeMul)
 	renEnlarged.SetColor(color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255})
 
-	ras.ras.Reset()
-	ras.ras.MoveToD(d.x[0]/sizeMul, d.y[0]/sizeMul)
-	ras.ras.LineToD(d.x[1]/sizeMul, d.y[1]/sizeMul)
-	ras.ras.LineToD(d.x[2]/sizeMul, d.y[2]/sizeMul)
+	ras.Reset()
+	ras.MoveToD(d.x[0]/sizeMul, d.y[0]/sizeMul)
+	ras.LineToD(d.x[1]/sizeMul, d.y[1]/sizeMul)
+	ras.LineToD(d.x[2]/sizeMul, d.y[2]/sizeMul)
 	renscan.RenderScanlines(ras, sl, renEnlarged)
 
 	// 2. Actual-size solid black fill at scaled coordinates.
-	ras.ras.Reset()
-	ras.ras.MoveToD(d.x[0]/sizeMul, d.y[0]/sizeMul)
-	ras.ras.LineToD(d.x[1]/sizeMul, d.y[1]/sizeMul)
-	ras.ras.LineToD(d.x[2]/sizeMul, d.y[2]/sizeMul)
+	ras.Reset()
+	ras.MoveToD(d.x[0]/sizeMul, d.y[0]/sizeMul)
+	ras.LineToD(d.x[1]/sizeMul, d.y[1]/sizeMul)
+	ras.LineToD(d.x[2]/sizeMul, d.y[2]/sizeMul)
 	renscan.RenderScanlinesAASolid(ras, sl, mainRb,
 		color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255})
 
@@ -243,7 +185,7 @@ func (d *demo) Render(img *agg.Image) {
 		stroke := conv.NewConvStroke(&pathStlVS{ps: ps})
 		stroke.SetWidth(2.0)
 		ras.Reset()
-		ras.ras.AddPath(&convVS{src: stroke}, 0)
+		ras.AddPath(&convVS{src: stroke}, 0)
 		renscan.RenderScanlinesAASolid(ras, sl, mainRb, teal)
 	}
 
@@ -273,14 +215,14 @@ func (d *demo) OnMouseUp(x, y int, btn lowlevelrunner.Buttons) bool {
 }
 
 func renderCtrl(
-	ras *rasterizerAdaptor,
-	sl *scanlineWrapper,
+	ras *rasType,
+	sl *scanline.ScanlineP8,
 	renBase *renderer.RendererBase[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]],
 	ctrl ctrlbase.Ctrl[color.RGBA],
 ) {
 	for pathID := uint(0); pathID < ctrl.NumPaths(); pathID++ {
-		ras.ras.Reset()
-		ras.ras.AddPath(&ctrlVS{ctrl: ctrl}, uint32(pathID))
+		ras.Reset()
+		ras.AddPath(&ctrlVS{ctrl: ctrl}, uint32(pathID))
 		c := ctrl.Color(pathID)
 		renscan.RenderScanlinesAASolid(ras, sl, renBase, color.RGBA8[color.Linear]{
 			R: clampU8(c.R),

@@ -200,7 +200,7 @@ func drawDashDemo() {
 	green := color.RGBA8[color.Linear]{R: 0, G: 153, B: 0, A: 204}
 	if rasGreen.RewindScanlines() {
 		slGreen.Reset(rasGreen.MinX(), rasGreen.MaxX())
-		for rasGreen.SweepScanline(&rasScanlineAdapter{sl: slGreen}) {
+		for rasGreen.SweepScanline(slGreen) {
 			y := slGreen.Y()
 			for _, span := range slGreen.Spans() {
 				if span.Len > 0 {
@@ -272,7 +272,7 @@ func drawDashDemo() {
 	black := color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255}
 	if ras.RewindScanlines() {
 		sl.Reset(ras.MinX(), ras.MaxX())
-		for ras.SweepScanline(&rasScanlineAdapter{sl: sl}) {
+		for ras.SweepScanline(sl) {
 			y := sl.Y()
 			for _, span := range sl.Spans() {
 				if span.Len > 0 {

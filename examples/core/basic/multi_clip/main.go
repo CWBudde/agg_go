@@ -12,7 +12,6 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/color"
 	liondemo "github.com/MeKo-Christian/agg_go/internal/demo/lion"
 	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
-	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
 	"github.com/MeKo-Christian/agg_go/internal/renderer"
 	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
 	"github.com/MeKo-Christian/agg_go/internal/scanline"
@@ -21,60 +20,6 @@ import (
 const clipN = 3
 
 // Scanline/rasterizer adapters.
-
-type mcRasAdp struct {
-	ras interface {
-		RewindScanlines() bool
-		SweepScanline(sl rasterizer.ScanlineInterface) bool
-		MinX() int
-		MaxX() int
-	}
-}
-
-func (r *mcRasAdp) RewindScanlines() bool { return r.ras.RewindScanlines() }
-func (r *mcRasAdp) MinX() int             { return r.ras.MinX() }
-func (r *mcRasAdp) MaxX() int             { return r.ras.MaxX() }
-
-type mcSlAdpP8 struct{ sl *scanline.ScanlineP8 }
-
-func (a *mcSlAdpP8) ResetSpans()                 { a.sl.ResetSpans() }
-func (a *mcSlAdpP8) AddCell(x int, cover uint32) { a.sl.AddCell(x, uint(cover)) }
-func (a *mcSlAdpP8) AddSpan(x, l int, c uint32)  { a.sl.AddSpan(x, l, uint(c)) }
-func (a *mcSlAdpP8) Finalize(y int)              { a.sl.Finalize(y) }
-func (a *mcSlAdpP8) NumSpans() int               { return a.sl.NumSpans() }
-
-func (r *mcRasAdp) SweepScanline(sl renscan.ScanlineInterface) bool {
-	if w, ok := sl.(*mcSlWrapP8); ok {
-		return r.ras.SweepScanline(&mcSlAdpP8{sl: w.sl})
-	}
-	return false
-}
-
-type mcSlWrapP8 struct{ sl *scanline.ScanlineP8 }
-
-func (w *mcSlWrapP8) Reset(minX, maxX int) { w.sl.Reset(minX, maxX) }
-func (w *mcSlWrapP8) Y() int               { return w.sl.Y() }
-func (w *mcSlWrapP8) NumSpans() int        { return w.sl.NumSpans() }
-
-type mcSpanIter struct {
-	spans []scanline.SpanP8
-	idx   int
-}
-
-func (it *mcSpanIter) GetSpan() renscan.SpanData {
-	s := it.spans[it.idx]
-	return renscan.SpanData{X: int(s.X), Len: int(s.Len), Covers: s.Covers}
-}
-func (it *mcSpanIter) Next() bool { it.idx++; return it.idx < len(it.spans) }
-
-func (w *mcSlWrapP8) Begin() renscan.ScanlineIterator {
-	spans := w.sl.Spans()
-	if len(spans) == 0 {
-		return &mcSpanIter{nil, 0}
-	}
-	return &mcSpanIter{spans, 0}
-}
-
 type demo struct{}
 
 func (d *demo) Render(img *agg.Image) {
@@ -112,9 +57,8 @@ func (d *demo) Render(img *agg.Image) {
 	}
 
 	ras := agg2d.GetInternalRasterizer()
-	rasAdp := &mcRasAdp{ras: ras}
+	
 	sl := scanline.NewScanlineP8()
-	slAdp := &mcSlWrapP8{sl: sl}
 
 	lionPaths := liondemo.Parse()
 	for _, lp := range lionPaths {
@@ -133,7 +77,7 @@ func (d *demo) Render(img *agg.Image) {
 				ras.AddVertex(tx, ty, uint32(basics.PathCmdLineTo))
 			}
 		}
-		renscan.RenderScanlinesAASolid(rasAdp, slAdp, mclip, c)
+		renscan.RenderScanlinesAASolid(ras, sl, mclip, c)
 	}
 }
 

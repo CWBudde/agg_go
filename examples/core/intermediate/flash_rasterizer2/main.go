@@ -109,7 +109,6 @@ func (d *demo) Render(img *agg.Image) {
 	ras.AutoClose(false)
 
 	sl := scanline.NewScanlineU8()
-	slRas := &rasScanlineAdapter{sl: sl}
 
 	// Fill pass (flash2 method).
 	tFillStart := time.Now()
@@ -137,9 +136,9 @@ func (d *demo) Render(img *agg.Image) {
 		}
 		sl.Reset(ras.MinX(), ras.MaxX())
 		c := d.styleColor(s)
-		for ras.SweepScanline(slRas) {
+		for ras.SweepScanline(sl) {
 			renscan.RenderScanlineAASolid(
-				&scanlineWrapperU8{sl: sl},
+				sl,
 				renBase,
 				c,
 			)
@@ -180,9 +179,9 @@ func (d *demo) Render(img *agg.Image) {
 			continue
 		}
 		sl.Reset(ras.MinX(), ras.MaxX())
-		for ras.SweepScanline(slRas) {
+		for ras.SweepScanline(sl) {
 			renscan.RenderScanlineAASolid(
-				&scanlineWrapperU8{sl: sl},
+				sl,
 				renBase,
 				strokeColor,
 			)
@@ -226,9 +225,9 @@ func (d *demo) Render(img *agg.Image) {
 	if ras.RewindScanlines() {
 		sl.Reset(ras.MinX(), ras.MaxX())
 		textColor := color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255}
-		for ras.SweepScanline(slRas) {
+		for ras.SweepScanline(sl) {
 			renscan.RenderScanlineAASolid(
-				&scanlineWrapperU8{sl: sl},
+				sl,
 				renBase,
 				textColor,
 			)
@@ -356,41 +355,3 @@ func (a *convVertexSourceRasVS) Vertex(x, y *float64) uint32 {
 	return uint32(cmd)
 }
 
-// --- Scanline adapters (mirrors cmd/wasm/adapter.go) ---
-
-type rasScanlineAdapter struct {
-	sl *scanline.ScanlineU8
-}
-
-func (a *rasScanlineAdapter) ResetSpans()                 { a.sl.ResetSpans() }
-func (a *rasScanlineAdapter) AddCell(x int, cover uint32) { a.sl.AddCell(x, uint(cover)) }
-func (a *rasScanlineAdapter) AddSpan(x, length int, cover uint32) {
-	a.sl.AddSpan(x, length, uint(cover))
-}
-func (a *rasScanlineAdapter) Finalize(y int) { a.sl.Finalize(y) }
-func (a *rasScanlineAdapter) NumSpans() int  { return a.sl.NumSpans() }
-
-type scanlineWrapperU8 struct{ sl *scanline.ScanlineU8 }
-
-func (w *scanlineWrapperU8) Reset(minX, maxX int) { w.sl.Reset(minX, maxX) }
-func (w *scanlineWrapperU8) Y() int               { return w.sl.Y() }
-func (w *scanlineWrapperU8) NumSpans() int        { return w.sl.NumSpans() }
-
-type spanIterU8 struct {
-	spans []scanline.Span
-	idx   int
-}
-
-func (it *spanIterU8) GetSpan() renscan.SpanData {
-	s := it.spans[it.idx]
-	return renscan.SpanData{X: int(s.X), Len: int(s.Len), Covers: s.Covers}
-}
-func (it *spanIterU8) Next() bool { it.idx++; return it.idx < len(it.spans) }
-
-func (w *scanlineWrapperU8) Begin() renscan.ScanlineIterator {
-	spans := w.sl.Spans()
-	if len(spans) == 0 {
-		return &spanIterU8{spans: nil, idx: 0}
-	}
-	return &spanIterU8{spans: spans, idx: 0}
-}

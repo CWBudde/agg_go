@@ -291,71 +291,17 @@ func (a *ctrlVertexSourceAdapter) Vertex(x, y *float64) uint32 {
 // --- Low-level rendering helpers ---
 
 // rasScanlineAdapter adapts scanline.ScanlineU8 to rasterizer.ScanlineInterface.
-type rasScanlineAdapter struct {
-	sl *scanline.ScanlineU8
-}
-
-func (a *rasScanlineAdapter) ResetSpans()                 { a.sl.ResetSpans() }
-func (a *rasScanlineAdapter) AddCell(x int, cover uint32) { a.sl.AddCell(x, uint(cover)) }
-func (a *rasScanlineAdapter) AddSpan(x, length int, cover uint32) {
-	a.sl.AddSpan(x, length, uint(cover))
-}
-func (a *rasScanlineAdapter) Finalize(y int) { a.sl.Finalize(y) }
-func (a *rasScanlineAdapter) NumSpans() int  { return a.sl.NumSpans() }
-
 // spanIter implements renscan.ScanlineIterator over scanline.Span slices.
-type spanIter struct {
-	spans []scanline.Span
-	idx   int
-}
-
-func (it *spanIter) GetSpan() renscan.SpanData {
-	s := it.spans[it.idx]
-	return renscan.SpanData{X: int(s.X), Len: int(s.Len), Covers: s.Covers}
-}
-func (it *spanIter) Next() bool { it.idx++; return it.idx < len(it.spans) }
-
 // scanlineWrapper adapts scanline.ScanlineU8 to renscan.ScanlineInterface.
-type scanlineWrapper struct {
-	sl   *scanline.ScanlineU8
-	iter spanIter
-}
-
-func (w *scanlineWrapper) Reset(minX, maxX int) { w.sl.Reset(minX, maxX) }
-func (w *scanlineWrapper) Y() int               { return w.sl.Y() }
-func (w *scanlineWrapper) NumSpans() int        { return w.sl.NumSpans() }
-func (w *scanlineWrapper) Begin() renscan.ScanlineIterator {
-	w.iter.spans = w.sl.Spans()
-	w.iter.idx = 0
-	return &w.iter
-}
-
 // rasAdapter wraps the rasterizer to satisfy renscan.RasterizerInterface.
-type rasAdapter struct {
-	ras    *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
-	slAdpt rasScanlineAdapter
-}
-
-func (r *rasAdapter) RewindScanlines() bool { return r.ras.RewindScanlines() }
-func (r *rasAdapter) MinX() int             { return r.ras.MinX() }
-func (r *rasAdapter) MaxX() int             { return r.ras.MaxX() }
-func (r *rasAdapter) SweepScanline(sl renscan.ScanlineInterface) bool {
-	if w, ok := sl.(*scanlineWrapper); ok {
-		r.slAdpt.sl = w.sl
-		return r.ras.SweepScanline(&r.slAdpt)
-	}
-	return false
-}
-
 // renderSolid renders the rasterizer using a solid color via renscan.RenderScanlinesAASolid.
 func renderSolid(
 	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
-	slw *scanlineWrapper,
+	slw *scanline.ScanlineP8,
 	rb *renderer.RendererBase[*pixfmt.PixFmtRGBA32Pre[icol.Linear], icol.RGBA8[icol.Linear]],
 	color icol.RGBA8[icol.Linear],
 ) {
-	ra := &rasAdapter{ras: ras}
-	renscan.RenderScanlinesAASolid(ra, slw, rb, color)
+	renscan.RenderScanlinesAASolid(ras, slw, rb, color)
 }
 
 // renderImageSpan renders the image-filter pass via a manual loop (avoids interface wrapping
@@ -371,8 +317,7 @@ func renderImageSpan(
 		return
 	}
 	sl.Reset(ras.MinX(), ras.MaxX())
-	rsa := &rasScanlineAdapter{sl: sl}
-	for ras.SweepScanline(rsa) {
+	for ras.SweepScanline(sl) {
 		y := sl.Y()
 		for _, sp := range sl.Spans() {
 			if sp.Len > 0 {
@@ -447,7 +392,7 @@ func toRGBA8(c icol.RGBA) icol.RGBA8[icol.Linear] {
 // renderCtrl renders all paths of a control widget using low-level rendering.
 func renderCtrl(
 	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
-	slw *scanlineWrapper,
+	slw *scanline.ScanlineP8,
 	rb *renderer.RendererBase[*pixfmt.PixFmtRGBA32Pre[icol.Linear], icol.RGBA8[icol.Linear]],
 	c ctrlbase.Ctrl[icol.RGBA],
 ) {
@@ -506,7 +451,7 @@ func (d *demo) Render(img *agg.Image) {
 		rasterizer.NewRasterizerSlNoClip(),
 	)
 	sl := scanline.NewScanlineU8()
-	slw := &scanlineWrapper{sl: sl}
+	slw := scanline.NewScanlineP8()
 
 	// --- Controls (C++ constructor positions, !flip_y = false) ---
 	//   m_angle     (5,      5,    150,     12,    !flip_y)
@@ -649,8 +594,7 @@ func (d *demo) Render(img *agg.Image) {
 	ras.Reset()
 	ell.Rewind(0)
 	ras.AddPath(&transformedEllipseAdapter{e: ell, mtx: gr1Mtx}, 0)
-	ra := &rasAdapter{ras: ras}
-	renscan.RenderScanlinesAA(ra, slw, rb, alloc, gradSpan)
+	renscan.RenderScanlinesAA(ras, slw, rb, alloc, gradSpan)
 
 	// --- Render controls (C++ render_ctrl calls at end of on_draw) ---
 	// C++: render_ctrl(ras, sl, rb, m_angle); etc.

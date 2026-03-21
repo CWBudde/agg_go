@@ -2,6 +2,7 @@ package rasterizer
 
 import (
 	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/scanline"
 )
 
 // AA scale constants are defined in compound_aa.go
@@ -324,7 +325,7 @@ func (r *RasterizerScanlineAA[C, V, Clip]) CalculateAlpha(area int) uint8 {
 }
 
 // SweepScanline generates the next scanline and stores it in the provided scanline object
-func (r *RasterizerScanlineAA[C, V, Clip]) SweepScanline(sl ScanlineInterface) bool {
+func (r *RasterizerScanlineAA[C, V, Clip]) SweepScanline(sl scanline.Scanline) bool {
 	for {
 		if r.scanY > r.outline.MaxY() {
 			return false
@@ -358,7 +359,7 @@ func (r *RasterizerScanlineAA[C, V, Clip]) SweepScanline(sl ScanlineInterface) b
 			if area != 0 {
 				alpha := r.CalculateAlpha((cover << (basics.PolySubpixelShift + 1)) - area)
 				if alpha != 0 {
-					sl.AddCell(x, uint32(alpha))
+					sl.AddCell(x, uint(alpha))
 				}
 				x++
 			}
@@ -366,7 +367,7 @@ func (r *RasterizerScanlineAA[C, V, Clip]) SweepScanline(sl ScanlineInterface) b
 			if cellIndex < numCells && cells[cellIndex].X > x {
 				alpha := r.CalculateAlpha(cover << (basics.PolySubpixelShift + 1))
 				if alpha != 0 {
-					sl.AddSpan(x, cells[cellIndex].X-x, uint32(alpha))
+					sl.AddSpan(x, cells[cellIndex].X-x, uint(alpha))
 				}
 			}
 		}

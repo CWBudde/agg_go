@@ -61,7 +61,7 @@ func drawRasterizersDemo() {
 	// Use manual sweep loop to avoid interface mismatches
 	if ras.RewindScanlines() {
 		sl.Reset(ras.MinX(), ras.MaxX())
-		for ras.SweepScanline(&rasScanlineAdapter{sl: sl}) {
+		for ras.SweepScanline(sl) {
 			y := sl.Y()
 			for _, spanData := range sl.Spans() {
 				if spanData.Len > 0 {
@@ -90,7 +90,7 @@ func drawRasterizersDemo() {
 
 	if ras.RewindScanlines() {
 		sl.Reset(ras.MinX(), ras.MaxX())
-		for ras.SweepScanline(&rasScanlineAdapter{sl: sl}) {
+		for ras.SweepScanline(sl) {
 			y := sl.Y()
 			for _, spanData := range sl.Spans() {
 				if spanData.Len > 0 {

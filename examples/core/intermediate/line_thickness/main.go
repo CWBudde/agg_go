@@ -45,19 +45,6 @@ func (a *controlPathAdapter) Vertex(x, y *float64) uint32 {
 	*y = vy
 	return uint32(cmd)
 }
-
-type rasScanlineAdapter struct {
-	sl *scanline.ScanlineU8
-}
-
-func (a *rasScanlineAdapter) ResetSpans()                 { a.sl.ResetSpans() }
-func (a *rasScanlineAdapter) AddCell(x int, cover uint32) { a.sl.AddCell(x, uint(cover)) }
-func (a *rasScanlineAdapter) AddSpan(x, length int, cover uint32) {
-	a.sl.AddSpan(x, length, uint(cover))
-}
-func (a *rasScanlineAdapter) Finalize(y int) { a.sl.Finalize(y) }
-func (a *rasScanlineAdapter) NumSpans() int  { return a.sl.NumSpans() }
-
 func rgbaToRGBA8(c color.RGBA) color.RGBA8[color.Linear] {
 	clamp := func(v float64) uint8 {
 		if v <= 0 {
@@ -94,7 +81,7 @@ func renderControl(
 			continue
 		}
 		sl.Reset(ras.MinX(), ras.MaxX())
-		for ras.SweepScanline(&rasScanlineAdapter{sl: sl}) {
+		for ras.SweepScanline(sl) {
 			y := sl.Y()
 			for _, spanData := range sl.Spans() {
 				if spanData.Len > 0 {

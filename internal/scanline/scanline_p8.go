@@ -193,6 +193,16 @@ func (sl *ScanlineP8) Spans() []SpanP8 {
 	return sl.Begin()
 }
 
+// BeginIterator returns an iterator over the spans, satisfying the unified
+// Scanline interface.
+func (sl *ScanlineP8) BeginIterator() ScanlineIterator {
+	spans := sl.Begin()
+	if len(spans) == 0 {
+		return &sliceIterP8{}
+	}
+	return &sliceIterP8{spans: spans}
+}
+
 // IsSolid reports whether the span uses the packed solid-span encoding.
 func (span *SpanP8) IsSolid() bool {
 	return span.Len < 0

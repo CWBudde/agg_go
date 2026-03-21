@@ -58,8 +58,7 @@ func radialShape2(rb renscan.BaseRendererInterface[color.RGBA8[color.Linear]], c
 	agg2d := ctx.GetAgg2D()
 	ras := agg2d.GetInternalRasterizer()
 	sl := scanline.NewScanlineU8()
-	slAdapter := &scanlineWrapperU8{sl: sl}
-	rasAdapter := &rasterizerAdapter{ras: ras}
+	
 
 	ras.Reset()
 	ell := shapes.NewEllipseWithParams(cx, cy, r, r, 100, false)
@@ -73,7 +72,7 @@ func radialShape2(rb renscan.BaseRendererInterface[color.RGBA8[color.Linear]], c
 		ras.AddVertex(x, y, uint32(cmd))
 	}
 
-	renscan.RenderScanlinesAA(rasAdapter, slAdapter, rb, sa, sg)
+	renscan.RenderScanlinesAA(ras, sl, rb, sa, sg)
 }
 
 type colorRampFunc struct {

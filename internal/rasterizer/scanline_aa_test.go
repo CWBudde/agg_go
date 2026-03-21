@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/scanline"
 )
 
 // MockScanline implements ScanlineInterface for testing
@@ -15,12 +16,12 @@ type MockScanline struct {
 
 type MockCell struct {
 	x     int
-	cover uint32
+	cover uint
 }
 
 type MockSpan struct {
 	x, len int
-	cover  uint32
+	cover  uint
 }
 
 func (ms *MockScanline) ResetSpans() {
@@ -28,11 +29,11 @@ func (ms *MockScanline) ResetSpans() {
 	ms.spans = ms.spans[:0]
 }
 
-func (ms *MockScanline) AddCell(x int, cover uint32) {
+func (ms *MockScanline) AddCell(x int, cover uint) {
 	ms.cells = append(ms.cells, MockCell{x: x, cover: cover})
 }
 
-func (ms *MockScanline) AddSpan(x, length int, cover uint32) {
+func (ms *MockScanline) AddSpan(x, length int, cover uint) {
 	ms.spans = append(ms.spans, MockSpan{x: x, len: length, cover: cover})
 }
 
@@ -43,6 +44,15 @@ func (ms *MockScanline) Finalize(y int) {
 func (ms *MockScanline) NumSpans() int {
 	return len(ms.cells) + len(ms.spans)
 }
+
+func (ms *MockScanline) Y() int                                  { return ms.y }
+func (ms *MockScanline) Reset(minX, maxX int)                    {}
+func (ms *MockScanline) BeginIterator() scanline.ScanlineIterator { return &mockSLIter{} }
+
+type mockSLIter struct{}
+
+func (m *mockSLIter) GetSpan() scanline.SpanInfo { return scanline.SpanInfo{} }
+func (m *mockSLIter) Next() bool                 { return false }
 
 // MockClip implements ClipInterface for testing
 type MockClip struct {

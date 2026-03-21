@@ -133,6 +133,16 @@ func (sl *ScanlineBin) Spans() []SpanBin {
 	return sl.Begin()
 }
 
+// BeginIterator returns an iterator over the spans, satisfying the unified
+// Scanline interface.
+func (sl *ScanlineBin) BeginIterator() ScanlineIterator {
+	spans := sl.Begin()
+	if len(spans) == 0 {
+		return &sliceIterBin{}
+	}
+	return &sliceIterBin{spans: spans}
+}
+
 // =============================================================scanline32_bin
 
 // Span32Bin is the Go equivalent of AGG's scanline32_bin::span.
@@ -234,6 +244,23 @@ func (sl *Scanline32Bin) Begin() *Scanline32BinIterator {
 		spanIdx: 0,
 	}
 }
+
+// BeginIterator returns an iterator over the spans, satisfying the unified
+// Scanline interface.
+func (sl *Scanline32Bin) BeginIterator() ScanlineIterator {
+	return &scanline32BinIterAdapter{inner: sl.Begin()}
+}
+
+type scanline32BinIterAdapter struct {
+	inner *Scanline32BinIterator
+}
+
+func (a *scanline32BinIterAdapter) GetSpan() SpanInfo {
+	s := a.inner.Span()
+	return SpanInfo{X: int(s.X), Len: int(s.Len), Covers: nil}
+}
+
+func (a *scanline32BinIterAdapter) Next() bool { return a.inner.Next() }
 
 // Spans returns all spans as a slice for iteration.
 // This is a Go-idiomatic way to iterate over spans.

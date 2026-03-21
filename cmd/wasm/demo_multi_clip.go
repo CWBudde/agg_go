@@ -68,9 +68,8 @@ func drawMultiClipDemo() {
 
 	// Render the lion with multi-clip
 	ras := agg2d.GetInternalRasterizer()
-	rasAdapter := &rasterizerAdapter{ras: ras}
+	
 	sl := scanline.NewScanlineP8()
-	slAdapter := &scanlineWrapperP8{sl: sl}
 
 	for _, lp := range lionPaths {
 		c := color.RGBA8[color.Linear]{R: lp.Color.R, G: lp.Color.G, B: lp.Color.B, A: 255}
@@ -93,7 +92,7 @@ func drawMultiClipDemo() {
 			}
 		}
 
-		renscan.RenderScanlinesAASolid(rasAdapter, slAdapter, mclip, c)
+		renscan.RenderScanlinesAASolid(ras, sl, mclip, c)
 	}
 
 	// Random lines
@@ -110,7 +109,7 @@ func drawMultiClipDemo() {
 		ras.Reset()
 		ras.AddVertex(x1, y1, uint32(basics.PathCmdMoveTo))
 		ras.AddVertex(x2, y2, uint32(basics.PathCmdLineTo))
-		renscan.RenderScanlinesAASolid(rasAdapter, slAdapter, mclip, c)
+		renscan.RenderScanlinesAASolid(ras, sl, mclip, c)
 	}
 
 	logStatus(fmt.Sprintf("Multi-Clip Demo: N=%.0f", n))

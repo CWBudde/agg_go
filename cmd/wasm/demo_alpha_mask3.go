@@ -51,8 +51,7 @@ func generateAlphaMask3(vs conv.VertexSource, w, h int) {
 	agg2d := ctx.GetAgg2D()
 	ras := agg2d.GetInternalRasterizer()
 	sl := scanline.NewScanlineP8()
-	slAdapter := &scanlineWrapperP8{sl: sl}
-	rasAdapter := &rasterizerAdapter{ras: ras}
+	
 
 	if am3Operation == 0 {
 		maskRb.Clear(color.Gray8[color.Linear]{V: 0, A: 255})
@@ -65,7 +64,7 @@ func generateAlphaMask3(vs conv.VertexSource, w, h int) {
 			}
 			ras.AddVertex(x, y, uint32(cmd))
 		}
-		renscan.RenderScanlinesAASolid(rasAdapter, slAdapter, maskRb, color.Gray8[color.Linear]{V: 255, A: 255})
+		renscan.RenderScanlinesAASolid(ras, sl, maskRb, color.Gray8[color.Linear]{V: 255, A: 255})
 	} else {
 		maskRb.Clear(color.Gray8[color.Linear]{V: 255, A: 255})
 		ras.Reset()
@@ -77,7 +76,7 @@ func generateAlphaMask3(vs conv.VertexSource, w, h int) {
 			}
 			ras.AddVertex(x, y, uint32(cmd))
 		}
-		renscan.RenderScanlinesAASolid(rasAdapter, slAdapter, maskRb, color.Gray8[color.Linear]{V: 0, A: 255})
+		renscan.RenderScanlinesAASolid(ras, sl, maskRb, color.Gray8[color.Linear]{V: 0, A: 255})
 	}
 
 	maskFunc := pixfmt.OneComponentMaskU8{}
@@ -101,9 +100,8 @@ func drawAlphaMask3Demo() {
 	rbBase := renderer.NewRendererBaseWithPixfmt(imgPixf)
 
 	ras := agg2d.GetInternalRasterizer()
-	rasAdapter := &rasterizerAdapter{ras: ras}
+	
 	sl := scanline.NewScanlineP8()
-	slAdapter := &scanlineWrapperP8{sl: sl}
 
 	if am3Polygon == 3 { // Great Britain and Spiral
 		psGB := path.NewPathStorageStl()
@@ -125,7 +123,7 @@ func drawAlphaMask3Demo() {
 			}
 			ras.AddVertex(x, y, uint32(cmd))
 		}
-		renscan.RenderScanlinesAASolid(rasAdapter, slAdapter, rbBase, color.RGBA8[color.Linear]{R: 127, G: 127, B: 0, A: 25})
+		renscan.RenderScanlinesAASolid(ras, sl, rbBase, color.RGBA8[color.Linear]{R: 127, G: 127, B: 0, A: 25})
 
 		// Draw GB stroke
 		strokeGB := conv.NewConvStroke(transGB)
@@ -139,7 +137,7 @@ func drawAlphaMask3Demo() {
 			}
 			ras.AddVertex(x, y, uint32(cmd))
 		}
-		renscan.RenderScanlinesAASolid(rasAdapter, slAdapter, rbBase, color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255})
+		renscan.RenderScanlinesAASolid(ras, sl, rbBase, color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255})
 
 		// Spiral
 		// We'd need a spiral generator here. For now let's just use a circle as a placeholder

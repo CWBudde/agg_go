@@ -15,9 +15,10 @@ type MockScanline struct {
 	spanIdx  int
 }
 
-func (m *MockScanline) Y() int                  { return m.y }
-func (m *MockScanline) NumSpans() int           { return m.numSpans }
-func (m *MockScanline) Begin() ScanlineIterator { m.spanIdx = 0; return m }
+func (m *MockScanline) Y() int        { return m.y }
+func (m *MockScanline) NumSpans() int { return m.numSpans }
+
+func (m *MockScanline) BeginIterator() ScanlineIterator { m.spanIdx = 0; return m }
 
 func (m *MockScanline) GetSpan() SpanData {
 	if m.spanIdx < len(m.spans) {
@@ -31,9 +32,19 @@ func (m *MockScanline) Next() bool {
 	return m.spanIdx < len(m.spans)
 }
 
-func (m *MockScanline) Reset(minX, maxX int) {
-	// Mock reset implementation
+func (m *MockScanline) Reset(minX, maxX int) {}
+func (m *MockScanline) ResetSpans()          {}
+func (m *MockScanline) AddCell(x int, cover uint) {
+	m.spans = append(m.spans, SpanData{X: x, Len: 1, Covers: []basics.Int8u{basics.Int8u(cover)}})
 }
+func (m *MockScanline) AddSpan(x, length int, cover uint) {
+	covers := make([]basics.Int8u, length)
+	for i := range covers {
+		covers[i] = basics.Int8u(cover)
+	}
+	m.spans = append(m.spans, SpanData{X: x, Len: length, Covers: covers})
+}
+func (m *MockScanline) Finalize(y int) { m.y = y }
 
 // MockResettableScanline extends MockScanline with reset tracking
 type MockResettableScanline struct {
@@ -48,6 +59,11 @@ func (m *MockResettableScanline) Reset(minX, maxX int) {
 	m.ResetMinX = minX
 	m.ResetMaxX = maxX
 }
+
+func (m *MockResettableScanline) ResetSpans()                       {}
+func (m *MockResettableScanline) AddCell(x int, cover uint)         {}
+func (m *MockResettableScanline) AddSpan(x, length int, cover uint) {}
+func (m *MockResettableScanline) Finalize(y int)                    {}
 
 // MockBaseRenderer implements BaseRendererInterface for testing
 type MockBaseRenderer[C any] struct {

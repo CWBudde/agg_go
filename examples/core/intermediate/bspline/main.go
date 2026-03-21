@@ -111,21 +111,17 @@ func (d *demo) Render(img *agg.Image) {
 		rasterizer.NewRasterizerSlNoClip(),
 	)
 	sl := isl.NewScanlineP8()
-	rasWrap := &rasterizerAdapter{ras: ras}
-	slWrap := &scanlineWrapperP8{sl: sl}
-
-	renderCurve(ras, rasWrap, slWrap, renBase, d.poly, d.close, d.points)
-	renderControl(ras, rasWrap, slWrap, renBase, d.poly)
-	renderControl(ras, rasWrap, slWrap, renBase, d.close)
-	renderControl(ras, rasWrap, slWrap, renBase, d.points)
+	renderCurve(ras, sl, renBase, d.poly, d.close, d.points)
+	renderControl(ras, sl, renBase, d.poly)
+	renderControl(ras, sl, renBase, d.close)
+	renderControl(ras, sl, renBase, d.points)
 
 	copyFlipY(workBuf, img.Data, w, h)
 }
 
 func renderCurve(
 	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
-	rasWrap *rasterizerAdapter,
-	slWrap *scanlineWrapperP8,
+	sl *isl.ScanlineP8,
 	renBase *renderer.RendererBase[*pixfmt.PixFmtRGBA32[icolor.Linear], icolor.RGBA8[icolor.Linear]],
 	poly *ctrlpoly.PolygonCtrl[icolor.RGBA],
 	close *checkbox.CheckboxCtrl[icolor.RGBA],
@@ -141,8 +137,8 @@ func renderCurve(
 	ras.Reset()
 	ras.AddPath(&rasterVertexSourceAdapter{src: stroke}, 0)
 	renscan.RenderScanlinesAASolid(
-		rasWrap,
-		slWrap,
+		ras,
+		sl,
 		renBase,
 		icolor.RGBA8[icolor.Linear]{R: 0, G: 0, B: 0, A: 255},
 	)
@@ -150,8 +146,7 @@ func renderCurve(
 
 func renderControl(
 	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
-	rasWrap *rasterizerAdapter,
-	slWrap *scanlineWrapperP8,
+	sl *isl.ScanlineP8,
 	renBase *renderer.RendererBase[*pixfmt.PixFmtRGBA32[icolor.Linear], icolor.RGBA8[icolor.Linear]],
 	ctrl ctrlpkg.Ctrl[icolor.RGBA],
 ) {
@@ -159,8 +154,8 @@ func renderControl(
 		ras.Reset()
 		ras.AddPath(&ctrlPathAdapter{ctrl: ctrl}, uint32(pathID))
 		renscan.RenderScanlinesAASolid(
-			rasWrap,
-			slWrap,
+			ras,
+			sl,
 			renBase,
 			toRGBA8(ctrl.Color(pathID)),
 		)
@@ -181,73 +176,6 @@ func (a *ctrlPathAdapter) Vertex(x, y *float64) uint32 {
 	*y = vy
 	return uint32(cmd)
 }
-
-type scanlineWrapperP8 struct {
-	sl   *isl.ScanlineP8
-	iter spanIterP8
-}
-
-func (w *scanlineWrapperP8) Reset(minX, maxX int) { w.sl.Reset(minX, maxX) }
-func (w *scanlineWrapperP8) Y() int               { return w.sl.Y() }
-func (w *scanlineWrapperP8) NumSpans() int        { return w.sl.NumSpans() }
-
-func (w *scanlineWrapperP8) Begin() renscan.ScanlineIterator {
-	w.iter.spans = w.sl.Spans()
-	w.iter.idx = 0
-	return &w.iter
-}
-
-type spanIterP8 struct {
-	spans []isl.SpanP8
-	idx   int
-}
-
-func (it *spanIterP8) GetSpan() renscan.SpanData {
-	s := it.spans[it.idx]
-	covers := make([]uint8, len(s.Covers))
-	for i := range s.Covers {
-		covers[i] = uint8(s.Covers[i])
-	}
-	return renscan.SpanData{X: int(s.X), Len: int(s.Len), Covers: covers}
-}
-
-func (it *spanIterP8) Next() bool {
-	it.idx++
-	return it.idx < len(it.spans)
-}
-
-type rasterizerAdapter struct {
-	ras interface {
-		RewindScanlines() bool
-		SweepScanline(sl rasterizer.ScanlineInterface) bool
-		MinX() int
-		MaxX() int
-	}
-}
-
-func (r *rasterizerAdapter) RewindScanlines() bool { return r.ras.RewindScanlines() }
-func (r *rasterizerAdapter) MinX() int             { return r.ras.MinX() }
-func (r *rasterizerAdapter) MaxX() int             { return r.ras.MaxX() }
-
-func (r *rasterizerAdapter) SweepScanline(sl renscan.ScanlineInterface) bool {
-	w, ok := sl.(*scanlineWrapperP8)
-	if !ok {
-		return false
-	}
-	return r.ras.SweepScanline(&rasScanlineAdapter{sl: w.sl})
-}
-
-type rasScanlineAdapter struct {
-	sl *isl.ScanlineP8
-}
-
-func (a *rasScanlineAdapter) ResetSpans()             { a.sl.ResetSpans() }
-func (a *rasScanlineAdapter) AddCell(x int, c uint32) { a.sl.AddCell(x, uint(c)) }
-func (a *rasScanlineAdapter) AddSpan(x, l int, c uint32) {
-	a.sl.AddSpan(x, l, uint(c))
-}
-func (a *rasScanlineAdapter) Finalize(y int) { a.sl.Finalize(y) }
-func (a *rasScanlineAdapter) NumSpans() int  { return a.sl.NumSpans() }
 
 func toRGBA8(c icolor.RGBA) icolor.RGBA8[icolor.Linear] {
 	clamp := func(v float64) uint8 {

@@ -18,31 +18,6 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/shapes"
 )
 
-// ScanlineAdapter adapts the scanline storage to the rasterizer interface
-type ScanlineAdapter struct {
-	sl *scanlinestorage.ScanlineU8
-}
-
-func (sa *ScanlineAdapter) ResetSpans() {
-	sa.sl.ResetSpans()
-}
-
-func (sa *ScanlineAdapter) AddCell(x int, cover uint32) {
-	sa.sl.AddCell(x, uint(cover))
-}
-
-func (sa *ScanlineAdapter) AddSpan(x, length int, cover uint32) {
-	sa.sl.AddSpan(x, length, uint(cover))
-}
-
-func (sa *ScanlineAdapter) Finalize(y int) {
-	sa.sl.Finalize(y)
-}
-
-func (sa *ScanlineAdapter) NumSpans() int {
-	return sa.sl.NumSpans()
-}
-
 // savePNG saves the RGBA buffer as a PNG file for visual verification
 func savePNG(filename string, pixelData []uint8, width, height int) error {
 	dir := filepath.Dir(filename)
@@ -106,12 +81,11 @@ func renderCircle(t *testing.T, width, height int, centerX, centerY, radius floa
 	}
 
 	sl := scanlinestorage.NewScanlineU8()
-	adapter := &ScanlineAdapter{sl}
 	fillColor := color.RGBA8[color.Linear]{R: 255, G: 0, B: 0, A: 255}
 
 	if ras.RewindScanlines() {
 		sl.Reset(ras.MinX(), ras.MaxX())
-		for ras.SweepScanline(adapter) {
+		for ras.SweepScanline(sl) {
 			y := sl.Y()
 			for _, span := range sl.Begin() {
 				for px := 0; px < int(span.Len); px++ {

@@ -2,7 +2,6 @@ package scanline
 
 import (
 	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
 )
 
 // Coverage constants are re-exported here for scanline boolean formulas.
@@ -19,7 +18,7 @@ const (
 type BooleanScanlineInterface interface {
 	Y() int
 	NumSpans() int
-	Begin() scanline.ScanlineIterator
+	Begin() ScanlineIterator
 	ResetSpans()
 	AddCell(x int, cover uint)
 	AddCells(x, length int, covers []basics.Int8u)
@@ -794,7 +793,7 @@ func UniteScanlines(sl1, sl2, sl BooleanScanlineInterface,
 	num1 := sl1.NumSpans()
 	num2 := sl2.NumSpans()
 
-	var span1, span2 scanline.ScanlineIterator
+	var span1, span2 ScanlineIterator
 
 	const (
 		invalidB = 0x0FFFFFFF

@@ -92,9 +92,8 @@ func drawCircleComp(rb renscan.BaseRendererInterface[color.RGBA8[color.Linear]],
 	cx, cy := (x1+x2)/2, (y1+y2)/2
 
 	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip())
-	rasAdapter := &rasterizerAdapter{ras: ras}
+	
 	sl := scanline.NewScanlineU8()
-	slAdapter := &scanlineWrapperU8{sl: sl}
 
 	// Shadow
 	circle := shapes.NewEllipseWithParams(cx+5, cy-3, r, r, 0, false)
@@ -108,7 +107,7 @@ func drawCircleComp(rb renscan.BaseRendererInterface[color.RGBA8[color.Linear]],
 		}
 		ras.AddVertex(x, y, uint32(cmd))
 	}
-	renscan.RenderScanlinesAASolid(rasAdapter, slAdapter, rb, color.RGBA8[color.Linear]{R: 153, G: 153, B: 153, A: uint8(0.7 * float64(c1.A))})
+	renscan.RenderScanlinesAASolid(ras, sl, rb, color.RGBA8[color.Linear]{R: 153, G: 153, B: 153, A: uint8(0.7 * float64(c1.A))})
 
 	ras.Reset()
 	circle.Init(cx, cy, r, r, 0, false)
@@ -122,14 +121,13 @@ func drawCircleComp(rb renscan.BaseRendererInterface[color.RGBA8[color.Linear]],
 		ras.AddVertex(x, y, uint32(cmd))
 	}
 
-	renscan.RenderScanlinesAASolid(rasAdapter, slAdapter, rb, c1)
+	renscan.RenderScanlinesAASolid(ras, sl, rb, c1)
 }
 
 func drawSourceShapeComp(rb renscan.BaseRendererInterface[color.RGBA8[color.Linear]], c1, c2 color.RGBA8[color.Linear], x1, y1, x2, y2 float64) {
 	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip())
-	rasAdapter := &rasterizerAdapter{ras: ras}
+	
 	sl := scanline.NewScanlineU8()
-	slAdapter := &scanlineWrapperU8{sl: sl}
 
 	// Just use a rectangle for now since we don't have a path helper here
 	ras.AddVertex(x1, y1, uint32(basics.PathCmdMoveTo))
@@ -137,7 +135,7 @@ func drawSourceShapeComp(rb renscan.BaseRendererInterface[color.RGBA8[color.Line
 	ras.AddVertex(x2, y2, uint32(basics.PathCmdLineTo))
 	ras.AddVertex(x1, y2, uint32(basics.PathCmdLineTo))
 
-	renscan.RenderScanlinesAASolid(rasAdapter, slAdapter, rb, c1)
+	renscan.RenderScanlinesAASolid(ras, sl, rb, c1)
 }
 
 func setCompOp(op int) {

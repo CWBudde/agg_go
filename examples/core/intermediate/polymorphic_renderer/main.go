@@ -69,7 +69,7 @@ func (r *rgba32Filler) RenderTriangle(x, y [3]float64) {
 	sl := scanline.NewScanlineU8()
 	if ras.RewindScanlines() {
 		sl.Reset(ras.MinX(), ras.MaxX())
-		for ras.SweepScanline(&slAdapter{sl: sl}) {
+		for ras.SweepScanline(sl) {
 			y := sl.Y()
 			for _, sp := range sl.Spans() {
 				if sp.Len > 0 {
@@ -169,12 +169,3 @@ func (a *psAdapter) Vertex(x, y *float64) uint32 {
 	return cmd
 }
 
-type slAdapter struct{ sl *scanline.ScanlineU8 }
-
-func (a *slAdapter) ResetSpans()                 { a.sl.ResetSpans() }
-func (a *slAdapter) AddCell(x int, cover uint32) { a.sl.AddCell(x, uint(cover)) }
-func (a *slAdapter) AddSpan(x, length int, cover uint32) {
-	a.sl.AddSpan(x, length, uint(cover))
-}
-func (a *slAdapter) Finalize(y int) { a.sl.Finalize(y) }
-func (a *slAdapter) NumSpans() int  { return a.sl.NumSpans() }

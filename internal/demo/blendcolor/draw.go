@@ -69,19 +69,6 @@ func (a *rasPathAdapter) Vertex(x, y *float64) uint32 {
 	return uint32(cmd)
 }
 
-// scanlineAdapter adapts scanline.ScanlineP8 to the rasterizer's ScanlineInterface.
-type scanlineAdapter struct {
-	sl *scanline.ScanlineP8
-}
-
-func (a *scanlineAdapter) ResetSpans()                 { a.sl.ResetSpans() }
-func (a *scanlineAdapter) AddCell(x int, cover uint32) { a.sl.AddCell(x, uint(cover)) }
-func (a *scanlineAdapter) AddSpan(x, length int, cover uint32) {
-	a.sl.AddSpan(x, length, uint(cover))
-}
-func (a *scanlineAdapter) Finalize(y int) { a.sl.Finalize(y) }
-func (a *scanlineAdapter) NumSpans() int  { return a.sl.NumSpans() }
-
 // buildGlyphPath creates the letter "a" glyph path, scales it 4x,
 // and translates to (150, 100). Returns the path storage.
 func buildGlyphPath() *path.PathStorageStl {
@@ -498,11 +485,10 @@ func Draw(ctx *agg.Context, cfg *Config) Result {
 
 	// Render shadow into gray8 buffer.
 	ras.AddPath(&rasPathAdapter{vs: shadowTrans}, 0)
-	slAdapter := &scanlineAdapter{sl: sl}
 	if ras.RewindScanlines() {
 		sl.Reset(ras.MinX(), ras.MaxX())
 		grayColor := color.Gray8[color.SRGB]{V: 255, A: 255}
-		for ras.SweepScanline(slAdapter) {
+		for ras.SweepScanline(sl) {
 			renderScanlineGray8(sl, grayRendBase, grayColor)
 		}
 	}
@@ -567,7 +553,7 @@ func Draw(ctx *agg.Context, cfg *Config) Result {
 	if ras.RewindScanlines() {
 		sl.Reset(ras.MinX(), ras.MaxX())
 		textColor := color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255}
-		for ras.SweepScanline(slAdapter) {
+		for ras.SweepScanline(sl) {
 			renderScanlineRGBA(sl, renBase, textColor)
 		}
 	}

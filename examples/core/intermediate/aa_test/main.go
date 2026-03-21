@@ -32,68 +32,14 @@ const (
 // Rasterizer / scanline adapters
 // ---------------------------------------------------------------------------
 
-type rasterizerAdaptor struct {
-	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
-	sl  rasScanlineAdaptor
+type rasType = rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
+
+func newRasterizer() *rasType {
+	return rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{},
+		rasterizer.NewRasterizerSlNoClip(),
+	)
 }
-
-func newRasterizer() *rasterizerAdaptor {
-	return &rasterizerAdaptor{
-		ras: rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
-			rasterizer.RasConvInt{},
-			rasterizer.NewRasterizerSlNoClip(),
-		),
-		sl: rasScanlineAdaptor{sl: scanline.NewScanlineP8()},
-	}
-}
-
-func (r *rasterizerAdaptor) Reset()                { r.ras.Reset() }
-func (r *rasterizerAdaptor) RewindScanlines() bool { return r.ras.RewindScanlines() }
-func (r *rasterizerAdaptor) MinX() int             { return r.ras.MinX() }
-func (r *rasterizerAdaptor) MaxX() int             { return r.ras.MaxX() }
-
-func (r *rasterizerAdaptor) SweepScanline(sl renscan.ScanlineInterface) bool {
-	if w, ok := sl.(*scanlineWrapper); ok {
-		r.sl.sl = w.sl
-		return r.ras.SweepScanline(&r.sl)
-	}
-	return false
-}
-
-type rasScanlineAdaptor struct{ sl *scanline.ScanlineP8 }
-
-func (a *rasScanlineAdaptor) ResetSpans()                 { a.sl.ResetSpans() }
-func (a *rasScanlineAdaptor) AddCell(x int, cover uint32) { a.sl.AddCell(x, uint(cover)) }
-func (a *rasScanlineAdaptor) AddSpan(x, length int, cover uint32) {
-	a.sl.AddSpan(x, length, uint(cover))
-}
-func (a *rasScanlineAdaptor) Finalize(y int) { a.sl.Finalize(y) }
-func (a *rasScanlineAdaptor) NumSpans() int  { return a.sl.NumSpans() }
-
-type scanlineWrapper struct{ sl *scanline.ScanlineP8 }
-
-func (w *scanlineWrapper) Reset(minX, maxX int) { w.sl.Reset(minX, maxX) }
-func (w *scanlineWrapper) Y() int               { return w.sl.Y() }
-func (w *scanlineWrapper) NumSpans() int        { return w.sl.NumSpans() }
-
-func (w *scanlineWrapper) Begin() renscan.ScanlineIterator {
-	spans := w.sl.Spans()
-	if len(spans) == 0 {
-		return &spanIter{nil, 0}
-	}
-	return &spanIter{spans, 0}
-}
-
-type spanIter struct {
-	spans []scanline.SpanP8
-	idx   int
-}
-
-func (it *spanIter) GetSpan() renscan.SpanData {
-	s := it.spans[it.idx]
-	return renscan.SpanData{X: int(s.X), Len: int(s.Len), Covers: s.Covers}
-}
-func (it *spanIter) Next() bool { it.idx++; return it.idx < len(it.spans) }
 
 // ---------------------------------------------------------------------------
 // Vertex-source adapters
@@ -131,8 +77,8 @@ func (a *convVS) Vertex(x, y *float64) uint32 {
 // ---------------------------------------------------------------------------
 
 func drawStrokedLine(
-	ras *rasterizerAdaptor,
-	sl *scanlineWrapper,
+	ras *rasType,
+	sl *scanline.ScanlineP8,
 	rb *renderer.RendererBase[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]],
 	x1, y1, x2, y2, lineWidth float64,
 	c color.RGBA8[color.Linear],
@@ -144,7 +90,7 @@ func drawStrokedLine(
 	stroke.SetWidth(lineWidth)
 	stroke.SetLineCap(basics.RoundCap)
 	ras.Reset()
-	ras.ras.AddPath(&convVS{src: stroke}, 0)
+	ras.AddPath(&convVS{src: stroke}, 0)
 	renscan.RenderScanlinesAASolid(ras, sl, rb, c)
 }
 
@@ -165,7 +111,7 @@ func (d *demo) Render(img *agg.Image) {
 	mainRb.Clear(color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255})
 
 	ras := newRasterizer()
-	sl := &scanlineWrapper{sl: scanline.NewScanlineP8()}
+	sl := scanline.NewScanlineP8()
 
 	white := color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255}
 	whiteAlpha := color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 51} // 0.2 * 255
@@ -192,7 +138,7 @@ func (d *demo) Render(img *agg.Image) {
 			uint32(8+i), false,
 		)
 		ras.Reset()
-		ras.ras.AddPath(&ellipseVS{e: ell}, 0)
+		ras.AddPath(&ellipseVS{e: ell}, 0)
 		renscan.RenderScanlinesAASolid(ras, sl, mainRb, white)
 
 		// Fractional point sizes 0..2.
@@ -202,7 +148,7 @@ func (d *demo) Render(img *agg.Image) {
 			8, false,
 		)
 		ras.Reset()
-		ras.ras.AddPath(&ellipseVS{e: ell2}, 0)
+		ras.AddPath(&ellipseVS{e: ell2}, 0)
 		renscan.RenderScanlinesAASolid(ras, sl, mainRb, white)
 
 		// Fractional point positioning.
@@ -212,7 +158,7 @@ func (d *demo) Render(img *agg.Image) {
 			0.5, 0.5, 8, false,
 		)
 		ras.Reset()
-		ras.ras.AddPath(&ellipseVS{e: ell3}, 0)
+		ras.AddPath(&ellipseVS{e: ell3}, 0)
 		renscan.RenderScanlinesAASolid(ras, sl, mainRb, white)
 
 		// Integral line widths 1..20 (solid white lines, no gradient).
@@ -296,10 +242,10 @@ func (d *demo) Render(img *agg.Image) {
 			B: uint8(float64(i%5) * 0.25 * 255),
 			A: 255,
 		}
-		ras.ras.Reset()
-		ras.ras.MoveToD(float64(w)-150, float64(h)-20-fi*(fi+1.5))
-		ras.ras.LineToD(float64(w)-20, float64(h)-20-fi*(fi+1))
-		ras.ras.LineToD(float64(w)-20, float64(h)-20-fi*(fi+2))
+		ras.Reset()
+		ras.MoveToD(float64(w)-150, float64(h)-20-fi*(fi+1.5))
+		ras.LineToD(float64(w)-20, float64(h)-20-fi*(fi+1))
+		ras.LineToD(float64(w)-20, float64(h)-20-fi*(fi+2))
 		renscan.RenderScanlinesAASolid(ras, sl, mainRb, c)
 	}
 

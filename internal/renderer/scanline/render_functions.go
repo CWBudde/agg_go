@@ -10,7 +10,7 @@ import (
 func RenderScanlineAASolid[C any](sl ScanlineInterface, ren BaseRendererInterface[C], color C) {
 	y := sl.Y()
 	numSpans := sl.NumSpans()
-	iter := sl.Begin()
+	iter := sl.BeginIterator()
 
 	for i := 0; i < numSpans; i++ {
 		span := iter.GetSpan()
@@ -42,9 +42,7 @@ func RenderScanlinesAASolid[C any](ras RasterizerInterface, sl ScanlineInterface
 	}
 
 	// Reset scanline for the rasterizer bounds
-	if resetScanline, ok := sl.(ResettableScanline); ok {
-		resetScanline.Reset(ras.MinX(), ras.MaxX())
-	}
+	sl.Reset(ras.MinX(), ras.MaxX())
 
 	// Store color reference to avoid repeated parameter passing
 	// This corresponds to AGG's: typename BaseRenderer::color_type ren_color = color;
@@ -56,7 +54,7 @@ func RenderScanlinesAASolid[C any](ras RasterizerInterface, sl ScanlineInterface
 		// This is equivalent to calling RenderScanlineAASolidT but avoids function call overhead
 		y := sl.Y()
 		numSpans := sl.NumSpans()
-		iter := sl.Begin()
+		iter := sl.BeginIterator()
 
 		for i := 0; i < numSpans; i++ {
 			span := iter.GetSpan()
@@ -85,7 +83,7 @@ func RenderScanlinesAASolid[C any](ras RasterizerInterface, sl ScanlineInterface
 func RenderScanlineAA[C any](sl ScanlineInterface, ren BaseRendererInterface[C], alloc SpanAllocatorInterface[C], spanGen SpanGeneratorInterface[C]) {
 	y := sl.Y()
 	numSpans := sl.NumSpans()
-	iter := sl.Begin()
+	iter := sl.BeginIterator()
 
 	for i := 0; i < numSpans; i++ {
 		span := iter.GetSpan()
@@ -128,9 +126,7 @@ func RenderScanlinesAA[C any](ras RasterizerInterface, sl ScanlineInterface, ren
 	}
 
 	// Reset scanline for the rasterizer bounds
-	if resetScanline, ok := sl.(ResettableScanline); ok {
-		resetScanline.Reset(ras.MinX(), ras.MaxX())
-	}
+	sl.Reset(ras.MinX(), ras.MaxX())
 
 	// Prepare the span generator
 	spanGen.Prepare()
@@ -145,7 +141,7 @@ func RenderScanlinesAA[C any](ras RasterizerInterface, sl ScanlineInterface, ren
 // This corresponds to AGG's render_scanline_bin_solid function.
 func RenderScanlineBinSolid[C any](sl ScanlineInterface, ren BaseRendererInterface[C], color C) {
 	numSpans := sl.NumSpans()
-	iter := sl.Begin()
+	iter := sl.BeginIterator()
 	y := sl.Y()
 
 	for i := 0; i < numSpans; i++ {
@@ -178,9 +174,7 @@ func RenderScanlinesBinSolid[C any](ras RasterizerInterface, sl ScanlineInterfac
 	}
 
 	// Reset scanline for the rasterizer bounds
-	if resetScanline, ok := sl.(ResettableScanline); ok {
-		resetScanline.Reset(ras.MinX(), ras.MaxX())
-	}
+	sl.Reset(ras.MinX(), ras.MaxX())
 
 	// Store color reference to avoid repeated parameter passing
 	// This corresponds to AGG's: typename BaseRenderer::color_type ren_color(color);
@@ -190,7 +184,7 @@ func RenderScanlinesBinSolid[C any](ras RasterizerInterface, sl ScanlineInterfac
 	for ras.SweepScanline(sl) {
 		// Inline the render_scanline_bin_solid logic for performance
 		numSpans := sl.NumSpans()
-		iter := sl.Begin()
+		iter := sl.BeginIterator()
 		y := sl.Y()
 
 		for i := 0; i < numSpans; i++ {
@@ -219,7 +213,7 @@ func RenderScanlinesBinSolid[C any](ras RasterizerInterface, sl ScanlineInterfac
 // This corresponds to AGG's render_scanline_bin function.
 func RenderScanlineBin[C any](sl ScanlineInterface, ren BaseRendererInterface[C], alloc SpanAllocatorInterface[C], spanGen SpanGeneratorInterface[C]) {
 	numSpans := sl.NumSpans()
-	iter := sl.Begin()
+	iter := sl.BeginIterator()
 	y := sl.Y()
 
 	for i := 0; i < numSpans; i++ {
@@ -256,9 +250,7 @@ func RenderScanlinesBin[C any](ras RasterizerInterface, sl ScanlineInterface, re
 	}
 
 	// Reset scanline for the rasterizer bounds
-	if resetScanline, ok := sl.(ResettableScanline); ok {
-		resetScanline.Reset(ras.MinX(), ras.MaxX())
-	}
+	sl.Reset(ras.MinX(), ras.MaxX())
 
 	// Prepare the span generator
 	spanGen.Prepare()

@@ -38,7 +38,7 @@ func (r *EnlargedRenderer) SetColor(c color.RGBA8[color.Linear]) {
 func (r *EnlargedRenderer) Render(sl renscan.ScanlineInterface) {
 	y := sl.Y()
 	numSpans := sl.NumSpans()
-	it := sl.Begin()
+	it := sl.BeginIterator()
 
 	//nolint:intrange // Scanline spans expose an int count; keep loop variable compatible with the renderer API.
 	for i := 0; i < numSpans; i++ {

@@ -56,7 +56,7 @@ func (r *RendererEnlargedT[Ren, C]) Render(sl scanline_renderer.ScanlineInterfac
 		return
 	}
 
-	it := sl.Begin()
+	it := sl.BeginIterator()
 	for i := 0; i < numSpans; i++ {
 		sp := it.GetSpan()
 		x := sp.X

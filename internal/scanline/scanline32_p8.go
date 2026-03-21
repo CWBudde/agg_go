@@ -214,6 +214,16 @@ func (sl *Scanline32P8) Spans() []Span32P8 {
 	return sl.Begin()
 }
 
+// BeginIterator returns an iterator over the spans, satisfying the unified
+// Scanline interface.
+func (sl *Scanline32P8) BeginIterator() ScanlineIterator {
+	spans := sl.Begin()
+	if len(spans) == 0 {
+		return &sliceIter32P8{}
+	}
+	return &sliceIter32P8{spans: spans}
+}
+
 // IsSolid returns true if the span is solid (all pixels have same coverage).
 // This is indicated by a negative length value.
 func (span *Span32P8) IsSolid() bool {

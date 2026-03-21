@@ -79,73 +79,14 @@ func (r *clibcRand) randAnd(mask int) int { return int(r.next()) & mask }
 // ---------------------------------------------------------------------------
 // Rasterizer / scanline adapters
 // ---------------------------------------------------------------------------
+type rasType = rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
 
-type rasterizerAdaptor struct {
-	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
-	sl  rasScanlineAdaptor
+func newRasterizer() *rasType {
+	return rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{},
+		rasterizer.NewRasterizerSlNoClip(),
+	)
 }
-
-func newRasterizer() *rasterizerAdaptor {
-	return &rasterizerAdaptor{
-		ras: rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
-			rasterizer.RasConvInt{},
-			rasterizer.NewRasterizerSlNoClip(),
-		),
-		sl: rasScanlineAdaptor{sl: scanline.NewScanlineP8()},
-	}
-}
-
-func (r *rasterizerAdaptor) Reset()                { r.ras.Reset() }
-func (r *rasterizerAdaptor) RewindScanlines() bool { return r.ras.RewindScanlines() }
-func (r *rasterizerAdaptor) MinX() int             { return r.ras.MinX() }
-func (r *rasterizerAdaptor) MaxX() int             { return r.ras.MaxX() }
-
-func (r *rasterizerAdaptor) AddPath(vs rasterizer.VertexSource, pathID uint32) {
-	r.ras.AddPath(vs, pathID)
-}
-
-func (r *rasterizerAdaptor) SweepScanline(sl renscan.ScanlineInterface) bool {
-	if w, ok := sl.(*scanlineWrapper); ok {
-		r.sl.sl = w.sl
-		return r.ras.SweepScanline(&r.sl)
-	}
-	return false
-}
-
-type rasScanlineAdaptor struct{ sl *scanline.ScanlineP8 }
-
-func (a *rasScanlineAdaptor) ResetSpans()                 { a.sl.ResetSpans() }
-func (a *rasScanlineAdaptor) AddCell(x int, cover uint32) { a.sl.AddCell(x, uint(cover)) }
-func (a *rasScanlineAdaptor) AddSpan(x, length int, cover uint32) {
-	a.sl.AddSpan(x, length, uint(cover))
-}
-func (a *rasScanlineAdaptor) Finalize(y int) { a.sl.Finalize(y) }
-func (a *rasScanlineAdaptor) NumSpans() int  { return a.sl.NumSpans() }
-
-type scanlineWrapper struct{ sl *scanline.ScanlineP8 }
-
-func (w *scanlineWrapper) Reset(minX, maxX int) { w.sl.Reset(minX, maxX) }
-func (w *scanlineWrapper) Y() int               { return w.sl.Y() }
-func (w *scanlineWrapper) NumSpans() int        { return w.sl.NumSpans() }
-
-func (w *scanlineWrapper) Begin() renscan.ScanlineIterator {
-	spans := w.sl.Spans()
-	if len(spans) == 0 {
-		return &spanIter{nil, 0}
-	}
-	return &spanIter{spans, 0}
-}
-
-type spanIter struct {
-	spans []scanline.SpanP8
-	idx   int
-}
-
-func (it *spanIter) GetSpan() renscan.SpanData {
-	s := it.spans[it.idx]
-	return renscan.SpanData{X: int(s.X), Len: int(s.Len), Covers: s.Covers}
-}
-func (it *spanIter) Next() bool { it.idx++; return it.idx < len(it.spans) }
 
 // ---------------------------------------------------------------------------
 // Vertex-source adapter for shapes.Ellipse
@@ -177,7 +118,7 @@ func (d *demo) Render(img *agg.Image) {
 	workRbuf := buffer.NewRenderingBufferU8WithData(workBuf, w, h, w*4)
 
 	ras := newRasterizer()
-	sl := &scanlineWrapper{sl: scanline.NewScanlineP8()}
+	sl := scanline.NewScanlineP8()
 
 	// --- Generate alpha mask from ellipses ---
 	// C++ uses srand(1432).
@@ -270,9 +211,9 @@ func (d *demo) Render(img *agg.Image) {
 			tx, ty := x, y
 			mtx.Transform(&tx, &ty)
 			if basics.IsMoveTo(pathCmd) {
-				ras.ras.AddVertex(tx, ty, uint32(basics.PathCmdMoveTo))
+				ras.AddVertex(tx, ty, uint32(basics.PathCmdMoveTo))
 			} else if basics.IsLineTo(pathCmd) {
-				ras.ras.AddVertex(tx, ty, uint32(basics.PathCmdLineTo))
+				ras.AddVertex(tx, ty, uint32(basics.PathCmdLineTo))
 			}
 		}
 		renscan.RenderScanlinesAASolid(ras, sl, rbAMask, c)

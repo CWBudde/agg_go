@@ -153,7 +153,6 @@ func drawFlashRasterizer2Demo() {
 	ras.AutoClose(false)
 
 	sl := scanline.NewScanlineU8()
-	slRas := &rasScanlineAdapter{sl: sl}
 
 	// --- Fill pass (flash2 method) ---
 	tFillStart := time.Now()
@@ -183,9 +182,9 @@ func drawFlashRasterizer2Demo() {
 		}
 		sl.Reset(ras.MinX(), ras.MaxX())
 		c := styleColor(s)
-		for ras.SweepScanline(slRas) {
+		for ras.SweepScanline(sl) {
 			renscan.RenderScanlineAASolid(
-				&scanlineWrapperU8{sl: sl},
+				sl,
 				renBase,
 				c,
 			)
@@ -227,9 +226,9 @@ func drawFlashRasterizer2Demo() {
 			continue
 		}
 		sl.Reset(ras.MinX(), ras.MaxX())
-		for ras.SweepScanline(slRas) {
+		for ras.SweepScanline(sl) {
 			renscan.RenderScanlineAASolid(
-				&scanlineWrapperU8{sl: sl},
+				sl,
 				renBase,
 				strokeColor,
 			)
@@ -273,9 +272,9 @@ func drawFlashRasterizer2Demo() {
 	if ras.RewindScanlines() {
 		sl.Reset(ras.MinX(), ras.MaxX())
 		textColor := color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255}
-		for ras.SweepScanline(slRas) {
+		for ras.SweepScanline(sl) {
 			renscan.RenderScanlineAASolid(
-				&scanlineWrapperU8{sl: sl},
+				sl,
 				renBase,
 				textColor,
 			)

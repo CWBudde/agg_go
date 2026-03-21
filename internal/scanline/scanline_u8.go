@@ -213,3 +213,13 @@ func (sl *ScanlineU8) Begin() []Span {
 func (sl *ScanlineU8) Spans() []Span {
 	return sl.Begin()
 }
+
+// BeginIterator returns an iterator over the spans, satisfying the unified
+// Scanline interface.
+func (sl *ScanlineU8) BeginIterator() ScanlineIterator {
+	spans := sl.Begin()
+	if len(spans) == 0 {
+		return &sliceIterU8{}
+	}
+	return &sliceIterU8{spans: spans}
+}

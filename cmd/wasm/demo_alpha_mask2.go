@@ -44,8 +44,6 @@ func generateAlphaMask2(w, h int) {
 	agg2d := ctx.GetAgg2D()
 	ras := agg2d.GetInternalRasterizer()
 	sl := scanline.NewScanlineP8()
-	slAdapter := &scanlineWrapperP8{sl: sl}
-	rasAdapter := &rasterizerAdapter{ras: ras}
 
 	rnd := rand.New(rand.NewSource(1432))
 
@@ -71,7 +69,7 @@ func generateAlphaMask2(w, h int) {
 		a := uint8(rnd.Intn(128) + 128)
 		gray := color.Gray8[color.Linear]{V: v, A: a}
 
-		renscan.RenderScanlinesAASolid(rasAdapter, slAdapter, maskRb, gray)
+		renscan.RenderScanlinesAASolid(ras, sl, maskRb, gray)
 	}
 
 	// Create the alpha mask
@@ -108,9 +106,7 @@ func drawAlphaMask2Demo() {
 	rbAMask := renderer.NewRendererBaseWithPixfmt(amaskAdaptor)
 
 	ras := agg2d.GetInternalRasterizer()
-	rasAdapter := &rasterizerAdapter{ras: ras}
 	sl := scanline.NewScanlineP8()
-	slAdapter := &scanlineWrapperP8{sl: sl}
 
 	// 1. Render the lion
 	baseDX, baseDY := 0.0, 0.0
@@ -147,7 +143,7 @@ func drawAlphaMask2Demo() {
 			}
 		}
 
-		renscan.RenderScanlinesAASolid(rasAdapter, slAdapter, rbAMask, c)
+		renscan.RenderScanlinesAASolid(ras, sl, rbAMask, c)
 	}
 
 	logStatus(fmt.Sprintf("Alpha Mask 2 Demo: Ellipses=%d", am2NumEllipses))

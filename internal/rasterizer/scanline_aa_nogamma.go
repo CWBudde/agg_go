@@ -2,6 +2,7 @@ package rasterizer
 
 import (
 	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/scanline"
 )
 
 // RasterizerScanlineAANoGamma is a polygon rasterizer optimized for high-quality
@@ -274,7 +275,7 @@ func (r *RasterizerScanlineAANoGamma[C, V, Clip]) CalculateAlpha(area int) uint8
 }
 
 // SweepScanline generates the next scanline of anti-aliased spans
-func (r *RasterizerScanlineAANoGamma[C, V, Clip]) SweepScanline(sl ScanlineInterface) bool {
+func (r *RasterizerScanlineAANoGamma[C, V, Clip]) SweepScanline(sl scanline.Scanline) bool {
 	for {
 		if r.scanY > r.outline.MaxY() {
 			return false
@@ -308,7 +309,7 @@ func (r *RasterizerScanlineAANoGamma[C, V, Clip]) SweepScanline(sl ScanlineInter
 			if area != 0 {
 				alpha := r.CalculateAlpha((cover << (basics.PolySubpixelShift + 1)) - area)
 				if alpha != 0 {
-					sl.AddCell(x, uint32(alpha))
+					sl.AddCell(x, uint(alpha))
 				}
 				x++
 			}
@@ -316,7 +317,7 @@ func (r *RasterizerScanlineAANoGamma[C, V, Clip]) SweepScanline(sl ScanlineInter
 			if cellIndex < numCells && cells[cellIndex].X > x {
 				alpha := r.CalculateAlpha(cover << (basics.PolySubpixelShift + 1))
 				if alpha != 0 {
-					sl.AddSpan(x, cells[cellIndex].X-x, uint32(alpha))
+					sl.AddSpan(x, cells[cellIndex].X-x, uint(alpha))
 				}
 			}
 		}

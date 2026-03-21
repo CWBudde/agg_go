@@ -102,13 +102,6 @@ type Agg2D struct {
 	scanline   *scanline.ScanlineU8
 	rasterizer *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
 
-	// Cached adapters that bridge the internal scanline/rasterizer types to
-	// the renderer/scanline interfaces. Stored as fields (like C++ stores
-	// m_renSolid, m_scanline, m_rasterizer by value) to avoid per-call
-	// heap allocations in the hot rendering path.
-	rasAdapter rasterizerAdapter
-	slAdapter  scanlineWrapper
-
 	// Rendering components (now properly typed)
 	pixfmt         *pixfmt.PixFmtRGBA32[color.Linear]
 	pixfmtPre      *pixfmt.PixFmtRGBA32Pre[color.Linear]
@@ -321,10 +314,6 @@ func NewAgg2D() *Agg2D {
 	conv := rasterizer.RasConvInt{}
 	agg2d.rasterizer = rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](conv, clipper)
 
-	// Initialize cached adapters
-	agg2d.rasAdapter.ras = agg2d.rasterizer
-	agg2d.slAdapter.sl = agg2d.scanline
-
 	// Initialize span allocator for gradient rendering
 	agg2d.spanAllocator = span.NewSpanAllocator[color.RGBA8[color.Linear]]()
 	agg2d.fillGradientLUT = make([]color.RGBA8[color.Linear], 256)
@@ -391,17 +380,15 @@ func (agg2d *Agg2D) GetInternalRasterizer() *rasterizer.RasterizerScanlineAA[int
 
 // ScanlineRender renders the given rasterizer data using a custom renderer.
 func (agg2d *Agg2D) ScanlineRender(ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip], renderer renscan.RendererInterface[color.RGBA8[color.Linear]]) {
-	ra := rasterizerAdapter{ras: ras}
-	sl := &agg2d.slAdapter
-
-	if !ra.RewindScanlines() {
+	if !ras.RewindScanlines() {
 		return
 	}
 
-	sl.Reset(ra.MinX(), ra.MaxX())
+	sl := agg2d.scanline
+	sl.Reset(ras.MinX(), ras.MaxX())
 	renderer.Prepare()
 
-	for ra.SweepScanline(sl) {
+	for ras.SweepScanline(sl) {
 		renderer.Render(sl)
 	}
 }
@@ -447,7 +434,7 @@ func (r *gouraudRenderer) SetColor(c color.RGBA8[color.Linear]) {}
 
 func (r *gouraudRenderer) Render(sl renscan.ScanlineInterface) {
 	y := sl.Y()
-	it := sl.Begin()
+	it := sl.BeginIterator()
 	for {
 		spanData := it.GetSpan()
 		x := spanData.X

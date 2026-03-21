@@ -65,29 +65,6 @@ func (a *rasterPathAdapter) Vertex(x, y *float64) uint32 {
 	return uint32(cmd)
 }
 
-type rasterScanlineAdapter struct{ sl *isc.ScanlineU8 }
-
-func (a *rasterScanlineAdapter) ResetSpans()                    { a.sl.ResetSpans() }
-func (a *rasterScanlineAdapter) AddCell(x int, cover uint32)    { a.sl.AddCell(x, uint(cover)) }
-func (a *rasterScanlineAdapter) AddSpan(x, l int, cover uint32) { a.sl.AddSpan(x, l, uint(cover)) }
-func (a *rasterScanlineAdapter) Finalize(y int)                 { a.sl.Finalize(y) }
-func (a *rasterScanlineAdapter) NumSpans() int                  { return a.sl.NumSpans() }
-
-type rasterScanlineP8Adapter struct{ sl *isc.ScanlineP8 }
-
-func (a *rasterScanlineP8Adapter) ResetSpans()                    { a.sl.ResetSpans() }
-func (a *rasterScanlineP8Adapter) AddCell(x int, cover uint32)    { a.sl.AddCell(x, uint(cover)) }
-func (a *rasterScanlineP8Adapter) AddSpan(x, l int, cover uint32) { a.sl.AddSpan(x, l, uint(cover)) }
-func (a *rasterScanlineP8Adapter) Finalize(y int)                 { a.sl.Finalize(y) }
-func (a *rasterScanlineP8Adapter) NumSpans() int                  { return a.sl.NumSpans() }
-
-type rasterScanlineBinAdapter struct{ sl *isc.ScanlineBin }
-
-func (a *rasterScanlineBinAdapter) ResetSpans()                    { a.sl.ResetSpans() }
-func (a *rasterScanlineBinAdapter) AddCell(x int, cover uint32)    { a.sl.AddCell(x, uint(cover)) }
-func (a *rasterScanlineBinAdapter) AddSpan(x, l int, cover uint32) { a.sl.AddSpan(x, l, uint(cover)) }
-func (a *rasterScanlineBinAdapter) Finalize(y int)                 { a.sl.Finalize(y) }
-func (a *rasterScanlineBinAdapter) NumSpans() int                  { return a.sl.NumSpans() }
 
 type storageScanlineU8 struct {
 	sl   *isc.ScanlineU8
@@ -517,8 +494,8 @@ func combineAndRenderBin(
 	storage1 := isc.NewScanlineStorageBin()
 	storage2 := isc.NewScanlineStorageBin()
 	slRaster := isc.NewScanlineBin()
-	renderRasterizerToBinStorage(ras1, slRaster, &rasterScanlineBinAdapter{sl: slRaster}, storage1)
-	renderRasterizerToBinStorage(ras2, slRaster, &rasterScanlineBinAdapter{sl: slRaster}, storage2)
+	renderRasterizerToBinStorage(ras1, slRaster, storage1)
+	renderRasterizerToBinStorage(ras2, slRaster, storage2)
 
 	sg1 := newBinStorageBoolRasterizer(storage1)
 	sg2 := newBinStorageBoolRasterizer(storage2)
@@ -550,9 +527,8 @@ func renderRasterizerToAAStorageU8(
 		return
 	}
 	sl.Reset(ras.MinX(), ras.MaxX())
-	rasSL := &rasterScanlineAdapter{sl: sl}
 	storageSL := &storageScanlineU8{sl: sl}
-	for ras.SweepScanline(rasSL) {
+	for ras.SweepScanline(sl) {
 		storage.Render(storageSL)
 	}
 }
@@ -567,9 +543,8 @@ func renderRasterizerToAAStorageP8(
 		return
 	}
 	sl.Reset(ras.MinX(), ras.MaxX())
-	rasSL := &rasterScanlineP8Adapter{sl: sl}
 	storageSL := &storageScanlineP8{sl: sl}
-	for ras.SweepScanline(rasSL) {
+	for ras.SweepScanline(sl) {
 		storage.Render(storageSL)
 	}
 }
@@ -577,7 +552,6 @@ func renderRasterizerToAAStorageP8(
 func renderRasterizerToBinStorage(
 	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
 	sl *isc.ScanlineBin,
-	rasSL rasterizer.ScanlineInterface,
 	storage *isc.ScanlineStorageBin,
 ) {
 	storage.Prepare()
@@ -585,7 +559,7 @@ func renderRasterizerToBinStorage(
 		return
 	}
 	sl.Reset(ras.MinX(), ras.MaxX())
-	for ras.SweepScanline(rasSL) {
+	for ras.SweepScanline(sl) {
 		storage.RenderBinScanline(sl)
 	}
 }

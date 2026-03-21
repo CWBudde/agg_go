@@ -214,7 +214,7 @@ func drawImageAlphaDemo() {
 
 	if imgAlphaRas.RewindScanlines() {
 		imgAlphaSl.Reset(imgAlphaRas.MinX(), imgAlphaRas.MaxX())
-		for imgAlphaRas.SweepScanline(&rasScanlineAdapter{sl: imgAlphaSl}) {
+		for imgAlphaRas.SweepScanline(imgAlphaSl) {
 			y := imgAlphaSl.Y()
 			for _, spanData := range imgAlphaSl.Spans() {
 				if spanData.Len > 0 {

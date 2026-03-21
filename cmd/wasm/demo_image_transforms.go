@@ -242,7 +242,7 @@ func drawImageTransformsDemo() {
 
 	if imgTransRas.RewindScanlines() {
 		imgTransSl.Reset(imgTransRas.MinX(), imgTransRas.MaxX())
-		for imgTransRas.SweepScanline(&rasScanlineAdapter{sl: imgTransSl}) {
+		for imgTransRas.SweepScanline(imgTransSl) {
 			y := imgTransSl.Y()
 			for _, spanData := range imgTransSl.Spans() {
 				if spanData.Len > 0 {
