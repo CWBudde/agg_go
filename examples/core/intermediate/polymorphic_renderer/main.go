@@ -66,7 +66,7 @@ func (r *rgba32Filler) RenderTriangle(x, y [3]float64) {
 	)
 	ras.AddPath(&psAdapter{ps: ps}, 0)
 
-	sl := scanline.NewScanlineU8()
+	sl := scanline.NewScanlineP8()
 	if ras.RewindScanlines() {
 		sl.Reset(ras.MinX(), ras.MaxX())
 		for ras.SweepScanline(sl) {

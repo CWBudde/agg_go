@@ -35,7 +35,7 @@ func drawRasterizersDemo() {
 
 	pixFmt := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
 	renBase := renderer.NewRendererBaseWithPixfmt[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](pixFmt)
-	sl := scanline.NewScanlineU8()
+	sl := scanline.NewScanlineP8()
 
 	// 1. Draw anti-aliased triangle
 	ps := path.NewPathStorageStl()

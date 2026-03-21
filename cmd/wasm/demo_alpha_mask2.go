@@ -43,7 +43,7 @@ func generateAlphaMask2(w, h int) {
 
 	agg2d := ctx.GetAgg2D()
 	ras := agg2d.GetInternalRasterizer()
-	sl := scanline.NewScanlineP8()
+	sl := scanline.NewScanlineU8()
 
 	rnd := rand.New(rand.NewSource(1432))
 
@@ -106,7 +106,7 @@ func drawAlphaMask2Demo() {
 	rbAMask := renderer.NewRendererBaseWithPixfmt(amaskAdaptor)
 
 	ras := agg2d.GetInternalRasterizer()
-	sl := scanline.NewScanlineP8()
+	sl := scanline.NewScanlineU8()
 
 	// 1. Render the lion
 	baseDX, baseDY := 0.0, 0.0

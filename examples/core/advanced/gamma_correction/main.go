@@ -109,7 +109,7 @@ func copyFlipY(src, dst []uint8, w, h int) {
 	}
 }
 
-func renderCtrl(ras *rasType, sl *isl.ScanlineP8, rb *renBase, c ctrlbase.Ctrl[icolor.RGBA]) {
+func renderCtrl(ras *rasType, sl *isl.ScanlineU8, rb *renBase, c ctrlbase.Ctrl[icolor.RGBA]) {
 	for pathID := uint(0); pathID < c.NumPaths(); pathID++ {
 		ras.Reset()
 		ras.AddPath(&ctrlRasAdapter{ctrl: c}, uint32(pathID))
@@ -118,7 +118,7 @@ func renderCtrl(ras *rasType, sl *isl.ScanlineP8, rb *renBase, c ctrlbase.Ctrl[i
 	}
 }
 
-func renderSolid(ras *rasType, sl *isl.ScanlineP8, rb *renBase, col icolor.RGBA8[icolor.Linear]) {
+func renderSolid(ras *rasType, sl *isl.ScanlineU8, rb *renBase, col icolor.RGBA8[icolor.Linear]) {
 	renscan.RenderScanlinesAASolid(ras, sl, rb, col)
 }
 
@@ -128,7 +128,7 @@ func fillRect(rb *renBase, x1, y1, x2, y2 int, col icolor.RGBA8[icolor.Linear]) 
 }
 
 // renderStrokeEllipse strokes an ellipse.
-func renderStrokeEllipse(ras *rasType, sl *isl.ScanlineP8, rb *renBase,
+func renderStrokeEllipse(ras *rasType, sl *isl.ScanlineU8, rb *renBase,
 	cx, cy, rx, ry float64, steps uint32, strokeWidth float64, col icolor.RGBA8[icolor.Linear],
 ) {
 	ell := shapes.NewEllipseWithParams(cx, cy, rx, ry, steps, false)
@@ -210,7 +210,7 @@ func (d *demo) Render(img *agg.Image) {
 	fillRect(rb, 0, h/2+1, w, h, rgba8(255, darkVal, darkVal, 255))
 
 	ras := newRasterizer()
-	sl := isl.NewScanlineP8()
+	sl := isl.NewScanlineU8()
 
 	// Gamma power curve (in work-buffer: y=50 at bottom area, going up).
 	// C++: x=(width-256)/2, y=50; for i: path.line_to(x+i, y + gp(v)*255)

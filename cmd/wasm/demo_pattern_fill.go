@@ -34,7 +34,7 @@ var (
 	patFillRenBase     *renderer.RendererBase[*pixfmt.PixFmtRGBA32Pre[color.Linear], color.RGBA8[color.Linear]]
 	patFillAlloc       *span.SpanAllocator[color.RGBA8[color.Linear]]
 	patFillRas         *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
-	patFillSl          *scanline.ScanlineU8
+	patFillSl          *scanline.ScanlineP8
 	patFillPath        *path.PathStorageStl
 	patFillInitialized bool
 )
@@ -87,7 +87,7 @@ func initPatFillDemo() {
 		rasterizer.RasConvInt{},
 		rasterizer.NewRasterizerSlNoClip(),
 	)
-	patFillSl = scanline.NewScanlineU8()
+	patFillSl = scanline.NewScanlineP8()
 	patFillPath = path.NewPathStorageStl()
 	patFillPolygonCX = float64(width) * 0.5
 	patFillPolygonCY = float64(height) * 0.5

@@ -678,54 +678,62 @@ clip variant.
 
 ---
 
-### 10.6 ⚠️ C++ Rasterizer Uses `scanline_u8` Not `scanline_p8` in Some Examples
+### 10.6 ✅ C++ Rasterizer Uses `scanline_u8` Not `scanline_p8` in Some Examples
 
-**Status**: OPEN — C++ `alpha_mask2.cpp` declares `agg::scanline_u8 g_scanline` (unpacked
-scanline). Go examples use `ScanlineP8` (packed). For solid-color rendering the outputs are
-identical, but for span-colored rendering (gradients etc.) the behavior differs.
+**Status**: DONE — Audited all C++ examples and aligned Go ports to use the matching scanline type.
 
 **C++ reference**: `agg_scanline_u.h`: `scanline_u8` — unpacked; `agg_scanline_p.h`: `scanline_p8` — packed.
 
 **Tasks**:
 
-- [ ] Audit each C++ example to identify which scanline type it uses.
-- [ ] For demos that use `scanline_u8`, switch Go port to use `ScanlineU8`.
-- [ ] Ensure `ScanlineU8` is implemented in `internal/scanline/` and satisfies `ScanlineInterface`.
+- [x] Audit each C++ example to identify which scanline type it uses.
+      Cross-referenced all 60+ C++ examples against Go ports and wasm demos.
+- [x] For demos that use `scanline_u8`, switch Go port to use `ScanlineU8`.
+      Fixed 11 standalone examples and 5 wasm demos. Changed both directions:
+      P8→U8 (aa_demo, aa_test, alpha_gradient, alpha_mask2, bezier_div, gamma_correction, multi_clip)
+      and U8→P8 (pattern_fill, polymorphic_renderer, rasterizers, rasterizers2).
+- [x] Ensure `ScanlineU8` is implemented in `internal/scanline/` and satisfies `ScanlineInterface`.
+      Confirmed: `ScanlineU8` in `internal/scanline/scanline_u8.go` satisfies `scanline.Scanline`.
+      Also fixed `internal/ctrl/render_test.go` mock to satisfy the unified interface.
 
 ---
 
-### 10.7 ⚠️ Missing `scanlineWrapper` / Rasterizer Adaptor — Architecture Smell
+### 10.7 ✅ Missing `scanlineWrapper` / Rasterizer Adaptor — Architecture Smell
 
-**Status**: OPEN — The `rasterizerAdaptor` / `scanlineWrapper` / `rasScanlineAdaptor` / `spanIter`
-boilerplate in `alpha_mask2/main.go` and `cmd/aggtest/main.go` exists only because the example
-cannot use the rasterizer and renderer interfaces directly. This is a symptom of interface
-mismatch between `renscan.ScanlineInterface` and `rasterizer.ScanlineInterface`.
+**Status**: DONE — Unified scanline interface defined in `internal/scanline/interfaces.go`.
+All adapter boilerplate removed from examples, wasm demos, internal demos, and tests.
 
-**Root cause**: Two different `ScanlineInterface` types exist — one in `internal/renderer/scanline`
-and one in `internal/rasterizer`. They have incompatible method sets, forcing every example that
-calls `RenderScanlinesAASolid` + `RasterizerScanlineAA` to write 4 adapter types.
+**Root cause** (resolved): Two different `ScanlineInterface` types existed — one in
+`internal/renderer/scanline` and one in `internal/rasterizer`. They had incompatible method sets,
+forcing every example that called `RenderScanlinesAASolid` + `RasterizerScanlineAA` to write
+4 adapter types.
 
 **Tasks**:
 
-- [ ] Unify the scanline interface: define a single `ScanlineInterface` (likely in `internal/scanline`
-      or `internal/basics`) that both the rasterizer and renderer packages use.
-- [ ] Remove the per-example adapter boilerplate (`rasterizerAdaptor`, `scanlineWrapper`, etc.)
-      once the interface is unified.
-- [ ] Ensure all example and demo files compile without manual adapter types.
+- [x] Unify the scanline interface: single `scanline.Scanline` interface in `internal/scanline/interfaces.go`
+      combining writer (rasterizer) and reader (renderer) methods. Rasterizer and renderer packages
+      both use this interface via type aliases.
+- [x] Remove the per-example adapter boilerplate (`rasterizerAdaptor`, `scanlineWrapper`,
+      `rasScanlineAdapter`, `scanlineWrapperU8`, `scanlineWrapperP8`, `spanIter*`, etc.)
+      from all example, wasm demo, internal demo, and test files.
+- [x] Ensure all example and demo files compile without manual adapter types.
+      `go build ./...` passes with zero errors.
 
 ---
 
-### 10.8 ⚠️ `cmd/aggtest` Regression Suite — Make Permanent
+### 10.8 ✅ `cmd/aggtest` Regression Suite — Make Permanent
 
-**Status**: OPEN — `cmd/aggtest/main.go` contains layer-by-layer pixel-accurate comparisons
-against C++ reference values. Currently lives in `cmd/` as a developer tool.
+**Status**: DONE — All 6 cmd/aggtest steps converted to proper integration tests in
+`tests/integration/cpp_parity_test.go`. `cmd/aggtest` kept as a human-readable developer tool.
 
 **Tasks**:
 
-- [ ] Convert `cmd/aggtest` steps into proper `testing.T`-based tests under `tests/integration/`.
-- [ ] Each step becomes a sub-test with `t.Errorf` on pixel mismatch, not just `fmt.Printf`.
-- [ ] Remove or keep `cmd/aggtest` as a human-readable tool; the test suite is the ground truth.
-- [ ] Add the C++ reference pixel values as test constants with source references.
+- [x] Convert `cmd/aggtest` steps into proper `testing.T`-based tests under `tests/integration/`.
+      File: `tests/integration/cpp_parity_test.go` — 6 sub-tests matching cmd/aggtest steps 1–6.
+- [x] Each step becomes a sub-test with `t.Errorf` on pixel mismatch, not just `fmt.Printf`.
+- [x] Keep `cmd/aggtest` as a human-readable tool; the test suite is the ground truth.
+- [x] Add the C++ reference pixel values as test constants with source references.
+      Each test documents the C++ source file (step3_rgba.cpp, step4_lion.cpp, step6_lion_full.cpp).
 
 ---
 
@@ -750,10 +758,11 @@ correctness), the reference images will need regeneration. This needs a document
 ### 10.10 Exit Criteria
 
 - [ ] All items in 10.1–10.8 are resolved or explicitly deferred with rationale.
-- [ ] `cmd/aggtest` pixel values match C++ for all 6 steps.
+- [x] `cmd/aggtest` pixel values match C++ for all 6 steps.
+      Proper integration tests in `tests/integration/cpp_parity_test.go`.
 - [ ] `alpha_mask2`, `alpha_mask`, `alpha_mask3` visual output matches C++ reference images within
       the visual regression threshold.
-- [ ] The `rasterizerAdaptor`/`scanlineWrapper` boilerplate is removed from all example files.
+- [x] The `rasterizerAdaptor`/`scanlineWrapper` boilerplate is removed from all example files.
 
 ---
 

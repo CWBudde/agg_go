@@ -64,7 +64,7 @@ func (a *controlPathAdapter) Vertex(x, y *float64) uint32 {
 
 func renderSolidPath(
 	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
-	sl *scanline.ScanlineU8,
+	sl *scanline.ScanlineP8,
 	renBase *renderer.RendererBase[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]],
 	vs rasterizer.VertexSource,
 	col color.RGBA8[color.Linear],
@@ -106,7 +106,7 @@ func rgbaToRGBA8(c color.RGBA) color.RGBA8[color.Linear] {
 
 func renderControl(
 	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
-	sl *scanline.ScanlineU8,
+	sl *scanline.ScanlineP8,
 	renBase *renderer.RendererBase[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]],
 	numPaths uint,
 	rewindFn func(pathID uint),
@@ -150,7 +150,7 @@ func (d *demo) Render(img *agg.Image) {
 		rasterizer.RasConvInt{},
 		rasterizer.NewRasterizerSlNoClip(),
 	)
-	sl := scanline.NewScanlineU8()
+	sl := scanline.NewScanlineP8()
 
 	// Anti-aliased triangle (same defaults as C++ sample).
 	pathAA := path.NewPathStorageStl()

@@ -58,7 +58,7 @@ func (d *demo) Render(img *agg.Image) {
 
 	ras := agg2d.GetInternalRasterizer()
 	
-	sl := scanline.NewScanlineP8()
+	sl := scanline.NewScanlineU8()
 
 	lionPaths := liondemo.Parse()
 	for _, lp := range lionPaths {

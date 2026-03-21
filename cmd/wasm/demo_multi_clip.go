@@ -69,7 +69,7 @@ func drawMultiClipDemo() {
 	// Render the lion with multi-clip
 	ras := agg2d.GetInternalRasterizer()
 	
-	sl := scanline.NewScanlineP8()
+	sl := scanline.NewScanlineU8()
 
 	for _, lp := range lionPaths {
 		c := color.RGBA8[color.Linear]{R: lp.Color.R, G: lp.Color.G, B: lp.Color.B, A: 255}

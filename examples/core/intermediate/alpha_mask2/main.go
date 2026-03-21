@@ -118,7 +118,7 @@ func (d *demo) Render(img *agg.Image) {
 	workRbuf := buffer.NewRenderingBufferU8WithData(workBuf, w, h, w*4)
 
 	ras := newRasterizer()
-	sl := scanline.NewScanlineP8()
+	sl := scanline.NewScanlineU8()
 
 	// --- Generate alpha mask from ellipses ---
 	// C++ uses srand(1432).

@@ -178,7 +178,7 @@ func (d *demo) Render(img *agg.Image) {
 	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
 		rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip(),
 	)
-	sl := scanline.NewScanlineU8()
+	sl := scanline.NewScanlineP8()
 
 	cx, cy := float64(canvasW)/2, float64(canvasH)/2
 	ps := buildLargeStarPath(cx, cy, canvasW, canvasH, polygonAngle)

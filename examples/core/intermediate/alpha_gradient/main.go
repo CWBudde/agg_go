@@ -305,7 +305,7 @@ func (g *alphaGradSpanGen) Generate(colors []color.RGBA8[color.Linear], x, y, le
 
 func renderCtrl(
 	ras *rasType,
-	sl *scanline.ScanlineP8,
+	sl *scanline.ScanlineU8,
 	rb *bgr24Renderer,
 	ctrl ctrlbase.Ctrl[color.RGBA],
 ) {
@@ -463,7 +463,7 @@ func (d *demo) Render(img *agg.Image) {
 	rb.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
 
 	ras := newRasterizer()
-	sl := scanline.NewScanlineP8()
+	sl := scanline.NewScanlineU8()
 
 	cx := float64(w) / 2
 	cy := float64(h) / 2

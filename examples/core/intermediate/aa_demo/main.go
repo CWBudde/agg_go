@@ -76,7 +76,7 @@ func (a *pathStlVS) Vertex() (float64, float64, basics.PathCommand) {
 
 type rendererEnlarged struct {
 	ras   *rasType
-	sl    *scanline.ScanlineP8
+	sl    *scanline.ScanlineU8
 	renRb *renderer.RendererBase[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]]
 	size  float64
 	col   color.RGBA8[color.Linear]
@@ -88,7 +88,7 @@ func newRendererEnlarged(
 ) *rendererEnlarged {
 	return &rendererEnlarged{
 		ras:   newRasterizer(),
-		sl:    scanline.NewScanlineP8(),
+		sl:    scanline.NewScanlineU8(),
 		renRb: renRb,
 		size:  size,
 	}
@@ -155,7 +155,7 @@ func (d *demo) Render(img *agg.Image) {
 	sizeMul := float64(int(d.slider1.Value()))
 
 	ras := newRasterizer()
-	sl := scanline.NewScanlineP8()
+	sl := scanline.NewScanlineU8()
 
 	// 1. Enlarged-pixel rendering.
 	renEnlarged := newRendererEnlarged(mainRb, sizeMul)
@@ -216,7 +216,7 @@ func (d *demo) OnMouseUp(x, y int, btn lowlevelrunner.Buttons) bool {
 
 func renderCtrl(
 	ras *rasType,
-	sl *scanline.ScanlineP8,
+	sl *scanline.ScanlineU8,
 	renBase *renderer.RendererBase[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]],
 	ctrl ctrlbase.Ctrl[color.RGBA],
 ) {

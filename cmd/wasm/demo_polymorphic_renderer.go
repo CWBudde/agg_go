@@ -60,7 +60,7 @@ func drawPolymorphicRendererDemo() {
 	)
 	ras.AddPath(&pathSourceAdapter{ps: ps}, 0)
 
-	sl := scanline.NewScanlineU8()
+	sl := scanline.NewScanlineP8()
 	if ras.RewindScanlines() {
 		sl.Reset(ras.MinX(), ras.MaxX())
 		for ras.SweepScanline(sl) {

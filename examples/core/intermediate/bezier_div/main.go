@@ -201,7 +201,7 @@ func (d *demo) Render(img *agg.Image) {
 	mainRb.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 242, A: 255})
 
 	ras := newRasterizer()
-	sl := scanline.NewScanlineP8()
+	sl := scanline.NewScanlineU8()
 
 	angleTol := d.angleTolerance.Value() * math.Pi / 180.0
 	cuspLimitVal := d.cuspLimit.Value() * math.Pi / 180.0
@@ -317,7 +317,7 @@ func (d *demo) OnMouseUp(x, y int, btn lowlevelrunner.Buttons) bool {
 
 func renderCtrl(
 	ras *rasType,
-	sl *scanline.ScanlineP8,
+	sl *scanline.ScanlineU8,
 	renBase *renderer.RendererBase[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]],
 	ctrl ctrlbase.Ctrl[color.RGBA],
 ) {

@@ -78,7 +78,7 @@ func (a *convVS) Vertex(x, y *float64) uint32 {
 
 func drawStrokedLine(
 	ras *rasType,
-	sl *scanline.ScanlineP8,
+	sl *scanline.ScanlineU8,
 	rb *renderer.RendererBase[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]],
 	x1, y1, x2, y2, lineWidth float64,
 	c color.RGBA8[color.Linear],
@@ -111,7 +111,7 @@ func (d *demo) Render(img *agg.Image) {
 	mainRb.Clear(color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255})
 
 	ras := newRasterizer()
-	sl := scanline.NewScanlineP8()
+	sl := scanline.NewScanlineU8()
 
 	white := color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255}
 	whiteAlpha := color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 51} // 0.2 * 255
