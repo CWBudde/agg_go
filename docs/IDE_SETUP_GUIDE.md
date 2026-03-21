@@ -7,20 +7,17 @@ Your IDE is experiencing test discovery issues due to a **dual-workspace configu
 ### Root Causes Identified
 
 1. **Two identical agg_go directories**
-
    - `/mnt/projekte/Code/agg_go` (primary, currently active)
    - `/home/christian/Code/agg_go` (secondary)
    - Both are complete git repositories pointing to the same remote
    - Both have identical test files causing duplicates in the test explorer
 
 2. **Gopls caching both workspaces**
-
    - Multiple gopls processes running (at least 4 active)
    - Gopls cache at `~/.cache/gopls/1d501daf/` contains merged information from both directories
    - This causes the IDE to see duplicate tests from both workspace paths
 
 3. **Test duplication mechanism**
-
    - Go test discovery (`go test -list .`) shows 7 instances of TestEdgeCases, 4 of TestVertexGeneration, etc.
    - These duplicates come from the same test packages being indexed from multiple roots
    - IDE shows these as separate test items in the test explorer

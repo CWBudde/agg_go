@@ -66,6 +66,44 @@ Remaining:
 
 ## Phase 2 - Core Pipeline Parity ✅
 
+### ⚠️ URGENT: PixFmtAMaskAdaptor hardcodes RGBA8 — RGB pixfmts cannot be wrapped
+
+**Gap**: `PixFmtInterface` (in `internal/pixfmt/pixfmt_amask_adaptor.go`) requires `RGBA8[Linear]`
+for every method. This means only RGBA pixfmts can be wrapped by `PixFmtAMaskAdaptor`. In C++,
+`pixfmt_amask_adaptor<PixFmt, Mask>` is a template and wraps _any_ pixfmt regardless of color type
+— including `pixfmt_bgr24`, `pixfmt_rgb24`, `pixfmt_gray8`, etc.
+
+**Concrete impact**:
+
+- `alpha_mask2.cpp` uses `pixfmt_amask_adaptor<pixfmt_bgr24, amask_no_clip_gray8>`.
+- The Go port cannot replicate this: `PixFmtBGR24` has color type `RGB8[Linear]` and does not
+  satisfy `PixFmtInterface`. The example works around this by using `PixFmtRGBA32[Linear]` instead
+  of BGR24 — a silent behavioral deviation.
+- For an opaque white background the RGB blending formulas are numerically equivalent (RGBA lerp ==
+  RGB lerp when destination alpha is 255), so the deviation does not affect the alpha_mask2 output
+  directly. However, it prevents faithful porting of any demo that uses a non-RGBA main buffer with
+  an alpha mask, and masks any future bug in the RGBA path that the BGR24 path would not share.
+
+**Fix required**:
+Make `PixFmtAMaskAdaptor` generic over the wrapped pixfmt's color type, or introduce a second
+adaptor variant (`PixFmtAMaskAdaptorRGB`) for RGB pixfmts. The internal `PixFmtInterface` should
+either become generic (`PixFmtInterface[C]`) or the amask adaptor should bypass it and delegate
+directly to a narrower "blend span" interface that both RGB and RGBA pixfmts satisfy.
+
+**References**:
+
+- C++: `agg_pixfmt_amask_adaptor.h`, `pixfmt_amask_adaptor<PixFmt, AlphaMask>`
+- Go: `internal/pixfmt/pixfmt_amask_adaptor.go`, `PixFmtInterface`
+- Go: `internal/pixfmt/pixfmt_rgb8.go`, `PixFmtBGR24` / `PixFmtAlphaBlendRGB`
+
+**Tasks**:
+
+- [ ] Redesign `PixFmtInterface` / `PixFmtAMaskAdaptor` to support RGB (and Gray) pixfmts.
+- [ ] Port `alpha_mask2` main buffer to `PixFmtBGR24` once the adaptor supports it.
+- [ ] Add a test that wraps `PixFmtBGR24` with the amask adaptor and asserts correct blending.
+
+---
+
 Rasterizer → scanline → renderer → pixfmt behavior is aligned with AGG:
 
 - **Rasterizer/scanline**: Fill rules, clipping edge cases, cell accumulation, sweep indexing,
@@ -479,6 +517,243 @@ Triage each: fully port, replace with Go-idiomatic equivalent, or defer with rat
 
 - [ ] Every remaining upstream demo is ported, replaced by a documented equivalent, or deferred.
 - [ ] Newly added demos build and run through the existing example workflows.
+
+---
+
+## Phase 10 - Rendering Fidelity: Architectural Gaps
+
+This phase captures all architectural gaps and subtle behavioral differences discovered through
+systematic layer-by-layer comparison between Go and C++ AGG output (March 2026 investigation).
+Each gap is concrete, traced to a C++ source reference, and has a verifiable fix path.
+
+---
+
+### 10.1 ⚠️ sRGB Color Handling in Lion/Demo Rendering
+
+**Status**: OPEN — causes saturated/dark colors vs C++ pale/washed-out reference.
+
+**Root cause**: In C++ AGG, lion colors are stored as `srgba8` (sRGB encoded). When passed to a
+pixfmt whose `color_type` is `rgba8` (linear) — e.g. `pixfmt_bgr24` or `pixfmt_rgba32` — the
+C++ template system implicitly converts sRGB→linear via the `rgba8T<linear>(const rgba8T<sRGB>&)`
+constructor. This means the **output buffer always contains linear-encoded bytes**, and the PNG
+viewer (treating bytes as sRGB) makes the lion look pale/light.
+
+The Go port stores sRGB bytes in the output buffer unchanged (no conversion), so colors appear
+fully saturated/dark. Applying `ConvertRGBA8SRGBToLinear` explicitly at call sites is the right
+direction but the result must flow through the same linear-space blending pipeline.
+
+**C++ reference**:
+
+- `agg_color_rgba.h`: `rgba8T<linear>(const rgba8T<sRGB>& c)` → calls `convert(*this, c)` → `rgb_from_sRGB`
+- `agg_pixfmt_rgb.h`: `blender_bgr24` = `blender_rgb<rgba8, order_bgr>` (color_type = linear rgba8)
+- `examples/alpha_mask2.cpp` line 271: `render_all_paths(... g_colors ...)` with `g_colors` typed `srgba8`
+
+**Go files**:
+
+- `internal/demo/lion/lion.go`: `parseColor` correctly returns `RGBA8[SRGB]` — **correct**
+- `examples/core/intermediate/alpha_mask2/main.go` line 261: applies `ConvertRGBA8SRGBToLinear` — **correct**
+- All other lion consumers: must apply the same conversion before rendering
+
+**Remaining work**:
+
+- [ ] Audit every lion/demo caller that renders through a pixfmt — ensure `ConvertRGBA8SRGBToLinear` is applied
+      for all sRGB source colors before calling `RenderScanlinesAASolid`.
+- [ ] Verify output PNG color values against C++ step6 reference: `out(300,100)` should be ≈ (245,217,177).
+- [ ] Update visual regression references once pixel-accurate.
+
+---
+
+### 10.2 ⚠️ `PixFmtAMaskAdaptor` Cannot Wrap Non-RGBA Pixfmts
+
+**Status**: OPEN — documented in Phase 2, tasks not yet started.
+
+**Root cause**: `PixFmtInterface` (used by `PixFmtAMaskAdaptor`) hardcodes `RGBA8[Linear]` for
+all blend methods. C++ uses templates, so `pixfmt_amask_adaptor<pixfmt_bgr24, mask>` compiles
+fine. In Go, `PixFmtBGR24` (color type `RGB8[Linear]`) does not satisfy `PixFmtInterface`.
+
+**C++ reference**: `agg_pixfmt_amask_adaptor.h` — `pixfmt_amask_adaptor<PixFmt, AlphaMask>` is a
+template that delegates all blend calls to the wrapped `PixFmt` regardless of its color type.
+
+**Go files**:
+
+- `internal/pixfmt/pixfmt_amask_adaptor.go`: `PixFmtInterface`, `PixFmtAMaskAdaptor`
+- `internal/pixfmt/pixfmt_rgb8.go`: `PixFmtBGR24` / `PixFmtAlphaBlendRGB`
+
+**Tasks**:
+
+- [ ] Introduce a generic `PixFmtBlendInterface[C color.ColorType]` that abstracts over color type.
+- [ ] Make `PixFmtAMaskAdaptor` generic: `PixFmtAMaskAdaptor[C color.ColorType]`.
+- [ ] Ensure `PixFmtBGR24` satisfies the new generic interface.
+- [ ] Port `alpha_mask2` main buffer to `PixFmtBGR24` once the adaptor is generic.
+- [ ] Add a test: wrap `PixFmtBGR24` with amask adaptor, assert correct blending output.
+
+---
+
+### 10.3 ⚠️ `render_all_paths` Equivalent Missing for Multi-Path Lion Rendering
+
+**Status**: OPEN — Go examples iterate paths manually with `lp.Path.Rewind(0)` + `NextVertex()`,
+but C++ uses `render_all_paths` with `conv_transform` which handles full AGG vertex-source
+semantics including all command types (curves, end-poly, etc.).
+
+**Root cause**: The Go examples only forward `MoveTo` and `LineTo` from `NextVertex()` and
+silently drop `EndPoly`/`ClosePolygon` and any curve commands. `EndPoly` commands carry the
+`PathFlagsClose` flag that tells the rasterizer to auto-close the polygon — dropping them may
+cause unclosed paths or missed fills in some lion sub-paths.
+
+**C++ reference**:
+
+- `agg_renderer_scanline.h`: `render_all_paths(ras, sl, ren, vs, colors, path_idx, num_paths)`
+- `agg_conv_transform.h`: `conv_transform<path_storage, trans_affine>` — wraps a vertex source
+  with a transform, forwarding ALL commands (including EndPoly) unchanged.
+
+**Go files**:
+
+- `examples/core/intermediate/alpha_mask2/main.go` lines 260–279: manual vertex loop
+- `cmd/aggtest/main.go` step6: same pattern
+
+**Tasks**:
+
+- [ ] Port `render_all_paths` to Go as `RenderAllPaths(ras, sl, ren, vs, colors, pathIdx)`.
+      C++ source: `agg_renderer_scanline.h` `render_all_paths` template.
+- [ ] Implement or reuse `ConvTransform` to wrap a path storage with an affine transform,
+      forwarding all commands including `EndPoly|Close`.
+- [ ] Update `alpha_mask2`, `alpha_mask`, `multi_clip`, and wasm demo equivalents to use
+      the proper `RenderAllPaths` + `ConvTransform` pattern.
+- [ ] Add a pixel-level test comparing `RenderAllPaths` output against C++ step6 reference.
+
+---
+
+### 10.4 ⚠️ `sgray8` vs `gray8` for Alpha Mask Generation
+
+**Status**: PARTIALLY OPEN — C++ `alpha_mask2.cpp` uses `pixfmt_sgray8` (sRGB grayscale) for the
+mask pixel format and renders ellipses with `sgray8` color. Go uses `PixFmtGray8` (linear gray).
+
+**Root cause**: In C++, `pixfmt_sgray8` uses `blender_gray<sgray8>` where `mult_cover` applies
+sRGB conversion to the coverage-scaled value. For the mask generation path this produces subtly
+different intermediate mask byte values than the linear `gray8` path.
+
+However, the layer-by-layer test showed the mask values match between Go (linear `gray8`) and
+C++ (`sgray8`) for the ellipses in the test. This is likely because `sgray8.mult_cover(v, a)`
+and `gray8.mult_cover(v, a)` produce the same 8-bit result for most inputs. Needs verification
+for edge cases.
+
+**C++ reference**:
+
+- `agg_color_gray.h`: `gray8T<sRGB>` vs `gray8T<linear>` — `mult_cover` differs
+- `examples/alpha_mask2.cpp` line 197: `pixfmt_sgray8 pixf(m_alpha_mask_rbuf)`
+
+**Go files**:
+
+- `examples/core/intermediate/alpha_mask2/main.go` line 187: `NewPixFmtGray8` (linear)
+- `internal/pixfmt/pixfmt_gray8.go`: `PixFmtGray8` / `PixFmtSGray8`
+
+**Tasks**:
+
+- [ ] Confirm whether `PixFmtSGray8` exists in Go; if not, add it following the `PixFmtGray8` pattern.
+- [ ] Switch `alpha_mask2` mask pixfmt to `PixFmtSGray8` to match C++ exactly.
+- [ ] Add a unit test comparing mask output byte-for-byte between `PixFmtGray8` and `PixFmtSGray8`
+      for representative inputs to document and bound any divergence.
+
+---
+
+### 10.5 ⚠️ `amask_no_clip_gray8` vs `AlphaMaskU8` — Clip vs No-Clip Variants
+
+**Status**: OPEN — C++ uses `amask_no_clip_gray8` (no bounds checking, faster path). Go uses
+`AlphaMaskU8` (with bounds checking). The `AMaskNoClipU8` type exists in Go but examples use the
+clip variant.
+
+**C++ reference**: `agg_alpha_mask_u8.h`: `amask_no_clip_gray8` = `amask_no_clip_u8<1, 0>`.
+
+**Go files**:
+
+- `internal/pixfmt/alpha_mask.go`: `AMaskNoClipU8` exists but is not used in examples.
+- `examples/core/intermediate/alpha_mask2/main.go` line 209: uses `NewAlphaMaskU8WithBuffer`
+  (clip variant) instead of the no-clip variant.
+
+**Tasks**:
+
+- [ ] Switch `alpha_mask2`, `alpha_mask`, `alpha_mask3` examples to `AMaskNoClipU8` to match C++.
+- [ ] Verify `AMaskNoClipU8.CombineHspan` produces identical output to `AlphaMaskU8.CombineHspan`
+      for in-bounds coordinates (add a table-driven test).
+
+---
+
+### 10.6 ⚠️ C++ Rasterizer Uses `scanline_u8` Not `scanline_p8` in Some Examples
+
+**Status**: OPEN — C++ `alpha_mask2.cpp` declares `agg::scanline_u8 g_scanline` (unpacked
+scanline). Go examples use `ScanlineP8` (packed). For solid-color rendering the outputs are
+identical, but for span-colored rendering (gradients etc.) the behavior differs.
+
+**C++ reference**: `agg_scanline_u.h`: `scanline_u8` — unpacked; `agg_scanline_p.h`: `scanline_p8` — packed.
+
+**Tasks**:
+
+- [ ] Audit each C++ example to identify which scanline type it uses.
+- [ ] For demos that use `scanline_u8`, switch Go port to use `ScanlineU8`.
+- [ ] Ensure `ScanlineU8` is implemented in `internal/scanline/` and satisfies `ScanlineInterface`.
+
+---
+
+### 10.7 ⚠️ Missing `scanlineWrapper` / Rasterizer Adaptor — Architecture Smell
+
+**Status**: OPEN — The `rasterizerAdaptor` / `scanlineWrapper` / `rasScanlineAdaptor` / `spanIter`
+boilerplate in `alpha_mask2/main.go` and `cmd/aggtest/main.go` exists only because the example
+cannot use the rasterizer and renderer interfaces directly. This is a symptom of interface
+mismatch between `renscan.ScanlineInterface` and `rasterizer.ScanlineInterface`.
+
+**Root cause**: Two different `ScanlineInterface` types exist — one in `internal/renderer/scanline`
+and one in `internal/rasterizer`. They have incompatible method sets, forcing every example that
+calls `RenderScanlinesAASolid` + `RasterizerScanlineAA` to write 4 adapter types.
+
+**Tasks**:
+
+- [ ] Unify the scanline interface: define a single `ScanlineInterface` (likely in `internal/scanline`
+      or `internal/basics`) that both the rasterizer and renderer packages use.
+- [ ] Remove the per-example adapter boilerplate (`rasterizerAdaptor`, `scanlineWrapper`, etc.)
+      once the interface is unified.
+- [ ] Ensure all example and demo files compile without manual adapter types.
+
+---
+
+### 10.8 ⚠️ `cmd/aggtest` Regression Suite — Make Permanent
+
+**Status**: OPEN — `cmd/aggtest/main.go` contains layer-by-layer pixel-accurate comparisons
+against C++ reference values. Currently lives in `cmd/` as a developer tool.
+
+**Tasks**:
+
+- [ ] Convert `cmd/aggtest` steps into proper `testing.T`-based tests under `tests/integration/`.
+- [ ] Each step becomes a sub-test with `t.Errorf` on pixel mismatch, not just `fmt.Printf`.
+- [ ] Remove or keep `cmd/aggtest` as a human-readable tool; the test suite is the ground truth.
+- [ ] Add the C++ reference pixel values as test constants with source references.
+
+---
+
+### 10.9 ⚠️ Output PNG Byte Encoding — Linear vs sRGB
+
+**Status**: OPEN — C++ examples write linear-encoded bytes to the display buffer and the platform
+screenshot captures them; PNG viewers treat bytes as sRGB (since PNG has no color profile embedded),
+making C++ output appear pale. Go writes the same linear bytes but the visual comparison target is
+the C++ screenshot (which is already "sRGB-interpreted linear"), so the comparison is valid.
+
+**However**: if Go ever switches to writing sRGB bytes to the output buffer (e.g. for display
+correctness), the reference images will need regeneration. This needs a documented policy.
+
+**Tasks**:
+
+- [ ] Document in `docs/AGG_DELTAS.md`: Go port writes linear bytes to output buffers, same as C++.
+      PNG files are not color-space tagged; viewers will interpret as sRGB (matches C++ behavior).
+- [ ] Add a note that reference PNG comparison is valid only when both sides use the same encoding.
+
+---
+
+### 10.10 Exit Criteria
+
+- [ ] All items in 10.1–10.8 are resolved or explicitly deferred with rationale.
+- [ ] `cmd/aggtest` pixel values match C++ for all 6 steps.
+- [ ] `alpha_mask2`, `alpha_mask`, `alpha_mask3` visual output matches C++ reference images within
+      the visual regression threshold.
+- [ ] The `rasterizerAdaptor`/`scanlineWrapper` boilerplate is removed from all example files.
 
 ---
 

@@ -61,7 +61,7 @@ func drawLionDemo() {
 	a.NoLine()
 
 	for _, lp := range lionPaths {
-		a.FillColor(agg.NewColor(lp.Color[0], lp.Color[1], lp.Color[2], alpha))
+		a.FillColor(agg.NewColor(lp.Color.R, lp.Color.G, lp.Color.B, alpha))
 		a.ResetPath()
 
 		lp.Path.Rewind(0)

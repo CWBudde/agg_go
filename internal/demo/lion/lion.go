@@ -5,12 +5,17 @@ import (
 	"strings"
 
 	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/color"
 	"github.com/MeKo-Christian/agg_go/internal/path"
 )
 
+// Path holds one lion sub-path together with its fill color.
+// The hex color data represents linear RGB values (C++ rgb8_packed returns
+// rgba8/linear). C++ parse_lion stores into srgba8[] which roundtrips
+// linear→sRGB→linear, but the net effect is identity (±1 rounding).
 type Path struct {
 	Path  *path.PathStorageStl
-	Color [3]uint8
+	Color color.RGBA8[color.Linear]
 }
 
 func Parse() []Path {
@@ -149,13 +154,14 @@ func arrangeOrientationsCW(lp *Path) {
 	lp.Path = newPath
 }
 
-func parseColor(s string) [3]uint8 {
-	var c [3]uint8
+func parseColor(s string) color.RGBA8[color.Linear] {
 	val, _ := strconv.ParseUint(s, 16, 32)
-	c[0] = uint8(val >> 16)
-	c[1] = uint8((val >> 8) & 0xFF)
-	c[2] = uint8(val & 0xFF)
-	return c
+	return color.RGBA8[color.Linear]{
+		R: uint8(val >> 16),
+		G: uint8((val >> 8) & 0xFF),
+		B: uint8(val & 0xFF),
+		A: 255,
+	}
 }
 
 const data = `f2cc99

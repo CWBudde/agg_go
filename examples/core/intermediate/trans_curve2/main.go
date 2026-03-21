@@ -93,7 +93,7 @@ func (d *demo) Render(img *agg.Image) {
 	dp.SetBaseHeight(math.Abs(ly2 - ly1))
 
 	for _, lp := range lionPaths {
-		a.FillColor(agg.NewColor(lp.Color[0], lp.Color[1], lp.Color[2], 220))
+		a.FillColor(agg.NewColor(lp.Color.R, lp.Color.G, lp.Color.B, 220))
 		a.NoLine()
 		a.ResetPath()
 

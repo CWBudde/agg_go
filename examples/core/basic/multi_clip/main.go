@@ -118,7 +118,7 @@ func (d *demo) Render(img *agg.Image) {
 
 	lionPaths := liondemo.Parse()
 	for _, lp := range lionPaths {
-		c := color.RGBA8[color.Linear]{R: lp.Color[0], G: lp.Color[1], B: lp.Color[2], A: 255}
+		c := color.RGBA8[color.Linear]{R: lp.Color.R, G: lp.Color.G, B: lp.Color.B, A: 255}
 		ras.Reset()
 		lp.Path.Rewind(0)
 		for {

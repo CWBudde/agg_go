@@ -73,7 +73,7 @@ func (r *clibcRand) next() int32 {
 	return result
 }
 
-func (r *clibcRand) randN(n int) int   { return int(r.next()) % n }
+func (r *clibcRand) randN(n int) int      { return int(r.next()) % n }
 func (r *clibcRand) randAnd(mask int) int { return int(r.next()) & mask }
 
 // ---------------------------------------------------------------------------
@@ -258,7 +258,7 @@ func (d *demo) Render(img *agg.Image) {
 	mtx.Multiply(transform.NewTransAffineTranslation(float64(w)/2, float64(h)/2))
 
 	for _, lp := range lionPaths {
-		c := color.RGBA8[color.Linear]{R: lp.Color[0], G: lp.Color[1], B: lp.Color[2], A: 255}
+		c := color.RGBA8[color.Linear]{R: lp.Color.R, G: lp.Color.G, B: lp.Color.B, A: 255}
 		ras.Reset()
 		lp.Path.Rewind(0)
 		for {

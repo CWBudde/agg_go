@@ -77,7 +77,7 @@ func (d *demo) Render(img *agg.Image) {
 	lens.SetRadius(lensRadius / lensScale)
 
 	for _, lp := range lionPaths {
-		a.FillColor(agg.NewColor(lp.Color[0], lp.Color[1], lp.Color[2], 255))
+		a.FillColor(agg.NewColor(lp.Color.R, lp.Color.G, lp.Color.B, 255))
 		a.NoLine()
 		a.ResetPath()
 

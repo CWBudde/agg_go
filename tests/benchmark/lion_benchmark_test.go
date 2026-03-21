@@ -44,7 +44,7 @@ func benchLion(b *testing.B, name string, width, height int) {
 
 func renderLion(ctx *agg2d.Agg2D, paths []liondemo.Path, scale, offsetX, offsetY float64) {
 	for _, lp := range paths {
-		ctx.FillColor(agg2d.Color{lp.Color[0], lp.Color[1], lp.Color[2], 255})
+		ctx.FillColor(agg2d.Color{lp.Color.R, lp.Color.G, lp.Color.B, lp.Color.A})
 		ctx.NoLine()
 		ctx.ResetPath()
 		lp.Path.Rewind(0)

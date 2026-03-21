@@ -105,7 +105,7 @@ func drawLionToAgg2D(agg2d *agg.Agg2D, scale float64) {
 	agg2d.Translate(float64(width)*0.5, float64(height)*0.5)
 
 	for _, lp := range lionPaths {
-		agg2d.FillColor(agg.NewColor(lp.Color[0], lp.Color[1], lp.Color[2], 255))
+		agg2d.FillColor(agg.NewColor(lp.Color.R, lp.Color.G, lp.Color.B, 255))
 		agg2d.NoLine()
 		agg2d.ResetPath()
 		lp.Path.Rewind(0)

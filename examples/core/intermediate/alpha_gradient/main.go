@@ -170,10 +170,12 @@ func (ev *ellipseVS) Vertex(x, y *float64) uint32 {
 
 // convVS adapts conv.VertexSource (Rewind(uint), Vertex()->(x,y,cmd)) to
 // rasterizer.VertexSource (Rewind(uint32), Vertex(*x,*y) uint32).
-type convVS struct{ src interface {
-	Rewind(uint)
-	Vertex() (float64, float64, basics.PathCommand)
-} }
+type convVS struct {
+	src interface {
+		Rewind(uint)
+		Vertex() (float64, float64, basics.PathCommand)
+	}
+}
 
 func (v *convVS) Rewind(id uint32) { v.src.Rewind(uint(id)) }
 func (v *convVS) Vertex(x, y *float64) uint32 {
@@ -183,10 +185,12 @@ func (v *convVS) Vertex(x, y *float64) uint32 {
 }
 
 // ctrlVS adapts a ctrl.Ctrl (Rewind(uint), Vertex()) to rasterizer.VertexSource.
-type ctrlVS struct{ src interface {
-	Rewind(uint)
-	Vertex() (float64, float64, basics.PathCommand)
-} }
+type ctrlVS struct {
+	src interface {
+		Rewind(uint)
+		Vertex() (float64, float64, basics.PathCommand)
+	}
+}
 
 func (v *ctrlVS) Rewind(id uint32) { v.src.Rewind(uint(id)) }
 func (v *ctrlVS) Vertex(x, y *float64) uint32 {

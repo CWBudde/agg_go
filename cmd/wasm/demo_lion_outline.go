@@ -56,7 +56,7 @@ func drawLionOutlineDemo() {
 	a.NoFill()
 
 	for _, lp := range lionPaths {
-		a.LineColor(agg.NewColor(lp.Color[0], lp.Color[1], lp.Color[2], 255))
+		a.LineColor(agg.NewColor(lp.Color.R, lp.Color.G, lp.Color.B, 255))
 		a.ResetPath()
 
 		lp.Path.Rewind(0)

@@ -120,7 +120,7 @@ func drawTransCurve2Demo() {
 	scaleX := tcurve.TotalLength1() / lionW * 0.8
 
 	for _, lp := range lionPaths {
-		agg2d.FillColor(agg.NewColor(lp.Color[0], lp.Color[1], lp.Color[2], 200))
+		agg2d.FillColor(agg.NewColor(lp.Color.R, lp.Color.G, lp.Color.B, 200))
 		agg2d.NoLine()
 		agg2d.ResetPath()
 		lp.Path.Rewind(0)

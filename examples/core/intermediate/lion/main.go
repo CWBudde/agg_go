@@ -20,7 +20,7 @@ func (d *demo) Render(img *agg.Image) {
 	scale := 1.2
 	offsetX, offsetY := 250.0, 100.0
 	for _, lp := range liondemo.Parse() {
-		agg2d.FillColor(agg.NewColor(lp.Color[0], lp.Color[1], lp.Color[2], 255))
+		agg2d.FillColor(agg.NewColor(lp.Color.R, lp.Color.G, lp.Color.B, 255))
 		agg2d.NoLine()
 		agg2d.ResetPath()
 		lp.Path.Rewind(0)
