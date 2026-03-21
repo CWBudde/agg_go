@@ -138,3 +138,62 @@ func TestAMaskNoClipSpanOperations(t *testing.T) {
 		t.Fatalf("CombineVspan() = %v", v)
 	}
 }
+
+// TestAlphaMaskClipNoClipEquivalence verifies that AlphaMaskU8 and
+// AMaskNoClipU8 produce identical results for in-bounds coordinates.
+// C++ uses amask_no_clip_gray8 (no bounds checking) while Go examples
+// previously used AlphaMaskU8 (with bounds checking). This test confirms
+// the switch is safe.
+func TestAlphaMaskClipNoClipEquivalence(t *testing.T) {
+	data := []basics.Int8u{
+		10, 20, 30, 40,
+		50, 60, 70, 80,
+		90, 100, 110, 120,
+		130, 140, 150, 160,
+	}
+	w, h := 4, 4
+	rbuf1 := buffer.NewRenderingBufferU8WithData(append([]basics.Int8u{}, data...), w, h, w)
+	rbuf2 := buffer.NewRenderingBufferU8WithData(append([]basics.Int8u{}, data...), w, h, w)
+
+	clip := NewAlphaMaskU8WithBuffer(rbuf1, 1, 0, OneComponentMaskU8{})
+	noclip := NewAMaskNoClipU8WithBuffer(rbuf2, 1, 0, OneComponentMaskU8{})
+
+	// CombinePixel equivalence.
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			for _, val := range []basics.Int8u{0, 1, 127, 128, 254, 255} {
+				got1 := clip.CombinePixel(x, y, val)
+				got2 := noclip.CombinePixel(x, y, val)
+				if got1 != got2 {
+					t.Errorf("CombinePixel(%d,%d,%d): clip=%d, noclip=%d", x, y, val, got1, got2)
+				}
+			}
+		}
+	}
+
+	// CombineHspan equivalence.
+	for y := 0; y < h; y++ {
+		dst1 := []basics.Int8u{100, 100, 100, 100}
+		dst2 := []basics.Int8u{100, 100, 100, 100}
+		clip.CombineHspan(0, y, dst1, w)
+		noclip.CombineHspan(0, y, dst2, w)
+		for i := range dst1 {
+			if dst1[i] != dst2[i] {
+				t.Errorf("CombineHspan y=%d i=%d: clip=%d, noclip=%d", y, i, dst1[i], dst2[i])
+			}
+		}
+	}
+
+	// CombineVspan equivalence.
+	for x := 0; x < w; x++ {
+		dst1 := []basics.Int8u{100, 100, 100, 100}
+		dst2 := []basics.Int8u{100, 100, 100, 100}
+		clip.CombineVspan(x, 0, dst1, h)
+		noclip.CombineVspan(x, 0, dst2, h)
+		for i := range dst1 {
+			if dst1[i] != dst2[i] {
+				t.Errorf("CombineVspan x=%d i=%d: clip=%d, noclip=%d", x, i, dst1[i], dst2[i])
+			}
+		}
+	}
+}

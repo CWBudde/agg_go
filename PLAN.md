@@ -656,25 +656,20 @@ for edge cases.
 
 ---
 
-### 10.5 ⚠️ `amask_no_clip_gray8` vs `AlphaMaskU8` — Clip vs No-Clip Variants
+### 10.5 ✅ `amask_no_clip_gray8` vs `AlphaMaskU8` — Clip vs No-Clip Variants
 
-**Status**: OPEN — C++ uses `amask_no_clip_gray8` (no bounds checking, faster path). Go uses
-`AlphaMaskU8` (with bounds checking). The `AMaskNoClipU8` type exists in Go but examples use the
-clip variant.
+**Status**: DONE — All alpha mask examples and demos switched to `AMaskNoClipU8` to match C++.
 
 **C++ reference**: `agg_alpha_mask_u8.h`: `amask_no_clip_gray8` = `amask_no_clip_u8<1, 0>`.
 
-**Go files**:
-
-- `internal/pixfmt/alpha_mask.go`: `AMaskNoClipU8` exists but is not used in examples.
-- `examples/core/intermediate/alpha_mask2/main.go` line 209: uses `NewAlphaMaskU8WithBuffer`
-  (clip variant) instead of the no-clip variant.
-
 **Tasks**:
 
-- [ ] Switch `alpha_mask2`, `alpha_mask`, `alpha_mask3` examples to `AMaskNoClipU8` to match C++.
-- [ ] Verify `AMaskNoClipU8.CombineHspan` produces identical output to `AlphaMaskU8.CombineHspan`
-      for in-bounds coordinates (add a table-driven test).
+- [x] Switch `alpha_mask2`, `alpha_mask`, `alpha_mask3` examples to `AMaskNoClipU8` to match C++.
+      Also switched: `cmd/aggtest`, `tests/integration/cpp_parity_test.go`, and 3 wasm demos.
+- [x] Verify `AMaskNoClipU8.CombineHspan` produces identical output to `AlphaMaskU8.CombineHspan`
+      for in-bounds coordinates. Table-driven equivalence test added in
+      `internal/pixfmt/additional_contract_test.go:TestAlphaMaskClipNoClipEquivalence`.
+      Covers CombinePixel (6 values × 16 positions), CombineHspan (4 rows), CombineVspan (4 cols).
 
 ---
 

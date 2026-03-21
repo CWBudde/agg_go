@@ -126,7 +126,7 @@ func step3() {
 	renscan.RenderScanlinesAASolid(ras, sl, maskRb, color.Gray8[color.Linear]{V: 200, A: 200})
 	fmt.Printf("  mask(64,64) = %d  [C++ expects 157]\n", maskData[64*W+64])
 
-	mask := pixfmt.NewAlphaMaskU8WithBuffer(maskBuf, 1, 0, pixfmt.OneComponentMaskU8{})
+	mask := pixfmt.NewAMaskNoClipU8WithBuffer(maskBuf, 1, 0, pixfmt.OneComponentMaskU8{})
 	amaskPf := pixfmt.NewPixFmtAMaskAdaptor(pf, mask)
 	rbMasked := renderer.NewRendererBaseWithPixfmt(amaskPf)
 
@@ -163,7 +163,7 @@ func step4() {
 	ras.AddPath(&ellipseVS{e: ell}, 0)
 	renscan.RenderScanlinesAASolid(ras, sl, maskRb, color.Gray8[color.Linear]{V: 200, A: 200})
 
-	mask := pixfmt.NewAlphaMaskU8WithBuffer(maskBuf, 1, 0, pixfmt.OneComponentMaskU8{})
+	mask := pixfmt.NewAMaskNoClipU8WithBuffer(maskBuf, 1, 0, pixfmt.OneComponentMaskU8{})
 	amaskPf := pixfmt.NewPixFmtAMaskAdaptor(pf, mask)
 	rbMasked := renderer.NewRendererBaseWithPixfmt(amaskPf)
 
@@ -285,7 +285,7 @@ func step6() {
 	fmt.Printf("  mask(300,100) = %d  [C++ expects 192]\n", maskData[100*fw+300])
 
 	// Setup amask adaptor
-	mask := pixfmt.NewAlphaMaskU8WithBuffer(maskBuf, 1, 0, pixfmt.OneComponentMaskU8{})
+	mask := pixfmt.NewAMaskNoClipU8WithBuffer(maskBuf, 1, 0, pixfmt.OneComponentMaskU8{})
 	amaskPf := pixfmt.NewPixFmtAMaskAdaptor(mainPf, mask)
 	amaskRb := renderer.NewRendererBaseWithPixfmt(amaskPf)
 

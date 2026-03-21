@@ -210,7 +210,7 @@ func generateAlphaMask(
 	vs conv.VertexSource,
 	opAND bool,
 	w, h int,
-) (*pixfmt.AlphaMaskU8, *buffer.RenderingBufferU8) {
+) (*pixfmt.AMaskNoClipU8, *buffer.RenderingBufferU8) {
 	maskData := make([]uint8, w*h)
 	maskBuf := buffer.NewRenderingBufferU8WithData(maskData, w, h, w)
 	maskPixf := pixfmt.NewPixFmtGray8(maskBuf)
@@ -229,7 +229,7 @@ func generateAlphaMask(
 	ras.AddPath(&rasterVS{src: vs}, 0)
 	renscan.RenderScanlinesAASolid(ras, sl, maskRb, fillColor)
 
-	mask := pixfmt.NewAlphaMaskU8WithBuffer(maskBuf, 1, 0, pixfmt.OneComponentMaskU8{})
+	mask := pixfmt.NewAMaskNoClipU8WithBuffer(maskBuf, 1, 0, pixfmt.OneComponentMaskU8{})
 	return mask, maskBuf
 }
 
@@ -237,7 +237,7 @@ func performRendering(
 	ras *rasType,
 	sl *scanline.ScanlineP8,
 	mainPixf *pixfmt.PixFmtRGBA32[color.Linear],
-	mask *pixfmt.AlphaMaskU8,
+	mask *pixfmt.AMaskNoClipU8,
 	vs conv.VertexSource,
 ) {
 	amaskAdaptor := pixfmt.NewPixFmtAMaskAdaptor(mainPixf, mask)

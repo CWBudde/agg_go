@@ -19,7 +19,7 @@ import (
 
 var (
 	am3AlphaMaskBuf *buffer.RenderingBuffer[uint8]
-	am3AlphaMask    *pixfmt.AlphaMaskU8
+	am3AlphaMask    *pixfmt.AMaskNoClipU8
 	am3Operation    = 0 // 0: AND, 1: SUB
 	am3Polygon      = 3 // Default to GB and Spiral
 	am3X, am3Y      float64
@@ -80,7 +80,7 @@ func generateAlphaMask3(vs conv.VertexSource, w, h int) {
 	}
 
 	maskFunc := pixfmt.OneComponentMaskU8{}
-	am3AlphaMask = pixfmt.NewAlphaMaskU8WithBuffer(am3AlphaMaskBuf, 1, 0, maskFunc)
+	am3AlphaMask = pixfmt.NewAMaskNoClipU8WithBuffer(am3AlphaMaskBuf, 1, 0, maskFunc)
 }
 
 func drawAlphaMask3Demo() {

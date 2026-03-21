@@ -176,7 +176,7 @@ func TestCPPParity_Step3_AlphaMask(t *testing.T) {
 		t.Errorf("mask(64,64) = %d, want 157", got)
 	}
 
-	mask := pixfmt.NewAlphaMaskU8WithBuffer(maskBuf, 1, 0, pixfmt.OneComponentMaskU8{})
+	mask := pixfmt.NewAMaskNoClipU8WithBuffer(maskBuf, 1, 0, pixfmt.OneComponentMaskU8{})
 	amaskPf := pixfmt.NewPixFmtAMaskAdaptor(pf, mask)
 	rbMasked := renderer.NewRendererBaseWithPixfmt(amaskPf)
 
@@ -227,7 +227,7 @@ func TestCPPParity_Step4_SRGBLionColors(t *testing.T) {
 	ras.AddPath(&ellipseVS{e: ell}, 0)
 	renscan.RenderScanlinesAASolid(ras, sl, maskRb, color.Gray8[color.Linear]{V: 200, A: 200})
 
-	mask := pixfmt.NewAlphaMaskU8WithBuffer(maskBuf, 1, 0, pixfmt.OneComponentMaskU8{})
+	mask := pixfmt.NewAMaskNoClipU8WithBuffer(maskBuf, 1, 0, pixfmt.OneComponentMaskU8{})
 	amaskPf := pixfmt.NewPixFmtAMaskAdaptor(pf, mask)
 	rbMasked := renderer.NewRendererBaseWithPixfmt(amaskPf)
 
@@ -335,7 +335,7 @@ func TestCPPParity_Step6_LionThroughMask(t *testing.T) {
 	}
 
 	// Setup amask adaptor.
-	mask := pixfmt.NewAlphaMaskU8WithBuffer(maskBuf, 1, 0, pixfmt.OneComponentMaskU8{})
+	mask := pixfmt.NewAMaskNoClipU8WithBuffer(maskBuf, 1, 0, pixfmt.OneComponentMaskU8{})
 	amaskPf := pixfmt.NewPixFmtAMaskAdaptor(mainPf, mask)
 	amaskRb := renderer.NewRendererBaseWithPixfmt(amaskPf)
 

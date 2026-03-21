@@ -147,7 +147,7 @@ func (d *demo) Render(img *agg.Image) {
 		renscan.RenderScanlinesAASolid(ras, sl, maskRb, color.Gray8[color.Linear]{V: v, A: a})
 	}
 
-	mask := pixfmt.NewAlphaMaskU8WithBuffer(maskBuf, 1, 0, pixfmt.OneComponentMaskU8{})
+	mask := pixfmt.NewAMaskNoClipU8WithBuffer(maskBuf, 1, 0, pixfmt.OneComponentMaskU8{})
 
 	// --- White background ---
 	mainPixf := pixfmt.NewPixFmtRGBA32[color.Linear](workRbuf)

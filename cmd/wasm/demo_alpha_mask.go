@@ -19,7 +19,7 @@ import (
 
 var (
 	amAlphaMaskBuf *buffer.RenderingBuffer[uint8]
-	amAlphaMask    *pixfmt.AlphaMaskU8
+	amAlphaMask    *pixfmt.AMaskNoClipU8
 	amLionAngle    = 0.0
 	amLionScale    = 1.0
 	amLionSkewX    = 0.0
@@ -69,7 +69,7 @@ func generateAlphaMask(w, h int) {
 
 	// Create the alpha mask
 	maskFunc := pixfmt.OneComponentMaskU8{}
-	amAlphaMask = pixfmt.NewAlphaMaskU8WithBuffer(amAlphaMaskBuf, 1, 0, maskFunc)
+	amAlphaMask = pixfmt.NewAMaskNoClipU8WithBuffer(amAlphaMaskBuf, 1, 0, maskFunc)
 }
 
 func drawAlphaMaskDemo() {
