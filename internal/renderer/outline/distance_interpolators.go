@@ -3,6 +3,7 @@
 package outline
 
 import (
+	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/primitives"
 )
 
@@ -98,8 +99,10 @@ func NewDistanceInterpolator1(x1, y1, x2, y2, x, y int) *DistanceInterpolator1 {
 	d := &DistanceInterpolator1{}
 	d.dx = x2 - x1
 	d.dy = y2 - y1
-	d.dist = int(float64(x+primitives.LineSubpixelScale/2-x2)*float64(d.dy) -
-		float64(y+primitives.LineSubpixelScale/2-y2)*float64(d.dx) + 0.5)
+	d.dist = basics.IRound(
+		float64(x+primitives.LineSubpixelScale/2-x2)*float64(d.dy) -
+			float64(y+primitives.LineSubpixelScale/2-y2)*float64(d.dx),
+	)
 
 	d.dx <<= primitives.LineSubpixelShift
 	d.dy <<= primitives.LineSubpixelShift
@@ -205,8 +208,10 @@ func NewDistanceInterpolator2Start(x1, y1, x2, y2, sx, sy, x, y int) *DistanceIn
 	d.dxStart = primitives.LineMR(sx) - primitives.LineMR(x1)
 	d.dyStart = primitives.LineMR(sy) - primitives.LineMR(y1)
 
-	d.dist = int(float64(x+primitives.LineSubpixelScale/2-x2)*float64(d.dy) -
-		float64(y+primitives.LineSubpixelScale/2-y2)*float64(d.dx) + 0.5)
+	d.dist = basics.IRound(
+		float64(x+primitives.LineSubpixelScale/2-x2)*float64(d.dy) -
+			float64(y+primitives.LineSubpixelScale/2-y2)*float64(d.dx),
+	)
 
 	d.distStart = (primitives.LineMR(x+primitives.LineSubpixelScale/2)-primitives.LineMR(sx))*d.dyStart -
 		(primitives.LineMR(y+primitives.LineSubpixelScale/2)-primitives.LineMR(sy))*d.dxStart
@@ -227,8 +232,10 @@ func NewDistanceInterpolator2End(x1, y1, x2, y2, ex, ey, x, y int) *DistanceInte
 	d.dxStart = primitives.LineMR(ex) - primitives.LineMR(x2)
 	d.dyStart = primitives.LineMR(ey) - primitives.LineMR(y2)
 
-	d.dist = int(float64(x+primitives.LineSubpixelScale/2-x2)*float64(d.dy) -
-		float64(y+primitives.LineSubpixelScale/2-y2)*float64(d.dx) + 0.5)
+	d.dist = basics.IRound(
+		float64(x+primitives.LineSubpixelScale/2-x2)*float64(d.dy) -
+			float64(y+primitives.LineSubpixelScale/2-y2)*float64(d.dx),
+	)
 
 	d.distStart = (primitives.LineMR(x+primitives.LineSubpixelScale/2)-primitives.LineMR(ex))*d.dyStart -
 		(primitives.LineMR(y+primitives.LineSubpixelScale/2)-primitives.LineMR(ey))*d.dxStart
@@ -390,8 +397,10 @@ func NewDistanceInterpolator3(x1, y1, x2, y2, sx, sy, ex, ey, x, y int) *Distanc
 	d.dxEnd = primitives.LineMR(ex) - primitives.LineMR(x2)
 	d.dyEnd = primitives.LineMR(ey) - primitives.LineMR(y2)
 
-	d.dist = int(float64(x+primitives.LineSubpixelScale/2-x2)*float64(d.dy) -
-		float64(y+primitives.LineSubpixelScale/2-y2)*float64(d.dx) + 0.5)
+	d.dist = basics.IRound(
+		float64(x+primitives.LineSubpixelScale/2-x2)*float64(d.dy) -
+			float64(y+primitives.LineSubpixelScale/2-y2)*float64(d.dx),
+	)
 
 	d.distStart = (primitives.LineMR(x+primitives.LineSubpixelScale/2)-primitives.LineMR(sx))*d.dyStart -
 		(primitives.LineMR(y+primitives.LineSubpixelScale/2)-primitives.LineMR(sy))*d.dxStart

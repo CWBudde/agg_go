@@ -639,8 +639,10 @@ func (li *LineInterpolatorAA3) StepHor() bool {
 
 	npix := 0
 	li.covers[p1] = 0
-	if distEnd > 0 && distStart <= 0 {
-		li.covers[p1] = basics.CoverType(li.ren.Cover(s1))
+	if distEnd > 0 {
+		if distStart <= 0 {
+			li.covers[p1] = basics.CoverType(li.ren.Cover(s1))
+		}
 		npix++
 	}
 	p1++
@@ -688,8 +690,10 @@ func (li *LineInterpolatorAA3) StepVer() bool {
 
 	npix := 0
 	li.covers[p1] = 0
-	if distEnd > 0 && distStart <= 0 {
-		li.covers[p1] = basics.CoverType(li.ren.Cover(s1))
+	if distEnd > 0 {
+		if distStart <= 0 {
+			li.covers[p1] = basics.CoverType(li.ren.Cover(s1))
+		}
 		npix++
 	}
 	p1++
