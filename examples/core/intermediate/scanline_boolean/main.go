@@ -1,8 +1,11 @@
 // Faithful port of AGG's scanline_boolean.cpp example.
 //
-// The demo renders two groups of circles generated along the edges of two
+// Renders two groups of circles generated along the edges of two
 // quadrilaterals, then combines them using scanline boolean algebra (Union).
-// For the static (headless) output the defaults are Union with opacity 1.0.
+// Controls (radio box, sliders, reset checkbox) are rendered matching C++.
+//
+// The image is rendered in a flipped work buffer and copied with y-flip,
+// matching the C++ original's flip_y=true coordinate system.
 package main
 
 import (
@@ -12,6 +15,10 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
 	"github.com/MeKo-Christian/agg_go/internal/conv"
+	ctrlbase "github.com/MeKo-Christian/agg_go/internal/ctrl"
+	checkboxctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/checkbox"
+	rboxctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/rbox"
+	sliderctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/slider"
 	"github.com/MeKo-Christian/agg_go/internal/path"
 	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
 	"github.com/MeKo-Christian/agg_go/internal/pixfmt/gamma"
@@ -27,26 +34,38 @@ const (
 	imgHeight = 600
 )
 
-// Concrete color and renderer types used throughout.
+// Concrete types used throughout.
 type colorType = color.RGBA8[color.Linear]
 type rasType = rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
+type rbType = *renderer.RendererBase[*pixfmt.PixFmtRGBA32Pre[color.Linear], colorType]
 
-// srgba8 builds an sRGB color and converts to linear for the pixel format,
-// matching C++ agg::srgba8(r,g,b,a).
+// srgba8 converts sRGB to linear, matching C++ agg::srgba8(r,g,b,a).
 func srgba8(r, g, b, a uint8) colorType {
 	return color.ConvertRGBA8SRGBToLinear(color.RGBA8[color.SRGB]{R: r, G: g, B: b, A: a})
 }
 
+// toRGBA8 converts float RGBA to RGBA8[Linear].
+func toRGBA8(c color.RGBA) colorType {
+	clamp := func(v float64) uint8 {
+		if v <= 0 {
+			return 0
+		}
+		if v >= 1 {
+			return 255
+		}
+		return uint8(v*255.0 + 0.5)
+	}
+	return colorType{R: clamp(c.R), G: clamp(c.G), B: clamp(c.B), A: clamp(c.A)}
+}
+
 // --- Interactive polygon vertex source (matches C++ interactive_polygon) ---
-// Emits: conv_stroke of the closed polygon, then filled ellipses at each vertex.
 
 type interactivePolygonVS struct {
-	ps     *path.PathStorageStl
 	stroke *conv.ConvStroke
 	ell    *shapes.Ellipse
 	quad   [8]float64
 	radius float64
-	status int // 0=stroke phase, 1..n=ellipse phases
+	status int
 }
 
 func newInteractivePolygonVS(quad [8]float64, pointRadius float64) *interactivePolygonVS {
@@ -62,7 +81,6 @@ func newInteractivePolygonVS(quad [8]float64, pointRadius float64) *interactiveP
 	stroke.SetWidth(1.0)
 
 	return &interactivePolygonVS{
-		ps:     ps,
 		stroke: stroke,
 		ell:    shapes.NewEllipse(),
 		quad:   quad,
@@ -70,7 +88,6 @@ func newInteractivePolygonVS(quad [8]float64, pointRadius float64) *interactiveP
 	}
 }
 
-// pathToConvSource adapts PathStorageStl to conv.VertexSource.
 type pathToConvSource struct{ ps *path.PathStorageStl }
 
 func (a *pathToConvSource) Rewind(pathID uint) { a.ps.Rewind(pathID) }
@@ -79,27 +96,22 @@ func (a *pathToConvSource) Vertex() (x, y float64, cmd basics.PathCommand) {
 	return vx, vy, basics.PathCommand(c)
 }
 
-// Rewind implements rasterizer.VertexSource.
 func (ip *interactivePolygonVS) Rewind(_ uint32) {
 	ip.status = 0
 	ip.stroke.Rewind(0)
 }
 
-// Vertex implements rasterizer.VertexSource.
 func (ip *interactivePolygonVS) Vertex(x, y *float64) uint32 {
 	if ip.status == 0 {
-		// Stroke phase
 		vx, vy, cmd := ip.stroke.Vertex()
 		if !basics.IsStop(cmd) {
 			*x = vx
 			*y = vy
 			return uint32(cmd)
 		}
-		// Stroke done, start first ellipse
 		ip.ell.Init(ip.quad[0], ip.quad[1], ip.radius, ip.radius, 32, false)
 		ip.status = 1
 	}
-	// Ellipse phases
 	cmd := ip.ell.Vertex(x, y)
 	if !basics.IsStop(basics.PathCommand(cmd)) {
 		return uint32(cmd)
@@ -113,7 +125,7 @@ func (ip *interactivePolygonVS) Vertex(x, y *float64) uint32 {
 	return uint32(ip.ell.Vertex(x, y))
 }
 
-// --- Circle path vertex source ---
+// --- Circle path vertex source (matches C++ generate_circles) ---
 
 type circlePathVS struct {
 	vx  []float64
@@ -134,8 +146,6 @@ func (p *circlePathVS) Vertex(x, y *float64) uint32 {
 	return c
 }
 
-// generateCircles mirrors the C++ generate_circles function.
-// It creates circles along the edges of a quad (4 corners -> 4 edges).
 func generateCircles(quad [8]float64, numCircles int, radius float64) *circlePathVS {
 	ps := &circlePathVS{}
 	ell := shapes.NewEllipse()
@@ -204,10 +214,10 @@ func (it *boolScanlineP8Iter) Next() bool {
 	return it.idx < len(it.spans)
 }
 
-// --- Boolean renderer that renders directly using renderer_base ---
+// --- Boolean renderer that writes to renderer_base ---
 
 type boolRendererSolid struct {
-	rb    *renderer.RendererBase[*pixfmt.PixFmtRGBA32[color.Linear], colorType]
+	rb    rbType
 	color colorType
 }
 
@@ -220,14 +230,12 @@ func (r *boolRendererSolid) Render(sl isc.BooleanScanlineInterface) {
 		x := span.X
 		length := span.Len
 		if length < 0 {
-			// Solid span: single cover value for |length| pixels
 			cover := basics.Int8u(0)
 			if len(span.Covers) > 0 {
 				cover = span.Covers[0]
 			}
 			r.rb.BlendHline(x, y, x-length-1, r.color, cover)
 		} else {
-			// Per-pixel coverage span
 			r.rb.BlendSolidHspan(x, y, length, r.color, span.Covers)
 		}
 		if i < sl.NumSpans()-1 {
@@ -337,10 +345,45 @@ func renderRasterizerToStorage(
 	}
 }
 
+// copyFlipY copies src to dst with vertical flip (y=0 at bottom -> y=0 at top).
+func copyFlipY(src, dst []uint8, w, h int) {
+	stride := w * 4
+	for y := range h {
+		srcOff := (h - 1 - y) * stride
+		dstOff := y * stride
+		copy(dst[dstOff:dstOff+stride], src[srcOff:srcOff+stride])
+	}
+}
+
+// --- Control rendering (adapted from distortions example) ---
+
+type ctrlVertexSourceAdapter struct {
+	src interface {
+		Rewind(pathID uint)
+		Vertex() (x, y float64, cmd basics.PathCommand)
+	}
+}
+
+func (a *ctrlVertexSourceAdapter) Rewind(pathID uint32) { a.src.Rewind(uint(pathID)) }
+func (a *ctrlVertexSourceAdapter) Vertex(x, y *float64) uint32 {
+	vx, vy, cmd := a.src.Vertex()
+	*x = vx
+	*y = vy
+	return uint32(cmd)
+}
+
+func renderCtrl(ras *rasType, sl *isc.ScanlineP8, rb rbType, c ctrlbase.Ctrl[color.RGBA]) {
+	for i := uint(0); i < c.NumPaths(); i++ {
+		ras.Reset()
+		ras.AddPath(&ctrlVertexSourceAdapter{src: c}, uint32(i))
+		renscan.RenderScanlinesAASolid(ras, sl, rb, toRGBA8(c.Color(i)))
+	}
+}
+
 // --- Demo ---
 
 type demo struct {
-	quad1 [8]float64 // 4 points as (x0,y0, x1,y1, x2,y2, x3,y3)
+	quad1 [8]float64
 	quad2 [8]float64
 }
 
@@ -348,7 +391,7 @@ func (d *demo) OnInit() {
 	w := float64(imgWidth)
 	h := float64(imgHeight)
 
-	// C++ on_init() positions
+	// C++ on_init() positions — coordinates are in flip_y=true space (y=0 at bottom)
 	d.quad1 = [8]float64{
 		50, 200 - 20,
 		w/2 - 25, 200,
@@ -367,10 +410,19 @@ func (d *demo) Render(img *agg.Image) {
 	w := img.Width()
 	h := img.Height()
 
-	rbuf := buffer.NewRenderingBufferU8WithData(img.Data, w, h, w*4)
-	pf := pixfmt.NewPixFmtRGBA32[color.Linear](rbuf)
+	// Work buffer: y=0 at bottom (flip_y=true convention).
+	workBuf := make([]uint8, w*h*4)
+	for i := 0; i < len(workBuf); i += 4 {
+		workBuf[i] = 255
+		workBuf[i+1] = 255
+		workBuf[i+2] = 255
+		workBuf[i+3] = 255
+	}
+
+	rbuf := buffer.NewRenderingBufferU8()
+	rbuf.Attach(workBuf, w, h, w*4)
+	pf := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
 	rb := renderer.NewRendererBaseWithPixfmt(pf)
-	rb.Clear(colorType{R: 255, G: 255, B: 255, A: 255})
 
 	sl := isc.NewScanlineP8()
 	ras := newRas()
@@ -379,10 +431,12 @@ func (d *demo) Render(img *agg.Image) {
 
 	// Default: Union operation, opacity 1.0
 	op := isc.BoolOr
+	mul1 := 1.0
+	mul2 := 1.0
 
 	// Apply gamma (opacity) to rasterizers
-	gammaFn1 := gamma.NewGammaMultiply(1.0)
-	gammaFn2 := gamma.NewGammaMultiply(1.0)
+	gammaFn1 := gamma.NewGammaMultiply(mul1)
+	gammaFn2 := gamma.NewGammaMultiply(mul2)
 	ras1.SetGamma(gammaFn1.Apply)
 	ras2.SetGamma(gammaFn2.Apply)
 
@@ -408,7 +462,6 @@ func (d *demo) Render(img *agg.Image) {
 	storage2 := isc.NewScanlineStorageAA[basics.Int8u]()
 	slRaster := isc.NewScanlineP8()
 
-	// Re-rasterize into storage (same settings as above)
 	ras1.Reset()
 	ras1.FillingRule(basics.FillEvenOdd)
 	ras1.SetGamma(gammaFn1.Apply)
@@ -426,18 +479,13 @@ func (d *demo) Render(img *agg.Image) {
 	sl2 := newBoolScanlineP8()
 	slResult := newBoolScanlineP8()
 
-	// Prepare scanlines with combined bounds
 	minX := min(sg1.MinX(), sg2.MinX())
 	maxX := max(sg1.MaxX(), sg2.MaxX())
 	sl1.sl.Reset(minX, maxX)
 	sl2.sl.Reset(minX, maxX)
 	slResult.sl.Reset(minX, maxX)
 
-	// Boolean result rendered in black: srgba8(0, 0, 0)
-	sren := &boolRendererSolid{
-		rb:    rb,
-		color: srgba8(0, 0, 0, 255),
-	}
+	sren := &boolRendererSolid{rb: rb, color: srgba8(0, 0, 0, 255)}
 	isc.CombineShapesAA(op, sg1, sg2, sl1, sl2, slResult, sren)
 
 	// --- Render quad outlines + vertex dots (matches C++ interactive_polygon) ---
@@ -445,14 +493,46 @@ func (d *demo) Render(img *agg.Image) {
 	quadColor := colorType{R: 0, G: 77, B: 128, A: 153}
 
 	ras.Reset()
-	q1vs := newInteractivePolygonVS(d.quad1, 5.0)
-	ras.AddPath(q1vs, 0)
+	ras.AddPath(newInteractivePolygonVS(d.quad1, 5.0), 0)
 	renscan.RenderScanlinesAASolid(ras, sl, rb, quadColor)
 
 	ras.Reset()
-	q2vs := newInteractivePolygonVS(d.quad2, 5.0)
-	ras.AddPath(q2vs, 0)
+	ras.AddPath(newInteractivePolygonVS(d.quad2, 5.0), 0)
 	renscan.RenderScanlinesAASolid(ras, sl, rb, quadColor)
+
+	// --- Render controls ---
+	// C++ constructor positions (using !flip_y = false):
+	//   m_trans_type(420, 5.0, 420+130.0, 145.0, !flip_y)
+	//   m_reset     (350, 5.0,  "Reset", !flip_y)
+	//   m_mul1      (5.0,  5.0, 340.0, 12.0, !flip_y)
+	//   m_mul2      (5.0, 20.0, 340.0, 27.0, !flip_y)
+	ctrlTransType := rboxctrl.NewDefaultRboxCtrl(420, 5.0, 420+130.0, 145.0, false)
+	ctrlTransType.AddItem("Union")
+	ctrlTransType.AddItem("Intersection")
+	ctrlTransType.AddItem("Linear XOR")
+	ctrlTransType.AddItem("Saddle XOR")
+	ctrlTransType.AddItem("Abs Diff XOR")
+	ctrlTransType.AddItem("A-B")
+	ctrlTransType.AddItem("B-A")
+	ctrlTransType.SetCurItem(0)
+
+	ctrlReset := checkboxctrl.NewDefaultCheckboxCtrl(350, 5.0, "Reset", false)
+
+	ctrlMul1 := sliderctrl.NewSliderCtrl(5.0, 5.0, 340.0, 12.0, false)
+	ctrlMul1.SetValue(mul1)
+	ctrlMul1.SetLabel("Opacity1=%.3f")
+
+	ctrlMul2 := sliderctrl.NewSliderCtrl(5.0, 20.0, 340.0, 27.0, false)
+	ctrlMul2.SetValue(mul2)
+	ctrlMul2.SetLabel("Opacity2=%.3f")
+
+	renderCtrl(ras, sl, rb, ctrlTransType)
+	renderCtrl(ras, sl, rb, ctrlReset)
+	renderCtrl(ras, sl, rb, ctrlMul1)
+	renderCtrl(ras, sl, rb, ctrlMul2)
+
+	// Flip work buffer to output
+	copyFlipY(workBuf, img.Data, w, h)
 }
 
 func main() {
