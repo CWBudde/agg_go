@@ -528,38 +528,30 @@ Each gap is concrete, traced to a C++ source reference, and has a verifiable fix
 
 ---
 
-### 10.1 ⚠️ sRGB Color Handling in Lion/Demo Rendering
+### 10.1 ✅ sRGB Color Handling in Lion/Demo Rendering
 
-**Status**: OPEN — causes saturated/dark colors vs C++ pale/washed-out reference.
+**Status**: DONE — lion hex colors are LINEAR values, not sRGB. No conversion needed.
+Lion parser restructured to match C++ `parse_lion()` exactly: single shared PathStorage
+with parallel Colors/PathIdx arrays, `ArrangeOrientationsAllPaths(PathFlagsCW)`.
 
-**Root cause**: In C++ AGG, lion colors are stored as `srgba8` (sRGB encoded). When passed to a
-pixfmt whose `color_type` is `rgba8` (linear) — e.g. `pixfmt_bgr24` or `pixfmt_rgba32` — the
-C++ template system implicitly converts sRGB→linear via the `rgba8T<linear>(const rgba8T<sRGB>&)`
-constructor. This means the **output buffer always contains linear-encoded bytes**, and the PNG
-viewer (treating bytes as sRGB) makes the lion look pale/light.
+**Root cause (revised)**: C++ `rgb8_packed()` returns `rgba8` (linear type). When `parse_lion`
+stores into `srgba8[]`, the C++ type system roundtrips linear→sRGB→linear via converting
+constructors — but the net result is identity (±1 rounding). The hex values represent the
+actual linear colors to blend. Applying `ConvertRGBA8SRGBToLinear` would double-convert.
 
-The Go port stores sRGB bytes in the output buffer unchanged (no conversion), so colors appear
-fully saturated/dark. Applying `ConvertRGBA8SRGBToLinear` explicitly at call sites is the right
-direction but the result must flow through the same linear-space blending pipeline.
+**Go implementation**: `lion.Parse()` returns `LionData` with single shared `*PathStorageStl`,
+`Colors []RGBA8[Linear]`, `PathIdx []uint`, and `NPaths int`. All callers updated.
 
-**C++ reference**:
+**Verification**: `TestCPPParity_Step6_LionThroughMask` confirms pixel(300,100) = (245, 217, 177).
 
-- `agg_color_rgba.h`: `rgba8T<linear>(const rgba8T<sRGB>& c)` → calls `convert(*this, c)` → `rgb_from_sRGB`
-- `agg_pixfmt_rgb.h`: `blender_bgr24` = `blender_rgb<rgba8, order_bgr>` (color_type = linear rgba8)
-- `examples/alpha_mask2.cpp` line 271: `render_all_paths(... g_colors ...)` with `g_colors` typed `srgba8`
+**Tasks**:
 
-**Go files**:
-
-- `internal/demo/lion/lion.go`: `parseColor` correctly returns `RGBA8[SRGB]` — **correct**
-- `examples/core/intermediate/alpha_mask2/main.go` line 261: applies `ConvertRGBA8SRGBToLinear` — **correct**
-- All other lion consumers: must apply the same conversion before rendering
-
-**Remaining work**:
-
-- [ ] Audit every lion/demo caller that renders through a pixfmt — ensure `ConvertRGBA8SRGBToLinear` is applied
-      for all sRGB source colors before calling `RenderScanlinesAASolid`.
-- [ ] Verify output PNG color values against C++ step6 reference: `out(300,100)` should be ≈ (245,217,177).
-- [ ] Update visual regression references once pixel-accurate.
+- [x] Audit every lion/demo caller — all use colors as LINEAR, no spurious conversions.
+- [x] Verify output PNG color values against C++ step6 reference: `out(300,100)` = (245,217,177) ✓
+- [x] Restructure lion.go to single shared PathStorage matching C++ parse_lion.
+- [x] Port `ArrangeOrientationsAllPaths` to `PathBase` (5 methods from C++ `agg_path_storage.h`).
+- [x] Update all 26 callers to new `LionData` API.
+- [ ] Update visual regression references (deferred — visual tests have broader pre-existing failures).
 
 ---
 
