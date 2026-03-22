@@ -48,21 +48,21 @@ func (ev *ellipseVS) Vertex(x, y *float64) uint32 {
 	return uint32(cmd)
 }
 
-type outlineBlendBase interface {
+type outlineBlendBase[C any] interface {
 	Width() int
 	Height() int
-	BlendSolidHspan(x, y, length int, c color.RGBA8[color.Linear], covers []basics.Int8u)
-	BlendSolidVspan(x, y, length int, c color.RGBA8[color.Linear], covers []basics.Int8u)
+	BlendSolidHspan(x, y, length int, c C, covers []basics.Int8u)
+	BlendSolidVspan(x, y, length int, c C, covers []basics.Int8u)
 }
 
-type outlineBaseAdapter struct {
-	renBase outlineBlendBase
+type outlineBaseAdapter[C any] struct {
+	renBase outlineBlendBase[C]
 }
 
-func (a *outlineBaseAdapter) Width() int  { return a.renBase.Width() }
-func (a *outlineBaseAdapter) Height() int { return a.renBase.Height() }
+func (a *outlineBaseAdapter[C]) Width() int  { return a.renBase.Width() }
+func (a *outlineBaseAdapter[C]) Height() int { return a.renBase.Height() }
 
-func (a *outlineBaseAdapter) BlendSolidHSpan(x, y, length int, c color.RGBA8[color.Linear], covers []basics.CoverType) {
+func (a *outlineBaseAdapter[C]) BlendSolidHSpan(x, y, length int, c C, covers []basics.CoverType) {
 	convCovers := make([]basics.Int8u, len(covers))
 	for i := range covers {
 		convCovers[i] = basics.Int8u(covers[i])
@@ -70,7 +70,7 @@ func (a *outlineBaseAdapter) BlendSolidHSpan(x, y, length int, c color.RGBA8[col
 	a.renBase.BlendSolidHspan(x, y, length, c, convCovers)
 }
 
-func (a *outlineBaseAdapter) BlendSolidVSpan(x, y, length int, c color.RGBA8[color.Linear], covers []basics.CoverType) {
+func (a *outlineBaseAdapter[C]) BlendSolidVSpan(x, y, length int, c C, covers []basics.CoverType) {
 	convCovers := make([]basics.Int8u, len(covers))
 	for i := range covers {
 		convCovers[i] = basics.Int8u(covers[i])
@@ -78,9 +78,9 @@ func (a *outlineBaseAdapter) BlendSolidVSpan(x, y, length int, c color.RGBA8[col
 	a.renBase.BlendSolidVspan(x, y, length, c, convCovers)
 }
 
-type outlineRenderer interface {
+type outlineRenderer[C any] interface {
 	AccurateJoinOnly() bool
-	Color(c color.RGBA8[color.Linear])
+	Color(c C)
 	Line0(lp *primitives.LineParameters)
 	Line1(lp *primitives.LineParameters, sx, sy int)
 	Line2(lp *primitives.LineParameters, ex, ey int)
@@ -89,24 +89,26 @@ type outlineRenderer interface {
 	Semidot(cmp func(int) bool, x, y, x1, y1 int)
 }
 
-type outlineAAAdapter struct {
-	ren outlineRenderer
+type outlineAAAdapter[C any] struct {
+	ren outlineRenderer[C]
 }
 
-func (a *outlineAAAdapter) AccurateJoinOnly() bool             { return a.ren.AccurateJoinOnly() }
-func (a *outlineAAAdapter) Color(c color.RGBA8[color.Linear])  { a.ren.Color(c) }
-func (a *outlineAAAdapter) Line0(lp primitives.LineParameters) { a.ren.Line0(&lp) }
-func (a *outlineAAAdapter) Line1(lp primitives.LineParameters, sx, sy int) {
+func (a *outlineAAAdapter[C]) AccurateJoinOnly() bool { return a.ren.AccurateJoinOnly() }
+func (a *outlineAAAdapter[C]) Color(c C)              { a.ren.Color(c) }
+func (a *outlineAAAdapter[C]) Line0(lp primitives.LineParameters) {
+	a.ren.Line0(&lp)
+}
+func (a *outlineAAAdapter[C]) Line1(lp primitives.LineParameters, sx, sy int) {
 	a.ren.Line1(&lp, sx, sy)
 }
-func (a *outlineAAAdapter) Line2(lp primitives.LineParameters, ex, ey int) {
+func (a *outlineAAAdapter[C]) Line2(lp primitives.LineParameters, ex, ey int) {
 	a.ren.Line2(&lp, ex, ey)
 }
-func (a *outlineAAAdapter) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) {
+func (a *outlineAAAdapter[C]) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) {
 	a.ren.Line3(&lp, sx, sy, ex, ey)
 }
-func (a *outlineAAAdapter) Pie(x, y, x1, y1, x2, y2 int) { a.ren.Pie(x, y, x1, y1, x2, y2) }
-func (a *outlineAAAdapter) Semidot(cmp func(int) bool, x, y, x1, y1 int) {
+func (a *outlineAAAdapter[C]) Pie(x, y, x1, y1, x2, y2 int) { a.ren.Pie(x, y, x1, y1, x2, y2) }
+func (a *outlineAAAdapter[C]) Semidot(cmp func(int) bool, x, y, x1, y1 int) {
 	a.ren.Semidot(cmp, x, y, x1, y1)
 }
 
@@ -116,19 +118,47 @@ type clibcRand struct {
 	rptr  int
 }
 
-func newClibcRandSeed1() *clibcRand {
-	return &clibcRand{
-		state: [31]int32{
-			-1726662223, 379960547, 1735697613, 1040273694, 1313901226,
-			1627687941, -179304937, -2073333483, 1780058412, -1989503057,
-			-615974602, 344556628, 939512070, -1249116260, 1507946756,
-			-812545463, 154635395, 1388815473, -1926676823, 525320961,
-			-1009028674, 968117788, -123449607, 1284210865, 435012392,
-			-2017506339, -911064859, -370259173, 1132637927, 1398500161, -205601318,
-		},
+func newClibcRand(seed int32) *clibcRand {
+	if seed == 0 {
+		seed = 1
+	}
+
+	// glibc rand()/random() state initialization:
+	// 1. Park-Miller sequence for 31 values from srand(seed)
+	// 2. copy first 3 values
+	// 3. additive feedback warmup for 310 outputs
+	//
+	// The final state layout matches the in-memory representation used by the
+	// existing seed=1/seed=1234 precomputed tables elsewhere in this repo:
+	// state[0:3] hold the values immediately before the current rptr/fptr pair.
+	const (
+		mod  int64 = 2147483647
+		mult int64 = 16807
+	)
+
+	var seq [344]int32
+	seq[0] = seed
+	for i := 1; i < 31; i++ {
+		v := mult * int64(seq[i-1]) % mod
+		if v < 0 {
+			v += mod
+		}
+		seq[i] = int32(v)
+	}
+	for i := 31; i < 34; i++ {
+		seq[i] = seq[i-31]
+	}
+	for i := 34; i < len(seq); i++ {
+		seq[i] = seq[i-31] + seq[i-3]
+	}
+
+	rng := &clibcRand{
 		fptr: 3,
 		rptr: 0,
 	}
+	copy(rng.state[:3], seq[341:344])
+	copy(rng.state[3:], seq[313:341])
+	return rng
 }
 
 func (r *clibcRand) next() int32 {
@@ -181,22 +211,26 @@ func initLion() {
 	lionBaseDY = (maxY - minY) / 2.0
 }
 
-func rgbaRTL(rng *clibcRand, alphaBase int) color.RGBA8[color.Linear] {
-	a := uint8(rng.randAnd(0x7F) + alphaBase)
-	b := uint8(rng.randAnd(0x7F))
-	g := uint8(rng.randAnd(0x7F))
-	r := uint8(rng.randAnd(0x7F))
-	return color.RGBA8[color.Linear]{R: r, G: g, B: b, A: a}
+func srgbaRandRTL(rng *clibcRand, alphaBase int) color.RGBA8[color.SRGB] {
+	// Keep the previous right-to-left overlay argument mapping for now.
+	// The seed issue is resolved, but the exact C++ argument evaluation order for
+	// nested calls in alpha_mask2.cpp is not locked down yet.
+	return color.RGBA8[color.SRGB]{
+		A: uint8(rng.randAnd(0x7F) + alphaBase),
+		B: uint8(rng.randAnd(0x7F)),
+		G: uint8(rng.randAnd(0x7F)),
+		R: uint8(rng.randAnd(0x7F)),
+	}
 }
 
 func RenderToBGR24(dst []uint8, width, height int, cfg Config) {
 	lionOnce.Do(initLion)
 
 	rbuf := buffer.NewRenderingBufferU8WithData(dst, width, height, width*3)
-	mainPixf := pixfmt.NewPixFmtBGR24(rbuf)
-	mainPixfAdaptor := pixfmt.NewPixFmtRGBARendererAdaptor(mainPixf)
-	mainRb := renderer.NewRendererBaseWithPixfmt(mainPixfAdaptor)
-	mainRb.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
+	mainPixfLinear := pixfmt.NewPixFmtBGR24(rbuf)
+	mainPixfLinearAdaptor := pixfmt.NewPixFmtRGBARendererAdaptor(mainPixfLinear)
+	mainRbLinear := renderer.NewRendererBaseWithPixfmt(mainPixfLinearAdaptor)
+	mainRbLinear.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
 
 	maskData := make([]uint8, width*height)
 	maskBuf := buffer.NewRenderingBufferU8WithData(maskData, width, height, width)
@@ -206,7 +240,9 @@ func RenderToBGR24(dst []uint8, width, height int, cfg Config) {
 
 	ras := newRasterizer()
 	sl := scanline.NewScanlineU8()
-	rng := newClibcRandSeed1()
+	// C++ generate_alpha_mask() explicitly seeds rand() with srand(1432), and
+	// the same RNG stream continues into the overlay rendering in on_draw().
+	rng := newClibcRand(1432)
 
 	numEllipses := cfg.NumEllipses
 	if numEllipses <= 0 {
@@ -231,8 +267,13 @@ func RenderToBGR24(dst []uint8, width, height int, cfg Config) {
 	}
 
 	mask := pixfmt.NewAMaskNoClipU8WithBuffer(maskBuf, 1, 0, pixfmt.OneComponentMaskU8{})
-	amaskAdaptor := pixfmt.NewPixFmtAMaskAdaptor(mainPixfAdaptor, mask)
-	rbAMask := renderer.NewRendererBaseWithPixfmt(amaskAdaptor)
+	amaskAdaptorLinear := pixfmt.NewPixFmtAMaskAdaptor(mainPixfLinearAdaptor, mask)
+	rbAMaskLinear := renderer.NewRendererBaseWithPixfmt(amaskAdaptorLinear)
+
+	mainPixfSRGB := pixfmt.NewPixFmtSBGR24(rbuf)
+	mainPixfSRGBAdaptor := pixfmt.NewPixFmtRGBARendererAdaptor(mainPixfSRGB)
+	amaskAdaptorSRGB := pixfmt.NewPixFmtAMaskAdaptor(mainPixfSRGBAdaptor, mask)
+	rbAMaskSRGB := renderer.NewRendererBaseWithPixfmt(amaskAdaptorSRGB)
 
 	mtx := transform.NewTransAffine()
 	mtx.Multiply(transform.NewTransAffineTranslation(-lionBaseDX, -lionBaseDY))
@@ -244,23 +285,23 @@ func RenderToBGR24(dst []uint8, width, height int, cfg Config) {
 	pathVS := path.NewPathStorageStlVertexSourceAdapter(lionData.Path)
 	transVS := conv.NewConvTransform(pathVS, mtx)
 	rasVS := conv.NewRasterizerVertexSourceAdapter(transVS)
-	renSolid := renscan.NewRendererScanlineAASolidWithRenderer(rbAMask)
+	renSolid := renscan.NewRendererScanlineAASolidWithRenderer(rbAMaskLinear)
 	renscan.RenderAllPaths(ras, sl, renSolid, rasVS, &lionData, &lionData, lionData.NPaths)
 
-	renderMarkers(rbAMask, rng, width, height)
-	renderOutlineLines(rbAMask, rng, width, height)
-	renderGradientCircles(ras, sl, rbAMask, rng, width, height)
+	renderMarkers(rbAMaskSRGB, rng, width, height)
+	renderOutlineLines(rbAMaskSRGB, rng, width, height)
+	renderGradientCircles(ras, sl, rbAMaskSRGB, rng, width, height)
 }
 
 func renderMarkers(
-	rbAMask *renderer.RendererBase[*pixfmt.PixFmtAMaskAdaptor[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]],
+	rbAMask *renderer.RendererBase[*pixfmt.PixFmtAMaskAdaptor[color.RGBA8[color.SRGB]], color.RGBA8[color.SRGB]],
 	rng *clibcRand,
 	width, height int,
 ) {
 	m := markers.NewRendererMarkers(rbAMask)
 	for i := 0; i < 50; i++ {
-		m.LineColor(rgbaRTL(rng, 0x7F))
-		m.FillColor(rgbaRTL(rng, 0x7F))
+		m.LineColor(srgbaRandRTL(rng, 0x7F))
+		m.FillColor(srgbaRandRTL(rng, 0x7F))
 
 		y2 := rng.randN(height)
 		x2 := rng.randN(width)
@@ -277,24 +318,24 @@ func renderMarkers(
 }
 
 func renderOutlineLines(
-	rbAMask *renderer.RendererBase[*pixfmt.PixFmtAMaskAdaptor[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]],
+	rbAMask *renderer.RendererBase[*pixfmt.PixFmtAMaskAdaptor[color.RGBA8[color.SRGB]], color.RGBA8[color.SRGB]],
 	rng *clibcRand,
 	width, height int,
 ) {
 	profile := outline.NewLineProfileAA()
 	profile.Width(5.0)
 
-	renOutline := outline.NewRendererOutlineAA[*outlineBaseAdapter, color.RGBA8[color.Linear]](
-		&outlineBaseAdapter{renBase: rbAMask},
+	renOutline := outline.NewRendererOutlineAA[*outlineBaseAdapter[color.RGBA8[color.SRGB]], color.RGBA8[color.SRGB]](
+		&outlineBaseAdapter[color.RGBA8[color.SRGB]]{renBase: rbAMask},
 		profile,
 	)
-	rasOutline := rasterizer.NewRasterizerOutlineAA[*outlineAAAdapter, color.RGBA8[color.Linear]](
-		&outlineAAAdapter{ren: renOutline},
+	rasOutline := rasterizer.NewRasterizerOutlineAA[*outlineAAAdapter[color.RGBA8[color.SRGB]], color.RGBA8[color.SRGB]](
+		&outlineAAAdapter[color.RGBA8[color.SRGB]]{ren: renOutline},
 	)
 	rasOutline.SetRoundCap(true)
 
 	for i := 0; i < 50; i++ {
-		renOutline.Color(rgbaRTL(rng, 0x7F))
+		renOutline.Color(srgbaRandRTL(rng, 0x7F))
 		y1 := rng.randN(height)
 		x1 := rng.randN(width)
 		rasOutline.MoveToD(float64(x1), float64(y1))
@@ -308,11 +349,11 @@ func renderOutlineLines(
 func renderGradientCircles(
 	ras *rasType,
 	sl *scanline.ScanlineU8,
-	rbAMask *renderer.RendererBase[*pixfmt.PixFmtAMaskAdaptor[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]],
+	rbAMask *renderer.RendererBase[*pixfmt.PixFmtAMaskAdaptor[color.RGBA8[color.SRGB]], color.RGBA8[color.SRGB]],
 	rng *clibcRand,
 	width, height int,
 ) {
-	alloc := span.NewSpanAllocator[color.RGBA8[color.Linear]]()
+	alloc := span.NewSpanAllocator[color.RGBA8[color.SRGB]]()
 	for i := 0; i < 50; i++ {
 		x := rng.randN(width)
 		y := rng.randN(height)
@@ -324,13 +365,13 @@ func renderGradientCircles(
 
 		inter := span.NewSpanInterpolatorLinearDefault(grm)
 		colorFunc := span.NewGradientLinearColorRGBA8(
-			color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 0},
-			func() color.RGBA8[color.Linear] {
-				b := uint8(rng.randAnd(0x7F))
-				g := uint8(rng.randAnd(0x7F))
-				rv := uint8(rng.randAnd(0x7F))
-				return color.RGBA8[color.Linear]{R: rv, G: g, B: b, A: 255}
-			}(),
+			color.RGBA8[color.SRGB]{R: 255, G: 255, B: 255, A: 0},
+			color.RGBA8[color.SRGB]{
+				R: uint8(rng.randAnd(0x7F)),
+				G: uint8(rng.randAnd(0x7F)),
+				B: uint8(rng.randAnd(0x7F)),
+				A: 255,
+			},
 			256,
 		)
 		spanGen := span.NewSpanGradient(inter, span.GradientRadial{}, colorFunc, 0, 10)

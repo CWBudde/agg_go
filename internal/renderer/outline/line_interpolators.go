@@ -61,7 +61,7 @@ func NewLineInterpolatorAABase(ren OutlineRenderer, lp *primitives.LineParameter
 		base.li = primitives.NewDda2LineInterpolator(
 			0,
 			primitives.LineDblHR(lp.X2-lp.X1),
-			basics.Abs(lp.Y2-lp.Y1)+1)
+			basics.Abs(lp.Y2-lp.Y1))
 	} else {
 		base.count = basics.Abs((lp.X2 >> primitives.LineSubpixelShift) - base.x)
 		base.li = primitives.NewDda2LineInterpolator(
