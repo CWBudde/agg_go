@@ -51,7 +51,6 @@ func generateAlphaMask3(vs conv.VertexSource, w, h int) {
 	agg2d := ctx.GetAgg2D()
 	ras := agg2d.GetInternalRasterizer()
 	sl := scanline.NewScanlineP8()
-	
 
 	if am3Operation == 0 {
 		maskRb.Clear(color.Gray8[color.SRGB]{V: 0, A: 255})
@@ -100,7 +99,7 @@ func drawAlphaMask3Demo() {
 	rbBase := renderer.NewRendererBaseWithPixfmt(imgPixf)
 
 	ras := agg2d.GetInternalRasterizer()
-	
+
 	sl := scanline.NewScanlineP8()
 
 	if am3Polygon == 3 { // Great Britain and Spiral

@@ -58,7 +58,6 @@ func radialShape2(rb renscan.BaseRendererInterface[color.RGBA8[color.Linear]], c
 	agg2d := ctx.GetAgg2D()
 	ras := agg2d.GetInternalRasterizer()
 	sl := scanline.NewScanlineU8()
-	
 
 	ras.Reset()
 	ell := shapes.NewEllipseWithParams(cx, cy, r, r, 100, false)

@@ -191,8 +191,10 @@ func TestCPPParity_Step3_AlphaMask(t *testing.T) {
 // blending of lion-colored rects through a mask.
 // C++ reference: step4_lion.cpp.
 // Expected conversions:
-//   sRGB(242,204,153) → linear(226,154,81)
-//   sRGB(235,128,128) → linear(212,55,55)
+//
+//	sRGB(242,204,153) → linear(226,154,81)
+//	sRGB(235,128,128) → linear(212,55,55)
+//
 // Expected output pixel(64,64) = (222,108,91).
 func TestCPPParity_Step4_SRGBLionColors(t *testing.T) {
 	const w, h = 128, 128
@@ -291,10 +293,11 @@ func TestCPPParity_Step5_MaskGeneration(t *testing.T) {
 // TestCPPParity_Step6_LionThroughMask verifies the full lion rendered through
 // an alpha mask at 512x400, matching the C++ step6_lion_full.cpp output.
 // C++ reference pixel values:
-//   mask(300,100) = 192
-//   pixel(300,100) = (245, 217, 177)  — tolerance ±1 for rounding
-//   pixel(250,150) = (244, 213, 171)
-//   pixel(200,200) = (255, 255, 255)  — white (outside lion)
+//
+//	mask(300,100) = 192
+//	pixel(300,100) = (245, 217, 177)  — tolerance ±1 for rounding
+//	pixel(250,150) = (244, 213, 171)
+//	pixel(200,200) = (255, 255, 255)  — white (outside lion)
 func TestCPPParity_Step6_LionThroughMask(t *testing.T) {
 	const fw, fh = 512, 400
 

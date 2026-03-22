@@ -99,5 +99,6 @@ func main() {
 		Title:  "AGG Blend Color",
 		Width:  440,
 		Height: 330,
+		FlipY:  true,
 	}, newDemo())
 }

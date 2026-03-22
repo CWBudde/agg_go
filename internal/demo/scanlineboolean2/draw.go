@@ -65,7 +65,6 @@ func (a *rasterPathAdapter) Vertex(x, y *float64) uint32 {
 	return uint32(cmd)
 }
 
-
 type storageScanlineU8 struct {
 	sl   *isc.ScanlineU8
 	iter storageScanlineU8Iter

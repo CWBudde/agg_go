@@ -79,8 +79,6 @@ func (d *demo) Render(img *agg.Image) {
 	drawDestinationImage(ctx.GetImage(), srcImg, d.state)
 	drawGraph(ctx, d.state)
 	drawControls(ctx, d.state)
-
-	flipImageY(img)
 }
 
 func drawDestinationImage(dstImg, srcImg *agg.Image, st imageFilters2State) {
@@ -245,7 +243,8 @@ func (a *ctrlVertexSource) Vertex(x, y *float64) uint32 {
 func renderCtrl(a *agg.Agg2D, ras interface {
 	Reset()
 	AddPath(vs rasterizer.VertexSource, pathID uint32)
-}, c ctrlbase.Ctrl[icol.RGBA]) {
+}, c ctrlbase.Ctrl[icol.RGBA],
+) {
 	for pathID := uint(0); pathID < c.NumPaths(); pathID++ {
 		ras.Reset()
 		ras.AddPath(&ctrlVertexSource{ctrl: c}, uint32(pathID))

@@ -35,9 +35,11 @@ const (
 )
 
 // Concrete types used throughout.
-type colorType = color.RGBA8[color.Linear]
-type rasType = rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
-type rbType = *renderer.RendererBase[*pixfmt.PixFmtRGBA32Pre[color.Linear], colorType]
+type (
+	colorType = color.RGBA8[color.Linear]
+	rasType   = rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
+	rbType    = *renderer.RendererBase[*pixfmt.PixFmtRGBA32Pre[color.Linear], colorType]
+)
 
 // srgba8 converts sRGB to linear, matching C++ agg::srgba8(r,g,b,a).
 func srgba8(r, g, b, a uint8) colorType {
@@ -192,9 +194,11 @@ func (s *boolScanlineP8) ResetSpans()    { s.sl.ResetSpans() }
 func (s *boolScanlineP8) AddCell(x int, cover uint) {
 	s.sl.AddCell(x, cover)
 }
+
 func (s *boolScanlineP8) AddCells(x, length int, covers []basics.Int8u) {
 	s.sl.AddCells(x, length, covers)
 }
+
 func (s *boolScanlineP8) AddSpan(x, length int, cover basics.Int8u) {
 	s.sl.AddSpan(x, length, uint(cover))
 }
@@ -209,6 +213,7 @@ func (it *boolScanlineP8Iter) GetSpan() isc.SpanInfo {
 	span := it.spans[it.idx]
 	return isc.SpanInfo{X: int(span.X), Len: int(span.Len), Covers: span.Covers}
 }
+
 func (it *boolScanlineP8Iter) Next() bool {
 	it.idx++
 	return it.idx < len(it.spans)
@@ -303,6 +308,7 @@ func (s *storageScanlineP8) ResetSpans()   { s.sl.ResetSpans() }
 func (s *storageScanlineP8) AddSpan(x, length int, cover basics.Int8u) {
 	s.sl.AddSpan(x, length, uint(cover))
 }
+
 func (s *storageScanlineP8) AddCells(x, length int, covers []basics.Int8u) {
 	s.sl.AddCells(x, length, covers)
 }
@@ -317,6 +323,7 @@ func (it *storageScanlineP8Iter) GetSpan() isc.SpanInfo {
 	span := it.spans[it.idx]
 	return isc.SpanInfo{X: int(span.X), Len: int(span.Len), Covers: span.Covers}
 }
+
 func (it *storageScanlineP8Iter) Next() bool {
 	it.idx++
 	return it.idx < len(it.spans)

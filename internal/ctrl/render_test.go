@@ -336,13 +336,13 @@ type mockScanlineFull struct {
 	numSpans int
 }
 
-func (ms *mockScanlineFull) Y() int               { return ms.y }
-func (ms *mockScanlineFull) NumSpans() int         { return ms.numSpans }
-func (ms *mockScanlineFull) ResetSpans()           {}
-func (ms *mockScanlineFull) AddCell(_ int, _ uint) {}
+func (ms *mockScanlineFull) Y() int                   { return ms.y }
+func (ms *mockScanlineFull) NumSpans() int            { return ms.numSpans }
+func (ms *mockScanlineFull) ResetSpans()              {}
+func (ms *mockScanlineFull) AddCell(_ int, _ uint)    {}
 func (ms *mockScanlineFull) AddSpan(_, _ int, _ uint) {}
-func (ms *mockScanlineFull) Finalize(_ int)        {}
-func (ms *mockScanlineFull) Reset(_, _ int)        {}
+func (ms *mockScanlineFull) Finalize(_ int)           {}
+func (ms *mockScanlineFull) Reset(_, _ int)           {}
 
 func (ms *mockScanlineFull) BeginIterator() scanline.ScanlineIterator {
 	return &mockScanlineIterator{

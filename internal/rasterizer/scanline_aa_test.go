@@ -45,8 +45,8 @@ func (ms *MockScanline) NumSpans() int {
 	return len(ms.cells) + len(ms.spans)
 }
 
-func (ms *MockScanline) Y() int                                  { return ms.y }
-func (ms *MockScanline) Reset(minX, maxX int)                    {}
+func (ms *MockScanline) Y() int                                   { return ms.y }
+func (ms *MockScanline) Reset(minX, maxX int)                     {}
 func (ms *MockScanline) BeginIterator() scanline.ScanlineIterator { return &mockSLIter{} }
 
 type mockSLIter struct{}

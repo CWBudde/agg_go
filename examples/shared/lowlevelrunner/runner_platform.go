@@ -30,10 +30,17 @@ func Run(cfg Config, demo Demo) {
 		os.Exit(1)
 	}
 
+	// Match C++ platform_support flip_y: negative stride means row 0 is at the
+	// physical bottom of the buffer.  The platform blit reads img.Data
+	// top-to-bottom without any row reversal, so the Y-axis is naturally flipped.
+	stride := cfg.Width * 4
+	if cfg.FlipY {
+		stride = -stride
+	}
 	h := &handler{
 		backend: backend,
 		ps:      platform.NewPlatformSupport(platform.PixelFormatRGBA32, false),
-		img:     agg.NewImage(make([]uint8, cfg.Width*cfg.Height*4), cfg.Width, cfg.Height, cfg.Width*4),
+		img:     agg.NewImage(make([]uint8, cfg.Width*cfg.Height*4), cfg.Width, cfg.Height, stride),
 		cfg:     cfg,
 		demo:    demo,
 		running: true,
@@ -85,7 +92,11 @@ func (h *handler) OnDraw() {
 }
 
 func (h *handler) OnResize(width, height int) {
-	h.img.Attach(make([]uint8, width*height*4), width, height, width*4)
+	stride := width * 4
+	if h.cfg.FlipY {
+		stride = -stride
+	}
+	h.img.Attach(make([]uint8, width*height*4), width, height, stride)
 	h.backend.ForceRedraw()
 }
 
@@ -153,6 +164,9 @@ func (h *handler) onIdle() {
 }
 
 // blit copies the raw image buffer into the platform window buffer and presents it.
+// img.Data is always read sequentially top-to-bottom; when FlipY=true the image
+// was created with negative stride so rbuf row 0 is physically at the bottom of
+// img.Data — no additional row-reversal is needed here.
 func (h *handler) blit() {
 	winBuf := h.ps.WindowBuffer()
 	src := h.img.Data

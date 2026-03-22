@@ -160,6 +160,7 @@ func (g *gsvOutlineVS) Rewind(id uint) { g.o.Rewind(id) }
 func (g *gsvOutlineVS) Vertex() (float64, float64, basics.PathCommand) {
 	return g.o.Vertex()
 }
+
 type bgr24Renderer struct {
 	pf *pixfmt.PixFmtBGR24
 }

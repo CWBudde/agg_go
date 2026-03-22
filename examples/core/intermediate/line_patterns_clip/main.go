@@ -229,7 +229,7 @@ func (d *demo) Render(img *agg.Image) {
 
 	// ----- low-level pipeline over the RGBA premultiplied buffer -----
 	rbuf := buffer.NewRenderingBufferU8()
-	rbuf.Attach(img.Data, w, h, w*4)
+	rbuf.Attach(img.Data, w, h, img.Stride())
 	pf := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
 	renBase := renderer.NewRendererBaseWithPixfmt[
 		*pixfmt.PixFmtAlphaBlendRGBA[icolor.Linear, blender.BlenderRGBA8Pre[icolor.Linear, order.RGBA]],
@@ -330,5 +330,6 @@ func main() {
 		Title:  "Line Patterns Clip",
 		Width:  500,
 		Height: 500,
+		FlipY:  true,
 	}, &demo{})
 }

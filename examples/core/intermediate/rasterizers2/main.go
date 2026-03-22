@@ -57,6 +57,7 @@ func (a *convToRasAdapter) Vertex(x, y *float64) uint32 {
 	*y = vy
 	return uint32(cmd)
 }
+
 type controlPathAdapter struct {
 	rewindFn func(pathID uint)
 	vertexFn func() (x, y float64, cmd uint32)
@@ -461,5 +462,6 @@ func main() {
 		Title:  "Rasterizers 2",
 		Width:  frameWidth,
 		Height: frameHeight,
+		FlipY:  true,
 	}, &demo{})
 }

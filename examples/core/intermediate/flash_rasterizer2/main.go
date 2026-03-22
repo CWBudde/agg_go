@@ -354,4 +354,3 @@ func (a *convVertexSourceRasVS) Vertex(x, y *float64) uint32 {
 	*x, *y = vx, vy
 	return uint32(cmd)
 }
-

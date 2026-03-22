@@ -37,6 +37,7 @@ func (m *MockScanline) ResetSpans()          {}
 func (m *MockScanline) AddCell(x int, cover uint) {
 	m.spans = append(m.spans, SpanData{X: x, Len: 1, Covers: []basics.Int8u{basics.Int8u(cover)}})
 }
+
 func (m *MockScanline) AddSpan(x, length int, cover uint) {
 	covers := make([]basics.Int8u, length)
 	for i := range covers {

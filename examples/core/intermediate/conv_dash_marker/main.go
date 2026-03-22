@@ -69,6 +69,7 @@ func (a *convToRasSource) Vertex(x, y *float64) uint32 {
 	*x, *y = vx, vy
 	return uint32(cmd)
 }
+
 func rgbaToRGBA8(c color.RGBA) color.RGBA8[color.Linear] {
 	clamp := func(v float64) uint8 {
 		if v <= 0 {

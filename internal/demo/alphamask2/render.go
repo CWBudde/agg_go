@@ -98,12 +98,15 @@ func (a *outlineAAAdapter[C]) Color(c C)              { a.ren.Color(c) }
 func (a *outlineAAAdapter[C]) Line0(lp primitives.LineParameters) {
 	a.ren.Line0(&lp)
 }
+
 func (a *outlineAAAdapter[C]) Line1(lp primitives.LineParameters, sx, sy int) {
 	a.ren.Line1(&lp, sx, sy)
 }
+
 func (a *outlineAAAdapter[C]) Line2(lp primitives.LineParameters, ex, ey int) {
 	a.ren.Line2(&lp, ex, ey)
 }
+
 func (a *outlineAAAdapter[C]) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) {
 	a.ren.Line3(&lp, sx, sy, ex, ey)
 }

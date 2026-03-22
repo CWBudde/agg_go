@@ -121,6 +121,7 @@ func (pa *PixFmtRGBARendererAdaptor[S, B]) BlendColorVspan(x, y, length int, col
 func (pa *PixFmtRGBARendererAdaptor[S, B]) Clear(c color.RGBA8[S]) {
 	pa.CopyBar(0, 0, pa.Width()-1, pa.Height()-1, c)
 }
+
 func (pa *PixFmtRGBARendererAdaptor[S, B]) Fill(c color.RGBA8[S]) {
 	pa.BlendBar(0, 0, pa.Width()-1, pa.Height()-1, c, basics.CoverFull)
 }

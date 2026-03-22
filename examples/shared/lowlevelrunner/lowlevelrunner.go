@@ -13,8 +13,12 @@ type Config struct {
 	Width  int
 	Height int
 	// FlipY mirrors C++ platform_support's flip_y flag.
-	// When true the runner flips mouse Y coordinates before forwarding
-	// them to the demo (so the demo sees Y=0 at the bottom).
+	// When true the image is created with a negative stride so that rbuf row 0
+	// is at the physical bottom of the backing slice, matching C++ behaviour
+	// where Y=0 is the bottom of the canvas.  Mouse Y coordinates are also
+	// flipped before being forwarded to the demo.
+	// Demos must use img.Stride() (not a hardcoded positive value) when
+	// attaching their own rendering buffer to img.Data.
 	FlipY bool
 }
 

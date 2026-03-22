@@ -176,8 +176,6 @@ func (d *demo) Render(img *agg.Image) {
 
 	drawStatusText(a, d.state)
 	drawControls(ctx, d.state)
-
-	flipImageY(img)
 }
 
 func renderTransformedImage(dst, src *agg.Image, st filterState) {

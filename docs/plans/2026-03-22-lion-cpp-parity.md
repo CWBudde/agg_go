@@ -19,6 +19,7 @@
 **Current Go:** Each lion `Path` struct has its own `*PathStorageStl`. This diverges significantly from C++ and means callers iterate differently.
 
 **Decision:** Switch to C++ model — one shared `PathStorageStl`, parallel `Colors` and `PathIdx` slices. This is the biggest change and affects all 22+ callers, but:
+
 - Enables `render_all_paths` (task 10.3) which expects this exact structure
 - Enables `bounding_rect` with path indices (used by C++ callers)
 - Makes `conv_transform` wrapping natural (one path source, not N)
@@ -31,6 +32,7 @@
 **Current Go:** Lion has a standalone `arrangeOrientationsCW()` that manually reimplements the shoelace formula and vertex reversal. This duplicates logic that belongs on `PathBase`.
 
 **Decision:** Port the three missing C++ methods to `PathBase`:
+
 - `PerceivePolygonOrientation(start, end uint) PathFlag`
 - `ArrangePolygonOrientation(start uint, orientation PathFlag) uint`
 - `ArrangeOrientationsAllPaths(orientation PathFlag)`
@@ -65,6 +67,7 @@ C++ uses `path.start_new_path()` to record path indices. Go should do the same.
 ### Task 1: Port missing `PathBase` orientation methods
 
 **Files:**
+
 - Modify: `internal/path/path_base.go` (add methods at end)
 - Create: `internal/path/path_base_orientation_test.go`
 
@@ -236,6 +239,7 @@ git commit -m "path: port ArrangeOrientationsAllPaths from C++ path_base"
 ### Task 2: Restructure lion.go to match C++ parse_lion
 
 **Files:**
+
 - Modify: `internal/demo/lion/lion.go`
 
 **Step 1: Replace the `Path` struct and `Parse` function**
@@ -260,6 +264,7 @@ func Parse() LionData {
 ```
 
 The parsing loop must match C++ exactly:
+
 1. On color line: `path.ClosePolygon()`, store color, `path.StartNewPath()` → pathIdx
 2. On M command: `path.ClosePolygon()`, `path.MoveTo(x, y)`
 3. On L command: `path.LineTo(x, y)`
@@ -317,8 +322,9 @@ For callers that use the high-level agg2d API and iterate manually, the same pat
 Bounding box computation changes from iterating per-path to iterating the single shared path once.
 
 Update files in groups:
+
 1. Examples (core/basic, core/intermediate, core/advanced)
-2. WASM demos (cmd/wasm/demo_*.go)
+2. WASM demos (cmd/wasm/demo\_\*.go)
 3. Tests (tests/benchmark, tests/integration, tests/visual)
 4. Commands (cmd/aggtest, cmd/lion_bounds)
 
@@ -368,6 +374,7 @@ Expected: all pass, pixel(300,100) still = (245, 217, 177).
 ## Pre-flight Checklist
 
 Before starting, verify these helpers exist in `internal/basics/`:
+
 - [ ] `IsNextPoly(cmd) bool` — C++: `is_next_poly`
 - [ ] `SetOrientation(cmd uint32, orientation uint32) uint32` — C++: `set_orientation`
 - [ ] `PathFlagsCW` and `PathFlagsCCW` constants

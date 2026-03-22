@@ -57,10 +57,12 @@ func sboolInit() {
 
 // --- Concrete types ---
 
-type sboolColorType = color.RGBA8[color.Linear]
-type sboolPfType = renderer.PixelFormat[sboolColorType]
-type sboolRbType = *renderer.RendererBase[sboolPfType, sboolColorType]
-type sboolRasType = rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
+type (
+	sboolColorType = color.RGBA8[color.Linear]
+	sboolPfType    = renderer.PixelFormat[sboolColorType]
+	sboolRbType    = *renderer.RendererBase[sboolPfType, sboolColorType]
+	sboolRasType   = rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
+)
 
 func sboolNewRas() *sboolRasType {
 	return rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
@@ -206,9 +208,11 @@ func (s *sboolScanlineP8) ResetSpans()     { s.sl.ResetSpans() }
 func (s *sboolScanlineP8) AddCell(x int, cover uint) {
 	s.sl.AddCell(x, cover)
 }
+
 func (s *sboolScanlineP8) AddCells(x, length int, covers []basics.Int8u) {
 	s.sl.AddCells(x, length, covers)
 }
+
 func (s *sboolScanlineP8) AddSpan(x, length int, cover basics.Int8u) {
 	s.sl.AddSpan(x, length, uint(cover))
 }
@@ -223,6 +227,7 @@ func (it *sboolScanlineP8Iter) GetSpan() isc.SpanInfo {
 	span := it.spans[it.idx]
 	return isc.SpanInfo{X: int(span.X), Len: int(span.Len), Covers: span.Covers}
 }
+
 func (it *sboolScanlineP8Iter) Next() bool {
 	it.idx++
 	return it.idx < len(it.spans)
@@ -246,6 +251,7 @@ func (s *sboolStorageScanlineP8) ResetSpans()   { s.sl.ResetSpans() }
 func (s *sboolStorageScanlineP8) AddSpan(x, length int, cover basics.Int8u) {
 	s.sl.AddSpan(x, length, uint(cover))
 }
+
 func (s *sboolStorageScanlineP8) AddCells(x, length int, covers []basics.Int8u) {
 	s.sl.AddCells(x, length, covers)
 }
@@ -260,6 +266,7 @@ func (it *sboolStorageScanlineP8Iter) GetSpan() isc.SpanInfo {
 	span := it.spans[it.idx]
 	return isc.SpanInfo{X: int(span.X), Len: int(span.Len), Covers: span.Covers}
 }
+
 func (it *sboolStorageScanlineP8Iter) Next() bool {
 	it.idx++
 	return it.idx < len(it.spans)

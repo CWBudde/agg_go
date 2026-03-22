@@ -349,8 +349,12 @@ export const demoURLHandlers = {
       const n = getSBoolNodes();
       updateURL({
         sop: parseInt(document.getElementById("sboolOpSelector").value),
-        sm1: parseFloat(document.getElementById("sboolMul1Slider").value).toFixed(3),
-        sm2: parseFloat(document.getElementById("sboolMul2Slider").value).toFixed(3),
+        sm1: parseFloat(
+          document.getElementById("sboolMul1Slider").value,
+        ).toFixed(3),
+        sm2: parseFloat(
+          document.getElementById("sboolMul2Slider").value,
+        ).toFixed(3),
         p1x0: n.p1x0.toFixed(1),
         p1y0: n.p1y0.toFixed(1),
         p1x1: n.p1x1.toFixed(1),

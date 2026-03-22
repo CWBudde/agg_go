@@ -86,6 +86,7 @@ func renderSolidPath(
 		}
 	}
 }
+
 func rgbaToRGBA8(c color.RGBA) color.RGBA8[color.Linear] {
 	clamp := func(v float64) uint8 {
 		if v <= 0 {
@@ -238,5 +239,6 @@ func main() {
 		Title:  "Rasterizers",
 		Width:  frameWidth,
 		Height: frameHeight,
+		FlipY:  true,
 	}, &demo{})
 }

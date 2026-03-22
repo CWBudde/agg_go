@@ -56,7 +56,7 @@ func (r *rgba32Renderer) Clear(c color.RGBA8[color.SRGB]) { r.renBase.Clear(c) }
 func (r *rgba32Renderer) SetColor(c color.RGBA8[color.SRGB]) {
 	r.ren.SetColor(c)
 }
-func (r *rgba32Renderer) Prepare()                          { r.ren.Prepare() }
+func (r *rgba32Renderer) Prepare()                           { r.ren.Prepare() }
 func (r *rgba32Renderer) Render(sl rendsl.ScanlineInterface) { r.ren.Render(sl) }
 
 // --- Demo ---

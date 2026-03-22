@@ -15,7 +15,15 @@ import (
 // Run renders the demo once and saves the result as a PNG file.
 // The filename is derived from Config.Title (spaces -> underscores, + ".png").
 func Run(cfg Config, demo Demo) {
-	img := agg.NewImage(make([]uint8, cfg.Width*cfg.Height*4), cfg.Width, cfg.Height, cfg.Width*4)
+	// Match C++ platform_support: when flip_y=true the rendering buffer is
+	// attached with a negative stride so that row 0 is at the physical bottom
+	// of the buffer.  The PNG is then written top-to-bottom from the raw bytes
+	// without any additional row-reversal — exactly as C++ would blit.
+	stride := cfg.Width * 4
+	if cfg.FlipY {
+		stride = -stride
+	}
+	img := agg.NewImage(make([]uint8, cfg.Width*cfg.Height*4), cfg.Width, cfg.Height, stride)
 	if initDemo, ok := demo.(InitHandler); ok {
 		initDemo.OnInit()
 	}

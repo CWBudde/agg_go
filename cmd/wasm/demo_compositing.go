@@ -92,7 +92,7 @@ func drawCircleComp(rb renscan.BaseRendererInterface[color.RGBA8[color.Linear]],
 	cx, cy := (x1+x2)/2, (y1+y2)/2
 
 	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip())
-	
+
 	sl := scanline.NewScanlineU8()
 
 	// Shadow
@@ -126,7 +126,7 @@ func drawCircleComp(rb renscan.BaseRendererInterface[color.RGBA8[color.Linear]],
 
 func drawSourceShapeComp(rb renscan.BaseRendererInterface[color.RGBA8[color.Linear]], c1, c2 color.RGBA8[color.Linear], x1, y1, x2, y2 float64) {
 	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip())
-	
+
 	sl := scanline.NewScanlineU8()
 
 	// Just use a rectangle for now since we don't have a path helper here

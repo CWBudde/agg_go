@@ -187,5 +187,6 @@ func main() {
 		Title:  "Anti-Aliasing Gamma Correction",
 		Width:  gammaCtrlWidth,
 		Height: gammaCtrlHeight,
+		FlipY:  true,
 	}, &demo{})
 }

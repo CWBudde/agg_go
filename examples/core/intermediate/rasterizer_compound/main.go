@@ -300,5 +300,6 @@ func main() {
 		Title:  "Rasterizer Compound",
 		Width:  440,
 		Height: 330,
+		FlipY:  true,
 	}, &demo{})
 }

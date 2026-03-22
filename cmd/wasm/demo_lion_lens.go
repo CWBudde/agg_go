@@ -13,7 +13,6 @@ var (
 	lionLensRadius       = 70.0
 	lionLensX, lionLensY float64
 	lionLensInitialized  bool
-
 )
 
 func initLionLensDemo() {
@@ -112,7 +111,6 @@ func getLionBoundingRect(ld *liondemo.LionData) (x1, y1, x2, y2 float64) {
 	}
 	return
 }
-
 
 func setLionLensScale(v float64)  { lionLensScale = v }
 func setLionLensRadius(v float64) { lionLensRadius = v }

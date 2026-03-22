@@ -74,6 +74,7 @@ func (a *spanGenAdapter) Generate(colors []color.RGBA8[color.Linear], x, y, leng
 	}
 	a.sg.Generate(colors[:length], x, y)
 }
+
 type pathSourceAdapter struct{ ps *path.PathStorageStl }
 
 func (a *pathSourceAdapter) Rewind(id uint32) { a.ps.Rewind(uint(id)) }

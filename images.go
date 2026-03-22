@@ -78,6 +78,12 @@ func (img *Image) Height() int {
 	return img.height
 }
 
+// Stride returns the buffer stride in bytes per row.
+// Negative values indicate a bottom-up (flip_y) buffer, matching C++ platform_support.
+func (img *Image) Stride() int {
+	return img.renBuf.Stride()
+}
+
 // Attach attaches a buffer to the image.
 func (img *Image) Attach(buf []uint8, width, height, stride int) {
 	img.renBuf.Attach(buf, width, height, stride)
