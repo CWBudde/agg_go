@@ -526,6 +526,9 @@ func (pb *PathBase[VC]) ArrangeOrientations(start uint, orientation basics.PathF
 	if orientation != basics.PathFlagsNone {
 		for start < pb.vertices.TotalVertices() {
 			start = pb.ArrangePolygonOrientation(start, orientation)
+			if start >= pb.vertices.TotalVertices() {
+				break
+			}
 			if basics.IsStop(basics.PathCommand(pb.vertices.Command(start))) {
 				start++
 				break
