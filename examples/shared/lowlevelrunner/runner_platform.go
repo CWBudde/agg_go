@@ -89,9 +89,16 @@ func (h *handler) OnResize(width, height int) {
 	h.backend.ForceRedraw()
 }
 
+func (h *handler) flipMouseY(y int) int {
+	if h.cfg.FlipY {
+		return h.img.Height() - 1 - y
+	}
+	return y
+}
+
 func (h *handler) OnMouseMove(x, y int, flags platform.InputFlags) {
 	if md, ok := h.demo.(MouseHandler); ok {
-		if md.OnMouseMove(x, y, toButtons(flags)) {
+		if md.OnMouseMove(x, h.flipMouseY(y), toButtons(flags)) {
 			h.backend.ForceRedraw()
 		}
 	}
@@ -99,7 +106,7 @@ func (h *handler) OnMouseMove(x, y int, flags platform.InputFlags) {
 
 func (h *handler) OnMouseButtonDown(x, y int, flags platform.InputFlags) {
 	if md, ok := h.demo.(MouseHandler); ok {
-		if md.OnMouseDown(x, y, toButtons(flags)) {
+		if md.OnMouseDown(x, h.flipMouseY(y), toButtons(flags)) {
 			h.backend.ForceRedraw()
 		}
 	}
@@ -107,7 +114,7 @@ func (h *handler) OnMouseButtonDown(x, y int, flags platform.InputFlags) {
 
 func (h *handler) OnMouseButtonUp(x, y int, flags platform.InputFlags) {
 	if md, ok := h.demo.(MouseHandler); ok {
-		if md.OnMouseUp(x, y, toButtons(flags)) {
+		if md.OnMouseUp(x, h.flipMouseY(y), toButtons(flags)) {
 			h.backend.ForceRedraw()
 		}
 	}
@@ -156,10 +163,10 @@ func (h *handler) blit() {
 	if dstStride < 0 {
 		dstStride = -dstStride
 	}
-	for y := 0; y < winBuf.Height(); y++ {
+	for y := range winBuf.Height() {
 		srcOff := y * srcStride
 		dstOff := y * dstStride
-		for x := 0; x < winBuf.Width(); x++ {
+		for x := range winBuf.Width() {
 			srcIdx := srcOff + x*4
 			dstIdx := dstOff + x*4
 			dst[dstIdx] = src[srcIdx]
@@ -175,10 +182,10 @@ func (h *handler) saveScreenshot() {
 	filename := strings.ReplaceAll(strings.ToLower(h.cfg.Title), " ", "_") + ".png"
 	goImg := image.NewRGBA(image.Rect(0, 0, h.img.Width(), h.img.Height()))
 	srcStride := h.img.Width() * 4
-	for y := 0; y < h.img.Height(); y++ {
+	for y := range h.img.Height() {
 		srcOff := y * srcStride
 		dstOff := y * goImg.Stride
-		for x := 0; x < h.img.Width(); x++ {
+		for x := range h.img.Width() {
 			srcIdx := srcOff + x*4
 			dstIdx := dstOff + x*4
 			goImg.Pix[dstIdx] = h.img.Data[srcIdx]

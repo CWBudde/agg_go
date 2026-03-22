@@ -3,7 +3,7 @@
 // In the original C++ demo, a virtual base class (polymorphic_renderer_solid_rgba8_base)
 // and a template adaptor let one rendering routine work with any pixel-format backend.
 // Go interfaces provide this naturally: the same draw call works through any
-// implementation of the SolidFiller interface below, without virtual keyword,
+// implementation of the SolidRenderer interface below, without virtual keyword,
 // explicit factory, or heap allocation of C++ base classes.
 //
 // Visual: a filled triangle on a white background.
@@ -22,71 +22,39 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
 	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
 	"github.com/MeKo-Christian/agg_go/internal/renderer"
+	rendsl "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
 	"github.com/MeKo-Christian/agg_go/internal/scanline"
 )
 
-// SolidFiller is the Go equivalent of C++'s polymorphic_renderer_solid_rgba8_base.
+// SolidRenderer is the Go equivalent of C++'s polymorphic_renderer_solid_rgba8_base.
 // Any pixel-format backend that implements these methods is a valid renderer.
-type SolidFiller interface {
+type SolidRenderer interface {
 	Clear(c color.RGBA8[color.SRGB])
 	SetColor(c color.RGBA8[color.SRGB])
-	RenderTriangle(x, y [3]float64)
+	Prepare()
+	Render(sl rendsl.ScanlineInterface)
 }
 
-// rgba32Filler is one concrete implementation backed by PixFmtRGBA32 (sRGB).
-// C++ uses srgba8 colors, so we match with color.SRGB so that byte values
-// like {80,30,20} are stored as-is and PNG viewers interpret them as sRGB.
-type rgba32Filler struct {
-	renBase   *renderer.RendererBase[renderer.PixelFormat[color.RGBA8[color.SRGB]], color.RGBA8[color.SRGB]]
-	fillColor color.RGBA8[color.SRGB]
+// rgba32Renderer is one concrete implementation backed by PixFmtRGBA32 (sRGB).
+// This mirrors C++'s polymorphic_renderer_solid_rgba8_adaptor<PixFmt>.
+type rgba32Renderer struct {
+	renBase *renderer.RendererBase[renderer.PixelFormat[color.RGBA8[color.SRGB]], color.RGBA8[color.SRGB]]
+	ren     *rendsl.RendererScanlineAASolid[*renderer.RendererBase[renderer.PixelFormat[color.RGBA8[color.SRGB]], color.RGBA8[color.SRGB]], color.RGBA8[color.SRGB]]
 }
 
-func newRGBA32Filler(rbuf *buffer.RenderingBufferU8, w, h int) *rgba32Filler {
+func newRGBA32Renderer(rbuf *buffer.RenderingBufferU8) *rgba32Renderer {
 	pf := pixfmt.NewPixFmtRGBA32[color.SRGB](rbuf)
 	rb := renderer.NewRendererBaseWithPixfmt[renderer.PixelFormat[color.RGBA8[color.SRGB]], color.RGBA8[color.SRGB]](pf)
-	rb.ClipBox(0, 0, w, h)
-	return &rgba32Filler{renBase: rb}
+	ren := rendsl.NewRendererScanlineAASolidWithRenderer(rb)
+	return &rgba32Renderer{renBase: rb, ren: ren}
 }
 
-func (r *rgba32Filler) Clear(c color.RGBA8[color.SRGB])    { r.renBase.Clear(c) }
-func (r *rgba32Filler) SetColor(c color.RGBA8[color.SRGB]) { r.fillColor = c }
-
-// RenderTriangle is the rendering routine — it operates identically regardless
-// of which concrete SolidFiller implementation is in use.
-func (r *rgba32Filler) RenderTriangle(x, y [3]float64) {
-	ps := path.NewPathStorageStl()
-	ps.MoveTo(x[0], y[0])
-	ps.LineTo(x[1], y[1])
-	ps.LineTo(x[2], y[2])
-	ps.ClosePolygon(basics.PathFlagsNone)
-
-	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
-		rasterizer.RasConvInt{},
-		rasterizer.NewRasterizerSlNoClip(),
-	)
-	ras.AddPath(&psAdapter{ps: ps}, 0)
-
-	sl := scanline.NewScanlineP8()
-	if ras.RewindScanlines() {
-		sl.Reset(ras.MinX(), ras.MaxX())
-		for ras.SweepScanline(sl) {
-			y := sl.Y()
-			for _, sp := range sl.Spans() {
-				if sp.Len > 0 {
-					r.renBase.BlendSolidHspan(int(sp.X), y, int(sp.Len), r.fillColor, sp.Covers)
-				}
-			}
-		}
-	}
+func (r *rgba32Renderer) Clear(c color.RGBA8[color.SRGB]) { r.renBase.Clear(c) }
+func (r *rgba32Renderer) SetColor(c color.RGBA8[color.SRGB]) {
+	r.ren.SetColor(c)
 }
-
-// drawFilled demonstrates the polymorphic dispatch: the same code works with
-// any SolidFiller, just as the C++ version worked with any PixFmt.
-func drawFilled(ren SolidFiller, x, y [3]float64, bg, fg color.RGBA8[color.SRGB]) {
-	ren.Clear(bg)
-	ren.SetColor(fg)
-	ren.RenderTriangle(x, y)
-}
+func (r *rgba32Renderer) Prepare()                          { r.ren.Prepare() }
+func (r *rgba32Renderer) Render(sl rendsl.ScanlineInterface) { r.ren.Render(sl) }
 
 // --- Demo ---
 
@@ -108,22 +76,38 @@ func newDemo() *demo {
 func (d *demo) Render(img *agg.Image) {
 	w, h := img.Width(), img.Height()
 
+	// Negative stride gives flip_y=true (Y=0 at bottom), matching C++.
+	// The runner's FlipY config handles flipping the output and mouse coords.
 	rbuf := buffer.NewRenderingBufferU8()
-	rbuf.Attach(img.Data, w, h, w*4)
+	rbuf.Attach(img.Data, w, h, -w*4)
 
-	// Swap out rgba32Filler for any other SolidFiller without changing drawFilled.
-	var ren SolidFiller = newRGBA32Filler(rbuf, w, h)
-	drawFilled(
-		ren,
-		d.x, d.y,
-		color.RGBA8[color.SRGB]{R: 255, G: 255, B: 255, A: 255}, // white bg
-		color.RGBA8[color.SRGB]{R: 80, G: 30, B: 20, A: 255},    // srgba8 fill
+	var ren SolidRenderer = newRGBA32Renderer(rbuf)
+
+	// Build the triangle path.
+	ps := path.NewPathStorageStl()
+	ps.MoveTo(d.x[0], d.y[0])
+	ps.LineTo(d.x[1], d.y[1])
+	ps.LineTo(d.x[2], d.y[2])
+	ps.ClosePolygon(basics.PathFlagsNone)
+
+	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{},
+		rasterizer.NewRasterizerSlNoClip(),
 	)
+	ras.AddPath(&psAdapter{ps: ps}, 0)
+
+	sl := scanline.NewScanlineP8()
+
+	// Polymorphic dispatch: same code works with any SolidRenderer,
+	// just as the C++ version works with any PixFmt.
+	ren.Clear(color.RGBA8[color.SRGB]{R: 255, G: 255, B: 255, A: 255})
+	ren.SetColor(color.RGBA8[color.SRGB]{R: 80, G: 30, B: 20, A: 255})
+	rendsl.RenderScanlines[color.RGBA8[color.SRGB]](ras, sl, ren)
 }
 
 func (d *demo) OnMouseDown(x, y int, btn lowlevelrunner.Buttons) bool {
 	d.selected = -1
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		dx := float64(x) - d.x[i]
 		dy := float64(y) - d.y[i]
 		if math.Sqrt(dx*dx+dy*dy) < 10 {
@@ -155,6 +139,7 @@ func main() {
 		Title:  "Polymorphic Renderer",
 		Width:  400,
 		Height: 330,
+		FlipY:  true,
 	}, newDemo())
 }
 
@@ -168,4 +153,3 @@ func (a *psAdapter) Vertex(x, y *float64) uint32 {
 	*x, *y = vx, vy
 	return cmd
 }
-

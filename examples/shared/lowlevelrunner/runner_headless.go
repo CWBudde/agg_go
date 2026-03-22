@@ -32,10 +32,10 @@ func Run(cfg Config, demo Demo) {
 func savePNG(img *agg.Image, filename string) error {
 	goImg := image.NewRGBA(image.Rect(0, 0, img.Width(), img.Height()))
 	srcStride := img.Width() * 4
-	for y := 0; y < img.Height(); y++ {
+	for y := range img.Height() {
 		srcOff := y * srcStride
 		dstOff := y * goImg.Stride
-		for x := 0; x < img.Width(); x++ {
+		for x := range img.Width() {
 			srcIdx := srcOff + x*4
 			dstIdx := dstOff + x*4
 			goImg.Pix[dstIdx] = img.Data[srcIdx]

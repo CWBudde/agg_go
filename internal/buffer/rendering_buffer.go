@@ -12,11 +12,13 @@ import (
 // Stride is stored in bytes, not elements, and may be negative for bottom-up
 // buffers.
 type RenderingBuffer[T any] struct {
-	buf    []T
-	start  []T
-	width  int
-	height int
-	stride int // Number of bytes per row (can be negative for bottom-up)
+	buf           []T
+	start         []T // kept for legacy compatibility; prefer rowStart()
+	width         int
+	height        int
+	stride        int // Number of bytes per row (can be negative for bottom-up)
+	elementStride int // stride / sizeof(T), cached
+	startOffset   int // element offset of row 0 within buf (0 for positive stride)
 }
 
 // NewRenderingBuffer creates a new rendering buffer.
@@ -39,18 +41,20 @@ func (rb *RenderingBuffer[T]) Attach(buf []T, width, height, stride int) {
 	rb.height = height
 	rb.stride = stride
 
+	elementSize := int(unsafe.Sizeof(*new(T)))
+	rb.elementStride = stride / elementSize
+
 	if stride < 0 {
-		// Negative stride means bottom-up organization
-		// Calculate offset in elements: (-stride * (height-1)) / sizeof(T)
-		elementSize := int(unsafe.Sizeof(*new(T)))
-		byteOffset := (-stride) * (height - 1)
-		elementOffset := byteOffset / elementSize
-		if len(buf) > elementOffset {
-			rb.start = buf[elementOffset:]
+		// Negative stride means bottom-up organization.
+		// Row 0 starts at the last row of the underlying buffer.
+		rb.startOffset = (height - 1) * (-stride) / elementSize
+		if rb.startOffset < len(buf) {
+			rb.start = buf[rb.startOffset:]
 		} else {
 			rb.start = buf
 		}
 	} else {
+		rb.startOffset = 0
 		rb.start = buf
 	}
 }
@@ -83,6 +87,15 @@ func (rb *RenderingBuffer[T]) StrideAbs() int {
 	return rb.stride
 }
 
+// rowStart returns the absolute element offset into rb.buf for the given row.
+// This handles both positive and negative stride correctly.
+func (rb *RenderingBuffer[T]) rowStart(y int) int {
+	// For positive stride: startOffset=0, elementStride>0, so offset = y * stride.
+	// For negative stride: startOffset points to last row in buf, elementStride<0,
+	// so offset = lastRow - y * absStride, which walks backwards through buf.
+	return rb.startOffset + y*rb.elementStride
+}
+
 // RowPtr returns a slice to the beginning of the specified row with length checking.
 // x is the starting x coordinate, y is the row, length is the number of elements needed.
 func (rb *RenderingBuffer[T]) RowPtr(x, y, length int) []T {
@@ -90,29 +103,18 @@ func (rb *RenderingBuffer[T]) RowPtr(x, y, length int) []T {
 		return nil
 	}
 
-	// Convert byte stride to element stride
-	elementSize := int(unsafe.Sizeof(*new(T)))
-	elementStride := rb.stride / elementSize
-
-	// Calculate row start in elements
-	rowOffset := y * elementStride
-	if rowOffset < 0 || rowOffset >= len(rb.start) {
+	rowOff := rb.rowStart(y)
+	start := rowOff + x
+	if start < 0 || start >= len(rb.buf) {
 		return nil
 	}
 
-	// Add x offset
-	rowStart := rowOffset + x
-	if x < 0 || rowStart < 0 || rowStart >= len(rb.start) {
-		return nil
+	end := start + length
+	if end > len(rb.buf) {
+		end = len(rb.buf)
 	}
 
-	// Calculate end position
-	end := rowStart + length
-	if end > len(rb.start) {
-		end = len(rb.start)
-	}
-
-	return rb.start[rowStart:end]
+	return rb.buf[start:end]
 }
 
 // Row returns a slice for the entire row.
@@ -121,29 +123,22 @@ func (rb *RenderingBuffer[T]) Row(y int) []T {
 		return nil
 	}
 
-	// Convert byte stride to element stride
-	elementSize := int(unsafe.Sizeof(*new(T)))
-	elementStride := rb.stride / elementSize
-
-	// Calculate row start in elements
-	rowOffset := y * elementStride
-	if rowOffset < 0 || rowOffset >= len(rb.start) {
+	rowOff := rb.rowStart(y)
+	if rowOff < 0 || rowOff >= len(rb.buf) {
 		return nil
 	}
 
-	// Calculate the absolute element stride for the row length
-	absElementStride := elementStride
-	if absElementStride < 0 {
-		absElementStride = -absElementStride
+	absStride := rb.elementStride
+	if absStride < 0 {
+		absStride = -absStride
 	}
 
-	// End is row start + absolute stride (in elements)
-	end := rowOffset + absElementStride
-	if end > len(rb.start) {
-		end = len(rb.start)
+	end := rowOff + absStride
+	if end > len(rb.buf) {
+		end = len(rb.buf)
 	}
 
-	return rb.start[rowOffset:end]
+	return rb.buf[rowOff:end]
 }
 
 // RowData returns row information for the specified row.
