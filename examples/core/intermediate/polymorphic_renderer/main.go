@@ -8,6 +8,9 @@
 //
 // Visual: a filled triangle on a white background.
 // Drag the three vertex handles to reshape it.
+//
+// NOTE: The C++ original uses pix_format_rgb555 (15-bit packed pixels).
+// This port uses RGBA32 until PixFmtRGB555 is completed (PLAN.md 10.10).
 package main
 
 import (

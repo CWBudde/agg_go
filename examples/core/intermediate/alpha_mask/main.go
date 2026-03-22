@@ -12,7 +12,9 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/conv"
 	liondemo "github.com/MeKo-Christian/agg_go/internal/demo/lion"
+	"github.com/MeKo-Christian/agg_go/internal/path"
 	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
 	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
 	"github.com/MeKo-Christian/agg_go/internal/renderer"
@@ -188,26 +190,11 @@ func (d *demo) Render(img *agg.Image) {
 	mtx.Multiply(transform.NewTransAffineRotation(d.angle + math.Pi))
 	mtx.Multiply(transform.NewTransAffineTranslation(float64(w)/2, float64(h)/2))
 
-	for i := 0; i < ld.NPaths; i++ {
-		c := color.RGBA8[color.Linear]{R: ld.Colors[i].R, G: ld.Colors[i].G, B: ld.Colors[i].B, A: 255}
-		ras.Reset()
-		ld.Path.Rewind(ld.PathIdx[i])
-		for {
-			x, y, cmd := ld.Path.NextVertex()
-			pathCmd := basics.PathCommand(cmd)
-			if basics.IsStop(pathCmd) {
-				break
-			}
-			tx, ty := x, y
-			mtx.Transform(&tx, &ty)
-			if basics.IsMoveTo(pathCmd) {
-				ras.AddVertex(tx, ty, uint32(basics.PathCmdMoveTo))
-			} else if basics.IsLineTo(pathCmd) {
-				ras.AddVertex(tx, ty, uint32(basics.PathCmdLineTo))
-			}
-		}
-		renscan.RenderScanlinesAASolid(ras, sl, rbAMask, c)
-	}
+	pathVS := path.NewPathStorageStlVertexSourceAdapter(ld.Path)
+	transVS := conv.NewConvTransform(pathVS, mtx)
+	rasVS := conv.NewRasterizerVertexSourceAdapter(transVS)
+	renSolid := renscan.NewRendererScanlineAASolidWithRenderer(rbAMask)
+	renscan.RenderAllPaths(ras, sl, renSolid, rasVS, &ld, &ld, ld.NPaths)
 
 	// Copy work buffer to output with y-flip (match C++ flip_y=true).
 	copyFlipY(workBuf, img.Data, w, h)

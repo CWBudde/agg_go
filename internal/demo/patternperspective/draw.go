@@ -61,7 +61,7 @@ func Draw(ctx *agg.Context, cfg Config) {
 		ShowQuadFill:       true,
 		ShowQuadOutline:    true,
 		ShowHandles:        true,
-		QuadFillColor:      agg.RGBA(0, 0.3, 0.5, 0.16),
+		QuadFillColor:      agg.RGBA(0, 0.3, 0.5, 0.6),
 		QuadLineColor:      agg.RGBA(0, 0.25, 0.35, 0.9),
 	})
 }

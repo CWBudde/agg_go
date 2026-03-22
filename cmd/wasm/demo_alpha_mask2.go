@@ -9,7 +9,9 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/conv"
 	liondemo "github.com/MeKo-Christian/agg_go/internal/demo/lion"
+	"github.com/MeKo-Christian/agg_go/internal/path"
 	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
 	"github.com/MeKo-Christian/agg_go/internal/renderer"
 	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
@@ -123,29 +125,11 @@ func drawAlphaMask2Demo() {
 	mtx.Rotate(am2LionAngle + basics.Pi)
 	mtx.Translate(float64(w)/2, float64(h)/2)
 
-	for i := 0; i < lionData.NPaths; i++ {
-		c := color.RGBA8[color.Linear]{R: lionData.Colors[i].R, G: lionData.Colors[i].G, B: lionData.Colors[i].B, A: 255}
-
-		ras.Reset()
-		lionData.Path.Rewind(lionData.PathIdx[i])
-		for {
-			x, y, cmd := lionData.Path.NextVertex()
-			if basics.IsStop(basics.PathCommand(cmd)) {
-				break
-			}
-
-			tx, ty := x, y
-			mtx.Transform(&tx, &ty)
-
-			if basics.IsMoveTo(basics.PathCommand(cmd)) {
-				ras.AddVertex(tx, ty, uint32(basics.PathCmdMoveTo))
-			} else if basics.IsLineTo(basics.PathCommand(cmd)) {
-				ras.AddVertex(tx, ty, uint32(basics.PathCmdLineTo))
-			}
-		}
-
-		renscan.RenderScanlinesAASolid(ras, sl, rbAMask, c)
-	}
+	pathVS := path.NewPathStorageStlVertexSourceAdapter(lionData.Path)
+	transVS := conv.NewConvTransform(pathVS, mtx)
+	rasVS := conv.NewRasterizerVertexSourceAdapter(transVS)
+	renSolid := renscan.NewRendererScanlineAASolidWithRenderer(rbAMask)
+	renscan.RenderAllPaths(ras, sl, renSolid, rasVS, lionData, lionData, lionData.NPaths)
 
 	logStatus(fmt.Sprintf("Alpha Mask 2 Demo: Ellipses=%d", am2NumEllipses))
 }

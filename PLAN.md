@@ -464,7 +464,7 @@ idiomatic in Go.
 
 ### 9.3 Medium-priority demo ports
 
-- [x] Completed: `interactive_polygon.cpp`, `graph_test.cpp`, `gpc_test.cpp`, `gradients_contour.cpp`, `flash_rasterizer2.cpp`, `polymorphic_renderer.cpp`.
+- [x] Completed: `interactive_polygon.cpp`, `graph_test.cpp`, `gpc_test.cpp`, `gradients_contour.cpp`, `flash_rasterizer2.cpp`, `polymorphic_renderer.cpp` (uses RGBA32 pending 10.10).
 - [x] `image_fltr_graph.cpp`: source `../agg-2.6/agg-src/examples/image_fltr_graph.cpp`; standalone `examples/core/intermediate/image_fltr_graph/main.go`; web `cmd/wasm/demo_image_fltr_graph.go` + `web/index.html`; shared rendering `internal/demo/imagefltrgraph/draw.go`; URL/HTML controls `web/{event-handlers.js,demo-state.js,url-state.js}`; verification `cmd/wasm/{main.go,main_stub.go,render_test.go}`.
 - [x] `blend_color.cpp`: shared draw `internal/demo/blendcolor/draw.go`; standalone `examples/core/intermediate/blend_color/main.go`; web `cmd/wasm/demo_blend_color.go` + `web/index.html`; infrastructure `RendererBase.BlendFromColor`/`BlendFromLUT` + gray8 `GrayImageInterface` compliance.
 - [x] `image_filters2.cpp`: shared renderer `internal/demo/imagefilters2/draw.go`; standalone `examples/core/intermediate/image_filters2/main.go`; web `cmd/wasm/demo_image_filters2.go` + `web/index.html`; verification `cmd/wasm/{main.go,main_stub.go,render_test.go}`.
@@ -581,16 +581,15 @@ template that delegates all blend calls to the wrapped `PixFmt` regardless of it
 
 ---
 
-### 10.3 ⚠️ `render_all_paths` Equivalent Missing for Multi-Path Lion Rendering
+### 10.3 ✅ `render_all_paths` Equivalent for Affine Multi-Path Lion Rendering
 
-**Status**: OPEN — Go examples iterate paths manually with `lp.Path.Rewind(0)` + `NextVertex()`,
-but C++ uses `render_all_paths` with `conv_transform` which handles full AGG vertex-source
-semantics including all command types (curves, end-poly, etc.).
+**Status**: DONE — rasterizer-based lion examples now use `RenderAllPaths` together with
+`ConvTransform` and a `conv.VertexSource -> rasterizer.VertexSource` bridge, so the full AGG
+vertex stream reaches the rasterizer without dropping `EndPoly|Close`.
 
-**Root cause**: The Go examples only forward `MoveTo` and `LineTo` from `NextVertex()` and
-silently drop `EndPoly`/`ClosePolygon` and any curve commands. `EndPoly` commands carry the
-`PathFlagsClose` flag that tells the rasterizer to auto-close the polygon — dropping them may
-cause unclosed paths or missed fills in some lion sub-paths.
+**Root cause** (resolved): Several Go examples manually replayed only `MoveTo`/`LineTo` from
+`NextVertex()`, which bypassed the AGG-style helper path and could discard `EndPoly` close flags.
+Those call sites now use the same `render_all_paths` pattern as C++ for affine lion rendering.
 
 **C++ reference**:
 
@@ -605,13 +604,14 @@ cause unclosed paths or missed fills in some lion sub-paths.
 
 **Tasks**:
 
-- [ ] Port `render_all_paths` to Go as `RenderAllPaths(ras, sl, ren, vs, colors, pathIdx)`.
+- [x] Port `render_all_paths` to Go as `RenderAllPaths(ras, sl, ren, vs, colors, pathIdx)`.
       C++ source: `agg_renderer_scanline.h` `render_all_paths` template.
-- [ ] Implement or reuse `ConvTransform` to wrap a path storage with an affine transform,
+- [x] Implement or reuse `ConvTransform` to wrap a path storage with an affine transform,
       forwarding all commands including `EndPoly|Close`.
-- [ ] Update `alpha_mask2`, `alpha_mask`, `multi_clip`, and wasm demo equivalents to use
+- [x] Update `alpha_mask2`, `alpha_mask`, `multi_clip`, and wasm demo equivalents to use
       the proper `RenderAllPaths` + `ConvTransform` pattern.
-- [ ] Add a pixel-level test comparing `RenderAllPaths` output against C++ step6 reference.
+- [x] Add a pixel-level regression test proving that preserving `EndPoly|Close` changes output.
+      `tests/integration/render_all_paths_parity_test.go`
 
 ---
 
@@ -727,9 +727,56 @@ forcing every example that called `RenderScanlinesAASolid` + `RasterizerScanline
 
 ---
 
-### 10.10 Exit Criteria
+### 10.10 ⚠️ Packed Pixel Formats (`PixFmtRGB555`, `RGB565`, etc.) Incomplete
 
-- [ ] All items in 10.1–10.8 are resolved or explicitly deferred with rationale.
+**Status**: OPEN — `PixFmtRGB555`, `PixFmtBGR555`, `PixFmtRGB565`, `PixFmtBGR565` have only
+`CopyPixel`, `BlendPixel`, and `GetPixel`. They are missing the span and fill methods required
+by the `renderer.PixelFormat[C]` interface and cannot be used with `RendererBase` or the
+scanline rendering pipeline.
+
+**Root cause**: C++ `pixfmt_alpha_blend_rgb_packed` template provides all methods
+(`copy_hline`, `blend_hline`, `blend_solid_hspan`, `blend_solid_vspan`, `blend_color_hspan`,
+`blend_color_vspan`, `copy_bar`, `for_each_pixel`, etc.). The Go port only translated the
+per-pixel methods.
+
+**C++ reference**:
+
+- `agg_pixfmt_rgb_packed.h`: `pixfmt_alpha_blend_rgb_packed<Blender, RenBuf>` — complete
+  pixel format implementation for 16-bit packed formats.
+- `agg_pixfmt_rgb_packed.h`: `blender_rgb555`, `blender_rgb565`, etc. — 16-bit blenders.
+
+**Go files**:
+
+- `internal/pixfmt/pixfmt_rgb_packed.go`: `PixFmtRGB555`, `PixFmtRGB565`, etc.
+- `internal/pixfmt/blender/rgb_packed.go`: 16-bit packed blenders.
+
+**Color type**: The Go types currently use `color.RGB8[color.Linear]`. C++ uses `srgba8` (RGBA
+with alpha) as the color type for `pixfmt_rgb555`. The alpha channel is used for blending but
+not stored in the 16-bit pixel. Go should use `color.RGBA8[color.SRGB]` to match.
+
+**Blocked examples**: `polymorphic_renderer` (currently uses RGBA32 instead of RGB555, see 9.3).
+
+**Tasks**:
+
+- [ ] Change `PixFmtRGB555` color type from `RGB8[Linear]` to `RGBA8[SRGB]` to match C++
+      `srgba8`. Alpha used for blending, not stored in the 16-bit pixel.
+- [ ] Implement missing methods on `PixFmtRGB555` to satisfy `renderer.PixelFormat[RGBA8[SRGB]]`:
+      `CopyHline`, `BlendHline`, `CopyVline`, `BlendVline`, `CopyBar`, `BlendBar`,
+      `BlendSolidHspan`, `BlendSolidVspan`, `CopyColorHspan`, `BlendColorHspan`,
+      `CopyColorVspan`, `BlendColorVspan`, `Clear`, `Fill`, `Pixel` (rename from `GetPixel`),
+      `BlendPixel` (fix signature: 4 args, alpha from `c.A`).
+- [ ] Repeat for `PixFmtRGB565`, `PixFmtBGR555`, `PixFmtBGR565`.
+- [ ] Use `RenderingBufferU16` with negative stride for `flip_y` support (verified by
+      the `RenderingBuffer` negative stride fix).
+- [ ] Update `polymorphic_renderer` example to use `PixFmtRGB555` matching C++ original.
+- [ ] Add contract tests: clear, copy_hline, blend_solid_hspan, round-trip pack/unpack.
+- [ ] Add visual regression: polymorphic_renderer Go output vs C++ reference screenshot.
+
+---
+
+### 10.11 Exit Criteria
+
+- [ ] All items in 10.1–10.10 are resolved or explicitly deferred with rationale.
 - [x] `cmd/aggtest` pixel values match C++ for all 6 steps.
       Proper integration tests in `tests/integration/cpp_parity_test.go`.
 - [ ] `alpha_mask2`, `alpha_mask`, `alpha_mask3` visual output matches C++ reference images within

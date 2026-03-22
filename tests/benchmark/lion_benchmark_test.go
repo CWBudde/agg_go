@@ -4,9 +4,17 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/MeKo-Christian/agg_go/internal/agg2d"
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
+	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/conv"
 	liondemo "github.com/MeKo-Christian/agg_go/internal/demo/lion"
+	"github.com/MeKo-Christian/agg_go/internal/path"
+	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
+	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
+	"github.com/MeKo-Christian/agg_go/internal/renderer"
+	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
 
 func BenchmarkLionFull(b *testing.B) {
@@ -21,46 +29,34 @@ func benchLion(b *testing.B, name string, width, height int) {
 	b.Helper()
 	b.Run(name, func(b *testing.B) {
 		stride := width * 4
-		buffer := make([]uint8, height*stride)
-
-		ctx := agg2d.NewAgg2D()
-		ctx.Attach(buffer, width, height, stride)
+		pixels := make([]uint8, height*stride)
+		rbuf := buffer.NewRenderingBufferU8WithData(pixels, width, height, stride)
+		pixf := pixfmt.NewPixFmtRGBA32[color.Linear](rbuf)
+		renBase := renderer.NewRendererBaseWithPixfmt(pixf)
+		ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+			rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip(),
+		)
+		sl := scanline.NewScanlineU8()
+		renSolid := renscan.NewRendererScanlineAASolidWithRenderer(renBase)
 
 		// Pre-parse lion data outside the benchmark loop
 		ld := liondemo.Parse()
+		pathVS := path.NewPathStorageStlVertexSourceAdapter(ld.Path)
+		mtx := transform.NewTransAffine()
+		mtx.Multiply(transform.NewTransAffineScaling(1.2))
+		mtx.Multiply(transform.NewTransAffineTranslation(250.0, 100.0))
+		transVS := conv.NewConvTransform(pathVS, mtx)
+		rasVS := conv.NewRasterizerVertexSourceAdapter(transVS)
 
 		b.ReportAllocs()
-		b.SetBytes(int64(len(buffer)))
+		b.SetBytes(int64(len(pixels)))
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
-			ctx.ClearAll(benchWhite)
-			renderLion(ctx, &ld, 1.2, 250.0, 100.0)
+			renBase.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
+			renscan.RenderAllPaths(ras, sl, renSolid, rasVS, &ld, &ld, ld.NPaths)
 		}
 
-		runtime.KeepAlive(buffer)
+		runtime.KeepAlive(pixels)
 	})
-}
-
-func renderLion(ctx *agg2d.Agg2D, ld *liondemo.LionData, scale, offsetX, offsetY float64) {
-	for i := 0; i < ld.NPaths; i++ {
-		ctx.FillColor(agg2d.Color{ld.Colors[i].R, ld.Colors[i].G, ld.Colors[i].B, ld.Colors[i].A})
-		ctx.NoLine()
-		ctx.ResetPath()
-		ld.Path.Rewind(ld.PathIdx[i])
-		for {
-			x, y, cmd := ld.Path.NextVertex()
-			if basics.IsStop(basics.PathCommand(cmd)) {
-				break
-			}
-			tx, ty := x*scale+offsetX, y*scale+offsetY
-			if basics.IsMoveTo(basics.PathCommand(cmd)) {
-				ctx.MoveTo(tx, ty)
-			} else if basics.IsLineTo(basics.PathCommand(cmd)) {
-				ctx.LineTo(tx, ty)
-			}
-		}
-		ctx.ClosePolygon()
-		ctx.DrawPath(agg2d.FillOnly)
-	}
 }

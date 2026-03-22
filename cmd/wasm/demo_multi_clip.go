@@ -9,11 +9,14 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/conv"
 	liondemo "github.com/MeKo-Christian/agg_go/internal/demo/lion"
+	"github.com/MeKo-Christian/agg_go/internal/path"
 	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
 	"github.com/MeKo-Christian/agg_go/internal/renderer"
 	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
 	"github.com/MeKo-Christian/agg_go/internal/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
 
 var multiClipN = 3.0
@@ -69,32 +72,17 @@ func drawMultiClipDemo() {
 
 	// Render the lion with multi-clip
 	ras := agg2d.GetInternalRasterizer()
-	
 	sl := scanline.NewScanlineU8()
-
-	for i := 0; i < lionData.NPaths; i++ {
-		c := color.RGBA8[color.Linear]{R: lionData.Colors[i].R, G: lionData.Colors[i].G, B: lionData.Colors[i].B, A: 255}
-
-		ras.Reset()
-		lionData.Path.Rewind(lionData.PathIdx[i])
-		for {
-			x, y, cmd := lionData.Path.NextVertex()
-			if basics.IsStop(basics.PathCommand(cmd)) {
-				break
-			}
-
-			tx, ty := x, y
-			agg2d.GetTransformations().Transform(tx, ty)
-
-			if basics.IsMoveTo(basics.PathCommand(cmd)) {
-				ras.AddVertex(tx, ty, uint32(basics.PathCmdMoveTo))
-			} else if basics.IsLineTo(basics.PathCommand(cmd)) {
-				ras.AddVertex(tx, ty, uint32(basics.PathCmdLineTo))
-			}
-		}
-
-		renscan.RenderScanlinesAASolid(ras, sl, mclip, c)
-	}
+	pathVS := path.NewPathStorageStlVertexSourceAdapter(lionData.Path)
+	mtx := agg2d.GetTransformations()
+	affine := transform.NewTransAffineFromValues(
+		mtx.AffineMatrix[0], mtx.AffineMatrix[1], mtx.AffineMatrix[2],
+		mtx.AffineMatrix[3], mtx.AffineMatrix[4], mtx.AffineMatrix[5],
+	)
+	transVS := conv.NewConvTransform(pathVS, affine)
+	rasVS := conv.NewRasterizerVertexSourceAdapter(transVS)
+	renSolid := renscan.NewRendererScanlineAASolidWithRenderer(mclip)
+	renscan.RenderAllPaths(ras, sl, renSolid, rasVS, lionData, lionData, lionData.NPaths)
 
 	// Random lines
 	for i := 0; i < 50; i++ {

@@ -10,11 +10,14 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/conv"
 	liondemo "github.com/MeKo-Christian/agg_go/internal/demo/lion"
+	"github.com/MeKo-Christian/agg_go/internal/path"
 	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
 	"github.com/MeKo-Christian/agg_go/internal/renderer"
 	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
 	"github.com/MeKo-Christian/agg_go/internal/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
 
 const clipN = 3
@@ -38,6 +41,10 @@ func (d *demo) Render(img *agg.Image) {
 	agg2d.Rotate(basics.Pi)
 	agg2d.Translate(float64(width)/2, float64(height)/2)
 	mtx := agg2d.GetTransformations()
+	affine := transform.NewTransAffineFromValues(
+		mtx.AffineMatrix[0], mtx.AffineMatrix[1], mtx.AffineMatrix[2],
+		mtx.AffineMatrix[3], mtx.AffineMatrix[4], mtx.AffineMatrix[5],
+	)
 
 	// Setup multi-clip renderer.
 	mainBuf := buffer.NewRenderingBufferWithData[uint8](img.Data, width, height, width*4)
@@ -57,28 +64,14 @@ func (d *demo) Render(img *agg.Image) {
 	}
 
 	ras := agg2d.GetInternalRasterizer()
-	
 	sl := scanline.NewScanlineU8()
 
 	ld := liondemo.Parse()
-	for i := 0; i < ld.NPaths; i++ {
-		c := color.RGBA8[color.Linear]{R: ld.Colors[i].R, G: ld.Colors[i].G, B: ld.Colors[i].B, A: 255}
-		ras.Reset()
-		ld.Path.Rewind(ld.PathIdx[i])
-		for {
-			x, y, cmd := ld.Path.NextVertex()
-			if basics.IsStop(basics.PathCommand(cmd)) {
-				break
-			}
-			tx, ty := mtx.Transform(x, y)
-			if basics.IsMoveTo(basics.PathCommand(cmd)) {
-				ras.AddVertex(tx, ty, uint32(basics.PathCmdMoveTo))
-			} else if basics.IsLineTo(basics.PathCommand(cmd)) {
-				ras.AddVertex(tx, ty, uint32(basics.PathCmdLineTo))
-			}
-		}
-		renscan.RenderScanlinesAASolid(ras, sl, mclip, c)
-	}
+	pathVS := path.NewPathStorageStlVertexSourceAdapter(ld.Path)
+	transVS := conv.NewConvTransform(pathVS, affine)
+	rasVS := conv.NewRasterizerVertexSourceAdapter(transVS)
+	renSolid := renscan.NewRendererScanlineAASolidWithRenderer(mclip)
+	renscan.RenderAllPaths(ras, sl, renSolid, rasVS, &ld, &ld, ld.NPaths)
 }
 
 func main() {

@@ -15,9 +15,6 @@ type Config struct {
 	// FlipY mirrors C++ platform_support's flip_y flag.
 	// When true the runner flips mouse Y coordinates before forwarding
 	// them to the demo (so the demo sees Y=0 at the bottom).
-	// The demo itself is responsible for using a negative stride on its
-	// rendering buffer, which arranges the pixel data so that visual-top
-	// is at byte offset 0 — no additional output flip is needed.
 	FlipY bool
 }
 
