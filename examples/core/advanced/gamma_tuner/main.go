@@ -103,7 +103,10 @@ func (d *demo) Render(img *agg.Image) {
 	gammaVal := d.gammaSlider.Value()
 	lut := pixgamma.NewSimpleGammaLut(gammaVal)
 
-	baseColor := func(a float64) icol.RGBA8[icol.Linear] {
+	// baseColor mirrors C++ color.gradient(black, k):
+	// k=0 → full color, k=1 → black (brightness = 1-k).
+	baseColor := func(k float64) icol.RGBA8[icol.Linear] {
+		a := 1 - k
 		return icol.RGBA8[icol.Linear]{
 			R: gammaByte(lut, rVal*a),
 			G: gammaByte(lut, gVal*a),
@@ -167,13 +170,6 @@ func (d *demo) Render(img *agg.Image) {
 			rb.CopyHline(50+xc-10, y, 50+xc+10, c)
 		}
 	}
-
-	// Border around the square.
-	border := icol.RGBA8[icol.Linear]{R: 100, G: 100, B: 100, A: 150}
-	rb.CopyHline(50, 80, 50+squareSize-1, border)
-	rb.CopyHline(50, 80+squareSize-1, 50+squareSize-1, border)
-	rb.CopyVline(50, 80, 80+squareSize-1, border)
-	rb.CopyVline(50+squareSize-1, 80, 80+squareSize-1, border)
 
 	// Controls on top.
 	ctx := agg.NewContextForImage(img)
