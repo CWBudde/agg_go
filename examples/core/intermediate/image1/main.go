@@ -254,10 +254,10 @@ func (d *demo) Render(img *agg.Image) {
 	imgMtx.Translate(-initW/2+10, -initH/2+20+10)
 	imgMtx.Rotate(d.angle.Value() * math.Pi / 180.0)
 	imgMtx.Scale(d.scale.Value())
-	imgMtx.Translate(initW/2, initH/2+20)
+	imgMtx.Translate(initW*0.5, initH*0.5+20)
 	imgMtx.Invert()
 
-	imgRbuf := buffer.NewRenderingBufferU8WithData(d.srcImg.Data, d.srcImg.Width(), d.srcImg.Height(), d.srcImg.Width()*4)
+	imgRbuf := buffer.NewRenderingBufferU8WithData(d.srcImg.Data, d.srcImg.Width(), d.srcImg.Height(), -d.srcImg.Width()*4)
 	ipf := &imagePixFmt{rbuf: imgRbuf}
 
 	// Bilinear filtered image generator
