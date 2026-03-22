@@ -9,19 +9,23 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/path"
 )
 
-// Path holds one lion sub-path together with its fill color.
+// LionData holds the parsed lion artwork, structured like C++ parse_lion output:
+// a single shared path storage with parallel color and path-index arrays.
 // The hex color data represents linear RGB values (C++ rgb8_packed returns
 // rgba8/linear). C++ parse_lion stores into srgba8[] which roundtrips
-// linear→sRGB→linear, but the net effect is identity (±1 rounding).
-type Path struct {
-	Path  *path.PathStorageStl
-	Color color.RGBA8[color.Linear]
+// linear->sRGB->linear, but the net effect is identity (+-1 rounding).
+type LionData struct {
+	Path    *path.PathStorageStl
+	Colors  []color.RGBA8[color.Linear]
+	PathIdx []uint
+	NPaths  int
 }
 
-func Parse() []Path {
+func Parse() LionData {
 	lines := strings.Split(data, "\n")
-	var result []Path
-	currentIdx := -1
+	ld := LionData{
+		Path: path.NewPathStorageStl(),
+	}
 
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
@@ -29,19 +33,20 @@ func Parse() []Path {
 			continue
 		}
 
+		// Color line: first char is not 'M' or 'L' and is alphanumeric.
 		if line[0] != 'M' && line[0] != 'L' {
-			result = append(result, Path{
-				Path:  path.NewPathStorageStl(),
-				Color: parseColor(line),
-			})
-			currentIdx = len(result) - 1
+			ld.Path.ClosePolygon(basics.PathFlagsNone)
+			ld.Colors = append(ld.Colors, parseColor(line))
+			ld.PathIdx = append(ld.PathIdx, ld.Path.StartNewPath())
+			ld.NPaths++
 			continue
 		}
 
-		if currentIdx < 0 {
+		if ld.NPaths == 0 {
 			continue
 		}
 
+		// Vertex line: parse M/L commands with x,y coordinates.
 		line = strings.ReplaceAll(line, ",", " ")
 		parts := strings.Fields(line)
 		for i := 0; i < len(parts); {
@@ -59,99 +64,18 @@ func Parse() []Path {
 			i += 2
 
 			if cmd == "M" {
-				result[currentIdx].Path.ClosePolygon(basics.PathFlagsNone)
-				result[currentIdx].Path.MoveTo(x, y)
+				ld.Path.ClosePolygon(basics.PathFlagsNone)
+				ld.Path.MoveTo(x, y)
 			} else {
-				result[currentIdx].Path.LineTo(x, y)
+				ld.Path.LineTo(x, y)
 			}
 		}
 	}
 
 	// Match C++ parse_lion.cpp: arrange_orientations_all_paths(path_flags_cw).
-	// CW is defined as signed area < 0 in the shoelace formula (standard y-up
-	// convention used by AGG). Sub-paths that are CCW are inverted so that the
-	// non-zero winding fill rule produces consistent results across all paths.
-	for i := range result {
-		arrangeOrientationsCW(&result[i])
-	}
+	ld.Path.ArrangeOrientationsAllPaths(basics.PathFlagsCW)
 
-	return result
-}
-
-// arrangeOrientationsCW normalizes every sub-path in lp to clockwise orientation
-// (shoelace area < 0), mirroring parse_lion.cpp's arrange_orientations_all_paths.
-func arrangeOrientationsCW(lp *Path) {
-	// Collect all vertex coordinates, dropping EndPoly markers.
-	type pt struct{ x, y float64 }
-
-	// Split into sub-paths at each MoveTo boundary.
-	var subpaths [][]pt
-	var cur []pt
-
-	lp.Path.Rewind(0)
-	for {
-		x, y, cmd := lp.Path.NextVertex()
-		pathCmd := basics.PathCommand(cmd)
-		if basics.IsStop(pathCmd) {
-			break
-		}
-		if basics.IsMoveTo(pathCmd) {
-			if len(cur) > 0 {
-				subpaths = append(subpaths, cur)
-				cur = nil
-			}
-			cur = append(cur, pt{x, y})
-		} else if basics.IsLineTo(pathCmd) {
-			cur = append(cur, pt{x, y})
-		}
-		// EndPoly commands are skipped – sub-path boundaries are handled by MoveTo.
-	}
-	if len(cur) > 0 {
-		subpaths = append(subpaths, cur)
-	}
-
-	// Normalize each sub-path and rebuild the path storage.
-	newPath := path.NewPathStorageStl()
-	for _, sp := range subpaths {
-		if len(sp) < 3 {
-			// Degenerate – just emit as-is.
-			newPath.ClosePolygon(basics.PathFlagsNone)
-			for j, p := range sp {
-				if j == 0 {
-					newPath.MoveTo(p.x, p.y)
-				} else {
-					newPath.LineTo(p.x, p.y)
-				}
-			}
-			continue
-		}
-
-		// Shoelace signed area.
-		n := len(sp)
-		area := 0.0
-		for j := range n {
-			k := (j + 1) % n
-			area += sp[j].x*sp[k].y - sp[k].x*sp[j].y
-		}
-
-		// area < 0  →  CW in y-up convention  →  already correct.
-		// area >= 0 →  CCW in y-up convention  →  reverse to make CW.
-		if area >= 0 {
-			for l, r := 0, n-1; l < r; l, r = l+1, r-1 {
-				sp[l], sp[r] = sp[r], sp[l]
-			}
-		}
-
-		newPath.ClosePolygon(basics.PathFlagsNone)
-		for j, p := range sp {
-			if j == 0 {
-				newPath.MoveTo(p.x, p.y)
-			} else {
-				newPath.LineTo(p.x, p.y)
-			}
-		}
-	}
-	lp.Path = newPath
+	return ld
 }
 
 func parseColor(s string) color.RGBA8[color.Linear] {
@@ -163,7 +87,6 @@ func parseColor(s string) color.RGBA8[color.Linear] {
 		A: 255,
 	}
 }
-
 const data = `f2cc99
 M 69,18 L 82,8 L 99,3 L 118,5 L 135,12 L 149,21 L 156,13 L 165,9 L 177,13 L 183,28 L 180,50 L 164,91 L 155,107 L 154,114 L 151,121 L 141,127 L 139,136 L 155,206 L 157,251 L 126,342 L 133,357 L 128,376 L 83,376 L 75,368 L 67,350 L 61,350 L 53,369 L 4,369 L 2,361 L 5,354 L 12,342 L 16,321 L 4,257 L 4,244 L 7,218 L 9,179 L 26,127 L 43,93 L 32,77 L 30,70 L 24,67 L 16,49 L 17,35 L 18,23 L 30,12 L 40,7 L 53,7 L 62,12 L 69,18 L 69,18 L 69,18
 e5b27f
