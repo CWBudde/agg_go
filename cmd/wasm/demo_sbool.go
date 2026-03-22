@@ -11,6 +11,8 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/conv"
+	"github.com/MeKo-Christian/agg_go/internal/path"
 	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
 	"github.com/MeKo-Christian/agg_go/internal/pixfmt/gamma"
 	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
@@ -118,31 +120,71 @@ func sboolGenerateCircles(quad [8]float64, numCircles int, radius float64) *sboo
 	return ps
 }
 
-// --- Quad vertex source ---
+// --- Interactive polygon vertex source (matches C++ interactive_polygon) ---
 
-type sboolQuadVS struct {
-	xn  [4]float64
-	yn  [4]float64
-	idx int
+type sboolInteractivePolygonVS struct {
+	stroke *conv.ConvStroke
+	ell    *shapes.Ellipse
+	quad   [8]float64
+	radius float64
+	status int
 }
 
-func (q *sboolQuadVS) Rewind(_ uint32) { q.idx = 0 }
-func (q *sboolQuadVS) Vertex(x, y *float64) uint32 {
-	switch {
-	case q.idx < 4:
-		*x = q.xn[q.idx]
-		*y = q.yn[q.idx]
-		q.idx++
-		if q.idx == 1 {
-			return uint32(basics.PathCmdMoveTo)
+func newSboolInteractivePolygonVS(quad [8]float64, pointRadius float64) *sboolInteractivePolygonVS {
+	ps := path.NewPathStorageStl()
+	ps.MoveTo(quad[0], quad[1])
+	ps.LineTo(quad[2], quad[3])
+	ps.LineTo(quad[4], quad[5])
+	ps.LineTo(quad[6], quad[7])
+	ps.ClosePolygon(0)
+
+	src := &sboolPathToConvSource{ps: ps}
+	stroke := conv.NewConvStroke(src)
+	stroke.SetWidth(1.0)
+
+	return &sboolInteractivePolygonVS{
+		stroke: stroke,
+		ell:    shapes.NewEllipse(),
+		quad:   quad,
+		radius: pointRadius,
+	}
+}
+
+type sboolPathToConvSource struct{ ps *path.PathStorageStl }
+
+func (a *sboolPathToConvSource) Rewind(pathID uint) { a.ps.Rewind(pathID) }
+func (a *sboolPathToConvSource) Vertex() (x, y float64, cmd basics.PathCommand) {
+	vx, vy, c := a.ps.NextVertex()
+	return vx, vy, basics.PathCommand(c)
+}
+
+func (ip *sboolInteractivePolygonVS) Rewind(_ uint32) {
+	ip.status = 0
+	ip.stroke.Rewind(0)
+}
+
+func (ip *sboolInteractivePolygonVS) Vertex(x, y *float64) uint32 {
+	if ip.status == 0 {
+		vx, vy, cmd := ip.stroke.Vertex()
+		if !basics.IsStop(cmd) {
+			*x = vx
+			*y = vy
+			return uint32(cmd)
 		}
-		return uint32(basics.PathCmdLineTo)
-	case q.idx == 4:
-		q.idx++
-		return uint32(basics.PathCmdEndPoly) | uint32(basics.PathFlagsClose)
-	default:
+		ip.ell.Init(ip.quad[0], ip.quad[1], ip.radius, ip.radius, 32, false)
+		ip.status = 1
+	}
+	cmd := ip.ell.Vertex(x, y)
+	if !basics.IsStop(basics.PathCommand(cmd)) {
+		return uint32(cmd)
+	}
+	if ip.status >= 4 {
 		return uint32(basics.PathCmdStop)
 	}
+	idx := ip.status * 2
+	ip.ell.Init(ip.quad[idx], ip.quad[idx+1], ip.radius, ip.radius, 32, false)
+	ip.status++
+	return uint32(ip.ell.Vertex(x, y))
 }
 
 // --- BooleanScanlineInterface adapter for ScanlineP8 ---
@@ -445,32 +487,14 @@ func drawSBoolDemo() {
 	}
 
 	ras.Reset()
-	q1 := &sboolQuadVS{
-		xn: [4]float64{sboolQuad1[0], sboolQuad1[2], sboolQuad1[4], sboolQuad1[6]},
-		yn: [4]float64{sboolQuad1[1], sboolQuad1[3], sboolQuad1[5], sboolQuad1[7]},
-	}
+	q1 := newSboolInteractivePolygonVS(sboolQuad1, 5.0)
 	ras.AddPath(q1, 0)
 	sboolManualRenderSolid(ras, rb, quadColor)
 
 	ras.Reset()
-	q2 := &sboolQuadVS{
-		xn: [4]float64{sboolQuad2[0], sboolQuad2[2], sboolQuad2[4], sboolQuad2[6]},
-		yn: [4]float64{sboolQuad2[1], sboolQuad2[3], sboolQuad2[5], sboolQuad2[7]},
-	}
+	q2 := newSboolInteractivePolygonVS(sboolQuad2, 5.0)
 	ras.AddPath(q2, 0)
 	sboolManualRenderSolid(ras, rb, quadColor)
-
-	// --- Draw interactive handles for quad corners ---
-	for i := 0; i < 4; i++ {
-		drawSBoolHandle(agg2d, sboolQuad1[i*2], sboolQuad1[i*2+1])
-		drawSBoolHandle(agg2d, sboolQuad2[i*2], sboolQuad2[i*2+1])
-	}
-}
-
-func drawSBoolHandle(agg2d *agg.Agg2D, x, y float64) {
-	agg2d.FillColor(agg.RGBA(0, 0.3, 0.5, 0.6))
-	agg2d.NoLine()
-	agg2d.FillCircle(x, y, 5)
 }
 
 // --- Mouse interaction ---
