@@ -33,8 +33,9 @@ func transCurve2FrameOffset() (float64, float64) {
 }
 
 func initTransCurve2Demo() {
-	if lionPaths == nil {
-		lionPaths = liondemo.Parse()
+	if lionData == nil {
+		ld := liondemo.Parse()
+		lionData = &ld
 	}
 	for i := 0; i < 6; i++ {
 		transCurve2DX1[i] = (math.Mod(float64(i*1234+1), 10.0) - 5.0) * 0.5
@@ -95,37 +96,34 @@ func drawTransCurve2Demo() {
 
 	// 3. Transform the lion
 	lx1, ly1, lx2, ly2 := 1e9, 1e9, -1e9, -1e9
-	for _, lp := range lionPaths {
-		lp.Path.Rewind(0)
-		for {
-			x, y, cmd := lp.Path.NextVertex()
-			if basics.IsStop(basics.PathCommand(cmd)) {
-				break
-			}
-			if x < lx1 {
-				lx1 = x
-			}
-			if x > lx2 {
-				lx2 = x
-			}
-			if y < ly1 {
-				ly1 = y
-			}
-			if y > ly2 {
-				ly2 = y
-			}
+	for idx := uint(0); idx < lionData.Path.TotalVertices(); idx++ {
+		x, y, cmd := lionData.Path.Vertex(idx)
+		if !basics.IsVertex(basics.PathCommand(cmd)) {
+			continue
+		}
+		if x < lx1 {
+			lx1 = x
+		}
+		if x > lx2 {
+			lx2 = x
+		}
+		if y < ly1 {
+			ly1 = y
+		}
+		if y > ly2 {
+			ly2 = y
 		}
 	}
 	lionW := lx2 - lx1
 	scaleX := tcurve.TotalLength1() / lionW * 0.8
 
-	for _, lp := range lionPaths {
-		agg2d.FillColor(agg.NewColor(lp.Color.R, lp.Color.G, lp.Color.B, 200))
+	for i := 0; i < lionData.NPaths; i++ {
+		agg2d.FillColor(agg.NewColor(lionData.Colors[i].R, lionData.Colors[i].G, lionData.Colors[i].B, 200))
 		agg2d.NoLine()
 		agg2d.ResetPath()
-		lp.Path.Rewind(0)
+		lionData.Path.Rewind(lionData.PathIdx[i])
 		for {
-			x, y, cmd := lp.Path.NextVertex()
+			x, y, cmd := lionData.Path.NextVertex()
 			if basics.IsStop(basics.PathCommand(cmd)) {
 				break
 			}

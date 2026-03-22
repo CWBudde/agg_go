@@ -33,30 +33,24 @@ func (d *demo) Render(img *agg.Image) {
 	a := ctx.GetAgg2D()
 	a.ResetTransformations()
 
-	lionPaths := liondemo.Parse()
+	ld := liondemo.Parse()
 
 	// Compute lion bounding box.
 	bx1, by1, bx2, by2 := 1e9, 1e9, -1e9, -1e9
-	for _, lp := range lionPaths {
-		lp.Path.Rewind(0)
-		for {
-			x, y, cmd := lp.Path.NextVertex()
-			if basics.IsStop(basics.PathCommand(cmd)) {
-				break
+	for idx := uint(0); idx < ld.Path.TotalVertices(); idx++ {
+		x, y, cmd := ld.Path.Vertex(idx)
+		if basics.IsVertex(basics.PathCommand(cmd)) {
+			if x < bx1 {
+				bx1 = x
 			}
-			if basics.IsVertex(basics.PathCommand(cmd)) {
-				if x < bx1 {
-					bx1 = x
-				}
-				if y < by1 {
-					by1 = y
-				}
-				if x > bx2 {
-					bx2 = x
-				}
-				if y > by2 {
-					by2 = y
-				}
+			if y < by1 {
+				by1 = y
+			}
+			if x > bx2 {
+				bx2 = x
+			}
+			if y > by2 {
+				by2 = y
 			}
 		}
 	}
@@ -76,14 +70,14 @@ func (d *demo) Render(img *agg.Image) {
 	lens.SetMagnification(lensScale)
 	lens.SetRadius(lensRadius / lensScale)
 
-	for _, lp := range lionPaths {
-		a.FillColor(agg.NewColor(lp.Color.R, lp.Color.G, lp.Color.B, 255))
+	for i := 0; i < ld.NPaths; i++ {
+		a.FillColor(agg.NewColor(ld.Colors[i].R, ld.Colors[i].G, ld.Colors[i].B, 255))
 		a.NoLine()
 		a.ResetPath()
 
-		lp.Path.Rewind(0)
+		ld.Path.Rewind(ld.PathIdx[i])
 		for {
-			x, y, cmd := lp.Path.NextVertex()
+			x, y, cmd := ld.Path.NextVertex()
 			if basics.IsStop(basics.PathCommand(cmd)) {
 				break
 			}

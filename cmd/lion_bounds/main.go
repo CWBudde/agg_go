@@ -8,27 +8,24 @@ import (
 )
 
 func main() {
-	paths := liondemo.Parse()
+	ld := liondemo.Parse()
 	minX, minY, maxX, maxY := 1e9, 1e9, -1e9, -1e9
-	for _, lp := range paths {
-		lp.Path.Rewind(0)
-		for {
-			x, y, cmd := lp.Path.NextVertex()
-			if basics.IsStop(basics.PathCommand(cmd)) {
-				break
-			}
-			if x < minX {
-				minX = x
-			}
-			if y < minY {
-				minY = y
-			}
-			if x > maxX {
-				maxX = x
-			}
-			if y > maxY {
-				maxY = y
-			}
+	for idx := uint(0); idx < ld.Path.TotalVertices(); idx++ {
+		x, y, cmd := ld.Path.Vertex(idx)
+		if !basics.IsVertex(basics.PathCommand(cmd)) {
+			continue
+		}
+		if x < minX {
+			minX = x
+		}
+		if y < minY {
+			minY = y
+		}
+		if x > maxX {
+			maxX = x
+		}
+		if y > maxY {
+			maxY = y
 		}
 	}
 	fmt.Printf("Lion bounds: X=[%.1f, %.1f] Y=[%.1f, %.1f]\n", minX, maxX, minY, maxY)

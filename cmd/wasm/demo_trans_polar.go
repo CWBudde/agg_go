@@ -34,8 +34,9 @@ var (
 )
 
 func drawTransPolarDemo() {
-	if lionPaths == nil {
-		lionPaths = liondemo.Parse()
+	if lionData == nil {
+		ld := liondemo.Parse()
+		lionData = &ld
 	}
 
 	agg2d := ctx.GetAgg2D()
@@ -52,50 +53,40 @@ func drawTransPolarDemo() {
 		spiral:    polarSpiral,
 	}
 
-	// We'll transform the lion
 	// Find bounding box of the lion
 	lx1, ly1, lx2, ly2 := 1e9, 1e9, -1e9, -1e9
-	for _, lp := range lionPaths {
-		lp.Path.Rewind(0)
-		for {
-			x, y, cmd := lp.Path.NextVertex()
-			if basics.IsStop(basics.PathCommand(cmd)) {
-				break
-			}
-			if x < lx1 {
-				lx1 = x
-			}
-			if x > lx2 {
-				lx2 = x
-			}
-			if y < ly1 {
-				ly1 = y
-			}
-			if y > ly2 {
-				ly2 = y
-			}
+	for idx := uint(0); idx < lionData.Path.TotalVertices(); idx++ {
+		x, y, cmd := lionData.Path.Vertex(idx)
+		if !basics.IsVertex(basics.PathCommand(cmd)) {
+			continue
+		}
+		if x < lx1 {
+			lx1 = x
+		}
+		if x > lx2 {
+			lx2 = x
+		}
+		if y < ly1 {
+			ly1 = y
+		}
+		if y > ly2 {
+			ly2 = y
 		}
 	}
 
 	lionW := lx2 - lx1
 	// Scale lion to fit the "circle"
-	// We want it to be roughly 600 units wide in logical space
 	scaleX := 600.0 / lionW
 
-	for _, lp := range lionPaths {
-		agg2d.FillColor(agg.NewColor(lp.Color.R, lp.Color.G, lp.Color.B, 255))
+	for i := 0; i < lionData.NPaths; i++ {
+		agg2d.FillColor(agg.NewColor(lionData.Colors[i].R, lionData.Colors[i].G, lionData.Colors[i].B, 255))
 		agg2d.NoLine()
 
 		agg2d.ResetPath()
-		lp.Path.Rewind(0)
-
-		// Use a segmentator to ensure the lion curves nicely
-		// Actually for a simple demo we can just transform vertices,
-		// but segmentator would be better if we had long straight lines.
-		// Lion has many small segments already.
+		lionData.Path.Rewind(lionData.PathIdx[i])
 
 		for {
-			x, y, cmd := lp.Path.NextVertex()
+			x, y, cmd := lionData.Path.NextVertex()
 			if basics.IsStop(basics.PathCommand(cmd)) {
 				break
 			}

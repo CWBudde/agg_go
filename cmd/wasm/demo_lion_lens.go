@@ -4,7 +4,6 @@ package main
 import (
 	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/conv"
 	liondemo "github.com/MeKo-Christian/agg_go/internal/demo/lion"
 	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
@@ -15,48 +14,20 @@ var (
 	lionLensX, lionLensY float64
 	lionLensInitialized  bool
 
-	// Reusable pipeline components to reduce allocations
-	lionLensPipelines []lionLensPipeline
 )
-
-type lionLensPipeline struct {
-	pathSource *pathConvAdapter
-	segm       *conv.ConvSegmentator
-	segmSource *segmConvAdapter
-	transMtx   *conv.ConvTransform[*segmConvAdapter, *transform.TransAffine]
-	transMtxS  *transConvAdapter
-	transLens  *conv.ConvTransform[*transConvAdapter, *transform.TransWarpMagnifier]
-	final      *finalLensAdapter
-}
 
 func initLionLensDemo() {
 	if lionLensInitialized {
 		return
 	}
 
-	if lionPaths == nil {
-		lionPaths = liondemo.Parse()
+	if lionData == nil {
+		ld := liondemo.Parse()
+		lionData = &ld
 	}
 
 	lionLensX = float64(width) * 0.5
 	lionLensY = float64(height) * 0.5
-
-	// Initialize pipelines for each path
-	lionLensPipelines = make([]lionLensPipeline, len(lionPaths))
-	mtx := transform.NewTransAffine()         // Dummy
-	lens := transform.NewTransWarpMagnifier() // Dummy
-
-	for i := range lionPaths {
-		p := &lionLensPipelines[i]
-		p.pathSource = &pathConvAdapter{ps: &lionPaths[i]}
-		p.segm = conv.NewConvSegmentator(p.pathSource)
-		p.segm.ApproximationScale(1.0)
-		p.segmSource = &segmConvAdapter{segm: p.segm}
-		p.transMtx = conv.NewConvTransform(p.segmSource, mtx)
-		p.transMtxS = &transConvAdapter{ct: p.transMtx}
-		p.transLens = conv.NewConvTransform(p.transMtxS, lens)
-		p.final = &finalLensAdapter{ct: p.transLens}
-	}
 
 	lionLensInitialized = true
 }
@@ -75,7 +46,7 @@ func drawLionLensDemo() {
 	lens.SetRadius(lionLensRadius / lionLensScale)
 
 	// Set up the base transformation for the lion
-	g_x1, g_y1, g_x2, g_y2 := getLionBoundingRect(lionPaths)
+	g_x1, g_y1, g_x2, g_y2 := getLionBoundingRect(lionData)
 	base_dx := (g_x2 - g_x1) * 0.5
 	base_dy := (g_y2 - g_y1) * 0.5
 
@@ -86,61 +57,55 @@ func drawLionLensDemo() {
 	mtx.ScaleXY(-1, 1)
 	mtx.Translate(float64(width)*0.5, float64(height)*0.5)
 
-	for i := range lionPaths {
-		lp := &lionPaths[i]
-		pipe := &lionLensPipelines[i]
-
-		// Update shared transformers in existing pipeline
-		pipe.transMtx.SetTransformer(mtx)
-		pipe.transLens.SetTransformer(lens)
-
+	for i := 0; i < lionData.NPaths; i++ {
 		agg2d.ResetPath()
-		pipe.final.Rewind(0)
+
+		lionData.Path.Rewind(lionData.PathIdx[i])
 		for {
-			x, y, cmd := pipe.final.ct.Vertex() // Direct access
-			if basics.IsStop(cmd) {
+			x, y, cmd := lionData.Path.NextVertex()
+			if basics.IsStop(basics.PathCommand(cmd)) {
 				break
 			}
-			if basics.IsMoveTo(cmd) {
-				agg2d.MoveTo(x, y)
-			} else if basics.IsLineTo(cmd) {
-				agg2d.LineTo(x, y)
+
+			// Apply base transform then lens.
+			fx, fy := x, y
+			mtx.Transform(&fx, &fy)
+			lens.Transform(&fx, &fy)
+
+			if basics.IsMoveTo(basics.PathCommand(cmd)) {
+				agg2d.MoveTo(fx, fy)
+			} else if basics.IsLineTo(basics.PathCommand(cmd)) {
+				agg2d.LineTo(fx, fy)
 			}
 		}
 
-		agg2d.FillColor(agg.NewColor(lp.Color.R, lp.Color.G, lp.Color.B, 255))
+		agg2d.FillColor(agg.NewColor(lionData.Colors[i].R, lionData.Colors[i].G, lionData.Colors[i].B, 255))
 		agg2d.NoLine()
 		agg2d.DrawPath(agg.FillOnly)
 	}
 }
 
-func getLionBoundingRect(paths []liondemo.Path) (x1, y1, x2, y2 float64) {
+func getLionBoundingRect(ld *liondemo.LionData) (x1, y1, x2, y2 float64) {
 	x1, y1, x2, y2 = 1e100, 1e100, -1e100, -1e100
 	first := true
-	for _, lp := range paths {
-		lp.Path.Rewind(0)
-		for {
-			x, y, cmd := lp.Path.NextVertex()
-			if basics.IsStop(basics.PathCommand(cmd)) {
-				break
-			}
-			if basics.IsVertex(basics.PathCommand(cmd)) {
-				if first {
-					x1, y1, x2, y2 = x, y, x, y
-					first = false
-				} else {
-					if x < x1 {
-						x1 = x
-					}
-					if y < y1 {
-						y1 = y
-					}
-					if x > x2 {
-						x2 = x
-					}
-					if y > y2 {
-						y2 = y
-					}
+	for idx := uint(0); idx < ld.Path.TotalVertices(); idx++ {
+		x, y, cmd := ld.Path.Vertex(idx)
+		if basics.IsVertex(basics.PathCommand(cmd)) {
+			if first {
+				x1, y1, x2, y2 = x, y, x, y
+				first = false
+			} else {
+				if x < x1 {
+					x1 = x
+				}
+				if y < y1 {
+					y1 = y
+				}
+				if x > x2 {
+					x2 = x
+				}
+				if y > y2 {
+					y2 = y
 				}
 			}
 		}
@@ -148,58 +113,6 @@ func getLionBoundingRect(paths []liondemo.Path) (x1, y1, x2, y2 float64) {
 	return
 }
 
-type pathConvAdapter struct {
-	ps *liondemo.Path
-}
-
-func (a *pathConvAdapter) Rewind(pathID uint) {
-	a.ps.Path.Rewind(pathID)
-}
-
-func (a *pathConvAdapter) Vertex() (x, y float64, cmd basics.PathCommand) {
-	vx, vy, vcmd := a.ps.Path.NextVertex()
-	return vx, vy, basics.PathCommand(vcmd)
-}
-
-type segmConvAdapter struct {
-	segm *conv.ConvSegmentator
-}
-
-func (a *segmConvAdapter) Rewind(pathID uint) {
-	a.segm.Rewind(pathID)
-}
-
-func (a *segmConvAdapter) Vertex() (x, y float64, cmd basics.PathCommand) {
-	vx, vy, vcmd := a.segm.Vertex()
-	return vx, vy, basics.PathCommand(vcmd)
-}
-
-type transConvAdapter struct {
-	ct *conv.ConvTransform[*segmConvAdapter, *transform.TransAffine]
-}
-
-func (a *transConvAdapter) Rewind(pathID uint) {
-	a.ct.Rewind(pathID)
-}
-
-func (a *transConvAdapter) Vertex() (x, y float64, cmd basics.PathCommand) {
-	return a.ct.Vertex()
-}
-
-type finalLensAdapter struct {
-	ct *conv.ConvTransform[*transConvAdapter, *transform.TransWarpMagnifier]
-}
-
-func (a *finalLensAdapter) Rewind(pathID uint32) {
-	a.ct.Rewind(uint(pathID))
-}
-
-func (a *finalLensAdapter) Vertex(x, y *float64) uint32 {
-	vx, vy, vcmd := a.ct.Vertex()
-	*x = vx
-	*y = vy
-	return uint32(vcmd)
-}
 
 func setLionLensScale(v float64)  { lionLensScale = v }
 func setLionLensRadius(v float64) { lionLensRadius = v }

@@ -84,8 +84,9 @@ func applySimpleBlurInsideEllipse(dst, src *agg.Image, cx, cy, rx, ry float64) {
 }
 
 func drawLionToAgg2D(agg2d *agg.Agg2D, scale float64) {
-	if lionPaths == nil {
-		lionPaths = liondemo.Parse()
+	if lionData == nil {
+		ld := liondemo.Parse()
+		lionData = &ld
 	}
 
 	agg2d.PushTransform()
@@ -104,13 +105,13 @@ func drawLionToAgg2D(agg2d *agg.Agg2D, scale float64) {
 	agg2d.Scale(scale, scale)
 	agg2d.Translate(float64(width)*0.5, float64(height)*0.5)
 
-	for _, lp := range lionPaths {
-		agg2d.FillColor(agg.NewColor(lp.Color.R, lp.Color.G, lp.Color.B, 255))
+	for i := 0; i < lionData.NPaths; i++ {
+		agg2d.FillColor(agg.NewColor(lionData.Colors[i].R, lionData.Colors[i].G, lionData.Colors[i].B, 255))
 		agg2d.NoLine()
 		agg2d.ResetPath()
-		lp.Path.Rewind(0)
+		lionData.Path.Rewind(lionData.PathIdx[i])
 		for {
-			x, y, cmd := lp.Path.NextVertex()
+			x, y, cmd := lionData.Path.NextVertex()
 			if basics.IsStop(basics.PathCommand(cmd)) {
 				break
 			}

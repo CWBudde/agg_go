@@ -158,32 +158,26 @@ func (d *demo) Render(img *agg.Image) {
 	amaskAdaptor := pixfmt.NewPixFmtAMaskAdaptor(mainPixf, mask)
 	rbAMask := renderer.NewRendererBaseWithPixfmt(amaskAdaptor)
 
-	lionPaths := liondemo.Parse()
+	ld := liondemo.Parse()
 
 	// Compute lion bounding rect.
 	minX, minY := 1e9, 1e9
 	maxX, maxY := -1e9, -1e9
-	for _, lp := range lionPaths {
-		lp.Path.Rewind(0)
-		for {
-			x, y, cmd := lp.Path.NextVertex()
-			pathCmd := basics.PathCommand(cmd)
-			if basics.IsStop(pathCmd) {
-				break
+	for idx := uint(0); idx < ld.Path.TotalVertices(); idx++ {
+		x, y, cmd := ld.Path.Vertex(idx)
+		pathCmd := basics.PathCommand(cmd)
+		if basics.IsMoveTo(pathCmd) || basics.IsLineTo(pathCmd) {
+			if x < minX {
+				minX = x
 			}
-			if basics.IsMoveTo(pathCmd) || basics.IsLineTo(pathCmd) {
-				if x < minX {
-					minX = x
-				}
-				if y < minY {
-					minY = y
-				}
-				if x > maxX {
-					maxX = x
-				}
-				if y > maxY {
-					maxY = y
-				}
+			if y < minY {
+				minY = y
+			}
+			if x > maxX {
+				maxX = x
+			}
+			if y > maxY {
+				maxY = y
 			}
 		}
 	}
@@ -198,12 +192,12 @@ func (d *demo) Render(img *agg.Image) {
 	mtx.Multiply(transform.NewTransAffineSkewing(d.skewX/1000.0, d.skewY/1000.0))
 	mtx.Multiply(transform.NewTransAffineTranslation(float64(w)/2, float64(h)/2))
 
-	for _, lp := range lionPaths {
-		c := color.RGBA8[color.Linear]{R: lp.Color.R, G: lp.Color.G, B: lp.Color.B, A: 255}
+	for i := 0; i < ld.NPaths; i++ {
+		c := color.RGBA8[color.Linear]{R: ld.Colors[i].R, G: ld.Colors[i].G, B: ld.Colors[i].B, A: 255}
 		ras.Reset()
-		lp.Path.Rewind(0)
+		ld.Path.Rewind(ld.PathIdx[i])
 		for {
-			x, y, cmd := lp.Path.NextVertex()
+			x, y, cmd := ld.Path.NextVertex()
 			pathCmd := basics.PathCommand(cmd)
 			if basics.IsStop(pathCmd) {
 				break

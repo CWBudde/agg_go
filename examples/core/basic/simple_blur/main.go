@@ -82,13 +82,14 @@ func drawLion(agg2d *agg.Agg2D, width, height int) {
 	agg2d.Scale(1.0, 1.0)
 	agg2d.Translate(float64(width)*0.25, float64(height)*0.5)
 
-	for _, lp := range liondemo.Parse() {
-		agg2d.FillColor(agg.NewColor(lp.Color.R, lp.Color.G, lp.Color.B, 255))
+	ld := liondemo.Parse()
+	for i := 0; i < ld.NPaths; i++ {
+		agg2d.FillColor(agg.NewColor(ld.Colors[i].R, ld.Colors[i].G, ld.Colors[i].B, 255))
 		agg2d.NoLine()
 		agg2d.ResetPath()
-		lp.Path.Rewind(0)
+		ld.Path.Rewind(ld.PathIdx[i])
 		for {
-			x, y, cmd := lp.Path.NextVertex()
+			x, y, cmd := ld.Path.NextVertex()
 			if basics.IsStop(basics.PathCommand(cmd)) {
 				break
 			}

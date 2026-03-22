@@ -36,7 +36,7 @@ func BenchmarkDemos(b *testing.B) {
 
 func renderDemoForBenchmark(demoType string) {
 	if demoType != "lion" && demoType != "lionoutline" {
-		lionPaths = nil
+		lionData = nil
 	}
 	if demoType != "imagefilters" {
 		testImage = nil

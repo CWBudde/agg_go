@@ -8,13 +8,14 @@ import (
 	"syscall/js"
 
 	agg "github.com/MeKo-Christian/agg_go"
+	liondemo "github.com/MeKo-Christian/agg_go/internal/demo/lion"
 )
 
 var (
 	width, height = 800, 600
 	ctx           *agg.Context
 	canvasBuf     []uint8
-	lionPaths     []LionPath
+	lionData      *liondemo.LionData
 )
 
 func main() {
@@ -1622,7 +1623,7 @@ func renderDemo(this js.Value, args []js.Value) interface{} {
 
 	// Release cached demo state when switching away from a demo.
 	if demoType != "lion" && demoType != "lionoutline" && demoType != "lion_lens" {
-		lionPaths = nil
+		lionData = nil
 	}
 	if demoType != "imagefilters" {
 		testImage = nil

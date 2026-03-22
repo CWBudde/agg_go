@@ -60,13 +60,13 @@ func (d *demo) Render(img *agg.Image) {
 	
 	sl := scanline.NewScanlineU8()
 
-	lionPaths := liondemo.Parse()
-	for _, lp := range lionPaths {
-		c := color.RGBA8[color.Linear]{R: lp.Color.R, G: lp.Color.G, B: lp.Color.B, A: 255}
+	ld := liondemo.Parse()
+	for i := 0; i < ld.NPaths; i++ {
+		c := color.RGBA8[color.Linear]{R: ld.Colors[i].R, G: ld.Colors[i].G, B: ld.Colors[i].B, A: 255}
 		ras.Reset()
-		lp.Path.Rewind(0)
+		ld.Path.Rewind(ld.PathIdx[i])
 		for {
-			x, y, cmd := lp.Path.NextVertex()
+			x, y, cmd := ld.Path.NextVertex()
 			if basics.IsStop(basics.PathCommand(cmd)) {
 				break
 			}

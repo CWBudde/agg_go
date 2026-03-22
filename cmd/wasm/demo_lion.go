@@ -17,8 +17,6 @@ import (
 	liondemo "github.com/MeKo-Christian/agg_go/internal/demo/lion"
 )
 
-type LionPath = liondemo.Path
-
 var (
 	lionFillAlpha         = 1.0
 	lionFillAngle         = 0.0
@@ -30,15 +28,16 @@ var (
 )
 
 func drawLionDemo() {
-	if lionPaths == nil {
-		lionPaths = liondemo.Parse()
+	if lionData == nil {
+		ld := liondemo.Parse()
+		lionData = &ld
 	}
 
 	a := ctx.GetAgg2D()
 
 	// Compute the true bounding-box centre so the lion rotates around its own
 	// centre and is centred on the canvas in the default (angle=0) state.
-	x1, y1, x2, y2 := getLionBoundingRect(lionPaths)
+	x1, y1, x2, y2 := getLionBoundingRect(lionData)
 	cx := (x1 + x2) * 0.5
 	cy := (y1 + y2) * 0.5
 
@@ -60,13 +59,13 @@ func drawLionDemo() {
 	alpha := uint8(lionFillAlpha * 255)
 	a.NoLine()
 
-	for _, lp := range lionPaths {
-		a.FillColor(agg.NewColor(lp.Color.R, lp.Color.G, lp.Color.B, alpha))
+	for i := 0; i < lionData.NPaths; i++ {
+		a.FillColor(agg.NewColor(lionData.Colors[i].R, lionData.Colors[i].G, lionData.Colors[i].B, alpha))
 		a.ResetPath()
 
-		lp.Path.Rewind(0)
+		lionData.Path.Rewind(lionData.PathIdx[i])
 		for {
-			x, y, cmd := lp.Path.NextVertex()
+			x, y, cmd := lionData.Path.NextVertex()
 			if basics.IsStop(basics.PathCommand(cmd)) {
 				break
 			}

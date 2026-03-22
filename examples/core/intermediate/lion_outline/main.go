@@ -56,13 +56,14 @@ func (d *demo) Render(img *agg.Image) {
 	a.LineWidth(outlineWidth)
 	a.NoFill()
 
-	for _, lp := range liondemo.Parse() {
-		a.LineColor(agg.NewColor(lp.Color.R, lp.Color.G, lp.Color.B, 255))
+	ld := liondemo.Parse()
+	for i := 0; i < ld.NPaths; i++ {
+		a.LineColor(agg.NewColor(ld.Colors[i].R, ld.Colors[i].G, ld.Colors[i].B, 255))
 		a.ResetPath()
 
-		lp.Path.Rewind(0)
+		ld.Path.Rewind(ld.PathIdx[i])
 		for {
-			x, y, cmd := lp.Path.NextVertex()
+			x, y, cmd := ld.Path.NextVertex()
 			if basics.IsStop(basics.PathCommand(cmd)) {
 				break
 			}

@@ -290,41 +290,35 @@ func step6() {
 	amaskRb := renderer.NewRendererBaseWithPixfmt(amaskPf)
 
 	// Parse lion
-	lionPaths := liondemo.Parse()
+	ld := liondemo.Parse()
 	minX, minY := 1e9, 1e9
 	maxX, maxY := -1e9, -1e9
-	for _, lp := range lionPaths {
-		lp.Path.Rewind(0)
-		for {
-			x, y, cmd := lp.Path.NextVertex()
-			pathCmd := basics.PathCommand(cmd)
-			if basics.IsStop(pathCmd) {
-				break
+	for idx := uint(0); idx < ld.Path.TotalVertices(); idx++ {
+		x, y, cmd := ld.Path.Vertex(idx)
+		pathCmd := basics.PathCommand(cmd)
+		if basics.IsMoveTo(pathCmd) || basics.IsLineTo(pathCmd) {
+			if x < minX {
+				minX = x
 			}
-			if basics.IsMoveTo(pathCmd) || basics.IsLineTo(pathCmd) {
-				if x < minX {
-					minX = x
-				}
-				if y < minY {
-					minY = y
-				}
-				if x > maxX {
-					maxX = x
-				}
-				if y > maxY {
-					maxY = y
-				}
+			if y < minY {
+				minY = y
+			}
+			if x > maxX {
+				maxX = x
+			}
+			if y > maxY {
+				maxY = y
 			}
 		}
 	}
 	baseDX := (maxX - minX) / 2.0
 	baseDY := (maxY - minY) / 2.0
 	fmt.Printf("  npaths=%d bbox=(%.1f,%.1f)-(%.1f,%.1f) base_d=(%.1f,%.1f)\n",
-		len(lionPaths), minX, minY, maxX, maxY, baseDX, baseDY)
+		ld.NPaths, minX, minY, maxX, maxY, baseDX, baseDY)
 
 	// Print first 5 colors (hex values are linear)
-	for i := 0; i < 5 && i < len(lionPaths); i++ {
-		c := lionPaths[i].Color
+	for i := 0; i < 5 && i < ld.NPaths; i++ {
+		c := ld.Colors[i]
 		fmt.Printf("  path %d: linear(%d,%d,%d,%d)\n", i, c.R, c.G, c.B, c.A)
 	}
 
@@ -336,16 +330,16 @@ func step6() {
 	mtx.Multiply(transform.NewTransAffineTranslation(float64(fw)/2, float64(fh)/2))
 
 	// Render each lion path through amask
-	for _, lp := range lionPaths {
+	for i := 0; i < ld.NPaths; i++ {
 		// Lion hex colors are LINEAR values (C++ rgb8_packed returns rgba8/linear).
-		// parse_lion stores into srgba8 array, which roundtrips linear→sRGB→linear,
-		// but the net result is the original linear values (within ±1 rounding).
-		// So use the hex values directly as linear — no sRGB conversion needed.
-		c := color.RGBA8[color.Linear]{R: lp.Color.R, G: lp.Color.G, B: lp.Color.B, A: 255}
+		// parse_lion stores into srgba8 array, which roundtrips linear->sRGB->linear,
+		// but the net result is the original linear values (within +-1 rounding).
+		// So use the hex values directly as linear -- no sRGB conversion needed.
+		c := color.RGBA8[color.Linear]{R: ld.Colors[i].R, G: ld.Colors[i].G, B: ld.Colors[i].B, A: 255}
 		ras.Reset()
-		lp.Path.Rewind(0)
+		ld.Path.Rewind(ld.PathIdx[i])
 		for {
-			x, y, cmd := lp.Path.NextVertex()
+			x, y, cmd := ld.Path.NextVertex()
 			pathCmd := basics.PathCommand(cmd)
 			if basics.IsStop(pathCmd) {
 				break

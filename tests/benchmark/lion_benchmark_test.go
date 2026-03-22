@@ -27,7 +27,7 @@ func benchLion(b *testing.B, name string, width, height int) {
 		ctx.Attach(buffer, width, height, stride)
 
 		// Pre-parse lion data outside the benchmark loop
-		lionPaths := liondemo.Parse()
+		ld := liondemo.Parse()
 
 		b.ReportAllocs()
 		b.SetBytes(int64(len(buffer)))
@@ -35,21 +35,21 @@ func benchLion(b *testing.B, name string, width, height int) {
 
 		for i := 0; i < b.N; i++ {
 			ctx.ClearAll(benchWhite)
-			renderLion(ctx, lionPaths, 1.2, 250.0, 100.0)
+			renderLion(ctx, &ld, 1.2, 250.0, 100.0)
 		}
 
 		runtime.KeepAlive(buffer)
 	})
 }
 
-func renderLion(ctx *agg2d.Agg2D, paths []liondemo.Path, scale, offsetX, offsetY float64) {
-	for _, lp := range paths {
-		ctx.FillColor(agg2d.Color{lp.Color.R, lp.Color.G, lp.Color.B, lp.Color.A})
+func renderLion(ctx *agg2d.Agg2D, ld *liondemo.LionData, scale, offsetX, offsetY float64) {
+	for i := 0; i < ld.NPaths; i++ {
+		ctx.FillColor(agg2d.Color{ld.Colors[i].R, ld.Colors[i].G, ld.Colors[i].B, ld.Colors[i].A})
 		ctx.NoLine()
 		ctx.ResetPath()
-		lp.Path.Rewind(0)
+		ld.Path.Rewind(ld.PathIdx[i])
 		for {
-			x, y, cmd := lp.Path.NextVertex()
+			x, y, cmd := ld.Path.NextVertex()
 			if basics.IsStop(basics.PathCommand(cmd)) {
 				break
 			}

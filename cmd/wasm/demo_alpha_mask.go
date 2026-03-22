@@ -78,8 +78,9 @@ func drawAlphaMaskDemo() {
 		generateAlphaMask(w, h)
 	}
 
-	if lionPaths == nil {
-		lionPaths = liondemo.Parse()
+	if lionData == nil {
+		ld := liondemo.Parse()
+		lionData = &ld
 	}
 
 	agg2d := ctx.GetAgg2D()
@@ -99,7 +100,7 @@ func drawAlphaMaskDemo() {
 	// Setup transformation for the lion
 	baseDX, baseDY := 0.0, 0.0
 	// Get bounding box for lion
-	if len(lionPaths) > 0 {
+	if lionData.NPaths > 0 {
 		x1, y1, x2, y2 := 20.0, 20.0, 480.0, 380.0
 		baseDX = (x2 - x1) * 0.5
 		baseDY = (y2 - y1) * 0.5
@@ -126,13 +127,13 @@ func drawAlphaMaskDemo() {
 	ras := agg2d.GetInternalRasterizer()
 	sl := scanline.NewScanlineP8()
 
-	for _, lp := range lionPaths {
-		c := color.RGBA8[color.Linear]{R: lp.Color.R, G: lp.Color.G, B: lp.Color.B, A: 255}
+	for i := 0; i < lionData.NPaths; i++ {
+		c := color.RGBA8[color.Linear]{R: lionData.Colors[i].R, G: lionData.Colors[i].G, B: lionData.Colors[i].B, A: 255}
 
 		ras.Reset()
-		lp.Path.Rewind(0)
+		lionData.Path.Rewind(lionData.PathIdx[i])
 		for {
-			x, y, cmd := lp.Path.NextVertex()
+			x, y, cmd := lionData.Path.NextVertex()
 			if basics.IsStop(basics.PathCommand(cmd)) {
 				break
 			}

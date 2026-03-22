@@ -19,8 +19,9 @@ var (
 )
 
 func initPerspectiveDemo() {
-	if lionPaths == nil {
-		lionPaths = liondemo.Parse()
+	if lionData == nil {
+		ld := liondemo.Parse()
+		lionData = &ld
 	}
 
 	if perspectiveInitialized {
@@ -29,25 +30,22 @@ func initPerspectiveDemo() {
 
 	// Find bounding box of the lion
 	x1, y1, x2, y2 := 1e9, 1e9, -1e9, -1e9
-	for _, lp := range lionPaths {
-		lp.Path.Rewind(0)
-		for {
-			x, y, cmd := lp.Path.NextVertex()
-			if basics.IsStop(basics.PathCommand(cmd)) {
-				break
-			}
-			if x < x1 {
-				x1 = x
-			}
-			if x > x2 {
-				x2 = x
-			}
-			if y < y1 {
-				y1 = y
-			}
-			if y > y2 {
-				y2 = y
-			}
+	for idx := uint(0); idx < lionData.Path.TotalVertices(); idx++ {
+		x, y, cmd := lionData.Path.Vertex(idx)
+		if !basics.IsVertex(basics.PathCommand(cmd)) {
+			continue
+		}
+		if x < x1 {
+			x1 = x
+		}
+		if x > x2 {
+			x2 = x
+		}
+		if y < y1 {
+			y1 = y
+		}
+		if y > y2 {
+			y2 = y
 		}
 	}
 	perspectiveLionX1, perspectiveLionY1, perspectiveLionX2, perspectiveLionY2 = x1, y1, x2, y2
@@ -77,14 +75,14 @@ func drawPerspectiveDemo() {
 	}
 
 	// Render transformed lion
-	for _, lp := range lionPaths {
-		agg2d.FillColor(agg.NewColor(lp.Color.R, lp.Color.G, lp.Color.B, 255))
+	for i := 0; i < lionData.NPaths; i++ {
+		agg2d.FillColor(agg.NewColor(lionData.Colors[i].R, lionData.Colors[i].G, lionData.Colors[i].B, 255))
 		agg2d.NoLine()
 
 		agg2d.ResetPath()
-		lp.Path.Rewind(0)
+		lionData.Path.Rewind(lionData.PathIdx[i])
 		for {
-			x, y, cmd := lp.Path.NextVertex()
+			x, y, cmd := lionData.Path.NextVertex()
 			if basics.IsStop(basics.PathCommand(cmd)) {
 				break
 			}

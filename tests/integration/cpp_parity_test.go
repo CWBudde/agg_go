@@ -340,23 +340,17 @@ func TestCPPParity_Step6_LionThroughMask(t *testing.T) {
 	amaskRb := renderer.NewRendererBaseWithPixfmt(amaskPf)
 
 	// Parse lion and compute bounding box.
-	lionPaths := liondemo.Parse()
+	ld := liondemo.Parse()
 	minX, minY := 1e9, 1e9
 	maxX, maxY := -1e9, -1e9
-	for _, lp := range lionPaths {
-		lp.Path.Rewind(0)
-		for {
-			x, y, cmd := lp.Path.NextVertex()
-			pathCmd := basics.PathCommand(cmd)
-			if basics.IsStop(pathCmd) {
-				break
-			}
-			if basics.IsMoveTo(pathCmd) || basics.IsLineTo(pathCmd) {
-				minX = min(minX, x)
-				minY = min(minY, y)
-				maxX = max(maxX, x)
-				maxY = max(maxY, y)
-			}
+	for idx := uint(0); idx < ld.Path.TotalVertices(); idx++ {
+		x, y, cmd := ld.Path.Vertex(idx)
+		pathCmd := basics.PathCommand(cmd)
+		if basics.IsMoveTo(pathCmd) || basics.IsLineTo(pathCmd) {
+			minX = min(minX, x)
+			minY = min(minY, y)
+			maxX = max(maxX, x)
+			maxY = max(maxY, y)
 		}
 	}
 	baseDX := (maxX - minX) / 2.0
@@ -371,14 +365,14 @@ func TestCPPParity_Step6_LionThroughMask(t *testing.T) {
 	mtx.Multiply(transform.NewTransAffineTranslation(float64(fw)/2, float64(fh)/2))
 
 	// Render each lion path through amask.
-	for _, lp := range lionPaths {
-		// Lion hex colors are LINEAR values — no sRGB conversion needed.
+	for i := 0; i < ld.NPaths; i++ {
+		// Lion hex colors are LINEAR values -- no sRGB conversion needed.
 		// See memory: feedback_lion_colors_linear.md
-		c := color.RGBA8[color.Linear]{R: lp.Color.R, G: lp.Color.G, B: lp.Color.B, A: 255}
+		c := color.RGBA8[color.Linear]{R: ld.Colors[i].R, G: ld.Colors[i].G, B: ld.Colors[i].B, A: 255}
 		ras.Reset()
-		lp.Path.Rewind(0)
+		ld.Path.Rewind(ld.PathIdx[i])
 		for {
-			x, y, cmd := lp.Path.NextVertex()
+			x, y, cmd := ld.Path.NextVertex()
 			pathCmd := basics.PathCommand(cmd)
 			if basics.IsStop(pathCmd) {
 				break

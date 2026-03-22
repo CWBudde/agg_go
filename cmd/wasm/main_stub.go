@@ -12,13 +12,14 @@ import (
 	"time"
 
 	agg "github.com/MeKo-Christian/agg_go"
+	liondemo "github.com/MeKo-Christian/agg_go/internal/demo/lion"
 )
 
 var (
 	width, height = 800, 600
 	ctx           *agg.Context
 	canvasBuf     []uint8
-	lionPaths     []LionPath
+	lionData      *liondemo.LionData
 	_             func(float64)                                                                = setGradientFocalGamma
 	_             func(float64)                                                                = setGradientFocalFX
 	_             func(float64)                                                                = setGradientFocalFY
@@ -143,7 +144,7 @@ func main() {
 
 func renderDemoToFile(demoType, outDir string) error {
 	if demoType != "lion" && demoType != "lionoutline" {
-		lionPaths = nil
+		lionData = nil
 	}
 	if demoType != "imagefilters" {
 		testImage = nil
