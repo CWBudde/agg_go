@@ -3,6 +3,7 @@ package patternresample
 import (
 	"math"
 	"sync"
+	"time"
 
 	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/internal/demo/imageassets"
@@ -25,10 +26,20 @@ var (
 )
 
 func Draw(ctx *agg.Context, cfg Config) {
+	_ = draw(ctx, cfg)
+}
+
+// DrawTimed renders the demo and returns the time spent in the core image
+// resampling pass, matching the original AGG timer label more closely.
+func DrawTimed(ctx *agg.Context, cfg Config) time.Duration {
+	return draw(ctx, cfg)
+}
+
+func draw(ctx *agg.Context, cfg Config) time.Duration {
 	if cachedAgg == nil {
 		img, err := imageassets.Agg()
 		if err != nil {
-			return
+			return 0
 		}
 		cachedAgg = img
 	}
@@ -93,6 +104,7 @@ func Draw(ctx *agg.Context, cfg Config) {
 		sampling = quadwarp.SampleResample
 	}
 
+	start := time.Now()
 	quadwarp.Draw(ctx, quadwarp.Config{
 		CanvasWidth:        ctx.GetImage().Width(),
 		CanvasHeight:       ctx.GetImage().Height(),
@@ -113,8 +125,10 @@ func Draw(ctx *agg.Context, cfg Config) {
 		QuadFillColor:      agg.RGBA(0, 0.3, 0.5, 0.12),
 		QuadLineColor:      agg.RGBA(0, 0.25, 0.35, 0.9),
 	})
+	elapsed := time.Since(start)
 
 	applyGammaInvLUT(ctx.GetImage(), gamma)
+	return elapsed
 }
 
 func gammaCacheKey(gamma float64) int {
