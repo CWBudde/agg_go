@@ -439,6 +439,113 @@ func (pb *PathBase[VC]) FlipY(y1, y2 float64) {
 	}
 }
 
+// PerceivePolygonOrientation computes the winding orientation of the polygon
+// defined by vertices [start, end) using the shoelace formula.
+// Returns PathFlagsCW if the signed area is negative, PathFlagsCCW otherwise.
+func (pb *PathBase[VC]) PerceivePolygonOrientation(start, end uint) basics.PathFlag {
+	np := end - start
+	area := 0.0
+	for i := uint(0); i < np; i++ {
+		x1, y1, _ := pb.vertices.Vertex(start + i)
+		x2, y2, _ := pb.vertices.Vertex(start + (i+1)%np)
+		area += x1*y2 - y1*x2
+	}
+	if area < 0.0 {
+		return basics.PathFlagsCW
+	}
+	return basics.PathFlagsCCW
+}
+
+// InvertPolygonRange reverses the vertex order of the polygon in [start, end).
+// Commands are shifted left by one position (first command goes to last),
+// then vertices are swapped from outside in.
+func (pb *PathBase[VC]) InvertPolygonRange(start, end uint) {
+	tmpCmd := pb.vertices.Command(start)
+	end-- // make end inclusive
+	for i := start; i < end; i++ {
+		pb.vertices.ModifyCommand(i, pb.vertices.Command(i+1))
+	}
+	pb.vertices.ModifyCommand(end, tmpCmd)
+	for end > start {
+		pb.vertices.SwapVertices(start, end)
+		start++
+		end--
+	}
+}
+
+// ArrangePolygonOrientation arranges one polygon starting at start to the
+// given orientation. It skips non-vertex commands and consecutive MoveTo
+// commands, finds the polygon end, checks orientation, inverts if needed,
+// and updates EndPoly command flags. Returns the index past the end of the polygon.
+func (pb *PathBase[VC]) ArrangePolygonOrientation(start uint, orientation basics.PathFlag) uint {
+	if orientation == basics.PathFlagsNone {
+		return start
+	}
+
+	// Skip non-vertex commands
+	for start < pb.vertices.TotalVertices() &&
+		!basics.IsVertex(basics.PathCommand(pb.vertices.Command(start))) {
+		start++
+	}
+
+	// Skip consecutive MoveTo commands
+	for start+1 < pb.vertices.TotalVertices() &&
+		basics.IsMoveTo(basics.PathCommand(pb.vertices.Command(start))) &&
+		basics.IsMoveTo(basics.PathCommand(pb.vertices.Command(start+1))) {
+		start++
+	}
+
+	// Find end of polygon
+	end := start + 1
+	for end < pb.vertices.TotalVertices() &&
+		!basics.IsNextPoly(pb.vertices.Command(end)) {
+		end++
+	}
+
+	if end-start > 2 {
+		if pb.PerceivePolygonOrientation(start, end) != orientation {
+			pb.InvertPolygonRange(start, end)
+			// Update orientation flags on trailing EndPoly commands
+			for end < pb.vertices.TotalVertices() {
+				cmd := pb.vertices.Command(end)
+				if !basics.IsEndPoly(basics.PathCommand(cmd)) {
+					break
+				}
+				pb.vertices.ModifyCommand(end, basics.SetOrientation(cmd, orientation))
+				end++
+			}
+		}
+	}
+	return end
+}
+
+// ArrangeOrientations arranges all polygons within one path (delimited by
+// Stop commands) to the given orientation. Returns the index past the end
+// of the path (past the Stop command, or at end of vertices).
+func (pb *PathBase[VC]) ArrangeOrientations(start uint, orientation basics.PathFlag) uint {
+	if orientation != basics.PathFlagsNone {
+		for start < pb.vertices.TotalVertices() {
+			start = pb.ArrangePolygonOrientation(start, orientation)
+			if basics.IsStop(basics.PathCommand(pb.vertices.Command(start))) {
+				start++
+				break
+			}
+		}
+	}
+	return start
+}
+
+// ArrangeOrientationsAllPaths arranges all polygons in all paths to the
+// given orientation.
+func (pb *PathBase[VC]) ArrangeOrientationsAllPaths(orientation basics.PathFlag) {
+	if orientation != basics.PathFlagsNone {
+		start := uint(0)
+		for start < pb.vertices.TotalVertices() {
+			start = pb.ArrangeOrientations(start, orientation)
+		}
+	}
+}
+
 // PathStorage is the standard path storage type using VertexBlockStorage with float64.
 type PathStorage = PathBase[*VertexBlockStorage[float64]]
 
