@@ -555,29 +555,39 @@ actual linear colors to blend. Applying `ConvertRGBA8SRGBToLinear` would double-
 
 ---
 
-### 10.2 ⚠️ `PixFmtAMaskAdaptor` Cannot Wrap Non-RGBA Pixfmts
+### 10.2 ✅ `PixFmtAMaskAdaptor` Can Wrap Non-RGBA Pixfmts
 
-**Status**: OPEN — documented in Phase 2, tasks not yet started.
+**Status**: DONE — `PixFmtAMaskAdaptor` is now generic over the wrapped pixfmt color type, and
+`alpha_mask2` uses a `BGR24` main buffer again.
 
-**Root cause**: `PixFmtInterface` (used by `PixFmtAMaskAdaptor`) hardcodes `RGBA8[Linear]` for
-all blend methods. C++ uses templates, so `pixfmt_amask_adaptor<pixfmt_bgr24, mask>` compiles
-fine. In Go, `PixFmtBGR24` (color type `RGB8[Linear]`) does not satisfy `PixFmtInterface`.
+**Root cause** (resolved): `PixFmtAMaskAdaptor` hardcoded `RGBA8[Linear]` across its wrapped
+pixfmt interface, which blocked non-RGBA pixfmts. In this Go port the deeper mismatch is that
+`PixFmtBGR24` exposes `RGB8 + explicit alpha` methods instead of AGG's `rgba8` color_type, so the
+fix is two-part: make the amask adaptor generic and add a small renderer-surface adapter for RGB24
+pixfmts where the port's native API differs from AGG.
 
 **C++ reference**: `agg_pixfmt_amask_adaptor.h` — `pixfmt_amask_adaptor<PixFmt, AlphaMask>` is a
 template that delegates all blend calls to the wrapped `PixFmt` regardless of its color type.
 
 **Go files**:
 
-- `internal/pixfmt/pixfmt_amask_adaptor.go`: `PixFmtInterface`, `PixFmtAMaskAdaptor`
-- `internal/pixfmt/pixfmt_rgb8.go`: `PixFmtBGR24` / `PixFmtAlphaBlendRGB`
+- `internal/pixfmt/pixfmt_amask_adaptor.go`: generic `PixFmtBlendInterface[C]`,
+  `PixFmtAMaskAdaptor[C]`, and AGG-style masked `copy_color_*span`
+- `internal/pixfmt/pixfmt_rgb8_renderer_adaptor.go`: renderer-surface adapter for
+  `PixFmtAlphaBlendRGB` / `PixFmtBGR24`
+- `examples/core/intermediate/alpha_mask2/main.go`: restored `BGR24` main buffer
+- `cmd/wasm/demo_alpha_mask2.go`: same `BGR24` main-buffer port for the wasm demo
+- `internal/pixfmt/pixfmt_amask_adaptor_test.go`: regression coverage for masked color spans and
+  `BGR24` wrapping
 
 **Tasks**:
 
-- [ ] Introduce a generic `PixFmtBlendInterface[C color.ColorType]` that abstracts over color type.
-- [ ] Make `PixFmtAMaskAdaptor` generic: `PixFmtAMaskAdaptor[C color.ColorType]`.
-- [ ] Ensure `PixFmtBGR24` satisfies the new generic interface.
-- [ ] Port `alpha_mask2` main buffer to `PixFmtBGR24` once the adaptor is generic.
-- [ ] Add a test: wrap `PixFmtBGR24` with amask adaptor, assert correct blending output.
+- [x] Introduce a generic `PixFmtBlendInterface[C]` that abstracts over color type.
+- [x] Make `PixFmtAMaskAdaptor` generic: `PixFmtAMaskAdaptor[C]`.
+- [x] Add the necessary RGB24 renderer-surface adapter so `PixFmtBGR24` can be wrapped by the
+      generic amask adaptor in rendering code.
+- [x] Port `alpha_mask2` main buffer to `PixFmtBGR24`.
+- [x] Add a test covering masked rendering through `PixFmtBGR24`.
 
 ---
 

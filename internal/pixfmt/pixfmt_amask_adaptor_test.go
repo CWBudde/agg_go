@@ -4,12 +4,16 @@ import (
 	"testing"
 
 	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/renderer"
 )
 
 type mockAMaskPixfmt struct {
-	width, height int
-	pixels        map[[2]int]color.RGBA8[color.Linear]
+	width, height         int
+	pixels                map[[2]int]color.RGBA8[color.Linear]
+	blendColorHspanCalled bool
+	blendColorVspanCalled bool
 }
 
 func newMockAMaskPixfmt(width, height int) *mockAMaskPixfmt {
@@ -123,7 +127,7 @@ func (m fullAlphaMask) FillVspan(x, y int, dst []basics.Int8u, length int) {
 }
 func (m fullAlphaMask) CombineVspan(x, y int, dst []basics.Int8u, length int) {}
 
-func newRGBAPixfmt(w, h int) (*newMockTrackingPixfmt, *PixFmtAMaskAdaptor) {
+func newRGBAPixfmt(w, h int) (*newMockTrackingPixfmt, *PixFmtAMaskAdaptor[color.RGBA8[color.Linear]]) {
 	mock := newTrackingMock(w, h)
 	adaptor := NewPixFmtAMaskAdaptor(mock, fullAlphaMask{w: w, h: h})
 	return mock, adaptor
@@ -146,6 +150,32 @@ func (m *newMockTrackingPixfmt) BlendSolidHspan(x, y, length int, c color.RGBA8[
 
 func (m *newMockTrackingPixfmt) BlendSolidVspan(x, y, length int, c color.RGBA8[color.Linear], covers []basics.Int8u) {
 	m.blendSolidVspanCalled = true
+}
+
+func (m *newMockTrackingPixfmt) BlendColorHspan(x, y, length int, colors []color.RGBA8[color.Linear], covers []basics.Int8u, cover basics.Int8u) {
+	m.blendColorHspanCalled = true
+	for i := 0; i < length && i < len(colors); i++ {
+		actualCover := cover
+		if covers != nil && i < len(covers) {
+			actualCover = covers[i]
+		}
+		if actualCover > 0 {
+			m.pixels[[2]int{x + i, y}] = colors[i]
+		}
+	}
+}
+
+func (m *newMockTrackingPixfmt) BlendColorVspan(x, y, length int, colors []color.RGBA8[color.Linear], covers []basics.Int8u, cover basics.Int8u) {
+	m.blendColorVspanCalled = true
+	for i := 0; i < length && i < len(colors); i++ {
+		actualCover := cover
+		if covers != nil && i < len(covers) {
+			actualCover = covers[i]
+		}
+		if actualCover > 0 {
+			m.pixels[[2]int{x, y + i}] = colors[i]
+		}
+	}
 }
 
 func TestPixFmtAMaskAdaptorWidthHeightPixWidth(t *testing.T) {
@@ -336,17 +366,21 @@ func TestPixFmtAMaskAdaptorCopyBarBlendBar(t *testing.T) {
 }
 
 func TestPixFmtAMaskAdaptorCopyColorHspanVspan(t *testing.T) {
-	mock := newMockAMaskPixfmt(3, 3)
+	mock := newTrackingMock(3, 3)
 	adaptor := NewPixFmtAMaskAdaptor(mock, fullAlphaMask{w: 3, h: 3})
 
 	colors := []color.RGBA8[color.Linear]{
 		{R: 10, A: 255}, {R: 20, A: 255}, {R: 30, A: 255},
 	}
 
-	// CopyColorHspan delegates directly to underlying pixfmt
 	adaptor.CopyColorHspan(0, 0, 3, colors)
 	adaptor.CopyColorVspan(0, 0, 3, colors)
-	// No panic means the delegation works
+	if !mock.blendColorHspanCalled {
+		t.Error("CopyColorHspan should route through BlendColorHspan with mask covers")
+	}
+	if !mock.blendColorVspanCalled {
+		t.Error("CopyColorVspan should route through BlendColorVspan with mask covers")
+	}
 }
 
 func TestPixFmtAMaskAdaptorClearAndFill(t *testing.T) {
@@ -359,7 +393,7 @@ func TestPixFmtAMaskAdaptorClearAndFill(t *testing.T) {
 }
 
 func TestPixFmtAMaskAdaptorBlendColorHspanWithCovers(t *testing.T) {
-	mock := newMockAMaskPixfmt(4, 1)
+	mock := newTrackingMock(4, 1)
 	mask := NewSimpleAlphaMask(4, 1)
 	mask.Fill(255) // fully opaque mask
 	adaptor := NewPixFmtAMaskAdaptor(mock, mask)
@@ -372,6 +406,9 @@ func TestPixFmtAMaskAdaptorBlendColorHspanWithCovers(t *testing.T) {
 	}
 	covers := []basics.Int8u{255, 255, 255, 255}
 	adaptor.BlendColorHspan(0, 0, 4, colors, covers, basics.CoverFull)
+	if !mock.blendColorHspanCalled {
+		t.Fatal("BlendColorHspan should call underlying BlendColorHspan")
+	}
 	// pixels should be set (mask is opaque, covers are 255)
 	if got := mock.pixels[[2]int{0, 0}]; got.R != 100 {
 		t.Errorf("BlendColorHspan x=0: R expected 100, got %d", got.R)
@@ -379,7 +416,7 @@ func TestPixFmtAMaskAdaptorBlendColorHspanWithCovers(t *testing.T) {
 }
 
 func TestPixFmtAMaskAdaptorBlendColorHspanNilCovers(t *testing.T) {
-	mock := newMockAMaskPixfmt(2, 1)
+	mock := newTrackingMock(2, 1)
 	mask := NewSimpleAlphaMask(2, 1)
 	mask.Fill(255)
 	adaptor := NewPixFmtAMaskAdaptor(mock, mask)
@@ -396,7 +433,7 @@ func TestPixFmtAMaskAdaptorBlendColorHspanNilCovers(t *testing.T) {
 }
 
 func TestPixFmtAMaskAdaptorBlendColorVspan(t *testing.T) {
-	mock := newMockAMaskPixfmt(1, 3)
+	mock := newTrackingMock(1, 3)
 	mask := NewSimpleAlphaMask(1, 3)
 	mask.Fill(255)
 	adaptor := NewPixFmtAMaskAdaptor(mock, mask)
@@ -412,6 +449,9 @@ func TestPixFmtAMaskAdaptorBlendColorVspan(t *testing.T) {
 	}
 	if got := mock.pixels[[2]int{0, 2}]; got.B != 30 {
 		t.Errorf("BlendColorVspan y=2: B expected 30, got %d", got.B)
+	}
+	if !mock.blendColorVspanCalled {
+		t.Fatal("BlendColorVspan should call underlying BlendColorVspan")
 	}
 }
 
@@ -533,5 +573,61 @@ func TestPixFmtAMaskAdaptorCopyFromFallbackBypassesMask(t *testing.T) {
 	}
 	if got := dst.GetPixel(2, 0); got.R != 40 || got.G != 50 || got.B != 60 || got.A != 255 {
 		t.Fatalf("pixel (2,0) = %+v, want RGBA(40,50,60,255)", got)
+	}
+}
+
+func TestPixFmtAMaskAdaptorWrapsBGR24(t *testing.T) {
+	const w, h = 3, 1
+
+	buf := make([]uint8, w*h*3)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, w, h, w*3)
+	pf := NewPixFmtBGR24(rbuf)
+	pfAdaptor := NewPixFmtRGBRendererAdaptor(pf)
+	pfAdaptor.Clear(color.RGB8[color.Linear]{R: 255, G: 255, B: 255})
+
+	mask := NewSimpleAlphaMask(w, h)
+	mask.SetOpaque()
+	mask.SetPixel(1, 0, 128)
+
+	adaptor := NewPixFmtAMaskAdaptor(pfAdaptor, mask)
+	rb := renderer.NewRendererBaseWithPixfmt(adaptor)
+
+	rb.BlendPixel(0, 0, color.RGB8[color.Linear]{R: 200, G: 0, B: 0}, basics.CoverFull)
+	rb.BlendPixel(1, 0, color.RGB8[color.Linear]{R: 200, G: 0, B: 0}, basics.CoverFull)
+	rb.BlendPixel(2, 0, color.RGB8[color.Linear]{R: 200, G: 0, B: 0}, basics.CoverFull)
+
+	if got := pf.Pixel(0, 0); got != (color.RGB8[color.Linear]{R: 200, G: 0, B: 0}) {
+		t.Fatalf("opaque masked pixel = %+v, want full source color", got)
+	}
+
+	gotMid := pf.Pixel(1, 0)
+	if gotMid.R >= 255 || gotMid.G <= 0 || gotMid.B <= 0 {
+		t.Fatalf("half-masked BGR24 pixel = %+v, want blended red over white", gotMid)
+	}
+
+	if got := pf.Pixel(2, 0); got != (color.RGB8[color.Linear]{R: 200, G: 0, B: 0}) {
+		t.Fatalf("opaque masked pixel = %+v, want full source color", got)
+	}
+}
+
+func TestPixFmtAMaskAdaptorWrapsBGR24WithRGBAColors(t *testing.T) {
+	const w, h = 1, 1
+
+	buf := make([]uint8, w*h*3)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, w, h, w*3)
+	pf := NewPixFmtBGR24(rbuf)
+	rgbaAdaptor := NewPixFmtRGBARendererAdaptor(pf)
+	rgbaAdaptor.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
+
+	mask := NewSimpleAlphaMask(w, h)
+	mask.SetOpaque()
+
+	amaskAdaptor := NewPixFmtAMaskAdaptor(rgbaAdaptor, mask)
+	rb := renderer.NewRendererBaseWithPixfmt(amaskAdaptor)
+	rb.BlendPixel(0, 0, color.RGBA8[color.Linear]{R: 200, G: 0, B: 0, A: 128}, basics.CoverFull)
+
+	got := pf.Pixel(0, 0)
+	if got.R >= 255 || got.R <= 200 || got.G >= 255 || got.G == 0 || got.B >= 255 || got.B == 0 {
+		t.Fatalf("alpha-aware masked BGR24 pixel = %+v, want blended red over white", got)
 	}
 }

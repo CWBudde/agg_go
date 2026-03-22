@@ -3,133 +3,41 @@ package main
 import (
 	"fmt"
 	"math"
-	"math/rand"
 
-	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/buffer"
-	"github.com/MeKo-Christian/agg_go/internal/color"
-	"github.com/MeKo-Christian/agg_go/internal/conv"
-	liondemo "github.com/MeKo-Christian/agg_go/internal/demo/lion"
-	"github.com/MeKo-Christian/agg_go/internal/path"
-	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
-	"github.com/MeKo-Christian/agg_go/internal/renderer"
-	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
-	"github.com/MeKo-Christian/agg_go/internal/scanline"
-	"github.com/MeKo-Christian/agg_go/internal/shapes"
-	"github.com/MeKo-Christian/agg_go/internal/transform"
+	alphamask2demo "github.com/MeKo-Christian/agg_go/internal/demo/alphamask2"
 )
 
 var (
-	am2AlphaMaskBuf *buffer.RenderingBuffer[uint8]
-	am2AlphaMask    *pixfmt.AMaskNoClipU8
-	am2NumEllipses  = 10
-	am2LionAngle    = 0.0
-	am2LionScale    = 1.0
-	am2LionSkewX    = 0.0
-	am2LionSkewY    = 0.0
-	am2SliderValue  = 10.0
+	am2NumEllipses = 10
+	am2LionAngle   = 0.0
+	am2LionScale   = 1.0
+	am2LionSkewX   = 0.0
+	am2LionSkewY   = 0.0
+	am2SliderValue = 10.0
 )
-
-func generateAlphaMask2(w, h int) {
-	if am2AlphaMaskBuf == nil || am2AlphaMaskBuf.Width() != w || am2AlphaMaskBuf.Height() != h {
-		data := make([]uint8, w*h)
-		am2AlphaMaskBuf = buffer.NewRenderingBufferWithData[uint8](data, w, h, w)
-	}
-
-	// Create a grayscale pixel format for the mask buffer
-	maskPixf := pixfmt.NewPixFmtSGray8(am2AlphaMaskBuf)
-	maskRb := renderer.NewRendererBaseWithPixfmt(maskPixf)
-
-	maskRb.Clear(color.Gray8[color.SRGB]{V: 0, A: 255})
-
-	agg2d := ctx.GetAgg2D()
-	ras := agg2d.GetInternalRasterizer()
-	sl := scanline.NewScanlineU8()
-
-	rnd := rand.New(rand.NewSource(1432))
-
-	for i := 0; i < am2NumEllipses; i++ {
-		cx := float64(rnd.Intn(w))
-		cy := float64(rnd.Intn(h))
-		rx := float64(rnd.Intn(100) + 20)
-		ry := float64(rnd.Intn(100) + 20)
-
-		ras.Reset()
-		ell := shapes.NewEllipseWithParams(cx, cy, rx, ry, 100, false)
-		ell.Rewind(0)
-		for {
-			var x, y float64
-			cmd := ell.Vertex(&x, &y)
-			if basics.IsStop(cmd) {
-				break
-			}
-			ras.AddVertex(x, y, uint32(cmd))
-		}
-
-		v := uint8(rnd.Intn(128) + 128)
-		a := uint8(rnd.Intn(128) + 128)
-		gray := color.Gray8[color.SRGB]{V: v, A: a}
-
-		renscan.RenderScanlinesAASolid(ras, sl, maskRb, gray)
-	}
-
-	// Create the alpha mask
-	maskFunc := pixfmt.OneComponentMaskU8{}
-	am2AlphaMask = pixfmt.NewAMaskNoClipU8WithBuffer(am2AlphaMaskBuf, 1, 0, maskFunc)
-}
 
 func drawAlphaMask2Demo() {
 	w, h := ctx.GetImage().Width(), ctx.GetImage().Height()
 
 	if float64(am2NumEllipses) != am2SliderValue {
 		am2NumEllipses = int(am2SliderValue)
-		generateAlphaMask2(w, h)
-	}
-
-	if am2AlphaMask == nil {
-		generateAlphaMask2(w, h)
-	}
-
-	if lionData == nil {
-		ld := liondemo.Parse()
-		lionData = &ld
 	}
 
 	agg2d := ctx.GetAgg2D()
 	agg2d.ResetTransformations()
 
-	// Fill background with white
-	agg2d.ClearAll(agg.White)
+	// Render into a BGR24 work buffer like the original AGG example, then copy
+	// back to the RGBA canvas image.
+	workBuf := make([]uint8, w*h*3)
+	alphamask2demo.RenderToBGR24(workBuf, w, h, alphamask2demo.Config{
+		NumEllipses: am2NumEllipses,
+		Angle:       am2LionAngle,
+		Scale:       am2LionScale,
+		SkewX:       am2LionSkewX,
+		SkewY:       am2LionSkewY,
+	})
 
-	// Set up the mask adaptor
-	tempRbuf := buffer.NewRenderingBufferWithData[uint8](ctx.GetImage().Data, w, h, w*4)
-	imgPixf := pixfmt.NewPixFmtRGBA32[color.Linear](tempRbuf)
-	amaskAdaptor := pixfmt.NewPixFmtAMaskAdaptor(imgPixf, am2AlphaMask)
-	rbAMask := renderer.NewRendererBaseWithPixfmt(amaskAdaptor)
-
-	ras := agg2d.GetInternalRasterizer()
-	sl := scanline.NewScanlineU8()
-
-	// 1. Render the lion
-	baseDX, baseDY := 0.0, 0.0
-	if lionData.NPaths > 0 {
-		x1, y1, x2, y2 := 20.0, 20.0, 480.0, 380.0
-		baseDX = (x2 - x1) * 0.5
-		baseDY = (y2 - y1) * 0.5
-	}
-
-	mtx := transform.NewTransAffine()
-	mtx.Translate(-baseDX, -baseDY)
-	mtx.Scale(am2LionScale)
-	mtx.Rotate(am2LionAngle + basics.Pi)
-	mtx.Translate(float64(w)/2, float64(h)/2)
-
-	pathVS := path.NewPathStorageStlVertexSourceAdapter(lionData.Path)
-	transVS := conv.NewConvTransform(pathVS, mtx)
-	rasVS := conv.NewRasterizerVertexSourceAdapter(transVS)
-	renSolid := renscan.NewRendererScanlineAASolidWithRenderer(rbAMask)
-	renscan.RenderAllPaths(ras, sl, renSolid, rasVS, lionData, lionData, lionData.NPaths)
+	copyBGR24ToRGBA(workBuf, ctx.GetImage().Data, w, h)
 
 	logStatus(fmt.Sprintf("Alpha Mask 2 Demo: Ellipses=%d", am2NumEllipses))
 }
@@ -151,4 +59,19 @@ func handleAlphaMask2RightMouseDown(x, y float64) bool {
 
 func setAlphaMask2NumEllipses(n float64) {
 	am2SliderValue = n
+}
+
+func copyBGR24ToRGBA(src, dst []uint8, width, height int) {
+	for y := 0; y < height; y++ {
+		srcOff := y * width * 3
+		dstOff := y * width * 4
+		for x := 0; x < width; x++ {
+			s := srcOff + x*3
+			d := dstOff + x*4
+			dst[d+0] = src[s+2]
+			dst[d+1] = src[s+1]
+			dst[d+2] = src[s+0]
+			dst[d+3] = 255
+		}
+	}
 }
