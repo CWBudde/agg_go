@@ -128,6 +128,8 @@ func main() {
 		return nil
 	}))
 	js.Global().Set("setSBoolOp", js.FuncOf(setSBoolOp))
+	js.Global().Set("setSBoolMul1", js.FuncOf(setSBoolMul1))
+	js.Global().Set("setSBoolMul2", js.FuncOf(setSBoolMul2))
 	js.Global().Set("setStrokeJoin", js.FuncOf(setStrokeJoin))
 	js.Global().Set("setStrokeCap", js.FuncOf(setStrokeCap))
 	js.Global().Set("setStrokeWidth", js.FuncOf(setStrokeWidth))
@@ -1251,7 +1253,21 @@ func setImageFilterAngle(this js.Value, args []js.Value) interface{} {
 
 func setSBoolOp(this js.Value, args []js.Value) interface{} {
 	if len(args) > 0 {
-		sboolOp = SBoolOp(args[0].Int())
+		sboolOp = args[0].Int()
+	}
+	return nil
+}
+
+func setSBoolMul1(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		sboolMul1 = args[0].Float()
+	}
+	return nil
+}
+
+func setSBoolMul2(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		sboolMul2 = args[0].Float()
 	}
 	return nil
 }
@@ -1433,36 +1449,44 @@ func setGouraudNodes(this js.Value, args []js.Value) interface{} {
 }
 
 func getSBoolNodes(this js.Value, args []js.Value) interface{} {
+	if !sboolInited {
+		sboolInit()
+	}
+	q1 := getSBoolQuad1()
+	q2 := getSBoolQuad2()
 	return map[string]interface{}{
-		"p1x0": sboolPoly1X[0], "p1y0": sboolPoly1Y[0],
-		"p1x1": sboolPoly1X[1], "p1y1": sboolPoly1Y[1],
-		"p1x2": sboolPoly1X[2], "p1y2": sboolPoly1Y[2],
-		"p1x3": sboolPoly1X[3], "p1y3": sboolPoly1Y[3],
-		"p2x0": sboolPoly2X[0], "p2y0": sboolPoly2Y[0],
-		"p2x1": sboolPoly2X[1], "p2y1": sboolPoly2Y[1],
-		"p2x2": sboolPoly2X[2], "p2y2": sboolPoly2Y[2],
-		"p2x3": sboolPoly2X[3], "p2y3": sboolPoly2Y[3],
+		"p1x0": q1[0], "p1y0": q1[1],
+		"p1x1": q1[2], "p1y1": q1[3],
+		"p1x2": q1[4], "p1y2": q1[5],
+		"p1x3": q1[6], "p1y3": q1[7],
+		"p2x0": q2[0], "p2y0": q2[1],
+		"p2x1": q2[2], "p2y1": q2[3],
+		"p2x2": q2[4], "p2y2": q2[5],
+		"p2x3": q2[6], "p2y3": q2[7],
 	}
 }
 
 func setSBoolNodes(this js.Value, args []js.Value) interface{} {
+	if !sboolInited {
+		sboolInit()
+	}
 	if len(args) >= 16 {
-		sboolPoly1X[0] = args[0].Float()
-		sboolPoly1Y[0] = args[1].Float()
-		sboolPoly1X[1] = args[2].Float()
-		sboolPoly1Y[1] = args[3].Float()
-		sboolPoly1X[2] = args[4].Float()
-		sboolPoly1Y[2] = args[5].Float()
-		sboolPoly1X[3] = args[6].Float()
-		sboolPoly1Y[3] = args[7].Float()
-		sboolPoly2X[0] = args[8].Float()
-		sboolPoly2Y[0] = args[9].Float()
-		sboolPoly2X[1] = args[10].Float()
-		sboolPoly2Y[1] = args[11].Float()
-		sboolPoly2X[2] = args[12].Float()
-		sboolPoly2Y[2] = args[13].Float()
-		sboolPoly2X[3] = args[14].Float()
-		sboolPoly2Y[3] = args[15].Float()
+		sboolQuad1[0] = args[0].Float()
+		sboolQuad1[1] = args[1].Float()
+		sboolQuad1[2] = args[2].Float()
+		sboolQuad1[3] = args[3].Float()
+		sboolQuad1[4] = args[4].Float()
+		sboolQuad1[5] = args[5].Float()
+		sboolQuad1[6] = args[6].Float()
+		sboolQuad1[7] = args[7].Float()
+		sboolQuad2[0] = args[8].Float()
+		sboolQuad2[1] = args[9].Float()
+		sboolQuad2[2] = args[10].Float()
+		sboolQuad2[3] = args[11].Float()
+		sboolQuad2[4] = args[12].Float()
+		sboolQuad2[5] = args[13].Float()
+		sboolQuad2[6] = args[14].Float()
+		sboolQuad2[7] = args[15].Float()
 	}
 	return nil
 }

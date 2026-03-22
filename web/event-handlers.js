@@ -338,6 +338,20 @@ export function setupEventHandlers(
     persistDemoParams("sbool");
     renderSelectedDemo();
   });
+  document.getElementById("sboolMul1Slider").addEventListener("input", () => {
+    const v = parseFloat(document.getElementById("sboolMul1Slider").value);
+    document.getElementById("sboolMul1Value").textContent = v.toFixed(3);
+    setSBoolMul1(v);
+    persistDemoParams("sbool");
+    renderSelectedDemo();
+  });
+  document.getElementById("sboolMul2Slider").addEventListener("input", () => {
+    const v = parseFloat(document.getElementById("sboolMul2Slider").value);
+    document.getElementById("sboolMul2Value").textContent = v.toFixed(3);
+    setSBoolMul2(v);
+    persistDemoParams("sbool");
+    renderSelectedDemo();
+  });
 
   // convstroke controls
   document

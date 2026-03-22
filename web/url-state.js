@@ -71,6 +71,8 @@ export const ALL_DEMO_PARAMS = [
   "mvr",
   // sbool
   "sop",
+  "sm1",
+  "sm2",
   "p1x0",
   "p1y0",
   "p1x1",

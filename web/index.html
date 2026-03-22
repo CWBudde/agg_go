@@ -46,7 +46,7 @@
           </option>
           <option value="bezier_div">Bezier Subdivision</option>
           <option value="bspline">B-Spline Demo</option>
-          <option value="sbool">Boolean Operations (XOR/Union)</option>
+          <option value="sbool">Scanline Boolean</option>
           <option value="roundedrect">Rounded Rectangle</option>
         </optgroup>
         <optgroup label="── Color &amp; Shading ──">
@@ -596,9 +596,20 @@
     <div class="controls" id="sboolControls" style="display: none">
       <label for="sboolOpSelector">Operation:</label>
       <select id="sboolOpSelector">
-        <option value="0">Union (Non-Zero)</option>
-        <option value="2">XOR (Even-Odd)</option>
+        <option value="0">Union</option>
+        <option value="1">Intersection</option>
+        <option value="2">Linear XOR</option>
+        <option value="3">Saddle XOR</option>
+        <option value="4">Abs Diff XOR</option>
+        <option value="5">A-B</option>
+        <option value="6">B-A</option>
       </select>
+      <label for="sboolMul1Slider">Opacity1:</label>
+      <input type="range" id="sboolMul1Slider" min="0" max="1" step="0.01" value="1.0" />
+      <span id="sboolMul1Value">1.000</span>
+      <label for="sboolMul2Slider">Opacity2:</label>
+      <input type="range" id="sboolMul2Slider" min="0" max="1" step="0.01" value="1.0" />
+      <span id="sboolMul2Value">1.000</span>
     </div>
 
     <div class="controls" id="convstrokeControls" style="display: none">

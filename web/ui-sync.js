@@ -138,7 +138,7 @@ export const demoDescriptions = {
   mol_view:
     "Port of AGG's mol_view.cpp. Parses the original SDF molecule set, renders bond geometry plus colored atom labels, and supports molecule selection, bond thickness, label size, and idle rotation. Left-drag rotates/scales, right-drag pans. URL params: mvm, mvt, mvz, mvr.",
   sbool:
-    "Boolean operations on vector shapes. Demonstrates combining multiple paths using filling rules to achieve Union and XOR-like effects with interactive polygons.",
+    "Port of AGG's scanline_boolean.cpp. Generates circles along two interactive quadrilaterals and combines them using scanline boolean algebra (Union, Intersection, XOR variants, A-B, B-A) with adjustable opacity. URL params: sop, sm1, sm2, p1x0..p2y3.",
   aatest:
     "Comprehensive anti-aliasing precision test. Renders radial lines, various ellipse sizes, and gradient-filled triangles at fractional offsets to verify the rasterizer's quality.",
   convstroke:

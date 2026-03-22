@@ -349,6 +349,8 @@ export const demoURLHandlers = {
       const n = getSBoolNodes();
       updateURL({
         sop: parseInt(document.getElementById("sboolOpSelector").value),
+        sm1: parseFloat(document.getElementById("sboolMul1Slider").value).toFixed(3),
+        sm2: parseFloat(document.getElementById("sboolMul2Slider").value).toFixed(3),
         p1x0: n.p1x0.toFixed(1),
         p1y0: n.p1y0.toFixed(1),
         p1x1: n.p1x1.toFixed(1),
@@ -372,6 +374,18 @@ export const demoURLHandlers = {
         const val = parseInt(p.get("sop"));
         setSBoolOp(val);
         document.getElementById("sboolOpSelector").value = val;
+      }
+      if (p.has("sm1")) {
+        const v = parseFloat(p.get("sm1"));
+        setSBoolMul1(v);
+        document.getElementById("sboolMul1Slider").value = v;
+        document.getElementById("sboolMul1Value").textContent = v.toFixed(3);
+      }
+      if (p.has("sm2")) {
+        const v = parseFloat(p.get("sm2"));
+        setSBoolMul2(v);
+        document.getElementById("sboolMul2Slider").value = v;
+        document.getElementById("sboolMul2Value").textContent = v.toFixed(3);
       }
       const keys = [
         "p1x0",
