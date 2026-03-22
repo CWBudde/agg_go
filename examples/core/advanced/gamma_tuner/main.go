@@ -22,9 +22,11 @@ import (
 	ctrlbase "github.com/MeKo-Christian/agg_go/internal/ctrl"
 	rboxctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/rbox"
 	sliderctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/slider"
-	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
 	pixgamma "github.com/MeKo-Christian/agg_go/internal/pixfmt/gamma"
+	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
 	"github.com/MeKo-Christian/agg_go/internal/renderer"
+	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
+	isl "github.com/MeKo-Christian/agg_go/internal/scanline"
 )
 
 const (
@@ -41,6 +43,18 @@ type demo struct {
 	bSlider     *sliderctrl.SliderCtrl
 	gammaSlider *sliderctrl.SliderCtrl
 	pattern     *rboxctrl.RboxCtrl[icol.RGBA]
+}
+
+type (
+	rasType = rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
+	renBase = renderer.RendererBase[*pixgamma.PixFmtRGBA32GammaBlend, icol.RGBA8[icol.Linear]]
+)
+
+func newRasterizer() *rasType {
+	return rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{},
+		rasterizer.NewRasterizerSlNoClip(),
+	)
 }
 
 type rasterVertexSourceAdapter struct {
@@ -92,30 +106,41 @@ func newDemo() *demo {
 func (d *demo) Render(img *agg.Image) {
 	w, h := img.Width(), img.Height()
 
-	rbuf := buffer.NewRenderingBufferU8()
-	rbuf.Attach(img.Data, w, h, img.Stride())
-	pixf := pixfmt.NewPixFmtRGBA32Linear(rbuf)
-	rb := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32[icol.Linear], icol.RGBA8[icol.Linear]](pixf)
-
 	rVal := d.rSlider.Value()
 	gVal := d.gSlider.Value()
 	bVal := d.bSlider.Value()
 	gammaVal := d.gammaSlider.Value()
-	lut := pixgamma.NewSimpleGammaLut(gammaVal)
 
-	// baseColor mirrors C++ color.gradient(black, k):
-	// k=0 → full color, k=1 → black (brightness = 1-k).
-	baseColor := func(k float64) icol.RGBA8[icol.Linear] {
+	// Use gamma-correct blending to match C++ pixfmt_sbgr24_gamma / blender_rgb_gamma.
+	// Copy operations (background, strips) remain raw sRGB — gamma only applies to blends.
+	rbuf := buffer.NewRenderingBufferU8()
+	rbuf.Attach(img.Data, w, h, img.Stride())
+	pixf := pixgamma.NewPixFmtRGBA32GammaBlend(rbuf, pixgamma.NewSimpleGammaLut(gammaVal))
+	rb := renderer.NewRendererBaseWithPixfmt[*pixgamma.PixFmtRGBA32GammaBlend, icol.RGBA8[icol.Linear]](pixf)
+
+	// rawColor computes raw sRGB matching C++ color.gradient(black, k):
+	//   k=0 → full color, k=1 → black (brightness = 1-k)
+	// C++ copy_hline writes raw sRGB directly (no gamma applied).
+	rawColor := func(k float64) icol.RGBA8[icol.Linear] {
 		a := 1 - k
+		clamp := func(v float64) uint8 {
+			if v <= 0 {
+				return 0
+			}
+			if v >= 1 {
+				return 255
+			}
+			return uint8(v*255.0 + 0.5)
+		}
 		return icol.RGBA8[icol.Linear]{
-			R: gammaByte(lut, rVal*a),
-			G: gammaByte(lut, gVal*a),
-			B: gammaByte(lut, bVal*a),
+			R: clamp(rVal * a),
+			G: clamp(gVal * a),
+			B: clamp(bVal * a),
 			A: 255,
 		}
 	}
 
-	// Vertical gradient background.
+	// Vertical gradient background (C++: copy_hline — raw sRGB, no gamma).
 	for y := 0; y < h; y++ {
 		k := float64(y-80) / float64(squareSize-1)
 		if y < 80 {
@@ -124,46 +149,61 @@ func (d *demo) Render(img *agg.Image) {
 		if y >= 80+squareSize {
 			k = 1
 		}
-
 		k = 1 - math.Pow(k/2, 1/gammaVal)
-		rb.CopyHline(0, y, w-1, baseColor(k))
+		rb.CopyHline(0, y, w-1, rawColor(k))
 	}
 
-	// Pattern setup.
 	span1 := make([]icol.RGBA8[icol.Linear], squareSize)
 	span2 := make([]icol.RGBA8[icol.Linear], squareSize)
-	buildSpans := func() {
-		for i := 0; i < squareSize; i++ {
-			a1, a2 := patternAlpha(i, squareSize, d.pattern.CurItem())
-			span1[i] = icol.RGBA8[icol.Linear]{R: 0, G: 0, B: 0, A: a1}
-			span2[i] = icol.RGBA8[icol.Linear]{R: 0, G: 0, B: 0, A: a2}
+
+	// Pre-compute span alpha values, matching C++ span setup before the draw loop.
+	for j := 0; j < squareSize; j++ {
+		alpha := uint8(j * 255 / squareSize)
+		inv := 255 - alpha
+		switch d.pattern.CurItem() {
+		case 0: // Horizontal
+			span1[j].A = alpha
+			span2[j].A = inv
+		case 1: // Vertical
+			if j&1 != 0 {
+				span1[j].A = alpha
+				span2[j].A = alpha
+			} else {
+				span1[j].A = inv
+				span2[j].A = inv
+			}
+		default: // Checkered
+			if j&1 != 0 {
+				span1[j].A = alpha
+				span2[j].A = inv
+			} else {
+				span2[j].A = alpha
+				span1[j].A = inv
+			}
 		}
 	}
-	buildSpans()
 
 	// Clear the square.
 	rb.CopyBar(50, 80, 50+squareSize-1, 80+squareSize-1, icol.RGBA8[icol.Linear]{R: 0, G: 0, B: 0, A: 255})
 
-	// Draw the pattern.
+	// Draw the pattern — only update RGB per row; alpha stays fixed from pre-computation.
 	for i := 0; i < squareSize; i += 2 {
 		k := float64(i) / float64(squareSize-1)
 		k = 1 - math.Pow(k, 1/gammaVal)
-		c := baseColor(k)
-
+		c := rawColor(k)
 		for j := 0; j < squareSize; j++ {
 			span1[j].R, span1[j].G, span1[j].B = c.R, c.G, c.B
 			span2[j].R, span2[j].G, span2[j].B = c.R, c.G, c.B
 		}
-
 		rb.BlendColorHspan(50, i+80, squareSize, span1, nil, basics.CoverFull)
 		rb.BlendColorHspan(50, i+80+1, squareSize, span2, nil, basics.CoverFull)
 	}
 
-	// Draw vertical strips.
+	// Draw vertical strips (C++: copy_hline — raw sRGB, no gamma).
 	for i := 0; i < squareSize; i++ {
 		k := float64(i) / float64(squareSize-1)
 		k = 1 - math.Pow(k/2, 1/gammaVal)
-		c := baseColor(k)
+		c := rawColor(k)
 		y := i + 80
 		for j := 0; j < verStrips; j++ {
 			xc := squareSize * (j + 1) / (verStrips + 1)
@@ -171,14 +211,14 @@ func (d *demo) Render(img *agg.Image) {
 		}
 	}
 
-	// Controls on top.
-	ctx := agg.NewContextForImage(img)
-	a := ctx.GetAgg2D()
-	renderCtrl(a, d.gammaSlider)
-	renderCtrl(a, d.rSlider)
-	renderCtrl(a, d.gSlider)
-	renderCtrl(a, d.bSlider)
-	renderCtrl(a, d.pattern)
+	// Controls on top — use the same gamma-correct renderer so anti-aliasing matches C++.
+	ras := newRasterizer()
+	sl := isl.NewScanlineU8()
+	renderCtrl(ras, sl, rb, d.gammaSlider)
+	renderCtrl(ras, sl, rb, d.rSlider)
+	renderCtrl(ras, sl, rb, d.gSlider)
+	renderCtrl(ras, sl, rb, d.bSlider)
+	renderCtrl(ras, sl, rb, d.pattern)
 }
 
 func (d *demo) OnMouseDown(x, y int, btn lowlevelrunner.Buttons) bool {
@@ -238,58 +278,25 @@ func (d *demo) OnMouseUp(x, y int, btn lowlevelrunner.Buttons) bool {
 	return changed
 }
 
-func gammaByte(lut *pixgamma.SimpleGammaLut, v float64) uint8 {
-	if v < 0 {
-		v = 0
+func renderCtrl(ras *rasType, sl *isl.ScanlineU8, rb *renBase, c ctrlbase.Ctrl[icol.RGBA]) {
+	clamp := func(v float64) uint8 {
+		if v <= 0 {
+			return 0
+		}
+		if v >= 1 {
+			return 255
+		}
+		return uint8(v*255.0 + 0.5)
 	}
-	if v > 1 {
-		v = 1
-	}
-	return lut.Dir(uint8(v*255.0 + 0.5))
-}
-
-func renderCtrl(a *agg.Agg2D, c ctrlbase.Ctrl[icol.RGBA]) {
-	ras := a.GetInternalRasterizer()
 	for i := uint(0); i < c.NumPaths(); i++ {
 		ras.Reset()
 		ras.AddPath(&rasterVertexSourceAdapter{src: c}, uint32(i))
-		a.RenderRasterizerWithColor(toAggColor(c.Color(i)))
+		col := c.Color(i)
+		renscan.RenderScanlinesAASolid(ras, sl, rb,
+			icol.RGBA8[icol.Linear]{R: clamp(col.R), G: clamp(col.G), B: clamp(col.B), A: clamp(col.A)})
 	}
 }
 
-func toAggColor(c icol.RGBA) agg.Color {
-	clamp := func(v float64) uint8 {
-		switch {
-		case v <= 0:
-			return 0
-		case v >= 1:
-			return 255
-		default:
-			return uint8(v*255.0 + 0.5)
-		}
-	}
-	return agg.NewColor(clamp(c.R), clamp(c.G), clamp(c.B), clamp(c.A))
-}
-
-func patternAlpha(j, size, pattern int) (uint8, uint8) {
-	alpha := uint8(j * 255 / size)
-	invAlpha := 255 - alpha
-
-	switch pattern {
-	case 0:
-		return alpha, invAlpha
-	case 1:
-		if j&1 != 0 {
-			return alpha, alpha
-		}
-		return invAlpha, invAlpha
-	default:
-		if j&1 != 0 {
-			return alpha, invAlpha
-		}
-		return invAlpha, alpha
-	}
-}
 
 func main() {
 	lowlevelrunner.Run(lowlevelrunner.Config{

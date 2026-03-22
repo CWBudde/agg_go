@@ -191,6 +191,67 @@ func (BlenderRGBA8Plain[S, O]) IdxG() int { var o O; return o.IdxG() }
 func (BlenderRGBA8Plain[S, O]) IdxB() int { var o O; return o.IdxB() }
 func (BlenderRGBA8Plain[S, O]) IdxA() int { var o O; return o.IdxA() }
 
+////////////////////////////////////////////////////////////////////////////////
+// Gamma-correct (linearising) source -> Premultiplied destination
+////////////////////////////////////////////////////////////////////////////////
+
+// GammaLUT8 is the minimal gamma lookup table interface for gamma-correct blending.
+// Dir converts a display (sRGB-like) value to linear; Inv is the reverse.
+// Both SimpleGammaLut and GammaLUT8 from the gamma package satisfy this interface.
+type GammaLUT8 interface {
+	Dir(basics.Int8u) basics.Int8u
+	Inv(basics.Int8u) basics.Int8u
+}
+
+// BlenderRGBA8Gamma blends plain source into a premultiplied destination using a
+// gamma lookup table, matching C++ AGG's blender_rgb_gamma.
+//
+// Copy operations (SetPlain/GetPlain) are raw — gamma only applies during blending.
+// RGB is linearised with Dir, blended in linear space, then re-encoded with Inv.
+// Alpha uses the standard prelerp formula.
+type BlenderRGBA8Gamma[S color.Space, O order.RGBAOrder] struct {
+	Lut GammaLUT8
+}
+
+// BlendPix blends a plain RGBA source into a premultiplied destination buffer,
+// linearising RGB through the gamma LUT before blending.
+// Matches C++ blender_rgb_gamma::blend_pix:
+//
+//	p[C] = inv( (dir(src[C]) - dir(dst[C])) * alpha >> 8 + dir(dst[C]) )
+func (bl BlenderRGBA8Gamma[S, O]) BlendPix(dst []basics.Int8u, cr, cg, cb, a, cover basics.Int8u) {
+	a = color.RGBA8MultCover(a, cover)
+	if a == 0 {
+		return
+	}
+	var o O
+	dr := int(bl.Lut.Dir(dst[o.IdxR()]))
+	dg := int(bl.Lut.Dir(dst[o.IdxG()]))
+	db := int(bl.Lut.Dir(dst[o.IdxB()]))
+	sr := int(bl.Lut.Dir(cr))
+	sg := int(bl.Lut.Dir(cg))
+	sb := int(bl.Lut.Dir(cb))
+	ia := int(a)
+	dst[o.IdxR()] = bl.Lut.Inv(basics.Int8u(((sr-dr)*ia>>8) + dr))
+	dst[o.IdxG()] = bl.Lut.Inv(basics.Int8u(((sg-dg)*ia>>8) + dg))
+	dst[o.IdxB()] = bl.Lut.Inv(basics.Int8u(((sb-db)*ia>>8) + db))
+	dst[o.IdxA()] = color.RGBA8Prelerp(dst[o.IdxA()], a, a)
+}
+
+func (bl BlenderRGBA8Gamma[S, O]) SetPlain(dst []basics.Int8u, r, g, b, a basics.Int8u) {
+	BlenderRGBA8[S, O]{}.SetPlain(dst, r, g, b, a)
+}
+
+func (bl BlenderRGBA8Gamma[S, O]) GetPlain(src []basics.Int8u) (r, g, b, a basics.Int8u) {
+	return BlenderRGBA8[S, O]{}.GetPlain(src)
+}
+
+// RawRGBAOrder interface implementation for fast path access
+func (bl BlenderRGBA8Gamma[S, O]) IdxR() int       { var o O; return o.IdxR() }
+func (bl BlenderRGBA8Gamma[S, O]) IdxG() int       { var o O; return o.IdxG() }
+func (bl BlenderRGBA8Gamma[S, O]) IdxB() int       { var o O; return o.IdxB() }
+func (bl BlenderRGBA8Gamma[S, O]) IdxA() int       { var o O; return o.IdxA() }
+func (bl BlenderRGBA8Gamma[S, O]) PremulSrc() bool { return false }
+
 // BlendRGBAPixel blends a single pixel using the provided blender B.
 // Works for any Space S and Order O, and never branches on order at runtime.
 func BlendRGBAPixel[S color.Space, O order.RGBAOrder](

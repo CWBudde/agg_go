@@ -18,7 +18,7 @@ import (
 	ctrlbase "github.com/MeKo-Christian/agg_go/internal/ctrl"
 	sliderctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/slider"
 	"github.com/MeKo-Christian/agg_go/internal/path"
-	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
+	pixgamma "github.com/MeKo-Christian/agg_go/internal/pixfmt/gamma"
 	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
 	"github.com/MeKo-Christian/agg_go/internal/renderer"
 	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
@@ -84,7 +84,7 @@ func (a *ctrlRasAdapter) Vertex(x, y *float64) uint32 {
 // Rendering helpers
 // ---------------------------------------------------------------------------
 
-type renBase = renderer.RendererBase[*pixfmt.PixFmtRGBA32[icolor.Linear], icolor.RGBA8[icolor.Linear]]
+type renBase = renderer.RendererBase[*pixgamma.PixFmtRGBA32GammaBlend, icolor.RGBA8[icolor.Linear]]
 
 func clampU8(v float64) uint8 {
 	if v <= 0 {
@@ -184,16 +184,17 @@ func newDemo() *demo {
 func (d *demo) Render(img *agg.Image) {
 	w, h := img.Width(), img.Height()
 
-	// Work buffer: y=0 at bottom (flip_y=true convention), copied with y-flip.
-	workBuf := make([]uint8, w*h*4)
-	workRbuf := buffer.NewRenderingBufferU8WithData(workBuf, w, h, w*4)
-	pf := pixfmt.NewPixFmtRGBA32Linear(workRbuf)
-	rb := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32[icolor.Linear], icolor.RGBA8[icolor.Linear]](pf)
-	rb.Clear(rgba8(255, 255, 255, 255))
-
 	thickness := d.thickness.Value()
 	contrast := d.contrast.Value()
 	g := d.gamma.Value()
+
+	// Work buffer: y=0 at bottom (flip_y=true convention), copied with y-flip.
+	// Use gamma-correct blending so anti-aliasing matches C++ pixfmt_sbgr24_gamma.
+	workBuf := make([]uint8, w*h*4)
+	workRbuf := buffer.NewRenderingBufferU8WithData(workBuf, w, h, w*4)
+	pf := pixgamma.NewPixFmtRGBA32GammaBlend(workRbuf, pixgamma.NewSimpleGammaLut(g))
+	rb := renderer.NewRendererBaseWithPixfmt[*pixgamma.PixFmtRGBA32GammaBlend, icolor.RGBA8[icolor.Linear]](pf)
+	rb.Clear(rgba8(255, 255, 255, 255))
 
 	dark := contrast
 	light := contrast

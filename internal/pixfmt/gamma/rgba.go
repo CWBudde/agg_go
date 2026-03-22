@@ -2,6 +2,7 @@ package gamma
 
 import (
 	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
 	"github.com/MeKo-Christian/agg_go/internal/order"
 	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
@@ -100,6 +101,23 @@ func NewPixFmtRGBA32Gamma(pf *pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.
 
 func NewPixFmtRGBA32Linear(pf *pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8[color.Linear, order.RGBA]]) *PixFmtRGBA32Linear {
 	return NewPixFmtRGBAGamma[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8[color.Linear, order.RGBA]]](pf, NewLinearGammaLut())
+}
+
+// PixFmtRGBA32GammaBlend is a first-class gamma-correct RGBA32 pixel format.
+// Unlike the PixFmtRGBAGamma wrapper, this type embeds gamma correction directly
+// in the blender, so all RendererBase operations (CopyHline, BlendColorHspan, …)
+// are available and copy operations remain raw (no gamma applied), exactly matching
+// C++ pixfmt_alpha_blend_rgb<blender_rgb_gamma<...>, ...>.
+type PixFmtRGBA32GammaBlend = pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Gamma[color.Linear, order.RGBA]]
+
+// NewPixFmtRGBA32GammaBlend creates a gamma-correct RGBA32 pixel format over rbuf.
+// The lut (e.g. NewSimpleGammaLut(2.2)) is used to linearise RGB during blend
+// operations while leaving copy operations raw — matching C++ blender_rgb_gamma.
+func NewPixFmtRGBA32GammaBlend(rbuf *buffer.RenderingBufferU8, lut GammaLut) *PixFmtRGBA32GammaBlend {
+	return pixfmt.NewPixFmtAlphaBlendRGBA[color.Linear](
+		rbuf,
+		blender.BlenderRGBA8Gamma[color.Linear, order.RGBA]{Lut: lut},
+	)
 }
 
 // RGBA multiplier for premultiplication/demultiplication with different component orders
