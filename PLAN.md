@@ -354,7 +354,7 @@ Span generators feed pixel data into `BlendColorHspan`; profile before committin
     - [ ] `gamma_ctrl`
     - [ ] `gamma_tuner`
     - [ ] `gouraud_mesh`
-    - [ ] `gouraud`
+    - [x] `gouraud`
     - [ ] `gradient_focal`
     - [ ] `gradients_contour`
     - [ ] `gradients`
