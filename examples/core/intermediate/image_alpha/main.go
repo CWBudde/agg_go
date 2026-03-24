@@ -1,13 +1,15 @@
 // Port of AGG C++ image_alpha.cpp – brightness-to-alpha image compositing.
 //
-// Loads spheres.ppm, draws random background ellipses, then composites the
+// Loads spheres.bmp, draws random background ellipses, then composites the
 // transformed image through a transformed ellipse while converting RGB
 // brightness to output alpha via a 6-point spline LUT.
 package main
 
 import (
-	"bytes"
+	"encoding/binary"
 	"errors"
+	"fmt"
+	"io"
 	"math"
 	"os"
 	"path/filepath"
@@ -38,10 +40,10 @@ type imagePixFmt struct {
 
 func (p imagePixFmt) Width() int    { return p.rbuf.Width() }
 func (p imagePixFmt) Height() int   { return p.rbuf.Height() }
-func (p imagePixFmt) PixWidth() int { return 4 }
+func (p imagePixFmt) PixWidth() int { return 3 }
 func (p imagePixFmt) PixPtr(x, y int) []basics.Int8u {
 	row := buffer.RowU8(p.rbuf, y)
-	return row[x*4:]
+	return row[x*3:]
 }
 
 type imageClipSource struct {
@@ -51,8 +53,8 @@ type imageClipSource struct {
 
 func (s *imageClipSource) Width() int                  { return s.ipf.Width() }
 func (s *imageClipSource) Height() int                 { return s.ipf.Height() }
-func (s *imageClipSource) ColorType() string           { return "RGBA8" }
-func (s *imageClipSource) OrderType() color.ColorOrder { return color.OrderRGBA }
+func (s *imageClipSource) ColorType() string           { return "RGB8" }
+func (s *imageClipSource) OrderType() color.ColorOrder { return color.OrderBGR }
 func (s *imageClipSource) Span(x, y, l int) []basics.Int8u {
 	return s.accessor.Span(x, y, l)
 }
@@ -62,9 +64,9 @@ func (s *imageClipSource) RowPtr(y int) []basics.Int8u {
 	return s.ipf.PixPtr(0, y)
 }
 
-// imgAlphaSpanGen wraps bilinear and converts brightness to alpha.
+// imgAlphaSpanGen wraps bilinear RGB sampling and converts brightness to alpha.
 type imgAlphaSpanGen struct {
-	inner *span.SpanImageFilterRGBABilinearClip[*imageClipSource, *span.SpanInterpolatorLinear[*transform.TransAffine]]
+	inner *span.SpanImageFilterRGBBilinearClip[*imageClipSource, *span.SpanInterpolatorLinear[*transform.TransAffine]]
 	lut   [256 * 3]uint8
 }
 
@@ -73,11 +75,16 @@ func (g *imgAlphaSpanGen) Generate(colors []color.RGBA8[color.Linear], x, y, len
 	if length > len(colors) {
 		length = len(colors)
 	}
-	g.inner.Generate(colors[:length], x, y)
+	tmp := make([]color.RGB8[color.Linear], length)
+	g.inner.Generate(tmp, x, y)
 	for i := 0; i < length; i++ {
+		src := tmp[i]
 		c := &colors[i]
-		sum := int(c.R) + int(c.G) + int(c.B) // 0..765
-		idx := (sum * len(g.lut)) / (3 * 255) // match C++ scaling
+		c.R = src.R
+		c.G = src.G
+		c.B = src.B
+		sum := int(src.R) + int(src.G) + int(src.B) // 0..765
+		idx := (sum * len(g.lut)) / (3 * 255)       // match C++ scaling
 		if idx >= len(g.lut) {
 			idx = len(g.lut) - 1
 		}
@@ -132,23 +139,19 @@ type clibcRand struct {
 	rptr  int
 }
 
-func newClibcRandSeed(seed int32) *clibcRand {
-	if seed == 0 {
-		seed = 1
+func newClibcRandSeed1() *clibcRand {
+	return &clibcRand{
+		state: [31]int32{
+			-1726662223, 379960547, 1735697613, 1040273694, 1313901226,
+			1627687941, -179304937, -2073333483, 1780058412, -1989503057,
+			-615974602, 344556628, 939512070, -1249116260, 1507946756,
+			-812545463, 154635395, 1388815473, -1926676823, 525320961,
+			-1009028674, 968117788, -123449607, 1284210865, 435012392,
+			-2017506339, -911064859, -370259173, 1132637927, 1398500161, -205601318,
+		},
+		fptr: 3,
+		rptr: 0,
 	}
-
-	r := &clibcRand{}
-	r.state[0] = seed
-	for i := 1; i < len(r.state); i++ {
-		next := (16807 * int64(r.state[i-1])) % 2147483647
-		r.state[i] = int32(next)
-	}
-	r.fptr = 3
-	r.rptr = 0
-	for i := 0; i < 310; i++ {
-		r.next()
-	}
-	return r
 }
 
 func (r *clibcRand) next() int32 {
@@ -181,13 +184,110 @@ func renderCtrl(ctx *agg.Context, ctrl ctrlPathSource) {
 	}
 }
 
-func loadPPMImage(filename string) (*agg.Image, error) {
-	data, err := os.ReadFile(filename)
+func loadImageAsset(filename string) (*agg.Image, error) {
+	f, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	switch filepath.Ext(filename) {
+	case ".bmp", ".BMP":
+		return loadBMPImage(f)
+	case ".ppm", ".PPM":
+		return loadPPMImage(f)
+	default:
+		if img, err := loadBMPImage(f); err == nil {
+			return img, nil
+		}
+		if _, err := f.Seek(0, io.SeekStart); err != nil {
+			return nil, err
+		}
+		return loadPPMImage(f)
+	}
+}
+
+func loadBMPImage(r io.ReadSeeker) (*agg.Image, error) {
+	var fileHeader struct {
+		Type      uint16
+		Size      uint32
+		Reserved1 uint16
+		Reserved2 uint16
+		OffBits   uint32
+	}
+	if err := binary.Read(r, binary.LittleEndian, &fileHeader); err != nil {
+		return nil, err
+	}
+	if fileHeader.Type != 0x4D42 {
+		return nil, errors.New("not a BMP file")
+	}
+
+	var infoHeader struct {
+		Size          uint32
+		Width         int32
+		Height        int32
+		Planes        uint16
+		BitCount      uint16
+		Compression   uint32
+		SizeImage     uint32
+		XPelsPerMeter int32
+		YPelsPerMeter int32
+		ClrUsed       uint32
+		ClrImportant  uint32
+	}
+	if err := binary.Read(r, binary.LittleEndian, &infoHeader); err != nil {
+		return nil, err
+	}
+	if infoHeader.Planes != 1 {
+		return nil, fmt.Errorf("unsupported BMP planes: %d", infoHeader.Planes)
+	}
+	if infoHeader.Compression != 0 {
+		return nil, fmt.Errorf("unsupported BMP compression: %d", infoHeader.Compression)
+	}
+	if infoHeader.BitCount != 24 && infoHeader.BitCount != 32 {
+		return nil, fmt.Errorf("unsupported BMP bit depth: %d", infoHeader.BitCount)
+	}
+
+	width := int(infoHeader.Width)
+	height := int(infoHeader.Height)
+	if width <= 0 || height == 0 {
+		return nil, fmt.Errorf("invalid BMP dimensions: %dx%d", width, height)
+	}
+	if height < 0 {
+		height = -height
+	}
+	if _, err := r.Seek(int64(fileHeader.OffBits), io.SeekStart); err != nil {
+		return nil, err
+	}
+
+	rowStride := ((width*int(infoHeader.BitCount) + 31) / 32) * 4
+	rowData := make([]byte, rowStride)
+	buf := make([]uint8, width*height*3)
+
+	for y := 0; y < height; y++ {
+		if _, err := io.ReadFull(r, rowData); err != nil {
+			return nil, err
+		}
+		dstY := y
+		for x := 0; x < width; x++ {
+			src := x * int(infoHeader.BitCount) / 8
+			dst := (dstY*width + x) * 3
+			buf[dst+0] = rowData[src+0]
+			buf[dst+1] = rowData[src+1]
+			buf[dst+2] = rowData[src+2]
+		}
+	}
+
+	return agg.NewImage(buf, width, height, width*3), nil
+}
+
+func loadPPMImage(r io.ReadSeeker) (*agg.Image, error) {
+	data, err := io.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}
 	if len(data) < 2 || data[0] != 'P' || data[1] != '6' {
-		return nil, errors.New("unsupported ppm format: expected P6")
+		return nil, errors.New("unsupported PPM format")
 	}
 
 	i := 2
@@ -200,19 +300,19 @@ func loadPPMImage(filename string) (*agg.Image, error) {
 				}
 				continue
 			}
-			if bytes.IndexByte([]byte{' ', '\t', '\n', '\r'}, b) >= 0 {
+			if b == ' ' || b == '\t' || b == '\r' || b == '\n' {
 				i++
 				continue
 			}
 			break
 		}
 		if i >= len(data) {
-			return "", errors.New("unexpected end of ppm header")
+			return "", errors.New("unexpected end of PPM header")
 		}
 		start := i
 		for i < len(data) {
 			b := data[i]
-			if bytes.IndexByte([]byte{' ', '\t', '\n', '\r', '#'}, b) >= 0 {
+			if b == ' ' || b == '\t' || b == '\r' || b == '\n' || b == '#' {
 				break
 			}
 			i++
@@ -232,36 +332,37 @@ func loadPPMImage(filename string) (*agg.Image, error) {
 	if err != nil {
 		return nil, err
 	}
-	w, err := strconv.Atoi(wTok)
-	if err != nil || w <= 0 {
-		return nil, errors.New("invalid ppm width")
+	width, err := strconv.Atoi(wTok)
+	if err != nil || width <= 0 {
+		return nil, fmt.Errorf("invalid PPM width: %q", wTok)
 	}
-	h, err := strconv.Atoi(hTok)
-	if err != nil || h <= 0 {
-		return nil, errors.New("invalid ppm height")
+	height, err := strconv.Atoi(hTok)
+	if err != nil || height <= 0 {
+		return nil, fmt.Errorf("invalid PPM height: %q", hTok)
 	}
-	maxV, err := strconv.Atoi(maxTok)
-	if err != nil || maxV != 255 {
-		return nil, errors.New("unsupported ppm max value")
+	maxVal, err := strconv.Atoi(maxTok)
+	if err != nil || maxVal != 255 {
+		return nil, fmt.Errorf("unsupported PPM max value: %q", maxTok)
 	}
 
-	for i < len(data) && (data[i] == ' ' || data[i] == '\t' || data[i] == '\n' || data[i] == '\r') {
+	for i < len(data) && (data[i] == ' ' || data[i] == '\t' || data[i] == '\r' || data[i] == '\n') {
 		i++
 	}
+	if len(data)-i < width*height*3 {
+		return nil, errors.New("PPM payload too short")
+	}
+
+	buf := make([]uint8, width*height*3)
 	rgb := data[i:]
-	if len(rgb) < w*h*3 {
-		return nil, errors.New("ppm pixel data too short")
+	for p := 0; p < width*height; p++ {
+		src := p * 3
+		dst := p * 3
+		buf[dst+0] = rgb[src+0]
+		buf[dst+1] = rgb[src+1]
+		buf[dst+2] = rgb[src+2]
 	}
 
-	buf := make([]uint8, w*h*4)
-	for p := 0; p < w*h; p++ {
-		buf[p*4+0] = rgb[p*3+0]
-		buf[p*4+1] = rgb[p*3+1]
-		buf[p*4+2] = rgb[p*3+2]
-		buf[p*4+3] = 255
-	}
-
-	return agg.NewImage(buf, w, h, w*4), nil
+	return agg.NewImage(buf, width, height, width*3), nil
 }
 
 func buildTransformedEllipsePath(w, h int, mtx *transform.TransAffine) *path.PathStorageStl {
@@ -306,7 +407,7 @@ func (d *demo) Render(img *agg.Image) {
 
 	// C++ on_init uses rand() without an explicit srand(), so match its
 	// default seed and generator instead of Go's PRNG.
-	rng := newClibcRandSeed(1)
+	rng := newClibcRandSeed1()
 	for i := 0; i < 50; i++ {
 		x := float64(rng.randN(canvasW))
 		y := float64(rng.randN(canvasH))
@@ -345,14 +446,13 @@ func (d *demo) Render(img *agg.Image) {
 	imgMtx.Invert()
 
 	imgRbuf := buffer.NewRenderingBufferU8()
-	imgRbuf.Attach(d.srcImg.Data, d.srcImg.Width(), d.srcImg.Height(), d.srcImg.Stride())
+	imgRbuf.Attach(d.srcImg.Data, d.srcImg.Width(), d.srcImg.Height(), -d.srcImg.Stride())
 	ipf := imagePixFmt{rbuf: imgRbuf}
 	accessor := image.NewImageAccessorClip(&ipf, []basics.Int8u{0, 0, 0, 0})
 	src := &imageClipSource{accessor: accessor, ipf: &ipf}
 
 	interp := span.NewSpanInterpolatorLinear[*transform.TransAffine](imgMtx, 8)
-	innerSG := span.NewSpanImageFilterRGBABilinearClipWithParams(src, color.RGBA8[color.Linear]{}, interp)
-	sg := &imgAlphaSpanGen{inner: innerSG}
+	sg := &imgAlphaSpanGen{inner: span.NewSpanImageFilterRGBBilinearClipWithParams(src, color.RGB8[color.Linear]{}, interp)}
 
 	alphaCtrl := spline.NewSplineCtrl[color.RGBA8[color.Linear]](2, 2, 200, 30, 6, false)
 	alphaCtrl.SetBackgroundColor(color.NewRGBA8[color.Linear](255, 255, 230, 255))
@@ -396,10 +496,14 @@ func (d *demo) Render(img *agg.Image) {
 }
 
 func main() {
-	srcPath := filepath.Join("examples", "shared", "art", defaultImageName+".ppm")
-	srcImg, err := loadPPMImage(srcPath)
+	srcPath := filepath.Join("examples", "shared", "art", defaultImageName+".bmp")
+	srcImg, err := loadImageAsset(srcPath)
 	if err != nil {
-		panic(err)
+		srcPath = filepath.Join("examples", "shared", "art", defaultImageName+".ppm")
+		srcImg, err = loadImageAsset(srcPath)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	lowlevelrunner.Run(lowlevelrunner.Config{
