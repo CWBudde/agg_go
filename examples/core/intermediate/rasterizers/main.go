@@ -9,6 +9,7 @@ import (
 	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
+	ctrlpkg "github.com/MeKo-Christian/agg_go/internal/ctrl"
 	"github.com/MeKo-Christian/agg_go/internal/ctrl/checkbox"
 	"github.com/MeKo-Christian/agg_go/internal/ctrl/slider"
 	"github.com/MeKo-Christian/agg_go/internal/gamma"
@@ -48,19 +49,18 @@ func (a *pathStorageAdapter) Vertex(x, y *float64) uint32 {
 }
 
 type controlPathAdapter struct {
-	rewindFn func(pathID uint)
-	vertexFn func() (x, y float64, cmd uint32)
+	ctrl ctrlpkg.Ctrl[color.RGBA]
 }
 
 func (a *controlPathAdapter) Rewind(pathID uint32) {
-	a.rewindFn(uint(pathID))
+	a.ctrl.Rewind(uint(pathID))
 }
 
 func (a *controlPathAdapter) Vertex(x, y *float64) uint32 {
-	vx, vy, cmd := a.vertexFn()
+	vx, vy, cmd := a.ctrl.Vertex()
 	*x = vx
 	*y = vy
-	return cmd
+	return uint32(cmd)
 }
 
 func renderSolidPath(
@@ -132,31 +132,18 @@ func renderControl(
 	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
 	sl *scanline.ScanlineP8,
 	renBase *renderer.RendererBase[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]],
-	numPaths uint,
-	rewindFn func(pathID uint),
-	vertexFn func() (x, y float64, cmd uint32),
-	colorFn func(pathID uint) color.RGBA,
+	ctrl ctrlpkg.Ctrl[color.RGBA],
 ) {
-	adapter := &controlPathAdapter{
-		rewindFn: rewindFn,
-		vertexFn: vertexFn,
-	}
-	for pathID := uint(0); pathID < numPaths; pathID++ {
+	adapter := &controlPathAdapter{ctrl: ctrl}
+	for pathID := uint(0); pathID < ctrl.NumPaths(); pathID++ {
 		ras.Reset()
 		ras.AddPath(adapter, uint32(pathID))
-		col := rgbaToRGBA8(colorFn(pathID))
 		if !ras.RewindScanlines() {
 			continue
 		}
 		sl.Reset(ras.MinX(), ras.MaxX())
-		for ras.SweepScanline(sl) {
-			y := sl.Y()
-			for _, spanData := range sl.Spans() {
-				if spanData.Len > 0 {
-					renBase.BlendSolidHspan(int(spanData.X), y, int(spanData.Len), col, spanData.Covers)
-				}
-			}
-		}
+		col := rgbaToRGBA8(ctrl.Color(pathID))
+		renscan.RenderScanlinesAASolid(ras, sl, renBase, col)
 	}
 }
 
@@ -176,6 +163,11 @@ func (d *demo) Render(img *agg.Image) {
 	)
 	sl := scanline.NewScanlineP8()
 	slBin := scanline.NewScanlineBin()
+	rasCtrl := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{},
+		rasterizer.NewRasterizerSlNoClip(),
+	)
+	slCtrl := scanline.NewScanlineP8()
 
 	// Anti-aliased triangle (same defaults as C++ sample).
 	pathAA := path.NewPathStorageStl()
@@ -220,42 +212,9 @@ func (d *demo) Render(img *agg.Image) {
 	testPerf := checkbox.NewDefaultCheckboxCtrl(140, 30, "Test Performance", false)
 	testPerf.SetChecked(false)
 
-	renderControl(
-		ras,
-		sl,
-		renBase,
-		gammaSlider.NumPaths(),
-		gammaSlider.Rewind,
-		func() (x, y float64, cmd uint32) {
-			vx, vy, c := gammaSlider.Vertex()
-			return vx, vy, uint32(c)
-		},
-		gammaSlider.Color,
-	)
-	renderControl(
-		ras,
-		sl,
-		renBase,
-		alphaSlider.NumPaths(),
-		alphaSlider.Rewind,
-		func() (x, y float64, cmd uint32) {
-			vx, vy, c := alphaSlider.Vertex()
-			return vx, vy, uint32(c)
-		},
-		alphaSlider.Color,
-	)
-	renderControl(
-		ras,
-		sl,
-		renBase,
-		testPerf.NumPaths(),
-		testPerf.Rewind,
-		func() (x, y float64, cmd uint32) {
-			vx, vy, c := testPerf.Vertex()
-			return vx, vy, uint32(c)
-		},
-		testPerf.Color,
-	)
+	renderControl(rasCtrl, slCtrl, renBase, gammaSlider)
+	renderControl(rasCtrl, slCtrl, renBase, alphaSlider)
+	renderControl(rasCtrl, slCtrl, renBase, testPerf)
 }
 
 func main() {
