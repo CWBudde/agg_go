@@ -409,6 +409,16 @@ func buildColorLUT() []color.RGBA8[color.SRGB] {
 	return lut
 }
 
+// BuildGlyphPath exposes the canonical glyph path used by the demo.
+func BuildGlyphPath() *path.PathStorageStl {
+	return buildGlyphPath()
+}
+
+// BuildColorLUT exposes the canonical gradient lookup table used by the demo.
+func BuildColorLUT() []color.RGBA8[color.SRGB] {
+	return buildColorLUT()
+}
+
 // Draw renders the blend color demo onto the given context.
 // Returns the (potentially initialized) quad and shape bounds so
 // the caller can track the draggable quad across frames.
