@@ -80,19 +80,16 @@ func (r *RendererRasterHTextSolid[BR, GG, C]) RenderText(x, y float64, str strin
 		r.glyph.Prepare(&rect, x, y, ch, flip)
 		if rect.X2 >= rect.X1 {
 			var i int
-			// Glyph.Span internally flips the row index. For non-flipped text,
-			// pass (rect.Y2 - i) so the internal flip restores the original order.
-			// For flipped text, pass (i - rect.Y1) to intentionally mirror.
 			if !flip {
 				for i = rect.Y1; i <= rect.Y2; i++ {
-					covers := r.glyph.Span(rect.Y2 - i)
+					covers := r.glyph.Span(i - rect.Y1)
 					if len(covers) > 0 {
 						r.ren.BlendSolidHspan(rect.X1, i, rect.X2-rect.X1+1, r.color, covers)
 					}
 				}
 			} else {
 				for i = rect.Y1; i <= rect.Y2; i++ {
-					covers := r.glyph.Span(i - rect.Y1)
+					covers := r.glyph.Span(rect.Y2 - i)
 					if len(covers) > 0 {
 						r.ren.BlendSolidHspan(rect.X1, i, rect.X2-rect.X1+1, r.color, covers)
 					}
@@ -242,7 +239,7 @@ func (r *RendererRasterHText[SR, GG]) RenderText(x, y float64, str string, flip 
 			var i int
 			if !flip {
 				for i = rect.Y1; i <= rect.Y2; i++ {
-					covers := r.glyph.Span(rect.Y2 - i)
+					covers := r.glyph.Span(i - rect.Y1)
 					if len(covers) > 0 {
 						scanline := NewScanlineSingleSpan(rect.X1, i, rect.X2-rect.X1+1, covers)
 						r.ren.Render(scanline)
@@ -250,7 +247,7 @@ func (r *RendererRasterHText[SR, GG]) RenderText(x, y float64, str string, flip 
 				}
 			} else {
 				for i = rect.Y1; i <= rect.Y2; i++ {
-					covers := r.glyph.Span(i - rect.Y1)
+					covers := r.glyph.Span(rect.Y2 - i)
 					if len(covers) > 0 {
 						scanline := NewScanlineSingleSpan(rect.X1, i, rect.X2-rect.X1+1, covers)
 						r.ren.Render(scanline)

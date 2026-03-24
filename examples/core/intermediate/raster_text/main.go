@@ -24,15 +24,33 @@ type spanRenderer struct {
 	img *agg.Image
 }
 
+func (s *spanRenderer) pixelOffset(x, y int) (int, bool) {
+	width := s.img.Width()
+	height := s.img.Height()
+	if x < 0 || y < 0 || x >= width || y >= height {
+		return 0, false
+	}
+
+	stride := s.img.Stride()
+	base := 0
+	if stride < 0 {
+		base = (height - 1) * -stride
+	}
+
+	off := base + y*stride + x*4
+	if off < 0 || off+3 >= len(s.img.Data) {
+		return 0, false
+	}
+	return off, true
+}
+
 func (s *spanRenderer) blendPixel(x, y int, sr, sg, sb, sa, cover uint8) {
-	h := s.img.Height()
-	fy := h - 1 - y
-	if x < 0 || fy < 0 || x >= s.img.Width() || fy >= h {
+	off, ok := s.pixelOffset(x, y)
+	if !ok {
 		return
 	}
 	alpha := uint32(sa) * uint32(cover) / 255
 	inv := 255 - alpha
-	off := (fy*s.img.Width() + x) * 4
 	d := s.img.Data
 	d[off+0] = uint8((uint32(sr)*alpha + uint32(d[off+0])*inv) / 255)
 	d[off+1] = uint8((uint32(sg)*alpha + uint32(d[off+1])*inv) / 255)
@@ -84,16 +102,34 @@ func (g *gradientRenderer) gradientColor(x, y int) (r, gr, b uint8) {
 	return uint8(rf * 255), uint8(gf * 255), 0
 }
 
+func (g *gradientRenderer) pixelOffset(x, y int) (int, bool) {
+	width := g.img.Width()
+	height := g.img.Height()
+	if x < 0 || y < 0 || x >= width || y >= height {
+		return 0, false
+	}
+
+	stride := g.img.Stride()
+	base := 0
+	if stride < 0 {
+		base = (height - 1) * -stride
+	}
+
+	off := base + y*stride + x*4
+	if off < 0 || off+3 >= len(g.img.Data) {
+		return 0, false
+	}
+	return off, true
+}
+
 func (g *gradientRenderer) blendPixel(x, y int, cover uint8) {
-	h := g.img.Height()
-	fy := h - 1 - y
-	if x < 0 || fy < 0 || x >= g.img.Width() || fy >= h {
+	off, ok := g.pixelOffset(x, y)
+	if !ok {
 		return
 	}
 	cr, cg, _ := g.gradientColor(x, y)
 	alpha := uint32(cover)
 	inv := 255 - alpha
-	off := (fy*g.img.Width() + x) * 4
 	d := g.img.Data
 	d[off+0] = uint8((uint32(cr)*alpha + uint32(d[off+0])*inv) / 255)
 	d[off+1] = uint8((uint32(cg)*alpha + uint32(d[off+1])*inv) / 255)
@@ -186,7 +222,7 @@ func (d *demo) Render(img *agg.Image) {
 	gradRen := newGradientRenderer(img)
 	g.SetFont(fonts.GetVerdana12())
 	gradTextRen := rtext.NewRendererRasterHText[*gradientRenderer, *glyph.GlyphRasterBin](gradRen, g)
-	gradTextRen.RenderText(5, 465, "RADIAL REPEATING GRADIENT: A quick brown fox jumps over the lazy dog", false)
+	gradTextRen.RenderText(5, float64(img.Height()-15), "RADIAL REPEATING GRADIENT: A quick brown fox jumps over the lazy dog", false)
 }
 
 func main() {
@@ -194,5 +230,6 @@ func main() {
 		Title:  "Raster Text",
 		Width:  640,
 		Height: 480,
+		FlipY:  true,
 	}, &demo{})
 }

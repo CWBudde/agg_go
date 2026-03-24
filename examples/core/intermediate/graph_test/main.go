@@ -14,9 +14,9 @@ type demo struct {
 func (d *demo) Render(img *agg.Image) {
 	ctx := agg.NewContextForImage(img)
 	graphtest.Draw(ctx, d.graph, graphtest.Config{
-		Mode:        1,
+		Mode:        0,
 		Width:       2.0,
-		Translucent: true,
+		Translucent: false,
 		DrawNodes:   true,
 		DrawEdges:   true,
 	})
@@ -28,5 +28,6 @@ func main() {
 		Title:  "Graph Test",
 		Width:  700,
 		Height: 530,
+		FlipY:  true,
 	}, d)
 }
