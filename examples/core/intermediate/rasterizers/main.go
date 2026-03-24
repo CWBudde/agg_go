@@ -18,6 +18,7 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/pixfmt/blender"
 	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
 	"github.com/MeKo-Christian/agg_go/internal/renderer"
+	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
 	"github.com/MeKo-Christian/agg_go/internal/scanline"
 )
 
@@ -82,8 +83,30 @@ func renderSolidPath(
 		for _, spanData := range sl.Spans() {
 			if spanData.Len > 0 {
 				renBase.BlendSolidHspan(int(spanData.X), y, int(spanData.Len), col, spanData.Covers)
+			} else {
+				renBase.BlendHline(int(spanData.X), y, int(spanData.X)-int(spanData.Len)-1, col, spanData.Covers[0])
 			}
 		}
+	}
+}
+
+func renderAliasedPath(
+	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
+	sl *scanline.ScanlineBin,
+	renBase *renderer.RendererBase[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]],
+	vs rasterizer.VertexSource,
+	col color.RGBA8[color.Linear],
+) {
+	ras.Reset()
+	ras.AddPath(vs, 0)
+
+	if !ras.RewindScanlines() {
+		return
+	}
+
+	sl.Reset(ras.MinX(), ras.MaxX())
+	for ras.SweepScanline(sl) {
+		renscan.RenderScanlineBinSolid(sl, renBase, col)
 	}
 }
 
@@ -141,7 +164,7 @@ type demo struct{}
 
 func (d *demo) Render(img *agg.Image) {
 	imgData := img.Data
-	rbuf := buffer.NewRenderingBufferU8WithData(imgData, frameWidth, frameHeight, frameWidth*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(imgData, frameWidth, frameHeight, img.Stride())
 
 	pf := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
 	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]](pf)
@@ -152,6 +175,7 @@ func (d *demo) Render(img *agg.Image) {
 		rasterizer.NewRasterizerSlNoClip(),
 	)
 	sl := scanline.NewScanlineP8()
+	slBin := scanline.NewScanlineBin()
 
 	// Anti-aliased triangle (same defaults as C++ sample).
 	pathAA := path.NewPathStorageStl()
@@ -175,9 +199,9 @@ func (d *demo) Render(img *agg.Image) {
 	pathAliased.LineTo(triX[2]-200, triY[2])
 	pathAliased.ClosePolygon(0)
 	ras.SetGamma(gamma.NewGammaThreshold(0.5).Apply)
-	renderSolidPath(
+	renderAliasedPath(
 		ras,
-		sl,
+		slBin,
 		renBase,
 		&pathStorageAdapter{ps: pathAliased},
 		color.RGBA8[color.Linear]{R: 25, G: 127, B: 178, A: 255},

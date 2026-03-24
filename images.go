@@ -108,22 +108,29 @@ func (img *Image) ToGoImage() *image.RGBA {
 
 	goImg := image.NewRGBA(image.Rect(0, 0, img.width, img.height))
 
-	// Copy pixel data from AGG format (RGBA) to Go image format (RGBA)
-	stride := img.renBuf.Stride()
+	// Copy pixel data row-by-row in top-down image order. Bottom-up (flip_y)
+	// buffers are read in reverse row order so exported images match the C++
+	// platform_support screenshots.
+	rowStride := img.width * 4
 	for y := 0; y < img.height; y++ {
-		srcRow := y * stride
+		srcY := y
+		if img.Stride() < 0 {
+			srcY = img.height - 1 - y
+		}
+		srcRow := img.renBuf.Row(srcY)
+		if len(srcRow) == 0 {
+			continue
+		}
 		dstRow := y * goImg.Stride
-		for x := 0; x < img.width; x++ {
-			srcIdx := srcRow + x*4
-			dstIdx := dstRow + x*4
-
-			// AGG format is RGBA, Go image is also RGBA, so direct copy
-			if srcIdx+3 < len(img.Data) && dstIdx+3 < len(goImg.Pix) {
-				goImg.Pix[dstIdx] = img.Data[srcIdx]     // R
-				goImg.Pix[dstIdx+1] = img.Data[srcIdx+1] // G
-				goImg.Pix[dstIdx+2] = img.Data[srcIdx+2] // B
-				goImg.Pix[dstIdx+3] = img.Data[srcIdx+3] // A
-			}
+		copyLen := rowStride
+		if copyLen > len(srcRow) {
+			copyLen = len(srcRow)
+		}
+		if dstRow+copyLen > len(goImg.Pix) {
+			copyLen = len(goImg.Pix) - dstRow
+		}
+		if copyLen > 0 {
+			copy(goImg.Pix[dstRow:dstRow+copyLen], srcRow[:copyLen])
 		}
 	}
 
@@ -272,23 +279,30 @@ func (img *Image) ToStandardImage() (image.Image, error) {
 
 	width := img.Width()
 	height := img.Height()
-	stride := img.renBuf.Stride()
-
 	bounds := image.Rect(0, 0, width, height)
 	stdImg := image.NewRGBA(bounds)
 
-	// Copy pixel data
-	buffer := img.renBuf.Buf()
+	// Copy pixel data row-by-row in top-down image order. Bottom-up (flip_y)
+	// buffers are read in reverse row order so exported images match the C++
+	// platform_support screenshots.
 	for y := 0; y < height; y++ {
+		srcY := y
+		if img.Stride() < 0 {
+			srcY = height - 1 - y
+		}
+		srcRow := img.renBuf.Row(srcY)
+		if len(srcRow) == 0 {
+			continue
+		}
+		dstIndex := y * stdImg.Stride
 		for x := 0; x < width; x++ {
-			srcIndex := y*stride + x*4
-			dstIndex := y*stdImg.Stride + x*4
-
-			if srcIndex+3 < len(buffer) {
-				stdImg.Pix[dstIndex] = buffer[srcIndex]     // R
-				stdImg.Pix[dstIndex+1] = buffer[srcIndex+1] // G
-				stdImg.Pix[dstIndex+2] = buffer[srcIndex+2] // B
-				stdImg.Pix[dstIndex+3] = buffer[srcIndex+3] // A
+			srcIndex := x * 4
+			dstOff := dstIndex + x*4
+			if srcIndex+3 < len(srcRow) && dstOff+3 < len(stdImg.Pix) {
+				stdImg.Pix[dstOff] = srcRow[srcIndex]     // R
+				stdImg.Pix[dstOff+1] = srcRow[srcIndex+1] // G
+				stdImg.Pix[dstOff+2] = srcRow[srcIndex+2] // B
+				stdImg.Pix[dstOff+3] = srcRow[srcIndex+3] // A
 			}
 		}
 	}
