@@ -6,9 +6,9 @@ var graphTestGraph = graphtest.NewGraph(200, 100)
 
 func drawGraphTestDemo() {
 	graphtest.Draw(ctx, graphTestGraph, graphtest.Config{
-		Mode:        1,
+		Mode:        0,
 		Width:       2.0,
-		Translucent: true,
+		Translucent: false,
 		DrawNodes:   true,
 		DrawEdges:   true,
 	})

@@ -8,6 +8,83 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/glyph"
 )
 
+func copyCovers(covers []basics.CoverType) []basics.CoverType {
+	if len(covers) == 0 {
+		return nil
+	}
+	out := make([]basics.CoverType, len(covers))
+	copy(out, covers)
+	return out
+}
+
+func expectedSolidRowCalls(t *testing.T, g *glyph.GlyphRasterBin, x, y float64, ch rune, flip bool) []struct {
+	y      int
+	covers []basics.CoverType
+} {
+	t.Helper()
+
+	var rect glyph.GlyphRect
+	g.Prepare(&rect, x, y, ch, flip)
+
+	var expected []struct {
+		y      int
+		covers []basics.CoverType
+	}
+	for row := rect.Y1; row <= rect.Y2; row++ {
+		var covers []basics.CoverType
+		if flip {
+			covers = g.Span(rect.Y2 - row)
+		} else {
+			covers = g.Span(row - rect.Y1)
+		}
+		if len(covers) == 0 {
+			continue
+		}
+		expected = append(expected, struct {
+			y      int
+			covers []basics.CoverType
+		}{
+			y:      row,
+			covers: copyCovers(covers),
+		})
+	}
+	return expected
+}
+
+func expectedScanlineRowCalls(t *testing.T, g *glyph.GlyphRasterBin, x, y float64, ch rune, flip bool) []struct {
+	y      int
+	covers []basics.CoverType
+} {
+	t.Helper()
+
+	var rect glyph.GlyphRect
+	g.Prepare(&rect, x, y, ch, flip)
+
+	var expected []struct {
+		y      int
+		covers []basics.CoverType
+	}
+	for row := rect.Y1; row <= rect.Y2; row++ {
+		var covers []basics.CoverType
+		if flip {
+			covers = g.Span(rect.Y2 - row)
+		} else {
+			covers = g.Span(row - rect.Y1)
+		}
+		if len(covers) == 0 {
+			continue
+		}
+		expected = append(expected, struct {
+			y      int
+			covers []basics.CoverType
+		}{
+			y:      row,
+			covers: copyCovers(covers),
+		})
+	}
+	return expected
+}
+
 // MockBaseRenderer implements BaseRendererInterface for testing
 type MockBaseRenderer[C any] struct {
 	blendHSpanCalls []BlendHSpanCall[C]
@@ -341,6 +418,124 @@ func TestRendererRasterTextWithFlip(t *testing.T) {
 
 	// With flip, the span calculation should be different
 	// This is tested implicitly by ensuring no panics occur
+}
+
+func TestRendererRasterHTextSolidRowOrder(t *testing.T) {
+	font := fonts.GetSimple4x6Font()
+	g := glyph.NewGlyphRasterBin(font)
+
+	t.Run("normal", func(t *testing.T) {
+		mockRenderer := NewMockBaseRenderer[string]()
+		renderer := NewRendererRasterHTextSolid[*MockBaseRenderer[string], *glyph.GlyphRasterBin, string](mockRenderer, g)
+		renderer.SetColor("green")
+
+		expected := expectedSolidRowCalls(t, g, 5, 10, 'A', false)
+		renderer.RenderText(5, 10, "A", false)
+
+		if len(mockRenderer.blendHSpanCalls) != len(expected) {
+			t.Fatalf("expected %d row calls, got %d", len(expected), len(mockRenderer.blendHSpanCalls))
+		}
+		for i, call := range mockRenderer.blendHSpanCalls {
+			if call.Y != expected[i].y {
+				t.Fatalf("call %d: expected y=%d, got %d", i, expected[i].y, call.Y)
+			}
+			if len(call.Covers) != len(expected[i].covers) {
+				t.Fatalf("call %d: expected cover length=%d, got %d", i, len(expected[i].covers), len(call.Covers))
+			}
+			for j := range call.Covers {
+				if call.Covers[j] != expected[i].covers[j] {
+					t.Fatalf("call %d cover %d: expected %d, got %d", i, j, expected[i].covers[j], call.Covers[j])
+				}
+			}
+		}
+	})
+
+	t.Run("flipped", func(t *testing.T) {
+		mockRenderer := NewMockBaseRenderer[string]()
+		renderer := NewRendererRasterHTextSolid[*MockBaseRenderer[string], *glyph.GlyphRasterBin, string](mockRenderer, g)
+		renderer.SetColor("green")
+
+		expected := expectedSolidRowCalls(t, g, 5, 10, 'A', true)
+		renderer.RenderText(5, 10, "A", true)
+
+		if len(mockRenderer.blendHSpanCalls) != len(expected) {
+			t.Fatalf("expected %d row calls, got %d", len(expected), len(mockRenderer.blendHSpanCalls))
+		}
+		for i, call := range mockRenderer.blendHSpanCalls {
+			if call.Y != expected[i].y {
+				t.Fatalf("call %d: expected y=%d, got %d", i, expected[i].y, call.Y)
+			}
+			if len(call.Covers) != len(expected[i].covers) {
+				t.Fatalf("call %d: expected cover length=%d, got %d", i, len(expected[i].covers), len(call.Covers))
+			}
+			for j := range call.Covers {
+				if call.Covers[j] != expected[i].covers[j] {
+					t.Fatalf("call %d cover %d: expected %d, got %d", i, j, expected[i].covers[j], call.Covers[j])
+				}
+			}
+		}
+	})
+}
+
+func TestRendererRasterHTextRowOrder(t *testing.T) {
+	font := fonts.GetSimple4x6Font()
+	g := glyph.NewGlyphRasterBin(font)
+
+	t.Run("normal", func(t *testing.T) {
+		mockRenderer := NewMockScanlineRenderer()
+		renderer := NewRendererRasterHText[*MockScanlineRenderer, *glyph.GlyphRasterBin](mockRenderer, g)
+
+		expected := expectedScanlineRowCalls(t, g, 5, 10, 'A', false)
+		renderer.RenderText(5, 10, "A", false)
+
+		if len(mockRenderer.renderCalls) != len(expected) {
+			t.Fatalf("expected %d scanline calls, got %d", len(expected), len(mockRenderer.renderCalls))
+		}
+		for i, call := range mockRenderer.renderCalls {
+			if call.Y != expected[i].y {
+				t.Fatalf("call %d: expected y=%d, got %d", i, expected[i].y, call.Y)
+			}
+			if len(call.Spans) != 1 {
+				t.Fatalf("call %d: expected 1 span, got %d", i, len(call.Spans))
+			}
+			if len(call.Spans[0].Covers) != len(expected[i].covers) {
+				t.Fatalf("call %d: expected cover length=%d, got %d", i, len(expected[i].covers), len(call.Spans[0].Covers))
+			}
+			for j := range call.Spans[0].Covers {
+				if call.Spans[0].Covers[j] != expected[i].covers[j] {
+					t.Fatalf("call %d cover %d: expected %d, got %d", i, j, expected[i].covers[j], call.Spans[0].Covers[j])
+				}
+			}
+		}
+	})
+
+	t.Run("flipped", func(t *testing.T) {
+		mockRenderer := NewMockScanlineRenderer()
+		renderer := NewRendererRasterHText[*MockScanlineRenderer, *glyph.GlyphRasterBin](mockRenderer, g)
+
+		expected := expectedScanlineRowCalls(t, g, 5, 10, 'A', true)
+		renderer.RenderText(5, 10, "A", true)
+
+		if len(mockRenderer.renderCalls) != len(expected) {
+			t.Fatalf("expected %d scanline calls, got %d", len(expected), len(mockRenderer.renderCalls))
+		}
+		for i, call := range mockRenderer.renderCalls {
+			if call.Y != expected[i].y {
+				t.Fatalf("call %d: expected y=%d, got %d", i, expected[i].y, call.Y)
+			}
+			if len(call.Spans) != 1 {
+				t.Fatalf("call %d: expected 1 span, got %d", i, len(call.Spans))
+			}
+			if len(call.Spans[0].Covers) != len(expected[i].covers) {
+				t.Fatalf("call %d: expected cover length=%d, got %d", i, len(expected[i].covers), len(call.Spans[0].Covers))
+			}
+			for j := range call.Spans[0].Covers {
+				if call.Spans[0].Covers[j] != expected[i].covers[j] {
+					t.Fatalf("call %d cover %d: expected %d, got %d", i, j, expected[i].covers[j], call.Spans[0].Covers[j])
+				}
+			}
+		}
+	})
 }
 
 func TestGlyphRasterBinInvalidGlyph(t *testing.T) {

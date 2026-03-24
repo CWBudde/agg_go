@@ -6,12 +6,12 @@ package main
 
 import (
 	"math"
-	"math/rand"
 
 	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/ctrl/spline"
 	"github.com/MeKo-Christian/agg_go/internal/image"
 	"github.com/MeKo-Christian/agg_go/internal/path"
 	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
@@ -31,7 +31,8 @@ var (
 	imgAlphaEllipses []imgAlphaEllipse
 
 	// Brightness-to-alpha LUT (256*3 entries): alpha = f(r+g+b)
-	imgAlphaLUT [256 * 3]uint8
+	imgAlphaLUT  [256 * 3]uint8
+	imgAlphaCtrl *spline.SplineCtrl[color.RGBA8[color.Linear]]
 
 	// Reusable components
 	imgAlphaRbuf        *buffer.RenderingBufferU8
@@ -73,6 +74,87 @@ func (g *imgAlphaSpanGen) Generate(colors []color.RGBA8[color.Linear], x, y, len
 	}
 }
 
+type ctrlPathSource interface {
+	NumPaths() uint
+	Rewind(pathID uint)
+	Vertex() (x, y float64, cmd basics.PathCommand)
+	Color(pathID uint) color.RGBA8[color.Linear]
+}
+
+type ctrlPathAdapter struct {
+	ctrl ctrlPathSource
+}
+
+func (a *ctrlPathAdapter) Rewind(pathID uint32) {
+	a.ctrl.Rewind(uint(pathID))
+}
+
+func (a *ctrlPathAdapter) Vertex(x, y *float64) uint32 {
+	vx, vy, cmd := a.ctrl.Vertex()
+	*x = vx
+	*y = vy
+	return uint32(cmd)
+}
+
+func toAggColor(c color.RGBA8[color.Linear]) agg.Color {
+	return agg.NewColor(uint8(c.R), uint8(c.G), uint8(c.B), uint8(c.A))
+}
+
+type clibcRand struct {
+	state [31]int32
+	fptr  int
+	rptr  int
+}
+
+func newClibcRandSeed(seed int32) *clibcRand {
+	if seed == 0 {
+		seed = 1
+	}
+
+	r := &clibcRand{}
+	r.state[0] = seed
+	for i := 1; i < len(r.state); i++ {
+		next := (16807 * int64(r.state[i-1])) % 2147483647
+		r.state[i] = int32(next)
+	}
+	r.fptr = 3
+	r.rptr = 0
+	for i := 0; i < 310; i++ {
+		r.next()
+	}
+	return r
+}
+
+func (r *clibcRand) next() int32 {
+	r.state[r.fptr] += r.state[r.rptr]
+	result := int32(uint32(r.state[r.fptr]) >> 1)
+	r.fptr++
+	if r.fptr >= len(r.state) {
+		r.fptr = 0
+	}
+	r.rptr++
+	if r.rptr >= len(r.state) {
+		r.rptr = 0
+	}
+	return result
+}
+
+func (r *clibcRand) randN(n int) int {
+	return int(r.next()) % n
+}
+
+func renderCtrl(ctx *agg.Context, ctrl ctrlPathSource) {
+	a := ctx.GetAgg2D()
+	ras := a.GetInternalRasterizer()
+	adapter := &ctrlPathAdapter{ctrl: ctrl}
+
+	for pathID := uint(0); pathID < ctrl.NumPaths(); pathID++ {
+		ras.Reset()
+		ras.AddPath(adapter, uint32(pathID))
+		a.RenderRasterizerWithColor(toAggColor(ctrl.Color(pathID)))
+	}
+}
+
 func initImgAlphaDemo() {
 	if imgAlphaInitialized {
 		return
@@ -87,52 +169,42 @@ func initImgAlphaDemo() {
 	)
 	imgAlphaSl = scanline.NewScanlineU8()
 	imgAlphaPath = path.NewPathStorageStl()
+	imgAlphaCtrl = spline.NewSplineCtrl[color.RGBA8[color.Linear]](2, 2, 200, 30, 6, false)
+	imgAlphaCtrl.SetBackgroundColor(color.NewRGBA8[color.Linear](255, 255, 230, 255))
+	imgAlphaCtrl.SetBorderColor(color.NewRGBA8[color.Linear](0, 0, 0, 255))
+	imgAlphaCtrl.SetCurveColor(color.NewRGBA8[color.Linear](0, 0, 0, 255))
+	imgAlphaCtrl.SetInactivePointColor(color.NewRGBA8[color.Linear](0, 0, 0, 255))
+	imgAlphaCtrl.SetActivePointColor(color.NewRGBA8[color.Linear](255, 0, 0, 255))
 
-	// Build background ellipses (same seed each run for reproducibility)
-	rng := rand.New(rand.NewSource(42))
+	// Build background ellipses using the C rand() sequence to match AGG.
+	rng := newClibcRandSeed(1)
 	imgAlphaEllipses = make([]imgAlphaEllipse, 50)
 	for i := range imgAlphaEllipses {
 		imgAlphaEllipses[i] = imgAlphaEllipse{
-			x:  float64(rng.Intn(width)),
-			y:  float64(rng.Intn(height)),
-			rx: float64(rng.Intn(60) + 10),
-			ry: float64(rng.Intn(60) + 10),
-			r:  uint8(rng.Intn(256)),
-			g:  uint8(rng.Intn(256)),
-			b:  uint8(rng.Intn(256)),
-			a:  uint8(rng.Intn(256)),
+			x:  float64(rng.randN(width)),
+			y:  float64(rng.randN(height)),
+			rx: float64(rng.randN(60) + 10),
+			ry: float64(rng.randN(60) + 10),
+			r:  uint8(rng.randN(256)),
+			g:  uint8(rng.randN(256)),
+			b:  uint8(rng.randN(256)),
+			a:  uint8(rng.randN(256)),
 		}
 	}
 
-	// Default brightness→alpha LUT: same as C++ defaults (control points 1,1,1,0.5,0.5,1)
-	// Approximation: linear fade in the middle region.
-	buildImgAlphaLUT([]float64{1.0, 1.0, 1.0, 0.5, 0.5, 1.0})
+	// Default brightness→alpha LUT: same as C++ defaults (control points 1,1,1,0.5,0.5,1).
+	imgAlphaCtrl.SetValue(0, 1.0)
+	imgAlphaCtrl.SetValue(1, 1.0)
+	imgAlphaCtrl.SetValue(2, 1.0)
+	imgAlphaCtrl.SetValue(3, 0.5)
+	imgAlphaCtrl.SetValue(4, 0.5)
+	imgAlphaCtrl.SetValue(5, 1.0)
+	for i := range imgAlphaLUT {
+		t := float64(i) / float64(len(imgAlphaLUT))
+		imgAlphaLUT[i] = uint8(imgAlphaCtrl.Value(t)*255.0 + 0.5)
+	}
 
 	imgAlphaInitialized = true
-}
-
-// buildImgAlphaLUT builds the brightness→alpha LUT from 6 control values (spline approximation).
-func buildImgAlphaLUT(ctrlValues []float64) {
-	n := 256 * 3
-	for i := 0; i < n; i++ {
-		t := float64(i) / float64(n-1) // 0..1
-		// Simple piecewise linear interpolation of the control points
-		nc := len(ctrlValues)
-		seg := t * float64(nc-1)
-		lo := int(seg)
-		if lo >= nc-1 {
-			lo = nc - 2
-		}
-		frac := seg - float64(lo)
-		v := ctrlValues[lo]*(1-frac) + ctrlValues[lo+1]*frac
-		if v < 0 {
-			v = 0
-		}
-		if v > 1 {
-			v = 1
-		}
-		imgAlphaLUT[i] = uint8(v * 255)
-	}
 }
 
 func drawImageAlphaDemo() {
@@ -147,7 +219,7 @@ func drawImageAlphaDemo() {
 
 	// Attach rendering target
 	img := ctx.GetImage()
-	imgAlphaRbuf.Attach(img.Data, img.Width(), img.Height(), img.Width()*4)
+	imgAlphaRbuf.Attach(img.Data, img.Width(), img.Height(), img.Stride())
 
 	// Render background ellipses using the public API
 	ctx.GetAgg2D().ResetTransformations()
@@ -177,7 +249,7 @@ func drawImageAlphaDemo() {
 
 	// Image source
 	imgRbuf := buffer.NewRenderingBufferU8()
-	imgRbuf.Attach(imgAlphaImage.Data, imgAlphaImage.Width(), imgAlphaImage.Height(), imgAlphaImage.Width()*4)
+	imgRbuf.Attach(imgAlphaImage.Data, imgAlphaImage.Width(), imgAlphaImage.Height(), imgAlphaImage.Stride())
 	ipf := imagePixFmt{rbuf: imgRbuf}
 	accessor := image.NewImageAccessorClip(&ipf, []basics.Int8u{0, 0, 0, 0})
 	src := &imageClipSource{accessor: accessor, ipf: &ipf}
@@ -225,4 +297,6 @@ func drawImageAlphaDemo() {
 			}
 		}
 	}
+
+	renderCtrl(ctx, imgAlphaCtrl)
 }

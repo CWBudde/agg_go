@@ -2,9 +2,16 @@ package graphtest
 
 import (
 	"math"
-	"math/rand"
 
 	agg "github.com/MeKo-Christian/agg_go"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	icolor "github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/conv"
+	checkboxctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/checkbox"
+	rboxctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/rbox"
+	sliderctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/slider"
+	"github.com/MeKo-Christian/agg_go/internal/shapes"
+	"github.com/MeKo-Christian/agg_go/internal/vcgen"
 )
 
 type Config struct {
@@ -25,9 +32,6 @@ type node struct {
 type edge struct {
 	n1 int
 	n2 int
-	r  uint8
-	g  uint8
-	b  uint8
 }
 
 type Graph struct {
@@ -45,7 +49,6 @@ type preparedEdge struct {
 	arrowY0  float64
 	arrowX1  float64
 	arrowY1  float64
-	r, g, b  uint8
 }
 
 type preparedGraph struct {
@@ -61,7 +64,7 @@ func NewGraph(numNodes, numEdges int) *Graph {
 		numEdges = 100
 	}
 
-	rng := rand.New(rand.NewSource(100))
+	rng := newClibcRandSeed(100)
 	g := &Graph{
 		nodes:    make([]node, numNodes),
 		edges:    make([]edge, 0, numEdges),
@@ -69,22 +72,19 @@ func NewGraph(numNodes, numEdges int) *Graph {
 	}
 	for i := range g.nodes {
 		g.nodes[i] = node{
-			x: rng.Float64()*0.75 + 0.2,
-			y: rng.Float64()*0.85 + 0.1,
+			x: rng.randDouble()*0.75 + 0.2,
+			y: rng.randDouble()*0.85 + 0.1,
 		}
 	}
 	for len(g.edges) < numEdges {
-		n1 := rng.Intn(numNodes)
-		n2 := rng.Intn(numNodes)
+		n1 := rng.randN(numNodes)
+		n2 := rng.randN(numNodes)
 		if n1 == n2 {
 			continue
 		}
 		g.edges = append(g.edges, edge{
 			n1: n1,
 			n2: n2,
-			r:  uint8(rng.Intn(128)),
-			g:  uint8(rng.Intn(128)),
-			b:  uint8(rng.Intn(128)),
 		})
 	}
 	return g
@@ -112,35 +112,47 @@ func Draw(ctx *agg.Context, g *Graph, cfg Config) {
 	w := float64(ctx.GetImage().Width())
 	h := float64(ctx.GetImage().Height())
 	prepared := g.prepare(int(w), int(h))
+	colorRng := newClibcRandSeed(100)
 
 	if cfg.DrawEdges {
 		ctx.SetLineWidth(cfg.Width)
 		a.NoFill()
 		if cfg.Mode == 2 {
-			a.AddDash(9, 5)
+			a.AddDash(6, 3)
 			a.DashStart(0)
 		}
 		for _, e := range prepared.edges {
+			r := uint8(colorRng.randN(128))
+			gc := uint8(colorRng.randN(128))
+			b := uint8(colorRng.randN(128))
 			a8 := uint8(255)
 			if cfg.Translucent {
 				a8 = 80
 			}
-			col := agg.NewColor(e.r, e.g, e.b, a8)
+			col := agg.NewColor(r, gc, b, a8)
 			ctx.SetColor(col)
 
 			switch cfg.Mode {
 			case 0:
-				a.ResetPath()
-				a.MoveTo(e.x1, e.y1)
-				a.LineTo(e.x2, e.y2)
-				a.DrawPath(agg.StrokeOnly)
-				drawArrowHead(ctx, e.arrowX0, e.arrowY0, e.arrowX1, e.arrowY1, 8.0, col)
+				line := &lineSource{x1: e.x1, y1: e.y1, x2: e.x2, y2: e.y2}
+				markers := vcgen.NewVCGenMarkersTerm()
+				stroke := conv.NewConvStrokeWithMarkers(line, markers)
+				stroke.SetWidth(cfg.Width)
+				stroke.SetShorten(10.0)
+				ah := shapes.NewArrowhead()
+				ah.Head(0, 10, 5, 0)
+				arrow := conv.NewConvMarker(stroke.Markers(), &arrowheadShapes{ah: ah})
+				concat := conv.NewConvConcat(stroke, arrow)
+				ras := a.GetInternalRasterizer()
+				ras.Reset()
+				ras.AddPath(&convToRasSource{src: concat}, 0)
+				a.RenderRasterizerWithColor(col)
 			case 1:
 				drawPreparedCurve(a, e, cfg.Width)
-				drawArrowHead(ctx, e.arrowX0, e.arrowY0, e.arrowX1, e.arrowY1, 8.0, col)
+				drawArrowHead(ctx, e.arrowX0, e.arrowY0, e.arrowX1, e.arrowY1, 10.0, col)
 			case 2:
 				drawPreparedCurve(a, e, cfg.Width)
-				drawArrowHead(ctx, e.arrowX0, e.arrowY0, e.arrowX1, e.arrowY1, 8.0, col)
+				drawArrowHead(ctx, e.arrowX0, e.arrowY0, e.arrowX1, e.arrowY1, 10.0, col)
 			}
 		}
 		if cfg.Mode == 2 {
@@ -150,36 +162,22 @@ func Draw(ctx *agg.Context, g *Graph, cfg Config) {
 
 	if cfg.DrawNodes {
 		outerR := 5.0 * cfg.Width
-		innerR := 4.0
 
-		a.ResetPath()
 		for _, n := range prepared.nodes {
-			x, y := n.x, n.y
-			a.AddEllipse(x, y, outerR, outerR, agg.CCW)
+			a.ResetPath()
+			a.AddEllipse(n.x, n.y, outerR, outerR, agg.CCW)
+			a.FillRadialGradient(
+				n.x, n.y, outerR,
+				agg.NewColor(255, 255, 0, 64),
+				agg.NewColor(0, 0, 255, 255),
+				1.0,
+			)
+			a.LineColor(agg.Transparent)
+			a.DrawPath(agg.FillOnly)
 		}
-		a.FillColor(agg.NewColor(115, 47, 0, 220))
-		a.NoLine()
-		a.DrawPath(agg.FillOnly)
-
-		a.ResetPath()
-		for _, n := range prepared.nodes {
-			x, y := n.x, n.y
-			a.AddEllipse(x, y, outerR, outerR, agg.CCW)
-		}
-		a.FillColor(agg.Transparent)
-		a.LineColor(agg.NewColor(154, 74, 0, 255))
-		a.LineWidth(1.0)
-		a.DrawPath(agg.StrokeOnly)
-
-		a.ResetPath()
-		for _, n := range prepared.nodes {
-			x, y := n.x, n.y
-			a.AddEllipse(x, y, innerR, innerR, agg.CCW)
-		}
-		a.FillColor(agg.NewColor(248, 202, 80, 230))
-		a.NoLine()
-		a.DrawPath(agg.FillOnly)
 	}
+
+	drawControls(ctx, cfg)
 }
 
 func (g *Graph) prepare(width, height int) *preparedGraph {
@@ -217,9 +215,6 @@ func (g *Graph) prepare(width, height int) *preparedGraph {
 			arrowY0: ay0,
 			arrowX1: ax1,
 			arrowY1: ay1,
-			r:       e.r,
-			g:       e.g,
-			b:       e.b,
 		}
 	}
 
@@ -295,4 +290,185 @@ func drawArrowHeadOnCurve(ctx *agg.Context, x1, y1, x2, y2, size float64, col ag
 	p0x, p0y := cubicPoint(x1, y1, cx1, cy1, cx2, cy2, x2, y2, 0.92)
 	p1x, p1y := cubicPoint(x1, y1, cx1, cy1, cx2, cy2, x2, y2, 1.0)
 	drawArrowHead(ctx, p0x, p0y, p1x, p1y, size, col)
+}
+
+type lineSource struct {
+	x1, y1 float64
+	x2, y2 float64
+	f      int
+}
+
+func (l *lineSource) Rewind(pathID uint) { l.f = 0 }
+
+func (l *lineSource) Vertex() (x, y float64, cmd basics.PathCommand) {
+	switch l.f {
+	case 0:
+		l.f++
+		return l.x1, l.y1, basics.PathCmdMoveTo
+	case 1:
+		l.f++
+		return l.x2, l.y2, basics.PathCmdLineTo
+	default:
+		return 0, 0, basics.PathCmdStop
+	}
+}
+
+type arrowheadShapes struct{ ah *shapes.Arrowhead }
+
+func (a *arrowheadShapes) Rewind(shapeIndex uint) { a.ah.Rewind(uint32(shapeIndex)) }
+func (a *arrowheadShapes) Vertex() (x, y float64, cmd basics.PathCommand) {
+	var vx, vy float64
+	c := a.ah.Vertex(&vx, &vy)
+	return vx, vy, c
+}
+
+type convToRasSource struct{ src conv.VertexSource }
+
+func (a *convToRasSource) Rewind(pathID uint32) { a.src.Rewind(uint(pathID)) }
+func (a *convToRasSource) Vertex(x, y *float64) uint32 {
+	vx, vy, cmd := a.src.Vertex()
+	*x = vx
+	*y = vy
+	return uint32(cmd)
+}
+
+type clibcRand struct {
+	state [31]int32
+	fptr  int
+	rptr  int
+}
+
+func newClibcRandSeed(seed int32) *clibcRand {
+	if seed == 0 {
+		seed = 1
+	}
+
+	r := &clibcRand{}
+	r.state[0] = seed
+	for i := 1; i < len(r.state); i++ {
+		next := (16807 * int64(r.state[i-1])) % 2147483647
+		r.state[i] = int32(next)
+	}
+	r.fptr = 3
+	r.rptr = 0
+	for i := 0; i < 310; i++ {
+		r.next()
+	}
+	return r
+}
+
+func (r *clibcRand) next() int32 {
+	r.state[r.fptr] += r.state[r.rptr]
+	result := int32(uint32(r.state[r.fptr]) >> 1)
+	r.fptr++
+	if r.fptr >= len(r.state) {
+		r.fptr = 0
+	}
+	r.rptr++
+	if r.rptr >= len(r.state) {
+		r.rptr = 0
+	}
+	return result
+}
+
+func (r *clibcRand) randN(n int) int {
+	return int(r.next()) % n
+}
+
+func (r *clibcRand) randDouble() float64 {
+	return float64(r.next()) / 2147483647.0
+}
+
+type ctrlPathSource interface {
+	NumPaths() uint
+	Rewind(pathID uint)
+	Vertex() (x, y float64, cmd basics.PathCommand)
+	Color(pathID uint) icolor.RGBA
+}
+
+type ctrlPathAdapter struct {
+	ctrl ctrlPathSource
+}
+
+func (a *ctrlPathAdapter) Rewind(pathID uint32) {
+	a.ctrl.Rewind(uint(pathID))
+}
+
+func (a *ctrlPathAdapter) Vertex(x, y *float64) uint32 {
+	vx, vy, cmd := a.ctrl.Vertex()
+	*x = vx
+	*y = vy
+	return uint32(cmd)
+}
+
+func toAggColor(c icolor.RGBA) agg.Color {
+	clamp := func(v float64) uint8 {
+		switch {
+		case v <= 0:
+			return 0
+		case v >= 1:
+			return 255
+		default:
+			return uint8(v*255 + 0.5)
+		}
+	}
+	return agg.NewColor(clamp(c.R), clamp(c.G), clamp(c.B), clamp(c.A))
+}
+
+func renderCtrl(ctx *agg.Context, ctrl ctrlPathSource) {
+	a := ctx.GetAgg2D()
+	ras := a.GetInternalRasterizer()
+	adapter := &ctrlPathAdapter{ctrl: ctrl}
+
+	for pathID := uint(0); pathID < ctrl.NumPaths(); pathID++ {
+		ras.Reset()
+		ras.AddPath(adapter, uint32(pathID))
+		a.RenderRasterizerWithColor(toAggColor(ctrl.Color(pathID)))
+	}
+}
+
+func drawControls(ctx *agg.Context, cfg Config) {
+	typeCtrl := rboxctrl.NewDefaultRboxCtrl(0, 0, 110, 95, false)
+	typeCtrl.SetTextSize(8.0, 0.0)
+	for _, item := range []string{"Poygons Bin", "Poygons AA", "Dashed curves", "Bezier curves", "Solid lines"} {
+		typeCtrl.AddItem(item)
+	}
+	typeCtrl.SetCurItem(4 - cfg.Mode)
+
+	widthCtrl := sliderctrl.NewSliderCtrl(190, 8, 390, 15, false)
+	widthCtrl.SetNumSteps(20)
+	widthCtrl.SetRange(0.0, 5.0)
+	widthCtrl.SetValue(cfg.Width)
+	widthCtrl.SetLabel("Width=%1.2f")
+	widthCtrl.SetTextThickness(1.0)
+
+	benchmarkCtrl := checkboxctrl.NewDefaultCheckboxCtrl(398, 6, "Benchmark", false)
+	drawNodesCtrl := checkboxctrl.NewDefaultCheckboxCtrl(398, 21, "Draw Nodes", false)
+	drawEdgesCtrl := checkboxctrl.NewDefaultCheckboxCtrl(488, 21, "Draw Edges", false)
+	draftCtrl := checkboxctrl.NewDefaultCheckboxCtrl(488, 6, "Draft Mode", false)
+	translucentCtrl := checkboxctrl.NewDefaultCheckboxCtrl(190, 21, "Translucent Mode", false)
+
+	benchmarkCtrl.SetChecked(false)
+	drawNodesCtrl.SetChecked(cfg.DrawNodes)
+	drawEdgesCtrl.SetChecked(cfg.DrawEdges)
+	draftCtrl.SetChecked(false)
+	translucentCtrl.SetChecked(cfg.Translucent)
+
+	benchmarkCtrl.SetTextSize(8.0, 0.0)
+	drawNodesCtrl.SetTextSize(8.0, 0.0)
+	drawEdgesCtrl.SetTextSize(8.0, 0.0)
+	draftCtrl.SetTextSize(8.0, 0.0)
+	translucentCtrl.SetTextSize(8.0, 0.0)
+
+	for _, ctrl := range []ctrlPathSource{
+		typeCtrl,
+		widthCtrl,
+		benchmarkCtrl,
+		drawNodesCtrl,
+		drawEdgesCtrl,
+		draftCtrl,
+		translucentCtrl,
+	} {
+		renderCtrl(ctx, ctrl)
+	}
 }

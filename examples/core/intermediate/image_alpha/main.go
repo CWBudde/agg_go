@@ -9,7 +9,6 @@ import (
 	"bytes"
 	"errors"
 	"math"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -96,6 +95,90 @@ func (a *pathSourceAdapter) Vertex(x, y *float64) uint32 {
 	*x = vx
 	*y = vy
 	return cmd
+}
+
+type ctrlPathSource interface {
+	NumPaths() uint
+	Rewind(pathID uint)
+	Vertex() (x, y float64, cmd basics.PathCommand)
+	Color(pathID uint) color.RGBA8[color.Linear]
+}
+
+type ctrlPathAdapter struct {
+	ctrl ctrlPathSource
+}
+
+func (a *ctrlPathAdapter) Rewind(pathID uint32) {
+	a.ctrl.Rewind(uint(pathID))
+}
+
+func (a *ctrlPathAdapter) Vertex(x, y *float64) uint32 {
+	vx, vy, cmd := a.ctrl.Vertex()
+	*x = vx
+	*y = vy
+	return uint32(cmd)
+}
+
+func toAggColor(c color.RGBA8[color.Linear]) agg.Color {
+	clamp := func(v basics.Int8u) uint8 {
+		return uint8(v)
+	}
+	return agg.NewColor(clamp(c.R), clamp(c.G), clamp(c.B), clamp(c.A))
+}
+
+type clibcRand struct {
+	state [31]int32
+	fptr  int
+	rptr  int
+}
+
+func newClibcRandSeed(seed int32) *clibcRand {
+	if seed == 0 {
+		seed = 1
+	}
+
+	r := &clibcRand{}
+	r.state[0] = seed
+	for i := 1; i < len(r.state); i++ {
+		next := (16807 * int64(r.state[i-1])) % 2147483647
+		r.state[i] = int32(next)
+	}
+	r.fptr = 3
+	r.rptr = 0
+	for i := 0; i < 310; i++ {
+		r.next()
+	}
+	return r
+}
+
+func (r *clibcRand) next() int32 {
+	r.state[r.fptr] += r.state[r.rptr]
+	result := int32(uint32(r.state[r.fptr]) >> 1)
+	r.fptr++
+	if r.fptr >= len(r.state) {
+		r.fptr = 0
+	}
+	r.rptr++
+	if r.rptr >= len(r.state) {
+		r.rptr = 0
+	}
+	return result
+}
+
+func (r *clibcRand) randN(n int) int {
+	return int(r.next()) % n
+}
+
+func renderCtrl(ctx *agg.Context, ctrl ctrlPathSource) {
+	a := ctx.GetAgg2D()
+	ras := a.GetInternalRasterizer()
+	adapter := &ctrlPathAdapter{ctrl: ctrl}
+
+	for pathID := uint(0); pathID < ctrl.NumPaths(); pathID++ {
+		ras.Reset()
+		ras.AddPath(adapter, uint32(pathID))
+		a.RenderRasterizerWithColor(toAggColor(ctrl.Color(pathID)))
+	}
 }
 
 func loadPPMImage(filename string) (*agg.Image, error) {
@@ -221,24 +304,25 @@ func (d *demo) Render(img *agg.Image) {
 	a.ResetTransformations()
 	ctx.Clear(agg.RGBA(1, 1, 1, 1))
 
-	// C++ on_init uses rand() with deterministic default seed semantics.
-	rng := rand.New(rand.NewSource(1))
+	// C++ on_init uses rand() without an explicit srand(), so match its
+	// default seed and generator instead of Go's PRNG.
+	rng := newClibcRandSeed(1)
 	for i := 0; i < 50; i++ {
-		x := float64(rng.Intn(canvasW))
-		y := float64(rng.Intn(canvasH))
-		rx := float64(rng.Intn(60) + 10)
-		ry := float64(rng.Intn(60) + 10)
+		x := float64(rng.randN(canvasW))
+		y := float64(rng.randN(canvasH))
+		rx := float64(rng.randN(60) + 10)
+		ry := float64(rng.randN(60) + 10)
 		a.FillColor(agg.NewColor(
-			uint8(rng.Intn(256)),
-			uint8(rng.Intn(256)),
-			uint8(rng.Intn(256)),
-			uint8(rng.Intn(256)),
+			uint8(rng.randN(256)),
+			uint8(rng.randN(256)),
+			uint8(rng.randN(256)),
+			uint8(rng.randN(256)),
 		))
 		a.NoLine()
 		a.Ellipse(x, y, rx, ry)
 	}
 
-	dstRbuf := buffer.NewRenderingBufferWithData[uint8](img.Data, img.Width(), img.Height(), img.Width()*4)
+	dstRbuf := buffer.NewRenderingBufferWithData[uint8](img.Data, img.Width(), img.Height(), img.Stride())
 	dstPixf := pixfmt.NewPixFmtRGBA32Pre[color.Linear](dstRbuf)
 	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32Pre[color.Linear], color.RGBA8[color.Linear]](dstPixf)
 	alloc := span.NewSpanAllocator[color.RGBA8[color.Linear]]()
@@ -261,7 +345,7 @@ func (d *demo) Render(img *agg.Image) {
 	imgMtx.Invert()
 
 	imgRbuf := buffer.NewRenderingBufferU8()
-	imgRbuf.Attach(d.srcImg.Data, d.srcImg.Width(), d.srcImg.Height(), d.srcImg.Width()*4)
+	imgRbuf.Attach(d.srcImg.Data, d.srcImg.Width(), d.srcImg.Height(), d.srcImg.Stride())
 	ipf := imagePixFmt{rbuf: imgRbuf}
 	accessor := image.NewImageAccessorClip(&ipf, []basics.Int8u{0, 0, 0, 0})
 	src := &imageClipSource{accessor: accessor, ipf: &ipf}
@@ -270,7 +354,12 @@ func (d *demo) Render(img *agg.Image) {
 	innerSG := span.NewSpanImageFilterRGBABilinearClipWithParams(src, color.RGBA8[color.Linear]{}, interp)
 	sg := &imgAlphaSpanGen{inner: innerSG}
 
-	alphaCtrl := spline.NewSplineCtrlRGBA(2, 2, 200, 30, 6, false)
+	alphaCtrl := spline.NewSplineCtrl[color.RGBA8[color.Linear]](2, 2, 200, 30, 6, false)
+	alphaCtrl.SetBackgroundColor(color.NewRGBA8[color.Linear](255, 255, 230, 255))
+	alphaCtrl.SetBorderColor(color.NewRGBA8[color.Linear](0, 0, 0, 255))
+	alphaCtrl.SetCurveColor(color.NewRGBA8[color.Linear](0, 0, 0, 255))
+	alphaCtrl.SetInactivePointColor(color.NewRGBA8[color.Linear](0, 0, 0, 255))
+	alphaCtrl.SetActivePointColor(color.NewRGBA8[color.Linear](255, 0, 0, 255))
 	alphaCtrl.SetValue(0, 1.0)
 	alphaCtrl.SetValue(1, 1.0)
 	alphaCtrl.SetValue(2, 1.0)
@@ -278,7 +367,7 @@ func (d *demo) Render(img *agg.Image) {
 	alphaCtrl.SetValue(4, 0.5)
 	alphaCtrl.SetValue(5, 1.0)
 	for i := range sg.lut {
-		t := float64(i) / float64(len(sg.lut)-1)
+		t := float64(i) / float64(len(sg.lut))
 		sg.lut[i] = uint8(alphaCtrl.Value(t)*255.0 + 0.5)
 	}
 
@@ -302,6 +391,8 @@ func (d *demo) Render(img *agg.Image) {
 			}
 		}
 	}
+
+	renderCtrl(ctx, alphaCtrl)
 }
 
 func main() {
@@ -315,5 +406,6 @@ func main() {
 		Title:  "Image Alpha",
 		Width:  320,
 		Height: 300,
+		FlipY:  true,
 	}, &demo{srcImg: srcImg})
 }
