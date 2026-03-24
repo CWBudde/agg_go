@@ -4,7 +4,6 @@ package lowlevelrunner
 
 import (
 	"fmt"
-	"image"
 	"image/png"
 	"os"
 	"strings"
@@ -163,22 +162,24 @@ func (h *handler) onIdle() {
 	}
 }
 
-// blit copies the raw image buffer into the platform window buffer and presents it.
-// img.Data is always read sequentially top-to-bottom; when FlipY=true the image
-// was created with negative stride so rbuf row 0 is physically at the bottom of
-// img.Data — no additional row-reversal is needed here.
+// blit copies the image buffer into the platform window buffer and presents it.
+// FlipY images are exported in top-down order so the window output matches the
+// corresponding C++ platform_support screenshots.
 func (h *handler) blit() {
 	winBuf := h.ps.WindowBuffer()
 	src := h.img.Data
 	dst := winBuf.Buf()
 
-	srcStride := h.img.Width() * 4
 	dstStride := winBuf.Stride()
 	if dstStride < 0 {
 		dstStride = -dstStride
 	}
 	for y := range winBuf.Height() {
-		srcOff := y * srcStride
+		srcY := y
+		if h.img.Stride() < 0 {
+			srcY = h.img.Height() - 1 - y
+		}
+		srcOff := srcY * (h.img.Width() * 4)
 		dstOff := y * dstStride
 		for x := range winBuf.Width() {
 			srcIdx := srcOff + x*4
@@ -194,19 +195,10 @@ func (h *handler) blit() {
 
 func (h *handler) saveScreenshot() {
 	filename := strings.ReplaceAll(strings.ToLower(h.cfg.Title), " ", "_") + ".png"
-	goImg := image.NewRGBA(image.Rect(0, 0, h.img.Width(), h.img.Height()))
-	srcStride := h.img.Width() * 4
-	for y := range h.img.Height() {
-		srcOff := y * srcStride
-		dstOff := y * goImg.Stride
-		for x := range h.img.Width() {
-			srcIdx := srcOff + x*4
-			dstIdx := dstOff + x*4
-			goImg.Pix[dstIdx] = h.img.Data[srcIdx]
-			goImg.Pix[dstIdx+1] = h.img.Data[srcIdx+1]
-			goImg.Pix[dstIdx+2] = h.img.Data[srcIdx+2]
-			goImg.Pix[dstIdx+3] = 255
-		}
+	goImg := h.img.ToGoImage()
+	if goImg == nil {
+		fmt.Fprintf(os.Stderr, "screenshot: image conversion failed\n")
+		return
 	}
 	f, err := os.Create(filename)
 	if err != nil {

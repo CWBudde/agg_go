@@ -1,11 +1,8 @@
 // Port of AGG C++ conv_stroke.cpp example.
 //
-// Original caption: "AGG Example. Line Join"
-//
-// Demonstrates conv_stroke features: line join styles (miter, round, bevel)
-// and line cap styles (butt, square, round) applied to open and closed paths.
-// Since this Go port produces a static image, all join/cap combinations are
-// shown in a 3×3 grid instead of the original interactive controls.
+// This matches the original interactive "Line Join" demo: one stroked path,
+// one dashed overlay, a filled base path, two rbox controls, two sliders, and
+// draggable triangle points.
 package main
 
 import (
@@ -13,129 +10,291 @@ import (
 
 	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	icol "github.com/MeKo-Christian/agg_go/internal/color"
+	ctrlbase "github.com/MeKo-Christian/agg_go/internal/ctrl"
+	rboxctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/rbox"
+	sliderctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/slider"
 )
-
-// drawStrokeDemo draws the conv_stroke demo for a single join/cap combination
-// at the given offset (ox, oy) in a cell of size cellW × cellH.
-func drawStrokeDemo(a *agg.Agg2D, ox, oy, cellW, cellH float64, join agg.LineJoin, capStyle agg.LineCap, strokeWidth, miterLimit float64) {
-	// Original points from conv_stroke.cpp on a 500×330 canvas (offset +100 on x).
-	// We scale them to fit within the cell.
-	const origW, origH = 500.0, 330.0
-	scaleX := cellW / origW
-	scaleY := cellH / origH
-	scale := math.Min(scaleX, scaleY)
-
-	tp := func(px, py float64) (float64, float64) {
-		return ox + px*scaleX, oy + py*scaleY
-	}
-
-	// Three control points (same as in C++ example, x offset 100).
-	px := [3]float64{57 + 100, 369 + 100, 143 + 100}
-	py := [3]float64{60, 170, 310}
-
-	buildPaths := func() {
-		// Open zigzag path with one extra midpoint for stability check (same as C++).
-		x0, y0 := tp(px[0], py[0])
-		xm01, ym01 := tp((px[0]+px[1])/2, (py[0]+py[1])/2)
-		x1, y1 := tp(px[1], py[1])
-		x2, y2 := tp(px[2], py[2])
-
-		a.MoveTo(x0, y0)
-		a.LineTo(xm01, ym01)
-		a.LineTo(x1, y1)
-		a.LineTo(x2, y2)
-		a.LineTo(x2, y2) // duplicate – numerical stability check (same as C++)
-
-		// Closed triangle from midpoints.
-		xm12, ym12 := tp((px[1]+px[2])/2, (py[1]+py[2])/2)
-		xm20, ym20 := tp((px[2]+px[0])/2, (py[2]+py[0])/2)
-		a.MoveTo(xm01, ym01)
-		a.LineTo(xm12, ym12)
-		a.LineTo(xm20, ym20)
-		a.ClosePolygon()
-	}
-
-	// (1) Wide stroked path with the selected join/cap style.
-	a.ResetPath()
-	buildPaths()
-	a.LineJoin(join)
-	a.LineCap(capStyle)
-	a.MiterLimit(miterLimit)
-	a.LineWidth(strokeWidth * scale)
-	a.LineColor(agg.NewColor(204, 178, 153, 255))
-	a.NoFill()
-	a.DrawPath(agg.StrokeOnly)
-
-	// (2) Thin outline of the original raw path in black.
-	a.ResetPath()
-	buildPaths()
-	a.LineJoin(agg.JoinMiter)
-	a.LineCap(agg.CapButt)
-	a.LineWidth(1.5 * scale)
-	a.LineColor(agg.Black)
-	a.DrawPath(agg.StrokeOnly)
-
-	// (3) Semi-transparent fill of the raw path.
-	a.ResetPath()
-	buildPaths()
-	a.FillColor(agg.NewColor(0, 0, 0, 51)) // rgba(0,0,0,0.2)
-	a.NoLine()
-	a.DrawPath(agg.FillOnly)
-}
-
-func drawCellBorder(a *agg.Agg2D, x, y, w, h float64) {
-	a.LineColor(agg.NewColor(180, 180, 180, 255))
-	a.LineWidth(1)
-	a.NoFill()
-	a.ResetPath()
-	a.MoveTo(x, y)
-	a.LineTo(x+w, y)
-	a.LineTo(x+w, y+h)
-	a.LineTo(x, y+h)
-	a.ClosePolygon()
-	a.DrawPath(agg.StrokeOnly)
-}
 
 const (
-	cols    = 3 // join styles
-	rows    = 3 // cap styles
-	cellW   = 160.0
-	cellH   = 96.0
-	margin  = 5.0
-	headerH = 22.0 // space for column headers at the top
-
-	totalW = float64(cols)*cellW + float64(cols+1)*margin
-	totalH = float64(rows)*cellH + float64(rows+1)*margin + headerH
+	frameWidth  = 500
+	frameHeight = 330
 )
 
-type demo struct{}
+type demo struct {
+	points    [3][2]float64
+	selected  int
+	dragDX    float64
+	dragDY    float64
+	joinCtrl  *rboxctrl.RboxCtrl[icol.RGBA]
+	capCtrl   *rboxctrl.RboxCtrl[icol.RGBA]
+	widthCtrl *sliderctrl.SliderCtrl
+	miterCtrl *sliderctrl.SliderCtrl
+	controls  []ctrlbase.Ctrl[icol.RGBA]
+}
+
+type ctrlVertexSourceAdapter struct {
+	ctrl ctrlbase.Ctrl[icol.RGBA]
+}
+
+func (a *ctrlVertexSourceAdapter) Rewind(pathID uint32) {
+	a.ctrl.Rewind(uint(pathID))
+}
+
+func (a *ctrlVertexSourceAdapter) Vertex(x, y *float64) uint32 {
+	vx, vy, cmd := a.ctrl.Vertex()
+	*x = vx
+	*y = vy
+	return uint32(cmd)
+}
+
+func toAggColor(c icol.RGBA) agg.Color {
+	clamp := func(v float64) uint8 {
+		switch {
+		case v <= 0:
+			return 0
+		case v >= 1:
+			return 255
+		default:
+			return uint8(v*255.0 + 0.5)
+		}
+	}
+	return agg.NewColor(clamp(c.R), clamp(c.G), clamp(c.B), clamp(c.A))
+}
+
+func renderCtrl(a *agg.Agg2D, c ctrlbase.Ctrl[icol.RGBA]) {
+	ras := a.GetInternalRasterizer()
+	for pathID := uint(0); pathID < c.NumPaths(); pathID++ {
+		ras.Reset()
+		ras.AddPath(&ctrlVertexSourceAdapter{ctrl: c}, uint32(pathID))
+		a.RenderRasterizerWithColor(toAggColor(c.Color(pathID)))
+	}
+}
+
+func newDemo() *demo {
+	join := rboxctrl.NewDefaultRboxCtrl(10, 10, 133, 80, false)
+	join.SetTextSize(7.5, 0)
+	join.SetTextThickness(1.0)
+	join.AddItem("Miter Join")
+	join.AddItem("Miter Join Revert")
+	join.AddItem("Round Join")
+	join.AddItem("Bevel Join")
+	join.SetCurItem(2)
+
+	capCtrl := rboxctrl.NewDefaultRboxCtrl(10, 90, 133, 170, false)
+	capCtrl.AddItem("Butt Cap")
+	capCtrl.AddItem("Square Cap")
+	capCtrl.AddItem("Round Cap")
+	capCtrl.SetCurItem(2)
+
+	width := sliderctrl.NewSliderCtrl(140, 14, 490, 22, false)
+	width.SetRange(3.0, 40.0)
+	width.SetValue(20.0)
+	width.SetLabel("Width=%1.2f")
+
+	miter := sliderctrl.NewSliderCtrl(140, 34, 490, 42, false)
+	miter.SetRange(1.0, 10.0)
+	miter.SetValue(4.0)
+	miter.SetLabel("Miter Limit=%1.2f")
+
+	return &demo{
+		points: [3][2]float64{
+			{57 + 100, 60},
+			{369 + 100, 170},
+			{143 + 100, 310},
+		},
+		selected:  -1,
+		joinCtrl:  join,
+		capCtrl:   capCtrl,
+		widthCtrl: width,
+		miterCtrl: miter,
+		controls:  []ctrlbase.Ctrl[icol.RGBA]{join, capCtrl, width, miter},
+	}
+}
 
 func (d *demo) Render(img *agg.Image) {
 	ctx := agg.NewContextForImage(img)
 	ctx.Clear(agg.White)
+
 	a := ctx.GetAgg2D()
 	a.ResetTransformations()
 
-	joins := []agg.LineJoin{agg.JoinMiter, agg.JoinRound, agg.JoinBevel}
-	caps := []agg.LineCap{agg.CapButt, agg.CapSquare, agg.CapRound}
+	joinStyles := []basics.LineJoin{
+		basics.MiterJoin,
+		basics.MiterJoinRevert,
+		basics.RoundJoin,
+		basics.BevelJoin,
+	}
+	capStyles := []basics.LineCap{
+		basics.ButtCap,
+		basics.SquareCap,
+		basics.RoundCap,
+	}
 
-	strokeWidth := 12.0
-	miterLimit := 4.0
+	join := joinStyles[d.joinCtrl.CurItem()]
+	capStyle := capStyles[d.capCtrl.CurItem()]
+	strokeWidth := d.widthCtrl.Value()
+	miterLimit := d.miterCtrl.Value()
 
-	for row, cap := range caps {
-		for col, join := range joins {
-			ox := margin + float64(col)*(cellW+margin)
-			oy := headerH + margin + float64(row)*(cellH+margin)
-			drawCellBorder(a, ox, oy, cellW, cellH)
-			drawStrokeDemo(a, ox, oy, cellW, cellH, join, cap, strokeWidth, miterLimit)
+	buildPath := func() {
+		a.ResetPath()
+		a.MoveTo(d.points[0][0], d.points[0][1])
+		a.LineTo((d.points[0][0]+d.points[1][0])/2, (d.points[0][1]+d.points[1][1])/2)
+		a.LineTo(d.points[1][0], d.points[1][1])
+		a.LineTo(d.points[2][0], d.points[2][1])
+		a.LineTo(d.points[2][0], d.points[2][1]) // Numerical stability check from the C++ demo.
+
+		a.MoveTo((d.points[0][0]+d.points[1][0])/2, (d.points[0][1]+d.points[1][1])/2)
+		a.LineTo((d.points[1][0]+d.points[2][0])/2, (d.points[1][1]+d.points[2][1])/2)
+		a.LineTo((d.points[2][0]+d.points[0][0])/2, (d.points[2][1]+d.points[0][1])/2)
+		a.ClosePolygon()
+	}
+
+	// (1) Wide stroked path with the selected join/cap style.
+	buildPath()
+	a.LineJoin(agg.LineJoin(join))
+	a.LineCap(agg.LineCap(capStyle))
+	a.MiterLimit(miterLimit)
+	a.LineWidth(strokeWidth)
+	a.LineColor(agg.NewColor(204, 178, 153, 255))
+	a.NoFill()
+	a.DrawPath(agg.StrokeOnly)
+
+	// (2) Thin outline of the raw path in black.
+	buildPath()
+	a.LineJoin(agg.JoinMiter)
+	a.LineCap(agg.CapButt)
+	a.LineWidth(1.5)
+	a.LineColor(agg.Black)
+	a.DrawPath(agg.StrokeOnly)
+
+	// (3) Dashed overlay on the wide stroke.
+	buildPath()
+	a.LineJoin(agg.LineJoin(join))
+	a.LineCap(agg.LineCap(capStyle))
+	a.LineWidth(strokeWidth / 5.0)
+	a.RemoveAllDashes()
+	a.AddDash(20.0, strokeWidth/2.5)
+	a.LineColor(agg.NewColor(0, 0, 77, 255))
+	a.DrawPath(agg.StrokeOnly)
+	a.RemoveAllDashes()
+
+	// (4) Semi-transparent fill of the raw path.
+	buildPath()
+	a.FillColor(agg.NewColor(0, 0, 0, 51))
+	a.NoLine()
+	a.DrawPath(agg.FillOnly)
+
+	for _, ctrl := range d.controls {
+		renderCtrl(a, ctrl)
+	}
+}
+
+func (d *demo) OnMouseDown(x, y int, btn lowlevelrunner.Buttons) bool {
+	if !btn.Left {
+		return false
+	}
+
+	fx, fy := float64(x), float64(y)
+	for _, ctrl := range d.controls {
+		if ctrl.OnMouseButtonDown(fx, fy) {
+			return true
 		}
 	}
+
+	for i := 0; i < len(d.points); i++ {
+		dx := fx - d.points[i][0]
+		dy := fy - d.points[i][1]
+		if math.Sqrt(dx*dx+dy*dy) < 20.0 {
+			d.selected = i
+			d.dragDX = dx
+			d.dragDY = dy
+			return true
+		}
+	}
+
+	if pointInTriangle(
+		d.points[0][0], d.points[0][1],
+		d.points[1][0], d.points[1][1],
+		d.points[2][0], d.points[2][1],
+		fx, fy,
+	) {
+		d.selected = 3
+		d.dragDX = fx - d.points[0][0]
+		d.dragDY = fy - d.points[0][1]
+		return true
+	}
+
+	return false
+}
+
+func (d *demo) OnMouseMove(x, y int, btn lowlevelrunner.Buttons) bool {
+	fx, fy := float64(x), float64(y)
+	redraw := false
+
+	for _, ctrl := range d.controls {
+		if ctrl.OnMouseMove(fx, fy, btn.Left) {
+			redraw = true
+		}
+	}
+
+	if d.selected == -1 || !btn.Left {
+		return redraw
+	}
+
+	if d.selected == 3 {
+		newX := fx - d.dragDX
+		newY := fy - d.dragDY
+		shiftX := newX - d.points[0][0]
+		shiftY := newY - d.points[0][1]
+		for i := range d.points {
+			d.points[i][0] += shiftX
+			d.points[i][1] += shiftY
+		}
+		return true
+	}
+
+	d.points[d.selected][0] = fx - d.dragDX
+	d.points[d.selected][1] = fy - d.dragDY
+	return true
+}
+
+func (d *demo) OnMouseUp(x, y int, btn lowlevelrunner.Buttons) bool {
+	fx, fy := float64(x), float64(y)
+	redraw := false
+
+	for _, ctrl := range d.controls {
+		if ctrl.OnMouseButtonUp(fx, fy) {
+			redraw = true
+		}
+	}
+
+	if d.selected != -1 {
+		d.selected = -1
+		redraw = true
+	}
+
+	return redraw
+}
+
+func pointInTriangle(x1, y1, x2, y2, x3, y3, px, py float64) bool {
+	sign := func(ax, ay, bx, by, px, py float64) float64 {
+		return (px-bx)*(ay-by) - (ax-bx)*(py-by)
+	}
+	d1 := sign(x1, y1, x2, y2, px, py)
+	d2 := sign(x2, y2, x3, y3, px, py)
+	d3 := sign(x3, y3, x1, y1, px, py)
+	hasNeg := d1 < 0 || d2 < 0 || d3 < 0
+	hasPos := d1 > 0 || d2 > 0 || d3 > 0
+	return !(hasNeg && hasPos)
 }
 
 func main() {
 	lowlevelrunner.Run(lowlevelrunner.Config{
 		Title:  "Conv Stroke",
-		Width:  int(totalW),
-		Height: int(totalH),
-	}, &demo{})
+		Width:  frameWidth,
+		Height: frameHeight,
+		FlipY:  true,
+	}, newDemo())
 }

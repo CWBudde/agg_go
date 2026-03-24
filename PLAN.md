@@ -115,6 +115,15 @@ Rasterizer → scanline → renderer → pixfmt behavior is aligned with AGG:
   viewport/gradient/scalar propagation are aligned; key converter/vcgen/vpgen state machines are
   audited beyond just Agg2D call sites.
 
+Renderer/scanline API cleanup still needs to be finished:
+
+- [ ] Unify the low-level scanline contracts so `internal/renderer/scanline/helpers.go`,
+      `internal/rasterizer/compound_aa.go`, and the example ports can share one compound
+      rendering path without per-example adapters or signature shims.
+- [ ] Rework the compound rasterizer helper signatures to match the renderer-side expectations
+      for `SweepScanline`, `SweepStyles`, and scanline/reset types.
+- [ ] Remove the remaining example-local bridge types once the shared API is consistent.
+
 ---
 
 ## Phase 3 - Font Subsystem Consolidation and Type Safety ✅

@@ -133,6 +133,19 @@ Translation should stay as close as practical to the original implementation unl
 - Benchmark before replacing generics with concrete types in the name of performance; keep the simpler design unless a real hotspot is demonstrated.
 - Preserve AGG's performance-sensitive behavior without sacrificing Go safety unless required.
 
+### FlipY and Example Fidelity
+
+- For close ports of AGG `platform_support` examples, treat `FlipY: true` in
+  `examples/shared/lowlevelrunner` as the primary way to match C++ buffer orientation.
+- Keep scene and control coordinates in the original C++ frame; do not compensate with
+  ad hoc Y inversions in example rendering code unless the source demo explicitly does so.
+- When attaching any scratch buffer or direct renderer target, always use the image stride
+  reported by the image/buffer object instead of hardcoding `width * 4`.
+- If a demo mixes Agg2D and lower-level scanline rendering, ensure both paths write into the
+  same logical orientation and avoid row-reversal in one path to "fix" the other.
+- Image conversion helpers (`ToGoImage`, `ToStandardImage`, PNG/JPEG export) must respect the
+  stored stride, including negative stride for bottom-up buffers.
+
 ### Error Handling
 
 - Return `error` for invalid input, I/O issues, and recoverable failures.
