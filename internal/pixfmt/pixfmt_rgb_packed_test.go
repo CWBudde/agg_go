@@ -7,6 +7,15 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
 	"github.com/MeKo-Christian/agg_go/internal/pixfmt/blender"
+	"github.com/MeKo-Christian/agg_go/internal/renderer"
+)
+
+// Compile-time interface satisfaction checks.
+var (
+	_ renderer.PixelFormat[color.RGBA8[color.SRGB]] = (*PixFmtRGB555[blender.BlenderRGB555])(nil)
+	_ renderer.PixelFormat[color.RGBA8[color.SRGB]] = (*PixFmtRGB565[blender.BlenderRGB565])(nil)
+	_ renderer.PixelFormat[color.RGBA8[color.SRGB]] = (*PixFmtBGR555[blender.BlenderBGR555])(nil)
+	_ renderer.PixelFormat[color.RGBA8[color.SRGB]] = (*PixFmtBGR565[blender.BlenderBGR565])(nil)
 )
 
 // Test RGB555 packing/unpacking accuracy
@@ -142,10 +151,10 @@ func TestPixFmtRGB555Basic(t *testing.T) {
 	}
 
 	// Test pixel copy and retrieval
-	testColor := color.RGB8[color.Linear]{R: 255, G: 128, B: 64}
+	testColor := color.RGBA8[color.SRGB]{R: 255, G: 128, B: 64, A: 255}
 	pixfmt.CopyPixel(1, 1, testColor)
 
-	retrieved := pixfmt.GetPixel(1, 1)
+	retrieved := pixfmt.Pixel(1, 1)
 
 	// Check within precision limits
 	if !within555Precision(testColor.R, retrieved.R) {
@@ -179,10 +188,10 @@ func TestPixFmtRGB565Basic(t *testing.T) {
 	}
 
 	// Test pixel copy and retrieval
-	testColor := color.RGB8[color.Linear]{R: 255, G: 128, B: 64}
+	testColor := color.RGBA8[color.SRGB]{R: 255, G: 128, B: 64, A: 255}
 	pixfmt.CopyPixel(1, 1, testColor)
 
-	retrieved := pixfmt.GetPixel(1, 1)
+	retrieved := pixfmt.Pixel(1, 1)
 
 	// Check within precision limits
 	if !within565RedBluePrecision(testColor.R, retrieved.R) {
@@ -263,7 +272,7 @@ func TestPackedFormatBounds(t *testing.T) {
 	pixfmt := NewPixFmtRGB555(rbuf, blender.BlenderRGB555{})
 
 	// Test out-of-bounds access (should not panic)
-	testColor := color.RGB8[color.Linear]{R: 255, G: 128, B: 64}
+	testColor := color.RGBA8[color.SRGB]{R: 255, G: 128, B: 64, A: 255}
 
 	// These should not panic
 	pixfmt.CopyPixel(-1, 0, testColor)
@@ -271,15 +280,15 @@ func TestPackedFormatBounds(t *testing.T) {
 	pixfmt.CopyPixel(width, 0, testColor)
 	pixfmt.CopyPixel(0, height, testColor)
 
-	retrieved := pixfmt.GetPixel(-1, 0)
+	retrieved := pixfmt.Pixel(-1, 0)
 	if retrieved.R != 0 || retrieved.G != 0 || retrieved.B != 0 {
-		t.Error("Out-of-bounds GetPixel should return zero")
+		t.Error("Out-of-bounds Pixel should return zero")
 	}
 }
 
 // Test color conversion functions
 func TestPackedColorConversion(t *testing.T) {
-	testColor := color.RGB8[color.Linear]{R: 123, G: 89, B: 200}
+	testColor := color.RGBA8[color.SRGB]{R: 123, G: 89, B: 200, A: 255}
 
 	// RGB555
 	pixel555 := MakePixel555(testColor.R, testColor.G, testColor.B)
@@ -395,5 +404,80 @@ func BenchmarkBlenderRGB565(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		bl.BlendPix(&pixel, 200, 100, 50, 128, 255)
+	}
+}
+
+// --- Contract tests ---
+
+func makeRGB555Buf(w, h int) (*PixFmtRGB555[blender.BlenderRGB555], []basics.Int16u) {
+	buf := make([]basics.Int16u, w*h)
+	rbuf := buffer.NewRenderingBufferU16WithData(buf, w, h, w*2)
+	return NewPixFmtRGB555(rbuf, blender.BlenderRGB555{}), buf
+}
+
+func TestPixFmtRGB555Clear(t *testing.T) {
+	pf, buf := makeRGB555Buf(8, 4)
+	white := color.RGBA8[color.SRGB]{R: 255, G: 255, B: 255, A: 255}
+	pf.Clear(white)
+
+	expected := MakePixel555(255, 255, 255)
+	for i, pix := range buf {
+		if pix != expected {
+			t.Errorf("pixel %d: got 0x%04X, want 0x%04X", i, pix, expected)
+			break
+		}
+	}
+}
+
+func TestPixFmtRGB555CopyHline(t *testing.T) {
+	pf, buf := makeRGB555Buf(8, 4)
+	pf.Clear(color.RGBA8[color.SRGB]{R: 0, G: 0, B: 0, A: 255})
+
+	red := color.RGBA8[color.SRGB]{R: 248, G: 0, B: 0, A: 255}
+	pf.CopyHline(1, 0, 5, red)
+
+	// Pixels 1–5 in row 0 should be red.
+	expectedRed := MakePixel555(248, 0, 0)
+	for x := 1; x <= 5; x++ {
+		if buf[x] != expectedRed {
+			t.Errorf("x=%d: got 0x%04X, want 0x%04X", x, buf[x], expectedRed)
+		}
+	}
+	// Pixels 0 and 6 should still be black.
+	if buf[0] != MakePixel555(0, 0, 0) {
+		t.Errorf("x=0 should be black, got 0x%04X", buf[0])
+	}
+	if buf[6] != MakePixel555(0, 0, 0) {
+		t.Errorf("x=6 should be black, got 0x%04X", buf[6])
+	}
+}
+
+func TestPixFmtRGB555BlendSolidHspan_FullCover(t *testing.T) {
+	pf, _ := makeRGB555Buf(8, 4)
+	pf.Clear(color.RGBA8[color.SRGB]{R: 0, G: 0, B: 0, A: 255})
+
+	c := color.RGBA8[color.SRGB]{R: 248, G: 0, B: 0, A: 255}
+	covers := []basics.Int8u{255, 255, 255}
+	pf.BlendSolidHspan(2, 1, 3, c, covers)
+
+	// With opaque color + full coverage, blend ≈ copy.
+	for x := 2; x <= 4; x++ {
+		got := pf.Pixel(x, 1)
+		if !within555Precision(248, got.R) || got.G != 0 || got.B != 0 {
+			t.Errorf("x=%d: got {%d,%d,%d}, want ~{248,0,0}", x, got.R, got.G, got.B)
+		}
+	}
+}
+
+func TestPixFmtRGB555BlendPixel_ZeroCoverNoOp(t *testing.T) {
+	pf, _ := makeRGB555Buf(4, 4)
+	orig := color.RGBA8[color.SRGB]{R: 100, G: 150, B: 200, A: 255}
+	pf.CopyPixel(2, 2, orig)
+
+	// Blending with cover=0 must not modify the pixel.
+	pf.BlendPixel(2, 2, color.RGBA8[color.SRGB]{R: 255, G: 0, B: 0, A: 255}, 0)
+	got := pf.Pixel(2, 2)
+	if !within555Precision(orig.R, got.R) || !within555Precision(orig.G, got.G) || !within555Precision(orig.B, got.B) {
+		t.Errorf("BlendPixel with cover=0 modified pixel: got {%d,%d,%d}", got.R, got.G, got.B)
 	}
 }
