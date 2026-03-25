@@ -1,7 +1,4 @@
-// Port of AGG C++ pattern_fill.cpp – tiled pattern fill.
-//
-// Renders a large star polygon filled with a tiling pattern of small stars.
-// Default: pattern size=30, pattern angle=0°, polygon angle=0°, scale=1.0.
+// Port of AGG C++ pattern_fill.cpp.
 package main
 
 import (
@@ -12,217 +9,223 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/conv"
 	imageacc "github.com/MeKo-Christian/agg_go/internal/image"
 	"github.com/MeKo-Christian/agg_go/internal/path"
 	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
 	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
 	"github.com/MeKo-Christian/agg_go/internal/renderer"
+	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
 	"github.com/MeKo-Christian/agg_go/internal/scanline"
 	"github.com/MeKo-Christian/agg_go/internal/span"
+	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
 
 const (
-	canvasW      = 640
-	canvasH      = 480
-	patternSize  = 30
-	patternAngle = 0.0 // degrees
-	polygonAngle = 0.0 // degrees
+	canvasW = 640
+	canvasH = 480
+
+	defaultPolygonAngle = 0.0
+	defaultPolygonScale = 1.0
+	defaultPatternAngle = 0.0
+	defaultPatternSize  = 30.0
+	defaultPatternAlpha = 0.1
 )
 
-// patPixFmt is a simple RGBA pixel format for the pattern tile.
-type patPixFmt struct {
+type patternPixFmt struct {
 	data         []basics.Int8u
 	w, h, stride int
 }
 
-func (p patPixFmt) Width() int    { return p.w }
-func (p patPixFmt) Height() int   { return p.h }
-func (p patPixFmt) PixWidth() int { return 4 }
-func (p patPixFmt) PixPtr(x, y int) []basics.Int8u {
+func (p patternPixFmt) Width() int    { return p.w }
+func (p patternPixFmt) Height() int   { return p.h }
+func (p patternPixFmt) PixWidth() int { return 4 }
+
+func (p patternPixFmt) PixPtr(x, y int) []basics.Int8u {
 	if y < 0 || y >= p.h || x < 0 || x >= p.w {
-		return p.data[0:]
+		return p.data[:0]
 	}
 	return p.data[y*p.stride+x*4:]
 }
 
-// patSource wraps an ImageAccessorWrap over patPixFmt.
-type patSource struct {
-	accessor *imageacc.ImageAccessorWrap[patPixFmt, *imageacc.WrapModeRepeatAutoPow2, *imageacc.WrapModeRepeatAutoPow2]
-	pf       patPixFmt
+type patternSource struct {
+	accessor *imageacc.ImageAccessorWrap[patternPixFmt, *imageacc.WrapModeReflectAutoPow2, *imageacc.WrapModeReflectAutoPow2]
+	pf       patternPixFmt
 }
 
-func (s *patSource) Width() int                  { return s.pf.w }
-func (s *patSource) Height() int                 { return s.pf.h }
-func (s *patSource) ColorType() string           { return "RGBA8" }
-func (s *patSource) OrderType() color.ColorOrder { return color.OrderRGBA }
-func (s *patSource) Span(x, y, l int) []basics.Int8u {
-	return s.accessor.Span(x, y, l)
+func (s *patternSource) Width() int                  { return s.pf.w }
+func (s *patternSource) Height() int                 { return s.pf.h }
+func (s *patternSource) ColorType() string           { return "RGBA8" }
+func (s *patternSource) OrderType() color.ColorOrder { return color.OrderRGBA }
+func (s *patternSource) Span(x, y, length int) []basics.Int8u {
+	return s.accessor.Span(x, y, length)
 }
-func (s *patSource) NextX() []basics.Int8u { return s.accessor.NextX() }
-func (s *patSource) NextY() []basics.Int8u { return s.accessor.NextY() }
-func (s *patSource) RowPtr(y int) []basics.Int8u {
+func (s *patternSource) NextX() []basics.Int8u { return s.accessor.NextX() }
+func (s *patternSource) NextY() []basics.Int8u { return s.accessor.NextY() }
+func (s *patternSource) RowPtr(y int) []basics.Int8u {
 	return s.pf.PixPtr(0, y)
 }
 
-// rasScanlineAdapter adapts ScanlineU8 to rasterizer.ScanlineInterface.
-// pathSourceAdapter bridges PathStorageStl to rasterizer VertexSource.
-type pathSourceAdapter struct{ ps *path.PathStorageStl }
+type rasterizerVertexSource interface {
+	Rewind(id uint)
+	Vertex() (x, y float64, cmd basics.PathCommand)
+}
 
-func (a *pathSourceAdapter) Rewind(id uint32) { a.ps.Rewind(uint(id)) }
-func (a *pathSourceAdapter) Vertex(x, y *float64) uint32 {
-	vx, vy, cmd := a.ps.NextVertex()
+type rasterizerAdapter struct {
+	source rasterizerVertexSource
+}
+
+func (a *rasterizerAdapter) Rewind(id uint32) { a.source.Rewind(uint(id)) }
+func (a *rasterizerAdapter) Vertex(x, y *float64) uint32 {
+	vx, vy, cmd := a.source.Vertex()
 	*x = vx
 	*y = vy
-	return cmd
+	return uint32(cmd)
 }
 
-// generatePatternTile creates a small star-on-dark-background pattern image.
-func generatePatternTile(size int, angleDeg float64) patPixFmt {
-	pf := patPixFmt{w: size, h: size, stride: size * 4, data: make([]basics.Int8u, size*size*4)}
+func createStar(ps *path.PathStorageStl, xc, yc, r1, r2 float64, n uint, startAngleDeg float64) {
+	ps.RemoveAll()
+	startAngleRad := startAngleDeg * math.Pi / 180.0
+	for i := uint(0); i < n; i++ {
+		a := math.Pi*2.0*float64(i)/float64(n) - math.Pi/2.0
+		dx := math.Cos(a + startAngleRad)
+		dy := math.Sin(a + startAngleRad)
 
-	// Fill background dark.
-	for i := 0; i < size*size*4; i += 4 {
-		pf.data[i] = 102
-		pf.data[i+1] = 0
-		pf.data[i+2] = 26
-		pf.data[i+3] = 200
-	}
-
-	// Draw the pattern via a temporary agg.Image.
-	tmpImg := agg.CreateImage(size, size)
-	tc := agg.NewContextForImage(tmpImg)
-	tc.Clear(agg.RGBA(0.4, 0.0, 0.1, 0.8))
-
-	cx, cy := float64(size)*0.5, float64(size)*0.5
-	r1 := float64(size)*0.5 - 1
-	r2 := r1 / 2.5
-	n := 6
-	startRad := angleDeg * math.Pi / 180.0
-
-	// Star fill.
-	tc.SetColor(agg.RGBA(0.43, 0.51, 0.20, 1.0))
-	first := true
-	for i := 0; i < n*2; i++ {
-		a := math.Pi*2.0*float64(i)/float64(n*2) - math.Pi*0.5 + startRad
-		r := r2
-		if i%2 == 0 {
-			r = r1
-		}
-		x := cx + math.Cos(a)*r
-		y := cy + math.Sin(a)*r
-		if first {
-			tc.MoveTo(x, y)
-			first = false
-		} else {
-			tc.LineTo(x, y)
-		}
-	}
-	tc.ClosePath()
-	tc.Fill()
-
-	copy(pf.data, tmpImg.Data)
-	return pf
-}
-
-// buildLargeStarPath builds a large star polygon centred on (cx,cy).
-func buildLargeStarPath(cx, cy float64, w, h int, angleDeg float64) *path.PathStorageStl {
-	r := float64(w)
-	if float64(h) < r {
-		r = float64(h)
-	}
-	r1 := r/3 - 8
-	r2 := r1 / 1.45
-	nr := 14
-	startRad := angleDeg * math.Pi / 180.0
-
-	ps := path.NewPathStorageStl()
-	for i := 0; i < nr; i++ {
-		a := math.Pi*2.0*float64(i)/float64(nr) - math.Pi*0.5 + startRad
-		dx := math.Cos(a)
-		dy := math.Sin(a)
 		if i&1 != 0 {
-			ps.LineTo(cx+dx*r1, cy+dy*r1)
-		} else {
-			if i == 0 {
-				ps.MoveTo(cx+dx*r2, cy+dy*r2)
-			} else {
-				ps.LineTo(cx+dx*r2, cy+dy*r2)
-			}
+			ps.LineTo(xc+dx*r1, yc+dy*r1)
+			continue
 		}
+		if i == 0 {
+			ps.MoveTo(xc+dx*r2, yc+dy*r2)
+			continue
+		}
+		ps.LineTo(xc+dx*r2, yc+dy*r2)
 	}
-	ps.ClosePolygon(basics.PathFlagsNone)
-	return ps
+	ps.ClosePolygon(basics.PathFlagsClose)
 }
 
-type demo struct{}
+func generatePattern(size int, patternAngle, patternAlpha float64) patternPixFmt {
+	ps := path.NewPathStorageStl()
+	createStar(ps, float64(size)/2.0, float64(size)/2.0, float64(size)/2.5, float64(size)/6.0, 6, patternAngle)
 
-func (d *demo) Render(img *agg.Image) {
-	ctx := agg.NewContextForImage(img)
-	ctx.Clear(agg.RGBA(0.95, 0.95, 0.9, 1.0))
+	smooth := conv.NewConvSmoothPoly1Curve(path.NewPathStorageStlVertexSourceAdapter(ps))
+	smooth.SetSmoothValue(1.0)
+	smooth.SetApproximationScale(4.0)
 
-	// Generate pattern tile.
-	pf := generatePatternTile(patternSize, patternAngle)
-	wrapX := imageacc.NewWrapModeRepeatAutoPow2(basics.Int32u(pf.w))
-	wrapY := imageacc.NewWrapModeRepeatAutoPow2(basics.Int32u(pf.h))
-	accessor := imageacc.NewImageAccessorWrap[patPixFmt, *imageacc.WrapModeRepeatAutoPow2, *imageacc.WrapModeRepeatAutoPow2](&pf, wrapX, wrapY)
-	src := &patSource{accessor: accessor, pf: pf}
-	sg := span.NewSpanPatternRGBAWithParams[*patSource](src, 0, 0)
+	stroke := conv.NewConvStroke(smooth)
+	stroke.SetWidth(float64(size) / 15.0)
 
-	// Destination pipeline.
-	dstImg := img
-	dstRbuf := buffer.NewRenderingBufferWithData[uint8](dstImg.Data, dstImg.Width(), dstImg.Height(), dstImg.Width()*4)
-	dstPixf := pixfmt.NewPixFmtRGBA32Pre[color.Linear](dstRbuf)
-	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32Pre[color.Linear], color.RGBA8[color.Linear]](dstPixf)
-	alloc := span.NewSpanAllocator[color.RGBA8[color.Linear]]()
-
+	pf := patternPixFmt{
+		data:   make([]basics.Int8u, size*size*4),
+		w:      size,
+		h:      size,
+		stride: size * 4,
+	}
+	rbuf := buffer.NewRenderingBufferWithData[uint8](pf.data, size, size, pf.stride)
+	pixf := pixfmt.NewPixFmtRGBA32Linear(rbuf)
+	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]](pixf)
+	renSolid := renscan.NewRendererScanlineAASolidWithRenderer[*renderer.RendererBase[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](renBase)
 	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
-		rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip(),
+		rasterizer.RasConvInt{},
+		rasterizer.NewRasterizerSlNoClip(),
 	)
 	sl := scanline.NewScanlineP8()
 
-	cx, cy := float64(canvasW)/2, float64(canvasH)/2
-	ps := buildLargeStarPath(cx, cy, canvasW, canvasH, polygonAngle)
+	renBase.Clear(color.NewRGBA8[color.Linear](102, 0, 26, basics.Int8u(patternAlpha*255.0)))
 
-	ras.Reset()
-	ras.ClipBox(0, 0, float64(canvasW), float64(canvasH))
-	ras.AddPath(&pathSourceAdapter{ps: ps}, 0)
+	ras.AddPath(&rasterizerAdapter{source: smooth}, 0)
+	renSolid.SetColor(color.NewRGBA8[color.Linear](110, 130, 50, 255))
+	renscan.RenderScanlinesAASolid(ras, sl, renSolid.BaseRenderer(), renSolid.Color())
 
+	ras.AddPath(&rasterizerAdapter{source: stroke}, 0)
+	renSolid.SetColor(color.NewRGBA8[color.Linear](0, 50, 80, 255))
+	renscan.RenderScanlinesAASolid(ras, sl, renSolid.BaseRenderer(), renSolid.Color())
+
+	return pf
+}
+
+type demo struct {
+	patternSize  float64
+	patternAngle float64
+	patternAlpha float64
+	polygonAngle float64
+	polygonScale float64
+	polygonCX    float64
+	polygonCY    float64
+}
+
+func newDemo() *demo {
+	return &demo{
+		patternSize:  defaultPatternSize,
+		patternAngle: defaultPatternAngle,
+		patternAlpha: defaultPatternAlpha,
+		polygonAngle: defaultPolygonAngle,
+		polygonScale: defaultPolygonScale,
+		polygonCX:    float64(canvasW) / 2.0,
+		polygonCY:    float64(canvasH) / 2.0,
+	}
+}
+
+func (d *demo) Render(img *agg.Image) {
+	dstRbuf := buffer.NewRenderingBufferWithData[uint8](img.Data, img.Width(), img.Height(), img.Stride())
+	dstPixf := pixfmt.NewPixFmtRGBA32PreLinear(dstRbuf)
+	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32Pre[color.Linear], color.RGBA8[color.Linear]](dstPixf)
+	alloc := span.NewSpanAllocator[color.RGBA8[color.Linear]]()
+	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{},
+		rasterizer.NewRasterizerSlNoClip(),
+	)
+	sl := scanline.NewScanlineP8()
+
+	renBase.Clear(color.NewRGBA8[color.Linear](255, 255, 255, 255))
+
+	size := int(d.patternSize)
+	pf := generatePattern(size, d.patternAngle, d.patternAlpha)
+
+	wrapX := imageacc.NewWrapModeReflectAutoPow2(basics.Int32u(pf.w))
+	wrapY := imageacc.NewWrapModeReflectAutoPow2(basics.Int32u(pf.h))
+	imgSrc := imageacc.NewImageAccessorWrap[patternPixFmt, *imageacc.WrapModeReflectAutoPow2, *imageacc.WrapModeReflectAutoPow2](&pf, wrapX, wrapY)
+	sg := span.NewSpanPatternRGBAWithParams[*patternSource](
+		&patternSource{accessor: imgSrc, pf: pf},
+		0,
+		0,
+	)
+
+	ps := path.NewPathStorageStl()
+	r := float64(canvasW)/3.0 - 8.0
+	createStar(ps, d.polygonCX, d.polygonCY, r, r/1.45, 14, 0.0)
+
+	polygonMtx := transform.NewTransAffine()
+	polygonMtx.Multiply(transform.NewTransAffineTranslation(-d.polygonCX, -d.polygonCY))
+	polygonMtx.Multiply(transform.NewTransAffineRotation(d.polygonAngle * math.Pi / 180.0))
+	polygonMtx.Multiply(transform.NewTransAffineScaling(d.polygonScale))
+	polygonMtx.Multiply(transform.NewTransAffineTranslation(d.polygonCX, d.polygonCY))
+
+	tr := conv.NewConvTransform(path.NewPathStorageStlVertexSourceAdapter(ps), polygonMtx)
+	ras.AddPath(&rasterizerAdapter{source: tr}, 0)
 	if ras.RewindScanlines() {
 		sl.Reset(ras.MinX(), ras.MaxX())
+		sg.Prepare()
 		for ras.SweepScanline(sl) {
 			y := sl.Y()
 			for _, spanData := range sl.Spans() {
-				if spanData.Len > 0 {
-					colors := alloc.Allocate(int(spanData.Len))
-					sg.Generate(colors, int(spanData.X), y, uint(spanData.Len))
-					renBase.BlendColorHspan(int(spanData.X), y, int(spanData.Len), colors, spanData.Covers, basics.CoverFull)
+				length := int(spanData.Len)
+				if length < 0 {
+					length = -length
 				}
+				if length == 0 {
+					continue
+				}
+				colors := alloc.Allocate(length)
+				sg.Generate(colors, int(spanData.X), y, uint(length))
+				if spanData.Len < 0 {
+					renBase.BlendColorHspan(int(spanData.X), y, length, colors, nil, spanData.Covers[0])
+					continue
+				}
+				renBase.BlendColorHspan(int(spanData.X), y, length, colors, spanData.Covers, spanData.Covers[0])
 			}
 		}
 	}
-
-	// Draw the star outline.
-	a := ctx.GetAgg2D()
-	a.ResetTransformations()
-	a.NoFill()
-	a.LineColor(agg.NewColor(0, 60, 80, 200))
-	a.LineWidth(2.0)
-	ps2 := buildLargeStarPath(cx, cy, canvasW, canvasH, polygonAngle)
-	a.ResetPath()
-	ps2.Rewind(0)
-	for {
-		x, y, cmd := ps2.NextVertex()
-		if basics.IsStop(basics.PathCommand(cmd)) {
-			break
-		}
-		if basics.IsMoveTo(basics.PathCommand(cmd)) {
-			a.MoveTo(x, y)
-		} else if basics.IsVertex(basics.PathCommand(cmd)) {
-			a.LineTo(x, y)
-		}
-	}
-	a.ClosePolygon()
-	a.DrawPath(agg.StrokeOnly)
 }
 
 func main() {
@@ -230,5 +233,6 @@ func main() {
 		Title:  "Pattern Fill",
 		Width:  canvasW,
 		Height: canvasH,
-	}, &demo{})
+		FlipY:  true,
+	}, newDemo())
 }

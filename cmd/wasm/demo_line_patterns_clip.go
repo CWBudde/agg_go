@@ -90,7 +90,8 @@ func (s *lineChainPatternSource) Pixel(x, y int) color.RGBA {
 	if x < 0 || y < 0 || x >= s.img.Width || y >= s.img.Height {
 		return color.NewRGBA(0, 0, 0, 0)
 	}
-	p := s.img.Pixels[y*s.img.Width+x]
+	srcY := s.img.Height - 1 - y
+	p := s.img.Pixels[srcY*s.img.Width+x]
 	r := uint8((p >> 16) & 0xFF)
 	g := uint8((p >> 8) & 0xFF)
 	b := uint8(p & 0xFF)
