@@ -196,7 +196,7 @@ func applyBlurInsideEllipse(dst, src *agg.Image, cx, cy, rx, ry float64) {
 }
 
 func main() {
-	lowlevelrunner.Run(lowlevelrunner.Config{Title: "Simple Blur", Width: 512, Height: 400, FlipY: true}, &demo{
+	lowlevelrunner.Run(lowlevelrunner.Config{Title: "Simple Blur", Width: 512, Height: 400, FlipY: true, DisableLinearRGBToSRGB: true}, &demo{
 		cx: 100,
 		cy: 102,
 	})

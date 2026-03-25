@@ -259,9 +259,10 @@ func (d *demo) OnMouseUp(x, y int, btn lowlevelrunner.Buttons) bool   { return f
 func main() {
 	d := newDemo()
 	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "Flash Rasterizer 2 (Style Decomposition)",
-		Width:  655,
-		Height: 520,
+		Title:                 "Flash Rasterizer 2 (Style Decomposition)",
+		Width:                 655,
+		Height:                520,
+		EncodeLinearRGBToSRGB: true,
 	}, d)
 }
 

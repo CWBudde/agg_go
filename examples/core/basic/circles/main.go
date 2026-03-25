@@ -462,8 +462,9 @@ func renderCtrl(
 
 func main() {
 	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "Circles",
-		Width:  startWidth,
-		Height: startHeight,
+		Title:                 "Circles",
+		Width:                 startWidth,
+		Height:                startHeight,
+		EncodeLinearRGBToSRGB: true,
 	}, &demo{})
 }

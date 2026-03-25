@@ -585,8 +585,9 @@ func copyBGR24FlipY(src, dst []uint8, width, height int) {
 func main() {
 	d := newDemo()
 	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "Alpha Gradient",
-		Width:  frameWidth,
-		Height: frameHeight,
+		Title:                 "Alpha Gradient",
+		Width:                 frameWidth,
+		Height:                frameHeight,
+		EncodeLinearRGBToSRGB: true,
 	}, d)
 }

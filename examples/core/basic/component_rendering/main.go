@@ -220,8 +220,9 @@ func main() {
 		alphaSlider: alphaSlider,
 	}
 	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "Component Rendering",
-		Width:  frameWidth,
-		Height: frameHeight,
+		Title:                 "Component Rendering",
+		Width:                 frameWidth,
+		Height:                frameHeight,
+		EncodeLinearRGBToSRGB: true,
 	}, d)
 }

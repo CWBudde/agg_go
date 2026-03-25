@@ -272,8 +272,9 @@ func copyFlipY(src, dst []uint8, width, height int) {
 
 func main() {
 	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "Blur",
-		Width:  frameWidth,
-		Height: frameHeight,
+		Title:                 "Blur",
+		Width:                 frameWidth,
+		Height:                frameHeight,
+		EncodeLinearRGBToSRGB: true,
 	}, &demo{})
 }

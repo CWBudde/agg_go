@@ -278,8 +278,9 @@ func main() {
 		slider1: sl,
 	}
 	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "AA Demo",
-		Width:  frameWidth,
-		Height: frameHeight,
+		Title:                 "AA Demo",
+		Width:                 frameWidth,
+		Height:                frameHeight,
+		EncodeLinearRGBToSRGB: true,
 	}, d)
 }

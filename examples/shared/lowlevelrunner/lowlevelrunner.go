@@ -20,6 +20,21 @@ type Config struct {
 	// Demos must use img.Stride() (not a hardcoded positive value) when
 	// attaching their own rendering buffer to img.Data.
 	FlipY bool
+	// EncodeLinearRGBToSRGB gamma-encodes the rendered RGB channels before
+	// window blit / PNG export. Use this when a demo renders a linear-light
+	// framebuffer but the C++ reference is compared in display/sRGB space.
+	EncodeLinearRGBToSRGB bool
+	// DisableLinearRGBToSRGB disables the default output conversion.
+	// Leave this false for typical low-level demos that render linear RGB.
+	// Set it true only for demos that already render in display/sRGB space.
+	DisableLinearRGBToSRGB bool
+}
+
+func (c Config) shouldEncodeLinearRGBToSRGB() bool {
+	if c.DisableLinearRGBToSRGB {
+		return false
+	}
+	return c.EncodeLinearRGBToSRGB
 }
 
 // Demo is the core interface every low-level demo must implement.

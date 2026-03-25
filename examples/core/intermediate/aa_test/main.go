@@ -255,8 +255,9 @@ func (d *demo) Render(img *agg.Image) {
 
 func main() {
 	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "AA Test",
-		Width:  frameWidth,
-		Height: frameHeight,
+		Title:                 "AA Test",
+		Width:                 frameWidth,
+		Height:                frameHeight,
+		EncodeLinearRGBToSRGB: true,
 	}, &demo{})
 }

@@ -25,15 +25,15 @@ func Run(cfg Config, demo Demo) {
 	demo.Render(img)
 
 	filename := strings.ReplaceAll(strings.ToLower(cfg.Title), " ", "_") + ".png"
-	if err := savePNG(img, filename); err != nil {
+	if err := savePNG(img, filename, cfg.shouldEncodeLinearRGBToSRGB()); err != nil {
 		fmt.Fprintf(os.Stderr, "lowlevelrunner: save PNG: %v\n", err)
 		os.Exit(1)
 	}
 	fmt.Printf("saved %s\n", filename)
 }
 
-func savePNG(img *agg.Image, filename string) error {
-	goImg := img.ToGoImage()
+func savePNG(img *agg.Image, filename string, encodeLinearRGBToSRGB bool) error {
+	goImg := outputImage(img, encodeLinearRGBToSRGB)
 	if goImg == nil {
 		return fmt.Errorf("image conversion failed")
 	}

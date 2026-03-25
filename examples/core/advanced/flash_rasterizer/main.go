@@ -209,8 +209,9 @@ func (d *demo) Render(img *agg.Image) {
 
 func main() {
 	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "Flash Rasterizer",
-		Width:  width,
-		Height: height,
+		Title:                 "Flash Rasterizer",
+		Width:                 width,
+		Height:                height,
+		EncodeLinearRGBToSRGB: true,
 	}, &demo{})
 }

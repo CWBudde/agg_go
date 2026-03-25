@@ -169,9 +169,10 @@ func main() {
 		numCtrl: numCtrl,
 	}
 	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "Alpha Mask2",
-		Width:  frameWidth,
-		Height: frameHeight,
-		FlipY:  true,
+		Title:                 "Alpha Mask2",
+		Width:                 frameWidth,
+		Height:                frameHeight,
+		FlipY:                 true,
+		EncodeLinearRGBToSRGB: true,
 	}, d)
 }

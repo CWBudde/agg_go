@@ -463,7 +463,7 @@ func Draw(ctx *agg.Context, cfg *Config) Result {
 
 	outRbuf := buffer.NewRenderingBufferU8()
 	outRbuf.Attach(outImg.Data, w, h, w*4)
-	outPixFmt := pixfmt.NewPixFmtRGBA32PreLinear(outRbuf)
+	outPixFmt := pixfmt.NewPixFmtRGBA32[color.Linear](outRbuf)
 	renBase := renderer.NewRendererBaseWithPixfmt(outPixFmt)
 	renBase.Clear(color.RGBA8[color.Linear]{R: 255, G: 242, B: 242, A: 255})
 
@@ -471,9 +471,9 @@ func Draw(ctx *agg.Context, cfg *Config) Result {
 	grayBuf := make([]basics.Int8u, w*h)
 	grayRbuf := buffer.NewRenderingBufferU8()
 	grayRbuf.Attach(grayBuf, w, h, w)
-	grayPixFmt := pixfmt.NewPixFmtSGray8(grayRbuf)
+	grayPixFmt := pixfmt.NewPixFmtGray8(grayRbuf)
 	grayRendBase := renderer.NewRendererBaseWithPixfmt(grayPixFmt)
-	grayRendBase.Clear(color.Gray8[color.SRGB]{V: 0, A: 255})
+	grayRendBase.Clear(color.Gray8[color.Linear]{V: 0, A: 255})
 
 	// Build perspective transform from shape bounds to quad.
 	shadowPersp := transform.NewTransPerspectiveRectToQuad(
@@ -497,7 +497,7 @@ func Draw(ctx *agg.Context, cfg *Config) Result {
 	ras.AddPath(&rasPathAdapter{vs: shadowTrans}, 0)
 	if ras.RewindScanlines() {
 		sl.Reset(ras.MinX(), ras.MaxX())
-		grayColor := color.Gray8[color.SRGB]{V: 255, A: 255}
+		grayColor := color.Gray8[color.Linear]{V: 255, A: 255}
 		for ras.SweepScanline(sl) {
 			renderScanlineGray8(sl, grayRendBase, grayColor)
 		}
@@ -539,10 +539,9 @@ func Draw(ctx *agg.Context, cfg *Config) Result {
 		} else {
 			// Color LUT method: gradient shadow.
 			colorLUT := buildColorLUT()
-			// Convert SRGB LUT to Linear for the linear renderer.
 			linearLUT := make([]color.RGBA8[color.Linear], len(colorLUT))
 			for i, c := range colorLUT {
-				linearLUT[i] = color.RGBA8[color.Linear](c)
+				linearLUT[i] = color.ConvertToLinear(c)
 			}
 			renBase.BlendFromLUT(grayPixFmt, linearLUT, srcRect, 0, 0, 255)
 		}
@@ -578,8 +577,8 @@ func Draw(ctx *agg.Context, cfg *Config) Result {
 // This is an inline version of RenderScanlineAASolid for gray8 renderer.
 func renderScanlineGray8(
 	sl *scanline.ScanlineP8,
-	ren *renderer.RendererBase[*pixfmt.PixFmtSGray8, color.Gray8[color.SRGB]],
-	c color.Gray8[color.SRGB],
+	ren *renderer.RendererBase[*pixfmt.PixFmtGray8, color.Gray8[color.Linear]],
+	c color.Gray8[color.Linear],
 ) {
 	y := sl.Y()
 	spans := sl.Begin()
@@ -601,7 +600,7 @@ func renderScanlineGray8(
 // renderScanlineRGBA renders a single scanline with solid RGBA color.
 func renderScanlineRGBA(
 	sl *scanline.ScanlineP8,
-	ren *renderer.RendererBase[*pixfmt.PixFmtRGBA32Pre[color.Linear], color.RGBA8[color.Linear]],
+	ren *renderer.RendererBase[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]],
 	c color.RGBA8[color.Linear],
 ) {
 	y := sl.Y()

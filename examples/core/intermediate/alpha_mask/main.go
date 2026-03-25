@@ -213,8 +213,9 @@ func copyFlipY(src, dst []uint8, width, height int) {
 func main() {
 	d := &demo{scale: 1.0}
 	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "Alpha Mask",
-		Width:  frameWidth,
-		Height: frameHeight,
+		Title:                 "Alpha Mask",
+		Width:                 frameWidth,
+		Height:                frameHeight,
+		EncodeLinearRGBToSRGB: true,
 	}, d)
 }

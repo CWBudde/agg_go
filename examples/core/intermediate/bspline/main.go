@@ -261,8 +261,9 @@ func (d *demo) OnKey(key rune) bool {
 
 func main() {
 	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "AGG Example. BSpline Interpolator",
-		Width:  frameWidth,
-		Height: frameHeight,
+		Title:                 "AGG Example. BSpline Interpolator",
+		Width:                 frameWidth,
+		Height:                frameHeight,
+		EncodeLinearRGBToSRGB: true,
 	}, newDemo())
 }
