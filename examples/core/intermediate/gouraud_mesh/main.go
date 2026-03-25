@@ -73,8 +73,8 @@ func cxxRandom(rng *clibcRand, v1, v2 float64) float64 {
 	return (v2-v1)*float64(rng.randN(1000))/999.0 + v1
 }
 
-func srgbaRandRTL(rng *clibcRand) icol.RGBA8[icol.Linear] {
-	return icol.RGBA8[icol.Linear]{
+func srgbaRandRTL(rng *clibcRand) icol.RGBA8[icol.SRGB] {
+	return icol.RGBA8[icol.SRGB]{
 		A: 255,
 		B: uint8(rng.randAnd(0xFF)),
 		G: uint8(rng.randAnd(0xFF)),
@@ -82,8 +82,8 @@ func srgbaRandRTL(rng *clibcRand) icol.RGBA8[icol.Linear] {
 	}
 }
 
-func srgbaDirRTL(rng *clibcRand) icol.RGBA8[icol.Linear] {
-	return icol.RGBA8[icol.Linear]{
+func srgbaDirRTL(rng *clibcRand) icol.RGBA8[icol.SRGB] {
+	return icol.RGBA8[icol.SRGB]{
 		B: uint8(rng.randAnd(1)),
 		G: uint8(rng.randAnd(1)),
 		R: uint8(rng.randAnd(1)),
@@ -93,8 +93,8 @@ func srgbaDirRTL(rng *clibcRand) icol.RGBA8[icol.Linear] {
 type meshPoint struct {
 	x, y   float64
 	dx, dy float64
-	color  icol.RGBA8[icol.Linear]
-	dc     icol.RGBA8[icol.Linear]
+	color  icol.RGBA8[icol.SRGB]
+	dc     icol.RGBA8[icol.SRGB]
 }
 
 type meshTriangle struct {
@@ -336,18 +336,18 @@ func newMeshStyleHandler(mesh *meshCtrl) *meshStyleHandler {
 
 func (h *meshStyleHandler) IsSolid(int) bool { return false }
 
-func (h *meshStyleHandler) Color(int) icol.RGBA8[icol.Linear] {
-	return icol.RGBA8[icol.Linear]{}
+func (h *meshStyleHandler) Color(int) icol.RGBA8[icol.SRGB] {
+	return icol.RGBA8[icol.SRGB]{}
 }
 
-func (h *meshStyleHandler) GenerateSpan(colors []icol.RGBA8[icol.Linear], x, y, length, style int) {
+func (h *meshStyleHandler) GenerateSpan(colors []icol.RGBA8[icol.SRGB], x, y, length, style int) {
 	if style < 0 || style >= len(h.triangles) {
 		return
 	}
 	tmp := make([]span.RGBAColor, length)
 	h.triangles[style].Generate(tmp, x, y, uint(length))
 	for i := 0; i < length; i++ {
-		colors[i] = icol.RGBA8[icol.Linear]{
+		colors[i] = icol.RGBA8[icol.SRGB]{
 			R: uint8(tmp[i].R),
 			G: uint8(tmp[i].G),
 			B: uint8(tmp[i].B),
@@ -431,9 +431,9 @@ func (d *demo) Render(img *agg.Image) {
 	}
 
 	rbuf := buffer.NewRenderingBufferU8WithData(img.Data, img.Width(), img.Height(), img.Stride())
-	pf := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
-	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32Pre[icol.Linear], icol.RGBA8[icol.Linear]](pf)
-	renBase.Clear(icol.RGBA8[icol.Linear]{A: 255})
+	pf := pixfmt.NewPixFmtRGBA32Pre[icol.SRGB](rbuf)
+	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32Pre[icol.SRGB], icol.RGBA8[icol.SRGB]](pf)
+	renBase.Clear(icol.RGBA8[icol.SRGB]{A: 255})
 
 	styles := newMeshStyleHandler(d.mesh)
 	rasc := rasterizer.NewRasterizerCompoundAA(&compoundNoClip{})
@@ -441,7 +441,7 @@ func (d *demo) Render(img *agg.Image) {
 	slBin := scanline.NewScanlineU8()
 	adAA := &compoundSLAdapter{sl: slAA}
 	adBin := &compoundSLAdapter{sl: slBin}
-	alloc := span.NewSpanAllocator[icol.RGBA8[icol.Linear]]()
+	alloc := span.NewSpanAllocator[icol.RGBA8[icol.SRGB]]()
 
 	start := time.Now()
 	rasc.Reset()
@@ -462,7 +462,7 @@ func (d *demo) Render(img *agg.Image) {
 		if length < 0 {
 			length = 0
 		}
-		colorSpan := make([]icol.RGBA8[icol.Linear], length*2)
+		colorSpan := make([]icol.RGBA8[icol.SRGB], length*2)
 		mixBuffer := colorSpan[length:]
 
 		for {
@@ -491,7 +491,7 @@ func (d *demo) Render(img *agg.Image) {
 			y := slBin.Y()
 			for _, sp := range slBin.Spans() {
 				for j := 0; j < int(sp.Len); j++ {
-					mixBuffer[int(sp.X)-minX+j] = icol.RGBA8[icol.Linear]{}
+					mixBuffer[int(sp.X)-minX+j] = icol.RGBA8[icol.SRGB]{}
 				}
 			}
 
@@ -525,7 +525,7 @@ func (d *demo) Render(img *agg.Image) {
 
 type scanlineRas = rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
 
-func drawText(renBase *renderer.RendererBase[*pixfmt.PixFmtRGBA32Pre[icol.Linear], icol.RGBA8[icol.Linear]], text string) {
+func drawText(renBase *renderer.RendererBase[*pixfmt.PixFmtRGBA32Pre[icol.SRGB], icol.RGBA8[icol.SRGB]], text string) {
 	txt := gsv.NewGSVText()
 	txt.SetSize(10.0, 0)
 	txt.SetStartPoint(10.0, 10.0)
@@ -543,7 +543,7 @@ func drawText(renBase *renderer.RendererBase[*pixfmt.PixFmtRGBA32Pre[icol.Linear
 	sl := scanline.NewScanlineU8()
 	ras.Reset()
 	ras.AddPath(&convVertexSourceRasVS{src: txtStroke}, 0)
-	renscan.RenderScanlinesAASolid(ras, sl, renBase, icol.RGBA8[icol.Linear]{R: 255, G: 255, B: 255, A: 255})
+	renscan.RenderScanlinesAASolid(ras, sl, renBase, icol.RGBA8[icol.SRGB]{R: 255, G: 255, B: 255, A: 255})
 }
 
 func main() {
