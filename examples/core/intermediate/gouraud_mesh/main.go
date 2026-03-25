@@ -22,14 +22,13 @@ import (
 )
 
 const (
-	frameWidth   = 400
-	frameHeight  = 400
-	meshCols     = 20
-	meshRows     = 20
-	cellSize     = 17.0
-	meshStartX   = 40.0
-	meshStartY   = 40.0
-	snapshotStep = 4
+	frameWidth  = 400
+	frameHeight = 400
+	meshCols    = 20
+	meshRows    = 20
+	cellSize    = 17.0
+	meshStartX  = 40.0
+	meshStartY  = 40.0
 )
 
 type clibcRand struct {
@@ -38,36 +37,19 @@ type clibcRand struct {
 	rptr  int
 }
 
-func newClibcRandSeed(seed int32) *clibcRand {
-	if seed == 0 {
-		seed = 1
+func newClibcRandSeed1() *clibcRand {
+	return &clibcRand{
+		state: [31]int32{
+			-1726662223, 379960547, 1735697613, 1040273694, 1313901226,
+			1627687941, -179304937, -2073333483, 1780058412, -1989503057,
+			-615974602, 344556628, 939512070, -1249116260, 1507946756,
+			-812545463, 154635395, 1388815473, -1926676823, 525320961,
+			-1009028674, 968117788, -123449607, 1284210865, 435012392,
+			-2017506339, -911064859, -370259173, 1132637927, 1398500161, -205601318,
+		},
+		fptr: 3,
+		rptr: 0,
 	}
-
-	const (
-		mod  int64 = 2147483647
-		mult int64 = 16807
-	)
-
-	var seq [344]int32
-	seq[0] = seed
-	for i := 1; i < 31; i++ {
-		v := mult * int64(seq[i-1]) % mod
-		if v < 0 {
-			v += mod
-		}
-		seq[i] = int32(v)
-	}
-	for i := 31; i < 34; i++ {
-		seq[i] = seq[i-31]
-	}
-	for i := 34; i < len(seq); i++ {
-		seq[i] = seq[i-31] + seq[i-3]
-	}
-
-	rng := &clibcRand{fptr: 3, rptr: 0}
-	copy(rng.state[:3], seq[341:344])
-	copy(rng.state[3:], seq[313:341])
-	return rng
 }
 
 func (r *clibcRand) next() int32 {
@@ -84,12 +66,28 @@ func (r *clibcRand) next() int32 {
 	return result
 }
 
-func (r *clibcRand) rand31() uint32 {
-	return uint32(r.next())
-}
+func (r *clibcRand) randN(n int) int      { return int(r.next()) % n }
+func (r *clibcRand) randAnd(mask int) int { return int(r.next()) & mask }
 
 func cxxRandom(rng *clibcRand, v1, v2 float64) float64 {
-	return (v2-v1)*float64(rng.rand31()%1000)/999.0 + v1
+	return (v2-v1)*float64(rng.randN(1000))/999.0 + v1
+}
+
+func srgbaRandRTL(rng *clibcRand) icol.RGBA8[icol.Linear] {
+	return icol.RGBA8[icol.Linear]{
+		A: 255,
+		B: uint8(rng.randAnd(0xFF)),
+		G: uint8(rng.randAnd(0xFF)),
+		R: uint8(rng.randAnd(0xFF)),
+	}
+}
+
+func srgbaDirRTL(rng *clibcRand) icol.RGBA8[icol.Linear] {
+	return icol.RGBA8[icol.Linear]{
+		B: uint8(rng.randAnd(1)),
+		G: uint8(rng.randAnd(1)),
+		R: uint8(rng.randAnd(1)),
+	}
 }
 
 type meshPoint struct {
@@ -141,21 +139,12 @@ func (m *meshCtrl) generate(cols, rows int, cellW, cellH, startX, startY float64
 		x := startX
 		for j := 0; j < m.cols; j++ {
 			m.vertices = append(m.vertices, meshPoint{
-				x:  x,
-				y:  y,
-				dx: cxxRandom(rng, -0.5, 0.5),
-				dy: cxxRandom(rng, -0.5, 0.5),
-				color: icol.RGBA8[icol.Linear]{
-					R: uint8(rng.rand31() & 0xFF),
-					G: uint8(rng.rand31() & 0xFF),
-					B: uint8(rng.rand31() & 0xFF),
-					A: 255,
-				},
-				dc: icol.RGBA8[icol.Linear]{
-					R: uint8(rng.rand31() & 1),
-					G: uint8(rng.rand31() & 1),
-					B: uint8(rng.rand31() & 1),
-				},
+				x:     x,
+				y:     y,
+				dx:    cxxRandom(rng, -0.5, 0.5),
+				dy:    cxxRandom(rng, -0.5, 0.5),
+				color: srgbaRandRTL(rng),
+				dc:    srgbaDirRTL(rng),
 			})
 			x += cellW
 		}
@@ -409,12 +398,8 @@ func newDemo() *demo {
 }
 
 func (d *demo) OnInit() {
-	rng := newClibcRandSeed(1)
+	rng := newClibcRandSeed1()
 	d.mesh.generate(meshCols, meshRows, cellSize, cellSize, meshStartX, meshStartY, rng)
-	for i := 0; i < snapshotStep; i++ {
-		d.mesh.randomizePoints()
-		d.mesh.rotateColors()
-	}
 	d.initialized = true
 }
 
