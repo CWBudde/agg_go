@@ -268,7 +268,9 @@ func loadBMPImage(r io.ReadSeeker) (*agg.Image, error) {
 		if _, err := io.ReadFull(r, rowData); err != nil {
 			return nil, err
 		}
-		dstY := y
+		// BMP rows are stored bottom-up; flip to top-down so that
+		// negative-stride attachment matches the C++ flip_y convention.
+		dstY := height - 1 - y
 		for x := 0; x < width; x++ {
 			src := x * int(infoHeader.BitCount) / 8
 			dst := (dstY*width + x) * 3
@@ -407,25 +409,32 @@ func (d *demo) Render(img *agg.Image) {
 
 	// C++ on_init uses rand() without an explicit srand(), so match its
 	// default seed and generator instead of Go's PRNG.
+	// C++ stores colors as srgba8 (sRGB) which are implicitly converted to
+	// linear rgba8 before blending into the BGR24 buffer (the render_scanlines_aa_solid
+	// template creates BaseRenderer::color_type ren_color = color, triggering the
+	// sRGB-to-linear conversion). Replicate this by converting RGB channels to linear.
 	rng := newClibcRandSeed1()
 	for i := 0; i < 50; i++ {
 		x := float64(rng.randN(canvasW))
 		y := float64(rng.randN(canvasH))
 		rx := float64(rng.randN(60) + 10)
 		ry := float64(rng.randN(60) + 10)
-		a.FillColor(agg.NewColor(
-			uint8(rng.randN(256)),
-			uint8(rng.randN(256)),
-			uint8(rng.randN(256)),
-			uint8(rng.randN(256)),
-		))
+		sa := uint8(rng.randN(256))
+		sb := uint8(rng.randN(256))
+		sg := uint8(rng.randN(256))
+		sr := uint8(rng.randN(256))
+		a.FillColor(agg.NewColor(sr, sg, sb, sa))
 		a.NoLine()
 		a.Ellipse(x, y, rx, ry)
 	}
 
+	// Use non-premultiplied blending to match the C++ BGR24 render path.
+	// The span generator outputs plain (non-premultiplied) colors: full RGB values
+	// from the bilinear filter plus a brightness-derived alpha. The C++ code blends
+	// these into a BGR24 buffer using non-premultiplied compositing.
 	dstRbuf := buffer.NewRenderingBufferWithData[uint8](img.Data, img.Width(), img.Height(), img.Stride())
-	dstPixf := pixfmt.NewPixFmtRGBA32Pre[color.Linear](dstRbuf)
-	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32Pre[color.Linear], color.RGBA8[color.Linear]](dstPixf)
+	dstPixf := pixfmt.NewPixFmtRGBA32[color.Linear](dstRbuf)
+	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]](dstPixf)
 	alloc := span.NewSpanAllocator[color.RGBA8[color.Linear]]()
 
 	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
