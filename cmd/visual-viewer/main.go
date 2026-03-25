@@ -260,6 +260,7 @@ body { background: #111; color: #ddd; font-family: monospace; font-size: 13px; }
 .card-title { font-size: 13px; color: #eee; flex: 1; }
 .metrics { color: #999; font-size: 11px; display: flex; gap: 12px; flex-wrap: wrap; }
 .badge { padding: 2px 7px; border-radius: 3px; font-size: 11px; font-weight: bold; }
+.badge-neutral { background: #2a2a2a; color: #ccc; border: 1px solid #555; }
 .badge-ok  { background: #1a3a1a; color: #5f5; border: 1px solid #3a6a3a; }
 .badge-warn { background: #3a2a00; color: #fa0; border: 1px solid #6a5000; }
 .badge-bad { background: #3a0000; color: #f55; border: 1px solid #6a0000; }
@@ -305,9 +306,15 @@ body { background: #111; color: #ddd; font-family: monospace; font-size: 13px; }
 <div class="sticky-header">
   <h1>AGG Visual Comparison</h1>
   <input type="text" id="search" placeholder="Search demos…" oninput="filterCards()" style="width:180px">
-  <select id="sort-select" onchange="sortCards()">
+<select id="sort-select" onchange="sortCards()">
     <option value="rmse-desc">Sort: RMSE ↓</option>
     <option value="rmse-asc">Sort: RMSE ↑</option>
+    <option value="diff-pixels-desc">Sort: Different pixels ↓</option>
+    <option value="diff-pixels-asc">Sort: Different pixels ↑</option>
+    <option value="avg-diff-desc">Sort: Avg diff ↓</option>
+    <option value="avg-diff-asc">Sort: Avg diff ↑</option>
+    <option value="max-diff-desc">Sort: Max diff ↓</option>
+    <option value="max-diff-asc">Sort: Max diff ↑</option>
     <option value="name-asc">Sort: Name ↑</option>
   </select>
   <select id="diff-mode" onchange="setDiffMode(this.value)">
@@ -347,21 +354,78 @@ const pageFooter = `</div>
     var mode = document.getElementById('sort-select').value;
     var container = document.getElementById('cards-container');
     var cards = Array.from(container.querySelectorAll('.card'));
+    function metric(card, attr) {
+      return parseFloat(card.dataset[attr] || 0);
+    }
     cards.sort(function(a, b) {
-      if (mode === 'rmse-desc') return parseFloat(b.dataset.rmse||0) - parseFloat(a.dataset.rmse||0);
-      if (mode === 'rmse-asc')  return parseFloat(a.dataset.rmse||0) - parseFloat(b.dataset.rmse||0);
-      if (mode === 'name-asc')  return (a.dataset.name||'').localeCompare(b.dataset.name||'');
+      if (mode === 'rmse-desc') return metric(b, 'rmse') - metric(a, 'rmse');
+      if (mode === 'rmse-asc') return metric(a, 'rmse') - metric(b, 'rmse');
+      if (mode === 'diff-pixels-desc') return metric(b, 'diffPixels') - metric(a, 'diffPixels');
+      if (mode === 'diff-pixels-asc') return metric(a, 'diffPixels') - metric(b, 'diffPixels');
+      if (mode === 'avg-diff-desc') return metric(b, 'avgDiff') - metric(a, 'avgDiff');
+      if (mode === 'avg-diff-asc') return metric(a, 'avgDiff') - metric(b, 'avgDiff');
+      if (mode === 'max-diff-desc') return metric(b, 'maxDiff') - metric(a, 'maxDiff');
+      if (mode === 'max-diff-asc') return metric(a, 'maxDiff') - metric(b, 'maxDiff');
+      if (mode === 'name-asc') return (a.dataset.name||'').localeCompare(b.dataset.name||'');
       return 0;
     });
     cards.forEach(function(c) { container.appendChild(c); });
+    updateSortMetricBadges(mode);
+  }
+
+  function updateSortMetricBadges(mode) {
+    var label = 'none';
+    var attr = '';
+    var formatter = function(value) { return String(value); };
+
+    if (mode === 'rmse-desc' || mode === 'rmse-asc') {
+      label = 'RMSE';
+      attr = 'rmse';
+      formatter = function(value) { return Number(value).toFixed(2); };
+    } else if (mode === 'diff-pixels-desc' || mode === 'diff-pixels-asc') {
+      label = 'Different pixels';
+      attr = 'diffPixels';
+      formatter = function(value) { return String(Math.round(Number(value))); };
+    } else if (mode === 'avg-diff-desc' || mode === 'avg-diff-asc') {
+      label = 'Avg diff';
+      attr = 'avgDiff';
+      formatter = function(value) { return Number(value).toFixed(2); };
+    } else if (mode === 'max-diff-desc' || mode === 'max-diff-asc') {
+      label = 'Max diff';
+      attr = 'maxDiff';
+      formatter = function(value) { return String(Math.round(Number(value))); };
+    }
+
+    document.querySelectorAll('.card').forEach(function(card) {
+      var leftBadge = card.querySelector('.sort-metric-badge');
+      var rightBadge = card.querySelector('.rmse-badge');
+      if (!leftBadge || !rightBadge) {
+        return;
+      }
+
+      rightBadge.textContent = 'RMSE ' + Number(card.dataset.rmse || 0).toFixed(2);
+
+      if (!attr) {
+        leftBadge.textContent = 'none';
+        leftBadge.style.display = '';
+        return;
+      }
+
+      leftBadge.textContent = label + ' ' + formatter(card.dataset[attr] || 0);
+      leftBadge.style.display = '';
+    });
+
+    if (!attr) {
+      return;
+    }
   }
 
   function setDiffMode(mode) {
     document.querySelectorAll('.col-amp').forEach(function(el) {
-      el.style.display = (mode === 'amp' || mode === 'both') ? '' : 'none';
+      el.style.display = (mode === 'amp' || mode === 'both') ? 'flex' : 'none';
     });
     document.querySelectorAll('.col-raw').forEach(function(el) {
-      el.style.display = (mode === 'raw' || mode === 'both') ? '' : 'none';
+      el.style.display = (mode === 'raw' || mode === 'both') ? 'flex' : 'none';
     });
   }
 
@@ -410,6 +474,7 @@ const pageFooter = `</div>
   }
 
   // Initial summary
+  updateSortMetricBadges(document.getElementById('sort-select').value);
   updateSummary();
 
   // Expose for onchange handlers
@@ -436,10 +501,11 @@ func renderCard(w io.Writer, d *demoEntry) {
 	badge := badgeClass(d.RMSE)
 	pctDiff := d.DiffRatio * 100.0
 
-	fmt.Fprintf(w, `<div class="card" data-name="%s" data-rmse="%.4f">`, d.Name, d.RMSE)
+	fmt.Fprintf(w, `<div class="card" data-name="%s" data-rmse="%.4f" data-avg-diff="%.4f" data-max-diff="%d" data-diff-pixels="%d">`, d.Name, d.RMSE, d.AvgDiff, d.MaxDiff, d.DiffPixels)
 	fmt.Fprintf(w, `<div class="card-header">`)
-	fmt.Fprintf(w, `<span class="badge %s">RMSE %.2f</span>`, badge, d.RMSE)
+	fmt.Fprintf(w, `<span class="badge badge-neutral sort-metric-badge">RMSE %.2f</span>`, d.RMSE)
 	fmt.Fprintf(w, `<span class="card-title">%s</span>`, d.Name)
+	fmt.Fprintf(w, `<span class="badge %s rmse-badge">RMSE %.2f</span>`, badge, d.RMSE)
 	fmt.Fprintf(w, `<span class="metrics">`)
 	fmt.Fprintf(w, `<span>avg&nbsp;diff:&nbsp;%.2f</span>`, d.AvgDiff)
 	fmt.Fprintf(w, `<span>max&nbsp;diff:&nbsp;%d</span>`, d.MaxDiff)

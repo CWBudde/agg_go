@@ -12,6 +12,7 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
 	"github.com/MeKo-Christian/agg_go/internal/ctrl/spline"
+	"github.com/MeKo-Christian/agg_go/internal/demo/imageassets"
 	"github.com/MeKo-Christian/agg_go/internal/image"
 	"github.com/MeKo-Christian/agg_go/internal/path"
 	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
@@ -208,7 +209,11 @@ func drawImageAlphaDemo() {
 	initImgAlphaDemo()
 
 	if imgAlphaImage == nil {
-		imgAlphaImage = createSpheresImage(400, 400)
+		if src, err := imageassets.Spheres(); err == nil && src != nil {
+			imgAlphaImage = src
+		} else {
+			imgAlphaImage = createSpheresImage(400, 400)
+		}
 	}
 
 	imgW := float64(imgAlphaImage.Width())
@@ -246,7 +251,8 @@ func drawImageAlphaDemo() {
 
 	// Image source
 	imgRbuf := buffer.NewRenderingBufferU8()
-	imgRbuf.Attach(imgAlphaImage.Data, imgAlphaImage.Width(), imgAlphaImage.Height(), imgAlphaImage.Stride())
+	// Match the AGG reference: the source texture is sampled bottom-up.
+	imgRbuf.Attach(imgAlphaImage.Data, imgAlphaImage.Width(), imgAlphaImage.Height(), -imgAlphaImage.Stride())
 	ipf := imagePixFmt{rbuf: imgRbuf}
 	accessor := image.NewImageAccessorClip(&ipf, []basics.Int8u{0, 0, 0, 0})
 	src := &imageClipSource{accessor: accessor, ipf: &ipf}
