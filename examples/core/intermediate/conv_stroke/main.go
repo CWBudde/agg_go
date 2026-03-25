@@ -12,9 +12,11 @@ import (
 	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	icol "github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/conv"
 	ctrlbase "github.com/MeKo-Christian/agg_go/internal/ctrl"
 	rboxctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/rbox"
 	sliderctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/slider"
+	"github.com/MeKo-Christian/agg_go/internal/path"
 )
 
 const (
@@ -170,15 +172,54 @@ func (d *demo) Render(img *agg.Image) {
 	a.DrawPath(agg.StrokeOnly)
 
 	// (3) Dashed overlay on the wide stroke.
-	buildPath()
-	a.LineJoin(agg.LineJoin(join))
-	a.LineCap(agg.LineCap(capStyle))
-	a.LineWidth(strokeWidth / 5.0)
-	a.RemoveAllDashes()
-	a.AddDash(20.0, strokeWidth/2.5)
-	a.LineColor(agg.NewColor(0, 0, 77, 255))
-	a.DrawPath(agg.StrokeOnly)
-	a.RemoveAllDashes()
+	// C++ pipeline: path → conv_stroke(wide) → conv_dash → conv_stroke(thin).
+	// The dashes follow the outline of the wide stroke, not the center path.
+	{
+		ps := path.NewPathStorageStl()
+		ps.MoveTo(d.points[0][0], d.points[0][1])
+		ps.LineTo((d.points[0][0]+d.points[1][0])/2, (d.points[0][1]+d.points[1][1])/2)
+		ps.LineTo(d.points[1][0], d.points[1][1])
+		ps.LineTo(d.points[2][0], d.points[2][1])
+		ps.LineTo(d.points[2][0], d.points[2][1])
+
+		ps.MoveTo((d.points[0][0]+d.points[1][0])/2, (d.points[0][1]+d.points[1][1])/2)
+		ps.LineTo((d.points[1][0]+d.points[2][0])/2, (d.points[1][1]+d.points[2][1])/2)
+		ps.LineTo((d.points[2][0]+d.points[0][0])/2, (d.points[2][1]+d.points[0][1])/2)
+		ps.ClosePolygon(0)
+
+		psAdapter := path.NewPathStorageStlVertexSourceAdapter(ps)
+
+		// Wide stroke (same as step 1).
+		wideStroke := conv.NewConvStroke(psAdapter)
+		wideStroke.SetLineJoin(join)
+		wideStroke.SetLineCap(capStyle)
+		wideStroke.SetMiterLimit(miterLimit)
+		wideStroke.SetWidth(strokeWidth)
+
+		// Dash the stroked outline.
+		dashedStroke := conv.NewConvDash(wideStroke)
+		dashedStroke.AddDash(20.0, strokeWidth/2.5)
+
+		// Thin stroke of the dashed outline.
+		thinStroke := conv.NewConvStroke(dashedStroke)
+		thinStroke.SetMiterLimit(4.0)
+		thinStroke.SetWidth(strokeWidth / 5.0)
+		thinStroke.SetLineCap(capStyle)
+		thinStroke.SetLineJoin(join)
+
+		ras := a.GetInternalRasterizer()
+		ras.Reset()
+		// Feed vertices from the low-level pipeline into the rasterizer.
+		thinStroke.Rewind(0)
+		for {
+			x, y, cmd := thinStroke.Vertex()
+			if cmd == basics.PathCmdStop {
+				break
+			}
+			ras.AddVertex(x, y, uint32(cmd))
+		}
+		a.RenderRasterizerWithColor(agg.NewColor(0, 0, 77, 255))
+	}
 
 	// (4) Semi-transparent fill of the raw path.
 	buildPath()
