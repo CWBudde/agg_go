@@ -297,7 +297,6 @@ func renderCtrl(ras *rasType, sl *isl.ScanlineU8, rb *renBase, c ctrlbase.Ctrl[i
 	}
 }
 
-
 func main() {
 	lowlevelrunner.Run(lowlevelrunner.Config{
 		Title:  "AGG Example. Gamma Tuner",

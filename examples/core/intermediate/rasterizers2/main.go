@@ -50,12 +50,12 @@ var pixmapChain = []uint32{
 // --- type aliases for readability ---
 
 type (
-	pixFmt     = *pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]]
-	colorType  = color.RGBA8[color.Linear]
-	renBaseT   = *renderer.RendererBase[pixFmt, colorType]
-	rasAAType  = *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
-	slType     = *scanline.ScanlineP8
-	renPrimT   = *rprimitives.RendererPrimitives[renBaseT, colorType]
+	pixFmt    = *pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]]
+	colorType = color.RGBA8[color.Linear]
+	renBaseT  = *renderer.RendererBase[pixFmt, colorType]
+	rasAAType = *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
+	slType    = *scanline.ScanlineP8
+	renPrimT  = *rprimitives.RendererPrimitives[renBaseT, colorType]
 )
 
 // --- interface adapters between rasterizer.VertexSource and conv.VertexSource ---
@@ -205,10 +205,10 @@ type outlineAAAdapter struct {
 func (a *outlineAAAdapter) AccurateJoinOnly() bool { return a.ren.AccurateJoinOnly() }
 func (a *outlineAAAdapter) Color(c colorType)      { a.ren.Color(c) }
 
-func (a *outlineAAAdapter) Line0(lp primitives.LineParameters) { a.ren.Line0(&lp) }                       //nolint:gocritic
-func (a *outlineAAAdapter) Line1(lp primitives.LineParameters, sx, sy int) { a.ren.Line1(&lp, sx, sy) }   //nolint:gocritic
-func (a *outlineAAAdapter) Line2(lp primitives.LineParameters, ex, ey int) { a.ren.Line2(&lp, ex, ey) }   //nolint:gocritic
-func (a *outlineAAAdapter) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) {                       //nolint:gocritic
+func (a *outlineAAAdapter) Line0(lp primitives.LineParameters)             { a.ren.Line0(&lp) }         //nolint:gocritic
+func (a *outlineAAAdapter) Line1(lp primitives.LineParameters, sx, sy int) { a.ren.Line1(&lp, sx, sy) } //nolint:gocritic
+func (a *outlineAAAdapter) Line2(lp primitives.LineParameters, ex, ey int) { a.ren.Line2(&lp, ex, ey) } //nolint:gocritic
+func (a *outlineAAAdapter) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) { //nolint:gocritic
 	a.ren.Line3(&lp, sx, sy, ex, ey)
 }
 func (a *outlineAAAdapter) Pie(x, y, x1, y1, x2, y2 int) { a.ren.Pie(x, y, x1, y1, x2, y2) }
@@ -255,12 +255,12 @@ type outlineImageAdapter struct {
 	ren *outline.RendererOutlineImage
 }
 
-func (a *outlineImageAdapter) AccurateJoinOnly() bool            { return a.ren.AccurateJoinOnly() }
-func (a *outlineImageAdapter) Color(colorType)                   {}
-func (a *outlineImageAdapter) Line0(primitives.LineParameters)   {}                                           //nolint:gocritic
-func (a *outlineImageAdapter) Line1(primitives.LineParameters, int, int) {}                                   //nolint:gocritic
-func (a *outlineImageAdapter) Line2(primitives.LineParameters, int, int) {}                                   //nolint:gocritic
-func (a *outlineImageAdapter) Pie(int, int, int, int, int, int)          {}
+func (a *outlineImageAdapter) AccurateJoinOnly() bool                     { return a.ren.AccurateJoinOnly() }
+func (a *outlineImageAdapter) Color(colorType)                            {}
+func (a *outlineImageAdapter) Line0(primitives.LineParameters)            {} //nolint:gocritic
+func (a *outlineImageAdapter) Line1(primitives.LineParameters, int, int)  {} //nolint:gocritic
+func (a *outlineImageAdapter) Line2(primitives.LineParameters, int, int)  {} //nolint:gocritic
+func (a *outlineImageAdapter) Pie(int, int, int, int, int, int)           {}
 func (a *outlineImageAdapter) Semidot(func(int) bool, int, int, int, int) {}
 func (a *outlineImageAdapter) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) { //nolint:gocritic
 	a.ren.Line3(&lp, sx, sy, ex, ey)
@@ -356,13 +356,13 @@ func renderSlider(ras rasAAType, sl slType, renBase renBaseT, s *sliderctrl.Slid
 // --- demo ---
 
 type demo struct {
-	stepSlider     *sliderctrl.SliderCtrl
-	widthSlider    *sliderctrl.SliderCtrl
-	testPerf       *checkbox.CheckboxCtrl[color.RGBA]
-	rotate         *checkbox.CheckboxCtrl[color.RGBA]
-	accurateJoins  *checkbox.CheckboxCtrl[color.RGBA]
-	scalePattern   *checkbox.CheckboxCtrl[color.RGBA]
-	startAngle     float64
+	stepSlider    *sliderctrl.SliderCtrl
+	widthSlider   *sliderctrl.SliderCtrl
+	testPerf      *checkbox.CheckboxCtrl[color.RGBA]
+	rotate        *checkbox.CheckboxCtrl[color.RGBA]
+	accurateJoins *checkbox.CheckboxCtrl[color.RGBA]
+	scalePattern  *checkbox.CheckboxCtrl[color.RGBA]
+	startAngle    float64
 }
 
 func newDemo() *demo {

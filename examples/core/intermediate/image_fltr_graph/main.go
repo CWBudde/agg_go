@@ -65,8 +65,8 @@ type filterEval interface {
 type constFilter struct{ fn image.FilterFunction }
 
 func (f *constFilter) Radius() float64              { return f.fn.Radius() }
-func (f *constFilter) SetRadius(float64)             {}
-func (f *constFilter) CalcWeight(x float64) float64  { return f.fn.CalcWeight(math.Abs(x)) }
+func (f *constFilter) SetRadius(float64)            {}
+func (f *constFilter) CalcWeight(x float64) float64 { return f.fn.CalcWeight(math.Abs(x)) }
 
 type varFilter struct {
 	factory func(r float64) image.FilterFunction

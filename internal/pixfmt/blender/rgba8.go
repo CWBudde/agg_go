@@ -231,9 +231,9 @@ func (bl BlenderRGBA8Gamma[S, O]) BlendPix(dst []basics.Int8u, cr, cg, cb, a, co
 	sg := int(bl.Lut.Dir(cg))
 	sb := int(bl.Lut.Dir(cb))
 	ia := int(a)
-	dst[o.IdxR()] = bl.Lut.Inv(basics.Int8u(((sr-dr)*ia>>8) + dr))
-	dst[o.IdxG()] = bl.Lut.Inv(basics.Int8u(((sg-dg)*ia>>8) + dg))
-	dst[o.IdxB()] = bl.Lut.Inv(basics.Int8u(((sb-db)*ia>>8) + db))
+	dst[o.IdxR()] = bl.Lut.Inv(basics.Int8u(((sr - dr) * ia >> 8) + dr))
+	dst[o.IdxG()] = bl.Lut.Inv(basics.Int8u(((sg - dg) * ia >> 8) + dg))
+	dst[o.IdxB()] = bl.Lut.Inv(basics.Int8u(((sb - db) * ia >> 8) + db))
 	dst[o.IdxA()] = color.RGBA8Prelerp(dst[o.IdxA()], a, a)
 }
 
