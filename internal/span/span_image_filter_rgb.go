@@ -258,21 +258,22 @@ func (sif *SpanImageFilterRGBBilinearClip[Source, Interpolator]) Generate(span [
 			// Since Source is constrained to RGBSourceInterface, we can use RowPtr directly
 			row := sif.base.source.RowPtr(yLr)
 			pixelOffset := xLr * 3
+			nextPixelOffset := pixelOffset + 3
 
 			// Top-left sample
 			weight := (image.ImageSubpixelScale - xHr) * (image.ImageSubpixelScale - yHr)
 			if pixelOffset+2 < len(row) {
-				fg[0] += weight * int(row[pixelOffset])
-				fg[1] += weight * int(row[pixelOffset+1])
-				fg[2] += weight * int(row[pixelOffset+2])
+				fg[0] += weight * int(row[pixelOffset+orderType.R])
+				fg[1] += weight * int(row[pixelOffset+orderType.G])
+				fg[2] += weight * int(row[pixelOffset+orderType.B])
 			}
 
 			// Top-right sample
 			weight = xHr * (image.ImageSubpixelScale - yHr)
-			if pixelOffset+5 < len(row) {
-				fg[0] += weight * int(row[pixelOffset+3])
-				fg[1] += weight * int(row[pixelOffset+4])
-				fg[2] += weight * int(row[pixelOffset+5])
+			if nextPixelOffset+2 < len(row) {
+				fg[0] += weight * int(row[nextPixelOffset+orderType.R])
+				fg[1] += weight * int(row[nextPixelOffset+orderType.G])
+				fg[2] += weight * int(row[nextPixelOffset+orderType.B])
 			}
 
 			// Bottom row samples
@@ -283,17 +284,17 @@ func (sif *SpanImageFilterRGBBilinearClip[Source, Interpolator]) Generate(span [
 				// Bottom-left sample
 				weight = (image.ImageSubpixelScale - xHr) * yHr
 				if pixelOffset+2 < len(row) {
-					fg[0] += weight * int(row[pixelOffset])
-					fg[1] += weight * int(row[pixelOffset+1])
-					fg[2] += weight * int(row[pixelOffset+2])
+					fg[0] += weight * int(row[pixelOffset+orderType.R])
+					fg[1] += weight * int(row[pixelOffset+orderType.G])
+					fg[2] += weight * int(row[pixelOffset+orderType.B])
 				}
 
 				// Bottom-right sample
 				weight = xHr * yHr
-				if pixelOffset+5 < len(row) {
-					fg[0] += weight * int(row[pixelOffset+3])
-					fg[1] += weight * int(row[pixelOffset+4])
-					fg[2] += weight * int(row[pixelOffset+5])
+				if nextPixelOffset+2 < len(row) {
+					fg[0] += weight * int(row[nextPixelOffset+orderType.R])
+					fg[1] += weight * int(row[nextPixelOffset+orderType.G])
+					fg[2] += weight * int(row[nextPixelOffset+orderType.B])
 				}
 			}
 

@@ -258,7 +258,7 @@ body { background: #111; color: #ddd; font-family: monospace; font-size: 13px; }
 .card-body { display: none; padding: 10px; }
 .card.open .card-body { display: block; }
 .card-title { font-size: 13px; color: #eee; flex: 1; }
-.metrics { color: #999; font-size: 11px; display: flex; gap: 12px; flex-wrap: wrap; }
+.right-badges { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
 .badge { padding: 2px 7px; border-radius: 3px; font-size: 11px; font-weight: bold; }
 .badge-neutral { background: #2a2a2a; color: #ccc; border: 1px solid #555; }
 .badge-ok  { background: #1a3a1a; color: #5f5; border: 1px solid #3a6a3a; }
@@ -373,8 +373,33 @@ const pageFooter = `</div>
     updateSortMetricBadges(mode);
   }
 
+  function badgeColorClass(attr, value, diffRatio) {
+    if (attr === 'rmse') {
+      if (value <= 5) return 'badge-ok';
+      if (value <= 20) return 'badge-warn';
+      return 'badge-bad';
+    }
+    if (attr === 'avgDiff') {
+      if (value <= 2) return 'badge-ok';
+      if (value <= 8) return 'badge-warn';
+      return 'badge-bad';
+    }
+    if (attr === 'maxDiff') {
+      if (value <= 10) return 'badge-ok';
+      if (value <= 40) return 'badge-warn';
+      return 'badge-bad';
+    }
+    if (attr === 'diffPixels') {
+      var r = parseFloat(diffRatio || 0);
+      if (r <= 0.01) return 'badge-ok';
+      if (r <= 0.05) return 'badge-warn';
+      return 'badge-bad';
+    }
+    return 'badge-neutral';
+  }
+
   function updateSortMetricBadges(mode) {
-    var label = 'none';
+    var label = '';
     var attr = '';
     var formatter = function(value) { return String(value); };
 
@@ -383,41 +408,34 @@ const pageFooter = `</div>
       attr = 'rmse';
       formatter = function(value) { return Number(value).toFixed(2); };
     } else if (mode === 'diff-pixels-desc' || mode === 'diff-pixels-asc') {
-      label = 'Different pixels';
+      label = 'diff px';
       attr = 'diffPixels';
       formatter = function(value) { return String(Math.round(Number(value))); };
     } else if (mode === 'avg-diff-desc' || mode === 'avg-diff-asc') {
-      label = 'Avg diff';
+      label = 'avg';
       attr = 'avgDiff';
       formatter = function(value) { return Number(value).toFixed(2); };
     } else if (mode === 'max-diff-desc' || mode === 'max-diff-asc') {
-      label = 'Max diff';
+      label = 'max';
       attr = 'maxDiff';
       formatter = function(value) { return String(Math.round(Number(value))); };
     }
 
     document.querySelectorAll('.card').forEach(function(card) {
       var leftBadge = card.querySelector('.sort-metric-badge');
-      var rightBadge = card.querySelector('.rmse-badge');
-      if (!leftBadge || !rightBadge) {
-        return;
-      }
-
-      rightBadge.textContent = 'RMSE ' + Number(card.dataset.rmse || 0).toFixed(2);
+      if (!leftBadge) return;
 
       if (!attr) {
-        leftBadge.textContent = 'none';
-        leftBadge.style.display = '';
+        leftBadge.style.display = 'none';
         return;
       }
 
-      leftBadge.textContent = label + ' ' + formatter(card.dataset[attr] || 0);
+      var value = parseFloat(card.dataset[attr] || 0);
+      var colorClass = badgeColorClass(attr, value, card.dataset.diffRatio);
+      leftBadge.className = 'badge ' + colorClass + ' sort-metric-badge';
+      leftBadge.textContent = label + ' ' + formatter(value);
       leftBadge.style.display = '';
     });
-
-    if (!attr) {
-      return;
-    }
   }
 
   function setDiffMode(mode) {
@@ -497,20 +515,49 @@ func badgeClass(rmse float64) string {
 	return "badge-bad"
 }
 
+func badgeClassAvgDiff(v float64) string {
+	if v <= 2 {
+		return "badge-ok"
+	}
+	if v <= 8 {
+		return "badge-warn"
+	}
+	return "badge-bad"
+}
+
+func badgeClassMaxDiff(v uint8) string {
+	if v <= 10 {
+		return "badge-ok"
+	}
+	if v <= 40 {
+		return "badge-warn"
+	}
+	return "badge-bad"
+}
+
+func badgeClassDiffRatio(r float64) string {
+	if r <= 0.01 {
+		return "badge-ok"
+	}
+	if r <= 0.05 {
+		return "badge-warn"
+	}
+	return "badge-bad"
+}
+
 func renderCard(w io.Writer, d *demoEntry) {
-	badge := badgeClass(d.RMSE)
 	pctDiff := d.DiffRatio * 100.0
 
-	fmt.Fprintf(w, `<div class="card" data-name="%s" data-rmse="%.4f" data-avg-diff="%.4f" data-max-diff="%d" data-diff-pixels="%d">`, d.Name, d.RMSE, d.AvgDiff, d.MaxDiff, d.DiffPixels)
+	fmt.Fprintf(w, `<div class="card" data-name="%s" data-rmse="%.4f" data-avg-diff="%.4f" data-max-diff="%d" data-diff-pixels="%d" data-diff-ratio="%.6f">`, d.Name, d.RMSE, d.AvgDiff, d.MaxDiff, d.DiffPixels, d.DiffRatio)
 	fmt.Fprintf(w, `<div class="card-header">`)
-	fmt.Fprintf(w, `<span class="badge badge-neutral sort-metric-badge">RMSE %.2f</span>`, d.RMSE)
+	fmt.Fprintf(w, `<span class="badge badge-neutral sort-metric-badge" style="display:none"></span>`)
 	fmt.Fprintf(w, `<span class="card-title">%s</span>`, d.Name)
-	fmt.Fprintf(w, `<span class="badge %s rmse-badge">RMSE %.2f</span>`, badge, d.RMSE)
-	fmt.Fprintf(w, `<span class="metrics">`)
-	fmt.Fprintf(w, `<span>avg&nbsp;diff:&nbsp;%.2f</span>`, d.AvgDiff)
-	fmt.Fprintf(w, `<span>max&nbsp;diff:&nbsp;%d</span>`, d.MaxDiff)
-	fmt.Fprintf(w, `<span>diff&nbsp;pixels:&nbsp;%.2f%%</span>`, pctDiff)
-	fmt.Fprintf(w, `</span>`)
+	fmt.Fprintf(w, `<div class="right-badges">`)
+	fmt.Fprintf(w, `<span class="badge %s rmse-badge">RMSE %.2f</span>`, badgeClass(d.RMSE), d.RMSE)
+	fmt.Fprintf(w, `<span class="badge %s">avg %.2f</span>`, badgeClassAvgDiff(d.AvgDiff), d.AvgDiff)
+	fmt.Fprintf(w, `<span class="badge %s">max %d</span>`, badgeClassMaxDiff(d.MaxDiff), d.MaxDiff)
+	fmt.Fprintf(w, `<span class="badge %s">diff %.2f%%</span>`, badgeClassDiffRatio(d.DiffRatio), pctDiff)
+	fmt.Fprintf(w, `</div>`)
 	fmt.Fprintf(w, `</div>`) // card-header
 
 	fmt.Fprintf(w, `<div class="card-body">`)
