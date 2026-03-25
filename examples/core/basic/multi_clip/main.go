@@ -91,6 +91,7 @@ func (a *outlineBaseAdapter) BlendSolidHSpan(x, y, length int, c color.RGBA8[col
 	}
 	a.renBase.BlendSolidHspan(x, y, length, c, convCovers)
 }
+
 func (a *outlineBaseAdapter) BlendSolidVSpan(x, y, length int, c color.RGBA8[color.Linear], covers []basics.CoverType) {
 	convCovers := make([]basics.Int8u, len(covers))
 	for i := range covers {
