@@ -158,12 +158,12 @@ func Draw(ctx *agg.Context, cfg Config) {
 
 	outImg := ctx.GetImage()
 	outRbuf := buffer.NewRenderingBufferU8()
-	outRbuf.Attach(outImg.Data, outImg.Width(), outImg.Height(), outImg.Width()*4)
+	outRbuf.Attach(outImg.Data, outImg.Width(), outImg.Height(), outImg.Stride())
 	outPixFmt := pixfmt.NewPixFmtRGBA32PreLinear(outRbuf)
 	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32Pre[color.Linear], color.RGBA8[color.Linear]](outPixFmt)
 
 	srcRbuf := buffer.NewRenderingBufferU8()
-	srcRbuf.Attach(cfg.Source.Data, cfg.Source.Width(), cfg.Source.Height(), cfg.Source.Width()*4)
+	srcRbuf.Attach(cfg.Source.Data, cfg.Source.Width(), cfg.Source.Height(), cfg.Source.Stride())
 	srcPf := pixFmtSrc{rbuf: srcRbuf}
 	var acc accessor
 	switch cfg.SourceMode {

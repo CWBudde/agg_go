@@ -1,8 +1,4 @@
 // Package main ports AGG's gradient_focal.cpp demo.
-//
-// It renders a radial-focus gradient with a reflected profile and a gamma-aware
-// 4-stop LUT, then applies inverse gamma to the final framebuffer to match the
-// original AGG rendering path.
 package main
 
 import (
@@ -11,11 +7,69 @@ import (
 	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
+	ctrlbase "github.com/MeKo-Christian/agg_go/internal/ctrl"
+	sliderctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/slider"
 	"github.com/MeKo-Christian/agg_go/internal/gamma"
+	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
+	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
+	"github.com/MeKo-Christian/agg_go/internal/renderer"
+	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/scanline"
 	"github.com/MeKo-Christian/agg_go/internal/span"
 	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
+
+const gradR = 100.0
+
+type demo struct {
+	gammaSlider *sliderctrl.SliderCtrl
+	mouseX      float64
+	mouseY      float64
+	mouseValid  bool
+	lastGamma   float64
+	gradientLUT []color.RGBA8[color.Linear]
+}
+
+type (
+	rasType = rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
+	renBase = renderer.RendererBase[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]]
+)
+
+type rasterVertexSourceAdapter struct {
+	src ctrlbase.Ctrl[color.RGBA]
+}
+
+func (a *rasterVertexSourceAdapter) Rewind(pathID uint32) {
+	a.src.Rewind(uint(pathID))
+}
+
+func (a *rasterVertexSourceAdapter) Vertex(x, y *float64) uint32 {
+	vx, vy, cmd := a.src.Vertex()
+	*x = vx
+	*y = vy
+	return uint32(cmd)
+}
+
+func newRasterizer() *rasType {
+	return rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{},
+		rasterizer.NewRasterizerSlNoClip(),
+	)
+}
+
+func newDemo() *demo {
+	gammaSlider := sliderctrl.NewSliderCtrl(5.0, 5.0, 340.0, 12.0, false)
+	gammaSlider.SetRange(0.5, 2.5)
+	gammaSlider.SetValue(1.0)
+	gammaSlider.SetLabel("Gamma = %.3f")
+
+	return &demo{
+		gammaSlider: gammaSlider,
+		lastGamma:   math.NaN(),
+	}
+}
 
 func buildGradientFocalLUT(g float64, size int) []color.RGBA8[color.Linear] {
 	if size < 2 {
@@ -61,9 +115,8 @@ func buildGradientFocalLUT(g float64, size int) []color.RGBA8[color.Linear] {
 		}
 		a := sg[j]
 		b := sg[j+1]
-		den := b.pos - a.pos
 		u := 0.0
-		if den > 0 {
+		if den := b.pos - a.pos; den > 0 {
 			u = (t - a.pos) / den
 		}
 		if u < 0 {
@@ -72,10 +125,12 @@ func buildGradientFocalLUT(g float64, size int) []color.RGBA8[color.Linear] {
 		if u > 1 {
 			u = 1
 		}
-		r := uint8(a.r + (b.r-a.r)*u + 0.5)
-		gv := uint8(a.g + (b.g-a.g)*u + 0.5)
-		bv := uint8(a.b + (b.b-a.b)*u + 0.5)
-		lut[i] = color.RGBA8[color.Linear]{R: r, G: gv, B: bv, A: 255}
+		lut[i] = color.RGBA8[color.Linear]{
+			R: uint8(a.r + (b.r-a.r)*u + 0.5),
+			G: uint8(a.g + (b.g-a.g)*u + 0.5),
+			B: uint8(a.b + (b.b-a.b)*u + 0.5),
+			A: 255,
+		}
 	}
 
 	return lut
@@ -93,51 +148,118 @@ func applyGammaInv(img *agg.Image, g float64) {
 	}
 }
 
-const (
-	gradR     = 100.0
-	gradFX    = 40.0
-	gradFY    = -10.0
-	gradGamma = 1.0
-)
-
-type demo struct{}
+func renderCtrl(ras *rasType, sl *scanline.ScanlineU8, rb *renBase, c ctrlbase.Ctrl[color.RGBA]) {
+	clamp := func(v float64) uint8 {
+		if v <= 0 {
+			return 0
+		}
+		if v >= 1 {
+			return 255
+		}
+		return uint8(v*255.0 + 0.5)
+	}
+	for i := uint(0); i < c.NumPaths(); i++ {
+		ras.Reset()
+		ras.AddPath(&rasterVertexSourceAdapter{src: c}, uint32(i))
+		col := c.Color(i)
+		renscan.RenderScanlinesAASolid(ras, sl, rb, color.RGBA8[color.Linear]{
+			R: clamp(col.R),
+			G: clamp(col.G),
+			B: clamp(col.B),
+			A: clamp(col.A),
+		})
+	}
+}
 
 func (d *demo) Render(img *agg.Image) {
-	ctx := agg.NewContextForImage(img)
 	w := img.Width()
 	h := img.Height()
-
-	ctx.Clear(agg.White)
-	a := ctx.GetAgg2D()
-	a.ResetTransformations()
-
 	cx := float64(w) * 0.5
 	cy := float64(h) * 0.5
+
+	if !d.mouseValid {
+		d.mouseX = cx
+		d.mouseY = cy
+		d.mouseValid = true
+	}
+
+	gammaVal := d.gammaSlider.Value()
+	if d.gradientLUT == nil || math.Abs(gammaVal-d.lastGamma) > 1e-9 {
+		d.gradientLUT = buildGradientFocalLUT(gammaVal, 1024)
+		d.lastGamma = gammaVal
+	}
+
+	ctx := agg.NewContextForImage(img)
+	ctx.Clear(agg.White)
+
+	rbuf := buffer.NewRenderingBufferU8()
+	rbuf.Attach(img.Data, w, h, img.Stride())
+	pf := pixfmt.NewPixFmtRGBA32Linear(rbuf)
+	rb := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]](pf)
+
+	ras := newRasterizer()
+	sl := scanline.NewScanlineU8()
+	alloc := span.NewSpanAllocator[color.RGBA8[color.Linear]]()
 
 	gradientMtx := transform.NewTransAffine()
 	gradientMtx.Translate(cx, cy)
 	gradientMtx.Invert()
 
+	fx := d.mouseX - cx
+	fy := d.mouseY - cy
+
 	interpolator := span.NewSpanInterpolatorLinearDefault(gradientMtx)
-	gradientFunc := span.NewGradientRadialFocus(gradR, gradFX, gradFY)
+	gradientFunc := span.NewGradientRadialFocus(gradR, fx, fy)
 	gradientReflect := span.NewGradientReflectAdaptor(gradientFunc)
-	colorFn := span.NewGradientPrebuiltColorRGBA8[color.Linear](buildGradientFocalLUT(gradGamma, 1024))
+	colorFn := span.NewGradientPrebuiltColorRGBA8[color.Linear](d.gradientLUT)
 	spanGen := span.NewSpanGradient(interpolator, gradientReflect, colorFn, 0, gradR)
 
-	ras := a.GetInternalRasterizer()
-	ras.Reset()
 	ras.MoveToD(0, 0)
 	ras.LineToD(float64(w), 0)
 	ras.LineToD(float64(w), float64(h))
 	ras.LineToD(0, float64(h))
-	ras.LineToD(0, 0)
-	a.RenderScanlinesAAWithSpanGen(ras, spanGen)
+	ras.ClosePolygon()
+	renscan.RenderScanlinesAA(ras, sl, rb, alloc, spanGen)
 
 	ctx.SetColor(agg.White)
 	ctx.SetLineWidth(1.0)
 	ctx.DrawCircle(cx, cy, gradR)
 
-	applyGammaInv(img, gradGamma)
+	renderCtrl(ras, sl, rb, d.gammaSlider)
+	applyGammaInv(img, gammaVal)
+}
+
+func (d *demo) OnMouseDown(x, y int, btn lowlevelrunner.Buttons) bool {
+	if !btn.Left {
+		return false
+	}
+	fx, fy := float64(x), float64(y)
+	if d.gammaSlider.OnMouseButtonDown(fx, fy) {
+		return true
+	}
+	d.mouseX = fx
+	d.mouseY = fy
+	d.mouseValid = true
+	return true
+}
+
+func (d *demo) OnMouseMove(x, y int, btn lowlevelrunner.Buttons) bool {
+	fx, fy := float64(x), float64(y)
+	if d.gammaSlider.OnMouseMove(fx, fy, btn.Left) {
+		return true
+	}
+	if !btn.Left {
+		return false
+	}
+	d.mouseX = fx
+	d.mouseY = fy
+	d.mouseValid = true
+	return true
+}
+
+func (d *demo) OnMouseUp(x, y int, btn lowlevelrunner.Buttons) bool {
+	_ = btn
+	return d.gammaSlider.OnMouseButtonUp(float64(x), float64(y))
 }
 
 func main() {
@@ -145,5 +267,6 @@ func main() {
 		Title:  "Gradient Focal",
 		Width:  600,
 		Height: 400,
-	}, &demo{})
+		FlipY:  true,
+	}, newDemo())
 }

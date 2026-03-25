@@ -8,11 +8,33 @@ import (
 )
 
 type Config struct {
-	Mode int
-	Quad [4][2]float64
+	Mode   int
+	Quad   [4][2]float64
+	Source *agg.Image
 }
 
 var cachedSpheres *agg.Image
+
+func flippedVerticalCopy(src *agg.Image) *agg.Image {
+	if src == nil {
+		return nil
+	}
+	goImg := src.ToGoImage()
+	if goImg == nil {
+		return nil
+	}
+
+	w, h := goImg.Bounds().Dx(), goImg.Bounds().Dy()
+	buf := make([]byte, len(goImg.Pix))
+	rowBytes := w * 4
+	for y := 0; y < h; y++ {
+		srcOff := (h - 1 - y) * goImg.Stride
+		dstOff := y * rowBytes
+		copy(buf[dstOff:dstOff+rowBytes], goImg.Pix[srcOff:srcOff+rowBytes])
+	}
+
+	return agg.NewImage(buf, w, h, rowBytes)
+}
 
 func Draw(ctx *agg.Context, cfg Config) {
 	if cachedSpheres == nil {
@@ -33,6 +55,12 @@ func Draw(ctx *agg.Context, cfg Config) {
 
 	ctx.Clear(agg.White)
 
+	source := cfg.Source
+	if source == nil {
+		source = cachedSpheres
+	}
+	source = flippedVerticalCopy(source)
+
 	transformMode := quadwarp.TransformPerspective
 	interpMode := quadwarp.InterpolatorTrans
 	sampling := quadwarp.SampleFilter2x2
@@ -52,8 +80,8 @@ func Draw(ctx *agg.Context, cfg Config) {
 	quadwarp.Draw(ctx, quadwarp.Config{
 		CanvasWidth:        ctx.GetImage().Width(),
 		CanvasHeight:       ctx.GetImage().Height(),
-		Source:             cachedSpheres,
-		SourceRect:         [4]float64{0, 0, float64(cachedSpheres.Width()), float64(cachedSpheres.Height())},
+		Source:             source,
+		SourceRect:         [4]float64{0, 0, float64(source.Width()), float64(source.Height())},
 		Quad:               cfg.Quad,
 		Transform:          transformMode,
 		Interpolator:       interpMode,
@@ -65,7 +93,7 @@ func Draw(ctx *agg.Context, cfg Config) {
 		ShowQuadFill:       true,
 		ShowQuadOutline:    true,
 		ShowHandles:        true,
-		QuadFillColor:      agg.RGBA(0, 0.3, 0.5, 0.16),
-		QuadLineColor:      agg.RGBA(0, 0.25, 0.35, 0.9),
+		QuadFillColor:      agg.RGBA(0, 0.3, 0.5, 0.6),
+		QuadLineColor:      agg.RGBA(0, 0, 0, 0.9),
 	})
 }
