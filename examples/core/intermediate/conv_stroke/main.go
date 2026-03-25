@@ -333,9 +333,10 @@ func pointInTriangle(x1, y1, x2, y2, x3, y3, px, py float64) bool {
 
 func main() {
 	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "Conv Stroke",
-		Width:  frameWidth,
-		Height: frameHeight,
-		FlipY:  true,
+		Title:                 "Conv Stroke",
+		Width:                 frameWidth,
+		Height:                frameHeight,
+		FlipY:                 true,
+		EncodeLinearRGBToSRGB: true,
 	}, newDemo())
 }

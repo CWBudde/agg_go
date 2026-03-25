@@ -1,3 +1,11 @@
+// Port of AGG C++ rasterizers2.cpp example.
+//
+// Demonstrates five different rasterization methods for spiral paths:
+//   - Bresenham with pixel-rounded accuracy
+//   - Bresenham with subpixel accuracy
+//   - Anti-aliased outline renderer
+//   - Scanline rasterizer with conv_stroke
+//   - Image-pattern outline renderer
 package main
 
 import (
@@ -10,7 +18,8 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/color"
 	"github.com/MeKo-Christian/agg_go/internal/conv"
 	"github.com/MeKo-Christian/agg_go/internal/ctrl/checkbox"
-	ctrltext "github.com/MeKo-Christian/agg_go/internal/ctrl/text"
+	sliderctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/slider"
+	"github.com/MeKo-Christian/agg_go/internal/gsv"
 	"github.com/MeKo-Christian/agg_go/internal/order"
 	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
 	"github.com/MeKo-Christian/agg_go/internal/pixfmt/blender"
@@ -38,18 +47,28 @@ var pixmapChain = []uint32{
 	0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0xb4c29999, 0xff9a5757, 0xff9a5757, 0xff9a5757, 0xff9a5757, 0xff9a5757, 0xff9a5757, 0xb4c29999, 0x00ffffff, 0x00ffffff, 0x00ffffff, 0x00ffffff,
 }
 
-type convVertexSource interface {
-	Rewind(pathID uint)
-	Vertex() (x, y float64, cmd basics.PathCommand)
-}
+// --- type aliases for readability ---
 
+type (
+	pixFmt     = *pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]]
+	colorType  = color.RGBA8[color.Linear]
+	renBaseT   = *renderer.RendererBase[pixFmt, colorType]
+	rasAAType  = *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
+	slType     = *scanline.ScanlineP8
+	renPrimT   = *rprimitives.RendererPrimitives[renBaseT, colorType]
+)
+
+// --- interface adapters between rasterizer.VertexSource and conv.VertexSource ---
+
+// convToRasAdapter wraps a conv.VertexSource for use with rasterizer.AddPath.
 type convToRasAdapter struct {
-	src convVertexSource
+	src interface {
+		Rewind(pathID uint)
+		Vertex() (x, y float64, cmd basics.PathCommand)
+	}
 }
 
-func (a *convToRasAdapter) Rewind(pathID uint32) {
-	a.src.Rewind(uint(pathID))
-}
+func (a *convToRasAdapter) Rewind(pathID uint32) { a.src.Rewind(uint(pathID)) }
 
 func (a *convToRasAdapter) Vertex(x, y *float64) uint32 {
 	vx, vy, cmd := a.src.Vertex()
@@ -58,21 +77,20 @@ func (a *convToRasAdapter) Vertex(x, y *float64) uint32 {
 	return uint32(cmd)
 }
 
-type controlPathAdapter struct {
-	rewindFn func(pathID uint)
-	vertexFn func() (x, y float64, cmd uint32)
+// rasToConvAdapter wraps a rasterizer.VertexSource for use with conv.NewConvStroke.
+type rasToConvAdapter struct {
+	src rasterizer.VertexSource
 }
 
-func (a *controlPathAdapter) Rewind(pathID uint32) {
-	a.rewindFn(uint(pathID))
+func (a *rasToConvAdapter) Rewind(pathID uint) { a.src.Rewind(uint32(pathID)) }
+
+func (a *rasToConvAdapter) Vertex() (x, y float64, cmd basics.PathCommand) {
+	c := a.src.Vertex(&x, &y)
+	cmd = basics.PathCommand(c)
+	return
 }
 
-func (a *controlPathAdapter) Vertex(x, y *float64) uint32 {
-	vx, vy, cmd := a.vertexFn()
-	*x = vx
-	*y = vy
-	return cmd
-}
+// --- spiral vertex source (implements rasterizer.VertexSource) ---
 
 type spiral struct {
 	x, y                 float64
@@ -84,55 +102,52 @@ type spiral struct {
 
 func newSpiral(x, y, r1, r2, step, startAngle float64) *spiral {
 	return &spiral{
-		x:          x,
-		y:          y,
-		r1:         r1,
-		r2:         r2,
-		step:       step,
-		startAngle: startAngle,
-		da:         basics.Deg2RadF(8.0),
-		dr:         step / 45.0,
+		x: x, y: y, r1: r1, r2: r2,
+		step: step, startAngle: startAngle,
+		da: basics.Deg2RadF(8.0),
+		dr: step / 45.0,
 	}
 }
 
-func (s *spiral) Rewind(pathID uint) {
+func (s *spiral) Rewind(uint32) {
 	s.angle = s.startAngle
 	s.currR = s.r1
 	s.start = true
 }
 
-func (s *spiral) Vertex() (x, y float64, cmd basics.PathCommand) {
+func (s *spiral) Vertex(x, y *float64) uint32 {
 	if s.currR > s.r2 {
-		return 0, 0, basics.PathCmdStop
+		return uint32(basics.PathCmdStop)
 	}
-
-	x = s.x + math.Cos(s.angle)*s.currR
-	y = s.y + math.Sin(s.angle)*s.currR
+	*x = s.x + math.Cos(s.angle)*s.currR
+	*y = s.y + math.Sin(s.angle)*s.currR
 	s.currR += s.dr
 	s.angle += s.da
 	if s.start {
 		s.start = false
-		return x, y, basics.PathCmdMoveTo
+		return uint32(basics.PathCmdMoveTo)
 	}
-	return x, y, basics.PathCmdLineTo
+	return uint32(basics.PathCmdLineTo)
 }
+
+// --- roundoff source (implements rasterizer.VertexSource) ---
 
 type roundoffSource struct {
-	src convVertexSource
+	src *spiral
 }
 
-func (r *roundoffSource) Rewind(pathID uint) {
-	r.src.Rewind(pathID)
-}
+func (r *roundoffSource) Rewind(pathID uint32) { r.src.Rewind(pathID) }
 
-func (r *roundoffSource) Vertex() (x, y float64, cmd basics.PathCommand) {
-	x, y, cmd = r.src.Vertex()
-	if basics.IsVertex(cmd) {
-		x = math.Floor(x)
-		y = math.Floor(y)
+func (r *roundoffSource) Vertex(x, y *float64) uint32 {
+	cmd := r.src.Vertex(x, y)
+	if basics.IsVertex(basics.PathCommand(cmd)) {
+		*x = math.Floor(*x)
+		*y = math.Floor(*y)
 	}
-	return x, y, cmd
+	return cmd
 }
+
+// --- pattern source ---
 
 type chainPatternSource struct {
 	data []uint32
@@ -158,27 +173,42 @@ func (s *chainPatternSource) Pixel(x, y int) color.RGBA {
 	return c
 }
 
+// --- outline renderer adapters ---
+
+type outlineBaseAdapter struct {
+	renBase renBaseT
+}
+
+func (a *outlineBaseAdapter) Width() int  { return a.renBase.Width() }
+func (a *outlineBaseAdapter) Height() int { return a.renBase.Height() }
+
+func (a *outlineBaseAdapter) BlendSolidHSpan(x, y, length int, c colorType, covers []basics.CoverType) {
+	conv := make([]basics.Int8u, len(covers))
+	for i := range covers {
+		conv[i] = basics.Int8u(covers[i])
+	}
+	a.renBase.BlendSolidHspan(x, y, length, c, conv)
+}
+
+func (a *outlineBaseAdapter) BlendSolidVSpan(x, y, length int, c colorType, covers []basics.CoverType) {
+	conv := make([]basics.Int8u, len(covers))
+	for i := range covers {
+		conv[i] = basics.Int8u(covers[i])
+	}
+	a.renBase.BlendSolidVspan(x, y, length, c, conv)
+}
+
 type outlineAAAdapter struct {
-	ren *outline.RendererOutlineAA[*outlineBaseAdapter, color.RGBA8[color.Linear]]
+	ren *outline.RendererOutlineAA[*outlineBaseAdapter, colorType]
 }
 
-func (a *outlineAAAdapter) AccurateJoinOnly() bool            { return a.ren.AccurateJoinOnly() }
-func (a *outlineAAAdapter) Color(c color.RGBA8[color.Linear]) { a.ren.Color(c) }
+func (a *outlineAAAdapter) AccurateJoinOnly() bool { return a.ren.AccurateJoinOnly() }
+func (a *outlineAAAdapter) Color(c colorType)      { a.ren.Color(c) }
 
-//nolint:gocritic // The adapter must match the renderer interface, which passes line parameters by value.
-func (a *outlineAAAdapter) Line0(lp primitives.LineParameters) { //nolint:gocritic // Interface compatibility requires a by-value parameter here.
-	a.ren.Line0(&lp)
-}
-
-func (a *outlineAAAdapter) Line1(lp primitives.LineParameters, sx, sy int) { //nolint:gocritic // Interface compatibility requires a by-value parameter here.
-	a.ren.Line1(&lp, sx, sy)
-}
-
-func (a *outlineAAAdapter) Line2(lp primitives.LineParameters, ex, ey int) { //nolint:gocritic // Interface compatibility requires a by-value parameter here.
-	a.ren.Line2(&lp, ex, ey)
-}
-
-func (a *outlineAAAdapter) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) { //nolint:gocritic // Interface compatibility requires a by-value parameter here.
+func (a *outlineAAAdapter) Line0(lp primitives.LineParameters) { a.ren.Line0(&lp) }                       //nolint:gocritic
+func (a *outlineAAAdapter) Line1(lp primitives.LineParameters, sx, sy int) { a.ren.Line1(&lp, sx, sy) }   //nolint:gocritic
+func (a *outlineAAAdapter) Line2(lp primitives.LineParameters, ex, ey int) { a.ren.Line2(&lp, ex, ey) }   //nolint:gocritic
+func (a *outlineAAAdapter) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) {                       //nolint:gocritic
 	a.ren.Line3(&lp, sx, sy, ex, ey)
 }
 func (a *outlineAAAdapter) Pie(x, y, x1, y1, x2, y2 int) { a.ren.Pie(x, y, x1, y1, x2, y2) }
@@ -186,35 +216,13 @@ func (a *outlineAAAdapter) Semidot(cmp func(int) bool, x, y, x1, y1 int) {
 	a.ren.Semidot(cmp, x, y, x1, y1)
 }
 
+// --- image outline adapters ---
+
 type imageBaseAdapter struct {
-	renBase *renderer.RendererBase[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]]
+	renBase renBaseT
 }
 
-type outlineBaseAdapter struct {
-	renBase *renderer.RendererBase[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]]
-}
-
-func (a *outlineBaseAdapter) Width() int { return a.renBase.Width() }
-
-func (a *outlineBaseAdapter) Height() int { return a.renBase.Height() }
-
-func (a *outlineBaseAdapter) BlendSolidHSpan(x, y, length int, c color.RGBA8[color.Linear], covers []basics.CoverType) {
-	convCovers := make([]basics.Int8u, len(covers))
-	for i := range covers {
-		convCovers[i] = basics.Int8u(covers[i])
-	}
-	a.renBase.BlendSolidHspan(x, y, length, c, convCovers)
-}
-
-func (a *outlineBaseAdapter) BlendSolidVSpan(x, y, length int, c color.RGBA8[color.Linear], covers []basics.CoverType) {
-	convCovers := make([]basics.Int8u, len(covers))
-	for i := range covers {
-		convCovers[i] = basics.Int8u(covers[i])
-	}
-	a.renBase.BlendSolidVspan(x, y, length, c, convCovers)
-}
-
-func rgbaToRGBA8(c color.RGBA) color.RGBA8[color.Linear] {
+func rgbaToRGBA8(c color.RGBA) colorType {
 	clamp := func(v float64) uint8 {
 		if v <= 0 {
 			return 0
@@ -224,11 +232,11 @@ func rgbaToRGBA8(c color.RGBA) color.RGBA8[color.Linear] {
 		}
 		return uint8(v*255 + 0.5)
 	}
-	return color.RGBA8[color.Linear]{R: clamp(c.R), G: clamp(c.G), B: clamp(c.B), A: clamp(c.A)}
+	return colorType{R: clamp(c.R), G: clamp(c.G), B: clamp(c.B), A: clamp(c.A)}
 }
 
 func (a *imageBaseAdapter) BlendColorHSpan(x, y, length int, colors []color.RGBA, covers []basics.CoverType) {
-	buf := make([]color.RGBA8[color.Linear], len(colors))
+	buf := make([]colorType, len(colors))
 	for i := range colors {
 		buf[i] = rgbaToRGBA8(colors[i])
 	}
@@ -236,7 +244,7 @@ func (a *imageBaseAdapter) BlendColorHSpan(x, y, length int, colors []color.RGBA
 }
 
 func (a *imageBaseAdapter) BlendColorVSpan(x, y, length int, colors []color.RGBA, covers []basics.CoverType) {
-	buf := make([]color.RGBA8[color.Linear], len(colors))
+	buf := make([]colorType, len(colors))
 	for i := range colors {
 		buf[i] = rgbaToRGBA8(colors[i])
 	}
@@ -247,101 +255,161 @@ type outlineImageAdapter struct {
 	ren *outline.RendererOutlineImage
 }
 
-func (a *outlineImageAdapter) AccurateJoinOnly() bool                         { return a.ren.AccurateJoinOnly() }
-func (a *outlineImageAdapter) Color(c color.RGBA8[color.Linear])              {}
-func (a *outlineImageAdapter) Line0(lp primitives.LineParameters)             {} //nolint:gocritic // Interface compatibility requires a by-value parameter here.
-func (a *outlineImageAdapter) Line1(lp primitives.LineParameters, sx, sy int) {} //nolint:gocritic // Interface compatibility requires a by-value parameter here.
-func (a *outlineImageAdapter) Line2(lp primitives.LineParameters, ex, ey int) {} //nolint:gocritic // Interface compatibility requires a by-value parameter here.
-func (a *outlineImageAdapter) Pie(x, y, x1, y1, x2, y2 int)                   {}
-func (a *outlineImageAdapter) Semidot(cmp func(int) bool, x, y, x1, y1 int)   {}
-func (a *outlineImageAdapter) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) { //nolint:gocritic // Interface compatibility requires a by-value parameter here.
+func (a *outlineImageAdapter) AccurateJoinOnly() bool            { return a.ren.AccurateJoinOnly() }
+func (a *outlineImageAdapter) Color(colorType)                   {}
+func (a *outlineImageAdapter) Line0(primitives.LineParameters)   {}                                           //nolint:gocritic
+func (a *outlineImageAdapter) Line1(primitives.LineParameters, int, int) {}                                   //nolint:gocritic
+func (a *outlineImageAdapter) Line2(primitives.LineParameters, int, int) {}                                   //nolint:gocritic
+func (a *outlineImageAdapter) Pie(int, int, int, int, int, int)          {}
+func (a *outlineImageAdapter) Semidot(func(int) bool, int, int, int, int) {}
+func (a *outlineImageAdapter) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) { //nolint:gocritic
 	a.ren.Line3(&lp, sx, sy, ex, ey)
 }
 
-func renderSolidPath(
-	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
-	sl *scanline.ScanlineP8,
-	renBase *renderer.RendererBase[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]],
-	vs rasterizer.VertexSource,
-	col color.RGBA8[color.Linear],
-) {
-	ras.Reset()
-	ras.AddPath(vs, 0)
+// --- helpers ---
+
+func renderScanlines(ras rasAAType, sl slType, renBase renBaseT, col colorType) {
 	if !ras.RewindScanlines() {
 		return
 	}
 	sl.Reset(ras.MinX(), ras.MaxX())
 	for ras.SweepScanline(sl) {
 		y := sl.Y()
-		for _, spanData := range sl.Spans() {
-			if spanData.Len > 0 {
-				renBase.BlendSolidHspan(int(spanData.X), y, int(spanData.Len), col, spanData.Covers)
+		for _, sp := range sl.Spans() {
+			x := int(sp.X)
+			if sp.Len > 0 {
+				renBase.BlendSolidHspan(x, y, int(sp.Len), col, sp.Covers)
+			} else {
+				// Solid span: single cover value repeated for |Len| pixels.
+				// C++: blend_hline(x, y, x - len - 1, color, *covers)
+				renBase.BlendHline(x, y, x-int(sp.Len)-1, col, sp.Covers[0])
 			}
 		}
 	}
 }
 
-func drawText(
-	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
-	sl *scanline.ScanlineP8,
-	renBase *renderer.RendererBase[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]],
-	x, y float64,
-	lines []string,
-) {
-	for i, line := range lines {
-		if line == "" {
-			continue
-		}
-		t := ctrltext.NewSimpleText()
-		t.SetSize(8)
-		t.SetThickness(0.7)
-		t.SetText(line)
-		t.SetPosition(x, y+float64(i)*12)
-		renderSolidPath(ras, sl, renBase, &convToRasAdapter{src: t}, color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255})
-	}
+func drawText(ras rasAAType, sl slType, renBase renBaseT, x, y float64, txt string) {
+	t := gsv.NewGSVText()
+	t.SetSize(8, 0)
+	t.SetText(txt)
+	t.SetStartPoint(x, y)
+
+	stroke := conv.NewConvStroke(t)
+	stroke.SetWidth(0.7)
+
+	ras.Reset()
+	ras.AddPath(&convToRasAdapter{src: stroke}, 0)
+	renderScanlines(ras, sl, renBase, colorType{R: 0, G: 0, B: 0, A: 255})
 }
 
 func renderControl(
-	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
-	sl *scanline.ScanlineP8,
-	renBase *renderer.RendererBase[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]],
+	ras rasAAType, sl slType, renBase renBaseT,
 	numPaths uint,
 	rewindFn func(pathID uint),
-	vertexFn func() (x, y float64, cmd uint32),
+	vertexFn func(x, y *float64) uint32,
 	colorFn func(pathID uint) color.RGBA,
 ) {
-	adapter := &controlPathAdapter{
-		rewindFn: rewindFn,
-		vertexFn: vertexFn,
-	}
+	adapter := &ctrlPathAdapter{rewindFn: rewindFn, vertexFn: vertexFn}
 	for pathID := uint(0); pathID < numPaths; pathID++ {
 		ras.Reset()
 		ras.AddPath(adapter, uint32(pathID))
 		col := rgbaToRGBA8(colorFn(pathID))
-		if !ras.RewindScanlines() {
-			continue
-		}
-		sl.Reset(ras.MinX(), ras.MaxX())
-		for ras.SweepScanline(sl) {
-			y := sl.Y()
-			for _, spanData := range sl.Spans() {
-				if spanData.Len > 0 {
-					renBase.BlendSolidHspan(int(spanData.X), y, int(spanData.Len), col, spanData.Covers)
-				}
-			}
-		}
+		renderScanlines(ras, sl, renBase, col)
 	}
 }
 
-type demo struct{}
+type ctrlPathAdapter struct {
+	rewindFn func(pathID uint)
+	vertexFn func(x, y *float64) uint32
+}
+
+func (a *ctrlPathAdapter) Rewind(pathID uint32) { a.rewindFn(uint(pathID)) }
+
+func (a *ctrlPathAdapter) Vertex(x, y *float64) uint32 { return a.vertexFn(x, y) }
+
+// --- checkbox rendering adapter ---
+
+func renderCheckbox(ras rasAAType, sl slType, renBase renBaseT, cb *checkbox.CheckboxCtrl[color.RGBA]) {
+	renderControl(ras, sl, renBase, cb.NumPaths(), cb.Rewind,
+		func(x, y *float64) uint32 {
+			vx, vy, cmd := cb.Vertex()
+			*x = vx
+			*y = vy
+			return uint32(cmd)
+		},
+		cb.Color,
+	)
+}
+
+func renderSlider(ras rasAAType, sl slType, renBase renBaseT, s *sliderctrl.SliderCtrl) {
+	renderControl(ras, sl, renBase, s.NumPaths(), s.Rewind,
+		func(x, y *float64) uint32 {
+			vx, vy, cmd := s.Vertex()
+			*x = vx
+			*y = vy
+			return uint32(cmd)
+		},
+		s.Color,
+	)
+}
+
+// --- demo ---
+
+type demo struct {
+	stepSlider     *sliderctrl.SliderCtrl
+	widthSlider    *sliderctrl.SliderCtrl
+	testPerf       *checkbox.CheckboxCtrl[color.RGBA]
+	rotate         *checkbox.CheckboxCtrl[color.RGBA]
+	accurateJoins  *checkbox.CheckboxCtrl[color.RGBA]
+	scalePattern   *checkbox.CheckboxCtrl[color.RGBA]
+	startAngle     float64
+}
+
+func newDemo() *demo {
+	// C++: m_step(10.0, 10.0 + 4.0, 150.0, 10.0 + 8.0 + 4.0, !flip_y)
+	step := sliderctrl.NewSliderCtrl(10.0, 14.0, 150.0, 22.0, false)
+	step.SetRange(0.0, 2.0)
+	step.SetValue(0.1)
+	step.SetLabel("Step=%1.2f")
+
+	// C++: m_width(150.0 + 10.0, 10.0 + 4.0, 400 - 10.0, 10.0 + 8.0 + 4.0, !flip_y)
+	width := sliderctrl.NewSliderCtrl(160.0, 14.0, 390.0, 22.0, false)
+	width.SetRange(0.0, 14.0)
+	width.SetValue(3.0)
+	width.SetLabel("Width=%1.2f")
+
+	// C++: checkboxes at y = 10.0 + 4.0 + 16.0 = 30.0, !flip_y
+	testPerf := checkbox.NewDefaultCheckboxCtrl(10.0, 30.0, "Test Performance", false)
+	testPerf.SetTextSize(9.0, 7.0)
+
+	rotate := checkbox.NewDefaultCheckboxCtrl(140.0, 30.0, "Rotate", false)
+	rotate.SetTextSize(9.0, 7.0)
+
+	accurateJoins := checkbox.NewDefaultCheckboxCtrl(210.0, 30.0, "Accurate Joins", false)
+	accurateJoins.SetTextSize(9.0, 7.0)
+
+	scalePattern := checkbox.NewDefaultCheckboxCtrl(320.0, 30.0, "Scale Pattern", false)
+	scalePattern.SetTextSize(9.0, 7.0)
+	scalePattern.SetChecked(true)
+
+	return &demo{
+		stepSlider:    step,
+		widthSlider:   width,
+		testPerf:      testPerf,
+		rotate:        rotate,
+		accurateJoins: accurateJoins,
+		scalePattern:  scalePattern,
+	}
+}
 
 func (d *demo) Render(img *agg.Image) {
-	imgData := img.Data
-	rbuf := buffer.NewRenderingBufferU8WithData(imgData, frameWidth, frameHeight, frameWidth*4)
+	w := img.Width()
+	h := img.Height()
+	rbuf := buffer.NewRenderingBufferU8WithData(img.Data, w, h, img.Stride())
 
 	pf := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
-	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]](pf)
-	renBase.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 242, A: 255})
+	renBase := renderer.NewRendererBaseWithPixfmt[pixFmt, colorType](pf)
+	renBase.Clear(colorType{R: 255, G: 255, B: 242, A: 255})
 
 	rasAA := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
 		rasterizer.RasConvInt{},
@@ -349,112 +417,152 @@ func (d *demo) Render(img *agg.Image) {
 	)
 	sl := scanline.NewScanlineP8()
 
-	renPrim := rprimitives.NewRendererPrimitives[*renderer.RendererBase[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](renBase)
-	rasAliased := rasterizer.NewRasterizerOutline[*rprimitives.RendererPrimitives[*renderer.RendererBase[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]], color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](renPrim)
+	renPrim := rprimitives.NewRendererPrimitives[renBaseT, colorType](renBase)
+	rasAliased := rasterizer.NewRasterizerOutline[renPrimT, colorType](renPrim)
+
+	lineWidth := d.widthSlider.Value()
 
 	profile := outline.NewLineProfileAA()
-	profile.Width(3.0)
-	renOutlineAA := outline.NewRendererOutlineAA[*outlineBaseAdapter, color.RGBA8[color.Linear]](&outlineBaseAdapter{renBase: renBase}, profile)
-	rasOutlineAA := rasterizer.NewRasterizerOutlineAA[*outlineAAAdapter, color.RGBA8[color.Linear]](&outlineAAAdapter{ren: renOutlineAA})
+	profile.Width(lineWidth)
+	renOutlineAA := outline.NewRendererOutlineAA[*outlineBaseAdapter, colorType](
+		&outlineBaseAdapter{renBase: renBase}, profile,
+	)
+	rasOutlineAA := rasterizer.NewRasterizerOutlineAA[*outlineAAAdapter, colorType](
+		&outlineAAAdapter{ren: renOutlineAA},
+	)
+	// C++: line_join depends on accurate_joins checkbox
+	if d.accurateJoins.IsChecked() {
+		rasOutlineAA.SetLineJoin(rasterizer.OutlineMiterAccurateJoin)
+	} else {
+		rasOutlineAA.SetLineJoin(rasterizer.OutlineRoundJoin)
+	}
 	rasOutlineAA.SetRoundCap(true)
-	rasOutlineAA.SetLineJoin(rasterizer.OutlineRoundJoin)
 
 	patternSource := &chainPatternSource{data: pixmapChain}
 	filter := outline.NewPatternFilterRGBAAdapter()
-	scaledSrc := outline.NewLineImageScale(patternSource, 3.0)
 	pattern := outline.NewLineImagePatternPow2(filter)
-	pattern.Create(scaledSrc)
+	if d.scalePattern.IsChecked() {
+		scaledSrc := outline.NewLineImageScale(patternSource, lineWidth)
+		pattern.Create(scaledSrc)
+	} else {
+		pattern.Create(patternSource)
+	}
 	renImg := outline.NewRendererOutlineImage(&imageBaseAdapter{renBase: renBase}, pattern)
-	renImg.SetScaleX(3.0 / patternSource.Height())
-	rasImg := rasterizer.NewRasterizerOutlineAA[*outlineImageAdapter, color.RGBA8[color.Linear]](&outlineImageAdapter{ren: renImg})
+	if d.scalePattern.IsChecked() {
+		renImg.SetScaleX(lineWidth / patternSource.Height())
+	}
+	rasImg := rasterizer.NewRasterizerOutlineAA[*outlineImageAdapter, colorType](
+		&outlineImageAdapter{ren: renImg},
+	)
 
-	brown := color.RGBA8[color.Linear]{R: 102, G: 77, B: 26, A: 255}
+	brown := colorType{R: 102, G: 77, B: 26, A: 255}
+	fw := float64(w)
+	fh := float64(h)
 
-	s1 := &roundoffSource{src: newSpiral(float64(frameWidth)/5, float64(frameHeight)/4+50, 5, 70, 16, 0)}
+	// (1) Bresenham lines, pixel-rounded accuracy
+	s1 := newSpiral(fw/5, fh/4+50, 5, 70, 16, d.startAngle)
 	renPrim.LineColor(brown)
-	rasAliased.AddPath(&convToRasAdapter{src: s1}, 0)
+	rasAliased.AddPath(&roundoffSource{src: s1}, 0)
 
-	s2 := newSpiral(float64(frameWidth)/2, float64(frameHeight)/4+50, 5, 70, 16, 0)
+	// (2) Bresenham lines, subpixel accuracy
+	s2 := newSpiral(fw/2, fh/4+50, 5, 70, 16, d.startAngle)
 	renPrim.LineColor(brown)
-	rasAliased.AddPath(&convToRasAdapter{src: s2}, 0)
+	rasAliased.AddPath(s2, 0)
 
-	s3 := newSpiral(float64(frameWidth)/5, float64(frameHeight)-float64(frameHeight)/4+20, 5, 70, 16, 0)
+	// (3) Anti-aliased outline
+	s3 := newSpiral(fw/5, fh-fh/4+20, 5, 70, 16, d.startAngle)
 	renOutlineAA.Color(brown)
-	rasOutlineAA.AddPath(&convToRasAdapter{src: s3}, 0)
+	rasOutlineAA.AddPath(s3, 0)
 
-	s4 := newSpiral(float64(frameWidth)/2, float64(frameHeight)-float64(frameHeight)/4+20, 5, 70, 16, 0)
-	stroke := conv.NewConvStroke(s4)
-	stroke.SetWidth(3.0)
+	// (4) Scanline rasterizer with conv_stroke
+	s4 := newSpiral(fw/2, fh-fh/4+20, 5, 70, 16, d.startAngle)
+	stroke := conv.NewConvStroke(&rasToConvAdapter{src: s4})
+	stroke.SetWidth(lineWidth)
 	stroke.SetLineCap(basics.RoundCap)
-	renderSolidPath(rasAA, sl, renBase, &convToRasAdapter{src: stroke}, brown)
+	rasAA.Reset()
+	rasAA.AddPath(&convToRasAdapter{src: stroke}, 0)
+	renderScanlines(rasAA, sl, renBase, brown)
 
-	s5 := newSpiral(float64(frameWidth)-float64(frameWidth)/5, float64(frameHeight)-float64(frameHeight)/4+20, 5, 70, 16, 0)
-	rasImg.AddPath(&convToRasAdapter{src: s5}, 0)
+	// (5) Arbitrary image pattern
+	s5 := newSpiral(fw-fw/5, fh-fh/4+20, 5, 70, 16, d.startAngle)
+	rasImg.AddPath(s5, 0)
 
-	drawText(rasAA, sl, renBase, 50, 80, []string{"Bresenham lines,", "regular accuracy"})
-	drawText(rasAA, sl, renBase, float64(frameWidth)/2-50, 80, []string{"Bresenham lines,", "subpixel accuracy"})
-	drawText(rasAA, sl, renBase, 50, float64(frameHeight)/2+50, []string{"Anti-aliased lines"})
-	drawText(rasAA, sl, renBase, float64(frameWidth)/2-50, float64(frameHeight)/2+50, []string{"Scanline rasterizer"})
-	drawText(rasAA, sl, renBase, float64(frameWidth)-float64(frameWidth)/5-50, float64(frameHeight)/2+50, []string{"Arbitrary Image Pattern"})
+	// Labels
+	drawText(rasAA, sl, renBase, 50, 80, "Bresenham lines,\n\nregular accuracy")
+	drawText(rasAA, sl, renBase, fw/2-50, 80, "Bresenham lines,\n\nsubpixel accuracy")
+	drawText(rasAA, sl, renBase, 50, fh/2+50, "Anti-aliased lines")
+	drawText(rasAA, sl, renBase, fw/2-50, fh/2+50, "Scanline rasterizer")
+	drawText(rasAA, sl, renBase, fw-fw/5-50, fh/2+50, "Arbitrary Image Pattern")
 
-	testPerf := checkbox.NewDefaultCheckboxCtrl(10, 30, "Test Performance", false)
-	testPerf.SetTextSize(9.0, 7.0)
-	rotate := checkbox.NewDefaultCheckboxCtrl(140, 30, "Rotate", false)
-	rotate.SetTextSize(9.0, 7.0)
-	accurateJoins := checkbox.NewDefaultCheckboxCtrl(210, 30, "Accurate Joins", false)
-	accurateJoins.SetTextSize(9.0, 7.0)
-	scalePattern := checkbox.NewDefaultCheckboxCtrl(320, 30, "Scale Pattern", false)
-	scalePattern.SetTextSize(9.0, 7.0)
-	scalePattern.SetChecked(true)
+	// Controls
+	renderSlider(rasAA, sl, renBase, d.stepSlider)
+	renderSlider(rasAA, sl, renBase, d.widthSlider)
+	renderCheckbox(rasAA, sl, renBase, d.testPerf)
+	renderCheckbox(rasAA, sl, renBase, d.rotate)
+	renderCheckbox(rasAA, sl, renBase, d.accurateJoins)
+	renderCheckbox(rasAA, sl, renBase, d.scalePattern)
+}
 
-	renderControl(
-		rasAA,
-		sl,
-		renBase,
-		testPerf.NumPaths(),
-		testPerf.Rewind,
-		func() (x, y float64, cmd uint32) {
-			vx, vy, c := testPerf.Vertex()
-			return vx, vy, uint32(c)
-		},
-		testPerf.Color,
-	)
-	renderControl(
-		rasAA,
-		sl,
-		renBase,
-		rotate.NumPaths(),
-		rotate.Rewind,
-		func() (x, y float64, cmd uint32) {
-			vx, vy, c := rotate.Vertex()
-			return vx, vy, uint32(c)
-		},
-		rotate.Color,
-	)
-	renderControl(
-		rasAA,
-		sl,
-		renBase,
-		accurateJoins.NumPaths(),
-		accurateJoins.Rewind,
-		func() (x, y float64, cmd uint32) {
-			vx, vy, c := accurateJoins.Vertex()
-			return vx, vy, uint32(c)
-		},
-		accurateJoins.Color,
-	)
-	renderControl(
-		rasAA,
-		sl,
-		renBase,
-		scalePattern.NumPaths(),
-		scalePattern.Rewind,
-		func() (x, y float64, cmd uint32) {
-			vx, vy, c := scalePattern.Vertex()
-			return vx, vy, uint32(c)
-		},
-		scalePattern.Color,
-	)
+func (d *demo) OnMouseDown(x, y int, btn lowlevelrunner.Buttons) bool {
+	if !btn.Left {
+		return false
+	}
+	fx, fy := float64(x), float64(y)
+	if d.stepSlider.OnMouseButtonDown(fx, fy) {
+		return true
+	}
+	if d.widthSlider.OnMouseButtonDown(fx, fy) {
+		return true
+	}
+	if d.testPerf.OnMouseButtonDown(fx, fy) {
+		return true
+	}
+	if d.rotate.OnMouseButtonDown(fx, fy) {
+		return true
+	}
+	if d.accurateJoins.OnMouseButtonDown(fx, fy) {
+		return true
+	}
+	if d.scalePattern.OnMouseButtonDown(fx, fy) {
+		return true
+	}
+	return false
+}
+
+func (d *demo) OnMouseMove(x, y int, btn lowlevelrunner.Buttons) bool {
+	fx, fy := float64(x), float64(y)
+	redraw := false
+	if d.stepSlider.OnMouseMove(fx, fy, btn.Left) {
+		redraw = true
+	}
+	if d.widthSlider.OnMouseMove(fx, fy, btn.Left) {
+		redraw = true
+	}
+	return redraw
+}
+
+func (d *demo) OnMouseUp(x, y int, btn lowlevelrunner.Buttons) bool {
+	fx, fy := float64(x), float64(y)
+	redraw := false
+	if d.stepSlider.OnMouseButtonUp(fx, fy) {
+		redraw = true
+	}
+	if d.widthSlider.OnMouseButtonUp(fx, fy) {
+		redraw = true
+	}
+	if d.testPerf.OnMouseButtonUp(fx, fy) {
+		redraw = true
+	}
+	if d.rotate.OnMouseButtonUp(fx, fy) {
+		redraw = true
+	}
+	if d.accurateJoins.OnMouseButtonUp(fx, fy) {
+		redraw = true
+	}
+	if d.scalePattern.OnMouseButtonUp(fx, fy) {
+		redraw = true
+	}
+	return redraw
 }
 
 func main() {
@@ -464,5 +572,5 @@ func main() {
 		Height:                frameHeight,
 		FlipY:                 true,
 		EncodeLinearRGBToSRGB: true,
-	}, &demo{})
+	}, newDemo())
 }
