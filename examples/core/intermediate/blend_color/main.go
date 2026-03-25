@@ -23,10 +23,8 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/ctrl/slider"
 	blenddata "github.com/MeKo-Christian/agg_go/internal/demo/blendcolor"
 	"github.com/MeKo-Christian/agg_go/internal/effects"
-	"github.com/MeKo-Christian/agg_go/internal/order"
 	"github.com/MeKo-Christian/agg_go/internal/path"
 	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
-	"github.com/MeKo-Christian/agg_go/internal/pixfmt/blender"
 	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
 	"github.com/MeKo-Christian/agg_go/internal/renderer"
 	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
@@ -90,7 +88,7 @@ type demo struct {
 	radiusCtrl *slider.SliderCtrl
 	shadowCtrl *polygon.PolygonCtrl[color.RGBA]
 
-	colorLUT []color.RGBA8[color.SRGB]
+	colorLUT []color.RGBA8[color.Linear]
 }
 
 func newDemo() *demo {
@@ -130,7 +128,7 @@ func newDemo() *demo {
 		methodCtrl: methodCtrl,
 		radiusCtrl: radiusCtrl,
 		shadowCtrl: shadowCtrl,
-		colorLUT:   blenddata.BuildColorLUT(),
+		colorLUT:   buildLinearLUT(blenddata.BuildColorLUT()),
 	}
 }
 
@@ -147,15 +145,15 @@ func (d *demo) Render(img *agg.Image) {
 	w, h := img.Width(), img.Height()
 
 	rbuf := buffer.NewRenderingBufferU8WithData(img.Data, w, h, img.Stride())
-	pf := pixfmt.NewPixFmtRGBA32Pre[color.SRGB](rbuf)
-	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtAlphaBlendRGBA[color.SRGB, blender.BlenderRGBA8Pre[color.SRGB, order.RGBA]], color.RGBA8[color.SRGB]](pf)
-	renBase.Clear(color.RGBA8[color.SRGB]{R: 255, G: 249, B: 249, A: 255})
+	pf := pixfmt.NewPixFmtRGBA32[color.Linear](rbuf)
+	renBase := renderer.NewRendererBaseWithPixfmt(pf)
+	renBase.Clear(color.RGBA8[color.Linear]{R: 255, G: 242, B: 242, A: 255})
 
 	grayBuf := make([]byte, w*h)
 	grayRbuf := buffer.NewRenderingBufferU8WithData(grayBuf, w, h, w)
-	grayPix := pixfmt.NewPixFmtSGray8(grayRbuf)
-	grayRen := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtSGray8, color.Gray8[color.SRGB]](grayPix)
-	grayRen.Clear(color.Gray8[color.SRGB]{V: 0, A: 255})
+	grayPix := pixfmt.NewPixFmtGray8(grayRbuf)
+	grayRen := renderer.NewRendererBaseWithPixfmt(grayPix)
+	grayRen.Clear(color.Gray8[color.Linear]{V: 0, A: 255})
 
 	shape := conv.NewConvCurve(&pathStorageAdapter{ps: d.glyphPath})
 	shadowPersp := transform.NewTransPerspectiveRectToQuad(
@@ -174,7 +172,7 @@ func (d *demo) Render(img *agg.Image) {
 	ras.AddPath(&rasPathAdapter{vs: shadowTrans}, 0)
 	if ras.RewindScanlines() {
 		sl.Reset(ras.MinX(), ras.MaxX())
-		renscan.RenderScanlinesAASolid(ras, sl, grayRen, color.Gray8[color.SRGB]{V: 255, A: 255})
+		renscan.RenderScanlinesAASolid(ras, sl, grayRen, color.Gray8[color.Linear]{V: 255, A: 255})
 	}
 
 	bbox, ok := basics.BoundingRectSingle[float64](shadowTrans, 0)
@@ -211,7 +209,7 @@ func (d *demo) Render(img *agg.Image) {
 			}
 
 			if d.methodCtrl.CurItem() == 0 {
-				renBase.BlendFromColor(shadowPix, color.RGBA8[color.SRGB]{R: 0, G: 100, B: 0, A: 255}, nil, x1, y1, 255)
+				renBase.BlendFromColor(shadowPix, color.RGBA8[color.Linear]{R: 0, G: 100, B: 0, A: 255}, nil, x1, y1, 255)
 			} else {
 				renBase.BlendFromLUT(shadowPix, d.colorLUT, nil, x1, y1, 255)
 			}
@@ -231,7 +229,7 @@ func (d *demo) Render(img *agg.Image) {
 func (d *demo) renderControl(
 	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
 	sl *scanline.ScanlineP8,
-	renBase *renderer.RendererBase[*pixfmt.PixFmtAlphaBlendRGBA[color.SRGB, blender.BlenderRGBA8Pre[color.SRGB, order.RGBA]], color.RGBA8[color.SRGB]],
+	renBase *renderer.RendererBase[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]],
 	ctrl ctrlpkg.Ctrl[color.RGBA],
 ) {
 	adapter := &controlPathAdapter{ctrl: ctrl}
@@ -246,7 +244,7 @@ func (d *demo) renderControl(
 	}
 }
 
-func rgbaToRGBA8(c color.RGBA) color.RGBA8[color.SRGB] {
+func rgbaToRGBA8(c color.RGBA) color.RGBA8[color.Linear] {
 	clamp := func(v float64) uint8 {
 		if v <= 0 {
 			return 0
@@ -256,12 +254,20 @@ func rgbaToRGBA8(c color.RGBA) color.RGBA8[color.SRGB] {
 		}
 		return uint8(v*255 + 0.5)
 	}
-	return color.RGBA8[color.SRGB]{
+	return color.RGBA8[color.Linear]{
 		R: clamp(c.R),
 		G: clamp(c.G),
 		B: clamp(c.B),
 		A: clamp(c.A),
 	}
+}
+
+func buildLinearLUT(src []color.RGBA8[color.SRGB]) []color.RGBA8[color.Linear] {
+	dst := make([]color.RGBA8[color.Linear], len(src))
+	for i, c := range src {
+		dst[i] = color.ConvertToLinear(c)
+	}
+	return dst
 }
 
 func (d *demo) OnMouseDown(x, y int, btn lowlevelrunner.Buttons) bool {
@@ -319,9 +325,10 @@ func (d *demo) OnKey(key rune) bool {
 
 func main() {
 	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "Blend Color",
-		Width:  frameWidth,
-		Height: frameHeight,
-		FlipY:  true,
+		Title:                 "Blend Color",
+		Width:                 frameWidth,
+		Height:                frameHeight,
+		FlipY:                 true,
+		EncodeLinearRGBToSRGB: true,
 	}, newDemo())
 }

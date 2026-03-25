@@ -325,9 +325,10 @@ func main() {
 
 	d := newDemo(srcImg)
 	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "AGG Example. Image Affine Transformations with filtering",
-		Width:  d.w,
-		Height: d.h,
-		FlipY:  true,
+		Title:                 "AGG Example. Image Affine Transformations with filtering",
+		Width:                 d.w,
+		Height:                d.h,
+		FlipY:                 true,
+		EncodeLinearRGBToSRGB: true,
 	}, d)
 }

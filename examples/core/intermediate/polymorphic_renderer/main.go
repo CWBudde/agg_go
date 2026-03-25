@@ -139,10 +139,11 @@ func (d *demo) OnMouseUp(x, y int, btn lowlevelrunner.Buttons) bool {
 
 func main() {
 	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "Polymorphic Renderer",
-		Width:  400,
-		Height: 330,
-		FlipY:  true,
+		Title:                  "Polymorphic Renderer",
+		Width:                  400,
+		Height:                 330,
+		FlipY:                  true,
+		DisableLinearRGBToSRGB: true,
 	}, newDemo())
 }
 

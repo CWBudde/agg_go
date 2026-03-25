@@ -161,8 +161,9 @@ func (d *demo) OnMouseUp(_, _ int, _ lowlevelrunner.Buttons) bool {
 
 func main() {
 	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "Rounded Rectangle",
-		Width:  demoWidth,
-		Height: demoHeight,
+		Title:                 "Rounded Rectangle",
+		Width:                 demoWidth,
+		Height:                demoHeight,
+		EncodeLinearRGBToSRGB: true,
 	}, newDemo())
 }

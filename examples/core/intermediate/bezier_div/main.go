@@ -366,8 +366,9 @@ func copyFlipY(src, dst []uint8, width, height int) {
 
 func main() {
 	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "Bezier Div",
-		Width:  width,
-		Height: height,
+		Title:                 "Bezier Div",
+		Width:                 width,
+		Height:                height,
+		EncodeLinearRGBToSRGB: true,
 	}, newDemo())
 }

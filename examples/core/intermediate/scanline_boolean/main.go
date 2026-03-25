@@ -546,8 +546,9 @@ func main() {
 	d := &demo{}
 	d.OnInit()
 	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "Scanline Boolean",
-		Width:  imgWidth,
-		Height: imgHeight,
+		Title:                 "Scanline Boolean",
+		Width:                 imgWidth,
+		Height:                imgHeight,
+		EncodeLinearRGBToSRGB: true,
 	}, d)
 }

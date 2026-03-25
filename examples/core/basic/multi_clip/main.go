@@ -334,10 +334,11 @@ func (d *demo) OnMouseUp(x, y int, btn lowlevelrunner.Buttons) bool {
 
 func main() {
 	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "AGG Example. Clipping to multiple rectangle regions",
-		Width:  512,
-		Height: 400,
-		FlipY:  true,
+		Title:                 "AGG Example. Clipping to multiple rectangle regions",
+		Width:                 512,
+		Height:                400,
+		FlipY:                 true,
+		EncodeLinearRGBToSRGB: true,
 	}, newDemo())
 }
 

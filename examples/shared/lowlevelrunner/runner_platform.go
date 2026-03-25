@@ -167,7 +167,11 @@ func (h *handler) onIdle() {
 // corresponding C++ platform_support screenshots.
 func (h *handler) blit() {
 	winBuf := h.ps.WindowBuffer()
-	src := h.img.Data
+	srcImg := outputImage(h.img, h.cfg.shouldEncodeLinearRGBToSRGB())
+	if srcImg == nil {
+		return
+	}
+	src := srcImg.Pix
 	dst := winBuf.Buf()
 
 	dstStride := winBuf.Stride()
@@ -175,11 +179,7 @@ func (h *handler) blit() {
 		dstStride = -dstStride
 	}
 	for y := range winBuf.Height() {
-		srcY := y
-		if h.img.Stride() < 0 {
-			srcY = h.img.Height() - 1 - y
-		}
-		srcOff := srcY * (h.img.Width() * 4)
+		srcOff := y * srcImg.Stride
 		dstOff := y * dstStride
 		for x := range winBuf.Width() {
 			srcIdx := srcOff + x*4
@@ -195,7 +195,7 @@ func (h *handler) blit() {
 
 func (h *handler) saveScreenshot() {
 	filename := strings.ReplaceAll(strings.ToLower(h.cfg.Title), " ", "_") + ".png"
-	goImg := h.img.ToGoImage()
+	goImg := outputImage(h.img, h.cfg.shouldEncodeLinearRGBToSRGB())
 	if goImg == nil {
 		fmt.Fprintf(os.Stderr, "screenshot: image conversion failed\n")
 		return

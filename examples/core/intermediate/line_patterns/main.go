@@ -20,8 +20,9 @@ func (d *demo) Render(img *agg.Image) {
 
 func main() {
 	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "Line Patterns",
-		Width:  500,
-		Height: 450,
+		Title:                 "Line Patterns",
+		Width:                 500,
+		Height:                450,
+		EncodeLinearRGBToSRGB: true,
 	}, &demo{})
 }

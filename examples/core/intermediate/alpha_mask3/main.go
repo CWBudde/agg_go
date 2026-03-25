@@ -644,8 +644,9 @@ func main() {
 
 	// Suppress unused import warning – fmt used for potential future timing
 	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "AGG Example. Alpha-Mask as a Polygon Clipper",
-		Width:  frameWidth,
-		Height: frameHeight,
+		Title:                 "AGG Example. Alpha-Mask as a Polygon Clipper",
+		Width:                 frameWidth,
+		Height:                frameHeight,
+		EncodeLinearRGBToSRGB: true,
 	}, d)
 }

@@ -250,9 +250,10 @@ func (d *demo) OnMouseUp(x, y int, btn lowlevelrunner.Buttons) bool {
 
 func main() {
 	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "AGG Example. Polar Transformer",
-		Width:  600,
-		Height: 400,
-		FlipY:  true,
+		Title:                 "AGG Example. Polar Transformer",
+		Width:                 600,
+		Height:                400,
+		FlipY:                 true,
+		EncodeLinearRGBToSRGB: true,
 	}, newDemo())
 }
