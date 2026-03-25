@@ -190,7 +190,7 @@ func newDemo() *demo {
 	gradient.SetTextThickness(1.0)
 	gradient.AddItem("Contour")
 	gradient.AddItem("Auto Contour")
-	gradient.AddItem("Assymetric Conic")
+	gradient.AddItem("Asymmetric Conic")
 	gradient.AddItem("Flat Fill")
 	gradient.SetCurItem(1)
 
