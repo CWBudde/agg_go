@@ -12,6 +12,7 @@ import (
 	rboxctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/rbox"
 	sliderctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/slider"
 	"github.com/MeKo-Christian/agg_go/internal/demo/imageresample"
+	"github.com/MeKo-Christian/agg_go/internal/gsv"
 )
 
 const (
@@ -58,6 +59,21 @@ func toAggColor(c icol.RGBA) agg.Color {
 	return agg.NewColor(clamp(c.R), clamp(c.G), clamp(c.B), clamp(c.A))
 }
 
+type gsvVertexSourceAdapter struct {
+	src *gsv.GSVTextOutline
+}
+
+func (a *gsvVertexSourceAdapter) Rewind(pathID uint32) {
+	a.src.Rewind(uint(pathID))
+}
+
+func (a *gsvVertexSourceAdapter) Vertex(x, y *float64) uint32 {
+	vx, vy, cmd := a.src.Vertex()
+	*x = vx
+	*y = vy
+	return uint32(cmd)
+}
+
 type demo struct {
 	quad      *polygonctrl.PolygonCtrl[icol.RGBA]
 	transType *rboxctrl.RboxCtrl[icol.RGBA]
@@ -66,19 +82,26 @@ type demo struct {
 }
 
 func newDemo() *demo {
+	srcW, srcH, ok := imageresample.SourceSize()
+	if !ok {
+		srcW, srcH = 320, 300
+	}
+	x1 := float64(frameWidth-srcW) / 2.0
+	y1 := float64(frameHeight-srcH) / 2.0
+
 	quad := polygonctrl.NewDefaultPolygonCtrl(4, 5.0)
 	quad.SetClose(true)
 	quad.SetInPolygonCheck(true)
-	quad.SetXn(0, 100)
-	quad.SetYn(0, 100)
-	quad.SetXn(1, 500)
-	quad.SetYn(1, 100)
-	quad.SetXn(2, 500)
-	quad.SetYn(2, 500)
-	quad.SetXn(3, 100)
-	quad.SetYn(3, 500)
+	quad.SetXn(0, x1)
+	quad.SetYn(0, y1)
+	quad.SetXn(1, x1+float64(srcW))
+	quad.SetYn(1, y1)
+	quad.SetXn(2, x1+float64(srcW))
+	quad.SetYn(2, y1+float64(srcH))
+	quad.SetXn(3, x1)
+	quad.SetYn(3, y1+float64(srcH))
 
-	transType := rboxctrl.NewDefaultRboxCtrl(400, 5.0, 400+170.0, 100.0, false)
+	transType := rboxctrl.NewDefaultRboxCtrl(400, 5.0, 600.0, 100.0, false)
 	transType.SetTextSize(7, 0)
 	transType.AddItem("Affine No Resample")
 	transType.AddItem("Affine Resample")
@@ -119,14 +142,27 @@ func (d *demo) Render(img *agg.Image) {
 	})
 
 	a := ctx.GetAgg2D()
-	a.FontGSV(10)
-	a.FillColor(agg.Black)
-	a.NoLine()
-	a.Text(10, 70, fmt.Sprintf("%3.2f ms", float64(elapsed)/1e6), false, 0, 0)
+	renderTimingText(a, float64(elapsed)/1e6)
 
 	for _, ctrl := range d.controls {
 		renderCtrl(a, ctrl)
 	}
+}
+
+func renderTimingText(a *agg.Agg2D, ms float64) {
+	text := fmt.Sprintf("%3.2f ms", ms)
+	gsvText := gsv.NewGSVText()
+	gsvText.SetSize(10.0, 0)
+	gsvText.SetStartPoint(10.0, 70.0)
+	gsvText.SetText(text)
+
+	outline := gsv.NewGSVTextOutline(gsvText)
+	outline.SetWidth(1.5)
+
+	ras := a.GetInternalRasterizer()
+	ras.Reset()
+	ras.AddPath(&gsvVertexSourceAdapter{src: outline}, 0)
+	a.RenderRasterizerWithColor(agg.Black)
 }
 
 func (d *demo) OnMouseDown(x, y int, btn lowlevelrunner.Buttons) bool {

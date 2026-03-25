@@ -12,29 +12,70 @@ import (
 )
 
 type Config struct {
-	Mode int
-	Blur float64
-	Quad [4][2]float64
+	Mode   int
+	Blur   float64
+	Quad   [4][2]float64
+	Source *agg.Image
 }
 
 var (
 	cachedSpheres *agg.Image
+	cachedFlipped *agg.Image
 	once          sync.Once
 )
+
+func loadSpheres() *agg.Image {
+	once.Do(func() {
+		img, err := imageassets.Spheres()
+		if err == nil {
+			cachedSpheres = img
+		}
+	})
+	return cachedSpheres
+}
 
 func flippedVerticalCopy(src *agg.Image) *agg.Image {
 	if src == nil {
 		return nil
 	}
-	w, h := src.Width(), src.Height()
-	rowBytes := w * 4
-	buf := make([]byte, len(src.Data))
-	for y := 0; y < h; y++ {
-		srcOff := (h - 1 - y) * rowBytes
-		dstOff := y * rowBytes
-		copy(buf[dstOff:dstOff+rowBytes], src.Data[srcOff:srcOff+rowBytes])
+	goImg := src.ToGoImage()
+	if goImg == nil {
+		return nil
 	}
+
+	w, h := goImg.Bounds().Dx(), goImg.Bounds().Dy()
+	rowBytes := w * 4
+	buf := make([]byte, len(goImg.Pix))
+	for y := 0; y < h; y++ {
+		srcOff := (h - 1 - y) * goImg.Stride
+		dstOff := y * rowBytes
+		copy(buf[dstOff:dstOff+rowBytes], goImg.Pix[srcOff:srcOff+rowBytes])
+	}
+
 	return agg.NewImage(buf, w, h, rowBytes)
+}
+
+func sourceImage(src *agg.Image) *agg.Image {
+	if src != nil {
+		return flippedVerticalCopy(src)
+	}
+	if cachedFlipped != nil {
+		return cachedFlipped
+	}
+	base := loadSpheres()
+	if base == nil {
+		return nil
+	}
+	cachedFlipped = flippedVerticalCopy(base)
+	return cachedFlipped
+}
+
+func SourceSize() (int, int, bool) {
+	base := loadSpheres()
+	if base == nil {
+		return 0, 0, false
+	}
+	return base.Width(), base.Height(), true
 }
 
 func DrawTimed(ctx *agg.Context, cfg Config) time.Duration {
@@ -44,17 +85,13 @@ func DrawTimed(ctx *agg.Context, cfg Config) time.Duration {
 }
 
 func Draw(ctx *agg.Context, cfg Config) {
-	once.Do(func() {
-		img, err := imageassets.Spheres()
-		if err == nil {
-			cachedSpheres = img
-		}
-	})
-	if ctx == nil || cachedSpheres == nil {
+	if ctx == nil {
 		return
 	}
-
-	source := flippedVerticalCopy(cachedSpheres)
+	baseSource := loadSpheres()
+	if baseSource == nil {
+		return
+	}
 
 	mode := cfg.Mode
 	if mode < 0 {
@@ -108,6 +145,14 @@ func Draw(ctx *agg.Context, cfg Config) {
 		sampling = quadwarp.SampleResample
 	}
 
+	source := sourceImage(cfg.Source)
+	if source == nil {
+		source = cachedSpheres
+	}
+	if source == nil {
+		return
+	}
+
 	quadwarp.Draw(ctx, quadwarp.Config{
 		CanvasWidth:        ctx.GetImage().Width(),
 		CanvasHeight:       ctx.GetImage().Height(),
@@ -123,8 +168,8 @@ func Draw(ctx *agg.Context, cfg Config) {
 		Blur:               blur,
 		ForceParallelogram: forceParallelogram,
 		ShowQuadFill:       true,
-		ShowQuadOutline:    true,
-		ShowHandles:        true,
+		ShowQuadOutline:    false,
+		ShowHandles:        false,
 		QuadFillColor:      agg.RGBA(0, 0.3, 0.5, 0.5),
 		QuadLineColor:      agg.RGBA(0, 0.2, 0.3, 0.9),
 	})

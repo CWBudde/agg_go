@@ -39,7 +39,8 @@ func (s *imagePatternSource) Pixel(x, y int) color.RGBA {
 	if x < 0 || y < 0 || x >= s.img.Width || y >= s.img.Height {
 		return color.NewRGBA(0, 0, 0, 0)
 	}
-	p := s.img.Pixels[y*s.img.Width+x]
+	srcY := s.img.Height - 1 - y
+	p := s.img.Pixels[srcY*s.img.Width+x]
 	r := uint8((p >> 16) & 0xFF)
 	g := uint8((p >> 8) & 0xFF)
 	b := uint8(p & 0xFF)
@@ -198,8 +199,12 @@ func drawCurves(img *agg.Image, scaleX, startX float64, curvesData []Curve) {
 	preparedLinePatternOnce.Do(prepareLinePatternResources)
 
 	rgbData := make([]uint8, img.Width()*img.Height()*3)
+	rgbStride := img.Width() * 3
+	if img.Stride() < 0 {
+		rgbStride = -rgbStride
+	}
 	rbuf := buffer.NewRenderingBufferU8()
-	rbuf.Attach(rgbData, img.Width(), img.Height(), img.Width()*3)
+	rbuf.Attach(rgbData, img.Width(), img.Height(), rgbStride)
 	pf := pixfmt.NewPixFmtBGR24(rbuf)
 	pf.Clear(color.RGB8[color.Linear]{R: 255, G: 255, B: 242})
 
@@ -220,7 +225,7 @@ func drawCurves(img *agg.Image, scaleX, startX float64, curvesData []Curve) {
 	}
 
 	for y := 0; y < img.Height(); y++ {
-		srcOff := y * img.Width() * 3
+		srcOff := physicalRowOffset(img.Height(), rgbStride, y)
 		dstOff := physicalRowOffset(img.Height(), img.Stride(), y)
 		for x := 0; x < img.Width(); x++ {
 			b := rgbData[srcOff+x*3+0]
