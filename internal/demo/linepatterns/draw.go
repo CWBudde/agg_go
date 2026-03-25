@@ -171,6 +171,13 @@ func clamp(v, lo, hi float64) float64 {
 	return v
 }
 
+func physicalRowOffset(height, stride, y int) int {
+	if stride >= 0 {
+		return y * stride
+	}
+	return (height - 1 - y) * -stride
+}
+
 func Draw(img *agg.Image, scaleX, startX float64) {
 	preparedLinePatternOnce.Do(prepareLinePatternResources)
 	curves := DefaultCurves()
@@ -214,7 +221,7 @@ func drawCurves(img *agg.Image, scaleX, startX float64, curvesData []Curve) {
 
 	for y := 0; y < img.Height(); y++ {
 		srcOff := y * img.Width() * 3
-		dstOff := y * img.Width() * 4
+		dstOff := physicalRowOffset(img.Height(), img.Stride(), y)
 		for x := 0; x < img.Width(); x++ {
 			b := rgbData[srcOff+x*3+0]
 			g := rgbData[srcOff+x*3+1]

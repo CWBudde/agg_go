@@ -1,118 +1,200 @@
-// Package main ports AGG's image_resample.cpp demo (closest affine equivalent).
+// Package main ports AGG's image_resample.cpp demo.
 package main
 
 import (
+	"fmt"
+
 	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
+	icol "github.com/MeKo-Christian/agg_go/internal/color"
+	ctrlbase "github.com/MeKo-Christian/agg_go/internal/ctrl"
+	polygonctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/polygon"
+	rboxctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/rbox"
+	sliderctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/slider"
+	"github.com/MeKo-Christian/agg_go/internal/demo/imageresample"
 )
 
 const (
-	resampleMode = 4
-	resampleBlur = 1.0
+	frameWidth  = 600
+	frameHeight = 600
 )
 
-type demo struct{}
+type ctrlVertexSourceAdapter struct {
+	ctrl ctrlbase.Ctrl[icol.RGBA]
+}
 
-func (d *demo) Render(img *agg.Image) {
-	ctx := agg.NewContextForImage(img)
-	srcImg := createSpheresImage(320, 320)
-	quad := [4][2]float64{
-		{140, 140},
-		{460, 140},
-		{460, 460},
-		{140, 460},
-	}
-	if resampleMode < 2 {
-		quad[3][0] = quad[0][0] + (quad[2][0] - quad[1][0])
-		quad[3][1] = quad[0][1] + (quad[2][1] - quad[1][1])
-	}
+func (a *ctrlVertexSourceAdapter) Rewind(pathID uint32) {
+	a.ctrl.Rewind(uint(pathID))
+}
 
-	ctx.Clear(agg.White)
-	a := ctx.GetAgg2D()
-	a.ResetTransformations()
+func (a *ctrlVertexSourceAdapter) Vertex(x, y *float64) uint32 {
+	vx, vy, cmd := a.ctrl.Vertex()
+	*x = vx
+	*y = vy
+	return uint32(cmd)
+}
 
-	a.FillColor(agg.RGBA(0, 0.3, 0.5, 0.2))
-	a.NoLine()
-	a.ResetPath()
-	a.MoveTo(quad[0][0], quad[0][1])
-	a.LineTo(quad[1][0], quad[1][1])
-	a.LineTo(quad[2][0], quad[2][1])
-	a.LineTo(quad[3][0], quad[3][1])
-	a.ClosePolygon()
-	a.DrawPath(agg.FillOnly)
-
-	a.ResetPath()
-	a.MoveTo(quad[0][0], quad[0][1])
-	a.LineTo(quad[1][0], quad[1][1])
-	a.LineTo(quad[2][0], quad[2][1])
-	a.LineTo(quad[3][0], quad[3][1])
-	a.ClosePolygon()
-
-	a.SetImageFilterRadius(agg.FilterBilinear, resampleBlur)
-	if resampleMode == 1 || resampleMode == 4 || resampleMode == 5 {
-		a.ImageResample(agg.ResampleBilinear)
-	} else {
-		a.ImageResample(agg.ResampleNearest)
-	}
-
-	par := []float64{
-		quad[0][0], quad[0][1],
-		quad[1][0], quad[1][1],
-		quad[2][0], quad[2][1],
-	}
-	_ = a.TransformImagePathParallelogramSimple(srcImg, par)
-
-	ctx.SetColor(agg.RGBA(0, 0.2, 0.3, 0.9))
-	ctx.SetLineWidth(1.5)
-	a.NoFill()
-	a.ResetPath()
-	a.MoveTo(quad[0][0], quad[0][1])
-	a.LineTo(quad[1][0], quad[1][1])
-	a.LineTo(quad[2][0], quad[2][1])
-	a.LineTo(quad[3][0], quad[3][1])
-	a.ClosePolygon()
-	a.DrawPath(agg.StrokeOnly)
-
-	ctx.SetColor(agg.RGBA(0.8, 0.1, 0.1, 0.75))
-	for i := 0; i < 4; i++ {
-		ctx.FillCircle(quad[i][0], quad[i][1], 4.0)
+func renderCtrl(a *agg.Agg2D, c ctrlbase.Ctrl[icol.RGBA]) {
+	ras := a.GetInternalRasterizer()
+	for pathID := uint(0); pathID < c.NumPaths(); pathID++ {
+		ras.Reset()
+		ras.AddPath(&ctrlVertexSourceAdapter{ctrl: c}, uint32(pathID))
+		a.RenderRasterizerWithColor(toAggColor(c.Color(pathID)))
 	}
 }
 
-func createSpheresImage(w, h int) *agg.Image {
-	img := agg.CreateImage(w, h)
-	imgCtx := agg.NewContextForImage(img)
-
-	imgCtx.SetColor(agg.RGBA(0.05, 0.05, 0.12, 1.0))
-	imgCtx.FillRectangle(0, 0, float64(w), float64(h))
-
-	type sphere struct {
-		x, y, r    float64
-		r0, g0, b0 float64
-	}
-	spheres := []sphere{
-		{float64(w) * 0.22, float64(h) * 0.30, float64(w) * 0.18, 0.9, 0.2, 0.1},
-		{float64(w) * 0.65, float64(h) * 0.28, float64(w) * 0.15, 0.1, 0.4, 0.9},
-		{float64(w) * 0.45, float64(h) * 0.68, float64(w) * 0.20, 0.1, 0.8, 0.3},
-		{float64(w) * 0.78, float64(h) * 0.65, float64(w) * 0.12, 0.9, 0.7, 0.1},
-		{float64(w) * 0.15, float64(h) * 0.72, float64(w) * 0.10, 0.7, 0.1, 0.8},
+func toAggColor(c icol.RGBA) agg.Color {
+	clamp := func(v float64) uint8 {
+		switch {
+		case v <= 0:
+			return 0
+		case v >= 1:
+			return 255
+		default:
+			return uint8(v*255.0 + 0.5)
+		}
 	}
 
-	for _, sp := range spheres {
-		imgCtx.SetColor(agg.RGBA(0, 0, 0, 0.35))
-		imgCtx.FillCircle(sp.x+sp.r*0.15, sp.y+sp.r*0.15, sp.r)
-		imgCtx.SetColor(agg.RGBA(sp.r0, sp.g0, sp.b0, 0.85))
-		imgCtx.FillCircle(sp.x, sp.y, sp.r)
-		imgCtx.SetColor(agg.RGBA(1.0, 1.0, 1.0, 0.6))
-		imgCtx.FillCircle(sp.x-sp.r*0.30, sp.y-sp.r*0.30, sp.r*0.30)
+	return agg.NewColor(clamp(c.R), clamp(c.G), clamp(c.B), clamp(c.A))
+}
+
+type demo struct {
+	quad      *polygonctrl.PolygonCtrl[icol.RGBA]
+	transType *rboxctrl.RboxCtrl[icol.RGBA]
+	blur      *sliderctrl.SliderCtrl
+	controls  []ctrlbase.Ctrl[icol.RGBA]
+}
+
+func newDemo() *demo {
+	quad := polygonctrl.NewDefaultPolygonCtrl(4, 5.0)
+	quad.SetClose(true)
+	quad.SetInPolygonCheck(true)
+	quad.SetXn(0, 100)
+	quad.SetYn(0, 100)
+	quad.SetXn(1, 500)
+	quad.SetYn(1, 100)
+	quad.SetXn(2, 500)
+	quad.SetYn(2, 500)
+	quad.SetXn(3, 100)
+	quad.SetYn(3, 500)
+
+	transType := rboxctrl.NewDefaultRboxCtrl(400, 5.0, 400+170.0, 100.0, false)
+	transType.SetTextSize(7, 0)
+	transType.AddItem("Affine No Resample")
+	transType.AddItem("Affine Resample")
+	transType.AddItem("Perspective No Resample LERP")
+	transType.AddItem("Perspective No Resample Exact")
+	transType.AddItem("Perspective Resample LERP")
+	transType.AddItem("Perspective Resample Exact")
+	transType.SetCurItem(4)
+
+	blur := sliderctrl.NewSliderCtrl(5.0, 5.0, 400-5.0, 10.0, false)
+	blur.SetRange(0.5, 5.0)
+	blur.SetValue(1.0)
+	blur.SetLabel("Blur=%.3f")
+
+	return &demo{
+		quad:      quad,
+		transType: transType,
+		blur:      blur,
+		controls:  []ctrlbase.Ctrl[icol.RGBA]{transType, blur},
 	}
-	return img
+}
+
+func (d *demo) quadPoints() [4][2]float64 {
+	return [4][2]float64{
+		{d.quad.Xn(0), d.quad.Yn(0)},
+		{d.quad.Xn(1), d.quad.Yn(1)},
+		{d.quad.Xn(2), d.quad.Yn(2)},
+		{d.quad.Xn(3), d.quad.Yn(3)},
+	}
+}
+
+func (d *demo) Render(img *agg.Image) {
+	ctx := agg.NewContextForImage(img)
+	elapsed := imageresample.DrawTimed(ctx, imageresample.Config{
+		Mode: d.transType.CurItem(),
+		Blur: d.blur.Value(),
+		Quad: d.quadPoints(),
+	})
+
+	a := ctx.GetAgg2D()
+	a.FontGSV(10)
+	a.FillColor(agg.Black)
+	a.NoLine()
+	a.Text(10, 70, fmt.Sprintf("%3.2f ms", float64(elapsed)/1e6), false, 0, 0)
+
+	for _, ctrl := range d.controls {
+		renderCtrl(a, ctrl)
+	}
+}
+
+func (d *demo) OnMouseDown(x, y int, btn lowlevelrunner.Buttons) bool {
+	if !btn.Left {
+		return false
+	}
+
+	fx, fy := float64(x), float64(y)
+	for _, ctrl := range d.controls {
+		if ctrl.OnMouseButtonDown(fx, fy) {
+			return true
+		}
+	}
+	return d.quad.OnMouseButtonDown(fx, fy)
+}
+
+func (d *demo) OnMouseMove(x, y int, btn lowlevelrunner.Buttons) bool {
+	fx, fy := float64(x), float64(y)
+	redraw := false
+
+	for _, ctrl := range d.controls {
+		if ctrl.OnMouseMove(fx, fy, btn.Left) {
+			redraw = true
+		}
+	}
+	if d.quad.OnMouseMove(fx, fy, btn.Left) {
+		redraw = true
+	}
+
+	return redraw
+}
+
+func (d *demo) OnMouseUp(x, y int, btn lowlevelrunner.Buttons) bool {
+	_ = btn
+	fx, fy := float64(x), float64(y)
+	redraw := false
+
+	for _, ctrl := range d.controls {
+		if ctrl.OnMouseButtonUp(fx, fy) {
+			redraw = true
+		}
+	}
+	if d.quad.OnMouseButtonUp(fx, fy) {
+		redraw = true
+	}
+
+	return redraw
+}
+
+func (d *demo) OnKey(key rune) bool {
+	if key != ' ' {
+		return false
+	}
+
+	quad := d.quadPoints()
+	imageresample.RotateQuad90(&quad)
+	for i := range quad {
+		d.quad.SetXn(uint(i), quad[i][0])
+		d.quad.SetYn(uint(i), quad[i][1])
+	}
+	return true
 }
 
 func main() {
 	lowlevelrunner.Run(lowlevelrunner.Config{
 		Title:  "Image Resample",
-		Width:  600,
-		Height: 600,
-	}, &demo{})
+		Width:  frameWidth,
+		Height: frameHeight,
+		FlipY:  true,
+	}, newDemo())
 }
