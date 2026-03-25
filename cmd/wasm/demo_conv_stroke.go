@@ -5,6 +5,9 @@ import (
 	"math"
 
 	agg "github.com/MeKo-Christian/agg_go"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/conv"
+	"github.com/MeKo-Christian/agg_go/internal/path"
 )
 
 // --- State ---
@@ -78,16 +81,54 @@ func drawConvStrokeDemo() {
 	a.DrawPath(agg.StrokeOnly)
 
 	// (3) Dashed thin overlay on the wide stroke (matching the C++ poly2).
-	a.ResetPath()
-	buildPaths()
-	a.LineJoin(join)
-	a.LineCap(lineCap)
-	a.LineWidth(strokeWidth / 5.0)
-	a.RemoveAllDashes()
-	a.AddDash(20, strokeWidth/2.5)
-	a.LineColor(agg.NewColor(0, 0, 77, 255))
-	a.DrawPath(agg.StrokeOnly)
-	a.RemoveAllDashes()
+	// C++ pipeline: path → conv_stroke(wide) → conv_dash → conv_stroke(thin).
+	{
+		joinStyles := []basics.LineJoin{basics.MiterJoin, basics.RoundJoin, basics.BevelJoin}
+		capStyles := []basics.LineCap{basics.ButtCap, basics.SquareCap, basics.RoundCap}
+		lj := joinStyles[strokeJoin]
+		lc := capStyles[strokeCap]
+
+		ps := path.NewPathStorageStl()
+		ps.MoveTo(x[0], y[0])
+		ps.LineTo((x[0]+x[1])/2, (y[0]+y[1])/2)
+		ps.LineTo(x[1], y[1])
+		ps.LineTo(x[2], y[2])
+		ps.LineTo(x[2], y[2])
+
+		ps.MoveTo((x[0]+x[1])/2, (y[0]+y[1])/2)
+		ps.LineTo((x[1]+x[2])/2, (y[1]+y[2])/2)
+		ps.LineTo((x[2]+x[0])/2, (y[2]+y[0])/2)
+		ps.ClosePolygon(0)
+
+		psAdapter := path.NewPathStorageStlVertexSourceAdapter(ps)
+
+		wideStroke := conv.NewConvStroke(psAdapter)
+		wideStroke.SetLineJoin(lj)
+		wideStroke.SetLineCap(lc)
+		wideStroke.SetMiterLimit(strokeMiterLimit)
+		wideStroke.SetWidth(strokeWidth)
+
+		dashedStroke := conv.NewConvDash(wideStroke)
+		dashedStroke.AddDash(20.0, strokeWidth/2.5)
+
+		thinStroke := conv.NewConvStroke(dashedStroke)
+		thinStroke.SetMiterLimit(4.0)
+		thinStroke.SetWidth(strokeWidth / 5.0)
+		thinStroke.SetLineCap(lc)
+		thinStroke.SetLineJoin(lj)
+
+		ras := a.GetInternalRasterizer()
+		ras.Reset()
+		thinStroke.Rewind(0)
+		for {
+			vx, vy, cmd := thinStroke.Vertex()
+			if cmd == basics.PathCmdStop {
+				break
+			}
+			ras.AddVertex(vx, vy, uint32(cmd))
+		}
+		a.RenderRasterizerWithColor(agg.NewColor(0, 0, 77, 255))
+	}
 
 	// (4) Semi-transparent fill of the raw path.
 	a.ResetPath()
