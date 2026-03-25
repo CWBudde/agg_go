@@ -112,7 +112,7 @@ func (g *gradContourSpanGen) Generate(colors []color.RGBA8[color.Linear], x, y, 
 
 		if g.reflect {
 			d2 := g.d2scaled * 2
-			d = d % d2
+			d %= d2
 			if d < 0 {
 				d += d2
 			}
@@ -292,20 +292,21 @@ func buildGradientContourLUT(numColors int) []color.RGBA8[color.Linear] {
 		t := float64(i) / float64(lutSize-1)
 		// find segment
 		for j := 1; j < len(stops); j++ {
-			if t <= stops[j].t {
-				dt := stops[j].t - stops[j-1].t
-				var lt float64
-				if dt > 0 {
-					lt = (t - stops[j-1].t) / dt
-				}
-				lut[i] = color.RGBA8[color.Linear]{
-					R: lerp(stops[j-1].r, stops[j].r, lt),
-					G: lerp(stops[j-1].g, stops[j].g, lt),
-					B: lerp(stops[j-1].b, stops[j].b, lt),
-					A: 255,
-				}
-				break
+			if t > stops[j].t {
+				continue
 			}
+			dt := stops[j].t - stops[j-1].t
+			var lt float64
+			if dt > 0 {
+				lt = (t - stops[j-1].t) / dt
+			}
+			lut[i] = color.RGBA8[color.Linear]{
+				R: lerp(stops[j-1].r, stops[j].r, lt),
+				G: lerp(stops[j-1].g, stops[j].g, lt),
+				B: lerp(stops[j-1].b, stops[j].b, lt),
+				A: 255,
+			}
+			break
 		}
 	}
 

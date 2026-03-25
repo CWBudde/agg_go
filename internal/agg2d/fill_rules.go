@@ -218,9 +218,5 @@ func (frt *FillRuleTest) TestFillingRuleEnum() bool {
 
 	// Test non-zero via enum
 	frt.agg2d.SetFillRule(basics.FillNonZero)
-	if frt.agg2d.GetFillRule() != basics.FillNonZero {
-		return false
-	}
-
-	return true
+	return frt.agg2d.GetFillRule() == basics.FillNonZero
 }

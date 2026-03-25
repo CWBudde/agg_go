@@ -346,11 +346,12 @@ func step6() {
 			}
 			tx, ty := x, y
 			mtx.Transform(&tx, &ty)
-			if basics.IsMoveTo(pathCmd) {
+			switch {
+			case basics.IsMoveTo(pathCmd):
 				ras.AddVertex(tx, ty, uint32(basics.PathCmdMoveTo))
-			} else if basics.IsLineTo(pathCmd) {
+			case basics.IsLineTo(pathCmd):
 				ras.AddVertex(tx, ty, uint32(basics.PathCmdLineTo))
-			} else if basics.IsEndPoly(pathCmd) {
+			case basics.IsEndPoly(pathCmd):
 				ras.AddVertex(0, 0, cmd)
 			}
 		}

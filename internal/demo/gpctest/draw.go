@@ -44,7 +44,7 @@ func Draw(ctx *agg.Context, cfg Config) {
 
 	cfg.Scene = clampInt(cfg.Scene, 0, 4)
 	cfg.Operation = clampInt(cfg.Operation, 0, 5)
-	cfg.CenterX = cfg.CenterX - frameOffX
+	cfg.CenterX -= frameOffX
 	cfg.CenterY = referenceHeight - (cfg.CenterY - frameOffY)
 
 	a, b := buildScene(cfg, referenceWidth, referenceHeight)

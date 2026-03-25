@@ -383,7 +383,7 @@ func Draw(ctx *agg.Context, cfg Config) {
 
 	// The upstream demo runs with flip_y=true. Convert the dragged center from
 	// screen coordinates into the original 655x520 reference frame.
-	cfg.CenterX = cfg.CenterX - frameOffX
+	cfg.CenterX -= frameOffX
 	cfg.CenterY = referenceHeight - (cfg.CenterY - frameOffY)
 
 	a, b := buildShapes(cfg, referenceWidth, referenceHeight)

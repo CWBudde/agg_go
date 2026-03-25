@@ -132,7 +132,7 @@ func (c *ConvMarker) Vertex() (x, y float64, cmd basics.PathCommand) {
 			if basics.IsStop(cmd) {
 				cmd = basics.PathCmdMoveTo
 				c.status = MarkerStatusMarkers
-				break
+				continue
 			}
 
 			// Transform the vertex by the marker transformation matrix
@@ -141,7 +141,7 @@ func (c *ConvMarker) Vertex() (x, y float64, cmd basics.PathCommand) {
 
 		case MarkerStatusStop:
 			cmd = basics.PathCmdStop
-			break
+			return 0, 0, cmd
 		}
 	}
 

@@ -26,7 +26,7 @@ func TestVPGenClipPolyline_Basic(t *testing.T) {
 		t.Errorf("Expected line_to (8,8), got %v (%f,%f)", cmd, x, y)
 	}
 
-	x, y, cmd = vpgen.Vertex()
+	_, _, cmd = vpgen.Vertex()
 	if cmd != basics.PathCmdStop {
 		t.Errorf("Expected stop, got %v", cmd)
 	}
@@ -62,12 +62,12 @@ func TestVPGenClipPolyline_PartialClipping(t *testing.T) {
 		t.Errorf("Expected move_to (5,5), got %v (%f,%f)", cmd, x, y)
 	}
 
-	x, y, cmd = vpgen.Vertex()
+	_, _, cmd = vpgen.Vertex()
 	if cmd != basics.PathCmdLineTo || x != 10 || y != 5 {
 		t.Errorf("Expected clipped line_to (10,5), got %v (%f,%f)", cmd, x, y)
 	}
 
-	x, y, cmd = vpgen.Vertex()
+	_, _, cmd = vpgen.Vertex()
 	if cmd != basics.PathCmdStop {
 		t.Errorf("Expected stop, got %v", cmd)
 	}
@@ -87,12 +87,12 @@ func TestVPGenClipPolyline_BothEndpointsClipped(t *testing.T) {
 		t.Errorf("Expected clipped move_to (0,5), got %v (%f,%f)", cmd, x, y)
 	}
 
-	x, y, cmd = vpgen.Vertex()
+	_, _, cmd = vpgen.Vertex()
 	if cmd != basics.PathCmdLineTo || x != 10 || y != 5 {
 		t.Errorf("Expected clipped line_to (10,5), got %v (%f,%f)", cmd, x, y)
 	}
 
-	x, y, cmd = vpgen.Vertex()
+	_, _, cmd = vpgen.Vertex()
 	if cmd != basics.PathCmdStop {
 		t.Errorf("Expected stop, got %v", cmd)
 	}
