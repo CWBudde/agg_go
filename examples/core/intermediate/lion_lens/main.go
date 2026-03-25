@@ -153,10 +153,8 @@ func (d *demo) OnMouseDown(x, y int, btn lowlevelrunner.Buttons) bool {
 func (d *demo) OnMouseMove(x, y int, btn lowlevelrunner.Buttons) bool {
 	fx, fy := float64(x), float64(y)
 
-	redraw := false
-	if d.magnSlider.OnMouseMove(fx, fy, btn.Left) {
-		redraw = true
-	}
+	redraw := d.magnSlider.OnMouseMove(fx, fy, btn.Left)
+
 	if d.radiusSlider.OnMouseMove(fx, fy, btn.Left) {
 		redraw = true
 	}
@@ -173,10 +171,8 @@ func (d *demo) OnMouseMove(x, y int, btn lowlevelrunner.Buttons) bool {
 func (d *demo) OnMouseUp(x, y int, btn lowlevelrunner.Buttons) bool {
 	fx, fy := float64(x), float64(y)
 
-	redraw := false
-	if d.magnSlider.OnMouseButtonUp(fx, fy) {
-		redraw = true
-	}
+	redraw := d.magnSlider.OnMouseButtonUp(fx, fy)
+
 	if d.radiusSlider.OnMouseButtonUp(fx, fy) {
 		redraw = true
 	}
