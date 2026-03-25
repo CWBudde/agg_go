@@ -473,7 +473,7 @@ idiomatic in Go.
 
 ### 9.3 Medium-priority demo ports
 
-- [x] Completed: `interactive_polygon.cpp`, `graph_test.cpp`, `gpc_test.cpp`, `gradients_contour.cpp`, `flash_rasterizer2.cpp`, `polymorphic_renderer.cpp` (uses RGBA32 pending 10.10).
+- [x] Completed: `interactive_polygon.cpp`, `graph_test.cpp`, `gpc_test.cpp`, `gradients_contour.cpp`, `flash_rasterizer2.cpp`, `polymorphic_renderer.cpp` (now uses PixFmtRGB555 matching C++ original, see 10.10).
 - [x] `image_fltr_graph.cpp`: source `../agg-2.6/agg-src/examples/image_fltr_graph.cpp`; standalone `examples/core/intermediate/image_fltr_graph/main.go`; web `cmd/wasm/demo_image_fltr_graph.go` + `web/index.html`; shared rendering `internal/demo/imagefltrgraph/draw.go`; URL/HTML controls `web/{event-handlers.js,demo-state.js,url-state.js}`; verification `cmd/wasm/{main.go,main_stub.go,render_test.go}`.
 - [x] `blend_color.cpp`: shared draw `internal/demo/blendcolor/draw.go`; standalone `examples/core/intermediate/blend_color/main.go`; web `cmd/wasm/demo_blend_color.go` + `web/index.html`; infrastructure `RendererBase.BlendFromColor`/`BlendFromLUT` + gray8 `GrayImageInterface` compliance.
 - [x] `image_filters2.cpp`: shared renderer `internal/demo/imagefilters2/draw.go`; standalone `examples/core/intermediate/image_filters2/main.go`; web `cmd/wasm/demo_image_filters2.go` + `web/index.html`; verification `cmd/wasm/{main.go,main_stub.go,render_test.go}`.
@@ -746,12 +746,9 @@ forcing every example that called `RenderScanlinesAASolid` + `RasterizerScanline
 
 ---
 
-### 10.10 ⚠️ Packed Pixel Formats (`PixFmtRGB555`, `RGB565`, etc.) Incomplete
+### 10.10 ✅ Packed Pixel Formats (`PixFmtRGB555`, `RGB565`, etc.) Complete
 
-**Status**: OPEN — `PixFmtRGB555`, `PixFmtBGR555`, `PixFmtRGB565`, `PixFmtBGR565` have only
-`CopyPixel`, `BlendPixel`, and `GetPixel`. They are missing the span and fill methods required
-by the `renderer.PixelFormat[C]` interface and cannot be used with `RendererBase` or the
-scanline rendering pipeline.
+**Status**: DONE — all four formats now fully implement `renderer.PixelFormat[color.RGBA8[color.SRGB]]`.
 
 **Root cause**: C++ `pixfmt_alpha_blend_rgb_packed` template provides all methods
 (`copy_hline`, `blend_hline`, `blend_solid_hspan`, `blend_solid_vspan`, `blend_color_hspan`,
@@ -777,18 +774,18 @@ not stored in the 16-bit pixel. Go should use `color.RGBA8[color.SRGB]` to match
 
 **Tasks**:
 
-- [ ] Change `PixFmtRGB555` color type from `RGB8[Linear]` to `RGBA8[SRGB]` to match C++
+- [x] Change `PixFmtRGB555` color type from `RGB8[Linear]` to `RGBA8[SRGB]` to match C++
       `srgba8`. Alpha used for blending, not stored in the 16-bit pixel.
-- [ ] Implement missing methods on `PixFmtRGB555` to satisfy `renderer.PixelFormat[RGBA8[SRGB]]`:
-      `CopyHline`, `BlendHline`, `CopyVline`, `BlendVline`, `CopyBar`, `BlendBar`,
-      `BlendSolidHspan`, `BlendSolidVspan`, `CopyColorHspan`, `BlendColorHspan`,
-      `CopyColorVspan`, `BlendColorVspan`, `Clear`, `Fill`, `Pixel` (rename from `GetPixel`),
-      `BlendPixel` (fix signature: 4 args, alpha from `c.A`).
-- [ ] Repeat for `PixFmtRGB565`, `PixFmtBGR555`, `PixFmtBGR565`.
-- [ ] Use `RenderingBufferU16` with negative stride for `flip_y` support (verified by
-      the `RenderingBuffer` negative stride fix).
-- [ ] Update `polymorphic_renderer` example to use `PixFmtRGB555` matching C++ original.
-- [ ] Add contract tests: clear, copy_hline, blend_solid_hspan, round-trip pack/unpack.
+- [x] Implement missing methods on all four packed pixfmt types to satisfy
+      `renderer.PixelFormat[RGBA8[SRGB]]`: `CopyHline`, `BlendHline`, `CopyVline`,
+      `BlendVline`, `CopyBar`, `BlendBar`, `BlendSolidHspan`, `BlendSolidVspan`,
+      `CopyColorHspan`, `BlendColorHspan`, `CopyColorVspan`, `BlendColorVspan`,
+      `Clear`, `Fill`, `Pixel` (renamed from `GetPixel`), `BlendPixel` (4-arg signature).
+- [x] Added `UnpackPix` to `RGB16PackedBlender` interface; implemented on all blenders.
+- [x] Use `RenderingBufferU16` with negative stride for `flip_y` support.
+- [x] Update `polymorphic_renderer` example to use `PixFmtRGB555` matching C++ original.
+- [x] Add contract tests: clear, copy_hline, blend_solid_hspan, round-trip pack/unpack,
+      and compile-time interface checks for all four format types.
 - [ ] Add visual regression: polymorphic_renderer Go output vs C++ reference screenshot.
 
 ---

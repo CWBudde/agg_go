@@ -13,6 +13,7 @@ import (
 type RGB16PackedBlender interface {
 	BlendPix(pixel *basics.Int16u, r, g, b, alpha, cover basics.Int8u)
 	MakePix(r, g, b basics.Int8u) basics.Int16u
+	UnpackPix(pixel basics.Int16u) (r, g, b basics.Int8u)
 }
 
 // Utility functions for RGB555/565 pixel packing/unpacking
@@ -89,6 +90,11 @@ func (bl BlenderRGB555) MakePix(r, g, b basics.Int8u) basics.Int16u {
 	return MakePixel555(r, g, b)
 }
 
+// UnpackPix extracts 8-bit RGB values from an RGB555 packed pixel
+func (bl BlenderRGB555) UnpackPix(pixel basics.Int16u) (r, g, b basics.Int8u) {
+	return UnpackPixel555(pixel)
+}
+
 // BlenderRGB555Pre implements premultiplied RGB555 blending
 type BlenderRGB555Pre struct{}
 
@@ -114,6 +120,11 @@ func (bl BlenderRGB555Pre) BlendPix(pixel *basics.Int16u, r, g, b, alpha, cover 
 // MakePix creates an RGB555 pixel from 8-bit RGB values
 func (bl BlenderRGB555Pre) MakePix(r, g, b basics.Int8u) basics.Int16u {
 	return MakePixel555(r, g, b)
+}
+
+// UnpackPix extracts 8-bit RGB values from an RGB555 packed pixel
+func (bl BlenderRGB555Pre) UnpackPix(pixel basics.Int16u) (r, g, b basics.Int8u) {
+	return UnpackPixel555(pixel)
 }
 
 // BlenderRGB555Gamma implements gamma-corrected RGB555 blending
@@ -162,6 +173,11 @@ func (bl BlenderRGB555Gamma[G]) MakePix(r, g, b basics.Int8u) basics.Int16u {
 	return MakePixel555(r, g, b)
 }
 
+// UnpackPix extracts 8-bit RGB values from an RGB555 packed pixel
+func (bl BlenderRGB555Gamma[G]) UnpackPix(pixel basics.Int16u) (r, g, b basics.Int8u) {
+	return UnpackPixel555(pixel)
+}
+
 // BlenderRGB565 implements standard RGB565 blending
 type BlenderRGB565 struct{}
 
@@ -185,6 +201,11 @@ func (bl BlenderRGB565) BlendPix(pixel *basics.Int16u, r, g, b, alpha, cover bas
 // MakePix creates an RGB565 pixel from 8-bit RGB values
 func (bl BlenderRGB565) MakePix(r, g, b basics.Int8u) basics.Int16u {
 	return MakePixel565(r, g, b)
+}
+
+// UnpackPix extracts 8-bit RGB values from an RGB565 packed pixel
+func (bl BlenderRGB565) UnpackPix(pixel basics.Int16u) (r, g, b basics.Int8u) {
+	return UnpackPixel565(pixel)
 }
 
 // BlenderRGB565Pre implements premultiplied RGB565 blending
@@ -212,6 +233,11 @@ func (bl BlenderRGB565Pre) BlendPix(pixel *basics.Int16u, r, g, b, alpha, cover 
 // MakePix creates an RGB565 pixel from 8-bit RGB values
 func (bl BlenderRGB565Pre) MakePix(r, g, b basics.Int8u) basics.Int16u {
 	return MakePixel565(r, g, b)
+}
+
+// UnpackPix extracts 8-bit RGB values from an RGB565 packed pixel
+func (bl BlenderRGB565Pre) UnpackPix(pixel basics.Int16u) (r, g, b basics.Int8u) {
+	return UnpackPixel565(pixel)
 }
 
 // BlenderRGB565Gamma implements gamma-corrected RGB565 blending
@@ -260,6 +286,11 @@ func (bl BlenderRGB565Gamma[G]) MakePix(r, g, b basics.Int8u) basics.Int16u {
 	return MakePixel565(r, g, b)
 }
 
+// UnpackPix extracts 8-bit RGB values from an RGB565 packed pixel
+func (bl BlenderRGB565Gamma[G]) UnpackPix(pixel basics.Int16u) (r, g, b basics.Int8u) {
+	return UnpackPixel565(pixel)
+}
+
 // BlenderBGR555 implements standard BGR555 blending
 type BlenderBGR555 struct{}
 
@@ -285,6 +316,11 @@ func (bl BlenderBGR555) MakePix(r, g, b basics.Int8u) basics.Int16u {
 	return MakePixelBGR555(r, g, b)
 }
 
+// UnpackPix extracts 8-bit RGB values from a BGR555 packed pixel
+func (bl BlenderBGR555) UnpackPix(pixel basics.Int16u) (r, g, b basics.Int8u) {
+	return UnpackPixelBGR555(pixel)
+}
+
 // BlenderBGR565 implements standard BGR565 blending
 type BlenderBGR565 struct{}
 
@@ -308,6 +344,11 @@ func (bl BlenderBGR565) BlendPix(pixel *basics.Int16u, r, g, b, alpha, cover bas
 // MakePix creates a BGR565 pixel from 8-bit RGB values
 func (bl BlenderBGR565) MakePix(r, g, b basics.Int8u) basics.Int16u {
 	return MakePixelBGR565(r, g, b)
+}
+
+// UnpackPix extracts 8-bit RGB values from a BGR565 packed pixel
+func (bl BlenderBGR565) UnpackPix(pixel basics.Int16u) (r, g, b basics.Int8u) {
+	return UnpackPixelBGR565(pixel)
 }
 
 // Convenience function to get the correct color from a packed pixel
@@ -377,6 +418,11 @@ func (bl BlenderBGR555Gamma[G]) MakePix(r, g, b basics.Int8u) basics.Int16u {
 	return MakePixelBGR555(r, g, b)
 }
 
+// UnpackPix extracts 8-bit RGB values from a BGR555 packed pixel
+func (bl BlenderBGR555Gamma[G]) UnpackPix(pixel basics.Int16u) (r, g, b basics.Int8u) {
+	return UnpackPixelBGR555(pixel)
+}
+
 // BlenderBGR565Gamma implements gamma-corrected BGR565 blending
 type BlenderBGR565Gamma[G GammaCorrector] struct {
 	gamma G
@@ -421,4 +467,9 @@ func (bl BlenderBGR565Gamma[G]) BlendPix(pixel *basics.Int16u, r, g, b, alpha, c
 // MakePix creates a BGR565 pixel from 8-bit RGB values
 func (bl BlenderBGR565Gamma[G]) MakePix(r, g, b basics.Int8u) basics.Int16u {
 	return MakePixelBGR565(r, g, b)
+}
+
+// UnpackPix extracts 8-bit RGB values from a BGR565 packed pixel
+func (bl BlenderBGR565Gamma[G]) UnpackPix(pixel basics.Int16u) (r, g, b basics.Int8u) {
+	return UnpackPixelBGR565(pixel)
 }

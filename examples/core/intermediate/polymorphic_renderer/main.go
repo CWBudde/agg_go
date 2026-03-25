@@ -9,8 +9,8 @@
 // Visual: a filled triangle on a white background.
 // Drag the three vertex handles to reshape it.
 //
-// NOTE: The C++ original uses pix_format_rgb555 (15-bit packed pixels).
-// This port uses RGBA32 until PixFmtRGB555 is completed (PLAN.md 10.10).
+// The C++ original uses pix_format_rgb555 (15-bit packed pixels); this port matches
+// that by rendering into a uint16 scratch buffer and converting to RGBA8 for display.
 package main
 
 import (
@@ -23,6 +23,7 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/color"
 	"github.com/MeKo-Christian/agg_go/internal/path"
 	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
+	"github.com/MeKo-Christian/agg_go/internal/pixfmt/blender"
 	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
 	"github.com/MeKo-Christian/agg_go/internal/renderer"
 	rendsl "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
@@ -38,26 +39,26 @@ type SolidRenderer interface {
 	Render(sl rendsl.ScanlineInterface)
 }
 
-// rgba32Renderer is one concrete implementation backed by PixFmtRGBA32 (sRGB).
-// This mirrors C++'s polymorphic_renderer_solid_rgba8_adaptor<PixFmt>.
-type rgba32Renderer struct {
+// rgb555Renderer is backed by PixFmtRGB555, matching C++'s pix_format_rgb555.
+type rgb555Renderer struct {
+	pf      *pixfmt.PixFmtRGB555[blender.BlenderRGB555]
 	renBase *renderer.RendererBase[renderer.PixelFormat[color.RGBA8[color.SRGB]], color.RGBA8[color.SRGB]]
 	ren     *rendsl.RendererScanlineAASolid[*renderer.RendererBase[renderer.PixelFormat[color.RGBA8[color.SRGB]], color.RGBA8[color.SRGB]], color.RGBA8[color.SRGB]]
 }
 
-func newRGBA32Renderer(rbuf *buffer.RenderingBufferU8) *rgba32Renderer {
-	pf := pixfmt.NewPixFmtRGBA32[color.SRGB](rbuf)
+func newRGB555Renderer(w, h int) (*rgb555Renderer, []basics.Int16u) {
+	buf16 := make([]basics.Int16u, w*h)
+	rbuf16 := buffer.NewRenderingBufferU16WithData(buf16, w, h, -w*2) // negative stride = flip_y
+	pf := pixfmt.NewPixFmtRGB555(rbuf16, blender.BlenderRGB555{})
 	rb := renderer.NewRendererBaseWithPixfmt[renderer.PixelFormat[color.RGBA8[color.SRGB]], color.RGBA8[color.SRGB]](pf)
 	ren := rendsl.NewRendererScanlineAASolidWithRenderer(rb)
-	return &rgba32Renderer{renBase: rb, ren: ren}
+	return &rgb555Renderer{pf: pf, renBase: rb, ren: ren}, buf16
 }
 
-func (r *rgba32Renderer) Clear(c color.RGBA8[color.SRGB]) { r.renBase.Clear(c) }
-func (r *rgba32Renderer) SetColor(c color.RGBA8[color.SRGB]) {
-	r.ren.SetColor(c)
-}
-func (r *rgba32Renderer) Prepare()                           { r.ren.Prepare() }
-func (r *rgba32Renderer) Render(sl rendsl.ScanlineInterface) { r.ren.Render(sl) }
+func (r *rgb555Renderer) Clear(c color.RGBA8[color.SRGB])    { r.renBase.Clear(c) }
+func (r *rgb555Renderer) SetColor(c color.RGBA8[color.SRGB]) { r.ren.SetColor(c) }
+func (r *rgb555Renderer) Prepare()                           { r.ren.Prepare() }
+func (r *rgb555Renderer) Render(sl rendsl.ScanlineInterface) { r.ren.Render(sl) }
 
 // --- Demo ---
 
@@ -79,12 +80,9 @@ func newDemo() *demo {
 func (d *demo) Render(img *agg.Image) {
 	w, h := img.Width(), img.Height()
 
-	// Negative stride gives flip_y=true (Y=0 at bottom), matching C++.
-	// The runner's FlipY config handles flipping the output and mouse coords.
-	rbuf := buffer.NewRenderingBufferU8()
-	rbuf.Attach(img.Data, w, h, -w*4)
-
-	var ren SolidRenderer = newRGBA32Renderer(rbuf)
+	// Render into a uint16 RGB555 scratch buffer (flip_y via negative stride).
+	ren, buf16 := newRGB555Renderer(w, h)
+	var sr SolidRenderer = ren
 
 	// Build the triangle path.
 	ps := path.NewPathStorageStl()
@@ -103,9 +101,20 @@ func (d *demo) Render(img *agg.Image) {
 
 	// Polymorphic dispatch: same code works with any SolidRenderer,
 	// just as the C++ version works with any PixFmt.
-	ren.Clear(color.RGBA8[color.SRGB]{R: 255, G: 255, B: 255, A: 255})
-	ren.SetColor(color.RGBA8[color.SRGB]{R: 80, G: 30, B: 20, A: 255})
-	rendsl.RenderScanlines[color.RGBA8[color.SRGB]](ras, sl, ren)
+	sr.Clear(color.RGBA8[color.SRGB]{R: 255, G: 255, B: 255, A: 255})
+	sr.SetColor(color.RGBA8[color.SRGB]{R: 80, G: 30, B: 20, A: 255})
+	rendsl.RenderScanlines(ras, sl, sr)
+
+	// Convert the RGB555 uint16 buffer to RGBA8 for display.
+	// buf16 has negative stride so raw index 0 corresponds to screen bottom-left,
+	// matching img.Data when the runner uses FlipY:true with -w*4 stride.
+	for i, pix := range buf16 {
+		r, g, b := pixfmt.UnpackPixel555(pix)
+		img.Data[i*4+0] = r
+		img.Data[i*4+1] = g
+		img.Data[i*4+2] = b
+		img.Data[i*4+3] = 255
+	}
 }
 
 func (d *demo) OnMouseDown(x, y int, btn lowlevelrunner.Buttons) bool {
