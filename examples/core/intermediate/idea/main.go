@@ -54,11 +54,12 @@ func renderCtrl(ag *agg.Agg2D, ctrl ctrlIface) {
 		ras.AddPath(adapter, uint32(pathID))
 		c := ctrl.Color(pathID)
 		var a uint8
-		if c.A <= 0 {
+		switch {
+		case c.A <= 0:
 			a = 0
-		} else if c.A >= 1 {
+		case c.A >= 1:
 			a = 255
-		} else {
+		default:
 			a = uint8(c.A*255 + 0.5)
 		}
 		ag.RenderRasterizerWithColor(agg.NewColor(linearToSRGB(c.R), linearToSRGB(c.G), linearToSRGB(c.B), a))

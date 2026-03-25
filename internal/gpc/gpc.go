@@ -1211,7 +1211,6 @@ func TristripClip(operation GPCOp, subjectPolygon, clipPolygon *GPCPolygon) (*GP
 							edge.OutP[ABOVE] = nil
 						}
 					}
-					px = xb
 				}
 			}
 		}

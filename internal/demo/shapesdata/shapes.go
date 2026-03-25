@@ -52,7 +52,7 @@ func ParseShapes(data []byte) []RawShape {
 
 	for _, raw := range lines {
 		line := strings.TrimRight(raw, "\r")
-		if len(line) == 0 {
+		if line == "" {
 			continue
 		}
 		switch line[0] {

@@ -21,7 +21,7 @@ func TestCombineAndRenderProducesResult(t *testing.T) {
 
 	frameOffX := (800.0 - referenceWidth) * 0.5
 	frameOffY := (600.0 - referenceHeight) * 0.5
-	cfg.CenterX = cfg.CenterX - frameOffX
+	cfg.CenterX -= frameOffX
 	cfg.CenterY = referenceHeight - (cfg.CenterY - frameOffY)
 
 	a, b := buildShapes(cfg, referenceWidth, referenceHeight)

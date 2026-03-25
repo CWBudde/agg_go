@@ -246,27 +246,19 @@ func (d *demo) OnIdle() {
 func (d *demo) OnMouseDown(x, y int, btn lowlevelrunner.Buttons) bool {
 	d.prepareState()
 	fx, fy := float64(x), float64(y)
-	changed := false
 
 	if btn.Left {
-		if d.scaleCtrl.OnMouseButtonDown(fx, fy) {
-			changed = true
-		}
-		if d.selCtrl.OnMouseButtonDown(fx, fy) {
-			changed = true
-		}
-		if d.sizeCtrl.OnMouseButtonDown(fx, fy) {
-			changed = true
-		}
+		d.scaleCtrl.OnMouseButtonDown(fx, fy)
+		d.selCtrl.OnMouseButtonDown(fx, fy)
+		d.sizeCtrl.OnMouseButtonDown(fx, fy)
 		d.generatePoints(startWidth, startHeight)
-		changed = true
 	}
 
 	if btn.Right {
 		d.paused = !d.paused
 	}
 
-	return changed
+	return btn.Left || btn.Right
 }
 
 func (d *demo) OnMouseMove(x, y int, btn lowlevelrunner.Buttons) bool {

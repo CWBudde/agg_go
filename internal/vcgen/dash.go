@@ -234,7 +234,7 @@ func (d *VCGenDash) Vertex() (x, y float64, cmd basics.PathCommand) {
 
 		case DashStatusStop:
 			cmd = basics.PathCmdStop
-			break
+			return 0, 0, cmd
 		}
 	}
 	return 0, 0, basics.PathCmdStop

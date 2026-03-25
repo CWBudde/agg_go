@@ -124,10 +124,10 @@ func renderCurve(
 	sl *isl.ScanlineP8,
 	renBase *renderer.RendererBase[*pixfmt.PixFmtRGBA32[icolor.Linear], icolor.RGBA8[icolor.Linear]],
 	poly *ctrlpoly.PolygonCtrl[icolor.RGBA],
-	close *checkbox.CheckboxCtrl[icolor.RGBA],
+	closeCtrl *checkbox.CheckboxCtrl[icolor.RGBA],
 	points *slider.SliderCtrl,
 ) {
-	src := ctrlpoly.NewSimplePolygonVertexSource(poly.PolygonData(), poly.NumPoints(), false, close.IsChecked())
+	src := ctrlpoly.NewSimplePolygonVertexSource(poly.PolygonData(), poly.NumPoints(), false, closeCtrl.IsChecked())
 	bspline := conv.NewConvBSpline(src)
 	bspline.SetInterpolationStep(1.0 / points.Value())
 

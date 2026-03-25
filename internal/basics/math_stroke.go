@@ -198,8 +198,6 @@ func (ms *MathStroke) calcArc(vc VertexConsumer, x, y, dx1, dy1, dx2, dy2 float6
 func (ms *MathStroke) calcMiter(vc VertexConsumer, v0, v1, v2 VertexDist,
 	dx1, dy1, dx2, dy2 float64, lj LineJoin, mlimit, dbevel float64,
 ) {
-	xi := v1.X
-	yi := v1.Y
 	di := 1.0
 	lim := ms.widthAbs * mlimit
 	miterLimitExceeded := true // Assume the worst
@@ -207,7 +205,7 @@ func (ms *MathStroke) calcMiter(vc VertexConsumer, v0, v1, v2 VertexDist,
 
 	// Try to calculate intersection
 	var intersectionOK bool
-	xi, yi, intersectionOK = CalcIntersection(v0.X+dx1, v0.Y-dy1,
+	xi, yi, intersectionOK := CalcIntersection(v0.X+dx1, v0.Y-dy1,
 		v1.X+dx1, v1.Y-dy1,
 		v1.X+dx2, v1.Y-dy2,
 		v2.X+dx2, v2.Y-dy2)

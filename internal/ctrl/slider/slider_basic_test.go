@@ -151,8 +151,7 @@ func TestSliderCtrlKeyboardNavigation(t *testing.T) {
 
 	// Test left arrow (should decrease value)
 	currentValue := slider.Value()
-	result = slider.OnArrowKeys(true, false, false, false)
-	if !result {
+	if !slider.OnArrowKeys(true, false, false, false) {
 		t.Error("Expected arrow key to return true")
 	}
 	if slider.Value() >= currentValue {
@@ -182,7 +181,7 @@ func TestSliderCtrlDescending(t *testing.T) {
 
 	// Test left arrow decreases
 	originalValue = slider.Value()
-	result = slider.OnArrowKeys(true, false, false, false) // Left arrow
+	_ = slider.OnArrowKeys(true, false, false, false) // Left arrow
 	newValue = slider.Value()
 	if newValue >= originalValue {
 		t.Errorf("Expected left arrow to decrease value, was %.3f now %.3f", originalValue, newValue)
