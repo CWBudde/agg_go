@@ -10,6 +10,9 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
 	"github.com/MeKo-Christian/agg_go/internal/conv"
+	ctrlbase "github.com/MeKo-Christian/agg_go/internal/ctrl"
+	checkbox "github.com/MeKo-Christian/agg_go/internal/ctrl/checkbox"
+	sliderctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/slider"
 	imageacc "github.com/MeKo-Christian/agg_go/internal/image"
 	"github.com/MeKo-Christian/agg_go/internal/path"
 	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
@@ -145,25 +148,57 @@ func generatePattern(size int, patternAngle, patternAlpha float64) patternPixFmt
 }
 
 type demo struct {
-	patternSize  float64
-	patternAngle float64
-	patternAlpha float64
-	polygonAngle float64
-	polygonScale float64
-	polygonCX    float64
-	polygonCY    float64
+	polygonAngle  *sliderctrl.SliderCtrl
+	polygonScale  *sliderctrl.SliderCtrl
+	patternAngle  *sliderctrl.SliderCtrl
+	patternSize   *sliderctrl.SliderCtrl
+	patternAlpha  *sliderctrl.SliderCtrl
+	rotatePolygon *checkbox.CheckboxCtrl[color.RGBA]
+	rotatePattern *checkbox.CheckboxCtrl[color.RGBA]
+	tiePattern    *checkbox.CheckboxCtrl[color.RGBA]
+	polygonCX     float64
+	polygonCY     float64
+	dragDX        float64
+	dragDY        float64
+	dragging      bool
 }
 
 func newDemo() *demo {
-	return &demo{
-		patternSize:  defaultPatternSize,
-		patternAngle: defaultPatternAngle,
-		patternAlpha: defaultPatternAlpha,
-		polygonAngle: defaultPolygonAngle,
-		polygonScale: defaultPolygonScale,
-		polygonCX:    float64(canvasW) / 2.0,
-		polygonCY:    float64(canvasH) / 2.0,
+	d := &demo{
+		polygonCX: float64(canvasW) / 2.0,
+		polygonCY: float64(canvasH) / 2.0,
 	}
+
+	d.polygonAngle = sliderctrl.NewSliderCtrl(5, 5, 145, 12, false)
+	d.polygonAngle.SetLabel("Polygon Angle=%3.2f")
+	d.polygonAngle.SetRange(-180.0, 180.0)
+	d.polygonAngle.SetValue(defaultPolygonAngle)
+
+	d.polygonScale = sliderctrl.NewSliderCtrl(5, 19, 145, 26, false)
+	d.polygonScale.SetLabel("Polygon Scale=%3.2f")
+	d.polygonScale.SetRange(0.1, 5.0)
+	d.polygonScale.SetValue(defaultPolygonScale)
+
+	d.patternAngle = sliderctrl.NewSliderCtrl(155, 5, 300, 12, false)
+	d.patternAngle.SetLabel("Pattern Angle=%3.2f")
+	d.patternAngle.SetRange(-180.0, 180.0)
+	d.patternAngle.SetValue(defaultPatternAngle)
+
+	d.patternSize = sliderctrl.NewSliderCtrl(155, 19, 300, 26, false)
+	d.patternSize.SetLabel("Pattern Size=%3.2f")
+	d.patternSize.SetRange(10.0, 40.0)
+	d.patternSize.SetValue(defaultPatternSize)
+
+	d.patternAlpha = sliderctrl.NewSliderCtrl(310, 5, 460, 12, false)
+	d.patternAlpha.SetLabel("Background Alpha=%.2f")
+	d.patternAlpha.SetRange(0.0, 1.0)
+	d.patternAlpha.SetValue(defaultPatternAlpha)
+
+	d.rotatePolygon = checkbox.NewDefaultCheckboxCtrl(5, 33, "Rotate Polygon", false)
+	d.rotatePattern = checkbox.NewDefaultCheckboxCtrl(5, 47, "Rotate Pattern", false)
+	d.tiePattern = checkbox.NewDefaultCheckboxCtrl(155, 33, "Tie pattern to polygon", false)
+
+	return d
 }
 
 func (d *demo) Render(img *agg.Image) {
@@ -179,16 +214,21 @@ func (d *demo) Render(img *agg.Image) {
 
 	renBase.Clear(color.NewRGBA8[color.Linear](255, 255, 255, 255))
 
-	size := int(d.patternSize)
-	pf := generatePattern(size, d.patternAngle, d.patternAlpha)
+	size := int(d.patternSize.Value())
+	pf := generatePattern(size, d.patternAngle.Value(), d.patternAlpha.Value())
 
 	wrapX := imageacc.NewWrapModeReflectAutoPow2(basics.Int32u(pf.w))
 	wrapY := imageacc.NewWrapModeReflectAutoPow2(basics.Int32u(pf.h))
+	offsetX, offsetY := uint(0), uint(0)
+	if d.tiePattern.IsChecked() {
+		offsetX = uint(float64(img.Width()) - d.polygonCX)
+		offsetY = uint(float64(img.Height()) - d.polygonCY)
+	}
 	imgSrc := imageacc.NewImageAccessorWrap[patternPixFmt, *imageacc.WrapModeReflectAutoPow2, *imageacc.WrapModeReflectAutoPow2](&pf, wrapX, wrapY)
 	sg := span.NewSpanPatternRGBAWithParams[*patternSource](
 		&patternSource{accessor: imgSrc, pf: pf},
-		0,
-		0,
+		offsetX,
+		offsetY,
 	)
 
 	ps := path.NewPathStorageStl()
@@ -197,8 +237,8 @@ func (d *demo) Render(img *agg.Image) {
 
 	polygonMtx := transform.NewTransAffine()
 	polygonMtx.Multiply(transform.NewTransAffineTranslation(-d.polygonCX, -d.polygonCY))
-	polygonMtx.Multiply(transform.NewTransAffineRotation(d.polygonAngle * math.Pi / 180.0))
-	polygonMtx.Multiply(transform.NewTransAffineScaling(d.polygonScale))
+	polygonMtx.Multiply(transform.NewTransAffineRotation(d.polygonAngle.Value() * math.Pi / 180.0))
+	polygonMtx.Multiply(transform.NewTransAffineScaling(d.polygonScale.Value()))
 	polygonMtx.Multiply(transform.NewTransAffineTranslation(d.polygonCX, d.polygonCY))
 
 	tr := conv.NewConvTransform(path.NewPathStorageStlVertexSourceAdapter(ps), polygonMtx)
@@ -218,6 +258,9 @@ func (d *demo) Render(img *agg.Image) {
 				}
 				colors := alloc.Allocate(length)
 				sg.Generate(colors, int(spanData.X), y, uint(length))
+				for i := 0; i < length; i++ {
+					colors[i].Premultiply()
+				}
 				if spanData.Len < 0 {
 					renBase.BlendColorHspan(int(spanData.X), y, length, colors, nil, spanData.Covers[0])
 					continue
@@ -226,6 +269,164 @@ func (d *demo) Render(img *agg.Image) {
 			}
 		}
 	}
+
+	renderCtrl(ras, sl, renBase, d.polygonAngle)
+	renderCtrl(ras, sl, renBase, d.polygonScale)
+	renderCtrl(ras, sl, renBase, d.patternAngle)
+	renderCtrl(ras, sl, renBase, d.patternSize)
+	renderCtrl(ras, sl, renBase, d.patternAlpha)
+	renderCtrl(ras, sl, renBase, d.rotatePolygon)
+	renderCtrl(ras, sl, renBase, d.rotatePattern)
+	renderCtrl(ras, sl, renBase, d.tiePattern)
+}
+
+func (d *demo) OnIdle() {
+	if d.rotatePolygon.IsChecked() {
+		value := d.polygonAngle.Value() + 0.5
+		if value >= 180.0 {
+			value -= 360.0
+		}
+		d.polygonAngle.SetValue(value)
+	}
+	if d.rotatePattern.IsChecked() {
+		value := d.patternAngle.Value() - 0.5
+		if value <= -180.0 {
+			value += 360.0
+		}
+		d.patternAngle.SetValue(value)
+	}
+}
+
+func (d *demo) IsAnimated() bool {
+	return d.rotatePolygon.IsChecked() || d.rotatePattern.IsChecked()
+}
+
+func (d *demo) OnMouseDown(x, y int, btn lowlevelrunner.Buttons) bool {
+	if !btn.Left {
+		return false
+	}
+	if d.handleCtrlMouseDown(float64(x), float64(y)) {
+		return true
+	}
+
+	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{},
+		rasterizer.NewRasterizerSlNoClip(),
+	)
+	ps := path.NewPathStorageStl()
+	r := float64(canvasW)/3.0 - 8.0
+	createStar(ps, d.polygonCX, d.polygonCY, r, r/1.45, 14, 0.0)
+	polygonMtx := transform.NewTransAffine()
+	polygonMtx.Multiply(transform.NewTransAffineTranslation(-d.polygonCX, -d.polygonCY))
+	polygonMtx.Multiply(transform.NewTransAffineRotation(d.polygonAngle.Value() * math.Pi / 180.0))
+	polygonMtx.Multiply(transform.NewTransAffineScaling(d.polygonScale.Value()))
+	polygonMtx.Multiply(transform.NewTransAffineTranslation(d.polygonCX, d.polygonCY))
+	tr := conv.NewConvTransform(path.NewPathStorageStlVertexSourceAdapter(ps), polygonMtx)
+	ras.AddPath(&rasterizerAdapter{source: tr}, 0)
+	if ras.HitTest(x, y) {
+		d.dragDX = float64(x) - d.polygonCX
+		d.dragDY = float64(y) - d.polygonCY
+		d.dragging = true
+		return true
+	}
+	return false
+}
+
+func (d *demo) OnMouseMove(x, y int, btn lowlevelrunner.Buttons) bool {
+	if d.handleCtrlMouseMove(float64(x), float64(y), btn.Left) {
+		return true
+	}
+	if btn.Left && d.dragging {
+		d.polygonCX = float64(x) - d.dragDX
+		d.polygonCY = float64(y) - d.dragDY
+		return true
+	}
+	if !btn.Left {
+		d.dragging = false
+	}
+	return false
+}
+
+func (d *demo) OnMouseUp(x, y int, btn lowlevelrunner.Buttons) bool {
+	changed := d.handleCtrlMouseUp(float64(x), float64(y))
+	if d.dragging {
+		d.dragging = false
+		return true
+	}
+	return changed || btn.Left
+}
+
+func (d *demo) handleCtrlMouseDown(x, y float64) bool {
+	for _, c := range d.controls() {
+		if c.OnMouseButtonDown(x, y) {
+			return true
+		}
+	}
+	return false
+}
+
+func (d *demo) handleCtrlMouseMove(x, y float64, pressed bool) bool {
+	changed := false
+	for _, c := range d.controls() {
+		if c.OnMouseMove(x, y, pressed) {
+			changed = true
+		}
+	}
+	return changed
+}
+
+func (d *demo) handleCtrlMouseUp(x, y float64) bool {
+	changed := false
+	for _, c := range d.controls() {
+		if c.OnMouseButtonUp(x, y) {
+			changed = true
+		}
+	}
+	return changed
+}
+
+func (d *demo) controls() []ctrlbase.Ctrl[color.RGBA] {
+	return []ctrlbase.Ctrl[color.RGBA]{
+		d.polygonAngle,
+		d.polygonScale,
+		d.patternAngle,
+		d.patternSize,
+		d.patternAlpha,
+		d.rotatePolygon,
+		d.rotatePattern,
+		d.tiePattern,
+	}
+}
+
+func toRGBA8(c color.RGBA) color.RGBA8[color.Linear] {
+	return color.ConvertFromRGBA[color.Linear](c)
+}
+
+func renderCtrl(
+	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
+	sl *scanline.ScanlineP8,
+	rb *renderer.RendererBase[*pixfmt.PixFmtRGBA32Pre[color.Linear], color.RGBA8[color.Linear]],
+	c ctrlbase.Ctrl[color.RGBA],
+) {
+	for i := uint(0); i < c.NumPaths(); i++ {
+		ras.Reset()
+		ras.AddPath(&rasterizerAdapter{source: &ctrlPathAdapter{ctrl: c, pathID: i}}, uint32(i))
+		renscan.RenderScanlinesAASolid(ras, sl, rb, toRGBA8(c.Color(i)))
+	}
+}
+
+type ctrlPathAdapter struct {
+	ctrl   ctrlbase.Ctrl[color.RGBA]
+	pathID uint
+}
+
+func (a *ctrlPathAdapter) Rewind(id uint) {
+	a.pathID = id
+	a.ctrl.Rewind(id)
+}
+
+func (a *ctrlPathAdapter) Vertex() (x, y float64, cmd basics.PathCommand) {
+	return a.ctrl.Vertex()
 }
 
 func main() {
