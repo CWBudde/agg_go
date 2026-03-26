@@ -186,7 +186,7 @@ export const demoDescriptions = {
   distortions:
     "Animated image distortions. Applies Wave and Swirl effects to the selected source image (Spheres/Test Grid) using custom coordinate distortion interpolators. Click and drag to move the distortion center. URL parameter: dimg (0/1).",
   trans_polar:
-    "Polar coordinate transformations. Bends the lion vector art into a circular or spiral shape using a non-linear polar transformer. Click and drag to adjust the radius and spiral intensity.",
+    "Polar coordinate transformations. Renders a slider control bent into a circular arc via the trans_polar transformer. Drag the slider knobs to adjust 'Some Value', 'Spiral', and 'Base Y'.",
   circles:
     "Random circles demo. A scatter plot prototype using B-Spline color interpolation. Renders thousands of small circles with colors controlled by splines. Click to regenerate the points.",
   blur: "Gaussian and Stack blur demonstration. Renders a complex path with a shadow and applies recursive or stack blur to the entire canvas. Use the controls to adjust radius and method.",

@@ -837,7 +837,7 @@ control widgets. Items below are rendering bugs or significant visual deviations
 - [ ] **gamma_correction**: Background quadrant colors are in wrong positions
       (black/white/red quadrants are y-flipped vs C++).
 - [x] **rasterizer_compound**: Wrong glyph rendered ("gj"-like shape instead of "a").
-- [ ] **trans_polar**: Completely different content — shows polar-transformed lion
+- [x] **trans_polar**: Completely different content — shows polar-transformed lion
       instead of circular arc with text labels ("Some Value=40").
 
 **Moderate — partially wrong or significant visual difference:**

@@ -7,8 +7,8 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
-	liondemo "github.com/MeKo-Christian/agg_go/internal/demo/lion"
-	"github.com/MeKo-Christian/agg_go/internal/path"
+	"github.com/MeKo-Christian/agg_go/internal/conv"
+	sliderctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/slider"
 	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
 	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
 	"github.com/MeKo-Christian/agg_go/internal/renderer"
@@ -16,7 +16,8 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/scanline"
 )
 
-type transPolar struct {
+// polarTransform implements AGG's trans_polar coordinate transformation.
+type polarTransform struct {
 	baseAngle      float64
 	baseScale      float64
 	baseX, baseY   float64
@@ -24,122 +25,163 @@ type transPolar struct {
 	spiral         float64
 }
 
-func (p *transPolar) transform(x, y *float64) {
+func (p *polarTransform) Transform(x, y *float64) {
 	x1 := (*x + p.baseX) * p.baseAngle
 	y1 := (*y+p.baseY)*p.baseScale + (*x * p.spiral)
 	*x = math.Cos(x1)*y1 + p.transX
 	*y = math.Sin(x1)*y1 + p.transY
 }
 
-func (p *transPolar) Transform(x, y *float64) {
-	p.transform(x, y)
-}
-
+// Package-level slider controls for the trans_polar demo.
 var (
-	polarBaseY  = 120.0
-	polarSpiral = 0.0
+	tpSlider1      *sliderctrl.SliderCtrl
+	tpSliderSpiral *sliderctrl.SliderCtrl
+	tpSliderBaseY  *sliderctrl.SliderCtrl
 )
 
-func drawTransPolarDemo() {
-	if lionData == nil {
-		ld := liondemo.Parse()
-		lionData = &ld
+func initTransPolarSliders() {
+	if tpSlider1 != nil {
+		return
 	}
+	tpSlider1 = sliderctrl.NewSliderCtrl(10, 10, 590, 17, false)
+	tpSlider1.SetRange(0.0, 100.0)
+	tpSlider1.SetNumSteps(5)
+	tpSlider1.SetValue(32.0)
+	tpSlider1.SetLabel("Some Value=%1.0f")
+
+	tpSliderSpiral = sliderctrl.NewSliderCtrl(10, 30, 590, 37, false)
+	tpSliderSpiral.SetLabel("Spiral=%.3f")
+	tpSliderSpiral.SetRange(-0.1, 0.1)
+	tpSliderSpiral.SetValue(0.0)
+
+	tpSliderBaseY = sliderctrl.NewSliderCtrl(10, 50, 590, 57, false)
+	tpSliderBaseY.SetLabel("Base Y=%.3f")
+	tpSliderBaseY.SetRange(50.0, 200.0)
+	tpSliderBaseY.SetValue(120.0)
+}
+
+// tpSegmAdapter wraps ConvSegmentator to conv.VertexSource (Vertex returns uint32
+// but the interface requires basics.PathCommand).
+type tpSegmAdapter struct{ s *conv.ConvSegmentator }
+
+func (a *tpSegmAdapter) Rewind(id uint) { a.s.Rewind(id) }
+func (a *tpSegmAdapter) Vertex() (float64, float64, basics.PathCommand) {
+	x, y, cmd := a.s.Vertex()
+	return x, y, basics.PathCommand(cmd)
+}
+
+type tpPixFmt = pixfmt.PixFmtRGBA32[color.Linear]
+type tpRenBase = renderer.RendererBase[*tpPixFmt, color.RGBA8[color.Linear]]
+type tpRasterizer = rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
+
+func newTPRasterizer() *tpRasterizer {
+	return rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip(),
+	)
+}
+
+// renderTPSlider renders all paths of a slider control into the scene.
+func renderTPSlider(
+	ras *tpRasterizer,
+	sl *scanline.ScanlineU8,
+	ren *tpRenBase,
+	s *sliderctrl.SliderCtrl,
+) {
+	adapter := conv.NewRasterizerVertexSourceAdapter(s)
+	for pathID := uint(0); pathID < s.NumPaths(); pathID++ {
+		ras.Reset()
+		ras.AddPath(adapter, uint32(pathID))
+		c := s.Color(pathID)
+		renscan.RenderScanlinesAASolid(ras, sl, ren, color.RGBA8[color.Linear]{
+			R: uint8(c.R*255 + 0.5),
+			G: uint8(c.G*255 + 0.5),
+			B: uint8(c.B*255 + 0.5),
+			A: uint8(c.A*255 + 0.5),
+		})
+	}
+}
+
+// renderTPSliderPolar renders slider1 paths through the polar transformation.
+func renderTPSliderPolar(
+	ras *tpRasterizer,
+	sl *scanline.ScanlineU8,
+	ren *tpRenBase,
+	s *sliderctrl.SliderCtrl,
+	trans *polarTransform,
+) {
+	segm := conv.NewConvSegmentator(s)
+	pipeline := conv.NewConvTransform[conv.VertexSource, *polarTransform](&tpSegmAdapter{s: segm}, trans)
+	adapter := conv.NewRasterizerVertexSourceAdapter(pipeline)
+	for pathID := uint(0); pathID < s.NumPaths(); pathID++ {
+		ras.Reset()
+		ras.AddPath(adapter, uint32(pathID))
+		c := s.Color(pathID)
+		renscan.RenderScanlinesAASolid(ras, sl, ren, color.RGBA8[color.Linear]{
+			R: uint8(c.R*255 + 0.5),
+			G: uint8(c.G*255 + 0.5),
+			B: uint8(c.B*255 + 0.5),
+			A: uint8(c.A*255 + 0.5),
+		})
+	}
+}
+
+func drawTransPolarDemo() {
+	initTransPolarSliders()
 
 	img := ctx.GetImage()
 	rbuf := buffer.NewRenderingBufferU8()
 	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Stride())
 
-	pixFmt := pixfmt.NewPixFmtRGBA32[color.Linear](rbuf)
-	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]](pixFmt)
-	renBase.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
+	pf := pixfmt.NewPixFmtRGBA32[color.Linear](rbuf)
+	ren := renderer.NewRendererBaseWithPixfmt[*tpPixFmt, color.RGBA8[color.Linear]](pf)
+	ren.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
 
-	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
-		rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip(),
-	)
+	ras := newTPRasterizer()
 	sl := scanline.NewScanlineU8()
 
-	// Setup polar transformer
-	trans := &transPolar{
-		baseAngle: 2.0 * math.Pi / 600.0, // spread 600 units over 2PI
-		baseScale: 1.0,
+	// Render the three slider controls.
+	renderTPSlider(ras, sl, ren, tpSlider1)
+	renderTPSlider(ras, sl, ren, tpSliderSpiral)
+	renderTPSlider(ras, sl, ren, tpSliderBaseY)
+
+	// Build polar transformer matching the C++ on_draw parameters.
+	trans := &polarTransform{
+		baseAngle: 2.0 * math.Pi / -600.0,
+		baseScale: -1.0,
 		baseX:     0.0,
-		baseY:     polarBaseY,
-		transX:    float64(width) * 0.5,
-		transY:    float64(height) * 0.5,
-		spiral:    polarSpiral,
+		baseY:     tpSliderBaseY.Value(),
+		transX:    float64(width) / 2.0,
+		transY:    float64(height)/2.0 + 30.0,
+		spiral:    -tpSliderSpiral.Value(),
 	}
 
-	// Find bounding box of the lion
-	lx1, ly1, lx2, ly2 := 1e9, 1e9, -1e9, -1e9
-	for idx := uint(0); idx < lionData.Path.TotalVertices(); idx++ {
-		x, y, cmd := lionData.Path.Vertex(idx)
-		if !basics.IsVertex(basics.PathCommand(cmd)) {
-			continue
-		}
-		if x < lx1 {
-			lx1 = x
-		}
-		if x > lx2 {
-			lx2 = x
-		}
-		if y < ly1 {
-			ly1 = y
-		}
-		if y > ly2 {
-			ly2 = y
-		}
-	}
-
-	lionW := lx2 - lx1
-	// Scale lion to fit the "circle"
-	scaleX := 600.0 / lionW
-
-	for i := 0; i < lionData.NPaths; i++ {
-		ps := path.NewPathStorageStl()
-
-		lionData.Path.Rewind(lionData.PathIdx[i])
-
-		for {
-			x, y, cmd := lionData.Path.NextVertex()
-			if basics.IsStop(basics.PathCommand(cmd)) {
-				break
-			}
-
-			// Normalize and scale lion
-			tx := (x-lx1)*scaleX - 300.0 // Center it horizontally
-			ty := y - (ly1+ly2)*0.5
-
-			// Transform to polar
-			trans.Transform(&tx, &ty)
-
-			if basics.IsMoveTo(basics.PathCommand(cmd)) {
-				ps.MoveTo(tx, ty)
-			} else if basics.IsLineTo(basics.PathCommand(cmd)) {
-				ps.LineTo(tx, ty)
-			}
-		}
-		ps.ClosePolygon(basics.PathFlagsNone)
-
-		c := lionData.Colors[i]
-
-		ras.Reset()
-		ras.AddPath(&pathSourceAdapter{ps: ps}, 0)
-		renscan.RenderScanlinesAASolid(ras, sl, renBase, c)
-	}
+	// Render slider1 again, warped into polar/circular form.
+	renderTPSliderPolar(ras, sl, ren, tpSlider1, trans)
 
 	applyLinearToSRGB(img)
 }
 
 func handleTransPolarMouseDown(x, y float64) bool {
-	polarBaseY = y - float64(height)*0.5 + 120.0
-	return true
+	initTransPolarSliders()
+	return tpSlider1.OnMouseButtonDown(x, y) ||
+		tpSliderSpiral.OnMouseButtonDown(x, y) ||
+		tpSliderBaseY.OnMouseButtonDown(x, y)
 }
 
 func handleTransPolarMouseMove(x, y float64) bool {
-	polarBaseY = y - float64(height)*0.5 + 120.0
-	polarSpiral = (x - float64(width)*0.5) / 1000.0
-	return true
+	if tpSlider1 == nil {
+		return false
+	}
+	return tpSlider1.OnMouseMove(x, y, true) ||
+		tpSliderSpiral.OnMouseMove(x, y, true) ||
+		tpSliderBaseY.OnMouseMove(x, y, true)
 }
 
-func handleTransPolarMouseUp() {}
+func handleTransPolarMouseUp() {
+	if tpSlider1 == nil {
+		return
+	}
+	tpSlider1.OnMouseButtonUp(0, 0)
+	tpSliderSpiral.OnMouseButtonUp(0, 0)
+	tpSliderBaseY.OnMouseButtonUp(0, 0)
+}
