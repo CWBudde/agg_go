@@ -60,9 +60,12 @@ func newRGB555Renderer(w, h int) (*rgb555Renderer, []basics.Int16u) {
 }
 
 // Clear converts sRGB→linear before clearing, matching the C++ implicit srgba8→rgba8 conversion.
-func (r *rgb555Renderer) Clear(c color.RGBA8[color.SRGB])    { r.renBase.Clear(color.ConvertToLinear(c)) }
+func (r *rgb555Renderer) Clear(c color.RGBA8[color.SRGB]) { r.renBase.Clear(color.ConvertToLinear(c)) }
+
 // SetColor converts sRGB→linear before setting the color, matching C++ adaptor behavior.
-func (r *rgb555Renderer) SetColor(c color.RGBA8[color.SRGB]) { r.ren.SetColor(color.ConvertToLinear(c)) }
+func (r *rgb555Renderer) SetColor(c color.RGBA8[color.SRGB]) {
+	r.ren.SetColor(color.ConvertToLinear(c))
+}
 func (r *rgb555Renderer) Prepare()                           { r.ren.Prepare() }
 func (r *rgb555Renderer) Render(sl rendsl.ScanlineInterface) { r.ren.Render(sl) }
 

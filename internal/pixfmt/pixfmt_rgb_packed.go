@@ -151,8 +151,15 @@ func (pf *PixFmtRGB555[B]) BlendHline(x, y, length int, c color.RGBA8[color.Line
 		length = pf.Width() - x
 	}
 	row := buffer.RowU16(pf.rbuf, y)
-	for i := range length {
-		pf.blender.BlendPix(&row[x+i], c.R, c.G, c.B, c.A, cover)
+	if c.A == basics.CoverFull && cover == basics.CoverFull {
+		packed := pf.blender.MakePix(c.R, c.G, c.B)
+		for i := range length {
+			row[x+i] = packed
+		}
+	} else {
+		for i := range length {
+			pf.blender.BlendPix(&row[x+i], c.R, c.G, c.B, c.A, cover)
+		}
 	}
 }
 
@@ -179,8 +186,16 @@ func (pf *PixFmtRGB555[B]) BlendVline(x, y, length int, c color.RGBA8[color.Line
 	if y+length > pf.Height() {
 		length = pf.Height() - y
 	}
-	for i := range length {
-		pf.BlendPixel(x, y+i, c, cover)
+	if c.A == basics.CoverFull && cover == basics.CoverFull {
+		packed := pf.blender.MakePix(c.R, c.G, c.B)
+		for i := range length {
+			buffer.RowU16(pf.rbuf, y+i)[x] = packed
+		}
+	} else {
+		for i := range length {
+			row := buffer.RowU16(pf.rbuf, y+i)
+			pf.blender.BlendPix(&row[x], c.R, c.G, c.B, c.A, cover)
+		}
 	}
 }
 
@@ -220,14 +235,30 @@ func (pf *PixFmtRGB555[B]) BlendSolidHspan(x, y, length int, c color.RGBA8[color
 		length = pf.Width() - x
 	}
 	row := buffer.RowU16(pf.rbuf, y)
+	opaque := c.A == basics.CoverFull
 	if covers == nil {
-		for i := range length {
-			pf.blender.BlendPix(&row[x+i], c.R, c.G, c.B, c.A, basics.CoverFull)
+		if opaque {
+			packed := pf.blender.MakePix(c.R, c.G, c.B)
+			for i := range length {
+				row[x+i] = packed
+			}
+		} else {
+			for i := range length {
+				pf.blender.BlendPix(&row[x+i], c.R, c.G, c.B, c.A, basics.CoverFull)
+			}
 		}
 	} else {
 		for i := range length {
-			if i < len(covers) && covers[i] > 0 {
-				pf.blender.BlendPix(&row[x+i], c.R, c.G, c.B, c.A, covers[i])
+			if i < len(covers) {
+				cover := covers[i]
+				if cover == 0 {
+					continue
+				}
+				if opaque && cover == basics.CoverFull {
+					row[x+i] = pf.blender.MakePix(c.R, c.G, c.B)
+				} else {
+					pf.blender.BlendPix(&row[x+i], c.R, c.G, c.B, c.A, cover)
+				}
 			}
 		}
 	}
@@ -416,8 +447,15 @@ func (pf *PixFmtRGB565[B]) BlendHline(x, y, length int, c color.RGBA8[color.Line
 		length = pf.Width() - x
 	}
 	row := buffer.RowU16(pf.rbuf, y)
-	for i := range length {
-		pf.blender.BlendPix(&row[x+i], c.R, c.G, c.B, c.A, cover)
+	if c.A == basics.CoverFull && cover == basics.CoverFull {
+		packed := pf.blender.MakePix(c.R, c.G, c.B)
+		for i := range length {
+			row[x+i] = packed
+		}
+	} else {
+		for i := range length {
+			pf.blender.BlendPix(&row[x+i], c.R, c.G, c.B, c.A, cover)
+		}
 	}
 }
 
@@ -442,8 +480,16 @@ func (pf *PixFmtRGB565[B]) BlendVline(x, y, length int, c color.RGBA8[color.Line
 	if y+length > pf.Height() {
 		length = pf.Height() - y
 	}
-	for i := range length {
-		pf.BlendPixel(x, y+i, c, cover)
+	if c.A == basics.CoverFull && cover == basics.CoverFull {
+		packed := pf.blender.MakePix(c.R, c.G, c.B)
+		for i := range length {
+			buffer.RowU16(pf.rbuf, y+i)[x] = packed
+		}
+	} else {
+		for i := range length {
+			row := buffer.RowU16(pf.rbuf, y+i)
+			pf.blender.BlendPix(&row[x], c.R, c.G, c.B, c.A, cover)
+		}
 	}
 }
 
@@ -480,14 +526,30 @@ func (pf *PixFmtRGB565[B]) BlendSolidHspan(x, y, length int, c color.RGBA8[color
 		length = pf.Width() - x
 	}
 	row := buffer.RowU16(pf.rbuf, y)
+	opaque := c.A == basics.CoverFull
 	if covers == nil {
-		for i := range length {
-			pf.blender.BlendPix(&row[x+i], c.R, c.G, c.B, c.A, basics.CoverFull)
+		if opaque {
+			packed := pf.blender.MakePix(c.R, c.G, c.B)
+			for i := range length {
+				row[x+i] = packed
+			}
+		} else {
+			for i := range length {
+				pf.blender.BlendPix(&row[x+i], c.R, c.G, c.B, c.A, basics.CoverFull)
+			}
 		}
 	} else {
 		for i := range length {
-			if i < len(covers) && covers[i] > 0 {
-				pf.blender.BlendPix(&row[x+i], c.R, c.G, c.B, c.A, covers[i])
+			if i < len(covers) {
+				cover := covers[i]
+				if cover == 0 {
+					continue
+				}
+				if opaque && cover == basics.CoverFull {
+					row[x+i] = pf.blender.MakePix(c.R, c.G, c.B)
+				} else {
+					pf.blender.BlendPix(&row[x+i], c.R, c.G, c.B, c.A, cover)
+				}
 			}
 		}
 	}
@@ -669,8 +731,15 @@ func (pf *PixFmtBGR555[B]) BlendHline(x, y, length int, c color.RGBA8[color.Line
 		length = pf.Width() - x
 	}
 	row := buffer.RowU16(pf.rbuf, y)
-	for i := range length {
-		pf.blender.BlendPix(&row[x+i], c.R, c.G, c.B, c.A, cover)
+	if c.A == basics.CoverFull && cover == basics.CoverFull {
+		packed := pf.blender.MakePix(c.R, c.G, c.B)
+		for i := range length {
+			row[x+i] = packed
+		}
+	} else {
+		for i := range length {
+			pf.blender.BlendPix(&row[x+i], c.R, c.G, c.B, c.A, cover)
+		}
 	}
 }
 
@@ -695,8 +764,16 @@ func (pf *PixFmtBGR555[B]) BlendVline(x, y, length int, c color.RGBA8[color.Line
 	if y+length > pf.Height() {
 		length = pf.Height() - y
 	}
-	for i := range length {
-		pf.BlendPixel(x, y+i, c, cover)
+	if c.A == basics.CoverFull && cover == basics.CoverFull {
+		packed := pf.blender.MakePix(c.R, c.G, c.B)
+		for i := range length {
+			buffer.RowU16(pf.rbuf, y+i)[x] = packed
+		}
+	} else {
+		for i := range length {
+			row := buffer.RowU16(pf.rbuf, y+i)
+			pf.blender.BlendPix(&row[x], c.R, c.G, c.B, c.A, cover)
+		}
 	}
 }
 
@@ -733,14 +810,30 @@ func (pf *PixFmtBGR555[B]) BlendSolidHspan(x, y, length int, c color.RGBA8[color
 		length = pf.Width() - x
 	}
 	row := buffer.RowU16(pf.rbuf, y)
+	opaque := c.A == basics.CoverFull
 	if covers == nil {
-		for i := range length {
-			pf.blender.BlendPix(&row[x+i], c.R, c.G, c.B, c.A, basics.CoverFull)
+		if opaque {
+			packed := pf.blender.MakePix(c.R, c.G, c.B)
+			for i := range length {
+				row[x+i] = packed
+			}
+		} else {
+			for i := range length {
+				pf.blender.BlendPix(&row[x+i], c.R, c.G, c.B, c.A, basics.CoverFull)
+			}
 		}
 	} else {
 		for i := range length {
-			if i < len(covers) && covers[i] > 0 {
-				pf.blender.BlendPix(&row[x+i], c.R, c.G, c.B, c.A, covers[i])
+			if i < len(covers) {
+				cover := covers[i]
+				if cover == 0 {
+					continue
+				}
+				if opaque && cover == basics.CoverFull {
+					row[x+i] = pf.blender.MakePix(c.R, c.G, c.B)
+				} else {
+					pf.blender.BlendPix(&row[x+i], c.R, c.G, c.B, c.A, cover)
+				}
 			}
 		}
 	}
@@ -922,8 +1015,15 @@ func (pf *PixFmtBGR565[B]) BlendHline(x, y, length int, c color.RGBA8[color.Line
 		length = pf.Width() - x
 	}
 	row := buffer.RowU16(pf.rbuf, y)
-	for i := range length {
-		pf.blender.BlendPix(&row[x+i], c.R, c.G, c.B, c.A, cover)
+	if c.A == basics.CoverFull && cover == basics.CoverFull {
+		packed := pf.blender.MakePix(c.R, c.G, c.B)
+		for i := range length {
+			row[x+i] = packed
+		}
+	} else {
+		for i := range length {
+			pf.blender.BlendPix(&row[x+i], c.R, c.G, c.B, c.A, cover)
+		}
 	}
 }
 
@@ -948,8 +1048,16 @@ func (pf *PixFmtBGR565[B]) BlendVline(x, y, length int, c color.RGBA8[color.Line
 	if y+length > pf.Height() {
 		length = pf.Height() - y
 	}
-	for i := range length {
-		pf.BlendPixel(x, y+i, c, cover)
+	if c.A == basics.CoverFull && cover == basics.CoverFull {
+		packed := pf.blender.MakePix(c.R, c.G, c.B)
+		for i := range length {
+			buffer.RowU16(pf.rbuf, y+i)[x] = packed
+		}
+	} else {
+		for i := range length {
+			row := buffer.RowU16(pf.rbuf, y+i)
+			pf.blender.BlendPix(&row[x], c.R, c.G, c.B, c.A, cover)
+		}
 	}
 }
 
@@ -986,14 +1094,30 @@ func (pf *PixFmtBGR565[B]) BlendSolidHspan(x, y, length int, c color.RGBA8[color
 		length = pf.Width() - x
 	}
 	row := buffer.RowU16(pf.rbuf, y)
+	opaque := c.A == basics.CoverFull
 	if covers == nil {
-		for i := range length {
-			pf.blender.BlendPix(&row[x+i], c.R, c.G, c.B, c.A, basics.CoverFull)
+		if opaque {
+			packed := pf.blender.MakePix(c.R, c.G, c.B)
+			for i := range length {
+				row[x+i] = packed
+			}
+		} else {
+			for i := range length {
+				pf.blender.BlendPix(&row[x+i], c.R, c.G, c.B, c.A, basics.CoverFull)
+			}
 		}
 	} else {
 		for i := range length {
-			if i < len(covers) && covers[i] > 0 {
-				pf.blender.BlendPix(&row[x+i], c.R, c.G, c.B, c.A, covers[i])
+			if i < len(covers) {
+				cover := covers[i]
+				if cover == 0 {
+					continue
+				}
+				if opaque && cover == basics.CoverFull {
+					row[x+i] = pf.blender.MakePix(c.R, c.G, c.B)
+				} else {
+					pf.blender.BlendPix(&row[x+i], c.R, c.G, c.B, c.A, cover)
+				}
 			}
 		}
 	}
