@@ -5,10 +5,10 @@ import (
 	"strconv"
 	"strings"
 
-	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/conv"
 	"github.com/MeKo-Christian/agg_go/internal/demo/linepatterns"
 	"github.com/MeKo-Christian/agg_go/internal/order"
 	"github.com/MeKo-Christian/agg_go/internal/path"
@@ -18,6 +18,9 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
 	"github.com/MeKo-Christian/agg_go/internal/renderer"
 	outline "github.com/MeKo-Christian/agg_go/internal/renderer/outline"
+	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/shapes"
 )
 
 // Port of AGG C++ line_patterns_clip.cpp (web variant).
@@ -411,24 +414,15 @@ func buildLinePatternsClipPath() *path.PathStorageStl {
 	return ps
 }
 
-func renderLinePatternsClipGuides() {
-	a := ctx.GetAgg2D()
-	a.ResetTransformations()
-	a.LineColor(agg.NewColor(0, 77, 128, 92))
-	a.LineWidth(1.35)
-	a.NoFill()
-	a.ResetPath()
-	a.MoveTo(linePatternClipPoints[0][0], linePatternClipPoints[0][1])
-	for i := 1; i < len(linePatternClipPoints); i++ {
-		a.LineTo(linePatternClipPoints[i][0], linePatternClipPoints[i][1])
-	}
-	a.DrawPath(agg.StrokeOnly)
+// lineClipEllipseVS adapts shapes.Ellipse to the rasterizer VertexSource interface.
+type lineClipEllipseVS struct{ ell *shapes.Ellipse }
 
-	a.NoLine()
-	a.FillColor(agg.NewColor(0, 77, 128, 122))
-	for _, pt := range linePatternClipPoints {
-		a.FillCircle(pt[0], pt[1], 6.0)
-	}
+func (e *lineClipEllipseVS) Rewind(id uint32) { e.ell.Rewind(id) }
+func (e *lineClipEllipseVS) Vertex(x, y *float64) uint32 {
+	var vx, vy float64
+	cmd := e.ell.Vertex(&vx, &vy)
+	*x, *y = vx, vy
+	return uint32(cmd)
 }
 
 func drawLinePatternsClipDemo() {
@@ -436,7 +430,7 @@ func drawLinePatternsClipDemo() {
 
 	img := ctx.GetImage()
 	rbuf := buffer.NewRenderingBufferU8()
-	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Width()*4)
+	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Stride())
 	pf := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
 	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]](pf)
 	renBase.Clear(color.RGBA8[color.Linear]{R: 128, G: 191, B: 217, A: 255})
@@ -501,5 +495,42 @@ func drawLinePatternsClipDemo() {
 	rasImg.AddPath(&pathSourceAdapter{ps: ps}, 0)
 
 	renBase.ResetClipping(true)
-	renderLinePatternsClipGuides()
+
+	// Guide rendering (low-level): polyline stroke + point circles.
+	guideRas := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{},
+		rasterizer.NewRasterizerSlNoClip(),
+	)
+	guideSl := scanline.NewScanlineU8()
+
+	addConvPath := func(src conv.VertexSource) {
+		src.Rewind(0)
+		for {
+			vx, vy, cmd := src.Vertex()
+			if basics.IsStop(cmd) {
+				break
+			}
+			guideRas.AddVertex(vx, vy, uint32(cmd))
+		}
+	}
+
+	// Polyline guide stroke (semi-transparent blue, width=1.35).
+	guidePath := buildLinePatternsClipPath()
+	psVS := path.NewPathStorageStlVertexSourceAdapter(guidePath)
+	guideStroke := conv.NewConvStroke(psVS)
+	guideStroke.SetWidth(1.35)
+	guideRas.Reset()
+	addConvPath(guideStroke)
+	strokeColor := color.RGBA8[color.Linear]{R: 0, G: 77, B: 128, A: 92}
+	renscan.RenderScanlinesAASolid(guideRas, guideSl, renBase, strokeColor)
+
+	// Point circles (slightly more opaque blue, radius=6).
+	circleColor := color.RGBA8[color.Linear]{R: 0, G: 77, B: 128, A: 122}
+	for _, pt := range linePatternClipPoints {
+		ell := shapes.NewEllipseWithParams(pt[0], pt[1], 6.0, 6.0, 20, false)
+		ellVS := &lineClipEllipseVS{ell: ell}
+		guideRas.Reset()
+		guideRas.AddPath(ellVS, 0)
+		renscan.RenderScanlinesAASolid(guideRas, guideSl, renBase, circleColor)
+	}
 }

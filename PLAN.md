@@ -751,8 +751,8 @@ forcing every example that called `RenderScanlinesAASolid` + `RasterizerScanline
 **Status**: DONE — all four formats now fully implement `renderer.PixelFormat[color.RGBA8[color.Linear]]`.
 
 **Correction (post-completion)**: The color type was initially set to `RGBA8[SRGB]` based on
-a misreading of the C++ polymorphic interface.  The correct type is `RGBA8[Linear]`, matching
-`blender_rgb555::color_type = rgba8 = rgba8T<linear>`.  The polymorphic example's `SolidRenderer`
+a misreading of the C++ polymorphic interface. The correct type is `RGBA8[Linear]`, matching
+`blender_rgb555::color_type = rgba8 = rgba8T<linear>`. The polymorphic example's `SolidRenderer`
 interface still accepts `RGBA8[SRGB]` at its boundary, and `rgb555Renderer` converts sRGB→linear
 via `color.ConvertToLinear()` — replicating the implicit C++ `rgba8T<linear>(rgba8T<sRGB>)` constructor.
 
@@ -780,7 +780,7 @@ per-pixel methods.
 **Tasks**:
 
 - [x] Change `PixFmtRGB555` color type to `RGBA8[Linear]` (matching C++ `blender_rgb555::color_type
-      = rgba8`). Alpha used for blending, not stored in the 16-bit pixel. The polymorphic example
+    = rgba8`). Alpha used for blending, not stored in the 16-bit pixel. The polymorphic example
       converts sRGB→linear at the interface boundary.
 - [x] Implement missing methods on all four packed pixfmt types to satisfy
       `renderer.PixelFormat[RGBA8[SRGB]]`: `CopyHline`, `BlendHline`, `CopyVline`,
@@ -851,6 +851,7 @@ The packed pixel formats have no equivalent SIMD escape.
 **Option A — Keep generics as-is** (status quo)
 
 Accept that blender calls inside pixel loops may not be inlined. Rationale:
+
 - Performance impact is unproven without benchmarks.
 - The `PixelFormat` interface dispatch already dominates in all polymorphic usage.
 - Consistent with `PixFmtAlphaBlendRGBA`, which uses the same pattern and is the main workhorse.
@@ -873,6 +874,7 @@ type PixFmtRGB555Pre struct { rbuf *buffer.RenderingBufferU16 }  // BlenderRGB55
 ```
 
 The compiler can now inline `BlenderRGB555.BlendPix` unconditionally. Matches C++:
+
 ```cpp
 typedef pixfmt_alpha_blend_rgb_packed<blender_rgb555>      pixfmt_rgb555;
 typedef pixfmt_alpha_blend_rgb_packed<blender_rgb555_pre>  pixfmt_rgb555_pre;
