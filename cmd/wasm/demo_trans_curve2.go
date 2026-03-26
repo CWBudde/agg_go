@@ -4,16 +4,11 @@ package main
 import (
 	"math"
 
+	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/buffer"
-	"github.com/MeKo-Christian/agg_go/internal/color"
 	"github.com/MeKo-Christian/agg_go/internal/conv"
-	liondemo "github.com/MeKo-Christian/agg_go/internal/demo/lion"
-	"github.com/MeKo-Christian/agg_go/internal/path"
-	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
-	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
-	"github.com/MeKo-Christian/agg_go/internal/renderer"
-	"github.com/MeKo-Christian/agg_go/internal/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/ctrl/polygon"
+	"github.com/MeKo-Christian/agg_go/internal/gsv"
 	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
 
@@ -26,11 +21,17 @@ var (
 	transCurve2DY1      [6]float64
 	transCurve2DX2      [6]float64
 	transCurve2DY2      [6]float64
+
+	transCurve2NumPoints      = 200.0
+	transCurve2FixedLen       = true
+	transCurve2PreserveXScale = true
 )
 
 const (
-	transCurve2RefW = 600.0
-	transCurve2RefH = 600.0
+	transCurve2RefW    = 600.0
+	transCurve2RefH    = 600.0
+	transCurve2Text    = "Anti-Grain Geometry is designed as a set of loosely coupled algorithms and class templates united with a common idea, so that all the components can be easily combined. Also, the template based design allows you to replace any part of the library without the necessity to modify a single byte in the existing code. "
+	transCurve2BaseLen = 1140.0
 )
 
 func transCurve2FrameOffset() (float64, float64) {
@@ -38,10 +39,6 @@ func transCurve2FrameOffset() (float64, float64) {
 }
 
 func initTransCurve2Demo() {
-	if lionData == nil {
-		ld := liondemo.Parse()
-		lionData = &ld
-	}
 	for i := 0; i < 6; i++ {
 		transCurve2DX1[i] = (math.Mod(float64(i*1234+1), 10.0) - 5.0) * 0.5
 		transCurve2DY1[i] = (math.Mod(float64(i*5678+2), 10.0) - 5.0) * 0.5
@@ -67,157 +64,117 @@ func drawTransCurve2Demo() {
 		for i := 0; i < 6; i++ {
 			moveTransCurve2Point(&transCurve2Points1[i*2], &transCurve2Points1[i*2+1], &transCurve2DX1[i], &transCurve2DY1[i])
 			moveTransCurve2Point(&transCurve2Points2[i*2], &transCurve2Points2[i*2+1], &transCurve2DX2[i], &transCurve2DY2[i])
-			// normalize distance
 			d := math.Sqrt((transCurve2Points1[i*2]-transCurve2Points2[i*2])*(transCurve2Points1[i*2]-transCurve2Points2[i*2]) + (transCurve2Points1[i*2+1]-transCurve2Points2[i*2+1])*(transCurve2Points1[i*2+1]-transCurve2Points2[i*2+1]))
-			if d > 100 {
-				transCurve2Points2[i*2] = transCurve2Points1[i*2] + (transCurve2Points2[i*2]-transCurve2Points1[i*2])*100/d
-				transCurve2Points2[i*2+1] = transCurve2Points1[i*2+1] + (transCurve2Points2[i*2+1]-transCurve2Points1[i*2+1])*100/d
+			if d > 28.28 {
+				transCurve2Points2[i*2] = transCurve2Points1[i*2] + (transCurve2Points2[i*2]-transCurve2Points1[i*2])*28.28/d
+				transCurve2Points2[i*2+1] = transCurve2Points1[i*2+1] + (transCurve2Points2[i*2+1]-transCurve2Points1[i*2+1])*28.28/d
 			}
 		}
 	}
 
-	// --- Low-level rendering setup ---
-	img := ctx.GetImage()
-	rbuf := buffer.NewRenderingBufferU8()
-	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Stride())
+	ctx.Clear(agg.White)
+	a := ctx.GetAgg2D()
+	a.ResetTransformations()
 
-	pf := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
-	ren := renderer.NewRendererBaseWithPixfmt[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](pf)
-	ren.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 242, A: 255})
+	// 1. Build guide B-splines from the two control-point polygons.
+	poly1 := polygon.NewSimplePolygonVertexSource(transCurve2Points1[:], 6, false, false)
+	poly2 := polygon.NewSimplePolygonVertexSource(transCurve2Points2[:], 6, false, false)
 
-	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
-		rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip(),
-	)
-	sl := scanline.NewScanlineU8()
+	bs1 := conv.NewConvBSpline(poly1)
+	bs2 := conv.NewConvBSpline(poly2)
+	bs1.SetInterpolationStep(1.0 / transCurve2NumPoints)
+	bs2.SetInterpolationStep(1.0 / transCurve2NumPoints)
 
-	addPathToRas := func(src conv.VertexSource) {
-		src.Rewind(0)
-		for {
-			vx, vy, cmd := src.Vertex()
-			if basics.IsStop(cmd) {
-				break
-			}
-			ras.AddVertex(vx, vy, uint32(cmd))
-		}
-	}
-
-	renderSolid := func(c color.RGBA8[color.Linear]) {
-		if ras.RewindScanlines() {
-			sl.Reset(ras.MinX(), ras.MaxX())
-			for ras.SweepScanline(sl) {
-				y := sl.Y()
-				for _, span := range sl.Spans() {
-					if span.Len > 0 {
-						ren.BlendSolidHspan(int(span.X), y, int(span.Len), c, span.Covers)
-					}
-				}
-			}
-		}
-	}
-
-	// 1. Create guide paths
-	ps1 := path.NewPathStorageStl()
-	ps2 := path.NewPathStorageStl()
-	ps1.MoveTo(transCurve2Points1[0], transCurve2Points1[1])
-	ps2.MoveTo(transCurve2Points2[0], transCurve2Points2[1])
-	for i := 1; i < 6; i++ {
-		ps1.LineTo(transCurve2Points1[i*2], transCurve2Points1[i*2+1])
-		ps2.LineTo(transCurve2Points2[i*2], transCurve2Points2[i*2+1])
-	}
-
-	bs1 := conv.NewConvBSpline(path.NewPathStorageStlVertexSourceAdapter(ps1))
-	bs2 := conv.NewConvBSpline(path.NewPathStorageStlVertexSourceAdapter(ps2))
-	bs1.SetInterpolationStep(1.0 / 40.0)
-	bs2.SetInterpolationStep(1.0 / 40.0)
-
-	// 2. Setup transformation
+	// 2. Set up the double-path transformer.
 	tcurve := transform.NewTransDoublePath()
+	tcurve.SetPreserveXScale(transCurve2PreserveXScale)
+	if transCurve2FixedLen {
+		tcurve.SetBaseLength(transCurve2BaseLen)
+	} else {
+		tcurve.SetBaseLength(0)
+	}
+	tcurve.SetBaseHeight(30.0)
 	tcurve.AddPaths(&transDoubleAdapter{bs1}, &transDoubleAdapter{bs2}, 0, 0)
-	tcurve.SetBaseHeight(40.0)
 
-	// 3. Find lion bounding box
-	lx1, ly1, lx2, ly2 := 1e9, 1e9, -1e9, -1e9
-	for idx := uint(0); idx < lionData.Path.TotalVertices(); idx++ {
-		x, y, cmd := lionData.Path.Vertex(idx)
-		if !basics.IsVertex(basics.PathCommand(cmd)) {
-			continue
-		}
-		if x < lx1 {
-			lx1 = x
-		}
-		if x > lx2 {
-			lx2 = x
-		}
-		if y < ly1 {
-			ly1 = y
-		}
-		if y > ly2 {
-			ly2 = y
-		}
-	}
-	lionW := lx2 - lx1
-	scaleX := tcurve.TotalLength1() / lionW * 0.8
+	// 3. Render text transformed along the double path.
+	text := gsv.NewGSVText()
+	text.SetFlip(true)
+	text.SetSize(40.0, 0)
+	text.SetStartPoint(0, 3)
+	text.SetText(transCurve2Text)
 
-	// 4. Render transformed lion paths
-	for i := 0; i < lionData.NPaths; i++ {
-		c := lionData.Colors[i]
-		fillColor := color.RGBA8[color.Linear]{R: c.R, G: c.G, B: c.B, A: 200}
+	outline := gsv.NewGSVTextOutline(text)
+	outline.SetWidth(1.0)
 
-		lionData.Path.Rewind(lionData.PathIdx[i])
-		ras.Reset()
-		for {
-			x, y, cmd := lionData.Path.NextVertex()
-			if basics.IsStop(basics.PathCommand(cmd)) {
-				break
-			}
-			tx := (x - lx1) * scaleX
-			ty := (y - (ly1+ly2)*0.5)
-			tcurve.Transform(&tx, &ty)
-			tx += offX
-			ty += offY
-			if basics.IsMoveTo(basics.PathCommand(cmd)) {
-				ras.AddVertex(tx, ty, uint32(basics.PathCmdMoveTo))
-			} else if basics.IsLineTo(basics.PathCommand(cmd)) {
-				ras.AddVertex(tx, ty, uint32(basics.PathCmdLineTo))
-			}
-		}
-		ras.ClosePolygon()
-		renderSolid(fillColor)
-	}
+	segm := conv.NewConvSegmentator(outline)
+	segm.ApproximationScale(3.0)
 
-	// 5. Draw guide curves as stroked paths
-	guideColor := color.RGBA8[color.Linear]{R: 170, G: 50, B: 20, A: 100}
+	transformedText := conv.NewConvTransform(
+		&segmentatorAdapter2{source: segm},
+		tcurve,
+	)
 
-	for _, bs := range []*conv.ConvBSpline{bs1, bs2} {
-		// Build an offset spline into a PathStorageStl, then stroke it
-		psGuide := path.NewPathStorageStl()
-		bs.Rewind(0)
-		first := true
-		for {
-			vx, vy, cmd := bs.Vertex()
-			if basics.IsStop(cmd) {
-				break
-			}
-			if first {
-				psGuide.MoveTo(vx+offX, vy+offY)
-				first = false
-			} else {
-				psGuide.LineTo(vx+offX, vy+offY)
-			}
-		}
-		guideAdapter := path.NewPathStorageStlVertexSourceAdapter(psGuide)
-		guideStroke := conv.NewConvStroke(guideAdapter)
-		guideStroke.SetWidth(1.0)
-		ras.Reset()
-		addPathToRas(guideStroke)
-		renderSolid(guideColor)
-	}
+	a.FillColor(agg.Black)
+	a.NoLine()
+	transCurve2AppendPath(a, transformedText, offX, offY)
+	a.DrawPath(agg.FillOnly)
 
-	// 6. Draw handles
+	// 4. Draw guide curves.
+	a.LineColor(agg.NewColor(170, 50, 20, 100))
+	a.LineWidth(2.0)
+	a.NoFill()
+	transCurve2AppendPath(a, bs1, offX, offY)
+	a.DrawPath(agg.StrokeOnly)
+	transCurve2AppendPath(a, bs2, offX, offY)
+	a.DrawPath(agg.StrokeOnly)
+
+	// 5. Draw polygon guide lines.
+	a.LineColor(agg.NewColor(0, 76, 128, 120))
+	a.LineWidth(1.0)
+	a.NoFill()
+	transCurve2AppendPath(a, poly1, offX, offY)
+	a.DrawPath(agg.StrokeOnly)
+	transCurve2AppendPath(a, poly2, offX, offY)
+	a.DrawPath(agg.StrokeOnly)
+
+	// 6. Draw interactive handles.
 	for i := 0; i < 6; i++ {
 		drawHandle(transCurve2Points1[i*2]+offX, transCurve2Points1[i*2+1]+offY)
 		drawHandle(transCurve2Points2[i*2]+offX, transCurve2Points2[i*2+1]+offY)
 	}
+}
+
+// transCurve2AppendPath feeds vertices from src into the Agg2D path builder.
+func transCurve2AppendPath(a *agg.Agg2D, src conv.VertexSource, offsetX, offsetY float64) {
+	a.ResetPath()
+	src.Rewind(0)
+	for {
+		x, y, cmd := src.Vertex()
+		switch {
+		case basics.IsStop(cmd):
+			return
+		case basics.IsMoveTo(cmd):
+			a.MoveTo(x+offsetX, y+offsetY)
+		case basics.IsLineTo(cmd):
+			a.LineTo(x+offsetX, y+offsetY)
+		case basics.IsEndPoly(cmd):
+			if basics.IsClosed(uint32(cmd)) {
+				a.ClosePolygon()
+			}
+		}
+	}
+}
+
+// segmentatorAdapter2 bridges ConvSegmentator to the conv.VertexSourceCommander
+// interface required by conv.NewConvTransform.
+type segmentatorAdapter2 struct {
+	source *conv.ConvSegmentator
+}
+
+func (a *segmentatorAdapter2) Rewind(pathID uint) { a.source.Rewind(pathID) }
+func (a *segmentatorAdapter2) Vertex() (x, y float64, cmd basics.PathCommand) {
+	x, y, raw := a.source.Vertex()
+	return x, y, basics.PathCommand(raw)
 }
 
 func moveTransCurve2Point(x, y, dx, dy *float64) {
@@ -273,4 +230,16 @@ func handleTransCurve2MouseUp() {
 
 func toggleTransCurve2Animate() {
 	transCurve2Animate = !transCurve2Animate
+}
+
+func setTransCurve2NumPoints(v float64) {
+	transCurve2NumPoints = v
+}
+
+func setTransCurve2FixedLen(v bool) {
+	transCurve2FixedLen = v
+}
+
+func setTransCurve2PreserveXScale(v bool) {
+	transCurve2PreserveXScale = v
 }
