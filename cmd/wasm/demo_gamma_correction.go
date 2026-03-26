@@ -82,8 +82,8 @@ func drawGammaCorrectionDemo() {
 	ren.CopyBar(0, 0, cx, h, color.RGBA8[color.Linear]{R: f(1.0 - dark), G: f(1.0 - dark), B: f(1.0 - dark), A: 255})
 	// Right half: light gray
 	ren.CopyBar(cx+1, 0, w, h, color.RGBA8[color.Linear]{R: f(dark), G: f(dark), B: f(dark), A: 255})
-	// Bottom half: reddish (overwrites both sides as in C++)
-	ren.CopyBar(0, cy+1, w, h, color.RGBA8[color.Linear]{R: 255, G: f(1.0 - dark), B: f(1.0 - dark), A: 255})
+	// Top half: reddish (C++ uses flip_y so copy_bar at y=height/2+1..height fills the top of the screen)
+	ren.CopyBar(0, 0, w, cy, color.RGBA8[color.Linear]{R: 255, G: f(1.0 - dark), B: f(1.0 - dark), A: 255})
 
 	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
 		rasterizer.RasConvInt{},

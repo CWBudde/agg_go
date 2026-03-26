@@ -832,11 +832,11 @@ control widgets. Items below are rendering bugs or significant visual deviations
       negative Len; the span loop was guarded by `Len > 0`, silently dropping
       all fully-covered interior runs. Fixed by handling both positive (per-pixel
       coverage) and negative (solid cover) spans in `demo_pattern_fill.go`.
-- [ ] **gamma_ctrl**: Text "Text 2345" renders mirrored/reversed (characters are
+- [x] **gamma_ctrl**: Text "Text 2345" renders mirrored/reversed (characters are
       horizontally flipped).
 - [ ] **gamma_correction**: Background quadrant colors are in wrong positions
       (black/white/red quadrants are y-flipped vs C++).
-- [ ] **rasterizer_compound**: Wrong glyph rendered ("gj"-like shape instead of "a").
+- [x] **rasterizer_compound**: Wrong glyph rendered ("gj"-like shape instead of "a").
 - [ ] **trans_polar**: Completely different content — shows polar-transformed lion
       instead of circular arc with text labels ("Some Value=40").
 
