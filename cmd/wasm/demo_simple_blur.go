@@ -2,8 +2,6 @@
 package main
 
 import (
-	"math"
-
 	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
@@ -84,10 +82,13 @@ func drawSimpleBlurLionFill(
 	cx := (x1 + x2) * 0.5
 	cy := (y1 + y2) * 0.5
 
+	// In C++ the transform includes rotation(pi) which flips both X and Y.
+	// Combined with the FlipY=true rendering buffer the Y-flip cancels, leaving
+	// only an X-mirror.  The WASM canvas uses Y-down (no FlipY), so we replace
+	// the 180° rotation with an X-flip-only scale to get the same visual result.
 	mtx := transform.NewTransAffine()
 	mtx.Multiply(transform.NewTransAffineTranslation(-cx, -cy))
-	mtx.Multiply(transform.NewTransAffineScaling(1.0))
-	mtx.Multiply(transform.NewTransAffineRotation(math.Pi))
+	mtx.Multiply(transform.NewTransAffineScalingXY(-1, 1))
 	mtx.Multiply(transform.NewTransAffineTranslation(float64(w)*0.25, float64(h)*0.5))
 
 	pathVS := path.NewPathStorageStlVertexSourceAdapter(lionData.Path)
@@ -109,10 +110,10 @@ func drawSimpleBlurLionOutline(
 	cx := (x1 + x2) * 0.5
 	cy := (y1 + y2) * 0.5
 
+	// Same X-flip-only approach as drawSimpleBlurLionFill (see comment there).
 	mtx := transform.NewTransAffine()
 	mtx.Multiply(transform.NewTransAffineTranslation(-cx, -cy))
-	mtx.Multiply(transform.NewTransAffineScaling(1.0))
-	mtx.Multiply(transform.NewTransAffineRotation(math.Pi))
+	mtx.Multiply(transform.NewTransAffineScalingXY(-1, 1))
 	mtx.Multiply(transform.NewTransAffineTranslation(float64(w)*0.75, float64(h)*0.5))
 
 	pathVS := path.NewPathStorageStlVertexSourceAdapter(lionData.Path)

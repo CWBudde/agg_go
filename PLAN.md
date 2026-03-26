@@ -815,8 +815,16 @@ control widgets. Items below are rendering bugs or significant visual deviations
       right-mouse skewY).
 - [ ] **distortions**: Right circle is solid black; should show a second distortion
       effect (orange/glow sphere in C++).
-- [ ] **perspective**: Lion is upside-down (y-flip bug in the WASM demo).
-- [ ] **simple_blur**: Both lion renderings (color + outline) are upside-down (y-flip).
+- [x] **perspective**: Lion is upside-down (y-flip bug in the WASM demo). Fixed —
+      the Y-down WASM canvas shares the same coordinate system as the lion data
+      (small Y = top of figure), so only an X-flip is needed to mirror the C++
+      `flip_x` behaviour. Changed source-rect corners from `(x2,y2,x1,y1)` (both
+      axes swapped, designed for the FlipY=true standalone) to `(x2,y1,x1,y2)`
+      (X-swap only) in `demo_perspective.go`.
+- [x] **simple_blur**: Both lion renderings (color + outline) are upside-down (y-flip).
+      Fixed — replaced `rotation(π)` (designed for FlipY=true: flips both axes,
+      then Y-up buffer undoes the Y-flip) with `ScalingXY(-1,1)` (X-flip only) in
+      `demo_simple_blur.go`.
 - [ ] **pattern_fill**: Star shape renders as a thin outline only; the interior
       pattern fill is completely missing.
 - [ ] **gamma_ctrl**: Text "Text 2345" renders mirrored/reversed (characters are

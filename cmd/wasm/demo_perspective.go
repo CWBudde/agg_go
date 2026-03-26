@@ -176,12 +176,15 @@ func drawPerspectiveDemo() {
 	sl := scanline.NewScanlineP8()
 	renSolid := renscan.NewRendererScanlineAASolidWithRenderer(rb)
 
-	// Mirror the C++ parse_lion() flip_x+flip_y by swapping source rect corners:
-	// (x2,y2,x1,y1) pre-applies both axis flips so the lion is right-side-up.
+	// The WASM canvas uses Y-down coordinates (Y=0 at top, matching the lion's
+	// own data coordinate system).  Swap only the X corners to mirror the C++
+	// flip_x behaviour while keeping Y correctly oriented.  Do NOT also swap the
+	// Y corners as the standalone FlipY=true example does: that was needed to
+	// compensate for the Y-up rendering buffer and would invert the lion here.
 	switch perspectiveType {
 	case 0: // Bilinear
 		tr := transform.NewTransBilinearRectToQuad(
-			perspectiveLionX2, perspectiveLionY2, perspectiveLionX1, perspectiveLionY1,
+			perspectiveLionX2, perspectiveLionY1, perspectiveLionX1, perspectiveLionY2,
 			perspectiveQuad,
 		)
 		if tr.IsValid() {
@@ -190,7 +193,7 @@ func drawPerspectiveDemo() {
 		}
 	case 1: // Perspective
 		tr := transform.NewTransPerspectiveRectToQuad(
-			perspectiveLionX2, perspectiveLionY2, perspectiveLionX1, perspectiveLionY1,
+			perspectiveLionX2, perspectiveLionY1, perspectiveLionX1, perspectiveLionY2,
 			perspectiveQuad,
 		)
 		if tr.IsValid(1e-14) {
