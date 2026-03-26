@@ -722,6 +722,46 @@ export const demoURLHandlers = {
     },
   },
 
+  graph_test: {
+    persist() {
+      updateURL({
+        gtm: document.getElementById("gtModeSelect").value,
+        gtw: parseFloat(document.getElementById("gtWidthSlider").value),
+        gtn: document.getElementById("gtDrawNodes").checked ? "1" : "0",
+        gte: document.getElementById("gtDrawEdges").checked ? "1" : "0",
+        gtt: document.getElementById("gtTranslucent").checked ? "1" : "0",
+      });
+    },
+    restore(p) {
+      if (p.has("gtm")) {
+        const v = parseInt(p.get("gtm"), 10);
+        document.getElementById("gtModeSelect").value = String(v);
+        setGraphTestMode(v);
+      }
+      if (p.has("gtw")) {
+        const v = parseFloat(p.get("gtw"));
+        document.getElementById("gtWidthSlider").value = v;
+        document.getElementById("gtWidthValue").textContent = v.toFixed(1);
+        setGraphTestWidth(v);
+      }
+      if (p.has("gtn")) {
+        const v = p.get("gtn") === "1";
+        document.getElementById("gtDrawNodes").checked = v;
+        setGraphTestDrawNodes(v);
+      }
+      if (p.has("gte")) {
+        const v = p.get("gte") === "1";
+        document.getElementById("gtDrawEdges").checked = v;
+        setGraphTestDrawEdges(v);
+      }
+      if (p.has("gtt")) {
+        const v = p.get("gtt") === "1";
+        document.getElementById("gtTranslucent").checked = v;
+        setGraphTestTranslucent(v);
+      }
+    },
+  },
+
   rasterizer_compound: {
     persist() {
       updateURL({

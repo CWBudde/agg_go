@@ -89,6 +89,8 @@ export function syncControlVisibility(demoType) {
     demoType === "gradients_contour" ? "flex" : "none";
   document.getElementById("gradientFocalControls").style.display =
     demoType === "gradient_focal" ? "flex" : "none";
+  document.getElementById("graphTestControls").style.display =
+    demoType === "graph_test" ? "flex" : "none";
   document.getElementById("rasterizerCompoundControls").style.display =
     demoType === "rasterizer_compound" ? "flex" : "none";
   document.getElementById("flashRasterizer2Controls").style.display =

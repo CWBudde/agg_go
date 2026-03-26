@@ -12,8 +12,8 @@ var (
 	graphTestDrawEdges   = true
 )
 
-func setGraphTestMode(v int)        { graphTestMode = v }
-func setGraphTestWidth(v float64)   { graphTestWidth = v }
+func setGraphTestMode(v int)         { graphTestMode = v }
+func setGraphTestWidth(v float64)    { graphTestWidth = v }
 func setGraphTestTranslucent(v bool) { graphTestTranslucent = v }
 func setGraphTestDrawNodes(v bool)   { graphTestDrawNodes = v }
 func setGraphTestDrawEdges(v bool)   { graphTestDrawEdges = v }

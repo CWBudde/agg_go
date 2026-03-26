@@ -70,9 +70,11 @@ func (a *tpSegmAdapter) Vertex() (float64, float64, basics.PathCommand) {
 	return x, y, basics.PathCommand(cmd)
 }
 
-type tpPixFmt = pixfmt.PixFmtRGBA32[color.Linear]
-type tpRenBase = renderer.RendererBase[*tpPixFmt, color.RGBA8[color.Linear]]
-type tpRasterizer = rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
+type (
+	tpPixFmt     = pixfmt.PixFmtRGBA32[color.Linear]
+	tpRenBase    = renderer.RendererBase[*tpPixFmt, color.RGBA8[color.Linear]]
+	tpRasterizer = rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
+)
 
 func newTPRasterizer() *tpRasterizer {
 	return rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
