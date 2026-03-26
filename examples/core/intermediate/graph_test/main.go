@@ -14,11 +14,12 @@ type demo struct {
 func (d *demo) Render(img *agg.Image) {
 	ctx := agg.NewContextForImage(img)
 	graphtest.Draw(ctx, d.graph, graphtest.Config{
-		Mode:        0,
-		Width:       2.0,
-		Translucent: false,
-		DrawNodes:   true,
-		DrawEdges:   true,
+		Mode:         0,
+		Width:        2.0,
+		Translucent:  false,
+		DrawNodes:    true,
+		DrawEdges:    true,
+		ShowControls: true,
 	})
 }
 

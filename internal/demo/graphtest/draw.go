@@ -15,13 +15,14 @@ import (
 )
 
 type Config struct {
-	Mode        int
-	Width       float64
-	Translucent bool
-	DrawNodes   bool
-	DrawEdges   bool
-	NumNodes    int
-	NumEdges    int
+	Mode         int
+	Width        float64
+	Translucent  bool
+	DrawNodes    bool
+	DrawEdges    bool
+	NumNodes     int
+	NumEdges     int
+	ShowControls bool
 }
 
 type node struct {
@@ -177,7 +178,9 @@ func Draw(ctx *agg.Context, g *Graph, cfg Config) {
 		}
 	}
 
-	drawControls(ctx, cfg)
+	if cfg.ShowControls {
+		drawControls(ctx, cfg)
+	}
 }
 
 func (g *Graph) prepare(width, height int) *preparedGraph {
