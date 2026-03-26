@@ -4,7 +4,6 @@
 // then draws the shape on top.
 //
 // State variables blurRadius and blurMethod are preserved and exposed to JS.
-//go:build js && wasm
 
 package main
 

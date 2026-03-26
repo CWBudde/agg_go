@@ -29,7 +29,7 @@ func (a *pathSourceAdapter) Vertex(x, y *float64) uint32 {
 // ellipseVS adapts shapes.Ellipse to the rasterizer's VertexSource interface.
 type ellipseVS struct{ ell *shapes.Ellipse }
 
-func (a *ellipseVS) Rewind(pathID uint32) { a.ell.Rewind(pathID) }
+func (a *ellipseVS) Rewind(pathID uint32)        { a.ell.Rewind(pathID) }
 func (a *ellipseVS) Vertex(x, y *float64) uint32 { return uint32(a.ell.Vertex(x, y)) }
 
 // ellipseConvVS adapts shapes.Ellipse to the conv.VertexSource interface

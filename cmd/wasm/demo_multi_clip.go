@@ -79,6 +79,7 @@ func (a *multiClipOutlineAAAdapter) Line3(lp primitives.LineParameters, sx, sy, 
 func (a *multiClipOutlineAAAdapter) Pie(x, y, x1, y1, x2, y2 int) {
 	a.ren.Pie(x, y, x1, y1, x2, y2)
 }
+
 func (a *multiClipOutlineAAAdapter) Semidot(cmp func(int) bool, x, y, x1, y1 int) {
 	a.ren.Semidot(cmp, x, y, x1, y1)
 }
