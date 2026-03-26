@@ -80,6 +80,8 @@ func renderStrokedEllipseGC(
 }
 
 // renderTextGC renders stroked GSV text at the given position.
+// Applies a combined skew + y-flip transform so characters appear correct in the
+// y-down screen coordinate system used by the WASM canvas.
 func renderTextGC(
 	ras *gcRasType,
 	sl *scanline.ScanlineU8,
@@ -92,12 +94,33 @@ func renderTextGC(
 	t.SetText(text)
 	t.SetSize(size, 0)
 	t.SetStartPoint(x, y)
-	outline := gsv.NewGSVTextOutlineWithTransform(t, transform.NewTransAffineSkewing(0.15, 0.0))
+	// Skew(0.15,0) then flip-y around baseline y:
+	//   x' = x + tan(0.15)*y_local
+	//   y' = -y_local + 2*y  (maps baseline to y, flips characters upward)
+	mtx := transform.NewTransAffineFromValues(1.0, 0.0, math.Tan(0.15), -1.0, 0.0, 2*y)
+	outline := gsv.NewGSVTextOutlineWithTransform(t, mtx)
 	outline.SetWidth(2.0)
 	adapter := conv.NewRasterizerVertexSourceAdapter(outline)
 	ras.Reset()
 	ras.AddPath(adapter, 0)
 	renscan.RenderScanlinesAASolid(ras, sl, ren, c)
+}
+
+// renderGammaCtrlWidget renders the interactive gamma control widget.
+func renderGammaCtrlWidget(ras *gcRasType, sl *scanline.ScanlineU8, ren *gcRendererBase) {
+	adapter := conv.NewRasterizerVertexSourceAdapter(gammaControl)
+	for i := uint(0); i < gammaControl.NumPaths(); i++ {
+		c := gammaControl.Color(i)
+		c8 := color.RGBA8[color.Linear]{
+			R: uint8(c.R*255 + 0.5),
+			G: uint8(c.G*255 + 0.5),
+			B: uint8(c.B*255 + 0.5),
+			A: uint8(c.A*255 + 0.5),
+		}
+		ras.Reset()
+		ras.AddPath(adapter, uint32(i))
+		renscan.RenderScanlinesAASolid(ras, sl, ren, c8)
+	}
 }
 
 // drawArrowPairGC renders one pair of filled arrow triangles rotated by angle around (cx, cy).
@@ -148,6 +171,9 @@ func drawGammaCtrlDemo() {
 	ewidth := float64(width)/2 - 10
 	ecenter := float64(width) / 2
 
+	// Render the interactive gamma control widget first (no gamma correction).
+	renderGammaCtrlWidget(ras, sl, ren)
+
 	// Apply gamma from the control to the rasterizer before drawing shapes.
 	ras.SetGamma(gammaControl.Y)
 
@@ -178,8 +204,8 @@ func drawGammaCtrlDemo() {
 	// Render text and arrows without gamma correction.
 	ras.SetGamma(func(x float64) float64 { return x })
 
-	// Draw text in lower-right, matching original start_point(320,10) after flip_y.
-	renderTextGC(ras, sl, ren, 370, 555, 50, "Text 2345", color.RGBA8[color.Linear]{R: 0, G: 127, B: 0, A: 255})
+	// Draw text in lower-right: proportional to C++ start_point(320,10) on 500x400 with flip_y.
+	renderTextGC(ras, sl, ren, 320, 575, 50, "Text 2345", color.RGBA8[color.Linear]{R: 0, G: 127, B: 0, A: 255})
 
 	// Rotating arrows to the right of the gamma control.
 	arrowColor := color.RGBA8[color.Linear]{R: 127, G: 0, B: 0, A: 255}
