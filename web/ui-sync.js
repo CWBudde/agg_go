@@ -89,6 +89,8 @@ export function syncControlVisibility(demoType) {
     demoType === "gradients_contour" ? "flex" : "none";
   document.getElementById("gradientFocalControls").style.display =
     demoType === "gradient_focal" ? "flex" : "none";
+  document.getElementById("rasterizerCompoundControls").style.display =
+    demoType === "rasterizer_compound" ? "flex" : "none";
   document.getElementById("flashRasterizer2Controls").style.display =
     demoType === "flash_rasterizer2" ? "flex" : "none";
   document.getElementById("blendColorControls").style.display =
@@ -164,7 +166,7 @@ export const demoDescriptions = {
   graph_test:
     "Port of AGG's graph_test demo core. Renders a deterministic random graph with curved, arrowed edges and radial node markers.",
   rasterizer_compound:
-    "Port of AGG's rasterizer_compound demo. Shows layered compound AA rasterization (direct/inverse layer order) over a yellow→cyan gradient background. URL params: rcw, rca1..rca4, rcio.",
+    "Port of AGG's rasterizer_compound demo. Shows layered compound AA rasterization over a yellow→cyan gradient background. The ellipse (pink/purple) renders in front of the letter 'a' (orange/blue) with direct layer order. Use the sliders to adjust stroke width and per-layer alpha, and toggle Z-order inversion.",
   perspective:
     "Perspective and Bilinear transformations. Apply non-linear distortions to the lion vector art by dragging the four corners of the control quadrilateral. Switch between Bilinear and Perspective modes to see the difference in projection.",
   bezier_div:

@@ -724,26 +724,50 @@ export const demoURLHandlers = {
 
   rasterizer_compound: {
     persist() {
-      // URL-only controls (no visible widget panel).
+      updateURL({
+        rcw: parseFloat(document.getElementById("rcWidthSlider").value),
+        rca1: parseFloat(document.getElementById("rcAlpha1Slider").value),
+        rca2: parseFloat(document.getElementById("rcAlpha2Slider").value),
+        rca3: parseFloat(document.getElementById("rcAlpha3Slider").value),
+        rca4: parseFloat(document.getElementById("rcAlpha4Slider").value),
+        rcio: document.getElementById("rcInvertOrder").checked ? "1" : "0",
+      });
     },
     restore(p) {
       if (p.has("rcw")) {
-        setCompoundWidth(parseFloat(p.get("rcw")));
+        const v = parseFloat(p.get("rcw"));
+        document.getElementById("rcWidthSlider").value = v;
+        document.getElementById("rcWidthValue").textContent = v.toFixed(2);
+        setCompoundWidth(v);
       }
       if (p.has("rca1")) {
-        setCompoundAlpha1(parseFloat(p.get("rca1")));
+        const v = parseFloat(p.get("rca1"));
+        document.getElementById("rcAlpha1Slider").value = v;
+        document.getElementById("rcAlpha1Value").textContent = v.toFixed(3);
+        setCompoundAlpha1(v);
       }
       if (p.has("rca2")) {
-        setCompoundAlpha2(parseFloat(p.get("rca2")));
+        const v = parseFloat(p.get("rca2"));
+        document.getElementById("rcAlpha2Slider").value = v;
+        document.getElementById("rcAlpha2Value").textContent = v.toFixed(3);
+        setCompoundAlpha2(v);
       }
       if (p.has("rca3")) {
-        setCompoundAlpha3(parseFloat(p.get("rca3")));
+        const v = parseFloat(p.get("rca3"));
+        document.getElementById("rcAlpha3Slider").value = v;
+        document.getElementById("rcAlpha3Value").textContent = v.toFixed(3);
+        setCompoundAlpha3(v);
       }
       if (p.has("rca4")) {
-        setCompoundAlpha4(parseFloat(p.get("rca4")));
+        const v = parseFloat(p.get("rca4"));
+        document.getElementById("rcAlpha4Slider").value = v;
+        document.getElementById("rcAlpha4Value").textContent = v.toFixed(3);
+        setCompoundAlpha4(v);
       }
       if (p.has("rcio")) {
-        setCompoundInvert(p.get("rcio") === "1");
+        const v = p.get("rcio") === "1";
+        document.getElementById("rcInvertOrder").checked = v;
+        setCompoundInvert(v);
       }
     },
   },
