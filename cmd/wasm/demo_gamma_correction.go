@@ -1,15 +1,24 @@
 // Port of AGG C++ gamma_correction.cpp – "Thin red ellipse / gamma correction".
 //
 // Shows how the anti-aliasing gamma affects the visual quality of thin
-// colored lines rendered over a split dark/light background. The demo
-// uses AntiAliasGamma to control the rasterizer's coverage-to-alpha mapping,
-// which is the closest equivalent to the C++ pixfmt_gamma approach.
+// colored lines rendered over a split dark/light background.
 package main
 
 import (
 	"math"
 
-	agg "github.com/MeKo-Christian/agg_go"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
+	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/conv"
+	"github.com/MeKo-Christian/agg_go/internal/gamma"
+	"github.com/MeKo-Christian/agg_go/internal/path"
+	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
+	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
+	"github.com/MeKo-Christian/agg_go/internal/renderer"
+	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/shapes"
 )
 
 // --- State ---
@@ -24,104 +33,128 @@ var (
 	gammaRY = float64(height) / 3.0
 )
 
+// --- Vertex source adapters (local to this demo) ---
+
+// gcConvVS adapts a conv.VertexSource to the rasterizer VertexSource interface.
+type gcConvVS struct {
+	src conv.VertexSource
+}
+
+func (a *gcConvVS) Rewind(pathID uint32) { a.src.Rewind(uint(pathID)) }
+func (a *gcConvVS) Vertex(x, y *float64) uint32 {
+	vx, vy, cmd := a.src.Vertex()
+	*x = vx
+	*y = vy
+	return uint32(cmd)
+}
+
+// gcEllipseSrc adapts shapes.Ellipse to conv.VertexSource.
+type gcEllipseSrc struct {
+	ell *shapes.Ellipse
+}
+
+func (a *gcEllipseSrc) Rewind(pathID uint) { a.ell.Rewind(uint32(pathID)) }
+func (a *gcEllipseSrc) Vertex() (x, y float64, cmd basics.PathCommand) {
+	cmd = a.ell.Vertex(&x, &y)
+	return x, y, cmd
+}
+
 // --- Drawing ---
 
 func drawGammaCorrectionDemo() {
-	a := ctx.GetAgg2D()
-	a.ResetTransformations()
+	img := ctx.GetImage()
+	rbuf := buffer.NewRenderingBufferU8()
+	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Stride())
 
-	w := float64(width)
-	h := float64(height)
+	pf := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
+	ren := renderer.NewRendererBaseWithPixfmt[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](pf)
+
+	w := img.Width()
+	h := img.Height()
 	cx := w / 2
 	cy := h / 2
 
-	dark := 1.0 - gammaContrast
-	light := gammaContrast
+	dark := gammaContrast
 	f := func(v float64) uint8 { return uint8(v*255 + 0.5) }
 
-	// Background: four quadrants, matching the C++ copy_bar sequence.
-	// Top-left: dark gray
-	a.FillColor(agg.NewColor(f(dark), f(dark), f(dark), 255))
-	a.NoLine()
-	a.ResetPath()
-	a.MoveTo(0, 0)
-	a.LineTo(cx, 0)
-	a.LineTo(cx, cy)
-	a.LineTo(0, cy)
-	a.ClosePolygon()
-	a.DrawPath(agg.FillOnly)
+	// Background: matching C++ copy_bar calls.
+	// Left half: dark gray
+	ren.CopyBar(0, 0, cx, h, color.RGBA8[color.Linear]{R: f(1.0 - dark), G: f(1.0 - dark), B: f(1.0 - dark), A: 255})
+	// Right half: light gray
+	ren.CopyBar(cx+1, 0, w, h, color.RGBA8[color.Linear]{R: f(dark), G: f(dark), B: f(dark), A: 255})
+	// Bottom half: reddish (overwrites both sides as in C++)
+	ren.CopyBar(0, cy+1, w, h, color.RGBA8[color.Linear]{R: 255, G: f(1.0 - dark), B: f(1.0 - dark), A: 255})
 
-	// Top-right: light gray
-	a.FillColor(agg.NewColor(f(light), f(light), f(light), 255))
-	a.ResetPath()
-	a.MoveTo(cx, 0)
-	a.LineTo(w, 0)
-	a.LineTo(w, cy)
-	a.LineTo(cx, cy)
-	a.ClosePolygon()
-	a.DrawPath(agg.FillOnly)
+	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{},
+		rasterizer.NewRasterizerSlNoClip(),
+	)
+	sl := scanline.NewScanlineU8()
 
-	// Bottom half: reddish (1, dark, dark) – overwrites both sides as in C++.
-	a.FillColor(agg.NewColor(255, f(dark), f(dark), 255))
-	a.ResetPath()
-	a.MoveTo(0, cy)
-	a.LineTo(w, cy)
-	a.LineTo(w, h)
-	a.LineTo(0, h)
-	a.ClosePolygon()
-	a.DrawPath(agg.FillOnly)
+	// Apply gamma to the rasterizer's AA coverage mapping.
+	gp := gamma.NewGammaPower(gammaValue)
+	ras.SetGamma(gp.Apply)
 
-	// Apply the gamma to the rasterizer's anti-aliasing coverage mapping.
-	a.AntiAliasGamma(gammaValue)
-
-	// Draw the gamma power curve in the top area (like the C++ demo).
-	// The curve maps [0,255] through gamma power.
-	drawGammaCurve(a, cx-128, 20, gammaValue)
+	// Gamma power curve as a green polyline.
+	drawGammaCurveLowLevel(ras, sl, ren, float64(w)/2-128, 50, gammaValue)
 
 	// 5 concentric stroked ellipses: Red, Green, Blue, Black, White.
 	type ellipseSpec struct {
-		dr    float64
-		color agg.Color
+		dr  float64
+		col color.RGBA8[color.Linear]
 	}
 	specs := []ellipseSpec{
-		{0, agg.NewColor(255, 0, 0, 255)},
-		{5, agg.NewColor(0, 200, 0, 255)},
-		{10, agg.NewColor(0, 0, 255, 255)},
-		{15, agg.NewColor(0, 0, 0, 255)},
-		{20, agg.NewColor(255, 255, 255, 255)},
-	}
-	a.NoFill()
-	a.LineWidth(gammaThick)
-	for _, s := range specs {
-		a.LineColor(s.color)
-		a.ResetPath()
-		a.Ellipse(cx, cy, gammaRX-s.dr, gammaRY-s.dr)
-		a.DrawPath(agg.StrokeOnly)
+		{0, color.RGBA8[color.Linear]{R: 255, G: 0, B: 0, A: 255}},
+		{5, color.RGBA8[color.Linear]{R: 0, G: 200, B: 0, A: 255}},
+		{10, color.RGBA8[color.Linear]{R: 0, G: 0, B: 255, A: 255}},
+		{15, color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255}},
+		{20, color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255}},
 	}
 
-	// Reset gamma to default so other demos are not affected.
-	a.AntiAliasGamma(1.0)
+	fcx := float64(w) / 2
+	fcy := float64(h) / 2
+
+	for _, s := range specs {
+		ell := shapes.NewEllipseWithParams(fcx, fcy, gammaRX-s.dr, gammaRY-s.dr, 150, false)
+		stroke := conv.NewConvStroke(&gcEllipseSrc{ell: ell})
+		stroke.SetWidth(gammaThick)
+
+		ras.Reset()
+		ras.AddPath(&gcConvVS{src: stroke}, 0)
+		renscan.RenderScanlinesAASolid(ras, sl, ren, s.col)
+	}
+
+	// No sRGB conversion for this demo.
 }
 
-// drawGammaCurve draws the gamma power curve as a thin green polyline.
-func drawGammaCurve(a *agg.Agg2D, startX, startY, gamma float64) {
+// drawGammaCurveLowLevel draws the gamma power curve as a thin green polyline.
+func drawGammaCurveLowLevel(
+	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
+	sl *scanline.ScanlineU8,
+	ren renscan.BaseRendererInterface[color.RGBA8[color.Linear]],
+	startX, startY, g float64,
+) {
 	const npts = 256
-	a.LineColor(agg.NewColor(80, 160, 80, 255))
-	a.LineWidth(2.0)
-	a.NoFill()
-	a.ResetPath()
+	ps := path.NewPathStorageStl()
 	for i := 0; i < npts; i++ {
 		v := float64(i) / float64(npts-1)
-		gv := math.Pow(v, gamma)
+		gv := math.Pow(v, g)
 		px := startX + float64(i)
-		py := startY + gv*80 // 80px height for the curve
+		py := startY + gv*255.0
 		if i == 0 {
-			a.MoveTo(px, py)
+			ps.MoveTo(px, py)
 		} else {
-			a.LineTo(px, py)
+			ps.LineTo(px, py)
 		}
 	}
-	a.DrawPath(agg.StrokeOnly)
+
+	psAdapter := path.NewPathStorageStlVertexSourceAdapter(ps)
+	stroke := conv.NewConvStroke(psAdapter)
+	stroke.SetWidth(2.0)
+
+	ras.Reset()
+	ras.AddPath(&gcConvVS{src: stroke}, 0)
+	renscan.RenderScanlinesAASolid(ras, sl, ren, color.RGBA8[color.Linear]{R: 80, G: 160, B: 80, A: 255})
 }
 
 // --- Mouse handlers ---
