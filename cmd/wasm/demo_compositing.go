@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"math"
 
-	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
+	icol "github.com/MeKo-Christian/agg_go/internal/color"
 	"github.com/MeKo-Christian/agg_go/internal/order"
 	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
 	"github.com/MeKo-Christian/agg_go/internal/pixfmt/blender"
@@ -22,53 +22,56 @@ var (
 	compAlphaSrc = 0.75
 	compAlphaDst = 1.0
 	compOp       = blender.CompOpSrcOver
-	compImage    *agg.Image
 )
 
 func drawCompositingDemo() {
-	w, h := ctx.GetImage().Width(), ctx.GetImage().Height()
+	img := ctx.GetImage()
+	w, h := img.Width(), img.Height()
 
-	if compImage == nil {
-		compImage = createTestImage(200, 200)
-	}
+	// Attach main rendering buffer using img.Stride().
+	mainRbuf := buffer.NewRenderingBufferWithData[uint8](img.Data, w, h, img.Stride())
+	mainPixf := pixfmt.NewPixFmtRGBA32[color.Linear](mainRbuf)
+	mainRb := renderer.NewRendererBaseWithPixfmt(mainPixf)
 
-	agg2d := ctx.GetAgg2D()
-	agg2d.ResetTransformations()
-	agg2d.ClearAll(agg.White)
+	// Clear to white.
+	mainRb.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
 
-	// Draw checkered background
+	// Draw checkered background.
+	// 0xDF sRGB → linear for the grey squares.
+	greyLinear := icol.ConvertRGBA8SRGBToLinear(icol.RGBA8[icol.SRGB]{R: 0xDF, G: 0xDF, B: 0xDF, A: 0xFF})
+	checkRas := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip(),
+	)
+	checkSl := scanline.NewScanlineU8()
 	for y := 0; y < h; y += 8 {
-		for x := ((y >> 3) & 1) << 3; x < w; x += 16 {
-			agg2d.FillColor(agg.NewColor(0xdf, 0xdf, 0xdf, 0xff))
-			agg2d.Rectangle(float64(x), float64(y), float64(x+7), float64(y+7))
+		xStart := ((y >> 3) & 1) << 3
+		for x := xStart; x < w; x += 16 {
+			fx, fy := float64(x), float64(y)
+			checkRas.Reset()
+			checkRas.AddVertex(fx, fy, uint32(basics.PathCmdMoveTo))
+			checkRas.AddVertex(fx+7, fy, uint32(basics.PathCmdLineTo))
+			checkRas.AddVertex(fx+7, fy+7, uint32(basics.PathCmdLineTo))
+			checkRas.AddVertex(fx, fy+7, uint32(basics.PathCmdLineTo))
+			renscan.RenderScanlinesAASolid(checkRas, checkSl, mainRb, greyLinear)
 		}
 	}
 
-	// 1. Draw Destination Shape (Yellow circle)
-	// We draw it directly to the context using normal alpha blending first
-	agg2d.ResetTransformations()
-
-	// Create a temporary buffer for compositing
+	// Temporary buffer for compositing (transparent black initially).
 	tempBuf := make([]uint8, w*h*4)
 	tempRbuf := buffer.NewRenderingBufferWithData[uint8](tempBuf, w, h, w*4)
 
-	// We need to use RGBA32 (premultiplied) for compositing
+	// Use RGBA32 (non-premultiplied) for compositing.
 	pixf := pixfmt.NewPixFmtRGBA32[color.Linear](tempRbuf)
 	rb := renderer.NewRendererBaseWithPixfmt(pixf)
 	rb.Clear(color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 0})
 
-	// Draw destination image from the test image
-	srcPixf := pixfmt.NewPixFmtRGBA32[color.Linear](buffer.NewRenderingBufferWithData[uint8](compImage.Data, 200, 200, 200*4))
-	rb.BlendFrom(srcPixf, &basics.RectI{X1: 0, Y1: 0, X2: 200, Y2: 200}, 0, 250, basics.Int8u(compAlphaDst*255))
-
-	// Draw destination circle
+	// Draw destination circle.
 	drawCircleComp(rb,
 		color.RGBA8[color.Linear]{R: 0xFD, G: 0xF0, B: 0x6F, A: uint8(compAlphaDst * 255)},
 		color.RGBA8[color.Linear]{R: 0xFE, G: 0x9F, B: 0x34, A: uint8(compAlphaDst * 255)},
 		70*3, 100+24*3, 37*3, 100+79*3)
 
-	// 2. Draw Source Shape (Blue rounded rect) with Compositing Op
-	// Create a custom blender for the compositing op
+	// Draw source shape with selected compositing op.
 	compBlender := blender.NewCompositeBlender[color.Linear, order.RGBA](compOp)
 	compPixf := pixfmt.NewPixFmtAlphaBlendRGBA[color.Linear, blender.CompositeBlender[color.Linear, order.RGBA]](tempRbuf, compBlender)
 	compRb := renderer.NewRendererBaseWithPixfmt(compPixf)
@@ -78,11 +81,11 @@ func drawCompositingDemo() {
 		color.RGBA8[color.Linear]{R: 0x05, G: 0x00, B: 0x5F, A: uint8(compAlphaSrc * 255)},
 		300+50, 100+24*3, 107+50, 100+79*3)
 
-	// Final step: blend the temp buffer back to the main context
-	mainRbuf := buffer.NewRenderingBufferWithData[uint8](ctx.GetImage().Data, w, h, w*4)
-	mainPixf := pixfmt.NewPixFmtRGBA32[color.Linear](mainRbuf)
-	mainRb := renderer.NewRendererBaseWithPixfmt(mainPixf)
+	// Blend temp buffer onto the main buffer.
 	mainRb.BlendFrom(pixf, nil, 0, 0, 255)
+
+	// Gamma-encode linear→sRGB.
+	applyLinearToSRGB(img)
 
 	logStatus(fmt.Sprintf("Compositing Demo: Op=%d, AlphaSrc=%.2f, AlphaDst=%.2f", compOp, compAlphaSrc, compAlphaDst))
 }

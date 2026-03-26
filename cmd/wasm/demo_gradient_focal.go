@@ -1,20 +1,27 @@
+// Port of AGG C++ gradient_focal.cpp.
+//
+// Web variant keeps controls outside AGG widgets: parameters are controlled
+// via JS/URL query params (`gfg`, `gfx`, `gfy`).
 package main
 
 import (
 	"math"
 
-	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/conv"
 	"github.com/MeKo-Christian/agg_go/internal/gamma"
+	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
+	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
+	"github.com/MeKo-Christian/agg_go/internal/renderer"
+	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/shapes"
 	"github.com/MeKo-Christian/agg_go/internal/span"
 	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
 
-// Port of AGG C++ gradient_focal.cpp.
-//
-// Web variant keeps controls outside AGG widgets: parameters are controlled
-// via JS/URL query params (`gfg`, `gfx`, `gfy`).
 var (
 	gradientFocalGamma = 1.0
 	gradientFocalFX    = 40.0
@@ -112,17 +119,56 @@ func applyGammaInvToContextImage(g float64) {
 	}
 }
 
-func drawGradientFocalDemo() {
-	a := ctx.GetAgg2D()
-	a.ResetTransformations()
+// gfEllipseConvAdapter adapts shapes.Ellipse to the conv.VertexSource interface.
+type gfEllipseConvAdapter struct {
+	ell *shapes.Ellipse
+}
 
-	cx := float64(width) * 0.5
-	cy := float64(height) * 0.5
+func (a *gfEllipseConvAdapter) Rewind(pathID uint) {
+	a.ell.Rewind(uint32(pathID))
+}
+
+func (a *gfEllipseConvAdapter) Vertex() (x, y float64, cmd basics.PathCommand) {
+	cmd = a.ell.Vertex(&x, &y)
+	return x, y, cmd
+}
+
+// gfConvVSAdapter bridges a conv.VertexSource to the rasterizer.VertexSource interface.
+type gfConvVSAdapter struct {
+	vs interface {
+		Rewind(pathID uint)
+		Vertex() (x, y float64, cmd basics.PathCommand)
+	}
+}
+
+func (a *gfConvVSAdapter) Rewind(pathID uint32) {
+	a.vs.Rewind(uint(pathID))
+}
+
+func (a *gfConvVSAdapter) Vertex(x, y *float64) uint32 {
+	vx, vy, cmd := a.vs.Vertex()
+	*x = vx
+	*y = vy
+	return uint32(cmd)
+}
+
+func drawGradientFocalDemo() {
+	img := ctx.GetImage()
+	w, h := img.Width(), img.Height()
+
+	rbuf := buffer.NewRenderingBufferU8()
+	rbuf.Attach(img.Data, w, h, img.Stride())
+	pf := pixfmt.NewPixFmtRGBA32Linear(rbuf)
+	rb := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]](pf)
+	rb.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
+
+	cx := float64(w) * 0.5
+	cy := float64(h) * 0.5
 	r := 100.0
 
 	// Match C++ trans_affine_resizing() behavior from 600x400 base window.
-	sx := float64(width) / 600.0
-	sy := float64(height) / 400.0
+	sx := float64(w) / 600.0
+	sy := float64(h) / 400.0
 
 	gradientMtx := transform.NewTransAffine()
 	gradientMtx.Translate(cx, cy)
@@ -137,18 +183,31 @@ func drawGradientFocalDemo() {
 	colorFn := span.NewGradientPrebuiltColorRGBA8[color.Linear](lut)
 	spanGen := span.NewSpanGradient(interpolator, gradientReflect, colorFn, 0, r)
 
-	ras := a.GetInternalRasterizer()
+	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{},
+		rasterizer.NewRasterizerSlNoClip(),
+	)
+	sl := scanline.NewScanlineU8()
+	alloc := span.NewSpanAllocator[color.RGBA8[color.Linear]]()
+
 	ras.Reset()
 	ras.MoveToD(0, 0)
-	ras.LineToD(float64(width), 0)
-	ras.LineToD(float64(width), float64(height))
-	ras.LineToD(0, float64(height))
+	ras.LineToD(float64(w), 0)
+	ras.LineToD(float64(w), float64(h))
+	ras.LineToD(0, float64(h))
 	ras.LineToD(0, 0)
-	a.RenderScanlinesAAWithSpanGen(ras, spanGen)
+	renscan.RenderScanlinesAA(ras, sl, rb, alloc, spanGen)
 
-	ctx.SetColor(agg.White)
-	ctx.SetLineWidth(1.0)
-	ctx.DrawEllipse(cx, cy, r*sx, r*sy)
+	// Draw the circle boundary (white outline), scaled by trans_affine_resizing.
+	scalingMtx := transform.NewTransAffineScalingXY(sx, sy)
+	ell := shapes.NewEllipseWithParams(cx, cy, r, r, 100, false)
+	ellConv := &gfEllipseConvAdapter{ell: ell}
+	stroke := conv.NewConvStroke(ellConv)
+	stroke.SetWidth(1.0)
+	strokeTrans := conv.NewConvTransform(stroke, scalingMtx)
+	ras.Reset()
+	ras.AddPath(&gfConvVSAdapter{vs: strokeTrans}, 0)
+	renscan.RenderScanlinesAASolid(ras, sl, rb, color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
 
 	// C++ applies inverse gamma to the framebuffer after rasterization.
 	applyGammaInvToContextImage(gradientFocalGamma)
