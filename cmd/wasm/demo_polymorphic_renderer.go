@@ -16,8 +16,10 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/color"
 	"github.com/MeKo-Christian/agg_go/internal/path"
 	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
+	"github.com/MeKo-Christian/agg_go/internal/pixfmt/blender"
 	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
 	"github.com/MeKo-Christian/agg_go/internal/renderer"
+	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
 	"github.com/MeKo-Christian/agg_go/internal/scanline"
 )
 
@@ -31,28 +33,61 @@ var (
 	polyRenDragDY   = 0.0
 )
 
+// --- Polymorphic renderer types ---
+
+// polyRenSolidRenderer is the Go equivalent of C++'s polymorphic_renderer_solid_rgba8_base.
+// Any pixel-format backend that implements these methods is a valid renderer.
+type polyRenSolidRenderer interface {
+	Clear(c color.RGBA8[color.SRGB])
+	SetColor(c color.RGBA8[color.SRGB])
+	Prepare()
+	Render(sl renscan.ScanlineInterface)
+}
+
+// polyRenRGB555Renderer is backed by PixFmtRGB555, matching C++'s pix_format_rgb555.
+// Internally it uses linear RGBA8 colors. The interface accepts sRGB colors and
+// this adaptor converts sRGB→linear before passing to the renderer.
+type polyRenRGB555Renderer struct {
+	renBase *renderer.RendererBase[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]]
+	ren     *renscan.RendererScanlineAASolid[*renderer.RendererBase[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]], color.RGBA8[color.Linear]]
+}
+
+func newPolyRenRGB555Renderer(w, h int) (*polyRenRGB555Renderer, []basics.Int16u) {
+	buf16 := make([]basics.Int16u, w*h)
+	rbuf16 := buffer.NewRenderingBufferU16WithData(buf16, w, h, w*2) // positive stride = y-down (no flip)
+	pf := pixfmt.NewPixFmtRGB555(rbuf16, blender.BlenderRGB555{})
+	rb := renderer.NewRendererBaseWithPixfmt[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](pf)
+	ren := renscan.NewRendererScanlineAASolidWithRenderer(rb)
+	return &polyRenRGB555Renderer{renBase: rb, ren: ren}, buf16
+}
+
+func (r *polyRenRGB555Renderer) Clear(c color.RGBA8[color.SRGB]) {
+	r.renBase.Clear(color.ConvertToLinear(c))
+}
+
+func (r *polyRenRGB555Renderer) SetColor(c color.RGBA8[color.SRGB]) {
+	r.ren.SetColor(color.ConvertToLinear(c))
+}
+
+func (r *polyRenRGB555Renderer) Prepare()                              { r.ren.Prepare() }
+func (r *polyRenRGB555Renderer) Render(sl renscan.ScanlineInterface)   { r.ren.Render(sl) }
+
 // --- Rendering ---
 
 func drawPolymorphicRendererDemo() {
-	ctx.GetAgg2D().ResetTransformations()
-
 	img := ctx.GetImage()
 	w, h := img.Width(), img.Height()
-	rbuf := buffer.NewRenderingBufferU8()
-	rbuf.Attach(img.Data, w, h, w*4)
 
-	pixFmt := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
-	renBase := renderer.NewRendererBaseWithPixfmt[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](pixFmt)
-	renBase.ClipBox(0, 0, w, h)
-	renBase.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
+	// Render into a uint16 RGB555 scratch buffer (positive stride = y-down, matching canvas).
+	ren, buf16 := newPolyRenRGB555Renderer(w, h)
+	var sr polyRenSolidRenderer = ren
 
+	// Build the triangle path.
 	ps := path.NewPathStorageStl()
 	ps.MoveTo(polyRenX[0], polyRenY[0])
 	ps.LineTo(polyRenX[1], polyRenY[1])
 	ps.LineTo(polyRenX[2], polyRenY[2])
 	ps.ClosePolygon(basics.PathFlagsNone)
-
-	fillColor := color.RGBA8[color.Linear]{R: 80, G: 30, B: 20, A: 255}
 
 	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
 		rasterizer.RasConvInt{},
@@ -61,16 +96,21 @@ func drawPolymorphicRendererDemo() {
 	ras.AddPath(&pathSourceAdapter{ps: ps}, 0)
 
 	sl := scanline.NewScanlineP8()
-	if ras.RewindScanlines() {
-		sl.Reset(ras.MinX(), ras.MaxX())
-		for ras.SweepScanline(sl) {
-			y := sl.Y()
-			for _, sp := range sl.Spans() {
-				if sp.Len > 0 {
-					renBase.BlendSolidHspan(int(sp.X), y, int(sp.Len), fillColor, sp.Covers)
-				}
-			}
-		}
+
+	// Polymorphic dispatch: same code works with any polyRenSolidRenderer,
+	// just as the C++ version works with any PixFmt.
+	sr.Clear(color.RGBA8[color.SRGB]{R: 255, G: 255, B: 255, A: 255})
+	sr.SetColor(color.RGBA8[color.SRGB]{R: 80, G: 30, B: 20, A: 255})
+	renscan.RenderScanlines(ras, sl, sr)
+
+	// Convert the RGB555 uint16 buffer to RGBA8 for display.
+	// No sRGB conversion needed (DisableLinearRGBToSRGB: true in standalone).
+	for i, pix := range buf16 {
+		r, g, b := pixfmt.UnpackPixel555(pix)
+		img.Data[i*4+0] = r
+		img.Data[i*4+1] = g
+		img.Data[i*4+2] = b
+		img.Data[i*4+3] = 255
 	}
 
 	// Draw interactive vertex handles.
