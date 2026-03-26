@@ -1113,6 +1113,49 @@ export function setupEventHandlers(
     renderSelectedDemo();
   });
 
+  // rasterizer_compound controls
+  document.getElementById("rcWidthSlider").addEventListener("input", () => {
+    const val = parseFloat(document.getElementById("rcWidthSlider").value);
+    document.getElementById("rcWidthValue").textContent = val.toFixed(2);
+    setCompoundWidth(val);
+    persistDemoParams("rasterizer_compound");
+    renderSelectedDemo();
+  });
+  document.getElementById("rcAlpha1Slider").addEventListener("input", () => {
+    const val = parseFloat(document.getElementById("rcAlpha1Slider").value);
+    document.getElementById("rcAlpha1Value").textContent = val.toFixed(3);
+    setCompoundAlpha1(val);
+    persistDemoParams("rasterizer_compound");
+    renderSelectedDemo();
+  });
+  document.getElementById("rcAlpha2Slider").addEventListener("input", () => {
+    const val = parseFloat(document.getElementById("rcAlpha2Slider").value);
+    document.getElementById("rcAlpha2Value").textContent = val.toFixed(3);
+    setCompoundAlpha2(val);
+    persistDemoParams("rasterizer_compound");
+    renderSelectedDemo();
+  });
+  document.getElementById("rcAlpha3Slider").addEventListener("input", () => {
+    const val = parseFloat(document.getElementById("rcAlpha3Slider").value);
+    document.getElementById("rcAlpha3Value").textContent = val.toFixed(3);
+    setCompoundAlpha3(val);
+    persistDemoParams("rasterizer_compound");
+    renderSelectedDemo();
+  });
+  document.getElementById("rcAlpha4Slider").addEventListener("input", () => {
+    const val = parseFloat(document.getElementById("rcAlpha4Slider").value);
+    document.getElementById("rcAlpha4Value").textContent = val.toFixed(3);
+    setCompoundAlpha4(val);
+    persistDemoParams("rasterizer_compound");
+    renderSelectedDemo();
+  });
+  document.getElementById("rcInvertOrder").addEventListener("change", () => {
+    const val = document.getElementById("rcInvertOrder").checked;
+    setCompoundInvert(val);
+    persistDemoParams("rasterizer_compound");
+    renderSelectedDemo();
+  });
+
   // flash_rasterizer2 controls
   document.getElementById("fr2ShapeSlider").addEventListener("input", () => {
     const val = parseInt(document.getElementById("fr2ShapeSlider").value, 10);
