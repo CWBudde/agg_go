@@ -2,8 +2,6 @@ package linethickness
 
 import (
 	"testing"
-
-	agg "github.com/MeKo-Christian/agg_go"
 )
 
 func TestStateClamp(t *testing.T) {
@@ -18,9 +16,10 @@ func TestStateClamp(t *testing.T) {
 }
 
 func TestDraw(t *testing.T) {
-	ctx := agg.NewContext(640, 480)
-	Draw(ctx, DefaultState())
-	if len(ctx.GetImage().Data) != 640*480*4 {
-		t.Fatalf("unexpected image size: %d", len(ctx.GetImage().Data))
+	w, h := Width, Height
+	buf := make([]uint8, w*h*4)
+	Draw(buf, w, h, DefaultState())
+	if len(buf) != w*h*4 {
+		t.Fatalf("unexpected buffer size: %d", len(buf))
 	}
 }

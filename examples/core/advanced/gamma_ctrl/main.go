@@ -148,24 +148,31 @@ func (d *demo) Render(img *agg.Image) {
 
 	eWidth := float64(gammaCtrlWidth)/2.0 - 10.0
 	eCenter := float64(gammaCtrlWidth) / 2.0
+
+	// Ellipse rows match C++ gamma_ctrl.cpp colors and radii.
+	// With FlipY=true, high y values appear near the display top.
+	// C++ uses: black at y=220, gray at y=260, light-gray at y=300,
+	// dark-blue (rgba 0,0,0.4) at y=340/380/420.
+	// Inner circle radius is 11 for y=220-300 and 10.5 for y=340-420.
 	rows := []struct {
-		cy    float64
-		rx    float64
-		ry    float64
-		width float64
-		color agg.Color
+		cy     float64
+		rx     float64
+		ry     float64
+		width  float64
+		innerR float64
+		color  agg.Color
 	}{
-		{220, eWidth, 15.0, 2.0, agg.NewColor(0, 0, 0x66, 255)},
-		{260, eWidth, 15.0, 2.0, agg.NewColor(0, 0, 0x66, 255)},
-		{300, eWidth, 15.0, 2.0, agg.NewColor(0, 0, 0x66, 255)},
-		{340, eWidth, 15.5, 1.0, agg.NewColor(192, 192, 192, 255)},
-		{380, eWidth, 15.5, 0.4, agg.NewColor(127, 127, 127, 255)},
-		{420, eWidth, 15.5, 0.1, agg.NewColor(0, 0, 0, 255)},
+		{220, eWidth, 15.0, 2.0, 11.0, agg.NewColor(0, 0, 0, 255)},
+		{260, eWidth, 15.0, 2.0, 11.0, agg.NewColor(127, 127, 127, 255)},
+		{300, eWidth, 15.0, 2.0, 11.0, agg.NewColor(192, 192, 192, 255)},
+		{340, eWidth, 15.5, 1.0, 10.5, agg.NewColor(0, 0, 102, 255)},
+		{380, eWidth, 15.5, 0.4, 10.5, agg.NewColor(0, 0, 102, 255)},
+		{420, eWidth, 15.5, 0.1, 10.5, agg.NewColor(0, 0, 102, 255)},
 	}
 
 	for _, row := range rows {
 		renderStrokeEllipse(a, eCenter, row.cy, row.rx, row.ry, 100, row.width, row.color)
-		renderStrokeEllipse(a, eCenter, row.cy, 11.0, 11.0, 100, row.width, row.color)
+		renderStrokeEllipse(a, eCenter, row.cy, row.innerR, row.innerR, 100, row.width, row.color)
 	}
 
 	text := gsv.NewGSVText()

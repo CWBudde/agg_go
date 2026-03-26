@@ -1,51 +1,60 @@
+// Port of AGG C++ line_thickness.cpp (flip_y = true).
+//
+// Renders a row of straight lines of increasing thickness and a wheel of
+// fine lines, then applies a slight blur. Interactive sliders control the line
+// thickness and blur radius; checkboxes select monochrome vs. colour and
+// invert the foreground/background.
+//
+// Rendering is done in a work buffer (y=0 at bottom, C++ coordinate frame)
+// and copied with a y-flip into the output image, matching the
+// flip_y=true platform_support convention. Mouse y-coordinates are flipped
+// in the handlers before being forwarded to the controls.
 package main
 
 import (
 	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
-	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
-	"github.com/MeKo-Christian/agg_go/internal/ctrl/checkbox"
-	"github.com/MeKo-Christian/agg_go/internal/ctrl/slider"
+	ctrlbase "github.com/MeKo-Christian/agg_go/internal/ctrl"
+	checkboxctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/checkbox"
+	sliderctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/slider"
 	"github.com/MeKo-Christian/agg_go/internal/demo/linethickness"
-	"github.com/MeKo-Christian/agg_go/internal/order"
 	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
-	"github.com/MeKo-Christian/agg_go/internal/pixfmt/blender"
 	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
 	"github.com/MeKo-Christian/agg_go/internal/renderer"
+	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
 	"github.com/MeKo-Christian/agg_go/internal/scanline"
 )
 
 const (
-	frameWidth  = 640
-	frameHeight = 480
+	frameWidth  = linethickness.Width
+	frameHeight = linethickness.Height
 )
 
-type control interface {
-	InRect(x, y float64) bool
-	OnMouseButtonDown(x, y float64) bool
-	OnMouseButtonUp(x, y float64) bool
-	OnMouseMove(x, y float64, buttonPressed bool) bool
-	NumPaths() uint
-	Rewind(pathID uint)
-	Vertex() (x, y float64, cmd basics.PathCommand)
-	Color(pathID uint) color.RGBA
+// rasType is the concrete rasterizer type used throughout this demo.
+type rasType = rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
+
+func newRasterizer() *rasType {
+	return rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{},
+		rasterizer.NewRasterizerSlNoClip(),
+	)
 }
 
-type controlPathAdapter struct {
-	rewindFn func(pathID uint)
-	vertexFn func() (x, y float64, cmd basics.PathCommand)
+// ctrlVS adapts a ctrl.Ctrl to the rasterizer.VertexSource interface.
+type ctrlVS struct {
+	ctrl ctrlbase.Ctrl[color.RGBA]
 }
 
-func (a *controlPathAdapter) Rewind(pathID uint32) { a.rewindFn(uint(pathID)) }
-func (a *controlPathAdapter) Vertex(x, y *float64) uint32 {
-	vx, vy, cmd := a.vertexFn()
-	*x = vx
-	*y = vy
+func (v *ctrlVS) Rewind(id uint32) { v.ctrl.Rewind(uint(id)) }
+func (v *ctrlVS) Vertex(x, y *float64) uint32 {
+	vx, vy, cmd := v.ctrl.Vertex()
+	*x, *y = vx, vy
 	return uint32(cmd)
 }
 
+// rgbaToRGBA8 converts the float-based color.RGBA to a clamped RGBA8.
 func rgbaToRGBA8(c color.RGBA) color.RGBA8[color.Linear] {
 	clamp := func(v float64) uint8 {
 		if v <= 0 {
@@ -56,50 +65,41 @@ func rgbaToRGBA8(c color.RGBA) color.RGBA8[color.Linear] {
 		}
 		return uint8(v*255 + 0.5)
 	}
-	return color.RGBA8[color.Linear]{
-		R: clamp(c.R),
-		G: clamp(c.G),
-		B: clamp(c.B),
-		A: clamp(c.A),
+	return color.RGBA8[color.Linear]{R: clamp(c.R), G: clamp(c.G), B: clamp(c.B), A: clamp(c.A)}
+}
+
+// renderCtrl renders all paths of a control widget into the work buffer.
+func renderCtrl(
+	ras *rasType,
+	sl *scanline.ScanlineU8,
+	rb *renderer.RendererBase[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]],
+	ctrl ctrlbase.Ctrl[color.RGBA],
+) {
+	vs := &ctrlVS{ctrl: ctrl}
+	for i := range ctrl.NumPaths() {
+		ras.Reset()
+		ras.AddPath(vs, uint32(i))
+		renscan.RenderScanlinesAASolid(ras, sl, rb, rgbaToRGBA8(ctrl.Color(i)))
 	}
 }
 
-func renderControl(
-	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
-	sl *scanline.ScanlineU8,
-	renBase *renderer.RendererBase[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]],
-	ctrl control,
-) {
-	adapter := &controlPathAdapter{
-		rewindFn: ctrl.Rewind,
-		vertexFn: ctrl.Vertex,
-	}
-	for pathID := uint(0); pathID < ctrl.NumPaths(); pathID++ {
-		ras.Reset()
-		ras.AddPath(adapter, uint32(pathID))
-		col := rgbaToRGBA8(ctrl.Color(pathID))
-		if !ras.RewindScanlines() {
-			continue
-		}
-		sl.Reset(ras.MinX(), ras.MaxX())
-		for ras.SweepScanline(sl) {
-			y := sl.Y()
-			for _, spanData := range sl.Spans() {
-				if spanData.Len > 0 {
-					renBase.BlendSolidHspan(int(spanData.X), y, int(spanData.Len), col, spanData.Covers)
-				}
-			}
-		}
+// copyFlipY copies src to dst with a vertical flip.
+func copyFlipY(src, dst []uint8, w, h int) {
+	stride := w * 4
+	for y := range h {
+		srcOff := (h - 1 - y) * stride
+		dstOff := y * stride
+		copy(dst[dstOff:dstOff+stride], src[srcOff:srcOff+stride])
 	}
 }
 
 type demo struct {
 	state     linethickness.State
-	thickness *slider.SliderCtrl
-	blur      *slider.SliderCtrl
-	mono      *checkbox.CheckboxCtrl[color.RGBA]
-	invert    *checkbox.CheckboxCtrl[color.RGBA]
-	controls  []control
+	thickness *sliderctrl.SliderCtrl
+	blur      *sliderctrl.SliderCtrl
+	mono      *checkboxctrl.CheckboxCtrl[color.RGBA]
+	invert    *checkboxctrl.CheckboxCtrl[color.RGBA]
+	ctrls     []ctrlbase.Ctrl[color.RGBA]
 }
 
 func newDemo() *demo {
@@ -107,23 +107,27 @@ func newDemo() *demo {
 		state: linethickness.DefaultState(),
 	}
 
-	d.thickness = slider.NewSliderCtrl(10, 480-19, 640-10, 480-10, false)
+	// C++: m_slider1(10, 10,    640-10, 19,    !flip_y=false)  line thickness
+	//      m_slider2(10, 10+20, 640-10, 19+20, !flip_y=false)  blur radius
+	//      m_cbox1  (10, 10+40, "Monochrome",  !flip_y=false)
+	//      m_cbox2  (10, 10+60, "Invert",      !flip_y=false)
+	d.thickness = sliderctrl.NewSliderCtrl(10, 10, 630, 19, false)
 	d.thickness.SetRange(0.0, 5.0)
 	d.thickness.SetValue(d.state.Thickness)
 	d.thickness.SetLabel("Line thickness=%1.2f")
 
-	d.blur = slider.NewSliderCtrl(10, 480-39, 640-10, 480-30, false)
+	d.blur = sliderctrl.NewSliderCtrl(10, 30, 630, 39, false)
 	d.blur.SetRange(0.0, 2.0)
 	d.blur.SetValue(d.state.Blur)
 	d.blur.SetLabel("Blur radius=%1.2f")
 
-	d.mono = checkbox.NewDefaultCheckboxCtrl(10, 480-64, "Monochrome", false)
+	d.mono = checkboxctrl.NewDefaultCheckboxCtrl(10, 50, "Monochrome", false)
 	d.mono.SetChecked(d.state.Mono)
 
-	d.invert = checkbox.NewDefaultCheckboxCtrl(10, 480-84, "Invert", false)
+	d.invert = checkboxctrl.NewDefaultCheckboxCtrl(10, 70, "Invert", false)
 	d.invert.SetChecked(d.state.Invert)
 
-	d.controls = []control{d.thickness, d.blur, d.mono, d.invert}
+	d.ctrls = []ctrlbase.Ctrl[color.RGBA]{d.thickness, d.blur, d.mono, d.invert}
 	return d
 }
 
@@ -136,31 +140,41 @@ func (d *demo) syncState() {
 }
 
 func (d *demo) Render(img *agg.Image) {
-	ctx := agg.NewContextForImage(img)
+	w, h := frameWidth, frameHeight
 	d.syncState()
-	linethickness.Draw(ctx, d.state)
 
-	imgData := img.Data
-	rbuf := buffer.NewRenderingBufferU8WithData(imgData, frameWidth, frameHeight, frameWidth*4)
-	pf := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
-	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]](pf)
-	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
-		rasterizer.RasConvInt{},
-		rasterizer.NewRasterizerSlNoClip(),
-	)
+	// Work buffer: positive stride, y=0 at bottom (C++ y-up frame).
+	workBuf := make([]uint8, w*h*4)
+
+	// Render scene content (straight lines + wheel + blur).
+	linethickness.Draw(workBuf, w, h, d.state)
+
+	// Render controls on top of the blurred scene.
+	rbuf := buffer.NewRenderingBufferU8()
+	rbuf.Attach(workBuf, w, h, w*4)
+	pf := pixfmt.NewPixFmtRGBA32[color.Linear](rbuf)
+	rb := renderer.NewRendererBaseWithPixfmt(pf)
+	ras := newRasterizer()
 	sl := scanline.NewScanlineU8()
 
-	for _, ctrl := range d.controls {
-		renderControl(ras, sl, renBase, ctrl)
+	for _, ctrl := range d.ctrls {
+		renderCtrl(ras, sl, rb, ctrl)
 	}
+
+	// Copy work buffer to output image with y-flip (flip_y=true convention).
+	copyFlipY(workBuf, img.Data, w, h)
 }
+
+// flipY converts screen y (y=0 at top) to work-buffer y (y=0 at bottom).
+func flipY(y int) int { return frameHeight - 1 - y }
 
 func (d *demo) OnMouseDown(x, y int, btn lowlevelrunner.Buttons) bool {
 	if !btn.Left {
 		return false
 	}
-	for _, ctrl := range d.controls {
-		if ctrl.OnMouseButtonDown(float64(x), float64(y)) {
+	wy := flipY(y)
+	for _, ctrl := range d.ctrls {
+		if ctrl.OnMouseButtonDown(float64(x), float64(wy)) {
 			return true
 		}
 	}
@@ -168,9 +182,10 @@ func (d *demo) OnMouseDown(x, y int, btn lowlevelrunner.Buttons) bool {
 }
 
 func (d *demo) OnMouseMove(x, y int, btn lowlevelrunner.Buttons) bool {
+	wy := flipY(y)
 	redraw := false
-	for _, ctrl := range d.controls {
-		if ctrl.OnMouseMove(float64(x), float64(y), btn.Left) {
+	for _, ctrl := range d.ctrls {
+		if ctrl.OnMouseMove(float64(x), float64(wy), btn.Left) {
 			redraw = true
 		}
 	}
@@ -179,9 +194,10 @@ func (d *demo) OnMouseMove(x, y int, btn lowlevelrunner.Buttons) bool {
 
 func (d *demo) OnMouseUp(x, y int, btn lowlevelrunner.Buttons) bool {
 	_ = btn
+	wy := flipY(y)
 	redraw := false
-	for _, ctrl := range d.controls {
-		if ctrl.OnMouseButtonUp(float64(x), float64(y)) {
+	for _, ctrl := range d.ctrls {
+		if ctrl.OnMouseButtonUp(float64(x), float64(wy)) {
 			redraw = true
 		}
 	}
@@ -190,8 +206,9 @@ func (d *demo) OnMouseUp(x, y int, btn lowlevelrunner.Buttons) bool {
 
 func main() {
 	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "Line Thickness",
-		Width:  frameWidth,
-		Height: frameHeight,
+		Title:                 "Anti-aliased lines with blurring",
+		Width:                 frameWidth,
+		Height:                frameHeight,
+		EncodeLinearRGBToSRGB: true,
 	}, newDemo())
 }
