@@ -4,86 +4,107 @@ package main
 import (
 	"math"
 
-	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/conv"
 	"github.com/MeKo-Christian/agg_go/internal/path"
+	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
+	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
+	"github.com/MeKo-Christian/agg_go/internal/renderer"
 	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/scanline"
 )
 
-// enlargedPixel holds a single pixel to be drawn after the scanline sweep.
-type enlargedPixel struct {
-	x, y  float64
-	color agg.Color
+// aaRasType is the concrete rasterizer type used throughout this demo.
+type aaRasType = rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
+
+func newAARasterizer() *aaRasType {
+	return rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{},
+		rasterizer.NewRasterizerSlNoClip(),
+	)
 }
 
-// EnlargedRenderer implements the AGG Scanline Renderer interface.
-// It draws a "zoomed in" view where each physical pixel is rendered as a large square.
-//
-// Drawing via ctx.FillRectangle goes through the shared rasterizer, which would
-// corrupt the ongoing sweep. So Render only collects pixels; Flush draws them.
-type EnlargedRenderer struct {
-	ctx       *agg.Context
-	pixelSize float64
-	color     agg.Color
-	pixels    []enlargedPixel
+// aaRendererBase is the concrete renderer base type used throughout this demo.
+type aaRendererBase = renderer.RendererBase[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]]
+
+// rendererEnlargedAA draws each scanline pixel as a large square via its own
+// rasterizer, matching the C++ renderer_enlarged exactly.
+type rendererEnlargedAA struct {
+	ras   *aaRasType
+	sl    *scanline.ScanlineU8
+	renRb *aaRendererBase
+	size  float64
+	col   color.RGBA8[color.Linear]
 }
 
-func (r *EnlargedRenderer) Prepare() { r.pixels = r.pixels[:0] }
-
-func (r *EnlargedRenderer) SetColor(c color.RGBA8[color.Linear]) {
-	r.color = agg.NewColorRGBA8(c)
+func newRendererEnlargedAA(renRb *aaRendererBase, size float64) *rendererEnlargedAA {
+	return &rendererEnlargedAA{
+		ras:   newAARasterizer(),
+		sl:    scanline.NewScanlineU8(),
+		renRb: renRb,
+		size:  size,
+	}
 }
 
-func (r *EnlargedRenderer) Render(sl renscan.ScanlineInterface) {
+func (r *rendererEnlargedAA) Prepare() {}
+
+func (r *rendererEnlargedAA) SetColor(c color.RGBA8[color.Linear]) { r.col = c }
+
+func (r *rendererEnlargedAA) Render(sl renscan.ScanlineInterface) {
 	y := sl.Y()
-	numSpans := sl.NumSpans()
 	it := sl.BeginIterator()
-
-	//nolint:intrange // Scanline spans expose an int count; keep loop variable compatible with the renderer API.
-	for i := 0; i < numSpans; i++ {
+	for i, n := 0, sl.NumSpans(); i < n; i++ {
 		span := it.GetSpan()
 		x := span.X
 		numPix := span.Len
 		covers := span.Covers
-
-		// Handle solid spans (negative len means solid with single cover value)
-		if numPix < 0 {
+		solid := numPix < 0
+		if solid {
 			numPix = -numPix
-			cover := covers[0]
-			alpha := (uint16(cover) * uint16(r.color.A)) >> 8
-			c := agg.NewColor(r.color.R, r.color.G, r.color.B, uint8(alpha))
-			for j := 0; j < numPix; j++ {
-				r.pixels = append(r.pixels, enlargedPixel{
-					x:     float64(x+j) * r.pixelSize,
-					y:     float64(y) * r.pixelSize,
-					color: c,
-				})
-			}
-		} else {
-			for j := 0; j < numPix; j++ {
-				cover := covers[j]
-				alpha := (uint16(cover) * uint16(r.color.A)) >> 8
-				r.pixels = append(r.pixels, enlargedPixel{
-					x:     float64(x+j) * r.pixelSize,
-					y:     float64(y) * r.pixelSize,
-					color: agg.NewColor(r.color.R, r.color.G, r.color.B, uint8(alpha)),
-				})
-			}
 		}
-
-		if i < numSpans-1 {
+		for j := 0; j < numPix; j++ {
+			cover := covers[0]
+			if !solid {
+				cover = covers[j]
+			}
+			a := (uint16(cover) * uint16(r.col.A)) >> 8
+			r.drawSquare(float64(x+j), float64(y),
+				color.RGBA8[color.Linear]{R: r.col.R, G: r.col.G, B: r.col.B, A: uint8(a)})
+		}
+		if i < n-1 {
 			it.Next()
 		}
 	}
 }
 
-// Flush draws all collected pixels. Must be called after ScanlineRender returns.
-func (r *EnlargedRenderer) Flush() {
-	for _, p := range r.pixels {
-		r.ctx.SetColor(p.color)
-		r.ctx.FillRectangle(p.x, p.y, r.pixelSize, r.pixelSize)
-	}
+func (r *rendererEnlargedAA) drawSquare(x, y float64, c color.RGBA8[color.Linear]) {
+	r.ras.Reset()
+	r.ras.MoveToD(x*r.size, y*r.size)
+	r.ras.LineToD(x*r.size+r.size, y*r.size)
+	r.ras.LineToD(x*r.size+r.size, y*r.size+r.size)
+	r.ras.LineToD(x*r.size, y*r.size+r.size)
+	renscan.RenderScanlinesAASolid(r.ras, r.sl, r.renRb, c)
+}
+
+// pathStlVSAA wraps PathStorageStl as a conv.VertexSource.
+type pathStlVSAA struct{ ps *path.PathStorageStl }
+
+func (a *pathStlVSAA) Rewind(id uint) { a.ps.Rewind(id) }
+func (a *pathStlVSAA) Vertex() (float64, float64, basics.PathCommand) {
+	x, y, cmd := a.ps.NextVertex()
+	return x, y, basics.PathCommand(cmd)
+}
+
+// convVSAA adapts a conv.VertexSource to the rasterizer's VertexSource interface.
+type convVSAA struct{ src conv.VertexSource }
+
+func (a *convVSAA) Rewind(id uint32) { a.src.Rewind(uint(id)) }
+func (a *convVSAA) Vertex(x, y *float64) uint32 {
+	vx, vy, cmd := a.src.Vertex()
+	*x, *y = vx, vy
+	return uint32(cmd)
 }
 
 var (
@@ -96,52 +117,85 @@ var (
 )
 
 func drawAADemo() {
-	agg2d := ctx.GetAgg2D()
-	agg2d.ResetTransformations()
+	img := ctx.GetImage()
+	rbuf := buffer.NewRenderingBufferU8()
+	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Stride())
 
-	// 1. Draw the enlarged pixel representation
-	ps := path.NewPathStorageStl()
-	ps.MoveTo(aaTriangleX[0]/aaPixelSize, aaTriangleY[0]/aaPixelSize)
-	ps.LineTo(aaTriangleX[1]/aaPixelSize, aaTriangleY[1]/aaPixelSize)
-	ps.LineTo(aaTriangleX[2]/aaPixelSize, aaTriangleY[2]/aaPixelSize)
-	ps.ClosePolygon(basics.PathFlagsNone)
+	mainPixf := pixfmt.NewPixFmtRGBA32[color.Linear](rbuf)
+	mainRb := renderer.NewRendererBaseWithPixfmt(mainPixf)
+	mainRb.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
 
-	enlargedRen := &EnlargedRenderer{
-		ctx:       ctx,
-		pixelSize: aaPixelSize,
-		color:     agg.Black,
-	}
+	sizeMul := aaPixelSize
 
-	// Use adapter to fix Rewind(uint) vs Rewind(uint32) mismatch
-	adapter := &pathSourceAdapter{ps: ps}
+	ras := newAARasterizer()
+	sl := scanline.NewScanlineU8()
 
-	// Set up the rasterizer
-	ras := agg2d.GetInternalRasterizer()
+	// 1. Enlarged-pixel rendering.
+	renEnlarged := newRendererEnlargedAA(mainRb, sizeMul)
+	renEnlarged.SetColor(color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255})
+
 	ras.Reset()
-	ras.AddPath(adapter, 0)
+	ras.MoveToD(aaTriangleX[0]/sizeMul, aaTriangleY[0]/sizeMul)
+	ras.LineToD(aaTriangleX[1]/sizeMul, aaTriangleY[1]/sizeMul)
+	ras.LineToD(aaTriangleX[2]/sizeMul, aaTriangleY[2]/sizeMul)
+	renscan.RenderScanlines(ras, sl, renEnlarged)
 
-	// Collect pixel data during sweep (drawing would reset the shared rasterizer)
-	agg2d.ScanlineRender(ras, enlargedRen)
-	// Now flush: draw all collected enlarged pixels
-	enlargedRen.Flush()
-
-	// 2. Draw the "real size" triangle outline for comparison
-	ctx.SetColor(agg.NewColor(0, 150, 160, 200))
-	ctx.SetLineWidth(2.0)
-	ctx.BeginPath()
-	ctx.MoveTo(aaTriangleX[0], aaTriangleY[0])
-	ctx.LineTo(aaTriangleX[1], aaTriangleY[1])
-	ctx.LineTo(aaTriangleX[2], aaTriangleY[2])
-	ctx.ClosePath()
-	ctx.Stroke()
-
-	// 3. Draw interactive handles
-	for i := 0; i < 3; i++ {
-		ctx.SetColor(agg.RGBA(0.8, 0.2, 0.1, 0.6))
-		ctx.FillCircle(aaTriangleX[i], aaTriangleY[i], 5)
-		ctx.SetColor(agg.Black)
-		ctx.DrawCircle(aaTriangleX[i], aaTriangleY[i], 5)
+	// 2. Full-scale triangle outline in teal via conv_stroke.
+	teal := color.RGBA8[color.Linear]{R: 0, G: 150, B: 160, A: 200}
+	edges := [3][2]int{{0, 1}, {1, 2}, {2, 0}}
+	for _, e := range edges {
+		ps := path.NewPathStorageStl()
+		ps.MoveTo(aaTriangleX[e[0]], aaTriangleY[e[0]])
+		ps.LineTo(aaTriangleX[e[1]], aaTriangleY[e[1]])
+		stroke := conv.NewConvStroke(&pathStlVSAA{ps: ps})
+		stroke.SetWidth(2.0)
+		ras.Reset()
+		ras.AddPath(&convVSAA{src: stroke}, 0)
+		renscan.RenderScanlinesAASolid(ras, sl, mainRb, teal)
 	}
+
+	// 3. Draw interactive handles.
+	handleCol := color.RGBA8[color.Linear]{R: 204, G: 51, B: 26, A: 153}
+	black := color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255}
+	for i := 0; i < 3; i++ {
+		drawAAHandle(ras, sl, mainRb, aaTriangleX[i], aaTriangleY[i], handleCol, black)
+	}
+
+	applyLinearToSRGB(img)
+}
+
+// drawAAHandle renders a filled circle and its outline at (cx, cy).
+func drawAAHandle(
+	ras *aaRasType,
+	sl *scanline.ScanlineU8,
+	renRb *aaRendererBase,
+	cx, cy float64,
+	fillCol, outlineCol color.RGBA8[color.Linear],
+) {
+	const r = 5.0
+	const steps = 32
+	// Filled circle.
+	ras.Reset()
+	ras.MoveToD(cx+r, cy)
+	for i := 1; i < steps; i++ {
+		angle := float64(i) * 2.0 * math.Pi / float64(steps)
+		ras.LineToD(cx+r*math.Cos(angle), cy+r*math.Sin(angle))
+	}
+	renscan.RenderScanlinesAASolid(ras, sl, renRb, fillCol)
+
+	// Outline via conv_stroke.
+	ps := path.NewPathStorageStl()
+	ps.MoveTo(cx+r, cy)
+	for i := 1; i < steps; i++ {
+		angle := float64(i) * 2.0 * math.Pi / float64(steps)
+		ps.LineTo(cx+r*math.Cos(angle), cy+r*math.Sin(angle))
+	}
+	ps.ClosePolygon(basics.PathFlagsNone)
+	stroke := conv.NewConvStroke(&pathStlVSAA{ps: ps})
+	stroke.SetWidth(1.0)
+	ras.Reset()
+	ras.AddPath(&convVSAA{src: stroke}, 0)
+	renscan.RenderScanlinesAASolid(ras, sl, renRb, outlineCol)
 }
 
 func handleAAMouseDown(x, y float64) bool {
