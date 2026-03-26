@@ -1,3 +1,7 @@
+// Port of AGG C++ alpha_mask.cpp – alpha-masked lion rendering.
+//
+// Generates a grayscale alpha mask from random ellipses, then renders the
+// lion through it so only the mask's bright regions show the lion colours.
 package main
 
 import (
@@ -5,7 +9,6 @@ import (
 	"math"
 	"math/rand"
 
-	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
@@ -13,6 +16,7 @@ import (
 	liondemo "github.com/MeKo-Christian/agg_go/internal/demo/lion"
 	"github.com/MeKo-Christian/agg_go/internal/path"
 	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
+	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
 	"github.com/MeKo-Christian/agg_go/internal/renderer"
 	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
 	"github.com/MeKo-Christian/agg_go/internal/scanline"
@@ -41,8 +45,9 @@ func generateAlphaMask(w, h int) {
 
 	maskRb.Clear(color.Gray8[color.SRGB]{V: 0, A: 255})
 
-	agg2d := ctx.GetAgg2D()
-	ras := agg2d.GetInternalRasterizer()
+	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip(),
+	)
 	sl := scanline.NewScanlineP8()
 
 	for i := 0; i < 10; i++ {
@@ -76,7 +81,8 @@ func generateAlphaMask(w, h int) {
 }
 
 func drawAlphaMaskDemo() {
-	w, h := ctx.GetImage().Width(), ctx.GetImage().Height()
+	img := ctx.GetImage()
+	w, h := img.Width(), img.Height()
 	if amAlphaMask == nil {
 		generateAlphaMask(w, h)
 	}
@@ -86,60 +92,79 @@ func drawAlphaMaskDemo() {
 		lionData = &ld
 	}
 
-	agg2d := ctx.GetAgg2D()
-	agg2d.ResetTransformations()
+	// Attach the image buffer.
+	rbuf := buffer.NewRenderingBufferU8()
+	rbuf.Attach(img.Data, w, h, img.Stride())
 
-	// Fill background with white
-	agg2d.ClearAll(agg.White)
+	// White background.
+	imgPixf := pixfmt.NewPixFmtRGBA32[color.Linear](rbuf)
+	mainRb := renderer.NewRendererBaseWithPixfmt(imgPixf)
+	mainRb.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
 
-	// Draw checkered background
+	// Draw checkered background using direct pixel rendering.
+	checkColor := color.RGBA8[color.Linear]{R: 0xdf, G: 0xdf, B: 0xdf, A: 0xff}
 	for y := 0; y < h; y += 8 {
 		for x := ((y >> 3) & 1) << 3; x < w; x += 16 {
-			agg2d.FillColor(agg.NewColor(0xdf, 0xdf, 0xdf, 0xff))
-			agg2d.Rectangle(float64(x), float64(y), float64(x+7), float64(y+7))
+			x2 := x + 8
+			if x2 > w {
+				x2 = w
+			}
+			y2 := y + 8
+			if y2 > h {
+				y2 = h
+			}
+			mainRb.CopyBar(x, y, x2-1, y2-1, checkColor)
 		}
 	}
 
-	// Setup transformation for the lion
-	baseDX, baseDY := 0.0, 0.0
-	// Get bounding box for lion
-	if lionData.NPaths > 0 {
-		x1, y1, x2, y2 := 20.0, 20.0, 480.0, 380.0
-		baseDX = (x2 - x1) * 0.5
-		baseDY = (y2 - y1) * 0.5
+	// Build transform for the lion.
+	// Compute bounding box from lion path data.
+	minX, minY := 1e9, 1e9
+	maxX, maxY := -1e9, -1e9
+	for idx := uint(0); idx < lionData.Path.TotalVertices(); idx++ {
+		x, y, cmd := lionData.Path.Vertex(idx)
+		pathCmd := basics.PathCommand(cmd)
+		if basics.IsMoveTo(pathCmd) || basics.IsLineTo(pathCmd) {
+			if x < minX {
+				minX = x
+			}
+			if y < minY {
+				minY = y
+			}
+			if x > maxX {
+				maxX = x
+			}
+			if y > maxY {
+				maxY = y
+			}
+		}
 	}
+	baseDX := (maxX - minX) / 2.0
+	baseDY := (maxY - minY) / 2.0
 
-	agg2d.ResetTransformations()
-	agg2d.Translate(-baseDX, -baseDY)
-	agg2d.Scale(amLionScale, amLionScale)
-	agg2d.Rotate(amLionAngle + basics.Pi)
-	agg2d.Skew(amLionSkewX/1000.0, amLionSkewY/1000.0)
-	agg2d.Translate(float64(w)/2, float64(h)/2)
+	mtx := transform.NewTransAffine()
+	mtx.Multiply(transform.NewTransAffineTranslation(-baseDX, -baseDY))
+	mtx.Multiply(transform.NewTransAffineScaling(amLionScale))
+	mtx.Multiply(transform.NewTransAffineRotation(amLionAngle + math.Pi))
+	mtx.Multiply(transform.NewTransAffineSkewing(amLionSkewX/1000.0, amLionSkewY/1000.0))
+	mtx.Multiply(transform.NewTransAffineTranslation(float64(w)/2, float64(h)/2))
 
-	// In the Go port, Agg2D doesn't support masking directly yet.
-	// We need to use the lower-level API with PixFmtAMaskAdaptor.
-
-	// Get the image pixel format
-	tempRbuf := buffer.NewRenderingBufferWithData[uint8](ctx.GetImage().Data, w, h, w*4)
-	imgPixf := pixfmt.NewPixFmtRGBA32[color.Linear](tempRbuf)
-
-	// Create alpha mask adaptor
+	// Render lion through the alpha mask.
 	amaskAdaptor := pixfmt.NewPixFmtAMaskAdaptor(imgPixf, amAlphaMask)
 	rbAMask := renderer.NewRendererBaseWithPixfmt(amaskAdaptor)
 
-	ras := agg2d.GetInternalRasterizer()
+	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip(),
+	)
 	sl := scanline.NewScanlineP8()
 
 	pathVS := path.NewPathStorageStlVertexSourceAdapter(lionData.Path)
-	mtx := agg2d.GetTransformations()
-	affine := transform.NewTransAffineFromValues(
-		mtx.AffineMatrix[0], mtx.AffineMatrix[1], mtx.AffineMatrix[2],
-		mtx.AffineMatrix[3], mtx.AffineMatrix[4], mtx.AffineMatrix[5],
-	)
-	transVS := conv.NewConvTransform(pathVS, affine)
+	transVS := conv.NewConvTransform(pathVS, mtx)
 	rasVS := conv.NewRasterizerVertexSourceAdapter(transVS)
 	renSolid := renscan.NewRendererScanlineAASolidWithRenderer(rbAMask)
 	renscan.RenderAllPaths(ras, sl, renSolid, rasVS, lionData, lionData, lionData.NPaths)
+
+	applyLinearToSRGB(img)
 
 	logStatus(fmt.Sprintf("Alpha Mask Demo: Scale=%.2f, Angle=%.2f", amLionScale, amLionAngle))
 }
