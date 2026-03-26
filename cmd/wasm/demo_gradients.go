@@ -96,7 +96,7 @@ func drawGradientsDemo() {
 
 	// Gradient centre in canvas (y-down) coordinates.
 	cx := gradNativeCX + offsetX
-	cy := float64(gradientsNativeH)-gradNativeCY + offsetY // (400-280)+100 = 220
+	cy := float64(gradientsNativeH) - gradNativeCY + offsetY // (400-280)+100 = 220
 
 	colorFunc := buildDefaultGradientLUT()
 

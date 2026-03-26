@@ -69,8 +69,8 @@ func (r *polyRenRGB555Renderer) SetColor(c color.RGBA8[color.SRGB]) {
 	r.ren.SetColor(color.ConvertToLinear(c))
 }
 
-func (r *polyRenRGB555Renderer) Prepare()                              { r.ren.Prepare() }
-func (r *polyRenRGB555Renderer) Render(sl renscan.ScanlineInterface)   { r.ren.Render(sl) }
+func (r *polyRenRGB555Renderer) Prepare()                            { r.ren.Prepare() }
+func (r *polyRenRGB555Renderer) Render(sl renscan.ScanlineInterface) { r.ren.Render(sl) }
 
 // --- Rendering ---
 

@@ -780,7 +780,7 @@ per-pixel methods.
 **Tasks**:
 
 - [x] Change `PixFmtRGB555` color type to `RGBA8[Linear]` (matching C++ `blender_rgb555::color_type
-    = rgba8`). Alpha used for blending, not stored in the 16-bit pixel. The polymorphic example
+  = rgba8`). Alpha used for blending, not stored in the 16-bit pixel. The polymorphic example
       converts sRGB→linear at the interface boundary.
 - [x] Implement missing methods on all four packed pixfmt types to satisfy
       `renderer.PixelFormat[RGBA8[SRGB]]`: `CopyHline`, `BlendHline`, `CopyVline`,

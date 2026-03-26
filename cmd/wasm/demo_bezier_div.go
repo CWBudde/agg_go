@@ -302,8 +302,10 @@ func bdCalcMaxError(x1, y1, x2, y2, x3, y3, x4, y4, approxScale, angleTol, cuspL
 
 // --- Low-level rendering types ---
 
-type bdRasType = rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
-type bdRendererBase = renderer.RendererBase[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]]
+type (
+	bdRasType      = rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
+	bdRendererBase = renderer.RendererBase[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]]
+)
 
 func bdNewRasterizer() *bdRasType {
 	return rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
