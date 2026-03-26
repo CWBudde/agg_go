@@ -396,8 +396,13 @@ func Draw(ctx *agg.Context, cfg Config) {
 	agg2d.FillEvenOdd(cfg.FillRule == 0)
 
 	fillA, lineA, fillB := sceneColors(cfg.Mode)
-	drawContours(agg2d, a, fillA, lineA)
-	drawContours(agg2d, b, fillB, agg.Transparent)
+	lineWidth := 1.0
+	if cfg.Mode == 2 || cfg.Mode == 3 {
+		lineWidth = 0.1
+	}
+
+	drawContoursWithLineWidth(agg2d, a, fillA, lineA, lineWidth)
+	drawContoursWithLineWidth(agg2d, b, fillB, agg.Transparent, 1.0)
 
 	if cfg.Operation == 0 {
 		return
@@ -932,6 +937,10 @@ func mirrorContoursY(cs []contour, h float64) []contour {
 }
 
 func drawContours(a *agg.Agg2D, cs []contour, fill, line agg.Color) {
+	drawContoursWithLineWidth(a, cs, fill, line, 1.0)
+}
+
+func drawContoursWithLineWidth(a *agg.Agg2D, cs []contour, fill, line agg.Color, lineWidth float64) {
 	for _, c := range cs {
 		if len(c) < 3 {
 			continue
@@ -945,7 +954,7 @@ func drawContours(a *agg.Agg2D, cs []contour, fill, line agg.Color) {
 		a.FillColor(fill)
 		if line.A > 0 {
 			a.LineColor(line)
-			a.LineWidth(1)
+			a.LineWidth(lineWidth)
 			a.DrawPath(agg.FillAndStroke)
 		} else {
 			a.NoLine()
