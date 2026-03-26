@@ -17,7 +17,6 @@ import (
 	"math/rand"
 	"time"
 
-	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
@@ -84,8 +83,6 @@ func initFlash2() {
 func drawFlashRasterizer2Demo() {
 	initFlash2()
 
-	ctx.GetAgg2D().ResetTransformations()
-
 	if len(flash2Shapes) == 0 {
 		return
 	}
@@ -138,7 +135,7 @@ func drawFlashRasterizer2Demo() {
 	// Set up raw renderer pipeline (bypass Agg2D for direct scanline access).
 	img := ctx.GetImage()
 	rbuf := buffer.NewRenderingBufferU8()
-	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Width()*4)
+	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Stride())
 	pixFmt := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
 	renBase := renderer.NewRendererBaseWithPixfmt[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](pixFmt)
 	renBase.ClipBox(0, 0, img.Width(), img.Height())
@@ -281,7 +278,7 @@ func drawFlashRasterizer2Demo() {
 		}
 	}
 
-	_ = agg.RGBA(0, 0, 0, 0) // keep agg import live
+	applyLinearToSRGB(img)
 }
 
 // styleColor returns the random colour for a given style index.
