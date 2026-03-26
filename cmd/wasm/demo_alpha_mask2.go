@@ -44,13 +44,13 @@ func drawAlphaMask2Demo() {
 		SkewY:       am2LionSkewY,
 	})
 
-	// Copy BGR24 work buffer to RGBA canvas without Y-flip. The standalone
-	// example's copyBGR24FlipY + negative-stride Image + ToGoImage yields
-	// zero net flip; the WASM canvas is already top-down so no flip is needed.
+	// Copy BGR24 work buffer to RGBA canvas with Y-flip. RenderToBGR24 renders
+	// in AGG's Y-up coordinate system (row 0 = bottom of scene), so we must
+	// flip vertically when copying to the top-down WASM/PNG canvas.
 	srcStride := w * 3
 	dstStride := img.Stride()
 	for y := 0; y < h; y++ {
-		srcOff := y * srcStride
+		srcOff := (h - 1 - y) * srcStride
 		dstOff := y * dstStride
 		for x := 0; x < w; x++ {
 			s := srcOff + x*3
