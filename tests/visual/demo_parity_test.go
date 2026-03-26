@@ -76,7 +76,7 @@ var demoConfigs = []demoConfig{
 	{name: "pattern_fill", dir: "examples/core/intermediate/pattern_fill"},
 	{name: "pattern_perspective", dir: "examples/core/intermediate/pattern_perspective"},
 	{name: "pattern_resample", dir: "examples/core/intermediate/pattern_resample"},
-	{name: "perspective", dir: "examples/core/advanced/perspective"},
+	{name: "perspective", dir: "examples/core/intermediate/perspective"},
 	{name: "polymorphic_renderer", dir: "examples/core/intermediate/polymorphic_renderer"},
 	{name: "raster_text", dir: "examples/core/intermediate/raster_text"},
 	{name: "rasterizer_compound", dir: "examples/core/intermediate/rasterizer_compound"},

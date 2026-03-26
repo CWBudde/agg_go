@@ -20,6 +20,7 @@ import (
 
 	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
+	"github.com/MeKo-Christian/agg_go/internal/demo/imageassets"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	icol "github.com/MeKo-Christian/agg_go/internal/color"
@@ -339,34 +340,6 @@ func copyFlipY(src, dst []uint8, w, h int) {
 	}
 }
 
-// --- Source image ---
-
-// createTestImage builds a procedural source image to substitute for "spheres.bmp".
-func createTestImage(w, h int) *agg.Image {
-	img := agg.CreateImage(w, h)
-	imgCtx := agg.NewContextForImage(img)
-	imgCtx.Clear(agg.White)
-
-	imgCtx.SetColor(agg.RGBA(0.8, 0.8, 0.8, 1.0))
-	for i := 0; i < w; i += 20 {
-		imgCtx.DrawLine(float64(i), 0, float64(i), float64(h))
-	}
-	for i := 0; i < h; i += 20 {
-		imgCtx.DrawLine(0, float64(i), float64(w), float64(i))
-	}
-	imgCtx.SetColor(agg.Red)
-	imgCtx.FillCircle(float64(w)/2, float64(h)/2, float64(w)/4)
-	imgCtx.SetColor(agg.Blue)
-	imgCtx.SetStrokeWidth(5.0)
-	imgCtx.DrawRectangle(10, 10, float64(w-20), float64(h-20))
-	imgCtx.SetColor(agg.Black)
-	imgCtx.SetStrokeWidth(1.0)
-	for i := -w; i < w; i += 4 {
-		imgCtx.DrawLine(float64(i), 0, float64(i+w), float64(h))
-	}
-	return img
-}
-
 // --- Controls ---
 
 // toRGBA8 converts an RGBA float color to RGBA8, clamping to [0, 255].
@@ -516,7 +489,10 @@ func (d *demo) Render(img *agg.Image) {
 	dist := makeDistortion(distType, db)
 
 	// --- Build image span generator ---
-	srcImg := createTestImage(srcImgW, srcImgH)
+	srcImg, err := imageassets.Spheres()
+	if err != nil {
+		panic(err)
+	}
 	imgRbuf := buffer.NewRenderingBufferU8()
 	imgRbuf.Attach(srcImg.Data, srcImg.Width(), srcImg.Height(), srcImg.Width()*4)
 	ipf := &imagePixFmt{rbuf: imgRbuf}

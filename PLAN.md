@@ -748,7 +748,13 @@ forcing every example that called `RenderScanlinesAASolid` + `RasterizerScanline
 
 ### 10.10 ✅ Packed Pixel Formats (`PixFmtRGB555`, `RGB565`, etc.) Complete
 
-**Status**: DONE — all four formats now fully implement `renderer.PixelFormat[color.RGBA8[color.SRGB]]`.
+**Status**: DONE — all four formats now fully implement `renderer.PixelFormat[color.RGBA8[color.Linear]]`.
+
+**Correction (post-completion)**: The color type was initially set to `RGBA8[SRGB]` based on
+a misreading of the C++ polymorphic interface.  The correct type is `RGBA8[Linear]`, matching
+`blender_rgb555::color_type = rgba8 = rgba8T<linear>`.  The polymorphic example's `SolidRenderer`
+interface still accepts `RGBA8[SRGB]` at its boundary, and `rgb555Renderer` converts sRGB→linear
+via `color.ConvertToLinear()` — replicating the implicit C++ `rgba8T<linear>(rgba8T<sRGB>)` constructor.
 
 **Root cause**: C++ `pixfmt_alpha_blend_rgb_packed` template provides all methods
 (`copy_hline`, `blend_hline`, `blend_solid_hspan`, `blend_solid_vspan`, `blend_color_hspan`,
@@ -766,16 +772,16 @@ per-pixel methods.
 - `internal/pixfmt/pixfmt_rgb_packed.go`: `PixFmtRGB555`, `PixFmtRGB565`, etc.
 - `internal/pixfmt/blender/rgb_packed.go`: 16-bit packed blenders.
 
-**Color type**: The Go types currently use `color.RGB8[color.Linear]`. C++ uses `srgba8` (RGBA
-with alpha) as the color type for `pixfmt_rgb555`. The alpha channel is used for blending but
-not stored in the 16-bit pixel. Go should use `color.RGBA8[color.SRGB]` to match.
+**Color type**: The Go types use `color.RGBA8[color.Linear]`, matching C++ `blender_rgb555::color_type
+= rgba8 = rgba8T<linear>`. Alpha is used for blending but not stored in the 16-bit pixel.
 
 **Blocked examples**: `polymorphic_renderer` (currently uses RGBA32 instead of RGB555, see 9.3).
 
 **Tasks**:
 
-- [x] Change `PixFmtRGB555` color type from `RGB8[Linear]` to `RGBA8[SRGB]` to match C++
-      `srgba8`. Alpha used for blending, not stored in the 16-bit pixel.
+- [x] Change `PixFmtRGB555` color type to `RGBA8[Linear]` (matching C++ `blender_rgb555::color_type
+      = rgba8`). Alpha used for blending, not stored in the 16-bit pixel. The polymorphic example
+      converts sRGB→linear at the interface boundary.
 - [x] Implement missing methods on all four packed pixfmt types to satisfy
       `renderer.PixelFormat[RGBA8[SRGB]]`: `CopyHline`, `BlendHline`, `CopyVline`,
       `BlendVline`, `CopyBar`, `BlendBar`, `BlendSolidHspan`, `BlendSolidVspan`,
@@ -798,6 +804,127 @@ not stored in the 16-bit pixel. Go should use `color.RGBA8[color.SRGB]` to match
 - [ ] `alpha_mask2`, `alpha_mask`, `alpha_mask3` visual output matches C++ reference images within
       the visual regression threshold.
 - [x] The `rasterizerAdaptor`/`scanlineWrapper` boilerplate is removed from all example files.
+
+---
+
+## Phase 11 — Pixfmt Generics Architecture Decision
+
+### Context
+
+Every pixfmt type in the codebase is currently generic over its blender:
+
+```go
+type PixFmtAlphaBlendRGBA[S color.Space, B blender.RGBABlender[S]] struct { ... }
+type PixFmtRGB555[B blender.RGB16PackedBlender] struct { ... }
+```
+
+C++ achieves the same reuse via templates, but the compiler behaviour differs fundamentally:
+C++ templates are **fully monomorphized** — every instantiation gets its own specialized copy
+with all blender calls inlined. Go generics use **GCShape stenciling**: types that share the
+same GC shape share one implementation, with method calls on the type parameter going through
+a runtime dictionary rather than a direct inlined call.
+
+For zero-size blender structs (the common case: `BlenderRGB555{}`, `BlenderRGBA8Pre{}`), all
+share the same GCShape, so the Go compiler may route `pf.blender.BlendPix(...)` — inside the
+innermost per-pixel loop — through dictionary dispatch instead of inlining it, even though the
+concrete type is known at the call site.
+
+This is the gap between what C++ templates buy and what Go generics currently deliver.
+
+### What the hot path looks like today
+
+The critical call chain for `BlendSolidHspan` (the primary anti-aliased fill path):
+
+```
+RendererBase[PixelFormat[C], C].BlendSolidHspan
+    → interface dispatch on PixelFormat[C]           ← dynamic, unavoidable in polymorphic code
+        → PixFmtAlphaBlendRGBA[S,B].BlendSolidHspan
+            → pf.blender.BlendPix(...)                ← potentially dictionary dispatch
+```
+
+`PixFmtAlphaBlendRGBA` partially escapes this by falling into a SIMD path
+(`simd.BlendSolidHspanRGBA`) before hitting `BlendPix` in the common fully-opaque case.
+The packed pixel formats have no equivalent SIMD escape.
+
+### Decision required
+
+**Option A — Keep generics as-is** (status quo)
+
+Accept that blender calls inside pixel loops may not be inlined. Rationale:
+- Performance impact is unproven without benchmarks.
+- The `PixelFormat` interface dispatch already dominates in all polymorphic usage.
+- Consistent with `PixFmtAlphaBlendRGBA`, which uses the same pattern and is the main workhorse.
+- AGENTS.md guidance: "Benchmark before replacing generics with concrete types."
+- Concrete aliases (`PixFmtRGB555AA`, `PixFmtAlphaBlendRGBALinPre`) already cover the common
+  instantiations and limit generic-form proliferation.
+
+Accepted risks: If packed pixel formats are ever used in a real hot path (e.g., embedded
+rendering, 16-bit display target), the blender dispatch overhead would need revisiting.
+
+**Option B — De-genericize blender parameter; concrete types per blender variant**
+
+Match the C++ typedef approach: one concrete (non-generic) type per blender variant.
+
+```go
+// instead of PixFmtRGB555[B]
+type PixFmtRGB555    struct { rbuf *buffer.RenderingBufferU16 }  // BlenderRGB555 hardcoded
+type PixFmtRGB555Pre struct { rbuf *buffer.RenderingBufferU16 }  // BlenderRGB555Pre hardcoded
+// etc.
+```
+
+The compiler can now inline `BlenderRGB555.BlendPix` unconditionally. Matches C++:
+```cpp
+typedef pixfmt_alpha_blend_rgb_packed<blender_rgb555>      pixfmt_rgb555;
+typedef pixfmt_alpha_blend_rgb_packed<blender_rgb555_pre>  pixfmt_rgb555_pre;
+```
+
+Downside: 4 blender variants × 4 packed formats = 16 concrete types (vs 4 generic types + 16
+alias/typedef-equivalent types today). Same duplication pattern exists for `PixFmtAlphaBlendRGBA`
+if applied consistently there: roughly 6 blender variants × ~4 color/order variants = 24 types.
+
+**Option C — Hybrid: keep generics internally, expose concrete non-generic wrappers publicly**
+
+The generic type `PixFmtRGB555[B]` remains as an internal implementation detail.
+The public types are concrete thin wrappers:
+
+```go
+type PixFmtRGB555 struct{ inner PixFmtRGB555[blender.BlenderRGB555] }
+```
+
+Calling methods on `PixFmtRGB555` goes directly to the concrete inner type, allowing the
+compiler to inline the blender. This avoids the 16-type explosion while still guaranteeing
+inlining at the public boundary.
+
+Downside: extra struct nesting adds boilerplate and one layer of method forwarding.
+
+### Recommendation
+
+**Option A** is appropriate unless a benchmark shows a measurable regression in a realistic
+workload. The `PixelFormat` interface dispatch at the `RendererBase` level already sets the
+performance ceiling for all polymorphic rendering — fixing the inner blender dispatch without
+also fixing that outer dispatch would provide limited gain.
+
+If a concrete performance target requires removing the `PixelFormat` interface dispatch as well
+(e.g., by passing the concrete pixfmt type directly to `RendererBase` without boxing), then
+**Option B** should be applied consistently across the entire pixfmt layer, not just packed
+formats. That is a larger architectural undertaking that should be planned separately.
+
+### Tasks (if Option B or C is chosen)
+
+The following applies to both options (scope differs in how much generic code is removed):
+
+- [ ] **Decision checkpoint**: run `go tool pprof` on a rendered benchmark (≥ 1 M pixels,
+      anti-aliased fill) with the current code. Confirm whether `blender.BlendPix` appears
+      in a profile hot path at a level that justifies the refactoring cost.
+- [ ] **Packed formats (4 types)**: `PixFmtRGB555`, `PixFmtRGB565`, `PixFmtBGR555`, `PixFmtBGR565`
+      — de-genericize blender; keep concrete aliases or rename.
+- [ ] **RGBA8 pixfmt**: `PixFmtAlphaBlendRGBA` — apply the same treatment for consistency.
+      This is the main rendering workhorse; any approach chosen here must not regress the SIMD
+      fast paths in `BlendSolidHspan` / `BlendColorHspan`.
+- [ ] Update all example and test code that currently names the generic form explicitly
+      (type args in `renderer.NewRendererBaseWithPixfmt[...]` calls, etc.).
+- [ ] Update `AGENTS.md` with the final decision so future contributors know the chosen pattern.
+- [ ] Re-run `just check` and all visual regression tests to confirm no behavioral change.
 
 ---
 
