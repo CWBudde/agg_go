@@ -130,9 +130,9 @@ func drawImageTransformsDemo() {
 
 	// Attach rendering target
 	img := ctx.GetImage()
-	imgTransRbuf.Attach(img.Data, img.Width(), img.Height(), img.Width()*4)
+	imgTransRbuf.Attach(img.Data, img.Width(), img.Height(), img.Stride())
 	imgTransRenBase.Attach(imgTransPixFmt)
-	ctx.GetAgg2D().ClearAll(agg.White)
+	imgTransRenBase.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
 
 	polyAngleRad := imgTransPolygonAngle * math.Pi / 180.0
 	imgAngleRad := imgTransImageAngle * math.Pi / 180.0
