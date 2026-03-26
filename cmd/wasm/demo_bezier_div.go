@@ -8,10 +8,19 @@ import (
 
 	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
+	"github.com/MeKo-Christian/agg_go/internal/color"
 	"github.com/MeKo-Christian/agg_go/internal/conv"
 	"github.com/MeKo-Christian/agg_go/internal/ctrl/bezier"
 	"github.com/MeKo-Christian/agg_go/internal/curves"
+	"github.com/MeKo-Christian/agg_go/internal/gsv"
 	"github.com/MeKo-Christian/agg_go/internal/path"
+	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
+	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
+	"github.com/MeKo-Christian/agg_go/internal/renderer"
+	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/shapes"
 )
 
 // --- Enum mappings (matching C++ line_cap_e, line_join_e, inner_join_e) ---
@@ -291,46 +300,56 @@ func bdCalcMaxError(x1, y1, x2, y2, x3, y3, x4, y4, approxScale, angleTol, cuspL
 	return maxErr * scale, maxAngle * 180.0 / math.Pi
 }
 
-// --- Rendering helpers ---
+// --- Low-level rendering types ---
 
-// bdIterPath feeds a VertexSource into the agg2d path builder.
-func bdIterPath(a *agg.Agg2D, src conv.VertexSource) {
-	for {
-		x, y, cmd := src.Vertex()
-		if basics.IsStop(cmd) {
-			break
-		}
-		switch {
-		case basics.IsMoveTo(cmd):
-			a.MoveTo(x, y)
-		case basics.IsEndPoly(cmd):
-			if basics.IsClose(uint32(cmd)) {
-				a.ClosePolygon()
-			}
-		case basics.IsVertex(cmd):
-			a.LineTo(x, y)
-		}
-	}
+type bdRasType = rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
+type bdRendererBase = renderer.RendererBase[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]]
+
+func bdNewRasterizer() *bdRasType {
+	return rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{},
+		rasterizer.NewRasterizerSlNoClip(),
+	)
 }
 
-// renderBezierCtrl renders a BezierCtrl via the internal rasterizer.
-func renderBezierCtrl(agg2d *agg.Agg2D, b *bezier.BezierCtrl[agg.Color]) {
-	ras := agg2d.GetInternalRasterizer()
-	for i := uint(0); i < b.NumPaths(); i++ {
-		ras.Reset()
-		adapter := &bezierCtrlAdapter{b: b}
-		ras.AddPath(adapter, uint32(i))
-		agg2d.RenderRasterizerWithColor(b.Color(i))
-	}
+// bdConvVS adapts conv.VertexSource to the rasterizer's VertexSource interface.
+type bdConvVS struct{ src conv.VertexSource }
+
+func (a *bdConvVS) Rewind(id uint32) { a.src.Rewind(uint(id)) }
+func (a *bdConvVS) Vertex(x, y *float64) uint32 {
+	vx, vy, cmd := a.src.Vertex()
+	*x, *y = vx, vy
+	return uint32(cmd)
 }
 
-type bezierCtrlAdapter struct{ b *bezier.BezierCtrl[agg.Color] }
+// bdBezierCtrlVS adapts BezierCtrl to the rasterizer's VertexSource interface.
+type bdBezierCtrlVS struct{ b *bezier.BezierCtrl[agg.Color] }
 
-func (a *bezierCtrlAdapter) Rewind(pathID uint32) { a.b.Rewind(uint(pathID)) }
-func (a *bezierCtrlAdapter) Vertex(x, y *float64) uint32 {
+func (a *bdBezierCtrlVS) Rewind(pathID uint32) { a.b.Rewind(uint(pathID)) }
+func (a *bdBezierCtrlVS) Vertex(x, y *float64) uint32 {
 	vx, vy, cmd := a.b.Vertex()
 	*x, *y = vx, vy
 	return uint32(cmd)
+}
+
+// bdRenderBezierCtrl renders a BezierCtrl directly using the low-level rasterizer.
+func bdRenderBezierCtrl(
+	ras *bdRasType,
+	sl *scanline.ScanlineU8,
+	renBase *bdRendererBase,
+	b *bezier.BezierCtrl[agg.Color],
+) {
+	for i := uint(0); i < b.NumPaths(); i++ {
+		ras.Reset()
+		ras.AddPath(&bdBezierCtrlVS{b: b}, uint32(i))
+		c := b.Color(i)
+		renscan.RenderScanlinesAASolid(ras, sl, renBase, color.RGBA8[color.Linear]{
+			R: c.R,
+			G: c.G,
+			B: c.B,
+			A: c.A,
+		})
+	}
 }
 
 // --- Main demo ---
@@ -339,19 +358,18 @@ func drawBezierDivDemo() {
 	initBezierDivDemo()
 	bdHandleCaseTypeChange()
 
-	a := ctx.GetAgg2D()
-	a.ResetTransformations()
+	img := ctx.GetImage()
+	rbuf := buffer.NewRenderingBufferU8()
+	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Stride())
 
-	// Light cream background (rgba(1.0, 1.0, 0.95) from original)
-	a.FillColor(agg.NewColor(255, 255, 242, 255))
-	a.NoLine()
-	a.ResetPath()
-	a.MoveTo(0, 0)
-	a.LineTo(float64(width), 0)
-	a.LineTo(float64(width), float64(height))
-	a.LineTo(0, float64(height))
-	a.ClosePolygon()
-	a.DrawPath(agg.FillOnly)
+	pf := pixfmt.NewPixFmtRGBA32[color.Linear](rbuf)
+	renBase := renderer.NewRendererBaseWithPixfmt(pf)
+
+	// Light cream background (rgba(255, 255, 242) from original)
+	renBase.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 242, A: 255})
+
+	ras := bdNewRasterizer()
+	sl := scanline.NewScanlineU8()
 
 	// Get control point coordinates from BezierCtrl
 	x1, y1 := bdCurve1.X1(), bdCurve1.Y1()
@@ -404,18 +422,14 @@ func drawBezierDivDemo() {
 	stroke.SetInnerJoin(bdInnerJoins[innerJoinIdx])
 	stroke.SetInnerMiterLimit(1.01)
 
-	// Draw wide filled stroke (rgba(0, 0.5, 0, 0.5) = green semi-transparent)
-	a.ResetPath()
-	stroke.Rewind(0)
-	bdIterPath(a, stroke)
-	a.FillColor(agg.RGBA(0, 0.5, 0, 0.5))
-	a.NoLine()
-	a.DrawPath(agg.FillOnly)
+	// Draw wide filled stroke (semi-transparent green)
+	ras.Reset()
+	ras.AddPath(&bdConvVS{src: stroke}, 0)
+	renscan.RenderScanlinesAASolid(ras, sl, renBase,
+		color.RGBA8[color.Linear]{R: 0, G: 128, B: 0, A: 128})
 
 	// Show subdivision points as small dots (r=1.5)
 	if bdShowPointsVal {
-		a.FillColor(agg.RGBA(0, 0, 0, 0.5))
-		a.NoLine()
 		curvePath.Rewind(0)
 		for {
 			x, y, cmd := curvePath.NextVertex()
@@ -423,7 +437,11 @@ func drawBezierDivDemo() {
 				break
 			}
 			if basics.IsVertex(basics.PathCommand(cmd)) {
-				a.FillCircle(x, y, 1.5)
+				dot := shapes.NewEllipseWithParams(x, y, 1.5, 1.5, 8, false)
+				ras.Reset()
+				ras.AddPath(&ellipseVS{ell: dot}, 0)
+				renscan.RenderScanlinesAASolid(ras, sl, renBase,
+					color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 128})
 			}
 		}
 	}
@@ -431,12 +449,11 @@ func drawBezierDivDemo() {
 	// Show stroke outline (stroke of stroke, thin black)
 	if bdShowOutlineVal {
 		stroke2 := conv.NewConvStroke(stroke)
-		a.ResetPath()
-		stroke2.Rewind(0)
-		bdIterPath(a, stroke2)
-		a.FillColor(agg.RGBA(0, 0, 0, 0.5))
-		a.NoLine()
-		a.DrawPath(agg.FillOnly)
+		stroke2.SetWidth(1.5)
+		ras.Reset()
+		ras.AddPath(&bdConvVS{src: stroke2}, 0)
+		renscan.RenderScanlinesAASolid(ras, sl, renBase,
+			color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 128})
 	}
 
 	// Measure performance and accuracy
@@ -457,13 +474,25 @@ func drawBezierDivDemo() {
 		ae01, ae1, ae10, ae100, ae1000,
 	)
 
-	a.FillColor(agg.Black)
-	a.NoLine()
-	a.FontGSV(10)
-	a.Text(10, 445, statsText, false, 0, 0)
+	// Render stats text via GSV stroke font (flip=true for C++ y-axis convention)
+	t := gsv.NewGSVText()
+	t.SetSize(10.0, 0)
+	t.SetFlip(true)
+	t.SetStartPoint(10.0, float64(img.Height())-445.0)
+	t.SetText(statsText)
 
-	// Render bezier control (interactive curve handles - kept on canvas)
-	renderBezierCtrl(a, bdCurve1)
+	ts := gsv.NewGSVTextOutline(t)
+	ts.SetWidth(1.5)
+
+	ras.Reset()
+	ras.AddPath(&bdConvVS{src: ts}, 0)
+	renscan.RenderScanlinesAASolid(ras, sl, renBase,
+		color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255})
+
+	// Render bezier control (interactive curve handles)
+	bdRenderBezierCtrl(ras, sl, renBase, bdCurve1)
+
+	applyLinearToSRGB(img)
 }
 
 // --- Mouse handlers ---
