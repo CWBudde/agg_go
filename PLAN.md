@@ -844,8 +844,8 @@ control widgets. Items below are rendering bugs or significant visual deviations
 
 - [ ] **compositing2**: Content renders only in the upper-left quarter; the four
       composited circles should fill more of the canvas.
-- [ ] **blend_color**: Different glyph ("g" vs "a" in C++) and positioned in
-      upper-left instead of centered.
+- [x] **blend_color**: Fixed Y-flip (rendered "g" instead of "a") and centered glyph
+      on the WASM canvas by applying scale(4)→FlipY→center-translate in `buildGlyphPath`.
 - [ ] **alpha_mask3**: Great Britain map orientation/position is noticeably shifted
       and rotated compared to C++ reference.
 - [ ] **aatest**: Background is black instead of grey.
