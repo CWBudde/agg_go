@@ -81,21 +81,29 @@ func (a *convVS) Vertex(x, y *float64) uint32 {
 // Gradient support
 // ---------------------------------------------------------------------------
 
-// mutableLUT is a 256-entry colour lookup table whose contents can be
-// updated in-place between draw calls.  A single instance is shared by the
-// span-generator so we avoid repeated heap allocations per line.
+// mutableLUT is a 256-entry sRGB colour lookup table (= C++'s
+// pod_auto_array<srgba8,256>) whose contents can be updated in-place between
+// draw calls.  It implements ColorFunction[RGBA8[SRGB]].
+//
+// Pair it with span.SRGBColorAdapter when feeding a linear-pixfmt span
+// generator; the adapter decodes each entry to linear on lookup, matching
+// C++'s implicit rgba8(srgba8) conversion inside span_gradient::generate.
 type mutableLUT struct {
-	lut [256]color.RGBA8[color.Linear]
+	lut [256]color.RGBA8[color.SRGB]
 }
 
-func (m *mutableLUT) Size() int                               { return 256 }
-func (m *mutableLUT) ColorAt(i int) color.RGBA8[color.Linear] { return m.lut[i] }
+func (m *mutableLUT) Size() int                             { return 256 }
+func (m *mutableLUT) ColorAt(i int) color.RGBA8[color.SRGB] { return m.lut[i] }
 
-// fillColors builds a linear ramp from c1 (index 0) to c2 (index 255).
-// Matches AGG's fill_color_array pattern: array[i] = begin.gradient(end, i/255.0).
+// fillColors builds a ramp from c1 (index 0) to c2 (index 255) in sRGB byte
+// space, matching C++'s fill_color_array with a pod_auto_array<srgba8,256>:
+//   - ConvertRGBA8LinearToSRGB  ≡  srgba8(rgba) constructor
+//   - RGBA8[SRGB].Gradient      ≡  srgba8::gradient  (lerp in sRGB space)
 func (m *mutableLUT) fillColors(c1, c2 color.RGBA8[color.Linear]) {
+	s1 := color.ConvertRGBA8LinearToSRGB(c1)
+	s2 := color.ConvertRGBA8LinearToSRGB(c2)
 	for i := range m.lut {
-		m.lut[i] = c1.Gradient(c2, basics.Int8u(i))
+		m.lut[i] = s1.Gradient(s2, basics.Int8u(i))
 	}
 }
 
@@ -115,10 +123,14 @@ func calcLinearGradientTransform(gradMtx *transform.TransAffine, x1, y1, x2, y2 
 	gradMtx.Invert()
 }
 
-// Gradient span-generator types (fixed so the type can be used as a parameter).
+// Gradient span-generator types.
+// gradAdapterType wraps *mutableLUT (ColorFunction[RGBA8[SRGB]]) so that the
+// span generator receives ColorFunction[RGBA8[Linear]] — the Go equivalent of
+// C++'s implicit rgba8(srgba8) conversion inside span_gradient::generate.
 type (
 	gradInterpType  = *span.SpanInterpolatorLinear[*transform.TransAffine]
-	gradSpanGenType = *span.SpanGradient[color.RGBA8[color.Linear], gradInterpType, span.GradientLinearX, *mutableLUT]
+	gradAdapterType = span.SRGBColorAdapter[*mutableLUT]
+	gradSpanGenType = *span.SpanGradient[color.RGBA8[color.Linear], gradInterpType, span.GradientLinearX, gradAdapterType]
 	gradAllocType   = *span.SpanAllocator[color.RGBA8[color.Linear]]
 )
 
@@ -203,8 +215,9 @@ func (d *demo) Render(img *agg.Image) {
 	// Shared gradient infrastructure — reused across all gradient draw calls.
 	gradMtx := transform.NewTransAffine()
 	lut := &mutableLUT{}
+	adapter := span.NewSRGBColorAdapter(lut)
 	interpolator := span.NewSpanInterpolatorLinearDefault(gradMtx)
-	spanGen := span.NewSpanGradient(interpolator, span.GradientLinearX{}, lut, 0.0, 100.0)
+	spanGen := span.NewSpanGradient(interpolator, span.GradientLinearX{}, adapter, 0.0, 100.0)
 	alloc := span.NewSpanAllocator[color.RGBA8[color.Linear]]()
 
 	cx := float64(w) / 2.0

@@ -346,6 +346,34 @@ func (g *GradientReflectAdaptor[GT]) Calculate(x, y, d int) int {
 
 // Color functions
 
+// SRGBColorAdapter adapts any ColorFunction[color.RGBA8[color.SRGB]] for use
+// with a linear-pixfmt span generator. It converts each looked-up entry from
+// sRGB to linear on the way out.
+//
+// This is the Go equivalent of the implicit rgba8(srgba8) constructor
+// conversion that C++ span_gradient::generate performs when the color array
+// element type is srgba8 but the span color type is rgba8. Making it an
+// explicit adapter preserves Go's type-safety while keeping the same
+// semantics: gradient interpolation happens in sRGB byte space (perceptual),
+// and the result is decoded to linear before it is written into the span.
+type SRGBColorAdapter[CF ColorFunction[color.RGBA8[color.SRGB]]] struct {
+	inner CF
+}
+
+// NewSRGBColorAdapter wraps an sRGB-typed color function so that it satisfies
+// ColorFunction[color.RGBA8[color.Linear]] for use with a linear pixfmt.
+func NewSRGBColorAdapter[CF ColorFunction[color.RGBA8[color.SRGB]]](inner CF) SRGBColorAdapter[CF] {
+	return SRGBColorAdapter[CF]{inner: inner}
+}
+
+// Size forwards to the wrapped color function.
+func (a SRGBColorAdapter[CF]) Size() int { return a.inner.Size() }
+
+// ColorAt returns the entry at index decoded from sRGB to linear.
+func (a SRGBColorAdapter[CF]) ColorAt(i int) color.RGBA8[color.Linear] {
+	return color.ConvertRGBA8SRGBToLinear(a.inner.ColorAt(i))
+}
+
 // GradientLinearColorRGBA implements linear color interpolation for RGBA colors.
 type GradientLinearColorRGBA struct {
 	c1   color.RGBA // Start color
