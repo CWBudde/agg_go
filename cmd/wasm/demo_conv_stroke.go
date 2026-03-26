@@ -4,10 +4,15 @@ package main
 import (
 	"math"
 
-	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
+	"github.com/MeKo-Christian/agg_go/internal/color"
 	"github.com/MeKo-Christian/agg_go/internal/conv"
 	"github.com/MeKo-Christian/agg_go/internal/path"
+	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
+	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
+	"github.com/MeKo-Christian/agg_go/internal/renderer"
+	"github.com/MeKo-Christian/agg_go/internal/scanline"
 )
 
 // --- State ---
@@ -29,65 +34,34 @@ var (
 )
 
 var (
-	strokeJoins = []agg.LineJoin{agg.JoinMiter, agg.JoinRound, agg.JoinBevel}
-	strokeCaps  = []agg.LineCap{agg.CapButt, agg.CapSquare, agg.CapRound}
+	strokeJoins = []basics.LineJoin{basics.MiterJoin, basics.RoundJoin, basics.BevelJoin}
+	strokeCaps  = []basics.LineCap{basics.ButtCap, basics.SquareCap, basics.RoundCap}
 )
 
 // --- Drawing ---
 
 func drawConvStrokeDemo() {
-	a := ctx.GetAgg2D()
-	a.ResetTransformations()
+	img := ctx.GetImage()
+	rbuf := buffer.NewRenderingBufferU8()
+	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Stride())
+
+	pf := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
+	ren := renderer.NewRendererBaseWithPixfmt[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](pf)
+	ren.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
+
+	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{},
+		rasterizer.NewRasterizerSlNoClip(),
+	)
+	sl := scanline.NewScanlineU8()
 
 	x := [3]float64{strokePts[0][0], strokePts[1][0], strokePts[2][0]}
 	y := [3]float64{strokePts[0][1], strokePts[1][1], strokePts[2][1]}
 
-	buildPaths := func() {
-		// Open zigzag: pt0 → midpt01 → pt1 → pt2 → pt2 (duplicate for stability).
-		a.MoveTo(x[0], y[0])
-		a.LineTo((x[0]+x[1])/2, (y[0]+y[1])/2)
-		a.LineTo(x[1], y[1])
-		a.LineTo(x[2], y[2])
-		a.LineTo(x[2], y[2])
+	lj := strokeJoins[strokeJoin]
+	lc := strokeCaps[strokeCap]
 
-		// Closed triangle from midpoints.
-		a.MoveTo((x[0]+x[1])/2, (y[0]+y[1])/2)
-		a.LineTo((x[1]+x[2])/2, (y[1]+y[2])/2)
-		a.LineTo((x[2]+x[0])/2, (y[2]+y[0])/2)
-		a.ClosePolygon()
-	}
-
-	join := strokeJoins[strokeJoin]
-	lineCap := strokeCaps[strokeCap]
-
-	// (1) Wide stroked path with selected join/cap.
-	a.ResetPath()
-	buildPaths()
-	a.LineJoin(join)
-	a.LineCap(lineCap)
-	a.MiterLimit(strokeMiterLimit)
-	a.LineWidth(strokeWidth)
-	a.LineColor(agg.NewColor(204, 178, 153, 255))
-	a.NoFill()
-	a.DrawPath(agg.StrokeOnly)
-
-	// (2) Thin outline of the raw path in black.
-	a.ResetPath()
-	buildPaths()
-	a.LineJoin(agg.JoinMiter)
-	a.LineCap(agg.CapButt)
-	a.LineWidth(1.5)
-	a.LineColor(agg.Black)
-	a.DrawPath(agg.StrokeOnly)
-
-	// (3) Dashed thin overlay on the wide stroke (matching the C++ poly2).
-	// C++ pipeline: path → conv_stroke(wide) → conv_dash → conv_stroke(thin).
-	{
-		joinStyles := []basics.LineJoin{basics.MiterJoin, basics.RoundJoin, basics.BevelJoin}
-		capStyles := []basics.LineCap{basics.ButtCap, basics.SquareCap, basics.RoundCap}
-		lj := joinStyles[strokeJoin]
-		lc := capStyles[strokeCap]
-
+	buildPS := func() *path.PathStorageStl {
 		ps := path.NewPathStorageStl()
 		ps.MoveTo(x[0], y[0])
 		ps.LineTo((x[0]+x[1])/2, (y[0]+y[1])/2)
@@ -99,7 +73,65 @@ func drawConvStrokeDemo() {
 		ps.LineTo((x[1]+x[2])/2, (y[1]+y[2])/2)
 		ps.LineTo((x[2]+x[0])/2, (y[2]+y[0])/2)
 		ps.ClosePolygon(0)
+		return ps
+	}
 
+	renderSolid := func(c color.RGBA8[color.Linear]) {
+		if ras.RewindScanlines() {
+			sl.Reset(ras.MinX(), ras.MaxX())
+			for ras.SweepScanline(sl) {
+				yy := sl.Y()
+				for _, span := range sl.Spans() {
+					if span.Len > 0 {
+						ren.BlendSolidHspan(int(span.X), yy, int(span.Len), c, span.Covers)
+					}
+				}
+			}
+		}
+	}
+
+	addPathToRas := func(src conv.VertexSource) {
+		src.Rewind(0)
+		for {
+			vx, vy, cmd := src.Vertex()
+			if basics.IsStop(cmd) {
+				break
+			}
+			ras.AddVertex(vx, vy, uint32(cmd))
+		}
+	}
+
+	// (1) Wide stroked path with selected join/cap.
+	{
+		ps := buildPS()
+		psAdapter := path.NewPathStorageStlVertexSourceAdapter(ps)
+		wideStroke := conv.NewConvStroke(psAdapter)
+		wideStroke.SetLineJoin(lj)
+		wideStroke.SetLineCap(lc)
+		wideStroke.SetMiterLimit(strokeMiterLimit)
+		wideStroke.SetWidth(strokeWidth)
+		ras.Reset()
+		addPathToRas(wideStroke)
+		renderSolid(color.RGBA8[color.Linear]{R: 204, G: 178, B: 153, A: 255})
+	}
+
+	// (2) Thin outline of the raw path in black.
+	{
+		ps := buildPS()
+		psAdapter := path.NewPathStorageStlVertexSourceAdapter(ps)
+		thinStroke := conv.NewConvStroke(psAdapter)
+		thinStroke.SetLineJoin(basics.MiterJoin)
+		thinStroke.SetLineCap(basics.ButtCap)
+		thinStroke.SetWidth(1.5)
+		ras.Reset()
+		addPathToRas(thinStroke)
+		renderSolid(color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255})
+	}
+
+	// (3) Dashed thin overlay on the wide stroke.
+	// C++ pipeline: path → conv_stroke(wide) → conv_dash → conv_stroke(thin).
+	{
+		ps := buildPS()
 		psAdapter := path.NewPathStorageStlVertexSourceAdapter(ps)
 
 		wideStroke := conv.NewConvStroke(psAdapter)
@@ -117,34 +149,25 @@ func drawConvStrokeDemo() {
 		thinStroke.SetLineCap(lc)
 		thinStroke.SetLineJoin(lj)
 
-		ras := a.GetInternalRasterizer()
 		ras.Reset()
-		thinStroke.Rewind(0)
-		for {
-			vx, vy, cmd := thinStroke.Vertex()
-			if cmd == basics.PathCmdStop {
-				break
-			}
-			ras.AddVertex(vx, vy, uint32(cmd))
-		}
-		a.RenderRasterizerWithColor(agg.NewColor(0, 0, 77, 255))
+		addPathToRas(thinStroke)
+		renderSolid(color.RGBA8[color.Linear]{R: 0, G: 0, B: 77, A: 255})
 	}
 
 	// (4) Semi-transparent fill of the raw path.
-	a.ResetPath()
-	buildPaths()
-	a.FillColor(agg.NewColor(0, 0, 0, 51))
-	a.NoLine()
-	a.DrawPath(agg.FillOnly)
+	{
+		ps := buildPS()
+		psAdapter := path.NewPathStorageStlVertexSourceAdapter(ps)
+		ras.Reset()
+		addPathToRas(psAdapter)
+		renderSolid(color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 51})
+	}
 
-	// Interactive handles.
+	applyLinearToSRGB(img)
+
+	// Interactive handles (drawn on top via ctx after sRGB encoding).
 	for i := 0; i < 3; i++ {
-		a.FillColor(agg.NewColor(200, 50, 20, 180))
-		a.NoLine()
-		a.FillCircle(x[i], y[i], 7)
-		a.LineColor(agg.Black)
-		a.LineWidth(1.0)
-		a.DrawCircle(x[i], y[i], 7)
+		drawHandle(x[i], y[i])
 	}
 }
 
