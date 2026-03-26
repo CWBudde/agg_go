@@ -7,6 +7,11 @@ import (
 	alphamask2demo "github.com/MeKo-Christian/agg_go/internal/demo/alphamask2"
 )
 
+const (
+	am2RefWidth  = 512
+	am2RefHeight = 400
+)
+
 var (
 	am2NumEllipses = 10
 	am2LionAngle   = 0.0
@@ -24,19 +29,26 @@ func drawAlphaMask2Demo() {
 		am2NumEllipses = int(am2SliderValue)
 	}
 
+	// Scale the lion proportionally so it fills the canvas the same way
+	// the C++ original fills its 512×400 window.
+	canvasScale := math.Min(float64(w)/am2RefWidth, float64(h)/am2RefHeight)
+	scale := am2LionScale * canvasScale
+
 	// Render into a BGR24 work buffer like the original AGG example.
 	workBuf := make([]uint8, w*h*3)
 	alphamask2demo.RenderToBGR24(workBuf, w, h, alphamask2demo.Config{
 		NumEllipses: am2NumEllipses,
 		Angle:       am2LionAngle,
-		Scale:       am2LionScale,
+		Scale:       scale,
 		SkewX:       am2LionSkewX,
 		SkewY:       am2LionSkewY,
 	})
 
-	// Convert BGR24 work buffer to RGBA canvas image with y-flip to match
-	// the AGG bottom-up buffer orientation expected by the web canvas.
-	copyBGR24FlipYToRGBA(workBuf, img.Data, w, h, img.Stride())
+	// Convert BGR24 work buffer to RGBA canvas image. No y-flip needed:
+	// the work buffer uses a top-down layout matching the web canvas, and
+	// the standalone example's FlipY is already accounted for by the π
+	// rotation in RenderToBGR24.
+	copyBGR24ToRGBA(workBuf, img.Data, w, h, img.Stride())
 
 	applyLinearToSRGB(img)
 
@@ -62,12 +74,11 @@ func setAlphaMask2NumEllipses(n float64) {
 	am2SliderValue = n
 }
 
-// copyBGR24FlipYToRGBA copies a BGR24 buffer into an RGBA buffer, flipping Y to convert
-// from the AGG bottom-up layout to the top-down web canvas layout.
-func copyBGR24FlipYToRGBA(src, dst []uint8, width, height, dstStride int) {
+// copyBGR24ToRGBA copies a BGR24 buffer into an RGBA buffer without y-flip.
+func copyBGR24ToRGBA(src, dst []uint8, width, height, dstStride int) {
 	srcStride := width * 3
 	for y := 0; y < height; y++ {
-		srcOff := (height - 1 - y) * srcStride
+		srcOff := y * srcStride
 		dstOff := y * dstStride
 		for x := 0; x < width; x++ {
 			s := srcOff + x*3

@@ -104,9 +104,15 @@ test-visual:
     go test -timeout 5m ./tests/visual/...
 
 # Regenerate Go reference images, then run visual tests
-update-visual:
+update-visual: update-visual-wasm
     @echo "Regenerating Go reference images and running visual tests..."
     UPDATE_VISUAL=1 go test -v -timeout 30m -run TestUpdateGoReferences ./tests/visual/
+
+# Capture WASM demo screenshots via main_stub and store in tests/visual/reference/wasm/
+update-visual-wasm:
+    @echo "Capturing WASM demo screenshots..."
+    @mkdir -p tests/visual/reference/wasm
+    AGG_OUT=tests/visual/reference/wasm go run ./cmd/wasm/
 
 # Serve interactive visual comparison of C++ vs Go reference images
 show-visuals:

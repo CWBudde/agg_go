@@ -796,9 +796,56 @@ per-pixel methods.
 
 ---
 
-### 10.11 Exit Criteria
+### 10.11 WASM Demo Visual Rework
 
-- [ ] All items in 10.1–10.10 are resolved or explicitly deferred with rationale.
+Screenshots captured via `just update-visual-wasm` (stored in `tests/visual/reference/wasm/`)
+were compared against C++ reference images in `tests/visual/reference/cpp/examples/`.
+Known acceptable differences: fixed 800×600 canvas (vs per-demo C++ sizes), absence of
+control widgets.  Items below are rendering bugs or significant visual deviations.
+
+**Critical — completely wrong output:**
+
+- [ ] **image_alpha**: Renders completely blank (white). No image content at all.
+- [ ] **alpha_mask2**: Broken rendering — scattered geometric fragments instead of
+      a properly masked lion with crossed lines.
+- [ ] **distortions**: Right circle is solid black; should show a second distortion
+      effect (orange/glow sphere in C++).
+- [ ] **perspective**: Lion is upside-down (y-flip bug in the WASM demo).
+- [ ] **simple_blur**: Both lion renderings (color + outline) are upside-down (y-flip).
+- [ ] **pattern_fill**: Star shape renders as a thin outline only; the interior
+      pattern fill is completely missing.
+- [ ] **gamma_ctrl**: Text "Text 2345" renders mirrored/reversed (characters are
+      horizontally flipped).
+- [ ] **gamma_correction**: Background quadrant colors are in wrong positions
+      (black/white/red quadrants are y-flipped vs C++).
+- [ ] **rasterizer_compound**: Wrong glyph rendered ("gj"-like shape instead of "a").
+- [ ] **trans_polar**: Completely different content — shows polar-transformed lion
+      instead of circular arc with text labels ("Some Value=40").
+
+**Moderate — partially wrong or significant visual difference:**
+
+- [ ] **compositing2**: Content renders only in the upper-left quarter; the four
+      composited circles should fill more of the canvas.
+- [ ] **blend_color**: Different glyph ("g" vs "a" in C++) and positioned in
+      upper-left instead of centered.
+- [ ] **alpha_mask3**: Great Britain map orientation/position is noticeably shifted
+      and rotated compared to C++ reference.
+- [ ] **aatest**: Background is black instead of grey.
+- [ ] **gradients**: Sphere positioned far to the right instead of centered.
+
+**Low priority — minor or acceptable with investigation:**
+
+- [ ] **flash_rasterizer / flash_rasterizer2**: WASM renders actual shapes while
+      C++ reference was captured at shape-index 0 (blank). Verify that shape-index
+      initialization is intentional.
+- [ ] **gouraud_mesh**: Content is small relative to 800×600 canvas (missing
+      statistics text at bottom).
+
+---
+
+### 10.12 Exit Criteria
+
+- [ ] All items in 10.1–10.11 are resolved or explicitly deferred with rationale.
 - [x] `cmd/aggtest` pixel values match C++ for all 6 steps.
       Proper integration tests in `tests/integration/cpp_parity_test.go`.
 - [ ] `alpha_mask2`, `alpha_mask`, `alpha_mask3` visual output matches C++ reference images within
