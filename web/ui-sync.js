@@ -178,7 +178,7 @@ export const demoDescriptions = {
   trans_curve:
     "Along-a-curve transformation. Go-idiomatic equivalent of AGG's trans_curve1.cpp: an embedded vector-font paragraph is stroked and bent along an interactive B-spline path. Drag the six control points to reshape the path; use the controls for closure, X-scale preservation, fixed base length, subdivision count, and animation.",
   trans_curve2:
-    "Double path transformation. Bends vector shapes (the lion) between two interactive B-Spline curves. Drag the 12 control points to reshape the envelope. Toggle animation to watch the lion morph between the moving curves.",
+    "Double path transformation. Bends a text paragraph between two interactive B-Spline curves using TransDoublePath. Drag the 12 control points (6 per curve) to reshape the envelope. Toggle animation to watch the text morph between the moving curves.",
   gamma_ctrl:
     "Interactive gamma correction control. Port of AGG's gamma_ctrl demo. Use the spline control points to adjust the gamma curve and see its effect on various primitives, text, and rotated shapes.",
   gamma_tuner:

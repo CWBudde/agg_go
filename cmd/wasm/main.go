@@ -172,6 +172,9 @@ func main() {
 	js.Global().Set("setTransCurveFixedLen", js.FuncOf(setTransCurveFixedLenJS))
 	js.Global().Set("toggleTransCurveAnimate", js.FuncOf(toggleTransCurveAnimateJS))
 	js.Global().Set("toggleTransCurve2Animate", js.FuncOf(toggleTransCurve2AnimateJS))
+	js.Global().Set("setTransCurve2NumPoints", js.FuncOf(setTransCurve2NumPointsJS))
+	js.Global().Set("setTransCurve2FixedLen", js.FuncOf(setTransCurve2FixedLenJS))
+	js.Global().Set("setTransCurve2PreserveXScale", js.FuncOf(setTransCurve2PreserveXScaleJS))
 	js.Global().Set("setBlurRadius", js.FuncOf(setBlurRadius))
 	js.Global().Set("setBlurMethod", js.FuncOf(setBlurMethod))
 	js.Global().Set("setBlendColorMethod", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
