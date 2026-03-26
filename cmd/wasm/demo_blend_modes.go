@@ -3,15 +3,31 @@ package main
 
 import (
 	agg "github.com/MeKo-Christian/agg_go"
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
+	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
+	"github.com/MeKo-Christian/agg_go/internal/pixfmt/blender"
+	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
+	"github.com/MeKo-Christian/agg_go/internal/renderer"
+	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/shapes"
 )
 
 func drawBlendModesDemo() {
-	ctx.Clear(agg.RGBA(0.9, 0.9, 0.9, 1.0))
+	img := ctx.GetImage()
+	rbuf := buffer.NewRenderingBufferU8()
+	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Stride())
 
-	agg2d := ctx.GetAgg2D()
-	agg2d.ResetTransformations()
-	agg2d.FontGSV(10)
-	agg2d.TextAlignment(agg.AlignCenter, agg.AlignTop)
+	pf := pixfmt.NewPixFmtCompositeRGBA32(rbuf, blender.CompOpSrcOver)
+	ren := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtCompositeRGBA32, color.RGBA8[color.Linear]](pf)
+	ren.Clear(color.RGBA8[color.Linear]{R: 229, G: 229, B: 229, A: 255})
+
+	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip(),
+	)
+	sl := scanline.NewScanlineU8()
 
 	modes := []struct {
 		name string
@@ -33,8 +49,8 @@ func drawBlendModesDemo() {
 
 	const cols = 4
 	rows := (len(modes) + cols - 1) / cols
-	canvasW := float64(ctx.GetImage().Width())
-	canvasH := float64(ctx.GetImage().Height())
+	canvasW := float64(img.Width())
+	canvasH := float64(img.Height())
 	const (
 		gapX = 8.0
 		gapY = 8.0
@@ -60,36 +76,131 @@ func drawBlendModesDemo() {
 	drawAreaH := cellH - labelBandH
 	shiftY := (drawAreaH-(groupMaxY-groupMinY))*0.5 - groupMinY
 
+	_ = rows // used in cell layout
+
 	for i, m := range modes {
 		x := float64(i%cols) * (cellW + gapX)
 		y := float64(i/cols) * (cellH + gapY)
 
-		agg2d.BlendMode(agg.BlendAlpha)
-		agg2d.FillColor(agg.RGBA(1.0, 1.0, 1.0, 0.6))
-		agg2d.NoLine()
-		agg2d.ResetPath()
-		agg2d.MoveTo(x+4, y+4)
-		agg2d.LineTo(x+cellW-4, y+4)
-		agg2d.LineTo(x+cellW-4, y+cellH-4)
-		agg2d.LineTo(x+4, y+cellH-4)
-		agg2d.ClosePolygon()
-		agg2d.DrawPath(agg.FillOnly)
+		// Cell background with normal blending.
+		pf.SetCompOp(blender.CompOpSrcOver)
+		fillRect(ras, sl, ren,
+			x+4, y+4, x+cellW-4, y+cellH-4,
+			color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 153})
 
-		agg2d.FillColor(agg.NewColor(255, 0, 0, 180))
-		agg2d.FillCircle(x+shiftX+c1x, y+shiftY+c1y, r)
-		agg2d.FillColor(agg.NewColor(0, 255, 0, 180))
-		agg2d.FillCircle(x+shiftX+c2x, y+shiftY+c2y, r)
+		// Red circle — normal blending.
+		fillCircle(ras, sl, ren,
+			x+shiftX+c1x, y+shiftY+c1y, r,
+			color.RGBA8[color.Linear]{R: 255, G: 0, B: 0, A: 180})
 
-		agg2d.BlendMode(m.mode)
-		agg2d.FillColor(agg.NewColor(0, 0, 255, 200))
-		agg2d.FillCircle(x+shiftX+c3x, y+shiftY+c3y, r)
+		// Green circle — normal blending.
+		fillCircle(ras, sl, ren,
+			x+shiftX+c2x, y+shiftY+c2y, r,
+			color.RGBA8[color.Linear]{R: 0, G: 255, B: 0, A: 180})
 
-		agg2d.BlendMode(agg.BlendAlpha)
-		agg2d.FillColor(agg.NewColor(20, 20, 20, 255))
-		agg2d.Text(x+cellW*0.5, y+drawAreaH+4, m.name, false, 0, 0)
+		// Blue circle — per-mode blending.
+		pf.SetCompOp(blendModeToCompOpBM(m.mode))
+		fillCircle(ras, sl, ren,
+			x+shiftX+c3x, y+shiftY+c3y, r,
+			color.RGBA8[color.Linear]{R: 0, G: 0, B: 255, A: 200})
 	}
 
-	agg2d.BlendMode(agg.BlendAlpha)
+	// Restore default.
+	pf.SetCompOp(blender.CompOpSrcOver)
+}
+
+// blendModeToCompOpBM maps the public agg.BlendMode to a blender.CompOp.
+func blendModeToCompOpBM(mode agg.BlendMode) blender.CompOp {
+	switch mode {
+	case agg.BlendAlpha, agg.BlendSrcOver:
+		return blender.CompOpSrcOver
+	case agg.BlendClear:
+		return blender.CompOpClear
+	case agg.BlendSrc:
+		return blender.CompOpSrc
+	case agg.BlendDst:
+		return blender.CompOpDst
+	case agg.BlendDstOver:
+		return blender.CompOpDstOver
+	case agg.BlendSrcIn:
+		return blender.CompOpSrcIn
+	case agg.BlendDstIn:
+		return blender.CompOpDstIn
+	case agg.BlendSrcOut:
+		return blender.CompOpSrcOut
+	case agg.BlendDstOut:
+		return blender.CompOpDstOut
+	case agg.BlendSrcAtop:
+		return blender.CompOpSrcAtop
+	case agg.BlendDstAtop:
+		return blender.CompOpDstAtop
+	case agg.BlendXor:
+		return blender.CompOpXor
+	case agg.BlendAdd:
+		return blender.CompOpPlus
+	case agg.BlendMultiply:
+		return blender.CompOpMultiply
+	case agg.BlendScreen:
+		return blender.CompOpScreen
+	case agg.BlendOverlay:
+		return blender.CompOpOverlay
+	case agg.BlendDarken:
+		return blender.CompOpDarken
+	case agg.BlendLighten:
+		return blender.CompOpLighten
+	case agg.BlendColorDodge:
+		return blender.CompOpColorDodge
+	case agg.BlendColorBurn:
+		return blender.CompOpColorBurn
+	case agg.BlendHardLight:
+		return blender.CompOpHardLight
+	case agg.BlendSoftLight:
+		return blender.CompOpSoftLight
+	case agg.BlendDifference:
+		return blender.CompOpDifference
+	case agg.BlendExclusion:
+		return blender.CompOpExclusion
+	default:
+		return blender.CompOpSrcOver
+	}
+}
+
+// fillCircle rasterizes a filled circle at (cx,cy) with radius r.
+func fillCircle(
+	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
+	sl *scanline.ScanlineU8,
+	ren renscan.BaseRendererInterface[color.RGBA8[color.Linear]],
+	cx, cy, radius float64,
+	c color.RGBA8[color.Linear],
+) {
+	ell := shapes.NewEllipseWithParams(cx, cy, radius, radius, 0, false)
+	ras.Reset()
+	ell.Rewind(0)
+	for {
+		var x, y float64
+		cmd := ell.Vertex(&x, &y)
+		if basics.IsStop(cmd) {
+			break
+		}
+		ras.AddVertex(x, y, uint32(cmd))
+	}
+	renscan.RenderScanlinesAASolid(ras, sl, ren, c)
+}
+
+// fillRect rasterizes a filled axis-aligned rectangle.
+func fillRect(
+	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
+	sl *scanline.ScanlineU8,
+	ren renscan.BaseRendererInterface[color.RGBA8[color.Linear]],
+	x1, y1, x2, y2 float64,
+	c color.RGBA8[color.Linear],
+) {
+	ras.Reset()
+	ras.AddVertex(x1, y1, uint32(basics.PathCmdMoveTo))
+	ras.AddVertex(x2, y1, uint32(basics.PathCmdLineTo))
+	ras.AddVertex(x2, y2, uint32(basics.PathCmdLineTo))
+	ras.AddVertex(x1, y2, uint32(basics.PathCmdLineTo))
+	renscan.RenderScanlinesAASolid(ras, sl, ren, c)
 }
 
 func min3(a, b, c float64) float64 {
