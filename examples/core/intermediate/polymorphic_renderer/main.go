@@ -40,23 +40,29 @@ type SolidRenderer interface {
 }
 
 // rgb555Renderer is backed by PixFmtRGB555, matching C++'s pix_format_rgb555.
+// Internally it uses linear RGBA8 colors (matching C++ blender_rgb555::color_type = rgba8).
+// The SolidRenderer interface accepts sRGB colors (matching C++ polymorphic_renderer_solid_rgba8_base),
+// and this adaptor converts sRGB→linear before passing to the renderer, just as the C++ adaptor
+// implicitly converts srgba8→rgba8 via the rgba8T<linear>(rgba8T<sRGB>) constructor.
 type rgb555Renderer struct {
 	pf      *pixfmt.PixFmtRGB555[blender.BlenderRGB555]
-	renBase *renderer.RendererBase[renderer.PixelFormat[color.RGBA8[color.SRGB]], color.RGBA8[color.SRGB]]
-	ren     *rendsl.RendererScanlineAASolid[*renderer.RendererBase[renderer.PixelFormat[color.RGBA8[color.SRGB]], color.RGBA8[color.SRGB]], color.RGBA8[color.SRGB]]
+	renBase *renderer.RendererBase[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]]
+	ren     *rendsl.RendererScanlineAASolid[*renderer.RendererBase[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]], color.RGBA8[color.Linear]]
 }
 
 func newRGB555Renderer(w, h int) (*rgb555Renderer, []basics.Int16u) {
 	buf16 := make([]basics.Int16u, w*h)
 	rbuf16 := buffer.NewRenderingBufferU16WithData(buf16, w, h, -w*2) // negative stride = flip_y
 	pf := pixfmt.NewPixFmtRGB555(rbuf16, blender.BlenderRGB555{})
-	rb := renderer.NewRendererBaseWithPixfmt[renderer.PixelFormat[color.RGBA8[color.SRGB]], color.RGBA8[color.SRGB]](pf)
+	rb := renderer.NewRendererBaseWithPixfmt[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](pf)
 	ren := rendsl.NewRendererScanlineAASolidWithRenderer(rb)
 	return &rgb555Renderer{pf: pf, renBase: rb, ren: ren}, buf16
 }
 
-func (r *rgb555Renderer) Clear(c color.RGBA8[color.SRGB])    { r.renBase.Clear(c) }
-func (r *rgb555Renderer) SetColor(c color.RGBA8[color.SRGB]) { r.ren.SetColor(c) }
+// Clear converts sRGB→linear before clearing, matching the C++ implicit srgba8→rgba8 conversion.
+func (r *rgb555Renderer) Clear(c color.RGBA8[color.SRGB])    { r.renBase.Clear(color.ConvertToLinear(c)) }
+// SetColor converts sRGB→linear before setting the color, matching C++ adaptor behavior.
+func (r *rgb555Renderer) SetColor(c color.RGBA8[color.SRGB]) { r.ren.SetColor(color.ConvertToLinear(c)) }
 func (r *rgb555Renderer) Prepare()                           { r.ren.Prepare() }
 func (r *rgb555Renderer) Render(sl rendsl.ScanlineInterface) { r.ren.Render(sl) }
 

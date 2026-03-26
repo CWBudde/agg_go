@@ -80,8 +80,8 @@ func UnpackPixelBGR565(pixel basics.Int16u) (r, g, b basics.Int8u) {
 // ─── PixFmtRGB555 ────────────────────────────────────────────────────────────
 
 // PixFmtRGB555 is the Go equivalent of AGG's pixfmt_alpha_blend_rgb_packed for
-// RGB555 (15-bit) packed pixel format. The color type is RGBA8[SRGB] to match
-// C++ srgba8: alpha is used for blending but not stored in the 16-bit pixel.
+// RGB555 (15-bit) packed pixel format. The color type is RGBA8[Linear] to match
+// C++ rgba8 (blender_rgb555::color_type): alpha is used for blending but not stored in the 16-bit pixel.
 type PixFmtRGB555[B blender.RGB16PackedBlender] struct {
 	rbuf     *buffer.RenderingBufferU16
 	blender  B
@@ -98,17 +98,17 @@ func (pf *PixFmtRGB555[B]) Height() int   { return pf.rbuf.Height() }
 func (pf *PixFmtRGB555[B]) PixWidth() int { return 2 }
 
 // Pixel returns the color at (x, y). Alpha is always 255 (packed formats are opaque).
-func (pf *PixFmtRGB555[B]) Pixel(x, y int) color.RGBA8[color.SRGB] {
+func (pf *PixFmtRGB555[B]) Pixel(x, y int) color.RGBA8[color.Linear] {
 	if !InBounds(x, y, pf.Width(), pf.Height()) {
-		return color.RGBA8[color.SRGB]{}
+		return color.RGBA8[color.Linear]{}
 	}
 	row := buffer.RowU16(pf.rbuf, y)
 	r, g, b := pf.blender.UnpackPix(row[x])
-	return color.RGBA8[color.SRGB]{R: r, G: g, B: b, A: 255}
+	return color.RGBA8[color.Linear]{R: r, G: g, B: b, A: 255}
 }
 
 // CopyPixel writes c directly, bypassing alpha compositing.
-func (pf *PixFmtRGB555[B]) CopyPixel(x, y int, c color.RGBA8[color.SRGB]) {
+func (pf *PixFmtRGB555[B]) CopyPixel(x, y int, c color.RGBA8[color.Linear]) {
 	if !InBounds(x, y, pf.Width(), pf.Height()) {
 		return
 	}
@@ -117,7 +117,7 @@ func (pf *PixFmtRGB555[B]) CopyPixel(x, y int, c color.RGBA8[color.SRGB]) {
 }
 
 // BlendPixel blends a pixel with coverage.
-func (pf *PixFmtRGB555[B]) BlendPixel(x, y int, c color.RGBA8[color.SRGB], cover basics.Int8u) {
+func (pf *PixFmtRGB555[B]) BlendPixel(x, y int, c color.RGBA8[color.Linear], cover basics.Int8u) {
 	if !InBounds(x, y, pf.Width(), pf.Height()) || c.A == 0 {
 		return
 	}
@@ -126,7 +126,7 @@ func (pf *PixFmtRGB555[B]) BlendPixel(x, y int, c color.RGBA8[color.SRGB], cover
 }
 
 // CopyHline writes a solid horizontal run without blending.
-func (pf *PixFmtRGB555[B]) CopyHline(x, y, length int, c color.RGBA8[color.SRGB]) {
+func (pf *PixFmtRGB555[B]) CopyHline(x, y, length int, c color.RGBA8[color.Linear]) {
 	if y < 0 || y >= pf.Height() || length <= 0 {
 		return
 	}
@@ -142,7 +142,7 @@ func (pf *PixFmtRGB555[B]) CopyHline(x, y, length int, c color.RGBA8[color.SRGB]
 }
 
 // BlendHline blends a horizontal line with uniform coverage.
-func (pf *PixFmtRGB555[B]) BlendHline(x, y, length int, c color.RGBA8[color.SRGB], cover basics.Int8u) {
+func (pf *PixFmtRGB555[B]) BlendHline(x, y, length int, c color.RGBA8[color.Linear], cover basics.Int8u) {
 	if y < 0 || y >= pf.Height() || length <= 0 || c.A == 0 {
 		return
 	}
@@ -157,7 +157,7 @@ func (pf *PixFmtRGB555[B]) BlendHline(x, y, length int, c color.RGBA8[color.SRGB
 }
 
 // CopyVline writes a solid vertical run without blending.
-func (pf *PixFmtRGB555[B]) CopyVline(x, y, length int, c color.RGBA8[color.SRGB]) {
+func (pf *PixFmtRGB555[B]) CopyVline(x, y, length int, c color.RGBA8[color.Linear]) {
 	if x < 0 || x >= pf.Width() || length <= 0 {
 		return
 	}
@@ -171,7 +171,7 @@ func (pf *PixFmtRGB555[B]) CopyVline(x, y, length int, c color.RGBA8[color.SRGB]
 }
 
 // BlendVline blends a solid vertical run with uniform coverage.
-func (pf *PixFmtRGB555[B]) BlendVline(x, y, length int, c color.RGBA8[color.SRGB], cover basics.Int8u) {
+func (pf *PixFmtRGB555[B]) BlendVline(x, y, length int, c color.RGBA8[color.Linear], cover basics.Int8u) {
 	if x < 0 || x >= pf.Width() || length <= 0 || c.A == 0 {
 		return
 	}
@@ -185,7 +185,7 @@ func (pf *PixFmtRGB555[B]) BlendVline(x, y, length int, c color.RGBA8[color.SRGB
 }
 
 // CopyBar fills a rectangle without blending.
-func (pf *PixFmtRGB555[B]) CopyBar(x1, y1, x2, y2 int, c color.RGBA8[color.SRGB]) {
+func (pf *PixFmtRGB555[B]) CopyBar(x1, y1, x2, y2 int, c color.RGBA8[color.Linear]) {
 	if y1 > y2 {
 		y1, y2 = y2, y1
 	}
@@ -198,7 +198,7 @@ func (pf *PixFmtRGB555[B]) CopyBar(x1, y1, x2, y2 int, c color.RGBA8[color.SRGB]
 }
 
 // BlendBar blends a rectangle with uniform coverage.
-func (pf *PixFmtRGB555[B]) BlendBar(x1, y1, x2, y2 int, c color.RGBA8[color.SRGB], cover basics.Int8u) {
+func (pf *PixFmtRGB555[B]) BlendBar(x1, y1, x2, y2 int, c color.RGBA8[color.Linear], cover basics.Int8u) {
 	if y1 > y2 {
 		y1, y2 = y2, y1
 	}
@@ -211,7 +211,7 @@ func (pf *PixFmtRGB555[B]) BlendBar(x1, y1, x2, y2 int, c color.RGBA8[color.SRGB
 }
 
 // BlendSolidHspan blends a horizontal span with varying per-pixel coverage.
-func (pf *PixFmtRGB555[B]) BlendSolidHspan(x, y, length int, c color.RGBA8[color.SRGB], covers []basics.Int8u) {
+func (pf *PixFmtRGB555[B]) BlendSolidHspan(x, y, length int, c color.RGBA8[color.Linear], covers []basics.Int8u) {
 	if y < 0 || y >= pf.Height() || length <= 0 || c.A == 0 {
 		return
 	}
@@ -234,7 +234,7 @@ func (pf *PixFmtRGB555[B]) BlendSolidHspan(x, y, length int, c color.RGBA8[color
 }
 
 // BlendSolidVspan blends a vertical span with varying per-pixel coverage.
-func (pf *PixFmtRGB555[B]) BlendSolidVspan(x, y, length int, c color.RGBA8[color.SRGB], covers []basics.Int8u) {
+func (pf *PixFmtRGB555[B]) BlendSolidVspan(x, y, length int, c color.RGBA8[color.Linear], covers []basics.Int8u) {
 	if x < 0 || x >= pf.Width() || length <= 0 || c.A == 0 {
 		return
 	}
@@ -256,7 +256,7 @@ func (pf *PixFmtRGB555[B]) BlendSolidVspan(x, y, length int, c color.RGBA8[color
 }
 
 // CopyColorHspan copies a horizontal span of colors without blending.
-func (pf *PixFmtRGB555[B]) CopyColorHspan(x, y, length int, colors []color.RGBA8[color.SRGB]) {
+func (pf *PixFmtRGB555[B]) CopyColorHspan(x, y, length int, colors []color.RGBA8[color.Linear]) {
 	if y < 0 || y >= pf.Height() || length <= 0 || len(colors) == 0 {
 		return
 	}
@@ -270,7 +270,7 @@ func (pf *PixFmtRGB555[B]) CopyColorHspan(x, y, length int, colors []color.RGBA8
 }
 
 // BlendColorHspan blends a horizontal span of colors with per-pixel or uniform coverage.
-func (pf *PixFmtRGB555[B]) BlendColorHspan(x, y, length int, colors []color.RGBA8[color.SRGB], covers []basics.Int8u, cover basics.Int8u) {
+func (pf *PixFmtRGB555[B]) BlendColorHspan(x, y, length int, colors []color.RGBA8[color.Linear], covers []basics.Int8u, cover basics.Int8u) {
 	if y < 0 || y >= pf.Height() || length <= 0 || len(colors) == 0 {
 		return
 	}
@@ -299,7 +299,7 @@ func (pf *PixFmtRGB555[B]) BlendColorHspan(x, y, length int, colors []color.RGBA
 }
 
 // CopyColorVspan copies a vertical span of colors without blending.
-func (pf *PixFmtRGB555[B]) CopyColorVspan(x, y, length int, colors []color.RGBA8[color.SRGB]) {
+func (pf *PixFmtRGB555[B]) CopyColorVspan(x, y, length int, colors []color.RGBA8[color.Linear]) {
 	if x < 0 || x >= pf.Width() || length <= 0 || len(colors) == 0 {
 		return
 	}
@@ -313,7 +313,7 @@ func (pf *PixFmtRGB555[B]) CopyColorVspan(x, y, length int, colors []color.RGBA8
 }
 
 // BlendColorVspan blends a vertical span of colors with per-pixel or uniform coverage.
-func (pf *PixFmtRGB555[B]) BlendColorVspan(x, y, length int, colors []color.RGBA8[color.SRGB], covers []basics.Int8u, cover basics.Int8u) {
+func (pf *PixFmtRGB555[B]) BlendColorVspan(x, y, length int, colors []color.RGBA8[color.Linear], covers []basics.Int8u, cover basics.Int8u) {
 	if x < 0 || x >= pf.Width() || length <= 0 || len(colors) == 0 {
 		return
 	}
@@ -335,7 +335,7 @@ func (pf *PixFmtRGB555[B]) BlendColorVspan(x, y, length int, colors []color.RGBA
 }
 
 // Clear fills the entire buffer with c (alpha channel ignored; all pixels opaque).
-func (pf *PixFmtRGB555[B]) Clear(c color.RGBA8[color.SRGB]) {
+func (pf *PixFmtRGB555[B]) Clear(c color.RGBA8[color.Linear]) {
 	packed := pf.blender.MakePix(c.R, c.G, c.B)
 	for y := range pf.Height() {
 		row := buffer.RowU16(pf.rbuf, y)
@@ -346,7 +346,7 @@ func (pf *PixFmtRGB555[B]) Clear(c color.RGBA8[color.SRGB]) {
 }
 
 // Fill is an alias for Clear.
-func (pf *PixFmtRGB555[B]) Fill(c color.RGBA8[color.SRGB]) { pf.Clear(c) }
+func (pf *PixFmtRGB555[B]) Fill(c color.RGBA8[color.Linear]) { pf.Clear(c) }
 
 // ─── PixFmtRGB565 ────────────────────────────────────────────────────────────
 
@@ -367,16 +367,16 @@ func (pf *PixFmtRGB565[B]) Width() int    { return pf.rbuf.Width() }
 func (pf *PixFmtRGB565[B]) Height() int   { return pf.rbuf.Height() }
 func (pf *PixFmtRGB565[B]) PixWidth() int { return 2 }
 
-func (pf *PixFmtRGB565[B]) Pixel(x, y int) color.RGBA8[color.SRGB] {
+func (pf *PixFmtRGB565[B]) Pixel(x, y int) color.RGBA8[color.Linear] {
 	if !InBounds(x, y, pf.Width(), pf.Height()) {
-		return color.RGBA8[color.SRGB]{}
+		return color.RGBA8[color.Linear]{}
 	}
 	row := buffer.RowU16(pf.rbuf, y)
 	r, g, b := pf.blender.UnpackPix(row[x])
-	return color.RGBA8[color.SRGB]{R: r, G: g, B: b, A: 255}
+	return color.RGBA8[color.Linear]{R: r, G: g, B: b, A: 255}
 }
 
-func (pf *PixFmtRGB565[B]) CopyPixel(x, y int, c color.RGBA8[color.SRGB]) {
+func (pf *PixFmtRGB565[B]) CopyPixel(x, y int, c color.RGBA8[color.Linear]) {
 	if !InBounds(x, y, pf.Width(), pf.Height()) {
 		return
 	}
@@ -384,7 +384,7 @@ func (pf *PixFmtRGB565[B]) CopyPixel(x, y int, c color.RGBA8[color.SRGB]) {
 	row[x] = pf.blender.MakePix(c.R, c.G, c.B)
 }
 
-func (pf *PixFmtRGB565[B]) BlendPixel(x, y int, c color.RGBA8[color.SRGB], cover basics.Int8u) {
+func (pf *PixFmtRGB565[B]) BlendPixel(x, y int, c color.RGBA8[color.Linear], cover basics.Int8u) {
 	if !InBounds(x, y, pf.Width(), pf.Height()) || c.A == 0 {
 		return
 	}
@@ -392,7 +392,7 @@ func (pf *PixFmtRGB565[B]) BlendPixel(x, y int, c color.RGBA8[color.SRGB], cover
 	pf.blender.BlendPix(&row[x], c.R, c.G, c.B, c.A, cover)
 }
 
-func (pf *PixFmtRGB565[B]) CopyHline(x, y, length int, c color.RGBA8[color.SRGB]) {
+func (pf *PixFmtRGB565[B]) CopyHline(x, y, length int, c color.RGBA8[color.Linear]) {
 	if y < 0 || y >= pf.Height() || length <= 0 {
 		return
 	}
@@ -407,7 +407,7 @@ func (pf *PixFmtRGB565[B]) CopyHline(x, y, length int, c color.RGBA8[color.SRGB]
 	}
 }
 
-func (pf *PixFmtRGB565[B]) BlendHline(x, y, length int, c color.RGBA8[color.SRGB], cover basics.Int8u) {
+func (pf *PixFmtRGB565[B]) BlendHline(x, y, length int, c color.RGBA8[color.Linear], cover basics.Int8u) {
 	if y < 0 || y >= pf.Height() || length <= 0 || c.A == 0 {
 		return
 	}
@@ -421,7 +421,7 @@ func (pf *PixFmtRGB565[B]) BlendHline(x, y, length int, c color.RGBA8[color.SRGB
 	}
 }
 
-func (pf *PixFmtRGB565[B]) CopyVline(x, y, length int, c color.RGBA8[color.SRGB]) {
+func (pf *PixFmtRGB565[B]) CopyVline(x, y, length int, c color.RGBA8[color.Linear]) {
 	if x < 0 || x >= pf.Width() || length <= 0 {
 		return
 	}
@@ -434,7 +434,7 @@ func (pf *PixFmtRGB565[B]) CopyVline(x, y, length int, c color.RGBA8[color.SRGB]
 	}
 }
 
-func (pf *PixFmtRGB565[B]) BlendVline(x, y, length int, c color.RGBA8[color.SRGB], cover basics.Int8u) {
+func (pf *PixFmtRGB565[B]) BlendVline(x, y, length int, c color.RGBA8[color.Linear], cover basics.Int8u) {
 	if x < 0 || x >= pf.Width() || length <= 0 || c.A == 0 {
 		return
 	}
@@ -447,7 +447,7 @@ func (pf *PixFmtRGB565[B]) BlendVline(x, y, length int, c color.RGBA8[color.SRGB
 	}
 }
 
-func (pf *PixFmtRGB565[B]) CopyBar(x1, y1, x2, y2 int, c color.RGBA8[color.SRGB]) {
+func (pf *PixFmtRGB565[B]) CopyBar(x1, y1, x2, y2 int, c color.RGBA8[color.Linear]) {
 	if y1 > y2 {
 		y1, y2 = y2, y1
 	}
@@ -459,7 +459,7 @@ func (pf *PixFmtRGB565[B]) CopyBar(x1, y1, x2, y2 int, c color.RGBA8[color.SRGB]
 	}
 }
 
-func (pf *PixFmtRGB565[B]) BlendBar(x1, y1, x2, y2 int, c color.RGBA8[color.SRGB], cover basics.Int8u) {
+func (pf *PixFmtRGB565[B]) BlendBar(x1, y1, x2, y2 int, c color.RGBA8[color.Linear], cover basics.Int8u) {
 	if y1 > y2 {
 		y1, y2 = y2, y1
 	}
@@ -471,7 +471,7 @@ func (pf *PixFmtRGB565[B]) BlendBar(x1, y1, x2, y2 int, c color.RGBA8[color.SRGB
 	}
 }
 
-func (pf *PixFmtRGB565[B]) BlendSolidHspan(x, y, length int, c color.RGBA8[color.SRGB], covers []basics.Int8u) {
+func (pf *PixFmtRGB565[B]) BlendSolidHspan(x, y, length int, c color.RGBA8[color.Linear], covers []basics.Int8u) {
 	if y < 0 || y >= pf.Height() || length <= 0 || c.A == 0 {
 		return
 	}
@@ -493,7 +493,7 @@ func (pf *PixFmtRGB565[B]) BlendSolidHspan(x, y, length int, c color.RGBA8[color
 	}
 }
 
-func (pf *PixFmtRGB565[B]) BlendSolidVspan(x, y, length int, c color.RGBA8[color.SRGB], covers []basics.Int8u) {
+func (pf *PixFmtRGB565[B]) BlendSolidVspan(x, y, length int, c color.RGBA8[color.Linear], covers []basics.Int8u) {
 	if x < 0 || x >= pf.Width() || length <= 0 || c.A == 0 {
 		return
 	}
@@ -514,7 +514,7 @@ func (pf *PixFmtRGB565[B]) BlendSolidVspan(x, y, length int, c color.RGBA8[color
 	}
 }
 
-func (pf *PixFmtRGB565[B]) CopyColorHspan(x, y, length int, colors []color.RGBA8[color.SRGB]) {
+func (pf *PixFmtRGB565[B]) CopyColorHspan(x, y, length int, colors []color.RGBA8[color.Linear]) {
 	if y < 0 || y >= pf.Height() || length <= 0 || len(colors) == 0 {
 		return
 	}
@@ -527,7 +527,7 @@ func (pf *PixFmtRGB565[B]) CopyColorHspan(x, y, length int, colors []color.RGBA8
 	}
 }
 
-func (pf *PixFmtRGB565[B]) BlendColorHspan(x, y, length int, colors []color.RGBA8[color.SRGB], covers []basics.Int8u, cover basics.Int8u) {
+func (pf *PixFmtRGB565[B]) BlendColorHspan(x, y, length int, colors []color.RGBA8[color.Linear], covers []basics.Int8u, cover basics.Int8u) {
 	if y < 0 || y >= pf.Height() || length <= 0 || len(colors) == 0 {
 		return
 	}
@@ -555,7 +555,7 @@ func (pf *PixFmtRGB565[B]) BlendColorHspan(x, y, length int, colors []color.RGBA
 	}
 }
 
-func (pf *PixFmtRGB565[B]) CopyColorVspan(x, y, length int, colors []color.RGBA8[color.SRGB]) {
+func (pf *PixFmtRGB565[B]) CopyColorVspan(x, y, length int, colors []color.RGBA8[color.Linear]) {
 	if x < 0 || x >= pf.Width() || length <= 0 || len(colors) == 0 {
 		return
 	}
@@ -568,7 +568,7 @@ func (pf *PixFmtRGB565[B]) CopyColorVspan(x, y, length int, colors []color.RGBA8
 	}
 }
 
-func (pf *PixFmtRGB565[B]) BlendColorVspan(x, y, length int, colors []color.RGBA8[color.SRGB], covers []basics.Int8u, cover basics.Int8u) {
+func (pf *PixFmtRGB565[B]) BlendColorVspan(x, y, length int, colors []color.RGBA8[color.Linear], covers []basics.Int8u, cover basics.Int8u) {
 	if x < 0 || x >= pf.Width() || length <= 0 || len(colors) == 0 {
 		return
 	}
@@ -589,7 +589,7 @@ func (pf *PixFmtRGB565[B]) BlendColorVspan(x, y, length int, colors []color.RGBA
 	}
 }
 
-func (pf *PixFmtRGB565[B]) Clear(c color.RGBA8[color.SRGB]) {
+func (pf *PixFmtRGB565[B]) Clear(c color.RGBA8[color.Linear]) {
 	packed := pf.blender.MakePix(c.R, c.G, c.B)
 	for y := range pf.Height() {
 		row := buffer.RowU16(pf.rbuf, y)
@@ -599,7 +599,7 @@ func (pf *PixFmtRGB565[B]) Clear(c color.RGBA8[color.SRGB]) {
 	}
 }
 
-func (pf *PixFmtRGB565[B]) Fill(c color.RGBA8[color.SRGB]) { pf.Clear(c) }
+func (pf *PixFmtRGB565[B]) Fill(c color.RGBA8[color.Linear]) { pf.Clear(c) }
 
 // ─── PixFmtBGR555 ────────────────────────────────────────────────────────────
 
@@ -620,16 +620,16 @@ func (pf *PixFmtBGR555[B]) Width() int    { return pf.rbuf.Width() }
 func (pf *PixFmtBGR555[B]) Height() int   { return pf.rbuf.Height() }
 func (pf *PixFmtBGR555[B]) PixWidth() int { return 2 }
 
-func (pf *PixFmtBGR555[B]) Pixel(x, y int) color.RGBA8[color.SRGB] {
+func (pf *PixFmtBGR555[B]) Pixel(x, y int) color.RGBA8[color.Linear] {
 	if !InBounds(x, y, pf.Width(), pf.Height()) {
-		return color.RGBA8[color.SRGB]{}
+		return color.RGBA8[color.Linear]{}
 	}
 	row := buffer.RowU16(pf.rbuf, y)
 	r, g, b := pf.blender.UnpackPix(row[x])
-	return color.RGBA8[color.SRGB]{R: r, G: g, B: b, A: 255}
+	return color.RGBA8[color.Linear]{R: r, G: g, B: b, A: 255}
 }
 
-func (pf *PixFmtBGR555[B]) CopyPixel(x, y int, c color.RGBA8[color.SRGB]) {
+func (pf *PixFmtBGR555[B]) CopyPixel(x, y int, c color.RGBA8[color.Linear]) {
 	if !InBounds(x, y, pf.Width(), pf.Height()) {
 		return
 	}
@@ -637,7 +637,7 @@ func (pf *PixFmtBGR555[B]) CopyPixel(x, y int, c color.RGBA8[color.SRGB]) {
 	row[x] = pf.blender.MakePix(c.R, c.G, c.B)
 }
 
-func (pf *PixFmtBGR555[B]) BlendPixel(x, y int, c color.RGBA8[color.SRGB], cover basics.Int8u) {
+func (pf *PixFmtBGR555[B]) BlendPixel(x, y int, c color.RGBA8[color.Linear], cover basics.Int8u) {
 	if !InBounds(x, y, pf.Width(), pf.Height()) || c.A == 0 {
 		return
 	}
@@ -645,7 +645,7 @@ func (pf *PixFmtBGR555[B]) BlendPixel(x, y int, c color.RGBA8[color.SRGB], cover
 	pf.blender.BlendPix(&row[x], c.R, c.G, c.B, c.A, cover)
 }
 
-func (pf *PixFmtBGR555[B]) CopyHline(x, y, length int, c color.RGBA8[color.SRGB]) {
+func (pf *PixFmtBGR555[B]) CopyHline(x, y, length int, c color.RGBA8[color.Linear]) {
 	if y < 0 || y >= pf.Height() || length <= 0 {
 		return
 	}
@@ -660,7 +660,7 @@ func (pf *PixFmtBGR555[B]) CopyHline(x, y, length int, c color.RGBA8[color.SRGB]
 	}
 }
 
-func (pf *PixFmtBGR555[B]) BlendHline(x, y, length int, c color.RGBA8[color.SRGB], cover basics.Int8u) {
+func (pf *PixFmtBGR555[B]) BlendHline(x, y, length int, c color.RGBA8[color.Linear], cover basics.Int8u) {
 	if y < 0 || y >= pf.Height() || length <= 0 || c.A == 0 {
 		return
 	}
@@ -674,7 +674,7 @@ func (pf *PixFmtBGR555[B]) BlendHline(x, y, length int, c color.RGBA8[color.SRGB
 	}
 }
 
-func (pf *PixFmtBGR555[B]) CopyVline(x, y, length int, c color.RGBA8[color.SRGB]) {
+func (pf *PixFmtBGR555[B]) CopyVline(x, y, length int, c color.RGBA8[color.Linear]) {
 	if x < 0 || x >= pf.Width() || length <= 0 {
 		return
 	}
@@ -687,7 +687,7 @@ func (pf *PixFmtBGR555[B]) CopyVline(x, y, length int, c color.RGBA8[color.SRGB]
 	}
 }
 
-func (pf *PixFmtBGR555[B]) BlendVline(x, y, length int, c color.RGBA8[color.SRGB], cover basics.Int8u) {
+func (pf *PixFmtBGR555[B]) BlendVline(x, y, length int, c color.RGBA8[color.Linear], cover basics.Int8u) {
 	if x < 0 || x >= pf.Width() || length <= 0 || c.A == 0 {
 		return
 	}
@@ -700,7 +700,7 @@ func (pf *PixFmtBGR555[B]) BlendVline(x, y, length int, c color.RGBA8[color.SRGB
 	}
 }
 
-func (pf *PixFmtBGR555[B]) CopyBar(x1, y1, x2, y2 int, c color.RGBA8[color.SRGB]) {
+func (pf *PixFmtBGR555[B]) CopyBar(x1, y1, x2, y2 int, c color.RGBA8[color.Linear]) {
 	if y1 > y2 {
 		y1, y2 = y2, y1
 	}
@@ -712,7 +712,7 @@ func (pf *PixFmtBGR555[B]) CopyBar(x1, y1, x2, y2 int, c color.RGBA8[color.SRGB]
 	}
 }
 
-func (pf *PixFmtBGR555[B]) BlendBar(x1, y1, x2, y2 int, c color.RGBA8[color.SRGB], cover basics.Int8u) {
+func (pf *PixFmtBGR555[B]) BlendBar(x1, y1, x2, y2 int, c color.RGBA8[color.Linear], cover basics.Int8u) {
 	if y1 > y2 {
 		y1, y2 = y2, y1
 	}
@@ -724,7 +724,7 @@ func (pf *PixFmtBGR555[B]) BlendBar(x1, y1, x2, y2 int, c color.RGBA8[color.SRGB
 	}
 }
 
-func (pf *PixFmtBGR555[B]) BlendSolidHspan(x, y, length int, c color.RGBA8[color.SRGB], covers []basics.Int8u) {
+func (pf *PixFmtBGR555[B]) BlendSolidHspan(x, y, length int, c color.RGBA8[color.Linear], covers []basics.Int8u) {
 	if y < 0 || y >= pf.Height() || length <= 0 || c.A == 0 {
 		return
 	}
@@ -746,7 +746,7 @@ func (pf *PixFmtBGR555[B]) BlendSolidHspan(x, y, length int, c color.RGBA8[color
 	}
 }
 
-func (pf *PixFmtBGR555[B]) BlendSolidVspan(x, y, length int, c color.RGBA8[color.SRGB], covers []basics.Int8u) {
+func (pf *PixFmtBGR555[B]) BlendSolidVspan(x, y, length int, c color.RGBA8[color.Linear], covers []basics.Int8u) {
 	if x < 0 || x >= pf.Width() || length <= 0 || c.A == 0 {
 		return
 	}
@@ -767,7 +767,7 @@ func (pf *PixFmtBGR555[B]) BlendSolidVspan(x, y, length int, c color.RGBA8[color
 	}
 }
 
-func (pf *PixFmtBGR555[B]) CopyColorHspan(x, y, length int, colors []color.RGBA8[color.SRGB]) {
+func (pf *PixFmtBGR555[B]) CopyColorHspan(x, y, length int, colors []color.RGBA8[color.Linear]) {
 	if y < 0 || y >= pf.Height() || length <= 0 || len(colors) == 0 {
 		return
 	}
@@ -780,7 +780,7 @@ func (pf *PixFmtBGR555[B]) CopyColorHspan(x, y, length int, colors []color.RGBA8
 	}
 }
 
-func (pf *PixFmtBGR555[B]) BlendColorHspan(x, y, length int, colors []color.RGBA8[color.SRGB], covers []basics.Int8u, cover basics.Int8u) {
+func (pf *PixFmtBGR555[B]) BlendColorHspan(x, y, length int, colors []color.RGBA8[color.Linear], covers []basics.Int8u, cover basics.Int8u) {
 	if y < 0 || y >= pf.Height() || length <= 0 || len(colors) == 0 {
 		return
 	}
@@ -808,7 +808,7 @@ func (pf *PixFmtBGR555[B]) BlendColorHspan(x, y, length int, colors []color.RGBA
 	}
 }
 
-func (pf *PixFmtBGR555[B]) CopyColorVspan(x, y, length int, colors []color.RGBA8[color.SRGB]) {
+func (pf *PixFmtBGR555[B]) CopyColorVspan(x, y, length int, colors []color.RGBA8[color.Linear]) {
 	if x < 0 || x >= pf.Width() || length <= 0 || len(colors) == 0 {
 		return
 	}
@@ -821,7 +821,7 @@ func (pf *PixFmtBGR555[B]) CopyColorVspan(x, y, length int, colors []color.RGBA8
 	}
 }
 
-func (pf *PixFmtBGR555[B]) BlendColorVspan(x, y, length int, colors []color.RGBA8[color.SRGB], covers []basics.Int8u, cover basics.Int8u) {
+func (pf *PixFmtBGR555[B]) BlendColorVspan(x, y, length int, colors []color.RGBA8[color.Linear], covers []basics.Int8u, cover basics.Int8u) {
 	if x < 0 || x >= pf.Width() || length <= 0 || len(colors) == 0 {
 		return
 	}
@@ -842,7 +842,7 @@ func (pf *PixFmtBGR555[B]) BlendColorVspan(x, y, length int, colors []color.RGBA
 	}
 }
 
-func (pf *PixFmtBGR555[B]) Clear(c color.RGBA8[color.SRGB]) {
+func (pf *PixFmtBGR555[B]) Clear(c color.RGBA8[color.Linear]) {
 	packed := pf.blender.MakePix(c.R, c.G, c.B)
 	for y := range pf.Height() {
 		row := buffer.RowU16(pf.rbuf, y)
@@ -852,7 +852,7 @@ func (pf *PixFmtBGR555[B]) Clear(c color.RGBA8[color.SRGB]) {
 	}
 }
 
-func (pf *PixFmtBGR555[B]) Fill(c color.RGBA8[color.SRGB]) { pf.Clear(c) }
+func (pf *PixFmtBGR555[B]) Fill(c color.RGBA8[color.Linear]) { pf.Clear(c) }
 
 // ─── PixFmtBGR565 ────────────────────────────────────────────────────────────
 
@@ -873,16 +873,16 @@ func (pf *PixFmtBGR565[B]) Width() int    { return pf.rbuf.Width() }
 func (pf *PixFmtBGR565[B]) Height() int   { return pf.rbuf.Height() }
 func (pf *PixFmtBGR565[B]) PixWidth() int { return 2 }
 
-func (pf *PixFmtBGR565[B]) Pixel(x, y int) color.RGBA8[color.SRGB] {
+func (pf *PixFmtBGR565[B]) Pixel(x, y int) color.RGBA8[color.Linear] {
 	if !InBounds(x, y, pf.Width(), pf.Height()) {
-		return color.RGBA8[color.SRGB]{}
+		return color.RGBA8[color.Linear]{}
 	}
 	row := buffer.RowU16(pf.rbuf, y)
 	r, g, b := pf.blender.UnpackPix(row[x])
-	return color.RGBA8[color.SRGB]{R: r, G: g, B: b, A: 255}
+	return color.RGBA8[color.Linear]{R: r, G: g, B: b, A: 255}
 }
 
-func (pf *PixFmtBGR565[B]) CopyPixel(x, y int, c color.RGBA8[color.SRGB]) {
+func (pf *PixFmtBGR565[B]) CopyPixel(x, y int, c color.RGBA8[color.Linear]) {
 	if !InBounds(x, y, pf.Width(), pf.Height()) {
 		return
 	}
@@ -890,7 +890,7 @@ func (pf *PixFmtBGR565[B]) CopyPixel(x, y int, c color.RGBA8[color.SRGB]) {
 	row[x] = pf.blender.MakePix(c.R, c.G, c.B)
 }
 
-func (pf *PixFmtBGR565[B]) BlendPixel(x, y int, c color.RGBA8[color.SRGB], cover basics.Int8u) {
+func (pf *PixFmtBGR565[B]) BlendPixel(x, y int, c color.RGBA8[color.Linear], cover basics.Int8u) {
 	if !InBounds(x, y, pf.Width(), pf.Height()) || c.A == 0 {
 		return
 	}
@@ -898,7 +898,7 @@ func (pf *PixFmtBGR565[B]) BlendPixel(x, y int, c color.RGBA8[color.SRGB], cover
 	pf.blender.BlendPix(&row[x], c.R, c.G, c.B, c.A, cover)
 }
 
-func (pf *PixFmtBGR565[B]) CopyHline(x, y, length int, c color.RGBA8[color.SRGB]) {
+func (pf *PixFmtBGR565[B]) CopyHline(x, y, length int, c color.RGBA8[color.Linear]) {
 	if y < 0 || y >= pf.Height() || length <= 0 {
 		return
 	}
@@ -913,7 +913,7 @@ func (pf *PixFmtBGR565[B]) CopyHline(x, y, length int, c color.RGBA8[color.SRGB]
 	}
 }
 
-func (pf *PixFmtBGR565[B]) BlendHline(x, y, length int, c color.RGBA8[color.SRGB], cover basics.Int8u) {
+func (pf *PixFmtBGR565[B]) BlendHline(x, y, length int, c color.RGBA8[color.Linear], cover basics.Int8u) {
 	if y < 0 || y >= pf.Height() || length <= 0 || c.A == 0 {
 		return
 	}
@@ -927,7 +927,7 @@ func (pf *PixFmtBGR565[B]) BlendHline(x, y, length int, c color.RGBA8[color.SRGB
 	}
 }
 
-func (pf *PixFmtBGR565[B]) CopyVline(x, y, length int, c color.RGBA8[color.SRGB]) {
+func (pf *PixFmtBGR565[B]) CopyVline(x, y, length int, c color.RGBA8[color.Linear]) {
 	if x < 0 || x >= pf.Width() || length <= 0 {
 		return
 	}
@@ -940,7 +940,7 @@ func (pf *PixFmtBGR565[B]) CopyVline(x, y, length int, c color.RGBA8[color.SRGB]
 	}
 }
 
-func (pf *PixFmtBGR565[B]) BlendVline(x, y, length int, c color.RGBA8[color.SRGB], cover basics.Int8u) {
+func (pf *PixFmtBGR565[B]) BlendVline(x, y, length int, c color.RGBA8[color.Linear], cover basics.Int8u) {
 	if x < 0 || x >= pf.Width() || length <= 0 || c.A == 0 {
 		return
 	}
@@ -953,7 +953,7 @@ func (pf *PixFmtBGR565[B]) BlendVline(x, y, length int, c color.RGBA8[color.SRGB
 	}
 }
 
-func (pf *PixFmtBGR565[B]) CopyBar(x1, y1, x2, y2 int, c color.RGBA8[color.SRGB]) {
+func (pf *PixFmtBGR565[B]) CopyBar(x1, y1, x2, y2 int, c color.RGBA8[color.Linear]) {
 	if y1 > y2 {
 		y1, y2 = y2, y1
 	}
@@ -965,7 +965,7 @@ func (pf *PixFmtBGR565[B]) CopyBar(x1, y1, x2, y2 int, c color.RGBA8[color.SRGB]
 	}
 }
 
-func (pf *PixFmtBGR565[B]) BlendBar(x1, y1, x2, y2 int, c color.RGBA8[color.SRGB], cover basics.Int8u) {
+func (pf *PixFmtBGR565[B]) BlendBar(x1, y1, x2, y2 int, c color.RGBA8[color.Linear], cover basics.Int8u) {
 	if y1 > y2 {
 		y1, y2 = y2, y1
 	}
@@ -977,7 +977,7 @@ func (pf *PixFmtBGR565[B]) BlendBar(x1, y1, x2, y2 int, c color.RGBA8[color.SRGB
 	}
 }
 
-func (pf *PixFmtBGR565[B]) BlendSolidHspan(x, y, length int, c color.RGBA8[color.SRGB], covers []basics.Int8u) {
+func (pf *PixFmtBGR565[B]) BlendSolidHspan(x, y, length int, c color.RGBA8[color.Linear], covers []basics.Int8u) {
 	if y < 0 || y >= pf.Height() || length <= 0 || c.A == 0 {
 		return
 	}
@@ -999,7 +999,7 @@ func (pf *PixFmtBGR565[B]) BlendSolidHspan(x, y, length int, c color.RGBA8[color
 	}
 }
 
-func (pf *PixFmtBGR565[B]) BlendSolidVspan(x, y, length int, c color.RGBA8[color.SRGB], covers []basics.Int8u) {
+func (pf *PixFmtBGR565[B]) BlendSolidVspan(x, y, length int, c color.RGBA8[color.Linear], covers []basics.Int8u) {
 	if x < 0 || x >= pf.Width() || length <= 0 || c.A == 0 {
 		return
 	}
@@ -1020,7 +1020,7 @@ func (pf *PixFmtBGR565[B]) BlendSolidVspan(x, y, length int, c color.RGBA8[color
 	}
 }
 
-func (pf *PixFmtBGR565[B]) CopyColorHspan(x, y, length int, colors []color.RGBA8[color.SRGB]) {
+func (pf *PixFmtBGR565[B]) CopyColorHspan(x, y, length int, colors []color.RGBA8[color.Linear]) {
 	if y < 0 || y >= pf.Height() || length <= 0 || len(colors) == 0 {
 		return
 	}
@@ -1033,7 +1033,7 @@ func (pf *PixFmtBGR565[B]) CopyColorHspan(x, y, length int, colors []color.RGBA8
 	}
 }
 
-func (pf *PixFmtBGR565[B]) BlendColorHspan(x, y, length int, colors []color.RGBA8[color.SRGB], covers []basics.Int8u, cover basics.Int8u) {
+func (pf *PixFmtBGR565[B]) BlendColorHspan(x, y, length int, colors []color.RGBA8[color.Linear], covers []basics.Int8u, cover basics.Int8u) {
 	if y < 0 || y >= pf.Height() || length <= 0 || len(colors) == 0 {
 		return
 	}
@@ -1061,7 +1061,7 @@ func (pf *PixFmtBGR565[B]) BlendColorHspan(x, y, length int, colors []color.RGBA
 	}
 }
 
-func (pf *PixFmtBGR565[B]) CopyColorVspan(x, y, length int, colors []color.RGBA8[color.SRGB]) {
+func (pf *PixFmtBGR565[B]) CopyColorVspan(x, y, length int, colors []color.RGBA8[color.Linear]) {
 	if x < 0 || x >= pf.Width() || length <= 0 || len(colors) == 0 {
 		return
 	}
@@ -1074,7 +1074,7 @@ func (pf *PixFmtBGR565[B]) CopyColorVspan(x, y, length int, colors []color.RGBA8
 	}
 }
 
-func (pf *PixFmtBGR565[B]) BlendColorVspan(x, y, length int, colors []color.RGBA8[color.SRGB], covers []basics.Int8u, cover basics.Int8u) {
+func (pf *PixFmtBGR565[B]) BlendColorVspan(x, y, length int, colors []color.RGBA8[color.Linear], covers []basics.Int8u, cover basics.Int8u) {
 	if x < 0 || x >= pf.Width() || length <= 0 || len(colors) == 0 {
 		return
 	}
@@ -1095,7 +1095,7 @@ func (pf *PixFmtBGR565[B]) BlendColorVspan(x, y, length int, colors []color.RGBA
 	}
 }
 
-func (pf *PixFmtBGR565[B]) Clear(c color.RGBA8[color.SRGB]) {
+func (pf *PixFmtBGR565[B]) Clear(c color.RGBA8[color.Linear]) {
 	packed := pf.blender.MakePix(c.R, c.G, c.B)
 	for y := range pf.Height() {
 		row := buffer.RowU16(pf.rbuf, y)
@@ -1105,7 +1105,7 @@ func (pf *PixFmtBGR565[B]) Clear(c color.RGBA8[color.SRGB]) {
 	}
 }
 
-func (pf *PixFmtBGR565[B]) Fill(c color.RGBA8[color.SRGB]) { pf.Clear(c) }
+func (pf *PixFmtBGR565[B]) Fill(c color.RGBA8[color.Linear]) { pf.Clear(c) }
 
 // ─── NoBlender ───────────────────────────────────────────────────────────────
 
