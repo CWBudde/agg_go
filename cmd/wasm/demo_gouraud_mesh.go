@@ -17,7 +17,7 @@ import (
 type meshPoint struct {
 	x, y   float64
 	dx, dy float64
-	color  color.RGBA8[color.Linear]
+	color  color.RGBA8[color.SRGB]
 	dc     [3]int // direction of color change
 }
 
@@ -73,7 +73,7 @@ func initMesh() {
 				x: x, y: y,
 				dx: (rng.Float64() - 0.5) * 2.0,
 				dy: (rng.Float64() - 0.5) * 2.0,
-				color: color.RGBA8[color.Linear]{
+				color: color.RGBA8[color.SRGB]{
 					R: uint8(rng.Intn(256)),
 					G: uint8(rng.Intn(256)),
 					B: uint8(rng.Intn(256)),
@@ -143,16 +143,16 @@ type meshStyleHandler struct {
 }
 
 func (h *meshStyleHandler) IsSolid(style int) bool { return false }
-func (h *meshStyleHandler) Color(style int) color.RGBA8[color.Linear] {
-	return color.RGBA8[color.Linear]{}
+func (h *meshStyleHandler) Color(style int) color.RGBA8[color.SRGB] {
+	return color.RGBA8[color.SRGB]{}
 }
 
-func (h *meshStyleHandler) GenerateSpan(colors []color.RGBA8[color.Linear], x, y, length, style int) {
+func (h *meshStyleHandler) GenerateSpan(colors []color.RGBA8[color.SRGB], x, y, length, style int) {
 	if style >= 0 && style < len(h.triangles) {
 		temp := make([]span.RGBAColor, length)
 		h.triangles[style].Generate(temp, x, y, uint(length))
 		for i := 0; i < length; i++ {
-			colors[i] = color.RGBA8[color.Linear]{
+			colors[i] = color.RGBA8[color.SRGB]{
 				R: uint8(temp[i].R),
 				G: uint8(temp[i].G),
 				B: uint8(temp[i].B),
@@ -201,16 +201,13 @@ func drawGouraudMeshDemo() {
 		updateChan(&c.B, &p.dc[2])
 	}
 
-	agg2d := ctx.GetAgg2D()
-	agg2d.ResetTransformations()
-
 	img := ctx.GetImage()
 	rbuf := buffer.NewRenderingBufferU8()
-	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Width()*4)
+	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Stride())
 
-	pixFmt := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
-	renBase := renderer.NewRendererBaseWithPixfmt[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](pixFmt)
-	renBase.Clear(color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255}) // rgba(0, 0, 0)
+	pixFmt := pixfmt.NewPixFmtRGBA32Pre[color.SRGB](rbuf)
+	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32Pre[color.SRGB], color.RGBA8[color.SRGB]](pixFmt)
+	renBase.Clear(color.RGBA8[color.SRGB]{R: 0, G: 0, B: 0, A: 255})
 
 	styles := &meshStyleHandler{}
 	for _, t := range meshTriangles {
@@ -257,13 +254,13 @@ func drawGouraudMeshDemo() {
 	adapterAA := &flashScanlineAdapter{sl: slAA}
 	adapterBin := &flashScanlineAdapter{sl: slBin}
 
-	alloc := span.NewSpanAllocator[color.RGBA8[color.Linear]]()
+	alloc := span.NewSpanAllocator[color.RGBA8[color.SRGB]]()
 
 	length := maxX - minX + 2
 	if length < 0 {
 		length = 0
 	}
-	colorSpan := make([]color.RGBA8[color.Linear], length*2)
+	colorSpan := make([]color.RGBA8[color.SRGB], length*2)
 	mixBuffer := colorSpan[length:]
 
 	for {
@@ -289,7 +286,7 @@ func drawGouraudMeshDemo() {
 				y := slBin.Y()
 				for _, spanData := range slBin.Spans() {
 					for j := 0; j < int(spanData.Len); j++ {
-						mixBuffer[int(spanData.X)-minX+j] = color.RGBA8[color.Linear]{}
+						mixBuffer[int(spanData.X)-minX+j] = color.RGBA8[color.SRGB]{}
 					}
 				}
 
