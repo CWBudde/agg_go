@@ -24,8 +24,8 @@ import (
 
 var (
 	gradientFocalGamma = 1.0
-	gradientFocalFX    = 40.0
-	gradientFocalFY    = -10.0
+	gradientFocalFX    = 0.0
+	gradientFocalFY    = 0.0
 )
 
 func setGradientFocalGamma(v float64) {
@@ -166,13 +166,10 @@ func drawGradientFocalDemo() {
 	cy := float64(h) * 0.5
 	r := 100.0
 
-	// Match C++ trans_affine_resizing() behavior from 600x400 base window.
-	sx := float64(w) / 600.0
-	sy := float64(h) / 400.0
-
+	// Centre the gradient at the canvas centre. Working directly in screen
+	// coordinates, so no additional scaling is required.
 	gradientMtx := transform.NewTransAffine()
 	gradientMtx.Translate(cx, cy)
-	gradientMtx.Multiply(transform.NewTransAffineScalingXY(sx, sy))
 	gradientMtx.Invert()
 
 	interpolator := span.NewSpanInterpolatorLinearDefault(gradientMtx)
@@ -198,15 +195,13 @@ func drawGradientFocalDemo() {
 	ras.LineToD(0, 0)
 	renscan.RenderScanlinesAA(ras, sl, rb, alloc, spanGen)
 
-	// Draw the circle boundary (white outline), scaled by trans_affine_resizing.
-	scalingMtx := transform.NewTransAffineScalingXY(sx, sy)
+	// Draw the circle boundary (white outline) in screen coordinates.
 	ell := shapes.NewEllipseWithParams(cx, cy, r, r, 100, false)
 	ellConv := &gfEllipseConvAdapter{ell: ell}
 	stroke := conv.NewConvStroke(ellConv)
 	stroke.SetWidth(1.0)
-	strokeTrans := conv.NewConvTransform(stroke, scalingMtx)
 	ras.Reset()
-	ras.AddPath(&gfConvVSAdapter{vs: strokeTrans}, 0)
+	ras.AddPath(&gfConvVSAdapter{vs: stroke}, 0)
 	renscan.RenderScanlinesAASolid(ras, sl, rb, color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
 
 	// C++ applies inverse gamma to the framebuffer after rasterization.
