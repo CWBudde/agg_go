@@ -1,15 +1,17 @@
+//go:build js && wasm
+
 package main
 
 import (
 	"fmt"
 
-	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
 	"github.com/MeKo-Christian/agg_go/internal/order"
 	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
 	"github.com/MeKo-Christian/agg_go/internal/pixfmt/blender"
+	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
 	"github.com/MeKo-Christian/agg_go/internal/renderer"
 	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
 	"github.com/MeKo-Christian/agg_go/internal/scanline"
@@ -36,6 +38,15 @@ func generateColorRamp(c []color.RGBA8[color.Linear], c1, c2, c3, c4 color.RGBA8
 	}
 }
 
+type comp2RasType = rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
+
+func newComp2Rasterizer() *comp2RasType {
+	return rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{},
+		rasterizer.NewRasterizerSlNoClip(),
+	)
+}
+
 func radialShape2(rb renscan.BaseRendererInterface[color.RGBA8[color.Linear]], colors []color.RGBA8[color.Linear], x1, y1, x2, y2 float64) {
 	cx := (x1 + x2) * 0.5
 	cy := (y1 + y2) * 0.5
@@ -55,8 +66,7 @@ func radialShape2(rb renscan.BaseRendererInterface[color.RGBA8[color.Linear]], c
 	sg := span.NewSpanGradient[color.RGBA8[color.Linear]](inter, grad, colorFunc, 0, 100)
 	sa := span.NewSpanAllocator[color.RGBA8[color.Linear]]()
 
-	agg2d := ctx.GetAgg2D()
-	ras := agg2d.GetInternalRasterizer()
+	ras := newComp2Rasterizer()
 	sl := scanline.NewScanlineU8()
 
 	ras.Reset()
@@ -97,18 +107,16 @@ func mathMin(a, b float64) float64 {
 }
 
 func drawCompositing2Demo() {
-	w, h := ctx.GetImage().Width(), ctx.GetImage().Height()
-	agg2d := ctx.GetAgg2D()
-	agg2d.ResetTransformations()
-	agg2d.ClearAll(agg.White)
+	img := ctx.GetImage()
+	w, h := img.Width(), img.Height()
 
-	// Checkered background
-	for y := 0; y < h; y += 8 {
-		for x := ((y >> 3) & 1) << 3; x < w; x += 16 {
-			agg2d.FillColor(agg.NewColor(0xdf, 0xdf, 0xdf, 0xff))
-			agg2d.Rectangle(float64(x), float64(y), float64(x+7), float64(y+7))
-		}
-	}
+	rbuf := buffer.NewRenderingBufferU8()
+	rbuf.Attach(img.Data, w, h, img.Stride())
+
+	// Clear to white
+	mainPixf := pixfmt.NewPixFmtRGBA32[color.Linear](rbuf)
+	mainRb := renderer.NewRendererBaseWithPixfmt(mainPixf)
+	mainRb.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
 
 	ramp1 := make([]color.RGBA8[color.Linear], 256)
 	ramp2 := make([]color.RGBA8[color.Linear], 256)
@@ -154,11 +162,10 @@ func drawCompositing2Demo() {
 	radialShape2(compRb, ramp2, cx+120-70, cy+200-70, cx+120+70, cy+200+70)
 	radialShape2(compRb, ramp2, cx+200-70, cy+200-70, cx+200+70, cy+200+70)
 
-	// Blend back to main context
-	mainRbuf := buffer.NewRenderingBufferWithData[uint8](ctx.GetImage().Data, w, h, w*4)
-	mainPixf := pixfmt.NewPixFmtRGBA32[color.Linear](mainRbuf)
-	mainRb := renderer.NewRendererBaseWithPixfmt(mainPixf)
+	// Blend composited result back to main buffer
 	mainRb.BlendFrom(pixf1, nil, 0, 0, 255)
+
+	applyLinearToSRGB(img)
 
 	logStatus(fmt.Sprintf("Compositing 2 Demo: Op=%d, AlphaSrc=%.2f, AlphaDst=%.2f", comp2Op, comp2AlphaSrc, comp2AlphaDst))
 }
