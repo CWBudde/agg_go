@@ -443,10 +443,8 @@ func combineAndRenderP8(
 	prepareBoolScanlinesAA(sg1, sg2, sl1.sl, sl2.sl, slOut.sl)
 
 	start := time.Now()
-	for i := 0; i < 10; i++ {
-		isc.CombineShapesAA(mapOperation(op), sg1, sg2, sl1, sl2, slOut, ren)
-	}
-	combineMS := float64(time.Since(start).Microseconds()) / 10000.0
+	isc.CombineShapesAA(mapOperation(op), sg1, sg2, sl1, sl2, slOut, ren)
+	combineMS := float64(time.Since(start).Microseconds()) / 1000.0
 
 	start = time.Now()
 	numSpans := renderCollectedScanlines(img, ren.scanlines)
@@ -474,10 +472,8 @@ func combineAndRenderU8(
 	prepareBoolScanlinesAA(sg1, sg2, sl1.sl, sl2.sl, slOut.sl)
 
 	start := time.Now()
-	for i := 0; i < 10; i++ {
-		isc.CombineShapesAA(mapOperation(op), sg1, sg2, sl1, sl2, slOut, ren)
-	}
-	combineMS := float64(time.Since(start).Microseconds()) / 10000.0
+	isc.CombineShapesAA(mapOperation(op), sg1, sg2, sl1, sl2, slOut, ren)
+	combineMS := float64(time.Since(start).Microseconds()) / 1000.0
 
 	start = time.Now()
 	numSpans := renderCollectedScanlines(img, ren.scanlines)
@@ -505,10 +501,8 @@ func combineAndRenderBin(
 	prepareBoolScanlinesBin(sg1, sg2, sl1.sl, sl2.sl, slOut.sl)
 
 	start := time.Now()
-	for i := 0; i < 10; i++ {
-		isc.CombineShapesBin(mapOperation(op), sg1, sg2, sl1, sl2, slOut, ren)
-	}
-	combineMS := float64(time.Since(start).Microseconds()) / 10000.0
+	isc.CombineShapesBin(mapOperation(op), sg1, sg2, sl1, sl2, slOut, ren)
+	combineMS := float64(time.Since(start).Microseconds()) / 1000.0
 
 	start = time.Now()
 	numSpans := renderCollectedScanlines(img, ren.scanlines)

@@ -27,5 +27,20 @@ func setLineThicknessInvert(v bool) { lineThicknessState.Invert = v }
 func getLineThicknessBlurTime() float64 { return linethickness.LastBlurMS() }
 
 func drawLineThicknessDemo() {
-	linethickness.Draw(ctx, lineThicknessState)
+	img := ctx.GetImage()
+	w, h := img.Width(), img.Height()
+
+	// Render into work buffer using C++ y-up coordinate frame (row 0 = bottom).
+	workBuf := make([]uint8, w*h*4)
+	linethickness.Draw(workBuf, w, h, lineThicknessState)
+
+	// Copy work buffer to canvas with y-flip.
+	stride := w * 4
+	for y := 0; y < h; y++ {
+		srcOff := (h - 1 - y) * stride
+		dstOff := y * stride
+		copy(img.Data[dstOff:dstOff+stride], workBuf[srcOff:srcOff+stride])
+	}
+
+	applyLinearToSRGB(img)
 }
