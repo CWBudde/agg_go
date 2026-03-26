@@ -353,21 +353,24 @@ func (gc *GammaCtrlImpl[C]) Rewind(pathID uint) {
 }
 
 // Vertex returns the next vertex for the current path.
+// TransformXY is applied to all non-stop vertices, matching C++ gamma_ctrl_impl behavior.
 func (gc *GammaCtrlImpl[C]) Vertex() (x, y float64, cmd basics.PathCommand) {
 	switch gc.currentPath {
 	case 0, 1, 3: // Background, Border, Grid - use pre-calculated vertices
-		return gc.getPreCalculatedVertex()
+		x, y, cmd = gc.getPreCalculatedVertex()
 	case 2: // Curve - use stroke converter
-		return gc.curveStroke.Vertex()
+		x, y, cmd = gc.curveStroke.Vertex()
 	case 4, 5: // Points - use ellipse
-		var x, y float64
-		cmd := gc.ellipse.Vertex(&x, &y)
-		return x, y, cmd
+		cmd = gc.ellipse.Vertex(&x, &y)
 	case 6: // Text
-		return gc.textRenderer.Vertex()
+		x, y, cmd = gc.textRenderer.Vertex()
 	default:
 		return 0, 0, basics.PathCmdStop
 	}
+	if !basics.IsStop(cmd) {
+		gc.TransformXY(&x, &y)
+	}
+	return x, y, cmd
 }
 
 // Color returns the color for a specific path.
@@ -556,8 +559,6 @@ func (gc *GammaCtrlImpl[C]) getPreCalculatedVertex() (x, y float64, cmd basics.P
 	y = gc.vertices[gc.vertexIndex*2+1]
 	gc.vertexIndex++
 
-	// Apply transformation
-	gc.TransformXY(&x, &y)
 	return x, y, cmd
 }
 

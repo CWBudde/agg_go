@@ -27,7 +27,7 @@ func initGammaCtrlDemo() {
 	if gammaControl == nil {
 		// Position control in the lower-left area of the 800x600 canvas.
 		// Original C++ used (10,10,300,200) with flip_y; here Y increases downward.
-		gammaControl = gammactrl.NewGammaCtrl(10, 340, 310, 585, false)
+		gammaControl = gammactrl.NewGammaCtrl(10, 340, 310, 585, true)
 		gammaControl.SetTextSize(10, 0)
 	}
 }
