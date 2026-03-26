@@ -12,9 +12,18 @@ package main
 import (
 	"math"
 
-	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
+	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/conv"
 	liondemo "github.com/MeKo-Christian/agg_go/internal/demo/lion"
+	"github.com/MeKo-Christian/agg_go/internal/path"
+	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
+	"github.com/MeKo-Christian/agg_go/internal/primitives"
+	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
+	"github.com/MeKo-Christian/agg_go/internal/renderer"
+	outline "github.com/MeKo-Christian/agg_go/internal/renderer/outline"
+	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
 
 // --- State ---
@@ -33,50 +42,111 @@ var (
 
 // --- Drawing ---
 
+type loRendererBase = renderer.RendererBase[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]]
+
+type loOutlineBaseAdapter struct {
+	rb *loRendererBase
+}
+
+func (a *loOutlineBaseAdapter) Width() int  { return a.rb.Width() }
+func (a *loOutlineBaseAdapter) Height() int { return a.rb.Height() }
+
+func (a *loOutlineBaseAdapter) BlendSolidHSpan(x, y, length int, c color.RGBA8[color.Linear], covers []basics.CoverType) {
+	convCovers := make([]basics.Int8u, len(covers))
+	for i := range covers {
+		convCovers[i] = basics.Int8u(covers[i])
+	}
+	a.rb.BlendSolidHspan(x, y, length, c, convCovers)
+}
+
+func (a *loOutlineBaseAdapter) BlendSolidVSpan(x, y, length int, c color.RGBA8[color.Linear], covers []basics.CoverType) {
+	convCovers := make([]basics.Int8u, len(covers))
+	for i := range covers {
+		convCovers[i] = basics.Int8u(covers[i])
+	}
+	a.rb.BlendSolidVspan(x, y, length, c, convCovers)
+}
+
+type loOutlineAAAdapter struct {
+	ren *outline.RendererOutlineAA[*loOutlineBaseAdapter, color.RGBA8[color.Linear]]
+}
+
+func (a *loOutlineAAAdapter) AccurateJoinOnly() bool            { return a.ren.AccurateJoinOnly() }
+func (a *loOutlineAAAdapter) Color(c color.RGBA8[color.Linear]) { a.ren.Color(c) }
+
+//nolint:gocritic // Interface compatibility requires a by-value parameter here.
+func (a *loOutlineAAAdapter) Line0(lp primitives.LineParameters) {
+	a.ren.Line0(&lp)
+}
+
+//nolint:gocritic // Interface compatibility requires a by-value parameter here.
+func (a *loOutlineAAAdapter) Line1(lp primitives.LineParameters, sx, sy int) {
+	a.ren.Line1(&lp, sx, sy)
+}
+
+//nolint:gocritic // Interface compatibility requires a by-value parameter here.
+func (a *loOutlineAAAdapter) Line2(lp primitives.LineParameters, ex, ey int) {
+	a.ren.Line2(&lp, ex, ey)
+}
+
+//nolint:gocritic // Interface compatibility requires a by-value parameter here.
+func (a *loOutlineAAAdapter) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) {
+	a.ren.Line3(&lp, sx, sy, ex, ey)
+}
+
+func (a *loOutlineAAAdapter) Pie(x, y, x1, y1, x2, y2 int) { a.ren.Pie(x, y, x1, y1, x2, y2) }
+func (a *loOutlineAAAdapter) Semidot(cmp func(int) bool, x, y, x1, y1 int) {
+	a.ren.Semidot(cmp, x, y, x1, y1)
+}
+
+type loLionColorView struct {
+	data *liondemo.LionData
+}
+
+func (v loLionColorView) GetColor(index int) color.RGBA8[color.Linear] {
+	return v.data.Colors[index]
+}
+
 func drawLionOutlineDemo() {
 	if lionData == nil {
 		ld := liondemo.Parse()
 		lionData = &ld
 	}
 
-	a := ctx.GetAgg2D()
+	img := ctx.GetImage()
+	rbuf := buffer.NewRenderingBufferU8()
+	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Stride())
+
+	pf := pixfmt.NewPixFmtRGBA32[color.Linear](rbuf)
+	rb := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]](pf)
+	rb.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
 
 	x1, y1, x2, y2 := getLionBoundingRect(lionData)
 	cx := (x1 + x2) * 0.5
 	cy := (y1 + y2) * 0.5
 
-	a.ResetTransformations()
-	a.Translate(-cx, -cy)
-	a.Scale(lionScale, lionScale)
-	a.Scale(-1, 1)
-	a.Rotate(lionAngle)
-	a.Skew(lionSkewX/1000.0, lionSkewY/1000.0)
-	a.Translate(float64(width)*0.5, float64(height)*0.5)
+	mtx := transform.NewTransAffine()
+	mtx.Multiply(transform.NewTransAffineTranslation(-cx, -cy))
+	mtx.Multiply(transform.NewTransAffineScaling(lionScale))
+	mtx.Multiply(transform.NewTransAffineScalingXY(-1, 1))
+	mtx.Multiply(transform.NewTransAffineRotation(lionAngle))
+	mtx.Multiply(transform.NewTransAffineSkewing(lionSkewX/1000.0, lionSkewY/1000.0))
+	mtx.Multiply(transform.NewTransAffineTranslation(float64(width)*0.5, float64(height)*0.5))
 
-	a.LineWidth(lionOutlineWidth)
-	a.NoFill()
+	pathVS := path.NewPathStorageStlVertexSourceAdapter(lionData.Path)
+	transVS := conv.NewConvTransform(pathVS, mtx)
+	outlineVS := conv.NewRasterizerVertexSourceAdapter(transVS)
 
-	for i := 0; i < lionData.NPaths; i++ {
-		a.LineColor(agg.NewColor(lionData.Colors[i].R, lionData.Colors[i].G, lionData.Colors[i].B, 255))
-		a.ResetPath()
+	profile := outline.NewLineProfileAA()
+	profile.Width(lionOutlineWidth * mtx.GetScale())
 
-		lionData.Path.Rewind(lionData.PathIdx[i])
-		for {
-			x, y, cmd := lionData.Path.NextVertex()
-			if basics.IsStop(basics.PathCommand(cmd)) {
-				break
-			}
-			if basics.IsMoveTo(basics.PathCommand(cmd)) {
-				a.MoveTo(x, y)
-			} else if basics.IsLineTo(basics.PathCommand(cmd)) {
-				a.LineTo(x, y)
-			}
-		}
-		a.ClosePolygon()
-		a.DrawPath(agg.StrokeOnly)
-	}
+	outlineBase := &loOutlineBaseAdapter{rb: rb}
+	renOutline := outline.NewRendererOutlineAA[*loOutlineBaseAdapter, color.RGBA8[color.Linear]](outlineBase, profile)
+	rasOutline := rasterizer.NewRasterizerOutlineAA[*loOutlineAAAdapter, color.RGBA8[color.Linear]](&loOutlineAAAdapter{ren: renOutline})
 
-	a.ResetTransformations()
+	rasOutline.RenderAllPaths(outlineVS, loLionColorView{data: lionData}, lionData, lionData.NPaths)
+
+	applyLinearToSRGB(img)
 }
 
 // --- Mouse handlers ---
