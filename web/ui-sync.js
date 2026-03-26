@@ -87,6 +87,8 @@ export function syncControlVisibility(demoType) {
     demoType === "gpc_test" ? "flex" : "none";
   document.getElementById("gradientsContourControls").style.display =
     demoType === "gradients_contour" ? "flex" : "none";
+  document.getElementById("gradientFocalControls").style.display =
+    demoType === "gradient_focal" ? "flex" : "none";
   document.getElementById("flashRasterizer2Controls").style.display =
     demoType === "flash_rasterizer2" ? "flex" : "none";
   document.getElementById("blendColorControls").style.display =
@@ -100,7 +102,7 @@ export const demoDescriptions = {
   gradients:
     "Linear and radial gradient fills. Demonstrates the advanced span generation and multi-stop color interpolation.",
   gradient_focal:
-    "Port of AGG's gradient_focal demo. Renders a reflected radial-focus gradient (focal offset inside the circle) using a gamma-aware 4-stop LUT. Web parameters are URL-driven: gfg (gamma), gfx (focus-x), gfy (focus-y).",
+    "Port of AGG's gradient_focal demo. Renders a reflected radial-focus gradient. Drag on the canvas to move the focal point. Use the Gamma slider to adjust the perceptual correction. URL parameters: gfg (gamma), gfx/gfy (focal offset from centre).",
   aa: "Anti-aliasing showcase. Lines and circles drawn at sub-pixel offsets to demonstrate the precision and smoothness of AGG's rasterizer.",
   blend:
     "Blend-mode gallery. Shows multiple blend modes side-by-side on overlapping RGB circles for quick visual comparison.",
