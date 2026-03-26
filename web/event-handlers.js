@@ -1156,6 +1156,39 @@ export function setupEventHandlers(
     renderSelectedDemo();
   });
 
+  // graph_test controls
+  document.getElementById("gtModeSelect").addEventListener("change", () => {
+    const val = parseInt(document.getElementById("gtModeSelect").value, 10);
+    setGraphTestMode(val);
+    persistDemoParams("graph_test");
+    renderSelectedDemo();
+  });
+  document.getElementById("gtWidthSlider").addEventListener("input", () => {
+    const val = parseFloat(document.getElementById("gtWidthSlider").value);
+    document.getElementById("gtWidthValue").textContent = val.toFixed(1);
+    setGraphTestWidth(val);
+    persistDemoParams("graph_test");
+    renderSelectedDemo();
+  });
+  document.getElementById("gtDrawNodes").addEventListener("change", () => {
+    const val = document.getElementById("gtDrawNodes").checked;
+    setGraphTestDrawNodes(val);
+    persistDemoParams("graph_test");
+    renderSelectedDemo();
+  });
+  document.getElementById("gtDrawEdges").addEventListener("change", () => {
+    const val = document.getElementById("gtDrawEdges").checked;
+    setGraphTestDrawEdges(val);
+    persistDemoParams("graph_test");
+    renderSelectedDemo();
+  });
+  document.getElementById("gtTranslucent").addEventListener("change", () => {
+    const val = document.getElementById("gtTranslucent").checked;
+    setGraphTestTranslucent(val);
+    persistDemoParams("graph_test");
+    renderSelectedDemo();
+  });
+
   // flash_rasterizer2 controls
   document.getElementById("fr2ShapeSlider").addEventListener("input", () => {
     const val = parseInt(document.getElementById("fr2ShapeSlider").value, 10);

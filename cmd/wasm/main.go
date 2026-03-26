@@ -291,6 +291,36 @@ func main() {
 		}
 		return nil
 	}))
+	js.Global().Set("setGraphTestMode", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setGraphTestMode(args[0].Int())
+		}
+		return nil
+	}))
+	js.Global().Set("setGraphTestWidth", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setGraphTestWidth(args[0].Float())
+		}
+		return nil
+	}))
+	js.Global().Set("setGraphTestTranslucent", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setGraphTestTranslucent(args[0].Bool())
+		}
+		return nil
+	}))
+	js.Global().Set("setGraphTestDrawNodes", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setGraphTestDrawNodes(args[0].Bool())
+		}
+		return nil
+	}))
+	js.Global().Set("setGraphTestDrawEdges", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
+		if len(args) > 0 {
+			setGraphTestDrawEdges(args[0].Bool())
+		}
+		return nil
+	}))
 	js.Global().Set("setImageResampleType", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
 		if len(args) > 0 {
 			setImageResampleType(args[0].Int())
