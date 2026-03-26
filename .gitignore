@@ -63,6 +63,7 @@ Thumbs.db
 # Visual test reports (generated, not tracked)
 tests/visual/reports/*.html
 tests/visual/reference/go/examples/*.png
+tests/visual/reference/wasm/examples/*.png
 tests/visual/diffs/
 
 # Example binaries (if built)
