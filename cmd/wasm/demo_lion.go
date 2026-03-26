@@ -12,9 +12,17 @@ package main
 import (
 	"math"
 
-	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
+	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/conv"
 	liondemo "github.com/MeKo-Christian/agg_go/internal/demo/lion"
+	"github.com/MeKo-Christian/agg_go/internal/path"
+	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
+	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
+	"github.com/MeKo-Christian/agg_go/internal/renderer"
+	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
 
 var (
@@ -27,13 +35,40 @@ var (
 	lionFillRightDragging = false
 )
 
+// lionAlphaColorView wraps LionData and overrides the alpha channel.
+type lionAlphaColorView struct {
+	data  *liondemo.LionData
+	alpha uint8
+}
+
+func (v lionAlphaColorView) GetColor(index int) color.RGBA8[color.Linear] {
+	c := v.data.Colors[index]
+	c.A = v.alpha
+	return c
+}
+
+func (v lionAlphaColorView) GetPathID(index int) uint32 {
+	return uint32(v.data.PathIdx[index])
+}
+
 func drawLionDemo() {
 	if lionData == nil {
 		ld := liondemo.Parse()
 		lionData = &ld
 	}
 
-	a := ctx.GetAgg2D()
+	img := ctx.GetImage()
+	rbuf := buffer.NewRenderingBufferU8()
+	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Stride())
+
+	pf := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
+	ren := renderer.NewRendererBaseWithPixfmt(pf)
+	ren.Clear(color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255})
+
+	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip(),
+	)
+	sl := scanline.NewScanlineP8()
 
 	// Compute the true bounding-box centre so the lion rotates around its own
 	// centre and is centred on the canvas in the default (angle=0) state.
@@ -48,39 +83,26 @@ func drawLionDemo() {
 	//   rotate(angle)         – interactive rotation
 	//   skew(sx/1000, sy/1000)
 	//   translate(W/2, H/2)   – move to canvas centre
-	a.ResetTransformations()
-	a.Translate(-cx, -cy)
-	a.Scale(lionFillScale, lionFillScale)
-	a.Scale(-1, 1)
-	a.Rotate(lionFillAngle)
-	a.Skew(lionFillSkewX/1000.0, lionFillSkewY/1000.0)
-	a.Translate(float64(width)*0.5, float64(height)*0.5)
+	mtx := transform.NewTransAffine()
+	mtx.Multiply(transform.NewTransAffineTranslation(-cx, -cy))
+	mtx.Multiply(transform.NewTransAffineScalingXY(lionFillScale, lionFillScale))
+	mtx.Multiply(transform.NewTransAffineScalingXY(-1, 1))
+	mtx.Multiply(transform.NewTransAffineRotation(lionFillAngle))
+	mtx.Multiply(transform.NewTransAffineSkewing(lionFillSkewX/1000.0, lionFillSkewY/1000.0))
+	mtx.Multiply(transform.NewTransAffineTranslation(float64(img.Width())*0.5, float64(img.Height())*0.5))
 
-	alpha := uint8(lionFillAlpha * 255)
-	a.NoLine()
+	pathVS := path.NewPathStorageStlVertexSourceAdapter(lionData.Path)
+	transVS := conv.NewConvTransform(pathVS, mtx)
+	rasVS := conv.NewRasterizerVertexSourceAdapter(transVS)
+	renSolid := renscan.NewRendererScanlineAASolidWithRenderer(ren)
 
-	for i := 0; i < lionData.NPaths; i++ {
-		a.FillColor(agg.NewColor(lionData.Colors[i].R, lionData.Colors[i].G, lionData.Colors[i].B, alpha))
-		a.ResetPath()
-
-		lionData.Path.Rewind(lionData.PathIdx[i])
-		for {
-			x, y, cmd := lionData.Path.NextVertex()
-			if basics.IsStop(basics.PathCommand(cmd)) {
-				break
-			}
-			if basics.IsMoveTo(basics.PathCommand(cmd)) {
-				a.MoveTo(x, y)
-			} else if basics.IsLineTo(basics.PathCommand(cmd)) {
-				a.LineTo(x, y)
-			}
-		}
-		a.ClosePolygon()
-		a.DrawPath(agg.FillOnly)
-		a.ResetPath()
+	colors := lionAlphaColorView{
+		data:  lionData,
+		alpha: uint8(lionFillAlpha * 255),
 	}
+	renscan.RenderAllPaths(ras, sl, renSolid, rasVS, colors, colors, lionData.NPaths)
 
-	a.ResetTransformations()
+	applyLinearToSRGB(img)
 }
 
 // --- Mouse handlers ---
