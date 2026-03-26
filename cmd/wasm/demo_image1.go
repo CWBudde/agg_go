@@ -87,14 +87,13 @@ func drawImage1Demo() {
 	offX := (float64(width) - initialW) * 0.5
 	offY := (float64(height) - initialH) * 0.5
 
-	agg2d := ctx.GetAgg2D()
-	agg2d.ResetTransformations()
-	agg2d.ClearAll(agg.White)
-
-	// Attach rendering target
+	// Attach rendering target using reported stride (not hardcoded width*4)
 	img := ctx.GetImage()
-	img1Rbuf.Attach(img.Data, img.Width(), img.Height(), img.Width()*4)
+	img1Rbuf.Attach(img.Data, img.Width(), img.Height(), img.Stride())
 	img1RenBase.Attach(img1PixFmt)
+
+	// Clear to white
+	img1RenBase.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
 
 	// Image transform: translate to center, rotate, scale, then translate to screen center
 	// Then invert so we can map screen -> image coords.
@@ -119,9 +118,9 @@ func drawImage1Demo() {
 	// Span interpolator over the image matrix
 	interp := span.NewSpanInterpolatorLinear[*transform.TransAffine](imgMtx, 8)
 
-	// Build image source
+	// Build image source using reported stride
 	imgRbuf := buffer.NewRenderingBufferU8()
-	imgRbuf.Attach(img1Image.Data, img1Image.Width(), img1Image.Height(), img1Image.Width()*4)
+	imgRbuf.Attach(img1Image.Data, img1Image.Width(), img1Image.Height(), img1Image.Stride())
 	ipf := imagePixFmt{rbuf: imgRbuf}
 	accessor := image.NewImageAccessorClip(&ipf, []basics.Int8u{0, 100, 0, 128})
 	src := &imageClipSource{accessor: accessor, ipf: &ipf}
