@@ -461,16 +461,21 @@ func drawGradientsContourDemo() {
 	offsetY := (canvasH - scaledH) / 2
 
 	// Build the shape-to-screen affine: translate(-x1,-y1) * scale * translate(offsetX, offsetY).
+	// Then flip Y to match the C++ flip_y=true rendering buffer: scale(1,-1) * translate(0, canvasH).
 	shapeToScreen := transform.NewTransAffine()
 	shapeToScreen.Multiply(transform.NewTransAffineTranslation(-x1, -y1))
 	shapeToScreen.Multiply(transform.NewTransAffineScaling(scale))
 	shapeToScreen.Multiply(transform.NewTransAffineTranslation(offsetX, offsetY))
+	shapeToScreen.Multiply(transform.NewTransAffineScalingXY(1, -1))
+	shapeToScreen.Multiply(transform.NewTransAffineTranslation(0, canvasH))
 
-	// The gradient interpolator maps screen → gradient space.
-	// Gradient space = scaled shape space (after scale * translate(-x1,-y1)),
-	// which equals screen space minus the final (offsetX, offsetY) offset.
-	// So: gradMtx = translate(-offsetX, -offsetY)
-	gradMtx := transform.NewTransAffineTranslation(-offsetX, -offsetY)
+	// The gradient interpolator maps screen → gradient space (scaled shape space).
+	// With Y-flip in shapeToScreen: sy = canvasH - s*(py-y1) - offsetY
+	// So: gy = s*(py-y1) = canvasH - offsetY - sy
+	// gradMtx = scale(1,-1) * translate(-offsetX, canvasH-offsetY)
+	gradMtx := transform.NewTransAffine()
+	gradMtx.Multiply(transform.NewTransAffineScalingXY(1, -1))
+	gradMtx.Multiply(transform.NewTransAffineTranslation(-offsetX, canvasH-offsetY))
 
 	// Build the shape pipeline for rendering.
 	mainVS.Rewind(0) // reset after bounding-rect scan

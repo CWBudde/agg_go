@@ -813,8 +813,10 @@ control widgets. Items below are rendering bugs or significant visual deviations
       Y-flip, and mouse-drag Y-axis corrected so rotation direction matches C++
       (`dy = h/2 - y` to convert canvas Y-down to AGG Y-up; same fix applied to
       right-mouse skewY).
-- [ ] **distortions**: Right circle is solid black; should show a second distortion
-      effect (orange/glow sphere in C++).
+- [x] **distortions**: Right circle is solid black; should show a second distortion
+      effect (orange/glow sphere in C++). Fixed — added Pass 3 gradient circle using
+      SpanGradient<GradientRadial, 256-entry color LUT> with shifted distortion center
+      and separate gr1Mtx/gr2Mtx matching the C++ on_draw logic.
 - [x] **perspective**: Lion is upside-down (y-flip bug in the WASM demo). Fixed —
       the Y-down WASM canvas shares the same coordinate system as the lion data
       (small Y = top of figure), so only an X-flip is needed to mirror the C++
