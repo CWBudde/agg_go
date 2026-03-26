@@ -501,7 +501,7 @@ Triage each: fully port, replace with Go-idiomatic equivalent, or defer with rat
 - [ ] `image_resample` (web): restore draggable quad handles and ensure down/move/up handlers map to this demo as they do for perspective demos.
 - [ ] `image_perspective` (web): add or fix draggable quad handles and mouse interaction wiring.
 - [x] `image_transforms` (web): fixed near-empty output by mapping screen sampling into a centered source-image reference frame, sizing the star from source dimensions, and switching to embedded `spheres.ppm` with finite-scale guards.
-- [ ] `pattern_fill` (web): fix empty output; verify offscreen pattern generation and final blend spans.
+- [x] `pattern_fill` (web): fixed empty output; root cause was `if spanData.Len > 0` skipping negative-length (solid) interior spans from ScanlineP8 — only anti-aliased edges were drawn; fixed span loop to handle both positive and negative Len values with correct cover propagation.
 - [x] `pattern_perspective` (web): added or fixed draggable quad handles and mouse interaction wiring.
 - [x] `pattern_resample` (web): added or fixed draggable quad handles and mouse interaction wiring.
 - [x] `rasterizer_compound` (web): fixed upside-down/odd glyph rendering by applying upstream `flip_y` parity and centering the original 440x330 scene for closer standalone/C++ alignment.
@@ -827,8 +827,11 @@ control widgets. Items below are rendering bugs or significant visual deviations
       Fixed — replaced `rotation(π)` (designed for FlipY=true: flips both axes,
       then Y-up buffer undoes the Y-flip) with `ScalingXY(-1,1)` (X-flip only) in
       `demo_simple_blur.go`.
-- [ ] **pattern_fill**: Star shape renders as a thin outline only; the interior
-      pattern fill is completely missing.
+- [x] **pattern_fill**: Star shape rendered as a thin outline only; interior
+      pattern fill was missing. Fixed — ScanlineP8 solid interior spans have
+      negative Len; the span loop was guarded by `Len > 0`, silently dropping
+      all fully-covered interior runs. Fixed by handling both positive (per-pixel
+      coverage) and negative (solid cover) spans in `demo_pattern_fill.go`.
 - [ ] **gamma_ctrl**: Text "Text 2345" renders mirrored/reversed (characters are
       horizontally flipped).
 - [ ] **gamma_correction**: Background quadrant colors are in wrong positions

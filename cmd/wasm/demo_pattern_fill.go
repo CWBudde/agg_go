@@ -275,10 +275,20 @@ func drawPatternFillDemo() {
 		for patFillRas.SweepScanline(patFillSl) {
 			y := patFillSl.Y()
 			for _, spanData := range patFillSl.Spans() {
-				if spanData.Len > 0 {
-					colors := patFillAlloc.Allocate(int(spanData.Len))
-					sg.Generate(colors, int(spanData.X), y, uint(spanData.Len))
-					patFillRenBase.BlendColorHspan(int(spanData.X), y, int(spanData.Len), colors, spanData.Covers, basics.CoverFull)
+				length := int(spanData.Len)
+				if length < 0 {
+					length = -length
+				}
+				if length == 0 {
+					continue
+				}
+				colors := patFillAlloc.Allocate(length)
+				sg.Generate(colors, int(spanData.X), y, uint(length))
+				if spanData.Len < 0 {
+					// Solid span: single cover value for the whole run.
+					patFillRenBase.BlendColorHspan(int(spanData.X), y, length, colors, nil, spanData.Covers[0])
+				} else {
+					patFillRenBase.BlendColorHspan(int(spanData.X), y, length, colors, spanData.Covers, spanData.Covers[0])
 				}
 			}
 		}
