@@ -4,7 +4,6 @@ package main
 import (
 	"math"
 
-	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
@@ -101,26 +100,6 @@ func (a *arrowheadShapes) Vertex() (x, y float64, cmd basics.PathCommand) {
 	return vx, vy, c
 }
 
-// --- addPath helper: feeds a conv.VertexSource into agg2d via MoveTo/LineTo ---
-
-func dashAddToPath(a *agg.Agg2D, src conv.VertexSource) {
-	src.Rewind(0)
-	for {
-		x, y, cmd := src.Vertex()
-		if basics.IsStop(cmd) {
-			break
-		}
-		switch {
-		case basics.IsMoveTo(cmd):
-			a.MoveTo(x, y)
-		case basics.IsLineTo(cmd):
-			a.LineTo(x, y)
-		case basics.IsClosed(uint32(cmd)):
-			a.ClosePolygon()
-		}
-	}
-}
-
 func fitDashFrame(w, h int) (scale, offX, offY float64) {
 	sx := float64(w) / dashBaseWidth
 	sy := float64(h) / dashBaseHeight
@@ -147,77 +126,17 @@ func dashUnmapPoint(scale, offX, offY, x, y float64) (float64, float64) {
 // --- Drawing ---
 
 func drawDashDemo() {
-	a := ctx.GetAgg2D()
-	a.ResetTransformations()
-	a.ClearAll(agg.White)
-
 	scale, offX, offY := fitDashFrame(ctx.Width(), ctx.Height())
 	mapX := func(x float64) float64 { return offX + x*scale }
 	mapY := func(y float64) float64 { return offY + (dashBaseHeight-y)*scale }
 
-	ps := buildDashPath(mapX, mapY)
-	rawSrc := &pathToConvSource{ps: ps}
-
-	a.FillEvenOdd(dashEvenOdd)
-
-	// === Layer 1: raw fill (amber rgba(0.7, 0.5, 0.1, 0.5)) ===
-	a.ResetPath()
-	dashAddToPath(a, rawSrc)
-	a.FillColor(agg.RGBA(0.7, 0.5, 0.1, 0.5))
-	a.NoLine()
-	a.DrawPath(agg.FillOnly)
-
-	// === Layer 2: smooth poly fill (light blue rgba(0.1, 0.5, 0.7, 0.1)) ===
-	smooth1 := conv.NewConvSmoothPoly1Curve(rawSrc)
-	smooth1.SetSmoothValue(dashSmooth)
-	a.ResetPath()
-	dashAddToPath(a, smooth1)
-	a.FillColor(agg.RGBA(0.1, 0.5, 0.7, 0.1))
-	a.NoLine()
-	a.DrawPath(agg.FillOnly)
-
-	// === Layer 3: smooth poly stroke outline (green rgba(0.0, 0.6, 0.0, 0.8)) ===
-	smooth2 := conv.NewConvSmoothPoly1(rawSrc)
-	smooth2.SetSmoothValue(dashSmooth)
-	smoothOutline := conv.NewConvStroke(smooth2)
-	smoothOutline.SetWidth(max(1.0, scale))
-	rasGreen := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
-		rasterizer.RasConvInt{},
-		rasterizer.NewRasterizerSlNoClip(),
-	)
-	if dashEvenOdd {
-		rasGreen.FillingRule(basics.FillEvenOdd)
-	} else {
-		rasGreen.FillingRule(basics.FillNonZero)
-	}
-	slGreen := scanline.NewScanlineU8()
-	imgGreen := ctx.GetImage()
-	rbufGreen := buffer.NewRenderingBufferU8()
-	rbufGreen.Attach(imgGreen.Data, imgGreen.Width(), imgGreen.Height(), imgGreen.Width()*4)
-	pixFmtGreen := pixfmt.NewPixFmtRGBA32PreLinear(rbufGreen)
-	renBaseGreen := renderer.NewRendererBaseWithPixfmt[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](pixFmtGreen)
-	rasGreen.AddPath(&convToRasSource{src: smoothOutline}, 0)
-	green := color.RGBA8[color.Linear]{R: 0, G: 153, B: 0, A: 204}
-	if rasGreen.RewindScanlines() {
-		slGreen.Reset(rasGreen.MinX(), rasGreen.MaxX())
-		for rasGreen.SweepScanline(slGreen) {
-			y := slGreen.Y()
-			for _, span := range slGreen.Spans() {
-				if span.Len > 0 {
-					renBaseGreen.BlendSolidHspan(int(span.X), y, int(span.Len), green, span.Covers)
-				}
-			}
-		}
-	}
-
-	// === Layer 4: dashed smooth stroke + arrowhead markers (black) ===
-	// Requires internal rasterizer to wire VCGenMarkersTerm → ConvMarker → Arrowhead.
 	img := ctx.GetImage()
 	rbuf := buffer.NewRenderingBufferU8()
-	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Width()*4)
-	pixFmt := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
-	renBase := renderer.NewRendererBaseWithPixfmt[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](pixFmt)
-	sl := scanline.NewScanlineU8()
+	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Stride())
+	pf := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
+	renBase := renderer.NewRendererBaseWithPixfmt[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](pf)
+	renBase.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
+
 	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
 		rasterizer.RasConvInt{},
 		rasterizer.NewRasterizerSlNoClip(),
@@ -227,6 +146,48 @@ func drawDashDemo() {
 	} else {
 		ras.FillingRule(basics.FillNonZero)
 	}
+	sl := scanline.NewScanlineU8()
+
+	renderSolidColor := func(col color.RGBA8[color.Linear]) {
+		if !ras.RewindScanlines() {
+			return
+		}
+		sl.Reset(ras.MinX(), ras.MaxX())
+		for ras.SweepScanline(sl) {
+			y := sl.Y()
+			for _, span := range sl.Spans() {
+				if span.Len > 0 {
+					renBase.BlendSolidHspan(int(span.X), y, int(span.Len), col, span.Covers)
+				}
+			}
+		}
+	}
+
+	ps := buildDashPath(mapX, mapY)
+	rawSrc := &pathToConvSource{ps: ps}
+
+	// === Layer 1: raw fill (amber rgba(0.7, 0.5, 0.1, 0.5)) ===
+	ras.Reset()
+	ras.AddPath(&convToRasSource{src: rawSrc}, 0)
+	renderSolidColor(color.RGBA8[color.Linear]{R: 178, G: 127, B: 25, A: 127})
+
+	// === Layer 2: smooth poly fill (light blue rgba(0.1, 0.5, 0.7, 0.1)) ===
+	smooth1 := conv.NewConvSmoothPoly1Curve(rawSrc)
+	smooth1.SetSmoothValue(dashSmooth)
+	ras.Reset()
+	ras.AddPath(&convToRasSource{src: smooth1}, 0)
+	renderSolidColor(color.RGBA8[color.Linear]{R: 25, G: 127, B: 178, A: 25})
+
+	// === Layer 3: smooth poly stroke outline (green rgba(0.0, 0.6, 0.0, 0.8)) ===
+	smooth2 := conv.NewConvSmoothPoly1(rawSrc)
+	smooth2.SetSmoothValue(dashSmooth)
+	smoothOutline := conv.NewConvStroke(smooth2)
+	smoothOutline.SetWidth(max(1.0, scale))
+	ras.Reset()
+	ras.AddPath(&convToRasSource{src: smoothOutline}, 0)
+	renderSolidColor(color.RGBA8[color.Linear]{R: 0, G: 153, B: 0, A: 204})
+
+	// === Layer 4: dashed smooth stroke + arrowhead markers (black) ===
 
 	// Smooth + curve-flatten source for dashing
 	curve := conv.NewConvSmoothPoly1Curve(rawSrc)
@@ -266,23 +227,10 @@ func drawDashDemo() {
 	arrow := conv.NewConvMarker(markers, &arrowheadShapes{ah: ah})
 
 	// Add stroked dash path and arrowhead markers to rasterizer.
+	ras.Reset()
 	ras.AddPath(&convToRasSource{src: stroke}, 0)
 	ras.AddPath(&convToRasSource{src: arrow}, 0)
-
-	black := color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255}
-	if ras.RewindScanlines() {
-		sl.Reset(ras.MinX(), ras.MaxX())
-		for ras.SweepScanline(sl) {
-			y := sl.Y()
-			for _, span := range sl.Spans() {
-				if span.Len > 0 {
-					renBase.BlendSolidHspan(int(span.X), y, int(span.Len), black, span.Covers)
-				}
-			}
-		}
-	}
-
-	a.FillEvenOdd(false)
+	renderSolidColor(color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255})
 
 	// === Handles ===
 	for i := 0; i < 3; i++ {
