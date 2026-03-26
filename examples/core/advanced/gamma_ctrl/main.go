@@ -184,9 +184,10 @@ func (d *demo) Render(img *agg.Image) {
 
 func main() {
 	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "Anti-Aliasing Gamma Correction",
-		Width:  gammaCtrlWidth,
-		Height: gammaCtrlHeight,
-		FlipY:  true,
+		Title:                 "Anti-Aliasing Gamma Correction",
+		Width:                 gammaCtrlWidth,
+		Height:                gammaCtrlHeight,
+		FlipY:                 true,
+		EncodeLinearRGBToSRGB: true,
 	}, &demo{})
 }
