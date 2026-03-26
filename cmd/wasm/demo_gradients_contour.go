@@ -20,12 +20,17 @@ package main
 import (
 	"math"
 
-	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
 	"github.com/MeKo-Christian/agg_go/internal/conv"
 	"github.com/MeKo-Christian/agg_go/internal/demo/aggshapes"
 	"github.com/MeKo-Christian/agg_go/internal/path"
+	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
+	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
+	"github.com/MeKo-Christian/agg_go/internal/renderer"
+	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/scanline"
 	"github.com/MeKo-Christian/agg_go/internal/span"
 	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
@@ -392,8 +397,16 @@ func buildStarPath() *path.PathStorage {
 // --- Main draw function ---
 
 func drawGradientsContourDemo() {
-	a := ctx.GetAgg2D()
-	a.ResetTransformations()
+	img := ctx.GetImage()
+	rbuf := buffer.NewRenderingBufferU8()
+	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Stride())
+	pf := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
+	ren := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32Pre[color.Linear], color.RGBA8[color.Linear]](pf)
+	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip(),
+	)
+	sl := scanline.NewScanlineU8()
+	sa := span.NewSpanAllocator[color.RGBA8[color.Linear]]()
 
 	canvasW := float64(width)
 	canvasH := float64(height)
@@ -466,7 +479,6 @@ func drawGradientsContourDemo() {
 	// Build the color LUT.
 	colors := buildGradientContourLUT(gradientsContourColors)
 
-	ras := a.GetInternalRasterizer()
 	interp := span.NewSpanInterpolatorLinearDefault(gradMtx)
 	downscale := interp.SubpixelShift() - span.GradientSubpixelShift
 	if downscale < 0 {
@@ -514,7 +526,7 @@ func drawGradientsContourDemo() {
 
 		ras.Reset()
 		ras.AddPath(&contourConvVS{vs: shapeT}, 0)
-		a.RenderScanlinesAAWithSpanGen(ras, spanGen)
+		renscan.RenderScanlinesAA(ras, sl, ren, sa, spanGen)
 
 	case 2: // Asymmetric Conic (angle) gradient
 		// Centre of the conic gradient: centre of the canvas.
@@ -552,16 +564,17 @@ func drawGradientsContourDemo() {
 
 		ras.Reset()
 		ras.AddPath(&contourConvVS{vs: shapeT2}, 0)
-		a.RenderScanlinesAAWithSpanGen(ras, spanGen)
+		renscan.RenderScanlinesAA(ras, sl, ren, sa, spanGen)
 
 	case 3: // Flat fill
 		shapeT.Rewind(0)
 		mainVS.Rewind(0)
 		shapeT3 := conv.NewConvTransform(mainVS, shapeToScreen)
 
+		flatColor := color.RGBA8[color.Linear]{R: 0, G: 153, B: 0, A: 128}
 		ras.Reset()
 		ras.AddPath(&contourConvVS{vs: shapeT3}, 0)
-		a.RenderRasterizerWithColor(agg.RGBA(0, 0.6, 0, 0.5))
+		renscan.RenderScanlinesAASolid(ras, sl, ren, flatColor)
 	}
 }
 
