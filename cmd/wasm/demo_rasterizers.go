@@ -12,7 +12,9 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
 	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
 	"github.com/MeKo-Christian/agg_go/internal/renderer"
+	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
 	"github.com/MeKo-Christian/agg_go/internal/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/shapes"
 )
 
 var (
@@ -26,16 +28,21 @@ var (
 )
 
 func drawRasterizersDemo() {
-	agg2d := ctx.GetAgg2D()
-	agg2d.ResetTransformations()
-
 	img := ctx.GetImage()
 	rbuf := buffer.NewRenderingBufferU8()
-	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Width()*4)
+	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Stride())
 
 	pixFmt := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
 	renBase := renderer.NewRendererBaseWithPixfmt[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](pixFmt)
+	renBase.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
+
 	sl := scanline.NewScanlineP8()
+	slBin := scanline.NewScanlineBin()
+
+	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{},
+		rasterizer.NewRasterizerSlNoClip(),
+	)
 
 	// 1. Draw anti-aliased triangle
 	ps := path.NewPathStorageStl()
@@ -46,19 +53,13 @@ func drawRasterizersDemo() {
 
 	cAA := color.RGBA8[color.Linear]{R: 178, G: 127, B: 25, A: uint8(255 * rasterizersAlpha)}
 
-	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
-		rasterizer.RasConvInt{},
-		rasterizer.NewRasterizerSlNoClip(),
-	)
-
 	// Set gamma for AA
 	gPower := gamma.NewGammaPower(rasterizersGamma * 2.0)
 	ras.SetGamma(gPower.Apply)
 
-	adapter := &pathSourceAdapter{ps: ps}
-	ras.AddPath(adapter, 0)
+	ras.Reset()
+	ras.AddPath(&pathSourceAdapter{ps: ps}, 0)
 
-	// Use manual sweep loop to avoid interface mismatches
 	if ras.RewindScanlines() {
 		sl.Reset(ras.MinX(), ras.MaxX())
 		for ras.SweepScanline(sl) {
@@ -66,6 +67,8 @@ func drawRasterizersDemo() {
 			for _, spanData := range sl.Spans() {
 				if spanData.Len > 0 {
 					renBase.BlendSolidHspan(int(spanData.X), y, int(spanData.Len), cAA, spanData.Covers)
+				} else {
+					renBase.BlendHline(int(spanData.X), y, int(spanData.X)-int(spanData.Len)-1, cAA, spanData.Covers[0])
 				}
 			}
 		}
@@ -85,26 +88,49 @@ func drawRasterizersDemo() {
 	gThreshold := gamma.NewGammaThreshold(rasterizersGamma)
 	ras.SetGamma(gThreshold.Apply)
 
-	adapterAliased := &pathSourceAdapter{ps: psAliased}
-	ras.AddPath(adapterAliased, 0)
+	ras.AddPath(&pathSourceAdapter{ps: psAliased}, 0)
 
 	if ras.RewindScanlines() {
-		sl.Reset(ras.MinX(), ras.MaxX())
-		for ras.SweepScanline(sl) {
-			y := sl.Y()
-			for _, spanData := range sl.Spans() {
-				if spanData.Len > 0 {
-					renBase.BlendSolidHspan(int(spanData.X), y, int(spanData.Len), cAliased, spanData.Covers)
-				}
-			}
+		slBin.Reset(ras.MinX(), ras.MaxX())
+		for ras.SweepScanline(slBin) {
+			renscan.RenderScanlineBinSolid(slBin, renBase, cAliased)
 		}
 	}
 
-	// 3. Draw interactive handles
+	// 3. Draw interactive handles using low-level ellipse rendering
+	handleRas := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{},
+		rasterizer.NewRasterizerSlNoClip(),
+	)
+	handleSl := scanline.NewScanlineP8()
+	fillColor := color.RGBA8[color.Linear]{R: 204, G: 51, B: 26, A: 153}
+	outlineColor := color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255}
 	for i := 0; i < 3; i++ {
-		drawHandle(rasterizersX[i], rasterizersY[i])
-		drawHandle(rasterizersX[i]-200, rasterizersY[i])
+		drawRasterizersHandle(handleRas, handleSl, renBase, rasterizersX[i], rasterizersY[i], fillColor, outlineColor)
+		drawRasterizersHandle(handleRas, handleSl, renBase, rasterizersX[i]-200, rasterizersY[i], fillColor, outlineColor)
 	}
+
+	applyLinearToSRGB(img)
+}
+
+func drawRasterizersHandle(
+	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
+	sl *scanline.ScanlineP8,
+	renBase *renderer.RendererBase[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]],
+	x, y float64,
+	fillColor, outlineColor color.RGBA8[color.Linear],
+) {
+	// Fill the circle
+	ell := shapes.NewEllipseWithParams(x, y, 5, 5, 20, false)
+	ras.Reset()
+	ras.AddPath(&ellipseVS{ell: ell}, 0)
+	renscan.RenderScanlinesAASolid(ras, sl, renBase, fillColor)
+
+	// Stroke outline using a slightly larger ellipse
+	ellOut := shapes.NewEllipseWithParams(x, y, 5.5, 5.5, 20, false)
+	ras.Reset()
+	ras.AddPath(&ellipseVS{ell: ellOut}, 0)
+	renscan.RenderScanlinesAASolid(ras, sl, renBase, outlineColor)
 }
 
 func handleRasterizersMouseDown(x, y float64) bool {
