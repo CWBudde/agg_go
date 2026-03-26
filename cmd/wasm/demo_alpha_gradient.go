@@ -19,8 +19,16 @@ import (
 
 	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/conv"
 	ctrlspline "github.com/MeKo-Christian/agg_go/internal/ctrl/spline"
+	"github.com/MeKo-Christian/agg_go/internal/path"
+	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
+	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
+	"github.com/MeKo-Christian/agg_go/internal/renderer"
+	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/scanline"
 	"github.com/MeKo-Christian/agg_go/internal/shapes"
 	"github.com/MeKo-Christian/agg_go/internal/span"
 	"github.com/MeKo-Christian/agg_go/internal/transform"
@@ -196,40 +204,70 @@ func (g *alphaGradSpanGen) Generate(colors []color.RGBA8[color.Linear], x, y, le
 	}
 }
 
-// --- Ellipse VertexSource adapter (Ellipse.Vertex returns PathCommand, not uint32) ---
+// --- Ellipse VertexSource adapter ---
 
-type ellipseVS struct{ ell *shapes.Ellipse }
+type agEllipseVS struct{ ell *shapes.Ellipse }
 
-func (a *ellipseVS) Rewind(pathID uint32) { a.ell.Rewind(pathID) }
+func (a *agEllipseVS) Rewind(pathID uint32) { a.ell.Rewind(pathID) }
 
-func (a *ellipseVS) Vertex(x, y *float64) uint32 { return uint32(a.ell.Vertex(x, y)) }
+func (a *agEllipseVS) Vertex(x, y *float64) uint32 { return uint32(a.ell.Vertex(x, y)) }
+
+// --- convVS adapts a conv.ConvStroke to rasterizer.VertexSource ---
+
+type agConvVS struct {
+	src interface {
+		Rewind(uint)
+		Vertex() (float64, float64, basics.PathCommand)
+	}
+}
+
+func (v *agConvVS) Rewind(id uint32) { v.src.Rewind(uint(id)) }
+func (v *agConvVS) Vertex(x, y *float64) uint32 {
+	vx, vy, cmd := v.src.Vertex()
+	*x, *y = vx, vy
+	return uint32(cmd)
+}
 
 // --- Spline control rendering ---
 
-// renderAlphaSplineCtrl renders the spline control widget using Agg2D's rasterizer.
-func renderAlphaSplineCtrl(a *agg.Agg2D, ctrl *ctrlspline.SplineCtrl[color.RGBA]) {
-	ras := a.GetInternalRasterizer()
+// renderAlphaSplineCtrl renders the spline control widget using the low-level pipeline.
+func renderAlphaSplineCtrl(
+	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
+	sl *scanline.ScanlineU8,
+	ren renscan.BaseRendererInterface[color.RGBA8[color.Linear]],
+	ctrl *ctrlspline.SplineCtrl[color.RGBA],
+) {
 	numPaths := ctrl.NumPaths()
 	for i := uint(0); i < numPaths; i++ {
 		ras.Reset()
-		ctrl.Rewind(i)
-		for {
-			x, y, cmd := ctrl.Vertex()
-			if cmd == basics.PathCmdStop {
-				break
-			}
-			ras.AddVertex(x, y, uint32(cmd))
-		}
+		vs := &agConvVS{src: ctrl}
+		ras.AddPath(vs, uint32(i))
 		c := ctrl.Color(i)
-		a.RenderRasterizerWithColor(agg.RGBA(c.R, c.G, c.B, c.A))
+		renscan.RenderScanlinesAASolid(ras, sl, ren, color.RGBA8[color.Linear]{
+			R: uint8(math.Round(c.R * 255)),
+			G: uint8(math.Round(c.G * 255)),
+			B: uint8(math.Round(c.B * 255)),
+			A: uint8(math.Round(c.A * 255)),
+		})
 	}
 }
 
 // --- Drawing ---
 
 func drawAlphaGradientDemo() {
-	a := ctx.GetAgg2D()
-	a.ResetTransformations()
+	img := ctx.GetImage()
+	rbuf := buffer.NewRenderingBufferU8()
+	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Stride())
+
+	pf := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
+	ren := renderer.NewRendererBaseWithPixfmt[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](pf)
+	ren.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
+
+	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{},
+		rasterizer.NewRasterizerSlNoClip(),
+	)
+	sl := scanline.NewScanlineU8()
 
 	alphaCtrl := getAlphaGradSplineCtrl()
 
@@ -238,7 +276,6 @@ func drawAlphaGradientDemo() {
 
 	// 1. Random colourful background ellipses (seed 1234, matches C++ srand(1234)).
 	rng := rand.New(rand.NewSource(1234))
-	a.NoLine()
 	for i := 0; i < 100; i++ {
 		ex := float64(rng.Intn(width))
 		ey := float64(rng.Intn(height))
@@ -248,10 +285,11 @@ func drawAlphaGradientDemo() {
 		g := uint8(rng.Intn(256))
 		b := uint8(rng.Intn(256))
 		al := uint8(rng.Intn(128))
-		a.FillColor(agg.NewColor(r, g, b, al))
-		a.ResetPath() // C++ AGG2D resets path before each shape call.
-		a.AddEllipse(ex, ey, rx, ry, agg.CCW)
-		a.DrawPath(agg.FillOnly)
+		c := color.RGBA8[color.Linear]{R: r, G: g, B: b, A: al}
+		ell := shapes.NewEllipseWithParams(ex, ey, rx, ry, 100, false)
+		ras.Reset()
+		ras.AddPath(&agEllipseVS{ell}, 0)
+		renscan.RenderScanlinesAASolid(ras, sl, ren, c)
 	}
 
 	// 2. Gradient matrix: scale(0.75, 1.2) × rotate(-π/3) × translate(cx, cy), inverted.
@@ -286,36 +324,42 @@ func drawAlphaGradientDemo() {
 
 	// 6. Render the 150-px circle with the combined span generator.
 	spanGen := newAlphaGradSpanGen(gradMtx, alphaMtx, &colorArr, &alphaArr)
-	ras := a.GetInternalRasterizer()
+	alloc := span.NewSpanAllocator[color.RGBA8[color.Linear]]()
 	ras.Reset()
 	ell := shapes.NewEllipseWithParams(cx, cy, 150, 150, 100, false)
-	ras.AddPath(&ellipseVS{ell}, 0)
-	a.RenderScanlinesAAWithSpanGen(ras, spanGen)
+	ras.AddPath(&agEllipseVS{ell}, 0)
+	renscan.RenderScanlinesAA(ras, sl, ren, alloc, spanGen)
 
 	// 7. Control points.
-	a.NoLine()
-	a.FillColor(agg.NewColor(0, 102, 102, 79)) // (0, 0.4, 0.4, 0.31)*255
+	ctrlDotColor := color.RGBA8[color.Linear]{R: 0, G: 102, B: 102, A: 79}
 	for i := 0; i < 3; i++ {
-		a.FillCircle(alphaGradPts[i][0], alphaGradPts[i][1], 5)
+		dot := shapes.NewEllipseWithParams(alphaGradPts[i][0], alphaGradPts[i][1], 5, 5, 20, false)
+		ras.Reset()
+		ras.AddPath(&agEllipseVS{dot}, 0)
+		renscan.RenderScanlinesAASolid(ras, sl, ren, ctrlDotColor)
 	}
 
 	// 8. Parallelogram outline (4th point = p0 + p2 − p1).
 	p3x := alphaGradPts[0][0] + alphaGradPts[2][0] - alphaGradPts[1][0]
 	p3y := alphaGradPts[0][1] + alphaGradPts[2][1] - alphaGradPts[1][1]
 
-	a.LineColor(agg.Black)
-	a.LineWidth(1.0)
-	a.NoFill()
-	a.ResetPath()
-	a.MoveTo(alphaGradPts[0][0], alphaGradPts[0][1])
-	a.LineTo(alphaGradPts[1][0], alphaGradPts[1][1])
-	a.LineTo(alphaGradPts[2][0], alphaGradPts[2][1])
-	a.LineTo(p3x, p3y)
-	a.ClosePolygon()
-	a.DrawPath(agg.StrokeOnly)
+	ps := path.NewPathStorage()
+	ps.MoveTo(alphaGradPts[0][0], alphaGradPts[0][1])
+	ps.LineTo(alphaGradPts[1][0], alphaGradPts[1][1])
+	ps.LineTo(alphaGradPts[2][0], alphaGradPts[2][1])
+	ps.LineTo(p3x, p3y)
+	ps.ClosePolygon(basics.PathFlagsNone)
+
+	stroke := conv.NewConvStroke(path.NewPathStorageVertexSourceAdapter(ps))
+	ras.Reset()
+	ras.AddPath(&agConvVS{src: stroke}, 0)
+	renscan.RenderScanlinesAASolid(ras, sl, ren,
+		color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255})
 
 	// 9. Spline control widget (bottom-left, matching C++ render_ctrl call).
-	renderAlphaSplineCtrl(a, alphaCtrl)
+	renderAlphaSplineCtrl(ras, sl, ren, alphaCtrl)
+
+	applyLinearToSRGB(img)
 }
 
 // --- Mouse handlers ---
