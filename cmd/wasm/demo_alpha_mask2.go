@@ -1,3 +1,5 @@
+//go:build js && wasm
+
 package main
 
 import (
@@ -17,17 +19,14 @@ var (
 )
 
 func drawAlphaMask2Demo() {
-	w, h := ctx.GetImage().Width(), ctx.GetImage().Height()
+	img := ctx.GetImage()
+	w, h := img.Width(), img.Height()
 
 	if float64(am2NumEllipses) != am2SliderValue {
 		am2NumEllipses = int(am2SliderValue)
 	}
 
-	agg2d := ctx.GetAgg2D()
-	agg2d.ResetTransformations()
-
-	// Render into a BGR24 work buffer like the original AGG example, then copy
-	// back to the RGBA canvas image.
+	// Render into a BGR24 work buffer like the original AGG example.
 	workBuf := make([]uint8, w*h*3)
 	alphamask2demo.RenderToBGR24(workBuf, w, h, alphamask2demo.Config{
 		NumEllipses: am2NumEllipses,
@@ -37,7 +36,11 @@ func drawAlphaMask2Demo() {
 		SkewY:       am2LionSkewY,
 	})
 
-	copyBGR24ToRGBA(workBuf, ctx.GetImage().Data, w, h)
+	// Convert BGR24 work buffer to RGBA canvas image with y-flip to match
+	// the AGG bottom-up buffer orientation expected by the web canvas.
+	copyBGR24FlipYToRGBA(workBuf, img.Data, w, h, img.Stride())
+
+	applyLinearToSRGB(img)
 
 	logStatus(fmt.Sprintf("Alpha Mask 2 Demo: Ellipses=%d", am2NumEllipses))
 }
@@ -61,16 +64,19 @@ func setAlphaMask2NumEllipses(n float64) {
 	am2SliderValue = n
 }
 
-func copyBGR24ToRGBA(src, dst []uint8, width, height int) {
+// copyBGR24FlipYToRGBA copies a BGR24 buffer into an RGBA buffer, flipping Y to convert
+// from the AGG bottom-up layout to the top-down web canvas layout.
+func copyBGR24FlipYToRGBA(src, dst []uint8, width, height, dstStride int) {
+	srcStride := width * 3
 	for y := 0; y < height; y++ {
-		srcOff := y * width * 3
-		dstOff := y * width * 4
+		srcOff := (height - 1 - y) * srcStride
+		dstOff := y * dstStride
 		for x := 0; x < width; x++ {
 			s := srcOff + x*3
 			d := dstOff + x*4
-			dst[d+0] = src[s+2]
-			dst[d+1] = src[s+1]
-			dst[d+2] = src[s+0]
+			dst[d+0] = src[s+2] // R ← B in BGR
+			dst[d+1] = src[s+1] // G
+			dst[d+2] = src[s+0] // B ← R in BGR
 			dst[d+3] = 255
 		}
 	}
