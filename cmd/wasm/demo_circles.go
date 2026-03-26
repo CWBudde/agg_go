@@ -5,14 +5,20 @@ import (
 	"math"
 	"math/rand"
 
-	agg "github.com/MeKo-Christian/agg_go"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
+	"github.com/MeKo-Christian/agg_go/internal/color"
 	"github.com/MeKo-Christian/agg_go/internal/curves"
+	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
+	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
+	"github.com/MeKo-Christian/agg_go/internal/renderer"
+	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/scanline"
 	"github.com/MeKo-Christian/agg_go/internal/shapes"
 )
 
 type scatterPoint struct {
 	x, y, z float64
-	color   agg.Color
+	r, g, b float64
 }
 
 var (
@@ -30,9 +36,18 @@ var (
 
 	// Reusable components
 	circlesEllipse     *shapes.Ellipse
-	circlesAdapter     *ellipseVS
 	circlesInitialized bool
 )
+
+func circlesClampU8(v float64) uint8 {
+	if v <= 0 {
+		return 0
+	}
+	if v >= 1 {
+		return 255
+	}
+	return uint8(v*255 + 0.5)
+}
 
 func initCircles() {
 	if circlesInitialized {
@@ -51,7 +66,6 @@ func initCircles() {
 	splineB = curves.NewBSplineFromPoints(splineBX, splineBY)
 
 	circlesEllipse = shapes.NewEllipse()
-	circlesAdapter = &ellipseVS{circlesEllipse}
 
 	generateCircles()
 	circlesInitialized = true
@@ -76,21 +90,29 @@ func generateCircles() {
 		circlesPoints[i].x = float64(width)*0.5 + x + math.Cos(angle)*dist
 		circlesPoints[i].y = float64(height)*0.5 + y + math.Sin(angle)*dist
 
-		r := splineR.Get(z) * 0.8
-		g := splineG.Get(z) * 0.8
-		b := splineB.Get(z) * 0.8
-		circlesPoints[i].color = agg.NewColor(uint8(r*255), uint8(g*255), uint8(b*255), 255)
+		circlesPoints[i].r = splineR.Get(z) * 0.8
+		circlesPoints[i].g = splineG.Get(z) * 0.8
+		circlesPoints[i].b = splineB.Get(z) * 0.8
 	}
 }
 
 func drawCirclesScatterDemo() {
 	initCircles()
 
-	agg2d := ctx.GetAgg2D()
-	agg2d.ResetTransformations()
-	agg2d.NoLine()
+	img := ctx.GetImage()
+	rbuf := buffer.NewRenderingBufferU8()
+	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Stride())
 
-	ras := agg2d.GetInternalRasterizer()
+	pf := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
+	ren := renderer.NewRendererBaseWithPixfmt[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](pf)
+	ren.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
+
+	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{},
+		rasterizer.NewRasterizerSlNoClip(),
+	)
+	sl := scanline.NewScanlineU8()
+
 	radius := sizeScale * 5.0
 
 	for _, p := range circlesPoints {
@@ -109,15 +131,18 @@ func drawCirclesScatterDemo() {
 			continue
 		}
 
-		color := p.color.WithAlphaF(alpha)
-
-		// Manually populate rasterizer then render — DrawPath would reset the rasterizer
-		// before reading agg2d.path (which is empty), discarding the ellipse we just added.
-		circlesEllipse.Init(p.x, p.y, radius, radius, 8, false) // Fewer steps for small circles
+		circlesEllipse.Init(p.x, p.y, radius, radius, 8, false)
 		ras.Reset()
-		ras.AddPath(circlesAdapter, 0)
-		agg2d.RenderRasterizerWithColor(color)
+		ras.AddPath(&ellipseVS{ell: circlesEllipse}, 0)
+		renscan.RenderScanlinesAASolid[color.RGBA8[color.Linear]](ras, sl, ren, color.RGBA8[color.Linear]{
+			R: circlesClampU8(p.r),
+			G: circlesClampU8(p.g),
+			B: circlesClampU8(p.b),
+			A: circlesClampU8(alpha),
+		})
 	}
+
+	applyLinearToSRGB(img)
 
 	// Update for animation (idle loop in original)
 	for i := range circlesPoints {
