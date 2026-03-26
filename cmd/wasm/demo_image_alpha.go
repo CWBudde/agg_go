@@ -18,7 +18,9 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
 	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
 	"github.com/MeKo-Christian/agg_go/internal/renderer"
+	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
 	"github.com/MeKo-Christian/agg_go/internal/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/shapes"
 	"github.com/MeKo-Christian/agg_go/internal/span"
 	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
@@ -37,8 +39,8 @@ var (
 
 	// Reusable components
 	imgAlphaRbuf        *buffer.RenderingBufferU8
-	imgAlphaPixFmt      *pixfmt.PixFmtRGBA32Pre[color.Linear]
-	imgAlphaRenBase     *renderer.RendererBase[*pixfmt.PixFmtRGBA32Pre[color.Linear], color.RGBA8[color.Linear]]
+	imgAlphaPixFmt      *pixfmt.PixFmtRGBA32[color.Linear]
+	imgAlphaRenBase     *renderer.RendererBase[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]]
 	imgAlphaAlloc       *span.SpanAllocator[color.RGBA8[color.Linear]]
 	imgAlphaRas         *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
 	imgAlphaSl          *scanline.ScanlineU8
@@ -73,32 +75,6 @@ func (g *imgAlphaSpanGen) Generate(colors []color.RGBA8[color.Linear], x, y, len
 		}
 		c.A = g.lut[lutIdx]
 	}
-}
-
-type ctrlPathSource interface {
-	NumPaths() uint
-	Rewind(pathID uint)
-	Vertex() (x, y float64, cmd basics.PathCommand)
-	Color(pathID uint) color.RGBA8[color.Linear]
-}
-
-type ctrlPathAdapter struct {
-	ctrl ctrlPathSource
-}
-
-func (a *ctrlPathAdapter) Rewind(pathID uint32) {
-	a.ctrl.Rewind(uint(pathID))
-}
-
-func (a *ctrlPathAdapter) Vertex(x, y *float64) uint32 {
-	vx, vy, cmd := a.ctrl.Vertex()
-	*x = vx
-	*y = vy
-	return uint32(cmd)
-}
-
-func toAggColor(c color.RGBA8[color.Linear]) agg.Color {
-	return agg.NewColor(uint8(c.R), uint8(c.G), uint8(c.B), uint8(c.A))
 }
 
 type clibcRand struct {
@@ -141,25 +117,13 @@ func (r *clibcRand) randN(n int) int {
 	return int(r.next()) % n
 }
 
-func renderCtrl(ctx *agg.Context, ctrl ctrlPathSource) {
-	a := ctx.GetAgg2D()
-	ras := a.GetInternalRasterizer()
-	adapter := &ctrlPathAdapter{ctrl: ctrl}
-
-	for pathID := uint(0); pathID < ctrl.NumPaths(); pathID++ {
-		ras.Reset()
-		ras.AddPath(adapter, uint32(pathID))
-		a.RenderRasterizerWithColor(toAggColor(ctrl.Color(pathID)))
-	}
-}
-
 func initImgAlphaDemo() {
 	if imgAlphaInitialized {
 		return
 	}
 	imgAlphaRbuf = buffer.NewRenderingBufferU8()
-	imgAlphaPixFmt = pixfmt.NewPixFmtRGBA32PreLinear(imgAlphaRbuf)
-	imgAlphaRenBase = renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32Pre[color.Linear], color.RGBA8[color.Linear]](imgAlphaPixFmt)
+	imgAlphaPixFmt = pixfmt.NewPixFmtRGBA32Linear(imgAlphaRbuf)
+	imgAlphaRenBase = renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]](imgAlphaPixFmt)
 	imgAlphaAlloc = span.NewSpanAllocator[color.RGBA8[color.Linear]]()
 	imgAlphaRas = rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
 		rasterizer.RasConvInt{},
@@ -223,12 +187,15 @@ func drawImageAlphaDemo() {
 	img := ctx.GetImage()
 	imgAlphaRbuf.Attach(img.Data, img.Width(), img.Height(), img.Stride())
 
-	// Render background ellipses using the public API
-	ctx.GetAgg2D().ResetTransformations()
-	const oneTwoHundredFiftyFifth = 1.0 / 255.0
+	// Render background ellipses using the low-level pipeline.
+	ell := shapes.NewEllipse()
+	ellAdapter := &ellipseVS{ell: ell}
 	for _, e := range imgAlphaEllipses {
-		ctx.SetColor(agg.RGBA(float64(e.r)*oneTwoHundredFiftyFifth, float64(e.g)*oneTwoHundredFiftyFifth, float64(e.b)*oneTwoHundredFiftyFifth, float64(e.a)*oneTwoHundredFiftyFifth))
-		ctx.FillEllipse(e.x, e.y, e.rx, e.ry)
+		c := color.RGBA8[color.Linear]{R: e.r, G: e.g, B: e.b, A: e.a}
+		ell.Init(e.x, e.y, e.rx, e.ry, 32, false)
+		imgAlphaRas.Reset()
+		imgAlphaRas.AddPath(ellAdapter, 0)
+		renscan.RenderScanlinesAASolid[color.RGBA8[color.Linear]](imgAlphaRas, imgAlphaSl, imgAlphaRenBase, c)
 	}
 
 	// Image transform: 10° rotation around image center, then placed at screen center
@@ -300,6 +267,4 @@ func drawImageAlphaDemo() {
 			}
 		}
 	}
-
-	renderCtrl(ctx, imgAlphaCtrl)
 }
