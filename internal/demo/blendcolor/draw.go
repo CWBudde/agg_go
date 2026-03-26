@@ -69,9 +69,9 @@ func (a *rasPathAdapter) Vertex(x, y *float64) uint32 {
 	return uint32(cmd)
 }
 
-// buildGlyphPath creates the letter "a" glyph path, scales it 4x,
-// and translates to (150, 100). Returns the path storage.
-func buildGlyphPath() *path.PathStorageStl {
+// buildGlyphPath creates the letter "a" glyph path for a Y-down canvas (WASM).
+// It scales 4x, flips Y, and centers on the given canvas dimensions.
+func buildGlyphPath(w, h int) *path.PathStorageStl {
 	p := path.NewPathStorageStl()
 
 	p.MoveTo(28.47, 6.45)
@@ -119,8 +119,12 @@ func buildGlyphPath() *path.PathStorageStl {
 	p.Curve3(22.41, 4.74, 28.47, 9.62)
 	p.ClosePolygon(basics.PathFlagsNone)
 
-	// Apply scale(4.0) then translate(150, 100) to all vertices in-place.
-	mtx := transform.NewTransAffine().Scale(4.0).Translate(150, 100)
+	// For Y-down canvas (WASM): scale 4x, flip Y axis, translate to center.
+	// Raw glyph center after scale(4): x≈95.5, y≈90.22
+	// After FlipY: y→-90.22; translate so center lands at (w/2, h/2).
+	tx := float64(w)/2.0 - 95.5
+	ty := float64(h)/2.0 + 90.22
+	mtx := transform.NewTransAffine().Scale(4.0).FlipY().Translate(tx, ty)
 	n := p.TotalVertices()
 	for i := range n {
 		x, y, cmd := p.Vertex(i)
@@ -409,9 +413,66 @@ func buildColorLUT() []color.RGBA8[color.SRGB] {
 	return lut
 }
 
-// BuildGlyphPath exposes the canonical glyph path used by the demo.
+// BuildGlyphPath exposes the canonical glyph path for the standalone example.
+// It uses scale(4.0) + translate(150, 100) matching the C++ original with flip_y=true.
 func BuildGlyphPath() *path.PathStorageStl {
-	return buildGlyphPath()
+	p := path.NewPathStorageStl()
+
+	p.MoveTo(28.47, 6.45)
+	p.Curve3(21.58, 1.12, 19.82, 0.29)
+	p.Curve3(17.19, -0.93, 14.21, -0.93)
+	p.Curve3(9.57, -0.93, 6.57, 2.25)
+	p.Curve3(3.56, 5.42, 3.56, 10.60)
+	p.Curve3(3.56, 13.87, 5.03, 16.26)
+	p.Curve3(7.03, 19.58, 11.99, 22.51)
+	p.Curve3(16.94, 25.44, 28.47, 29.64)
+	p.LineTo(28.47, 31.40)
+	p.Curve3(28.47, 38.09, 26.34, 40.58)
+	p.Curve3(24.22, 43.07, 20.17, 43.07)
+	p.Curve3(17.09, 43.07, 15.28, 41.41)
+	p.Curve3(13.43, 39.75, 13.43, 37.60)
+	p.LineTo(13.53, 34.77)
+	p.Curve3(13.53, 32.52, 12.38, 31.30)
+	p.Curve3(11.23, 30.08, 9.38, 30.08)
+	p.Curve3(7.57, 30.08, 6.42, 31.35)
+	p.Curve3(5.27, 32.62, 5.27, 34.81)
+	p.Curve3(5.27, 39.01, 9.57, 42.53)
+	p.Curve3(13.87, 46.04, 21.63, 46.04)
+	p.Curve3(27.59, 46.04, 31.40, 44.04)
+	p.Curve3(34.28, 42.53, 35.64, 39.31)
+	p.Curve3(36.52, 37.21, 36.52, 30.71)
+	p.LineTo(36.52, 15.53)
+	p.Curve3(36.52, 9.13, 36.77, 7.69)
+	p.Curve3(37.01, 6.25, 37.57, 5.76)
+	p.Curve3(38.13, 5.27, 38.87, 5.27)
+	p.Curve3(39.65, 5.27, 40.23, 5.62)
+	p.Curve3(41.26, 6.25, 44.19, 9.18)
+	p.LineTo(44.19, 6.45)
+	p.Curve3(38.72, -0.88, 33.74, -0.88)
+	p.Curve3(31.35, -0.88, 29.93, 0.78)
+	p.Curve3(28.52, 2.44, 28.47, 6.45)
+	p.ClosePolygon(basics.PathFlagsNone)
+
+	p.MoveTo(28.47, 9.62)
+	p.LineTo(28.47, 26.66)
+	p.Curve3(21.09, 23.73, 18.95, 22.51)
+	p.Curve3(15.09, 20.36, 13.43, 18.02)
+	p.Curve3(11.77, 15.67, 11.77, 12.89)
+	p.Curve3(11.77, 9.38, 13.87, 7.06)
+	p.Curve3(15.97, 4.74, 18.70, 4.74)
+	p.Curve3(22.41, 4.74, 28.47, 9.62)
+	p.ClosePolygon(basics.PathFlagsNone)
+
+	mtx := transform.NewTransAffine().Scale(4.0).Translate(150, 100)
+	n := p.TotalVertices()
+	for i := range n {
+		x, y, cmd := p.Vertex(i)
+		if basics.IsVertex(basics.PathCommand(cmd)) {
+			mtx.Transform(&x, &y)
+			p.ModifyVertex(i, x, y)
+		}
+	}
+	return p
 }
 
 // BuildColorLUT exposes the canonical gradient lookup table used by the demo.
@@ -427,8 +488,12 @@ func Draw(ctx *agg.Context, cfg *Config) Result {
 		return Result{}
 	}
 
-	// Build the glyph path (letter "a", scaled 4x, translated to (150,100)).
-	glyphPath := buildGlyphPath()
+	// Get canvas dimensions first — needed to position the glyph.
+	outImg := ctx.GetImage()
+	w, h := outImg.Width(), outImg.Height()
+
+	// Build the glyph path scaled 4x, Y-flipped, and centered for the Y-down canvas.
+	glyphPath := buildGlyphPath(w, h)
 
 	// Wrap path with ConvCurve to flatten curve3 segments.
 	shape := conv.NewConvCurve(&pathStorageAdapter{ps: glyphPath})
@@ -456,10 +521,6 @@ func Draw(ctx *agg.Context, cfg *Config) Result {
 			shapeBounds.X1, shapeBounds.Y2, // bottom-left
 		}
 	}
-
-	// Get canvas dimensions and pixel data.
-	outImg := ctx.GetImage()
-	w, h := outImg.Width(), outImg.Height()
 
 	outRbuf := buffer.NewRenderingBufferU8()
 	outRbuf.Attach(outImg.Data, w, h, w*4)
