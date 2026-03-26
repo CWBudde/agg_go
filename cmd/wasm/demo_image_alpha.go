@@ -186,6 +186,7 @@ func drawImageAlphaDemo() {
 	// Attach rendering target
 	img := ctx.GetImage()
 	imgAlphaRbuf.Attach(img.Data, img.Width(), img.Height(), img.Stride())
+	imgAlphaRenBase.Attach(imgAlphaPixFmt)
 
 	// Render background ellipses using the low-level pipeline.
 	ell := shapes.NewEllipse()

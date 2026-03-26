@@ -70,7 +70,9 @@ func drawAlphaMask2Demo() {
 func handleAlphaMask2MouseDown(x, y float64, flags int) bool {
 	w, h := ctx.GetImage().Width(), ctx.GetImage().Height()
 	dx := x - float64(w)/2
-	dy := y - float64(h)/2
+	// Canvas Y is top-down; AGG rendering uses Y-up, so flip Y relative to centre
+	// to match C++ platform_support flip_y=true behaviour.
+	dy := float64(h)/2 - y
 	am2LionAngle = math.Atan2(dy, dx)
 	am2LionScale = math.Sqrt(dy*dy+dx*dx) / 100.0
 	return true
@@ -78,11 +80,11 @@ func handleAlphaMask2MouseDown(x, y float64, flags int) bool {
 
 func handleAlphaMask2RightMouseDown(x, y float64) bool {
 	am2LionSkewX = x
-	am2LionSkewY = y
+	// Flip Y for the same reason as in handleAlphaMask2MouseDown.
+	am2LionSkewY = float64(ctx.GetImage().Height()) - y
 	return true
 }
 
 func setAlphaMask2NumEllipses(n float64) {
 	am2SliderValue = n
 }
-
