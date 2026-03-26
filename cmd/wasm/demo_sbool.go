@@ -7,7 +7,6 @@ package main
 import (
 	"math"
 
-	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
 	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
@@ -417,13 +416,16 @@ func drawSBoolDemo() {
 		sboolInit()
 	}
 
-	agg2d := ctx.GetAgg2D()
-	agg2d.ResetTransformations()
-	agg2d.ClearAll(agg.White)
-
 	img := ctx.GetImage()
+	// Clear to white
+	for i := 0; i+3 < len(img.Data); i += 4 {
+		img.Data[i] = 255
+		img.Data[i+1] = 255
+		img.Data[i+2] = 255
+		img.Data[i+3] = 255
+	}
 	rbuf := buffer.NewRenderingBufferU8()
-	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Width()*4)
+	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Stride())
 	pixFmt := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
 	rb := renderer.NewRendererBaseWithPixfmt[renderer.PixelFormat[sboolColorType], sboolColorType](pixFmt)
 
@@ -502,6 +504,8 @@ func drawSBoolDemo() {
 	q2 := newSboolInteractivePolygonVS(sboolQuad2, 5.0)
 	ras.AddPath(q2, 0)
 	sboolManualRenderSolid(ras, rb, quadColor)
+
+	applyLinearToSRGB(img)
 }
 
 // --- Mouse interaction ---
