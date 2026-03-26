@@ -342,10 +342,6 @@ func (s *SliderCtrl) Vertex() (x, y float64, cmd basics.PathCommand) {
 			s.vertexIndex++
 			s.TransformXY(&x, &y)
 
-			// Close the path for filled shapes
-			if s.vertexIndex >= s.vertexCount {
-				return x, y, basics.PathCmdLineTo | basics.PathFlagClose
-			}
 			return x, y, basics.PathCmdLineTo
 		}
 
