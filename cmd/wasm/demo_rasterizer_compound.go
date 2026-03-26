@@ -1,12 +1,15 @@
 package main
 
 import (
-	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
 	"github.com/MeKo-Christian/agg_go/internal/color"
 	"github.com/MeKo-Christian/agg_go/internal/conv"
 	"github.com/MeKo-Christian/agg_go/internal/path"
+	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
 	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
+	"github.com/MeKo-Christian/agg_go/internal/renderer"
+	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
 	"github.com/MeKo-Christian/agg_go/internal/scanline"
 	"github.com/MeKo-Christian/agg_go/internal/shapes"
 	"github.com/MeKo-Christian/agg_go/internal/transform"
@@ -183,67 +186,68 @@ func composeCompoundPath(ps *path.PathStorageStl) {
 }
 
 func drawRasterizerCompoundDemo() {
-	a := ctx.GetAgg2D()
-	a.ResetTransformations()
-
-	// Horizontal background gradient: yellow -> cyan.
 	img := ctx.GetImage()
 	w, h := img.Width(), img.Height()
-	for y := 0; y < h; y++ {
-		for x := 0; x < w; x++ {
-			t := float64(x) / float64(w-1)
-			r := uint8((1.0 - t) * 255)
-			g := uint8(255)
-			b := uint8(t * 255)
-			i := (y*w + x) * 4
-			img.Data[i+0] = r
-			img.Data[i+1] = g
-			img.Data[i+2] = b
-			img.Data[i+3] = 255
+
+	rbuf := buffer.NewRenderingBufferU8()
+	rbuf.Attach(img.Data, w, h, img.Stride())
+	pf := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
+	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32Pre[color.Linear], color.RGBA8[color.Linear]](pf)
+
+	// Horizontal background gradient: yellow -> cyan.
+	gradient := make([]color.RGBA8[color.Linear], w)
+	for x := 0; x < w; x++ {
+		t := float64(x) / float64(w-1)
+		gradient[x] = color.RGBA8[color.Linear]{
+			R: uint8((1.0 - t) * 255),
+			G: 255,
+			B: uint8(t * 255),
+			A: 255,
 		}
+	}
+	for y := 0; y < h; y++ {
+		renBase.CopyColorHspan(0, y, w, gradient)
 	}
 
 	// Two background triangles.
-	ctx.SetColor(agg.NewColor(0, 100, 0, 255))
-	a.ResetPath()
-	a.MoveTo(0, 0)
-	a.LineTo(float64(w), 0)
-	a.LineTo(float64(w), float64(h))
-	a.ClosePolygon()
-	a.DrawPath(agg.FillOnly)
+	bgRas := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip(),
+	)
+	bgSl := scanline.NewScanlineU8()
 
-	ctx.SetColor(agg.NewColor(0, 100, 100, 255))
-	a.ResetPath()
-	a.MoveTo(0, 0)
-	a.LineTo(0, float64(h))
-	a.LineTo(float64(w), 0)
-	a.ClosePolygon()
-	a.DrawPath(agg.FillOnly)
+	bgPath := path.NewPathStorageStl()
+	bgPath.MoveTo(0, 0)
+	bgPath.LineTo(float64(w), 0)
+	bgPath.LineTo(float64(w), float64(h))
+	bgPath.ClosePolygon(basics.PathFlagsNone)
+	bgRas.Reset()
+	bgRas.AddPath(&rcConvVSAdapter{vs: path.NewPathStorageStlVertexSourceAdapter(bgPath)}, 0)
+	renscan.RenderScanlinesAASolid(bgRas, bgSl, renBase, color.RGBA8[color.Linear]{R: 0, G: 100, B: 0, A: 255})
+
+	bgPath2 := path.NewPathStorageStl()
+	bgPath2.MoveTo(0, 0)
+	bgPath2.LineTo(0, float64(h))
+	bgPath2.LineTo(float64(w), 0)
+	bgPath2.ClosePolygon(basics.PathFlagsNone)
+	bgRas.Reset()
+	bgRas.AddPath(&rcConvVSAdapter{vs: path.NewPathStorageStlVertexSourceAdapter(bgPath2)}, 0)
+	renscan.RenderScanlinesAASolid(bgRas, bgSl, renBase, color.RGBA8[color.Linear]{R: 0, G: 100, B: 100, A: 255})
 
 	// Compose and transform glyph path.
 	ps := path.NewPathStorageStl()
 	composeCompoundPath(ps)
 	psAdapter := path.NewPathStorageStlVertexSourceAdapter(ps)
-	offX := (float64(w) - compoundRefW) * 0.5
-	offY := (float64(h) - compoundRefH) * 0.5
-	// C++ demo runs with flip_y=true in a 440x330 window. Mirror Y in that
-	// reference frame, then center the whole scene in the web canvas.
-	sceneMtx := transform.NewTransAffine()
-	sceneMtx.Multiply(transform.NewTransAffineScalingXY(1.0, -1.0))
-	sceneMtx.Multiply(transform.NewTransAffineTranslation(0.0, compoundRefH))
-	sceneMtx.Multiply(transform.NewTransAffineTranslation(offX, offY))
 
 	mtx := transform.NewTransAffine()
 	mtx.Multiply(transform.NewTransAffineScaling(4.0))
 	mtx.Multiply(transform.NewTransAffineTranslation(150, 100))
-	mtx.Multiply(sceneMtx)
 	transPath := conv.NewConvTransform(psAdapter, mtx)
 	curve := conv.NewConvCurve(transPath)
 	stroke := conv.NewConvStroke(curve)
 	stroke.SetWidth(compoundWidth)
 
 	ell := shapes.NewEllipseWithParams(220.0, 180.0, 120.0, 10.0, 128, false)
-	ellTrans := conv.NewConvTransform(&rcEllipseConvAdapter{ell: ell}, sceneMtx)
+	ellTrans := conv.NewConvTransform(&rcEllipseConvAdapter{ell: ell}, transform.NewTransAffine())
 	ellStroke := conv.NewConvStroke(ellTrans)
 	ellStroke.SetWidth(compoundWidth * 0.5)
 
@@ -308,55 +312,30 @@ func drawRasterizerCompoundDemo() {
 		if numStyles == 1 {
 			if rasc.SweepScanline(adAA, 0) {
 				c := styleHandler.Color(int(rasc.Style(0)))
-				y := slAA.Y()
-				for _, sp := range slAA.Spans() {
-					for j := 0; j < int(sp.Len); j++ {
-						x := int(sp.X) + j
-						i := (y*w + x) * 4
-						if i >= 0 && i+3 < len(img.Data) {
-							cover := float64(sp.Covers[j]) / 255.0
-							inv := 1.0 - cover
-							img.Data[i+0] = uint8(float64(c.R)*cover + float64(img.Data[i+0])*inv)
-							img.Data[i+1] = uint8(float64(c.G)*cover + float64(img.Data[i+1])*inv)
-							img.Data[i+2] = uint8(float64(c.B)*cover + float64(img.Data[i+2])*inv)
-							img.Data[i+3] = 255
+				renscan.RenderScanlineAASolid(slAA, renBase, c)
+			}
+		} else if rasc.SweepScanline(adBin, -1) {
+			y := slBin.Y()
+			for _, sp := range slBin.Spans() {
+				for j := 0; j < int(sp.Len); j++ {
+					mixBuffer[int(sp.X)-minX+j] = color.RGBA8[color.Linear]{}
+				}
+			}
+			for i := uint32(0); i < numStyles; i++ {
+				style := int(rasc.Style(i))
+				if rasc.SweepScanline(adAA, int(i)) {
+					c := styleHandler.Color(style)
+					for _, sp := range slAA.Spans() {
+						for j := 0; j < int(sp.Len); j++ {
+							ptr := &mixBuffer[int(sp.X)-minX+j]
+							ptr.AddWithCover(c, sp.Covers[j])
 						}
 					}
 				}
 			}
-		} else {
-			if rasc.SweepScanline(adBin, -1) {
-				y := slBin.Y()
-				for _, sp := range slBin.Spans() {
-					for j := 0; j < int(sp.Len); j++ {
-						mixBuffer[int(sp.X)-minX+j] = color.RGBA8[color.Linear]{}
-					}
-				}
-				for i := uint32(0); i < numStyles; i++ {
-					style := int(rasc.Style(i))
-					if rasc.SweepScanline(adAA, int(i)) {
-						for _, sp := range slAA.Spans() {
-							c := styleHandler.Color(style)
-							for j := 0; j < int(sp.Len); j++ {
-								ptr := &mixBuffer[int(sp.X)-minX+j]
-								ptr.AddWithCover(c, sp.Covers[j])
-							}
-						}
-					}
-				}
-				for _, sp := range slBin.Spans() {
-					for j := 0; j < int(sp.Len); j++ {
-						x := int(sp.X) + j
-						i := (y*w + x) * 4
-						if i >= 0 && i+3 < len(img.Data) {
-							c := mixBuffer[int(sp.X)-minX+j]
-							img.Data[i+0] = uint8(c.R)
-							img.Data[i+1] = uint8(c.G)
-							img.Data[i+2] = uint8(c.B)
-							img.Data[i+3] = 255
-						}
-					}
-				}
+			for _, sp := range slBin.Spans() {
+				start := int(sp.X) - minX
+				renBase.BlendColorHspan(int(sp.X), y, int(sp.Len), mixBuffer[start:start+int(sp.Len)], nil, basics.CoverFull)
 			}
 		}
 	}
