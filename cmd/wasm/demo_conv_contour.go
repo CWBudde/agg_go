@@ -2,10 +2,15 @@
 package main
 
 import (
-	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
+	"github.com/MeKo-Christian/agg_go/internal/color"
 	"github.com/MeKo-Christian/agg_go/internal/conv"
 	"github.com/MeKo-Christian/agg_go/internal/path"
+	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
+	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
+	"github.com/MeKo-Christian/agg_go/internal/renderer"
+	"github.com/MeKo-Christian/agg_go/internal/scanline"
 	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
 
@@ -20,8 +25,17 @@ var (
 // --- Drawing ---
 
 func drawConvContourDemo() {
-	a := ctx.GetAgg2D()
-	a.ResetTransformations()
+	img := ctx.GetImage()
+	rbuf := buffer.NewRenderingBufferU8()
+	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Stride())
+
+	pf := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
+	ren := renderer.NewRendererBaseWithPixfmt[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](pf)
+
+	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip(),
+	)
+	sl := scanline.NewScanlineU8()
 
 	// Build the "a" glyph path from the original conv_contour.cpp.
 	ps := path.NewPathStorageStl()
@@ -41,28 +55,30 @@ func drawConvContourDemo() {
 	contour.Width(contourWidth)
 	contour.AutoDetectOrientation(contourAutoDetect)
 
-	// Feed the contour output vertices into the agg2d path and render.
-	a.ResetPath()
+	// Feed the contour output into the rasterizer.
+	ras.Reset()
 	contour.Rewind(0)
 	for {
 		x, y, cmd := contour.Vertex()
-		switch {
-		case basics.IsStop(cmd):
-			goto done
-		case basics.IsMoveTo(cmd):
-			a.MoveTo(x, y)
-		case basics.IsEndPoly(cmd):
-			if basics.IsClose(uint32(cmd)) {
-				a.ClosePolygon()
+		if basics.IsStop(cmd) {
+			break
+		}
+		ras.AddVertex(x, y, uint32(cmd))
+	}
+
+	// Render as solid black.
+	black := color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255}
+	if ras.RewindScanlines() {
+		sl.Reset(ras.MinX(), ras.MaxX())
+		for ras.SweepScanline(sl) {
+			y := sl.Y()
+			for _, sp := range sl.Spans() {
+				if sp.Len > 0 {
+					ren.BlendSolidHspan(int(sp.X), y, int(sp.Len), black, sp.Covers)
+				}
 			}
-		case basics.IsVertex(cmd):
-			a.LineTo(x, y)
 		}
 	}
-done:
-	a.FillColor(agg.Black)
-	a.NoLine()
-	a.DrawPath(agg.FillOnly)
 }
 
 // composePath builds the "a" glyph path from the original C++ example.
