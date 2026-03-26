@@ -4,11 +4,16 @@ package main
 import (
 	"math"
 
-	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
+	"github.com/MeKo-Christian/agg_go/internal/color"
 	"github.com/MeKo-Christian/agg_go/internal/conv"
 	liondemo "github.com/MeKo-Christian/agg_go/internal/demo/lion"
 	"github.com/MeKo-Christian/agg_go/internal/path"
+	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
+	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
+	"github.com/MeKo-Christian/agg_go/internal/renderer"
+	"github.com/MeKo-Christian/agg_go/internal/scanline"
 	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
 
@@ -71,8 +76,44 @@ func drawTransCurve2Demo() {
 		}
 	}
 
-	agg2d := ctx.GetAgg2D()
-	agg2d.ResetTransformations()
+	// --- Low-level rendering setup ---
+	img := ctx.GetImage()
+	rbuf := buffer.NewRenderingBufferU8()
+	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Stride())
+
+	pf := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
+	ren := renderer.NewRendererBaseWithPixfmt[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](pf)
+	ren.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 242, A: 255})
+
+	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip(),
+	)
+	sl := scanline.NewScanlineU8()
+
+	addPathToRas := func(src conv.VertexSource) {
+		src.Rewind(0)
+		for {
+			vx, vy, cmd := src.Vertex()
+			if basics.IsStop(cmd) {
+				break
+			}
+			ras.AddVertex(vx, vy, uint32(cmd))
+		}
+	}
+
+	renderSolid := func(c color.RGBA8[color.Linear]) {
+		if ras.RewindScanlines() {
+			sl.Reset(ras.MinX(), ras.MaxX())
+			for ras.SweepScanline(sl) {
+				y := sl.Y()
+				for _, span := range sl.Spans() {
+					if span.Len > 0 {
+						ren.BlendSolidHspan(int(span.X), y, int(span.Len), c, span.Covers)
+					}
+				}
+			}
+		}
+	}
 
 	// 1. Create guide paths
 	ps1 := path.NewPathStorageStl()
@@ -94,7 +135,7 @@ func drawTransCurve2Demo() {
 	tcurve.AddPaths(&transDoubleAdapter{bs1}, &transDoubleAdapter{bs2}, 0, 0)
 	tcurve.SetBaseHeight(40.0)
 
-	// 3. Transform the lion
+	// 3. Find lion bounding box
 	lx1, ly1, lx2, ly2 := 1e9, 1e9, -1e9, -1e9
 	for idx := uint(0); idx < lionData.Path.TotalVertices(); idx++ {
 		x, y, cmd := lionData.Path.Vertex(idx)
@@ -117,11 +158,13 @@ func drawTransCurve2Demo() {
 	lionW := lx2 - lx1
 	scaleX := tcurve.TotalLength1() / lionW * 0.8
 
+	// 4. Render transformed lion paths
 	for i := 0; i < lionData.NPaths; i++ {
-		agg2d.FillColor(agg.NewColor(lionData.Colors[i].R, lionData.Colors[i].G, lionData.Colors[i].B, 200))
-		agg2d.NoLine()
-		agg2d.ResetPath()
+		c := lionData.Colors[i]
+		fillColor := color.RGBA8[color.Linear]{R: c.R, G: c.G, B: c.B, A: 200}
+
 		lionData.Path.Rewind(lionData.PathIdx[i])
+		ras.Reset()
 		for {
 			x, y, cmd := lionData.Path.NextVertex()
 			if basics.IsStop(basics.PathCommand(cmd)) {
@@ -133,22 +176,21 @@ func drawTransCurve2Demo() {
 			tx += offX
 			ty += offY
 			if basics.IsMoveTo(basics.PathCommand(cmd)) {
-				agg2d.MoveTo(tx, ty)
+				ras.AddVertex(tx, ty, uint32(basics.PathCmdMoveTo))
 			} else if basics.IsLineTo(basics.PathCommand(cmd)) {
-				agg2d.LineTo(tx, ty)
+				ras.AddVertex(tx, ty, uint32(basics.PathCmdLineTo))
 			}
 		}
-		agg2d.ClosePolygon()
-		agg2d.DrawPath(agg.FillOnly)
+		ras.ClosePolygon()
+		renderSolid(fillColor)
 	}
 
-	// 4. Draw guide curves
-	agg2d.NoFill()
-	agg2d.LineWidth(1.0)
-	agg2d.LineColor(agg.NewColor(170, 50, 20, 100))
+	// 5. Draw guide curves as stroked paths
+	guideColor := color.RGBA8[color.Linear]{R: 170, G: 50, B: 20, A: 100}
 
 	for _, bs := range []*conv.ConvBSpline{bs1, bs2} {
-		agg2d.ResetPath()
+		// Build an offset spline into a PathStorageStl, then stroke it
+		psGuide := path.NewPathStorageStl()
 		bs.Rewind(0)
 		first := true
 		for {
@@ -157,16 +199,21 @@ func drawTransCurve2Demo() {
 				break
 			}
 			if first {
-				agg2d.MoveTo(vx+offX, vy+offY)
+				psGuide.MoveTo(vx+offX, vy+offY)
 				first = false
 			} else {
-				agg2d.LineTo(vx+offX, vy+offY)
+				psGuide.LineTo(vx+offX, vy+offY)
 			}
 		}
-		agg2d.DrawPath(agg.StrokeOnly)
+		guideAdapter := path.NewPathStorageStlVertexSourceAdapter(psGuide)
+		guideStroke := conv.NewConvStroke(guideAdapter)
+		guideStroke.SetWidth(1.0)
+		ras.Reset()
+		addPathToRas(guideStroke)
+		renderSolid(guideColor)
 	}
 
-	// 5. Draw handles
+	// 6. Draw handles
 	for i := 0; i < 6; i++ {
 		drawHandle(transCurve2Points1[i*2]+offX, transCurve2Points1[i*2+1]+offY)
 		drawHandle(transCurve2Points2[i*2]+offX, transCurve2Points2[i*2+1]+offY)
