@@ -63,7 +63,7 @@ func drawLionDemo() {
 
 	pf := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
 	ren := renderer.NewRendererBaseWithPixfmt(pf)
-	ren.Clear(color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255})
+	ren.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
 
 	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
 		rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip(),
