@@ -222,6 +222,12 @@ func main() {
 		}
 		return nil
 	}))
+	js.Global().Set("getGradientFocalFX", js.FuncOf(func(_ js.Value, _ []js.Value) interface{} {
+		return gradientFocalFX
+	}))
+	js.Global().Set("getGradientFocalFY", js.FuncOf(func(_ js.Value, _ []js.Value) interface{} {
+		return gradientFocalFY
+	}))
 	js.Global().Set("setLineThicknessFactor", js.FuncOf(func(_ js.Value, args []js.Value) interface{} {
 		if len(args) > 0 {
 			setLineThicknessFactor(args[0].Float())
@@ -900,6 +906,9 @@ func onMouseDown(this js.Value, args []js.Value) interface{} {
 		}
 		return handleGPCTestMouseDown(x, y)
 	}
+	if demoType == "gradient_focal" {
+		return handleGradientFocalMouseDown(x, y)
+	}
 	return false
 }
 
@@ -1056,6 +1065,9 @@ func onMouseMove(this js.Value, args []js.Value) interface{} {
 		}
 		return handleGPCTestMouseMove(x, y)
 	}
+	if demoType == "gradient_focal" {
+		return handleGradientFocalMouseMove(x, y)
+	}
 	return false
 }
 
@@ -1157,6 +1169,9 @@ func onMouseUp(this js.Value, args []js.Value) interface{} {
 	}
 	if demoType == "gpc_test" {
 		handleGPCTestMouseUp()
+	}
+	if demoType == "gradient_focal" {
+		handleGradientFocalMouseUp()
 	}
 	return nil
 }

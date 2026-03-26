@@ -28,6 +28,29 @@ var (
 	gradientFocalFY    = 0.0
 )
 
+func handleGradientFocalMouseDown(x, y float64) bool {
+	cx := float64(width) * 0.5
+	cy := float64(height) * 0.5
+	r := 100.0
+	fx := x - cx
+	fy := y - cy
+	// Clamp focal point inside the gradient circle with a small margin.
+	if d := math.Hypot(fx, fy); d >= r {
+		scale := (r - 0.001) / d
+		fx *= scale
+		fy *= scale
+	}
+	gradientFocalFX = fx
+	gradientFocalFY = fy
+	return true
+}
+
+func handleGradientFocalMouseMove(x, y float64) bool {
+	return handleGradientFocalMouseDown(x, y)
+}
+
+func handleGradientFocalMouseUp() {}
+
 func setGradientFocalGamma(v float64) {
 	if v < 0.5 {
 		v = 0.5

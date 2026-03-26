@@ -700,6 +700,20 @@ export function setupEventHandlers(
     renderSelectedDemo();
   });
 
+  // gradient_focal controls
+  document
+    .getElementById("gradientFocalGammaSlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("gradientFocalGammaSlider").value,
+      );
+      document.getElementById("gradientFocalGammaValue").textContent =
+        val.toFixed(2);
+      setGradientFocalGamma(val);
+      persistDemoParams("gradient_focal");
+      renderSelectedDemo();
+    });
+
   // distortions controls
   document
     .getElementById("distortionsImageSelector")

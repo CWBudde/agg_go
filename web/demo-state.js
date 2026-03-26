@@ -652,11 +652,21 @@ export const demoURLHandlers = {
 
   gradient_focal: {
     persist() {
-      // URL-only controls (no visible widget panel).
+      updateURL({
+        gfg: parseFloat(
+          document.getElementById("gradientFocalGammaSlider").value,
+        ).toFixed(2),
+        gfx: getGradientFocalFX().toFixed(3),
+        gfy: getGradientFocalFY().toFixed(3),
+      });
     },
     restore(p) {
       if (p.has("gfg")) {
-        setGradientFocalGamma(parseFloat(p.get("gfg")));
+        const val = parseFloat(p.get("gfg"));
+        setGradientFocalGamma(val);
+        document.getElementById("gradientFocalGammaSlider").value = val;
+        document.getElementById("gradientFocalGammaValue").textContent =
+          val.toFixed(2);
       }
       if (p.has("gfx")) {
         setGradientFocalFX(parseFloat(p.get("gfx")));
