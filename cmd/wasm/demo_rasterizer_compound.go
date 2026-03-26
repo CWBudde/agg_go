@@ -188,6 +188,11 @@ func composeCompoundPath(ps *path.PathStorageStl) {
 func drawRasterizerCompoundDemo() {
 	img := ctx.GetImage()
 	w, h := img.Width(), img.Height()
+	wf, hf := float64(w), float64(h)
+
+	// Scale factors from C++ reference canvas (440×330, flip_y=true) to WASM canvas.
+	scaleX := wf / compoundRefW
+	scaleY := hf / compoundRefH
 
 	rbuf := buffer.NewRenderingBufferU8()
 	rbuf.Attach(img.Data, w, h, img.Stride())
@@ -209,47 +214,53 @@ func drawRasterizerCompoundDemo() {
 		renBase.CopyColorHspan(0, y, w, gradient)
 	}
 
-	// Two background triangles.
+	// Two background triangles matching C++ y-up orientation mapped to y-down screen.
+	// C++ y-up triangle 1: (0,0)→(w,0)→(w,h)  →  y-down: (0,h)→(w,h)→(w,0)
+	// C++ y-up triangle 2: (0,0)→(0,h)→(w,0)  →  y-down: (0,h)→(0,0)→(w,h)
 	bgRas := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
 		rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip(),
 	)
 	bgSl := scanline.NewScanlineU8()
 
 	bgPath := path.NewPathStorageStl()
-	bgPath.MoveTo(0, 0)
-	bgPath.LineTo(float64(w), 0)
-	bgPath.LineTo(float64(w), float64(h))
+	bgPath.MoveTo(0, hf)
+	bgPath.LineTo(wf, hf)
+	bgPath.LineTo(wf, 0)
 	bgPath.ClosePolygon(basics.PathFlagsNone)
 	bgRas.Reset()
 	bgRas.AddPath(&rcConvVSAdapter{vs: path.NewPathStorageStlVertexSourceAdapter(bgPath)}, 0)
 	renscan.RenderScanlinesAASolid(bgRas, bgSl, renBase, color.RGBA8[color.Linear]{R: 0, G: 100, B: 0, A: 255})
 
 	bgPath2 := path.NewPathStorageStl()
-	bgPath2.MoveTo(0, 0)
-	bgPath2.LineTo(0, float64(h))
-	bgPath2.LineTo(float64(w), 0)
+	bgPath2.MoveTo(0, hf)
+	bgPath2.LineTo(0, 0)
+	bgPath2.LineTo(wf, hf)
 	bgPath2.ClosePolygon(basics.PathFlagsNone)
 	bgRas.Reset()
 	bgRas.AddPath(&rcConvVSAdapter{vs: path.NewPathStorageStlVertexSourceAdapter(bgPath2)}, 0)
 	renscan.RenderScanlinesAASolid(bgRas, bgSl, renBase, color.RGBA8[color.Linear]{R: 0, G: 100, B: 100, A: 255})
 
 	// Compose and transform glyph path.
+	// C++ y-up: scale(4) + translate(150, 100), canvas height 330.
+	// In WASM y-down with canvas scaling:
+	//   x' = 4*scaleX*x + 150*scaleX
+	//   y' = hf - (4*scaleY*y + 100*scaleY) = -4*scaleY*y + (hf - 100*scaleY)
 	ps := path.NewPathStorageStl()
 	composeCompoundPath(ps)
 	psAdapter := path.NewPathStorageStlVertexSourceAdapter(ps)
 
-	mtx := transform.NewTransAffine()
-	mtx.Multiply(transform.NewTransAffineScaling(4.0))
-	mtx.Multiply(transform.NewTransAffineTranslation(150, 100))
+	mtx := transform.NewTransAffineFromValues(4*scaleX, 0, 0, -4*scaleY, 150*scaleX, hf-100*scaleY)
 	transPath := conv.NewConvTransform(psAdapter, mtx)
 	curve := conv.NewConvCurve(transPath)
 	stroke := conv.NewConvStroke(curve)
-	stroke.SetWidth(compoundWidth)
+	stroke.SetWidth(compoundWidth * scaleX)
 
-	ell := shapes.NewEllipseWithParams(220.0, 180.0, 120.0, 10.0, 128, false)
+	// Ellipse: C++ y-up center (220, 180), rx=120, ry=10.
+	// In WASM y-down: center (220*scaleX, hf-180*scaleY), rx=120*scaleX, ry=10*scaleY.
+	ell := shapes.NewEllipseWithParams(220.0*scaleX, hf-180.0*scaleY, 120.0*scaleX, 10.0*scaleY, 128, false)
 	ellTrans := conv.NewConvTransform(&rcEllipseConvAdapter{ell: ell}, transform.NewTransAffine())
 	ellStroke := conv.NewConvStroke(ellTrans)
-	ellStroke.SetWidth(compoundWidth * 0.5)
+	ellStroke.SetWidth(compoundWidth * 0.5 * scaleX)
 
 	styles := []color.RGBA8[color.Linear]{
 		{R: 0, G: 0, B: 255, A: 255},   // 0
