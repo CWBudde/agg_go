@@ -13,6 +13,7 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
 	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
 	"github.com/MeKo-Christian/agg_go/internal/renderer"
+	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
 	"github.com/MeKo-Christian/agg_go/internal/scanline"
 	"github.com/MeKo-Christian/agg_go/internal/span"
 	"github.com/MeKo-Christian/agg_go/internal/transform"
@@ -131,6 +132,7 @@ var (
 	distortionsAlloc       *span.SpanAllocator[color.RGBA8[color.Linear]]
 	distortionsRas         *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
 	distortionsSl          *scanline.ScanlineU8
+	distortionsSlP8        *scanline.ScanlineP8
 	distortionsPath        *path.PathStorageStl
 	distortionsInitialized bool
 )
@@ -153,6 +155,7 @@ func initDistortionsDemo() {
 		rasterizer.NewRasterizerSlNoClip(),
 	)
 	distortionsSl = scanline.NewScanlineU8()
+	distortionsSlP8 = scanline.NewScanlineP8()
 	distortionsPath = path.NewPathStorageStl()
 
 	distortionsInitialized = true
@@ -187,9 +190,6 @@ func drawDistortionsDemo() {
 	if distortionsPhase > math.Pi*200.0 {
 		distortionsPhase -= math.Pi * 200.0
 	}
-
-	agg2d := ctx.GetAgg2D()
-	agg2d.ResetTransformations()
 
 	img := ctx.GetImage()
 	distortionsRbuf.Attach(img.Data, img.Width(), img.Height(), img.Width()*4)
@@ -289,6 +289,29 @@ func drawDistortionsDemo() {
 			}
 		}
 	}
+
+	// Draw ellipse outline (Pass 2): same ellipse shifted right by imgW-imgW/10.
+	// Matches C++: src_mtx *= trans_affine_translation(img_width - img_width/10, 0)
+	shiftX := imgW - imgW/10
+	distortionsPath.RemoveAll()
+	for i := 0; i < numPoints; i++ {
+		angle := 2.0 * math.Pi * float64(i) / float64(numPoints)
+		x := imgW/2 + (r/2-20)*math.Cos(angle)
+		y := imgH/2 + (r/2-20)*math.Sin(angle)
+		srcMtx.Transform(&x, &y)
+		x += shiftX
+		if i == 0 {
+			distortionsPath.MoveTo(x, y)
+		} else {
+			distortionsPath.LineTo(x, y)
+		}
+	}
+	distortionsPath.ClosePolygon(basics.PathFlagsClose)
+
+	outlineAdapter := &pathSourceAdapter{ps: distortionsPath}
+	distortionsRas.Reset()
+	distortionsRas.AddPath(outlineAdapter, 0)
+	renscan.RenderScanlinesAASolid(distortionsRas, distortionsSlP8, distortionsRenBase, color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255})
 
 	// Draw interactive handle
 	drawHandle(distortionsCenterX, distortionsCenterY)
