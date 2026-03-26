@@ -19,18 +19,13 @@ import (
 
 // --- State ---
 
-const (
-	dashBaseWidth  = 500.0
-	dashBaseHeight = 330.0
-)
-
 var (
-	// Control points matching C++ constructor: m_x[i] = 57/369/143 + 100, m_y[i] = 60/170/310.
-	dashX = [3]float64{157, 469, 243}
-	dashY = [3]float64{60, 170, 310}
+	// Control points in screen coordinates (Y-down), initialised by dashInit.
+	dashX = [3]float64{}
+	dashY = [3]float64{}
 
-	dashWidth   = 3.0 // m_width default
-	dashSmooth  = 1.0 // m_smooth default (range 0.0–2.0)
+	dashWidth   = 3.0  // m_width default
+	dashSmooth  = 1.0  // m_smooth default (range 0.0–2.0)
 	dashClosed  = false
 	dashCap     = 0     // 0=butt, 1=square, 2=round
 	dashEvenOdd = false // m_even_odd
@@ -40,28 +35,65 @@ var (
 	dashDY  = 0.0
 )
 
+// dashInit seeds control points from the original C++ constructor values
+// (m_x = {157, 469, 243}, m_y = {60, 170, 310} in a 500×330 Y-up frame),
+// mapped once to screen coordinates at canvas size.
+func dashInit() {
+	const (
+		frameW = 500.0
+		frameH = 330.0
+	)
+	w := float64(width)
+	h := float64(height)
+
+	sx := w / frameW
+	sy := h / frameH
+	scale := math.Min(sx, sy)
+	if scale > 1.0 {
+		scale = 1.0
+	}
+	if scale <= 0 {
+		scale = 1.0
+	}
+	offX := (w - frameW*scale) * 0.5
+	offY := (h - frameH*scale) * 0.5
+
+	mapPt := func(cx, cy float64) (float64, float64) {
+		return offX + cx*scale, offY + (frameH-cy)*scale
+	}
+
+	dashX[0], dashY[0] = mapPt(157, 60)
+	dashX[1], dashY[1] = mapPt(469, 170)
+	dashX[2], dashY[2] = mapPt(243, 310)
+}
+
+func init() {
+	dashInit()
+}
+
 // --- Path builder ---
 
 // buildDashPath creates the two-sub-path storage matching the C++ on_draw path.
-func buildDashPath(mapX, mapY func(float64) float64) *path.PathStorageStl {
+// Coordinates are in screen space (Y-down).
+func buildDashPath() *path.PathStorageStl {
 	cx := (dashX[0] + dashX[1] + dashX[2]) / 3
 	cy := (dashY[0] + dashY[1] + dashY[2]) / 3
 
 	ps := path.NewPathStorageStl()
 
 	// Sub-path 1: P0 → P1 → centroid → P2
-	ps.MoveTo(mapX(dashX[0]), mapY(dashY[0]))
-	ps.LineTo(mapX(dashX[1]), mapY(dashY[1]))
-	ps.LineTo(mapX(cx), mapY(cy))
-	ps.LineTo(mapX(dashX[2]), mapY(dashY[2]))
+	ps.MoveTo(dashX[0], dashY[0])
+	ps.LineTo(dashX[1], dashY[1])
+	ps.LineTo(cx, cy)
+	ps.LineTo(dashX[2], dashY[2])
 	if dashClosed {
 		ps.ClosePolygon(basics.PathFlagsNone)
 	}
 
 	// Sub-path 2: mid01 → mid12 → mid20
-	ps.MoveTo(mapX((dashX[0]+dashX[1])/2), mapY((dashY[0]+dashY[1])/2))
-	ps.LineTo(mapX((dashX[1]+dashX[2])/2), mapY((dashY[1]+dashY[2])/2))
-	ps.LineTo(mapX((dashX[2]+dashX[0])/2), mapY((dashY[2]+dashY[0])/2))
+	ps.MoveTo((dashX[0]+dashX[1])/2, (dashY[0]+dashY[1])/2)
+	ps.LineTo((dashX[1]+dashX[2])/2, (dashY[1]+dashY[2])/2)
+	ps.LineTo((dashX[2]+dashX[0])/2, (dashY[2]+dashY[0])/2)
 	if dashClosed {
 		ps.ClosePolygon(basics.PathFlagsNone)
 	}
@@ -100,36 +132,9 @@ func (a *arrowheadShapes) Vertex() (x, y float64, cmd basics.PathCommand) {
 	return vx, vy, c
 }
 
-func fitDashFrame(w, h int) (scale, offX, offY float64) {
-	sx := float64(w) / dashBaseWidth
-	sy := float64(h) / dashBaseHeight
-	scale = math.Min(sx, sy)
-	if scale > 1.0 {
-		scale = 1.0
-	}
-	if scale <= 0 {
-		scale = 1.0
-	}
-	offX = (float64(w) - dashBaseWidth*scale) * 0.5
-	offY = (float64(h) - dashBaseHeight*scale) * 0.5
-	return scale, offX, offY
-}
-
-func dashMapPoint(scale, offX, offY, x, y float64) (float64, float64) {
-	return offX + x*scale, offY + (dashBaseHeight-y)*scale
-}
-
-func dashUnmapPoint(scale, offX, offY, x, y float64) (float64, float64) {
-	return (x - offX) / scale, dashBaseHeight - (y-offY)/scale
-}
-
 // --- Drawing ---
 
 func drawDashDemo() {
-	scale, offX, offY := fitDashFrame(ctx.Width(), ctx.Height())
-	mapX := func(x float64) float64 { return offX + x*scale }
-	mapY := func(y float64) float64 { return offY + (dashBaseHeight-y)*scale }
-
 	img := ctx.GetImage()
 	rbuf := buffer.NewRenderingBufferU8()
 	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Stride())
@@ -163,7 +168,7 @@ func drawDashDemo() {
 		}
 	}
 
-	ps := buildDashPath(mapX, mapY)
+	ps := buildDashPath()
 	rawSrc := &pathToConvSource{ps: ps}
 
 	// === Layer 1: raw fill (amber rgba(0.7, 0.5, 0.1, 0.5)) ===
@@ -182,7 +187,7 @@ func drawDashDemo() {
 	smooth2 := conv.NewConvSmoothPoly1(rawSrc)
 	smooth2.SetSmoothValue(dashSmooth)
 	smoothOutline := conv.NewConvStroke(smooth2)
-	smoothOutline.SetWidth(max(1.0, scale))
+	smoothOutline.SetWidth(1.0)
 	ras.Reset()
 	ras.AddPath(&convToRasSource{src: smoothOutline}, 0)
 	renderSolidColor(color.RGBA8[color.Linear]{R: 0, G: 153, B: 0, A: 204})
@@ -234,8 +239,7 @@ func drawDashDemo() {
 
 	// === Handles ===
 	for i := 0; i < 3; i++ {
-		x, y := dashMapPoint(scale, offX, offY, dashX[i], dashY[i])
-		drawHandle(x, y)
+		drawHandle(dashX[i], dashY[i])
 	}
 }
 
@@ -252,10 +256,8 @@ func dashPointInTriangle(ax, ay, bx, by, cx, cy, px, py float64) bool {
 }
 
 func handleDashMouseDown(x, y float64) bool {
-	scale, offX, offY := fitDashFrame(ctx.Width(), ctx.Height())
-	x, y = dashUnmapPoint(scale, offX, offY, x, y)
 	dashIdx = -1
-	// Hit-test individual control points first (radius 20 px, matching C++).
+	// Hit-test individual control points first (radius 20 px).
 	for i := 0; i < 3; i++ {
 		if math.Sqrt((x-dashX[i])*(x-dashX[i])+(y-dashY[i])*(y-dashY[i])) < 20 {
 			dashDX = x - dashX[i]
@@ -275,8 +277,6 @@ func handleDashMouseDown(x, y float64) bool {
 }
 
 func handleDashMouseMove(x, y float64) bool {
-	scale, offX, offY := fitDashFrame(ctx.Width(), ctx.Height())
-	x, y = dashUnmapPoint(scale, offX, offY, x, y)
 	if dashIdx == 3 {
 		// Move whole polygon: new position of P0 is (x-dashDX, y-dashDY).
 		dx := x - dashDX
