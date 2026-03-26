@@ -4,9 +4,16 @@ package main
 import (
 	"math"
 
-	agg "github.com/MeKo-Christian/agg_go"
 	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
+	"github.com/MeKo-Christian/agg_go/internal/color"
 	liondemo "github.com/MeKo-Christian/agg_go/internal/demo/lion"
+	"github.com/MeKo-Christian/agg_go/internal/path"
+	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
+	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
+	"github.com/MeKo-Christian/agg_go/internal/renderer"
+	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/scanline"
 )
 
 type transPolar struct {
@@ -39,8 +46,18 @@ func drawTransPolarDemo() {
 		lionData = &ld
 	}
 
-	agg2d := ctx.GetAgg2D()
-	agg2d.ResetTransformations()
+	img := ctx.GetImage()
+	rbuf := buffer.NewRenderingBufferU8()
+	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Stride())
+
+	pixFmt := pixfmt.NewPixFmtRGBA32[color.Linear](rbuf)
+	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]](pixFmt)
+	renBase.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
+
+	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip(),
+	)
+	sl := scanline.NewScanlineU8()
 
 	// Setup polar transformer
 	trans := &transPolar{
@@ -79,10 +96,8 @@ func drawTransPolarDemo() {
 	scaleX := 600.0 / lionW
 
 	for i := 0; i < lionData.NPaths; i++ {
-		agg2d.FillColor(agg.NewColor(lionData.Colors[i].R, lionData.Colors[i].G, lionData.Colors[i].B, 255))
-		agg2d.NoLine()
+		ps := path.NewPathStorageStl()
 
-		agg2d.ResetPath()
 		lionData.Path.Rewind(lionData.PathIdx[i])
 
 		for {
@@ -93,20 +108,27 @@ func drawTransPolarDemo() {
 
 			// Normalize and scale lion
 			tx := (x-lx1)*scaleX - 300.0 // Center it horizontally
-			ty := (y - (ly1+ly2)*0.5)
+			ty := y - (ly1+ly2)*0.5
 
 			// Transform to polar
 			trans.Transform(&tx, &ty)
 
 			if basics.IsMoveTo(basics.PathCommand(cmd)) {
-				agg2d.MoveTo(tx, ty)
+				ps.MoveTo(tx, ty)
 			} else if basics.IsLineTo(basics.PathCommand(cmd)) {
-				agg2d.LineTo(tx, ty)
+				ps.LineTo(tx, ty)
 			}
 		}
-		agg2d.ClosePolygon()
-		agg2d.DrawPath(agg.FillOnly)
+		ps.ClosePolygon(basics.PathFlagsNone)
+
+		c := lionData.Colors[i]
+
+		ras.Reset()
+		ras.AddPath(&pathSourceAdapter{ps: ps}, 0)
+		renscan.RenderScanlinesAASolid(ras, sl, renBase, c)
 	}
+
+	applyLinearToSRGB(img)
 }
 
 func handleTransPolarMouseDown(x, y float64) bool {
