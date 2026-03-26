@@ -780,7 +780,7 @@ per-pixel methods.
 **Tasks**:
 
 - [x] Change `PixFmtRGB555` color type to `RGBA8[Linear]` (matching C++ `blender_rgb555::color_type
-  = rgba8`). Alpha used for blending, not stored in the 16-bit pixel. The polymorphic example
+= rgba8`). Alpha used for blending, not stored in the 16-bit pixel. The polymorphic example
       converts sRGB→linear at the interface boundary.
 - [x] Implement missing methods on all four packed pixfmt types to satisfy
       `renderer.PixelFormat[RGBA8[SRGB]]`: `CopyHline`, `BlendHline`, `CopyVline`,
@@ -801,13 +801,18 @@ per-pixel methods.
 Screenshots captured via `just update-visual-wasm` (stored in `tests/visual/reference/wasm/`)
 were compared against C++ reference images in `tests/visual/reference/cpp/examples/`.
 Known acceptable differences: fixed 800×600 canvas (vs per-demo C++ sizes), absence of
-control widgets.  Items below are rendering bugs or significant visual deviations.
+control widgets. Items below are rendering bugs or significant visual deviations.
 
 **Critical — completely wrong output:**
 
-- [ ] **image_alpha**: Renders completely blank (white). No image content at all.
-- [ ] **alpha_mask2**: Broken rendering — scattered geometric fragments instead of
-      a properly masked lion with crossed lines.
+- [x] **image_alpha**: Fixed — `imgAlphaRenBase` was constructed before the buffer was
+      attached (width=0/height=0), so its cached clip box was `{0,0,-1,-1}` and every
+      pixel was clipped. Fix: call `imgAlphaRenBase.Attach(imgAlphaPixFmt)` after
+      `imgAlphaRbuf.Attach(...)` each frame, matching the pattern used in `demo_image1.go`.
+- [x] **alpha_mask2**: Rendering fixed — proportional scaling, BGRr24→RGBA copy with
+      Y-flip, and mouse-drag Y-axis corrected so rotation direction matches C++
+      (`dy = h/2 - y` to convert canvas Y-down to AGG Y-up; same fix applied to
+      right-mouse skewY).
 - [ ] **distortions**: Right circle is solid black; should show a second distortion
       effect (orange/glow sphere in C++).
 - [ ] **perspective**: Lion is upside-down (y-flip bug in the WASM demo).
