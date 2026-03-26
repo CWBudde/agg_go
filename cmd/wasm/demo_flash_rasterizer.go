@@ -14,6 +14,11 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/scanline"
 )
 
+const (
+	flashNativeWidth  = 655
+	flashNativeHeight = 520
+)
+
 var (
 	flashShapes []flashPath
 	flashColors []color.RGBA8[color.Linear]
@@ -83,6 +88,9 @@ func initFlashDemo() {
 		return
 	}
 
+	offsetX := float64((width - flashNativeWidth) / 2)
+	offsetY := float64((height - flashNativeHeight) / 2)
+
 	rng := rand.New(rand.NewSource(1234))
 	flashColors = make([]color.RGBA8[color.Linear], 20)
 	for i := range flashColors {
@@ -94,10 +102,10 @@ func initFlashDemo() {
 		}
 	}
 
-	// Create some overlapping shapes
+	// Create some overlapping shapes positioned in the native coordinate space
 	for i := 0; i < 15; i++ {
-		cx := rng.Float64() * float64(width)
-		cy := rng.Float64() * float64(height)
+		cx := offsetX + rng.Float64()*float64(flashNativeWidth)
+		cy := offsetY + rng.Float64()*float64(flashNativeHeight)
 		r := 20.0 + rng.Float64()*80.0
 
 		path := flashPath{
@@ -129,12 +137,9 @@ func initFlashDemo() {
 func drawFlashRasterizerDemo() {
 	initFlashDemo()
 
-	agg2d := ctx.GetAgg2D()
-	agg2d.ResetTransformations()
-
 	img := ctx.GetImage()
 	rbuf := buffer.NewRenderingBufferU8()
-	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Width()*4)
+	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Stride())
 
 	pixFmt := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
 	renBase := renderer.NewRendererBaseWithPixfmt[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](pixFmt)
@@ -224,4 +229,6 @@ func drawFlashRasterizerDemo() {
 			}
 		}
 	}
+
+	applyLinearToSRGB(img)
 }
