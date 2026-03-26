@@ -2,128 +2,191 @@
 package main
 
 import (
-	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/internal/ctrl/gamma"
+	"math"
+
+	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/MeKo-Christian/agg_go/internal/buffer"
+	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/MeKo-Christian/agg_go/internal/conv"
+	gammactrl "github.com/MeKo-Christian/agg_go/internal/ctrl/gamma"
+	"github.com/MeKo-Christian/agg_go/internal/gsv"
+	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
+	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
+	"github.com/MeKo-Christian/agg_go/internal/renderer"
+	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/scanline"
+	"github.com/MeKo-Christian/agg_go/internal/shapes"
+	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
 
-var gammaControl *gamma.GammaCtrl
+var gammaControl *gammactrl.GammaCtrl
 
-type GammaControl = gamma.GammaCtrl
+type GammaControl = gammactrl.GammaCtrl
 
 func initGammaCtrlDemo() {
 	if gammaControl == nil {
 		// Position control in the lower-left area of the 800x600 canvas.
 		// Original C++ used (10,10,300,200) with flip_y; here Y increases downward.
-		gammaControl = gamma.NewGammaCtrl(10, 340, 310, 585, false)
+		gammaControl = gammactrl.NewGammaCtrl(10, 340, 310, 585, false)
 		gammaControl.SetTextSize(10, 0)
 	}
+}
+
+// gcPixFmt is the concrete pixfmt type for this demo (non-premultiplied, linear, no sRGB).
+type gcPixFmt = pixfmt.PixFmtRGBA32[color.Linear]
+
+// gcRendererBase is the concrete renderer base type for this demo.
+type gcRendererBase = renderer.RendererBase[*gcPixFmt, color.RGBA8[color.Linear]]
+
+// gcRasType is the concrete rasterizer type for this demo.
+type gcRasType = rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
+
+func newGCRasterizer() *gcRasType {
+	return rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{},
+		rasterizer.NewRasterizerSlNoClip(),
+	)
+}
+
+// ellipseToConvVS adapts shapes.Ellipse (pointer-based Vertex) to conv.VertexSource.
+type ellipseToConvVS struct {
+	e *shapes.Ellipse
+}
+
+func (a *ellipseToConvVS) Rewind(pathID uint) {
+	a.e.Rewind(uint32(pathID))
+}
+
+func (a *ellipseToConvVS) Vertex() (x, y float64, cmd basics.PathCommand) {
+	cmd = a.e.Vertex(&x, &y)
+	return x, y, cmd
+}
+
+// renderStrokedEllipseGC renders a stroked ellipse directly into the rasterizer/renderer.
+func renderStrokedEllipseGC(
+	ras *gcRasType,
+	sl *scanline.ScanlineU8,
+	ren *gcRendererBase,
+	cx, cy, rx, ry, strokeWidth float64,
+	c color.RGBA8[color.Linear],
+) {
+	e := shapes.NewEllipseWithParams(cx, cy, rx, ry, 100, false)
+	stroke := conv.NewConvStroke(&ellipseToConvVS{e: e})
+	stroke.SetWidth(strokeWidth)
+	adapter := conv.NewRasterizerVertexSourceAdapter(stroke)
+	ras.Reset()
+	ras.AddPath(adapter, 0)
+	renscan.RenderScanlinesAASolid(ras, sl, ren, c)
+}
+
+// renderTextGC renders stroked GSV text at the given position.
+func renderTextGC(
+	ras *gcRasType,
+	sl *scanline.ScanlineU8,
+	ren *gcRendererBase,
+	x, y, size float64,
+	text string,
+	c color.RGBA8[color.Linear],
+) {
+	t := gsv.NewGSVText()
+	t.SetText(text)
+	t.SetSize(size, 0)
+	t.SetStartPoint(x, y)
+	outline := gsv.NewGSVTextOutlineWithTransform(t, transform.NewTransAffineSkewing(0.15, 0.0))
+	outline.SetWidth(2.0)
+	adapter := conv.NewRasterizerVertexSourceAdapter(outline)
+	ras.Reset()
+	ras.AddPath(adapter, 0)
+	renscan.RenderScanlinesAASolid(ras, sl, ren, c)
+}
+
+// drawArrowPairGC renders one pair of filled arrow triangles rotated by angle around (cx, cy).
+func drawArrowPairGC(
+	ras *gcRasType,
+	sl *scanline.ScanlineU8,
+	ren *gcRendererBase,
+	cx, cy, angle float64,
+	c color.RGBA8[color.Linear],
+) {
+	rotate := func(dx, dy float64) (float64, float64) {
+		s, cs := math.Sincos(angle)
+		return cx + dx*cs - dy*s, cy + dx*s + dy*cs
+	}
+
+	p0x, p0y := rotate(30, -1)
+	p1x, p1y := rotate(60, 0)
+	p2x, p2y := rotate(30, 1)
+
+	p3x, p3y := rotate(27, -1)
+	p4x, p4y := rotate(10, 0)
+	p5x, p5y := rotate(27, 1)
+
+	ras.Reset()
+	ras.MoveToD(p0x, p0y)
+	ras.LineToD(p1x, p1y)
+	ras.LineToD(p2x, p2y)
+	ras.MoveToD(p3x, p3y)
+	ras.LineToD(p4x, p4y)
+	ras.LineToD(p5x, p5y)
+	renscan.RenderScanlinesAASolid(ras, sl, ren, c)
 }
 
 func drawGammaCtrlDemo() {
 	initGammaCtrlDemo()
 
-	agg2d := ctx.GetAgg2D()
-	agg2d.ResetTransformations()
-	agg2d.ClearAll(agg.White)
+	img := ctx.GetImage()
+	rbuf := buffer.NewRenderingBufferU8()
+	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Stride())
+
+	pf := pixfmt.NewPixFmtRGBA32[color.Linear](rbuf)
+	ren := renderer.NewRendererBaseWithPixfmt(pf)
+	ren.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
+
+	ras := newGCRasterizer()
+	sl := scanline.NewScanlineU8()
 
 	ewidth := float64(width)/2 - 10
 	ecenter := float64(width) / 2
 
-	// Apply gamma from control to the rasterizer before drawing shapes.
-	ras := agg2d.GetInternalRasterizer()
+	// Apply gamma from the control to the rasterizer before drawing shapes.
 	ras.SetGamma(gammaControl.Y)
 
-	// Six ellipse pairs ordered top-to-bottom (least visible → most visible),
-	// matching the original flip_y layout from gamma_ctrl.cpp.
-	drawGammaEllipse(agg2d, ecenter, 45, ewidth, 15.5, 0.1, agg.NewColor(0, 0, 102, 255))
-	drawGammaEllipse(agg2d, ecenter, 45, 10.5, 10.5, 0.1, agg.NewColor(0, 0, 102, 255))
+	darkBlue := color.RGBA8[color.Linear]{R: 0, G: 0, B: 102, A: 255}
+	lightGray := color.RGBA8[color.Linear]{R: 192, G: 192, B: 192, A: 255}
+	midGray := color.RGBA8[color.Linear]{R: 127, G: 127, B: 127, A: 255}
+	black := color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255}
 
-	drawGammaEllipse(agg2d, ecenter, 95, ewidth, 15.5, 0.4, agg.NewColor(0, 0, 102, 255))
-	drawGammaEllipse(agg2d, ecenter, 95, 10.5, 10.5, 0.4, agg.NewColor(0, 0, 102, 255))
+	// Six ellipse pairs ordered top-to-bottom, matching the original flip_y layout.
+	renderStrokedEllipseGC(ras, sl, ren, ecenter, 45, ewidth, 15.5, 0.1, darkBlue)
+	renderStrokedEllipseGC(ras, sl, ren, ecenter, 45, 10.5, 10.5, 0.1, darkBlue)
 
-	drawGammaEllipse(agg2d, ecenter, 145, ewidth, 15.5, 1.0, agg.NewColor(0, 0, 102, 255))
-	drawGammaEllipse(agg2d, ecenter, 145, 10.5, 10.5, 1.0, agg.NewColor(0, 0, 102, 255))
+	renderStrokedEllipseGC(ras, sl, ren, ecenter, 95, ewidth, 15.5, 0.4, darkBlue)
+	renderStrokedEllipseGC(ras, sl, ren, ecenter, 95, 10.5, 10.5, 0.4, darkBlue)
 
-	drawGammaEllipse(agg2d, ecenter, 195, ewidth, 15, 2.0, agg.NewColor(192, 192, 192, 255))
-	drawGammaEllipse(agg2d, ecenter, 195, 11, 11, 2.0, agg.NewColor(192, 192, 192, 255))
+	renderStrokedEllipseGC(ras, sl, ren, ecenter, 145, ewidth, 15.5, 1.0, darkBlue)
+	renderStrokedEllipseGC(ras, sl, ren, ecenter, 145, 10.5, 10.5, 1.0, darkBlue)
 
-	drawGammaEllipse(agg2d, ecenter, 245, ewidth, 15, 2.0, agg.NewColor(127, 127, 127, 255))
-	drawGammaEllipse(agg2d, ecenter, 245, 11, 11, 2.0, agg.NewColor(127, 127, 127, 255))
+	renderStrokedEllipseGC(ras, sl, ren, ecenter, 195, ewidth, 15, 2.0, lightGray)
+	renderStrokedEllipseGC(ras, sl, ren, ecenter, 195, 11, 11, 2.0, lightGray)
 
-	drawGammaEllipse(agg2d, ecenter, 295, ewidth, 15, 2.0, agg.NewColor(0, 0, 0, 255))
-	drawGammaEllipse(agg2d, ecenter, 295, 11, 11, 2.0, agg.NewColor(0, 0, 0, 255))
+	renderStrokedEllipseGC(ras, sl, ren, ecenter, 245, ewidth, 15, 2.0, midGray)
+	renderStrokedEllipseGC(ras, sl, ren, ecenter, 245, 11, 11, 2.0, midGray)
 
-	// Render without gamma correction for the control and decorative elements.
+	renderStrokedEllipseGC(ras, sl, ren, ecenter, 295, ewidth, 15, 2.0, black)
+	renderStrokedEllipseGC(ras, sl, ren, ecenter, 295, 11, 11, 2.0, black)
+
+	// Render text and arrows without gamma correction.
 	ras.SetGamma(func(x float64) float64 { return x })
 
 	// Draw text in lower-right, matching original start_point(320,10) after flip_y.
-	agg2d.FontGSV(50)
-	agg2d.FillColor(agg.NewColor(0, 127, 0, 255))
-	agg2d.Text(370, 555, "Text 2345", false, 0, 0)
+	renderTextGC(ras, sl, ren, 370, 555, 50, "Text 2345", color.RGBA8[color.Linear]{R: 0, G: 127, B: 0, A: 255})
 
 	// Rotating arrows to the right of the gamma control.
-	drawRotatingArrows(agg2d, 490, 415, agg.NewColor(127, 0, 0, 255))
-
-	// Render the gamma control itself last (no gamma applied).
-	renderControl(agg2d, gammaControl)
-}
-
-func drawGammaEllipse(agg2d *agg.Agg2D, cx, cy, rx, ry, strokeWidth float64, c agg.Color) {
-	agg2d.NoFill()
-	agg2d.LineColor(c)
-	agg2d.LineWidth(strokeWidth)
-	agg2d.Ellipse(cx, cy, rx, ry)
-}
-
-func drawRotatingArrows(agg2d *agg.Agg2D, cx, cy float64, c agg.Color) {
-	agg2d.FillColor(c)
-	agg2d.NoLine()
-
+	arrowColor := color.RGBA8[color.Linear]{R: 127, G: 0, B: 0, A: 255}
 	for i := 0; i < 35; i++ {
-		agg2d.PushTransform()
-		agg2d.Translate(-cx, -cy)
-		agg2d.Rotate(float64(i) / 35.0 * 2.0 * agg.Pi)
-		agg2d.Translate(cx, cy)
-
-		agg2d.ResetPath()
-		agg2d.MoveTo(cx+30, cy-1.0)
-		agg2d.LineTo(cx+60, cy+0.0)
-		agg2d.LineTo(cx+30, cy+1.0)
-		agg2d.MoveTo(cx+27, cy-1.0)
-		agg2d.LineTo(cx+10, cy+0.0)
-		agg2d.LineTo(cx+27, cy+1.0)
-		agg2d.DrawPath(agg.FillOnly)
-
-		agg2d.PopTransform()
+		angle := float64(i) / 35.0 * 2.0 * math.Pi
+		drawArrowPairGC(ras, sl, ren, 490, 415, angle, arrowColor)
 	}
-}
-
-func renderControl(agg2d *agg.Agg2D, ctrl *gamma.GammaCtrl) {
-	ras := agg2d.GetInternalRasterizer()
-	numPaths := ctrl.NumPaths()
-
-	for i := uint(0); i < numPaths; i++ {
-		ras.Reset()
-		adapter := &gammaCtrlAdapter{ctrl: ctrl}
-		ras.AddPath(adapter, uint32(i)) // AddPath calls adapter.Rewind(i) → ctrl.Rewind(i)
-		c := ctrl.Color(i)
-		agg2d.RenderRasterizerWithColor(agg.RGBA(c.R, c.G, c.B, c.A))
-	}
-}
-
-type gammaCtrlAdapter struct {
-	ctrl *gamma.GammaCtrl
-}
-
-func (a *gammaCtrlAdapter) Rewind(pathID uint32) {
-	a.ctrl.Rewind(uint(pathID))
-}
-
-func (a *gammaCtrlAdapter) Vertex(x, y *float64) uint32 {
-	vx, vy, cmd := a.ctrl.Vertex()
-	*x = vx
-	*y = vy
-	return uint32(cmd)
 }
 
 func handleGammaCtrlMouseDown(x, y float64) bool {
