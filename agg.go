@@ -89,6 +89,11 @@ func Deg2RadFunc(degrees float64) float64 {
 	return degrees * Deg2Rad
 }
 
+// Rad2DegFunc converts radians to degrees.
+func Rad2DegFunc(radians float64) float64 {
+	return radians * Rad2Deg
+}
+
 // Public type definitions mirror the internal AGG2D enums so numeric values
 // stay compatible with upstream when passed through the wrapper.
 type (
