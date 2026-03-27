@@ -17,6 +17,11 @@ const (
 	BSplineStop
 )
 
+const (
+	minInterpolationStep = 1e-3
+	maxInterpolationStep = 1.0
+)
+
 // VCGenBSpline is a direct port of AGG's vcgen_bspline.
 type VCGenBSpline struct {
 	srcVertices       *array.PodBVector[basics.PointD]
@@ -45,6 +50,11 @@ func NewVCGenBSpline() *VCGenBSpline {
 
 // SetInterpolationStep sets the interpolation step size.
 func (v *VCGenBSpline) SetInterpolationStep(step float64) {
+	if step < minInterpolationStep {
+		step = minInterpolationStep
+	} else if step > maxInterpolationStep {
+		step = maxInterpolationStep
+	}
 	v.interpolationStep = step
 }
 
@@ -84,7 +94,7 @@ func (v *VCGenBSpline) Rewind(pathID uint) {
 	v.maxAbscissa = 0.0
 	v.srcVertex = 0
 
-	if v.status == BSplineInitial && v.srcVertices.Size() > 2 {
+	if v.srcVertices.Size() > 2 {
 		if v.closed != 0 {
 			v.splineX.Init(v.srcVertices.Size() + 8)
 			v.splineY.Init(v.srcVertices.Size() + 8)
@@ -150,6 +160,10 @@ func (v *VCGenBSpline) Vertex() (x, y float64, cmd basics.PathCommand) {
 			}
 
 			if v.srcVertices.Size() == 2 {
+				if v.srcVertex >= uint(v.srcVertices.Size()) {
+					cmd = basics.PathCmdStop
+					break
+				}
 				pt := v.srcVertices.At(int(v.srcVertex))
 				x, y = pt.X, pt.Y
 				v.srcVertex++
