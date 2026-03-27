@@ -7,9 +7,19 @@ type Rect struct {
 	X1, Y1, X2, Y2 int
 }
 
+// RectD represents a double-precision rectangle.
+type RectD struct {
+	X1, Y1, X2, Y2 float64
+}
+
 // NewRect creates a new rectangle with the specified coordinates.
 func NewRect(x1, y1, x2, y2 int) Rect {
 	return Rect{X1: x1, Y1: y1, X2: x2, Y2: y2}
+}
+
+// NewRectD creates a new floating-point rectangle with the specified coordinates.
+func NewRectD(x1, y1, x2, y2 float64) RectD {
+	return RectD{X1: x1, Y1: y1, X2: x2, Y2: y2}
 }
 
 // Width returns the width of the rectangle.
@@ -19,6 +29,16 @@ func (r Rect) Width() int {
 
 // Height returns the height of the rectangle.
 func (r Rect) Height() int {
+	return r.Y2 - r.Y1
+}
+
+// Width returns the width of the rectangle.
+func (r RectD) Width() float64 {
+	return r.X2 - r.X1
+}
+
+// Height returns the height of the rectangle.
+func (r RectD) Height() float64 {
 	return r.Y2 - r.Y1
 }
 

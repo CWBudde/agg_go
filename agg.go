@@ -188,6 +188,12 @@ func (a *Agg2D) GetClipBox() (x1, y1, x2, y2 float64) {
 	return a.impl.GetClipBox()
 }
 
+// GetClipBoxRect returns the current clipping rectangle as a RectD value.
+func (a *Agg2D) GetClipBoxRect() RectD {
+	x1, y1, x2, y2 := a.GetClipBox()
+	return RectD{X1: x1, Y1: y1, X2: x2, Y2: y2}
+}
+
 // ClearAll fills the entire buffer with the specified color and resets the current path.
 func (a *Agg2D) ClearAll(c Color) {
 	// Convert public Color to internal color format
@@ -433,22 +439,23 @@ type ImageFilter = agg2d.ImageFilter
 
 // ImageFilter constants for image interpolation.
 const (
-	FilterNoFilter ImageFilter = agg2d.NoFilter
-	FilterBilinear ImageFilter = agg2d.Bilinear
-	FilterHanning  ImageFilter = agg2d.Hanning
-	FilterHermite  ImageFilter = agg2d.Hermite
-	FilterQuadric  ImageFilter = agg2d.Quadric
-	FilterBicubic  ImageFilter = agg2d.Bicubic
-	FilterCatrom   ImageFilter = agg2d.Catrom
-	FilterSpline16 ImageFilter = agg2d.Spline16
-	FilterSpline36 ImageFilter = agg2d.Spline36
-	FilterBlackman ImageFilter = agg2d.Blackman
-	FilterHamming  ImageFilter = agg2d.Blackman + 1
-	FilterMitchell ImageFilter = agg2d.Blackman + 2
-	FilterGaussian ImageFilter = agg2d.Blackman + 3
-	FilterBessel   ImageFilter = agg2d.Blackman + 4
-	FilterSinc     ImageFilter = agg2d.Blackman + 5
-	FilterLanczos  ImageFilter = agg2d.Blackman + 6
+	FilterNoFilter    ImageFilter = agg2d.NoFilter
+	FilterBilinear    ImageFilter = agg2d.Bilinear
+	FilterHanning     ImageFilter = agg2d.Hanning
+	FilterHermite     ImageFilter = agg2d.Hermite
+	FilterQuadric     ImageFilter = agg2d.Quadric
+	FilterBicubic     ImageFilter = agg2d.Bicubic
+	FilterCatrom      ImageFilter = agg2d.Catrom
+	FilterSpline16    ImageFilter = agg2d.Spline16
+	FilterSpline36    ImageFilter = agg2d.Spline36
+	FilterBlackman    ImageFilter = agg2d.Blackman
+	FilterBlackman144 ImageFilter = agg2d.Blackman
+	FilterHamming     ImageFilter = agg2d.Blackman + 1
+	FilterMitchell    ImageFilter = agg2d.Blackman + 2
+	FilterGaussian    ImageFilter = agg2d.Blackman + 3
+	FilterBessel      ImageFilter = agg2d.Blackman + 4
+	FilterSinc        ImageFilter = agg2d.Blackman + 5
+	FilterLanczos     ImageFilter = agg2d.Blackman + 6
 )
 
 // ImageFilter sets the image filtering method using a predefined filter type.
@@ -618,9 +625,21 @@ func (a *Agg2D) DrawPath(flag DrawPathFlag) {
 	a.impl.DrawPath(flag)
 }
 
+// DrawPathDefault rasterizes the current path using the upstream default mode:
+// fill and stroke.
+func (a *Agg2D) DrawPathDefault() {
+	a.DrawPath(FillAndStroke)
+}
+
 // DrawPathNoTransform rasterizes the current path without applying the world transform.
 func (a *Agg2D) DrawPathNoTransform(flag DrawPathFlag) {
 	a.impl.DrawPathNoTransform(flag)
+}
+
+// DrawPathNoTransformDefault rasterizes the current path without the world
+// transform using the upstream default mode: fill and stroke.
+func (a *Agg2D) DrawPathNoTransformDefault() {
+	a.DrawPathNoTransform(FillAndStroke)
 }
 
 // Shape methods
@@ -723,9 +742,20 @@ func (a *Agg2D) Viewport(worldX1, worldY1, worldX2, worldY2, screenX1, screenY1,
 	a.impl.Viewport(worldX1, worldY1, worldX2, worldY2, screenX1, screenY1, screenX2, screenY2, int(opt))
 }
 
+// ViewportDefault applies the upstream default viewport option: XMidYMid.
+func (a *Agg2D) ViewportDefault(worldX1, worldY1, worldX2, worldY2, screenX1, screenY1, screenX2, screenY2 float64) {
+	a.Viewport(worldX1, worldY1, worldX2, worldY2, screenX1, screenY1, screenX2, screenY2, XMidYMid)
+}
+
 // Font loads and activates a font file for subsequent text rendering.
 func (a *Agg2D) Font(fontName string, height float64, bold, italic bool, cacheType FontCacheType, angle float64) error {
 	return a.impl.Font(fontName, height, bold, italic, cacheType, angle)
+}
+
+// FontDefault loads and activates a font using the upstream default options:
+// non-bold, non-italic, raster cache, zero angle.
+func (a *Agg2D) FontDefault(fontName string, height float64) error {
+	return a.Font(fontName, height, false, false, RasterFontCache, 0.0)
 }
 
 // FontHeight returns the configured font height in world units.
@@ -820,6 +850,12 @@ func (a *Agg2D) FillRuleDescription() string {
 // Text renders str at x, y with optional rounding and offset adjustments.
 func (a *Agg2D) Text(x, y float64, str string, roundOff bool, dx, dy float64) {
 	a.impl.Text(x, y, str, roundOff, dx, dy)
+}
+
+// TextDefault renders text using the upstream default options: no round-off
+// and zero offsets.
+func (a *Agg2D) TextDefault(x, y float64, str string) {
+	a.Text(x, y, str, false, 0.0, 0.0)
 }
 
 // TextWidth measures str using the active font backend and cache mode.
@@ -958,9 +994,21 @@ func (a *Agg2D) BlendImage(img *Image, imgX1, imgY1, imgX2, imgY2 int, dstX, dst
 	return a.impl.BlendImage(img.ToInternalImage(), imgX1, imgY1, imgX2, imgY2, dstX, dstY, alpha)
 }
 
+// BlendImageDefaultAlpha blends an image region using the upstream default
+// alpha of 255.
+func (a *Agg2D) BlendImageDefaultAlpha(img *Image, imgX1, imgY1, imgX2, imgY2 int, dstX, dstY float64) error {
+	return a.BlendImage(img, imgX1, imgY1, imgX2, imgY2, dstX, dstY, 255)
+}
+
 // BlendImageSimple blends the whole image directly onto the target without transformation.
 func (a *Agg2D) BlendImageSimple(img *Image, dstX, dstY float64, alpha uint) error {
 	return a.impl.BlendImageSimple(img.ToInternalImage(), dstX, dstY, alpha)
+}
+
+// BlendImageSimpleDefaultAlpha blends the whole image using the upstream
+// default alpha of 255.
+func (a *Agg2D) BlendImageSimpleDefaultAlpha(img *Image, dstX, dstY float64) error {
+	return a.BlendImageSimple(img, dstX, dstY, 255)
 }
 
 // CopyImage copies an image region directly, including alpha, without blending.
