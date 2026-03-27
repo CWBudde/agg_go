@@ -98,12 +98,6 @@ func NewVertexDistCmd(x, y, dist float64, cmd basics.PathCommand) VertexDistCmd 
 	return VertexDistCmd{X: x, Y: y, Dist: dist, Cmd: cmd}
 }
 
-// validateVertexDistCmd checks if the distance between two vertices exceeds the epsilon.
-// This is used internally by VertexCmdSequence without interface type assertions.
-func validateVertexDistCmd(v, other VertexDistCmd) bool {
-	return (&v).Validate(other)
-}
-
 // CalculateDistance calculates and sets the distance to another vertex.
 func (v *VertexDistCmd) CalculateDistance(other VertexDistCmd) {
 	v.Dist = basics.CalcDistance(v.X, v.Y, other.X, other.Y)

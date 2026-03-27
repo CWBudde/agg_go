@@ -112,22 +112,6 @@ func (agg2d *Agg2D) Translate(x, y float64) {
 	// Translation doesn't affect approximation scale
 }
 
-// worldToScreenScalar converts a scalar distance through the transformation.
-// This is used internally to calculate approximation scales.
-func (agg2d *Agg2D) worldToScreenScalar(scalar float64) float64 {
-	// Transform two points separated by scalar distance
-	x1, y1 := 0.0, 0.0
-	x2, y2 := scalar, scalar
-
-	agg2d.transform.Transform(&x1, &y1)
-	agg2d.transform.Transform(&x2, &y2)
-
-	// Calculate the distance between transformed points
-	dx := x2 - x1
-	dy := y2 - y1
-	return math.Sqrt(dx*dx+dy*dy) / math.Sqrt(2.0) // Normalize for diagonal
-}
-
 // Transform stack management
 
 // PushTransformations is an alias for PushTransform to match the C++ API.

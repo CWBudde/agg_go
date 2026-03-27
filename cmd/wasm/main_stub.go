@@ -109,9 +109,9 @@ func main() {
 			"rasterizers", "flash_rasterizer", "perspective", "bezier_div",
 			"gouraud_mesh", "trans_curve", "distortions", "trans_polar",
 			"trans_curve2", "gamma_ctrl", "gamma_tuner", "lion_lens", "circles", "blur", "simple_blur",
-			"alpha_mask2", "alpha_mask3", "compositing2",
+			"alpha_mask", "alpha_mask2", "alpha_mask3", "compositing", "compositing2",
 			"image1", "image_transforms", "image_alpha", "pattern_fill",
-			"gradient_focal", "line_thickness", "rasterizer_compound", "image_resample", "line_patterns_clip", "line_patterns", "scanline_boolean2", "gpc_test",
+			"gradient_focal", "line_thickness", "multi_clip", "rasterizer_compound", "image_resample", "line_patterns_clip", "line_patterns", "scanline_boolean2", "gpc_test",
 			"pattern_perspective", "pattern_resample", "image_perspective", "gradients_contour",
 			"flash_rasterizer2", "polymorphic_renderer", "blend_color",
 		}
@@ -232,10 +232,14 @@ func renderDemoToFile(demoType, outDir string) error {
 		drawBlurDemo()
 	case "simple_blur":
 		drawSimpleBlurDemo()
+	case "alpha_mask":
+		drawAlphaMaskDemo()
 	case "alpha_mask2":
 		drawAlphaMask2Demo()
 	case "alpha_mask3":
 		drawAlphaMask3Demo()
+	case "compositing":
+		drawCompositingDemo()
 	case "compositing2":
 		drawCompositing2Demo()
 	case "image1":
@@ -250,6 +254,8 @@ func renderDemoToFile(demoType, outDir string) error {
 		drawGradientFocalDemo()
 	case "line_thickness":
 		drawLineThicknessDemo()
+	case "multi_clip":
+		drawMultiClipDemo()
 	case "rasterizer_compound":
 		drawRasterizerCompoundDemo()
 	case "image_resample":

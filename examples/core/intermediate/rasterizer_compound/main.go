@@ -81,15 +81,6 @@ func (a *rcConvVSAdapter) Vertex(x, y *float64) uint32 {
 	return uint32(cmd)
 }
 
-type rcEllipseVSAdapter struct {
-	ell *shapes.Ellipse
-}
-
-func (a *rcEllipseVSAdapter) Rewind(pathID uint32) { a.ell.Rewind(pathID) }
-func (a *rcEllipseVSAdapter) Vertex(x, y *float64) uint32 {
-	return uint32(a.ell.Vertex(x, y))
-}
-
 type rcEllipseConvAdapter struct {
 	ell *shapes.Ellipse
 }

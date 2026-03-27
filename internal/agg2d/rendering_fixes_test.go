@@ -357,11 +357,3 @@ func TestRenderingIntegration(t *testing.T) {
 		t.Fatalf("exterior pixel = (%d,%d,%d,%d), want white", r, g2, b, a2)
 	}
 }
-
-// Helper function to test if two colors are approximately equal (for floating point comparisons)
-func colorsApproxEqual(c1, c2 Color, tolerance uint8) bool {
-	return math.Abs(float64(c1[0])-float64(c2[0])) <= float64(tolerance) &&
-		math.Abs(float64(c1[1])-float64(c2[1])) <= float64(tolerance) &&
-		math.Abs(float64(c1[2])-float64(c2[2])) <= float64(tolerance) &&
-		math.Abs(float64(c1[3])-float64(c2[3])) <= float64(tolerance)
-}

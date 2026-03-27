@@ -36,21 +36,6 @@ func newRasterizer() *rasType {
 	)
 }
 
-// ---------------------------------------------------------------------------
-// Vertex-source adapters
-// ---------------------------------------------------------------------------
-
-type pathSourceAdapter struct {
-	ps *path.PathStorageStl
-}
-
-func (a *pathSourceAdapter) Rewind(pathID uint32) { a.ps.Rewind(uint(pathID)) }
-func (a *pathSourceAdapter) Vertex(x, y *float64) uint32 {
-	vx, vy, cmd := a.ps.NextVertex()
-	*x, *y = vx, vy
-	return cmd
-}
-
 type convVS struct{ src conv.VertexSource }
 
 func (a *convVS) Rewind(id uint32) { a.src.Rewind(uint(id)) }

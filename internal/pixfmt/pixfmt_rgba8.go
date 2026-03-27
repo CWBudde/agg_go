@@ -37,9 +37,8 @@ func (p *RGBAPixelType) GetColor() color.RGBA8[color.Linear] {
 // premultiplied-vs-plain source semantics come from the blender while the pixfmt
 // supplies AGG's span-oriented drawing operations.
 type PixFmtAlphaBlendRGBA[S color.Space, B blender.RGBABlender[S]] struct {
-	rbuf     *buffer.RenderingBufferU8
-	blender  B
-	category PixFmtRGBATag
+	rbuf    *buffer.RenderingBufferU8
+	blender B
 }
 
 // NewPixFmtAlphaBlendRGBA creates an RGBA pixfmt over rbuf using blender b.

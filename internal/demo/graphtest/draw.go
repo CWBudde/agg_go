@@ -247,15 +247,6 @@ func curveControls(x1, y1, x2, y2 float64) (float64, float64, float64, float64) 
 	return cx1, cy1, cx2, cy2
 }
 
-func drawCurve(a *agg.Agg2D, x1, y1, x2, y2, width float64, dashed bool) {
-	cx1, cy1, cx2, cy2 := curveControls(x1, y1, x2, y2)
-	a.ResetPath()
-	a.MoveTo(x1, y1)
-	a.CubicCurveTo(cx1, cy1, cx2, cy2, x2, y2)
-	a.LineWidth(width)
-	a.DrawPath(agg.StrokeOnly)
-}
-
 func drawPreparedCurve(a *agg.Agg2D, e preparedEdge, width float64) {
 	a.ResetPath()
 	a.MoveTo(e.x1, e.y1)
@@ -286,13 +277,6 @@ func drawArrowHead(ctx *agg.Context, x1, y1, x2, y2, size float64, col agg.Color
 	a.ClosePolygon()
 	a.NoLine()
 	a.DrawPath(agg.FillOnly)
-}
-
-func drawArrowHeadOnCurve(ctx *agg.Context, x1, y1, x2, y2, size float64, col agg.Color) {
-	cx1, cy1, cx2, cy2 := curveControls(x1, y1, x2, y2)
-	p0x, p0y := cubicPoint(x1, y1, cx1, cy1, cx2, cy2, x2, y2, 0.92)
-	p1x, p1y := cubicPoint(x1, y1, cx1, cy1, cx2, cy2, x2, y2, 1.0)
-	drawArrowHead(ctx, p0x, p0y, p1x, p1y, size, col)
 }
 
 type lineSource struct {

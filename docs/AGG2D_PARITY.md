@@ -10,6 +10,9 @@ original AGG2D documentation and demo code remain useful references.
 
 - C++ getter overloads become explicit `Get...` methods in Go.
   Examples: `clipBox() const` -> `GetClipBox()`, `blendMode() const` -> `GetBlendMode()`.
+- Where upstream returns a rectangle object, Go may provide both the explicit
+  getter tuple and a value helper.
+  Example: `clipBox() const` -> `GetClipBox()` and `GetClipBoxRect()`.
 - Whole-image overloads that would collide with rectangle/parallelogram
   overloads use a `...Simple` suffix.
   Examples: `transformImage(img, dstX1, dstY1, dstX2, dstY2)` -> `TransformImageSimple(...)`.
@@ -21,6 +24,14 @@ original AGG2D documentation and demo code remain useful references.
   by argument count.
   Examples: `roundedRect(..., rx, ry)` -> `RoundedRectXY(...)`,
   `roundedRect(..., rxBottom, ryBottom, rxTop, ryTop)` -> `RoundedRectVariableRadii(...)`.
+- Default arguments use explicit Go wrappers where keeping the upstream name is
+  not possible.
+  Examples: `drawPath()` -> `DrawPathDefault()`, `viewport(..., XMidYMid)` ->
+  `ViewportDefault(...)`, `blendImage(..., alpha=255)` ->
+  `BlendImageDefaultAlpha(...)`.
+- The upstream `parallelogram(x1, y1, x2, y2, para)` overload is exposed as
+  `ParallelogramFromRect(...)` because Go cannot overload the existing
+  `Parallelogram(...)` helper.
 
 ## Direct Mappings
 
@@ -31,9 +42,14 @@ These method families keep the upstream name directly:
 - drawing state: `BlendMode`, `ImageBlendMode`, `ImageBlendColor`, `MasterAlpha`, `AntiAliasGamma`
 - colors and gradients: `FillColor`, `LineColor`, `FillLinearGradient`, `LineLinearGradient`, `FillRadialGradient`, `LineRadialGradient`
 - transforms: `ResetTransformations`, `Affine`, `Rotate`, `Scale`, `Skew`, `Translate`, `Parallelogram`, `Viewport`
+- transform compatibility shims: `ParallelogramFromRect`, `ViewportDefault`
 - shapes and paths: `Line`, `Triangle`, `Rectangle`, `Ellipse`, `Arc`, `Star`, `Polygon`, `Polyline`, `MoveTo`, `LineTo`, `ArcTo`, `ClosePolygon`, `DrawPath`
+- path compatibility shims: `DrawPathDefault`, `DrawPathNoTransformDefault`
 - text: `FlipText`, `Font`, `FontHeight`, `TextAlignment`, `TextHints`, `TextWidth`, `Text`
+- text compatibility shims: `FontDefault`, `TextDefault`
 - images: `ImageFilter`, `ImageResample`, `TransformImage`, `TransformImagePath`, `BlendImage`, `CopyImage`
+- image compatibility shims: `BlendImageDefaultAlpha`, `BlendImageSimpleDefaultAlpha`
+- image struct parity: `Attach`, `Width`, `Height`, `Premultiply`, `Demultiply`
 
 ## Deliberate Go Differences
 
@@ -42,6 +58,8 @@ These differences are intentional and currently unavoidable:
 - Getter overloads are named explicitly with `Get...`.
 - Overload families that differ only by parameter list use descriptive suffixes
   such as `Simple`, `MultiStop`, and `Pos`.
+- Some upstream defaults are represented as explicit wrapper methods with a
+  `Default` or `DefaultAlpha` suffix.
 - Public image-transform methods accept Go slices for parallelograms instead of
   raw `double*`.
 - The public package exposes Go `Color` values rather than the internal array
@@ -53,6 +71,7 @@ These differences are intentional and currently unavoidable:
 ## Getter Mapping Reference
 
 - `clipBox() const` -> `GetClipBox()`
+- `clipBox() const` -> `GetClipBoxRect()` for `RectD`-style access
 - `fillColor() const` -> `GetFillColor()`
 - `lineColor() const` -> `GetLineColor()`
 - `blendMode() const` -> `GetBlendMode()`
@@ -68,7 +87,21 @@ These differences are intentional and currently unavoidable:
 - `textHints() const` -> `GetTextHints()`
 - `transformations() const` -> `GetTransformations()`
 
+## Remaining Differences
+
+These are the notable remaining differences after the current compatibility
+pass:
+
+- Getter and setter overloads cannot share one identifier in Go, so the public
+  API will continue to use `Get...` names for the getter half.
+- Upstream overload sets that differ only by signature continue to use explicit
+  Go names such as `...Simple`, `...Pos`, `...MultiStop`, and
+  `ParallelogramFromRect`.
+- Static C++ helpers such as `Agg2D::pi()`, `Agg2D::deg2Rad()`, and
+  `Agg2D::rad2Deg()` remain package-level constants and functions in Go:
+  `Pi`, `Deg2Rad`, `Rad2Deg`, `Deg2RadFunc`, `Rad2DegFunc`.
+
 ## Status
 
-As of Phase 10.0, the remaining interface differences are mostly overload-name
-translation rather than missing method families.
+As of Phase 10.0, the remaining interface differences are primarily Go language
+shape differences rather than missing Agg2D capability.

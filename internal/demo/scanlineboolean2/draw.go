@@ -936,10 +936,6 @@ func mirrorContoursY(cs []contour, h float64) []contour {
 	return out
 }
 
-func drawContours(a *agg.Agg2D, cs []contour, fill, line agg.Color) {
-	drawContoursWithLineWidth(a, cs, fill, line, 1.0)
-}
-
 func drawContoursWithLineWidth(a *agg.Agg2D, cs []contour, fill, line agg.Color, lineWidth float64) {
 	for _, c := range cs {
 		if len(c) < 3 {

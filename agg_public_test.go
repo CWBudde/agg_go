@@ -121,3 +121,86 @@ func TestAgg2DPublicWrappers(t *testing.T) {
 		t.Fatalf("Parallelogram() = %#v, want %#v", got, want)
 	}
 }
+
+func TestAgg2DCompatibilityShims(t *testing.T) {
+	a := NewAgg2D()
+	buf := make([]uint8, 16*16*4)
+	a.Attach(buf, 16, 16, 16*4)
+
+	a.ClipBox(2, 3, 12, 14)
+	if got := a.GetClipBoxRect(); got != (RectD{X1: 2, Y1: 3, X2: 12, Y2: 14}) {
+		t.Fatalf("GetClipBoxRect() = %#v", got)
+	}
+
+	a.ResetTransformations()
+	a.ParallelogramFromRect(10, 20, 14, 26, []float64{10, 20, 14, 20, 10, 26})
+	got := a.GetTransformations()
+	want := [6]float64{1, 0, 0, 1, 0, 0}
+	if got == nil || got.AffineMatrix != want {
+		t.Fatalf("ParallelogramFromRect(identity) = %#v, want %#v", got, want)
+	}
+
+	if Deg2RadFunc(180) != math.Pi {
+		t.Fatalf("Deg2RadFunc(180) = %v", Deg2RadFunc(180))
+	}
+	if math.Abs(Rad2DegFunc(math.Pi)-180.0) > 1e-12 {
+		t.Fatalf("Rad2DegFunc(pi) = %v", Rad2DegFunc(math.Pi))
+	}
+
+	imgBuf := []uint8{100, 50, 25, 128}
+	img := Image{}
+	img.Attach(imgBuf, 1, 1, 4)
+	if img.Width() != 1 || img.Height() != 1 || img.Stride() != 4 {
+		t.Fatalf("zero-value Image.Attach() produced invalid image: %dx%d stride=%d", img.Width(), img.Height(), img.Stride())
+	}
+	if err := img.Premultiply(); err != nil {
+		t.Fatalf("Premultiply() failed: %v", err)
+	}
+	if got := img.Data; got[0] != 50 || got[1] != 25 || got[2] != 12 || got[3] != 128 {
+		t.Fatalf("Premultiply() pixel = %#v", got)
+	}
+	if err := img.Demultiply(); err != nil {
+		t.Fatalf("Demultiply() failed: %v", err)
+	}
+	if got := img.Data; got[3] != 128 {
+		t.Fatalf("Demultiply() alpha = %d, want 128", got[3])
+	}
+
+	if ImageFilterBlackman144 != ImageFilterBlackman {
+		t.Fatalf("ImageFilterBlackman144 = %v, want %v", ImageFilterBlackman144, ImageFilterBlackman)
+	}
+	if Blackman144 != Blackman {
+		t.Fatalf("Blackman144 = %v, want %v", Blackman144, Blackman)
+	}
+	if FilterBlackman144 != FilterBlackman {
+		t.Fatalf("FilterBlackman144 = %v, want %v", FilterBlackman144, FilterBlackman)
+	}
+
+	a.ResetPath()
+	a.MoveTo(1, 1)
+	a.LineTo(8, 1)
+	a.LineTo(8, 8)
+	a.ClosePolygon()
+	a.DrawPathDefault()
+
+	a.ResetPath()
+	a.MoveTo(2, 2)
+	a.LineTo(6, 2)
+	a.LineTo(6, 6)
+	a.ClosePolygon()
+	a.DrawPathNoTransformDefault()
+
+	a.ViewportDefault(0, 0, 10, 10, 0, 0, 20, 20)
+	sx, sy := 5.0, 5.0
+	a.WorldToScreen(&sx, &sy)
+	if math.Abs(sx-10.0) > 1e-9 || math.Abs(sy-10.0) > 1e-9 {
+		t.Fatalf("ViewportDefault worldToScreen(5,5) = (%v,%v), want (10,10)", sx, sy)
+	}
+
+	if err := a.BlendImageDefaultAlpha(&img, 0, 0, 1, 1, 1, 1); err != nil {
+		t.Fatalf("BlendImageDefaultAlpha() failed: %v", err)
+	}
+	if err := a.BlendImageSimpleDefaultAlpha(&img, 2, 2); err != nil {
+		t.Fatalf("BlendImageSimpleDefaultAlpha() failed: %v", err)
+	}
+}

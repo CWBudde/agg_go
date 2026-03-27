@@ -395,15 +395,6 @@ func (agg2d *Agg2D) updateApproximationScales() {
 	}
 }
 
-// render is the main rendering method that handles both fill and stroke colors
-func (agg2d *Agg2D) render(fillColor bool) {
-	if fillColor {
-		agg2d.renderFill()
-	} else {
-		agg2d.renderStroke()
-	}
-}
-
 // updateRasterizerGamma updates the rasterizer gamma correction
 func (agg2d *Agg2D) updateRasterizerGamma() {
 	if agg2d.rasterizer == nil {
@@ -591,13 +582,4 @@ func (agg2d *Agg2D) SetAntiAliasGamma(gamma float64) {
 	}
 	agg2d.antiAliasGamma = gamma
 	agg2d.updateRasterizerGamma()
-}
-
-// Math helpers local to the rendering package.
-func cos(x float64) float64 {
-	return math.Cos(x)
-}
-
-func sin(x float64) float64 {
-	return math.Sin(x)
 }

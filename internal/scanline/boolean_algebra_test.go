@@ -8,10 +8,9 @@ import (
 
 // BooleanMockScanline implements BooleanScanlineInterface for testing
 type BooleanMockScanline struct {
-	y       int
-	spans   []SpanInfo
-	cells   map[int]basics.Int8u // Map of x coordinate to cover value
-	current int                  // Current span index for iteration
+	y     int
+	spans []SpanInfo
+	cells map[int]basics.Int8u // Map of x coordinate to cover value
 }
 
 func NewBooleanMockScanline(y int) *BooleanMockScanline {

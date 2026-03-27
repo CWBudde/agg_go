@@ -1,9 +1,5 @@
 package agg
 
-import (
-	"math"
-)
-
 // Gradient identifies the underlying Agg2D gradient mode.
 type Gradient int
 
@@ -230,21 +226,4 @@ func ThreeColorRadialGradient(innerColor, middleColor, outerColor Color, cx, cy,
 	rg.AddStop(0.5, middleColor)
 	rg.AddStop(1.0, outerColor)
 	return rg
-}
-
-// Helper function to interpolate between colors based on position
-func interpolateColor(c1, c2 Color, position float64) Color {
-	return c1.Gradient(c2, position)
-}
-
-// Helper function to calculate gradient angle
-func calculateGradientAngle(x1, y1, x2, y2 float64) float64 {
-	return math.Atan2(y2-y1, x2-x1)
-}
-
-// Helper function to calculate gradient distance
-func calculateGradientDistance(x1, y1, x2, y2 float64) float64 {
-	dx := x2 - x1
-	dy := y2 - y1
-	return math.Sqrt(dx*dx + dy*dy)
 }

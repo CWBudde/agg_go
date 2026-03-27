@@ -107,7 +107,6 @@ func (ev *ellipseVS) Vertex(x, y *float64) uint32 {
 
 type demo struct {
 	angle, scale float64
-	skewX, skewY float64
 }
 
 func (d *demo) Render(img *agg.Image) {

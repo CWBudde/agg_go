@@ -364,8 +364,3 @@ func testRasterizerDbl[V Conv[float64]](t *testing.T, clipper *RasterizerSlClip[
 		t.Errorf("Expected 1 line for type alias test, got %d", len(mock.Lines))
 	}
 }
-
-func typeName(i int) string {
-	names := []string{"Int", "IntSat", "Int3x", "Dbl", "Dbl3x"}
-	return names[i]
-}

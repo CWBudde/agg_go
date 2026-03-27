@@ -11,9 +11,8 @@ import (
 
 // PixFmtAlphaBlendGray implements alpha blending for grayscale pixel formats
 type PixFmtAlphaBlendGray[CS color.Space, B blender.GrayBlender[CS]] struct {
-	rbuf     *buffer.RenderingBufferU8
-	blender  B
-	category PixFmtGrayTag
+	rbuf    *buffer.RenderingBufferU8
+	blender B
 }
 
 // PixelType represents a grayscale pixel

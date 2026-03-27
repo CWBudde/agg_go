@@ -494,8 +494,6 @@ func TestDecomposeTransform(t *testing.T) {
 }
 
 func TestDecomposeTransformWithSkew(t *testing.T) {
-	const tolerance = 1e-6
-
 	agg2d := createTestAgg2D()
 	skewX := 0.2
 	skewY := -0.1
