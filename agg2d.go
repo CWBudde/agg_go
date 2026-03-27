@@ -75,3 +75,21 @@ func (a *Agg2D) LineRadialGradientPos(x, y, r float64) {
 func (a *Agg2D) Parallelogram(x1, y1, x2, y2, x3, y3 float64) {
 	a.impl.Parallelogram(x1, y1, x2, y2, x3, y3)
 }
+
+// ParallelogramFromRect mirrors the upstream `parallelogram(x1, y1, x2, y2, para)`
+// overload by mapping the source rectangle `(x1, y1)-(x2, y2)` into the
+// destination parallelogram encoded as `{px1, py1, px2, py2, px3, py3}`.
+//
+// Go cannot overload methods, so this uses an explicit name instead of
+// reusing `Parallelogram`.
+func (a *Agg2D) ParallelogramFromRect(x1, y1, x2, y2 float64, parallelogram []float64) {
+	if len(parallelogram) != 6 {
+		return
+	}
+	a.impl.ParallelogramFromRect(
+		x1, y1, x2, y2,
+		parallelogram[0], parallelogram[1],
+		parallelogram[2], parallelogram[3],
+		parallelogram[4], parallelogram[5],
+	)
+}

@@ -28,16 +28,17 @@ const (
 
 // Short aliases matching the original AGG2D naming.
 const (
-	NoFilter = ImageFilterNoFilter
-	Bilinear = ImageFilterBilinear
-	Hanning  = ImageFilterHanning
-	Hermite  = ImageFilterHermite
-	Quadric  = ImageFilterQuadric
-	Bicubic  = ImageFilterBicubic
-	Catrom   = ImageFilterCatrom
-	Spline16 = ImageFilterSpline16
-	Spline36 = ImageFilterSpline36
-	Blackman = ImageFilterBlackman
+	NoFilter    = ImageFilterNoFilter
+	Bilinear    = ImageFilterBilinear
+	Hanning     = ImageFilterHanning
+	Hermite     = ImageFilterHermite
+	Quadric     = ImageFilterQuadric
+	Bicubic     = ImageFilterBicubic
+	Catrom      = ImageFilterCatrom
+	Spline16    = ImageFilterSpline16
+	Spline36    = ImageFilterSpline36
+	Blackman    = ImageFilterBlackman
+	Blackman144 = ImageFilterBlackman
 )
 
 // ImageResample defines image resampling modes.
@@ -56,14 +57,20 @@ type Image struct {
 	height int     // Height in pixels
 }
 
+func (img *Image) ensureRenderingBuffer() {
+	if img.renBuf == nil {
+		img.renBuf = buffer.NewRenderingBuffer[uint8]()
+	}
+}
+
 // NewImage creates a new image with the specified buffer.
 func NewImage(buf []uint8, width, height, stride int) *Image {
 	img := &Image{
-		renBuf: buffer.NewRenderingBuffer[uint8](),
 		Data:   buf,
 		width:  width,
 		height: height,
 	}
+	img.ensureRenderingBuffer()
 	img.renBuf.Attach(buf, width, height, stride)
 	return img
 }
@@ -81,15 +88,45 @@ func (img *Image) Height() int {
 // Stride returns the buffer stride in bytes per row.
 // Negative values indicate a bottom-up (flip_y) buffer, matching C++ platform_support.
 func (img *Image) Stride() int {
+	if img == nil || img.renBuf == nil {
+		return 0
+	}
 	return img.renBuf.Stride()
 }
 
 // Attach attaches a buffer to the image.
 func (img *Image) Attach(buf []uint8, width, height, stride int) {
+	img.ensureRenderingBuffer()
 	img.renBuf.Attach(buf, width, height, stride)
 	img.Data = buf
 	img.width = width
 	img.height = height
+}
+
+// Premultiply converts the image from straight alpha to premultiplied alpha.
+// This mirrors the C++ Agg2D::Image::premultiply method.
+func (img *Image) Premultiply() error {
+	if img == nil {
+		return errors.New("image is nil")
+	}
+	internal := img.ToInternalImage()
+	if internal == nil {
+		return errors.New("image is nil")
+	}
+	return internal.Premultiply()
+}
+
+// Demultiply converts the image from premultiplied alpha to straight alpha.
+// This mirrors the C++ Agg2D::Image::demultiply method.
+func (img *Image) Demultiply() error {
+	if img == nil {
+		return errors.New("image is nil")
+	}
+	internal := img.ToInternalImage()
+	if internal == nil {
+		return errors.New("image is nil")
+	}
+	return internal.Demultiply()
 }
 
 // ToInternalImage converts this Image to the internal agg2d.Image type.
@@ -97,6 +134,7 @@ func (img *Image) ToInternalImage() *agg2d.Image {
 	if img == nil {
 		return nil
 	}
+	img.ensureRenderingBuffer()
 	return agg2d.NewImage(img.Data, img.width, img.height, img.renBuf.Stride())
 }
 
