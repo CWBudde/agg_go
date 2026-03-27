@@ -575,6 +575,33 @@ export function setupEventHandlers(
 
   // trans_curve2 controls
   document
+    .getElementById("transCurve2NumPointsSlider")
+    .addEventListener("input", () => {
+      const val = parseFloat(
+        document.getElementById("transCurve2NumPointsSlider").value,
+      );
+      document.getElementById("transCurve2NumPointsValue").textContent =
+        val.toFixed(0);
+      setTransCurve2NumPoints(val);
+      renderSelectedDemo();
+    });
+  document
+    .getElementById("transCurve2PreserveXScale")
+    .addEventListener("change", () => {
+      setTransCurve2PreserveXScale(
+        document.getElementById("transCurve2PreserveXScale").checked,
+      );
+      renderSelectedDemo();
+    });
+  document
+    .getElementById("transCurve2FixedLen")
+    .addEventListener("change", () => {
+      setTransCurve2FixedLen(
+        document.getElementById("transCurve2FixedLen").checked,
+      );
+      renderSelectedDemo();
+    });
+  document
     .getElementById("transCurve2Animate")
     .addEventListener("change", () => {
       toggleTransCurve2Animate();

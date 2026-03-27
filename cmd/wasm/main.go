@@ -1854,6 +1854,27 @@ func toggleTransCurve2AnimateJS(this js.Value, args []js.Value) interface{} {
 	return nil
 }
 
+func setTransCurve2NumPointsJS(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		setTransCurve2NumPoints(args[0].Float())
+	}
+	return nil
+}
+
+func setTransCurve2FixedLenJS(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		setTransCurve2FixedLen(args[0].Bool())
+	}
+	return nil
+}
+
+func setTransCurve2PreserveXScaleJS(this js.Value, args []js.Value) interface{} {
+	if len(args) > 0 {
+		setTransCurve2PreserveXScale(args[0].Bool())
+	}
+	return nil
+}
+
 func setMeshSizeJS(this js.Value, args []js.Value) interface{} {
 	if len(args) >= 2 {
 		setMeshSize(args[0].Int(), args[1].Int())
