@@ -14,16 +14,17 @@ import (
 
 // ImageFilter represents different image filtering options
 const (
-	ImageFilterNoFilter ImageFilter = ImageFilter(agg2d.NoFilter)
-	ImageFilterBilinear ImageFilter = ImageFilter(agg2d.Bilinear)
-	ImageFilterHanning  ImageFilter = ImageFilter(agg2d.Hanning)
-	ImageFilterHermite  ImageFilter = ImageFilter(agg2d.Hermite)
-	ImageFilterQuadric  ImageFilter = ImageFilter(agg2d.Quadric)
-	ImageFilterBicubic  ImageFilter = ImageFilter(agg2d.Bicubic)
-	ImageFilterCatrom   ImageFilter = ImageFilter(agg2d.Catrom)
-	ImageFilterSpline16 ImageFilter = ImageFilter(agg2d.Spline16)
-	ImageFilterSpline36 ImageFilter = ImageFilter(agg2d.Spline36)
-	ImageFilterBlackman ImageFilter = ImageFilter(agg2d.Blackman)
+	ImageFilterNoFilter    ImageFilter = ImageFilter(agg2d.NoFilter)
+	ImageFilterBilinear    ImageFilter = ImageFilter(agg2d.Bilinear)
+	ImageFilterHanning     ImageFilter = ImageFilter(agg2d.Hanning)
+	ImageFilterHermite     ImageFilter = ImageFilter(agg2d.Hermite)
+	ImageFilterQuadric     ImageFilter = ImageFilter(agg2d.Quadric)
+	ImageFilterBicubic     ImageFilter = ImageFilter(agg2d.Bicubic)
+	ImageFilterCatrom      ImageFilter = ImageFilter(agg2d.Catrom)
+	ImageFilterSpline16    ImageFilter = ImageFilter(agg2d.Spline16)
+	ImageFilterSpline36    ImageFilter = ImageFilter(agg2d.Spline36)
+	ImageFilterBlackman    ImageFilter = ImageFilter(agg2d.Blackman)
+	ImageFilterBlackman144 ImageFilter = ImageFilter(agg2d.Blackman)
 )
 
 // Short aliases matching the original AGG2D naming.
