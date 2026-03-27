@@ -863,6 +863,24 @@
     </div>
 
     <div class="controls" id="transCurve2Controls" style="display: none">
+      <label for="transCurve2NumPointsSlider">Intermediate Points:</label>
+      <input
+        type="range"
+        id="transCurve2NumPointsSlider"
+        min="10"
+        max="400"
+        value="200"
+        step="1"
+      />
+      <span id="transCurve2NumPointsValue">200</span>
+      <label
+        ><input type="checkbox" id="transCurve2PreserveXScale" checked />
+        Preserve X Scale</label
+      >
+      <label
+        ><input type="checkbox" id="transCurve2FixedLen" checked /> Fixed
+        Length</label
+      >
       <label><input type="checkbox" id="transCurve2Animate" /> Animate</label>
     </div>
 
