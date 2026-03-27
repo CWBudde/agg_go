@@ -523,8 +523,6 @@ func (d *demo) Render(img *agg.Image) {
 	drawText(renBase, text)
 }
 
-type scanlineRas = rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
-
 func drawText(renBase *renderer.RendererBase[*pixfmt.PixFmtRGBA32Pre[icol.SRGB], icol.RGBA8[icol.SRGB]], text string) {
 	txt := gsv.NewGSVText()
 	txt.SetSize(10.0, 0)

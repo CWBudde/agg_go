@@ -161,7 +161,6 @@ type FontCacheManager struct {
 	pathAdaptor  *path.PathStorageStl
 	gray8Adaptor *SerializedScanlinesAdaptorAA
 	monoAdaptor  *SerializedScanlinesAdaptorBin
-	lastError    error
 }
 
 // translatedPathSource applies a static translation to every vertex from src.

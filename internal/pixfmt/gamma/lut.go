@@ -317,11 +317,6 @@ func (lut *SRGBLUT8) Inv(v basics.Int8u) basics.Int8u {
 	return lut.invTable[v]
 }
 
-// sRGB conversion base for static methods
-type SRGBConvBase[T Numeric] struct {
-	lut SRGBLUT[T]
-}
-
 // Global sRGB conversion instances
 var (
 	srgbLUTFloat *SRGBLUTFloat

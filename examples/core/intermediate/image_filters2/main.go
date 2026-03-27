@@ -348,25 +348,6 @@ func newFilter(idx int, radius float64) imgacc.FilterFunction {
 	}
 }
 
-func flipImageY(img *agg.Image) {
-	if img == nil {
-		return
-	}
-	w, h := img.Width(), img.Height()
-	if w == 0 || h == 0 {
-		return
-	}
-	stride := w * 4
-	row := make([]byte, stride)
-	for y := 0; y < h/2; y++ {
-		top := y * stride
-		bottom := (h - 1 - y) * stride
-		copy(row, img.Data[top:top+stride])
-		copy(img.Data[top:top+stride], img.Data[bottom:bottom+stride])
-		copy(img.Data[bottom:bottom+stride], row)
-	}
-}
-
 func max(a, b float64) float64 {
 	if a > b {
 		return a

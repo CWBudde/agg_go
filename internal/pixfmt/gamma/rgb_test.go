@@ -11,8 +11,6 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
 )
 
-const testEpsilon = 1e-9
-
 func TestApplyGammaDirectRGB_BasicFunctionality(t *testing.T) {
 	// Test with gamma = 2.2 (common display gamma)
 	gamma := NewSimpleGammaLut(2.2)

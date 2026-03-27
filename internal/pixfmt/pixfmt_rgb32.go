@@ -17,9 +17,8 @@ type PixFmtAlphaBlendRGB96[
 	S color.Space,
 	O order.RGBOrder,
 ] struct {
-	rbuf     *buffer.RenderingBufferF32
-	blender  B
-	category PixFmtRGBTag
+	rbuf    *buffer.RenderingBufferF32
+	blender B
 }
 
 // NewPixFmtAlphaBlendRGB96 creates a new RGB96 pixel format

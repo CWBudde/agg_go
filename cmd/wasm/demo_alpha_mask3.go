@@ -481,30 +481,3 @@ func am3RenderSpiralAndGlyph(
 	mask, _ := am3GenerateAlphaMask(ras, sl, stroke, opAND, w, h)
 	am3PerformRendering(ras, sl, mainPixf, mask, curveGlyph)
 }
-
-// ---------------------------------------------------------------------------
-// Mouse / setter handlers (unchanged)
-// ---------------------------------------------------------------------------
-
-func handleAlphaMask3MouseDown(x, y float64, flags int) bool {
-	am3X = x
-	am3Y = y
-	return true
-}
-
-func handleAlphaMask3MouseMove(x, y float64, flags int) bool {
-	if flags != 0 {
-		am3X = x
-		am3Y = y
-		return true
-	}
-	return false
-}
-
-func setAlphaMask3Op(op int) {
-	am3Operation = op
-}
-
-func setAlphaMask3Poly(poly int) {
-	am3Polygon = poly
-}

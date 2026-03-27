@@ -83,9 +83,8 @@ func UnpackPixelBGR565(pixel basics.Int16u) (r, g, b basics.Int8u) {
 // RGB555 (15-bit) packed pixel format. The color type is RGBA8[Linear] to match
 // C++ rgba8 (blender_rgb555::color_type): alpha is used for blending but not stored in the 16-bit pixel.
 type PixFmtRGB555[B blender.RGB16PackedBlender] struct {
-	rbuf     *buffer.RenderingBufferU16
-	blender  B
-	category PixFmtRGBTag
+	rbuf    *buffer.RenderingBufferU16
+	blender B
 }
 
 // NewPixFmtRGB555 creates a new RGB555 pixel format over the given rendering buffer.
@@ -384,9 +383,8 @@ func (pf *PixFmtRGB555[B]) Fill(c color.RGBA8[color.Linear]) { pf.Clear(c) }
 // PixFmtRGB565 is the Go equivalent of AGG's pixfmt_alpha_blend_rgb_packed for
 // RGB565 (16-bit) packed pixel format.
 type PixFmtRGB565[B blender.RGB16PackedBlender] struct {
-	rbuf     *buffer.RenderingBufferU16
-	blender  B
-	category PixFmtRGBTag
+	rbuf    *buffer.RenderingBufferU16
+	blender B
 }
 
 // NewPixFmtRGB565 creates a new RGB565 pixel format over the given rendering buffer.
@@ -668,9 +666,8 @@ func (pf *PixFmtRGB565[B]) Fill(c color.RGBA8[color.Linear]) { pf.Clear(c) }
 // PixFmtBGR555 is the Go equivalent of AGG's pixfmt_alpha_blend_rgb_packed for
 // BGR555 (15-bit) packed pixel format.
 type PixFmtBGR555[B blender.RGB16PackedBlender] struct {
-	rbuf     *buffer.RenderingBufferU16
-	blender  B
-	category PixFmtRGBTag
+	rbuf    *buffer.RenderingBufferU16
+	blender B
 }
 
 // NewPixFmtBGR555 creates a new BGR555 pixel format over the given rendering buffer.
@@ -952,9 +949,8 @@ func (pf *PixFmtBGR555[B]) Fill(c color.RGBA8[color.Linear]) { pf.Clear(c) }
 // PixFmtBGR565 is the Go equivalent of AGG's pixfmt_alpha_blend_rgb_packed for
 // BGR565 (16-bit) packed pixel format.
 type PixFmtBGR565[B blender.RGB16PackedBlender] struct {
-	rbuf     *buffer.RenderingBufferU16
-	blender  B
-	category PixFmtRGBTag
+	rbuf    *buffer.RenderingBufferU16
+	blender B
 }
 
 // NewPixFmtBGR565 creates a new BGR565 pixel format over the given rendering buffer.

@@ -1559,14 +1559,6 @@ func resetIntersectionTable(it **itNode) {
 	}
 }
 
-// resetLocalMinimaTable clears the local minima table
-func resetLocalMinimaTable(lmt **lmtNode) {
-	for *lmt != nil {
-		next := (*lmt).Next
-		*lmt = next
-	}
-}
-
 // insertBound inserts an edge into the bound list, maintaining X-coordinate order
 func insertBound(b **edgeNode, e *edgeNode) {
 	if *b == nil {
@@ -1664,16 +1656,6 @@ func buildScanBeamTable(entries *int, sbt []float64, sbtree *sbTree) {
 	if sbtree.More != nil {
 		buildScanBeamTable(entries, sbt, sbtree.More)
 	}
-}
-
-// addVertex adds a vertex to a vertex list
-func addVertex(list **vertexNode, x, y float64) {
-	newVertex := &vertexNode{
-		X:    x,
-		Y:    y,
-		Next: *list,
-	}
-	*list = newVertex
 }
 
 // Helper macros adapted from C

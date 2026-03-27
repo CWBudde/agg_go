@@ -625,14 +625,6 @@ func (img *Image) GetPixel(x, y int) [4]uint8 {
 	}
 }
 
-// Helper methods for image rendering pipeline integration
-
-// rendererIntersects checks if a scanline intersects with current rendering bounds
-func (agg2d *Agg2D) rendererIntersects(y int) bool {
-	// Simple bounds check - can be made more sophisticated
-	return y >= 0 && y < agg2d.rbuf.Height()
-}
-
 // GetBounds returns the current rendering bounds
 func (agg2d *Agg2D) GetBounds() struct{ X1, Y1, X2, Y2 float64 } {
 	return agg2d.clipBox

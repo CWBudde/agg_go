@@ -213,21 +213,6 @@ type demo struct {
 	nDrawn      int
 }
 
-func newDemo() *demo {
-	d := &demo{
-		rng: newClibcRand(),
-		scaleCtrl: scalectrl.NewScaleCtrl(
-			5, 5, startWidth-5, 12, false,
-		),
-		selCtrl:  sliderctrl.NewSliderCtrl(5, 20, startWidth-5, 27, false),
-		sizeCtrl: sliderctrl.NewSliderCtrl(5, 35, startWidth-5, 42, false),
-	}
-	d.selCtrl.SetLabel("Selectivity=%.2f")
-	d.sizeCtrl.SetLabel("Size=%.2f")
-	d.prepareState()
-	return d
-}
-
 func (d *demo) OnInit() {
 	d.prepareState()
 }

@@ -80,16 +80,6 @@ func (a *contourPathVS) NextVertex() (x, y float64, cmd uint32) {
 	return vx, vy, uint32(c)
 }
 
-// pathStorageVS adapts *path.PathStorage to the rasterizer's path interface.
-type pathStorageVS struct{ ps *path.PathStorage }
-
-func (a *pathStorageVS) Rewind(pathID uint32) { a.ps.Rewind(uint(pathID)) }
-func (a *pathStorageVS) Vertex(x, y *float64) uint32 {
-	vx, vy, cmd := a.ps.NextVertex()
-	*x, *y = vx, vy
-	return cmd
-}
-
 // gradContourSpanGen is a unified span generator for contour & conic gradients.
 type gradContourSpanGen struct {
 	interp    *span.SpanInterpolatorLinear[*transform.TransAffine]

@@ -22,7 +22,6 @@ const (
 var (
 	flashShapes []flashPath
 	flashColors []color.RGBA8[color.Linear]
-	flashScale  = 1.0
 )
 
 type flashPath struct {

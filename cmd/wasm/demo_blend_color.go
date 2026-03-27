@@ -10,7 +10,6 @@ var (
 	blendColorMethod       = 1    // 0: Single Color, 1: Color LUT
 	blendColorRadius       = 15.0 // Blur radius
 	blendColorQuad         [8]float64
-	blendColorShapeBounds  [4]float64
 	blendColorSelectedNode = -1
 	blendColorDragDX       = 0.0
 	blendColorDragDY       = 0.0
@@ -23,7 +22,6 @@ func drawBlendColorDemo() {
 		Quad:   blendColorQuad,
 	})
 	blendColorQuad = result.Quad
-	blendColorShapeBounds = result.ShapeBounds
 }
 
 // Mouse handlers — dragging 4 quad corners (8 values: x0,y0, x1,y1, x2,y2, x3,y3)

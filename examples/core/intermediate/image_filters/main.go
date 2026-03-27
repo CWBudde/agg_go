@@ -37,11 +37,6 @@ import (
 	"github.com/MeKo-Christian/agg_go/internal/transform"
 )
 
-const (
-	windowWidth  = 430
-	windowHeight = 340
-)
-
 type imagePixFmt struct {
 	rbuf *buffer.RenderingBufferU8
 }
