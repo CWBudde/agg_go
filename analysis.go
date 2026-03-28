@@ -261,62 +261,6 @@ func (t *pixelImageTransposer[C]) CopyColorHspan(x, y, length int, colors []C) {
 }
 
 // ---------------------------------------------------------------------------
-// Convenience wrappers for raw RGBA byte buffers
-// ---------------------------------------------------------------------------
-
-// rawRGBA8Image adapts a flat RGBA byte buffer into a PixelReadWriter, acting
-// like a minimal pixfmt_alpha_blend_rgba attached to a rendering_buffer.
-type rawRGBA8Image struct {
-	pixels []byte
-	w, h   int
-}
-
-func (r *rawRGBA8Image) Width() int  { return r.w }
-func (r *rawRGBA8Image) Height() int { return r.h }
-
-func (r *rawRGBA8Image) Pixel(x, y int) color.RGBA8[color.Linear] {
-	i := (y*r.w + x) * 4
-	return color.RGBA8[color.Linear]{
-		R: r.pixels[i],
-		G: r.pixels[i+1],
-		B: r.pixels[i+2],
-		A: r.pixels[i+3],
-	}
-}
-
-func (r *rawRGBA8Image) CopyColorHspan(x, y, length int, colors []color.RGBA8[color.Linear]) {
-	for i := range length {
-		off := (y*r.w + x + i) * 4
-		r.pixels[off] = colors[i].R
-		r.pixels[off+1] = colors[i].G
-		r.pixels[off+2] = colors[i].B
-		r.pixels[off+3] = colors[i].A
-	}
-}
-
-// SobelGradientRGBA is a convenience wrapper that computes the Sobel gradient
-// from a flat RGBA pixel buffer using BT.709 luminance weights.
-//
-// pixels must have length width*height*4 with bytes in RGBA order.
-func SobelGradientRGBA(pixels []byte, width, height int) []float32 {
-	img := &rawRGBA8Image{pixels: pixels, w: width, h: height}
-	return SobelGradient(img, LuminanceRGBA8Linear())
-}
-
-// StackBlurRGBA applies an in-place stack blur to a flat RGBA pixel buffer.
-// radius must be in [1, 254].
-//
-// pixels must have length width*height*4 with bytes in RGBA order.
-func StackBlurRGBA(pixels []byte, width, height, radius int) {
-	if radius < 1 || width <= 0 || height <= 0 || len(pixels) < width*height*4 {
-		return
-	}
-	img := &rawRGBA8Image{pixels: pixels, w: width, h: height}
-	sb := NewStackBlur()
-	sb.Blur(img, radius)
-}
-
-// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -329,6 +273,3 @@ func clampInt(v, lo, hi int) int {
 	}
 	return v
 }
-
-// Ensure PixelReadWriter satisfaction at compile time.
-var _ PixelReadWriter[color.RGBA8[color.Linear]] = (*rawRGBA8Image)(nil)
