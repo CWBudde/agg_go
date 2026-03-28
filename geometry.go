@@ -1,6 +1,10 @@
 package agg
 
-import "github.com/MeKo-Christian/agg_go/internal/transform"
+import (
+	"math"
+
+	"github.com/MeKo-Christian/agg_go/internal/transform"
+)
 
 // Rect represents an integer rectangle.
 type Rect struct {
@@ -225,4 +229,42 @@ func FromTransAffine(t *transform.TransAffine) *Affine {
 	a.matrix[4] = t.TX
 	a.matrix[5] = t.TY
 	return a
+}
+
+// SimplifyPolyline reduces the number of vertices in a polyline using the
+// Ramer–Douglas–Peucker algorithm. Points whose maximum perpendicular distance
+// from the chord connecting a segment's endpoints is less than epsilon are
+// replaced by a straight line between those endpoints.
+//
+// epsilon is expressed in the same coordinate units as the points (e.g. pixels).
+// Values in the range 0.5–2.0 work well for screen-resolution paths.
+// Returns pts unchanged if len(pts) ≤ 2.
+func SimplifyPolyline(pts []Point, epsilon float64) []Point {
+	if len(pts) <= 2 {
+		return pts
+	}
+	a, b := pts[0], pts[len(pts)-1]
+	maxDist, maxIdx := 0.0, 0
+	for i := 1; i < len(pts)-1; i++ {
+		if d := pointLineDistance(pts[i], a, b); d > maxDist {
+			maxDist, maxIdx = d, i
+		}
+	}
+	if maxDist > epsilon {
+		left := SimplifyPolyline(pts[:maxIdx+1], epsilon)
+		right := SimplifyPolyline(pts[maxIdx:], epsilon)
+		return append(left[:len(left)-1], right...)
+	}
+	return []Point{a, b}
+}
+
+// pointLineDistance returns the perpendicular distance from point p to the
+// infinite line defined by segment a→b.
+func pointLineDistance(p, a, b Point) float64 {
+	dx, dy := b.X-a.X, b.Y-a.Y
+	if dx == 0 && dy == 0 {
+		return math.Hypot(p.X-a.X, p.Y-a.Y)
+	}
+	t := ((p.X-a.X)*dx + (p.Y-a.Y)*dy) / (dx*dx + dy*dy)
+	return math.Hypot(p.X-a.X-t*dx, p.Y-a.Y-t*dy)
 }
