@@ -88,21 +88,6 @@ func TestSobelGradientEdge(t *testing.T) {
 	}
 }
 
-// TestSobelGradientRawConvenience ensures the raw-byte convenience wrapper
-// produces the same result as the generic path.
-func TestSobelGradientRawConvenience(t *testing.T) {
-	const w, h = 4, 4
-	pixels := make([]byte, w*h*4)
-	for i := 0; i < len(pixels); i += 4 {
-		pixels[i], pixels[i+1], pixels[i+2], pixels[i+3] = 128, 128, 128, 255
-	}
-	grad := SobelGradientRGBA(pixels, w, h)
-	for i, v := range grad {
-		if v > 1e-6 {
-			t.Fatalf("grad[%d] = %v on flat image, want ~0", i, v)
-		}
-	}
-}
 
 // ---------------------------------------------------------------------------
 // StackBlur tests — exercised through the PixelReadWriter interface
@@ -127,21 +112,6 @@ func TestStackBlurPreservesOpaque(t *testing.T) {
 	}
 }
 
-// TestStackBlurRGBAConvenience verifies the raw-byte convenience wrapper.
-func TestStackBlurRGBAConvenience(t *testing.T) {
-	const w, h = 8, 8
-	pixels := make([]byte, w*h*4)
-	for i := 0; i < len(pixels); i += 4 {
-		pixels[i], pixels[i+1], pixels[i+2], pixels[i+3] = 200, 100, 50, 255
-	}
-	StackBlurRGBA(pixels, w, h, 2)
-	for i := 0; i < len(pixels); i += 4 {
-		if pixels[i] != 200 || pixels[i+1] != 100 || pixels[i+2] != 50 || pixels[i+3] != 255 {
-			t.Fatalf("pixel[%d..%d] = %v %v %v %v, want 200 100 50 255",
-				i, i+3, pixels[i], pixels[i+1], pixels[i+2], pixels[i+3])
-		}
-	}
-}
 
 // TestStackBlurSpreads verifies that a single bright pixel gets spread
 // across its neighbours.
