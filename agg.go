@@ -989,6 +989,20 @@ func (a *Agg2D) TransformImagePathParallelogramSimple(img *Image, parallelogram 
 	return a.impl.TransformImagePathParallelogramSimple(img.ToInternalImage(), parallelogram)
 }
 
+// TransformImageQuad transforms a source rectangle of img to an arbitrary
+// destination quadrangle using perspective (homographic) interpolation with
+// bilinear filtering. quad holds the eight destination coordinates
+// [x0,y0, x1,y1, x2,y2, x3,y3] for the TL, TR, BR, BL corners.
+func (a *Agg2D) TransformImageQuad(img *Image, imgX1, imgY1, imgX2, imgY2 int, quad [8]float64) error {
+	return a.impl.TransformImageQuad(img.ToInternalImage(), imgX1, imgY1, imgX2, imgY2, quad)
+}
+
+// TransformImageQuadSimple transforms the full image to an arbitrary destination
+// quadrangle using perspective interpolation.
+func (a *Agg2D) TransformImageQuadSimple(img *Image, quad [8]float64) error {
+	return a.impl.TransformImageQuadSimple(img.ToInternalImage(), quad)
+}
+
 // BlendImage blends an image region directly onto the target without geometric transformation.
 func (a *Agg2D) BlendImage(img *Image, imgX1, imgY1, imgX2, imgY2 int, dstX, dstY float64, alpha uint) error {
 	return a.impl.BlendImage(img.ToInternalImage(), imgX1, imgY1, imgX2, imgY2, dstX, dstY, alpha)

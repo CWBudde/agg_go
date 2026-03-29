@@ -1002,6 +1002,84 @@ func BenchmarkTransformImage(b *testing.B) {
 	}
 }
 
+// TestTransformImageQuad tests perspective quad transformation.
+func TestTransformImageQuad(t *testing.T) {
+	agg2d := NewAgg2D()
+	width, height := 64, 64
+	buf := make([]uint8, width*height*4)
+	agg2d.Attach(buf, width, height, width*4)
+	agg2d.ImageFilter(Bilinear)
+
+	// Source: solid blue 4×4 image.
+	srcBuf := make([]uint8, 4*4*4)
+	for i := 0; i < 4*4; i++ {
+		srcBuf[i*4+2] = 255 // B
+		srcBuf[i*4+3] = 255 // A
+	}
+	img := NewImage(srcBuf, 4, 4, 4*4)
+
+	// Map source rect to a simple square quad (identity-like).
+	quad := [8]float64{10, 10, 20, 10, 20, 20, 10, 20}
+	err := agg2d.TransformImageQuad(img, 0, 0, 4, 4, quad)
+	if err != nil {
+		t.Fatalf("TransformImageQuad failed: %v", err)
+	}
+
+	// Centre of destination quad should be blue.
+	r, g, b, a := pixelAt(buf, width, 15, 15)
+	if b == 0 || a == 0 {
+		t.Fatalf("quad transformed pixel at centre = (%d,%d,%d,%d), want blue non-zero", r, g, b, a)
+	}
+	// Outside the quad should be untouched.
+	r, g, b, a = pixelAt(buf, width, 0, 0)
+	if r != 0 || g != 0 || b != 0 || a != 0 {
+		t.Fatalf("outside quad pixel = (%d,%d,%d,%d), want zero", r, g, b, a)
+	}
+}
+
+// TestTransformImageQuadSimple tests perspective quad transformation for the full image.
+func TestTransformImageQuadSimple(t *testing.T) {
+	agg2d := NewAgg2D()
+	width, height := 64, 64
+	buf := make([]uint8, width*height*4)
+	agg2d.Attach(buf, width, height, width*4)
+	agg2d.ImageFilter(Bilinear)
+
+	// Source: solid red 2×2 image.
+	srcBuf := []uint8{255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255}
+	img := NewImage(srcBuf, 2, 2, 2*4)
+
+	// Skewed quad (perspective-like).
+	quad := [8]float64{5, 5, 30, 8, 28, 28, 4, 25}
+	err := agg2d.TransformImageQuadSimple(img, quad)
+	if err != nil {
+		t.Fatalf("TransformImageQuadSimple failed: %v", err)
+	}
+
+	// Some pixel inside the quad should be non-zero.
+	r, g, b, a := pixelAt(buf, width, 15, 15)
+	_ = b
+	if r == 0 || a == 0 {
+		t.Fatalf("quad transformed pixel at (15,15) = (%d,%d,%d,%d), want red non-zero", r, g, b, a)
+	}
+}
+
+// TestTransformImageQuadDegenerate tests that a degenerate quad returns an error.
+func TestTransformImageQuadDegenerate(t *testing.T) {
+	agg2d := NewAgg2D()
+	buf := make([]uint8, 32*32*4)
+	agg2d.Attach(buf, 32, 32, 32*4)
+
+	img := NewImage([]uint8{255, 0, 0, 255}, 1, 1, 4)
+
+	// All corners collapsed to one point → degenerate.
+	quad := [8]float64{10, 10, 10, 10, 10, 10, 10, 10}
+	err := agg2d.TransformImageQuad(img, 0, 0, 1, 1, quad)
+	if err == nil {
+		t.Error("Expected error for degenerate quad, got nil")
+	}
+}
+
 // BenchmarkBlendImage benchmarks the image blending performance.
 func BenchmarkBlendImage(b *testing.B) {
 	agg2d := NewAgg2D()
