@@ -233,6 +233,26 @@ func (ctx *Context) DrawImageRegion(img *Image, srcX, srcY, srcW, srcH int, dstX
 	return ctx.agg2d.TransformImage(img, srcX, srcY, srcX+srcW, srcY+srcH, dstX, dstY, dstX+dstW, dstY+dstH)
 }
 
+// DrawImageQuad draws the full source image mapped to an arbitrary destination
+// quadrangle using perspective (homographic) interpolation with bilinear filtering.
+// quad holds eight destination coordinates [x0,y0, x1,y1, x2,y2, x3,y3] for the
+// TL, TR, BR, BL corners respectively.
+func (ctx *Context) DrawImageQuad(img *Image, quad [8]float64) error {
+	if img == nil {
+		return errors.New("image is nil")
+	}
+	return ctx.agg2d.TransformImageQuadSimple(img, quad)
+}
+
+// DrawImageRegionQuad draws a source region of an image mapped to an arbitrary
+// destination quadrangle using perspective interpolation.
+func (ctx *Context) DrawImageRegionQuad(img *Image, srcX, srcY, srcW, srcH int, quad [8]float64) error {
+	if img == nil {
+		return errors.New("image is nil")
+	}
+	return ctx.agg2d.TransformImageQuad(img, srcX, srcY, srcX+srcW, srcY+srcH, quad)
+}
+
 // Image loading functions
 
 // LoadImageFromFile loads an image from a file.

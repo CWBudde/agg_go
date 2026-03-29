@@ -399,6 +399,73 @@ func (agg2d *Agg2D) TransformImagePathParallelogramSimple(img *Image, parallelog
 	return agg2d.TransformImagePathParallelogram(img, 0, 0, img.Width(), img.Height(), parallelogram)
 }
 
+// renderImagePerspective renders img into the current context using a perspective
+// (homographic) transform. The source rectangle [x1,y1]–[x2,y2] in image coords
+// is mapped to the destination quadrangle quad (8 floats: TL, TR, BR, BL).
+// Bilinear filtering is always used for perspective transforms.
+func (agg2d *Agg2D) renderImagePerspective(img *Image, x1, y1, x2, y2 int, quad [8]float64) error {
+	if img == nil || img.renBuf == nil {
+		return errors.New("image or image buffer is nil")
+	}
+	if agg2d.rasterizer == nil || agg2d.scanline == nil || agg2d.spanAllocator == nil {
+		return errors.New("render pipeline is not initialized")
+	}
+
+	// Map destination quad → source rectangle so that for each destination
+	// pixel the interpolator returns the corresponding source coordinates.
+	interpolator := span.NewSpanInterpolatorPerspectiveLerp(0)
+	interpolator.QuadToRect(quad, float64(x1), float64(y1), float64(x2), float64(y2))
+	if !interpolator.IsValid() {
+		return errors.New("degenerate perspective transform")
+	}
+
+	// Build the destination polygon path.
+	agg2d.ResetPath()
+	agg2d.MoveTo(quad[0], quad[1])
+	agg2d.LineTo(quad[2], quad[3])
+	agg2d.LineTo(quad[4], quad[5])
+	agg2d.LineTo(quad[6], quad[7])
+	agg2d.ClosePolygon()
+
+	agg2d.rasterizer.Reset()
+	agg2d.rasterizer.FillingRule(agg2d.GetFillRule())
+	agg2d.addCurrentPathToRasterizer()
+
+	imageSource := newImagePixelFormat(img)
+	sampleGenerator := span.NewSpanImageFilterRGBABilinearWithParams[*imagePixelFormat, *span.SpanInterpolatorPerspectiveLerp](imageSource, interpolator)
+	spanGenerator := newImageSpanGenerator(sampleGenerator, agg2d.imageBlendMode, agg2d.imageBlendColor)
+
+	renderer := agg2d.currentImageRenderer()
+	if renderer == nil {
+		return nil
+	}
+	renscan.RenderScanlinesAA(agg2d.rasterizer, agg2d.scanline, renderer, agg2d.spanAllocator, spanGenerator)
+	return nil
+}
+
+// TransformImageQuad transforms a source rectangle of img to an arbitrary
+// destination quadrangle using perspective (homographic) interpolation.
+// quad holds the eight destination coordinates [x0,y0, x1,y1, x2,y2, x3,y3]
+// for the TL, TR, BR, BL corners respectively.
+func (agg2d *Agg2D) TransformImageQuad(img *Image, imgX1, imgY1, imgX2, imgY2 int, quad [8]float64) error {
+	if img == nil {
+		return errors.New("image is nil")
+	}
+	if imgX1 < 0 || imgY1 < 0 || imgX2 > img.Width() || imgY2 > img.Height() {
+		return errors.New("invalid source rectangle bounds")
+	}
+	return agg2d.renderImagePerspective(img, imgX1, imgY1, imgX2, imgY2, quad)
+}
+
+// TransformImageQuadSimple transforms the full image to an arbitrary destination
+// quadrangle using perspective interpolation.
+func (agg2d *Agg2D) TransformImageQuadSimple(img *Image, quad [8]float64) error {
+	if img == nil {
+		return errors.New("image is nil")
+	}
+	return agg2d.renderImagePerspective(img, 0, 0, img.Width(), img.Height(), quad)
+}
+
 // BlendImage blends an image at the specified destination coordinates with alpha blending.
 // This matches the C++ Agg2D::blendImage method.
 func (agg2d *Agg2D) BlendImage(img *Image, imgX1, imgY1, imgX2, imgY2 int, dstX, dstY float64, alpha uint) error {
