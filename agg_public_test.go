@@ -204,3 +204,45 @@ func TestAgg2DCompatibilityShims(t *testing.T) {
 		t.Fatalf("BlendImageSimpleDefaultAlpha() failed: %v", err)
 	}
 }
+
+func TestFillRadialGradientStops(t *testing.T) {
+	const w, h = 64, 64
+	buf := make([]uint8, w*h*4)
+	a := NewAgg2D()
+	a.Attach(buf, w, h, w*4)
+	a.ClearAll(NewColor(0, 0, 0, 0))
+
+	// Wet-edge profile: transparent centre → opaque ring at 70% → transparent edge.
+	stops := []GradientStop{
+		{Position: 0.0, Color: NewColor(255, 0, 0, 0)},   // transparent centre
+		{Position: 0.7, Color: NewColor(255, 0, 0, 255)}, // opaque ring
+		{Position: 1.0, Color: NewColor(255, 0, 0, 0)},   // transparent edge
+	}
+	cx, cy, r := 32.0, 32.0, 28.0
+
+	a.NoLine()
+	a.Translate(cx, cy)
+	a.ResetPath()
+	a.AddEllipse(0, 0, r, r, CCW)
+	a.FillRadialGradientStops(0, 0, r, stops)
+	a.DrawPath(FillOnly)
+
+	// Centre pixel (32,32) must be transparent (alpha ≈ 0).
+	centreIdx := (32*w + 32) * 4
+	if buf[centreIdx+3] > 20 {
+		t.Errorf("centre alpha = %d, want ≈ 0 (transparent centre)", buf[centreIdx+3])
+	}
+
+	// Mid-ring pixel at roughly 70% radius should be mostly opaque.
+	ringX := int(cx + r*0.7)
+	ringIdx := (32*w + ringX) * 4
+	if buf[ringIdx+3] < 200 {
+		t.Errorf("ring pixel alpha = %d at x=%d, want > 200 (opaque ring)", buf[ringIdx+3], ringX)
+	}
+
+	// Corner pixel far outside the ellipse must be untouched.
+	outerIdx := 0
+	if buf[outerIdx+3] != 0 {
+		t.Errorf("outer pixel alpha = %d, want 0", buf[outerIdx+3])
+	}
+}
