@@ -34,6 +34,67 @@ func buildThreeColorGradient(dst *[256]Color, c1, c2, c3 Color) {
 	}
 }
 
+// ColorStop defines a single color/position pair for a multi-stop gradient.
+// Position must be in [0, 1]; the slice passed to buildNStopGradient must be
+// sorted in ascending Position order.
+type ColorStop struct {
+	Position float64
+	Color    Color
+}
+
+// buildNStopGradient fills the 256-entry gradient LUT by interpolating between
+// an arbitrary number of color stops. The stops slice must be sorted by
+// ascending Position. Out-of-range positions are clamped to the nearest stop.
+func buildNStopGradient(dst *[256]Color, stops []ColorStop) {
+	if len(stops) == 0 {
+		return
+	}
+	if len(stops) == 1 {
+		for i := range dst {
+			dst[i] = stops[0].Color
+		}
+		return
+	}
+	for i := 0; i < 256; i++ {
+		pos := float64(i) / 255.0
+		if pos <= stops[0].Position {
+			dst[i] = stops[0].Color
+			continue
+		}
+		last := stops[len(stops)-1]
+		if pos >= last.Position {
+			dst[i] = last.Color
+			continue
+		}
+		// Binary search for the bracketing stops.
+		lo, hi := 0, len(stops)-1
+		for hi-lo > 1 {
+			mid := (lo + hi) / 2
+			if stops[mid].Position <= pos {
+				lo = mid
+			} else {
+				hi = mid
+			}
+		}
+		span := stops[hi].Position - stops[lo].Position
+		var t float64
+		if span > 0 {
+			t = (pos - stops[lo].Position) / span
+		}
+		dst[i] = stops[lo].Color.Gradient(stops[hi].Color, t)
+	}
+}
+
+// FillRadialGradientStops sets up a radial fill gradient from an arbitrary
+// sorted slice of ColorStops (position 0 = centre, position 1 = edge).
+func (agg2d *Agg2D) FillRadialGradientStops(x, y, r float64, stops []ColorStop) {
+	buildNStopGradient(&agg2d.fillGradient, stops)
+	agg2d.fillGradientLUTDirty = true
+	agg2d.fillGradientD1, agg2d.fillGradientD2 = agg2d.setupWorldRadialGradient(agg2d.fillGradientMatrix, x, y, r)
+	agg2d.fillGradientFlag = Radial
+	agg2d.fillColor = NewColor(0, 0, 0, 255)
+}
+
 func setupRadialGradient(matrix *transform.TransAffine, x, y, r float64) (d1, d2 float64) {
 	matrix.Reset()
 	matrix.Translate(x, y)

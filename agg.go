@@ -302,6 +302,21 @@ func (a *Agg2D) FillRadialGradientMultiStop(x, y, r float64, c1, c2, c3 Color) {
 	a.impl.FillRadialGradientMultiStop(x, y, r, internalC1, internalC2, internalC3)
 }
 
+// FillRadialGradientStops sets up a radial fill gradient from an arbitrary
+// sorted slice of GradientStops (Position 0 = centre, Position 1 = edge).
+// Stops must be in ascending Position order; positions outside [0, 1] are clamped.
+// This enables arbitrary radial alpha/colour profiles such as wet-edges rings.
+func (a *Agg2D) FillRadialGradientStops(x, y, r float64, stops []GradientStop) {
+	internalStops := make([]agg2d.ColorStop, len(stops))
+	for i, s := range stops {
+		internalStops[i] = agg2d.ColorStop{
+			Position: s.Position,
+			Color:    [4]uint8{s.Color.R, s.Color.G, s.Color.B, s.Color.A},
+		}
+	}
+	a.impl.FillRadialGradientStops(x, y, r, internalStops)
+}
+
 // LineLinearGradient sets up a linear gradient for line/stroke operations.
 func (a *Agg2D) LineLinearGradient(x1, y1, x2, y2 float64, c1, c2 Color, profile float64) {
 	internalC1 := [4]uint8{c1.R, c1.G, c1.B, c1.A}
