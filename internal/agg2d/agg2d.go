@@ -25,15 +25,16 @@ type Color [4]uint8
 
 // Type aliases for the Agg2D-style enums exposed across the package.
 type (
-	BlendMode      = int
-	Gradient       = int
-	LineCap        = int
-	LineJoin       = int
-	TextAlignment  = int
-	FontCacheType  = int
-	ImageFilter    = int
-	ImageResample  = int
-	ViewportOption = int
+	BlendMode                 = int
+	Gradient                  = int
+	LineCap                   = int
+	LineJoin                  = int
+	TextAlignment             = int
+	FontCacheType             = int
+	ImageFilter               = int
+	ImageResample             = int
+	AffineImageResamplePolicy = int
+	ViewportOption            = int
 )
 
 // Core constants mirror the enum values exposed by the C++ Agg2D interface.
@@ -165,9 +166,10 @@ type Agg2D struct {
 	gsvFontMode bool         // True when the active font backend is GSV
 
 	// Image filtering
-	imageFilter    ImageFilter
-	imageResample  ImageResample
-	imageFilterLUT *aggimage.ImageFilterLUT
+	imageFilter               ImageFilter
+	imageResample             ImageResample
+	affineImageResamplePolicy AffineImageResamplePolicy
+	imageFilterLUT            *aggimage.ImageFilterLUT
 
 	// Fill mode
 	evenOddFlag bool
@@ -266,42 +268,43 @@ func (c Color) Gradient(to Color, factor float64) Color {
 // This matches the C++ Agg2D constructor.
 func NewAgg2D() *Agg2D {
 	agg2d := &Agg2D{
-		rbuf:               buffer.NewRenderingBuffer[uint8](),
-		clipBox:            struct{ X1, Y1, X2, Y2 float64 }{0, 0, 0, 0},
-		blendMode:          BlendAlpha,
-		imageBlendMode:     BlendDst,
-		imageBlendColor:    NewColor(0, 0, 0, 255),
-		masterAlpha:        1.0,
-		antiAliasGamma:     1.0,
-		fillColor:          White,
-		lineColor:          Black,
-		fillGradientFlag:   Solid,
-		lineGradientFlag:   Solid,
-		fillGradientD1:     0.0,
-		lineGradientD1:     0.0,
-		fillGradientD2:     100.0,
-		lineGradientD2:     100.0,
-		textAngle:          0.0,
-		textAlignX:         AlignLeft,
-		textAlignY:         AlignBottom,
-		textHints:          true,
-		resolution:         72,
-		fontHeight:         0.0,
-		fontAscent:         0.0,
-		fontDescent:        0.0,
-		fontCacheType:      RasterFontCache,
-		imageFilter:        ImageFilterBilinear,
-		imageResample:      NoResample,
-		imageFilterLUT:     aggimage.NewImageFilterLUTWithFilter(aggimage.BilinearFilter{}, true),
-		lineWidth:          1.0,
-		lineCap:            CapRound,
-		lineJoin:           JoinRound,
-		evenOddFlag:        false,
-		path:               path.NewPathStorageStl(),
-		transform:          transform.NewTransAffine(),
-		fillGradientMatrix: transform.NewTransAffine(),
-		lineGradientMatrix: transform.NewTransAffine(),
-		scanline:           scanline.NewScanlineU8(),
+		rbuf:                      buffer.NewRenderingBuffer[uint8](),
+		clipBox:                   struct{ X1, Y1, X2, Y2 float64 }{0, 0, 0, 0},
+		blendMode:                 BlendAlpha,
+		imageBlendMode:            BlendDst,
+		imageBlendColor:           NewColor(0, 0, 0, 255),
+		masterAlpha:               1.0,
+		antiAliasGamma:            1.0,
+		fillColor:                 White,
+		lineColor:                 Black,
+		fillGradientFlag:          Solid,
+		lineGradientFlag:          Solid,
+		fillGradientD1:            0.0,
+		lineGradientD1:            0.0,
+		fillGradientD2:            100.0,
+		lineGradientD2:            100.0,
+		textAngle:                 0.0,
+		textAlignX:                AlignLeft,
+		textAlignY:                AlignBottom,
+		textHints:                 true,
+		resolution:                72,
+		fontHeight:                0.0,
+		fontAscent:                0.0,
+		fontDescent:               0.0,
+		fontCacheType:             RasterFontCache,
+		imageFilter:               ImageFilterBilinear,
+		imageResample:             NoResample,
+		affineImageResamplePolicy: AffineImageResampleAgg2D,
+		imageFilterLUT:            aggimage.NewImageFilterLUTWithFilter(aggimage.BilinearFilter{}, true),
+		lineWidth:                 1.0,
+		lineCap:                   CapRound,
+		lineJoin:                  JoinRound,
+		evenOddFlag:               false,
+		path:                      path.NewPathStorageStl(),
+		transform:                 transform.NewTransAffine(),
+		fillGradientMatrix:        transform.NewTransAffine(),
+		lineGradientMatrix:        transform.NewTransAffine(),
+		scanline:                  scanline.NewScanlineU8(),
 	}
 
 	// Initialize converters

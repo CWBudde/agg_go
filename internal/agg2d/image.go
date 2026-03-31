@@ -111,6 +111,9 @@ func (agg2d *Agg2D) newImageFilterGenerator(
 			}
 		}
 	}
+	if !resample && agg2d.affineImageResamplePolicy == AffineImageResamplePreferFiltered && agg2d.imageFilter != NoFilter {
+		resample = true
+	}
 
 	if resample {
 		return span.NewSpanImageResampleRGBAAffineWithParams[*imagePixelFormat](
