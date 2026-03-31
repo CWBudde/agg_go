@@ -60,6 +60,7 @@ func (agg2d *Agg2D) Attach(buf []uint8, width, height, stride int) {
 	agg2d.FlipText(false)
 	agg2d.ImageFilter(ImageFilterBilinear)
 	agg2d.ImageResample(NoResample)
+	agg2d.AffineImageResamplePolicy(AffineImageResampleAgg2D)
 	agg2d.masterAlpha = 1.0
 	agg2d.antiAliasGamma = 1.0
 	agg2d.blendMode = BlendAlpha

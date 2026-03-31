@@ -45,6 +45,13 @@ const (
 	ResampleOnZoomOut ImageResample = 2
 )
 
+// Affine image resample policy controls how affine image transforms pick their
+// sampling generator when ImageResample is left at NoResample.
+const (
+	AffineImageResampleAgg2D AffineImageResamplePolicy = iota
+	AffineImageResamplePreferFiltered
+)
+
 // Additional TextAlignment constants
 const (
 	AlignRight  TextAlignment = 1

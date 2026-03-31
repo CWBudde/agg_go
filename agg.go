@@ -38,7 +38,6 @@ import (
 
 	"github.com/MeKo-Christian/agg_go/internal/agg2d"
 	"github.com/MeKo-Christian/agg_go/internal/color"
-	aggimage "github.com/MeKo-Christian/agg_go/internal/image"
 	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
 	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
 )
@@ -97,10 +96,11 @@ func Rad2DegFunc(radians float64) float64 {
 // Public type definitions mirror the internal AGG2D enums so numeric values
 // stay compatible with upstream when passed through the wrapper.
 type (
-	LineCap       = agg2d.LineCap
-	LineJoin      = agg2d.LineJoin
-	ImageResample = agg2d.ImageResample
-	TextAlignment = agg2d.TextAlignment
+	LineCap                   = agg2d.LineCap
+	LineJoin                  = agg2d.LineJoin
+	ImageResample             = agg2d.ImageResample
+	AffineImageResamplePolicy = agg2d.AffineImageResamplePolicy
+	TextAlignment             = agg2d.TextAlignment
 )
 
 // LineCap constants
@@ -475,64 +475,22 @@ const (
 
 // ImageFilter sets the image filtering method using a predefined filter type.
 func (a *Agg2D) ImageFilter(ft ImageFilter) {
-	var f aggimage.FilterFunction
-	switch ft {
-	case FilterBilinear:
-		f = aggimage.BilinearFilter{}
-	case FilterHanning:
-		f = aggimage.HanningFilter{}
-	case FilterHamming:
-		f = aggimage.HammingFilter{}
-	case FilterHermite:
-		f = aggimage.HermiteFilter{}
-	case FilterQuadric:
-		f = aggimage.QuadricFilter{}
-	case FilterBicubic:
-		f = aggimage.BicubicFilter{}
-	case FilterCatrom:
-		f = aggimage.CatromFilter{}
-	case FilterMitchell:
-		f = aggimage.NewMitchellFilter(1.0/3.0, 1.0/3.0)
-	case FilterSpline16:
-		f = aggimage.Spline16Filter{}
-	case FilterSpline36:
-		f = aggimage.Spline36Filter{}
-	case FilterGaussian:
-		f = aggimage.GaussianFilter{}
-	case FilterBessel:
-		f = aggimage.BesselFilter{}
-	case FilterSinc:
-		f = aggimage.NewSincFilter(4.0)
-	case FilterLanczos:
-		f = aggimage.NewLanczosFilter(4.0)
-	case FilterBlackman:
-		f = aggimage.NewBlackmanFilter(4.0)
-	default:
-		f = aggimage.BilinearFilter{}
-	}
-	a.impl.SetImageFilterLUT(aggimage.NewImageFilterLUTWithFilter(f, true))
+	a.impl.ImageFilter(int(ft))
 }
 
 // SetImageFilterRadius sets the image filtering method with a custom radius for supported filters.
 func (a *Agg2D) SetImageFilterRadius(ft ImageFilter, radius float64) {
-	var f aggimage.FilterFunction
-	switch ft {
-	case FilterSinc:
-		f = aggimage.NewSincFilter(radius)
-	case FilterLanczos:
-		f = aggimage.NewLanczosFilter(radius)
-	case FilterBlackman:
-		f = aggimage.NewBlackmanFilter(radius)
-	default:
-		a.ImageFilter(ft)
-		return
-	}
-	a.impl.SetImageFilterLUT(aggimage.NewImageFilterLUTWithFilter(f, true))
+	a.impl.SetImageFilterRadius(int(ft), radius)
 }
 
 // ImageResample sets the image resampling method.
 func (a *Agg2D) ImageResample(r ImageResample) {
 	a.impl.ImageResample(int(r))
+}
+
+// AffineImageResamplePolicy sets the opt-in affine image resample policy.
+func (a *Agg2D) AffineImageResamplePolicy(policy AffineImageResamplePolicy) {
+	a.impl.AffineImageResamplePolicy(int(policy))
 }
 
 // GetImageFilter returns the current image filtering method.
@@ -543,6 +501,11 @@ func (a *Agg2D) GetImageFilter() ImageFilter {
 // GetImageResample returns the current image resampling method.
 func (a *Agg2D) GetImageResample() ImageResample {
 	return ImageResample(a.impl.GetImageResample())
+}
+
+// GetAffineImageResamplePolicy returns the current affine image resample policy.
+func (a *Agg2D) GetAffineImageResamplePolicy() AffineImageResamplePolicy {
+	return AffineImageResamplePolicy(a.impl.GetAffineImageResamplePolicy())
 }
 
 // TextAlignment sets text alignment.

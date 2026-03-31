@@ -49,6 +49,12 @@ const (
 	ResampleOnZoomOut ImageResample = ImageResample(agg2d.ResampleOnZoomOut)
 )
 
+// AffineImageResamplePolicy defines opt-in affine image sampling behavior.
+const (
+	AffineImageResampleAgg2D          AffineImageResamplePolicy = AffineImageResamplePolicy(agg2d.AffineImageResampleAgg2D)
+	AffineImageResamplePreferFiltered AffineImageResamplePolicy = AffineImageResamplePolicy(agg2d.AffineImageResamplePreferFiltered)
+)
+
 // Image represents a raster image that can be used as a rendering target.
 // This matches the C++ Agg2D::Image structure.
 type Image struct {

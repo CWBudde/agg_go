@@ -47,6 +47,18 @@ func TestAgg2DPublicWrappers(t *testing.T) {
 	if a.GetImageBlendMode() != BlendMultiply {
 		t.Fatalf("GetImageBlendMode() = %v, want %v", a.GetImageBlendMode(), BlendMultiply)
 	}
+	a.ImageFilter(NoFilter)
+	if a.GetImageFilter() != NoFilter {
+		t.Fatalf("GetImageFilter() = %v, want %v", a.GetImageFilter(), NoFilter)
+	}
+	a.ImageFilter(Bicubic)
+	if a.GetImageFilter() != Bicubic {
+		t.Fatalf("GetImageFilter() = %v, want %v", a.GetImageFilter(), Bicubic)
+	}
+	a.AffineImageResamplePolicy(AffineImageResamplePreferFiltered)
+	if a.GetAffineImageResamplePolicy() != AffineImageResamplePreferFiltered {
+		t.Fatalf("GetAffineImageResamplePolicy() = %v, want %v", a.GetAffineImageResamplePolicy(), AffineImageResamplePreferFiltered)
+	}
 	a.FillColorRGBA(90, 91, 92, 93)
 	if gotColor := a.GetFillColor(); gotColor != (Color{R: 90, G: 91, B: 92, A: 93}) {
 		t.Fatalf("GetFillColor() = %#v", gotColor)

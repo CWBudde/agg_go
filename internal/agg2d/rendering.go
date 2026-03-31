@@ -521,6 +521,13 @@ func (agg2d *Agg2D) ImageResample(r ImageResample) {
 	agg2d.imageResample = r
 }
 
+// AffineImageResamplePolicy controls how affine image transforms choose
+// between direct filtered spans and the affine resampler when ImageResample is
+// NoResample. The default preserves Agg2D behavior.
+func (agg2d *Agg2D) AffineImageResamplePolicy(policy AffineImageResamplePolicy) {
+	agg2d.affineImageResamplePolicy = policy
+}
+
 // TextAlignment sets text alignment.
 func (agg2d *Agg2D) TextAlignment(alignX, alignY TextAlignment) {
 	agg2d.textAlignX = alignX
@@ -550,6 +557,11 @@ func (agg2d *Agg2D) GetImageFilter() ImageFilter {
 // GetImageResample returns the current image resampling method
 func (agg2d *Agg2D) GetImageResample() ImageResample {
 	return agg2d.imageResample
+}
+
+// GetAffineImageResamplePolicy returns the current affine image resample policy.
+func (agg2d *Agg2D) GetAffineImageResamplePolicy() AffineImageResamplePolicy {
+	return agg2d.affineImageResamplePolicy
 }
 
 // GetMasterAlpha returns the current master alpha value
