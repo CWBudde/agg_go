@@ -70,7 +70,7 @@ package main
 import (
 	"log"
 
-	agg "github.com/MeKo-Christian/agg_go"
+	agg "github.com/CWBudde/agg_go"
 )
 
 func main() {
