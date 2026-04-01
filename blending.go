@@ -1,7 +1,7 @@
 package agg
 
 import (
-	ia "github.com/MeKo-Christian/agg_go/internal/agg2d"
+	ia "github.com/cwbudde/agg_go/internal/agg2d"
 )
 
 // Public blend mode type (aliases internal type so values match).

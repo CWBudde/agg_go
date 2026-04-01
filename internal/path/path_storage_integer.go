@@ -5,8 +5,8 @@ import (
 	"encoding/binary"
 	"math"
 
-	"github.com/MeKo-Christian/agg_go/internal/array"
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/array"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // PathStorageInteger is a compact integer-based path storage container.

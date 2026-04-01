@@ -3,7 +3,7 @@ package rasterizer
 import (
 	"testing"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // TestRasterizerCellsAAStyled_RepeatedResetDoesNotDropCells mirrors the simple variant's

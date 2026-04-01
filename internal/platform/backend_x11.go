@@ -6,7 +6,7 @@ package platform
 import (
 	"fmt"
 
-	"github.com/MeKo-Christian/agg_go/internal/platform/x11"
+	"github.com/cwbudde/agg_go/internal/platform/x11"
 )
 
 // Availability when X11 is built

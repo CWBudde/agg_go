@@ -3,8 +3,8 @@ package effects
 import (
 	"math"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/color"
 )
 
 // SlightBlur provides a special-purpose filter for applying a Gaussian blur

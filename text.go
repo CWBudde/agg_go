@@ -3,7 +3,7 @@ package agg
 import (
 	"errors"
 
-	ia "github.com/MeKo-Christian/agg_go/internal/agg2d"
+	ia "github.com/cwbudde/agg_go/internal/agg2d"
 )
 
 // FontCacheType defines font caching modes (re-exported from internal).

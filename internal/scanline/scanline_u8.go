@@ -1,8 +1,8 @@
 package scanline
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/array"
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/array"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // CoverType is the per-pixel coverage type used by anti-aliased scanlines.
@@ -28,6 +28,7 @@ type ScanlineU8 struct {
 	covers  *array.PodArray[CoverType] // Coverage values array
 	spans   *array.PodArray[Span]      // Spans array
 	curSpan int                        // Index of current span being built
+	iter    sliceIterU8                // Reusable iterator to avoid per-scanline heap churn
 }
 
 // NewScanlineU8 creates an unpacked AA scanline container.
@@ -219,7 +220,11 @@ func (sl *ScanlineU8) Spans() []Span {
 func (sl *ScanlineU8) BeginIterator() ScanlineIterator {
 	spans := sl.Begin()
 	if len(spans) == 0 {
-		return &sliceIterU8{}
+		sl.iter.spans = nil
+		sl.iter.idx = 0
+		return &sl.iter
 	}
-	return &sliceIterU8{spans: spans}
+	sl.iter.spans = spans
+	sl.iter.idx = 0
+	return &sl.iter
 }

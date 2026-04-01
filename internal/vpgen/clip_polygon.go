@@ -1,7 +1,7 @@
 package vpgen
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // VPGenClipPolygon clips streamed polygon vertices to a rectangular clip box,

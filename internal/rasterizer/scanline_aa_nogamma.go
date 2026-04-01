@@ -1,8 +1,8 @@
 package rasterizer
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/scanline"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/scanline"
 )
 
 // RasterizerScanlineAANoGamma is a polygon rasterizer optimized for high-quality

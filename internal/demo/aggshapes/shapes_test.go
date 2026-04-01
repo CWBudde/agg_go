@@ -3,8 +3,8 @@ package aggshapes
 import (
 	"testing"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/path"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/path"
 )
 
 func TestMakeArrows(t *testing.T) {

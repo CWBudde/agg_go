@@ -3,8 +3,8 @@ package lowlevelrunner
 import (
 	"image"
 
-	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/internal/color"
+	agg "github.com/cwbudde/agg_go"
+	"github.com/cwbudde/agg_go/internal/color"
 )
 
 func outputImage(img *agg.Image, encodeLinearRGBToSRGB bool) *image.RGBA {

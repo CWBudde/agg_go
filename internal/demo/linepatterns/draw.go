@@ -3,15 +3,15 @@ package linepatterns
 import (
 	"sync"
 
-	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/buffer"
-	"github.com/MeKo-Christian/agg_go/internal/color"
-	"github.com/MeKo-Christian/agg_go/internal/curves"
-	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
-	"github.com/MeKo-Christian/agg_go/internal/primitives"
-	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
-	outline "github.com/MeKo-Christian/agg_go/internal/renderer/outline"
+	agg "github.com/cwbudde/agg_go"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/buffer"
+	"github.com/cwbudde/agg_go/internal/color"
+	"github.com/cwbudde/agg_go/internal/curves"
+	"github.com/cwbudde/agg_go/internal/pixfmt"
+	"github.com/cwbudde/agg_go/internal/primitives"
+	"github.com/cwbudde/agg_go/internal/rasterizer"
+	outline "github.com/cwbudde/agg_go/internal/renderer/outline"
 )
 
 type curveSourceAdapter struct {

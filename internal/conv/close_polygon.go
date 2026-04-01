@@ -1,7 +1,7 @@
 package conv
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // ConvClosePolygon ensures that polygons are properly closed by automatically

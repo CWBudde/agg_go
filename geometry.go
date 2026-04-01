@@ -3,7 +3,7 @@ package agg
 import (
 	"math"
 
-	"github.com/MeKo-Christian/agg_go/internal/transform"
+	"github.com/cwbudde/agg_go/internal/transform"
 )
 
 // Rect represents an integer rectangle.

@@ -3,8 +3,8 @@ package transform
 import (
 	"math"
 
-	"github.com/MeKo-Christian/agg_go/internal/array"
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/array"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // Status tracks the construction/readiness state of the path transforms.

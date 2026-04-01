@@ -3,13 +3,13 @@
 package bezier
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/color"
-	"github.com/MeKo-Christian/agg_go/internal/conv"
-	"github.com/MeKo-Christian/agg_go/internal/ctrl"
-	"github.com/MeKo-Christian/agg_go/internal/ctrl/polygon"
-	"github.com/MeKo-Christian/agg_go/internal/curves"
-	"github.com/MeKo-Christian/agg_go/internal/shapes"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/color"
+	"github.com/cwbudde/agg_go/internal/conv"
+	"github.com/cwbudde/agg_go/internal/ctrl"
+	"github.com/cwbudde/agg_go/internal/ctrl/polygon"
+	"github.com/cwbudde/agg_go/internal/curves"
+	"github.com/cwbudde/agg_go/internal/shapes"
 )
 
 // BezierCtrl implements an interactive cubic Bezier curve control.

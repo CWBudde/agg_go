@@ -3,7 +3,7 @@
 package color
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // Constants for RGBA16 fixed-point arithmetic

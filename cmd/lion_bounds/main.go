@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	liondemo "github.com/MeKo-Christian/agg_go/internal/demo/lion"
+	"github.com/cwbudde/agg_go/internal/basics"
+	liondemo "github.com/cwbudde/agg_go/internal/demo/lion"
 )
 
 func main() {

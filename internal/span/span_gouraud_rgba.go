@@ -3,7 +3,7 @@ package span
 import (
 	"math"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // SubpixelShift defines the subpixel precision shift (4 bits = 16 subpixels per pixel).

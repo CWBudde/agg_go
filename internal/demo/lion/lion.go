@@ -4,9 +4,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/color"
-	"github.com/MeKo-Christian/agg_go/internal/path"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/color"
+	"github.com/cwbudde/agg_go/internal/path"
 )
 
 // LionData holds the parsed lion artwork, structured like C++ parse_lion output:

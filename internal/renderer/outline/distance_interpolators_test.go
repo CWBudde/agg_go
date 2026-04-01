@@ -5,7 +5,7 @@ package outline
 import (
 	"testing"
 
-	"github.com/MeKo-Christian/agg_go/internal/primitives"
+	"github.com/cwbudde/agg_go/internal/primitives"
 )
 
 // TestDistanceInterpolator0Comprehensive tests all DistanceInterpolator0 functionality.

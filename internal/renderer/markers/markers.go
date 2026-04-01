@@ -3,9 +3,9 @@
 package markers
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/primitives"
-	primitives_pkg "github.com/MeKo-Christian/agg_go/internal/renderer/primitives"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/primitives"
+	primitives_pkg "github.com/cwbudde/agg_go/internal/renderer/primitives"
 )
 
 // RendererMarkers provides marker drawing operations on top of a base renderer.

@@ -4,16 +4,16 @@ package main
 import (
 	"math"
 
-	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	icol "github.com/MeKo-Christian/agg_go/internal/color"
-	"github.com/MeKo-Christian/agg_go/internal/conv"
-	ctrlbase "github.com/MeKo-Christian/agg_go/internal/ctrl"
-	gammactrl "github.com/MeKo-Christian/agg_go/internal/ctrl/gamma"
-	"github.com/MeKo-Christian/agg_go/internal/gsv"
-	"github.com/MeKo-Christian/agg_go/internal/shapes"
-	"github.com/MeKo-Christian/agg_go/internal/transform"
+	agg "github.com/cwbudde/agg_go"
+	"github.com/cwbudde/agg_go/examples/shared/lowlevelrunner"
+	"github.com/cwbudde/agg_go/internal/basics"
+	icol "github.com/cwbudde/agg_go/internal/color"
+	"github.com/cwbudde/agg_go/internal/conv"
+	ctrlbase "github.com/cwbudde/agg_go/internal/ctrl"
+	gammactrl "github.com/cwbudde/agg_go/internal/ctrl/gamma"
+	"github.com/cwbudde/agg_go/internal/gsv"
+	"github.com/cwbudde/agg_go/internal/shapes"
+	"github.com/cwbudde/agg_go/internal/transform"
 )
 
 const (

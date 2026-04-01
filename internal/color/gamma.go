@@ -1,7 +1,7 @@
 package color
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // lut8Like is the minimal 8-bit gamma-LUT contract used by the color helpers.

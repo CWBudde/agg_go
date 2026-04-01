@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	agg "github.com/MeKo-Christian/agg_go"
+	agg "github.com/cwbudde/agg_go"
 )
 
 func TestCombineAndRenderProducesResult(t *testing.T) {

@@ -3,7 +3,7 @@ package span
 import (
 	"testing"
 
-	"github.com/MeKo-Christian/agg_go/internal/transform"
+	"github.com/cwbudde/agg_go/internal/transform"
 )
 
 // MockSubdivInterpolator is a test interpolator that implements SubdivInterpolator

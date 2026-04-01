@@ -3,7 +3,7 @@ package main
 import (
 	"math"
 
-	"github.com/MeKo-Christian/agg_go/internal/demo/gpctest"
+	"github.com/cwbudde/agg_go/internal/demo/gpctest"
 )
 
 var (

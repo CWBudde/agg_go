@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	agg "github.com/MeKo-Christian/agg_go"
-	liondemo "github.com/MeKo-Christian/agg_go/internal/demo/lion"
+	agg "github.com/cwbudde/agg_go"
+	liondemo "github.com/cwbudde/agg_go/internal/demo/lion"
 )
 
 var (

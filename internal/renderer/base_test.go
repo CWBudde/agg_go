@@ -3,7 +3,7 @@ package renderer
 import (
 	"testing"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // MockPixelFormat is a typed mock pixel format for tests.

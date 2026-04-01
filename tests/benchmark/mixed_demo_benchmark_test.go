@@ -4,8 +4,8 @@ import (
 	"runtime"
 	"testing"
 
-	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/internal/demo/benchmarkmix"
+	agg "github.com/cwbudde/agg_go"
+	"github.com/cwbudde/agg_go/internal/demo/benchmarkmix"
 )
 
 func BenchmarkMixedDemoScene(b *testing.B) {

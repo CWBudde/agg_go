@@ -1,8 +1,8 @@
 package vcgen
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/array"
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/array"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // VCGenVertexSequence is a vertex generator that stores and replays a sequence of vertices

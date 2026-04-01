@@ -3,7 +3,7 @@ package integration
 import (
 	"testing"
 
-	agg "github.com/MeKo-Christian/agg_go"
+	agg "github.com/cwbudde/agg_go"
 )
 
 // TestContextAPIClear tests that Clear fills the entire buffer with the given color.

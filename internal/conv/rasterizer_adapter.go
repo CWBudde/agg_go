@@ -1,6 +1,6 @@
 package conv
 
-import "github.com/MeKo-Christian/agg_go/internal/rasterizer"
+import "github.com/cwbudde/agg_go/internal/rasterizer"
 
 // RasterizerVertexSourceAdapter bridges a converter-style VertexSource to the
 // rasterizer AddPath contract while preserving all path commands.

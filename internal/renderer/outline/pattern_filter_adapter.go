@@ -2,8 +2,8 @@
 package outline
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/color"
-	"github.com/MeKo-Christian/agg_go/internal/primitives"
+	"github.com/cwbudde/agg_go/internal/color"
+	"github.com/cwbudde/agg_go/internal/primitives"
 )
 
 const rgba8ToFloat64 = 1.0 / 255.0

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math"
 
-	alphamask2demo "github.com/MeKo-Christian/agg_go/internal/demo/alphamask2"
+	alphamask2demo "github.com/cwbudde/agg_go/internal/demo/alphamask2"
 )
 
 const (

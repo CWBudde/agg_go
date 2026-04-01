@@ -12,16 +12,16 @@ package main
 import (
 	"math"
 
-	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	icol "github.com/MeKo-Christian/agg_go/internal/color"
-	"github.com/MeKo-Christian/agg_go/internal/conv"
-	ctrlbase "github.com/MeKo-Christian/agg_go/internal/ctrl"
-	checkboxctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/checkbox"
-	sliderctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/slider"
-	"github.com/MeKo-Christian/agg_go/internal/image"
-	"github.com/MeKo-Christian/agg_go/internal/path"
+	agg "github.com/cwbudde/agg_go"
+	"github.com/cwbudde/agg_go/examples/shared/lowlevelrunner"
+	"github.com/cwbudde/agg_go/internal/basics"
+	icol "github.com/cwbudde/agg_go/internal/color"
+	"github.com/cwbudde/agg_go/internal/conv"
+	ctrlbase "github.com/cwbudde/agg_go/internal/ctrl"
+	checkboxctrl "github.com/cwbudde/agg_go/internal/ctrl/checkbox"
+	sliderctrl "github.com/cwbudde/agg_go/internal/ctrl/slider"
+	"github.com/cwbudde/agg_go/internal/image"
+	"github.com/cwbudde/agg_go/internal/path"
 )
 
 const (

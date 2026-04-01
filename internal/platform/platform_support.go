@@ -17,8 +17,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/MeKo-Christian/agg_go/internal/buffer"
-	"github.com/MeKo-Christian/agg_go/internal/platform/types"
+	"github.com/cwbudde/agg_go/internal/buffer"
+	"github.com/cwbudde/agg_go/internal/platform/types"
 )
 
 // Type aliases to avoid breaking existing code while using shared types

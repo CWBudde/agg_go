@@ -4,9 +4,10 @@ package agg2d
 import (
 	"testing"
 
-	"github.com/MeKo-Christian/agg_go/internal/color"
-	"github.com/MeKo-Christian/agg_go/internal/span"
-	"github.com/MeKo-Christian/agg_go/internal/transform"
+	"github.com/cwbudde/agg_go/internal/color"
+	aggimage "github.com/cwbudde/agg_go/internal/image"
+	"github.com/cwbudde/agg_go/internal/span"
+	"github.com/cwbudde/agg_go/internal/transform"
 )
 
 // TestTransformImage tests the primary TransformImage method.
@@ -985,6 +986,158 @@ func TestNewImageFilterGeneratorDispatch(t *testing.T) {
 			t.Fatalf("expected general LUT generator, got %T", gen)
 		}
 	})
+}
+
+func makeHighFrequencyTraceFixture() []uint8 {
+	buf := make([]uint8, 4*4*4)
+	colors := [][4]uint8{
+		{255, 0, 0, 255},
+		{0, 255, 0, 255},
+		{0, 0, 255, 255},
+		{255, 255, 0, 255},
+	}
+	for y := range 4 {
+		for x := range 4 {
+			c := colors[(x+y)%len(colors)]
+			i := (y*4 + x) * 4
+			buf[i+0] = c[0]
+			buf[i+1] = c[1]
+			buf[i+2] = c[2]
+			buf[i+3] = c[3]
+		}
+	}
+	return buf
+}
+
+func firstVisiblePixel(buf []uint8, width, height int) (int, int, bool) {
+	for y := range height {
+		for x := range width {
+			if buf[(y*width+x)*4+3] != 0 {
+				return x, y, true
+			}
+		}
+	}
+	return 0, 0, false
+}
+
+func traceAffineNoResampleSamples(startX, startY, length int, dst [6]float64) []string {
+	src := [6]float64{0, 0, 4, 0, 4, 4}
+	mtx := transform.NewTransAffineParlToParl(src, dst)
+	mtx.Invert()
+
+	nearestInterpolator := span.NewSpanInterpolatorLinearDefault(mtx)
+	bilinearInterpolator := span.NewSpanInterpolatorLinearDefault(mtx)
+	nearestInterpolator.Begin(float64(startX)+0.5, float64(startY)+0.5, length)
+	bilinearInterpolator.Begin(float64(startX)+0.5, float64(startY)+0.5, length)
+
+	trace := make([]string, 0, length)
+	for i := range length {
+		nxHr, nyHr := nearestInterpolator.Coordinates()
+		bxHr, byHr := bilinearInterpolator.Coordinates()
+
+		nearestX := nxHr >> aggimage.ImageSubpixelShift
+		nearestY := nyHr >> aggimage.ImageSubpixelShift
+
+		shiftedX := bxHr - aggimage.ImageSubpixelScale/2
+		shiftedY := byHr - aggimage.ImageSubpixelScale/2
+		baseX := shiftedX >> aggimage.ImageSubpixelShift
+		baseY := shiftedY >> aggimage.ImageSubpixelShift
+		fracX := shiftedX & aggimage.ImageSubpixelMask
+		fracY := shiftedY & aggimage.ImageSubpixelMask
+		w00 := (aggimage.ImageSubpixelScale - fracX) * (aggimage.ImageSubpixelScale - fracY)
+		w10 := fracX * (aggimage.ImageSubpixelScale - fracY)
+		w01 := (aggimage.ImageSubpixelScale - fracX) * fracY
+		w11 := fracX * fracY
+
+		trace = append(trace,
+			"dest=("+itoa(startX+i)+","+itoa(startY)+") "+
+				"nearestRaw=("+itoa(nxHr)+","+itoa(nyHr)+") src=("+itoa(nearestX)+","+itoa(nearestY)+") "+
+				"bilinearRaw=("+itoa(bxHr)+","+itoa(byHr)+") shifted=("+itoa(shiftedX)+","+itoa(shiftedY)+") "+
+				"base=("+itoa(baseX)+","+itoa(baseY)+") weights=["+itoa(w00)+","+itoa(w10)+","+itoa(w01)+","+itoa(w11)+"]",
+		)
+
+		nearestInterpolator.Next()
+		bilinearInterpolator.Next()
+	}
+	return trace
+}
+
+func itoa(v int) string {
+	if v == 0 {
+		return "0"
+	}
+	negative := v < 0
+	if negative {
+		v = -v
+	}
+	var digits [20]byte
+	i := len(digits)
+	for v > 0 {
+		i--
+		digits[i] = byte('0' + v%10)
+		v /= 10
+	}
+	if negative {
+		i--
+		digits[i] = '-'
+	}
+	return string(digits[i:])
+}
+
+func TestAffineNoResampleNearestBilinearTrace(t *testing.T) {
+	cases := []struct {
+		name   string
+		render func(t *testing.T, img *Image, buf []uint8)
+		dst    [6]float64
+	}{
+		{
+			name: "TransformImageSimple",
+			render: func(t *testing.T, img *Image, buf []uint8) {
+				t.Helper()
+				agg2d := NewAgg2D()
+				agg2d.Attach(buf, 8, 8, 8*4)
+				agg2d.ImageFilter(NoFilter)
+				agg2d.ImageResample(NoResample)
+				if err := agg2d.TransformImageSimple(img, 0.35, 0.4, 6.75, 5.8); err != nil {
+					t.Fatalf("TransformImageSimple: %v", err)
+				}
+			},
+			dst: [6]float64{0.35, 0.4, 6.75, 0.4, 6.75, 5.8},
+		},
+		{
+			name: "TransformImageParallelogram",
+			render: func(t *testing.T, img *Image, buf []uint8) {
+				t.Helper()
+				agg2d := NewAgg2D()
+				agg2d.Attach(buf, 8, 8, 8*4)
+				agg2d.ImageFilter(NoFilter)
+				agg2d.ImageResample(NoResample)
+				if err := agg2d.TransformImageParallelogram(img, 0, 0, 4, 4, []float64{0.6, -0.15, 5.32, 1.53, 4.0, 6.61}); err != nil {
+					t.Fatalf("TransformImageParallelogram: %v", err)
+				}
+			},
+			dst: [6]float64{0.6, -0.15, 5.32, 1.53, 4.0, 6.61},
+		},
+	}
+
+	img := NewImage(makeHighFrequencyTraceFixture(), 4, 4, 4*4)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			buf := make([]uint8, 8*8*4)
+			tc.render(t, img, buf)
+			startX, startY, ok := firstVisiblePixel(buf, 8, 8)
+			if !ok {
+				t.Fatal("expected affine transform to render visible pixels")
+			}
+			length := 4
+			if remaining := 8 - startX; remaining < length {
+				length = remaining
+			}
+			for _, line := range traceAffineNoResampleSamples(startX, startY, length, tc.dst) {
+				t.Log(line)
+			}
+		})
+	}
 }
 
 // BenchmarkTransformImage benchmarks the image transformation performance.

@@ -4,15 +4,15 @@ package main
 import (
 	"fmt"
 
-	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
-	icol "github.com/MeKo-Christian/agg_go/internal/color"
-	ctrlbase "github.com/MeKo-Christian/agg_go/internal/ctrl"
-	polygonctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/polygon"
-	rboxctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/rbox"
-	sliderctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/slider"
-	"github.com/MeKo-Christian/agg_go/internal/demo/imageresample"
-	"github.com/MeKo-Christian/agg_go/internal/gsv"
+	agg "github.com/cwbudde/agg_go"
+	"github.com/cwbudde/agg_go/examples/shared/lowlevelrunner"
+	icol "github.com/cwbudde/agg_go/internal/color"
+	ctrlbase "github.com/cwbudde/agg_go/internal/ctrl"
+	polygonctrl "github.com/cwbudde/agg_go/internal/ctrl/polygon"
+	rboxctrl "github.com/cwbudde/agg_go/internal/ctrl/rbox"
+	sliderctrl "github.com/cwbudde/agg_go/internal/ctrl/slider"
+	"github.com/cwbudde/agg_go/internal/demo/imageresample"
+	"github.com/cwbudde/agg_go/internal/gsv"
 )
 
 const (

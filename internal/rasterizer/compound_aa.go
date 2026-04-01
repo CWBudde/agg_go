@@ -4,8 +4,8 @@ import (
 	"math"
 	"sort"
 
-	"github.com/MeKo-Christian/agg_go/internal/array"
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/array"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // AA scale constants for compound rasterization

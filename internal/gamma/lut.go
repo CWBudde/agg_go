@@ -3,7 +3,7 @@ package gamma
 import (
 	"math"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // Unsigned is used to constrain LoResT/HiResT to unsigned integer-like types.

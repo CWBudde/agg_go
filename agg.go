@@ -36,10 +36,10 @@ import (
 	"math"
 	"os"
 
-	"github.com/MeKo-Christian/agg_go/internal/agg2d"
-	"github.com/MeKo-Christian/agg_go/internal/color"
-	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
-	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
+	"github.com/cwbudde/agg_go/internal/agg2d"
+	"github.com/cwbudde/agg_go/internal/color"
+	"github.com/cwbudde/agg_go/internal/rasterizer"
+	renscan "github.com/cwbudde/agg_go/internal/renderer/scanline"
 )
 
 // Version information

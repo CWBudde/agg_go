@@ -3,8 +3,8 @@ package glyph
 import (
 	"testing"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/fonts"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/fonts"
 )
 
 func TestNewGlyphRasterBin(t *testing.T) {

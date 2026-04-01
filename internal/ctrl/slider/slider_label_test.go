@@ -3,7 +3,7 @@ package slider
 import (
 	"testing"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 func TestSliderCtrlLabelRendering(t *testing.T) {

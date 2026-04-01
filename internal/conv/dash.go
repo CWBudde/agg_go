@@ -1,7 +1,7 @@
 package conv
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/vcgen"
+	"github.com/cwbudde/agg_go/internal/vcgen"
 )
 
 // ConvDash is the Go equivalent of AGG's conv_dash. It wraps VCGenDash behind

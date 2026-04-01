@@ -1,6 +1,6 @@
 package main
 
-import "github.com/MeKo-Christian/agg_go/internal/demo/imagefilters2"
+import "github.com/cwbudde/agg_go/internal/demo/imagefilters2"
 
 var imageFilters2State = imagefilters2.DefaultState()
 

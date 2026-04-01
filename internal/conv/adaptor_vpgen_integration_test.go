@@ -3,8 +3,8 @@ package conv
 import (
 	"testing"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/vpgen"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/vpgen"
 )
 
 func TestConvAdaptorVPGen_ClipPolygon(t *testing.T) {

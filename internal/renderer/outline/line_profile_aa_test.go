@@ -6,7 +6,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // TestGammaFunction is a test implementation of GammaFunction.

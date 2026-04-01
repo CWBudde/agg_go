@@ -4,8 +4,8 @@ import (
 	"math"
 	"unsafe"
 
-	"github.com/MeKo-Christian/agg_go/internal/array"
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/array"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // ScanlineInterface is the local scanline contract used by storage helpers to

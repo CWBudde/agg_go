@@ -1,7 +1,7 @@
 package conv
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/vcgen"
+	"github.com/cwbudde/agg_go/internal/vcgen"
 )
 
 // ConvClipPolygon is the Go equivalent of AGG's conv_clip_polygon. It wraps

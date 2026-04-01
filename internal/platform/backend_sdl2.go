@@ -6,7 +6,7 @@ package platform
 import (
 	"fmt"
 
-	"github.com/MeKo-Christian/agg_go/internal/platform/sdl2"
+	"github.com/cwbudde/agg_go/internal/platform/sdl2"
 )
 
 // Availability when SDL2 is built

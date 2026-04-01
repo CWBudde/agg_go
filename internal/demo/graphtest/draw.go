@@ -3,15 +3,15 @@ package graphtest
 import (
 	"math"
 
-	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	icolor "github.com/MeKo-Christian/agg_go/internal/color"
-	"github.com/MeKo-Christian/agg_go/internal/conv"
-	checkboxctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/checkbox"
-	rboxctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/rbox"
-	sliderctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/slider"
-	"github.com/MeKo-Christian/agg_go/internal/shapes"
-	"github.com/MeKo-Christian/agg_go/internal/vcgen"
+	agg "github.com/cwbudde/agg_go"
+	"github.com/cwbudde/agg_go/internal/basics"
+	icolor "github.com/cwbudde/agg_go/internal/color"
+	"github.com/cwbudde/agg_go/internal/conv"
+	checkboxctrl "github.com/cwbudde/agg_go/internal/ctrl/checkbox"
+	rboxctrl "github.com/cwbudde/agg_go/internal/ctrl/rbox"
+	sliderctrl "github.com/cwbudde/agg_go/internal/ctrl/slider"
+	"github.com/cwbudde/agg_go/internal/shapes"
+	"github.com/cwbudde/agg_go/internal/vcgen"
 )
 
 type Config struct {

@@ -5,12 +5,12 @@ import (
 	"math"
 	"time"
 
-	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/conv"
-	"github.com/MeKo-Christian/agg_go/internal/demo/aggshapes"
-	"github.com/MeKo-Christian/agg_go/internal/gpc"
-	"github.com/MeKo-Christian/agg_go/internal/path"
+	agg "github.com/cwbudde/agg_go"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/conv"
+	"github.com/cwbudde/agg_go/internal/demo/aggshapes"
+	"github.com/cwbudde/agg_go/internal/gpc"
+	"github.com/cwbudde/agg_go/internal/path"
 )
 
 type Config struct {

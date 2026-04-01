@@ -1,6 +1,6 @@
 package font
 
-import "github.com/MeKo-Christian/agg_go/internal/basics"
+import "github.com/cwbudde/agg_go/internal/basics"
 
 // IntegerPathStorage abstracts the integer outline storages used by the
 // FreeType-backed engines for 16-bit and 32-bit glyph coordinate paths.

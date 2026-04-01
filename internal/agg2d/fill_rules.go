@@ -3,7 +3,7 @@
 package agg2d
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // FillEvenOdd sets the fill rule for path rendering.

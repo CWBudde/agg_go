@@ -5,12 +5,12 @@ package span
 import (
 	"math"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/conv"
-	"github.com/MeKo-Christian/agg_go/internal/path"
-	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
-	rprimitives "github.com/MeKo-Christian/agg_go/internal/renderer/primitives"
-	"github.com/MeKo-Christian/agg_go/internal/transform"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/conv"
+	"github.com/cwbudde/agg_go/internal/path"
+	"github.com/cwbudde/agg_go/internal/rasterizer"
+	rprimitives "github.com/cwbudde/agg_go/internal/renderer/primitives"
+	"github.com/cwbudde/agg_go/internal/transform"
 )
 
 // PathVertexAdapter adapts PathBase to the VertexSource interface used by conv

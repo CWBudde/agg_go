@@ -4,8 +4,8 @@ package idea
 import (
 	"math"
 
-	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/internal/gamma"
+	agg "github.com/cwbudde/agg_go"
+	"github.com/cwbudde/agg_go/internal/gamma"
 )
 
 const (

@@ -3,7 +3,7 @@ package rasterizer
 import (
 	"testing"
 
-	"github.com/MeKo-Christian/agg_go/internal/primitives"
+	"github.com/cwbudde/agg_go/internal/primitives"
 )
 
 // MockOutlineAARenderer implements OutlineAARenderer for testing

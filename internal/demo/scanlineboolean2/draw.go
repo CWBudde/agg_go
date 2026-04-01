@@ -5,14 +5,14 @@ import (
 	"math"
 	"time"
 
-	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/conv"
-	"github.com/MeKo-Christian/agg_go/internal/demo/aggshapes"
-	"github.com/MeKo-Christian/agg_go/internal/path"
-	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
-	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
-	isc "github.com/MeKo-Christian/agg_go/internal/scanline"
+	agg "github.com/cwbudde/agg_go"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/conv"
+	"github.com/cwbudde/agg_go/internal/demo/aggshapes"
+	"github.com/cwbudde/agg_go/internal/path"
+	"github.com/cwbudde/agg_go/internal/rasterizer"
+	renscan "github.com/cwbudde/agg_go/internal/renderer/scanline"
+	isc "github.com/cwbudde/agg_go/internal/scanline"
 )
 
 type Config struct {

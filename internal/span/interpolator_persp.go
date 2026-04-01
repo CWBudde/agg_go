@@ -5,8 +5,8 @@ package span
 import (
 	"math"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/transform"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/transform"
 )
 
 // SpanInterpolatorPerspectiveExact implements exact perspective span interpolation.

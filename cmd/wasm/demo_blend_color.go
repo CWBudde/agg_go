@@ -3,7 +3,7 @@ package main
 import (
 	"math"
 
-	blendcolor "github.com/MeKo-Christian/agg_go/internal/demo/blendcolor"
+	blendcolor "github.com/cwbudde/agg_go/internal/demo/blendcolor"
 )
 
 var (

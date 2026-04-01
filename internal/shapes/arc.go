@@ -6,7 +6,7 @@ package shapes
 import (
 	"math"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // Arc generates vertices along an elliptical arc.

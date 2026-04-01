@@ -5,7 +5,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/MeKo-Christian/agg_go/internal/agg2d"
+	"github.com/cwbudde/agg_go/internal/agg2d"
 )
 
 var (

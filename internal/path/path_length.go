@@ -1,7 +1,7 @@
 package path
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // PathLength calculates the geometric length of a path source using the same

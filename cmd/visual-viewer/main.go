@@ -17,7 +17,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/MeKo-Christian/agg_go/tests/visual/framework"
+	"github.com/cwbudde/agg_go/tests/visual/framework"
 )
 
 const (

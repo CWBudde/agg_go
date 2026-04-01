@@ -1,9 +1,9 @@
 package span
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/image"
-	"github.com/MeKo-Christian/agg_go/internal/transform"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/image"
+	"github.com/cwbudde/agg_go/internal/transform"
 )
 
 // SourceInterface is the minimal source contract used by the base image-filter

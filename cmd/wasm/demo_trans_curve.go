@@ -4,7 +4,7 @@ package main
 import (
 	"math"
 
-	"github.com/MeKo-Christian/agg_go/internal/demo/transcurve"
+	"github.com/cwbudde/agg_go/internal/demo/transcurve"
 )
 
 var (

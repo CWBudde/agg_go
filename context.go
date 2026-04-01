@@ -1,8 +1,8 @@
 package agg
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/shapes"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/shapes"
 )
 
 // Context provides the main high-level drawing API for typical Go callers.

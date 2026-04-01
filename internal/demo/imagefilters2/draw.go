@@ -4,9 +4,9 @@ package imagefilters2
 import (
 	"math"
 
-	agg "github.com/MeKo-Christian/agg_go"
-	iagg2d "github.com/MeKo-Christian/agg_go/internal/agg2d"
-	imgacc "github.com/MeKo-Christian/agg_go/internal/image"
+	agg "github.com/cwbudde/agg_go"
+	iagg2d "github.com/cwbudde/agg_go/internal/agg2d"
+	imgacc "github.com/cwbudde/agg_go/internal/image"
 )
 
 const (

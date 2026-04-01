@@ -1,8 +1,8 @@
 package scanline
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/array"
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/array"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // SpanP8 is the Go equivalent of AGG's scanline_p8::span. A negative Len marks

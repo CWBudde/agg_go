@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/MeKo-Christian/agg_go/internal/curves"
+	"github.com/cwbudde/agg_go/internal/curves"
 )
 
 func TestBSplineValues(t *testing.T) {

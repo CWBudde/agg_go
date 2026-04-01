@@ -1,7 +1,7 @@
 package path
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // VertexSource interface represents a source of path vertices.

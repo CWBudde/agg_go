@@ -4,7 +4,7 @@
 package config
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/buffer"
+	"github.com/cwbudde/agg_go/internal/buffer"
 )
 
 // RenderingBufferInterface defines the common interface for all rendering buffer types.

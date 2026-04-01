@@ -2,7 +2,7 @@
 // This implements RGB colors without alpha channel (24-bit RGB).
 package color
 
-import "github.com/MeKo-Christian/agg_go/internal/basics"
+import "github.com/cwbudde/agg_go/internal/basics"
 
 // RGB represents a floating-point RGB color (base type, no alpha)
 type RGB struct {

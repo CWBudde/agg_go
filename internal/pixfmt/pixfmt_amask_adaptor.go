@@ -1,8 +1,8 @@
 package pixfmt
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/color"
 )
 
 // AlphaMaskInterface is the Go equivalent of AGG alpha-mask classes used by

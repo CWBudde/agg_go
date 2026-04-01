@@ -2,7 +2,7 @@
 // This package handles various pixel access patterns and boundary conditions.
 package image
 
-import "github.com/MeKo-Christian/agg_go/internal/basics"
+import "github.com/cwbudde/agg_go/internal/basics"
 
 // PixelFormat defines the interface that pixel formats must implement for image accessors.
 type PixelFormat interface {

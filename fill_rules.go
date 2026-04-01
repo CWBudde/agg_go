@@ -1,6 +1,6 @@
 package agg
 
-import "github.com/MeKo-Christian/agg_go/internal/agg2d"
+import "github.com/cwbudde/agg_go/internal/agg2d"
 
 // FillRuleExamples re-exports the helper examples for the supported fill rules.
 type FillRuleExamples = agg2d.FillRuleExamples
