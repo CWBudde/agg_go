@@ -7,7 +7,7 @@ save the result as a PNG.
 
 ```bash
 go mod init example.com/agg-demo
-go get github.com/MeKo-Christian/agg_go
+go get github.com/CWBudde/agg_go
 ```
 
 ## 2. Draw into a Context
@@ -20,7 +20,7 @@ package main
 import (
 	"log"
 
-	agg "github.com/MeKo-Christian/agg_go"
+	agg "github.com/CWBudde/agg_go"
 )
 
 func main() {

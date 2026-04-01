@@ -214,7 +214,7 @@ Go:
 Add the module in the usual Go way:
 
 ```bash
-go get github.com/MeKo-Christian/agg_go
+go get github.com/CWBudde/agg_go
 ```
 
 Basic library build:
