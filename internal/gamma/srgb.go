@@ -1,7 +1,7 @@
 package gamma
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // ---- sRGB lookup tables (AGG sRGB_lut) ------------------------------------

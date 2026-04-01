@@ -4,8 +4,8 @@ package span
 import (
 	"testing"
 
-	"github.com/MeKo-Christian/agg_go/internal/color"
-	"github.com/MeKo-Christian/agg_go/internal/primitives"
+	"github.com/cwbudde/agg_go/internal/color"
+	"github.com/cwbudde/agg_go/internal/primitives"
 )
 
 // Test data for pattern filters

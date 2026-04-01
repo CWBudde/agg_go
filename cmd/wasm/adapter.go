@@ -3,10 +3,10 @@ package main
 import (
 	"math"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	liondemo "github.com/MeKo-Christian/agg_go/internal/demo/lion"
-	"github.com/MeKo-Christian/agg_go/internal/path"
-	"github.com/MeKo-Christian/agg_go/internal/shapes"
+	"github.com/cwbudde/agg_go/internal/basics"
+	liondemo "github.com/cwbudde/agg_go/internal/demo/lion"
+	"github.com/cwbudde/agg_go/internal/path"
+	"github.com/cwbudde/agg_go/internal/shapes"
 )
 
 // pathSourceAdapter bridges PathStorageStl (uint Rewind) to the rasterizer's

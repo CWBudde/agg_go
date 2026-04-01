@@ -1,9 +1,9 @@
 package conv
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/curves"
-	"github.com/MeKo-Christian/agg_go/internal/path"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/curves"
+	"github.com/cwbudde/agg_go/internal/path"
 )
 
 // ConvCurveInteger is a specialized curve converter for integer path storage

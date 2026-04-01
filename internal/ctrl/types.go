@@ -1,6 +1,6 @@
 package ctrl
 
-import "github.com/MeKo-Christian/agg_go/internal/basics"
+import "github.com/cwbudde/agg_go/internal/basics"
 
 // Common constants for control implementations
 

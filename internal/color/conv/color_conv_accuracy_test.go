@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 	"testing"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // TestRGB555AccuracyVsCpp tests RGB555 conversion accuracy against expected C++ AGG results.

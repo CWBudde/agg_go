@@ -5,13 +5,13 @@ import (
 	"math"
 	"math/rand"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/buffer"
-	"github.com/MeKo-Christian/agg_go/internal/color"
-	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
-	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
-	"github.com/MeKo-Christian/agg_go/internal/renderer"
-	"github.com/MeKo-Christian/agg_go/internal/scanline"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/buffer"
+	"github.com/cwbudde/agg_go/internal/color"
+	"github.com/cwbudde/agg_go/internal/pixfmt"
+	"github.com/cwbudde/agg_go/internal/rasterizer"
+	"github.com/cwbudde/agg_go/internal/renderer"
+	"github.com/cwbudde/agg_go/internal/scanline"
 )
 
 const (

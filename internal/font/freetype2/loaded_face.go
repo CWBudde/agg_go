@@ -48,11 +48,11 @@ import (
 	"math"
 	"unsafe"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/fonts"
-	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
-	"github.com/MeKo-Christian/agg_go/internal/scanline"
-	"github.com/MeKo-Christian/agg_go/internal/transform"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/fonts"
+	"github.com/cwbudde/agg_go/internal/rasterizer"
+	"github.com/cwbudde/agg_go/internal/scanline"
+	"github.com/cwbudde/agg_go/internal/transform"
 )
 
 // LoadedFace represents a loaded font face with instance management capabilities.

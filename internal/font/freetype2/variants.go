@@ -8,8 +8,8 @@ package freetype2
 import (
 	"unsafe"
 
-	"github.com/MeKo-Christian/agg_go/internal/path"
-	"github.com/MeKo-Christian/agg_go/internal/scanline"
+	"github.com/cwbudde/agg_go/internal/path"
+	"github.com/cwbudde/agg_go/internal/scanline"
 )
 
 // FontEngineInt16 uses 16-bit precision (10.6 format) for vector cache.

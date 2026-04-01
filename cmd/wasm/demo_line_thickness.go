@@ -1,6 +1,6 @@
 package main
 
-import "github.com/MeKo-Christian/agg_go/internal/demo/linethickness"
+import "github.com/cwbudde/agg_go/internal/demo/linethickness"
 
 // Port of AGG C++ line_thickness.cpp.
 //

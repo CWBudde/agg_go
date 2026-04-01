@@ -6,13 +6,13 @@ import (
 	"math"
 	"time"
 
-	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
-	icol "github.com/MeKo-Christian/agg_go/internal/color"
-	ctrlbase "github.com/MeKo-Christian/agg_go/internal/ctrl"
-	rboxctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/rbox"
-	"github.com/MeKo-Christian/agg_go/internal/demo/imageperspective"
-	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
+	agg "github.com/cwbudde/agg_go"
+	"github.com/cwbudde/agg_go/examples/shared/lowlevelrunner"
+	icol "github.com/cwbudde/agg_go/internal/color"
+	ctrlbase "github.com/cwbudde/agg_go/internal/ctrl"
+	rboxctrl "github.com/cwbudde/agg_go/internal/ctrl/rbox"
+	"github.com/cwbudde/agg_go/internal/demo/imageperspective"
+	"github.com/cwbudde/agg_go/internal/rasterizer"
 )
 
 const handleRadius = 5.0

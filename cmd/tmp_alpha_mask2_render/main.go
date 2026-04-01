@@ -5,8 +5,8 @@ import (
 	"image/png"
 	"os"
 
-	agg "github.com/MeKo-Christian/agg_go"
-	alphamask2 "github.com/MeKo-Christian/agg_go/internal/demo/alphamask2"
+	agg "github.com/cwbudde/agg_go"
+	alphamask2 "github.com/cwbudde/agg_go/internal/demo/alphamask2"
 )
 
 func main() {

@@ -2,7 +2,7 @@
 package renderer
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // PixelFormat is the minimal pixel-format contract required by RendererBase.

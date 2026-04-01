@@ -3,8 +3,8 @@
 package ctrl
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/transform"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/transform"
 )
 
 // Ctrl defines the core control interface that all AGG controls must implement.

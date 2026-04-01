@@ -2,14 +2,14 @@
 package main
 
 import (
-	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/color"
-	ctrlbase "github.com/MeKo-Christian/agg_go/internal/ctrl"
-	bezierctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/bezier"
-	sliderctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/slider"
-	"github.com/MeKo-Christian/agg_go/internal/demo/linepatterns"
+	agg "github.com/cwbudde/agg_go"
+	"github.com/cwbudde/agg_go/examples/shared/lowlevelrunner"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/color"
+	ctrlbase "github.com/cwbudde/agg_go/internal/ctrl"
+	bezierctrl "github.com/cwbudde/agg_go/internal/ctrl/bezier"
+	sliderctrl "github.com/cwbudde/agg_go/internal/ctrl/slider"
+	"github.com/cwbudde/agg_go/internal/demo/linepatterns"
 )
 
 type ctrlIface interface {

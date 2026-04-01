@@ -3,7 +3,7 @@
 package agg2d
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/pixfmt/blender"
+	"github.com/cwbudde/agg_go/internal/pixfmt/blender"
 )
 
 // BlendMode represents the different blending modes available in AGG2D

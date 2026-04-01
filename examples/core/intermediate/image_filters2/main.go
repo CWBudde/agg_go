@@ -12,16 +12,16 @@ package main
 import (
 	"math"
 
-	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
-	iagg2d "github.com/MeKo-Christian/agg_go/internal/agg2d"
-	icol "github.com/MeKo-Christian/agg_go/internal/color"
-	ctrlbase "github.com/MeKo-Christian/agg_go/internal/ctrl"
-	"github.com/MeKo-Christian/agg_go/internal/ctrl/checkbox"
-	"github.com/MeKo-Christian/agg_go/internal/ctrl/rbox"
-	"github.com/MeKo-Christian/agg_go/internal/ctrl/slider"
-	imgacc "github.com/MeKo-Christian/agg_go/internal/image"
-	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
+	agg "github.com/cwbudde/agg_go"
+	"github.com/cwbudde/agg_go/examples/shared/lowlevelrunner"
+	iagg2d "github.com/cwbudde/agg_go/internal/agg2d"
+	icol "github.com/cwbudde/agg_go/internal/color"
+	ctrlbase "github.com/cwbudde/agg_go/internal/ctrl"
+	"github.com/cwbudde/agg_go/internal/ctrl/checkbox"
+	"github.com/cwbudde/agg_go/internal/ctrl/rbox"
+	"github.com/cwbudde/agg_go/internal/ctrl/slider"
+	imgacc "github.com/cwbudde/agg_go/internal/image"
+	"github.com/cwbudde/agg_go/internal/rasterizer"
 )
 
 const (

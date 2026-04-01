@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/MeKo-Christian/agg_go/internal/color"
-	"github.com/MeKo-Christian/agg_go/internal/transform"
+	"github.com/cwbudde/agg_go/internal/color"
+	"github.com/cwbudde/agg_go/internal/transform"
 )
 
 // Test gradient shape functions

@@ -3,7 +3,7 @@ package scanline
 import (
 	"testing"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // MockScanline is a test implementation of ScanlineInterface

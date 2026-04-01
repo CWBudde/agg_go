@@ -5,7 +5,7 @@
 // the convenience layer, while opening a separate path for lower-level ports.
 package lowlevelrunner
 
-import agg "github.com/MeKo-Christian/agg_go"
+import agg "github.com/cwbudde/agg_go"
 
 // Config holds the configuration for a demo window / PNG output.
 type Config struct {

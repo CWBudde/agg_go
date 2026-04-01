@@ -1,8 +1,8 @@
 package conv
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/vcgen"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/vcgen"
 )
 
 // ConvShortenPath is a vertex converter that shortens paths by removing

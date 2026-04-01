@@ -5,8 +5,8 @@ package gamma
 import (
 	"math"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/curves"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/curves"
 )
 
 // GammaSpline implements a cubic spline-based gamma curve editor.

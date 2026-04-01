@@ -3,8 +3,8 @@
 package outline
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/primitives"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/primitives"
 )
 
 // BaseRendererInterface defines the interface for base renderers.

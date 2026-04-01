@@ -1,8 +1,8 @@
 package renderer
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/glyph"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/glyph"
 )
 
 // BaseRendererInterface is the base-renderer contract needed by solid raster-text renderers.

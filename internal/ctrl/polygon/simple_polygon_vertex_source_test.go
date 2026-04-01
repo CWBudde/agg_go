@@ -3,7 +3,7 @@ package polygon
 import (
 	"testing"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 func TestNewSimplePolygonVertexSource(t *testing.T) {

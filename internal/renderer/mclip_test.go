@@ -3,7 +3,7 @@ package renderer
 import (
 	"testing"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // Use MockColorType from renderer_base_test.go

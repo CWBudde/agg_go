@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/tests/visual/framework"
+	agg "github.com/cwbudde/agg_go"
+	"github.com/cwbudde/agg_go/tests/visual/framework"
 )
 
 // TestRectangles runs all rectangle-related visual tests.

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/MeKo-Christian/agg_go/internal/color"
+	"github.com/cwbudde/agg_go/internal/color"
 )
 
 func TestDDALineInterpolator(t *testing.T) {

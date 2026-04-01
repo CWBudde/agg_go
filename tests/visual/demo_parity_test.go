@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/MeKo-Christian/agg_go/tests/visual/framework"
+	"github.com/cwbudde/agg_go/tests/visual/framework"
 )
 
 func updateRequested() bool { return os.Getenv("UPDATE_VISUAL") != "" }

@@ -1,6 +1,6 @@
 package main
 
-import "github.com/MeKo-Christian/agg_go/internal/demo/idea"
+import "github.com/cwbudde/agg_go/internal/demo/idea"
 
 var ideaState = idea.DefaultState()
 

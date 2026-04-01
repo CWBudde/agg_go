@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/color"
-	"github.com/MeKo-Christian/agg_go/internal/ctrl"
-	"github.com/MeKo-Christian/agg_go/internal/ctrl/text"
-	"github.com/MeKo-Christian/agg_go/internal/path"
-	"github.com/MeKo-Christian/agg_go/internal/shapes"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/color"
+	"github.com/cwbudde/agg_go/internal/ctrl"
+	"github.com/cwbudde/agg_go/internal/ctrl/text"
+	"github.com/cwbudde/agg_go/internal/path"
+	"github.com/cwbudde/agg_go/internal/shapes"
 )
 
 // SliderCtrl implements a horizontal or vertical slider control.

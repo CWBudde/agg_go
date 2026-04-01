@@ -3,7 +3,7 @@ package color
 import (
 	"math"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // ColorOrder identifies channel positions inside packed pixel layouts.

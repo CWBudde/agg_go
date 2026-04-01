@@ -1,6 +1,6 @@
 package lion
 
-import "github.com/MeKo-Christian/agg_go/internal/color"
+import "github.com/cwbudde/agg_go/internal/color"
 
 // GetColor exposes per-path fill colors for renderer/scanline.RenderAllPaths.
 func (ld *LionData) GetColor(index int) color.RGBA8[color.Linear] {

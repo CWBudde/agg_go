@@ -3,8 +3,8 @@ package agg
 import (
 	"math"
 
-	ia "github.com/MeKo-Christian/agg_go/internal/agg2d"
-	"github.com/MeKo-Christian/agg_go/internal/transform"
+	ia "github.com/cwbudde/agg_go/internal/agg2d"
+	"github.com/cwbudde/agg_go/internal/transform"
 )
 
 // Re-export internal types and options for public API.

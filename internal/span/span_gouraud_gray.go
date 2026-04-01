@@ -3,7 +3,7 @@ package span
 import (
 	"math"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // GrayCalc performs grayscale color interpolation calculations for one triangle edge.

@@ -1,6 +1,6 @@
 package main
 
-import "github.com/MeKo-Christian/agg_go/internal/demo/molview"
+import "github.com/cwbudde/agg_go/internal/demo/molview"
 
 var (
 	molViewState = molview.DefaultState()

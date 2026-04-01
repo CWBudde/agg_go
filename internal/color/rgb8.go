@@ -3,7 +3,7 @@
 package color
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // RGB8 represents an 8-bit RGB color with colorspace (24-bit, 3 bytes)

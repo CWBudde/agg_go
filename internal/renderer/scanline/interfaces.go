@@ -1,8 +1,8 @@
 package scanline
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	sl "github.com/MeKo-Christian/agg_go/internal/scanline"
+	"github.com/cwbudde/agg_go/internal/basics"
+	sl "github.com/cwbudde/agg_go/internal/scanline"
 )
 
 // ScanlineInterface is the unified scanline contract. Concrete scanline types

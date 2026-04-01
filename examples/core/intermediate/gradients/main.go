@@ -7,18 +7,18 @@
 package main
 
 import (
-	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	icol "github.com/MeKo-Christian/agg_go/internal/color"
-	"github.com/MeKo-Christian/agg_go/internal/conv"
-	ctrlbase "github.com/MeKo-Christian/agg_go/internal/ctrl"
-	gammactrl "github.com/MeKo-Christian/agg_go/internal/ctrl/gamma"
-	rboxctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/rbox"
-	splinectrl "github.com/MeKo-Christian/agg_go/internal/ctrl/spline"
-	"github.com/MeKo-Christian/agg_go/internal/shapes"
-	"github.com/MeKo-Christian/agg_go/internal/span"
-	"github.com/MeKo-Christian/agg_go/internal/transform"
+	agg "github.com/cwbudde/agg_go"
+	"github.com/cwbudde/agg_go/examples/shared/lowlevelrunner"
+	"github.com/cwbudde/agg_go/internal/basics"
+	icol "github.com/cwbudde/agg_go/internal/color"
+	"github.com/cwbudde/agg_go/internal/conv"
+	ctrlbase "github.com/cwbudde/agg_go/internal/ctrl"
+	gammactrl "github.com/cwbudde/agg_go/internal/ctrl/gamma"
+	rboxctrl "github.com/cwbudde/agg_go/internal/ctrl/rbox"
+	splinectrl "github.com/cwbudde/agg_go/internal/ctrl/spline"
+	"github.com/cwbudde/agg_go/internal/shapes"
+	"github.com/cwbudde/agg_go/internal/span"
+	"github.com/cwbudde/agg_go/internal/transform"
 )
 
 const (

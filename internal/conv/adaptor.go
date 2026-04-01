@@ -1,7 +1,7 @@
 package conv
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // Status tracks the internal state machine of ConvAdaptorVCGen while it

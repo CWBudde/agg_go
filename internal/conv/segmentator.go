@@ -1,7 +1,7 @@
 package conv
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/vcgen"
+	"github.com/cwbudde/agg_go/internal/vcgen"
 )
 
 // ConvSegmentator is a path converter that segments lines into equal-length pieces.

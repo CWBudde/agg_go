@@ -1,7 +1,7 @@
 package conv
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/vcgen"
+	"github.com/cwbudde/agg_go/internal/vcgen"
 )
 
 // ConvClipPolyline is the Go equivalent of AGG's conv_clip_polyline. It wraps

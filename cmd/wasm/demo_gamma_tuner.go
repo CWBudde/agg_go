@@ -4,7 +4,7 @@ package main
 import (
 	"math"
 
-	pfgamma "github.com/MeKo-Christian/agg_go/internal/pixfmt/gamma"
+	pfgamma "github.com/cwbudde/agg_go/internal/pixfmt/gamma"
 )
 
 var (

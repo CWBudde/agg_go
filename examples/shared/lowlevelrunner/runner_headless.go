@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	agg "github.com/MeKo-Christian/agg_go"
+	agg "github.com/cwbudde/agg_go"
 )
 
 // Run renders the demo once and saves the result as a PNG file.

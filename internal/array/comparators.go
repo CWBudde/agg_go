@@ -1,7 +1,7 @@
 package array
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // IntLess compares two integers for less-than relationship.

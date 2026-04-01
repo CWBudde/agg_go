@@ -5,7 +5,7 @@ package agg2d
 import (
 	"math"
 
-	"github.com/MeKo-Christian/agg_go/internal/transform"
+	"github.com/cwbudde/agg_go/internal/transform"
 )
 
 // Transformations represents a complete transformation matrix.

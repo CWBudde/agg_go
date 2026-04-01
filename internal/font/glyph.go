@@ -1,7 +1,7 @@
 package font
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // GlyphDataType identifies which serialized representation a cached glyph uses.

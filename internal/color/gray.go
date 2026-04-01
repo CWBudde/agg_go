@@ -1,7 +1,7 @@
 package color
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // BT.709 integer weights used by AGG-style 8-bit luminance conversion.

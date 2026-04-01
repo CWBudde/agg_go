@@ -3,7 +3,7 @@ package span
 import (
 	"math"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // CoordType is the Go equivalent of span_gouraud::coord_type.

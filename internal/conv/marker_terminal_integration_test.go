@@ -3,9 +3,9 @@ package conv
 import (
 	"testing"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/shapes"
-	"github.com/MeKo-Christian/agg_go/internal/vcgen"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/shapes"
+	"github.com/cwbudde/agg_go/internal/vcgen"
 )
 
 func TestConvMarkerWithTerminalMarkersMultipleSubpaths(t *testing.T) {

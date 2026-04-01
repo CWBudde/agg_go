@@ -6,7 +6,7 @@ import (
 	"encoding/binary"
 	"math"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // EmbeddedScanlineSerial is an embedded scanline that reads from serialized binary data.

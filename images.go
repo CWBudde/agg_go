@@ -8,8 +8,8 @@ import (
 	"image/png"
 	"os"
 
-	"github.com/MeKo-Christian/agg_go/internal/agg2d"
-	"github.com/MeKo-Christian/agg_go/internal/buffer"
+	"github.com/cwbudde/agg_go/internal/agg2d"
+	"github.com/cwbudde/agg_go/internal/buffer"
 )
 
 // ImageFilter represents different image filtering options

@@ -4,7 +4,7 @@ import (
 	"math"
 	"sync"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // Scalar sRGB <-> linear helpers follow the standard sRGB transfer curve used

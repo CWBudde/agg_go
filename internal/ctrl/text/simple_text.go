@@ -3,9 +3,9 @@
 package text
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/conv"
-	"github.com/MeKo-Christian/agg_go/internal/gsv"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/conv"
+	"github.com/cwbudde/agg_go/internal/gsv"
 )
 
 // SimpleText wraps GSVText + ConvStroke, exactly as the C++ ctrl does with

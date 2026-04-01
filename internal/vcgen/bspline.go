@@ -1,9 +1,9 @@
 package vcgen
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/array"
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/curves"
+	"github.com/cwbudde/agg_go/internal/array"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/curves"
 )
 
 // BSplineStatus matches AGG's vcgen_bspline state machine.

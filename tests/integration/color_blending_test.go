@@ -3,7 +3,7 @@ package integration
 import (
 	"testing"
 
-	"github.com/MeKo-Christian/agg_go/internal/agg2d"
+	"github.com/cwbudde/agg_go/internal/agg2d"
 )
 
 // TestColorBlendingAlphaNormal tests normal alpha blending

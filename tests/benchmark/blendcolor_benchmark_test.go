@@ -4,8 +4,8 @@ import (
 	"runtime"
 	"testing"
 
-	agg "github.com/MeKo-Christian/agg_go"
-	blendcolordemo "github.com/MeKo-Christian/agg_go/internal/demo/blendcolor"
+	agg "github.com/cwbudde/agg_go"
+	blendcolordemo "github.com/cwbudde/agg_go/internal/demo/blendcolor"
 )
 
 func BenchmarkBlendColorLUT(b *testing.B) {

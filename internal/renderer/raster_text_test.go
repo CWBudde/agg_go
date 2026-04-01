@@ -3,9 +3,9 @@ package renderer
 import (
 	"testing"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/fonts"
-	"github.com/MeKo-Christian/agg_go/internal/glyph"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/fonts"
+	"github.com/cwbudde/agg_go/internal/glyph"
 )
 
 func copyCovers(covers []basics.CoverType) []basics.CoverType {

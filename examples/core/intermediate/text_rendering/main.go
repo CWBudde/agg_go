@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
-	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
+	agg "github.com/cwbudde/agg_go"
+	"github.com/cwbudde/agg_go/examples/shared/lowlevelrunner"
 )
 
 type demo struct{}

@@ -3,7 +3,7 @@ package buffer
 import (
 	"unsafe"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // RenderingBuffer wraps a raw pixel slice with AGG-style width, height, stride,

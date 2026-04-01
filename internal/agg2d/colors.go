@@ -2,7 +2,7 @@
 // This file contains additional color-related methods and functionality.
 package agg2d
 
-import "github.com/MeKo-Christian/agg_go/internal/color"
+import "github.com/cwbudde/agg_go/internal/color"
 
 // Additional predefined colors
 var (

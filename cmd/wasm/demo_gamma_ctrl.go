@@ -4,19 +4,19 @@ package main
 import (
 	"math"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/buffer"
-	"github.com/MeKo-Christian/agg_go/internal/color"
-	"github.com/MeKo-Christian/agg_go/internal/conv"
-	gammactrl "github.com/MeKo-Christian/agg_go/internal/ctrl/gamma"
-	"github.com/MeKo-Christian/agg_go/internal/gsv"
-	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
-	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
-	"github.com/MeKo-Christian/agg_go/internal/renderer"
-	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
-	"github.com/MeKo-Christian/agg_go/internal/scanline"
-	"github.com/MeKo-Christian/agg_go/internal/shapes"
-	"github.com/MeKo-Christian/agg_go/internal/transform"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/buffer"
+	"github.com/cwbudde/agg_go/internal/color"
+	"github.com/cwbudde/agg_go/internal/conv"
+	gammactrl "github.com/cwbudde/agg_go/internal/ctrl/gamma"
+	"github.com/cwbudde/agg_go/internal/gsv"
+	"github.com/cwbudde/agg_go/internal/pixfmt"
+	"github.com/cwbudde/agg_go/internal/rasterizer"
+	"github.com/cwbudde/agg_go/internal/renderer"
+	renscan "github.com/cwbudde/agg_go/internal/renderer/scanline"
+	"github.com/cwbudde/agg_go/internal/scanline"
+	"github.com/cwbudde/agg_go/internal/shapes"
+	"github.com/cwbudde/agg_go/internal/transform"
 )
 
 var gammaControl *gammactrl.GammaCtrl

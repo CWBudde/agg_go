@@ -8,8 +8,8 @@ import (
 	"os"
 	"strings"
 
-	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/internal/platform"
+	agg "github.com/cwbudde/agg_go"
+	"github.com/cwbudde/agg_go/internal/platform"
 )
 
 // Run opens a platform window (SDL2 preferred, X11 fallback) and runs the

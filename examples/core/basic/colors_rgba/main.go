@@ -4,12 +4,12 @@ package main
 import (
 	"fmt"
 
-	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/color"
-	"github.com/MeKo-Christian/agg_go/internal/order"
-	"github.com/MeKo-Christian/agg_go/internal/pixfmt/blender"
+	agg "github.com/cwbudde/agg_go"
+	"github.com/cwbudde/agg_go/examples/shared/demorunner"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/color"
+	"github.com/cwbudde/agg_go/internal/order"
+	"github.com/cwbudde/agg_go/internal/pixfmt/blender"
 )
 
 type demo struct{}

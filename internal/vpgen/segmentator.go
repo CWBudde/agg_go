@@ -3,7 +3,7 @@ package vpgen
 import (
 	"math"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // VPGenSegmentator breaks lines into uniform segments based on approximation scale.

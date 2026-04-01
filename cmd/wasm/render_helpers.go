@@ -1,8 +1,8 @@
 package main
 
 import (
-	agg "github.com/MeKo-Christian/agg_go"
-	icol "github.com/MeKo-Christian/agg_go/internal/color"
+	agg "github.com/cwbudde/agg_go"
+	icol "github.com/cwbudde/agg_go/internal/color"
 )
 
 // applyLinearToSRGB gamma-encodes a linearly-rendered RGBA buffer to sRGB in-place.

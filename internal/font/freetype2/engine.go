@@ -25,9 +25,9 @@ import (
 	"fmt"
 	"unsafe"
 
-	"github.com/MeKo-Christian/agg_go/internal/font"
-	"github.com/MeKo-Christian/agg_go/internal/path"
-	"github.com/MeKo-Christian/agg_go/internal/transform"
+	"github.com/cwbudde/agg_go/internal/font"
+	"github.com/cwbudde/agg_go/internal/path"
+	"github.com/cwbudde/agg_go/internal/transform"
 )
 
 // FontEngine is the main FreeType2 font engine with enhanced multi-face support.

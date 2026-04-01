@@ -12,7 +12,7 @@
 // call them at startup and during idle periods, respectively.
 package demorunner
 
-import agg "github.com/MeKo-Christian/agg_go"
+import agg "github.com/cwbudde/agg_go"
 
 // Config holds the configuration for a demo window / PNG output.
 type Config struct {

@@ -76,10 +76,10 @@ import (
 	"fmt"
 	"unsafe"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/font"
-	"github.com/MeKo-Christian/agg_go/internal/path"
-	"github.com/MeKo-Christian/agg_go/internal/transform"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/font"
+	"github.com/cwbudde/agg_go/internal/path"
+	"github.com/cwbudde/agg_go/internal/transform"
 )
 
 // CRC32 table for font signature generation (AUTODIN II polynomial)

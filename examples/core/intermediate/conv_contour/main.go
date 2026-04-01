@@ -8,16 +8,16 @@ package main
 import (
 	"math"
 
-	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/color"
-	"github.com/MeKo-Christian/agg_go/internal/conv"
-	"github.com/MeKo-Christian/agg_go/internal/ctrl/checkbox"
-	"github.com/MeKo-Christian/agg_go/internal/ctrl/rbox"
-	"github.com/MeKo-Christian/agg_go/internal/ctrl/slider"
-	"github.com/MeKo-Christian/agg_go/internal/path"
-	"github.com/MeKo-Christian/agg_go/internal/transform"
+	agg "github.com/cwbudde/agg_go"
+	"github.com/cwbudde/agg_go/examples/shared/lowlevelrunner"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/color"
+	"github.com/cwbudde/agg_go/internal/conv"
+	"github.com/cwbudde/agg_go/internal/ctrl/checkbox"
+	"github.com/cwbudde/agg_go/internal/ctrl/rbox"
+	"github.com/cwbudde/agg_go/internal/ctrl/slider"
+	"github.com/cwbudde/agg_go/internal/path"
+	"github.com/cwbudde/agg_go/internal/transform"
 )
 
 const (

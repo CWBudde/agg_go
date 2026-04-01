@@ -5,8 +5,8 @@
 package fonts
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/array"
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/array"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // V2 namespace equivalent - fman (font manager) from AGG

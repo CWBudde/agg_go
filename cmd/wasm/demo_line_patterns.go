@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/MeKo-Christian/agg_go/internal/demo/linepatterns"
+	"github.com/cwbudde/agg_go/internal/demo/linepatterns"
 )
 
 // Port of AGG C++ line_patterns.cpp (web variant).

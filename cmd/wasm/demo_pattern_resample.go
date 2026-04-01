@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/demo/patternresample"
+	"github.com/cwbudde/agg_go/internal/demo/patternresample"
 )
 
 var (

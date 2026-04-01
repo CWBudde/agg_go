@@ -9,9 +9,9 @@ import (
 	"strconv"
 	"strings"
 
-	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/internal/gsv"
-	"github.com/MeKo-Christian/agg_go/internal/transform"
+	agg "github.com/cwbudde/agg_go"
+	"github.com/cwbudde/agg_go/internal/gsv"
+	"github.com/cwbudde/agg_go/internal/transform"
 )
 
 const (

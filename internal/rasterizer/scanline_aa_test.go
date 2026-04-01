@@ -3,8 +3,8 @@ package rasterizer
 import (
 	"testing"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/scanline"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/scanline"
 )
 
 // MockScanline implements ScanlineInterface for testing

@@ -1,8 +1,8 @@
 package blender
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/color"
-	"github.com/MeKo-Christian/agg_go/internal/order"
+	"github.com/cwbudde/agg_go/internal/color"
+	"github.com/cwbudde/agg_go/internal/order"
 )
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -4,9 +4,9 @@ import (
 	"math"
 	"testing"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/gpc"
-	"github.com/MeKo-Christian/agg_go/internal/path"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/gpc"
+	"github.com/cwbudde/agg_go/internal/path"
 )
 
 func TestNewConvGPC(t *testing.T) {

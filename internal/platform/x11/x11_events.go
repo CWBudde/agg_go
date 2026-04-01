@@ -10,7 +10,7 @@ import "C"
 import (
 	"unsafe"
 
-	"github.com/MeKo-Christian/agg_go/internal/platform/types"
+	"github.com/cwbudde/agg_go/internal/platform/types"
 )
 
 // PollEvents polls for X11 events and processes them

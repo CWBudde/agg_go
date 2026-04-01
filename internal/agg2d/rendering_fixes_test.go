@@ -6,7 +6,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/MeKo-Christian/agg_go/internal/pixfmt/blender"
+	"github.com/cwbudde/agg_go/internal/pixfmt/blender"
 )
 
 func TestGammaCorrection(t *testing.T) {

@@ -1,8 +1,8 @@
 package conv
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/vcgen"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/vcgen"
 )
 
 // ConvMarkerAdaptor is an adaptor for custom marker systems

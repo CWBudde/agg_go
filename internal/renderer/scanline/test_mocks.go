@@ -1,8 +1,8 @@
 package scanline
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/rasterizer"
 )
 
 // Shared mock types for all scanline tests

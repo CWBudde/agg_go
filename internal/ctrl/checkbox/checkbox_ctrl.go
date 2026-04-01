@@ -3,10 +3,10 @@
 package checkbox
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/color"
-	"github.com/MeKo-Christian/agg_go/internal/ctrl"
-	"github.com/MeKo-Christian/agg_go/internal/ctrl/text"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/color"
+	"github.com/cwbudde/agg_go/internal/ctrl"
+	"github.com/cwbudde/agg_go/internal/ctrl/text"
 )
 
 // CheckboxCtrl implements a checkbox control with label support.

@@ -4,18 +4,18 @@ package main
 import (
 	"math"
 
-	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
-	"github.com/MeKo-Christian/agg_go/internal/buffer"
-	"github.com/MeKo-Christian/agg_go/internal/color"
-	ctrlbase "github.com/MeKo-Christian/agg_go/internal/ctrl"
-	sliderctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/slider"
-	alphamask2demo "github.com/MeKo-Christian/agg_go/internal/demo/alphamask2"
-	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
-	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
-	"github.com/MeKo-Christian/agg_go/internal/renderer"
-	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
-	"github.com/MeKo-Christian/agg_go/internal/scanline"
+	agg "github.com/cwbudde/agg_go"
+	"github.com/cwbudde/agg_go/examples/shared/lowlevelrunner"
+	"github.com/cwbudde/agg_go/internal/buffer"
+	"github.com/cwbudde/agg_go/internal/color"
+	ctrlbase "github.com/cwbudde/agg_go/internal/ctrl"
+	sliderctrl "github.com/cwbudde/agg_go/internal/ctrl/slider"
+	alphamask2demo "github.com/cwbudde/agg_go/internal/demo/alphamask2"
+	"github.com/cwbudde/agg_go/internal/pixfmt"
+	"github.com/cwbudde/agg_go/internal/rasterizer"
+	"github.com/cwbudde/agg_go/internal/renderer"
+	renscan "github.com/cwbudde/agg_go/internal/renderer/scanline"
+	"github.com/cwbudde/agg_go/internal/scanline"
 )
 
 const (

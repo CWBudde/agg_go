@@ -6,11 +6,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/internal/buffer"
-	"github.com/MeKo-Christian/agg_go/internal/color"
-	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
-	"github.com/MeKo-Christian/agg_go/internal/renderer"
+	agg "github.com/cwbudde/agg_go"
+	"github.com/cwbudde/agg_go/internal/buffer"
+	"github.com/cwbudde/agg_go/internal/color"
+	"github.com/cwbudde/agg_go/internal/pixfmt"
+	"github.com/cwbudde/agg_go/internal/renderer"
 )
 
 func TestBackgroundOnlyPixelMatchesCurrentPipeline(t *testing.T) {

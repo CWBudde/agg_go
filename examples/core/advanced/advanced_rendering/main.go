@@ -5,8 +5,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/demorunner"
+	"github.com/cwbudde/agg_go"
+	"github.com/cwbudde/agg_go/examples/shared/demorunner"
 )
 
 type demo struct{}

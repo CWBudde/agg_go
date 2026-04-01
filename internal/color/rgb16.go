@@ -3,7 +3,7 @@
 package color
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // RGB16 represents a 16-bit RGB color

@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	agg "github.com/MeKo-Christian/agg_go"
+	agg "github.com/cwbudde/agg_go"
 )
 
 // TestShapes runs visual tests for non-rectangle primitive rendering.

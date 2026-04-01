@@ -1,8 +1,8 @@
 package rasterizer
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/scanline"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/scanline"
 )
 
 // AA scale constants are defined in compound_aa.go

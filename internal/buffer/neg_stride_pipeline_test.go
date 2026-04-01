@@ -3,11 +3,11 @@ package buffer_test
 import (
 	"testing"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/buffer"
-	icol "github.com/MeKo-Christian/agg_go/internal/color"
-	"github.com/MeKo-Christian/agg_go/internal/pixfmt"
-	"github.com/MeKo-Christian/agg_go/internal/renderer"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/buffer"
+	icol "github.com/cwbudde/agg_go/internal/color"
+	"github.com/cwbudde/agg_go/internal/pixfmt"
+	"github.com/cwbudde/agg_go/internal/renderer"
 )
 
 // TestNegativeStridePipeline verifies that the full rendering pipeline

@@ -1,9 +1,9 @@
 package interactivepolygon
 
 import (
-	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/internal/color"
-	"github.com/MeKo-Christian/agg_go/internal/ctrl/polygon"
+	agg "github.com/cwbudde/agg_go"
+	"github.com/cwbudde/agg_go/internal/color"
+	"github.com/cwbudde/agg_go/internal/ctrl/polygon"
 )
 
 // State stores the interactive polygon control state across frames.

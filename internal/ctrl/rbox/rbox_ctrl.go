@@ -5,12 +5,12 @@ package rbox
 import (
 	"math"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/color"
-	"github.com/MeKo-Christian/agg_go/internal/conv"
-	"github.com/MeKo-Christian/agg_go/internal/ctrl"
-	"github.com/MeKo-Christian/agg_go/internal/ctrl/text"
-	"github.com/MeKo-Christian/agg_go/internal/shapes"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/color"
+	"github.com/cwbudde/agg_go/internal/conv"
+	"github.com/cwbudde/agg_go/internal/ctrl"
+	"github.com/cwbudde/agg_go/internal/ctrl/text"
+	"github.com/cwbudde/agg_go/internal/shapes"
 )
 
 // ellipseAdapter adapts shapes.Ellipse to conv.VertexSource interface

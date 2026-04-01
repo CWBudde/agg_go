@@ -1,7 +1,7 @@
 package color
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // Gray8 represents an 8-bit grayscale color with colorspace

@@ -12,12 +12,12 @@ import (
 	"path/filepath"
 	"runtime"
 
-	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
-	icol "github.com/MeKo-Christian/agg_go/internal/color"
-	ctrlbase "github.com/MeKo-Christian/agg_go/internal/ctrl"
-	"github.com/MeKo-Christian/agg_go/internal/ctrl/rbox"
-	"github.com/MeKo-Christian/agg_go/internal/ctrl/slider"
+	agg "github.com/cwbudde/agg_go"
+	"github.com/cwbudde/agg_go/examples/shared/lowlevelrunner"
+	icol "github.com/cwbudde/agg_go/internal/color"
+	ctrlbase "github.com/cwbudde/agg_go/internal/ctrl"
+	"github.com/cwbudde/agg_go/internal/ctrl/rbox"
+	"github.com/cwbudde/agg_go/internal/ctrl/slider"
 )
 
 const (

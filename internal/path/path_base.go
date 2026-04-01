@@ -3,8 +3,8 @@ package path
 import (
 	"math"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/bezierarc"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/bezierarc"
 )
 
 // PathBase is AGG's primary mutable path container.

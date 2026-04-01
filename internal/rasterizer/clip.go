@@ -1,7 +1,7 @@
 package rasterizer
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // Maximum coordinate value for polygon clipping

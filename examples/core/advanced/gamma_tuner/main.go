@@ -14,19 +14,19 @@ package main
 import (
 	"math"
 
-	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/buffer"
-	icol "github.com/MeKo-Christian/agg_go/internal/color"
-	ctrlbase "github.com/MeKo-Christian/agg_go/internal/ctrl"
-	rboxctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/rbox"
-	sliderctrl "github.com/MeKo-Christian/agg_go/internal/ctrl/slider"
-	pixgamma "github.com/MeKo-Christian/agg_go/internal/pixfmt/gamma"
-	"github.com/MeKo-Christian/agg_go/internal/rasterizer"
-	"github.com/MeKo-Christian/agg_go/internal/renderer"
-	renscan "github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
-	isl "github.com/MeKo-Christian/agg_go/internal/scanline"
+	agg "github.com/cwbudde/agg_go"
+	"github.com/cwbudde/agg_go/examples/shared/lowlevelrunner"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/buffer"
+	icol "github.com/cwbudde/agg_go/internal/color"
+	ctrlbase "github.com/cwbudde/agg_go/internal/ctrl"
+	rboxctrl "github.com/cwbudde/agg_go/internal/ctrl/rbox"
+	sliderctrl "github.com/cwbudde/agg_go/internal/ctrl/slider"
+	pixgamma "github.com/cwbudde/agg_go/internal/pixfmt/gamma"
+	"github.com/cwbudde/agg_go/internal/rasterizer"
+	"github.com/cwbudde/agg_go/internal/renderer"
+	renscan "github.com/cwbudde/agg_go/internal/renderer/scanline"
+	isl "github.com/cwbudde/agg_go/internal/scanline"
 )
 
 const (

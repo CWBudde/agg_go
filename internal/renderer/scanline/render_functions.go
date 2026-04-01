@@ -2,12 +2,30 @@
 package scanline
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/basics"
+	slcore "github.com/cwbudde/agg_go/internal/scanline"
 )
 
 // RenderScanlineAASolid renders a single anti-aliased scanline with solid color.
 // This corresponds to AGG's render_scanline_aa_solid function.
 func RenderScanlineAASolid[C any](sl ScanlineInterface, ren BaseRendererInterface[C], color C) {
+	if slU8, ok := sl.(*slcore.ScanlineU8); ok {
+		y := slU8.Y()
+		spans := slU8.Begin()
+		for i := range spans {
+			span := spans[i]
+			x := int(span.X)
+			if span.Len > 0 {
+				ren.BlendSolidHspan(x, y, int(span.Len), color, span.Covers)
+			} else {
+				endX := x - int(span.Len) - 1
+				cover := span.Covers[0]
+				ren.BlendHline(x, y, endX, color, cover)
+			}
+		}
+		return
+	}
+
 	y := sl.Y()
 	numSpans := sl.NumSpans()
 	iter := sl.BeginIterator()
@@ -81,6 +99,31 @@ func RenderScanlinesAASolid[C any](ras RasterizerInterface, sl ScanlineInterface
 // RenderScanlineAA renders a single anti-aliased scanline with span generation.
 // This corresponds to AGG's render_scanline_aa function.
 func RenderScanlineAA[C any](sl ScanlineInterface, ren BaseRendererInterface[C], alloc SpanAllocatorInterface[C], spanGen SpanGeneratorInterface[C]) {
+	if slU8, ok := sl.(*slcore.ScanlineU8); ok {
+		y := slU8.Y()
+		spans := slU8.Begin()
+		for i := range spans {
+			span := spans[i]
+			x := int(span.X)
+			length := int(span.Len)
+			covers := span.Covers
+
+			if length < 0 {
+				length = -length
+			}
+
+			colors := alloc.Allocate(length)
+			spanGen.Generate(colors, x, y, length)
+
+			if span.Len < 0 {
+				ren.BlendColorHspan(x, y, length, colors, nil, covers[0])
+			} else {
+				ren.BlendColorHspan(x, y, length, colors, covers, covers[0])
+			}
+		}
+		return
+	}
+
 	y := sl.Y()
 	numSpans := sl.NumSpans()
 	iter := sl.BeginIterator()

@@ -3,14 +3,14 @@ package benchmarkmix
 import (
 	"math"
 
-	agg "github.com/MeKo-Christian/agg_go"
-	blendcolordemo "github.com/MeKo-Christian/agg_go/internal/demo/blendcolor"
-	"github.com/MeKo-Christian/agg_go/internal/demo/gpctest"
-	"github.com/MeKo-Christian/agg_go/internal/demo/graphtest"
-	"github.com/MeKo-Christian/agg_go/internal/demo/imageassets"
-	"github.com/MeKo-Christian/agg_go/internal/demo/imagefltrgraph"
-	"github.com/MeKo-Christian/agg_go/internal/demo/linepatterns"
-	"github.com/MeKo-Christian/agg_go/internal/demo/patternresample"
+	agg "github.com/cwbudde/agg_go"
+	blendcolordemo "github.com/cwbudde/agg_go/internal/demo/blendcolor"
+	"github.com/cwbudde/agg_go/internal/demo/gpctest"
+	"github.com/cwbudde/agg_go/internal/demo/graphtest"
+	"github.com/cwbudde/agg_go/internal/demo/imageassets"
+	"github.com/cwbudde/agg_go/internal/demo/imagefltrgraph"
+	"github.com/cwbudde/agg_go/internal/demo/linepatterns"
+	"github.com/cwbudde/agg_go/internal/demo/patternresample"
 )
 
 type tile struct {

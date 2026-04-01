@@ -1,7 +1,7 @@
 package ctrl
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/renderer/scanline"
+	"github.com/cwbudde/agg_go/internal/renderer/scanline"
 )
 
 // RasterizerInterface defines the interface that rasterizers must implement for control rendering.

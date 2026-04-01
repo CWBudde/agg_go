@@ -1,6 +1,6 @@
 package effects
 
-import "github.com/MeKo-Christian/agg_go/internal/basics"
+import "github.com/cwbudde/agg_go/internal/basics"
 
 // StackBlurTables names the AGG-derived lookup-table family used by the stack
 // blur implementations.

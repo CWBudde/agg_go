@@ -1,12 +1,12 @@
 package pixfmt
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/buffer"
-	"github.com/MeKo-Christian/agg_go/internal/color"
-	"github.com/MeKo-Christian/agg_go/internal/order"
-	"github.com/MeKo-Christian/agg_go/internal/pixfmt/blender"
-	"github.com/MeKo-Christian/agg_go/internal/simd"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/buffer"
+	"github.com/cwbudde/agg_go/internal/color"
+	"github.com/cwbudde/agg_go/internal/order"
+	"github.com/cwbudde/agg_go/internal/pixfmt/blender"
+	"github.com/cwbudde/agg_go/internal/simd"
 )
 
 type compositeRGBABlender[CS color.Space, O order.RGBAOrder] interface {

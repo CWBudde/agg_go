@@ -4,12 +4,12 @@
 package main
 
 import (
-	agg "github.com/MeKo-Christian/agg_go"
-	"github.com/MeKo-Christian/agg_go/examples/shared/lowlevelrunner"
-	icol "github.com/MeKo-Christian/agg_go/internal/color"
-	ctrl "github.com/MeKo-Christian/agg_go/internal/ctrl"
-	"github.com/MeKo-Christian/agg_go/internal/ctrl/rbox"
-	"github.com/MeKo-Christian/agg_go/internal/demo/scanlineboolean2"
+	agg "github.com/cwbudde/agg_go"
+	"github.com/cwbudde/agg_go/examples/shared/lowlevelrunner"
+	icol "github.com/cwbudde/agg_go/internal/color"
+	ctrl "github.com/cwbudde/agg_go/internal/ctrl"
+	"github.com/cwbudde/agg_go/internal/ctrl/rbox"
+	"github.com/cwbudde/agg_go/internal/demo/scanlineboolean2"
 )
 
 const (

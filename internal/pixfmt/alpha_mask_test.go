@@ -3,8 +3,8 @@ package pixfmt
 import (
 	"testing"
 
-	"github.com/MeKo-Christian/agg_go/internal/basics"
-	"github.com/MeKo-Christian/agg_go/internal/buffer"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/buffer"
 )
 
 // TestOneComponentMaskU8 tests the OneComponentMaskU8 mask function

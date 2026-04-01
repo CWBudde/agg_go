@@ -1,7 +1,7 @@
 package path
 
 import (
-	"github.com/MeKo-Christian/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/basics"
 )
 
 // VertexBlockStorage is the block-allocated vertex container used by AGG's
