@@ -4,6 +4,17 @@ import (
 	"github.com/cwbudde/agg_go/internal/color"
 )
 
+// ColorSpace is the public constraint for colour-space type parameters.
+// It mirrors the internal color.Space interface so that consumers outside
+// agg_go can instantiate generic types like StackBlur[agg.ColorSpaceSRGB].
+type ColorSpace = color.Space
+
+// ColorSpaceLinear marks colors stored in linear-light space.
+type ColorSpaceLinear = color.Linear
+
+// ColorSpaceSRGB marks colors stored in the standard sRGB transfer space.
+type ColorSpaceSRGB = color.SRGB
+
 // Color represents an SRGBA8 color (0-255 range) matching AGG's srgba8.
 // This is the primary color type used throughout the AGG2D interface.
 type Color struct {
