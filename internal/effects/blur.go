@@ -80,6 +80,309 @@ func (calc *StackBlurCalcRGBA[T, CS]) CalcPixMulShr(result *color.RGBA8[CS], mul
 	result.A = basics.Int8u((calc.a * m) >> shr)
 }
 
+// StackBlurCalcRGBA16 mirrors AGG's stack_blur_calc_rgba for 16-bit RGBA channels.
+type StackBlurCalcRGBA16[T ~uint32 | ~uint64, CS color.Space] struct {
+	r, g, b, a T
+}
+
+// Clear resets all color channels to zero.
+func (calc *StackBlurCalcRGBA16[T, CS]) Clear() {
+	calc.r, calc.g, calc.b, calc.a = 0, 0, 0, 0
+}
+
+// Add adds a color value to the accumulator.
+func (calc *StackBlurCalcRGBA16[T, CS]) Add(v color.RGBA16[CS]) {
+	calc.r += T(v.R)
+	calc.g += T(v.G)
+	calc.b += T(v.B)
+	calc.a += T(v.A)
+}
+
+// AddWeighted adds a weighted color value to the accumulator.
+func (calc *StackBlurCalcRGBA16[T, CS]) AddWeighted(v color.RGBA16[CS], weight int) {
+	w := T(weight)
+	calc.r += T(v.R) * w
+	calc.g += T(v.G) * w
+	calc.b += T(v.B) * w
+	calc.a += T(v.A) * w
+}
+
+// Sub subtracts a color value from the accumulator.
+func (calc *StackBlurCalcRGBA16[T, CS]) Sub(v color.RGBA16[CS]) {
+	calc.r -= T(v.R)
+	calc.g -= T(v.G)
+	calc.b -= T(v.B)
+	calc.a -= T(v.A)
+}
+
+// SubCalc subtracts another calculator from this one.
+func (calc *StackBlurCalcRGBA16[T, CS]) SubCalc(other StackBlurCalcRGBA16[T, CS]) {
+	calc.r -= other.r
+	calc.g -= other.g
+	calc.b -= other.b
+	calc.a -= other.a
+}
+
+// AddCalc adds another calculator to this one.
+func (calc *StackBlurCalcRGBA16[T, CS]) AddCalc(other StackBlurCalcRGBA16[T, CS]) {
+	calc.r += other.r
+	calc.g += other.g
+	calc.b += other.b
+	calc.a += other.a
+}
+
+// CalcPix calculates the final pixel value using division.
+func (calc *StackBlurCalcRGBA16[T, CS]) CalcPix(result *color.RGBA16[CS], div int) {
+	d := T(div)
+	result.R = basics.Int16u(calc.r / d)
+	result.G = basics.Int16u(calc.g / d)
+	result.B = basics.Int16u(calc.b / d)
+	result.A = basics.Int16u(calc.a / d)
+}
+
+// CalcPixMulShr calculates the final pixel value using multiplication and bit shift.
+func (calc *StackBlurCalcRGBA16[T, CS]) CalcPixMulShr(result *color.RGBA16[CS], mul, shr int) {
+	m := T(mul)
+	result.R = basics.Int16u((calc.r * m) >> shr)
+	result.G = basics.Int16u((calc.g * m) >> shr)
+	result.B = basics.Int16u((calc.b * m) >> shr)
+	result.A = basics.Int16u((calc.a * m) >> shr)
+}
+
+// StackBlurCalcRGB mirrors AGG's stack_blur_calc_rgb for 8-bit RGB channels.
+type StackBlurCalcRGB[T ~uint32 | ~uint64, CS color.Space] struct {
+	r, g, b T
+}
+
+// Clear resets all color channels to zero.
+func (calc *StackBlurCalcRGB[T, CS]) Clear() {
+	calc.r, calc.g, calc.b = 0, 0, 0
+}
+
+// Add adds a color value to the accumulator.
+func (calc *StackBlurCalcRGB[T, CS]) Add(v color.RGB8[CS]) {
+	calc.r += T(v.R)
+	calc.g += T(v.G)
+	calc.b += T(v.B)
+}
+
+// AddWeighted adds a weighted color value to the accumulator.
+func (calc *StackBlurCalcRGB[T, CS]) AddWeighted(v color.RGB8[CS], weight int) {
+	w := T(weight)
+	calc.r += T(v.R) * w
+	calc.g += T(v.G) * w
+	calc.b += T(v.B) * w
+}
+
+// Sub subtracts a color value from the accumulator.
+func (calc *StackBlurCalcRGB[T, CS]) Sub(v color.RGB8[CS]) {
+	calc.r -= T(v.R)
+	calc.g -= T(v.G)
+	calc.b -= T(v.B)
+}
+
+// SubCalc subtracts another calculator from this one.
+func (calc *StackBlurCalcRGB[T, CS]) SubCalc(other StackBlurCalcRGB[T, CS]) {
+	calc.r -= other.r
+	calc.g -= other.g
+	calc.b -= other.b
+}
+
+// AddCalc adds another calculator to this one.
+func (calc *StackBlurCalcRGB[T, CS]) AddCalc(other StackBlurCalcRGB[T, CS]) {
+	calc.r += other.r
+	calc.g += other.g
+	calc.b += other.b
+}
+
+// CalcPix calculates the final pixel value using division.
+func (calc *StackBlurCalcRGB[T, CS]) CalcPix(result *color.RGB8[CS], div int) {
+	d := T(div)
+	result.R = basics.Int8u(calc.r / d)
+	result.G = basics.Int8u(calc.g / d)
+	result.B = basics.Int8u(calc.b / d)
+}
+
+// CalcPixMulShr calculates the final pixel value using multiplication and bit shift.
+func (calc *StackBlurCalcRGB[T, CS]) CalcPixMulShr(result *color.RGB8[CS], mul, shr int) {
+	m := T(mul)
+	result.R = basics.Int8u((calc.r * m) >> shr)
+	result.G = basics.Int8u((calc.g * m) >> shr)
+	result.B = basics.Int8u((calc.b * m) >> shr)
+}
+
+// StackBlurCalcRGB16 mirrors AGG's stack_blur_calc_rgb for 16-bit RGB channels.
+type StackBlurCalcRGB16[T ~uint32 | ~uint64, CS color.Space] struct {
+	r, g, b T
+}
+
+// Clear resets all color channels to zero.
+func (calc *StackBlurCalcRGB16[T, CS]) Clear() {
+	calc.r, calc.g, calc.b = 0, 0, 0
+}
+
+// Add adds a color value to the accumulator.
+func (calc *StackBlurCalcRGB16[T, CS]) Add(v color.RGB16[CS]) {
+	calc.r += T(v.R)
+	calc.g += T(v.G)
+	calc.b += T(v.B)
+}
+
+// AddWeighted adds a weighted color value to the accumulator.
+func (calc *StackBlurCalcRGB16[T, CS]) AddWeighted(v color.RGB16[CS], weight int) {
+	w := T(weight)
+	calc.r += T(v.R) * w
+	calc.g += T(v.G) * w
+	calc.b += T(v.B) * w
+}
+
+// Sub subtracts a color value from the accumulator.
+func (calc *StackBlurCalcRGB16[T, CS]) Sub(v color.RGB16[CS]) {
+	calc.r -= T(v.R)
+	calc.g -= T(v.G)
+	calc.b -= T(v.B)
+}
+
+// SubCalc subtracts another calculator from this one.
+func (calc *StackBlurCalcRGB16[T, CS]) SubCalc(other StackBlurCalcRGB16[T, CS]) {
+	calc.r -= other.r
+	calc.g -= other.g
+	calc.b -= other.b
+}
+
+// AddCalc adds another calculator to this one.
+func (calc *StackBlurCalcRGB16[T, CS]) AddCalc(other StackBlurCalcRGB16[T, CS]) {
+	calc.r += other.r
+	calc.g += other.g
+	calc.b += other.b
+}
+
+// CalcPix calculates the final pixel value using division.
+func (calc *StackBlurCalcRGB16[T, CS]) CalcPix(result *color.RGB16[CS], div int) {
+	d := T(div)
+	result.R = basics.Int16u(calc.r / d)
+	result.G = basics.Int16u(calc.g / d)
+	result.B = basics.Int16u(calc.b / d)
+}
+
+// CalcPixMulShr calculates the final pixel value using multiplication and bit shift.
+func (calc *StackBlurCalcRGB16[T, CS]) CalcPixMulShr(result *color.RGB16[CS], mul, shr int) {
+	m := T(mul)
+	result.R = basics.Int16u((calc.r * m) >> shr)
+	result.G = basics.Int16u((calc.g * m) >> shr)
+	result.B = basics.Int16u((calc.b * m) >> shr)
+}
+
+// StackBlurCalcGray mirrors AGG's stack_blur_calc_gray for 8-bit grayscale channels.
+type StackBlurCalcGray[T ~uint32 | ~uint64, CS color.Space] struct {
+	v, a T
+}
+
+// Clear resets all channels to zero.
+func (calc *StackBlurCalcGray[T, CS]) Clear() {
+	calc.v, calc.a = 0, 0
+}
+
+// Add adds a color value to the accumulator.
+func (calc *StackBlurCalcGray[T, CS]) Add(c color.Gray8[CS]) {
+	calc.v += T(c.V)
+	calc.a += T(c.A)
+}
+
+// AddWeighted adds a weighted color value to the accumulator.
+func (calc *StackBlurCalcGray[T, CS]) AddWeighted(c color.Gray8[CS], weight int) {
+	w := T(weight)
+	calc.v += T(c.V) * w
+	calc.a += T(c.A) * w
+}
+
+// Sub subtracts a color value from the accumulator.
+func (calc *StackBlurCalcGray[T, CS]) Sub(c color.Gray8[CS]) {
+	calc.v -= T(c.V)
+	calc.a -= T(c.A)
+}
+
+// SubCalc subtracts another calculator from this one.
+func (calc *StackBlurCalcGray[T, CS]) SubCalc(other StackBlurCalcGray[T, CS]) {
+	calc.v -= other.v
+	calc.a -= other.a
+}
+
+// AddCalc adds another calculator to this one.
+func (calc *StackBlurCalcGray[T, CS]) AddCalc(other StackBlurCalcGray[T, CS]) {
+	calc.v += other.v
+	calc.a += other.a
+}
+
+// CalcPix calculates the final pixel value using division.
+func (calc *StackBlurCalcGray[T, CS]) CalcPix(result *color.Gray8[CS], div int) {
+	d := T(div)
+	result.V = basics.Int8u(calc.v / d)
+	result.A = basics.Int8u(calc.a / d)
+}
+
+// CalcPixMulShr calculates the final pixel value using multiplication and bit shift.
+func (calc *StackBlurCalcGray[T, CS]) CalcPixMulShr(result *color.Gray8[CS], mul, shr int) {
+	m := T(mul)
+	result.V = basics.Int8u((calc.v * m) >> shr)
+	result.A = basics.Int8u((calc.a * m) >> shr)
+}
+
+// StackBlurCalcGray16 mirrors AGG's stack_blur_calc_gray for 16-bit grayscale channels.
+type StackBlurCalcGray16[T ~uint32 | ~uint64, CS color.Space] struct {
+	v, a T
+}
+
+// Clear resets all channels to zero.
+func (calc *StackBlurCalcGray16[T, CS]) Clear() {
+	calc.v, calc.a = 0, 0
+}
+
+// Add adds a color value to the accumulator.
+func (calc *StackBlurCalcGray16[T, CS]) Add(c color.Gray16[CS]) {
+	calc.v += T(c.V)
+	calc.a += T(c.A)
+}
+
+// AddWeighted adds a weighted color value to the accumulator.
+func (calc *StackBlurCalcGray16[T, CS]) AddWeighted(c color.Gray16[CS], weight int) {
+	w := T(weight)
+	calc.v += T(c.V) * w
+	calc.a += T(c.A) * w
+}
+
+// Sub subtracts a color value from the accumulator.
+func (calc *StackBlurCalcGray16[T, CS]) Sub(c color.Gray16[CS]) {
+	calc.v -= T(c.V)
+	calc.a -= T(c.A)
+}
+
+// SubCalc subtracts another calculator from this one.
+func (calc *StackBlurCalcGray16[T, CS]) SubCalc(other StackBlurCalcGray16[T, CS]) {
+	calc.v -= other.v
+	calc.a -= other.a
+}
+
+// AddCalc adds another calculator to this one.
+func (calc *StackBlurCalcGray16[T, CS]) AddCalc(other StackBlurCalcGray16[T, CS]) {
+	calc.v += other.v
+	calc.a += other.a
+}
+
+// CalcPix calculates the final pixel value using division.
+func (calc *StackBlurCalcGray16[T, CS]) CalcPix(result *color.Gray16[CS], div int) {
+	d := T(div)
+	result.V = basics.Int16u(calc.v / d)
+	result.A = basics.Int16u(calc.a / d)
+}
+
+// CalcPixMulShr calculates the final pixel value using multiplication and bit shift.
+func (calc *StackBlurCalcGray16[T, CS]) CalcPixMulShr(result *color.Gray16[CS], mul, shr int) {
+	m := T(mul)
+	result.V = basics.Int16u((calc.v * m) >> shr)
+	result.A = basics.Int16u((calc.a * m) >> shr)
+}
+
 // SimpleStackBlur is a direct, reusable two-pass stack blur for RGBA images.
 // It keeps AGG-style temporary buffers between calls to avoid repeated
 // allocations when the same instance is reused.
