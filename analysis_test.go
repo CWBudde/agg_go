@@ -95,7 +95,6 @@ func TestSobelGradientEdge(t *testing.T) {
 	}
 }
 
-
 // ---------------------------------------------------------------------------
 // StackBlur tests — exercised through the PixelReadWriter interface
 // ---------------------------------------------------------------------------
@@ -118,7 +117,6 @@ func TestStackBlurPreservesOpaque(t *testing.T) {
 		}
 	}
 }
-
 
 // TestStackBlurSpreads verifies that a single bright pixel gets spread
 // across its neighbours.

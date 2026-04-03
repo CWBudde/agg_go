@@ -1,6 +1,8 @@
 package agg
 
 import (
+	"unsafe"
+
 	"github.com/cwbudde/agg_go/internal/array"
 	"github.com/cwbudde/agg_go/internal/color"
 	"github.com/cwbudde/agg_go/internal/effects"
@@ -194,13 +196,8 @@ func (r *rawRGBA8Image[CS]) Pixel(x, y int) color.RGBA8[CS] {
 
 func (r *rawRGBA8Image[CS]) CopyColorHspan(x, y, length int, colors []color.RGBA8[CS]) {
 	off := y*r.stride + x*4
-	for _, c := range colors {
-		r.pixels[off] = c.R
-		r.pixels[off+1] = c.G
-		r.pixels[off+2] = c.B
-		r.pixels[off+3] = c.A
-		off += 4
-	}
+	src := unsafe.Slice((*byte)(unsafe.Pointer(&colors[0])), len(colors)*4)
+	copy(r.pixels[off:off+len(colors)*4], src)
 }
 
 func (r *rawRGBA8Image[CS]) CopyColorVspan(x, y, length int, colors []color.RGBA8[CS]) {
