@@ -1,6 +1,7 @@
 package agg
 
 import (
+	"fmt"
 	"math"
 	"testing"
 
@@ -134,6 +135,61 @@ func TestStackBlurSpreads(t *testing.T) {
 	}
 	if centre.R == 0 {
 		t.Fatal("centre should still have some red after blur")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// StackBlur benchmarks
+// ---------------------------------------------------------------------------
+
+func newBenchImage(size int) *mockRGBA8Image {
+	img := newMockRGBA8Image(size, size)
+	for y := range size {
+		for x := range size {
+			img.set(x, y, color.RGBA8[color.Linear]{
+				R: uint8(x % 256),
+				G: uint8(y % 256),
+				B: uint8((x + y) % 256),
+				A: 255,
+			})
+		}
+	}
+	return img
+}
+
+func BenchmarkStackBlur(b *testing.B) {
+	for _, size := range []int{64, 256} {
+		for _, radius := range []int{2, 10} {
+			name := fmt.Sprintf("size=%d/radius=%d", size, radius)
+			b.Run(name, func(b *testing.B) {
+				img := newBenchImage(size)
+				sb := NewStackBlur[color.Linear]()
+				b.ResetTimer()
+				for range b.N {
+					sb.Blur(img, radius)
+				}
+			})
+		}
+	}
+}
+
+func BenchmarkStackBlurRGBA8(b *testing.B) {
+	for _, size := range []int{64, 256} {
+		for _, radius := range []int{2, 10} {
+			name := fmt.Sprintf("size=%d/radius=%d", size, radius)
+			b.Run(name, func(b *testing.B) {
+				pixels := make([]byte, size*size*4)
+				for i := range pixels {
+					pixels[i] = uint8(i % 256)
+				}
+				stride := size * 4
+				sb := NewStackBlur[color.Linear]()
+				b.ResetTimer()
+				for range b.N {
+					sb.BlurRGBA8(pixels, size, size, stride, radius)
+				}
+			})
+		}
 	}
 }
 
