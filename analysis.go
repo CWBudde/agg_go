@@ -3,11 +3,12 @@ package agg
 import (
 	"math"
 
+	"github.com/cwbudde/agg_go/internal/blur"
 	"github.com/cwbudde/agg_go/internal/color"
 )
 
 // ---------------------------------------------------------------------------
-// Image interfaces
+// Image interfaces — re-exported from internal/blur
 //
 // These mirror the implicit template contracts from C++ AGG.  In C++ an image
 // processing algorithm such as stack_blur is templated on Img and calls
@@ -18,23 +19,11 @@ import (
 
 // PixelReader is the read-only image contract used by analysis algorithms
 // (e.g. Sobel gradient).  Any AGG pixel-format adapter satisfies this.
-type PixelReader[C any] interface {
-	Width() int
-	Height() int
-	Pixel(x, y int) C
-}
+type PixelReader[C any] = blur.PixelReader[C]
 
 // PixelReadWriter extends PixelReader with the span-write capabilities that
-// C++ AGG's in-place blur algorithms require: pixel() for reading,
-// copy_color_hspan() for writing processed rows back, and copy_color_vspan()
-// for writing processed columns.  The vertical span method is needed by
-// pixfmt_transposer which maps copy_color_hspan → copy_color_vspan on the
-// underlying image (see agg_pixfmt_transposer.h).
-type PixelReadWriter[C any] interface {
-	PixelReader[C]
-	CopyColorHspan(x, y, length int, colors []C)
-	CopyColorVspan(x, y, length int, colors []C)
-}
+// C++ AGG's in-place blur algorithms require.
+type PixelReadWriter[C any] = blur.PixelReadWriter[C]
 
 // LuminanceFunc converts a color value to a scalar luminance in [0, 1].
 // It separates the colour-to-luminance conversion from the analysis algorithm,
