@@ -28,24 +28,27 @@ import (
 
 // StackBlur implements AGG's stack_blur for RGBA8 images.  It is reusable:
 // temporary buffers are kept between calls to avoid repeated allocations, just
-// like the C++ original.
-type StackBlur struct {
-	buf   *array.PodVector[color.RGBA8[color.Linear]]
-	stack *array.PodVector[color.RGBA8[color.Linear]]
+// like the C++ original.  The CS type parameter selects the colour-space tag
+// (color.Linear or color.SRGB), mirroring the C++ template parameter ColorT.
+// The blur algorithm itself is identical for both spaces — it averages raw
+// channel bytes — so the parameter only affects type safety, not computation.
+type StackBlur[CS color.Space] struct {
+	buf   *array.PodVector[color.RGBA8[CS]]
+	stack *array.PodVector[color.RGBA8[CS]]
 }
 
 // NewStackBlur creates a new StackBlur instance.
-func NewStackBlur() *StackBlur {
-	return &StackBlur{
-		buf:   array.NewPodVector[color.RGBA8[color.Linear]](),
-		stack: array.NewPodVector[color.RGBA8[color.Linear]](),
+func NewStackBlur[CS color.Space]() *StackBlur[CS] {
+	return &StackBlur[CS]{
+		buf:   array.NewPodVector[color.RGBA8[CS]](),
+		stack: array.NewPodVector[color.RGBA8[CS]](),
 	}
 }
 
 // BlurX applies a horizontal stack blur pass.  It reads pixels through
 // img.Pixel(x, y) and writes blurred rows back with img.CopyColorHspan(),
 // matching C++ AGG's stack_blur::blur_x exactly.
-func (sb *StackBlur) BlurX(img PixelReadWriter[color.RGBA8[color.Linear]], radius int) {
+func (sb *StackBlur[CS]) BlurX(img PixelReadWriter[color.RGBA8[CS]], radius int) {
 	if radius < 1 {
 		return
 	}
@@ -67,7 +70,7 @@ func (sb *StackBlur) BlurX(img PixelReadWriter[color.RGBA8[color.Linear]], radiu
 	sb.stack.Allocate(div, 32)
 
 	for y := range h {
-		var sum, sumIn, sumOut effects.StackBlurCalcRGBA[uint32]
+		var sum, sumIn, sumOut effects.StackBlurCalcRGBA[uint32, CS]
 		sum.Clear()
 		sumIn.Clear()
 		sumOut.Clear()
@@ -87,7 +90,7 @@ func (sb *StackBlur) BlurX(img PixelReadWriter[color.RGBA8[color.Linear]], radiu
 
 		stackPtr := radius
 		for x := range w {
-			var result color.RGBA8[color.Linear]
+			var result color.RGBA8[CS]
 			if mulSum != 0 {
 				sum.CalcPixMulShr(&result, mulSum, shrSum)
 			} else {
@@ -126,12 +129,12 @@ func (sb *StackBlur) BlurX(img PixelReadWriter[color.RGBA8[color.Linear]], radiu
 
 // BlurY applies a vertical stack blur pass.  Following the C++ AGG pattern,
 // it wraps the image in a transposing adapter and delegates to BlurX.
-func (sb *StackBlur) BlurY(img PixelReadWriter[color.RGBA8[color.Linear]], radius int) {
-	sb.BlurX(&pixelImageTransposer[color.RGBA8[color.Linear]]{img: img}, radius)
+func (sb *StackBlur[CS]) BlurY(img PixelReadWriter[color.RGBA8[CS]], radius int) {
+	sb.BlurX(&pixelImageTransposer[color.RGBA8[CS]]{img: img}, radius)
 }
 
 // Blur applies both horizontal and vertical blur passes.
-func (sb *StackBlur) Blur(img PixelReadWriter[color.RGBA8[color.Linear]], radius int) {
+func (sb *StackBlur[CS]) Blur(img PixelReadWriter[color.RGBA8[CS]], radius int) {
 	sb.BlurX(img, radius)
 	sb.BlurY(img, radius)
 }
@@ -168,48 +171,57 @@ func (t *pixelImageTransposer[C]) CopyColorVspan(x, y, length int, colors []C) {
 // Public convenience wrappers for raw RGBA8 byte buffers
 // ---------------------------------------------------------------------------
 
-// rawRGBA8Image adapts a flat RGBA8 byte slice (row-major, 4 bytes/pixel) to
-// the PixelReadWriter[color.RGBA8[color.Linear]] interface so that callers
-// outside the agg_go module can use StackBlur without importing internal types.
-type rawRGBA8Image struct {
+// rawRGBA8Image adapts a flat RGBA8 byte slice to the
+// PixelReadWriter[color.RGBA8[CS]] interface so that callers outside the
+// agg_go module can use StackBlur without importing internal types.
+//
+// The stride field is the distance in bytes between consecutive rows.  When
+// stride equals w*4 the buffer is tightly packed; larger values accommodate
+// padding or sub-regions of a bigger image.
+type rawRGBA8Image[CS color.Space] struct {
 	pixels []byte
 	w, h   int
+	stride int // bytes per row
 }
 
-func (r *rawRGBA8Image) Width() int  { return r.w }
-func (r *rawRGBA8Image) Height() int { return r.h }
+func (r *rawRGBA8Image[CS]) Width() int  { return r.w }
+func (r *rawRGBA8Image[CS]) Height() int { return r.h }
 
-func (r *rawRGBA8Image) Pixel(x, y int) color.RGBA8[color.Linear] {
-	i := (y*r.w + x) * 4
-	return color.NewRGBA8[color.Linear](r.pixels[i], r.pixels[i+1], r.pixels[i+2], r.pixels[i+3])
+func (r *rawRGBA8Image[CS]) Pixel(x, y int) color.RGBA8[CS] {
+	i := y*r.stride + x*4
+	return color.NewRGBA8[CS](r.pixels[i], r.pixels[i+1], r.pixels[i+2], r.pixels[i+3])
 }
 
-func (r *rawRGBA8Image) CopyColorHspan(x, y, length int, colors []color.RGBA8[color.Linear]) {
-	for j, c := range colors {
-		i := (y*r.w + x + j) * 4
-		r.pixels[i] = c.R
-		r.pixels[i+1] = c.G
-		r.pixels[i+2] = c.B
-		r.pixels[i+3] = c.A
+func (r *rawRGBA8Image[CS]) CopyColorHspan(x, y, length int, colors []color.RGBA8[CS]) {
+	off := y*r.stride + x*4
+	for _, c := range colors {
+		r.pixels[off] = c.R
+		r.pixels[off+1] = c.G
+		r.pixels[off+2] = c.B
+		r.pixels[off+3] = c.A
+		off += 4
 	}
 }
 
-func (r *rawRGBA8Image) CopyColorVspan(x, y, length int, colors []color.RGBA8[color.Linear]) {
-	for j, c := range colors {
-		i := ((y+j)*r.w + x) * 4
-		r.pixels[i] = c.R
-		r.pixels[i+1] = c.G
-		r.pixels[i+2] = c.B
-		r.pixels[i+3] = c.A
+func (r *rawRGBA8Image[CS]) CopyColorVspan(x, y, length int, colors []color.RGBA8[CS]) {
+	off := y*r.stride + x*4
+	for _, c := range colors {
+		r.pixels[off] = c.R
+		r.pixels[off+1] = c.G
+		r.pixels[off+2] = c.B
+		r.pixels[off+3] = c.A
+		off += r.stride
 	}
 }
 
-// BlurRGBA8 applies a stack blur to a raw RGBA8 byte buffer (row-major,
-// 4 bytes per pixel, len = w*h*4).  This is the recommended entry point for
-// callers outside the agg_go module.
-func (sb *StackBlur) BlurRGBA8(pixels []byte, w, h, radius int) {
-	if radius < 1 || w <= 0 || h <= 0 || len(pixels) < w*h*4 {
+// BlurRGBA8 applies a stack blur to a raw RGBA8 byte buffer.  The stride
+// parameter is the number of bytes per row; pass w*4 for tightly packed
+// buffers.  The blur algorithm averages raw channel bytes and is agnostic to
+// colour-space interpretation — the CS type parameter on the StackBlur
+// instance determines only the type tag, not the computation.
+func (sb *StackBlur[CS]) BlurRGBA8(pixels []byte, w, h, stride, radius int) {
+	if radius < 1 || w <= 0 || h <= 0 || stride < w*4 || len(pixels) < (h-1)*stride+w*4 {
 		return
 	}
-	sb.Blur(&rawRGBA8Image{pixels: pixels, w: w, h: h}, radius)
+	sb.Blur(&rawRGBA8Image[CS]{pixels: pixels, w: w, h: h, stride: stride}, radius)
 }

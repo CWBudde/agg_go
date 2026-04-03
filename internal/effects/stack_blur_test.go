@@ -43,14 +43,14 @@ func TestSimpleStackBlurBoth(t *testing.T) {
 // ──────────────────────────────────────────────────────────────────────────
 
 func TestCalcPix(t *testing.T) {
-	calc := StackBlurCalcRGBA[uint32]{r: 255, g: 128, b: 64, a: 255}
+	calc := StackBlurCalcRGBA[uint32, color.Linear]{r: 255, g: 128, b: 64, a: 255}
 	var result color.RGBA8[color.Linear]
 	calc.CalcPix(&result, 1)
 	if result.R != 255 || result.G != 128 || result.B != 64 || result.A != 255 {
 		t.Errorf("CalcPix/1 = %+v, want {255,128,64,255}", result)
 	}
 
-	calc2 := StackBlurCalcRGBA[uint32]{r: 200, g: 100, b: 50, a: 200}
+	calc2 := StackBlurCalcRGBA[uint32, color.Linear]{r: 200, g: 100, b: 50, a: 200}
 	var result2 color.RGBA8[color.Linear]
 	calc2.CalcPix(&result2, 2)
 	if result2.R != 100 || result2.G != 50 || result2.B != 25 || result2.A != 100 {

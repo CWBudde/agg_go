@@ -9,18 +9,20 @@ import (
 )
 
 // StackBlurCalcRGBA is the RGBA accumulator used by the generic stack-blur
-// implementation, mirroring AGG's stack_blur_calc_rgba helper.
-type StackBlurCalcRGBA[T ~uint32 | ~uint64] struct {
+// implementation, mirroring AGG's stack_blur_calc_rgba helper.  The CS type
+// parameter carries the colour-space tag so that the calculator produces
+// correctly typed output without unsafe conversions.
+type StackBlurCalcRGBA[T ~uint32 | ~uint64, CS color.Space] struct {
 	r, g, b, a T
 }
 
 // Clear resets all color channels to zero.
-func (calc *StackBlurCalcRGBA[T]) Clear() {
+func (calc *StackBlurCalcRGBA[T, CS]) Clear() {
 	calc.r, calc.g, calc.b, calc.a = 0, 0, 0, 0
 }
 
 // Add adds a color value to the accumulator.
-func (calc *StackBlurCalcRGBA[T]) Add(v color.RGBA8[color.Linear]) {
+func (calc *StackBlurCalcRGBA[T, CS]) Add(v color.RGBA8[CS]) {
 	calc.r += T(v.R)
 	calc.g += T(v.G)
 	calc.b += T(v.B)
@@ -28,7 +30,7 @@ func (calc *StackBlurCalcRGBA[T]) Add(v color.RGBA8[color.Linear]) {
 }
 
 // AddWeighted adds a weighted color value to the accumulator.
-func (calc *StackBlurCalcRGBA[T]) AddWeighted(v color.RGBA8[color.Linear], weight int) {
+func (calc *StackBlurCalcRGBA[T, CS]) AddWeighted(v color.RGBA8[CS], weight int) {
 	w := T(weight)
 	calc.r += T(v.R) * w
 	calc.g += T(v.G) * w
@@ -37,7 +39,7 @@ func (calc *StackBlurCalcRGBA[T]) AddWeighted(v color.RGBA8[color.Linear], weigh
 }
 
 // Sub subtracts a color value from the accumulator.
-func (calc *StackBlurCalcRGBA[T]) Sub(v color.RGBA8[color.Linear]) {
+func (calc *StackBlurCalcRGBA[T, CS]) Sub(v color.RGBA8[CS]) {
 	calc.r -= T(v.R)
 	calc.g -= T(v.G)
 	calc.b -= T(v.B)
@@ -45,7 +47,7 @@ func (calc *StackBlurCalcRGBA[T]) Sub(v color.RGBA8[color.Linear]) {
 }
 
 // SubCalc subtracts another calculator from this one.
-func (calc *StackBlurCalcRGBA[T]) SubCalc(other StackBlurCalcRGBA[T]) {
+func (calc *StackBlurCalcRGBA[T, CS]) SubCalc(other StackBlurCalcRGBA[T, CS]) {
 	calc.r -= other.r
 	calc.g -= other.g
 	calc.b -= other.b
@@ -53,7 +55,7 @@ func (calc *StackBlurCalcRGBA[T]) SubCalc(other StackBlurCalcRGBA[T]) {
 }
 
 // AddCalc adds another calculator to this one.
-func (calc *StackBlurCalcRGBA[T]) AddCalc(other StackBlurCalcRGBA[T]) {
+func (calc *StackBlurCalcRGBA[T, CS]) AddCalc(other StackBlurCalcRGBA[T, CS]) {
 	calc.r += other.r
 	calc.g += other.g
 	calc.b += other.b
@@ -61,7 +63,7 @@ func (calc *StackBlurCalcRGBA[T]) AddCalc(other StackBlurCalcRGBA[T]) {
 }
 
 // CalcPix calculates the final pixel value using division.
-func (calc *StackBlurCalcRGBA[T]) CalcPix(result *color.RGBA8[color.Linear], div int) {
+func (calc *StackBlurCalcRGBA[T, CS]) CalcPix(result *color.RGBA8[CS], div int) {
 	d := T(div)
 	result.R = basics.Int8u(calc.r / d)
 	result.G = basics.Int8u(calc.g / d)
@@ -70,7 +72,7 @@ func (calc *StackBlurCalcRGBA[T]) CalcPix(result *color.RGBA8[color.Linear], div
 }
 
 // CalcPixMulShr calculates the final pixel value using multiplication and bit shift.
-func (calc *StackBlurCalcRGBA[T]) CalcPixMulShr(result *color.RGBA8[color.Linear], mul, shr int) {
+func (calc *StackBlurCalcRGBA[T, CS]) CalcPixMulShr(result *color.RGBA8[CS], mul, shr int) {
 	m := T(mul)
 	result.R = basics.Int8u((calc.r * m) >> shr)
 	result.G = basics.Int8u((calc.g * m) >> shr)
@@ -116,9 +118,9 @@ func (sb *SimpleStackBlur) BlurHorizontal(pixels [][]color.RGBA8[color.Linear], 
 	sb.stack.Allocate(div, 32)
 
 	for y := 0; y < h; y++ {
-		sum := StackBlurCalcRGBA[uint32]{}
-		sumIn := StackBlurCalcRGBA[uint32]{}
-		sumOut := StackBlurCalcRGBA[uint32]{}
+		sum := StackBlurCalcRGBA[uint32, color.Linear]{}
+		sumIn := StackBlurCalcRGBA[uint32, color.Linear]{}
+		sumOut := StackBlurCalcRGBA[uint32, color.Linear]{}
 
 		sum.Clear()
 		sumIn.Clear()
@@ -216,9 +218,9 @@ func (sb *SimpleStackBlur) BlurVertical(pixels [][]color.RGBA8[color.Linear], ra
 	sb.stack.Allocate(div, 32)
 
 	for x := 0; x < w; x++ {
-		sum := StackBlurCalcRGBA[uint32]{}
-		sumIn := StackBlurCalcRGBA[uint32]{}
-		sumOut := StackBlurCalcRGBA[uint32]{}
+		sum := StackBlurCalcRGBA[uint32, color.Linear]{}
+		sumIn := StackBlurCalcRGBA[uint32, color.Linear]{}
+		sumOut := StackBlurCalcRGBA[uint32, color.Linear]{}
 
 		sum.Clear()
 		sumIn.Clear()

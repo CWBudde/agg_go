@@ -34,6 +34,12 @@ func (m *mockRGBA8Image) CopyColorHspan(x, y, length int, colors []color.RGBA8[c
 	copy(m.pixels[y*m.w+x:], colors[:length])
 }
 
+func (m *mockRGBA8Image) CopyColorVspan(x, y, length int, colors []color.RGBA8[color.Linear]) {
+	for i, c := range colors[:length] {
+		m.pixels[(y+i)*m.w+x] = c
+	}
+}
+
 func (m *mockRGBA8Image) set(x, y int, c color.RGBA8[color.Linear]) {
 	m.pixels[y*m.w+x] = c
 }
@@ -102,7 +108,7 @@ func TestStackBlurPreservesOpaque(t *testing.T) {
 		img.pixels[i] = want
 	}
 
-	sb := NewStackBlur()
+	sb := NewStackBlur[color.Linear]()
 	sb.Blur(img, 2)
 
 	for i, got := range img.pixels {
@@ -119,7 +125,7 @@ func TestStackBlurSpreads(t *testing.T) {
 	img := newMockRGBA8Image(5, 5)
 	img.set(2, 2, color.RGBA8[color.Linear]{R: 255, G: 0, B: 0, A: 255})
 
-	sb := NewStackBlur()
+	sb := NewStackBlur[color.Linear]()
 	sb.Blur(img, 1)
 
 	centre := img.Pixel(2, 2)
