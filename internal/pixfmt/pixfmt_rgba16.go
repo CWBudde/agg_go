@@ -190,6 +190,20 @@ func (pf *PixFmtAlphaBlendRGBA16[S, B]) CopyColorHspan(x, y, length int, colors 
 	}
 }
 
+func (pf *PixFmtAlphaBlendRGBA16[S, B]) CopyColorVspan(x, y, length int, colors []color.RGBA16[S]) {
+	if x < 0 || x >= pf.Width() || length <= 0 || len(colors) == 0 {
+		return
+	}
+	y = ClampY(y, pf.Height())
+	if y+length > pf.Height() {
+		length = pf.Height() - y
+	}
+	for i := 0; i < length; i++ {
+		colorIdx := i % len(colors)
+		pf.CopyPixel(x, y+i, colors[colorIdx])
+	}
+}
+
 // Clear fills the entire buffer with c.
 func (pf *PixFmtAlphaBlendRGBA16[S, B]) Clear(c color.RGBA16[S]) {
 	w, h := pf.Width(), pf.Height()
