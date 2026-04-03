@@ -1,4 +1,4 @@
-package agg
+package blur
 
 import (
 	"unsafe"
@@ -9,27 +9,22 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// Stack blur for Gray8 images — mirrors the RGBA8 StackBlur pattern but uses
-// StackBlurCalcGray[uint32, CS] as the accumulator calculator.
+// StackBlurGray8 — mirrors C++ AGG's stack_blur<gray8>
 // ---------------------------------------------------------------------------
 
-// StackBlurGray implements AGG's stack_blur for Gray8 images.  Like StackBlur,
-// temporary buffers are reused across calls.
-type StackBlurGray[CS color.Space] struct {
+type StackBlurGray8[CS color.Space] struct {
 	buf   *array.PodVector[color.Gray8[CS]]
 	stack *array.PodVector[color.Gray8[CS]]
 }
 
-// NewStackBlurGray creates a new StackBlurGray instance.
-func NewStackBlurGray[CS color.Space]() *StackBlurGray[CS] {
-	return &StackBlurGray[CS]{
+func NewStackBlurGray8[CS color.Space]() *StackBlurGray8[CS] {
+	return &StackBlurGray8[CS]{
 		buf:   array.NewPodVector[color.Gray8[CS]](),
 		stack: array.NewPodVector[color.Gray8[CS]](),
 	}
 }
 
-// BlurX applies a horizontal stack blur pass for Gray8 images.
-func (sb *StackBlurGray[CS]) BlurX(img PixelReadWriter[color.Gray8[CS]], radius int) {
+func (sb *StackBlurGray8[CS]) BlurX(img PixelReadWriter[color.Gray8[CS]], radius int) {
 	if radius < 1 {
 		return
 	}
@@ -108,73 +103,62 @@ func (sb *StackBlurGray[CS]) BlurX(img PixelReadWriter[color.Gray8[CS]], radius 
 	}
 }
 
-// BlurY applies a vertical stack blur pass by delegating through a transposer.
-func (sb *StackBlurGray[CS]) BlurY(img PixelReadWriter[color.Gray8[CS]], radius int) {
-	sb.BlurX(&pixelImageTransposer[color.Gray8[CS]]{img: img}, radius)
+func (sb *StackBlurGray8[CS]) BlurY(img PixelReadWriter[color.Gray8[CS]], radius int) {
+	sb.BlurX(&Transposer[color.Gray8[CS]]{Img: img}, radius)
 }
 
-// Blur applies both horizontal and vertical blur passes.
-func (sb *StackBlurGray[CS]) Blur(img PixelReadWriter[color.Gray8[CS]], radius int) {
+func (sb *StackBlurGray8[CS]) Blur(img PixelReadWriter[color.Gray8[CS]], radius int) {
 	sb.BlurX(img, radius)
 	sb.BlurY(img, radius)
 }
 
-// ---------------------------------------------------------------------------
-// Raw Gray8 byte-buffer adapter
-// ---------------------------------------------------------------------------
-
-// rawGray8Image adapts a flat Gray8 byte slice (2 bytes per pixel: V, A) to
-// PixelReadWriter[color.Gray8[CS]].
-type rawGray8Image[CS color.Space] struct {
-	pixels []byte
-	w, h   int
-	stride int
+// RawGray8Image adapts a flat Gray8 byte slice (2 bytes per pixel: V, A) to
+// PixelReadWriter.
+type RawGray8Image[CS color.Space] struct {
+	Pixels []byte
+	W, H   int
+	Stride int
 }
 
-func (r *rawGray8Image[CS]) Width() int  { return r.w }
-func (r *rawGray8Image[CS]) Height() int { return r.h }
+func (r *RawGray8Image[CS]) Width() int  { return r.W }
+func (r *RawGray8Image[CS]) Height() int { return r.H }
 
-func (r *rawGray8Image[CS]) Pixel(x, y int) color.Gray8[CS] {
-	off := y*r.stride + x*2
-	return color.Gray8[CS]{V: r.pixels[off], A: r.pixels[off+1]}
+func (r *RawGray8Image[CS]) Pixel(x, y int) color.Gray8[CS] {
+	off := y*r.Stride + x*2
+	return color.Gray8[CS]{V: r.Pixels[off], A: r.Pixels[off+1]}
 }
 
-func (r *rawGray8Image[CS]) CopyColorHspan(x, y, length int, colors []color.Gray8[CS]) {
-	off := y*r.stride + x*2
+func (r *RawGray8Image[CS]) CopyColorHspan(x, y, length int, colors []color.Gray8[CS]) {
+	off := y*r.Stride + x*2
 	src := unsafe.Slice((*byte)(unsafe.Pointer(&colors[0])), len(colors)*2)
-	copy(r.pixels[off:off+len(colors)*2], src)
+	copy(r.Pixels[off:off+len(colors)*2], src)
 }
 
-func (r *rawGray8Image[CS]) CopyColorVspan(x, y, length int, colors []color.Gray8[CS]) {
-	off := y*r.stride + x*2
+func (r *RawGray8Image[CS]) CopyColorVspan(x, y, length int, colors []color.Gray8[CS]) {
+	off := y*r.Stride + x*2
 	for _, c := range colors {
-		r.pixels[off] = c.V
-		r.pixels[off+1] = c.A
-		off += r.stride
+		r.Pixels[off] = c.V
+		r.Pixels[off+1] = c.A
+		off += r.Stride
 	}
 }
 
-// BlurGray8 applies a stack blur to a raw Gray8 byte buffer.  Each pixel is
-// 2 bytes (V, A).  The stride parameter is the number of bytes per row.
-func (sb *StackBlurGray[CS]) BlurGray8(pixels []byte, w, h, stride, radius int) {
+func (sb *StackBlurGray8[CS]) BlurGray8(pixels []byte, w, h, stride, radius int) {
 	if radius < 1 || w <= 0 || h <= 0 || stride < w*2 || len(pixels) < (h-1)*stride+w*2 {
 		return
 	}
-	sb.Blur(&rawGray8Image[CS]{pixels: pixels, w: w, h: h, stride: stride}, radius)
+	sb.Blur(&RawGray8Image[CS]{Pixels: pixels, W: w, H: h, Stride: stride}, radius)
 }
 
 // ---------------------------------------------------------------------------
-// Stack blur for Gray16 images — uses StackBlurCalcGray16[uint64, CS].
+// StackBlurGray16 — mirrors C++ AGG's stack_blur<gray16>
 // ---------------------------------------------------------------------------
 
-// StackBlurGray16 implements AGG's stack_blur for Gray16 images.  Like
-// StackBlur, temporary buffers are reused across calls.
 type StackBlurGray16[CS color.Space] struct {
 	buf   *array.PodVector[color.Gray16[CS]]
 	stack *array.PodVector[color.Gray16[CS]]
 }
 
-// NewStackBlurGray16 creates a new StackBlurGray16 instance.
 func NewStackBlurGray16[CS color.Space]() *StackBlurGray16[CS] {
 	return &StackBlurGray16[CS]{
 		buf:   array.NewPodVector[color.Gray16[CS]](),
@@ -182,7 +166,6 @@ func NewStackBlurGray16[CS color.Space]() *StackBlurGray16[CS] {
 	}
 }
 
-// BlurX applies a horizontal stack blur pass for Gray16 images.
 func (sb *StackBlurGray16[CS]) BlurX(img PixelReadWriter[color.Gray16[CS]], radius int) {
 	if radius < 1 {
 		return
@@ -194,7 +177,6 @@ func (sb *StackBlurGray16[CS]) BlurX(img PixelReadWriter[color.Gray16[CS]], radi
 	wm := w - 1
 	div := radius*2 + 1
 
-	// 16-bit channels exceed the 8-bit mul/shr table range.
 	divSum := (radius + 1) * (radius + 1)
 
 	sb.buf.Allocate(w, 128)
@@ -254,57 +236,46 @@ func (sb *StackBlurGray16[CS]) BlurX(img PixelReadWriter[color.Gray16[CS]], radi
 	}
 }
 
-// BlurY applies a vertical stack blur pass by delegating through a transposer.
 func (sb *StackBlurGray16[CS]) BlurY(img PixelReadWriter[color.Gray16[CS]], radius int) {
-	sb.BlurX(&pixelImageTransposer[color.Gray16[CS]]{img: img}, radius)
+	sb.BlurX(&Transposer[color.Gray16[CS]]{Img: img}, radius)
 }
 
-// Blur applies both horizontal and vertical blur passes.
 func (sb *StackBlurGray16[CS]) Blur(img PixelReadWriter[color.Gray16[CS]], radius int) {
 	sb.BlurX(img, radius)
 	sb.BlurY(img, radius)
 }
 
-// ---------------------------------------------------------------------------
-// Raw Gray16 byte-buffer adapter
-// ---------------------------------------------------------------------------
-
-// rawGray16Image adapts a flat Gray16 byte slice (4 bytes per pixel: V uint16,
-// A uint16, native byte order) to PixelReadWriter[color.Gray16[CS]].
-type rawGray16Image[CS color.Space] struct {
-	pixels []byte
-	w, h   int
-	stride int
+type RawGray16Image[CS color.Space] struct {
+	Pixels []byte
+	W, H   int
+	Stride int
 }
 
-func (r *rawGray16Image[CS]) Width() int  { return r.w }
-func (r *rawGray16Image[CS]) Height() int { return r.h }
+func (r *RawGray16Image[CS]) Width() int  { return r.W }
+func (r *RawGray16Image[CS]) Height() int { return r.H }
 
-func (r *rawGray16Image[CS]) Pixel(x, y int) color.Gray16[CS] {
-	off := y*r.stride + x*4
-	return *(*color.Gray16[CS])(unsafe.Pointer(&r.pixels[off]))
+func (r *RawGray16Image[CS]) Pixel(x, y int) color.Gray16[CS] {
+	off := y*r.Stride + x*4
+	return *(*color.Gray16[CS])(unsafe.Pointer(&r.Pixels[off]))
 }
 
-func (r *rawGray16Image[CS]) CopyColorHspan(x, y, length int, colors []color.Gray16[CS]) {
-	off := y*r.stride + x*4
+func (r *RawGray16Image[CS]) CopyColorHspan(x, y, length int, colors []color.Gray16[CS]) {
+	off := y*r.Stride + x*4
 	src := unsafe.Slice((*byte)(unsafe.Pointer(&colors[0])), len(colors)*4)
-	copy(r.pixels[off:off+len(colors)*4], src)
+	copy(r.Pixels[off:off+len(colors)*4], src)
 }
 
-func (r *rawGray16Image[CS]) CopyColorVspan(x, y, length int, colors []color.Gray16[CS]) {
-	off := y*r.stride + x*4
+func (r *RawGray16Image[CS]) CopyColorVspan(x, y, length int, colors []color.Gray16[CS]) {
+	off := y*r.Stride + x*4
 	for _, c := range colors {
-		*(*color.Gray16[CS])(unsafe.Pointer(&r.pixels[off])) = c
-		off += r.stride
+		*(*color.Gray16[CS])(unsafe.Pointer(&r.Pixels[off])) = c
+		off += r.Stride
 	}
 }
 
-// BlurGray16 applies a stack blur to a raw Gray16 byte buffer.  Each pixel is
-// 4 bytes (V uint16, A uint16, native byte order).  The stride parameter is
-// the number of bytes per row.
 func (sb *StackBlurGray16[CS]) BlurGray16(pixels []byte, w, h, stride, radius int) {
 	if radius < 1 || w <= 0 || h <= 0 || stride < w*4 || len(pixels) < (h-1)*stride+w*4 {
 		return
 	}
-	sb.Blur(&rawGray16Image[CS]{pixels: pixels, w: w, h: h, stride: stride}, radius)
+	sb.Blur(&RawGray16Image[CS]{Pixels: pixels, W: w, H: h, Stride: stride}, radius)
 }
