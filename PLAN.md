@@ -168,37 +168,7 @@ test rather than a larger architecture change.
 
 ---
 
-## Phase 4 - Pixfmt Generics Decision
-
-The remaining architectural question is whether the pixfmt layer should keep the current generic
-blender parameter or flatten to concrete variants for hot-path inlining. The code is currently
-correct, so this is a performance and maintenance decision rather than a functional bug.
-
-The current recommendation is to keep the status quo unless profiling shows that the inner blender
-dispatch is a real bottleneck. If the data justifies the refactor, apply it consistently rather than
-only to one pixfmt family.
-
-### 4.1 Decision checkpoint
-
-- [ ] Run `go tool pprof` on a representative AA fill benchmark of at least 1M pixels and decide
-      whether `blender.BlendPix` is hot enough to justify the refactor.
-
-### 4.2 If the answer is "de-genericize"
-
-- [ ] Apply the change to the packed formats `PixFmtRGB555`, `PixFmtRGB565`, `PixFmtBGR555`,
-      `PixFmtBGR565`.
-- [ ] Apply the same treatment to `PixFmtAlphaBlendRGBA` so the main rendering workhorse stays
-      consistent.
-- [ ] Update all example and test call sites that name the generic forms explicitly.
-
-### 4.3 Follow-up regardless of the outcome
-
-- [ ] Update `AGENTS.md` with the final decision so future contributors know the chosen pattern.
-- [ ] Re-run `just check` and the visual regression suite after any change.
-
----
-
-## Phase 5 - Exit Checklist
+## Phase 4 - Exit Checklist
 
 The plan is complete when the remaining open items below are all closed or explicitly deferred
 with rationale:

@@ -25,9 +25,11 @@ func (m *mockRGBA16Image) Height() int { return m.h }
 func (m *mockRGBA16Image) Pixel(x, y int) color.RGBA16[color.Linear] {
 	return m.pixels[y*m.w+x]
 }
+
 func (m *mockRGBA16Image) CopyColorHspan(x, y, length int, colors []color.RGBA16[color.Linear]) {
 	copy(m.pixels[y*m.w+x:], colors[:length])
 }
+
 func (m *mockRGBA16Image) CopyColorVspan(x, y, length int, colors []color.RGBA16[color.Linear]) {
 	for i, c := range colors[:length] {
 		m.pixels[(y+i)*m.w+x] = c
@@ -48,9 +50,11 @@ func (m *mockRGB8Image) Height() int { return m.h }
 func (m *mockRGB8Image) Pixel(x, y int) color.RGB8[color.Linear] {
 	return m.pixels[y*m.w+x]
 }
+
 func (m *mockRGB8Image) CopyColorHspan(x, y, length int, colors []color.RGB8[color.Linear]) {
 	copy(m.pixels[y*m.w+x:], colors[:length])
 }
+
 func (m *mockRGB8Image) CopyColorVspan(x, y, length int, colors []color.RGB8[color.Linear]) {
 	for i, c := range colors[:length] {
 		m.pixels[(y+i)*m.w+x] = c
@@ -71,9 +75,11 @@ func (m *mockGray8Image) Height() int { return m.h }
 func (m *mockGray8Image) Pixel(x, y int) color.Gray8[color.Linear] {
 	return m.pixels[y*m.w+x]
 }
+
 func (m *mockGray8Image) CopyColorHspan(x, y, length int, colors []color.Gray8[color.Linear]) {
 	copy(m.pixels[y*m.w+x:], colors[:length])
 }
+
 func (m *mockGray8Image) CopyColorVspan(x, y, length int, colors []color.Gray8[color.Linear]) {
 	for i, c := range colors[:length] {
 		m.pixels[(y+i)*m.w+x] = c

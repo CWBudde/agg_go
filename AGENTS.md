@@ -106,6 +106,7 @@ Choose between generics and concrete types pragmatically:
 - Prefer concrete types or aliases at the root API boundary and for the most common internal instantiations.
 - Do not keep a generic design by default in a measured hotspot; simplify to concrete types when profiling shows that helps code generation, readability, or maintenance.
 - Avoid premature de-genericization when there is no demonstrated performance problem.
+- **PixFmt Generics Decision (Phase 4):** The `PixFmt` layer retains the generic type parameter for blenders (e.g. `[B blender.RGBABlender]`). Profiling confirmed that Go successfully devirtualizes these calls in tight loops, and SIMD optimized paths bypass them entirely for solid fills. There is no performance justification for manually flattening to concrete variants.
 
 Translation should stay as close as practical to the original implementation unless there is a clear Go-specific improvement or repository convention that requires a different approach.
 

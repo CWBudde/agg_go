@@ -407,7 +407,30 @@ func BenchmarkBlenderRGB565(b *testing.B) {
 	}
 }
 
+func BenchmarkRGB565BlendSolidHspan(b *testing.B) {
+	w, h := 1000, 1000
+	pf, _ := makeRGB565Buf(w, h)
+	c := color.RGBA8[color.Linear]{R: 255, G: 0, B: 0, A: 128}
+	covers := make([]basics.Int8u, w)
+	for i := range covers {
+		covers[i] = 128 // half coverage
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for y := 0; y < h; y++ {
+			pf.BlendSolidHspan(0, y, w, c, covers)
+		}
+	}
+}
+
 // --- Contract tests ---
+
+func makeRGB565Buf(w, h int) (*PixFmtRGB565[blender.BlenderRGB565], []basics.Int16u) {
+	buf := make([]basics.Int16u, w*h)
+	rbuf := buffer.NewRenderingBufferU16WithData(buf, w, h, w*2)
+	return NewPixFmtRGB565(rbuf, blender.BlenderRGB565{}), buf
+}
 
 func makeRGB555Buf(w, h int) (*PixFmtRGB555[blender.BlenderRGB555], []basics.Int16u) {
 	buf := make([]basics.Int16u, w*h)
