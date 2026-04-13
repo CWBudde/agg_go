@@ -702,7 +702,8 @@ func (fe *FontEngineFreetype) decomposeFTOutline(outline *C.FT_Outline, flipY bo
 	first := 0
 
 	for n := 0; n < int(outline.n_contours); n++ {
-		last := int(C.short(uintptr(unsafe.Pointer(uintptr(unsafe.Pointer(outline.contours)) + uintptr(n)*unsafe.Sizeof(C.short(0))))))
+		lastPtr := uintptr(unsafe.Pointer(outline.contours)) + uintptr(n)*unsafe.Sizeof(C.short(0))
+		last := int(*(*C.short)(unsafe.Pointer(lastPtr)))
 
 		// Bounds checking - ensure indices are within valid range
 		if first < 0 || last < 0 || first >= int(outline.n_points) || last >= int(outline.n_points) {
