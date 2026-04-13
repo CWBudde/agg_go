@@ -85,3 +85,4 @@ mem.prof
 # AI Agents
 .claude/
 .serena/
+.codex

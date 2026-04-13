@@ -168,7 +168,77 @@ test rather than a larger architecture change.
 
 ---
 
-## Phase 4 - Exit Checklist
+## Phase 4 - Explicit Float Agg2D Variant
+
+AGG 2.6's `Agg2D` has a compile-time `AGG2D_USE_FLOAT_FORMAT` switch in
+`../agg-2.6/agg-src/agg2d/agg2d.h` that swaps the internal `ColorType` from
+`agg::rgba8` to `agg::rgba32`. The Go port should support the same mode as an
+explicit, dedicated implementation path, not via build tags and not by mutating
+the semantics of the current 8-bit `Agg2D`.
+
+### 4.1 Goal
+
+- [ ] Add a dedicated float-backed `Agg2D` implementation path that mirrors the
+      existing 8-bit `Agg2D` API closely enough for side-by-side parity work.
+- [ ] Keep the current 8-bit `Agg2D` behavior and public API stable.
+- [ ] Make the float path explicit in naming and construction so callers opt in
+      intentionally rather than changing global build configuration.
+
+### 4.2 Shape of the work
+
+- [ ] Introduce a separate implementation rather than a runtime mode flag on the
+      existing `Agg2D`. The working assumption is a dedicated copy/twin such as
+      `Agg2DFloat`, `ContextFloat`, and `ImageFloat`, with shared helpers only
+      where behavior is identical.
+- [ ] Mirror the C++ `AGG2D_USE_FLOAT_FORMAT` intent specifically at the
+      Agg2D-layer pixel-format wiring: the float variant should use the
+      `rgba32`/`rgba128`-class pixel-format stack for its internal renderers
+      while preserving the current path semantics around blend/plain/pre modes.
+- [ ] Keep the 8-bit and float implementations source-comparable. If code is
+      factored, the factoring must preserve a clear one-to-one mapping back to
+      C++ Agg2D methods and state.
+- [ ] Avoid build tags for selecting the float path. Selection must happen via
+      explicit constructors/types in normal Go code.
+
+### 4.3 Required scope
+
+- [ ] Provide dedicated float image and context types with attach/create APIs,
+      not just a hidden internal renderer.
+- [ ] Cover at least these Agg2D subsystems in the float variant:
+      clear/fill/stroke, path rendering, image copy/blend/transform, gradients,
+      and text state plumbing.
+- [ ] Define and document the boundary conversions between float Agg2D images
+      and standard Go image types or 8-bit AGG images.
+- [ ] Add an explicit contract for premultiply/demultiply behavior in the float
+      variant, including whether exported helper APIs expose straight or premultiplied
+      data at the boundary.
+
+### 4.4 Non-goals
+
+- [ ] Do not replace the existing 8-bit `Agg2D`.
+- [ ] Do not hide both precisions behind one opaque constructor unless parity
+      and debugging remain straightforward.
+- [ ] Do not treat this as a generic whole-library precision rewrite. This task
+      is specifically about an explicit Agg2D-level float twin first.
+- [ ] Do not add a 16-bit Agg2D variant in the same change unless it falls out
+      naturally from shared lower-level abstractions after the float path is in
+      place and tested.
+
+### 4.5 Verification and exit criteria
+
+- [ ] Add side-by-side tests that render the same scene through 8-bit Agg2D and
+      float Agg2D, then compare the quantized float output against expected
+      tolerance envelopes.
+- [ ] Add source-linked tests for premultiply/demultiply and transformed-image
+      behavior in the float path.
+- [ ] Add at least one visual regression/demo hook that can run a demo via the
+      float Agg2D path without disturbing the existing 8-bit baseline.
+- [ ] Document the intentional API and behavioral differences between the 8-bit
+      and float variants in `docs/AGG_DELTAS.md` or a dedicated companion note.
+
+---
+
+## Phase 5 - Exit Checklist
 
 The plan is complete when the remaining open items below are all closed or explicitly deferred
 with rationale:

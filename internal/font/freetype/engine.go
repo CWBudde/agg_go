@@ -428,6 +428,77 @@ func (fe *FontEngineFreetype) GetDescender() float64 {
 	return 0
 }
 
+func absInt(v int) int {
+	if v < 0 {
+		return -v
+	}
+	return v
+}
+
+func bitmapBoundsForAgg(left, top, width, rows int, flipY bool) basics.Rect[int] {
+	if width <= 0 || rows <= 0 {
+		return basics.Rect[int]{X1: left, Y1: top, X2: left, Y2: top}
+	}
+	if flipY {
+		return basics.Rect[int]{
+			X1: left,
+			Y1: -top,
+			X2: left + width,
+			Y2: -top + rows,
+		}
+	}
+	return basics.Rect[int]{
+		X1: left,
+		Y1: top - rows,
+		X2: left + width,
+		Y2: top,
+	}
+}
+
+func signedPointerAdd(ptr unsafe.Pointer, offset int) unsafe.Pointer {
+	return unsafe.Pointer(uintptr(int64(uintptr(ptr)) + int64(offset)))
+}
+
+func copyBitmapRowsForAgg(dst []byte, bitmap *C.FT_Bitmap, bounds basics.Rect[int], flipY bool) {
+	if bitmap == nil || bitmap.buffer == nil || len(dst) == 0 {
+		return
+	}
+
+	rows := int(bitmap.rows)
+	pitch := int(bitmap.pitch)
+	rowBytes := absInt(pitch)
+	if rows <= 0 || rowBytes <= 0 {
+		return
+	}
+
+	buf := unsafe.Pointer(bitmap.buffer)
+	y := 0
+	step := pitch
+	top := int(bounds.Y2)
+	if flipY {
+		top = -bounds.Y1
+		buf = signedPointerAdd(buf, pitch*(rows-1))
+		y = -top + rows
+		step = -pitch
+	} else {
+		y = top
+	}
+
+	for i := 0; i < rows; i++ {
+		scanY := y - i - 1
+		destRow := scanY - bounds.Y1
+		if destRow >= 0 && destRow < rows {
+			rowStart := destRow * rowBytes
+			rowEnd := rowStart + rowBytes
+			if rowStart >= 0 && rowEnd <= len(dst) {
+				srcRow := unsafe.Slice((*byte)(buf), rowBytes)
+				copy(dst[rowStart:rowEnd], srcRow)
+			}
+		}
+		buf = signedPointerAdd(buf, step)
+	}
+}
+
 // NumFaces returns the number of loaded faces.
 func (fe *FontEngineFreetype) NumFaces() uint {
 	return fe.numFaces
@@ -469,14 +540,6 @@ func (fe *FontEngineFreetype) PrepareGlyph(glyphCode uint) bool {
 
 	glyph := fe.currentFace.glyph
 
-	// Set bounds and advance
-	fe.bounds = basics.Rect[int]{
-		X1: int(glyph.bitmap_left),
-		Y1: int(int(glyph.bitmap_top) - int(glyph.bitmap.rows)),
-		X2: int(int(glyph.bitmap_left) + int(glyph.bitmap.width)),
-		Y2: int(glyph.bitmap_top),
-	}
-
 	fe.advanceX = float64(glyph.advance.x) / 64.0
 	fe.advanceY = float64(glyph.advance.y) / 64.0
 
@@ -505,7 +568,14 @@ func (fe *FontEngineFreetype) PrepareGlyph(glyphCode uint) bool {
 				return false
 			}
 		}
-		fe.dataSize = uint(int(glyph.bitmap.rows) * int(glyph.bitmap.pitch))
+		fe.bounds = bitmapBoundsForAgg(
+			int(glyph.bitmap_left),
+			int(glyph.bitmap_top),
+			int(glyph.bitmap.width),
+			int(glyph.bitmap.rows),
+			fe.flipY,
+		)
+		fe.dataSize = uint(int(glyph.bitmap.rows) * absInt(int(glyph.bitmap.pitch)))
 
 	case GlyphRenderingAAMono:
 		fe.dataType = font.GlyphDataMono
@@ -517,7 +587,14 @@ func (fe *FontEngineFreetype) PrepareGlyph(glyphCode uint) bool {
 				return false
 			}
 		}
-		fe.dataSize = uint(int(glyph.bitmap.rows) * int(glyph.bitmap.pitch))
+		fe.bounds = bitmapBoundsForAgg(
+			int(glyph.bitmap_left),
+			int(glyph.bitmap_top),
+			int(glyph.bitmap.width),
+			int(glyph.bitmap.rows),
+			fe.flipY,
+		)
+		fe.dataSize = uint(int(glyph.bitmap.rows) * absInt(int(glyph.bitmap.pitch)))
 
 	default:
 		fe.dataType = font.GlyphDataInvalid
@@ -567,13 +644,9 @@ func (fe *FontEngineFreetype) WriteGlyphTo(data []byte) {
 
 	switch fe.dataType {
 	case font.GlyphDataGray8:
-		bitmap := &glyph.bitmap
-		srcData := unsafe.Slice((*byte)(bitmap.buffer), fe.dataSize)
-		copy(data, srcData)
+		copyBitmapRowsForAgg(data, &glyph.bitmap, fe.bounds, fe.flipY)
 	case font.GlyphDataMono:
-		bitmap := &glyph.bitmap
-		srcData := unsafe.Slice((*byte)(bitmap.buffer), fe.dataSize)
-		copy(data, srcData)
+		copyBitmapRowsForAgg(data, &glyph.bitmap, fe.bounds, fe.flipY)
 	}
 }
 
