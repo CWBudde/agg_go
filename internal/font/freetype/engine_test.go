@@ -7,6 +7,7 @@ import (
 
 	"github.com/cwbudde/agg_go/internal/basics"
 	"github.com/cwbudde/agg_go/internal/path"
+	isc "github.com/cwbudde/agg_go/internal/scanline"
 )
 
 func TestNewFontEngineFreetype(t *testing.T) {
@@ -424,6 +425,135 @@ func TestOutlineBoundsForAgg(t *testing.T) {
 
 	if got := outlineBoundsForAgg(nil); got != (basics.Rect[int]{}) {
 		t.Fatalf("outlineBoundsForAgg(nil) = %+v, want zero bounds", got)
+	}
+}
+
+// TestPrepareGlyphGray8MatchesAGGFormula verifies the AGG raster path shape:
+// prepare_glyph() decomposes the FreeType bitmap into scanline storage, then
+// reports storage-derived bounds and serialized byte size.
+func TestPrepareGlyphGray8MatchesAGGFormula(t *testing.T) {
+	engine, err := NewFontEngineFreetype(false, 32)
+	if err != nil {
+		t.Fatalf("Failed to create engine: %v", err)
+	}
+	defer engine.Close()
+
+	fontPath := "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"
+	if engine.LoadFont(fontPath, 0, GlyphRenderingAAGray8, nil) != nil {
+		fontPath = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+		if engine.LoadFont(fontPath, 0, GlyphRenderingAAGray8, nil) != nil {
+			t.Skip("No test fonts available - skipping gray8 parity test")
+		}
+	}
+
+	engine.SetHeight(36.0)
+
+	testGlyphs := []rune{'0', '.', '2', 'H', ',', 'x', '-'}
+	for _, flipY := range []bool{false, true} {
+		engine.SetFlipY(flipY)
+
+		for _, ch := range testGlyphs {
+			t.Run(string(ch)+"/flip="+map[bool]string{false: "false", true: "true"}[flipY], func(t *testing.T) {
+				if !engine.PrepareGlyph(uint(ch)) {
+					t.Fatalf("PrepareGlyph(%q) failed", ch)
+				}
+
+				glyph := engine.currentFace.glyph
+				top := int(glyph.bitmap_top)
+				if flipY {
+					top = -top
+				}
+
+				wantStorage := isc.NewScanlineStorageAA[basics.Int8u]()
+				wantScanline := isc.NewScanlineU8()
+				decomposeFTBitmapGray8(&glyph.bitmap, int(glyph.bitmap_left), top, flipY, engine.gammaTable[:], wantScanline, wantStorage)
+
+				wantBounds := scanlineStorageBoundsAA(wantStorage)
+				if got := engine.Bounds(); got != wantBounds {
+					t.Fatalf("Bounds(%q, flip=%v) = %+v, want %+v", ch, flipY, got, wantBounds)
+				}
+
+				wantSize := wantStorage.ByteSize()
+				if got := int(engine.DataSize()); got != wantSize {
+					t.Fatalf("DataSize(%q, flip=%v) = %d, want %d", ch, flipY, got, wantSize)
+				}
+
+				wantData := make([]byte, wantSize)
+				wantStorage.Serialize(wantData)
+				gotData := make([]byte, wantSize)
+				engine.WriteGlyphTo(gotData)
+				for i := range wantData {
+					if gotData[i] != wantData[i] {
+						t.Fatalf("WriteGlyphTo(%q, flip=%v) differs at byte %d: got %d want %d", ch, flipY, i, gotData[i], wantData[i])
+					}
+				}
+			})
+		}
+	}
+}
+
+func TestSetGammaAffectsGray8SignatureAndSerializedGlyph(t *testing.T) {
+	engine, err := NewFontEngineFreetype(false, 32)
+	if err != nil {
+		t.Fatalf("Failed to create engine: %v", err)
+	}
+	defer engine.Close()
+
+	fontPath := "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"
+	if engine.LoadFont(fontPath, 0, GlyphRenderingAAGray8, nil) != nil {
+		fontPath = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+		if engine.LoadFont(fontPath, 0, GlyphRenderingAAGray8, nil) != nil {
+			t.Skip("No test fonts available - skipping gray8 gamma test")
+		}
+	}
+
+	engine.SetHeight(36.0)
+	if !engine.PrepareGlyph(uint('x')) {
+		t.Fatalf("PrepareGlyph('x') failed with identity gamma")
+	}
+
+	baseSig := engine.FontSignature()
+	baseData := make([]byte, engine.DataSize())
+	engine.WriteGlyphTo(baseData)
+
+	engine.SetGamma(2.0)
+	if !engine.PrepareGlyph(uint('x')) {
+		t.Fatalf("PrepareGlyph('x') failed with gamma=2.0")
+	}
+
+	if got := engine.FontSignature(); got == baseSig {
+		t.Fatalf("FontSignature() did not change after SetGamma: %s", got)
+	}
+
+	gammaData := make([]byte, engine.DataSize())
+	engine.WriteGlyphTo(gammaData)
+
+	differs := false
+	if len(gammaData) != len(baseData) {
+		differs = true
+	}
+	for i := 0; !differs && i < len(gammaData) && i < len(baseData); i++ {
+		if gammaData[i] != baseData[i] {
+			differs = true
+			break
+		}
+	}
+	if !differs {
+		t.Fatalf("SetGamma(2.0) did not change serialized gray8 glyph data")
+	}
+
+	glyph := engine.currentFace.glyph
+	top := int(glyph.bitmap_top)
+	wantStorage := isc.NewScanlineStorageAA[basics.Int8u]()
+	wantScanline := isc.NewScanlineU8()
+	decomposeFTBitmapGray8(&glyph.bitmap, int(glyph.bitmap_left), top, false, engine.gammaTable[:], wantScanline, wantStorage)
+	wantData := make([]byte, wantStorage.ByteSize())
+	wantStorage.Serialize(wantData)
+
+	for i := range wantData {
+		if gammaData[i] != wantData[i] {
+			t.Fatalf("gamma-adjusted serialization differs at byte %d: got %d want %d", i, gammaData[i], wantData[i])
+		}
 	}
 }
 

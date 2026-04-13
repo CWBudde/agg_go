@@ -80,6 +80,8 @@ import (
 	"github.com/cwbudde/agg_go/internal/basics"
 	"github.com/cwbudde/agg_go/internal/font"
 	"github.com/cwbudde/agg_go/internal/path"
+	"github.com/cwbudde/agg_go/internal/pixfmt/gamma"
+	isc "github.com/cwbudde/agg_go/internal/scanline"
 	"github.com/cwbudde/agg_go/internal/transform"
 )
 
@@ -180,6 +182,8 @@ type FontEngineFreetype struct {
 	resolution         int
 	glyphRendering     GlyphRenderingType
 	affine             *transform.TransAffine
+	gammaFunc          gamma.GammaFunction
+	gammaTable         [256]basics.Int8u
 
 	// FreeType handles
 	library     *C.FT_Library
@@ -198,7 +202,11 @@ type FontEngineFreetype struct {
 	advanceY   float64
 
 	// Path storage for outline fonts
-	pathStorage *path.PathStorageStl
+	pathStorage  *path.PathStorageStl
+	scanlineU8   *isc.ScanlineU8
+	scanlineBin  *isc.ScanlineBin
+	scanlinesAA  *isc.ScanlineStorageAA[basics.Int8u]
+	scanlinesBin *isc.ScanlineStorageBin
 }
 
 // GlyphRenderingType selects the glyph representation requested from FreeType.
@@ -219,14 +227,20 @@ func NewFontEngineFreetype(flag32 bool, maxFaces uint) (*FontEngineFreetype, err
 	}
 
 	engine := &FontEngineFreetype{
-		flag32:      flag32,
-		maxFaces:    maxFaces,
-		resolution:  72, // Default DPI
-		hinting:     true,
-		flipY:       false,
-		pathStorage: path.NewPathStorageStl(),
-		affine:      transform.NewTransAffine(),
+		flag32:       flag32,
+		maxFaces:     maxFaces,
+		resolution:   72, // Default DPI
+		hinting:      true,
+		flipY:        false,
+		pathStorage:  path.NewPathStorageStl(),
+		scanlineU8:   isc.NewScanlineU8(),
+		scanlineBin:  isc.NewScanlineBin(),
+		scanlinesAA:  isc.NewScanlineStorageAA[basics.Int8u](),
+		scanlinesBin: isc.NewScanlineStorageBin(),
+		affine:       transform.NewTransAffine(),
+		gammaFunc:    gamma.NewGammaNone(),
 	}
+	engine.rebuildGammaTable()
 
 	// Initialize FreeType library
 	engine.library = C.new_library()
@@ -270,6 +284,8 @@ func (fe *FontEngineFreetype) Close() error {
 func (fe *FontEngineFreetype) SetResolution(dpi uint) {
 	fe.resolution = int(dpi)
 	fe.updateCharSize()
+	fe.updateSignature()
+	fe.changeStamp++
 }
 
 // LoadFont loads a font from file or memory.
@@ -336,15 +352,85 @@ func (fe *FontEngineFreetype) updateCharSize() {
 	}
 }
 
-// updateSignature updates the font signature string with CRC32 hash.
-func (fe *FontEngineFreetype) updateSignature() {
-	// Create signature string similar to AGG C++ implementation
-	sigStr := fmt.Sprintf("%s_%d_%d_%t_%t_%d",
-		fe.name, fe.height, fe.width, fe.hinting, fe.flipY, int(fe.glyphRendering))
+func boolInt(v bool) int {
+	if v {
+		return 1
+	}
+	return 0
+}
 
-	// Calculate CRC32 hash for uniqueness (similar to AGG)
-	crc := calcCRC32([]byte(sigStr))
-	fe.signature = fmt.Sprintf("%s_%08x", sigStr, crc)
+func dblToPlainFX(v float64) int {
+	return int(v * 65536.0)
+}
+
+func usesGammaInSignature(rendering GlyphRenderingType) bool {
+	switch rendering {
+	case GlyphRenderingAAGray8, GlyphRenderingAAMono:
+		return true
+	default:
+		return false
+	}
+}
+
+func usesAffineInSignature(rendering GlyphRenderingType) bool {
+	switch rendering {
+	case GlyphRenderingOutline, GlyphRenderingAAGray8, GlyphRenderingAAMono:
+		return true
+	default:
+		return false
+	}
+}
+
+func buildGammaTable(gammaFunc gamma.GammaFunction) [256]basics.Int8u {
+	var table [256]basics.Int8u
+	for i := range table {
+		value := basics.URound(gammaFunc.Apply(float64(i)/255.0) * 255.0)
+		if value > 255 {
+			value = 255
+		}
+		table[i] = basics.Int8u(value)
+	}
+	return table
+}
+
+func (fe *FontEngineFreetype) rebuildGammaTable() {
+	fe.gammaTable = buildGammaTable(fe.gammaFunc)
+}
+
+// updateSignature updates the font signature string following AGG's cache key layout.
+func (fe *FontEngineFreetype) updateSignature() {
+	gammaHash := uint32(0)
+	if usesGammaInSignature(fe.glyphRendering) {
+		gammaHash = calcCRC32(fe.gammaTable[:])
+	}
+
+	fe.signature = fmt.Sprintf("%s,%d,%d,%d,%d:%dx%d,%d,%d,%08X",
+		fe.name,
+		int(fe.charMap),
+		fe.faceIndex,
+		int(fe.glyphRendering),
+		fe.resolution,
+		fe.height,
+		fe.width,
+		boolInt(fe.hinting),
+		boolInt(fe.flipY),
+		gammaHash,
+	)
+
+	if usesAffineInSignature(fe.glyphRendering) {
+		mtx := [6]float64{1, 0, 0, 1, 0, 0}
+		if fe.affine != nil {
+			fe.affine.StoreTo(mtx[:])
+		}
+		fe.signature += fmt.Sprintf(",%08X%08X%08X%08X%08X%08X",
+			dblToPlainFX(mtx[0]),
+			dblToPlainFX(mtx[1]),
+			dblToPlainFX(mtx[2]),
+			dblToPlainFX(mtx[3]),
+			dblToPlainFX(mtx[4]),
+			dblToPlainFX(mtx[5]),
+		)
+	}
 }
 
 // SetHeight sets the font height in 26.6 fixed point (1/64th of a point).
@@ -379,7 +465,25 @@ func (fe *FontEngineFreetype) SetFlipY(f bool) {
 
 // SetTransform sets the affine transformation matrix.
 func (fe *FontEngineFreetype) SetTransform(affine *transform.TransAffine) {
-	fe.affine = affine
+	if affine == nil {
+		fe.affine = transform.NewTransAffine()
+	} else {
+		fe.affine = affine
+	}
+	fe.updateSignature()
+	fe.changeStamp++
+}
+
+// SetGamma configures AGG-style gamma correction for gray8 bitmap glyph coverage.
+func (fe *FontEngineFreetype) SetGamma(gammaValue float64) {
+	switch {
+	case gammaValue <= 0 || gammaValue == 1.0:
+		fe.gammaFunc = gamma.NewGammaNone()
+	default:
+		fe.gammaFunc = gamma.NewGammaPower(gammaValue)
+	}
+	fe.rebuildGammaTable()
+	fe.updateSignature()
 	fe.changeStamp++
 }
 
@@ -436,65 +540,139 @@ func absInt(v int) int {
 	return v
 }
 
-func bitmapBoundsForAgg(left, top, width, rows int, flipY bool) basics.Rect[int] {
-	if width <= 0 || rows <= 0 {
-		return basics.Rect[int]{X1: left, Y1: top, X2: left, Y2: top}
-	}
-	if flipY {
-		return basics.Rect[int]{
-			X1: left,
-			Y1: -top,
-			X2: left + width,
-			Y2: -top + rows,
-		}
-	}
-	return basics.Rect[int]{
-		X1: left,
-		Y1: top - rows,
-		X2: left + width,
-		Y2: top,
-	}
-}
-
 func signedPointerAdd(ptr unsafe.Pointer, offset int) unsafe.Pointer {
 	return unsafe.Pointer(uintptr(int64(uintptr(ptr)) + int64(offset)))
 }
 
-func copyBitmapRowsForAgg(dst []byte, bitmap *C.FT_Bitmap, bounds basics.Rect[int], flipY bool) {
-	if bitmap == nil || bitmap.buffer == nil || len(dst) == 0 {
+type scanlineU8StorageWrapper struct {
+	sl *isc.ScanlineU8
+}
+
+func (w scanlineU8StorageWrapper) Y() int        { return w.sl.Y() }
+func (w scanlineU8StorageWrapper) NumSpans() int { return w.sl.NumSpans() }
+func (w scanlineU8StorageWrapper) ResetSpans()   { w.sl.ResetSpans() }
+func (w scanlineU8StorageWrapper) AddSpan(x, length int, cover basics.Int8u) {
+	w.sl.AddSpan(x, length, uint(cover))
+}
+func (w scanlineU8StorageWrapper) AddCells(x, length int, covers []basics.Int8u) {
+	for i := 0; i < length && i < len(covers); i++ {
+		w.sl.AddCell(x+i, uint(covers[i]))
+	}
+}
+func (w scanlineU8StorageWrapper) Finalize(y int) { w.sl.Finalize(y) }
+func (w scanlineU8StorageWrapper) Begin() isc.ScanlineIterator {
+	return w.sl.BeginIterator()
+}
+
+func scanlineStorageBoundsAA(storage *isc.ScanlineStorageAA[basics.Int8u]) basics.Rect[int] {
+	if storage == nil {
+		return basics.Rect[int]{}
+	}
+	return basics.Rect[int]{
+		X1: storage.MinX(),
+		Y1: storage.MinY(),
+		X2: storage.MaxX() + 1,
+		Y2: storage.MaxY() + 1,
+	}
+}
+
+func scanlineStorageBoundsBin(storage *isc.ScanlineStorageBin) basics.Rect[int] {
+	if storage == nil {
+		return basics.Rect[int]{}
+	}
+	return basics.Rect[int]{
+		X1: storage.MinX(),
+		Y1: storage.MinY(),
+		X2: storage.MaxX() + 1,
+		Y2: storage.MaxY() + 1,
+	}
+}
+
+func decomposeFTBitmapGray8(bitmap *C.FT_Bitmap, x, y int, flipY bool, gammaTable []basics.Int8u, sl *isc.ScanlineU8, storage *isc.ScanlineStorageAA[basics.Int8u]) {
+	if bitmap == nil || bitmap.buffer == nil || sl == nil || storage == nil {
 		return
 	}
 
 	rows := int(bitmap.rows)
+	width := int(bitmap.width)
 	pitch := int(bitmap.pitch)
-	rowBytes := absInt(pitch)
-	if rows <= 0 || rowBytes <= 0 {
+	if rows <= 0 || width <= 0 || pitch == 0 {
 		return
 	}
 
+	storage.Prepare()
+	sl.Reset(x, x+width)
+
 	buf := unsafe.Pointer(bitmap.buffer)
-	y := 0
 	step := pitch
-	top := int(bounds.Y2)
 	if flipY {
-		top = -bounds.Y1
 		buf = signedPointerAdd(buf, pitch*(rows-1))
-		y = -top + rows
+		y += rows
 		step = -pitch
-	} else {
-		y = top
 	}
 
 	for i := 0; i < rows; i++ {
-		scanY := y - i - 1
-		destRow := scanY - bounds.Y1
-		if destRow >= 0 && destRow < rows {
-			rowStart := destRow * rowBytes
-			rowEnd := rowStart + rowBytes
-			if rowStart >= 0 && rowEnd <= len(dst) {
-				srcRow := unsafe.Slice((*byte)(buf), rowBytes)
-				copy(dst[rowStart:rowEnd], srcRow)
+		sl.ResetSpans()
+		for j := 0; j < width; j++ {
+			src := *(*byte)(signedPointerAdd(buf, j))
+			if src != 0 {
+				cover := src
+				if len(gammaTable) > int(src) {
+					cover = byte(gammaTable[int(src)])
+				}
+				if cover != 0 {
+					sl.AddCell(x+j, uint(cover))
+				}
 			}
+		}
+		if sl.NumSpans() > 0 {
+			sl.Finalize(y - i - 1)
+			storage.Render(scanlineU8StorageWrapper{sl: sl})
+		}
+		buf = signedPointerAdd(buf, step)
+	}
+}
+
+func decomposeFTBitmapMono(bitmap *C.FT_Bitmap, x, y int, flipY bool, sl *isc.ScanlineBin, storage *isc.ScanlineStorageBin) {
+	if bitmap == nil || bitmap.buffer == nil || sl == nil || storage == nil {
+		return
+	}
+
+	rows := int(bitmap.rows)
+	width := int(bitmap.width)
+	pitch := int(bitmap.pitch)
+	rowBytes := absInt(pitch)
+	if rows <= 0 || width <= 0 || rowBytes <= 0 {
+		return
+	}
+
+	storage.Prepare()
+	sl.Reset(x, x+width)
+
+	buf := unsafe.Pointer(bitmap.buffer)
+	step := pitch
+	if flipY {
+		buf = signedPointerAdd(buf, pitch*(rows-1))
+		y += rows
+		step = -pitch
+	}
+
+	for i := 0; i < rows; i++ {
+		sl.ResetSpans()
+		for j := 0; j < width; j++ {
+			byteIdx := j >> 3
+			if byteIdx >= rowBytes {
+				continue
+			}
+			src := *(*byte)(signedPointerAdd(buf, byteIdx))
+			bit := uint(7 - (j & 7))
+			if ((src >> bit) & 0x1) != 0 {
+				sl.AddCell(x+j, 0)
+			}
+		}
+		if sl.NumSpans() > 0 {
+			sl.Finalize(y - i - 1)
+			storage.RenderBinScanline(sl)
 		}
 		buf = signedPointerAdd(buf, step)
 	}
@@ -564,21 +742,21 @@ func (fe *FontEngineFreetype) PrepareGlyph(glyphCode uint) bool {
 
 	// Determine data type and size based on rendering type
 	switch fe.glyphRendering {
-		case GlyphRenderingOutline:
-			fe.dataType = font.GlyphDataOutline
+	case GlyphRenderingOutline:
+		fe.dataType = font.GlyphDataOutline
 
-			// Clear previous path and decompose the outline
-			fe.pathStorage.RemoveAll()
-			if glyph.format == C.FT_GLYPH_FORMAT_OUTLINE {
-				if !fe.decomposeFTOutline(&glyph.outline, fe.flipY, fe.pathStorage) {
-					fe.lastError = -1
-					return false
-				}
+		// Clear previous path and decompose the outline
+		fe.pathStorage.RemoveAll()
+		if glyph.format == C.FT_GLYPH_FORMAT_OUTLINE {
+			if !fe.decomposeFTOutline(&glyph.outline, fe.flipY, fe.pathStorage) {
+				fe.lastError = -1
+				return false
 			}
-			fe.bounds = outlineBoundsForAgg(fe.pathStorage)
+		}
+		fe.bounds = outlineBoundsForAgg(fe.pathStorage)
 
-		case GlyphRenderingAAGray8:
-			fe.dataType = font.GlyphDataGray8
+	case GlyphRenderingAAGray8:
+		fe.dataType = font.GlyphDataGray8
 		// Render to bitmap if not already done
 		if glyph.format != C.FT_GLYPH_FORMAT_BITMAP {
 			err = C.FT_Render_Glyph(glyph, C.FT_RENDER_MODE_NORMAL)
@@ -587,14 +765,13 @@ func (fe *FontEngineFreetype) PrepareGlyph(glyphCode uint) bool {
 				return false
 			}
 		}
-		fe.bounds = bitmapBoundsForAgg(
-			int(glyph.bitmap_left),
-			int(glyph.bitmap_top),
-			int(glyph.bitmap.width),
-			int(glyph.bitmap.rows),
-			fe.flipY,
-		)
-		fe.dataSize = uint(int(glyph.bitmap.rows) * absInt(int(glyph.bitmap.pitch)))
+		top := int(glyph.bitmap_top)
+		if fe.flipY {
+			top = -top
+		}
+		decomposeFTBitmapGray8(&glyph.bitmap, int(glyph.bitmap_left), top, fe.flipY, fe.gammaTable[:], fe.scanlineU8, fe.scanlinesAA)
+		fe.bounds = scanlineStorageBoundsAA(fe.scanlinesAA)
+		fe.dataSize = uint(fe.scanlinesAA.ByteSize())
 
 	case GlyphRenderingAAMono:
 		fe.dataType = font.GlyphDataMono
@@ -606,14 +783,13 @@ func (fe *FontEngineFreetype) PrepareGlyph(glyphCode uint) bool {
 				return false
 			}
 		}
-		fe.bounds = bitmapBoundsForAgg(
-			int(glyph.bitmap_left),
-			int(glyph.bitmap_top),
-			int(glyph.bitmap.width),
-			int(glyph.bitmap.rows),
-			fe.flipY,
-		)
-		fe.dataSize = uint(int(glyph.bitmap.rows) * absInt(int(glyph.bitmap.pitch)))
+		top := int(glyph.bitmap_top)
+		if fe.flipY {
+			top = -top
+		}
+		decomposeFTBitmapMono(&glyph.bitmap, int(glyph.bitmap_left), top, fe.flipY, fe.scanlineBin, fe.scanlinesBin)
+		fe.bounds = scanlineStorageBoundsBin(fe.scanlinesBin)
+		fe.dataSize = uint(fe.scanlinesBin.ByteSize())
 
 	default:
 		fe.dataType = font.GlyphDataInvalid
@@ -659,13 +835,11 @@ func (fe *FontEngineFreetype) WriteGlyphTo(data []byte) {
 		return
 	}
 
-	glyph := fe.currentFace.glyph
-
 	switch fe.dataType {
 	case font.GlyphDataGray8:
-		copyBitmapRowsForAgg(data, &glyph.bitmap, fe.bounds, fe.flipY)
+		fe.scanlinesAA.Serialize(data)
 	case font.GlyphDataMono:
-		copyBitmapRowsForAgg(data, &glyph.bitmap, fe.bounds, fe.flipY)
+		fe.scanlinesBin.Serialize(data)
 	}
 }
 

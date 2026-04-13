@@ -5,11 +5,89 @@ import (
 
 	"github.com/cwbudde/agg_go/internal/basics"
 	"github.com/cwbudde/agg_go/internal/font"
+	isc "github.com/cwbudde/agg_go/internal/scanline"
 )
 
 func pixelAt(buf []byte, width, x, y int) (r, g, b, a uint8) {
 	idx := (y*width + x) * 4
 	return buf[idx], buf[idx+1], buf[idx+2], buf[idx+3]
+}
+
+type testScanlineU8StorageWrapper struct {
+	sl *isc.ScanlineU8
+}
+
+func (w testScanlineU8StorageWrapper) Y() int        { return w.sl.Y() }
+func (w testScanlineU8StorageWrapper) NumSpans() int { return w.sl.NumSpans() }
+func (w testScanlineU8StorageWrapper) ResetSpans()   { w.sl.ResetSpans() }
+func (w testScanlineU8StorageWrapper) AddSpan(x, length int, cover basics.Int8u) {
+	w.sl.AddSpan(x, length, uint(cover))
+}
+func (w testScanlineU8StorageWrapper) AddCells(x, length int, covers []basics.Int8u) {
+	for i := 0; i < length && i < len(covers); i++ {
+		w.sl.AddCell(x+i, uint(covers[i]))
+	}
+}
+func (w testScanlineU8StorageWrapper) Finalize(y int) { w.sl.Finalize(y) }
+func (w testScanlineU8StorageWrapper) Begin() isc.ScanlineIterator {
+	return w.sl.BeginIterator()
+}
+
+func makeSerializedGray8Adaptor(x0, y0 int, rows [][]uint8) *font.SerializedScanlinesAdaptorAA {
+	storage := isc.NewScanlineStorageAA[basics.Int8u]()
+	sl := isc.NewScanlineU8()
+	storage.Prepare()
+
+	maxWidth := 0
+	for _, row := range rows {
+		if len(row) > maxWidth {
+			maxWidth = len(row)
+		}
+	}
+	sl.Reset(x0, x0+maxWidth)
+
+	for rowIdx, row := range rows {
+		sl.ResetSpans()
+		for col, cov := range row {
+			if cov != 0 {
+				sl.AddCell(x0+col, uint(cov))
+			}
+		}
+		if sl.NumSpans() > 0 {
+			sl.Finalize(y0 + rowIdx)
+			storage.Render(testScanlineU8StorageWrapper{sl: sl})
+		}
+	}
+
+	data := make([]byte, storage.ByteSize())
+	storage.Serialize(data)
+	bounds := basics.Rect[int]{X1: storage.MinX(), Y1: storage.MinY(), X2: storage.MaxX() + 1, Y2: storage.MaxY() + 1}
+	return font.NewSerializedScanlinesAdaptorAA(data, bounds)
+}
+
+func makeSerializedMonoAdaptor(x0, y0 int, width int, bits [][]bool) *font.SerializedScanlinesAdaptorBin {
+	storage := isc.NewScanlineStorageBin()
+	sl := isc.NewScanlineBin()
+	storage.Prepare()
+	sl.Reset(x0, x0+width)
+
+	for rowIdx, row := range bits {
+		sl.ResetSpans()
+		for col := 0; col < width && col < len(row); col++ {
+			if row[col] {
+				sl.AddCell(x0+col, 0)
+			}
+		}
+		if sl.NumSpans() > 0 {
+			sl.Finalize(y0 + rowIdx)
+			storage.RenderBinScanline(sl)
+		}
+	}
+
+	data := make([]byte, storage.ByteSize())
+	storage.Serialize(data)
+	bounds := basics.Rect[int]{X1: storage.MinX(), Y1: storage.MinY(), X2: storage.MaxX() + 1, Y2: storage.MaxY() + 1}
+	return font.NewSerializedScanlinesAdaptorBin(data, bounds)
 }
 
 func TestRenderGlyphScanlinesGray8UsesCoverage(t *testing.T) {
@@ -20,15 +98,10 @@ func TestRenderGlyphScanlinesGray8UsesCoverage(t *testing.T) {
 	agg2d.ClearAll(Color{0, 0, 0, 0})
 	agg2d.FillColor(Color{255, 0, 0, 255})
 
-	// 3x2 glyph bitmap coverage, row-major.
-	// Row 0: 255,0,255
-	// Row 1: 0,255,0
-	data := []byte{
-		255, 0, 255,
-		0, 255, 0,
-	}
-	bounds := basics.Rect[int]{X1: 2, Y1: 3, X2: 5, Y2: 5}
-	adaptor := font.NewSerializedScanlinesAdaptorAA(data, bounds)
+	adaptor := makeSerializedGray8Adaptor(2, 3, [][]uint8{
+		{255, 0, 255},
+		{0, 255, 0},
+	})
 
 	glyph := &font.GlyphCache{DataType: font.GlyphDataGray8}
 	agg2d.renderGlyphScanlines(adaptor, glyph, 0, 0)
@@ -66,10 +139,9 @@ func TestRenderGlyphScanlinesMonoDecodesBits(t *testing.T) {
 	agg2d.ClearAll(Color{0, 0, 0, 0})
 	agg2d.FillColor(Color{0, 255, 0, 255})
 
-	// 8x1 monochrome row, 0b10101010 (MSB-first).
-	data := []byte{0xAA}
-	bounds := basics.Rect[int]{X1: 4, Y1: 2, X2: 12, Y2: 3}
-	adaptor := font.NewSerializedScanlinesAdaptorBin(data, bounds)
+	adaptor := makeSerializedMonoAdaptor(4, 2, 8, [][]bool{
+		{true, false, true, false, true, false, true, false},
+	})
 
 	glyph := &font.GlyphCache{DataType: font.GlyphDataMono}
 	agg2d.renderGlyphScanlines(adaptor, glyph, 0, 0)
@@ -100,9 +172,7 @@ func TestRenderGlyphScanlinesUsesGeneralBlendMode(t *testing.T) {
 	agg2d.Attach(buf, width, height, width*4)
 	agg2d.FillColor(Color{255, 0, 0, 255})
 
-	data := []byte{255}
-	bounds := basics.Rect[int]{X1: 1, Y1: 1, X2: 2, Y2: 2}
-	adaptor := font.NewSerializedScanlinesAdaptorAA(data, bounds)
+	adaptor := makeSerializedGray8Adaptor(1, 1, [][]uint8{{255}})
 	glyph := &font.GlyphCache{DataType: font.GlyphDataGray8}
 
 	agg2d.SetBlendMode(BlendAlpha)

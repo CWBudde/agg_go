@@ -1,6 +1,9 @@
 package font
 
-import "github.com/cwbudde/agg_go/internal/basics"
+import (
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/scanline"
+)
 
 // IntegerPathStorage abstracts the integer outline storages used by the
 // FreeType-backed engines for 16-bit and 32-bit glyph coordinate paths.
@@ -24,4 +27,8 @@ type IntegerPathStorage interface {
 type SerializedScanlinesAdaptor interface {
 	Bounds() basics.Rect[int]
 	Data() []byte
+	RewindScanlines() bool
+	MinX() int
+	MaxX() int
+	SweepScanline(sl scanline.Scanline) bool
 }

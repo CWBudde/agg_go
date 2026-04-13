@@ -291,9 +291,15 @@ func (fcm *FontCacheManager) InitEmbeddedAdaptors(glyph *GlyphCache, x, y float6
 
 	switch glyph.DataType {
 	case GlyphDataGray8:
-		fcm.gray8Adaptor = NewSerializedScanlinesAdaptorAA(glyph.Data, glyph.Bounds)
+		if fcm.gray8Adaptor == nil {
+			fcm.gray8Adaptor = NewSerializedScanlinesAdaptorAA(glyph.Data, glyph.Bounds)
+		}
+		fcm.gray8Adaptor.Init(glyph.Data, glyph.Bounds, x, y)
 	case GlyphDataMono:
-		fcm.monoAdaptor = NewSerializedScanlinesAdaptorBin(glyph.Data, glyph.Bounds)
+		if fcm.monoAdaptor == nil {
+			fcm.monoAdaptor = NewSerializedScanlinesAdaptorBin(glyph.Data, glyph.Bounds)
+		}
+		fcm.monoAdaptor.Init(glyph.Data, glyph.Bounds, x, y)
 	case GlyphDataOutline:
 		fcm.pathAdaptor.RemoveAll()
 		if fcm.fontEngine == nil {

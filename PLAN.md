@@ -147,22 +147,24 @@ path to each fix.
 
 ## Phase 3 - Font Fidelity
 
-The font subsystem is mostly in good shape, but one visible regression remains in the FreeType
-baseline positioning path. This is a good candidate for a narrow fix plus a pixel-level regression
-test rather than a larger architecture change.
+The font subsystem is mostly in good shape. The recent FreeType and low-level
+runner fixes appear to have addressed the main baseline/orientation regression
+path (notably the bitmap-bounds/row-order handling and the earlier double-flip
+/ inverted-baseline behavior). The remaining work here is to lock that in with
+explicit regression coverage and, if practical, a direct C++ comparison.
 
 ### 3.1 Open bug
 
-- [ ] Fix the FreeType raster glyph vertical baseline bug where short glyphs such as `.`, `,`, and
+- [x] Fix the FreeType raster glyph vertical baseline bug where short glyphs such as `.`, `,`, and
       `-` render at the wrong Y position when using `RasterFontCache`.
-- [ ] Re-check the glyph bitmap positioning pipeline around `InitEmbeddedAdaptors`,
+- [x] Re-check the glyph bitmap positioning pipeline around `InitEmbeddedAdaptors`,
       `NewSerializedScanlinesAdaptorAA`, and `glyphBitmapRasterizer.SweepScanline`.
 - [ ] Add a pixel-level regression test for a mixed-height string such as `0.2 H,x-y`.
 - [ ] Add a C++ comparison for the same string and font size if practical.
 
 ### 3.2 Acceptance criteria
 
-- [ ] Short glyphs land on the baseline band rather than above x-height.
+- [x] Short glyphs land on the baseline band rather than above x-height.
 - [ ] The regression is covered by a stable image- or pixel-level test.
 - [ ] Any intentional deviation is documented in `docs/AGG_DELTAS.md`.
 
