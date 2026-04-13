@@ -74,6 +74,7 @@ import "C"
 import (
 	"errors"
 	"fmt"
+	"math"
 	"unsafe"
 
 	"github.com/cwbudde/agg_go/internal/basics"
@@ -499,6 +500,24 @@ func copyBitmapRowsForAgg(dst []byte, bitmap *C.FT_Bitmap, bounds basics.Rect[in
 	}
 }
 
+func outlineBoundsForAgg(pathStorage *path.PathStorageStl) basics.Rect[int] {
+	if pathStorage == nil || pathStorage.TotalVertices() == 0 {
+		return basics.Rect[int]{}
+	}
+	pathBounds, ok := basics.BoundingRectSingle[float64](
+		path.NewPathStorageStlVertexSourceAdapter(pathStorage), 0,
+	)
+	if !ok {
+		return basics.Rect[int]{}
+	}
+	return basics.Rect[int]{
+		X1: int(math.Floor(pathBounds.X1)),
+		Y1: int(math.Floor(pathBounds.Y1)),
+		X2: int(math.Ceil(pathBounds.X2)),
+		Y2: int(math.Ceil(pathBounds.Y2)),
+	}
+}
+
 // NumFaces returns the number of loaded faces.
 func (fe *FontEngineFreetype) NumFaces() uint {
 	return fe.numFaces
@@ -545,21 +564,21 @@ func (fe *FontEngineFreetype) PrepareGlyph(glyphCode uint) bool {
 
 	// Determine data type and size based on rendering type
 	switch fe.glyphRendering {
-	case GlyphRenderingOutline:
-		fe.dataType = font.GlyphDataOutline
-		fe.dataSize = 0 // Outline data is stored in path
+		case GlyphRenderingOutline:
+			fe.dataType = font.GlyphDataOutline
 
-		// Clear previous path and decompose the outline
-		fe.pathStorage.RemoveAll()
-		if glyph.format == C.FT_GLYPH_FORMAT_OUTLINE {
-			if !fe.decomposeFTOutline(&glyph.outline, fe.flipY, fe.pathStorage) {
-				fe.lastError = -1
-				return false
+			// Clear previous path and decompose the outline
+			fe.pathStorage.RemoveAll()
+			if glyph.format == C.FT_GLYPH_FORMAT_OUTLINE {
+				if !fe.decomposeFTOutline(&glyph.outline, fe.flipY, fe.pathStorage) {
+					fe.lastError = -1
+					return false
+				}
 			}
-		}
+			fe.bounds = outlineBoundsForAgg(fe.pathStorage)
 
-	case GlyphRenderingAAGray8:
-		fe.dataType = font.GlyphDataGray8
+		case GlyphRenderingAAGray8:
+			fe.dataType = font.GlyphDataGray8
 		// Render to bitmap if not already done
 		if glyph.format != C.FT_GLYPH_FORMAT_BITMAP {
 			err = C.FT_Render_Glyph(glyph, C.FT_RENDER_MODE_NORMAL)

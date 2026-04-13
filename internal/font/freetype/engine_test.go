@@ -4,6 +4,9 @@ package freetype
 
 import (
 	"testing"
+
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/path"
 )
 
 func TestNewFontEngineFreetype(t *testing.T) {
@@ -403,6 +406,24 @@ func TestDecomposeFTOutlineWithFont(t *testing.T) {
 				t.Errorf("Unreasonable advance Y %f for character '%c'", advY, tc.char)
 			}
 		})
+	}
+}
+
+func TestOutlineBoundsForAgg(t *testing.T) {
+	pathStorage := path.NewPathStorageStl()
+	pathStorage.MoveTo(1.25, -2.75)
+	pathStorage.LineTo(10.75, 3.1)
+	pathStorage.LineTo(6.4, 8.9)
+	pathStorage.ClosePolygon(basics.PathFlagsClose)
+
+	bounds := outlineBoundsForAgg(pathStorage)
+	want := basics.Rect[int]{X1: 1, Y1: -3, X2: 11, Y2: 9}
+	if bounds != want {
+		t.Fatalf("outlineBoundsForAgg() = %+v, want %+v", bounds, want)
+	}
+
+	if got := outlineBoundsForAgg(nil); got != (basics.Rect[int]{}) {
+		t.Fatalf("outlineBoundsForAgg(nil) = %+v, want zero bounds", got)
 	}
 }
 
