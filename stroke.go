@@ -9,6 +9,12 @@ import (
 // SetStrokeWidth sets the width of strokes (alias for LineWidth on Context).
 func (ctx *Context) SetStrokeWidth(width float64) { ctx.agg2d.LineWidth(width) }
 
+// SetStrokeColor sets the stroke color without changing fill state.
+func (ctx *Context) SetStrokeColor(color Color) { ctx.agg2d.LineColor(color) }
+
+// SetFillColor sets the fill color without changing stroke state.
+func (ctx *Context) SetFillColor(color Color) { ctx.agg2d.FillColor(color) }
+
 // GetLineWidth returns the current line width.
 func (ctx *Context) GetLineWidth() float64 { return ctx.agg2d.impl.GetLineWidth() }
 

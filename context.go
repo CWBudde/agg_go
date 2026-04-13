@@ -276,6 +276,16 @@ func (ctx *Context) LineTo(x, y float64) {
 	ctx.agg2d.LineTo(x, y)
 }
 
+// QuadricCurveTo appends a quadratic Bezier segment.
+func (ctx *Context) QuadricCurveTo(xCtrl, yCtrl, xTo, yTo float64) {
+	ctx.agg2d.QuadricCurveTo(xCtrl, yCtrl, xTo, yTo)
+}
+
+// CubicCurveTo appends a cubic Bezier segment.
+func (ctx *Context) CubicCurveTo(xCtrl1, yCtrl1, xCtrl2, yCtrl2, xTo, yTo float64) {
+	ctx.agg2d.CubicCurveTo(xCtrl1, yCtrl1, xCtrl2, yCtrl2, xTo, yTo)
+}
+
 // ClosePath closes the current contour by connecting the last point back to the
 // first point in the subpath.
 func (ctx *Context) ClosePath() {
