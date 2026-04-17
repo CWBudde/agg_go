@@ -259,7 +259,13 @@ func (i *portImage) Demultiply() error { return i.img.Demultiply() }
 
 func (i *portImage) ToGoImage() *image.RGBA { return i.img.ToGoImage() }
 
+func (i *portImage) ToStandardImage() (image.Image, error) { return i.img.ToStandardImage() }
+
 func (i *portImage) SaveToPNG(filename string) error { return i.img.SaveToPNG(filename) }
+
+func (i *portImage) SaveToJPEG(filename string, quality int) error {
+	return i.img.SaveToJPEG(filename, quality)
+}
 
 func unwrapPortImage(img Image, contextKind Kind) (*agg.Image, error) {
 	if img == nil {

@@ -298,13 +298,16 @@ across two active repositories.
       operations only: clear, fill/stroke color, line width/cap/join, path
       construction, fill rules, clip box, transforms, basic image drawing,
       compositing, and image export.
-- [ ] Treat unsupported operations as explicit capability errors rather than
+- [x] Treat unsupported operations as explicit capability errors rather than
       silent no-op or backend switching.
+- [ ] Wire capability checks into any future partial or comparison-only backend
+      implementations so unsupported features fail with typed capability errors
+      instead of ad hoc messages.
 - [x] Define and test the error contract for engine/resource mismatches, such as
       passing an image created by one engine implementation into another.
 - [x] Add package-level docs and a small end-to-end example for first-time
       `engine` usage.
-- [ ] Add engine-level image export/interop helpers beyond PNG and `ToGoImage`,
+- [x] Add engine-level image export/interop helpers beyond PNG and `ToGoImage`,
       such as `ToStandardImage` and JPEG export, or explicitly document why the
       facade stops short of those conversions.
 
@@ -332,15 +335,19 @@ across two active repositories.
 
 ### 5.5 In-repo C++ engine migration constraints
 
-- [ ] Keep the optional C++-backed engine behind an explicit build tag such as
+- [x] Keep the optional C++-backed engine behind an explicit build tag such as
       `agogo` or `cppref`, not in the default build.
 - [ ] Move or reimplement any required C++ FFI glue, build configuration,
       wrappers, and test helpers inside this repository rather than depending on
       `github.com/cwbudde/agogo` at runtime.
-- [ ] If the C++ engine is requested but the build tag, cgo toolchain, native
-      AGG libs, or other prerequisites are missing, return a concrete
-      unavailable error.
-- [ ] Never silently fall back from the C++ engine to the native port, and
+- [x] Return concrete typed unavailable errors for the currently known C++
+      migration prerequisites and build modes: missing `agogo` build tag,
+      `agogo` builds without cgo, and `agogo` builds where the in-repo bridge is
+      still only a stub.
+- [ ] Extend the unavailable-path checks once the real C++ bridge exists so
+      missing native AGG libs, pkg-config failures, or other link/runtime
+      prerequisites also surface as concrete unavailable errors.
+- [x] Never silently fall back from the C++ engine to the native port, and
       never silently accept a stub implementation as a valid backend.
 
 ### 5.6 AGoGo absorption gate

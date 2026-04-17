@@ -4,6 +4,8 @@ import (
 	"errors"
 	"image"
 	"image/color"
+	"image/jpeg"
+	"os"
 	"testing"
 
 	agg "github.com/cwbudde/agg_go"
@@ -18,7 +20,13 @@ func (foreignImage) Height() int            { return 1 }
 func (foreignImage) Premultiply() error     { return nil }
 func (foreignImage) Demultiply() error      { return nil }
 func (foreignImage) ToGoImage() *image.RGBA { return image.NewRGBA(image.Rect(0, 0, 1, 1)) }
+func (foreignImage) ToStandardImage() (image.Image, error) {
+	return image.NewRGBA(image.Rect(0, 0, 1, 1)), nil
+}
 func (foreignImage) SaveToPNG(string) error { return nil }
+func (foreignImage) SaveToJPEG(string, int) error {
+	return nil
+}
 
 func TestAvailableIncludesPort(t *testing.T) {
 	available := engine.Available()
@@ -27,6 +35,70 @@ func TestAvailableIncludesPort(t *testing.T) {
 	}
 	if available[0] != engine.Port {
 		t.Fatalf("expected first available engine to be %q, got %q", engine.Port, available[0])
+	}
+}
+
+func TestPortCapabilitiesExposeCurrentFacadeSurface(t *testing.T) {
+	caps, err := engine.Capabilities(engine.Port)
+	if err != nil {
+		t.Fatalf("Capabilities() error = %v", err)
+	}
+
+	for _, want := range []engine.Capability{
+		engine.CapabilitySolidStyle,
+		engine.CapabilityPath,
+		engine.CapabilityTransforms,
+		engine.CapabilityClipBox,
+		engine.CapabilityCompositing,
+		engine.CapabilityImageDraw,
+		engine.CapabilityImageExport,
+		engine.CapabilityImageInterop,
+		engine.CapabilityGradients,
+		engine.CapabilityText,
+	} {
+		if !containsCapability(caps, want) {
+			t.Fatalf("expected capability set to include %q, got %v", want, caps)
+		}
+	}
+}
+
+func TestCapabilitiesCPPUnavailable(t *testing.T) {
+	_, err := engine.Capabilities(engine.CPP)
+	if err == nil {
+		t.Fatal("expected unavailable error for C++ capability query")
+	}
+	if !errors.Is(err, engine.ErrUnavailable) {
+		t.Fatalf("expected ErrUnavailable, got %v", err)
+	}
+}
+
+func TestRequireCapabilityReturnsTypedUnsupportedError(t *testing.T) {
+	err := engine.RequireCapability(engine.Port, engine.CapabilityDashedStroke, "SetDash")
+	if err == nil {
+		t.Fatal("expected unsupported capability error")
+	}
+	if !errors.Is(err, engine.ErrUnsupportedCapability) {
+		t.Fatalf("expected ErrUnsupportedCapability, got %v", err)
+	}
+
+	var unsupported *engine.UnsupportedCapabilityError
+	if !errors.As(err, &unsupported) {
+		t.Fatalf("expected UnsupportedCapabilityError, got %T", err)
+	}
+	if unsupported.Kind != engine.Port || unsupported.Capability != engine.CapabilityDashedStroke || unsupported.Operation != "SetDash" {
+		t.Fatalf("unexpected unsupported capability payload: %+v", unsupported)
+	}
+}
+
+func TestSupportsReflectsCapabilitySet(t *testing.T) {
+	if !engine.Supports(engine.Port, engine.CapabilityText) {
+		t.Fatal("expected port engine to support text capability")
+	}
+	if engine.Supports(engine.Port, engine.CapabilityDashedStroke) {
+		t.Fatal("did not expect port engine to report dashed-stroke capability")
+	}
+	if engine.Supports(engine.CPP, engine.CapabilityText) {
+		t.Fatal("did not expect unavailable C++ engine to report text capability")
 	}
 }
 
@@ -206,4 +278,58 @@ func TestTextFacadeConfigurationAndValidation(t *testing.T) {
 	if err := ctx.DrawText("", 1, 1); err == nil {
 		t.Fatal("expected empty text to be rejected")
 	}
+}
+
+func TestImageInteropHelpers(t *testing.T) {
+	img, err := engine.NewImage(3, 2, engine.Config{Kind: engine.Port})
+	if err != nil {
+		t.Fatalf("NewImage() error = %v", err)
+	}
+	ctx, err := engine.NewContextForImage(img)
+	if err != nil {
+		t.Fatalf("NewContextForImage() error = %v", err)
+	}
+
+	ctx.Clear(agg.Transparent)
+	ctx.SetColor(agg.Red)
+	ctx.FillRectangle(0, 0, 3, 2)
+
+	stdImg, err := img.ToStandardImage()
+	if err != nil {
+		t.Fatalf("ToStandardImage() error = %v", err)
+	}
+	if got := stdImg.Bounds(); got.Dx() != 3 || got.Dy() != 2 {
+		t.Fatalf("unexpected standard image bounds: %v", got)
+	}
+	r, g, b, a := stdImg.At(1, 1).RGBA()
+	if r < 0xf000 || g != 0 || b != 0 || a != 0xffff {
+		t.Fatalf("unexpected standard image pixel: r=%#x g=%#x b=%#x a=%#x", r, g, b, a)
+	}
+
+	out := t.TempDir() + "/out.jpg"
+	if err := img.SaveToJPEG(out, 90); err != nil {
+		t.Fatalf("SaveToJPEG() error = %v", err)
+	}
+	f, err := os.Open(out)
+	if err != nil {
+		t.Fatalf("Open(%q) error = %v", out, err)
+	}
+	defer f.Close()
+
+	decoded, err := jpeg.Decode(f)
+	if err != nil {
+		t.Fatalf("jpeg.Decode() error = %v", err)
+	}
+	if got := decoded.Bounds(); got.Dx() != 3 || got.Dy() != 2 {
+		t.Fatalf("unexpected decoded JPEG bounds: %v", got)
+	}
+}
+
+func containsCapability(caps []engine.Capability, want engine.Capability) bool {
+	for _, cap := range caps {
+		if cap == want {
+			return true
+		}
+	}
+	return false
 }

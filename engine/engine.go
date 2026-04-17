@@ -99,7 +99,9 @@ type Image interface {
 	Premultiply() error
 	Demultiply() error
 	ToGoImage() *image.RGBA
+	ToStandardImage() (image.Image, error)
 	SaveToPNG(filename string) error
+	SaveToJPEG(filename string, quality int) error
 }
 
 // ErrUnavailable is returned when an engine was requested but is not available
