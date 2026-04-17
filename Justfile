@@ -491,3 +491,7 @@ release-tag VERSION:
     @echo "Tagging release {{VERSION}}..."
     git tag -a v{{VERSION}} -m "Release v{{VERSION}}"
     @echo "Tagged v{{VERSION}} (push with: git push origin v{{VERSION}})"
+
+fix:
+    just lint-fix
+    just fmt
