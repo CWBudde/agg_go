@@ -71,10 +71,7 @@ func Capabilities(kind Kind) ([]Capability, error) {
 		return out, nil
 	case CPP:
 		if !cppAvailable() {
-			return nil, &UnavailableError{
-				Kind:   CPP,
-				Reason: "the C++ engine is not implemented in this repository yet",
-			}
+			return nil, cppUnavailableError(cppUnavailableReason())
 		}
 		return nil, nil
 	default:

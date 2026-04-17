@@ -229,7 +229,7 @@ func (fe *FontEngine) decomposeOutlineToPath(outline *C.FT_Outline, flipY bool, 
 		firstTag := *(*C.char)(unsafe.Pointer(firstTagPtr))
 
 		// A contour cannot start with a cubic control point
-		if (int(firstTag) & 3) == 3 { // FT_CURVE_TAG_CUBIC
+		if (int(firstTag) & 3) == 2 { // FT_CURVE_TAG_CUBIC = 0x02
 			return errors.New("contour cannot start with cubic control point")
 		}
 
@@ -393,7 +393,7 @@ func (fe *FontEngine) processCubicCurve(outline *C.FT_Outline, i *int, last int,
 	// Verify second control point is cubic
 	tag2Ptr := uintptr(unsafe.Pointer(outline.tags)) + uintptr(*i)
 	tag2 := int(*(*C.char)(unsafe.Pointer(tag2Ptr))) & 3
-	if tag2 != 3 {
+	if tag2 != 2 { // FT_CURVE_TAG_CUBIC = 0x02
 		return errors.New("second cubic control point has wrong tag")
 	}
 

@@ -1008,7 +1008,7 @@ func (fe *FontEngineFreetype) decomposeFTOutline(outline *C.FT_Outline, flipY bo
 		tag := int(*tags) & 1 // FT_CURVE_TAG_ON = 1
 
 		// A contour cannot start with a cubic control point
-		if (int(*tags) & 3) == 3 { // FT_CURVE_TAG_CUBIC = 3
+		if (int(*tags) & 3) == 2 { // FT_CURVE_TAG_CUBIC = 0x02
 			return false
 		}
 
@@ -1138,7 +1138,7 @@ func (fe *FontEngineFreetype) decomposeFTOutline(outline *C.FT_Outline, flipY bo
 				point = (*C.FT_Vector)(unsafe.Pointer(uintptr(unsafe.Pointer(outline.points)) + uintptr(i)*unsafe.Sizeof(C.FT_Vector{})))
 				tags = (*C.char)(unsafe.Pointer(uintptr(unsafe.Pointer(outline.tags)) + uintptr(i)))
 
-				if (int(*tags) & 3) != 3 { // Not FT_CURVE_TAG_CUBIC
+				if (int(*tags) & 3) != 2 { // Not FT_CURVE_TAG_CUBIC (0x02)
 					return false
 				}
 

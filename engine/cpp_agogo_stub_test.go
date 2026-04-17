@@ -23,7 +23,7 @@ func TestCPPUnavailableReasonWithAgogoTag(t *testing.T) {
 	if !errors.As(err, &unavailable) {
 		t.Fatalf("expected UnavailableError, got %T", err)
 	}
-	if !strings.Contains(unavailable.Reason, "agogo") || !strings.Contains(unavailable.Reason, "not implemented") {
+	if !strings.Contains(unavailable.Reason, "agogo") || !strings.Contains(unavailable.Reason, "stub") {
 		t.Fatalf("unexpected unavailable reason: %q", unavailable.Reason)
 	}
 }

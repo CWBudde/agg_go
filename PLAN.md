@@ -337,9 +337,14 @@ across two active repositories.
 
 - [x] Keep the optional C++-backed engine behind an explicit build tag such as
       `agogo` or `cppref`, not in the default build.
-- [ ] Move or reimplement any required C++ FFI glue, build configuration,
-      wrappers, and test helpers inside this repository rather than depending on
-      `github.com/cwbudde/agogo` at runtime.
+- [x] Create an in-repo `agogo`-tagged native bridge package with local
+      header/source files, cgo build configuration, bridge metadata/probe
+      wrappers, and build-mode-specific tests, so the native boundary now lives
+      in this repository rather than in the external AGoGo module.
+- [ ] Move or reimplement the remaining C++ FFI glue, build configuration,
+      wrappers, and test helpers needed by the actual engine adapter inside
+      this repository rather than depending on `github.com/cwbudde/agogo` at
+      runtime.
 - [x] Return concrete typed unavailable errors for the currently known C++
       migration prerequisites and build modes: missing `agogo` build tag,
       `agogo` builds without cgo, and `agogo` builds where the in-repo bridge is
