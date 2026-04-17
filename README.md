@@ -2,7 +2,9 @@
 
 Go port of the Anti-Grain Geometry (AGG) 2.6 library — a high‑quality 2D renderer with anti‑aliasing and sub‑pixel accuracy. The goal is a clean, idiomatic Go API over a faithful implementation of AGG’s core pipeline.
 
-Important: Work in progress. This repository may be deleted or merged into the author’s AGoGo project.
+Important: Work in progress. This repository is intended to become the single
+home of the work; once migration and consolidation are complete, it is expected
+to be renamed back to `AGoGo`.
 
 ## Overview
 
@@ -153,4 +155,7 @@ Follow `PLAN.md` for the consolidated roadmap and phased backlog, `docs/TASKS.md
 
 ## License
 
-This is an in‑progress port of AGG 2.6 for Go. Licensing will follow the original AGG licensing terms; see upstream AGG for details. This repository may be consolidated into AGoGo in the future.
+This is an in‑progress port of AGG 2.6 for Go. Licensing will follow the
+original AGG licensing terms; see upstream AGG for details. The current plan is
+to consolidate the work here and eventually rename this repository back to
+`AGoGo`.
