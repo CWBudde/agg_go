@@ -8,8 +8,17 @@ package freetype
 #cgo pkg-config: freetype2
 #include <ft2build.h>
 #include FT_FREETYPE_H
+#include FT_MODULE_H
 #include <stdlib.h>
 #include <string.h>
+
+// Set the TrueType bytecode interpreter version globally for the given
+// library. Values are 35 (classic Apple), 38 (Infinality/older CT), 40
+// (default modern ClearType). Returns 0 on success, FT_Error otherwise.
+static int agg_set_tt_interpreter_version(FT_Library lib, unsigned int version) {
+    FT_UInt v = version;
+    return FT_Property_Set(lib, "truetype", "interpreter-version", &v);
+}
 
 // Helper functions to work around CGO limitations
 static FT_Library* new_library() {
@@ -176,8 +185,11 @@ type FontEngineFreetype struct {
 	signature          string
 	height             uint
 	width              uint
-	hinting            bool
-	flipY              bool
+	hinting              bool
+	forceAutohint        bool
+	snapOutlineX         bool
+	ttInterpreterVersion uint
+	flipY                bool
 	libraryInitialized bool
 	resolution         int
 	glyphRendering     GlyphRenderingType
@@ -404,7 +416,7 @@ func (fe *FontEngineFreetype) updateSignature() {
 		gammaHash = calcCRC32(fe.gammaTable[:])
 	}
 
-	fe.signature = fmt.Sprintf("%s,%d,%d,%d,%d:%dx%d,%d,%d,%08X",
+	fe.signature = fmt.Sprintf("%s,%d,%d,%d,%d:%dx%d,%d,%d,%d,%d,%d,%08X",
 		fe.name,
 		int(fe.charMap),
 		fe.faceIndex,
@@ -413,6 +425,9 @@ func (fe *FontEngineFreetype) updateSignature() {
 		fe.height,
 		fe.width,
 		boolInt(fe.hinting),
+		boolInt(fe.forceAutohint),
+		boolInt(fe.snapOutlineX),
+		fe.ttInterpreterVersion,
 		boolInt(fe.flipY),
 		gammaHash,
 	)
@@ -454,6 +469,58 @@ func (fe *FontEngineFreetype) SetHinting(h bool) {
 	fe.hinting = h
 	fe.updateSignature()
 	fe.changeStamp++
+}
+
+// SetForceAutohint forces FreeType to use its auto-hinter instead of
+// the font's native TrueType bytecode hints. Has no effect when hinting
+// is disabled. Useful for Java-like stem grid-fitting behaviour when
+// the font's built-in hints leave stems at fractional pixel positions.
+func (fe *FontEngineFreetype) SetForceAutohint(f bool) {
+	fe.forceAutohint = f
+	fe.updateSignature()
+	fe.changeStamp++
+}
+
+// SetSnapOutlineX enables integer-snapping of the glyph outline's leftmost
+// X coordinate to the pixel grid after FT_Load_Glyph. When enabled (outline
+// rendering only), the whole outline path is translated so the leftmost
+// vertex lands on an integer pixel. Mimics Java Graphics2D's aggressive
+// stem grid-fitting. Advance metrics are unchanged.
+func (fe *FontEngineFreetype) SetSnapOutlineX(s bool) {
+	fe.snapOutlineX = s
+	fe.updateSignature()
+	fe.changeStamp++
+}
+
+// SetTrueTypeInterpreterVersion selects the TrueType bytecode interpreter
+// version used by FreeType for this engine's library. Passing 0 leaves the
+// library default untouched. Common values:
+//
+//   - 35: classic Apple-style — aggressive X+Y stem grid-fit; closest to older
+//     Oracle JDK T2K and modern OpenJDK greyscale-AA output.
+//   - 38: intermediate "Infinality" / early ClearType-like behaviour.
+//   - 40: FreeType's current default — avoids X-direction grid-fit to preserve
+//     advance width for sub-pixel AA.
+//
+// Because FT_Property_Set applies library-globally, this affects all subsequent
+// glyph loads from this engine. Returns an error if the library rejects the
+// value (e.g. the requested interpreter module isn't built in).
+func (fe *FontEngineFreetype) SetTrueTypeInterpreterVersion(v uint) error {
+	fe.ttInterpreterVersion = v
+	if !fe.libraryInitialized || v == 0 {
+		fe.updateSignature()
+		fe.changeStamp++
+		return nil
+	}
+
+	rc := C.agg_set_tt_interpreter_version(*fe.library, C.uint(v))
+	if rc != 0 {
+		return fmt.Errorf("FT_Property_Set(truetype.interpreter-version=%d) failed: FT_Error=%d", v, int(rc))
+	}
+
+	fe.updateSignature()
+	fe.changeStamp++
+	return nil
 }
 
 // SetFlipY sets whether to flip Y coordinates.
@@ -678,6 +745,39 @@ func decomposeFTBitmapMono(bitmap *C.FT_Bitmap, x, y int, flipY bool, sl *isc.Sc
 	}
 }
 
+// snapPathStorageMinXToInteger shifts every vertex in the path so that the
+// leftmost vertex X coordinate lands on the nearest integer pixel. No-op if
+// the path is empty or already snapped. Advance metrics are untouched.
+func snapPathStorageMinXToInteger(ps *path.PathStorageStl) {
+	if ps == nil {
+		return
+	}
+	total := ps.TotalVertices()
+	if total == 0 {
+		return
+	}
+
+	pathBounds, ok := basics.BoundingRectSingle[float64](
+		path.NewPathStorageStlVertexSourceAdapter(ps), 0,
+	)
+	if !ok {
+		return
+	}
+
+	shift := math.Round(pathBounds.X1) - pathBounds.X1
+	if shift == 0 {
+		return
+	}
+
+	for i := uint(0); i < total; i++ {
+		x, y, cmd := ps.Vertex(i)
+		if !basics.IsVertex(basics.PathCommand(cmd)) {
+			continue
+		}
+		ps.ModifyVertex(i, x+shift, y)
+	}
+}
+
 func outlineBoundsForAgg(pathStorage *path.PathStorageStl) basics.Rect[int] {
 	if pathStorage == nil || pathStorage.TotalVertices() == 0 {
 		return basics.Rect[int]{}
@@ -727,6 +827,8 @@ func (fe *FontEngineFreetype) PrepareGlyph(glyphCode uint) bool {
 	loadFlags := C.FT_LOAD_DEFAULT
 	if !fe.hinting {
 		loadFlags |= C.FT_LOAD_NO_HINTING
+	} else if fe.forceAutohint {
+		loadFlags |= C.FT_LOAD_FORCE_AUTOHINT
 	}
 
 	err := C.FT_Load_Glyph(fe.currentFace, C.FT_UInt(fe.glyphIndex), C.FT_Int32(loadFlags))
@@ -752,6 +854,9 @@ func (fe *FontEngineFreetype) PrepareGlyph(glyphCode uint) bool {
 				fe.lastError = -1
 				return false
 			}
+		}
+		if fe.snapOutlineX {
+			snapPathStorageMinXToInteger(fe.pathStorage)
 		}
 		fe.bounds = outlineBoundsForAgg(fe.pathStorage)
 

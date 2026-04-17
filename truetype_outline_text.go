@@ -19,9 +19,12 @@ type FreeTypeOutlineText struct {
 	height     float64
 	width      float64
 	resolution uint
-	hinting    bool
-	flip       bool
-	dirty      bool
+	hinting              bool
+	forceAutohint        bool
+	snapOutlineX         bool
+	ttInterpreterVersion uint
+	flip                 bool
+	dirty                bool
 }
 
 // NewFreeTypeOutlineText creates a public outline-only FreeType text source.
@@ -41,6 +44,8 @@ func NewFreeTypeOutlineText() (*FreeTypeOutlineText, error) {
 	}
 	t.engine.SetResolution(t.resolution)
 	t.engine.SetHinting(t.hinting)
+	t.engine.SetForceAutohint(t.forceAutohint)
+	t.engine.SetSnapOutlineX(t.snapOutlineX)
 	t.engine.SetFlipY(t.flip)
 
 	return t, nil
@@ -68,6 +73,8 @@ func (t *FreeTypeOutlineText) LoadFont(fontPath string) error {
 
 	t.engine.SetResolution(t.resolution)
 	t.engine.SetHinting(t.hinting)
+	t.engine.SetForceAutohint(t.forceAutohint)
+	t.engine.SetSnapOutlineX(t.snapOutlineX)
 	t.engine.SetFlipY(t.flip)
 	if err := t.engine.LoadFont(fontPath, 0, freetype.GlyphRenderingOutline, nil); err != nil {
 		return err
@@ -99,6 +106,53 @@ func (t *FreeTypeOutlineText) SetHinting(hinting bool) {
 	t.hinting = hinting
 	t.engine.SetHinting(hinting)
 	t.dirty = true
+}
+
+// SetForceAutohint forces FreeType to use its auto-hinter instead of the
+// font's native TrueType bytecode hints. Has no effect when hinting is
+// disabled. Produces stem positions that more aggressively grid-fit to
+// integer pixel boundaries, closer to Java Graphics2D's text AA output.
+func (t *FreeTypeOutlineText) SetForceAutohint(force bool) {
+	if t == nil || t.engine == nil {
+		return
+	}
+
+	t.forceAutohint = force
+	t.engine.SetForceAutohint(force)
+	t.dirty = true
+}
+
+// SetSnapOutlineX enables integer-snapping of the leftmost outline X
+// coordinate after FT_Load_Glyph. When enabled, the whole outline is
+// translated so the leftmost vertex lands on an integer pixel (Java-like
+// aggressive stem grid-fit). Advance metrics are preserved.
+func (t *FreeTypeOutlineText) SetSnapOutlineX(snap bool) {
+	if t == nil || t.engine == nil {
+		return
+	}
+
+	t.snapOutlineX = snap
+	t.engine.SetSnapOutlineX(snap)
+	t.dirty = true
+}
+
+// SetTrueTypeInterpreterVersion selects the TrueType bytecode interpreter
+// version used by FreeType. Common values: 35 (classic Apple, aggressive
+// X+Y grid-fit, closest to Java greyscale AA), 38 (intermediate), 40
+// (FreeType default, sub-pixel biased, no X grid-fit). Pass 0 to leave
+// FreeType's default untouched.
+func (t *FreeTypeOutlineText) SetTrueTypeInterpreterVersion(v uint) error {
+	if t == nil || t.engine == nil {
+		return nil
+	}
+
+	t.ttInterpreterVersion = v
+	if err := t.engine.SetTrueTypeInterpreterVersion(v); err != nil {
+		return err
+	}
+
+	t.dirty = true
+	return nil
 }
 
 // SetFlip controls whether the outline Y coordinates are flipped.
@@ -179,6 +233,65 @@ func (t *FreeTypeOutlineText) GetDescender() float64 {
 	}
 
 	return t.engine.GetDescender()
+}
+
+// FirstGlyphMinX returns the minimum X coordinate of the first rune's outline
+// when rendered at origin (0, 0) — effectively the left side bearing of the
+// first glyph with the current font settings (including hinting / autohint).
+// Returns ok=false if no text is configured, the glyph has no outline, or the
+// outline is empty. The returned value is in pixel units and is typically a
+// small non-negative fractional number.
+func (t *FreeTypeOutlineText) FirstGlyphMinX() (float64, bool) {
+	if t == nil || t.cache == nil || t.text == "" {
+		return 0, false
+	}
+
+	var firstRune rune
+	haveRune := false
+	for _, r := range t.text {
+		firstRune = r
+		haveRune = true
+		break
+	}
+	if !haveRune {
+		return 0, false
+	}
+
+	glyph := t.cache.Glyph(uint(firstRune))
+	if glyph == nil || glyph.DataType != font.GlyphDataOutline {
+		return 0, false
+	}
+
+	t.cache.InitEmbeddedAdaptors(glyph, 0, 0)
+	src := t.cache.PathAdaptor()
+	if src == nil {
+		return 0, false
+	}
+
+	src.Rewind(0)
+	minX := 0.0
+	haveVertex := false
+	for {
+		x, _, raw := src.NextVertex()
+		cmd := PathCommand(raw)
+		if cmd == PathCmdStop {
+			break
+		}
+		if !IsPathVertex(cmd) {
+			continue
+		}
+		if !haveVertex || x < minX {
+			minX = x
+			haveVertex = true
+		}
+	}
+	if !haveVertex {
+		return 0, false
+	}
+
+	t.dirty = true
+
+	return minX, true
 }
 
 // Rewind resets vertex iteration for the current text path.

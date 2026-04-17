@@ -109,6 +109,16 @@ func (fe *FontEngineFreetype) SetWidth(w float64) {
 func (fe *FontEngineFreetype) SetHinting(h bool) {
 }
 
+func (fe *FontEngineFreetype) SetForceAutohint(f bool) {
+}
+
+func (fe *FontEngineFreetype) SetSnapOutlineX(s bool) {
+}
+
+func (fe *FontEngineFreetype) SetTrueTypeInterpreterVersion(v uint) error {
+	return errors.New("FreeType not available")
+}
+
 func (fe *FontEngineFreetype) SetFlipY(f bool) {
 }
 
