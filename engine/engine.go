@@ -42,7 +42,19 @@ type Context interface {
 	SetLineCap(cap agg.LineCap)
 	SetLineJoin(join agg.LineJoin)
 	SetBlendMode(mode agg.BlendMode)
+	GetBlendMode() agg.BlendMode
 	FillEvenOdd(evenOdd bool)
+	GetFillEvenOdd() bool
+	SetLinearGradient(x1, y1, x2, y2 float64, c1, c2 agg.Color)
+	SetLinearGradientWithProfile(x1, y1, x2, y2 float64, c1, c2 agg.Color, profile float64)
+	SetRadialGradient(cx, cy, radius float64, c1, c2 agg.Color)
+	SetRadialGradientWithProfile(cx, cy, radius float64, c1, c2 agg.Color, profile float64)
+	SetStrokeLinearGradient(x1, y1, x2, y2 float64, c1, c2 agg.Color)
+	SetStrokeLinearGradientWithProfile(x1, y1, x2, y2 float64, c1, c2 agg.Color, profile float64)
+	SetStrokeRadialGradient(cx, cy, radius float64, c1, c2 agg.Color)
+	SetStrokeRadialGradientWithProfile(cx, cy, radius float64, c1, c2 agg.Color, profile float64)
+	GetFillGradientType() agg.GradientType
+	GetStrokeGradientType() agg.GradientType
 	BeginPath()
 	MoveTo(x, y float64)
 	LineTo(x, y float64)
@@ -56,13 +68,26 @@ type Context interface {
 	FillRectangle(x, y, width, height float64)
 	DrawCircle(cx, cy, radius float64)
 	FillCircle(cx, cy, radius float64)
+	ClipBox(x1, y1, x2, y2 float64)
+	GetClipBox() agg.RectD
 	Translate(tx, ty float64)
 	Rotate(angle float64)
 	Scale(sx, sy float64)
 	ResetTransform()
 	DrawImage(img Image, x, y float64) error
 	DrawImageScaled(img Image, x, y, width, height float64) error
+	DrawImageRegion(img Image, srcX, srcY, srcW, srcH int, dstX, dstY, dstW, dstH float64) error
 	DrawImageQuad(img Image, quad [8]float64) error
+	DrawImageRegionQuad(img Image, srcX, srcY, srcW, srcH int, quad [8]float64) error
+	LoadFont(fontFile string) error
+	SetResolution(dpi uint)
+	TextHints(hints bool)
+	GetTextHints() bool
+	SetTextAlignment(alignX, alignY agg.TextAlignment)
+	DrawText(text string, x, y float64) error
+	DrawTextAligned(text string, x, y float64, alignment agg.TextAlignment) error
+	MeasureText(text string) (width, height float64)
+	GetTextBounds(text string) (x, y, width, height float64)
 	GetImage() Image
 }
 
@@ -80,6 +105,10 @@ type Image interface {
 // ErrUnavailable is returned when an engine was requested but is not available
 // in the current build/runtime environment.
 var ErrUnavailable = errors.New("engine unavailable")
+
+// ErrEngineMismatch is returned when a resource from one engine is used with a
+// different engine implementation.
+var ErrEngineMismatch = errors.New("engine mismatch")
 
 // UnavailableError describes why a specific engine kind is unavailable.
 type UnavailableError struct {
@@ -99,6 +128,30 @@ func (e *UnavailableError) Error() string {
 
 // Unwrap allows errors.Is(err, ErrUnavailable).
 func (e *UnavailableError) Unwrap() error { return ErrUnavailable }
+
+// EngineMismatchError describes an operation using resources from incompatible
+// engine implementations.
+type EngineMismatchError struct {
+	ContextKind  Kind
+	ResourceKind Kind
+	ResourceType string
+}
+
+func (e *EngineMismatchError) Error() string {
+	if e == nil {
+		return ErrEngineMismatch.Error()
+	}
+	return fmt.Sprintf(
+		"%s: context=%s resource=%s type=%s",
+		ErrEngineMismatch,
+		e.ContextKind,
+		e.ResourceKind,
+		e.ResourceType,
+	)
+}
+
+// Unwrap allows errors.Is(err, ErrEngineMismatch).
+func (e *EngineMismatchError) Unwrap() error { return ErrEngineMismatch }
 
 // Available returns the engine kinds supported by the current build.
 func Available() []Kind {
@@ -124,6 +177,33 @@ func NewContext(width, height int, cfg Config) (Context, error) {
 	}
 }
 
+// NewContextForImage creates a context attached to an existing engine image.
+func NewContextForImage(img Image) (Context, error) {
+	if img == nil {
+		return nil, fmt.Errorf("image is nil")
+	}
+	switch img.Kind() {
+	case Port:
+		return newPortContextForImage(img)
+	case CPP:
+		return newCPPContextForImage(img)
+	default:
+		return nil, fmt.Errorf("unknown engine kind %q", img.Kind())
+	}
+}
+
+// NewImage creates a blank engine image owned by the selected engine.
+func NewImage(width, height int, cfg Config) (Image, error) {
+	switch normalizeKind(cfg.Kind) {
+	case Port:
+		return newPortImage(width, height)
+	case CPP:
+		return newCPPImage(width, height)
+	default:
+		return nil, fmt.Errorf("unknown engine kind %q", cfg.Kind)
+	}
+}
+
 // NewImageFromGoImage converts a standard library image into an engine image.
 func NewImageFromGoImage(src image.Image, cfg Config) (Image, error) {
 	switch normalizeKind(cfg.Kind) {
@@ -131,6 +211,19 @@ func NewImageFromGoImage(src image.Image, cfg Config) (Image, error) {
 		return newPortImageFromGoImage(src)
 	case CPP:
 		return newCPPImageFromGoImage(src)
+	default:
+		return nil, fmt.Errorf("unknown engine kind %q", cfg.Kind)
+	}
+}
+
+// NewImageFromBuffer creates an engine image attached to a caller-managed RGBA
+// buffer.
+func NewImageFromBuffer(buf []byte, width, height, stride int, cfg Config) (Image, error) {
+	switch normalizeKind(cfg.Kind) {
+	case Port:
+		return newPortImageFromBuffer(buf, width, height, stride)
+	case CPP:
+		return newCPPImageFromBuffer(buf, width, height, stride)
 	default:
 		return nil, fmt.Errorf("unknown engine kind %q", cfg.Kind)
 	}

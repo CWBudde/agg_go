@@ -259,6 +259,9 @@ across two active repositories.
 
 ### 5.1 Goal
 
+- [x] Create a first-cut in-repo `engine` facade with a working port-backed
+      implementation and an explicit typed unavailable path for the future C++
+      engine.
 - [ ] Add an opt-in high-level engine-selection layer in this repository that
       can render through either the native `agg_go` port or an in-repo C++ AGG
       reference/backend path.
@@ -270,29 +273,40 @@ across two active repositories.
 
 ### 5.2 Canonical API boundary
 
-- [ ] Keep the existing root `agg` package concrete and pure Go.
-- [ ] Introduce a separate backend-selectable facade package, tentatively
+- [x] Keep the existing root `agg` package concrete and pure Go.
+- [x] Introduce a separate backend-selectable facade package, tentatively
       `engine`, instead of mutating `agg.Agg2D`, `agg.Context`, or `agg.Image`
       into interface-first types.
-- [ ] Keep current `agg_go` callers source-compatible unless they explicitly opt
+- [x] Keep current `agg_go` callers source-compatible unless they explicitly opt
       into backend selection.
-- [ ] Do not add direct cgo-backed implementation files to the root `agg`
+- [x] Do not add direct cgo-backed implementation files to the root `agg`
       package.
-- [ ] Do not require the final public API to depend on the external
+- [x] Do not require the final public API to depend on the external
       `../AGoGo` repository or module path.
 
 ### 5.3 Required facade shape
 
-- [ ] Define an explicit backend enum such as `engine.Kind` with at least
+- [x] Define an explicit backend enum such as `engine.Kind` with at least
       `Port` and `AGoGo`.
-- [ ] Define an explicit config/construction API such as `engine.Config`,
+- [x] Define an explicit config/construction API such as `engine.Config`,
       `engine.Available()`, and `engine.NewContext(...)`.
+- [x] Add engine-level image loading/conversion helpers so callers can create
+      engine images from Go images or files without going through the root API.
+- [x] Add engine-level blank-image/create/attach APIs for caller-managed buffers
+      instead of supporting only file/image conversion inputs.
 - [ ] Expose a narrow backend-neutral surface covering the shared high-level
       operations only: clear, fill/stroke color, line width/cap/join, path
       construction, fill rules, clip box, transforms, basic image drawing,
       compositing, and image export.
 - [ ] Treat unsupported operations as explicit capability errors rather than
       silent no-op or backend switching.
+- [x] Define and test the error contract for engine/resource mismatches, such as
+      passing an image created by one engine implementation into another.
+- [x] Add package-level docs and a small end-to-end example for first-time
+      `engine` usage.
+- [ ] Add engine-level image export/interop helpers beyond PNG and `ToGoImage`,
+      such as `ToStandardImage` and JPEG export, or explicitly document why the
+      facade stops short of those conversions.
 
 ### 5.4 Scope for v1
 
@@ -301,6 +315,17 @@ across two active repositories.
       fill/stroke rendering, affine transforms, clip box control, solid fills,
       dashed strokes, basic image copy/scale/quad mapping, and compositing mode
       selection.
+- [x] Finish the port-backed facade coverage for operations already present on
+      the root `agg.Context`, especially clip box, image-region helpers,
+      gradients, and text-related APIs.
+- [x] Decide and implement the first getter/readback subset exposed by the
+      facade v1 contract: fill-rule state, blend mode state, gradient type
+      state, clip-box readback, text-hint state, and text metrics/bounds.
+- [ ] Decide whether backend-neutral transform-matrix readback belongs in the
+      facade v1 contract or remains intentionally out of scope.
+- [ ] Decide whether additional style/state getters from the root API, such as
+      current colors, line width, line cap, and line join, belong in the facade
+      contract or should stay write-only for v1.
 - [ ] Delay full abstraction of low-level rasterizer/scanline/pixfmt internals.
 - [ ] Keep demo-by-demo backend switching out of the first public cut unless the
       demo already uses only the supported shared surface.
@@ -367,6 +392,11 @@ Before exposing the in-repo C++ engine outside comparison tooling, mine
 
 ### 5.9 Verification and exit criteria
 
+- [x] Add first-cut unit tests for `engine.Available()`, default engine
+      selection, explicit unavailable C++ requests, and port-backed image
+      drawing through the facade.
+- [x] Add tests covering blank-image creation, caller-managed buffers, attached
+      contexts, examples, and typed engine-mismatch errors.
 - [ ] Add unit tests for backend selection, capability discovery, and explicit
       unavailable/stub-rejected error paths.
 - [ ] Add cross-backend conformance tests that render the same scene through
