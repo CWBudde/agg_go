@@ -341,6 +341,10 @@ across two active repositories.
       header/source files, cgo build configuration, bridge metadata/probe
       wrappers, and build-mode-specific tests, so the native boundary now lives
       in this repository rather than in the external AGoGo module.
+- [x] Migrate the first actual native primitive slice into the in-repo bridge:
+      local image allocation/clear/readback, region blit, local path
+      allocation/editing, and minimal native path fill/stroke primitives with
+      tagged tests.
 - [ ] Move or reimplement the remaining C++ FFI glue, build configuration,
       wrappers, and test helpers needed by the actual engine adapter inside
       this repository rather than depending on `github.com/cwbudde/agogo` at
