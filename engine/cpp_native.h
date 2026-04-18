@@ -42,6 +42,13 @@ const uint8_t* agg_go_cpp_image_pixels(const AggGoCPPImage* image);
 int agg_go_cpp_image_clear(AggGoCPPImage* image, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 int agg_go_cpp_image_blit(AggGoCPPImage* dst, const AggGoCPPImage* src, int dst_x, int dst_y,
                           int src_x, int src_y, uint32_t width, uint32_t height);
+int agg_go_cpp_image_composite(AggGoCPPImage* dst, const AggGoCPPImage* src, int dst_x, int dst_y,
+                               int clip_x1, int clip_y1, int clip_x2, int clip_y2, int blend_mode);
+int agg_go_cpp_image_composite_scaled(AggGoCPPImage* dst, const AggGoCPPImage* src, int src_x,
+                                      int src_y, uint32_t src_width, uint32_t src_height,
+                                      int dst_x, int dst_y, uint32_t dst_width, uint32_t dst_height,
+                                      int clip_x1, int clip_y1, int clip_x2, int clip_y2,
+                                      int blend_mode);
 
 AggGoCPPPath* agg_go_cpp_path_create(void);
 void agg_go_cpp_path_free(AggGoCPPPath* path);

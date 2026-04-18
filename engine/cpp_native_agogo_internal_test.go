@@ -3,9 +3,17 @@
 package engine
 
 import (
+	"errors"
 	"math"
 	"strings"
 	"testing"
+
+	agg "github.com/cwbudde/agg_go"
+)
+
+var (
+	_ Context = (*cppContext)(nil)
+	_ Image   = (*cppImage)(nil)
 )
 
 func TestCurrentCPPNativeMetadataReportsStub(t *testing.T) {
@@ -321,4 +329,181 @@ func TestCPPNativePathTransformMovesFilledGeometry(t *testing.T) {
 	if inside.G < 200 || inside.R != 0 || inside.B != 0 || inside.A != 255 {
 		t.Fatalf("unexpected transformed fill pixel: %+v", inside)
 	}
+}
+
+func TestCPPBackendContextFillRectangle(t *testing.T) {
+	ctx, err := newCPPBackendContext(16, 16)
+	if err != nil {
+		t.Fatalf("newCPPBackendContext() error = %v", err)
+	}
+
+	ctx.Clear(agg.White)
+	ctx.SetColor(agg.Red)
+	ctx.FillRectangle(2, 2, 10, 10)
+
+	got := ctx.GetImage().ToGoImage().RGBAAt(6, 6)
+	if got.R < 200 || got.G != 0 || got.B != 0 || got.A != 255 {
+		t.Fatalf("unexpected rendered pixel: %+v", got)
+	}
+}
+
+func TestCPPBackendContextDrawImage(t *testing.T) {
+	src, err := newCPPBackendImage(4, 4)
+	if err != nil {
+		t.Fatalf("newCPPBackendImage(src) error = %v", err)
+	}
+	ctxSrc, err := newCPPBackendContextForImage(src)
+	if err != nil {
+		t.Fatalf("newCPPBackendContextForImage(src) error = %v", err)
+	}
+	ctxSrc.Clear(agg.Blue)
+
+	dst, err := newCPPBackendContext(12, 12)
+	if err != nil {
+		t.Fatalf("newCPPBackendContext(dst) error = %v", err)
+	}
+	dst.Clear(agg.White)
+	if err := dst.DrawImage(src, 3, 4); err != nil {
+		t.Fatalf("DrawImage() error = %v", err)
+	}
+
+	got := dst.GetImage().ToGoImage().RGBAAt(4, 5)
+	if got.B < 200 || got.R != 0 || got.G != 0 || got.A != 255 {
+		t.Fatalf("unexpected drawn image pixel: %+v", got)
+	}
+}
+
+func TestCPPBackendContextTransformAffectsFill(t *testing.T) {
+	ctx, err := newCPPBackendContext(20, 20)
+	if err != nil {
+		t.Fatalf("newCPPBackendContext() error = %v", err)
+	}
+	ctx.Clear(agg.White)
+	ctx.SetColor(agg.Green)
+	ctx.Translate(5, 4)
+	ctx.FillRectangle(1, 1, 4, 4)
+
+	got := ctx.GetImage().ToGoImage().RGBAAt(7, 6)
+	if got.G < 200 || got.R != 0 || got.B != 0 || got.A != 255 {
+		t.Fatalf("unexpected transformed fill pixel: %+v", got)
+	}
+}
+
+func TestCPPBackendContextClipBoxClipsFill(t *testing.T) {
+	ctx, err := newCPPBackendContext(16, 16)
+	if err != nil {
+		t.Fatalf("newCPPBackendContext() error = %v", err)
+	}
+
+	ctx.Clear(agg.White)
+	ctx.SetColor(agg.Red)
+	ctx.ClipBox(4, 4, 8, 8)
+	ctx.FillRectangle(2, 2, 8, 8)
+
+	inside := ctx.GetImage().ToGoImage().RGBAAt(5, 5)
+	if inside.R < 200 || inside.G != 0 || inside.B != 0 || inside.A != 255 {
+		t.Fatalf("unexpected clipped inside pixel: %+v", inside)
+	}
+	outside := ctx.GetImage().ToGoImage().RGBAAt(3, 3)
+	if outside.R != agg.White.R || outside.G != agg.White.G || outside.B != agg.White.B || outside.A != agg.White.A {
+		t.Fatalf("unexpected clipped outside pixel: %+v", outside)
+	}
+}
+
+func TestCPPBackendContextDrawImageScaled(t *testing.T) {
+	ctx, err := newCPPBackendContext(10, 10)
+	if err != nil {
+		t.Fatalf("newCPPBackendContext() error = %v", err)
+	}
+	img, err := newCPPBackendImage(4, 4)
+	if err != nil {
+		t.Fatalf("newCPPBackendImage() error = %v", err)
+	}
+	srcCtx, err := newCPPBackendContextForImage(img)
+	if err != nil {
+		t.Fatalf("newCPPBackendContextForImage() error = %v", err)
+	}
+	srcCtx.Clear(agg.Blue)
+	ctx.Clear(agg.White)
+
+	err = ctx.DrawImageScaled(img, 1, 1, 8, 8)
+	if err != nil {
+		t.Fatalf("DrawImageScaled() error = %v", err)
+	}
+
+	got := ctx.GetImage().ToGoImage().RGBAAt(7, 7)
+	if got.B < 200 || got.R != 0 || got.G != 0 || got.A != 255 {
+		t.Fatalf("unexpected scaled image pixel: %+v", got)
+	}
+}
+
+func TestCPPBackendTextOperationsAreTypedUnsupported(t *testing.T) {
+	ctx, err := newCPPBackendContext(10, 10)
+	if err != nil {
+		t.Fatalf("newCPPBackendContext() error = %v", err)
+	}
+
+	err = ctx.DrawText("hello", 1, 1)
+	if err == nil {
+		t.Fatal("expected DrawText() to fail")
+	}
+	if !errors.Is(err, ErrUnsupportedCapability) {
+		t.Fatalf("expected ErrUnsupportedCapability, got %v", err)
+	}
+}
+
+func TestCPPBackendContextDrawImageRegionScaledHonorsClipAndBlend(t *testing.T) {
+	src, err := newCPPBackendImage(2, 2)
+	if err != nil {
+		t.Fatalf("newCPPBackendImage(src) error = %v", err)
+	}
+	srcCtx, err := newCPPBackendContextForImage(src)
+	if err != nil {
+		t.Fatalf("newCPPBackendContextForImage(src) error = %v", err)
+	}
+	srcCtx.Clear(agg.Color{R: 255, G: 0, B: 0, A: 128})
+
+	dst, err := newCPPBackendContext(8, 8)
+	if err != nil {
+		t.Fatalf("newCPPBackendContext(dst) error = %v", err)
+	}
+	dst.Clear(agg.White)
+	dst.ClipBox(2, 2, 6, 6)
+
+	if err := dst.DrawImageRegion(src, 0, 0, 2, 2, 1, 1, 6, 6); err != nil {
+		t.Fatalf("DrawImageRegion() error = %v", err)
+	}
+
+	clippedOut := dst.GetImage().ToGoImage().RGBAAt(1, 1)
+	if clippedOut.R != agg.White.R || clippedOut.G != agg.White.G || clippedOut.B != agg.White.B || clippedOut.A != agg.White.A {
+		t.Fatalf("unexpected pixel outside clip: %+v", clippedOut)
+	}
+	inside := dst.GetImage().ToGoImage().RGBAAt(3, 3)
+	if inside.R < 240 || inside.G > 140 || inside.B > 140 || inside.A != 255 {
+		t.Fatalf("unexpected blended pixel inside clip: %+v", inside)
+	}
+}
+
+func TestCPPBackendUnsupportedBlendModePanicsTypedOnFill(t *testing.T) {
+	ctx, err := newCPPBackendContext(8, 8)
+	if err != nil {
+		t.Fatalf("newCPPBackendContext() error = %v", err)
+	}
+	ctx.SetBlendMode(agg.BlendMultiply)
+
+	defer func() {
+		recovered := recover()
+		if recovered == nil {
+			t.Fatal("expected panic for unsupported blend mode")
+		}
+		err, ok := recovered.(error)
+		if !ok {
+			t.Fatalf("expected error panic, got %T", recovered)
+		}
+		if !errors.Is(err, ErrUnsupportedCapability) {
+			t.Fatalf("expected ErrUnsupportedCapability panic, got %v", err)
+		}
+	}()
+
+	ctx.FillRectangle(1, 1, 4, 4)
 }

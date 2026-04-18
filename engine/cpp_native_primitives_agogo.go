@@ -16,6 +16,8 @@ import (
 	"math"
 	"runtime"
 	"unsafe"
+
+	agg "github.com/cwbudde/agg_go"
 )
 
 type cppNativeFillRule int
@@ -161,6 +163,72 @@ func (img *cppNativeImage) blitFrom(src *cppNativeImage, dstX, dstY, srcX, srcY,
 	))
 	if code != 0 {
 		return fmt.Errorf("agg_go_cpp_image_blit failed: %s", cppNativeLastError())
+	}
+	return nil
+}
+
+func (img *cppNativeImage) compositeFrom(src *cppNativeImage, dstX, dstY int, clip image.Rectangle, blendMode agg.BlendMode) error {
+	if img == nil || img.ptr == nil {
+		return fmt.Errorf("destination image is nil")
+	}
+	if src == nil || src.ptr == nil {
+		return fmt.Errorf("source image is nil")
+	}
+	code := int(C.agg_go_cpp_image_composite(
+		img.ptr,
+		src.ptr,
+		C.int(dstX),
+		C.int(dstY),
+		C.int(clip.Min.X),
+		C.int(clip.Min.Y),
+		C.int(clip.Max.X),
+		C.int(clip.Max.Y),
+		C.int(blendMode),
+	))
+	if code != 0 {
+		return fmt.Errorf("agg_go_cpp_image_composite failed: %s", cppNativeLastError())
+	}
+	return nil
+}
+
+func (img *cppNativeImage) compositeScaledFrom(
+	src *cppNativeImage,
+	srcX,
+	srcY,
+	srcW,
+	srcH,
+	dstX,
+	dstY,
+	dstW,
+	dstH int,
+	clip image.Rectangle,
+	blendMode agg.BlendMode,
+) error {
+	if img == nil || img.ptr == nil {
+		return fmt.Errorf("destination image is nil")
+	}
+	if src == nil || src.ptr == nil {
+		return fmt.Errorf("source image is nil")
+	}
+	code := int(C.agg_go_cpp_image_composite_scaled(
+		img.ptr,
+		src.ptr,
+		C.int(srcX),
+		C.int(srcY),
+		C.uint32_t(srcW),
+		C.uint32_t(srcH),
+		C.int(dstX),
+		C.int(dstY),
+		C.uint32_t(dstW),
+		C.uint32_t(dstH),
+		C.int(clip.Min.X),
+		C.int(clip.Min.Y),
+		C.int(clip.Max.X),
+		C.int(clip.Max.Y),
+		C.int(blendMode),
+	))
+	if code != 0 {
+		return fmt.Errorf("agg_go_cpp_image_composite_scaled failed: %s", cppNativeLastError())
 	}
 	return nil
 }

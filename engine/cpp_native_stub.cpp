@@ -37,10 +37,23 @@ struct AggGoCPPMatrix {
 
 namespace {
 
+constexpr int kBlendAlpha = 0;
+constexpr int kBlendClear = 1;
+constexpr int kBlendSrc = 2;
+constexpr int kBlendDst = 3;
+constexpr int kBlendSrcOver = 4;
+
 std::string& last_error_storage() {
   static std::string value = "stub bridge: no AGG-backed implementation linked";
   return value;
 }
+
+struct RectI {
+  int x1;
+  int y1;
+  int x2;
+  int y2;
+};
 
 bool valid_image(const AggGoCPPImage* image) { return image != nullptr; }
 
@@ -55,6 +68,94 @@ bool valid_stroke_path(const AggGoCPPPath* path) {
 bool valid_matrix(const AggGoCPPMatrix* matrix) { return matrix != nullptr; }
 
 void set_last_error(const char* value) { last_error_storage() = value; }
+
+uint8_t clamp_byte(double value) {
+  if (value <= 0.0) {
+    return 0;
+  }
+  if (value >= 255.0) {
+    return 255;
+  }
+  return static_cast<uint8_t>(std::lround(value));
+}
+
+bool supported_blend_mode(int blend_mode) {
+  switch (blend_mode) {
+    case kBlendAlpha:
+    case kBlendClear:
+    case kBlendSrc:
+    case kBlendDst:
+    case kBlendSrcOver:
+      return true;
+    default:
+      return false;
+  }
+}
+
+RectI clamp_clip_rect(const AggGoCPPImage* image, int clip_x1, int clip_y1, int clip_x2, int clip_y2) {
+  if (clip_x2 < clip_x1) {
+    std::swap(clip_x1, clip_x2);
+  }
+  if (clip_y2 < clip_y1) {
+    std::swap(clip_y1, clip_y2);
+  }
+  return RectI{
+      std::max(0, std::min(static_cast<int>(image->width), clip_x1)),
+      std::max(0, std::min(static_cast<int>(image->height), clip_y1)),
+      std::max(0, std::min(static_cast<int>(image->width), clip_x2)),
+      std::max(0, std::min(static_cast<int>(image->height), clip_y2)),
+  };
+}
+
+bool rect_empty(const RectI& rect) { return rect.x1 >= rect.x2 || rect.y1 >= rect.y2; }
+
+void composite_pixel(uint8_t* dst, const uint8_t* src, int blend_mode) {
+  switch (blend_mode) {
+    case kBlendClear:
+      dst[0] = 0;
+      dst[1] = 0;
+      dst[2] = 0;
+      dst[3] = 0;
+      return;
+    case kBlendDst:
+      return;
+    case kBlendSrc:
+      dst[0] = src[0];
+      dst[1] = src[1];
+      dst[2] = src[2];
+      dst[3] = src[3];
+      return;
+    case kBlendAlpha:
+    case kBlendSrcOver: {
+      const double sr = static_cast<double>(src[0]) / 255.0;
+      const double sg = static_cast<double>(src[1]) / 255.0;
+      const double sb = static_cast<double>(src[2]) / 255.0;
+      const double sa = static_cast<double>(src[3]) / 255.0;
+      const double dr = static_cast<double>(dst[0]) / 255.0;
+      const double dg = static_cast<double>(dst[1]) / 255.0;
+      const double db = static_cast<double>(dst[2]) / 255.0;
+      const double da = static_cast<double>(dst[3]) / 255.0;
+      const double out_a = sa + da * (1.0 - sa);
+      if (out_a <= 1e-12) {
+        dst[0] = 0;
+        dst[1] = 0;
+        dst[2] = 0;
+        dst[3] = 0;
+        return;
+      }
+      const double out_r = (sr * sa + dr * da * (1.0 - sa)) / out_a;
+      const double out_g = (sg * sa + dg * da * (1.0 - sa)) / out_a;
+      const double out_b = (sb * sa + db * da * (1.0 - sa)) / out_a;
+      dst[0] = clamp_byte(out_r * 255.0);
+      dst[1] = clamp_byte(out_g * 255.0);
+      dst[2] = clamp_byte(out_b * 255.0);
+      dst[3] = clamp_byte(out_a * 255.0);
+      return;
+    }
+    default:
+      return;
+  }
+}
 
 bool point_in_path_even_odd(const AggGoCPPPath& path, float px, float py) {
   bool inside = false;
@@ -266,6 +367,113 @@ extern "C" int agg_go_cpp_image_blit(AggGoCPPImage* dst, const AggGoCPPImage* sr
     const size_t dst_offset = static_cast<size_t>(dst_y + static_cast<int>(row)) * dst->stride +
                               static_cast<size_t>(dst_x) * 4;
     std::memcpy(&dst->pixels[dst_offset], &src->pixels[src_offset], static_cast<size_t>(width) * 4);
+  }
+  return 0;
+}
+
+extern "C" int agg_go_cpp_image_composite(AggGoCPPImage* dst, const AggGoCPPImage* src, int dst_x, int dst_y,
+                                          int clip_x1, int clip_y1, int clip_x2, int clip_y2,
+                                          int blend_mode) {
+  if (!valid_image(dst)) {
+    set_last_error("destination image is nil");
+    return -1;
+  }
+  if (!valid_image(src)) {
+    set_last_error("source image is nil");
+    return -1;
+  }
+  if (!supported_blend_mode(blend_mode)) {
+    set_last_error("unsupported blend mode");
+    return -1;
+  }
+
+  const RectI clip = clamp_clip_rect(dst, clip_x1, clip_y1, clip_x2, clip_y2);
+  if (rect_empty(clip)) {
+    return 0;
+  }
+
+  const int visible_x1 = std::max(dst_x, clip.x1);
+  const int visible_y1 = std::max(dst_y, clip.y1);
+  const int visible_x2 = std::min(dst_x + static_cast<int>(src->width), clip.x2);
+  const int visible_y2 = std::min(dst_y + static_cast<int>(src->height), clip.y2);
+  if (visible_x1 >= visible_x2 || visible_y1 >= visible_y2) {
+    return 0;
+  }
+
+  for (int y = visible_y1; y < visible_y2; ++y) {
+    for (int x = visible_x1; x < visible_x2; ++x) {
+      const int src_px = x - dst_x;
+      const int src_py = y - dst_y;
+      const size_t src_offset =
+          static_cast<size_t>(src_py) * src->stride + static_cast<size_t>(src_px) * 4;
+      const size_t dst_offset =
+          static_cast<size_t>(y) * dst->stride + static_cast<size_t>(x) * 4;
+      composite_pixel(&dst->pixels[dst_offset], &src->pixels[src_offset], blend_mode);
+    }
+  }
+  return 0;
+}
+
+extern "C" int agg_go_cpp_image_composite_scaled(AggGoCPPImage* dst, const AggGoCPPImage* src, int src_x,
+                                                 int src_y, uint32_t src_width, uint32_t src_height,
+                                                 int dst_x, int dst_y, uint32_t dst_width,
+                                                 uint32_t dst_height, int clip_x1, int clip_y1,
+                                                 int clip_x2, int clip_y2, int blend_mode) {
+  if (!valid_image(dst)) {
+    set_last_error("destination image is nil");
+    return -1;
+  }
+  if (!valid_image(src)) {
+    set_last_error("source image is nil");
+    return -1;
+  }
+  if (!supported_blend_mode(blend_mode)) {
+    set_last_error("unsupported blend mode");
+    return -1;
+  }
+  if (src_width == 0 || src_height == 0) {
+    set_last_error("source dimensions must be positive");
+    return -1;
+  }
+  if (dst_width == 0 || dst_height == 0) {
+    set_last_error("destination dimensions must be positive");
+    return -1;
+  }
+  if (src_x < 0 || src_y < 0) {
+    set_last_error("source coordinates must be non-negative");
+    return -1;
+  }
+  if (static_cast<uint32_t>(src_x) + src_width > src->width ||
+      static_cast<uint32_t>(src_y) + src_height > src->height) {
+    set_last_error("source region exceeds image bounds");
+    return -1;
+  }
+
+  const RectI clip = clamp_clip_rect(dst, clip_x1, clip_y1, clip_x2, clip_y2);
+  if (rect_empty(clip)) {
+    return 0;
+  }
+
+  const int visible_x1 = std::max(dst_x, clip.x1);
+  const int visible_y1 = std::max(dst_y, clip.y1);
+  const int visible_x2 = std::min(dst_x + static_cast<int>(dst_width), clip.x2);
+  const int visible_y2 = std::min(dst_y + static_cast<int>(dst_height), clip.y2);
+  if (visible_x1 >= visible_x2 || visible_y1 >= visible_y2) {
+    return 0;
+  }
+
+  for (int y = visible_y1; y < visible_y2; ++y) {
+    const uint32_t src_py = static_cast<uint32_t>(
+        (static_cast<uint64_t>(y - dst_y) * src_height) / dst_height);
+    for (int x = visible_x1; x < visible_x2; ++x) {
+      const uint32_t src_px = static_cast<uint32_t>(
+          (static_cast<uint64_t>(x - dst_x) * src_width) / dst_width);
+      const size_t src_offset = static_cast<size_t>(src_y + static_cast<int>(src_py)) * src->stride +
+                                static_cast<size_t>(src_x + static_cast<int>(src_px)) * 4;
+      const size_t dst_offset =
+          static_cast<size_t>(y) * dst->stride + static_cast<size_t>(x) * 4;
+      composite_pixel(&dst->pixels[dst_offset], &src->pixels[src_offset], blend_mode);
+    }
   }
   return 0;
 }

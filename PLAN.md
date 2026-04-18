@@ -283,6 +283,10 @@ across two active repositories.
       package.
 - [x] Do not require the final public API to depend on the external
       `../AGoGo` repository or module path.
+- [x] Keep the optional native C++ support layer internal to the `engine`
+      package rather than growing a second public or semi-public bridge API.
+- [ ] Avoid re-introducing a separate bridge-plus-adapter architecture unless a
+      concrete reuse case appears that justifies the extra abstraction.
 
 ### 5.3 Required facade shape
 
@@ -346,10 +350,26 @@ across two active repositories.
       `engine` package: local image allocation/clear/readback, region blit,
       local path allocation/editing, affine matrix/path transforms, and minimal
       native path fill/stroke primitives with tagged tests.
+- [x] Convert the current native helper primitives from internal migration
+      scaffolding into actual package-private `engine` backend types
+      implementing `engine.Context` and `engine.Image` for the currently
+      supported subset.
+- [x] Keep the native helper surface package-private while the C++ backend is
+      still partial, so users only interact through the public `engine`
+      interfaces and availability/capability checks.
 - [ ] Move or reimplement the remaining C++ FFI glue, build configuration,
       wrappers, and test helpers needed by the actual engine adapter inside
       this repository rather than depending on `github.com/cwbudde/agogo` at
       runtime.
+- [ ] Port the next direct C++ backend primitives needed for parity with the
+      current facade subset, especially image scaling/quad mapping, clip box,
+      compositing mode selection, gradients, and text.
+- [x] Make the current package-private C++ backend honor clip-box state during
+      fill, stroke, and image operations by compositing through clip-aware
+      native helper paths instead of storing clip state only.
+- [x] Add scaled image-region drawing to the current package-private C++ backend
+      subset, with internal tests covering scaled copy plus clip/blend
+      interaction.
 - [x] Return concrete typed unavailable errors for the currently known C++
       migration prerequisites and build modes: missing `agogo` build tag,
       `agogo` builds without cgo, and `agogo` builds where the in-repo C++
@@ -384,6 +404,9 @@ Before exposing the in-repo C++ engine outside comparison tooling, mine
 - [ ] Audit the AGoGo surface area against what the in-repo facade intends to
       expose, focusing on image, path, transform, stroke, paint, compositing,
       text, and scanline/boolean behavior.
+- [ ] Audit which of the old AGoGo Go wrapper types and tests are still useful
+      after the direct `engine`-local native design, and drop anything that only
+      existed to support the old standalone bridge API shape.
 - [ ] Record engine support status in a new `docs/BACKENDS.md` capability
       matrix, including required native dependencies, migrated pieces, and known
       unsupported operations.
