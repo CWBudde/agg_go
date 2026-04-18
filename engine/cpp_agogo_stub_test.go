@@ -1,4 +1,4 @@
-//go:build agogo && cgo
+//go:build agogo && cgo && !aggreal
 
 package engine_test
 

@@ -36,6 +36,18 @@ var portCapabilities = []Capability{
 	CapabilityText,
 }
 
+var cppCapabilities = []Capability{
+	CapabilitySolidStyle,
+	CapabilityPath,
+	CapabilityTransforms,
+	CapabilityClipBox,
+	CapabilityCompositing,
+	CapabilityImageDraw,
+	CapabilityImageExport,
+	CapabilityGradients,
+	CapabilityText,
+}
+
 // ErrUnsupportedCapability is returned when a known engine does not implement a
 // requested facade capability.
 var ErrUnsupportedCapability = errors.New("engine capability unsupported")
@@ -73,7 +85,9 @@ func Capabilities(kind Kind) ([]Capability, error) {
 		if !cppAvailable() {
 			return nil, cppUnavailableError(cppUnavailableReason())
 		}
-		return nil, nil
+		out := make([]Capability, len(cppCapabilities))
+		copy(out, cppCapabilities)
+		return out, nil
 	default:
 		return nil, fmt.Errorf("unknown engine kind %q", kind)
 	}

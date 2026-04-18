@@ -5,7 +5,6 @@ package engine
 import (
 	"errors"
 	"math"
-	"strings"
 	"testing"
 
 	agg "github.com/cwbudde/agg_go"
@@ -16,23 +15,24 @@ var (
 	_ Image   = (*cppImage)(nil)
 )
 
-func TestCurrentCPPNativeMetadataReportsStub(t *testing.T) {
+func TestCurrentCPPNativeMetadataHasBuildID(t *testing.T) {
 	meta := currentCPPNativeMetadata()
-	if !meta.Stub {
-		t.Fatal("expected agogo native backend metadata to report stub mode")
-	}
 	if meta.BuildID == "" {
 		t.Fatal("expected build id to be set")
 	}
 }
 
-func TestProbeCPPNativeReturnsStubFailure(t *testing.T) {
+func TestProbeCPPNativeMatchesMetadata(t *testing.T) {
+	meta := currentCPPNativeMetadata()
 	err := probeCPPNative()
-	if err == nil {
-		t.Fatal("expected stub probe failure")
+	if meta.Stub {
+		if err == nil {
+			t.Fatal("expected stub probe failure")
+		}
+		return
 	}
-	if !strings.Contains(err.Error(), "stub") {
-		t.Fatalf("expected stub failure message, got %q", err.Error())
+	if err != nil {
+		t.Fatalf("expected real native probe to succeed, got %v", err)
 	}
 }
 
@@ -518,6 +518,10 @@ func TestCPPBackendTextOperationsAreTypedUnsupported(t *testing.T) {
 	ctx, err := newCPPBackendContext(10, 10)
 	if err != nil {
 		t.Fatalf("newCPPBackendContext() error = %v", err)
+	}
+
+	if !currentCPPNativeMetadata().Stub {
+		t.Skip("text is implemented in non-stub builds")
 	}
 
 	err = ctx.DrawText("hello", 1, 1)

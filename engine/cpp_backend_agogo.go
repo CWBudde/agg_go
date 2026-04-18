@@ -43,6 +43,7 @@ type cppContext struct {
 	img                *cppImage
 	path               *cppNativePath
 	transform          *cppNativeMatrix
+	font               *cppNativeFont
 	transformDirty     bool
 	currentX           float64
 	currentY           float64
@@ -63,6 +64,7 @@ type cppContext struct {
 	textHints          bool
 	textAlignX         agg.TextAlignment
 	textAlignY         agg.TextAlignment
+	textResolution     uint
 	clipBox            agg.RectD
 }
 
@@ -111,6 +113,7 @@ func newCPPBackendContextForImage(img *cppImage) (*cppContext, error) {
 		strokeGradientType: agg.SolidGradient,
 		textAlignX:         agg.AlignLeft,
 		textAlignY:         agg.AlignBottom,
+		textResolution:     96,
 		clipBox: agg.RectD{
 			X1: 0,
 			Y1: 0,
@@ -525,13 +528,41 @@ func (c *cppContext) DrawImageRegionQuad(img Image, srcX, srcY, srcW, srcH int, 
 	)
 }
 
-func (c *cppContext) LoadFont(string) error {
-	return &UnsupportedCapabilityError{Kind: CPP, Capability: CapabilityText, Operation: "LoadFont"}
+func (c *cppContext) LoadFont(fontFile string) error {
+	if currentCPPNativeMetadata().Stub {
+		return &UnsupportedCapabilityError{Kind: CPP, Capability: CapabilityText, Operation: "LoadFont"}
+	}
+	font, err := newCPPNativeFont(fontFile)
+	if err != nil {
+		return err
+	}
+	if err := font.setSize(12); err != nil {
+		_ = font.close()
+		return err
+	}
+	if err := font.setHinting(c.textHints); err != nil {
+		_ = font.close()
+		return err
+	}
+	if err := font.setFlipY(true); err != nil {
+		_ = font.close()
+		return err
+	}
+	if c.font != nil {
+		_ = c.font.close()
+	}
+	c.font = font
+	return nil
 }
 
-func (c *cppContext) SetResolution(uint) {}
+func (c *cppContext) SetResolution(dpi uint) { c.textResolution = dpi }
 
-func (c *cppContext) TextHints(hints bool) { c.textHints = hints }
+func (c *cppContext) TextHints(hints bool) {
+	c.textHints = hints
+	if c.font != nil {
+		c.must(c.font.setHinting(hints))
+	}
+}
 
 func (c *cppContext) GetTextHints() bool { return c.textHints }
 
@@ -540,17 +571,58 @@ func (c *cppContext) SetTextAlignment(alignX, alignY agg.TextAlignment) {
 	c.textAlignY = alignY
 }
 
-func (c *cppContext) DrawText(string, float64, float64) error {
-	return &UnsupportedCapabilityError{Kind: CPP, Capability: CapabilityText, Operation: "DrawText"}
+func (c *cppContext) DrawText(text string, x, y float64) error {
+	if text == "" {
+		return fmt.Errorf("text is empty")
+	}
+	if currentCPPNativeMetadata().Stub {
+		return &UnsupportedCapabilityError{Kind: CPP, Capability: CapabilityText, Operation: "DrawText"}
+	}
+	if c.font == nil {
+		return fmt.Errorf("font is not loaded")
+	}
+	layer, err := newCPPNativeImage(c.Width(), c.Height())
+	if err != nil {
+		return err
+	}
+	defer layer.close()
+	if err := layer.clear(0, 0, 0, 0); err != nil {
+		return err
+	}
+	drawX, drawY := c.textOrigin(text, x, y)
+	r, g, b, a := colorToRGBA8(c.fillColor)
+	if err := c.font.renderText(layer, text, float32(drawX), float32(drawY), r, g, b, a); err != nil {
+		return err
+	}
+	return c.compositeLayer(layer, "DrawText")
 }
 
-func (c *cppContext) DrawTextAligned(string, float64, float64, agg.TextAlignment) error {
-	return &UnsupportedCapabilityError{Kind: CPP, Capability: CapabilityText, Operation: "DrawTextAligned"}
+func (c *cppContext) DrawTextAligned(text string, x, y float64, alignment agg.TextAlignment) error {
+	if text == "" {
+		return fmt.Errorf("text is empty")
+	}
+	width, _ := c.MeasureText(text)
+	ax := x
+	switch alignment {
+	case agg.AlignCenter:
+		ax = x - width/2
+	case agg.AlignRight:
+		ax = x - width
+	}
+	return c.DrawText(text, ax, y)
 }
 
-func (c *cppContext) MeasureText(string) (width, height float64) { return 0, 0 }
+func (c *cppContext) MeasureText(text string) (width, height float64) {
+	if c.font == nil || currentCPPNativeMetadata().Stub {
+		return 0, 0
+	}
+	return c.font.textWidth(text), c.font.textHeight()
+}
 
-func (c *cppContext) GetTextBounds(string) (x, y, width, height float64) { return 0, 0, 0, 0 }
+func (c *cppContext) GetTextBounds(text string) (x, y, width, height float64) {
+	w, h := c.MeasureText(text)
+	return 0, 0, w, h
+}
 
 func (c *cppContext) GetImage() Image { return c.img }
 
@@ -626,6 +698,25 @@ func (c *cppContext) circlePath(cx, cy, radius float64) {
 		}
 	}
 	c.ClosePath()
+}
+
+func (c *cppContext) textOrigin(text string, x, y float64) (float64, float64) {
+	width, height := c.MeasureText(text)
+	outX := x
+	switch c.textAlignX {
+	case agg.AlignCenter:
+		outX = x - width/2
+	case agg.AlignRight:
+		outX = x - width
+	}
+	outY := y
+	switch c.textAlignY {
+	case agg.AlignTop:
+		outY = y + height
+	case agg.AlignCenter:
+		outY = y + height/2
+	}
+	return outX, outY
 }
 
 func (c *cppContext) clipRectangle() image.Rectangle {

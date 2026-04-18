@@ -1,4 +1,4 @@
-//go:build agogo && cgo && !aggreal
+//go:build agogo && cgo && aggreal
 
 package engine
 
@@ -15,10 +15,10 @@ func cppAvailable() bool {
 func cppUnavailableReason() string {
 	meta := currentCPPNativeMetadata()
 	if meta.Stub {
-		return fmt.Sprintf("the %q build tag is enabled, but the in-repo C++ backend build %q is a stub and is rejected", cppBuildTag, meta.BuildID)
+		return fmt.Sprintf("the %q build is using a stub C++ backend %q", cppBuildTag, meta.BuildID)
 	}
 	if err := probeCPPNative(); err != nil {
-		return fmt.Sprintf("the %q build tag is enabled, but the in-repo C++ backend probe failed: %v", cppBuildTag, err)
+		return fmt.Sprintf("the %q build tag is enabled, but the real AGG-backed probe failed: %v", cppBuildTag, err)
 	}
 	return cppBridgeNotImplementedReason()
 }

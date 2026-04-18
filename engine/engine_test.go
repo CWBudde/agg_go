@@ -1,3 +1,5 @@
+//go:build !aggreal
+
 package engine_test
 
 import (

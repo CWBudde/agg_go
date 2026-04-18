@@ -361,6 +361,9 @@ across two active repositories.
       wrappers, and test helpers needed by the actual engine adapter inside
       this repository rather than depending on `github.com/cwbudde/agogo` at
       runtime.
+- [x] Add a first real AGG-backed in-repo build path for the current direct
+      `engine` C++ subset, so `engine.CPP` becomes available in a local
+      `agogo`+real-native build instead of only through the stub native layer.
 - [ ] Port the next direct C++ backend primitives needed for parity with the
       current facade subset, especially image scaling/quad mapping, clip box,
       compositing mode selection, gradients, and text.
@@ -376,6 +379,9 @@ across two active repositories.
 - [x] Add package-private C++ image quad drawing for the current migrated
       subset, with internal tests covering full-image quads, source-region
       quads, clip interaction, and typed unsupported blend-mode rejection.
+- [x] Add a first real-text slice to the AGG-backed in-repo C++ engine path:
+      font loading, hinting configuration, text drawing, and basic text
+      measurement/bounds for the current facade contract.
 - [x] Return concrete typed unavailable errors for the currently known C++
       migration prerequisites and build modes: missing `agogo` build tag,
       `agogo` builds without cgo, and `agogo` builds where the in-repo C++
@@ -384,6 +390,13 @@ across two active repositories.
       exists so
       missing native AGG libs, pkg-config failures, or other link/runtime
       prerequisites also surface as concrete unavailable errors.
+- [ ] Collapse the temporary `aggreal` build split back into the primary
+      `agogo` build once native dependency probing can replace compile-time
+      system-library assumptions cleanly.
+- [ ] Replace the remaining CPU helper paths in the real C++ build with direct
+      AGG-backed implementations where that materially affects parity or
+      performance, especially for image operations that are still not using AGG
+      internally.
 - [x] Never silently fall back from the C++ engine to the native port, and
       never silently accept a stub implementation as a valid backend.
 

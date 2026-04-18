@@ -6,6 +6,7 @@ package engine
 #cgo CXXFLAGS: -std=c++17
 #cgo LDFLAGS: -lstdc++
 #cgo CPPFLAGS: -I${SRCDIR}
+#include <stdlib.h>
 #include "cpp_native.h"
 */
 import "C"
@@ -489,4 +490,113 @@ func (m *cppNativeMatrix) transformPoint(x, y float64) (float64, float64, error)
 		return 0, 0, fmt.Errorf("agg_go_cpp_matrix_transform_point failed: %s", cppNativeLastError())
 	}
 	return float64(cx), float64(cy), nil
+}
+
+type cppNativeFont struct {
+	ptr *C.AggGoCPPFont
+}
+
+func newCPPNativeFont(fontPath string) (*cppNativeFont, error) {
+	if fontPath == "" {
+		return nil, fmt.Errorf("font path is empty")
+	}
+	cPath := C.CString(fontPath)
+	defer C.free(unsafe.Pointer(cPath))
+	ptr := C.agg_go_cpp_font_create(cPath)
+	if ptr == nil {
+		return nil, fmt.Errorf("agg_go_cpp_font_create failed: %s", cppNativeLastError())
+	}
+	font := &cppNativeFont{ptr: ptr}
+	runtime.SetFinalizer(font, (*cppNativeFont).close)
+	return font, nil
+}
+
+func (f *cppNativeFont) close() error {
+	runtime.SetFinalizer(f, nil)
+	if f == nil || f.ptr == nil {
+		return nil
+	}
+	C.agg_go_cpp_font_free(f.ptr)
+	f.ptr = nil
+	return nil
+}
+
+func (f *cppNativeFont) setSize(size float32) error {
+	if f == nil || f.ptr == nil {
+		return fmt.Errorf("font is nil")
+	}
+	if code := int(C.agg_go_cpp_font_set_size(f.ptr, C.float(size))); code != 0 {
+		return fmt.Errorf("agg_go_cpp_font_set_size failed: %s", cppNativeLastError())
+	}
+	return nil
+}
+
+func (f *cppNativeFont) setHinting(enabled bool) error {
+	if f == nil || f.ptr == nil {
+		return fmt.Errorf("font is nil")
+	}
+	value := 0
+	if enabled {
+		value = 1
+	}
+	if code := int(C.agg_go_cpp_font_set_hinting(f.ptr, C.int(value))); code != 0 {
+		return fmt.Errorf("agg_go_cpp_font_set_hinting failed: %s", cppNativeLastError())
+	}
+	return nil
+}
+
+func (f *cppNativeFont) setFlipY(enabled bool) error {
+	if f == nil || f.ptr == nil {
+		return fmt.Errorf("font is nil")
+	}
+	value := 0
+	if enabled {
+		value = 1
+	}
+	if code := int(C.agg_go_cpp_font_set_flip_y(f.ptr, C.int(value))); code != 0 {
+		return fmt.Errorf("agg_go_cpp_font_set_flip_y failed: %s", cppNativeLastError())
+	}
+	return nil
+}
+
+func (f *cppNativeFont) renderText(img *cppNativeImage, text string, x, y float32, r, g, b, a uint8) error {
+	if f == nil || f.ptr == nil {
+		return fmt.Errorf("font is nil")
+	}
+	if img == nil || img.ptr == nil {
+		return fmt.Errorf("image is nil")
+	}
+	cText := C.CString(text)
+	defer C.free(unsafe.Pointer(cText))
+	code := int(C.agg_go_cpp_render_text(
+		img.ptr,
+		f.ptr,
+		cText,
+		C.float(x),
+		C.float(y),
+		C.uint8_t(r),
+		C.uint8_t(g),
+		C.uint8_t(b),
+		C.uint8_t(a),
+	))
+	if code != 0 {
+		return fmt.Errorf("agg_go_cpp_render_text failed: %s", cppNativeLastError())
+	}
+	return nil
+}
+
+func (f *cppNativeFont) textWidth(text string) float64 {
+	if f == nil || f.ptr == nil {
+		return 0
+	}
+	cText := C.CString(text)
+	defer C.free(unsafe.Pointer(cText))
+	return float64(C.agg_go_cpp_text_width(f.ptr, cText))
+}
+
+func (f *cppNativeFont) textHeight() float64 {
+	if f == nil || f.ptr == nil {
+		return 0
+	}
+	return float64(C.agg_go_cpp_text_height(f.ptr))
 }

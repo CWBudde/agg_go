@@ -1,0 +1,118 @@
+//go:build agogo && cgo && aggreal
+
+package engine_test
+
+import (
+	"os"
+	"testing"
+
+	agg "github.com/cwbudde/agg_go"
+	"github.com/cwbudde/agg_go/engine"
+)
+
+func TestAvailableIncludesCPPWithAggReal(t *testing.T) {
+	available := engine.Available()
+	if len(available) < 2 {
+		t.Fatalf("expected C++ engine to be advertised in aggreal build, got %v", available)
+	}
+	found := false
+	for _, kind := range available {
+		if kind == engine.CPP {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected available engines to include %q, got %v", engine.CPP, available)
+	}
+}
+
+func TestCapabilitiesCPPExposeCurrentRealSubset(t *testing.T) {
+	caps, err := engine.Capabilities(engine.CPP)
+	if err != nil {
+		t.Fatalf("Capabilities(CPP) error = %v", err)
+	}
+	for _, want := range []engine.Capability{
+		engine.CapabilitySolidStyle,
+		engine.CapabilityPath,
+		engine.CapabilityTransforms,
+		engine.CapabilityClipBox,
+		engine.CapabilityCompositing,
+		engine.CapabilityImageDraw,
+		engine.CapabilityImageExport,
+		engine.CapabilityGradients,
+		engine.CapabilityText,
+	} {
+		found := false
+		for _, cap := range caps {
+			if cap == want {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("expected cpp capability set to include %q, got %v", want, caps)
+		}
+	}
+	if !engine.Supports(engine.CPP, engine.CapabilityText) {
+		t.Fatal("expected current real C++ subset to report text capability")
+	}
+}
+
+func TestNewContextCPPWorksWithAggReal(t *testing.T) {
+	ctx, err := engine.NewContext(16, 16, engine.Config{Kind: engine.CPP})
+	if err != nil {
+		t.Fatalf("NewContext(CPP) error = %v", err)
+	}
+
+	ctx.Clear(agg.White)
+	ctx.SetColor(agg.Red)
+	ctx.FillRectangle(2, 2, 10, 10)
+
+	got := ctx.GetImage().ToGoImage().RGBAAt(6, 6)
+	if got.R < 200 || got.G > 40 || got.B > 40 || got.A != 255 {
+		t.Fatalf("unexpected rendered color at center: %+v", got)
+	}
+}
+
+func TestCPPTextWorksWithAggReal(t *testing.T) {
+	fontPath := "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+	if _, err := os.Stat(fontPath); err != nil {
+		t.Skipf("font not available: %v", err)
+	}
+
+	ctx, err := engine.NewContext(120, 40, engine.Config{Kind: engine.CPP})
+	if err != nil {
+		t.Fatalf("NewContext(CPP) error = %v", err)
+	}
+	ctx.Clear(agg.White)
+	ctx.SetFillColor(agg.Black)
+	if err := ctx.LoadFont(fontPath); err != nil {
+		t.Fatalf("LoadFont() error = %v", err)
+	}
+	ctx.TextHints(true)
+
+	width, height := ctx.MeasureText("Hello")
+	if width <= 0 || height <= 0 {
+		t.Fatalf("unexpected text metrics: width=%v height=%v", width, height)
+	}
+
+	if err := ctx.DrawText("Hello", 10, 20); err != nil {
+		t.Fatalf("DrawText() error = %v", err)
+	}
+
+	img := ctx.GetImage().ToGoImage()
+	nonWhite := false
+	for y := 0; y < img.Bounds().Dy() && !nonWhite; y++ {
+		for x := 0; x < img.Bounds().Dx(); x++ {
+			p := img.RGBAAt(x, y)
+			if p.R != agg.White.R || p.G != agg.White.G || p.B != agg.White.B || p.A != agg.White.A {
+				nonWhite = true
+				break
+			}
+		}
+	}
+	if !nonWhite {
+		t.Fatal("expected rendered text to modify at least one pixel")
+	}
+}

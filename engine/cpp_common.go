@@ -7,28 +7,46 @@ import (
 
 const cppBuildTag = "agogo"
 
-func newCPPContext(_, _ int) (Context, error) {
-	return nil, cppUnavailableError(cppUnavailableReason())
+func newCPPContext(width, height int) (Context, error) {
+	if !cppAvailable() {
+		return nil, cppUnavailableError(cppUnavailableReason())
+	}
+	return newCPPBackendContextAvailable(width, height)
 }
 
-func newCPPContextForImage(Image) (Context, error) {
-	return nil, cppUnavailableError(cppUnavailableReason())
+func newCPPContextForImage(img Image) (Context, error) {
+	if !cppAvailable() {
+		return nil, cppUnavailableError(cppUnavailableReason())
+	}
+	return newCPPBackendContextForImageAvailable(img)
 }
 
-func newCPPImage(_, _ int) (Image, error) {
-	return nil, cppUnavailableError(cppUnavailableReason())
+func newCPPImage(width, height int) (Image, error) {
+	if !cppAvailable() {
+		return nil, cppUnavailableError(cppUnavailableReason())
+	}
+	return newCPPBackendImageAvailable(width, height)
 }
 
-func newCPPImageFromGoImage(image.Image) (Image, error) {
-	return nil, cppUnavailableError(cppUnavailableReason())
+func newCPPImageFromGoImage(src image.Image) (Image, error) {
+	if !cppAvailable() {
+		return nil, cppUnavailableError(cppUnavailableReason())
+	}
+	return newCPPBackendImageFromGoImageAvailable(src)
 }
 
-func newCPPImageFromBuffer([]byte, int, int, int) (Image, error) {
-	return nil, cppUnavailableError(cppUnavailableReason())
+func newCPPImageFromBuffer(buf []byte, width, height, stride int) (Image, error) {
+	if !cppAvailable() {
+		return nil, cppUnavailableError(cppUnavailableReason())
+	}
+	return newCPPBackendImageFromBufferAvailable(buf, width, height, stride)
 }
 
-func loadCPPImageFromFile(string) (Image, error) {
-	return nil, cppUnavailableError(cppUnavailableReason())
+func loadCPPImageFromFile(filename string) (Image, error) {
+	if !cppAvailable() {
+		return nil, cppUnavailableError(cppUnavailableReason())
+	}
+	return loadCPPBackendImageFromFileAvailable(filename)
 }
 
 func cppUnavailableError(reason string) error {

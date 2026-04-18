@@ -6,8 +6,24 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <memory>
 #include <string>
 #include <vector>
+
+#ifdef AGG_GO_CPP_REAL
+#include <agg_color_rgba.h>
+#include <agg_font_cache_manager.h>
+#include <agg_font_freetype.h>
+#include <agg_conv_stroke.h>
+#include <agg_conv_curve.h>
+#include <agg_path_storage.h>
+#include <agg_pixfmt_rgba.h>
+#include <agg_rasterizer_scanline_aa.h>
+#include <agg_renderer_base.h>
+#include <agg_renderer_scanline.h>
+#include <agg_rendering_buffer.h>
+#include <agg_scanline_u.h>
+#endif
 
 struct Point {
   float x;
@@ -24,6 +40,11 @@ struct AggGoCPPImage {
   uint32_t height;
   uint32_t stride;
   std::vector<uint8_t> pixels;
+#ifdef AGG_GO_CPP_REAL
+  std::unique_ptr<agg::rendering_buffer> rendering_buf;
+  std::unique_ptr<agg::pixfmt_rgba32> pixfmt;
+  std::unique_ptr<agg::renderer_base<agg::pixfmt_rgba32>> ren_base;
+#endif
 };
 
 struct AggGoCPPPath {
@@ -38,6 +59,22 @@ struct AggGoCPPMatrix {
   double d;
   double e;
   double f;
+};
+
+struct AggGoCPPFont {
+#ifdef AGG_GO_CPP_REAL
+  using font_engine_type = agg::font_engine_freetype_int32;
+  using font_manager_type = agg::font_cache_manager<font_engine_type>;
+  using path_adaptor_type = font_manager_type::path_adaptor_type;
+  using conv_curves_type = agg::conv_curve<path_adaptor_type>;
+
+  std::unique_ptr<font_engine_type> font_engine;
+  std::unique_ptr<font_manager_type> font_manager;
+#endif
+  std::string font_path;
+  float font_size = 12.0f;
+  bool hinting_enabled = true;
+  bool flip_y = true;
 };
 
 namespace {
@@ -71,8 +108,71 @@ bool valid_stroke_path(const AggGoCPPPath* path) {
 }
 
 bool valid_matrix(const AggGoCPPMatrix* matrix) { return matrix != nullptr; }
+bool valid_font(const AggGoCPPFont* font) { return font != nullptr; }
 
 void set_last_error(const char* value) { last_error_storage() = value; }
+
+#ifdef AGG_GO_CPP_REAL
+void init_rendering(AggGoCPPImage* image) {
+  image->rendering_buf =
+      std::make_unique<agg::rendering_buffer>(image->pixels.data(), image->width, image->height,
+                                              static_cast<int>(image->stride));
+  image->pixfmt = std::make_unique<agg::pixfmt_rgba32>(*image->rendering_buf);
+  image->ren_base = std::make_unique<agg::renderer_base<agg::pixfmt_rgba32>>(*image->pixfmt);
+}
+
+void convert_path_to_agg(const AggGoCPPPath& path, agg::path_storage* agg_path) {
+  if (path.points.empty()) {
+    return;
+  }
+  agg_path->move_to(path.points[0].x, path.points[0].y);
+  for (size_t i = 1; i < path.points.size(); ++i) {
+    agg_path->line_to(path.points[i].x, path.points[i].y);
+  }
+  if (path.closed) {
+    agg_path->close_polygon();
+  }
+}
+
+void setup_font_engine(AggGoCPPFont* font) {
+  font->font_engine->height(font->font_size);
+  font->font_engine->width(font->font_size);
+  font->font_engine->hinting(font->hinting_enabled);
+  font->font_engine->flip_y(font->flip_y);
+  font->font_engine->char_map(FT_ENCODING_UNICODE);
+}
+#endif
+
+bool next_utf8(const char*& p, uint32_t& cp) {
+  unsigned char c = static_cast<unsigned char>(*p);
+  if (c < 0x80) {
+    cp = c;
+    ++p;
+    return true;
+  }
+  if ((c >> 5) == 0x6) {
+    if (!p[1]) return false;
+    cp = ((c & 0x1F) << 6) | (static_cast<unsigned char>(p[1]) & 0x3F);
+    p += 2;
+    return true;
+  }
+  if ((c >> 4) == 0xE) {
+    if (!p[1] || !p[2]) return false;
+    cp = ((c & 0x0F) << 12) | ((static_cast<unsigned char>(p[1]) & 0x3F) << 6) |
+         (static_cast<unsigned char>(p[2]) & 0x3F);
+    p += 3;
+    return true;
+  }
+  if ((c >> 3) == 0x1E) {
+    if (!p[1] || !p[2] || !p[3]) return false;
+    cp = ((c & 0x07) << 18) | ((static_cast<unsigned char>(p[1]) & 0x3F) << 12) |
+         ((static_cast<unsigned char>(p[2]) & 0x3F) << 6) |
+         (static_cast<unsigned char>(p[3]) & 0x3F);
+    p += 4;
+    return true;
+  }
+  return false;
+}
 
 uint8_t clamp_byte(double value) {
   if (value <= 0.0) {
@@ -294,14 +394,29 @@ Point matrix_transform_point(const AggGoCPPMatrix& matrix, const Point& point) {
 }  // namespace
 
 extern "C" int agg_go_cpp_bridge_probe(void) {
+#ifdef AGG_GO_CPP_REAL
+  last_error_storage().clear();
+  return 0;
+#else
   last_error_storage() = "stub bridge: no AGG-backed implementation linked";
   return -1;
+#endif
 }
 
-extern "C" int agg_go_cpp_bridge_is_stub(void) { return 1; }
+extern "C" int agg_go_cpp_bridge_is_stub(void) {
+#ifdef AGG_GO_CPP_REAL
+  return 0;
+#else
+  return 1;
+#endif
+}
 
 extern "C" const char* agg_go_cpp_bridge_build_id(void) {
+#ifdef AGG_GO_CPP_REAL
+  return "agogo-agg-real-v1";
+#else
   return "agogo-primitives-stub-v2";
+#endif
 }
 
 extern "C" const char* agg_go_cpp_bridge_last_error(void) {
@@ -318,6 +433,9 @@ extern "C" AggGoCPPImage* agg_go_cpp_image_create(uint32_t width, uint32_t heigh
   image->height = height;
   image->stride = width * 4;
   image->pixels.assign(static_cast<size_t>(image->stride) * height, 0);
+#ifdef AGG_GO_CPP_REAL
+  init_rendering(image);
+#endif
   return image;
 }
 
@@ -354,6 +472,10 @@ extern "C" int agg_go_cpp_image_clear(AggGoCPPImage* image, uint8_t r, uint8_t g
     set_last_error("image is nil");
     return -1;
   }
+#ifdef AGG_GO_CPP_REAL
+  image->ren_base->clear(agg::rgba8(r, g, b, a));
+  return 0;
+#else
   for (size_t i = 0; i < image->pixels.size(); i += 4) {
     image->pixels[i + 0] = r;
     image->pixels[i + 1] = g;
@@ -361,6 +483,7 @@ extern "C" int agg_go_cpp_image_clear(AggGoCPPImage* image, uint8_t r, uint8_t g
     image->pixels[i + 3] = a;
   }
   return 0;
+#endif
 }
 
 extern "C" int agg_go_cpp_image_blit(AggGoCPPImage* dst, const AggGoCPPImage* src, int dst_x, int dst_y,
@@ -743,6 +866,22 @@ extern "C" int agg_go_cpp_render_fill_path(AggGoCPPImage* image, const AggGoCPPP
     return -1;
   }
 
+#ifdef AGG_GO_CPP_REAL
+  agg::path_storage agg_path;
+  convert_path_to_agg(*path, &agg_path);
+  agg::rasterizer_scanline_aa<> ras;
+  if (fill_rule == AggGoCPPFillRuleEvenOdd) {
+    ras.filling_rule(agg::fill_even_odd);
+  } else {
+    ras.filling_rule(agg::fill_non_zero);
+  }
+  agg::scanline_u8 sl;
+  ras.add_path(agg_path);
+  agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_rgba32>> ren(*image->ren_base);
+  ren.color(agg::rgba8(r, g, b, a));
+  agg::render_scanlines(ras, sl, ren);
+  return 0;
+#else
   float min_x = path->points[0].x;
   float max_x = path->points[0].x;
   float min_y = path->points[0].y;
@@ -775,6 +914,7 @@ extern "C" int agg_go_cpp_render_fill_path(AggGoCPPImage* image, const AggGoCPPP
   }
 
   return 0;
+#endif
 }
 
 extern "C" int agg_go_cpp_render_stroke_path(AggGoCPPImage* image, const AggGoCPPPath* path, float width,
@@ -805,6 +945,42 @@ extern "C" int agg_go_cpp_render_stroke_path(AggGoCPPImage* image, const AggGoCP
     return -1;
   }
 
+#ifdef AGG_GO_CPP_REAL
+  agg::path_storage agg_path;
+  convert_path_to_agg(*path, &agg_path);
+  agg::conv_stroke<agg::path_storage> stroke(agg_path);
+  stroke.width(width);
+  switch (line_cap) {
+    case AggGoCPPLineCapRound:
+      stroke.line_cap(agg::round_cap);
+      break;
+    case AggGoCPPLineCapSquare:
+      stroke.line_cap(agg::square_cap);
+      break;
+    default:
+      stroke.line_cap(agg::butt_cap);
+      break;
+  }
+  switch (line_join) {
+    case AggGoCPPLineJoinRound:
+      stroke.line_join(agg::round_join);
+      break;
+    case AggGoCPPLineJoinBevel:
+      stroke.line_join(agg::bevel_join);
+      break;
+    default:
+      stroke.line_join(agg::miter_join);
+      stroke.miter_limit(miter_limit);
+      break;
+  }
+  agg::rasterizer_scanline_aa<> ras;
+  agg::scanline_u8 sl;
+  ras.add_path(stroke);
+  agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_rgba32>> ren(*image->ren_base);
+  ren.color(agg::rgba8(r, g, b, a));
+  agg::render_scanlines(ras, sl, ren);
+  return 0;
+#else
   float min_x = path->points[0].x;
   float max_x = path->points[0].x;
   float min_y = path->points[0].y;
@@ -857,4 +1033,158 @@ extern "C" int agg_go_cpp_render_stroke_path(AggGoCPPImage* image, const AggGoCP
   }
 
   return 0;
+#endif
+}
+
+extern "C" AggGoCPPFont* agg_go_cpp_font_create(const char* font_path) {
+  if (font_path == nullptr || *font_path == '\0') {
+    set_last_error("font path is empty");
+    return nullptr;
+  }
+  auto* font = new AggGoCPPFont();
+  font->font_path = font_path;
+#ifdef AGG_GO_CPP_REAL
+  font->font_engine = std::make_unique<AggGoCPPFont::font_engine_type>();
+  font->font_manager = std::make_unique<AggGoCPPFont::font_manager_type>(*font->font_engine);
+  setup_font_engine(font);
+  if (!font->font_engine->load_font(font_path, 0, agg::glyph_ren_outline)) {
+    set_last_error("failed to load font");
+    delete font;
+    return nullptr;
+  }
+  setup_font_engine(font);
+  return font;
+#else
+  set_last_error("font support is unavailable in stub backend");
+  delete font;
+  return nullptr;
+#endif
+}
+
+extern "C" void agg_go_cpp_font_free(AggGoCPPFont* font) { delete font; }
+
+extern "C" int agg_go_cpp_font_set_size(AggGoCPPFont* font, float size) {
+  if (!valid_font(font) || !(size > 0.0f)) {
+    set_last_error("invalid font size");
+    return -1;
+  }
+  font->font_size = size;
+#ifdef AGG_GO_CPP_REAL
+  setup_font_engine(font);
+#endif
+  return 0;
+}
+
+extern "C" int agg_go_cpp_font_set_hinting(AggGoCPPFont* font, int enabled) {
+  if (!valid_font(font)) {
+    set_last_error("font is nil");
+    return -1;
+  }
+  font->hinting_enabled = enabled != 0;
+#ifdef AGG_GO_CPP_REAL
+  setup_font_engine(font);
+#endif
+  return 0;
+}
+
+extern "C" int agg_go_cpp_font_set_flip_y(AggGoCPPFont* font, int flip_y) {
+  if (!valid_font(font)) {
+    set_last_error("font is nil");
+    return -1;
+  }
+  font->flip_y = flip_y != 0;
+#ifdef AGG_GO_CPP_REAL
+  setup_font_engine(font);
+#endif
+  return 0;
+}
+
+extern "C" int agg_go_cpp_render_text(AggGoCPPImage* image, AggGoCPPFont* font, const char* text, float x, float y,
+                                      uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+  if (!valid_image(image) || !valid_font(font) || text == nullptr) {
+    set_last_error("text rendering inputs are nil");
+    return -1;
+  }
+#ifdef AGG_GO_CPP_REAL
+  if (!image->ren_base || !font->font_engine || !font->font_manager) {
+    set_last_error("font rendering backend is unavailable");
+    return -1;
+  }
+  try {
+    agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_rgba32>> ren(*image->ren_base);
+    ren.color(agg::rgba8(r, g, b, a));
+    agg::rasterizer_scanline_aa<> ras;
+    agg::scanline_u8 sl;
+    double pen_x = x;
+    double pen_y = y;
+    const char* p = text;
+    while (*p) {
+      uint32_t codepoint;
+      if (!next_utf8(p, codepoint)) {
+        break;
+      }
+      const agg::glyph_cache* glyph = font->font_manager->glyph(codepoint);
+      if (!glyph) {
+        continue;
+      }
+      font->font_manager->add_kerning(&pen_x, &pen_y);
+      font->font_manager->init_embedded_adaptors(glyph, pen_x, pen_y);
+      AggGoCPPFont::path_adaptor_type path_adaptor = font->font_manager->path_adaptor();
+      AggGoCPPFont::conv_curves_type curves(path_adaptor);
+      curves.approximation_scale(1.0);
+      ras.reset();
+      ras.add_path(curves);
+      agg::render_scanlines(ras, sl, ren);
+      pen_x += glyph->advance_x;
+      pen_y += glyph->advance_y;
+    }
+    return 0;
+  } catch (...) {
+    set_last_error("font rendering failed");
+    return -1;
+  }
+#else
+  set_last_error("font support is unavailable in stub backend");
+  return -1;
+#endif
+}
+
+extern "C" float agg_go_cpp_text_width(AggGoCPPFont* font, const char* text) {
+  if (!valid_font(font) || text == nullptr) {
+    return 0.0f;
+  }
+#ifdef AGG_GO_CPP_REAL
+  if (!font->font_engine || !font->font_manager) {
+    return 0.0f;
+  }
+  float width = 0.0f;
+  const char* p = text;
+  while (*p) {
+    uint32_t codepoint;
+    if (!next_utf8(p, codepoint)) {
+      break;
+    }
+    const agg::glyph_cache* glyph = font->font_manager->glyph(codepoint);
+    if (glyph) {
+      width += glyph->advance_x;
+    }
+  }
+  return width;
+#else
+  return 0.0f;
+#endif
+}
+
+extern "C" float agg_go_cpp_text_height(AggGoCPPFont* font) {
+  if (!valid_font(font)) {
+    return 0.0f;
+  }
+#ifdef AGG_GO_CPP_REAL
+  if (!font->font_engine) {
+    return font->font_size;
+  }
+  return font->font_engine->height();
+#else
+  return 0.0f;
+#endif
 }

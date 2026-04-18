@@ -10,6 +10,7 @@ extern "C" {
 typedef struct AggGoCPPImage AggGoCPPImage;
 typedef struct AggGoCPPPath AggGoCPPPath;
 typedef struct AggGoCPPMatrix AggGoCPPMatrix;
+typedef struct AggGoCPPFont AggGoCPPFont;
 
 enum AggGoCPPFillRule {
   AggGoCPPFillRuleNonZero = 0,
@@ -76,6 +77,16 @@ int agg_go_cpp_render_fill_path(AggGoCPPImage* image, const AggGoCPPPath* path, 
 int agg_go_cpp_render_stroke_path(AggGoCPPImage* image, const AggGoCPPPath* path, float width,
                                   int line_cap, int line_join, float miter_limit, uint8_t r,
                                   uint8_t g, uint8_t b, uint8_t a);
+
+AggGoCPPFont* agg_go_cpp_font_create(const char* font_path);
+void agg_go_cpp_font_free(AggGoCPPFont* font);
+int agg_go_cpp_font_set_size(AggGoCPPFont* font, float size);
+int agg_go_cpp_font_set_hinting(AggGoCPPFont* font, int enabled);
+int agg_go_cpp_font_set_flip_y(AggGoCPPFont* font, int flip_y);
+int agg_go_cpp_render_text(AggGoCPPImage* image, AggGoCPPFont* font, const char* text, float x, float y,
+                           uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+float agg_go_cpp_text_width(AggGoCPPFont* font, const char* text);
+float agg_go_cpp_text_height(AggGoCPPFont* font);
 
 #ifdef __cplusplus
 }
