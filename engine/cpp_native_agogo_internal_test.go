@@ -469,6 +469,51 @@ func TestCPPBackendContextDrawImageQuad(t *testing.T) {
 	}
 }
 
+func TestCPPBackendContextFillLinearGradient(t *testing.T) {
+	ctx, err := newCPPBackendContext(16, 10)
+	if err != nil {
+		t.Fatalf("newCPPBackendContext() error = %v", err)
+	}
+	ctx.Clear(agg.White)
+	ctx.SetLinearGradient(2, 0, 14, 0, agg.Red, agg.Blue)
+	ctx.FillRectangle(2, 1, 12, 8)
+
+	left := ctx.GetImage().ToGoImage().RGBAAt(3, 5)
+	right := ctx.GetImage().ToGoImage().RGBAAt(12, 5)
+	if left.R <= left.B {
+		t.Fatalf("expected left gradient pixel to skew red, got %+v", left)
+	}
+	if right.B <= right.R {
+		t.Fatalf("expected right gradient pixel to skew blue, got %+v", right)
+	}
+}
+
+func TestCPPBackendContextStrokeRadialGradient(t *testing.T) {
+	ctx, err := newCPPBackendContext(18, 18)
+	if err != nil {
+		t.Fatalf("newCPPBackendContext() error = %v", err)
+	}
+	ctx.Clear(agg.White)
+	ctx.SetLineWidth(3)
+	ctx.SetStrokeRadialGradient(9, 9, 6, agg.Green, agg.Blue)
+	ctx.DrawCircle(9, 9, 5)
+
+	top := ctx.GetImage().ToGoImage().RGBAAt(9, 4)
+	right := ctx.GetImage().ToGoImage().RGBAAt(14, 9)
+	if (top.R == agg.White.R && top.G == agg.White.G && top.B == agg.White.B && top.A == agg.White.A) || top.A != 255 || (int(top.G)+int(top.B)) < 120 {
+		t.Fatalf("expected stroke gradient pixel to be colored, got %+v", top)
+	}
+	if (right.R == agg.White.R && right.G == agg.White.G && right.B == agg.White.B && right.A == agg.White.A) || right.A != 255 || (int(right.G)+int(right.B)) < 120 {
+		t.Fatalf("expected stroke gradient pixel to be colored, got %+v", right)
+	}
+	if ctx.GetFillGradientType() != agg.SolidGradient {
+		t.Fatalf("unexpected fill gradient type: %v", ctx.GetFillGradientType())
+	}
+	if ctx.GetStrokeGradientType() != agg.RadialGradient {
+		t.Fatalf("unexpected stroke gradient type: %v", ctx.GetStrokeGradientType())
+	}
+}
+
 func TestCPPBackendTextOperationsAreTypedUnsupported(t *testing.T) {
 	ctx, err := newCPPBackendContext(10, 10)
 	if err != nil {

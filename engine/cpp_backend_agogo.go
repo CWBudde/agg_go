@@ -17,6 +17,28 @@ type cppImage struct {
 	img *cppNativeImage
 }
 
+type cppGradientKind int
+
+const (
+	cppGradientSolid cppGradientKind = iota
+	cppGradientLinear
+	cppGradientRadial
+)
+
+type cppGradientState struct {
+	kind    cppGradientKind
+	c1      agg.Color
+	c2      agg.Color
+	profile float64
+	x1      float64
+	y1      float64
+	x2      float64
+	y2      float64
+	cx      float64
+	cy      float64
+	radius  float64
+}
+
 type cppContext struct {
 	img                *cppImage
 	path               *cppNativePath
@@ -29,6 +51,8 @@ type cppContext struct {
 	hasCurrentPoint    bool
 	fillColor          agg.Color
 	strokeColor        agg.Color
+	fillGradient       cppGradientState
+	strokeGradient     cppGradientState
 	lineWidth          float64
 	lineCap            agg.LineCap
 	lineJoin           agg.LineJoin
@@ -77,6 +101,8 @@ func newCPPBackendContextForImage(img *cppImage) (*cppContext, error) {
 		transform:          transform,
 		fillColor:          agg.Black,
 		strokeColor:        agg.Black,
+		fillGradient:       cppGradientState{kind: cppGradientSolid, c1: agg.Black, c2: agg.Black, profile: 1},
+		strokeGradient:     cppGradientState{kind: cppGradientSolid, c1: agg.Black, c2: agg.Black, profile: 1},
 		lineWidth:          1,
 		lineCap:            agg.CapButt,
 		lineJoin:           agg.JoinMiter,
@@ -181,11 +207,13 @@ func (c *cppContext) SetColor(color agg.Color) {
 func (c *cppContext) SetFillColor(color agg.Color) {
 	c.fillColor = color
 	c.fillGradientType = agg.SolidGradient
+	c.fillGradient = cppGradientState{kind: cppGradientSolid, c1: color, c2: color, profile: 1}
 }
 
 func (c *cppContext) SetStrokeColor(color agg.Color) {
 	c.strokeColor = color
 	c.strokeGradientType = agg.SolidGradient
+	c.strokeGradient = cppGradientState{kind: cppGradientSolid, c1: color, c2: color, profile: 1}
 }
 
 func (c *cppContext) SetLineWidth(width float64) { c.lineWidth = width }
@@ -202,36 +230,74 @@ func (c *cppContext) FillEvenOdd(evenOdd bool) { c.fillEvenOdd = evenOdd }
 
 func (c *cppContext) GetFillEvenOdd() bool { return c.fillEvenOdd }
 
-func (c *cppContext) SetLinearGradient(_, _, _, _ float64, _, _ agg.Color) {
+func (c *cppContext) SetLinearGradientWithProfile(x1, y1, x2, y2 float64, c1, c2 agg.Color, profile float64) {
 	c.fillGradientType = agg.LinearGradient
+	c.fillGradient = cppGradientState{
+		kind:    cppGradientLinear,
+		c1:      c1,
+		c2:      c2,
+		profile: profile,
+		x1:      x1,
+		y1:      y1,
+		x2:      x2,
+		y2:      y2,
+	}
 }
 
-func (c *cppContext) SetLinearGradientWithProfile(_, _, _, _ float64, _, _ agg.Color, _ float64) {
-	c.fillGradientType = agg.LinearGradient
+func (c *cppContext) SetLinearGradient(x1, y1, x2, y2 float64, c1, c2 agg.Color) {
+	c.SetLinearGradientWithProfile(x1, y1, x2, y2, c1, c2, 1)
 }
 
-func (c *cppContext) SetRadialGradient(_, _, _ float64, _, _ agg.Color) {
+func (c *cppContext) SetRadialGradient(cx, cy, radius float64, c1, c2 agg.Color) {
+	c.SetRadialGradientWithProfile(cx, cy, radius, c1, c2, 1)
+}
+
+func (c *cppContext) SetRadialGradientWithProfile(cx, cy, radius float64, c1, c2 agg.Color, profile float64) {
 	c.fillGradientType = agg.RadialGradient
+	c.fillGradient = cppGradientState{
+		kind:    cppGradientRadial,
+		c1:      c1,
+		c2:      c2,
+		profile: profile,
+		cx:      cx,
+		cy:      cy,
+		radius:  radius,
+	}
 }
 
-func (c *cppContext) SetRadialGradientWithProfile(_, _, _ float64, _, _ agg.Color, _ float64) {
-	c.fillGradientType = agg.RadialGradient
+func (c *cppContext) SetStrokeLinearGradient(x1, y1, x2, y2 float64, c1, c2 agg.Color) {
+	c.SetStrokeLinearGradientWithProfile(x1, y1, x2, y2, c1, c2, 1)
 }
 
-func (c *cppContext) SetStrokeLinearGradient(_, _, _, _ float64, _, _ agg.Color) {
+func (c *cppContext) SetStrokeLinearGradientWithProfile(x1, y1, x2, y2 float64, c1, c2 agg.Color, profile float64) {
 	c.strokeGradientType = agg.LinearGradient
+	c.strokeGradient = cppGradientState{
+		kind:    cppGradientLinear,
+		c1:      c1,
+		c2:      c2,
+		profile: profile,
+		x1:      x1,
+		y1:      y1,
+		x2:      x2,
+		y2:      y2,
+	}
 }
 
-func (c *cppContext) SetStrokeLinearGradientWithProfile(_, _, _, _ float64, _, _ agg.Color, _ float64) {
-	c.strokeGradientType = agg.LinearGradient
+func (c *cppContext) SetStrokeRadialGradient(cx, cy, radius float64, c1, c2 agg.Color) {
+	c.SetStrokeRadialGradientWithProfile(cx, cy, radius, c1, c2, 1)
 }
 
-func (c *cppContext) SetStrokeRadialGradient(_, _, _ float64, _, _ agg.Color) {
+func (c *cppContext) SetStrokeRadialGradientWithProfile(cx, cy, radius float64, c1, c2 agg.Color, profile float64) {
 	c.strokeGradientType = agg.RadialGradient
-}
-
-func (c *cppContext) SetStrokeRadialGradientWithProfile(_, _, _ float64, _, _ agg.Color, _ float64) {
-	c.strokeGradientType = agg.RadialGradient
+	c.strokeGradient = cppGradientState{
+		kind:    cppGradientRadial,
+		c1:      c1,
+		c2:      c2,
+		profile: profile,
+		cx:      cx,
+		cy:      cy,
+		radius:  radius,
+	}
 }
 
 func (c *cppContext) GetFillGradientType() agg.GradientType { return c.fillGradientType }
@@ -294,12 +360,17 @@ func (c *cppContext) Fill() {
 	c.must(err)
 	defer layer.close()
 	c.must(layer.clear(0, 0, 0, 0))
-	r, g, b, a := colorToRGBA8(c.fillColor)
 	rule := cppNativeFillRuleNonZero
 	if c.fillEvenOdd {
 		rule = cppNativeFillRuleEvenOdd
 	}
-	c.must(fillCPPNativePath(layer, working, rule, r, g, b, a))
+	if c.fillGradient.kind == cppGradientSolid {
+		r, g, b, a := colorToRGBA8(c.fillColor)
+		c.must(fillCPPNativePath(layer, working, rule, r, g, b, a))
+	} else {
+		c.must(fillCPPNativePath(layer, working, rule, 255, 255, 255, 255))
+		c.must(c.applyGradientToLayer(layer, c.fillGradient))
+	}
 	c.must(c.compositeLayer(layer, "Fill"))
 }
 
@@ -310,12 +381,17 @@ func (c *cppContext) Stroke() {
 	c.must(err)
 	defer layer.close()
 	c.must(layer.clear(0, 0, 0, 0))
-	r, g, b, a := colorToRGBA8(c.strokeColor)
 	opts := defaultCPPNativeStrokeOptions()
 	opts.Width = float32(c.lineWidth)
 	opts.LineCap = mapLineCap(c.lineCap)
 	opts.LineJoin = mapLineJoin(c.lineJoin)
-	c.must(strokeCPPNativePath(layer, working, opts, r, g, b, a))
+	if c.strokeGradient.kind == cppGradientSolid {
+		r, g, b, a := colorToRGBA8(c.strokeColor)
+		c.must(strokeCPPNativePath(layer, working, opts, r, g, b, a))
+	} else {
+		c.must(strokeCPPNativePath(layer, working, opts, 255, 255, 255, 255))
+		c.must(c.applyGradientToLayer(layer, c.strokeGradient))
+	}
 	c.must(c.compositeLayer(layer, "Stroke"))
 }
 
@@ -485,6 +561,36 @@ func (c *cppContext) compositeLayer(layer *cppNativeImage, operation string) err
 	return c.img.img.compositeFrom(layer, 0, 0, c.clipRectangle(), c.blendMode)
 }
 
+func (c *cppContext) applyGradientToLayer(layer *cppNativeImage, gradient cppGradientState) error {
+	pixels, err := layer.pixelView()
+	if err != nil {
+		return err
+	}
+	stride := layer.stride()
+	width := layer.width()
+	height := layer.height()
+	if stride == 0 || width == 0 || height == 0 {
+		return nil
+	}
+	for y := 0; y < height; y++ {
+		row := y * stride
+		for x := 0; x < width; x++ {
+			offset := row + x*4
+			maskAlpha := pixels[offset+3]
+			if maskAlpha == 0 {
+				continue
+			}
+			t := gradient.sampleAt(float64(x)+0.5, float64(y)+0.5)
+			color := gradient.c1.Gradient(gradient.c2, gradient.profileSample(t))
+			pixels[offset+0] = color.R
+			pixels[offset+1] = color.G
+			pixels[offset+2] = color.B
+			pixels[offset+3] = uint8((uint16(color.A) * uint16(maskAlpha)) / 255)
+		}
+	}
+	return nil
+}
+
 func (c *cppContext) must(err error) {
 	if err != nil {
 		panic(err)
@@ -549,6 +655,52 @@ func (c *cppContext) requireBlendMode(operation string) error {
 			Capability: CapabilityCompositing,
 			Operation:  operation,
 		}
+	}
+}
+
+func (g cppGradientState) profileSample(t float64) float64 {
+	if t <= 0 {
+		return 0
+	}
+	if t >= 1 {
+		return 1
+	}
+	profile := g.profile
+	if profile <= 0 {
+		profile = 0
+	}
+	start := 0.5 - profile*(127.0/255.0)
+	end := 0.5 + profile*(127.0/255.0)
+	if end <= start {
+		end = start + (1.0 / 255.0)
+	}
+	switch {
+	case t <= start:
+		return 0
+	case t >= end:
+		return 1
+	default:
+		return (t - start) / (end - start)
+	}
+}
+
+func (g cppGradientState) sampleAt(x, y float64) float64 {
+	switch g.kind {
+	case cppGradientLinear:
+		dx := g.x2 - g.x1
+		dy := g.y2 - g.y1
+		lengthSq := dx*dx + dy*dy
+		if lengthSq <= 1e-12 {
+			return 0
+		}
+		return ((x-g.x1)*dx + (y-g.y1)*dy) / lengthSq
+	case cppGradientRadial:
+		if g.radius <= 1e-12 {
+			return 1
+		}
+		return math.Hypot(x-g.cx, y-g.cy) / g.radius
+	default:
+		return 0
 	}
 }
 

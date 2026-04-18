@@ -364,6 +364,9 @@ across two active repositories.
 - [ ] Port the next direct C++ backend primitives needed for parity with the
       current facade subset, especially image scaling/quad mapping, clip box,
       compositing mode selection, gradients, and text.
+- [x] Make the current package-private C++ backend gradient setters affect
+      actual fill/stroke rendering for the migrated subset, with tagged tests
+      covering at least one fill gradient and one stroke gradient case.
 - [x] Make the current package-private C++ backend honor clip-box state during
       fill, stroke, and image operations by compositing through clip-aware
       native helper paths instead of storing clip state only.

@@ -132,6 +132,21 @@ func (img *cppNativeImage) pixelsRGBA() ([]byte, error) {
 	return C.GoBytes(unsafe.Pointer(ptr), C.int(size)), nil
 }
 
+func (img *cppNativeImage) pixelView() ([]byte, error) {
+	if img == nil || img.ptr == nil {
+		return nil, fmt.Errorf("image is nil")
+	}
+	size := img.stride() * img.height()
+	if size == 0 {
+		return nil, nil
+	}
+	ptr := C.agg_go_cpp_image_pixels_mut(img.ptr)
+	if ptr == nil {
+		return nil, fmt.Errorf("agg_go_cpp_image_pixels_mut returned nil")
+	}
+	return unsafe.Slice((*byte)(unsafe.Pointer(ptr)), size), nil
+}
+
 func (img *cppNativeImage) toGoImage() (*image.RGBA, error) {
 	pixels, err := img.pixelsRGBA()
 	if err != nil {

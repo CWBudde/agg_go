@@ -39,6 +39,7 @@ uint32_t agg_go_cpp_image_width(const AggGoCPPImage* image);
 uint32_t agg_go_cpp_image_height(const AggGoCPPImage* image);
 uint32_t agg_go_cpp_image_stride(const AggGoCPPImage* image);
 const uint8_t* agg_go_cpp_image_pixels(const AggGoCPPImage* image);
+uint8_t* agg_go_cpp_image_pixels_mut(AggGoCPPImage* image);
 int agg_go_cpp_image_clear(AggGoCPPImage* image, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 int agg_go_cpp_image_blit(AggGoCPPImage* dst, const AggGoCPPImage* src, int dst_x, int dst_y,
                           int src_x, int src_y, uint32_t width, uint32_t height);

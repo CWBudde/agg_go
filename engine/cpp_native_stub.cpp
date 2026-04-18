@@ -342,6 +342,13 @@ extern "C" const uint8_t* agg_go_cpp_image_pixels(const AggGoCPPImage* image) {
   return image->pixels.data();
 }
 
+extern "C" uint8_t* agg_go_cpp_image_pixels_mut(AggGoCPPImage* image) {
+  if (!valid_image(image) || image->pixels.empty()) {
+    return nullptr;
+  }
+  return image->pixels.data();
+}
+
 extern "C" int agg_go_cpp_image_clear(AggGoCPPImage* image, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
   if (!valid_image(image)) {
     set_last_error("image is nil");
