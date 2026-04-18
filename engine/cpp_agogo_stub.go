@@ -2,27 +2,23 @@
 
 package engine
 
-import (
-	"fmt"
-
-	"github.com/cwbudde/agg_go/internal/cppbridge"
-)
+import "fmt"
 
 func cppAvailable() bool {
-	meta := cppbridge.CurrentMetadata()
+	meta := currentCPPNativeMetadata()
 	if meta.Stub {
 		return false
 	}
-	return cppbridge.Probe() == nil
+	return probeCPPNative() == nil
 }
 
 func cppUnavailableReason() string {
-	meta := cppbridge.CurrentMetadata()
+	meta := currentCPPNativeMetadata()
 	if meta.Stub {
-		return fmt.Sprintf("the %q build tag is enabled, but the in-repo C++ bridge build %q is a stub and is rejected", cppBuildTag, meta.BuildID)
+		return fmt.Sprintf("the %q build tag is enabled, but the in-repo C++ backend build %q is a stub and is rejected", cppBuildTag, meta.BuildID)
 	}
-	if err := cppbridge.Probe(); err != nil {
-		return fmt.Sprintf("the %q build tag is enabled, but the in-repo C++ bridge probe failed: %v", cppBuildTag, err)
+	if err := probeCPPNative(); err != nil {
+		return fmt.Sprintf("the %q build tag is enabled, but the in-repo C++ backend probe failed: %v", cppBuildTag, err)
 	}
 	return cppBridgeNotImplementedReason()
 }

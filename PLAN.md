@@ -337,23 +337,25 @@ across two active repositories.
 
 - [x] Keep the optional C++-backed engine behind an explicit build tag such as
       `agogo` or `cppref`, not in the default build.
-- [x] Create an in-repo `agogo`-tagged native bridge package with local
-      header/source files, cgo build configuration, bridge metadata/probe
-      wrappers, and build-mode-specific tests, so the native boundary now lives
-      in this repository rather than in the external AGoGo module.
-- [x] Migrate the first actual native primitive slice into the in-repo bridge:
-      local image allocation/clear/readback, region blit, local path
-      allocation/editing, and minimal native path fill/stroke primitives with
-      tagged tests.
+- [x] Create an in-repo `agogo`-tagged native C++ backend support layer inside
+      the `engine` package with local header/source files, cgo build
+      configuration, native metadata/probe helpers, and build-mode-specific
+      tests, so the native boundary now lives in this repository rather than in
+      the external AGoGo module.
+- [x] Migrate the first actual native primitive slice directly into the
+      `engine` package: local image allocation/clear/readback, region blit,
+      local path allocation/editing, affine matrix/path transforms, and minimal
+      native path fill/stroke primitives with tagged tests.
 - [ ] Move or reimplement the remaining C++ FFI glue, build configuration,
       wrappers, and test helpers needed by the actual engine adapter inside
       this repository rather than depending on `github.com/cwbudde/agogo` at
       runtime.
 - [x] Return concrete typed unavailable errors for the currently known C++
       migration prerequisites and build modes: missing `agogo` build tag,
-      `agogo` builds without cgo, and `agogo` builds where the in-repo bridge is
-      still only a stub.
-- [ ] Extend the unavailable-path checks once the real C++ bridge exists so
+      `agogo` builds without cgo, and `agogo` builds where the in-repo C++
+      backend support is still only a stub.
+- [ ] Extend the unavailable-path checks once the real in-repo C++ backend
+      exists so
       missing native AGG libs, pkg-config failures, or other link/runtime
       prerequisites also surface as concrete unavailable errors.
 - [x] Never silently fall back from the C++ engine to the native port, and

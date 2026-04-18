@@ -1,6 +1,6 @@
 //go:build agogo && cgo
 
-#include "bridge.h"
+#include "cpp_native.h"
 
 #include <algorithm>
 #include <cmath>
