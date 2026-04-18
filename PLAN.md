@@ -364,9 +364,13 @@ across two active repositories.
 - [x] Add a first real AGG-backed in-repo build path for the current direct
       `engine` C++ subset, so `engine.CPP` becomes available in a local
       `agogo`+real-native build instead of only through the stub native layer.
-- [ ] Port the next direct C++ backend primitives needed for parity with the
-      current facade subset, especially image scaling/quad mapping, clip box,
-      compositing mode selection, gradients, and text.
+- [x] Port the first real direct C++ backend primitives needed for parity with
+      the current facade subset: image scaling/quad mapping, clip box support,
+      the current compositing subset, gradients, and a first text slice.
+- [ ] Extend that partial C++ parity work to the remaining shared-facade gaps,
+      especially dashed strokes, broader compositing coverage, transformed
+      image-region behavior, and any image paths that still bypass AGG in the
+      real-native build.
 - [x] Make the current package-private C++ backend gradient setters affect
       actual fill/stroke rendering for the migrated subset, with tagged tests
       covering at least one fill gradient and one stroke gradient case.
@@ -405,35 +409,38 @@ across two active repositories.
 Before exposing the in-repo C++ engine outside comparison tooling, mine
 `../AGoGo` for reusable assets and make them trustworthy here:
 
-- [ ] Audit `../AGoGo/go` and `../AGoGo/cpp` to identify what should be ported
+- [x] Audit `../AGoGo/go` and `../AGoGo/cpp` to identify what should be ported
       into this repository: C++ wrapper code, tests, benchmarks, fixtures,
       docs, and feature-specific edge-case knowledge.
+- [ ] Eliminate donor-repo default-fallback enum behavior during migration:
+      unknown paint/compositing/pixel-format values must fail explicitly rather
+      than silently mapping to solid color, src-over, or RGBA32 defaults.
 - [ ] Fix the currently observed test/build breakages from the audit:
       duplicate helper symbols such as `abs` and `compareImages`, missing test
       bridge functions such as `CAPIImageGetBuffer`, and stale enum names such
       as `LineCapRound` / `LineJoinRound`.
-- [ ] Review and classify all current stub, fallback, and "not implemented"
+- [x] Review and classify all current stub, fallback, and "not implemented"
       paths found in AGoGo-derived code: each one must become either
       fully supported, explicitly unavailable, or comparison-only.
-- [ ] Add a hard guard that rejects the C++ engine when the migrated build has
+- [x] Add a hard guard that rejects the C++ engine when the migrated build has
       produced a stub implementation instead of a real AGG-backed library.
 
 ### 5.7 AGoGo feature audit and trust boundaries
 
-- [ ] Audit the AGoGo surface area against what the in-repo facade intends to
+- [x] Audit the AGoGo surface area against what the in-repo facade intends to
       expose, focusing on image, path, transform, stroke, paint, compositing,
       text, and scanline/boolean behavior.
-- [ ] Audit which of the old AGoGo Go wrapper types and tests are still useful
+- [x] Audit which of the old AGoGo Go wrapper types and tests are still useful
       after the direct `engine`-local native design, and drop anything that only
       existed to support the old standalone bridge API shape.
-- [ ] Record engine support status in a new `docs/BACKENDS.md` capability
+- [x] Record engine support status in a new `docs/BACKENDS.md` capability
       matrix, including required native dependencies, migrated pieces, and known
       unsupported operations.
-- [ ] Reconcile or absorb stale AGoGo documentation that still positions it as
+- [x] Reconcile or absorb stale AGoGo documentation that still positions it as
       the future pure-Go destination; update this repo's docs so the final story
       is "single repo, Go-first implementation, optional in-repo C++ reference
       engine".
-- [ ] Keep any AGoGo-derived but still-partial SVG/text/pattern behavior out of
+- [x] Keep any AGoGo-derived but still-partial SVG/text/pattern behavior out of
       the shared facade until it is verified and documented.
 
 ### 5.8 Shared comparison and benchmark layer
@@ -457,7 +464,7 @@ Before exposing the in-repo C++ engine outside comparison tooling, mine
       drawing through the facade.
 - [x] Add tests covering blank-image creation, caller-managed buffers, attached
       contexts, examples, and typed engine-mismatch errors.
-- [ ] Add unit tests for backend selection, capability discovery, and explicit
+- [x] Add unit tests for backend selection, capability discovery, and explicit
       unavailable/stub-rejected error paths.
 - [ ] Add cross-backend conformance tests that render the same scene through
       both engines and compare outputs with exact-match or documented tolerance

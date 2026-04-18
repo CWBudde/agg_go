@@ -13,6 +13,8 @@ port.
 - [guides/migrating-from-cpp-agg.md](./guides/migrating-from-cpp-agg.md) for C++ AGG to Go migration
 - [guides/performance-optimization.md](./guides/performance-optimization.md) for practical performance advice
 - [AGG2D_PARITY.md](./AGG2D_PARITY.md) for C++ `Agg2D` to Go API mapping
+- [BACKENDS.md](./BACKENDS.md) for the current `engine` backend matrix
+- [AGOGO_AUDIT.md](./AGOGO_AUDIT.md) for the donor-repo migration audit
 
 ## Reference Material
 

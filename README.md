@@ -23,6 +23,23 @@ References:
 - Unified roadmap and phase plan: `PLAN.md`
 - Implementation roadmap: `docs/TASKS.md`
 - Completed items: `docs/TASKS-COMPLETED.md`
+- Engine support matrix: `docs/BACKENDS.md`
+- AGoGo migration audit: `docs/AGOGO_AUDIT.md`
+
+## Engine Modes
+
+The canonical API remains the pure-Go root package in this repository. For
+existing users, that remains the default and compatibility anchor.
+
+An opt-in `engine` facade also exists for Phase 5 work. It can select either:
+
+- the default pure-Go `port` backend
+- an optional in-repo C++ AGG-backed `cpp` backend for comparison and
+  performance work
+
+The external `../AGoGo` repository is now treated as migration input only. The
+end state is a single maintained repository with the Go port as the primary
+implementation and the optional C++ path living here as well.
 
 ## Web Demo
 
