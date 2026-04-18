@@ -370,6 +370,9 @@ across two active repositories.
 - [x] Add scaled image-region drawing to the current package-private C++ backend
       subset, with internal tests covering scaled copy plus clip/blend
       interaction.
+- [x] Add package-private C++ image quad drawing for the current migrated
+      subset, with internal tests covering full-image quads, source-region
+      quads, clip interaction, and typed unsupported blend-mode rejection.
 - [x] Return concrete typed unavailable errors for the currently known C++
       migration prerequisites and build modes: missing `agogo` build tag,
       `agogo` builds without cgo, and `agogo` builds where the in-repo C++

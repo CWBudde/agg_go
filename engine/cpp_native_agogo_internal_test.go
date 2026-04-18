@@ -437,6 +437,38 @@ func TestCPPBackendContextDrawImageScaled(t *testing.T) {
 	}
 }
 
+func TestCPPBackendContextDrawImageQuad(t *testing.T) {
+	src, err := newCPPBackendImage(3, 3)
+	if err != nil {
+		t.Fatalf("newCPPBackendImage(src) error = %v", err)
+	}
+	srcCtx, err := newCPPBackendContextForImage(src)
+	if err != nil {
+		t.Fatalf("newCPPBackendContextForImage(src) error = %v", err)
+	}
+	srcCtx.Clear(agg.Blue)
+
+	dst, err := newCPPBackendContext(12, 12)
+	if err != nil {
+		t.Fatalf("newCPPBackendContext(dst) error = %v", err)
+	}
+	dst.Clear(agg.White)
+
+	quad := [8]float64{2, 1, 9, 2, 8, 9, 1, 8}
+	if err := dst.DrawImageQuad(src, quad); err != nil {
+		t.Fatalf("DrawImageQuad() error = %v", err)
+	}
+
+	inside := dst.GetImage().ToGoImage().RGBAAt(5, 5)
+	if inside.B < 200 || inside.R != 0 || inside.G != 0 || inside.A != 255 {
+		t.Fatalf("unexpected quad pixel: %+v", inside)
+	}
+	outside := dst.GetImage().ToGoImage().RGBAAt(10, 10)
+	if outside.R != agg.White.R || outside.G != agg.White.G || outside.B != agg.White.B || outside.A != agg.White.A {
+		t.Fatalf("unexpected pixel outside quad: %+v", outside)
+	}
+}
+
 func TestCPPBackendTextOperationsAreTypedUnsupported(t *testing.T) {
 	ctx, err := newCPPBackendContext(10, 10)
 	if err != nil {
@@ -484,6 +516,39 @@ func TestCPPBackendContextDrawImageRegionScaledHonorsClipAndBlend(t *testing.T) 
 	}
 }
 
+func TestCPPBackendContextDrawImageRegionQuadHonorsClip(t *testing.T) {
+	src, err := newCPPBackendImage(4, 4)
+	if err != nil {
+		t.Fatalf("newCPPBackendImage(src) error = %v", err)
+	}
+	srcCtx, err := newCPPBackendContextForImage(src)
+	if err != nil {
+		t.Fatalf("newCPPBackendContextForImage(src) error = %v", err)
+	}
+	srcCtx.Clear(agg.Green)
+
+	dst, err := newCPPBackendContext(10, 10)
+	if err != nil {
+		t.Fatalf("newCPPBackendContext(dst) error = %v", err)
+	}
+	dst.Clear(agg.White)
+	dst.ClipBox(3, 3, 8, 8)
+
+	quad := [8]float64{1, 1, 9, 2, 8, 9, 2, 8}
+	if err := dst.DrawImageRegionQuad(src, 1, 1, 2, 2, quad); err != nil {
+		t.Fatalf("DrawImageRegionQuad() error = %v", err)
+	}
+
+	outside := dst.GetImage().ToGoImage().RGBAAt(2, 2)
+	if outside.R != agg.White.R || outside.G != agg.White.G || outside.B != agg.White.B || outside.A != agg.White.A {
+		t.Fatalf("unexpected pixel outside clip: %+v", outside)
+	}
+	inside := dst.GetImage().ToGoImage().RGBAAt(5, 5)
+	if inside.G < 200 || inside.R != 0 || inside.B != 0 || inside.A != 255 {
+		t.Fatalf("unexpected quad region pixel: %+v", inside)
+	}
+}
+
 func TestCPPBackendUnsupportedBlendModePanicsTypedOnFill(t *testing.T) {
 	ctx, err := newCPPBackendContext(8, 8)
 	if err != nil {
@@ -506,4 +571,24 @@ func TestCPPBackendUnsupportedBlendModePanicsTypedOnFill(t *testing.T) {
 	}()
 
 	ctx.FillRectangle(1, 1, 4, 4)
+}
+
+func TestCPPBackendUnsupportedBlendModeOnDrawImageQuadIsTyped(t *testing.T) {
+	src, err := newCPPBackendImage(2, 2)
+	if err != nil {
+		t.Fatalf("newCPPBackendImage(src) error = %v", err)
+	}
+	dst, err := newCPPBackendContext(8, 8)
+	if err != nil {
+		t.Fatalf("newCPPBackendContext(dst) error = %v", err)
+	}
+	dst.SetBlendMode(agg.BlendMultiply)
+
+	err = dst.DrawImageQuad(src, [8]float64{1, 1, 6, 1, 6, 6, 1, 6})
+	if err == nil {
+		t.Fatal("expected DrawImageQuad() to fail")
+	}
+	if !errors.Is(err, ErrUnsupportedCapability) {
+		t.Fatalf("expected ErrUnsupportedCapability, got %v", err)
+	}
 }

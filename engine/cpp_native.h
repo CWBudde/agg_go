@@ -49,6 +49,10 @@ int agg_go_cpp_image_composite_scaled(AggGoCPPImage* dst, const AggGoCPPImage* s
                                       int dst_x, int dst_y, uint32_t dst_width, uint32_t dst_height,
                                       int clip_x1, int clip_y1, int clip_x2, int clip_y2,
                                       int blend_mode);
+int agg_go_cpp_image_composite_quad(AggGoCPPImage* dst, const AggGoCPPImage* src, int src_x,
+                                    int src_y, uint32_t src_width, uint32_t src_height,
+                                    const double* quad_xy, int clip_x1, int clip_y1, int clip_x2,
+                                    int clip_y2, int blend_mode);
 
 AggGoCPPPath* agg_go_cpp_path_create(void);
 void agg_go_cpp_path_free(AggGoCPPPath* path);

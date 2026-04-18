@@ -233,6 +233,42 @@ func (img *cppNativeImage) compositeScaledFrom(
 	return nil
 }
 
+func (img *cppNativeImage) compositeQuadFrom(
+	src *cppNativeImage,
+	srcX,
+	srcY,
+	srcW,
+	srcH int,
+	quad [8]float64,
+	clip image.Rectangle,
+	blendMode agg.BlendMode,
+) error {
+	if img == nil || img.ptr == nil {
+		return fmt.Errorf("destination image is nil")
+	}
+	if src == nil || src.ptr == nil {
+		return fmt.Errorf("source image is nil")
+	}
+	code := int(C.agg_go_cpp_image_composite_quad(
+		img.ptr,
+		src.ptr,
+		C.int(srcX),
+		C.int(srcY),
+		C.uint32_t(srcW),
+		C.uint32_t(srcH),
+		(*C.double)(unsafe.Pointer(&quad[0])),
+		C.int(clip.Min.X),
+		C.int(clip.Min.Y),
+		C.int(clip.Max.X),
+		C.int(clip.Max.Y),
+		C.int(blendMode),
+	))
+	if code != 0 {
+		return fmt.Errorf("agg_go_cpp_image_composite_quad failed: %s", cppNativeLastError())
+	}
+	return nil
+}
+
 type cppNativePath struct {
 	ptr *C.AggGoCPPPath
 }

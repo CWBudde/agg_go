@@ -14,6 +14,11 @@ struct Point {
   float y;
 };
 
+struct PointD {
+  double x;
+  double y;
+};
+
 struct AggGoCPPImage {
   uint32_t width;
   uint32_t height;
@@ -240,6 +245,23 @@ float distance_to_segment_squared(const Point& a, const Point& b, float px, floa
     dist_sq = std::min(dist_sq, distance_squared(b.x, b.y, px, py));
   }
   return dist_sq;
+}
+
+double signed_area2(const PointD& a, const PointD& b, const PointD& c) {
+  return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+}
+
+bool barycentric_weights(const PointD& p, const PointD& a, const PointD& b, const PointD& c,
+                         double* w0, double* w1, double* w2) {
+  const double denom = signed_area2(a, b, c);
+  if (std::abs(denom) <= 1e-12) {
+    return false;
+  }
+  *w0 = signed_area2(p, b, c) / denom;
+  *w1 = signed_area2(a, p, c) / denom;
+  *w2 = signed_area2(a, b, p) / denom;
+  constexpr double kEps = -1e-9;
+  return *w0 >= kEps && *w1 >= kEps && *w2 >= kEps;
 }
 
 void matrix_set_identity(AggGoCPPMatrix* matrix) {
@@ -470,6 +492,106 @@ extern "C" int agg_go_cpp_image_composite_scaled(AggGoCPPImage* dst, const AggGo
           (static_cast<uint64_t>(x - dst_x) * src_width) / dst_width);
       const size_t src_offset = static_cast<size_t>(src_y + static_cast<int>(src_py)) * src->stride +
                                 static_cast<size_t>(src_x + static_cast<int>(src_px)) * 4;
+      const size_t dst_offset =
+          static_cast<size_t>(y) * dst->stride + static_cast<size_t>(x) * 4;
+      composite_pixel(&dst->pixels[dst_offset], &src->pixels[src_offset], blend_mode);
+    }
+  }
+  return 0;
+}
+
+extern "C" int agg_go_cpp_image_composite_quad(AggGoCPPImage* dst, const AggGoCPPImage* src, int src_x,
+                                               int src_y, uint32_t src_width, uint32_t src_height,
+                                               const double* quad_xy, int clip_x1, int clip_y1,
+                                               int clip_x2, int clip_y2, int blend_mode) {
+  if (!valid_image(dst)) {
+    set_last_error("destination image is nil");
+    return -1;
+  }
+  if (!valid_image(src)) {
+    set_last_error("source image is nil");
+    return -1;
+  }
+  if (!supported_blend_mode(blend_mode)) {
+    set_last_error("unsupported blend mode");
+    return -1;
+  }
+  if (src_width == 0 || src_height == 0) {
+    set_last_error("source dimensions must be positive");
+    return -1;
+  }
+  if (quad_xy == nullptr) {
+    set_last_error("quad is nil");
+    return -1;
+  }
+  if (src_x < 0 || src_y < 0) {
+    set_last_error("source coordinates must be non-negative");
+    return -1;
+  }
+  if (static_cast<uint32_t>(src_x) + src_width > src->width ||
+      static_cast<uint32_t>(src_y) + src_height > src->height) {
+    set_last_error("source region exceeds image bounds");
+    return -1;
+  }
+
+  const PointD q0{quad_xy[0], quad_xy[1]};
+  const PointD q1{quad_xy[2], quad_xy[3]};
+  const PointD q2{quad_xy[4], quad_xy[5]};
+  const PointD q3{quad_xy[6], quad_xy[7]};
+  if (std::abs(signed_area2(q0, q1, q2)) <= 1e-12 || std::abs(signed_area2(q0, q2, q3)) <= 1e-12) {
+    set_last_error("quad is degenerate");
+    return -1;
+  }
+
+  const RectI clip = clamp_clip_rect(dst, clip_x1, clip_y1, clip_x2, clip_y2);
+  if (rect_empty(clip)) {
+    return 0;
+  }
+
+  const double min_x = std::min(std::min(q0.x, q1.x), std::min(q2.x, q3.x));
+  const double max_x = std::max(std::max(q0.x, q1.x), std::max(q2.x, q3.x));
+  const double min_y = std::min(std::min(q0.y, q1.y), std::min(q2.y, q3.y));
+  const double max_y = std::max(std::max(q0.y, q1.y), std::max(q2.y, q3.y));
+
+  const int start_x = std::max(clip.x1, static_cast<int>(std::floor(min_x)));
+  const int end_x = std::min(clip.x2, static_cast<int>(std::ceil(max_x)));
+  const int start_y = std::max(clip.y1, static_cast<int>(std::floor(min_y)));
+  const int end_y = std::min(clip.y2, static_cast<int>(std::ceil(max_y)));
+
+  const PointD s0{static_cast<double>(src_x), static_cast<double>(src_y)};
+  const PointD s1{static_cast<double>(src_x) + static_cast<double>(src_width),
+                  static_cast<double>(src_y)};
+  const PointD s2{static_cast<double>(src_x) + static_cast<double>(src_width),
+                  static_cast<double>(src_y) + static_cast<double>(src_height)};
+  const PointD s3{static_cast<double>(src_x),
+                  static_cast<double>(src_y) + static_cast<double>(src_height)};
+
+  for (int y = start_y; y < end_y; ++y) {
+    for (int x = start_x; x < end_x; ++x) {
+      const PointD p{static_cast<double>(x) + 0.5, static_cast<double>(y) + 0.5};
+      double w0 = 0.0;
+      double w1 = 0.0;
+      double w2 = 0.0;
+      double sample_x = 0.0;
+      double sample_y = 0.0;
+
+      if (barycentric_weights(p, q0, q1, q2, &w0, &w1, &w2)) {
+        sample_x = w0 * s0.x + w1 * s1.x + w2 * s2.x;
+        sample_y = w0 * s0.y + w1 * s1.y + w2 * s2.y;
+      } else if (barycentric_weights(p, q0, q2, q3, &w0, &w1, &w2)) {
+        sample_x = w0 * s0.x + w1 * s2.x + w2 * s3.x;
+        sample_y = w0 * s0.y + w1 * s2.y + w2 * s3.y;
+      } else {
+        continue;
+      }
+
+      int src_px = static_cast<int>(std::floor(sample_x));
+      int src_py = static_cast<int>(std::floor(sample_y));
+      src_px = std::max(src_x, std::min(src_x + static_cast<int>(src_width) - 1, src_px));
+      src_py = std::max(src_y, std::min(src_y + static_cast<int>(src_height) - 1, src_py));
+
+      const size_t src_offset =
+          static_cast<size_t>(src_py) * src->stride + static_cast<size_t>(src_px) * 4;
       const size_t dst_offset =
           static_cast<size_t>(y) * dst->stride + static_cast<size_t>(x) * 4;
       composite_pixel(&dst->pixels[dst_offset], &src->pixels[src_offset], blend_mode);

@@ -383,10 +383,16 @@ func (c *cppContext) ResetTransform() {
 }
 
 func (c *cppContext) DrawImage(img Image, x, y float64) error {
+	if img == nil {
+		return fmt.Errorf("image is nil")
+	}
 	return c.DrawImageRegion(img, 0, 0, img.Width(), img.Height(), x, y, float64(img.Width()), float64(img.Height()))
 }
 
 func (c *cppContext) DrawImageScaled(img Image, x, y, width, height float64) error {
+	if img == nil {
+		return fmt.Errorf("image is nil")
+	}
 	return c.DrawImageRegion(img, 0, 0, img.Width(), img.Height(), x, y, width, height)
 }
 
@@ -416,12 +422,31 @@ func (c *cppContext) DrawImageRegion(img Image, srcX, srcY, srcW, srcH int, dstX
 	)
 }
 
-func (c *cppContext) DrawImageQuad(Image, [8]float64) error {
-	return &UnsupportedCapabilityError{Kind: CPP, Capability: CapabilityImageDraw, Operation: "DrawImageQuad"}
+func (c *cppContext) DrawImageQuad(img Image, quad [8]float64) error {
+	if img == nil {
+		return fmt.Errorf("image is nil")
+	}
+	return c.DrawImageRegionQuad(img, 0, 0, img.Width(), img.Height(), quad)
 }
 
-func (c *cppContext) DrawImageRegionQuad(Image, int, int, int, int, [8]float64) error {
-	return &UnsupportedCapabilityError{Kind: CPP, Capability: CapabilityImageDraw, Operation: "DrawImageRegionQuad"}
+func (c *cppContext) DrawImageRegionQuad(img Image, srcX, srcY, srcW, srcH int, quad [8]float64) error {
+	cppImg, err := unwrapCPPImage(img, c.Kind())
+	if err != nil {
+		return err
+	}
+	if err := c.requireBlendMode("DrawImageRegionQuad"); err != nil {
+		return err
+	}
+	return c.img.img.compositeQuadFrom(
+		cppImg.img,
+		srcX,
+		srcY,
+		srcW,
+		srcH,
+		quad,
+		c.clipRectangle(),
+		c.blendMode,
+	)
 }
 
 func (c *cppContext) LoadFont(string) error {
