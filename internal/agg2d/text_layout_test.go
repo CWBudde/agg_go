@@ -740,6 +740,22 @@ func TestRasterTextQuantizationHappensAfterWorldToScreen(t *testing.T) {
 	}
 }
 
+func TestRasterTextYPhaseMatchesYUpQuantization(t *testing.T) {
+	base, frac := quantizeRasterTextPhaseF26Dot6(10.203125)
+	if base != 10 || frac != 13.0/64.0 {
+		t.Fatalf("positive quantization=(%d,%v), want (10,%v)", base, frac, 13.0/64.0)
+	}
+
+	yFrac := quantizeRasterTextYPhaseF26Dot6(10.203125)
+	if yFrac != 51.0/64.0 {
+		t.Fatalf("y-up quantized fraction=%v, want %v", yFrac, 51.0/64.0)
+	}
+
+	if quantizeRasterTextYPhaseF26Dot6(10.0) != 0 {
+		t.Fatalf("expected integral baseline to preserve zero y phase")
+	}
+}
+
 func TestRasterTextBoundsMatchRenderedBitmapPlacement(t *testing.T) {
 	fontPath := findSystemFont()
 	if fontPath == "" {

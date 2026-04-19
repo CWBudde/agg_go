@@ -194,6 +194,11 @@ func quantizeRasterTextPhaseF26Dot6(v float64) (base int, frac float64) {
 	return int(baseFloat), quantized - baseFloat
 }
 
+func quantizeRasterTextYPhaseF26Dot6(v float64) float64 {
+	_, frac := quantizeRasterTextPhaseF26Dot6(-v)
+	return frac
+}
+
 func (agg2d *Agg2D) rasterPlacedGlyphBounds(glyphs []font.PositionedGlyph) (minX, minY, maxX, maxY float64, ok bool) {
 	if agg2d.fontEngine == nil {
 		return 0, 0, 0, 0, false
@@ -208,7 +213,8 @@ func (agg2d *Agg2D) rasterPlacedGlyphBounds(glyphs []font.PositionedGlyph) (minX
 		glyphX := currentX + placedGlyph.XOffset
 		glyphY := currentY + placedGlyph.YOffset
 		baseX, fracX := quantizeRasterTextPhaseF26Dot6(glyphX)
-		baseY, fracY := quantizeRasterTextPhaseF26Dot6(glyphY)
+		baseY, _ := quantizeRasterTextPhaseF26Dot6(glyphY)
+		fracY := quantizeRasterTextYPhaseF26Dot6(glyphY)
 
 		if !agg2d.fontEngine.PrepareGlyphIndexSubpixel(placedGlyph.GlyphIndex, fracX, fracY) {
 			currentX += placedGlyph.XAdvance
@@ -425,7 +431,8 @@ func (agg2d *Agg2D) renderShapedRasterMask(startX, startY float64, glyphs []font
 		glyphX := currentX + placedGlyph.XOffset
 		glyphY := currentY + placedGlyph.YOffset
 		baseX, fracX := quantizeRasterTextPhaseF26Dot6(glyphX)
-		baseY, fracY := quantizeRasterTextPhaseF26Dot6(glyphY)
+		baseY, _ := quantizeRasterTextPhaseF26Dot6(glyphY)
+		fracY := quantizeRasterTextYPhaseF26Dot6(glyphY)
 
 		if !agg2d.fontEngine.PrepareGlyphIndexSubpixel(placedGlyph.GlyphIndex, fracX, fracY) {
 			currentX += placedGlyph.XAdvance
