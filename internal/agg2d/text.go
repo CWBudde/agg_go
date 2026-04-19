@@ -183,6 +183,10 @@ func (agg2d *Agg2D) shapedRasterGlyphs(str string) ([]font.PositionedGlyph, bool
 	return agg2d.fontEngine.LayoutText(str)
 }
 
+func snapDeviceTextCoord(v float64) float64 {
+	return math.Round(v*64.0) / 64.0
+}
+
 func shapedGlyphBounds(glyphs []font.PositionedGlyph, fcm *font.FontCacheManager) (minX, maxX float64, ok bool) {
 	penX := 0.0
 	penY := 0.0
@@ -581,6 +585,8 @@ func (agg2d *Agg2D) Text(x, y float64, str string, roundOff bool, dx, dy float64
 	// Convert to screen coordinates for raster fonts
 	if agg2d.fontCacheType == RasterFontCache {
 		agg2d.WorldToScreen(&startX, &startY)
+		startX = snapDeviceTextCoord(startX)
+		startY = snapDeviceTextCoord(startY)
 	}
 
 	// Render each character
