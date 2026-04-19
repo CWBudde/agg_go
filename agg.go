@@ -846,6 +846,12 @@ func (a *Agg2D) TextWidth(str string) float64 {
 	return a.impl.TextWidth(str)
 }
 
+// GetTextBounds returns the actual ink bounds of str relative to the baseline
+// origin.
+func (a *Agg2D) GetTextBounds(str string) (x, y, width, height float64) {
+	return a.impl.GetTextBounds(str)
+}
+
 // Blend mode methods
 func (a *Agg2D) BlendMode(mode BlendMode) {
 	a.impl.SetBlendMode(mode)

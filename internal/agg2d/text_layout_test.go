@@ -309,6 +309,31 @@ func TestVectorTextAlignmentProducesExpectedBounds(t *testing.T) {
 	}
 }
 
+func TestGetTextBoundsUsesActualGlyphRunBounds(t *testing.T) {
+	engine := newMockTextFontEngine()
+	engine.glyphs[uint('H')] = mockOutlineGlyph{
+		glyphIndex: 10,
+		advanceX:   4,
+		bounds:     basics.Rect[int]{X1: 0, Y1: -6, X2: 3, Y2: 0},
+	}
+	engine.glyphs[uint('g')] = mockOutlineGlyph{
+		glyphIndex: 20,
+		advanceX:   4,
+		bounds:     basics.Rect[int]{X1: 0, Y1: -4, X2: 3, Y2: 2},
+	}
+
+	agg2d := NewAgg2D()
+	buf := make([]byte, 32*16*4)
+	agg2d.Attach(buf, 32, 16, 32*4)
+	agg2d.fontCacheType = VectorFontCache
+	agg2d.fontCacheManager = font.NewFontCacheManager(engine, 32)
+
+	x, y, w, h := agg2d.GetTextBounds("Hg")
+	if x != 0 || y != -6 || w != 7 || h != 8 {
+		t.Fatalf("GetTextBounds(Hg) = (%v,%v,%v,%v), want (0,-6,7,8)", x, y, w, h)
+	}
+}
+
 // TestTextWidthEmptyStringIsZero mirrors the C++ textWidth guard: an empty
 // string always returns 0 regardless of font state. Source: agg2d.cpp:960-978.
 func TestTextWidthEmptyStringIsZero(t *testing.T) {

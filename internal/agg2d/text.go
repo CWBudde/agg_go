@@ -127,6 +127,11 @@ func (agg2d *Agg2D) GetDescender() float64 {
 
 // MeasureText returns width and height for the current font settings.
 func (agg2d *Agg2D) MeasureText(text string) (width, height float64) {
+	if agg2d.fontCacheType == RasterFontCache {
+		if width, height, _, _, ok := agg2d.textRunMetrics(text); ok {
+			return width, height
+		}
+	}
 	width = agg2d.TextWidth(text)
 	ascent := agg2d.GetAscender()
 	descent := -agg2d.GetDescender()
@@ -189,7 +194,7 @@ func quantizeRasterTextPhaseF26Dot6(v float64) (base int, frac float64) {
 	return int(baseFloat), quantized - baseFloat
 }
 
-func shapedGlyphBounds(glyphs []font.PositionedGlyph, fcm *font.FontCacheManager) (minX, maxX float64, ok bool) {
+func positionedGlyphBounds(glyphs []font.PositionedGlyph, fcm *font.FontCacheManager) (minX, minY, maxX, maxY float64, ok bool) {
 	penX := 0.0
 	penY := 0.0
 
@@ -203,19 +208,113 @@ func shapedGlyphBounds(glyphs []font.PositionedGlyph, fcm *font.FontCacheManager
 
 		x1 := penX + placed.XOffset + float64(glyph.Bounds.X1)
 		x2 := penX + placed.XOffset + float64(glyph.Bounds.X2)
+		y1 := penY + placed.YOffset + float64(glyph.Bounds.Y1)
+		y2 := penY + placed.YOffset + float64(glyph.Bounds.Y2)
 		if !ok {
 			minX = math.Min(x1, x2)
 			maxX = math.Max(x1, x2)
+			minY = math.Min(y1, y2)
+			maxY = math.Max(y1, y2)
 			ok = true
 		} else {
 			minX = math.Min(minX, math.Min(x1, x2))
 			maxX = math.Max(maxX, math.Max(x1, x2))
+			minY = math.Min(minY, math.Min(y1, y2))
+			maxY = math.Max(maxY, math.Max(y1, y2))
 		}
 
 		penX += placed.XAdvance
 		penY += placed.YAdvance
 	}
-	return minX, maxX, ok
+	return minX, minY, maxX, maxY, ok
+}
+
+func (agg2d *Agg2D) textRunBounds(str string) (minX, minY, maxX, maxY float64, ok bool) {
+	fcm := agg2d.fontCacheManager
+	if fcm == nil || str == "" {
+		return 0, 0, 0, 0, false
+	}
+
+	if glyphs, ok := agg2d.shapedRasterGlyphs(str); ok {
+		return positionedGlyphBounds(glyphs, fcm)
+	}
+
+	x := 0.0
+	y := 0.0
+	first := true
+	var prevGlyphIndex uint
+
+	for _, r := range str {
+		glyph := fcm.Glyph(uint(r))
+		if glyph == nil {
+			continue
+		}
+		if !first {
+			fcm.AddKerning(&x, &y, prevGlyphIndex, glyph.GlyphIndex)
+		}
+
+		x1 := x + float64(glyph.Bounds.X1)
+		x2 := x + float64(glyph.Bounds.X2)
+		y1 := y + float64(glyph.Bounds.Y1)
+		y2 := y + float64(glyph.Bounds.Y2)
+		if !ok {
+			minX = math.Min(x1, x2)
+			maxX = math.Max(x1, x2)
+			minY = math.Min(y1, y2)
+			maxY = math.Max(y1, y2)
+			ok = true
+		} else {
+			minX = math.Min(minX, math.Min(x1, x2))
+			maxX = math.Max(maxX, math.Max(x1, x2))
+			minY = math.Min(minY, math.Min(y1, y2))
+			maxY = math.Max(maxY, math.Max(y1, y2))
+		}
+
+		x += glyph.AdvanceX
+		y += glyph.AdvanceY
+		prevGlyphIndex = glyph.GlyphIndex
+		first = false
+	}
+
+	return minX, minY, maxX, maxY, ok
+}
+
+func (agg2d *Agg2D) textRunMetrics(str string) (width, height, ascent, descent float64, ok bool) {
+	minX, minY, maxX, maxY, ok := agg2d.textRunBounds(str)
+	if !ok {
+		return 0, 0, 0, 0, false
+	}
+
+	width = maxX - minX
+	height = maxY - minY
+	ascent = math.Max(0, -minY)
+	descent = math.Max(0, maxY)
+
+	if agg2d.fontCacheType == RasterFontCache {
+		width = agg2d.ScreenToWorldScalar(width)
+		height = agg2d.ScreenToWorldScalar(height)
+		ascent = agg2d.ScreenToWorldScalar(ascent)
+		descent = agg2d.ScreenToWorldScalar(descent)
+	}
+
+	return width, height, ascent, descent, true
+}
+
+// GetTextBounds reports the actual ink bounds of str relative to the baseline
+// origin. The returned x/y are offsets from the baseline point to the top-left
+// corner of the bounds.
+func (agg2d *Agg2D) GetTextBounds(str string) (x, y, width, height float64) {
+	minX, minY, maxX, maxY, ok := agg2d.textRunBounds(str)
+	if !ok {
+		return 0, 0, 0, 0
+	}
+	if agg2d.fontCacheType == RasterFontCache {
+		minX = agg2d.ScreenToWorldScalar(minX)
+		minY = agg2d.ScreenToWorldScalar(minY)
+		maxX = agg2d.ScreenToWorldScalar(maxX)
+		maxY = agg2d.ScreenToWorldScalar(maxY)
+	}
+	return minX, minY, maxX - minX, maxY - minY
 }
 
 func preparedGlyphFromEngine(engine *freetype.FontEngineFreetype) *font.GlyphCache {
@@ -277,7 +376,7 @@ func (agg2d *Agg2D) renderShapedRasterMask(startX, startY float64, glyphs []font
 		}
 
 		dstX := baseX + left
-		dstY := baseY - top
+		dstY := baseY - top + 1
 		placed = append(placed, shapedGlyphBitmap{
 			x:         dstX,
 			y:         dstY,
@@ -381,17 +480,15 @@ func (agg2d *Agg2D) TextWidth(str string) float64 {
 		return agg2d.gsvText.MeasureText(str)
 	}
 
+	if agg2d.fontCacheType == RasterFontCache {
+		if width, _, _, _, ok := agg2d.textRunMetrics(str); ok {
+			return width
+		}
+	}
+
 	fcm := agg2d.fontCacheManager
 	if fcm == nil {
 		return 0.0
-	}
-
-	if glyphs, ok := agg2d.shapedRasterGlyphs(str); ok {
-		minX, maxX, haveBounds := shapedGlyphBounds(glyphs, fcm)
-		if !haveBounds {
-			return 0
-		}
-		return agg2d.ScreenToWorldScalar(maxX - minX)
 	}
 
 	x := 0.0
@@ -523,40 +620,60 @@ func (agg2d *Agg2D) Text(x, y float64, str string, roundOff bool, dx, dy float64
 		return
 	}
 
+	shapedGlyphs, haveShapedGlyphs := agg2d.shapedRasterGlyphs(str)
+
 	// Calculate alignment offsets
 	alignDx := 0.0
 	alignDy := 0.0
 
-	// Horizontal alignment
-	switch agg2d.textAlignX {
-	case AlignCenter:
-		alignDx = -agg2d.TextWidth(str) * 0.5
-	case AlignRight:
-		alignDx = -agg2d.TextWidth(str)
-	}
+	if haveShapedGlyphs {
+		minX, minY, maxX, maxY, ok := positionedGlyphBounds(shapedGlyphs, fcm)
+		if ok {
+			switch agg2d.textAlignX {
+			case AlignCenter:
+				alignDx = -agg2d.ScreenToWorldScalar((minX + maxX) * 0.5)
+			case AlignRight:
+				alignDx = -agg2d.ScreenToWorldScalar(maxX)
+			}
+			switch agg2d.textAlignY {
+			case AlignCenter:
+				alignDy = -agg2d.ScreenToWorldScalar((minY + maxY) * 0.5)
+			case AlignTop:
+				alignDy = -agg2d.ScreenToWorldScalar(minY)
+			}
+		}
+	} else {
+		// Horizontal alignment
+		switch agg2d.textAlignX {
+		case AlignCenter:
+			alignDx = -agg2d.TextWidth(str) * 0.5
+		case AlignRight:
+			alignDx = -agg2d.TextWidth(str)
+		}
 
-	// Vertical alignment - calculate font ascender
-	ascent := agg2d.fontHeight
-	// Try to get ascent from 'H' character for better alignment
-	glyph := fcm.Glyph(uint('H'))
-	if glyph != nil {
-		ascent = float64(glyph.Bounds.Y2 - glyph.Bounds.Y1)
-	}
+		// Vertical alignment - calculate font ascender
+		ascent := agg2d.fontHeight
+		// Try to get ascent from 'H' character for better alignment
+		glyph := fcm.Glyph(uint('H'))
+		if glyph != nil {
+			ascent = float64(glyph.Bounds.Y2 - glyph.Bounds.Y1)
+		}
 
-	if agg2d.fontCacheType == RasterFontCache {
-		ascent = agg2d.ScreenToWorldScalar(ascent)
-	}
+		if agg2d.fontCacheType == RasterFontCache {
+			ascent = agg2d.ScreenToWorldScalar(ascent)
+		}
 
-	switch agg2d.textAlignY {
-	case AlignCenter:
-		alignDy = -ascent * 0.5
-	case AlignTop:
-		alignDy = -ascent
-	}
+		switch agg2d.textAlignY {
+		case AlignCenter:
+			alignDy = -ascent * 0.5
+		case AlignTop:
+			alignDy = -ascent
+		}
 
-	// Flip Y alignment if font engine has Y-flipping enabled
-	if agg2d.fontEngine != nil && agg2d.fontEngine.GetFlipY() {
-		alignDy = -alignDy
+		// Flip Y alignment if font engine has Y-flipping enabled
+		if agg2d.fontEngine != nil && agg2d.fontEngine.GetFlipY() {
+			alignDy = -alignDy
+		}
 	}
 
 	// Calculate starting position
@@ -591,14 +708,15 @@ func (agg2d *Agg2D) Text(x, y float64, str string, roundOff bool, dx, dy float64
 	currentX := startX
 	currentY := startY
 
-	if glyphs, ok := agg2d.shapedRasterGlyphs(str); ok {
-		if agg2d.renderShapedRasterMask(currentX, currentY, glyphs) {
+	if haveShapedGlyphs {
+		if agg2d.renderShapedRasterMask(currentX, currentY, shapedGlyphs) {
 			return
 		}
 	}
 
 	firstGlyph := true
 	var prevGlyphIndex uint
+	var glyph *font.GlyphCache
 
 	for _, r := range str {
 		glyph = fcm.Glyph(uint(r))

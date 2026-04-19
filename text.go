@@ -96,13 +96,7 @@ func (ctx *Context) StrokeText(text string, x, y float64) error {
 
 // MeasureText returns width and height of the text with current font settings.
 func (ctx *Context) MeasureText(text string) (width, height float64) {
-	width = ctx.agg2d.impl.TextWidth(text)
-	ascent := ctx.GetAscender()
-	descent := -ctx.GetDescender()
-	if ascent <= 0 && descent <= 0 {
-		return width, ctx.agg2d.impl.FontHeight()
-	}
-	return width, ascent + descent
+	return ctx.agg2d.impl.MeasureText(text)
 }
 
 // GetTextWidth returns the width of the text.
@@ -120,8 +114,7 @@ func (ctx *Context) GetTextHeight() float64 {
 
 // GetTextBounds returns a simple bounds box for the text.
 func (ctx *Context) GetTextBounds(text string) (x, y, width, height float64) {
-	w, h := ctx.MeasureText(text)
-	return 0, 0, w, h
+	return ctx.agg2d.impl.GetTextBounds(text)
 }
 
 // DrawTextOnPath placeholder until path integration is implemented.
