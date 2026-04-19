@@ -47,9 +47,6 @@ func (ctx *Context) TextHints(hints bool) { ctx.agg2d.impl.TextHints(hints) }
 // TextForceAutohint enables/disables FreeType's auto-hinter for raster text.
 func (ctx *Context) TextForceAutohint(force bool) { ctx.agg2d.impl.TextForceAutohint(force) }
 
-// TextHintingFactor sets the horizontal hinting factor used for raster glyphs.
-func (ctx *Context) TextHintingFactor(factor uint) { ctx.agg2d.impl.TextHintingFactor(factor) }
-
 // GetTextHints returns current hinting state.
 func (ctx *Context) GetTextHints() bool { return ctx.agg2d.impl.GetTextHints() }
 

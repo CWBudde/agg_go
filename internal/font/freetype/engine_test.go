@@ -3,11 +3,13 @@
 package freetype
 
 import (
+	"math"
 	"testing"
 
 	"github.com/cwbudde/agg_go/internal/basics"
 	"github.com/cwbudde/agg_go/internal/path"
 	isc "github.com/cwbudde/agg_go/internal/scanline"
+	"github.com/cwbudde/agg_go/internal/transform"
 )
 
 func TestNewFontEngineFreetype(t *testing.T) {
@@ -106,12 +108,6 @@ func TestFontEngineFreetype_BasicProperties(t *testing.T) {
 		t.Errorf("Expected hinting disabled")
 	}
 
-	// Test horizontal hinting factor
-	engine.SetHintingFactor(8)
-	if engine.GetHintingFactor() != 8 {
-		t.Errorf("Expected hinting factor 8, got %d", engine.GetHintingFactor())
-	}
-
 	// Test flip Y
 	engine.SetFlipY(true)
 	if !engine.GetFlipY() {
@@ -150,17 +146,10 @@ func TestFontEngineFreetype_SignatureGeneration(t *testing.T) {
 		t.Errorf("Expected signature to change after SetHinting, got same signature: %s", sig2)
 	}
 
-	engine.SetHintingFactor(8)
-	sig4 := engine.FontSignature()
-
-	if sig3 == sig4 {
-		t.Errorf("Expected signature to change after SetHintingFactor, got same signature: %s", sig3)
-	}
-
 	// Test that signature is consistent for same settings
-	sig5 := engine.FontSignature()
-	if sig4 != sig5 {
-		t.Errorf("Expected consistent signature for same settings, got %s vs %s", sig4, sig5)
+	sig4 := engine.FontSignature()
+	if sig3 != sig4 {
+		t.Errorf("Expected consistent signature for same settings, got %s vs %s", sig3, sig4)
 	}
 }
 
@@ -205,6 +194,52 @@ func TestFontEngineFreetype_KerningWithoutFont(t *testing.T) {
 	dx, dy := engine.AddKerning(65, 86) // 'A', 'V'
 	if dx != 0 || dy != 0 {
 		t.Errorf("Expected zero kerning without font, got dx=%f, dy=%f", dx, dy)
+	}
+}
+
+func TestFontEngineFreetype_KerningUsesAffineForOutline(t *testing.T) {
+	engine, err := NewFontEngineFreetype(false, 32)
+	if err != nil {
+		t.Fatalf("Failed to create engine: %v", err)
+	}
+	defer engine.Close()
+
+	fontPath := "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"
+	if engine.LoadFont(fontPath, 0, GlyphRenderingOutline, nil) != nil {
+		fontPath = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+		if engine.LoadFont(fontPath, 0, GlyphRenderingOutline, nil) != nil {
+			t.Skip("No test fonts available - skipping affine kerning test")
+		}
+	}
+
+	engine.SetHeight(36.0)
+	engine.SetTransform(transform.NewTransAffine())
+
+	if !engine.PrepareGlyph(uint('A')) {
+		t.Fatalf("PrepareGlyph('A') failed")
+	}
+	first := engine.GlyphIndex()
+
+	if !engine.PrepareGlyph(uint('V')) {
+		t.Fatalf("PrepareGlyph('V') failed")
+	}
+	second := engine.GlyphIndex()
+
+	baseDX, baseDY := engine.AddKerning(first, second)
+	if baseDX == 0 && baseDY == 0 {
+		t.Skip("test font did not provide a kerning pair for A/V")
+	}
+
+	mtx := transform.NewTransAffineRotation(math.Pi / 2)
+	engine.SetTransform(mtx)
+
+	gotDX, gotDY := engine.AddKerning(first, second)
+	wantDX, wantDY := baseDX, baseDY
+	mtx.Transform2x2(&wantDX, &wantDY)
+
+	const eps = 1e-6
+	if math.Abs(gotDX-wantDX) > eps || math.Abs(gotDY-wantDY) > eps {
+		t.Fatalf("AddKerning() with affine = (%v,%v), want (%v,%v)", gotDX, gotDY, wantDX, wantDY)
 	}
 }
 

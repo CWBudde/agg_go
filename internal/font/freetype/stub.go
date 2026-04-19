@@ -109,9 +109,6 @@ func (fe *FontEngineFreetype) SetWidth(w float64) {
 func (fe *FontEngineFreetype) SetHinting(h bool) {
 }
 
-func (fe *FontEngineFreetype) SetHintingFactor(f uint) {
-}
-
 func (fe *FontEngineFreetype) SetForceAutohint(f bool) {
 }
 
@@ -138,10 +135,6 @@ func (fe *FontEngineFreetype) GetWidth() float64 {
 
 func (fe *FontEngineFreetype) GetHinting() bool {
 	return false
-}
-
-func (fe *FontEngineFreetype) GetHintingFactor() uint {
-	return 1
 }
 
 func (fe *FontEngineFreetype) GetFlipY() bool {
