@@ -402,25 +402,24 @@ func preparedGlyphFromEngine(engine *freetype.FontEngineFreetype) *font.GlyphCac
 	return glyph
 }
 
-type shapedGlyphBitmap struct {
-	x, y      int
-	width     int
-	height    int
-	pitch     int
-	pixelMode uint8
-	data      []byte
-}
-
 func (agg2d *Agg2D) renderShapedRasterMask(startX, startY float64, glyphs []font.PositionedGlyph) bool {
 	if agg2d.fontEngine == nil {
 		return false
 	}
 
-	placed := make([]shapedGlyphBitmap, 0, len(glyphs))
-	minX, minY := math.MaxInt32, math.MaxInt32
-	maxX, maxY := math.MinInt32, math.MinInt32
+	renderer := agg2d.currentRenderer()
+	if renderer == nil {
+		return false
+	}
+	fillColor := color.RGBA8[color.Linear]{
+		R: agg2d.fillColor[0],
+		G: agg2d.fillColor[1],
+		B: agg2d.fillColor[2],
+		A: agg2d.fillColor[3],
+	}
 	currentX := startX
 	currentY := startY
+	rendered := false
 
 	for _, placedGlyph := range glyphs {
 		glyphX := currentX + placedGlyph.XOffset
@@ -443,100 +442,78 @@ func (agg2d *Agg2D) renderShapedRasterMask(startX, startY float64, glyphs []font
 
 		dstX := baseX + left
 		dstY := baseY - top + 1
-		placed = append(placed, shapedGlyphBitmap{
-			x:         dstX,
-			y:         dstY,
-			width:     width,
-			height:    height,
-			pitch:     pitch,
-			pixelMode: pixelMode,
-			data:      append([]byte(nil), data...),
-		})
-
-		if dstX < minX {
-			minX = dstX
-		}
-		if dstY < minY {
-			minY = dstY
-		}
-		if dstX+width > maxX {
-			maxX = dstX + width
-		}
-		if dstY+height > maxY {
-			maxY = dstY + height
+		if blendRasterGlyphBitmap(renderer, fillColor, dstX, dstY, width, height, pitch, pixelMode, data) {
+			rendered = true
 		}
 
 		currentX += placedGlyph.XAdvance
 		currentY += placedGlyph.YAdvance
 	}
 
-	if len(placed) == 0 || maxX <= minX || maxY <= minY {
+	return rendered
+}
+
+func blendRasterGlyphBitmap(
+	renderer *baseRendererAdapter[color.RGBA8[color.Linear]],
+	fillColor color.RGBA8[color.Linear],
+	dstX, dstY, width, height, pitch int,
+	pixelMode uint8,
+	data []byte,
+) bool {
+	rowStride := pitch
+	if rowStride < 0 {
+		rowStride = -rowStride
+	}
+	if rowStride <= 0 {
 		return false
 	}
 
-	maskW := maxX - minX
-	maskH := maxY - minY
-	mask := make([]basics.Int8u, maskW*maskH)
-
-	for _, glyph := range placed {
-		rowStride := glyph.pitch
-		if rowStride < 0 {
-			rowStride = -rowStride
+	rendered := false
+	covers := make([]basics.Int8u, width)
+	for row := 0; row < height; row++ {
+		srcRow := row
+		if pitch < 0 {
+			srcRow = height - 1 - row
 		}
-		for row := 0; row < glyph.height; row++ {
-			dstY := glyph.y - minY + row
-			if dstY < 0 || dstY >= maskH {
+		srcOffset := srcRow * rowStride
+		if srcOffset >= len(data) {
+			continue
+		}
+
+		switch pixelMode {
+		case 2: // FT_PIXEL_MODE_GRAY
+			limit := width
+			if srcOffset+limit > len(data) {
+				limit = len(data) - srcOffset
+			}
+			if limit <= 0 {
 				continue
 			}
-			srcRow := row
-			if glyph.pitch < 0 {
-				srcRow = glyph.height - 1 - row
+			for i := 0; i < limit; i++ {
+				covers[i] = basics.Int8u(data[srcOffset+i])
 			}
-			srcOffset := srcRow * rowStride
-			dstOffset := dstY * maskW
-
-			switch glyph.pixelMode {
-			case 2: // FT_PIXEL_MODE_GRAY
-				for col := 0; col < glyph.width; col++ {
-					dstX := glyph.x - minX + col
-					if dstX < 0 || dstX >= maskW || srcOffset+col >= len(glyph.data) {
-						continue
-					}
-					mask[dstOffset+dstX] |= basics.Int8u(glyph.data[srcOffset+col])
+			for i := limit; i < width; i++ {
+				covers[i] = 0
+			}
+		case 1: // FT_PIXEL_MODE_MONO
+			clear(covers)
+			for col := 0; col < width; col++ {
+				byteIdx := srcOffset + (col >> 3)
+				if byteIdx >= len(data) {
+					break
 				}
-			case 1: // FT_PIXEL_MODE_MONO
-				for col := 0; col < glyph.width; col++ {
-					dstX := glyph.x - minX + col
-					if dstX < 0 || dstX >= maskW {
-						continue
-					}
-					byteIdx := srcOffset + (col >> 3)
-					if byteIdx >= len(glyph.data) {
-						continue
-					}
-					if (glyph.data[byteIdx] & (1 << uint(7-(col&7)))) != 0 {
-						mask[dstOffset+dstX] |= 0xff
-					}
+				if (data[byteIdx] & (1 << uint(7-(col&7)))) != 0 {
+					covers[col] = 0xff
 				}
 			}
+		default:
+			continue
 		}
-	}
 
-	renderer := agg2d.currentRenderer()
-	if renderer == nil {
-		return false
+		renderer.BlendSolidHspan(dstX, dstY+row, width, fillColor, covers)
+		rendered = true
 	}
-	fillColor := color.RGBA8[color.Linear]{
-		R: agg2d.fillColor[0],
-		G: agg2d.fillColor[1],
-		B: agg2d.fillColor[2],
-		A: agg2d.fillColor[3],
-	}
-	for row := 0; row < maskH; row++ {
-		covers := mask[row*maskW : (row+1)*maskW]
-		renderer.BlendSolidHspan(minX, minY+row, maskW, fillColor, covers)
-	}
-	return true
+	return rendered
 }
 
 // TextWidth calculates the width of the given text string in current units.

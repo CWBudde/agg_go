@@ -1,9 +1,11 @@
 package agg2d
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/color"
 	"github.com/cwbudde/agg_go/internal/font"
 	"github.com/cwbudde/agg_go/internal/path"
 )
@@ -674,5 +676,105 @@ func TestTextRasterFontCacheWorldToScreenConversion(t *testing.T) {
 	_, _, _, aWrong := pixelAt(buf, width, 1, 1)
 	if aWrong != 0 {
 		t.Fatalf("expected no coverage at screen (1,1): glyph must be placed via viewport transform")
+	}
+}
+
+func TestBlendRasterGlyphBitmapAccumulatesOverlapCoverage(t *testing.T) {
+	agg2d := NewAgg2D()
+	width, height := 4, 4
+	buf := make([]byte, width*height*4)
+	agg2d.Attach(buf, width, height, width*4)
+
+	renderer := agg2d.currentRenderer()
+	if renderer == nil {
+		t.Fatal("expected renderer")
+	}
+
+	fill := color.RGBA8[color.Linear]{R: 255, G: 0, B: 0, A: 255}
+	if !blendRasterGlyphBitmap(renderer, fill, 1, 1, 1, 1, 1, 2, []byte{128}) {
+		t.Fatal("expected first glyph blend to render")
+	}
+	_, _, _, alphaOnce := pixelAt(buf, width, 1, 1)
+	if alphaOnce == 0 {
+		t.Fatal("expected non-zero alpha after first glyph blend")
+	}
+
+	if !blendRasterGlyphBitmap(renderer, fill, 1, 1, 1, 1, 1, 2, []byte{128}) {
+		t.Fatal("expected second glyph blend to render")
+	}
+	_, _, _, alphaTwice := pixelAt(buf, width, 1, 1)
+	if alphaTwice <= alphaOnce {
+		t.Fatalf("expected overlapping glyph coverage to accumulate, got once=%d twice=%d", alphaOnce, alphaTwice)
+	}
+}
+
+func TestRasterTextQuantizationHappensAfterWorldToScreen(t *testing.T) {
+	fontPath := findSystemFont()
+	if fontPath == "" {
+		t.Skip("No system font found for FreeType testing")
+	}
+
+	renderText := func(x float64) []byte {
+		agg2d := NewAgg2D()
+		width, height := 80, 60
+		buf := make([]byte, width*height*4)
+		agg2d.Attach(buf, width, height, width*4)
+		agg2d.Viewport(0, 0, 40, 30, 0, 0, float64(width), float64(height), XMidYMid)
+		if err := agg2d.Font(fontPath, 12.0, false, false, RasterFontCache, 0.0); err != nil {
+			t.Skip("FreeType not available or font load failed")
+		}
+		agg2d.FillColor(Color{255, 0, 0, 255})
+		agg2d.NoLine()
+		agg2d.Text(x, 10, "H", false, 0, 0)
+		return append([]byte(nil), buf...)
+	}
+
+	// With 2x viewport scaling, a 0.005 world-space delta becomes 0.01 screen
+	// pixels. That is enough to cross a 1/64-pixel snap boundary in device
+	// space, but not enough to cross one if quantization were incorrectly done
+	// before WorldToScreen.
+	first := renderText(10.000)
+	second := renderText(10.005)
+	if bytes.Equal(first, second) {
+		t.Fatal("expected raster text output to differ when only the post-transform 1/64-pixel snap boundary is crossed")
+	}
+}
+
+func TestRasterTextBoundsMatchRenderedBitmapPlacement(t *testing.T) {
+	fontPath := findSystemFont()
+	if fontPath == "" {
+		t.Skip("No system font found for FreeType testing")
+	}
+
+	agg2d := NewAgg2D()
+	width, height := 160, 80
+	buf := make([]byte, width*height*4)
+	agg2d.Attach(buf, width, height, width*4)
+	if err := agg2d.Font(fontPath, 12.0, false, false, RasterFontCache, 0.0); err != nil {
+		t.Skip("FreeType not available or font load failed")
+	}
+	agg2d.FillColor(Color{255, 0, 0, 255})
+	agg2d.NoLine()
+
+	originX, originY := 20.0, 40.0
+	text := "Hg"
+	agg2d.Text(originX, originY, text, false, 0, 0)
+
+	minX, minY, maxX, maxY, ok := alphaBounds(buf, width, height)
+	if !ok {
+		t.Fatal("expected rendered glyph coverage")
+	}
+
+	x, y, w, h := agg2d.GetTextBounds(text)
+	gotX := float64(minX) - originX
+	gotY := float64(minY) - originY
+	gotW := float64(maxX - minX + 1)
+	gotH := float64(maxY - minY + 1)
+
+	if x != gotX || y != gotY || w != gotW || h != gotH {
+		t.Fatalf(
+			"GetTextBounds(%q)=(%v,%v,%v,%v), rendered bounds relative to baseline=(%v,%v,%v,%v)",
+			text, x, y, w, h, gotX, gotY, gotW, gotH,
+		)
 	}
 }
