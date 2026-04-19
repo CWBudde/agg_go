@@ -334,6 +334,28 @@ func TestGetTextBoundsUsesActualGlyphRunBounds(t *testing.T) {
 	}
 }
 
+func TestGetTextBoundsPreservesRasterOffsetSign(t *testing.T) {
+	fontPath := findSystemFont()
+	if fontPath == "" {
+		t.Skip("No system font found for FreeType testing")
+	}
+
+	agg2d := NewAgg2D()
+	buf := make([]byte, 200*100*4)
+	agg2d.Attach(buf, 200, 100, 200*4)
+	if err := agg2d.Font(fontPath, 10.0, false, false, RasterFontCache, 0.0); err != nil {
+		t.Skip("FreeType not available or font load failed")
+	}
+
+	x, y, w, h := agg2d.GetTextBounds("0")
+	if w <= 0 || h <= 0 {
+		t.Fatalf("expected positive raster bounds, got (%v,%v,%v,%v)", x, y, w, h)
+	}
+	if y >= 0 {
+		t.Fatalf("expected raster bounds top offset above baseline, got y=%v", y)
+	}
+}
+
 // TestTextWidthEmptyStringIsZero mirrors the C++ textWidth guard: an empty
 // string always returns 0 regardless of font state. Source: agg2d.cpp:960-978.
 func TestTextWidthEmptyStringIsZero(t *testing.T) {

@@ -194,6 +194,57 @@ func quantizeRasterTextPhaseF26Dot6(v float64) (base int, frac float64) {
 	return int(baseFloat), quantized - baseFloat
 }
 
+func (agg2d *Agg2D) rasterPlacedGlyphBounds(glyphs []font.PositionedGlyph) (minX, minY, maxX, maxY float64, ok bool) {
+	if agg2d.fontEngine == nil {
+		return 0, 0, 0, 0, false
+	}
+
+	currentX := 0.0
+	currentY := 0.0
+	minXi, minYi := math.MaxInt32, math.MaxInt32
+	maxXi, maxYi := math.MinInt32, math.MinInt32
+
+	for _, placedGlyph := range glyphs {
+		glyphX := currentX + placedGlyph.XOffset
+		glyphY := currentY + placedGlyph.YOffset
+		baseX, fracX := quantizeRasterTextPhaseF26Dot6(glyphX)
+		baseY, fracY := quantizeRasterTextPhaseF26Dot6(glyphY)
+
+		if !agg2d.fontEngine.PrepareGlyphIndexSubpixel(placedGlyph.GlyphIndex, fracX, fracY) {
+			currentX += placedGlyph.XAdvance
+			currentY += placedGlyph.YAdvance
+			continue
+		}
+
+		_, width, height, pitch, left, top, _ := agg2d.fontEngine.CurrentBitmap()
+		if width > 0 && height > 0 && pitch != 0 {
+			dstX := baseX + left
+			dstY := baseY - top + 1
+			if dstX < minXi {
+				minXi = dstX
+			}
+			if dstY < minYi {
+				minYi = dstY
+			}
+			if dstX+width > maxXi {
+				maxXi = dstX + width
+			}
+			if dstY+height > maxYi {
+				maxYi = dstY + height
+			}
+			ok = true
+		}
+
+		currentX += placedGlyph.XAdvance
+		currentY += placedGlyph.YAdvance
+	}
+
+	if !ok {
+		return 0, 0, 0, 0, false
+	}
+	return float64(minXi), float64(minYi), float64(maxXi), float64(maxYi), true
+}
+
 func positionedGlyphBounds(glyphs []font.PositionedGlyph, fcm *font.FontCacheManager) (minX, minY, maxX, maxY float64, ok bool) {
 	penX := 0.0
 	penY := 0.0
@@ -236,6 +287,9 @@ func (agg2d *Agg2D) textRunBounds(str string) (minX, minY, maxX, maxY float64, o
 	}
 
 	if glyphs, ok := agg2d.shapedRasterGlyphs(str); ok {
+		if minX, minY, maxX, maxY, ok := agg2d.rasterPlacedGlyphBounds(glyphs); ok {
+			return minX, minY, maxX, maxY, true
+		}
 		return positionedGlyphBounds(glyphs, fcm)
 	}
 
@@ -300,6 +354,18 @@ func (agg2d *Agg2D) textRunMetrics(str string) (width, height, ascent, descent f
 	return width, height, ascent, descent, true
 }
 
+func (agg2d *Agg2D) screenToWorldOffset(offset float64) float64 {
+	if offset == 0 {
+		return 0
+	}
+	sign := 1.0
+	if offset < 0 {
+		sign = -1.0
+		offset = -offset
+	}
+	return sign * agg2d.ScreenToWorldScalar(offset)
+}
+
 // GetTextBounds reports the actual ink bounds of str relative to the baseline
 // origin. The returned x/y are offsets from the baseline point to the top-left
 // corner of the bounds.
@@ -309,10 +375,10 @@ func (agg2d *Agg2D) GetTextBounds(str string) (x, y, width, height float64) {
 		return 0, 0, 0, 0
 	}
 	if agg2d.fontCacheType == RasterFontCache {
-		minX = agg2d.ScreenToWorldScalar(minX)
-		minY = agg2d.ScreenToWorldScalar(minY)
-		maxX = agg2d.ScreenToWorldScalar(maxX)
-		maxY = agg2d.ScreenToWorldScalar(maxY)
+		minX = agg2d.screenToWorldOffset(minX)
+		minY = agg2d.screenToWorldOffset(minY)
+		maxX = agg2d.screenToWorldOffset(maxX)
+		maxY = agg2d.screenToWorldOffset(maxY)
 	}
 	return minX, minY, maxX - minX, maxY - minY
 }
