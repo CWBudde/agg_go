@@ -696,6 +696,10 @@ func scanlineStorageBoundsAA(storage *isc.ScanlineStorageAA[basics.Int8u]) basic
 	}
 }
 
+func scanlineStorageHasBoundsAA(storage *isc.ScanlineStorageAA[basics.Int8u]) bool {
+	return storage != nil && storage.MinX() <= storage.MaxX() && storage.MinY() <= storage.MaxY()
+}
+
 func scanlineStorageBoundsBin(storage *isc.ScanlineStorageBin) basics.Rect[int] {
 	if storage == nil {
 		return basics.Rect[int]{}
@@ -708,7 +712,14 @@ func scanlineStorageBoundsBin(storage *isc.ScanlineStorageBin) basics.Rect[int] 
 	}
 }
 
+func scanlineStorageHasBoundsBin(storage *isc.ScanlineStorageBin) bool {
+	return storage != nil && storage.MinX() <= storage.MaxX() && storage.MinY() <= storage.MaxY()
+}
+
 func decomposeFTBitmapGray8(bitmap *C.FT_Bitmap, x, y int, flipY bool, gammaTable []basics.Int8u, sl *isc.ScanlineU8, storage *isc.ScanlineStorageAA[basics.Int8u]) {
+	if storage != nil {
+		storage.Prepare()
+	}
 	if bitmap == nil || bitmap.buffer == nil || sl == nil || storage == nil {
 		return
 	}
@@ -720,7 +731,6 @@ func decomposeFTBitmapGray8(bitmap *C.FT_Bitmap, x, y int, flipY bool, gammaTabl
 		return
 	}
 
-	storage.Prepare()
 	sl.Reset(x, x+width)
 
 	buf := unsafe.Pointer(bitmap.buffer)
@@ -754,6 +764,9 @@ func decomposeFTBitmapGray8(bitmap *C.FT_Bitmap, x, y int, flipY bool, gammaTabl
 }
 
 func decomposeFTBitmapMono(bitmap *C.FT_Bitmap, x, y int, flipY bool, sl *isc.ScanlineBin, storage *isc.ScanlineStorageBin) {
+	if storage != nil {
+		storage.Prepare()
+	}
 	if bitmap == nil || bitmap.buffer == nil || sl == nil || storage == nil {
 		return
 	}
@@ -766,7 +779,6 @@ func decomposeFTBitmapMono(bitmap *C.FT_Bitmap, x, y int, flipY bool, sl *isc.Sc
 		return
 	}
 
-	storage.Prepare()
 	sl.Reset(x, x+width)
 
 	buf := unsafe.Pointer(bitmap.buffer)
@@ -901,6 +913,7 @@ func (fe *FontEngineFreetype) PrepareGlyph(glyphCode uint) bool {
 		fe.dataType = font.GlyphDataOutline
 
 		// Clear previous path and decompose the outline
+		fe.dataSize = 0
 		fe.pathStorage.RemoveAll()
 		if glyph.format == C.FT_GLYPH_FORMAT_OUTLINE {
 			if !fe.decomposeFTOutline(&glyph.outline, fe.flipY, fe.pathStorage) {
@@ -915,6 +928,8 @@ func (fe *FontEngineFreetype) PrepareGlyph(glyphCode uint) bool {
 
 	case GlyphRenderingAAGray8:
 		fe.dataType = font.GlyphDataGray8
+		fe.bounds = basics.Rect[int]{}
+		fe.dataSize = 0
 		// Render to bitmap if not already done
 		if glyph.format != C.FT_GLYPH_FORMAT_BITMAP {
 			err = C.FT_Render_Glyph(glyph, C.FT_RENDER_MODE_NORMAL)
@@ -928,11 +943,15 @@ func (fe *FontEngineFreetype) PrepareGlyph(glyphCode uint) bool {
 			top = -top
 		}
 		decomposeFTBitmapGray8(&glyph.bitmap, int(glyph.bitmap_left), top, fe.flipY, fe.gammaTable[:], fe.scanlineU8, fe.scanlinesAA)
-		fe.bounds = scanlineStorageBoundsAA(fe.scanlinesAA)
-		fe.dataSize = uint(fe.scanlinesAA.ByteSize())
+		if scanlineStorageHasBoundsAA(fe.scanlinesAA) {
+			fe.bounds = scanlineStorageBoundsAA(fe.scanlinesAA)
+			fe.dataSize = uint(fe.scanlinesAA.ByteSize())
+		}
 
 	case GlyphRenderingAAMono:
 		fe.dataType = font.GlyphDataMono
+		fe.bounds = basics.Rect[int]{}
+		fe.dataSize = 0
 		// Render to monochrome bitmap
 		if glyph.format != C.FT_GLYPH_FORMAT_BITMAP {
 			err = C.FT_Render_Glyph(glyph, C.FT_RENDER_MODE_MONO)
@@ -946,8 +965,10 @@ func (fe *FontEngineFreetype) PrepareGlyph(glyphCode uint) bool {
 			top = -top
 		}
 		decomposeFTBitmapMono(&glyph.bitmap, int(glyph.bitmap_left), top, fe.flipY, fe.scanlineBin, fe.scanlinesBin)
-		fe.bounds = scanlineStorageBoundsBin(fe.scanlinesBin)
-		fe.dataSize = uint(fe.scanlinesBin.ByteSize())
+		if scanlineStorageHasBoundsBin(fe.scanlinesBin) {
+			fe.bounds = scanlineStorageBoundsBin(fe.scanlinesBin)
+			fe.dataSize = uint(fe.scanlinesBin.ByteSize())
+		}
 
 	default:
 		fe.dataType = font.GlyphDataInvalid

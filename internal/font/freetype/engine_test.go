@@ -505,6 +505,41 @@ func TestPrepareGlyphGray8MatchesAGGFormula(t *testing.T) {
 	}
 }
 
+func TestPrepareGlyphGray8BlankGlyphClearsSerializedData(t *testing.T) {
+	engine, err := NewFontEngineFreetype(false, 32)
+	if err != nil {
+		t.Fatalf("Failed to create engine: %v", err)
+	}
+	defer engine.Close()
+
+	fontPath := "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"
+	if engine.LoadFont(fontPath, 0, GlyphRenderingAAGray8, nil) != nil {
+		fontPath = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+		if engine.LoadFont(fontPath, 0, GlyphRenderingAAGray8, nil) != nil {
+			t.Skip("No test fonts available - skipping blank glyph gray8 test")
+		}
+	}
+
+	engine.SetHeight(36.0)
+
+	if !engine.PrepareGlyph(uint('x')) {
+		t.Fatalf("PrepareGlyph('x') failed")
+	}
+	if engine.DataSize() == 0 {
+		t.Fatalf("expected non-empty serialized data for 'x'")
+	}
+
+	if !engine.PrepareGlyph(uint(' ')) {
+		t.Fatalf("PrepareGlyph(' ') failed")
+	}
+	if got := engine.DataSize(); got != 0 {
+		t.Fatalf("DataSize(' ') = %d, want 0", got)
+	}
+	if got := engine.Bounds(); got != (basics.Rect[int]{}) {
+		t.Fatalf("Bounds(' ') = %+v, want zero bounds", got)
+	}
+}
+
 func TestSetGammaAffectsGray8SignatureAndSerializedGlyph(t *testing.T) {
 	engine, err := NewFontEngineFreetype(false, 32)
 	if err != nil {
