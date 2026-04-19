@@ -212,6 +212,13 @@ type FontEngineFreetype struct {
 	bounds     basics.Rect[int]
 	advanceX   float64
 	advanceY   float64
+	bitmapData []byte
+	bitmapW    int
+	bitmapH    int
+	bitmapPitch int
+	bitmapLeft int
+	bitmapTop  int
+	bitmapMode uint8
 
 	// Path storage for outline fonts
 	pathStorage  *path.PathStorageStl
@@ -384,6 +391,29 @@ func (fe *FontEngineFreetype) applyFaceTransform() {
 	delta := C.FT_Vector{
 		x: C.FT_Pos(dblToPlainFX(mtx.TX)),
 		y: C.FT_Pos(dblToPlainFX(mtx.TY)),
+	}
+	C.FT_Set_Transform(fe.currentFace, &matrix, &delta)
+}
+
+func (fe *FontEngineFreetype) applyFaceTransformWithSubpixelOffset(offsetX, offsetY float64) {
+	if fe.currentFace == nil {
+		return
+	}
+
+	mtx := transform.NewTransAffine()
+	if fe.affine != nil {
+		*mtx = *fe.affine
+	}
+
+	matrix := C.FT_Matrix{
+		xx: C.FT_Fixed(dblToPlainFX(mtx.SX)),
+		xy: C.FT_Fixed(dblToPlainFX(mtx.SHX)),
+		yx: C.FT_Fixed(dblToPlainFX(mtx.SHY)),
+		yy: C.FT_Fixed(dblToPlainFX(mtx.SY)),
+	}
+	delta := C.FT_Vector{
+		x: C.dbl_to_int26p6(C.double(offsetX)),
+		y: C.dbl_to_int26p6(C.double(offsetY)),
 	}
 	C.FT_Set_Transform(fe.currentFace, &matrix, &delta)
 }
@@ -858,7 +888,7 @@ func (fe *FontEngineFreetype) currentLoadFlags() C.FT_Int32 {
 	return C.FT_Int32(loadFlags)
 }
 
-func (fe *FontEngineFreetype) prepareGlyphIndex(glyphIndex uint) bool {
+func (fe *FontEngineFreetype) prepareGlyphIndexWithOffset(glyphIndex uint, offsetX, offsetY float64) bool {
 	if fe.currentFace == nil {
 		return false
 	}
@@ -867,7 +897,9 @@ func (fe *FontEngineFreetype) prepareGlyphIndex(glyphIndex uint) bool {
 	}
 	fe.glyphIndex = glyphIndex
 
+	fe.applyFaceTransformWithSubpixelOffset(offsetX, offsetY)
 	err := C.FT_Load_Glyph(fe.currentFace, C.FT_UInt(fe.glyphIndex), fe.currentLoadFlags())
+	fe.applyFaceTransform()
 	if err != 0 {
 		fe.lastError = int(err)
 		return false
@@ -877,6 +909,13 @@ func (fe *FontEngineFreetype) prepareGlyphIndex(glyphIndex uint) bool {
 
 	fe.advanceX = float64(glyph.advance.x) / 64.0
 	fe.advanceY = float64(glyph.advance.y) / 64.0
+	fe.bitmapData = nil
+	fe.bitmapW = 0
+	fe.bitmapH = 0
+	fe.bitmapPitch = 0
+	fe.bitmapLeft = 0
+	fe.bitmapTop = 0
+	fe.bitmapMode = 0
 
 	// Determine data type and size based on rendering type
 	switch fe.glyphRendering {
@@ -909,6 +948,7 @@ func (fe *FontEngineFreetype) prepareGlyphIndex(glyphIndex uint) bool {
 				return false
 			}
 		}
+		fe.captureBitmap(glyph)
 		top := int(glyph.bitmap_top)
 		if fe.flipY {
 			top = -top
@@ -931,6 +971,7 @@ func (fe *FontEngineFreetype) prepareGlyphIndex(glyphIndex uint) bool {
 				return false
 			}
 		}
+		fe.captureBitmap(glyph)
 		top := int(glyph.bitmap_top)
 		if fe.flipY {
 			top = -top
@@ -949,6 +990,29 @@ func (fe *FontEngineFreetype) prepareGlyphIndex(glyphIndex uint) bool {
 	return true
 }
 
+func (fe *FontEngineFreetype) captureBitmap(glyph C.FT_GlyphSlot) {
+	if glyph == nil {
+		return
+	}
+	bitmap := glyph.bitmap
+	width := int(bitmap.width)
+	rows := int(bitmap.rows)
+	pitch := int(bitmap.pitch)
+	if width <= 0 || rows <= 0 || pitch == 0 || bitmap.buffer == nil {
+		return
+	}
+
+	rowStride := absInt(pitch)
+	size := rowStride * rows
+	fe.bitmapData = C.GoBytes(unsafe.Pointer(bitmap.buffer), C.int(size))
+	fe.bitmapW = width
+	fe.bitmapH = rows
+	fe.bitmapPitch = pitch
+	fe.bitmapLeft = int(glyph.bitmap_left)
+	fe.bitmapTop = int(glyph.bitmap_top)
+	fe.bitmapMode = uint8(bitmap.pixel_mode)
+}
+
 // PrepareGlyph prepares a glyph for rendering from a Unicode code point.
 func (fe *FontEngineFreetype) PrepareGlyph(glyphCode uint) bool {
 	if fe.currentFace == nil {
@@ -959,12 +1023,23 @@ func (fe *FontEngineFreetype) PrepareGlyph(glyphCode uint) bool {
 	if glyphIndex == 0 {
 		return false
 	}
-	return fe.prepareGlyphIndex(glyphIndex)
+	return fe.prepareGlyphIndexWithOffset(glyphIndex, 0, 0)
 }
 
 // PrepareGlyphIndex prepares a glyph for rendering from a font-specific glyph index.
 func (fe *FontEngineFreetype) PrepareGlyphIndex(glyphIndex uint) bool {
-	return fe.prepareGlyphIndex(glyphIndex)
+	return fe.prepareGlyphIndexWithOffset(glyphIndex, 0, 0)
+}
+
+// PrepareGlyphIndexSubpixel prepares a glyph for rendering from a font-specific
+// glyph index using fractional screen-space offsets in pixels.
+func (fe *FontEngineFreetype) PrepareGlyphIndexSubpixel(glyphIndex uint, offsetX, offsetY float64) bool {
+	return fe.prepareGlyphIndexWithOffset(glyphIndex, offsetX, offsetY)
+}
+
+// CurrentBitmap returns the raw rendered bitmap of the current glyph, if any.
+func (fe *FontEngineFreetype) CurrentBitmap() (data []byte, width, height, pitch, left, top int, pixelMode uint8) {
+	return fe.bitmapData, fe.bitmapW, fe.bitmapH, fe.bitmapPitch, fe.bitmapLeft, fe.bitmapTop, fe.bitmapMode
 }
 
 // GlyphIndex returns the current glyph index.

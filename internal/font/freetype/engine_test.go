@@ -729,3 +729,46 @@ func TestDecomposeFTOutlineFlipY(t *testing.T) {
 		t.Error("No vertices produced with Y-axis flipping")
 	}
 }
+
+func TestPrepareGlyphIndexSubpixelChangesGray8Bitmap(t *testing.T) {
+	engine, err := NewFontEngineFreetype(false, 32)
+	if err != nil {
+		t.Fatalf("Failed to create engine: %v", err)
+	}
+	defer engine.Close()
+
+	fontPath := "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+	if engine.LoadFont(fontPath, 0, GlyphRenderingAAGray8, nil) != nil {
+		t.Skip("DejaVu Sans not available - skipping subpixel bitmap test")
+	}
+
+	engine.SetResolution(100)
+	engine.SetHeight(12.0)
+
+	if !engine.PrepareGlyph(uint('i')) {
+		t.Fatal("failed to prepare baseline glyph")
+	}
+	base := make([]byte, engine.DataSize())
+	engine.WriteGlyphTo(base)
+
+	if !engine.PrepareGlyphIndexSubpixel(engine.GlyphIndex(), 0.375, 0.0) {
+		t.Fatal("failed to prepare subpixel glyph")
+	}
+	shifted := make([]byte, engine.DataSize())
+	engine.WriteGlyphTo(shifted)
+
+	if len(base) != len(shifted) {
+		t.Fatalf("glyph serialization size changed unexpectedly: %d vs %d", len(base), len(shifted))
+	}
+
+	different := false
+	for i := range base {
+		if base[i] != shifted[i] {
+			different = true
+			break
+		}
+	}
+	if !different {
+		t.Fatal("expected subpixel glyph serialization to differ from integer-position serialization")
+	}
+}

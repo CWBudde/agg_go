@@ -31,14 +31,21 @@ func (agg2d *Agg2D) Font(fileName string, height float64, bold, italic bool,
 		agg2d.fontCacheManager = font.NewFontCacheManager(engine, 32)
 	}
 
+	effectiveCacheType := cacheType
+	// Rotated text must use outline glyphs. Raster glyph caches are screen-space
+	// bitmaps and follow upstream AGG's limitation: they do not rotate cleanly.
+	if angle != 0.0 && cacheType == RasterFontCache {
+		effectiveCacheType = VectorFontCache
+	}
+
 	// Store font parameters
 	agg2d.textAngle = angle
 	agg2d.fontHeight = height
-	agg2d.fontCacheType = cacheType
+	agg2d.fontCacheType = effectiveCacheType
 
 	// Determine rendering type based on cache type
 	var renderingType freetype.GlyphRenderingType
-	if cacheType == VectorFontCache {
+	if effectiveCacheType == VectorFontCache {
 		renderingType = freetype.GlyphRenderingOutline
 	} else {
 		renderingType = freetype.GlyphRenderingAAGray8
@@ -57,7 +64,7 @@ func (agg2d *Agg2D) Font(fileName string, height float64, bold, italic bool,
 		agg2d.fontEngine.SetForceAutohint(agg2d.textForceAutohint)
 
 		// Set height based on cache type
-		if cacheType == VectorFontCache {
+		if effectiveCacheType == VectorFontCache {
 			agg2d.fontEngine.SetHeight(height)
 		} else {
 			// Raster glyph caches are configured in screen units.
@@ -203,6 +210,164 @@ func shapedGlyphBounds(glyphs []font.PositionedGlyph, fcm *font.FontCacheManager
 		penY += placed.YAdvance
 	}
 	return minX, maxX, ok
+}
+
+func preparedGlyphFromEngine(engine *freetype.FontEngineFreetype) *font.GlyphCache {
+	if engine == nil {
+		return nil
+	}
+	glyph := &font.GlyphCache{
+		GlyphIndex: engine.GlyphIndex(),
+		DataSize:   engine.DataSize(),
+		DataType:   engine.DataType(),
+		Bounds:     engine.Bounds(),
+		AdvanceX:   engine.AdvanceX(),
+		AdvanceY:   engine.AdvanceY(),
+	}
+	if glyph.DataSize > 0 {
+		glyph.Data = make([]byte, glyph.DataSize)
+		engine.WriteGlyphTo(glyph.Data)
+	}
+	return glyph
+}
+
+type shapedGlyphBitmap struct {
+	x, y      int
+	width     int
+	height    int
+	pitch     int
+	pixelMode uint8
+	data      []byte
+}
+
+func (agg2d *Agg2D) renderShapedRasterMask(startX, startY float64, glyphs []font.PositionedGlyph) bool {
+	if agg2d.fontEngine == nil {
+		return false
+	}
+
+	placed := make([]shapedGlyphBitmap, 0, len(glyphs))
+	minX, minY := math.MaxInt32, math.MaxInt32
+	maxX, maxY := math.MinInt32, math.MinInt32
+	currentX := startX
+	currentY := startY
+
+	for _, placedGlyph := range glyphs {
+		glyphX := currentX + placedGlyph.XOffset
+		glyphY := currentY + placedGlyph.YOffset
+		baseX := math.Floor(glyphX)
+		baseY := math.Floor(glyphY)
+		fracX := glyphX - baseX
+		fracY := glyphY - baseY
+
+		if !agg2d.fontEngine.PrepareGlyphIndexSubpixel(placedGlyph.GlyphIndex, fracX, fracY) {
+			currentX += placedGlyph.XAdvance
+			currentY += placedGlyph.YAdvance
+			continue
+		}
+
+		data, width, height, pitch, left, top, pixelMode := agg2d.fontEngine.CurrentBitmap()
+		if len(data) == 0 || width <= 0 || height <= 0 || pitch == 0 {
+			currentX += placedGlyph.XAdvance
+			currentY += placedGlyph.YAdvance
+			continue
+		}
+
+		dstX := int(baseX) + left
+		dstY := int(baseY) - top
+		placed = append(placed, shapedGlyphBitmap{
+			x:         dstX,
+			y:         dstY,
+			width:     width,
+			height:    height,
+			pitch:     pitch,
+			pixelMode: pixelMode,
+			data:      append([]byte(nil), data...),
+		})
+
+		if dstX < minX {
+			minX = dstX
+		}
+		if dstY < minY {
+			minY = dstY
+		}
+		if dstX+width > maxX {
+			maxX = dstX + width
+		}
+		if dstY+height > maxY {
+			maxY = dstY + height
+		}
+
+		currentX += placedGlyph.XAdvance
+		currentY += placedGlyph.YAdvance
+	}
+
+	if len(placed) == 0 || maxX <= minX || maxY <= minY {
+		return false
+	}
+
+	maskW := maxX - minX
+	maskH := maxY - minY
+	mask := make([]basics.Int8u, maskW*maskH)
+
+	for _, glyph := range placed {
+		rowStride := glyph.pitch
+		if rowStride < 0 {
+			rowStride = -rowStride
+		}
+		for row := 0; row < glyph.height; row++ {
+			dstY := glyph.y - minY + row
+			if dstY < 0 || dstY >= maskH {
+				continue
+			}
+			srcRow := row
+			if glyph.pitch < 0 {
+				srcRow = glyph.height - 1 - row
+			}
+			srcOffset := srcRow * rowStride
+			dstOffset := dstY * maskW
+
+			switch glyph.pixelMode {
+			case 2: // FT_PIXEL_MODE_GRAY
+				for col := 0; col < glyph.width; col++ {
+					dstX := glyph.x - minX + col
+					if dstX < 0 || dstX >= maskW || srcOffset+col >= len(glyph.data) {
+						continue
+					}
+					mask[dstOffset+dstX] |= basics.Int8u(glyph.data[srcOffset+col])
+				}
+			case 1: // FT_PIXEL_MODE_MONO
+				for col := 0; col < glyph.width; col++ {
+					dstX := glyph.x - minX + col
+					if dstX < 0 || dstX >= maskW {
+						continue
+					}
+					byteIdx := srcOffset + (col >> 3)
+					if byteIdx >= len(glyph.data) {
+						continue
+					}
+					if (glyph.data[byteIdx] & (1 << uint(7-(col&7)))) != 0 {
+						mask[dstOffset+dstX] |= 0xff
+					}
+				}
+			}
+		}
+	}
+
+	renderer := agg2d.currentRenderer()
+	if renderer == nil {
+		return false
+	}
+	fillColor := color.RGBA8[color.Linear]{
+		R: agg2d.fillColor[0],
+		G: agg2d.fillColor[1],
+		B: agg2d.fillColor[2],
+		A: agg2d.fillColor[3],
+	}
+	for row := 0; row < maskH; row++ {
+		covers := mask[row*maskW : (row+1)*maskW]
+		renderer.BlendSolidHspan(minX, minY+row, maskW, fillColor, covers)
+	}
+	return true
 }
 
 // TextWidth calculates the width of the given text string in current units.
@@ -423,43 +588,9 @@ func (agg2d *Agg2D) Text(x, y float64, str string, roundOff bool, dx, dy float64
 	currentY := startY
 
 	if glyphs, ok := agg2d.shapedRasterGlyphs(str); ok {
-		for _, placed := range glyphs {
-			glyph = fcm.GlyphByIndex(placed.GlyphIndex)
-			if glyph == nil {
-				currentX += placed.XAdvance
-				currentY += placed.YAdvance
-				continue
-			}
-
-			glyphX := currentX + placed.XOffset
-			glyphY := currentY + placed.YOffset
-			fcm.InitEmbeddedAdaptors(glyph, glyphX, glyphY)
-
-			switch glyph.DataType {
-			case font.GlyphDataGray8:
-				if adaptor := fcm.Gray8Adaptor(); adaptor != nil {
-					agg2d.renderGlyphScanlines(adaptor, glyph, glyphX, glyphY)
-				}
-			case font.GlyphDataMono:
-				if adaptor := fcm.MonoAdaptor(); adaptor != nil {
-					agg2d.renderGlyphScanlines(adaptor, glyph, glyphX, glyphY)
-				}
-			case font.GlyphDataOutline:
-				agg2d.path.RemoveAll()
-				if pathStorage != nil {
-					if textTransform != nil {
-						agg2d.path.ConcatPath(&transformedPathSource{src: pathStorage, mtx: textTransform}, 0)
-					} else {
-						agg2d.path.ConcatPath(pathStorage, 0)
-					}
-					agg2d.DrawPath(FillAndStroke)
-				}
-			}
-
-			currentX += placed.XAdvance
-			currentY += placed.YAdvance
+		if agg2d.renderShapedRasterMask(currentX, currentY, glyphs) {
+			return
 		}
-		return
 	}
 
 	firstGlyph := true

@@ -117,6 +117,8 @@ Important current behavior:
 - `RasterFontCache` configures the backend in screen-space units, matching AGG2D
   bitmap glyph behavior.
 - `VectorFontCache` keeps glyph outlines in world-space units.
+- Non-zero `angle` values promote raster requests to outline rendering so
+  rotated labels stay visually correct.
 - If FreeType is unavailable, `Font(...)` returns an error.
 
 ## Alignment semantics

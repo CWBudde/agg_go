@@ -1,8 +1,11 @@
 package agg2d
 
 import (
+	"math"
 	"os"
 	"testing"
+
+	"github.com/cwbudde/agg_go/internal/font"
 )
 
 // TestTextAlignmentText tests the text alignment functionality for text rendering.
@@ -436,6 +439,36 @@ func TestFontLoadingWithFreeType(t *testing.T) {
 				t.Errorf("Expected positive text width for cache type %v, got %v", tt.cacheType, width)
 			}
 		})
+	}
+}
+
+func TestFontPromotesRotatedRasterTextToVectorCache(t *testing.T) {
+	fontPath := findSystemFont()
+	if fontPath == "" {
+		t.Skip("No system font found for FreeType testing")
+		return
+	}
+
+	agg2d := NewAgg2D()
+	buf := make([]byte, 400*200*4)
+	agg2d.Attach(buf, 400, 200, 400*4)
+
+	err := agg2d.Font(fontPath, 16.0, false, false, RasterFontCache, -math.Pi/2)
+	if err != nil {
+		t.Skip("FreeType not available or font load failed")
+		return
+	}
+
+	if agg2d.fontCacheType != VectorFontCache {
+		t.Fatalf("rotated raster text should promote to vector cache, got %v", agg2d.fontCacheType)
+	}
+
+	glyph := agg2d.fontCacheManager.Glyph(uint('Y'))
+	if glyph == nil {
+		t.Fatal("expected glyph for rotated text")
+	}
+	if glyph.DataType != font.GlyphDataOutline {
+		t.Fatalf("rotated text glyph data type = %v, want outline", glyph.DataType)
 	}
 }
 
