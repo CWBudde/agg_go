@@ -183,8 +183,10 @@ func (agg2d *Agg2D) shapedRasterGlyphs(str string) ([]font.PositionedGlyph, bool
 	return agg2d.fontEngine.LayoutText(str)
 }
 
-func snapDeviceTextCoord(v float64) float64 {
-	return math.Round(v*64.0) / 64.0
+func quantizeRasterTextPhaseF26Dot6(v float64) (base int, frac float64) {
+	quantized := math.Round(v*64.0) / 64.0
+	baseFloat := math.Floor(quantized)
+	return int(baseFloat), quantized - baseFloat
 }
 
 func shapedGlyphBounds(glyphs []font.PositionedGlyph, fcm *font.FontCacheManager) (minX, maxX float64, ok bool) {
@@ -258,10 +260,8 @@ func (agg2d *Agg2D) renderShapedRasterMask(startX, startY float64, glyphs []font
 	for _, placedGlyph := range glyphs {
 		glyphX := currentX + placedGlyph.XOffset
 		glyphY := currentY + placedGlyph.YOffset
-		baseX := math.Floor(glyphX)
-		baseY := math.Floor(glyphY)
-		fracX := glyphX - baseX
-		fracY := glyphY - baseY
+		baseX, fracX := quantizeRasterTextPhaseF26Dot6(glyphX)
+		baseY, fracY := quantizeRasterTextPhaseF26Dot6(glyphY)
 
 		if !agg2d.fontEngine.PrepareGlyphIndexSubpixel(placedGlyph.GlyphIndex, fracX, fracY) {
 			currentX += placedGlyph.XAdvance
@@ -276,8 +276,8 @@ func (agg2d *Agg2D) renderShapedRasterMask(startX, startY float64, glyphs []font
 			continue
 		}
 
-		dstX := int(baseX) + left
-		dstY := int(baseY) - top
+		dstX := baseX + left
+		dstY := baseY - top
 		placed = append(placed, shapedGlyphBitmap{
 			x:         dstX,
 			y:         dstY,
@@ -585,8 +585,6 @@ func (agg2d *Agg2D) Text(x, y float64, str string, roundOff bool, dx, dy float64
 	// Convert to screen coordinates for raster fonts
 	if agg2d.fontCacheType == RasterFontCache {
 		agg2d.WorldToScreen(&startX, &startY)
-		startX = snapDeviceTextCoord(startX)
-		startY = snapDeviceTextCoord(startY)
 	}
 
 	// Render each character

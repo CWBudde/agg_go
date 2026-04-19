@@ -262,6 +262,31 @@ func TestTextPositioning(t *testing.T) {
 	}
 }
 
+func TestQuantizeRasterTextPhaseF26Dot6(t *testing.T) {
+	tests := []struct {
+		name     string
+		value    float64
+		wantBase int
+		wantFrac float64
+	}{
+		{name: "positive rounds to 26dot6", value: 10.1, wantBase: 10, wantFrac: 6.0 / 64.0},
+		{name: "negative keeps floor base", value: -0.1, wantBase: -1, wantFrac: 58.0 / 64.0},
+		{name: "exact integer stays integer", value: 3.0, wantBase: 3, wantFrac: 0.0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotBase, gotFrac := quantizeRasterTextPhaseF26Dot6(tt.value)
+			if gotBase != tt.wantBase {
+				t.Fatalf("base = %d, want %d", gotBase, tt.wantBase)
+			}
+			if math.Abs(gotFrac-tt.wantFrac) > 1e-12 {
+				t.Fatalf("frac = %.12f, want %.12f", gotFrac, tt.wantFrac)
+			}
+		})
+	}
+}
+
 // TestTextWithEmptyString tests text rendering with edge cases.
 func TestTextWithEmptyString(t *testing.T) {
 	agg2d := NewAgg2D()
