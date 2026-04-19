@@ -3,6 +3,8 @@
 package agg2d
 
 import (
+	"math"
+
 	"github.com/cwbudde/agg_go/internal/basics"
 	"github.com/cwbudde/agg_go/internal/color"
 	"github.com/cwbudde/agg_go/internal/conv"
@@ -167,6 +169,42 @@ func (agg2d *Agg2D) GetTextHints() bool {
 	return agg2d.textHints
 }
 
+func (agg2d *Agg2D) shapedRasterGlyphs(str string) ([]font.PositionedGlyph, bool) {
+	if agg2d.fontCacheType != RasterFontCache || agg2d.fontEngine == nil || str == "" {
+		return nil, false
+	}
+	return agg2d.fontEngine.LayoutText(str)
+}
+
+func shapedGlyphBounds(glyphs []font.PositionedGlyph, fcm *font.FontCacheManager) (minX, maxX float64, ok bool) {
+	penX := 0.0
+	penY := 0.0
+
+	for _, placed := range glyphs {
+		glyph := fcm.GlyphByIndex(placed.GlyphIndex)
+		if glyph == nil {
+			penX += placed.XAdvance
+			penY += placed.YAdvance
+			continue
+		}
+
+		x1 := penX + placed.XOffset + float64(glyph.Bounds.X1)
+		x2 := penX + placed.XOffset + float64(glyph.Bounds.X2)
+		if !ok {
+			minX = math.Min(x1, x2)
+			maxX = math.Max(x1, x2)
+			ok = true
+		} else {
+			minX = math.Min(minX, math.Min(x1, x2))
+			maxX = math.Max(maxX, math.Max(x1, x2))
+		}
+
+		penX += placed.XAdvance
+		penY += placed.YAdvance
+	}
+	return minX, maxX, ok
+}
+
 // TextWidth calculates the width of the given text string in current units.
 // This matches the C++ Agg2D::textWidth() method.
 func (agg2d *Agg2D) TextWidth(str string) float64 {
@@ -177,6 +215,14 @@ func (agg2d *Agg2D) TextWidth(str string) float64 {
 	fcm := agg2d.fontCacheManager
 	if fcm == nil {
 		return 0.0
+	}
+
+	if glyphs, ok := agg2d.shapedRasterGlyphs(str); ok {
+		minX, maxX, haveBounds := shapedGlyphBounds(glyphs, fcm)
+		if !haveBounds {
+			return 0
+		}
+		return agg2d.ScreenToWorldScalar(maxX - minX)
 	}
 
 	x := 0.0
@@ -375,6 +421,47 @@ func (agg2d *Agg2D) Text(x, y float64, str string, roundOff bool, dx, dy float64
 	// Render each character
 	currentX := startX
 	currentY := startY
+
+	if glyphs, ok := agg2d.shapedRasterGlyphs(str); ok {
+		for _, placed := range glyphs {
+			glyph = fcm.GlyphByIndex(placed.GlyphIndex)
+			if glyph == nil {
+				currentX += placed.XAdvance
+				currentY += placed.YAdvance
+				continue
+			}
+
+			glyphX := currentX + placed.XOffset
+			glyphY := currentY + placed.YOffset
+			fcm.InitEmbeddedAdaptors(glyph, glyphX, glyphY)
+
+			switch glyph.DataType {
+			case font.GlyphDataGray8:
+				if adaptor := fcm.Gray8Adaptor(); adaptor != nil {
+					agg2d.renderGlyphScanlines(adaptor, glyph, glyphX, glyphY)
+				}
+			case font.GlyphDataMono:
+				if adaptor := fcm.MonoAdaptor(); adaptor != nil {
+					agg2d.renderGlyphScanlines(adaptor, glyph, glyphX, glyphY)
+				}
+			case font.GlyphDataOutline:
+				agg2d.path.RemoveAll()
+				if pathStorage != nil {
+					if textTransform != nil {
+						agg2d.path.ConcatPath(&transformedPathSource{src: pathStorage, mtx: textTransform}, 0)
+					} else {
+						agg2d.path.ConcatPath(pathStorage, 0)
+					}
+					agg2d.DrawPath(FillAndStroke)
+				}
+			}
+
+			currentX += placed.XAdvance
+			currentY += placed.YAdvance
+		}
+		return
+	}
+
 	firstGlyph := true
 	var prevGlyphIndex uint
 

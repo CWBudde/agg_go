@@ -77,6 +77,22 @@ func (m *mockTextFontEngine) PrepareGlyph(glyphCode uint) bool {
 	return true
 }
 
+func (m *mockTextFontEngine) PrepareGlyphIndex(glyphIndex uint) bool {
+	for _, g := range m.glyphs {
+		if g.glyphIndex == glyphIndex {
+			m.current = g
+			m.currentValid = true
+			m.pathStorage.RemoveAll()
+			if g.buildPath != nil {
+				g.buildPath(m.pathStorage)
+			}
+			return true
+		}
+	}
+	m.currentValid = false
+	return false
+}
+
 func (m *mockTextFontEngine) GlyphIndex() uint {
 	if !m.currentValid {
 		return 0

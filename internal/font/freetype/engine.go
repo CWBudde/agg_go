@@ -848,27 +848,26 @@ func (fe *FontEngineFreetype) LastError() int {
 	return fe.lastError
 }
 
-// PrepareGlyph prepares a glyph for rendering.
-func (fe *FontEngineFreetype) PrepareGlyph(glyphCode uint) bool {
-	if fe.currentFace == nil {
-		return false
-	}
-
-	// Get glyph index
-	fe.glyphIndex = uint(C.FT_Get_Char_Index(fe.currentFace, C.FT_ULong(glyphCode)))
-	if fe.glyphIndex == 0 {
-		return false
-	}
-
-	// Load glyph
+func (fe *FontEngineFreetype) currentLoadFlags() C.FT_Int32 {
 	loadFlags := C.FT_LOAD_DEFAULT
 	if !fe.hinting {
 		loadFlags |= C.FT_LOAD_NO_HINTING
 	} else if fe.forceAutohint {
 		loadFlags |= C.FT_LOAD_FORCE_AUTOHINT
 	}
+	return C.FT_Int32(loadFlags)
+}
 
-	err := C.FT_Load_Glyph(fe.currentFace, C.FT_UInt(fe.glyphIndex), C.FT_Int32(loadFlags))
+func (fe *FontEngineFreetype) prepareGlyphIndex(glyphIndex uint) bool {
+	if fe.currentFace == nil {
+		return false
+	}
+	if glyphIndex == 0 {
+		return false
+	}
+	fe.glyphIndex = glyphIndex
+
+	err := C.FT_Load_Glyph(fe.currentFace, C.FT_UInt(fe.glyphIndex), fe.currentLoadFlags())
 	if err != 0 {
 		fe.lastError = int(err)
 		return false
@@ -948,6 +947,24 @@ func (fe *FontEngineFreetype) PrepareGlyph(glyphCode uint) bool {
 	}
 
 	return true
+}
+
+// PrepareGlyph prepares a glyph for rendering from a Unicode code point.
+func (fe *FontEngineFreetype) PrepareGlyph(glyphCode uint) bool {
+	if fe.currentFace == nil {
+		return false
+	}
+
+	glyphIndex := uint(C.FT_Get_Char_Index(fe.currentFace, C.FT_ULong(glyphCode)))
+	if glyphIndex == 0 {
+		return false
+	}
+	return fe.prepareGlyphIndex(glyphIndex)
+}
+
+// PrepareGlyphIndex prepares a glyph for rendering from a font-specific glyph index.
+func (fe *FontEngineFreetype) PrepareGlyphIndex(glyphIndex uint) bool {
+	return fe.prepareGlyphIndex(glyphIndex)
 }
 
 // GlyphIndex returns the current glyph index.

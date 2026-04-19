@@ -61,6 +61,17 @@ type GlyphCache struct {
 	AdvanceY   float64          // Vertical advance for glyph positioning
 }
 
+// PositionedGlyph stores the glyph index and placement returned by a shaped
+// text layout run. Advance and offset values are expressed in the same units as
+// GlyphCache advances for the active font engine configuration.
+type PositionedGlyph struct {
+	GlyphIndex uint
+	XAdvance   float64
+	YAdvance   float64
+	XOffset    float64
+	YOffset    float64
+}
+
 // GlyphRenderingType selects the raster or outline form requested from a font
 // engine.
 type GlyphRenderingType int

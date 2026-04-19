@@ -58,6 +58,10 @@ func (fe *FontEngineFreetype) PrepareGlyph(glyphCode uint) bool {
 	return false
 }
 
+func (fe *FontEngineFreetype) PrepareGlyphIndex(glyphIndex uint) bool {
+	return false
+}
+
 func (fe *FontEngineFreetype) GlyphIndex() uint {
 	return 0
 }
@@ -159,4 +163,8 @@ func (fe *FontEngineFreetype) Name() string {
 
 func (fe *FontEngineFreetype) LastError() int {
 	return -1
+}
+
+func (fe *FontEngineFreetype) LayoutText(text string) ([]font.PositionedGlyph, bool) {
+	return nil, false
 }

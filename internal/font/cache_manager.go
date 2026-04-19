@@ -22,6 +22,7 @@ type FontEngine interface {
 
 	// Glyph preparation and access
 	PrepareGlyph(glyphCode uint) bool
+	PrepareGlyphIndex(glyphIndex uint) bool
 	GlyphIndex() uint
 	DataSize() uint
 	DataType() GlyphDataType
@@ -40,7 +41,8 @@ type FontEngine interface {
 type FontCache struct {
 	allocator     *blockAllocator
 	fontSignature string
-	glyphs        [256]*[256]*GlyphCache // Two-level array: [MSB][LSB]
+	glyphs        [256]*[256]*GlyphCache // Two-level array: [MSB][LSB] for rune-keyed glyphs
+	glyphIndices  [256]*[256]*GlyphCache // Two-level array: [MSB][LSB] for glyph-index-keyed glyphs
 }
 
 // blockAllocator mirrors AGG's block allocator used by font_cache to keep glyph
@@ -91,6 +93,7 @@ func (fc *FontCache) SetSignature(fontSignature string) {
 	fc.fontSignature = fontSignature
 	// Clear existing glyphs when signature changes
 	fc.glyphs = [256]*[256]*GlyphCache{}
+	fc.glyphIndices = [256]*[256]*GlyphCache{}
 }
 
 // FontIs reports whether the cache belongs to fontSignature.
@@ -100,33 +103,44 @@ func (fc *FontCache) FontIs(fontSignature string) bool {
 
 // FindGlyph returns the cached glyph for glyphCode, or nil if it is absent.
 func (fc *FontCache) FindGlyph(glyphCode uint) *GlyphCache {
-	msb := (glyphCode >> 8) & 0xFF
-	lsb := glyphCode & 0xFF
+	return findGlyphFromTable(fc.glyphs, glyphCode)
+}
 
-	if fc.glyphs[msb] != nil {
-		return fc.glyphs[msb][lsb]
+// FindGlyphIndex returns the cached glyph for glyphIndex, or nil if absent.
+func (fc *FontCache) FindGlyphIndex(glyphIndex uint) *GlyphCache {
+	return findGlyphFromTable(fc.glyphIndices, glyphIndex)
+}
+
+func findGlyphFromTable(table [256]*[256]*GlyphCache, key uint) *GlyphCache {
+	msb := (key >> 8) & 0xFF
+	lsb := key & 0xFF
+
+	if table[msb] != nil {
+		return table[msb][lsb]
 	}
 	return nil
 }
 
-// CacheGlyph allocates and stores one glyph entry and its serialized payload.
-func (fc *FontCache) CacheGlyph(glyphCode, glyphIndex uint, dataSize uint,
+func (fc *FontCache) ensureGlyphTableSlot(table *[256]*[256]*GlyphCache, msb uint) {
+	if table[msb] != nil {
+		return
+	}
+
+	arraySize := 256 * int(unsafe.Sizeof((*GlyphCache)(nil)))
+	arrayData := fc.allocator.allocate(arraySize)
+	table[msb] = (*[256]*GlyphCache)(unsafe.Pointer(&arrayData[0]))
+	for i := 0; i < 256; i++ {
+		table[msb][i] = nil
+	}
+}
+
+func (fc *FontCache) cacheGlyphInTable(table *[256]*[256]*GlyphCache, key, glyphIndex uint, dataSize uint,
 	dataType GlyphDataType, bounds basics.Rect[int], advanceX, advanceY float64,
 ) *GlyphCache {
-	msb := (glyphCode >> 8) & 0xFF
-	lsb := glyphCode & 0xFF
+	msb := (key >> 8) & 0xFF
+	lsb := key & 0xFF
 
-	// Allocate LSB array if needed
-	if fc.glyphs[msb] == nil {
-		// Allocate space for the array and zero it
-		arraySize := 256 * int(unsafe.Sizeof((*GlyphCache)(nil)))
-		arrayData := fc.allocator.allocate(arraySize)
-		fc.glyphs[msb] = (*[256]*GlyphCache)(unsafe.Pointer(&arrayData[0]))
-		// Zero the array
-		for i := 0; i < 256; i++ {
-			fc.glyphs[msb][i] = nil
-		}
-	}
+	fc.ensureGlyphTableSlot(table, msb)
 
 	// Allocate and initialize the glyph cache entry
 	glyphSize := int(unsafe.Sizeof(GlyphCache{}))
@@ -147,8 +161,22 @@ func (fc *FontCache) CacheGlyph(glyphCode, glyphIndex uint, dataSize uint,
 		glyph.Data = fc.allocator.allocate(int(dataSize))
 	}
 
-	fc.glyphs[msb][lsb] = glyph
+	table[msb][lsb] = glyph
 	return glyph
+}
+
+// CacheGlyph allocates and stores one rune-keyed glyph entry and its serialized payload.
+func (fc *FontCache) CacheGlyph(glyphCode, glyphIndex uint, dataSize uint,
+	dataType GlyphDataType, bounds basics.Rect[int], advanceX, advanceY float64,
+) *GlyphCache {
+	return fc.cacheGlyphInTable(&fc.glyphs, glyphCode, glyphIndex, dataSize, dataType, bounds, advanceX, advanceY)
+}
+
+// CacheGlyphIndex allocates and stores one glyph-index-keyed glyph entry and its serialized payload.
+func (fc *FontCache) CacheGlyphIndex(glyphIndex uint, dataSize uint,
+	dataType GlyphDataType, bounds basics.Rect[int], advanceX, advanceY float64,
+) *GlyphCache {
+	return fc.cacheGlyphInTable(&fc.glyphIndices, glyphIndex, glyphIndex, dataSize, dataType, bounds, advanceX, advanceY)
 }
 
 // FontCacheManager coordinates the active font engine with a bounded set of
@@ -263,6 +291,38 @@ func (fcm *FontCacheManager) Glyph(charCode uint) *GlyphCache {
 	)
 
 	// Write glyph data
+	if glyph.DataSize > 0 {
+		fcm.fontEngine.WriteGlyphTo(glyph.Data)
+	}
+
+	return glyph
+}
+
+// GlyphByIndex returns the cached glyph for glyphIndex, loading it through the
+// engine on a miss.
+func (fcm *FontCacheManager) GlyphByIndex(glyphIndex uint) *GlyphCache {
+	fcm.currentCache = fcm.findFontCache()
+
+	if glyph := fcm.currentCache.FindGlyphIndex(glyphIndex); glyph != nil {
+		if glyph.DataType == GlyphDataOutline {
+			_ = fcm.fontEngine.PrepareGlyphIndex(glyphIndex)
+		}
+		return glyph
+	}
+
+	if !fcm.fontEngine.PrepareGlyphIndex(glyphIndex) {
+		return nil
+	}
+
+	glyph := fcm.currentCache.CacheGlyphIndex(
+		fcm.fontEngine.GlyphIndex(),
+		fcm.fontEngine.DataSize(),
+		fcm.fontEngine.DataType(),
+		fcm.fontEngine.Bounds(),
+		fcm.fontEngine.AdvanceX(),
+		fcm.fontEngine.AdvanceY(),
+	)
+
 	if glyph.DataSize > 0 {
 		fcm.fontEngine.WriteGlyphTo(glyph.Data)
 	}
