@@ -106,6 +106,12 @@ func TestFontEngineFreetype_BasicProperties(t *testing.T) {
 		t.Errorf("Expected hinting disabled")
 	}
 
+	// Test horizontal hinting factor
+	engine.SetHintingFactor(8)
+	if engine.GetHintingFactor() != 8 {
+		t.Errorf("Expected hinting factor 8, got %d", engine.GetHintingFactor())
+	}
+
 	// Test flip Y
 	engine.SetFlipY(true)
 	if !engine.GetFlipY() {
@@ -144,10 +150,17 @@ func TestFontEngineFreetype_SignatureGeneration(t *testing.T) {
 		t.Errorf("Expected signature to change after SetHinting, got same signature: %s", sig2)
 	}
 
-	// Test that signature is consistent for same settings
+	engine.SetHintingFactor(8)
 	sig4 := engine.FontSignature()
-	if sig3 != sig4 {
-		t.Errorf("Expected consistent signature for same settings, got %s vs %s", sig3, sig4)
+
+	if sig3 == sig4 {
+		t.Errorf("Expected signature to change after SetHintingFactor, got same signature: %s", sig3)
+	}
+
+	// Test that signature is consistent for same settings
+	sig5 := engine.FontSignature()
+	if sig4 != sig5 {
+		t.Errorf("Expected consistent signature for same settings, got %s vs %s", sig4, sig5)
 	}
 }
 

@@ -52,6 +52,8 @@ func (agg2d *Agg2D) Font(fileName string, height float64, bold, italic bool,
 		}
 
 		agg2d.fontEngine.SetHinting(agg2d.textHints)
+		agg2d.fontEngine.SetForceAutohint(agg2d.textForceAutohint)
+		agg2d.fontEngine.SetHintingFactor(agg2d.textHintingFactor)
 
 		// Set height based on cache type
 		if cacheType == VectorFontCache {
@@ -150,6 +152,25 @@ func (agg2d *Agg2D) TextHints(hints bool) {
 	agg2d.textHints = hints
 	if agg2d.fontEngine != nil {
 		agg2d.fontEngine.SetHinting(hints)
+	}
+}
+
+// TextForceAutohint enables or disables FreeType's auto-hinter for raster text.
+func (agg2d *Agg2D) TextForceAutohint(force bool) {
+	agg2d.textForceAutohint = force
+	if agg2d.fontEngine != nil {
+		agg2d.fontEngine.SetForceAutohint(force)
+	}
+}
+
+// TextHintingFactor sets the horizontal hinting factor used for raster glyphs.
+func (agg2d *Agg2D) TextHintingFactor(factor uint) {
+	if factor == 0 {
+		factor = 1
+	}
+	agg2d.textHintingFactor = factor
+	if agg2d.fontEngine != nil {
+		agg2d.fontEngine.SetHintingFactor(factor)
 	}
 }
 

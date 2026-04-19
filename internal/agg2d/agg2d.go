@@ -139,16 +139,18 @@ type Agg2D struct {
 	lineWidth float64
 
 	// Text attributes
-	textAngle     float64
-	textAlignX    TextAlignment
-	textAlignY    TextAlignment
-	textHints     bool
-	flipText      bool
-	resolution    uint
-	fontHeight    float64
-	fontAscent    float64
-	fontDescent   float64
-	fontCacheType FontCacheType
+	textAngle         float64
+	textAlignX        TextAlignment
+	textAlignY        TextAlignment
+	textHints         bool
+	textForceAutohint bool
+	textHintingFactor uint
+	flipText          bool
+	resolution        uint
+	fontHeight        float64
+	fontAscent        float64
+	fontDescent       float64
+	fontCacheType     FontCacheType
 
 	// AGG's agg2d.h wires Agg2D through font_cache_manager<FontEngine>.
 	// Keep that stack authoritative here; the fman/font_cache_manager2 path
@@ -287,6 +289,8 @@ func NewAgg2D() *Agg2D {
 		textAlignX:                AlignLeft,
 		textAlignY:                AlignBottom,
 		textHints:                 true,
+		textForceAutohint:         false,
+		textHintingFactor:         1,
 		resolution:                72,
 		fontHeight:                0.0,
 		fontAscent:                0.0,

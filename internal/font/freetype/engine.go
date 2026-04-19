@@ -175,27 +175,28 @@ func calcCRC32(data []byte) uint32 {
 // instance, closely following AGG's font_engine_freetype_* classes.
 type FontEngineFreetype struct {
 	// Configuration
-	flag32             bool
-	changeStamp        int
-	lastError          int
-	name               string
-	nameLen            uint
-	faceIndex          uint
-	charMap            C.FT_Encoding
-	signature          string
-	height             uint
-	width              uint
+	flag32               bool
+	changeStamp          int
+	lastError            int
+	name                 string
+	nameLen              uint
+	faceIndex            uint
+	charMap              C.FT_Encoding
+	signature            string
+	height               uint
+	width                uint
 	hinting              bool
+	hintingFactor        uint
 	forceAutohint        bool
 	snapOutlineX         bool
 	ttInterpreterVersion uint
 	flipY                bool
-	libraryInitialized bool
-	resolution         int
-	glyphRendering     GlyphRenderingType
-	affine             *transform.TransAffine
-	gammaFunc          gamma.GammaFunction
-	gammaTable         [256]basics.Int8u
+	libraryInitialized   bool
+	resolution           int
+	glyphRendering       GlyphRenderingType
+	affine               *transform.TransAffine
+	gammaFunc            gamma.GammaFunction
+	gammaTable           [256]basics.Int8u
 
 	// FreeType handles
 	library     *C.FT_Library
@@ -239,18 +240,19 @@ func NewFontEngineFreetype(flag32 bool, maxFaces uint) (*FontEngineFreetype, err
 	}
 
 	engine := &FontEngineFreetype{
-		flag32:       flag32,
-		maxFaces:     maxFaces,
-		resolution:   72, // Default DPI
-		hinting:      true,
-		flipY:        false,
-		pathStorage:  path.NewPathStorageStl(),
-		scanlineU8:   isc.NewScanlineU8(),
-		scanlineBin:  isc.NewScanlineBin(),
-		scanlinesAA:  isc.NewScanlineStorageAA[basics.Int8u](),
-		scanlinesBin: isc.NewScanlineStorageBin(),
-		affine:       transform.NewTransAffine(),
-		gammaFunc:    gamma.NewGammaNone(),
+		flag32:        flag32,
+		maxFaces:      maxFaces,
+		resolution:    72, // Default DPI
+		hinting:       true,
+		hintingFactor: 1,
+		flipY:         false,
+		pathStorage:   path.NewPathStorageStl(),
+		scanlineU8:    isc.NewScanlineU8(),
+		scanlineBin:   isc.NewScanlineBin(),
+		scanlinesAA:   isc.NewScanlineStorageAA[basics.Int8u](),
+		scanlinesBin:  isc.NewScanlineStorageBin(),
+		affine:        transform.NewTransAffine(),
+		gammaFunc:     gamma.NewGammaNone(),
 	}
 	engine.rebuildGammaTable()
 
@@ -356,12 +358,43 @@ func (fe *FontEngineFreetype) LoadFont(fontName string, faceIndex uint, renType 
 // updateCharSize updates the character size in FreeType.
 func (fe *FontEngineFreetype) updateCharSize() {
 	if fe.currentFace != nil {
+		xResolution := fe.resolution
+		if fe.hintingFactor > 1 {
+			xResolution *= int(fe.hintingFactor)
+		}
 		C.FT_Set_Char_Size(fe.currentFace,
 			C.FT_F26Dot6(fe.width),
 			C.FT_F26Dot6(fe.height),
-			C.FT_UInt(fe.resolution),
+			C.FT_UInt(xResolution),
 			C.FT_UInt(fe.resolution))
+		fe.applyFaceTransform()
 	}
+}
+
+func (fe *FontEngineFreetype) applyFaceTransform() {
+	if fe.currentFace == nil {
+		return
+	}
+
+	mtx := transform.NewTransAffine()
+	if fe.affine != nil {
+		*mtx = *fe.affine
+	}
+	if fe.hintingFactor > 1 {
+		mtx.Multiply(transform.NewTransAffineScalingXY(1/float64(fe.hintingFactor), 1))
+	}
+
+	matrix := C.FT_Matrix{
+		xx: C.FT_Fixed(dblToPlainFX(mtx.SX)),
+		xy: C.FT_Fixed(dblToPlainFX(mtx.SHX)),
+		yx: C.FT_Fixed(dblToPlainFX(mtx.SHY)),
+		yy: C.FT_Fixed(dblToPlainFX(mtx.SY)),
+	}
+	delta := C.FT_Vector{
+		x: C.FT_Pos(dblToPlainFX(mtx.TX)),
+		y: C.FT_Pos(dblToPlainFX(mtx.TY)),
+	}
+	C.FT_Set_Transform(fe.currentFace, &matrix, &delta)
 }
 
 func boolInt(v bool) int {
@@ -416,7 +449,7 @@ func (fe *FontEngineFreetype) updateSignature() {
 		gammaHash = calcCRC32(fe.gammaTable[:])
 	}
 
-	fe.signature = fmt.Sprintf("%s,%d,%d,%d,%d:%dx%d,%d,%d,%d,%d,%d,%08X",
+	fe.signature = fmt.Sprintf("%s,%d,%d,%d,%d:%dx%d,%d,%d,%d,%d,%d,%d,%08X",
 		fe.name,
 		int(fe.charMap),
 		fe.faceIndex,
@@ -425,6 +458,7 @@ func (fe *FontEngineFreetype) updateSignature() {
 		fe.height,
 		fe.width,
 		boolInt(fe.hinting),
+		fe.hintingFactor,
 		boolInt(fe.forceAutohint),
 		boolInt(fe.snapOutlineX),
 		fe.ttInterpreterVersion,
@@ -467,6 +501,19 @@ func (fe *FontEngineFreetype) SetWidth(w float64) {
 // SetHinting enables or disables font hinting.
 func (fe *FontEngineFreetype) SetHinting(h bool) {
 	fe.hinting = h
+	fe.updateSignature()
+	fe.changeStamp++
+}
+
+// SetHintingFactor applies a Matplotlib-like horizontal hinting factor.
+// Values greater than 1 increase the horizontal rasterization resolution while
+// the face transform scales glyphs back by 1/factor on X.
+func (fe *FontEngineFreetype) SetHintingFactor(f uint) {
+	if f == 0 {
+		f = 1
+	}
+	fe.hintingFactor = f
+	fe.updateCharSize()
 	fe.updateSignature()
 	fe.changeStamp++
 }
@@ -537,6 +584,7 @@ func (fe *FontEngineFreetype) SetTransform(affine *transform.TransAffine) {
 	} else {
 		fe.affine = affine
 	}
+	fe.applyFaceTransform()
 	fe.updateSignature()
 	fe.changeStamp++
 }
@@ -577,6 +625,11 @@ func (fe *FontEngineFreetype) GetWidth() float64 {
 // GetHinting returns whether hinting is enabled.
 func (fe *FontEngineFreetype) GetHinting() bool {
 	return fe.hinting
+}
+
+// GetHintingFactor returns the current horizontal hinting factor.
+func (fe *FontEngineFreetype) GetHintingFactor() uint {
+	return fe.hintingFactor
 }
 
 // GetFlipY returns whether Y coordinates are flipped.
