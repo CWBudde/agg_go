@@ -91,7 +91,7 @@ func (agg2d *Agg2D) initializeRendering() {
 
 	if width > 0 && height > 0 {
 		// Create pixel format
-		agg2d.pixfmt = pixfmt.NewPixFmtRGBA32[color.Linear](agg2d.rbuf)
+		agg2d.pixfmt = pixfmt.NewPixFmtRGBA32Plain[color.Linear](agg2d.rbuf)
 		agg2d.pixfmtPre = pixfmt.NewPixFmtRGBA32Pre[color.Linear](agg2d.rbuf)
 		agg2d.renBase = newBaseRendererAdapter[color.RGBA8[color.Linear]](agg2d.pixfmt)
 		agg2d.renBasePre = newBaseRendererAdapter[color.RGBA8[color.Linear]](agg2d.pixfmtPre)

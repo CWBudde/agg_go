@@ -111,6 +111,10 @@ func (pf *PixFmtAlphaBlendRGBA[S, B]) BlendPixel(x, y int, c color.RGBA8[S], cov
 	if !InBounds(x, y, pf.Width(), pf.Height()) || c.IsTransparent() {
 		return
 	}
+	if c.IsOpaque() && cover == basics.CoverFull {
+		pf.CopyPixel(x, y, c)
+		return
+	}
 
 	row := buffer.RowU8(pf.rbuf, y)
 	off := x * 4
@@ -378,6 +382,10 @@ func (pf *PixFmtAlphaBlendRGBA[S, B]) BlendSolidHspan(x, y, length int, c color.
 
 slow:
 	if covers == nil {
+		if c.IsOpaque() {
+			pf.CopyHline(x, y, length, c)
+			return
+		}
 		for i := 0; i < length; i++ {
 			pixelOffset := (x + i) * 4
 			if pixelOffset+3 < len(row) {
@@ -387,6 +395,10 @@ slow:
 	} else {
 		for i := 0; i < length && i < len(covers); i++ {
 			if covers[i] > 0 {
+				if c.IsOpaque() && covers[i] == basics.CoverFull {
+					pf.CopyPixel(x+i, y, c)
+					continue
+				}
 				pixelOffset := (x + i) * 4
 				if pixelOffset+3 < len(row) {
 					pf.blender.BlendPix(row[pixelOffset:pixelOffset+4], c.R, c.G, c.B, c.A, covers[i])

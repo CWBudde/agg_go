@@ -33,6 +33,41 @@ func TestRenderCardEmitsSortableMetrics(t *testing.T) {
 	}
 }
 
+func TestRenderCardEmitsRegenerateForm(t *testing.T) {
+	demo := demoEntry{Name: "line_patterns_clip"}
+
+	var buf bytes.Buffer
+	renderCard(&buf, &demo)
+
+	html := buf.String()
+	for _, want := range []string{
+		`class="regen-form"`,
+		`method="post"`,
+		`action="/regenerate?name=line_patterns_clip"`,
+		`Regenerate`,
+	} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("renderCard() missing %q in output:\n%s", want, html)
+		}
+	}
+}
+
+func TestFindDemoConfigRejectsUnknownName(t *testing.T) {
+	if _, ok := findDemoConfig("does_not_exist"); ok {
+		t.Fatal("findDemoConfig accepted an unknown demo")
+	}
+}
+
+func TestFindDemoConfigAcceptsKnownName(t *testing.T) {
+	demo, ok := findDemoConfig("line_patterns_clip")
+	if !ok {
+		t.Fatal("findDemoConfig rejected a known demo")
+	}
+	if demo.dir != "examples/core/intermediate/line_patterns_clip" {
+		t.Fatalf("unexpected demo dir: %s", demo.dir)
+	}
+}
+
 func TestSortSelectIncludesAdditionalMetrics(t *testing.T) {
 	for _, want := range []string{
 		`value="diff-pixels-desc"`,

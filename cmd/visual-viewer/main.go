@@ -39,6 +39,83 @@ type demoEntry struct {
 	AmpDiffB64  string
 }
 
+type demoConfig struct {
+	name string
+	dir  string
+}
+
+var demoConfigs = []demoConfig{
+	{name: "aa_demo", dir: "examples/core/intermediate/aa_demo"},
+	{name: "aa_test", dir: "examples/core/intermediate/aa_test"},
+	{name: "alpha_gradient", dir: "examples/core/intermediate/alpha_gradient"},
+	{name: "alpha_mask", dir: "examples/core/intermediate/alpha_mask"},
+	{name: "alpha_mask2", dir: "examples/core/intermediate/alpha_mask2"},
+	{name: "alpha_mask3", dir: "examples/core/intermediate/alpha_mask3"},
+	{name: "bezier_div", dir: "examples/core/intermediate/bezier_div"},
+	{name: "blend_color", dir: "examples/core/intermediate/blend_color"},
+	{name: "blur", dir: "examples/core/intermediate/blur"},
+	{name: "bspline", dir: "examples/core/intermediate/bspline"},
+	{name: "circles", dir: "examples/core/basic/circles"},
+	{name: "component_rendering", dir: "examples/core/basic/component_rendering"},
+	{name: "compositing", dir: "examples/core/intermediate/compositing"},
+	{name: "compositing2", dir: "examples/core/intermediate/compositing2"},
+	{name: "conv_contour", dir: "examples/core/intermediate/conv_contour"},
+	{name: "conv_dash_marker", dir: "examples/core/intermediate/conv_dash_marker"},
+	{name: "conv_stroke", dir: "examples/core/intermediate/conv_stroke"},
+	{name: "distortions", dir: "examples/core/advanced/distortions"},
+	{name: "flash_rasterizer", dir: "examples/core/advanced/flash_rasterizer"},
+	{name: "flash_rasterizer2", dir: "examples/core/intermediate/flash_rasterizer2"},
+	{name: "gamma_correction", dir: "examples/core/advanced/gamma_correction"},
+	{name: "gamma_ctrl", dir: "examples/core/advanced/gamma_ctrl"},
+	{name: "gamma_tuner", dir: "examples/core/advanced/gamma_tuner"},
+	{name: "gouraud", dir: "examples/core/intermediate/gouraud"},
+	{name: "gouraud_mesh", dir: "examples/core/intermediate/gouraud_mesh"},
+	{name: "gradient_focal", dir: "examples/core/intermediate/gradient_focal"},
+	{name: "gradients", dir: "examples/core/intermediate/gradients"},
+	{name: "gradients_contour", dir: "examples/core/intermediate/gradients_contour"},
+	{name: "graph_test", dir: "examples/core/intermediate/graph_test"},
+	{name: "idea", dir: "examples/core/intermediate/idea"},
+	{name: "image1", dir: "examples/core/intermediate/image1"},
+	{name: "image_alpha", dir: "examples/core/intermediate/image_alpha"},
+	{name: "image_filters", dir: "examples/core/intermediate/image_filters"},
+	{name: "image_filters2", dir: "examples/core/intermediate/image_filters2"},
+	{name: "image_fltr_graph", dir: "examples/core/intermediate/image_fltr_graph"},
+	{name: "image_perspective", dir: "examples/core/intermediate/image_perspective"},
+	{name: "image_resample", dir: "examples/core/intermediate/image_resample"},
+	{name: "image_transforms", dir: "examples/core/intermediate/image_transforms"},
+	{name: "line_patterns", dir: "examples/core/intermediate/line_patterns"},
+	{name: "line_patterns_clip", dir: "examples/core/intermediate/line_patterns_clip"},
+	{name: "line_thickness", dir: "examples/core/intermediate/line_thickness"},
+	{name: "lion", dir: "examples/core/intermediate/lion"},
+	{name: "lion_lens", dir: "examples/core/intermediate/lion_lens"},
+	{name: "lion_outline", dir: "examples/core/intermediate/lion_outline"},
+	{name: "mol_view", dir: "examples/core/intermediate/mol_view"},
+	{name: "multi_clip", dir: "examples/core/basic/multi_clip"},
+	{name: "pattern_fill", dir: "examples/core/intermediate/pattern_fill"},
+	{name: "pattern_perspective", dir: "examples/core/intermediate/pattern_perspective"},
+	{name: "pattern_resample", dir: "examples/core/intermediate/pattern_resample"},
+	{name: "perspective", dir: "examples/core/intermediate/perspective"},
+	{name: "polymorphic_renderer", dir: "examples/core/intermediate/polymorphic_renderer"},
+	{name: "raster_text", dir: "examples/core/intermediate/raster_text"},
+	{name: "rasterizer_compound", dir: "examples/core/intermediate/rasterizer_compound"},
+	{name: "rasterizers", dir: "examples/core/intermediate/rasterizers"},
+	{name: "rasterizers2", dir: "examples/core/intermediate/rasterizers2"},
+	{name: "rounded_rect", dir: "examples/core/basic/rounded_rect"},
+	{name: "scanline_boolean", dir: "examples/core/intermediate/scanline_boolean"},
+	{name: "scanline_boolean2", dir: "examples/core/intermediate/scanline_boolean2"},
+	{name: "simple_blur", dir: "examples/core/basic/simple_blur"},
+	{name: "trans_polar", dir: "examples/core/intermediate/trans_polar"},
+}
+
+func findDemoConfig(name string) (demoConfig, bool) {
+	for _, demo := range demoConfigs {
+		if demo.name == name {
+			return demo, true
+		}
+	}
+	return demoConfig{}, false
+}
+
 func loadPNG(path string) (image.Image, error) {
 	f, err := os.Open(path)
 	if err != nil {

@@ -145,8 +145,12 @@ func (BlenderRGBA8Pre[S, O]) PremulSrc() bool { return true }
 // blends in premultiplied space, then demultiplies to store plain again.
 type BlenderRGBA8Plain[S color.Space, O order.RGBAOrder] struct{}
 
-// BlendPix blends non-premultiplied src into non-premultiplied dst using the classic
-// “premultiply → blend in premul → demultiply” approach.
+// BlendPix blends non-premultiplied src into a non-premultiplied destination.
+//
+// Matplotlib's RendererAgg uses fixed_blender_rgba_plain, a patched AGG plain
+// blender that keeps more precision than the stock "premultiply, blend,
+// demultiply" path. Use the same integer formula here so edge compositing
+// matches Matplotlib at 8-bit output precision.
 func (BlenderRGBA8Plain[S, O]) BlendPix(dst []basics.Int8u, r, g, b, a, cover basics.Int8u) {
 	a = color.RGBA8MultCover(a, cover)
 	if a == 0 {
@@ -155,24 +159,22 @@ func (BlenderRGBA8Plain[S, O]) BlendPix(dst []basics.Int8u, r, g, b, a, cover ba
 	var o O
 
 	da := dst[o.IdxA()]
-	// premultiply dst on the fly
-	dr := color.RGBA8Multiply(dst[o.IdxR()], da)
-	dg := color.RGBA8Multiply(dst[o.IdxG()], da)
-	db := color.RGBA8Multiply(dst[o.IdxB()], da)
-
-	dr = color.RGBA8Lerp(dr, r, a)
-	dg = color.RGBA8Lerp(dg, g, a)
-	db = color.RGBA8Lerp(db, b, a)
-	da = color.RGBA8Prelerp(da, a, a)
-
-	if da > 0 {
-		dst[o.IdxR()] = demul8(dr, da)
-		dst[o.IdxG()] = demul8(dg, da)
-		dst[o.IdxB()] = demul8(db, da)
-		dst[o.IdxA()] = da
-	} else {
+	combinedA := ((uint32(a) + uint32(da)) << color.RGBA8BaseShift) - uint32(a)*uint32(da)
+	if combinedA == 0 {
 		dst[o.IdxR()], dst[o.IdxG()], dst[o.IdxB()], dst[o.IdxA()] = 0, 0, 0, 0
+		return
 	}
+	dst[o.IdxA()] = basics.Int8u(combinedA >> color.RGBA8BaseShift)
+	dst[o.IdxR()] = fixedBlendRGBAPlainChannel(dst[o.IdxR()], r, da, a, combinedA)
+	dst[o.IdxG()] = fixedBlendRGBAPlainChannel(dst[o.IdxG()], g, da, a, combinedA)
+	dst[o.IdxB()] = fixedBlendRGBAPlainChannel(dst[o.IdxB()], b, da, a, combinedA)
+}
+
+func fixedBlendRGBAPlainChannel(dst, src, dstA, srcA basics.Int8u, combinedA uint32) basics.Int8u {
+	dstPremul := int64(uint32(dst) * uint32(dstA))
+	numerator := ((int64(src) << color.RGBA8BaseShift) - dstPremul) * int64(srcA)
+	numerator += dstPremul << color.RGBA8BaseShift
+	return basics.Int8u(numerator / int64(combinedA))
 }
 
 func (BlenderRGBA8Plain[S, O]) SetPlain(dst []basics.Int8u, r, g, b, a basics.Int8u) {

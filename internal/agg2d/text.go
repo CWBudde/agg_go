@@ -85,10 +85,11 @@ func (agg2d *Agg2D) FontGSV(height float64) {
 	if agg2d.gsvText == nil {
 		agg2d.gsvText = gsv.NewGSVText()
 	}
-	// In standard screen coordinates (Y increases downward) GSV must flip its
-	// Y axis so that characters are rendered right-side up.
-	// C++ equivalent: agg2d.flipText(true) when the render buffer is NOT flipped.
-	agg2d.gsvText.SetFlip(true)
+	// GSV glyph data uses Y-up math coordinates. In a Y-down buffer (positive
+	// stride) the height scalar must be negated so characters appear right-side
+	// up. In a Y-up buffer (negative stride) the rendering buffer already
+	// handles the flip, so no negation is needed.
+	agg2d.gsvText.SetFlip(agg2d.rbuf.Stride() >= 0)
 	agg2d.gsvText.SetSize(height, 0) // width=0 → proportional
 	agg2d.fontHeight = height
 	agg2d.gsvFontMode = true

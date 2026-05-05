@@ -104,7 +104,7 @@ type Agg2D struct {
 	rasterizer *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
 
 	// Rendering components (now properly typed)
-	pixfmt         *pixfmt.PixFmtRGBA32[color.Linear]
+	pixfmt         *pixfmt.PixFmtRGBA32Plain[color.Linear]
 	pixfmtPre      *pixfmt.PixFmtRGBA32Pre[color.Linear]
 	pixfmtComp     *pixfmt.PixFmtCompositeRGBA32
 	pixfmtCompPre  *pixfmt.PixFmtCompositeRGBA32Pre

@@ -704,9 +704,11 @@ func drawOverlay(a *agg.Agg2D, offX, offY, combineMS, renderMS float64, numSpans
 	a.FontGSV(8)
 	a.FillColor(agg.Black)
 	a.NoLine()
+	// In y-up coordinates each successive line moves DOWN (decreasing y),
+	// matching C++ gsv_text which uses \n\n (16px spacing) from start_point(420,40).
 	a.Text(420+offX, 40+offY, fmt.Sprintf("Combine=%.3fms", combineMS), false, 0, 0)
-	a.Text(420+offX, 58+offY, fmt.Sprintf("Render=%.3fms", renderMS), false, 0, 0)
-	a.Text(420+offX, 76+offY, fmt.Sprintf("num_spans=%d", numSpans), false, 0, 0)
+	a.Text(420+offX, 24+offY, fmt.Sprintf("Render=%.3fms", renderMS), false, 0, 0)
+	a.Text(420+offX, 8+offY, fmt.Sprintf("num_spans=%d", numSpans), false, 0, 0)
 }
 
 func mapOperation(op int) isc.BoolOp {
