@@ -254,6 +254,56 @@ func TestPixFmtRGBA32ClippedSolidVspanAdvancesCovers(t *testing.T) {
 	}
 }
 
+func TestPixFmtRGBA32ClippedColorHspanAdvancesColors(t *testing.T) {
+	width, height := 3, 1
+	buf := make([]basics.Int8u, width*height*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, width, height, width*4)
+	pf := NewPixFmtRGBA32[color.Linear](rbuf)
+
+	colors := []color.RGBA8[color.Linear]{
+		color.NewRGBA8[color.Linear](255, 0, 0, 255),
+		color.NewRGBA8[color.Linear](0, 255, 0, 255),
+		color.NewRGBA8[color.Linear](0, 0, 255, 255),
+		color.NewRGBA8[color.Linear](255, 255, 0, 255),
+	}
+	pf.CopyColorHspan(-2, 0, 4, colors)
+
+	if got := pf.GetPixel(0, 0); got.B != 255 || got.A != 255 {
+		t.Fatalf("x=0: got %+v, want clipped color index 2", got)
+	}
+	if got := pf.GetPixel(1, 0); got.R != 255 || got.G != 255 || got.A != 255 {
+		t.Fatalf("x=1: got %+v, want clipped color index 3", got)
+	}
+	if got := pf.GetPixel(2, 0); got.A != 0 {
+		t.Fatalf("x=2: clipped color hspan overdrawn with %+v", got)
+	}
+}
+
+func TestPixFmtRGBA32ClippedColorVspanAdvancesColorsAndCovers(t *testing.T) {
+	width, height := 1, 3
+	buf := make([]basics.Int8u, width*height*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, width, height, width*4)
+	pf := NewPixFmtRGBA32[color.Linear](rbuf)
+
+	colors := []color.RGBA8[color.Linear]{
+		color.NewRGBA8[color.Linear](255, 0, 0, 255),
+		color.NewRGBA8[color.Linear](0, 255, 0, 255),
+		color.NewRGBA8[color.Linear](0, 0, 255, 255),
+		color.NewRGBA8[color.Linear](255, 255, 0, 255),
+	}
+	pf.BlendColorVspan(0, -2, 4, colors, []basics.Int8u{255, 255, 0, 255}, basics.CoverFull)
+
+	if got := pf.GetPixel(0, 0); got.A != 0 {
+		t.Fatalf("y=0: got %+v, want unchanged because clipped cover index 2 is zero", got)
+	}
+	if got := pf.GetPixel(0, 1); got.R != 255 || got.G != 255 || got.A != 255 {
+		t.Fatalf("y=1: got %+v, want clipped color index 3 with full cover", got)
+	}
+	if got := pf.GetPixel(0, 2); got.A != 0 {
+		t.Fatalf("y=2: clipped color vspan overdrawn with %+v", got)
+	}
+}
+
 func TestPixFmtRGBA32Clear(t *testing.T) {
 	width, height := 10, 10
 	buf := make([]basics.Int8u, width*height*4)

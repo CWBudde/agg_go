@@ -251,7 +251,12 @@ func (pf *PixFmtCompositeRGBA[CS, O]) BlendSolidHspan(x, y, length int, c color.
 	for i := startX; i < endX; i++ {
 		pixelOffset := i * 4
 		coverIndex := i - x
-		if pixelOffset+3 < len(row) && coverIndex < len(covers) {
+		if pixelOffset+3 >= len(row) {
+			continue
+		}
+		if covers == nil {
+			pf.blender.BlendPix(row[pixelOffset:pixelOffset+4], c.R, c.G, c.B, c.A, basics.CoverFull)
+		} else if coverIndex < len(covers) {
 			pf.blender.BlendPix(row[pixelOffset:pixelOffset+4], c.R, c.G, c.B, c.A, covers[coverIndex])
 		}
 	}

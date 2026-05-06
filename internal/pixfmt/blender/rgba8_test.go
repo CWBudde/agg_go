@@ -69,7 +69,7 @@ func TestBlenderRGBAPlain(t *testing.T) {
 	}
 }
 
-func TestBlenderRGBAPlainMatchesMatplotlibFixedBlender(t *testing.T) {
+func TestBlenderRGBAPlainMatchesAGG(t *testing.T) {
 	tests := []struct {
 		name   string
 		src    []basics.Int8u
@@ -92,7 +92,7 @@ func TestBlenderRGBAPlainMatchesMatplotlibFixedBlender(t *testing.T) {
 			cover:  128,
 			n:      1,
 			dst:    []basics.Int8u{255, 255, 255, 255},
-			expect: []basics.Int8u{218, 232, 242, 255},
+			expect: []basics.Int8u{218, 233, 243, 255},
 		},
 		{
 			name:   "blue_a33_cov128_n10",
@@ -100,7 +100,7 @@ func TestBlenderRGBAPlainMatchesMatplotlibFixedBlender(t *testing.T) {
 			cover:  128,
 			n:      10,
 			dst:    []basics.Int8u{255, 255, 255, 255},
-			expect: []basics.Int8u{66, 139, 190, 255},
+			expect: []basics.Int8u{68, 142, 193, 255},
 		},
 		{
 			name:   "red_a50_cov73_n25",
@@ -108,7 +108,7 @@ func TestBlenderRGBAPlainMatchesMatplotlibFixedBlender(t *testing.T) {
 			cover:  73,
 			n:      25,
 			dst:    []basics.Int8u{255, 255, 255, 255},
-			expect: []basics.Int8u{214, 39, 40, 255},
+			expect: []basics.Int8u{217, 43, 44, 255},
 		},
 		{
 			name:   "black_a20_cov37_n100",
@@ -116,7 +116,7 @@ func TestBlenderRGBAPlainMatchesMatplotlibFixedBlender(t *testing.T) {
 			cover:  37,
 			n:      100,
 			dst:    []basics.Int8u{255, 255, 255, 255},
-			expect: []basics.Int8u{0, 0, 0, 255},
+			expect: []basics.Int8u{18, 18, 18, 255},
 		},
 	}
 
@@ -136,7 +136,7 @@ func TestBlenderRGBAPlainMatchesMatplotlibFixedBlender(t *testing.T) {
 	}
 }
 
-func TestBlenderRGBAPlainMatchesMatplotlibFixedBlenderMixedSequence(t *testing.T) {
+func TestBlenderRGBAPlainMatchesAGGMixedSequence(t *testing.T) {
 	dst := []basics.Int8u{250, 240, 230, 245}
 	bl := BlenderRGBA8Plain[color.Linear, order.RGBA]{}
 	for i := 0; i < 37; i++ {
@@ -150,7 +150,7 @@ func TestBlenderRGBAPlainMatchesMatplotlibFixedBlenderMixedSequence(t *testing.T
 		)
 	}
 
-	expect := []basics.Int8u{162, 171, 153, 255}
+	expect := []basics.Int8u{165, 173, 156, 255}
 	for i := range expect {
 		if dst[i] != expect[i] {
 			t.Fatalf("dst=%v, want %v", dst, expect)

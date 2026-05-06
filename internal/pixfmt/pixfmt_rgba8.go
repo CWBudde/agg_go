@@ -46,24 +46,6 @@ func NewPixFmtAlphaBlendRGBA[S color.Space, B blender.RGBABlender[S]](rbuf *buff
 	return &PixFmtAlphaBlendRGBA[S, B]{rbuf: rbuf, blender: b}
 }
 
-func clipSpan(start, length, limit int) (clippedStart, clippedLength, skipped int, ok bool) {
-	if length <= 0 || limit <= 0 || start >= limit || start+length <= 0 {
-		return 0, 0, 0, false
-	}
-	if start < 0 {
-		skipped = -start
-		length -= skipped
-		start = 0
-	}
-	if start+length > limit {
-		length = limit - start
-	}
-	if length <= 0 {
-		return 0, 0, 0, false
-	}
-	return start, length, skipped, true
-}
-
 // Width returns the attached buffer width in pixels.
 func (pf *PixFmtAlphaBlendRGBA[S, B]) Width() int {
 	return pf.rbuf.Width()
@@ -608,10 +590,19 @@ func (pf *PixFmtAlphaBlendRGBA[S, B]) CopyColorHspan(x, y, length int, colors []
 	if !ok {
 		return
 	}
+	if skip >= len(colors) {
+		return
+	}
+	colors = colors[skip:]
+	if length > len(colors) {
+		length = len(colors)
+	}
+	if length <= 0 {
+		return
+	}
 
 	for i := 0; i < length; i++ {
-		colorIdx := (i + skip) % len(colors)
-		pf.CopyPixel(x+i, y, colors[colorIdx])
+		pf.CopyPixel(x+i, y, colors[i])
 	}
 }
 
@@ -739,10 +730,19 @@ func (pf *PixFmtAlphaBlendRGBA[S, B]) CopyColorVspan(x, y, length int, colors []
 	if !ok {
 		return
 	}
+	if skip >= len(colors) {
+		return
+	}
+	colors = colors[skip:]
+	if length > len(colors) {
+		length = len(colors)
+	}
+	if length <= 0 {
+		return
+	}
 
 	for i := 0; i < length; i++ {
-		colorIdx := (i + skip) % len(colors)
-		pf.CopyPixel(x, y+i, colors[colorIdx])
+		pf.CopyPixel(x, y+i, colors[i])
 	}
 }
 
@@ -758,6 +758,10 @@ func (pf *PixFmtAlphaBlendRGBA[S, B]) BlendColorVspan(x, y, length int, colors [
 	if !ok {
 		return
 	}
+	if skip >= len(colors) {
+		return
+	}
+	colors = colors[skip:]
 	if covers != nil {
 		if skip >= len(covers) {
 			return
@@ -767,10 +771,15 @@ func (pf *PixFmtAlphaBlendRGBA[S, B]) BlendColorVspan(x, y, length int, colors [
 			length = len(covers)
 		}
 	}
+	if length > len(colors) {
+		length = len(colors)
+	}
+	if length <= 0 {
+		return
+	}
 
 	for i := 0; i < length; i++ {
-		colorIdx := (i + skip) % len(colors)
-		c := colors[colorIdx]
+		c := colors[i]
 		if c.IsTransparent() {
 			continue
 		}

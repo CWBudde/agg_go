@@ -114,9 +114,10 @@ func (pf *PixFmtAlphaBlendGray32[B, CS]) CopyHline(x, y, length int, c color.Gra
 		return
 	}
 
-	x = Max(0, x)
-	if x+length > pf.Width() {
-		length = pf.Width() - x
+	var ok bool
+	x, length, _, ok = clipSpan(x, length, pf.Width())
+	if !ok {
+		return
 	}
 
 	row := pf.RowPtr(y)
@@ -129,9 +130,10 @@ func (pf *PixFmtAlphaBlendGray32[B, CS]) BlendHline(x, y, length int, c color.Gr
 		return
 	}
 
-	x = Max(0, x)
-	if x+length > pf.Width() {
-		length = pf.Width() - x
+	var ok bool
+	x, length, _, ok = clipSpan(x, length, pf.Width())
+	if !ok {
+		return
 	}
 
 	row := pf.RowPtr(y)
@@ -147,12 +149,11 @@ func (pf *PixFmtAlphaBlendGray32[B, CS]) CopyVline(x, y1, y2 int, c color.Gray32
 		return
 	}
 
-	if y1 > y2 {
-		y1, y2 = y2, y1
+	var ok bool
+	y1, y2, ok = clipLineRange(y1, y2, pf.Height())
+	if !ok {
+		return
 	}
-
-	y1 = Max(0, y1)
-	y2 = Min(pf.Height()-1, y2)
 
 	for y := y1; y <= y2; y++ {
 		pf.CopyPixel(x, y, c)
@@ -165,12 +166,11 @@ func (pf *PixFmtAlphaBlendGray32[B, CS]) BlendVline(x, y1, y2 int, c color.Gray3
 		return
 	}
 
-	if y1 > y2 {
-		y1, y2 = y2, y1
+	var ok bool
+	y1, y2, ok = clipLineRange(y1, y2, pf.Height())
+	if !ok {
+		return
 	}
-
-	y1 = Max(0, y1)
-	y2 = Min(pf.Height()-1, y2)
 
 	for y := y1; y <= y2; y++ {
 		pf.BlendPixel(x, y, c, cover)
@@ -229,20 +229,21 @@ func (pf *PixFmtAlphaBlendGray32[B, CS]) BlendSolidHspan(x, y, length int, c col
 		return
 	}
 
-	x1 := Max(0, x)
-	x2 := Min(pf.Width()-1, x+length-1)
-
-	if x1 <= x2 {
-		row := pf.RowPtr(y)
-		coverOffset := Max(0, -x)
-		effectiveLength := x2 - x1 + 1
-
-		for i := 0; i < effectiveLength; i++ {
-			coverIndex := coverOffset + i
-			if coverIndex < len(covers) && covers[coverIndex] > 0 {
-				floatCover := float32(covers[coverIndex]) / 255.0
-				pf.blender.BlendPix(&row[x1+i], c.V, c.A, floatCover)
-			}
+	var skip int
+	var ok bool
+	x, length, skip, ok = clipSpan(x, length, pf.Width())
+	if !ok || skip >= len(covers) {
+		return
+	}
+	covers = covers[skip:]
+	if length > len(covers) {
+		length = len(covers)
+	}
+	row := pf.RowPtr(y)
+	for i := 0; i < length; i++ {
+		if covers[i] > 0 {
+			floatCover := float32(covers[i]) / 255.0
+			pf.blender.BlendPix(&row[x+i], c.V, c.A, floatCover)
 		}
 	}
 }
@@ -253,13 +254,19 @@ func (pf *PixFmtAlphaBlendGray32[B, CS]) BlendSolidVspan(x, y, length int, c col
 		return
 	}
 
-	y1 := Max(0, y)
-	y2 := Min(pf.Height()-1, y+length-1)
-	coverOffset := Max(0, -y)
-
-	for i, currentY := 0, y1; currentY <= y2; i, currentY = i+1, currentY+1 {
-		if coverOffset+i < len(covers) && covers[coverOffset+i] > 0 {
-			pf.BlendPixel(x, currentY, c, covers[coverOffset+i])
+	var skip int
+	var ok bool
+	y, length, skip, ok = clipSpan(y, length, pf.Height())
+	if !ok || skip >= len(covers) {
+		return
+	}
+	covers = covers[skip:]
+	if length > len(covers) {
+		length = len(covers)
+	}
+	for i := 0; i < length; i++ {
+		if covers[i] > 0 {
+			pf.BlendPixel(x, y+i, c, covers[i])
 		}
 	}
 }
@@ -270,14 +277,19 @@ func (pf *PixFmtAlphaBlendGray32[B, CS]) CopyColorHspan(x, y, length int, colors
 		return
 	}
 
-	x = Max(0, x)
-	if x+length > pf.Width() {
-		length = pf.Width() - x
+	var skip int
+	var ok bool
+	x, length, skip, ok = clipSpan(x, length, pf.Width())
+	if !ok || skip >= len(colors) {
+		return
+	}
+	colors = colors[skip:]
+	if length > len(colors) {
+		length = len(colors)
 	}
 
 	for i := 0; i < length; i++ {
-		colorIdx := i % len(colors)
-		pf.CopyPixel(x+i, y, colors[colorIdx])
+		pf.CopyPixel(x+i, y, colors[i])
 	}
 }
 
@@ -287,14 +299,28 @@ func (pf *PixFmtAlphaBlendGray32[B, CS]) BlendColorHspan(x, y, length int, color
 		return
 	}
 
-	x = Max(0, x)
-	if x+length > pf.Width() {
-		length = pf.Width() - x
+	var skip int
+	var ok bool
+	x, length, skip, ok = clipSpan(x, length, pf.Width())
+	if !ok || skip >= len(colors) {
+		return
+	}
+	colors = colors[skip:]
+	if covers != nil {
+		if skip >= len(covers) {
+			return
+		}
+		covers = covers[skip:]
+		if length > len(covers) {
+			length = len(covers)
+		}
+	}
+	if length > len(colors) {
+		length = len(colors)
 	}
 
 	for i := 0; i < length; i++ {
-		colorIdx := i % len(colors)
-		c := colors[colorIdx]
+		c := colors[i]
 		if c.A == 0.0 {
 			continue
 		}
@@ -313,14 +339,19 @@ func (pf *PixFmtAlphaBlendGray32[B, CS]) CopyColorVspan(x, y, length int, colors
 		return
 	}
 
-	y = Max(0, y)
-	if y+length > pf.Height() {
-		length = pf.Height() - y
+	var skip int
+	var ok bool
+	y, length, skip, ok = clipSpan(y, length, pf.Height())
+	if !ok || skip >= len(colors) {
+		return
+	}
+	colors = colors[skip:]
+	if length > len(colors) {
+		length = len(colors)
 	}
 
 	for i := 0; i < length; i++ {
-		colorIdx := i % len(colors)
-		pf.CopyPixel(x, y+i, colors[colorIdx])
+		pf.CopyPixel(x, y+i, colors[i])
 	}
 }
 
@@ -330,14 +361,28 @@ func (pf *PixFmtAlphaBlendGray32[B, CS]) BlendColorVspan(x, y, length int, color
 		return
 	}
 
-	y = Max(0, y)
-	if y+length > pf.Height() {
-		length = pf.Height() - y
+	var skip int
+	var ok bool
+	y, length, skip, ok = clipSpan(y, length, pf.Height())
+	if !ok || skip >= len(colors) {
+		return
+	}
+	colors = colors[skip:]
+	if covers != nil {
+		if skip >= len(covers) {
+			return
+		}
+		covers = covers[skip:]
+		if length > len(covers) {
+			length = len(covers)
+		}
+	}
+	if length > len(colors) {
+		length = len(colors)
 	}
 
 	for i := 0; i < length; i++ {
-		colorIdx := i % len(colors)
-		c := colors[colorIdx]
+		c := colors[i]
 		if c.A == 0.0 {
 			continue
 		}

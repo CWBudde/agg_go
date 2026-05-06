@@ -103,6 +103,43 @@ func InBounds(x, y, width, height int) bool {
 	return x >= 0 && y >= 0 && x < width && y < height
 }
 
+func clipSpan(start, length, limit int) (clippedStart, clippedLength, skipped int, ok bool) {
+	if length <= 0 || limit <= 0 || start >= limit || start+length <= 0 {
+		return 0, 0, 0, false
+	}
+	if start < 0 {
+		skipped = -start
+		length -= skipped
+		start = 0
+	}
+	if start+length > limit {
+		length = limit - start
+	}
+	if length <= 0 {
+		return 0, 0, 0, false
+	}
+	return start, length, skipped, true
+}
+
+func clipLineRange(start, end, limit int) (clippedStart, clippedEnd int, ok bool) {
+	if start > end {
+		start, end = end, start
+	}
+	if limit <= 0 || end < 0 || start >= limit {
+		return 0, 0, false
+	}
+	if start < 0 {
+		start = 0
+	}
+	if end >= limit {
+		end = limit - 1
+	}
+	if start > end {
+		return 0, 0, false
+	}
+	return start, end, true
+}
+
 // Min returns the smaller integer.
 func Min(a, b int) int {
 	if a < b {

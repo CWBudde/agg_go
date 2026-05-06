@@ -89,9 +89,10 @@ func (pf *PixFmtAlphaBlendRGBA16[S, B]) CopyHline(x, y, length int, c color.RGBA
 	if y < 0 || y >= pf.Height() || length <= 0 {
 		return
 	}
-	x = ClampX(x, pf.Width())
-	if x+length > pf.Width() {
-		length = pf.Width() - x
+	var ok bool
+	x, length, _, ok = clipSpan(x, length, pf.Width())
+	if !ok {
+		return
 	}
 
 	row := buffer.RowU8(pf.rbuf, y)
@@ -107,9 +108,10 @@ func (pf *PixFmtAlphaBlendRGBA16[S, B]) BlendHline(x, y, length int, c color.RGB
 	if y < 0 || y >= pf.Height() || length <= 0 || c.IsTransparent() {
 		return
 	}
-	x = ClampX(x, pf.Width())
-	if x+length > pf.Width() {
-		length = pf.Width() - x
+	var ok bool
+	x, length, _, ok = clipSpan(x, length, pf.Width())
+	if !ok {
+		return
 	}
 
 	// Full coverage + opaque → direct copy.
@@ -132,9 +134,20 @@ func (pf *PixFmtAlphaBlendRGBA16[S, B]) BlendSolidHspan(x, y, length int, c colo
 	if y < 0 || y >= pf.Height() || length <= 0 || c.IsTransparent() {
 		return
 	}
-	x = ClampX(x, pf.Width())
-	if x+length > pf.Width() {
-		length = pf.Width() - x
+	var skip int
+	var ok bool
+	x, length, skip, ok = clipSpan(x, length, pf.Width())
+	if !ok {
+		return
+	}
+	if covers != nil {
+		if skip >= len(covers) {
+			return
+		}
+		covers = covers[skip:]
+		if length > len(covers) {
+			length = len(covers)
+		}
 	}
 
 	row := buffer.RowU8(pf.rbuf, y)
@@ -159,12 +172,27 @@ func (pf *PixFmtAlphaBlendRGBA16[S, B]) BlendColorHspan(x, y, length int, colors
 	if y < 0 || y >= pf.Height() || length <= 0 || len(colors) == 0 {
 		return
 	}
-	x = ClampX(x, pf.Width())
-	if x+length > pf.Width() {
-		length = pf.Width() - x
+	var skip int
+	var ok bool
+	x, length, skip, ok = clipSpan(x, length, pf.Width())
+	if !ok || skip >= len(colors) {
+		return
+	}
+	colors = colors[skip:]
+	if covers != nil {
+		if skip >= len(covers) {
+			return
+		}
+		covers = covers[skip:]
+		if length > len(covers) {
+			length = len(covers)
+		}
+	}
+	if length > len(colors) {
+		length = len(colors)
 	}
 	for i := 0; i < length; i++ {
-		c := colors[i%len(colors)]
+		c := colors[i]
 		if c.IsTransparent() {
 			continue
 		}
@@ -181,12 +209,18 @@ func (pf *PixFmtAlphaBlendRGBA16[S, B]) CopyColorHspan(x, y, length int, colors 
 	if y < 0 || y >= pf.Height() || length <= 0 || len(colors) == 0 {
 		return
 	}
-	x = ClampX(x, pf.Width())
-	if x+length > pf.Width() {
-		length = pf.Width() - x
+	var skip int
+	var ok bool
+	x, length, skip, ok = clipSpan(x, length, pf.Width())
+	if !ok || skip >= len(colors) {
+		return
+	}
+	colors = colors[skip:]
+	if length > len(colors) {
+		length = len(colors)
 	}
 	for i := 0; i < length; i++ {
-		pf.CopyPixel(x+i, y, colors[i%len(colors)])
+		pf.CopyPixel(x+i, y, colors[i])
 	}
 }
 
@@ -194,13 +228,18 @@ func (pf *PixFmtAlphaBlendRGBA16[S, B]) CopyColorVspan(x, y, length int, colors 
 	if x < 0 || x >= pf.Width() || length <= 0 || len(colors) == 0 {
 		return
 	}
-	y = ClampY(y, pf.Height())
-	if y+length > pf.Height() {
-		length = pf.Height() - y
+	var skip int
+	var ok bool
+	y, length, skip, ok = clipSpan(y, length, pf.Height())
+	if !ok || skip >= len(colors) {
+		return
+	}
+	colors = colors[skip:]
+	if length > len(colors) {
+		length = len(colors)
 	}
 	for i := 0; i < length; i++ {
-		colorIdx := i % len(colors)
-		pf.CopyPixel(x, y+i, colors[colorIdx])
+		pf.CopyPixel(x, y+i, colors[i])
 	}
 }
 
