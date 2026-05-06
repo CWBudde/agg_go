@@ -3,6 +3,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"fmt"
 	"image"
@@ -13,9 +14,11 @@ import (
 	"math"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/cwbudde/agg_go/tests/visual/framework"
 )
@@ -106,6 +109,8 @@ var demoConfigs = []demoConfig{
 	{name: "simple_blur", dir: "examples/core/basic/simple_blur"},
 	{name: "trans_polar", dir: "examples/core/intermediate/trans_polar"},
 }
+
+var regenerateMu sync.Mutex
 
 func findDemoConfig(name string) (demoConfig, bool) {
 	for _, demo := range demoConfigs {
@@ -302,6 +307,104 @@ func loadDemos(baseDir string) ([]demoEntry, error) {
 	return demos, nil
 }
 
+func regenerateGoReference(ctx context.Context, baseDir string, demo demoConfig) error {
+	outDir := filepath.Join(baseDir, goDir)
+	if err := os.MkdirAll(outDir, 0o755); err != nil {
+		return fmt.Errorf("create go reference dir: %w", err)
+	}
+
+	if err := tryGenerateFromDir(ctx, outDir, demo, filepath.Join(baseDir, demo.dir), []string{"go", "run", "."}); err == nil {
+		return nil
+	}
+	return tryGenerateFromDir(ctx, outDir, demo, baseDir, []string{"go", "run", "./" + demo.dir})
+}
+
+func regenerateAllGoReferences(ctx context.Context, baseDir string) error {
+	for _, demo := range demoConfigs {
+		if err := regenerateGoReference(ctx, baseDir, demo); err != nil {
+			return fmt.Errorf("%s: %w", demo.name, err)
+		}
+	}
+	return nil
+}
+
+func tryGenerateFromDir(ctx context.Context, outDir string, demo demoConfig, runDir string, args []string) error {
+	stamp, err := os.CreateTemp(runDir, ".demo-stamp-*")
+	if err != nil {
+		return err
+	}
+	stampPath := stamp.Name()
+	_ = stamp.Close()
+	defer os.Remove(stampPath)
+
+	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
+	cmd.Dir = runDir
+	cmd.Env = os.Environ()
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("run %s in %s failed: %w\n%s", strings.Join(args, " "), runDir, err, strings.TrimSpace(string(output)))
+	}
+
+	generated, err := findGeneratedPNG(runDir, stampPath)
+	if err != nil {
+		return fmt.Errorf("find generated png after %s in %s: %w\n%s", strings.Join(args, " "), runDir, err, strings.TrimSpace(string(output)))
+	}
+	defer os.Remove(generated)
+
+	dstPath := filepath.Join(outDir, demo.name+".png")
+	return copyFile(generated, dstPath)
+}
+
+func findGeneratedPNG(runDir, stampPath string) (string, error) {
+	entries, err := os.ReadDir(runDir)
+	if err != nil {
+		return "", err
+	}
+	stampInfo, err := os.Stat(stampPath)
+	if err != nil {
+		return "", err
+	}
+
+	var found []string
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".png" {
+			continue
+		}
+		path := filepath.Join(runDir, entry.Name())
+		info, err := os.Stat(path)
+		if err != nil {
+			return "", err
+		}
+		if info.ModTime().After(stampInfo.ModTime()) {
+			found = append(found, path)
+		}
+	}
+	if len(found) == 0 {
+		return "", fmt.Errorf("no generated png found")
+	}
+	sort.Strings(found)
+	return found[0], nil
+}
+
+func copyFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	if _, err := io.Copy(out, in); err != nil {
+		return err
+	}
+	return out.Close()
+}
+
 const pageHeader = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -321,6 +424,12 @@ body { background: #111; color: #ddd; font-family: monospace; font-size: 13px; }
   background: #222; color: #ddd; border: 1px solid #444; padding: 4px 8px;
   font-family: monospace; font-size: 12px;
 }
+.regen-button {
+  background: #262626; color: #ddd; border: 1px solid #555; padding: 4px 8px;
+  font-family: monospace; font-size: 12px; cursor: pointer; border-radius: 3px;
+}
+.regen-button:hover { background: #303030; border-color: #777; }
+.regen-form { display: inline-flex; }
 #summary { color: #888; font-size: 12px; margin-left: auto; }
 .container { padding: 12px; }
 .card {
@@ -399,6 +508,9 @@ body { background: #111; color: #ddd; font-family: monospace; font-size: 13px; }
     <option value="raw">Diff: Raw</option>
     <option value="both">Diff: Both</option>
   </select>
+  <form class="regen-form" method="post" action="/regenerate-all">
+    <button class="regen-button" type="submit">Regenerate All</button>
+  </form>
   <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer">
     <input type="checkbox" id="original-size" onchange="setOriginalSize(this.checked)"> Original size
   </label>
@@ -414,6 +526,11 @@ const pageFooter = `</div>
   document.querySelectorAll('.card-header').forEach(function(h) {
     h.addEventListener('click', function() {
       h.closest('.card').classList.toggle('open');
+    });
+  });
+  document.querySelectorAll('.regen-form').forEach(function(form) {
+    form.addEventListener('click', function(e) {
+      e.stopPropagation();
     });
   });
 
@@ -576,6 +693,7 @@ const pageFooter = `</div>
   window.filterCards = filterCards;
   window.sortCards = sortCards;
   window.setDiffMode = setDiffMode;
+  window.setOriginalSize = setOriginalSize;
 })();
 </script>
 </body>
@@ -634,6 +752,9 @@ func renderCard(w io.Writer, d *demoEntry) {
 	fmt.Fprintf(w, `<span class="badge %s">avg %.2f</span>`, badgeClassAvgDiff(d.AvgDiff), d.AvgDiff)
 	fmt.Fprintf(w, `<span class="badge %s">max %d</span>`, badgeClassMaxDiff(d.MaxDiff), d.MaxDiff)
 	fmt.Fprintf(w, `<span class="badge %s">diff %.2f%%</span>`, badgeClassDiffRatio(d.DiffRatio), pctDiff)
+	fmt.Fprintf(w, `<form class="regen-form" method="post" action="/regenerate?name=%s">`, d.Name)
+	fmt.Fprintf(w, `<button class="regen-button" type="submit">Regenerate</button>`)
+	fmt.Fprintf(w, `</form>`)
 	fmt.Fprintf(w, `</div>`)
 	fmt.Fprintf(w, `</div>`) // card-header
 
@@ -703,6 +824,10 @@ func main() {
 	}
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		demos, err := loadDemos(cwd)
 		if err != nil {
@@ -710,6 +835,42 @@ func main() {
 			return
 		}
 		renderPage(w, demos)
+	})
+	http.HandleFunc("/regenerate", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		name := r.URL.Query().Get("name")
+		demo, ok := findDemoConfig(name)
+		if !ok {
+			http.Error(w, fmt.Sprintf("unknown demo %q", name), http.StatusBadRequest)
+			return
+		}
+
+		regenerateMu.Lock()
+		defer regenerateMu.Unlock()
+
+		if err := regenerateGoReference(r.Context(), cwd, demo); err != nil {
+			http.Error(w, fmt.Sprintf("failed to regenerate %s: %v", name, err), http.StatusInternalServerError)
+			return
+		}
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+	})
+	http.HandleFunc("/regenerate-all", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		regenerateMu.Lock()
+		defer regenerateMu.Unlock()
+
+		if err := regenerateAllGoReferences(r.Context(), cwd); err != nil {
+			http.Error(w, fmt.Sprintf("failed to regenerate all demos: %v", err), http.StatusInternalServerError)
+			return
+		}
+		http.Redirect(w, r, "/", http.StatusSeeOther)
 	})
 
 	addr := ":" + port

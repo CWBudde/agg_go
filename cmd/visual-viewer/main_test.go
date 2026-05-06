@@ -52,6 +52,19 @@ func TestRenderCardEmitsRegenerateForm(t *testing.T) {
 	}
 }
 
+func TestPageHeaderEmitsRegenerateAllForm(t *testing.T) {
+	for _, want := range []string{
+		`class="regen-form"`,
+		`method="post"`,
+		`action="/regenerate-all"`,
+		`Regenerate All`,
+	} {
+		if !strings.Contains(pageHeader, want) {
+			t.Fatalf("pageHeader missing %q", want)
+		}
+	}
+}
+
 func TestFindDemoConfigRejectsUnknownName(t *testing.T) {
 	if _, ok := findDemoConfig("does_not_exist"); ok {
 		t.Fatal("findDemoConfig accepted an unknown demo")
