@@ -191,6 +191,69 @@ func TestPixFmtRGBA32Spans(t *testing.T) {
 	}
 }
 
+func TestPixFmtRGBA32ClippedHlineShortensSpan(t *testing.T) {
+	width, height := 5, 1
+	buf := make([]basics.Int8u, width*height*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, width, height, width*4)
+	pf := NewPixFmtRGBA32[color.Linear](rbuf)
+
+	red := color.NewRGBA8[color.Linear](255, 0, 0, 255)
+	pf.CopyHline(-2, 0, 4, red)
+
+	for x := 0; x < width; x++ {
+		got := pf.GetPixel(x, 0)
+		if x < 2 {
+			if got.R != 255 || got.A != 255 {
+				t.Fatalf("x=%d: got %+v, want red", x, got)
+			}
+			continue
+		}
+		if got.A != 0 {
+			t.Fatalf("x=%d: clipped hline overdrawn with %+v", x, got)
+		}
+	}
+}
+
+func TestPixFmtRGBA32ClippedSolidHspanAdvancesCovers(t *testing.T) {
+	width, height := 3, 1
+	buf := make([]basics.Int8u, width*height*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, width, height, width*4)
+	pf := NewPixFmtRGBA32[color.Linear](rbuf)
+
+	red := color.NewRGBA8[color.Linear](255, 0, 0, 255)
+	pf.BlendSolidHspan(-2, 0, 4, red, []basics.Int8u{255, 0, 0, 255})
+
+	if got := pf.GetPixel(0, 0); got.A != 0 {
+		t.Fatalf("x=0: got %+v, want unchanged because clipped cover index 2 is zero", got)
+	}
+	if got := pf.GetPixel(1, 0); got.R != 255 || got.A != 255 {
+		t.Fatalf("x=1: got %+v, want red because clipped cover index 3 is full", got)
+	}
+	if got := pf.GetPixel(2, 0); got.A != 0 {
+		t.Fatalf("x=2: clipped hspan overdrawn with %+v", got)
+	}
+}
+
+func TestPixFmtRGBA32ClippedSolidVspanAdvancesCovers(t *testing.T) {
+	width, height := 1, 3
+	buf := make([]basics.Int8u, width*height*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, width, height, width*4)
+	pf := NewPixFmtRGBA32[color.Linear](rbuf)
+
+	blue := color.NewRGBA8[color.Linear](0, 0, 255, 255)
+	pf.BlendSolidVspan(0, -2, 4, blue, []basics.Int8u{255, 0, 0, 255})
+
+	if got := pf.GetPixel(0, 0); got.A != 0 {
+		t.Fatalf("y=0: got %+v, want unchanged because clipped cover index 2 is zero", got)
+	}
+	if got := pf.GetPixel(0, 1); got.B != 255 || got.A != 255 {
+		t.Fatalf("y=1: got %+v, want blue because clipped cover index 3 is full", got)
+	}
+	if got := pf.GetPixel(0, 2); got.A != 0 {
+		t.Fatalf("y=2: clipped vspan overdrawn with %+v", got)
+	}
+}
+
 func TestPixFmtRGBA32Clear(t *testing.T) {
 	width, height := 10, 10
 	buf := make([]basics.Int8u, width*height*4)

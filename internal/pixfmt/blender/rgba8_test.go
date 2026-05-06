@@ -69,6 +69,95 @@ func TestBlenderRGBAPlain(t *testing.T) {
 	}
 }
 
+func TestBlenderRGBAPlainMatchesMatplotlibFixedBlender(t *testing.T) {
+	tests := []struct {
+		name   string
+		src    []basics.Int8u
+		cover  basics.Int8u
+		n      int
+		dst    []basics.Int8u
+		expect []basics.Int8u
+	}{
+		{
+			name:   "blue_a33_cov255_n1",
+			src:    []basics.Int8u{31, 119, 180, 84},
+			cover:  255,
+			n:      1,
+			dst:    []basics.Int8u{255, 255, 255, 255},
+			expect: []basics.Int8u{181, 210, 230, 255},
+		},
+		{
+			name:   "blue_a33_cov128_n1",
+			src:    []basics.Int8u{31, 119, 180, 84},
+			cover:  128,
+			n:      1,
+			dst:    []basics.Int8u{255, 255, 255, 255},
+			expect: []basics.Int8u{218, 232, 242, 255},
+		},
+		{
+			name:   "blue_a33_cov128_n10",
+			src:    []basics.Int8u{31, 119, 180, 84},
+			cover:  128,
+			n:      10,
+			dst:    []basics.Int8u{255, 255, 255, 255},
+			expect: []basics.Int8u{66, 139, 190, 255},
+		},
+		{
+			name:   "red_a50_cov73_n25",
+			src:    []basics.Int8u{214, 39, 40, 128},
+			cover:  73,
+			n:      25,
+			dst:    []basics.Int8u{255, 255, 255, 255},
+			expect: []basics.Int8u{214, 39, 40, 255},
+		},
+		{
+			name:   "black_a20_cov37_n100",
+			src:    []basics.Int8u{0, 0, 0, 51},
+			cover:  37,
+			n:      100,
+			dst:    []basics.Int8u{255, 255, 255, 255},
+			expect: []basics.Int8u{0, 0, 0, 255},
+		},
+	}
+
+	bl := BlenderRGBA8Plain[color.Linear, order.RGBA]{}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dst := append([]basics.Int8u(nil), tt.dst...)
+			for i := 0; i < tt.n; i++ {
+				bl.BlendPix(dst, tt.src[0], tt.src[1], tt.src[2], tt.src[3], tt.cover)
+			}
+			for i := range tt.expect {
+				if dst[i] != tt.expect[i] {
+					t.Fatalf("dst=%v, want %v", dst, tt.expect)
+				}
+			}
+		})
+	}
+}
+
+func TestBlenderRGBAPlainMatchesMatplotlibFixedBlenderMixedSequence(t *testing.T) {
+	dst := []basics.Int8u{250, 240, 230, 245}
+	bl := BlenderRGBA8Plain[color.Linear, order.RGBA]{}
+	for i := 0; i < 37; i++ {
+		bl.BlendPix(
+			dst,
+			basics.Int8u(20+(i*17)%231),
+			basics.Int8u(40+(i*29)%211),
+			basics.Int8u(60+(i*43)%191),
+			basics.Int8u(20+(i*7)%181),
+			basics.Int8u(1+(i*19)%255),
+		)
+	}
+
+	expect := []basics.Int8u{162, 171, 153, 255}
+	for i := range expect {
+		if dst[i] != expect[i] {
+			t.Fatalf("dst=%v, want %v", dst, expect)
+		}
+	}
+}
+
 func TestBlendRGBAPixel(t *testing.T) {
 	dst := []basics.Int8u{50, 50, 50, 255}
 	src := color.NewRGBA8[color.Linear](150, 200, 100, 200)
