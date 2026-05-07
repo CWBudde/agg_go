@@ -421,6 +421,32 @@ func TestImagePixelFormatPreRowDataPremultiplies(t *testing.T) {
 	}
 }
 
+func TestImagePixelFormatRowDataHandlesNegativeStride(t *testing.T) {
+	img := NewImage([]uint8{
+		10, 20, 30, 255,
+		40, 50, 60, 255,
+	}, 1, 2, -4)
+
+	if got := img.GetPixel(0, 0); got != [4]uint8{40, 50, 60, 255} {
+		t.Fatalf("GetPixel row 0 = %v, want bottom-up first logical row", got)
+	}
+	if got := img.GetPixel(0, 1); got != [4]uint8{10, 20, 30, 255} {
+		t.Fatalf("GetPixel row 1 = %v, want top physical row", got)
+	}
+
+	src := newImagePixelFormatPre(img)
+	row := src.RowData(0)
+	if row == nil {
+		t.Fatalf("expected row data")
+	}
+	want := []uint8{40, 50, 60, 255}
+	for i, v := range want {
+		if row[i] != v {
+			t.Fatalf("row[%d]: got %d want %d", i, row[i], v)
+		}
+	}
+}
+
 func TestBlendImageRespectsClipBox(t *testing.T) {
 	agg2d := NewAgg2D()
 	width, height := 6, 6

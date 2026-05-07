@@ -736,6 +736,23 @@ func TestPixFmtRGBA32Fill(t *testing.T) {
 	}
 }
 
+func TestPixFmtRGBA32PreBlendFromTransparentRowDataPreservesDestination(t *testing.T) {
+	buf := []basics.Int8u{30, 60, 90, 255}
+	rbuf := buffer.NewRenderingBufferU8WithData(buf, 1, 1, 4)
+	pf := NewPixFmtRGBA32Pre[color.Linear](rbuf)
+
+	src := newRGBARowDataSource([]color.RGBA8[color.Linear]{
+		{R: 0, G: 0, B: 0, A: 0},
+	})
+
+	pf.BlendFrom(src, 0, 0, 0, 0, 1, basics.CoverFull)
+
+	want := color.RGBA8[color.Linear]{R: 30, G: 60, B: 90, A: 255}
+	if got := pf.GetPixel(0, 0); got != want {
+		t.Fatalf("BlendFrom copied transparent source over destination: got %+v want %+v", got, want)
+	}
+}
+
 func TestPixFmtRGBA32Premultiply(t *testing.T) {
 	buf := make([]basics.Int8u, 1*4)
 	rbuf := buffer.NewRenderingBufferU8WithData(buf, 1, 1, 4)

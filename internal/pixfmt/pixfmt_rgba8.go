@@ -963,40 +963,29 @@ func (pf *PixFmtAlphaBlendRGBA[S, B]) BlendFrom(src rgbaBlendFromSource[S], xdst
 	if rowSrc, ok := src.(interface{ RowData(y int) []basics.Int8u }); ok {
 		srcRow := rowSrc.RowData(ysrc)
 		if srcRow != nil {
-			bytesPerPixel := 4
-			if bytesPerPixel == 4 {
-				if dstRow := pf.RowData(ydst); dstRow != nil && cover == basics.CoverFull {
-					start := 0
-					end := length
-					step := 1
-					if xdst > xsrc {
-						start = length - 1
-						end = -1
-						step = -1
-					}
-					for i := start; i != end; i += step {
-						srcOff := (xsrc + i) * 4
-						dstOff := (xdst + i) * 4
-						copy(dstRow[dstOff:dstOff+4], srcRow[srcOff:srcOff+4])
-					}
-					return
-				}
-				for i := 0; i < length; i++ {
-					srcOff := (xsrc + i) * 4
-					c := color.RGBA8[S]{
-						R: srcRow[srcOff+0],
-						G: srcRow[srcOff+1],
-						B: srcRow[srcOff+2],
-						A: srcRow[srcOff+3],
-					}
-					if cover == basics.CoverFull && c.A == 255 {
-						pf.CopyPixel(xdst+i, ydst, c)
-						continue
-					}
-					pf.BlendPixel(xdst+i, ydst, c, cover)
-				}
-				return
+			start := 0
+			end := length
+			step := 1
+			if xdst > xsrc {
+				start = length - 1
+				end = -1
+				step = -1
 			}
+			for i := start; i != end; i += step {
+				srcOff := (xsrc + i) * 4
+				c := color.RGBA8[S]{
+					R: srcRow[srcOff+0],
+					G: srcRow[srcOff+1],
+					B: srcRow[srcOff+2],
+					A: srcRow[srcOff+3],
+				}
+				if cover == basics.CoverFull && c.A == 255 {
+					pf.CopyPixel(xdst+i, ydst, c)
+					continue
+				}
+				pf.BlendPixel(xdst+i, ydst, c, cover)
+			}
+			return
 		}
 	}
 

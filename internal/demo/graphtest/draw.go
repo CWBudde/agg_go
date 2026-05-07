@@ -466,7 +466,7 @@ func drawControls(ctx *agg.Context, cfg Config) {
 }
 
 func newTypeControl(cfg Config) *rboxctrl.RboxCtrl[icolor.RGBA] {
-	typeCtrl := rboxctrl.NewDefaultRboxCtrl(0, 0, 110, 95, false)
+	typeCtrl := rboxctrl.NewDefaultRboxCtrl(-1, -1, -1, -1, false)
 	typeCtrl.SetTextSize(8.0, 0.0)
 	for _, item := range []string{"Solid lines", "Bezier curves", "Dashed curves", "Poygons AA", "Poygons Bin"} {
 		typeCtrl.AddItem(item)

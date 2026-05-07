@@ -83,7 +83,7 @@ func newDemo() *demo {
 	srcAlpha := slider.NewSliderCtrl(5, 5, 400, 11, false)
 	srcAlpha.SetLabel("Src Alpha=%.2f")
 	srcAlpha.SetRange(0, 1)
-	srcAlpha.SetValue(1)
+	srcAlpha.SetValue(0.75)
 
 	dstAlpha := slider.NewSliderCtrl(5, 20, 400, 26, false)
 	dstAlpha.SetLabel("Dst Alpha=%.2f")
@@ -314,17 +314,19 @@ func srcShape(a *agg.Agg2D, c1, c2 agg.Color, x1, y1, x2, y2 float64) {
 	a.DrawPath(agg.FillOnly)
 }
 
-func renderCtrl(a *agg.Agg2D, c ctrlbase.Ctrl[icol.RGBA]) {
-	ras := a.GetInternalRasterizer()
-	adapter := &controlVertexSourceAdapter{ctrl: c}
-	for pathID := uint(0); pathID < c.NumPaths(); pathID++ {
-		ras.Reset()
-		ras.AddPath(adapter, uint32(pathID))
-		a.RenderRasterizerWithColor(toAggColor(c.Color(pathID)))
+func newSceneImageLike(img *agg.Image) *agg.Image {
+	stride := img.Stride()
+	if stride == 0 {
+		stride = img.Width() * 4
 	}
+	size := stride
+	if size < 0 {
+		size = -size
+	}
+	return agg.NewImage(make([]uint8, size*img.Height()), img.Width(), img.Height(), stride)
 }
 
-func (d *demo) Render(img *agg.Image) {
+func (d *demo) renderScene(img *agg.Image) {
 	ctx := agg.NewContextForImage(img)
 	if ctx == nil {
 		return
@@ -332,10 +334,8 @@ func (d *demo) Render(img *agg.Image) {
 
 	a := ctx.GetAgg2D()
 	a.ResetTransformations()
-	a.BlendMode(agg.BlendSrcOver)
-	ctx.Clear(agg.White)
-
-	drawCheckerboard(a, frameWidth, frameHeight)
+	a.BlendMode(agg.BlendAlpha)
+	ctx.Clear(agg.Transparent)
 
 	if d.bgImg != nil {
 		_ = a.BlendImageSimple(d.bgImg, 250, 180, uint(d.dstAlpha.Value()*255.0+0.5))
@@ -356,8 +356,37 @@ func (d *demo) Render(img *agg.Image) {
 		srgba8(0x05, 0x00, 0x5F, uint8(d.srcAlpha.Value()*255)),
 		300+50, 100+24*3, 107+50, 100+79*3,
 	)
+}
 
-	a.BlendMode(agg.BlendSrcOver)
+func renderCtrl(a *agg.Agg2D, c ctrlbase.Ctrl[icol.RGBA]) {
+	ras := a.GetInternalRasterizer()
+	adapter := &controlVertexSourceAdapter{ctrl: c}
+	for pathID := uint(0); pathID < c.NumPaths(); pathID++ {
+		ras.Reset()
+		ras.AddPath(adapter, uint32(pathID))
+		a.RenderRasterizerWithColor(toAggColor(c.Color(pathID)))
+	}
+}
+
+func (d *demo) Render(img *agg.Image) {
+	ctx := agg.NewContextForImage(img)
+	if ctx == nil {
+		return
+	}
+
+	a := ctx.GetAgg2D()
+	a.ResetTransformations()
+	a.BlendMode(agg.BlendAlpha)
+	ctx.Clear(agg.White)
+
+	drawCheckerboard(a, frameWidth, frameHeight)
+
+	scene := newSceneImageLike(img)
+	d.renderScene(scene)
+	a.BlendMode(agg.BlendAlpha)
+	_ = a.BlendImageSimple(scene, 0, 0, 255)
+
+	a.BlendMode(agg.BlendAlpha)
 	renderCtrl(a, d.srcAlpha)
 	renderCtrl(a, d.dstAlpha)
 	renderCtrl(a, d.compOp)

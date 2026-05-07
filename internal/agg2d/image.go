@@ -680,18 +680,21 @@ func (img *Image) GetPixel(x, y int) [4]uint8 {
 	if img.Data == nil || x < 0 || y < 0 || x >= img.width || y >= img.height {
 		return [4]uint8{0, 0, 0, 0}
 	}
+	if img.renBuf == nil {
+		return [4]uint8{0, 0, 0, 0}
+	}
 
-	stride := img.Stride()
-	offset := y*stride + x*4
-	if offset+3 >= len(img.Data) {
+	row := img.renBuf.Row(y)
+	offset := x * 4
+	if offset+3 >= len(row) {
 		return [4]uint8{0, 0, 0, 0}
 	}
 
 	return [4]uint8{
-		img.Data[offset],
-		img.Data[offset+1],
-		img.Data[offset+2],
-		img.Data[offset+3],
+		row[offset],
+		row[offset+1],
+		row[offset+2],
+		row[offset+3],
 	}
 }
 

@@ -11,6 +11,11 @@ import (
 func TestGraphTypeControlMatchesCPPVisualOrder(t *testing.T) {
 	ctrl := newTypeControl(Config{Mode: 0})
 
+	if ctrl.X1() != -1 || ctrl.Y1() != -1 || ctrl.X2() != -1 || ctrl.Y2() != -1 {
+		t.Fatalf("type control bounds = (%v,%v,%v,%v), want C++ degenerate panel bounds (-1,-1,-1,-1)",
+			ctrl.X1(), ctrl.Y1(), ctrl.X2(), ctrl.Y2())
+	}
+
 	want := []string{
 		"Solid lines",
 		"Bezier curves",

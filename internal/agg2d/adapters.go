@@ -187,18 +187,22 @@ func (ipf *imagePixelFormat) pixelSliceClamped(x, y int) []basics.Int8u {
 		y = ipf.img.height - 1
 	}
 
-	stride := ipf.img.Stride()
-	offset := y*stride + x*4
-	if offset+3 >= len(ipf.img.Data) {
+	row := ipf.RowPtr(y)
+	if row == nil {
+		ipf.pixelBuf = [4]basics.Int8u{0, 0, 0, 0}
+		return ipf.pixelBuf[:]
+	}
+	offset := x * 4
+	if offset+3 >= len(row) {
 		ipf.pixelBuf = [4]basics.Int8u{0, 0, 0, 0}
 		return ipf.pixelBuf[:]
 	}
 
 	ipf.pixelBuf = [4]basics.Int8u{
-		ipf.img.Data[offset],
-		ipf.img.Data[offset+1],
-		ipf.img.Data[offset+2],
-		ipf.img.Data[offset+3],
+		row[offset],
+		row[offset+1],
+		row[offset+2],
+		row[offset+3],
 	}
 	return ipf.pixelBuf[:]
 }
@@ -230,14 +234,16 @@ func (ipf *imagePixelFormat) RowPtr(y int) []basics.Int8u {
 	if ipf.img == nil || ipf.img.Data == nil || y < 0 || y >= ipf.img.height {
 		return nil
 	}
-
-	stride := ipf.img.Stride()
-	rowOffset := y * stride
-	rowEnd := rowOffset + ipf.img.width*4
-	if rowOffset < 0 || rowEnd > len(ipf.img.Data) {
+	if ipf.img.renBuf == nil {
 		return nil
 	}
-	return ipf.img.Data[rowOffset:rowEnd]
+
+	row := ipf.img.renBuf.Row(y)
+	rowLen := ipf.img.width * 4
+	if len(row) < rowLen {
+		return nil
+	}
+	return row[:rowLen]
 }
 
 func (ipf *imagePixelFormat) RowData(y int) []basics.Int8u {

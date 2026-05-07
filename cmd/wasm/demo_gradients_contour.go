@@ -266,43 +266,53 @@ func buildGradientContourLUT(numColors int) []color.RGBA8[color.Linear] {
 
 	const lutSize = 1024
 	lut := make([]color.RGBA8[color.Linear], lutSize)
-
-	// Extend stops to cover [0,1] if they don't already.
-	if len(stops) > 0 && stops[0].t > 0 {
-		s := stops[0]
-		s.t = 0
-		stops = append([]gradContourStop{s}, stops...)
-	}
-	if len(stops) > 0 && stops[len(stops)-1].t < 1 {
-		s := stops[len(stops)-1]
-		s.t = 1
-		stops = append(stops, s)
+	if len(stops) < 2 {
+		return lut
 	}
 
-	lerp := func(a, b uint8, t float64) uint8 {
-		return uint8(float64(a)*(1-t) + float64(b)*t + 0.5)
+	type linearStop struct {
+		t float64
+		c color.RGBA8[color.Linear]
 	}
 
-	for i := 0; i < lutSize; i++ {
-		t := float64(i) / float64(lutSize-1)
-		// find segment
-		for j := 1; j < len(stops); j++ {
-			if t > stops[j].t {
-				continue
-			}
-			dt := stops[j].t - stops[j-1].t
-			var lt float64
-			if dt > 0 {
-				lt = (t - stops[j-1].t) / dt
-			}
-			lut[i] = color.RGBA8[color.Linear]{
-				R: lerp(stops[j-1].r, stops[j].r, lt),
-				G: lerp(stops[j-1].g, stops[j].g, lt),
-				B: lerp(stops[j-1].b, stops[j].b, lt),
+	linearStops := make([]linearStop, len(stops))
+	for i, s := range stops {
+		linearStops[i] = linearStop{
+			t: s.t,
+			c: color.ConvertToLinear(color.RGBA8[color.SRGB]{
+				R: s.r,
+				G: s.g,
+				B: s.b,
 				A: 255,
-			}
-			break
+			}),
 		}
+	}
+
+	start := int(basics.URound(linearStops[0].t * lutSize))
+	if start > lutSize {
+		start = lutSize
+	}
+	for i := 0; i < start; i++ {
+		lut[i] = linearStops[0].c
+	}
+
+	end := start
+	for i := 1; i < len(linearStops); i++ {
+		end = int(basics.URound(linearStops[i].t * lutSize))
+		if end > lutSize {
+			end = lutSize
+		}
+
+		ci := span.NewColorInterpolatorRGBA8(linearStops[i-1].c, linearStops[i].c, uint(end-start+1))
+		for start < end {
+			lut[start] = ci.Color()
+			ci.Inc()
+			start++
+		}
+	}
+
+	for ; end < lutSize; end++ {
+		lut[end] = linearStops[len(linearStops)-1].c
 	}
 
 	return lut
@@ -319,7 +329,7 @@ func buildSpectrumStops() []gradContourStop {
 	return stops
 }
 
-// wavelengthToRGB converts a wavelength (nm) to an approximate RGB colour.
+// wavelengthToRGB converts a wavelength (nm) to an approximate sRGB colour.
 // This matches the C++ srgba8::from_wavelength implementation.
 func wavelengthToRGB(wl, gamma float64) (r, g, b uint8) {
 	var fr, fg, fb float64
@@ -358,9 +368,14 @@ func wavelengthToRGB(wl, gamma float64) (r, g, b uint8) {
 		}
 		return math.Pow(v*factor, gamma)
 	}
-	r = uint8(pow(fr) * 255)
-	g = uint8(pow(fg) * 255)
-	b = uint8(pow(fb) * 255)
+
+	toSRGB := func(v float64) uint8 {
+		return uint8(color.ConvertToSRGB(v)*255 + 0.5)
+	}
+
+	r = toSRGB(pow(fr))
+	g = toSRGB(pow(fg))
+	b = toSRGB(pow(fb))
 	return
 }
 
@@ -572,7 +587,6 @@ func drawGradientsContourDemo() {
 		renscan.RenderScanlinesAASolid(ras, sl, ren, flatColor)
 	}
 
-	applyLinearToSRGB(img)
 }
 
 // --- Helper: bounding rect for conv.VertexSource ---
