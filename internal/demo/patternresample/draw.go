@@ -139,8 +139,12 @@ func gammaAdjustedSource(gamma float64) *agg.Image {
 	if cachedAgg == nil {
 		return nil
 	}
+	base := quadwarp.CopyFlippedVertical(cachedAgg)
+	if base == nil {
+		return nil
+	}
 	if gamma <= 0 || math.Abs(gamma-1.0) < 1e-9 {
-		return cachedAgg
+		return base
 	}
 
 	key := gammaCacheKey(gamma)
@@ -148,7 +152,7 @@ func gammaAdjustedSource(gamma float64) *agg.Image {
 		return cached.(*agg.Image)
 	}
 
-	src := quadwarp.CopyWithGammaDir(cachedAgg, gamma)
+	src := quadwarp.CopyWithGammaDir(base, gamma)
 	actual, _ := gammaImageCache.LoadOrStore(key, src)
 	return actual.(*agg.Image)
 }

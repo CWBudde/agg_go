@@ -77,7 +77,7 @@ func newDemo() *demo {
 	quad.SetXn(3, 100)
 	quad.SetYn(3, 500)
 
-	transType := rboxctrl.NewDefaultRboxCtrl(460, 540.0, 590.0, 595.0, true)
+	transType := rboxctrl.NewDefaultRboxCtrl(460, 5.0, 590.0, 60.0, false)
 	transType.SetTextSize(8, 0)
 	transType.SetTextThickness(1.0)
 	transType.AddItem("Affine")
@@ -175,5 +175,6 @@ func main() {
 		Title:  "Pattern Perspective",
 		Width:  frameWidth,
 		Height: frameHeight,
+		FlipY:  true,
 	}, d)
 }

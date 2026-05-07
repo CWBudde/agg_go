@@ -81,7 +81,7 @@ func newDemo() *demo {
 	quad.SetXn(3, 100)
 	quad.SetYn(3, 500)
 
-	transType := rboxctrl.NewDefaultRboxCtrl(400, 500.0, 600, 595.0, true)
+	transType := rboxctrl.NewDefaultRboxCtrl(400, 5.0, 600, 100.0, false)
 	transType.SetTextSize(7, 0)
 	transType.AddItem("Affine No Resample")
 	transType.AddItem("Affine Resample")
@@ -91,12 +91,12 @@ func newDemo() *demo {
 	transType.AddItem("Perspective Resample Exact")
 	transType.SetCurItem(4)
 
-	gamma := sliderctrl.NewSliderCtrl(5.0, 590.0, 395.0, 595.0, true)
+	gamma := sliderctrl.NewSliderCtrl(5.0, 5.0, 395.0, 10.0, false)
 	gamma.SetRange(0.5, 3.0)
 	gamma.SetValue(2.0)
 	gamma.SetLabel("Gamma=%.3f")
 
-	blur := sliderctrl.NewSliderCtrl(5.0, 575.0, 395.0, 580.0, true)
+	blur := sliderctrl.NewSliderCtrl(5.0, 20.0, 395.0, 25.0, false)
 	blur.SetRange(0.5, 2.0)
 	blur.SetValue(1.0)
 	blur.SetLabel("Blur=%.3f")
@@ -131,7 +131,7 @@ func (d *demo) Render(img *agg.Image) {
 	a := ctx.GetAgg2D()
 	a.FontGSV(10)
 	a.FillColor(agg.Black)
-	a.Text(10, frameHeight-70, fmt.Sprintf("%3.2f ms", float64(elapsed)/float64(time.Millisecond)), false, 0, 0)
+	a.Text(10, 70, fmt.Sprintf("%3.2f ms", float64(elapsed)/float64(time.Millisecond)), false, 0, 0)
 
 	for _, ctrl := range d.controls {
 		renderCtrl(a, ctrl)
@@ -217,5 +217,6 @@ func main() {
 		Title:  "Pattern Resample",
 		Width:  frameWidth,
 		Height: frameHeight,
+		FlipY:  true,
 	}, newDemo())
 }

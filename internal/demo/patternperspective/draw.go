@@ -45,10 +45,15 @@ func Draw(ctx *agg.Context, cfg Config) {
 		interpMode = quadwarp.InterpolatorLinear
 	}
 
+	source := quadwarp.CopyFlippedVertical(cachedAgg)
+	if source == nil {
+		return
+	}
+
 	quadwarp.Draw(ctx, quadwarp.Config{
 		CanvasWidth:        ctx.GetImage().Width(),
 		CanvasHeight:       ctx.GetImage().Height(),
-		Source:             cachedAgg,
+		Source:             source,
 		SourceRect:         [4]float64{-150, -150, 150, 150},
 		Quad:               cfg.Quad,
 		Transform:          transformMode,

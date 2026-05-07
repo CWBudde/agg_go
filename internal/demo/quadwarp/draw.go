@@ -370,6 +370,29 @@ func ApplyGammaInv(img *agg.Image, gamma float64) {
 	}
 }
 
+// CopyFlippedVertical returns a top-down image whose row order matches AGG
+// platform_support image buffers loaded with flip_y=true.
+func CopyFlippedVertical(src *agg.Image) *agg.Image {
+	if src == nil {
+		return nil
+	}
+	goImg := src.ToGoImage()
+	if goImg == nil {
+		return nil
+	}
+
+	w, h := goImg.Bounds().Dx(), goImg.Bounds().Dy()
+	rowBytes := w * 4
+	buf := make([]byte, h*rowBytes)
+	for y := 0; y < h; y++ {
+		srcOff := (h - 1 - y) * goImg.Stride
+		dstOff := y * rowBytes
+		copy(buf[dstOff:dstOff+rowBytes], goImg.Pix[srcOff:srcOff+rowBytes])
+	}
+
+	return agg.NewImage(buf, w, h, rowBytes)
+}
+
 // CopyWithGammaDir returns a copy with direct gamma applied to RGB channels.
 func CopyWithGammaDir(src *agg.Image, gamma float64) *agg.Image {
 	if src == nil {

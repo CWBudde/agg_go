@@ -138,31 +138,31 @@ func newDemo() *demo {
 		idx: -1,
 	}
 
-	d.capCtrl = rbox.NewDefaultRboxCtrl(10, 250, 130, 320, false)
+	d.capCtrl = rbox.NewDefaultRboxCtrl(10, 10, 130, 80, false)
 	_ = d.capCtrl.AddItem("Butt Cap")
 	_ = d.capCtrl.AddItem("Square Cap")
 	_ = d.capCtrl.AddItem("Round Cap")
 	d.capCtrl.SetCurItem(0)
 
-	d.widthCtrl = slider.NewSliderCtrl(140, 308, 280, 316, false)
+	d.widthCtrl = slider.NewSliderCtrl(140, 14, 280, 22, false)
 	d.widthCtrl.SetRange(0, 10)
 	d.widthCtrl.SetValue(3)
 	d.widthCtrl.SetLabel("Width=%1.2f")
 
-	d.smoothCtrl = slider.NewSliderCtrl(290, 308, 490, 316, false)
+	d.smoothCtrl = slider.NewSliderCtrl(290, 14, 490, 22, false)
 	d.smoothCtrl.SetRange(0, 2)
 	d.smoothCtrl.SetValue(1)
 	d.smoothCtrl.SetLabel("Smooth=%1.2f")
 
-	d.closeCtrl = checkbox.NewDefaultCheckboxCtrl(140, 286, "Close Polygons", false)
-	d.evenOddCtrl = checkbox.NewDefaultCheckboxCtrl(290, 286, "Even-Odd Fill", false)
+	d.closeCtrl = checkbox.NewDefaultCheckboxCtrl(140, 30, "Close Polygons", false)
+	d.evenOddCtrl = checkbox.NewDefaultCheckboxCtrl(290, 30, "Even-Odd Fill", false)
 
 	d.controls = []control{d.capCtrl, d.widthCtrl, d.smoothCtrl, d.closeCtrl, d.evenOddCtrl}
 	return d
 }
 
-func mapPoint(x, y float64) (float64, float64)   { return x, float64(frameHeight) - y }
-func unmapPoint(x, y float64) (float64, float64) { return x, float64(frameHeight) - y }
+func mapPoint(x, y float64) (float64, float64)   { return x, y }
+func unmapPoint(x, y float64) (float64, float64) { return x, y }
 
 func (d *demo) buildPath() *path.PathStorageStl {
 	cx := (d.x[0] + d.x[1] + d.x[2]) / 3
@@ -251,7 +251,7 @@ func (d *demo) Render(img *agg.Image) {
 	greenStroke := conv.NewConvStroke(smoothOutline)
 	greenStroke.SetWidth(1.0)
 
-	rbuf := buffer.NewRenderingBufferU8WithData(img.Data, frameWidth, frameHeight, frameWidth*4)
+	rbuf := buffer.NewRenderingBufferU8WithData(img.Data, img.Width(), img.Height(), img.Stride())
 	pf := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
 	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]](pf)
 	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
@@ -433,5 +433,6 @@ func main() {
 		Width:                 frameWidth,
 		Height:                frameHeight,
 		EncodeLinearRGBToSRGB: true,
+		FlipY:                 true,
 	}, newDemo())
 }
