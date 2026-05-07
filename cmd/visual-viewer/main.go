@@ -429,6 +429,8 @@ body { background: #111; color: #ddd; font-family: monospace; font-size: 13px; }
   font-family: monospace; font-size: 12px; cursor: pointer; border-radius: 3px;
 }
 .regen-button:hover { background: #303030; border-color: #777; }
+.regen-button:disabled { opacity: 0.6; cursor: not-allowed; }
+.regen-button.is-regenerating { cursor: wait; }
 .regen-form { display: inline-flex; }
 #summary { color: #888; font-size: 12px; margin-left: auto; }
 .container { padding: 12px; }
@@ -556,6 +558,45 @@ const pageFooter = `</div>
   document.querySelectorAll('.regen-form').forEach(function(form) {
     form.addEventListener('click', function(e) {
       e.stopPropagation();
+    });
+  });
+
+  function setRegenerateButtonsDisabled(disabled) {
+    document.querySelectorAll('.regen-button').forEach(function(button) {
+      button.disabled = disabled;
+      button.classList.toggle('is-regenerating', disabled);
+    });
+  }
+
+  function navigateToFreshPage() {
+    var url = new URL(window.location.href);
+    url.searchParams.set('_vv', String(Date.now()));
+    window.location.assign(url.toString());
+  }
+
+  function regenerateFromForm(form) {
+    return fetch(form.action, {
+      method: (form.method || 'POST').toUpperCase()
+    }).then(function(response) {
+      if (!response.ok) {
+        return response.text().then(function(text) {
+          throw new Error(text.trim() || 'regenerate failed');
+        });
+      }
+    });
+  }
+
+  document.querySelectorAll('.regen-form').forEach(function(form) {
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      setRegenerateButtonsDisabled(true);
+      regenerateFromForm(form).then(function() {
+        navigateToFreshPage();
+      }).catch(function(err) {
+        window.alert(err.message);
+        setRegenerateButtonsDisabled(false);
+      });
     });
   });
 

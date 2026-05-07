@@ -14,6 +14,7 @@ import (
 	renscan "github.com/cwbudde/agg_go/internal/renderer/scanline"
 	"github.com/cwbudde/agg_go/internal/scanline"
 	"github.com/cwbudde/agg_go/internal/shapes"
+	"github.com/cwbudde/agg_go/internal/span"
 	"github.com/cwbudde/agg_go/internal/transform"
 )
 
@@ -50,25 +51,26 @@ func drawSimpleBlurDemo() {
 	// 3. Draw lion outline (right half of canvas).
 	drawSimpleBlurLionOutline(ras, sl, renSolid, img.Width(), img.Height())
 
-	// 4. Snapshot the scene before the ellipse outline is drawn so the blur
-	//    samples the clean lion pixels.
-	bgImg := agg.NewImage(make([]uint8, len(img.Data)), img.Width(), img.Height(), img.Stride())
-	copy(bgImg.Data, img.Data)
-
-	// 5. Draw ellipse outline over the lion.
+	// 4. Match C++ simple_blur.cpp: stroke the ellipse, then stroke that stroke.
 	rx, ry := 100.0, 100.0
 	ellipse := shapes.NewEllipseWithParams(simpleBlurCX, simpleBlurCY, rx, ry, 100, false)
-	ellConv := &ellipseConvVS{ell: ellipse}
-	stroke := conv.NewConvStroke(ellConv)
-	stroke.SetWidth(2.0)
-	strokeVS := conv.NewRasterizerVertexSourceAdapter(stroke)
+	ellStroke1 := conv.NewConvStroke(&ellipseConvVS{ell: ellipse})
+	ellStroke1.SetWidth(6.0)
+	ellStroke2 := conv.NewConvStroke(ellStroke1)
+	ellStroke2.SetWidth(2.0)
 	ras.Reset()
-	ras.AddPath(strokeVS, 0)
+	ras.AddPath(conv.NewRasterizerVertexSourceAdapter(ellStroke2), 0)
 	renSolid.SetColor(color.RGBA8[color.Linear]{R: 0, G: 51, B: 0, A: 255})
 	renscan.RenderScanlines(ras, sl, renSolid)
 
-	// 6. Apply 3×3 box-blur inside the ellipse using the pre-outline snapshot.
+	// 5. Snapshot after the boundary is drawn, like C++ copy_window_to_img(0).
+	bgImg := agg.NewImage(make([]uint8, len(img.Data)), img.Width(), img.Height(), img.Stride())
+	copy(bgImg.Data, img.Data)
+
+	// 6. Apply 3x3 box-blur inside the ellipse through AA rasterized coverage.
 	applyBlurInsideEllipseSimple(img, bgImg, simpleBlurCX, simpleBlurCY, rx, ry)
+
+	applyLinearToSRGB(img)
 }
 
 // drawSimpleBlurLionFill renders the lion fill paths into the left half of the canvas.
@@ -139,54 +141,62 @@ func (v lionSimpleBlurColorView) GetPathID(index int) uint32 {
 	return uint32(v.data.PathIdx[index])
 }
 
-// applyBlurInsideEllipseSimple performs a 3×3 box-blur on dst for all pixels
-// inside the ellipse defined by (cx, cy, rx, ry), sampling from src.
-// It uses img.Stride() rather than a hardcoded stride to support any buffer layout.
+// applyBlurInsideEllipseSimple performs the C++ span_simple_blur_rgb24 operation
+// through an anti-aliased ellipse rasterizer, sampling from src.
 func applyBlurInsideEllipseSimple(dst, src *agg.Image, cx, cy, rx, ry float64) {
-	w, h := dst.Width(), dst.Height()
-	dstData := dst.Data
-	srcData := src.Data
-	dstStride := dst.Stride()
-	srcStride := src.Stride()
-	dstBase := 0
-	srcBase := 0
-	if dstStride < 0 {
-		dstBase = (h - 1) * -dstStride
-	}
-	if srcStride < 0 {
-		srcBase = (h - 1) * -srcStride
+	dstRbuf := buffer.NewRenderingBufferU8()
+	dstRbuf.Attach(dst.Data, dst.Width(), dst.Height(), dst.Stride())
+	srcRbuf := buffer.NewRenderingBufferU8()
+	srcRbuf.Attach(src.Data, src.Width(), src.Height(), src.Stride())
+
+	pf := pixfmt.NewPixFmtRGBA32PreLinear(dstRbuf)
+	ren := renderer.NewRendererBaseWithPixfmt(pf)
+	alloc := span.NewSpanAllocator[color.RGBA8[color.Linear]]()
+	gen := &simpleBlurSpanGenerator{src: srcRbuf}
+
+	ellipse := shapes.NewEllipseWithParams(cx, cy, rx, ry, 100, false)
+	ras := newSimpleBlurRasterizer()
+	ras.AddPath(&ellipseVS{ell: ellipse}, 0)
+	renscan.RenderScanlinesAA(ras, scanline.NewScanlineU8(), ren, alloc, gen)
+}
+
+type simpleBlurRasterizer = rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
+
+func newSimpleBlurRasterizer() *simpleBlurRasterizer {
+	return rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip(),
+	)
+}
+
+type simpleBlurSpanGenerator struct {
+	src *buffer.RenderingBufferU8
+}
+
+func (g *simpleBlurSpanGenerator) Prepare() {}
+
+func (g *simpleBlurSpanGenerator) Generate(colors []color.RGBA8[color.Linear], x, y, length int) {
+	w, h := g.src.Width(), g.src.Height()
+	if y < 1 || y >= h-1 {
+		return
 	}
 
-	rx2 := rx * rx
-	ry2 := ry * ry
-
-	for y := 0; y < h; y++ {
-		dy := float64(y) - cy
-		dy2 := dy * dy
-		for x := 0; x < w; x++ {
-			dx := float64(x) - cx
-			if dx*dx/rx2+dy2/ry2 > 1.0 {
-				continue // outside ellipse
-			}
-			if x == 0 || x == w-1 || y == 0 || y == h-1 {
-				continue // skip border pixels
-			}
-			var r, g, b, a uint32
+	for i := 0; i < length; i++ {
+		if x > 0 && x < w-1 {
+			var r, gg, b uint32
 			for iy := -1; iy <= 1; iy++ {
-				rowOff := srcBase + (y+iy)*srcStride
-				for ix := -1; ix <= 1; ix++ {
-					idx := rowOff + (x+ix)*4
-					r += uint32(srcData[idx])
-					g += uint32(srcData[idx+1])
-					b += uint32(srcData[idx+2])
-					a += uint32(srcData[idx+3])
+				row := g.src.Row(y + iy)
+				off := (x - 1) * 4
+				for ix := 0; ix < 3; ix++ {
+					r += uint32(row[off])
+					gg += uint32(row[off+1])
+					b += uint32(row[off+2])
+					off += 4
 				}
 			}
-			dstIdx := dstBase + y*dstStride + x*4
-			dstData[dstIdx] = uint8(r / 9)
-			dstData[dstIdx+1] = uint8(g / 9)
-			dstData[dstIdx+2] = uint8(b / 9)
-			dstData[dstIdx+3] = uint8(a / 9)
+			colors[i] = color.RGBA8[color.Linear]{R: uint8(r / 9), G: uint8(gg / 9), B: uint8(b / 9), A: 255}
+		} else {
+			colors[i] = color.RGBA8[color.Linear]{A: 255}
 		}
+		x++
 	}
 }

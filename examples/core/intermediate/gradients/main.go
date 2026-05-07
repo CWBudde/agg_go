@@ -241,8 +241,9 @@ func (d *demo) Render(img *agg.Image) {
 
 func main() {
 	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "AGG gradients with Mach bands compensation",
-		Width:  gradientsWidth,
-		Height: gradientsHeight,
+		Title:                 "AGG gradients with Mach bands compensation",
+		Width:                 gradientsWidth,
+		Height:                gradientsHeight,
+		EncodeLinearRGBToSRGB: true,
 	}, &demo{})
 }

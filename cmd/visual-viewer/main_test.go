@@ -92,6 +92,57 @@ func TestPageHeaderEmitsRegenerateAllForm(t *testing.T) {
 	}
 }
 
+func TestPageInterceptsRegenerateFormsWithFetch(t *testing.T) {
+	requiredSnippets := []string{
+		`function regenerateFromForm(form) {`,
+		`return fetch(form.action, {`,
+		`method: (form.method || 'POST').toUpperCase()`,
+		`form.addEventListener('submit', function(e) {`,
+		`e.preventDefault();`,
+		`window.alert(err.message);`,
+		`setRegenerateButtonsDisabled(false);`,
+	}
+	for _, snippet := range requiredSnippets {
+		if !strings.Contains(pageFooter, snippet) {
+			t.Fatalf("pageFooter missing regenerate fetch snippet %q", snippet)
+		}
+	}
+}
+
+func TestPageUsesCacheBustingNavigationAfterRegenerate(t *testing.T) {
+	requiredSnippets := []string{
+		`function navigateToFreshPage() {`,
+		`url.searchParams.set('_vv', String(Date.now()));`,
+		`window.location.assign(url.toString());`,
+		`regenerateFromForm(form).then(function() {`,
+		`navigateToFreshPage();`,
+	}
+	for _, snippet := range requiredSnippets {
+		if !strings.Contains(pageFooter, snippet) {
+			t.Fatalf("pageFooter missing regenerate freshness snippet %q", snippet)
+		}
+	}
+	if strings.Contains(pageFooter, `window.location.reload();`) {
+		t.Fatal("pageFooter still uses plain reload after regenerate")
+	}
+}
+
+func TestPageRegenerateButtonsSeparateDisabledAndBusyCursors(t *testing.T) {
+	requiredSnippets := []string{
+		`.regen-button:disabled { opacity: 0.6; cursor: not-allowed; }`,
+		`.regen-button.is-regenerating { cursor: wait; }`,
+		`button.classList.toggle('is-regenerating', disabled);`,
+	}
+	for _, snippet := range requiredSnippets {
+		if !strings.Contains(pageHeader, snippet) && !strings.Contains(pageFooter, snippet) {
+			t.Fatalf("page markup missing regenerate cursor snippet %q", snippet)
+		}
+	}
+	if strings.Contains(pageHeader, `.regen-button:disabled { opacity: 0.6; cursor: wait; }`) {
+		t.Fatal("disabled regenerate buttons still use wait cursor")
+	}
+}
+
 func TestPageHeaderEmitsResampleModeControl(t *testing.T) {
 	for _, want := range []string{
 		`id="resample-mode"`,
