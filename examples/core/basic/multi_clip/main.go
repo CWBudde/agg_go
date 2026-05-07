@@ -204,29 +204,27 @@ func (d *demo) Render(img *agg.Image) {
 	renscan.RenderAllPaths(ras, sl, renSolid, rasVS, &d.ld, &d.ld, d.ld.NPaths)
 
 	// 2. Render random Bresenham lines and markers
-	rng := newClibcRandSeed1()
+	rng := newClibcRand(1)
 	m := markers.NewRendererMarkers[*renderer.RendererMClip[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](mclip)
 	for i := 0; i < 50; i++ {
-		m.LineColor(color.RGBA8[color.Linear]{
-			R: uint8(rng.randAnd(0x7F)),
-			G: uint8(rng.randAnd(0x7F)),
-			B: uint8(rng.randAnd(0x7F)),
-			A: uint8(rng.randAnd(0x7F) + 127),
-		})
-		m.FillColor(color.RGBA8[color.Linear]{
-			R: uint8(rng.randAnd(0x7F)),
-			G: uint8(rng.randAnd(0x7F)),
-			B: uint8(rng.randAnd(0x7F)),
-			A: uint8(rng.randAnd(0x7F) + 127),
-		})
+		m.LineColor(rgbaRandRTL(rng, 0x7F))
+		m.FillColor(rgbaRandRTL(rng, 0x7F))
 
+		y2 := rng.randN(d.h)
+		x2 := rng.randN(d.w)
+		y1 := rng.randN(d.h)
+		x1 := rng.randN(d.w)
 		m.Line(
-			m.Coord(float64(rng.randN(d.w))), m.Coord(float64(rng.randN(d.h))),
-			m.Coord(float64(rng.randN(d.w))), m.Coord(float64(rng.randN(d.h))),
+			m.Coord(float64(x1)), m.Coord(float64(y1)),
+			m.Coord(float64(x2)), m.Coord(float64(y2)),
 			true,
 		)
 
-		m.Marker(rng.randN(d.w), rng.randN(d.h), rng.randN(10)+5, markers.MarkerType(rng.randN(int(markers.EndOfMarkers))))
+		markerType := markers.MarkerType(rng.randN(int(markers.EndOfMarkers)))
+		radius := rng.randN(10) + 5
+		y := rng.randN(d.h)
+		x := rng.randN(d.w)
+		m.Marker(x, y, radius, markerType)
 	}
 
 	// 3. Render random anti-aliased lines
@@ -239,14 +237,13 @@ func (d *demo) Render(img *agg.Image) {
 	rasOutline.SetRoundCap(true)
 
 	for i := 0; i < 50; i++ {
-		renOutline.Color(color.RGBA8[color.Linear]{
-			R: uint8(rng.randAnd(0x7F)),
-			G: uint8(rng.randAnd(0x7F)),
-			B: uint8(rng.randAnd(0x7F)),
-			A: uint8(rng.randAnd(0x7F) + 127),
-		})
-		rasOutline.MoveToD(float64(rng.randN(d.w)), float64(rng.randN(d.h)))
-		rasOutline.LineToD(float64(rng.randN(d.w)), float64(rng.randN(d.h)))
+		renOutline.Color(rgbaRandRTL(rng, 0x7F))
+		y1 := rng.randN(d.h)
+		x1 := rng.randN(d.w)
+		rasOutline.MoveToD(float64(x1), float64(y1))
+		y2 := rng.randN(d.h)
+		x2 := rng.randN(d.w)
+		rasOutline.LineToD(float64(x2), float64(y2))
 		rasOutline.Render(false)
 	}
 
@@ -266,12 +263,7 @@ func (d *demo) Render(img *agg.Image) {
 		inter := span.NewSpanInterpolatorLinearDefault(grm)
 
 		c1 := color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 0}
-		c2 := color.RGBA8[color.Linear]{
-			R: uint8(rng.randAnd(0x7F)),
-			G: uint8(rng.randAnd(0x7F)),
-			B: uint8(rng.randAnd(0x7F)),
-			A: 255,
-		}
+		c2 := rgbaRandRGBRTL(rng, 255)
 
 		sg := span.NewRadialGradientRGBA8(inter, c1, c2, 0, 10, 256)
 
@@ -344,8 +336,8 @@ func main() {
 }
 
 // ---------------------------------------------------------------------------
-// glibc rand() with default seed (no srand call = seed 1).
-// State pre-computed from glibc srand(1) initialization + 310 warmup cycles.
+// glibc rand()/random() with the same initialization as srand(seed).
+// This mirrors internal/demo/alphamask2's parity RNG.
 // ---------------------------------------------------------------------------
 
 type clibcRand struct {
@@ -354,20 +346,39 @@ type clibcRand struct {
 	rptr  int
 }
 
-func newClibcRandSeed1() *clibcRand {
-	return &clibcRand{
-		state: [31]int32{
-			-1726662223, 379960547, 1735697613, 1040273694, 1313901226,
-			1627687941, -179304937, -2073915851, 19113796, -73392711,
-			864575501, 1954350912, 1853386453, 108502596, 1770989849,
-			1140076113, 2120506151, 1431634354, 1162235973, 1961623253,
-			1362719266, 2132549216, 1961162464, -225679901, 196417531,
-			1647413401, 1435272633, 1081395475, 411831818, 52187654,
-			-499380962,
-		},
+func newClibcRand(seed int32) *clibcRand {
+	if seed == 0 {
+		seed = 1
+	}
+
+	const (
+		mod  int64 = 2147483647
+		mult int64 = 16807
+	)
+
+	var seq [344]int32
+	seq[0] = seed
+	for i := 1; i < 31; i++ {
+		v := mult * int64(seq[i-1]) % mod
+		if v < 0 {
+			v += mod
+		}
+		seq[i] = int32(v)
+	}
+	for i := 31; i < 34; i++ {
+		seq[i] = seq[i-31]
+	}
+	for i := 34; i < len(seq); i++ {
+		seq[i] = seq[i-31] + seq[i-3]
+	}
+
+	rng := &clibcRand{
 		fptr: 3,
 		rptr: 0,
 	}
+	copy(rng.state[:3], seq[341:344])
+	copy(rng.state[3:], seq[313:341])
+	return rng
 }
 
 func (r *clibcRand) next() int32 {
@@ -376,12 +387,10 @@ func (r *clibcRand) next() int32 {
 	r.fptr++
 	if r.fptr >= 31 {
 		r.fptr = 0
-		r.rptr++
-	} else {
-		r.rptr++
-		if r.rptr >= 31 {
-			r.rptr = 0
-		}
+	}
+	r.rptr++
+	if r.rptr >= 31 {
+		r.rptr = 0
 	}
 	return result
 }
@@ -391,6 +400,22 @@ func (r *clibcRand) randN(n int) int { return int(r.next()) % n }
 
 // randAnd returns rand() & mask, matching C++ rand() & mask.
 func (r *clibcRand) randAnd(mask int) int { return int(r.next()) & mask }
+
+func rgbaRandRTL(rng *clibcRand, alphaBase int) color.RGBA8[color.Linear] {
+	return color.RGBA8[color.Linear]{
+		A: uint8(rng.randAnd(0x7F) + alphaBase),
+		B: uint8(rng.randAnd(0x7F)),
+		G: uint8(rng.randAnd(0x7F)),
+		R: uint8(rng.randAnd(0x7F)),
+	}
+}
+
+func rgbaRandRGBRTL(rng *clibcRand, alpha int) color.RGBA8[color.Linear] {
+	b := uint8(rng.randAnd(0x7F))
+	g := uint8(rng.randAnd(0x7F))
+	r := uint8(rng.randAnd(0x7F))
+	return color.RGBA8[color.Linear]{R: r, G: g, B: b, A: uint8(alpha)}
+}
 
 // Port of AGG C++ multi_clip.cpp – multi-clip region rendering.
 //
