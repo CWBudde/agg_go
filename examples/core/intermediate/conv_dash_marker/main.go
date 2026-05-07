@@ -429,8 +429,9 @@ func (d *demo) OnMouseUp(x, y int, btn lowlevelrunner.Buttons) bool {
 
 func main() {
 	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "Conv Dash Marker",
-		Width:  frameWidth,
-		Height: frameHeight,
+		Title:                 "Conv Dash Marker",
+		Width:                 frameWidth,
+		Height:                frameHeight,
+		EncodeLinearRGBToSRGB: true,
 	}, newDemo())
 }

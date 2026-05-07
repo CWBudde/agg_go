@@ -357,9 +357,10 @@ func max(a, b float64) float64 {
 
 func main() {
 	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "Image Filters 2",
-		Width:  frameWidth,
-		Height: frameHeight,
-		FlipY:  true,
+		Title:                 "Image Filters 2",
+		Width:                 frameWidth,
+		Height:                frameHeight,
+		FlipY:                 true,
+		EncodeLinearRGBToSRGB: true,
 	}, newDemo())
 }

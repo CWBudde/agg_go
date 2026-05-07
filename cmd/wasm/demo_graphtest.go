@@ -26,4 +26,5 @@ func drawGraphTestDemo() {
 		DrawNodes:   graphTestDrawNodes,
 		DrawEdges:   graphTestDrawEdges,
 	})
+	applyLinearToSRGB(ctx.GetImage())
 }

@@ -99,6 +99,8 @@ func drawLionLensDemo() {
 	renSolid := renscan.NewRendererScanlineAASolidWithRenderer(ren)
 
 	renscan.RenderAllPaths(ras, sl, renSolid, rasVS, lionData, lionData, lionData.NPaths)
+
+	applyLinearToSRGB(img)
 }
 
 func setLionLensScale(v float64)  { lionLensScale = v }

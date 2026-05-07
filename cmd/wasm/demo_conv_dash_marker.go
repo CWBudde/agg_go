@@ -241,6 +241,8 @@ func drawDashDemo() {
 	for i := 0; i < 3; i++ {
 		drawHandle(dashX[i], dashY[i])
 	}
+
+	applyLinearToSRGB(img)
 }
 
 // --- Mouse handlers ---

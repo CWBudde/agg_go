@@ -249,9 +249,10 @@ func toAggColor(c icol.RGBA) agg.Color {
 
 func main() {
 	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "Lion Lens",
-		Width:  llWidth,
-		Height: llHeight,
-		FlipY:  true,
+		Title:                 "Lion Lens",
+		Width:                 llWidth,
+		Height:                llHeight,
+		FlipY:                 true,
+		EncodeLinearRGBToSRGB: true,
 	}, newDemo())
 }

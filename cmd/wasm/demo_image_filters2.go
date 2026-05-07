@@ -20,4 +20,5 @@ func setImageFilters2Normalize(v bool) {
 
 func drawImageFilters2Demo() {
 	imagefilters2.Draw(ctx, imageFilters2State)
+	applyLinearToSRGB(ctx.GetImage())
 }

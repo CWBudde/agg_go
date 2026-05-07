@@ -26,9 +26,10 @@ func (d *demo) Render(img *agg.Image) {
 func main() {
 	d := &demo{graph: graphtest.NewGraph(200, 100)}
 	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "Graph Test",
-		Width:  700,
-		Height: 530,
-		FlipY:  true,
+		Title:                 "Graph Test",
+		Width:                 700,
+		Height:                530,
+		FlipY:                 true,
+		EncodeLinearRGBToSRGB: true,
 	}, d)
 }
