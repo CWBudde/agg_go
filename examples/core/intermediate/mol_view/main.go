@@ -65,9 +65,10 @@ func (d *demo) IsAnimated() bool {
 
 func main() {
 	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "Mol View",
-		Width:  400,
-		Height: 400,
-		FlipY:  true,
+		Title:                 "Mol View",
+		Width:                 400,
+		Height:                400,
+		FlipY:                 true,
+		EncodeLinearRGBToSRGB: true,
 	}, newDemo())
 }

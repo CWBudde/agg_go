@@ -476,20 +476,17 @@ func renderCtrl(ctx *agg.Context, ctrl ctrlbase.Ctrl[icolor.RGBA]) {
 }
 
 func toAggColor(c icolor.RGBA) agg.Color {
-	clamp := func(v float64, encode bool) uint8 {
+	clamp := func(v float64) uint8 {
 		switch {
 		case v <= 0:
 			return 0
 		case v >= 1:
 			return 255
 		default:
-			if encode {
-				v = math.Pow(v, 1.0/2.2)
-			}
 			return uint8(v*255 + 0.5)
 		}
 	}
-	return agg.NewColor(clamp(c.R, true), clamp(c.G, true), clamp(c.B, true), clamp(c.A, false))
+	return agg.NewColor(clamp(c.R), clamp(c.G), clamp(c.B), clamp(c.A))
 }
 
 func loadMolecules() []Molecule {
