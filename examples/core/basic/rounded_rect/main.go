@@ -35,7 +35,7 @@ const (
 
 type (
 	colorType = color.RGBA8[color.Linear]
-	pixFmt    = *pixfmt.PixFmtRGBA32[color.Linear]
+	pixFmt    = *pixfmt.PixFmtRGBA32Plain[color.Linear]
 	renBaseT  = *renderer.RendererBase[pixFmt, colorType]
 	rasType   = *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
 	slType    = *scanline.ScanlineP8
@@ -96,11 +96,13 @@ func newDemo() *demo {
 	radius.SetLabel("radius=%4.3f")
 	radius.SetRange(0.0, 50.0)
 	radius.SetValue(defaultRadius)
+	applyCPPSliderColors(radius)
 
 	offset := sliderctrl.NewSliderCtrl(10, 10+20, demoWidth-10, 19+20, false)
 	offset.SetLabel("subpixel offset=%4.3f")
 	offset.SetRange(-2.0, 3.0)
 	offset.SetValue(defaultOffset)
+	applyCPPSliderColors(offset)
 
 	ctrlGray := color.NewRGBAFromRGBA8(127, 127, 127, 255)
 	whiteOnBlack := checkboxctrl.NewDefaultCheckboxCtrl(10, 10+40, "White on black", false)
@@ -119,7 +121,7 @@ func newDemo() *demo {
 
 func (d *demo) Render(img *agg.Image) {
 	rbuf := buffer.NewRenderingBufferU8WithData(img.Data, img.Width(), img.Height(), img.Stride())
-	pf := pixfmt.NewPixFmtRGBA32[color.Linear](rbuf)
+	pf := pixfmt.NewPixFmtRGBA32Plain[color.Linear](rbuf)
 	rb := renderer.NewRendererBaseWithPixfmt[pixFmt, colorType](pf)
 	if d.whiteOnBlack.IsChecked() {
 		rb.Clear(colorType{R: 0, G: 0, B: 0, A: 255})
@@ -161,6 +163,22 @@ func (d *demo) Render(img *agg.Image) {
 	renderSlider(ras, sl, rb, d.radiusCtrl)
 	renderSlider(ras, sl, rb, d.offsetCtrl)
 	renderCheckbox(ras, sl, rb, d.whiteOnBlack)
+}
+
+func applyCPPSliderColors(s *sliderctrl.SliderCtrl) {
+	s.SetBackgroundColor(linearRGBAForSRGBA8(color.NewRGBA(1.0, 0.9, 0.8, 1.0)))
+	s.SetTriangleColor(linearRGBAForSRGBA8(color.NewRGBA(0.7, 0.6, 0.6, 1.0)))
+	s.SetPointerPreviewColor(linearRGBAForSRGBA8(color.NewRGBA(0.6, 0.4, 0.4, 0.4)))
+	s.SetPointerColor(linearRGBAForSRGBA8(color.NewRGBA(0.8, 0.0, 0.0, 0.6)))
+}
+
+func linearRGBAForSRGBA8(c color.RGBA) color.RGBA {
+	return color.RGBA{
+		R: color.ConvertToSRGB(c.R),
+		G: color.ConvertToSRGB(c.G),
+		B: color.ConvertToSRGB(c.B),
+		A: c.A,
+	}
 }
 
 func renderSlider(ras rasType, sl slType, rb renBaseT, s *sliderctrl.SliderCtrl) {

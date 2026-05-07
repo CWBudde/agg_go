@@ -29,6 +29,37 @@ func TestRoundedRectDemoSavedPNGUsesCXXControlGray(t *testing.T) {
 	t.Chdir(t.TempDir())
 	main()
 
+	got := loadSavedDemoPNG(t)
+
+	if countNeutralGray(got, image.Rect(0, demoHeight-60, demoWidth, demoHeight), 110, 145) < 50 {
+		t.Fatalf("expected C++ srgba8(127,127,127) control gray in saved PNG")
+	}
+}
+
+func TestRoundedRectDemoSavedPNGBlendsSliderPointerAlpha(t *testing.T) {
+	t.Chdir(t.TempDir())
+	main()
+
+	got := loadSavedDemoPNG(t)
+	r16, g16, b16, _ := got.At(300, 365).RGBA()
+	r := uint8(r16 >> 8)
+	g := uint8(g16 >> 8)
+	b := uint8(b16 >> 8)
+	if r < 210 || g < 60 || b < 50 {
+		t.Fatalf("offset slider pointer pixel = (%d,%d,%d), want translucent blend over slider background", r, g, b)
+	}
+}
+
+func TestRoundedRectDemoDefaultOffsetMatchesCPP(t *testing.T) {
+	d := newDemo()
+	if got := d.offsetCtrl.Value(); got != 0.5 {
+		t.Fatalf("default offset = %v, want 0.5", got)
+	}
+}
+
+func loadSavedDemoPNG(t *testing.T) image.Image {
+	t.Helper()
+
 	f, err := os.Open(filepath.Join(".", "rounded_rectangle.png"))
 	if err != nil {
 		t.Fatalf("open output PNG: %v", err)
@@ -39,17 +70,7 @@ func TestRoundedRectDemoSavedPNGUsesCXXControlGray(t *testing.T) {
 	if err != nil {
 		t.Fatalf("decode output PNG: %v", err)
 	}
-
-	if countNeutralGray(got, image.Rect(0, demoHeight-60, demoWidth, demoHeight), 110, 145) < 50 {
-		t.Fatalf("expected C++ srgba8(127,127,127) control gray in saved PNG")
-	}
-}
-
-func TestRoundedRectDemoDefaultOffsetMatchesCPP(t *testing.T) {
-	d := newDemo()
-	if got := d.offsetCtrl.Value(); got != 0.5 {
-		t.Fatalf("default offset = %v, want 0.5", got)
-	}
+	return got
 }
 
 func countNonWhite(img image.Image, rect image.Rectangle) int {
