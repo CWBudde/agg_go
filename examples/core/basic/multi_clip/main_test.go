@@ -1,6 +1,10 @@
 package main
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/cwbudde/agg_go/internal/color"
+)
 
 func TestNewClibcRandMatchesAlphaMask2Seed1State(t *testing.T) {
 	t.Parallel()
@@ -20,5 +24,41 @@ func TestNewClibcRandMatchesAlphaMask2Seed1State(t *testing.T) {
 	}
 	if rng.state != want {
 		t.Fatalf("state = %v, want %v", rng.state, want)
+	}
+}
+
+func TestRGBARandRTLMatchesCppSrgba8Conversion(t *testing.T) {
+	rng := newClibcRand(1)
+	got := rgbaRandRTL(rng, 0x7F)
+
+	expectedRng := newClibcRand(1)
+	raw := color.RGBA8[color.SRGB]{
+		A: uint8(expectedRng.randAnd(0x7F) + 0x7F),
+		B: uint8(expectedRng.randAnd(0x7F)),
+		G: uint8(expectedRng.randAnd(0x7F)),
+		R: uint8(expectedRng.randAnd(0x7F)),
+	}
+	want := color.ConvertRGBA8SRGBToLinear(raw)
+
+	if got != want {
+		t.Fatalf("rgbaRandRTL = %+v, want C++ srgba8 decoded to linear %+v from raw %+v", got, want, raw)
+	}
+}
+
+func TestRGBARandRGBRTLMatchesCppSrgba8Conversion(t *testing.T) {
+	rng := newClibcRand(1)
+	got := rgbaRandRGBRTL(rng, 255)
+
+	expectedRng := newClibcRand(1)
+	raw := color.RGBA8[color.SRGB]{
+		B: uint8(expectedRng.randAnd(0x7F)),
+		G: uint8(expectedRng.randAnd(0x7F)),
+		R: uint8(expectedRng.randAnd(0x7F)),
+		A: 255,
+	}
+	want := color.ConvertRGBA8SRGBToLinear(raw)
+
+	if got != want {
+		t.Fatalf("rgbaRandRGBRTL = %+v, want C++ srgba8 decoded to linear %+v from raw %+v", got, want, raw)
 	}
 }

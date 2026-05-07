@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	agg "github.com/cwbudde/agg_go"
+	internalcolor "github.com/cwbudde/agg_go/internal/color"
 )
 
 func TestGraphTypeControlMatchesCPPVisualOrder(t *testing.T) {
@@ -52,6 +53,40 @@ func TestGraphArrowsRenderOnTopOfNodes(t *testing.T) {
 	if !isDarkArrowPixel(got) {
 		t.Fatalf("arrow sample at destination node = rgba(%d,%d,%d,%d), want dark edge/arrow color on top of node gradient",
 			got.R, got.G, got.B, got.A)
+	}
+}
+
+func TestGraphEdgeColorsMatchCPPsRGBConversion(t *testing.T) {
+	g := &Graph{
+		nodes: []node{
+			{x: 0.2, y: 0.5},
+			{x: 0.8, y: 0.5},
+		},
+		edges:    []edge{{n1: 0, n2: 1}},
+		prepared: make(map[[2]int]*preparedGraph),
+	}
+
+	img := agg.NewImage(make([]byte, 100*100*4), 100, 100, 100*4)
+	Draw(agg.NewContextForImage(img), g, Config{
+		Mode:      0,
+		Width:     2,
+		DrawNodes: false,
+		DrawEdges: true,
+	})
+
+	rng := newClibcRandSeed(100)
+	srgb := internalcolor.RGBA8[internalcolor.SRGB]{
+		R: uint8(rng.randN(128)),
+		G: uint8(rng.randN(128)),
+		B: uint8(rng.randN(128)),
+		A: 255,
+	}
+	want := internalcolor.ConvertRGBA8SRGBToLinear(srgb)
+
+	got := img.ToGoImage().RGBAAt(50, 50)
+	if got.R != want.R || got.G != want.G || got.B != want.B || got.A != want.A {
+		t.Fatalf("edge sample = rgba(%d,%d,%d,%d), want C++ srgba8 converted to linear rgba(%d,%d,%d,%d)",
+			got.R, got.G, got.B, got.A, want.R, want.G, want.B, want.A)
 	}
 }
 

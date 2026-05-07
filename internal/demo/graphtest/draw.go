@@ -147,7 +147,7 @@ func Draw(ctx *agg.Context, g *Graph, cfg Config) {
 			if cfg.Translucent {
 				a8 = 80
 			}
-			col := agg.NewColor(r, gc, b, a8)
+			col := graphEdgeColor(r, gc, b, a8)
 			ctx.SetColor(col)
 
 			switch cfg.Mode {
@@ -181,6 +181,16 @@ func Draw(ctx *agg.Context, g *Graph, cfg Config) {
 	if cfg.ShowControls {
 		drawControls(ctx, cfg)
 	}
+}
+
+func graphEdgeColor(r, g, b, a uint8) agg.Color {
+	linear := icolor.ConvertRGBA8SRGBToLinear(icolor.RGBA8[icolor.SRGB]{
+		R: r,
+		G: g,
+		B: b,
+		A: a,
+	})
+	return agg.NewColorRGBA8(linear)
 }
 
 func (g *Graph) prepare(width, height int) *preparedGraph {

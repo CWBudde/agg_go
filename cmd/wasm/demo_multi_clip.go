@@ -311,18 +311,23 @@ func (r *multiClipRand) randN(n int) int { return int(r.next()) % n }
 // randAnd returns rand() & mask, matching C++ rand() & mask.
 func (r *multiClipRand) randAnd(mask int) int { return int(r.next()) & mask }
 
+func multiClipSrgba8(r, g, b, a uint8) color.RGBA8[color.Linear] {
+	return color.ConvertRGBA8SRGBToLinear(color.RGBA8[color.SRGB]{
+		R: r, G: g, B: b, A: a,
+	})
+}
+
 func multiClipRGBARandRTL(rng *multiClipRand, alphaBase int) color.RGBA8[color.Linear] {
-	return color.RGBA8[color.Linear]{
-		A: uint8(rng.randAnd(0x7F) + alphaBase),
-		B: uint8(rng.randAnd(0x7F)),
-		G: uint8(rng.randAnd(0x7F)),
-		R: uint8(rng.randAnd(0x7F)),
-	}
+	a := uint8(rng.randAnd(0x7F) + alphaBase)
+	b := uint8(rng.randAnd(0x7F))
+	g := uint8(rng.randAnd(0x7F))
+	r := uint8(rng.randAnd(0x7F))
+	return multiClipSrgba8(r, g, b, a)
 }
 
 func multiClipRGBARandRGBRTL(rng *multiClipRand, alpha int) color.RGBA8[color.Linear] {
 	b := uint8(rng.randAnd(0x7F))
 	g := uint8(rng.randAnd(0x7F))
 	r := uint8(rng.randAnd(0x7F))
-	return color.RGBA8[color.Linear]{R: r, G: g, B: b, A: uint8(alpha)}
+	return multiClipSrgba8(r, g, b, uint8(alpha))
 }

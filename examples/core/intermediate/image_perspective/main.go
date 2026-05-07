@@ -38,7 +38,7 @@ func (a *ctrlVertexSourceAdapter) Vertex(x, y *float64) uint32 {
 	return uint32(cmd)
 }
 
-func toAggColor(c icol.RGBA) agg.Color {
+func toDisplayAggColor(c icol.RGBA) agg.Color {
 	clamp := func(v float64) uint8 {
 		switch {
 		case v <= 0:
@@ -50,7 +50,13 @@ func toAggColor(c icol.RGBA) agg.Color {
 		}
 	}
 
-	return agg.NewColor(clamp(c.R), clamp(c.G), clamp(c.B), clamp(c.A))
+	srgb := icol.ConvertToSRGBFromLinear(icol.RGBA8[icol.Linear]{
+		R: clamp(c.R),
+		G: clamp(c.G),
+		B: clamp(c.B),
+		A: clamp(c.A),
+	})
+	return agg.NewColor(srgb.R, srgb.G, srgb.B, srgb.A)
 }
 
 func renderCtrl(
@@ -64,14 +70,12 @@ func renderCtrl(
 	for pathID := uint(0); pathID < c.NumPaths(); pathID++ {
 		ras.Reset()
 		ras.AddPath(&ctrlVertexSourceAdapter{ctrl: c}, uint32(pathID))
-		a.RenderRasterizerWithColor(toAggColor(c.Color(pathID)))
+		a.RenderRasterizerWithColor(toDisplayAggColor(c.Color(pathID)))
 	}
 }
 
 func newDemo() *demo {
 	transType := rboxctrl.NewDefaultRboxCtrl(420, 5.0, 420+170.0, 70.0, false)
-	transType.SetTextSize(8, 0)
-	transType.SetTextThickness(1.0)
 	transType.AddItem("Affine Parallelogram")
 	transType.AddItem("Bilinear")
 	transType.AddItem("Perspective")
@@ -100,13 +104,13 @@ func (d *demo) Render(img *agg.Image) {
 	elapsed := time.Since(start)
 
 	a := ctx.GetAgg2D()
-	renderCtrl(a, a.GetInternalRasterizer(), d.transType)
-
 	a.FontGSV(10)
 	a.FlipText(false)
 	a.FillColor(agg.Black)
 	a.NoLine()
 	a.Text(10, 10, fmt.Sprintf("%3.2f ms", float64(elapsed)/float64(time.Millisecond)), false, 0, 0)
+
+	renderCtrl(a, a.GetInternalRasterizer(), d.transType)
 }
 
 func (d *demo) OnMouseDown(x, y int, btn lowlevelrunner.Buttons) bool {
@@ -152,10 +156,14 @@ func (d *demo) OnMouseMove(x, y int, btn lowlevelrunner.Buttons) bool {
 }
 
 func main() {
-	lowlevelrunner.Run(lowlevelrunner.Config{
+	lowlevelrunner.Run(runnerConfig(), newDemo())
+}
+
+func runnerConfig() lowlevelrunner.Config {
+	return lowlevelrunner.Config{
 		Title:  "Image Perspective",
 		Width:  600,
 		Height: 600,
 		FlipY:  true,
-	}, newDemo())
+	}
 }
