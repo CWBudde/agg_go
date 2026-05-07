@@ -359,6 +359,5 @@ func drawAATestDemo() {
 		renscan.RenderScanlinesAA(ras, sl, rb, alloc, spanGen)
 	}
 
-	// No sRGB conversion: standalone uses EncodeLinearRGBToSRGB: false.
-	_ = img
+	applyLinearToSRGB(img)
 }

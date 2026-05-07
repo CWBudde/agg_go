@@ -387,6 +387,6 @@ func main() {
 		Title:                 "AA Test",
 		Width:                 frameWidth,
 		Height:                frameHeight,
-		EncodeLinearRGBToSRGB: false,
+		EncodeLinearRGBToSRGB: true,
 	}, &demo{})
 }
