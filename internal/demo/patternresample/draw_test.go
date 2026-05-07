@@ -40,3 +40,11 @@ func TestGammaAdjustedSourceUsesAGGFlipYImageOrientation(t *testing.T) {
 		t.Fatalf("gammaAdjustedSource(1) returned cachedAgg directly; want orientation-adjusted copy")
 	}
 }
+
+func TestQuadToolColorMatchesPatternResampleSource(t *testing.T) {
+	got := toRawAggColor(quadToolColor())
+	if got.R != 0 || got.G != 77 || got.B != 128 || got.A != 26 {
+		t.Fatalf("pattern_resample quad tool color = rgba(%d,%d,%d,%d), want C++ rgba(0,0.3,0.5,0.1) rounded to rgba(0,77,128,26)",
+			got.R, got.G, got.B, got.A)
+	}
+}

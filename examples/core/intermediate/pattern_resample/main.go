@@ -41,11 +41,11 @@ func renderCtrl(a *agg.Agg2D, c ctrlbase.Ctrl[icol.RGBA]) {
 	for pathID := uint(0); pathID < c.NumPaths(); pathID++ {
 		ras.Reset()
 		ras.AddPath(&ctrlVertexSourceAdapter{ctrl: c}, uint32(pathID))
-		a.RenderRasterizerWithColor(toAggColor(c.Color(pathID)))
+		a.RenderRasterizerWithColor(toDisplayAggColor(c.Color(pathID)))
 	}
 }
 
-func toAggColor(c icol.RGBA) agg.Color {
+func toDisplayAggColor(c icol.RGBA) agg.Color {
 	clamp := func(v float64) uint8 {
 		switch {
 		case v <= 0:
@@ -57,7 +57,13 @@ func toAggColor(c icol.RGBA) agg.Color {
 		}
 	}
 
-	return agg.NewColor(clamp(c.R), clamp(c.G), clamp(c.B), clamp(c.A))
+	srgb := icol.ConvertToSRGBFromLinear(icol.RGBA8[icol.Linear]{
+		R: clamp(c.R),
+		G: clamp(c.G),
+		B: clamp(c.B),
+		A: clamp(c.A),
+	})
+	return agg.NewColor(srgb.R, srgb.G, srgb.B, srgb.A)
 }
 
 type demo struct {
@@ -213,10 +219,14 @@ func (d *demo) OnKey(key rune) bool {
 }
 
 func main() {
-	lowlevelrunner.Run(lowlevelrunner.Config{
+	lowlevelrunner.Run(runnerConfig(), newDemo())
+}
+
+func runnerConfig() lowlevelrunner.Config {
+	return lowlevelrunner.Config{
 		Title:  "Pattern Resample",
 		Width:  frameWidth,
 		Height: frameHeight,
 		FlipY:  true,
-	}, newDemo())
+	}
 }

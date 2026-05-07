@@ -178,8 +178,6 @@ func (d *demo) Render(img *agg.Image) {
 	renderGlyph(a, 0, 0.0, false)
 
 	closeCtrl := rbox.NewDefaultRboxCtrl(10, 10, 130, 80, false)
-	closeCtrl.SetTextSize(7.5, 0)
-	closeCtrl.SetTextThickness(1.0)
 	_ = closeCtrl.AddItem("Close")
 	_ = closeCtrl.AddItem("Close CW")
 	_ = closeCtrl.AddItem("Close CCW")

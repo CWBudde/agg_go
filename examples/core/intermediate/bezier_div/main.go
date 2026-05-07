@@ -9,7 +9,9 @@
 package main
 
 import (
+	"fmt"
 	"math"
+	"time"
 
 	agg "github.com/cwbudde/agg_go"
 	"github.com/cwbudde/agg_go/examples/shared/lowlevelrunner"
@@ -23,6 +25,7 @@ import (
 	rboxctrl "github.com/cwbudde/agg_go/internal/ctrl/rbox"
 	sliderctrl "github.com/cwbudde/agg_go/internal/ctrl/slider"
 	"github.com/cwbudde/agg_go/internal/curves"
+	"github.com/cwbudde/agg_go/internal/gsv"
 	"github.com/cwbudde/agg_go/internal/path"
 	"github.com/cwbudde/agg_go/internal/pixfmt"
 	"github.com/cwbudde/agg_go/internal/rasterizer"
@@ -72,6 +75,20 @@ func (ev *ellipseVS) Vertex(x, y *float64) uint32 {
 	cmd := ev.e.Vertex(&vx, &vy)
 	*x, *y = vx, vy
 	return uint32(cmd)
+}
+
+type curvePoint struct {
+	x, y float64
+	dist float64
+}
+
+type curve4Source interface {
+	SetApproximationScale(float64)
+	SetAngleTolerance(float64)
+	SetCuspLimit(float64)
+	Init(x1, y1, x2, y2, x3, y3, x4, y4 float64)
+	Rewind(pathID uint)
+	Vertex() (x, y float64, cmd basics.PathCommand)
 }
 
 // ---------------------------------------------------------------------------
@@ -205,31 +222,9 @@ func (d *demo) Render(img *agg.Image) {
 
 	angleTol := d.angleTolerance.Value() * math.Pi / 180.0
 	cuspLimitVal := d.cuspLimit.Value() * math.Pi / 180.0
+	incremental := d.curveType.CurItem() == 0
 
-	// Build the curve using the selected method.
-	curve := curves.NewCurve4Div()
-	curve.SetApproximationScale(d.approxScale.Value())
-	curve.SetAngleTolerance(angleTol)
-	curve.SetCuspLimit(cuspLimitVal)
-	curve.Init(d.curve1.X1(), d.curve1.Y1(),
-		d.curve1.X2(), d.curve1.Y2(),
-		d.curve1.X3(), d.curve1.Y3(),
-		d.curve1.X4(), d.curve1.Y4())
-
-	// Collect subdivision points.
-	curvePath := path.NewPathStorageStl()
-	curve.Rewind(0)
-	for {
-		x, y, cmd := curve.Vertex()
-		if basics.IsStop(cmd) {
-			break
-		}
-		if basics.IsMoveTo(cmd) {
-			curvePath.MoveTo(x, y)
-		} else if basics.IsVertex(cmd) {
-			curvePath.LineTo(x, y)
-		}
-	}
+	curvePath := d.buildCurvePath(d.approxScale.Value(), angleTol, cuspLimitVal, incremental)
 
 	// Wide stroke from the curve.
 	curveAdapter := path.NewPathStorageStlVertexSourceAdapter(curvePath)
@@ -274,6 +269,19 @@ func (d *demo) Render(img *agg.Image) {
 			color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 128})
 	}
 
+	statsText := d.statsText(curvePath, angleTol, cuspLimitVal, incremental)
+	stats := gsv.NewGSVText()
+	stats.SetSize(8.0, 0)
+	stats.SetStartPoint(10.0, 85.0)
+	stats.SetText(statsText)
+
+	statsStroke := gsv.NewGSVTextOutline(stats)
+	statsStroke.SetWidth(1.5)
+	ras.Reset()
+	ras.AddPath(&convVS{src: statsStroke}, 0)
+	renscan.RenderScanlinesAASolid(ras, sl, mainRb,
+		color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255})
+
 	// Render all controls.
 	for _, c := range d.allCtrls {
 		renderCtrl(ras, sl, mainRb, c)
@@ -281,6 +289,195 @@ func (d *demo) Render(img *agg.Image) {
 
 	// Copy with y-flip (C++ uses flip_y=true).
 	copyFlipY(workBuf, img.Data, w, h)
+}
+
+func (d *demo) buildCurvePath(approxScale, angleTol, cuspLimitVal float64, incremental bool) *path.PathStorageStl {
+	curvePath := path.NewPathStorageStl()
+	curve := d.newCurve(approxScale, angleTol, cuspLimitVal, incremental)
+	curve.Rewind(0)
+	for {
+		x, y, cmd := curve.Vertex()
+		if basics.IsStop(cmd) {
+			break
+		}
+		if basics.IsMoveTo(cmd) {
+			curvePath.MoveTo(x, y)
+		} else if basics.IsVertex(cmd) {
+			curvePath.LineTo(x, y)
+		}
+	}
+	return curvePath
+}
+
+func (d *demo) newCurve(approxScale, angleTol, cuspLimitVal float64, incremental bool) curve4Source {
+	var curve curve4Source
+	if incremental {
+		curve = curves.NewCurve4Inc()
+	} else {
+		curve = curves.NewCurve4Div()
+	}
+	curve.SetApproximationScale(approxScale)
+	curve.SetAngleTolerance(angleTol)
+	curve.SetCuspLimit(cuspLimitVal)
+	d.initCurve(curve)
+	return curve
+}
+
+func (d *demo) initCurve(curve curve4Source) {
+	curve.Init(d.curve1.X1(), d.curve1.Y1(),
+		d.curve1.X2(), d.curve1.Y2(),
+		d.curve1.X3(), d.curve1.Y3(),
+		d.curve1.X4(), d.curve1.Y4())
+}
+
+func (d *demo) statsText(curvePath *path.PathStorageStl, angleTol, cuspLimitVal float64, incremental bool) string {
+	curveTime := d.measureCurveTime(angleTol, cuspLimitVal, incremental)
+	maxError01, maxAngleError01 := d.calcMaxError(0.01, angleTol, cuspLimitVal, incremental)
+	maxError1, maxAngleError1 := d.calcMaxError(0.1, angleTol, cuspLimitVal, incremental)
+	maxError10, maxAngleError10 := d.calcMaxError(1, angleTol, cuspLimitVal, incremental)
+	maxError100, maxAngleError100 := d.calcMaxError(10, angleTol, cuspLimitVal, incremental)
+	maxError1000, maxAngleError1000 := d.calcMaxError(100, angleTol, cuspLimitVal, incremental)
+
+	return fmt.Sprintf(
+		"Num Points=%d Time=%.2fmks\n\n"+
+			" Dist Error: x0.01=%.5f x0.1=%.5f x1=%.5f x10=%.5f x100=%.5f\n\n"+
+			"Angle Error: x0.01=%.1f x0.1=%.1f x1=%.1f x10=%.1f x100=%.1f",
+		countPathVertices(curvePath), curveTime,
+		maxError01, maxError1, maxError10, maxError100, maxError1000,
+		maxAngleError01, maxAngleError1, maxAngleError10, maxAngleError100, maxAngleError1000,
+	)
+}
+
+func (d *demo) measureCurveTime(angleTol, cuspLimitVal float64, incremental bool) float64 {
+	curve := d.newCurve(d.approxScale.Value(), angleTol, cuspLimitVal, incremental)
+	start := time.Now()
+	for i := 0; i < 100; i++ {
+		d.initCurve(curve)
+		curve.Rewind(0)
+		for {
+			_, _, cmd := curve.Vertex()
+			if basics.IsStop(cmd) {
+				break
+			}
+		}
+	}
+	return time.Since(start).Seconds() * 1_000_000.0 / 100.0
+}
+
+func (d *demo) calcMaxError(scale, angleTol, cuspLimitVal float64, incremental bool) (float64, float64) {
+	curve := d.newCurve(d.approxScale.Value()*scale, angleTol, cuspLimitVal, incremental)
+
+	var curvePoints []curvePoint
+	curve.Rewind(0)
+	for {
+		x, y, cmd := curve.Vertex()
+		if basics.IsStop(cmd) {
+			break
+		}
+		if basics.IsVertex(cmd) {
+			curvePoints = append(curvePoints, curvePoint{x: x, y: y})
+		}
+	}
+	if len(curvePoints) < 2 {
+		return 0, 0
+	}
+
+	curveDist := 0.0
+	for i := 1; i < len(curvePoints); i++ {
+		curvePoints[i-1].dist = curveDist
+		curveDist += basics.CalcDistance(
+			curvePoints[i-1].x, curvePoints[i-1].y,
+			curvePoints[i].x, curvePoints[i].y,
+		)
+	}
+	curvePoints[len(curvePoints)-1].dist = curveDist
+
+	const referenceCount = 4096
+	referencePoints := make([]curvePoint, referenceCount)
+	for i := range referencePoints {
+		mu := float64(i) / float64(referenceCount-1)
+		referencePoints[i].x, referencePoints[i].y = bezier4Point(
+			d.curve1.X1(), d.curve1.Y1(),
+			d.curve1.X2(), d.curve1.Y2(),
+			d.curve1.X3(), d.curve1.Y3(),
+			d.curve1.X4(), d.curve1.Y4(),
+			mu,
+		)
+	}
+
+	referenceDist := 0.0
+	for i := 1; i < len(referencePoints); i++ {
+		referencePoints[i-1].dist = referenceDist
+		referenceDist += basics.CalcDistance(
+			referencePoints[i-1].x, referencePoints[i-1].y,
+			referencePoints[i].x, referencePoints[i].y,
+		)
+	}
+	referencePoints[len(referencePoints)-1].dist = referenceDist
+
+	maxError := 0.0
+	for _, ref := range referencePoints {
+		idx1, idx2 := findPoint(curvePoints, ref.dist)
+		err := basics.CalcLinePointDistance(
+			curvePoints[idx1].x, curvePoints[idx1].y,
+			curvePoints[idx2].x, curvePoints[idx2].y,
+			ref.x, ref.y,
+		)
+		if err > maxError {
+			maxError = err
+		}
+	}
+
+	maxAngleError := 0.0
+	for i := 2; i < len(curvePoints); i++ {
+		a1 := math.Atan2(curvePoints[i-1].y-curvePoints[i-2].y, curvePoints[i-1].x-curvePoints[i-2].x)
+		a2 := math.Atan2(curvePoints[i].y-curvePoints[i-1].y, curvePoints[i].x-curvePoints[i-1].x)
+		da := math.Abs(a1 - a2)
+		if da >= math.Pi {
+			da = 2*math.Pi - da
+		}
+		if da > maxAngleError {
+			maxAngleError = da
+		}
+	}
+
+	return maxError * scale, maxAngleError * 180.0 / math.Pi
+}
+
+func countPathVertices(p *path.PathStorageStl) int {
+	count := 0
+	p.Rewind(0)
+	for {
+		_, _, cmd := p.NextVertex()
+		if basics.IsStop(basics.PathCommand(cmd)) {
+			break
+		}
+		count++
+	}
+	return count
+}
+
+func findPoint(points []curvePoint, dist float64) (int, int) {
+	i := 0
+	j := len(points) - 1
+	for j-i > 1 {
+		k := (i + j) >> 1
+		if dist < points[k].dist {
+			j = k
+		} else {
+			i = k
+		}
+	}
+	return i, j
+}
+
+func bezier4Point(x1, y1, x2, y2, x3, y3, x4, y4, mu float64) (float64, float64) {
+	mum1 := 1 - mu
+	mum13 := mum1 * mum1 * mum1
+	mu3 := mu * mu * mu
+	x := mum13*x1 + 3*mu*mum1*mum1*x2 + 3*mu*mu*mum1*x3 + mu3*x4
+	y := mum13*y1 + 3*mu*mum1*mum1*y2 + 3*mu*mu*mum1*y3 + mu3*y4
+	return x, y
 }
 
 func (d *demo) OnMouseDown(x, y int, btn lowlevelrunner.Buttons) bool {
