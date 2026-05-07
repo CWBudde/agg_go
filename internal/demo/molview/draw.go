@@ -10,6 +10,9 @@ import (
 	"strings"
 
 	agg "github.com/cwbudde/agg_go"
+	icolor "github.com/cwbudde/agg_go/internal/color"
+	ctrlbase "github.com/cwbudde/agg_go/internal/ctrl"
+	sliderctrl "github.com/cwbudde/agg_go/internal/ctrl/slider"
 	"github.com/cwbudde/agg_go/internal/gsv"
 	"github.com/cwbudde/agg_go/internal/transform"
 )
@@ -103,8 +106,8 @@ var atomPalette = [atomColors]agg.Color{
 
 func DefaultState() State {
 	return State{
-		Thickness:  1.0,
-		TextSize:   2.5,
+		Thickness:  0.5,
+		TextSize:   0.5,
 		CenterX:    BaseWidth * 0.5,
 		CenterY:    BaseHeight * 0.5,
 		Scale:      1.0,
@@ -200,7 +203,6 @@ func Draw(ctx *agg.Context, st State) {
 	}
 
 	text := gsv.NewGSVText()
-	text.SetFlip(true)
 	text.SetSize(lay.textSize*3.0, 0)
 	outline := gsv.NewGSVTextOutlineWithTransform(text, tm)
 	outline.SetWidth(st.Thickness * lay.thickness)
@@ -222,6 +224,8 @@ func Draw(ctx *agg.Context, st State) {
 	a.FillColor(agg.Black)
 	a.NoLine()
 	a.Text(10, BaseHeight-20, mol.Name, false, 0, 0)
+
+	drawControls(ctx, st)
 }
 
 func BeginDrag(st *State, drag *DragState, x, y float64, right bool) {
@@ -429,6 +433,63 @@ func (a *gsvAdapter) Vertex(x, y *float64) uint32 {
 	*x = vx
 	*y = vy
 	return uint32(cmd)
+}
+
+type ctrlAdapter struct {
+	ctrl ctrlbase.Ctrl[icolor.RGBA]
+}
+
+func (a *ctrlAdapter) Rewind(pathID uint32) {
+	a.ctrl.Rewind(uint(pathID))
+}
+
+func (a *ctrlAdapter) Vertex(x, y *float64) uint32 {
+	vx, vy, cmd := a.ctrl.Vertex()
+	*x = vx
+	*y = vy
+	return uint32(cmd)
+}
+
+func drawControls(ctx *agg.Context, st State) {
+	thickness := sliderctrl.NewSliderCtrl(5, 5, BaseWidth-5, 12, false)
+	thickness.SetLabel("Thickness=%3.2f")
+	thickness.SetValue(st.Thickness)
+
+	textSize := sliderctrl.NewSliderCtrl(5, 20, BaseWidth-5, 27, false)
+	textSize.SetLabel("Label Size=%3.2f")
+	textSize.SetValue(st.TextSize)
+
+	renderCtrl(ctx, thickness)
+	renderCtrl(ctx, textSize)
+}
+
+func renderCtrl(ctx *agg.Context, ctrl ctrlbase.Ctrl[icolor.RGBA]) {
+	a := ctx.GetAgg2D()
+	ras := a.GetInternalRasterizer()
+	adapter := &ctrlAdapter{ctrl: ctrl}
+
+	for pathID := uint(0); pathID < ctrl.NumPaths(); pathID++ {
+		ras.Reset()
+		ras.AddPath(adapter, uint32(pathID))
+		a.RenderRasterizerWithColor(toAggColor(ctrl.Color(pathID)))
+	}
+}
+
+func toAggColor(c icolor.RGBA) agg.Color {
+	clamp := func(v float64, encode bool) uint8 {
+		switch {
+		case v <= 0:
+			return 0
+		case v >= 1:
+			return 255
+		default:
+			if encode {
+				v = math.Pow(v, 1.0/2.2)
+			}
+			return uint8(v*255 + 0.5)
+		}
+	}
+	return agg.NewColor(clamp(c.R, true), clamp(c.G, true), clamp(c.B, true), clamp(c.A, false))
 }
 
 func loadMolecules() []Molecule {

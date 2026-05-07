@@ -58,6 +58,21 @@ func (m *MockCompoundClipper) LineTo(outline *RasterizerCellsAAStyled, x, y floa
 	m.lastY = y2
 }
 
+type recordingCompoundClipper struct {
+	moves [][2]float64
+	lines [][2]float64
+}
+
+func (r *recordingCompoundClipper) ResetClipping() {}
+func (r *recordingCompoundClipper) ClipBox(x1, y1, x2, y2 float64) {
+}
+func (r *recordingCompoundClipper) MoveTo(x, y float64) {
+	r.moves = append(r.moves, [2]float64{x, y})
+}
+func (r *recordingCompoundClipper) LineTo(_ *RasterizerCellsAAStyled, x, y float64) {
+	r.lines = append(r.lines, [2]float64{x, y})
+}
+
 // TestCellStyleAA tests the CellStyleAA implementation
 func TestCellStyleAA(t *testing.T) {
 	cell := &CellStyleAA{}
@@ -203,11 +218,11 @@ func TestRasterizerCompoundAAPath(t *testing.T) {
 
 	// Create a simple rectangle
 	rasterizer.Styles(1, 0) // Fill with style 1
-	rasterizer.MoveTo(10, 10)
-	rasterizer.LineTo(90, 10)
-	rasterizer.LineTo(90, 90)
-	rasterizer.LineTo(10, 90)
-	rasterizer.LineTo(10, 10) // Close
+	rasterizer.MoveToD(10, 10)
+	rasterizer.LineToD(90, 10)
+	rasterizer.LineToD(90, 90)
+	rasterizer.LineToD(10, 90)
+	rasterizer.LineToD(10, 10) // Close
 
 	// Check bounding box (approximate)
 	if rasterizer.outline.TotalCells() == 0 {
@@ -344,18 +359,18 @@ func TestRasterizerCompoundAALayerOrdering(t *testing.T) {
 
 	// Create geometry with multiple styles
 	rasterizer.Styles(3, 0)
-	rasterizer.MoveTo(0, 0)
-	rasterizer.LineTo(100, 0)
-	rasterizer.LineTo(100, 100)
-	rasterizer.LineTo(0, 100)
-	rasterizer.LineTo(0, 0)
+	rasterizer.MoveToD(0, 0)
+	rasterizer.LineToD(100, 0)
+	rasterizer.LineToD(100, 100)
+	rasterizer.LineToD(0, 100)
+	rasterizer.LineToD(0, 0)
 
 	rasterizer.Styles(1, 0)
-	rasterizer.MoveTo(50, 0)
-	rasterizer.LineTo(150, 0)
-	rasterizer.LineTo(150, 100)
-	rasterizer.LineTo(50, 100)
-	rasterizer.LineTo(50, 0)
+	rasterizer.MoveToD(50, 0)
+	rasterizer.LineToD(150, 0)
+	rasterizer.LineToD(150, 100)
+	rasterizer.LineToD(50, 100)
+	rasterizer.LineToD(50, 0)
 
 	// Test different layer orders
 	orders := []basics.LayerOrder{
@@ -397,11 +412,11 @@ func TestRasterizerCompoundAAHitTest(t *testing.T) {
 
 	// Create a simple filled rectangle
 	rasterizer.Styles(1, 0)
-	rasterizer.MoveTo(10, 10)
-	rasterizer.LineTo(90, 10)
-	rasterizer.LineTo(90, 90)
-	rasterizer.LineTo(10, 90)
-	rasterizer.LineTo(10, 10)
+	rasterizer.MoveToD(10, 10)
+	rasterizer.LineToD(90, 10)
+	rasterizer.LineToD(90, 90)
+	rasterizer.LineToD(10, 90)
+	rasterizer.LineToD(10, 10)
 
 	rasterizer.Sort()
 
@@ -435,6 +450,38 @@ func TestRasterizerCompoundAACoverBuffer(t *testing.T) {
 	buffer2 := rasterizer.AllocateCoverBuffer(1000)
 	if len(buffer2) != 1000 {
 		t.Errorf("AllocateCoverBuffer(1000) returned buffer of length %d", len(buffer2))
+	}
+}
+
+func TestRasterizerCompoundAAIntegerCoordinatesAreSubpixel(t *testing.T) {
+	clipper := &recordingCompoundClipper{}
+	rasterizer := NewRasterizerCompoundAA(clipper)
+
+	rasterizer.MoveTo(10*basics.PolySubpixelScale, 20*basics.PolySubpixelScale)
+	rasterizer.LineTo(30*basics.PolySubpixelScale, 40*basics.PolySubpixelScale)
+
+	if len(clipper.moves) != 1 || clipper.moves[0] != [2]float64{10, 20} {
+		t.Fatalf("MoveTo passed %v, want [10 20]", clipper.moves)
+	}
+	if len(clipper.lines) != 1 || clipper.lines[0] != [2]float64{30, 40} {
+		t.Fatalf("LineTo passed %v, want [30 40]", clipper.lines)
+	}
+}
+
+func TestRasterizerCompoundAAAddVertexClosePreservesDoubleStart(t *testing.T) {
+	clipper := &recordingCompoundClipper{}
+	rasterizer := NewRasterizerCompoundAA(clipper)
+
+	startX, startY := 10.123, 20.987
+	rasterizer.AddVertex(startX, startY, uint32(basics.PathCmdMoveTo))
+	rasterizer.AddVertex(30.25, 40.75, uint32(basics.PathCmdLineTo))
+	rasterizer.AddVertex(0, 0, uint32(basics.PathCmdEndPoly)|uint32(basics.PathFlagsClose))
+
+	if len(clipper.lines) != 2 {
+		t.Fatalf("got %d line calls, want 2", len(clipper.lines))
+	}
+	if got := clipper.lines[1]; got != [2]float64{startX, startY} {
+		t.Fatalf("closing edge ended at %v, want [%v %v]", got, startX, startY)
 	}
 }
 

@@ -125,11 +125,11 @@ type RasterizerCompoundAA[Clip CompoundClipInterface] struct {
 	maxStyle int // Maximum style ID encountered
 
 	// Current processing state
-	startX  int    // Starting X coordinate for current path
-	startY  int    // Starting Y coordinate for current path
-	scanY   int    // Current scanline Y coordinate
-	slStart int    // Scanline start X coordinate
-	slLen   uint32 // Scanline length
+	startX  float64 // Starting X coordinate in clipper coordinates
+	startY  float64 // Starting Y coordinate in clipper coordinates
+	scanY   int     // Current scanline Y coordinate
+	slStart int     // Scanline start X coordinate
+	slLen   uint32  // Scanline length
 }
 
 // NewRasterizerCompoundAA creates the styled scanline rasterizer.
@@ -209,19 +209,19 @@ func (r *RasterizerCompoundAA[Clip]) Styles(left, right int) {
 	}
 }
 
-// MoveTo starts a new subpath at the given coordinates
+// MoveTo starts a new subpath at integer AGG subpixel coordinates.
 func (r *RasterizerCompoundAA[Clip]) MoveTo(x, y int) {
 	if r.outline.Sorted() {
 		r.Reset()
 	}
-	r.startX = x
-	r.startY = y
-	r.clipper.MoveTo(float64(x), float64(y))
+	r.startX = float64(x) / basics.PolySubpixelScale
+	r.startY = float64(y) / basics.PolySubpixelScale
+	r.clipper.MoveTo(r.startX, r.startY)
 }
 
-// LineTo adds a line segment to the current subpath
+// LineTo adds a line segment to the current subpath at integer AGG subpixel coordinates.
 func (r *RasterizerCompoundAA[Clip]) LineTo(x, y int) {
-	r.clipper.LineTo(r.outline, float64(x), float64(y))
+	r.clipper.LineTo(r.outline, float64(x)/basics.PolySubpixelScale, float64(y)/basics.PolySubpixelScale)
 }
 
 // MoveToD starts a new subpath at the given double coordinates
@@ -229,9 +229,9 @@ func (r *RasterizerCompoundAA[Clip]) MoveToD(x, y float64) {
 	if r.outline.Sorted() {
 		r.Reset()
 	}
-	r.startX = basics.IRound(x * basics.PolySubpixelScale)
-	r.startY = basics.IRound(y * basics.PolySubpixelScale)
-	r.clipper.MoveTo(x, y)
+	r.startX = x
+	r.startY = y
+	r.clipper.MoveTo(r.startX, r.startY)
 }
 
 // LineToD adds a line segment to the current subpath using double coordinates
@@ -239,13 +239,13 @@ func (r *RasterizerCompoundAA[Clip]) LineToD(x, y float64) {
 	r.clipper.LineTo(r.outline, x, y)
 }
 
-// Edge adds a single edge from (x1,y1) to (x2,y2)
+// Edge adds a single edge from integer AGG subpixel coordinates.
 func (r *RasterizerCompoundAA[Clip]) Edge(x1, y1, x2, y2 int) {
 	if r.outline.Sorted() {
 		r.Reset()
 	}
-	r.clipper.MoveTo(float64(x1), float64(y1))
-	r.clipper.LineTo(r.outline, float64(x2), float64(y2))
+	r.clipper.MoveTo(float64(x1)/basics.PolySubpixelScale, float64(y1)/basics.PolySubpixelScale)
+	r.clipper.LineTo(r.outline, float64(x2)/basics.PolySubpixelScale, float64(y2)/basics.PolySubpixelScale)
 }
 
 // EdgeD adds a single edge using double coordinates
@@ -267,10 +267,7 @@ func (r *RasterizerCompoundAA[Clip]) AddVertex(x, y float64, cmd uint32) {
 	case basics.IsVertex(pathCmd):
 		r.LineToD(x, y)
 	case basics.IsClose(cmd):
-		r.clipper.LineTo(r.outline,
-			float64(r.startX)/basics.PolySubpixelScale,
-			float64(r.startY)/basics.PolySubpixelScale,
-		)
+		r.clipper.LineTo(r.outline, r.startX, r.startY)
 	}
 }
 

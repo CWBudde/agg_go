@@ -188,6 +188,60 @@ func TestSliderCtrlDescending(t *testing.T) {
 	}
 }
 
+func TestSliderCtrlTriangleVerticesMatchAGG(t *testing.T) {
+	tests := []struct {
+		name       string
+		descending bool
+		expected   [][2]float64
+	}{
+		{
+			name: "ascending",
+			expected: [][2]float64{
+				{0, 0},
+				{200, 0},
+				{200, 20},
+				{0, 0},
+			},
+		},
+		{
+			name:       "descending",
+			descending: true,
+			expected: [][2]float64{
+				{0, 0},
+				{200, 0},
+				{0, 20},
+				{0, 0},
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			slider := NewSliderCtrl(0, 0, 200, 20, false)
+			slider.SetDescending(tc.descending)
+			slider.Rewind(1)
+
+			for i, expected := range tc.expected {
+				x, y, cmd := slider.Vertex()
+				if i == 0 && cmd != basics.PathCmdMoveTo {
+					t.Fatalf("vertex %d command = %v, want %v", i, cmd, basics.PathCmdMoveTo)
+				}
+				if i > 0 && cmd != basics.PathCmdLineTo {
+					t.Fatalf("vertex %d command = %v, want %v", i, cmd, basics.PathCmdLineTo)
+				}
+				if x != expected[0] || y != expected[1] {
+					t.Fatalf("vertex %d = (%.1f, %.1f), want (%.1f, %.1f)", i, x, y, expected[0], expected[1])
+				}
+			}
+
+			_, _, cmd := slider.Vertex()
+			if cmd != basics.PathCmdStop {
+				t.Fatalf("final command = %v, want %v", cmd, basics.PathCmdStop)
+			}
+		})
+	}
+}
+
 func TestSliderCtrlVertexGeneration(t *testing.T) {
 	slider := NewSliderCtrl(0, 0, 200, 20, false)
 

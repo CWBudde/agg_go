@@ -400,28 +400,24 @@ func (s *SliderCtrl) generateBackgroundPath() {
 }
 
 func (s *SliderCtrl) generateTrianglePath() {
-	// Triangle shape indicating slider direction.
-	// C++ uses flipY=true so vertices at (x1,y1),(x2,y1),(x2,y2) become
-	// (x1,y2),(x2,y2),(x2,y1) after ctrl transform — i.e., the base is at y2.
-	// In Go (flipY=false) we emit the post-transform vertices directly.
 	if s.descending {
 		s.vertices[0] = s.X1()
-		s.vertices[1] = s.Y2()
+		s.vertices[1] = s.Y1()
 		s.vertices[2] = s.X2()
-		s.vertices[3] = s.Y2()
+		s.vertices[3] = s.Y1()
 		s.vertices[4] = s.X1()
-		s.vertices[5] = s.Y1()
+		s.vertices[5] = s.Y2()
 		s.vertices[6] = s.X1()
-		s.vertices[7] = s.Y2()
+		s.vertices[7] = s.Y1()
 	} else {
 		s.vertices[0] = s.X1()
-		s.vertices[1] = s.Y2()
+		s.vertices[1] = s.Y1()
 		s.vertices[2] = s.X2()
-		s.vertices[3] = s.Y2()
+		s.vertices[3] = s.Y1()
 		s.vertices[4] = s.X2()
-		s.vertices[5] = s.Y1()
+		s.vertices[5] = s.Y2()
 		s.vertices[6] = s.X1()
-		s.vertices[7] = s.Y2()
+		s.vertices[7] = s.Y1()
 	}
 	s.vertexCount = 4
 }

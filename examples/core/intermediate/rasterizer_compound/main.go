@@ -322,11 +322,8 @@ func (d *demo) Render(img *agg.Image) {
 		minX := rasc.MinX()
 		maxX := rasc.MaxX()
 		slAA := scanline.NewScanlineU8()
-		slBin := scanline.NewScanlineU8()
 		slAA.Reset(minX, maxX)
-		slBin.Reset(minX, maxX)
 		adAA := &rcSLAdapter{sl: slAA}
-		adBin := &rcSLAdapter{sl: slBin}
 		styleHandler := &rcStyleHandler{styles: styles}
 
 		length := maxX - minX + 2
@@ -335,6 +332,7 @@ func (d *demo) Render(img *agg.Image) {
 		}
 		colorSpan := make([]icol.RGBA8[icol.Linear], length*2)
 		mixBuffer := colorSpan[length:]
+		coverBuffer := rasc.AllocateCoverBuffer(length)
 
 		for {
 			numStyles := rasc.SweepStyles()
@@ -346,29 +344,40 @@ func (d *demo) Render(img *agg.Image) {
 					c := styleHandler.Color(int(rasc.Style(0)))
 					renscan.RenderScanlineAASolid(slAA, renBase, c)
 				}
-			} else if rasc.SweepScanline(adBin, -1) {
-				y := slBin.Y()
-				for _, sp := range slBin.Spans() {
-					for j := 0; j < int(sp.Len); j++ {
-						mixBuffer[int(sp.X)-minX+j] = icol.RGBA8[icol.Linear]{}
-					}
+			} else {
+				slStart := rasc.ScanlineStart()
+				slLen := int(rasc.ScanlineLength())
+				if slLen == 0 {
+					continue
 				}
+				for i := 0; i < slLen; i++ {
+					mixBuffer[slStart-minX+i] = icol.RGBA8[icol.Linear]{}
+					coverBuffer[slStart-minX+i] = 0
+				}
+
+				slY := 0
 				for i := uint32(0); i < numStyles; i++ {
 					style := int(rasc.Style(i))
 					if rasc.SweepScanline(adAA, int(i)) {
+						slY = slAA.Y()
 						c := styleHandler.Color(style)
 						for _, sp := range slAA.Spans() {
 							for j := 0; j < int(sp.Len); j++ {
-								ptr := &mixBuffer[int(sp.X)-minX+j]
-								ptr.AddWithCover(c, sp.Covers[j])
+								idx := int(sp.X) - minX + j
+								cover := sp.Covers[j]
+								dst := coverBuffer[idx]
+								if int(dst)+int(cover) > basics.CoverFull {
+									cover = basics.Int8u(basics.CoverFull) - dst
+								}
+								if cover > 0 {
+									mixBuffer[idx].AddWithCover(c, cover)
+									coverBuffer[idx] += cover
+								}
 							}
 						}
 					}
 				}
-				for _, sp := range slBin.Spans() {
-					start := int(sp.X) - minX
-					renBase.BlendColorHspan(int(sp.X), y, int(sp.Len), mixBuffer[start:start+int(sp.Len)], nil, basics.CoverFull)
-				}
+				renBase.BlendColorHspan(slStart, slY, slLen, mixBuffer[slStart-minX:slStart-minX+slLen], nil, basics.CoverFull)
 			}
 		}
 	}

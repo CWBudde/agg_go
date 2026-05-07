@@ -134,7 +134,7 @@ stage_assets() {
         for file in "$dir"/*; do
             [ -f "$file" ] || continue
             case "$file" in
-                *.ppm|*.bmp|*.txt)
+                *.ppm|*.bmp|*.txt|*.sdf)
                     cp -f "$file" "$bindir/"
                     ;;
             esac

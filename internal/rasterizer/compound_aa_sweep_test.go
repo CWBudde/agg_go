@@ -45,11 +45,11 @@ func TestCompoundAASweepStylesMinimal(t *testing.T) {
 
 	// Create some geometry with styles to trigger the SweepStyles code path
 	rasterizer.Styles(1, 0) // Set left=1, right=0 styles
-	rasterizer.MoveTo(10, 10)
-	rasterizer.LineTo(90, 10)
-	rasterizer.LineTo(90, 90)
-	rasterizer.LineTo(10, 90)
-	rasterizer.LineTo(10, 10)
+	rasterizer.MoveToD(10, 10)
+	rasterizer.LineToD(90, 10)
+	rasterizer.LineToD(90, 90)
+	rasterizer.LineToD(10, 90)
+	rasterizer.LineToD(10, 10)
 
 	// Sort to prepare for scanline processing
 	rasterizer.Sort()
@@ -113,8 +113,8 @@ func TestCompoundAAPointerDerefFix(t *testing.T) {
 
 	// Add some basic geometry
 	rasterizer.Styles(2, 1)
-	rasterizer.MoveTo(0, 0)
-	rasterizer.LineTo(100, 0)
+	rasterizer.MoveToD(0, 0)
+	rasterizer.LineToD(100, 0)
 
 	rasterizer.Sort()
 
@@ -140,11 +140,11 @@ func TestCompoundAANavigateNegativeScanline(t *testing.T) {
 	clipper.outline = rasterizer.outline
 
 	rasterizer.Styles(1, 0)
-	rasterizer.MoveTo(-10, -10)
-	rasterizer.LineTo(10, -10)
-	rasterizer.LineTo(10, 10)
-	rasterizer.LineTo(-10, 10)
-	rasterizer.LineTo(-10, -10)
+	rasterizer.MoveToD(-10, -10)
+	rasterizer.LineToD(10, -10)
+	rasterizer.LineToD(10, 10)
+	rasterizer.LineToD(-10, 10)
+	rasterizer.LineToD(-10, -10)
 	rasterizer.Sort()
 
 	if !rasterizer.NavigateScanline(-5) {
@@ -164,18 +164,18 @@ func TestCompoundAASweepStylesLayerOrderMatchesAGG(t *testing.T) {
 		rasterizer.LayerOrder(order)
 
 		rasterizer.Styles(3, 0)
-		rasterizer.MoveTo(0, 0)
-		rasterizer.LineTo(100, 0)
-		rasterizer.LineTo(100, 100)
-		rasterizer.LineTo(0, 100)
-		rasterizer.LineTo(0, 0)
+		rasterizer.MoveToD(0, 0)
+		rasterizer.LineToD(100, 0)
+		rasterizer.LineToD(100, 100)
+		rasterizer.LineToD(0, 100)
+		rasterizer.LineToD(0, 0)
 
 		rasterizer.Styles(1, 0)
-		rasterizer.MoveTo(25, 0)
-		rasterizer.LineTo(125, 0)
-		rasterizer.LineTo(125, 100)
-		rasterizer.LineTo(25, 100)
-		rasterizer.LineTo(25, 0)
+		rasterizer.MoveToD(25, 0)
+		rasterizer.LineToD(125, 0)
+		rasterizer.LineToD(125, 100)
+		rasterizer.LineToD(25, 100)
+		rasterizer.LineToD(25, 0)
 		rasterizer.Sort()
 		return rasterizer
 	}
@@ -226,19 +226,19 @@ func TestCompoundAASweepStylesSkipsImplicitNoFillScanlines(t *testing.T) {
 
 	// Unstyled geometry creates cells but should not produce visible styles.
 	rasterizer.Styles(-1, -1)
-	rasterizer.MoveTo(0, 0)
-	rasterizer.LineTo(20, 0)
-	rasterizer.LineTo(20, 1)
-	rasterizer.LineTo(0, 1)
-	rasterizer.LineTo(0, 0)
+	rasterizer.MoveToD(0, 0)
+	rasterizer.LineToD(20, 0)
+	rasterizer.LineToD(20, 1)
+	rasterizer.LineToD(0, 1)
+	rasterizer.LineToD(0, 0)
 
 	// Styled geometry lower in Y should be the first scanline reported by SweepStyles.
 	rasterizer.Styles(2, 0)
-	rasterizer.MoveTo(0, 10)
-	rasterizer.LineTo(20, 10)
-	rasterizer.LineTo(20, 20)
-	rasterizer.LineTo(0, 20)
-	rasterizer.LineTo(0, 10)
+	rasterizer.MoveToD(0, 10)
+	rasterizer.LineToD(20, 10)
+	rasterizer.LineToD(20, 20)
+	rasterizer.LineToD(0, 20)
+	rasterizer.LineToD(0, 10)
 	rasterizer.Sort()
 
 	if !rasterizer.NavigateScanline(0) {

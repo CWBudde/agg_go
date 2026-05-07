@@ -18,8 +18,11 @@ func newDemo() *demo {
 
 func (d *demo) Render(img *agg.Image) {
 	ctx := agg.NewContextForImage(img)
-	d.state.Advance()
 	molview.Draw(ctx, d.state)
+}
+
+func (d *demo) OnIdle() {
+	d.state.Advance()
 }
 
 func (d *demo) OnMouseDown(x, y int, btn lowlevelrunner.Buttons) bool {
@@ -65,5 +68,6 @@ func main() {
 		Title:  "Mol View",
 		Width:  400,
 		Height: 400,
+		FlipY:  true,
 	}, newDemo())
 }
