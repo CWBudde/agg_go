@@ -160,10 +160,15 @@ func toAggColor(c icol.RGBA) agg.Color {
 }
 
 func main() {
-	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "Scanline Boolean 2",
-		Width:  frameWidth,
-		Height: frameHeight,
-		FlipY:  true,
-	}, newDemo())
+	lowlevelrunner.Run(runnerConfig(), newDemo())
+}
+
+func runnerConfig() lowlevelrunner.Config {
+	return lowlevelrunner.Config{
+		Title:                 "Scanline Boolean 2",
+		Width:                 frameWidth,
+		Height:                frameHeight,
+		FlipY:                 true,
+		EncodeLinearRGBToSRGB: true,
+	}
 }

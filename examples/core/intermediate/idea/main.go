@@ -80,19 +80,20 @@ func (d *demo) Render(img *agg.Image) {
 
 	// Render UI controls on top (matching C++ on_draw render_ctrl calls).
 	a := ctx.GetAgg2D()
-	rotateCb := checkbox.NewDefaultCheckboxCtrl(10, 3, "Rotate", false)
+	const controlFlipY = true // C++ idea.cpp uses !flip_y, with flip_y=false.
+	rotateCb := checkbox.NewDefaultCheckboxCtrl(10, 3, "Rotate", controlFlipY)
 	rotateCb.SetChecked(d.state.Rotate)
 	rotateCb.SetTextSize(7.0, 0)
-	evenOddCb := checkbox.NewDefaultCheckboxCtrl(60, 3, "Even-Odd", false)
+	evenOddCb := checkbox.NewDefaultCheckboxCtrl(60, 3, "Even-Odd", controlFlipY)
 	evenOddCb.SetChecked(d.state.EvenOdd)
 	evenOddCb.SetTextSize(7.0, 0)
-	draftCb := checkbox.NewDefaultCheckboxCtrl(130, 3, "Draft", false)
+	draftCb := checkbox.NewDefaultCheckboxCtrl(130, 3, "Draft", controlFlipY)
 	draftCb.SetChecked(d.state.Draft)
 	draftCb.SetTextSize(7.0, 0)
-	roundoffCb := checkbox.NewDefaultCheckboxCtrl(175, 3, "Roundoff", false)
+	roundoffCb := checkbox.NewDefaultCheckboxCtrl(175, 3, "Roundoff", controlFlipY)
 	roundoffCb.SetChecked(d.state.Roundoff)
 	roundoffCb.SetTextSize(7.0, 0)
-	angleSlider := slider.NewSliderCtrl(10, 21, 240, 27, false)
+	angleSlider := slider.NewSliderCtrl(10, 21, 240, 27, controlFlipY)
 	angleSlider.SetLabel("Step=%4.3f degree")
 	angleSlider.SetValue(d.state.AngleDelta)
 	for _, c := range []ctrlIface{rotateCb, evenOddCb, draftCb, roundoffCb, angleSlider} {

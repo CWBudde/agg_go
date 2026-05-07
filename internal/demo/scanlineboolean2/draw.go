@@ -381,14 +381,15 @@ func Draw(ctx *agg.Context, cfg Config) {
 	cfg.ScanlineType = clampInt(cfg.ScanlineType, 0, 2)
 	cfg.Operation = clampInt(cfg.Operation, 0, 6)
 
-	// The upstream demo runs with flip_y=true. Convert the dragged center from
-	// screen coordinates into the original 655x520 reference frame.
+	// The upstream demo runs with flip_y=true. The lowlevelrunner supplies a
+	// negative-stride buffer and y-up mouse coordinates, so keep scene geometry
+	// in the original reference frame and only remove any frame offset.
 	cfg.CenterX -= frameOffX
-	cfg.CenterY = referenceHeight - (cfg.CenterY - frameOffY)
+	cfg.CenterY -= frameOffY
 
 	a, b := buildShapes(cfg, referenceWidth, referenceHeight)
-	a = transformContours(mirrorContoursY(a, referenceHeight), 0, 0, 1, 1, frameOffX, frameOffY)
-	b = transformContours(mirrorContoursY(b, referenceHeight), 0, 0, 1, 1, frameOffX, frameOffY)
+	a = transformContours(a, 0, 0, 1, 1, frameOffX, frameOffY)
+	b = transformContours(b, 0, 0, 1, 1, frameOffX, frameOffY)
 
 	agg2d := ctx.GetAgg2D()
 	agg2d.ResetTransformations()
@@ -643,15 +644,15 @@ func blendPixel(img *agg.Image, x, y int, c colorDef, cover uint8) {
 		alpha = 255
 	}
 
-	stride := 0
-	if img.Height() > 0 {
-		stride = len(img.Data) / img.Height()
-	}
+	stride := img.Stride()
 	if stride <= 0 {
-		return
+		stride = -stride
 	}
 
 	idx := y*stride + x*4
+	if img.Stride() < 0 {
+		idx = (img.Height()-1-y)*stride + x*4
+	}
 	if idx+3 >= len(img.Data) {
 		return
 	}

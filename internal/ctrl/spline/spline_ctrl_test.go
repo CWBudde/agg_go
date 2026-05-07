@@ -302,6 +302,26 @@ func TestVertexSource(t *testing.T) {
 	}
 }
 
+func TestCurvePathDoesNotLeakStrokeEndPolyToOrigin(t *testing.T) {
+	ctrl := NewSplineCtrlImpl[color.RGBA](210, 10, 460, 45, 6, false)
+	ctrl.BorderWidth(1.0, 2.0)
+	for i := 0; i < 6; i++ {
+		x := float64(i) / 5.0
+		ctrl.SetPoint(uint(i), x, 1.0-x)
+	}
+
+	ctrl.Rewind(2)
+	for {
+		x, y, cmd := ctrl.Vertex()
+		if cmd == basics.PathCmdStop {
+			break
+		}
+		if basics.IsLineTo(cmd) && x == 0.0 && y == 0.0 {
+			t.Fatal("curve stroke emitted LineTo(0,0), leaking an EndPoly close command as geometry")
+		}
+	}
+}
+
 func TestInRect(t *testing.T) {
 	ctrl := NewSplineCtrlImpl[color.RGBA](10, 20, 90, 80, 4, false)
 

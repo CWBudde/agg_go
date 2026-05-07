@@ -8,14 +8,18 @@
 package main
 
 import (
+	"fmt"
+
 	agg "github.com/cwbudde/agg_go"
 	"github.com/cwbudde/agg_go/examples/shared/lowlevelrunner"
 	"github.com/cwbudde/agg_go/internal/basics"
 	"github.com/cwbudde/agg_go/internal/buffer"
 	icolor "github.com/cwbudde/agg_go/internal/color"
+	"github.com/cwbudde/agg_go/internal/conv"
 	ctrlbase "github.com/cwbudde/agg_go/internal/ctrl"
 	sliderctrl "github.com/cwbudde/agg_go/internal/ctrl/slider"
 	"github.com/cwbudde/agg_go/internal/demo/linepatterns"
+	"github.com/cwbudde/agg_go/internal/gsv"
 	"github.com/cwbudde/agg_go/internal/order"
 	"github.com/cwbudde/agg_go/internal/path"
 	"github.com/cwbudde/agg_go/internal/pixfmt"
@@ -170,6 +174,20 @@ func (a *psAdaptor) Vertex(x, y *float64) uint32 {
 	return cmd
 }
 
+type gsvAdaptor struct {
+	src interface {
+		Rewind(uint)
+		Vertex() (float64, float64, basics.PathCommand)
+	}
+}
+
+func (a *gsvAdaptor) Rewind(pathID uint32) { a.src.Rewind(uint(pathID)) }
+func (a *gsvAdaptor) Vertex(x, y *float64) uint32 {
+	vx, vy, cmd := a.src.Vertex()
+	*x, *y = vx, vy
+	return uint32(cmd)
+}
+
 // -- ctrl rendering helpers (mirrors idea.cpp pattern) ----------------------
 
 type ctrlIface interface {
@@ -251,7 +269,6 @@ func (d *demo) Render(img *agg.Image) {
 	renImg.SetStartX(0.0)
 	rasImg := rasterizer.NewRasterizerOutlineAA[*imgOutlineAdaptor, icolor.RGBA8[icolor.Linear]](
 		&imgOutlineAdaptor{ren: renImg})
-	rasImg.SetRoundCap(true)
 
 	// Solid AA-profile line renderer (dark blue, width=8, smoother=10).
 	profile := outline.NewLineProfileAA()
@@ -283,6 +300,8 @@ func (d *demo) Render(img *agg.Image) {
 	renBase.CopyBar(0, 0, w-1, h-1, white)
 
 	// ---- Second pass: draw again, now clipped to the inner box ----
+	renImg.SetScaleX(1.0)
+	renImg.SetStartX(0.0)
 	ps = buildPath(defaultPoints)
 	rasLine.AddPath(&psAdaptor{ps}, 0)
 	rasImg.AddPath(&psAdaptor{ps}, 0)
@@ -324,6 +343,23 @@ func (d *demo) Render(img *agg.Image) {
 
 	renderCtrl(a, scaleSlider)
 	renderCtrl(a, startSlider)
+
+	txt := gsv.NewGSVText()
+	txt.SetSize(10.0, 0)
+	txt.SetStartPoint(10.0, 30.0)
+	txt.SetText(fmt.Sprintf("Len=%.2f", basics.CalcDistance(
+		defaultPoints[0][0], defaultPoints[0][1],
+		defaultPoints[1][0], defaultPoints[1][1],
+	)))
+
+	txtStroke := conv.NewConvStroke(txt)
+	txtStroke.SetWidth(1.5)
+	txtStroke.SetLineCap(basics.RoundCap)
+
+	ras := a.GetInternalRasterizer()
+	ras.Reset()
+	ras.AddPath(&gsvAdaptor{src: txtStroke}, 0)
+	a.RenderRasterizerWithColor(agg.Black)
 }
 
 func main() {

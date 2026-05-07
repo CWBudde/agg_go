@@ -371,9 +371,11 @@ func (s *SplineCtrlImpl[C]) Rewind(pathID uint) {
 			if basics.IsStop(sc) {
 				break
 			}
-			if basics.IsMoveTo(sc) {
+			if basics.IsEndPoly(sc) {
+				s.strokePath.ClosePolygon(basics.PathFlag(sc) & basics.PathFlagsMask)
+			} else if basics.IsMoveTo(sc) {
 				s.strokePath.MoveTo(sx, sy)
-			} else {
+			} else if basics.IsVertex(sc) {
 				s.strokePath.LineTo(sx, sy)
 			}
 		}

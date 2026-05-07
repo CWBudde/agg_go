@@ -115,6 +115,7 @@ func buildColorProfile(
 func newGammaControl() *gammactrl.GammaCtrl {
 	gc := gammactrl.NewGammaCtrl(10.0, 10.0, 200.0, 165.0, false)
 	gc.SetTextSize(8.0, 0.0)
+	gc.SetBorderWidth(2.0, 2.0)
 	return gc
 }
 

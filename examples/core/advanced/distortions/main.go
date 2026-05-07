@@ -11,7 +11,7 @@
 //   - Period and Amplitude sliders (top-center)
 //   - Distortion type radio-button group (top-right)
 //
-// The image is rendered in a flipped work buffer and copied with y-flip,
+// The image is rendered through a negative-stride buffer when FlipY is enabled,
 // matching the C++ original's flip_y=true coordinate system.
 package main
 
@@ -241,12 +241,12 @@ func (g *gradientColorFunc) ColorAt(index int) icol.RGBA8[icol.Linear] {
 func buildGradientColors() *gradientColorFunc {
 	f := &gradientColorFunc{}
 	for i := range 256 {
-		f.colors[i] = icol.RGBA8[icol.Linear]{
+		f.colors[i] = icol.ConvertRGBA8SRGBToLinear(icol.RGBA8[icol.SRGB]{
 			R: g_gradient_colors[i*4+0],
 			G: g_gradient_colors[i*4+1],
 			B: g_gradient_colors[i*4+2],
 			A: g_gradient_colors[i*4+3],
-		}
+		})
 	}
 	return f
 }
@@ -330,16 +330,6 @@ func renderImageSpan(
 	}
 }
 
-// copyFlipY copies src to dst with vertical flip (y=0 at bottom → y=0 at top).
-func copyFlipY(src, dst []uint8, w, h int) {
-	stride := w * 4
-	for y := range h {
-		srcOff := (h - 1 - y) * stride
-		dstOff := y * stride
-		copy(dst[dstOff:dstOff+stride], src[srcOff:srcOff+stride])
-	}
-}
-
 // --- Controls ---
 
 // toRGBA8 converts an RGBA float color to RGBA8, clamping to [0, 255].
@@ -376,6 +366,21 @@ func renderCtrl(
 	}
 }
 
+func convertImageSRGBToLinear(img *agg.Image) {
+	for i := 0; i+3 < len(img.Data); i += 4 {
+		c := icol.ConvertRGBA8SRGBToLinear(icol.RGBA8[icol.SRGB]{
+			R: img.Data[i],
+			G: img.Data[i+1],
+			B: img.Data[i+2],
+			A: img.Data[i+3],
+		})
+		img.Data[i] = c.R
+		img.Data[i+1] = c.G
+		img.Data[i+2] = c.B
+		img.Data[i+3] = c.A
+	}
+}
+
 // --- Demo ---
 
 type demo struct{}
@@ -383,15 +388,12 @@ type demo struct{}
 func (d *demo) Render(img *agg.Image) {
 	w, h := img.Width(), img.Height()
 
-	// Work buffer: y=0 at bottom (flip_y=true convention), copied with y-flip.
-	workBuf := make([]uint8, w*h*4)
-
-	// Fill work buffer white (C++: rb.clear(rgba(1,1,1))).
-	for i := 0; i < len(workBuf); i += 4 {
-		workBuf[i] = 255
-		workBuf[i+1] = 255
-		workBuf[i+2] = 255
-		workBuf[i+3] = 255
+	// Fill the image buffer white before attaching the C++ flip_y row view.
+	for i := 0; i < len(img.Data); i += 4 {
+		img.Data[i] = 255
+		img.Data[i+1] = 255
+		img.Data[i+2] = 255
+		img.Data[i+3] = 255
 	}
 
 	// Default control values matching the C++ original.
@@ -415,7 +417,7 @@ func (d *demo) Render(img *agg.Image) {
 
 	// --- Low-level canvas objects ---
 	rbuf := buffer.NewRenderingBufferU8()
-	rbuf.Attach(workBuf, w, h, w*4)
+	rbuf.Attach(img.Data, w, h, img.Stride())
 	pixFmt := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
 	rb := renderer.NewRendererBaseWithPixfmt(pixFmt)
 	alloc := span.NewSpanAllocator[icol.RGBA8[icol.Linear]]()
@@ -493,8 +495,9 @@ func (d *demo) Render(img *agg.Image) {
 	if err != nil {
 		panic(err)
 	}
+	convertImageSRGBToLinear(srcImg)
 	imgRbuf := buffer.NewRenderingBufferU8()
-	imgRbuf.Attach(srcImg.Data, srcImg.Width(), srcImg.Height(), srcImg.Width()*4)
+	imgRbuf.Attach(srcImg.Data, srcImg.Width(), srcImg.Height(), -srcImg.Stride())
 	ipf := &imagePixFmt{rbuf: imgRbuf}
 	accessor := image.NewImageAccessorClip(ipf, []basics.Int8u{255, 255, 255, 255})
 	source := &distortionsSource{accessor: accessor, ipf: ipf}
@@ -579,14 +582,14 @@ func (d *demo) Render(img *agg.Image) {
 	renderCtrl(ras, slw, rb, ctrlAmplitude)
 	renderCtrl(ras, slw, rb, ctrlPeriod)
 	renderCtrl(ras, slw, rb, ctrlDistortion)
-
-	copyFlipY(workBuf, img.Data, w, h)
 }
 
 func main() {
 	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "Image and Gradient Distortions",
-		Width:  canvasW,
-		Height: canvasH,
+		Title:                 "Image and Gradient Distortions",
+		Width:                 canvasW,
+		Height:                canvasH,
+		FlipY:                 true,
+		EncodeLinearRGBToSRGB: true,
 	}, &demo{})
 }

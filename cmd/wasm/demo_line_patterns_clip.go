@@ -444,7 +444,6 @@ func drawLinePatternsClipDemo() {
 	renImg.SetScaleX(linePatternClipScaleX)
 	renImg.SetStartX(linePatternClipStartX)
 	rasImg := rasterizer.NewRasterizerOutlineAA[*lineClipOutlineImageAdapter, color.RGBA8[color.Linear]](&lineClipOutlineImageAdapter{ren: renImg})
-	rasImg.SetRoundCap(true)
 
 	profile := outline.NewLineProfileAA()
 	profile.SmootherWidth(10.0)
@@ -490,6 +489,8 @@ func drawLinePatternsClipDemo() {
 		height-1,
 		color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255},
 	)
+	renImg.SetScaleX(linePatternClipScaleX)
+	renImg.SetStartX(linePatternClipStartX)
 	ps = buildLinePatternsClipPath()
 	rasLine.AddPath(&pathSourceAdapter{ps: ps}, 0)
 	rasImg.AddPath(&pathSourceAdapter{ps: ps}, 0)

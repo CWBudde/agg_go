@@ -1,6 +1,7 @@
 package scanlineboolean2
 
 import (
+	"image/color"
 	"math"
 	"testing"
 
@@ -44,4 +45,48 @@ func TestCombineAndRenderProducesResult(t *testing.T) {
 	if !hasResultPixel {
 		t.Fatal("combineAndRender did not produce any result-colored pixels")
 	}
+}
+
+func TestDrawUsesFlipYBufferWithoutManualSceneMirror(t *testing.T) {
+	const width, height = 655, 520
+	img := agg.NewImage(make([]uint8, width*height*4), width, height, -width*4)
+	ctx := agg.NewContextForImage(img)
+
+	Draw(ctx, Config{
+		Mode:         3,
+		FillRule:     1,
+		ScanlineType: 1,
+		Operation:    0,
+		CenterX:      width * 0.5,
+		CenterY:      height * 0.5,
+	})
+
+	got := img.ToGoImage()
+	if got == nil {
+		t.Fatal("ToGoImage returned nil")
+	}
+	northernScotland := got.RGBAAt(275, 45)
+	if nearWhite(northernScotland) {
+		t.Fatalf("northern GB sample is white, scene appears vertically mirrored: %v", northernScotland)
+	}
+}
+
+func TestBlendPixelUsesImageStride(t *testing.T) {
+	const width, height = 3, 2
+	img := agg.NewImage(make([]uint8, width*height*4), width, height, -width*4)
+
+	blendPixel(img, 1, 0, colorDef{r: 1, g: 0, b: 0, a: 1}, 255)
+
+	wantOff := (height-1)*width*4 + 1*4
+	if got := img.Data[wantOff : wantOff+4]; got[0] != 255 || got[1] != 0 || got[2] != 0 || got[3] != 255 {
+		t.Fatalf("logical row 0 pixel not written through negative stride, got RGBA=%v", got)
+	}
+	wrongOff := 1 * 4
+	if got := img.Data[wrongOff : wrongOff+4]; got[0] != 0 || got[1] != 0 || got[2] != 0 || got[3] != 0 {
+		t.Fatalf("blendPixel wrote through raw positive offset despite negative stride, got RGBA=%v", got)
+	}
+}
+
+func nearWhite(c color.RGBA) bool {
+	return c.R > 252 && c.G > 252 && c.B > 252
 }
