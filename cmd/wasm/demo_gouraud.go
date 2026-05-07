@@ -218,6 +218,8 @@ func drawGouraudDemo() {
 		ras.AddPath(&gouraudStrokeVS{cs: stroke}, 0)
 		renscan.RenderScanlinesAASolid[color.RGBA8[color.Linear]](ras, sl, ren, handleLine)
 	}
+
+	applyLinearToSRGB(img)
 }
 
 // gouraudEllipseConvSrc adapts shapes.Ellipse to conv.VertexSource.

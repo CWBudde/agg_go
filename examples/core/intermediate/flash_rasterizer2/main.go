@@ -12,7 +12,6 @@ package main
 import (
 	"fmt"
 	"math"
-	"math/rand"
 	"time"
 
 	agg "github.com/cwbudde/agg_go"
@@ -38,18 +37,7 @@ type demo struct {
 
 func newDemo() *demo {
 	shapes := shapesdata.LoadShapes()
-	rng := rand.New(rand.NewSource(42))
-	colors := make([]color.RGBA8[color.Linear], 100)
-	for i := range colors {
-		colors[i] = color.RGBA8[color.Linear]{
-			R: uint8(rng.Intn(256)),
-			G: uint8(rng.Intn(256)),
-			B: uint8(rng.Intn(256)),
-			A: 230,
-		}
-		colors[i].Premultiply()
-	}
-	return &demo{shapes: shapes, colors: colors}
+	return &demo{shapes: shapes, colors: cppDemoColors()}
 }
 
 func (d *demo) Render(img *agg.Image) {
@@ -89,12 +77,12 @@ func (d *demo) Render(img *agg.Image) {
 	// Pre-flatten all paths in screen coordinates.
 	flatPaths := make([][]shapesdata.FlatVertex, len(shape.Paths))
 	for i := range shape.Paths {
-		flatPaths[i] = shapesdata.FlattenPath(&shape.Paths[i], sc, sc, tx, ty, 1.0)
+		flatPaths[i] = shapesdata.FlattenPath(&shape.Paths[i], sc, sc, tx, ty, sc)
 	}
 
 	// Set up raw renderer pipeline.
 	rbuf := buffer.NewRenderingBufferU8()
-	rbuf.Attach(img.Data, w, h, w*4)
+	rbuf.Attach(img.Data, w, h, img.Stride())
 	pixFmt := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
 	renBase := renderer.NewRendererBaseWithPixfmt[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](pixFmt)
 	renBase.ClipBox(0, 0, w, h)
@@ -152,9 +140,6 @@ func (d *demo) Render(img *agg.Image) {
 	ras.AutoClose(true)
 	strokeColor := color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 128}
 	strokeW := math.Sqrt(sc)
-	if strokeW < 0.5 {
-		strokeW = 0.5
-	}
 
 	flatSrc := &flatConvVS{}
 	stroke := conv.NewConvStroke(flatSrc)
@@ -207,7 +192,7 @@ func (d *demo) Render(img *agg.Image) {
 		totalFPS = int(1000.0 / ttotalMs)
 	}
 
-	txt := fmt.Sprintf("Fill=%.2fms (%dFPS) Stroke=%.2fms (%dFPS) Total=%.2fms (%dFPS)",
+	txt := fmt.Sprintf("Fill=%.2fms (%dFPS) Stroke=%.2fms (%dFPS) Total=%.2fms (%dFPS)\n\nSpace: Next Shape\n\n+/- : ZoomIn/ZoomOut (with respect to the mouse pointer)",
 		tfillMs, fillFPS, tstrokeMs, strokeFPS, ttotalMs, totalFPS)
 
 	gsvT := gsv.NewGSVText()
@@ -242,6 +227,57 @@ func (d *demo) styleColor(s int) color.RGBA8[color.Linear] {
 		return color.RGBA8[color.Linear]{R: 200, G: 200, B: 200, A: 200}
 	}
 	return d.colors[s]
+}
+
+func cppDemoColors() []color.RGBA8[color.Linear] {
+	rng := newGlibcRand(1)
+	colors := make([]color.RGBA8[color.Linear], 100)
+	for i := range colors {
+		// GCC evaluates the original srgba8(rand(), rand(), rand(), 230)
+		// arguments right-to-left for this demo build.
+		b := basics.Int8u(rng.next() & 0xFF)
+		g := basics.Int8u(rng.next() & 0xFF)
+		r := basics.Int8u(rng.next() & 0xFF)
+		c := color.ConvertToLinear(color.RGBA8[color.SRGB]{
+			R: r,
+			G: g,
+			B: b,
+			A: 230,
+		})
+		c.Premultiply()
+		colors[i] = c
+	}
+	return colors
+}
+
+type glibcRand struct {
+	state []uint32
+	idx   int
+}
+
+func newGlibcRand(seed uint32) *glibcRand {
+	if seed == 0 {
+		seed = 1
+	}
+	state := make([]uint32, 344)
+	state[0] = seed
+	for i := 1; i < 31; i++ {
+		state[i] = uint32((16807 * uint64(state[i-1])) % 2147483647)
+	}
+	for i := 31; i < 34; i++ {
+		state[i] = state[i-31]
+	}
+	for i := 34; i < len(state); i++ {
+		state[i] = state[i-31] + state[i-3]
+	}
+	return &glibcRand{state: state, idx: 344}
+}
+
+func (r *glibcRand) next() uint32 {
+	r.state = append(r.state, r.state[r.idx-31]+r.state[r.idx-3])
+	v := r.state[r.idx] >> 1
+	r.idx++
+	return v
 }
 
 func (d *demo) OnKey(key rune) bool {

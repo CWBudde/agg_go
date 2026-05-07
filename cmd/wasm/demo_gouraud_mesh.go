@@ -143,16 +143,16 @@ type meshStyleHandler struct {
 }
 
 func (h *meshStyleHandler) IsSolid(style int) bool { return false }
-func (h *meshStyleHandler) Color(style int) color.RGBA8[color.SRGB] {
-	return color.RGBA8[color.SRGB]{}
+func (h *meshStyleHandler) Color(style int) color.RGBA8[color.Linear] {
+	return color.RGBA8[color.Linear]{}
 }
 
-func (h *meshStyleHandler) GenerateSpan(colors []color.RGBA8[color.SRGB], x, y, length, style int) {
+func (h *meshStyleHandler) GenerateSpan(colors []color.RGBA8[color.Linear], x, y, length, style int) {
 	if style >= 0 && style < len(h.triangles) {
 		temp := make([]span.RGBAColor, length)
 		h.triangles[style].Generate(temp, x, y, uint(length))
 		for i := 0; i < length; i++ {
-			colors[i] = color.RGBA8[color.SRGB]{
+			colors[i] = color.RGBA8[color.Linear]{
 				R: uint8(temp[i].R),
 				G: uint8(temp[i].G),
 				B: uint8(temp[i].B),
@@ -205,19 +205,22 @@ func drawGouraudMeshDemo() {
 	rbuf := buffer.NewRenderingBufferU8()
 	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Stride())
 
-	pixFmt := pixfmt.NewPixFmtRGBA32Pre[color.SRGB](rbuf)
-	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32Pre[color.SRGB], color.RGBA8[color.SRGB]](pixFmt)
-	renBase.Clear(color.RGBA8[color.SRGB]{R: 0, G: 0, B: 0, A: 255})
+	pixFmt := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
+	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32Pre[color.Linear], color.RGBA8[color.Linear]](pixFmt)
+	renBase.Clear(color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255})
 
 	styles := &meshStyleHandler{}
 	for _, t := range meshTriangles {
 		p1 := meshVertices[t.p1]
 		p2 := meshVertices[t.p2]
 		p3 := meshVertices[t.p3]
+		c1Linear := color.ConvertToLinear(p1.color)
+		c2Linear := color.ConvertToLinear(p2.color)
+		c3Linear := color.ConvertToLinear(p3.color)
 
-		c1 := span.RGBAColor{R: int(p1.color.R), G: int(p1.color.G), B: int(p1.color.B), A: int(p1.color.A)}
-		c2 := span.RGBAColor{R: int(p2.color.R), G: int(p2.color.G), B: int(p2.color.B), A: int(p2.color.A)}
-		c3 := span.RGBAColor{R: int(p3.color.R), G: int(p3.color.G), B: int(p3.color.B), A: int(p3.color.A)}
+		c1 := span.RGBAColor{R: int(c1Linear.R), G: int(c1Linear.G), B: int(c1Linear.B), A: int(c1Linear.A)}
+		c2 := span.RGBAColor{R: int(c2Linear.R), G: int(c2Linear.G), B: int(c2Linear.B), A: int(c2Linear.A)}
+		c3 := span.RGBAColor{R: int(c3Linear.R), G: int(c3Linear.G), B: int(c3Linear.B), A: int(c3Linear.A)}
 
 		g := span.NewSpanGouraudRGBAWithTriangle(
 			c1, c2, c3,
@@ -254,13 +257,13 @@ func drawGouraudMeshDemo() {
 	adapterAA := &flashScanlineAdapter{sl: slAA}
 	adapterBin := &flashScanlineAdapter{sl: slBin}
 
-	alloc := span.NewSpanAllocator[color.RGBA8[color.SRGB]]()
+	alloc := span.NewSpanAllocator[color.RGBA8[color.Linear]]()
 
 	length := maxX - minX + 2
 	if length < 0 {
 		length = 0
 	}
-	colorSpan := make([]color.RGBA8[color.SRGB], length*2)
+	colorSpan := make([]color.RGBA8[color.Linear], length*2)
 	mixBuffer := colorSpan[length:]
 
 	for {
@@ -286,7 +289,7 @@ func drawGouraudMeshDemo() {
 				y := slBin.Y()
 				for _, spanData := range slBin.Spans() {
 					for j := 0; j < int(spanData.Len); j++ {
-						mixBuffer[int(spanData.X)-minX+j] = color.RGBA8[color.SRGB]{}
+						mixBuffer[int(spanData.X)-minX+j] = color.RGBA8[color.Linear]{}
 					}
 				}
 
@@ -311,4 +314,6 @@ func drawGouraudMeshDemo() {
 			}
 		}
 	}
+
+	applyLinearToSRGB(img)
 }

@@ -262,8 +262,9 @@ func pointInTriangle(x1, y1, x2, y2, x3, y3, px, py float64) bool {
 
 func main() {
 	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "Gouraud",
-		Width:  frameWidth,
-		Height: frameHeight,
+		Title:                 "Gouraud",
+		Width:                 frameWidth,
+		Height:                frameHeight,
+		EncodeLinearRGBToSRGB: true,
 	}, newDemo())
 }
