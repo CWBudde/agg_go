@@ -8,6 +8,8 @@ import (
 	"github.com/cwbudde/agg_go/examples/shared/lowlevelrunner"
 	"github.com/cwbudde/agg_go/internal/basics"
 	"github.com/cwbudde/agg_go/internal/color"
+	"github.com/cwbudde/agg_go/internal/image"
+	"github.com/cwbudde/agg_go/internal/span"
 	"github.com/cwbudde/agg_go/internal/transform"
 )
 
@@ -28,9 +30,9 @@ func TestImageAlphaRandomEllipseUsesCXXRGBAOrder(t *testing.T) {
 	rng := newClibcRandSeed1()
 	e := nextImageAlphaEllipse(rng, 320, 300)
 
-	wantColor := imageAlphaSRGBA8(81, 255, 74, 236)
+	wantColor := imageAlphaSRGBA8(236, 74, 255, 81)
 	if e.color != wantColor {
-		t.Fatalf("first ellipse color = %+v, want C++ rand order converted from srgba8 %+v", e.color, wantColor)
+		t.Fatalf("first ellipse color = %+v, want GCC C++ rand argument order converted from srgba8 %+v", e.color, wantColor)
 	}
 }
 
@@ -135,4 +137,14 @@ func TestImageAlphaRenderTargetUsesCXXBGR24(t *testing.T) {
 	if got.R != 10 || got.G != 20 || got.B != 30 || got.A != 255 {
 		t.Fatalf("copied BGR24 target pixel = RGBA(%d,%d,%d,%d), want RGBA(10,20,30,255)", got.R, got.G, got.B, got.A)
 	}
+}
+
+func TestImageAlphaUsesCXXRGBBilinearFilterWithClipAccessor(t *testing.T) {
+	src := &imageClipSource{
+		accessor: image.NewImageAccessorClip(&imagePixFmt{}, []basics.Int8u{0, 0, 0, 0}),
+		ipf:      &imagePixFmt{},
+	}
+	interp := span.NewSpanInterpolatorLinear(transform.NewTransAffine(), 8)
+
+	var _ *span.SpanImageFilterRGBBilinear[*imageClipSource, *span.SpanInterpolatorLinear[*transform.TransAffine]] = newImageAlphaRGBBilinear(src, interp)
 }

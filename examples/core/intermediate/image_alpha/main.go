@@ -117,7 +117,7 @@ func (s *imageClipSource) RowPtr(y int) []basics.Int8u {
 
 // imgAlphaSpanGen wraps bilinear RGB sampling and converts brightness to alpha.
 type imgAlphaSpanGen struct {
-	inner *span.SpanImageFilterRGBBilinearClip[*imageClipSource, *span.SpanInterpolatorLinear[*transform.TransAffine]]
+	inner *span.SpanImageFilterRGBBilinear[*imageClipSource, *span.SpanInterpolatorLinear[*transform.TransAffine]]
 	lut   [256 * 3]uint8
 }
 
@@ -138,6 +138,13 @@ func (g *imgAlphaSpanGen) Generate(colors []color.RGBA8[color.Linear], x, y, len
 		idx := imageAlphaBrightnessIndex(sum, len(g.lut))
 		c.A = g.lut[idx]
 	}
+}
+
+func newImageAlphaRGBBilinear(
+	src *imageClipSource,
+	interp *span.SpanInterpolatorLinear[*transform.TransAffine],
+) *span.SpanImageFilterRGBBilinear[*imageClipSource, *span.SpanInterpolatorLinear[*transform.TransAffine]] {
+	return span.NewSpanImageFilterRGBBilinearWithParams(src, interp)
 }
 
 // rasScanlineAdapter adapts ScanlineU8 to rasterizer.ScanlineInterface.
@@ -220,12 +227,24 @@ func imageAlphaBrightnessIndex(sum, lutLen int) int {
 }
 
 func nextImageAlphaEllipse(rng *clibcRand, width, height int) imageAlphaEllipse {
+	x := float64(rng.randN(width))
+	y := float64(rng.randN(height))
+	rx := float64(rng.randN(60) + 10)
+	ry := float64(rng.randN(60) + 10)
+
+	// The C++ source writes srgba8(rand(), rand(), rand(), rand()). With the
+	// GCC build used for the reference, those arguments are evaluated
+	// right-to-left, so the random stream is consumed as A, B, G, R.
+	a := uint8(rng.randN(256))
+	b := uint8(rng.randN(256))
+	g := uint8(rng.randN(256))
+	r := uint8(rng.randN(256))
 	return imageAlphaEllipse{
-		x:     float64(rng.randN(width)),
-		y:     float64(rng.randN(height)),
-		rx:    float64(rng.randN(60) + 10),
-		ry:    float64(rng.randN(60) + 10),
-		color: imageAlphaSRGBA8(uint8(rng.randN(256)), uint8(rng.randN(256)), uint8(rng.randN(256)), uint8(rng.randN(256))),
+		x:     x,
+		y:     y,
+		rx:    rx,
+		ry:    ry,
+		color: imageAlphaSRGBA8(r, g, b, a),
 	}
 }
 
@@ -593,7 +612,7 @@ func (d *demo) Render(img *agg.Image) {
 	src := &imageClipSource{accessor: accessor, ipf: &ipf}
 
 	interp := span.NewSpanInterpolatorLinear[*transform.TransAffine](imgMtx, 8)
-	sg := &imgAlphaSpanGen{inner: span.NewSpanImageFilterRGBBilinearClipWithParams(src, color.RGB8[color.Linear]{}, interp)}
+	sg := &imgAlphaSpanGen{inner: newImageAlphaRGBBilinear(src, interp)}
 
 	alphaCtrl := spline.NewSplineCtrl[color.RGBA8[color.Linear]](2, 2, 200, 30, 6, false)
 	alphaCtrl.SetBackgroundColor(color.NewRGBA8[color.Linear](255, 255, 230, 255))

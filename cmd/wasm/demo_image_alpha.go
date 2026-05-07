@@ -11,10 +11,10 @@ import (
 	"github.com/cwbudde/agg_go/internal/basics"
 	"github.com/cwbudde/agg_go/internal/buffer"
 	"github.com/cwbudde/agg_go/internal/color"
+	"github.com/cwbudde/agg_go/internal/conv"
 	"github.com/cwbudde/agg_go/internal/ctrl/spline"
 	"github.com/cwbudde/agg_go/internal/demo/imageassets"
 	"github.com/cwbudde/agg_go/internal/image"
-	"github.com/cwbudde/agg_go/internal/path"
 	"github.com/cwbudde/agg_go/internal/pixfmt"
 	"github.com/cwbudde/agg_go/internal/rasterizer"
 	"github.com/cwbudde/agg_go/internal/renderer"
@@ -26,6 +26,7 @@ import (
 )
 
 const imageAlphaBackgroundEllipseSteps = 50
+const imageAlphaClipEllipseSteps = 200
 
 // --- Demo state ---
 
@@ -46,7 +47,6 @@ var (
 	imgAlphaAlloc       *span.SpanAllocator[color.RGBA8[color.Linear]]
 	imgAlphaRas         *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
 	imgAlphaSl          *scanline.ScanlineU8
-	imgAlphaPath        *path.PathStorageStl
 	imgAlphaInitialized bool
 )
 
@@ -80,6 +80,20 @@ func imageAlphaBrightnessIndex(sum, lutLen int) int {
 		return lutLen - 1
 	}
 	return idx
+}
+
+func newImageAlphaClipSource(w, h int, mtx *transform.TransAffine) rasterizer.VertexSource {
+	ell := shapes.NewEllipse()
+	ell.Init(
+		float64(w)/2.0,
+		float64(h)/2.0,
+		float64(w)/1.9,
+		float64(h)/1.9,
+		imageAlphaClipEllipseSteps,
+		false,
+	)
+	tr := conv.NewConvTransform[conv.VertexSource, *transform.TransAffine](&ellipseConvVS{ell: ell}, mtx)
+	return conv.NewRasterizerVertexSourceAdapter(tr)
 }
 
 // imgAlphaSpanGen wraps a bilinear clip span generator and applies brightness→alpha.
@@ -156,7 +170,6 @@ func initImgAlphaDemo() {
 		rasterizer.NewRasterizerSlNoClip(),
 	)
 	imgAlphaSl = scanline.NewScanlineU8()
-	imgAlphaPath = path.NewPathStorageStl()
 	imgAlphaCtrl = spline.NewSplineCtrl[color.RGBA8[color.Linear]](2, 2, 200, 30, 6, false)
 	imgAlphaCtrl.SetBackgroundColor(color.NewRGBA8[color.Linear](255, 255, 230, 255))
 	imgAlphaCtrl.SetBorderColor(color.NewRGBA8[color.Linear](0, 0, 0, 255))
@@ -168,12 +181,22 @@ func initImgAlphaDemo() {
 	rng := newClibcRandSeed(1)
 	imgAlphaEllipses = make([]imgAlphaEllipse, 50)
 	for i := range imgAlphaEllipses {
+		x := float64(rng.randN(width))
+		y := float64(rng.randN(height))
+		rx := float64(rng.randN(60) + 10)
+		ry := float64(rng.randN(60) + 10)
+		// Match the compiled C++ reference: GCC evaluates the rand()
+		// arguments to srgba8(...) right-to-left, consuming A, B, G, R.
+		a := uint8(rng.randN(256))
+		b := uint8(rng.randN(256))
+		g := uint8(rng.randN(256))
+		r := uint8(rng.randN(256))
 		imgAlphaEllipses[i] = imgAlphaEllipse{
-			x:     float64(rng.randN(width)),
-			y:     float64(rng.randN(height)),
-			rx:    float64(rng.randN(60) + 10),
-			ry:    float64(rng.randN(60) + 10),
-			color: imageAlphaSRGBA8(uint8(rng.randN(256)), uint8(rng.randN(256)), uint8(rng.randN(256)), uint8(rng.randN(256))),
+			x:     x,
+			y:     y,
+			rx:    rx,
+			ry:    ry,
+			color: imageAlphaSRGBA8(r, g, b, a),
 		}
 	}
 
@@ -251,31 +274,11 @@ func drawImageAlphaDemo() {
 	innerSG := span.NewSpanImageFilterRGBABilinearClipWithParams(src, bgColor, interp)
 	sg := &imgAlphaSpanGen{inner: innerSG, lut: &imgAlphaLUT}
 
-	// Large ellipse clipped to screen, rotated (polygon transform)
-	r := imgW * 0.9
-	if imgH*0.9 < r {
-		r = imgH * 0.9
-	}
-
-	imgAlphaPath.RemoveAll()
-	numPoints := 200
-
-	for i := range numPoints {
-		a := 2.0 * math.Pi * float64(i) / float64(numPoints)
-		px := imgW*0.5 + r*0.5*math.Cos(a)
-		py := imgH*0.5 + r*0.5*math.Sin(a)
-		polyMtx.Transform(&px, &py)
-		if i == 0 {
-			imgAlphaPath.MoveTo(px, py)
-		} else {
-			imgAlphaPath.LineTo(px, py)
-		}
-	}
-	imgAlphaPath.ClosePolygon(basics.PathFlagsNone)
+	clipSource := newImageAlphaClipSource(width, height, polyMtx)
 
 	imgAlphaRas.Reset()
 	imgAlphaRas.ClipBox(0, 0, float64(width), float64(height))
-	imgAlphaRas.AddPath(&pathSourceAdapter{ps: imgAlphaPath}, 0)
+	imgAlphaRas.AddPath(clipSource, 0)
 
 	if imgAlphaRas.RewindScanlines() {
 		imgAlphaSl.Reset(imgAlphaRas.MinX(), imgAlphaRas.MaxX())
