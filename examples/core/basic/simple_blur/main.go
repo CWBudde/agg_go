@@ -84,12 +84,10 @@ func (d *demo) OnMouseUp(_, _ int, _ lowlevelrunner.Buttons) bool { return false
 
 func drawLionFill(agg2d *agg.Agg2D, width, height int) {
 	ld := liondata()
-	x1, y1, x2, y2 := getLionBoundingRect(ld)
-	cx := (x1 + x2) * 0.5
-	cy := (y1 + y2) * 0.5
+	baseDX, baseDY := getLionBaseOffset(ld)
 
 	m := transform.NewTransAffine()
-	m.Translate(-cx, -cy)
+	m.Translate(-baseDX, -baseDY)
 	m.Scale(1.0)
 	m.Rotate(math.Pi)
 	m.Translate(float64(width)*0.25, float64(height)*0.5)
@@ -118,12 +116,10 @@ func drawLionFill(agg2d *agg.Agg2D, width, height int) {
 
 func drawLionOutline(agg2d *agg.Agg2D, width, height int) {
 	ld := liondata()
-	x1, y1, x2, y2 := getLionBoundingRect(ld)
-	cx := (x1 + x2) * 0.5
-	cy := (y1 + y2) * 0.5
+	baseDX, baseDY := getLionBaseOffset(ld)
 
 	m := transform.NewTransAffine()
-	m.Translate(-cx, -cy)
+	m.Translate(-baseDX, -baseDY)
 	m.Scale(1.0)
 	m.Rotate(math.Pi)
 	m.Translate(float64(width)*0.75, float64(height)*0.5)
@@ -284,4 +280,9 @@ func getLionBoundingRect(ld *liondemo.LionData) (x1, y1, x2, y2 float64) {
 		}
 	}
 	return
+}
+
+func getLionBaseOffset(ld *liondemo.LionData) (baseDX, baseDY float64) {
+	x1, y1, x2, y2 := getLionBoundingRect(ld)
+	return (x2 - x1) * 0.5, (y2 - y1) * 0.5
 }
