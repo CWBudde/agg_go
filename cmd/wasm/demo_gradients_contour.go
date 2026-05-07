@@ -587,6 +587,7 @@ func drawGradientsContourDemo() {
 		renscan.RenderScanlinesAASolid(ras, sl, ren, flatColor)
 	}
 
+	applyLinearToSRGB(img)
 }
 
 // --- Helper: bounding rect for conv.VertexSource ---

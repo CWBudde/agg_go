@@ -220,7 +220,7 @@ func (d *demo) Render(img *agg.Image) {
 	}
 
 	gradRen := newGradientRenderer(img)
-	g.SetFont(fonts.GetVerdana12())
+	g.SetFont(fonts.GetVerdana18Bold())
 	gradTextRen := rtext.NewRendererRasterHText[*gradientRenderer, *glyph.GlyphRasterBin](gradRen, g)
 	gradTextRen.RenderText(5, float64(img.Height()-15), "RADIAL REPEATING GRADIENT: A quick brown fox jumps over the lazy dog", false)
 }

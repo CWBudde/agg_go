@@ -828,10 +828,11 @@ func (d *demo) OnKey(_ rune) bool { return false }
 
 func runnerConfig() lowlevelrunner.Config {
 	return lowlevelrunner.Config{
-		Title:  "Gradients Contour (Distance Transform)",
-		Width:  frameWidth,
-		Height: frameHeight,
-		FlipY:  true,
+		Title:                 "Gradients Contour (Distance Transform)",
+		Width:                 frameWidth,
+		Height:                frameHeight,
+		FlipY:                 true,
+		EncodeLinearRGBToSRGB: true,
 	}
 }
 

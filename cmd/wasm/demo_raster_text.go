@@ -69,7 +69,7 @@ type rasterTextGradientRenderer struct {
 }
 
 func newRasterTextGradientRenderer(img *agg.Image) *rasterTextGradientRenderer {
-	return &rasterTextGradientRenderer{img: img, periods: 5.0, d: 150.0}
+	return &rasterTextGradientRenderer{img: img, periods: 5.0 * math.Pi * 2.0, d: 150.0}
 }
 
 func (g *rasterTextGradientRenderer) Prepare() {}
@@ -179,7 +179,7 @@ func drawRasterTextDemo() {
 
 	// Gradient footer – radial sine-repeat, red→dark-green (matches raster_text.cpp)
 	gradRen := newRasterTextGradientRenderer(img)
-	g.SetFont(fonts.GetVerdana12())
+	g.SetFont(fonts.GetVerdana18Bold())
 	gradTextRen := rtext.NewRendererRasterHText[*rasterTextGradientRenderer, *glyph.GlyphRasterBin](gradRen, g)
 	gradTextRen.RenderText(5, float64(height)-15, "RADIAL REPEATING GRADIENT: A quick brown fox jumps over the lazy dog", false)
 }

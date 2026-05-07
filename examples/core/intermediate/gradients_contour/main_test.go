@@ -23,12 +23,12 @@ func TestBuildGradientContourLUTConvertsSRGBStopsToLinear(t *testing.T) {
 	}
 }
 
-func TestRunnerConfigKeepsAGGLinearBytesRaw(t *testing.T) {
+func TestRunnerConfigEncodesLinearBufferForCXXScreenshotParity(t *testing.T) {
 	cfg := runnerConfig()
-	if cfg.EncodeLinearRGBToSRGB {
-		t.Fatal("gradients_contour should not sRGB-encode the final framebuffer")
+	if !cfg.EncodeLinearRGBToSRGB {
+		t.Fatal("gradients_contour should sRGB-encode the final framebuffer like AGG save_img does")
 	}
 	if cfg.DisableLinearRGBToSRGB {
-		t.Fatal("gradients_contour should rely on the raw-output default, not a display-space escape hatch")
+		t.Fatal("gradients_contour should use the standard linear-to-sRGB output path")
 	}
 }

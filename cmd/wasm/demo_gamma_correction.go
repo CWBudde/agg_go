@@ -11,9 +11,8 @@ import (
 	"github.com/cwbudde/agg_go/internal/buffer"
 	"github.com/cwbudde/agg_go/internal/color"
 	"github.com/cwbudde/agg_go/internal/conv"
-	"github.com/cwbudde/agg_go/internal/gamma"
 	"github.com/cwbudde/agg_go/internal/path"
-	"github.com/cwbudde/agg_go/internal/pixfmt"
+	pixgamma "github.com/cwbudde/agg_go/internal/pixfmt/gamma"
 	"github.com/cwbudde/agg_go/internal/rasterizer"
 	"github.com/cwbudde/agg_go/internal/renderer"
 	renscan "github.com/cwbudde/agg_go/internal/renderer/scanline"
@@ -66,8 +65,8 @@ func drawGammaCorrectionDemo() {
 	rbuf := buffer.NewRenderingBufferU8()
 	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Stride())
 
-	pf := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
-	ren := renderer.NewRendererBaseWithPixfmt[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](pf)
+	pf := pixgamma.NewPixFmtRGBA32GammaBlend(rbuf, pixgamma.NewSimpleGammaLut(gammaValue))
+	ren := renderer.NewRendererBaseWithPixfmt[*pixgamma.PixFmtRGBA32GammaBlend, color.RGBA8[color.Linear]](pf)
 
 	w := img.Width()
 	h := img.Height()
@@ -91,10 +90,6 @@ func drawGammaCorrectionDemo() {
 	)
 	sl := scanline.NewScanlineU8()
 
-	// Apply gamma to the rasterizer's AA coverage mapping.
-	gp := gamma.NewGammaPower(gammaValue)
-	ras.SetGamma(gp.Apply)
-
 	// Gamma power curve as a green polyline.
 	drawGammaCurveLowLevel(ras, sl, ren, float64(w)/2-128, 50, gammaValue)
 
@@ -104,11 +99,11 @@ func drawGammaCorrectionDemo() {
 		col color.RGBA8[color.Linear]
 	}
 	specs := []ellipseSpec{
-		{0, color.RGBA8[color.Linear]{R: 255, G: 0, B: 0, A: 255}},
-		{5, color.RGBA8[color.Linear]{R: 0, G: 200, B: 0, A: 255}},
-		{10, color.RGBA8[color.Linear]{R: 0, G: 0, B: 255, A: 255}},
-		{15, color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255}},
-		{20, color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255}},
+		{0, gammaCorrectionSRGBA8(255, 0, 0, 255)},
+		{5, gammaCorrectionSRGBA8(0, 255, 0, 255)},
+		{10, gammaCorrectionSRGBA8(0, 0, 255, 255)},
+		{15, gammaCorrectionSRGBA8(0, 0, 0, 255)},
+		{20, gammaCorrectionSRGBA8(255, 255, 255, 255)},
 	}
 
 	fcx := float64(w) / 2
@@ -124,7 +119,16 @@ func drawGammaCorrectionDemo() {
 		renscan.RenderScanlinesAASolid(ras, sl, ren, s.col)
 	}
 
-	// No sRGB conversion for this demo.
+	applyLinearToSRGB(img)
+}
+
+func gammaCorrectionSRGBA8(r, g, b, a uint8) color.RGBA8[color.Linear] {
+	return color.ConvertRGBA8SRGBToLinear(color.RGBA8[color.SRGB]{
+		R: r,
+		G: g,
+		B: b,
+		A: a,
+	})
 }
 
 // drawGammaCurveLowLevel draws the gamma power curve as a thin green polyline.
@@ -154,7 +158,7 @@ func drawGammaCurveLowLevel(
 
 	ras.Reset()
 	ras.AddPath(&gcConvVS{src: stroke}, 0)
-	renscan.RenderScanlinesAASolid(ras, sl, ren, color.RGBA8[color.Linear]{R: 80, G: 160, B: 80, A: 255})
+	renscan.RenderScanlinesAASolid(ras, sl, ren, gammaCorrectionSRGBA8(80, 127, 80, 255))
 }
 
 // --- Mouse handlers ---

@@ -100,6 +100,15 @@ func rgba8(r, g, b, a uint8) icolor.RGBA8[icolor.Linear] {
 	return icolor.RGBA8[icolor.Linear]{R: r, G: g, B: b, A: a}
 }
 
+func srgba8(r, g, b, a uint8) icolor.RGBA8[icolor.Linear] {
+	return icolor.ConvertRGBA8SRGBToLinear(icolor.RGBA8[icolor.SRGB]{
+		R: r,
+		G: g,
+		B: b,
+		A: a,
+	})
+}
+
 func copyFlipY(src, dst []uint8, w, h int) {
 	stride := w * 4
 	for y := 0; y < h; y++ {
@@ -235,17 +244,17 @@ func (d *demo) Render(img *agg.Image) {
 		stroke.SetWidth(2.0)
 		ras.Reset()
 		ras.AddPath(&convRasAdapter{src: stroke}, 0)
-		renderSolid(ras, sl, rb, rgba8(80, 127, 80, 255))
+		renderSolid(ras, sl, rb, srgba8(80, 127, 80, 255))
 	}
 
 	cx := float64(w) / 2.0
 	cy := float64(h) / 2.0
 
-	renderStrokeEllipse(ras, sl, rb, cx, cy, d.rx, d.ry, 150, thickness, rgba8(255, 0, 0, 255))
-	renderStrokeEllipse(ras, sl, rb, cx, cy, d.rx-5, d.ry-5, 150, thickness, rgba8(0, 255, 0, 255))
-	renderStrokeEllipse(ras, sl, rb, cx, cy, d.rx-10, d.ry-10, 150, thickness, rgba8(0, 0, 255, 255))
-	renderStrokeEllipse(ras, sl, rb, cx, cy, d.rx-15, d.ry-15, 150, thickness, rgba8(0, 0, 0, 255))
-	renderStrokeEllipse(ras, sl, rb, cx, cy, d.rx-20, d.ry-20, 150, thickness, rgba8(255, 255, 255, 255))
+	renderStrokeEllipse(ras, sl, rb, cx, cy, d.rx, d.ry, 150, thickness, srgba8(255, 0, 0, 255))
+	renderStrokeEllipse(ras, sl, rb, cx, cy, d.rx-5, d.ry-5, 150, thickness, srgba8(0, 255, 0, 255))
+	renderStrokeEllipse(ras, sl, rb, cx, cy, d.rx-10, d.ry-10, 150, thickness, srgba8(0, 0, 255, 255))
+	renderStrokeEllipse(ras, sl, rb, cx, cy, d.rx-15, d.ry-15, 150, thickness, srgba8(0, 0, 0, 255))
+	renderStrokeEllipse(ras, sl, rb, cx, cy, d.rx-20, d.ry-20, 150, thickness, srgba8(255, 255, 255, 255))
 
 	renderCtrl(ras, sl, rb, d.thickness)
 	renderCtrl(ras, sl, rb, d.contrast)
@@ -299,9 +308,16 @@ func (d *demo) OnMouseUp(x, y int, btn lowlevelrunner.Buttons) bool {
 }
 
 func main() {
-	lowlevelrunner.Run(lowlevelrunner.Config{
+	lowlevelrunner.Run(runnerConfig(), newDemo())
+}
+
+func runnerConfig() lowlevelrunner.Config {
+	return lowlevelrunner.Config{
 		Title:  "AGG Example. Thin red ellipse",
 		Width:  frameWidth,
 		Height: frameHeight,
-	}, newDemo())
+		// C++ uses corrected AGG_BGR24 gamma blending. The framebuffer is
+		// linear-light, then encoded once for display/PNG output.
+		EncodeLinearRGBToSRGB: true,
+	}
 }
