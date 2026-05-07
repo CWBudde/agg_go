@@ -57,6 +57,25 @@ func TestPixFmtRGBAGammaDimensions(t *testing.T) {
 	}
 }
 
+func TestPixFmtRGBA32GammaBlendColorHspanUsesGammaBlendMath(t *testing.T) {
+	const gammaValue = 2.2
+	lut := NewSimpleGammaLut(gammaValue)
+	data := make([]basics.Int8u, 4)
+	rbuf := buffer.NewRenderingBufferU8WithData(data, 1, 1, 4)
+	pf := NewPixFmtRGBA32GammaBlend(rbuf, lut)
+
+	pf.CopyPixel(0, 0, color.RGBA8[color.Linear]{A: 255})
+	pf.BlendColorHspan(0, 0, 1, []color.RGBA8[color.Linear]{
+		{R: 255, G: 255, B: 255, A: 128},
+	}, nil, basics.CoverFull)
+
+	want := lut.Inv(basics.Int8u((uint32(lut.Dir(255)) * 128) >> 8))
+	got := pf.Pixel(0, 0)
+	if got.R != want || got.G != want || got.B != want {
+		t.Fatalf("gamma BlendColorHspan RGB = (%d,%d,%d), want %d", got.R, got.G, got.B, want)
+	}
+}
+
 func TestRGBAMultiplierPremultiplyAndDemultiply(t *testing.T) {
 	rgba := []basics.Int8u{100, 50, 25, 128}
 	RGBAMultiplier[order.RGBA]{}.Premultiply(rgba)

@@ -781,8 +781,8 @@ func (lii *LineInterpolatorImage) StepHor() bool {
 
 	dy := 1
 	for {
-		dist := lii.distPos[dy] - s1
-		if dist > lii.width {
+		dist := lii.distPos[dy]
+		if dist-s1 > lii.width {
 			break
 		}
 		distStart -= lii.di.DXStart()
@@ -805,8 +805,8 @@ func (lii *LineInterpolatorImage) StepHor() bool {
 	distPict = lii.di.DistPict() + lii.start
 	distEnd = lii.di.DistEnd()
 	for {
-		dist := lii.distPos[dy] + s1
-		if dist > lii.width {
+		dist := lii.distPos[dy]
+		if dist+s1 > lii.width {
 			break
 		}
 		distStart += lii.di.DXStart()
@@ -876,8 +876,8 @@ func (lii *LineInterpolatorImage) StepVer() bool {
 
 	dx := 1
 	for {
-		dist := lii.distPos[dx] - s1
-		if dist > lii.width {
+		dist := lii.distPos[dx]
+		if dist-s1 > lii.width {
 			break
 		}
 		distStart += lii.di.DYStart()
@@ -900,8 +900,8 @@ func (lii *LineInterpolatorImage) StepVer() bool {
 	distPict = lii.di.DistPict() + lii.start
 	distEnd = lii.di.DistEnd()
 	for {
-		dist := lii.distPos[dx] + s1
-		if dist > lii.width {
+		dist := lii.distPos[dx]
+		if dist+s1 > lii.width {
 			break
 		}
 		distStart -= lii.di.DYStart()

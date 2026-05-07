@@ -97,6 +97,19 @@ type ImageBlendCall struct {
 	Colors []color.RGBA
 }
 
+type recordingImageRenderer struct {
+	pixelY []int
+}
+
+func (r *recordingImageRenderer) SubpixelWidth() int { return 0 }
+func (r *recordingImageRenderer) PatternWidth() int  { return 1 }
+func (r *recordingImageRenderer) Pixel(p *color.RGBA, _, y int) {
+	r.pixelY = append(r.pixelY, y)
+	*p = color.NewRGBA(1, 1, 1, 1)
+}
+func (r *recordingImageRenderer) BlendColorVSpan(_, _, _ int, _ []color.RGBA) {}
+func (r *recordingImageRenderer) BlendColorHSpan(_, _, _ int, _ []color.RGBA) {}
+
 func NewMockImageBaseRenderer() *MockImageBaseRenderer {
 	return &MockImageBaseRenderer{
 		blendHCalls: make([]ImageBlendCall, 0),
@@ -118,6 +131,37 @@ func (mbr *MockImageBaseRenderer) BlendColorVSpan(x, y, length int, colors []col
 	mbr.blendVCalls = append(mbr.blendVCalls, ImageBlendCall{
 		X: x, Y: y, Length: length, Colors: colorsCopy,
 	})
+}
+
+func TestLineInterpolatorImageStepHorUsesRawDistanceForPatternPixel(t *testing.T) {
+	ren := &recordingImageRenderer{}
+	li := &LineInterpolatorImage{
+		lp: &primitives.LineParameters{
+			X1:  0,
+			Y1:  0,
+			Inc: 1,
+			Len: 10,
+		},
+		li:    primitives.NewDda2LineInterpolatorSimple(0, 10),
+		di:    &DistanceInterpolator4{dist: 20, distStart: 0, distPict: 100, distEnd: 1},
+		ren:   ren,
+		width: 100,
+		count: 2,
+	}
+	li.distPos[1] = 30
+	li.distPos[2] = 0x7FFF0000
+
+	li.StepHor()
+
+	want := []int{-2, 28, -32}
+	if len(ren.pixelY) != len(want) {
+		t.Fatalf("pixel y calls = %v, want %v", ren.pixelY, want)
+	}
+	for i := range want {
+		if ren.pixelY[i] != want[i] {
+			t.Fatalf("pixel y calls = %v, want %v", ren.pixelY, want)
+		}
+	}
 }
 
 func TestLineImageScale(t *testing.T) {

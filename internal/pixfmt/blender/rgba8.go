@@ -51,6 +51,12 @@ type RGBAFastBlender interface {
 	PremulSrc() bool
 }
 
+// RGBAFastPathDisabler marks blenders whose BlendPix has custom channel math
+// that cannot be replaced by the standard RGBA fast paths.
+type RGBAFastPathDisabler interface {
+	DisableRGBAFastPath() bool
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Plain (non-premultiplied) source -> Premultiplied destination
 ////////////////////////////////////////////////////////////////////////////////
@@ -265,6 +271,9 @@ func (bl BlenderRGBA8Gamma[S, O]) IdxG() int       { var o O; return o.IdxG() }
 func (bl BlenderRGBA8Gamma[S, O]) IdxB() int       { var o O; return o.IdxB() }
 func (bl BlenderRGBA8Gamma[S, O]) IdxA() int       { var o O; return o.IdxA() }
 func (bl BlenderRGBA8Gamma[S, O]) PremulSrc() bool { return false }
+func (bl BlenderRGBA8Gamma[S, O]) DisableRGBAFastPath() bool {
+	return true
+}
 
 // BlendRGBAPixel blends a single pixel using the provided blender B.
 // Works for any Space S and Order O, and never branches on order at runtime.

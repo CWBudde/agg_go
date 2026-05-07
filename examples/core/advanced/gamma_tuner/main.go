@@ -110,6 +110,7 @@ func (d *demo) Render(img *agg.Image) {
 	gVal := d.gSlider.Value()
 	bVal := d.bSlider.Value()
 	gammaVal := d.gammaSlider.Value()
+	color := srgbaFromRGBA(icol.RGBA{R: rVal, G: gVal, B: bVal, A: 1})
 
 	// Use gamma-correct blending to match C++ pixfmt_sbgr24_gamma / blender_rgb_gamma.
 	// Copy operations (background, strips) remain raw sRGB — gamma only applies to blends.
@@ -122,20 +123,14 @@ func (d *demo) Render(img *agg.Image) {
 	//   k=0 → full color, k=1 → black (brightness = 1-k)
 	// C++ copy_hline writes raw sRGB directly (no gamma applied).
 	rawColor := func(k float64) icol.RGBA8[icol.Linear] {
-		a := 1 - k
-		clamp := func(v float64) uint8 {
-			if v <= 0 {
-				return 0
-			}
-			if v >= 1 {
-				return 255
-			}
-			return uint8(v*255.0 + 0.5)
+		ik := basics.URound(k * 255)
+		if ik > 255 {
+			ik = 255
 		}
 		return icol.RGBA8[icol.Linear]{
-			R: clamp(rVal * a),
-			G: clamp(gVal * a),
-			B: clamp(bVal * a),
+			R: icol.RGBA8Lerp(color.R, 0, uint8(ik)),
+			G: icol.RGBA8Lerp(color.G, 0, uint8(ik)),
+			B: icol.RGBA8Lerp(color.B, 0, uint8(ik)),
 			A: 255,
 		}
 	}
@@ -279,6 +274,14 @@ func (d *demo) OnMouseUp(x, y int, btn lowlevelrunner.Buttons) bool {
 }
 
 func renderCtrl(ras *rasType, sl *isl.ScanlineU8, rb *renBase, c ctrlbase.Ctrl[icol.RGBA]) {
+	for i := uint(0); i < c.NumPaths(); i++ {
+		ras.Reset()
+		ras.AddPath(&rasterVertexSourceAdapter{src: c}, uint32(i))
+		renscan.RenderScanlinesAASolid(ras, sl, rb, srgbaFromRGBA(c.Color(i)))
+	}
+}
+
+func srgbaFromRGBA(c icol.RGBA) icol.RGBA8[icol.Linear] {
 	clamp := func(v float64) uint8 {
 		if v <= 0 {
 			return 0
@@ -288,12 +291,20 @@ func renderCtrl(ras *rasType, sl *isl.ScanlineU8, rb *renBase, c ctrlbase.Ctrl[i
 		}
 		return uint8(v*255.0 + 0.5)
 	}
-	for i := uint(0); i < c.NumPaths(); i++ {
-		ras.Reset()
-		ras.AddPath(&rasterVertexSourceAdapter{src: c}, uint32(i))
-		col := c.Color(i)
-		renscan.RenderScanlinesAASolid(ras, sl, rb,
-			icol.RGBA8[icol.Linear]{R: clamp(col.R), G: clamp(col.G), B: clamp(col.B), A: clamp(col.A)})
+	clampSRGB := func(v float64) uint8 {
+		if v <= 0 {
+			return 0
+		}
+		if v >= 1 {
+			return 255
+		}
+		return uint8(icol.ConvertToSRGB(v)*255.0 + 0.5)
+	}
+	return icol.RGBA8[icol.Linear]{
+		R: clampSRGB(c.R),
+		G: clampSRGB(c.G),
+		B: clampSRGB(c.B),
+		A: clamp(c.A),
 	}
 }
 

@@ -571,6 +571,8 @@ func drawGradientsContourDemo() {
 		ras.AddPath(&contourConvVS{vs: shapeT3}, 0)
 		renscan.RenderScanlinesAASolid(ras, sl, ren, flatColor)
 	}
+
+	applyLinearToSRGB(img)
 }
 
 // --- Helper: bounding rect for conv.VertexSource ---

@@ -811,15 +811,10 @@ func (d *demo) OnKey(_ rune) bool { return false }
 
 func main() {
 	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "Gradients Contour (Distance Transform)",
-		Width:  frameWidth,
-		Height: frameHeight,
-		FlipY:  true,
-		// The AGG reference demo feeds display-space sRGBA bytes into the
-		// gradient LUT and control colors directly. Re-encoding the finished
-		// framebuffer as sRGB would apply a second transfer curve and wash the
-		// image out, so keep the output buffer in the same byte space as the
-		// original C++ screenshot.
-		DisableLinearRGBToSRGB: true,
+		Title:                 "Gradients Contour (Distance Transform)",
+		Width:                 frameWidth,
+		Height:                frameHeight,
+		FlipY:                 true,
+		EncodeLinearRGBToSRGB: true,
 	}, newDemo())
 }

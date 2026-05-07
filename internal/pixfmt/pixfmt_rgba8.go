@@ -176,6 +176,9 @@ func (pf *PixFmtAlphaBlendRGBA[S, B]) BlendHline(x, y, length int, c color.RGBA8
 
 	// Fast path: resolve order and blend mode once.
 	if fb, ok := any(pf.blender).(blender.RGBAFastBlender); ok {
+		if disabler, ok := any(pf.blender).(blender.RGBAFastPathDisabler); ok && disabler.DisableRGBAFastPath() {
+			goto slow
+		}
 		ir, ig, ib, ia := fb.IdxR(), fb.IdxG(), fb.IdxB(), fb.IdxA()
 
 		spanEnd := (x+length-1)*4 + 3
@@ -376,6 +379,9 @@ func (pf *PixFmtAlphaBlendRGBA[S, B]) BlendSolidHspan(x, y, length int, c color.
 
 	// Fast path: resolve order and blend mode once, then loop with inlined math.
 	if fb, ok := any(pf.blender).(blender.RGBAFastBlender); ok {
+		if disabler, ok := any(pf.blender).(blender.RGBAFastPathDisabler); ok && disabler.DisableRGBAFastPath() {
+			goto slow
+		}
 		ir, ig, ib, ia := fb.IdxR(), fb.IdxG(), fb.IdxB(), fb.IdxA()
 
 		// Single upfront bounds check for the entire span (BCE).
@@ -641,6 +647,9 @@ func (pf *PixFmtAlphaBlendRGBA[S, B]) BlendColorHspan(x, y, length int, colors [
 	row := buffer.RowU8(pf.rbuf, y)
 
 	if fb, ok := any(pf.blender).(blender.RGBAFastBlender); ok {
+		if disabler, ok := any(pf.blender).(blender.RGBAFastPathDisabler); ok && disabler.DisableRGBAFastPath() {
+			goto slow
+		}
 		ir, ig, ib, ia := fb.IdxR(), fb.IdxG(), fb.IdxB(), fb.IdxA()
 
 		spanEnd := (x+length-1)*4 + 3
