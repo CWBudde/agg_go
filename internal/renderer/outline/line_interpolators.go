@@ -58,14 +58,12 @@ func NewLineInterpolatorAABase(ren OutlineRenderer, lp *primitives.LineParameter
 
 	if lp.Vertical {
 		base.count = basics.Abs((lp.Y2 >> primitives.LineSubpixelShift) - base.y)
-		base.li = primitives.NewDda2LineInterpolator(
-			0,
+		base.li = primitives.NewDda2LineInterpolatorSimple(
 			primitives.LineDblHR(lp.X2-lp.X1),
 			basics.Abs(lp.Y2-lp.Y1))
 	} else {
 		base.count = basics.Abs((lp.X2 >> primitives.LineSubpixelShift) - base.x)
-		base.li = primitives.NewDda2LineInterpolator(
-			0,
+		base.li = primitives.NewDda2LineInterpolatorSimple(
 			primitives.LineDblHR(lp.Y2-lp.Y1),
 			basics.Abs(lp.X2-lp.X1)+1)
 	}
@@ -80,14 +78,15 @@ func NewLineInterpolatorAABase(ren OutlineRenderer, lp *primitives.LineParameter
 		li = primitives.NewDda2LineInterpolator(0, lp.DX<<primitives.LineSubpixelShift, lp.Len)
 	}
 	stop := base.width + primitives.LineSubpixelScale*2
-	for i := 0; i < MaxHalfWidth; i++ {
+	i := 0
+	for ; i < MaxHalfWidth; i++ {
 		base.dist[i] = li.Y()
 		if base.dist[i] >= stop {
 			break
 		}
 		li.Inc()
 	}
-	base.dist[MaxHalfWidth] = 0x7FFF0000
+	base.dist[i] = 0x7FFF0000
 
 	return base
 }

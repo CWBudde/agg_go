@@ -89,6 +89,17 @@ func TestDda2LineInterpolatorZeroCount(t *testing.T) {
 	_ = d.Y()
 }
 
+func TestDda2LineInterpolatorSimpleUsesBackwardAdjustment(t *testing.T) {
+	d := NewDda2LineInterpolatorSimple(7, 3)
+	if d.Y() != 0 {
+		t.Fatalf("initial Y = %d, want 0", d.Y())
+	}
+	d.Inc()
+	if d.Y() != 3 {
+		t.Fatalf("after one Inc Y = %d, want 3", d.Y())
+	}
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 // EllipseBresenhamInterpolator
 // ──────────────────────────────────────────────────────────────────────────

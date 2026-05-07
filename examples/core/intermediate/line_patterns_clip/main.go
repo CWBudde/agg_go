@@ -17,6 +17,7 @@ import (
 	icolor "github.com/cwbudde/agg_go/internal/color"
 	"github.com/cwbudde/agg_go/internal/conv"
 	ctrlbase "github.com/cwbudde/agg_go/internal/ctrl"
+	polygonctrl "github.com/cwbudde/agg_go/internal/ctrl/polygon"
 	sliderctrl "github.com/cwbudde/agg_go/internal/ctrl/slider"
 	"github.com/cwbudde/agg_go/internal/demo/linepatterns"
 	"github.com/cwbudde/agg_go/internal/gsv"
@@ -56,14 +57,20 @@ func (s *chainPatternSrc) Pixel(x, y int) icolor.RGBA {
 	r := uint8((p >> 16) & 0xFF)
 	g := uint8((p >> 8) & 0xFF)
 	b := uint8(p & 0xFF)
-	c := icolor.NewRGBAFromRGBA8(r, g, b, linepatterns.BrightnessToAlpha(int(r)+int(g)+int(b)))
+	linear := icolor.ConvertToLinear(icolor.NewRGBA8[icolor.SRGB](r, g, b, 255))
+	c := icolor.NewRGBAFromRGBA8(
+		linear.R,
+		linear.G,
+		linear.B,
+		linepatterns.BrightnessToAlpha(int(r)+int(g)+int(b)),
+	)
 	return c
 }
 
 // -- renderer-base adapter for the image outline renderer -------------------
 
 type renBaseType = renderer.RendererBase[
-	*pixfmt.PixFmtAlphaBlendRGBA[icolor.Linear, blender.BlenderRGBA8Pre[icolor.Linear, order.RGBA]],
+	*pixfmt.PixFmtAlphaBlendRGBA[icolor.Linear, blender.BlenderRGBA8[icolor.Linear, order.RGBA]],
 	icolor.RGBA8[icolor.Linear],
 ]
 
@@ -79,16 +86,14 @@ func clampF(v float64) uint8 {
 	return uint8(v*255 + 0.5)
 }
 
-func rgbaToRGBA8Pre(c icolor.RGBA) icolor.RGBA8[icolor.Linear] {
-	out := icolor.RGBA8[icolor.Linear]{R: clampF(c.R), G: clampF(c.G), B: clampF(c.B), A: clampF(c.A)}
-	out.Premultiply()
-	return out
+func rgbaToRGBA8(c icolor.RGBA) icolor.RGBA8[icolor.Linear] {
+	return icolor.RGBA8[icolor.Linear]{R: clampF(c.R), G: clampF(c.G), B: clampF(c.B), A: clampF(c.A)}
 }
 
 func (a *imgBaseAdaptor) BlendColorHSpan(x, y, length int, colors []icolor.RGBA, _ []basics.CoverType) {
 	buf := make([]icolor.RGBA8[icolor.Linear], length)
 	for i := range buf {
-		buf[i] = rgbaToRGBA8Pre(colors[i])
+		buf[i] = rgbaToRGBA8(colors[i])
 	}
 	a.rb.BlendColorHspan(x, y, length, buf, nil, basics.CoverFull)
 }
@@ -96,7 +101,7 @@ func (a *imgBaseAdaptor) BlendColorHSpan(x, y, length int, colors []icolor.RGBA,
 func (a *imgBaseAdaptor) BlendColorVSpan(x, y, length int, colors []icolor.RGBA, _ []basics.CoverType) {
 	buf := make([]icolor.RGBA8[icolor.Linear], length)
 	for i := range buf {
-		buf[i] = rgbaToRGBA8Pre(colors[i])
+		buf[i] = rgbaToRGBA8(colors[i])
 	}
 	a.rb.BlendColorVspan(x, y, length, buf, nil, basics.CoverFull)
 }
@@ -242,6 +247,18 @@ func buildPath(pts [][2]float64) *path.PathStorageStl {
 	return ps
 }
 
+func buildPolygonCtrl() *polygonctrl.PolygonCtrl[icolor.RGBA] {
+	ctrlColor := icolor.NewRGBA(0.0, 0.3, 0.5, 0.3)
+	lineCtrl := polygonctrl.NewPolygonCtrl[icolor.RGBA](uint(len(defaultPoints)), 5.0, ctrlColor)
+	lineCtrl.SetLineColor(ctrlColor)
+	lineCtrl.SetClose(false)
+	for i, pt := range defaultPoints {
+		lineCtrl.SetXn(uint(i), pt[0])
+		lineCtrl.SetYn(uint(i), pt[1])
+	}
+	return lineCtrl
+}
+
 func (d *demo) Render(img *agg.Image) {
 	w := img.Width()
 	h := img.Height()
@@ -249,9 +266,9 @@ func (d *demo) Render(img *agg.Image) {
 	// ----- low-level pipeline over the RGBA premultiplied buffer -----
 	rbuf := buffer.NewRenderingBufferU8()
 	rbuf.Attach(img.Data, w, h, img.Stride())
-	pf := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
+	pf := pixfmt.NewPixFmtRGBA32Linear(rbuf)
 	renBase := renderer.NewRendererBaseWithPixfmt[
-		*pixfmt.PixFmtAlphaBlendRGBA[icolor.Linear, blender.BlenderRGBA8Pre[icolor.Linear, order.RGBA]],
+		*pixfmt.PixFmtAlphaBlendRGBA[icolor.Linear, blender.BlenderRGBA8[icolor.Linear, order.RGBA]],
 		icolor.RGBA8[icolor.Linear]](pf)
 
 	renBase.Clear(icolor.RGBA8[icolor.Linear]{R: 128, G: 191, B: 217, A: 255})
@@ -276,7 +293,7 @@ func (d *demo) Render(img *agg.Image) {
 	profile.Width(8.0)
 	solidBA := &solidBaseAdaptor{rb: renBase}
 	renLine := outline.NewRendererOutlineAA[*solidBaseAdaptor, icolor.RGBA8[icolor.Linear]](solidBA, profile)
-	renLine.Color(icolor.RGBA8[icolor.Linear]{R: 0, G: 0, B: 127, A: 255})
+	renLine.Color(icolor.ConvertToLinear(icolor.NewRGBA8[icolor.SRGB](0, 0, 127, 255)))
 	rasLine := rasterizer.NewRasterizerOutlineAA[*solidOutlineAdaptor, icolor.RGBA8[icolor.Linear]](
 		&solidOutlineAdaptor{ren: renLine})
 	rasLine.SetRoundCap(true)
@@ -313,21 +330,8 @@ func (d *demo) Render(img *agg.Image) {
 	a := ctx.GetAgg2D()
 	a.ResetTransformations()
 
-	// Polygon guide (matches C++ polygon_ctrl rendering: line + point circles).
-	a.LineColor(agg.NewColor(0, 77, 128, 76))
-	a.LineWidth(1.0)
-	a.NoFill()
-	a.ResetPath()
-	a.MoveTo(defaultPoints[0][0], defaultPoints[0][1])
-	for i := 1; i < len(defaultPoints); i++ {
-		a.LineTo(defaultPoints[i][0], defaultPoints[i][1])
-	}
-	a.DrawPath(agg.StrokeOnly)
-	a.NoLine()
-	a.FillColor(agg.NewColor(0, 77, 128, 128))
-	for _, pt := range defaultPoints {
-		a.FillCircle(pt[0], pt[1], 5.0)
-	}
+	lineCtrl := buildPolygonCtrl()
+	renderCtrl(a, lineCtrl)
 
 	// Sliders at y=5..12 matching C++ source coords (flip_y=true equivalent;
 	// the demorunner flips the PNG so y=5 appears at the visual bottom).
@@ -364,9 +368,10 @@ func (d *demo) Render(img *agg.Image) {
 
 func main() {
 	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "Line Patterns Clip",
-		Width:  500,
-		Height: 500,
-		FlipY:  true,
+		Title:                 "Line Patterns Clip",
+		Width:                 500,
+		Height:                500,
+		FlipY:                 true,
+		EncodeLinearRGBToSRGB: true,
 	}, &demo{})
 }

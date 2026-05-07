@@ -56,6 +56,54 @@ func NewDda2LineInterpolator(y1, y2, count int) *Dda2LineInterpolator {
 	return d
 }
 
+// NewDda2LineInterpolatorBackward creates a new DDA2 line interpolator with
+// AGG's backward-adjusted three-argument constructor.
+func NewDda2LineInterpolatorBackward(y1, y2, count int) *Dda2LineInterpolator {
+	if count <= 0 {
+		count = 1
+	}
+
+	d := &Dda2LineInterpolator{
+		cnt: count,
+		lft: (y2 - y1) / count,
+		rem: (y2 - y1) % count,
+		mod: (y2 - y1) % count,
+		y:   y1,
+	}
+
+	if d.mod <= 0 {
+		d.mod += count
+		d.rem += count
+		d.lft--
+	}
+
+	return d
+}
+
+// NewDda2LineInterpolatorSimple creates a new DDA2 line interpolator with
+// AGG's two-argument constructor dda2_line_interpolator(y, count).
+func NewDda2LineInterpolatorSimple(y, count int) *Dda2LineInterpolator {
+	if count <= 0 {
+		count = 1
+	}
+
+	d := &Dda2LineInterpolator{
+		cnt: count,
+		lft: y / count,
+		rem: y % count,
+		mod: y % count,
+		y:   0,
+	}
+
+	if d.mod <= 0 {
+		d.mod += count
+		d.rem += count
+		d.lft--
+	}
+
+	return d
+}
+
 // Inc increments the interpolator (equivalent to operator++).
 func (d *Dda2LineInterpolator) Inc() {
 	d.mod += d.rem

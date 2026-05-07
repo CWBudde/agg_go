@@ -226,9 +226,9 @@ func (lip *LineImagePattern) Create(src Source) {
 
 		for x := 0; x < lip.dilation; x++ {
 			leftIdx := lip.dilation - x - 1
-			leftSrcIdx := lip.dilation + x
+			leftSrcIdx := lip.dilation + lip.width - x - 1
 			rightIdx := lip.dilation + lip.width + x
-			rightSrcIdx := lip.dilation + lip.width - x - 1
+			rightSrcIdx := lip.dilation + x
 
 			if leftIdx >= 0 && leftIdx < len(row) && leftSrcIdx >= 0 && leftSrcIdx < len(row) {
 				row[leftIdx] = row[leftSrcIdx]
@@ -600,7 +600,7 @@ func NewLineInterpolatorImage(ren ImageRenderer, lp *primitives.LineParameters,
 		count = int(math.Abs(float64(lp.X2-lp.X1))) + 1
 	}
 
-	li.li = primitives.NewDda2LineInterpolator(0, liParam, count)
+	li.li = primitives.NewDda2LineInterpolatorSimple(liParam, count)
 
 	// Create distance interpolator
 	li.di = NewDistanceInterpolator4(lp.X1, lp.Y1, lp.X2, lp.Y2, sx, sy, ex, ey, lp.Len, scaleX,

@@ -98,21 +98,22 @@ func (s *lineChainPatternSource) Pixel(x, y int) color.RGBA {
 	r := uint8((p >> 16) & 0xFF)
 	g := uint8((p >> 8) & 0xFF)
 	b := uint8(p & 0xFF)
+	linear := color.ConvertToLinear(color.NewRGBA8[color.SRGB](r, g, b, 255))
 	c := color.NewRGBAFromRGBA8(
-		r,
-		g,
-		b,
+		linear.R,
+		linear.G,
+		linear.B,
 		linepatterns.BrightnessToAlpha(int(r)+int(g)+int(b)),
 	)
 	return c
 }
 
 type lineClipImageBaseAdapter struct {
-	renBase *renderer.RendererBase[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]]
+	renBase *renderer.RendererBase[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8[color.Linear, order.RGBA]], color.RGBA8[color.Linear]]
 }
 
 type lineClipSolidBaseAdapter struct {
-	renBase *renderer.RendererBase[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]]
+	renBase *renderer.RendererBase[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8[color.Linear, order.RGBA]], color.RGBA8[color.Linear]]
 }
 
 func rgbaToRGBA8(c color.RGBA) color.RGBA8[color.Linear] {
@@ -125,9 +126,7 @@ func rgbaToRGBA8(c color.RGBA) color.RGBA8[color.Linear] {
 		}
 		return uint8(v*255 + 0.5)
 	}
-	out := color.RGBA8[color.Linear]{R: clamp(c.R), G: clamp(c.G), B: clamp(c.B), A: clamp(c.A)}
-	out.Premultiply()
-	return out
+	return color.RGBA8[color.Linear]{R: clamp(c.R), G: clamp(c.G), B: clamp(c.B), A: clamp(c.A)}
 }
 
 func (a *lineClipImageBaseAdapter) BlendColorHSpan(x, y, length int, colors []color.RGBA, covers []basics.CoverType) {
@@ -431,8 +430,8 @@ func drawLinePatternsClipDemo() {
 	img := ctx.GetImage()
 	rbuf := buffer.NewRenderingBufferU8()
 	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Stride())
-	pf := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
-	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]](pf)
+	pf := pixfmt.NewPixFmtRGBA32Linear(rbuf)
+	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8[color.Linear, order.RGBA]], color.RGBA8[color.Linear]](pf)
 	renBase.Clear(color.RGBA8[color.Linear]{R: 128, G: 191, B: 217, A: 255})
 
 	patternSource := &lineChainPatternSource{img: linepatterns.Images[0]}
@@ -449,7 +448,7 @@ func drawLinePatternsClipDemo() {
 	profile.SmootherWidth(10.0)
 	profile.Width(8.0)
 	renLine := outline.NewRendererOutlineAA[*lineClipSolidBaseAdapter, color.RGBA8[color.Linear]](&lineClipSolidBaseAdapter{renBase: renBase}, profile)
-	renLine.Color(color.RGBA8[color.Linear]{R: 0, G: 0, B: 127, A: 255})
+	renLine.Color(color.ConvertToLinear(color.NewRGBA8[color.SRGB](0, 0, 127, 255)))
 	rasLine := rasterizer.NewRasterizerOutlineAA[*lineClipOutlineAAAdapter, color.RGBA8[color.Linear]](&lineClipOutlineAAAdapter{ren: renLine})
 	rasLine.SetRoundCap(true)
 
