@@ -52,12 +52,54 @@ func TestRenderCardEmitsRegenerateForm(t *testing.T) {
 	}
 }
 
+func TestRenderCardEmitsZoomSurfaces(t *testing.T) {
+	demo := demoEntry{
+		Name:       "line_patterns_clip",
+		CppB64:     "cpp",
+		GoB64:      "go",
+		AmpDiffB64: "amp",
+		RawDiffB64: "raw",
+	}
+
+	var buf bytes.Buffer
+	renderCard(&buf, &demo)
+
+	html := buf.String()
+	for _, want := range []string{
+		`class="zoom-surface"`,
+		`class="zoom-transform"`,
+		`class="zoom-selection"`,
+		`class="comparison-image"`,
+		`class="slider-wrap zoom-surface"`,
+		`class="zoom-transform zoom-overlay-layer"`,
+	} {
+		if !strings.Contains(html, want) {
+			t.Fatalf("renderCard() missing %q in output:\n%s", want, html)
+		}
+	}
+}
+
 func TestPageHeaderEmitsRegenerateAllForm(t *testing.T) {
 	for _, want := range []string{
 		`class="regen-form"`,
 		`method="post"`,
 		`action="/regenerate-all"`,
 		`Regenerate All`,
+	} {
+		if !strings.Contains(pageHeader, want) {
+			t.Fatalf("pageHeader missing %q", want)
+		}
+	}
+}
+
+func TestPageHeaderEmitsResampleModeControl(t *testing.T) {
+	for _, want := range []string{
+		`id="resample-mode"`,
+		`setResampleMode(this.value)`,
+		`value="smooth"`,
+		`value="pixelated"`,
+		`Scaling: Antialiased`,
+		`Scaling: Pixelated`,
 	} {
 		if !strings.Contains(pageHeader, want) {
 			t.Fatalf("pageHeader missing %q", want)

@@ -451,34 +451,46 @@ body { background: #111; color: #ddd; font-family: monospace; font-size: 13px; }
 .badge-warn { background: #3a2a00; color: #fa0; border: 1px solid #6a5000; }
 .badge-bad { background: #3a0000; color: #f55; border: 1px solid #6a0000; }
 .img-grid {
-  display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px;
 }
-.img-col { display: flex; flex-direction: column; gap: 4px; }
+.img-col { display: flex; flex-direction: column; gap: 4px; min-width: 0; overflow: auto; }
 .img-col label { font-size: 11px; color: #888; text-align: center; }
-.img-col { overflow: auto; }
-/* Stretch mode (default): images fill column width with bilinear resampling */
-.img-col img { display: block; image-rendering: auto; width: 100%; height: auto; }
-/* Original mode: images shown at native pixel size, column scrolls if needed */
-.original-size .img-col img { width: auto; height: auto; max-width: none; }
+.zoom-surface {
+  position: relative; overflow: hidden; width: 100%; max-width: 100%;
+  background: #000; cursor: crosshair;
+}
+.zoom-transform { position: relative; transform-origin: 0 0; will-change: transform; }
+.zoom-selection {
+  display: none; position: absolute; border: 1px solid #8ab4ff;
+  background: rgba(80, 150, 255, 0.18); pointer-events: none; z-index: 4;
+}
+.comparison-image {
+  display: block; image-rendering: auto; width: 100%; height: auto; max-width: 100%;
+}
+.resample-pixelated .comparison-image { image-rendering: pixelated; }
+.original-size .img-grid { grid-template-columns: repeat(5, max-content); }
+.original-size .img-col { min-width: max-content; }
+.original-size .zoom-surface, .original-size .slider-wrap { align-self: flex-start; width: auto; }
+.original-size .comparison-image { width: auto; height: auto; max-width: none; }
 .col-raw { display: none; }
 /* Slider */
 .slider-wrap {
-  position: relative; overflow: hidden; width: 100%; cursor: col-resize;
+  position: relative; overflow: hidden; width: 100%; cursor: crosshair;
 }
-.slider-wrap img.base { display: block; image-rendering: auto; width: 100%; height: auto; }
-.original-size .slider-wrap img.base { width: auto; height: auto; max-width: none; }
+.slider-wrap img.base, .slider-wrap .zoom-overlay-layer img {
+  display: block; image-rendering: auto; width: 100%; height: auto; max-width: 100%;
+}
+.resample-pixelated .slider-wrap img.base,
+.resample-pixelated .slider-wrap .zoom-overlay-layer img { image-rendering: pixelated; }
+.original-size .slider-wrap img.base,
+.original-size .slider-wrap .zoom-overlay-layer img { width: auto; height: auto; max-width: none; }
 .slider-overlay {
-  position: absolute; top: 0; left: 0; height: 100%; overflow: hidden; width: 50%;
+  position: absolute; top: 0; left: 0; height: 100%; overflow: hidden; width: 50%; z-index: 2;
+  pointer-events: none;
 }
-.slider-overlay img {
-  display: block; position: absolute; top: 0; left: 0;
-  image-rendering: auto;
-  width: 200%; /* will be updated by JS */
-}
-.original-size .slider-overlay img { width: auto !important; }
 .slider-divider {
   position: absolute; top: 0; left: 50%; height: 100%;
-  width: 3px; background: #fff; cursor: col-resize; transform: translateX(-50%);
+  width: 3px; background: #fff; cursor: col-resize; transform: translateX(-50%); z-index: 3;
 }
 .slider-divider::before {
   content: ''; position: absolute; top: 50%; left: 50%;
@@ -486,6 +498,7 @@ body { background: #111; color: #ddd; font-family: monospace; font-size: 13px; }
   width: 20px; height: 20px; background: #fff; border-radius: 50%;
   border: 2px solid #333;
 }
+.zoom-dragging, .zoom-dragging * { user-select: none; }
 </style>
 </head>
 <body>
@@ -508,6 +521,10 @@ body { background: #111; color: #ddd; font-family: monospace; font-size: 13px; }
     <option value="raw">Diff: Raw</option>
     <option value="both">Diff: Both</option>
   </select>
+  <select id="resample-mode" onchange="setResampleMode(this.value)">
+    <option value="smooth">Scaling: Antialiased</option>
+    <option value="pixelated">Scaling: Pixelated</option>
+  </select>
   <form class="regen-form" method="post" action="/regenerate-all">
     <button class="regen-button" type="submit">Regenerate All</button>
   </form>
@@ -522,6 +539,14 @@ body { background: #111; color: #ddd; font-family: monospace; font-size: 13px; }
 const pageFooter = `</div>
 <script>
 (function() {
+  var minZoomDragPixels = 4;
+  var activeSlider = null;
+  var activeZoomSelection = null;
+
+  function clamp(value, minValue, maxValue) {
+    return Math.min(Math.max(value, minValue), maxValue);
+  }
+
   // Card toggle
   document.querySelectorAll('.card-header').forEach(function(h) {
     h.addEventListener('click', function() {
@@ -639,6 +664,7 @@ const pageFooter = `</div>
     document.querySelectorAll('.col-raw').forEach(function(el) {
       el.style.display = (mode === 'raw' || mode === 'both') ? 'flex' : 'none';
     });
+    refreshCardZooms();
   }
 
   function updateSummary() {
@@ -647,34 +673,11 @@ const pageFooter = `</div>
     document.getElementById('summary').textContent = visible.length + ' / ' + all.length + ' demos';
   }
 
-  // Slider logic
-  document.querySelectorAll('.slider-wrap').forEach(function(wrap) {
-    var divider = wrap.querySelector('.slider-divider');
-    var overlay = wrap.querySelector('.slider-overlay');
-    var dragging = false;
-
-    function updateSlider(x) {
-      var rect = wrap.getBoundingClientRect();
-      var pct = Math.max(0, Math.min(1, (x - rect.left) / rect.width));
-      overlay.style.width = (pct * 100) + '%';
-      divider.style.left = (pct * 100) + '%';
-      if (pct > 0) {
-        overlay.querySelector('img').style.width = (100 / pct) + '%';
-      } else {
-        overlay.querySelector('img').style.width = '100%';
-      }
-    }
-
-    divider.addEventListener('mousedown', function(e) {
-      dragging = true;
-      e.preventDefault();
-    });
-    document.addEventListener('mousemove', function(e) {
-      if (dragging) updateSlider(e.clientX);
-    });
-    document.addEventListener('mouseup', function() { dragging = false; });
-    wrap.addEventListener('click', function(e) { updateSlider(e.clientX); });
-  });
+  function setResampleMode(mode) {
+    var container = document.getElementById('cards-container');
+    container.classList.remove('resample-smooth', 'resample-pixelated');
+    container.classList.add(mode === 'pixelated' ? 'resample-pixelated' : 'resample-smooth');
+  }
 
   function setOriginalSize(on) {
     var container = document.getElementById('cards-container');
@@ -683,17 +686,211 @@ const pageFooter = `</div>
     } else {
       container.classList.remove('original-size');
     }
+    refreshCardZooms();
   }
 
+  function ensureCardZoomState(card) {
+    if (!card.__zoomState) {
+      card.__zoomState = { scale: 1, x: 0, y: 0 };
+    }
+    return card.__zoomState;
+  }
+
+  function applyCardZoom(card) {
+    var state = ensureCardZoomState(card);
+    card.querySelectorAll('.zoom-surface').forEach(function(surface) {
+      var width = surface.clientWidth;
+      var height = surface.clientHeight;
+      surface.querySelectorAll('.zoom-transform').forEach(function(layer) {
+        if (!width || !height || state.scale <= 1) {
+          layer.style.transform = '';
+          return;
+        }
+        var tx = -state.x * width * state.scale;
+        var ty = -state.y * height * state.scale;
+        layer.style.transform = 'matrix(' + state.scale + ',0,0,' + state.scale + ',' + tx + ',' + ty + ')';
+      });
+    });
+  }
+
+  function refreshCardZooms() {
+    document.querySelectorAll('.card').forEach(applyCardZoom);
+  }
+
+  function setCardZoomFromSelection(card, rect) {
+    var width = clamp(rect.width, 0, 1);
+    var height = clamp(rect.height, 0, 1);
+    if (width <= 0 || height <= 0) {
+      return;
+    }
+    var scale = 1 / Math.max(width, height);
+    var visibleWidth = 1 / scale;
+    var visibleHeight = 1 / scale;
+    var centerX = rect.x + width / 2;
+    var centerY = rect.y + height / 2;
+    var state = ensureCardZoomState(card);
+    state.scale = scale;
+    state.x = clamp(centerX - visibleWidth / 2, 0, Math.max(0, 1 - visibleWidth));
+    state.y = clamp(centerY - visibleHeight / 2, 0, Math.max(0, 1 - visibleHeight));
+    applyCardZoom(card);
+  }
+
+  function resetCardZoom(card) {
+    var state = ensureCardZoomState(card);
+    state.scale = 1;
+    state.x = 0;
+    state.y = 0;
+    applyCardZoom(card);
+  }
+
+  function showSelectionBox(selection, x0, y0, x1, y1) {
+    var left = Math.min(x0, x1);
+    var top = Math.min(y0, y1);
+    selection.style.display = 'block';
+    selection.style.left = left + 'px';
+    selection.style.top = top + 'px';
+    selection.style.width = Math.abs(x1 - x0) + 'px';
+    selection.style.height = Math.abs(y1 - y0) + 'px';
+  }
+
+  function hideSelectionBox(selection) {
+    if (!selection) return;
+    selection.style.display = 'none';
+    selection.style.left = '0';
+    selection.style.top = '0';
+    selection.style.width = '0';
+    selection.style.height = '0';
+  }
+
+  // Slider logic
+  document.querySelectorAll('.slider-wrap').forEach(function(wrap) {
+    var divider = wrap.querySelector('.slider-divider');
+    var overlay = wrap.querySelector('.slider-overlay');
+
+    function applyPos(pct) {
+      pct = Math.max(0, Math.min(1, pct));
+      overlay.style.width = (pct * 100) + '%';
+      divider.style.left = (pct * 100) + '%';
+      var overlayLayer = wrap.querySelector('.zoom-overlay-layer');
+      if (overlayLayer) {
+        overlayLayer.style.width = pct <= 0 ? '0%' : (100 / pct) + '%';
+      }
+    }
+
+    function setPos(x) {
+      var rect = wrap.getBoundingClientRect();
+      if (rect.width <= 0) {
+        applyPos(0.5);
+      } else {
+        applyPos((x - rect.left) / rect.width);
+      }
+    }
+
+    wrap.__setSliderClientX = setPos;
+    divider.addEventListener('mousedown', function(e) {
+      activeSlider = { setPos: setPos };
+      e.preventDefault();
+      e.stopPropagation();
+    });
+    applyPos(0.5);
+  });
+
+  document.addEventListener('mousemove', function(e) {
+    if (activeSlider) {
+      activeSlider.setPos(e.clientX);
+    }
+    if (!activeZoomSelection) {
+      return;
+    }
+    var rect = activeZoomSelection.rect;
+    var x = clamp(e.clientX - rect.left, 0, rect.width);
+    var y = clamp(e.clientY - rect.top, 0, rect.height);
+    activeZoomSelection.currentX = x;
+    activeZoomSelection.currentY = y;
+    showSelectionBox(activeZoomSelection.selection, activeZoomSelection.startX, activeZoomSelection.startY, x, y);
+  });
+
+  document.addEventListener('mouseup', function(e) {
+    if (activeSlider && e.button === 0) {
+      activeSlider = null;
+    }
+    if (!activeZoomSelection || e.button !== 0) {
+      return;
+    }
+    var drag = activeZoomSelection;
+    var width = Math.abs(drag.currentX - drag.startX);
+    var height = Math.abs(drag.currentY - drag.startY);
+    hideSelectionBox(drag.selection);
+    document.body.classList.remove('zoom-dragging');
+    activeZoomSelection = null;
+
+    if (width > minZoomDragPixels && height > minZoomDragPixels) {
+      setCardZoomFromSelection(drag.card, {
+        x: Math.min(drag.startX, drag.currentX) / drag.rect.width,
+        y: Math.min(drag.startY, drag.currentY) / drag.rect.height,
+        width: width / drag.rect.width,
+        height: height / drag.rect.height,
+      });
+      return;
+    }
+
+    if (drag.surface.classList.contains('slider-wrap') && typeof drag.surface.__setSliderClientX === 'function') {
+      drag.surface.__setSliderClientX(e.clientX);
+    }
+  });
+
+  document.querySelectorAll('.zoom-surface').forEach(function(surface) {
+    surface.addEventListener('mousedown', function(e) {
+      if (e.button !== 0) {
+        return;
+      }
+      if (e.target.closest('.slider-divider')) {
+        return;
+      }
+      var rect = surface.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) {
+        return;
+      }
+      var selection = surface.querySelector('.zoom-selection');
+      if (!selection) {
+        return;
+      }
+      var startX = clamp(e.clientX - rect.left, 0, rect.width);
+      var startY = clamp(e.clientY - rect.top, 0, rect.height);
+      activeZoomSelection = {
+        card: surface.closest('.card'),
+        surface: surface,
+        rect: rect,
+        selection: selection,
+        startX: startX,
+        startY: startY,
+        currentX: startX,
+        currentY: startY,
+      };
+      showSelectionBox(selection, startX, startY, startX, startY);
+      document.body.classList.add('zoom-dragging');
+      e.preventDefault();
+    });
+    surface.addEventListener('contextmenu', function(e) {
+      e.preventDefault();
+      resetCardZoom(surface.closest('.card'));
+    });
+  });
+
+  window.addEventListener('resize', refreshCardZooms);
+
   // Initial summary
+  setResampleMode(document.getElementById('resample-mode').value);
   updateSortMetricBadges(document.getElementById('sort-select').value);
   updateSummary();
+  refreshCardZooms();
 
   // Expose for onchange handlers
   window.filterCards = filterCards;
   window.sortCards = sortCards;
   window.setDiffMode = setDiffMode;
   window.setOriginalSize = setOriginalSize;
+  window.setResampleMode = setResampleMode;
 })();
 </script>
 </body>
@@ -764,22 +961,34 @@ func renderCard(w io.Writer, d *demoEntry) {
 	// Column 1: C++ Reference
 	fmt.Fprintf(w, `<div class="img-col">`)
 	fmt.Fprintf(w, `<label>C++ Reference</label>`)
-	fmt.Fprintf(w, `<img src="data:image/png;base64,%s" alt="cpp">`, d.CppB64)
+	fmt.Fprintf(w, `<div class="zoom-surface">`)
+	fmt.Fprintf(w, `<div class="zoom-transform">`)
+	fmt.Fprintf(w, `<img class="comparison-image" src="data:image/png;base64,%s" alt="cpp">`, d.CppB64)
+	fmt.Fprintf(w, `</div><div class="zoom-selection"></div></div>`)
 	fmt.Fprintf(w, `</div>`)
 
 	// Column 2: Go Output
 	fmt.Fprintf(w, `<div class="img-col">`)
 	fmt.Fprintf(w, `<label>Go Output</label>`)
-	fmt.Fprintf(w, `<img src="data:image/png;base64,%s" alt="go">`, d.GoB64)
+	fmt.Fprintf(w, `<div class="zoom-surface">`)
+	fmt.Fprintf(w, `<div class="zoom-transform">`)
+	fmt.Fprintf(w, `<img class="comparison-image" src="data:image/png;base64,%s" alt="go">`, d.GoB64)
+	fmt.Fprintf(w, `</div><div class="zoom-selection"></div></div>`)
 	fmt.Fprintf(w, `</div>`)
 
 	// Column 3: Slider comparison (C++ base, Go overlay)
 	fmt.Fprintf(w, `<div class="img-col">`)
 	fmt.Fprintf(w, `<label>C++ vs Go (drag to compare)</label>`)
-	fmt.Fprintf(w, `<div class="slider-wrap">`)
+	fmt.Fprintf(w, `<div class="slider-wrap zoom-surface">`)
+	fmt.Fprintf(w, `<div class="zoom-transform zoom-base-layer">`)
 	fmt.Fprintf(w, `<img class="base" src="data:image/png;base64,%s" alt="base">`, d.CppB64)
-	fmt.Fprintf(w, `<div class="slider-overlay"><img src="data:image/png;base64,%s" alt="overlay"></div>`, d.GoB64)
+	fmt.Fprintf(w, `</div>`)
+	fmt.Fprintf(w, `<div class="slider-overlay">`)
+	fmt.Fprintf(w, `<div class="zoom-transform zoom-overlay-layer">`)
+	fmt.Fprintf(w, `<img src="data:image/png;base64,%s" alt="overlay">`, d.GoB64)
+	fmt.Fprintf(w, `</div></div>`)
 	fmt.Fprintf(w, `<div class="slider-divider"></div>`)
+	fmt.Fprintf(w, `<div class="zoom-selection"></div>`)
 	fmt.Fprintf(w, `</div>`)
 	fmt.Fprintf(w, `</div>`)
 
@@ -787,7 +996,10 @@ func renderCard(w io.Writer, d *demoEntry) {
 	fmt.Fprintf(w, `<div class="img-col col-amp">`)
 	fmt.Fprintf(w, `<label>Diff (amplified)</label>`)
 	if d.AmpDiffB64 != "" {
-		fmt.Fprintf(w, `<img src="data:image/png;base64,%s" alt="amp-diff">`, d.AmpDiffB64)
+		fmt.Fprintf(w, `<div class="zoom-surface">`)
+		fmt.Fprintf(w, `<div class="zoom-transform">`)
+		fmt.Fprintf(w, `<img class="comparison-image" src="data:image/png;base64,%s" alt="amp-diff">`, d.AmpDiffB64)
+		fmt.Fprintf(w, `</div><div class="zoom-selection"></div></div>`)
 	}
 	fmt.Fprintf(w, `</div>`)
 
@@ -795,7 +1007,10 @@ func renderCard(w io.Writer, d *demoEntry) {
 	fmt.Fprintf(w, `<div class="img-col col-raw" style="display:none">`)
 	fmt.Fprintf(w, `<label>Diff (raw subtract)</label>`)
 	if d.RawDiffB64 != "" {
-		fmt.Fprintf(w, `<img src="data:image/png;base64,%s" alt="raw-diff">`, d.RawDiffB64)
+		fmt.Fprintf(w, `<div class="zoom-surface">`)
+		fmt.Fprintf(w, `<div class="zoom-transform">`)
+		fmt.Fprintf(w, `<img class="comparison-image" src="data:image/png;base64,%s" alt="raw-diff">`, d.RawDiffB64)
+		fmt.Fprintf(w, `</div><div class="zoom-selection"></div></div>`)
 	}
 	fmt.Fprintf(w, `</div>`)
 
