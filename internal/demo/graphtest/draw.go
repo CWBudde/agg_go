@@ -115,6 +115,23 @@ func Draw(ctx *agg.Context, g *Graph, cfg Config) {
 	prepared := g.prepare(int(w), int(h))
 	colorRng := newClibcRandSeed(100)
 
+	if cfg.DrawNodes {
+		outerR := 5.0 * cfg.Width
+
+		for _, n := range prepared.nodes {
+			a.ResetPath()
+			a.AddEllipse(n.x, n.y, outerR, outerR, agg.CCW)
+			a.FillRadialGradient(
+				n.x, n.y, outerR,
+				agg.NewColor(255, 255, 0, 64),
+				agg.NewColor(0, 0, 255, 255),
+				1.0,
+			)
+			a.LineColor(agg.Transparent)
+			a.DrawPath(agg.FillOnly)
+		}
+	}
+
 	if cfg.DrawEdges {
 		ctx.SetLineWidth(cfg.Width)
 		a.NoFill()
@@ -158,23 +175,6 @@ func Draw(ctx *agg.Context, g *Graph, cfg Config) {
 		}
 		if cfg.Mode == 2 {
 			a.NoDashes()
-		}
-	}
-
-	if cfg.DrawNodes {
-		outerR := 5.0 * cfg.Width
-
-		for _, n := range prepared.nodes {
-			a.ResetPath()
-			a.AddEllipse(n.x, n.y, outerR, outerR, agg.CCW)
-			a.FillRadialGradient(
-				n.x, n.y, outerR,
-				agg.NewColor(255, 255, 0, 64),
-				agg.NewColor(0, 0, 255, 255),
-				1.0,
-			)
-			a.LineColor(agg.Transparent)
-			a.DrawPath(agg.FillOnly)
 		}
 	}
 
@@ -415,12 +415,7 @@ func renderCtrl(ctx *agg.Context, ctrl ctrlPathSource) {
 }
 
 func drawControls(ctx *agg.Context, cfg Config) {
-	typeCtrl := rboxctrl.NewDefaultRboxCtrl(0, 0, 110, 95, false)
-	typeCtrl.SetTextSize(8.0, 0.0)
-	for _, item := range []string{"Poygons Bin", "Poygons AA", "Dashed curves", "Bezier curves", "Solid lines"} {
-		typeCtrl.AddItem(item)
-	}
-	typeCtrl.SetCurItem(4 - cfg.Mode)
+	typeCtrl := newTypeControl(cfg)
 
 	widthCtrl := sliderctrl.NewSliderCtrl(190, 8, 390, 15, false)
 	widthCtrl.SetNumSteps(20)
@@ -458,4 +453,14 @@ func drawControls(ctx *agg.Context, cfg Config) {
 	} {
 		renderCtrl(ctx, ctrl)
 	}
+}
+
+func newTypeControl(cfg Config) *rboxctrl.RboxCtrl[icolor.RGBA] {
+	typeCtrl := rboxctrl.NewDefaultRboxCtrl(0, 0, 110, 95, false)
+	typeCtrl.SetTextSize(8.0, 0.0)
+	for _, item := range []string{"Solid lines", "Bezier curves", "Dashed curves", "Poygons AA", "Poygons Bin"} {
+		typeCtrl.AddItem(item)
+	}
+	typeCtrl.SetCurItem(cfg.Mode)
+	return typeCtrl
 }

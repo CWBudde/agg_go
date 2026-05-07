@@ -1,0 +1,60 @@
+package graphtest
+
+import (
+	"image/color"
+	"testing"
+
+	agg "github.com/cwbudde/agg_go"
+)
+
+func TestGraphTypeControlMatchesCPPVisualOrder(t *testing.T) {
+	ctrl := newTypeControl(Config{Mode: 0})
+
+	want := []string{
+		"Solid lines",
+		"Bezier curves",
+		"Dashed curves",
+		"Poygons AA",
+		"Poygons Bin",
+	}
+	if got := int(ctrl.NumItems()); got != len(want) {
+		t.Fatalf("NumItems() = %d, want %d", got, len(want))
+	}
+	for i, text := range want {
+		if got := ctrl.ItemText(i); got != text {
+			t.Fatalf("ItemText(%d) = %q, want %q", i, got, text)
+		}
+	}
+	if got := ctrl.CurItem(); got != 0 {
+		t.Fatalf("CurItem() = %d, want 0", got)
+	}
+}
+
+func TestGraphArrowsRenderOnTopOfNodes(t *testing.T) {
+	g := &Graph{
+		nodes: []node{
+			{x: 0.2, y: 0.5},
+			{x: 0.8, y: 0.5},
+		},
+		edges:    []edge{{n1: 0, n2: 1}},
+		prepared: make(map[[2]int]*preparedGraph),
+	}
+
+	img := agg.NewImage(make([]byte, 100*100*4), 100, 100, 100*4)
+	Draw(agg.NewContextForImage(img), g, Config{
+		Mode:      0,
+		Width:     2,
+		DrawNodes: true,
+		DrawEdges: true,
+	})
+
+	got := img.ToGoImage().RGBAAt(73, 50)
+	if !isDarkArrowPixel(got) {
+		t.Fatalf("arrow sample at destination node = rgba(%d,%d,%d,%d), want dark edge/arrow color on top of node gradient",
+			got.R, got.G, got.B, got.A)
+	}
+}
+
+func isDarkArrowPixel(c color.RGBA) bool {
+	return c.R < 150 && c.G < 150 && c.B < 150 && c.A == 255
+}
