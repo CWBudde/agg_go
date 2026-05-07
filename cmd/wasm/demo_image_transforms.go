@@ -39,8 +39,8 @@ var (
 
 	// Reusable components
 	imgTransRbuf        *buffer.RenderingBufferU8
-	imgTransPixFmt      *pixfmt.PixFmtRGBA32Pre[color.Linear]
-	imgTransRenBase     *renderer.RendererBase[*pixfmt.PixFmtRGBA32Pre[color.Linear], color.RGBA8[color.Linear]]
+	imgTransPixFmt      *pixfmt.PixFmtRGBA32[color.Linear]
+	imgTransRenBase     *renderer.RendererBase[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]]
 	imgTransAlloc       *span.SpanAllocator[color.RGBA8[color.Linear]]
 	imgTransRas         *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
 	imgTransSl          *scanline.ScanlineU8
@@ -65,8 +65,8 @@ func initImgTransDemo() {
 		return
 	}
 	imgTransRbuf = buffer.NewRenderingBufferU8()
-	imgTransPixFmt = pixfmt.NewPixFmtRGBA32PreLinear(imgTransRbuf)
-	imgTransRenBase = renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32Pre[color.Linear], color.RGBA8[color.Linear]](imgTransPixFmt)
+	imgTransPixFmt = pixfmt.NewPixFmtRGBA32[color.Linear](imgTransRbuf)
+	imgTransRenBase = renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]](imgTransPixFmt)
 	imgTransAlloc = span.NewSpanAllocator[color.RGBA8[color.Linear]]()
 	imgTransRas = rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
 		rasterizer.RasConvInt{},
@@ -116,7 +116,7 @@ func drawImageTransformsDemo() {
 
 	if imgTransImage == nil {
 		if src, err := imageassets.Spheres(); err == nil && src != nil {
-			imgTransImage = src
+			imgTransImage = linearizeSRGBImage(src)
 		} else {
 			imgTransImage = createSpheresImage(400, 300)
 		}
@@ -256,6 +256,7 @@ func drawImageTransformsDemo() {
 
 	// Draw image center handle (interactive point)
 	drawHandle(imgTransImageCX, imgTransImageCY)
+	applyLinearToSRGB(img)
 }
 
 func imgTransIsFinitePositive(v float64) bool {

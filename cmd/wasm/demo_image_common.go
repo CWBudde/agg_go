@@ -28,6 +28,36 @@ func (s *imageClipSource) RowPtr(y int) []basics.Int8u {
 	return s.ipf.PixPtr(0, y)
 }
 
+func linearizeSRGBImage(src *agg.Image) *agg.Image {
+	goImg := src.ToGoImage()
+	if goImg == nil {
+		return nil
+	}
+
+	w := goImg.Bounds().Dx()
+	h := goImg.Bounds().Dy()
+	buf := make([]byte, w*h*4)
+	for y := 0; y < h; y++ {
+		srcOff := y * goImg.Stride
+		dstOff := y * w * 4
+		for x := 0; x < w; x++ {
+			s := srcOff + x*4
+			d := dstOff + x*4
+			c := color.ConvertRGBA8SRGBToLinear(color.RGBA8[color.SRGB]{
+				R: goImg.Pix[s],
+				G: goImg.Pix[s+1],
+				B: goImg.Pix[s+2],
+				A: goImg.Pix[s+3],
+			})
+			buf[d] = c.R
+			buf[d+1] = c.G
+			buf[d+2] = c.B
+			buf[d+3] = c.A
+		}
+	}
+	return agg.NewImage(buf, w, h, w*4)
+}
+
 // createSpheresImage creates a procedural image with colorful spheres on a dark background.
 // This is used in place of spheres.bmp from the original AGG demos.
 func createSpheresImage(w, h int) *agg.Image {

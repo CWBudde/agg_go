@@ -62,3 +62,14 @@ func TestRGBARandRGBRTLMatchesCppSrgba8Conversion(t *testing.T) {
 		t.Fatalf("rgbaRandRGBRTL = %+v, want C++ srgba8 decoded to linear %+v from raw %+v", got, want, raw)
 	}
 }
+
+func TestNewDemoUsesCppLionBoundingRect(t *testing.T) {
+	d := newDemo()
+
+	if d.baseDx != 119.0 {
+		t.Fatalf("baseDx = %v, want C++ bounding_rect delta 119", d.baseDx)
+	}
+	if d.baseDy != 188.5 {
+		t.Fatalf("baseDy = %v, want C++ bounding_rect delta 188.5", d.baseDy)
+	}
+}

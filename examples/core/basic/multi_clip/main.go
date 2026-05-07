@@ -41,6 +41,7 @@ type demo struct {
 
 func newDemo() *demo {
 	ld := liondemo.Parse()
+	baseDx, baseDy := lionBaseDelta(ld)
 
 	// C++: m_num_cb(5, 5, 150, 12, !flip_y)  => !true = false
 	numCb := sliderctrl.NewSliderCtrl(5, 5, 150, 12, false)
@@ -49,13 +50,21 @@ func newDemo() *demo {
 	numCb.SetLabel("N=%.2f")
 
 	return &demo{
-		ld: ld,
-		// hardcoded values for liondemo to avoid re-parsing for bounds
-		baseDx: (238 - 0) / 2.0, // lion is approx 0 to 238
-		baseDy: (379 - 0) / 2.0, // lion is approx 0 to 379
+		ld:     ld,
+		baseDx: baseDx,
+		baseDy: baseDy,
 		scale:  1.0,
 		numCb:  numCb,
 	}
+}
+
+func lionBaseDelta(ld liondemo.LionData) (float64, float64) {
+	vs := path.NewPathStorageStlVertexSourceAdapter(ld.Path)
+	rect, ok := basics.BoundingRect[float64](vs, basics.SliceGetID(ld.PathIdx), 0, uint(ld.NPaths))
+	if !ok {
+		return 0, 0
+	}
+	return (rect.X2 - rect.X1) / 2.0, (rect.Y2 - rect.Y1) / 2.0
 }
 
 type ctrlVS struct {

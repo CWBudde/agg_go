@@ -21,6 +21,7 @@ import (
 	"github.com/cwbudde/agg_go/internal/conv"
 	ctrlbase "github.com/cwbudde/agg_go/internal/ctrl"
 	sliderctrl "github.com/cwbudde/agg_go/internal/ctrl/slider"
+	"github.com/cwbudde/agg_go/internal/image"
 	"github.com/cwbudde/agg_go/internal/pixfmt"
 	"github.com/cwbudde/agg_go/internal/rasterizer"
 	"github.com/cwbudde/agg_go/internal/renderer"
@@ -164,6 +165,66 @@ func clampU8(v float64) uint8 {
 	return uint8(v*255.0 + 0.5)
 }
 
+func displayRGBA8(c color.RGBA) color.RGBA8[color.Linear] {
+	srgb := color.ConvertToSRGBFromLinear(color.RGBA8[color.Linear]{
+		R: clampU8(c.R),
+		G: clampU8(c.G),
+		B: clampU8(c.B),
+		A: clampU8(c.A),
+	})
+	return color.RGBA8[color.Linear]{R: srgb.R, G: srgb.G, B: srgb.B, A: srgb.A}
+}
+
+func rgba8Pre(r, g, b, a float64) color.RGBA8[color.Linear] {
+	return color.RGBA8[color.Linear]{
+		R: clampU8(r * a),
+		G: clampU8(g * a),
+		B: clampU8(b * a),
+		A: clampU8(a),
+	}
+}
+
+// displayPremulOverWhite bakes the same linear->sRGB correction used by other
+// low-level demos into a premultiplied source color. image1 cannot post-encode
+// the whole framebuffer because the sampled PPM pixels are already display RGB.
+func displayPremulOverWhite(c color.RGBA8[color.Linear]) color.RGBA8[color.Linear] {
+	prelerpOverWhite := func(q uint8) uint8 {
+		v := 255 + int(q) - int(color.RGBA8Multiply(255, c.A))
+		switch {
+		case v <= 0:
+			return 0
+		case v >= 255:
+			return 255
+		default:
+			return uint8(v)
+		}
+	}
+	linearOverWhite := color.RGBA8[color.Linear]{
+		R: prelerpOverWhite(c.R),
+		G: prelerpOverWhite(c.G),
+		B: prelerpOverWhite(c.B),
+		A: 255,
+	}
+	display := color.ConvertToSRGBFromLinear(linearOverWhite)
+	whiteContribution := 255 - int(color.RGBA8Multiply(255, c.A))
+	uncomposite := func(v uint8) uint8 {
+		switch q := int(v) - whiteContribution; {
+		case q <= 0:
+			return 0
+		case q >= 255:
+			return 255
+		default:
+			return uint8(q)
+		}
+	}
+	return color.RGBA8[color.Linear]{
+		R: uncomposite(display.R),
+		G: uncomposite(display.G),
+		B: uncomposite(display.B),
+		A: c.A,
+	}
+}
+
 func renderCtrl(
 	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
 	sl *scanline.ScanlineU8,
@@ -173,13 +234,7 @@ func renderCtrl(
 	for pathID := uint(0); pathID < ctrl.NumPaths(); pathID++ {
 		ras.Reset()
 		ras.AddPath(&ctrlVS{ctrl: ctrl}, uint32(pathID))
-		c := ctrl.Color(pathID)
-		renscan.RenderScanlinesAASolid(ras, sl, renBase, color.RGBA8[color.Linear]{
-			R: clampU8(c.R),
-			G: clampU8(c.G),
-			B: clampU8(c.B),
-			A: clampU8(c.A),
-		})
+		renscan.RenderScanlinesAASolid(ras, sl, renBase, displayRGBA8(ctrl.Color(pathID)))
 	}
 }
 
@@ -216,14 +271,118 @@ func (ev *ellipseVS) Vertex() (float64, float64, basics.PathCommand) {
 	return x, y, cmd
 }
 
-// spanGeneratorAdapter wraps SpanImageFilterRGBABilinearClip to satisfy renscan.SpanGeneratorInterface.
-type spanGeneratorAdapter struct {
-	sg *span.SpanImageFilterRGBABilinearClip[*imagePixFmt, *span.SpanInterpolatorLinear[*transform.TransAffine]]
+// rgbBilinearClipSpanGenerator ports the RGB variant used by image1.cpp:
+// span_image_filter_rgb_bilinear_clip<pixfmt, interpolator_type>.
+type rgbBilinearClipSpanGenerator struct {
+	src    *imagePixFmt
+	back   color.RGBA8[color.Linear]
+	interp *span.SpanInterpolatorLinear[*transform.TransAffine]
 }
 
-func (a *spanGeneratorAdapter) Prepare() {}
-func (a *spanGeneratorAdapter) Generate(colors []color.RGBA8[color.Linear], x, y, length int) {
-	a.sg.Generate(colors[:length], x, y)
+func (g *rgbBilinearClipSpanGenerator) Prepare() {}
+
+func (g *rgbBilinearClipSpanGenerator) Generate(colors []color.RGBA8[color.Linear], x, y, length int) {
+	if length > len(colors) {
+		length = len(colors)
+	}
+	if length <= 0 {
+		return
+	}
+
+	g.interp.Begin(float64(x)+0.5, float64(y)+0.5, length)
+
+	backR := int(g.back.R)
+	backG := int(g.back.G)
+	backB := int(g.back.B)
+	backA := int(g.back.A)
+	maxX := g.src.Width() - 1
+	maxY := g.src.Height() - 1
+
+	for i := 0; i < length; i++ {
+		xHr, yHr := g.interp.Coordinates()
+		xHr -= image.ImageSubpixelScale / 2
+		yHr -= image.ImageSubpixelScale / 2
+
+		xLr := xHr >> image.ImageSubpixelShift
+		yLr := yHr >> image.ImageSubpixelShift
+		var fg [3]int
+		srcAlpha := 0
+
+		if xLr >= 0 && yLr >= 0 && xLr < maxX && yLr < maxY {
+			xHr &= image.ImageSubpixelMask
+			yHr &= image.ImageSubpixelMask
+
+			row := g.src.RowPtr(yLr)
+			off := xLr * 4
+			weight := (image.ImageSubpixelScale - xHr) * (image.ImageSubpixelScale - yHr)
+			fg[0] += weight * int(row[off+0])
+			fg[1] += weight * int(row[off+1])
+			fg[2] += weight * int(row[off+2])
+
+			weight = xHr * (image.ImageSubpixelScale - yHr)
+			fg[0] += weight * int(row[off+4])
+			fg[1] += weight * int(row[off+5])
+			fg[2] += weight * int(row[off+6])
+
+			row = g.src.RowPtr(yLr + 1)
+			weight = (image.ImageSubpixelScale - xHr) * yHr
+			fg[0] += weight * int(row[off+0])
+			fg[1] += weight * int(row[off+1])
+			fg[2] += weight * int(row[off+2])
+
+			weight = xHr * yHr
+			fg[0] += weight * int(row[off+4])
+			fg[1] += weight * int(row[off+5])
+			fg[2] += weight * int(row[off+6])
+
+			fg[0] >>= image.ImageSubpixelShift * 2
+			fg[1] >>= image.ImageSubpixelShift * 2
+			fg[2] >>= image.ImageSubpixelShift * 2
+			srcAlpha = 255
+		} else if xLr < -1 || yLr < -1 || xLr > maxX || yLr > maxY {
+			fg[0] = backR
+			fg[1] = backG
+			fg[2] = backB
+			srcAlpha = backA
+		} else {
+			xHr &= image.ImageSubpixelMask
+			yHr &= image.ImageSubpixelMask
+
+			sample := func(sampleX, sampleY, weight int) {
+				if sampleX >= 0 && sampleY >= 0 && sampleX <= maxX && sampleY <= maxY {
+					row := g.src.RowPtr(sampleY)
+					off := sampleX * 4
+					fg[0] += weight * int(row[off+0])
+					fg[1] += weight * int(row[off+1])
+					fg[2] += weight * int(row[off+2])
+					srcAlpha += weight * 255
+					return
+				}
+				fg[0] += backR * weight
+				fg[1] += backG * weight
+				fg[2] += backB * weight
+				srcAlpha += backA * weight
+			}
+
+			sample(xLr, yLr, (image.ImageSubpixelScale-xHr)*(image.ImageSubpixelScale-yHr))
+			sample(xLr+1, yLr, xHr*(image.ImageSubpixelScale-yHr))
+			sample(xLr, yLr+1, (image.ImageSubpixelScale-xHr)*yHr)
+			sample(xLr+1, yLr+1, xHr*yHr)
+
+			fg[0] >>= image.ImageSubpixelShift * 2
+			fg[1] >>= image.ImageSubpixelShift * 2
+			fg[2] >>= image.ImageSubpixelShift * 2
+			srcAlpha >>= image.ImageSubpixelShift * 2
+		}
+
+		colors[i] = color.RGBA8[color.Linear]{
+			R: basics.Int8u(fg[0]),
+			G: basics.Int8u(fg[1]),
+			B: basics.Int8u(fg[2]),
+			A: basics.Int8u(srcAlpha),
+		}
+		g.interp.Next()
+	}
 }
 
 func (d *demo) Render(img *agg.Image) {
@@ -257,15 +416,13 @@ func (d *demo) Render(img *agg.Image) {
 	imgMtx.Translate(initW*0.5, initH*0.5+20)
 	imgMtx.Invert()
 
-	imgRbuf := buffer.NewRenderingBufferU8WithData(d.srcImg.Data, d.srcImg.Width(), d.srcImg.Height(), -d.srcImg.Width()*4)
+	imgRbuf := buffer.NewRenderingBufferU8WithData(d.srcImg.Data, d.srcImg.Width(), d.srcImg.Height(), -d.srcImg.Stride())
 	ipf := &imagePixFmt{rbuf: imgRbuf}
 
 	// Bilinear filtered image generator
 	interp := span.NewSpanInterpolatorLinearDefault(imgMtx)
-	// C++: rgba_pre(0, 0.4, 0, 0.5) => (0, 102, 0, 128)
-	clipColor := color.RGBA8[color.Linear]{R: 0, G: 102, B: 0, A: 128}
-	sg := span.NewSpanImageFilterRGBABilinearClipWithParams[*imagePixFmt, *span.SpanInterpolatorLinear[*transform.TransAffine]](ipf, clipColor, interp)
-	sgAdapter := &spanGeneratorAdapter{sg: sg}
+	clipColor := displayPremulOverWhite(rgba8Pre(0, 0.4, 0, 0.5))
+	sgAdapter := &rgbBilinearClipSpanGenerator{src: ipf, back: clipColor, interp: interp}
 
 	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
 		rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip(),
@@ -324,11 +481,14 @@ func main() {
 	}
 
 	d := newDemo(srcImg)
-	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:                  "AGG Example. Image Affine Transformations with filtering",
-		Width:                  d.w,
-		Height:                 d.h,
-		FlipY:                  true,
-		DisableLinearRGBToSRGB: true,
-	}, d)
+	lowlevelrunner.Run(runnerConfig(d), d)
+}
+
+func runnerConfig(d *demo) lowlevelrunner.Config {
+	return lowlevelrunner.Config{
+		Title:  "AGG Example. Image Affine Transformations with filtering",
+		Width:  d.w,
+		Height: d.h,
+		FlipY:  true,
+	}
 }

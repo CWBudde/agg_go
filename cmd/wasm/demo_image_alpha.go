@@ -25,6 +25,8 @@ import (
 	"github.com/cwbudde/agg_go/internal/transform"
 )
 
+const imageAlphaBackgroundEllipseSteps = 50
+
 // --- Demo state ---
 
 var (
@@ -50,7 +52,34 @@ var (
 
 type imgAlphaEllipse struct {
 	x, y, rx, ry float64
-	r, g, b, a   uint8
+	color        color.RGBA8[color.Linear]
+}
+
+func imageAlphaSRGBA8(r, g, b, a uint8) color.RGBA8[color.Linear] {
+	return color.ConvertRGBA8SRGBToLinear(color.RGBA8[color.SRGB]{
+		R: r,
+		G: g,
+		B: b,
+		A: a,
+	})
+}
+
+func imageAlphaAlphaByte(v float64) uint8 {
+	if v <= 0 {
+		return 0
+	}
+	if v >= 1 {
+		return 255
+	}
+	return uint8(v * 255.0)
+}
+
+func imageAlphaBrightnessIndex(sum, lutLen int) int {
+	idx := (sum * lutLen) / (3 * 255)
+	if idx >= lutLen {
+		return lutLen - 1
+	}
+	return idx
 }
 
 // imgAlphaSpanGen wraps a bilinear clip span generator and applies brightness→alpha.
@@ -69,10 +98,7 @@ func (g *imgAlphaSpanGen) Generate(colors []color.RGBA8[color.Linear], x, y, len
 	for i := 0; i < length; i++ {
 		c := &colors[i]
 		sum := int(c.R) + int(c.G) + int(c.B) // 0..765
-		lutIdx := sum * (256 * 3) / (3 * 256)
-		if lutIdx >= 256*3 {
-			lutIdx = 256*3 - 1
-		}
+		lutIdx := imageAlphaBrightnessIndex(sum, len(g.lut))
 		c.A = g.lut[lutIdx]
 	}
 }
@@ -143,14 +169,11 @@ func initImgAlphaDemo() {
 	imgAlphaEllipses = make([]imgAlphaEllipse, 50)
 	for i := range imgAlphaEllipses {
 		imgAlphaEllipses[i] = imgAlphaEllipse{
-			x:  float64(rng.randN(width)),
-			y:  float64(rng.randN(height)),
-			rx: float64(rng.randN(60) + 10),
-			ry: float64(rng.randN(60) + 10),
-			r:  uint8(rng.randN(256)),
-			g:  uint8(rng.randN(256)),
-			b:  uint8(rng.randN(256)),
-			a:  uint8(rng.randN(256)),
+			x:     float64(rng.randN(width)),
+			y:     float64(rng.randN(height)),
+			rx:    float64(rng.randN(60) + 10),
+			ry:    float64(rng.randN(60) + 10),
+			color: imageAlphaSRGBA8(uint8(rng.randN(256)), uint8(rng.randN(256)), uint8(rng.randN(256)), uint8(rng.randN(256))),
 		}
 	}
 
@@ -163,7 +186,7 @@ func initImgAlphaDemo() {
 	imgAlphaCtrl.SetValue(5, 1.0)
 	for i := range imgAlphaLUT {
 		t := float64(i) / float64(len(imgAlphaLUT))
-		imgAlphaLUT[i] = uint8(imgAlphaCtrl.Value(t)*255.0 + 0.5)
+		imgAlphaLUT[i] = imageAlphaAlphaByte(imgAlphaCtrl.Value(t))
 	}
 
 	imgAlphaInitialized = true
@@ -174,7 +197,7 @@ func drawImageAlphaDemo() {
 
 	if imgAlphaImage == nil {
 		if src, err := imageassets.Spheres(); err == nil && src != nil {
-			imgAlphaImage = src
+			imgAlphaImage = linearizeSRGBImage(src)
 		} else {
 			imgAlphaImage = createSpheresImage(400, 400)
 		}
@@ -192,11 +215,10 @@ func drawImageAlphaDemo() {
 	ell := shapes.NewEllipse()
 	ellAdapter := &ellipseVS{ell: ell}
 	for _, e := range imgAlphaEllipses {
-		c := color.RGBA8[color.Linear]{R: e.r, G: e.g, B: e.b, A: e.a}
-		ell.Init(e.x, e.y, e.rx, e.ry, 32, false)
+		ell.Init(e.x, e.y, e.rx, e.ry, imageAlphaBackgroundEllipseSteps, false)
 		imgAlphaRas.Reset()
 		imgAlphaRas.AddPath(ellAdapter, 0)
-		renscan.RenderScanlinesAASolid[color.RGBA8[color.Linear]](imgAlphaRas, imgAlphaSl, imgAlphaRenBase, c)
+		renscan.RenderScanlinesAASolid[color.RGBA8[color.Linear]](imgAlphaRas, imgAlphaSl, imgAlphaRenBase, e.color)
 	}
 
 	// Image transform: 10° rotation around image center, then placed at screen center
@@ -268,4 +290,6 @@ func drawImageAlphaDemo() {
 			}
 		}
 	}
+
+	applyLinearToSRGB(img)
 }

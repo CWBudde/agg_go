@@ -20,18 +20,69 @@ import (
 	"github.com/cwbudde/agg_go/internal/basics"
 	"github.com/cwbudde/agg_go/internal/buffer"
 	"github.com/cwbudde/agg_go/internal/color"
+	"github.com/cwbudde/agg_go/internal/conv"
 	"github.com/cwbudde/agg_go/internal/ctrl/spline"
 	"github.com/cwbudde/agg_go/internal/image"
 	"github.com/cwbudde/agg_go/internal/path"
 	"github.com/cwbudde/agg_go/internal/pixfmt"
+	"github.com/cwbudde/agg_go/internal/pixfmt/blender"
 	"github.com/cwbudde/agg_go/internal/rasterizer"
 	"github.com/cwbudde/agg_go/internal/renderer"
+	renscan "github.com/cwbudde/agg_go/internal/renderer/scanline"
 	"github.com/cwbudde/agg_go/internal/scanline"
+	"github.com/cwbudde/agg_go/internal/shapes"
 	"github.com/cwbudde/agg_go/internal/span"
 	"github.com/cwbudde/agg_go/internal/transform"
 )
 
 const defaultImageName = "spheres"
+const imageAlphaBackgroundEllipseSteps = 50
+const imageAlphaClipEllipseSteps = 200
+
+type imageAlphaPixFmt = pixfmt.PixFmtRGBARendererAdaptor[color.Linear, blender.BlenderBGR24Linear]
+type imageAlphaRendererBase = renderer.RendererBase[*imageAlphaPixFmt, color.RGBA8[color.Linear]]
+
+type imageAlphaRenderTarget struct {
+	buf     []uint8
+	rbuf    *buffer.RenderingBufferU8
+	pixf    *pixfmt.PixFmtBGR24
+	adaptor *imageAlphaPixFmt
+	renBase *imageAlphaRendererBase
+}
+
+func newImageAlphaRenderTarget(img *agg.Image) *imageAlphaRenderTarget {
+	stride := img.Width() * 3
+	if img.Stride() < 0 {
+		stride = -stride
+	}
+	buf := make([]uint8, img.Width()*img.Height()*3)
+	rbuf := buffer.NewRenderingBufferWithData[uint8](buf, img.Width(), img.Height(), stride)
+	pixf := pixfmt.NewPixFmtBGR24(rbuf)
+	adaptor := pixfmt.NewPixFmtRGBARendererAdaptor[color.Linear](pixf)
+	return &imageAlphaRenderTarget{
+		buf:     buf,
+		rbuf:    rbuf,
+		pixf:    pixf,
+		adaptor: adaptor,
+		renBase: renderer.NewRendererBaseWithPixfmt[*imageAlphaPixFmt, color.RGBA8[color.Linear]](adaptor),
+	}
+}
+
+func (t *imageAlphaRenderTarget) copyToImage(img *agg.Image) {
+	dstRbuf := buffer.NewRenderingBufferWithData[uint8](img.Data, img.Width(), img.Height(), img.Stride())
+	for y := 0; y < img.Height(); y++ {
+		srcRow := buffer.RowU8(t.rbuf, y)
+		dstRow := buffer.RowU8(dstRbuf, y)
+		for x := 0; x < img.Width(); x++ {
+			src := x * 3
+			dst := x * 4
+			dstRow[dst+0] = srcRow[src+2]
+			dstRow[dst+1] = srcRow[src+1]
+			dstRow[dst+2] = srcRow[src+0]
+			dstRow[dst+3] = 255
+		}
+	}
+}
 
 // imagePixFmt wraps a RenderingBufferU8 and implements image.PixelFormat.
 type imagePixFmt struct {
@@ -84,10 +135,7 @@ func (g *imgAlphaSpanGen) Generate(colors []color.RGBA8[color.Linear], x, y, len
 		c.G = src.G
 		c.B = src.B
 		sum := int(src.R) + int(src.G) + int(src.B) // 0..765
-		idx := (sum * len(g.lut)) / (3 * 255)       // match C++ scaling
-		if idx >= len(g.lut) {
-			idx = len(g.lut) - 1
-		}
+		idx := imageAlphaBrightnessIndex(sum, len(g.lut))
 		c.A = g.lut[idx]
 	}
 }
@@ -113,6 +161,72 @@ type ctrlPathSource interface {
 
 type ctrlPathAdapter struct {
 	ctrl ctrlPathSource
+}
+
+type ellipseAdapter struct {
+	ell *shapes.Ellipse
+}
+
+func (a *ellipseAdapter) Rewind(pathID uint32) { a.ell.Rewind(pathID) }
+func (a *ellipseAdapter) Vertex(x, y *float64) uint32 {
+	return uint32(a.ell.Vertex(x, y))
+}
+
+type ellipseConvAdapter struct {
+	ell *shapes.Ellipse
+}
+
+func (a *ellipseConvAdapter) Rewind(pathID uint) { a.ell.Rewind(uint32(pathID)) }
+func (a *ellipseConvAdapter) Vertex() (x, y float64, cmd basics.PathCommand) {
+	cmd = a.ell.Vertex(&x, &y)
+	return x, y, cmd
+}
+
+type imageAlphaEllipse struct {
+	x, y, rx, ry float64
+	color        color.RGBA8[color.Linear]
+}
+
+func imageAlphaSRGBA8(r, g, b, a uint8) color.RGBA8[color.Linear] {
+	return color.ConvertRGBA8SRGBToLinear(color.RGBA8[color.SRGB]{
+		R: r,
+		G: g,
+		B: b,
+		A: a,
+	})
+}
+
+func imageAlphaSRGBToLinearBGR(r, g, b uint8) (uint8, uint8, uint8) {
+	c := imageAlphaSRGBA8(r, g, b, 255)
+	return c.B, c.G, c.R
+}
+
+func imageAlphaAlphaByte(v float64) uint8 {
+	if v <= 0 {
+		return 0
+	}
+	if v >= 1 {
+		return 255
+	}
+	return uint8(v * 255.0)
+}
+
+func imageAlphaBrightnessIndex(sum, lutLen int) int {
+	idx := (sum * lutLen) / (3 * 255)
+	if idx >= lutLen {
+		return lutLen - 1
+	}
+	return idx
+}
+
+func nextImageAlphaEllipse(rng *clibcRand, width, height int) imageAlphaEllipse {
+	return imageAlphaEllipse{
+		x:     float64(rng.randN(width)),
+		y:     float64(rng.randN(height)),
+		rx:    float64(rng.randN(60) + 10),
+		ry:    float64(rng.randN(60) + 10),
+		color: imageAlphaSRGBA8(uint8(rng.randN(256)), uint8(rng.randN(256)), uint8(rng.randN(256)), uint8(rng.randN(256))),
+	}
 }
 
 func (a *ctrlPathAdapter) Rewind(pathID uint32) {
@@ -181,6 +295,20 @@ func renderCtrl(ctx *agg.Context, ctrl ctrlPathSource) {
 		ras.Reset()
 		ras.AddPath(adapter, uint32(pathID))
 		a.RenderRasterizerWithColor(toAggColor(ctrl.Color(pathID)))
+	}
+}
+
+func renderCtrlBGR(
+	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
+	sl *scanline.ScanlineU8,
+	renBase *imageAlphaRendererBase,
+	ctrl ctrlPathSource,
+) {
+	adapter := &ctrlPathAdapter{ctrl: ctrl}
+	for pathID := uint(0); pathID < ctrl.NumPaths(); pathID++ {
+		ras.Reset()
+		ras.AddPath(adapter, uint32(pathID))
+		renscan.RenderScanlinesAASolid(ras, sl, renBase, ctrl.Color(pathID))
 	}
 }
 
@@ -274,9 +402,11 @@ func loadBMPImage(r io.ReadSeeker) (*agg.Image, error) {
 		for x := 0; x < width; x++ {
 			src := x * int(infoHeader.BitCount) / 8
 			dst := (dstY*width + x) * 3
-			buf[dst+0] = rowData[src+0]
-			buf[dst+1] = rowData[src+1]
-			buf[dst+2] = rowData[src+2]
+			buf[dst+0], buf[dst+1], buf[dst+2] = imageAlphaSRGBToLinearBGR(
+				rowData[src+2],
+				rowData[src+1],
+				rowData[src+0],
+			)
 		}
 	}
 
@@ -359,9 +489,11 @@ func loadPPMImage(r io.ReadSeeker) (*agg.Image, error) {
 	for p := 0; p < width*height; p++ {
 		src := p * 3
 		dst := p * 3
-		buf[dst+0] = rgb[src+0]
-		buf[dst+1] = rgb[src+1]
-		buf[dst+2] = rgb[src+2]
+		buf[dst+0], buf[dst+1], buf[dst+2] = imageAlphaSRGBToLinearBGR(
+			rgb[src+0],
+			rgb[src+1],
+			rgb[src+2],
+		)
 	}
 
 	return agg.NewImage(buf, width, height, width*3), nil
@@ -374,9 +506,8 @@ func buildTransformedEllipsePath(w, h int, mtx *transform.TransAffine) *path.Pat
 	ry := float64(h) / 1.9
 
 	ps := path.NewPathStorageStl()
-	const steps = 200
-	for i := 0; i <= steps; i++ {
-		a := 2 * math.Pi * float64(i) / float64(steps)
+	for i := 0; i < imageAlphaClipEllipseSteps; i++ {
+		a := 2 * math.Pi * float64(i) / float64(imageAlphaClipEllipseSteps)
 		x := cx + rx*math.Cos(a)
 		y := cy + ry*math.Sin(a)
 		mtx.Transform(&x, &y)
@@ -388,6 +519,20 @@ func buildTransformedEllipsePath(w, h int, mtx *transform.TransAffine) *path.Pat
 	}
 	ps.ClosePolygon(basics.PathFlagsNone)
 	return ps
+}
+
+func newImageAlphaClipSource(w, h int, mtx *transform.TransAffine) rasterizer.VertexSource {
+	ell := shapes.NewEllipse()
+	ell.Init(
+		float64(w)/2.0,
+		float64(h)/2.0,
+		float64(w)/1.9,
+		float64(h)/1.9,
+		imageAlphaClipEllipseSteps,
+		false,
+	)
+	tr := conv.NewConvTransform[conv.VertexSource, *transform.TransAffine](&ellipseConvAdapter{ell: ell}, mtx)
+	return conv.NewRasterizerVertexSourceAdapter(tr)
 }
 
 type demo struct {
@@ -402,39 +547,9 @@ func (d *demo) Render(img *agg.Image) {
 	canvasW := img.Width()
 	canvasH := img.Height()
 
-	ctx := agg.NewContextForImage(img)
-	a := ctx.GetAgg2D()
-	a.ResetTransformations()
-	ctx.Clear(agg.RGBA(1, 1, 1, 1))
-
-	// C++ on_init uses rand() without an explicit srand(), so match its
-	// default seed and generator instead of Go's PRNG.
-	// C++ stores colors as srgba8 (sRGB) which are implicitly converted to
-	// linear rgba8 before blending into the BGR24 buffer (the render_scanlines_aa_solid
-	// template creates BaseRenderer::color_type ren_color = color, triggering the
-	// sRGB-to-linear conversion). Replicate this by converting RGB channels to linear.
-	rng := newClibcRandSeed1()
-	for i := 0; i < 50; i++ {
-		x := float64(rng.randN(canvasW))
-		y := float64(rng.randN(canvasH))
-		rx := float64(rng.randN(60) + 10)
-		ry := float64(rng.randN(60) + 10)
-		sa := uint8(rng.randN(256))
-		sb := uint8(rng.randN(256))
-		sg := uint8(rng.randN(256))
-		sr := uint8(rng.randN(256))
-		a.FillColor(agg.NewColor(sr, sg, sb, sa))
-		a.NoLine()
-		a.Ellipse(x, y, rx, ry)
-	}
-
-	// Use non-premultiplied blending to match the C++ BGR24 render path.
-	// The span generator outputs plain (non-premultiplied) colors: full RGB values
-	// from the bilinear filter plus a brightness-derived alpha. The C++ code blends
-	// these into a BGR24 buffer using non-premultiplied compositing.
-	dstRbuf := buffer.NewRenderingBufferWithData[uint8](img.Data, img.Width(), img.Height(), img.Stride())
-	dstPixf := pixfmt.NewPixFmtRGBA32[color.Linear](dstRbuf)
-	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]](dstPixf)
+	target := newImageAlphaRenderTarget(img)
+	renBase := target.renBase
+	renBase.Clear(color.NewRGBA8[color.Linear](255, 255, 255, 255))
 	alloc := span.NewSpanAllocator[color.RGBA8[color.Linear]]()
 
 	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
@@ -442,6 +557,23 @@ func (d *demo) Render(img *agg.Image) {
 	)
 	sl := scanline.NewScanlineU8()
 
+	// C++ on_init uses rand() without an explicit srand(), so match its
+	// default seed, channel order, and srgba8 -> color_type conversion.
+	rng := newClibcRandSeed1()
+	ell := shapes.NewEllipse()
+	ellAdapter := &ellipseAdapter{ell: ell}
+	for i := 0; i < 50; i++ {
+		e := nextImageAlphaEllipse(rng, canvasW, canvasH)
+		ell.Init(e.x, e.y, e.rx, e.ry, imageAlphaBackgroundEllipseSteps, false)
+		ras.Reset()
+		ras.AddPath(ellAdapter, 0)
+		renscan.RenderScanlinesAASolid(ras, sl, renBase, e.color)
+	}
+
+	// Use non-premultiplied blending to match the C++ BGR24 render path.
+	// The span generator outputs plain (non-premultiplied) colors: full RGB values
+	// from the bilinear filter plus a brightness-derived alpha. The C++ code blends
+	// these into a BGR24 buffer using non-premultiplied compositing.
 	angle := 10.0 * math.Pi / 180.0
 	srcMtx := transform.NewTransAffine()
 	srcMtx.Translate(-float64(canvasW)*0.5, -float64(canvasH)*0.5)
@@ -477,14 +609,14 @@ func (d *demo) Render(img *agg.Image) {
 	alphaCtrl.SetValue(5, 1.0)
 	for i := range sg.lut {
 		t := float64(i) / float64(len(sg.lut))
-		sg.lut[i] = uint8(alphaCtrl.Value(t)*255.0 + 0.5)
+		sg.lut[i] = imageAlphaAlphaByte(alphaCtrl.Value(t))
 	}
 
-	clipPath := buildTransformedEllipsePath(canvasW, canvasH, srcMtx)
+	clipSource := newImageAlphaClipSource(canvasW, canvasH, srcMtx)
 
 	ras.Reset()
 	ras.ClipBox(0, 0, float64(canvasW), float64(canvasH))
-	ras.AddPath(&pathSourceAdapter{ps: clipPath}, 0)
+	ras.AddPath(clipSource, 0)
 
 	if ras.RewindScanlines() {
 		sl.Reset(ras.MinX(), ras.MaxX())
@@ -501,24 +633,32 @@ func (d *demo) Render(img *agg.Image) {
 		}
 	}
 
-	renderCtrl(ctx, alphaCtrl)
+	renderCtrlBGR(ras, sl, renBase, alphaCtrl)
+	target.copyToImage(img)
 }
 
 func main() {
-	srcPath := filepath.Join("examples", "shared", "art", defaultImageName+".bmp")
+	srcPath := filepath.Join("examples", "shared", "art", defaultImageName+".ppm")
 	srcImg, err := loadImageAsset(srcPath)
 	if err != nil {
-		srcPath = filepath.Join("examples", "shared", "art", defaultImageName+".ppm")
+		srcPath = filepath.Join("examples", "shared", "art", defaultImageName+".bmp")
 		srcImg, err = loadImageAsset(srcPath)
 		if err != nil {
 			panic(err)
 		}
 	}
 
-	lowlevelrunner.Run(lowlevelrunner.Config{
+	lowlevelrunner.Run(runnerConfig(), &demo{srcImg: srcImg})
+}
+
+func runnerConfig() lowlevelrunner.Config {
+	return lowlevelrunner.Config{
 		Title:  "Image Alpha",
 		Width:  320,
 		Height: 300,
 		FlipY:  true,
-	}, &demo{srcImg: srcImg})
+		// C++ X11 loads sRGB PPM data into linear pixfmt_bgr24 and save_img
+		// converts that linear buffer back to pixfmt_srgb24.
+		EncodeLinearRGBToSRGB: true,
+	}
 }

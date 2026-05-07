@@ -28,6 +28,7 @@ import (
 	"github.com/cwbudde/agg_go/internal/renderer"
 	renscan "github.com/cwbudde/agg_go/internal/renderer/scanline"
 	"github.com/cwbudde/agg_go/internal/scanline"
+	"github.com/cwbudde/agg_go/internal/shapes"
 	"github.com/cwbudde/agg_go/internal/span"
 	"github.com/cwbudde/agg_go/internal/transform"
 )
@@ -73,6 +74,31 @@ func (a *ctrlVertexSourceAdapter) Vertex(x, y *float64) uint32 {
 	return uint32(cmd)
 }
 
+type ellipseVertexSourceAdapter struct {
+	ell *shapes.Ellipse
+}
+
+func (a *ellipseVertexSourceAdapter) Rewind(pathID uint32) {
+	a.ell.Rewind(pathID)
+}
+
+func (a *ellipseVertexSourceAdapter) Vertex(x, y *float64) uint32 {
+	return uint32(a.ell.Vertex(x, y))
+}
+
+type ellipseConvAdapter struct {
+	ell *shapes.Ellipse
+}
+
+func (a *ellipseConvAdapter) Rewind(pathID uint) {
+	a.ell.Rewind(uint32(pathID))
+}
+
+func (a *ellipseConvAdapter) Vertex() (x, y float64, cmd basics.PathCommand) {
+	cmd = a.ell.Vertex(&x, &y)
+	return x, y, cmd
+}
+
 type spanGenAdapter struct {
 	sg *span.SpanImageFilterRGBABilinearClip[*imageClipSource, *span.SpanInterpolatorLinear[*transform.TransAffine]]
 }
@@ -102,7 +128,7 @@ func clampU8(v float64) uint8 {
 func renderCtrl(
 	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
 	sl *scanline.ScanlineU8,
-	renBase *renderer.RendererBase[*pixfmt.PixFmtRGBA32Pre[color.Linear], color.RGBA8[color.Linear]],
+	renBase *renderer.RendererBase[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]],
 	ctrl ctrlbase.Ctrl[color.RGBA],
 ) {
 	for pathID := uint(0); pathID < ctrl.NumPaths(); pathID++ {
@@ -116,6 +142,20 @@ func renderCtrl(
 			A: clampU8(c.A),
 		})
 	}
+}
+
+func renderSolidPath(
+	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
+	sl *scanline.ScanlineU8,
+	renBase *renderer.RendererBase[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]],
+	vs rasterizer.VertexSource,
+	c color.RGBA8[color.Linear],
+) {
+	ras.Reset()
+	ras.AddPath(vs, 0)
+	renSolid := renscan.NewRendererScanlineAASolidWithRenderer(renBase)
+	renSolid.SetColor(c)
+	renscan.RenderScanlines(ras, sl, renSolid)
 }
 
 func createStar(cx, cy, w, h float64) *path.PathStorageStl {
@@ -226,7 +266,7 @@ type demo struct {
 }
 
 func newDemo(srcImg *agg.Image) *demo {
-	d := &demo{srcImg: srcImg}
+	d := &demo{srcImg: linearizeSRGBImage(srcImg)}
 
 	d.polygonAngle = slider.NewSliderCtrl(5, 5, 145, 11, false)
 	d.polygonAngle.SetLabel("Polygon Angle=%3.2f")
@@ -262,6 +302,36 @@ func newDemo(srcImg *agg.Image) *demo {
 	d.example.SetCurItem(0)
 
 	return d
+}
+
+func linearizeSRGBImage(src *agg.Image) *agg.Image {
+	goImg := src.ToGoImage()
+	if goImg == nil {
+		return nil
+	}
+
+	w := goImg.Bounds().Dx()
+	h := goImg.Bounds().Dy()
+	buf := make([]byte, w*h*4)
+	for y := 0; y < h; y++ {
+		srcOff := y * goImg.Stride
+		dstOff := y * w * 4
+		for x := 0; x < w; x++ {
+			s := srcOff + x*4
+			d := dstOff + x*4
+			c := color.ConvertRGBA8SRGBToLinear(color.RGBA8[color.SRGB]{
+				R: goImg.Pix[s],
+				G: goImg.Pix[s+1],
+				B: goImg.Pix[s+2],
+				A: goImg.Pix[s+3],
+			})
+			buf[d] = c.R
+			buf[d+1] = c.G
+			buf[d+2] = c.B
+			buf[d+3] = c.A
+		}
+	}
+	return agg.NewImage(buf, w, h, w*4)
 }
 
 func (d *demo) controls() []ctrlbase.Ctrl[color.RGBA] {
@@ -324,8 +394,8 @@ func (d *demo) Render(img *agg.Image) {
 
 	dstRbuf := buffer.NewRenderingBufferU8()
 	dstRbuf.Attach(img.Data, w, h, img.Stride())
-	dstPixf := pixfmt.NewPixFmtRGBA32PreLinear(dstRbuf)
-	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32Pre[color.Linear], color.RGBA8[color.Linear]](dstPixf)
+	dstPixf := pixfmt.NewPixFmtRGBA32[color.Linear](dstRbuf)
+	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]](dstPixf)
 	alloc := span.NewSpanAllocator[color.RGBA8[color.Linear]]()
 
 	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
@@ -387,12 +457,12 @@ func (d *demo) Render(img *agg.Image) {
 	}
 
 	// Image center handle, matching the C++ demo.
-	a.FillColor(agg.RGBA(0.7, 0.8, 0.0, 1.0))
-	a.NoLine()
-	a.FillCircle(d.imageCX, d.imageCY, 5.0)
-	a.FillColor(agg.Black)
-	a.NoLine()
-	a.FillCircle(d.imageCX, d.imageCY, 2.0)
+	e1 := shapes.NewEllipseWithParams(d.imageCX, d.imageCY, 5, 5, 20, false)
+	e2 := shapes.NewEllipseWithParams(d.imageCX, d.imageCY, 2, 2, 20, false)
+	c1 := conv.NewConvStroke(&ellipseConvAdapter{ell: e1})
+	renderSolidPath(ras, sl, renBase, &ellipseVertexSourceAdapter{ell: e1}, color.RGBA8[color.Linear]{R: 179, G: 204, B: 0, A: 255})
+	renderSolidPath(ras, sl, renBase, conv.NewRasterizerVertexSourceAdapter(c1), color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255})
+	renderSolidPath(ras, sl, renBase, &ellipseVertexSourceAdapter{ell: e2}, color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255})
 
 	// Render the controls last, like the reference example.
 	for _, ctrl := range d.controls() {
@@ -492,10 +562,15 @@ func main() {
 		panic(err)
 	}
 
-	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "Image Transforms",
-		Width:  srcImg.Width(),
-		Height: srcImg.Height(),
-		FlipY:  true,
-	}, newDemo(srcImg))
+	lowlevelrunner.Run(runnerConfig(srcImg.Width(), srcImg.Height()), newDemo(srcImg))
+}
+
+func runnerConfig(width, height int) lowlevelrunner.Config {
+	return lowlevelrunner.Config{
+		Title:                 "Image Transforms",
+		Width:                 width,
+		Height:                height,
+		FlipY:                 true,
+		EncodeLinearRGBToSRGB: true,
+	}
 }
