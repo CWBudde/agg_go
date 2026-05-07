@@ -30,7 +30,7 @@ const (
 	demoHeight = 400
 
 	defaultRadius = 25.0
-	defaultOffset = 0.0
+	defaultOffset = 0.5
 )
 
 type (

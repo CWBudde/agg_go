@@ -45,6 +45,13 @@ func TestRoundedRectDemoSavedPNGUsesCXXControlGray(t *testing.T) {
 	}
 }
 
+func TestRoundedRectDemoDefaultOffsetMatchesCPP(t *testing.T) {
+	d := newDemo()
+	if got := d.offsetCtrl.Value(); got != 0.5 {
+		t.Fatalf("default offset = %v, want 0.5", got)
+	}
+}
+
 func countNonWhite(img image.Image, rect image.Rectangle) int {
 	count := 0
 	for y := rect.Min.Y; y < rect.Max.Y; y++ {
