@@ -541,9 +541,92 @@ body { background: #111; color: #ddd; font-family: monospace; font-size: 13px; }
 const pageFooter = `</div>
 <script>
 (function() {
+  var viewerStateStorageKey = 'agg-visual-viewer-state-v1';
+  var viewerStateControlIDs = ['search', 'sort-select', 'diff-mode', 'resample-mode', 'original-size'];
   var minZoomDragPixels = 4;
   var activeSlider = null;
   var activeZoomSelection = null;
+
+  if ('scrollRestoration' in window.history) {
+    window.history.scrollRestoration = 'manual';
+  }
+
+  function cardStateKey(card) {
+    return card.dataset.name || '';
+  }
+
+  function loadViewerState() {
+    try {
+      var raw = window.sessionStorage.getItem(viewerStateStorageKey);
+      if (!raw) return {};
+      var parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object') return {};
+      return parsed;
+    } catch (err) {
+      return {};
+    }
+  }
+
+  function saveViewerState() {
+    var state = {};
+    viewerStateControlIDs.forEach(function(id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      state[id] = el.type === 'checkbox' ? el.checked : el.value;
+    });
+    state.openCards = Array.from(document.querySelectorAll('.card.open')).map(cardStateKey);
+    state.scrollY = window.scrollY || window.pageYOffset || 0;
+    try {
+      window.sessionStorage.setItem(viewerStateStorageKey, JSON.stringify(state));
+    } catch (err) {
+    }
+  }
+
+  function restoreViewerState() {
+    var state = loadViewerState();
+    viewerStateControlIDs.forEach(function(id) {
+      if (!Object.prototype.hasOwnProperty.call(state, id)) return;
+      var el = document.getElementById(id);
+      if (!el) return;
+      if (el.type === 'checkbox') {
+        el.checked = !!state[id];
+        return;
+      }
+      if (typeof state[id] === 'string') {
+        el.value = state[id];
+      }
+    });
+    var openCards = Array.isArray(state.openCards) ? state.openCards : [];
+    var openCardSet = new Set(openCards);
+    document.querySelectorAll('.card').forEach(function(card) {
+      card.classList.toggle('open', openCardSet.has(cardStateKey(card)));
+    });
+  }
+
+  function restoreScrollPosition() {
+    var state = loadViewerState();
+    if (typeof state.scrollY !== 'number') {
+      return;
+    }
+    var targetY = Math.max(0, state.scrollY);
+    function scrollToTarget() {
+      window.scrollTo(0, targetY);
+    }
+    requestAnimationFrame(function() {
+      scrollToTarget();
+      setTimeout(scrollToTarget, 0);
+    });
+    window.addEventListener('load', scrollToTarget, { once: true });
+  }
+
+  function bindViewerStatePersistence() {
+    viewerStateControlIDs.forEach(function(id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener(el.type === 'text' ? 'input' : 'change', saveViewerState);
+    });
+    window.addEventListener('beforeunload', saveViewerState);
+  }
 
   function clamp(value, minValue, maxValue) {
     return Math.min(Math.max(value, minValue), maxValue);
@@ -553,6 +636,7 @@ const pageFooter = `</div>
   document.querySelectorAll('.card-header').forEach(function(h) {
     h.addEventListener('click', function() {
       h.closest('.card').classList.toggle('open');
+      saveViewerState();
     });
   });
   document.querySelectorAll('.regen-form').forEach(function(form) {
@@ -569,6 +653,7 @@ const pageFooter = `</div>
   }
 
   function navigateToFreshPage() {
+    saveViewerState();
     var url = new URL(window.location.href);
     url.searchParams.set('_vv', String(Date.now()));
     window.location.assign(url.toString());
@@ -576,7 +661,8 @@ const pageFooter = `</div>
 
   function regenerateFromForm(form) {
     return fetch(form.action, {
-      method: (form.method || 'POST').toUpperCase()
+      method: (form.method || 'POST').toUpperCase(),
+      headers: { 'X-Visual-Viewer-Regenerate': '1' }
     }).then(function(response) {
       if (!response.ok) {
         return response.text().then(function(text) {
@@ -590,6 +676,7 @@ const pageFooter = `</div>
     form.addEventListener('submit', function(e) {
       e.preventDefault();
       e.stopPropagation();
+      saveViewerState();
       setRegenerateButtonsDisabled(true);
       regenerateFromForm(form).then(function() {
         navigateToFreshPage();
@@ -920,11 +1007,15 @@ const pageFooter = `</div>
 
   window.addEventListener('resize', refreshCardZooms);
 
-  // Initial summary
+  restoreViewerState();
+  bindViewerStatePersistence();
+  sortCards();
+  setDiffMode(document.getElementById('diff-mode').value);
   setResampleMode(document.getElementById('resample-mode').value);
-  updateSortMetricBadges(document.getElementById('sort-select').value);
-  updateSummary();
+  setOriginalSize(document.getElementById('original-size').checked);
   refreshCardZooms();
+  filterCards();
+  restoreScrollPosition();
 
   // Expose for onchange handlers
   window.filterCards = filterCards;
@@ -1068,6 +1159,10 @@ func renderPage(w io.Writer, demos []demoEntry) {
 	fmt.Fprint(w, pageFooter)
 }
 
+func isRegenerateFetch(r *http.Request) bool {
+	return r.Header.Get("X-Visual-Viewer-Regenerate") == "1"
+}
+
 func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -1111,6 +1206,10 @@ func main() {
 			http.Error(w, fmt.Sprintf("failed to regenerate %s: %v", name, err), http.StatusInternalServerError)
 			return
 		}
+		if isRegenerateFetch(r) {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	})
 	http.HandleFunc("/regenerate-all", func(w http.ResponseWriter, r *http.Request) {
@@ -1124,6 +1223,10 @@ func main() {
 
 		if err := regenerateAllGoReferences(r.Context(), cwd); err != nil {
 			http.Error(w, fmt.Sprintf("failed to regenerate all demos: %v", err), http.StatusInternalServerError)
+			return
+		}
+		if isRegenerateFetch(r) {
+			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 		http.Redirect(w, r, "/", http.StatusSeeOther)

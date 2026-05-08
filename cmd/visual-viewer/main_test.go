@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -97,6 +99,7 @@ func TestPageInterceptsRegenerateFormsWithFetch(t *testing.T) {
 		`function regenerateFromForm(form) {`,
 		`return fetch(form.action, {`,
 		`method: (form.method || 'POST').toUpperCase()`,
+		`headers: { 'X-Visual-Viewer-Regenerate': '1' }`,
 		`form.addEventListener('submit', function(e) {`,
 		`e.preventDefault();`,
 		`window.alert(err.message);`,
@@ -112,6 +115,7 @@ func TestPageInterceptsRegenerateFormsWithFetch(t *testing.T) {
 func TestPageUsesCacheBustingNavigationAfterRegenerate(t *testing.T) {
 	requiredSnippets := []string{
 		`function navigateToFreshPage() {`,
+		`saveViewerState();`,
 		`url.searchParams.set('_vv', String(Date.now()));`,
 		`window.location.assign(url.toString());`,
 		`regenerateFromForm(form).then(function() {`,
@@ -124,6 +128,27 @@ func TestPageUsesCacheBustingNavigationAfterRegenerate(t *testing.T) {
 	}
 	if strings.Contains(pageFooter, `window.location.reload();`) {
 		t.Fatal("pageFooter still uses plain reload after regenerate")
+	}
+}
+
+func TestPagePersistsViewerStateAroundRegenerate(t *testing.T) {
+	requiredSnippets := []string{
+		`var viewerStateStorageKey = 'agg-visual-viewer-state-v1';`,
+		`var viewerStateControlIDs = ['search', 'sort-select', 'diff-mode', 'resample-mode', 'original-size'];`,
+		`function saveViewerState() {`,
+		`state.openCards = Array.from(document.querySelectorAll('.card.open')).map(cardStateKey);`,
+		`state.scrollY = window.scrollY || window.pageYOffset || 0;`,
+		`window.sessionStorage.setItem(viewerStateStorageKey, JSON.stringify(state));`,
+		`function restoreViewerState() {`,
+		`card.classList.toggle('open', openCardSet.has(cardStateKey(card)));`,
+		`restoreViewerState();`,
+		`bindViewerStatePersistence();`,
+		`restoreScrollPosition();`,
+	}
+	for _, snippet := range requiredSnippets {
+		if !strings.Contains(pageFooter, snippet) {
+			t.Fatalf("pageFooter missing viewer state snippet %q", snippet)
+		}
 	}
 }
 
@@ -155,6 +180,18 @@ func TestPageHeaderEmitsResampleModeControl(t *testing.T) {
 		if !strings.Contains(pageHeader, want) {
 			t.Fatalf("pageHeader missing %q", want)
 		}
+	}
+}
+
+func TestIsRegenerateFetchRequiresHeader(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPost, "/regenerate", nil)
+	if isRegenerateFetch(req) {
+		t.Fatal("isRegenerateFetch accepted request without fetch header")
+	}
+
+	req.Header.Set("X-Visual-Viewer-Regenerate", "1")
+	if !isRegenerateFetch(req) {
+		t.Fatal("isRegenerateFetch rejected request with fetch header")
 	}
 }
 
