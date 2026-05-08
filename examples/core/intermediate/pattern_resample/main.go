@@ -41,11 +41,11 @@ func renderCtrl(a *agg.Agg2D, c ctrlbase.Ctrl[icol.RGBA]) {
 	for pathID := uint(0); pathID < c.NumPaths(); pathID++ {
 		ras.Reset()
 		ras.AddPath(&ctrlVertexSourceAdapter{ctrl: c}, uint32(pathID))
-		a.RenderRasterizerWithColor(toDisplayAggColor(c.Color(pathID)))
+		a.RenderRasterizerWithColor(toRawAggColor(c.Color(pathID)))
 	}
 }
 
-func toDisplayAggColor(c icol.RGBA) agg.Color {
+func toRawAggColor(c icol.RGBA) agg.Color {
 	clamp := func(v float64) uint8 {
 		switch {
 		case v <= 0:
@@ -57,13 +57,7 @@ func toDisplayAggColor(c icol.RGBA) agg.Color {
 		}
 	}
 
-	srgb := icol.ConvertToSRGBFromLinear(icol.RGBA8[icol.Linear]{
-		R: clamp(c.R),
-		G: clamp(c.G),
-		B: clamp(c.B),
-		A: clamp(c.A),
-	})
-	return agg.NewColor(srgb.R, srgb.G, srgb.B, srgb.A)
+	return agg.NewColor(clamp(c.R), clamp(c.G), clamp(c.B), clamp(c.A))
 }
 
 type demo struct {

@@ -347,6 +347,40 @@ func TestSpanImageResampleRGBA_Create(t *testing.T) {
 	}
 }
 
+type mockLocalScaleInterpolator struct {
+	*MockInterpolator
+	calls int
+}
+
+func (m *mockLocalScaleInterpolator) LocalScale() (x, y int) {
+	m.calls++
+	return image.ImageSubpixelScale * 2, image.ImageSubpixelScale * 3
+}
+
+func TestSpanImageResampleRGBAUsesInterpolatorLocalScale(t *testing.T) {
+	source := NewMockRGBASource(4, 4)
+	for y := 0; y < 4; y++ {
+		for x := 0; x < 4; x++ {
+			source.SetPixel(x, y, color.RGBA8[color.Linear]{R: 32, G: 64, B: 96, A: 255})
+		}
+	}
+
+	interpolator := &mockLocalScaleInterpolator{MockInterpolator: NewMockInterpolator()}
+	filter := image.NewImageFilterLUTWithFilter(image.HanningFilter{}, true)
+	resampler := NewSpanImageResampleRGBAWithParams[*MockRGBASource, *mockLocalScaleInterpolator](
+		source,
+		interpolator,
+		filter,
+	)
+
+	span := make([]color.RGBA8[color.Linear], 3)
+	resampler.Generate(span, 0, 0)
+
+	if interpolator.calls != len(span) {
+		t.Fatalf("LocalScale calls = %d, want one call per generated pixel (%d)", interpolator.calls, len(span))
+	}
+}
+
 func TestRGBAAlphaConstraints(t *testing.T) {
 	// Test specific alpha constraint scenarios
 	testCases := []struct {

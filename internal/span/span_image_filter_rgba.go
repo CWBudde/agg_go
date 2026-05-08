@@ -899,6 +899,9 @@ func (sirg *SpanImageResampleRGBA[Source, Interpolator]) Generate(span []color.R
 		rx := image.ImageSubpixelScale
 		ry := image.ImageSubpixelScale
 
+		if localScaler, ok := any(baseFilter.interpolator).(LocalScaler); ok {
+			rx, ry = localScaler.LocalScale()
+		}
 		sirg.base.AdjustScale(&rx, &ry)
 
 		rxInv := image.ImageSubpixelScale * image.ImageSubpixelScale / rx

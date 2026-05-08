@@ -19,17 +19,11 @@ func TestRunnerConfigKeepsPatternResamplePixelsRaw(t *testing.T) {
 	}
 }
 
-func TestControlColorsAreEncodedForDisplay(t *testing.T) {
-	got := toDisplayAggColor(icol.NewRGBA(0.8, 0, 0, 0.6))
-	want := icol.ConvertToSRGBFromLinear(icol.RGBA8[icol.Linear]{
-		R: 204,
-		G: 0,
-		B: 0,
-		A: 153,
-	})
-	if got.R != want.R || got.G != want.G || got.B != want.B || got.A != want.A {
-		t.Fatalf("display control color = rgba(%d,%d,%d,%d), want rgba(%d,%d,%d,%d)",
-			got.R, got.G, got.B, got.A, want.R, want.G, want.B, want.A)
+func TestPostGammaControlColorsMatchPatternResampleSource(t *testing.T) {
+	got := toRawAggColor(icol.NewRGBA(0.8, 0, 0, 0.6))
+	if got.R != 204 || got.G != 0 || got.B != 0 || got.A != 153 {
+		t.Fatalf("post-gamma control color = rgba(%d,%d,%d,%d), want C++ raw rgba(0.8,0,0,0.6) rounded to rgba(204,0,0,153)",
+			got.R, got.G, got.B, got.A)
 	}
 }
 

@@ -311,7 +311,6 @@ func srcShape(a *agg.Agg2D, c1, c2 agg.Color, x1, y1, x2, y2 float64) {
 	a.FillLinearGradient(x1, y1, x2, y2, c1, c2, 1.0)
 	a.NoLine()
 	a.RoundedRect(x1, y1, x2, y2, 40)
-	a.DrawPath(agg.FillOnly)
 }
 
 func newSceneImageLike(img *agg.Image) *agg.Image {

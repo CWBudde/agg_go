@@ -700,11 +700,12 @@ func (sirg *SpanImageResampleGray[Source, Interpolator]) Generate(span []color.G
 	for i := 0; i < length; i++ {
 		sx, sy := baseFilter.interpolator.Coordinates()
 
-		// Get local scale from interpolator if it supports it
 		rx := image.ImageSubpixelScale
 		ry := image.ImageSubpixelScale
 
-		// Adjust scale using base method
+		if localScaler, ok := any(baseFilter.interpolator).(LocalScaler); ok {
+			rx, ry = localScaler.LocalScale()
+		}
 		sirg.base.AdjustScale(&rx, &ry)
 
 		rxInv := image.ImageSubpixelScale * image.ImageSubpixelScale / rx
