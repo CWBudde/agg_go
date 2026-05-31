@@ -137,11 +137,11 @@ func generatePattern(size int, patternAngle, patternAlpha float64) patternPixFmt
 	renBase.Clear(color.NewRGBA8[color.Linear](102, 0, 26, basics.Int8u(patternAlpha*255.0)))
 
 	ras.AddPath(&rasterizerAdapter{source: smooth}, 0)
-	renSolid.SetColor(color.NewRGBA8[color.Linear](110, 130, 50, 255))
+	renSolid.SetColor(color.ConvertRGBA8SRGBToLinear(color.NewRGBA8[color.SRGB](110, 130, 50, 255)))
 	renscan.RenderScanlinesAASolid(ras, sl, renSolid.BaseRenderer(), renSolid.Color())
 
 	ras.AddPath(&rasterizerAdapter{source: stroke}, 0)
-	renSolid.SetColor(color.NewRGBA8[color.Linear](0, 50, 80, 255))
+	renSolid.SetColor(color.ConvertRGBA8SRGBToLinear(color.NewRGBA8[color.SRGB](0, 50, 80, 255)))
 	renscan.RenderScanlinesAASolid(ras, sl, renSolid.BaseRenderer(), renSolid.Color())
 
 	return pf
@@ -429,11 +429,16 @@ func (a *ctrlPathAdapter) Vertex() (x, y float64, cmd basics.PathCommand) {
 	return a.ctrl.Vertex()
 }
 
+func demoConfig() lowlevelrunner.Config {
+	return lowlevelrunner.Config{
+		Title:                 "Pattern Fill",
+		Width:                 canvasW,
+		Height:                canvasH,
+		FlipY:                 true,
+		EncodeLinearRGBToSRGB: true,
+	}
+}
+
 func main() {
-	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "Pattern Fill",
-		Width:  canvasW,
-		Height: canvasH,
-		FlipY:  true,
-	}, newDemo())
+	lowlevelrunner.Run(demoConfig(), newDemo())
 }

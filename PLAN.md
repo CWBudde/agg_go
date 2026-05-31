@@ -293,10 +293,37 @@ C++ references live under `../agg-2.6/agg-src/`.
       pixfmt packages green, gofmt/vet clean, golangci-lint clean (only the
       pre-existing `infertypeargs` style hints shared with the 8-bit `buffer.go`),
       `go build ./...` OK.
-- [ ] **L5 — Subsystem coverage** in the float twin: clear/fill/stroke, path
+- [x] **L5 — Subsystem coverage** in the float twin: clear/fill/stroke, path
       rendering, gradients (linear/radial), image copy/blend/transform, and text
       state plumbing. Reuse color-generic span/renderer code; only the pixfmt and
       color LUTs differ.
+      DONE 2026-05-31 (TDD, 5 + 2 end-to-end pixel-asserting tests). Five new files,
+      all rendering into a real float buffer and verified at pixel level:
+      • `rendering_float.go` — float render core: `renderFill`/`renderStroke`/
+        `renderFillWithLineColor`, `addStrokeToRasterizer`, `renderSolidFillWithColor`
+        (+ master-alpha), `renderSolidStroke`, `renderGradientFill`/`Stroke`,
+        `renderLinearGradientFill`/`renderRadialGradientFill`, `scanlineRender`,
+        `updateApproximationScales`/`updateRasterizerGamma`, `WorldToScreenScalar`,
+        `LineWidth/Cap/Join`, `Set/GetMasterAlpha`, `SetAntiAliasGamma`,
+        `TextAlignment`/`FlipText` (text state plumbing). The render helpers
+        (`RenderScanlinesAA`, `NewRendererScanlineAASolidWithColor`) are color-generic
+        and instantiate over `RGBA32`; only the LUT refresh (`copy` of `[256]RGBA32`)
+        and `colorToRGBA32`+master-alpha differ from 8-bit.
+      • `paths_float.go` — `ResetPath`/`MoveTo`/`LineTo`/(rel)/`HorLineTo`/`VerLineTo`/
+        `ArcTo`/`QuadricCurveTo`/`CubicCurveTo`/`AddEllipse`/`ClosePolygon`/`DrawPath`/
+        `DrawPathNoTransform` (bodies identical to paths.go — shared color-agnostic state).
+      • `shapes_float.go` — `Line`/`Triangle`/`Rectangle`/`Ellipse`/`DrawCircle`/`FillCircle`.
+      • `gradient_float.go` — float gradient builders (`buildProfileGradient32`/
+        `buildThreeColorGradient32`, interpolating in RGBA32 space) + `FillLinearGradient`/
+        `LineLinearGradient`/`FillRadialGradient`/`LineRadialGradient`/`FillRadialGradientMultiStop`.
+      • `image_float.go` — `CopyImageFloat`/`BlendImageFloat` via the base renderer's
+        CopyFrom/BlendFrom with a float source pixfmt over the `ImageFloat` buffer.
+      Carried forward (documented in files): composite (Comp/CompPre) blend modes;
+      full affine/perspective image transforms (`TransformImage*`); the remaining
+      shape helpers (Star, RoundedRect variants, Arc, smooth curve variants); and
+      actual glyph rasterization (only text *state* is plumbed). Verified: 15/15
+      agg2d float tests, full agg2d package green, gofmt/vet clean, golangci-lint
+      clean on all float files, `go build ./...` OK.
 - [ ] **L6 — Public surface** `agg2d_float.go` (root) + `context_float.go` +
       float `Image` API: `NewAgg2DFloat`, `Attach`, `AttachImage`, and the mirror
       of the 8-bit public methods that the float subsystems support.
@@ -308,12 +335,13 @@ constructing `Agg2DFloat`/`ContextFloat`/`ImageFloat`.
 
 - [ ] Provide dedicated float image and context types with attach/create APIs,
       not just a hidden internal renderer.
-- [ ] Cover at least these Agg2D subsystems in the float variant:
+- [x] Cover at least these Agg2D subsystems in the float variant:
       clear/fill/stroke, path rendering, image copy/blend/transform, gradients,
-      and text state plumbing.
-- [ ] Define and document the boundary conversions between float Agg2D images
-      and standard Go image types or 8-bit AGG images.
-- [ ] Add an explicit contract for premultiply/demultiply behavior in the float
+      and text state plumbing. (L5 — full affine/perspective image transform
+      carried forward; copy/blend covered.)
+- [x] Define and document the boundary conversions between float Agg2D images
+      and standard Go image types or 8-bit AGG images. (L3 — `buffer_float.go`.)
+- [x] Add an explicit contract for premultiply/demultiply behavior in the float
       variant. Working contract (to confirm during L2/L3): internal storage and
       the `Plain`/`Pre` blender split mirror the 8-bit semantics exactly; exported
       helper APIs expose **straight (non-premultiplied)** float data at the
