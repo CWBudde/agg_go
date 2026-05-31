@@ -7,9 +7,9 @@ import (
 )
 
 func TestNewAgg2DFloatDefaults(t *testing.T) {
-	a := newAgg2DFloat()
+	a := NewAgg2DFloat()
 	if a == nil {
-		t.Fatal("newAgg2DFloat() = nil")
+		t.Fatal("NewAgg2DFloat() = nil")
 	}
 	if a.lineWidth != 1.0 {
 		t.Errorf("lineWidth = %v, want 1.0", a.lineWidth)
@@ -42,7 +42,7 @@ func TestNewAgg2DFloatDefaults(t *testing.T) {
 }
 
 func TestAgg2DFloatAttachWiresRenderers(t *testing.T) {
-	a := newAgg2DFloat()
+	a := NewAgg2DFloat()
 	buf := make([]float32, 4*3*4)
 	a.Attach(buf, 4, 3, 4*4*4)
 
@@ -58,7 +58,7 @@ func TestAgg2DFloatAttachWiresRenderers(t *testing.T) {
 }
 
 func TestAgg2DFloatClearAll(t *testing.T) {
-	a := newAgg2DFloat()
+	a := NewAgg2DFloat()
 	buf := make([]float32, 2*2*4)
 	a.Attach(buf, 2, 2, 2*4*4)
 
@@ -77,7 +77,7 @@ func TestAgg2DFloatClearAll(t *testing.T) {
 }
 
 func TestAgg2DFloatAttachImage(t *testing.T) {
-	a := newAgg2DFloat()
+	a := NewAgg2DFloat()
 	img := NewImageFloatEmpty(5, 4)
 	a.AttachImageFloat(img)
 	if a.pixfmt == nil || a.pixfmt.Width() != 5 || a.pixfmt.Height() != 4 {

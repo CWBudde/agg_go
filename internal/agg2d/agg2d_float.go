@@ -108,7 +108,7 @@ type Agg2DFloat struct {
 	// Path and transformation (reused as-is)
 	path           *path.PathStorageStl
 	transform      *transform.TransAffine
-	transformStack *TransformStack //nolint:unused // wired in L6 (push/pop transform)
+	transformStack *TransformStack //nolint:unused // reserved for push/pop transform (not yet mirrored)
 
 	// Converters (reused as-is)
 	convCurve  *conv.ConvCurve
@@ -158,8 +158,8 @@ type Agg2DFloat struct {
 	hasLastCtrl          bool    //nolint:unused // wired in L5 (smooth curve path methods)
 }
 
-// newAgg2DFloat creates a new float AGG2D rendering context, mirroring NewAgg2D.
-func newAgg2DFloat() *Agg2DFloat {
+// NewAgg2DFloat creates a new float AGG2D rendering context, mirroring NewAgg2D.
+func NewAgg2DFloat() *Agg2DFloat {
 	a := &Agg2DFloat{
 		rbuf:                      buffer.NewRenderingBufferF32(),
 		clipBox:                   struct{ X1, Y1, X2, Y2 float64 }{0, 0, 0, 0},
@@ -274,6 +274,7 @@ func (a *Agg2DFloat) Attach(buf []float32, width, height, stride int) {
 	a.blendMode = BlendAlpha
 
 	a.initializeRendering()
+	a.updateRasterizerGamma()
 }
 
 // AttachImageFloat attaches the rendering context to an existing float image.

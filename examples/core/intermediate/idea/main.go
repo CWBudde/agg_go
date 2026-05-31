@@ -2,8 +2,6 @@
 package main
 
 import (
-	"math"
-
 	agg "github.com/cwbudde/agg_go"
 	"github.com/cwbudde/agg_go/examples/shared/lowlevelrunner"
 	"github.com/cwbudde/agg_go/internal/basics"
@@ -30,20 +28,14 @@ func (a *ctrlPathAdapter) Vertex(x, y *float64) uint32 {
 	return uint32(cmd)
 }
 
-func linearToSRGB(v float64) uint8 {
+func clampUnitToU8(v float64) uint8 {
 	if v <= 0 {
 		return 0
 	}
 	if v >= 1 {
 		return 255
 	}
-	var s float64
-	if v <= 0.0031308 {
-		s = 12.92 * v
-	} else {
-		s = 1.055*math.Pow(v, 1.0/2.4) - 0.055
-	}
-	return uint8(s*255 + 0.5)
+	return uint8(v*255 + 0.5)
 }
 
 func renderCtrl(ag *agg.Agg2D, ctrl ctrlIface) {
@@ -62,7 +54,7 @@ func renderCtrl(ag *agg.Agg2D, ctrl ctrlIface) {
 		default:
 			a = uint8(c.A*255 + 0.5)
 		}
-		ag.RenderRasterizerWithColor(agg.NewColor(linearToSRGB(c.R), linearToSRGB(c.G), linearToSRGB(c.B), a))
+		ag.RenderRasterizerWithColor(agg.NewColor(clampUnitToU8(c.R), clampUnitToU8(c.G), clampUnitToU8(c.B), a))
 	}
 }
 
@@ -102,9 +94,14 @@ func (d *demo) Render(img *agg.Image) {
 }
 
 func main() {
-	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "Idea",
-		Width:  250,
-		Height: 280,
-	}, newDemo())
+	lowlevelrunner.Run(demoConfig(), newDemo())
+}
+
+func demoConfig() lowlevelrunner.Config {
+	return lowlevelrunner.Config{
+		Title:                 "Idea",
+		Width:                 250,
+		Height:                280,
+		EncodeLinearRGBToSRGB: true,
+	}
 }

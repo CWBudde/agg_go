@@ -1,0 +1,128 @@
+package agg
+
+import "testing"
+
+func feqf(a, b float32) bool {
+	d := a - b
+	if d < 0 {
+		d = -d
+	}
+	return d <= 1e-6
+}
+
+func TestPublicAgg2DFloatSolidFill(t *testing.T) {
+	img := NewImageFloat(20, 20)
+	a := NewAgg2DFloat()
+	a.AttachImage(img)
+	a.ClearAll(NewColor(0, 0, 0, 0))
+
+	a.FillColor(NewColor(255, 0, 0, 255))
+	a.ResetPath()
+	a.MoveTo(2, 2)
+	a.LineTo(18, 2)
+	a.LineTo(18, 18)
+	a.LineTo(2, 18)
+	a.ClosePolygon()
+	a.DrawPath(FillOnly)
+
+	r, g, b, al := img.GetPixelFloat(10, 10)
+	if !feqf(r, 1.0) || !feqf(g, 0.0) || !feqf(b, 0.0) || !feqf(al, 1.0) {
+		t.Fatalf("center = {%v,%v,%v,%v}, want opaque red", r, g, b, al)
+	}
+	_, _, _, ca := img.GetPixelFloat(0, 0)
+	if ca != 0 {
+		t.Fatalf("corner alpha = %v, want 0", ca)
+	}
+}
+
+func TestPublicAgg2DFloatGradientAndImageOps(t *testing.T) {
+	img := NewImageFloat(40, 10)
+	a := NewAgg2DFloat()
+	a.AttachImage(img)
+	a.ClearAll(NewColor(0, 0, 0, 0))
+
+	a.FillLinearGradient(0, 0, 40, 0, NewColor(255, 0, 0, 255), NewColor(0, 0, 255, 255), 1.0)
+	a.ResetPath()
+	a.MoveTo(0, 0)
+	a.LineTo(40, 0)
+	a.LineTo(40, 10)
+	a.LineTo(0, 10)
+	a.ClosePolygon()
+	a.DrawPath(FillOnly)
+
+	lr, _, _, _ := img.GetPixelFloat(3, 5)
+	_, _, rb, _ := img.GetPixelFloat(36, 5)
+	if lr <= 0 || rb <= 0 {
+		t.Fatalf("gradient endpoints not rendered: lr=%v rb=%v", lr, rb)
+	}
+
+	// CopyImage onto a fresh target.
+	dst := NewImageFloat(60, 20)
+	b := NewAgg2DFloat()
+	b.AttachImage(dst)
+	b.ClearAll(NewColor(0, 0, 0, 0))
+	b.CopyImage(img, 5, 5)
+	_, _, _, a2 := dst.GetPixelFloat(20, 8)
+	if a2 <= 0 {
+		t.Fatalf("copied region alpha = %v, want > 0", a2)
+	}
+}
+
+func TestPublicAgg2DFloatBoundaryToRGBA(t *testing.T) {
+	img := NewImageFloat(1, 1)
+	img.SetPixelFloat(0, 0, 1.0, 0.5, 0.0, 0.5)
+	rgba := img.ToRGBA()
+	got := rgba.RGBAAt(0, 0)
+	// Go image.RGBA is premultiplied: a=128, r=round(1*0.5*255)=128
+	if got.A < 126 || got.A > 130 || got.R < 126 || got.R > 130 {
+		t.Fatalf("ToRGBA pixel = %+v, want ~{128,64,0,128}", got)
+	}
+}
+
+func TestPublicAgg2DFloatTransformAndFillMode(t *testing.T) {
+	img := NewImageFloat(24, 24)
+	a := NewAgg2DFloat()
+	a.AttachImage(img)
+	a.ClearAll(NewColor(0, 0, 0, 0))
+
+	// Translate then fill a small rect; verify it moved.
+	a.FillColor(NewColor(255, 0, 0, 255))
+	a.Translate(10, 10)
+	a.ResetPath()
+	a.MoveTo(0, 0)
+	a.LineTo(6, 0)
+	a.LineTo(6, 6)
+	a.LineTo(0, 6)
+	a.ClosePolygon()
+	a.DrawPath(FillOnly)
+	if _, _, _, al := img.GetPixelFloat(13, 13); al <= 0 {
+		t.Fatalf("translated fill missing at (13,13): alpha=%v", al)
+	}
+	if _, _, _, al := img.GetPixelFloat(3, 3); al != 0 {
+		t.Fatalf("untranslated location should be empty: alpha=%v", al)
+	}
+
+	// Fill-mode toggles are reachable from the public API.
+	a.FillEvenOdd(true)
+	if !a.GetFillEvenOdd() {
+		t.Fatal("GetFillEvenOdd should be true after FillEvenOdd(true)")
+	}
+	a.NoFill()
+	a.NoLine()
+}
+
+func TestPublicContextFloat(t *testing.T) {
+	ctx := NewContextFloat(20, 20)
+	ctx.Clear(NewColor(0, 0, 0, 0))
+	ctx.SetColor(NewColor(0, 0, 255, 255))
+	ctx.FillRectangle(2, 2, 16, 16)
+
+	img := ctx.GetImage()
+	_, _, bb, ba := img.GetPixelFloat(10, 10)
+	if !feqf(bb, 1.0) || ba <= 0 {
+		t.Fatalf("context fill center = blue? b=%v a=%v", bb, ba)
+	}
+	if ctx.Width() != 20 || ctx.Height() != 20 {
+		t.Fatalf("ctx dims = %dx%d, want 20x20", ctx.Width(), ctx.Height())
+	}
+}

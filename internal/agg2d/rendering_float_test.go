@@ -6,7 +6,7 @@ import (
 
 // setupFloatTarget makes a float context rendering into a fresh w x h image.
 func setupFloatTarget(w, h int) (*Agg2DFloat, *ImageFloat) {
-	a := newAgg2DFloat()
+	a := NewAgg2DFloat()
 	img := NewImageFloatEmpty(w, h)
 	a.AttachImageFloat(img)
 	a.ClearAll(NewColor(0, 0, 0, 0))

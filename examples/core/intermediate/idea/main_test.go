@@ -27,6 +27,21 @@ func TestIdeaDemoRendersControlsWithCXXTextOrientation(t *testing.T) {
 	}
 }
 
+func TestIdeaConfigEncodesLinearOutput(t *testing.T) {
+	cfg := demoConfig()
+
+	if !cfg.EncodeLinearRGBToSRGB {
+		t.Fatalf("EncodeLinearRGBToSRGB = false, want true for AGG_BGR24 linear output")
+	}
+}
+
+func TestControlColorsStayLinearBeforeOutputEncoding(t *testing.T) {
+	got := clampUnitToU8(0.3)
+	if got != 77 {
+		t.Fatalf("clampUnitToU8(0.3) = %d, want 77", got)
+	}
+}
+
 func countDarkPixels(img image.Image, rect image.Rectangle) int {
 	count := 0
 	for y := rect.Min.Y; y < rect.Max.Y; y++ {

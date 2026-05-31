@@ -324,17 +324,40 @@ C++ references live under `../agg-2.6/agg-src/`.
       actual glyph rasterization (only text *state* is plumbed). Verified: 15/15
       agg2d float tests, full agg2d package green, gofmt/vet clean, golangci-lint
       clean on all float files, `go build ./...` OK.
-- [ ] **L6 — Public surface** `agg2d_float.go` (root) + `context_float.go` +
+- [x] **L6 — Public surface** `agg2d_float.go` (root) + `context_float.go` +
       float `Image` API: `NewAgg2DFloat`, `Attach`, `AttachImage`, and the mirror
       of the 8-bit public methods that the float subsystems support.
+      DONE 2026-05-31 (TDD, 4 public end-to-end tests). Exported the internal
+      constructor (`newAgg2DFloat`→`NewAgg2DFloat`). Root `agg2d_float.go`:
+      • public `ImageFloat` (thin wrapper over `agg2d.ImageFloat`) — `NewImageFloat`,
+        `Width`/`Height`, `Get/SetPixelFloat` (float tuples, no internal-color leak in
+        signatures), `Premultiply`/`Demultiply`, and boundary `ToRGBA`/`ToNRGBA64`
+        returning standard Go image types.
+      • public `Agg2DFloat` (wraps `*agg2d.Agg2DFloat`) with `NewAgg2DFloat`, `Attach`
+        (`[]float32`), `AttachImage`, `GetImpl`, and the full mirror of the supported
+        8-bit methods: ClearAll/ClipBox/GetBounds, FillColor/LineColor, LineWidth/
+        Cap/Join, master-alpha + AA gamma, path (ResetPath/MoveTo/LineTo/rel/Hor/Ver/
+        ArcTo/Quadric/Cubic/AddEllipse/ClosePolygon/DrawPath/NoTransform), shapes
+        (Line/Triangle/Rectangle/Ellipse/Draw+FillCircle), gradients (Fill/Line ×
+        Linear/Radial + MultiStop), image transfer (CopyImage/BlendImage), transforms
+        (WorldToScreen/ScreenToWorld/WorldToScreenScalar), and text state (TextAlignment/
+        FlipText). Public `Color` stays 8-bit; `toInternalColor` bridges to `agg2d.Color`.
+      `context_float.go`: high-level `ContextFloat` (`NewContextFloat`/`ForImage`,
+      Clear/SetColor/SetLineWidth, DrawLine/Draw+FillRectangle/Draw+FillCircle,
+      GetImage/GetAgg2D), mirroring the 8-bit `Context`. No build tags — float path
+      is selected purely by constructing `Agg2DFloat`/`ContextFloat`/`ImageFloat`.
+      Verified: 4/4 public tests (solid fill, gradient+CopyImage, ToRGBA boundary,
+      ContextFloat) + full root and internal agg2d suites green, gofmt/vet clean,
+      golangci-lint clean on all float files, `go build ./...` OK.
 
 Do not introduce build tags for selection; the float path is chosen purely by
 constructing `Agg2DFloat`/`ContextFloat`/`ImageFloat`.
 
 ### 4.3 Required scope and boundary contract
 
-- [ ] Provide dedicated float image and context types with attach/create APIs,
-      not just a hidden internal renderer.
+- [x] Provide dedicated float image and context types with attach/create APIs,
+      not just a hidden internal renderer. (L6 — public `ImageFloat`, `Agg2DFloat`,
+      `ContextFloat` with `NewImageFloat`/`NewAgg2DFloat`/`NewContextFloat`/Attach.)
 - [x] Cover at least these Agg2D subsystems in the float variant:
       clear/fill/stroke, path rendering, image copy/blend/transform, gradients,
       and text state plumbing. (L5 — full affine/perspective image transform
@@ -361,15 +384,41 @@ constructing `Agg2DFloat`/`ContextFloat`/`ImageFloat`.
 
 ### 4.5 Verification and exit criteria
 
-- [ ] Add side-by-side tests that render the same scene through 8-bit Agg2D and
+- [x] Add side-by-side tests that render the same scene through 8-bit Agg2D and
       float Agg2D, then compare the quantized float output against expected
       tolerance envelopes.
+      DONE 2026-05-31 — `internal/agg2d/parity_float_test.go`: a `parityTarget`
+      interface (the method subset shared verbatim by `*Agg2D` and `*Agg2DFloat`)
+      drives one scene through both pipelines; solid fill is pixel-identical
+      (tol 1), linear gradient within tol 3, stroke within tol 2.
 - [ ] Add source-linked tests for premultiply/demultiply and transformed-image
       behavior in the float path.
 - [ ] Add at least one visual regression/demo hook that can run a demo via the
       float Agg2D path without disturbing the existing 8-bit baseline.
 - [ ] Document the intentional API and behavioral differences between the 8-bit
       and float variants in `docs/AGG_DELTAS.md` or a dedicated companion note.
+
+### 4.6 Post-completion hardening (2026-05-31)
+
+Follow-up after the L1–L6 review:
+- [x] **Parity bug fixed**: float `Attach` now calls `updateRasterizerGamma()`
+      (matching 8-bit `buffer.go`). Without it, a master alpha set before a
+      re-`Attach` leaked into later rendering as a stale coverage scale (caught by
+      `TestAgg2DFloatAttachResetsRasterizerGamma`: interior alpha was 0.498 → now 1.0).
+- [x] **Cross-precision parity test** added (see §4.5).
+- [x] **Breadth increment** (trivial color-agnostic delegations): world transforms
+      (`Rotate`/`Scale`/`UniformScale`/`Skew`/`Translate`/`ResetTransformations`),
+      fill mode (`FillEvenOdd`/`GetFillEvenOdd`, `NoFill`/`NoLine`) on both the
+      internal twin (`transform_float.go`) and the public surface, TDD'd incl. an
+      even-odd donut-hole test.
+
+Still outstanding (genuinely new work, prioritized): full affine/perspective
+**image transform** (`TransformImage*`); **composite blend modes**
+(`PixFmtCompositeRGBA128` + wiring `BlendMode`/`imageBlendMode`); **text glyph
+rendering** (only state is plumbed); and the remaining ~100 public-method
+delegations (Viewport/Parallelogram, Arc/RoundedRect/Polygon/Star, curve variants,
+dashes, gradient stops, `Get*` accessors, `GouraudTriangle`). None block the float
+twin from being usable today.
 
 ---
 
