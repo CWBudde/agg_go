@@ -268,11 +268,31 @@ C++ references live under `../agg-2.6/agg-src/`.
       `NewImageFloatFromImage8` (straight ↔ 8-bit AGG image, ×255). Contract
       documented in the file header. Verified: 8/8 tests, full agg2d package green,
       gofmt/vet/golangci-lint clean on new files, `go build ./...` OK.
-- [ ] **L4 — `Agg2DFloat` internal twin** `internal/agg2d/agg2d_float.go`. Mirror
+- [x] **L4 — `Agg2DFloat` internal twin** `internal/agg2d/agg2d_float.go`. Mirror
       the internal `Agg2D` struct field-for-field, swapping the pixfmt/renderer/
       color/gradient-LUT/span types to the float ones. Keep a one-to-one method
       mapping; share only behavior-identical helpers (transform, path, converters,
       rasterizer, scanline are reused as-is).
+      DONE 2026-05-31 (TDD, 4 + 3 tests). Two parts:
+      (1) Float gradient span support in `internal/span/span_gradient.go`:
+      `GradientPrebuiltColorRGBA32` + `NewLinearGradientFromLUT32` /
+      `NewRadialGradientFromLUT32` (float twins of the RGBA8 LUT helpers) — 3 tests.
+      (2) `Agg2DFloat` struct mirroring `Agg2D` field-for-field with float types:
+      `rbuf *RenderingBufferF32`, `pixfmt *PixFmtRGBA128Plain`/`pixfmtPre`,
+      `renBase`/`renBasePre baseRendererAdapter[RGBA32[Linear]]`, gradient array
+      `[256]RGBA32`, `spanAllocator`/`*GradientLUT []RGBA32`, and the four float
+      gradient span generators. Per C++ `AGG2D_USE_FLOAT_FORMAT`: the public
+      `Color` stays 8-bit (srgba8); `ColorType`→rgba32 drives pixfmt/blender/
+      span/gradient. Constructor `newAgg2DFloat` mirrors `NewAgg2D`; render wiring
+      `Attach`/`AttachImageFloat`/`initializeRendering`/`ClipBox`/`ClearAll`/
+      `GetBounds`/`WorldToScreen`/`ScreenToWorld`/`FillColor`/`LineColor` +
+      `colorToRGBA32` boundary helper. Composite pixfmt fields deferred to L5
+      (no `PixFmtCompositeRGBA128` yet). Fields declared ahead of their L5/L6
+      wiring (gradient arrays, font, dash, curve-ctrl, transform stack) carry
+      documented `//nolint:unused`. Verified: 7/7 new tests, full agg2d + span +
+      pixfmt packages green, gofmt/vet clean, golangci-lint clean (only the
+      pre-existing `infertypeargs` style hints shared with the 8-bit `buffer.go`),
+      `go build ./...` OK.
 - [ ] **L5 — Subsystem coverage** in the float twin: clear/fill/stroke, path
       rendering, gradients (linear/radial), image copy/blend/transform, and text
       state plumbing. Reuse color-generic span/renderer code; only the pixfmt and

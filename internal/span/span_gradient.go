@@ -547,3 +547,53 @@ func NewRadialGradientFromLUT[InterpolatorT SpanInterpolatorInterface](
 	return NewSpanGradient[color.RGBA8[color.Linear], InterpolatorT, GradientRadial, *GradientPrebuiltColorRGBA8[color.Linear]](
 		interpolator, gradientFunc, colorFunc, d1, d2)
 }
+
+// GradientPrebuiltColorRGBA32 is the float (RGBA32) twin of
+// GradientPrebuiltColorRGBA8: a color function backed by a pre-built lookup
+// table, mapping each gradient index directly to a table entry. It mirrors
+// AGG's pod_auto_array<ColorType, 256> used as the color function when
+// ColorType is the float rgba32.
+type GradientPrebuiltColorRGBA32[CS color.Space] struct {
+	table []color.RGBA32[CS]
+}
+
+// NewGradientPrebuiltColorRGBA32 creates a color function wrapping an existing LUT slice.
+func NewGradientPrebuiltColorRGBA32[CS color.Space](table []color.RGBA32[CS]) *GradientPrebuiltColorRGBA32[CS] {
+	return &GradientPrebuiltColorRGBA32[CS]{table: table}
+}
+
+// Size returns the number of entries in the lookup table.
+func (g *GradientPrebuiltColorRGBA32[CS]) Size() int {
+	return len(g.table)
+}
+
+// ColorAt returns the color at the given index via direct table lookup.
+func (g *GradientPrebuiltColorRGBA32[CS]) ColorAt(index int) color.RGBA32[CS] {
+	return g.table[index]
+}
+
+// NewLinearGradientFromLUT32 creates a float linear gradient span generator using
+// a pre-built 256-entry RGBA32 color lookup table.
+func NewLinearGradientFromLUT32[InterpolatorT SpanInterpolatorInterface](
+	interpolator InterpolatorT,
+	lut []color.RGBA32[color.Linear],
+	d1, d2 float64,
+) *SpanGradient[color.RGBA32[color.Linear], InterpolatorT, GradientLinearX, *GradientPrebuiltColorRGBA32[color.Linear]] {
+	colorFunc := NewGradientPrebuiltColorRGBA32[color.Linear](lut)
+	gradientFunc := GradientLinearX{}
+	return NewSpanGradient[color.RGBA32[color.Linear], InterpolatorT, GradientLinearX, *GradientPrebuiltColorRGBA32[color.Linear]](
+		interpolator, gradientFunc, colorFunc, d1, d2)
+}
+
+// NewRadialGradientFromLUT32 creates a float radial gradient span generator using
+// a pre-built 256-entry RGBA32 color lookup table.
+func NewRadialGradientFromLUT32[InterpolatorT SpanInterpolatorInterface](
+	interpolator InterpolatorT,
+	lut []color.RGBA32[color.Linear],
+	d1, d2 float64,
+) *SpanGradient[color.RGBA32[color.Linear], InterpolatorT, GradientRadial, *GradientPrebuiltColorRGBA32[color.Linear]] {
+	colorFunc := NewGradientPrebuiltColorRGBA32[color.Linear](lut)
+	gradientFunc := GradientRadial{}
+	return NewSpanGradient[color.RGBA32[color.Linear], InterpolatorT, GradientRadial, *GradientPrebuiltColorRGBA32[color.Linear]](
+		interpolator, gradientFunc, colorFunc, d1, d2)
+}

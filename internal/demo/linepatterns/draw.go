@@ -44,8 +44,14 @@ func (s *imagePatternSource) Pixel(x, y int) color.RGBA {
 	r := uint8((p >> 16) & 0xFF)
 	g := uint8((p >> 8) & 0xFF)
 	b := uint8(p & 0xFF)
-	a := BrightnessToAlpha(int(r) + int(g) + int(b))
-	return color.NewRGBAFromRGBA8(r, g, b, a)
+	lin := color.ConvertRGBA8SRGBToLinear(color.RGBA8[color.SRGB]{
+		R: r,
+		G: g,
+		B: b,
+		A: 255,
+	})
+	lin.A = BrightnessToAlpha(int(lin.R) + int(lin.G) + int(lin.B))
+	return lin.ConvertToRGBA()
 }
 
 type lineImageBaseAdapter struct {
