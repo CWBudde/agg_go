@@ -70,6 +70,16 @@ func toAggColor(c icol.RGBA) agg.Color {
 	return agg.NewColor(clamp(c.R), clamp(c.G), clamp(c.B), clamp(c.A))
 }
 
+func srgba8Color(r, g, b, a uint8) agg.Color {
+	c := icol.ConvertRGBA8SRGBToLinear(icol.RGBA8[icol.SRGB]{
+		R: r,
+		G: g,
+		B: b,
+		A: a,
+	})
+	return agg.NewColor(c.R, c.G, c.B, c.A)
+}
+
 func renderCtrl(a *agg.Agg2D, c ctrlbase.Ctrl[icol.RGBA]) {
 	ras := a.GetInternalRasterizer()
 	for i := uint(0); i < c.NumPaths(); i++ {
@@ -163,8 +173,8 @@ func (d *demo) Render(img *agg.Image) {
 		color  agg.Color
 	}{
 		{220, eWidth, 15.0, 2.0, 11.0, agg.NewColor(0, 0, 0, 255)},
-		{260, eWidth, 15.0, 2.0, 11.0, agg.NewColor(127, 127, 127, 255)},
-		{300, eWidth, 15.0, 2.0, 11.0, agg.NewColor(192, 192, 192, 255)},
+		{260, eWidth, 15.0, 2.0, 11.0, srgba8Color(127, 127, 127, 255)},
+		{300, eWidth, 15.0, 2.0, 11.0, srgba8Color(192, 192, 192, 255)},
 		{340, eWidth, 15.5, 1.0, 10.5, agg.NewColor(0, 0, 102, 255)},
 		{380, eWidth, 15.5, 0.4, 10.5, agg.NewColor(0, 0, 102, 255)},
 		{420, eWidth, 15.5, 0.1, 10.5, agg.NewColor(0, 0, 102, 255)},

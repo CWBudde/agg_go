@@ -253,10 +253,21 @@ C++ references live under `../agg-2.6/agg-src/`.
       + sRGB variants and constructors. 7 TDD tests green; gofmt/lint clean; whole
       pixfmt package passes. Composite (`Comp`/`CompPre`) variants deferred to L5.
       C++ ref: `pixfmt_rgba` family parameterised on `rgba128`.
-- [ ] **L3 — Float image + buffer wiring** `internal/agg2d/buffer_float.go` and a
+- [x] **L3 — Float image + buffer wiring** `internal/agg2d/buffer_float.go` and a
       float `Image`. Define the boundary contract (see 4.3) and conversions
       to/from `color.RGBA32`, standard Go `image.RGBA`/`image.NRGBA64`, and the
       8-bit AGG image.
+      DONE 2026-05-31 (TDD, 8 tests): added `ImageFloat` over `RenderingBufferF32`
+      storing **straight** RGBA float32 (4/pixel, [0,1]), the float twin of
+      `Image`. Constructors `NewImageFloat`/`NewImageFloatEmpty`; `Width/Height/
+      Stride/IsAttached/Attach`; straight `GetPixel`/`SetPixel` over `color.RGBA32`;
+      in-place `Premultiply`/`Demultiply`. Boundary conversions honoring each
+      format's alpha convention: `ToNRGBA64`/`NewImageFloatFromNRGBA64` (straight
+      ↔ straight 16-bit), `ToRGBA`/`NewImageFloatFromRGBA` (straight ↔ Go's
+      premultiplied 8-bit, premul/demul at the boundary), `ToImage8`/
+      `NewImageFloatFromImage8` (straight ↔ 8-bit AGG image, ×255). Contract
+      documented in the file header. Verified: 8/8 tests, full agg2d package green,
+      gofmt/vet/golangci-lint clean on new files, `go build ./...` OK.
 - [ ] **L4 — `Agg2DFloat` internal twin** `internal/agg2d/agg2d_float.go`. Mirror
       the internal `Agg2D` struct field-for-field, swapping the pixfmt/renderer/
       color/gradient-LUT/span types to the float ones. Keep a one-to-one method
