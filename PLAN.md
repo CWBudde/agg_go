@@ -178,6 +178,49 @@ AGG 2.6's `Agg2D` has a compile-time `AGG2D_USE_FLOAT_FORMAT` switch in
 explicit, dedicated implementation path, not via build tags and not by mutating
 the semantics of the current 8-bit `Agg2D`.
 
+### 4.0 Current starting point (verified 2026-05-31)
+
+A codebase audit established what float infrastructure already exists vs. what
+must be built. The earlier draft of this phase assumed an "`rgba32`/`rgba128`-class
+pixel-format stack" was available to wire in; for RGBA it is **not**. Reality:
+
+**Already present (float-capable):**
+- `internal/color/rgba32.go` — `color.RGBA32[CS]` with `float32` channels and a
+  full method set (`Premultiply`, `Demultiply`, `Gradient`, `Scale`, `Add`,
+  `Opacity`, …). This is the Go equivalent of C++ `agg::rgba32` (the float color
+  selected by `AGG2D_USE_FLOAT_FORMAT`). `color.RGBA` (float64) also exists.
+- `internal/buffer/rendering_buffer.go` — `RenderingBuffer[T]` is generic;
+  `RenderingBufferF32` already exists and is used by the gray-float pixfmt.
+- `internal/renderer/base.go` — `RendererBase[PF PixelFormat[C], C any]` is
+  color-generic.
+- `internal/span/*` — `SpanGradient[ColorT any, …]`, `SpanAllocator[C]`, and
+  interpolators are color-generic.
+- `internal/rasterizer/*` and `internal/scanline/*` are color-agnostic (coverage
+  only) and need no changes.
+- **Precedent to mirror:** a complete float **gray** stack exists —
+  `internal/pixfmt/blender/gray32.go` (`Gray32Blender` over `[]float32`) and
+  `internal/pixfmt/pixfmt_gray32.go` (`PixFmtAlphaBlendGray32` over
+  `*buffer.RenderingBufferF32`). The float RGBA stack should be its structural twin.
+
+**Missing (must be built):**
+- A float **RGBA blender** (`[]float32`, order-aware). Only `rgba8`, `rgba16`,
+  float-`rgb32`, and float-`gray32` blenders exist today.
+- A float **RGBA pixfmt** (128-bit). Only `pixfmt_rgba8` (32-bit) and
+  `pixfmt_rgba16` (64-bit) exist; the RGBA `PixFmtAlphaBlendRGBA` base is
+  hardwired to `*buffer.RenderingBufferU8`.
+- The `Agg2DFloat` twin (internal + public) and float `Image`/`Context` wiring.
+
+**Naming decision (to avoid a real collision):** the existing 8-bit pixfmt is
+*already* aliased `PixFmtRGBA32*` ("RGBA32" = 32-bit **pixel**, 8 bits/channel),
+and a code comment equates C++ `blender_rgba32` with the 8-bit blender. To avoid
+ambiguity the float stack is named by **total pixel width = 4 × float32 = 128
+bits**, matching AGG's own `pixfmt_rgba128`:
+- Blender: `RGBA128Blender[S]` interface + `BlenderRGBA128[S,O]` / `…Pre` / `…Plain`.
+- Pixfmt: `PixFmtAlphaBlendRGBA128[…]` + aliases `PixFmtRGBA128`, `PixFmtRGBA128Pre`, `PixFmtRGBA128Plain`.
+- The color these pair with is `color.RGBA32` (float). Document this pairing in
+  `docs/AGG_DELTAS.md`.
+- Public twin keeps the plan's working names: `Agg2DFloat`, `ContextFloat`, `ImageFloat`.
+
 ### 4.1 Goal
 
 - [ ] Add a dedicated float-backed `Agg2D` implementation path that mirrors the
@@ -186,23 +229,51 @@ the semantics of the current 8-bit `Agg2D`.
 - [ ] Make the float path explicit in naming and construction so callers opt in
       intentionally rather than changing global build configuration.
 
-### 4.2 Shape of the work
+### 4.2 Layered build order (TDD, bottom-up)
 
-- [ ] Introduce a separate implementation rather than a runtime mode flag on the
-      existing `Agg2D`. The working assumption is a dedicated copy/twin such as
-      `Agg2DFloat`, `ContextFloat`, and `ImageFloat`, with shared helpers only
-      where behavior is identical.
-- [ ] Mirror the C++ `AGG2D_USE_FLOAT_FORMAT` intent specifically at the
-      Agg2D-layer pixel-format wiring: the float variant should use the
-      `rgba32`/`rgba128`-class pixel-format stack for its internal renderers
-      while preserving the current path semantics around blend/plain/pre modes.
-- [ ] Keep the 8-bit and float implementations source-comparable. If code is
-      factored, the factoring must preserve a clear one-to-one mapping back to
-      C++ Agg2D methods and state.
-- [ ] Avoid build tags for selecting the float path. Selection must happen via
-      explicit constructors/types in normal Go code.
+Each layer is independently testable; build and green-test before moving up.
+C++ references live under `../agg-2.6/agg-src/`.
 
-### 4.3 Required scope
+- [x] **L1 — Float RGBA blender** `internal/pixfmt/blender/rgba128.go` (+ `_test.go`).
+      Structural twin of `gray32.go`, with RGBA8's order/interface shape. Provides
+      `RGBA128Blender[S]` and `BlenderRGBA128` (plain→premul), `BlenderRGBA128Pre`
+      (premul→premul), `BlenderRGBA128Plain` (plain→plain), plus single-pixel/hline
+      helpers (`BlendRGBA128Pixel`, `CopyRGBA128Pixel`, `BlendRGBA128Hline`,
+      `CopyRGBA128Hline`, `FillRGBA128Span`) and order/space aliases. Float
+      arithmetic: `lerp(p,q,a)=p+(q-p)*a`, `prelerp(p,q,a)=p+q-p*a`, cover ∈ [0,1].
+      13 TDD unit tests green; golangci-lint clean.
+      C++ ref: `agg_pixfmt_rgba.h` `blender_rgba{,_pre,_plain}` with float color.
+- [x] **L2 — Float RGBA pixfmt** `internal/pixfmt/pixfmt_rgba128.go` (+ `_test.go`).
+      Twin of `pixfmt_gray32.go` over `*buffer.RenderingBufferF32`; implements the
+      full `renderer.PixelFormat[color.RGBA32[S]]` surface (compile-time asserted
+      in the test) — pixel/hline/vline/bar/solid-span/color-span/clear — driven by
+      the L1 blender (order + premul semantics) with 8-bit `cover` normalised to
+      [0,1]. Length-based vline/bar semantics match `pixfmt_rgba8`/`RendererBase`
+      (not gray32's end-coord variant). Concrete aliases `PixFmtRGBA128{,Pre,Plain}`
+      + sRGB variants and constructors. 7 TDD tests green; gofmt/lint clean; whole
+      pixfmt package passes. Composite (`Comp`/`CompPre`) variants deferred to L5.
+      C++ ref: `pixfmt_rgba` family parameterised on `rgba128`.
+- [ ] **L3 — Float image + buffer wiring** `internal/agg2d/buffer_float.go` and a
+      float `Image`. Define the boundary contract (see 4.3) and conversions
+      to/from `color.RGBA32`, standard Go `image.RGBA`/`image.NRGBA64`, and the
+      8-bit AGG image.
+- [ ] **L4 — `Agg2DFloat` internal twin** `internal/agg2d/agg2d_float.go`. Mirror
+      the internal `Agg2D` struct field-for-field, swapping the pixfmt/renderer/
+      color/gradient-LUT/span types to the float ones. Keep a one-to-one method
+      mapping; share only behavior-identical helpers (transform, path, converters,
+      rasterizer, scanline are reused as-is).
+- [ ] **L5 — Subsystem coverage** in the float twin: clear/fill/stroke, path
+      rendering, gradients (linear/radial), image copy/blend/transform, and text
+      state plumbing. Reuse color-generic span/renderer code; only the pixfmt and
+      color LUTs differ.
+- [ ] **L6 — Public surface** `agg2d_float.go` (root) + `context_float.go` +
+      float `Image` API: `NewAgg2DFloat`, `Attach`, `AttachImage`, and the mirror
+      of the 8-bit public methods that the float subsystems support.
+
+Do not introduce build tags for selection; the float path is chosen purely by
+constructing `Agg2DFloat`/`ContextFloat`/`ImageFloat`.
+
+### 4.3 Required scope and boundary contract
 
 - [ ] Provide dedicated float image and context types with attach/create APIs,
       not just a hidden internal renderer.
@@ -212,8 +283,11 @@ the semantics of the current 8-bit `Agg2D`.
 - [ ] Define and document the boundary conversions between float Agg2D images
       and standard Go image types or 8-bit AGG images.
 - [ ] Add an explicit contract for premultiply/demultiply behavior in the float
-      variant, including whether exported helper APIs expose straight or premultiplied
-      data at the boundary.
+      variant. Working contract (to confirm during L2/L3): internal storage and
+      the `Plain`/`Pre` blender split mirror the 8-bit semantics exactly; exported
+      helper APIs expose **straight (non-premultiplied)** float data at the
+      boundary, with conversion to/from premultiplied happening inside the pixfmt
+      blenders, identical to the 8-bit path.
 
 ### 4.4 Non-goals
 

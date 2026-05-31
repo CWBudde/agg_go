@@ -65,6 +65,7 @@ This repository uses `just` for common development workflows.
 - Pre-commit validation: `just check`.
 - Coverage analysis: `just test-coverage`.
 - Example verification: `just build` and `just run-hello` or `just run-example <group>/<name>`.
+- Amplified visual diff inspection: `go run ./cmd/visual-diff -ref tests/visual/reference/cpp/examples/<demo>.png -gen tests/visual/reference/go/examples/<demo>.png -out /tmp/<demo>_amp.png -factor 12`.
 
 ## Coding Style and Naming
 

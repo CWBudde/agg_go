@@ -305,6 +305,54 @@ func TestGammaCtrlAppearanceSettings(t *testing.T) {
 	}
 }
 
+func TestGammaCtrlTextPathUsesConfiguredWidth(t *testing.T) {
+	ctrl := NewGammaCtrlImpl[color.RGBA](10, 10, 300, 200, false)
+	ctrl.Values(1, 1, 1, 1)
+
+	ctrl.SetTextSize(10, 0)
+	proportionalWidth := gammaCtrlPathWidth(t, ctrl, 6)
+
+	ctrl.SetTextSize(10, 12)
+	wideWidth := gammaCtrlPathWidth(t, ctrl, 6)
+
+	if wideWidth <= proportionalWidth*1.10 {
+		t.Fatalf("text path width = %.3f after SetTextSize(10, 12), want > %.3f from SetTextSize(10, 0)",
+			wideWidth, proportionalWidth)
+	}
+}
+
+func gammaCtrlPathWidth(t *testing.T, ctrl *GammaCtrlImpl[color.RGBA], pathID uint) float64 {
+	t.Helper()
+
+	ctrl.Rewind(pathID)
+	first := true
+	minX, maxX := 0.0, 0.0
+	for i := 0; i < 10000; i++ {
+		x, _, cmd := ctrl.Vertex()
+		if cmd == basics.PathCmdStop {
+			break
+		}
+		if !basics.IsVertex(cmd) {
+			continue
+		}
+		if first {
+			minX, maxX = x, x
+			first = false
+			continue
+		}
+		if x < minX {
+			minX = x
+		}
+		if x > maxX {
+			maxX = x
+		}
+	}
+	if first {
+		t.Fatalf("path %d produced no vertices", pathID)
+	}
+	return maxX - minX
+}
+
 func TestGammaCtrlVertexGeneration(t *testing.T) {
 	ctrl := NewGammaCtrlImpl[color.RGBA](0, 0, 100, 100, false)
 

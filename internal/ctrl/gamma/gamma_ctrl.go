@@ -524,7 +524,7 @@ func (gc *GammaCtrlImpl[C]) setupTextPath() {
 	text := fmt.Sprintf("%5.3f %5.3f %5.3f %5.3f", kx1, ky1, kx2, ky2)
 
 	gc.textRenderer.SetText(text)
-	gc.textRenderer.SetSize(gc.textHeight)
+	gc.textRenderer.SetSize(gc.textHeight, gc.textWidth)
 
 	// Matches C++: start_point(xt1 + borderWidth*2, (yt1+yt2)*0.5 - textHeight*0.5)
 	centerY := (gc.yt1 + gc.yt2) * 0.5
