@@ -172,7 +172,7 @@ func displayRGBA8(c color.RGBA) color.RGBA8[color.Linear] {
 		B: clampU8(c.B),
 		A: clampU8(c.A),
 	})
-	return color.RGBA8[color.Linear]{R: srgb.R, G: srgb.G, B: srgb.B, A: srgb.A}
+	return color.RGBA8[color.Linear](srgb)
 }
 
 func rgba8Pre(r, g, b, a float64) color.RGBA8[color.Linear] {

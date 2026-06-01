@@ -486,10 +486,63 @@ usable.
       outline/raster caches, max channel diff ≤ 2) in
       `internal/agg2d/text_float_test.go` plus a public-API test in
       `agg2d_float_test.go`; see `docs/AGG_DELTAS.md` "Text glyph rendering".
-- [ ] Remaining **~100 public-method delegations**: Viewport/Parallelogram,
-      Arc/RoundedRect/Polygon/Star, curve variants, dashes, positioned/multi-stop
-      gradient variants, `Get*` accessors, `GouraudTriangle`, transform stack.
-      _Mostly mechanical; path/transform building is color-agnostic and reusable._
+- [ ] **Remaining ~90 public-method delegations.** The float twin still lacks the
+      bulk of the 8-bit surface. An audit (root `Agg2D` vs `Agg2DFloat`) shows ~90
+      missing public methods; most also need their underlying internal
+      `Agg2DFloat` builder. Path-, transform-, and state-building is color-agnostic
+      and largely reusable from the 8-bit `Agg2D`, so the work is mostly mechanical —
+      the one exception (Gouraud) needs a genuinely new float span generator. Each
+      group below is one reviewable slice (internal builder + root wrapper + a small
+      parity test vs the 8-bit oracle):
+
+  - [ ] **Shapes**: `Arc`, `ArcRel`, `RoundedRect`, `RoundedRectXY`,
+        `RoundedRectVariableRadii`, `Polygon`, `Polyline`, `Star`, `Parallelogram`,
+        `ParallelogramFromRect`. Pure path construction → existing float `DrawPath`;
+        the shape builders (`internal/shapes/rounded_rect.go`, arc/curve converters)
+        are color-agnostic and reused as-is.
+  - [ ] **Curve & relative path commands**: `Curve`, `Curve4`, `CubicCurveToSmooth`,
+        `CubicCurveRel`, `CubicCurveRelSmooth`, `QuadricCurveToSmooth`,
+        `QuadricCurveRel`, `QuadricCurveRelSmooth`, `HorLineRel`, `VerLineRel`. Needs
+        the smooth-curve control-point tracking (`lastCtrlX/Y`, `hasLastCtrl` fields
+        already present on the float struct, currently reserved).
+  - [ ] **Dashed strokes**: `AddDash`, `RemoveAllDashes`, `DashStart`,
+        `GetDashStart`, `NoDashes`. The float struct already holds the reserved
+        `convDash` field; wire it into the existing float stroke path in
+        `rendering_float.go` (mirror the 8-bit `convDash.NumDashes() == 0` branch).
+  - [ ] **Gradient variants**: `FillGradientD1/D2`, `LineGradientD1/D2`,
+        `FillGradientFlag`, `LineGradientFlag`, `FillRadialGradientPos`,
+        `FillRadialGradientStops`, `LineRadialGradientPos`,
+        `LineRadialGradientMultiStop`. Positioned/multi-stop gradient setters and
+        the D1/D2/flag accessors; the float gradient LUT/span pipeline already exists.
+  - [ ] **Viewport & coordinate mapping**: `Viewport`, `ViewportDefault`,
+        `ScreenToWorldScalar` (root wrapper; internal already added with text),
+        `ScreenToWorldDistance`, `WorldToScreenDistance`, `AlignPoint`, `InBox`,
+        `AffineImageResamplePolicy`/`GetAffineImageResamplePolicy`. All affine math,
+        color-agnostic.
+  - [ ] **Transform stack & affine matrix**: `PushTransform`, `PopTransform`,
+        `Affine`, `GetTransformations`, `SetTransformations`. The reserved
+        `transformStack` field exists; mirror the 8-bit push/pop semantics.
+  - [ ] **State accessors & RGBA/alias setters**: `Get*` readbacks (`GetFillColor`,
+        `GetLineColor`, `GetLineCap`, `GetLineJoin`, `GetMiterLimit`, `GetClipBox`,
+        `GetClipBoxRect`, `GetImageFilter`, `GetImageResample`, `GetAntiAliasGamma`),
+        `*RGBA` convenience setters (`ClearAllRGBA`, `FillColorRGBA`, `LineColorRGBA`,
+        `ClearClipBoxRGBA`, `ImageBlendColorRGBA`), C++-style accessor aliases
+        (`MasterAlpha`, `MiterLimit`, `AntiAliasGamma`, `BlendMode`, `ImageBlendMode`,
+        `ImageBlendColor`, `ImageFilter`, `ImageResample`), fill-rule queries
+        (`IsEvenOddFillRule`, `IsNonZeroFillRule`, `FillRuleDescription`),
+        `SetImageFilterRadius`, `ResetStyle`, and clip helpers (`ClearClipBox`).
+        Trivial delegations once the state already lives on the float struct.
+  - [ ] **Image convenience + export**: `BlendImageSimple`, `BlendImageDefaultAlpha`,
+        `BlendImageSimpleDefaultAlpha`, `CopyImageSimple`, `SaveImagePPM`. Thin
+        wrappers over the existing float copy/blend/transform paths.
+  - [ ] **DrawPath defaults & escape hatches**: `DrawPathDefault`,
+        `DrawPathNoTransformDefault`, root `RenderRasterizerWithColor` wrapper
+        (internal already exists), `ScanlineRender`, `RenderScanlinesAAWithSpanGen`,
+        `GetInternalRasterizer`.
+  - [ ] **Gouraud shading** (`GouraudTriangle`): the only non-mechanical item —
+        requires a float Gouraud span generator (`span_gouraud_rgba128`, the float
+        twin of the 8-bit `span_gouraud_rgba`) before the public method can delegate,
+        analogous to the gradient/image-filter float twins already built in L5.
 
 ---
 

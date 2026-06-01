@@ -184,7 +184,7 @@ func TestPageHeaderEmitsResampleModeControl(t *testing.T) {
 }
 
 func TestIsRegenerateFetchRequiresHeader(t *testing.T) {
-	req := httptest.NewRequest(http.MethodPost, "/regenerate", nil)
+	req := httptest.NewRequest(http.MethodPost, "/regenerate", http.NoBody)
 	if isRegenerateFetch(req) {
 		t.Fatal("isRegenerateFetch accepted request without fetch header")
 	}

@@ -33,7 +33,7 @@ func TestClipBackgroundMatchesDisplayEncodedCPPColor(t *testing.T) {
 		B: color.RGBA8Prelerp(255, rgba8Pre(0, 0.4, 0, 0.5).B, clip.A),
 		A: 255,
 	})
-	wantLinear := color.RGBA8[color.Linear]{R: want.R, G: want.G, B: want.B, A: want.A}
+	wantLinear := color.RGBA8[color.Linear](want)
 
 	if got != wantLinear {
 		t.Fatalf("clip background over white = %+v, want display-encoded %+v", got, want)
