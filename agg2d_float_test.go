@@ -238,3 +238,86 @@ func TestPublicAgg2DFloatText(t *testing.T) {
 		t.Fatalf("public float GSV text rendered too little ink: %d pixels", ink)
 	}
 }
+
+// TestPublicAgg2DFloatShapes drives the Shapes-group convenience methods through
+// the public float surface and the public 8-bit surface (the oracle), then
+// asserts whole-frame parity. The scene is fully opaque so float-premultiplied
+// and 8-bit-straight exports are apples-to-apples.
+func TestPublicAgg2DFloatShapes(t *testing.T) {
+	const w, h = 120, 100
+
+	scene := func(
+		clear func(Color), fill func(Color), line func(Color), lw func(float64),
+		roundedRect func(x1, y1, x2, y2, r float64),
+		star func(cx, cy, r1, r2, startAngle float64, numRays int),
+		arc func(cx, cy, rx, ry, start, sweep float64),
+		polygon func(xy []float64, n int),
+		curve4 func(x1, y1, x2, y2, x3, y3, x4, y4 float64),
+	) {
+		clear(NewColor(255, 255, 255, 255))
+		fill(NewColor(60, 160, 90, 255))
+		line(NewColor(10, 10, 10, 255))
+		lw(1.5)
+		roundedRect(8, 8, 60, 44, 10)
+		fill(NewColor(240, 200, 30, 255))
+		star(86, 28, 8, 18, 0, 5)
+		line(NewColor(180, 30, 30, 255))
+		lw(2)
+		arc(34, 74, 24, 16, 0.2, 3.6)
+		fill(NewColor(40, 120, 200, 255))
+		polygon([]float64{80, 60, 112, 78, 86, 96}, 3)
+		line(NewColor(20, 160, 120, 255))
+		lw(2)
+		curve4(6, 92, 22, 60, 50, 60, 66, 92)
+	}
+
+	// Float path.
+	imgF := NewImageFloat(w, h)
+	af := NewAgg2DFloat()
+	af.AttachImage(imgF)
+	scene(af.ClearAll, af.FillColor, af.LineColor, af.LineWidth,
+		af.RoundedRect, af.Star, af.Arc, af.Polygon, af.Curve4)
+	rgbaF := imgF.ToRGBA()
+
+	// 8-bit oracle.
+	buf := make([]uint8, w*h*4)
+	a8 := NewAgg2D()
+	a8.Attach(buf, w, h, w*4)
+	scene(a8.ClearAll, a8.FillColor, a8.LineColor, a8.LineWidth,
+		a8.RoundedRect, a8.Star, a8.Arc, a8.Polygon, a8.Curve4)
+	img8 := NewImage(buf, w, h, w*4).ToGoImage()
+
+	maxDiff, ink := 0, 0
+	for y := range h {
+		for x := range w {
+			cf := rgbaF.RGBAAt(x, y)
+			c8 := img8.RGBAAt(x, y)
+			for _, d := range []int{
+				absInt(int(cf.R) - int(c8.R)),
+				absInt(int(cf.G) - int(c8.G)),
+				absInt(int(cf.B) - int(c8.B)),
+				absInt(int(cf.A) - int(c8.A)),
+			} {
+				if d > maxDiff {
+					maxDiff = d
+				}
+			}
+			if c8.R < 250 || c8.G < 250 || c8.B < 250 {
+				ink++
+			}
+		}
+	}
+	if ink < 100 {
+		t.Fatalf("public shapes drew too little ink in 8-bit oracle: %d pixels", ink)
+	}
+	if maxDiff > 2 {
+		t.Errorf("public float vs 8-bit shapes max channel diff = %d (tol 2)", maxDiff)
+	}
+}
+
+func absInt(v int) int {
+	if v < 0 {
+		return -v
+	}
+	return v
+}

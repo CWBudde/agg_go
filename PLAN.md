@@ -495,16 +495,26 @@ usable.
       group below is one reviewable slice (internal builder + root wrapper + a small
       parity test vs the 8-bit oracle):
 
-  - [ ] **Shapes**: `Arc`, `ArcRel`, `RoundedRect`, `RoundedRectXY`,
-        `RoundedRectVariableRadii`, `Polygon`, `Polyline`, `Star`, `Parallelogram`,
-        `ParallelogramFromRect`. Pure path construction → existing float `DrawPath`;
-        the shape builders (`internal/shapes/rounded_rect.go`, arc/curve converters)
-        are color-agnostic and reused as-is.
-  - [ ] **Curve & relative path commands**: `Curve`, `Curve4`, `CubicCurveToSmooth`,
+  - [x] **Shapes** — DONE 2026-06-01. `Arc`, `ArcRel`, `RoundedRect`,
+        `RoundedRectXY`, `RoundedRectVariableRadii`, `Polygon`, `Polyline`, `Star`,
+        `Curve`, `Curve4`, `Parallelogram`, `ParallelogramFromRect`. Pure path
+        construction → existing float `DrawPath`; the shape builders
+        (`internal/shapes/rounded_rect.go`, arc/curve converters) are color-agnostic
+        and reused as-is. Implemented in `internal/agg2d/shapes_float.go`
+        (RoundedRect*/Arc/Star/Curve/Curve4/Polygon/Polyline),
+        `internal/agg2d/paths_float.go` (`ArcRel`), and
+        `internal/agg2d/transform_float.go` (`Parallelogram`/`ParallelogramFromRect`),
+        with root wrappers in `agg2d_float.go`. Parity vs the 8-bit oracle covered by
+        `internal/agg2d/shapes_float_test.go` (12 shape tests, tol ≤ 2) and the
+        public-surface `TestPublicAgg2DFloatShapes` in `agg2d_float_test.go`.
+        (Convenience `Curve`/`Curve4` are the shapes-group methods and live here, not
+        in the curve-command group below.)
+  - [ ] **Curve & relative path commands**: `CubicCurveToSmooth`,
         `CubicCurveRel`, `CubicCurveRelSmooth`, `QuadricCurveToSmooth`,
         `QuadricCurveRel`, `QuadricCurveRelSmooth`, `HorLineRel`, `VerLineRel`. Needs
         the smooth-curve control-point tracking (`lastCtrlX/Y`, `hasLastCtrl` fields
-        already present on the float struct, currently reserved).
+        already present on the float struct, currently reserved). (Convenience
+        `Curve`/`Curve4` are done — see the Shapes group above.)
   - [ ] **Dashed strokes**: `AddDash`, `RemoveAllDashes`, `DashStart`,
         `GetDashStart`, `NoDashes`. The float struct already holds the reserved
         `convDash` field; wire it into the existing float stroke path in

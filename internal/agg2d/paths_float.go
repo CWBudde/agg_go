@@ -49,6 +49,11 @@ func (a *Agg2DFloat) ArcTo(rx, ry, angle float64, largeArcFlag, sweepFlag bool, 
 	a.path.ArcTo(rx, ry, angle, largeArcFlag, sweepFlag, x, y)
 }
 
+// ArcRel adds an elliptical arc to the path using relative coordinates.
+func (a *Agg2DFloat) ArcRel(rx, ry, angle float64, largeArcFlag, sweepFlag bool, dx, dy float64) {
+	a.path.ArcRel(rx, ry, angle, largeArcFlag, sweepFlag, dx, dy)
+}
+
 // QuadricCurveTo adds a quadratic Bézier curve to the path.
 func (a *Agg2DFloat) QuadricCurveTo(xCtrl, yCtrl, xTo, yTo float64) {
 	a.path.Curve3(xCtrl, yCtrl, xTo, yTo)

@@ -296,6 +296,72 @@ func (a *Agg2DFloat) DrawCircle(cx, cy, radius float64) { a.impl.DrawCircle(cx, 
 // FillCircle fills a circle.
 func (a *Agg2DFloat) FillCircle(cx, cy, radius float64) { a.impl.FillCircle(cx, cy, radius) }
 
+// RoundedRect fills and strokes a rounded rectangle with a uniform corner radius.
+func (a *Agg2DFloat) RoundedRect(x1, y1, x2, y2, r float64) {
+	a.impl.RoundedRect(x1, y1, x2, y2, r)
+}
+
+// RoundedRectXY fills and strokes a rounded rectangle with separate x and y radii.
+func (a *Agg2DFloat) RoundedRectXY(x1, y1, x2, y2, rx, ry float64) {
+	a.impl.RoundedRectXY(x1, y1, x2, y2, rx, ry)
+}
+
+// RoundedRectVariableRadii fills and strokes a rounded rectangle with distinct top and bottom radii.
+func (a *Agg2DFloat) RoundedRectVariableRadii(x1, y1, x2, y2, rxBottom, ryBottom, rxTop, ryTop float64) {
+	a.impl.RoundedRectVariableRadii(x1, y1, x2, y2, rxBottom, ryBottom, rxTop, ryTop)
+}
+
+// Arc strokes an elliptical arc described by center, radii, start, and sweep angles.
+func (a *Agg2DFloat) Arc(cx, cy, rx, ry, start, sweep float64) {
+	a.impl.Arc(cx, cy, rx, ry, start, sweep)
+}
+
+// ArcRel appends an elliptical arc to the path using relative coordinates.
+func (a *Agg2DFloat) ArcRel(rx, ry, angle float64, largeArcFlag, sweepFlag bool, dx, dy float64) {
+	a.impl.ArcRel(rx, ry, angle, largeArcFlag, sweepFlag, dx, dy)
+}
+
+// Star fills and strokes a star polygon centered at cx, cy.
+func (a *Agg2DFloat) Star(cx, cy, r1, r2, startAngle float64, numRays int) {
+	a.impl.Star(cx, cy, r1, r2, startAngle, numRays)
+}
+
+// Curve strokes a quadratic Bézier convenience shape.
+func (a *Agg2DFloat) Curve(x1, y1, x2, y2, x3, y3 float64) {
+	a.impl.Curve(x1, y1, x2, y2, x3, y3)
+}
+
+// Curve4 strokes a cubic Bézier convenience shape.
+func (a *Agg2DFloat) Curve4(x1, y1, x2, y2, x3, y3, x4, y4 float64) {
+	a.impl.Curve4(x1, y1, x2, y2, x3, y3, x4, y4)
+}
+
+// Polygon fills and strokes a polygon from xy as alternating x,y coordinates.
+func (a *Agg2DFloat) Polygon(xy []float64, numPoints int) { a.impl.Polygon(xy, numPoints) }
+
+// Polyline strokes an open polyline from xy as alternating x,y coordinates.
+func (a *Agg2DFloat) Polyline(xy []float64, numPoints int) { a.impl.Polyline(xy, numPoints) }
+
+// Parallelogram applies a transform mapping the unit square to a parallelogram.
+func (a *Agg2DFloat) Parallelogram(x1, y1, x2, y2, x3, y3 float64) {
+	a.impl.Parallelogram(x1, y1, x2, y2, x3, y3)
+}
+
+// ParallelogramFromRect mirrors the upstream `parallelogram(x1, y1, x2, y2, para)`
+// overload by mapping the source rectangle `(x1, y1)-(x2, y2)` into the
+// destination parallelogram encoded as `{px1, py1, px2, py2, px3, py3}`.
+func (a *Agg2DFloat) ParallelogramFromRect(x1, y1, x2, y2 float64, parallelogram []float64) {
+	if len(parallelogram) != 6 {
+		return
+	}
+	a.impl.ParallelogramFromRect(
+		x1, y1, x2, y2,
+		parallelogram[0], parallelogram[1],
+		parallelogram[2], parallelogram[3],
+		parallelogram[4], parallelogram[5],
+	)
+}
+
 // --- Gradients ---
 
 // FillLinearGradient sets up a linear gradient for fill operations.

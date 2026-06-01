@@ -42,6 +42,37 @@ func (a *Agg2DFloat) Affine(tr *transform.TransAffine) {
 	a.updateApproximationScales()
 }
 
+// Parallelogram applies a transform mapping the unit square to a parallelogram
+// defined by three corners; the fourth is derived. Mirrors transform.go.
+func (a *Agg2DFloat) Parallelogram(x1, y1, x2, y2, x3, y3 float64) {
+	sx := x2 - x1
+	shx := x3 - x1
+	sy := y3 - y1
+	shy := y2 - y1
+	tx := x1
+	ty := y1
+
+	parallelogramTransform := transform.NewTransAffineFromValues(sx, shy, shx, sy, tx, ty)
+	a.Affine(parallelogramTransform)
+}
+
+// ParallelogramFromRect applies a transform mapping the given source rectangle
+// onto the parallelogram defined by three corners.
+func (a *Agg2DFloat) ParallelogramFromRect(rectX1, rectY1, rectX2, rectY2,
+	x1, y1, x2, y2, x3, y3 float64,
+) {
+	rectWidth := rectX2 - rectX1
+	rectHeight := rectY2 - rectY1
+
+	if rectWidth == 0 || rectHeight == 0 {
+		return
+	}
+
+	a.Translate(-rectX1, -rectY1)
+	a.Scale(1.0/rectWidth, 1.0/rectHeight)
+	a.Parallelogram(x1, y1, x2, y2, x3, y3)
+}
+
 // NoFill disables fill by setting a transparent fill color.
 func (a *Agg2DFloat) NoFill() {
 	a.fillColor = Color{0, 0, 0, 0}
