@@ -189,7 +189,8 @@ func TestGoPortMatchesCPPExamples(t *testing.T) {
 				}
 			}
 
-			t.Fatalf("images differ: ratio=%.4f different_pixels=%d/%d max_diff=%d avg_diff=%.2f diff=%s",
+			t.Fatalf(
+				"images differ: ratio=%.4f different_pixels=%d/%d max_diff=%d avg_diff=%.2f diff=%s",
 				result.DifferentRatio,
 				result.DifferentPixels,
 				result.TotalPixels,

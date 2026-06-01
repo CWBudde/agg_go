@@ -2,8 +2,8 @@
 // path: a float source image is wrapped in a float pixfmt and transferred into
 // the target through the base renderer's CopyFrom/BlendFrom rectangle ops.
 //
-// Full affine/perspective image transforms (TransformImage*) are carried forward
-// and not yet mirrored here; copy and blend cover the L5 "image copy/blend" item.
+// Affine/perspective image transforms (TransformImage*) live in
+// image_transform_float.go; this file covers the rectangle-aligned copy/blend.
 package agg2d
 
 import (

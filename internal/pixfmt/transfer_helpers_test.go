@@ -87,7 +87,8 @@ func TestDecodeRGBA8FromRowData(t *testing.T) {
 				return
 			}
 			if got.R != tc.want[0] || got.G != tc.want[1] || got.B != tc.want[2] || got.A != tc.want[3] {
-				t.Fatalf("decodeRGBA8FromRowData() = (%d,%d,%d,%d), want (%d,%d,%d,%d)",
+				t.Fatalf(
+					"decodeRGBA8FromRowData() = (%d,%d,%d,%d), want (%d,%d,%d,%d)",
 					got.R, got.G, got.B, got.A,
 					tc.want[0], tc.want[1], tc.want[2], tc.want[3],
 				)

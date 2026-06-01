@@ -60,7 +60,8 @@ func NewTransAffineReflectionUnit(ux, uy float64) *TransAffine {
 		2.0*ux*uy,
 		2.0*ux*uy,
 		2.0*uy*uy-1.0,
-		0.0, 0.0)
+		0.0, 0.0,
+	)
 }
 
 // NewTransAffineReflection creates a reflection matrix across a line

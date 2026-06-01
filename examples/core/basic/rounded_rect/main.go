@@ -182,7 +182,8 @@ func linearRGBAForSRGBA8(c color.RGBA) color.RGBA {
 }
 
 func renderSlider(ras rasType, sl slType, rb renBaseT, s *sliderctrl.SliderCtrl) {
-	renderControl(ras, sl, rb, s.NumPaths(), s.Rewind,
+	renderControl(
+		ras, sl, rb, s.NumPaths(), s.Rewind,
 		func(x, y *float64) uint32 {
 			vx, vy, cmd := s.Vertex()
 			*x = vx
@@ -194,7 +195,8 @@ func renderSlider(ras rasType, sl slType, rb renBaseT, s *sliderctrl.SliderCtrl)
 }
 
 func renderCheckbox(ras rasType, sl slType, rb renBaseT, cb *checkboxctrl.CheckboxCtrl[color.RGBA]) {
-	renderControl(ras, sl, rb, cb.NumPaths(), cb.Rewind,
+	renderControl(
+		ras, sl, rb, cb.NumPaths(), cb.Rewind,
 		func(x, y *float64) uint32 {
 			vx, vy, cmd := cb.Vertex()
 			*x = vx

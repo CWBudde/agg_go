@@ -160,7 +160,8 @@ func (m *meshCtrl) generate(cols, rows int, cellW, cellH, startX, startY float64
 			p3 := p2 + m.cols
 			p4 := p1 + m.cols
 
-			m.triangles = append(m.triangles,
+			m.triangles = append(
+				m.triangles,
 				meshTriangle{p1: p1, p2: p2, p3: p3},
 				meshTriangle{p1: p3, p2: p4, p3: p1},
 			)
@@ -186,7 +187,8 @@ func (m *meshCtrl) generate(cols, rows int, cellW, cellH, startX, startY float64
 				bottomT2 = bottomCell*2 + 1
 			}
 
-			m.edges = append(m.edges,
+			m.edges = append(
+				m.edges,
 				meshEdge{p1: p1, p2: p2, tl: currT1, tr: bottomT2},
 				meshEdge{p1: p1, p2: p3, tl: currT2, tr: currT1},
 				meshEdge{p1: p1, p2: p4, tl: leftT1, tr: currT2},

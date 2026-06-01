@@ -85,7 +85,8 @@ func (s *SDL2Backend) Init(width, height int, flags types.WindowFlags) error {
 		s.caption,
 		sdl.WINDOWPOS_CENTERED, sdl.WINDOWPOS_CENTERED,
 		int32(width), int32(height),
-		windowFlags)
+		windowFlags,
+	)
 	if err != nil {
 		s.cleanup()
 		return fmt.Errorf("failed to create SDL2 window: %w", err)
@@ -106,7 +107,8 @@ func (s *SDL2Backend) Init(width, height int, flags types.WindowFlags) error {
 	s.texture, err = s.renderer.CreateTexture(
 		s.pixelFormat,
 		sdl.TEXTUREACCESS_STREAMING,
-		int32(width), int32(height))
+		int32(width), int32(height),
+	)
 	if err != nil {
 		s.cleanup()
 		return fmt.Errorf("failed to create SDL2 texture: %w", err)
@@ -115,7 +117,8 @@ func (s *SDL2Backend) Init(width, height int, flags types.WindowFlags) error {
 	// Create surface for CPU-side rendering
 	s.surface, err = sdl.CreateRGBSurface(
 		0, int32(width), int32(height), int32(s.bpp),
-		s.rmask, s.gmask, s.bmask, s.amask)
+		s.rmask, s.gmask, s.bmask, s.amask,
+	)
 	if err != nil {
 		s.cleanup()
 		return fmt.Errorf("failed to create SDL2 surface: %w", err)
@@ -332,7 +335,8 @@ func (s *SDL2Backend) SetWindowSize(width, height int) error {
 	s.texture, err = s.renderer.CreateTexture(
 		s.pixelFormat,
 		sdl.TEXTUREACCESS_STREAMING,
-		int32(width), int32(height))
+		int32(width), int32(height),
+	)
 	if err != nil {
 		return fmt.Errorf("failed to recreate texture: %w", err)
 	}
@@ -343,7 +347,8 @@ func (s *SDL2Backend) SetWindowSize(width, height int) error {
 
 	s.surface, err = sdl.CreateRGBSurface(
 		0, int32(width), int32(height), int32(s.bpp),
-		s.rmask, s.gmask, s.bmask, s.amask)
+		s.rmask, s.gmask, s.bmask, s.amask,
+	)
 	if err != nil {
 		return fmt.Errorf("failed to recreate surface: %w", err)
 	}

@@ -152,6 +152,7 @@ type solidOutlineAdaptor struct {
 func (a *solidOutlineAdaptor) AccurateJoinOnly() bool              { return a.ren.AccurateJoinOnly() }
 func (a *solidOutlineAdaptor) Color(c icolor.RGBA8[icolor.Linear]) { a.ren.Color(c) }
 func (a *solidOutlineAdaptor) Pie(x, y, x1, y1, x2, y2 int)        { a.ren.Pie(x, y, x1, y1, x2, y2) }
+
 func (a *solidOutlineAdaptor) Semidot(cmp func(int) bool, x, y, x1, y1 int) {
 	a.ren.Semidot(cmp, x, y, x1, y1)
 }
@@ -285,7 +286,8 @@ func (d *demo) Render(img *agg.Image) {
 	renImg.SetScaleX(1.0)
 	renImg.SetStartX(0.0)
 	rasImg := rasterizer.NewRasterizerOutlineAA[*imgOutlineAdaptor, icolor.RGBA8[icolor.Linear]](
-		&imgOutlineAdaptor{ren: renImg})
+		&imgOutlineAdaptor{ren: renImg},
+	)
 
 	// Solid AA-profile line renderer (dark blue, width=8, smoother=10).
 	profile := outline.NewLineProfileAA()
@@ -295,7 +297,8 @@ func (d *demo) Render(img *agg.Image) {
 	renLine := outline.NewRendererOutlineAA[*solidBaseAdaptor, icolor.RGBA8[icolor.Linear]](solidBA, profile)
 	renLine.Color(icolor.ConvertToLinear(icolor.NewRGBA8[icolor.SRGB](0, 0, 127, 255)))
 	rasLine := rasterizer.NewRasterizerOutlineAA[*solidOutlineAdaptor, icolor.RGBA8[icolor.Linear]](
-		&solidOutlineAdaptor{ren: renLine})
+		&solidOutlineAdaptor{ren: renLine},
+	)
 	rasLine.SetRoundCap(true)
 
 	// Clip box: slightly wider than the raster clip so caps draw correctly.

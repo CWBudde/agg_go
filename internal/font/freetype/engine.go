@@ -206,19 +206,19 @@ type FontEngineFreetype struct {
 	currentFace C.FT_Face
 
 	// Current glyph information
-	glyphIndex uint
-	dataSize   uint
-	dataType   font.GlyphDataType
-	bounds     basics.Rect[int]
-	advanceX   float64
-	advanceY   float64
-	bitmapData []byte
-	bitmapW    int
-	bitmapH    int
+	glyphIndex  uint
+	dataSize    uint
+	dataType    font.GlyphDataType
+	bounds      basics.Rect[int]
+	advanceX    float64
+	advanceY    float64
+	bitmapData  []byte
+	bitmapW     int
+	bitmapH     int
 	bitmapPitch int
-	bitmapLeft int
-	bitmapTop  int
-	bitmapMode uint8
+	bitmapLeft  int
+	bitmapTop   int
+	bitmapMode  uint8
 
 	// Path storage for outline fonts
 	pathStorage  *path.PathStorageStl
@@ -470,7 +470,8 @@ func (fe *FontEngineFreetype) updateSignature() {
 		gammaHash = calcCRC32(fe.gammaTable[:])
 	}
 
-	fe.signature = fmt.Sprintf("%s,%d,%d,%d,%d:%dx%d,%d,%d,%d,%d,%d,%08X",
+	fe.signature = fmt.Sprintf(
+		"%s,%d,%d,%d,%d:%dx%d,%d,%d,%d,%d,%d,%08X",
 		fe.name,
 		int(fe.charMap),
 		fe.faceIndex,
@@ -491,7 +492,8 @@ func (fe *FontEngineFreetype) updateSignature() {
 		if fe.affine != nil {
 			fe.affine.StoreTo(mtx[:])
 		}
-		fe.signature += fmt.Sprintf(",%08X%08X%08X%08X%08X%08X",
+		fe.signature += fmt.Sprintf(
+			",%08X%08X%08X%08X%08X%08X",
 			dblToPlainFX(mtx[0]),
 			dblToPlainFX(mtx[1]),
 			dblToPlainFX(mtx[2]),
@@ -676,6 +678,7 @@ func (w scanlineU8StorageWrapper) ResetSpans()   { w.sl.ResetSpans() }
 func (w scanlineU8StorageWrapper) AddSpan(x, length int, cover basics.Int8u) {
 	w.sl.AddSpan(x, length, uint(cover))
 }
+
 func (w scanlineU8StorageWrapper) AddCells(x, length int, covers []basics.Int8u) {
 	for i := 0; i < length && i < len(covers); i++ {
 		w.sl.AddCell(x+i, uint(covers[i]))

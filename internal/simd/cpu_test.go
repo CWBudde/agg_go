@@ -103,7 +103,8 @@ func TestFillRGBAForcedPaths(t *testing.T) {
 
 	actual := DetectFeatures()
 	if runtime.GOARCH == "amd64" {
-		cases = append(cases,
+		cases = append(
+			cases,
 			struct {
 				name     string
 				features Features

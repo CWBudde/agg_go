@@ -166,7 +166,7 @@ precisions coexist in one binary for side-by-side parity and debugging.
 
 **C++**: The float pixel format is `pixfmt_rgba` parameterised on `rgba32`
 (`agg_pixfmt_rgba.h`); AGG also names a 4×float32 format `pixfmt_rgba128`.
-**Go**: The existing 8-bit pixfmt is *already* aliased `PixFmtRGBA32*` ("RGBA32"
+**Go**: The existing 8-bit pixfmt is _already_ aliased `PixFmtRGBA32*` ("RGBA32"
 = 32-bit **pixel**, 8 bits/channel), so the float stack is named by **total
 pixel width = 4 × float32 = 128 bits** to avoid a real collision, matching AGG's
 own `pixfmt_rgba128`. The float color it pairs with is `color.RGBA32` (float32
@@ -201,24 +201,52 @@ stays straight). Source-linked tests:
 **Files**: `internal/agg2d/buffer_float.go`, `internal/pixfmt/blender/rgba128.go`,
 `internal/color/rgba32.go`.
 
+### Float image transforms (`TransformImage*`)
+
+**C++**: `Agg2D::renderImage` (`agg2d/agg2d.cpp`) instantiates
+`span_image_filter_rgba_{nn,bilinear,2x2}` / `span_image_filter_rgba` /
+`span_image_resample_rgba_affine` over `image_accessor_clone<PixFormat>`, where
+`PixFormat` is the float `pixfmt_rgba128` under `AGG2D_USE_FLOAT_FORMAT`; the
+quad overloads use `span_interpolator_persp_lerp`.
+**Go**: The float path mirrors this completely. `internal/span/span_image_filter_rgba32.go`
+holds float twins of the NN / bilinear / 2×2 / general / affine-resample RGBA
+filters (reusing the color-agnostic `SpanImageFilter`/`SpanImageResampleAffine`
+bases), producing `color.RGBA32` from straight `[]float32` source rows.
+`internal/agg2d/adapters_float.go` provides the clone-clamped `imagePixelFormatFloat`
+source, and `internal/agg2d/image_transform_float.go` reproduces
+`renderImage`/`newImageFilterGenerator`/`renderImagePerspective` plus the full
+`TransformImage*` / `…Parallelogram*` / `…Path*` / `…Quad*` surface (public
+wrappers in `agg2d_float.go`). Like the 8-bit path it transfers through the
+premultiplied base renderer, so source images should be premultiplied first
+(opaque sources are unaffected). Parity is covered by
+`internal/agg2d/image_transform_float_test.go` (affine/parallelogram/quad vs the
+8-bit path) and a visual hook (`tests/visual/float_image_transform_test.go`).
+
+> **Bilinear bias deviation.** AGG's shared `span_image_filter_rgba_bilinear`
+> template seeds its accumulator with `image_subpixel_scale²/2` as an integer
+> rounding bias applied before the final `downshift`. For 8-bit channels that is
+> ≈0.5 of one 0..255 unit (harmless rounding); for `rgba32` the channels are
+> floats in [0,1], so the same bias would add a full **+0.5** to every channel
+> and corrupt the result. Float color does not quantize, so the float bilinear
+> generator omits the bias and computes a true weighted average — which is what
+> actually matches the 8-bit output within tolerance. The LUT-based generators
+> (2×2/general/resample) clamp against `full_value()` = 1.0, mirroring AGG.
+
 ### Capability gaps vs the 8-bit variant (deferred)
 
 The float twin is usable today for clear/fill/stroke, path rendering, image
-copy/blend, gradients (linear/radial), world transforms, and fill rules, and is
-covered by a cross-precision parity test
-(`internal/agg2d/parity_float_test.go`) and a visual hook
-(`tests/visual/float_path_test.go`). The following 8-bit features are **not yet
-ported** to the float path and are intentionally deferred (tracked in PLAN.md
-§4.6):
+copy/blend, **affine/perspective image transforms**, gradients (linear/radial),
+world transforms, and fill rules, and is covered by a cross-precision parity
+test (`internal/agg2d/parity_float_test.go`), image-transform parity tests
+(`internal/agg2d/image_transform_float_test.go`), and visual hooks
+(`tests/visual/float_path_test.go`, `tests/visual/float_image_transform_test.go`).
+The following 8-bit features are **not yet ported** to the float path and are
+intentionally deferred (tracked in PLAN.md §4.7):
 
-- **`TransformImage*`** — full affine/perspective image transforms. Only
-  rectangle-aligned `CopyImage`/`BlendImage` are implemented. The span
-  generators/interpolators are color-generic and reusable; only float image
-  pixel-format adapters need wiring. **File**: `internal/agg2d/image_float.go`.
 - **Composite blend modes** — there is no `PixFmtCompositeRGBA128`; `BlendMode`/
   `imageBlendMode` state exists but does not yet affect rendering. Src-over is
   the only effective mode.
-- **Text glyph rendering** — only text *state* (alignment, flip, hints, font
+- **Text glyph rendering** — only text _state_ (alignment, flip, hints, font
   height) is plumbed; `Text()` glyph rasterization is not yet mirrored.
 - **Remaining ~100 public-method delegations** — e.g. Viewport, Parallelogram,
   Arc, RoundedRect, Polygon, Star, dashes, positioned/multi-stop gradient

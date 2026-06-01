@@ -155,9 +155,12 @@ func (c *ColorConvRGBAAAToRGB24) CopyRow(dst, src []basics.Int8u, width int) {
 
 // Common 10-bit AAA conversions
 func NewColorConvRGBAAAToRGB24Std() *ColorConvRGBAAAToRGB24 { return NewColorConvRGBAAAToRGB24(0, 2) }
-func NewColorConvRGBAAAToBGR24() *ColorConvRGBAAAToRGB24    { return NewColorConvRGBAAAToRGB24(2, 0) }
-func NewColorConvBGRAAAToRGB24() *ColorConvRGBAAAToRGB24    { return NewColorConvRGBAAAToRGB24(2, 0) }
-func NewColorConvBGRAAAToBGR24() *ColorConvRGBAAAToRGB24    { return NewColorConvRGBAAAToRGB24(0, 2) }
+
+func NewColorConvRGBAAAToBGR24() *ColorConvRGBAAAToRGB24 { return NewColorConvRGBAAAToRGB24(2, 0) }
+
+func NewColorConvBGRAAAToRGB24() *ColorConvRGBAAAToRGB24 { return NewColorConvRGBAAAToRGB24(2, 0) }
+
+func NewColorConvBGRAAAToBGR24() *ColorConvRGBAAAToRGB24 { return NewColorConvRGBAAAToRGB24(0, 2) }
 
 // ColorConvRGBBBAToRGB24 converts 10-bit packed RGB (BBA format) to RGB24.
 // Format: RRRRRRRRRRRRGGGGGGGGGGBBBBBBBBAA (32-bit)
@@ -196,7 +199,8 @@ func (c *ColorConvRGBBBAToRGB24) CopyRow(dst, src []basics.Int8u, width int) {
 
 // Common 10-bit BBA conversions
 func NewColorConvRGBBBAToRGB24Std() *ColorConvRGBBBAToRGB24 { return NewColorConvRGBBBAToRGB24(0, 2) }
-func NewColorConvRGBBBAToBGR24() *ColorConvRGBBBAToRGB24    { return NewColorConvRGBBBAToRGB24(2, 0) }
+
+func NewColorConvRGBBBAToBGR24() *ColorConvRGBBBAToRGB24 { return NewColorConvRGBBBAToRGB24(2, 0) }
 
 // ColorConvBGRABBToRGB24 converts 10-bit packed BGR (ABB format) to RGB24.
 // Format: BBBBBBBBBBGGGGGGGGGGAARRRRRRRRR (32-bit)
@@ -235,7 +239,8 @@ func (c *ColorConvBGRABBToRGB24) CopyRow(dst, src []basics.Int8u, width int) {
 
 // Common 10-bit ABB conversions
 func NewColorConvBGRABBToRGB24Std() *ColorConvBGRABBToRGB24 { return NewColorConvBGRABBToRGB24(2, 0) }
-func NewColorConvBGRABBToBGR24() *ColorConvBGRABBToRGB24    { return NewColorConvBGRABBToRGB24(0, 2) }
+
+func NewColorConvBGRABBToBGR24() *ColorConvBGRABBToRGB24 { return NewColorConvBGRABBToRGB24(0, 2) }
 
 // ColorConvRGBA64RGBA32 converts RGBA64 to RGBA32 by taking high bytes.
 type ColorConvRGBA64RGBA32 struct {
@@ -279,11 +284,17 @@ func (c *ColorConvRGBA64RGBA32) CopyRow(dst, src []basics.Int8u, width int) {
 
 // Common RGBA64 to RGBA32 conversions
 func NewColorConvRGBA64ToRGBA32() *ColorConvRGBA64RGBA32 { return NewColorConvRGBA64RGBA32(0, 1, 2, 3) }
+
 func NewColorConvARGB64ToARGB32() *ColorConvRGBA64RGBA32 { return NewColorConvRGBA64RGBA32(0, 1, 2, 3) }
+
 func NewColorConvBGRA64ToBGRA32() *ColorConvRGBA64RGBA32 { return NewColorConvRGBA64RGBA32(0, 1, 2, 3) }
+
 func NewColorConvABGR64ToABGR32() *ColorConvRGBA64RGBA32 { return NewColorConvRGBA64RGBA32(0, 1, 2, 3) }
+
 func NewColorConvARGB64ToABGR32() *ColorConvRGBA64RGBA32 { return NewColorConvRGBA64RGBA32(0, 3, 2, 1) }
+
 func NewColorConvARGB64ToBGRA32() *ColorConvRGBA64RGBA32 { return NewColorConvRGBA64RGBA32(3, 2, 1, 0) }
+
 func NewColorConvARGB64ToRGBA32() *ColorConvRGBA64RGBA32 { return NewColorConvRGBA64RGBA32(1, 2, 3, 0) }
 
 // ColorConvRGB24RGBA64 converts RGB24 to RGBA64 with full alpha.
@@ -330,12 +341,19 @@ func (c *ColorConvRGB24RGBA64) CopyRow(dst, src []basics.Int8u, width int) {
 
 // Common RGB24 to RGBA64 conversions
 func NewColorConvRGB24ToARGB64() *ColorConvRGB24RGBA64 { return NewColorConvRGB24RGBA64(1, 2, 3, 0) }
+
 func NewColorConvRGB24ToABGR64() *ColorConvRGB24RGBA64 { return NewColorConvRGB24RGBA64(3, 2, 1, 0) }
+
 func NewColorConvRGB24ToBGRA64() *ColorConvRGB24RGBA64 { return NewColorConvRGB24RGBA64(2, 1, 0, 3) }
+
 func NewColorConvRGB24ToRGBA64() *ColorConvRGB24RGBA64 { return NewColorConvRGB24RGBA64(0, 1, 2, 3) }
+
 func NewColorConvBGR24ToARGB64() *ColorConvRGB24RGBA64 { return NewColorConvRGB24RGBA64(3, 2, 1, 0) }
+
 func NewColorConvBGR24ToABGR64() *ColorConvRGB24RGBA64 { return NewColorConvRGB24RGBA64(1, 2, 3, 0) }
+
 func NewColorConvBGR24ToBGRA64() *ColorConvRGB24RGBA64 { return NewColorConvRGB24RGBA64(0, 1, 2, 3) }
+
 func NewColorConvBGR24ToRGBA64() *ColorConvRGB24RGBA64 { return NewColorConvRGB24RGBA64(2, 1, 0, 3) }
 
 // ColorConvRGB24Gray16 converts RGB24 to 16-bit grayscale.

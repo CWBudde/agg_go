@@ -12,13 +12,13 @@ this file changes the compatibility story for callers that stay on `agg`.
 
 ## Build Modes
 
-| Engine | Build tags | Availability | Notes |
-| --- | --- | --- | --- |
-| `port` | none | available | Default pure-Go path. No cgo required. |
-| `cpp` | none | unavailable | Returns a typed `engine.ErrUnavailable` because the `agogo` build tag is missing. |
-| `cpp` | `agogo` with `CGO_ENABLED=0` | unavailable | Returns a typed `engine.ErrUnavailable` because cgo is disabled. |
-| `cpp` | `agogo` | unavailable today | The current native layer compiles, but this build still rejects the backend when it is only the stub implementation. |
-| `cpp` | `agogo aggreal` | available for current subset | Temporary real-native development path while dependency detection is being moved into this repo. |
+| Engine | Build tags                   | Availability                 | Notes                                                                                                                |
+| ------ | ---------------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `port` | none                         | available                    | Default pure-Go path. No cgo required.                                                                               |
+| `cpp`  | none                         | unavailable                  | Returns a typed `engine.ErrUnavailable` because the `agogo` build tag is missing.                                    |
+| `cpp`  | `agogo` with `CGO_ENABLED=0` | unavailable                  | Returns a typed `engine.ErrUnavailable` because cgo is disabled.                                                     |
+| `cpp`  | `agogo`                      | unavailable today            | The current native layer compiles, but this build still rejects the backend when it is only the stub implementation. |
+| `cpp`  | `agogo aggreal`              | available for current subset | Temporary real-native development path while dependency detection is being moved into this repo.                     |
 
 ## Native Dependencies
 
@@ -40,19 +40,19 @@ handled cleanly inside this repository.
 This matrix reflects the `engine.Capabilities(...)` contract and the currently
 implemented high-level facade subset.
 
-| Capability | `port` | `cpp` stub (`agogo`) | `cpp` real (`agogo aggreal`) | Notes |
-| --- | --- | --- | --- | --- |
-| `solid_style` | yes | unavailable | yes | Fill and stroke colors work in both available engines. |
-| `path` | yes | unavailable | yes | `MoveTo`, `LineTo`, `QuadTo`, `CubicTo`, `ClosePath`, fill, stroke, rectangle, and circle helpers are available. |
-| `transforms` | yes | unavailable | yes | Translation, rotation, scale, and reset are implemented. |
-| `clip_box` | yes | unavailable | yes | The current C++ backend clips fill, stroke, and image operations. |
-| `compositing` | yes | unavailable | partial | The current C++ backend supports `BlendAlpha`, `BlendClear`, `BlendSrc`, `BlendDst`, and `BlendSrcOver`. Other blend modes fail with typed capability errors. |
-| `image_draw` | yes | unavailable | partial | Copy, region draw, scaling, and quad mapping are implemented. `DrawImageRegion` with an active transform is still rejected as unsupported. |
-| `image_export` | yes | unavailable | yes | PNG, JPEG, `ToGoImage`, and `ToStandardImage` work through the facade. |
-| `image_interop` | yes | unavailable | no | The C++ backend still rejects `Premultiply` and `Demultiply`. |
-| `gradients` | yes | unavailable | yes | The current C++ subset applies fill and stroke gradients during actual rendering. |
-| `text` | yes | unavailable | partial | Font loading, hinting, draw, measure, and bounds exist in the real-native path. Advanced text features are still out of scope. |
-| `dashed_stroke` | no | unavailable | no | Not part of the current shared facade subset yet. |
+| Capability      | `port` | `cpp` stub (`agogo`) | `cpp` real (`agogo aggreal`) | Notes                                                                                                                                                         |
+| --------------- | ------ | -------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `solid_style`   | yes    | unavailable          | yes                          | Fill and stroke colors work in both available engines.                                                                                                        |
+| `path`          | yes    | unavailable          | yes                          | `MoveTo`, `LineTo`, `QuadTo`, `CubicTo`, `ClosePath`, fill, stroke, rectangle, and circle helpers are available.                                              |
+| `transforms`    | yes    | unavailable          | yes                          | Translation, rotation, scale, and reset are implemented.                                                                                                      |
+| `clip_box`      | yes    | unavailable          | yes                          | The current C++ backend clips fill, stroke, and image operations.                                                                                             |
+| `compositing`   | yes    | unavailable          | partial                      | The current C++ backend supports `BlendAlpha`, `BlendClear`, `BlendSrc`, `BlendDst`, and `BlendSrcOver`. Other blend modes fail with typed capability errors. |
+| `image_draw`    | yes    | unavailable          | partial                      | Copy, region draw, scaling, and quad mapping are implemented. `DrawImageRegion` with an active transform is still rejected as unsupported.                    |
+| `image_export`  | yes    | unavailable          | yes                          | PNG, JPEG, `ToGoImage`, and `ToStandardImage` work through the facade.                                                                                        |
+| `image_interop` | yes    | unavailable          | no                           | The C++ backend still rejects `Premultiply` and `Demultiply`.                                                                                                 |
+| `gradients`     | yes    | unavailable          | yes                          | The current C++ subset applies fill and stroke gradients during actual rendering.                                                                             |
+| `text`          | yes    | unavailable          | partial                      | Font loading, hinting, draw, measure, and bounds exist in the real-native path. Advanced text features are still out of scope.                                |
+| `dashed_stroke` | no     | unavailable          | no                           | Not part of the current shared facade subset yet.                                                                                                             |
 
 ## Intentional Gaps
 

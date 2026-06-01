@@ -100,7 +100,8 @@ func (v *VPGenClipPolygon) LineTo(x, y float64) {
 		v.numVertices = basics.ClipLiangBarsky(
 			v.x1, v.y1, x, y,
 			v.clipBox,
-			v.x[:], v.y[:])
+			v.x[:], v.y[:],
+		)
 	}
 
 	v.clipFlags = flags

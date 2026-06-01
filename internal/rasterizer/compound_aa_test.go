@@ -66,9 +66,11 @@ type recordingCompoundClipper struct {
 func (r *recordingCompoundClipper) ResetClipping() {}
 func (r *recordingCompoundClipper) ClipBox(x1, y1, x2, y2 float64) {
 }
+
 func (r *recordingCompoundClipper) MoveTo(x, y float64) {
 	r.moves = append(r.moves, [2]float64{x, y})
 }
+
 func (r *recordingCompoundClipper) LineTo(_ *RasterizerCellsAAStyled, x, y float64) {
 	r.lines = append(r.lines, [2]float64{x, y})
 }

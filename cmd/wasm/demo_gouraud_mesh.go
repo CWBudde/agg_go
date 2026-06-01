@@ -93,7 +93,8 @@ func initMesh() {
 			p3 := p2 + uint32(meshCols)
 			p4 := p1 + uint32(meshCols)
 
-			meshTriangles = append(meshTriangles,
+			meshTriangles = append(
+				meshTriangles,
 				meshTriangle{p1, p2, p3},
 				meshTriangle{p3, p4, p1},
 			)
@@ -121,7 +122,8 @@ func initMesh() {
 				bottT2 = (bottCell * 2) + 1
 			}
 
-			meshEdges = append(meshEdges,
+			meshEdges = append(
+				meshEdges,
 				meshEdge{p1, p2, currT1, bottT2},
 				meshEdge{p1, p3, currT2, currT1},
 				meshEdge{p1, p4, leftT1, currT2},

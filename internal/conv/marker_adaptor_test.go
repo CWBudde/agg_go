@@ -208,7 +208,8 @@ func (m *TestMarkerImpl) AddVertex(x, y float64, cmd basics.PathCommand) {
 	// Only add start and end markers for line segments
 	if basics.IsMoveTo(cmd) || basics.IsLineTo(cmd) {
 		// Add a simple marker shape (small cross) at this position
-		m.vertices = append(m.vertices,
+		m.vertices = append(
+			m.vertices,
 			Vertex{x - 1, y, basics.PathCmdMoveTo},
 			Vertex{x + 1, y, basics.PathCmdLineTo},
 			Vertex{x, y - 1, basics.PathCmdMoveTo},

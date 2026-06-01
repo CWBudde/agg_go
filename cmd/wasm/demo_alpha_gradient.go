@@ -309,7 +309,8 @@ func drawAlphaGradientDemo() {
 
 	// 4. Color LUT: dark teal → yellow-green → dark red.
 	var colorArr gradColorArray
-	fillColorArray(&colorArr,
+	fillColorArray(
+		&colorArr,
 		agg.RGBA(0, 0.19, 0.19, 1),
 		agg.RGBA(0.7, 0.7, 0.19, 1),
 		agg.RGBA(0.31, 0, 0, 1),

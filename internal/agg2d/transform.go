@@ -65,7 +65,8 @@ func (agg2d *Agg2D) Affine(tr *transform.TransAffine) {
 func (agg2d *Agg2D) AffineFromMatrix(tr *Transformations) {
 	affine := transform.NewTransAffineFromValues(
 		tr.AffineMatrix[0], tr.AffineMatrix[1], tr.AffineMatrix[2],
-		tr.AffineMatrix[3], tr.AffineMatrix[4], tr.AffineMatrix[5])
+		tr.AffineMatrix[3], tr.AffineMatrix[4], tr.AffineMatrix[5],
+	)
 	agg2d.Affine(affine)
 }
 
@@ -99,7 +100,8 @@ func (agg2d *Agg2D) UniformScale(s float64) {
 func (agg2d *Agg2D) Skew(sx, sy float64) {
 	// Create skew transformation: [1, tan(sy), tan(sx), 1, 0, 0]
 	skewTransform := transform.NewTransAffineFromValues(
-		1.0, math.Tan(sy), math.Tan(sx), 1.0, 0.0, 0.0)
+		1.0, math.Tan(sy), math.Tan(sx), 1.0, 0.0, 0.0,
+	)
 	agg2d.Affine(skewTransform)
 }
 
@@ -135,7 +137,8 @@ func (agg2d *Agg2D) PushTransform() {
 	// Create a copy of the current transformation
 	transformCopy := transform.NewTransAffineFromValues(
 		agg2d.transform.SX, agg2d.transform.SHY, agg2d.transform.SHX,
-		agg2d.transform.SY, agg2d.transform.TX, agg2d.transform.TY)
+		agg2d.transform.SY, agg2d.transform.TX, agg2d.transform.TY,
+	)
 
 	agg2d.transformStack.stack = append(agg2d.transformStack.stack, transformCopy)
 }
@@ -312,7 +315,8 @@ func (agg2d *Agg2D) DecomposeTransform() *TransformComponents {
 func (agg2d *Agg2D) InvertTransform() *transform.TransAffine {
 	inverse := transform.NewTransAffineFromValues(
 		agg2d.transform.SX, agg2d.transform.SHY, agg2d.transform.SHX,
-		agg2d.transform.SY, agg2d.transform.TX, agg2d.transform.TY)
+		agg2d.transform.SY, agg2d.transform.TX, agg2d.transform.TY,
+	)
 
 	if inverse.Invert() != nil {
 		return inverse

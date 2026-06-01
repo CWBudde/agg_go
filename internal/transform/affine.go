@@ -389,7 +389,8 @@ func (t *TransAffine) ParlToParl(src, dst [6]float64) *TransAffine {
 	t.Multiply(NewTransAffineFromValues(
 		dst[2]-dst[0], dst[3]-dst[1],
 		dst[4]-dst[0], dst[5]-dst[1],
-		dst[0], dst[1]))
+		dst[0], dst[1],
+	))
 	return t
 }
 

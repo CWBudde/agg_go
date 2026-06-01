@@ -115,7 +115,8 @@ func TestScanlineStorageAA_StoreSingleScanline(t *testing.T) {
 	mockScanline := NewMockScanline(100)
 
 	// Add some spans to the mock scanline
-	mockScanline.spans = append(mockScanline.spans,
+	mockScanline.spans = append(
+		mockScanline.spans,
 		MockSpan{
 			X:      10,
 			Len:    5,
@@ -240,7 +241,8 @@ func TestScanlineStorageAA_EmbeddedScanline(t *testing.T) {
 
 	// Store a scanline
 	mockScanline := NewMockScanline(300)
-	mockScanline.spans = append(mockScanline.spans,
+	mockScanline.spans = append(
+		mockScanline.spans,
 		MockSpan{
 			X:      50,
 			Len:    2,

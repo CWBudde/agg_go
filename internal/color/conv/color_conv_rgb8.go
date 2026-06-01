@@ -142,12 +142,19 @@ func (c *ColorConvRGB24RGBA32) CopyRow(dst, src []basics.Int8u, width int) {
 
 // Common RGB24 to RGBA32 conversions
 func NewColorConvRGB24ToARGB32() *ColorConvRGB24RGBA32 { return NewColorConvRGB24RGBA32(1, 2, 3, 0) }
+
 func NewColorConvRGB24ToABGR32() *ColorConvRGB24RGBA32 { return NewColorConvRGB24RGBA32(3, 2, 1, 0) }
+
 func NewColorConvRGB24ToBGRA32() *ColorConvRGB24RGBA32 { return NewColorConvRGB24RGBA32(2, 1, 0, 3) }
+
 func NewColorConvRGB24ToRGBA32() *ColorConvRGB24RGBA32 { return NewColorConvRGB24RGBA32(0, 1, 2, 3) }
+
 func NewColorConvBGR24ToARGB32() *ColorConvRGB24RGBA32 { return NewColorConvRGB24RGBA32(3, 2, 1, 0) }
+
 func NewColorConvBGR24ToABGR32() *ColorConvRGB24RGBA32 { return NewColorConvRGB24RGBA32(1, 2, 3, 0) }
+
 func NewColorConvBGR24ToBGRA32() *ColorConvRGB24RGBA32 { return NewColorConvRGB24RGBA32(0, 1, 2, 3) }
+
 func NewColorConvBGR24ToRGBA32() *ColorConvRGB24RGBA32 { return NewColorConvRGB24RGBA32(2, 1, 0, 3) }
 
 // ColorConvRGBA32RGB24 converts RGBA32 to RGB24 (drops alpha).

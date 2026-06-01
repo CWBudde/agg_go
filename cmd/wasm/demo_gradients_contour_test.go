@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	agg "github.com/cwbudde/agg_go"
-
 	"github.com/cwbudde/agg_go/internal/color"
 )
 

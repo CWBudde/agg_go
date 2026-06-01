@@ -85,6 +85,7 @@ func (h *rcStyleHandler) Color(style int) color.RGBA8[color.Linear] {
 	}
 	return h.styles[style]
 }
+
 func (h *rcStyleHandler) GenerateSpan(colors []color.RGBA8[color.Linear], x, y, length, style int) {}
 
 type rcSLAdapter struct{ sl *scanline.ScanlineU8 }

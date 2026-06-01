@@ -15,7 +15,8 @@ func buildSerializedAAData(t *testing.T) []byte {
 	storage.Prepare()
 
 	sl := NewMockScanline(30)
-	sl.spans = append(sl.spans,
+	sl.spans = append(
+		sl.spans,
 		MockSpan{
 			X:      10,
 			Len:    3,

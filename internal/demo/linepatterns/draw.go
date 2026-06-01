@@ -98,6 +98,7 @@ type lineOutlineImageAdapter struct {
 func (a *lineOutlineImageAdapter) AccurateJoinOnly() bool            { return a.ren.AccurateJoinOnly() }
 func (a *lineOutlineImageAdapter) Color(c color.RGBA8[color.Linear]) {}
 func (a *lineOutlineImageAdapter) Pie(x, y, x1, y1, x2, y2 int)      { a.ren.Pie(x, y, x1, y1, x2, y2) }
+
 func (a *lineOutlineImageAdapter) Semidot(cmp func(int) bool, x, y, x1, y1 int) {
 	a.ren.Semidot(cmp, x, y, x1, y1)
 }

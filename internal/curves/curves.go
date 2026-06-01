@@ -724,7 +724,7 @@ func (c *Curve4Div) recursiveBezier(x1, y1, x2, y2, x3, y3, x4, y4 float64, leve
 
 	var da1, da2, k float64
 
-	switch (func() int {
+	switch func() int {
 		result := 0
 		if d2 > CurveCollinearityEpsilon {
 			result += 1
@@ -733,7 +733,7 @@ func (c *Curve4Div) recursiveBezier(x1, y1, x2, y2, x3, y3, x4, y4 float64, leve
 			result += 2
 		}
 		return result
-	})() {
+	}() {
 	case 0:
 		// All collinear OR p1==p4
 		k = dx*dx + dy*dy

@@ -278,7 +278,8 @@ func (s *SDL2Backend) copyRawToSurface(src, dst []byte, srcStride, dstStride int
 func (s *SDL2Backend) CreateImageSurface(width, height int) (types.ImageSurface, error) {
 	surface, err := sdl.CreateRGBSurface(
 		0, int32(width), int32(height), int32(s.bpp),
-		s.rmask, s.gmask, s.bmask, s.amask)
+		s.rmask, s.gmask, s.bmask, s.amask,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create SDL2 surface: %w", err)
 	}

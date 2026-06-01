@@ -1075,7 +1075,8 @@ func traceAffineNoResampleSamples(startX, startY, length int, dst [6]float64) []
 		w01 := (aggimage.ImageSubpixelScale - fracX) * fracY
 		w11 := fracX * fracY
 
-		trace = append(trace,
+		trace = append(
+			trace,
 			"dest=("+itoa(startX+i)+","+itoa(startY)+") "+
 				"nearestRaw=("+itoa(nxHr)+","+itoa(nyHr)+") src=("+itoa(nearestX)+","+itoa(nearestY)+") "+
 				"bilinearRaw=("+itoa(bxHr)+","+itoa(byHr)+") shifted=("+itoa(shiftedX)+","+itoa(shiftedY)+") "+

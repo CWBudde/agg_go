@@ -1,11 +1,16 @@
 package agg
 
 import (
+	"errors"
 	"image"
 
 	"github.com/cwbudde/agg_go/internal/agg2d"
 	"github.com/cwbudde/agg_go/internal/color"
 )
+
+// errNilImageFloat is returned by the float image-transform methods when the
+// source image is nil.
+var errNilImageFloat = errors.New("agg: image is nil")
 
 // ImageFloat is the public float (128-bit, 4 x float32) raster image used as a
 // rendering target or image source for Agg2DFloat. It stores straight
@@ -244,6 +249,97 @@ func (a *Agg2DFloat) BlendImage(img *ImageFloat, dstX, dstY int, cover uint8) {
 		return
 	}
 	a.impl.BlendImageFloat(img.impl, dstX, dstY, cover)
+}
+
+// --- Image transforms (affine / perspective) ---
+
+// TransformImage maps a source rectangle of img to a destination rectangle using
+// the current image filter and world transform.
+func (a *Agg2DFloat) TransformImage(img *ImageFloat, imgX1, imgY1, imgX2, imgY2 int, dstX1, dstY1, dstX2, dstY2 float64) error {
+	if img == nil {
+		return errNilImageFloat
+	}
+	return a.impl.TransformImageFloat(img.impl, imgX1, imgY1, imgX2, imgY2, dstX1, dstY1, dstX2, dstY2)
+}
+
+// TransformImageSimple maps the whole image to a destination rectangle.
+func (a *Agg2DFloat) TransformImageSimple(img *ImageFloat, dstX1, dstY1, dstX2, dstY2 float64) error {
+	if img == nil {
+		return errNilImageFloat
+	}
+	return a.impl.TransformImageFloatSimple(img.impl, dstX1, dstY1, dstX2, dstY2)
+}
+
+// TransformImageParallelogram maps a source rectangle to a destination
+// parallelogram (6 floats: 3 corners).
+func (a *Agg2DFloat) TransformImageParallelogram(img *ImageFloat, imgX1, imgY1, imgX2, imgY2 int, parallelogram []float64) error {
+	if img == nil {
+		return errNilImageFloat
+	}
+	return a.impl.TransformImageFloatParallelogram(img.impl, imgX1, imgY1, imgX2, imgY2, parallelogram)
+}
+
+// TransformImageParallelogramSimple maps the whole image to a destination
+// parallelogram.
+func (a *Agg2DFloat) TransformImageParallelogramSimple(img *ImageFloat, parallelogram []float64) error {
+	if img == nil {
+		return errNilImageFloat
+	}
+	return a.impl.TransformImageFloatParallelogramSimple(img.impl, parallelogram)
+}
+
+// TransformImagePath maps a source rectangle along the current path, clipping the
+// image to the path shape.
+func (a *Agg2DFloat) TransformImagePath(img *ImageFloat, imgX1, imgY1, imgX2, imgY2 int, dstX1, dstY1, dstX2, dstY2 float64) error {
+	if img == nil {
+		return errNilImageFloat
+	}
+	return a.impl.TransformImageFloatPath(img.impl, imgX1, imgY1, imgX2, imgY2, dstX1, dstY1, dstX2, dstY2)
+}
+
+// TransformImagePathSimple maps the whole image along the current path.
+func (a *Agg2DFloat) TransformImagePathSimple(img *ImageFloat, dstX1, dstY1, dstX2, dstY2 float64) error {
+	if img == nil {
+		return errNilImageFloat
+	}
+	return a.impl.TransformImageFloatPathSimple(img.impl, dstX1, dstY1, dstX2, dstY2)
+}
+
+// TransformImagePathParallelogram maps a source rectangle along the current path
+// to a destination parallelogram.
+func (a *Agg2DFloat) TransformImagePathParallelogram(img *ImageFloat, imgX1, imgY1, imgX2, imgY2 int, parallelogram []float64) error {
+	if img == nil {
+		return errNilImageFloat
+	}
+	return a.impl.TransformImageFloatPathParallelogram(img.impl, imgX1, imgY1, imgX2, imgY2, parallelogram)
+}
+
+// TransformImagePathParallelogramSimple maps the whole image along the current
+// path to a destination parallelogram.
+func (a *Agg2DFloat) TransformImagePathParallelogramSimple(img *ImageFloat, parallelogram []float64) error {
+	if img == nil {
+		return errNilImageFloat
+	}
+	return a.impl.TransformImageFloatPathParallelogramSimple(img.impl, parallelogram)
+}
+
+// TransformImageQuad maps a source rectangle to an arbitrary destination
+// quadrangle using perspective interpolation. quad holds [x0,y0,...,x3,y3] for
+// the TL, TR, BR, BL corners.
+func (a *Agg2DFloat) TransformImageQuad(img *ImageFloat, imgX1, imgY1, imgX2, imgY2 int, quad [8]float64) error {
+	if img == nil {
+		return errNilImageFloat
+	}
+	return a.impl.TransformImageFloatQuad(img.impl, imgX1, imgY1, imgX2, imgY2, quad)
+}
+
+// TransformImageQuadSimple maps the whole image to an arbitrary destination
+// quadrangle using perspective interpolation.
+func (a *Agg2DFloat) TransformImageQuadSimple(img *ImageFloat, quad [8]float64) error {
+	if img == nil {
+		return errNilImageFloat
+	}
+	return a.impl.TransformImageFloatQuadSimple(img.impl, quad)
 }
 
 // --- Transforms ---

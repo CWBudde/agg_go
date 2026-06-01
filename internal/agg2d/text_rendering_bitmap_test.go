@@ -23,6 +23,7 @@ func (w testScanlineU8StorageWrapper) ResetSpans()   { w.sl.ResetSpans() }
 func (w testScanlineU8StorageWrapper) AddSpan(x, length int, cover basics.Int8u) {
 	w.sl.AddSpan(x, length, uint(cover))
 }
+
 func (w testScanlineU8StorageWrapper) AddCells(x, length int, covers []basics.Int8u) {
 	for i := 0; i < length && i < len(covers); i++ {
 		w.sl.AddCell(x+i, uint(covers[i]))

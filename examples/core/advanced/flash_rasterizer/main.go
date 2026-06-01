@@ -269,7 +269,8 @@ func renderInfoText(
 		return int(1000.0 / ms)
 	}
 
-	txt := fmt.Sprintf("Fill=%.2fms (%dFPS) Stroke=%.2fms (%dFPS) Total=%.2fms (%dFPS)\n\nSpace: Next Shape\n\n+/- : ZoomIn/ZoomOut (with respect to the mouse pointer)",
+	txt := fmt.Sprintf(
+		"Fill=%.2fms (%dFPS) Stroke=%.2fms (%dFPS) Total=%.2fms (%dFPS)\n\nSpace: Next Shape\n\n+/- : ZoomIn/ZoomOut (with respect to the mouse pointer)",
 		tfillMs, fps(tfillMs),
 		tstrokeMs, fps(tstrokeMs),
 		ttotalMs, fps(ttotalMs),

@@ -35,12 +35,16 @@ import (
 	"github.com/cwbudde/agg_go/internal/transform"
 )
 
-const defaultImageName = "spheres"
-const imageAlphaBackgroundEllipseSteps = 50
-const imageAlphaClipEllipseSteps = 200
+const (
+	defaultImageName                 = "spheres"
+	imageAlphaBackgroundEllipseSteps = 50
+	imageAlphaClipEllipseSteps       = 200
+)
 
-type imageAlphaPixFmt = pixfmt.PixFmtRGBARendererAdaptor[color.Linear, blender.BlenderBGR24Linear]
-type imageAlphaRendererBase = renderer.RendererBase[*imageAlphaPixFmt, color.RGBA8[color.Linear]]
+type (
+	imageAlphaPixFmt       = pixfmt.PixFmtRGBARendererAdaptor[color.Linear, blender.BlenderBGR24Linear]
+	imageAlphaRendererBase = renderer.RendererBase[*imageAlphaPixFmt, color.RGBA8[color.Linear]]
+)
 
 type imageAlphaRenderTarget struct {
 	buf     []uint8

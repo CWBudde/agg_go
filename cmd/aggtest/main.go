@@ -48,7 +48,8 @@ type rasType = rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rast
 
 func newRas() *rasType {
 	return rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
-		rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip())
+		rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip(),
+	)
 }
 
 func addRect(ras *rasType, x1, y1, x2, y2 float64) {

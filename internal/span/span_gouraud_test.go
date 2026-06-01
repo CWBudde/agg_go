@@ -89,7 +89,7 @@ func TestSpanGouraudTriangleWithDilation(t *testing.T) {
 
 	// The exact values depend on the mathematical calculations,
 	// but we can verify they're not the same as input
-	originalDistSq := (coord[0].X)*(coord[0].X) + (coord[0].Y)*(coord[0].Y)
+	originalDistSq := coord[0].X*coord[0].X + coord[0].Y*coord[0].Y
 	if originalDistSq == 0 {
 		t.Error("Dilation should modify coordinates")
 	}

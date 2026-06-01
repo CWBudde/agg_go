@@ -478,7 +478,8 @@ func NewLinearGradientRGBA8[InterpolatorT SpanInterpolatorInterface](
 	colorFunc := NewGradientLinearColorRGBA8(startColor, endColor, size)
 
 	return NewSpanGradient[color.RGBA8[color.Linear], InterpolatorT, GradientLinearX, *GradientLinearColorRGBA8[color.Linear]](
-		interpolator, gradientFunc, colorFunc, d1, d2)
+		interpolator, gradientFunc, colorFunc, d1, d2,
+	)
 }
 
 // NewRadialGradientRGBA8 creates a radial RGBA8 gradient span generator.
@@ -496,7 +497,8 @@ func NewRadialGradientRGBA8[InterpolatorT SpanInterpolatorInterface](
 	colorFunc := NewGradientLinearColorRGBA8(startColor, endColor, size)
 
 	return NewSpanGradient[color.RGBA8[color.Linear], InterpolatorT, GradientRadial, *GradientLinearColorRGBA8[color.Linear]](
-		interpolator, gradientFunc, colorFunc, d1, d2)
+		interpolator, gradientFunc, colorFunc, d1, d2,
+	)
 }
 
 // GradientPrebuiltColorRGBA8 is a color function backed by a pre-built lookup table.
@@ -532,7 +534,8 @@ func NewLinearGradientFromLUT[InterpolatorT SpanInterpolatorInterface](
 	colorFunc := NewGradientPrebuiltColorRGBA8[color.Linear](lut)
 	gradientFunc := GradientLinearX{}
 	return NewSpanGradient[color.RGBA8[color.Linear], InterpolatorT, GradientLinearX, *GradientPrebuiltColorRGBA8[color.Linear]](
-		interpolator, gradientFunc, colorFunc, d1, d2)
+		interpolator, gradientFunc, colorFunc, d1, d2,
+	)
 }
 
 // NewRadialGradientFromLUT creates a radial gradient span generator using a pre-built
@@ -545,7 +548,8 @@ func NewRadialGradientFromLUT[InterpolatorT SpanInterpolatorInterface](
 	colorFunc := NewGradientPrebuiltColorRGBA8[color.Linear](lut)
 	gradientFunc := GradientRadial{}
 	return NewSpanGradient[color.RGBA8[color.Linear], InterpolatorT, GradientRadial, *GradientPrebuiltColorRGBA8[color.Linear]](
-		interpolator, gradientFunc, colorFunc, d1, d2)
+		interpolator, gradientFunc, colorFunc, d1, d2,
+	)
 }
 
 // GradientPrebuiltColorRGBA32 is the float (RGBA32) twin of
@@ -582,7 +586,8 @@ func NewLinearGradientFromLUT32[InterpolatorT SpanInterpolatorInterface](
 	colorFunc := NewGradientPrebuiltColorRGBA32[color.Linear](lut)
 	gradientFunc := GradientLinearX{}
 	return NewSpanGradient[color.RGBA32[color.Linear], InterpolatorT, GradientLinearX, *GradientPrebuiltColorRGBA32[color.Linear]](
-		interpolator, gradientFunc, colorFunc, d1, d2)
+		interpolator, gradientFunc, colorFunc, d1, d2,
+	)
 }
 
 // NewRadialGradientFromLUT32 creates a float radial gradient span generator using
@@ -595,5 +600,6 @@ func NewRadialGradientFromLUT32[InterpolatorT SpanInterpolatorInterface](
 	colorFunc := NewGradientPrebuiltColorRGBA32[color.Linear](lut)
 	gradientFunc := GradientRadial{}
 	return NewSpanGradient[color.RGBA32[color.Linear], InterpolatorT, GradientRadial, *GradientPrebuiltColorRGBA32[color.Linear]](
-		interpolator, gradientFunc, colorFunc, d1, d2)
+		interpolator, gradientFunc, colorFunc, d1, d2,
+	)
 }

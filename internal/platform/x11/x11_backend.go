@@ -129,7 +129,8 @@ func (x *X11Backend) Init(width, height int, flags types.WindowFlags) error {
 		x.display, rootWindow,
 		0, 0, C.uint(width), C.uint(height),
 		1, C.XBlackPixel(x.display, x.screen),
-		C.XWhitePixel(x.display, x.screen))
+		C.XWhitePixel(x.display, x.screen),
+	)
 
 	if x.window == 0 {
 		C.XCloseDisplay(x.display)
@@ -210,7 +211,8 @@ func (x *X11Backend) createImageBuffer() error {
 		C.ZPixmap, 0,
 		(*C.char)(unsafe.Pointer(&x.imgData[0])),
 		C.uint(x.width), C.uint(x.height),
-		32, C.int(x.imgStride))
+		32, C.int(x.imgStride),
+	)
 
 	if x.ximg == nil {
 		return fmt.Errorf("failed to create XImage")

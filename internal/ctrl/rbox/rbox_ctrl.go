@@ -401,7 +401,8 @@ func (r *RboxCtrl[C]) setupInactiveCirclesPath() {
 			r.ys1+r.dy/1.3,
 			r.textHeight/1.5,
 			r.textHeight/1.5,
-			32, false)
+			32, false,
+		)
 		r.ellipseStroke.SetWidth(r.textThickness)
 		r.ellipseStroke.Rewind(0)
 	}
@@ -415,7 +416,8 @@ func (r *RboxCtrl[C]) setupActiveCirclePath() {
 			r.ys1+r.dy*float64(r.curItem)+r.dy/1.3,
 			r.textHeight*0.5,
 			r.textHeight*0.5,
-			32, false)
+			32, false,
+		)
 		r.ellipse.Rewind(0)
 	}
 }
@@ -471,7 +473,8 @@ func (r *RboxCtrl[C]) generateTextVertex() (x, y float64, cmd basics.PathCommand
 		r.textRenderer.SetText(r.items[r.drawItem])
 		r.textRenderer.SetPosition(
 			r.xs1+r.dy*1.5,
-			r.ys1+r.dy*float64(r.drawItem+1)-r.dy/2.0)
+			r.ys1+r.dy*float64(r.drawItem+1)-r.dy/2.0,
+		)
 		r.textRenderer.SetThickness(r.textThickness)
 		r.textRenderer.Rewind(0)
 		x, y, cmd = r.textRenderer.Vertex()
@@ -503,7 +506,8 @@ func (r *RboxCtrl[C]) generateInactiveCirclesVertex() (x, y float64, cmd basics.
 			r.ys1+r.dy*float64(r.drawItem)+r.dy/1.3,
 			r.textHeight/1.5,
 			r.textHeight/1.5,
-			32, false)
+			32, false,
+		)
 		r.ellipseStroke.SetWidth(r.textThickness)
 		r.ellipseStroke.Rewind(0)
 		x, y, cmd = r.ellipseStroke.Vertex()

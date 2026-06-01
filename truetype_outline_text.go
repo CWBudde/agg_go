@@ -10,15 +10,15 @@ import (
 // going through Agg2D's text engine. Callers can measure text or iterate the
 // full outline path and then render it through ordinary AGG path operations.
 type FreeTypeOutlineText struct {
-	engine     *freetype.FontEngineFreetype
-	cache      *font.FontCacheManager
-	path       *path.PathStorageStl
-	text       string
-	startX     float64
-	startY     float64
-	height     float64
-	width      float64
-	resolution uint
+	engine               *freetype.FontEngineFreetype
+	cache                *font.FontCacheManager
+	path                 *path.PathStorageStl
+	text                 string
+	startX               float64
+	startY               float64
+	height               float64
+	width                float64
+	resolution           uint
 	hinting              bool
 	forceAutohint        bool
 	snapOutlineX         bool

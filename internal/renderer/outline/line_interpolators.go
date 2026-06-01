@@ -60,12 +60,14 @@ func NewLineInterpolatorAABase(ren OutlineRenderer, lp *primitives.LineParameter
 		base.count = basics.Abs((lp.Y2 >> primitives.LineSubpixelShift) - base.y)
 		base.li = primitives.NewDda2LineInterpolatorSimple(
 			primitives.LineDblHR(lp.X2-lp.X1),
-			basics.Abs(lp.Y2-lp.Y1))
+			basics.Abs(lp.Y2-lp.Y1),
+		)
 	} else {
 		base.count = basics.Abs((lp.X2 >> primitives.LineSubpixelShift) - base.x)
 		base.li = primitives.NewDda2LineInterpolatorSimple(
 			primitives.LineDblHR(lp.Y2-lp.Y1),
-			basics.Abs(lp.X2-lp.X1)+1)
+			basics.Abs(lp.X2-lp.X1)+1,
+		)
 	}
 
 	base.maxExtent = (base.width + primitives.LineSubpixelMask) >> primitives.LineSubpixelShift

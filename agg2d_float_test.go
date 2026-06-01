@@ -111,6 +111,45 @@ func TestPublicAgg2DFloatTransformAndFillMode(t *testing.T) {
 	a.NoLine()
 }
 
+func TestPublicAgg2DFloatTransformImage(t *testing.T) {
+	// Opaque source with a recognizable solid color.
+	src := NewImageFloat(8, 8)
+	for y := 0; y < 8; y++ {
+		for x := 0; x < 8; x++ {
+			src.SetPixelFloat(x, y, 0.0, 0.8, 0.2, 1.0)
+		}
+	}
+
+	dst := NewImageFloat(40, 40)
+	a := NewAgg2DFloat()
+	a.AttachImage(dst)
+	a.ClearAll(NewColor(0, 0, 0, 0))
+
+	// Affine scale the 8x8 source into a 24x24 destination rectangle.
+	if err := a.TransformImageSimple(src, 8, 8, 32, 32); err != nil {
+		t.Fatalf("TransformImageSimple: %v", err)
+	}
+	if _, g, _, al := dst.GetPixelFloat(20, 20); g <= 0 || al <= 0 {
+		t.Fatalf("transformed region missing at (20,20): g=%v a=%v", g, al)
+	}
+	if _, _, _, al := dst.GetPixelFloat(2, 2); al != 0 {
+		t.Fatalf("outside transformed region should be empty: alpha=%v", al)
+	}
+
+	// Perspective quad maps the source to a non-affine quadrangle.
+	dst2 := NewImageFloat(40, 40)
+	b := NewAgg2DFloat()
+	b.AttachImage(dst2)
+	b.ClearAll(NewColor(0, 0, 0, 0))
+	quad := [8]float64{6, 8, 34, 5, 32, 36, 9, 31}
+	if err := b.TransformImageQuadSimple(src, quad); err != nil {
+		t.Fatalf("TransformImageQuadSimple: %v", err)
+	}
+	if _, _, _, al := dst2.GetPixelFloat(20, 20); al <= 0 {
+		t.Fatalf("perspective region missing at (20,20): alpha=%v", al)
+	}
+}
+
 func TestPublicContextFloat(t *testing.T) {
 	ctx := NewContextFloat(20, 20)
 	ctx.Clear(NewColor(0, 0, 0, 0))

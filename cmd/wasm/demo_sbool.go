@@ -65,7 +65,8 @@ type (
 
 func sboolNewRas() *sboolRasType {
 	return rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
-		rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip())
+		rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip(),
+	)
 }
 
 // srgba8 converts sRGB values to linear for the pixel format.

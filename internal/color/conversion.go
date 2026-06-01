@@ -132,6 +132,7 @@ func ConvertGray8SRGBToLinear(g Gray8[SRGB]) Gray8[Linear] {
 
 // (Aliases kept for compatibility)
 func ConvertGray8FromSRGBToLinear(g Gray8[SRGB]) Gray8[Linear] { return ConvertGray8SRGBToLinear(g) }
+
 func ConvertGray8FromLinearToSRGB(g Gray8[Linear]) Gray8[SRGB] { return ConvertGray8LinearToSRGB(g) }
 
 //

@@ -291,7 +291,8 @@ func TestLineInterpolators(t *testing.T) {
 		100<<primitives.LineSubpixelShift,
 		200<<primitives.LineSubpixelShift,
 		200<<primitives.LineSubpixelShift,
-		100)
+		100,
+	)
 
 	t.Run("LineInterpolatorAA0", func(t *testing.T) {
 		li := NewLineInterpolatorAA0(renderer, &lp)
@@ -376,7 +377,8 @@ func TestRendererOutlineAA(t *testing.T) {
 			100<<primitives.LineSubpixelShift,
 			200<<primitives.LineSubpixelShift,
 			100<<primitives.LineSubpixelShift,
-			100)
+			100,
+		)
 
 		initialSpanCalls := len(renderer.hspanCalls) + len(renderer.vspanCalls)
 
@@ -395,7 +397,8 @@ func TestRendererOutlineAA(t *testing.T) {
 			100<<primitives.LineSubpixelShift,
 			200<<primitives.LineSubpixelShift,
 			150<<primitives.LineSubpixelShift,
-			100)
+			100,
+		)
 
 		sx := 90 << primitives.LineSubpixelShift
 		sy := 90 << primitives.LineSubpixelShift
@@ -460,7 +463,8 @@ func TestEdgeCases(t *testing.T) {
 			0, 0,
 			primitives.LineMaxLength+100,
 			primitives.LineMaxLength+100,
-			primitives.LineMaxLength+100)
+			primitives.LineMaxLength+100,
+		)
 
 		// Should handle line subdivision without panicking
 		outlineRenderer.Line0(&lp)
@@ -478,7 +482,8 @@ func TestEdgeCases(t *testing.T) {
 			-100<<primitives.LineSubpixelShift,
 			100<<primitives.LineSubpixelShift,
 			100<<primitives.LineSubpixelShift,
-			200)
+			200,
+		)
 
 		// Should handle negative coordinates without panicking
 		outlineRenderer.Line0(&lp)

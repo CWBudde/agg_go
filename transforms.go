@@ -157,10 +157,12 @@ func (t *Transformations) Multiply(other *Transformations) {
 	// Create TransAffine objects for multiplication
 	t1 := transform.NewTransAffineFromValues(
 		t.AffineMatrix[0], t.AffineMatrix[1], t.AffineMatrix[2],
-		t.AffineMatrix[3], t.AffineMatrix[4], t.AffineMatrix[5])
+		t.AffineMatrix[3], t.AffineMatrix[4], t.AffineMatrix[5],
+	)
 	t2 := transform.NewTransAffineFromValues(
 		other.AffineMatrix[0], other.AffineMatrix[1], other.AffineMatrix[2],
-		other.AffineMatrix[3], other.AffineMatrix[4], other.AffineMatrix[5])
+		other.AffineMatrix[3], other.AffineMatrix[4], other.AffineMatrix[5],
+	)
 
 	t1.Multiply(t2)
 
@@ -176,7 +178,8 @@ func (t *Transformations) Multiply(other *Transformations) {
 func (t *Transformations) Invert() bool {
 	affine := transform.NewTransAffineFromValues(
 		t.AffineMatrix[0], t.AffineMatrix[1], t.AffineMatrix[2],
-		t.AffineMatrix[3], t.AffineMatrix[4], t.AffineMatrix[5])
+		t.AffineMatrix[3], t.AffineMatrix[4], t.AffineMatrix[5],
+	)
 
 	// Check if matrix is invertible (determinant != 0)
 	det := affine.SX*affine.SY - affine.SHX*affine.SHY
@@ -200,7 +203,8 @@ func (t *Transformations) Invert() bool {
 func (t *Transformations) Transform(x, y float64) (float64, float64) {
 	affine := transform.NewTransAffineFromValues(
 		t.AffineMatrix[0], t.AffineMatrix[1], t.AffineMatrix[2],
-		t.AffineMatrix[3], t.AffineMatrix[4], t.AffineMatrix[5])
+		t.AffineMatrix[3], t.AffineMatrix[4], t.AffineMatrix[5],
+	)
 
 	px, py := x, y
 	affine.Transform(&px, &py)

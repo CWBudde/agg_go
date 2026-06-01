@@ -216,7 +216,8 @@ func geomAbs(x float64) float64 {
 func (a *Affine) ToTransAffine() *transform.TransAffine {
 	return transform.NewTransAffineFromValues(
 		a.matrix[0], a.matrix[1], a.matrix[2],
-		a.matrix[3], a.matrix[4], a.matrix[5])
+		a.matrix[3], a.matrix[4], a.matrix[5],
+	)
 }
 
 // FromTransAffine creates an Affine from internal transform.TransAffine.

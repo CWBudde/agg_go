@@ -307,7 +307,8 @@ func TestSpanGradientAlpha(t *testing.T) {
 		alphaFunc := NewGradientAlphaLinear(0, 255, 100)
 
 		spanAlphaGrad := NewSpanGradientAlpha[RGBA8AlphaWrapper[color.Linear], *SpanInterpolatorLinear[*transform.TransAffine], GradientDiamond, *GradientAlphaLinear](
-			interp, diamondGrad, alphaFunc, 0.0, 50.0)
+			interp, diamondGrad, alphaFunc, 0.0, 50.0,
+		)
 
 		// Create span
 		span := make([]RGBA8AlphaWrapper[color.Linear], 5)
@@ -337,7 +338,8 @@ func TestSpanGradientAlpha(t *testing.T) {
 
 		gradientFunc := GradientLinearX{}
 		spanAlphaGrad := NewSpanGradientAlpha[RGBA8AlphaWrapper[color.Linear], *SpanInterpolatorLinear[*transform.TransAffine], GradientLinearX, *GradientAlphaLUT](
-			interp, gradientFunc, alphaLUT, 0.0, float64(len(customAlphas)-1))
+			interp, gradientFunc, alphaLUT, 0.0, float64(len(customAlphas)-1),
+		)
 
 		// Create span
 		span := make([]RGBA8AlphaWrapper[color.Linear], len(customAlphas))

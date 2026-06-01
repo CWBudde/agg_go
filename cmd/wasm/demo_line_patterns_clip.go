@@ -162,6 +162,7 @@ type lineClipOutlineImageAdapter struct {
 func (a *lineClipOutlineImageAdapter) AccurateJoinOnly() bool            { return a.ren.AccurateJoinOnly() }
 func (a *lineClipOutlineImageAdapter) Color(c color.RGBA8[color.Linear]) {}
 func (a *lineClipOutlineImageAdapter) Pie(x, y, x1, y1, x2, y2 int)      { a.ren.Pie(x, y, x1, y1, x2, y2) }
+
 func (a *lineClipOutlineImageAdapter) Semidot(cmp func(int) bool, x, y, x1, y1 int) {
 	a.ren.Semidot(cmp, x, y, x1, y1)
 }
@@ -185,6 +186,7 @@ type lineClipOutlineAAAdapter struct {
 func (a *lineClipOutlineAAAdapter) AccurateJoinOnly() bool            { return a.ren.AccurateJoinOnly() }
 func (a *lineClipOutlineAAAdapter) Color(c color.RGBA8[color.Linear]) { a.ren.Color(c) }
 func (a *lineClipOutlineAAAdapter) Pie(x, y, x1, y1, x2, y2 int)      { a.ren.Pie(x, y, x1, y1, x2, y2) }
+
 func (a *lineClipOutlineAAAdapter) Semidot(cmp func(int) bool, x, y, x1, y1 int) {
 	a.ren.Semidot(cmp, x, y, x1, y1)
 }

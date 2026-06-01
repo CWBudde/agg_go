@@ -333,7 +333,8 @@ func (it *storageScanlineP8Iter) Next() bool {
 
 func newRas() *rasType {
 	return rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
-		rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip())
+		rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip(),
+	)
 }
 
 func renderRasterizerToStorage(

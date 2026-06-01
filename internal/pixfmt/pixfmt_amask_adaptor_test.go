@@ -506,7 +506,7 @@ func TestSimpleAlphaMaskOperations(t *testing.T) {
 	covers := []basics.Int8u{128, 64, 32, 16}
 	mask.CombineHspan(0, 0, covers, 4)
 	for i, v := range covers {
-		if v != 128>>(i) {
+		if v != 128>>i {
 			// roughly should be scaled
 			_ = v
 		}

@@ -680,6 +680,7 @@ func (w scanlineU8Wrapper) Y() int                                 { return w.sl
 func (w scanlineU8Wrapper) NumSpans() int                          { return w.sl.NumSpans() }
 func (w scanlineU8Wrapper) ResetSpans()                            { w.sl.ResetSpans() }
 func (w scanlineU8Wrapper) AddSpan(x, len int, cover basics.Int8u) { w.sl.AddSpan(x, len, uint(cover)) }
+
 func (w scanlineU8Wrapper) AddCells(x, len int, covers []basics.Int8u) {
 	w.sl.AddCells(x, len, covers)
 }

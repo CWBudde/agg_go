@@ -1583,11 +1583,11 @@ func insertBound(b **edgeNode, e *edgeNode) {
 			(*b).NextBound = existing
 		} else {
 			// Head further down the list
-			insertBound(&((*b).NextBound), e)
+			insertBound(&(*b).NextBound, e)
 		}
 	default:
 		// Head further down the list
-		insertBound(&((*b).NextBound), e)
+		insertBound(&(*b).NextBound, e)
 	}
 }
 
@@ -1600,7 +1600,7 @@ func boundList(lmt **lmtNode, y float64) **edgeNode {
 			FirstBound: nil,
 			Next:       nil,
 		}
-		return &((*lmt).FirstBound)
+		return &(*lmt).FirstBound
 	}
 
 	if y < (*lmt).Y {
@@ -1611,16 +1611,16 @@ func boundList(lmt **lmtNode, y float64) **edgeNode {
 			FirstBound: nil,
 			Next:       existing,
 		}
-		return &((*lmt).FirstBound)
+		return &(*lmt).FirstBound
 	}
 
 	if y > (*lmt).Y {
 		// Head further up the LMT
-		return boundList(&((*lmt).Next), y)
+		return boundList(&(*lmt).Next, y)
 	}
 
 	// Use this existing LMT node
-	return &((*lmt).FirstBound)
+	return &(*lmt).FirstBound
 }
 
 // addToScanBeamTree adds a Y coordinate to the scan beam tree
@@ -1638,10 +1638,10 @@ func addToScanBeamTree(entries *int, sbtree **sbTree, y float64) {
 
 	if (*sbtree).Y > y {
 		// Head into the 'less' sub-tree
-		addToScanBeamTree(entries, &((*sbtree).Less), y)
+		addToScanBeamTree(entries, &(*sbtree).Less, y)
 	} else if (*sbtree).Y < y {
 		// Head into the 'more' sub-tree
-		addToScanBeamTree(entries, &((*sbtree).More), y)
+		addToScanBeamTree(entries, &(*sbtree).More, y)
 	}
 	// Equal values are ignored (no duplicates)
 }
@@ -1906,11 +1906,11 @@ func addEdgeToAET(aet **edgeNode, edge, prev *edgeNode) {
 			*aet = edge
 		} else {
 			// Head further into the AET
-			addEdgeToAET(&((*aet).Next), edge, *aet)
+			addEdgeToAET(&(*aet).Next, edge, *aet)
 		}
 	default:
 		// Head further into the AET
-		addEdgeToAET(&((*aet).Next), edge, *aet)
+		addEdgeToAET(&(*aet).Next, edge, *aet)
 	}
 }
 
@@ -1936,7 +1936,7 @@ func addIntersection(it **itNode, edge0, edge1 *edgeNode, x, y float64) {
 		}
 	} else {
 		// Head further down the list
-		addIntersection(&((*it).Next), edge0, edge1, x, y)
+		addIntersection(&(*it).Next, edge0, edge1, x, y)
 	}
 }
 
@@ -1977,7 +1977,7 @@ func addSortedEdge(st **stNode, it **itNode, edge *edgeNode, dy float64) {
 		addIntersection(it, (*st).Edge, edge, x, y)
 
 		// Head further into the ST
-		addSortedEdge(&((*st).Prev), it, edge, dy)
+		addSortedEdge(&(*st).Prev, it, edge, dy)
 	}
 }
 
@@ -2147,7 +2147,7 @@ func addVertexToTristrip(t **vertexNode, x, y float64) {
 		}
 	} else {
 		// Head further down the list
-		addVertexToTristrip(&((*t).Next), x, y)
+		addVertexToTristrip(&(*t).Next, x, y)
 	}
 }
 
@@ -2159,11 +2159,11 @@ func newTristrip(tn **polygonNode, edge *edgeNode, x, y float64) {
 			V:      [2]*vertexNode{nil, nil},
 			Active: 1,
 		}
-		addVertexToTristrip(&((*tn).V[LEFT]), x, y)
+		addVertexToTristrip(&(*tn).V[LEFT], x, y)
 		edge.OutP[ABOVE] = *tn
 	} else {
 		// Head further down the list
-		newTristrip(&((*tn).Next), edge, x, y)
+		newTristrip(&(*tn).Next, edge, x, y)
 	}
 }
 

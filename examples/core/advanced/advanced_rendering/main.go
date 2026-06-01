@@ -39,7 +39,8 @@ func (d *demo) Render(ctx *agg.Context) {
 	agg2d.LineJoin(agg.JoinBevel)
 	agg2d.MiterLimit(4.0)
 
-	lines = append(lines,
+	lines = append(
+		lines,
 		fmt.Sprintf("  Line width: %g, Cap: Round, Join: Bevel", agg2d.GetLineWidth()),
 		fmt.Sprintf("  Miter limit: %g", agg2d.GetMiterLimit()),
 		"",

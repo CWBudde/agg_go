@@ -207,7 +207,9 @@ func (a *outlineAAAdapter) Color(c colorType)      { a.ren.Color(c) }
 
 func (a *outlineAAAdapter) Line0(lp primitives.LineParameters)             { a.ren.Line0(&lp) }         //nolint:gocritic
 func (a *outlineAAAdapter) Line1(lp primitives.LineParameters, sx, sy int) { a.ren.Line1(&lp, sx, sy) } //nolint:gocritic
+
 func (a *outlineAAAdapter) Line2(lp primitives.LineParameters, ex, ey int) { a.ren.Line2(&lp, ex, ey) } //nolint:gocritic
+
 func (a *outlineAAAdapter) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) { //nolint:gocritic
 	a.ren.Line3(&lp, sx, sy, ex, ey)
 }
@@ -330,7 +332,8 @@ func (a *ctrlPathAdapter) Vertex(x, y *float64) uint32 { return a.vertexFn(x, y)
 // --- checkbox rendering adapter ---
 
 func renderCheckbox(ras rasAAType, sl slType, renBase renBaseT, cb *checkbox.CheckboxCtrl[color.RGBA]) {
-	renderControl(ras, sl, renBase, cb.NumPaths(), cb.Rewind,
+	renderControl(
+		ras, sl, renBase, cb.NumPaths(), cb.Rewind,
 		func(x, y *float64) uint32 {
 			vx, vy, cmd := cb.Vertex()
 			*x = vx
@@ -342,7 +345,8 @@ func renderCheckbox(ras rasAAType, sl slType, renBase renBaseT, cb *checkbox.Che
 }
 
 func renderSlider(ras rasAAType, sl slType, renBase renBaseT, s *sliderctrl.SliderCtrl) {
-	renderControl(ras, sl, renBase, s.NumPaths(), s.Rewind,
+	renderControl(
+		ras, sl, renBase, s.NumPaths(), s.Rewind,
 		func(x, y *float64) uint32 {
 			vx, vy, cmd := s.Vertex()
 			*x = vx

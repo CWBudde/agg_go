@@ -185,6 +185,7 @@ must be built. The earlier draft of this phase assumed an "`rgba32`/`rgba128`-cl
 pixel-format stack" was available to wire in; for RGBA it is **not**. Reality:
 
 **Already present (float-capable):**
+
 - `internal/color/rgba32.go` — `color.RGBA32[CS]` with `float32` channels and a
   full method set (`Premultiply`, `Demultiply`, `Gradient`, `Scale`, `Add`,
   `Opacity`, …). This is the Go equivalent of C++ `agg::rgba32` (the float color
@@ -203,6 +204,7 @@ pixel-format stack" was available to wire in; for RGBA it is **not**. Reality:
   `*buffer.RenderingBufferF32`). The float RGBA stack should be its structural twin.
 
 **Missing (must be built):**
+
 - A float **RGBA blender** (`[]float32`, order-aware). Only `rgba8`, `rgba16`,
   float-`rgb32`, and float-`gray32` blenders exist today.
 - A float **RGBA pixfmt** (128-bit). Only `pixfmt_rgba8` (32-bit) and
@@ -211,10 +213,11 @@ pixel-format stack" was available to wire in; for RGBA it is **not**. Reality:
 - The `Agg2DFloat` twin (internal + public) and float `Image`/`Context` wiring.
 
 **Naming decision (to avoid a real collision):** the existing 8-bit pixfmt is
-*already* aliased `PixFmtRGBA32*` ("RGBA32" = 32-bit **pixel**, 8 bits/channel),
+_already_ aliased `PixFmtRGBA32*` ("RGBA32" = 32-bit **pixel**, 8 bits/channel),
 and a code comment equates C++ `blender_rgba32` with the 8-bit blender. To avoid
 ambiguity the float stack is named by **total pixel width = 4 × float32 = 128
 bits**, matching AGG's own `pixfmt_rgba128`:
+
 - Blender: `RGBA128Blender[S]` interface + `BlenderRGBA128[S,O]` / `…Pre` / `…Plain`.
 - Pixfmt: `PixFmtAlphaBlendRGBA128[…]` + aliases `PixFmtRGBA128`, `PixFmtRGBA128Pre`, `PixFmtRGBA128Plain`.
 - The color these pair with is `color.RGBA32` (float). Document this pairing in
@@ -252,8 +255,7 @@ C++ references live under `../agg-2.6/agg-src/`.
       in the test) — pixel/hline/vline/bar/solid-span/color-span/clear — driven by
       the L1 blender (order + premul semantics) with 8-bit `cover` normalised to
       [0,1]. Length-based vline/bar semantics match `pixfmt_rgba8`/`RendererBase`
-      (not gray32's end-coord variant). Concrete aliases `PixFmtRGBA128{,Pre,Plain}`
-      + sRGB variants and constructors. 7 TDD tests green; gofmt/lint clean; whole
+      (not gray32's end-coord variant). Concrete aliases `PixFmtRGBA128{,Pre,Plain}` + sRGB variants and constructors. 7 TDD tests green; gofmt/lint clean; whole
       pixfmt package passes. Composite (`Comp`/`CompPre`) variants deferred to L5.
       C++ ref: `pixfmt_rgba` family parameterised on `rgba128`.
 - [x] **L3 — Float image + buffer wiring** `internal/agg2d/buffer_float.go` and a
@@ -263,7 +265,7 @@ C++ references live under `../agg-2.6/agg-src/`.
       DONE 2026-05-31 (TDD, 8 tests): added `ImageFloat` over `RenderingBufferF32`
       storing **straight** RGBA float32 (4/pixel, [0,1]), the float twin of
       `Image`. Constructors `NewImageFloat`/`NewImageFloatEmpty`; `Width/Height/
-      Stride/IsAttached/Attach`; straight `GetPixel`/`SetPixel` over `color.RGBA32`;
+    Stride/IsAttached/Attach`; straight `GetPixel`/`SetPixel` over `color.RGBA32`;
       in-place `Premultiply`/`Demultiply`. Boundary conversions honoring each
       format's alpha convention: `ToNRGBA64`/`NewImageFloatFromNRGBA64` (straight
       ↔ straight 16-bit), `ToRGBA`/`NewImageFloatFromRGBA` (straight ↔ Go's
@@ -303,28 +305,28 @@ C++ references live under `../agg-2.6/agg-src/`.
       DONE 2026-05-31 (TDD, 5 + 2 end-to-end pixel-asserting tests). Five new files,
       all rendering into a real float buffer and verified at pixel level:
       • `rendering_float.go` — float render core: `renderFill`/`renderStroke`/
-        `renderFillWithLineColor`, `addStrokeToRasterizer`, `renderSolidFillWithColor`
-        (+ master-alpha), `renderSolidStroke`, `renderGradientFill`/`Stroke`,
-        `renderLinearGradientFill`/`renderRadialGradientFill`, `scanlineRender`,
-        `updateApproximationScales`/`updateRasterizerGamma`, `WorldToScreenScalar`,
-        `LineWidth/Cap/Join`, `Set/GetMasterAlpha`, `SetAntiAliasGamma`,
-        `TextAlignment`/`FlipText` (text state plumbing). The render helpers
-        (`RenderScanlinesAA`, `NewRendererScanlineAASolidWithColor`) are color-generic
-        and instantiate over `RGBA32`; only the LUT refresh (`copy` of `[256]RGBA32`)
-        and `colorToRGBA32`+master-alpha differ from 8-bit.
+      `renderFillWithLineColor`, `addStrokeToRasterizer`, `renderSolidFillWithColor`
+      (+ master-alpha), `renderSolidStroke`, `renderGradientFill`/`Stroke`,
+      `renderLinearGradientFill`/`renderRadialGradientFill`, `scanlineRender`,
+      `updateApproximationScales`/`updateRasterizerGamma`, `WorldToScreenScalar`,
+      `LineWidth/Cap/Join`, `Set/GetMasterAlpha`, `SetAntiAliasGamma`,
+      `TextAlignment`/`FlipText` (text state plumbing). The render helpers
+      (`RenderScanlinesAA`, `NewRendererScanlineAASolidWithColor`) are color-generic
+      and instantiate over `RGBA32`; only the LUT refresh (`copy` of `[256]RGBA32`)
+      and `colorToRGBA32`+master-alpha differ from 8-bit.
       • `paths_float.go` — `ResetPath`/`MoveTo`/`LineTo`/(rel)/`HorLineTo`/`VerLineTo`/
-        `ArcTo`/`QuadricCurveTo`/`CubicCurveTo`/`AddEllipse`/`ClosePolygon`/`DrawPath`/
-        `DrawPathNoTransform` (bodies identical to paths.go — shared color-agnostic state).
+      `ArcTo`/`QuadricCurveTo`/`CubicCurveTo`/`AddEllipse`/`ClosePolygon`/`DrawPath`/
+      `DrawPathNoTransform` (bodies identical to paths.go — shared color-agnostic state).
       • `shapes_float.go` — `Line`/`Triangle`/`Rectangle`/`Ellipse`/`DrawCircle`/`FillCircle`.
       • `gradient_float.go` — float gradient builders (`buildProfileGradient32`/
-        `buildThreeColorGradient32`, interpolating in RGBA32 space) + `FillLinearGradient`/
-        `LineLinearGradient`/`FillRadialGradient`/`LineRadialGradient`/`FillRadialGradientMultiStop`.
+      `buildThreeColorGradient32`, interpolating in RGBA32 space) + `FillLinearGradient`/
+      `LineLinearGradient`/`FillRadialGradient`/`LineRadialGradient`/`FillRadialGradientMultiStop`.
       • `image_float.go` — `CopyImageFloat`/`BlendImageFloat` via the base renderer's
-        CopyFrom/BlendFrom with a float source pixfmt over the `ImageFloat` buffer.
+      CopyFrom/BlendFrom with a float source pixfmt over the `ImageFloat` buffer.
       Carried forward (documented in files): composite (Comp/CompPre) blend modes;
       full affine/perspective image transforms (`TransformImage*`); the remaining
       shape helpers (Star, RoundedRect variants, Arc, smooth curve variants); and
-      actual glyph rasterization (only text *state* is plumbed). Verified: 15/15
+      actual glyph rasterization (only text _state_ is plumbed). Verified: 15/15
       agg2d float tests, full agg2d package green, gofmt/vet clean, golangci-lint
       clean on all float files, `go build ./...` OK.
 - [x] **L6 — Public surface** `agg2d_float.go` (root) + `context_float.go` +
@@ -333,18 +335,18 @@ C++ references live under `../agg-2.6/agg-src/`.
       DONE 2026-05-31 (TDD, 4 public end-to-end tests). Exported the internal
       constructor (`newAgg2DFloat`→`NewAgg2DFloat`). Root `agg2d_float.go`:
       • public `ImageFloat` (thin wrapper over `agg2d.ImageFloat`) — `NewImageFloat`,
-        `Width`/`Height`, `Get/SetPixelFloat` (float tuples, no internal-color leak in
-        signatures), `Premultiply`/`Demultiply`, and boundary `ToRGBA`/`ToNRGBA64`
-        returning standard Go image types.
+      `Width`/`Height`, `Get/SetPixelFloat` (float tuples, no internal-color leak in
+      signatures), `Premultiply`/`Demultiply`, and boundary `ToRGBA`/`ToNRGBA64`
+      returning standard Go image types.
       • public `Agg2DFloat` (wraps `*agg2d.Agg2DFloat`) with `NewAgg2DFloat`, `Attach`
-        (`[]float32`), `AttachImage`, `GetImpl`, and the full mirror of the supported
-        8-bit methods: ClearAll/ClipBox/GetBounds, FillColor/LineColor, LineWidth/
-        Cap/Join, master-alpha + AA gamma, path (ResetPath/MoveTo/LineTo/rel/Hor/Ver/
-        ArcTo/Quadric/Cubic/AddEllipse/ClosePolygon/DrawPath/NoTransform), shapes
-        (Line/Triangle/Rectangle/Ellipse/Draw+FillCircle), gradients (Fill/Line ×
-        Linear/Radial + MultiStop), image transfer (CopyImage/BlendImage), transforms
-        (WorldToScreen/ScreenToWorld/WorldToScreenScalar), and text state (TextAlignment/
-        FlipText). Public `Color` stays 8-bit; `toInternalColor` bridges to `agg2d.Color`.
+      (`[]float32`), `AttachImage`, `GetImpl`, and the full mirror of the supported
+      8-bit methods: ClearAll/ClipBox/GetBounds, FillColor/LineColor, LineWidth/
+      Cap/Join, master-alpha + AA gamma, path (ResetPath/MoveTo/LineTo/rel/Hor/Ver/
+      ArcTo/Quadric/Cubic/AddEllipse/ClosePolygon/DrawPath/NoTransform), shapes
+      (Line/Triangle/Rectangle/Ellipse/Draw+FillCircle), gradients (Fill/Line ×
+      Linear/Radial + MultiStop), image transfer (CopyImage/BlendImage), transforms
+      (WorldToScreen/ScreenToWorld/WorldToScreenScalar), and text state (TextAlignment/
+      FlipText). Public `Color` stays 8-bit; `toInternalColor` bridges to `agg2d.Color`.
       `context_float.go`: high-level `ContextFloat` (`NewContextFloat`/`ForImage`,
       Clear/SetColor/SetLineWidth, DrawLine/Draw+FillRectangle/Draw+FillCircle,
       GetImage/GetAgg2D), mirroring the 8-bit `Context`. No build tags — float path
@@ -400,8 +402,9 @@ constructing `Agg2DFloat`/`ContextFloat`/`ImageFloat`.
       `color.RGBA32` and `ImageFloat` premul/demul to `agg_color_rgba.h`
       `rgba32T::premultiply()`/`demultiply()` (~L1243), including the `a < 1`
       opaque-no-op guard and `a <= 0` zeroing. The **transformed-image** half of
-      this item stays deferred: `TransformImage*` is not yet in the float path
-      (see §4.7 and `docs/AGG_DELTAS.md` "Float Agg2D Variant").
+      this item is now covered too: `TransformImage*` is in the float path as of
+      2026-06-01 (see §4.7 and `docs/AGG_DELTAS.md` "Float image transforms"),
+      with parity tests over affine/parallelogram/perspective transforms.
 - [x] Add at least one visual regression/demo hook that can run a demo via the
       float Agg2D path without disturbing the existing 8-bit baseline.
       DONE 2026-05-31 — `tests/visual/float_path_test.go` renders one opaque
@@ -419,6 +422,7 @@ constructing `Agg2DFloat`/`ContextFloat`/`ImageFloat`.
 ### 4.6 Post-completion hardening (2026-05-31)
 
 Follow-up after the L1–L6 review:
+
 - [x] **Parity bug fixed**: float `Attach` now calls `updateRasterizerGamma()`
       (matching 8-bit `buffer.go`). Without it, a master alpha set before a
       re-`Attach` leaked into later rendering as a stale coverage scale (caught by
@@ -439,19 +443,29 @@ new work, deferred with rationale and recorded in `docs/AGG_DELTAS.md`
 ("Float Agg2D Variant" → capability gaps). None block the float twin from being
 usable.
 
-- [ ] Full affine/perspective **image transform** (`TransformImage*`). Only
-      rectangle-aligned `CopyImage`/`BlendImage` exist. The span generators and
-      interpolators are color-generic and reusable; only float image
-      pixel-format adapters need wiring. *Highest priority.*
+- [x] Full affine/perspective **image transform** (`TransformImage*`).
+      DONE 2026-06-01 — float twins of the NN/bilinear/2×2/general/affine-resample
+      RGBA filters in `internal/span/span_image_filter_rgba32.go` (reusing the
+      color-agnostic filter/resample bases), a clone-clamped float image source
+      `internal/agg2d/adapters_float.go`, and the full
+      `renderImage`/`newImageFilterGenerator`/`renderImagePerspective` mirror plus
+      `TransformImage*`/`…Parallelogram*`/`…Path*`/`…Quad*` surface in
+      `internal/agg2d/image_transform_float.go` (public wrappers in
+      `agg2d_float.go`). One documented deviation: the float bilinear omits AGG's
+      integer rounding bias (which would shift float channels by +0.5); see
+      `docs/AGG_DELTAS.md` "Float image transforms". Parity vs the 8-bit path
+      verified in `internal/agg2d/image_transform_float_test.go` (affine tol 3,
+      parallelogram/quad tol 4) + a visual hook
+      `tests/visual/float_image_transform_test.go`.
 - [ ] **Composite blend modes**: build `PixFmtCompositeRGBA128` and wire
       `BlendMode`/`imageBlendMode`. Today only src-over is effective in the float
       path (state is stored but inert).
 - [ ] **Text glyph rendering**: mirror `Text()` glyph rasterization. Only text
-      *state* (alignment/flip/hints/height) is plumbed.
+      _state_ (alignment/flip/hints/height) is plumbed.
 - [ ] Remaining **~100 public-method delegations**: Viewport/Parallelogram,
       Arc/RoundedRect/Polygon/Star, curve variants, dashes, positioned/multi-stop
       gradient variants, `Get*` accessors, `GouraudTriangle`, transform stack.
-      *Mostly mechanical; path/transform building is color-agnostic and reusable.*
+      _Mostly mechanical; path/transform building is color-agnostic and reusable._
 
 ---
 

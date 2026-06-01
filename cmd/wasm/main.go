@@ -5,10 +5,10 @@ package main
 
 import (
 	"fmt"
-	"syscall/js"
 
 	agg "github.com/cwbudde/agg_go"
 	liondemo "github.com/cwbudde/agg_go/internal/demo/lion"
+	"syscall/js"
 )
 
 var (

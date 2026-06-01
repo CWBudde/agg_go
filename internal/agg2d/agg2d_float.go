@@ -222,13 +222,17 @@ func NewAgg2DFloat() *Agg2DFloat {
 	a.lineRadialSpanInterpolator = span.NewSpanInterpolatorLinearDefault(a.lineGradientMatrix)
 
 	a.fillLinearSpanGenerator = span.NewLinearGradientFromLUT32(
-		a.fillLinearSpanInterpolator, a.fillGradientLUT, a.fillGradientD1, a.fillGradientD2)
+		a.fillLinearSpanInterpolator, a.fillGradientLUT, a.fillGradientD1, a.fillGradientD2,
+	)
 	a.lineLinearSpanGenerator = span.NewLinearGradientFromLUT32(
-		a.lineLinearSpanInterpolator, a.lineGradientLUT, a.lineGradientD1, a.lineGradientD2)
+		a.lineLinearSpanInterpolator, a.lineGradientLUT, a.lineGradientD1, a.lineGradientD2,
+	)
 	a.fillRadialSpanGenerator = span.NewRadialGradientFromLUT32(
-		a.fillRadialSpanInterpolator, a.fillGradientLUT, a.fillGradientD1, a.fillGradientD2)
+		a.fillRadialSpanInterpolator, a.fillGradientLUT, a.fillGradientD1, a.fillGradientD2,
+	)
 	a.lineRadialSpanGenerator = span.NewRadialGradientFromLUT32(
-		a.lineRadialSpanInterpolator, a.lineGradientLUT, a.lineGradientD1, a.lineGradientD2)
+		a.lineRadialSpanInterpolator, a.lineGradientLUT, a.lineGradientD1, a.lineGradientD2,
+	)
 
 	a.fillGradientLUTDirty = true
 	a.lineGradientLUTDirty = true

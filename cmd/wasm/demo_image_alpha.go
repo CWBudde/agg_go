@@ -25,8 +25,10 @@ import (
 	"github.com/cwbudde/agg_go/internal/transform"
 )
 
-const imageAlphaBackgroundEllipseSteps = 50
-const imageAlphaClipEllipseSteps = 200
+const (
+	imageAlphaBackgroundEllipseSteps = 50
+	imageAlphaClipEllipseSteps       = 200
+)
 
 // --- Demo state ---
 

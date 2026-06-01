@@ -92,11 +92,13 @@ func (s *SDL2Backend) handleWindowEvent(event *sdl.WindowEvent) {
 			s.texture, err = s.renderer.CreateTexture(
 				s.pixelFormat,
 				sdl.TEXTUREACCESS_STREAMING,
-				int32(newWidth), int32(newHeight))
+				int32(newWidth), int32(newHeight),
+			)
 			if err == nil {
 				s.surface, err = sdl.CreateRGBSurface(
 					0, int32(newWidth), int32(newHeight), int32(s.bpp),
-					s.rmask, s.gmask, s.bmask, s.amask)
+					s.rmask, s.gmask, s.bmask, s.amask,
+				)
 			}
 
 			if s.eventCallback != nil && err == nil {

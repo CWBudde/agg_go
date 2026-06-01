@@ -370,7 +370,8 @@ func NewLinearAlphaGradientRGBA8[InterpolatorT SpanInterpolatorInterface, CS col
 	alphaFunc := NewGradientAlphaLinear(startAlpha, endAlpha, size)
 
 	return NewSpanGradientAlpha[RGBA8AlphaWrapper[CS], InterpolatorT, GradientLinearX, *GradientAlphaLinear](
-		interpolator, gradientFunc, alphaFunc, d1, d2)
+		interpolator, gradientFunc, alphaFunc, d1, d2,
+	)
 }
 
 // NewRadialAlphaGradientRGBA8 creates a radial alpha gradient for RGBA8 colors.
@@ -388,5 +389,6 @@ func NewRadialAlphaGradientRGBA8[InterpolatorT SpanInterpolatorInterface, CS col
 	alphaFunc := NewGradientAlphaLinear(startAlpha, endAlpha, size)
 
 	return NewSpanGradientAlpha[RGBA8AlphaWrapper[CS], InterpolatorT, GradientRadial, *GradientAlphaLinear](
-		interpolator, gradientFunc, alphaFunc, d1, d2)
+		interpolator, gradientFunc, alphaFunc, d1, d2,
+	)
 }
