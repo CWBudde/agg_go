@@ -457,9 +457,20 @@ usable.
       verified in `internal/agg2d/image_transform_float_test.go` (affine tol 3,
       parallelogram/quad tol 4) + a visual hook
       `tests/visual/float_image_transform_test.go`.
-- [ ] **Composite blend modes**: build `PixFmtCompositeRGBA128` and wire
-      `BlendMode`/`imageBlendMode`. Today only src-over is effective in the float
-      path (state is stored but inert).
+- [x] **Composite blend modes**. DONE 2026-06-01 — float composite blenders
+      `CompositeBlenderRGBA128`/`...Pre` in
+      `internal/pixfmt/blender/rgba128_composite.go` (reusing the 8-bit
+      `CompositeBlender.blendOperation` so the per-operator algebra is shared
+      verbatim), the float composite pixfmt `PixFmtCompositeRGBA128` in
+      `internal/pixfmt/pixfmt_composite_rgba128.go`, and the `renBaseComp`/
+      `renBaseCompPre` wiring in `Agg2DFloat` with `SetBlendMode`/
+      `updateBlendMode` (`internal/agg2d/blend_modes_float.go`) plus
+      `currentRenderer`/`currentImageRenderer` switching on `blendMode`. Public
+      `SetBlendMode`/`GetBlendMode`/image-blend accessors in `agg2d_float.go`.
+      Parity vs the 8-bit path for ten operators (Multiply/Screen/Darken/
+      Lighten/Difference/Exclusion/Overlay/HardLight/Plus/SrcOver) verified in
+      `internal/agg2d/composite_float_test.go` (tol 2) plus a public-API test in
+      `agg2d_float_test.go`; see `docs/AGG_DELTAS.md` "Composite blend modes".
 - [ ] **Text glyph rendering**: mirror `Text()` glyph rasterization. Only text
       _state_ (alignment/flip/hints/height) is plumbed.
 - [ ] Remaining **~100 public-method delegations**: Viewport/Parallelogram,

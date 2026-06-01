@@ -11,6 +11,7 @@ import (
 	aggimage "github.com/cwbudde/agg_go/internal/image"
 	"github.com/cwbudde/agg_go/internal/path"
 	"github.com/cwbudde/agg_go/internal/pixfmt"
+	"github.com/cwbudde/agg_go/internal/pixfmt/blender"
 	"github.com/cwbudde/agg_go/internal/rasterizer"
 	"github.com/cwbudde/agg_go/internal/scanline"
 	"github.com/cwbudde/agg_go/internal/span"
@@ -28,8 +29,10 @@ import (
 // Color-agnostic helpers (transform, path, converters, rasterizer, scanline,
 // image filter LUT) are reused as-is.
 //
-// Composite (Comp/CompPre) pixfmt variants are deferred to L5, matching the
-// pixfmt-layer deferral noted for PixFmtCompositeRGBA128.
+// Composite blend modes use the float composite pixfmts (PixFmtCompositeRGBA128
+// / ...Pre) wrapped in dedicated base renderers, mirroring the 8-bit Comp /
+// CompPre pipeline; currentRenderer / currentImageRenderer switch to them
+// whenever blendMode != BlendAlpha.
 type Agg2DFloat struct {
 	// Rendering buffer (float)
 	rbuf *buffer.RenderingBufferF32
@@ -51,6 +54,14 @@ type Agg2DFloat struct {
 	pixfmtPre  *pixfmt.PixFmtRGBA128Pre
 	renBase    *baseRendererAdapter[color.RGBA32[color.Linear]]
 	renBasePre *baseRendererAdapter[color.RGBA32[color.Linear]]
+
+	// Composite (Porter-Duff / SVG blend mode) rendering components (float).
+	// renBaseComp drives solid/gradient fills and strokes; renBaseCompPre drives
+	// premultiplied image transfers, mirroring the 8-bit Comp / CompPre split.
+	pixfmtComp     *pixfmt.PixFmtCompositeRGBA128Linear
+	pixfmtCompPre  *pixfmt.PixFmtCompositeRGBA128PreLinear
+	renBaseComp    *baseRendererAdapter[color.RGBA32[color.Linear]]
+	renBaseCompPre *baseRendererAdapter[color.RGBA32[color.Linear]]
 
 	// Master alpha and anti-aliasing gamma
 	masterAlpha    float64
@@ -307,6 +318,12 @@ func (a *Agg2DFloat) initializeRendering() {
 	a.renBase = newBaseRendererAdapter[color.RGBA32[color.Linear]](a.pixfmt)
 	a.renBasePre = newBaseRendererAdapter[color.RGBA32[color.Linear]](a.pixfmtPre)
 
+	// Composite pixfmts default to source-over; SetBlendMode swaps the operator.
+	a.pixfmtComp = pixfmt.NewPixFmtCompositeRGBA128Linear(a.rbuf, blender.CompOpSrcOver)
+	a.pixfmtCompPre = pixfmt.NewPixFmtCompositeRGBA128PreLinear(a.rbuf, blender.CompOpSrcOver)
+	a.renBaseComp = newBaseRendererAdapter[color.RGBA32[color.Linear]](a.pixfmtComp)
+	a.renBaseCompPre = newBaseRendererAdapter[color.RGBA32[color.Linear]](a.pixfmtCompPre)
+
 	a.ClipBox(a.clipBox.X1, a.clipBox.Y1, a.clipBox.X2, a.clipBox.Y2)
 
 	if a.rasterizer != nil {
@@ -325,6 +342,12 @@ func (a *Agg2DFloat) ClipBox(x1, y1, x2, y2 float64) {
 	}
 	if a.renBasePre != nil {
 		a.renBasePre.ClipBox(rx1, ry1, rx2, ry2)
+	}
+	if a.renBaseComp != nil {
+		a.renBaseComp.ClipBox(rx1, ry1, rx2, ry2)
+	}
+	if a.renBaseCompPre != nil {
+		a.renBaseCompPre.ClipBox(rx1, ry1, rx2, ry2)
 	}
 	if a.rasterizer != nil {
 		a.rasterizer.ClipBox(x1, y1, x2, y2)

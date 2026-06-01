@@ -165,3 +165,42 @@ func TestPublicContextFloat(t *testing.T) {
 		t.Fatalf("ctx dims = %dx%d, want 20x20", ctx.Width(), ctx.Height())
 	}
 }
+
+func TestPublicAgg2DFloatBlendMode(t *testing.T) {
+	img := NewImageFloat(24, 24)
+	a := NewAgg2DFloat()
+	a.AttachImage(img)
+
+	if a.GetBlendMode() != BlendAlpha {
+		t.Fatalf("default blend mode = %v, want BlendAlpha", a.GetBlendMode())
+	}
+
+	// Opaque background; Multiply an opaque fill over it. Premultiplied == straight
+	// for opaque content, so the result is the component-wise product.
+	a.ClearAll(NewColor(255, 128, 64, 255)) // ~(1.0, 0.502, 0.251)
+	a.SetBlendMode(BlendMultiply)
+	if a.GetBlendMode() != BlendMultiply {
+		t.Fatalf("blend mode = %v after set, want BlendMultiply", a.GetBlendMode())
+	}
+	a.FillColor(NewColor(128, 128, 128, 255)) // ~0.502
+	a.ResetPath()
+	a.MoveTo(4, 4)
+	a.LineTo(20, 4)
+	a.LineTo(20, 20)
+	a.LineTo(4, 20)
+	a.ClosePolygon()
+	a.DrawPath(FillOnly)
+
+	r, g, b, al := img.GetPixelFloat(12, 12)
+	near := func(v, want float32) bool {
+		d := v - want
+		if d < 0 {
+			d = -d
+		}
+		return d <= 0.01
+	}
+	// r = 1.0*0.502, g = 0.502*0.502, b = 0.251*0.502
+	if !near(r, 0.502) || !near(g, 0.252) || !near(b, 0.126) || !near(al, 1.0) {
+		t.Fatalf("multiply center = {%v,%v,%v,%v}, want ~{0.502,0.252,0.126,1}", r, g, b, al)
+	}
+}

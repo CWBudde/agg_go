@@ -131,6 +131,32 @@ func (a *Agg2DFloat) TextAlignment(alignX, alignY TextAlignment) {
 // FlipText sets the text flip state.
 func (a *Agg2DFloat) FlipText(flip bool) { a.impl.FlipText(flip) }
 
+// --- Blend modes ---
+
+// SetBlendMode sets the general blend/composite mode for fills, strokes, and
+// gradients. BlendAlpha (the default) uses the plain alpha pipeline; any other
+// mode routes rendering through the float composite pixfmt.
+func (a *Agg2DFloat) SetBlendMode(mode BlendMode) { a.impl.SetBlendMode(mode) }
+
+// GetBlendMode returns the current general blend/composite mode.
+func (a *Agg2DFloat) GetBlendMode() BlendMode { return a.impl.GetBlendMode() }
+
+// SetImageBlendMode sets the blend mode used by image transfer operations.
+func (a *Agg2DFloat) SetImageBlendMode(mode BlendMode) { a.impl.SetImageBlendMode(mode) }
+
+// GetImageBlendMode returns the current image blend mode.
+func (a *Agg2DFloat) GetImageBlendMode() BlendMode { return a.impl.GetImageBlendMode() }
+
+// SetImageBlendColor sets the image blend color whose alpha scales sampled image
+// spans before compositing.
+func (a *Agg2DFloat) SetImageBlendColor(c Color) { a.impl.SetImageBlendColor(toInternalColor(c)) }
+
+// GetImageBlendColor returns the current image blend color.
+func (a *Agg2DFloat) GetImageBlendColor() Color {
+	c := a.impl.GetImageBlendColor()
+	return Color{R: c[0], G: c[1], B: c[2], A: c[3]}
+}
+
 // --- Path building ---
 
 // ResetPath clears the current path.

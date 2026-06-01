@@ -16,6 +16,7 @@ type parityTarget interface {
 	DrawPath(DrawPathFlag)
 	Rectangle(x1, y1, x2, y2 float64)
 	FillLinearGradient(x1, y1, x2, y2 float64, c1, c2 Color, profile float64)
+	SetBlendMode(BlendMode)
 }
 
 var (

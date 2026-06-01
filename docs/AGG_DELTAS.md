@@ -232,20 +232,41 @@ premultiplied base renderer, so source images should be premultiplied first
 > actually matches the 8-bit output within tolerance. The LUT-based generators
 > (2×2/general/resample) clamp against `full_value()` = 1.0, mirroring AGG.
 
+### Composite blend modes (`BlendMode` / `imageBlendMode`)
+
+**C++**: under `AGG2D_USE_FLOAT_FORMAT`, `Agg2D::blendMode` /
+`Agg2D::imageBlendMode` retarget the rendering buffer through
+`pixfmt_custom_blend_rgba<comp_op_adaptor_rgba{,_pre}<rgba32, order_rgba>>`,
+selecting a Porter-Duff / SVG composite operator from `comp_op_e`.
+**Go**: mirrored completely. `internal/pixfmt/blender/rgba128_composite.go`
+holds `CompositeBlenderRGBA128` (straight source → premultiplied dest) and
+`CompositeBlenderRGBA128Pre` (premultiplied source), which **reuse the 8-bit
+`CompositeBlender.blendOperation`** so the per-operator algebra is identical
+across precisions (channels stay in [0,1], no `/255`; results clamp to [0,1]
+matching the 8-bit `to8` saturation). `internal/pixfmt/pixfmt_composite_rgba128.go`
+wraps them in `PixFmtCompositeRGBA128`, the float twin of `PixFmtCompositeRGBA`.
+`Agg2DFloat` owns `renBaseComp` / `renBaseCompPre`; `SetBlendMode` swaps the
+operator and `currentRenderer` / `currentImageRenderer` route through the
+composite renderers whenever `blendMode != BlendAlpha` (fills/strokes/gradients
+via `renBaseComp`, transformed images via `renBaseCompPre`), exactly like the
+8-bit `Agg2D`. As in the 8-bit path the composite pixfmt treats the buffer as
+premultiplied, so for partially-transparent destinations the result follows
+AGG's premultiplied-buffer convention (opaque content is unaffected). Parity for
+ten representative operators is covered by `internal/agg2d/composite_float_test.go`.
+
 ### Capability gaps vs the 8-bit variant (deferred)
 
 The float twin is usable today for clear/fill/stroke, path rendering, image
-copy/blend, **affine/perspective image transforms**, gradients (linear/radial),
-world transforms, and fill rules, and is covered by a cross-precision parity
-test (`internal/agg2d/parity_float_test.go`), image-transform parity tests
-(`internal/agg2d/image_transform_float_test.go`), and visual hooks
-(`tests/visual/float_path_test.go`, `tests/visual/float_image_transform_test.go`).
+copy/blend, **affine/perspective image transforms**, **composite blend modes**,
+gradients (linear/radial), world transforms, and fill rules, and is covered by a
+cross-precision parity test (`internal/agg2d/parity_float_test.go`),
+image-transform parity tests (`internal/agg2d/image_transform_float_test.go`),
+composite blend-mode parity tests (`internal/agg2d/composite_float_test.go`), and
+visual hooks (`tests/visual/float_path_test.go`,
+`tests/visual/float_image_transform_test.go`).
 The following 8-bit features are **not yet ported** to the float path and are
 intentionally deferred (tracked in PLAN.md §4.7):
 
-- **Composite blend modes** — there is no `PixFmtCompositeRGBA128`; `BlendMode`/
-  `imageBlendMode` state exists but does not yet affect rendering. Src-over is
-  the only effective mode.
 - **Text glyph rendering** — only text _state_ (alignment, flip, hints, font
   height) is plumbed; `Text()` glyph rasterization is not yet mirrored.
 - **Remaining ~100 public-method delegations** — e.g. Viewport, Parallelogram,

@@ -4,9 +4,10 @@
 // swapping the RGBA8 span image filters for their RGBA32 counterparts and the
 // straight Image source for an ImageFloat source.
 //
-// Composite image blend modes remain deferred (only src-over is effective in the
-// float path, matching the PixFmtCompositeRGBA128 deferral); the image blend
-// color's alpha is still honored, identical to the 8-bit span generator.
+// Composite image blend modes are honored: when a blend mode other than
+// BlendAlpha is set, image transfers route through the premultiplied composite
+// base renderer (renBaseCompPre). The image blend color's alpha is still applied
+// after sampling, identical to the 8-bit span generator.
 package agg2d
 
 import (
@@ -53,8 +54,9 @@ func (sg *imageSpanGeneratorFloat) Generate(colors []color.RGBA32[color.Linear],
 
 	sg.sample.Generate(colors, x, y)
 
-	// AGG applies the image blend color's alpha after sampling. Composite ops are
-	// deferred for the float path, so only the alpha scaling is honored here.
+	// AGG applies the image blend color's alpha after sampling. The composite
+	// operator itself is applied downstream by the composite base renderer, so
+	// only the blend-color alpha scaling is honored here.
 	if sg.blendColor[3] != 255 {
 		alpha := float32(sg.blendColor[3]) / 255
 		for i := range colors {
@@ -67,8 +69,12 @@ func (sg *imageSpanGeneratorFloat) Generate(colors []color.RGBA32[color.Linear],
 }
 
 // currentImageRenderer returns the base renderer used for image transfers. As in
-// the 8-bit path, images blend through the premultiplied base renderer.
+// the 8-bit path, images blend through the premultiplied base renderer, using
+// the composite variant when a Porter-Duff / SVG blend mode is active.
 func (a *Agg2DFloat) currentImageRenderer() *baseRendererAdapter[color.RGBA32[color.Linear]] {
+	if a.blendMode != BlendAlpha && a.renBaseCompPre != nil {
+		return a.renBaseCompPre
+	}
 	return a.renBasePre
 }
 

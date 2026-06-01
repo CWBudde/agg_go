@@ -31,9 +31,13 @@ func (a *Agg2DFloat) refreshLineGradientLUTIfDirty() {
 	a.lineGradientLUTDirty = false
 }
 
-// currentRenderer returns the active base renderer (composite deferred to a
-// later pass, so always the plain alpha renderer for now).
+// currentRenderer returns the active base renderer: the composite renderer when
+// a Porter-Duff / SVG blend mode is selected, otherwise the plain alpha
+// renderer. Mirrors the 8-bit Agg2D.currentRenderer.
 func (a *Agg2DFloat) currentRenderer() *baseRendererAdapter[color.RGBA32[color.Linear]] {
+	if a.blendMode != BlendAlpha && a.renBaseComp != nil {
+		return a.renBaseComp
+	}
 	return a.renBase
 }
 
