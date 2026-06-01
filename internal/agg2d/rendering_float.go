@@ -364,4 +364,9 @@ func (a *Agg2DFloat) TextAlignment(alignX, alignY TextAlignment) {
 }
 
 // FlipText sets the text flip state.
-func (a *Agg2DFloat) FlipText(flip bool) { a.flipText = flip }
+func (a *Agg2DFloat) FlipText(flip bool) {
+	a.flipText = flip
+	if a.fontEngine != nil {
+		a.fontEngine.SetFlipY(flip)
+	}
+}

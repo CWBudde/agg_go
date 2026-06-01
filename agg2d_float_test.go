@@ -204,3 +204,37 @@ func TestPublicAgg2DFloatBlendMode(t *testing.T) {
 		t.Fatalf("multiply center = {%v,%v,%v,%v}, want ~{0.502,0.252,0.126,1}", r, g, b, al)
 	}
 }
+
+// TestPublicAgg2DFloatText draws GSV stroke text through the public float
+// surface and verifies ink lands in the expected region.
+func TestPublicAgg2DFloatText(t *testing.T) {
+	img := NewImageFloat(96, 32)
+	a := NewAgg2DFloat()
+	a.AttachImage(img)
+
+	a.ClearAll(NewColor(255, 255, 255, 255))
+	a.FontGSV(18)
+	if h := a.FontHeight(); h != 18 {
+		t.Fatalf("FontHeight = %v, want 18", h)
+	}
+	if w := a.TextWidth("Hi!"); w <= 0 {
+		t.Fatalf("TextWidth = %v, want > 0", w)
+	}
+	a.FillColor(NewColor(0, 0, 0, 255))
+	a.Text(4, 22, "Hi!", false, 0, 0)
+
+	ink := 0
+	for y := range 32 {
+		for x := range 96 {
+			if _, _, _, al := img.GetPixelFloat(x, y); al > 0 {
+				r, _, _, _ := img.GetPixelFloat(x, y)
+				if r < 1.0 { // darkened by the black stroke
+					ink++
+				}
+			}
+		}
+	}
+	if ink < 20 {
+		t.Fatalf("public float GSV text rendered too little ink: %d pixels", ink)
+	}
+}

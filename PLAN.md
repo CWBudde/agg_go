@@ -471,8 +471,21 @@ usable.
       Lighten/Difference/Exclusion/Overlay/HardLight/Plus/SrcOver) verified in
       `internal/agg2d/composite_float_test.go` (tol 2) plus a public-API test in
       `agg2d_float_test.go`; see `docs/AGG_DELTAS.md` "Composite blend modes".
-- [ ] **Text glyph rendering**: mirror `Text()` glyph rasterization. Only text
-      _state_ (alignment/flip/hints/height) is plumbed.
+- [x] **Text glyph rendering**. DONE 2026-06-01 — float twin of the 8-bit text
+      pipeline in `internal/agg2d/text_float.go` (`Font`/`FontGSV`/`Text`/
+      `TextWidth`/`MeasureText`/`GetTextBounds`/metrics + float `renderScanlines`/
+      `renderGlyphScanlines`/`renderShapedRasterMask`/`textGSV`). The font engine,
+      glyph cache, GSV font, and layout/metrics/bounds math are color-agnostic and
+      reused verbatim; the raster-bitmap blend helper `blendRasterGlyphBitmap` was
+      made generic over the color type (`text.go`). Solid glyph fills flow through
+      `color.RGBA32[color.Linear]` and the float base renderer, honoring the active
+      blend mode. Public wrappers (`Font`/`FontDefault`/`FontGSV`/`SetResolution`/
+      `TextHints`/`TextForceAutohint`/`GetTextHints`/`GetAscender`/`GetDescender`/
+      `MeasureText`/`GetTextHeight`/`Text`/`TextDefault`/`TextWidth`/`GetTextBounds`)
+      in root `agg2d_float.go`. Parity vs the 8-bit path (GSV stroke + FreeType
+      outline/raster caches, max channel diff ≤ 2) in
+      `internal/agg2d/text_float_test.go` plus a public-API test in
+      `agg2d_float_test.go`; see `docs/AGG_DELTAS.md` "Text glyph rendering".
 - [ ] Remaining **~100 public-method delegations**: Viewport/Parallelogram,
       Arc/RoundedRect/Polygon/Star, curve variants, dashes, positioned/multi-stop
       gradient variants, `Get*` accessors, `GouraudTriangle`, transform stack.

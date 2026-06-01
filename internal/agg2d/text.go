@@ -390,25 +390,6 @@ func (agg2d *Agg2D) GetTextBounds(str string) (x, y, width, height float64) {
 	return minX, minY, maxX - minX, maxY - minY
 }
 
-func preparedGlyphFromEngine(engine *freetype.FontEngineFreetype) *font.GlyphCache {
-	if engine == nil {
-		return nil
-	}
-	glyph := &font.GlyphCache{
-		GlyphIndex: engine.GlyphIndex(),
-		DataSize:   engine.DataSize(),
-		DataType:   engine.DataType(),
-		Bounds:     engine.Bounds(),
-		AdvanceX:   engine.AdvanceX(),
-		AdvanceY:   engine.AdvanceY(),
-	}
-	if glyph.DataSize > 0 {
-		glyph.Data = make([]byte, glyph.DataSize)
-		engine.WriteGlyphTo(glyph.Data)
-	}
-	return glyph
-}
-
 func (agg2d *Agg2D) renderShapedRasterMask(startX, startY float64, glyphs []font.PositionedGlyph) bool {
 	if agg2d.fontEngine == nil {
 		return false
@@ -461,9 +442,13 @@ func (agg2d *Agg2D) renderShapedRasterMask(startX, startY float64, glyphs []font
 	return rendered
 }
 
-func blendRasterGlyphBitmap(
-	renderer *baseRendererAdapter[color.RGBA8[color.Linear]],
-	fillColor color.RGBA8[color.Linear],
+// blendRasterGlyphBitmap is color-agnostic: it converts a FreeType glyph bitmap
+// (gray or mono) into coverage spans and blends them through the base renderer
+// with the supplied solid color. It is shared verbatim by the 8-bit and float
+// (RGBA32) text paths via the generic color parameter C.
+func blendRasterGlyphBitmap[C any](
+	renderer *baseRendererAdapter[C],
+	fillColor C,
 	dstX, dstY, width, height, pitch int,
 	pixelMode uint8,
 	data []byte,

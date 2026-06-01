@@ -131,6 +131,71 @@ func (a *Agg2DFloat) TextAlignment(alignX, alignY TextAlignment) {
 // FlipText sets the text flip state.
 func (a *Agg2DFloat) FlipText(flip bool) { a.impl.FlipText(flip) }
 
+// --- Text rendering ---
+
+// Font loads and activates a font file for subsequent text rendering, mirroring
+// the 8-bit Agg2D.Font. Requires cgo/FreeType; for WASM use FontGSV instead.
+func (a *Agg2DFloat) Font(fontName string, height float64, bold, italic bool, cacheType FontCacheType, angle float64) error {
+	return a.impl.Font(fontName, height, bold, italic, cacheType, angle)
+}
+
+// FontDefault loads a font using the upstream defaults: non-bold, non-italic,
+// raster cache, zero angle.
+func (a *Agg2DFloat) FontDefault(fontName string, height float64) error {
+	return a.Font(fontName, height, false, false, RasterFontCache, 0.0)
+}
+
+// FontHeight returns the configured font height in world units.
+func (a *Agg2DFloat) FontHeight() float64 { return a.impl.FontHeight() }
+
+// FontGSV configures the built-in AGG GSV stroke-vector font as the active text
+// backend. No external font file is required; it works in WASM builds.
+func (a *Agg2DFloat) FontGSV(height float64) { a.impl.FontGSV(height) }
+
+// SetResolution sets the font rendering resolution in DPI for FreeType text.
+func (a *Agg2DFloat) SetResolution(dpi uint) { a.impl.SetResolution(dpi) }
+
+// TextHints enables or disables font hinting.
+func (a *Agg2DFloat) TextHints(hints bool) { a.impl.TextHints(hints) }
+
+// TextForceAutohint enables or disables FreeType's auto-hinter for raster text.
+func (a *Agg2DFloat) TextForceAutohint(force bool) { a.impl.TextForceAutohint(force) }
+
+// GetTextHints reports whether text hinting is enabled.
+func (a *Agg2DFloat) GetTextHints() bool { return a.impl.GetTextHints() }
+
+// GetAscender returns the configured font ascender in world units.
+func (a *Agg2DFloat) GetAscender() float64 { return a.impl.GetAscender() }
+
+// GetDescender returns the configured font descender in world units.
+func (a *Agg2DFloat) GetDescender() float64 { return a.impl.GetDescender() }
+
+// MeasureText returns the width and height of str for the current font settings.
+func (a *Agg2DFloat) MeasureText(str string) (width, height float64) {
+	return a.impl.MeasureText(str)
+}
+
+// GetTextHeight returns the nominal height of the current font.
+func (a *Agg2DFloat) GetTextHeight() float64 { return a.impl.GetTextHeight() }
+
+// Text renders str at x, y with optional rounding and offset adjustments.
+func (a *Agg2DFloat) Text(x, y float64, str string, roundOff bool, dx, dy float64) {
+	a.impl.Text(x, y, str, roundOff, dx, dy)
+}
+
+// TextDefault renders text using the upstream defaults: no round-off, zero offsets.
+func (a *Agg2DFloat) TextDefault(x, y float64, str string) {
+	a.Text(x, y, str, false, 0.0, 0.0)
+}
+
+// TextWidth measures str using the active font backend and cache mode.
+func (a *Agg2DFloat) TextWidth(str string) float64 { return a.impl.TextWidth(str) }
+
+// GetTextBounds returns the actual ink bounds of str relative to the baseline origin.
+func (a *Agg2DFloat) GetTextBounds(str string) (x, y, width, height float64) {
+	return a.impl.GetTextBounds(str)
+}
+
 // --- Blend modes ---
 
 // SetBlendMode sets the general blend/composite mode for fills, strokes, and

@@ -129,6 +129,58 @@ func TestFloatPathVisualParity(t *testing.T) {
 	}
 }
 
+// TestFloatTextVisualParity renders GSV stroke text through the public float and
+// 8-bit paths and asserts whole-frame parity. The 8-bit render is the oracle, so
+// no reference PNG is needed. GSV is cgo-free, so this runs without FreeType.
+func TestFloatTextVisualParity(t *testing.T) {
+	const w, h = 160, 48
+
+	drawText := func(fillColor func(agg.Color), fontGSV func(float64),
+		text func(x, y float64, s string, roundOff bool, dx, dy float64),
+		clear func(agg.Color),
+	) {
+		clear(agg.Color{R: 255, G: 255, B: 255, A: 255})
+		fontGSV(22)
+		fillColor(agg.Color{R: 10, G: 30, B: 120, A: 255})
+		text(8, 32, "Float!", false, 0, 0)
+	}
+
+	cf := agg.NewContextFloat(w, h)
+	gf := cf.GetAgg2D()
+	drawText(gf.FillColor, gf.FontGSV, gf.Text, func(c agg.Color) { cf.Clear(c) })
+	imgF := cf.GetImage().ToRGBA()
+
+	c8 := agg.NewContext(w, h)
+	g8 := c8.GetAgg2D()
+	drawText(g8.FillColor, g8.FontGSV, g8.Text, func(c agg.Color) { c8.Clear(c) })
+	img8 := c8.GetImage().ToGoImage()
+
+	out := filepath.Join("output", "float_text.png")
+	if err := savePNG(out, imgF.Pix, w, h); err != nil {
+		t.Fatalf("failed to save float text render: %v", err)
+	}
+	t.Logf("float text render written to %s", out)
+
+	maxDiff, ink := 0, 0
+	for y := range h {
+		for x := range w {
+			if d := maxRGBADiff(imgF, img8, x, y); d > maxDiff {
+				maxDiff = d
+			}
+			c := img8.RGBAAt(x, y)
+			if c.R < 250 || c.G < 250 || c.B < 250 {
+				ink++
+			}
+		}
+	}
+	if ink < 50 {
+		t.Fatalf("GSV text drew too little ink in 8-bit oracle: %d pixels", ink)
+	}
+	if maxDiff > 2 {
+		t.Errorf("float vs 8-bit GSV text max channel diff = %d (tol 2)", maxDiff)
+	}
+}
+
 // maxRGBADiff returns the largest per-channel absolute difference between two
 // *image.RGBA at (x,y).
 func maxRGBADiff(a, b *image.RGBA, x, y int) int {

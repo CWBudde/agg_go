@@ -101,11 +101,11 @@ type Agg2DFloat struct {
 	fontDescent       float64
 	fontCacheType     FontCacheType
 
-	fontEngine       *freetype.FontEngineFreetype //nolint:unused // wired in L5 (text state plumbing)
-	fontCacheManager *font.FontCacheManager       //nolint:unused // wired in L5 (text state plumbing)
+	fontEngine       *freetype.FontEngineFreetype
+	fontCacheManager *font.FontCacheManager
 
-	gsvText     *gsv.GSVText //nolint:unused // wired in L5 (text state plumbing)
-	gsvFontMode bool         //nolint:unused // wired in L5 (text state plumbing)
+	gsvText     *gsv.GSVText
+	gsvFontMode bool
 
 	// Image filtering (color-agnostic)
 	imageFilter               ImageFilter

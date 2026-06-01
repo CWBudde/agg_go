@@ -254,21 +254,39 @@ premultiplied, so for partially-transparent destinations the result follows
 AGG's premultiplied-buffer convention (opaque content is unaffected). Parity for
 ten representative operators is covered by `internal/agg2d/composite_float_test.go`.
 
+### Text glyph rendering (`Font` / `FontGSV` / `Text`)
+
+**C++**: under `AGG2D_USE_FLOAT_FORMAT`, `Agg2D::text()` rasterizes glyphs into
+the same float rendering buffer used for fills; the glyph cache, font engine, and
+metrics are color-independent. **Go**: mirrored in `internal/agg2d/text_float.go`,
+the float twin of `text.go`. The FreeType font engine (`freetype.FontEngineFreetype`),
+glyph cache (`font.FontCacheManager`), GSV stroke font (`gsv.GSVText`), and all
+layout/metrics/bounds math are color-agnostic and reused verbatim. Only the solid
+fill color type and base renderer differ: glyph coverage spans and the GSV stroke
+fill flow through `color.RGBA32[color.Linear]` and the float `baseRendererAdapter`.
+The raster-bitmap blend helper `blendRasterGlyphBitmap` was made generic over the
+color type so both precisions share it. All three glyph backends are supported —
+vector outline (`GlyphDataOutline` → shared fill+stroke path), gray8 AA bitmaps
+(`GlyphDataGray8` → `BlendSolidHspan` coverage), mono bitmaps, and the cgo-free
+GSV stroke font. Text honors the active blend mode via `currentRenderer`. Parity
+vs the 8-bit path is covered by `internal/agg2d/text_float_test.go` (GSV stroke
+plus FreeType outline and raster caches, max channel diff ≤ 2).
+
 ### Capability gaps vs the 8-bit variant (deferred)
 
 The float twin is usable today for clear/fill/stroke, path rendering, image
 copy/blend, **affine/perspective image transforms**, **composite blend modes**,
-gradients (linear/radial), world transforms, and fill rules, and is covered by a
+**text glyph rendering** (FreeType outline/raster + GSV), gradients
+(linear/radial), world transforms, and fill rules, and is covered by a
 cross-precision parity test (`internal/agg2d/parity_float_test.go`),
 image-transform parity tests (`internal/agg2d/image_transform_float_test.go`),
-composite blend-mode parity tests (`internal/agg2d/composite_float_test.go`), and
+composite blend-mode parity tests (`internal/agg2d/composite_float_test.go`),
+text parity tests (`internal/agg2d/text_float_test.go`), and
 visual hooks (`tests/visual/float_path_test.go`,
 `tests/visual/float_image_transform_test.go`).
 The following 8-bit features are **not yet ported** to the float path and are
 intentionally deferred (tracked in PLAN.md §4.7):
 
-- **Text glyph rendering** — only text _state_ (alignment, flip, hints, font
-  height) is plumbed; `Text()` glyph rasterization is not yet mirrored.
 - **Remaining ~100 public-method delegations** — e.g. Viewport, Parallelogram,
   Arc, RoundedRect, Polygon, Star, dashes, positioned/multi-stop gradient
   variants, `Get*` accessors, `GouraudTriangle`, and the transform stack.
