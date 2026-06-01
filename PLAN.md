@@ -223,11 +223,14 @@ bits**, matching AGG's own `pixfmt_rgba128`:
 
 ### 4.1 Goal
 
-- [ ] Add a dedicated float-backed `Agg2D` implementation path that mirrors the
+- [x] Add a dedicated float-backed `Agg2D` implementation path that mirrors the
       existing 8-bit `Agg2D` API closely enough for side-by-side parity work.
-- [ ] Keep the current 8-bit `Agg2D` behavior and public API stable.
-- [ ] Make the float path explicit in naming and construction so callers opt in
-      intentionally rather than changing global build configuration.
+      (L4–L6: internal `Agg2DFloat` + public `Agg2DFloat`/`ContextFloat`.)
+- [x] Keep the current 8-bit `Agg2D` behavior and public API stable. (No 8-bit
+      files changed; the float path is purely additive.)
+- [x] Make the float path explicit in naming and construction so callers opt in
+      intentionally rather than changing global build configuration. (Selected by
+      constructing `Agg2DFloat`/`ContextFloat`/`ImageFloat`; no build tags.)
 
 ### 4.2 Layered build order (TDD, bottom-up)
 
@@ -373,14 +376,15 @@ constructing `Agg2DFloat`/`ContextFloat`/`ImageFloat`.
 
 ### 4.4 Non-goals
 
-- [ ] Do not replace the existing 8-bit `Agg2D`.
-- [ ] Do not hide both precisions behind one opaque constructor unless parity
-      and debugging remain straightforward.
-- [ ] Do not treat this as a generic whole-library precision rewrite. This task
-      is specifically about an explicit Agg2D-level float twin first.
-- [ ] Do not add a 16-bit Agg2D variant in the same change unless it falls out
+- [x] Do not replace the existing 8-bit `Agg2D`. (Untouched; float path is additive.)
+- [x] Do not hide both precisions behind one opaque constructor unless parity
+      and debugging remain straightforward. (Separate `NewAgg2D` / `NewAgg2DFloat`.)
+- [x] Do not treat this as a generic whole-library precision rewrite. This task
+      is specifically about an explicit Agg2D-level float twin first. (Scope held
+      to the Agg2D twin + the float pixfmt/blender it needs.)
+- [x] Do not add a 16-bit Agg2D variant in the same change unless it falls out
       naturally from shared lower-level abstractions after the float path is in
-      place and tested.
+      place and tested. (No 16-bit Agg2D added.)
 
 ### 4.5 Verification and exit criteria
 
@@ -391,12 +395,26 @@ constructing `Agg2DFloat`/`ContextFloat`/`ImageFloat`.
       interface (the method subset shared verbatim by `*Agg2D` and `*Agg2DFloat`)
       drives one scene through both pipelines; solid fill is pixel-identical
       (tol 1), linear gradient within tol 3, stroke within tol 2.
-- [ ] Add source-linked tests for premultiply/demultiply and transformed-image
-      behavior in the float path.
-- [ ] Add at least one visual regression/demo hook that can run a demo via the
+- [x] Add source-linked tests for premultiply/demultiply in the float path.
+      DONE 2026-05-31 — `internal/agg2d/premultiply_float_test.go` ties
+      `color.RGBA32` and `ImageFloat` premul/demul to `agg_color_rgba.h`
+      `rgba32T::premultiply()`/`demultiply()` (~L1243), including the `a < 1`
+      opaque-no-op guard and `a <= 0` zeroing. The **transformed-image** half of
+      this item stays deferred: `TransformImage*` is not yet in the float path
+      (see §4.7 and `docs/AGG_DELTAS.md` "Float Agg2D Variant").
+- [x] Add at least one visual regression/demo hook that can run a demo via the
       float Agg2D path without disturbing the existing 8-bit baseline.
-- [ ] Document the intentional API and behavioral differences between the 8-bit
+      DONE 2026-05-31 — `tests/visual/float_path_test.go` renders one opaque
+      scene through the public float path (`ContextFloat` → `ImageFloat.ToRGBA`)
+      and the same scene through 8-bit `Context` as the oracle, asserting parity
+      within documented tolerances (solid ~1, gradient/AA ~4). No new reference
+      PNGs; the float render is saved to `tests/visual/output/float_path.png`.
+- [x] Document the intentional API and behavioral differences between the 8-bit
       and float variants in `docs/AGG_DELTAS.md` or a dedicated companion note.
+      DONE 2026-05-31 — `docs/AGG_DELTAS.md` "Float Agg2D Variant" section:
+      explicit (no-build-tag) selection, `RGBA128`/`color.RGBA32` naming,
+      8-bit public `Color`, the premul/demul boundary contract, and the deferred
+      capability gaps.
 
 ### 4.6 Post-completion hardening (2026-05-31)
 
@@ -412,13 +430,28 @@ Follow-up after the L1–L6 review:
       internal twin (`transform_float.go`) and the public surface, TDD'd incl. an
       even-odd donut-hole test.
 
-Still outstanding (genuinely new work, prioritized): full affine/perspective
-**image transform** (`TransformImage*`); **composite blend modes**
-(`PixFmtCompositeRGBA128` + wiring `BlendMode`/`imageBlendMode`); **text glyph
-rendering** (only state is plumbed); and the remaining ~100 public-method
-delegations (Viewport/Parallelogram, Arc/RoundedRect/Polygon/Star, curve variants,
-dashes, gradient stops, `Get*` accessors, `GouraudTriangle`). None block the float
-twin from being usable today.
+### 4.7 Deferred to a future change (not blocking)
+
+The L1–L6 float twin is complete, tested, and usable today (clear/fill/stroke,
+paths, shapes, image copy/blend, linear/radial gradients, world transforms, fill
+rules; cross-precision parity + visual hook green). The following are genuinely
+new work, deferred with rationale and recorded in `docs/AGG_DELTAS.md`
+("Float Agg2D Variant" → capability gaps). None block the float twin from being
+usable.
+
+- [ ] Full affine/perspective **image transform** (`TransformImage*`). Only
+      rectangle-aligned `CopyImage`/`BlendImage` exist. The span generators and
+      interpolators are color-generic and reusable; only float image
+      pixel-format adapters need wiring. *Highest priority.*
+- [ ] **Composite blend modes**: build `PixFmtCompositeRGBA128` and wire
+      `BlendMode`/`imageBlendMode`. Today only src-over is effective in the float
+      path (state is stored but inert).
+- [ ] **Text glyph rendering**: mirror `Text()` glyph rasterization. Only text
+      *state* (alignment/flip/hints/height) is plumbed.
+- [ ] Remaining **~100 public-method delegations**: Viewport/Parallelogram,
+      Arc/RoundedRect/Polygon/Star, curve variants, dashes, positioned/multi-stop
+      gradient variants, `Get*` accessors, `GouraudTriangle`, transform stack.
+      *Mostly mechanical; path/transform building is color-agnostic and reusable.*
 
 ---
 

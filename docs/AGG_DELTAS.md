@@ -144,6 +144,88 @@ buffer write.
 
 ---
 
+## Float Agg2D Variant (`AGG2D_USE_FLOAT_FORMAT`)
+
+C++ AGG 2.6's `Agg2D` has a compile-time `AGG2D_USE_FLOAT_FORMAT` switch
+(`agg2d/agg2d.h`) that swaps the internal `ColorType` from `agg::rgba8` to the
+float color `agg::rgba32`, dragging the pixel format, blender, span, and
+gradient-LUT types along with it. The Go port provides the same capability as an
+explicit, dedicated path rather than a build-time switch.
+
+### Selection is explicit, not a build tag
+
+**C++**: Precision is chosen at compile time via `#define AGG2D_USE_FLOAT_FORMAT`;
+a single translation unit is either 8-bit or float.
+**Go**: There is no build tag. Callers opt into the float path by constructing
+`Agg2DFloat` / `ContextFloat` / `ImageFloat`. The existing 8-bit `Agg2D`,
+`Context`, and `Image` are untouched and remain the default. This lets both
+precisions coexist in one binary for side-by-side parity and debugging.
+**Files**: `agg2d_float.go`, `context_float.go` (root), `internal/agg2d/agg2d_float.go`.
+
+### Naming: `RGBA128` = 128-bit pixel (4 × float32)
+
+**C++**: The float pixel format is `pixfmt_rgba` parameterised on `rgba32`
+(`agg_pixfmt_rgba.h`); AGG also names a 4×float32 format `pixfmt_rgba128`.
+**Go**: The existing 8-bit pixfmt is *already* aliased `PixFmtRGBA32*` ("RGBA32"
+= 32-bit **pixel**, 8 bits/channel), so the float stack is named by **total
+pixel width = 4 × float32 = 128 bits** to avoid a real collision, matching AGG's
+own `pixfmt_rgba128`. The float color it pairs with is `color.RGBA32` (float32
+channels, the Go equivalent of `agg::rgba32`).
+**Files**: `internal/pixfmt/blender/rgba128.go` (`BlenderRGBA128{,Pre,Plain}`),
+`internal/pixfmt/pixfmt_rgba128.go` (`PixFmtRGBA128{,Pre,Plain}`).
+
+### Public `Color` stays 8-bit
+
+**C++**: `Agg2D::Color` is `srgba8` regardless of the format switch; only the
+internal `ColorType` becomes float.
+**Go**: Same — the public `Color` passed to `Agg2DFloat`/`ContextFloat` is still
+the 8-bit `agg.Color`. Internally it is bridged to `color.RGBA32` and flows
+through the float pixel pipeline.
+**File**: `internal/agg2d/agg2d_float.go` (`colorToRGBA32` boundary helper).
+
+### Premultiply/demultiply boundary contract
+
+**C++**: `rgba32T::premultiply()`/`demultiply()` (`agg_color_rgba.h`, ~line 1243)
+use the float formulas `r*=a; g*=a; b*=a` (and the inverse), guarded by
+`if (a < 1)` so opaque pixels are left untouched, with `a <= 0` zeroing RGB.
+**Go**: Internal storage and the `Plain`/`Pre` blender split mirror the 8-bit
+semantics exactly. Exported helper APIs expose **straight (non-premultiplied)**
+float data at the boundary; conversion to/from premultiplied happens inside the
+pixfmt blenders, identical to the 8-bit path. The `color.RGBA32` and
+`ImageFloat` premultiply/demultiply reproduce the C++ float formulas including
+the `a < 1` opaque-no-op guard. Boundary conversions
+(`ToRGBA`/`ToNRGBA64`/`ToImage8` and their `From*` inverses) honor each format's
+alpha convention (`ToRGBA` premultiplies for Go's `image.RGBA`; `ToNRGBA64`
+stays straight). Source-linked tests:
+`internal/agg2d/premultiply_float_test.go`.
+**Files**: `internal/agg2d/buffer_float.go`, `internal/pixfmt/blender/rgba128.go`,
+`internal/color/rgba32.go`.
+
+### Capability gaps vs the 8-bit variant (deferred)
+
+The float twin is usable today for clear/fill/stroke, path rendering, image
+copy/blend, gradients (linear/radial), world transforms, and fill rules, and is
+covered by a cross-precision parity test
+(`internal/agg2d/parity_float_test.go`) and a visual hook
+(`tests/visual/float_path_test.go`). The following 8-bit features are **not yet
+ported** to the float path and are intentionally deferred (tracked in PLAN.md
+§4.6):
+
+- **`TransformImage*`** — full affine/perspective image transforms. Only
+  rectangle-aligned `CopyImage`/`BlendImage` are implemented. The span
+  generators/interpolators are color-generic and reusable; only float image
+  pixel-format adapters need wiring. **File**: `internal/agg2d/image_float.go`.
+- **Composite blend modes** — there is no `PixFmtCompositeRGBA128`; `BlendMode`/
+  `imageBlendMode` state exists but does not yet affect rendering. Src-over is
+  the only effective mode.
+- **Text glyph rendering** — only text *state* (alignment, flip, hints, font
+  height) is plumbed; `Text()` glyph rasterization is not yet mirrored.
+- **Remaining ~100 public-method delegations** — e.g. Viewport, Parallelogram,
+  Arc, RoundedRect, Polygon, Star, dashes, positioned/multi-stop gradient
+  variants, `Get*` accessors, `GouraudTriangle`, and the transform stack.
+
+---
+
 ## Public API Additions (Go-only, no C++ equivalent)
 
 These additions have no C++ counterpart and are Go-specific conveniences:
