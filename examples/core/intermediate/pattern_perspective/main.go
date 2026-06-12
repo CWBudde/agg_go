@@ -1,16 +1,32 @@
 // Package main ports AGG's pattern_perspective.cpp demo.
+//
+// The original example is built on AGG_BGR24 (linear color_type): the sRGB
+// agg.ppm pattern is decoded to linear on load, the Hanning-filtered pattern
+// sampling and all blending happen in linear space, and the platform encodes
+// linear->sRGB when saving. This port mirrors that with linear pixfmts plus
+// EncodeLinearRGBToSRGB in the runner config.
 package main
 
 import (
-	"flag"
+	"math"
 
 	agg "github.com/cwbudde/agg_go"
 	"github.com/cwbudde/agg_go/examples/shared/lowlevelrunner"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/buffer"
 	icol "github.com/cwbudde/agg_go/internal/color"
 	ctrlbase "github.com/cwbudde/agg_go/internal/ctrl"
 	polygonctrl "github.com/cwbudde/agg_go/internal/ctrl/polygon"
 	rboxctrl "github.com/cwbudde/agg_go/internal/ctrl/rbox"
-	"github.com/cwbudde/agg_go/internal/demo/patternperspective"
+	"github.com/cwbudde/agg_go/internal/demo/imageassets"
+	imgacc "github.com/cwbudde/agg_go/internal/image"
+	"github.com/cwbudde/agg_go/internal/pixfmt"
+	"github.com/cwbudde/agg_go/internal/rasterizer"
+	"github.com/cwbudde/agg_go/internal/renderer"
+	renscan "github.com/cwbudde/agg_go/internal/renderer/scanline"
+	"github.com/cwbudde/agg_go/internal/scanline"
+	"github.com/cwbudde/agg_go/internal/span"
+	"github.com/cwbudde/agg_go/internal/transform"
 )
 
 const (
@@ -18,31 +34,27 @@ const (
 	frameHeight = 600
 )
 
-type ctrlVertexSourceAdapter struct {
-	ctrl ctrlbase.Ctrl[icol.RGBA]
-}
+// The C++ demo uses the default rasterizer_scanline_aa<> with its integer
+// clipper (clip_box is set before the pattern pass).
+type rasType = rasterizer.RasterizerScanlineAA[int, rasterizer.IntConv, *rasterizer.RasterizerSlClip[int, rasterizer.IntConv]]
 
-func (a *ctrlVertexSourceAdapter) Rewind(pathID uint32) {
-	a.ctrl.Rewind(uint(pathID))
-}
+type renBase = renderer.RendererBase[*pixfmt.PixFmtRGBA32[icol.Linear], icol.RGBA8[icol.Linear]]
 
-func (a *ctrlVertexSourceAdapter) Vertex(x, y *float64) uint32 {
+type renBasePre = renderer.RendererBase[*pixfmt.PixFmtRGBA32Pre[icol.Linear], icol.RGBA8[icol.Linear]]
+
+// ctrlVertexSource wraps a ctrl.Ctrl into the rasterizer interface.
+type ctrlVertexSource struct{ ctrl ctrlbase.Ctrl[icol.RGBA] }
+
+func (a *ctrlVertexSource) Rewind(id uint32) { a.ctrl.Rewind(uint(id)) }
+func (a *ctrlVertexSource) Vertex(x, y *float64) uint32 {
 	vx, vy, cmd := a.ctrl.Vertex()
-	*x = vx
-	*y = vy
+	*x, *y = vx, vy
 	return uint32(cmd)
 }
 
-func renderCtrl(a *agg.Agg2D, c ctrlbase.Ctrl[icol.RGBA]) {
-	ras := a.GetInternalRasterizer()
-	for pathID := uint(0); pathID < c.NumPaths(); pathID++ {
-		ras.Reset()
-		ras.AddPath(&ctrlVertexSourceAdapter{ctrl: c}, uint32(pathID))
-		a.RenderRasterizerWithColor(toDisplayAggColor(c.Color(pathID)))
-	}
-}
-
-func toDisplayAggColor(c icol.RGBA) agg.Color {
+// ctrlColor converts a control's float color the way the C++ demo does:
+// rgba -> rgba8 is a plain *255 quantization with no colorspace conversion.
+func ctrlColor(c icol.RGBA) icol.RGBA8[icol.Linear] {
 	clamp := func(v float64) uint8 {
 		switch {
 		case v <= 0:
@@ -53,37 +65,104 @@ func toDisplayAggColor(c icol.RGBA) agg.Color {
 			return uint8(v*255.0 + 0.5)
 		}
 	}
+	return icol.RGBA8[icol.Linear]{R: clamp(c.R), G: clamp(c.G), B: clamp(c.B), A: clamp(c.A)}
+}
 
-	srgb := icol.ConvertToSRGBFromLinear(icol.RGBA8[icol.Linear]{
-		R: clamp(c.R),
-		G: clamp(c.G),
-		B: clamp(c.B),
-		A: clamp(c.A),
-	})
-	return agg.NewColor(srgb.R, srgb.G, srgb.B, srgb.A)
+// renderCtrl is the Go equivalent of C++ agg::render_ctrl.
+func renderCtrl(ras *rasType, sl *scanline.ScanlineU8, rb *renBase, c ctrlbase.Ctrl[icol.RGBA]) {
+	for pathID := uint(0); pathID < c.NumPaths(); pathID++ {
+		ras.Reset()
+		ras.AddPath(&ctrlVertexSource{ctrl: c}, uint32(pathID))
+		renscan.RenderScanlinesAASolid(ras, sl, rb, ctrlColor(c.Color(pathID)))
+	}
+}
+
+// imagePixFmt exposes the pattern image buffer to the image accessors.
+type imagePixFmt struct {
+	rbuf *buffer.RenderingBufferU8
+}
+
+func (p imagePixFmt) Width() int    { return p.rbuf.Width() }
+func (p imagePixFmt) Height() int   { return p.rbuf.Height() }
+func (p imagePixFmt) PixWidth() int { return 4 }
+func (p imagePixFmt) PixPtr(x, y int) []basics.Int8u {
+	return buffer.RowU8(p.rbuf, y)[x*4:]
+}
+
+// imageWrapSource adapts image_accessor_wrap (reflect, auto pow2 on both
+// axes) to the span RGBA source interface.
+type imageWrapSource struct {
+	accessor *imgacc.ImageAccessorWrap[imagePixFmt, *imgacc.WrapModeReflectAutoPow2, *imgacc.WrapModeReflectAutoPow2]
+	ipf      *imagePixFmt
+}
+
+func (s *imageWrapSource) Width() int                 { return s.ipf.Width() }
+func (s *imageWrapSource) Height() int                { return s.ipf.Height() }
+func (s *imageWrapSource) ColorType() string          { return "RGBA8" }
+func (s *imageWrapSource) OrderType() icol.ColorOrder { return icol.OrderRGBA }
+func (s *imageWrapSource) Span(x, y, l int) []basics.Int8u {
+	return s.accessor.Span(x, y, l)
+}
+func (s *imageWrapSource) NextX() []basics.Int8u { return s.accessor.NextX() }
+func (s *imageWrapSource) NextY() []basics.Int8u { return s.accessor.NextY() }
+func (s *imageWrapSource) RowPtr(y int) []basics.Int8u {
+	return s.ipf.PixPtr(0, y)
+}
+
+type spanImageGenerator interface {
+	Generate(span []icol.RGBA8[icol.Linear], x, y int)
+}
+
+// renderImageSpans is the equivalent of C++ agg::render_scanlines_aa for the
+// pattern pass: generated spans are blended through the premultiplied base.
+func renderImageSpans(ras *rasType, sl *scanline.ScanlineU8, rbPre *renBasePre, sg spanImageGenerator) {
+	alloc := span.NewSpanAllocator[icol.RGBA8[icol.Linear]]()
+	if !ras.RewindScanlines() {
+		return
+	}
+	// C++ render_scanlines_aa always calls prepare(); it is a no-op for the
+	// plain filter generators here.
+	if p, ok := sg.(interface{ Prepare() }); ok {
+		p.Prepare()
+	}
+	sl.Reset(ras.MinX(), ras.MaxX())
+	for ras.SweepScanline(sl) {
+		y := sl.Y()
+		for _, sp := range sl.Spans() {
+			if sp.Len <= 0 {
+				continue
+			}
+			colors := alloc.Allocate(int(sp.Len))
+			sg.Generate(colors[:sp.Len], int(sp.X), y)
+			rbPre.BlendColorHspan(int(sp.X), y, int(sp.Len), colors, sp.Covers, basics.CoverFull)
+		}
+	}
 }
 
 type demo struct {
-	mode      int
+	srcImg    *agg.Image
 	quad      *polygonctrl.PolygonCtrl[icol.RGBA]
 	transType *rboxctrl.RboxCtrl[icol.RGBA]
-	controls  []ctrlbase.Ctrl[icol.RGBA]
 }
 
 func newDemo() *demo {
-	quad := polygonctrl.NewDefaultPolygonCtrl(4, 5.0)
-	quad.SetClose(true)
-	quad.SetInPolygonCheck(true)
-	quad.SetXn(0, 100)
-	quad.SetYn(0, 100)
-	quad.SetXn(1, 500)
-	quad.SetYn(1, 100)
-	quad.SetXn(2, 500)
-	quad.SetYn(2, 500)
-	quad.SetXn(3, 100)
-	quad.SetYn(3, 500)
+	srcImg := loadSourceImage()
 
-	transType := rboxctrl.NewDefaultRboxCtrl(460, 5.0, 590.0, 60.0, false)
+	// C++ on_init: a +-200 quad centered in the window, floored.
+	const transX1, transY1, transX2, transY2 = -200.0, -200.0, 200.0, 200.0
+	dx := frameWidth/2.0 - (transX2+transX1)/2.0
+	dy := frameHeight/2.0 - (transY2+transY1)/2.0
+	quad := polygonctrl.NewDefaultPolygonCtrl(4, 5.0)
+	quad.SetXn(0, math.Floor(transX1+dx))
+	quad.SetYn(0, math.Floor(transY1+dy))
+	quad.SetXn(1, math.Floor(transX2+dx))
+	quad.SetYn(1, math.Floor(transY1+dy))
+	quad.SetXn(2, math.Floor(transX2+dx))
+	quad.SetYn(2, math.Floor(transY2+dy))
+	quad.SetXn(3, math.Floor(transX1+dx))
+	quad.SetYn(3, math.Floor(transY2+dy))
+
+	transType := rboxctrl.NewDefaultRboxCtrl(460, 5.0, 420+170.0, 60.0, false)
 	transType.SetTextSize(8, 0)
 	transType.SetTextThickness(1.0)
 	transType.AddItem("Affine")
@@ -92,32 +171,106 @@ func newDemo() *demo {
 	transType.SetCurItem(2)
 
 	return &demo{
-		mode:      2,
+		srcImg:    srcImg,
 		quad:      quad,
 		transType: transType,
-		controls:  []ctrlbase.Ctrl[icol.RGBA]{transType},
-	}
-}
-
-func (d *demo) quadPoints() [4][2]float64 {
-	return [4][2]float64{
-		{d.quad.Xn(0), d.quad.Yn(0)},
-		{d.quad.Xn(1), d.quad.Yn(1)},
-		{d.quad.Xn(2), d.quad.Yn(2)},
-		{d.quad.Xn(3), d.quad.Yn(3)},
 	}
 }
 
 func (d *demo) Render(img *agg.Image) {
-	ctx := agg.NewContextForImage(img)
-	patternperspective.Draw(ctx, patternperspective.Config{
-		Mode: d.transType.CurItem(),
-		Quad: d.quadPoints(),
-	})
+	w, h := img.Width(), img.Height()
+	rbuf := buffer.NewRenderingBufferU8WithData(img.Data, w, h, img.Stride())
 
-	a := ctx.GetAgg2D()
-	for _, ctrl := range d.controls {
-		renderCtrl(a, ctrl)
+	pf := pixfmt.NewPixFmtRGBA32Linear(rbuf)
+	rb := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32[icol.Linear], icol.RGBA8[icol.Linear]](pf)
+	pfPre := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
+	rbPre := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32Pre[icol.Linear], icol.RGBA8[icol.Linear]](pfPre)
+
+	rb.Clear(icol.RGBA8[icol.Linear]{R: 255, G: 255, B: 255, A: 255})
+
+	if d.transType.CurItem() == 0 {
+		// For the affine parallelogram transformations we calculate the
+		// 4-th (implicit) point of the parallelogram.
+		d.quad.SetXn(3, d.quad.Xn(0)+(d.quad.Xn(2)-d.quad.Xn(1)))
+		d.quad.SetYn(3, d.quad.Yn(0)+(d.quad.Yn(2)-d.quad.Yn(1)))
+	}
+
+	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.IntConv, *rasterizer.RasterizerSlClip[int, rasterizer.IntConv]](
+		rasterizer.IntConv{}, rasterizer.NewRasterizerSlClip[int, rasterizer.IntConv](rasterizer.IntConv{}),
+	)
+	sl := scanline.NewScanlineU8()
+
+	// Render the "quad" tool and controls BEFORE the pattern: the pattern
+	// covers them inside the quad, exactly like the C++ demo.
+	ras.Reset()
+	ras.AddPath(&ctrlVertexSource{ctrl: d.quad}, 0)
+	renscan.RenderScanlinesAASolid(ras, sl, rb, ctrlColor(icol.NewRGBA(0, 0.3, 0.5, 0.6)))
+
+	renderCtrl(ras, sl, rb, d.transType)
+
+	// Prepare the polygon to rasterize: the destination (transformed) quad.
+	ras.ClipBox(0, 0, float64(w), float64(h))
+	ras.Reset()
+	ras.MoveToD(d.quad.Xn(0), d.quad.Yn(0))
+	ras.LineToD(d.quad.Xn(1), d.quad.Yn(1))
+	ras.LineToD(d.quad.Xn(2), d.quad.Yn(2))
+	ras.LineToD(d.quad.Xn(3), d.quad.Yn(3))
+
+	// C++: agg::image_filter<agg::image_filter_hanning> - normalized LUT.
+	filter := imgacc.NewImageFilterLUTWithFilter(imgacc.HanningFilter{}, true)
+
+	imgRbuf := buffer.NewRenderingBufferU8()
+	imgRbuf.Attach(d.srcImg.Data, d.srcImg.Width(), d.srcImg.Height(), d.srcImg.Stride())
+	ipf := imagePixFmt{rbuf: imgRbuf}
+	wx := imgacc.NewWrapModeReflectAutoPow2(basics.Int32u(d.srcImg.Width()))
+	wy := imgacc.NewWrapModeReflectAutoPow2(basics.Int32u(d.srcImg.Height()))
+	accessor := imgacc.NewImageAccessorWrap[imagePixFmt, *imgacc.WrapModeReflectAutoPow2, *imgacc.WrapModeReflectAutoPow2](&ipf, wx, wy)
+	source := &imageWrapSource{accessor: accessor, ipf: &ipf}
+
+	// C++ on_init: g_x1..g_y2 = -150..150 (independent of the image size).
+	const srcX1, srcY1, srcX2, srcY2 = -150.0, -150.0, 150.0, 150.0
+	parl := [6]float64{
+		d.quad.Xn(0), d.quad.Yn(0),
+		d.quad.Xn(1), d.quad.Yn(1),
+		d.quad.Xn(2), d.quad.Yn(2),
+	}
+	q8 := [8]float64{
+		d.quad.Xn(0), d.quad.Yn(0),
+		d.quad.Xn(1), d.quad.Yn(1),
+		d.quad.Xn(2), d.quad.Yn(2),
+		d.quad.Xn(3), d.quad.Yn(3),
+	}
+
+	switch d.transType.CurItem() {
+	case 0:
+		tr := transform.NewTransAffineParlToRect(parl, srcX1, srcY1, srcX2, srcY2)
+		interp := span.NewSpanInterpolatorLinear[*transform.TransAffine](tr, 8)
+		sg := span.NewSpanImageFilterRGBA2x2WithParams[*imageWrapSource, *span.SpanInterpolatorLinear[*transform.TransAffine]](
+			source, interp, filter,
+		)
+		renderImageSpans(ras, sl, rbPre, sg)
+
+	case 1:
+		tr := transform.NewTransBilinearQuadToRect(q8, srcX1, srcY1, srcX2, srcY2)
+		if tr.IsValid() {
+			interp := span.NewSpanInterpolatorLinear[*transform.TransBilinear](tr, 8)
+			sg := span.NewSpanImageFilterRGBA2x2WithParams[*imageWrapSource, *span.SpanInterpolatorLinear[*transform.TransBilinear]](
+				source, interp, filter,
+			)
+			renderImageSpans(ras, sl, rbPre, sg)
+		}
+
+	case 2:
+		tr := transform.NewTransPerspectiveQuadToRect(q8, srcX1, srcY1, srcX2, srcY2)
+		if tr.IsValid(transform.AffineEpsilon) {
+			// C++ span_interpolator_linear_subdiv<trans_perspective, 8>:
+			// subpixel shift 8, default subdivision shift 4.
+			interp := span.NewSpanInterpolatorLinearSubdiv[*transform.TransPerspective](tr, 8, 4)
+			sg := span.NewSpanImageFilterRGBA2x2WithParams[*imageWrapSource, *span.SpanInterpolatorLinearSubdiv[*transform.TransPerspective]](
+				source, interp, filter,
+			)
+			renderImageSpans(ras, sl, rbPre, sg)
+		}
 	}
 }
 
@@ -125,66 +278,80 @@ func (d *demo) OnMouseDown(x, y int, btn lowlevelrunner.Buttons) bool {
 	if !btn.Left {
 		return false
 	}
-
 	fx, fy := float64(x), float64(y)
-	for _, ctrl := range d.controls {
-		if ctrl.OnMouseButtonDown(fx, fy) {
-			d.mode = d.transType.CurItem()
-			return true
-		}
+	if d.transType.OnMouseButtonDown(fx, fy) {
+		return true
 	}
 	return d.quad.OnMouseButtonDown(fx, fy)
 }
 
 func (d *demo) OnMouseMove(x, y int, btn lowlevelrunner.Buttons) bool {
 	fx, fy := float64(x), float64(y)
-	redraw := false
-
-	for _, ctrl := range d.controls {
-		if ctrl.OnMouseMove(fx, fy, btn.Left) {
-			redraw = true
-		}
-	}
+	redraw := d.transType.OnMouseMove(fx, fy, btn.Left)
 	if d.quad.OnMouseMove(fx, fy, btn.Left) {
 		redraw = true
 	}
-
 	return redraw
 }
 
 func (d *demo) OnMouseUp(x, y int, btn lowlevelrunner.Buttons) bool {
-	_ = btn
 	fx, fy := float64(x), float64(y)
-	redraw := false
-
-	for _, ctrl := range d.controls {
-		if ctrl.OnMouseButtonUp(fx, fy) {
-			redraw = true
-		}
-	}
+	redraw := d.transType.OnMouseButtonUp(fx, fy)
 	if d.quad.OnMouseButtonUp(fx, fy) {
 		redraw = true
 	}
-
 	return redraw
 }
 
-func main() {
-	mode := flag.Int("mode", 2, "0=Affine, 1=Bilinear, 2=Perspective")
-	flag.Parse()
+// loadSourceImage returns the agg pattern image decoded to linear RGBA.
+// The C++ platform loads the sRGB PPM into the linear window format, and the
+// bundled PPM decodes top-down while the demo frame is bottom-up, so flip it.
+func loadSourceImage() *agg.Image {
+	img, err := imageassets.Agg()
+	if err != nil {
+		panic("pattern_perspective: failed to load agg image: " + err.Error())
+	}
+	w, h := img.Width(), img.Height()
+	for p := 0; p < w*h; p++ {
+		c := icol.ConvertRGB8SRGBToLinear(icol.RGB8[icol.SRGB]{
+			R: img.Data[p*4+0],
+			G: img.Data[p*4+1],
+			B: img.Data[p*4+2],
+		})
+		img.Data[p*4+0] = c.R
+		img.Data[p*4+1] = c.G
+		img.Data[p*4+2] = c.B
+	}
+	flipImageY(img)
+	return img
+}
 
-	d := newDemo()
-	d.mode = *mode
-	d.transType.SetCurItem(*mode)
-
-	lowlevelrunner.Run(runnerConfig(), d)
+func flipImageY(img *agg.Image) {
+	w, h := img.Width(), img.Height()
+	if w == 0 || h == 0 {
+		return
+	}
+	stride := w * 4
+	row := make([]byte, stride)
+	for y := 0; y < h/2; y++ {
+		top := y * stride
+		bottom := (h - 1 - y) * stride
+		copy(row, img.Data[top:top+stride])
+		copy(img.Data[top:top+stride], img.Data[bottom:bottom+stride])
+		copy(img.Data[bottom:bottom+stride], row)
+	}
 }
 
 func runnerConfig() lowlevelrunner.Config {
 	return lowlevelrunner.Config{
-		Title:  "Pattern Perspective",
-		Width:  frameWidth,
-		Height: frameHeight,
-		FlipY:  true,
+		Title:                 "Pattern Perspective",
+		Width:                 frameWidth,
+		Height:                frameHeight,
+		FlipY:                 true,
+		EncodeLinearRGBToSRGB: true,
 	}
+}
+
+func main() {
+	lowlevelrunner.Run(runnerConfig(), newDemo())
 }

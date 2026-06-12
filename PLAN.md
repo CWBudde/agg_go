@@ -92,7 +92,7 @@ Keep the remaining corpus of demo mismatches under active repair:
 - [ ] `mol_view`
 - [ ] `multi_clip`
 - [ ] `pattern_fill`
-- [ ] `pattern_perspective`
+- [x] `pattern_perspective` — pixel-exact (RMSE 0.0): same faithful-port rewrite as `image_resample`/`image_perspective` — quad tool + rbox rendered BEFORE the pattern, wrap-reflect accessor, normalized Hanning 2x2 filter, source rect ±150, linear_subdiv interpolator for perspective, sRGB-decoded agg.ppm, linear pipeline + EncodeLinearRGBToSRGB.
 - [ ] `pattern_resample`
 - [x] `perspective` — pixel-exact (RMSE 0.0) via the lion color roundtrip fix.
 - [ ] `polymorphic_renderer`

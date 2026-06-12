@@ -6,29 +6,23 @@ import (
 	icol "github.com/cwbudde/agg_go/internal/color"
 )
 
-func TestRunnerConfigKeepsPatternPixelsRaw(t *testing.T) {
+func TestRunnerConfigMatchesCPPPipeline(t *testing.T) {
 	cfg := runnerConfig()
 	if !cfg.FlipY {
 		t.Fatal("pattern_perspective must run with FlipY=true to match C++ platform_support")
 	}
-	if cfg.EncodeLinearRGBToSRGB {
-		t.Fatal("pattern_perspective must not post-encode the full framebuffer; the sampled pattern image is already in display byte space")
-	}
-	if cfg.DisableLinearRGBToSRGB {
-		t.Fatal("pattern_perspective should leave the default output path untouched instead of using the explicit opt-out flag")
+	if !cfg.EncodeLinearRGBToSRGB {
+		t.Fatal("pattern_perspective renders in linear space (AGG_BGR24 color_type) and must encode linear->sRGB on save like the C++ platform")
 	}
 }
 
-func TestControlColorsAreEncodedForDisplay(t *testing.T) {
-	got := toDisplayAggColor(icol.NewRGBA(0, 0.3, 0.5, 0.6))
-	want := icol.ConvertToSRGBFromLinear(icol.RGBA8[icol.Linear]{
-		R: 0,
-		G: 77,
-		B: 128,
-		A: 153,
-	})
-	if got.R != want.R || got.G != want.G || got.B != want.B || got.A != want.A {
-		t.Fatalf("display control color = rgba(%d,%d,%d,%d), want rgba(%d,%d,%d,%d)",
+func TestControlColorsArePlainQuantized(t *testing.T) {
+	// C++ render_ctrl with a linear color_type quantizes rgba floats with a
+	// plain *255, no colorspace conversion.
+	got := ctrlColor(icol.NewRGBA(0, 0.3, 0.5, 0.6))
+	want := icol.RGBA8[icol.Linear]{R: 0, G: 77, B: 128, A: 153}
+	if got != want {
+		t.Fatalf("control color = rgba(%d,%d,%d,%d), want rgba(%d,%d,%d,%d)",
 			got.R, got.G, got.B, got.A, want.R, want.G, want.B, want.A)
 	}
 }
