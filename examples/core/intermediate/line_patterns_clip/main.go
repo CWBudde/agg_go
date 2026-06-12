@@ -29,6 +29,8 @@ import (
 	"github.com/cwbudde/agg_go/internal/rasterizer"
 	"github.com/cwbudde/agg_go/internal/renderer"
 	outline "github.com/cwbudde/agg_go/internal/renderer/outline"
+	renscan "github.com/cwbudde/agg_go/internal/renderer/scanline"
+	"github.com/cwbudde/agg_go/internal/scanline"
 )
 
 // default polygon polyline matching C++ m_line1 initial state.
@@ -57,12 +59,14 @@ func (s *chainPatternSrc) Pixel(x, y int) icolor.RGBA {
 	r := uint8((p >> 16) & 0xFF)
 	g := uint8((p >> 8) & 0xFF)
 	b := uint8(p & 0xFF)
+	// C++ platform_support::load_img decodes the sRGB file into the linear
+	// window format, so pattern_src_brightness_to_alpha sums LINEAR values.
 	linear := icolor.ConvertToLinear(icolor.NewRGBA8[icolor.SRGB](r, g, b, 255))
 	c := icolor.NewRGBAFromRGBA8(
 		linear.R,
 		linear.G,
 		linear.B,
-		linepatterns.BrightnessToAlpha(int(r)+int(g)+int(b)),
+		linepatterns.BrightnessToAlpha(int(linear.R)+int(linear.G)+int(linear.B)),
 	)
 	return c
 }
@@ -194,7 +198,9 @@ func (a *gsvAdaptor) Vertex(x, y *float64) uint32 {
 	return uint32(cmd)
 }
 
-// -- ctrl rendering helpers (mirrors idea.cpp pattern) ----------------------
+// -- ctrl rendering helpers (Go equivalent of C++ agg::render_ctrl) ---------
+
+type rasType = rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
 
 type ctrlIface interface {
 	NumPaths() uint
@@ -212,23 +218,18 @@ func (a *ctrlVSAdaptor) Vertex(x, y *float64) uint32 {
 	return uint32(cmd)
 }
 
-func renderCtrl(ag *agg.Agg2D, ctrl ctrlIface) {
-	ras := ag.GetInternalRasterizer()
+// ctrlColor converts a control's float color the way the C++ demo does:
+// rgba -> rgba8 is a plain *255 quantization with no colorspace conversion.
+func ctrlColor(c icolor.RGBA) icolor.RGBA8[icolor.Linear] {
+	return icolor.RGBA8[icolor.Linear]{R: clampF(c.R), G: clampF(c.G), B: clampF(c.B), A: clampF(c.A)}
+}
+
+func renderCtrl(ras *rasType, sl *scanline.ScanlineP8, rb *renBaseType, ctrl ctrlIface) {
 	vs := &ctrlVSAdaptor{ctrl}
 	for id := uint(0); id < ctrl.NumPaths(); id++ {
 		ras.Reset()
 		ras.AddPath(vs, uint32(id))
-		c := ctrl.Color(id)
-		toU8 := func(v float64) uint8 {
-			if v <= 0 {
-				return 0
-			}
-			if v >= 1 {
-				return 255
-			}
-			return uint8(v*255 + 0.5)
-		}
-		ag.RenderRasterizerWithColor(agg.NewColor(toU8(c.R), toU8(c.G), toU8(c.B), toU8(c.A)))
+		renscan.RenderScanlinesAASolid(ras, sl, rb, ctrlColor(ctrl.Color(id)))
 	}
 }
 
@@ -328,13 +329,15 @@ func (d *demo) Render(img *agg.Image) {
 
 	renBase.ResetClipping(true)
 
-	// ----- Agg2D: polygon-ctrl guide + slider controls -----
-	ctx := agg.NewContextForImage(img)
-	a := ctx.GetAgg2D()
-	a.ResetTransformations()
+	// ----- controls + text via scanline rasterizer (C++ render_ctrl) -----
+	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip(),
+	)
+	sl := scanline.NewScanlineP8()
 
 	lineCtrl := buildPolygonCtrl()
-	renderCtrl(a, lineCtrl)
+	lineCtrl.SetLineWidth(1.0)
+	renderCtrl(ras, sl, renBase, lineCtrl)
 
 	// Sliders at y=5..12 matching C++ source coords (flip_y=true equivalent;
 	// the demorunner flips the PNG so y=5 appears at the visual bottom).
@@ -348,8 +351,8 @@ func (d *demo) Render(img *agg.Image) {
 	startSlider.SetRange(0.0, 10.0)
 	startSlider.SetValue(0.0)
 
-	renderCtrl(a, scaleSlider)
-	renderCtrl(a, startSlider)
+	renderCtrl(ras, sl, renBase, scaleSlider)
+	renderCtrl(ras, sl, renBase, startSlider)
 
 	txt := gsv.NewGSVText()
 	txt.SetSize(10.0, 0)
@@ -363,10 +366,9 @@ func (d *demo) Render(img *agg.Image) {
 	txtStroke.SetWidth(1.5)
 	txtStroke.SetLineCap(basics.RoundCap)
 
-	ras := a.GetInternalRasterizer()
 	ras.Reset()
 	ras.AddPath(&gsvAdaptor{src: txtStroke}, 0)
-	a.RenderRasterizerWithColor(agg.Black)
+	renscan.RenderScanlinesAASolid(ras, sl, renBase, icolor.RGBA8[icolor.Linear]{R: 0, G: 0, B: 0, A: 255})
 }
 
 func main() {
