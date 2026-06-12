@@ -434,8 +434,10 @@ func (g *GradientLinearColorRGBA8[CS]) Size() int {
 }
 
 // ColorAt returns the color at the specified index.
+// Matches C++ gradient_linear_color::operator[] feeding rgba8T::gradient,
+// which computes ik = uround(k * base_mask) rather than truncating.
 func (g *GradientLinearColorRGBA8[CS]) ColorAt(index int) color.RGBA8[CS] {
-	k := basics.Int8u(float64(index) * g.mult * 255.0)
+	k := basics.Int8u(basics.URound(float64(index) * g.mult * 255.0))
 	return g.c1.Gradient(g.c2, k)
 }
 

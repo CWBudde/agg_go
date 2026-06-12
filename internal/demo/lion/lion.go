@@ -12,8 +12,11 @@ import (
 // LionData holds the parsed lion artwork, structured like C++ parse_lion output:
 // a single shared path storage with parallel color and path-index arrays.
 // The hex color data represents linear RGB values (C++ rgb8_packed returns
-// rgba8/linear). C++ parse_lion stores into srgba8[] which roundtrips
-// linear->sRGB->linear, but the net effect is identity (+-1 rounding).
+// rgba8/linear). C++ parse_lion stores into srgba8[] g_colors, and the demos
+// (all built with AGG_BGR24, linear color_type) decode back to linear at render
+// time. That encode/decode roundtrip is NOT identity for every byte (132->131,
+// 153->152, 178->179 in the lion palette), so Colors holds the roundtripped
+// values the C++ demos effectively render with.
 type LionData struct {
 	Path    *path.PathStorageStl
 	Colors  []color.RGBA8[color.Linear]
@@ -80,12 +83,13 @@ func Parse() LionData {
 
 func parseColor(s string) color.RGBA8[color.Linear] {
 	val, _ := strconv.ParseUint(s, 16, 32)
-	return color.RGBA8[color.Linear]{
+	raw := color.RGBA8[color.Linear]{
 		R: uint8(val >> 16),
 		G: uint8((val >> 8) & 0xFF),
 		B: uint8(val & 0xFF),
 		A: 255,
 	}
+	return color.ConvertRGBA8SRGBToLinear(color.ConvertRGBA8LinearToSRGB(raw))
 }
 
 const data = `f2cc99

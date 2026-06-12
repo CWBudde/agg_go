@@ -214,16 +214,17 @@ func initLion() {
 	lionBaseDY = (maxY - minY) / 2.0
 }
 
-func srgbaRandRTL(rng *clibcRand, alphaBase int) color.RGBA8[color.SRGB] {
-	// Keep the previous right-to-left overlay argument mapping for now.
-	// The seed issue is resolved, but the exact C++ argument evaluation order for
-	// nested calls in alpha_mask2.cpp is not locked down yet.
-	return color.RGBA8[color.SRGB]{
-		A: uint8(rng.randAnd(0x7F) + alphaBase),
-		B: uint8(rng.randAnd(0x7F)),
-		G: uint8(rng.randAnd(0x7F)),
-		R: uint8(rng.randAnd(0x7F)),
-	}
+// srgbaRandRTL builds the C++ `agg::srgba8(rand()&0x7F, ..., (rand()&0x7F)+base)`
+// literal with GCC's right-to-left argument evaluation (alpha consumed first),
+// then decodes it to linear: the C++ renderers have color_type rgba8 (linear,
+// AGG_BGR24), so srgba8 literals are sRGB->linear converted at the call site.
+func srgbaRandRTL(rng *clibcRand, alphaBase int) color.RGBA8[color.Linear] {
+	c := color.RGBA8[color.SRGB]{}
+	c.A = uint8(rng.randAnd(0x7F) + alphaBase)
+	c.B = uint8(rng.randAnd(0x7F))
+	c.G = uint8(rng.randAnd(0x7F))
+	c.R = uint8(rng.randAnd(0x7F))
+	return color.ConvertRGBA8SRGBToLinear(c)
 }
 
 func RenderToBGR24(dst []uint8, width, height int, cfg Config) {
@@ -269,14 +270,12 @@ func RenderToBGR24(dst []uint8, width, height int, cfg Config) {
 		renscan.RenderScanlinesAASolid(ras, sl, maskRb, color.Gray8[color.SRGB]{V: v, A: a})
 	}
 
+	// C++ uses a single pixfmt_amask_adaptor over the linear window pixfmt for
+	// the lion, markers, outline lines, and gradient circles alike; all srgba8
+	// literals are decoded to the linear color_type before blending.
 	mask := pixfmt.NewAMaskNoClipU8WithBuffer(maskBuf, 1, 0, pixfmt.OneComponentMaskU8{})
 	amaskAdaptorLinear := pixfmt.NewPixFmtAMaskAdaptor(mainPixfLinearAdaptor, mask)
 	rbAMaskLinear := renderer.NewRendererBaseWithPixfmt(amaskAdaptorLinear)
-
-	mainPixfSRGB := pixfmt.NewPixFmtSBGR24(rbuf)
-	mainPixfSRGBAdaptor := pixfmt.NewPixFmtRGBARendererAdaptor(mainPixfSRGB)
-	amaskAdaptorSRGB := pixfmt.NewPixFmtAMaskAdaptor(mainPixfSRGBAdaptor, mask)
-	rbAMaskSRGB := renderer.NewRendererBaseWithPixfmt(amaskAdaptorSRGB)
 
 	mtx := transform.NewTransAffine()
 	mtx.Multiply(transform.NewTransAffineTranslation(-lionBaseDX, -lionBaseDY))
@@ -291,13 +290,13 @@ func RenderToBGR24(dst []uint8, width, height int, cfg Config) {
 	renSolid := renscan.NewRendererScanlineAASolidWithRenderer(rbAMaskLinear)
 	renscan.RenderAllPaths(ras, sl, renSolid, rasVS, &lionData, &lionData, lionData.NPaths)
 
-	renderMarkers(rbAMaskSRGB, rng, width, height)
-	renderOutlineLines(rbAMaskSRGB, rng, width, height)
-	renderGradientCircles(ras, sl, rbAMaskSRGB, rng, width, height)
+	renderMarkers(rbAMaskLinear, rng, width, height)
+	renderOutlineLines(rbAMaskLinear, rng, width, height)
+	renderGradientCircles(ras, sl, rbAMaskLinear, rng, width, height)
 }
 
 func renderMarkers(
-	rbAMask *renderer.RendererBase[*pixfmt.PixFmtAMaskAdaptor[color.RGBA8[color.SRGB]], color.RGBA8[color.SRGB]],
+	rbAMask *renderer.RendererBase[*pixfmt.PixFmtAMaskAdaptor[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]],
 	rng *clibcRand,
 	width, height int,
 ) {
@@ -321,19 +320,19 @@ func renderMarkers(
 }
 
 func renderOutlineLines(
-	rbAMask *renderer.RendererBase[*pixfmt.PixFmtAMaskAdaptor[color.RGBA8[color.SRGB]], color.RGBA8[color.SRGB]],
+	rbAMask *renderer.RendererBase[*pixfmt.PixFmtAMaskAdaptor[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]],
 	rng *clibcRand,
 	width, height int,
 ) {
 	profile := outline.NewLineProfileAA()
 	profile.Width(5.0)
 
-	renOutline := outline.NewRendererOutlineAA[*outlineBaseAdapter[color.RGBA8[color.SRGB]], color.RGBA8[color.SRGB]](
-		&outlineBaseAdapter[color.RGBA8[color.SRGB]]{renBase: rbAMask},
+	renOutline := outline.NewRendererOutlineAA[*outlineBaseAdapter[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](
+		&outlineBaseAdapter[color.RGBA8[color.Linear]]{renBase: rbAMask},
 		profile,
 	)
-	rasOutline := rasterizer.NewRasterizerOutlineAA[*outlineAAAdapter[color.RGBA8[color.SRGB]], color.RGBA8[color.SRGB]](
-		&outlineAAAdapter[color.RGBA8[color.SRGB]]{ren: renOutline},
+	rasOutline := rasterizer.NewRasterizerOutlineAA[*outlineAAAdapter[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](
+		&outlineAAAdapter[color.RGBA8[color.Linear]]{ren: renOutline},
 	)
 	rasOutline.SetRoundCap(true)
 
@@ -352,11 +351,11 @@ func renderOutlineLines(
 func renderGradientCircles(
 	ras *rasType,
 	sl *scanline.ScanlineU8,
-	rbAMask *renderer.RendererBase[*pixfmt.PixFmtAMaskAdaptor[color.RGBA8[color.SRGB]], color.RGBA8[color.SRGB]],
+	rbAMask *renderer.RendererBase[*pixfmt.PixFmtAMaskAdaptor[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]],
 	rng *clibcRand,
 	width, height int,
 ) {
-	alloc := span.NewSpanAllocator[color.RGBA8[color.SRGB]]()
+	alloc := span.NewSpanAllocator[color.RGBA8[color.Linear]]()
 	for i := 0; i < 50; i++ {
 		x := rng.randN(width)
 		y := rng.randN(height)
@@ -367,14 +366,17 @@ func renderGradientCircles(
 		grm.Invert()
 
 		inter := span.NewSpanInterpolatorLinearDefault(grm)
+		// C++ grc.colors(srgba8(255,255,255,0), srgba8(rand,rand,rand,255)):
+		// GCC evaluates the srgba8 constructor arguments right-to-left (B, G, R),
+		// and gradient_linear_color<rgba8>::colors decodes both srgba8 arguments
+		// to the linear color_type, so interpolation runs in linear space.
+		c2 := color.RGBA8[color.SRGB]{A: 255}
+		c2.B = uint8(rng.randAnd(0x7F))
+		c2.G = uint8(rng.randAnd(0x7F))
+		c2.R = uint8(rng.randAnd(0x7F))
 		colorFunc := span.NewGradientLinearColorRGBA8(
-			color.RGBA8[color.SRGB]{R: 255, G: 255, B: 255, A: 0},
-			color.RGBA8[color.SRGB]{
-				R: uint8(rng.randAnd(0x7F)),
-				G: uint8(rng.randAnd(0x7F)),
-				B: uint8(rng.randAnd(0x7F)),
-				A: 255,
-			},
+			color.ConvertRGBA8SRGBToLinear(color.RGBA8[color.SRGB]{R: 255, G: 255, B: 255, A: 0}),
+			color.ConvertRGBA8SRGBToLinear(c2),
 			256,
 		)
 		spanGen := span.NewSpanGradient(inter, span.GradientRadial{}, colorFunc, 0, 10)
