@@ -6,24 +6,24 @@ import (
 	icol "github.com/cwbudde/agg_go/internal/color"
 )
 
-func TestRunnerConfigKeepsPatternResamplePixelsRaw(t *testing.T) {
+func TestRunnerConfigMatchesCPPPipeline(t *testing.T) {
 	cfg := runnerConfig()
 	if !cfg.FlipY {
 		t.Fatal("pattern_resample must run with FlipY=true to match C++ platform_support")
 	}
-	if cfg.EncodeLinearRGBToSRGB {
-		t.Fatal("pattern_resample must not post-encode the full framebuffer; gamma handling is part of the demo")
-	}
-	if cfg.DisableLinearRGBToSRGB {
-		t.Fatal("pattern_resample should leave the default output path untouched instead of using the explicit opt-out flag")
+	if !cfg.EncodeLinearRGBToSRGB {
+		t.Fatal("pattern_resample renders in linear space (AGG_BGR24 color_type) and must encode linear->sRGB on save like the C++ platform")
 	}
 }
 
-func TestPostGammaControlColorsMatchPatternResampleSource(t *testing.T) {
-	got := toRawAggColor(icol.NewRGBA(0.8, 0, 0, 0.6))
-	if got.R != 204 || got.G != 0 || got.B != 0 || got.A != 153 {
-		t.Fatalf("post-gamma control color = rgba(%d,%d,%d,%d), want C++ raw rgba(0.8,0,0,0.6) rounded to rgba(204,0,0,153)",
-			got.R, got.G, got.B, got.A)
+func TestControlColorsArePlainQuantized(t *testing.T) {
+	// C++ render_ctrl with a linear color_type quantizes rgba floats with a
+	// plain *255, no colorspace conversion. The quad ghost uses alpha 0.1.
+	got := ctrlColor(icol.NewRGBA(0, 0.3, 0.5, 0.1))
+	want := icol.RGBA8[icol.Linear]{R: 0, G: 77, B: 128, A: 26}
+	if got != want {
+		t.Fatalf("control color = rgba(%d,%d,%d,%d), want rgba(%d,%d,%d,%d)",
+			got.R, got.G, got.B, got.A, want.R, want.G, want.B, want.A)
 	}
 }
 
@@ -40,5 +40,20 @@ func TestControlsMatchPatternResampleSourceDefaults(t *testing.T) {
 	}
 	if got := d.blur.Value(); got != 1.0 {
 		t.Fatalf("pattern_resample blur default = %v, want C++ default 1.0", got)
+	}
+}
+
+func TestGammaLUTMatchesAGGGammaLut(t *testing.T) {
+	d := newDemo()
+	// agg::gamma_lut<int8u,int8u,8,8>(2.0): dir[i]=uround(pow(i/255,2)*255),
+	// inv[i]=uround(pow(i/255,0.5)*255).
+	if got := d.gammaLut.Dir(128); got != 64 {
+		t.Fatalf("dir(128) = %d, want 64", got)
+	}
+	if got := d.gammaLut.Inv(64); got != 128 {
+		t.Fatalf("inv(64) = %d, want 128", got)
+	}
+	if got := d.gammaLut.Dir(255); got != 255 {
+		t.Fatalf("dir(255) = %d, want 255", got)
 	}
 }

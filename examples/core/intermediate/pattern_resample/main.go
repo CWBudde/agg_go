@@ -1,4 +1,11 @@
 // Package main ports AGG's pattern_resample.cpp demo.
+//
+// The original example is built on AGG_BGR24 (linear color_type): the sRGB
+// agg.ppm pattern is decoded to linear on load, a gamma_lut(2.0) is applied
+// to the pattern (apply_gamma_dir), all sampling/blending happens in linear
+// space, the window gets apply_gamma_inv before the text and controls, and
+// the platform encodes linear->sRGB when saving. This port mirrors that with
+// linear pixfmts plus EncodeLinearRGBToSRGB in the runner config.
 package main
 
 import (
@@ -8,12 +15,25 @@ import (
 
 	agg "github.com/cwbudde/agg_go"
 	"github.com/cwbudde/agg_go/examples/shared/lowlevelrunner"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/buffer"
 	icol "github.com/cwbudde/agg_go/internal/color"
+	"github.com/cwbudde/agg_go/internal/conv"
 	ctrlbase "github.com/cwbudde/agg_go/internal/ctrl"
 	polygonctrl "github.com/cwbudde/agg_go/internal/ctrl/polygon"
 	rboxctrl "github.com/cwbudde/agg_go/internal/ctrl/rbox"
 	sliderctrl "github.com/cwbudde/agg_go/internal/ctrl/slider"
-	"github.com/cwbudde/agg_go/internal/demo/patternresample"
+	"github.com/cwbudde/agg_go/internal/demo/imageassets"
+	gammalut "github.com/cwbudde/agg_go/internal/gamma"
+	"github.com/cwbudde/agg_go/internal/gsv"
+	imgacc "github.com/cwbudde/agg_go/internal/image"
+	"github.com/cwbudde/agg_go/internal/pixfmt"
+	"github.com/cwbudde/agg_go/internal/rasterizer"
+	"github.com/cwbudde/agg_go/internal/renderer"
+	renscan "github.com/cwbudde/agg_go/internal/renderer/scanline"
+	"github.com/cwbudde/agg_go/internal/scanline"
+	"github.com/cwbudde/agg_go/internal/span"
+	"github.com/cwbudde/agg_go/internal/transform"
 )
 
 const (
@@ -21,31 +41,36 @@ const (
 	frameHeight = 600
 )
 
-type ctrlVertexSourceAdapter struct {
-	ctrl ctrlbase.Ctrl[icol.RGBA]
-}
+// The C++ demo uses the default rasterizer_scanline_aa<> with its integer
+// clipper (clip_box is set before the pattern pass).
+type rasType = rasterizer.RasterizerScanlineAA[int, rasterizer.IntConv, *rasterizer.RasterizerSlClip[int, rasterizer.IntConv]]
 
-func (a *ctrlVertexSourceAdapter) Rewind(pathID uint32) {
-	a.ctrl.Rewind(uint(pathID))
-}
+type renBase = renderer.RendererBase[*pixfmt.PixFmtRGBA32[icol.Linear], icol.RGBA8[icol.Linear]]
 
-func (a *ctrlVertexSourceAdapter) Vertex(x, y *float64) uint32 {
+type renBasePre = renderer.RendererBase[*pixfmt.PixFmtRGBA32Pre[icol.Linear], icol.RGBA8[icol.Linear]]
+
+// ctrlVertexSource wraps a ctrl.Ctrl into the rasterizer interface.
+type ctrlVertexSource struct{ ctrl ctrlbase.Ctrl[icol.RGBA] }
+
+func (a *ctrlVertexSource) Rewind(id uint32) { a.ctrl.Rewind(uint(id)) }
+func (a *ctrlVertexSource) Vertex(x, y *float64) uint32 {
 	vx, vy, cmd := a.ctrl.Vertex()
-	*x = vx
-	*y = vy
+	*x, *y = vx, vy
 	return uint32(cmd)
 }
 
-func renderCtrl(a *agg.Agg2D, c ctrlbase.Ctrl[icol.RGBA]) {
-	ras := a.GetInternalRasterizer()
-	for pathID := uint(0); pathID < c.NumPaths(); pathID++ {
-		ras.Reset()
-		ras.AddPath(&ctrlVertexSourceAdapter{ctrl: c}, uint32(pathID))
-		a.RenderRasterizerWithColor(toRawAggColor(c.Color(pathID)))
-	}
+type gsvStrokeVS struct{ s *conv.ConvStroke }
+
+func (g *gsvStrokeVS) Rewind(id uint32) { g.s.Rewind(uint(id)) }
+func (g *gsvStrokeVS) Vertex(x, y *float64) uint32 {
+	vx, vy, cmd := g.s.Vertex()
+	*x, *y = vx, vy
+	return uint32(cmd)
 }
 
-func toRawAggColor(c icol.RGBA) agg.Color {
+// ctrlColor converts a control's float color the way the C++ demo does:
+// rgba -> rgba8 is a plain *255 quantization with no colorspace conversion.
+func ctrlColor(c icol.RGBA) icol.RGBA8[icol.Linear] {
 	clamp := func(v float64) uint8 {
 		switch {
 		case v <= 0:
@@ -56,11 +81,101 @@ func toRawAggColor(c icol.RGBA) agg.Color {
 			return uint8(v*255.0 + 0.5)
 		}
 	}
+	return icol.RGBA8[icol.Linear]{R: clamp(c.R), G: clamp(c.G), B: clamp(c.B), A: clamp(c.A)}
+}
 
-	return agg.NewColor(clamp(c.R), clamp(c.G), clamp(c.B), clamp(c.A))
+// renderCtrl is the Go equivalent of C++ agg::render_ctrl.
+func renderCtrl(ras *rasType, sl *scanline.ScanlineU8, rb *renBase, c ctrlbase.Ctrl[icol.RGBA]) {
+	for pathID := uint(0); pathID < c.NumPaths(); pathID++ {
+		ras.Reset()
+		ras.AddPath(&ctrlVertexSource{ctrl: c}, uint32(pathID))
+		renscan.RenderScanlinesAASolid(ras, sl, rb, ctrlColor(c.Color(pathID)))
+	}
+}
+
+func drawGSVText(ras *rasType, sl *scanline.ScanlineU8, rb *renBase, x, y float64, text string) {
+	txt := gsv.NewGSVText()
+	txt.SetSize(10.0, 0)
+	txt.SetStartPoint(x, y)
+	txt.SetText(text)
+
+	// The C++ demo strokes gsv_text with a plain conv_stroke (butt caps,
+	// miter joins), not gsv_text_outline (which forces round caps).
+	stroke := conv.NewConvStroke(txt)
+	stroke.SetWidth(1.5)
+
+	ras.Reset()
+	ras.AddPath(&gsvStrokeVS{s: stroke}, 0)
+	renscan.RenderScanlinesAASolid(ras, sl, rb, icol.RGBA8[icol.Linear]{R: 0, G: 0, B: 0, A: 255})
+}
+
+// imagePixFmt exposes the pattern image buffer to the image accessors.
+type imagePixFmt struct {
+	rbuf *buffer.RenderingBufferU8
+}
+
+func (p imagePixFmt) Width() int    { return p.rbuf.Width() }
+func (p imagePixFmt) Height() int   { return p.rbuf.Height() }
+func (p imagePixFmt) PixWidth() int { return 4 }
+func (p imagePixFmt) PixPtr(x, y int) []basics.Int8u {
+	return buffer.RowU8(p.rbuf, y)[x*4:]
+}
+
+// imageWrapSource adapts image_accessor_wrap (reflect, auto pow2 on both
+// axes) to the span RGBA source interface.
+type imageWrapSource struct {
+	accessor *imgacc.ImageAccessorWrap[imagePixFmt, *imgacc.WrapModeReflectAutoPow2, *imgacc.WrapModeReflectAutoPow2]
+	ipf      *imagePixFmt
+}
+
+func (s *imageWrapSource) Width() int                 { return s.ipf.Width() }
+func (s *imageWrapSource) Height() int                { return s.ipf.Height() }
+func (s *imageWrapSource) ColorType() string          { return "RGBA8" }
+func (s *imageWrapSource) OrderType() icol.ColorOrder { return icol.OrderRGBA }
+func (s *imageWrapSource) Span(x, y, l int) []basics.Int8u {
+	return s.accessor.Span(x, y, l)
+}
+func (s *imageWrapSource) NextX() []basics.Int8u { return s.accessor.NextX() }
+func (s *imageWrapSource) NextY() []basics.Int8u { return s.accessor.NextY() }
+func (s *imageWrapSource) RowPtr(y int) []basics.Int8u {
+	return s.ipf.PixPtr(0, y)
+}
+
+type spanImageGenerator interface {
+	Generate(span []icol.RGBA8[icol.Linear], x, y int)
+}
+
+// renderImageSpans is the equivalent of C++ agg::render_scanlines_aa for the
+// pattern pass: generated spans are blended through the premultiplied base.
+func renderImageSpans(ras *rasType, sl *scanline.ScanlineU8, rbPre *renBasePre, sg spanImageGenerator) {
+	alloc := span.NewSpanAllocator[icol.RGBA8[icol.Linear]]()
+	if !ras.RewindScanlines() {
+		return
+	}
+	// C++ render_scanlines_aa always calls prepare(); it is a no-op for the
+	// plain filter generators but computes the scale for the affine resampler.
+	if p, ok := sg.(interface{ Prepare() }); ok {
+		p.Prepare()
+	}
+	sl.Reset(ras.MinX(), ras.MaxX())
+	for ras.SweepScanline(sl) {
+		y := sl.Y()
+		for _, sp := range sl.Spans() {
+			if sp.Len <= 0 {
+				continue
+			}
+			colors := alloc.Allocate(int(sp.Len))
+			sg.Generate(colors[:sp.Len], int(sp.X), y)
+			rbPre.BlendColorHspan(int(sp.X), y, int(sp.Len), colors, sp.Covers, basics.CoverFull)
+		}
+	}
 }
 
 type demo struct {
+	baseImg   *agg.Image // linear pattern, no demo gamma applied
+	srcImg    *agg.Image // baseImg with gamma_lut dir gamma applied
+	gammaLut  *gammalut.GammaLUT[basics.Int8u, basics.Int8u]
+	oldGamma  float64
 	quad      *polygonctrl.PolygonCtrl[icol.RGBA]
 	transType *rboxctrl.RboxCtrl[icol.RGBA]
 	gamma     *sliderctrl.SliderCtrl
@@ -69,19 +184,23 @@ type demo struct {
 }
 
 func newDemo() *demo {
-	quad := polygonctrl.NewDefaultPolygonCtrl(4, 5.0)
-	quad.SetClose(true)
-	quad.SetInPolygonCheck(true)
-	quad.SetXn(0, 100)
-	quad.SetYn(0, 100)
-	quad.SetXn(1, 500)
-	quad.SetYn(1, 100)
-	quad.SetXn(2, 500)
-	quad.SetYn(2, 500)
-	quad.SetXn(3, 100)
-	quad.SetYn(3, 500)
+	baseImg := loadSourceImage()
 
-	transType := rboxctrl.NewDefaultRboxCtrl(400, 5.0, 600, 100.0, false)
+	// C++ on_init: a +-200 quad centered in the window, floored.
+	const transX1, transY1, transX2, transY2 = -200.0, -200.0, 200.0, 200.0
+	dx := frameWidth/2.0 - (transX2+transX1)/2.0
+	dy := frameHeight/2.0 - (transY2+transY1)/2.0
+	quad := polygonctrl.NewDefaultPolygonCtrl(4, 5.0)
+	quad.SetXn(0, math.Floor(transX1+dx))
+	quad.SetYn(0, math.Floor(transY1+dy))
+	quad.SetXn(1, math.Floor(transX2+dx))
+	quad.SetYn(1, math.Floor(transY1+dy))
+	quad.SetXn(2, math.Floor(transX2+dx))
+	quad.SetYn(2, math.Floor(transY2+dy))
+	quad.SetXn(3, math.Floor(transX1+dx))
+	quad.SetYn(3, math.Floor(transY2+dy))
+
+	transType := rboxctrl.NewDefaultRboxCtrl(400, 5.0, 430+170.0, 100.0, false)
 	transType.SetTextSize(7, 0)
 	transType.AddItem("Affine No Resample")
 	transType.AddItem("Affine Resample")
@@ -91,17 +210,24 @@ func newDemo() *demo {
 	transType.AddItem("Perspective Resample Exact")
 	transType.SetCurItem(4)
 
-	gamma := sliderctrl.NewSliderCtrl(5.0, 5.0, 395.0, 10.0, false)
+	gamma := sliderctrl.NewSliderCtrl(5.0, 5.0, 400-5.0, 10.0, false)
 	gamma.SetRange(0.5, 3.0)
 	gamma.SetValue(2.0)
 	gamma.SetLabel("Gamma=%.3f")
 
-	blur := sliderctrl.NewSliderCtrl(5.0, 20.0, 395.0, 25.0, false)
+	blur := sliderctrl.NewSliderCtrl(5.0, 5.0+15, 400-5.0, 10.0+15, false)
 	blur.SetRange(0.5, 2.0)
 	blur.SetValue(1.0)
 	blur.SetLabel("Blur=%.3f")
 
+	// C++ ctor: m_gamma_lut(2.0); on_init applies dir gamma to the pattern.
+	lut := gammalut.NewGammaLUT8WithGamma(2.0)
+
 	return &demo{
+		baseImg:   baseImg,
+		srcImg:    applyGammaDir(baseImg, lut),
+		gammaLut:  lut,
+		oldGamma:  2.0,
 		quad:      quad,
 		transType: transType,
 		gamma:     gamma,
@@ -110,31 +236,144 @@ func newDemo() *demo {
 	}
 }
 
-func (d *demo) quadPoints() [4][2]float64 {
-	return [4][2]float64{
-		{d.quad.Xn(0), d.quad.Yn(0)},
-		{d.quad.Xn(1), d.quad.Yn(1)},
-		{d.quad.Xn(2), d.quad.Yn(2)},
-		{d.quad.Xn(3), d.quad.Yn(3)},
-	}
-}
-
 func (d *demo) Render(img *agg.Image) {
-	ctx := agg.NewContextForImage(img)
-	elapsed := patternresample.DrawTimed(ctx, patternresample.Config{
-		Mode:  d.transType.CurItem(),
-		Gamma: d.gamma.Value(),
-		Blur:  d.blur.Value(),
-		Quad:  d.quadPoints(),
-	})
+	// C++ on_draw: when the gamma slider moved, reload the image and re-apply
+	// the dir gamma with the new LUT.
+	if d.gamma.Value() != d.oldGamma {
+		d.gammaLut.SetGamma(d.gamma.Value())
+		d.srcImg = applyGammaDir(d.baseImg, d.gammaLut)
+		d.oldGamma = d.gamma.Value()
+	}
 
-	a := ctx.GetAgg2D()
-	a.FontGSV(10)
-	a.FillColor(agg.Black)
-	a.Text(10, 70, fmt.Sprintf("%3.2f ms", float64(elapsed)/float64(time.Millisecond)), false, 0, 0)
+	w, h := img.Width(), img.Height()
+	rbuf := buffer.NewRenderingBufferU8WithData(img.Data, w, h, img.Stride())
 
-	for _, ctrl := range d.controls {
-		renderCtrl(a, ctrl)
+	pf := pixfmt.NewPixFmtRGBA32Linear(rbuf)
+	rb := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32[icol.Linear], icol.RGBA8[icol.Linear]](pf)
+	pfPre := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
+	rbPre := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32Pre[icol.Linear], icol.RGBA8[icol.Linear]](pfPre)
+
+	rb.Clear(icol.RGBA8[icol.Linear]{R: 255, G: 255, B: 255, A: 255})
+
+	if d.transType.CurItem() < 2 {
+		// For the affine parallelogram transformations we calculate the
+		// 4-th (implicit) point of the parallelogram.
+		d.quad.SetXn(3, d.quad.Xn(0)+(d.quad.Xn(2)-d.quad.Xn(1)))
+		d.quad.SetYn(3, d.quad.Yn(0)+(d.quad.Yn(2)-d.quad.Yn(1)))
+	}
+
+	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.IntConv, *rasterizer.RasterizerSlClip[int, rasterizer.IntConv]](
+		rasterizer.IntConv{}, rasterizer.NewRasterizerSlClip[int, rasterizer.IntConv](rasterizer.IntConv{}),
+	)
+	sl := scanline.NewScanlineU8()
+
+	// Render the "quad" tool (outline + handle circles) before the pattern.
+	ras.Reset()
+	ras.AddPath(&ctrlVertexSource{ctrl: d.quad}, 0)
+	renscan.RenderScanlinesAASolid(ras, sl, rb, ctrlColor(icol.NewRGBA(0, 0.3, 0.5, 0.1)))
+
+	// Prepare the polygon to rasterize: the destination (transformed) quad.
+	ras.ClipBox(0, 0, float64(w), float64(h))
+	ras.Reset()
+	ras.MoveToD(d.quad.Xn(0), d.quad.Yn(0))
+	ras.LineToD(d.quad.Xn(1), d.quad.Yn(1))
+	ras.LineToD(d.quad.Xn(2), d.quad.Yn(2))
+	ras.LineToD(d.quad.Xn(3), d.quad.Yn(3))
+
+	// C++: agg::image_filter_lut filter(image_filter_hanning, true) - normalized.
+	filter := imgacc.NewImageFilterLUTWithFilter(imgacc.HanningFilter{}, true)
+
+	imgRbuf := buffer.NewRenderingBufferU8()
+	imgRbuf.Attach(d.srcImg.Data, d.srcImg.Width(), d.srcImg.Height(), d.srcImg.Stride())
+	ipf := imagePixFmt{rbuf: imgRbuf}
+	wx := imgacc.NewWrapModeReflectAutoPow2(basics.Int32u(d.srcImg.Width()))
+	wy := imgacc.NewWrapModeReflectAutoPow2(basics.Int32u(d.srcImg.Height()))
+	accessor := imgacc.NewImageAccessorWrap[imagePixFmt, *imgacc.WrapModeReflectAutoPow2, *imgacc.WrapModeReflectAutoPow2](&ipf, wx, wy)
+	source := &imageWrapSource{accessor: accessor, ipf: &ipf}
+
+	// C++ on_init: g_x1..g_y2 = -150..150 (independent of the image size).
+	const srcX1, srcY1, srcX2, srcY2 = -150.0, -150.0, 150.0, 150.0
+	parl := [6]float64{
+		d.quad.Xn(0), d.quad.Yn(0),
+		d.quad.Xn(1), d.quad.Yn(1),
+		d.quad.Xn(2), d.quad.Yn(2),
+	}
+	q8 := [8]float64{
+		d.quad.Xn(0), d.quad.Yn(0),
+		d.quad.Xn(1), d.quad.Yn(1),
+		d.quad.Xn(2), d.quad.Yn(2),
+		d.quad.Xn(3), d.quad.Yn(3),
+	}
+
+	startTime := time.Now()
+	switch d.transType.CurItem() {
+	case 0:
+		tr := transform.NewTransAffineParlToRect(parl, srcX1, srcY1, srcX2, srcY2)
+		interp := span.NewSpanInterpolatorLinear[*transform.TransAffine](tr, 8)
+		sg := span.NewSpanImageFilterRGBA2x2WithParams[*imageWrapSource, *span.SpanInterpolatorLinear[*transform.TransAffine]](
+			source, interp, filter,
+		)
+		renderImageSpans(ras, sl, rbPre, sg)
+
+	case 1:
+		tr := transform.NewTransAffineParlToRect(parl, srcX1, srcY1, srcX2, srcY2)
+		interp := span.NewSpanInterpolatorLinear[*transform.TransAffine](tr, 8)
+		sg := span.NewSpanImageResampleRGBAAffineWithParams[*imageWrapSource](source, interp, filter)
+		sg.Blur(d.blur.Value())
+		renderImageSpans(ras, sl, rbPre, sg)
+
+	case 2:
+		tr := transform.NewTransPerspectiveQuadToRect(q8, srcX1, srcY1, srcX2, srcY2)
+		if tr.IsValid(transform.AffineEpsilon) {
+			interp := span.NewSpanInterpolatorLinearSubdiv[*transform.TransPerspective](tr, 8, 4)
+			sg := span.NewSpanImageFilterRGBA2x2WithParams[*imageWrapSource, *span.SpanInterpolatorLinearSubdiv[*transform.TransPerspective]](
+				source, interp, filter,
+			)
+			renderImageSpans(ras, sl, rbPre, sg)
+		}
+
+	case 3:
+		tr := transform.NewTransPerspectiveQuadToRect(q8, srcX1, srcY1, srcX2, srcY2)
+		if tr.IsValid(transform.AffineEpsilon) {
+			interp := span.NewSpanInterpolatorTrans[*transform.TransPerspective](tr)
+			sg := span.NewSpanImageFilterRGBA2x2WithParams[*imageWrapSource, *span.SpanInterpolatorTrans[*transform.TransPerspective]](
+				source, interp, filter,
+			)
+			renderImageSpans(ras, sl, rbPre, sg)
+		}
+
+	case 4:
+		interp := span.NewSpanInterpolatorPerspectiveLerpQuadToRect(q8, srcX1, srcY1, srcX2, srcY2, 8)
+		if interp.IsValid() {
+			subdiv := span.NewSpanSubdivAdaptor(interp)
+			sg := span.NewSpanImageResampleRGBAWithParams[*imageWrapSource, *span.SpanSubdivAdaptor[*span.SpanInterpolatorPerspectiveLerp]](
+				source, subdiv, filter,
+			)
+			sg.Blur(d.blur.Value())
+			renderImageSpans(ras, sl, rbPre, sg)
+		}
+
+	case 5:
+		interp := span.NewSpanInterpolatorPerspectiveExactQuadToRect(q8, srcX1, srcY1, srcX2, srcY2, 8)
+		if interp.IsValid() {
+			subdiv := span.NewSpanSubdivAdaptor(interp)
+			sg := span.NewSpanImageResampleRGBAWithParams[*imageWrapSource, *span.SpanSubdivAdaptor[*span.SpanInterpolatorPerspectiveExact]](
+				source, subdiv, filter,
+			)
+			sg.Blur(d.blur.Value())
+			renderImageSpans(ras, sl, rbPre, sg)
+		}
+	}
+	elapsedMs := float64(time.Since(startTime)) / float64(time.Millisecond)
+
+	// C++: pixf.apply_gamma_inv(m_gamma_lut) on the whole window, BEFORE the
+	// timing text and the controls (alpha is untouched, matching bgr24).
+	pf.ApplyGammaInv(d.gammaLut.Inv)
+
+	drawGSVText(ras, sl, rb, 10.0, 70.0, fmt.Sprintf("%3.2f ms", elapsedMs))
+
+	for _, c := range d.controls {
+		renderCtrl(ras, sl, rb, c)
 	}
 }
 
@@ -142,10 +381,9 @@ func (d *demo) OnMouseDown(x, y int, btn lowlevelrunner.Buttons) bool {
 	if !btn.Left {
 		return false
 	}
-
 	fx, fy := float64(x), float64(y)
-	for _, ctrl := range d.controls {
-		if ctrl.OnMouseButtonDown(fx, fy) {
+	for _, c := range d.controls {
+		if c.OnMouseButtonDown(fx, fy) {
 			return true
 		}
 	}
@@ -155,33 +393,28 @@ func (d *demo) OnMouseDown(x, y int, btn lowlevelrunner.Buttons) bool {
 func (d *demo) OnMouseMove(x, y int, btn lowlevelrunner.Buttons) bool {
 	fx, fy := float64(x), float64(y)
 	redraw := false
-
-	for _, ctrl := range d.controls {
-		if ctrl.OnMouseMove(fx, fy, btn.Left) {
+	for _, c := range d.controls {
+		if c.OnMouseMove(fx, fy, btn.Left) {
 			redraw = true
 		}
 	}
 	if d.quad.OnMouseMove(fx, fy, btn.Left) {
 		redraw = true
 	}
-
 	return redraw
 }
 
 func (d *demo) OnMouseUp(x, y int, btn lowlevelrunner.Buttons) bool {
-	_ = btn
 	fx, fy := float64(x), float64(y)
 	redraw := false
-
-	for _, ctrl := range d.controls {
-		if ctrl.OnMouseButtonUp(fx, fy) {
+	for _, c := range d.controls {
+		if c.OnMouseButtonUp(fx, fy) {
 			redraw = true
 		}
 	}
 	if d.quad.OnMouseButtonUp(fx, fy) {
 		redraw = true
 	}
-
 	return redraw
 }
 
@@ -189,38 +422,82 @@ func (d *demo) OnKey(key rune) bool {
 	if key != ' ' {
 		return false
 	}
-
-	points := [4][2]float64{
-		{d.quad.Xn(0), d.quad.Yn(0)},
-		{d.quad.Xn(1), d.quad.Yn(1)},
-		{d.quad.Xn(2), d.quad.Yn(2)},
-		{d.quad.Xn(3), d.quad.Yn(3)},
+	cx := (d.quad.Xn(0) + d.quad.Xn(1) + d.quad.Xn(2) + d.quad.Xn(3)) / 4
+	cy := (d.quad.Yn(0) + d.quad.Yn(1) + d.quad.Yn(2) + d.quad.Yn(3)) / 4
+	tr := transform.NewTransAffineTranslation(-cx, -cy)
+	tr.Multiply(transform.NewTransAffineRotation(math.Pi / 2.0))
+	tr.Multiply(transform.NewTransAffineTranslation(cx, cy))
+	for i := uint(0); i < 4; i++ {
+		x, y := d.quad.Xn(i), d.quad.Yn(i)
+		tr.Transform(&x, &y)
+		d.quad.SetXn(i, x)
+		d.quad.SetYn(i, y)
 	}
-
-	cx := (points[0][0] + points[1][0] + points[2][0] + points[3][0]) / 4.0
-	cy := (points[0][1] + points[1][1] + points[2][1] + points[3][1]) / 4.0
-	s, c := math.Sincos(math.Pi / 2.0)
-	for i := range points {
-		dx := points[i][0] - cx
-		dy := points[i][1] - cy
-		x := cx + dx*c - dy*s
-		y := cy + dx*s + dy*c
-		d.quad.SetXn(uint(i), x)
-		d.quad.SetYn(uint(i), y)
-	}
-
 	return true
 }
 
-func main() {
-	lowlevelrunner.Run(runnerConfig(), newDemo())
+// applyGammaDir returns a copy of img with the LUT's dir gamma applied to the
+// RGB channels, mirroring C++ pixfmt::apply_gamma_dir on rbuf_img(0).
+func applyGammaDir(img *agg.Image, lut *gammalut.GammaLUT[basics.Int8u, basics.Int8u]) *agg.Image {
+	out := agg.NewImage(append([]byte(nil), img.Data...), img.Width(), img.Height(), img.Stride())
+	w, h := out.Width(), out.Height()
+	for p := 0; p < w*h; p++ {
+		out.Data[p*4+0] = lut.Dir(out.Data[p*4+0])
+		out.Data[p*4+1] = lut.Dir(out.Data[p*4+1])
+		out.Data[p*4+2] = lut.Dir(out.Data[p*4+2])
+	}
+	return out
+}
+
+// loadSourceImage returns the agg pattern image decoded to linear RGBA.
+// The C++ platform loads the sRGB PPM into the linear window format, and the
+// bundled PPM decodes top-down while the demo frame is bottom-up, so flip it.
+func loadSourceImage() *agg.Image {
+	img, err := imageassets.Agg()
+	if err != nil {
+		panic("pattern_resample: failed to load agg image: " + err.Error())
+	}
+	w, h := img.Width(), img.Height()
+	for p := 0; p < w*h; p++ {
+		c := icol.ConvertRGB8SRGBToLinear(icol.RGB8[icol.SRGB]{
+			R: img.Data[p*4+0],
+			G: img.Data[p*4+1],
+			B: img.Data[p*4+2],
+		})
+		img.Data[p*4+0] = c.R
+		img.Data[p*4+1] = c.G
+		img.Data[p*4+2] = c.B
+	}
+	flipImageY(img)
+	return img
+}
+
+func flipImageY(img *agg.Image) {
+	w, h := img.Width(), img.Height()
+	if w == 0 || h == 0 {
+		return
+	}
+	stride := w * 4
+	row := make([]byte, stride)
+	for y := 0; y < h/2; y++ {
+		top := y * stride
+		bottom := (h - 1 - y) * stride
+		copy(row, img.Data[top:top+stride])
+		copy(img.Data[top:top+stride], img.Data[bottom:bottom+stride])
+		copy(img.Data[bottom:bottom+stride], row)
+	}
 }
 
 func runnerConfig() lowlevelrunner.Config {
 	return lowlevelrunner.Config{
-		Title:  "Pattern Resample",
-		Width:  frameWidth,
-		Height: frameHeight,
-		FlipY:  true,
+		Title:                 "Pattern Resample",
+		Width:                 frameWidth,
+		Height:                frameHeight,
+		FlipY:                 true,
+		EncodeLinearRGBToSRGB: true,
 	}
+}
+
+func main() {
+	lowlevelrunner.Run(runnerConfig(), newDemo())
 }

@@ -93,7 +93,7 @@ Keep the remaining corpus of demo mismatches under active repair:
 - [ ] `multi_clip`
 - [ ] `pattern_fill`
 - [x] `pattern_perspective` — pixel-exact (RMSE 0.0): same faithful-port rewrite as `image_resample`/`image_perspective` — quad tool + rbox rendered BEFORE the pattern, wrap-reflect accessor, normalized Hanning 2x2 filter, source rect ±150, linear_subdiv interpolator for perspective, sRGB-decoded agg.ppm, linear pipeline + EncodeLinearRGBToSRGB.
-- [ ] `pattern_resample`
+- [x] `pattern_resample` — RMSE 2.92, all 222 remaining differing pixels are the printed render-time digits. Same faithful-port rewrite as its siblings (six resample modes from `image_resample` + wrap-reflect pattern source from `pattern_perspective`), plus the demo's `gamma_lut(2.0)`: apply_gamma_dir on the pattern image, apply_gamma_inv on the window before timing text and controls; quad ghost alpha 0.1.
 - [x] `perspective` — pixel-exact (RMSE 0.0) via the lion color roundtrip fix.
 - [ ] `polymorphic_renderer`
 - [ ] `raster_text`
