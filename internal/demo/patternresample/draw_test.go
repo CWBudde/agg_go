@@ -9,10 +9,9 @@ import (
 
 func TestGammaAdjustedSourceUsesAGGFlipYImageOrientation(t *testing.T) {
 	oldCachedAgg := cachedAgg
-	oldGammaCache := gammaImageCache
 	t.Cleanup(func() {
 		cachedAgg = oldCachedAgg
-		gammaImageCache = oldGammaCache
+		gammaImageCache.Clear()
 	})
 
 	cachedAgg = agg.NewImage([]byte{

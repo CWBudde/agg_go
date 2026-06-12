@@ -66,7 +66,7 @@ Keep the remaining corpus of demo mismatches under active repair:
 - [ ] `distortions`
 - [ ] `flash_rasterizer`
 - [ ] `flash_rasterizer2`
-- [ ] `gamma_correction`
+- [x] `gamma_correction` — pixel-exact (RMSE 0.0) after fixing C-sprintf label semantics in slider_ctrl.
 - [ ] `gamma_ctrl`
 - [ ] `gamma_tuner`
 - [ ] `gouraud_mesh`
@@ -97,7 +97,7 @@ Keep the remaining corpus of demo mismatches under active repair:
 - [ ] `perspective`
 - [ ] `polymorphic_renderer`
 - [ ] `raster_text`
-- [ ] `rasterizer_compound`
+- [x] `rasterizer_compound` — pixel-exact (RMSE 0.0) after porting the linear-pipeline + sRGB-encode-on-save semantics of the C++ demo.
 - [ ] `rasterizers`
 - [ ] `rasterizers2`
 - [ ] `rounded_rect`
@@ -265,7 +265,7 @@ C++ references live under `../agg-2.6/agg-src/`.
       DONE 2026-05-31 (TDD, 8 tests): added `ImageFloat` over `RenderingBufferF32`
       storing **straight** RGBA float32 (4/pixel, [0,1]), the float twin of
       `Image`. Constructors `NewImageFloat`/`NewImageFloatEmpty`; `Width/Height/
-    Stride/IsAttached/Attach`; straight `GetPixel`/`SetPixel` over `color.RGBA32`;
+Stride/IsAttached/Attach`; straight `GetPixel`/`SetPixel` over `color.RGBA32`;
       in-place `Premultiply`/`Demultiply`. Boundary conversions honoring each
       format's alpha convention: `ToNRGBA64`/`NewImageFloatFromNRGBA64` (straight
       ↔ straight 16-bit), `ToRGBA`/`NewImageFloatFromRGBA` (straight ↔ Go's
@@ -494,14 +494,13 @@ usable.
       the one exception (Gouraud) needs a genuinely new float span generator. Each
       group below is one reviewable slice (internal builder + root wrapper + a small
       parity test vs the 8-bit oracle):
-
   - [x] **Shapes** — DONE 2026-06-01. `Arc`, `ArcRel`, `RoundedRect`,
         `RoundedRectXY`, `RoundedRectVariableRadii`, `Polygon`, `Polyline`, `Star`,
         `Curve`, `Curve4`, `Parallelogram`, `ParallelogramFromRect`. Pure path
         construction → existing float `DrawPath`; the shape builders
         (`internal/shapes/rounded_rect.go`, arc/curve converters) are color-agnostic
         and reused as-is. Implemented in `internal/agg2d/shapes_float.go`
-        (RoundedRect*/Arc/Star/Curve/Curve4/Polygon/Polyline),
+        (RoundedRect\*/Arc/Star/Curve/Curve4/Polygon/Polyline),
         `internal/agg2d/paths_float.go` (`ArcRel`), and
         `internal/agg2d/transform_float.go` (`Parallelogram`/`ParallelogramFromRect`),
         with root wrappers in `agg2d_float.go`. Parity vs the 8-bit oracle covered by

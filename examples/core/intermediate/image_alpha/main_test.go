@@ -146,5 +146,5 @@ func TestImageAlphaUsesCXXRGBBilinearFilterWithClipAccessor(t *testing.T) {
 	}
 	interp := span.NewSpanInterpolatorLinear(transform.NewTransAffine(), 8)
 
-	var _ = newImageAlphaRGBBilinear(src, interp)
+	_ = newImageAlphaRGBBilinear(src, interp)
 }

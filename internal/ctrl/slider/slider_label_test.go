@@ -48,6 +48,28 @@ func TestSliderCtrlLabelRendering(t *testing.T) {
 	}
 }
 
+func TestSliderCtrlLabelFormatting(t *testing.T) {
+	// C's sprintf ignores the value argument when the label has no
+	// conversion verb (e.g. gamma_correction's "Contrast" slider).
+	testCases := []struct {
+		label    string
+		expected string
+	}{
+		{"Contrast", "Contrast"},
+		{"Value=%1.2f", "Value=75.50"},
+		{"%.0f%%", "76%"},
+		{"100%%", "100%"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.label, func(t *testing.T) {
+			if got := formatLabel(tc.label, 75.5); got != tc.expected {
+				t.Errorf("label %q rendered as %q, want %q", tc.label, got, tc.expected)
+			}
+		})
+	}
+}
+
 func TestSliderCtrlTextCharacters(t *testing.T) {
 	slider := NewSliderCtrl(0, 0, 200, 20, false)
 	slider.SetLabel("Value: 123.45%")

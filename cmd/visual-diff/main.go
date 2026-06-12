@@ -69,7 +69,8 @@ func main() {
 	if stats.TotalPixels > 0 {
 		ratio = float64(stats.DifferentPixels) / float64(stats.TotalPixels)
 	}
-	fmt.Printf("size=%dx%d different_pixels=%d/%d ratio=%.6f max_diff=%d avg_diff=%.4f rmse=%.4f out=%s\n",
+	fmt.Printf(
+		"size=%dx%d different_pixels=%d/%d ratio=%.6f max_diff=%d avg_diff=%.4f rmse=%.4f out=%s\n",
 		stats.Width,
 		stats.Height,
 		stats.DifferentPixels,

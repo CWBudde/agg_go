@@ -22,6 +22,7 @@ import (
 	renscan "github.com/cwbudde/agg_go/internal/renderer/scanline"
 	"github.com/cwbudde/agg_go/internal/scanline"
 	"github.com/cwbudde/agg_go/internal/shapes"
+	"github.com/cwbudde/agg_go/internal/span"
 	"github.com/cwbudde/agg_go/internal/transform"
 )
 
@@ -56,13 +57,11 @@ func (h *rcStyleHandler) Color(style int) icol.RGBA8[icol.Linear] {
 }
 func (h *rcStyleHandler) GenerateSpan(colors []icol.RGBA8[icol.Linear], x, y, length, style int) {}
 
-type rcSLAdapter struct{ sl *scanline.ScanlineU8 }
-
-func (a *rcSLAdapter) ResetSpans()                      { a.sl.ResetSpans() }
-func (a *rcSLAdapter) AddCell(x int, c basics.Int8u)    { a.sl.AddCell(x, uint(c)) }
-func (a *rcSLAdapter) AddSpan(x, l int, c basics.Int8u) { a.sl.AddSpan(x, l, uint(c)) }
-func (a *rcSLAdapter) Finalize(y int)                   { a.sl.Finalize(y) }
-func (a *rcSLAdapter) NumSpans() int                    { return a.sl.NumSpans() }
+// srgba8 mirrors the C++ demo's agg::srgba8 literals: assigning an srgba8 to
+// the linear color_type performs an sRGB -> linear decode.
+func srgba8(r, g, b, a uint8) icol.RGBA8[icol.Linear] {
+	return icol.ConvertRGBA8SRGBToLinear(icol.RGBA8[icol.SRGB]{R: r, G: g, B: b, A: a})
+}
 
 type rcConvVertexSource interface {
 	Rewind(pathID uint)
@@ -161,7 +160,10 @@ func (a *controlVertexSourceAdapter) Vertex(x, y *float64) uint32 {
 	return uint32(cmd)
 }
 
-func toAggColor(c icol.RGBA) agg.Color {
+// ctrlColor converts a control's float color the way the C++ demo's
+// slider_ctrl<color_type> does: rgba -> rgba8 is a plain *255 quantization
+// with no colorspace conversion.
+func ctrlColor(c icol.RGBA) icol.RGBA8[icol.Linear] {
 	clamp := func(v float64) uint8 {
 		switch {
 		case v <= 0:
@@ -172,15 +174,19 @@ func toAggColor(c icol.RGBA) agg.Color {
 			return uint8(v*255.0 + 0.5)
 		}
 	}
-	return agg.NewColor(clamp(c.R), clamp(c.G), clamp(c.B), clamp(c.A))
+	return icol.RGBA8[icol.Linear]{R: clamp(c.R), G: clamp(c.G), B: clamp(c.B), A: clamp(c.A)}
 }
 
-func renderCtrl(a *agg.Agg2D, c ctrlbase.Ctrl[icol.RGBA]) {
-	ras := a.GetInternalRasterizer()
+type bgRasterizer = rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
+
+type plainRenBase = renderer.RendererBase[*pixfmt.PixFmtRGBA32[icol.Linear], icol.RGBA8[icol.Linear]]
+
+// renderCtrl is the Go equivalent of C++ agg::render_ctrl.
+func renderCtrl(ras *bgRasterizer, sl *scanline.ScanlineU8, rb *plainRenBase, c ctrlbase.Ctrl[icol.RGBA]) {
 	for pathID := uint(0); pathID < c.NumPaths(); pathID++ {
 		ras.Reset()
 		ras.AddPath(&controlVertexSourceAdapter{ctrl: c}, uint32(pathID))
-		a.RenderRasterizerWithColor(toAggColor(c.Color(pathID)))
+		renscan.RenderScanlinesAASolid(ras, sl, rb, ctrlColor(c.Color(pathID)))
 	}
 }
 
@@ -226,19 +232,24 @@ func newDemo() *demo {
 func (d *demo) Render(img *agg.Image) {
 	w, h := img.Width(), img.Height()
 	rbuf := buffer.NewRenderingBufferU8WithData(img.Data, w, h, img.Stride())
-	pf := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
-	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32Pre[icol.Linear], icol.RGBA8[icol.Linear]](pf)
 
-	// Background gradient: yellow -> cyan, matching the upstream demo.
+	// Mirror the C++ demo's two renderer bases over the same buffer:
+	// a plain one for background and controls, a premultiplied one for the
+	// compound pass.
+	pf := pixfmt.NewPixFmtRGBA32Linear(rbuf)
+	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32[icol.Linear], icol.RGBA8[icol.Linear]](pf)
+
+	pfPre := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
+	renBasePre := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32Pre[icol.Linear], icol.RGBA8[icol.Linear]](pfPre)
+
+	// Background gradient: yellow -> cyan. The C++ demo interpolates
+	// srgba8 values in sRGB space and stores them decoded to linear.
+	yellow := icol.RGBA8[icol.SRGB]{R: 255, G: 255, B: 0, A: 255}
+	cyan := icol.RGBA8[icol.SRGB]{R: 0, G: 255, B: 255, A: 255}
 	gradient := make([]icol.RGBA8[icol.Linear], w)
 	for x := 0; x < w; x++ {
-		t := float64(x) / float64(w-1)
-		gradient[x] = icol.RGBA8[icol.Linear]{
-			R: uint8((1.0 - t) * 255),
-			G: 255,
-			B: uint8(t * 255),
-			A: 255,
-		}
+		k := basics.URound(float64(x) / float64(w) * 255.0)
+		gradient[x] = icol.ConvertRGBA8SRGBToLinear(yellow.Gradient(cyan, basics.Int8u(k)))
 	}
 	for y := 0; y < h; y++ {
 		renBase.CopyColorHspan(0, y, w, gradient)
@@ -250,9 +261,6 @@ func (d *demo) Render(img *agg.Image) {
 	)
 	bgSl := scanline.NewScanlineU8()
 
-	a := agg.NewContextForImage(img).GetAgg2D()
-	a.ResetTransformations()
-
 	bgPath := path.NewPathStorageStl()
 	bgPath.MoveTo(0, 0)
 	bgPath.LineTo(float64(w), 0)
@@ -260,7 +268,7 @@ func (d *demo) Render(img *agg.Image) {
 	bgPath.ClosePolygon(basics.PathFlagsNone)
 	bgRas.Reset()
 	bgRas.AddPath(&rcConvVSAdapter{vs: path.NewPathStorageStlVertexSourceAdapter(bgPath)}, 0)
-	renscan.RenderScanlinesAASolid(bgRas, bgSl, renBase, icol.RGBA8[icol.Linear]{R: 0, G: 100, B: 0, A: 255})
+	renscan.RenderScanlinesAASolid(bgRas, bgSl, renBase, srgba8(0, 100, 0, 255))
 
 	bgPath2 := path.NewPathStorageStl()
 	bgPath2.MoveTo(0, 0)
@@ -269,7 +277,7 @@ func (d *demo) Render(img *agg.Image) {
 	bgPath2.ClosePolygon(basics.PathFlagsNone)
 	bgRas.Reset()
 	bgRas.AddPath(&rcConvVSAdapter{vs: path.NewPathStorageStlVertexSourceAdapter(bgPath2)}, 0)
-	renscan.RenderScanlinesAASolid(bgRas, bgSl, renBase, icol.RGBA8[icol.Linear]{R: 0, G: 100, B: 100, A: 255})
+	renscan.RenderScanlinesAASolid(bgRas, bgSl, renBase, srgba8(0, 100, 100, 255))
 
 	// Compound scene.
 	ps := path.NewPathStorageStl()
@@ -290,10 +298,10 @@ func (d *demo) Render(img *agg.Image) {
 	ellStroke.SetWidth(d.widthCtrl.Value() * 0.5)
 
 	styles := []icol.RGBA8[icol.Linear]{
-		{R: 0, G: 0, B: 255, A: 255},
-		{R: 143, G: 90, B: 6, A: 255},
-		{R: 51, G: 0, B: 151, A: 255},
-		{R: 255, G: 0, B: 108, A: 255},
+		srgba8(0, 0, 255, 255),
+		srgba8(143, 90, 6, 255),
+		srgba8(51, 0, 151, 255),
+		srgba8(255, 0, 108, 255),
 	}
 	styles[3].Opacity(d.alpha1Ctrl.Value())
 	styles[2].Opacity(d.alpha2Ctrl.Value())
@@ -318,75 +326,15 @@ func (d *demo) Render(img *agg.Image) {
 	rasc.Styles(0, -1)
 	rasc.AddPath(&rcConvVSAdapter{vs: curve}, 0)
 
-	if rasc.RewindScanlines() {
-		minX := rasc.MinX()
-		maxX := rasc.MaxX()
-		slAA := scanline.NewScanlineU8()
-		slAA.Reset(minX, maxX)
-		adAA := &rcSLAdapter{sl: slAA}
-		styleHandler := &rcStyleHandler{styles: styles}
-
-		length := maxX - minX + 2
-		if length < 0 {
-			length = 0
-		}
-		colorSpan := make([]icol.RGBA8[icol.Linear], length*2)
-		mixBuffer := colorSpan[length:]
-		coverBuffer := rasc.AllocateCoverBuffer(length)
-
-		for {
-			numStyles := rasc.SweepStyles()
-			if numStyles == 0 {
-				break
-			}
-			if numStyles == 1 {
-				if rasc.SweepScanline(adAA, 0) {
-					c := styleHandler.Color(int(rasc.Style(0)))
-					renscan.RenderScanlineAASolid(slAA, renBase, c)
-				}
-			} else {
-				slStart := rasc.ScanlineStart()
-				slLen := int(rasc.ScanlineLength())
-				if slLen == 0 {
-					continue
-				}
-				for i := 0; i < slLen; i++ {
-					mixBuffer[slStart-minX+i] = icol.RGBA8[icol.Linear]{}
-					coverBuffer[slStart-minX+i] = 0
-				}
-
-				slY := 0
-				for i := uint32(0); i < numStyles; i++ {
-					style := int(rasc.Style(i))
-					if rasc.SweepScanline(adAA, int(i)) {
-						slY = slAA.Y()
-						c := styleHandler.Color(style)
-						for _, sp := range slAA.Spans() {
-							for j := 0; j < int(sp.Len); j++ {
-								idx := int(sp.X) - minX + j
-								cover := sp.Covers[j]
-								dst := coverBuffer[idx]
-								if int(dst)+int(cover) > basics.CoverFull {
-									cover = basics.Int8u(basics.CoverFull) - dst
-								}
-								if cover > 0 {
-									mixBuffer[idx].AddWithCover(c, cover)
-									coverBuffer[idx] += cover
-								}
-							}
-						}
-					}
-				}
-				renBase.BlendColorHspan(slStart, slY, slLen, mixBuffer[slStart-minX:slStart-minX+slLen], nil, basics.CoverFull)
-			}
-		}
-	}
-	ctx := agg.NewContextForImage(img)
-	a = ctx.GetAgg2D()
-	a.ResetTransformations()
+	slAA := scanline.NewScanlineU8()
+	alloc := span.NewSpanAllocator[icol.RGBA8[icol.Linear]]()
+	styleHandler := &rcStyleHandler{styles: styles}
+	renscan.RenderScanlinesCompoundLayered[icol.RGBA8[icol.Linear], *icol.RGBA8[icol.Linear]](
+		rasc, slAA, renBasePre, alloc, styleHandler,
+	)
 
 	for _, ctrl := range d.controls {
-		renderCtrl(a, ctrl)
+		renderCtrl(bgRas, bgSl, renBase, ctrl)
 	}
 }
 
@@ -427,9 +375,10 @@ func (d *demo) OnMouseUp(x, y int, btn lowlevelrunner.Buttons) bool {
 
 func main() {
 	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "Rasterizer Compound",
-		Width:  frameWidth,
-		Height: frameHeight,
-		FlipY:  true,
+		Title:                 "Rasterizer Compound",
+		Width:                 frameWidth,
+		Height:                frameHeight,
+		FlipY:                 true,
+		EncodeLinearRGBToSRGB: true,
 	}, newDemo())
 }

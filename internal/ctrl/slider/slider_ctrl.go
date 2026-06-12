@@ -5,6 +5,7 @@ package slider
 import (
 	"fmt"
 	"math"
+	"strings"
 
 	"github.com/cwbudde/agg_go/internal/basics"
 	"github.com/cwbudde/agg_go/internal/color"
@@ -422,10 +423,38 @@ func (s *SliderCtrl) generateTrianglePath() {
 	s.vertexCount = 4
 }
 
+// hasFormatVerb reports whether the label contains a C-style conversion
+// specification (a '%' that is not part of a '%%' escape). C's sprintf
+// silently ignores the value argument for plain labels such as "Contrast",
+// while fmt.Sprintf would append "%!(EXTRA float64=...)".
+func hasFormatVerb(label string) bool {
+	for i := 0; i < len(label); i++ {
+		if label[i] != '%' {
+			continue
+		}
+		if i+1 < len(label) && label[i+1] == '%' {
+			i++
+			continue
+		}
+		if i+1 < len(label) {
+			return true
+		}
+	}
+	return false
+}
+
+// formatLabel renders a slider label like C's sprintf(buf, label, value):
+// labels without a conversion verb ignore the value argument.
+func formatLabel(label string, value float64) string {
+	if hasFormatVerb(label) {
+		return fmt.Sprintf(label, value)
+	}
+	return strings.ReplaceAll(label, "%%", "%")
+}
+
 func (s *SliderCtrl) generateTextPath() {
 	if s.label != "" {
-		// Format the label with current value (matching C++ behavior)
-		text := fmt.Sprintf(s.label, s.Value())
+		text := formatLabel(s.label, s.Value())
 		s.textRenderer.SetText(text)
 		// Match AGG's slider_ctrl_impl::rewind path 2 exactly.
 		s.textRenderer.SetPosition(s.X1(), s.Y1())
