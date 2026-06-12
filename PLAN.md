@@ -79,8 +79,8 @@ Keep the remaining corpus of demo mismatches under active repair:
 - [x] `image_filters` — pixel-exact (RMSE 0.0): linear pipeline (sRGB-decoded PPM source, linear filtering, sRGB encode on save) + raw conv_stroke for the gsv status text.
 - [ ] `image_filters2`
 - [ ] `image_fltr_graph`
-- [ ] `image_perspective`
-- [ ] `image_resample`
+- [x] `image_perspective` — exact except timing-text digits (RMSE 3.07, 180 px all in the "ms" text): same faithful-port rewrite as `image_resample` — quad tool with handle circles (rgba 0,0.3,0.5,0.6), three modes (affine parl + NN, bilinear + 2x2, perspective + 2x2, filter LUT NOT normalized), linear pipeline + EncodeLinearRGBToSRGB, raw conv_stroke gsv timing text at (10,10).
+- [x] `image_resample` — exact except timing-text digits (RMSE 3.23, 259 px all in the "ms" text): rewritten from the Agg2D/quadwarp helper to a direct faithful port — quad tool (stroke + handle circles) rendered like C++ interactive_polygon, all six transform modes via the real span generators (2x2 filter / affine + perspective resample with subdiv adaptor), linear pipeline + EncodeLinearRGBToSRGB, raw conv_stroke gsv timing text.
 - [ ] `image_transforms`
 - [ ] `image1`
 - [ ] `line_patterns_clip`
@@ -126,9 +126,11 @@ path to each fix.
 - [ ] `trans_curve`: evaluate the source bitmap choice and switch to a better upstream-compatible
       shared asset if one exists.
 - [ ] `trans_curve2`: same asset/parity task as `trans_curve`.
-- [ ] `image_resample`: restore draggable quad handles and ensure down/move/up handlers map to
-      this demo correctly.
-- [ ] `image_perspective`: add or fix draggable quad handles and mouse-interaction wiring.
+- [x] `image_resample`: restore draggable quad handles and ensure down/move/up handlers map to
+      this demo correctly. (Done in the faithful-port rewrite: the quad tool renders with
+      handle circles and the mouse handlers drive the polygon ctrl.)
+- [x] `image_perspective`: add or fix draggable quad handles and mouse-interaction wiring.
+      (Done in the faithful-port rewrite: PolygonCtrl quad tool + mouse handlers.)
 - [ ] `gamma_correction`: correct the quadrant placement so the background matches the C++ frame.
 - [ ] `compositing2`: expand rendering so the composited circles occupy the intended canvas region.
 - [ ] `aatest`: restore the expected grey background.

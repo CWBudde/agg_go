@@ -2,16 +2,13 @@ package main
 
 import "testing"
 
-func TestRunnerConfigKeepsImagePixelsRaw(t *testing.T) {
+func TestRunnerConfigMatchesCPPPipeline(t *testing.T) {
 	cfg := runnerConfig()
 	if !cfg.FlipY {
 		t.Fatal("image_perspective must run with FlipY=true to match C++ platform_support")
 	}
-	if cfg.EncodeLinearRGBToSRGB {
-		t.Fatal("image_perspective must not post-encode the full framebuffer; the sampled source image is already in display byte space")
-	}
-	if cfg.DisableLinearRGBToSRGB {
-		t.Fatal("image_perspective should leave the default output path untouched instead of using the explicit opt-out flag")
+	if !cfg.EncodeLinearRGBToSRGB {
+		t.Fatal("image_perspective renders in linear space (AGG_BGRA32 color_type) and must encode linear->sRGB on save like the C++ platform")
 	}
 }
 
