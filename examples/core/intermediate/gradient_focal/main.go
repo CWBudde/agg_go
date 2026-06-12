@@ -1,22 +1,32 @@
 // Package main ports AGG's gradient_focal.cpp demo.
+//
+// The original renders into a linear BGR24 buffer: the gradient LUT is built
+// and interpolated in sRGB space (color_interpolator<srgba8>) and decoded to
+// linear per span pixel; blending happens in linear space and the platform
+// encodes linear->sRGB when saving (EncodeLinearRGBToSRGB here).
 package main
 
 import (
+	"fmt"
 	"math"
+	"time"
 
 	agg "github.com/cwbudde/agg_go"
 	"github.com/cwbudde/agg_go/examples/shared/lowlevelrunner"
 	"github.com/cwbudde/agg_go/internal/basics"
 	"github.com/cwbudde/agg_go/internal/buffer"
 	"github.com/cwbudde/agg_go/internal/color"
+	"github.com/cwbudde/agg_go/internal/conv"
 	ctrlbase "github.com/cwbudde/agg_go/internal/ctrl"
 	sliderctrl "github.com/cwbudde/agg_go/internal/ctrl/slider"
 	"github.com/cwbudde/agg_go/internal/gamma"
+	"github.com/cwbudde/agg_go/internal/gsv"
 	"github.com/cwbudde/agg_go/internal/pixfmt"
 	"github.com/cwbudde/agg_go/internal/rasterizer"
 	"github.com/cwbudde/agg_go/internal/renderer"
 	renscan "github.com/cwbudde/agg_go/internal/renderer/scanline"
 	"github.com/cwbudde/agg_go/internal/scanline"
+	"github.com/cwbudde/agg_go/internal/shapes"
 	"github.com/cwbudde/agg_go/internal/span"
 	"github.com/cwbudde/agg_go/internal/transform"
 )
@@ -52,6 +62,25 @@ func (a *rasterVertexSourceAdapter) Vertex(x, y *float64) uint32 {
 	return uint32(cmd)
 }
 
+// convRasAdapter wraps a conv.VertexSource into the rasterizer interface.
+type convRasAdapter struct{ src conv.VertexSource }
+
+func (a *convRasAdapter) Rewind(id uint32) { a.src.Rewind(uint(id)) }
+func (a *convRasAdapter) Vertex(x, y *float64) uint32 {
+	vx, vy, cmd := a.src.Vertex()
+	*x, *y = vx, vy
+	return uint32(cmd)
+}
+
+// ellipseVS adapts shapes.Ellipse to conv.VertexSource.
+type ellipseVS struct{ e *shapes.Ellipse }
+
+func (s *ellipseVS) Rewind(id uint) { s.e.Rewind(uint32(id)) }
+func (s *ellipseVS) Vertex() (x, y float64, cmd basics.PathCommand) {
+	cmd = s.e.Vertex(&x, &y)
+	return
+}
+
 func newRasterizer() *rasType {
 	return rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
 		rasterizer.RasConvInt{},
@@ -71,69 +100,67 @@ func newDemo() *demo {
 	}
 }
 
+// buildGradientFocalLUT ports the C++ demo's build_gradient_lut() with
+// agg::gradient_lut<color_interpolator<srgba8>, 1024>.
+//
+// Stop colors: rgba8_gamma_dir(srgba8(...), gamma_lut) takes rgba8 (linear),
+// so each srgba8 literal is decoded to linear, gamma.dir'ed, and re-encoded
+// to sRGB when stored in the srgba8 LUT profile (a non-identity roundtrip).
+// build_lut() interpolates between stops in sRGB space using the generic
+// color_interpolator (srgba8 has no fast specialization), i.e.
+// c1.gradient(c2, count/len) with ik = uround(k*255). Finally, span_gradient
+// assigns each srgba8 LUT entry to the linear color_type, an sRGB->linear
+// decode, which we bake into the returned table.
 func buildGradientFocalLUT(g float64, size int) []color.RGBA8[color.Linear] {
-	if size < 2 {
-		size = 2
-	}
-	lut := make([]color.RGBA8[color.Linear], size)
 	gammaLUT := gamma.NewGammaLUT8WithGamma(g)
 
-	type stop struct {
-		pos float64
-		r   uint8
-		g   uint8
-		b   uint8
-	}
-	stops := []stop{
-		{pos: 0.0, r: 0, g: 255, b: 0},
-		{pos: 0.2, r: 120, g: 0, b: 0},
-		{pos: 0.7, r: 120, g: 120, b: 0},
-		{pos: 1.0, r: 0, g: 0, b: 255},
+	stop := func(r, gc, b uint8) color.RGBA8[color.SRGB] {
+		lin := color.ConvertRGBA8SRGBToLinear(color.RGBA8[color.SRGB]{R: r, G: gc, B: b, A: 255})
+		lin.R = uint8(gammaLUT.Dir(basics.Int8u(lin.R)))
+		lin.G = uint8(gammaLUT.Dir(basics.Int8u(lin.G)))
+		lin.B = uint8(gammaLUT.Dir(basics.Int8u(lin.B)))
+		return color.ConvertRGBA8LinearToSRGB(lin)
 	}
 
-	type stopGamma struct {
-		pos float64
-		r   float64
-		g   float64
-		b   float64
+	type colorPoint struct {
+		offset float64
+		c      color.RGBA8[color.SRGB]
 	}
-	sg := make([]stopGamma, len(stops))
-	for i, s := range stops {
-		sg[i] = stopGamma{
-			pos: s.pos,
-			r:   float64(gammaLUT.Dir(basics.Int8u(s.r))),
-			g:   float64(gammaLUT.Dir(basics.Int8u(s.g))),
-			b:   float64(gammaLUT.Dir(basics.Int8u(s.b))),
-		}
+	profile := []colorPoint{
+		{0.0, stop(0, 255, 0)},
+		{0.2, stop(120, 0, 0)},
+		{0.7, stop(120, 120, 0)},
+		{1.0, stop(0, 0, 255)},
 	}
 
-	for i := 0; i < size; i++ {
-		t := float64(i) / float64(size-1)
-		j := 0
-		for j < len(sg)-2 && t > sg[j+1].pos {
-			j++
-		}
-		a := sg[j]
-		b := sg[j+1]
-		u := 0.0
-		if den := b.pos - a.pos; den > 0 {
-			u = (t - a.pos) / den
-		}
-		if u < 0 {
-			u = 0
-		}
-		if u > 1 {
-			u = 1
-		}
-		lut[i] = color.RGBA8[color.Linear]{
-			R: uint8(a.r + (b.r-a.r)*u + 0.5),
-			G: uint8(a.g + (b.g-a.g)*u + 0.5),
-			B: uint8(a.b + (b.b-a.b)*u + 0.5),
-			A: 255,
+	lut := make([]color.RGBA8[color.SRGB], size)
+	start := int(basics.URound(profile[0].offset * float64(size)))
+	end := start
+	for i := 0; i < start; i++ {
+		lut[i] = profile[0].c
+	}
+	for i := 1; i < len(profile); i++ {
+		end = int(basics.URound(profile[i].offset * float64(size)))
+		c1 := profile[i-1].c
+		c2 := profile[i].c
+		length := end - start + 1
+		count := 0
+		for start < end {
+			k := basics.Int8u(basics.URound(float64(count) / float64(length) * 255.0))
+			lut[start] = c1.Gradient(c2, k)
+			count++
+			start++
 		}
 	}
+	for ; end < size; end++ {
+		lut[end] = profile[len(profile)-1].c
+	}
 
-	return lut
+	out := make([]color.RGBA8[color.Linear], size)
+	for i, e := range lut {
+		out[i] = color.ConvertRGBA8SRGBToLinear(e)
+	}
+	return out
 }
 
 func applyGammaInv(img *agg.Image, g float64) {
@@ -171,6 +198,22 @@ func renderCtrl(ras *rasType, sl *scanline.ScanlineU8, rb *renBase, c ctrlbase.C
 	}
 }
 
+func drawGSVText(ras *rasType, sl *scanline.ScanlineU8, rb *renBase, x, y float64, text string) {
+	txt := gsv.NewGSVText()
+	txt.SetStartPoint(x, y)
+	txt.SetSize(10.0, 0)
+	txt.SetText(text)
+
+	// The C++ demo strokes gsv_text with a plain conv_stroke (butt caps,
+	// miter joins), not gsv_text_outline (which forces round caps).
+	stroke := conv.NewConvStroke(txt)
+	stroke.SetWidth(1.5)
+
+	ras.Reset()
+	ras.AddPath(&convRasAdapter{src: stroke}, 0)
+	renscan.RenderScanlinesAASolid(ras, sl, rb, color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255})
+}
+
 func (d *demo) Render(img *agg.Image) {
 	w := img.Width()
 	h := img.Height()
@@ -189,13 +232,11 @@ func (d *demo) Render(img *agg.Image) {
 		d.lastGamma = gammaVal
 	}
 
-	ctx := agg.NewContextForImage(img)
-	ctx.Clear(agg.White)
-
 	rbuf := buffer.NewRenderingBufferU8()
 	rbuf.Attach(img.Data, w, h, img.Stride())
 	pf := pixfmt.NewPixFmtRGBA32Linear(rbuf)
 	rb := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]](pf)
+	rb.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
 
 	ras := newRasterizer()
 	sl := scanline.NewScanlineU8()
@@ -219,11 +260,19 @@ func (d *demo) Render(img *agg.Image) {
 	ras.LineToD(float64(w), float64(h))
 	ras.LineToD(0, float64(h))
 	ras.ClosePolygon()
+	startTime := time.Now()
 	renscan.RenderScanlinesAA(ras, sl, rb, alloc, spanGen)
+	elapsedMs := float64(time.Since(startTime)) / float64(time.Millisecond)
 
-	ctx.SetColor(agg.White)
-	ctx.SetLineWidth(1.0)
-	ctx.DrawCircle(cx, cy, gradR)
+	// Transformed circle showing the gradient boundary: ellipse with
+	// auto-calculated steps, conv_stroke with default width 1.0.
+	ell := shapes.NewEllipseWithParams(cx, cy, gradR, gradR, 0, false)
+	ellStroke := conv.NewConvStroke(&ellipseVS{e: ell})
+	ras.Reset()
+	ras.AddPath(&convRasAdapter{src: ellStroke}, 0)
+	renscan.RenderScanlinesAASolid(ras, sl, rb, color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
+
+	drawGSVText(ras, sl, rb, 10.0, 35.0, fmt.Sprintf("%3.2f ms", elapsedMs))
 
 	renderCtrl(ras, sl, rb, d.gammaSlider)
 	applyGammaInv(img, gammaVal)
@@ -264,9 +313,10 @@ func (d *demo) OnMouseUp(x, y int, btn lowlevelrunner.Buttons) bool {
 
 func main() {
 	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "Gradient Focal",
-		Width:  600,
-		Height: 400,
-		FlipY:  true,
+		Title:                 "Gradient Focal",
+		Width:                 600,
+		Height:                400,
+		FlipY:                 true,
+		EncodeLinearRGBToSRGB: true,
 	}, newDemo())
 }

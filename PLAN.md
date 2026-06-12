@@ -60,7 +60,7 @@ Keep the remaining corpus of demo mismatches under active repair:
 - [ ] `component_rendering`
 - [ ] `compositing`
 - [ ] `compositing2`
-- [ ] `conv_contour`
+- [x] `conv_contour` — pixel-exact (RMSE 0.0): rewritten from Agg2D to the linear pipeline (linear pixfmt, render_ctrl equivalent, FlipY + EncodeLinearRGBToSRGB).
 - [ ] `conv_dash_marker`
 - [ ] `conv_stroke`
 - [ ] `distortions`
@@ -70,7 +70,7 @@ Keep the remaining corpus of demo mismatches under active repair:
 - [ ] `gamma_ctrl`
 - [ ] `gamma_tuner`
 - [ ] `gouraud_mesh`
-- [ ] `gradient_focal`
+- [x] `gradient_focal` — exact except timing-text digits (RMSE 1.48, 253 px all in the "ms" text): gradient_lut built/interpolated in sRGB space with the rgba8_gamma_dir roundtrip on stops, decoded to linear per entry; ellipse+conv_stroke boundary circle; linear pipeline + EncodeLinearRGBToSRGB.
 - [x] `gradients_contour` — pixel-exact (RMSE 0.0): DT grayscale truncation (not +0.5), rbox defaults (text thickness 1.5, right edge 300), exact span_interpolator_trans; C++ reference recaptured after fixing the "Assymetric Conic" typo in the original demo.
 - [ ] `gradients`
 - [ ] `graph_test`

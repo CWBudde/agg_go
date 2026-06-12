@@ -1,22 +1,28 @@
 // Package main ports AGG's conv_contour.cpp demo.
 //
-// The original example is an interactive contour/orientation tool. This Go
-// port keeps the same glyph path, contour pipeline, default control values,
-// and control layout, but renders them as a static frame.
+// The original example is an interactive contour/orientation tool built on
+// AGG_BGR24 (linear color_type): everything renders in linear space and the
+// platform encodes linear->sRGB when saving. This port mirrors that with
+// linear pixfmts plus EncodeLinearRGBToSRGB in the runner config.
 package main
 
 import (
-	"math"
-
 	agg "github.com/cwbudde/agg_go"
 	"github.com/cwbudde/agg_go/examples/shared/lowlevelrunner"
 	"github.com/cwbudde/agg_go/internal/basics"
-	"github.com/cwbudde/agg_go/internal/color"
+	"github.com/cwbudde/agg_go/internal/buffer"
+	icol "github.com/cwbudde/agg_go/internal/color"
 	"github.com/cwbudde/agg_go/internal/conv"
+	ctrlbase "github.com/cwbudde/agg_go/internal/ctrl"
 	"github.com/cwbudde/agg_go/internal/ctrl/checkbox"
 	"github.com/cwbudde/agg_go/internal/ctrl/rbox"
 	"github.com/cwbudde/agg_go/internal/ctrl/slider"
 	"github.com/cwbudde/agg_go/internal/path"
+	"github.com/cwbudde/agg_go/internal/pixfmt"
+	"github.com/cwbudde/agg_go/internal/rasterizer"
+	"github.com/cwbudde/agg_go/internal/renderer"
+	renscan "github.com/cwbudde/agg_go/internal/renderer/scanline"
+	"github.com/cwbudde/agg_go/internal/scanline"
 	"github.com/cwbudde/agg_go/internal/transform"
 )
 
@@ -25,56 +31,56 @@ const (
 	frameHeight = 330
 )
 
-type ctrlIface interface {
-	NumPaths() uint
-	Rewind(pathID uint)
-	Vertex() (x, y float64, cmd basics.PathCommand)
-	Color(pathID uint) color.RGBA
+type rasType = rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
+
+type renBase = renderer.RendererBase[*pixfmt.PixFmtRGBA32[icol.Linear], icol.RGBA8[icol.Linear]]
+
+// convRasAdapter wraps a conv.VertexSource into the rasterizer interface.
+type convRasAdapter struct{ src conv.VertexSource }
+
+func (a *convRasAdapter) Rewind(id uint32) { a.src.Rewind(uint(id)) }
+func (a *convRasAdapter) Vertex(x, y *float64) uint32 {
+	vx, vy, cmd := a.src.Vertex()
+	*x, *y = vx, vy
+	return uint32(cmd)
 }
 
-type ctrlVS struct{ ctrl ctrlIface }
+// ctrlRasAdapter wraps a ctrl.Ctrl into the rasterizer interface.
+type ctrlRasAdapter struct{ ctrl ctrlbase.Ctrl[icol.RGBA] }
 
-func (a *ctrlVS) Rewind(pathID uint32) { a.ctrl.Rewind(uint(pathID)) }
-func (a *ctrlVS) Vertex(x, y *float64) uint32 {
+func (a *ctrlRasAdapter) Rewind(id uint32) { a.ctrl.Rewind(uint(id)) }
+func (a *ctrlRasAdapter) Vertex(x, y *float64) uint32 {
 	vx, vy, cmd := a.ctrl.Vertex()
 	*x, *y = vx, vy
 	return uint32(cmd)
 }
 
-func linearToSRGB(v float64) uint8 {
-	if v <= 0 {
-		return 0
+// ctrlColor converts a control's float color the way the C++ demo does:
+// rgba -> rgba8 is a plain *255 quantization with no colorspace conversion.
+func ctrlColor(c icol.RGBA) icol.RGBA8[icol.Linear] {
+	clamp := func(v float64) uint8 {
+		switch {
+		case v <= 0:
+			return 0
+		case v >= 1:
+			return 255
+		default:
+			return uint8(v*255.0 + 0.5)
+		}
 	}
-	if v >= 1 {
-		return 255
-	}
-	if v <= 0.0031308 {
-		return uint8(v * 12.92 * 255.0)
-	}
-	return uint8((1.055*math.Pow(v, 1.0/2.4) - 0.055) * 255.0)
+	return icol.RGBA8[icol.Linear]{R: clamp(c.R), G: clamp(c.G), B: clamp(c.B), A: clamp(c.A)}
 }
 
-func renderCtrl(a *agg.Agg2D, c ctrlIface) {
-	ras := a.GetInternalRasterizer()
-	adapter := &ctrlVS{ctrl: c}
+// renderCtrl is the Go equivalent of C++ agg::render_ctrl.
+func renderCtrl(ras *rasType, sl *scanline.ScanlineP8, rb *renBase, c ctrlbase.Ctrl[icol.RGBA]) {
 	for pathID := uint(0); pathID < c.NumPaths(); pathID++ {
 		ras.Reset()
-		ras.AddPath(adapter, uint32(pathID))
-		col := c.Color(pathID)
-		a.RenderRasterizerWithColor(agg.NewColor(
-			linearToSRGB(col.R),
-			linearToSRGB(col.G),
-			linearToSRGB(col.B),
-			linearToSRGB(col.A),
-		))
+		ras.AddPath(&ctrlRasAdapter{ctrl: c}, uint32(pathID))
+		renscan.RenderScanlinesAASolid(ras, sl, rb, ctrlColor(c.Color(pathID)))
 	}
 }
 
-type demo struct{}
-
-func newDemo() *demo { return &demo{} }
-
-func composePath(closeMode int) *path.PathStorageStl {
+func composePath(ps *path.PathStorageStl, closeMode int) {
 	var flag basics.PathFlag
 	switch closeMode {
 	case 1:
@@ -85,7 +91,7 @@ func composePath(closeMode int) *path.PathStorageStl {
 		flag = basics.PathFlagsNone
 	}
 
-	ps := path.NewPathStorageStl()
+	ps.RemoveAll()
 	ps.MoveTo(28.47, 6.45)
 	ps.Curve3(21.58, 1.12, 19.82, 0.29)
 	ps.Curve3(17.19, -0.93, 14.21, -0.93)
@@ -130,53 +136,20 @@ func composePath(closeMode int) *path.PathStorageStl {
 	ps.Curve3(15.97, 4.74, 18.70, 4.74)
 	ps.Curve3(22.41, 4.74, 28.47, 9.62)
 	ps.ClosePolygon(flag)
-
-	return ps
 }
 
-func renderGlyph(a *agg.Agg2D, closeMode int, width float64, autoDetect bool) {
-	pathStorage := composePath(closeMode)
-	adapter := path.NewPathStorageStlVertexSourceAdapter(pathStorage)
-	mtx := transform.NewTransAffineFromValues(4.0, 0, 0, 4.0, 150.0, 100.0)
-	trans := conv.NewConvTransform(adapter, mtx)
-	curve := conv.NewConvCurve(trans)
-	contour := conv.NewConvContour(curve)
-	contour.Width(width)
-	contour.AutoDetectOrientation(autoDetect)
-
-	a.ResetPath()
-	contour.Rewind(0)
-	for {
-		x, y, cmd := contour.Vertex()
-		switch {
-		case basics.IsStop(cmd):
-			goto done
-		case basics.IsMoveTo(cmd):
-			a.MoveTo(x, y)
-		case basics.IsEndPoly(cmd):
-			if basics.IsClose(uint32(cmd)) {
-				a.ClosePolygon()
-			}
-		case basics.IsVertex(cmd):
-			a.LineTo(x, y)
-		}
-	}
-done:
-	a.FillColor(agg.Black)
-	a.NoLine()
-	a.DrawPath(agg.FillOnly)
+type demo struct {
+	closeCtrl      *rbox.RboxCtrl[icol.RGBA]
+	widthCtrl      *slider.SliderCtrl
+	autoDetectCtrl *checkbox.CheckboxCtrl[icol.RGBA]
+	controls       []ctrlbase.Ctrl[icol.RGBA]
 }
 
-func (d *demo) Render(img *agg.Image) {
-	ctx := agg.NewContextForImage(img)
-	ctx.Clear(agg.White)
-
-	a := ctx.GetAgg2D()
-	a.ResetTransformations()
-
-	// Match the original C++ example defaults.
-	renderGlyph(a, 0, 0.0, false)
-
+func newDemo() *demo {
+	// C++ ctrl coordinates (flip_y=true, so ctrl flipY=false):
+	//   m_close      (10, 10, 130, 80)
+	//   m_width      (140, 14, 430, 22)
+	//   m_auto_detect(140, 30, "...")
 	closeCtrl := rbox.NewDefaultRboxCtrl(10, 10, 130, 80, false)
 	_ = closeCtrl.AddItem("Close")
 	_ = closeCtrl.AddItem("Close CW")
@@ -189,36 +162,91 @@ func (d *demo) Render(img *agg.Image) {
 	widthCtrl.SetLabel("Width=%1.2f")
 
 	autoDetectCtrl := checkbox.NewDefaultCheckboxCtrl(140, 30, "Autodetect orientation if not defined", false)
-	autoDetectCtrl.SetChecked(false)
 
-	renderCtrl(a, closeCtrl)
-	renderCtrl(a, widthCtrl)
-	renderCtrl(a, autoDetectCtrl)
-
-	flipImageVertically(img)
+	return &demo{
+		closeCtrl:      closeCtrl,
+		widthCtrl:      widthCtrl,
+		autoDetectCtrl: autoDetectCtrl,
+		controls:       []ctrlbase.Ctrl[icol.RGBA]{closeCtrl, widthCtrl, autoDetectCtrl},
+	}
 }
 
-func flipImageVertically(img *agg.Image) {
-	w := img.Width()
-	h := img.Height()
-	stride := w * 4
-	if len(img.Data) < stride*h {
-		return
+func (d *demo) Render(img *agg.Image) {
+	w, h := img.Width(), img.Height()
+	rbuf := buffer.NewRenderingBufferU8WithData(img.Data, w, h, img.Stride())
+
+	pf := pixfmt.NewPixFmtRGBA32Linear(rbuf)
+	rb := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32[icol.Linear], icol.RGBA8[icol.Linear]](pf)
+	rb.Clear(icol.RGBA8[icol.Linear]{R: 255, G: 255, B: 255, A: 255})
+
+	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip(),
+	)
+	sl := scanline.NewScanlineP8()
+
+	mtx := transform.NewTransAffine()
+	mtx.Multiply(transform.NewTransAffineScaling(4.0))
+	mtx.Multiply(transform.NewTransAffineTranslation(150, 100))
+
+	ps := path.NewPathStorageStl()
+	composePath(ps, d.closeCtrl.CurItem())
+
+	trans := conv.NewConvTransform(path.NewPathStorageStlVertexSourceAdapter(ps), mtx)
+	curve := conv.NewConvCurve(trans)
+	contour := conv.NewConvContour(curve)
+	contour.Width(d.widthCtrl.Value())
+	contour.AutoDetectOrientation(d.autoDetectCtrl.IsChecked())
+
+	ras.Reset()
+	ras.AddPath(&convRasAdapter{src: contour}, 0)
+	renscan.RenderScanlinesAASolid(ras, sl, rb, icol.RGBA8[icol.Linear]{R: 0, G: 0, B: 0, A: 255})
+
+	for _, c := range d.controls {
+		renderCtrl(ras, sl, rb, c)
 	}
-	tmp := make([]uint8, stride)
-	for y := 0; y < h/2; y++ {
-		top := y * stride
-		bottom := (h - 1 - y) * stride
-		copy(tmp, img.Data[top:top+stride])
-		copy(img.Data[top:top+stride], img.Data[bottom:bottom+stride])
-		copy(img.Data[bottom:bottom+stride], tmp)
+}
+
+func (d *demo) OnMouseDown(x, y int, btn lowlevelrunner.Buttons) bool {
+	if !btn.Left {
+		return false
 	}
+	fx, fy := float64(x), float64(y)
+	for _, c := range d.controls {
+		if c.OnMouseButtonDown(fx, fy) {
+			return true
+		}
+	}
+	return false
+}
+
+func (d *demo) OnMouseMove(x, y int, btn lowlevelrunner.Buttons) bool {
+	fx, fy := float64(x), float64(y)
+	redraw := false
+	for _, c := range d.controls {
+		if c.OnMouseMove(fx, fy, btn.Left) {
+			redraw = true
+		}
+	}
+	return redraw
+}
+
+func (d *demo) OnMouseUp(x, y int, btn lowlevelrunner.Buttons) bool {
+	fx, fy := float64(x), float64(y)
+	redraw := false
+	for _, c := range d.controls {
+		if c.OnMouseButtonUp(fx, fy) {
+			redraw = true
+		}
+	}
+	return redraw
 }
 
 func main() {
 	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "Conv Contour",
-		Width:  frameWidth,
-		Height: frameHeight,
+		Title:                 "Conv Contour",
+		Width:                 frameWidth,
+		Height:                frameHeight,
+		FlipY:                 true,
+		EncodeLinearRGBToSRGB: true,
 	}, newDemo())
 }
