@@ -333,8 +333,8 @@ func NewLineInterpolatorAA1(ren OutlineRenderer, lp *primitives.LineParameters, 
 
 // StepHor performs a horizontal step with start distance checking.
 func (li *LineInterpolatorAA1) StepHor() bool {
-	distStart := li.di.DistStart()
 	s1 := li.stepHorBase(li.di)
+	distStart := li.di.DistStart()
 	p0 := MaxHalfWidth + 2
 	p1 := p0
 
@@ -374,8 +374,8 @@ func (li *LineInterpolatorAA1) StepHor() bool {
 
 // StepVer performs a vertical step with start distance checking.
 func (li *LineInterpolatorAA1) StepVer() bool {
-	distStart := li.di.DistStart()
 	s1 := li.stepVerBase(li.di)
+	distStart := li.di.DistStart()
 	p0 := MaxHalfWidth + 2
 	p1 := p0
 
@@ -436,8 +436,8 @@ func NewLineInterpolatorAA2(ren OutlineRenderer, lp *primitives.LineParameters, 
 
 // StepHor performs a horizontal step with end distance checking.
 func (li *LineInterpolatorAA2) StepHor() bool {
-	distEnd := li.di.DistEnd()
 	s1 := li.stepHorBase(li.di)
+	distEnd := li.di.DistEnd()
 	p0 := MaxHalfWidth + 2
 	p1 := p0
 
@@ -481,8 +481,8 @@ func (li *LineInterpolatorAA2) StepHor() bool {
 
 // StepVer performs a vertical step with end distance checking.
 func (li *LineInterpolatorAA2) StepVer() bool {
-	distEnd := li.di.DistEnd()
 	s1 := li.stepVerBase(li.di)
+	distEnd := li.di.DistEnd()
 	p0 := MaxHalfWidth + 2
 	p1 := p0
 
@@ -632,9 +632,11 @@ func NewLineInterpolatorAA3(ren OutlineRenderer, lp *primitives.LineParameters, 
 
 // StepHor performs a horizontal step with both start and end distance checking.
 func (li *LineInterpolatorAA3) StepHor() bool {
+	// C++ calls step_hor_base (which advances m_di) BEFORE reading
+	// dist_start/dist_end; reading them first uses stale distances.
+	s1 := li.stepHorBase(li.di)
 	distStart := li.di.DistStart()
 	distEnd := li.di.DistEnd()
-	s1 := li.stepHorBase(li.di)
 	p0 := MaxHalfWidth + 2
 	p1 := p0
 
@@ -683,9 +685,9 @@ func (li *LineInterpolatorAA3) StepHor() bool {
 
 // StepVer performs a vertical step with both start and end distance checking.
 func (li *LineInterpolatorAA3) StepVer() bool {
+	s1 := li.stepVerBase(li.di)
 	distStart := li.di.DistStart()
 	distEnd := li.di.DistEnd()
-	s1 := li.stepVerBase(li.di)
 	p0 := MaxHalfWidth + 2
 	p1 := p0
 

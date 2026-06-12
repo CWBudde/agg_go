@@ -49,8 +49,8 @@ Keep the remaining corpus of demo mismatches under active repair:
 - [ ] `aa_demo`
 - [ ] `aa_test`
 - [ ] `alpha_gradient`
-- [ ] `alpha_mask`
-- [ ] `alpha_mask2`
+- [x] `alpha_mask` — pixel-exact (RMSE 0.0) via the lion srgba8-storage color roundtrip fix.
+- [x] `alpha_mask2` — pixel-exact (RMSE 0.0): linear pipeline for all overlay passes, lion color roundtrip, gradient uround, and the line_interpolator_aa stale dist_start/dist_end fix.
 - [ ] `alpha_mask3`
 - [ ] `bezier_div`
 - [ ] `blend_color`
@@ -87,14 +87,14 @@ Keep the remaining corpus of demo mismatches under active repair:
 - [ ] `line_patterns`
 - [ ] `line_thickness`
 - [ ] `lion_lens`
-- [ ] `lion_outline`
-- [ ] `lion`
+- [ ] `lion_outline` — near-exact (RMSE 0.05) after the outline interpolator + lion color fixes.
+- [x] `lion` — pixel-exact (RMSE 0.0): lion color roundtrip + C-truncation of the alpha slider byte.
 - [ ] `mol_view`
 - [ ] `multi_clip`
 - [ ] `pattern_fill`
 - [ ] `pattern_perspective`
 - [ ] `pattern_resample`
-- [ ] `perspective`
+- [x] `perspective` — pixel-exact (RMSE 0.0) via the lion color roundtrip fix.
 - [ ] `polymorphic_renderer`
 - [ ] `raster_text`
 - [x] `rasterizer_compound` — pixel-exact (RMSE 0.0) after porting the linear-pipeline + sRGB-encode-on-save semantics of the C++ demo.

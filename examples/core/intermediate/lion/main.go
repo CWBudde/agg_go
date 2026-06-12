@@ -108,8 +108,9 @@ func (d *demo) Render(img *agg.Image) {
 	rasVS := conv.NewRasterizerVertexSourceAdapter(transVS)
 	renSolid := renscan.NewRendererScanlineAASolidWithRenderer(rb)
 	colors := lionColorView{
-		data:  &d.lion,
-		alpha: uint8(d.alphaCtrl.Value()*255.0 + 0.5),
+		data: &d.lion,
+		// C++: g_colors[i].a = agg::int8u(m_alpha_slider.value() * 255) — truncates.
+		alpha: uint8(d.alphaCtrl.Value() * 255.0),
 	}
 
 	renscan.RenderAllPaths(ras, sl, renSolid, rasVS, colors, &d.lion, d.lion.NPaths)
