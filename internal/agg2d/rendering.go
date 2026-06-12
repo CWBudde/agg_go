@@ -403,6 +403,18 @@ func (agg2d *Agg2D) updateRasterizerGamma() {
 
 	gamma := agg2d.antiAliasGamma
 	alpha := agg2d.masterAlpha
+	if agg2d.antiAliasOff {
+		// AGG's aliased path (render_scanlines_bin / scanline_bin) emits a
+		// fully covered pixel for every cell the rasterizer touches,
+		// regardless of partial coverage.
+		agg2d.rasterizer.SetGamma(func(x float64) float64 {
+			if x <= 0.0 {
+				return 0.0
+			}
+			return alpha
+		})
+		return
+	}
 	gammaFunc := func(x float64) float64 {
 		if x <= 0.0 {
 			return 0.0
@@ -413,6 +425,21 @@ func (agg2d *Agg2D) updateRasterizerGamma() {
 		return alpha * math.Pow(x, 1.0/gamma)
 	}
 	agg2d.rasterizer.SetGamma(gammaFunc)
+}
+
+// SetAntiAliased toggles between the anti-aliased scanline pipeline and the
+// binary-coverage behavior of AGG's scanline_bin renderer. It mirrors how
+// renderers built on AGG (e.g. matplotlib's Agg backend) switch to
+// renderer_scanline_bin_solid when a graphics context requests
+// antialiased=false.
+func (agg2d *Agg2D) SetAntiAliased(enabled bool) {
+	agg2d.antiAliasOff = !enabled
+	agg2d.updateRasterizerGamma()
+}
+
+// GetAntiAliased reports whether the anti-aliased pipeline is active.
+func (agg2d *Agg2D) GetAntiAliased() bool {
+	return !agg2d.antiAliasOff
 }
 
 // LineWidth sets the line width.

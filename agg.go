@@ -904,6 +904,18 @@ func (a *Agg2D) GetAntiAliasGamma() float64 {
 	return a.impl.GetAntiAliasGamma()
 }
 
+// SetAntiAliased toggles between the anti-aliased scanline pipeline and the
+// binary coverage of AGG's scanline_bin renderer (every touched cell becomes
+// a fully covered pixel).
+func (a *Agg2D) SetAntiAliased(enabled bool) {
+	a.impl.SetAntiAliased(enabled)
+}
+
+// GetAntiAliased reports whether the anti-aliased pipeline is active.
+func (a *Agg2D) GetAntiAliased() bool {
+	return a.impl.GetAntiAliased()
+}
+
 // Utility methods
 func (a *Agg2D) NoFill() {
 	a.impl.NoFill()

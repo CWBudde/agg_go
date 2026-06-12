@@ -321,3 +321,90 @@ func absInt(v int) int {
 	}
 	return v
 }
+
+// TestPublicAgg2DFloatCurves drives the curve-command and relative path methods
+// through the public float surface and the public 8-bit oracle, asserting
+// whole-frame parity. The smooth-curve reflection depends on shared control-point
+// tracking, so any drift in that state would surface as a pixel diff here.
+func TestPublicAgg2DFloatCurves(t *testing.T) {
+	const w, h = 120, 100
+
+	scene := func(
+		clear func(Color), line func(Color), lw func(float64),
+		reset func(), moveTo func(x, y float64),
+		quadTo func(xc, yc, xt, yt float64), quadSmooth func(xt, yt float64),
+		cubicTo func(xc1, yc1, xc2, yc2, xt, yt float64), cubicSmooth func(xc2, yc2, xt, yt float64),
+		horRel func(dx float64), verRel func(dy float64),
+		draw func(DrawPathFlag),
+	) {
+		clear(NewColor(255, 255, 255, 255))
+		line(NewColor(20, 60, 180, 255))
+		lw(2)
+
+		// Smooth quadratic chain.
+		reset()
+		moveTo(10, 50)
+		quadTo(30, 10, 50, 50)
+		quadSmooth(90, 50)
+		draw(StrokeOnly)
+
+		// Smooth cubic chain.
+		reset()
+		moveTo(10, 80)
+		cubicTo(25, 55, 45, 55, 55, 80)
+		cubicSmooth(85, 105, 100, 80)
+		draw(StrokeOnly)
+
+		// Relative hor/ver box.
+		reset()
+		moveTo(15, 15)
+		horRel(40)
+		verRel(20)
+		horRel(-40)
+		verRel(-20)
+		draw(StrokeOnly)
+	}
+
+	imgF := NewImageFloat(w, h)
+	af := NewAgg2DFloat()
+	af.AttachImage(imgF)
+	scene(af.ClearAll, af.LineColor, af.LineWidth, af.ResetPath, af.MoveTo,
+		af.QuadricCurveTo, af.QuadricCurveToSmooth, af.CubicCurveTo, af.CubicCurveToSmooth,
+		af.HorLineRel, af.VerLineRel, af.DrawPath)
+	rgbaF := imgF.ToRGBA()
+
+	buf := make([]uint8, w*h*4)
+	a8 := NewAgg2D()
+	a8.Attach(buf, w, h, w*4)
+	scene(a8.ClearAll, a8.LineColor, a8.LineWidth, a8.ResetPath, a8.MoveTo,
+		a8.QuadricCurveTo, a8.QuadricCurveToSmooth, a8.CubicCurveTo, a8.CubicCurveToSmooth,
+		a8.HorLineRel, a8.VerLineRel, a8.DrawPath)
+	img8 := NewImage(buf, w, h, w*4).ToGoImage()
+
+	maxDiff, ink := 0, 0
+	for y := range h {
+		for x := range w {
+			cf := rgbaF.RGBAAt(x, y)
+			c8 := img8.RGBAAt(x, y)
+			for _, d := range []int{
+				absInt(int(cf.R) - int(c8.R)),
+				absInt(int(cf.G) - int(c8.G)),
+				absInt(int(cf.B) - int(c8.B)),
+				absInt(int(cf.A) - int(c8.A)),
+			} {
+				if d > maxDiff {
+					maxDiff = d
+				}
+			}
+			if c8.R < 250 || c8.G < 250 || c8.B < 250 {
+				ink++
+			}
+		}
+	}
+	if ink < 80 {
+		t.Fatalf("public curves drew too little ink in 8-bit oracle: %d pixels", ink)
+	}
+	if maxDiff > 2 {
+		t.Errorf("public float vs 8-bit curves max channel diff = %d (tol 2)", maxDiff)
+	}
+}

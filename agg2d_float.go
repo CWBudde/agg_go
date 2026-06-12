@@ -242,8 +242,14 @@ func (a *Agg2DFloat) LineRel(dx, dy float64) { a.impl.LineRel(dx, dy) }
 // HorLineTo draws a horizontal line to the given x.
 func (a *Agg2DFloat) HorLineTo(x float64) { a.impl.HorLineTo(x) }
 
+// HorLineRel draws a horizontal line by a relative amount.
+func (a *Agg2DFloat) HorLineRel(dx float64) { a.impl.HorLineRel(dx) }
+
 // VerLineTo draws a vertical line to the given y.
 func (a *Agg2DFloat) VerLineTo(y float64) { a.impl.VerLineTo(y) }
+
+// VerLineRel draws a vertical line by a relative amount.
+func (a *Agg2DFloat) VerLineRel(dy float64) { a.impl.VerLineRel(dy) }
 
 // ArcTo adds an SVG-style elliptical arc to the path.
 func (a *Agg2DFloat) ArcTo(rx, ry, angle float64, largeArcFlag, sweepFlag bool, x, y float64) {
@@ -255,9 +261,39 @@ func (a *Agg2DFloat) QuadricCurveTo(xCtrl, yCtrl, xTo, yTo float64) {
 	a.impl.QuadricCurveTo(xCtrl, yCtrl, xTo, yTo)
 }
 
+// QuadricCurveRel adds a quadratic Bézier curve using relative coordinates.
+func (a *Agg2DFloat) QuadricCurveRel(dxCtrl, dyCtrl, dxTo, dyTo float64) {
+	a.impl.QuadricCurveRel(dxCtrl, dyCtrl, dxTo, dyTo)
+}
+
+// QuadricCurveToSmooth adds a smooth quadratic Bézier curve (reflected control point).
+func (a *Agg2DFloat) QuadricCurveToSmooth(xTo, yTo float64) {
+	a.impl.QuadricCurveToSmooth(xTo, yTo)
+}
+
+// QuadricCurveRelSmooth adds a smooth quadratic Bézier curve using relative coordinates.
+func (a *Agg2DFloat) QuadricCurveRelSmooth(dxTo, dyTo float64) {
+	a.impl.QuadricCurveRelSmooth(dxTo, dyTo)
+}
+
 // CubicCurveTo adds a cubic Bézier curve to the path.
 func (a *Agg2DFloat) CubicCurveTo(xCtrl1, yCtrl1, xCtrl2, yCtrl2, xTo, yTo float64) {
 	a.impl.CubicCurveTo(xCtrl1, yCtrl1, xCtrl2, yCtrl2, xTo, yTo)
+}
+
+// CubicCurveRel adds a cubic Bézier curve using relative coordinates.
+func (a *Agg2DFloat) CubicCurveRel(dxCtrl1, dyCtrl1, dxCtrl2, dyCtrl2, dxTo, dyTo float64) {
+	a.impl.CubicCurveRel(dxCtrl1, dyCtrl1, dxCtrl2, dyCtrl2, dxTo, dyTo)
+}
+
+// CubicCurveToSmooth adds a smooth cubic Bézier curve (reflected first control point).
+func (a *Agg2DFloat) CubicCurveToSmooth(xCtrl2, yCtrl2, xTo, yTo float64) {
+	a.impl.CubicCurveToSmooth(xCtrl2, yCtrl2, xTo, yTo)
+}
+
+// CubicCurveRelSmooth adds a smooth cubic Bézier curve using relative coordinates.
+func (a *Agg2DFloat) CubicCurveRelSmooth(dxCtrl2, dyCtrl2, dxTo, dyTo float64) {
+	a.impl.CubicCurveRelSmooth(dxCtrl2, dyCtrl2, dxTo, dyTo)
 }
 
 // AddEllipse appends an ellipse contour to the current path.

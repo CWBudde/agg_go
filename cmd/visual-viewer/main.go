@@ -1166,7 +1166,7 @@ func isRegenerateFetch(r *http.Request) bool {
 func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8080"
+		port = "8266"
 	}
 
 	cwd, err := os.Getwd()

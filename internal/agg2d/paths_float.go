@@ -41,8 +41,14 @@ func (a *Agg2DFloat) LineRel(dx, dy float64) {
 // HorLineTo draws a horizontal line to the given x.
 func (a *Agg2DFloat) HorLineTo(x float64) { a.path.HLineTo(x) }
 
+// HorLineRel draws a horizontal line by a relative amount.
+func (a *Agg2DFloat) HorLineRel(dx float64) { a.path.HLineRel(dx) }
+
 // VerLineTo draws a vertical line to the given y.
 func (a *Agg2DFloat) VerLineTo(y float64) { a.path.VLineTo(y) }
+
+// VerLineRel draws a vertical line by a relative amount.
+func (a *Agg2DFloat) VerLineRel(dy float64) { a.path.VLineRel(dy) }
 
 // ArcTo adds an SVG-style elliptical arc to the path.
 func (a *Agg2DFloat) ArcTo(rx, ry, angle float64, largeArcFlag, sweepFlag bool, x, y float64) {
@@ -62,11 +68,115 @@ func (a *Agg2DFloat) QuadricCurveTo(xCtrl, yCtrl, xTo, yTo float64) {
 	a.hasLastCtrl = true
 }
 
+// QuadricCurveRel adds a quadratic Bézier curve using relative coordinates.
+func (a *Agg2DFloat) QuadricCurveRel(dxCtrl, dyCtrl, dxTo, dyTo float64) {
+	currentX, currentY, _ := a.path.LastVertex()
+	a.path.Curve3Rel(dxCtrl, dyCtrl, dxTo, dyTo)
+	a.lastCtrlX = currentX + dxCtrl
+	a.lastCtrlY = currentY + dyCtrl
+	a.hasLastCtrl = true
+}
+
+// QuadricCurveToSmooth adds a smooth quadratic Bézier curve, reflecting the
+// previous control point across the current position (SVG-compatible).
+func (a *Agg2DFloat) QuadricCurveToSmooth(xTo, yTo float64) {
+	currentX, currentY, _ := a.path.LastVertex()
+
+	var ctrlX, ctrlY float64
+	if a.hasLastCtrl {
+		ctrlX = currentX + (currentX - a.lastCtrlX)
+		ctrlY = currentY + (currentY - a.lastCtrlY)
+	} else {
+		ctrlX = currentX
+		ctrlY = currentY
+	}
+
+	a.path.Curve3(ctrlX, ctrlY, xTo, yTo)
+	a.lastCtrlX = ctrlX
+	a.lastCtrlY = ctrlY
+	a.hasLastCtrl = true
+}
+
+// QuadricCurveRelSmooth adds a smooth quadratic Bézier curve using relative
+// coordinates.
+func (a *Agg2DFloat) QuadricCurveRelSmooth(dxTo, dyTo float64) {
+	currentX, currentY, _ := a.path.LastVertex()
+
+	var ctrlX, ctrlY float64
+	if a.hasLastCtrl {
+		ctrlX = currentX + (currentX - a.lastCtrlX)
+		ctrlY = currentY + (currentY - a.lastCtrlY)
+	} else {
+		ctrlX = currentX
+		ctrlY = currentY
+	}
+
+	dCtrlX := ctrlX - currentX
+	dCtrlY := ctrlY - currentY
+
+	a.path.Curve3Rel(dCtrlX, dCtrlY, dxTo, dyTo)
+	a.lastCtrlX = ctrlX
+	a.lastCtrlY = ctrlY
+	a.hasLastCtrl = true
+}
+
 // CubicCurveTo adds a cubic Bézier curve to the path.
 func (a *Agg2DFloat) CubicCurveTo(xCtrl1, yCtrl1, xCtrl2, yCtrl2, xTo, yTo float64) {
 	a.path.Curve4(xCtrl1, yCtrl1, xCtrl2, yCtrl2, xTo, yTo)
 	a.lastCtrlX = xCtrl2
 	a.lastCtrlY = yCtrl2
+	a.hasLastCtrl = true
+}
+
+// CubicCurveRel adds a cubic Bézier curve using relative coordinates.
+func (a *Agg2DFloat) CubicCurveRel(dxCtrl1, dyCtrl1, dxCtrl2, dyCtrl2, dxTo, dyTo float64) {
+	currentX, currentY, _ := a.path.LastVertex()
+	a.path.Curve4Rel(dxCtrl1, dyCtrl1, dxCtrl2, dyCtrl2, dxTo, dyTo)
+	a.lastCtrlX = currentX + dxCtrl2
+	a.lastCtrlY = currentY + dyCtrl2
+	a.hasLastCtrl = true
+}
+
+// CubicCurveToSmooth adds a smooth cubic Bézier curve, reflecting the previous
+// second control point across the current position (SVG-compatible).
+func (a *Agg2DFloat) CubicCurveToSmooth(xCtrl2, yCtrl2, xTo, yTo float64) {
+	currentX, currentY, _ := a.path.LastVertex()
+
+	var xCtrl1, yCtrl1 float64
+	if a.hasLastCtrl {
+		xCtrl1 = currentX + (currentX - a.lastCtrlX)
+		yCtrl1 = currentY + (currentY - a.lastCtrlY)
+	} else {
+		xCtrl1 = currentX
+		yCtrl1 = currentY
+	}
+
+	a.path.Curve4(xCtrl1, yCtrl1, xCtrl2, yCtrl2, xTo, yTo)
+	a.lastCtrlX = xCtrl2
+	a.lastCtrlY = yCtrl2
+	a.hasLastCtrl = true
+}
+
+// CubicCurveRelSmooth adds a smooth cubic Bézier curve using relative
+// coordinates.
+func (a *Agg2DFloat) CubicCurveRelSmooth(dxCtrl2, dyCtrl2, dxTo, dyTo float64) {
+	currentX, currentY, _ := a.path.LastVertex()
+
+	var xCtrl1, yCtrl1 float64
+	if a.hasLastCtrl {
+		xCtrl1 = currentX + (currentX - a.lastCtrlX)
+		yCtrl1 = currentY + (currentY - a.lastCtrlY)
+	} else {
+		xCtrl1 = currentX
+		yCtrl1 = currentY
+	}
+
+	dxCtrl1 := xCtrl1 - currentX
+	dyCtrl1 := yCtrl1 - currentY
+
+	a.path.Curve4Rel(dxCtrl1, dyCtrl1, dxCtrl2, dyCtrl2, dxTo, dyTo)
+	a.lastCtrlX = currentX + dxCtrl2
+	a.lastCtrlY = currentY + dyCtrl2
 	a.hasLastCtrl = true
 }
 

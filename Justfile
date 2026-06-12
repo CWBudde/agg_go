@@ -115,9 +115,9 @@ update-visual-wasm:
     AGG_OUT=tests/visual/reference/wasm go run ./cmd/wasm/
 
 # Serve interactive visual comparison of C++ vs Go reference images
-show-visuals:
-    @echo "Visual comparison viewer on http://localhost:8080  (Ctrl+C to stop)"
-    go run ./cmd/visual-viewer/
+show-visuals port="8266":
+    @echo "Visual comparison viewer on http://localhost:{{port}}  (Ctrl+C to stop)"
+    PORT={{port}} go run ./cmd/visual-viewer/
 
 # Run SIMD-focused tests
 test-simd:

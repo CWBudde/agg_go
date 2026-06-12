@@ -357,3 +357,59 @@ func TestRenderingIntegration(t *testing.T) {
 		t.Fatalf("exterior pixel = (%d,%d,%d,%d), want white", r, g2, b, a2)
 	}
 }
+
+func TestSetAntiAliasedBinaryCoverage(t *testing.T) {
+	agg2d := NewAgg2D()
+	buf := make([]uint8, 100*100*4)
+	agg2d.Attach(buf, 100, 100, 100*4)
+
+	if !agg2d.GetAntiAliased() {
+		t.Fatal("anti-aliasing should be enabled by default")
+	}
+
+	// A triangle with a diagonal hypotenuse: the anti-aliased pipeline blends
+	// the edge pixels, the aliased pipeline (scanline_bin behavior) must
+	// paint every touched pixel fully on.
+	draw := func() {
+		agg2d.ClearAllRGBA(255, 255, 255, 255)
+		agg2d.FillColor(Color{0, 0, 0, 255})
+		agg2d.ResetPath()
+		agg2d.MoveTo(10, 10)
+		agg2d.LineTo(60, 10)
+		agg2d.LineTo(10, 60)
+		agg2d.ClosePolygon()
+		agg2d.DrawPath(FillOnly)
+	}
+	partialPixels := func() int {
+		count := 0
+		for y := 0; y < 100; y++ {
+			for x := 0; x < 100; x++ {
+				r, _, _, _ := pixelAt(buf, 100, x, y)
+				if r > 0 && r < 255 {
+					count++
+				}
+			}
+		}
+		return count
+	}
+
+	draw()
+	if got := partialPixels(); got == 0 {
+		t.Fatal("anti-aliased diagonal produced no partially blended pixels")
+	}
+
+	agg2d.SetAntiAliased(false)
+	if agg2d.GetAntiAliased() {
+		t.Fatal("GetAntiAliased should report false after SetAntiAliased(false)")
+	}
+	draw()
+	if got := partialPixels(); got != 0 {
+		t.Fatalf("aliased diagonal produced %d partially blended pixels, want 0 (binary coverage like scanline_bin)", got)
+	}
+
+	agg2d.SetAntiAliased(true)
+	draw()
+	if got := partialPixels(); got == 0 {
+		t.Fatal("re-enabled anti-aliasing produced no partially blended pixels")
+	}
+}

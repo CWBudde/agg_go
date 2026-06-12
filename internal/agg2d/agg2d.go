@@ -116,6 +116,10 @@ type Agg2D struct {
 	// Master alpha and anti-aliasing gamma
 	masterAlpha    float64
 	antiAliasGamma float64
+	// antiAliasOff selects binary coverage like AGG's scanline_bin renderer:
+	// any cell the rasterizer touches becomes a fully covered pixel. The zero
+	// value keeps the normal anti-aliased pipeline.
+	antiAliasOff bool
 
 	// Fill and line colors
 	fillColor Color

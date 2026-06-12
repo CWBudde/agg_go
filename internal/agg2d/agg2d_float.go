@@ -165,8 +165,8 @@ type Agg2DFloat struct {
 	lineGradientLUTDirty bool
 
 	// Control point tracking for smooth curves
-	lastCtrlX, lastCtrlY float64 //nolint:unused // wired in L5 (smooth curve path methods)
-	hasLastCtrl          bool    //nolint:unused // wired in L5 (smooth curve path methods)
+	lastCtrlX, lastCtrlY float64
+	hasLastCtrl          bool
 }
 
 // NewAgg2DFloat creates a new float AGG2D rendering context, mirroring NewAgg2D.

@@ -509,12 +509,15 @@ usable.
         public-surface `TestPublicAgg2DFloatShapes` in `agg2d_float_test.go`.
         (Convenience `Curve`/`Curve4` are the shapes-group methods and live here, not
         in the curve-command group below.)
-  - [ ] **Curve & relative path commands**: `CubicCurveToSmooth`,
+  - [x] **Curve & relative path commands** — DONE 2026-06-01. `CubicCurveToSmooth`,
         `CubicCurveRel`, `CubicCurveRelSmooth`, `QuadricCurveToSmooth`,
-        `QuadricCurveRel`, `QuadricCurveRelSmooth`, `HorLineRel`, `VerLineRel`. Needs
-        the smooth-curve control-point tracking (`lastCtrlX/Y`, `hasLastCtrl` fields
-        already present on the float struct, currently reserved). (Convenience
-        `Curve`/`Curve4` are done — see the Shapes group above.)
+        `QuadricCurveRel`, `QuadricCurveRelSmooth`, `HorLineRel`, `VerLineRel`.
+        Implemented in `internal/agg2d/paths_float.go` with root wrappers in
+        `agg2d_float.go`; the smooth-curve reflection uses the now-wired
+        `lastCtrlX/Y`/`hasLastCtrl` fields (stale `//nolint:unused` markers removed).
+        Parity vs the 8-bit oracle in `internal/agg2d/curves_float_test.go` (7 tests,
+        tol ≤ 2) covering rel/smooth quadric & cubic curves and Hor/VerLineRel.
+        (Convenience `Curve`/`Curve4` are done — see the Shapes group above.)
   - [ ] **Dashed strokes**: `AddDash`, `RemoveAllDashes`, `DashStart`,
         `GetDashStart`, `NoDashes`. The float struct already holds the reserved
         `convDash` field; wire it into the existing float stroke path in
