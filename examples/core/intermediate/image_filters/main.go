@@ -23,15 +23,18 @@ import (
 	"github.com/cwbudde/agg_go/internal/buffer"
 	"github.com/cwbudde/agg_go/internal/color"
 	icol "github.com/cwbudde/agg_go/internal/color"
+	"github.com/cwbudde/agg_go/internal/conv"
 	ctrlbase "github.com/cwbudde/agg_go/internal/ctrl"
 	"github.com/cwbudde/agg_go/internal/ctrl/checkbox"
 	"github.com/cwbudde/agg_go/internal/ctrl/rbox"
 	"github.com/cwbudde/agg_go/internal/ctrl/slider"
+	"github.com/cwbudde/agg_go/internal/gsv"
 	imgacc "github.com/cwbudde/agg_go/internal/image"
 	"github.com/cwbudde/agg_go/internal/path"
 	"github.com/cwbudde/agg_go/internal/pixfmt"
 	"github.com/cwbudde/agg_go/internal/rasterizer"
 	"github.com/cwbudde/agg_go/internal/renderer"
+	renscan "github.com/cwbudde/agg_go/internal/renderer/scanline"
 	"github.com/cwbudde/agg_go/internal/scanline"
 	"github.com/cwbudde/agg_go/internal/span"
 	"github.com/cwbudde/agg_go/internal/transform"
@@ -153,30 +156,47 @@ func newDemo(srcImg *agg.Image) *demo {
 	return &demo{srcImg: srcImg, state: defaultState()}
 }
 
+type rasType = rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
+
+type renBaseType = renderer.RendererBase[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]]
+
 func (d *demo) Render(img *agg.Image) {
 	if d.srcImg == nil {
 		return
 	}
 	d.state.clamp()
 
-	ctx := agg.NewContextForImage(img)
-	ctx.Clear(agg.White)
+	rbuf := buffer.NewRenderingBufferU8WithData(img.Data, img.Width(), img.Height(), img.Stride())
+	pf := pixfmt.NewPixFmtRGBA32Linear(rbuf)
+	rb := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]](pf)
+
+	rb.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
 
 	work := agg.CreateImage(d.srcImg.Width(), d.srcImg.Height())
 	renderTransformedImage(work, d.srcImg, d.state)
 
-	a := ctx.GetAgg2D()
-	a.ResetTransformations()
-	_ = a.BlendImageSimple(work, 110, 35, 255)
+	workRbuf := buffer.NewRenderingBufferU8WithData(work.Data, work.Width(), work.Height(), work.Width()*4)
+	workPf := pixfmt.NewPixFmtRGBA32Linear(workRbuf)
+	rb.CopyFrom(workPf, nil, 110, 35)
 
-	drawStatusText(a, d.state)
-	drawControls(ctx, d.state)
+	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip(),
+	)
+	sl := scanline.NewScanlineU8()
+
+	drawStatusText(ras, sl, rb, &d.state)
+	drawControls(ras, sl, rb, &d.state)
 }
 
 func renderTransformedImage(dst, src *agg.Image, st filterState) {
-	agg.NewContextForImage(dst).Clear(agg.White)
-
 	dstRbuf := buffer.NewRenderingBufferWithData[uint8](dst.Data, dst.Width(), dst.Height(), dst.Width()*4)
+
+	// C++ transform_image clears through the plain renderer base before
+	// blending the filtered spans through the premultiplied one.
+	clearPixf := pixfmt.NewPixFmtRGBA32Linear(dstRbuf)
+	clearBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]](clearPixf)
+	clearBase.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
+
 	dstPixf := pixfmt.NewPixFmtRGBA32Pre[color.Linear](dstRbuf)
 	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32Pre[color.Linear], color.RGBA8[color.Linear]](dstPixf)
 	alloc := span.NewSpanAllocator[color.RGBA8[color.Linear]]()
@@ -299,28 +319,32 @@ func buildSpanGenerator(
 	}
 }
 
-func drawStatusText(a *agg.Agg2D, st filterState) {
-	a.ResetTransformations()
-	a.FillColor(agg.Black)
-	a.FontGSV(10)
-	a.TextAlignment(agg.AlignLeft, agg.AlignBottom)
+func drawGSVText(ras *rasType, sl *scanline.ScanlineU8, rb *renBaseType, x, y float64, text string) {
+	txt := gsv.NewGSVText()
+	txt.SetStartPoint(x, y)
+	txt.SetSize(10.0, 0)
+	txt.SetText(text)
 
-	buf := "NSteps=0"
-	if st.numSteps > 0 {
-		buf = "NSteps=" + itoa(st.numSteps)
-	}
-	a.Text(10, 295, buf, false, 0, 0)
+	// The C++ demo strokes gsv_text with a plain conv_stroke (butt caps,
+	// miter joins), not gsv_text_outline (which forces round caps).
+	stroke := conv.NewConvStroke(txt)
+	stroke.SetWidth(1.5)
+
+	ras.Reset()
+	ras.AddPath(&gsvStrokeVS{s: stroke}, 0)
+	renscan.RenderScanlinesAASolid(ras, sl, rb, color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255})
+}
+
+func drawStatusText(ras *rasType, sl *scanline.ScanlineU8, rb *renBaseType, st *filterState) {
+	drawGSVText(ras, sl, rb, 10.0, 295.0, "NSteps="+itoa(st.numSteps))
 
 	if st.time1 != st.time2 && st.numPix > 0 {
 		kpix := st.numPix / (st.time2 - st.time1)
-		a.Text(10, 310, ftoa2(kpix)+" Kpix/sec", false, 0, 0)
+		drawGSVText(ras, sl, rb, 10.0, 310.0, ftoa2(kpix)+" Kpix/sec")
 	}
 }
 
-func drawControls(ctx *agg.Context, st filterState) {
-	a := ctx.GetAgg2D()
-	ras := a.GetInternalRasterizer()
-
+func drawControls(ras *rasType, sl *scanline.ScanlineU8, rb *renBaseType, st *filterState) {
 	step := slider.NewSliderCtrl(115, 5, 400, 11, false)
 	step.SetLabel("Step=%3.2f")
 	step.SetRange(1.0, 10.0)
@@ -372,28 +396,48 @@ func drawControls(ctx *agg.Context, st filterState) {
 	refresh.SetChecked(st.refresh)
 
 	if st.filterIdx >= 14 {
-		renderCtrl(a, ras, radius)
+		renderCtrl(ras, sl, rb, radius)
 	}
-	renderCtrl(a, ras, step)
-	renderCtrl(a, ras, filters)
-	renderCtrl(a, ras, run)
-	renderCtrl(a, ras, normalize)
-	renderCtrl(a, ras, singleStep)
-	renderCtrl(a, ras, refresh)
+	renderCtrl(ras, sl, rb, step)
+	renderCtrl(ras, sl, rb, filters)
+	renderCtrl(ras, sl, rb, run)
+	renderCtrl(ras, sl, rb, normalize)
+	renderCtrl(ras, sl, rb, singleStep)
+	renderCtrl(ras, sl, rb, refresh)
 }
 
-func renderCtrl(a *agg.Agg2D, ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip], c ctrlbase.Ctrl[icol.RGBA]) {
+// ctrlColor converts a control's float color like the C++ render_ctrl with a
+// linear color_type: a plain *255 quantization, no colorspace conversion.
+func ctrlColor(c icol.RGBA) color.RGBA8[color.Linear] {
+	clamp := func(v float64) uint8 {
+		switch {
+		case v <= 0:
+			return 0
+		case v >= 1:
+			return 255
+		default:
+			return uint8(v*255.0 + 0.5)
+		}
+	}
+	return color.RGBA8[color.Linear]{R: clamp(c.R), G: clamp(c.G), B: clamp(c.B), A: clamp(c.A)}
+}
+
+// renderCtrl is the Go equivalent of C++ agg::render_ctrl.
+func renderCtrl(ras *rasType, sl *scanline.ScanlineU8, rb *renBaseType, c ctrlbase.Ctrl[icol.RGBA]) {
 	for pathID := uint(0); pathID < c.NumPaths(); pathID++ {
 		ras.Reset()
 		ras.AddPath(&ctrlVertexSource{ctrl: c}, uint32(pathID))
-		col := c.Color(pathID)
-		a.RenderRasterizerWithColor(agg.NewColor(
-			uint8(math.Round(col.R*255.0)),
-			uint8(math.Round(col.G*255.0)),
-			uint8(math.Round(col.B*255.0)),
-			uint8(math.Round(col.A*255.0)),
-		))
+		renscan.RenderScanlinesAASolid(ras, sl, rb, ctrlColor(c.Color(pathID)))
 	}
+}
+
+type gsvStrokeVS struct{ s *conv.ConvStroke }
+
+func (g *gsvStrokeVS) Rewind(pathID uint32) { g.s.Rewind(uint(pathID)) }
+func (g *gsvStrokeVS) Vertex(x, y *float64) uint32 {
+	vx, vy, cmd := g.s.Vertex()
+	*x, *y = vx, vy
+	return uint32(cmd)
 }
 
 type ctrlVertexSource struct {
@@ -612,11 +656,18 @@ func loadPPMImage(filename string) (*agg.Image, error) {
 		return nil, errors.New("ppm pixel data too short")
 	}
 
+	// The C++ platform loads the sRGB PPM into the linear window format
+	// (convert<pixfmt_bgr24, pixfmt_srgb24>), so decode each pixel here.
 	buf := make([]uint8, w*h*4)
 	for p := 0; p < w*h; p++ {
-		buf[p*4+0] = rgb[p*3+0]
-		buf[p*4+1] = rgb[p*3+1]
-		buf[p*4+2] = rgb[p*3+2]
+		c := icol.ConvertRGB8SRGBToLinear(icol.RGB8[icol.SRGB]{
+			R: rgb[p*3+0],
+			G: rgb[p*3+1],
+			B: rgb[p*3+2],
+		})
+		buf[p*4+0] = c.R
+		buf[p*4+1] = c.G
+		buf[p*4+2] = c.B
 		buf[p*4+3] = 255
 	}
 
@@ -635,9 +686,10 @@ func main() {
 	}
 
 	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "Image Filters",
-		Width:  w,
-		Height: h,
-		FlipY:  true,
+		Title:                 "Image Filters",
+		Width:                 w,
+		Height:                h,
+		FlipY:                 true,
+		EncodeLinearRGBToSRGB: true,
 	}, newDemo(srcImg))
 }

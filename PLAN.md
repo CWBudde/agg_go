@@ -76,7 +76,7 @@ Keep the remaining corpus of demo mismatches under active repair:
 - [ ] `graph_test`
 - [ ] `idea`
 - [ ] `image_alpha`
-- [ ] `image_filters`
+- [x] `image_filters` — pixel-exact (RMSE 0.0): linear pipeline (sRGB-decoded PPM source, linear filtering, sRGB encode on save) + raw conv_stroke for the gsv status text.
 - [ ] `image_filters2`
 - [ ] `image_fltr_graph`
 - [ ] `image_perspective`
