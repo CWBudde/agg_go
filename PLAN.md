@@ -71,7 +71,7 @@ Keep the remaining corpus of demo mismatches under active repair:
 - [ ] `gamma_tuner`
 - [ ] `gouraud_mesh`
 - [ ] `gradient_focal`
-- [ ] `gradients_contour`
+- [x] `gradients_contour` — pixel-exact (RMSE 0.0): DT grayscale truncation (not +0.5), rbox defaults (text thickness 1.5, right edge 300), exact span_interpolator_trans; C++ reference recaptured after fixing the "Assymetric Conic" typo in the original demo.
 - [ ] `gradients`
 - [ ] `graph_test`
 - [ ] `idea`

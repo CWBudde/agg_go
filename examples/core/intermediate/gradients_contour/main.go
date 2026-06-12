@@ -177,17 +177,13 @@ type demo struct {
 
 func newDemo() *demo {
 	polygons := rboxctrl.NewDefaultRboxCtrl(5.0, 5.0, 135.0, 90.0, false)
-	polygons.SetTextSize(9.0, 0.0)
-	polygons.SetTextThickness(1.0)
 	polygons.AddItem("Simple Path")
 	polygons.AddItem("Great Britain")
 	polygons.AddItem("Spiral")
 	polygons.AddItem("Glyph")
 	polygons.SetCurItem(0)
 
-	gradient := rboxctrl.NewDefaultRboxCtrl(145.0, 5.0, 305.0, 90.0, false)
-	gradient.SetTextSize(9.0, 0.0)
-	gradient.SetTextThickness(1.0)
+	gradient := rboxctrl.NewDefaultRboxCtrl(145.0, 5.0, 300.0, 90.0, false)
 	gradient.AddItem("Contour")
 	gradient.AddItem("Auto Contour")
 	gradient.AddItem("Asymmetric Conic")
@@ -343,7 +339,10 @@ func (d *demo) Render(img *agg.Image) {
 			return
 		}
 
-		interp := span.NewSpanInterpolatorPerspectiveLerpQuadToRect(quad, 0, 0, scaledW, scaledH, 8)
+		// C++ uses span_interpolator_trans<trans_perspective>(trpg): the exact
+		// per-pixel transform, not the subdividing lerp interpolator.
+		trpg := transform.NewTransPerspectiveQuadToRect(quad, 0, 0, scaledW, scaledH)
+		interp := span.NewSpanInterpolatorTrans(trpg)
 		downscale := interp.SubpixelShift() - span.GradientSubpixelShift
 		if downscale < 0 {
 			downscale = 0

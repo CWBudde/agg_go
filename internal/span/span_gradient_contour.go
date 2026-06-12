@@ -335,7 +335,8 @@ func (gc *GradientContour) performDistanceTransform(bwBuffer []uint8, width, hei
 	} else {
 		scale := 255.0 / (maxValue - minValue)
 		for i := range image {
-			result[i] = uint8(int((image[i]-minValue)*scale + 0.5))
+			// C++: int8u(int((image[l] - min) * scale)) — truncates, no rounding.
+			result[i] = uint8(int((image[i] - minValue) * scale))
 		}
 	}
 
