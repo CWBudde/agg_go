@@ -96,15 +96,16 @@ func newDemo() *demo {
 	radius.SetLabel("radius=%4.3f")
 	radius.SetRange(0.0, 50.0)
 	radius.SetValue(defaultRadius)
-	applyCPPSliderColors(radius)
 
 	offset := sliderctrl.NewSliderCtrl(10, 10+20, demoWidth-10, 19+20, false)
 	offset.SetLabel("subpixel offset=%4.3f")
 	offset.SetRange(-2.0, 3.0)
 	offset.SetValue(defaultOffset)
-	applyCPPSliderColors(offset)
 
-	ctrlGray := color.NewRGBAFromRGBA8(127, 127, 127, 255)
+	// C++ sets text_color/inactive_color to srgba8(127,127,127); with the
+	// linear (rgba8) color_type that literal is decoded sRGB->linear, then the
+	// whole frame is sRGB-encoded at save. Mirror the decode here.
+	ctrlGray := linearGrayRGBA(127)
 	whiteOnBlack := checkboxctrl.NewDefaultCheckboxCtrl(10, 10+40, "White on black", false)
 	whiteOnBlack.SetTextColor(ctrlGray)
 	whiteOnBlack.SetInactiveColor(ctrlGray)
@@ -135,8 +136,9 @@ func (d *demo) Render(img *agg.Image) {
 	)
 	sl := scanline.NewScanlineP8()
 
-	// Render two "control" circles.
-	gray := colorType{R: 127, G: 127, B: 127, A: 255}
+	// Render two "control" circles. C++ uses srgba8(127,127,127), decoded to
+	// linear under the rgba8 color_type.
+	gray := color.RGBA8[color.Linear](color.ConvertRGBA8SRGBToLinear(color.NewRGBA8[color.SRGB](127, 127, 127, 255)))
 	for i := 0; i < 2; i++ {
 		e := shapes.NewEllipseWithParams(d.x[i], d.y[i], 3, 3, 16, false)
 		ras.Reset()
@@ -165,20 +167,12 @@ func (d *demo) Render(img *agg.Image) {
 	renderCheckbox(ras, sl, rb, d.whiteOnBlack)
 }
 
-func applyCPPSliderColors(s *sliderctrl.SliderCtrl) {
-	s.SetBackgroundColor(linearRGBAForSRGBA8(color.NewRGBA(1.0, 0.9, 0.8, 1.0)))
-	s.SetTriangleColor(linearRGBAForSRGBA8(color.NewRGBA(0.7, 0.6, 0.6, 1.0)))
-	s.SetPointerPreviewColor(linearRGBAForSRGBA8(color.NewRGBA(0.6, 0.4, 0.4, 0.4)))
-	s.SetPointerColor(linearRGBAForSRGBA8(color.NewRGBA(0.8, 0.0, 0.0, 0.6)))
-}
-
-func linearRGBAForSRGBA8(c color.RGBA) color.RGBA {
-	return color.RGBA{
-		R: color.ConvertToSRGB(c.R),
-		G: color.ConvertToSRGB(c.G),
-		B: color.ConvertToSRGB(c.B),
-		A: c.A,
-	}
+// linearGrayRGBA returns the linear-space RGBA float whose *255 byte equals the
+// sRGB->linear decode of the given sRGB gray level (matching C++ srgba8 under
+// the linear rgba8 color_type).
+func linearGrayRGBA(srgb basics.Int8u) color.RGBA {
+	lin := color.ConvertRGBA8SRGBToLinear(color.NewRGBA8[color.SRGB](srgb, srgb, srgb, 255))
+	return lin.ConvertToRGBA()
 }
 
 func renderSlider(ras rasType, sl slType, rb renBaseT, s *sliderctrl.SliderCtrl) {
@@ -303,9 +297,10 @@ func (d *demo) OnMouseUp(x, y int, _ lowlevelrunner.Buttons) bool {
 
 func main() {
 	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "Rounded Rectangle",
-		Width:  demoWidth,
-		Height: demoHeight,
-		FlipY:  true,
+		Title:                 "Rounded Rectangle",
+		Width:                 demoWidth,
+		Height:                demoHeight,
+		FlipY:                 true,
+		EncodeLinearRGBToSRGB: true,
 	}, newDemo())
 }

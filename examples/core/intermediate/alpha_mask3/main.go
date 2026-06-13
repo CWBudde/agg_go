@@ -2,7 +2,7 @@
 //
 // Implements all five polygon/operation combos selectable via radio buttons,
 // matching the C++ original layout: polygons rbox bottom-left, operation rbox
-// bottom-right, and timing text in the lower-centre.
+// bottom-right, and optional timing text in the lower-centre.
 package main
 
 import (
@@ -16,6 +16,7 @@ import (
 	"github.com/cwbudde/agg_go/internal/conv"
 	"github.com/cwbudde/agg_go/internal/ctrl/rbox"
 	"github.com/cwbudde/agg_go/internal/demo/aggshapes"
+	"github.com/cwbudde/agg_go/internal/demo/timing"
 	"github.com/cwbudde/agg_go/internal/gsv"
 	"github.com/cwbudde/agg_go/internal/path"
 	"github.com/cwbudde/agg_go/internal/pixfmt"
@@ -310,10 +311,11 @@ func (d *demo) Render(img *agg.Image) {
 		d.renderSpiralAndGlyph(ras, sl, mainPixf, mainRb, opAND)
 	}
 
-	// Timing text (static labels, no actual timing)
-	// C++ draw_text(250, 20, ...) and draw_text(250, 5, ...) in flipped coords.
-	drawText(ras, sl, mainRb, 250, 20, "Generate AlphaMask: -")
-	drawText(ras, sl, mainRb, 250, 5, "Render with AlphaMask: -")
+	if timing.ShowText() {
+		// C++ draw_text(250, 20, ...) and draw_text(250, 5, ...) in flipped coords.
+		drawText(ras, sl, mainRb, 250, 20, "Generate AlphaMask: -")
+		drawText(ras, sl, mainRb, 250, 5, "Render with AlphaMask: -")
+	}
 
 	// Control widgets
 	renderCtrl(ras, sl, mainRb, d.polygons)
@@ -642,7 +644,6 @@ func (d *demo) OnMouseMove(x, y float64, buttonDown bool) bool {
 func main() {
 	d := newDemo()
 
-	// Suppress unused import warning – fmt used for potential future timing
 	lowlevelrunner.Run(lowlevelrunner.Config{
 		Title:                 "AGG Example. Alpha-Mask as a Polygon Clipper",
 		Width:                 frameWidth,

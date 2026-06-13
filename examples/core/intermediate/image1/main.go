@@ -106,11 +106,19 @@ func loadPPMImage(filename string) (*agg.Image, error) {
 		return nil, errors.New("ppm pixel data too short")
 	}
 
+	// C++ platform_support::load_img converts the sRGB image file into the
+	// linear window pixel format (color_type = rgba8 = linear under AGG_BGR24).
+	// Decode each channel sRGB->linear so all filtering happens in linear space.
 	buf := make([]uint8, w*h*4)
 	for p := 0; p < w*h; p++ {
-		buf[p*4+0] = rgb[p*3+0]
-		buf[p*4+1] = rgb[p*3+1]
-		buf[p*4+2] = rgb[p*3+2]
+		lin := color.ConvertRGB8SRGBToLinear(color.RGB8[color.SRGB]{
+			R: rgb[p*3+0],
+			G: rgb[p*3+1],
+			B: rgb[p*3+2],
+		})
+		buf[p*4+0] = lin.R
+		buf[p*4+1] = lin.G
+		buf[p*4+2] = lin.B
 		buf[p*4+3] = 255
 	}
 
@@ -165,63 +173,26 @@ func clampU8(v float64) uint8 {
 	return uint8(v*255.0 + 0.5)
 }
 
+// displayRGBA8 converts a control's float RGBA into linear bytes. C++ slider
+// colors are rgba() floats that map directly to linear rgba8 (color_type) via
+// *255; the whole frame is sRGB-encoded at save time.
 func displayRGBA8(c color.RGBA) color.RGBA8[color.Linear] {
-	srgb := color.ConvertToSRGBFromLinear(color.RGBA8[color.Linear]{
+	return color.RGBA8[color.Linear]{
 		R: clampU8(c.R),
 		G: clampU8(c.G),
 		B: clampU8(c.B),
 		A: clampU8(c.A),
-	})
-	return color.RGBA8[color.Linear](srgb)
+	}
 }
 
+// rgba8Pre premultiplies a straight float RGBA into linear bytes, matching
+// C++ agg::rgba_pre(r,g,b,a).
 func rgba8Pre(r, g, b, a float64) color.RGBA8[color.Linear] {
 	return color.RGBA8[color.Linear]{
 		R: clampU8(r * a),
 		G: clampU8(g * a),
 		B: clampU8(b * a),
 		A: clampU8(a),
-	}
-}
-
-// displayPremulOverWhite bakes the same linear->sRGB correction used by other
-// low-level demos into a premultiplied source color. image1 cannot post-encode
-// the whole framebuffer because the sampled PPM pixels are already display RGB.
-func displayPremulOverWhite(c color.RGBA8[color.Linear]) color.RGBA8[color.Linear] {
-	prelerpOverWhite := func(q uint8) uint8 {
-		v := 255 + int(q) - int(color.RGBA8Multiply(255, c.A))
-		switch {
-		case v <= 0:
-			return 0
-		case v >= 255:
-			return 255
-		default:
-			return uint8(v)
-		}
-	}
-	linearOverWhite := color.RGBA8[color.Linear]{
-		R: prelerpOverWhite(c.R),
-		G: prelerpOverWhite(c.G),
-		B: prelerpOverWhite(c.B),
-		A: 255,
-	}
-	display := color.ConvertToSRGBFromLinear(linearOverWhite)
-	whiteContribution := 255 - int(color.RGBA8Multiply(255, c.A))
-	uncomposite := func(v uint8) uint8 {
-		switch q := int(v) - whiteContribution; {
-		case q <= 0:
-			return 0
-		case q >= 255:
-			return 255
-		default:
-			return uint8(q)
-		}
-	}
-	return color.RGBA8[color.Linear]{
-		R: uncomposite(display.R),
-		G: uncomposite(display.G),
-		B: uncomposite(display.B),
-		A: c.A,
 	}
 }
 
@@ -421,7 +392,7 @@ func (d *demo) Render(img *agg.Image) {
 
 	// Bilinear filtered image generator
 	interp := span.NewSpanInterpolatorLinearDefault(imgMtx)
-	clipColor := displayPremulOverWhite(rgba8Pre(0, 0.4, 0, 0.5))
+	clipColor := rgba8Pre(0, 0.4, 0, 0.5)
 	sgAdapter := &rgbBilinearClipSpanGenerator{src: ipf, back: clipColor, interp: interp}
 
 	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
@@ -486,9 +457,10 @@ func main() {
 
 func runnerConfig(d *demo) lowlevelrunner.Config {
 	return lowlevelrunner.Config{
-		Title:  "AGG Example. Image Affine Transformations with filtering",
-		Width:  d.w,
-		Height: d.h,
-		FlipY:  true,
+		Title:                 "AGG Example. Image Affine Transformations with filtering",
+		Width:                 d.w,
+		Height:                d.h,
+		FlipY:                 true,
+		EncodeLinearRGBToSRGB: true,
 	}
 }

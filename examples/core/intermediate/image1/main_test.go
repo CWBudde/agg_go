@@ -6,36 +6,22 @@ import (
 	"github.com/cwbudde/agg_go/internal/color"
 )
 
-func TestRunnerConfigKeepsImagePixelsRaw(t *testing.T) {
+func TestRunnerConfigUsesLinearPipeline(t *testing.T) {
 	cfg := runnerConfig(&demo{w: 340, h: 360})
 	if !cfg.FlipY {
 		t.Fatal("image1 must run with FlipY=true to match C++ platform_support")
 	}
-	if cfg.EncodeLinearRGBToSRGB {
-		t.Fatal("image1 must not post-encode the full framebuffer; the sampled source image is already in display byte space")
-	}
-	if cfg.DisableLinearRGBToSRGB {
-		t.Fatal("image1 should leave the default output path untouched instead of using the explicit opt-out flag")
+	if !cfg.EncodeLinearRGBToSRGB {
+		t.Fatal("image1 renders in linear space (sRGB->linear decoded source); the framebuffer must be sRGB-encoded at save")
 	}
 }
 
-func TestClipBackgroundMatchesDisplayEncodedCPPColor(t *testing.T) {
-	clip := displayPremulOverWhite(rgba8Pre(0, 0.4, 0, 0.5))
-	got := color.RGBA8[color.Linear]{
-		R: color.RGBA8Prelerp(255, clip.R, clip.A),
-		G: color.RGBA8Prelerp(255, clip.G, clip.A),
-		B: color.RGBA8Prelerp(255, clip.B, clip.A),
-		A: 255,
-	}
-	want := color.ConvertToSRGBFromLinear(color.RGBA8[color.Linear]{
-		R: color.RGBA8Prelerp(255, rgba8Pre(0, 0.4, 0, 0.5).R, clip.A),
-		G: color.RGBA8Prelerp(255, rgba8Pre(0, 0.4, 0, 0.5).G, clip.A),
-		B: color.RGBA8Prelerp(255, rgba8Pre(0, 0.4, 0, 0.5).B, clip.A),
-		A: 255,
-	})
-	wantLinear := color.RGBA8[color.Linear](want)
-
-	if got != wantLinear {
-		t.Fatalf("clip background over white = %+v, want display-encoded %+v", got, want)
+// TestClipBackgroundMatchesCPPColor verifies the clip/outside color matches
+// C++ agg::rgba_pre(0, 0.4, 0, 0.5): premultiplied linear bytes (0, 51, 0, 128).
+func TestClipBackgroundMatchesCPPColor(t *testing.T) {
+	got := rgba8Pre(0, 0.4, 0, 0.5)
+	want := color.RGBA8[color.Linear]{R: 0, G: 51, B: 0, A: 128}
+	if got != want {
+		t.Fatalf("clip background = %+v, want %+v", got, want)
 	}
 }

@@ -205,6 +205,11 @@ func (d *demo) Render(img *agg.Image) {
 	dstRbuf := buffer.NewRenderingBufferWithData[uint8](img.Data, img.Width(), img.Height(), img.Stride())
 	dstPixf := pixfmt.NewPixFmtRGBA32PreLinear(dstRbuf)
 	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32Pre[color.Linear], color.RGBA8[color.Linear]](dstPixf)
+	// Controls render into the plain (non-premultiplied) base, matching C++
+	// pattern_fill.cpp which uses renderer_base<pixfmt> rb for render_ctrl while
+	// the pattern fill uses renderer_base<pixfmt_pre> rb_pre.
+	dstPixfPlain := pixfmt.NewPixFmtRGBA32[color.Linear](dstRbuf)
+	renBasePlain := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]](dstPixfPlain)
 	alloc := span.NewSpanAllocator[color.RGBA8[color.Linear]]()
 	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
 		rasterizer.RasConvInt{},
@@ -270,14 +275,14 @@ func (d *demo) Render(img *agg.Image) {
 		}
 	}
 
-	renderCtrl(ras, sl, renBase, d.polygonAngle)
-	renderCtrl(ras, sl, renBase, d.polygonScale)
-	renderCtrl(ras, sl, renBase, d.patternAngle)
-	renderCtrl(ras, sl, renBase, d.patternSize)
-	renderCtrl(ras, sl, renBase, d.patternAlpha)
-	renderCtrl(ras, sl, renBase, d.rotatePolygon)
-	renderCtrl(ras, sl, renBase, d.rotatePattern)
-	renderCtrl(ras, sl, renBase, d.tiePattern)
+	renderCtrl(ras, sl, renBasePlain, d.polygonAngle)
+	renderCtrl(ras, sl, renBasePlain, d.polygonScale)
+	renderCtrl(ras, sl, renBasePlain, d.patternAngle)
+	renderCtrl(ras, sl, renBasePlain, d.patternSize)
+	renderCtrl(ras, sl, renBasePlain, d.patternAlpha)
+	renderCtrl(ras, sl, renBasePlain, d.rotatePolygon)
+	renderCtrl(ras, sl, renBasePlain, d.rotatePattern)
+	renderCtrl(ras, sl, renBasePlain, d.tiePattern)
 }
 
 func (d *demo) OnIdle() {
@@ -405,7 +410,7 @@ func toRGBA8(c color.RGBA) color.RGBA8[color.Linear] {
 func renderCtrl(
 	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
 	sl *scanline.ScanlineP8,
-	rb *renderer.RendererBase[*pixfmt.PixFmtRGBA32Pre[color.Linear], color.RGBA8[color.Linear]],
+	rb *renderer.RendererBase[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]],
 	c ctrlbase.Ctrl[color.RGBA],
 ) {
 	for i := uint(0); i < c.NumPaths(); i++ {
