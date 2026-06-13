@@ -554,6 +554,37 @@ func (a *Agg2DFloat) SaveImagePPM(filename string) error {
 	return a.impl.SaveImagePPM(filename)
 }
 
+// --- Rasterizer escape hatches (advanced usage) ---
+
+// GetInternalRasterizer returns the underlying float-twin rasterizer for advanced
+// usage. Use after AddVertex/AddPath to render custom vertex sources via
+// RenderRasterizerWithColor, ScanlineRender, or RenderScanlinesAAWithSpanGen.
+func (a *Agg2DFloat) GetInternalRasterizer() *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip] {
+	return a.impl.GetInternalRasterizer()
+}
+
+// RenderRasterizerWithColor renders whatever is currently in the rasterizer with
+// the given color, without resetting it. Use after
+// GetInternalRasterizer().AddPath() to render custom vertex sources.
+func (a *Agg2DFloat) RenderRasterizerWithColor(c Color) {
+	a.impl.RenderRasterizerWithColor(toInternalColor(c))
+}
+
+// ScanlineRender renders the given rasterizer data using a custom float renderer.
+func (a *Agg2DFloat) ScanlineRender(ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip], renderer renscan.RendererInterface[color.RGBA32[color.Linear]]) {
+	a.impl.ScanlineRender(ras, renderer)
+}
+
+// RenderScanlinesAAWithSpanGen renders the rasterizer using a custom float span
+// generator. This enables advanced effects such as combining color gradients
+// with alpha gradients.
+func (a *Agg2DFloat) RenderScanlinesAAWithSpanGen(
+	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
+	spanGen renscan.SpanGeneratorInterface[color.RGBA32[color.Linear]],
+) {
+	a.impl.RenderScanlinesAAWithSpanGen(ras, spanGen)
+}
+
 // --- Image transforms (affine / perspective) ---
 
 // TransformImage maps a source rectangle of img to a destination rectangle using

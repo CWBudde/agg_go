@@ -7,6 +7,9 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/color"
 )
 
 func feqf(a, b float32) bool {
@@ -1043,5 +1046,106 @@ func TestPublicAgg2DFloatSaveImagePPM(t *testing.T) {
 	// A nil target errors.
 	if err := NewAgg2DFloat().SaveImagePPM(path); err == nil {
 		t.Fatal("SaveImagePPM with no attached buffer should error")
+	}
+}
+
+// TestPublicAgg2DFloatDrawPathDefaults verifies the default-mode DrawPath
+// convenience wrappers render (fill + stroke) on the public float surface.
+func TestPublicAgg2DFloatDrawPathDefaults(t *testing.T) {
+	img := NewImageFloat(20, 20)
+	a := NewAgg2DFloat()
+	a.AttachImage(img)
+	a.ClearAll(NewColor(0, 0, 0, 0))
+	a.FillColor(NewColor(255, 0, 0, 255))
+	a.LineColor(NewColor(0, 0, 255, 255))
+	a.LineWidth(1.0)
+
+	a.ResetPath()
+	a.MoveTo(4, 4)
+	a.LineTo(15, 4)
+	a.LineTo(15, 15)
+	a.LineTo(4, 15)
+	a.ClosePolygon()
+	a.DrawPathDefault()
+
+	if _, _, _, al := img.GetPixelFloat(9, 9); al <= 0 {
+		t.Fatalf("DrawPathDefault interior alpha = %v, want > 0", al)
+	}
+
+	// DrawPathNoTransformDefault renders even with a world transform set.
+	img2 := NewImageFloat(20, 20)
+	b := NewAgg2DFloat()
+	b.AttachImage(img2)
+	b.ClearAll(NewColor(0, 0, 0, 0))
+	b.FillColor(NewColor(0, 255, 0, 255))
+	b.Translate(100, 100) // would push the path off-buffer if applied
+	b.ResetPath()
+	b.MoveTo(4, 4)
+	b.LineTo(15, 4)
+	b.LineTo(15, 15)
+	b.LineTo(4, 15)
+	b.ClosePolygon()
+	b.DrawPathNoTransformDefault()
+
+	if _, _, _, al := img2.GetPixelFloat(9, 9); al <= 0 {
+		t.Fatalf("DrawPathNoTransformDefault interior alpha = %v, want > 0 (transform should be ignored)", al)
+	}
+}
+
+// publicFloatSpanGen is a trivial constant-color float span generator for the
+// public-surface RenderScanlinesAAWithSpanGen test.
+type publicFloatSpanGen struct {
+	c color.RGBA32[color.Linear]
+}
+
+func (g *publicFloatSpanGen) Prepare() {}
+
+func (g *publicFloatSpanGen) Generate(span []color.RGBA32[color.Linear], x, y, length int) {
+	for i := 0; i < length && i < len(span); i++ {
+		span[i] = g.c
+	}
+}
+
+// TestPublicAgg2DFloatRasterizerEscapeHatches exercises GetInternalRasterizer +
+// RenderRasterizerWithColor / ScanlineRender / RenderScanlinesAAWithSpanGen on
+// the public float surface.
+func TestPublicAgg2DFloatRasterizerEscapeHatches(t *testing.T) {
+	addTri := func(ras interface {
+		Reset()
+		AddVertex(x, y float64, cmd uint32)
+	},
+	) {
+		ras.Reset()
+		ras.AddVertex(2, 2, uint32(basics.PathCmdMoveTo))
+		ras.AddVertex(14, 2, uint32(basics.PathCmdLineTo))
+		ras.AddVertex(8, 14, uint32(basics.PathCmdLineTo))
+		ras.AddVertex(0, 0, uint32(basics.PathCmdEndPoly)|uint32(basics.PathFlagsClose))
+	}
+
+	// RenderRasterizerWithColor.
+	img := NewImageFloat(16, 16)
+	a := NewAgg2DFloat()
+	a.AttachImage(img)
+	a.ClearAll(NewColor(0, 0, 0, 0))
+	if a.GetInternalRasterizer() == nil {
+		t.Fatal("GetInternalRasterizer returned nil")
+	}
+	addTri(a.GetInternalRasterizer())
+	a.RenderRasterizerWithColor(NewColor(255, 0, 0, 255))
+	if r, _, _, al := img.GetPixelFloat(8, 6); r <= 0 || al <= 0 {
+		t.Fatalf("RenderRasterizerWithColor pixel(8,6) = r=%v a=%v, want opaque red", r, al)
+	}
+
+	// RenderScanlinesAAWithSpanGen.
+	img2 := NewImageFloat(16, 16)
+	b := NewAgg2DFloat()
+	b.AttachImage(img2)
+	b.ClearAll(NewColor(0, 0, 0, 0))
+	ras := b.GetInternalRasterizer()
+	addTri(ras)
+	gen := &publicFloatSpanGen{c: color.NewRGBA32[color.Linear](0.0, 0.0, 1.0, 1.0)}
+	b.RenderScanlinesAAWithSpanGen(ras, gen)
+	if _, _, bl, al := img2.GetPixelFloat(8, 6); bl <= 0 || al <= 0 {
+		t.Fatalf("RenderScanlinesAAWithSpanGen pixel(8,6) = b=%v a=%v, want opaque blue", bl, al)
 	}
 }

@@ -624,10 +624,29 @@ usable.
         float twin has no region-cropped `BlendImage`/`CopyImage` — its transfer
         primitives are whole-image — so `BlendImageDefaultAlpha` is the whole-image
         integer-dst form rather than the 8-bit region form.)
-  - [ ] **DrawPath defaults & escape hatches**: `DrawPathDefault`,
-        `DrawPathNoTransformDefault`, root `RenderRasterizerWithColor` wrapper
-        (internal already exists), `ScanlineRender`, `RenderScanlinesAAWithSpanGen`,
-        `GetInternalRasterizer`.
+  - [x] **DrawPath defaults & escape hatches** — DONE 2026-06-14.
+        `DrawPathDefault`, `DrawPathNoTransformDefault`, `GetInternalRasterizer`,
+        `RenderRasterizerWithColor`, `ScanlineRender`, `RenderScanlinesAAWithSpanGen`.
+        The rasterizer/scanline/span-allocator are color-agnostic and shared
+        verbatim with the 8-bit twin; only the renderer/span-generator color type
+        differs (`RGBA32`). Internal float twin: `RenderRasterizerWithColor` already
+        existed in `rendering_float.go`; added `GetInternalRasterizer`/
+        `ScanlineRender`/`RenderScanlinesAAWithSpanGen` in
+        `internal/agg2d/drawpath_escape_float.go` (bodies mirror agg2d.go/
+        rendering.go, reusing `a.scanline`/`a.spanAllocator`/`currentRenderer` and
+        `renscan.RenderScanlinesAA`). `DrawPath`/`DrawPathNoTransform` already
+        existed. Root wrappers in `agg2d_float.go`: the two `*Default` convenience
+        forms delegate to `impl.DrawPath(FillAndStroke)` /
+        `impl.DrawPathNoTransform(FillAndStroke)` (matching the 8-bit root), plus the
+        four rasterizer escape hatches (root now imports `internal/rasterizer` +
+        `renscan`). Behavior vs the 8-bit semantics in
+        `internal/agg2d/drawpath_escape_float_test.go` (raw-rasterizer triangle
+        painted via RenderRasterizerWithColor / a caller solid renderer via
+        ScanlineRender / a custom constant-color span generator via
+        RenderScanlinesAAWithSpanGen, plus the live-rasterizer accessor identity) and
+        public-surface tests `TestPublicAgg2DFloatDrawPathDefaults`,
+        `TestPublicAgg2DFloatRasterizerEscapeHatches` in `agg2d_float_test.go`
+        (DrawPathNoTransformDefault verified to ignore an off-buffer world translate).
   - [ ] **Gouraud shading** (`GouraudTriangle`): the only non-mechanical item —
         requires a float Gouraud span generator (`span_gouraud_rgba128`, the float
         twin of the 8-bit `span_gouraud_rgba`) before the public method can delegate,

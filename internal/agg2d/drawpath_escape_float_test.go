@@ -15,7 +15,8 @@ func addTriangleToRasterizer(ras interface {
 	Reset()
 	FillingRule(basics.FillingRule)
 	AddVertex(x, y float64, cmd uint32)
-}) {
+},
+) {
 	ras.Reset()
 	ras.FillingRule(basics.FillNonZero)
 	ras.AddVertex(2, 2, uint32(basics.PathCmdMoveTo))
