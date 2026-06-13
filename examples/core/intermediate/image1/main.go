@@ -279,7 +279,8 @@ func (g *rgbBilinearClipSpanGenerator) Generate(colors []color.RGBA8[color.Linea
 		var fg [3]int
 		srcAlpha := 0
 
-		if xLr >= 0 && yLr >= 0 && xLr < maxX && yLr < maxY {
+		switch {
+		case xLr >= 0 && yLr >= 0 && xLr < maxX && yLr < maxY:
 			xHr &= image.ImageSubpixelMask
 			yHr &= image.ImageSubpixelMask
 
@@ -310,12 +311,12 @@ func (g *rgbBilinearClipSpanGenerator) Generate(colors []color.RGBA8[color.Linea
 			fg[1] >>= image.ImageSubpixelShift * 2
 			fg[2] >>= image.ImageSubpixelShift * 2
 			srcAlpha = 255
-		} else if xLr < -1 || yLr < -1 || xLr > maxX || yLr > maxY {
+		case xLr < -1 || yLr < -1 || xLr > maxX || yLr > maxY:
 			fg[0] = backR
 			fg[1] = backG
 			fg[2] = backB
 			srcAlpha = backA
-		} else {
+		default:
 			xHr &= image.ImageSubpixelMask
 			yHr &= image.ImageSubpixelMask
 
