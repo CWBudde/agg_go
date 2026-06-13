@@ -605,9 +605,25 @@ usable.
         in `agg2d_float_test.go`. (Deferred from this item: `GetClipBoxRect` exists at
         the root only, as on 8-bit; `ImageFilter`/`ImageResample` listed twice in the
         original spec — implemented once as setters.)
-  - [ ] **Image convenience + export**: `BlendImageSimple`, `BlendImageDefaultAlpha`,
-        `BlendImageSimpleDefaultAlpha`, `CopyImageSimple`, `SaveImagePPM`. Thin
-        wrappers over the existing float copy/blend/transform paths.
+  - [x] **Image convenience + export** — DONE 2026-06-13. `CopyImageSimple`,
+        `BlendImageSimple`, `BlendImageDefaultAlpha`, `BlendImageSimpleDefaultAlpha`,
+        `SaveImagePPM`. Internal float twin in
+        `internal/agg2d/image_convenience_float.go`: the float-dst `*Simple` forms
+        mirror the 8-bit `image.go` semantics (WorldToScreen + integer truncation of
+        the destination) and delegate to the existing whole-image transfer
+        primitives `CopyImageFloat`/`BlendImageFloat`; `BlendImageDefaultAlpha`/
+        `BlendImageSimpleDefaultAlpha` add the upstream default-alpha-255 spellings;
+        `SaveImagePPM` is the float twin of the 8-bit `agg.go` exporter, writing the
+        attached `rbuf`'s straight RGB channels through `roundToU8` (alpha dropped, as
+        PPM has none). Root wrappers in `agg2d_float.go`. Parity/behavior vs the 8-bit
+        oracle in `internal/agg2d/image_convenience_float_test.go` (copy/blend land at
+        the rounded dst, default-alpha blends, nil-source errors, and a PPM
+        header+body round-trip incl. the no-buffer error path) and public-surface
+        tests `TestPublicAgg2DFloatImageConvenience`, `TestPublicAgg2DFloatSaveImagePPM`
+        in `agg2d_float_test.go`. (Deviation from the 8-bit region-blend surface: the
+        float twin has no region-cropped `BlendImage`/`CopyImage` — its transfer
+        primitives are whole-image — so `BlendImageDefaultAlpha` is the whole-image
+        integer-dst form rather than the 8-bit region form.)
   - [ ] **DrawPath defaults & escape hatches**: `DrawPathDefault`,
         `DrawPathNoTransformDefault`, root `RenderRasterizerWithColor` wrapper
         (internal already exists), `ScanlineRender`, `RenderScanlinesAAWithSpanGen`,

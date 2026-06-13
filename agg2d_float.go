@@ -6,6 +6,8 @@ import (
 
 	"github.com/cwbudde/agg_go/internal/agg2d"
 	"github.com/cwbudde/agg_go/internal/color"
+	"github.com/cwbudde/agg_go/internal/rasterizer"
+	renscan "github.com/cwbudde/agg_go/internal/renderer/scanline"
 )
 
 // errNilImageFloat is returned by the float image-transform methods when the
@@ -322,8 +324,16 @@ func (a *Agg2DFloat) ClosePolygon() { a.impl.ClosePolygon() }
 // DrawPath renders the current path according to the given flag.
 func (a *Agg2DFloat) DrawPath(flag DrawPathFlag) { a.impl.DrawPath(flag) }
 
+// DrawPathDefault rasterizes the current path using the upstream default mode:
+// fill and stroke.
+func (a *Agg2DFloat) DrawPathDefault() { a.impl.DrawPath(FillAndStroke) }
+
 // DrawPathNoTransform renders the current path with the identity transform.
 func (a *Agg2DFloat) DrawPathNoTransform(flag DrawPathFlag) { a.impl.DrawPathNoTransform(flag) }
+
+// DrawPathNoTransformDefault rasterizes the current path without the world
+// transform using the upstream default mode: fill and stroke.
+func (a *Agg2DFloat) DrawPathNoTransformDefault() { a.impl.DrawPathNoTransform(FillAndStroke) }
 
 // --- Shapes ---
 
@@ -500,6 +510,48 @@ func (a *Agg2DFloat) BlendImage(img *ImageFloat, dstX, dstY int, cover uint8) {
 		return
 	}
 	a.impl.BlendImageFloat(img.impl, dstX, dstY, cover)
+}
+
+// CopyImageSimple copies the whole float source image to the world destination
+// without blending (world-transformed, integer-truncated destination).
+func (a *Agg2DFloat) CopyImageSimple(img *ImageFloat, dstX, dstY float64) error {
+	if img == nil {
+		return errNilImageFloat
+	}
+	return a.impl.CopyImageSimple(img.impl, dstX, dstY)
+}
+
+// BlendImageSimple blends the whole float source image to the world destination
+// with the supplied alpha (0..255).
+func (a *Agg2DFloat) BlendImageSimple(img *ImageFloat, dstX, dstY float64, alpha uint) error {
+	if img == nil {
+		return errNilImageFloat
+	}
+	return a.impl.BlendImageSimple(img.impl, dstX, dstY, alpha)
+}
+
+// BlendImageDefaultAlpha blends the whole float source image at the integer
+// destination using the upstream default alpha of 255.
+func (a *Agg2DFloat) BlendImageDefaultAlpha(img *ImageFloat, dstX, dstY int) {
+	if img == nil {
+		return
+	}
+	a.impl.BlendImageDefaultAlpha(img.impl, dstX, dstY)
+}
+
+// BlendImageSimpleDefaultAlpha blends the whole float source image to the world
+// destination using the upstream default alpha of 255.
+func (a *Agg2DFloat) BlendImageSimpleDefaultAlpha(img *ImageFloat, dstX, dstY float64) error {
+	if img == nil {
+		return errNilImageFloat
+	}
+	return a.impl.BlendImageSimpleDefaultAlpha(img.impl, dstX, dstY)
+}
+
+// SaveImagePPM writes the currently attached float buffer as a binary PPM file
+// (straight RGB channels rounded to 8 bits; alpha dropped).
+func (a *Agg2DFloat) SaveImagePPM(filename string) error {
+	return a.impl.SaveImagePPM(filename)
 }
 
 // --- Image transforms (affine / perspective) ---

@@ -1,7 +1,11 @@
 package agg
 
 import (
+	"bytes"
+	"fmt"
 	"math"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -944,5 +948,100 @@ func TestPublicAgg2DFloatAccessorAliases(t *testing.T) {
 	af.ImageBlendColor(NewColor(1, 2, 3, 4))
 	if got := af.GetImageBlendColor(); got != NewColor(1, 2, 3, 4) {
 		t.Errorf("ImageBlendColor round-trip = %v, want {1 2 3 4}", got)
+	}
+}
+
+// TestPublicAgg2DFloatImageConvenience exercises the public float-twin image
+// convenience wrappers: whole-image float-dst copy/blend, the default-alpha
+// spellings, and that they land pixels at the rounded destination.
+func TestPublicAgg2DFloatImageConvenience(t *testing.T) {
+	src := NewImageFloat(4, 4)
+	for y := range 4 {
+		for x := range 4 {
+			src.SetPixelFloat(x, y, 1.0, 0.0, 0.0, 1.0)
+		}
+	}
+
+	// CopyImageSimple.
+	dst := NewImageFloat(16, 16)
+	a := NewAgg2DFloat()
+	a.AttachImage(dst)
+	a.ClearAll(NewColor(0, 0, 0, 0))
+	if err := a.CopyImageSimple(src, 3, 3); err != nil {
+		t.Fatalf("CopyImageSimple: %v", err)
+	}
+	if r, _, _, al := dst.GetPixelFloat(4, 4); r <= 0 || al <= 0 {
+		t.Fatalf("CopyImageSimple pixel(4,4) = r=%v a=%v, want opaque red", r, al)
+	}
+
+	// BlendImageSimple.
+	dst2 := NewImageFloat(16, 16)
+	b := NewAgg2DFloat()
+	b.AttachImage(dst2)
+	b.ClearAll(NewColor(0, 0, 0, 0))
+	if err := b.BlendImageSimple(src, 3, 3, 255); err != nil {
+		t.Fatalf("BlendImageSimple: %v", err)
+	}
+	if _, _, _, al := dst2.GetPixelFloat(5, 5); al <= 0 {
+		t.Fatalf("BlendImageSimple pixel(5,5) alpha = %v, want > 0", al)
+	}
+
+	// BlendImageDefaultAlpha (integer dst).
+	dst3 := NewImageFloat(16, 16)
+	c := NewAgg2DFloat()
+	c.AttachImage(dst3)
+	c.ClearAll(NewColor(0, 0, 0, 0))
+	c.BlendImageDefaultAlpha(src, 3, 3)
+	if _, _, _, al := dst3.GetPixelFloat(5, 5); al <= 0 {
+		t.Fatalf("BlendImageDefaultAlpha pixel(5,5) alpha = %v, want > 0", al)
+	}
+
+	// BlendImageSimpleDefaultAlpha.
+	dst4 := NewImageFloat(16, 16)
+	d := NewAgg2DFloat()
+	d.AttachImage(dst4)
+	d.ClearAll(NewColor(0, 0, 0, 0))
+	if err := d.BlendImageSimpleDefaultAlpha(src, 3, 3); err != nil {
+		t.Fatalf("BlendImageSimpleDefaultAlpha: %v", err)
+	}
+	if _, _, _, al := dst4.GetPixelFloat(5, 5); al <= 0 {
+		t.Fatalf("BlendImageSimpleDefaultAlpha pixel(5,5) alpha = %v, want > 0", al)
+	}
+
+	// Nil source is an error on the float-dst forms.
+	if err := a.CopyImageSimple(nil, 0, 0); err == nil {
+		t.Fatal("CopyImageSimple(nil) should error")
+	}
+}
+
+// TestPublicAgg2DFloatSaveImagePPM verifies the public float-twin PPM exporter
+// writes a valid binary P6 file with the correct dimensions.
+func TestPublicAgg2DFloatSaveImagePPM(t *testing.T) {
+	const w, h = 5, 3
+	img := NewImageFloat(w, h)
+	a := NewAgg2DFloat()
+	a.AttachImage(img)
+	a.ClearAll(NewColor(10, 20, 30, 255))
+
+	path := filepath.Join(t.TempDir(), "float.ppm")
+	if err := a.SaveImagePPM(path); err != nil {
+		t.Fatalf("SaveImagePPM: %v", err)
+	}
+
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read ppm: %v", err)
+	}
+	header := fmt.Sprintf("P6\n%d %d\n255\n", w, h)
+	if !bytes.HasPrefix(raw, []byte(header)) {
+		t.Fatalf("ppm header = %q, want prefix %q", raw[:min(len(raw), 20)], header)
+	}
+	if len(raw) != len(header)+w*h*3 {
+		t.Fatalf("ppm size = %d, want %d", len(raw), len(header)+w*h*3)
+	}
+
+	// A nil target errors.
+	if err := NewAgg2DFloat().SaveImagePPM(path); err == nil {
+		t.Fatal("SaveImagePPM with no attached buffer should error")
 	}
 }
