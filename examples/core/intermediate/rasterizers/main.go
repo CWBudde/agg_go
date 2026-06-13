@@ -13,10 +13,8 @@ import (
 	"github.com/cwbudde/agg_go/internal/ctrl/checkbox"
 	"github.com/cwbudde/agg_go/internal/ctrl/slider"
 	"github.com/cwbudde/agg_go/internal/gamma"
-	"github.com/cwbudde/agg_go/internal/order"
 	"github.com/cwbudde/agg_go/internal/path"
 	"github.com/cwbudde/agg_go/internal/pixfmt"
-	"github.com/cwbudde/agg_go/internal/pixfmt/blender"
 	"github.com/cwbudde/agg_go/internal/rasterizer"
 	"github.com/cwbudde/agg_go/internal/renderer"
 	renscan "github.com/cwbudde/agg_go/internal/renderer/scanline"
@@ -26,6 +24,18 @@ import (
 const (
 	frameWidth  = 500
 	frameHeight = 330
+)
+
+// Type aliases for readability. C++ rasterizers.cpp uses AGG_BGR24, i.e. the
+// plain (non-premultiplied) pixfmt_bgr24 for BOTH the scene and the controls
+// (render_ctrl). We mirror that with a single plain linear RGBA base so that
+// translucent control colours (the slider knobs use alpha 0.4/0.6) blend with
+// straight alpha exactly like the C++ reference.
+type (
+	colorType   = color.RGBA8[color.Linear]
+	pixFmtPlain = *pixfmt.PixFmtRGBA32[color.Linear]
+	renBaseT    = *renderer.RendererBase[pixFmtPlain, colorType]
+	rasType     = *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
 )
 
 var (
@@ -64,11 +74,11 @@ func (a *controlPathAdapter) Vertex(x, y *float64) uint32 {
 }
 
 func renderSolidPath(
-	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
+	ras rasType,
 	sl *scanline.ScanlineP8,
-	renBase *renderer.RendererBase[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]],
+	renBase renBaseT,
 	vs rasterizer.VertexSource,
-	col color.RGBA8[color.Linear],
+	col colorType,
 ) {
 	ras.Reset()
 	ras.AddPath(vs, 0)
@@ -91,11 +101,11 @@ func renderSolidPath(
 }
 
 func renderAliasedPath(
-	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
+	ras rasType,
 	sl *scanline.ScanlineBin,
-	renBase *renderer.RendererBase[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]],
+	renBase renBaseT,
 	vs rasterizer.VertexSource,
-	col color.RGBA8[color.Linear],
+	col colorType,
 ) {
 	ras.Reset()
 	ras.AddPath(vs, 0)
@@ -129,9 +139,9 @@ func rgbaToRGBA8(c color.RGBA) color.RGBA8[color.Linear] {
 }
 
 func renderControl(
-	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
+	ras rasType,
 	sl *scanline.ScanlineP8,
-	renBase *renderer.RendererBase[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]],
+	renBase renBaseT,
 	ctrl ctrlpkg.Ctrl[color.RGBA],
 ) {
 	adapter := &controlPathAdapter{ctrl: ctrl}
@@ -153,9 +163,9 @@ func (d *demo) Render(img *agg.Image) {
 	imgData := img.Data
 	rbuf := buffer.NewRenderingBufferU8WithData(imgData, frameWidth, frameHeight, img.Stride())
 
-	pf := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
-	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]](pf)
-	renBase.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
+	pf := pixfmt.NewPixFmtRGBA32[color.Linear](rbuf)
+	renBase := renderer.NewRendererBaseWithPixfmt(pf)
+	renBase.Clear(colorType{R: 255, G: 255, B: 255, A: 255})
 
 	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
 		rasterizer.RasConvInt{},
@@ -169,36 +179,8 @@ func (d *demo) Render(img *agg.Image) {
 	)
 	slCtrl := scanline.NewScanlineP8()
 
-	// Anti-aliased triangle (same defaults as C++ sample).
-	pathAA := path.NewPathStorageStl()
-	pathAA.MoveTo(triX[0], triY[0])
-	pathAA.LineTo(triX[1], triY[1])
-	pathAA.LineTo(triX[2], triY[2])
-	pathAA.ClosePolygon(0)
-	ras.SetGamma(gamma.NewGammaPower(0.5 * 2.0).Apply)
-	renderSolidPath(
-		ras,
-		sl,
-		renBase,
-		&pathStorageAdapter{ps: pathAA},
-		color.RGBA8[color.Linear]{R: 178, G: 127, B: 25, A: 255},
-	)
-
-	// Aliased triangle via threshold gamma.
-	pathAliased := path.NewPathStorageStl()
-	pathAliased.MoveTo(triX[0]-200, triY[0])
-	pathAliased.LineTo(triX[1]-200, triY[1])
-	pathAliased.LineTo(triX[2]-200, triY[2])
-	pathAliased.ClosePolygon(0)
-	ras.SetGamma(gamma.NewGammaThreshold(0.5).Apply)
-	renderAliasedPath(
-		ras,
-		slBin,
-		renBase,
-		&pathStorageAdapter{ps: pathAliased},
-		color.RGBA8[color.Linear]{R: 25, G: 127, B: 178, A: 255},
-	)
-
+	// Controls mirror the C++ members; their values drive the scene exactly as
+	// in rasterizers.cpp (gamma feeds the rasterizer gamma, alpha the fill).
 	gammaSlider := slider.NewSliderCtrl(140, 14, 280, 22, false)
 	gammaSlider.SetRange(0.0, 1.0)
 	gammaSlider.SetValue(0.5)
@@ -211,6 +193,39 @@ func (d *demo) Render(img *agg.Image) {
 
 	testPerf := checkbox.NewDefaultCheckboxCtrl(140, 30, "Test Performance", false)
 	testPerf.SetChecked(false)
+
+	gammaValue := gammaSlider.Value()
+	alphaValue := alphaSlider.Value()
+
+	// Anti-aliased triangle: agg::rgba(0.7, 0.5, 0.1, m_alpha.value()).
+	pathAA := path.NewPathStorageStl()
+	pathAA.MoveTo(triX[0], triY[0])
+	pathAA.LineTo(triX[1], triY[1])
+	pathAA.LineTo(triX[2], triY[2])
+	pathAA.ClosePolygon(0)
+	ras.SetGamma(gamma.NewGammaPower(gammaValue * 2.0).Apply)
+	renderSolidPath(
+		ras,
+		sl,
+		renBase,
+		&pathStorageAdapter{ps: pathAA},
+		rgbaToRGBA8(color.NewRGBA(0.7, 0.5, 0.1, alphaValue)),
+	)
+
+	// Aliased triangle via threshold gamma: agg::rgba(0.1, 0.5, 0.7, m_alpha.value()).
+	pathAliased := path.NewPathStorageStl()
+	pathAliased.MoveTo(triX[0]-200, triY[0])
+	pathAliased.LineTo(triX[1]-200, triY[1])
+	pathAliased.LineTo(triX[2]-200, triY[2])
+	pathAliased.ClosePolygon(0)
+	ras.SetGamma(gamma.NewGammaThreshold(gammaValue).Apply)
+	renderAliasedPath(
+		ras,
+		slBin,
+		renBase,
+		&pathStorageAdapter{ps: pathAliased},
+		rgbaToRGBA8(color.NewRGBA(0.1, 0.5, 0.7, alphaValue)),
+	)
 
 	renderControl(rasCtrl, slCtrl, renBase, gammaSlider)
 	renderControl(rasCtrl, slCtrl, renBase, alphaSlider)

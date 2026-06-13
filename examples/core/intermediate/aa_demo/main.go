@@ -161,7 +161,9 @@ func (d *demo) Render(img *agg.Image) {
 		color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255})
 
 	// 3. Full-scale triangle outline in teal via conv_stroke.
-	teal := color.RGBA8[color.Linear]{R: 0, G: 150, B: 160, A: 200}
+	// C++ uses srgba8(0,150,160,200); the BGR24 window has color_type=rgba8
+	// (linear), so the literal is sRGB-decoded to linear at the render boundary.
+	teal := color.ConvertToLinear(color.RGBA8[color.SRGB]{R: 0, G: 150, B: 160, A: 200})
 	edges := [3][2]int{{0, 1}, {1, 2}, {2, 0}}
 	for _, e := range edges {
 		ps := path.NewPathStorageStl()

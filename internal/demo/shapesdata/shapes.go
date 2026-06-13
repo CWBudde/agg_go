@@ -15,6 +15,8 @@ import (
 	"math"
 	"strconv"
 	"strings"
+
+	"github.com/cwbudde/agg_go/internal/curves"
 )
 
 //go:embed shapes.txt
@@ -208,7 +210,12 @@ type FlatVertex struct {
 
 // FlattenPath flattens a RawPath (applies quadratic bezier subdivision and affine) into FlatVertex slices.
 // The affine is specified as [a, b, c, d, e, f] where x' = a*x + c*y + e, y' = b*x + d*y + f.
-// approxScale controls curve subdivision quality (use the viewport scale for zoom-aware flattening).
+// approxScale is the device-space approximation scale, exactly mirroring AGG's
+// pipeline order path_storage → conv_curve(approximation_scale) → conv_transform:
+// curves are subdivided in WORLD space (raw control points) with the given
+// approximation scale, and only the resulting polyline points are transformed
+// to device coordinates. For a uniform scale this is mathematically identical
+// to subdividing the already-transformed bezier to a ~0.5px device tolerance.
 func FlattenPath(p *RawPath, sx, sy, tx, ty, approxScale float64) []FlatVertex {
 	if len(p.Vertices) == 0 {
 		return nil
@@ -217,21 +224,38 @@ func FlattenPath(p *RawPath, sx, sy, tx, ty, approxScale float64) []FlatVertex {
 
 	// First vertex is always MoveTo
 	v0 := p.Vertices[0]
-	x0, y0 := v0.X*sx+tx, v0.Y*sy+ty
-	result = append(result, FlatVertex{X: x0, Y: y0, Cmd: PathCmdMoveTo})
+	result = append(result, FlatVertex{X: v0.X*sx + tx, Y: v0.Y*sy + ty, Cmd: PathCmdMoveTo})
 
+	curve := curves.NewCurve3Div()
+	curve.SetApproximationScale(approxScale)
+
+	x0, y0 := v0.X, v0.Y // world-space current point
 	for i := 1; i < len(p.Vertices); i++ {
 		v := p.Vertices[i]
 		if v.IsCurve {
-			// Quadratic bezier from (x0,y0) via control (cx,cy) to (ax,ay)
-			cx, cy := v.CX*sx+tx, v.CY*sy+ty
-			ax, ay := v.X*sx+tx, v.Y*sy+ty
-			subdivideCurve3(&result, x0, y0, cx, cy, ax, ay, approxScale)
-			x0, y0 = ax, ay
+			// Quadratic bezier in WORLD space from (x0,y0) via control
+			// (v.CX,v.CY) to (v.X,v.Y), subdivided faithfully (agg::curve3_div).
+			curve.Reset()
+			curve.Init(x0, y0, v.CX, v.CY, v.X, v.Y)
+			curve.Rewind(0)
+			first := true
+			for {
+				px, py, cmd := curve.Vertex()
+				if cmd == 0 { // PathCmdStop
+					break
+				}
+				if first {
+					// Skip the curve's start point; it duplicates the
+					// previous segment's endpoint already in result.
+					first = false
+					continue
+				}
+				result = append(result, FlatVertex{X: px*sx + tx, Y: py*sy + ty, Cmd: PathCmdLineTo})
+			}
+			x0, y0 = v.X, v.Y
 		} else {
-			ax, ay := v.X*sx+tx, v.Y*sy+ty
-			result = append(result, FlatVertex{X: ax, Y: ay, Cmd: PathCmdLineTo})
-			x0, y0 = ax, ay
+			result = append(result, FlatVertex{X: v.X*sx + tx, Y: v.Y*sy + ty, Cmd: PathCmdLineTo})
+			x0, y0 = v.X, v.Y
 		}
 	}
 	return result
@@ -244,31 +268,6 @@ const (
 	PathCmdLineTo uint32 = 2
 	PathCmdStop   uint32 = 0
 )
-
-// subdivideCurve3 recursively flattens a quadratic bezier and appends LineTo vertices.
-func subdivideCurve3(out *[]FlatVertex, x1, y1, cx, cy, x2, y2, scale float64) {
-	// Compute midpoints
-	x12 := (x1 + cx) * 0.5
-	y12 := (y1 + cy) * 0.5
-	x23 := (cx + x2) * 0.5
-	y23 := (cy + y2) * 0.5
-	x123 := (x12 + x23) * 0.5
-	y123 := (y12 + y23) * 0.5
-
-	// Distance from midpoint to chord
-	dx := x2 - x1
-	dy := y2 - y1
-	d := math.Abs((cx-x2)*dy - (cy-y2)*dx)
-
-	if d*d <= 0.5*scale*scale*(dx*dx+dy*dy) {
-		// Flat enough
-		*out = append(*out, FlatVertex{X: x2, Y: y2, Cmd: PathCmdLineTo})
-		return
-	}
-
-	subdivideCurve3(out, x1, y1, x12, y12, x123, y123, scale)
-	subdivideCurve3(out, x123, y123, x23, y23, x2, y2, scale)
-}
 
 // LoadShapes parses the embedded shapes.txt and returns all shapes.
 func LoadShapes() []RawShape {
