@@ -84,7 +84,7 @@ func newDemo() *demo {
 	join.AddItem("Bevel Join")
 	join.SetCurItem(2)
 
-	capCtrl := rboxctrl.NewDefaultRboxCtrl(10, 90, 133, 170, false)
+	capCtrl := rboxctrl.NewDefaultRboxCtrl(10, 90, 133, 160, false)
 	capCtrl.AddItem("Butt Cap")
 	capCtrl.AddItem("Square Cap")
 	capCtrl.AddItem("Round Cap")
