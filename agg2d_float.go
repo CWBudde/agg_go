@@ -585,6 +585,15 @@ func (a *Agg2DFloat) RenderScanlinesAAWithSpanGen(
 	a.impl.RenderScanlinesAAWithSpanGen(ras, spanGen)
 }
 
+// --- Gouraud shading ---
+
+// GouraudTriangle renders a Gouraud-shaded (smoothly color-interpolated)
+// triangle. c1/c2/c3 are the vertex colors; d is the dilation distance used for
+// AGG's numerically stable beveled-polygon rasterization.
+func (a *Agg2DFloat) GouraudTriangle(x1, y1, x2, y2, x3, y3 float64, c1, c2, c3 Color, d float64) {
+	a.impl.GouraudTriangle(x1, y1, x2, y2, x3, y3, toInternalColor(c1), toInternalColor(c2), toInternalColor(c3), d)
+}
+
 // --- Image transforms (affine / perspective) ---
 
 // TransformImage maps a source rectangle of img to a destination rectangle using

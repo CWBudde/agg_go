@@ -1149,3 +1149,64 @@ func TestPublicAgg2DFloatRasterizerEscapeHatches(t *testing.T) {
 		t.Fatalf("RenderScanlinesAAWithSpanGen pixel(8,6) = b=%v a=%v, want opaque blue", bl, al)
 	}
 }
+
+// TestPublicAgg2DFloatGouraudTriangle renders a three-color Gouraud triangle
+// through the public float surface and the 8-bit oracle, asserting whole-frame
+// parity. The float twin interpolates colors in float space while the 8-bit
+// oracle interpolates in integer 0-255 space, so a small per-pixel tolerance is
+// allowed.
+func TestPublicAgg2DFloatGouraudTriangle(t *testing.T) {
+	const w, h = 80, 80
+
+	scene := func(
+		clear func(Color),
+		gouraud func(x1, y1, x2, y2, x3, y3 float64, c1, c2, c3 Color, d float64),
+	) {
+		clear(NewColor(0, 0, 0, 255))
+		gouraud(8, 8, 72, 8, 40, 72,
+			NewColor(255, 0, 0, 255),
+			NewColor(0, 255, 0, 255),
+			NewColor(0, 0, 255, 255), 0)
+	}
+
+	// Float path.
+	imgF := NewImageFloat(w, h)
+	af := NewAgg2DFloat()
+	af.AttachImage(imgF)
+	scene(af.ClearAll, af.GouraudTriangle)
+	rgbaF := imgF.ToRGBA()
+
+	// 8-bit oracle.
+	buf := make([]uint8, w*h*4)
+	a8 := NewAgg2D()
+	a8.Attach(buf, w, h, w*4)
+	scene(a8.ClearAll, a8.GouraudTriangle)
+	img8 := NewImage(buf, w, h, w*4).ToGoImage()
+
+	maxDiff, ink := 0, 0
+	for y := range h {
+		for x := range w {
+			cf := rgbaF.RGBAAt(x, y)
+			c8 := img8.RGBAAt(x, y)
+			for _, d := range []int{
+				absInt(int(cf.R) - int(c8.R)),
+				absInt(int(cf.G) - int(c8.G)),
+				absInt(int(cf.B) - int(c8.B)),
+				absInt(int(cf.A) - int(c8.A)),
+			} {
+				if d > maxDiff {
+					maxDiff = d
+				}
+			}
+			if c8.R > 10 || c8.G > 10 || c8.B > 10 {
+				ink++
+			}
+		}
+	}
+	if ink < 500 {
+		t.Fatalf("Gouraud triangle drew too little ink in 8-bit oracle: %d pixels", ink)
+	}
+	if maxDiff > 2 {
+		t.Errorf("public float vs 8-bit Gouraud max channel diff = %d (tol 2)", maxDiff)
+	}
+}
