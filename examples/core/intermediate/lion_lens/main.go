@@ -3,6 +3,16 @@
 // Renders the lion vector art with the original AGG control widgets and the
 // warp-magnifier lens. The lens starts at the C++ default position
 // (200, 150), while the sliders control magnification and radius.
+//
+// This mirrors the C++ rendering pipeline faithfully:
+//
+//	conv_segmentator(g_path) -> conv_transform(mtx) -> conv_transform(lens)
+//	render_all_paths(g_rasterizer, g_scanline, r, trans_lens, ...)
+//
+// The conv_segmentator is essential: it subdivides every line segment into
+// ~1px pieces (in source space) BEFORE the non-linear warp magnifier runs, so
+// straight edges curve smoothly through the lens instead of only having their
+// endpoints displaced.
 package main
 
 import (
@@ -11,10 +21,18 @@ import (
 	agg "github.com/cwbudde/agg_go"
 	"github.com/cwbudde/agg_go/examples/shared/lowlevelrunner"
 	"github.com/cwbudde/agg_go/internal/basics"
-	icol "github.com/cwbudde/agg_go/internal/color"
+	"github.com/cwbudde/agg_go/internal/buffer"
+	"github.com/cwbudde/agg_go/internal/color"
+	"github.com/cwbudde/agg_go/internal/conv"
 	ctrlbase "github.com/cwbudde/agg_go/internal/ctrl"
 	sliderctrl "github.com/cwbudde/agg_go/internal/ctrl/slider"
 	liondemo "github.com/cwbudde/agg_go/internal/demo/lion"
+	"github.com/cwbudde/agg_go/internal/path"
+	"github.com/cwbudde/agg_go/internal/pixfmt"
+	"github.com/cwbudde/agg_go/internal/rasterizer"
+	"github.com/cwbudde/agg_go/internal/renderer"
+	renscan "github.com/cwbudde/agg_go/internal/renderer/scanline"
+	"github.com/cwbudde/agg_go/internal/scanline"
 	"github.com/cwbudde/agg_go/internal/transform"
 )
 
@@ -29,8 +47,12 @@ const (
 	defaultLensY      = 150.0
 )
 
+type rasterizerType = rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
+
+type rendererBaseType = renderer.RendererBase[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]]
+
 type demo struct {
-	lion         *liondemo.LionData
+	lion         liondemo.LionData
 	baseDX       float64
 	baseDY       float64
 	lensX        float64
@@ -42,6 +64,14 @@ type demo struct {
 }
 
 func newDemo() *demo {
+	ld := liondemo.Parse()
+
+	pathVS := path.NewPathStorageStlVertexSourceAdapter(ld.Path)
+	bounds, ok := basics.BoundingRect[float64](pathVS, basics.SliceGetID(ld.PathIdx), 0, uint(ld.NPaths))
+	if !ok {
+		panic("lion_lens: bounding rect not found")
+	}
+
 	magnSlider := sliderctrl.NewSliderCtrl(5, 5, 495, 12, false)
 	magnSlider.SetRange(0.01, 4.0)
 	magnSlider.SetValue(defaultLensScale)
@@ -53,6 +83,9 @@ func newDemo() *demo {
 	radiusSlider.SetLabel("Radius=%3.2f")
 
 	return &demo{
+		lion:         ld,
+		baseDX:       (bounds.X2 - bounds.X1) * 0.5,
+		baseDY:       (bounds.Y2 - bounds.Y1) * 0.5,
 		lensX:        defaultLensX,
 		lensY:        defaultLensY,
 		lightX:       defaultLensX,
@@ -63,66 +96,53 @@ func newDemo() *demo {
 }
 
 func (d *demo) OnInit() {
-	d.ensureLion()
 	d.lensX = defaultLensX
 	d.lensY = defaultLensY
 	d.lightX = defaultLensX
 	d.lightY = defaultLensY
 }
 
+func newRasterizer() *rasterizerType {
+	return rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{},
+		rasterizer.NewRasterizerSlNoClip(),
+	)
+}
+
 func (d *demo) Render(img *agg.Image) {
-	d.ensureLion()
+	rbuf := buffer.NewRenderingBufferU8WithData(img.Data, img.Width(), img.Height(), img.Stride())
+	pf := pixfmt.NewPixFmtRGBA32[color.Linear](rbuf)
+	rb := renderer.NewRendererBaseWithPixfmt(pf)
+	rb.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
 
-	ctx := agg.NewContextForImage(img)
-	ctx.Clear(agg.White)
+	ras := newRasterizer()
+	sl := scanline.NewScanlineP8()
 
-	a := ctx.GetAgg2D()
-	a.ResetTransformations()
-
+	// Warp magnifier lens (non-linear transform).
 	lens := transform.NewTransWarpMagnifier()
 	lens.SetCenter(d.lensX, d.lensY)
 	lens.SetMagnification(d.magnSlider.Value())
 	lens.SetRadius(d.radiusSlider.Value() / d.magnSlider.Value())
 
+	// Affine: center the lion in the window, rotated by pi (matches C++).
 	mtx := transform.NewTransAffine()
-	mtx.Translate(-d.baseDX, -d.baseDY)
-	mtx.Rotate(math.Pi)
-	mtx.Translate(float64(llWidth)*0.5, float64(llHeight)*0.5)
+	mtx.Multiply(transform.NewTransAffineTranslation(-d.baseDX, -d.baseDY))
+	mtx.Multiply(transform.NewTransAffineRotation(math.Pi))
+	mtx.Multiply(transform.NewTransAffineTranslation(float64(img.Width())/2, float64(img.Height())/2))
 
-	for i := 0; i < d.lion.NPaths; i++ {
-		a.FillColor(agg.NewColor(
-			d.lion.Colors[i].R,
-			d.lion.Colors[i].G,
-			d.lion.Colors[i].B,
-			255,
-		))
-		a.NoLine()
-		a.ResetPath()
+	// conv_segmentator(g_path) -> conv_transform(mtx) -> conv_transform(lens).
+	pathVS := path.NewPathStorageStlVertexSourceAdapter(d.lion.Path)
+	segm := conv.NewConvSegmentator(pathVS)
+	transMtx := conv.NewConvTransform[conv.VertexSource, *transform.TransAffine](&segmAdapter{segm}, mtx)
+	transLens := conv.NewConvTransform[conv.VertexSource, *transform.TransWarpMagnifier](transMtx, lens)
 
-		d.lion.Path.Rewind(d.lion.PathIdx[i])
-		for {
-			x, y, cmd := d.lion.Path.NextVertex()
-			if basics.IsStop(basics.PathCommand(cmd)) {
-				break
-			}
+	rasVS := conv.NewRasterizerVertexSourceAdapter(transLens)
+	renSolid := renscan.NewRendererScanlineAASolidWithRenderer(rb)
 
-			mtx.Transform(&x, &y)
-			lens.Transform(&x, &y)
+	renscan.RenderAllPaths(ras, sl, renSolid, rasVS, &d.lion, &d.lion, d.lion.NPaths)
 
-			switch {
-			case basics.IsMoveTo(basics.PathCommand(cmd)):
-				a.MoveTo(x, y)
-			case basics.IsLineTo(basics.PathCommand(cmd)):
-				a.LineTo(x, y)
-			}
-		}
-
-		a.ClosePolygon()
-		a.DrawPath(agg.FillOnly)
-	}
-
-	renderCtrl(a, d.magnSlider)
-	renderCtrl(a, d.radiusSlider)
+	renderCtrl(ras, sl, rb, d.magnSlider)
+	renderCtrl(ras, sl, rb, d.radiusSlider)
 }
 
 func (d *demo) OnMouseDown(x, y int, btn lowlevelrunner.Buttons) bool {
@@ -179,72 +199,59 @@ func (d *demo) OnMouseUp(x, y int, btn lowlevelrunner.Buttons) bool {
 	return redraw
 }
 
-func (d *demo) ensureLion() {
-	if d.lion != nil {
-		return
-	}
+// segmAdapter bridges conv.ConvSegmentator (uint32 cmd) to the conv.VertexSource
+// contract (basics.PathCommand cmd) so it can feed conv.ConvTransform.
+type segmAdapter struct{ s *conv.ConvSegmentator }
 
-	ld := liondemo.Parse()
-	d.lion = &ld
+func (a *segmAdapter) Rewind(id uint) { a.s.Rewind(id) }
 
-	bx1, by1, bx2, by2 := 1e9, 1e9, -1e9, -1e9
-	for idx := uint(0); idx < d.lion.Path.TotalVertices(); idx++ {
-		x, y, cmd := d.lion.Path.Vertex(idx)
-		if !basics.IsVertex(basics.PathCommand(cmd)) {
-			continue
-		}
-		if x < bx1 {
-			bx1 = x
-		}
-		if y < by1 {
-			by1 = y
-		}
-		if x > bx2 {
-			bx2 = x
-		}
-		if y > by2 {
-			by2 = y
-		}
-	}
-
-	d.baseDX = (bx2 - bx1) * 0.5
-	d.baseDY = (by2 - by1) * 0.5
+func (a *segmAdapter) Vertex() (float64, float64, basics.PathCommand) {
+	x, y, cmd := a.s.Vertex()
+	return x, y, basics.PathCommand(cmd)
 }
 
-func renderCtrl(a *agg.Agg2D, c ctrlbase.Ctrl[icol.RGBA]) {
-	ras := a.GetInternalRasterizer()
-	for pathID := uint(0); pathID < c.NumPaths(); pathID++ {
+func renderCtrl(
+	ras *rasterizerType,
+	sl *scanline.ScanlineP8,
+	rb *rendererBaseType,
+	ctrl ctrlbase.Ctrl[color.RGBA],
+) {
+	for pathID := uint(0); pathID < ctrl.NumPaths(); pathID++ {
 		ras.Reset()
-		ras.AddPath(&ctrlVertexSourceAdapter{ctrl: c}, uint32(pathID))
-		a.RenderRasterizerWithColor(toAggColor(c.Color(pathID)))
+		ctrlVS := ctrlVertexSource{ctrl: ctrl}
+		ras.AddPath(&ctrlVS, uint32(pathID))
+
+		c := ctrl.Color(pathID)
+		renscan.RenderScanlinesAASolid(ras, sl, rb, color.RGBA8[color.Linear]{
+			R: clampU8(c.R),
+			G: clampU8(c.G),
+			B: clampU8(c.B),
+			A: clampU8(c.A),
+		})
 	}
 }
 
-type ctrlVertexSourceAdapter struct {
-	ctrl ctrlbase.Ctrl[icol.RGBA]
+type ctrlVertexSource struct {
+	ctrl ctrlbase.Ctrl[color.RGBA]
 }
 
-func (a *ctrlVertexSourceAdapter) Rewind(pathID uint32) { a.ctrl.Rewind(uint(pathID)) }
+func (c *ctrlVertexSource) Rewind(pathID uint32) { c.ctrl.Rewind(uint(pathID)) }
 
-func (a *ctrlVertexSourceAdapter) Vertex(x, y *float64) uint32 {
-	vx, vy, cmd := a.ctrl.Vertex()
-	*x = vx
-	*y = vy
+func (c *ctrlVertexSource) Vertex(x, y *float64) uint32 {
+	vx, vy, cmd := c.ctrl.Vertex()
+	*x, *y = vx, vy
 	return uint32(cmd)
 }
 
-func toAggColor(c icol.RGBA) agg.Color {
-	clamp := func(v float64) uint8 {
-		switch {
-		case v <= 0:
-			return 0
-		case v >= 1:
-			return 255
-		default:
-			return uint8(v*255.0 + 0.5)
-		}
+func clampU8(v float64) uint8 {
+	switch {
+	case v <= 0:
+		return 0
+	case v >= 1:
+		return 255
+	default:
+		return uint8(v*255.0 + 0.5)
 	}
-	return agg.NewColor(clamp(c.R), clamp(c.G), clamp(c.B), clamp(c.A))
 }
 
 func main() {

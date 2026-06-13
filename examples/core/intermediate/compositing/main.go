@@ -282,10 +282,14 @@ func drawCheckerboard(a *agg.Agg2D, width, height int) {
 			a.FillColor(srgba8(0xDF, 0xDF, 0xDF, 255))
 			a.NoLine()
 			a.ResetPath()
+			// C++ uses rb.copy_bar(x, y, x+7, y+7) which fills the
+			// inclusive 8x8 pixel block (x..x+7). Match it with a geometric
+			// rectangle spanning [x, x+8) x [y, y+8) so the fill covers the
+			// same 8 pixels per axis.
 			a.MoveTo(float64(x), float64(y))
-			a.LineTo(float64(x+7), float64(y))
-			a.LineTo(float64(x+7), float64(y+7))
-			a.LineTo(float64(x), float64(y+7))
+			a.LineTo(float64(x+8), float64(y))
+			a.LineTo(float64(x+8), float64(y+8))
+			a.LineTo(float64(x), float64(y+8))
 			a.ClosePolygon()
 			a.DrawPath(agg.FillOnly)
 		}

@@ -9,6 +9,7 @@
 package main
 
 import (
+	"github.com/cwbudde/agg_go/internal/basics"
 	"github.com/cwbudde/agg_go/internal/buffer"
 	"github.com/cwbudde/agg_go/internal/color"
 	"github.com/cwbudde/agg_go/internal/conv"
@@ -39,6 +40,17 @@ type lionLensTransformer struct {
 func (t *lionLensTransformer) Transform(x, y *float64) {
 	t.mtx.Transform(x, y)
 	t.lens.Transform(x, y)
+}
+
+// llSegmAdapter bridges conv.ConvSegmentator (uint32 cmd) to the
+// conv.VertexSource contract (basics.PathCommand cmd).
+type llSegmAdapter struct{ s *conv.ConvSegmentator }
+
+func (a *llSegmAdapter) Rewind(id uint) { a.s.Rewind(id) }
+
+func (a *llSegmAdapter) Vertex() (float64, float64, basics.PathCommand) {
+	x, y, cmd := a.s.Vertex()
+	return x, y, basics.PathCommand(cmd)
 }
 
 func initLionLensDemo() {
@@ -93,8 +105,12 @@ func drawLionLensDemo() {
 
 	combined := &lionLensTransformer{mtx: mtx, lens: lens}
 
+	// conv_segmentator(g_path) -> conv_transform(mtx+lens). The segmentator
+	// subdivides every line segment in source space before the non-linear lens
+	// runs, so edges curve smoothly through the lens (matches C++ pipeline).
 	pathVS := path.NewPathStorageStlVertexSourceAdapter(lionData.Path)
-	transVS := conv.NewConvTransform(pathVS, combined)
+	segm := conv.NewConvSegmentator(pathVS)
+	transVS := conv.NewConvTransform[conv.VertexSource, *lionLensTransformer](&llSegmAdapter{segm}, combined)
 	rasVS := conv.NewRasterizerVertexSourceAdapter(transVS)
 	renSolid := renscan.NewRendererScanlineAASolidWithRenderer(ren)
 
