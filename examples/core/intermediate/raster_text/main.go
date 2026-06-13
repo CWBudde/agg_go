@@ -1,7 +1,16 @@
 // Package main is a Go port of the AGG raster_text.cpp example.
+//
 // It demonstrates all built-in embedded bitmap fonts by rendering a sample
 // string in each font, then renders a gradient text line at the bottom using
 // a sine-repeat circular gradient – matching the original C++ demo.
+//
+// Fidelity notes: the C++ reference renders into a linear RGBA framebuffer
+// (color_type = rgba8, linear) and the platform encodes linear->sRGB at save
+// time. We mirror that exactly: a linear PixFmtRGBA32 + renderer_base, the real
+// span_gradient pipeline for the gradient text, and EncodeLinearRGBToSRGB on
+// the runner. The gradient stop colors rgba(1,0,0)/rgba(0,0.5,0) are plain
+// float->byte values (255,0,0)/(0,128,0) in linear space – they are NOT sRGB
+// literals, so they are not decoded.
 package main
 
 import (
@@ -10,145 +19,84 @@ import (
 	agg "github.com/cwbudde/agg_go"
 	"github.com/cwbudde/agg_go/examples/shared/lowlevelrunner"
 	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/buffer"
+	"github.com/cwbudde/agg_go/internal/color"
 	"github.com/cwbudde/agg_go/internal/fonts"
 	"github.com/cwbudde/agg_go/internal/glyph"
-	rtext "github.com/cwbudde/agg_go/internal/renderer"
+	"github.com/cwbudde/agg_go/internal/pixfmt"
+	"github.com/cwbudde/agg_go/internal/renderer"
+	"github.com/cwbudde/agg_go/internal/span"
+	"github.com/cwbudde/agg_go/internal/transform"
+)
+
+type (
+	pixfmtType = pixfmt.PixFmtRGBA32[color.Linear]
+	renBase    = renderer.RendererBase[*pixfmtType, color.RGBA8[color.Linear]]
+
+	// spanGenType is the concrete span_gradient instantiation used for the
+	// gradient text: a sine-repeat circular gradient over a linear two-color
+	// interpolator, driven by an identity linear interpolator.
+	spanGenType = *span.SpanGradient[
+		color.RGBA8[color.Linear],
+		*span.SpanInterpolatorLinear[*transform.TransAffine],
+		*gradientSineRepeatAdaptor,
+		*span.GradientLinearColorRGBA8[color.Linear],
+	]
 )
 
 // ---------------------------------------------------------------------------
-// Solid-color span renderer
+// gradient_sine_repeat_adaptor<gradient_circle>
 // ---------------------------------------------------------------------------
 
-// spanRenderer bridges RendererRasterHTextSolid into an agg.Image buffer.
-type spanRenderer struct {
-	img *agg.Image
+// gradientSineRepeatAdaptor ports the demo-local gradient_sine_repeat_adaptor
+// template from raster_text.cpp, specialized on gradient_circle (identical to
+// gradient_radial). It folds a radial distance into a repeating sine profile.
+type gradientSineRepeatAdaptor struct {
+	gradient span.GradientRadial // gradient_circle == gradient_radial
+	periods  float64
 }
 
-func (s *spanRenderer) pixelOffset(x, y int) (int, bool) {
-	width := s.img.Width()
-	height := s.img.Height()
-	if x < 0 || y < 0 || x >= width || y >= height {
-		return 0, false
-	}
-
-	stride := s.img.Stride()
-	base := 0
-	if stride < 0 {
-		base = (height - 1) * -stride
-	}
-
-	off := base + y*stride + x*4
-	if off < 0 || off+3 >= len(s.img.Data) {
-		return 0, false
-	}
-	return off, true
+func newGradientSineRepeatAdaptor() *gradientSineRepeatAdaptor {
+	return &gradientSineRepeatAdaptor{periods: math.Pi * 2.0}
 }
 
-func (s *spanRenderer) blendPixel(x, y int, sr, sg, sb, sa, cover uint8) {
-	off, ok := s.pixelOffset(x, y)
-	if !ok {
-		return
-	}
-	alpha := uint32(sa) * uint32(cover) / 255
-	inv := 255 - alpha
-	d := s.img.Data
-	d[off+0] = uint8((uint32(sr)*alpha + uint32(d[off+0])*inv) / 255)
-	d[off+1] = uint8((uint32(sg)*alpha + uint32(d[off+1])*inv) / 255)
-	d[off+2] = uint8((uint32(sb)*alpha + uint32(d[off+2])*inv) / 255)
-	d[off+3] = uint8(alpha + uint32(d[off+3])*inv/255)
+// SetPeriods mirrors gradient_sine_repeat_adaptor::periods.
+func (g *gradientSineRepeatAdaptor) SetPeriods(p float64) {
+	g.periods = p * math.Pi * 2.0
 }
 
-func (s *spanRenderer) BlendSolidHspan(x, y, length int, c agg.RGBA8, covers []basics.CoverType) {
-	for i := 0; i < length; i++ {
-		cover := uint8(255)
-		if covers != nil && i < len(covers) {
-			cover = uint8(covers[i])
-		}
-		s.blendPixel(x+i, y, c.R, c.G, c.B, c.A, cover)
-	}
-}
-
-func (s *spanRenderer) BlendSolidVspan(x, y, length int, c agg.RGBA8, covers []basics.CoverType) {
-	for i := 0; i < length; i++ {
-		cover := uint8(255)
-		if covers != nil && i < len(covers) {
-			cover = uint8(covers[i])
-		}
-		s.blendPixel(x, y+i, c.R, c.G, c.B, c.A, cover)
-	}
+// Calculate matches the C++ adaptor:
+//
+//	int((1.0 + sin(m_gradient.calculate(x, y, d) * m_periods / d)) * d/2)
+func (g *gradientSineRepeatAdaptor) Calculate(x, y, d int) int {
+	r := float64(g.gradient.Calculate(x, y, d))
+	return int((1.0 + math.Sin(r*g.periods/float64(d))) * float64(d) / 2.0)
 }
 
 // ---------------------------------------------------------------------------
-// Gradient span renderer
+// renderer_scanline_aa bridge for gradient raster text
 // ---------------------------------------------------------------------------
 
-type gradientRenderer struct {
-	img     *agg.Image
-	periods float64
-	d       float64
+// gradientTextRenderer plays the role of renderer_scanline_aa<base, alloc, sg>
+// in the C++ demo: renderer_raster_htext feeds it single-span scanlines of
+// glyph coverage, and it stamps gradient-generated colors into the base
+// renderer. The span loop mirrors AGG's render_scanline_aa.
+type gradientTextRenderer struct {
+	rb    *renBase
+	alloc *span.SpanAllocator[color.RGBA8[color.Linear]]
+	sg    spanGenType
 }
 
-func newGradientRenderer(img *agg.Image) *gradientRenderer {
-	return &gradientRenderer{img: img, periods: 5.0 * math.Pi * 2.0, d: 150.0}
-}
+func (r *gradientTextRenderer) Prepare() { r.sg.Prepare() }
 
-func (g *gradientRenderer) Prepare() {}
-
-func (g *gradientRenderer) gradientColor(x, y int) (r, gr, b uint8) {
-	dist := math.Sqrt(float64(x*x + y*y))
-	t := (1.0 + math.Sin(dist*g.periods/g.d)) * 0.5
-	rf := 1.0 - t
-	gf := 0.5 * t
-	return uint8(rf * 255), uint8(gf * 255), 0
-}
-
-func (g *gradientRenderer) pixelOffset(x, y int) (int, bool) {
-	width := g.img.Width()
-	height := g.img.Height()
-	if x < 0 || y < 0 || x >= width || y >= height {
-		return 0, false
-	}
-
-	stride := g.img.Stride()
-	base := 0
-	if stride < 0 {
-		base = (height - 1) * -stride
-	}
-
-	off := base + y*stride + x*4
-	if off < 0 || off+3 >= len(g.img.Data) {
-		return 0, false
-	}
-	return off, true
-}
-
-func (g *gradientRenderer) blendPixel(x, y int, cover uint8) {
-	off, ok := g.pixelOffset(x, y)
-	if !ok {
-		return
-	}
-	cr, cg, _ := g.gradientColor(x, y)
-	alpha := uint32(cover)
-	inv := 255 - alpha
-	d := g.img.Data
-	d[off+0] = uint8((uint32(cr)*alpha + uint32(d[off+0])*inv) / 255)
-	d[off+1] = uint8((uint32(cg)*alpha + uint32(d[off+1])*inv) / 255)
-	d[off+2] = uint8((0*alpha + uint32(d[off+2])*inv) / 255)
-	d[off+3] = uint8(alpha + uint32(d[off+3])*inv/255)
-}
-
-func (g *gradientRenderer) Render(sl rtext.ScanlineInterface) {
+func (r *gradientTextRenderer) Render(sl renderer.ScanlineInterface) {
 	y := sl.Y()
 	it := sl.Begin()
 	for it.HasNext() {
-		span := it.Next()
-		for i := 0; i < span.Len; i++ {
-			cover := uint8(255)
-			if span.Covers != nil && i < len(span.Covers) {
-				cover = uint8(span.Covers[i])
-			}
-			g.blendPixel(span.X+i, y, cover)
-		}
+		s := it.Next()
+		colors := r.alloc.Allocate(s.Len)
+		r.sg.Generate(colors, s.X, y, s.Len)
+		r.rb.BlendColorHspan(s.X, y, s.Len, colors, s.Covers, basics.CoverFull)
 	}
 }
 
@@ -156,17 +104,13 @@ func (g *gradientRenderer) Render(sl rtext.ScanlineInterface) {
 // Demo
 // ---------------------------------------------------------------------------
 
-type demo struct{}
+type fontEntry struct {
+	data []byte
+	name string
+}
 
-func (d *demo) Render(img *agg.Image) {
-	ctx := agg.NewContextForImage(img)
-	ctx.Clear(agg.RGB(1, 1, 1))
-
-	type fontEntry struct {
-		data []byte
-		name string
-	}
-	fontList := []fontEntry{
+func fontList() []fontEntry {
+	return []fontEntry{
 		{fonts.GetGSE4x6(), "gse4x6"},
 		{fonts.GetGSE4x8(), "gse4x8"},
 		{fonts.GetGSE5x7(), "gse5x7"},
@@ -202,34 +146,65 @@ func (d *demo) Render(img *agg.Image) {
 		{fonts.GetVerdana18(), "verdana18"},
 		{fonts.GetVerdana18Bold(), "verdana18_bold"},
 	}
+}
 
-	ren := &spanRenderer{img: img}
-	g := glyph.NewGlyphRasterBin(fontList[0].data)
-	textRen := rtext.NewRendererRasterHTextSolid[*spanRenderer, *glyph.GlyphRasterBin, agg.RGBA8](ren, g)
-	textRen.SetColor(agg.NewRGBA8(0, 0, 0, 255))
+type demo struct{}
+
+func (d *demo) Render(img *agg.Image) {
+	rbuf := buffer.NewRenderingBufferU8()
+	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Stride())
+	pf := pixfmt.NewPixFmtRGBA32Linear(rbuf)
+	rb := renderer.NewRendererBaseWithPixfmt(pf)
+	rb.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
+
+	glyphGen := glyph.NewGlyphRasterBin(nil)
+
+	// --- Solid black text in every embedded font -------------------------
+	textRen := renderer.NewRendererRasterHTextSolid(rb, glyphGen)
+	textRen.SetColor(color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255})
 
 	y := 5.0
-	for _, fe := range fontList {
+	for _, fe := range fontList() {
 		if len(fe.data) == 0 {
 			continue
 		}
-		g.SetFont(fe.data)
+		glyphGen.SetFont(fe.data)
 		text := "A quick brown fox jumps over the lazy dog 0123456789: " + fe.name
 		textRen.RenderText(5, y, text, false)
-		y += g.Height() + 1
+		y += glyphGen.Height() + 1
 	}
 
-	gradRen := newGradientRenderer(img)
-	g.SetFont(fonts.GetVerdana18Bold())
-	gradTextRen := rtext.NewRendererRasterHText[*gradientRenderer, *glyph.GlyphRasterBin](gradRen, g)
-	gradTextRen.RenderText(5, float64(img.Height()-15), "RADIAL REPEATING GRADIENT: A quick brown fox jumps over the lazy dog", false)
+	// --- Gradient text via a custom span generator -----------------------
+	// span_interpolator_linear with an identity matrix (mtx default-constructed
+	// in C++); gradient_sine_repeat_adaptor<gradient_circle> with periods(5);
+	// gradient_linear_color from rgba(1,0,0) to rgba(0,0.5,0); d1=0, d2=150.
+	mtx := transform.NewTransAffine()
+	interpolator := span.NewSpanInterpolatorLinearDefault(mtx)
+
+	gradFunc := newGradientSineRepeatAdaptor()
+	gradFunc.SetPeriods(5)
+
+	colorFunc := span.NewGradientLinearColorRGBA8(
+		color.RGBA8[color.Linear]{R: 255, G: 0, B: 0, A: 255}, // rgba(1.0, 0, 0)
+		color.RGBA8[color.Linear]{R: 0, G: 128, B: 0, A: 255}, // rgba(0, 0.5, 0)
+		256,
+	)
+
+	sg := span.NewSpanGradient(interpolator, gradFunc, colorFunc, 0, 150.0)
+	alloc := span.NewSpanAllocator[color.RGBA8[color.Linear]]()
+	gradRen := &gradientTextRenderer{rb: rb, alloc: alloc, sg: sg}
+
+	glyphGen.SetFont(fonts.GetVerdana18Bold())
+	gradTextRen := renderer.NewRendererRasterHText(gradRen, glyphGen)
+	gradTextRen.RenderText(5, 465, "RADIAL REPEATING GRADIENT: A quick brown fox jumps over the lazy dog", false)
 }
 
 func main() {
 	lowlevelrunner.Run(lowlevelrunner.Config{
-		Title:  "Raster Text",
-		Width:  640,
-		Height: 480,
-		FlipY:  true,
+		Title:                 "Raster Text",
+		Width:                 640,
+		Height:                480,
+		FlipY:                 true,
+		EncodeLinearRGBToSRGB: true,
 	}, &demo{})
 }
