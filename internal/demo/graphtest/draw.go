@@ -446,11 +446,12 @@ func drawControls(ctx *agg.Context, cfg Config) {
 	draftCtrl.SetChecked(false)
 	translucentCtrl.SetChecked(cfg.Translucent)
 
+	// Match C++ graph_test.cpp exactly: text_size(8.0) is called only on
+	// m_benchmark, m_draw_nodes and m_draft. m_draw_edges and m_translucent
+	// keep the cbox_ctrl default text height (9.0), so they render larger.
 	benchmarkCtrl.SetTextSize(8.0, 0.0)
 	drawNodesCtrl.SetTextSize(8.0, 0.0)
-	drawEdgesCtrl.SetTextSize(8.0, 0.0)
 	draftCtrl.SetTextSize(8.0, 0.0)
-	translucentCtrl.SetTextSize(8.0, 0.0)
 
 	for _, ctrl := range []ctrlPathSource{
 		typeCtrl,
