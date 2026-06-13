@@ -103,6 +103,26 @@ calculate uses `buffer * (d2 / 256) + d1`.
 versions used a linear lerp, which was incorrect.
 **File**: `internal/span/span_gradient_contour.go`
 
+### trans_curve / trans_curve2 use the embedded GSV vector font
+
+**C++ source**: `examples/trans_curve1.cpp`, `examples/trans_curve2.cpp` —
+both call `create_font("Times New Roman", glyph_ren_outline)` through the Win32
+TrueType engine (`font_win32_tt`), warping outline glyphs along one
+(`trans_single_path`) or two (`trans_double_path`) B-spline rails.
+**Go**: A platform TrueType face is not portable or deterministic, so the
+standalone demos substitute the always-available embedded GSV stroke-vector font
+(`internal/gsv`) for the same paragraph text. Geometry, control points, base
+length/height, segmentation, and the double-path transform match C++; only the
+glyph source differs. The TrueType intent is preserved by the dedicated
+`trans_curve1_ft` / `trans_curve2_ft` variants, which load a system serif italic
+TTF via FreeType (with a graceful fallback note when none is found). The shared
+rendering core lives in `internal/demo/transcurve` (`Draw` / `DrawDouble`) and is
+used verbatim by both the standalone examples and the WASM demos, guaranteeing
+standalone/web parity.
+**File**: `internal/demo/transcurve/draw.go`,
+`examples/core/intermediate/trans_curve{,2}/main.go`,
+`cmd/wasm/demo_trans_curve{,2}.go`
+
 ---
 
 ## Color Space

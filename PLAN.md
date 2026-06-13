@@ -142,27 +142,59 @@ path to each fix.
 
 ### 2.1 Open fixes
 
-- [ ] `trans_curve`: evaluate the source bitmap choice and switch to a better upstream-compatible
-      shared asset if one exists.
-- [ ] `trans_curve2`: same asset/parity task as `trans_curve`.
+- [x] `trans_curve`: evaluate the source bitmap choice and switch to a better upstream-compatible
+      shared asset if one exists. (Resolved — the "source bitmap" framing was a misnomer: C++
+      `trans_curve1.cpp` uses the Win32 TrueType face "Times New Roman", which is neither portable
+      nor deterministic. The demo already uses the always-available embedded **GSV vector font**
+      (`internal/gsv`) for the same paragraph text — that *is* the upstream-compatible shared asset;
+      no bundled TTF is warranted because the FreeType intent is covered by `trans_curve1_ft`.
+      Documented in `docs/AGG_DELTAS.md`.)
+- [x] `trans_curve2`: same asset/parity task as `trans_curve`. (Resolved — the standalone demo had
+      diverged from both C++ and the web demo by rendering the **lion** instead of C++'s
+      text-along-a-double-path. Rewrote it to render the GSV text paragraph warped between the two
+      B-spline rails via `transform.TransDoublePath`, faithful to `trans_curve2.cpp`. The rendering
+      core now lives in `internal/demo/transcurve.DrawDouble` and is shared verbatim by the
+      standalone example and the WASM demo, so standalone/web output is identical by construction.)
 - [x] `image_resample`: restore draggable quad handles and ensure down/move/up handlers map to
       this demo correctly. (Done in the faithful-port rewrite: the quad tool renders with
       handle circles and the mouse handlers drive the polygon ctrl.)
 - [x] `image_perspective`: add or fix draggable quad handles and mouse-interaction wiring.
       (Done in the faithful-port rewrite: PolygonCtrl quad tool + mouse handlers.)
-- [ ] `gamma_correction`: correct the quadrant placement so the background matches the C++ frame.
-- [ ] `compositing2`: expand rendering so the composited circles occupy the intended canvas region.
-- [ ] `aatest`: restore the expected grey background.
-- [ ] `gradients`: center the sphere instead of leaving it far to the right.
-- [ ] `flash_rasterizer` and `flash_rasterizer2`: verify whether the blank C++ reference frame is
+- [x] `gamma_correction`: correct the quadrant placement so the background matches the C++ frame.
+      (Stale — now pixel-exact, RMSE 0.0; quadrant placement matches C++. See §1.2.)
+- [x] `compositing2`: expand rendering so the composited circles occupy the intended canvas region.
+      (Stale — circles now occupy the intended region; only comp-op edge-blend rounding remains
+      at RMSE 0.0967, controls exact. See §1.2.)
+- [x] `aatest`: restore the expected grey background.
+      (Stale — `aa_test` background correct; residual is float-vs-8bit AA fringing only,
+      RMSE 0.1728, no logic error. See §1.2.)
+- [x] `gradients`: center the sphere instead of leaving it far to the right.
+      (Stale — sphere centered and gradient fill matches; residual is AA on the gradient-control
+      spline lines plus a couple of sphere-edge pixels, RMSE 0.0335. See §1.2.)
+- [x] `flash_rasterizer` and `flash_rasterizer2`: verify whether the blank C++ reference frame is
       intentional or whether the Go port still has a shape-index initialization bug.
-- [ ] `gouraud_mesh`: restore the full-sized layout and the statistics text at the bottom.
+      (Stale — both resolved: `flash_rasterizer2` pixel-exact (RMSE 0.0) and `flash_rasterizer`
+      verified-faithful at the float noise floor (RMSE 0.0031); no shape-index bug. See §1.2.)
+- [x] `gouraud_mesh`: restore the full-sized layout and the statistics text at the bottom.
+      (Stale — now pixel-exact, RMSE 0.0; full layout and bottom statistics text present. See §1.2.)
 
 ### 2.2 Required follow-up for each fix
 
-- [ ] Add a standalone-vs-web parity note.
-- [ ] Add a minimal verification path such as a render smoke test or bounded image-hash check.
-- [ ] Record the C++ source reference for the relevant behavior.
+- [x] Add a standalone-vs-web parity note. (Done — the `trans_curve`/`trans_curve2` rendering cores
+      are shared between the standalone examples and the WASM demos via `internal/demo/transcurve`
+      (`Draw`/`DrawDouble`); parity notes added to the demo headers, the package doc, and
+      `docs/AGG_DELTAS.md`. The image_resample/image_perspective rewrites already carry their own
+      faithful-port notes (§2.1).)
+- [x] Add a minimal verification path such as a render smoke test or bounded image-hash check.
+      (Done — bounded render smoke tests added: `examples/core/intermediate/trans_curve/main_test.go`
+      and `.../trans_curve2/main_test.go` assert the expected layered content — GSV text glyphs,
+      orange guide rails, white background — and the trans_curve2 test specifically guards against
+      regression to the lion fill. The other §2.1 demos are covered by the §1.2 visual-parity
+      corpus, which is their verification path.)
+- [x] Record the C++ source reference for the relevant behavior. (Done — explicit
+      `../agg-2.6/agg-src/examples/trans_curve{1,2}.cpp` references added to the demo headers, the
+      shared `transcurve` package doc, the smoke tests, and `docs/AGG_DELTAS.md`. The §1.2 corpus
+      rows already carry their per-demo C++ references.)
 
 ---
 
