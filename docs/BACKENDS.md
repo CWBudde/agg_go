@@ -75,3 +75,62 @@ switching behavior:
 
 The C++ backend must never silently fall back to the Go port, and stub builds
 must never be advertised as valid `cpp` support.
+
+## Cross-Backend Conformance
+
+The backend-neutral scene corpus (`engine/scene`) renders the same high-level
+operations through every available engine. Three artifacts consume it:
+
+- `tests/conformance/conformance_test.go` — renders each scene through `port`
+  and `cpp` and compares the two with documented tolerance envelopes.
+- `cmd/engine-compare` — writes `<scene>_port.png`, `<scene>_cpp.png`, and an
+  amplified `<scene>_diff.png` per scene for manual inspection.
+- `tests/conformance/benchmark_test.go` (`BenchmarkCorpusRender`) — runs the
+  corpus through each available engine and reports ns/op and allocs/op.
+
+All three are untagged: they compile and run in the default build (where only
+`port` is available and the cross-backend test skips), and exercise `cpp` when
+built with `-tags "agogo aggreal"` (add `freetype` for the text scene).
+
+### Tolerance Envelopes
+
+Both engines are 8-bit RGBA, so most operations match everywhere except
+anti-aliased edges, where two independent rasterizers disagree on a small,
+bounded fraction of pixels. Strict scenes must stay within these envelopes
+(`Tolerance` = max per-channel LSB delta before a pixel counts as "different";
+`MaxDifferentRatio` = bound on the fraction of such pixels):
+
+| Scene class                            | Tolerance | MaxDifferentRatio | Rationale                                                              |
+| -------------------------------------- | --------- | ----------------- | ---------------------------------------------------------------------- |
+| solid / path (NonZero, EvenOdd) / clip | 2         | 0.025             | Edge-AA disagreement on ~1.5% of pixels; bulk identical within 2 LSB.  |
+| linear / radial gradient               | 3         | 0.020             | Independent gradient interpolation rounding.                           |
+| scaled image (`image_scaled`)          | 4         | 0.080             | Independent samplers disagree along upscaled hard edges (~6%).         |
+| text (`text_basic`)                    | 8         | 0.100             | Native AGG vs Go-port FreeType AA/hinting; observed ~0.5% in practice. |
+
+### Known Cross-Backend Divergences
+
+These scenes render on both engines but differ beyond an AA-noise envelope
+because the C++ backend's implementation is still partial (PLAN.md §5.5). The
+conformance suite renders, measures, and **logs** them as tracked baselines but
+does not fail; `cmd/engine-compare` emits their diffs for triage. Promote each
+to a strict scene once the corresponding C++ parity work lands.
+
+| Scene                 | Divergence                                                                                  |
+| --------------------- | ------------------------------------------------------------------------------------------- |
+| `compositing_srcover` | CPP blends translucent fills darker than the port (8-bit blend/premultiply rounding).       |
+| `compositing_src`     | CPP applies the `Src` operator over the whole buffer, wiping untouched background to clear. |
+| `compositing_clear`   | CPP `Clear` operator coverage differs from the port across the filled region.               |
+
+### Capability-Gap Skips
+
+Scenes that hit a typed `engine.ErrUnsupportedCapability` on a backend are
+**skipped**, not failed — this is the correct response to a documented gap:
+
+- `image_affine` (scaled image draw under an active transform) skips on `cpp`,
+  which still rejects `DrawImageRegion` with an active transform.
+
+### Deferred Coverage
+
+- **Dashed stroke**: the `engine` facade exposes no dash API and neither backend
+  reports `dashed_stroke`, so a cross-backend dashed scene is deferred until the
+  facade gains dash support (PLAN.md §5.4/§5.5).

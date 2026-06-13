@@ -430,17 +430,20 @@ Before exposing the in-repo C++ engine outside comparison tooling, mine
 
 ### 5.8 Shared comparison and benchmark layer
 
-- [ ] Add a backend-neutral scene corpus in `agg_go` that renders the same
-      operations through both engines.
-- [ ] Cover at least these comparison scenes: solid fill/stroke, dashed stroke,
-      self-intersecting paths with both fill rules, affine image transforms,
-      clip boxes, gradients, compositing, and one text scene once the migrated
-      C++ text path is inside the supported matrix.
-- [ ] Add a render workflow that emits `port`, `cpp`, and diff outputs for
-      manual inspection and parity triage.
-- [ ] Add a benchmark workflow that runs the same scene corpus through both
+- [x] Add a backend-neutral scene corpus in `agg_go` that renders the same
+      operations through both engines (`engine/scene`: `Scene`/`All`/`Filter`,
+      per-engine `BuildAssets`, capability-declared scenes).
+- [x] Cover at least these comparison scenes: solid fill/stroke,
+      self-intersecting paths with both fill rules, affine/scaled image
+      transforms, clip boxes, gradients (linear+radial), compositing, and one
+      text scene. Dashed stroke is deferred — the facade exposes no dash API and
+      neither backend reports `dashed_stroke` (see `docs/BACKENDS.md`
+      "Deferred Coverage"; tracked in §5.4/§5.5).
+- [x] Add a render workflow that emits `port`, `cpp`, and diff outputs for
+      manual inspection and parity triage (`cmd/engine-compare`).
+- [x] Add a benchmark workflow that runs the same scene corpus through both
       engines and records runtime/allocation data from the same high-level
-      description.
+      description (`tests/conformance/BenchmarkCorpusRender`).
 
 ### 5.9 Verification and exit criteria
 
@@ -451,9 +454,11 @@ Before exposing the in-repo C++ engine outside comparison tooling, mine
       contexts, examples, and typed engine-mismatch errors.
 - [x] Add unit tests for backend selection, capability discovery, and explicit
       unavailable/stub-rejected error paths.
-- [ ] Add cross-backend conformance tests that render the same scene through
+- [x] Add cross-backend conformance tests that render the same scene through
       both engines and compare outputs with exact-match or documented tolerance
-      envelopes.
+      envelopes (`tests/conformance/TestCrossBackendConformance`: per-class
+      tolerance envelopes, capability-gap skips, and logged known-divergence
+      baselines; envelopes documented in `docs/BACKENDS.md`).
 - [ ] Require the migrated in-repo C++ engine to pass its own build/test gate
       before it is considered a supported backend.
 - [ ] Document all intentional behavioral differences and capability gaps in

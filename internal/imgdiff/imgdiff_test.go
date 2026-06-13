@@ -1,4 +1,4 @@
-package main
+package imgdiff
 
 import (
 	"image"
@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestAnalyzeImagesReportsRMSEAndDifferentPixels(t *testing.T) {
+func TestAnalyzeReportsRMSEAndDifferentPixels(t *testing.T) {
 	ref := image.NewRGBA(image.Rect(0, 0, 2, 1))
 	gen := image.NewRGBA(image.Rect(0, 0, 2, 1))
 	ref.SetRGBA(0, 0, color.RGBA{R: 10, G: 20, B: 30, A: 255})
@@ -14,9 +14,9 @@ func TestAnalyzeImagesReportsRMSEAndDifferentPixels(t *testing.T) {
 	gen.SetRGBA(0, 0, color.RGBA{R: 10, G: 20, B: 30, A: 255})
 	gen.SetRGBA(1, 0, color.RGBA{R: 90, G: 110, B: 140, A: 255})
 
-	stats, err := analyzeImages(ref, gen)
+	stats, err := Analyze(ref, gen)
 	if err != nil {
-		t.Fatalf("analyzeImages returned error: %v", err)
+		t.Fatalf("Analyze returned error: %v", err)
 	}
 
 	if stats.DifferentPixels != 1 {
@@ -31,9 +31,12 @@ func TestAnalyzeImagesReportsRMSEAndDifferentPixels(t *testing.T) {
 	if stats.RMSE < 9.12 || stats.RMSE > 9.13 {
 		t.Fatalf("RMSE = %.6f, want about 9.1287", stats.RMSE)
 	}
+	if got, want := stats.Ratio(), 0.5; got != want {
+		t.Fatalf("Ratio = %v, want %v", got, want)
+	}
 }
 
-func TestAmplifiedDiffUsesDimReferenceForIdenticalAndAmplifiesDifferences(t *testing.T) {
+func TestAmplifyUsesDimReferenceForIdenticalAndAmplifiesDifferences(t *testing.T) {
 	ref := image.NewRGBA(image.Rect(0, 0, 2, 1))
 	gen := image.NewRGBA(image.Rect(0, 0, 2, 1))
 	ref.SetRGBA(0, 0, color.RGBA{R: 100, G: 150, B: 200, A: 255})
@@ -41,9 +44,9 @@ func TestAmplifiedDiffUsesDimReferenceForIdenticalAndAmplifiesDifferences(t *tes
 	ref.SetRGBA(1, 0, color.RGBA{R: 10, G: 20, B: 30, A: 255})
 	gen.SetRGBA(1, 0, color.RGBA{R: 13, G: 28, B: 10, A: 255})
 
-	diff, err := amplifiedDiff(ref, gen, 10)
+	diff, err := Amplify(ref, gen, 10)
 	if err != nil {
-		t.Fatalf("amplifiedDiff returned error: %v", err)
+		t.Fatalf("Amplify returned error: %v", err)
 	}
 
 	if got, want := diff.RGBAAt(0, 0), (color.RGBA{R: 45, G: 45, B: 45, A: 255}); got != want {
@@ -54,11 +57,17 @@ func TestAmplifiedDiffUsesDimReferenceForIdenticalAndAmplifiesDifferences(t *tes
 	}
 }
 
-func TestAnalyzeImagesRejectsDimensionMismatch(t *testing.T) {
+func TestAnalyzeRejectsDimensionMismatch(t *testing.T) {
 	ref := image.NewRGBA(image.Rect(0, 0, 1, 1))
 	gen := image.NewRGBA(image.Rect(0, 0, 2, 1))
 
-	if _, err := analyzeImages(ref, gen); err == nil {
-		t.Fatal("analyzeImages accepted images with different dimensions")
+	if _, err := Analyze(ref, gen); err == nil {
+		t.Fatal("Analyze accepted images with different dimensions")
+	}
+	if _, err := Amplify(ref, gen, 8); err == nil {
+		t.Fatal("Amplify accepted images with different dimensions")
+	}
+	if _, err := Amplify(ref, ref, 0); err == nil {
+		t.Fatal("Amplify accepted non-positive factor")
 	}
 }
