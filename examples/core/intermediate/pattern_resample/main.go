@@ -24,6 +24,7 @@ import (
 	rboxctrl "github.com/cwbudde/agg_go/internal/ctrl/rbox"
 	sliderctrl "github.com/cwbudde/agg_go/internal/ctrl/slider"
 	"github.com/cwbudde/agg_go/internal/demo/imageassets"
+	"github.com/cwbudde/agg_go/internal/demo/timing"
 	gammalut "github.com/cwbudde/agg_go/internal/gamma"
 	"github.com/cwbudde/agg_go/internal/gsv"
 	imgacc "github.com/cwbudde/agg_go/internal/image"
@@ -370,7 +371,9 @@ func (d *demo) Render(img *agg.Image) {
 	// timing text and the controls (alpha is untouched, matching bgr24).
 	pf.ApplyGammaInv(d.gammaLut.Inv)
 
-	drawGSVText(ras, sl, rb, 10.0, 70.0, fmt.Sprintf("%3.2f ms", elapsedMs))
+	if timing.ShowText() {
+		drawGSVText(ras, sl, rb, 10.0, 70.0, fmt.Sprintf("%3.2f ms", elapsedMs))
+	}
 
 	for _, c := range d.controls {
 		renderCtrl(ras, sl, rb, c)

@@ -19,6 +19,7 @@ import (
 	"github.com/cwbudde/agg_go/internal/conv"
 	ctrlbase "github.com/cwbudde/agg_go/internal/ctrl"
 	sliderctrl "github.com/cwbudde/agg_go/internal/ctrl/slider"
+	"github.com/cwbudde/agg_go/internal/demo/timing"
 	"github.com/cwbudde/agg_go/internal/gamma"
 	"github.com/cwbudde/agg_go/internal/gsv"
 	"github.com/cwbudde/agg_go/internal/pixfmt"
@@ -272,7 +273,9 @@ func (d *demo) Render(img *agg.Image) {
 	ras.AddPath(&convRasAdapter{src: ellStroke}, 0)
 	renscan.RenderScanlinesAASolid(ras, sl, rb, color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
 
-	drawGSVText(ras, sl, rb, 10.0, 35.0, fmt.Sprintf("%3.2f ms", elapsedMs))
+	if timing.ShowText() {
+		drawGSVText(ras, sl, rb, 10.0, 35.0, fmt.Sprintf("%3.2f ms", elapsedMs))
+	}
 
 	renderCtrl(ras, sl, rb, d.gammaSlider)
 	applyGammaInv(img, gammaVal)

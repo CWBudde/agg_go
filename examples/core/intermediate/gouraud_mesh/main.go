@@ -12,6 +12,7 @@ import (
 	"github.com/cwbudde/agg_go/internal/buffer"
 	icol "github.com/cwbudde/agg_go/internal/color"
 	"github.com/cwbudde/agg_go/internal/conv"
+	"github.com/cwbudde/agg_go/internal/demo/timing"
 	"github.com/cwbudde/agg_go/internal/gsv"
 	"github.com/cwbudde/agg_go/internal/pixfmt"
 	"github.com/cwbudde/agg_go/internal/rasterizer"
@@ -523,9 +524,11 @@ func (d *demo) Render(img *agg.Image) {
 	}
 	elapsedMs := float64(time.Since(start).Microseconds()) / 1000.0
 
-	text := fmt.Sprintf("%3.2f ms, %d triangles, %.0f tri/sec",
-		elapsedMs, len(d.mesh.triangles), float64(len(d.mesh.triangles))/elapsedMs*1000.0)
-	drawText(renBase, text)
+	if timing.ShowText() {
+		text := fmt.Sprintf("%3.2f ms, %d triangles, %.0f tri/sec",
+			elapsedMs, len(d.mesh.triangles), float64(len(d.mesh.triangles))/elapsedMs*1000.0)
+		drawText(renBase, text)
+	}
 }
 
 func drawText(renBase *renderer.RendererBase[*pixfmt.PixFmtRGBA32Pre[icol.Linear], icol.RGBA8[icol.Linear]], text string) {

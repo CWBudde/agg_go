@@ -20,6 +20,7 @@ import (
 	polygonctrl "github.com/cwbudde/agg_go/internal/ctrl/polygon"
 	rboxctrl "github.com/cwbudde/agg_go/internal/ctrl/rbox"
 	"github.com/cwbudde/agg_go/internal/demo/imageassets"
+	"github.com/cwbudde/agg_go/internal/demo/timing"
 	"github.com/cwbudde/agg_go/internal/gsv"
 	imgacc "github.com/cwbudde/agg_go/internal/image"
 	"github.com/cwbudde/agg_go/internal/pixfmt"
@@ -288,7 +289,9 @@ func (d *demo) Render(img *agg.Image) {
 	}
 	elapsedMs := float64(time.Since(startTime)) / float64(time.Millisecond)
 
-	drawGSVText(ras, sl, rb, 10.0, 10.0, fmt.Sprintf("%3.2f ms", elapsedMs))
+	if timing.ShowText() {
+		drawGSVText(ras, sl, rb, 10.0, 10.0, fmt.Sprintf("%3.2f ms", elapsedMs))
+	}
 
 	renderCtrl(ras, sl, rb, d.transType)
 }

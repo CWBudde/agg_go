@@ -9,6 +9,7 @@ import (
 	"github.com/cwbudde/agg_go/internal/basics"
 	"github.com/cwbudde/agg_go/internal/conv"
 	"github.com/cwbudde/agg_go/internal/demo/aggshapes"
+	"github.com/cwbudde/agg_go/internal/demo/timing"
 	"github.com/cwbudde/agg_go/internal/gpc"
 	"github.com/cwbudde/agg_go/internal/path"
 )
@@ -448,7 +449,9 @@ func overlayStats(a *agg.Agg2D, offX, offY float64, result *gpc.GPCPolygon, err 
 	a.FillColor(agg.Black)
 	a.NoLine()
 	a.Text(250+offX, 15+offY, line1, false, 0, 0)
-	a.Text(250+offX, 30+offY, line2, false, 0, 0)
+	if timing.ShowText() {
+		a.Text(250+offX, 30+offY, line2, false, 0, 0)
+	}
 }
 
 func polygonStats(p *gpc.GPCPolygon) (int, int) {

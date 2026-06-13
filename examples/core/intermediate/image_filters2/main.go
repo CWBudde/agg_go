@@ -123,9 +123,9 @@ func drawDestinationImage(dstImg, srcImg *agg.Image, st imageFilters2State) {
 		internal.ImageFilter(iagg2d.Bilinear)
 	}
 	par := []float64{
-		200.5, 40.5,
-		500.5, 40.5,
-		500.5, 340.5,
+		200, 40,
+		500, 40,
+		500, 340,
 	}
 	_ = internal.TransformImageParallelogramSimple(srcImg.ToInternalImage(), par)
 }
@@ -143,9 +143,9 @@ func drawGraph(ctx *agg.Context, st imageFilters2State) {
 		if i == 8 {
 			alpha = 1.0
 		}
-		strokeLine(ctx, max(0.75, 0.8), agg.RGBA(0, 0, 0, alpha), x+0.5, yStart, x+0.5, yEnd)
+		strokeLine(ctx, 0.8, agg.RGBA(0, 0, 0, alpha), x+0.5, yStart, x+0.5, yEnd)
 	}
-	strokeLine(ctx, max(0.75, 0.8), agg.Black, xStart, ys, xEnd, ys)
+	strokeLine(ctx, 0.8, agg.Black, xStart, ys, xEnd, ys)
 
 	if st.filterIdx == 0 {
 		return
@@ -175,7 +175,7 @@ func drawGraph(ctx *agg.Context, st imageFilters2State) {
 		y := ys + dy*float64(weights[i])/float64(imgacc.ImageFilterScale)
 		pts = append(pts, point{x: x, y: y})
 	}
-	strokePolyline(ctx, max(0.75, 1.1), agg.RGBA(0.39, 0.0, 0.0, 1.0), pts)
+	strokePolyline(ctx, 0.8, agg.NewColorRGB(100, 0, 0), pts)
 }
 
 func drawControls(ctx *agg.Context, st imageFilters2State) {
@@ -346,13 +346,6 @@ func newFilter(idx int, radius float64) imgacc.FilterFunction {
 	default:
 		return absFilter{base: imgacc.BilinearFilter{}}
 	}
-}
-
-func max(a, b float64) float64 {
-	if a > b {
-		return a
-	}
-	return b
 }
 
 func main() {

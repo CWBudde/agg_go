@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/cwbudde/agg_go/internal/demo/timing"
 	"github.com/cwbudde/agg_go/tests/visual/framework"
 )
 
@@ -245,7 +246,7 @@ func tryGenerateFromDir(outDir string, demo demoConfig, runDir string, args []st
 
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Dir = runDir
-	cmd.Env = os.Environ()
+	cmd.Env = append(os.Environ(), timing.TextEnv+"=0")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("run %s in %s failed: %w\n%s", strings.Join(args, " "), runDir, err, strings.TrimSpace(string(output)))

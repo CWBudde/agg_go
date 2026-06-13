@@ -25,6 +25,7 @@ import (
 	rboxctrl "github.com/cwbudde/agg_go/internal/ctrl/rbox"
 	sliderctrl "github.com/cwbudde/agg_go/internal/ctrl/slider"
 	"github.com/cwbudde/agg_go/internal/curves"
+	"github.com/cwbudde/agg_go/internal/demo/timing"
 	"github.com/cwbudde/agg_go/internal/gsv"
 	"github.com/cwbudde/agg_go/internal/path"
 	"github.com/cwbudde/agg_go/internal/pixfmt"
@@ -331,18 +332,22 @@ func (d *demo) initCurve(curve curve4Source) {
 }
 
 func (d *demo) statsText(curvePath *path.PathStorageStl, angleTol, cuspLimitVal float64, incremental bool) string {
-	curveTime := d.measureCurveTime(angleTol, cuspLimitVal, incremental)
 	maxError01, maxAngleError01 := d.calcMaxError(0.01, angleTol, cuspLimitVal, incremental)
 	maxError1, maxAngleError1 := d.calcMaxError(0.1, angleTol, cuspLimitVal, incremental)
 	maxError10, maxAngleError10 := d.calcMaxError(1, angleTol, cuspLimitVal, incremental)
 	maxError100, maxAngleError100 := d.calcMaxError(10, angleTol, cuspLimitVal, incremental)
 	maxError1000, maxAngleError1000 := d.calcMaxError(100, angleTol, cuspLimitVal, incremental)
 
+	header := fmt.Sprintf("Num Points=%d", countPathVertices(curvePath))
+	if timing.ShowText() {
+		header += fmt.Sprintf(" Time=%.2fmks", d.measureCurveTime(angleTol, cuspLimitVal, incremental))
+	}
+
 	return fmt.Sprintf(
-		"Num Points=%d Time=%.2fmks\n\n"+
+		"%s\n\n"+
 			" Dist Error: x0.01=%.5f x0.1=%.5f x1=%.5f x10=%.5f x100=%.5f\n\n"+
 			"Angle Error: x0.01=%.1f x0.1=%.1f x1=%.1f x10=%.1f x100=%.1f",
-		countPathVertices(curvePath), curveTime,
+		header,
 		maxError01, maxError1, maxError10, maxError100, maxError1000,
 		maxAngleError01, maxAngleError1, maxAngleError10, maxAngleError100, maxAngleError1000,
 	)

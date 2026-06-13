@@ -9,6 +9,7 @@ import (
 	"github.com/cwbudde/agg_go/internal/basics"
 	"github.com/cwbudde/agg_go/internal/conv"
 	"github.com/cwbudde/agg_go/internal/demo/aggshapes"
+	"github.com/cwbudde/agg_go/internal/demo/timing"
 	"github.com/cwbudde/agg_go/internal/path"
 	"github.com/cwbudde/agg_go/internal/rasterizer"
 	renscan "github.com/cwbudde/agg_go/internal/renderer/scanline"
@@ -707,8 +708,10 @@ func drawOverlay(a *agg.Agg2D, offX, offY, combineMS, renderMS float64, numSpans
 	a.NoLine()
 	// In y-up coordinates each successive line moves DOWN (decreasing y),
 	// matching C++ gsv_text which uses \n\n (16px spacing) from start_point(420,40).
-	a.Text(420+offX, 40+offY, fmt.Sprintf("Combine=%.3fms", combineMS), false, 0, 0)
-	a.Text(420+offX, 24+offY, fmt.Sprintf("Render=%.3fms", renderMS), false, 0, 0)
+	if timing.ShowText() {
+		a.Text(420+offX, 40+offY, fmt.Sprintf("Combine=%.3fms", combineMS), false, 0, 0)
+		a.Text(420+offX, 24+offY, fmt.Sprintf("Render=%.3fms", renderMS), false, 0, 0)
+	}
 	a.Text(420+offX, 8+offY, fmt.Sprintf("num_spans=%d", numSpans), false, 0, 0)
 }
 

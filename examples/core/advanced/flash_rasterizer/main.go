@@ -13,6 +13,7 @@ import (
 	"github.com/cwbudde/agg_go/internal/color"
 	"github.com/cwbudde/agg_go/internal/conv"
 	"github.com/cwbudde/agg_go/internal/demo/shapesdata"
+	"github.com/cwbudde/agg_go/internal/demo/timing"
 	"github.com/cwbudde/agg_go/internal/gsv"
 	"github.com/cwbudde/agg_go/internal/pixfmt"
 	"github.com/cwbudde/agg_go/internal/rasterizer"
@@ -269,12 +270,16 @@ func renderInfoText(
 		return int(1000.0 / ms)
 	}
 
-	txt := fmt.Sprintf(
-		"Fill=%.2fms (%dFPS) Stroke=%.2fms (%dFPS) Total=%.2fms (%dFPS)\n\nSpace: Next Shape\n\n+/- : ZoomIn/ZoomOut (with respect to the mouse pointer)",
-		tfillMs, fps(tfillMs),
-		tstrokeMs, fps(tstrokeMs),
-		ttotalMs, fps(ttotalMs),
-	)
+	txt := "Space: Next Shape\n\n+/- : ZoomIn/ZoomOut (with respect to the mouse pointer)"
+	if timing.ShowText() {
+		txt = fmt.Sprintf(
+			"Fill=%.2fms (%dFPS) Stroke=%.2fms (%dFPS) Total=%.2fms (%dFPS)\n\n%s",
+			tfillMs, fps(tfillMs),
+			tstrokeMs, fps(tstrokeMs),
+			ttotalMs, fps(ttotalMs),
+			txt,
+		)
+	}
 
 	clipper := rasterizer.NewRasterizerSlClip[float64, rasterizer.DblConv](rasterizer.DblConv{})
 	ras := rasterizer.NewRasterizerScanlineAA[float64, rasterizer.DblConv, *rasterizer.RasterizerSlClip[float64, rasterizer.DblConv]](

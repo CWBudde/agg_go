@@ -20,6 +20,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/cwbudde/agg_go/internal/demo/timing"
 	"github.com/cwbudde/agg_go/tests/visual/framework"
 )
 
@@ -339,7 +340,7 @@ func tryGenerateFromDir(ctx context.Context, outDir string, demo demoConfig, run
 
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 	cmd.Dir = runDir
-	cmd.Env = os.Environ()
+	cmd.Env = demoCommandEnv(os.Environ())
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("run %s in %s failed: %w\n%s", strings.Join(args, " "), runDir, err, strings.TrimSpace(string(output)))
@@ -353,6 +354,11 @@ func tryGenerateFromDir(ctx context.Context, outDir string, demo demoConfig, run
 
 	dstPath := filepath.Join(outDir, demo.name+".png")
 	return copyFile(generated, dstPath)
+}
+
+func demoCommandEnv(base []string) []string {
+	env := append([]string{}, base...)
+	return append(env, timing.TextEnv+"=0")
 }
 
 func findGeneratedPNG(runDir, stampPath string) (string, error) {

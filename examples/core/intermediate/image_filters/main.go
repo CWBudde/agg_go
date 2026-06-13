@@ -28,6 +28,7 @@ import (
 	"github.com/cwbudde/agg_go/internal/ctrl/checkbox"
 	"github.com/cwbudde/agg_go/internal/ctrl/rbox"
 	"github.com/cwbudde/agg_go/internal/ctrl/slider"
+	"github.com/cwbudde/agg_go/internal/demo/timing"
 	"github.com/cwbudde/agg_go/internal/gsv"
 	imgacc "github.com/cwbudde/agg_go/internal/image"
 	"github.com/cwbudde/agg_go/internal/path"
@@ -338,7 +339,7 @@ func drawGSVText(ras *rasType, sl *scanline.ScanlineU8, rb *renBaseType, x, y fl
 func drawStatusText(ras *rasType, sl *scanline.ScanlineU8, rb *renBaseType, st *filterState) {
 	drawGSVText(ras, sl, rb, 10.0, 295.0, "NSteps="+itoa(st.numSteps))
 
-	if st.time1 != st.time2 && st.numPix > 0 {
+	if timing.ShowText() && st.time1 != st.time2 && st.numPix > 0 {
 		kpix := st.numPix / (st.time2 - st.time1)
 		drawGSVText(ras, sl, rb, 10.0, 310.0, ftoa2(kpix)+" Kpix/sec")
 	}

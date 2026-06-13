@@ -21,6 +21,7 @@ import (
 	"github.com/cwbudde/agg_go/internal/color"
 	"github.com/cwbudde/agg_go/internal/conv"
 	"github.com/cwbudde/agg_go/internal/demo/shapesdata"
+	"github.com/cwbudde/agg_go/internal/demo/timing"
 	"github.com/cwbudde/agg_go/internal/gsv"
 	"github.com/cwbudde/agg_go/internal/pixfmt"
 	"github.com/cwbudde/agg_go/internal/rasterizer"
@@ -192,8 +193,11 @@ func (d *demo) Render(img *agg.Image) {
 		totalFPS = int(1000.0 / ttotalMs)
 	}
 
-	txt := fmt.Sprintf("Fill=%.2fms (%dFPS) Stroke=%.2fms (%dFPS) Total=%.2fms (%dFPS)\n\nSpace: Next Shape\n\n+/- : ZoomIn/ZoomOut (with respect to the mouse pointer)",
-		tfillMs, fillFPS, tstrokeMs, strokeFPS, ttotalMs, totalFPS)
+	txt := "Space: Next Shape\n\n+/- : ZoomIn/ZoomOut (with respect to the mouse pointer)"
+	if timing.ShowText() {
+		txt = fmt.Sprintf("Fill=%.2fms (%dFPS) Stroke=%.2fms (%dFPS) Total=%.2fms (%dFPS)\n\n%s",
+			tfillMs, fillFPS, tstrokeMs, strokeFPS, ttotalMs, totalFPS, txt)
+	}
 
 	gsvT := gsv.NewGSVText()
 	gsvT.SetSize(8.0, 0)
