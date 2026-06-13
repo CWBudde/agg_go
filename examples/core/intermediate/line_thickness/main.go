@@ -149,6 +149,16 @@ func (d *demo) Render(img *agg.Image) {
 	// Render scene content (straight lines + wheel + blur).
 	linethickness.Draw(workBuf, w, h, d.state)
 
+	// C++ SetCtrlClr(m_cbox1/m_cbox2, foreground): both checkboxes are drawn
+	// entirely in the foreground colour (text, border and checkmark), so they
+	// follow the monochrome/invert state. The sliders keep their defaults.
+	fgRGBA := linethickness.ForegroundRGBA(d.state)
+	for _, cb := range []*checkboxctrl.CheckboxCtrl[color.RGBA]{d.mono, d.invert} {
+		cb.SetTextColor(fgRGBA)
+		cb.SetInactiveColor(fgRGBA)
+		cb.SetActiveColor(fgRGBA)
+	}
+
 	// Render controls on top of the blurred scene.
 	rbuf := buffer.NewRenderingBufferU8()
 	rbuf.Attach(workBuf, w, h, w*4)

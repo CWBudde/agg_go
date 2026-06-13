@@ -88,6 +88,28 @@ func Colors(st State) (fg, bg color.RGBA8[color.Linear]) {
 	return clr2, clr1
 }
 
+// ForegroundRGBA returns the foreground colour as a float color.RGBA, matching
+// the C++ on_draw colour selection. The line_thickness demo applies this colour
+// to both checkboxes via SetCtrlClr (text/inactive/active), so the controls
+// follow the monochrome/invert state.
+func ForegroundRGBA(st State) color.RGBA {
+	// C++: clr1 = mono ? rgba(1,1,1) : rgba(1,0,1)
+	//      clr2 = mono ? rgba(0,0,0) : rgba(0,1,0)
+	//      foreground = invert ? clr1 : clr2
+	var clr1, clr2 color.RGBA
+	if st.Mono {
+		clr1 = color.NewRGBA(1, 1, 1, 1)
+		clr2 = color.NewRGBA(0, 0, 0, 1)
+	} else {
+		clr1 = color.NewRGBA(1, 0, 1, 1)
+		clr2 = color.NewRGBA(0, 1, 0, 1)
+	}
+	if st.Invert {
+		return clr1
+	}
+	return clr2
+}
+
 // pathVS adapts PathStorageStl to conv.VertexSource.
 type pathVS struct{ ps *path.PathStorageStl }
 
