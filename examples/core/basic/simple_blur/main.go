@@ -1,8 +1,14 @@
 // Port of the AGG C++ example simple_blur.cpp.
 //
-// Renders the AGG lion, draws the double-stroked blur boundary, then applies
-// a simple 3x3 box-blur inside the ellipse — demonstrating basic pixel-level
-// post-processing on a rendered scene.
+// Renders the AGG lion twice — a scanline-AA fill on the left and an
+// anti-aliased outline (rasterizer_outline_aa + line_profile_aa) on the right —
+// draws the double-stroked blur boundary, then applies a simple 3x3 box-blur
+// inside the ellipse.
+//
+// The rendering mirrors the C++ pipeline faithfully: render_all_paths for the
+// fill, and rasterizer_outline_aa with round caps for the outline. (The earlier
+// version drew the outline with Agg2D StrokeOnly / conv_stroke, a different
+// algorithm that produced visibly different sub-pixel edge coverage.)
 package main
 
 import (
@@ -16,9 +22,12 @@ import (
 	"github.com/cwbudde/agg_go/internal/color"
 	"github.com/cwbudde/agg_go/internal/conv"
 	liondemo "github.com/cwbudde/agg_go/internal/demo/lion"
+	"github.com/cwbudde/agg_go/internal/path"
 	"github.com/cwbudde/agg_go/internal/pixfmt"
+	"github.com/cwbudde/agg_go/internal/primitives"
 	"github.com/cwbudde/agg_go/internal/rasterizer"
 	"github.com/cwbudde/agg_go/internal/renderer"
+	outline "github.com/cwbudde/agg_go/internal/renderer/outline"
 	renscan "github.com/cwbudde/agg_go/internal/renderer/scanline"
 	"github.com/cwbudde/agg_go/internal/scanline"
 	"github.com/cwbudde/agg_go/internal/shapes"
@@ -31,20 +40,25 @@ var (
 	lionData *liondemo.LionData
 )
 
+type renBaseType = renderer.RendererBase[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]]
+
 type demo struct {
 	cx, cy float64
 }
 
+type lionColorView struct {
+	data *liondemo.LionData
+}
+
+func (v lionColorView) GetColor(index int) color.RGBA8[color.Linear] {
+	return v.data.Colors[index]
+}
+
 func (d *demo) Render(img *agg.Image) {
-	ctx := agg.NewContextForImage(img)
-	ctx.Clear(agg.White)
-
-	agg2d := ctx.GetAgg2D()
-	agg2d.ResetTransformations()
-
-	// Draw the lion fill on the left, then the colored outline pass on the right.
-	drawLionFill(agg2d, img.Width(), img.Height())
-	drawLionOutline(agg2d, img.Width(), img.Height())
+	// Fill on the left, anti-aliased outline on the right (matches C++).
+	// drawLionFill clears the window to white first.
+	drawLionFill(img)
+	drawLionOutline(img)
 
 	rx, ry := 100.0, 100.0
 
@@ -82,69 +96,63 @@ func (d *demo) OnMouseMove(x, y int, btn lowlevelrunner.Buttons) bool {
 
 func (d *demo) OnMouseUp(_, _ int, _ lowlevelrunner.Buttons) bool { return false }
 
-func drawLionFill(agg2d *agg.Agg2D, width, height int) {
-	ld := liondata()
+// lionTransform builds the affine used for both lion copies. tx is the final
+// X translation (initial_width/4 for the fill, initial_width*3/4 for the
+// outline — i.e. fill position + initial_width/2 as in the C++ source).
+func lionTransform(ld *liondemo.LionData, tx, ty float64) *transform.TransAffine {
 	baseDX, baseDY := getLionBaseOffset(ld)
-
-	m := transform.NewTransAffine()
-	m.Translate(-baseDX, -baseDY)
-	m.Scale(1.0)
-	m.Rotate(math.Pi)
-	m.Translate(float64(width)*0.25, float64(height)*0.5)
-
-	agg2d.NoLine()
-	for i := 0; i < ld.NPaths; i++ {
-		agg2d.FillColor(agg.NewColor(ld.Colors[i].R, ld.Colors[i].G, ld.Colors[i].B, 255))
-		agg2d.ResetPath()
-		ld.Path.Rewind(ld.PathIdx[i])
-		for {
-			x, y, cmd := ld.Path.NextVertex()
-			if basics.IsStop(basics.PathCommand(cmd)) {
-				break
-			}
-			m.Transform(&x, &y)
-			if basics.IsMoveTo(basics.PathCommand(cmd)) {
-				agg2d.MoveTo(x, y)
-			} else if basics.IsLineTo(basics.PathCommand(cmd)) {
-				agg2d.LineTo(x, y)
-			}
-		}
-		agg2d.ClosePolygon()
-		agg2d.DrawPath(agg.FillOnly)
-	}
+	mtx := transform.NewTransAffine()
+	mtx.Multiply(transform.NewTransAffineTranslation(-baseDX, -baseDY))
+	mtx.Multiply(transform.NewTransAffineScaling(1.0))
+	mtx.Multiply(transform.NewTransAffineRotation(math.Pi))
+	mtx.Multiply(transform.NewTransAffineTranslation(tx, ty))
+	return mtx
 }
 
-func drawLionOutline(agg2d *agg.Agg2D, width, height int) {
+func drawLionFill(img *agg.Image) {
 	ld := liondata()
-	baseDX, baseDY := getLionBaseOffset(ld)
 
-	m := transform.NewTransAffine()
-	m.Translate(-baseDX, -baseDY)
-	m.Scale(1.0)
-	m.Rotate(math.Pi)
-	m.Translate(float64(width)*0.75, float64(height)*0.5)
+	rbuf := buffer.NewRenderingBufferU8WithData(img.Data, img.Width(), img.Height(), img.Stride())
+	pf := pixfmt.NewPixFmtRGBA32[color.Linear](rbuf)
+	rb := renderer.NewRendererBaseWithPixfmt(pf)
+	rb.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
 
-	agg2d.NoFill()
-	agg2d.LineWidth(1.0)
-	for i := 0; i < ld.NPaths; i++ {
-		agg2d.LineColor(agg.NewColor(ld.Colors[i].R, ld.Colors[i].G, ld.Colors[i].B, 255))
-		agg2d.ResetPath()
-		ld.Path.Rewind(ld.PathIdx[i])
-		for {
-			x, y, cmd := ld.Path.NextVertex()
-			if basics.IsStop(basics.PathCommand(cmd)) {
-				break
-			}
-			m.Transform(&x, &y)
-			if basics.IsMoveTo(basics.PathCommand(cmd)) {
-				agg2d.MoveTo(x, y)
-			} else if basics.IsLineTo(basics.PathCommand(cmd)) {
-				agg2d.LineTo(x, y)
-			}
-		}
-		agg2d.ClosePolygon()
-		agg2d.DrawPath(agg.StrokeOnly)
-	}
+	ras := newSimpleBlurRasterizer()
+	sl := scanline.NewScanlineP8()
+
+	mtx := lionTransform(ld, float64(img.Width())*0.25, float64(img.Height())*0.5)
+
+	pathVS := path.NewPathStorageStlVertexSourceAdapter(ld.Path)
+	transVS := conv.NewConvTransform(pathVS, mtx)
+	rasVS := conv.NewRasterizerVertexSourceAdapter(transVS)
+	renSolid := renscan.NewRendererScanlineAASolidWithRenderer(rb)
+
+	renscan.RenderAllPaths(ras, sl, renSolid, rasVS, lionColorView{data: ld}, ld, ld.NPaths)
+}
+
+func drawLionOutline(img *agg.Image) {
+	ld := liondata()
+
+	rbuf := buffer.NewRenderingBufferU8WithData(img.Data, img.Width(), img.Height(), img.Stride())
+	pf := pixfmt.NewPixFmtRGBA32[color.Linear](rbuf)
+	rb := renderer.NewRendererBaseWithPixfmt(pf)
+
+	mtx := lionTransform(ld, float64(img.Width())*0.75, float64(img.Height())*0.5)
+
+	pathVS := path.NewPathStorageStlVertexSourceAdapter(ld.Path)
+	transVS := conv.NewConvTransform(pathVS, mtx)
+
+	// C++: line_profile_aa profile; profile.width(1.0);
+	profile := outline.NewLineProfileAA()
+	profile.Width(1.0)
+
+	outlineBase := &outlineBaseAdapter{rb: rb}
+	renOutline := outline.NewRendererOutlineAA[*outlineBaseAdapter, color.RGBA8[color.Linear]](outlineBase, profile)
+	rasOutline := rasterizer.NewRasterizerOutlineAA[*outlineAAAdapter, color.RGBA8[color.Linear]](&outlineAAAdapter{ren: renOutline})
+	rasOutline.SetRoundCap(true) // C++: ras.round_cap(true)
+
+	outlineVS := conv.NewRasterizerVertexSourceAdapter(transVS)
+	rasOutline.RenderAllPaths(outlineVS, lionColorView{data: ld}, ld, ld.NPaths)
 }
 
 func drawBlurBoundary(img *agg.Image, cx, cy, rx, ry float64) {
@@ -191,6 +199,65 @@ func newSimpleBlurRasterizer() *simpleBlurRasterizer {
 	return rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
 		rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip(),
 	)
+}
+
+// outlineBaseAdapter adapts the renderer base to the outline-AA renderer's
+// span-blending contract.
+type outlineBaseAdapter struct {
+	rb *renBaseType
+}
+
+func (a *outlineBaseAdapter) Width() int  { return a.rb.Width() }
+func (a *outlineBaseAdapter) Height() int { return a.rb.Height() }
+
+func (a *outlineBaseAdapter) BlendSolidHSpan(x, y, length int, c color.RGBA8[color.Linear], covers []basics.CoverType) {
+	convCovers := make([]basics.Int8u, len(covers))
+	for i := range covers {
+		convCovers[i] = basics.Int8u(covers[i])
+	}
+	a.rb.BlendSolidHspan(x, y, length, c, convCovers)
+}
+
+func (a *outlineBaseAdapter) BlendSolidVSpan(x, y, length int, c color.RGBA8[color.Linear], covers []basics.CoverType) {
+	convCovers := make([]basics.Int8u, len(covers))
+	for i := range covers {
+		convCovers[i] = basics.Int8u(covers[i])
+	}
+	a.rb.BlendSolidVspan(x, y, length, c, convCovers)
+}
+
+// outlineAAAdapter bridges the concrete RendererOutlineAA to the line-drawing
+// interface expected by RasterizerOutlineAA.
+type outlineAAAdapter struct {
+	ren *outline.RendererOutlineAA[*outlineBaseAdapter, color.RGBA8[color.Linear]]
+}
+
+func (a *outlineAAAdapter) AccurateJoinOnly() bool            { return a.ren.AccurateJoinOnly() }
+func (a *outlineAAAdapter) Color(c color.RGBA8[color.Linear]) { a.ren.Color(c) }
+
+//nolint:gocritic // Interface compatibility requires a by-value parameter here.
+func (a *outlineAAAdapter) Line0(lp primitives.LineParameters) {
+	a.ren.Line0(&lp)
+}
+
+//nolint:gocritic // Interface compatibility requires a by-value parameter here.
+func (a *outlineAAAdapter) Line1(lp primitives.LineParameters, sx, sy int) {
+	a.ren.Line1(&lp, sx, sy)
+}
+
+//nolint:gocritic // Interface compatibility requires a by-value parameter here.
+func (a *outlineAAAdapter) Line2(lp primitives.LineParameters, ex, ey int) {
+	a.ren.Line2(&lp, ex, ey)
+}
+
+//nolint:gocritic // Interface compatibility requires a by-value parameter here.
+func (a *outlineAAAdapter) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) {
+	a.ren.Line3(&lp, sx, sy, ex, ey)
+}
+
+func (a *outlineAAAdapter) Pie(x, y, x1, y1, x2, y2 int) { a.ren.Pie(x, y, x1, y1, x2, y2) }
+func (a *outlineAAAdapter) Semidot(cmp func(int) bool, x, y, x1, y1 int) {
+	a.ren.Semidot(cmp, x, y, x1, y1)
 }
 
 type ellipseVS struct{ ell *shapes.Ellipse }
