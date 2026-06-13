@@ -219,7 +219,7 @@ func printCoverageStats(label string, src *image.RGBA, x0, x1, y0, y1 int) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 // compositeOutput assembles the three panels side by side.
-func compositeOutput(preview *image.RGBA, pixelPanel, coverPanel *image.RGBA) *image.RGBA {
+func compositeOutput(preview, pixelPanel, coverPanel *image.RGBA) *image.RGBA {
 	out := image.NewRGBA(image.Rect(0, 0, totalWidth, totalHeight))
 
 	// Grey filler so panel seams are visible.

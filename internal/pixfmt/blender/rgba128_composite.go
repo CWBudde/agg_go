@@ -148,10 +148,82 @@ func (bl CompositeBlenderRGBA128Pre[S, O]) BlendPix(dst []float32, r, g, b, a, c
 	dst[o.IdxA()] = clampF01(res.a)
 }
 
+// CompositeBlenderRGBA128Plain bridges AGG's premultiplied composite math to a
+// *straight* (non-premultiplied) destination buffer — the storage convention
+// used by the float Agg2D path (PixFmtRGBA128Plain). It is the float analogue of
+// CompositeBlenderPlain: it premultiplies the destination on read, evaluates the
+// operator in premultiplied space, then demultiplies the result back to straight
+// alpha for storage. With an opaque destination (Da == 1) it is identical to
+// CompositeBlenderRGBA128, since straight and premultiplied representations
+// coincide there; the difference only matters when compositing over partially
+// transparent destination content, where reading straight values as
+// premultiplied would over-contribute the destination colour (a washed-out halo).
+type CompositeBlenderRGBA128Plain[S color.Space, O order.RGBAOrder] struct {
+	op CompOp
+}
+
+func NewCompositeBlenderRGBA128Plain[S color.Space, O order.RGBAOrder](op CompOp) CompositeBlenderRGBA128Plain[S, O] {
+	return CompositeBlenderRGBA128Plain[S, O]{op: op}
+}
+
+func (bl CompositeBlenderRGBA128Plain[S, O]) GetOp() CompOp { return bl.op }
+
+// GetPlain/SetPlain operate on a straight-alpha buffer, so they pass through.
+func (bl CompositeBlenderRGBA128Plain[S, O]) GetPlain(px []float32) (r, g, b, a float32) {
+	var o O
+	return px[o.IdxR()], px[o.IdxG()], px[o.IdxB()], px[o.IdxA()]
+}
+
+func (bl CompositeBlenderRGBA128Plain[S, O]) SetPlain(px []float32, r, g, b, a float32) {
+	var o O
+	px[o.IdxR()], px[o.IdxG()], px[o.IdxB()], px[o.IdxA()] = r, g, b, a
+}
+
+func (bl CompositeBlenderRGBA128Plain[S, O]) BlendPix(dst []float32, r, g, b, a, cover float32) {
+	var o O
+
+	sa := float64(a) * float64(cover)
+	if sa <= 0 {
+		return
+	}
+
+	// Premultiplied source.
+	s := normalizedRGBA{
+		r: float64(r) * sa,
+		g: float64(g) * sa,
+		b: float64(b) * sa,
+		a: sa,
+	}
+
+	// Straight destination -> premultiply (Dca/Da) for the composite math.
+	da := float64(dst[o.IdxA()])
+	d := normalizedRGBA{
+		r: float64(dst[o.IdxR()]) * da,
+		g: float64(dst[o.IdxG()]) * da,
+		b: float64(dst[o.IdxB()]) * da,
+		a: da,
+	}
+
+	res := CompositeBlender[S, O](bl).blendOperation(d, s)
+
+	// Demultiply the premultiplied result back to straight alpha for storage.
+	if res.a <= 0 {
+		dst[o.IdxR()], dst[o.IdxG()], dst[o.IdxB()], dst[o.IdxA()] = 0, 0, 0, 0
+		return
+	}
+	inv := 1.0 / res.a
+	dst[o.IdxR()] = clampF01(res.r * inv)
+	dst[o.IdxG()] = clampF01(res.g * inv)
+	dst[o.IdxB()] = clampF01(res.b * inv)
+	dst[o.IdxA()] = clampF01(res.a)
+}
+
 // Convenience aliases (Linear space, RGBA order), mirroring the 8-bit set.
 type (
-	CompositeBlenderRGBA128Linear    = CompositeBlenderRGBA128[color.Linear, order.RGBA]
-	CompositeBlenderRGBA128PreLinear = CompositeBlenderRGBA128Pre[color.Linear, order.RGBA]
-	CompositeBlenderRGBA128SRGB      = CompositeBlenderRGBA128[color.SRGB, order.RGBA]
-	CompositeBlenderRGBA128PreSRGB   = CompositeBlenderRGBA128Pre[color.SRGB, order.RGBA]
+	CompositeBlenderRGBA128Linear      = CompositeBlenderRGBA128[color.Linear, order.RGBA]
+	CompositeBlenderRGBA128PreLinear   = CompositeBlenderRGBA128Pre[color.Linear, order.RGBA]
+	CompositeBlenderRGBA128PlainLinear = CompositeBlenderRGBA128Plain[color.Linear, order.RGBA]
+	CompositeBlenderRGBA128SRGB        = CompositeBlenderRGBA128[color.SRGB, order.RGBA]
+	CompositeBlenderRGBA128PreSRGB     = CompositeBlenderRGBA128Pre[color.SRGB, order.RGBA]
+	CompositeBlenderRGBA128PlainSRGB   = CompositeBlenderRGBA128Plain[color.SRGB, order.RGBA]
 )

@@ -66,7 +66,7 @@ func makeSerializedGray8Adaptor(x0, y0 int, rows [][]uint8) *font.SerializedScan
 	return font.NewSerializedScanlinesAdaptorAA(data, bounds)
 }
 
-func makeSerializedMonoAdaptor(x0, y0 int, width int, bits [][]bool) *font.SerializedScanlinesAdaptorBin {
+func makeSerializedMonoAdaptor(x0, y0, width int, bits [][]bool) *font.SerializedScanlinesAdaptorBin {
 	storage := isc.NewScanlineStorageBin()
 	sl := isc.NewScanlineBin()
 	storage.Prepare()

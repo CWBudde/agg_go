@@ -447,13 +447,6 @@ func (r *glyphBitmapRasterizer) SweepScanline(sl renscan.ScanlineInterface) bool
 	return false
 }
 
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
-
 func main() {
 	lowlevelrunner.Run(lowlevelrunner.Config{
 		Title:  "TrueType Test",

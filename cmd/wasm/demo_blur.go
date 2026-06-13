@@ -131,7 +131,7 @@ func blurClampInt(v, lo, hi int) int {
 }
 
 // blurRegion blurs the rectangle [x0,y0,x1,y1) in buf (row-major, RGBA).
-func blurRegion(buf []uint8, w, h int, x0, y0, x1, y1 int, radius float64, method int) {
+func blurRegion(buf []uint8, w, h, x0, y0, x1, y1 int, radius float64, method int) {
 	if radius <= 0 {
 		return
 	}
