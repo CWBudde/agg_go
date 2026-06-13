@@ -123,7 +123,7 @@ type Agg2DFloat struct {
 
 	// Converters (reused as-is)
 	convCurve  *conv.ConvCurve
-	convDash   *conv.ConvDash //nolint:unused // wired in L5 (dashed strokes)
+	convDash   *conv.ConvDash
 	convStroke *conv.ConvStroke
 
 	// Span rendering components for gradients (float)
