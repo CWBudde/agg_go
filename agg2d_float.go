@@ -801,3 +801,26 @@ func (a *Agg2DFloat) FillRuleDescription() string { return a.impl.FillRuleDescri
 
 // ResetStyle resets all style settings to their default values.
 func (a *Agg2DFloat) ResetStyle() { a.impl.ResetStyle() }
+
+// --- C++-style accessor aliases mirroring the 8-bit public surface ---
+
+// MasterAlpha sets the master alpha multiplier (C++-style alias for
+// SetMasterAlpha).
+func (a *Agg2DFloat) MasterAlpha(alpha float64) { a.impl.SetMasterAlpha(alpha) }
+
+// BlendMode sets the general blend/composite mode (C++-style alias for
+// SetBlendMode).
+func (a *Agg2DFloat) BlendMode(mode BlendMode) { a.impl.SetBlendMode(mode) }
+
+// ImageBlendMode sets the mode used by image drawing operations (C++-style
+// alias for SetImageBlendMode).
+func (a *Agg2DFloat) ImageBlendMode(mode BlendMode) { a.impl.SetImageBlendMode(mode) }
+
+// ImageBlendColor sets the additional blend color used by image operations
+// (C++-style alias for SetImageBlendColor).
+func (a *Agg2DFloat) ImageBlendColor(c Color) { a.impl.SetImageBlendColor(toInternalColor(c)) }
+
+// ImageBlendColorRGBA sets the image blend color using explicit RGBA components.
+func (a *Agg2DFloat) ImageBlendColorRGBA(r, g, b, alpha uint8) {
+	a.ImageBlendColor(Color{R: r, G: g, B: b, A: alpha})
+}

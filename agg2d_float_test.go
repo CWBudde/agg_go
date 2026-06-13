@@ -895,3 +895,54 @@ func TestPublicAgg2DFloatClearClipBoxRGBA(t *testing.T) {
 		}
 	}
 }
+
+// publicAliasScene exercises the C++-style accessor aliases that the 8-bit
+// public surface exposes (MasterAlpha/BlendMode/ImageBlendMode/ImageBlendColor/
+// ImageBlendColorRGBA). The float twin must offer the same alias spelling.
+type publicAliasScene interface {
+	MasterAlpha(float64)
+	GetMasterAlpha() float64
+	BlendMode(BlendMode)
+	GetBlendMode() BlendMode
+	ImageBlendMode(BlendMode)
+	GetImageBlendMode() BlendMode
+	ImageBlendColor(Color)
+	GetImageBlendColor() Color
+	ImageBlendColorRGBA(r, g, b, a uint8)
+}
+
+var (
+	_ publicAliasScene = (*Agg2D)(nil)
+	_ publicAliasScene = (*Agg2DFloat)(nil)
+)
+
+func TestPublicAgg2DFloatAccessorAliases(t *testing.T) {
+	type snap struct {
+		master float64
+		blend  BlendMode
+		imode  BlendMode
+		icolor Color
+	}
+	run := func(s publicAliasScene) snap {
+		s.MasterAlpha(0.5)
+		s.BlendMode(BlendMultiply)
+		s.ImageBlendMode(BlendDarken)
+		s.ImageBlendColorRGBA(11, 22, 33, 44)
+		return snap{
+			master: s.GetMasterAlpha(),
+			blend:  s.GetBlendMode(),
+			imode:  s.GetImageBlendMode(),
+			icolor: s.GetImageBlendColor(),
+		}
+	}
+	if s8, sF := run(NewAgg2D()), run(NewAgg2DFloat()); s8 != sF {
+		t.Errorf("public accessor-alias mismatch:\n  8bit = %+v\n float = %+v", s8, sF)
+	}
+
+	// ImageBlendColor (Color form) round-trips through the float surface.
+	af := NewAgg2DFloat()
+	af.ImageBlendColor(NewColor(1, 2, 3, 4))
+	if got := af.GetImageBlendColor(); got != NewColor(1, 2, 3, 4) {
+		t.Errorf("ImageBlendColor round-trip = %v, want {1 2 3 4}", got)
+	}
+}

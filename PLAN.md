@@ -581,16 +581,30 @@ usable.
         push/pop/affine-sequence matrix+depth parity test, a Get/Set round-trip, and
         an empty-stack PopTransform→false test) and a public-surface test
         `TestPublicAgg2DFloatTransformStack` in `agg2d_float_test.go`.
-  - [ ] **State accessors & RGBA/alias setters**: `Get*` readbacks (`GetFillColor`,
-        `GetLineColor`, `GetLineCap`, `GetLineJoin`, `GetMiterLimit`, `GetClipBox`,
-        `GetClipBoxRect`, `GetImageFilter`, `GetImageResample`, `GetAntiAliasGamma`),
-        `*RGBA` convenience setters (`ClearAllRGBA`, `FillColorRGBA`, `LineColorRGBA`,
-        `ClearClipBoxRGBA`, `ImageBlendColorRGBA`), C++-style accessor aliases
-        (`MasterAlpha`, `MiterLimit`, `AntiAliasGamma`, `BlendMode`, `ImageBlendMode`,
-        `ImageBlendColor`, `ImageFilter`, `ImageResample`), fill-rule queries
-        (`IsEvenOddFillRule`, `IsNonZeroFillRule`, `FillRuleDescription`),
-        `SetImageFilterRadius`, `ResetStyle`, and clip helpers (`ClearClipBox`).
-        Trivial delegations once the state already lives on the float struct.
+  - [x] **State accessors & RGBA/alias setters** — DONE 2026-06-13. Internal float
+        twin in `internal/agg2d/state_accessors_float.go`: `Get*` readbacks
+        (`GetFillColor`, `GetLineColor`, `GetLineCap`, `GetLineJoin`, `GetMiterLimit`,
+        `GetClipBox`, `GetImageFilter`, `GetImageResample`, `GetAntiAliasGamma`),
+        `*RGBA` setters (`FillColorRGBA`, `LineColorRGBA`, `ClearAllRGBA`,
+        `ClearClipBoxRGBA`), `MiterLimit`/`ImageFilter`/`ImageResample`/
+        `SetImageFilterRadius` setters, fill-rule queries (`IsEvenOddFillRule`,
+        `IsNonZeroFillRule`, `FillRuleDescription`), `ResetStyle`, `ClearClipBox`.
+        Bodies mirror colors.go/fill_rules.go/rendering.go/stroke.go/utilities.go;
+        the image-filter LUT switch is byte-identical (both twins share `*aggimage`),
+        `ClearClipBoxRGBA` builds the float color via `colorToRGBA32` + renderer
+        `CopyBar`. Root wrappers in `agg2d_float.go`: all the above plus
+        `GetClipBoxRect` (composed from `GetClipBox`) and the C++-style accessor
+        aliases that the 8-bit public surface exposes — `AntiAliasGamma`,
+        `MasterAlpha`, `BlendMode`, `ImageBlendMode`, `ImageBlendColor`,
+        `ImageBlendColorRGBA` (the `Set*`/`Get*` forms already lived on the float
+        twin; these add the C++ alias spellings). Parity vs the 8-bit oracle in
+        `internal/agg2d/state_accessors_float_test.go` (full style-snapshot readback,
+        float value round-trips, `ResetStyle` defaults, `ClearClipBoxRGBA` render
+        parity) and public-surface tests `TestPublicAgg2DFloatStateAccessors`,
+        `TestPublicAgg2DFloatClearClipBoxRGBA`, `TestPublicAgg2DFloatAccessorAliases`
+        in `agg2d_float_test.go`. (Deferred from this item: `GetClipBoxRect` exists at
+        the root only, as on 8-bit; `ImageFilter`/`ImageResample` listed twice in the
+        original spec — implemented once as setters.)
   - [ ] **Image convenience + export**: `BlendImageSimple`, `BlendImageDefaultAlpha`,
         `BlendImageSimpleDefaultAlpha`, `CopyImageSimple`, `SaveImagePPM`. Thin
         wrappers over the existing float copy/blend/transform paths.
