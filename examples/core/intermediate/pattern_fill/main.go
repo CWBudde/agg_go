@@ -134,7 +134,13 @@ func generatePattern(size int, patternAngle, patternAlpha float64) patternPixFmt
 	)
 	sl := scanline.NewScanlineP8()
 
-	renBase.Clear(color.NewRGBA8[color.Linear](102, 0, 26, basics.Int8u(patternAlpha*255.0)))
+	// C++ clears with rgba_pre(0.4, 0.0, 0.1, alpha): the background is stored
+	// premultiplied into the (plain) pattern buffer. The green/blue stars are
+	// then composited over it with a straight blender, and the whole buffer is
+	// later consumed as a premultiplied pattern source by the rb_pre base.
+	bg := color.NewRGBA8[color.Linear](102, 0, 26, basics.Int8u(patternAlpha*255.0))
+	bg.Premultiply()
+	renBase.Clear(bg)
 
 	ras.AddPath(&rasterizerAdapter{source: smooth}, 0)
 	renSolid.SetColor(color.ConvertRGBA8SRGBToLinear(color.NewRGBA8[color.SRGB](110, 130, 50, 255)))
@@ -262,10 +268,10 @@ func (d *demo) Render(img *agg.Image) {
 					continue
 				}
 				colors := alloc.Allocate(length)
+				// The pattern buffer already holds premultiplied data (premul
+				// background + opaque stars), matching C++ span_pattern_rgba
+				// which feeds raw bytes straight into the rb_pre base.
 				sg.Generate(colors, int(spanData.X), y, uint(length))
-				for i := 0; i < length; i++ {
-					colors[i].Premultiply()
-				}
 				if spanData.Len < 0 {
 					renBase.BlendColorHspan(int(spanData.X), y, length, colors, nil, spanData.Covers[0])
 					continue

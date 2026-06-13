@@ -353,16 +353,19 @@ func toRGBA8(c icol.RGBA) icol.RGBA8[icol.Linear] {
 }
 
 // renderCtrl renders all paths of a control widget using low-level rendering.
+// C++ distortions uses a plain (non-premultiplied) renderer_base for the whole
+// demo, including render_ctrl; the controls must therefore render through a
+// plain base so that translucent slider colors composite correctly.
 func renderCtrl(
 	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
 	slw *scanline.ScanlineP8,
-	rb *renderer.RendererBase[*pixfmt.PixFmtRGBA32Pre[icol.Linear], icol.RGBA8[icol.Linear]],
+	rb *renderer.RendererBase[*pixfmt.PixFmtRGBA32[icol.Linear], icol.RGBA8[icol.Linear]],
 	c ctrlbase.Ctrl[icol.RGBA],
 ) {
 	for i := uint(0); i < c.NumPaths(); i++ {
 		ras.Reset()
 		ras.AddPath(&ctrlVertexSourceAdapter{src: c}, uint32(i))
-		renderSolid(ras, slw, rb, toRGBA8(c.Color(i)))
+		renscan.RenderScanlinesAASolid(ras, slw, rb, toRGBA8(c.Color(i)))
 	}
 }
 
@@ -420,6 +423,10 @@ func (d *demo) Render(img *agg.Image) {
 	rbuf.Attach(img.Data, w, h, img.Stride())
 	pixFmt := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
 	rb := renderer.NewRendererBaseWithPixfmt(pixFmt)
+	// Controls render through a plain (non-premultiplied) base, matching C++
+	// distortions which uses renderer_base<pixfmt> for render_ctrl.
+	pixFmtPlain := pixfmt.NewPixFmtRGBA32[icol.Linear](rbuf)
+	rbCtrl := renderer.NewRendererBaseWithPixfmt(pixFmtPlain)
 	alloc := span.NewSpanAllocator[icol.RGBA8[icol.Linear]]()
 	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
 		rasterizer.RasConvInt{},
@@ -577,11 +584,11 @@ func (d *demo) Render(img *agg.Image) {
 
 	// --- Render controls (C++ render_ctrl calls at end of on_draw) ---
 	// C++: render_ctrl(ras, sl, rb, m_angle); etc.
-	renderCtrl(ras, slw, rb, ctrlAngle)
-	renderCtrl(ras, slw, rb, ctrlScale)
-	renderCtrl(ras, slw, rb, ctrlAmplitude)
-	renderCtrl(ras, slw, rb, ctrlPeriod)
-	renderCtrl(ras, slw, rb, ctrlDistortion)
+	renderCtrl(ras, slw, rbCtrl, ctrlAngle)
+	renderCtrl(ras, slw, rbCtrl, ctrlScale)
+	renderCtrl(ras, slw, rbCtrl, ctrlAmplitude)
+	renderCtrl(ras, slw, rbCtrl, ctrlPeriod)
+	renderCtrl(ras, slw, rbCtrl, ctrlDistortion)
 }
 
 func main() {
