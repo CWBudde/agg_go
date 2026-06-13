@@ -14,7 +14,11 @@ import (
 // at the pixel scale, e.g. single-pixel lines.
 type SlightBlur struct {
 	g0, g1 float64
-	buf    []basics.Int8u
+	// buf holds the horizontally-blurred rows. C++'s slight_blur keeps the
+	// intermediate result in the pixel's value_type (float for the bgr96
+	// reference), so we keep float precision between the horizontal and
+	// vertical passes rather than truncating to 8-bit in between.
+	buf []float64
 }
 
 // PixFmtInterface is the minimal pixel-format surface needed by SlightBlur.
@@ -70,10 +74,10 @@ func (sb *SlightBlur) Blur(img PixFmtInterface, bounds basics.RectI) {
 		return
 	}
 
-	// Allocate temporary buffer for the blur operation (4 bytes per pixel for RGBA)
+	// Allocate temporary buffer for the blur operation (4 floats per pixel for RGBA)
 	bufSize := w * h * 4
 	if len(sb.buf) < bufSize {
-		sb.buf = make([]basics.Int8u, bufSize)
+		sb.buf = make([]float64, bufSize)
 	}
 
 	// Apply horizontal blur first
@@ -116,11 +120,13 @@ func (sb *SlightBlur) blurHorizontal(img PixFmtInterface, bounds basics.RectI) {
 			blurredB := float64(left.B)*sb.g1 + float64(center.B)*sb.g0 + float64(right.B)*sb.g1
 			blurredA := float64(left.A)*sb.g1 + float64(center.A)*sb.g0 + float64(right.A)*sb.g1
 
-			// Clamp and store in buffer
-			sb.buf[pixOffset] = basics.Int8u(math.Min(255, math.Max(0, blurredR)))
-			sb.buf[pixOffset+1] = basics.Int8u(math.Min(255, math.Max(0, blurredG)))
-			sb.buf[pixOffset+2] = basics.Int8u(math.Min(255, math.Max(0, blurredB)))
-			sb.buf[pixOffset+3] = basics.Int8u(math.Min(255, math.Max(0, blurredA)))
+			// Store the horizontally-blurred value at full float precision
+			// (matches C++ slight_blur, which keeps the intermediate result
+			// in the pixel value_type before the vertical pass).
+			sb.buf[pixOffset] = blurredR
+			sb.buf[pixOffset+1] = blurredG
+			sb.buf[pixOffset+2] = blurredB
+			sb.buf[pixOffset+3] = blurredA
 		}
 	}
 }
