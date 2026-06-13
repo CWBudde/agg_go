@@ -757,3 +757,141 @@ func TestPublicAgg2DFloatTransformStack(t *testing.T) {
 		t.Error("public PopTransform after PushTransform should return true")
 	}
 }
+
+// publicStateScene is the root-level (package agg) method subset exercised by
+// the state-accessor parity test. Both the 8-bit Agg2D and the float twin
+// implement it, letting one driver pin the float public surface to the 8-bit
+// oracle.
+type publicStateScene interface {
+	FillColorRGBA(r, g, b, a uint8)
+	LineColorRGBA(r, g, b, a uint8)
+	GetFillColor() Color
+	GetLineColor() Color
+	LineCap(LineCap)
+	LineJoin(LineJoin)
+	GetLineCap() LineCap
+	GetLineJoin() LineJoin
+	MiterLimit(ml float64)
+	GetMiterLimit() float64
+	ClipBox(x1, y1, x2, y2 float64)
+	GetClipBox() (x1, y1, x2, y2 float64)
+	GetClipBoxRect() RectD
+	ImageFilter(ImageFilter)
+	GetImageFilter() ImageFilter
+	ImageResample(ImageResample)
+	GetImageResample() ImageResample
+	SetImageFilterRadius(ft ImageFilter, radius float64)
+	AntiAliasGamma(float64)
+	GetAntiAliasGamma() float64
+	FillEvenOdd(bool)
+	IsEvenOddFillRule() bool
+	IsNonZeroFillRule() bool
+	FillRuleDescription() string
+	ResetStyle()
+}
+
+var (
+	_ publicStateScene = (*Agg2D)(nil)
+	_ publicStateScene = (*Agg2DFloat)(nil)
+)
+
+func TestPublicAgg2DFloatStateAccessors(t *testing.T) {
+	type snap struct {
+		fill, line Color
+		cap        LineCap
+		join       LineJoin
+		miter      float64
+		cx1, cy1   float64
+		cx2, cy2   float64
+		rect       RectD
+		filter     ImageFilter
+		resample   ImageResample
+		gamma      float64
+		eo, nz     bool
+		desc       string
+	}
+	run := func(s publicStateScene) snap {
+		s.FillColorRGBA(10, 20, 30, 40)
+		s.LineColorRGBA(50, 60, 70, 80)
+		s.LineCap(CapSquare)
+		s.LineJoin(JoinBevel)
+		s.MiterLimit(7.5)
+		s.ClipBox(5, 6, 95, 96)
+		s.ImageFilter(Bicubic)
+		s.ImageResample(ResampleAlways)
+		s.AntiAliasGamma(1.7)
+		s.FillEvenOdd(true)
+		x1, y1, x2, y2 := s.GetClipBox()
+		return snap{
+			fill:     s.GetFillColor(),
+			line:     s.GetLineColor(),
+			cap:      s.GetLineCap(),
+			join:     s.GetLineJoin(),
+			miter:    s.GetMiterLimit(),
+			cx1:      x1,
+			cy1:      y1,
+			cx2:      x2,
+			cy2:      y2,
+			rect:     s.GetClipBoxRect(),
+			filter:   s.GetImageFilter(),
+			resample: s.GetImageResample(),
+			gamma:    s.GetAntiAliasGamma(),
+			eo:       s.IsEvenOddFillRule(),
+			nz:       s.IsNonZeroFillRule(),
+			desc:     s.FillRuleDescription(),
+		}
+	}
+
+	if s8, sF := run(NewAgg2D()), run(NewAgg2DFloat()); s8 != sF {
+		t.Errorf("public state accessor mismatch:\n  8bit = %+v\n float = %+v", s8, sF)
+	}
+
+	// SetImageFilterRadius updates the filter id through the public surface.
+	af := NewAgg2DFloat()
+	af.SetImageFilterRadius(FilterLanczos, 3.0)
+	if got := af.GetImageFilter(); got != FilterLanczos {
+		t.Errorf("public GetImageFilter after radius = %v, want FilterLanczos", got)
+	}
+
+	// ResetStyle returns defaults identically for both pipelines.
+	reset := func(s publicStateScene) (Color, Color, LineCap, LineJoin, float64, bool) {
+		s.FillColorRGBA(1, 1, 1, 1)
+		s.LineColorRGBA(2, 2, 2, 2)
+		s.LineCap(CapSquare)
+		s.MiterLimit(9)
+		s.FillEvenOdd(true)
+		s.ResetStyle()
+		return s.GetFillColor(), s.GetLineColor(), s.GetLineCap(), s.GetLineJoin(), s.GetMiterLimit(), s.IsEvenOddFillRule()
+	}
+	f8, l8, c8, j8, m8, e8 := reset(NewAgg2D())
+	fF, lF, cF, jF, mF, eF := reset(NewAgg2DFloat())
+	if f8 != fF || l8 != lF || c8 != cF || j8 != jF || m8 != mF || e8 != eF {
+		t.Errorf("public ResetStyle mismatch: 8bit=(%v %v %v %v %v %v) float=(%v %v %v %v %v %v)",
+			f8, l8, c8, j8, m8, e8, fF, lF, cF, jF, mF, eF)
+	}
+}
+
+func TestPublicAgg2DFloatClearClipBoxRGBA(t *testing.T) {
+	const w, h = 16, 16
+	af := NewAgg2DFloat()
+	img := NewImageFloat(w, h)
+	af.AttachImage(img)
+	af.ClearClipBoxRGBA(200, 100, 50, 255)
+
+	a8 := NewAgg2D()
+	buf := make([]uint8, w*h*4)
+	a8.Attach(buf, w, h, w*4)
+	a8.ClearClipBoxRGBA(200, 100, 50, 255)
+
+	rgba := img.ToRGBA()
+	for y := 0; y < h; y += 5 {
+		for x := 0; x < w; x += 5 {
+			o := (y*w + x) * 4
+			for c := 0; c < 4; c++ {
+				if absInt(int(rgba.Pix[o+c])-int(buf[o+c])) > 2 {
+					t.Errorf("ClearClipBoxRGBA pixel (%d,%d) ch %d: float=%d 8bit=%d", x, y, c, rgba.Pix[o+c], buf[o+c])
+				}
+			}
+		}
+	}
+}

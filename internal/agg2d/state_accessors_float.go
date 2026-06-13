@@ -7,6 +7,7 @@
 package agg2d
 
 import (
+	"github.com/cwbudde/agg_go/internal/basics"
 	aggimage "github.com/cwbudde/agg_go/internal/image"
 )
 
@@ -175,8 +176,8 @@ func (a *Agg2DFloat) ResetStyle() {
 	a.evenOddFlag = false
 	if a.convStroke != nil {
 		a.convStroke.SetWidth(1.0)
-		a.convStroke.SetLineCap(basicsLineCap(CapRound))
-		a.convStroke.SetLineJoin(basicsLineJoin(JoinRound))
+		a.convStroke.SetLineCap(basics.LineCap(CapRound))
+		a.convStroke.SetLineJoin(basics.LineJoin(JoinRound))
 	}
 	a.NoDashes()
 	a.textAlignX = AlignLeft

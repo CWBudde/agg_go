@@ -702,3 +702,102 @@ func (a *Agg2DFloat) FillEvenOdd(evenOddFlag bool) { a.impl.FillEvenOdd(evenOddF
 
 // GetFillEvenOdd reports whether the even-odd fill rule is active.
 func (a *Agg2DFloat) GetFillEvenOdd() bool { return a.impl.GetFillEvenOdd() }
+
+// --- State accessors, RGBA setters, and C++-style aliases (§4.7) ---
+//
+// These mirror the 8-bit Agg2D public surface (agg.go / agg2d.go). Color
+// readbacks convert the internal [4]uint8 to the public Color struct; enum
+// readbacks pass through the shared type aliases.
+
+// GetFillColor returns the current fill color.
+func (a *Agg2DFloat) GetFillColor() Color {
+	c := a.impl.GetFillColor()
+	return Color{R: c[0], G: c[1], B: c[2], A: c[3]}
+}
+
+// GetLineColor returns the current stroke color.
+func (a *Agg2DFloat) GetLineColor() Color {
+	c := a.impl.GetLineColor()
+	return Color{R: c[0], G: c[1], B: c[2], A: c[3]}
+}
+
+// FillColorRGBA sets the fill color using explicit RGBA components.
+func (a *Agg2DFloat) FillColorRGBA(r, g, b, alpha uint8) {
+	a.FillColor(Color{R: r, G: g, B: b, A: alpha})
+}
+
+// LineColorRGBA sets the stroke color using explicit RGBA components.
+func (a *Agg2DFloat) LineColorRGBA(r, g, b, alpha uint8) {
+	a.LineColor(Color{R: r, G: g, B: b, A: alpha})
+}
+
+// ClearAllRGBA fills the entire attached buffer using explicit RGBA components.
+func (a *Agg2DFloat) ClearAllRGBA(r, g, b, alpha uint8) {
+	a.ClearAll(Color{R: r, G: g, B: b, A: alpha})
+}
+
+// ClearClipBox fills only the current clip box with c.
+func (a *Agg2DFloat) ClearClipBox(c Color) { a.impl.ClearClipBox(toInternalColor(c)) }
+
+// ClearClipBoxRGBA fills the current clip box using explicit RGBA components.
+func (a *Agg2DFloat) ClearClipBoxRGBA(r, g, b, alpha uint8) {
+	a.ClearClipBox(Color{R: r, G: g, B: b, A: alpha})
+}
+
+// GetLineCap returns the current line-cap style.
+func (a *Agg2DFloat) GetLineCap() LineCap { return a.impl.GetLineCap() }
+
+// GetLineJoin returns the current line-join style.
+func (a *Agg2DFloat) GetLineJoin() LineJoin { return a.impl.GetLineJoin() }
+
+// MiterLimit sets the stroke miter limit.
+func (a *Agg2DFloat) MiterLimit(ml float64) { a.impl.MiterLimit(ml) }
+
+// GetMiterLimit returns the current miter limit.
+func (a *Agg2DFloat) GetMiterLimit() float64 { return a.impl.GetMiterLimit() }
+
+// GetClipBox returns the current clipping rectangle in world coordinates.
+func (a *Agg2DFloat) GetClipBox() (x1, y1, x2, y2 float64) { return a.impl.GetClipBox() }
+
+// GetClipBoxRect returns the current clipping rectangle as a RectD value.
+func (a *Agg2DFloat) GetClipBoxRect() RectD {
+	x1, y1, x2, y2 := a.GetClipBox()
+	return RectD{X1: x1, Y1: y1, X2: x2, Y2: y2}
+}
+
+// ImageFilter selects the image filtering method.
+func (a *Agg2DFloat) ImageFilter(ft ImageFilter) { a.impl.ImageFilter(ft) }
+
+// GetImageFilter returns the current image filtering method.
+func (a *Agg2DFloat) GetImageFilter() ImageFilter { return a.impl.GetImageFilter() }
+
+// ImageResample sets the image resampling method.
+func (a *Agg2DFloat) ImageResample(r ImageResample) { a.impl.ImageResample(r) }
+
+// GetImageResample returns the current image resampling method.
+func (a *Agg2DFloat) GetImageResample() ImageResample { return a.impl.GetImageResample() }
+
+// SetImageFilterRadius sets the image filtering method with a custom radius for
+// supported filters.
+func (a *Agg2DFloat) SetImageFilterRadius(ft ImageFilter, radius float64) {
+	a.impl.SetImageFilterRadius(ft, radius)
+}
+
+// AntiAliasGamma sets the gamma applied to scanline coverage values. This is the
+// C++-style alias for SetAntiAliasGamma.
+func (a *Agg2DFloat) AntiAliasGamma(gamma float64) { a.impl.SetAntiAliasGamma(gamma) }
+
+// GetAntiAliasGamma returns the current anti-alias gamma value.
+func (a *Agg2DFloat) GetAntiAliasGamma() float64 { return a.impl.GetAntiAliasGamma() }
+
+// IsEvenOddFillRule reports whether the even-odd fill rule is active.
+func (a *Agg2DFloat) IsEvenOddFillRule() bool { return a.impl.IsEvenOddFillRule() }
+
+// IsNonZeroFillRule reports whether the non-zero winding fill rule is active.
+func (a *Agg2DFloat) IsNonZeroFillRule() bool { return a.impl.IsNonZeroFillRule() }
+
+// FillRuleDescription returns a human-readable description of the current fill rule.
+func (a *Agg2DFloat) FillRuleDescription() string { return a.impl.FillRuleDescription() }
+
+// ResetStyle resets all style settings to their default values.
+func (a *Agg2DFloat) ResetStyle() { a.impl.ResetStyle() }
