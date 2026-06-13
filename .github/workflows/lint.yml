@@ -20,6 +20,11 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev libsdl2-dev
+
       - name: GolangCI-Lint
         uses: golangci/golangci-lint-action@v9
         with:

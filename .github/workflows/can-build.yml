@@ -23,5 +23,10 @@ jobs:
       - name: Install just
         uses: extractions/setup-just@v2
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev libsdl2-dev
+
       - name: Build
         run: just build
