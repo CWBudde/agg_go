@@ -239,7 +239,7 @@ func drawDashDemo() {
 	renderSolidColor(color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255})
 
 	// === Handles ===
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		drawHandle(dashX[i], dashY[i])
 	}
 

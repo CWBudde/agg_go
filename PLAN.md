@@ -46,65 +46,74 @@ still differs from upstream in positioning, orientation, clipping, or reference-
 
 Keep the remaining corpus of demo mismatches under active repair:
 
-- [ ] `aa_demo`
-- [ ] `aa_test`
-- [ ] `alpha_gradient`
+RMSE values below are current as of 2026-06-13, measured by regenerating the Go
+references (`UPDATE_VISUAL=1`) and comparing against the C++ references with
+`cmd/visual-diff` (RMSE over all RGB channels). `[x]` marks pixel-exact (RMSE 0.0).
+
+- [x] `aa_demo` — pixel-exact (RMSE 0.0, 0/240000 px).
 - [x] `alpha_mask` — pixel-exact (RMSE 0.0) via the lion srgba8-storage color roundtrip fix.
 - [x] `alpha_mask2` — pixel-exact (RMSE 0.0): linear pipeline for all overlay passes, lion color roundtrip, gradient uround, and the line_interpolator_aa stale dist_start/dist_end fix.
-- [ ] `alpha_mask3`
-- [ ] `bezier_div`
-- [ ] `blend_color`
-- [ ] `blur`
-- [ ] `bspline`
-- [ ] `circles`
-- [ ] `component_rendering`
-- [ ] `compositing`
-- [ ] `compositing2`
+- [x] `blend_color` — pixel-exact (RMSE 0.0, 0/145200 px).
+- [x] `bspline` — pixel-exact (RMSE 0.0, 0/360000 px).
+- [x] `circles` — pixel-exact (RMSE 0.0, 0/160000 px).
+- [x] `component_rendering` — pixel-exact (RMSE 0.0, 0/102400 px).
 - [x] `conv_contour` — pixel-exact (RMSE 0.0): rewritten from Agg2D to the linear pipeline (linear pixfmt, render_ctrl equivalent, FlipY + EncodeLinearRGBToSRGB).
-- [ ] `conv_dash_marker`
-- [ ] `conv_stroke`
-- [ ] `distortions`
-- [ ] `flash_rasterizer`
-- [ ] `flash_rasterizer2`
+- [x] `flash_rasterizer2` — pixel-exact (RMSE 0.0, 0/340600 px).
 - [x] `gamma_correction` — pixel-exact (RMSE 0.0) after fixing C-sprintf label semantics in slider_ctrl.
-- [ ] `gamma_ctrl`
-- [ ] `gamma_tuner`
-- [ ] `gouraud_mesh`
-- [x] `gradient_focal` — exact except timing-text digits (RMSE 1.48, 253 px all in the "ms" text): gradient_lut built/interpolated in sRGB space with the rgba8_gamma_dir roundtrip on stops, decoded to linear per entry; ellipse+conv_stroke boundary circle; linear pipeline + EncodeLinearRGBToSRGB.
+- [x] `gamma_tuner` — pixel-exact (RMSE 0.0, 0/250000 px).
+- [x] `gouraud_mesh` — pixel-exact (RMSE 0.0, 0/160000 px).
+- [x] `gradient_focal` — pixel-exact (RMSE 0.0, 0/240000 px); the former timing-text residual is gone after deterministic reference regeneration. gradient_lut built/interpolated in sRGB space with the rgba8_gamma_dir roundtrip on stops, decoded to linear per entry; ellipse+conv_stroke boundary circle; linear pipeline + EncodeLinearRGBToSRGB.
 - [x] `gradients_contour` — pixel-exact (RMSE 0.0): DT grayscale truncation (not +0.5), rbox defaults (text thickness 1.5, right edge 300), exact span_interpolator_trans; C++ reference recaptured after fixing the "Assymetric Conic" typo in the original demo.
-- [ ] `gradients`
-- [ ] `graph_test`
-- [ ] `idea`
-- [ ] `image_alpha`
 - [x] `image_filters` — pixel-exact (RMSE 0.0): linear pipeline (sRGB-decoded PPM source, linear filtering, sRGB encode on save) + raw conv_stroke for the gsv status text.
-- [ ] `image_filters2`
-- [ ] `image_fltr_graph`
-- [x] `image_perspective` — exact except timing-text digits (RMSE 3.07, 180 px all in the "ms" text): same faithful-port rewrite as `image_resample` — quad tool with handle circles (rgba 0,0.3,0.5,0.6), three modes (affine parl + NN, bilinear + 2x2, perspective + 2x2, filter LUT NOT normalized), linear pipeline + EncodeLinearRGBToSRGB, raw conv_stroke gsv timing text at (10,10).
-- [x] `image_resample` — exact except timing-text digits (RMSE 3.23, 259 px all in the "ms" text): rewritten from the Agg2D/quadwarp helper to a direct faithful port — quad tool (stroke + handle circles) rendered like C++ interactive_polygon, all six transform modes via the real span generators (2x2 filter / affine + perspective resample with subdiv adaptor), linear pipeline + EncodeLinearRGBToSRGB, raw conv_stroke gsv timing text.
-- [ ] `image_transforms`
-- [ ] `image1`
-- [ ] `line_patterns_clip`
-- [ ] `line_patterns`
-- [ ] `line_thickness`
-- [ ] `lion_lens`
-- [ ] `lion_outline` — near-exact (RMSE 0.05) after the outline interpolator + lion color fixes.
+- [x] `image_perspective` — pixel-exact (RMSE 0.0, 0/360000 px); former timing-text residual gone. Faithful-port rewrite: quad tool with handle circles, three modes (affine parl + NN, bilinear + 2x2, perspective + 2x2), linear pipeline + EncodeLinearRGBToSRGB.
+- [x] `image_resample` — pixel-exact (RMSE 0.0, 0/360000 px); former timing-text residual gone. Direct faithful port: quad tool rendered like C++ interactive_polygon, all six transform modes via the real span generators, linear pipeline + EncodeLinearRGBToSRGB.
+- [x] `image_transforms` — pixel-exact (RMSE 0.0, 0/96000 px).
+- [x] `image1` — pixel-exact (RMSE 0.0, 0/122400 px).
 - [x] `lion` — pixel-exact (RMSE 0.0): lion color roundtrip + C-truncation of the alpha slider byte.
-- [ ] `mol_view`
-- [ ] `multi_clip`
-- [ ] `pattern_fill`
-- [x] `pattern_perspective` — pixel-exact (RMSE 0.0): same faithful-port rewrite as `image_resample`/`image_perspective` — quad tool + rbox rendered BEFORE the pattern, wrap-reflect accessor, normalized Hanning 2x2 filter, source rect ±150, linear_subdiv interpolator for perspective, sRGB-decoded agg.ppm, linear pipeline + EncodeLinearRGBToSRGB.
-- [x] `pattern_resample` — RMSE 2.92, all 222 remaining differing pixels are the printed render-time digits. Same faithful-port rewrite as its siblings (six resample modes from `image_resample` + wrap-reflect pattern source from `pattern_perspective`), plus the demo's `gamma_lut(2.0)`: apply_gamma_dir on the pattern image, apply_gamma_inv on the window before timing text and controls; quad ghost alpha 0.1.
+- [x] `pattern_perspective` — pixel-exact (RMSE 0.0): quad tool + rbox rendered BEFORE the pattern, wrap-reflect accessor, normalized Hanning 2x2 filter, source rect ±150, linear_subdiv interpolator for perspective, sRGB-decoded agg.ppm, linear pipeline + EncodeLinearRGBToSRGB.
+- [x] `pattern_resample` — pixel-exact (RMSE 0.0, 0/360000 px); former timing-text residual gone. Six resample modes + wrap-reflect pattern source, plus the demo's gamma_lut(2.0) (apply_gamma_dir on the pattern, apply_gamma_inv on the window before timing text and controls).
 - [x] `perspective` — pixel-exact (RMSE 0.0) via the lion color roundtrip fix.
-- [ ] `polymorphic_renderer`
-- [ ] `raster_text`
+- [x] `raster_text` — pixel-exact (RMSE 0.0, 0/307200 px).
 - [x] `rasterizer_compound` — pixel-exact (RMSE 0.0) after porting the linear-pipeline + sRGB-encode-on-save semantics of the C++ demo.
-- [ ] `rasterizers`
-- [ ] `rasterizers2`
-- [ ] `rounded_rect`
-- [ ] `scanline_boolean`
-- [ ] `scanline_boolean2`
-- [ ] `simple_blur`
-- [ ] `trans_polar`
+- [x] `rasterizers` — pixel-exact (RMSE 0.0, 0/165000 px).
+- [x] `rounded_rect` — pixel-exact (RMSE 0.0, 0/240000 px).
+- [x] `scanline_boolean` — pixel-exact (RMSE 0.0, 0/480000 px).
+
+Ordered easiest → hardest to close (near-exact AA residuals first, localized
+single-cause bugs next, then broad rounding/format fixes that touch shared paths,
+and finally the genuinely algorithmic/architectural gaps).
+
+- [ ] `lion_lens` — RMSE 0.0015 (1 px). Single sub-LSB pixel in the lens distortion sampling; effectively pixel-exact (conv_segmentator fix landed).
+- [ ] `flash_rasterizer` — RMSE 0.0031 (2 px). Two differing AA pixels on a glyph edge; effectively identical.
+- [ ] `lion_outline` — RMSE 0.0512 (18 px). Outline-AA edge rounding along the whole stroke plus one saturated pixel; essentially done after the outline interpolator + lion color fixes.
+- [ ] `simple_blur` — RMSE 0.0579 (18 px). Sparse single-LSB outline-AA edge pixels on the right-half lion; essentially exact after the rasterizer_outline_aa + line_profile_aa fix.
+- [ ] `image_alpha` — RMSE 0.4502 (31 px). 8-bit alpha-blend rounding on the alpha-masked image rings and clip-rect outlines; background matches.
+- [ ] `image_fltr_graph` — RMSE 0.2356 (38 px). Control-widget checkbox label text and the central graph axis-line AA; filter curves themselves match.
+- [ ] `distortions` — RMSE 0.0377 (53 px). A few isolated extreme pixels from distortion-resampling rounding in the lensed image/sphere; essentially done.
+- [ ] `polymorphic_renderer` — RMSE 0.1239 (91 px). Float-vs-8bit AA edge-coverage rounding on the single triangle's anti-aliased edges only.
+- [ ] `gradients` — RMSE 0.0335 (118 px). AA on the gradient-control spline curve lines and a couple of sphere-edge pixels; the gradient fill itself matches.
+- [ ] `idea` — RMSE 0.7113 (171 px). A few extreme AA pixels on the tiny high-chroma lightbulb rays plus the step/degree label text.
+- [ ] `rasterizers2` — RMSE 0.8059 (258 px). 258 stray white pixels: off-by-one Bresenham / arbitrary-image-pattern marker placement in the lower spirals, not a colorspace issue.
+- [ ] `multi_clip` — RMSE 1.2046 (40 px). Only 40 px but a few are extreme: sub-pixel AA edge rounding on the dense thin random strokes/circles inside the clip cells.
+- [ ] `blur` — RMSE 0.4550 (347 px). Stack-blur intermediate-precision rounding across the whole blurred glyph plus a few saturated selection-handle pixels; slider/shadow geometry already fixed.
+- [ ] `line_patterns` — RMSE 0.1216 (936 px). Image-pattern glyph sampling/positioning along each curved path plus a couple of saturated control-pin pixels.
+- [ ] `gamma_ctrl` — RMSE 0.0644 (1378 px). Sub-pixel AA edge fringing on the green GSV "Text 2345" glyph outlines and the thin radial-spline lines; controls exact.
+- [ ] `trans_polar` — RMSE 0.0506 (1628 px). Transform-resampling AA on the curved polar ring plus the control text and slider-knob X positions.
+- [ ] `conv_stroke` — RMSE 0.0803 (1709 px). Faint float-vs-8bit AA edge fringing along the dashed-stroke borders and miter-join markers; near-exact.
+- [ ] `mol_view` — RMSE 0.2857 (2138 px). Sub-pixel AA fringing on the green GSV title-text glyph edges and the thin atom-bond strokes; geometry/colors already corrected.
+- [ ] `line_patterns_clip` — RMSE 0.1131 (3300 px). Patterned-stroke dash phase / clip-boundary sampling on the X-crossing lines and clipped line ends; edge AA plus stray control-pin pixels.
+- [ ] `compositing2` — RMSE 0.0967 (5004 px). Comp-op blend rounding (8-bit vs float) on the edges of the four overlapping translucent circles; controls exact.
+- [ ] `aa_test` — RMSE 0.1728 (10685 px). Float-vs-8bit AA fringing on the many thin anti-aliased lines/dashes in the radial sub-pixel line fans; no logic error.
+- [ ] `alpha_gradient` — RMSE 0.4158 (26799 px). Accumulated 8-bit blend rounding (agg.RGBA truncates `uint8(v*255)` instead of round-to-nearest `*255+0.5`) across the whole alpha-blended gradient circle and translucent ellipses; the round-to-nearest fix is one-line but touches a shared blend path.
+- [ ] `line_thickness` — RMSE 0.3650 (25756 px). Uniform BGR96-float-vs-8bit edge-AA fringe along every diagonal line and radial spoke; essentially done pending a float renderer.
+- [ ] `graph_test` — RMSE 0.7717 (37004 px). Sub-pixel AA on the grid of node-circle outlines plus glyph edges in the bottom timing/status text; residual after per-control text-height fixes.
+- [ ] `pattern_fill` — RMSE 0.2836 (64555 px). Background tint off by integer-rounding the premultiplied RGBA8(102,0,26,26) instead of float premultiply-then-quantize (rgba_pre), spread across the pattern-filled star interior; controls/margins clean.
+- [ ] `alpha_mask3` — RMSE 0.3438 (69120 px). Renders into 4-channel RGBA32 instead of the C++ opaque 3-channel BGR24 (pixfmt_rgb) buffer, so the layered low-alpha (25/127) over-blend rounds one LSB darker across the translucent shapes; controls/background identical.
+- [ ] `conv_dash_marker` — RMSE 0.9998 (4672 px). Dash-phase / sub-pixel dash-segment positioning offset along the dashed line (every dash lands slightly shifted) plus the green smooth-outline edges.
+- [ ] `bezier_div` — RMSE 1.1956 (2861 px). Stroke vertex generation at the Miter-Revert + Inner-Round join near the curve cusp differs slightly from C++ vcgen_stroke; diff concentrates at the inner-join triangle fan and dashed inner-stroke outline.
+- [ ] `compositing` — RMSE 0.5101 (98059 px). ±1-LSB gradient/composite interpolation rounding in the 8-bit-linear scene path (the known RGBA128 float comp-op residual) spread across the gradient-filled shapes; controls/text exact.
+- [ ] `scanline_boolean2` — RMSE 1.2047 (69301 px). Sub-pixel cover/span-boundary discrepancy in the scanline boolean AND-combine path (num_spans 1033 vs C++ 1031) on the intersection-shape AA edges; GSV text stroke already corrected.
+- [ ] `image_filters2` — RMSE 1.2622 (53494 px). Largest real gap: the scaled right-side image is rendered via Agg2D's dedicated bilinear resampler instead of the C++ LUT-based span_image_filter_rgba general filter, so every fractional sample blends source texels differently across the whole image; control panel clean.
 
 ### 1.3 Exit criteria
 

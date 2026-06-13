@@ -45,7 +45,7 @@ implementation and the optional C++ path living here as well.
 
 A live web demo of AGG Go, compiled to WebAssembly (WASM), is available. It showcases various rendering features directly in your browser.
 
-- **Live Demo:** [https://cwbudde.github.io/agg-go/](https://cwbudde.github.io/agg-go/)
+- **Live Demo:** [https://cwbudde.github.io/agg_go/](https://cwbudde.github.io/agg_go/)
 - **Source:** `cmd/wasm/main.go` and `web/`
 
 You can also run the demo locally:
