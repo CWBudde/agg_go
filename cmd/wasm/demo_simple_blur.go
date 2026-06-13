@@ -11,6 +11,7 @@ import (
 	"github.com/cwbudde/agg_go/internal/pixfmt"
 	"github.com/cwbudde/agg_go/internal/rasterizer"
 	"github.com/cwbudde/agg_go/internal/renderer"
+	outline "github.com/cwbudde/agg_go/internal/renderer/outline"
 	renscan "github.com/cwbudde/agg_go/internal/renderer/scanline"
 	"github.com/cwbudde/agg_go/internal/scanline"
 	"github.com/cwbudde/agg_go/internal/shapes"
@@ -49,7 +50,7 @@ func drawSimpleBlurDemo() {
 	drawSimpleBlurLionFill(ras, sl, renSolid, img.Width(), img.Height())
 
 	// 3. Draw lion outline (right half of canvas).
-	drawSimpleBlurLionOutline(ras, sl, renSolid, img.Width(), img.Height())
+	drawSimpleBlurLionOutline(img, img.Width(), img.Height())
 
 	// 4. Match C++ simple_blur.cpp: stroke the ellipse, then stroke that stroke.
 	rx, ry := 100.0, 100.0
@@ -101,13 +102,15 @@ func drawSimpleBlurLionFill(
 	renscan.RenderAllPaths(ras, sl, renSolid, rasVS, colors, colors, lionData.NPaths)
 }
 
-// drawSimpleBlurLionOutline renders the lion paths as outlines into the right half of the canvas.
-func drawSimpleBlurLionOutline(
-	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
-	sl *scanline.ScanlineP8,
-	renSolid *renscan.RendererScanlineAASolid[*renderer.RendererBase[*pixfmt.PixFmtRGBA32Pre[color.Linear], color.RGBA8[color.Linear]], color.RGBA8[color.Linear]],
-	w, h int,
-) {
+// drawSimpleBlurLionOutline renders the lion paths as anti-aliased outlines into
+// the right half of the canvas. It mirrors the C++ pipeline faithfully:
+// rasterizer_outline_aa + line_profile_aa with round caps (not conv_stroke).
+func drawSimpleBlurLionOutline(img *agg.Image, w, h int) {
+	rbuf := buffer.NewRenderingBufferU8()
+	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Stride())
+	pf := pixfmt.NewPixFmtRGBA32[color.Linear](rbuf)
+	rb := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]](pf)
+
 	x1, y1, x2, y2 := getLionBoundingRect(lionData)
 	cx := (x1 + x2) * 0.5
 	cy := (y1 + y2) * 0.5
@@ -120,12 +123,18 @@ func drawSimpleBlurLionOutline(
 
 	pathVS := path.NewPathStorageStlVertexSourceAdapter(lionData.Path)
 	transVS := conv.NewConvTransform(pathVS, mtx)
-	stroke := conv.NewConvStroke(transVS)
-	stroke.SetWidth(1.0)
-	strokeVS := conv.NewRasterizerVertexSourceAdapter(stroke)
+	outlineVS := conv.NewRasterizerVertexSourceAdapter(transVS)
 
-	colors := lionSimpleBlurColorView{data: lionData}
-	renscan.RenderAllPaths(ras, sl, renSolid, strokeVS, colors, colors, lionData.NPaths)
+	// C++: line_profile_aa profile; profile.width(1.0);
+	profile := outline.NewLineProfileAA()
+	profile.Width(1.0)
+
+	outlineBase := &loOutlineBaseAdapter{rb: rb}
+	renOutline := outline.NewRendererOutlineAA[*loOutlineBaseAdapter, color.RGBA8[color.Linear]](outlineBase, profile)
+	rasOutline := rasterizer.NewRasterizerOutlineAA[*loOutlineAAAdapter, color.RGBA8[color.Linear]](&loOutlineAAAdapter{ren: renOutline})
+	rasOutline.SetRoundCap(true) // C++: ras.round_cap(true)
+
+	rasOutline.RenderAllPaths(outlineVS, loLionColorView{data: lionData}, lionData, lionData.NPaths)
 }
 
 // lionSimpleBlurColorView provides per-path fill colors for RenderAllPaths.
