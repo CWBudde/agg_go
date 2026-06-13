@@ -408,3 +408,89 @@ func TestPublicAgg2DFloatCurves(t *testing.T) {
 		t.Errorf("public float vs 8-bit curves max channel diff = %d (tol 2)", maxDiff)
 	}
 }
+
+// TestPublicAgg2DFloatDashedStrokes drives the dashed-stroke methods through the
+// public float surface and the public 8-bit oracle, asserting whole-frame parity.
+// Covers a multi-segment dash pattern with a phase offset plus the NoDashes()
+// solid-fallback branch.
+func TestPublicAgg2DFloatDashedStrokes(t *testing.T) {
+	const w, h = 140, 120
+
+	scene := func(
+		clear func(Color), line func(Color), lw func(float64), cap func(LineCap),
+		reset func(), moveTo func(x, y float64), lineTo func(x, y float64),
+		addDash func(dashLen, gapLen float64), dashStart func(offset float64),
+		noDashes func(), draw func(DrawPathFlag),
+	) {
+		clear(NewColor(255, 255, 255, 255))
+		line(NewColor(20, 60, 180, 255))
+		lw(3)
+		cap(CapButt)
+
+		// Dashed polyline with a two-segment pattern and a phase offset.
+		addDash(12, 6)
+		addDash(4, 6)
+		dashStart(3)
+		reset()
+		moveTo(12, 20)
+		lineTo(128, 20)
+		lineTo(128, 60)
+		lineTo(12, 60)
+		draw(StrokeOnly)
+
+		// Solid fallback after NoDashes.
+		noDashes()
+		line(NewColor(200, 40, 40, 255))
+		reset()
+		moveTo(12, 95)
+		lineTo(128, 95)
+		draw(StrokeOnly)
+	}
+
+	imgF := NewImageFloat(w, h)
+	af := NewAgg2DFloat()
+	af.AttachImage(imgF)
+	scene(af.ClearAll, af.LineColor, af.LineWidth, af.LineCap, af.ResetPath,
+		af.MoveTo, af.LineTo, af.AddDash, af.DashStart, af.NoDashes, af.DrawPath)
+	rgbaF := imgF.ToRGBA()
+
+	buf := make([]uint8, w*h*4)
+	a8 := NewAgg2D()
+	a8.Attach(buf, w, h, w*4)
+	scene(a8.ClearAll, a8.LineColor, a8.LineWidth, a8.LineCap, a8.ResetPath,
+		a8.MoveTo, a8.LineTo, a8.AddDash, a8.DashStart, a8.NoDashes, a8.DrawPath)
+	img8 := NewImage(buf, w, h, w*4).ToGoImage()
+
+	maxDiff, ink := 0, 0
+	for y := range h {
+		for x := range w {
+			cf := rgbaF.RGBAAt(x, y)
+			c8 := img8.RGBAAt(x, y)
+			for _, d := range []int{
+				absInt(int(cf.R) - int(c8.R)),
+				absInt(int(cf.G) - int(c8.G)),
+				absInt(int(cf.B) - int(c8.B)),
+				absInt(int(cf.A) - int(c8.A)),
+			} {
+				if d > maxDiff {
+					maxDiff = d
+				}
+			}
+			if c8.R < 250 || c8.G < 250 || c8.B < 250 {
+				ink++
+			}
+		}
+	}
+	if ink < 80 {
+		t.Fatalf("public dashes drew too little ink in 8-bit oracle: %d pixels", ink)
+	}
+	if maxDiff > 2 {
+		t.Errorf("public float vs 8-bit dashes max channel diff = %d (tol 2)", maxDiff)
+	}
+
+	// GetDashStart round-trips through the public surface.
+	af.DashStart(9)
+	if got := af.GetDashStart(); got != 9 {
+		t.Errorf("public GetDashStart = %v, want 9", got)
+	}
+}

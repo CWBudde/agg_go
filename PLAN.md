@@ -570,10 +570,20 @@ usable.
         Parity vs the 8-bit oracle in `internal/agg2d/curves_float_test.go` (7 tests,
         tol ≤ 2) covering rel/smooth quadric & cubic curves and Hor/VerLineRel.
         (Convenience `Curve`/`Curve4` are done — see the Shapes group above.)
-  - [ ] **Dashed strokes**: `AddDash`, `RemoveAllDashes`, `DashStart`,
-        `GetDashStart`, `NoDashes`. The float struct already holds the reserved
-        `convDash` field; wire it into the existing float stroke path in
-        `rendering_float.go` (mirror the 8-bit `convDash.NumDashes() == 0` branch).
+  - [x] **Dashed strokes** — DONE 2026-06-13. `AddDash`, `RemoveAllDashes`,
+        `DashStart`, `GetDashStart`, `NoDashes`. The `conv_dash` converter and all
+        dash math are color-agnostic and reused verbatim; the internal float twin
+        `internal/agg2d/dash_float.go` mirrors the 8-bit `stroke.go` methods plus
+        `initializeDashing` (rebuilds the pipeline Path→Curve→Dash→Stroke,
+        preserving stroke state read off the existing `convStroke`). The existing
+        `rendering_float.go` solid-fallback branch (`convDash.NumDashes() == 0`)
+        now fires for real once dashes are installed. Root wrappers in
+        `agg2d_float.go`; the stale `//nolint:unused` marker on the `convDash`
+        field was removed. Parity vs the 8-bit oracle in
+        `internal/agg2d/dash_float_test.go` (6 scene tests — single/multi-segment
+        patterns, phase offset, polyline, RemoveAllDashes/NoDashes solid fallback,
+        tol 2 — plus a `GetDashStart` round-trip) and a public-surface test
+        `TestPublicAgg2DFloatDashedStrokes` in `agg2d_float_test.go`.
   - [ ] **Gradient variants**: `FillGradientD1/D2`, `LineGradientD1/D2`,
         `FillGradientFlag`, `LineGradientFlag`, `FillRadialGradientPos`,
         `FillRadialGradientStops`, `LineRadialGradientPos`,

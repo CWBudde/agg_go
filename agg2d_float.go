@@ -114,6 +114,21 @@ func (a *Agg2DFloat) LineCap(lineCap LineCap) { a.impl.LineCap(lineCap) }
 // LineJoin sets the line join style.
 func (a *Agg2DFloat) LineJoin(join LineJoin) { a.impl.LineJoin(join) }
 
+// AddDash appends one dash-gap pair to the current dash pattern.
+func (a *Agg2DFloat) AddDash(dashLen, gapLen float64) { a.impl.AddDash(dashLen, gapLen) }
+
+// RemoveAllDashes clears every dash pattern segment.
+func (a *Agg2DFloat) RemoveAllDashes() { a.impl.RemoveAllDashes() }
+
+// DashStart sets the dash-phase offset.
+func (a *Agg2DFloat) DashStart(offset float64) { a.impl.DashStart(offset) }
+
+// GetDashStart returns the current dash-phase offset.
+func (a *Agg2DFloat) GetDashStart() float64 { return a.impl.GetDashStart() }
+
+// NoDashes disables dashed stroke rendering.
+func (a *Agg2DFloat) NoDashes() { a.impl.NoDashes() }
+
 // SetMasterAlpha sets the master alpha.
 func (a *Agg2DFloat) SetMasterAlpha(alpha float64) { a.impl.SetMasterAlpha(alpha) }
 

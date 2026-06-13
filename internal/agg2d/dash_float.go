@@ -65,7 +65,7 @@ func (a *Agg2DFloat) initializeDashing() {
 	width := a.lineWidth
 	lineCap := a.lineCap
 	lineJoin := a.lineJoin
-	var miterLimit, innerMiterLimit, approximationScale, shorten float64 = 4.0, 1.01, 1.0, 0.0
+	miterLimit, innerMiterLimit, approximationScale, shorten := 4.0, 1.01, 1.0, 0.0
 	if a.convStroke != nil {
 		miterLimit = a.convStroke.MiterLimit()
 		innerMiterLimit = a.convStroke.InnerMiterLimit()
