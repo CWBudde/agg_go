@@ -276,9 +276,9 @@ func newDemo() *demo {
 
 	// C++: m_operation(555.0, 5.0, 555.0+80.0, 55.0, !flip_y)
 	d.operation = rbox.NewDefaultRboxCtrl(555, 5, 635, 55, false)
-	_ = d.operation.AddItem("SUB")
 	_ = d.operation.AddItem("AND")
-	d.operation.SetCurItem(1) // default AND
+	_ = d.operation.AddItem("SUB")
+	d.operation.SetCurItem(0) // default AND
 
 	return d
 }
@@ -295,7 +295,7 @@ func (d *demo) Render(img *agg.Image) {
 	ras := newRasterizer()
 	sl := scanline.NewScanlineP8()
 
-	opAND := d.operation.CurItem() == 1
+	opAND := d.operation.CurItem() == 0
 
 	switch d.polygons.CurItem() {
 	case 0:
