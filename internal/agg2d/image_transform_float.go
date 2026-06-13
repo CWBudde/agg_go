@@ -1,5 +1,5 @@
 // Package agg2d: float (RGBA32) affine/perspective image transform. This is the
-// float twin of the TransformImage* path in image.go (PLAN.md §4.7). It mirrors
+// float twin of the TransformImage* path in image.go (PLAN.md Phase 4). It mirrors
 // the 8-bit renderImage/newImageFilterGenerator/renderImagePerspective pipeline,
 // swapping the RGBA8 span image filters for their RGBA32 counterparts and the
 // straight Image source for an ImageFloat source.

@@ -317,24 +317,21 @@ GSV stroke font. Text honors the active blend mode via `currentRenderer`. Parity
 vs the 8-bit path is covered by `internal/agg2d/text_float_test.go` (GSV stroke
 plus FreeType outline and raster caches, max channel diff ≤ 2).
 
-### Capability gaps vs the 8-bit variant (deferred)
+### Coverage vs the 8-bit variant (complete)
 
-The float twin is usable today for clear/fill/stroke, path rendering, image
-copy/blend, **affine/perspective image transforms**, **composite blend modes**,
-**text glyph rendering** (FreeType outline/raster + GSV), gradients
-(linear/radial), world transforms, and fill rules, and is covered by a
-cross-precision parity test (`internal/agg2d/parity_float_test.go`),
-image-transform parity tests (`internal/agg2d/image_transform_float_test.go`),
-composite blend-mode parity tests (`internal/agg2d/composite_float_test.go`),
-text parity tests (`internal/agg2d/text_float_test.go`), and
-visual hooks (`tests/visual/float_path_test.go`,
+The float twin now mirrors the full 8-bit public surface (PLAN.md Phase 4): clear/
+fill/stroke, path rendering (incl. relative + smooth curves), shapes (Arc/
+RoundedRect\*/Star/Polygon/Polyline/Curve/Parallelogram), dashed strokes,
+gradients (linear/radial + D1/D2 + N-stop multi-stop), **affine/perspective image
+transforms** + copy/blend/PPM export, viewport & coordinate mapping, transform
+stack & affine matrix, state accessors + C++-style alias setters, **composite
+blend modes**, **text glyph rendering** (FreeType outline/raster + GSV), DrawPath
+escape hatches, and **Gouraud shading** (via the float span generator
+`internal/span/span_gouraud_rgba128.go`). It is covered by a cross-precision
+parity test (`internal/agg2d/parity_float_test.go`), per-subsystem parity tests
+(image-transform, composite, text, gradient, viewport, transform-stack, state,
+Gouraud, …), and visual hooks (`tests/visual/float_path_test.go`,
 `tests/visual/float_image_transform_test.go`).
-The following 8-bit features are **not yet ported** to the float path and are
-intentionally deferred (tracked in PLAN.md §4.7):
-
-- **Remaining ~100 public-method delegations** — e.g. Viewport, Parallelogram,
-  Arc, RoundedRect, Polygon, Star, dashes, positioned/multi-stop gradient
-  variants, `Get*` accessors, `GouraudTriangle`, and the transform stack.
 
 ---
 

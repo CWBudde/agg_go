@@ -8,7 +8,7 @@ import (
 	agg "github.com/cwbudde/agg_go"
 )
 
-// Float Agg2D path visual/demo hook (PLAN.md §4.5).
+// Float Agg2D path visual/demo hook (PLAN.md Phase 4).
 //
 // This renders one composed scene through the public FLOAT path
 // (agg.ContextFloat / Agg2DFloat -> ImageFloat.ToRGBA) and the SAME scene

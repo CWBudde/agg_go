@@ -1,4 +1,4 @@
-// Package agg2d float dash-pattern support (L5, Phase 4.7). Float twin of the
+// Package agg2d float dash-pattern support (L5, Phase 4). Float twin of the
 // 8-bit dash methods in stroke.go: AddDash/RemoveAllDashes/DashStart/
 // GetDashStart/NoDashes. The conv_dash converter and all dash math are
 // color-agnostic and reused verbatim; only the stroke-pipeline rebuild lives

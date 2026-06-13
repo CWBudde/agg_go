@@ -173,484 +173,55 @@ x-height under `RasterFontCache`) is fixed and locked in.
 
 ---
 
-## Phase 4 - Explicit Float Agg2D Variant
+## Phase 4 - Explicit Float Agg2D Variant — DONE
 
-AGG 2.6's `Agg2D` has a compile-time `AGG2D_USE_FLOAT_FORMAT` switch in
-`../agg-2.6/agg-src/agg2d/agg2d.h` that swaps the internal `ColorType` from
-`agg::rgba8` to `agg::rgba32`. The Go port should support the same mode as an
-explicit, dedicated implementation path, not via build tags and not by mutating
-the semantics of the current 8-bit `Agg2D`.
+AGG 2.6's `Agg2D` has a compile-time `AGG2D_USE_FLOAT_FORMAT` switch
+(`../agg-2.6/agg-src/agg2d/agg2d.h`) that swaps the internal `ColorType` from
+`agg::rgba8` to `agg::rgba32`. The Go port now provides this as an explicit,
+additive float twin — `Agg2DFloat`/`ContextFloat`/`ImageFloat` — selected purely
+by construction (no build tags) and with the 8-bit `Agg2D` untouched. The twin
+mirrors the full 8-bit public surface and is verified for cross-precision parity.
 
-### 4.0 Current starting point (verified 2026-05-31)
-
-A codebase audit established what float infrastructure already exists vs. what
-must be built. The earlier draft of this phase assumed an "`rgba32`/`rgba128`-class
-pixel-format stack" was available to wire in; for RGBA it is **not**. Reality:
-
-**Already present (float-capable):**
-
-- `internal/color/rgba32.go` — `color.RGBA32[CS]` with `float32` channels and a
-  full method set (`Premultiply`, `Demultiply`, `Gradient`, `Scale`, `Add`,
-  `Opacity`, …). This is the Go equivalent of C++ `agg::rgba32` (the float color
-  selected by `AGG2D_USE_FLOAT_FORMAT`). `color.RGBA` (float64) also exists.
-- `internal/buffer/rendering_buffer.go` — `RenderingBuffer[T]` is generic;
-  `RenderingBufferF32` already exists and is used by the gray-float pixfmt.
-- `internal/renderer/base.go` — `RendererBase[PF PixelFormat[C], C any]` is
-  color-generic.
-- `internal/span/*` — `SpanGradient[ColorT any, …]`, `SpanAllocator[C]`, and
-  interpolators are color-generic.
-- `internal/rasterizer/*` and `internal/scanline/*` are color-agnostic (coverage
-  only) and need no changes.
-- **Precedent to mirror:** a complete float **gray** stack exists —
-  `internal/pixfmt/blender/gray32.go` (`Gray32Blender` over `[]float32`) and
-  `internal/pixfmt/pixfmt_gray32.go` (`PixFmtAlphaBlendGray32` over
-  `*buffer.RenderingBufferF32`). The float RGBA stack should be its structural twin.
-
-**Missing (must be built):**
-
-- A float **RGBA blender** (`[]float32`, order-aware). Only `rgba8`, `rgba16`,
-  float-`rgb32`, and float-`gray32` blenders exist today.
-- A float **RGBA pixfmt** (128-bit). Only `pixfmt_rgba8` (32-bit) and
-  `pixfmt_rgba16` (64-bit) exist; the RGBA `PixFmtAlphaBlendRGBA` base is
-  hardwired to `*buffer.RenderingBufferU8`.
-- The `Agg2DFloat` twin (internal + public) and float `Image`/`Context` wiring.
-
-**Naming decision (to avoid a real collision):** the existing 8-bit pixfmt is
-_already_ aliased `PixFmtRGBA32*` ("RGBA32" = 32-bit **pixel**, 8 bits/channel),
-and a code comment equates C++ `blender_rgba32` with the 8-bit blender. To avoid
-ambiguity the float stack is named by **total pixel width = 4 × float32 = 128
-bits**, matching AGG's own `pixfmt_rgba128`:
-
-- Blender: `RGBA128Blender[S]` interface + `BlenderRGBA128[S,O]` / `…Pre` / `…Plain`.
-- Pixfmt: `PixFmtAlphaBlendRGBA128[…]` + aliases `PixFmtRGBA128`, `PixFmtRGBA128Pre`, `PixFmtRGBA128Plain`.
-- The color these pair with is `color.RGBA32` (float). Document this pairing in
-  `docs/AGG_DELTAS.md`.
-- Public twin keeps the plan's working names: `Agg2DFloat`, `ContextFloat`, `ImageFloat`.
-
-### 4.1 Goal
-
-- [x] Add a dedicated float-backed `Agg2D` implementation path that mirrors the
-      existing 8-bit `Agg2D` API closely enough for side-by-side parity work.
-      (L4–L6: internal `Agg2DFloat` + public `Agg2DFloat`/`ContextFloat`.)
-- [x] Keep the current 8-bit `Agg2D` behavior and public API stable. (No 8-bit
-      files changed; the float path is purely additive.)
-- [x] Make the float path explicit in naming and construction so callers opt in
-      intentionally rather than changing global build configuration. (Selected by
-      constructing `Agg2DFloat`/`ContextFloat`/`ImageFloat`; no build tags.)
-
-### 4.2 Layered build order (TDD, bottom-up)
-
-Each layer is independently testable; build and green-test before moving up.
-C++ references live under `../agg-2.6/agg-src/`.
-
-- [x] **L1 — Float RGBA blender** `internal/pixfmt/blender/rgba128.go` (+ `_test.go`).
-      Structural twin of `gray32.go`, with RGBA8's order/interface shape. Provides
-      `RGBA128Blender[S]` and `BlenderRGBA128` (plain→premul), `BlenderRGBA128Pre`
-      (premul→premul), `BlenderRGBA128Plain` (plain→plain), plus single-pixel/hline
-      helpers (`BlendRGBA128Pixel`, `CopyRGBA128Pixel`, `BlendRGBA128Hline`,
-      `CopyRGBA128Hline`, `FillRGBA128Span`) and order/space aliases. Float
-      arithmetic: `lerp(p,q,a)=p+(q-p)*a`, `prelerp(p,q,a)=p+q-p*a`, cover ∈ [0,1].
-      13 TDD unit tests green; golangci-lint clean.
-      C++ ref: `agg_pixfmt_rgba.h` `blender_rgba{,_pre,_plain}` with float color.
-- [x] **L2 — Float RGBA pixfmt** `internal/pixfmt/pixfmt_rgba128.go` (+ `_test.go`).
-      Twin of `pixfmt_gray32.go` over `*buffer.RenderingBufferF32`; implements the
-      full `renderer.PixelFormat[color.RGBA32[S]]` surface (compile-time asserted
-      in the test) — pixel/hline/vline/bar/solid-span/color-span/clear — driven by
-      the L1 blender (order + premul semantics) with 8-bit `cover` normalised to
-      [0,1]. Length-based vline/bar semantics match `pixfmt_rgba8`/`RendererBase`
-      (not gray32's end-coord variant). Concrete aliases `PixFmtRGBA128{,Pre,Plain}` + sRGB variants and constructors. 7 TDD tests green; gofmt/lint clean; whole
-      pixfmt package passes. Composite (`Comp`/`CompPre`) variants deferred to L5.
-      C++ ref: `pixfmt_rgba` family parameterised on `rgba128`.
-- [x] **L3 — Float image + buffer wiring** `internal/agg2d/buffer_float.go` and a
-      float `Image`. Define the boundary contract (see 4.3) and conversions
-      to/from `color.RGBA32`, standard Go `image.RGBA`/`image.NRGBA64`, and the
-      8-bit AGG image.
-      DONE 2026-05-31 (TDD, 8 tests): added `ImageFloat` over `RenderingBufferF32`
-      storing **straight** RGBA float32 (4/pixel, [0,1]), the float twin of
-      `Image`. Constructors `NewImageFloat`/`NewImageFloatEmpty`; `Width/Height/
-Stride/IsAttached/Attach`; straight `GetPixel`/`SetPixel` over `color.RGBA32`;
-      in-place `Premultiply`/`Demultiply`. Boundary conversions honoring each
-      format's alpha convention: `ToNRGBA64`/`NewImageFloatFromNRGBA64` (straight
-      ↔ straight 16-bit), `ToRGBA`/`NewImageFloatFromRGBA` (straight ↔ Go's
-      premultiplied 8-bit, premul/demul at the boundary), `ToImage8`/
-      `NewImageFloatFromImage8` (straight ↔ 8-bit AGG image, ×255). Contract
-      documented in the file header. Verified: 8/8 tests, full agg2d package green,
-      gofmt/vet/golangci-lint clean on new files, `go build ./...` OK.
-- [x] **L4 — `Agg2DFloat` internal twin** `internal/agg2d/agg2d_float.go`. Mirror
-      the internal `Agg2D` struct field-for-field, swapping the pixfmt/renderer/
-      color/gradient-LUT/span types to the float ones. Keep a one-to-one method
-      mapping; share only behavior-identical helpers (transform, path, converters,
-      rasterizer, scanline are reused as-is).
-      DONE 2026-05-31 (TDD, 4 + 3 tests). Two parts:
-      (1) Float gradient span support in `internal/span/span_gradient.go`:
-      `GradientPrebuiltColorRGBA32` + `NewLinearGradientFromLUT32` /
-      `NewRadialGradientFromLUT32` (float twins of the RGBA8 LUT helpers) — 3 tests.
-      (2) `Agg2DFloat` struct mirroring `Agg2D` field-for-field with float types:
-      `rbuf *RenderingBufferF32`, `pixfmt *PixFmtRGBA128Plain`/`pixfmtPre`,
-      `renBase`/`renBasePre baseRendererAdapter[RGBA32[Linear]]`, gradient array
-      `[256]RGBA32`, `spanAllocator`/`*GradientLUT []RGBA32`, and the four float
-      gradient span generators. Per C++ `AGG2D_USE_FLOAT_FORMAT`: the public
-      `Color` stays 8-bit (srgba8); `ColorType`→rgba32 drives pixfmt/blender/
-      span/gradient. Constructor `newAgg2DFloat` mirrors `NewAgg2D`; render wiring
-      `Attach`/`AttachImageFloat`/`initializeRendering`/`ClipBox`/`ClearAll`/
-      `GetBounds`/`WorldToScreen`/`ScreenToWorld`/`FillColor`/`LineColor` +
-      `colorToRGBA32` boundary helper. Composite pixfmt fields deferred to L5
-      (no `PixFmtCompositeRGBA128` yet). Fields declared ahead of their L5/L6
-      wiring (gradient arrays, font, dash, curve-ctrl, transform stack) carry
-      documented `//nolint:unused`. Verified: 7/7 new tests, full agg2d + span +
-      pixfmt packages green, gofmt/vet clean, golangci-lint clean (only the
-      pre-existing `infertypeargs` style hints shared with the 8-bit `buffer.go`),
-      `go build ./...` OK.
-- [x] **L5 — Subsystem coverage** in the float twin: clear/fill/stroke, path
-      rendering, gradients (linear/radial), image copy/blend/transform, and text
-      state plumbing. Reuse color-generic span/renderer code; only the pixfmt and
-      color LUTs differ.
-      DONE 2026-05-31 (TDD, 5 + 2 end-to-end pixel-asserting tests). Five new files,
-      all rendering into a real float buffer and verified at pixel level:
-      • `rendering_float.go` — float render core: `renderFill`/`renderStroke`/
-      `renderFillWithLineColor`, `addStrokeToRasterizer`, `renderSolidFillWithColor`
-      (+ master-alpha), `renderSolidStroke`, `renderGradientFill`/`Stroke`,
-      `renderLinearGradientFill`/`renderRadialGradientFill`, `scanlineRender`,
-      `updateApproximationScales`/`updateRasterizerGamma`, `WorldToScreenScalar`,
-      `LineWidth/Cap/Join`, `Set/GetMasterAlpha`, `SetAntiAliasGamma`,
-      `TextAlignment`/`FlipText` (text state plumbing). The render helpers
-      (`RenderScanlinesAA`, `NewRendererScanlineAASolidWithColor`) are color-generic
-      and instantiate over `RGBA32`; only the LUT refresh (`copy` of `[256]RGBA32`)
-      and `colorToRGBA32`+master-alpha differ from 8-bit.
-      • `paths_float.go` — `ResetPath`/`MoveTo`/`LineTo`/(rel)/`HorLineTo`/`VerLineTo`/
-      `ArcTo`/`QuadricCurveTo`/`CubicCurveTo`/`AddEllipse`/`ClosePolygon`/`DrawPath`/
-      `DrawPathNoTransform` (bodies identical to paths.go — shared color-agnostic state).
-      • `shapes_float.go` — `Line`/`Triangle`/`Rectangle`/`Ellipse`/`DrawCircle`/`FillCircle`.
-      • `gradient_float.go` — float gradient builders (`buildProfileGradient32`/
-      `buildThreeColorGradient32`, interpolating in RGBA32 space) + `FillLinearGradient`/
-      `LineLinearGradient`/`FillRadialGradient`/`LineRadialGradient`/`FillRadialGradientMultiStop`.
-      • `image_float.go` — `CopyImageFloat`/`BlendImageFloat` via the base renderer's
-      CopyFrom/BlendFrom with a float source pixfmt over the `ImageFloat` buffer.
-      Carried forward (documented in files): composite (Comp/CompPre) blend modes;
-      full affine/perspective image transforms (`TransformImage*`); the remaining
-      shape helpers (Star, RoundedRect variants, Arc, smooth curve variants); and
-      actual glyph rasterization (only text _state_ is plumbed). Verified: 15/15
-      agg2d float tests, full agg2d package green, gofmt/vet clean, golangci-lint
-      clean on all float files, `go build ./...` OK.
-- [x] **L6 — Public surface** `agg2d_float.go` (root) + `context_float.go` +
-      float `Image` API: `NewAgg2DFloat`, `Attach`, `AttachImage`, and the mirror
-      of the 8-bit public methods that the float subsystems support.
-      DONE 2026-05-31 (TDD, 4 public end-to-end tests). Exported the internal
-      constructor (`newAgg2DFloat`→`NewAgg2DFloat`). Root `agg2d_float.go`:
-      • public `ImageFloat` (thin wrapper over `agg2d.ImageFloat`) — `NewImageFloat`,
-      `Width`/`Height`, `Get/SetPixelFloat` (float tuples, no internal-color leak in
-      signatures), `Premultiply`/`Demultiply`, and boundary `ToRGBA`/`ToNRGBA64`
-      returning standard Go image types.
-      • public `Agg2DFloat` (wraps `*agg2d.Agg2DFloat`) with `NewAgg2DFloat`, `Attach`
-      (`[]float32`), `AttachImage`, `GetImpl`, and the full mirror of the supported
-      8-bit methods: ClearAll/ClipBox/GetBounds, FillColor/LineColor, LineWidth/
-      Cap/Join, master-alpha + AA gamma, path (ResetPath/MoveTo/LineTo/rel/Hor/Ver/
-      ArcTo/Quadric/Cubic/AddEllipse/ClosePolygon/DrawPath/NoTransform), shapes
-      (Line/Triangle/Rectangle/Ellipse/Draw+FillCircle), gradients (Fill/Line ×
-      Linear/Radial + MultiStop), image transfer (CopyImage/BlendImage), transforms
-      (WorldToScreen/ScreenToWorld/WorldToScreenScalar), and text state (TextAlignment/
-      FlipText). Public `Color` stays 8-bit; `toInternalColor` bridges to `agg2d.Color`.
-      `context_float.go`: high-level `ContextFloat` (`NewContextFloat`/`ForImage`,
-      Clear/SetColor/SetLineWidth, DrawLine/Draw+FillRectangle/Draw+FillCircle,
-      GetImage/GetAgg2D), mirroring the 8-bit `Context`. No build tags — float path
-      is selected purely by constructing `Agg2DFloat`/`ContextFloat`/`ImageFloat`.
-      Verified: 4/4 public tests (solid fill, gradient+CopyImage, ToRGBA boundary,
-      ContextFloat) + full root and internal agg2d suites green, gofmt/vet clean,
-      golangci-lint clean on all float files, `go build ./...` OK.
-
-Do not introduce build tags for selection; the float path is chosen purely by
-constructing `Agg2DFloat`/`ContextFloat`/`ImageFloat`.
-
-### 4.3 Required scope and boundary contract
-
-- [x] Provide dedicated float image and context types with attach/create APIs,
-      not just a hidden internal renderer. (L6 — public `ImageFloat`, `Agg2DFloat`,
-      `ContextFloat` with `NewImageFloat`/`NewAgg2DFloat`/`NewContextFloat`/Attach.)
-- [x] Cover at least these Agg2D subsystems in the float variant:
-      clear/fill/stroke, path rendering, image copy/blend/transform, gradients,
-      and text state plumbing. (L5 — full affine/perspective image transform
-      carried forward; copy/blend covered.)
-- [x] Define and document the boundary conversions between float Agg2D images
-      and standard Go image types or 8-bit AGG images. (L3 — `buffer_float.go`.)
-- [x] Add an explicit contract for premultiply/demultiply behavior in the float
-      variant. Working contract (to confirm during L2/L3): internal storage and
-      the `Plain`/`Pre` blender split mirror the 8-bit semantics exactly; exported
-      helper APIs expose **straight (non-premultiplied)** float data at the
-      boundary, with conversion to/from premultiplied happening inside the pixfmt
-      blenders, identical to the 8-bit path.
-
-### 4.4 Non-goals
-
-- [x] Do not replace the existing 8-bit `Agg2D`. (Untouched; float path is additive.)
-- [x] Do not hide both precisions behind one opaque constructor unless parity
-      and debugging remain straightforward. (Separate `NewAgg2D` / `NewAgg2DFloat`.)
-- [x] Do not treat this as a generic whole-library precision rewrite. This task
-      is specifically about an explicit Agg2D-level float twin first. (Scope held
-      to the Agg2D twin + the float pixfmt/blender it needs.)
-- [x] Do not add a 16-bit Agg2D variant in the same change unless it falls out
-      naturally from shared lower-level abstractions after the float path is in
-      place and tested. (No 16-bit Agg2D added.)
-
-### 4.5 Verification and exit criteria
-
-- [x] Add side-by-side tests that render the same scene through 8-bit Agg2D and
-      float Agg2D, then compare the quantized float output against expected
-      tolerance envelopes.
-      DONE 2026-05-31 — `internal/agg2d/parity_float_test.go`: a `parityTarget`
-      interface (the method subset shared verbatim by `*Agg2D` and `*Agg2DFloat`)
-      drives one scene through both pipelines; solid fill is pixel-identical
-      (tol 1), linear gradient within tol 3, stroke within tol 2.
-- [x] Add source-linked tests for premultiply/demultiply in the float path.
-      DONE 2026-05-31 — `internal/agg2d/premultiply_float_test.go` ties
-      `color.RGBA32` and `ImageFloat` premul/demul to `agg_color_rgba.h`
-      `rgba32T::premultiply()`/`demultiply()` (~L1243), including the `a < 1`
-      opaque-no-op guard and `a <= 0` zeroing. The **transformed-image** half of
-      this item is now covered too: `TransformImage*` is in the float path as of
-      2026-06-01 (see §4.7 and `docs/AGG_DELTAS.md` "Float image transforms"),
-      with parity tests over affine/parallelogram/perspective transforms.
-- [x] Add at least one visual regression/demo hook that can run a demo via the
-      float Agg2D path without disturbing the existing 8-bit baseline.
-      DONE 2026-05-31 — `tests/visual/float_path_test.go` renders one opaque
-      scene through the public float path (`ContextFloat` → `ImageFloat.ToRGBA`)
-      and the same scene through 8-bit `Context` as the oracle, asserting parity
-      within documented tolerances (solid ~1, gradient/AA ~4). No new reference
-      PNGs; the float render is saved to `tests/visual/output/float_path.png`.
-- [x] Document the intentional API and behavioral differences between the 8-bit
-      and float variants in `docs/AGG_DELTAS.md` or a dedicated companion note.
-      DONE 2026-05-31 — `docs/AGG_DELTAS.md` "Float Agg2D Variant" section:
-      explicit (no-build-tag) selection, `RGBA128`/`color.RGBA32` naming,
-      8-bit public `Color`, the premul/demul boundary contract, and the deferred
-      capability gaps.
-
-### 4.6 Post-completion hardening (2026-05-31)
-
-Follow-up after the L1–L6 review:
-
-- [x] **Parity bug fixed**: float `Attach` now calls `updateRasterizerGamma()`
-      (matching 8-bit `buffer.go`). Without it, a master alpha set before a
-      re-`Attach` leaked into later rendering as a stale coverage scale (caught by
-      `TestAgg2DFloatAttachResetsRasterizerGamma`: interior alpha was 0.498 → now 1.0).
-- [x] **Cross-precision parity test** added (see §4.5).
-- [x] **Breadth increment** (trivial color-agnostic delegations): world transforms
-      (`Rotate`/`Scale`/`UniformScale`/`Skew`/`Translate`/`ResetTransformations`),
-      fill mode (`FillEvenOdd`/`GetFillEvenOdd`, `NoFill`/`NoLine`) on both the
-      internal twin (`transform_float.go`) and the public surface, TDD'd incl. an
-      even-odd donut-hole test.
-
-### 4.7 Deferred to a future change (not blocking)
-
-The L1–L6 float twin is complete, tested, and usable today (clear/fill/stroke,
-paths, shapes, image copy/blend, linear/radial gradients, world transforms, fill
-rules; cross-precision parity + visual hook green). The following are genuinely
-new work, deferred with rationale and recorded in `docs/AGG_DELTAS.md`
-("Float Agg2D Variant" → capability gaps). None block the float twin from being
-usable.
-
-- [x] Full affine/perspective **image transform** (`TransformImage*`).
-      DONE 2026-06-01 — float twins of the NN/bilinear/2×2/general/affine-resample
-      RGBA filters in `internal/span/span_image_filter_rgba32.go` (reusing the
-      color-agnostic filter/resample bases), a clone-clamped float image source
-      `internal/agg2d/adapters_float.go`, and the full
-      `renderImage`/`newImageFilterGenerator`/`renderImagePerspective` mirror plus
-      `TransformImage*`/`…Parallelogram*`/`…Path*`/`…Quad*` surface in
-      `internal/agg2d/image_transform_float.go` (public wrappers in
-      `agg2d_float.go`). One documented deviation: the float bilinear omits AGG's
-      integer rounding bias (which would shift float channels by +0.5); see
-      `docs/AGG_DELTAS.md` "Float image transforms". Parity vs the 8-bit path
-      verified in `internal/agg2d/image_transform_float_test.go` (affine tol 3,
-      parallelogram/quad tol 4) + a visual hook
-      `tests/visual/float_image_transform_test.go`.
-- [x] **Composite blend modes**. DONE 2026-06-01 — float composite blenders
-      `CompositeBlenderRGBA128`/`...Pre` in
-      `internal/pixfmt/blender/rgba128_composite.go` (reusing the 8-bit
-      `CompositeBlender.blendOperation` so the per-operator algebra is shared
-      verbatim), the float composite pixfmt `PixFmtCompositeRGBA128` in
-      `internal/pixfmt/pixfmt_composite_rgba128.go`, and the `renBaseComp`/
-      `renBaseCompPre` wiring in `Agg2DFloat` with `SetBlendMode`/
-      `updateBlendMode` (`internal/agg2d/blend_modes_float.go`) plus
-      `currentRenderer`/`currentImageRenderer` switching on `blendMode`. Public
-      `SetBlendMode`/`GetBlendMode`/image-blend accessors in `agg2d_float.go`.
-      Parity vs the 8-bit path for ten operators (Multiply/Screen/Darken/
-      Lighten/Difference/Exclusion/Overlay/HardLight/Plus/SrcOver) verified in
-      `internal/agg2d/composite_float_test.go` (tol 2) plus a public-API test in
-      `agg2d_float_test.go`; see `docs/AGG_DELTAS.md` "Composite blend modes".
-- [x] **Text glyph rendering**. DONE 2026-06-01 — float twin of the 8-bit text
-      pipeline in `internal/agg2d/text_float.go` (`Font`/`FontGSV`/`Text`/
-      `TextWidth`/`MeasureText`/`GetTextBounds`/metrics + float `renderScanlines`/
-      `renderGlyphScanlines`/`renderShapedRasterMask`/`textGSV`). The font engine,
-      glyph cache, GSV font, and layout/metrics/bounds math are color-agnostic and
-      reused verbatim; the raster-bitmap blend helper `blendRasterGlyphBitmap` was
-      made generic over the color type (`text.go`). Solid glyph fills flow through
-      `color.RGBA32[color.Linear]` and the float base renderer, honoring the active
-      blend mode. Public wrappers (`Font`/`FontDefault`/`FontGSV`/`SetResolution`/
-      `TextHints`/`TextForceAutohint`/`GetTextHints`/`GetAscender`/`GetDescender`/
-      `MeasureText`/`GetTextHeight`/`Text`/`TextDefault`/`TextWidth`/`GetTextBounds`)
-      in root `agg2d_float.go`. Parity vs the 8-bit path (GSV stroke + FreeType
-      outline/raster caches, max channel diff ≤ 2) in
-      `internal/agg2d/text_float_test.go` plus a public-API test in
-      `agg2d_float_test.go`; see `docs/AGG_DELTAS.md` "Text glyph rendering".
-- [ ] **Remaining ~90 public-method delegations.** The float twin still lacks the
-      bulk of the 8-bit surface. An audit (root `Agg2D` vs `Agg2DFloat`) shows ~90
-      missing public methods; most also need their underlying internal
-      `Agg2DFloat` builder. Path-, transform-, and state-building is color-agnostic
-      and largely reusable from the 8-bit `Agg2D`, so the work is mostly mechanical —
-      the one exception (Gouraud) needs a genuinely new float span generator. Each
-      group below is one reviewable slice (internal builder + root wrapper + a small
-      parity test vs the 8-bit oracle):
-  - [x] **Shapes** — DONE 2026-06-01. `Arc`, `ArcRel`, `RoundedRect`,
-        `RoundedRectXY`, `RoundedRectVariableRadii`, `Polygon`, `Polyline`, `Star`,
-        `Curve`, `Curve4`, `Parallelogram`, `ParallelogramFromRect`. Pure path
-        construction → existing float `DrawPath`; the shape builders
-        (`internal/shapes/rounded_rect.go`, arc/curve converters) are color-agnostic
-        and reused as-is. Implemented in `internal/agg2d/shapes_float.go`
-        (RoundedRect\*/Arc/Star/Curve/Curve4/Polygon/Polyline),
-        `internal/agg2d/paths_float.go` (`ArcRel`), and
-        `internal/agg2d/transform_float.go` (`Parallelogram`/`ParallelogramFromRect`),
-        with root wrappers in `agg2d_float.go`. Parity vs the 8-bit oracle covered by
-        `internal/agg2d/shapes_float_test.go` (12 shape tests, tol ≤ 2) and the
-        public-surface `TestPublicAgg2DFloatShapes` in `agg2d_float_test.go`.
-        (Convenience `Curve`/`Curve4` are the shapes-group methods and live here, not
-        in the curve-command group below.)
-  - [x] **Curve & relative path commands** — DONE 2026-06-01. `CubicCurveToSmooth`,
-        `CubicCurveRel`, `CubicCurveRelSmooth`, `QuadricCurveToSmooth`,
-        `QuadricCurveRel`, `QuadricCurveRelSmooth`, `HorLineRel`, `VerLineRel`.
-        Implemented in `internal/agg2d/paths_float.go` with root wrappers in
-        `agg2d_float.go`; the smooth-curve reflection uses the now-wired
-        `lastCtrlX/Y`/`hasLastCtrl` fields (stale `//nolint:unused` markers removed).
-        Parity vs the 8-bit oracle in `internal/agg2d/curves_float_test.go` (7 tests,
-        tol ≤ 2) covering rel/smooth quadric & cubic curves and Hor/VerLineRel.
-        (Convenience `Curve`/`Curve4` are done — see the Shapes group above.)
-  - [x] **Dashed strokes** — DONE 2026-06-13. `AddDash`, `RemoveAllDashes`,
-        `DashStart`, `GetDashStart`, `NoDashes`. The `conv_dash` converter and all
-        dash math are color-agnostic and reused verbatim; the internal float twin
-        `internal/agg2d/dash_float.go` mirrors the 8-bit `stroke.go` methods plus
-        `initializeDashing` (rebuilds the pipeline Path→Curve→Dash→Stroke,
-        preserving stroke state read off the existing `convStroke`). The existing
-        `rendering_float.go` solid-fallback branch (`convDash.NumDashes() == 0`)
-        now fires for real once dashes are installed. Root wrappers in
-        `agg2d_float.go`; the stale `//nolint:unused` marker on the `convDash`
-        field was removed. Parity vs the 8-bit oracle in
-        `internal/agg2d/dash_float_test.go` (6 scene tests — single/multi-segment
-        patterns, phase offset, polyline, RemoveAllDashes/NoDashes solid fallback,
-        tol 2 — plus a `GetDashStart` round-trip) and a public-surface test
-        `TestPublicAgg2DFloatDashedStrokes` in `agg2d_float_test.go`.
-  - [x] **Gradient variants** — DONE 2026-06-13. `FillGradientD1/D2`,
-        `LineGradientD1/D2`, `FillGradientFlag`, `LineGradientFlag`,
-        `FillRadialGradientPos`, `FillRadialGradientStops`, `LineRadialGradientPos`,
-        `LineRadialGradientMultiStop`. The gradient LUT/span pipeline and the
-        world-radial setup already existed; added the float N-stop builder
-        `buildNStopGradient32` (float twin of `buildNStopGradient`, interpolating
-        stops in RGBA32 space) plus the setters/accessors in
-        `internal/agg2d/gradient_float.go`. Root wrappers in `agg2d_float.go`
-        (the flag accessors return `int` to match the 8-bit public surface;
-        `FillRadialGradientStops` converts root `[]GradientStop` → internal
-        `[]ColorStop`). Parity vs the 8-bit oracle in
-        `internal/agg2d/gradient_variants_float_test.go` (5 scene tests —
-        N-stop radial, fill/line multi-stop, fill/line reposition, tol 3 — plus a
-        D1/D2/flag accessor-parity test) and a public-surface test
-        `TestPublicAgg2DFloatGradientVariants` in `agg2d_float_test.go`.
-  - [x] **Viewport & coordinate mapping** — DONE 2026-06-13. `Viewport`,
-        `GetViewportTransform`, `GetScaling`, `WorldToScreenDistance`,
-        `ScreenToWorldDistance`, `AlignPoint`, `InBox`, `AffineImageResamplePolicy`/
-        `GetAffineImageResamplePolicy` on the internal float twin in
-        `internal/agg2d/viewport_float.go` (bodies mirror transform.go/utilities.go/
-        rendering.go; the package-level `viewportTransform` helper and the
-        `baseRendererAdapter.rendererBase().InBox` path are reused verbatim — color-
-        agnostic). Root wrappers in `agg2d_float.go` add `ScreenToWorldScalar`,
-        `Viewport`, `ViewportDefault` (XMidYMid), the distance/align/inbox methods,
-        and the resample-policy setter/getter (root `ViewportOption`/
-        `AffineImageResamplePolicy` aliases). `WorldToScreen`/`ScreenToWorld`/
-        `WorldToScreenScalar`/`ScreenToWorldScalar` already existed on the float
-        twin. Parity vs the 8-bit oracle in
-        `internal/agg2d/viewport_float_test.go` (a viewport render-parity test, tol
-        2, plus a scalar/bool accessor-parity test for distance/align/inbox/resample
-        across an identical viewport setup) and a public-surface test
-        `TestPublicAgg2DFloatViewportCoordinateMapping` in `agg2d_float_test.go`.
-  - [x] **Transform stack & affine matrix** — DONE 2026-06-13. `GetTransformations`,
-        `SetTransformations`, `AffineFromMatrix`, `PushTransform`, `PopTransform`,
-        `PushTransformations`/`PopTransformations` (aliases), `GetTransformStackDepth`
-        on the internal float twin in `internal/agg2d/transform_stack_float.go`
-        (bodies mirror transform.go; reuse the shared `TransformStack` type and the
-        existing `Affine(*transform.TransAffine)` from transform_float.go — color-
-        agnostic). The stale `//nolint:unused` marker on the `transformStack` field
-        was removed. Root wrappers in `agg2d_float.go`: `GetTransformations`,
-        `SetTransformations` (via `to/fromInternalTransformations`), `Affine`
-        (public root form takes `*Transformations` → `impl.AffineFromMatrix`, matching
-        the 8-bit surface), `PushTransform`, `PopTransform`. Parity vs the 8-bit
-        oracle in `internal/agg2d/transform_stack_float_test.go` (a balanced
-        push/pop/affine-sequence matrix+depth parity test, a Get/Set round-trip, and
-        an empty-stack PopTransform→false test) and a public-surface test
-        `TestPublicAgg2DFloatTransformStack` in `agg2d_float_test.go`.
-  - [x] **State accessors & RGBA/alias setters** — DONE 2026-06-13. Internal float
-        twin in `internal/agg2d/state_accessors_float.go`: `Get*` readbacks
-        (`GetFillColor`, `GetLineColor`, `GetLineCap`, `GetLineJoin`, `GetMiterLimit`,
-        `GetClipBox`, `GetImageFilter`, `GetImageResample`, `GetAntiAliasGamma`),
-        `*RGBA` setters (`FillColorRGBA`, `LineColorRGBA`, `ClearAllRGBA`,
-        `ClearClipBoxRGBA`), `MiterLimit`/`ImageFilter`/`ImageResample`/
-        `SetImageFilterRadius` setters, fill-rule queries (`IsEvenOddFillRule`,
-        `IsNonZeroFillRule`, `FillRuleDescription`), `ResetStyle`, `ClearClipBox`.
-        Bodies mirror colors.go/fill_rules.go/rendering.go/stroke.go/utilities.go;
-        the image-filter LUT switch is byte-identical (both twins share `*aggimage`),
-        `ClearClipBoxRGBA` builds the float color via `colorToRGBA32` + renderer
-        `CopyBar`. Root wrappers in `agg2d_float.go`: all the above plus
-        `GetClipBoxRect` (composed from `GetClipBox`) and the C++-style accessor
-        aliases that the 8-bit public surface exposes — `AntiAliasGamma`,
-        `MasterAlpha`, `BlendMode`, `ImageBlendMode`, `ImageBlendColor`,
-        `ImageBlendColorRGBA` (the `Set*`/`Get*` forms already lived on the float
-        twin; these add the C++ alias spellings). Parity vs the 8-bit oracle in
-        `internal/agg2d/state_accessors_float_test.go` (full style-snapshot readback,
-        float value round-trips, `ResetStyle` defaults, `ClearClipBoxRGBA` render
-        parity) and public-surface tests `TestPublicAgg2DFloatStateAccessors`,
-        `TestPublicAgg2DFloatClearClipBoxRGBA`, `TestPublicAgg2DFloatAccessorAliases`
-        in `agg2d_float_test.go`. (Deferred from this item: `GetClipBoxRect` exists at
-        the root only, as on 8-bit; `ImageFilter`/`ImageResample` listed twice in the
-        original spec — implemented once as setters.)
-  - [x] **Image convenience + export** — DONE 2026-06-13. `CopyImageSimple`,
-        `BlendImageSimple`, `BlendImageDefaultAlpha`, `BlendImageSimpleDefaultAlpha`,
-        `SaveImagePPM`. Internal float twin in
-        `internal/agg2d/image_convenience_float.go`: the float-dst `*Simple` forms
-        mirror the 8-bit `image.go` semantics (WorldToScreen + integer truncation of
-        the destination) and delegate to the existing whole-image transfer
-        primitives `CopyImageFloat`/`BlendImageFloat`; `BlendImageDefaultAlpha`/
-        `BlendImageSimpleDefaultAlpha` add the upstream default-alpha-255 spellings;
-        `SaveImagePPM` is the float twin of the 8-bit `agg.go` exporter, writing the
-        attached `rbuf`'s straight RGB channels through `roundToU8` (alpha dropped, as
-        PPM has none). Root wrappers in `agg2d_float.go`. Parity/behavior vs the 8-bit
-        oracle in `internal/agg2d/image_convenience_float_test.go` (copy/blend land at
-        the rounded dst, default-alpha blends, nil-source errors, and a PPM
-        header+body round-trip incl. the no-buffer error path) and public-surface
-        tests `TestPublicAgg2DFloatImageConvenience`, `TestPublicAgg2DFloatSaveImagePPM`
-        in `agg2d_float_test.go`. (Deviation from the 8-bit region-blend surface: the
-        float twin has no region-cropped `BlendImage`/`CopyImage` — its transfer
-        primitives are whole-image — so `BlendImageDefaultAlpha` is the whole-image
-        integer-dst form rather than the 8-bit region form.)
-  - [x] **DrawPath defaults & escape hatches** — DONE 2026-06-14.
-        `DrawPathDefault`, `DrawPathNoTransformDefault`, `GetInternalRasterizer`,
-        `RenderRasterizerWithColor`, `ScanlineRender`, `RenderScanlinesAAWithSpanGen`.
-        The rasterizer/scanline/span-allocator are color-agnostic and shared
-        verbatim with the 8-bit twin; only the renderer/span-generator color type
-        differs (`RGBA32`). Internal float twin: `RenderRasterizerWithColor` already
-        existed in `rendering_float.go`; added `GetInternalRasterizer`/
-        `ScanlineRender`/`RenderScanlinesAAWithSpanGen` in
-        `internal/agg2d/drawpath_escape_float.go` (bodies mirror agg2d.go/
-        rendering.go, reusing `a.scanline`/`a.spanAllocator`/`currentRenderer` and
-        `renscan.RenderScanlinesAA`). `DrawPath`/`DrawPathNoTransform` already
-        existed. Root wrappers in `agg2d_float.go`: the two `*Default` convenience
-        forms delegate to `impl.DrawPath(FillAndStroke)` /
-        `impl.DrawPathNoTransform(FillAndStroke)` (matching the 8-bit root), plus the
-        four rasterizer escape hatches (root now imports `internal/rasterizer` +
-        `renscan`). Behavior vs the 8-bit semantics in
-        `internal/agg2d/drawpath_escape_float_test.go` (raw-rasterizer triangle
-        painted via RenderRasterizerWithColor / a caller solid renderer via
-        ScanlineRender / a custom constant-color span generator via
-        RenderScanlinesAAWithSpanGen, plus the live-rasterizer accessor identity) and
-        public-surface tests `TestPublicAgg2DFloatDrawPathDefaults`,
-        `TestPublicAgg2DFloatRasterizerEscapeHatches` in `agg2d_float_test.go`
-        (DrawPathNoTransformDefault verified to ignore an off-buffer world translate).
-  - [ ] **Gouraud shading** (`GouraudTriangle`): the only non-mechanical item —
-        requires a float Gouraud span generator (`span_gouraud_rgba128`, the float
-        twin of the 8-bit `span_gouraud_rgba`) before the public method can delegate,
-        analogous to the gradient/image-filter float twins already built in L5.
+- **Float pixel stack (named by 128-bit pixel width to avoid the 8-bit
+  `PixFmtRGBA32` = 32-bit-pixel alias collision; pairs with `color.RGBA32`
+  float):** blender `internal/pixfmt/blender/rgba128.go`
+  (`BlenderRGBA128{,Pre,Plain}`, `lerp`/`prelerp`, cover ∈ [0,1]) and pixfmt
+  `internal/pixfmt/pixfmt_rgba128.go` (`PixFmtRGBA128{,Pre,Plain}` over
+  `*buffer.RenderingBufferF32`), structural twins of the float `gray32` stack.
+  Composite variants in `blender/rgba128_composite.go` +
+  `pixfmt_composite_rgba128.go` reuse the 8-bit `CompositeBlender.blendOperation`.
+- **Internal + public twin:** `internal/agg2d/agg2d_float.go` mirrors `Agg2D`
+  field-for-field with float types; root `agg2d_float.go` + `context_float.go`
+  expose the public API. The public `Color` stays 8-bit (srgba8); `colorToRGBA32`
+  bridges at the boundary. Rasterizer, scanline, transform, path, curve/stroke/
+  dash converters, font/glyph cache, gradient/image-filter/Gouraud span bases are
+  color-agnostic and reused as-is — only the pixfmt/blender/color LUTs differ.
+- **Boundary contract** (`internal/agg2d/buffer_float.go`): `ImageFloat` stores
+  **straight** RGBA float32 ([0,1], 4/pixel); premul/demul happens inside the
+  pixfmt blenders, identical to 8-bit. Conversions honor each format's alpha
+  convention: `ToNRGBA64`/`ToRGBA`/`ToImage8` (+ inverses).
+- **Full surface coverage:** clear/fill/stroke, paths (incl. relative + smooth
+  curves), shapes (Arc/RoundedRect\*/Star/Polygon/Polyline/Curve/Parallelogram),
+  dashed strokes, gradients (linear/radial + D1/D2 + N-stop multi-stop),
+  affine/perspective image transforms + copy/blend/PPM export, viewport &
+  coordinate mapping, transform stack & affine matrix, state accessors + C++-style
+  alias setters, composite blend modes, text glyph rendering, DrawPath escape
+  hatches (`GetInternalRasterizer`/`RenderRasterizerWithColor`/`ScanlineRender`/
+  `RenderScanlinesAAWithSpanGen`), and Gouraud shading. The one genuinely new
+  piece was the float Gouraud span generator
+  `internal/span/span_gouraud_rgba128.go` (color-agnostic `SpanGouraud[C]` base
+  reused; per-edge calc + horizontal Generate reimplemented in straight float
+  space). Each subsystem has its own `*_float.go` builder + root wrapper.
+- **Verification:** cross-precision parity tests render the same scene through
+  both pipelines and compare quantized output (solid tol 1, gradient/Gouraud/
+  transform tol ≤ 3, AA ≤ 4); source-linked premul/demul tests; a visual hook
+  (`tests/visual/float_path_test.go`, `float_image_transform_test.go`). All float
+  files are gofmt/vet/golangci-lint clean.
+- **Documented deviations** (`docs/AGG_DELTAS.md` "Float Agg2D Variant"):
+  no-build-tag selection, `RGBA128`/`color.RGBA32` naming, 8-bit public `Color`,
+  the straight-data boundary contract, the float bilinear's omission of AGG's
+  +0.5 integer rounding bias, and the whole-image (not region-cropped)
+  `BlendImageDefaultAlpha`.
 
 ---
 

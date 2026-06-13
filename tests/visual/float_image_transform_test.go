@@ -7,7 +7,7 @@ import (
 	agg "github.com/cwbudde/agg_go"
 )
 
-// Float Agg2D image-transform visual/demo hook (PLAN.md §4.7).
+// Float Agg2D image-transform visual/demo hook (PLAN.md Phase 4).
 //
 // Renders an affine-scaled image transform through the public FLOAT path
 // (Agg2DFloat.TransformImageSimple -> ImageFloat.ToRGBA) and the SAME transform

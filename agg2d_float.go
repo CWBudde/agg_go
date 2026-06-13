@@ -795,7 +795,7 @@ func (a *Agg2DFloat) FillEvenOdd(evenOddFlag bool) { a.impl.FillEvenOdd(evenOddF
 // GetFillEvenOdd reports whether the even-odd fill rule is active.
 func (a *Agg2DFloat) GetFillEvenOdd() bool { return a.impl.GetFillEvenOdd() }
 
-// --- State accessors, RGBA setters, and C++-style aliases (§4.7) ---
+// --- State accessors, RGBA setters, and C++-style aliases (Phase 4) ---
 //
 // These mirror the 8-bit Agg2D public surface (agg.go / agg2d.go). Color
 // readbacks convert the internal [4]uint8 to the public Color struct; enum

@@ -10,7 +10,7 @@ import (
 	"github.com/cwbudde/agg_go/internal/color"
 )
 
-// Boundary contract (PLAN.md §4.3)
+// Boundary contract (PLAN.md Phase 4)
 //
 // ImageFloat stores STRAIGHT (non-premultiplied) RGBA float32 data with channels
 // nominally in [0,1], laid out as 4 contiguous float32 per pixel in channel order

@@ -20,11 +20,11 @@ import (
 // The `a < 1` guard is significant: a fully opaque pixel (a == 1) is left
 // untouched by both operations, matching C++ exactly.
 //
-// NOTE: the transformed-image half of the PLAN.md §4.5 verification item
-// (TransformImage* premul/demul behavior) stays deferred — affine/perspective
-// image transforms are not yet ported to the float path (see image_float.go and
-// docs/AGG_DELTAS.md "Float Agg2D Variant"). This file covers only the
-// straight↔premultiplied boundary contract.
+// NOTE: this file covers the straight↔premultiplied boundary contract. The
+// transformed-image premul/demul behavior (TransformImage*) is exercised
+// separately in image_transform_float_test.go now that affine/perspective image
+// transforms are ported to the float path (see docs/AGG_DELTAS.md "Float Agg2D
+// Variant").
 
 func TestRGBA32PremultiplyDemultiplySourceLinked(t *testing.T) {
 	const tol = 1e-6

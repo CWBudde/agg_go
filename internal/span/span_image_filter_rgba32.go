@@ -1,7 +1,7 @@
 // Package span: float (RGBA32, 4 x float32) twins of the RGBA image-filter span
 // generators. These mirror span_image_filter_rgba.go's 8-bit generators but
 // operate on straight float32 source channels and emit color.RGBA32 spans, as
-// required by the float Agg2D image-transform path (PLAN.md §4.7).
+// required by the float Agg2D image-transform path (PLAN.md Phase 4).
 //
 // They are faithful ports of AGG's span_image_filter_rgba.h templates
 // instantiated for agg::rgba32 (value_type=float, calc_type/long_type=double,
