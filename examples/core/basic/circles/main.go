@@ -292,11 +292,11 @@ func (d *demo) prepareState() {
 	}
 	if d.selCtrl == nil {
 		d.selCtrl = sliderctrl.NewSliderCtrl(5, 20, startWidth-5, 27, false)
-		d.selCtrl.SetLabel("Selectivity=%.2f")
+		d.selCtrl.SetLabel("Selectivity")
 	}
 	if d.sizeCtrl == nil {
 		d.sizeCtrl = sliderctrl.NewSliderCtrl(5, 35, startWidth-5, 42, false)
-		d.sizeCtrl.SetLabel("Size=%.2f")
+		d.sizeCtrl.SetLabel("Size")
 	}
 
 	if !d.initialized {
