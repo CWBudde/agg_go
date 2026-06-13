@@ -694,3 +694,66 @@ func TestPublicAgg2DFloatViewportCoordinateMapping(t *testing.T) {
 			afb.GetAffineImageResamplePolicy(), a8b.GetAffineImageResamplePolicy())
 	}
 }
+
+// TestPublicAgg2DFloatTransformStack exercises the public transform-stack +
+// affine-matrix surface of Agg2DFloat against the 8-bit Agg2D oracle. The math
+// is color-agnostic, so the resulting matrix and stack depth must match exactly.
+func TestPublicAgg2DFloatTransformStack(t *testing.T) {
+	type stackScene interface {
+		ResetTransformations()
+		Translate(x, y float64)
+		Scale(sx, sy float64)
+		Rotate(angle float64)
+		Affine(tr *Transformations)
+		GetTransformations() *Transformations
+		SetTransformations(tr *Transformations)
+		PushTransform()
+		PopTransform() bool
+	}
+
+	run := func(s stackScene) [6]float64 {
+		s.ResetTransformations()
+		s.Translate(10, 20)
+		s.PushTransform()
+		s.Scale(2, 3)
+		s.Rotate(0.5)
+		s.Affine(&Transformations{AffineMatrix: [6]float64{1, 0.2, 0.1, 1, 5, 5}})
+		s.PopTransform()
+		s.Affine(&Transformations{AffineMatrix: [6]float64{1, 0, 0, 1, 3, 4}})
+		return s.GetTransformations().AffineMatrix
+	}
+
+	a8 := NewAgg2D()
+	af := NewAgg2DFloat()
+	m8 := run(a8)
+	mF := run(af)
+
+	for i := range m8 {
+		if math.Abs(m8[i]-mF[i]) > 1e-9 {
+			t.Fatalf("public transform-stack matrix mismatch at [%d]: float=%v 8bit=%v", i, mF, m8)
+		}
+	}
+
+	// Get/Set round-trip through the public surface.
+	af.ResetTransformations()
+	af.Translate(7, 8)
+	af.Scale(1.5, 2.5)
+	saved := af.GetTransformations()
+	af.Rotate(1.0)
+	af.SetTransformations(saved)
+	got := af.GetTransformations()
+	for i := range saved.AffineMatrix {
+		if math.Abs(saved.AffineMatrix[i]-got.AffineMatrix[i]) > 1e-9 {
+			t.Fatalf("public Get/SetTransformations round-trip mismatch at [%d]: got %v want %v", i, got.AffineMatrix, saved.AffineMatrix)
+		}
+	}
+
+	// PopTransform on an empty stack reports false through the public surface.
+	if af.PopTransform() {
+		t.Error("public PopTransform on empty stack should return false")
+	}
+	af.PushTransform()
+	if !af.PopTransform() {
+		t.Error("public PopTransform after PushTransform should return true")
+	}
+}

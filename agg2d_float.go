@@ -611,6 +611,27 @@ func (a *Agg2DFloat) ScreenToWorldScalar(scalar float64) float64 {
 	return a.impl.ScreenToWorldScalar(scalar)
 }
 
+// GetTransformations returns the current affine transform as a public matrix wrapper.
+func (a *Agg2DFloat) GetTransformations() *Transformations {
+	return fromInternalTransformations(a.impl.GetTransformations())
+}
+
+// SetTransformations replaces the current affine transform.
+func (a *Agg2DFloat) SetTransformations(tr *Transformations) {
+	a.impl.SetTransformations(toInternalTransformations(tr))
+}
+
+// Affine post-multiplies the current transform by tr.
+func (a *Agg2DFloat) Affine(tr *Transformations) {
+	a.impl.AffineFromMatrix(toInternalTransformations(tr))
+}
+
+// PushTransform saves the current transform on the transform stack.
+func (a *Agg2DFloat) PushTransform() { a.impl.PushTransform() }
+
+// PopTransform restores the last pushed transform and reports whether one existed.
+func (a *Agg2DFloat) PopTransform() bool { return a.impl.PopTransform() }
+
 // Viewport sets up a viewport transformation mapping world coordinates onto a
 // screen rectangle.
 func (a *Agg2DFloat) Viewport(worldX1, worldY1, worldX2, worldY2, screenX1, screenY1, screenX2, screenY2 float64, opt ViewportOption) {

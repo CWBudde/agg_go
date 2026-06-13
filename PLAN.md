@@ -566,9 +566,21 @@ usable.
         2, plus a scalar/bool accessor-parity test for distance/align/inbox/resample
         across an identical viewport setup) and a public-surface test
         `TestPublicAgg2DFloatViewportCoordinateMapping` in `agg2d_float_test.go`.
-  - [ ] **Transform stack & affine matrix**: `PushTransform`, `PopTransform`,
-        `Affine`, `GetTransformations`, `SetTransformations`. The reserved
-        `transformStack` field exists; mirror the 8-bit push/pop semantics.
+  - [x] **Transform stack & affine matrix** — DONE 2026-06-13. `GetTransformations`,
+        `SetTransformations`, `AffineFromMatrix`, `PushTransform`, `PopTransform`,
+        `PushTransformations`/`PopTransformations` (aliases), `GetTransformStackDepth`
+        on the internal float twin in `internal/agg2d/transform_stack_float.go`
+        (bodies mirror transform.go; reuse the shared `TransformStack` type and the
+        existing `Affine(*transform.TransAffine)` from transform_float.go — color-
+        agnostic). The stale `//nolint:unused` marker on the `transformStack` field
+        was removed. Root wrappers in `agg2d_float.go`: `GetTransformations`,
+        `SetTransformations` (via `to/fromInternalTransformations`), `Affine`
+        (public root form takes `*Transformations` → `impl.AffineFromMatrix`, matching
+        the 8-bit surface), `PushTransform`, `PopTransform`. Parity vs the 8-bit
+        oracle in `internal/agg2d/transform_stack_float_test.go` (a balanced
+        push/pop/affine-sequence matrix+depth parity test, a Get/Set round-trip, and
+        an empty-stack PopTransform→false test) and a public-surface test
+        `TestPublicAgg2DFloatTransformStack` in `agg2d_float_test.go`.
   - [ ] **State accessors & RGBA/alias setters**: `Get*` readbacks (`GetFillColor`,
         `GetLineColor`, `GetLineCap`, `GetLineJoin`, `GetMiterLimit`, `GetClipBox`,
         `GetClipBoxRect`, `GetImageFilter`, `GetImageResample`, `GetAntiAliasGamma`),

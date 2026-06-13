@@ -119,7 +119,7 @@ type Agg2DFloat struct {
 	// Path and transformation (reused as-is)
 	path           *path.PathStorageStl
 	transform      *transform.TransAffine
-	transformStack *TransformStack //nolint:unused // reserved for push/pop transform (not yet mirrored)
+	transformStack *TransformStack
 
 	// Converters (reused as-is)
 	convCurve  *conv.ConvCurve
