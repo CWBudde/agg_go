@@ -8,13 +8,11 @@ import (
 	"github.com/cwbudde/agg_go/internal/basics"
 	"github.com/cwbudde/agg_go/internal/buffer"
 	"github.com/cwbudde/agg_go/internal/color"
-	"github.com/cwbudde/agg_go/internal/conv"
 	"github.com/cwbudde/agg_go/internal/pixfmt"
 	"github.com/cwbudde/agg_go/internal/rasterizer"
 	"github.com/cwbudde/agg_go/internal/renderer"
 	renscan "github.com/cwbudde/agg_go/internal/renderer/scanline"
 	"github.com/cwbudde/agg_go/internal/scanline"
-	"github.com/cwbudde/agg_go/internal/shapes"
 	"github.com/cwbudde/agg_go/internal/span"
 )
 
@@ -27,31 +25,6 @@ var (
 	gouraudDragDX   = 0.0
 	gouraudDragDY   = 0.0
 )
-
-// gouraudEllipseVS adapts shapes.Ellipse to the rasterizer VertexSource interface.
-type gouraudEllipseVS struct {
-	e *shapes.Ellipse
-}
-
-func (s *gouraudEllipseVS) Rewind(pathID uint32) { s.e.Rewind(pathID) }
-
-func (s *gouraudEllipseVS) Vertex(x, y *float64) uint32 {
-	return uint32(s.e.Vertex(x, y))
-}
-
-// gouraudStrokeVS adapts conv.ConvStroke to the rasterizer VertexSource interface.
-type gouraudStrokeVS struct {
-	cs *conv.ConvStroke
-}
-
-func (s *gouraudStrokeVS) Rewind(pathID uint32) { s.cs.Rewind(uint(pathID)) }
-
-func (s *gouraudStrokeVS) Vertex(x, y *float64) uint32 {
-	vx, vy, cmd := s.cs.Vertex()
-	*x = vx
-	*y = vy
-	return uint32(cmd)
-}
 
 // gouraudRasAdapter adapts SpanGouraudRGBA to the rasterizer VertexSource interface.
 type gouraudRasAdapter struct {
@@ -197,46 +170,11 @@ func drawGouraudDemo() {
 	renderGouraudTriangle(ras, sl, ren, gouraudX[1], gouraudY[1], gouraudX[2], gouraudY[2], x2, y2, cGreen, cBlue, cBlack, d)
 	renderGouraudTriangle(ras, sl, ren, gouraudX[2], gouraudY[2], gouraudX[0], gouraudY[0], x3, y3, cBlue, cRed, cBlack, d)
 
-	// Draw interactive handles
-	handleFill := color.RGBA8[color.Linear]{R: 200, G: 50, B: 20, A: 150}
-	handleLine := color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255}
-
-	for i := 0; i < 3; i++ {
-		hx, hy := gouraudX[i], gouraudY[i]
-
-		// Filled circle
-		ell := shapes.NewEllipseWithParams(hx, hy, 8, 8, 32, false)
-		ras.Reset()
-		ras.AddPath(&gouraudEllipseVS{e: ell}, 0)
-		renscan.RenderScanlinesAASolid[color.RGBA8[color.Linear]](ras, sl, ren, handleFill)
-
-		// Circle outline via stroke
-		ellSrc := newGouraudEllipseConvSrc(ell)
-		stroke := conv.NewConvStroke(ellSrc)
-		stroke.SetWidth(1.0)
-		ras.Reset()
-		ras.AddPath(&gouraudStrokeVS{cs: stroke}, 0)
-		renscan.RenderScanlinesAASolid[color.RGBA8[color.Linear]](ras, sl, ren, handleLine)
-	}
+	// NOTE: The C++ gouraud demo draws no visible handles at the triangle
+	// vertices; they are draggable purely via hit-testing. To stay faithful,
+	// we render nothing here either.
 
 	applyLinearToSRGB(img)
-}
-
-// gouraudEllipseConvSrc adapts shapes.Ellipse to conv.VertexSource.
-type gouraudEllipseConvSrc struct {
-	e *shapes.Ellipse
-}
-
-func newGouraudEllipseConvSrc(e *shapes.Ellipse) *gouraudEllipseConvSrc {
-	return &gouraudEllipseConvSrc{e: e}
-}
-
-func (s *gouraudEllipseConvSrc) Rewind(pathID uint) { s.e.Rewind(uint32(pathID)) }
-
-func (s *gouraudEllipseConvSrc) Vertex() (float64, float64, basics.PathCommand) {
-	var x, y float64
-	cmd := s.e.Vertex(&x, &y)
-	return x, y, basics.PathCommand(cmd)
 }
 
 func handleGouraudMouseDown(x, y float64) bool {

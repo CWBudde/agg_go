@@ -113,14 +113,9 @@ func (d *demo) Render(img *agg.Image) {
 	a.GouraudTriangle(d.x[1], d.y[1], d.x[2], d.y[2], x2, y2, cGreen, cBlue, cBlack, d.dilation.Value())
 	a.GouraudTriangle(d.x[2], d.y[2], d.x[0], d.y[0], x3, y3, cBlue, cRed, cBlack, d.dilation.Value())
 
-	for i := range d.x {
-		a.FillColor(agg.NewColor(200, 50, 20, 150))
-		a.NoLine()
-		a.FillCircle(d.x[i], d.y[i], 8)
-		a.LineColor(agg.Black)
-		a.LineWidth(1.0)
-		a.DrawCircle(d.x[i], d.y[i], 8)
-	}
+	// NOTE: The C++ gouraud demo draws no visible handles at the triangle
+	// vertices; they are draggable purely via hit-testing (see OnMouseDown).
+	// To stay faithful, we render nothing here either.
 
 	ras.SetGamma(func(x float64) float64 { return x })
 	for _, c := range d.controls {
