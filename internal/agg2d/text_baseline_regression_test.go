@@ -49,20 +49,21 @@ func TestRasterTextBaselineMixedHeightString(t *testing.T) {
 		box := inkBox{minX: w, minY: h, maxX: -1, maxY: -1}
 		for y := 0; y < h; y++ {
 			for x := 0; x < w; x++ {
-				if buf[(y*w+x)*4] < 128 { // dark (inked) pixel on white background
-					box.count++
-					if x < box.minX {
-						box.minX = x
-					}
-					if y < box.minY {
-						box.minY = y
-					}
-					if x > box.maxX {
-						box.maxX = x
-					}
-					if y > box.maxY {
-						box.maxY = y
-					}
+				if buf[(y*w+x)*4] >= 128 { // skip white background, keep inked pixels
+					continue
+				}
+				box.count++
+				if x < box.minX {
+					box.minX = x
+				}
+				if y < box.minY {
+					box.minY = y
+				}
+				if x > box.maxX {
+					box.maxX = x
+				}
+				if y > box.maxY {
+					box.maxY = y
 				}
 			}
 		}

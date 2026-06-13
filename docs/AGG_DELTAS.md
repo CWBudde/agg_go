@@ -123,6 +123,31 @@ standalone/web parity.
 `examples/core/intermediate/trans_curve{,2}/main.go`,
 `cmd/wasm/demo_trans_curve{,2}.go`
 
+### FreeType raster-text vertical baseline & Y sub-pixel phase
+
+**C++ source**: `agg_font_cache_manager.h` (`init_embedded_adaptors`) +
+`agg_font_freetype.h` (`decompose_ft_bitmap_gray8` / `_mono`) — raster glyphs are
+positioned from the integer pen baseline using the FreeType bitmap `top` bearing,
+in device space (y-down).
+**Go**: `internal/agg2d/text.go` (`renderShapedRasterMask`) positions each cached
+glyph bitmap at `dstY = baseY - top + 1` from the rounded baseline, matching AGG's
+device-space placement. Because the Go `Agg2D` raster path drives FreeType's
+grid-fit hinting from a y-up coordinate frame, the **Y** sub-pixel phase is
+quantized against the negated coordinate (`quantizeRasterTextYPhaseF26Dot6`,
+the twin of the X helper `quantizeRasterTextPhaseF26Dot6`) so the hinting phase
+agrees with the coordinate convention. This is parity-preserving — the net
+rendered baseline matches AGG — and it is the fix for the earlier bug where short
+glyphs (`.`, `,`, `-`) drifted above the x-height. There is **no intentional
+visual deviation** from AGG; the negated-Y-phase helper is the only Go-specific
+implementation detail, called out here for traceability.
+**Verification**: `internal/agg2d/text_baseline_regression_test.go` (font-relative
+pixel-level geometry: period/comma/hyphen land in the baseline band, comma
+descends below the baseline) and the unit test
+`TestRasterTextYPhaseMatchesYUpQuantization` in
+`internal/agg2d/text_layout_test.go` (the sub-pixel phase value). Both exercise
+the real FreeType backend under `-tags freetype` and skip cleanly otherwise.
+**File**: `internal/agg2d/text.go`
+
 ---
 
 ## Color Space

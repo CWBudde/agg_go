@@ -133,93 +133,43 @@ and finally the genuinely algorithmic/architectural gaps).
 
 ---
 
-## Phase 2 - Demo-Specific Fixes
+## Phase 2 - Demo-Specific Fixes — DONE
 
-The demos below are not just "visual noise"; each one still encodes a concrete porting issue:
-asset selection, input mapping, coordinate-frame handling, canvas orientation, or demo-specific
-state initialization. The goal here is to close them one by one and attach a minimal verification
-path to each fix.
+All demo-specific porting issues (asset selection, input mapping, coordinate-frame
+handling, canvas orientation, state init) are resolved, each with a verification path.
 
-### 2.1 Open fixes
-
-- [x] `trans_curve`: evaluate the source bitmap choice and switch to a better upstream-compatible
-      shared asset if one exists. (Resolved — the "source bitmap" framing was a misnomer: C++
-      `trans_curve1.cpp` uses the Win32 TrueType face "Times New Roman", which is neither portable
-      nor deterministic. The demo already uses the always-available embedded **GSV vector font**
-      (`internal/gsv`) for the same paragraph text — that *is* the upstream-compatible shared asset;
-      no bundled TTF is warranted because the FreeType intent is covered by `trans_curve1_ft`.
-      Documented in `docs/AGG_DELTAS.md`.)
-- [x] `trans_curve2`: same asset/parity task as `trans_curve`. (Resolved — the standalone demo had
-      diverged from both C++ and the web demo by rendering the **lion** instead of C++'s
-      text-along-a-double-path. Rewrote it to render the GSV text paragraph warped between the two
-      B-spline rails via `transform.TransDoublePath`, faithful to `trans_curve2.cpp`. The rendering
-      core now lives in `internal/demo/transcurve.DrawDouble` and is shared verbatim by the
-      standalone example and the WASM demo, so standalone/web output is identical by construction.)
-- [x] `image_resample`: restore draggable quad handles and ensure down/move/up handlers map to
-      this demo correctly. (Done in the faithful-port rewrite: the quad tool renders with
-      handle circles and the mouse handlers drive the polygon ctrl.)
-- [x] `image_perspective`: add or fix draggable quad handles and mouse-interaction wiring.
-      (Done in the faithful-port rewrite: PolygonCtrl quad tool + mouse handlers.)
-- [x] `gamma_correction`: correct the quadrant placement so the background matches the C++ frame.
-      (Stale — now pixel-exact, RMSE 0.0; quadrant placement matches C++. See §1.2.)
-- [x] `compositing2`: expand rendering so the composited circles occupy the intended canvas region.
-      (Stale — circles now occupy the intended region; only comp-op edge-blend rounding remains
-      at RMSE 0.0967, controls exact. See §1.2.)
-- [x] `aatest`: restore the expected grey background.
-      (Stale — `aa_test` background correct; residual is float-vs-8bit AA fringing only,
-      RMSE 0.1728, no logic error. See §1.2.)
-- [x] `gradients`: center the sphere instead of leaving it far to the right.
-      (Stale — sphere centered and gradient fill matches; residual is AA on the gradient-control
-      spline lines plus a couple of sphere-edge pixels, RMSE 0.0335. See §1.2.)
-- [x] `flash_rasterizer` and `flash_rasterizer2`: verify whether the blank C++ reference frame is
-      intentional or whether the Go port still has a shape-index initialization bug.
-      (Stale — both resolved: `flash_rasterizer2` pixel-exact (RMSE 0.0) and `flash_rasterizer`
-      verified-faithful at the float noise floor (RMSE 0.0031); no shape-index bug. See §1.2.)
-- [x] `gouraud_mesh`: restore the full-sized layout and the statistics text at the bottom.
-      (Stale — now pixel-exact, RMSE 0.0; full layout and bottom statistics text present. See §1.2.)
-
-### 2.2 Required follow-up for each fix
-
-- [x] Add a standalone-vs-web parity note. (Done — the `trans_curve`/`trans_curve2` rendering cores
-      are shared between the standalone examples and the WASM demos via `internal/demo/transcurve`
-      (`Draw`/`DrawDouble`); parity notes added to the demo headers, the package doc, and
-      `docs/AGG_DELTAS.md`. The image_resample/image_perspective rewrites already carry their own
-      faithful-port notes (§2.1).)
-- [x] Add a minimal verification path such as a render smoke test or bounded image-hash check.
-      (Done — bounded render smoke tests added: `examples/core/intermediate/trans_curve/main_test.go`
-      and `.../trans_curve2/main_test.go` assert the expected layered content — GSV text glyphs,
-      orange guide rails, white background — and the trans_curve2 test specifically guards against
-      regression to the lion fill. The other §2.1 demos are covered by the §1.2 visual-parity
-      corpus, which is their verification path.)
-- [x] Record the C++ source reference for the relevant behavior. (Done — explicit
-      `../agg-2.6/agg-src/examples/trans_curve{1,2}.cpp` references added to the demo headers, the
-      shared `transcurve` package doc, the smoke tests, and `docs/AGG_DELTAS.md`. The §1.2 corpus
-      rows already carry their per-demo C++ references.)
+- **`trans_curve` / `trans_curve2`**: the embedded GSV vector font is the portable,
+  deterministic stand-in for C++'s Win32 "Times New Roman" (TrueType intent covered by
+  the `_ft` variants). `trans_curve2` was rewritten from the lion to the faithful
+  text-along-a-double-path; its render core (`internal/demo/transcurve.DrawDouble`) is
+  shared verbatim with the WASM demo, so standalone/web output is identical.
+- **`image_resample` / `image_perspective`**: draggable quad handles + mouse wiring
+  restored in the faithful-port rewrites.
+- **`gamma_correction`, `gouraud_mesh`**: pixel-exact (RMSE 0.0) — earlier layout/quadrant/
+  text reports were stale.
+- **`compositing2`, `gradients`, `aatest`, `flash_rasterizer{,2}`**: layout/region/background/
+  shape-index issues were stale; residuals are float-vs-8bit AA only (see §1.2).
+- **Follow-ups**: standalone-vs-web parity notes, render smoke tests
+  (`examples/core/intermediate/trans_curve{,2}/main_test.go`), and C++ source references
+  added across demo headers, the `transcurve` package doc, and `docs/AGG_DELTAS.md`.
 
 ---
 
-## Phase 3 - Font Fidelity
+## Phase 3 - Font Fidelity — DONE
 
-The font subsystem is mostly in good shape. The recent FreeType and low-level
-runner fixes appear to have addressed the main baseline/orientation regression
-path (notably the bitmap-bounds/row-order handling and the earlier double-flip
-/ inverted-baseline behavior). The remaining work here is to lock that in with
-explicit regression coverage and, if practical, a direct C++ comparison.
+The FreeType raster-glyph vertical-baseline bug (short glyphs `.`/`,`/`-` drifting above
+x-height under `RasterFontCache`) is fixed and locked in.
 
-### 3.1 Open bug
-
-- [x] Fix the FreeType raster glyph vertical baseline bug where short glyphs such as `.`, `,`, and
-      `-` render at the wrong Y position when using `RasterFontCache`.
-- [x] Re-check the glyph bitmap positioning pipeline around `InitEmbeddedAdaptors`,
-      `NewSerializedScanlinesAdaptorAA`, and `glyphBitmapRasterizer.SweepScanline`.
-- [ ] Add a pixel-level regression test for a mixed-height string such as `0.2 H,x-y`.
-- [ ] Add a C++ comparison for the same string and font size if practical.
-
-### 3.2 Acceptance criteria
-
-- [x] Short glyphs land on the baseline band rather than above x-height.
-- [ ] The regression is covered by a stable image- or pixel-level test.
-- [ ] Any intentional deviation is documented in `docs/AGG_DELTAS.md`.
+- Root fix: y-up Y sub-pixel phase quantization + `dstY = baseY - top + 1` bitmap placement
+  (`internal/agg2d/text.go`); net baseline matches AGG.
+- Regression coverage: `internal/agg2d/text_baseline_regression_test.go` renders `0.2 H,x-y`
+  and asserts font-relative inked geometry (short marks land in the baseline band, comma
+  descends below it); proven to fail under a simulated inverted-baseline mutation. Sub-pixel
+  phase pinned by `TestRasterTextYPhaseMatchesYUpQuantization`. Both run under `-tags freetype`.
+- A pixel-exact C++ comparison was evaluated and rejected as non-deterministic (FreeType
+  version/hinting dependent); the font-relative invariants are the durable equivalent.
+- Deviation documented in `docs/AGG_DELTAS.md` ("FreeType raster-text vertical baseline &
+  Y sub-pixel phase").
 
 ---
 
