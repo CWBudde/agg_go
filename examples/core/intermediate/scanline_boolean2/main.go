@@ -51,7 +51,7 @@ func newDemo() *demo {
 	d.scanlineTy.AddItem("scanline_bin")
 	d.scanlineTy.SetCurItem(1)
 
-	d.operation = rbox.NewDefaultRboxCtrl(535, 5, 650, 150, false)
+	d.operation = rbox.NewDefaultRboxCtrl(535, 5, 650, 145, false)
 	d.operation.AddItem("None")
 	d.operation.AddItem("OR")
 	d.operation.AddItem("AND")

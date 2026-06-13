@@ -411,7 +411,7 @@ func Draw(ctx *agg.Context, cfg Config) {
 	}
 
 	combineMS, renderMS, numSpans := combineAndRender(ctx.GetImage(), cfg, a, b)
-	drawOverlay(agg2d, frameOffX, frameOffY, combineMS, renderMS, numSpans)
+	drawOverlay(agg2d, ctx.GetImage(), frameOffX, frameOffY, combineMS, renderMS, numSpans, cfg.FillRule)
 }
 
 func combineAndRender(img *agg.Image, cfg Config, a, b []contour) (float64, float64, int) {
@@ -702,17 +702,53 @@ func sceneColors(mode int) (agg.Color, agg.Color, agg.Color) {
 	return agg.RGBA(0.0, 0.0, 0.0, 0.1), agg.Transparent, agg.RGBA(0.0, 0.6, 0.0, 0.1)
 }
 
-func drawOverlay(a *agg.Agg2D, offX, offY, combineMS, renderMS float64, numSpans int) {
-	a.FontGSV(8)
-	a.FillColor(agg.Black)
-	a.NoLine()
-	// In y-up coordinates each successive line moves DOWN (decreasing y),
-	// matching C++ gsv_text which uses \n\n (16px spacing) from start_point(420,40).
+// drawOverlay renders the timing / span-count text, mirroring the C++ demo:
+//
+//	agg::gsv_text txt;
+//	agg::conv_stroke<agg::gsv_text> txt_stroke(txt);
+//	txt_stroke.width(1.0);
+//	txt_stroke.line_cap(agg::round_cap);
+//	txt.size(8.0);
+//	txt.start_point(420, 40);
+//	txt.text(buf);
+//	ras1.add_path(txt_stroke);
+//	ren.color(agg::rgba(0,0,0));
+//	agg::render_scanlines(ras1, sl, ren);
+//
+// A single gsv_text carries the whole (possibly multi-line) buffer; gsv_text
+// advances down for each '\n'. We stroke it through the shared rasterizer
+// instead of Agg2D's GSV text helper so the stroke width matches C++ exactly
+// (the helper uses a thinner heuristic width that would make the glyphs faint).
+func drawOverlay(a *agg.Agg2D, img *agg.Image, offX, offY, combineMS, renderMS float64, numSpans, fillRule int) {
+	var buf string
 	if timing.ShowText() {
-		a.Text(420+offX, 40+offY, fmt.Sprintf("Combine=%.3fms", combineMS), false, 0, 0)
-		a.Text(420+offX, 24+offY, fmt.Sprintf("Render=%.3fms", renderMS), false, 0, 0)
+		buf = fmt.Sprintf("Combine=%.3fms\n\nRender=%.3fms\n\nnum_spans=%d", combineMS, renderMS, numSpans)
+	} else {
+		buf = fmt.Sprintf("num_spans=%d", numSpans)
 	}
-	a.Text(420+offX, 8+offY, fmt.Sprintf("num_spans=%d", numSpans), false, 0, 0)
+
+	txt := agg.NewGSVText()
+	// Mirror Agg2D.FontGSV: GSV glyph data is Y-up; only negate for a Y-down
+	// (positive-stride) buffer. The FlipY runner uses a negative stride, so the
+	// rendering buffer already performs the flip (txt flip stays false, as in C++).
+	txt.SetFlip(img.Stride() >= 0)
+	txt.SetSize(8.0, 0)
+	txt.SetStartPoint(420+offX, 40+offY)
+	txt.SetText(buf)
+
+	stroke := conv.NewConvStroke(txt)
+	stroke.SetWidth(1.0)
+	stroke.SetLineCap(basics.RoundCap)
+
+	ras := a.GetInternalRasterizer()
+	ras.Reset()
+	if fillRule == 0 {
+		ras.FillingRule(basics.FillEvenOdd)
+	} else {
+		ras.FillingRule(basics.FillNonZero)
+	}
+	ras.AddPath(&rasterPathAdapter{src: stroke}, 0)
+	a.RenderRasterizerWithColor(agg.Black)
 }
 
 func mapOperation(op int) isc.BoolOp {
