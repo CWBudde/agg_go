@@ -200,7 +200,7 @@ func TestGammaCtrlKeyboardInteraction(t *testing.T) {
 		if !handled {
 			t.Error("Arrow key should be handled")
 		}
-		newKx1, newKy1, _, _ := ctrl.GetValues()
+		newKx1, _, _, _ := ctrl.GetValues()
 		if newKx1 >= oldKx1 {
 			t.Error("Left arrow should decrease kx1")
 		}
@@ -220,7 +220,7 @@ func TestGammaCtrlKeyboardInteraction(t *testing.T) {
 		if !handled {
 			t.Error("Arrow key should be handled")
 		}
-		_, newKy1, _, _ = ctrl.GetValues()
+		_, newKy1, _, _ := ctrl.GetValues()
 		if newKy1 >= oldKy1 {
 			t.Error("Down arrow should decrease ky1")
 		}

@@ -23,11 +23,8 @@ func TestSimpleStackBlurBoth(t *testing.T) {
 	sb := NewSimpleStackBlur()
 	sb.Blur(pixels, 1)
 
-	// After full blur the white dot should have spread in both axes
-	center := pixels[3][3]
-	if center.R == 255 && center.G == 255 && center.B == 255 {
-		// centre may still be brightest, but neighbours should be non-zero
-	}
+	// After full blur the white dot should have spread in both axes.
+	// The centre may still be brightest, but neighbours should be non-zero.
 	neighbor := pixels[3][4]
 	if neighbor.R == 0 && neighbor.G == 0 && neighbor.B == 0 {
 		t.Error("horizontal neighbour should have blur contribution")

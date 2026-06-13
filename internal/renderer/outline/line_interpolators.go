@@ -73,7 +73,7 @@ func NewLineInterpolatorAABase(ren OutlineRenderer, lp *primitives.LineParameter
 	base.maxExtent = (base.width + primitives.LineSubpixelMask) >> primitives.LineSubpixelShift
 
 	// Initialize distance array
-	li := primitives.NewDda2LineInterpolator(0, 0, lp.Len)
+	var li *primitives.Dda2LineInterpolator
 	if lp.Vertical {
 		li = primitives.NewDda2LineInterpolator(0, lp.DY<<primitives.LineSubpixelShift, lp.Len)
 	} else {

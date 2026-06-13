@@ -22,7 +22,6 @@ import (
 	"github.com/cwbudde/agg_go/internal/basics"
 	"github.com/cwbudde/agg_go/internal/buffer"
 	"github.com/cwbudde/agg_go/internal/color"
-	icol "github.com/cwbudde/agg_go/internal/color"
 	"github.com/cwbudde/agg_go/internal/conv"
 	ctrlbase "github.com/cwbudde/agg_go/internal/ctrl"
 	"github.com/cwbudde/agg_go/internal/ctrl/checkbox"
@@ -358,7 +357,7 @@ func drawControls(ras *rasType, sl *scanline.ScanlineU8, rb *renBaseType, st *fi
 
 	filters := rbox.NewDefaultRboxCtrl(0, 0, 110, 210, false)
 	filters.SetBorderWidth(0, 0)
-	filters.SetBackgroundColor(icol.NewRGBA(0.0, 0.0, 0.0, 0.1))
+	filters.SetBackgroundColor(color.NewRGBA(0.0, 0.0, 0.0, 0.1))
 	filters.SetTextSize(6.0, 0)
 	filters.SetTextThickness(0.85)
 	filters.AddItem("simple (NN)")
@@ -409,7 +408,7 @@ func drawControls(ras *rasType, sl *scanline.ScanlineU8, rb *renBaseType, st *fi
 
 // ctrlColor converts a control's float color like the C++ render_ctrl with a
 // linear color_type: a plain *255 quantization, no colorspace conversion.
-func ctrlColor(c icol.RGBA) color.RGBA8[color.Linear] {
+func ctrlColor(c color.RGBA) color.RGBA8[color.Linear] {
 	clamp := func(v float64) uint8 {
 		switch {
 		case v <= 0:
@@ -424,7 +423,7 @@ func ctrlColor(c icol.RGBA) color.RGBA8[color.Linear] {
 }
 
 // renderCtrl is the Go equivalent of C++ agg::render_ctrl.
-func renderCtrl(ras *rasType, sl *scanline.ScanlineU8, rb *renBaseType, c ctrlbase.Ctrl[icol.RGBA]) {
+func renderCtrl(ras *rasType, sl *scanline.ScanlineU8, rb *renBaseType, c ctrlbase.Ctrl[color.RGBA]) {
 	for pathID := uint(0); pathID < c.NumPaths(); pathID++ {
 		ras.Reset()
 		ras.AddPath(&ctrlVertexSource{ctrl: c}, uint32(pathID))
@@ -442,7 +441,7 @@ func (g *gsvStrokeVS) Vertex(x, y *float64) uint32 {
 }
 
 type ctrlVertexSource struct {
-	ctrl ctrlbase.Ctrl[icol.RGBA]
+	ctrl ctrlbase.Ctrl[color.RGBA]
 }
 
 func (a *ctrlVertexSource) Rewind(pathID uint32) {
@@ -661,7 +660,7 @@ func loadPPMImage(filename string) (*agg.Image, error) {
 	// (convert<pixfmt_bgr24, pixfmt_srgb24>), so decode each pixel here.
 	buf := make([]uint8, w*h*4)
 	for p := 0; p < w*h; p++ {
-		c := icol.ConvertRGB8SRGBToLinear(icol.RGB8[icol.SRGB]{
+		c := color.ConvertRGB8SRGBToLinear(color.RGB8[color.SRGB]{
 			R: rgb[p*3+0],
 			G: rgb[p*3+1],
 			B: rgb[p*3+2],

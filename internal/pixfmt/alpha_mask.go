@@ -281,7 +281,7 @@ func (m *AlphaMaskU8) Pixel(x, y int) basics.Int8u {
 		// For RGB, we need at least 3 bytes starting from the offset
 		length := m.step
 		rowPtr := m.rbuf.RowPtr(x*m.step+m.offset, y, length)
-		if rowPtr != nil && len(rowPtr) > 0 {
+		if len(rowPtr) > 0 {
 			return m.maskFunc.Calculate(rowPtr)
 		}
 	}
@@ -297,7 +297,7 @@ func (m *AlphaMaskU8) CombinePixel(x, y int, val basics.Int8u) basics.Int8u {
 	if x >= 0 && y >= 0 && x < m.rbuf.Width() && y < m.rbuf.Height() {
 		length := m.step
 		rowPtr := m.rbuf.RowPtr(x*m.step+m.offset, y, length)
-		if rowPtr != nil && len(rowPtr) > 0 {
+		if len(rowPtr) > 0 {
 			maskVal := m.maskFunc.Calculate(rowPtr)
 			return basics.Int8u((CoverFull + int(val)*int(maskVal)) >> CoverShift)
 		}
@@ -459,7 +459,7 @@ func (m *AlphaMaskU8) FillVspan(x, y int, dst []basics.Int8u, numPix int) {
 	// Fill the valid portion
 	for i := 0; i < count; i++ {
 		maskPtr := m.rbuf.RowPtr(x*m.step+m.offset, y+i, m.step)
-		if maskPtr != nil && len(maskPtr) > 0 {
+		if len(maskPtr) > 0 {
 			covers[i] = m.maskFunc.Calculate(maskPtr)
 		} else {
 			covers[i] = 0
@@ -523,7 +523,7 @@ func (m *AlphaMaskU8) CombineVspan(x, y int, dst []basics.Int8u, numPix int) {
 	// Combine the valid portion
 	for i := 0; i < count; i++ {
 		maskPtr := m.rbuf.RowPtr(x*m.step+m.offset, y+i, m.step)
-		if maskPtr != nil && len(maskPtr) > 0 {
+		if len(maskPtr) > 0 {
 			maskVal := m.maskFunc.Calculate(maskPtr)
 			covers[i] = basics.Int8u((CoverFull + int(covers[i])*int(maskVal)) >> CoverShift)
 		} else {
@@ -592,7 +592,7 @@ func (m *AMaskNoClipU8) Pixel(x, y int) basics.Int8u {
 	}
 
 	rowPtr := m.rbuf.RowPtr(x*m.step+m.offset, y, m.step)
-	if rowPtr != nil && len(rowPtr) > 0 {
+	if len(rowPtr) > 0 {
 		return m.maskFunc.Calculate(rowPtr)
 	}
 	return 0
@@ -605,7 +605,7 @@ func (m *AMaskNoClipU8) CombinePixel(x, y int, val basics.Int8u) basics.Int8u {
 	}
 
 	rowPtr := m.rbuf.RowPtr(x*m.step+m.offset, y, m.step)
-	if rowPtr != nil && len(rowPtr) > 0 {
+	if len(rowPtr) > 0 {
 		maskVal := m.maskFunc.Calculate(rowPtr)
 		return basics.Int8u((CoverFull + int(val)*int(maskVal)) >> CoverShift)
 	}
@@ -646,7 +646,7 @@ func (m *AMaskNoClipU8) FillVspan(x, y int, dst []basics.Int8u, numPix int) {
 
 	for i := 0; i < numPix; i++ {
 		maskPtr := m.rbuf.RowPtr(x*m.step+m.offset, y+i, m.step)
-		if maskPtr != nil && len(maskPtr) > 0 {
+		if len(maskPtr) > 0 {
 			dst[i] = m.maskFunc.Calculate(maskPtr)
 		} else {
 			dst[i] = 0
@@ -662,7 +662,7 @@ func (m *AMaskNoClipU8) CombineVspan(x, y int, dst []basics.Int8u, numPix int) {
 
 	for i := 0; i < numPix; i++ {
 		maskPtr := m.rbuf.RowPtr(x*m.step+m.offset, y+i, m.step)
-		if maskPtr != nil && len(maskPtr) > 0 {
+		if len(maskPtr) > 0 {
 			maskVal := m.maskFunc.Calculate(maskPtr)
 			dst[i] = basics.Int8u((CoverFull + int(dst[i])*int(maskVal)) >> CoverShift)
 		} else {

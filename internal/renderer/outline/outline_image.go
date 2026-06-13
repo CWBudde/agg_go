@@ -220,7 +220,7 @@ func (lip *LineImagePattern) Create(src Source) {
 	totalHeight := lip.height + lip.dilation*2
 	for y := 0; y < totalHeight; y++ {
 		row := lip.buf.RowPtr(y)
-		if row == nil || len(row) == 0 {
+		if len(row) == 0 {
 			continue
 		}
 
@@ -621,7 +621,7 @@ func NewLineInterpolatorImage(ren ImageRenderer, lp *primitives.LineParameters,
 	li.step = 0
 
 	// Build distance array
-	subLi := primitives.NewDda2LineInterpolator(0, 0, lp.Len)
+	var subLi *primitives.Dda2LineInterpolator
 	if lp.Vertical {
 		subLi = primitives.NewDda2LineInterpolator(0, lp.DY<<primitives.LineSubpixelShift, lp.Len)
 	} else {

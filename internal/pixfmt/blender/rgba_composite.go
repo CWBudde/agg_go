@@ -161,6 +161,82 @@ func (bl CompositeBlenderPre[S, O]) BlendPix(dst []basics.Int8u, r, g, b, a, cov
 	dst[o.IdxA()] = to8(res.a)
 }
 
+// CompositeBlenderPlain bridges AGG's premultiplied composite math to a
+// *straight* (non-premultiplied) destination buffer — the storage convention
+// used by Agg2D and the Go pixfmt stack. AGG applies composite operators on
+// premultiplied buffers (pixfmt_custom_blend_rgba over a blender_rgba buffer);
+// Agg2D instead keeps colours straight, so this blender premultiplies the
+// destination on read, evaluates the operator in premultiplied space, then
+// demultiplies the result back to straight alpha for storage.
+//
+// It is the composite-operator analogue of BlenderRGBA8Plain. With an opaque
+// destination (Da == 255) it is identical to CompositeBlender, since straight
+// and premultiplied representations coincide there; the difference only shows
+// up when compositing over partially transparent destination content (e.g. an
+// anti-aliased edge or a semi-transparent shadow), where reading straight
+// values as premultiplied would over-contribute the destination colour and
+// produce a washed-out halo.
+type CompositeBlenderPlain[S color.Space, O order.RGBAOrder] struct {
+	op CompOp
+}
+
+func NewCompositeBlenderPlain[S color.Space, O order.RGBAOrder](op CompOp) CompositeBlenderPlain[S, O] {
+	return CompositeBlenderPlain[S, O]{op: op}
+}
+
+func (bl CompositeBlenderPlain[S, O]) GetOp() CompOp { return bl.op }
+
+// GetPlain/SetPlain operate on a straight-alpha buffer, so they pass the stored
+// components through unchanged.
+func (bl CompositeBlenderPlain[S, O]) GetPlain(px []basics.Int8u) (r, g, b, a basics.Int8u) {
+	var o O
+	return px[o.IdxR()], px[o.IdxG()], px[o.IdxB()], px[o.IdxA()]
+}
+
+func (bl CompositeBlenderPlain[S, O]) SetPlain(px []basics.Int8u, r, g, b, a basics.Int8u) {
+	var o O
+	px[o.IdxR()], px[o.IdxG()], px[o.IdxB()], px[o.IdxA()] = r, g, b, a
+}
+
+func (bl CompositeBlenderPlain[S, O]) BlendPix(dst []basics.Int8u, r, g, b, a, cover basics.Int8u) {
+	var o O
+
+	// Sa with coverage in [0,1]
+	sa := float64(color.RGBA8MultCover(a, cover)) / 255.0
+	if sa <= 0 {
+		return
+	}
+
+	// Sca (premultiplied source)
+	s := normalizedRGBA{
+		r: (float64(r) / 255.0) * sa,
+		g: (float64(g) / 255.0) * sa,
+		b: (float64(b) / 255.0) * sa,
+		a: sa,
+	}
+
+	// Straight destination -> premultiply (Dca/Da) for the composite math.
+	da := float64(dst[o.IdxA()]) / 255.0
+	d := normalizedRGBA{
+		r: (float64(dst[o.IdxR()]) / 255.0) * da,
+		g: (float64(dst[o.IdxG()]) / 255.0) * da,
+		b: (float64(dst[o.IdxB()]) / 255.0) * da,
+		a: da,
+	}
+
+	res := CompositeBlender[S, O](bl).blendOperation(d, s)
+
+	// Demultiply the premultiplied result back to straight alpha for storage.
+	if res.a <= 0 {
+		dst[o.IdxR()], dst[o.IdxG()], dst[o.IdxB()], dst[o.IdxA()] = 0, 0, 0, 0
+		return
+	}
+	dst[o.IdxR()] = to8(res.r / res.a)
+	dst[o.IdxG()] = to8(res.g / res.a)
+	dst[o.IdxB()] = to8(res.b / res.a)
+	dst[o.IdxA()] = to8(res.a)
+}
+
 // normalizedRGBA holds premultiplied color components in [0,1]
 type normalizedRGBA struct{ r, g, b, a float64 }
 

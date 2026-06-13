@@ -324,7 +324,7 @@ func TestPathBase(t *testing.T) {
 			t.Errorf("Expected second vertex (30, 40, LineTo), got (%f, %f, %d)", x, y, cmd)
 		}
 
-		x, y, cmd = path.NextVertex()
+		_, _, cmd = path.NextVertex()
 		if cmd != uint32(basics.PathCmdStop) {
 			t.Errorf("Expected Stop command, got %d", cmd)
 		}
@@ -387,7 +387,7 @@ func TestPolyAdaptors(t *testing.T) {
 		}
 
 		// Should get Stop
-		x, y, cmd = line.NextVertex()
+		_, _, cmd = line.NextVertex()
 		if cmd != uint32(basics.PathCmdStop) {
 			t.Errorf("Expected Stop, got %d", cmd)
 		}
@@ -421,7 +421,7 @@ func TestPolyAdaptors(t *testing.T) {
 		}
 
 		// Should get Stop (not closed)
-		x, y, cmd = adaptor.NextVertex()
+		_, _, cmd = adaptor.NextVertex()
 		if cmd != uint32(basics.PathCmdStop) {
 			t.Errorf("Expected Stop, got %d", cmd)
 		}

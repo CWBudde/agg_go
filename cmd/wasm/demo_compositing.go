@@ -7,7 +7,6 @@ import (
 	"github.com/cwbudde/agg_go/internal/basics"
 	"github.com/cwbudde/agg_go/internal/buffer"
 	"github.com/cwbudde/agg_go/internal/color"
-	icol "github.com/cwbudde/agg_go/internal/color"
 	"github.com/cwbudde/agg_go/internal/order"
 	"github.com/cwbudde/agg_go/internal/pixfmt"
 	"github.com/cwbudde/agg_go/internal/pixfmt/blender"
@@ -38,7 +37,7 @@ func drawCompositingDemo() {
 
 	// Draw checkered background.
 	// 0xDF sRGB → linear for the grey squares.
-	greyLinear := icol.ConvertRGBA8SRGBToLinear(icol.RGBA8[icol.SRGB]{R: 0xDF, G: 0xDF, B: 0xDF, A: 0xFF})
+	greyLinear := color.ConvertRGBA8SRGBToLinear(color.RGBA8[color.SRGB]{R: 0xDF, G: 0xDF, B: 0xDF, A: 0xFF})
 	checkRas := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
 		rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip(),
 	)

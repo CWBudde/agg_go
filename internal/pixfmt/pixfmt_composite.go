@@ -29,7 +29,7 @@ type PixFmtCompositeRGBA[CS color.Space, O order.RGBAOrder] struct {
 func NewPixFmtCompositeRGBA[CS color.Space, O order.RGBAOrder](rbuf *buffer.RenderingBufferU8, op blender.CompOp) *PixFmtCompositeRGBA[CS, O] {
 	return &PixFmtCompositeRGBA[CS, O]{
 		rbuf:    rbuf,
-		blender: blender.NewCompositeBlender[CS, O](op),
+		blender: blender.NewCompositeBlenderPlain[CS, O](op),
 	}
 }
 
@@ -269,7 +269,7 @@ func (pf *PixFmtCompositeRGBA[CS, O]) SetCompOp(op blender.CompOp) {
 		pf.blender = blender.NewCompositeBlenderPre[CS, O](op)
 		return
 	}
-	pf.blender = blender.NewCompositeBlender[CS, O](op)
+	pf.blender = blender.NewCompositeBlenderPlain[CS, O](op)
 }
 
 // GetCompOp returns the current composite operator.

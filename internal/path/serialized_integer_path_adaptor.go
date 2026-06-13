@@ -82,7 +82,7 @@ func (sipa *SerializedIntegerPathAdaptor[T]) Rewind(pathID uint32) {
 
 // Vertex reads the next vertex from the serialized data.
 func (sipa *SerializedIntegerPathAdaptor[T]) Vertex() (float64, float64, basics.PathCommand) {
-	if sipa.data == nil || len(sipa.data) == 0 || sipa.ptr > sipa.end {
+	if len(sipa.data) == 0 || sipa.ptr > sipa.end {
 		return 0, 0, basics.PathCmdStop
 	}
 

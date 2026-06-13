@@ -113,7 +113,7 @@ func (a *spanGeneratorAdapter) Generate(colors []color.RGBA8[color.Linear], x, y
 
 // --- Gradient color table (matches C++ g_gradient_colors, 256 RGBA entries) ---
 
-//nolint:gochecknoglobals
+//nolint:gochecknoglobals // static lookup table mirroring C++ g_gradient_colors
 var distortionsGradColorTable = [256 * 4]uint8{
 	255, 255, 255, 255, 255, 255, 254, 255, 255, 255, 254, 255, 255, 255, 254, 255,
 	255, 255, 253, 255, 255, 255, 253, 255, 255, 255, 252, 255, 255, 255, 251, 255,
@@ -191,7 +191,7 @@ func (g *distortionsGradColorFunc) ColorAt(i int) color.RGBA8[color.Linear] {
 	return g.colors[i]
 }
 
-var distortionsGradColors *distortionsGradColorFunc //nolint:gochecknoglobals
+var distortionsGradColors *distortionsGradColorFunc //nolint:gochecknoglobals // lazily-initialized demo gradient color function
 
 func buildDistortionsGradColors() *distortionsGradColorFunc {
 	if distortionsGradColors != nil {

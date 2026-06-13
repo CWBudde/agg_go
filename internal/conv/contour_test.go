@@ -237,11 +237,9 @@ func TestConvContour_NegativeWidth(t *testing.T) {
 		t.Error("Expected vertices for both positive and negative width")
 	}
 
-	// The contours should be different (inner vs outer)
-	// This is a basic check - detailed geometric verification would be complex
-	if len(positiveVertices) != len(negativeVertices) {
-		// Different number of vertices is acceptable for different contour types
-	}
+	// The contours should be different (inner vs outer).
+	// This is a basic check - detailed geometric verification would be complex.
+	// A different number of vertices is acceptable for different contour types.
 }
 
 func TestConvContour_AutoDetectOrientation(t *testing.T) {

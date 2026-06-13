@@ -83,7 +83,7 @@ func (c *portContext) SetStrokeColor(color agg.Color) { c.ctx.SetStrokeColor(col
 
 func (c *portContext) SetLineWidth(width float64) { c.ctx.SetLineWidth(width) }
 
-func (c *portContext) SetLineCap(cap agg.LineCap) { c.ctx.SetLineCap(cap) }
+func (c *portContext) SetLineCap(lineCap agg.LineCap) { c.ctx.SetLineCap(lineCap) }
 
 func (c *portContext) SetLineJoin(join agg.LineJoin) { c.ctx.SetLineJoin(join) }
 

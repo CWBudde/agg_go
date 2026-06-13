@@ -307,12 +307,10 @@ func TestGlyphRasterBinBitUnpacking(t *testing.T) {
 	foundCoverage := false
 	for y := 0; y < int(g.Height()); y++ {
 		span := g.Span(y)
-		if span != nil {
-			for _, cover := range span {
-				if cover != 0 {
-					foundCoverage = true
-					break
-				}
+		for _, cover := range span {
+			if cover != 0 {
+				foundCoverage = true
+				break
 			}
 		}
 		if foundCoverage {

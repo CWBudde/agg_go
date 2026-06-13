@@ -25,8 +25,8 @@ func (t serializedScanlineTarget) ResetSpans() {
 	t.sl.ResetSpans()
 }
 
-func (t serializedScanlineTarget) AddSpan(x, len int, cover basics.Int8u) {
-	t.sl.AddSpan(x, len, uint(cover))
+func (t serializedScanlineTarget) AddSpan(x, length int, cover basics.Int8u) {
+	t.sl.AddSpan(x, length, uint(cover))
 }
 
 func (t serializedScanlineTarget) AddCells(x, length int, covers []basics.Int8u) {

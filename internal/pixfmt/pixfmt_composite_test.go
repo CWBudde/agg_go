@@ -113,19 +113,24 @@ func TestPixFmtCompositeRGBA32BlendPixelCompositeOps(t *testing.T) {
 			src:  color.RGBA8[color.Linear]{R: 0, G: 255, B: 0, A: 255},
 			want: [4]basics.Int8u{255, 0, 0, 255},
 		},
+		// The straight-source composite pixfmt treats its buffer as straight
+		// alpha (Agg2D's convention): dst {128,0,0,128} is straight red at 50%
+		// alpha. dst-out keeps the destination colour and scales only its alpha
+		// by (1-Sa), so the red stays 128 and the alpha halves to 64. xor
+		// likewise demultiplies back to straight green.
 		{
 			name: "dst_out",
 			op:   blender.CompOpDstOut,
 			dst:  [4]basics.Int8u{128, 0, 0, 128},
 			src:  color.RGBA8[color.Linear]{R: 0, G: 255, B: 0, A: 128},
-			want: [4]basics.Int8u{64, 0, 0, 64},
+			want: [4]basics.Int8u{128, 0, 0, 64},
 		},
 		{
 			name: "xor",
 			op:   blender.CompOpXor,
 			dst:  [4]basics.Int8u{128, 0, 0, 128},
 			src:  color.RGBA8[color.Linear]{R: 0, G: 255, B: 0, A: 128},
-			want: [4]basics.Int8u{64, 64, 0, 127},
+			want: [4]basics.Int8u{64, 127, 0, 127},
 		},
 		{
 			name: "multiply",
