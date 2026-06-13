@@ -95,13 +95,24 @@ var sdfData []byte
 
 var molecules = loadMolecules()
 
+// atomPalette mirrors the C++ srgba8 atom colours. The demo renders into a
+// linear buffer that is encoded back to sRGB on save (EncodeLinearRGBToSRGB),
+// so each srgba8 literal is sRGB-decoded to linear here; the save-time encode
+// then round-trips it to the original byte value, matching the C++ BGR24 demo.
 var atomPalette = [atomColors]agg.Color{
-	agg.Black,
-	agg.NewColor(0, 0, 120, 255),
-	agg.NewColor(200, 0, 0, 255),
-	agg.NewColor(120, 120, 0, 255),
-	agg.NewColor(80, 50, 0, 255),
-	agg.NewColor(0, 200, 0, 255),
+	srgbaLiteral(0, 0, 0),
+	srgbaLiteral(0, 0, 120),
+	srgbaLiteral(200, 0, 0),
+	srgbaLiteral(120, 120, 0),
+	srgbaLiteral(80, 50, 0),
+	srgbaLiteral(0, 200, 0),
+}
+
+// srgbaLiteral converts an opaque sRGB byte triple (an AGG srgba8 literal) into
+// the linear-space agg.Color expected by the rendering pipeline.
+func srgbaLiteral(r, g, b uint8) agg.Color {
+	lin := icolor.ConvertRGBA8SRGBToLinear(icolor.RGBA8[icolor.SRGB]{R: r, G: g, B: b, A: 255})
+	return agg.NewColor(lin.R, lin.G, lin.B, 255)
 }
 
 func DefaultState() State {
@@ -206,6 +217,9 @@ func Draw(ctx *agg.Context, st State) {
 	text.SetSize(lay.textSize*3.0, 0)
 	outline := gsv.NewGSVTextOutlineWithTransform(text, tm)
 	outline.SetWidth(st.Thickness * lay.thickness)
+	// C++ sets ls.approximation_scale(mtx.scale()) so round joins/caps are
+	// tessellated to the on-screen scale of the (large) atom-label transform.
+	outline.Stroke().SetApproximationScale(tm.GetScale())
 	textAdapter := &gsvAdapter{src: outline}
 	ras := a.GetInternalRasterizer()
 
@@ -220,10 +234,23 @@ func Draw(ctx *agg.Context, st State) {
 		a.RenderRasterizerWithColor(atomPalette[atom.ColorIdx])
 	}
 
-	a.FontGSV(10)
-	a.FillColor(agg.Black)
-	a.NoLine()
-	a.Text(10, BaseHeight-20, mol.Name, false, 0, 0)
+	// Molecule name (top-left). C++ strokes the gsv_text outline at width 1.5
+	// with round join/cap, transformed by trans_affine_resizing(). The resizing
+	// matrix maps base coordinates into the (possibly scaled) frame; for the
+	// unscaled 400x400 reference it is the identity.
+	resize := transform.NewTransAffine()
+	resize.Scale(frameScale)
+	resize.Translate(offX, offY)
+	nameText := gsv.NewGSVText()
+	nameText.SetSize(10.0, 0)
+	nameText.SetText(mol.Name)
+	nameText.SetStartPoint(10.0, BaseHeight-20.0)
+	nameOutline := gsv.NewGSVTextOutlineWithTransform(nameText, resize)
+	nameOutline.SetWidth(1.5)
+	nameAdapter := &gsvAdapter{src: nameOutline}
+	ras.Reset()
+	ras.AddPath(nameAdapter, 0)
+	a.RenderRasterizerWithColor(agg.Black)
 
 	drawControls(ctx, st)
 }
