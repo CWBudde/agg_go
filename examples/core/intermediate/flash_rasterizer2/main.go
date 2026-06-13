@@ -136,11 +136,16 @@ func (d *demo) Render(img *agg.Image) {
 
 	tFill := time.Since(tFillStart)
 
-	// Stroke pass (using conv_stroke with round joins/caps, matching C++).
+	// Stroke pass (conv_stroke with round cap and default miter join, matching C++).
 	tStrokeStart := time.Now()
 	ras.AutoClose(true)
 	strokeColor := color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 128}
-	strokeW := math.Sqrt(sc)
+	// C++: stroke.width(sqrt(m_scale.scale())). m_scale is the interactive zoom
+	// transform (identity for the static screenshot), independent of the
+	// viewport fit applied during flattening, so the device-space stroke width
+	// is sqrt(1.0) = 1.0.
+	const zoomScale = 1.0
+	strokeW := math.Sqrt(zoomScale)
 
 	flatSrc := &flatConvVS{}
 	stroke := conv.NewConvStroke(flatSrc)
@@ -205,8 +210,11 @@ func (d *demo) Render(img *agg.Image) {
 	gsvT.SetStartPoint(10.0, 20.0)
 	gsvT.SetText(txt)
 
-	gsvTS := gsv.NewGSVTextOutline(gsvT)
+	// C++ strokes gsv_text with a raw conv_stroke (round cap, default miter
+	// join). GSVTextOutline would force round joins, so stroke directly.
+	gsvTS := conv.NewConvStroke(gsvT)
 	gsvTS.SetWidth(1.6)
+	gsvTS.SetLineCap(basics.RoundCap)
 
 	textRasVS := &convVertexSourceRasVS{src: gsvTS}
 	ras.Reset()

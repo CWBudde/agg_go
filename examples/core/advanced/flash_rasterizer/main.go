@@ -136,7 +136,7 @@ func (d *demo) Render(img *agg.Image) {
 	tFill := time.Since(tFillStart)
 
 	tStrokeStart := time.Now()
-	renderStrokes(shape, flatPaths, sc, renBase, w, h)
+	renderStrokes(shape, flatPaths, renBase, w, h)
 	tStroke := time.Since(tStrokeStart)
 
 	renderInfoText(renBase, w, h, tFill, tStroke)
@@ -216,7 +216,6 @@ func renderCompound(
 func renderStrokes(
 	shape *shapesdata.RawShape,
 	flatPaths [][]shapesdata.FlatVertex,
-	scale float64,
 	renBase *renderer.RendererBase[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]],
 	w, h int,
 ) {
@@ -229,7 +228,11 @@ func renderStrokes(
 
 	sl := scanline.NewScanlineU8()
 	strokeColor := color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 128}
-	strokeW := math.Sqrt(scale)
+	// C++: stroke.width(sqrt(m_scale.scale())). m_scale is the interactive zoom
+	// transform (identity for the static screenshot), independent of the
+	// viewport fit, so the device-space stroke width is sqrt(1.0) = 1.0.
+	const zoomScale = 1.0
+	strokeW := math.Sqrt(zoomScale)
 
 	flatSrc := &flatConvVS{}
 	stroke := conv.NewConvStroke(flatSrc)
@@ -293,8 +296,11 @@ func renderInfoText(
 	t.SetStartPoint(10.0, 20.0)
 	t.SetText(txt)
 
-	ts := gsv.NewGSVTextOutline(t)
+	// C++ strokes gsv_text with a raw conv_stroke (round cap, default miter
+	// join). GSVTextOutline would force round joins, so stroke directly.
+	ts := conv.NewConvStroke(t)
 	ts.SetWidth(1.6)
+	ts.SetLineCap(basics.RoundCap)
 
 	ras.AddPath(&convVertexSourceRasVS{src: ts}, 0)
 	if !ras.RewindScanlines() {

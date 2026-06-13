@@ -400,10 +400,12 @@ func (d *demo) Render(img *agg.Image) {
 	methodCtrl.SetCurItem(defaultMethod)
 
 	// ---------------------------------------------------------------------------
-	// Radius slider (140,14 – 440,22, flipY=false).
+	// Radius slider (140,14 – 430,22, flipY=false).
 	// C++: m_radius(130+10, 10+4, 130+300, 10+8+4, !flip_y=false)
+	// x2 = 130 + 300 = 430 (leaves a 10px right margin), NOT the window width
+	// 440. Using 440 stretches the track and shifts the value knob right.
 	// ---------------------------------------------------------------------------
-	radiusCtrl := sliderctrl.NewSliderCtrl(140, 14, 440, 22, false)
+	radiusCtrl := sliderctrl.NewSliderCtrl(140, 14, 430, 22, false)
 	radiusCtrl.SetRange(0.0, 40.0)
 	radiusCtrl.SetValue(defaultRadius)
 	radiusCtrl.SetLabel("Blur Radius=%1.2f")
@@ -446,8 +448,9 @@ func (d *demo) Render(img *agg.Image) {
 	glyphCurved2 := conv.NewConvCurve(glyphXformed2)
 
 	shadowVS := &perspectiveVS{src: glyphCurved2, persp: shadowPersp}
+	// C++: agg::rgba(0.1, 0.1, 0.1) → rgba8 via uround(0.1*255)=uround(25.5)=26.
 	renderPath(ras, sl, renBase, shadowVS,
-		color.RGBA8[color.Linear]{R: 25, G: 25, B: 25, A: 255})
+		color.RGBA8[color.Linear]{R: 26, G: 26, B: 26, A: 255})
 
 	// ---------------------------------------------------------------------------
 	// 2. Compute shadow bounding box, expand by radius, and blur that sub-region.
