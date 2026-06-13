@@ -1,6 +1,9 @@
 package agg
 
-import "testing"
+import (
+	"math"
+	"testing"
+)
 
 func feqf(a, b float32) bool {
 	d := a - b
@@ -492,5 +495,202 @@ func TestPublicAgg2DFloatDashedStrokes(t *testing.T) {
 	af.DashStart(9)
 	if got := af.GetDashStart(); got != 9 {
 		t.Errorf("public GetDashStart = %v, want 9", got)
+	}
+}
+
+// TestPublicAgg2DFloatGradientVariants drives the gradient-variant setters and
+// accessors through the public float surface and the public 8-bit oracle,
+// asserting whole-frame parity for a multi-stop radial fill plus accessor
+// readbacks.
+func TestPublicAgg2DFloatGradientVariants(t *testing.T) {
+	const w, h = 64, 64
+
+	fillScene := func(
+		clear func(Color),
+		stops func(x, y, r float64, s []GradientStop),
+		reset func(), moveTo func(x, y float64), lineTo func(x, y float64),
+		closePoly func(), draw func(DrawPathFlag),
+	) {
+		clear(NewColor(255, 255, 255, 255))
+		stops(32, 32, 30, []GradientStop{
+			{Position: 0.0, Color: NewColor(255, 0, 0, 255)},
+			{Position: 0.5, Color: NewColor(0, 200, 0, 255)},
+			{Position: 1.0, Color: NewColor(0, 0, 255, 255)},
+		})
+		reset()
+		moveTo(2, 2)
+		lineTo(62, 2)
+		lineTo(62, 62)
+		lineTo(2, 62)
+		closePoly()
+		draw(FillOnly)
+	}
+
+	imgF := NewImageFloat(w, h)
+	af := NewAgg2DFloat()
+	af.AttachImage(imgF)
+	fillScene(af.ClearAll, af.FillRadialGradientStops, af.ResetPath, af.MoveTo, af.LineTo, af.ClosePolygon, af.DrawPath)
+	rgbaF := imgF.ToRGBA()
+
+	buf := make([]uint8, w*h*4)
+	a8 := NewAgg2D()
+	a8.Attach(buf, w, h, w*4)
+	fillScene(a8.ClearAll, a8.FillRadialGradientStops, a8.ResetPath, a8.MoveTo, a8.LineTo, a8.ClosePolygon, a8.DrawPath)
+	img8 := NewImage(buf, w, h, w*4).ToGoImage()
+
+	maxDiff, ink := 0, 0
+	for y := range h {
+		for x := range w {
+			cf := rgbaF.RGBAAt(x, y)
+			c8 := img8.RGBAAt(x, y)
+			for _, d := range []int{
+				absInt(int(cf.R) - int(c8.R)),
+				absInt(int(cf.G) - int(c8.G)),
+				absInt(int(cf.B) - int(c8.B)),
+				absInt(int(cf.A) - int(c8.A)),
+			} {
+				if d > maxDiff {
+					maxDiff = d
+				}
+			}
+			if c8.R < 250 || c8.G < 250 || c8.B < 250 {
+				ink++
+			}
+		}
+	}
+	if ink < 100 {
+		t.Fatalf("public gradient variants drew too little ink in 8-bit oracle: %d pixels", ink)
+	}
+	if maxDiff > 3 {
+		t.Errorf("public float vs 8-bit gradient variants max channel diff = %d (tol 3)", maxDiff)
+	}
+
+	// Accessor parity through the public surface.
+	af.LineRadialGradientMultiStop(10, 10, 12, NewColor(0, 0, 0, 255), NewColor(128, 128, 128, 255), NewColor(255, 255, 255, 255))
+	a8.LineRadialGradientMultiStop(10, 10, 12, NewColor(0, 0, 0, 255), NewColor(128, 128, 128, 255), NewColor(255, 255, 255, 255))
+	af.FillRadialGradientPos(20, 20, 25)
+	a8.FillRadialGradientPos(20, 20, 25)
+	af.LineRadialGradientPos(40, 40, 18)
+	a8.LineRadialGradientPos(40, 40, 18)
+
+	if af.FillGradientFlag() != a8.FillGradientFlag() {
+		t.Errorf("public FillGradientFlag float=%v 8bit=%v", af.FillGradientFlag(), a8.FillGradientFlag())
+	}
+	if af.LineGradientFlag() != a8.LineGradientFlag() {
+		t.Errorf("public LineGradientFlag float=%v 8bit=%v", af.LineGradientFlag(), a8.LineGradientFlag())
+	}
+	if af.FillGradientD1() != a8.FillGradientD1() || af.FillGradientD2() != a8.FillGradientD2() {
+		t.Errorf("public FillGradient D1/D2 float=(%v,%v) 8bit=(%v,%v)",
+			af.FillGradientD1(), af.FillGradientD2(), a8.FillGradientD1(), a8.FillGradientD2())
+	}
+	if af.LineGradientD1() != a8.LineGradientD1() || af.LineGradientD2() != a8.LineGradientD2() {
+		t.Errorf("public LineGradient D1/D2 float=(%v,%v) 8bit=(%v,%v)",
+			af.LineGradientD1(), af.LineGradientD2(), a8.LineGradientD1(), a8.LineGradientD2())
+	}
+}
+
+// TestPublicAgg2DFloatViewportCoordinateMapping exercises the public viewport +
+// coordinate-mapping surface of Agg2DFloat against the 8-bit Agg2D oracle. The
+// math is color-agnostic, so scalar/bool results must match exactly and a
+// viewport-mapped fill must land on the same pixels.
+func TestPublicAgg2DFloatViewportCoordinateMapping(t *testing.T) {
+	const w, h = 60, 60
+
+	// Render-parity: a viewport mapping must produce identical pixels.
+	a8 := NewAgg2D()
+	buf := make([]uint8, w*h*4)
+	a8.Attach(buf, w, h, w*4)
+	af := NewAgg2DFloat()
+	imgF := NewImageFloat(w, h)
+	af.AttachImage(imgF)
+
+	for _, s := range []interface {
+		ClearAll(Color)
+		FillColor(Color)
+		Viewport(float64, float64, float64, float64, float64, float64, float64, float64, ViewportOption)
+		ViewportDefault(float64, float64, float64, float64, float64, float64, float64, float64)
+		ResetPath()
+		MoveTo(float64, float64)
+		LineTo(float64, float64)
+		ClosePolygon()
+		DrawPath(DrawPathFlag)
+	}{a8, af} {
+		s.ClearAll(NewColor(255, 255, 255, 255))
+		s.Viewport(0, 0, 10, 10, 5, 5, 55, 55, Anisotropic)
+		s.FillColor(NewColor(200, 40, 40, 255))
+		s.ResetPath()
+		s.MoveTo(2, 2)
+		s.LineTo(8, 2)
+		s.LineTo(8, 8)
+		s.LineTo(2, 8)
+		s.ClosePolygon()
+		s.DrawPath(FillOnly)
+	}
+
+	rgbaF := imgF.ToRGBA()
+	maxDiff, ink := 0, 0
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			i := (y*w + x) * 4
+			c8 := []int{int(buf[i]), int(buf[i+1]), int(buf[i+2]), int(buf[i+3])}
+			cf := []int{int(rgbaF.Pix[i]), int(rgbaF.Pix[i+1]), int(rgbaF.Pix[i+2]), int(rgbaF.Pix[i+3])}
+			for k := 0; k < 4; k++ {
+				if d := absInt(c8[k] - cf[k]); d > maxDiff {
+					maxDiff = d
+				}
+			}
+			if buf[i] < 250 || buf[i+1] < 250 || buf[i+2] < 250 {
+				ink++
+			}
+		}
+	}
+	if ink < 50 {
+		t.Fatalf("public viewport drew too little ink in 8-bit oracle: %d pixels", ink)
+	}
+	if maxDiff > 2 {
+		t.Errorf("public float vs 8-bit viewport max channel diff = %d (tol 2)", maxDiff)
+	}
+
+	// Scalar/bool accessor parity after an identical ViewportDefault setup.
+	a8b := NewAgg2D()
+	buf2 := make([]uint8, 50*50*4)
+	a8b.Attach(buf2, 50, 50, 50*4)
+	afb := NewAgg2DFloat()
+	afb.AttachImage(NewImageFloat(50, 50))
+	a8b.ViewportDefault(0, 0, 100, 100, 0, 0, 50, 50)
+	afb.ViewportDefault(0, 0, 100, 100, 0, 0, 50, 50)
+
+	for _, d := range []float64{0, 1, 7.5, 100} {
+		if math.Abs(a8b.WorldToScreenDistance(d)-afb.WorldToScreenDistance(d)) > 1e-9 {
+			t.Errorf("public WorldToScreenDistance(%v): float=%v 8bit=%v", d, afb.WorldToScreenDistance(d), a8b.WorldToScreenDistance(d))
+		}
+		got8, ok8 := a8b.ScreenToWorldDistance(d)
+		gotF, okF := afb.ScreenToWorldDistance(d)
+		if ok8 != okF || math.Abs(got8-gotF) > 1e-9 {
+			t.Errorf("public ScreenToWorldDistance(%v): float=(%v,%v) 8bit=(%v,%v)", d, gotF, okF, got8, ok8)
+		}
+	}
+
+	for _, p := range [][2]float64{{0, 0}, {3.3, 7.7}, {49, 49}} {
+		x8, y8 := p[0], p[1]
+		a8b.AlignPoint(&x8, &y8)
+		xF, yF := p[0], p[1]
+		afb.AlignPoint(&xF, &yF)
+		if math.Abs(x8-xF) > 1e-9 || math.Abs(y8-yF) > 1e-9 {
+			t.Errorf("public AlignPoint(%v): float=(%v,%v) 8bit=(%v,%v)", p, xF, yF, x8, y8)
+		}
+	}
+
+	for _, p := range [][2]float64{{0, 0}, {25, 25}, {49, 49}, {-5, 5}, {60, 60}} {
+		if a8b.InBox(p[0], p[1]) != afb.InBox(p[0], p[1]) {
+			t.Errorf("public InBox(%v): float=%v 8bit=%v", p, afb.InBox(p[0], p[1]), a8b.InBox(p[0], p[1]))
+		}
+	}
+
+	afb.AffineImageResamplePolicy(AffineImageResamplePreferFiltered)
+	a8b.AffineImageResamplePolicy(AffineImageResamplePreferFiltered)
+	if afb.GetAffineImageResamplePolicy() != a8b.GetAffineImageResamplePolicy() {
+		t.Errorf("public GetAffineImageResamplePolicy: float=%v 8bit=%v",
+			afb.GetAffineImageResamplePolicy(), a8b.GetAffineImageResamplePolicy())
 	}
 }

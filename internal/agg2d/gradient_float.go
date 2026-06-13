@@ -111,6 +111,62 @@ func (a *Agg2DFloat) LineRadialGradient(x, y, r float64, c1, c2 Color, profile f
 	a.lineColor = NewColor(0, 0, 0, 255)
 }
 
+// buildNStopGradient32 fills a float gradient array by interpolating between an
+// arbitrary number of color stops. The stops slice must be sorted by ascending
+// Position; out-of-range positions are clamped to the nearest stop. Float twin
+// of buildNStopGradient.
+func buildNStopGradient32(dst *[256]color.RGBA32[color.Linear], stops []ColorStop) {
+	if len(stops) == 0 {
+		return
+	}
+	if len(stops) == 1 {
+		c := colorToRGBA32(stops[0].Color)
+		for i := range dst {
+			dst[i] = c
+		}
+		return
+	}
+	first := colorToRGBA32(stops[0].Color)
+	last := colorToRGBA32(stops[len(stops)-1].Color)
+	for i := range 256 {
+		pos := float64(i) / 255.0
+		if pos <= stops[0].Position {
+			dst[i] = first
+			continue
+		}
+		if pos >= stops[len(stops)-1].Position {
+			dst[i] = last
+			continue
+		}
+		// Binary search for the bracketing stops.
+		lo, hi := 0, len(stops)-1
+		for hi-lo > 1 {
+			mid := (lo + hi) / 2
+			if stops[mid].Position <= pos {
+				lo = mid
+			} else {
+				hi = mid
+			}
+		}
+		span := stops[hi].Position - stops[lo].Position
+		var t float32
+		if span > 0 {
+			t = float32((pos - stops[lo].Position) / span)
+		}
+		dst[i] = colorToRGBA32(stops[lo].Color).Gradient(colorToRGBA32(stops[hi].Color), t)
+	}
+}
+
+// FillRadialGradientStops sets up a radial fill gradient from an arbitrary sorted
+// slice of ColorStops (position 0 = centre, position 1 = edge).
+func (a *Agg2DFloat) FillRadialGradientStops(x, y, r float64, stops []ColorStop) {
+	buildNStopGradient32(&a.fillGradient, stops)
+	a.fillGradientLUTDirty = true
+	a.fillGradientD1, a.fillGradientD2 = a.setupWorldRadialGradient(a.fillGradientMatrix, x, y, r)
+	a.fillGradientFlag = Radial
+	a.fillColor = NewColor(0, 0, 0, 255)
+}
+
 // FillRadialGradientMultiStop sets up a three-color radial gradient for fill.
 func (a *Agg2DFloat) FillRadialGradientMultiStop(x, y, r float64, c1, c2, c3 Color) {
 	buildThreeColorGradient32(&a.fillGradient, c1, c2, c3)
@@ -119,3 +175,42 @@ func (a *Agg2DFloat) FillRadialGradientMultiStop(x, y, r float64, c1, c2, c3 Col
 	a.fillGradientFlag = Radial
 	a.fillColor = NewColor(0, 0, 0, 255)
 }
+
+// LineRadialGradientMultiStop sets up a three-color radial gradient for strokes.
+func (a *Agg2DFloat) LineRadialGradientMultiStop(x, y, r float64, c1, c2, c3 Color) {
+	buildThreeColorGradient32(&a.lineGradient, c1, c2, c3)
+	a.lineGradientLUTDirty = true
+	a.lineGradientD1, a.lineGradientD2 = a.setupWorldRadialGradient(a.lineGradientMatrix, x, y, r)
+	a.lineGradientFlag = Radial
+	a.lineColor = NewColor(0, 0, 0, 255)
+}
+
+// FillRadialGradientPos repositions the fill radial gradient (centre and radius)
+// without changing the color ramp.
+func (a *Agg2DFloat) FillRadialGradientPos(x, y, r float64) {
+	a.fillGradientD1, a.fillGradientD2 = a.setupWorldRadialGradient(a.fillGradientMatrix, x, y, r)
+}
+
+// LineRadialGradientPos repositions the line radial gradient (centre and radius)
+// without changing the color ramp.
+func (a *Agg2DFloat) LineRadialGradientPos(x, y, r float64) {
+	a.lineGradientD1, a.lineGradientD2 = a.setupWorldRadialGradient(a.lineGradientMatrix, x, y, r)
+}
+
+// FillGradientD1 returns the fill gradient start distance.
+func (a *Agg2DFloat) FillGradientD1() float64 { return a.fillGradientD1 }
+
+// FillGradientD2 returns the fill gradient end distance.
+func (a *Agg2DFloat) FillGradientD2() float64 { return a.fillGradientD2 }
+
+// LineGradientD1 returns the line gradient start distance.
+func (a *Agg2DFloat) LineGradientD1() float64 { return a.lineGradientD1 }
+
+// LineGradientD2 returns the line gradient end distance.
+func (a *Agg2DFloat) LineGradientD2() float64 { return a.lineGradientD2 }
+
+// FillGradientFlag returns the current fill gradient type.
+func (a *Agg2DFloat) FillGradientFlag() Gradient { return a.fillGradientFlag }
+
+// LineGradientFlag returns the current line gradient type.
+func (a *Agg2DFloat) LineGradientFlag() Gradient { return a.lineGradientFlag }

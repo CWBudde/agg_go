@@ -534,16 +534,38 @@ usable.
         patterns, phase offset, polyline, RemoveAllDashes/NoDashes solid fallback,
         tol 2 — plus a `GetDashStart` round-trip) and a public-surface test
         `TestPublicAgg2DFloatDashedStrokes` in `agg2d_float_test.go`.
-  - [ ] **Gradient variants**: `FillGradientD1/D2`, `LineGradientD1/D2`,
-        `FillGradientFlag`, `LineGradientFlag`, `FillRadialGradientPos`,
-        `FillRadialGradientStops`, `LineRadialGradientPos`,
-        `LineRadialGradientMultiStop`. Positioned/multi-stop gradient setters and
-        the D1/D2/flag accessors; the float gradient LUT/span pipeline already exists.
-  - [ ] **Viewport & coordinate mapping**: `Viewport`, `ViewportDefault`,
-        `ScreenToWorldScalar` (root wrapper; internal already added with text),
-        `ScreenToWorldDistance`, `WorldToScreenDistance`, `AlignPoint`, `InBox`,
-        `AffineImageResamplePolicy`/`GetAffineImageResamplePolicy`. All affine math,
-        color-agnostic.
+  - [x] **Gradient variants** — DONE 2026-06-13. `FillGradientD1/D2`,
+        `LineGradientD1/D2`, `FillGradientFlag`, `LineGradientFlag`,
+        `FillRadialGradientPos`, `FillRadialGradientStops`, `LineRadialGradientPos`,
+        `LineRadialGradientMultiStop`. The gradient LUT/span pipeline and the
+        world-radial setup already existed; added the float N-stop builder
+        `buildNStopGradient32` (float twin of `buildNStopGradient`, interpolating
+        stops in RGBA32 space) plus the setters/accessors in
+        `internal/agg2d/gradient_float.go`. Root wrappers in `agg2d_float.go`
+        (the flag accessors return `int` to match the 8-bit public surface;
+        `FillRadialGradientStops` converts root `[]GradientStop` → internal
+        `[]ColorStop`). Parity vs the 8-bit oracle in
+        `internal/agg2d/gradient_variants_float_test.go` (5 scene tests —
+        N-stop radial, fill/line multi-stop, fill/line reposition, tol 3 — plus a
+        D1/D2/flag accessor-parity test) and a public-surface test
+        `TestPublicAgg2DFloatGradientVariants` in `agg2d_float_test.go`.
+  - [x] **Viewport & coordinate mapping** — DONE 2026-06-13. `Viewport`,
+        `GetViewportTransform`, `GetScaling`, `WorldToScreenDistance`,
+        `ScreenToWorldDistance`, `AlignPoint`, `InBox`, `AffineImageResamplePolicy`/
+        `GetAffineImageResamplePolicy` on the internal float twin in
+        `internal/agg2d/viewport_float.go` (bodies mirror transform.go/utilities.go/
+        rendering.go; the package-level `viewportTransform` helper and the
+        `baseRendererAdapter.rendererBase().InBox` path are reused verbatim — color-
+        agnostic). Root wrappers in `agg2d_float.go` add `ScreenToWorldScalar`,
+        `Viewport`, `ViewportDefault` (XMidYMid), the distance/align/inbox methods,
+        and the resample-policy setter/getter (root `ViewportOption`/
+        `AffineImageResamplePolicy` aliases). `WorldToScreen`/`ScreenToWorld`/
+        `WorldToScreenScalar`/`ScreenToWorldScalar` already existed on the float
+        twin. Parity vs the 8-bit oracle in
+        `internal/agg2d/viewport_float_test.go` (a viewport render-parity test, tol
+        2, plus a scalar/bool accessor-parity test for distance/align/inbox/resample
+        across an identical viewport setup) and a public-surface test
+        `TestPublicAgg2DFloatViewportCoordinateMapping` in `agg2d_float_test.go`.
   - [ ] **Transform stack & affine matrix**: `PushTransform`, `PopTransform`,
         `Affine`, `GetTransformations`, `SetTransformations`. The reserved
         `transformStack` field exists; mirror the 8-bit push/pop semantics.

@@ -440,6 +440,49 @@ func (a *Agg2DFloat) FillRadialGradientMultiStop(x, y, r float64, c1, c2, c3 Col
 	a.impl.FillRadialGradientMultiStop(x, y, r, toInternalColor(c1), toInternalColor(c2), toInternalColor(c3))
 }
 
+// LineRadialGradientMultiStop sets up a three-color radial gradient for strokes.
+func (a *Agg2DFloat) LineRadialGradientMultiStop(x, y, r float64, c1, c2, c3 Color) {
+	a.impl.LineRadialGradientMultiStop(x, y, r, toInternalColor(c1), toInternalColor(c2), toInternalColor(c3))
+}
+
+// FillRadialGradientStops sets up a radial fill gradient from an arbitrary sorted
+// slice of GradientStops (Position 0 = centre, Position 1 = edge). Stops must be
+// in ascending Position order; positions outside [0, 1] are clamped.
+func (a *Agg2DFloat) FillRadialGradientStops(x, y, r float64, stops []GradientStop) {
+	internalStops := make([]agg2d.ColorStop, len(stops))
+	for i, s := range stops {
+		internalStops[i] = agg2d.ColorStop{
+			Position: s.Position,
+			Color:    toInternalColor(s.Color),
+		}
+	}
+	a.impl.FillRadialGradientStops(x, y, r, internalStops)
+}
+
+// FillRadialGradientPos repositions the fill radial gradient without changing colors.
+func (a *Agg2DFloat) FillRadialGradientPos(x, y, r float64) { a.impl.FillRadialGradientPos(x, y, r) }
+
+// LineRadialGradientPos repositions the line radial gradient without changing colors.
+func (a *Agg2DFloat) LineRadialGradientPos(x, y, r float64) { a.impl.LineRadialGradientPos(x, y, r) }
+
+// FillGradientFlag returns the current fill gradient type.
+func (a *Agg2DFloat) FillGradientFlag() int { return int(a.impl.FillGradientFlag()) }
+
+// LineGradientFlag returns the current line gradient type.
+func (a *Agg2DFloat) LineGradientFlag() int { return int(a.impl.LineGradientFlag()) }
+
+// FillGradientD1 returns the first bound of the current fill gradient.
+func (a *Agg2DFloat) FillGradientD1() float64 { return a.impl.FillGradientD1() }
+
+// FillGradientD2 returns the second bound of the current fill gradient.
+func (a *Agg2DFloat) FillGradientD2() float64 { return a.impl.FillGradientD2() }
+
+// LineGradientD1 returns the first bound of the current line gradient.
+func (a *Agg2DFloat) LineGradientD1() float64 { return a.impl.LineGradientD1() }
+
+// LineGradientD2 returns the second bound of the current line gradient.
+func (a *Agg2DFloat) LineGradientD2() float64 { return a.impl.LineGradientD2() }
+
 // --- Image transfer ---
 
 // CopyImage copies a float source image into the target at (dstX, dstY).
@@ -561,6 +604,50 @@ func (a *Agg2DFloat) ScreenToWorld(x, y *float64) { a.impl.ScreenToWorld(x, y) }
 // WorldToScreenScalar converts a world-space distance using the current transform.
 func (a *Agg2DFloat) WorldToScreenScalar(scalar float64) float64 {
 	return a.impl.WorldToScreenScalar(scalar)
+}
+
+// ScreenToWorldScalar converts a screen-space distance using the current transform.
+func (a *Agg2DFloat) ScreenToWorldScalar(scalar float64) float64 {
+	return a.impl.ScreenToWorldScalar(scalar)
+}
+
+// Viewport sets up a viewport transformation mapping world coordinates onto a
+// screen rectangle.
+func (a *Agg2DFloat) Viewport(worldX1, worldY1, worldX2, worldY2, screenX1, screenY1, screenX2, screenY2 float64, opt ViewportOption) {
+	a.impl.Viewport(worldX1, worldY1, worldX2, worldY2, screenX1, screenY1, screenX2, screenY2, opt)
+}
+
+// ViewportDefault applies the upstream default viewport option: XMidYMid.
+func (a *Agg2DFloat) ViewportDefault(worldX1, worldY1, worldX2, worldY2, screenX1, screenY1, screenX2, screenY2 float64) {
+	a.Viewport(worldX1, worldY1, worldX2, worldY2, screenX1, screenY1, screenX2, screenY2, XMidYMid)
+}
+
+// WorldToScreenDistance transforms a distance from world to screen units.
+func (a *Agg2DFloat) WorldToScreenDistance(worldDistance float64) float64 {
+	return a.impl.WorldToScreenDistance(worldDistance)
+}
+
+// ScreenToWorldDistance transforms a distance from screen to world units; the
+// bool is false when the transform is not invertible.
+func (a *Agg2DFloat) ScreenToWorldDistance(screenDistance float64) (float64, bool) {
+	return a.impl.ScreenToWorldDistance(screenDistance)
+}
+
+// AlignPoint snaps a world point to pixel-centre boundaries for crisp rendering.
+func (a *Agg2DFloat) AlignPoint(x, y *float64) { a.impl.AlignPoint(x, y) }
+
+// InBox reports whether a world point lies inside the current clip box.
+func (a *Agg2DFloat) InBox(worldX, worldY float64) bool { return a.impl.InBox(worldX, worldY) }
+
+// AffineImageResamplePolicy controls how affine image transforms choose between
+// direct filtered spans and the affine resampler.
+func (a *Agg2DFloat) AffineImageResamplePolicy(policy AffineImageResamplePolicy) {
+	a.impl.AffineImageResamplePolicy(policy)
+}
+
+// GetAffineImageResamplePolicy returns the current affine image resample policy.
+func (a *Agg2DFloat) GetAffineImageResamplePolicy() AffineImageResamplePolicy {
+	return a.impl.GetAffineImageResamplePolicy()
 }
 
 // ResetTransformations resets the world transform to identity.
