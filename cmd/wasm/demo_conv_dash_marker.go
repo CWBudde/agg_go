@@ -46,12 +46,13 @@ func dashInit() {
 	w := float64(width)
 	h := float64(height)
 
+	// Scale the native 500×330 frame to fit the canvas while preserving aspect
+	// ratio, matching how the original C++ demo fills its window. Do NOT clamp
+	// to 1.0: clamping leaves the content at native scale and centres it, which
+	// shifts the scene right and undersizes it relative to the C++ reference.
 	sx := w / frameW
 	sy := h / frameH
 	scale := math.Min(sx, sy)
-	if scale > 1.0 {
-		scale = 1.0
-	}
 	if scale <= 0 {
 		scale = 1.0
 	}
