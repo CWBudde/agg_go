@@ -211,8 +211,14 @@ func clampInt(v, lo, hi int) int {
 	return v
 }
 
-// blurSubRegion blurs the rectangle [x0,y0,x1,y1) in the work buffer.
-// The work buffer uses positive stride (row 0 = top in y-up frame = bottom of screen).
+// blurSubRegion blurs the inclusive rectangle [x0,y0]..[x1,y1] in the work
+// buffer. The work buffer uses positive stride (row 0 = top in y-up frame =
+// bottom of screen).
+//
+// The bounds handling mirrors C++ pixfmt::attach: the rect is clipped to
+// [0,w-1]x[0,h-1] and the attached sub-image covers (x2-x1)+1 by (y2-y1)+1
+// pixels, i.e. x1/y1 are inclusive — not the exclusive upper bound a Go slice
+// range would imply.
 func blurSubRegion(
 	workBuf []uint8,
 	w, h int,
@@ -223,17 +229,17 @@ func blurSubRegion(
 	if radius <= 0 {
 		return
 	}
-	x0 = clampInt(x0, 0, w)
-	y0 = clampInt(y0, 0, h)
-	x1 = clampInt(x1, 0, w)
-	y1 = clampInt(y1, 0, h)
-	if x0 >= x1 || y0 >= y1 {
+	x0 = clampInt(x0, 0, w-1)
+	y0 = clampInt(y0, 0, h-1)
+	x1 = clampInt(x1, 0, w-1)
+	y1 = clampInt(y1, 0, h-1)
+	if x0 > x1 || y0 > y1 {
 		return
 	}
 
 	stride := w * 4
-	rw := x1 - x0
-	rh := y1 - y0
+	rw := x1 - x0 + 1
+	rh := y1 - y0 + 1
 
 	// Extract sub-region into a 2D pixel slice.
 	pixels := make([][]color.RGBA8[color.Linear], rh)
