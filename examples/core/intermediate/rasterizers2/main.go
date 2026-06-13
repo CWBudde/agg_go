@@ -56,7 +56,19 @@ type (
 	rasAAType = *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
 	slType    = *scanline.ScanlineP8
 	renPrimT  = *rprimitives.RendererPrimitives[renBaseT, colorType]
+
+	// Plain (non-premultiplied) base used for control widgets, matching C++
+	// rasterizers2 which renders the scene through renderer_base<pixfmt_pre>
+	// but render_ctrl through a separate renderer_base<pixfmt> (ren_base2).
+	pixFmtPlain = *pixfmt.PixFmtRGBA32[color.Linear]
 )
+
+// solidBase abstracts the two renderer bases (premultiplied scene base and
+// plain control base) so the scanline helpers can drive either.
+type solidBase interface {
+	BlendSolidHspan(x, y, length int, c colorType, covers []basics.Int8u)
+	BlendHline(x1, y, x2 int, c colorType, cover basics.Int8u)
+}
 
 // --- interface adapters between rasterizer.VertexSource and conv.VertexSource ---
 
@@ -163,12 +175,15 @@ func (s *chainPatternSource) Pixel(x, y int) color.RGBA {
 		return color.NewRGBA(0, 0, 0, 0)
 	}
 	p := s.data[idx]
-	c := color.NewRGBAFromRGBA8(
-		uint8((p>>16)&0xFF),
-		uint8((p>>8)&0xFF),
-		uint8(p&0xFF),
-		uint8((p>>24)&0xFF),
-	)
+	// C++: srgba8 c(R, G, B, A); return rgba(c).premultiply();
+	// The packed pixmap values are sRGB; decode to linear before premultiply.
+	lin := color.ConvertRGBA8SRGBToLinear(color.RGBA8[color.SRGB]{
+		R: uint8((p >> 16) & 0xFF),
+		G: uint8((p >> 8) & 0xFF),
+		B: uint8(p & 0xFF),
+		A: uint8((p >> 24) & 0xFF),
+	})
+	c := lin.ConvertToRGBA()
 	c.Premultiply()
 	return c
 }
@@ -270,7 +285,7 @@ func (a *outlineImageAdapter) Line3(lp primitives.LineParameters, sx, sy, ex, ey
 
 // --- helpers ---
 
-func renderScanlines(ras rasAAType, sl slType, renBase renBaseT, col colorType) {
+func renderScanlines(ras rasAAType, sl slType, renBase solidBase, col colorType) {
 	if !ras.RewindScanlines() {
 		return
 	}
@@ -290,7 +305,7 @@ func renderScanlines(ras rasAAType, sl slType, renBase renBaseT, col colorType) 
 	}
 }
 
-func drawText(ras rasAAType, sl slType, renBase renBaseT, x, y float64, txt string) {
+func drawText(ras rasAAType, sl slType, renBase solidBase, x, y float64, txt string) {
 	t := gsv.NewGSVText()
 	t.SetSize(8, 0)
 	t.SetText(txt)
@@ -305,7 +320,7 @@ func drawText(ras rasAAType, sl slType, renBase renBaseT, x, y float64, txt stri
 }
 
 func renderControl(
-	ras rasAAType, sl slType, renBase renBaseT,
+	ras rasAAType, sl slType, renBase solidBase,
 	numPaths uint,
 	rewindFn func(pathID uint),
 	vertexFn func(x, y *float64) uint32,
@@ -331,7 +346,7 @@ func (a *ctrlPathAdapter) Vertex(x, y *float64) uint32 { return a.vertexFn(x, y)
 
 // --- checkbox rendering adapter ---
 
-func renderCheckbox(ras rasAAType, sl slType, renBase renBaseT, cb *checkbox.CheckboxCtrl[color.RGBA]) {
+func renderCheckbox(ras rasAAType, sl slType, renBase solidBase, cb *checkbox.CheckboxCtrl[color.RGBA]) {
 	renderControl(
 		ras, sl, renBase, cb.NumPaths(), cb.Rewind,
 		func(x, y *float64) uint32 {
@@ -344,7 +359,7 @@ func renderCheckbox(ras rasAAType, sl slType, renBase renBaseT, cb *checkbox.Che
 	)
 }
 
-func renderSlider(ras rasAAType, sl slType, renBase renBaseT, s *sliderctrl.SliderCtrl) {
+func renderSlider(ras rasAAType, sl slType, renBase solidBase, s *sliderctrl.SliderCtrl) {
 	renderControl(
 		ras, sl, renBase, s.NumPaths(), s.Rewind,
 		func(x, y *float64) uint32 {
@@ -414,6 +429,11 @@ func (d *demo) Render(img *agg.Image) {
 	pf := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
 	renBase := renderer.NewRendererBaseWithPixfmt[pixFmt, colorType](pf)
 	renBase.Clear(colorType{R: 255, G: 255, B: 242, A: 255})
+
+	// Controls render through a plain (non-premultiplied) base, matching C++
+	// ren_base2 = renderer_base<pixfmt> used for render_ctrl.
+	pfPlain := pixfmt.NewPixFmtRGBA32[color.Linear](rbuf)
+	renBaseCtrl := renderer.NewRendererBaseWithPixfmt[pixFmtPlain, colorType](pfPlain)
 
 	rasAA := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
 		rasterizer.RasConvInt{},
@@ -499,12 +519,12 @@ func (d *demo) Render(img *agg.Image) {
 	drawText(rasAA, sl, renBase, fw-fw/5-50, fh/2+50, "Arbitrary Image Pattern")
 
 	// Controls
-	renderSlider(rasAA, sl, renBase, d.stepSlider)
-	renderSlider(rasAA, sl, renBase, d.widthSlider)
-	renderCheckbox(rasAA, sl, renBase, d.testPerf)
-	renderCheckbox(rasAA, sl, renBase, d.rotate)
-	renderCheckbox(rasAA, sl, renBase, d.accurateJoins)
-	renderCheckbox(rasAA, sl, renBase, d.scalePattern)
+	renderSlider(rasAA, sl, renBaseCtrl, d.stepSlider)
+	renderSlider(rasAA, sl, renBaseCtrl, d.widthSlider)
+	renderCheckbox(rasAA, sl, renBaseCtrl, d.testPerf)
+	renderCheckbox(rasAA, sl, renBaseCtrl, d.rotate)
+	renderCheckbox(rasAA, sl, renBaseCtrl, d.accurateJoins)
+	renderCheckbox(rasAA, sl, renBaseCtrl, d.scalePattern)
 }
 
 func (d *demo) OnMouseDown(x, y int, btn lowlevelrunner.Buttons) bool {

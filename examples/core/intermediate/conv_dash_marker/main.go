@@ -12,10 +12,8 @@ import (
 	"github.com/cwbudde/agg_go/internal/ctrl/checkbox"
 	"github.com/cwbudde/agg_go/internal/ctrl/rbox"
 	"github.com/cwbudde/agg_go/internal/ctrl/slider"
-	"github.com/cwbudde/agg_go/internal/order"
 	"github.com/cwbudde/agg_go/internal/path"
 	"github.com/cwbudde/agg_go/internal/pixfmt"
-	"github.com/cwbudde/agg_go/internal/pixfmt/blender"
 	"github.com/cwbudde/agg_go/internal/rasterizer"
 	"github.com/cwbudde/agg_go/internal/renderer"
 	"github.com/cwbudde/agg_go/internal/scanline"
@@ -88,29 +86,37 @@ func rgbaToRGBA8(c color.RGBA) color.RGBA8[color.Linear] {
 	}
 }
 
-func renderControl(
-	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
-	sl *scanline.ScanlineU8,
-	renBase *renderer.RendererBase[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]],
-	ctrl control,
-) {
+// plainBase is the renderer base type used throughout the demo. C++
+// conv_dash_marker renders everything (fills, strokes, controls) through a
+// single renderer_base<pixfmt> (plain, non-premultiplied) with color_type
+// rgba8 (linear); the framebuffer is sRGB-encoded at save time.
+type plainBase = *renderer.RendererBase[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]]
+
+type rasterizerAA = *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
+
+// renderSolid rasterizes the currently added path(s) and blends them with a
+// solid color, mirroring agg::render_scanlines_aa_solid.
+func renderSolid(ras rasterizerAA, sl *scanline.ScanlineU8, renBase plainBase, col color.RGBA8[color.Linear]) {
+	if !ras.RewindScanlines() {
+		return
+	}
+	sl.Reset(ras.MinX(), ras.MaxX())
+	for ras.SweepScanline(sl) {
+		y := sl.Y()
+		for _, spanData := range sl.Spans() {
+			if spanData.Len > 0 {
+				renBase.BlendSolidHspan(int(spanData.X), y, int(spanData.Len), col, spanData.Covers)
+			}
+		}
+	}
+}
+
+func renderControl(ras rasterizerAA, sl *scanline.ScanlineU8, renBase plainBase, ctrl control) {
 	adapter := &controlPathAdapter{rewindFn: ctrl.Rewind, vertexFn: ctrl.Vertex}
 	for pathID := uint(0); pathID < ctrl.NumPaths(); pathID++ {
 		ras.Reset()
 		ras.AddPath(adapter, uint32(pathID))
-		col := rgbaToRGBA8(ctrl.Color(pathID))
-		if !ras.RewindScanlines() {
-			continue
-		}
-		sl.Reset(ras.MinX(), ras.MaxX())
-		for ras.SweepScanline(sl) {
-			y := sl.Y()
-			for _, spanData := range sl.Spans() {
-				if spanData.Len > 0 {
-					renBase.BlendSolidHspan(int(spanData.X), y, int(spanData.Len), col, spanData.Covers)
-				}
-			}
-		}
+		renderSolid(ras, sl, renBase, rgbaToRGBA8(ctrl.Color(pathID)))
 	}
 }
 
@@ -194,91 +200,52 @@ func (d *demo) buildPath() *path.PathStorageStl {
 	return ps
 }
 
-func addVertexSourcePath(a *agg.Agg2D, src conv.VertexSource) {
-	src.Rewind(0)
-	for {
-		x, y, cmd := src.Vertex()
-		if basics.IsStop(cmd) {
-			break
-		}
-		switch {
-		case basics.IsMoveTo(cmd):
-			a.MoveTo(x, y)
-		case basics.IsLineTo(cmd):
-			a.LineTo(x, y)
-		case basics.IsClosed(uint32(cmd)):
-			a.ClosePolygon()
-		}
-	}
-}
-
-func (d *demo) drawHandles(ctx *agg.Context) {
-	for i := 0; i < 3; i++ {
-		x, y := mapPoint(d.x[i], d.y[i])
-		ctx.SetColor(agg.RGBA(0.8, 0.2, 0.1, 0.6))
-		ctx.FillCircle(x, y, 5)
-		ctx.SetColor(agg.Black)
-		ctx.DrawCircle(x, y, 5)
-	}
-}
-
 func (d *demo) Render(img *agg.Image) {
-	ctx := agg.NewContextForImage(img)
-	ctx.Clear(agg.White)
-	a := ctx.GetAgg2D()
-	a.ResetTransformations()
-
 	ps := d.buildPath()
 	rawSrc := &pathToConvSource{ps: ps}
-	a.FillEvenOdd(d.evenOddCtrl.IsChecked())
-
-	a.ResetPath()
-	addVertexSourcePath(a, rawSrc)
-	a.FillColor(agg.RGBA(0.7, 0.5, 0.1, 0.5))
-	a.NoLine()
-	a.DrawPath(agg.FillOnly)
-
-	smoothFill := conv.NewConvSmoothPoly1Curve(rawSrc)
-	smoothFill.SetSmoothValue(d.smoothCtrl.Value())
-	a.ResetPath()
-	addVertexSourcePath(a, smoothFill)
-	a.FillColor(agg.RGBA(0.1, 0.5, 0.7, 0.1))
-	a.NoLine()
-	a.DrawPath(agg.FillOnly)
-
-	smoothOutline := conv.NewConvSmoothPoly1(rawSrc)
-	smoothOutline.SetSmoothValue(d.smoothCtrl.Value())
-	greenStroke := conv.NewConvStroke(smoothOutline)
-	greenStroke.SetWidth(1.0)
 
 	rbuf := buffer.NewRenderingBufferU8WithData(img.Data, img.Width(), img.Height(), img.Stride())
-	pf := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
-	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtAlphaBlendRGBA[color.Linear, blender.BlenderRGBA8Pre[color.Linear, order.RGBA]], color.RGBA8[color.Linear]](pf)
+	pf := pixfmt.NewPixFmtRGBA32Linear(rbuf)
+	renBase := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32[color.Linear], color.RGBA8[color.Linear]](pf)
+	renBase.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
+
 	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
 		rasterizer.RasConvInt{},
 		rasterizer.NewRasterizerSlNoClip(),
 	)
-	if d.evenOddCtrl.IsChecked() {
-		ras.FillingRule(basics.FillEvenOdd)
-	} else {
-		ras.FillingRule(basics.FillNonZero)
-	}
 	sl := scanline.NewScanlineU8()
-	ras.AddPath(&convToRasSource{src: greenStroke}, 0)
-	green := color.RGBA8[color.Linear]{R: 0, G: 153, B: 0, A: 204}
-	if ras.RewindScanlines() {
-		sl.Reset(ras.MinX(), ras.MaxX())
-		for ras.SweepScanline(sl) {
-			y := sl.Y()
-			for _, span := range sl.Spans() {
-				if span.Len > 0 {
-					renBase.BlendSolidHspan(int(span.X), y, int(span.Len), green, span.Covers)
-				}
-			}
-		}
-	}
-	ras.Reset()
 
+	// C++ applies the even-odd rule (when enabled) to all four scene passes.
+	sceneRule := basics.FillNonZero
+	if d.evenOddCtrl.IsChecked() {
+		sceneRule = basics.FillEvenOdd
+	}
+
+	// (1) Raw path fill — agg::rgba(0.7, 0.5, 0.1, 0.5) as linear bytes.
+	ras.Reset()
+	ras.FillingRule(sceneRule)
+	ras.AddPath(&convToRasSource{src: rawSrc}, 0)
+	renderSolid(ras, sl, renBase, color.RGBA8[color.Linear]{R: 179, G: 128, B: 26, A: 128})
+
+	// (2) Smoothed polygon fill — agg::rgba(0.1, 0.5, 0.7, 0.1).
+	smoothFill := conv.NewConvSmoothPoly1Curve(rawSrc)
+	smoothFill.SetSmoothValue(d.smoothCtrl.Value())
+	ras.Reset()
+	ras.FillingRule(sceneRule)
+	ras.AddPath(&convToRasSource{src: smoothFill}, 0)
+	renderSolid(ras, sl, renBase, color.RGBA8[color.Linear]{R: 26, G: 128, B: 179, A: 26})
+
+	// (3) Smoothed outline stroke — agg::rgba(0.0, 0.6, 0.0, 0.8).
+	smoothOutline := conv.NewConvSmoothPoly1(rawSrc)
+	smoothOutline.SetSmoothValue(d.smoothCtrl.Value())
+	greenStroke := conv.NewConvStroke(smoothOutline)
+	greenStroke.SetWidth(1.0)
+	ras.Reset()
+	ras.FillingRule(sceneRule)
+	ras.AddPath(&convToRasSource{src: greenStroke}, 0)
+	renderSolid(ras, sl, renBase, color.RGBA8[color.Linear]{R: 0, G: 153, B: 0, A: 204})
+
+	// (4) Dashed stroke + arrowhead markers — agg::rgba(0, 0, 0).
 	curve := conv.NewConvSmoothPoly1Curve(rawSrc)
 	curve.SetSmoothValue(d.smoothCtrl.Value())
 	markers := vcgen.NewVCGenMarkersTerm()
@@ -307,26 +274,14 @@ func (d *demo) Render(img *agg.Image) {
 	}
 	arrow := conv.NewConvMarker(markers, &arrowheadShapes{ah: ah})
 
+	ras.Reset()
+	ras.FillingRule(sceneRule)
 	ras.AddPath(&convToRasSource{src: stroke}, 0)
 	ras.AddPath(&convToRasSource{src: arrow}, 0)
-	black := color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255}
-	if ras.RewindScanlines() {
-		sl.Reset(ras.MinX(), ras.MaxX())
-		for ras.SweepScanline(sl) {
-			y := sl.Y()
-			for _, span := range sl.Spans() {
-				if span.Len > 0 {
-					renBase.BlendSolidHspan(int(span.X), y, int(span.Len), black, span.Covers)
-				}
-			}
-		}
-	}
+	renderSolid(ras, sl, renBase, color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 255})
 
-	a.FillEvenOdd(false)
+	// Controls use the non-zero rule.
 	ras.FillingRule(basics.FillNonZero)
-
-	d.drawHandles(ctx)
-
 	for _, ctrl := range d.controls {
 		renderControl(ras, sl, renBase, ctrl)
 	}
