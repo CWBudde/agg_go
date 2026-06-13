@@ -38,7 +38,7 @@ const (
 type (
 	colorType = color.RGBA8[color.Linear]
 	rasType   = rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
-	rbType    = *renderer.RendererBase[*pixfmt.PixFmtRGBA32Pre[color.Linear], colorType]
+	rbType    = *renderer.RendererBase[*pixfmt.PixFmtRGBA32[color.Linear], colorType]
 )
 
 // srgba8 converts sRGB to linear, matching C++ agg::srgba8(r,g,b,a).
@@ -249,84 +249,22 @@ func (r *boolRendererSolid) Render(sl isc.BooleanScanlineInterface) {
 	}
 }
 
-// --- Storage rasterizer adapter for CombineShapesAA ---
+// --- Rasterizer scanline-generator adapter for CombineShapesAA ---
+// C++ passes ras1/ras2 directly into sbool_combine_shapes_aa; the already
+// sorted rasterizer is simply swept a second time. This adapter exposes the
+// rasterizer under the boolean-algebra generator interface.
 
-type aaStorageBoolRasterizer struct {
-	storage *isc.ScanlineStorageAA[basics.Int8u]
-	embed   *isc.EmbeddedScanline[basics.Int8u]
+type boolRasterizer struct {
+	ras *rasType
 }
 
-func newAAStorageBoolRasterizer(storage *isc.ScanlineStorageAA[basics.Int8u]) *aaStorageBoolRasterizer {
-	return &aaStorageBoolRasterizer{storage: storage, embed: isc.NewEmbeddedScanline(storage)}
-}
-
-func (r *aaStorageBoolRasterizer) RewindScanlines() bool { return r.storage.RewindScanlines() }
-func (r *aaStorageBoolRasterizer) MinX() int             { return r.storage.MinX() }
-func (r *aaStorageBoolRasterizer) MinY() int             { return r.storage.MinY() }
-func (r *aaStorageBoolRasterizer) MaxX() int             { return r.storage.MaxX() }
-func (r *aaStorageBoolRasterizer) MaxY() int             { return r.storage.MaxY() }
-func (r *aaStorageBoolRasterizer) SweepScanline(sl isc.BooleanScanlineInterface) bool {
-	if !r.storage.SweepEmbeddedScanline(r.embed) {
-		return false
-	}
-	sl.ResetSpans()
-	iter := r.embed.Begin()
-	for i := 0; i < r.embed.NumSpans(); i++ {
-		span := iter.GetSpan()
-		if span.Len < 0 {
-			cover := basics.Int8u(0)
-			if len(span.Covers) > 0 {
-				cover = span.Covers[0]
-			}
-			sl.AddSpan(int(span.X), int(-span.Len), cover)
-		} else {
-			sl.AddCells(int(span.X), int(span.Len), span.Covers)
-		}
-		if i < r.embed.NumSpans()-1 {
-			iter.Next()
-		}
-	}
-	sl.Finalize(r.embed.Y())
-	return true
-}
-
-// --- Storage scanline adapter for ScanlineStorageAA.Render ---
-
-type storageScanlineP8 struct {
-	sl   *isc.ScanlineP8
-	iter storageScanlineP8Iter
-}
-
-type storageScanlineP8Iter struct {
-	spans []isc.SpanP8
-	idx   int
-}
-
-func (s *storageScanlineP8) Y() int        { return s.sl.Y() }
-func (s *storageScanlineP8) NumSpans() int { return s.sl.NumSpans() }
-func (s *storageScanlineP8) ResetSpans()   { s.sl.ResetSpans() }
-func (s *storageScanlineP8) AddSpan(x, length int, cover basics.Int8u) {
-	s.sl.AddSpan(x, length, uint(cover))
-}
-
-func (s *storageScanlineP8) AddCells(x, length int, covers []basics.Int8u) {
-	s.sl.AddCells(x, length, covers)
-}
-func (s *storageScanlineP8) Finalize(y int) { s.sl.Finalize(y) }
-func (s *storageScanlineP8) Begin() isc.ScanlineIterator {
-	s.iter.spans = s.sl.Spans()
-	s.iter.idx = 0
-	return &s.iter
-}
-
-func (it *storageScanlineP8Iter) GetSpan() isc.SpanInfo {
-	span := it.spans[it.idx]
-	return isc.SpanInfo{X: int(span.X), Len: int(span.Len), Covers: span.Covers}
-}
-
-func (it *storageScanlineP8Iter) Next() bool {
-	it.idx++
-	return it.idx < len(it.spans)
+func (r *boolRasterizer) RewindScanlines() bool { return r.ras.RewindScanlines() }
+func (r *boolRasterizer) MinX() int             { return r.ras.MinX() }
+func (r *boolRasterizer) MinY() int             { return r.ras.MinY() }
+func (r *boolRasterizer) MaxX() int             { return r.ras.MaxX() }
+func (r *boolRasterizer) MaxY() int             { return r.ras.MaxY() }
+func (r *boolRasterizer) SweepScanline(sl isc.BooleanScanlineInterface) bool {
+	return r.ras.SweepScanline(sl.(*boolScanlineP8).sl)
 }
 
 // --- Helpers ---
@@ -335,22 +273,6 @@ func newRas() *rasType {
 	return rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
 		rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip(),
 	)
-}
-
-func renderRasterizerToStorage(
-	ras *rasType,
-	sl *isc.ScanlineP8,
-	storage *isc.ScanlineStorageAA[basics.Int8u],
-) {
-	storage.Prepare()
-	if !ras.RewindScanlines() {
-		return
-	}
-	sl.Reset(ras.MinX(), ras.MaxX())
-	storageSL := &storageScanlineP8{sl: sl}
-	for ras.SweepScanline(sl) {
-		storage.Render(storageSL)
-	}
 }
 
 // copyFlipY copies src to dst with vertical flip (y=0 at bottom -> y=0 at top).
@@ -429,7 +351,7 @@ func (d *demo) Render(img *agg.Image) {
 
 	rbuf := buffer.NewRenderingBufferU8()
 	rbuf.Attach(workBuf, w, h, w*4)
-	pf := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
+	pf := pixfmt.NewPixFmtRGBA32Linear(rbuf)
 	rb := renderer.NewRendererBaseWithPixfmt(pf)
 
 	sl := isc.NewScanlineP8()
@@ -466,29 +388,19 @@ func (d *demo) Render(img *agg.Image) {
 	renscan.RenderScanlinesAASolid(ras2, sl, rb, srgba8(255, 240, 240, 100))
 
 	// --- Scanline boolean combine ---
-	storage1 := isc.NewScanlineStorageAA[basics.Int8u]()
-	storage2 := isc.NewScanlineStorageAA[basics.Int8u]()
-	slRaster := isc.NewScanlineP8()
-
-	ras1.Reset()
-	ras1.FillingRule(basics.FillEvenOdd)
-	ras1.SetGamma(gammaFn1.Apply)
-	ras1.AddPath(ps1, 0)
-	renderRasterizerToStorage(ras1, slRaster, storage1)
-
-	ras2.Reset()
-	ras2.SetGamma(gammaFn2.Apply)
-	ras2.AddPath(ps2, 0)
-	renderRasterizerToStorage(ras2, slRaster, storage2)
-
-	sg1 := newAAStorageBoolRasterizer(storage1)
-	sg2 := newAAStorageBoolRasterizer(storage2)
+	// C++: agg::sbool_combine_shapes_aa(op, ras1, ras2, sl1, sl2, sl_result, sren)
+	// The rasterizers still hold their sorted cells from the fills above and
+	// are swept again by the boolean algebra, exactly like the C++ original.
+	sg1 := &boolRasterizer{ras: ras1}
+	sg2 := &boolRasterizer{ras: ras2}
 	sl1 := newBoolScanlineP8()
 	sl2 := newBoolScanlineP8()
 	slResult := newBoolScanlineP8()
 
-	minX := min(sg1.MinX(), sg2.MinX())
-	maxX := max(sg1.MaxX(), sg2.MaxX())
+	// C++ sbool_unite_shapes resets the scanlines to the generators' X ranges
+	// internally; the Go combinators only clear spans, so size them here.
+	minX := min(ras1.MinX(), ras2.MinX())
+	maxX := max(ras1.MaxX(), ras2.MaxX())
 	sl1.sl.Reset(minX, maxX)
 	sl2.sl.Reset(minX, maxX)
 	slResult.sl.Reset(minX, maxX)
