@@ -89,9 +89,9 @@ if [ "$mode" != "strict" ] && [ "$mode" != "fallback" ]; then
 fi
 
 agg_root="$(cd "$agg_root" && pwd)"
-srcdir="${SRC_DIR:-$agg_root/agg-src/examples}"
-bindir="${BUILD_DIR:-$agg_root/build/examples}"
-outdir="${OUT_DIR:-$repo_root/tests/visual/reference/cpp/examples}"
+srcdir="${srcdir:-${SRC_DIR:-$agg_root/agg-src/examples}}"
+bindir="${bindir:-${BUILD_DIR:-$agg_root/build/examples}}"
+outdir="${outdir:-${OUT_DIR:-$repo_root/tests/visual/reference/cpp/examples}}"
 
 if [ ! -d "$srcdir" ]; then
     echo "source directory not found: $srcdir" >&2
@@ -158,7 +158,7 @@ capture_one() {
     rm -f "$ppm" "$log"
     (
         cd "$bindir" &&
-        "./$bin" --screenshot
+        AGG_GO_DEMO_TIMING_TEXT=0 "./$bin" --screenshot
     ) >"$log" 2>&1 &
     pid=$!
 
