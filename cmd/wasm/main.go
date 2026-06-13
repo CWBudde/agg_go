@@ -8,6 +8,7 @@ import (
 	"syscall/js"
 
 	agg "github.com/cwbudde/agg_go"
+	"github.com/cwbudde/agg_go/internal/basics"
 	liondemo "github.com/cwbudde/agg_go/internal/demo/lion"
 )
 
@@ -1458,20 +1459,17 @@ func setRRNodes(this js.Value, args []js.Value) interface{} {
 
 func getDashNodes(this js.Value, args []js.Value) interface{} {
 	return map[string]interface{}{
-		"x0": dashX[0], "y0": dashY[0],
-		"x1": dashX[1], "y1": dashY[1],
-		"x2": dashX[2], "y2": dashY[2],
+		"x0": dashPts[0].X, "y0": dashPts[0].Y,
+		"x1": dashPts[1].X, "y1": dashPts[1].Y,
+		"x2": dashPts[2].X, "y2": dashPts[2].Y,
 	}
 }
 
 func setDashNodes(this js.Value, args []js.Value) interface{} {
 	if len(args) >= 6 {
-		dashX[0] = args[0].Float()
-		dashY[0] = args[1].Float()
-		dashX[1] = args[2].Float()
-		dashY[1] = args[3].Float()
-		dashX[2] = args[4].Float()
-		dashY[2] = args[5].Float()
+		dashPts[0] = basics.PointD{X: args[0].Float(), Y: args[1].Float()}
+		dashPts[1] = basics.PointD{X: args[2].Float(), Y: args[3].Float()}
+		dashPts[2] = basics.PointD{X: args[4].Float(), Y: args[5].Float()}
 	}
 	return nil
 }

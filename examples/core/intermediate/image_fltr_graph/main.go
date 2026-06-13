@@ -306,6 +306,10 @@ func (d *demo) Render(img *agg.Image) {
 }
 
 // strokeLine draws a thin stroked line via the low-level pipeline.
+//
+// C++ draws the grid/axis lines with a raw agg::conv_stroke, whose default cap
+// is butt. Agg2D defaults to a round cap, which would deposit AA coverage one
+// row past each butt endpoint; force butt to match the C++ output exactly.
 func strokeLine(a *agg.Agg2D, width float64, clr agg.Color, x1, y1, x2, y2 float64) {
 	a.ResetPath()
 	a.MoveTo(x1, y1)
@@ -313,6 +317,7 @@ func strokeLine(a *agg.Agg2D, width float64, clr agg.Color, x1, y1, x2, y2 float
 	a.NoFill()
 	a.LineColor(clr)
 	a.LineWidth(width)
+	a.LineCap(agg.CapButt)
 	a.DrawPath(agg.StrokeOnly)
 }
 

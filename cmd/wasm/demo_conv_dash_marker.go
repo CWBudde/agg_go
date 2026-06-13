@@ -19,10 +19,15 @@ import (
 
 // --- State ---
 
+// dashFrameHeight is the native C++ frame height. Control points are stored in
+// screen space (Y-down), so the original Y-up frame coordinates are flipped once
+// via dashFrameHeight - y at init. The scene is rendered at native scale in the
+// top-left of the canvas, matching the standalone conv_dash_marker port.
+const dashFrameHeight = 330.0
+
 var (
 	// Control points in screen coordinates (Y-down), initialised by dashInit.
-	dashX = [3]float64{}
-	dashY = [3]float64{}
+	dashPts [3]basics.PointD
 
 	dashWidth   = 3.0 // m_width default
 	dashSmooth  = 1.0 // m_smooth default (range 0.0–2.0)
@@ -30,42 +35,22 @@ var (
 	dashCap     = 0     // 0=butt, 1=square, 2=round
 	dashEvenOdd = false // m_even_odd
 
-	dashIdx = -1
-	dashDX  = 0.0
-	dashDY  = 0.0
+	dashIdx  = -1
+	dashDrag basics.PointD // grab offset (cursor − handle) captured on mouse-down
 )
 
 // dashInit seeds control points from the original C++ constructor values
-// (m_x = {157, 469, 243}, m_y = {60, 170, 310} in a 500×330 Y-up frame),
-// mapped once to screen coordinates at canvas size.
+// (m_x = {157, 469, 243}, m_y = {60, 170, 310} in a 500×330 Y-up frame). The
+// native coordinates are used 1:1; only Y is flipped once to screen space so the
+// scene and the browser's Y-down mouse coordinates share a single frame.
 func dashInit() {
-	const (
-		frameW = 500.0
-		frameH = 330.0
-	)
-	w := float64(width)
-	h := float64(height)
-
-	// Scale the native 500×330 frame to fit the canvas while preserving aspect
-	// ratio, matching how the original C++ demo fills its window. Do NOT clamp
-	// to 1.0: clamping leaves the content at native scale and centres it, which
-	// shifts the scene right and undersizes it relative to the C++ reference.
-	sx := w / frameW
-	sy := h / frameH
-	scale := math.Min(sx, sy)
-	if scale <= 0 {
-		scale = 1.0
-	}
-	offX := (w - frameW*scale) * 0.5
-	offY := (h - frameH*scale) * 0.5
-
-	mapPt := func(cx, cy float64) (float64, float64) {
-		return offX + cx*scale, offY + (frameH-cy)*scale
+	flipY := func(x, y float64) basics.PointD {
+		return basics.PointD{X: x, Y: dashFrameHeight - y}
 	}
 
-	dashX[0], dashY[0] = mapPt(157, 60)
-	dashX[1], dashY[1] = mapPt(469, 170)
-	dashX[2], dashY[2] = mapPt(243, 310)
+	dashPts[0] = flipY(157, 60)
+	dashPts[1] = flipY(469, 170)
+	dashPts[2] = flipY(243, 310)
 }
 
 func init() {
@@ -77,24 +62,25 @@ func init() {
 // buildDashPath creates the two-sub-path storage matching the C++ on_draw path.
 // Coordinates are in screen space (Y-down).
 func buildDashPath() *path.PathStorageStl {
-	cx := (dashX[0] + dashX[1] + dashX[2]) / 3
-	cy := (dashY[0] + dashY[1] + dashY[2]) / 3
+	p0, p1, p2 := dashPts[0], dashPts[1], dashPts[2]
+	cx := (p0.X + p1.X + p2.X) / 3
+	cy := (p0.Y + p1.Y + p2.Y) / 3
 
 	ps := path.NewPathStorageStl()
 
 	// Sub-path 1: P0 → P1 → centroid → P2
-	ps.MoveTo(dashX[0], dashY[0])
-	ps.LineTo(dashX[1], dashY[1])
+	ps.MoveTo(p0.X, p0.Y)
+	ps.LineTo(p1.X, p1.Y)
 	ps.LineTo(cx, cy)
-	ps.LineTo(dashX[2], dashY[2])
+	ps.LineTo(p2.X, p2.Y)
 	if dashClosed {
 		ps.ClosePolygon(basics.PathFlagsNone)
 	}
 
 	// Sub-path 2: mid01 → mid12 → mid20
-	ps.MoveTo((dashX[0]+dashX[1])/2, (dashY[0]+dashY[1])/2)
-	ps.LineTo((dashX[1]+dashX[2])/2, (dashY[1]+dashY[2])/2)
-	ps.LineTo((dashX[2]+dashX[0])/2, (dashY[2]+dashY[0])/2)
+	ps.MoveTo((p0.X+p1.X)/2, (p0.Y+p1.Y)/2)
+	ps.LineTo((p1.X+p2.X)/2, (p1.Y+p2.Y)/2)
+	ps.LineTo((p2.X+p0.X)/2, (p2.Y+p0.Y)/2)
 	if dashClosed {
 		ps.ClosePolygon(basics.PathFlagsNone)
 	}
@@ -240,7 +226,7 @@ func drawDashDemo() {
 
 	// === Handles ===
 	for i := range 3 {
-		drawHandle(dashX[i], dashY[i])
+		drawHandle(dashPts[i].X, dashPts[i].Y)
 	}
 
 	applyLinearToSRGB(img)
@@ -262,17 +248,15 @@ func handleDashMouseDown(x, y float64) bool {
 	dashIdx = -1
 	// Hit-test individual control points first (radius 20 px).
 	for i := 0; i < 3; i++ {
-		if math.Sqrt((x-dashX[i])*(x-dashX[i])+(y-dashY[i])*(y-dashY[i])) < 20 {
-			dashDX = x - dashX[i]
-			dashDY = y - dashY[i]
+		if math.Hypot(x-dashPts[i].X, y-dashPts[i].Y) < 20 {
+			dashDrag = basics.PointD{X: x - dashPts[i].X, Y: y - dashPts[i].Y}
 			dashIdx = i
 			return true
 		}
 	}
 	// Click inside the triangle → move all three points together.
-	if dashPointInTriangle(dashX[0], dashY[0], dashX[1], dashY[1], dashX[2], dashY[2], x, y) {
-		dashDX = x - dashX[0]
-		dashDY = y - dashY[0]
+	if dashPointInTriangle(dashPts[0].X, dashPts[0].Y, dashPts[1].X, dashPts[1].Y, dashPts[2].X, dashPts[2].Y, x, y) {
+		dashDrag = basics.PointD{X: x - dashPts[0].X, Y: y - dashPts[0].Y}
 		dashIdx = 3
 		return true
 	}
@@ -281,20 +265,19 @@ func handleDashMouseDown(x, y float64) bool {
 
 func handleDashMouseMove(x, y float64) bool {
 	if dashIdx == 3 {
-		// Move whole polygon: new position of P0 is (x-dashDX, y-dashDY).
-		dx := x - dashDX
-		dy := y - dashDY
-		dashX[1] -= dashX[0] - dx
-		dashY[1] -= dashY[0] - dy
-		dashX[2] -= dashX[0] - dx
-		dashY[2] -= dashY[0] - dy
-		dashX[0] = dx
-		dashY[0] = dy
+		// Move whole polygon: new position of P0 is cursor − grab offset.
+		dx := x - dashDrag.X
+		dy := y - dashDrag.Y
+		dashPts[1].X -= dashPts[0].X - dx
+		dashPts[1].Y -= dashPts[0].Y - dy
+		dashPts[2].X -= dashPts[0].X - dx
+		dashPts[2].Y -= dashPts[0].Y - dy
+		dashPts[0].X = dx
+		dashPts[0].Y = dy
 		return true
 	}
 	if dashIdx >= 0 {
-		dashX[dashIdx] = x - dashDX
-		dashY[dashIdx] = y - dashDY
+		dashPts[dashIdx] = basics.PointD{X: x - dashDrag.X, Y: y - dashDrag.Y}
 		return true
 	}
 	return false
