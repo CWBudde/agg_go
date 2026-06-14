@@ -1180,6 +1180,116 @@ extern "C" AggGoCPPPath* agg_go_cpp_path_transform(const AggGoCPPPath* path, con
   return out;
 }
 
+#ifndef AGG_GO_CPP_REAL
+// stub_clip_range intersects a [lo,hi) scan span with the image extent [0,limit)
+// and the half-open clip span [clip_lo,clip_hi), writing the result to
+// [out_start,out_end). Shared by the stub fill/stroke loops so the stub honours
+// ClipBox. The stub backend is never advertised as a valid engine; these CPU
+// rasterizers exist only so tagged primitive/clip tests stay meaningful.
+void stub_clip_range(int lo, int hi, int clip_lo, int clip_hi, int limit, int& out_start,
+                     int& out_end) {
+  out_start = std::max({0, clip_lo, lo});
+  out_end = std::min({limit, clip_hi, hi});
+}
+
+// stub_fill_path fills path on the CPU within the intersection of the path
+// bounding box, the image, and the half-open clip rectangle
+// [clip_x1,clip_x2) x [clip_y1,clip_y2).
+void stub_fill_path(AggGoCPPImage* image, const AggGoCPPPath& path, int fill_rule, int clip_x1,
+                    int clip_y1, int clip_x2, int clip_y2, uint8_t r, uint8_t g, uint8_t b,
+                    uint8_t a) {
+  float min_x = path.points[0].x;
+  float max_x = path.points[0].x;
+  float min_y = path.points[0].y;
+  float max_y = path.points[0].y;
+  for (const auto& point : path.points) {
+    min_x = std::min(min_x, point.x);
+    max_x = std::max(max_x, point.x);
+    min_y = std::min(min_y, point.y);
+    max_y = std::max(max_y, point.y);
+  }
+
+  int start_x, end_x, start_y, end_y;
+  stub_clip_range(static_cast<int>(std::floor(min_x)), static_cast<int>(std::ceil(max_x)), clip_x1,
+                  clip_x2, static_cast<int>(image->width), start_x, end_x);
+  stub_clip_range(static_cast<int>(std::floor(min_y)), static_cast<int>(std::ceil(max_y)), clip_y1,
+                  clip_y2, static_cast<int>(image->height), start_y, end_y);
+
+  for (int y = start_y; y < end_y; ++y) {
+    for (int x = start_x; x < end_x; ++x) {
+      const float px = static_cast<float>(x) + 0.5f;
+      const float py = static_cast<float>(y) + 0.5f;
+      if (!point_in_path(path, fill_rule, px, py)) {
+        continue;
+      }
+      const size_t offset = static_cast<size_t>(y) * image->stride + static_cast<size_t>(x) * 4;
+      image->pixels[offset + 0] = r;
+      image->pixels[offset + 1] = g;
+      image->pixels[offset + 2] = b;
+      image->pixels[offset + 3] = a;
+    }
+  }
+}
+
+// stub_stroke_path strokes path solid on the CPU (dashes are ignored in the stub)
+// within the same clipped region as stub_fill_path.
+void stub_stroke_path(AggGoCPPImage* image, const AggGoCPPPath& path, float width, int line_cap,
+                      int clip_x1, int clip_y1, int clip_x2, int clip_y2, uint8_t r, uint8_t g,
+                      uint8_t b, uint8_t a) {
+  float min_x = path.points[0].x;
+  float max_x = path.points[0].x;
+  float min_y = path.points[0].y;
+  float max_y = path.points[0].y;
+  for (const auto& point : path.points) {
+    min_x = std::min(min_x, point.x);
+    max_x = std::max(max_x, point.x);
+    min_y = std::min(min_y, point.y);
+    max_y = std::max(max_y, point.y);
+  }
+  const float radius = width * 0.5f;
+  min_x -= radius;
+  max_x += radius;
+  min_y -= radius;
+  max_y += radius;
+
+  int start_x, end_x, start_y, end_y;
+  stub_clip_range(static_cast<int>(std::floor(min_x)), static_cast<int>(std::ceil(max_x)), clip_x1,
+                  clip_x2, static_cast<int>(image->width), start_x, end_x);
+  stub_clip_range(static_cast<int>(std::floor(min_y)), static_cast<int>(std::ceil(max_y)), clip_y1,
+                  clip_y2, static_cast<int>(image->height), start_y, end_y);
+  const float radius_sq = radius * radius;
+
+  for (int y = start_y; y < end_y; ++y) {
+    for (int x = start_x; x < end_x; ++x) {
+      const float px = static_cast<float>(x) + 0.5f;
+      const float py = static_cast<float>(y) + 0.5f;
+      bool hit = false;
+      for (size_t i = 1; i < path.points.size(); ++i) {
+        const auto& a_point = path.points[i - 1];
+        const auto& b_point = path.points[i];
+        if (distance_to_segment_squared(a_point, b_point, px, py, line_cap, radius) <= radius_sq) {
+          hit = true;
+          break;
+        }
+      }
+      if (!hit && path.closed) {
+        const auto& a_point = path.points.back();
+        const auto& b_point = path.points.front();
+        hit = distance_to_segment_squared(a_point, b_point, px, py, line_cap, radius) <= radius_sq;
+      }
+      if (!hit) {
+        continue;
+      }
+      const size_t offset = static_cast<size_t>(y) * image->stride + static_cast<size_t>(x) * 4;
+      image->pixels[offset + 0] = r;
+      image->pixels[offset + 1] = g;
+      image->pixels[offset + 2] = b;
+      image->pixels[offset + 3] = a;
+    }
+  }
+}
+#endif
+
 extern "C" int agg_go_cpp_render_fill_path(AggGoCPPImage* image, const AggGoCPPPath* path, int fill_rule,
                                            uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
   if (!valid_image(image)) {
@@ -1207,37 +1317,8 @@ extern "C" int agg_go_cpp_render_fill_path(AggGoCPPImage* image, const AggGoCPPP
   agg::render_scanlines(ras, sl, ren);
   return 0;
 #else
-  float min_x = path->points[0].x;
-  float max_x = path->points[0].x;
-  float min_y = path->points[0].y;
-  float max_y = path->points[0].y;
-  for (const auto& point : path->points) {
-    min_x = std::min(min_x, point.x);
-    max_x = std::max(max_x, point.x);
-    min_y = std::min(min_y, point.y);
-    max_y = std::max(max_y, point.y);
-  }
-
-  const int start_x = std::max(0, static_cast<int>(std::floor(min_x)));
-  const int end_x = std::min(static_cast<int>(image->width), static_cast<int>(std::ceil(max_x)));
-  const int start_y = std::max(0, static_cast<int>(std::floor(min_y)));
-  const int end_y = std::min(static_cast<int>(image->height), static_cast<int>(std::ceil(max_y)));
-
-  for (int y = start_y; y < end_y; ++y) {
-    for (int x = start_x; x < end_x; ++x) {
-      const float px = static_cast<float>(x) + 0.5f;
-      const float py = static_cast<float>(y) + 0.5f;
-      if (!point_in_path(*path, fill_rule, px, py)) {
-        continue;
-      }
-      const size_t offset = static_cast<size_t>(y) * image->stride + static_cast<size_t>(x) * 4;
-      image->pixels[offset + 0] = r;
-      image->pixels[offset + 1] = g;
-      image->pixels[offset + 2] = b;
-      image->pixels[offset + 3] = a;
-    }
-  }
-
+  stub_fill_path(image, *path, fill_rule, 0, 0, static_cast<int>(image->width),
+                 static_cast<int>(image->height), r, g, b, a);
   return 0;
 #endif
 }
@@ -1307,57 +1388,8 @@ extern "C" int agg_go_cpp_render_stroke_path(AggGoCPPImage* image, const AggGoCP
   agg::render_scanlines(ras, sl, ren);
   return 0;
 #else
-  float min_x = path->points[0].x;
-  float max_x = path->points[0].x;
-  float min_y = path->points[0].y;
-  float max_y = path->points[0].y;
-  for (const auto& point : path->points) {
-    min_x = std::min(min_x, point.x);
-    max_x = std::max(max_x, point.x);
-    min_y = std::min(min_y, point.y);
-    max_y = std::max(max_y, point.y);
-  }
-  const float radius = width * 0.5f;
-  min_x -= radius;
-  max_x += radius;
-  min_y -= radius;
-  max_y += radius;
-
-  const int start_x = std::max(0, static_cast<int>(std::floor(min_x)));
-  const int end_x = std::min(static_cast<int>(image->width), static_cast<int>(std::ceil(max_x)));
-  const int start_y = std::max(0, static_cast<int>(std::floor(min_y)));
-  const int end_y = std::min(static_cast<int>(image->height), static_cast<int>(std::ceil(max_y)));
-  const float radius_sq = radius * radius;
-
-  for (int y = start_y; y < end_y; ++y) {
-    for (int x = start_x; x < end_x; ++x) {
-      const float px = static_cast<float>(x) + 0.5f;
-      const float py = static_cast<float>(y) + 0.5f;
-      bool hit = false;
-      for (size_t i = 1; i < path->points.size(); ++i) {
-        const auto& a_point = path->points[i - 1];
-        const auto& b_point = path->points[i];
-        if (distance_to_segment_squared(a_point, b_point, px, py, line_cap, radius) <= radius_sq) {
-          hit = true;
-          break;
-        }
-      }
-      if (!hit && path->closed) {
-        const auto& a_point = path->points.back();
-        const auto& b_point = path->points.front();
-        hit = distance_to_segment_squared(a_point, b_point, px, py, line_cap, radius) <= radius_sq;
-      }
-      if (!hit) {
-        continue;
-      }
-      const size_t offset = static_cast<size_t>(y) * image->stride + static_cast<size_t>(x) * 4;
-      image->pixels[offset + 0] = r;
-      image->pixels[offset + 1] = g;
-      image->pixels[offset + 2] = b;
-      image->pixels[offset + 3] = a;
-    }
-  }
-
+  stub_stroke_path(image, *path, width, line_cap, 0, 0, static_cast<int>(image->width),
+                   static_cast<int>(image->height), r, g, b, a);
   return 0;
 #endif
 }
@@ -1490,9 +1522,10 @@ extern "C" int agg_go_cpp_render_fill_path_comp(AggGoCPPImage* image, const AggG
                       a);
   return 0;
 #else
-  // The stub backend is never advertised; fall back to a plain unclipped fill so
-  // tagged primitive tests still exercise the geometry.
-  return agg_go_cpp_render_fill_path(image, path, fill_rule, r, g, b, a);
+  // The stub backend is never advertised; fill on the CPU honouring the clip
+  // rectangle (blend mode is ignored — the stub writes opaque source pixels).
+  stub_fill_path(image, *path, fill_rule, clip_x1, clip_y1, clip_x2, clip_y2, r, g, b, a);
+  return 0;
 #endif
 }
 
@@ -1562,9 +1595,13 @@ extern "C" int agg_go_cpp_render_stroke_path_comp(AggGoCPPImage* image, const Ag
                       a);
   return 0;
 #else
-  return agg_go_cpp_render_stroke_path_dashed(image, path, width, line_cap, line_join, miter_limit,
-                                              dashes, dash_pair_count, dash_start, r, g, b, a,
-                                              matrix);
+  // The stub backend is never advertised; stroke solid on the CPU honouring the
+  // clip rectangle (dash phase, the matrix, joins, and blend mode are ignored —
+  // dashes/joins/blend are still validated above for contract parity).
+  (void)dash_start;
+  (void)matrix;
+  stub_stroke_path(image, *path, width, line_cap, clip_x1, clip_y1, clip_x2, clip_y2, r, g, b, a);
+  return 0;
 #endif
 }
 

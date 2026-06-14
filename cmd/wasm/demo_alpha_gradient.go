@@ -259,7 +259,7 @@ func drawAlphaGradientDemo() {
 	rbuf := buffer.NewRenderingBufferU8()
 	rbuf.Attach(img.Data, img.Width(), img.Height(), img.Stride())
 
-	pf := pixfmt.NewPixFmtRGBA32PreLinear(rbuf)
+	pf := pixfmt.NewPixFmtRGBA32Linear(rbuf)
 	ren := renderer.NewRendererBaseWithPixfmt[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](pf)
 	ren.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
 
