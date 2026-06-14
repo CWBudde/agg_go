@@ -59,9 +59,10 @@ func toleranceFor(s scene.Scene) framework.ComparisonOptions {
 		// Go port's. Loose envelope; demote to render-only if it proves larger.
 		base.Tolerance = 8
 		base.MaxDifferentRatio = 0.10
-	default: // solid_fill_stroke, path_nonzero, path_evenodd, clip_box
+	default: // solid_fill_stroke, dashed_stroke, path_nonzero, path_evenodd, clip_box
 		// Bound the fraction of disagreeing edge pixels; the bulk matches within
-		// 2 LSB. AA edges span ~1.5% of these scenes.
+		// 2 LSB. AA edges span ~1.5% of these scenes (dashed_stroke ~1.3%: both
+		// backends run AGG conv_dash + conv_stroke, so segments line up).
 		base.Tolerance = 2
 		base.MaxDifferentRatio = 0.025
 	}

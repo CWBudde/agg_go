@@ -77,6 +77,15 @@ int agg_go_cpp_render_fill_path(AggGoCPPImage* image, const AggGoCPPPath* path, 
 int agg_go_cpp_render_stroke_path(AggGoCPPImage* image, const AggGoCPPPath* path, float width,
                                   int line_cap, int line_join, float miter_limit, uint8_t r,
                                   uint8_t g, uint8_t b, uint8_t a);
+// agg_go_cpp_render_stroke_path_dashed strokes a dashed outline. dashes points
+// to dash_pair_count (dash_len, gap_len) pairs (2*dash_pair_count floats);
+// dash_start is the phase offset along the path. dash_pair_count == 0 strokes
+// solid. Only the real AGG-backed build applies the dash pattern; the stub
+// build (never advertised as an available backend) strokes solid.
+int agg_go_cpp_render_stroke_path_dashed(AggGoCPPImage* image, const AggGoCPPPath* path, float width,
+                                         int line_cap, int line_join, float miter_limit,
+                                         const float* dashes, int dash_pair_count, float dash_start,
+                                         uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 
 AggGoCPPFont* agg_go_cpp_font_create(const char* font_path);
 void agg_go_cpp_font_free(AggGoCPPFont* font);

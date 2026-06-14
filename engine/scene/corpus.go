@@ -14,11 +14,6 @@ const canvasW, canvasH = 256, 256
 
 // corpus is the static, deterministically-ordered scene list. It is a plain
 // slice (no init-based registration) so iteration order is stable across runs.
-//
-// TODO(dashed_stroke): a dashed-stroke scene is intentionally omitted. The
-// engine facade exposes no dash API (no SetDash on engine.Context) and neither
-// backend reports CapabilityDashedStroke, so a cross-backend dashed scene is
-// blocked on facade work tracked in PLAN.md §5.4/§5.5.
 var corpus = []Scene{
 	{
 		Name:   "solid_fill_stroke",
@@ -47,6 +42,42 @@ var corpus = []Scene{
 			ctx.LineTo(110, 140)
 			ctx.LineTo(170, 210)
 			ctx.LineTo(220, 150)
+			ctx.Stroke()
+			return nil
+		},
+	},
+	{
+		Name:   "dashed_stroke",
+		Width:  canvasW,
+		Height: canvasH,
+		Caps:   []engine.Capability{engine.CapabilitySolidStyle, engine.CapabilityPath, engine.CapabilityDashedStroke},
+		Draw: func(ctx engine.Context, _ *Assets) error {
+			ctx.Clear(agg.White)
+			// No transform: dash lengths are in device space on both backends, so
+			// the dash segmentation lines up (the port applies dashes in user
+			// space, the CPP backend on the pre-transformed device path).
+			ctx.SetStrokeColor(agg.NewColorRGB(30, 60, 200))
+			ctx.SetLineWidth(5)
+			ctx.SetLineCap(agg.CapButt)
+			ctx.SetLineJoin(agg.JoinMiter)
+			ctx.AddDash(18, 10)
+			ctx.AddDash(6, 10)
+			ctx.DashStart(4)
+			ctx.BeginPath()
+			ctx.MoveTo(30, 60)
+			ctx.LineTo(226, 60)
+			ctx.LineTo(30, 130)
+			ctx.LineTo(226, 130)
+			ctx.Stroke()
+
+			// A second, dash-reset solid stroke confirms RemoveAllDashes returns to
+			// solid stroking on both backends.
+			ctx.RemoveAllDashes()
+			ctx.SetStrokeColor(agg.NewColorRGB(200, 40, 40))
+			ctx.SetLineWidth(4)
+			ctx.BeginPath()
+			ctx.MoveTo(30, 200)
+			ctx.LineTo(226, 200)
 			ctx.Stroke()
 			return nil
 		},

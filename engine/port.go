@@ -87,6 +87,14 @@ func (c *portContext) SetLineCap(lineCap agg.LineCap) { c.ctx.SetLineCap(lineCap
 
 func (c *portContext) SetLineJoin(join agg.LineJoin) { c.ctx.SetLineJoin(join) }
 
+func (c *portContext) AddDash(dashLen, gapLen float64) { c.ctx.GetAgg2D().AddDash(dashLen, gapLen) }
+
+func (c *portContext) RemoveAllDashes() { c.ctx.GetAgg2D().RemoveAllDashes() }
+
+func (c *portContext) DashStart(offset float64) { c.ctx.GetAgg2D().DashStart(offset) }
+
+func (c *portContext) GetDashStart() float64 { return c.ctx.GetAgg2D().GetDashStart() }
+
 func (c *portContext) SetBlendMode(mode agg.BlendMode) { c.ctx.SetBlendMode(mode) }
 
 func (c *portContext) GetBlendMode() agg.BlendMode { return c.ctx.GetBlendMode() }

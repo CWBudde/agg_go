@@ -41,6 +41,10 @@ type Context interface {
 	SetLineWidth(width float64)
 	SetLineCap(cap agg.LineCap)
 	SetLineJoin(join agg.LineJoin)
+	AddDash(dashLen, gapLen float64)
+	RemoveAllDashes()
+	DashStart(offset float64)
+	GetDashStart() float64
 	SetBlendMode(mode agg.BlendMode)
 	GetBlendMode() agg.BlendMode
 	FillEvenOdd(evenOdd bool)

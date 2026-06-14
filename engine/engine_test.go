@@ -74,8 +74,13 @@ func TestCapabilitiesCPPUnavailable(t *testing.T) {
 	}
 }
 
+// unknownCapability is a capability no engine implements, used to exercise the
+// unsupported-capability error path. (The port engine now supports every real
+// facade capability, so a fictitious one is needed for the negative case.)
+const unknownCapability engine.Capability = "imaginary_feature"
+
 func TestRequireCapabilityReturnsTypedUnsupportedError(t *testing.T) {
-	err := engine.RequireCapability(engine.Port, engine.CapabilityDashedStroke, "SetDash")
+	err := engine.RequireCapability(engine.Port, unknownCapability, "ImaginaryOp")
 	if err == nil {
 		t.Fatal("expected unsupported capability error")
 	}
@@ -87,7 +92,7 @@ func TestRequireCapabilityReturnsTypedUnsupportedError(t *testing.T) {
 	if !errors.As(err, &unsupported) {
 		t.Fatalf("expected UnsupportedCapabilityError, got %T", err)
 	}
-	if unsupported.Kind != engine.Port || unsupported.Capability != engine.CapabilityDashedStroke || unsupported.Operation != "SetDash" {
+	if unsupported.Kind != engine.Port || unsupported.Capability != unknownCapability || unsupported.Operation != "ImaginaryOp" {
 		t.Fatalf("unexpected unsupported capability payload: %+v", unsupported)
 	}
 }
@@ -96,8 +101,11 @@ func TestSupportsReflectsCapabilitySet(t *testing.T) {
 	if !engine.Supports(engine.Port, engine.CapabilityText) {
 		t.Fatal("expected port engine to support text capability")
 	}
-	if engine.Supports(engine.Port, engine.CapabilityDashedStroke) {
-		t.Fatal("did not expect port engine to report dashed-stroke capability")
+	if !engine.Supports(engine.Port, engine.CapabilityDashedStroke) {
+		t.Fatal("expected port engine to support dashed-stroke capability")
+	}
+	if engine.Supports(engine.Port, unknownCapability) {
+		t.Fatal("did not expect port engine to report an unknown capability")
 	}
 	if engine.Supports(engine.CPP, engine.CapabilityText) {
 		t.Fatal("did not expect unavailable C++ engine to report text capability")
@@ -324,6 +332,68 @@ func TestImageInteropHelpers(t *testing.T) {
 	}
 	if got := decoded.Bounds(); got.Dx() != 3 || got.Dy() != 2 {
 		t.Fatalf("unexpected decoded JPEG bounds: %v", got)
+	}
+}
+
+func TestPortDashedStrokeReducesInkAndRestores(t *testing.T) {
+	// inkOnLine strokes a single horizontal line and counts the non-white pixels,
+	// optionally applying a dash pattern first.
+	inkOnLine := func(dashed bool) int {
+		ctx, err := engine.NewContext(120, 20, engine.Config{Kind: engine.Port})
+		if err != nil {
+			t.Fatalf("NewContext() error = %v", err)
+		}
+		ctx.Clear(agg.White)
+		ctx.SetStrokeColor(agg.NewColorRGB(0, 0, 0))
+		ctx.SetLineWidth(3)
+		ctx.SetLineCap(agg.CapButt)
+		if dashed {
+			ctx.AddDash(8, 8)
+		} else {
+			ctx.RemoveAllDashes()
+		}
+		ctx.BeginPath()
+		ctx.MoveTo(5, 10)
+		ctx.LineTo(115, 10)
+		ctx.Stroke()
+
+		img := ctx.GetImage().ToGoImage()
+		ink := 0
+		bounds := img.Bounds()
+		for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+			for x := bounds.Min.X; x < bounds.Max.X; x++ {
+				r, g, b, _ := img.At(x, y).RGBA()
+				if r>>8 < 250 || g>>8 < 250 || b>>8 < 250 {
+					ink++
+				}
+			}
+		}
+		return ink
+	}
+
+	solid := inkOnLine(false)
+	dashed := inkOnLine(true)
+	if solid == 0 {
+		t.Fatal("solid stroke drew no ink")
+	}
+	if dashed == 0 {
+		t.Fatal("dashed stroke drew no ink")
+	}
+	// An 8-on/8-off pattern should leave roughly half the line unpainted.
+	if dashed >= solid {
+		t.Fatalf("expected dashed ink (%d) to be less than solid ink (%d)", dashed, solid)
+	}
+}
+
+func TestPortDashStartRoundTrips(t *testing.T) {
+	ctx, err := engine.NewContext(32, 32, engine.Config{Kind: engine.Port})
+	if err != nil {
+		t.Fatalf("NewContext() error = %v", err)
+	}
+	ctx.AddDash(10, 5)
+	ctx.DashStart(7)
+	if got := ctx.GetDashStart(); got != 7 {
+		t.Fatalf("GetDashStart() = %v, want 7", got)
 	}
 }
 

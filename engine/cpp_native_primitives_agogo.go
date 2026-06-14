@@ -49,6 +49,10 @@ type cppNativeStrokeOptions struct {
 	LineCap    cppNativeLineCap
 	LineJoin   cppNativeLineJoin
 	MiterLimit float32
+	// Dashes is a flat list of (dashLen, gapLen) pairs; an empty slice strokes
+	// solid. DashStart is the phase offset along the path.
+	Dashes    []float32
+	DashStart float32
 }
 
 func defaultCPPNativeStrokeOptions() cppNativeStrokeOptions {
@@ -394,6 +398,9 @@ func strokeCPPNativePath(img *cppNativeImage, path *cppNativePath, opts cppNativ
 	if path == nil || path.ptr == nil {
 		return fmt.Errorf("path is nil")
 	}
+	if len(opts.Dashes) >= 2 {
+		return strokeCPPNativePathDashed(img, path, opts, r, g, b, a)
+	}
 	code := int(C.agg_go_cpp_render_stroke_path(
 		img.ptr,
 		path.ptr,
@@ -408,6 +415,36 @@ func strokeCPPNativePath(img *cppNativeImage, path *cppNativePath, opts cppNativ
 	))
 	if code != 0 {
 		return fmt.Errorf("agg_go_cpp_render_stroke_path failed: %s", cppNativeLastError())
+	}
+	return nil
+}
+
+// strokeCPPNativePathDashed strokes a dashed outline. opts.Dashes holds an even
+// number of (dashLen, gapLen) values; pairs beyond the last complete pair are
+// ignored.
+func strokeCPPNativePathDashed(img *cppNativeImage, path *cppNativePath, opts cppNativeStrokeOptions, r, g, b, a uint8) error {
+	pairCount := len(opts.Dashes) / 2
+	dashes := make([]C.float, pairCount*2)
+	for i := range dashes {
+		dashes[i] = C.float(opts.Dashes[i])
+	}
+	code := int(C.agg_go_cpp_render_stroke_path_dashed(
+		img.ptr,
+		path.ptr,
+		C.float(opts.Width),
+		C.int(opts.LineCap),
+		C.int(opts.LineJoin),
+		C.float(opts.MiterLimit),
+		&dashes[0],
+		C.int(pairCount),
+		C.float(opts.DashStart),
+		C.uint8_t(r),
+		C.uint8_t(g),
+		C.uint8_t(b),
+		C.uint8_t(a),
+	))
+	if code != 0 {
+		return fmt.Errorf("agg_go_cpp_render_stroke_path_dashed failed: %s", cppNativeLastError())
 	}
 	return nil
 }

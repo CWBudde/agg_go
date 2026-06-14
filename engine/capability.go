@@ -34,6 +34,7 @@ var portCapabilities = []Capability{
 	CapabilityImageInterop,
 	CapabilityGradients,
 	CapabilityText,
+	CapabilityDashedStroke,
 }
 
 var cppCapabilities = []Capability{
@@ -46,6 +47,7 @@ var cppCapabilities = []Capability{
 	CapabilityImageExport,
 	CapabilityGradients,
 	CapabilityText,
+	CapabilityDashedStroke,
 }
 
 // ErrUnsupportedCapability is returned when a known engine does not implement a

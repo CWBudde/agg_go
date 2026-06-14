@@ -14,6 +14,7 @@
 #include <agg_color_rgba.h>
 #include <agg_font_cache_manager.h>
 #include <agg_font_freetype.h>
+#include <agg_conv_dash.h>
 #include <agg_conv_stroke.h>
 #include <agg_conv_curve.h>
 #include <agg_path_storage.h>
@@ -1033,6 +1034,100 @@ extern "C" int agg_go_cpp_render_stroke_path(AggGoCPPImage* image, const AggGoCP
   }
 
   return 0;
+#endif
+}
+
+extern "C" int agg_go_cpp_render_stroke_path_dashed(AggGoCPPImage* image, const AggGoCPPPath* path,
+                                                    float width, int line_cap, int line_join,
+                                                    float miter_limit, const float* dashes,
+                                                    int dash_pair_count, float dash_start, uint8_t r,
+                                                    uint8_t g, uint8_t b, uint8_t a) {
+  if (dash_pair_count < 0 || (dash_pair_count > 0 && dashes == nullptr)) {
+    set_last_error("invalid dash pattern");
+    return -1;
+  }
+  // No dashes: identical to a solid stroke.
+  if (dash_pair_count == 0) {
+    return agg_go_cpp_render_stroke_path(image, path, width, line_cap, line_join, miter_limit, r, g,
+                                         b, a);
+  }
+  if (!valid_image(image)) {
+    set_last_error("image is nil");
+    return -1;
+  }
+  if (!valid_stroke_path(path)) {
+    set_last_error("path must contain at least two points for stroking");
+    return -1;
+  }
+  if (!(width > 0.0f)) {
+    set_last_error("stroke width must be positive");
+    return -1;
+  }
+  if (line_cap < AggGoCPPLineCapButt || line_cap > AggGoCPPLineCapSquare) {
+    set_last_error("invalid line cap");
+    return -1;
+  }
+  if (line_join < AggGoCPPLineJoinMiter || line_join > AggGoCPPLineJoinBevel) {
+    set_last_error("invalid line join");
+    return -1;
+  }
+  if (line_join == AggGoCPPLineJoinMiter && miter_limit < 1.0f) {
+    set_last_error("miter limit must be >= 1 for miter joins");
+    return -1;
+  }
+  for (int i = 0; i < dash_pair_count * 2; ++i) {
+    if (!(dashes[i] >= 0.0f)) {
+      set_last_error("dash lengths must be non-negative");
+      return -1;
+    }
+  }
+
+#ifdef AGG_GO_CPP_REAL
+  agg::path_storage agg_path;
+  convert_path_to_agg(*path, &agg_path);
+  agg::conv_dash<agg::path_storage> dash(agg_path);
+  for (int i = 0; i < dash_pair_count; ++i) {
+    dash.add_dash(dashes[i * 2], dashes[i * 2 + 1]);
+  }
+  dash.dash_start(dash_start);
+  agg::conv_stroke<agg::conv_dash<agg::path_storage>> stroke(dash);
+  stroke.width(width);
+  switch (line_cap) {
+    case AggGoCPPLineCapRound:
+      stroke.line_cap(agg::round_cap);
+      break;
+    case AggGoCPPLineCapSquare:
+      stroke.line_cap(agg::square_cap);
+      break;
+    default:
+      stroke.line_cap(agg::butt_cap);
+      break;
+  }
+  switch (line_join) {
+    case AggGoCPPLineJoinRound:
+      stroke.line_join(agg::round_join);
+      break;
+    case AggGoCPPLineJoinBevel:
+      stroke.line_join(agg::bevel_join);
+      break;
+    default:
+      stroke.line_join(agg::miter_join);
+      stroke.miter_limit(miter_limit);
+      break;
+  }
+  agg::rasterizer_scanline_aa<> ras;
+  agg::scanline_u8 sl;
+  ras.add_path(stroke);
+  agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_rgba32>> ren(*image->ren_base);
+  ren.color(agg::rgba8(r, g, b, a));
+  agg::render_scanlines(ras, sl, ren);
+  return 0;
+#else
+  // The stub backend is never advertised as an available engine, so it does not
+  // implement dash segmentation; stroke solid so tagged primitive tests still
+  // exercise the path geometry.
+  return agg_go_cpp_render_stroke_path(image, path, width, line_cap, line_join, miter_limit, r, g, b,
+                                       a);
 #endif
 }
 

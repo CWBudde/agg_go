@@ -42,6 +42,7 @@ func TestCapabilitiesCPPExposeCurrentRealSubset(t *testing.T) {
 		engine.CapabilityImageExport,
 		engine.CapabilityGradients,
 		engine.CapabilityText,
+		engine.CapabilityDashedStroke,
 	} {
 		found := false
 		for _, cap := range caps {
@@ -72,6 +73,48 @@ func TestNewContextCPPWorksWithAggReal(t *testing.T) {
 	got := ctx.GetImage().ToGoImage().RGBAAt(6, 6)
 	if got.R < 200 || got.G > 40 || got.B > 40 || got.A != 255 {
 		t.Fatalf("unexpected rendered color at center: %+v", got)
+	}
+}
+
+func TestCPPDashedStrokeReducesInkWithAggReal(t *testing.T) {
+	inkOnLine := func(dashed bool) int {
+		ctx, err := engine.NewContext(120, 20, engine.Config{Kind: engine.CPP})
+		if err != nil {
+			t.Fatalf("NewContext(CPP) error = %v", err)
+		}
+		ctx.Clear(agg.White)
+		ctx.SetStrokeColor(agg.NewColorRGB(0, 0, 0))
+		ctx.SetLineWidth(3)
+		ctx.SetLineCap(agg.CapButt)
+		if dashed {
+			ctx.AddDash(8, 8)
+		}
+		ctx.BeginPath()
+		ctx.MoveTo(5, 10)
+		ctx.LineTo(115, 10)
+		ctx.Stroke()
+
+		img := ctx.GetImage().ToGoImage()
+		ink := 0
+		b := img.Bounds()
+		for y := b.Min.Y; y < b.Max.Y; y++ {
+			for x := b.Min.X; x < b.Max.X; x++ {
+				p := img.RGBAAt(x, y)
+				if p.R < 250 || p.G < 250 || p.B < 250 {
+					ink++
+				}
+			}
+		}
+		return ink
+	}
+
+	solid := inkOnLine(false)
+	dashed := inkOnLine(true)
+	if solid == 0 || dashed == 0 {
+		t.Fatalf("expected both strokes to draw ink: solid=%d dashed=%d", solid, dashed)
+	}
+	if dashed >= solid {
+		t.Fatalf("expected dashed ink (%d) < solid ink (%d) under real AGG backend", dashed, solid)
 	}
 }
 

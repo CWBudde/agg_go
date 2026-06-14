@@ -52,12 +52,11 @@ implemented high-level facade subset.
 | `image_interop` | yes    | unavailable          | no                           | The C++ backend still rejects `Premultiply` and `Demultiply`.                                                                                                 |
 | `gradients`     | yes    | unavailable          | yes                          | The current C++ subset applies fill and stroke gradients during actual rendering.                                                                             |
 | `text`          | yes    | unavailable          | partial                      | Font loading, hinting, draw, measure, and bounds exist in the real-native path. Advanced text features are still out of scope.                                |
-| `dashed_stroke` | no     | unavailable          | no                           | Not part of the current shared facade subset yet.                                                                                                             |
+| `dashed_stroke` | yes    | unavailable          | yes                          | `AddDash`/`RemoveAllDashes`/`DashStart`/`GetDashStart` drive AGG `conv_dash` on both backends.                                                                |
 
 ## Intentional Gaps
 
 - The `engine` facade is deliberately narrower than the root `agg` API.
-- Dashed strokes are not exposed through the shared facade yet.
 - The current C++ backend is still partial even in `agogo aggreal`.
 - Some C++ image/compositing paths still rely on local CPU helper logic instead
   of AGG-native implementations.
@@ -100,12 +99,12 @@ bounded fraction of pixels. Strict scenes must stay within these envelopes
 (`Tolerance` = max per-channel LSB delta before a pixel counts as "different";
 `MaxDifferentRatio` = bound on the fraction of such pixels):
 
-| Scene class                            | Tolerance | MaxDifferentRatio | Rationale                                                              |
-| -------------------------------------- | --------- | ----------------- | ---------------------------------------------------------------------- |
-| solid / path (NonZero, EvenOdd) / clip | 2         | 0.025             | Edge-AA disagreement on ~1.5% of pixels; bulk identical within 2 LSB.  |
-| linear / radial gradient               | 3         | 0.020             | Independent gradient interpolation rounding.                           |
-| scaled image (`image_scaled`)          | 4         | 0.080             | Independent samplers disagree along upscaled hard edges (~6%).         |
-| text (`text_basic`)                    | 8         | 0.100             | Native AGG vs Go-port FreeType AA/hinting; observed ~0.5% in practice. |
+| Scene class                   | Tolerance | MaxDifferentRatio | Rationale                                                              |
+| ----------------------------- | --------- | ----------------- | ---------------------------------------------------------------------- |
+| solid / dashed / path / clip  | 2         | 0.025             | Edge-AA disagreement on ~1.5% of pixels; bulk identical within 2 LSB.  |
+| linear / radial gradient      | 3         | 0.020             | Independent gradient interpolation rounding.                           |
+| scaled image (`image_scaled`) | 4         | 0.080             | Independent samplers disagree along upscaled hard edges (~6%).         |
+| text (`text_basic`)           | 8         | 0.100             | Native AGG vs Go-port FreeType AA/hinting; observed ~0.5% in practice. |
 
 ### Known Cross-Backend Divergences
 
@@ -129,8 +128,14 @@ Scenes that hit a typed `engine.ErrUnsupportedCapability` on a backend are
 - `image_affine` (scaled image draw under an active transform) skips on `cpp`,
   which still rejects `DrawImageRegion` with an active transform.
 
-### Deferred Coverage
+### Dashed strokes
 
-- **Dashed stroke**: the `engine` facade exposes no dash API and neither backend
-  reports `dashed_stroke`, so a cross-backend dashed scene is deferred until the
-  facade gains dash support (PLAN.md §5.4/§5.5).
+`AddDash(dashLen, gapLen)`, `RemoveAllDashes()`, `DashStart(offset)`, and
+`GetDashStart()` are now on `engine.Context`. The port delegates to the root
+`Agg2D` dash API; the real C++ backend feeds `agg::conv_dash` into
+`agg::conv_stroke`. The `dashed_stroke` corpus scene compares within the
+solid/path envelope (observed ~1.3% edge-AA disagreement). Dash lengths are
+measured in user space by the port and in device space by the C++ backend (it
+dashes the pre-transformed path), so the corpus scene uses no active transform;
+dashed strokes under a non-identity transform are not yet a guaranteed parity
+case (tracked in PLAN.md §5.5).

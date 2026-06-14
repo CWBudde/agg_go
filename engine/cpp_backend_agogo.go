@@ -57,6 +57,8 @@ type cppContext struct {
 	lineWidth          float64
 	lineCap            agg.LineCap
 	lineJoin           agg.LineJoin
+	dashes             []float32 // flat (dashLen, gapLen) pairs; empty strokes solid
+	dashStart          float64
 	blendMode          agg.BlendMode
 	fillEvenOdd        bool
 	fillGradientType   agg.GradientType
@@ -225,6 +227,19 @@ func (c *cppContext) SetLineCap(cap agg.LineCap) { c.lineCap = cap }
 
 func (c *cppContext) SetLineJoin(join agg.LineJoin) { c.lineJoin = join }
 
+func (c *cppContext) AddDash(dashLen, gapLen float64) {
+	c.dashes = append(c.dashes, float32(dashLen), float32(gapLen))
+}
+
+func (c *cppContext) RemoveAllDashes() {
+	c.dashes = c.dashes[:0]
+	c.dashStart = 0
+}
+
+func (c *cppContext) DashStart(offset float64) { c.dashStart = offset }
+
+func (c *cppContext) GetDashStart() float64 { return c.dashStart }
+
 func (c *cppContext) SetBlendMode(mode agg.BlendMode) { c.blendMode = mode }
 
 func (c *cppContext) GetBlendMode() agg.BlendMode { return c.blendMode }
@@ -388,6 +403,8 @@ func (c *cppContext) Stroke() {
 	opts.Width = float32(c.lineWidth)
 	opts.LineCap = mapLineCap(c.lineCap)
 	opts.LineJoin = mapLineJoin(c.lineJoin)
+	opts.Dashes = c.dashes
+	opts.DashStart = float32(c.dashStart)
 	if c.strokeGradient.kind == cppGradientSolid {
 		r, g, b, a := colorToRGBA8(c.strokeColor)
 		c.must(strokeCPPNativePath(layer, working, opts, r, g, b, a))

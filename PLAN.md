@@ -302,11 +302,12 @@ across two active repositories.
 
 ### 5.4 Scope for v1
 
-- [ ] Support these common high-level operations through both engines:
+- [x] Support these common high-level operations through both engines:
       rectangle/circle helpers, `MoveTo`/`LineTo`/`QuadTo`/`CubicTo`/`Close`,
       fill/stroke rendering, affine transforms, clip box control, solid fills,
-      dashed strokes, basic image copy/scale/quad mapping, and compositing mode
-      selection.
+      dashed strokes (`AddDash`/`RemoveAllDashes`/`DashStart`/`GetDashStart`,
+      driving AGG `conv_dash` on both backends), basic image copy/scale/quad
+      mapping, and compositing mode selection.
 - [x] Finish the port-backed facade coverage for operations already present on
       the root `agg.Context`, especially clip box, image-region helpers,
       gradients, and text-related APIs.
@@ -352,10 +353,12 @@ across two active repositories.
 - [x] Port the first real direct C++ backend primitives needed for parity with
       the current facade subset: image scaling/quad mapping, clip box support,
       the current compositing subset, gradients, and a first text slice.
-- [ ] Extend that partial C++ parity work to the remaining shared-facade gaps,
-      especially dashed strokes, broader compositing coverage, transformed
-      image-region behavior, and any image paths that still bypass AGG in the
-      real-native build.
+- [ ] Extend that partial C++ parity work to the remaining shared-facade gaps:
+      dashed strokes are done (real-native `agg::conv_dash` → `agg::conv_stroke`,
+      cross-backend conformance within the path envelope); broader compositing
+      coverage, transformed image-region behavior, dashed strokes under a
+      non-identity transform, and any image paths that still bypass AGG in the
+      real-native build remain.
 - [x] Make the current package-private C++ backend gradient setters affect
       actual fill/stroke rendering for the migrated subset, with tagged tests
       covering at least one fill gradient and one stroke gradient case.
@@ -433,12 +436,11 @@ Before exposing the in-repo C++ engine outside comparison tooling, mine
 - [x] Add a backend-neutral scene corpus in `agg_go` that renders the same
       operations through both engines (`engine/scene`: `Scene`/`All`/`Filter`,
       per-engine `BuildAssets`, capability-declared scenes).
-- [x] Cover at least these comparison scenes: solid fill/stroke,
+- [x] Cover at least these comparison scenes: solid fill/stroke, dashed stroke,
       self-intersecting paths with both fill rules, affine/scaled image
       transforms, clip boxes, gradients (linear+radial), compositing, and one
-      text scene. Dashed stroke is deferred — the facade exposes no dash API and
-      neither backend reports `dashed_stroke` (see `docs/BACKENDS.md`
-      "Deferred Coverage"; tracked in §5.4/§5.5).
+      text scene. The `dashed_stroke` scene compares within the path envelope on
+      both backends (AGG `conv_dash`); see `docs/BACKENDS.md` "Dashed strokes".
 - [x] Add a render workflow that emits `port`, `cpp`, and diff outputs for
       manual inspection and parity triage (`cmd/engine-compare`).
 - [x] Add a benchmark workflow that runs the same scene corpus through both
