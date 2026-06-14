@@ -42,9 +42,9 @@ implemented high-level facade subset.
 
 | Capability      | `port` | `cpp` stub (`agogo`) | `cpp` real (`agogo aggreal`) | Notes                                                                                                                                                                                                                                          |
 | --------------- | ------ | -------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `solid_style`   | yes    | unavailable          | yes                          | Fill and stroke colors work in both available engines.                                                                                                                                                                                         |
+| `solid_style`   | yes    | unavailable          | yes                          | Fill and stroke colors work in both available engines, with symmetric `GetFillColor`/`GetStrokeColor`/`GetLineWidth`/`GetLineCap`/`GetLineJoin` readback.                                                                                      |
 | `path`          | yes    | unavailable          | yes                          | `MoveTo`, `LineTo`, `QuadTo`, `CubicTo`, `ClosePath`, fill, stroke, rectangle, and circle helpers are available.                                                                                                                               |
-| `transforms`    | yes    | unavailable          | yes                          | Translation, rotation, scale, and reset are implemented.                                                                                                                                                                                       |
+| `transforms`    | yes    | unavailable          | yes                          | Translation, rotation, scale, and reset are implemented, plus `GetTransform` readback of the cumulative affine matrix (`agg.Transformations`, AGG order).                                                                                      |
 | `clip_box`      | yes    | unavailable          | yes                          | The current C++ backend clips fill, stroke, and image operations.                                                                                                                                                                              |
 | `compositing`   | yes    | unavailable          | partial                      | `BlendAlpha`, `BlendClear`, `BlendSrc`, `BlendDst`, `BlendSrcOver` are faithful: solid fills/strokes render directly through a comp-op pixfmt (straight-alpha adaptor), byte-matching the port. Other modes fail with typed capability errors. |
 | `image_draw`    | yes    | unavailable          | partial                      | Copy, region draw, scaling, and quad mapping are implemented. `DrawImageRegion` with an active transform is still rejected as unsupported.                                                                                                     |
@@ -151,3 +151,25 @@ measured in user space by the port and in device space by the C++ backend (it
 dashes the pre-transformed path), so the corpus scene uses no active transform;
 dashed strokes under a non-identity transform are not yet a guaranteed parity
 case (tracked in PLAN.md §5.5).
+
+### State and style readback
+
+The facade v1 getter contract is symmetric with its setters. In addition to the
+earlier subset (`GetBlendMode`, `GetFillEvenOdd`, `GetFillGradientType`,
+`GetStrokeGradientType`, `GetClipBox`, `GetTextHints`, `MeasureText`,
+`GetTextBounds`), it now exposes:
+
+- `GetFillColor()` / `GetStrokeColor()` — current solid fill/stroke colors.
+- `GetLineWidth()` / `GetLineCap()` / `GetLineJoin()` — current stroke style.
+- `GetTransform()` — the cumulative affine transform as an
+  `agg.Transformations` value in AGG order (`sx, shy, shx, sy, tx, ty`),
+  mirroring `GetClipBox`'s value-return style.
+
+Both backends return identical results: the port delegates to the root
+`agg.Context`/`Agg2D` getters, and the C++ backend returns its stored Go-side
+style state and reads the transform back from the native `agg`-order matrix via
+a dedicated `store` bridge call (so it reflects the actual native CTM rather
+than a Go-side mirror). These getters were the open §5.4 v1 decisions: both the
+transform-matrix readback and the style/state getters are deliberately **in
+scope** for v1 because they are trivially backend-neutral and round-trip exactly
+on both engines.

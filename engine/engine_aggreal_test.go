@@ -76,6 +76,51 @@ func TestNewContextCPPWorksWithAggReal(t *testing.T) {
 	}
 }
 
+func TestCPPStyleAndTransformReadbackWithAggReal(t *testing.T) {
+	ctx, err := engine.NewContext(16, 16, engine.Config{Kind: engine.CPP})
+	if err != nil {
+		t.Fatalf("NewContext(CPP) error = %v", err)
+	}
+
+	fill := agg.NewColor(10, 20, 30, 200)
+	stroke := agg.NewColor(40, 50, 60, 255)
+	ctx.SetFillColor(fill)
+	ctx.SetStrokeColor(stroke)
+	ctx.SetLineWidth(2.5)
+	ctx.SetLineCap(agg.CapRound)
+	ctx.SetLineJoin(agg.JoinBevel)
+
+	if got := ctx.GetFillColor(); got != fill {
+		t.Errorf("GetFillColor() = %+v, want %+v", got, fill)
+	}
+	if got := ctx.GetStrokeColor(); got != stroke {
+		t.Errorf("GetStrokeColor() = %+v, want %+v", got, stroke)
+	}
+	if got := ctx.GetLineWidth(); got != 2.5 {
+		t.Errorf("GetLineWidth() = %v, want 2.5", got)
+	}
+	if got := ctx.GetLineCap(); got != agg.CapRound {
+		t.Errorf("GetLineCap() = %v, want %v", got, agg.CapRound)
+	}
+	if got := ctx.GetLineJoin(); got != agg.JoinBevel {
+		t.Errorf("GetLineJoin() = %v, want %v", got, agg.JoinBevel)
+	}
+
+	// Fresh transform is identity; readback comes from the native matrix.
+	if got := ctx.GetTransform(); !got.IsIdentity() {
+		t.Fatalf("fresh GetTransform() = %v, want identity", got.AffineMatrix)
+	}
+	// Translation of identity is convention-independent.
+	ctx.Translate(5, 7)
+	if got := ctx.GetTransform().AffineMatrix; got != [6]float64{1, 0, 0, 1, 5, 7} {
+		t.Fatalf("after Translate GetTransform() = %v, want {1,0,0,1,5,7}", got)
+	}
+	ctx.ResetTransform()
+	if got := ctx.GetTransform(); !got.IsIdentity() {
+		t.Fatalf("after ResetTransform GetTransform() = %v, want identity", got.AffineMatrix)
+	}
+}
+
 func TestCPPCompOpSrcKeepsStraightAlphaWithAggReal(t *testing.T) {
 	// comp_op_src must replace the destination with the straight source colour,
 	// not a premultiplied one. The C++ comp-op adaptor demultiplies on write to

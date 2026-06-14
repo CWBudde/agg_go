@@ -592,6 +592,23 @@ func (m *cppNativeMatrix) rotateDegrees(degrees float32) error {
 	return m.rotate(float32(float64(degrees) * math.Pi / 180.0))
 }
 
+// store reads the matrix's six affine components in AGG order
+// (sx, shy, shx, sy, tx, ty).
+func (m *cppNativeMatrix) store() ([6]float64, error) {
+	var out [6]float64
+	if m == nil || m.ptr == nil {
+		return out, fmt.Errorf("matrix is nil")
+	}
+	var buf [6]C.double
+	if code := int(C.agg_go_cpp_matrix_store(m.ptr, &buf[0])); code != 0 {
+		return out, fmt.Errorf("agg_go_cpp_matrix_store failed: %s", cppNativeLastError())
+	}
+	for i := range out {
+		out[i] = float64(buf[i])
+	}
+	return out, nil
+}
+
 func (m *cppNativeMatrix) transformPoint(x, y float64) (float64, float64, error) {
 	if m == nil || m.ptr == nil {
 		return 0, 0, fmt.Errorf("matrix is nil")

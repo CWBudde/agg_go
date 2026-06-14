@@ -81,11 +81,21 @@ func (c *portContext) SetFillColor(color agg.Color) { c.ctx.SetFillColor(color) 
 
 func (c *portContext) SetStrokeColor(color agg.Color) { c.ctx.SetStrokeColor(color) }
 
+func (c *portContext) GetFillColor() agg.Color { return c.ctx.GetAgg2D().GetFillColor() }
+
+func (c *portContext) GetStrokeColor() agg.Color { return c.ctx.GetAgg2D().GetLineColor() }
+
 func (c *portContext) SetLineWidth(width float64) { c.ctx.SetLineWidth(width) }
 
 func (c *portContext) SetLineCap(lineCap agg.LineCap) { c.ctx.SetLineCap(lineCap) }
 
 func (c *portContext) SetLineJoin(join agg.LineJoin) { c.ctx.SetLineJoin(join) }
+
+func (c *portContext) GetLineWidth() float64 { return c.ctx.GetLineWidth() }
+
+func (c *portContext) GetLineCap() agg.LineCap { return c.ctx.GetLineCap() }
+
+func (c *portContext) GetLineJoin() agg.LineJoin { return c.ctx.GetLineJoin() }
 
 func (c *portContext) AddDash(dashLen, gapLen float64) { c.ctx.GetAgg2D().AddDash(dashLen, gapLen) }
 
@@ -184,6 +194,15 @@ func (c *portContext) Rotate(angle float64) { c.ctx.Rotate(angle) }
 func (c *portContext) Scale(sx, sy float64) { c.ctx.Scale(sx, sy) }
 
 func (c *portContext) ResetTransform() { c.ctx.ResetTransform() }
+
+// GetTransform returns the current cumulative affine transform as a
+// backend-neutral matrix in AGG order (sx, shy, shx, sy, tx, ty).
+func (c *portContext) GetTransform() agg.Transformations {
+	if t := c.ctx.GetTransform(); t != nil {
+		return *t
+	}
+	return agg.Transformations{AffineMatrix: [6]float64{1, 0, 0, 1, 0, 0}}
+}
 
 func (c *portContext) DrawImage(img Image, x, y float64) error {
 	portImg, err := unwrapPortImage(img, c.Kind())

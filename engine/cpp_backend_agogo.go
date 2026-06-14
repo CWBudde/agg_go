@@ -221,11 +221,21 @@ func (c *cppContext) SetStrokeColor(color agg.Color) {
 	c.strokeGradient = cppGradientState{kind: cppGradientSolid, c1: color, c2: color, profile: 1}
 }
 
+func (c *cppContext) GetFillColor() agg.Color { return c.fillColor }
+
+func (c *cppContext) GetStrokeColor() agg.Color { return c.strokeColor }
+
 func (c *cppContext) SetLineWidth(width float64) { c.lineWidth = width }
 
 func (c *cppContext) SetLineCap(cap agg.LineCap) { c.lineCap = cap }
 
 func (c *cppContext) SetLineJoin(join agg.LineJoin) { c.lineJoin = join }
+
+func (c *cppContext) GetLineWidth() float64 { return c.lineWidth }
+
+func (c *cppContext) GetLineCap() agg.LineCap { return c.lineCap }
+
+func (c *cppContext) GetLineJoin() agg.LineJoin { return c.lineJoin }
 
 func (c *cppContext) AddDash(dashLen, gapLen float64) {
 	c.dashes = append(c.dashes, float32(dashLen), float32(gapLen))
@@ -488,6 +498,15 @@ func (c *cppContext) Scale(sx, sy float64) {
 func (c *cppContext) ResetTransform() {
 	c.must(c.transform.identity())
 	c.transformDirty = false
+}
+
+// GetTransform returns the current cumulative affine transform as a
+// backend-neutral matrix in AGG order (sx, shy, shx, sy, tx, ty), read back
+// from the native matrix so it mirrors the port's GetTransform contract.
+func (c *cppContext) GetTransform() agg.Transformations {
+	m, err := c.transform.store()
+	c.must(err)
+	return agg.Transformations{AffineMatrix: m}
 }
 
 func (c *cppContext) DrawImage(img Image, x, y float64) error {

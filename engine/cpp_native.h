@@ -70,6 +70,7 @@ int agg_go_cpp_matrix_translate(AggGoCPPMatrix* matrix, float tx, float ty);
 int agg_go_cpp_matrix_scale(AggGoCPPMatrix* matrix, float sx, float sy);
 int agg_go_cpp_matrix_rotate(AggGoCPPMatrix* matrix, float angle);
 int agg_go_cpp_matrix_transform_point(const AggGoCPPMatrix* matrix, double* x, double* y);
+int agg_go_cpp_matrix_store(const AggGoCPPMatrix* matrix, double* out);
 AggGoCPPPath* agg_go_cpp_path_transform(const AggGoCPPPath* path, const AggGoCPPMatrix* matrix);
 
 int agg_go_cpp_render_fill_path(AggGoCPPImage* image, const AggGoCPPPath* path, int fill_rule,

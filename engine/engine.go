@@ -38,9 +38,14 @@ type Context interface {
 	SetColor(color agg.Color)
 	SetFillColor(color agg.Color)
 	SetStrokeColor(color agg.Color)
+	GetFillColor() agg.Color
+	GetStrokeColor() agg.Color
 	SetLineWidth(width float64)
 	SetLineCap(cap agg.LineCap)
 	SetLineJoin(join agg.LineJoin)
+	GetLineWidth() float64
+	GetLineCap() agg.LineCap
+	GetLineJoin() agg.LineJoin
 	AddDash(dashLen, gapLen float64)
 	RemoveAllDashes()
 	DashStart(offset float64)
@@ -78,6 +83,7 @@ type Context interface {
 	Rotate(angle float64)
 	Scale(sx, sy float64)
 	ResetTransform()
+	GetTransform() agg.Transformations
 	DrawImage(img Image, x, y float64) error
 	DrawImageScaled(img Image, x, y, width, height float64) error
 	DrawImageRegion(img Image, srcX, srcY, srcW, srcH int, dstX, dstY, dstW, dstH float64) error

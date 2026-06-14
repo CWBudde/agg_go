@@ -272,6 +272,77 @@ func TestGradientFacadeReadback(t *testing.T) {
 	}
 }
 
+func TestStyleStateReadback(t *testing.T) {
+	ctx, err := engine.NewContext(8, 8, engine.Config{Kind: engine.Port})
+	if err != nil {
+		t.Fatalf("NewContext() error = %v", err)
+	}
+
+	fill := agg.NewColor(10, 20, 30, 200)
+	stroke := agg.NewColor(40, 50, 60, 255)
+	ctx.SetFillColor(fill)
+	ctx.SetStrokeColor(stroke)
+	ctx.SetLineWidth(3.5)
+	ctx.SetLineCap(agg.CapRound)
+	ctx.SetLineJoin(agg.JoinBevel)
+
+	if got := ctx.GetFillColor(); got != fill {
+		t.Errorf("GetFillColor() = %+v, want %+v", got, fill)
+	}
+	if got := ctx.GetStrokeColor(); got != stroke {
+		t.Errorf("GetStrokeColor() = %+v, want %+v", got, stroke)
+	}
+	if got := ctx.GetLineWidth(); got != 3.5 {
+		t.Errorf("GetLineWidth() = %v, want 3.5", got)
+	}
+	if got := ctx.GetLineCap(); got != agg.CapRound {
+		t.Errorf("GetLineCap() = %v, want %v", got, agg.CapRound)
+	}
+	if got := ctx.GetLineJoin(); got != agg.JoinBevel {
+		t.Errorf("GetLineJoin() = %v, want %v", got, agg.JoinBevel)
+	}
+}
+
+func TestTransformReadback(t *testing.T) {
+	ctx, err := engine.NewContext(8, 8, engine.Config{Kind: engine.Port})
+	if err != nil {
+		t.Fatalf("NewContext() error = %v", err)
+	}
+
+	if got := ctx.GetTransform(); !got.IsIdentity() {
+		t.Fatalf("fresh context GetTransform() = %+v, want identity", got.AffineMatrix)
+	}
+
+	// Translation of identity is convention-independent: {1,0,0,1,tx,ty}.
+	ctx.Translate(5, 7)
+	if got := ctx.GetTransform().AffineMatrix; got != [6]float64{1, 0, 0, 1, 5, 7} {
+		t.Fatalf("after Translate GetTransform() = %v, want {1,0,0,1,5,7}", got)
+	}
+
+	// For a composed transform, the facade must read back exactly what the
+	// underlying engine holds. Drive a root agg.Context with the identical ops
+	// and compare element-wise (the composition math is the root package's
+	// concern; here we verify the readback wiring).
+	ctx.Scale(2, 3)
+	ref := agg.NewContext(8, 8)
+	ref.Translate(5, 7)
+	ref.Scale(2, 3)
+	got := ctx.GetTransform()
+	want := *ref.GetTransform()
+	const eps = 1e-9
+	for i := range got.AffineMatrix {
+		if d := got.AffineMatrix[i] - want.AffineMatrix[i]; d < -eps || d > eps {
+			t.Fatalf("GetTransform()[%d] = %v, want %v (got=%v want=%v)",
+				i, got.AffineMatrix[i], want.AffineMatrix[i], got.AffineMatrix, want.AffineMatrix)
+		}
+	}
+
+	ctx.ResetTransform()
+	if got := ctx.GetTransform(); !got.IsIdentity() {
+		t.Fatalf("after ResetTransform GetTransform() = %+v, want identity", got.AffineMatrix)
+	}
+}
+
 func TestTextFacadeConfigurationAndValidation(t *testing.T) {
 	ctx, err := engine.NewContext(16, 16, engine.Config{Kind: engine.Port})
 	if err != nil {

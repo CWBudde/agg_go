@@ -314,11 +314,20 @@ across two active repositories.
 - [x] Decide and implement the first getter/readback subset exposed by the
       facade v1 contract: fill-rule state, blend mode state, gradient type
       state, clip-box readback, text-hint state, and text metrics/bounds.
-- [ ] Decide whether backend-neutral transform-matrix readback belongs in the
-      facade v1 contract or remains intentionally out of scope.
-- [ ] Decide whether additional style/state getters from the root API, such as
+- [x] Decide whether backend-neutral transform-matrix readback belongs in the
+      facade v1 contract or remains intentionally out of scope. Decision: IN
+      scope. `GetTransform()` returns the cumulative affine as an
+      `agg.Transformations` value (AGG order); the port delegates to
+      `agg.Context.GetTransform`, the C++ backend reads its native matrix back
+      via an `agg_go_cpp_matrix_store` bridge call. Round-trips exactly on both
+      backends (tagged tests in `engine_test.go`/`engine_aggreal_test.go`).
+- [x] Decide whether additional style/state getters from the root API, such as
       current colors, line width, line cap, and line join, belong in the facade
-      contract or should stay write-only for v1.
+      contract or should stay write-only for v1. Decision: IN scope. Added
+      `GetFillColor`/`GetStrokeColor`/`GetLineWidth`/`GetLineCap`/`GetLineJoin`,
+      symmetric with the setters and the existing getter subset; the port
+      delegates to the root getters and the C++ backend returns stored Go-side
+      style state.
 - [ ] Delay full abstraction of low-level rasterizer/scanline/pixfmt internals.
 - [ ] Keep demo-by-demo backend switching out of the first public cut unless the
       demo already uses only the supported shared surface.

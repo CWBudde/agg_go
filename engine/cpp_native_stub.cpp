@@ -933,6 +933,24 @@ extern "C" int agg_go_cpp_matrix_transform_point(const AggGoCPPMatrix* matrix, d
   return 0;
 }
 
+extern "C" int agg_go_cpp_matrix_store(const AggGoCPPMatrix* matrix, double* out) {
+  if (!valid_matrix(matrix)) {
+    set_last_error("matrix is nil");
+    return -1;
+  }
+  if (out == nullptr) {
+    set_last_error("output buffer is nil");
+    return -1;
+  }
+  out[0] = matrix->a;
+  out[1] = matrix->b;
+  out[2] = matrix->c;
+  out[3] = matrix->d;
+  out[4] = matrix->e;
+  out[5] = matrix->f;
+  return 0;
+}
+
 extern "C" AggGoCPPPath* agg_go_cpp_path_transform(const AggGoCPPPath* path, const AggGoCPPMatrix* matrix) {
   if (path == nullptr) {
     set_last_error("path is nil");
