@@ -25,6 +25,15 @@ type straightSpanBlenderF32 interface {
 	BlendSolidSpanStraight(dst []float32, r, g, b, a float32, covers []basics.Int8u, count int)
 }
 
+// straightColorSpanBlenderF32 is the per-pixel-colour (gradient/image) analogue of
+// straightSpanBlenderF32. Only CompositeBlenderRGBA128Plain implements it; the Pre
+// blender falls back to per-pixel BlendPixel. Bit-for-bit identical to the
+// per-pixel path. Parameterised by CS only (colour type color.RGBA32[CS]); byte
+// order O lives on the concrete blender.
+type straightColorSpanBlenderF32[CS color.Space] interface {
+	BlendColorSpanStraight(dst []float32, colors []color.RGBA32[CS], covers []basics.Int8u, cover basics.Int8u, count int)
+}
+
 // PixFmtCompositeRGBA128 is the float (128-bit, 4 x float32) twin of
 // PixFmtCompositeRGBA and the structural analogue of AGG's
 // pixfmt_custom_blend_rgba instantiated with the float rgba32 color type.
@@ -282,12 +291,43 @@ func (pf *PixFmtCompositeRGBA128[CS, O]) CopyColorHspan(x, y, length int, colors
 
 // BlendColorHspan composites a horizontal span of per-pixel colors.
 func (pf *PixFmtCompositeRGBA128[CS, O]) BlendColorHspan(x, y, length int, colors []color.RGBA32[CS], covers []basics.Int8u, cover basics.Int8u) {
-	for i := 0; i < length && i < len(colors); i++ {
-		actualCover := cover
-		if i < len(covers) {
-			actualCover = covers[i]
+	if y < 0 || y >= pf.Height() {
+		return
+	}
+	startX := Max(0, x)
+	// min with x+len(colors) mirrors the per-pixel loop's i < len(colors) guard.
+	endX := Min(Min(x+length, pf.Width()), x+len(colors))
+	if startX >= endX {
+		return
+	}
+	row := pf.RowPtr(y)
+
+	// Bit-exact span fast path: one concrete call (and one row fetch) instead of a
+	// per-pixel BlendPixel, mirroring the 8-bit BlendColorHspan. Require a
+	// full-length cover slice so the kernel never reads past it.
+	if covers == nil || len(covers) >= length {
+		if sb, ok := pf.blender.(straightColorSpanBlenderF32[CS]); ok {
+			off := startX - x
+			var cv []basics.Int8u
+			if covers != nil {
+				cv = covers[off:]
+			}
+			sb.BlendColorSpanStraight(row[startX*4:], colors[off:], cv, cover, endX-startX)
+			return
 		}
-		pf.BlendPixel(x+i, y, colors[i], actualCover)
+	}
+
+	for i := startX; i < endX; i++ {
+		idx := i - x
+		actualCover := cover
+		if idx < len(covers) {
+			actualCover = covers[idx]
+		}
+		p := i * 4
+		if p+4 <= len(row) {
+			c := colors[idx]
+			pf.blender.BlendPix(row[p:p+4], c.R, c.G, c.B, c.A, coverToF32(actualCover))
+		}
 	}
 }
 

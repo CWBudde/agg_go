@@ -575,6 +575,108 @@ func TestPixFmtCompositeRGBA32FastPathMatchesScalar(t *testing.T) {
 	}
 }
 
+// TestPixFmtCompositeRGBA32ColorHspanFastPathMatchesScalar locks the wired
+// gradient/image colour-span fast path (BlendColorHspan -> BlendColorSpanStraight)
+// against the per-pixel BlendPix reference, including the clip (negative x,
+// overflow past width, length past len(colors)) and colour/cover alignment, and
+// the short-cover-slice case that must stay on the scalar path.
+func TestPixFmtCompositeRGBA32ColorHspanFastPathMatchesScalar(t *testing.T) {
+	const width = 24
+	ops := []struct {
+		name string
+		op   blender.CompOp
+	}{
+		{"src_over", blender.CompOpSrcOver},
+		{"xor", blender.CompOpXor},
+		{"dst_out", blender.CompOpDstOut},
+		{"clear", blender.CompOpClear},
+		{"multiply", blender.CompOpMultiply},
+		{"src_in", blender.CompOpSrcIn},
+	}
+
+	seed := func() []basics.Int8u {
+		buf := make([]basics.Int8u, width*4)
+		for i := 0; i < width; i++ {
+			p := i * 4
+			buf[p+0] = basics.Int8u(20 + i*7)
+			buf[p+1] = basics.Int8u(200 - i*5)
+			buf[p+2] = basics.Int8u(60 + i*3)
+			buf[p+3] = basics.Int8u(90 + i*6) // translucent destination
+		}
+		return buf
+	}
+	mkColors := func(n int) []color.RGBA8[color.Linear] {
+		cs := make([]color.RGBA8[color.Linear], n)
+		for i := range cs {
+			cs[i] = color.RGBA8[color.Linear]{
+				R: basics.Int8u((i * 11) % 256),
+				G: basics.Int8u(255 - (i*7)%256),
+				B: basics.Int8u((i * 13) % 256),
+				A: basics.Int8u(40 + (i*9)%200), // translucent source
+			}
+		}
+		return cs
+	}
+	ramp := make([]basics.Int8u, width)
+	for i := range ramp {
+		ramp[i] = basics.Int8u((i * 37) % 256)
+	}
+	const uniformCover = basics.Int8u(255)
+
+	cases := []struct {
+		name    string
+		x, n    int
+		nColors int
+		covers  []basics.Int8u
+	}{
+		{"full_x0", 0, width, width, nil},
+		{"full_xoff", 5, 16, 16, nil},
+		{"clip_negx", -3, 16, 16, nil},
+		{"clip_overflow", 16, 16, 16, nil}, // runs past width
+		{"short_colors", 2, 20, 8, nil},    // length past len(colors)
+		{"ramp_x0", 0, width, width, ramp},
+		{"ramp_xoff", 4, 18, 18, ramp},
+		{"ramp_negx", -2, 20, 20, ramp},
+		{"short_covers", 0, width, width, ramp[:5]}, // short cover slice -> scalar path
+	}
+
+	for _, opc := range ops {
+		op := opc.op
+		for _, tc := range cases {
+			t.Run(opc.name+"/"+tc.name, func(t *testing.T) {
+				colors := mkColors(tc.nColors)
+
+				fpBuf := seed()
+				rbuf := buffer.NewRenderingBufferU8WithData(fpBuf, width, 1, width*4)
+				pf := NewPixFmtCompositeRGBA32(rbuf, op)
+				pf.BlendColorHspan(tc.x, 0, tc.n, colors, tc.covers, uniformCover)
+
+				// Scalar reference: the original per-pixel BlendColorHspan semantics.
+				refBuf := seed()
+				bl := blender.NewCompositeBlenderPlain[color.Linear, order.RGBA](op)
+				for i := 0; i < tc.n && i < len(colors); i++ {
+					x := tc.x + i
+					if x < 0 || x >= width {
+						continue
+					}
+					cover := uniformCover
+					if i < len(tc.covers) {
+						cover = tc.covers[i]
+					}
+					c := colors[i]
+					bl.BlendPix(refBuf[x*4:x*4+4], c.R, c.G, c.B, c.A, cover)
+				}
+
+				for i := 0; i < width*4; i++ {
+					if fpBuf[i] != refBuf[i] {
+						t.Fatalf("px=%d byte=%d: fast-path %d != scalar %d", i/4, i%4, fpBuf[i], refBuf[i])
+					}
+				}
+			})
+		}
+	}
+}
+
 // TestPixFmtCompositeRGBA32StraightOverOpaqueFaithful is the end-to-end (through
 // the pixfmt's wired fast path) regression guard for the §5.5 premultiplied-
 // storage bug: a translucent source xor'd / dst-out over an opaque destination

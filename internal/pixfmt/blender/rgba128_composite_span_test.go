@@ -60,6 +60,87 @@ func benchF32SpanStraight(b *testing.B, op CompOp) {
 func BenchmarkRGBA128SpanStraightSrcOver(b *testing.B)  { benchF32SpanStraight(b, CompOpSrcOver) }
 func BenchmarkRGBA128SpanStraightMultiply(b *testing.B) { benchF32SpanStraight(b, CompOpMultiply) }
 
+// TestRGBA128BlendColorSpanStraightMatchesBlendPix is the per-pixel-colour twin of
+// TestRGBA128BlendSolidSpanStraightMatchesBlendPix: the float gradient/image
+// colour-span fast path must be EXACTLY equal to calling BlendPix per pixel, for
+// every operator over randomised straight + translucent float destinations, a
+// per-pixel translucent source colour array, and full / partial / zero-mixed
+// coverage, for both RGBA and BGRA byte order.
+func TestRGBA128BlendColorSpanStraightMatchesBlendPix(t *testing.T) {
+	t.Run("RGBA", func(t *testing.T) {
+		diffF32ColorSpanVsBlendPix[order.RGBA](t, rand.New(rand.NewSource(0xF10C0)))
+	})
+	t.Run("BGRA", func(t *testing.T) {
+		diffF32ColorSpanVsBlendPix[order.BGRA](t, rand.New(rand.NewSource(0xB6C01)))
+	})
+}
+
+func diffF32ColorSpanVsBlendPix[O order.RGBAOrder](t *testing.T, rng *rand.Rand) {
+	t.Helper()
+	const span = 48
+	coverModes := []string{"full", "partial", "zero-mixed"}
+	const uniformCover = basics.Int8u(200)
+
+	for _, op := range allCompOps {
+		bl := NewCompositeBlenderRGBA128Plain[color.Linear, O](op)
+		for _, mode := range coverModes {
+			for trial := 0; trial < 100; trial++ {
+				dst := make([]float32, span*4)
+				for i := range dst {
+					dst[i] = rng.Float32()
+				}
+				colors := make([]color.RGBA32[color.Linear], span)
+				for i := range colors {
+					colors[i] = color.RGBA32[color.Linear]{
+						R: rng.Float32(), G: rng.Float32(), B: rng.Float32(), A: rng.Float32(),
+					}
+				}
+
+				var covers []basics.Int8u
+				switch mode {
+				case "partial":
+					covers = make([]basics.Int8u, span)
+					for i := range covers {
+						covers[i] = basics.Int8u(rng.Intn(256))
+					}
+				case "zero-mixed":
+					covers = make([]basics.Int8u, span)
+					for i := range covers {
+						if rng.Intn(4) == 0 {
+							covers[i] = 0
+						} else {
+							covers[i] = basics.Int8u(rng.Intn(256))
+						}
+					}
+				}
+
+				// Reference: BlendPix per pixel, with the same actualCover selection
+				// and coverToF32 normalisation the pixfmt's BlendColorHspan performs.
+				want := append([]float32(nil), dst...)
+				for i := 0; i < span; i++ {
+					coverByte := uniformCover
+					if i < len(covers) {
+						coverByte = covers[i]
+					}
+					c := colors[i]
+					bl.BlendPix(want[i*4:i*4+4], c.R, c.G, c.B, c.A, float32(coverByte)/255.0)
+				}
+
+				// Fast path.
+				got := append([]float32(nil), dst...)
+				bl.BlendColorSpanStraight(got, colors, covers, uniformCover, span)
+
+				for i := 0; i < span*4; i++ {
+					if got[i] != want[i] {
+						t.Fatalf("op=%d %s trial=%d px=%d ch=%d: span %v != per-pixel %v (color=%v)",
+							op, mode, trial, i/4, i%4, got[i], want[i], colors[i/4])
+					}
+				}
+			}
+		}
+	}
+}
+
 func diffF32SpanVsBlendPix[O order.RGBAOrder](t *testing.T, rng *rand.Rand) {
 	t.Helper()
 	const span = 48

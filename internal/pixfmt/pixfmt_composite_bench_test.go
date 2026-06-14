@@ -104,3 +104,43 @@ func BenchmarkCompSolidHspanAACover(b *testing.B) {
 		b.Run(o.name, func(b *testing.B) { benchCompBlend(b, o.op, covers) })
 	}
 }
+
+// benchCompColorHspan measures the gradient/image span path BlendColorHspan: a
+// per-pixel colour array (no uniform colour), uniform full cover. This is the
+// analogue of benchCompBlend for the color-span fast path.
+func benchCompColorHspan(b *testing.B, op blender.CompOp) {
+	pf, work, template := benchCompSetup()
+	pf.SetCompOp(op)
+	colors := make([]color.RGBA8[color.Linear], benchCompSpan)
+	for i := range colors {
+		// A gradient-like ramp of translucent colours.
+		colors[i] = color.RGBA8[color.Linear]{
+			R: basics.Int8u(i),
+			G: basics.Int8u(255 - i),
+			B: 220,
+			A: basics.Int8u(64 + (i % 192)),
+		}
+	}
+	b.SetBytes(int64(benchCompSpan * 4))
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		copy(work, template)
+		pf.BlendColorHspan(0, 0, benchCompSpan, colors, nil, basics.CoverFull)
+	}
+}
+
+func BenchmarkCompColorHspanFullCover(b *testing.B) {
+	ops := []struct {
+		name string
+		op   blender.CompOp
+	}{
+		{"src_over", blender.CompOpSrcOver},
+		{"xor", blender.CompOpXor},
+		{"dst_out", blender.CompOpDstOut},
+		{"multiply", blender.CompOpMultiply},
+	}
+	for _, o := range ops {
+		b.Run(o.name, func(b *testing.B) { benchCompColorHspan(b, o.op) })
+	}
+}

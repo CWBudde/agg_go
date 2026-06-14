@@ -381,6 +381,63 @@ func (bl CompositeBlenderPlain[S, O]) BlendSolidSpanStraight(dst []basics.Int8u,
 	}
 }
 
+// BlendColorSpanStraight applies the active operator across count straight-alpha
+// destination pixels each with its OWN source colour — the gradient/image (per-
+// pixel colour) twin of BlendSolidSpanStraight. It performs the identical
+// premultiply-on-read / op / demultiply-on-write bridge as BlendPix, so its output
+// is bit-for-bit identical to calling BlendPix per pixel (locked by the
+// differential test in rgba_composite_span_test.go). dst is packed in channel
+// order O (4 bytes per pixel); colors[i] is the straight-alpha source for pixel i;
+// the per-pixel coverage is covers[i] when i < len(covers), else the uniform cover
+// — exactly matching pixfmt BlendColorHspan's actualCover selection and BlendPix's
+// color.RGBA8MultCover(a, cover) multiply. There is no SIMD tier here (the source
+// colour varies per pixel); the win is one concrete call per span instead of one
+// interface dispatch — and, at the pixfmt, one row fetch instead of one per pixel.
+func (bl CompositeBlenderPlain[S, O]) BlendColorSpanStraight(dst []basics.Int8u, colors []color.RGBA8[S], covers []basics.Int8u, cover basics.Int8u, count int) {
+	var o O
+	cb := CompositeBlender[S, O](bl)
+	ir, ig, ib, ia := o.IdxR(), o.IdxG(), o.IdxB(), o.IdxA()
+
+	for i := 0; i < count && i < len(colors); i++ {
+		c := colors[i]
+		cv := cover
+		if i < len(covers) {
+			cv = covers[i]
+		}
+		// Sa with coverage, matching BlendPix's color.RGBA8MultCover(a, cover)/255.
+		sa := float64(color.RGBA8MultCover(c.A, cv)) / 255.0
+		if sa <= 0 {
+			continue
+		}
+		p := i * 4
+		// Premultiplied source.
+		s := normalizedRGBA{
+			r: (float64(c.R) / 255.0) * sa,
+			g: (float64(c.G) / 255.0) * sa,
+			b: (float64(c.B) / 255.0) * sa,
+			a: sa,
+		}
+		// Straight destination -> premultiplied.
+		da := float64(dst[p+ia]) / 255.0
+		d := normalizedRGBA{
+			r: (float64(dst[p+ir]) / 255.0) * da,
+			g: (float64(dst[p+ig]) / 255.0) * da,
+			b: (float64(dst[p+ib]) / 255.0) * da,
+			a: da,
+		}
+		res := cb.blendOperation(d, s)
+		// Demultiply back to straight alpha for storage.
+		if res.a <= 0 {
+			dst[p+ir], dst[p+ig], dst[p+ib], dst[p+ia] = 0, 0, 0, 0
+			continue
+		}
+		dst[p+ir] = to8(res.r / res.a)
+		dst[p+ig] = to8(res.g / res.a)
+		dst[p+ib] = to8(res.b / res.a)
+		dst[p+ia] = to8(res.a)
+	}
+}
+
 // Porter–Duff/SVG ops (all in premultiplied space)
 
 // clear: D' = 0

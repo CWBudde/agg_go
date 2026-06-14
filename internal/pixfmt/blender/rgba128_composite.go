@@ -273,6 +273,57 @@ func (bl CompositeBlenderRGBA128Plain[S, O]) BlendSolidSpanStraight(dst []float3
 	}
 }
 
+// BlendColorSpanStraight is the per-pixel-colour (gradient/image) twin of
+// BlendSolidSpanStraight for the float comp pixfmt — the float analogue of the
+// 8-bit CompositeBlenderPlain.BlendColorSpanStraight. It performs the identical
+// premultiply-on-read / op / demultiply-on-write bridge as BlendPix, so it is
+// bit-for-bit identical to calling BlendPix per pixel (locked by the differential
+// test). colors[i] is the straight-alpha float source for pixel i; the per-pixel
+// coverage is covers[i] when i < len(covers), else the uniform cover, normalised
+// exactly as the pixfmt's coverToF32 (float32(cover)/255) before widening —
+// matching the per-pixel BlendPix(coverToF32(...)) calls.
+func (bl CompositeBlenderRGBA128Plain[S, O]) BlendColorSpanStraight(dst []float32, colors []color.RGBA32[S], covers []basics.Int8u, cover basics.Int8u, count int) {
+	var o O
+	cb := CompositeBlender[S, O](bl)
+	ir, ig, ib, ia := o.IdxR(), o.IdxG(), o.IdxB(), o.IdxA()
+
+	for i := 0; i < count && i < len(colors); i++ {
+		coverByte := cover
+		if i < len(covers) {
+			coverByte = covers[i]
+		}
+		c := colors[i]
+		// Coverage matches BlendPix(coverToF32(coverByte)): float32(cover)/255 in
+		// float32, widened to float64.
+		sa := float64(c.A) * float64(float32(coverByte)/255.0)
+		if sa <= 0 {
+			continue
+		}
+		p := i * 4
+		// Premultiplied source.
+		s := normalizedRGBA{r: float64(c.R) * sa, g: float64(c.G) * sa, b: float64(c.B) * sa, a: sa}
+		// Straight destination -> premultiplied.
+		da := float64(dst[p+ia])
+		d := normalizedRGBA{
+			r: float64(dst[p+ir]) * da,
+			g: float64(dst[p+ig]) * da,
+			b: float64(dst[p+ib]) * da,
+			a: da,
+		}
+		res := cb.blendOperation(d, s)
+		// Demultiply back to straight alpha for storage.
+		if res.a <= 0 {
+			dst[p+ir], dst[p+ig], dst[p+ib], dst[p+ia] = 0, 0, 0, 0
+			continue
+		}
+		inv := 1.0 / res.a
+		dst[p+ir] = clampF01(res.r * inv)
+		dst[p+ig] = clampF01(res.g * inv)
+		dst[p+ib] = clampF01(res.b * inv)
+		dst[p+ia] = clampF01(res.a)
+	}
+}
+
 // Convenience aliases (Linear space, RGBA order), mirroring the 8-bit set.
 type (
 	CompositeBlenderRGBA128Linear      = CompositeBlenderRGBA128[color.Linear, order.RGBA]

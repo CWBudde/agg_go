@@ -98,6 +98,91 @@ func diffSpanVsBlendPix[O order.RGBAOrder](t *testing.T, rng *rand.Rand) {
 	}
 }
 
+// TestBlendColorSpanStraightMatchesBlendPix is the per-pixel-colour twin of
+// TestBlendSolidSpanStraightMatchesBlendPix: the gradient/image colour-span fast
+// path must be byte-for-byte identical to calling BlendPix per pixel, for EVERY
+// operator, over randomised straight + translucent destinations, a per-pixel
+// translucent source colour array, and full / partial / zero-mixed coverage, for
+// both RGBA and BGRA byte order.
+func TestBlendColorSpanStraightMatchesBlendPix(t *testing.T) {
+	t.Run("RGBA", func(t *testing.T) {
+		diffColorSpanVsBlendPix[order.RGBA](t, rand.New(rand.NewSource(0xC010A)))
+	})
+	t.Run("BGRA", func(t *testing.T) {
+		diffColorSpanVsBlendPix[order.BGRA](t, rand.New(rand.NewSource(0xB6C01)))
+	})
+}
+
+func diffColorSpanVsBlendPix[O order.RGBAOrder](t *testing.T, rng *rand.Rand) {
+	t.Helper()
+	const span = 48
+	coverModes := []string{"full", "partial", "zero-mixed"}
+	const uniformCover = basics.Int8u(200) // the cover used when covers == nil
+
+	for _, op := range allCompOps {
+		bl := NewCompositeBlenderPlain[color.Linear, O](op)
+		for _, mode := range coverModes {
+			for trial := 0; trial < 200; trial++ {
+				dst := make([]basics.Int8u, span*4)
+				for i := range dst {
+					dst[i] = basics.Int8u(rng.Intn(256))
+				}
+				colors := make([]color.RGBA8[color.Linear], span)
+				for i := range colors {
+					colors[i] = color.RGBA8[color.Linear]{
+						R: basics.Int8u(rng.Intn(256)),
+						G: basics.Int8u(rng.Intn(256)),
+						B: basics.Int8u(rng.Intn(256)),
+						A: basics.Int8u(rng.Intn(256)),
+					}
+				}
+
+				var covers []basics.Int8u
+				switch mode {
+				case "partial":
+					covers = make([]basics.Int8u, span)
+					for i := range covers {
+						covers[i] = basics.Int8u(rng.Intn(256))
+					}
+				case "zero-mixed":
+					covers = make([]basics.Int8u, span)
+					for i := range covers {
+						if rng.Intn(4) == 0 {
+							covers[i] = 0
+						} else {
+							covers[i] = basics.Int8u(rng.Intn(256))
+						}
+					}
+				}
+
+				// Reference: BlendPix per pixel, with the same actualCover selection
+				// the pixfmt's BlendColorHspan performs (covers[i] when present, else
+				// the uniform cover).
+				want := append([]basics.Int8u(nil), dst...)
+				for i := 0; i < span; i++ {
+					cover := uniformCover
+					if i < len(covers) {
+						cover = covers[i]
+					}
+					c := colors[i]
+					bl.BlendPix(want[i*4:i*4+4], c.R, c.G, c.B, c.A, cover)
+				}
+
+				// Fast path.
+				got := append([]basics.Int8u(nil), dst...)
+				bl.BlendColorSpanStraight(got, colors, covers, uniformCover, span)
+
+				for i := 0; i < span*4; i++ {
+					if got[i] != want[i] {
+						t.Fatalf("op=%d %s trial=%d px=%d byte=%d: span %d != per-pixel %d (color=%v)",
+							op, mode, trial, i/4, i%4, got[i], want[i], colors[i/4])
+					}
+				}
+			}
+		}
+	}
+}
+
 // TestBlendSolidSpanStraightFaithfulStraightOverOpaque value-pins the AGG-faithful
 // result of a translucent source composited over an OPAQUE destination, for the
 // operators whose result is translucent over opaque dst. This is the port-side

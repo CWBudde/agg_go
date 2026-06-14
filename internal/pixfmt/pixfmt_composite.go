@@ -24,6 +24,18 @@ type straightSpanBlender interface {
 	BlendSolidSpanStraight(dst []basics.Int8u, r, g, b, a basics.Int8u, covers []basics.Int8u, count int)
 }
 
+// straightColorSpanBlender is the per-pixel-colour analogue of straightSpanBlender
+// for gradient/image spans: blend a whole colour span (one source colour per
+// pixel) in one concrete call. Only blender.CompositeBlenderPlain implements it;
+// the Pre blender falls back to the per-pixel BlendPixel path. Bit-for-bit
+// identical to BlendPix per pixel (locked by the differential test in
+// blender/rgba_composite_span_test.go and the pixfmt wiring test). Parameterised
+// by CS only: the colour type is color.RGBA8[CS]; byte order O lives on the
+// concrete blender.
+type straightColorSpanBlender[CS color.Space] interface {
+	BlendColorSpanStraight(dst []basics.Int8u, colors []color.RGBA8[CS], covers []basics.Int8u, cover basics.Int8u, count int)
+}
+
 // PixFmtCompositeRGBA is the Go equivalent of AGG's pixfmt_custom_blend_rgba.
 //
 // Instead of hard-wiring SrcOver semantics, it delegates each write to a
@@ -290,12 +302,47 @@ func (pf *PixFmtCompositeRGBA[CS, O]) CopyColorHspan(x, y, length int, colors []
 
 // BlendColorHspan composites a horizontal span of per-pixel colors.
 func (pf *PixFmtCompositeRGBA[CS, O]) BlendColorHspan(x, y, length int, colors []color.RGBA8[CS], covers []basics.Int8u, cover basics.Int8u) {
-	for i := 0; i < length && i < len(colors); i++ {
-		actualCover := cover
-		if i < len(covers) {
-			actualCover = covers[i]
+	if y < 0 || y >= pf.Height() {
+		return
+	}
+
+	startX := max(0, x)
+	// min with x+len(colors) mirrors the per-pixel loop's i < len(colors) guard.
+	endX := min(x+length, pf.Width(), x+len(colors))
+	if startX >= endX {
+		return
+	}
+
+	row := buffer.RowU8(pf.rbuf, y)
+
+	// Bit-exact span fast path: one concrete call (and one row fetch) instead of a
+	// per-pixel BlendPixel (which re-fetches the row, re-checks bounds, and
+	// dispatches through the blender interface every pixel). colors/covers are
+	// aligned to the first blended pixel (startX). Require a full-length cover
+	// slice so the kernel never reads past it (the per-pixel loop tolerates a short
+	// slice via the uniform-cover fallback; keep that edge case on the scalar path).
+	if covers == nil || len(covers) >= length {
+		if sb, ok := pf.blender.(straightColorSpanBlender[CS]); ok {
+			off := startX - x
+			var cv []basics.Int8u
+			if covers != nil {
+				cv = covers[off:]
+			}
+			sb.BlendColorSpanStraight(row[startX*4:], colors[off:], cv, cover, endX-startX)
+			return
 		}
-		pf.BlendPixel(x+i, y, colors[i], actualCover)
+	}
+
+	for i := startX; i < endX; i++ {
+		idx := i - x
+		actualCover := cover
+		if idx < len(covers) {
+			actualCover = covers[idx]
+		}
+		pixelOffset := i * 4
+		if pixelOffset+3 < len(row) {
+			pf.blender.BlendPix(row[pixelOffset:pixelOffset+4], colors[idx].R, colors[idx].G, colors[idx].B, colors[idx].A, actualCover)
+		}
 	}
 }
 

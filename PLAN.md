@@ -565,7 +565,7 @@ Steps:
       is architecturally guaranteed on amd64, so the only non-SIMD outcome is the
       `ForceGeneric` test hook. The Go-asm gotcha here: the 4-byte pixel load/store
       must use `MOVL` with an xmm operand (Go's spelling of the 32-bit `MOVD`,
-      `66 0F 6E`/`66 0F 7E`); plain `MOVD` is Go's *64-bit* move and silently
+      `66 0F 6E`/`66 0F 7E`); plain `MOVD` is Go's _64-bit_ move and silently
       over-reads/over-writes 8 bytes per pixel (the duplicated-store corrupted the
       next pixel's input — the px0-ok/px1-wrong symptom).
       Extending to other separable branch-free ops (xor/plus/multiply/screen/…) and
@@ -589,10 +589,55 @@ Steps:
       stale doc comments that wrongly described the default float comp buffer as
       premultiplied: the default Plain path stores **straight** (only the Pre
       variant is premultiplied), matching the 8-bit §5.5 convention.
-- [ ] **(Optional)** Apply the span fast path to gradient/image comp spans if
-      profiling warrants; and decide whether Option B (true premultiplied comp
-      buffer) is worth pursuing — only if also moving the comp path onto AGG's
-      native premultiplied model.
+- [x] **Span fast path for gradient/image (per-pixel colour) comp spans** — landed
+      (8-bit + float). Profiling first confirmed it was warranted: `BlendColorHspan`
+      drove a per-pixel `BlendPixel` that **re-fetched the row, re-ran the bounds
+      check, and dispatched through the blender interface every pixel** — measured
+      ~23.5 ns/px (256-px span: src-over 6120 / xor 7008 / dst-out 5966 / multiply
+      6578 ns), even worse than the solid scalar baseline. The fix is the per-pixel-
+      colour twin of the solid hoist: `CompositeBlenderPlain.BlendColorSpanStraight`
+      (8-bit, `rgba_composite.go`) and `CompositeBlenderRGBA128Plain.BlendColorSpanStraight`
+      (float, `rgba128_composite.go`), wired into each pixfmt's `BlendColorHspan` via
+      the new `straightColorSpanBlender[CS]` / `straightColorSpanBlenderF32[CS]`
+      interfaces (one concrete call + one row fetch per span). Both reuse the shared
+      `blendOperation`, so they are **byte-for-byte identical** to per-pixel
+      `BlendPix` (constraints 1–3 met by construction). Locked by
+      `TestBlendColorSpanStraightMatchesBlendPix` /
+      `TestRGBA128BlendColorSpanStraightMatchesBlendPix` (all 24 ops, RGBA+BGRA,
+      straight+translucent dst, per-pixel translucent colours, full/partial/zero
+      covers) and the pixfmt-level
+      `TestPixFmtCompositeRGBA32ColorHspanFastPathMatchesScalar` (clip: negative-x,
+      overflow, length past `len(colors)`, short-cover scalar fallback). Measured
+      **~1.7–2.0×** (256-px: src-over 6120→3675, xor 7008→3526, dst-out 5966→3600,
+      multiply 6578→3930 ns; 0 allocs). No SIMD tier (the source colour varies per
+      pixel). `BlendColorVspan` stays on the per-pixel path: each pixel is in a
+      different row, so the contiguous-span hoist does not apply and gradients/images
+      render as hspans in practice. Conformance under `agogo aggreal` byte-unchanged.
+- [x] **Option B (true premultiplied comp buffer) — decided: NOT pursuing.** _What
+      it would mean:_ stock AGG composites on a **premultiplied** buffer
+      (`comp_op_adaptor_rgba` reads Dca/Da, runs the op in premult space, writes
+      premult back — the buffer stays premultiplied; demultiply happens only at final
+      readback). This project deliberately deviates (constraint 1, §5.5): the comp
+      buffer stores **straight** alpha, and the per-pixel bridge premultiplies-on-read
+      / demultiplies-on-write around each op. "Moving the comp path onto AGG's native
+      premultiplied model" = reversing that deviation — flipping the comp buffer's
+      storage convention from straight back to AGG-native premultiplied — so the
+      premult-dst SIMD kernels (`simd.Comp*HspanRGBA`) would apply unchanged with no
+      per-pixel divide. _Why we are not doing it:_ (1) the straight convention is
+      load-bearing — `GetPixel`, `ToGoImage`, alpha masks, and the cross-backend
+      conformance comparator all read straight; going natively premultiplied moves a
+      demultiply onto **every read path** instead of confining it to the comp write,
+      i.e. it trades a localised (and now ~2–4.5× accelerated) cost for a pervasive
+      one, and reintroduces the exact §5.5 bug class (premultiplied data in a buffer
+      others read as straight). (2) Both backends currently agree on straight storage
+      (port `CompositeBlenderPlain` ↔ CPP `comp_op_adaptor_rgba_plain`, locked by
+      `TestCPPXorBlendIsAGGFaithfulWithAggReal`); flipping only the port would diverge
+      from that locked parity boundary, and flipping both is a large, risky change to
+      a non-default path. (3) The payoff is already captured by the straight bridge +
+      hoisted spans + AVX2/SSE2 SrcOver tier, all bit-exact. Option B remains
+      documented here as the considered-and-rejected alternative; revisit only if a
+      future decision deliberately adopts AGG-native premultiplied storage repo-wide
+      (which would also need the CPP side and all straight readers to move together).
 
 ---
 
