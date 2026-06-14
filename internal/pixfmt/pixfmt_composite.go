@@ -6,7 +6,34 @@ import (
 	"github.com/cwbudde/agg_go/internal/color"
 	"github.com/cwbudde/agg_go/internal/order"
 	"github.com/cwbudde/agg_go/internal/pixfmt/blender"
+	"github.com/cwbudde/agg_go/internal/simd"
 )
+
+// plainSpanKernel returns a straight-alpha composite span kernel for op, or nil
+// if no fast path exists for it. These kernels do the same premultiply-on-read /
+// op / demultiply-on-write bridge as the scalar blender.CompositeBlenderPlain and
+// are bit-for-bit identical to it (locked by simd's differential test); they only
+// hoist the per-pixel interface dispatch and operator switch out of the loop. The
+// caller must additionally confirm standard RGBA byte order and a non-premultiplied
+// pixfmt. NB: these are NOT the premult-dst simd.Comp*HspanRGBA kernels (which are
+// incompatible with this straight-alpha buffer — see the §5.5 history).
+func plainSpanKernel(op blender.CompOp) func(dst, covers []byte, r, g, b, a basics.Int8u, count int) {
+	switch op {
+	case blender.CompOpSrcOver:
+		return simd.CompSrcOverPlainHspanRGBA
+	case blender.CompOpXor:
+		return simd.CompXorPlainHspanRGBA
+	default:
+		return nil
+	}
+}
+
+// stdRGBAStraight reports whether this pixfmt stores straight alpha in standard
+// R,G,B,A byte order — the precondition for the plainSpanKernel fast path.
+func (pf *PixFmtCompositeRGBA[CS, O]) stdRGBAStraight() bool {
+	var o O
+	return !pf.premultiplied && o.IdxR() == 0 && o.IdxG() == 1 && o.IdxB() == 2 && o.IdxA() == 3
+}
 
 type compositeRGBABlender[CS color.Space, O order.RGBAOrder] interface {
 	BlendPix(dst []basics.Int8u, r, g, b, a, cover basics.Int8u)
@@ -126,15 +153,14 @@ func (pf *PixFmtCompositeRGBA[CS, O]) BlendHline(x, y, length int, c color.RGBA8
 
 	row := buffer.RowU8(pf.rbuf, y)
 
-	// NB: no SIMD fast path here. The simd.Comp*HspanRGBA kernels operate on a
-	// *premultiplied* destination (Dca, Da) and leave a premultiplied result,
-	// matching AGG's pixfmt_custom_blend_rgba over a premultiplied blender_rgba
-	// buffer. This pixfmt stores *straight* alpha (the Agg2D convention), so the
-	// scalar CompositeBlenderPlain must do the premultiply-on-read /
-	// demultiply-on-write bridge per pixel. Routing the straight buffer through
-	// the premult-dst kernels left premultiplied data in storage for any operator
-	// whose result is translucent over an opaque destination (xor, dst-out,
-	// src-in, dst-in), reading back too dark. See blender.CompositeBlenderPlain.
+	// Bit-exact straight-alpha fast path (uniform full cover only — a partial
+	// uniform cover is rare here and falls through to the scalar bridge).
+	if cover == basics.CoverFull && pf.stdRGBAStraight() {
+		if k := plainSpanKernel(pf.blender.GetOp()); k != nil {
+			k(row[startX*4:], nil, c.R, c.G, c.B, c.A, endX-startX)
+			return
+		}
+	}
 
 	for i := startX; i < endX; i++ {
 		pixelOffset := i * 4
@@ -181,9 +207,20 @@ func (pf *PixFmtCompositeRGBA[CS, O]) BlendSolidHspan(x, y, length int, c color.
 
 	row := buffer.RowU8(pf.rbuf, y)
 
-	// No SIMD fast path: the premult-dst simd.Comp*HspanRGBA kernels are
-	// incompatible with this straight-alpha buffer. See BlendHline above and
-	// blender.CompositeBlenderPlain for the straight<->premult bridge.
+	// Bit-exact straight-alpha fast path. covers is aligned to the first blended
+	// pixel (startX), matching the scalar loop's covers[i-x] indexing. Require a
+	// full-length cover slice so the kernel never reads past it (the scalar loop
+	// tolerates a short slice; keep that edge case on the scalar path).
+	if pf.stdRGBAStraight() && (covers == nil || len(covers) >= length) {
+		if k := plainSpanKernel(pf.blender.GetOp()); k != nil {
+			var cv []basics.Int8u
+			if covers != nil {
+				cv = covers[startX-x:]
+			}
+			k(row[startX*4:], cv, c.R, c.G, c.B, c.A, endX-startX)
+			return
+		}
+	}
 
 	for i := startX; i < endX; i++ {
 		pixelOffset := i * 4

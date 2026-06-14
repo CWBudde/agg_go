@@ -478,3 +478,95 @@ func TestPixFmtCompositeRGBA32SetCompOpAffectsSubsequentBlends(t *testing.T) {
 		t.Fatalf("SetCompOp should switch to source replacement, got %v", got)
 	}
 }
+
+// TestPixFmtCompositeRGBA32FastPathMatchesScalar locks the BlendSolidHspan /
+// BlendHline fast-path wiring (clip + cover-slice alignment) for the operators
+// that have a plainSpanKernel (src-over, xor). For each case it renders through
+// the pixfmt (which takes the fast path) and compares against an independent
+// scalar reference computed straight from CompositeBlenderPlain, asserting a
+// byte-for-byte match. Destinations are seeded translucent to exercise the
+// straight<->premult bridge the premult-dst kernels got wrong.
+func TestPixFmtCompositeRGBA32FastPathMatchesScalar(t *testing.T) {
+	const width = 24
+	ops := []struct {
+		name string
+		op   blender.CompOp
+	}{
+		{"src_over", blender.CompOpSrcOver},
+		{"xor", blender.CompOpXor},
+	}
+	src := color.RGBA8[color.Linear]{R: 40, G: 60, B: 220, A: 160}
+
+	seed := func() []basics.Int8u {
+		buf := make([]basics.Int8u, width*4)
+		for i := 0; i < width; i++ {
+			p := i * 4
+			buf[p+0] = basics.Int8u(20 + i*7)
+			buf[p+1] = basics.Int8u(200 - i*5)
+			buf[p+2] = basics.Int8u(60 + i*3)
+			buf[p+3] = basics.Int8u(90 + i*6) // translucent destination
+		}
+		return buf
+	}
+
+	ramp := make([]basics.Int8u, width)
+	for i := range ramp {
+		ramp[i] = basics.Int8u((i * 37) % 256)
+	}
+
+	type spanCase struct {
+		name    string
+		x, n    int
+		covers  []basics.Int8u
+		isHline bool
+	}
+	cases := []spanCase{
+		{"hspan_full_x0", 0, width, nil, false},
+		{"hspan_full_xoff", 5, 16, nil, false},
+		{"hspan_clip_negx", -3, 16, nil, false},
+		{"hspan_ramp_x0", 0, width, ramp, false},
+		{"hspan_ramp_xoff", 4, 18, ramp, false},
+		{"hline_full_x0", 0, width, nil, true},
+		{"hline_clip_negx", -2, 20, nil, true},
+	}
+
+	for _, opc := range ops {
+		op := opc.op
+		for _, tc := range cases {
+			t.Run(opc.name+"/"+tc.name, func(t *testing.T) {
+				// Fast path: render through the pixfmt.
+				fpBuf := seed()
+				rbuf := buffer.NewRenderingBufferU8WithData(fpBuf, width, 1, width*4)
+				pf := NewPixFmtCompositeRGBA32(rbuf, op)
+				if tc.isHline {
+					pf.BlendHline(tc.x, 0, tc.n, src, basics.CoverFull)
+				} else {
+					pf.BlendSolidHspan(tc.x, 0, tc.n, src, tc.covers)
+				}
+
+				// Scalar reference: same clip + covers indexing, straight from the blender.
+				refBuf := seed()
+				bl := blender.NewCompositeBlenderPlain[color.Linear, order.RGBA](op)
+				startX := max(0, tc.x)
+				endX := min(tc.x+tc.n, width)
+				for i := startX; i < endX; i++ {
+					cover := basics.Int8u(basics.CoverFull)
+					if !tc.isHline && tc.covers != nil {
+						ci := i - tc.x
+						if ci >= len(tc.covers) {
+							continue
+						}
+						cover = tc.covers[ci]
+					}
+					bl.BlendPix(refBuf[i*4:i*4+4], src.R, src.G, src.B, src.A, cover)
+				}
+
+				for i := 0; i < width*4; i++ {
+					if fpBuf[i] != refBuf[i] {
+						t.Fatalf("px=%d byte=%d: fast-path %d != scalar %d", i/4, i%4, fpBuf[i], refBuf[i])
+					}
+				}
+			})
+		}
+	}
+}
