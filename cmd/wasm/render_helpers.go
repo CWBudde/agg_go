@@ -19,32 +19,35 @@ func applyLinearToSRGB(img *agg.Image) {
 	}
 }
 
-// applyPremulLinearToSRGB converts a premultiplied linear RGBA buffer to straight sRGB in-place.
+// applyPremulLinearToSRGB converts a premultiplied linear RGBA buffer to opaque sRGB in-place.
 // Used for demos that render into a PixFmtRGBA32Pre (premultiplied) buffer.
-// The canvas putImageData expects straight sRGB, so we un-premultiply before gamma encoding
-// and do not re-premultiply afterwards.
+//
+// C++ AGG blits premultiplied buffers to screen via platform_support which ignores alpha
+// (the platform renders to BGR, not RGBA). In the web demo we must do the equivalent:
+// un-premultiply the RGB channels, gamma-encode to sRGB, then force alpha=255 so the
+// canvas putImageData treats every pixel as fully opaque and does not composite against
+// the page background.
 func applyPremulLinearToSRGB(img *agg.Image) {
 	d := img.Data
 	for i := 0; i+3 < len(d); i += 4 {
 		a := d[i+3]
+		var r, g, b uint8
 		if a == 0 {
-			d[i], d[i+1], d[i+2] = 0, 0, 0
-			continue
-		}
-		if a == 255 {
-			// Fully opaque: no un-premultiply needed, just gamma encode.
+			// Fully transparent premul pixel — treat as white (the standard clear color).
+			r, g, b = 255, 255, 255
+		} else if a == 255 {
 			c := icol.ConvertToSRGBFromLinear(icol.RGBA8[icol.Linear]{
 				R: d[i], G: d[i+1], B: d[i+2], A: 255,
 			})
-			d[i], d[i+1], d[i+2] = c.R, c.G, c.B
-			continue
+			r, g, b = c.R, c.G, c.B
+		} else {
+			// Un-premultiply: straight = premul * 255 / alpha (rounded).
+			sr := uint8((uint32(d[i])*255 + uint32(a)/2) / uint32(a))
+			sg := uint8((uint32(d[i+1])*255 + uint32(a)/2) / uint32(a))
+			sb := uint8((uint32(d[i+2])*255 + uint32(a)/2) / uint32(a))
+			c := icol.ConvertToSRGBFromLinear(icol.RGBA8[icol.Linear]{R: sr, G: sg, B: sb, A: a})
+			r, g, b = c.R, c.G, c.B
 		}
-		// Un-premultiply: straight = premul * 255 / alpha (rounded).
-		inv := uint32(255)
-		r := uint8((uint32(d[i])*inv + uint32(a)/2) / uint32(a))
-		g := uint8((uint32(d[i+1])*inv + uint32(a)/2) / uint32(a))
-		b := uint8((uint32(d[i+2])*inv + uint32(a)/2) / uint32(a))
-		c := icol.ConvertToSRGBFromLinear(icol.RGBA8[icol.Linear]{R: r, G: g, B: b, A: a})
-		d[i], d[i+1], d[i+2] = c.R, c.G, c.B
+		d[i], d[i+1], d[i+2], d[i+3] = r, g, b, 255
 	}
 }
