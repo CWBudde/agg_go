@@ -5,8 +5,16 @@ import (
 	"math"
 
 	agg "github.com/cwbudde/agg_go"
+	icolor "github.com/cwbudde/agg_go/internal/color"
 	"github.com/cwbudde/agg_go/internal/gamma"
 )
+
+// srgba8 decodes a C++ srgba8 literal to a linear-light agg.Color,
+// matching the implicit srgba8→rgba8 conversion in the C++ pixfmt blender.
+func srgba8(r, g, b, a uint8) agg.Color {
+	c := icolor.ConvertRGBA8SRGBToLinear(icolor.RGBA8[icolor.SRGB]{R: r, G: g, B: b, A: a})
+	return agg.NewColor(c.R, c.G, c.B, c.A)
+}
 
 const (
 	baseWidth  = 250.0
@@ -154,16 +162,16 @@ func fitFrame(w, h int) (scale, offX, offY float64) {
 
 var paths = []pathAttributes{
 	{
-		fill:        agg.NewColor(255, 255, 0, 255),
-		stroke:      agg.Black,
+		fill:        srgba8(255, 255, 0, 255),
+		stroke:      srgba8(0, 0, 0, 255),
 		strokeWidth: 1.0,
 		contours: []contour{
 			pointsFromCoords(bulbCoords),
 		},
 	},
 	{
-		fill:        agg.NewColor(255, 255, 200, 255),
-		stroke:      agg.NewColor(90, 0, 0, 255),
+		fill:        srgba8(255, 255, 200, 255),
+		stroke:      srgba8(90, 0, 0, 255),
 		strokeWidth: 0.7,
 		contours: []contour{
 			pointsFromCoords(beam1Coords),
@@ -173,7 +181,7 @@ var paths = []pathAttributes{
 		},
 	},
 	{
-		fill: agg.Black,
+		fill: srgba8(0, 0, 0, 255),
 		contours: []contour{
 			pointsFromCoords(fig1Coords),
 			pointsFromCoords(fig2Coords),

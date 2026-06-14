@@ -139,13 +139,13 @@ func drawGraph(ctx *agg.Context, st imageFilters2State) {
 
 	for i := 0; i <= 16; i++ {
 		x := xStart + (xEnd-xStart)*float64(i)/16.0
-		alpha := 100.0 / 255.0
+		a := uint8(100)
 		if i == 8 {
-			alpha = 1.0
+			a = 255
 		}
-		strokeLine(ctx, 0.8, agg.RGBA(0, 0, 0, alpha), x+0.5, yStart, x+0.5, yEnd)
+		strokeLine(ctx, 0.8, srgbaToLinear(0, 0, 0, a), x+0.5, yStart, x+0.5, yEnd)
 	}
-	strokeLine(ctx, 0.8, agg.Black, xStart, ys, xEnd, ys)
+	strokeLine(ctx, 0.8, srgbaToLinear(0, 0, 0, 255), xStart, ys, xEnd, ys)
 
 	if st.filterIdx == 0 {
 		return
@@ -175,7 +175,16 @@ func drawGraph(ctx *agg.Context, st imageFilters2State) {
 		y := ys + dy*float64(weights[i])/float64(imgacc.ImageFilterScale)
 		pts = append(pts, point{x: x, y: y})
 	}
-	strokePolyline(ctx, 0.8, agg.NewColorRGB(100, 0, 0), pts)
+	strokePolyline(ctx, 0.8, srgbaToLinear(100, 0, 0, 255), pts)
+}
+
+// srgbaToLinear decodes an AGG srgba8 literal into the linear color space the
+// renderer blends in. It mirrors C++'s implicit srgba8 -> rgba8 conversion that
+// happens when a color is handed to render_scanlines_aa_solid: the RGB channels
+// are sRGB-decoded while alpha stays linear.
+func srgbaToLinear(r, g, b, a uint8) agg.Color {
+	lin := icol.ConvertRGBA8SRGBToLinear(icol.RGBA8[icol.SRGB]{R: r, G: g, B: b, A: a})
+	return agg.NewColor(lin.R, lin.G, lin.B, lin.A)
 }
 
 func drawControls(ctx *agg.Context, st imageFilters2State) {

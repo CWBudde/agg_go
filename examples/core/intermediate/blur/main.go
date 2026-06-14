@@ -479,7 +479,14 @@ func (d *demo) Render(img *agg.Image) {
 	}
 
 	// ---------------------------------------------------------------------------
-	// 3. Render the actual shape on top of the blurred shadow.
+	// 3. Render shadow_ctrl (polygon handles) — drawn after blur but BEFORE the
+	//    shape, matching the C++ on_draw() order:
+	//    render_ctrl(shadow_ctrl) → render shape → render other controls.
+	// ---------------------------------------------------------------------------
+	renderCtrl(ras, sl, renBase, shadowCtrl)
+
+	// ---------------------------------------------------------------------------
+	// 4. Render the actual shape on top of the blurred shadow and the shadow ctrl.
 	// ---------------------------------------------------------------------------
 	glyphPS4 := buildGlyphPath()
 	glyphXformed4 := conv.NewConvTransform(&pathStlVS{ps: glyphPS4}, shapeMtx)
@@ -489,9 +496,8 @@ func (d *demo) Render(img *agg.Image) {
 		color.RGBA8[color.Linear]{R: 153, G: 230, B: 179, A: 204})
 
 	// ---------------------------------------------------------------------------
-	// 4. Render controls.
+	// 5. Render remaining controls.
 	// ---------------------------------------------------------------------------
-	renderCtrl(ras, sl, renBase, shadowCtrl)
 	renderCtrl(ras, sl, renBase, methodCtrl)
 	renderCtrl(ras, sl, renBase, radiusCtrl)
 	renderCtrl(ras, sl, renBase, chanR)
