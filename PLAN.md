@@ -420,7 +420,7 @@ BenchmarkCorpusRender` runs the corpus through every available engine.
 
 ---
 
-## Phase 6 - Composite SIMD Fast Path (performance) — core landed (src-over + xor)
+## Phase 6 - Composite Fast Path (performance) — landed (all operators)
 
 Restore acceleration for the straight-alpha composite pixfmt
 (`internal/pixfmt/pixfmt_composite.go`) without reintroducing the premultiplied-
@@ -428,11 +428,11 @@ storage bug fixed in §5.5. Previously every non-`BlendAlpha` solid/gradient spa
 went through the scalar `blender.CompositeBlenderPlain` bridge (premultiply-on-read
 → `comp_op` → demultiply-on-write); the premult-dst `simd.Comp*HspanRGBA` kernels
 were removed from this pixfmt because they assume a premultiplied destination and
-left premultiplied data in the straight buffer. **Status:** bit-exact straight-
-bridge kernels for `src-over` and `xor` are landed (~2× on those ops, 0 allocs,
-conformance byte-unchanged); extending to the other operators and a vector tier are
-optional follow-ups (see Steps). See the Findings note below for why a faster
-integer path was rejected.
+left premultiplied data in the straight buffer. **Status: landed.** A single
+bit-exact hoisted span method (`CompositeBlenderPlain.BlendSolidSpanStraight`)
+accelerates **all operators** (~1.8–2×, 0 allocs, conformance byte-unchanged); a
+true vector (SIMD asm) tier is an optional future step. See the Findings note for
+why faster integer/method-expression paths were rejected.
 
 **Context / payoff.** The comp pixfmt is reached only for explicit blend modes;
 the default `BlendAlpha` path uses the already-SIMD-accelerated `renBase` and is
@@ -476,58 +476,67 @@ workloads with heavy explicit-blend compositing over large areas.
   opaque-result case, which the non-comp `renBase` path already covers, and it is
   the fragile assumption that caused the §5.5 bug.
 
-**Findings (2026-06-14).** Option A was prototyped as a **bit-exact float64**
-straight-bridge kernel (`internal/simd/comp_plain.go`: `CompSrcOverPlainHspanRGBA`,
-`CompXorPlainHspanRGBA`) — same float ops as `CompositeBlenderPlain` in the same
-order, with the cover multiply via `rgba8Multiply` (bit-identical to
-`color.RGBA8MultCover`), so it is byte-for-byte identical to the scalar blender
-(constraint 1/2 met by construction). It hoists the per-pixel interface dispatch +
-operator switch out of the loop. Measured (256-px span, isolated kernel and
-end-to-end through the pixfmt, amd64, medians): **src-over ~2.2×, xor ~1.8×**, 0
-allocs. The remaining cost is the per-pixel demultiply **divide**.
+**Findings (2026-06-14).** Option A was first prototyped as bit-exact float64
+straight-bridge kernels in `internal/simd` for `src-over`/`xor`, then —
+recognising the op equations are pure functions of the premultiplied colours
+(independent of colour space and byte order) — **consolidated into a single
+hoisted span method**, `CompositeBlenderPlain.BlendSolidSpanStraight`
+(`internal/pixfmt/blender/rgba_composite.go`), which covers **all 24 operators**
+with zero math duplication. It performs the identical premultiply-on-read / op /
+demultiply-on-write bridge as `BlendPix` (reusing the same `blendOperation` and
+per-op equations), so it is **byte-for-byte identical** to the per-pixel path
+(constraints 1–3 met by construction; locked by
+`TestBlendSolidSpanStraightMatchesBlendPix` over all ops × straight/translucent
+dst × full/partial/zero covers). The win is one concrete call per span instead of
+one **interface dispatch per pixel** (the comp pixfmt holds the blender behind an
+interface). Measured (256-px span, end-to-end through the pixfmt, amd64): **~1.8–
+2.0× across every operator** (src-over/xor ~3.0–3.7 µs, dst-out ~2.8 µs, multiply
+~3.3 µs, down from ~5.2–6.1 µs), **0 allocs**.
 
-An **integer fixed-point** variant was prototyped to chase the ≥3× target by
-eliding the divide — **rejected**: over a *translucent* destination its
-premultiply→demultiply round-trip is inaccurate (max **125 LSB** vs the float
-scalar on random low-alpha pixels — fails constraint 3; corpus scenes use opaque
-dst so they alone wouldn't expose it), and it was **no faster** than the float
-kernel anyway (the AGG integer `multiply`/`demul8u` chain costs about the same).
-So the float divide is both necessary for correctness and the speed floor; the
-bit-exact float kernel is the right tier. The original "≥3×" bar assumed an
-integer/asm path was viable; with that ruled out (short of heavy bit-parity-risky
-vector asm), the practical bar is "material and zero-risk", which ~2× bit-exact
-meets. **Landed.**
+Two alternatives were measured and rejected: an **integer fixed-point** kernel
+(eliding the divide) is inaccurate over a *translucent* destination — max **125
+LSB** vs the float scalar on random low-alpha pixels (fails constraint 3) — and was
+no faster than float anyway; and a **generic method-expression** dispatch allocated
+16 B/span (Go boxes the generic dictionary), so the loop calls the concrete
+`blendOperation` directly instead. The float divide is both necessary for
+correctness and the speed floor. The original "≥3×" bar assumed an integer/asm path
+was viable; with that ruled out (short of heavy, bit-parity-risky vector asm), the
+practical bar is "material and zero-risk", which ~2× bit-exact meets. **Landed for
+all operators.**
 
 Steps:
 
 - [x] **Isolated microbenchmark** of `BlendSolidHspan` on the comp pixfmt, separated
       from render setup, with a copy-only baseline to subtract
       (`pixfmt_composite_bench_test.go`). Records the ~21 ns/px scalar baseline above.
-- [x] **Prototype Option A** (`xor` + `src-over`): bit-exact float64 straight-bridge
-      kernels in `internal/simd/comp_plain.go`. Differential test
-      `TestCompPlainKernelsMatchScalarBlender` (simd) asserts byte-parity with the
-      scalar `CompositeBlenderPlain` over randomised straight+translucent dst,
-      translucent src, and full/partial/zero covers (constraints 1–3).
-- [x] **Benchmark A vs scalar** (`BenchmarkCompPlainSrcOver`/`Xor` in simd; the
-      `BenchmarkCompSolidHspanFullCover` pixfmt bench shows the end-to-end effect):
-      src-over ~2.2×, xor ~1.8×, 0 allocs. Integer alternative measured and rejected
-      (above).
-- [x] **Re-wire `BlendHline`/`BlendSolidHspan`** to take the fast path only for the
-      standard-RGBA straight pixfmt and the ops with a kernel (`plainSpanKernel`),
-      falling back to the scalar bridge otherwise. Wiring (clip + cover-slice
-      alignment) locked by `TestPixFmtCompositeRGBA32FastPathMatchesScalar`.
-- [x] **Conformance re-run** under `agogo aggreal`: `compositing_xor`/`srcover`/`src`/
-      `clear`/`multiply`/`dstout` numbers are **byte-identical to pre-change** (the
-      kernel is bit-exact), all within envelope.
-- [ ] **(Optional, follow-up) Extend kernels to the remaining ops** (`dst-out`,
-      `dst-over`, `src-in/out`, `dst-in`, the separable modes) for the same ~2×; each
-      just needs its equation block + a differential-test row. Low risk, mechanical.
-- [ ] **(Optional, stretch) AVX2/SSE vector tier** for >2×: only viable in float
+- [x] **Prototype + consolidate (all ops).** Single bit-exact span method
+      `CompositeBlenderPlain.BlendSolidSpanStraight` covering every operator (the
+      throwaway `src-over`/`xor` simd kernels were removed in favour of it).
+      Differential test `TestBlendSolidSpanStraightMatchesBlendPix` (blender) asserts
+      byte-parity with per-pixel `BlendPix` for all 24 ops over randomised
+      straight+translucent dst, translucent src, and full/partial/zero covers
+      (constraints 1–3).
+- [x] **Benchmark vs scalar** (`BenchmarkBlendSolidSpanStraight*` in blender for the
+      isolated comparison; `BenchmarkCompSolidHspanFullCover` in pixfmt for the
+      end-to-end effect): ~1.8–2.0× across ops, 0 allocs. Integer + method-expression
+      alternatives measured and rejected (above).
+- [x] **Re-wire `BlendHline`/`BlendSolidHspan`** to take the fast path whenever the
+      blender implements `straightSpanBlender` (only the straight `CompositeBlenderPlain`
+      does; the premultiplied-source Pre pixfmt falls back to per-pixel `BlendPix`),
+      for every operator and byte order. Wiring (clip + cover-slice alignment) locked
+      by `TestPixFmtCompositeRGBA32FastPathMatchesScalar`.
+- [x] **Conformance re-run** under `agogo aggreal`: all `compositing_*` scenes are
+      **byte-identical to pre-change** (the span method is bit-exact), all within
+      envelope.
+- [ ] **(Optional, stretch) True SIMD vector tier** for >2×: only viable in float
       (float32 reciprocal risks breaking bit-parity — constraint 2; float64 `vdivpd`
-      stays exact but is a large hand-asm effort). Pursue only if profiling shows the
-      explicit-blend path is genuinely hot.
-- [ ] Decide whether Option B (true premultiplied comp buffer) is worth pursuing —
-      only if also moving the comp path onto AGG's native premultiplied model.
+      stays exact but is a large hand-asm effort in `internal/simd`). Pursue only if
+      profiling shows the explicit-blend path is genuinely hot.
+- [ ] **(Optional)** Apply the same span fast path to the **float** comp pixfmt
+      (`pixfmt_composite_rgba128.go`) and to gradient/image comp spans if profiling
+      warrants; and decide whether Option B (true premultiplied comp buffer) is worth
+      pursuing — only if also moving the comp path onto AGG's native premultiplied
+      model.
 
 ---
 

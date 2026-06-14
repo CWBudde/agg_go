@@ -11,11 +11,12 @@ import (
 
 // Focused microbenchmarks for the straight-alpha composite pixfmt's solid-span
 // blend, isolated from render setup (no context/rasterizer). They measure the
-// per-span cost of the scalar CompositeBlenderPlain bridge (premultiply-on-read,
-// comp op, demultiply-on-write) that BlendSolidHspan currently uses for every
-// operator. They are the baseline for the premultiplied-destination SIMD fast
-// path tracked in PLAN.md ("Composite SIMD fast path"): subtract benchCompCopyOnly
-// from each op to get the isolated blend cost, divide by benchCompSpan for ns/px.
+// per-span cost of BlendSolidHspan, which now takes the blender's
+// BlendSolidSpanStraight fast path (one concrete call per span instead of one
+// interface dispatch per pixel; bit-exact with the per-pixel bridge). The
+// scalar-vs-span comparison lives in blender/rgba_composite_span_test.go; here we
+// track the end-to-end pixfmt cost. Subtract benchCompCopyOnly from each op to get
+// the isolated blend cost, divide by benchCompSpan for ns/px.
 //
 // The destination row is reset to an opaque template each iteration (so iterative
 // operators like dst-out don't decay alpha to zero and stop being representative);

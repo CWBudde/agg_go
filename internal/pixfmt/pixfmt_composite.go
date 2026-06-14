@@ -6,38 +6,22 @@ import (
 	"github.com/cwbudde/agg_go/internal/color"
 	"github.com/cwbudde/agg_go/internal/order"
 	"github.com/cwbudde/agg_go/internal/pixfmt/blender"
-	"github.com/cwbudde/agg_go/internal/simd"
 )
-
-// plainSpanKernel returns a straight-alpha composite span kernel for op, or nil
-// if no fast path exists for it. These kernels do the same premultiply-on-read /
-// op / demultiply-on-write bridge as the scalar blender.CompositeBlenderPlain and
-// are bit-for-bit identical to it (locked by simd's differential test); they only
-// hoist the per-pixel interface dispatch and operator switch out of the loop. The
-// caller must additionally confirm standard RGBA byte order and a non-premultiplied
-// pixfmt. NB: these are NOT the premult-dst simd.Comp*HspanRGBA kernels (which are
-// incompatible with this straight-alpha buffer — see the §5.5 history).
-func plainSpanKernel(op blender.CompOp) func(dst, covers []byte, r, g, b, a basics.Int8u, count int) {
-	switch op {
-	case blender.CompOpSrcOver:
-		return simd.CompSrcOverPlainHspanRGBA
-	case blender.CompOpXor:
-		return simd.CompXorPlainHspanRGBA
-	default:
-		return nil
-	}
-}
-
-// stdRGBAStraight reports whether this pixfmt stores straight alpha in standard
-// R,G,B,A byte order — the precondition for the plainSpanKernel fast path.
-func (pf *PixFmtCompositeRGBA[CS, O]) stdRGBAStraight() bool {
-	var o O
-	return !pf.premultiplied && o.IdxR() == 0 && o.IdxG() == 1 && o.IdxB() == 2 && o.IdxA() == 3
-}
 
 type compositeRGBABlender[CS color.Space, O order.RGBAOrder] interface {
 	BlendPix(dst []basics.Int8u, r, g, b, a, cover basics.Int8u)
 	GetOp() blender.CompOp
+}
+
+// straightSpanBlender is the optional fast-path interface a composite blender may
+// implement: blend a whole solid span in one concrete call instead of one
+// interface dispatch per pixel. Only blender.CompositeBlenderPlain implements it
+// (the straight-alpha bridge); the premultiplied-source Pre blender does not, so
+// the Pre pixfmt falls back to the per-pixel BlendPix path. The method is
+// bit-for-bit identical to BlendPix per pixel (locked by the differential test in
+// blender/rgba_composite_span_test.go) and handles every operator and byte order.
+type straightSpanBlender interface {
+	BlendSolidSpanStraight(dst []basics.Int8u, r, g, b, a basics.Int8u, covers []basics.Int8u, count int)
 }
 
 // PixFmtCompositeRGBA is the Go equivalent of AGG's pixfmt_custom_blend_rgba.
@@ -153,11 +137,11 @@ func (pf *PixFmtCompositeRGBA[CS, O]) BlendHline(x, y, length int, c color.RGBA8
 
 	row := buffer.RowU8(pf.rbuf, y)
 
-	// Bit-exact straight-alpha fast path (uniform full cover only — a partial
-	// uniform cover is rare here and falls through to the scalar bridge).
-	if cover == basics.CoverFull && pf.stdRGBAStraight() {
-		if k := plainSpanKernel(pf.blender.GetOp()); k != nil {
-			k(row[startX*4:], nil, c.R, c.G, c.B, c.A, endX-startX)
+	// Bit-exact span fast path (uniform full cover only — a partial uniform cover
+	// is rare here and falls through to the per-pixel bridge).
+	if cover == basics.CoverFull {
+		if sb, ok := pf.blender.(straightSpanBlender); ok {
+			sb.BlendSolidSpanStraight(row[startX*4:], c.R, c.G, c.B, c.A, nil, endX-startX)
 			return
 		}
 	}
@@ -207,17 +191,17 @@ func (pf *PixFmtCompositeRGBA[CS, O]) BlendSolidHspan(x, y, length int, c color.
 
 	row := buffer.RowU8(pf.rbuf, y)
 
-	// Bit-exact straight-alpha fast path. covers is aligned to the first blended
-	// pixel (startX), matching the scalar loop's covers[i-x] indexing. Require a
-	// full-length cover slice so the kernel never reads past it (the scalar loop
+	// Bit-exact span fast path. covers is aligned to the first blended pixel
+	// (startX), matching the per-pixel loop's covers[i-x] indexing. Require a
+	// full-length cover slice so the kernel never reads past it (the per-pixel loop
 	// tolerates a short slice; keep that edge case on the scalar path).
-	if pf.stdRGBAStraight() && (covers == nil || len(covers) >= length) {
-		if k := plainSpanKernel(pf.blender.GetOp()); k != nil {
+	if covers == nil || len(covers) >= length {
+		if sb, ok := pf.blender.(straightSpanBlender); ok {
 			var cv []basics.Int8u
 			if covers != nil {
 				cv = covers[startX-x:]
 			}
-			k(row[startX*4:], cv, c.R, c.G, c.B, c.A, endX-startX)
+			sb.BlendSolidSpanStraight(row[startX*4:], c.R, c.G, c.B, c.A, cv, endX-startX)
 			return
 		}
 	}
