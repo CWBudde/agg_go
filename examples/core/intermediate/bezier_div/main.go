@@ -260,10 +260,11 @@ func (d *demo) Render(img *agg.Image) {
 		}
 	}
 
-	// Outline of the wide stroke (stroke of a stroke).
+	// Outline of the wide stroke (stroke of a stroke). C++ bezier_div constructs
+	// conv_stroke<conv_stroke<...>> without calling width(), so it uses the
+	// default stroke width of 1.0 — do not override it here.
 	if d.showOutline.IsChecked() {
 		stroke2 := conv.NewConvStroke(stroke)
-		stroke2.SetWidth(1.5)
 		ras.Reset()
 		ras.AddPath(&convVS{src: stroke2}, 0)
 		renscan.RenderScanlinesAASolid(ras, sl, mainRb,
