@@ -164,7 +164,10 @@ func drawDashDemo() {
 	renderSolidColor(color.RGBA8[color.Linear]{R: 178, G: 127, B: 25, A: 127})
 
 	// === Layer 2: smooth poly fill (light blue rgba(0.1, 0.5, 0.7, 0.1)) ===
-	smooth1 := conv.NewConvSmoothPoly1Curve(rawSrc)
+	// C++ feeds conv_smooth_poly1 (raw curve4 commands) directly to the
+	// rasterizer, which connects the bezier control points with straight lines.
+	// Wrapping in a curve converter would flatten the spline and shrink the fill.
+	smooth1 := conv.NewConvSmoothPoly1(rawSrc)
 	smooth1.SetSmoothValue(dashSmooth)
 	ras.Reset()
 	ras.AddPath(&convToRasSource{src: smooth1}, 0)

@@ -228,7 +228,10 @@ func (d *demo) Render(img *agg.Image) {
 	renderSolid(ras, sl, renBase, color.RGBA8[color.Linear]{R: 179, G: 128, B: 26, A: 128})
 
 	// (2) Smoothed polygon fill — agg::rgba(0.1, 0.5, 0.7, 0.1).
-	smoothFill := conv.NewConvSmoothPoly1Curve(rawSrc)
+	// C++ feeds conv_smooth_poly1 (raw curve4 commands) directly to the
+	// rasterizer, which connects the bezier control points with straight lines.
+	// Wrapping in a curve converter would flatten the spline and shrink the fill.
+	smoothFill := conv.NewConvSmoothPoly1(rawSrc)
 	smoothFill.SetSmoothValue(d.smoothCtrl.Value())
 	ras.Reset()
 	ras.FillingRule(sceneRule)
