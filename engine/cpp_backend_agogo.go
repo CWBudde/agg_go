@@ -399,17 +399,18 @@ func (c *cppContext) Fill() {
 		c.must(fillCPPNativePathComp(c.img.img, working, rule, c.clipRectangle(), c.blendMode, r, g, b, a))
 		return
 	}
-	// Gradient fill: rasterise the shape into a transparent layer, recolour by the
-	// gradient, then composite. Gradient + non-src-over compositing is not yet a
-	// faithful path (see docs/BACKENDS.md); the corpus only exercises gradients
-	// with src-over.
+	// Gradient fill: rasterise the shape into a transparent layer to capture its
+	// anti-aliased coverage, recolour by the gradient, then composite through the
+	// comp-op operator using that coverage as the per-pixel rasterizer cover. This
+	// is faithful for every supported blend mode: pixels outside the shape keep
+	// cover 0, so src/clear no longer wipe the untouched background.
+	c.must(c.requireBlendMode("Fill"))
 	layer, err := newCPPNativeImage(c.Width(), c.Height())
 	c.must(err)
 	defer layer.close()
 	c.must(layer.clear(0, 0, 0, 0))
 	c.must(fillCPPNativePath(layer, working, rule, 255, 255, 255, 255))
-	c.must(c.applyGradientToLayer(layer, c.fillGradient))
-	c.must(c.compositeLayer(layer, "Fill"))
+	c.must(c.compositeGradientLayer(layer, c.fillGradient))
 }
 
 func (c *cppContext) Stroke() {
@@ -428,13 +429,15 @@ func (c *cppContext) Stroke() {
 		c.must(strokeCPPNativePathComp(c.img.img, working, opts, c.clipRectangle(), c.blendMode, r, g, b, a))
 		return
 	}
+	// Gradient stroke: same faithful comp-op-over-coverage path as the gradient
+	// fill above (see Fill).
+	c.must(c.requireBlendMode("Stroke"))
 	layer, err := newCPPNativeImage(c.Width(), c.Height())
 	c.must(err)
 	defer layer.close()
 	c.must(layer.clear(0, 0, 0, 0))
 	c.must(strokeCPPNativePath(layer, working, opts, 255, 255, 255, 255))
-	c.must(c.applyGradientToLayer(layer, c.strokeGradient))
-	c.must(c.compositeLayer(layer, "Stroke"))
+	c.must(c.compositeGradientLayer(layer, c.strokeGradient))
 }
 
 func (c *cppContext) DrawLine(x1, y1, x2, y2 float64) {
@@ -681,7 +684,16 @@ func (c *cppContext) compositeLayer(layer *cppNativeImage, operation string) err
 	return c.img.img.compositeFrom(layer, 0, 0, c.clipRectangle(), c.blendMode)
 }
 
-func (c *cppContext) applyGradientToLayer(layer *cppNativeImage, gradient cppGradientState) error {
+// compositeGradientLayer recolours a shape-coverage layer by the gradient and
+// composites it onto the destination through the comp-op operator. The layer's
+// alpha on entry is the shape's anti-aliased coverage (from rasterising the shape
+// as opaque white). We copy that coverage into a separate mask, then overwrite
+// each layer pixel with the straight gradient colour (RGB plus the gradient's own
+// alpha, NOT premultiplied by coverage). The composite then applies the operator
+// per pixel with the coverage as the rasterizer cover, exactly as AGG's
+// renderer_scanline_aa + span_gradient + comp-op pixfmt would, so the blend is
+// confined to the shape and the untouched background survives src/clear.
+func (c *cppContext) compositeGradientLayer(layer *cppNativeImage, gradient cppGradientState) error {
 	pixels, err := layer.pixelView()
 	if err != nil {
 		return err
@@ -692,11 +704,14 @@ func (c *cppContext) applyGradientToLayer(layer *cppNativeImage, gradient cppGra
 	if stride == 0 || width == 0 || height == 0 {
 		return nil
 	}
+	cover := make([]byte, width*height)
 	for y := 0; y < height; y++ {
 		row := y * stride
+		coverRow := y * width
 		for x := 0; x < width; x++ {
 			offset := row + x*4
 			maskAlpha := pixels[offset+3]
+			cover[coverRow+x] = maskAlpha
 			if maskAlpha == 0 {
 				continue
 			}
@@ -705,10 +720,10 @@ func (c *cppContext) applyGradientToLayer(layer *cppNativeImage, gradient cppGra
 			pixels[offset+0] = color.R
 			pixels[offset+1] = color.G
 			pixels[offset+2] = color.B
-			pixels[offset+3] = uint8((uint16(color.A) * uint16(maskAlpha)) / 255)
+			pixels[offset+3] = color.A
 		}
 	}
-	return nil
+	return c.img.img.compositeCoverFrom(layer, cover, width, c.clipRectangle(), c.blendMode)
 }
 
 func (c *cppContext) must(err error) {

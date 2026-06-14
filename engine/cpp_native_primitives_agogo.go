@@ -211,6 +211,39 @@ func (img *cppNativeImage) compositeFrom(src *cppNativeImage, dstX, dstY int, cl
 	return nil
 }
 
+// compositeCoverFrom composites the straight-RGBA source layer onto img through
+// the comp-op operator, using cover (a width*height 8-bit shape-coverage buffer
+// with the given stride) as the per-pixel rasterizer cover. Pixels with cover==0
+// leave img untouched, so non-src-over blends do not wipe the background. src and
+// img must share the canvas dimensions and are aligned at (0,0).
+func (img *cppNativeImage) compositeCoverFrom(src *cppNativeImage, cover []byte, coverStride int, clip image.Rectangle, blendMode agg.BlendMode) error {
+	if img == nil || img.ptr == nil {
+		return fmt.Errorf("destination image is nil")
+	}
+	if src == nil || src.ptr == nil {
+		return fmt.Errorf("source image is nil")
+	}
+	if len(cover) == 0 {
+		return fmt.Errorf("cover buffer is empty")
+	}
+	code := int(C.agg_go_cpp_image_composite_cover(
+		img.ptr,
+		src.ptr,
+		(*C.uint8_t)(unsafe.Pointer(&cover[0])),
+		C.int(coverStride),
+		C.int(clip.Min.X),
+		C.int(clip.Min.Y),
+		C.int(clip.Max.X),
+		C.int(clip.Max.Y),
+		C.int(blendMode),
+	))
+	if code != 0 {
+		return fmt.Errorf("agg_go_cpp_image_composite_cover failed: %s", cppNativeLastError())
+	}
+	runtime.KeepAlive(cover)
+	return nil
+}
+
 func (img *cppNativeImage) compositeScaledFrom(
 	src *cppNativeImage,
 	srcX,

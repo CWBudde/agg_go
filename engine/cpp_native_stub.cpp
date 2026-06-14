@@ -662,6 +662,70 @@ extern "C" int agg_go_cpp_image_composite(AggGoCPPImage* dst, const AggGoCPPImag
   return 0;
 }
 
+// agg_go_cpp_image_composite_cover composites a straight-RGBA source layer onto
+// the destination through the comp-op operator, using a separate per-pixel
+// coverage mask as the rasterizer cover. This is the faithful path for gradient
+// (and other per-pixel-coloured) fills under a non-src-over blend: the operator
+// is applied only where the shape has geometric coverage (cover > 0), exactly as
+// AGG's renderer_scanline_aa + span_gradient + comp-op pixfmt would, so pixels
+// outside the shape (cover == 0) leave the destination untouched. The plain
+// whole-rect composite path applies the operator everywhere, which makes src and
+// clear wipe the untouched background. src and dst share the canvas dimensions
+// and are aligned at (0,0); cover is a width*height 8-bit buffer.
+extern "C" int agg_go_cpp_image_composite_cover(AggGoCPPImage* dst, const AggGoCPPImage* src,
+                                                const uint8_t* cover, int cover_stride, int clip_x1,
+                                                int clip_y1, int clip_x2, int clip_y2, int blend_mode) {
+  if (!valid_image(dst)) {
+    set_last_error("destination image is nil");
+    return -1;
+  }
+  if (!valid_image(src)) {
+    set_last_error("source image is nil");
+    return -1;
+  }
+  if (cover == nullptr) {
+    set_last_error("cover buffer is nil");
+    return -1;
+  }
+  if (!supported_blend_mode(blend_mode)) {
+    set_last_error("unsupported blend mode");
+    return -1;
+  }
+
+  const RectI clip = clamp_clip_rect(dst, clip_x1, clip_y1, clip_x2, clip_y2);
+  if (rect_empty(clip)) {
+    return 0;
+  }
+
+#ifdef AGG_GO_CPP_REAL
+  const unsigned op = static_cast<unsigned>(map_comp_op(blend_mode));
+#endif
+  for (int y = clip.y1; y < clip.y2; ++y) {
+    for (int x = clip.x1; x < clip.x2; ++x) {
+      const uint8_t cov = cover[static_cast<size_t>(y) * cover_stride + static_cast<size_t>(x)];
+      if (cov == 0) {
+        continue;  // no geometric coverage: leave the destination untouched
+      }
+      const size_t src_offset = static_cast<size_t>(y) * src->stride + static_cast<size_t>(x) * 4;
+      const size_t dst_offset = static_cast<size_t>(y) * dst->stride + static_cast<size_t>(x) * 4;
+      const uint8_t* s = &src->pixels[src_offset];
+      uint8_t* d = &dst->pixels[dst_offset];
+#ifdef AGG_GO_CPP_REAL
+      comp_op_adaptor_rgba_plain<agg::rgba8, agg::order_rgba>::blend_pix(op, d, s[0], s[1], s[2], s[3],
+                                                                        static_cast<agg::cover_type>(cov));
+#else
+      // Stub fallback (never advertised as a valid backend): apply the operator
+      // only on covered pixels, scaling the source alpha by the coverage so the
+      // untouched background is preserved.
+      uint8_t scaled[4] = {s[0], s[1], s[2],
+                           static_cast<uint8_t>((static_cast<int>(s[3]) * cov) / 255)};
+      composite_pixel(d, scaled, blend_mode);
+#endif
+    }
+  }
+  return 0;
+}
+
 extern "C" int agg_go_cpp_image_composite_scaled(AggGoCPPImage* dst, const AggGoCPPImage* src, int src_x,
                                                  int src_y, uint32_t src_width, uint32_t src_height,
                                                  int dst_x, int dst_y, uint32_t dst_width,

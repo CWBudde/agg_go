@@ -197,6 +197,27 @@ var corpus = []Scene{
 		},
 	},
 	{
+		Name:   "compositing_gradient",
+		Width:  canvasW,
+		Height: canvasH,
+		Caps:   []engine.Capability{engine.CapabilityGradients, engine.CapabilityCompositing},
+		Draw: func(ctx engine.Context, _ *Assets) error {
+			ctx.Clear(agg.White)
+			// Opaque background block that must survive outside the gradient shape:
+			// a non-src-over blend that wiped the whole clip rectangle would erase it.
+			ctx.SetFillColor(agg.NewColorRGB(40, 130, 60))
+			ctx.FillRectangle(30, 30, 150, 150)
+			// Gradient fill under a non-src-over blend. Src replaces the destination
+			// only within the shape's coverage; the background outside the circle is
+			// left untouched.
+			ctx.SetBlendMode(agg.BlendSrc)
+			ctx.SetLinearGradient(96, 96, 220, 220,
+				agg.NewColor(220, 40, 40, 160), agg.NewColor(40, 60, 220, 160))
+			ctx.FillCircle(140, 140, 70)
+			return nil
+		},
+	},
+	{
 		Name:   "image_scaled",
 		Width:  canvasW,
 		Height: canvasH,

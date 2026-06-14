@@ -71,6 +71,9 @@ int agg_go_cpp_matrix_scale(AggGoCPPMatrix* matrix, float sx, float sy);
 int agg_go_cpp_matrix_rotate(AggGoCPPMatrix* matrix, float angle);
 int agg_go_cpp_matrix_transform_point(const AggGoCPPMatrix* matrix, double* x, double* y);
 int agg_go_cpp_matrix_store(const AggGoCPPMatrix* matrix, double* out);
+int agg_go_cpp_image_composite_cover(AggGoCPPImage* dst, const AggGoCPPImage* src, const uint8_t* cover,
+                                     int cover_stride, int clip_x1, int clip_y1, int clip_x2, int clip_y2,
+                                     int blend_mode);
 AggGoCPPPath* agg_go_cpp_path_transform(const AggGoCPPPath* path, const AggGoCPPMatrix* matrix);
 
 int agg_go_cpp_render_fill_path(AggGoCPPImage* image, const AggGoCPPPath* path, int fill_rule,

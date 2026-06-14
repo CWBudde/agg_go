@@ -66,6 +66,16 @@ func toleranceFor(s scene.Scene) framework.ComparisonOptions {
 		// occasional 1-LSB rounding on anti-aliased edges.
 		base.Tolerance = 2
 		base.MaxDifferentRatio = 0.005
+	case "compositing_gradient":
+		// Gradient fill under a non-src-over blend: the gradient layer is
+		// composited through the comp-op operator using the shape's AA coverage as
+		// the rasterizer cover. Divergence is the gradient-interpolation rounding
+		// (same as the gradient scenes) plus a thin rim at the shape edge where a
+		// sub-pixel coverage disagreement under src flips a pixel between the
+		// translucent gradient and the opaque background (large per-pixel delta,
+		// but confined to ~0.8% of pixels on the circle perimeter).
+		base.Tolerance = 3
+		base.MaxDifferentRatio = 0.02
 	default: // solid_fill_stroke, dashed_stroke, path_nonzero, path_evenodd, clip_box
 		// Bound the fraction of disagreeing edge pixels; the bulk matches within
 		// 2 LSB. AA edges span ~1.5% of these scenes (dashed_stroke ~1.3%: both
