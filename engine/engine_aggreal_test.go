@@ -4,6 +4,7 @@ package engine_test
 
 import (
 	"errors"
+	"math"
 	"os"
 	"testing"
 

@@ -301,9 +301,22 @@ or a documented conformance skip, never a silent wrong render):
       opaque destination (e.g. `xor`, `dst-out`) — a separate port-side bug, so
       those operators are deliberately kept out of the strict corpus. Image/text
       draw stays limited to the original five (see next item).
-- [ ] **Transformed image draw.** `DrawImageRegion` under an active transform is
-      rejected; the `image_affine` scene skips on `cpp`. Route image draw through
-      AGG's affine image span path so it works under a non-identity CTM.
+- [x] **Transformed image draw.** `DrawImageRegion` (and the `DrawImage`/
+      `DrawImageScaled` that delegate to it) now map the destination rectangle's
+      corners through the active matrix and blit via the quad path, mirroring the
+      Port's `renderImage` (parl→parl composed with the CTM). The `image_affine`
+      scene renders on `cpp` and is strict (Tolerance 4, MaxDifferentRatio 0.10 —
+      CPP nearest-neighbour vs Port bilinear, the same sampler-noise class as
+      `image_scaled`). `TestCPPTransformedImageDrawRendersWithAggReal` locks it.
+      **Discovered while doing this:** the native C++ matrix composed
+      `Translate`/`Rotate`/`Scale` in the _reverse_ order from `agg::trans_affine`
+      (the later call ended up innermost), so a transform sequence mis-placed every
+      transformed draw relative to the faithful Port. Fixed by making the native
+      ops pre-multiply the primitive in output space (`matrix_premultiply`), exactly
+      matching `trans_affine`; guarded by
+      `TestCPPTransformComposeOrderMatchesPortWithAggReal` and the updated
+      `TestCPPNativeMatrixTransformPointTranslateRotateScale`. This also corrects
+      transformed _vector_ rendering, which no corpus scene had been exercising.
 - [ ] **Image and text draw under blend modes beyond the original five.** The
       image blits (region/quad/plain) and the text coverage layer still composite
       through the CPU helper rather than the AGG comp-op operator, so they are

@@ -47,7 +47,7 @@ implemented high-level facade subset.
 | `transforms`    | yes    | unavailable          | yes                          | Translation, rotation, scale, and reset are implemented, plus `GetTransform` readback of the cumulative affine matrix (`agg.Transformations`, AGG order).                                                                                                                                                                                                                                                                                                                                                                                   |
 | `clip_box`      | yes    | unavailable          | yes                          | The current C++ backend clips fill, stroke, and image operations.                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | `compositing`   | yes    | unavailable          | partial                      | Vector fill/stroke and gradient fills/strokes are faithful for the **full** `agg.BlendMode` set (Porter-Duff plus separable blend modes): solids render directly through a comp-op pixfmt (straight-alpha adaptor); gradients composite the recoloured layer through the same operator using the shape's AA coverage as cover. Image and text draw still composite through the CPU helper and are limited to `BlendAlpha`/`BlendClear`/`BlendSrc`/`BlendDst`/`BlendSrcOver`; other modes on those paths fail with a typed capability error. |
-| `image_draw`    | yes    | unavailable          | partial                      | Copy, region draw, scaling, and quad mapping are implemented. `DrawImageRegion` with an active transform is still rejected as unsupported.                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `image_draw`    | yes    | unavailable          | partial                      | Copy, region draw, scaling, and quad mapping are implemented, including draw under an active transform (the destination rectangle is mapped through the CTM and blitted via the quad path). Sampling is nearest-neighbour (CPU), so it diverges from the port's bilinear filter within the documented image envelope; image draw under blend modes beyond the original five is still rejected (see compositing).                                                                                                                            |
 | `image_export`  | yes    | unavailable          | yes                          | PNG, JPEG, `ToGoImage`, and `ToStandardImage` work through the facade.                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | `image_interop` | yes    | unavailable          | no                           | The C++ backend still rejects `Premultiply` and `Demultiply`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `gradients`     | yes    | unavailable          | yes                          | The current C++ subset applies fill and stroke gradients during actual rendering.                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
@@ -108,6 +108,7 @@ bounded fraction of pixels. Strict scenes must stay within these envelopes
 | linear / radial gradient                 | 3         | 0.020             | Independent gradient interpolation rounding.                                                           |
 | compositing gradient                     | 3         | 0.020             | Gradient interp plus a thin src-replaced AA rim (~0.8% of pixels).                                     |
 | scaled image (`image_scaled`)            | 4         | 0.080             | Independent samplers disagree along upscaled hard edges (~6%).                                         |
+| transformed image (`image_affine`)       | 4         | 0.100             | As scaled image, plus rotation lengthening every hard edge; CPP nearest vs port bilinear (~8.8%).      |
 | text (`text_basic`)                      | 8         | 0.100             | Native AGG vs Go-port FreeType AA/hinting; observed ~0.5% in practice.                                 |
 
 ### Compositing parity
@@ -173,10 +174,10 @@ gating CI; `cmd/engine-compare` emits per-scene diffs for triage either way.
 ### Capability-Gap Skips
 
 Scenes that hit a typed `engine.ErrUnsupportedCapability` on a backend are
-**skipped**, not failed — this is the correct response to a documented gap:
-
-- `image_affine` (scaled image draw under an active transform) skips on `cpp`,
-  which still rejects `DrawImageRegion` with an active transform.
+**skipped**, not failed — this is the correct response to a documented gap.
+There are currently no image/transform scenes in this state: `image_affine`
+(scaled image draw under an active transform) is now strict on `cpp` — see
+"Transformed image draw" below.
 
 ### Dashed strokes
 
@@ -189,6 +190,26 @@ measured in user space by the port and in device space by the C++ backend (it
 dashes the pre-transformed path), so the corpus scene uses no active transform;
 dashed strokes under a non-identity transform are not yet a guaranteed parity
 case (tracked in PLAN.md §5.5).
+
+### Transformed image draw
+
+`DrawImage`, `DrawImageScaled`, and `DrawImageRegion` honour the active
+transform on the C++ backend: the destination rectangle's corners are mapped
+through the current matrix and the image is blitted into the resulting
+parallelogram via the quad path, mirroring the port's `renderImage` (which
+composes the CTM into the source→destination parallelogram matrix). Sampling on
+the C++ side is nearest-neighbour (the CPU `composite_pixel` quad blit) while the
+port resamples with a bilinear image filter, so the two diverge along rotated
+edges within the documented `image_affine` envelope — not a geometry mismatch.
+
+Getting this right required fixing the native matrix's composition order: its
+`Translate`/`Rotate`/`Scale` had composed in the reverse order from
+`agg::trans_affine` (the most recent call ended up innermost rather than
+outermost), which silently mis-placed every transformed draw relative to the
+faithful port. The native ops now pre-multiply the primitive in output space,
+matching `trans_affine` exactly; the order is guarded cross-backend by
+`TestCPPTransformComposeOrderMatchesPortWithAggReal`. This fix also corrects
+transformed **vector** rendering, which no corpus scene had been exercising.
 
 ### State and style readback
 
