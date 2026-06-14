@@ -43,7 +43,7 @@ func TestGraphArrowsRenderOnTopOfNodes(t *testing.T) {
 			{x: 0.8, y: 0.5},
 		},
 		edges:    []edge{{n1: 0, n2: 1}},
-		prepared: make(map[[2]int]*preparedGraph),
+		prepared: make(map[preparedKey]*preparedGraph),
 	}
 
 	img := agg.NewImage(make([]byte, 100*100*4), 100, 100, 100*4)
@@ -68,7 +68,7 @@ func TestGraphEdgeColorsMatchCPPsRGBConversion(t *testing.T) {
 			{x: 0.8, y: 0.5},
 		},
 		edges:    []edge{{n1: 0, n2: 1}},
-		prepared: make(map[[2]int]*preparedGraph),
+		prepared: make(map[preparedKey]*preparedGraph),
 	}
 
 	img := agg.NewImage(make([]byte, 100*100*4), 100, 100, 100*4)

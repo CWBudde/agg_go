@@ -25,6 +25,10 @@ func drawGraphTestDemo() {
 		Translucent: graphTestTranslucent,
 		DrawNodes:   graphTestDrawNodes,
 		DrawEdges:   graphTestDrawEdges,
+		// The web demo has no on-screen controls, so fill the canvas instead of
+		// reserving the empty left/bottom strip the standalone C++ demo leaves
+		// for its control panel.
+		FillCanvas: true,
 	})
 	applyLinearToSRGB(ctx.GetImage())
 }

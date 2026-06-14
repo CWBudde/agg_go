@@ -130,7 +130,7 @@ func Draw(ctx *agg.Context, g *Graph, cfg Config) {
 
 	w := float64(ctx.GetImage().Width())
 	h := float64(ctx.GetImage().Height())
-	prepared := g.prepare(int(w), int(h))
+	prepared := g.prepare(int(w), int(h), cfg.FillCanvas)
 	colorRng := newClibcRandSeed(100)
 
 	if cfg.DrawNodes {
