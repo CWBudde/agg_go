@@ -528,3 +528,49 @@ func TestCPPTextWorksWithAggReal(t *testing.T) {
 		t.Fatal("expected rendered text to modify at least one pixel")
 	}
 }
+
+// TestCPPDashedStrokeUnderTransformDashesInUserSpaceWithAggReal proves the CPP
+// backend dashes in user space and applies the active transform to the stroked
+// outline last (path -> dash -> stroke -> transform), matching AGG's Agg2D and
+// the Go port. A 4x scale stretches the dash period by 4x: the user-space dash
+// (5 on, 5 off) becomes a device-space period of (20 on, 20 off) along the line.
+//
+// The earlier implementation stroked the pre-transformed (device-space) path, so
+// the dash period stayed (5 on, 5 off) in device units — the discriminating
+// assertion at x=40 would then fall inside an "on" dash instead of the gap.
+func TestCPPDashedStrokeUnderTransformDashesInUserSpaceWithAggReal(t *testing.T) {
+	ctx, err := engine.NewContext(160, 40, engine.Config{Kind: engine.CPP})
+	if err != nil {
+		t.Fatalf("NewContext(CPP) error = %v", err)
+	}
+	ctx.Clear(agg.White)
+
+	// 4x scale about the origin. The horizontal user-space line y=5, x in [2,30]
+	// maps to device y=20, x in [8,120]; dash boundaries at user x 2,7,12,17,...
+	// map to device x 8,28,48,68,... so device "on" runs are [8,28),[48,68),...
+	ctx.Scale(4, 4)
+	ctx.SetStrokeColor(agg.NewColorRGB(0, 0, 200))
+	ctx.SetLineWidth(2)
+	ctx.SetLineCap(agg.CapButt)
+	ctx.AddDash(5, 5)
+	ctx.DashStart(0)
+	ctx.BeginPath()
+	ctx.MoveTo(2, 5)
+	ctx.LineTo(30, 5)
+	ctx.Stroke()
+
+	img := ctx.GetImage().ToGoImage()
+
+	// Device x=16 lies inside the first scaled "on" dash [8,28): must be stroked.
+	on := img.RGBAAt(16, 20)
+	if on.B < 180 || on.R != 0 || on.G != 0 {
+		t.Fatalf("pixel in scaled dash = %+v, want blue (user-space dash scaled by 4x)", on)
+	}
+	// Device x=40 lies inside the first scaled gap [28,48): must be background.
+	// With device-space dashing (the old bug) the period would be 5/5 and x=40
+	// would land in an "on" dash, painting it blue.
+	off := img.RGBAAt(40, 20)
+	if off.R != 255 || off.G != 255 || off.B != 255 {
+		t.Fatalf("pixel in scaled dash gap = %+v, want white (dash period scales with transform)", off)
+	}
+}

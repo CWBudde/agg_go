@@ -53,9 +53,9 @@ var corpus = []Scene{
 		Caps:   []engine.Capability{engine.CapabilitySolidStyle, engine.CapabilityPath, engine.CapabilityDashedStroke},
 		Draw: func(ctx engine.Context, _ *Assets) error {
 			ctx.Clear(agg.White)
-			// No transform: dash lengths are in device space on both backends, so
-			// the dash segmentation lines up (the port applies dashes in user
-			// space, the CPP backend on the pre-transformed device path).
+			// No active transform: dash lengths coincide trivially. The
+			// dashed_stroke_transform scene exercises the user-space dash
+			// convention under a non-identity matrix.
 			ctx.SetStrokeColor(agg.NewColorRGB(30, 60, 200))
 			ctx.SetLineWidth(5)
 			ctx.SetLineCap(agg.CapButt)
@@ -78,6 +78,43 @@ var corpus = []Scene{
 			ctx.BeginPath()
 			ctx.MoveTo(30, 200)
 			ctx.LineTo(226, 200)
+			ctx.Stroke()
+			return nil
+		},
+	},
+	{
+		Name:   "dashed_stroke_transform",
+		Width:  canvasW,
+		Height: canvasH,
+		Caps: []engine.Capability{
+			engine.CapabilitySolidStyle, engine.CapabilityPath,
+			engine.CapabilityDashedStroke, engine.CapabilityTransforms,
+		},
+		Draw: func(ctx engine.Context, _ *Assets) error {
+			ctx.Clear(agg.White)
+			// Dashed stroke under a non-identity transform (scale + rotate about the
+			// canvas centre). Both backends now dash in user space and map the
+			// stroked outline to device space last (path -> dash -> stroke ->
+			// transform), so the dash period scales by 1.5 and rotates with the line
+			// identically. Stroking the pre-transformed path instead would leave the
+			// CPP dash period unscaled, diverging from the port.
+			ctx.Translate(128, 128)
+			ctx.Rotate(18 * math.Pi / 180)
+			ctx.Scale(1.5, 1.5)
+			ctx.Translate(-128, -128)
+
+			ctx.SetStrokeColor(agg.NewColorRGB(30, 60, 200))
+			ctx.SetLineWidth(5)
+			ctx.SetLineCap(agg.CapButt)
+			ctx.SetLineJoin(agg.JoinMiter)
+			ctx.AddDash(18, 10)
+			ctx.AddDash(6, 10)
+			ctx.DashStart(4)
+			ctx.BeginPath()
+			ctx.MoveTo(40, 90)
+			ctx.LineTo(216, 90)
+			ctx.LineTo(40, 166)
+			ctx.LineTo(216, 166)
 			ctx.Stroke()
 			return nil
 		},

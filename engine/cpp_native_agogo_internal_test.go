@@ -156,7 +156,7 @@ func TestStrokeCPPNativePathDrawsHorizontalLine(t *testing.T) {
 	opts.Width = 3
 	opts.LineCap = cppNativeLineCapRound
 	opts.LineJoin = cppNativeLineJoinRound
-	if err := strokeCPPNativePath(img, path, opts, 0, 0, 255, 255); err != nil {
+	if err := strokeCPPNativePath(img, path, nil, opts, 0, 0, 255, 255); err != nil {
 		t.Fatalf("strokeCPPNativePath() error = %v", err)
 	}
 
@@ -191,7 +191,7 @@ func TestStrokeCPPNativePathRejectsInvalidOptions(t *testing.T) {
 
 	opts := defaultCPPNativeStrokeOptions()
 	opts.Width = 0
-	if err := strokeCPPNativePath(img, path, opts, 0, 0, 0, 255); err == nil {
+	if err := strokeCPPNativePath(img, path, nil, opts, 0, 0, 0, 255); err == nil {
 		t.Fatal("expected strokeCPPNativePath() to reject zero width")
 	}
 }

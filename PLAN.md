@@ -269,7 +269,7 @@ implement it.
   backend reads its native matrix via the `agg_go_cpp_matrix_store` bridge).
   Round-trips exactly on both backends (`engine_test.go`/`engine_aggreal_test.go`).
 
-### 5.5 In-repo C++ engine — DONE except the parity gaps below
+### 5.5 In-repo C++ engine — DONE (all parity gaps below closed)
 
 The in-repo `agogo`-tagged native layer is self-contained (local header/source,
 cgo config, probes, build-mode tests). The real AGG-backed build (`agogo aggreal`)
@@ -286,8 +286,9 @@ The vector fill/stroke and gradient paths now honour the **full AGG operator set
 mapped 1:1 onto `comp_op_e` and dispatched through AGG's `g_comp_op_func`
 (`compositing_multiply` is byte-exact cross-backend).
 
-**Remaining C++ parity gaps** (each currently surfaces as a typed capability error
-or a documented conformance skip, never a silent wrong render):
+**C++ parity gaps — all now closed** (each formerly surfaced as a typed capability
+error or a documented conformance skip, never a silent wrong render; kept here as
+a record of what was reconciled):
 
 - [x] **Blend modes beyond the original five.** Done for the vector fill/stroke
       and gradient paths: `map_comp_op` covers every `comp_op_e`, and the gate
@@ -339,10 +340,23 @@ or a documented conformance skip, never a silent wrong render):
       the image_scaled sampler-noise class). (This subsumes the former "replace
       remaining CPU helper paths" item — it was specifically the image/text paths
       that still bypassed AGG.)
-- [ ] **Dashed strokes under a non-identity transform.** The port dashes in user
-      space; the C++ backend dashes the pre-transformed (device-space) path, so
-      dash lengths diverge under a transform. The `dashed_stroke` scene therefore
-      uses no active transform. Reconcile the dash-space convention.
+- [x] **Dashed strokes under a non-identity transform.** Reconciled: the native
+      stroke functions (`agg_go_cpp_render_stroke_path`/`_dashed`/`_comp`) now take
+      a trailing `const AggGoCPPMatrix*` and apply it to the stroked outline via
+      `agg::conv_transform` after dash + stroke (`add_stroke_to_ras`), so the
+      pipeline is `path -> dash -> stroke -> transform` — identical to AGG's Agg2D
+      and the port's `addStrokeToRasterizer` (`conv_transform(conv_stroke(...), m)`).
+      `Stroke()` now passes the **user-space** path plus the active matrix instead
+      of pre-transforming the path, so the dash period and line width scale with
+      the transform. A null/identity matrix takes the original direct-rasterize
+      path, so no-transform scenes stay byte-identical. The new strict
+      `dashed_stroke_transform` corpus scene (dashed stroke under scale+rotate) is
+      **byte-exact cross-backend (0/65536)**, and
+      `TestCPPDashedStrokeUnderTransformDashesInUserSpaceWithAggReal` locks the
+      user-space convention (a discriminating gap pixel that device-space dashing
+      would have painted). This also fixes plain (non-dashed) stroke **width**
+      scaling under a transform, which had the same device-vs-user-space gap. The
+      stub build (never advertised) ignores the matrix.
 
 ### 5.6–5.8 AGoGo audit, trust boundaries, and comparison layer — DONE
 

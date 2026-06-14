@@ -453,7 +453,12 @@ func fillCPPNativePathComp(img *cppNativeImage, path *cppNativePath, rule cppNat
 	return nil
 }
 
-func strokeCPPNativePath(img *cppNativeImage, path *cppNativePath, opts cppNativeStrokeOptions, r, g, b, a uint8) error {
+// strokeCPPNativePath strokes a path onto img. matrix, when non-nil and
+// non-identity, is applied to the stroked outline via conv_transform so the dash
+// period and stroke width are measured in the path's (user) space and mapped to
+// device space last — faithful to AGG's Agg2D. Pass nil when path is already in
+// device space.
+func strokeCPPNativePath(img *cppNativeImage, path *cppNativePath, matrix *cppNativeMatrix, opts cppNativeStrokeOptions, r, g, b, a uint8) error {
 	if img == nil || img.ptr == nil {
 		return fmt.Errorf("image is nil")
 	}
@@ -461,7 +466,7 @@ func strokeCPPNativePath(img *cppNativeImage, path *cppNativePath, opts cppNativ
 		return fmt.Errorf("path is nil")
 	}
 	if len(opts.Dashes) >= 2 {
-		return strokeCPPNativePathDashed(img, path, opts, r, g, b, a)
+		return strokeCPPNativePathDashed(img, path, matrix, opts, r, g, b, a)
 	}
 	code := int(C.agg_go_cpp_render_stroke_path(
 		img.ptr,
@@ -474,6 +479,7 @@ func strokeCPPNativePath(img *cppNativeImage, path *cppNativePath, opts cppNativ
 		C.uint8_t(g),
 		C.uint8_t(b),
 		C.uint8_t(a),
+		cppNativeMatrixPtr(matrix),
 	))
 	if code != 0 {
 		return fmt.Errorf("agg_go_cpp_render_stroke_path failed: %s", cppNativeLastError())
@@ -481,10 +487,20 @@ func strokeCPPNativePath(img *cppNativeImage, path *cppNativePath, opts cppNativ
 	return nil
 }
 
+// cppNativeMatrixPtr returns the underlying native matrix handle, or nil when
+// matrix is nil (no active transform). A nil handle tells the native stroke
+// functions to rasterize the outline as-is.
+func cppNativeMatrixPtr(matrix *cppNativeMatrix) *C.AggGoCPPMatrix {
+	if matrix == nil {
+		return nil
+	}
+	return matrix.ptr
+}
+
 // strokeCPPNativePathDashed strokes a dashed outline. opts.Dashes holds an even
 // number of (dashLen, gapLen) values; pairs beyond the last complete pair are
 // ignored.
-func strokeCPPNativePathDashed(img *cppNativeImage, path *cppNativePath, opts cppNativeStrokeOptions, r, g, b, a uint8) error {
+func strokeCPPNativePathDashed(img *cppNativeImage, path *cppNativePath, matrix *cppNativeMatrix, opts cppNativeStrokeOptions, r, g, b, a uint8) error {
 	pairCount := len(opts.Dashes) / 2
 	dashes := make([]C.float, pairCount*2)
 	for i := range dashes {
@@ -504,6 +520,7 @@ func strokeCPPNativePathDashed(img *cppNativeImage, path *cppNativePath, opts cp
 		C.uint8_t(g),
 		C.uint8_t(b),
 		C.uint8_t(a),
+		cppNativeMatrixPtr(matrix),
 	))
 	if code != 0 {
 		return fmt.Errorf("agg_go_cpp_render_stroke_path_dashed failed: %s", cppNativeLastError())
@@ -514,7 +531,7 @@ func strokeCPPNativePathDashed(img *cppNativeImage, path *cppNativePath, opts cp
 // strokeCPPNativePathComp strokes a path (optionally dashed) directly onto img
 // with the given blend mode and clip rectangle, applying the compositing
 // operator per span with coverage.
-func strokeCPPNativePathComp(img *cppNativeImage, path *cppNativePath, opts cppNativeStrokeOptions, clip image.Rectangle, blendMode agg.BlendMode, r, g, b, a uint8) error {
+func strokeCPPNativePathComp(img *cppNativeImage, path *cppNativePath, matrix *cppNativeMatrix, opts cppNativeStrokeOptions, clip image.Rectangle, blendMode agg.BlendMode, r, g, b, a uint8) error {
 	if img == nil || img.ptr == nil {
 		return fmt.Errorf("image is nil")
 	}
@@ -550,6 +567,7 @@ func strokeCPPNativePathComp(img *cppNativeImage, path *cppNativePath, opts cppN
 		C.uint8_t(g),
 		C.uint8_t(b),
 		C.uint8_t(a),
+		cppNativeMatrixPtr(matrix),
 	))
 	if code != 0 {
 		return fmt.Errorf("agg_go_cpp_render_stroke_path_comp failed: %s", cppNativeLastError())

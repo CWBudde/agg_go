@@ -414,8 +414,12 @@ func (c *cppContext) Fill() {
 }
 
 func (c *cppContext) Stroke() {
-	working := c.mustTransformedPath()
-	defer working.close()
+	// Stroke the user-space path and let the native layer apply the active matrix
+	// to the stroked outline (path -> dash -> stroke -> transform), so the dash
+	// period and line width scale with the transform. This mirrors AGG's Agg2D and
+	// the Go port (conv_transform(conv_stroke(...), m)); pre-transforming the path
+	// and stroking in device space would leave dashes/width unscaled, diverging
+	// from the port under a non-identity transform.
 	opts := defaultCPPNativeStrokeOptions()
 	opts.Width = float32(c.lineWidth)
 	opts.LineCap = mapLineCap(c.lineCap)
@@ -426,7 +430,7 @@ func (c *cppContext) Stroke() {
 		// Solid stroke: render directly through the comp-op pixfmt (see Fill).
 		c.must(c.requireBlendMode("Stroke"))
 		r, g, b, a := colorToRGBA8(c.strokeColor)
-		c.must(strokeCPPNativePathComp(c.img.img, working, opts, c.clipRectangle(), c.blendMode, r, g, b, a))
+		c.must(strokeCPPNativePathComp(c.img.img, c.path, c.transform, opts, c.clipRectangle(), c.blendMode, r, g, b, a))
 		return
 	}
 	// Gradient stroke: same faithful comp-op-over-coverage path as the gradient
@@ -436,7 +440,7 @@ func (c *cppContext) Stroke() {
 	c.must(err)
 	defer layer.close()
 	c.must(layer.clear(0, 0, 0, 0))
-	c.must(strokeCPPNativePath(layer, working, opts, 255, 255, 255, 255))
+	c.must(strokeCPPNativePath(layer, c.path, c.transform, opts, 255, 255, 255, 255))
 	c.must(c.compositeGradientLayer(layer, c.strokeGradient))
 }
 

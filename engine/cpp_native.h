@@ -78,18 +78,26 @@ AggGoCPPPath* agg_go_cpp_path_transform(const AggGoCPPPath* path, const AggGoCPP
 
 int agg_go_cpp_render_fill_path(AggGoCPPImage* image, const AggGoCPPPath* path, int fill_rule,
                                 uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+// matrix, when non-null and non-identity, is applied to the stroked outline via
+// conv_transform (after dash/stroke), so dash lengths and width are measured in
+// user space and mapped to device space last — faithful to AGG's Agg2D. Pass
+// null (or identity) when the path is already in device space.
 int agg_go_cpp_render_stroke_path(AggGoCPPImage* image, const AggGoCPPPath* path, float width,
                                   int line_cap, int line_join, float miter_limit, uint8_t r,
-                                  uint8_t g, uint8_t b, uint8_t a);
+                                  uint8_t g, uint8_t b, uint8_t a,
+                                  const AggGoCPPMatrix* matrix);
 // agg_go_cpp_render_stroke_path_dashed strokes a dashed outline. dashes points
 // to dash_pair_count (dash_len, gap_len) pairs (2*dash_pair_count floats);
 // dash_start is the phase offset along the path. dash_pair_count == 0 strokes
-// solid. Only the real AGG-backed build applies the dash pattern; the stub
-// build (never advertised as an available backend) strokes solid.
+// solid. matrix is applied to the stroked outline as in
+// agg_go_cpp_render_stroke_path. Only the real AGG-backed build applies the
+// dash pattern; the stub build (never advertised as an available backend)
+// strokes solid and ignores the matrix.
 int agg_go_cpp_render_stroke_path_dashed(AggGoCPPImage* image, const AggGoCPPPath* path, float width,
                                          int line_cap, int line_join, float miter_limit,
                                          const float* dashes, int dash_pair_count, float dash_start,
-                                         uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+                                         uint8_t r, uint8_t g, uint8_t b, uint8_t a,
+                                         const AggGoCPPMatrix* matrix);
 // agg_go_cpp_render_fill_path_comp fills a path directly onto the destination
 // through a comp-op-aware pixfmt, applying blend_mode per span with coverage and
 // clipping to the half-open [clip_x1,clip_x2) x [clip_y1,clip_y2) rectangle.
@@ -104,7 +112,8 @@ int agg_go_cpp_render_stroke_path_comp(AggGoCPPImage* image, const AggGoCPPPath*
                                        int line_cap, int line_join, float miter_limit,
                                        const float* dashes, int dash_pair_count, float dash_start,
                                        int blend_mode, int clip_x1, int clip_y1, int clip_x2,
-                                       int clip_y2, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+                                       int clip_y2, uint8_t r, uint8_t g, uint8_t b, uint8_t a,
+                                       const AggGoCPPMatrix* matrix);
 
 AggGoCPPFont* agg_go_cpp_font_create(const char* font_path);
 void agg_go_cpp_font_free(AggGoCPPFont* font);

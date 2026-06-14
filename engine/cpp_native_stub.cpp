@@ -17,6 +17,8 @@
 #include <agg_conv_dash.h>
 #include <agg_conv_stroke.h>
 #include <agg_conv_curve.h>
+#include <agg_conv_transform.h>
+#include <agg_trans_affine.h>
 #include <agg_path_storage.h>
 #include <agg_pixfmt_rgba.h>
 #include <agg_rasterizer_scanline_aa.h>
@@ -261,6 +263,37 @@ void configure_stroke(Stroke& stroke, float width, int line_cap, int line_join, 
       break;
   }
 }
+
+#ifdef AGG_GO_CPP_REAL
+// matrix_is_identity reports whether a (possibly null) matrix is the identity
+// transform. A null or identity matrix means the path is already in device
+// space (or no transform is active) and the stroke is rasterized as-is.
+bool matrix_is_identity(const AggGoCPPMatrix* matrix) {
+  return matrix == nullptr || (matrix->a == 1.0 && matrix->b == 0.0 && matrix->c == 0.0 &&
+                               matrix->d == 1.0 && matrix->e == 0.0 && matrix->f == 0.0);
+}
+
+// add_stroke_to_ras rasterizes a configured stroke (any conv_stroke
+// instantiation, possibly over conv_dash). When matrix is non-identity the
+// stroke output is wrapped in conv_transform so the dash period and stroke
+// width are measured in user space and the resulting outline is mapped to
+// device space last. This is faithful to AGG's Agg2D pipeline
+// (path -> dash -> stroke -> transform) and the Go port's addStrokeToRasterizer
+// (conv_transform(conv_stroke(...), m)). Pre-transforming the path and stroking
+// in device space instead would leave the dash lengths and width unscaled by
+// the matrix, diverging from the port under any non-identity transform.
+template <class VertexSource>
+void add_stroke_to_ras(agg::rasterizer_scanline_aa<>& ras, VertexSource& stroke,
+                       const AggGoCPPMatrix* matrix) {
+  if (matrix_is_identity(matrix)) {
+    ras.add_path(stroke);
+    return;
+  }
+  agg::trans_affine mtx(matrix->a, matrix->b, matrix->c, matrix->d, matrix->e, matrix->f);
+  agg::conv_transform<VertexSource, agg::trans_affine> trans(stroke, mtx);
+  ras.add_path(trans);
+}
+#endif
 
 // comp_op_adaptor_rgba_plain bridges AGG's premultiplied compositing math to a
 // *straight* (non-premultiplied) destination buffer, matching the Go port's
@@ -1211,7 +1244,8 @@ extern "C" int agg_go_cpp_render_fill_path(AggGoCPPImage* image, const AggGoCPPP
 
 extern "C" int agg_go_cpp_render_stroke_path(AggGoCPPImage* image, const AggGoCPPPath* path, float width,
                                              int line_cap, int line_join, float miter_limit, uint8_t r,
-                                             uint8_t g, uint8_t b, uint8_t a) {
+                                             uint8_t g, uint8_t b, uint8_t a,
+                                             const AggGoCPPMatrix* matrix) {
   if (!valid_image(image)) {
     set_last_error("image is nil");
     return -1;
@@ -1267,7 +1301,7 @@ extern "C" int agg_go_cpp_render_stroke_path(AggGoCPPImage* image, const AggGoCP
   }
   agg::rasterizer_scanline_aa<> ras;
   agg::scanline_u8 sl;
-  ras.add_path(stroke);
+  add_stroke_to_ras(ras, stroke, matrix);
   agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_rgba32>> ren(*image->ren_base);
   ren.color(agg::rgba8(r, g, b, a));
   agg::render_scanlines(ras, sl, ren);
@@ -1332,7 +1366,8 @@ extern "C" int agg_go_cpp_render_stroke_path_dashed(AggGoCPPImage* image, const 
                                                     float width, int line_cap, int line_join,
                                                     float miter_limit, const float* dashes,
                                                     int dash_pair_count, float dash_start, uint8_t r,
-                                                    uint8_t g, uint8_t b, uint8_t a) {
+                                                    uint8_t g, uint8_t b, uint8_t a,
+                                                    const AggGoCPPMatrix* matrix) {
   if (dash_pair_count < 0 || (dash_pair_count > 0 && dashes == nullptr)) {
     set_last_error("invalid dash pattern");
     return -1;
@@ -1340,7 +1375,7 @@ extern "C" int agg_go_cpp_render_stroke_path_dashed(AggGoCPPImage* image, const 
   // No dashes: identical to a solid stroke.
   if (dash_pair_count == 0) {
     return agg_go_cpp_render_stroke_path(image, path, width, line_cap, line_join, miter_limit, r, g,
-                                         b, a);
+                                         b, a, matrix);
   }
   if (!valid_image(image)) {
     set_last_error("image is nil");
@@ -1408,17 +1443,17 @@ extern "C" int agg_go_cpp_render_stroke_path_dashed(AggGoCPPImage* image, const 
   }
   agg::rasterizer_scanline_aa<> ras;
   agg::scanline_u8 sl;
-  ras.add_path(stroke);
+  add_stroke_to_ras(ras, stroke, matrix);
   agg::renderer_scanline_aa_solid<agg::renderer_base<agg::pixfmt_rgba32>> ren(*image->ren_base);
   ren.color(agg::rgba8(r, g, b, a));
   agg::render_scanlines(ras, sl, ren);
   return 0;
 #else
   // The stub backend is never advertised as an available engine, so it does not
-  // implement dash segmentation; stroke solid so tagged primitive tests still
-  // exercise the path geometry.
+  // implement dash segmentation or matrix transforms; stroke solid so tagged
+  // primitive tests still exercise the path geometry.
   return agg_go_cpp_render_stroke_path(image, path, width, line_cap, line_join, miter_limit, r, g, b,
-                                       a);
+                                       a, matrix);
 #endif
 }
 
@@ -1467,7 +1502,8 @@ extern "C" int agg_go_cpp_render_stroke_path_comp(AggGoCPPImage* image, const Ag
                                                   int dash_pair_count, float dash_start,
                                                   int blend_mode, int clip_x1, int clip_y1,
                                                   int clip_x2, int clip_y2, uint8_t r, uint8_t g,
-                                                  uint8_t b, uint8_t a) {
+                                                  uint8_t b, uint8_t a,
+                                                  const AggGoCPPMatrix* matrix) {
   if (!valid_image(image)) {
     set_last_error("image is nil");
     return -1;
@@ -1516,18 +1552,19 @@ extern "C" int agg_go_cpp_render_stroke_path_comp(AggGoCPPImage* image, const Ag
     dash.dash_start(dash_start);
     agg::conv_stroke<agg::conv_dash<agg::path_storage> > stroke(dash);
     configure_stroke(stroke, width, line_cap, line_join, miter_limit);
-    ras.add_path(stroke);
+    add_stroke_to_ras(ras, stroke, matrix);
   } else {
     agg::conv_stroke<agg::path_storage> stroke(agg_path);
     configure_stroke(stroke, width, line_cap, line_join, miter_limit);
-    ras.add_path(stroke);
+    add_stroke_to_ras(ras, stroke, matrix);
   }
   render_with_comp_op(image, ras, blend_mode, clip_x1, clip_y1, clip_x2 - 1, clip_y2 - 1, r, g, b,
                       a);
   return 0;
 #else
   return agg_go_cpp_render_stroke_path_dashed(image, path, width, line_cap, line_join, miter_limit,
-                                              dashes, dash_pair_count, dash_start, r, g, b, a);
+                                              dashes, dash_pair_count, dash_start, r, g, b, a,
+                                              matrix);
 #endif
 }
 

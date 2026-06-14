@@ -107,10 +107,15 @@ func toleranceFor(s scene.Scene) framework.ComparisonOptions {
 		// but confined to ~0.8% of pixels on the circle perimeter).
 		base.Tolerance = 3
 		base.MaxDifferentRatio = 0.02
-	default: // solid_fill_stroke, dashed_stroke, path_nonzero, path_evenodd, clip_box
+	default: // solid_fill_stroke, dashed_stroke, dashed_stroke_transform, path_nonzero, path_evenodd, clip_box
 		// Bound the fraction of disagreeing edge pixels; the bulk matches within
 		// 2 LSB. AA edges span ~1.5% of these scenes (dashed_stroke ~1.3%: both
 		// backends run AGG conv_dash + conv_stroke, so segments line up).
+		// dashed_stroke_transform is byte-exact (0/65536): the CPP backend now
+		// dashes/strokes in user space and applies the active matrix to the stroked
+		// outline via conv_transform (path -> dash -> stroke -> transform), exactly
+		// matching the port's addStrokeToRasterizer, so the scaled+rotated dash
+		// period lands identically.
 		base.Tolerance = 2
 		base.MaxDifferentRatio = 0.025
 	}
