@@ -11,6 +11,8 @@ import (
 	rboxctrl "github.com/cwbudde/agg_go/internal/ctrl/rbox"
 	sliderctrl "github.com/cwbudde/agg_go/internal/ctrl/slider"
 	"github.com/cwbudde/agg_go/internal/shapes"
+	"github.com/cwbudde/agg_go/internal/span"
+	"github.com/cwbudde/agg_go/internal/transform"
 	"github.com/cwbudde/agg_go/internal/vcgen"
 )
 
@@ -134,20 +136,7 @@ func Draw(ctx *agg.Context, g *Graph, cfg Config) {
 	colorRng := newClibcRandSeed(100)
 
 	if cfg.DrawNodes {
-		outerR := 5.0 * cfg.Width
-
-		for _, n := range prepared.nodes {
-			a.ResetPath()
-			a.AddEllipse(n.x, n.y, outerR, outerR, agg.CCW)
-			a.FillRadialGradient(
-				n.x, n.y, outerR,
-				agg.NewColor(255, 255, 0, 64),
-				agg.NewColor(0, 0, 255, 255),
-				1.0,
-			)
-			a.LineColor(agg.Transparent)
-			a.DrawPath(agg.FillOnly)
-		}
+		drawNodesFine(a, prepared.nodes, cfg.Width)
 	}
 
 	if cfg.DrawEdges {
@@ -199,6 +188,69 @@ func Draw(ctx *agg.Context, g *Graph, cfg Config) {
 	if cfg.ShowControls {
 		drawControls(ctx, cfg)
 	}
+}
+
+// buildNodeGradientLUT reproduces the C++ graph_test m_gradient_colors array:
+//
+//	m_gradient_colors[i] = c1.gradient(c2, double(i) / 255.0)
+//
+// with c1 = rgba(1, 1, 0, 0.25) and c2 = rgba(0, 0, 1). In the C++ demo the
+// pixfmt is BGR24, so color_type is the LINEAR rgba8; the float rgba endpoints
+// are interpolated in linear space and quantized once with uround(c * 255). We
+// build the same 256-entry LINEAR LUT here. This is deliberately NOT the Agg2D
+// FillRadialGradient profile LUT (which ramps over indices 1..254 to stay
+// faithful to C++ Agg2D); the standalone graph_test demo uses the raw
+// span_gradient full-range i/255 LUT instead.
+func buildNodeGradientLUT() []icolor.RGBA8[icolor.Linear] {
+	c1 := [4]float64{1, 1, 0, 0.25}
+	c2 := [4]float64{0, 0, 1, 1}
+	lut := make([]icolor.RGBA8[icolor.Linear], 256)
+	for i := range lut {
+		t := float64(i) / 255.0
+		q := func(k int) basics.Int8u {
+			return basics.Int8u(basics.URound((c1[k] + (c2[k]-c1[k])*t) * 255.0))
+		}
+		lut[i] = icolor.RGBA8[icolor.Linear]{R: q(0), G: q(1), B: q(2), A: q(3)}
+	}
+	return lut
+}
+
+// drawNodesFine mirrors C++ graph_test draw_nodes_fine() case 3: each node is an
+// ellipse of radius 5*width filled by a radial span_gradient (gradient_radial_d)
+// whose transform is scale(width/2) * translate(center), inverted, with the
+// gradient distance running d1=0 .. d2=10 over the full-range linear LUT.
+func drawNodesFine(a *agg.Agg2D, nodes []node, width float64) {
+	outerR := 5.0 * width
+	lut := buildNodeGradientLUT()
+	ras := a.GetInternalRasterizer()
+
+	for _, n := range nodes {
+		// Gradient transform: gradient space -> device space is
+		// scale(width/2) then translate(center); the interpolator needs the
+		// inverse (device -> gradient), matching the C++ mtx.invert().
+		mtx := transform.NewTransAffineScaling(width / 2.0)
+		mtx.Multiply(transform.NewTransAffineTranslation(n.x, n.y))
+		mtx.Invert()
+
+		interp := span.NewSpanInterpolatorLinearDefault(mtx)
+		gradFunc := span.GradientRadialDouble{}
+		colorFunc := span.NewGradientPrebuiltColorRGBA8(lut)
+		sg := span.NewSpanGradient(interp, gradFunc, colorFunc, 0.0, 10.0)
+
+		ell := shapes.NewEllipseWithParams(n.x, n.y, outerR, outerR, 0, false)
+		ras.Reset()
+		ras.AddPath(&ellipseRasSource{ell: ell}, 0)
+		a.RenderScanlinesAAWithSpanGen(ras, sg)
+	}
+}
+
+// ellipseRasSource adapts shapes.Ellipse to the rasterizer AddPath vertex source
+// signature (Vertex(x, y *float64) uint32), like convToRasSource for edges.
+type ellipseRasSource struct{ ell *shapes.Ellipse }
+
+func (e *ellipseRasSource) Rewind(pathID uint32) { e.ell.Rewind(pathID) }
+func (e *ellipseRasSource) Vertex(x, y *float64) uint32 {
+	return uint32(e.ell.Vertex(x, y))
 }
 
 func graphEdgeColor(r, g, b, a uint8) agg.Color {
