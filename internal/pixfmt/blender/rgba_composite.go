@@ -307,6 +307,58 @@ func (bl CompositeBlender[S, O]) blendOperation(d, s normalizedRGBA) normalizedR
 	}
 }
 
+// BlendSolidSpanStraight applies the active operator across count straight-alpha
+// destination pixels in one call. It is the fast path for the straight composite
+// pixfmt: it performs the identical premultiply-on-read / op / demultiply-on-write
+// bridge as BlendPix, so its output is bit-for-bit identical to calling BlendPix
+// per pixel (locked by the differential test in rgba_composite_span_test.go). The
+// win comes from doing it as one concrete call per span instead of one interface
+// dispatch per pixel (the comp pixfmt holds the blender behind an interface). dst
+// is packed in channel order O; covers may be nil (uniform full coverage) or hold
+// one cover per pixel; the coverage multiply matches BlendPix exactly.
+func (bl CompositeBlenderPlain[S, O]) BlendSolidSpanStraight(dst []basics.Int8u, r, g, b, a basics.Int8u, covers []basics.Int8u, count int) {
+	var o O
+	cb := CompositeBlender[S, O](bl)
+	ir, ig, ib, ia := o.IdxR(), o.IdxG(), o.IdxB(), o.IdxA()
+	rf := float64(r) / 255.0
+	gf := float64(g) / 255.0
+	bf := float64(b) / 255.0
+	for i := 0; i < count; i++ {
+		// Sa with coverage, matching BlendPix's color.RGBA8MultCover(a, cover)/255.
+		var saByte basics.Int8u
+		if covers != nil {
+			saByte = color.RGBA8MultCover(a, covers[i])
+		} else {
+			saByte = a
+		}
+		sa := float64(saByte) / 255.0
+		if sa <= 0 {
+			continue
+		}
+		p := i * 4
+		// Premultiplied source.
+		s := normalizedRGBA{r: rf * sa, g: gf * sa, b: bf * sa, a: sa}
+		// Straight destination -> premultiplied.
+		da := float64(dst[p+ia]) / 255.0
+		d := normalizedRGBA{
+			r: (float64(dst[p+ir]) / 255.0) * da,
+			g: (float64(dst[p+ig]) / 255.0) * da,
+			b: (float64(dst[p+ib]) / 255.0) * da,
+			a: da,
+		}
+		res := cb.blendOperation(d, s)
+		// Demultiply back to straight alpha for storage.
+		if res.a <= 0 {
+			dst[p+ir], dst[p+ig], dst[p+ib], dst[p+ia] = 0, 0, 0, 0
+			continue
+		}
+		dst[p+ir] = to8(res.r / res.a)
+		dst[p+ig] = to8(res.g / res.a)
+		dst[p+ib] = to8(res.b / res.a)
+		dst[p+ia] = to8(res.a)
+	}
+}
+
 // Porter–Duff/SVG ops (all in premultiplied space)
 
 // clear: D' = 0
