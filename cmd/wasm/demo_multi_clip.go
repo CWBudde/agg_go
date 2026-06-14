@@ -121,10 +121,15 @@ func drawMultiClipDemo() {
 	baseDx := (238 - 0) / 2.0
 	baseDy := (379 - 0) / 2.0
 
+	// The standalone example renders with rotate(angle+Pi) into a y-down work
+	// buffer and then applies copyFlipY. Net effect: X-mirror only.
+	// The WASM canvas is y-down with no final flip, so use Scale(-1,1)+rotate(angle)
+	// instead to get the same X-mirror without the vertical inversion.
 	mtx := transform.NewTransAffine()
 	mtx.Translate(-baseDx, -baseDy)
 	mtx.Scale(amLionScale)
-	mtx.Rotate(amLionAngle + math.Pi)
+	mtx.Multiply(transform.NewTransAffineScalingXY(-1, 1))
+	mtx.Rotate(amLionAngle)
 	mtx.Multiply(transform.NewTransAffineSkewing(amLionSkewX/1000.0, amLionSkewY/1000.0))
 	mtx.Translate(float64(w)/2, float64(h)/2)
 

@@ -142,10 +142,17 @@ func drawAlphaMaskDemo() {
 	baseDX := (maxX - minX) / 2.0
 	baseDY := (maxY - minY) / 2.0
 
+	// In the standalone example the lion is rendered into a y-down work buffer
+	// with rotate(angle+Pi), then the result is copied to the output with a
+	// vertical flip (copyFlipY). The net effect is an X-mirror only.
+	// The WASM canvas is already y-down and there is no final copy/flip step,
+	// so we replace rotate(angle+Pi) + later-flip with Scale(-1,1) + rotate(angle)
+	// to get the same X-mirror without the vertical inversion.
 	mtx := transform.NewTransAffine()
 	mtx.Multiply(transform.NewTransAffineTranslation(-baseDX, -baseDY))
 	mtx.Multiply(transform.NewTransAffineScaling(amLionScale))
-	mtx.Multiply(transform.NewTransAffineRotation(amLionAngle + math.Pi))
+	mtx.Multiply(transform.NewTransAffineScalingXY(-1, 1))
+	mtx.Multiply(transform.NewTransAffineRotation(amLionAngle))
 	mtx.Multiply(transform.NewTransAffineSkewing(amLionSkewX/1000.0, amLionSkewY/1000.0))
 	mtx.Multiply(transform.NewTransAffineTranslation(float64(w)/2, float64(h)/2))
 
