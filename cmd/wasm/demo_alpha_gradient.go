@@ -360,7 +360,7 @@ func drawAlphaGradientDemo() {
 	// 9. Spline control widget (bottom-left, matching C++ render_ctrl call).
 	renderAlphaSplineCtrl(ras, sl, ren, alphaCtrl)
 
-	applyPremulLinearToSRGB(img)
+	applyLinearToSRGB(img)
 }
 
 // --- Mouse handlers ---
