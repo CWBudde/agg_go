@@ -317,5 +317,5 @@ func drawGouraudMeshDemo() {
 		}
 	}
 
-	applyLinearToSRGB(img)
+	applyPremulLinearToSRGB(img)
 }

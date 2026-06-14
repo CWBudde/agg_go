@@ -506,7 +506,7 @@ func drawSBoolDemo() {
 	ras.AddPath(q2, 0)
 	sboolManualRenderSolid(ras, rb, quadColor)
 
-	applyLinearToSRGB(img)
+	applyPremulLinearToSRGB(img)
 }
 
 // --- Mouse interaction ---

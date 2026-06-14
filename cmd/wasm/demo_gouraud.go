@@ -174,7 +174,7 @@ func drawGouraudDemo() {
 	// vertices; they are draggable purely via hit-testing. To stay faithful,
 	// we render nothing here either.
 
-	applyLinearToSRGB(img)
+	applyPremulLinearToSRGB(img)
 }
 
 func handleGouraudMouseDown(x, y float64) bool {

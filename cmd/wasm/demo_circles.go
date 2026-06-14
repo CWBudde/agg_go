@@ -142,7 +142,7 @@ func drawCirclesScatterDemo() {
 		})
 	}
 
-	applyLinearToSRGB(img)
+	applyPremulLinearToSRGB(img)
 
 	// Update for animation (idle loop in original)
 	for i := range circlesPoints {

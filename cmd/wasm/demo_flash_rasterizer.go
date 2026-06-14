@@ -229,5 +229,5 @@ func drawFlashRasterizerDemo() {
 		}
 	}
 
-	applyLinearToSRGB(img)
+	applyPremulLinearToSRGB(img)
 }

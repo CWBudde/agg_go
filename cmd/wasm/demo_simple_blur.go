@@ -71,7 +71,7 @@ func drawSimpleBlurDemo() {
 	// 6. Apply 3x3 box-blur inside the ellipse through AA rasterized coverage.
 	applyBlurInsideEllipseSimple(img, bgImg, simpleBlurCX, simpleBlurCY, rx, ry)
 
-	applyLinearToSRGB(img)
+	applyPremulLinearToSRGB(img)
 }
 
 // drawSimpleBlurLionFill renders the lion fill paths into the left half of the canvas.

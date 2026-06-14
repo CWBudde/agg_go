@@ -121,5 +121,5 @@ func drawGradientsDemo() {
 	ras.AddPath(&gradRasConvVS{vs: ellipsePath}, 0)
 	renscan.RenderScanlinesAA(ras, sl, ren, alloc, spanGen)
 
-	applyLinearToSRGB(img)
+	applyPremulLinearToSRGB(img)
 }

@@ -110,7 +110,7 @@ func drawRasterizersDemo() {
 		drawRasterizersHandle(handleRas, handleSl, renBase, rasterizersX[i]-200, rasterizersY[i], fillColor, outlineColor)
 	}
 
-	applyLinearToSRGB(img)
+	applyPremulLinearToSRGB(img)
 }
 
 func drawRasterizersHandle(

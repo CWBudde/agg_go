@@ -102,7 +102,7 @@ func drawLionDemo() {
 	}
 	renscan.RenderAllPaths(ras, sl, renSolid, rasVS, colors, colors, lionData.NPaths)
 
-	applyLinearToSRGB(img)
+	applyPremulLinearToSRGB(img)
 }
 
 // --- Mouse handlers ---

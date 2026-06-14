@@ -142,7 +142,7 @@ func drawRoundedRectDemo() {
 	ras.AddPath(&rrStrokeVS{cs: stroke}, 0)
 	renscan.RenderScanlinesAASolid[color.RGBA8[color.Linear]](ras, sl, ren, lineColor)
 
-	applyLinearToSRGB(img)
+	applyPremulLinearToSRGB(img)
 }
 
 // --- Mouse handlers ---

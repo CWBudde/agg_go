@@ -278,7 +278,7 @@ func drawFlashRasterizer2Demo() {
 		}
 	}
 
-	applyLinearToSRGB(img)
+	applyPremulLinearToSRGB(img)
 }
 
 // styleColor returns the random colour for a given style index.

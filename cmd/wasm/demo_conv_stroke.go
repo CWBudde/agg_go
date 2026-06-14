@@ -163,7 +163,7 @@ func drawConvStrokeDemo() {
 		renderSolid(color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: 51})
 	}
 
-	applyLinearToSRGB(img)
+	applyPremulLinearToSRGB(img)
 
 	// Interactive handles (drawn on top via ctx after sRGB encoding).
 	for i := 0; i < 3; i++ {
