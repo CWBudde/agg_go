@@ -260,11 +260,16 @@ func (c Color) Gradient(to Color, factor float64) Color {
 		factor = 1.0
 	}
 
-	// Interpolate each component
-	r := uint8(float64(c[0]) + factor*float64(int(to[0])-int(c[0])))
-	g := uint8(float64(c[1]) + factor*float64(int(to[1])-int(c[1])))
-	b := uint8(float64(c[2]) + factor*float64(int(to[2])-int(c[2])))
-	a := uint8(float64(c[3]) + factor*float64(int(to[3])-int(c[3])))
+	// Match C++ agg::rgba8T::gradient (Agg2D::Color is srgba8): quantize the
+	// blend factor with uround(k * base_mask) and interpolate each component
+	// with AGG's integer lerp, which rounds rather than truncates. The previous
+	// implementation used a plain float multiply + uint8 truncation, biasing
+	// every interpolated entry low by ~1 LSB on at least one channel.
+	ik := basics.Int8u(basics.URound(factor * 255.0))
+	r := color.RGBA8Lerp(c[0], to[0], ik)
+	g := color.RGBA8Lerp(c[1], to[1], ik)
+	b := color.RGBA8Lerp(c[2], to[2], ik)
+	a := color.RGBA8Lerp(c[3], to[3], ik)
 
 	return Color{r, g, b, a}
 }
