@@ -234,11 +234,12 @@ system `libagg`/`freetype2`); nothing imports the external `github.com/cwbudde/a
 module. `../AGoGo` remains only a read-only oracle for auditing edge cases. The
 end state is a single repository that can be renamed back to `AGoGo`.
 
-The foundation (5.1–5.4, 5.6–5.8) and most verification (5.9) are **done**; what
-remains is closing the last C++ parity gaps, hardening the real-native build's
-availability story, and the final rename. The sections below preserve their
-numbers because `docs/BACKENDS.md` and `tests/conformance/` cross-reference §5.5
-and §5.9 by number.
+The foundation (5.1–5.4, 5.6–5.8) and most verification (5.9) are **done**, and
+the C++ backend's parity gaps (§5.5) are all closed. What remains is one tracked
+port-side comp-op bug (§5.5), keeping the behavioural-difference docs current
+(§5.9), and the final rename (§5.10). The sections below preserve their numbers
+because `docs/BACKENDS.md` and `tests/conformance/` cross-reference §5.5 and §5.9
+by number.
 
 ### 5.1–5.4 Facade, API boundary, and v1 scope — DONE
 
@@ -269,94 +270,73 @@ implement it.
   backend reads its native matrix via the `agg_go_cpp_matrix_store` bridge).
   Round-trips exactly on both backends (`engine_test.go`/`engine_aggreal_test.go`).
 
-### 5.5 In-repo C++ engine — DONE (all parity gaps below closed)
+### 5.5 In-repo C++ engine — DONE (C++ parity gaps closed; one port-side bug tracked)
 
 The in-repo `agogo`-tagged native layer is self-contained (local header/source,
 cgo config, probes, build-mode tests). The real AGG-backed build (`agogo aggreal`)
-makes `engine.CPP` available and ports image scale/quad, clip box, the supported
-compositing subset, gradients, dashed strokes, and a first text slice — all
-package-private, behind availability/capability checks, never silently falling
-back to the port or accepting a stub as valid. Compositing for **solid** fills/
-strokes renders directly through a comp-op pixfmt with a straight-alpha adaptor
-(`compositing_src`/`srcover`/`clear` byte-exact, strict); **gradient** fills/
-strokes under every supported blend mode composite the recoloured layer through
-the same operator using the shape's AA coverage as cover (`compositing_gradient`).
-The vector fill/stroke and gradient paths now honour the **full AGG operator set**
-(every `agg.BlendMode`: the Porter-Duff operators plus the separable blend modes),
-mapped 1:1 onto `comp_op_e` and dispatched through AGG's `g_comp_op_func`
-(`compositing_multiply` is byte-exact cross-backend).
+makes `engine.CPP` available and ports image scale/quad, clip box, compositing,
+gradients, dashed strokes, and a first text slice — all package-private, behind
+availability/capability checks, never silently falling back to the port or
+accepting a stub as valid. Compositing renders through a comp-op pixfmt with a
+straight-alpha adaptor that mirrors the port's `CompositeBlenderPlain`: **solid**
+fills/strokes are byte-exact (`compositing_src`/`srcover`/`clear`, strict);
+**gradient** fills/strokes composite the recoloured layer through the same
+operator using the shape's AA coverage as cover (`compositing_gradient`). All
+paths honour the **full AGG operator set** — every `agg.BlendMode` (Porter-Duff +
+separable) maps 1:1 onto `comp_op_e` via `map_comp_op`, dispatched through AGG's
+`g_comp_op_func`; the single `requireBlendMode` / `supported_comp_op_mode` gate
+accepts the whole enum.
 
-**C++ parity gaps — all now closed** (each formerly surfaced as a typed capability
-error or a documented conformance skip, never a silent wrong render; kept here as
-a record of what was reconciled):
+**Closed parity gaps** (each formerly a typed capability error or documented
+conformance skip — never a silent wrong render; retained as a reconciliation
+record, with the parity-relevant deviation each fix uncovered):
 
-- [x] **Blend modes beyond the original five.** Done for the vector fill/stroke
-      and gradient paths: `map_comp_op` covers every `comp_op_e`, and the gate
-      (`requireBlendMode` / `supported_comp_op_mode`) accepts the whole enum.
-      `compositing_multiply` is byte-exact in the corpus;
-      `TestCPPExtendedBlendModesRenderWithAggReal` and
-      `TestCPPXorBlendIsAGGFaithfulWithAggReal` lock the rest (the latter proves
-      the straight-alpha adaptor stays AGG-faithful for translucent results).
-      **Discovered while doing this:** the Go _port_ leaves premultiplied data in
-      its straight buffer for comp-ops that yield a translucent result over an
-      opaque destination (e.g. `xor`, `dst-out`) — a separate port-side bug, so
-      those operators are deliberately kept out of the strict corpus. Image/text
-      draw stays limited to the original five (see next item).
-- [x] **Transformed image draw.** `DrawImageRegion` (and the `DrawImage`/
-      `DrawImageScaled` that delegate to it) now map the destination rectangle's
-      corners through the active matrix and blit via the quad path, mirroring the
-      Port's `renderImage` (parl→parl composed with the CTM). The `image_affine`
-      scene renders on `cpp` and is strict (Tolerance 4, MaxDifferentRatio 0.10 —
-      CPP nearest-neighbour vs Port bilinear, the same sampler-noise class as
-      `image_scaled`). `TestCPPTransformedImageDrawRendersWithAggReal` locks it.
-      **Discovered while doing this:** the native C++ matrix composed
-      `Translate`/`Rotate`/`Scale` in the _reverse_ order from `agg::trans_affine`
-      (the later call ended up innermost), so a transform sequence mis-placed every
-      transformed draw relative to the faithful Port. Fixed by making the native
-      ops pre-multiply the primitive in output space (`matrix_premultiply`), exactly
-      matching `trans_affine`; guarded by
-      `TestCPPTransformComposeOrderMatchesPortWithAggReal` and the updated
-      `TestCPPNativeMatrixTransformPointTranslateRotateScale`. This also corrects
-      transformed _vector_ rendering, which no corpus scene had been exercising.
-- [x] **Image and text draw under blend modes beyond the original five.** The
-      scaled/quad image blits now composite each pixel through
-      `comp_op_adaptor_rgba_plain` (the straight-alpha premultiply → `g_comp_op_func`
-      → demultiply bridge the gradient cover blit uses), via the `blend_image_pixel`
-      helper, so they honour the full `agg.BlendMode` enum. Their loops only ever
-      visit pixels the image covers, so full cover (255) is correct and the
-      untouched background is never disturbed. The text coverage layer routes
-      clear/src and every separable mode through `compositeCoverFrom` (the gradient
-      cover primitive) with the layer alpha as per-pixel cover, confining the
-      operator to the glyphs — a whole-layer composite would let clear/src wipe the
-      background. The Go gate is now the single `requireBlendMode` (full enum;
-      `requireImageBlendMode` is removed) and the native gate is
-      `supported_comp_op_mode`. This matches the port, whose `currentImageRenderer`
-      composites image spans through the comp-op base renderer (`renBaseCompPre`) for
-      every non-`BlendAlpha` mode. `TestCPPImageDrawUnderExtendedBlendModeIsFaithfulWithAggReal`,
-      `TestCPPTextUnderExtendedBlendModePreservesBackgroundWithAggReal`, and
-      `TestCPPBackendExtendedBlendModeOnDrawImageQuad` lock it; the new strict
-      `image_blend` conformance scene (image over a colour field under multiply)
-      agrees cross-backend at ratio ~0.053 (Tolerance 4, MaxDifferentRatio 0.08 —
-      the image_scaled sampler-noise class). (This subsumes the former "replace
-      remaining CPU helper paths" item — it was specifically the image/text paths
-      that still bypassed AGG.)
-- [x] **Dashed strokes under a non-identity transform.** Reconciled: the native
-      stroke functions (`agg_go_cpp_render_stroke_path`/`_dashed`/`_comp`) now take
-      a trailing `const AggGoCPPMatrix*` and apply it to the stroked outline via
-      `agg::conv_transform` after dash + stroke (`add_stroke_to_ras`), so the
-      pipeline is `path -> dash -> stroke -> transform` — identical to AGG's Agg2D
-      and the port's `addStrokeToRasterizer` (`conv_transform(conv_stroke(...), m)`).
-      `Stroke()` now passes the **user-space** path plus the active matrix instead
-      of pre-transforming the path, so the dash period and line width scale with
-      the transform. A null/identity matrix takes the original direct-rasterize
-      path, so no-transform scenes stay byte-identical. The new strict
-      `dashed_stroke_transform` corpus scene (dashed stroke under scale+rotate) is
-      **byte-exact cross-backend (0/65536)**, and
-      `TestCPPDashedStrokeUnderTransformDashesInUserSpaceWithAggReal` locks the
-      user-space convention (a discriminating gap pixel that device-space dashing
-      would have painted). This also fixes plain (non-dashed) stroke **width**
-      scaling under a transform, which had the same device-vs-user-space gap. The
-      stub build (never advertised) ignores the matrix.
+- [x] **Full blend-mode set (vector + gradient + image + text).** Vector/gradient
+      paths dispatch every `comp_op_e` (`compositing_multiply` byte-exact). Image
+      (scaled/quad) blits composite per-pixel via `comp_op_adaptor_rgba_plain`
+      (`blend_image_pixel`, full cover on covered pixels only); text routes every
+      mode through `compositeCoverFrom` with layer alpha as per-pixel cover, so
+      clear/src cannot wipe the background. Mirrors the port's comp-op base
+      renderer (`renBaseCompPre`). The single `requireBlendMode` gate replaced the
+      former `requireImageBlendMode`. Locked by `TestCPPExtendedBlendModesRenderWithAggReal`,
+      `TestCPPXorBlendIsAGGFaithfulWithAggReal`,
+      `TestCPPImageDrawUnderExtendedBlendModeIsFaithfulWithAggReal`,
+      `TestCPPTextUnderExtendedBlendModePreservesBackgroundWithAggReal`,
+      `TestCPPBackendExtendedBlendModeOnDrawImageQuad`; strict `image_blend` scene
+      (image over a colour field under multiply) agrees at ~0.053 (Tol 4 / ratio
+      0.08, image-sampler-noise class).
+- [x] **Transformed image & vector draw.** `DrawImageRegion` (and the `DrawImage`/
+      `DrawImageScaled` delegating to it) map the dest-rect corners through the
+      active matrix and blit via the quad path, mirroring the port's `renderImage`.
+      Strict `image_affine` scene (Tol 4 / ratio 0.10, CPP nearest-neighbour vs
+      Port bilinear). *Deviation fixed:* the native matrix composed `Translate`/
+      `Rotate`/`Scale` in reverse of `agg::trans_affine`; corrected via
+      `matrix_premultiply` (primitive pre-multiplied in output space), which also
+      fixes transformed vector rendering. Locked by
+      `TestCPPTransformedImageDrawRendersWithAggReal`,
+      `TestCPPTransformComposeOrderMatchesPortWithAggReal`,
+      `TestCPPNativeMatrixTransformPointTranslateRotateScale`.
+- [x] **Dashed/plain strokes under a non-identity transform.** The native stroke
+      functions take a trailing `const AggGoCPPMatrix*` and apply it to the stroked
+      outline via `agg::conv_transform` after dash+stroke (`add_stroke_to_ras`):
+      `path -> dash -> stroke -> transform`, identical to Agg2D and the port's
+      `addStrokeToRasterizer`. `Stroke()` passes the **user-space** path + matrix,
+      so dash period and line width scale with the transform; a null/identity matrix
+      keeps the direct-rasterize path (no-transform scenes byte-identical). Strict
+      `dashed_stroke_transform` scene is **byte-exact (0/65536)**; locked by
+      `TestCPPDashedStrokeUnderTransformDashesInUserSpaceWithAggReal`. (Stub build,
+      never advertised, ignores the matrix.)
+
+**Open — tracked port-side bug** (surfaced by the CPP work but living in the Go
+port, not the C++ backend):
+
+- [ ] **Port stores premultiplied data in its straight buffer** for comp-ops that
+      yield a *translucent* result over an opaque destination (e.g. `xor`,
+      `dst-out`). The C++ backend is AGG-faithful here (proved by
+      `TestCPPXorBlendIsAGGFaithfulWithAggReal`), so these operators are kept out of
+      the strict conformance corpus until the port is fixed. The fix belongs in the
+      port's comp-op render/readback path, not in `engine/`. See conformance note in
+      `tests/conformance/conformance_test.go` (compositing case).
 
 ### 5.6–5.8 AGoGo audit, trust boundaries, and comparison layer — DONE
 
