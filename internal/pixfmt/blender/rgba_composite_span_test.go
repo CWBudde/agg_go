@@ -148,14 +148,34 @@ func TestBlendSolidSpanStraightSrcOverSIMDMatchesScalar(t *testing.T) {
 	t.Cleanup(simd.ResetDetection)
 
 	t.Run("RGBA", func(t *testing.T) {
-		srcOverSIMDvsScalar[order.RGBA](t, rand.New(rand.NewSource(0x5114D)))
+		srcOverSIMDvsScalar[order.RGBA](t, rand.New(rand.NewSource(0x5114D)), simd.Features{HasAVX2: true})
 	})
 	t.Run("BGRA", func(t *testing.T) {
-		srcOverSIMDvsScalar[order.BGRA](t, rand.New(rand.NewSource(0xB6A5A)))
+		srcOverSIMDvsScalar[order.BGRA](t, rand.New(rand.NewSource(0xB6A5A)), simd.Features{HasAVX2: true})
 	})
 }
 
-func srcOverSIMDvsScalar[O order.RGBAOrder](t *testing.T, rng *rand.Rand) {
+// TestBlendSolidSpanStraightSrcOverSSE2MatchesScalar locks the SSE2 fallback tier
+// (the pre-AVX2 amd64 path) against the scalar bridge, exactly as the AVX2 test
+// does for its tier. Forcing {HasSSE2:true} with AVX2 absent selects the SSE2
+// kernel in CompSrcOverPlainStraightHspanRGBA. SSE2 is architecturally guaranteed
+// on amd64, so DetectFeatures().HasSSE2 gates this to the platforms where the
+// kernel actually exists.
+func TestBlendSolidSpanStraightSrcOverSSE2MatchesScalar(t *testing.T) {
+	if !simd.DetectFeatures().HasSSE2 {
+		t.Skip("SSE2 unavailable; SSE2 tier not exercised on this platform")
+	}
+	t.Cleanup(simd.ResetDetection)
+
+	t.Run("RGBA", func(t *testing.T) {
+		srcOverSIMDvsScalar[order.RGBA](t, rand.New(rand.NewSource(0x55E20)), simd.Features{HasSSE2: true})
+	})
+	t.Run("BGRA", func(t *testing.T) {
+		srcOverSIMDvsScalar[order.BGRA](t, rand.New(rand.NewSource(0xB55E2)), simd.Features{HasSSE2: true})
+	})
+}
+
+func srcOverSIMDvsScalar[O order.RGBAOrder](t *testing.T, rng *rand.Rand, simdFeatures simd.Features) {
 	t.Helper()
 	bl := NewCompositeBlenderPlain[color.Linear, O](CompOpSrcOver)
 	counts := []int{1, 2, 3, 4, 5, 7, 8, 15, 16, 17, 31, 33, 64, 255, 256}
@@ -175,7 +195,7 @@ func srcOverSIMDvsScalar[O order.RGBAOrder](t *testing.T, rng *rand.Rand) {
 			scalar := append([]basics.Int8u(nil), base...)
 			bl.BlendSolidSpanStraight(scalar, r, g, b, a, nil, count)
 
-			simd.SetForcedFeatures(simd.Features{HasAVX2: true})
+			simd.SetForcedFeatures(simdFeatures)
 			got := append([]basics.Int8u(nil), base...)
 			bl.BlendSolidSpanStraight(got, r, g, b, a, nil, count)
 
@@ -226,7 +246,8 @@ func benchSpanStraight(b *testing.B, op CompOp) {
 // (locked by TestBlendSolidSpanStraightSrcOverSIMDMatchesScalar); this just
 // reports the speedup.
 func BenchmarkSrcOverSpanSIMDvsScalar(b *testing.B) {
-	if !simd.DetectFeatures().HasAVX2 {
+	feats := simd.DetectFeatures() // capture real CPU before any forcing below
+	if !feats.HasAVX2 {
 		b.Skip("AVX2 unavailable")
 	}
 	b.Cleanup(simd.ResetDetection)
@@ -251,6 +272,12 @@ func BenchmarkSrcOverSpanSIMDvsScalar(b *testing.B) {
 		simd.SetForcedFeatures(simd.Features{ForceGeneric: true})
 		run(b)
 	})
+	if feats.HasSSE2 {
+		b.Run("sse2", func(b *testing.B) {
+			simd.SetForcedFeatures(simd.Features{HasSSE2: true})
+			run(b)
+		})
+	}
 	b.Run("simd", func(b *testing.B) {
 		simd.SetForcedFeatures(simd.Features{HasAVX2: true})
 		run(b)

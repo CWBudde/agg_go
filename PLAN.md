@@ -548,13 +548,28 @@ Steps:
       (256-px SrcOver: 1245 ns vs 2833 ns; 4.86 vs 11.1 ns/px; 0 allocs) → ~4–4.5×
       over the original per-pixel interface path. **Scope:** uniform coverage
       (`covers == nil`), SrcOver, alpha-at-byte-3 orders (RGBA/BGRA) — the common
-      large-solid-span case; AA edges, other operators, non-AVX2 CPUs, and
-      ARGB/ABGR all fall through to the (already-2×) scalar bridge with no semantic
-      change. SrcOver is symmetric across the three colour lanes, so any colour
-      permutation with alpha at byte 3 is handled by placing the premult source in
-      byte order; the alpha lane is fixed at lane 3 by the blend masks. Extending
-      to other separable branch-free ops (xor/plus/multiply/screen/…) and an
-      unrolled multi-pixel variant remain open if profiling warrants. The
+      large-solid-span case; AA edges, other operators, and ARGB/ABGR all fall
+      through to the (already-2×) scalar bridge with no semantic change. SrcOver is
+      symmetric across the three colour lanes, so any colour permutation with alpha
+      at byte 3 is handled by placing the premult source in byte order; the alpha
+      lane is fixed at lane 3 by the blend masks.
+      An **SSE2 fallback tier** (`internal/simd/comp_plain_sse2_amd64.s`) now also
+      serves pre-AVX2 amd64: it is the exact SSE2 mirror of the AVX2 kernel,
+      carrying each pixel across two 128-bit registers (lo `{r,g}`, hi `{b,a}`) so
+      the per-lane float64 ops — hence the IEEE-754 result — are identical. It is
+      locked byte-for-byte against the scalar bridge by
+      `TestBlendSolidSpanStraightSrcOverSSE2MatchesScalar` (same shape as the AVX2
+      test, forcing `{HasSSE2:true}`). Measured **~1.9×** over scalar (256-px
+      SrcOver: ~1.6 µs vs ~3.0 µs; 0 allocs); AVX2 stays ~1.45× ahead of it.
+      Dispatch in `CompSrcOverPlainStraightHspanRGBA` is AVX2 → SSE2 → scalar; SSE2
+      is architecturally guaranteed on amd64, so the only non-SIMD outcome is the
+      `ForceGeneric` test hook. The Go-asm gotcha here: the 4-byte pixel load/store
+      must use `MOVL` with an xmm operand (Go's spelling of the 32-bit `MOVD`,
+      `66 0F 6E`/`66 0F 7E`); plain `MOVD` is Go's *64-bit* move and silently
+      over-reads/over-writes 8 bytes per pixel (the duplicated-store corrupted the
+      next pixel's input — the px0-ok/px1-wrong symptom).
+      Extending to other separable branch-free ops (xor/plus/multiply/screen/…) and
+      an unrolled multi-pixel variant remain open if profiling warrants. The
       conditional ops (overlay/dodge/burn/soft-light) are intentionally left on the
       scalar path. Float32 was avoided (reciprocal breaks the bit-parity envelope —
       constraint 2).
