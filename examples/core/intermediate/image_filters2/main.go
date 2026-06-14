@@ -17,11 +17,13 @@ import (
 	"github.com/cwbudde/agg_go/internal/basics"
 	"github.com/cwbudde/agg_go/internal/buffer"
 	icol "github.com/cwbudde/agg_go/internal/color"
+	"github.com/cwbudde/agg_go/internal/conv"
 	ctrlbase "github.com/cwbudde/agg_go/internal/ctrl"
 	"github.com/cwbudde/agg_go/internal/ctrl/checkbox"
 	"github.com/cwbudde/agg_go/internal/ctrl/rbox"
 	"github.com/cwbudde/agg_go/internal/ctrl/slider"
 	imgacc "github.com/cwbudde/agg_go/internal/image"
+	"github.com/cwbudde/agg_go/internal/path"
 	"github.com/cwbudde/agg_go/internal/pixfmt"
 	"github.com/cwbudde/agg_go/internal/rasterizer"
 	"github.com/cwbudde/agg_go/internal/renderer"
@@ -193,7 +195,42 @@ func buildImageSpanGenerator(
 	)
 }
 
+// strokeVS adapts a conv.ConvStroke to the rasterizer's VertexSource interface.
+type strokeVS struct{ s *conv.ConvStroke }
+
+func (g *strokeVS) Rewind(pathID uint32) { g.s.Rewind(uint(pathID)) }
+func (g *strokeVS) Vertex(x, y *float64) uint32 {
+	vx, vy, cmd := g.s.Vertex()
+	*x, *y = vx, vy
+	return uint32(cmd)
+}
+
+// srgbaLinear decodes an AGG srgba8 literal into the linear color_type the
+// renderer blends in, mirroring C++'s implicit srgba8 -> rgba8 conversion when
+// a color is handed to render_scanlines_aa_solid (RGB sRGB-decoded, alpha kept).
+func srgbaLinear(r, g, b, a uint8) icol.RGBA8[icol.Linear] {
+	return icol.ConvertRGBA8SRGBToLinear(icol.RGBA8[icol.SRGB]{R: r, G: g, B: b, A: a})
+}
+
+// drawGraph renders the filter-response graph (grid + axis + response curve)
+// with the low-level pipeline used by C++ image_filters2.cpp: a single
+// conv_stroke (width 0.8, butt caps) feeding render_scanlines_aa_solid.
 func drawGraph(ctx *agg.Context, st imageFilters2State) {
+	img := ctx.GetImage()
+	rbuf := buffer.NewRenderingBufferU8WithData(img.Data, img.Width(), img.Height(), img.Stride())
+	pf := pixfmt.NewPixFmtRGBA32Linear(rbuf)
+	rb := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32[icol.Linear], icol.RGBA8[icol.Linear]](pf)
+
+	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip(),
+	)
+	sl := scanline.NewScanlineU8()
+
+	p := path.NewPathStorageStl()
+	stroke := conv.NewConvStroke(path.NewPathStorageStlVertexSourceAdapter(p))
+	stroke.SetWidth(0.8)
+	strokeSrc := &strokeVS{s: stroke}
+
 	xStart := 5.0
 	xEnd := 195.0
 	yStart := 235.0
@@ -202,13 +239,24 @@ func drawGraph(ctx *agg.Context, st imageFilters2State) {
 
 	for i := 0; i <= 16; i++ {
 		x := xStart + (xEnd-xStart)*float64(i)/16.0
+		p.RemoveAll()
+		p.MoveTo(x+0.5, yStart)
+		p.LineTo(x+0.5, yEnd)
+		ras.Reset()
+		ras.AddPath(strokeSrc, 0)
 		a := uint8(100)
 		if i == 8 {
 			a = 255
 		}
-		strokeLine(ctx, 0.8, srgbaToLinear(0, 0, 0, a), x+0.5, yStart, x+0.5, yEnd)
+		renscan.RenderScanlinesAASolid[icol.RGBA8[icol.Linear]](ras, sl, rb, srgbaLinear(0, 0, 0, a))
 	}
-	strokeLine(ctx, 0.8, srgbaToLinear(0, 0, 0, 255), xStart, ys, xEnd, ys)
+
+	p.RemoveAll()
+	p.MoveTo(xStart, ys)
+	p.LineTo(xEnd, ys)
+	ras.Reset()
+	ras.AddPath(strokeSrc, 0)
+	renscan.RenderScanlinesAASolid[icol.RGBA8[icol.Linear]](ras, sl, rb, srgbaLinear(0, 0, 0, 255))
 
 	if st.filterIdx == 0 {
 		return
@@ -228,26 +276,17 @@ func drawGraph(ctx *agg.Context, st imageFilters2State) {
 	xs := (xEnd+xStart)/2.0 - (float64(lut.Diameter())*(xEnd-xStart))/32.0
 	nn := lut.Diameter() * 256
 
-	pts := make([]point, 0, nn)
-	pts = append(pts, point{
-		x: xs + 0.5,
-		y: ys + dy*float64(weights[0])/float64(imgacc.ImageFilterScale),
-	})
+	p.RemoveAll()
+	p.MoveTo(xs+0.5, ys+dy*float64(weights[0])/float64(imgacc.ImageFilterScale))
 	for i := 1; i < nn; i++ {
-		x := xs + dx*float64(i)/float64(n) + 0.5
-		y := ys + dy*float64(weights[i])/float64(imgacc.ImageFilterScale)
-		pts = append(pts, point{x: x, y: y})
+		p.LineTo(
+			xs+dx*float64(i)/float64(n)+0.5,
+			ys+dy*float64(weights[i])/float64(imgacc.ImageFilterScale),
+		)
 	}
-	strokePolyline(ctx, 0.8, srgbaToLinear(100, 0, 0, 255), pts)
-}
-
-// srgbaToLinear decodes an AGG srgba8 literal into the linear color space the
-// renderer blends in. It mirrors C++'s implicit srgba8 -> rgba8 conversion that
-// happens when a color is handed to render_scanlines_aa_solid: the RGB channels
-// are sRGB-decoded while alpha stays linear.
-func srgbaToLinear(r, g, b, a uint8) agg.Color {
-	lin := icol.ConvertRGBA8SRGBToLinear(icol.RGBA8[icol.SRGB]{R: r, G: g, B: b, A: a})
-	return agg.NewColor(lin.R, lin.G, lin.B, lin.A)
+	ras.Reset()
+	ras.AddPath(strokeSrc, 0)
+	renscan.RenderScanlinesAASolid[icol.RGBA8[icol.Linear]](ras, sl, rb, srgbaLinear(100, 0, 0, 255))
 }
 
 func drawControls(ctx *agg.Context, st imageFilters2State) {
@@ -294,10 +333,6 @@ func drawControls(ctx *agg.Context, st imageFilters2State) {
 	renderCtrl(agg2d, ras, normalize)
 }
 
-type point struct {
-	x, y float64
-}
-
 type ctrlVertexSource struct {
 	ctrl ctrlbase.Ctrl[icol.RGBA]
 }
@@ -328,26 +363,6 @@ func renderCtrl(a *agg.Agg2D, ras interface {
 			uint8(math.Round(col.A*255.0)),
 		))
 	}
-}
-
-func strokeLine(ctx *agg.Context, width float64, clr agg.Color, x1, y1, x2, y2 float64) {
-	ctx.SetColor(clr)
-	ctx.SetLineWidth(width)
-	ctx.DrawLine(x1, y1, x2, y2)
-}
-
-func strokePolyline(ctx *agg.Context, width float64, clr agg.Color, pts []point) {
-	if len(pts) < 2 {
-		return
-	}
-	ctx.SetColor(clr)
-	ctx.SetLineWidth(width)
-	ctx.BeginPath()
-	ctx.MoveTo(pts[0].x, pts[0].y)
-	for i := 1; i < len(pts); i++ {
-		ctx.LineTo(pts[i].x, pts[i].y)
-	}
-	ctx.Stroke()
 }
 
 func createSourceImage() *agg.Image {
