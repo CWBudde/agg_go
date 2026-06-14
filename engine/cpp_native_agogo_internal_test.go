@@ -598,28 +598,46 @@ func TestCPPBackendContextDrawImageRegionQuadHonorsClip(t *testing.T) {
 	}
 }
 
-func TestCPPBackendUnsupportedBlendModePanicsTypedOnFill(t *testing.T) {
+func TestCPPBackendExtendedBlendModeOnFill(t *testing.T) {
 	ctx, err := newCPPBackendContext(8, 8)
 	if err != nil {
 		t.Fatalf("newCPPBackendContext() error = %v", err)
 	}
 	ctx.SetBlendMode(agg.BlendMultiply)
 
-	defer func() {
-		recovered := recover()
-		if recovered == nil {
-			t.Fatal("expected panic for unsupported blend mode")
-		}
-		err, ok := recovered.(error)
-		if !ok {
-			t.Fatalf("expected error panic, got %T", recovered)
-		}
-		if !errors.Is(err, ErrUnsupportedCapability) {
-			t.Fatalf("expected ErrUnsupportedCapability panic, got %v", err)
-		}
-	}()
+	if currentCPPNativeMetadata().Stub {
+		// The stub vector path falls back to a plain solid fill that cannot honour
+		// comp-ops beyond the five image-blit modes, so it must still reject an
+		// extended mode with a typed capability error (surfaced as a panic via
+		// must()). The stub backend is never advertised as available, so this only
+		// guards the direct primitive path.
+		defer func() {
+			recovered := recover()
+			if recovered == nil {
+				t.Fatal("expected panic for unsupported blend mode in stub build")
+			}
+			err, ok := recovered.(error)
+			if !ok {
+				t.Fatalf("expected error panic, got %T", recovered)
+			}
+			if !errors.Is(err, ErrUnsupportedCapability) {
+				t.Fatalf("expected ErrUnsupportedCapability panic, got %v", err)
+			}
+		}()
+		ctx.FillRectangle(1, 1, 4, 4)
+		return
+	}
 
+	// The real backend renders the full AGG comp-op set on the vector fill/stroke
+	// path, so an extended mode like multiply must render rather than panic.
+	// Multiply of opaque black over opaque white yields black.
+	ctx.Clear(agg.White)
+	ctx.SetFillColor(agg.NewColorRGB(0, 0, 0))
 	ctx.FillRectangle(1, 1, 4, 4)
+	got := ctx.GetImage().ToGoImage().RGBAAt(2, 2)
+	if got.R > 4 || got.G > 4 || got.B > 4 || got.A != 255 {
+		t.Fatalf("multiply of black over white = %+v, want opaque black", got)
+	}
 }
 
 func TestCPPBackendUnsupportedBlendModeOnDrawImageQuadIsTyped(t *testing.T) {

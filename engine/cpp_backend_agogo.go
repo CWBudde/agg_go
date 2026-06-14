@@ -534,7 +534,7 @@ func (c *cppContext) DrawImageRegion(img Image, srcX, srcY, srcW, srcH int, dstX
 	if c.transformDirty {
 		return &UnsupportedCapabilityError{Kind: CPP, Capability: CapabilityImageDraw, Operation: "DrawImageRegion with active transform"}
 	}
-	if err := c.requireBlendMode("DrawImageRegion"); err != nil {
+	if err := c.requireImageBlendMode("DrawImageRegion"); err != nil {
 		return err
 	}
 	return c.img.img.compositeScaledFrom(
@@ -564,7 +564,7 @@ func (c *cppContext) DrawImageRegionQuad(img Image, srcX, srcY, srcW, srcH int, 
 	if err != nil {
 		return err
 	}
-	if err := c.requireBlendMode("DrawImageRegionQuad"); err != nil {
+	if err := c.requireImageBlendMode("DrawImageRegionQuad"); err != nil {
 		return err
 	}
 	return c.img.img.compositeQuadFrom(
@@ -678,7 +678,7 @@ func (c *cppContext) GetTextBounds(text string) (x, y, width, height float64) {
 func (c *cppContext) GetImage() Image { return c.img }
 
 func (c *cppContext) compositeLayer(layer *cppNativeImage, operation string) error {
-	if err := c.requireBlendMode(operation); err != nil {
+	if err := c.requireImageBlendMode(operation); err != nil {
 		return err
 	}
 	return c.img.img.compositeFrom(layer, 0, 0, c.clipRectangle(), c.blendMode)
@@ -799,7 +799,29 @@ func (c *cppContext) clipRectangle() image.Rectangle {
 	)
 }
 
+// requireBlendMode gates the vector fill/stroke and gradient paths. These render
+// through AGG's comp-op pixfmt (the real backend dispatches g_comp_op_func[op];
+// the gradient path composites its coverage layer through the same operator), so
+// they honour every operator in the agg.BlendMode enum — the full Porter-Duff set
+// plus the separable blend modes.
 func (c *cppContext) requireBlendMode(operation string) error {
+	if c.blendMode >= agg.BlendAlpha && c.blendMode <= agg.BlendExclusion {
+		return nil
+	}
+	return &UnsupportedCapabilityError{
+		Kind:       CPP,
+		Capability: CapabilityCompositing,
+		Operation:  operation,
+	}
+}
+
+// requireImageBlendMode gates the image-draw and text paths (region/quad blits and
+// the text coverage layer), which still composite through the CPU helper and only
+// implement the five operators the Go port's image blits also cover. Image or text
+// draw under any other operator stays a documented gap (PLAN.md §5.5,
+// docs/BACKENDS.md) and fails with a typed capability error rather than silently
+// rendering the wrong result.
+func (c *cppContext) requireImageBlendMode(operation string) error {
 	switch c.blendMode {
 	case agg.BlendAlpha, agg.BlendClear, agg.BlendSrc, agg.BlendDst, agg.BlendSrcOver:
 		return nil

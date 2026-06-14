@@ -227,290 +227,148 @@ mirrors the full 8-bit public surface and is verified for cross-precision parity
 
 ## Phase 5 - In-Repo Dual Engine Integration and AGoGo Absorption
 
-All implementation work for the final library should happen in this repository.
-`../AGoGo` is now only a migration source and temporary oracle: useful for
-auditing existing C++ FFI glue, tests, docs, benchmarks, and edge cases, but
-not a long-term runtime dependency. The end state is:
+All implementation work for the final library lives in this repository. The
+opt-in `engine` facade now renders through either the pure-Go `Port` backend or
+an in-repo C++ AGG-backed `CPP` backend (build tags `agogo aggreal`, linking
+system `libagg`/`freetype2`); nothing imports the external `github.com/cwbudde/agogo`
+module. `../AGoGo` remains only a read-only oracle for auditing edge cases. The
+end state is a single repository that can be renamed back to `AGoGo`.
 
-1. This repository contains the pure-Go port and any optional C++ reference
-   engine support needed for comparison or performance work.
-2. `../AGoGo` is redundant.
-3. This repository is renamed back to `AGoGo` once the migration is complete.
+The foundation (5.1–5.4, 5.6–5.8) and most verification (5.9) are **done**; what
+remains is closing the last C++ parity gaps, hardening the real-native build's
+availability story, and the final rename. The sections below preserve their
+numbers because `docs/BACKENDS.md` and `tests/conformance/` cross-reference §5.5
+and §5.9 by number.
 
-The goal of this phase is therefore twofold: keep a high-level way to choose
-either the Go port or a C++ AGG-backed path when useful, while ensuring that
-all such code, tooling, and maintenance live here rather than being split
-across two active repositories.
+### 5.1–5.4 Facade, API boundary, and v1 scope — DONE
 
-### 5.1 Goal
+The backend-neutral facade is complete for its v1 surface and both engines
+implement it.
 
-- [x] Create a first-cut in-repo `engine` facade with a working port-backed
-      implementation and an explicit typed unavailable path for the future C++
-      engine.
-- [ ] Add an opt-in high-level engine-selection layer in this repository that
-      can render through either the native `agg_go` port or an in-repo C++ AGG
-      reference/backend path.
-- [ ] Keep `agg_go` as the canonical, default, dependency-light engine.
-- [ ] Use `../AGoGo` only as a migration source until equivalent or better
-      functionality, tests, and docs live here.
-- [ ] End with a single maintained repository that can be renamed back to
-      `AGoGo` without losing functionality.
+- **API boundary (§5.2):** root `agg` package stays concrete and pure Go; the
+  backend-selectable surface lives in a separate `engine` package; no cgo files
+  in root `agg`; the native C++ layer is package-private inside `engine`; callers
+  not opting into backend selection stay source-compatible. No bridge-plus-adapter
+  architecture was reintroduced.
+- **Facade shape (§5.3):** `engine.Kind` (`Port`/`CPP`), `engine.Config`,
+  `engine.Available()`, `engine.NewContext`/`NewContextForImage`/`NewImage`/
+  `NewImageFromGoImage`/`NewImageFromBuffer`; the narrow shared surface (clear,
+  fill/stroke color, line width/cap/join, path construction, fill rules, clip box,
+  transforms, basic image drawing, compositing, image export incl.
+  `ToStandardImage`/JPEG) is exposed and no wider. Unsupported operations return
+  typed capability errors; engine/resource-mismatch is a typed error; package
+  docs and a runnable example exist.
+- **v1 scope (§5.4):** all the shared high-level operations (shapes, path verbs,
+  fill/stroke, affine transforms, clip box, solid fills, dashed strokes via AGG
+  `conv_dash`, image copy/scale/quad, compositing-mode selection) work on both
+  engines, with port coverage finished for clip/image-region/gradients/text.
+  Getter contract decided **IN scope** and implemented symmetrically with the
+  setters: fill-rule/blend-mode/gradient-type/clip-box/text-hint state, text
+  metrics/bounds, `GetFillColor`/`GetStrokeColor`/`GetLineWidth`/`GetLineCap`/
+  `GetLineJoin`, and `GetTransform()` (cumulative affine in AGG order; the C++
+  backend reads its native matrix via the `agg_go_cpp_matrix_store` bridge).
+  Round-trips exactly on both backends (`engine_test.go`/`engine_aggreal_test.go`).
 
-### 5.2 Canonical API boundary
+### 5.5 In-repo C++ engine — DONE except the parity gaps below
 
-- [x] Keep the existing root `agg` package concrete and pure Go.
-- [x] Introduce a separate backend-selectable facade package, tentatively
-      `engine`, instead of mutating `agg.Agg2D`, `agg.Context`, or `agg.Image`
-      into interface-first types.
-- [x] Keep current `agg_go` callers source-compatible unless they explicitly opt
-      into backend selection.
-- [x] Do not add direct cgo-backed implementation files to the root `agg`
-      package.
-- [x] Do not require the final public API to depend on the external
-      `../AGoGo` repository or module path.
-- [x] Keep the optional native C++ support layer internal to the `engine`
-      package rather than growing a second public or semi-public bridge API.
-- [ ] Avoid re-introducing a separate bridge-plus-adapter architecture unless a
-      concrete reuse case appears that justifies the extra abstraction.
+The in-repo `agogo`-tagged native layer is self-contained (local header/source,
+cgo config, probes, build-mode tests). The real AGG-backed build (`agogo aggreal`)
+makes `engine.CPP` available and ports image scale/quad, clip box, the supported
+compositing subset, gradients, dashed strokes, and a first text slice — all
+package-private, behind availability/capability checks, never silently falling
+back to the port or accepting a stub as valid. Compositing for **solid** fills/
+strokes renders directly through a comp-op pixfmt with a straight-alpha adaptor
+(`compositing_src`/`srcover`/`clear` byte-exact, strict); **gradient** fills/
+strokes under every supported blend mode composite the recoloured layer through
+the same operator using the shape's AA coverage as cover (`compositing_gradient`).
 
-### 5.3 Required facade shape
+**Remaining C++ parity gaps** (each currently surfaces as a typed capability error
+or a documented conformance skip, never a silent wrong render):
 
-- [x] Define an explicit backend enum such as `engine.Kind` with at least
-      `Port` and `AGoGo`.
-- [x] Define an explicit config/construction API such as `engine.Config`,
-      `engine.Available()`, and `engine.NewContext(...)`.
-- [x] Add engine-level image loading/conversion helpers so callers can create
-      engine images from Go images or files without going through the root API.
-- [x] Add engine-level blank-image/create/attach APIs for caller-managed buffers
-      instead of supporting only file/image conversion inputs.
-- [ ] Expose a narrow backend-neutral surface covering the shared high-level
-      operations only: clear, fill/stroke color, line width/cap/join, path
-      construction, fill rules, clip box, transforms, basic image drawing,
-      compositing, and image export.
-- [x] Treat unsupported operations as explicit capability errors rather than
-      silent no-op or backend switching.
-- [ ] Wire capability checks into any future partial or comparison-only backend
-      implementations so unsupported features fail with typed capability errors
-      instead of ad hoc messages.
-- [x] Define and test the error contract for engine/resource mismatches, such as
-      passing an image created by one engine implementation into another.
-- [x] Add package-level docs and a small end-to-end example for first-time
-      `engine` usage.
-- [x] Add engine-level image export/interop helpers beyond PNG and `ToGoImage`,
-      such as `ToStandardImage` and JPEG export, or explicitly document why the
-      facade stops short of those conversions.
+- [ ] **Blend modes beyond the supported five** (`alpha`/`clear`/`src`/`dst`/
+      `srcover`). Other `agg.BlendMode` values fail with
+      `ErrUnsupportedCapability`; extend the comp-op path to the full AGG set.
+- [ ] **Transformed image draw.** `DrawImageRegion` under an active transform is
+      rejected; the `image_affine` scene skips on `cpp`. Route image draw through
+      AGG's affine image span path so it works under a non-identity CTM.
+- [ ] **Image draw under a non-src-over blend.** Image paths still use the CPU
+      composite helper rather than the AGG comp-op operator, so image draw under
+      `src`/`clear`/etc. is not yet a guaranteed parity case. The
+      `agg_go_cpp_image_composite_cover` primitive added for gradients can be
+      reused here. (This subsumes the former "replace remaining CPU helper paths"
+      item — it is specifically the image paths that still bypass AGG.)
+- [ ] **Dashed strokes under a non-identity transform.** The port dashes in user
+      space; the C++ backend dashes the pre-transformed (device-space) path, so
+      dash lengths diverge under a transform. The `dashed_stroke` scene therefore
+      uses no active transform. Reconcile the dash-space convention.
 
-### 5.4 Scope for v1
+### 5.6–5.8 AGoGo audit, trust boundaries, and comparison layer — DONE
 
-- [x] Support these common high-level operations through both engines:
-      rectangle/circle helpers, `MoveTo`/`LineTo`/`QuadTo`/`CubicTo`/`Close`,
-      fill/stroke rendering, affine transforms, clip box control, solid fills,
-      dashed strokes (`AddDash`/`RemoveAllDashes`/`DashStart`/`GetDashStart`,
-      driving AGG `conv_dash` on both backends), basic image copy/scale/quad
-      mapping, and compositing mode selection.
-- [x] Finish the port-backed facade coverage for operations already present on
-      the root `agg.Context`, especially clip box, image-region helpers,
-      gradients, and text-related APIs.
-- [x] Decide and implement the first getter/readback subset exposed by the
-      facade v1 contract: fill-rule state, blend mode state, gradient type
-      state, clip-box readback, text-hint state, and text metrics/bounds.
-- [x] Decide whether backend-neutral transform-matrix readback belongs in the
-      facade v1 contract or remains intentionally out of scope. Decision: IN
-      scope. `GetTransform()` returns the cumulative affine as an
-      `agg.Transformations` value (AGG order); the port delegates to
-      `agg.Context.GetTransform`, the C++ backend reads its native matrix back
-      via an `agg_go_cpp_matrix_store` bridge call. Round-trips exactly on both
-      backends (tagged tests in `engine_test.go`/`engine_aggreal_test.go`).
-- [x] Decide whether additional style/state getters from the root API, such as
-      current colors, line width, line cap, and line join, belong in the facade
-      contract or should stay write-only for v1. Decision: IN scope. Added
-      `GetFillColor`/`GetStrokeColor`/`GetLineWidth`/`GetLineCap`/`GetLineJoin`,
-      symmetric with the setters and the existing getter subset; the port
-      delegates to the root getters and the C++ backend returns stored Go-side
-      style state.
-- [ ] Delay full abstraction of low-level rasterizer/scanline/pixfmt internals.
-- [ ] Keep demo-by-demo backend switching out of the first public cut unless the
-      demo already uses only the supported shared surface.
+- **Absorption + audit (§5.6/§5.7):** `../AGoGo/go` and `../AGoGo/cpp` were
+  audited; reusable knowledge was carried over and the old standalone-bridge Go
+  wrappers/tests were dropped in favour of the direct `engine`-local native
+  design. Every stub/fallback/"not implemented" path is classified as supported,
+  explicitly unavailable, or comparison-only, with a hard guard rejecting the C++
+  engine when the build produced only a stub. `docs/BACKENDS.md` records the
+  capability matrix, native dependencies, and gaps; stale AGoGo docs were
+  reconciled to the "single repo, Go-first, optional in-repo C++ engine" story;
+  partial SVG/text/pattern behavior is kept out of the facade.
+- **Note — obviated items:** the donor-repo default-fallback enum behavior and the
+  audit's build breakages (duplicate `abs`/`compareImages`, missing
+  `CAPIImageGetBuffer`, stale exported `LineCapRound`/`LineJoinRound`) do **not**
+  apply to the in-repo design: the native layer was written fresh with
+  package-private constants and typed errors for unknown paint/compositing/pixel
+  values, and never imports that glue. No such symbols exist in this repo.
+- **Comparison & benchmark layer (§5.8):** the backend-neutral scene corpus
+  (`engine/scene`: `Scene`/`All`/`Filter`, per-engine `BuildAssets`,
+  capability-declared scenes) covers solid fill/stroke, dashed stroke, both fill
+  rules, affine/scaled image, clip box, linear+radial gradients, the compositing
+  subset (incl. `compositing_gradient`), and a font-skip-gated text scene.
+  `cmd/engine-compare` emits port/cpp/diff PNGs; `tests/conformance/
+BenchmarkCorpusRender` runs the corpus through every available engine.
 
-### 5.5 In-repo C++ engine migration constraints
+### 5.9 Verification and exit criteria — mostly done
 
-- [x] Keep the optional C++-backed engine behind an explicit build tag such as
-      `agogo` or `cppref`, not in the default build.
-- [x] Create an in-repo `agogo`-tagged native C++ backend support layer inside
-      the `engine` package with local header/source files, cgo build
-      configuration, native metadata/probe helpers, and build-mode-specific
-      tests, so the native boundary now lives in this repository rather than in
-      the external AGoGo module.
-- [x] Migrate the first actual native primitive slice directly into the
-      `engine` package: local image allocation/clear/readback, region blit,
-      local path allocation/editing, affine matrix/path transforms, and minimal
-      native path fill/stroke primitives with tagged tests.
-- [x] Convert the current native helper primitives from internal migration
-      scaffolding into actual package-private `engine` backend types
-      implementing `engine.Context` and `engine.Image` for the currently
-      supported subset.
-- [x] Keep the native helper surface package-private while the C++ backend is
-      still partial, so users only interact through the public `engine`
-      interfaces and availability/capability checks.
-- [ ] Move or reimplement the remaining C++ FFI glue, build configuration,
-      wrappers, and test helpers needed by the actual engine adapter inside
-      this repository rather than depending on `github.com/cwbudde/agogo` at
-      runtime.
-- [x] Add a first real AGG-backed in-repo build path for the current direct
-      `engine` C++ subset, so `engine.CPP` becomes available in a local
-      `agogo`+real-native build instead of only through the stub native layer.
-- [x] Port the first real direct C++ backend primitives needed for parity with
-      the current facade subset: image scaling/quad mapping, clip box support,
-      the current compositing subset, gradients, and a first text slice.
-- [ ] Extend that partial C++ parity work to the remaining shared-facade gaps.
-      Done: dashed strokes (real-native `agg::conv_dash` → `agg::conv_stroke`);
-      the supported compositing set (`src`/`srcover`/`clear`/`alpha`/`dst`) now
-      renders solid fills/strokes directly through a comp-op pixfmt with a
-      straight-alpha adaptor, so `compositing_src`/`srcover`/`clear` are
-      byte-exact (promoted from logged divergences to strict); gradient fills and
-      strokes under every supported blend mode (the recoloured shape layer is
-      composited through the same comp-op operator using the shape's AA coverage
-      as the per-pixel rasterizer cover, so non-src-over no longer wipes the
-      background — covered by the `compositing_gradient` scene). Remaining: blend
-      modes beyond the supported five, transformed image-region behavior, dashed
-      strokes under a non-identity transform, and image paths (incl. image draw
-      under a non-src-over blend) that still bypass AGG in the real-native build.
-- [x] Make the current package-private C++ backend gradient setters affect
-      actual fill/stroke rendering for the migrated subset, with tagged tests
-      covering at least one fill gradient and one stroke gradient case.
-- [x] Make the current package-private C++ backend honor clip-box state during
-      fill, stroke, and image operations by compositing through clip-aware
-      native helper paths instead of storing clip state only.
-- [x] Add scaled image-region drawing to the current package-private C++ backend
-      subset, with internal tests covering scaled copy plus clip/blend
-      interaction.
-- [x] Add package-private C++ image quad drawing for the current migrated
-      subset, with internal tests covering full-image quads, source-region
-      quads, clip interaction, and typed unsupported blend-mode rejection.
-- [x] Add a first real-text slice to the AGG-backed in-repo C++ engine path:
-      font loading, hinting configuration, text drawing, and basic text
-      measurement/bounds for the current facade contract.
-- [x] Return concrete typed unavailable errors for the currently known C++
-      migration prerequisites and build modes: missing `agogo` build tag,
-      `agogo` builds without cgo, and `agogo` builds where the in-repo C++
-      backend support is still only a stub.
-- [ ] Extend the unavailable-path checks once the real in-repo C++ backend
-      exists so
-      missing native AGG libs, pkg-config failures, or other link/runtime
-      prerequisites also surface as concrete unavailable errors.
-- [ ] Collapse the temporary `aggreal` build split back into the primary
-      `agogo` build once native dependency probing can replace compile-time
-      system-library assumptions cleanly.
-- [ ] Replace the remaining CPU helper paths in the real C++ build with direct
-      AGG-backed implementations where that materially affects parity or
-      performance, especially for image operations that are still not using AGG
-      internally.
-- [x] Never silently fall back from the C++ engine to the native port, and
-      never silently accept a stub implementation as a valid backend.
+- [x] Unit tests for `engine.Available()`, default selection, unavailable/stub-
+      rejected C++ requests, blank-image/caller-buffer/attached-context paths,
+      examples, capability discovery, and typed engine-mismatch errors.
+- [x] Cross-backend conformance (`tests/conformance/TestCrossBackendConformance`):
+      per-class tolerance envelopes (documented in `docs/BACKENDS.md`) and
+      capability-gap skips. Compositing scenes are strict/byte-exact; the
+      `knownDivergence` mechanism is retained (currently empty) for the next
+      partial feature.
+- [ ] **CI build/test gate for the real C++ backend.** A green `agogo aggreal`
+      (+`freetype`) build/test run must gate the backend being advertised as
+      supported, so a broken native build can't ship as a working `cpp` engine.
+- [ ] **Keep behavioral-difference docs current.** As the parity gaps in §5.5
+      close, update `docs/BACKENDS.md`, and record any rendering-semantics
+      deltas in `docs/AGG_DELTAS.md`. (Ongoing maintenance item, not a one-shot.)
+- [ ] **Retire `../AGoGo` from normal workflows.** Confirm nothing in routine
+      development, verification, or release validation still needs the external
+      repo (no runtime dependency remains; this is the final sign-off before the
+      rename).
 
-### 5.6 AGoGo absorption gate
+### 5.10 Final rename and consolidation — open
 
-Before exposing the in-repo C++ engine outside comparison tooling, mine
-`../AGoGo` for reusable assets and make them trustworthy here:
+- [ ] Rename this repository back to `AGoGo` once `../AGoGo` is redundant.
+- [ ] Update `go.mod` from `github.com/cwbudde/agg_go` to the final module path,
+      and fix every internal doc/example/CI/badge/link/generated reference that
+      still says `agg_go`.
+- [ ] Decide and document the importer-compatibility story: whether the package
+      name stays `agg`, whether module redirects are relied on, and whether a
+      temporary migration note or deprecated mirror is needed.
 
-- [x] Audit `../AGoGo/go` and `../AGoGo/cpp` to identify what should be ported
-      into this repository: C++ wrapper code, tests, benchmarks, fixtures,
-      docs, and feature-specific edge-case knowledge.
-- [ ] Eliminate donor-repo default-fallback enum behavior during migration:
-      unknown paint/compositing/pixel-format values must fail explicitly rather
-      than silently mapping to solid color, src-over, or RGBA32 defaults.
-- [ ] Fix the currently observed test/build breakages from the audit:
-      duplicate helper symbols such as `abs` and `compareImages`, missing test
-      bridge functions such as `CAPIImageGetBuffer`, and stale enum names such
-      as `LineCapRound` / `LineJoinRound`.
-- [x] Review and classify all current stub, fallback, and "not implemented"
-      paths found in AGoGo-derived code: each one must become either
-      fully supported, explicitly unavailable, or comparison-only.
-- [x] Add a hard guard that rejects the C++ engine when the migrated build has
-      produced a stub implementation instead of a real AGG-backed library.
+### 5.11 Non-goals (and deliberate v1 deferrals)
 
-### 5.7 AGoGo feature audit and trust boundaries
-
-- [x] Audit the AGoGo surface area against what the in-repo facade intends to
-      expose, focusing on image, path, transform, stroke, paint, compositing,
-      text, and scanline/boolean behavior.
-- [x] Audit which of the old AGoGo Go wrapper types and tests are still useful
-      after the direct `engine`-local native design, and drop anything that only
-      existed to support the old standalone bridge API shape.
-- [x] Record engine support status in a new `docs/BACKENDS.md` capability
-      matrix, including required native dependencies, migrated pieces, and known
-      unsupported operations.
-- [x] Reconcile or absorb stale AGoGo documentation that still positions it as
-      the future pure-Go destination; update this repo's docs so the final story
-      is "single repo, Go-first implementation, optional in-repo C++ reference
-      engine".
-- [x] Keep any AGoGo-derived but still-partial SVG/text/pattern behavior out of
-      the shared facade until it is verified and documented.
-
-### 5.8 Shared comparison and benchmark layer
-
-- [x] Add a backend-neutral scene corpus in `agg_go` that renders the same
-      operations through both engines (`engine/scene`: `Scene`/`All`/`Filter`,
-      per-engine `BuildAssets`, capability-declared scenes).
-- [x] Cover at least these comparison scenes: solid fill/stroke, dashed stroke,
-      self-intersecting paths with both fill rules, affine/scaled image
-      transforms, clip boxes, gradients (linear+radial), compositing, and one
-      text scene. The `dashed_stroke` scene compares within the path envelope on
-      both backends (AGG `conv_dash`); see `docs/BACKENDS.md` "Dashed strokes".
-- [x] Add a render workflow that emits `port`, `cpp`, and diff outputs for
-      manual inspection and parity triage (`cmd/engine-compare`).
-- [x] Add a benchmark workflow that runs the same scene corpus through both
-      engines and records runtime/allocation data from the same high-level
-      description (`tests/conformance/BenchmarkCorpusRender`).
-
-### 5.9 Verification and exit criteria
-
-- [x] Add first-cut unit tests for `engine.Available()`, default engine
-      selection, explicit unavailable C++ requests, and port-backed image
-      drawing through the facade.
-- [x] Add tests covering blank-image creation, caller-managed buffers, attached
-      contexts, examples, and typed engine-mismatch errors.
-- [x] Add unit tests for backend selection, capability discovery, and explicit
-      unavailable/stub-rejected error paths.
-- [x] Add cross-backend conformance tests that render the same scene through
-      both engines and compare outputs with exact-match or documented tolerance
-      envelopes (`tests/conformance/TestCrossBackendConformance`: per-class
-      tolerance envelopes and capability-gap skips, envelopes documented in
-      `docs/BACKENDS.md`). The compositing scenes are now strict and byte-exact;
-      the `knownDivergence` logging mechanism is retained (currently empty) for
-      future partial features.
-- [ ] Require the migrated in-repo C++ engine to pass its own build/test gate
-      before it is considered a supported backend.
-- [ ] Document all intentional behavioral differences and capability gaps in
-      `docs/BACKENDS.md` and, when rendering semantics differ, in
-      `docs/AGG_DELTAS.md`.
-- [ ] Remove the need for `../AGoGo` to perform normal development,
-      verification, or release validation.
-
-### 5.10 Final rename and consolidation
-
-- [ ] Once the external AGoGo repository is redundant, rename this repository
-      back to `AGoGo`.
-- [ ] Update `go.mod` from `github.com/cwbudde/agg_go` to the final module path
-      chosen for the renamed repository.
-- [ ] Update internal docs, examples, CI, badges, links, and generated
-      references that still mention `agg_go`.
-- [ ] Decide and document the compatibility story for existing importers:
-      whether package name stays `agg`, whether module redirects are relied on,
-      and whether a temporary migration note or deprecated mirror is needed.
-
-### 5.11 Non-goals
-
-- [ ] Do not turn the existing root `agg` package into an interface-only
-      abstraction layer.
-- [ ] Do not expose the full low-level AGG pipeline through the shared facade in
-      the first pass.
-- [ ] Do not keep two actively developed repositories with overlapping
-      responsibilities once the migration is complete.
-- [ ] Do not rely on AGoGo stub mode or undocumented fallbacks to claim engine
-      support.
-- [ ] Do not move the center of gravity for pure-Go rendering work back out of
-      this repository.
+- Do not turn root `agg` into an interface-only abstraction layer.
+- Do not abstract the low-level rasterizer/scanline/pixfmt internals or expose
+  the full low-level AGG pipeline through the facade in this pass (deferred §5.4
+  item — out of scope until a concrete need appears).
+- Do not add demo-by-demo backend switching to the first public cut unless a demo
+  already uses only the supported shared surface (deferred §5.4 item).
+- Do not keep two actively developed repositories once migration completes.
+- Do not rely on stub mode or undocumented fallbacks to claim engine support.
+- Do not move the center of gravity for pure-Go rendering work out of this repo.
 
 ---
 

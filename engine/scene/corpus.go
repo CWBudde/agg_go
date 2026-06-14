@@ -218,6 +218,41 @@ var corpus = []Scene{
 		},
 	},
 	{
+		// Separable (non-Porter-Duff) blend mode on the vector path. Multiply
+		// darkens where the two opaque rectangles overlap and where the second
+		// rectangle covers the white background, exercising AGG's comp_op_multiply.
+		Name:   "compositing_multiply",
+		Width:  canvasW,
+		Height: canvasH,
+		Caps:   []engine.Capability{engine.CapabilityCompositing},
+		Draw: func(ctx engine.Context, _ *Assets) error {
+			ctx.Clear(agg.White)
+			ctx.SetFillColor(agg.NewColorRGB(200, 120, 40))
+			ctx.FillRectangle(50, 50, 110, 110)
+			ctx.SetBlendMode(agg.BlendMultiply)
+			ctx.SetFillColor(agg.NewColorRGB(120, 200, 160))
+			ctx.FillRectangle(110, 110, 110, 110)
+			return nil
+		},
+	},
+	{
+		// Porter-Duff xor on the vector path: a translucent source over the opaque
+		// white canvas reduces to dst*(1-Sa) (Da is 1), exercising comp_op_xor.
+		Name:   "compositing_xor",
+		Width:  canvasW,
+		Height: canvasH,
+		Caps:   []engine.Capability{engine.CapabilityCompositing},
+		Draw: func(ctx engine.Context, _ *Assets) error {
+			ctx.Clear(agg.White)
+			ctx.SetFillColor(agg.NewColorRGB(40, 130, 60))
+			ctx.FillRectangle(40, 40, 176, 176)
+			ctx.SetBlendMode(agg.BlendXor)
+			ctx.SetFillColor(agg.NewColor(40, 60, 220, 160))
+			ctx.FillCircle(128, 128, 70)
+			return nil
+		},
+	},
+	{
 		Name:   "image_scaled",
 		Width:  canvasW,
 		Height: canvasH,

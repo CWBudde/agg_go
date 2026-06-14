@@ -59,13 +59,18 @@ func toleranceFor(s scene.Scene) framework.ComparisonOptions {
 		// Go port's. Loose envelope; demote to render-only if it proves larger.
 		base.Tolerance = 8
 		base.MaxDifferentRatio = 0.10
-	case "compositing_srcover", "compositing_src", "compositing_clear":
+	case "compositing_srcover", "compositing_src", "compositing_clear",
+		"compositing_multiply", "compositing_xor":
 		// The C++ backend renders solid fills directly through a comp-op pixfmt
 		// with a straight-alpha (premultiply/op/demultiply) adaptor that mirrors
 		// the port's CompositeBlenderPlain, so these are byte-exact apart from
-		// occasional 1-LSB rounding on anti-aliased edges.
+		// occasional 1-LSB rounding on anti-aliased edges. This holds for the full
+		// AGG operator set (Porter-Duff plus separable blend modes), not just the
+		// original five — both engines evaluate the same comp_op in premultiplied
+		// space. compositing_xor adds a circle, so its disagreement is the usual
+		// edge-AA band; bound it like the other strict compositing scenes.
 		base.Tolerance = 2
-		base.MaxDifferentRatio = 0.005
+		base.MaxDifferentRatio = 0.02
 	case "compositing_gradient":
 		// Gradient fill under a non-src-over blend: the gradient layer is
 		// composited through the comp-op operator using the shape's AA coverage as

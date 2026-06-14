@@ -80,11 +80,34 @@ struct AggGoCPPFont {
 
 namespace {
 
+// Blend-mode constants mirror agg.BlendMode (internal/agg2d/blend_modes.go).
+// kBlendAlpha is the default standard alpha blend (aliases src-over); the rest
+// are the Porter-Duff operators and separable blend modes, in enum order.
 constexpr int kBlendAlpha = 0;
 constexpr int kBlendClear = 1;
 constexpr int kBlendSrc = 2;
 constexpr int kBlendDst = 3;
 constexpr int kBlendSrcOver = 4;
+constexpr int kBlendDstOver = 5;
+constexpr int kBlendSrcIn = 6;
+constexpr int kBlendDstIn = 7;
+constexpr int kBlendSrcOut = 8;
+constexpr int kBlendDstOut = 9;
+constexpr int kBlendSrcAtop = 10;
+constexpr int kBlendDstAtop = 11;
+constexpr int kBlendXor = 12;
+constexpr int kBlendAdd = 13;
+constexpr int kBlendMultiply = 14;
+constexpr int kBlendScreen = 15;
+constexpr int kBlendOverlay = 16;
+constexpr int kBlendDarken = 17;
+constexpr int kBlendLighten = 18;
+constexpr int kBlendColorDodge = 19;
+constexpr int kBlendColorBurn = 20;
+constexpr int kBlendHardLight = 21;
+constexpr int kBlendSoftLight = 22;
+constexpr int kBlendDifference = 23;
+constexpr int kBlendExclusion = 24;
 
 std::string& last_error_storage() {
   static std::string value = "stub bridge: no AGG-backed implementation linked";
@@ -144,8 +167,10 @@ void setup_font_engine(AggGoCPPFont* font) {
 }
 
 // map_comp_op translates the engine blend_mode enum into the AGG compositing
-// operator used by the comp-op pixfmt. Only the modes reported as supported by
-// the facade are handled; kBlendAlpha aliases src-over.
+// operator used by the comp-op pixfmt. The mapping is 1:1 with AGG 2.6's
+// comp_op_e (agg_pixfmt_rgba.h), covering every Porter-Duff and separable blend
+// operator. kBlendAlpha aliases src-over; kBlendAdd maps to comp_op_plus (AGG's
+// comp_op_minus is disabled upstream, so plus is followed directly by multiply).
 agg::comp_op_e map_comp_op(int blend_mode) {
   switch (blend_mode) {
     case kBlendClear:
@@ -154,6 +179,46 @@ agg::comp_op_e map_comp_op(int blend_mode) {
       return agg::comp_op_src;
     case kBlendDst:
       return agg::comp_op_dst;
+    case kBlendDstOver:
+      return agg::comp_op_dst_over;
+    case kBlendSrcIn:
+      return agg::comp_op_src_in;
+    case kBlendDstIn:
+      return agg::comp_op_dst_in;
+    case kBlendSrcOut:
+      return agg::comp_op_src_out;
+    case kBlendDstOut:
+      return agg::comp_op_dst_out;
+    case kBlendSrcAtop:
+      return agg::comp_op_src_atop;
+    case kBlendDstAtop:
+      return agg::comp_op_dst_atop;
+    case kBlendXor:
+      return agg::comp_op_xor;
+    case kBlendAdd:
+      return agg::comp_op_plus;
+    case kBlendMultiply:
+      return agg::comp_op_multiply;
+    case kBlendScreen:
+      return agg::comp_op_screen;
+    case kBlendOverlay:
+      return agg::comp_op_overlay;
+    case kBlendDarken:
+      return agg::comp_op_darken;
+    case kBlendLighten:
+      return agg::comp_op_lighten;
+    case kBlendColorDodge:
+      return agg::comp_op_color_dodge;
+    case kBlendColorBurn:
+      return agg::comp_op_color_burn;
+    case kBlendHardLight:
+      return agg::comp_op_hard_light;
+    case kBlendSoftLight:
+      return agg::comp_op_soft_light;
+    case kBlendDifference:
+      return agg::comp_op_difference;
+    case kBlendExclusion:
+      return agg::comp_op_exclusion;
     case kBlendSrcOver:
     case kBlendAlpha:
     default:
@@ -280,6 +345,10 @@ uint8_t clamp_byte(double value) {
   return static_cast<uint8_t>(std::lround(value));
 }
 
+// supported_blend_mode gates the CPU image-composite paths (composite_pixel),
+// which only implement the five operators that the Go port's image blits also
+// cover. Image draw under any other operator stays a documented gap (PLAN.md
+// §5.5) rather than silently falling back.
 bool supported_blend_mode(int blend_mode) {
   switch (blend_mode) {
     case kBlendAlpha:
@@ -291,6 +360,19 @@ bool supported_blend_mode(int blend_mode) {
     default:
       return false;
   }
+}
+
+// supported_comp_op_mode gates the vector fill/stroke and gradient-coverage
+// paths, which render through AGG's comp-op pixfmt (g_comp_op_func[op]) and so
+// support every operator map_comp_op knows about. In the stub build those paths
+// fall back to a plain solid fill that ignores the operator, so the stub is
+// held to the same narrow set it can actually honour.
+bool supported_comp_op_mode(int blend_mode) {
+#ifdef AGG_GO_CPP_REAL
+  return blend_mode >= kBlendAlpha && blend_mode <= kBlendExclusion;
+#else
+  return supported_blend_mode(blend_mode);
+#endif
 }
 
 RectI clamp_clip_rect(const AggGoCPPImage* image, int clip_x1, int clip_y1, int clip_x2, int clip_y2) {
@@ -687,7 +769,7 @@ extern "C" int agg_go_cpp_image_composite_cover(AggGoCPPImage* dst, const AggGoC
     set_last_error("cover buffer is nil");
     return -1;
   }
-  if (!supported_blend_mode(blend_mode)) {
+  if (!supported_comp_op_mode(blend_mode)) {
     set_last_error("unsupported blend mode");
     return -1;
   }
@@ -1320,7 +1402,7 @@ extern "C" int agg_go_cpp_render_fill_path_comp(AggGoCPPImage* image, const AggG
     set_last_error("path must contain at least three points");
     return -1;
   }
-  if (!supported_blend_mode(blend_mode)) {
+  if (!supported_comp_op_mode(blend_mode)) {
     set_last_error("unsupported blend mode");
     return -1;
   }
@@ -1382,7 +1464,7 @@ extern "C" int agg_go_cpp_render_stroke_path_comp(AggGoCPPImage* image, const Ag
     set_last_error("invalid dash pattern");
     return -1;
   }
-  if (!supported_blend_mode(blend_mode)) {
+  if (!supported_comp_op_mode(blend_mode)) {
     set_last_error("unsupported blend mode");
     return -1;
   }
