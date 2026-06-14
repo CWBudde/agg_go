@@ -15,15 +15,28 @@ type compositeRGBA128Blender interface {
 	GetOp() blender.CompOp
 }
 
+// straightSpanBlenderF32 is the optional fast-path interface a float composite
+// blender may implement to blend a whole solid span in one concrete call instead
+// of one interface dispatch per pixel. Only the straight-alpha
+// CompositeBlenderRGBA128Plain implements it; the premultiplied-source Pre
+// blender falls back to per-pixel BlendPix. It is the float twin of
+// straightSpanBlender and is bit-for-bit identical to the per-pixel path.
+type straightSpanBlenderF32 interface {
+	BlendSolidSpanStraight(dst []float32, r, g, b, a float32, covers []basics.Int8u, count int)
+}
+
 // PixFmtCompositeRGBA128 is the float (128-bit, 4 x float32) twin of
 // PixFmtCompositeRGBA and the structural analogue of AGG's
 // pixfmt_custom_blend_rgba instantiated with the float rgba32 color type.
 //
-// Like the 8-bit composite pixfmt it treats the attached buffer as holding
-// premultiplied components and delegates every write to a Porter-Duff / SVG
-// composite operator selected by the embedded blender. Coverage arrives as
-// basics.Int8u (0..255) per the renderer.PixelFormat contract and is normalised
-// to [0,1] for the float blender.
+// Like the 8-bit composite pixfmt it delegates every write to a Porter-Duff / SVG
+// composite operator selected by the embedded blender. The buffer storage
+// convention follows the blender: the default constructor uses the straight-alpha
+// CompositeBlenderRGBA128Plain (premultiply on read, demultiply back to straight
+// on write — the convention masks/ToGoImage/cross-backend all read), while
+// NewPixFmtCompositeRGBA128Pre keeps genuinely premultiplied storage. Coverage
+// arrives as basics.Int8u (0..255) per the renderer.PixelFormat contract and is
+// normalised to [0,1] for the float blender.
 type PixFmtCompositeRGBA128[CS color.Space, O order.RGBAOrder] struct {
 	rbuf          *buffer.RenderingBufferF32
 	blender       compositeRGBA128Blender
@@ -70,7 +83,8 @@ func (pf *PixFmtCompositeRGBA128[CS, O]) pixelSlice(x, y int) []float32 {
 	return row[off : off+4]
 }
 
-// GetPixel reads the stored (premultiplied) pixel in channel order O.
+// GetPixel reads the stored pixel in channel order O (straight alpha for the
+// default Plain blender; premultiplied for the Pre variant).
 func (pf *PixFmtCompositeRGBA128[CS, O]) GetPixel(x, y int) color.RGBA32[CS] {
 	if !InBounds(x, y, pf.Width(), pf.Height()) {
 		return color.RGBA32[CS]{}
@@ -137,6 +151,17 @@ func (pf *PixFmtCompositeRGBA128[CS, O]) BlendHline(x, y, length int, c color.RG
 		return
 	}
 	row := pf.RowPtr(y)
+
+	// Bit-exact span fast path (uniform full cover only — a partial uniform cover
+	// is rare here and falls through to the per-pixel bridge), mirroring the 8-bit
+	// PixFmtCompositeRGBA.BlendHline.
+	if cover == basics.CoverFull {
+		if sb, ok := pf.blender.(straightSpanBlenderF32); ok {
+			sb.BlendSolidSpanStraight(row[startX*4:], c.R, c.G, c.B, c.A, nil, endX-startX)
+			return
+		}
+	}
+
 	fc := coverToF32(cover)
 	for i := startX; i < endX; i++ {
 		p := i * 4
@@ -199,6 +224,23 @@ func (pf *PixFmtCompositeRGBA128[CS, O]) BlendSolidHspan(x, y, length int, c col
 		return
 	}
 	row := pf.RowPtr(y)
+
+	// Bit-exact span fast path. covers is aligned to the first blended pixel
+	// (startX), matching the per-pixel loop's covers[i-x] indexing. Require a
+	// full-length cover slice so the kernel never reads past it (the per-pixel loop
+	// tolerates a short slice; keep that edge case on the scalar path). Mirrors the
+	// 8-bit PixFmtCompositeRGBA.BlendSolidHspan.
+	if covers == nil || len(covers) >= length {
+		if sb, ok := pf.blender.(straightSpanBlenderF32); ok {
+			var cv []basics.Int8u
+			if covers != nil {
+				cv = covers[startX-x:]
+			}
+			sb.BlendSolidSpanStraight(row[startX*4:], c.R, c.G, c.B, c.A, cv, endX-startX)
+			return
+		}
+	}
+
 	for i := startX; i < endX; i++ {
 		p := i * 4
 		if p+4 > len(row) {

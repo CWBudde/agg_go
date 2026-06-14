@@ -1,6 +1,7 @@
 package blender
 
 import (
+	"github.com/cwbudde/agg_go/internal/basics"
 	"github.com/cwbudde/agg_go/internal/color"
 	"github.com/cwbudde/agg_go/internal/order"
 )
@@ -216,6 +217,60 @@ func (bl CompositeBlenderRGBA128Plain[S, O]) BlendPix(dst []float32, r, g, b, a,
 	dst[o.IdxG()] = clampF01(res.g * inv)
 	dst[o.IdxB()] = clampF01(res.b * inv)
 	dst[o.IdxA()] = clampF01(res.a)
+}
+
+// BlendSolidSpanStraight applies the active operator across count straight-alpha
+// destination pixels in one call — the float twin of
+// CompositeBlenderPlain.BlendSolidSpanStraight. It performs the identical
+// premultiply-on-read / op / demultiply-on-write bridge as BlendPix, so its
+// output is bit-for-bit identical to calling BlendPix per pixel; the win is one
+// concrete call per span instead of one interface dispatch per pixel (the comp
+// pixfmt holds the blender behind an interface). dst is packed in channel order O
+// (4 float32 per pixel); covers may be nil (uniform full coverage) or hold one
+// basics.Int8u cover per pixel, normalised exactly as the pixfmt's coverToF32
+// (float32(cover)/255) before widening, matching the per-pixel BlendPix calls.
+func (bl CompositeBlenderRGBA128Plain[S, O]) BlendSolidSpanStraight(dst []float32, r, g, b, a float32, covers []basics.Int8u, count int) {
+	var o O
+	cb := CompositeBlender[S, O](bl)
+	ir, ig, ib, ia := o.IdxR(), o.IdxG(), o.IdxB(), o.IdxA()
+	rf := float64(r)
+	gf := float64(g)
+	bf := float64(b)
+	af := float64(a)
+	for i := 0; i < count; i++ {
+		// Coverage, matching BlendPix(coverToF32(covers[i])): float32(cover)/255
+		// computed in float32, then widened to float64.
+		cover := 1.0
+		if covers != nil {
+			cover = float64(float32(covers[i]) / 255.0)
+		}
+		sa := af * cover
+		if sa <= 0 {
+			continue
+		}
+		p := i * 4
+		// Premultiplied source.
+		s := normalizedRGBA{r: rf * sa, g: gf * sa, b: bf * sa, a: sa}
+		// Straight destination -> premultiplied.
+		da := float64(dst[p+ia])
+		d := normalizedRGBA{
+			r: float64(dst[p+ir]) * da,
+			g: float64(dst[p+ig]) * da,
+			b: float64(dst[p+ib]) * da,
+			a: da,
+		}
+		res := cb.blendOperation(d, s)
+		// Demultiply back to straight alpha for storage.
+		if res.a <= 0 {
+			dst[p+ir], dst[p+ig], dst[p+ib], dst[p+ia] = 0, 0, 0, 0
+			continue
+		}
+		inv := 1.0 / res.a
+		dst[p+ir] = clampF01(res.r * inv)
+		dst[p+ig] = clampF01(res.g * inv)
+		dst[p+ib] = clampF01(res.b * inv)
+		dst[p+ia] = clampF01(res.a)
+	}
 }
 
 // Convenience aliases (Linear space, RGBA order), mirroring the 8-bit set.

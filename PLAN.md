@@ -558,11 +558,26 @@ Steps:
       conditional ops (overlay/dodge/burn/soft-light) are intentionally left on the
       scalar path. Float32 was avoided (reciprocal breaks the bit-parity envelope —
       constraint 2).
-- [ ] **(Optional)** Apply the same span fast path to the **float** comp pixfmt
-      (`pixfmt_composite_rgba128.go`) and to gradient/image comp spans if profiling
-      warrants; and decide whether Option B (true premultiplied comp buffer) is worth
-      pursuing — only if also moving the comp path onto AGG's native premultiplied
-      model.
+- [x] **Span fast path for the float comp pixfmt** (`pixfmt_composite_rgba128.go`)
+      — landed. `CompositeBlenderRGBA128Plain.BlendSolidSpanStraight` (the float
+      twin of the 8-bit hoisted span method) replaces the per-pixel interface
+      dispatch in `BlendHline`/`BlendSolidHspan` via the `straightSpanBlenderF32`
+      interface. It reuses the shared `blendOperation`, so it is **exactly** equal
+      to per-pixel `BlendPix` (float64 throughout, `clampF01` store) — locked by
+      `TestRGBA128BlendSolidSpanStraightMatchesBlendPix` (all 24 ops, RGBA+BGRA,
+      straight+translucent dst, full/partial/zero covers). Measured **~2.0×**
+      (256-px span: SrcOver 4671→2332 ns, multiply 4687→2451 ns; 0 allocs). The Pre
+      (premultiplied) blender does not implement the interface and stays on
+      per-pixel `BlendPix`.
+      (No SIMD tier for the float path — float32 storage + float64 compute makes it
+      lower value than the rarely-hot float comp path justifies.) While here, fixed
+      stale doc comments that wrongly described the default float comp buffer as
+      premultiplied: the default Plain path stores **straight** (only the Pre
+      variant is premultiplied), matching the 8-bit §5.5 convention.
+- [ ] **(Optional)** Apply the span fast path to gradient/image comp spans if
+      profiling warrants; and decide whether Option B (true premultiplied comp
+      buffer) is worth pursuing — only if also moving the comp path onto AGG's
+      native premultiplied model.
 
 ---
 
