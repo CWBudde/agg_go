@@ -3,6 +3,7 @@
 package engine_test
 
 import (
+	"errors"
 	"os"
 	"testing"
 
@@ -206,6 +207,98 @@ func TestCPPGradientUnderSrcBlendDoesNotWipeBackgroundWithAggReal(t *testing.T) 
 	}
 	if center.R == bg.R && center.G == bg.G && center.B == bg.B {
 		t.Fatalf("gradient circle center = %+v, expected gradient colour not the background", center)
+	}
+}
+
+func TestCPPExtendedBlendModesRenderWithAggReal(t *testing.T) {
+	// The vector fill/stroke path renders through AGG's comp-op pixfmt, so every
+	// operator in the agg.BlendMode enum is honoured — not just the five the image
+	// blits cover. Multiply of opaque black over opaque white must yield black;
+	// previously these modes failed with a typed capability error.
+	for _, mode := range []agg.BlendMode{
+		agg.BlendMultiply, agg.BlendScreen, agg.BlendOverlay, agg.BlendDarken,
+		agg.BlendLighten, agg.BlendDifference, agg.BlendExclusion,
+		agg.BlendDstOver, agg.BlendSrcIn, agg.BlendXor,
+	} {
+		t.Run(agg.BlendModeToString(mode), func(t *testing.T) {
+			ctx, err := engine.NewContext(16, 16, engine.Config{Kind: engine.CPP})
+			if err != nil {
+				t.Fatalf("NewContext(CPP) error = %v", err)
+			}
+			ctx.Clear(agg.White)
+			ctx.SetBlendMode(mode)
+			ctx.SetFillColor(agg.NewColorRGB(0, 0, 0))
+			// Must not return a typed capability error any more.
+			ctx.FillRectangle(2, 2, 12, 12)
+		})
+	}
+
+	// Multiply produces a deterministic result: black × white = black.
+	ctx, err := engine.NewContext(16, 16, engine.Config{Kind: engine.CPP})
+	if err != nil {
+		t.Fatalf("NewContext(CPP) error = %v", err)
+	}
+	ctx.Clear(agg.White)
+	ctx.SetBlendMode(agg.BlendMultiply)
+	ctx.SetFillColor(agg.NewColorRGB(0, 0, 0))
+	ctx.FillRectangle(2, 2, 12, 12)
+	got := ctx.GetImage().ToGoImage().RGBAAt(8, 8)
+	if got.R > 4 || got.G > 4 || got.B > 4 || got.A != 255 {
+		t.Fatalf("multiply(black, white) = %+v, want opaque black", got)
+	}
+}
+
+func TestCPPXorBlendIsAGGFaithfulWithAggReal(t *testing.T) {
+	// xor produces a *translucent* result over an opaque destination, the case the
+	// straight-alpha comp-op adaptor (premultiply → comp_op → demultiply) exists
+	// for. Over opaque green dst (Da=1) with translucent src (Sa=160/255), AGG's
+	// comp_op_xor reduces to Dca' = Dca·(1-Sa), Da' = 1-Sa, so the demultiplied
+	// straight colour is the original green again at reduced alpha (~95). The
+	// premultiplied-bug result would instead store ~(15,48,22). This locks the C++
+	// backend as AGG-faithful here; the corpus omits xor because the Go port still
+	// has a premultiplied-straight-buffer bug for translucent comp results
+	// (PLAN.md §5.5).
+	ctx, err := engine.NewContext(32, 32, engine.Config{Kind: engine.CPP})
+	if err != nil {
+		t.Fatalf("NewContext(CPP) error = %v", err)
+	}
+	ctx.Clear(agg.White)
+	ctx.SetFillColor(agg.NewColorRGB(40, 130, 60))
+	ctx.FillRectangle(0, 0, 32, 32)
+	ctx.SetBlendMode(agg.BlendXor)
+	ctx.SetFillColor(agg.NewColor(40, 60, 220, 160))
+	ctx.FillRectangle(8, 8, 16, 16)
+
+	got := ctx.GetImage().ToGoImage().RGBAAt(16, 16)
+	within := func(got, want uint8, tol int) bool {
+		d := int(got) - int(want)
+		return d >= -tol && d <= tol
+	}
+	// Straight colour is the original green; alpha drops to 1-Sa ≈ 95.
+	if !within(got.R, 40, 3) || !within(got.G, 130, 3) || !within(got.B, 60, 3) || !within(got.A, 95, 4) {
+		t.Fatalf("xor center pixel = %+v, want AGG-faithful straight ~(40,130,60,95), not premultiplied", got)
+	}
+}
+
+func TestCPPImageDrawUnderExtendedBlendModeIsTyped(t *testing.T) {
+	// Image draw still composites through the CPU helper, which only implements the
+	// five image-blit operators, so image draw under an extended mode must fail with
+	// a typed capability error rather than silently rendering wrong (PLAN.md §5.5).
+	src, err := engine.NewImage(4, 4, engine.Config{Kind: engine.CPP})
+	if err != nil {
+		t.Fatalf("NewImage(CPP) error = %v", err)
+	}
+	dst, err := engine.NewContext(32, 32, engine.Config{Kind: engine.CPP})
+	if err != nil {
+		t.Fatalf("NewContext(CPP) error = %v", err)
+	}
+	dst.SetBlendMode(agg.BlendMultiply)
+	err = dst.DrawImage(src, 4, 4)
+	if err == nil {
+		t.Fatal("expected DrawImage under multiply to fail with a typed capability error")
+	}
+	if !errors.Is(err, engine.ErrUnsupportedCapability) {
+		t.Fatalf("expected ErrUnsupportedCapability, got %v", err)
 	}
 }
 

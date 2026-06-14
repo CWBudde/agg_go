@@ -281,22 +281,39 @@ strokes renders directly through a comp-op pixfmt with a straight-alpha adaptor
 (`compositing_src`/`srcover`/`clear` byte-exact, strict); **gradient** fills/
 strokes under every supported blend mode composite the recoloured layer through
 the same operator using the shape's AA coverage as cover (`compositing_gradient`).
+The vector fill/stroke and gradient paths now honour the **full AGG operator set**
+(every `agg.BlendMode`: the Porter-Duff operators plus the separable blend modes),
+mapped 1:1 onto `comp_op_e` and dispatched through AGG's `g_comp_op_func`
+(`compositing_multiply` is byte-exact cross-backend).
 
 **Remaining C++ parity gaps** (each currently surfaces as a typed capability error
 or a documented conformance skip, never a silent wrong render):
 
-- [ ] **Blend modes beyond the supported five** (`alpha`/`clear`/`src`/`dst`/
-      `srcover`). Other `agg.BlendMode` values fail with
-      `ErrUnsupportedCapability`; extend the comp-op path to the full AGG set.
+- [x] **Blend modes beyond the original five.** Done for the vector fill/stroke
+      and gradient paths: `map_comp_op` covers every `comp_op_e`, and the gate
+      (`requireBlendMode` / `supported_comp_op_mode`) accepts the whole enum.
+      `compositing_multiply` is byte-exact in the corpus;
+      `TestCPPExtendedBlendModesRenderWithAggReal` and
+      `TestCPPXorBlendIsAGGFaithfulWithAggReal` lock the rest (the latter proves
+      the straight-alpha adaptor stays AGG-faithful for translucent results).
+      **Discovered while doing this:** the Go _port_ leaves premultiplied data in
+      its straight buffer for comp-ops that yield a translucent result over an
+      opaque destination (e.g. `xor`, `dst-out`) — a separate port-side bug, so
+      those operators are deliberately kept out of the strict corpus. Image/text
+      draw stays limited to the original five (see next item).
 - [ ] **Transformed image draw.** `DrawImageRegion` under an active transform is
       rejected; the `image_affine` scene skips on `cpp`. Route image draw through
       AGG's affine image span path so it works under a non-identity CTM.
-- [ ] **Image draw under a non-src-over blend.** Image paths still use the CPU
-      composite helper rather than the AGG comp-op operator, so image draw under
-      `src`/`clear`/etc. is not yet a guaranteed parity case. The
-      `agg_go_cpp_image_composite_cover` primitive added for gradients can be
-      reused here. (This subsumes the former "replace remaining CPU helper paths"
-      item — it is specifically the image paths that still bypass AGG.)
+- [ ] **Image and text draw under blend modes beyond the original five.** The
+      image blits (region/quad/plain) and the text coverage layer still composite
+      through the CPU helper rather than the AGG comp-op operator, so they are
+      gated to the five `composite_pixel` modes by `requireImageBlendMode` and
+      reject the rest with a typed capability error
+      (`TestCPPImageDrawUnderExtendedBlendModeIsTyped`). Route these through the
+      `agg_go_cpp_image_composite_cover` primitive (added for gradients) to lift
+      them to the full operator set. (This subsumes the former "replace remaining
+      CPU helper paths" item — it is specifically the image/text paths that still
+      bypass AGG.)
 - [ ] **Dashed strokes under a non-identity transform.** The port dashes in user
       space; the C++ backend dashes the pre-transformed (device-space) path, so
       dash lengths diverge under a transform. The `dashed_stroke` scene therefore

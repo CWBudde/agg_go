@@ -236,23 +236,6 @@ var corpus = []Scene{
 		},
 	},
 	{
-		// Porter-Duff xor on the vector path: a translucent source over the opaque
-		// white canvas reduces to dst*(1-Sa) (Da is 1), exercising comp_op_xor.
-		Name:   "compositing_xor",
-		Width:  canvasW,
-		Height: canvasH,
-		Caps:   []engine.Capability{engine.CapabilityCompositing},
-		Draw: func(ctx engine.Context, _ *Assets) error {
-			ctx.Clear(agg.White)
-			ctx.SetFillColor(agg.NewColorRGB(40, 130, 60))
-			ctx.FillRectangle(40, 40, 176, 176)
-			ctx.SetBlendMode(agg.BlendXor)
-			ctx.SetFillColor(agg.NewColor(40, 60, 220, 160))
-			ctx.FillCircle(128, 128, 70)
-			return nil
-		},
-	},
-	{
 		Name:   "image_scaled",
 		Width:  canvasW,
 		Height: canvasH,

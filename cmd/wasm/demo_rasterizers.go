@@ -52,6 +52,7 @@ func drawRasterizersDemo() {
 	ps.ClosePolygon(basics.PathFlagsNone)
 
 	cAA := color.RGBA8[color.Linear]{R: 178, G: 127, B: 25, A: uint8(255 * rasterizersAlpha)}
+	cAA.Premultiply()
 
 	// Set gamma for AA
 	gPower := gamma.NewGammaPower(rasterizersGamma * 2.0)
@@ -82,6 +83,7 @@ func drawRasterizersDemo() {
 	psAliased.ClosePolygon(basics.PathFlagsNone)
 
 	cAliased := color.RGBA8[color.Linear]{R: 25, G: 127, B: 178, A: uint8(255 * rasterizersAlpha)}
+	cAliased.Premultiply()
 
 	ras.Reset()
 	// Set gamma threshold for aliased rendering

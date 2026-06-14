@@ -157,6 +157,11 @@ func drawGouraudDemo() {
 	cBlue := color.RGBA8[color.Linear]{R: 0, G: 0, B: 255, A: alpha}
 	cWhite := color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: alpha}
 	cBlack := color.RGBA8[color.Linear]{R: 0, G: 0, B: 0, A: alpha}
+	cRed.Premultiply()
+	cGreen.Premultiply()
+	cBlue.Premultiply()
+	cWhite.Premultiply()
+	cBlack.Premultiply()
 
 	d := gouraudDilation
 

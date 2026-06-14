@@ -44,6 +44,7 @@ type lionAlphaColorView struct {
 func (v lionAlphaColorView) GetColor(index int) color.RGBA8[color.Linear] {
 	c := v.data.Colors[index]
 	c.A = v.alpha
+	c.Premultiply()
 	return c
 }
 
