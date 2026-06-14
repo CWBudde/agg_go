@@ -223,10 +223,14 @@ func (d *demo) Render(img *agg.Image) {
 		x2 := rng.randN(d.w)
 		y1 := rng.randN(d.h)
 		x1 := rng.randN(d.w)
+		// C++ multi_clip.cpp calls m.line(...) with the `last` argument
+		// defaulting to false, so the final endpoint pixel is NOT drawn.
+		// Passing true here drew one extra endpoint pixel per line (50 total),
+		// causing the residual parity diff against the C++ reference.
 		m.Line(
 			m.Coord(float64(x1)), m.Coord(float64(y1)),
 			m.Coord(float64(x2)), m.Coord(float64(y2)),
-			true,
+			false,
 		)
 
 		markerType := markers.MarkerType(rng.randN(int(markers.EndOfMarkers)))

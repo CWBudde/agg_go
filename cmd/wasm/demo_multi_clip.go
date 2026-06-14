@@ -167,10 +167,13 @@ func drawMultiClipDemo() {
 		x2 := rng.randN(w)
 		y1 := rng.randN(h)
 		x1 := rng.randN(w)
+		// C++ multi_clip.cpp calls m.line(...) with `last` defaulting to false,
+		// so the final endpoint pixel is not drawn (passing true would add one
+		// extra endpoint pixel per line and break parity).
 		m.Line(
 			m.Coord(float64(x1)), m.Coord(float64(y1)),
 			m.Coord(float64(x2)), m.Coord(float64(y2)),
-			true,
+			false,
 		)
 
 		markerType := markers.MarkerType(rng.randN(int(markers.EndOfMarkers)))
