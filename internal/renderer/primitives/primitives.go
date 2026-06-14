@@ -51,7 +51,10 @@ func (rp *RendererPrimitives[BR, C]) Attach(ren BR) {
 
 // Coord converts a floating point coordinate to the subpixel scale used by line_bresenham_interpolator.
 func (rp *RendererPrimitives[BR, C]) Coord(c float64) int {
-	return int(c * float64(1<<8)) // subpixel_scale = 1 << 8
+	// subpixel_scale = 1 << 8; round-to-nearest matches C++ renderer_primitives::coord
+	// (iround), not truncation. Truncating biases subpixel coords toward zero and flips
+	// which pixel a fractional line lands on.
+	return basics.IRound(c * float64(1<<8))
 }
 
 // FillColor sets the fill color.
