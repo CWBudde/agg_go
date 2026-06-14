@@ -253,6 +253,14 @@ func TestCPPNativeMatrixTransformPointTranslateRotateScale(t *testing.T) {
 	}
 	defer matrix.close()
 
+	// AGG trans_affine semantics: each incremental op composes so the FIRST call
+	// is applied to the point first (innermost) and the LAST call is applied last
+	// (outermost). So (1,0) flows translate → rotate → scale:
+	//   translate(10,20): (1,0)   -> (11,20)
+	//   rotate(90°):      (11,20) -> (-20,11)
+	//   scale(2,1):       (-20,11)-> (-40,11)
+	// This must match the faithful Port (internal/transform.TransAffine); an
+	// earlier reversed-order matrix produced (10,22) instead.
 	if err := matrix.translate(10, 20); err != nil {
 		t.Fatalf("translate() error = %v", err)
 	}
@@ -267,8 +275,8 @@ func TestCPPNativeMatrixTransformPointTranslateRotateScale(t *testing.T) {
 	if err != nil {
 		t.Fatalf("transformPoint() error = %v", err)
 	}
-	if math.Abs(x-10) > 0.01 || math.Abs(y-22) > 0.01 {
-		t.Fatalf("unexpected transformed point: got=(%.3f, %.3f) want≈(10, 22)", x, y)
+	if math.Abs(x-(-40)) > 0.01 || math.Abs(y-11) > 0.01 {
+		t.Fatalf("unexpected transformed point: got=(%.3f, %.3f) want≈(-40, 11)", x, y)
 	}
 }
 

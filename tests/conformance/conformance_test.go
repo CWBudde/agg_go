@@ -54,6 +54,16 @@ func toleranceFor(s scene.Scene) framework.ComparisonOptions {
 		// avg < 1 LSB. Same float-sampler-noise class as image_filters2.
 		base.Tolerance = 4
 		base.MaxDifferentRatio = 0.08
+	case "image_affine":
+		// Image drawn under an active transform (translate/scale/rotate). The CPP
+		// backend maps the destination rectangle's corners through the matrix and
+		// blits via the quad path (nearest-neighbour), while the Port resamples
+		// with a bilinear image filter, so the two disagree along the rotated tile
+		// seams and the parallelogram rim. Bulk avg ~1.4 LSB; the differing
+		// fraction is a touch larger than image_scaled because rotation lengthens
+		// every hard edge. Same float-sampler-noise class, not a geometry mismatch.
+		base.Tolerance = 4
+		base.MaxDifferentRatio = 0.10
 	case "text_basic":
 		// Documented divergence: native AGG FreeType AA/hinting differs from the
 		// Go port's. Loose envelope; demote to render-only if it proves larger.

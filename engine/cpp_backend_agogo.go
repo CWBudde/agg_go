@@ -532,7 +532,19 @@ func (c *cppContext) DrawImageRegion(img Image, srcX, srcY, srcW, srcH int, dstX
 		return err
 	}
 	if c.transformDirty {
-		return &UnsupportedCapabilityError{Kind: CPP, Capability: CapabilityImageDraw, Operation: "DrawImageRegion with active transform"}
+		// Active transform: map the destination rectangle's corners through the
+		// current matrix and draw the image into the resulting parallelogram via
+		// the quad path. This mirrors the Port's renderImage, which composes the
+		// active transform into the source→destination parl_to_parl matrix
+		// (internal/agg2d/image.go), so a translated/rotated/scaled context draws
+		// the image transformed rather than axis-aligned. Sampling is the quad
+		// path's nearest-neighbour (CPU composite_pixel); the cross-backend
+		// divergence is the same float-sampler-noise class as image_scaled.
+		quad, err := c.transformedRectQuad(dstX, dstY, dstW, dstH)
+		if err != nil {
+			return err
+		}
+		return c.DrawImageRegionQuad(img, srcX, srcY, srcW, srcH, quad)
 	}
 	if err := c.requireImageBlendMode("DrawImageRegion"); err != nil {
 		return err
@@ -738,6 +750,30 @@ func (c *cppContext) mustTransformedPath() *cppNativePath {
 		panic(err)
 	}
 	return path
+}
+
+// transformedRectQuad maps the destination rectangle (dstX, dstY, dstW, dstH)
+// through the active transform and returns its corners as a quad in TL, TR, BR,
+// BL order — the corner order DrawImageRegionQuad maps the source region onto.
+// The points are transformed by the same native matrix the rest of the backend
+// uses, so the result is consistent with GetTransform and the vector path.
+func (c *cppContext) transformedRectQuad(dstX, dstY, dstW, dstH float64) ([8]float64, error) {
+	corners := [4][2]float64{
+		{dstX, dstY},
+		{dstX + dstW, dstY},
+		{dstX + dstW, dstY + dstH},
+		{dstX, dstY + dstH},
+	}
+	var quad [8]float64
+	for i, pt := range corners {
+		tx, ty, err := c.transform.transformPoint(pt[0], pt[1])
+		if err != nil {
+			return quad, err
+		}
+		quad[i*2] = tx
+		quad[i*2+1] = ty
+	}
+	return quad, nil
 }
 
 func (c *cppContext) currentPoint() (float64, float64) {

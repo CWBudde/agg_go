@@ -302,6 +302,79 @@ func TestCPPImageDrawUnderExtendedBlendModeIsTyped(t *testing.T) {
 	}
 }
 
+func TestCPPTransformComposeOrderMatchesPortWithAggReal(t *testing.T) {
+	// The CPP native matrix must compose Translate/Rotate/Scale in the same order
+	// as the faithful Port (agg::trans_affine): the first call is innermost
+	// (applied to a point first) and the last call is outermost. A reversed-order
+	// matrix would silently mis-place every transformed draw (see the image_affine
+	// conformance scene, which only lands centred when the orders agree).
+	apply := func(ctx engine.Context) [6]float64 {
+		ctx.Translate(-64, -64)
+		ctx.Scale(1.6, 1.6)
+		ctx.Rotate(20 * math.Pi / 180)
+		ctx.Translate(128, 128)
+		return ctx.GetTransform().AffineMatrix
+	}
+
+	portCtx, err := engine.NewContext(256, 256, engine.Config{Kind: engine.Port})
+	if err != nil {
+		t.Fatalf("NewContext(Port) error = %v", err)
+	}
+	cppCtx, err := engine.NewContext(256, 256, engine.Config{Kind: engine.CPP})
+	if err != nil {
+		t.Fatalf("NewContext(CPP) error = %v", err)
+	}
+
+	port := apply(portCtx)
+	cpp := apply(cppCtx)
+	for i := range port {
+		// The native rotate takes a float32 angle, so allow a small epsilon.
+		if math.Abs(port[i]-cpp[i]) > 1e-3 {
+			t.Fatalf("transform[%d] mismatch: port=%v cpp=%v\nport=%v\ncpp=%v", i, port[i], cpp[i], port, cpp)
+		}
+	}
+}
+
+func TestCPPTransformedImageDrawRendersWithAggReal(t *testing.T) {
+	// DrawImageRegion (and the DrawImage/DrawImageScaled that delegate to it) used
+	// to reject an active transform. It now maps the destination rectangle through
+	// the matrix and blits via the quad path, mirroring the Port's renderImage, so
+	// a translated draw lands at the translated position instead of erroring.
+	src, err := engine.NewImage(16, 16, engine.Config{Kind: engine.CPP})
+	if err != nil {
+		t.Fatalf("NewImage(CPP) error = %v", err)
+	}
+	srcCtx, err := engine.NewContextForImage(src)
+	if err != nil {
+		t.Fatalf("NewContextForImage(CPP) error = %v", err)
+	}
+	srcCtx.Clear(agg.NewColorRGB(220, 40, 40)) // opaque red tile
+
+	dst, err := engine.NewContext(64, 64, engine.Config{Kind: engine.CPP})
+	if err != nil {
+		t.Fatalf("NewContext(CPP) error = %v", err)
+	}
+	dst.Clear(agg.White)
+	dst.Translate(32, 32) // move the 16×16 tile's origin to the canvas centre
+	if err := dst.DrawImageScaled(src, 0, 0, 16, 16); err != nil {
+		t.Fatalf("DrawImageScaled under active transform error = %v", err)
+	}
+
+	img := dst.GetImage().ToGoImage()
+	isRed := func(x, y int) bool {
+		r, g, b, _ := img.At(x, y).RGBA()
+		return r>>8 > 180 && g>>8 < 80 && b>>8 < 80
+	}
+	// The tile must paint around (40,40) (inside the translated 32..48 box) and
+	// must NOT paint at the untranslated origin (4,4).
+	if !isRed(40, 40) {
+		t.Errorf("expected red tile at translated position (40,40), got %v", img.At(40, 40))
+	}
+	if isRed(4, 4) {
+		t.Errorf("tile painted at untranslated origin (4,4); transform was not applied")
+	}
+}
+
 func TestCPPDashedStrokeReducesInkWithAggReal(t *testing.T) {
 	inkOnLine := func(dashed bool) int {
 		ctx, err := engine.NewContext(120, 20, engine.Config{Kind: engine.CPP})

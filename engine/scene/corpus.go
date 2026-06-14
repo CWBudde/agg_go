@@ -260,13 +260,17 @@ var corpus = []Scene{
 				return ErrAssetUnavailable
 			}
 			ctx.Clear(agg.White)
-			// Rotate/scale about the canvas centre, then draw the source scaled.
-			// DrawImageScaled (not DrawImageRegion) is used so the CPP backend,
-			// which rejects DrawImageRegion under an active transform, can run it.
-			ctx.Translate(128, 128)
-			ctx.Rotate(20 * math.Pi / 180)
-			ctx.Scale(1.6, 1.6)
+			// Rotate/scale the 128×128 image about its own centre and place it at
+			// the canvas centre. The calls are ordered for AGG trans_affine
+			// semantics: the first call is innermost (applied to the point first),
+			// the last is outermost — so a point flows centre→scale→rotate→recentre
+			// (see agg_trans_affine.h's rotate-about-a-point idiom). DrawImageScaled
+			// draws under the active transform, exercising the CPP backend's
+			// transform→quad image path.
 			ctx.Translate(-64, -64)
+			ctx.Scale(1.6, 1.6)
+			ctx.Rotate(20 * math.Pi / 180)
+			ctx.Translate(128, 128)
 			return ctx.DrawImageScaled(assets.Source, 0, 0, 128, 128)
 		},
 	},

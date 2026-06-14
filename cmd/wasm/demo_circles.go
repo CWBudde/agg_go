@@ -134,12 +134,14 @@ func drawCirclesScatterDemo() {
 		circlesEllipse.Init(p.x, p.y, radius, radius, 8, false)
 		ras.Reset()
 		ras.AddPath(&ellipseVS{ell: circlesEllipse}, 0)
-		renscan.RenderScanlinesAASolid[color.RGBA8[color.Linear]](ras, sl, ren, color.RGBA8[color.Linear]{
+		c := color.RGBA8[color.Linear]{
 			R: circlesClampU8(p.r),
 			G: circlesClampU8(p.g),
 			B: circlesClampU8(p.b),
 			A: circlesClampU8(alpha),
-		})
+		}
+		c.Premultiply()
+		renscan.RenderScanlinesAASolid[color.RGBA8[color.Linear]](ras, sl, ren, c)
 	}
 
 	applyPremulLinearToSRGB(img)

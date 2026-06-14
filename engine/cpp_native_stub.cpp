@@ -562,6 +562,18 @@ void matrix_multiply(AggGoCPPMatrix* lhs, const AggGoCPPMatrix& rhs) {
   *lhs = out;
 }
 
+// matrix_premultiply applies `primitive` in the matrix's output space, i.e.
+// matrix := primitive ∘ matrix. This matches agg::trans_affine::translate /
+// rotate / scale, where each incremental op composes so that the most recent
+// call is applied last (outermost) to a point. matrix_multiply alone composes
+// the other way (primitive innermost), which would reverse a Translate→Rotate→
+// Scale sequence relative to the faithful AGG port — see internal/transform.
+void matrix_premultiply(AggGoCPPMatrix* matrix, const AggGoCPPMatrix& primitive) {
+  AggGoCPPMatrix combined = primitive;
+  matrix_multiply(&combined, *matrix);
+  *matrix = combined;
+}
+
 Point matrix_transform_point(const AggGoCPPMatrix& matrix, const Point& point) {
   return Point{
       static_cast<float>(matrix.a * point.x + matrix.c * point.y + matrix.e),
@@ -1038,7 +1050,7 @@ extern "C" int agg_go_cpp_matrix_translate(AggGoCPPMatrix* matrix, float tx, flo
     return -1;
   }
   AggGoCPPMatrix translation{1.0, 0.0, 0.0, 1.0, tx, ty};
-  matrix_multiply(matrix, translation);
+  matrix_premultiply(matrix, translation);
   return 0;
 }
 
@@ -1048,7 +1060,7 @@ extern "C" int agg_go_cpp_matrix_scale(AggGoCPPMatrix* matrix, float sx, float s
     return -1;
   }
   AggGoCPPMatrix scale{sx, 0.0, 0.0, sy, 0.0, 0.0};
-  matrix_multiply(matrix, scale);
+  matrix_premultiply(matrix, scale);
   return 0;
 }
 
@@ -1060,7 +1072,7 @@ extern "C" int agg_go_cpp_matrix_rotate(AggGoCPPMatrix* matrix, float angle) {
   const double sin_v = std::sin(static_cast<double>(angle));
   const double cos_v = std::cos(static_cast<double>(angle));
   AggGoCPPMatrix rotation{cos_v, sin_v, -sin_v, cos_v, 0.0, 0.0};
-  matrix_multiply(matrix, rotation);
+  matrix_premultiply(matrix, rotation);
   return 0;
 }
 
