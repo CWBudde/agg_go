@@ -908,7 +908,7 @@
         id="blendColorMethod"
         onchange="
           setBlendColorMethod(parseInt(this.value));
-          renderCurrentDemo();
+          renderSelectedDemo();
         "
       >
         <option value="0">Single Color</option>
@@ -924,7 +924,7 @@
         value="15"
         oninput="
           setBlendColorRadius(parseFloat(this.value));
-          renderCurrentDemo();
+          renderSelectedDemo();
           document.getElementById('blendColorRadiusValue').textContent =
             parseFloat(this.value).toFixed(1);
         "
