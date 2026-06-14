@@ -101,16 +101,16 @@ bounded fraction of pixels. Strict scenes must stay within these envelopes
 (`Tolerance` = max per-channel LSB delta before a pixel counts as "different";
 `MaxDifferentRatio` = bound on the fraction of such pixels):
 
-| Scene class                              | Tolerance | MaxDifferentRatio | Rationale                                                                                                                                                   |
-| ---------------------------------------- | --------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| solid / dashed / path / clip             | 2         | 0.025             | Edge-AA disagreement on ~1.5% of pixels; bulk identical within 2 LSB. `dashed_stroke_transform` (dashed stroke under scale+rotate) is byte-exact (0/65536). |
-| compositing (src/srcover/clear/multiply/xor/dst-out) | 2 | 0.005       | Byte-exact apart from 1-LSB premul/demul rounding on AA edges; includes the separable `multiply` mode and the translucent-result `xor`/`dst-out` operators. |
-| linear / radial gradient                 | 3         | 0.020             | Independent gradient interpolation rounding.                                                                                                                |
-| compositing gradient                     | 3         | 0.020             | Gradient interp plus a thin src-replaced AA rim (~0.8% of pixels).                                                                                          |
-| scaled image (`image_scaled`)            | 4         | 0.080             | Independent samplers disagree along upscaled hard edges (~6%).                                                                                              |
-| blended image (`image_blend`)            | 4         | 0.080             | Image over a colour field under `multiply`; sampler noise carried through the operator (~5.3%).                                                             |
-| transformed image (`image_affine`)       | 4         | 0.100             | As scaled image, plus rotation lengthening every hard edge; CPP nearest vs port bilinear (~8.8%).                                                           |
-| text (`text_basic`)                      | 8         | 0.100             | Native AGG vs Go-port FreeType AA/hinting; observed ~0.5% in practice.                                                                                      |
+| Scene class                                          | Tolerance | MaxDifferentRatio | Rationale                                                                                                                                                   |
+| ---------------------------------------------------- | --------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| solid / dashed / path / clip                         | 2         | 0.025             | Edge-AA disagreement on ~1.5% of pixels; bulk identical within 2 LSB. `dashed_stroke_transform` (dashed stroke under scale+rotate) is byte-exact (0/65536). |
+| compositing (src/srcover/clear/multiply/xor/dst-out) | 2         | 0.005             | Byte-exact apart from 1-LSB premul/demul rounding on AA edges; includes the separable `multiply` mode and the translucent-result `xor`/`dst-out` operators. |
+| linear / radial gradient                             | 3         | 0.020             | Independent gradient interpolation rounding.                                                                                                                |
+| compositing gradient                                 | 3         | 0.020             | Gradient interp plus a thin src-replaced AA rim (~0.8% of pixels).                                                                                          |
+| scaled image (`image_scaled`)                        | 4         | 0.080             | Independent samplers disagree along upscaled hard edges (~6%).                                                                                              |
+| blended image (`image_blend`)                        | 4         | 0.080             | Image over a colour field under `multiply`; sampler noise carried through the operator (~5.3%).                                                             |
+| transformed image (`image_affine`)                   | 4         | 0.100             | As scaled image, plus rotation lengthening every hard edge; CPP nearest vs port bilinear (~8.8%).                                                           |
+| text (`text_basic`)                                  | 8         | 0.100             | Native AGG vs Go-port FreeType AA/hinting; observed ~0.5% in practice.                                                                                      |
 
 ### Compositing parity
 

@@ -6,6 +6,7 @@ import (
 	"github.com/cwbudde/agg_go/internal/basics"
 	"github.com/cwbudde/agg_go/internal/color"
 	"github.com/cwbudde/agg_go/internal/order"
+	"github.com/cwbudde/agg_go/internal/simd"
 )
 
 // Composite blend operation types (SVG/Porter-Duff + extras)
@@ -323,6 +324,27 @@ func (bl CompositeBlenderPlain[S, O]) BlendSolidSpanStraight(dst []basics.Int8u,
 	rf := float64(r) / 255.0
 	gf := float64(g) / 255.0
 	bf := float64(b) / 255.0
+
+	// SIMD (AVX2, float64) tier: uniform-coverage SrcOver on a straight
+	// RGBA/BGRA buffer (alpha at byte 3). The kernel performs the identical
+	// premultiply -> op -> demultiply bridge in float64 (no FMA), so it is
+	// bit-for-bit identical to the scalar loop below (locked by the differential
+	// test). SrcOver is symmetric across the three colour lanes, so any colour
+	// permutation with alpha at byte 3 is handled by placing the source in byte
+	// order. It returns false (falls through to scalar) when AVX2 is unavailable.
+	if bl.op == CompOpSrcOver && covers == nil && ia == 3 && a > 0 {
+		sa := float64(a) / 255.0
+		var src, is1 [4]float64
+		src[ir] = rf * sa
+		src[ig] = gf * sa
+		src[ib] = bf * sa
+		src[ia] = sa
+		is1[0], is1[1], is1[2], is1[3] = 1.0-sa, 1.0-sa, 1.0-sa, 1.0-sa
+		if simd.CompSrcOverPlainStraightHspanRGBA(dst, &src, &is1, count) {
+			return
+		}
+	}
+
 	for i := 0; i < count; i++ {
 		// Sa with coverage, matching BlendPix's color.RGBA8MultCover(a, cover)/255.
 		var saByte basics.Int8u

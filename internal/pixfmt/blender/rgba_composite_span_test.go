@@ -7,6 +7,7 @@ import (
 	"github.com/cwbudde/agg_go/internal/basics"
 	"github.com/cwbudde/agg_go/internal/color"
 	"github.com/cwbudde/agg_go/internal/order"
+	"github.com/cwbudde/agg_go/internal/simd"
 )
 
 // allCompOps is every operator BlendSolidSpanStraight must handle.
@@ -132,6 +133,62 @@ func TestBlendSolidSpanStraightFaithfulStraightOverOpaque(t *testing.T) {
 	}
 }
 
+// TestBlendSolidSpanStraightSrcOverSIMDMatchesScalar locks the optional AVX2
+// SIMD tier (PLAN.md Phase 6) bit-for-bit against the scalar bridge through the
+// real wired entry point. It runs the SAME BlendSolidSpanStraight call twice —
+// once with SIMD forced off (the scalar premultiply->op->demultiply loop) and
+// once with AVX2 forced on (the float64 kernel) — and asserts byte-identical
+// output. The SIMD path covers only uniform coverage (covers == nil) SrcOver on
+// an alpha-at-byte-3 buffer (RGBA/BGRA), so those are exactly the cases tested,
+// across pixel counts that exercise the per-pixel kernel including short spans.
+func TestBlendSolidSpanStraightSrcOverSIMDMatchesScalar(t *testing.T) {
+	if !simd.DetectFeatures().HasAVX2 {
+		t.Skip("AVX2 unavailable; SIMD tier not exercised on this CPU")
+	}
+	t.Cleanup(simd.ResetDetection)
+
+	t.Run("RGBA", func(t *testing.T) {
+		srcOverSIMDvsScalar[order.RGBA](t, rand.New(rand.NewSource(0x5114D)))
+	})
+	t.Run("BGRA", func(t *testing.T) {
+		srcOverSIMDvsScalar[order.BGRA](t, rand.New(rand.NewSource(0xB6A5A)))
+	})
+}
+
+func srcOverSIMDvsScalar[O order.RGBAOrder](t *testing.T, rng *rand.Rand) {
+	t.Helper()
+	bl := NewCompositeBlenderPlain[color.Linear, O](CompOpSrcOver)
+	counts := []int{1, 2, 3, 4, 5, 7, 8, 15, 16, 17, 31, 33, 64, 255, 256}
+
+	for _, count := range counts {
+		for trial := 0; trial < 64; trial++ {
+			base := make([]basics.Int8u, count*4)
+			for i := range base {
+				base[i] = basics.Int8u(rng.Intn(256)) // straight, incl. translucent dst
+			}
+			r := basics.Int8u(rng.Intn(256))
+			g := basics.Int8u(rng.Intn(256))
+			b := basics.Int8u(rng.Intn(256))
+			a := basics.Int8u(1 + rng.Intn(255)) // a>0 so the SIMD path engages
+
+			simd.SetForcedFeatures(simd.Features{ForceGeneric: true})
+			scalar := append([]basics.Int8u(nil), base...)
+			bl.BlendSolidSpanStraight(scalar, r, g, b, a, nil, count)
+
+			simd.SetForcedFeatures(simd.Features{HasAVX2: true})
+			got := append([]basics.Int8u(nil), base...)
+			bl.BlendSolidSpanStraight(got, r, g, b, a, nil, count)
+
+			for i := range got {
+				if got[i] != scalar[i] {
+					t.Fatalf("count=%d trial=%d byte=%d (px=%d ch=%d): simd %d != scalar %d (src=%d,%d,%d,%d)",
+						count, trial, i, i/4, i%4, got[i], scalar[i], r, g, b, a)
+				}
+			}
+		}
+	}
+}
+
 func benchSpanStraight(b *testing.B, op CompOp) {
 	const span = 256
 	bl := NewCompositeBlenderPlain[color.Linear, order.RGBA](op)
@@ -160,6 +217,43 @@ func benchSpanStraight(b *testing.B, op CompOp) {
 			copy(work, template)
 			bl.BlendSolidSpanStraight(work, 40, 60, 220, 160, nil, span)
 		}
+	})
+}
+
+// BenchmarkSrcOverSpanSIMDvsScalar measures the optional AVX2 SIMD tier against
+// the scalar bridge for the same BlendSolidSpanStraight SrcOver call: the
+// "scalar" subtest forces SIMD off, "simd" forces AVX2 on. Both are bit-exact
+// (locked by TestBlendSolidSpanStraightSrcOverSIMDMatchesScalar); this just
+// reports the speedup.
+func BenchmarkSrcOverSpanSIMDvsScalar(b *testing.B) {
+	if !simd.DetectFeatures().HasAVX2 {
+		b.Skip("AVX2 unavailable")
+	}
+	b.Cleanup(simd.ResetDetection)
+	const span = 256
+	bl := NewCompositeBlenderPlain[color.Linear, order.RGBA](CompOpSrcOver)
+	template := make([]basics.Int8u, span*4)
+	for i := 0; i < span; i++ {
+		p := i * 4
+		template[p+0], template[p+1], template[p+2], template[p+3] = 40, 130, 60, 255
+	}
+	work := make([]basics.Int8u, span*4)
+	run := func(b *testing.B) {
+		b.SetBytes(span * 4)
+		b.ReportAllocs()
+		b.ResetTimer()
+		for range b.N {
+			copy(work, template)
+			bl.BlendSolidSpanStraight(work, 40, 60, 220, 160, nil, span)
+		}
+	}
+	b.Run("scalar", func(b *testing.B) {
+		simd.SetForcedFeatures(simd.Features{ForceGeneric: true})
+		run(b)
+	})
+	b.Run("simd", func(b *testing.B) {
+		simd.SetForcedFeatures(simd.Features{HasAVX2: true})
+		run(b)
 	})
 }
 

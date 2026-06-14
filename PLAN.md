@@ -430,9 +430,11 @@ went through the scalar `blender.CompositeBlenderPlain` bridge (premultiply-on-r
 were removed from this pixfmt because they assume a premultiplied destination and
 left premultiplied data in the straight buffer. **Status: landed.** A single
 bit-exact hoisted span method (`CompositeBlenderPlain.BlendSolidSpanStraight`)
-accelerates **all operators** (~1.8–2×, 0 allocs, conformance byte-unchanged); a
-true vector (SIMD asm) tier is an optional future step. See the Findings note for
-why faster integer/method-expression paths were rejected.
+accelerates **all operators** (~1.8–2×, 0 allocs, conformance byte-unchanged). A
+true vector tier (float64 AVX2 asm) then landed for the common uniform-coverage
+**SrcOver** case (**2.28×** over the scalar span, bit-exact) — see the final step
+below. See the Findings note for why faster integer/method-expression paths were
+rejected.
 
 **Context / payoff.** The comp pixfmt is reached only for explicit blend modes;
 the default `BlendAlpha` path uses the already-SIMD-accelerated `renBase` and is
@@ -441,6 +443,7 @@ workloads with heavy explicit-blend compositing over large areas.
 
 **Baseline (measured 2026-06-14, `BenchmarkCompSolidHspan*` in
 `internal/pixfmt/pixfmt_composite_bench_test.go`, 256-px span, amd64):**
+
 - scalar `BlendSolidHspan` ≈ **21 ns/px** (~5.5 µs/256-px span; full-cover and
   AA-cover within noise; src-over/xor/dst-out/multiply all comparable — cost is
   dominated by the per-pixel float premultiply + the demultiply **divide**).
@@ -450,6 +453,7 @@ workloads with heavy explicit-blend compositing over large areas.
   avoids the float divide entirely.
 
 **Non-negotiable fidelity constraints (any fast path must hold all three):**
+
 1. Storage stays **straight alpha** — `GetPixel`, `ToGoImage`, alpha masks and the
    conformance comparison all read straight; both engine backends agree on the
    straight-demultiplied convention (port `CompositeBlenderPlain` ↔ CPP
@@ -463,6 +467,7 @@ workloads with heavy explicit-blend compositing over large areas.
    bug was invisible over opaque dst because premult == straight there).
 
 **Candidate approaches** (decide after the isolated benchmark + a prototype):
+
 - **A — vectorise the straight↔premult bridge (recommended start).** AVX2/SSE
   kernels that load straight dst, premultiply, run the op, demultiply (reciprocal),
   store straight. Least architectural disruption; keeps the straight convention.
@@ -494,7 +499,7 @@ interface). Measured (256-px span, end-to-end through the pixfmt, amd64): **~1.8
 ~3.3 µs, down from ~5.2–6.1 µs), **0 allocs**.
 
 Two alternatives were measured and rejected: an **integer fixed-point** kernel
-(eliding the divide) is inaccurate over a *translucent* destination — max **125
+(eliding the divide) is inaccurate over a _translucent_ destination — max **125
 LSB** vs the float scalar on random low-alpha pixels (fails constraint 3) — and was
 no faster than float anyway; and a **generic method-expression** dispatch allocated
 16 B/span (Go boxes the generic dictionary), so the loop calls the concrete
@@ -528,10 +533,31 @@ Steps:
 - [x] **Conformance re-run** under `agogo aggreal`: all `compositing_*` scenes are
       **byte-identical to pre-change** (the span method is bit-exact), all within
       envelope.
-- [ ] **(Optional, stretch) True SIMD vector tier** for >2×: only viable in float
-      (float32 reciprocal risks breaking bit-parity — constraint 2; float64 `vdivpd`
-      stays exact but is a large hand-asm effort in `internal/simd`). Pursue only if
-      profiling shows the explicit-blend path is genuinely hot.
+- [x] **(Optional, stretch) True SIMD vector tier** — landed for SrcOver. A
+      float64 AVX2 kernel (`internal/simd/comp_plain_avx2_amd64.s`,
+      `CompSrcOverPlainStraightHspanRGBA`) performs the same straight→premult→op→
+      demult bridge one pixel per 256-bit register: load 4 bytes → `VCVTDQ2PD` →
+      `VDIVPD 255` (premult) → `VMULPD`/`VADDPD` SrcOver (no FMA) → `VDIVPD` by
+      `{resa,resa,resa,1}` (demult) → clamp/`*255`/`+0.5`/`VCVTTPD2DQY` (truncate).
+      It is **byte-for-byte identical** to the scalar bridge (float64 throughout,
+      same operation order, no FMA contraction, truncation matches Go's
+      `uint8(v*255+0.5)`): locked by
+      `TestBlendSolidSpanStraightSrcOverSIMDMatchesScalar` (forced-generic vs
+      forced-AVX2 through the wired entry point, RGBA+BGRA, counts 1–256) and by
+      the existing all-ops differential. Measured **2.28×** over the scalar span
+      (256-px SrcOver: 1245 ns vs 2833 ns; 4.86 vs 11.1 ns/px; 0 allocs) → ~4–4.5×
+      over the original per-pixel interface path. **Scope:** uniform coverage
+      (`covers == nil`), SrcOver, alpha-at-byte-3 orders (RGBA/BGRA) — the common
+      large-solid-span case; AA edges, other operators, non-AVX2 CPUs, and
+      ARGB/ABGR all fall through to the (already-2×) scalar bridge with no semantic
+      change. SrcOver is symmetric across the three colour lanes, so any colour
+      permutation with alpha at byte 3 is handled by placing the premult source in
+      byte order; the alpha lane is fixed at lane 3 by the blend masks. Extending
+      to other separable branch-free ops (xor/plus/multiply/screen/…) and an
+      unrolled multi-pixel variant remain open if profiling warrants. The
+      conditional ops (overlay/dodge/burn/soft-light) are intentionally left on the
+      scalar path. Float32 was avoided (reciprocal breaks the bit-parity envelope —
+      constraint 2).
 - [ ] **(Optional)** Apply the same span fast path to the **float** comp pixfmt
       (`pixfmt_composite_rgba128.go`) and to gradient/image comp spans if profiling
       warrants; and decide whether Option B (true premultiplied comp buffer) is worth
