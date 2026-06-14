@@ -391,6 +391,35 @@ func fillCPPNativePath(img *cppNativeImage, path *cppNativePath, rule cppNativeF
 	return nil
 }
 
+// fillCPPNativePathComp fills a path directly onto img with the given blend mode
+// and clip rectangle, applying the compositing operator per span with coverage.
+func fillCPPNativePathComp(img *cppNativeImage, path *cppNativePath, rule cppNativeFillRule, clip image.Rectangle, blendMode agg.BlendMode, r, g, b, a uint8) error {
+	if img == nil || img.ptr == nil {
+		return fmt.Errorf("image is nil")
+	}
+	if path == nil || path.ptr == nil {
+		return fmt.Errorf("path is nil")
+	}
+	code := int(C.agg_go_cpp_render_fill_path_comp(
+		img.ptr,
+		path.ptr,
+		C.int(rule),
+		C.int(blendMode),
+		C.int(clip.Min.X),
+		C.int(clip.Min.Y),
+		C.int(clip.Max.X),
+		C.int(clip.Max.Y),
+		C.uint8_t(r),
+		C.uint8_t(g),
+		C.uint8_t(b),
+		C.uint8_t(a),
+	))
+	if code != 0 {
+		return fmt.Errorf("agg_go_cpp_render_fill_path_comp failed: %s", cppNativeLastError())
+	}
+	return nil
+}
+
 func strokeCPPNativePath(img *cppNativeImage, path *cppNativePath, opts cppNativeStrokeOptions, r, g, b, a uint8) error {
 	if img == nil || img.ptr == nil {
 		return fmt.Errorf("image is nil")
@@ -445,6 +474,52 @@ func strokeCPPNativePathDashed(img *cppNativeImage, path *cppNativePath, opts cp
 	))
 	if code != 0 {
 		return fmt.Errorf("agg_go_cpp_render_stroke_path_dashed failed: %s", cppNativeLastError())
+	}
+	return nil
+}
+
+// strokeCPPNativePathComp strokes a path (optionally dashed) directly onto img
+// with the given blend mode and clip rectangle, applying the compositing
+// operator per span with coverage.
+func strokeCPPNativePathComp(img *cppNativeImage, path *cppNativePath, opts cppNativeStrokeOptions, clip image.Rectangle, blendMode agg.BlendMode, r, g, b, a uint8) error {
+	if img == nil || img.ptr == nil {
+		return fmt.Errorf("image is nil")
+	}
+	if path == nil || path.ptr == nil {
+		return fmt.Errorf("path is nil")
+	}
+	pairCount := len(opts.Dashes) / 2
+	// A non-nil pointer is always passed; the C side ignores it when pairCount is
+	// zero. The single-element fallback keeps &dashes[0] valid for solid strokes.
+	dashes := make([]C.float, pairCount*2)
+	for i := range dashes {
+		dashes[i] = C.float(opts.Dashes[i])
+	}
+	if len(dashes) == 0 {
+		dashes = []C.float{0}
+	}
+	code := int(C.agg_go_cpp_render_stroke_path_comp(
+		img.ptr,
+		path.ptr,
+		C.float(opts.Width),
+		C.int(opts.LineCap),
+		C.int(opts.LineJoin),
+		C.float(opts.MiterLimit),
+		&dashes[0],
+		C.int(pairCount),
+		C.float(opts.DashStart),
+		C.int(blendMode),
+		C.int(clip.Min.X),
+		C.int(clip.Min.Y),
+		C.int(clip.Max.X),
+		C.int(clip.Max.Y),
+		C.uint8_t(r),
+		C.uint8_t(g),
+		C.uint8_t(b),
+		C.uint8_t(a),
+	))
+	if code != 0 {
+		return fmt.Errorf("agg_go_cpp_render_stroke_path_comp failed: %s", cppNativeLastError())
 	}
 	return nil
 }

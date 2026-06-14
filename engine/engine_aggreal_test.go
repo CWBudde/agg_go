@@ -76,6 +76,53 @@ func TestNewContextCPPWorksWithAggReal(t *testing.T) {
 	}
 }
 
+func TestCPPCompOpSrcKeepsStraightAlphaWithAggReal(t *testing.T) {
+	// comp_op_src must replace the destination with the straight source colour,
+	// not a premultiplied one. The C++ comp-op adaptor demultiplies on write to
+	// match the port's CompositeBlenderPlain; without it the stored RGB would be
+	// premultiplied (e.g. ~25,38,138 instead of 40,60,220 for alpha 160).
+	ctx, err := engine.NewContext(64, 64, engine.Config{Kind: engine.CPP})
+	if err != nil {
+		t.Fatalf("NewContext(CPP) error = %v", err)
+	}
+	ctx.Clear(agg.White)
+	ctx.SetBlendMode(agg.BlendSrc)
+	ctx.SetFillColor(agg.NewColor(40, 60, 220, 160))
+	ctx.FillRectangle(8, 8, 48, 48)
+
+	got := ctx.GetImage().ToGoImage().RGBAAt(32, 32)
+	// Straight colour is (40,60,220,160); the premultiplied bug would store
+	// roughly (25,38,138,160). Allow 1-LSB slack from the integer
+	// premultiply/demultiply round-trip — the distinction from premultiplied is
+	// ~80 LSB, far larger than the tolerance.
+	within := func(got, want uint8) bool {
+		d := int(got) - int(want)
+		return d >= -2 && d <= 2
+	}
+	if !within(got.R, 40) || !within(got.G, 60) || !within(got.B, 220) || got.A != 160 {
+		t.Fatalf("comp_op_src center pixel = %+v, want ~straight (40,60,220,160), not premultiplied", got)
+	}
+}
+
+func TestCPPCompOpSrcDoesNotWipeBackgroundWithAggReal(t *testing.T) {
+	// comp_op_src must only affect the rendered shape, not the whole buffer. The
+	// earlier layer-then-composite path wiped the untouched background to clear.
+	ctx, err := engine.NewContext(64, 64, engine.Config{Kind: engine.CPP})
+	if err != nil {
+		t.Fatalf("NewContext(CPP) error = %v", err)
+	}
+	ctx.Clear(agg.White)
+	ctx.SetBlendMode(agg.BlendSrc)
+	ctx.SetFillColor(agg.NewColor(40, 60, 220, 160))
+	ctx.FillRectangle(20, 20, 24, 24)
+
+	// A pixel well outside the rectangle must still be the opaque white clear.
+	bg := ctx.GetImage().ToGoImage().RGBAAt(4, 4)
+	if bg.R != 255 || bg.G != 255 || bg.B != 255 || bg.A != 255 {
+		t.Fatalf("background outside src rect = %+v, want opaque white", bg)
+	}
+}
+
 func TestCPPDashedStrokeReducesInkWithAggReal(t *testing.T) {
 	inkOnLine := func(dashed bool) int {
 		ctx, err := engine.NewContext(120, 20, engine.Config{Kind: engine.CPP})

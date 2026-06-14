@@ -353,12 +353,16 @@ across two active repositories.
 - [x] Port the first real direct C++ backend primitives needed for parity with
       the current facade subset: image scaling/quad mapping, clip box support,
       the current compositing subset, gradients, and a first text slice.
-- [ ] Extend that partial C++ parity work to the remaining shared-facade gaps:
-      dashed strokes are done (real-native `agg::conv_dash` → `agg::conv_stroke`,
-      cross-backend conformance within the path envelope); broader compositing
-      coverage, transformed image-region behavior, dashed strokes under a
-      non-identity transform, and any image paths that still bypass AGG in the
-      real-native build remain.
+- [ ] Extend that partial C++ parity work to the remaining shared-facade gaps.
+      Done: dashed strokes (real-native `agg::conv_dash` → `agg::conv_stroke`);
+      the supported compositing set (`src`/`srcover`/`clear`/`alpha`/`dst`) now
+      renders solid fills/strokes directly through a comp-op pixfmt with a
+      straight-alpha adaptor, so `compositing_src`/`srcover`/`clear` are
+      byte-exact (promoted from logged divergences to strict). Remaining: blend
+      modes beyond the supported five, gradient fills under a non-src-over blend
+      (still CPU-layer composited), transformed image-region behavior, dashed
+      strokes under a non-identity transform, and image paths that still bypass
+      AGG in the real-native build.
 - [x] Make the current package-private C++ backend gradient setters affect
       actual fill/stroke rendering for the migrated subset, with tagged tests
       covering at least one fill gradient and one stroke gradient case.
@@ -459,8 +463,10 @@ Before exposing the in-repo C++ engine outside comparison tooling, mine
 - [x] Add cross-backend conformance tests that render the same scene through
       both engines and compare outputs with exact-match or documented tolerance
       envelopes (`tests/conformance/TestCrossBackendConformance`: per-class
-      tolerance envelopes, capability-gap skips, and logged known-divergence
-      baselines; envelopes documented in `docs/BACKENDS.md`).
+      tolerance envelopes and capability-gap skips, envelopes documented in
+      `docs/BACKENDS.md`). The compositing scenes are now strict and byte-exact;
+      the `knownDivergence` logging mechanism is retained (currently empty) for
+      future partial features.
 - [ ] Require the migrated in-repo C++ engine to pass its own build/test gate
       before it is considered a supported backend.
 - [ ] Document all intentional behavioral differences and capability gaps in

@@ -40,26 +40,27 @@ handled cleanly inside this repository.
 This matrix reflects the `engine.Capabilities(...)` contract and the currently
 implemented high-level facade subset.
 
-| Capability      | `port` | `cpp` stub (`agogo`) | `cpp` real (`agogo aggreal`) | Notes                                                                                                                                                         |
-| --------------- | ------ | -------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `solid_style`   | yes    | unavailable          | yes                          | Fill and stroke colors work in both available engines.                                                                                                        |
-| `path`          | yes    | unavailable          | yes                          | `MoveTo`, `LineTo`, `QuadTo`, `CubicTo`, `ClosePath`, fill, stroke, rectangle, and circle helpers are available.                                              |
-| `transforms`    | yes    | unavailable          | yes                          | Translation, rotation, scale, and reset are implemented.                                                                                                      |
-| `clip_box`      | yes    | unavailable          | yes                          | The current C++ backend clips fill, stroke, and image operations.                                                                                             |
-| `compositing`   | yes    | unavailable          | partial                      | The current C++ backend supports `BlendAlpha`, `BlendClear`, `BlendSrc`, `BlendDst`, and `BlendSrcOver`. Other blend modes fail with typed capability errors. |
-| `image_draw`    | yes    | unavailable          | partial                      | Copy, region draw, scaling, and quad mapping are implemented. `DrawImageRegion` with an active transform is still rejected as unsupported.                    |
-| `image_export`  | yes    | unavailable          | yes                          | PNG, JPEG, `ToGoImage`, and `ToStandardImage` work through the facade.                                                                                        |
-| `image_interop` | yes    | unavailable          | no                           | The C++ backend still rejects `Premultiply` and `Demultiply`.                                                                                                 |
-| `gradients`     | yes    | unavailable          | yes                          | The current C++ subset applies fill and stroke gradients during actual rendering.                                                                             |
-| `text`          | yes    | unavailable          | partial                      | Font loading, hinting, draw, measure, and bounds exist in the real-native path. Advanced text features are still out of scope.                                |
-| `dashed_stroke` | yes    | unavailable          | yes                          | `AddDash`/`RemoveAllDashes`/`DashStart`/`GetDashStart` drive AGG `conv_dash` on both backends.                                                                |
+| Capability      | `port` | `cpp` stub (`agogo`) | `cpp` real (`agogo aggreal`) | Notes                                                                                                                                                                                                                                          |
+| --------------- | ------ | -------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `solid_style`   | yes    | unavailable          | yes                          | Fill and stroke colors work in both available engines.                                                                                                                                                                                         |
+| `path`          | yes    | unavailable          | yes                          | `MoveTo`, `LineTo`, `QuadTo`, `CubicTo`, `ClosePath`, fill, stroke, rectangle, and circle helpers are available.                                                                                                                               |
+| `transforms`    | yes    | unavailable          | yes                          | Translation, rotation, scale, and reset are implemented.                                                                                                                                                                                       |
+| `clip_box`      | yes    | unavailable          | yes                          | The current C++ backend clips fill, stroke, and image operations.                                                                                                                                                                              |
+| `compositing`   | yes    | unavailable          | partial                      | `BlendAlpha`, `BlendClear`, `BlendSrc`, `BlendDst`, `BlendSrcOver` are faithful: solid fills/strokes render directly through a comp-op pixfmt (straight-alpha adaptor), byte-matching the port. Other modes fail with typed capability errors. |
+| `image_draw`    | yes    | unavailable          | partial                      | Copy, region draw, scaling, and quad mapping are implemented. `DrawImageRegion` with an active transform is still rejected as unsupported.                                                                                                     |
+| `image_export`  | yes    | unavailable          | yes                          | PNG, JPEG, `ToGoImage`, and `ToStandardImage` work through the facade.                                                                                                                                                                         |
+| `image_interop` | yes    | unavailable          | no                           | The C++ backend still rejects `Premultiply` and `Demultiply`.                                                                                                                                                                                  |
+| `gradients`     | yes    | unavailable          | yes                          | The current C++ subset applies fill and stroke gradients during actual rendering.                                                                                                                                                              |
+| `text`          | yes    | unavailable          | partial                      | Font loading, hinting, draw, measure, and bounds exist in the real-native path. Advanced text features are still out of scope.                                                                                                                 |
+| `dashed_stroke` | yes    | unavailable          | yes                          | `AddDash`/`RemoveAllDashes`/`DashStart`/`GetDashStart` drive AGG `conv_dash` on both backends.                                                                                                                                                 |
 
 ## Intentional Gaps
 
 - The `engine` facade is deliberately narrower than the root `agg` API.
 - The current C++ backend is still partial even in `agogo aggreal`.
-- Some C++ image/compositing paths still rely on local CPU helper logic instead
-  of AGG-native implementations.
+- Solid fills/strokes composite through AGG's comp-op pixfmt, but gradient fills
+  still render via a CPU layer (correct only for src-over) and image draw paths
+  still use local CPU compositing helpers rather than AGG-native blends.
 - The current real-native build uses the temporary `aggreal` tag and
   compile-time system-library assumptions.
 
@@ -99,26 +100,37 @@ bounded fraction of pixels. Strict scenes must stay within these envelopes
 (`Tolerance` = max per-channel LSB delta before a pixel counts as "different";
 `MaxDifferentRatio` = bound on the fraction of such pixels):
 
-| Scene class                   | Tolerance | MaxDifferentRatio | Rationale                                                              |
-| ----------------------------- | --------- | ----------------- | ---------------------------------------------------------------------- |
-| solid / dashed / path / clip  | 2         | 0.025             | Edge-AA disagreement on ~1.5% of pixels; bulk identical within 2 LSB.  |
-| linear / radial gradient      | 3         | 0.020             | Independent gradient interpolation rounding.                           |
-| scaled image (`image_scaled`) | 4         | 0.080             | Independent samplers disagree along upscaled hard edges (~6%).         |
-| text (`text_basic`)           | 8         | 0.100             | Native AGG vs Go-port FreeType AA/hinting; observed ~0.5% in practice. |
+| Scene class                         | Tolerance | MaxDifferentRatio | Rationale                                                              |
+| ----------------------------------- | --------- | ----------------- | ---------------------------------------------------------------------- |
+| solid / dashed / path / clip        | 2         | 0.025             | Edge-AA disagreement on ~1.5% of pixels; bulk identical within 2 LSB.  |
+| compositing (src / srcover / clear) | 2         | 0.005             | Byte-exact apart from 1-LSB premul/demul rounding on AA edges.         |
+| linear / radial gradient            | 3         | 0.020             | Independent gradient interpolation rounding.                           |
+| scaled image (`image_scaled`)       | 4         | 0.080             | Independent samplers disagree along upscaled hard edges (~6%).         |
+| text (`text_basic`)                 | 8         | 0.100             | Native AGG vs Go-port FreeType AA/hinting; observed ~0.5% in practice. |
+
+### Compositing parity
+
+The C++ backend renders solid fills and strokes **directly** through a comp-op
+pixfmt (`pixfmt_custom_blend_rgba`), so the operator is applied per span with
+anti-aliased coverage — exactly as AGG's `Agg2D` does. Because the destination
+buffer is straight-alpha, a custom adaptor premultiplies the destination on
+read, evaluates the operator in premultiplied space, then demultiplies the
+result on write, matching the port's `CompositeBlenderPlain`. The previous
+approach rendered each shape into a transparent layer and composited the whole
+layer over the destination, which applied the operator across the entire clip
+rectangle — so `src`/`clear` wiped the untouched background. The
+`compositing_src`, `compositing_srcover`, and `compositing_clear` scenes are now
+strict (byte-exact within 1-LSB rounding) rather than logged divergences.
+
+Two compositing gaps remain (PLAN.md §5.5): gradient fills still composite via
+the CPU layer (faithful only for src-over), and blend modes outside the
+supported five still fail with a typed capability error.
 
 ### Known Cross-Backend Divergences
 
-These scenes render on both engines but differ beyond an AA-noise envelope
-because the C++ backend's implementation is still partial (PLAN.md §5.5). The
-conformance suite renders, measures, and **logs** them as tracked baselines but
-does not fail; `cmd/engine-compare` emits their diffs for triage. Promote each
-to a strict scene once the corresponding C++ parity work lands.
-
-| Scene                 | Divergence                                                                                  |
-| --------------------- | ------------------------------------------------------------------------------------------- |
-| `compositing_srcover` | CPP blends translucent fills darker than the port (8-bit blend/premultiply rounding).       |
-| `compositing_src`     | CPP applies the `Src` operator over the whole buffer, wiping untouched background to clear. |
-| `compositing_clear`   | CPP `Clear` operator coverage differs from the port across the filled region.               |
+None currently. The conformance suite retains a `knownDivergence` table (empty)
+so a future partial feature can be logged as a tracked baseline rather than
+gating CI; `cmd/engine-compare` emits per-scene diffs for triage either way.
 
 ### Capability-Gap Skips
 

@@ -86,6 +86,21 @@ int agg_go_cpp_render_stroke_path_dashed(AggGoCPPImage* image, const AggGoCPPPat
                                          int line_cap, int line_join, float miter_limit,
                                          const float* dashes, int dash_pair_count, float dash_start,
                                          uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+// agg_go_cpp_render_fill_path_comp fills a path directly onto the destination
+// through a comp-op-aware pixfmt, applying blend_mode per span with coverage and
+// clipping to the half-open [clip_x1,clip_x2) x [clip_y1,clip_y2) rectangle.
+int agg_go_cpp_render_fill_path_comp(AggGoCPPImage* image, const AggGoCPPPath* path, int fill_rule,
+                                     int blend_mode, int clip_x1, int clip_y1, int clip_x2,
+                                     int clip_y2, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+// agg_go_cpp_render_stroke_path_comp strokes (optionally dashed) a path directly
+// onto the destination through a comp-op-aware pixfmt with the same blend/clip
+// semantics as agg_go_cpp_render_fill_path_comp. dash_pair_count == 0 strokes
+// solid.
+int agg_go_cpp_render_stroke_path_comp(AggGoCPPImage* image, const AggGoCPPPath* path, float width,
+                                       int line_cap, int line_join, float miter_limit,
+                                       const float* dashes, int dash_pair_count, float dash_start,
+                                       int blend_mode, int clip_x1, int clip_y1, int clip_x2,
+                                       int clip_y2, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 
 AggGoCPPFont* agg_go_cpp_font_create(const char* font_path);
 void agg_go_cpp_font_free(AggGoCPPFont* font);

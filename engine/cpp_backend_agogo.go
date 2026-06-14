@@ -374,31 +374,37 @@ func (c *cppContext) ClosePath() {
 func (c *cppContext) Fill() {
 	working := c.mustTransformedPath()
 	defer working.close()
-	layer, err := newCPPNativeImage(c.Width(), c.Height())
-	c.must(err)
-	defer layer.close()
-	c.must(layer.clear(0, 0, 0, 0))
 	rule := cppNativeFillRuleNonZero
 	if c.fillEvenOdd {
 		rule = cppNativeFillRuleEvenOdd
 	}
 	if c.fillGradient.kind == cppGradientSolid {
+		// Solid fill: render directly onto the destination through the comp-op
+		// pixfmt so the blend mode is applied per span with anti-aliased coverage
+		// (faithful to AGG's Agg2D). The earlier layer-then-composite path applied
+		// the operator across the whole clip rectangle, so src/clear wiped the
+		// untouched background.
+		c.must(c.requireBlendMode("Fill"))
 		r, g, b, a := colorToRGBA8(c.fillColor)
-		c.must(fillCPPNativePath(layer, working, rule, r, g, b, a))
-	} else {
-		c.must(fillCPPNativePath(layer, working, rule, 255, 255, 255, 255))
-		c.must(c.applyGradientToLayer(layer, c.fillGradient))
+		c.must(fillCPPNativePathComp(c.img.img, working, rule, c.clipRectangle(), c.blendMode, r, g, b, a))
+		return
 	}
+	// Gradient fill: rasterise the shape into a transparent layer, recolour by the
+	// gradient, then composite. Gradient + non-src-over compositing is not yet a
+	// faithful path (see docs/BACKENDS.md); the corpus only exercises gradients
+	// with src-over.
+	layer, err := newCPPNativeImage(c.Width(), c.Height())
+	c.must(err)
+	defer layer.close()
+	c.must(layer.clear(0, 0, 0, 0))
+	c.must(fillCPPNativePath(layer, working, rule, 255, 255, 255, 255))
+	c.must(c.applyGradientToLayer(layer, c.fillGradient))
 	c.must(c.compositeLayer(layer, "Fill"))
 }
 
 func (c *cppContext) Stroke() {
 	working := c.mustTransformedPath()
 	defer working.close()
-	layer, err := newCPPNativeImage(c.Width(), c.Height())
-	c.must(err)
-	defer layer.close()
-	c.must(layer.clear(0, 0, 0, 0))
 	opts := defaultCPPNativeStrokeOptions()
 	opts.Width = float32(c.lineWidth)
 	opts.LineCap = mapLineCap(c.lineCap)
@@ -406,12 +412,18 @@ func (c *cppContext) Stroke() {
 	opts.Dashes = c.dashes
 	opts.DashStart = float32(c.dashStart)
 	if c.strokeGradient.kind == cppGradientSolid {
+		// Solid stroke: render directly through the comp-op pixfmt (see Fill).
+		c.must(c.requireBlendMode("Stroke"))
 		r, g, b, a := colorToRGBA8(c.strokeColor)
-		c.must(strokeCPPNativePath(layer, working, opts, r, g, b, a))
-	} else {
-		c.must(strokeCPPNativePath(layer, working, opts, 255, 255, 255, 255))
-		c.must(c.applyGradientToLayer(layer, c.strokeGradient))
+		c.must(strokeCPPNativePathComp(c.img.img, working, opts, c.clipRectangle(), c.blendMode, r, g, b, a))
+		return
 	}
+	layer, err := newCPPNativeImage(c.Width(), c.Height())
+	c.must(err)
+	defer layer.close()
+	c.must(layer.clear(0, 0, 0, 0))
+	c.must(strokeCPPNativePath(layer, working, opts, 255, 255, 255, 255))
+	c.must(c.applyGradientToLayer(layer, c.strokeGradient))
 	c.must(c.compositeLayer(layer, "Stroke"))
 }
 

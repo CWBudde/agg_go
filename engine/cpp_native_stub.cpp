@@ -142,6 +142,101 @@ void setup_font_engine(AggGoCPPFont* font) {
   font->font_engine->flip_y(font->flip_y);
   font->font_engine->char_map(FT_ENCODING_UNICODE);
 }
+
+// map_comp_op translates the engine blend_mode enum into the AGG compositing
+// operator used by the comp-op pixfmt. Only the modes reported as supported by
+// the facade are handled; kBlendAlpha aliases src-over.
+agg::comp_op_e map_comp_op(int blend_mode) {
+  switch (blend_mode) {
+    case kBlendClear:
+      return agg::comp_op_clear;
+    case kBlendSrc:
+      return agg::comp_op_src;
+    case kBlendDst:
+      return agg::comp_op_dst;
+    case kBlendSrcOver:
+    case kBlendAlpha:
+    default:
+      return agg::comp_op_src_over;
+  }
+}
+
+// render_with_comp_op renders a configured rasterizer directly onto the
+// destination image through a comp-op-aware pixfmt, so the compositing operator
+// is applied per span with anti-aliased coverage (matching AGG's Agg2D). This
+// is the faithful path that replaces "render to a transparent layer, then
+// composite the whole layer": the latter applied the operator across the entire
+// clip rectangle, so operators like src/clear wiped the untouched background.
+// configure_stroke applies width, cap, join, and miter limit to any conv_stroke
+// instantiation, mirroring the inline setup used by the non-comp stroke path.
+template <class Stroke>
+void configure_stroke(Stroke& stroke, float width, int line_cap, int line_join, float miter_limit) {
+  stroke.width(width);
+  switch (line_cap) {
+    case AggGoCPPLineCapRound:
+      stroke.line_cap(agg::round_cap);
+      break;
+    case AggGoCPPLineCapSquare:
+      stroke.line_cap(agg::square_cap);
+      break;
+    default:
+      stroke.line_cap(agg::butt_cap);
+      break;
+  }
+  switch (line_join) {
+    case AggGoCPPLineJoinRound:
+      stroke.line_join(agg::round_join);
+      break;
+    case AggGoCPPLineJoinBevel:
+      stroke.line_join(agg::bevel_join);
+      break;
+    default:
+      stroke.line_join(agg::miter_join);
+      stroke.miter_limit(miter_limit);
+      break;
+  }
+}
+
+// comp_op_adaptor_rgba_plain bridges AGG's premultiplied compositing math to a
+// *straight* (non-premultiplied) destination buffer, matching the Go port's
+// CompositeBlenderPlain. AGG's stock comp_op_adaptor_rgba treats the buffer as
+// premultiplied: it stores premultiplied results, which read back too dark for
+// operators that leave a translucent result (e.g. src with a translucent
+// colour). This adaptor premultiplies the straight destination on read, runs the
+// operator in premultiplied space, then demultiplies back to straight on write.
+// For opaque destinations and opaque results the round-trip is identity, so the
+// faithful src-over/clear/solid paths are unaffected.
+template <class ColorT, class Order>
+struct comp_op_adaptor_rgba_plain {
+  typedef ColorT color_type;
+  typedef Order order_type;
+  typedef typename color_type::value_type value_type;
+
+  static AGG_INLINE void blend_pix(unsigned op, value_type* p, value_type r, value_type g,
+                                   value_type b, value_type a, agg::cover_type cover) {
+    agg::multiplier_rgba<ColorT, Order>::premultiply(p);
+    agg::comp_op_table_rgba<ColorT, Order>::g_comp_op_func[op](
+        p, color_type::multiply(r, a), color_type::multiply(g, a), color_type::multiply(b, a), a,
+        cover);
+    agg::multiplier_rgba<ColorT, Order>::demultiply(p);
+  }
+};
+
+template <class Rasterizer>
+void render_with_comp_op(AggGoCPPImage* image, Rasterizer& ras, int blend_mode, int clip_x1,
+                         int clip_y1, int clip_x2, int clip_y2, uint8_t r, uint8_t g, uint8_t b,
+                         uint8_t a) {
+  typedef comp_op_adaptor_rgba_plain<agg::rgba8, agg::order_rgba> blender_type;
+  typedef agg::pixfmt_custom_blend_rgba<blender_type, agg::rendering_buffer> pixfmt_comp_type;
+  pixfmt_comp_type pf(*image->rendering_buf);
+  pf.comp_op(map_comp_op(blend_mode));
+  agg::renderer_base<pixfmt_comp_type> rb(pf);
+  rb.clip_box(clip_x1, clip_y1, clip_x2, clip_y2);
+  agg::scanline_u8 sl;
+  agg::renderer_scanline_aa_solid<agg::renderer_base<pixfmt_comp_type> > ren(rb);
+  ren.color(agg::rgba8(r, g, b, a));
+  agg::render_scanlines(ras, sl, ren);
+}
 #endif
 
 bool next_utf8(const char*& p, uint32_t& cp) {
@@ -1128,6 +1223,115 @@ extern "C" int agg_go_cpp_render_stroke_path_dashed(AggGoCPPImage* image, const 
   // exercise the path geometry.
   return agg_go_cpp_render_stroke_path(image, path, width, line_cap, line_join, miter_limit, r, g, b,
                                        a);
+#endif
+}
+
+extern "C" int agg_go_cpp_render_fill_path_comp(AggGoCPPImage* image, const AggGoCPPPath* path,
+                                                int fill_rule, int blend_mode, int clip_x1,
+                                                int clip_y1, int clip_x2, int clip_y2, uint8_t r,
+                                                uint8_t g, uint8_t b, uint8_t a) {
+  if (!valid_image(image)) {
+    set_last_error("image is nil");
+    return -1;
+  }
+  if (!valid_path(path)) {
+    set_last_error("path must contain at least three points");
+    return -1;
+  }
+  if (!supported_blend_mode(blend_mode)) {
+    set_last_error("unsupported blend mode");
+    return -1;
+  }
+  // The clip rectangle arrives half-open ([x1,x2) x [y1,y2)); an empty box means
+  // nothing is drawn.
+  if (clip_x2 <= clip_x1 || clip_y2 <= clip_y1) {
+    return 0;
+  }
+
+#ifdef AGG_GO_CPP_REAL
+  agg::path_storage agg_path;
+  convert_path_to_agg(*path, &agg_path);
+  agg::rasterizer_scanline_aa<> ras;
+  ras.filling_rule(fill_rule == AggGoCPPFillRuleEvenOdd ? agg::fill_even_odd : agg::fill_non_zero);
+  ras.add_path(agg_path);
+  // renderer_base::clip_box takes an inclusive max corner.
+  render_with_comp_op(image, ras, blend_mode, clip_x1, clip_y1, clip_x2 - 1, clip_y2 - 1, r, g, b,
+                      a);
+  return 0;
+#else
+  // The stub backend is never advertised; fall back to a plain unclipped fill so
+  // tagged primitive tests still exercise the geometry.
+  return agg_go_cpp_render_fill_path(image, path, fill_rule, r, g, b, a);
+#endif
+}
+
+extern "C" int agg_go_cpp_render_stroke_path_comp(AggGoCPPImage* image, const AggGoCPPPath* path,
+                                                  float width, int line_cap, int line_join,
+                                                  float miter_limit, const float* dashes,
+                                                  int dash_pair_count, float dash_start,
+                                                  int blend_mode, int clip_x1, int clip_y1,
+                                                  int clip_x2, int clip_y2, uint8_t r, uint8_t g,
+                                                  uint8_t b, uint8_t a) {
+  if (!valid_image(image)) {
+    set_last_error("image is nil");
+    return -1;
+  }
+  if (!valid_stroke_path(path)) {
+    set_last_error("path must contain at least two points for stroking");
+    return -1;
+  }
+  if (!(width > 0.0f)) {
+    set_last_error("stroke width must be positive");
+    return -1;
+  }
+  if (line_cap < AggGoCPPLineCapButt || line_cap > AggGoCPPLineCapSquare) {
+    set_last_error("invalid line cap");
+    return -1;
+  }
+  if (line_join < AggGoCPPLineJoinMiter || line_join > AggGoCPPLineJoinBevel) {
+    set_last_error("invalid line join");
+    return -1;
+  }
+  if (line_join == AggGoCPPLineJoinMiter && miter_limit < 1.0f) {
+    set_last_error("miter limit must be >= 1 for miter joins");
+    return -1;
+  }
+  if (dash_pair_count < 0 || (dash_pair_count > 0 && dashes == nullptr)) {
+    set_last_error("invalid dash pattern");
+    return -1;
+  }
+  if (!supported_blend_mode(blend_mode)) {
+    set_last_error("unsupported blend mode");
+    return -1;
+  }
+  if (clip_x2 <= clip_x1 || clip_y2 <= clip_y1) {
+    return 0;
+  }
+
+#ifdef AGG_GO_CPP_REAL
+  agg::path_storage agg_path;
+  convert_path_to_agg(*path, &agg_path);
+  agg::rasterizer_scanline_aa<> ras;
+  if (dash_pair_count > 0) {
+    agg::conv_dash<agg::path_storage> dash(agg_path);
+    for (int i = 0; i < dash_pair_count; ++i) {
+      dash.add_dash(dashes[i * 2], dashes[i * 2 + 1]);
+    }
+    dash.dash_start(dash_start);
+    agg::conv_stroke<agg::conv_dash<agg::path_storage> > stroke(dash);
+    configure_stroke(stroke, width, line_cap, line_join, miter_limit);
+    ras.add_path(stroke);
+  } else {
+    agg::conv_stroke<agg::path_storage> stroke(agg_path);
+    configure_stroke(stroke, width, line_cap, line_join, miter_limit);
+    ras.add_path(stroke);
+  }
+  render_with_comp_op(image, ras, blend_mode, clip_x1, clip_y1, clip_x2 - 1, clip_y2 - 1, r, g, b,
+                      a);
+  return 0;
+#else
+  return agg_go_cpp_render_stroke_path_dashed(image, path, width, line_cap, line_join, miter_limit,
+                                              dashes, dash_pair_count, dash_start, r, g, b, a);
 #endif
 }
 

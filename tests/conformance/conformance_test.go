@@ -30,11 +30,11 @@ import (
 // baseline, but does not fail: failing here would gate CI on a documented
 // backend gap rather than a regression. Promote a scene to strict once the
 // corresponding CPP parity work lands.
-var knownDivergence = map[string]string{
-	"compositing_srcover": "CPP comp-op blends translucent fills darker than the port (8-bit blend/premul rounding)",
-	"compositing_src":     "CPP applies the Src operator over the whole buffer, wiping untouched background to transparent",
-	"compositing_clear":   "CPP Clear operator coverage differs from the port across the filled region",
-}
+//
+// Currently empty: the compositing scenes (src/srcover/clear) were promoted to
+// strict once the C++ backend switched to faithful per-span comp-op rendering
+// (PLAN.md §5.5). The mechanism is retained for the next partial feature.
+var knownDivergence = map[string]string{}
 
 // toleranceFor returns the documented comparison envelope for a strict scene.
 // Both engines are 8-bit RGBA, so solid/path/clip scenes match everywhere
@@ -59,6 +59,13 @@ func toleranceFor(s scene.Scene) framework.ComparisonOptions {
 		// Go port's. Loose envelope; demote to render-only if it proves larger.
 		base.Tolerance = 8
 		base.MaxDifferentRatio = 0.10
+	case "compositing_srcover", "compositing_src", "compositing_clear":
+		// The C++ backend renders solid fills directly through a comp-op pixfmt
+		// with a straight-alpha (premultiply/op/demultiply) adaptor that mirrors
+		// the port's CompositeBlenderPlain, so these are byte-exact apart from
+		// occasional 1-LSB rounding on anti-aliased edges.
+		base.Tolerance = 2
+		base.MaxDifferentRatio = 0.005
 	default: // solid_fill_stroke, dashed_stroke, path_nonzero, path_evenodd, clip_box
 		// Bound the fraction of disagreeing edge pixels; the bulk matches within
 		// 2 LSB. AA edges span ~1.5% of these scenes (dashed_stroke ~1.3%: both
