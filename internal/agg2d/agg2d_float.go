@@ -259,13 +259,11 @@ func NewAgg2DFloat() *Agg2DFloat {
 // colorToRGBA32 converts the 8-bit public Color to the straight float color used
 // by the float pixfmt and renderers.
 func colorToRGBA32(c Color) color.RGBA32[color.Linear] {
-	// Color bytes are sRGB-encoded (matching C++ srgba8); decode to linear.
-	decoded := color.ConvertRGBA8SRGBToLinear(color.RGBA8[color.SRGB]{R: c[0], G: c[1], B: c[2], A: c[3]})
 	return color.RGBA32[color.Linear]{
-		R: float32(decoded.R) / 255,
-		G: float32(decoded.G) / 255,
-		B: float32(decoded.B) / 255,
-		A: float32(decoded.A) / 255,
+		R: float32(c[0]) / 255,
+		G: float32(c[1]) / 255,
+		B: float32(c[2]) / 255,
+		A: float32(c[3]) / 255,
 	}
 }
 

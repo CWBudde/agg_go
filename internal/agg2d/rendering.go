@@ -197,10 +197,8 @@ func (agg2d *Agg2D) renderSolidFillWithColor(c Color) {
 	masterAlpha := uint8(agg2d.masterAlpha * 255.0)
 	adjustedAlpha := uint8((uint16(c[3]) * uint16(masterAlpha)) / 255)
 
-	// Color bytes are sRGB-encoded (matching C++ srgba8); decode to linear
-	// before compositing, mirroring the implicit srgba8→rgba8 conversion in C++.
-	decoded := color.ConvertRGBA8SRGBToLinear(color.RGBA8[color.SRGB]{R: c[0], G: c[1], B: c[2], A: c[3]})
-	internalColor := color.RGBA8[color.Linear]{R: decoded.R, G: decoded.G, B: decoded.B, A: adjustedAlpha}
+	// Convert Color to internal color format with master alpha applied
+	internalColor := color.RGBA8[color.Linear]{R: c[0], G: c[1], B: c[2], A: adjustedAlpha}
 
 	// Create solid renderer
 	renSolid := renscan.NewRendererScanlineAASolidWithColor(renderer, internalColor)

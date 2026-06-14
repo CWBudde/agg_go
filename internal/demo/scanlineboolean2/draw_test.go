@@ -47,6 +47,27 @@ func TestCombineAndRenderProducesResult(t *testing.T) {
 	}
 }
 
+// TestDefaultSceneSpanCountMatchesCpp pins the output span count of the default
+// reference scene (Great Britain + Spiral, non-zero, scanline_u, AND) to the
+// value produced by the upstream C++ scanline_boolean2 demo. A mismatch means
+// the rasterized shapes diverged from AGG (e.g. the GB-poly data regressed); the
+// count is exact because the whole scanline_u8 + AND pipeline is span-preserving.
+func TestDefaultSceneSpanCountMatchesCpp(t *testing.T) {
+	const w, h = 655.0, 520.0
+	cfg := Config{Mode: 3, FillRule: 1, ScanlineType: 1, Operation: 2, CenterX: w * 0.5, CenterY: h * 0.5}
+
+	// Mirror Draw()'s shape construction (zero frame offset at 655x520, no Y mirror).
+	a, b := buildShapes(cfg, w, h)
+
+	ctx := agg.NewContext(int(w), int(h))
+	_, _, numSpans := combineAndRender(ctx.GetImage(), cfg, a, b)
+
+	const want = 1031
+	if numSpans != want {
+		t.Fatalf("default scene num_spans = %d, want %d (C++ oracle)", numSpans, want)
+	}
+}
+
 func TestDrawUsesFlipYBufferWithoutManualSceneMirror(t *testing.T) {
 	const width, height = 655, 520
 	img := agg.NewImage(make([]uint8, width*height*4), width, height, -width*4)
