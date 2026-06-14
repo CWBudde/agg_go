@@ -14,14 +14,21 @@ import (
 
 	agg "github.com/cwbudde/agg_go"
 	"github.com/cwbudde/agg_go/examples/shared/lowlevelrunner"
-	iagg2d "github.com/cwbudde/agg_go/internal/agg2d"
+	"github.com/cwbudde/agg_go/internal/basics"
+	"github.com/cwbudde/agg_go/internal/buffer"
 	icol "github.com/cwbudde/agg_go/internal/color"
 	ctrlbase "github.com/cwbudde/agg_go/internal/ctrl"
 	"github.com/cwbudde/agg_go/internal/ctrl/checkbox"
 	"github.com/cwbudde/agg_go/internal/ctrl/rbox"
 	"github.com/cwbudde/agg_go/internal/ctrl/slider"
 	imgacc "github.com/cwbudde/agg_go/internal/image"
+	"github.com/cwbudde/agg_go/internal/pixfmt"
 	"github.com/cwbudde/agg_go/internal/rasterizer"
+	"github.com/cwbudde/agg_go/internal/renderer"
+	renscan "github.com/cwbudde/agg_go/internal/renderer/scanline"
+	"github.com/cwbudde/agg_go/internal/scanline"
+	"github.com/cwbudde/agg_go/internal/span"
+	"github.com/cwbudde/agg_go/internal/transform"
 )
 
 const (
@@ -81,53 +88,109 @@ func (d *demo) Render(img *agg.Image) {
 	drawControls(ctx, d.state)
 }
 
+// imagePixFmt is a minimal straight-alpha RGBA32 pixel format over the 4x4
+// source buffer, matching the C++ pixfmt used for img_pixf.
+type imagePixFmt struct {
+	rbuf *buffer.RenderingBufferU8
+}
+
+func (p imagePixFmt) Width() int    { return p.rbuf.Width() }
+func (p imagePixFmt) Height() int   { return p.rbuf.Height() }
+func (p imagePixFmt) PixWidth() int { return 4 }
+func (p imagePixFmt) PixPtr(x, y int) []basics.Int8u {
+	row := buffer.RowU8(p.rbuf, y)
+	return row[x*4:]
+}
+
+// imageCloneSource adapts ImageAccessorClone to the span RGBA source interface,
+// mirroring C++ image_accessor_clone<pixfmt> (clamp-to-edge sampling).
+type imageCloneSource struct {
+	accessor *imgacc.ImageAccessorClone[imagePixFmt]
+	ipf      *imagePixFmt
+}
+
+func (s *imageCloneSource) Width() int                      { return s.ipf.Width() }
+func (s *imageCloneSource) Height() int                     { return s.ipf.Height() }
+func (s *imageCloneSource) ColorType() string               { return "RGBA8" }
+func (s *imageCloneSource) OrderType() icol.ColorOrder      { return icol.OrderRGBA }
+func (s *imageCloneSource) Span(x, y, l int) []basics.Int8u { return s.accessor.Span(x, y, l) }
+func (s *imageCloneSource) NextX() []basics.Int8u           { return s.accessor.NextX() }
+func (s *imageCloneSource) NextY() []basics.Int8u           { return s.accessor.NextY() }
+func (s *imageCloneSource) RowPtr(y int) []basics.Int8u     { return s.ipf.PixPtr(0, y) }
+
+// spanImageGenerator is the common shape of the span_image_filter generators.
+type spanImageGenerator interface {
+	Generate(span []icol.RGBA8[icol.Linear], x, y int)
+}
+
+// spanGenAdapter bridges a span_image_filter generator to the renderer's
+// SpanGeneratorInterface (which carries an explicit length).
+type spanGenAdapter struct{ gen spanImageGenerator }
+
+func (a *spanGenAdapter) Prepare() {}
+
+func (a *spanGenAdapter) Generate(colors []icol.RGBA8[icol.Linear], x, y, length int) {
+	if length > len(colors) {
+		length = len(colors)
+	}
+	if length <= 0 {
+		return
+	}
+	a.gen.Generate(colors[:length], x, y)
+}
+
+// drawDestinationImage scales the 4x4 source image into the destination
+// parallelogram, faithfully mirroring C++ image_filters2.cpp: the general
+// span_image_filter_rgba LUT filter (or span_image_filter_rgba_nn for the
+// "simple (NN)" case) fed by an image_accessor_clone and rendered through
+// render_scanlines_aa onto the straight-alpha destination.
 func drawDestinationImage(dstImg, srcImg *agg.Image, st imageFilters2State) {
-	internal := iagg2d.NewAgg2D()
-	internal.AttachImage(dstImg.ToInternalImage())
-	switch st.filterIdx {
-	case 0:
-		internal.ImageFilter(iagg2d.NoFilter)
-	case 1:
-		internal.ImageFilter(iagg2d.Bilinear)
-	case 2:
-		internal.ImageFilter(iagg2d.Bicubic)
-	case 3:
-		internal.ImageFilter(iagg2d.Spline16)
-	case 4:
-		internal.ImageFilter(iagg2d.Spline36)
-	case 5:
-		internal.ImageFilter(iagg2d.Hanning)
-	case 6:
-		internal.ImageFilter(iagg2d.Hamming)
-	case 7:
-		internal.ImageFilter(iagg2d.Hermite)
-	case 8:
-		internal.ImageFilter(iagg2d.Kaiser)
-	case 9:
-		internal.ImageFilter(iagg2d.Quadric)
-	case 10:
-		internal.ImageFilter(iagg2d.Catrom)
-	case 11:
-		internal.ImageFilter(iagg2d.Gaussian)
-	case 12:
-		internal.ImageFilter(iagg2d.Bessel)
-	case 13:
-		internal.ImageFilter(iagg2d.Mitchell)
-	case 14:
-		internal.SetImageFilterRadius(iagg2d.Sinc, st.radius)
-	case 15:
-		internal.SetImageFilterRadius(iagg2d.Lanczos, st.radius)
-	case 16:
-		internal.SetImageFilterRadius(iagg2d.Blackman, st.radius)
-	default:
-		internal.ImageFilter(iagg2d.Bilinear)
+	dstRbuf := buffer.NewRenderingBufferU8WithData(dstImg.Data, dstImg.Width(), dstImg.Height(), dstImg.Stride())
+	pf := pixfmt.NewPixFmtRGBA32Linear(dstRbuf)
+	rb := renderer.NewRendererBaseWithPixfmt[*pixfmt.PixFmtRGBA32[icol.Linear], icol.RGBA8[icol.Linear]](pf)
+
+	imgRbuf := buffer.NewRenderingBufferU8WithData(srcImg.Data, srcImg.Width(), srcImg.Height(), srcImg.Stride())
+	ipf := imagePixFmt{rbuf: imgRbuf}
+	accessor := imgacc.NewImageAccessorClone(&ipf)
+	source := &imageCloneSource{accessor: accessor, ipf: &ipf}
+
+	// trans_affine(para, 0,0,4,4): parallelogram (screen) -> source rectangle.
+	para := [6]float64{200, 40, 500, 40, 500, 340}
+	imgMtx := transform.NewTransAffineParlToRect(para, 0, 0, 4, 4)
+	interp := span.NewSpanInterpolatorLinear[*transform.TransAffine](imgMtx, 8)
+
+	alloc := span.NewSpanAllocator[icol.RGBA8[icol.Linear]]()
+
+	ras := rasterizer.NewRasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip](
+		rasterizer.RasConvInt{}, rasterizer.NewRasterizerSlNoClip(),
+	)
+	sl := scanline.NewScanlineU8()
+
+	ras.Reset()
+	ras.MoveToD(200, 40)
+	ras.LineToD(500, 40)
+	ras.LineToD(500, 340)
+	ras.LineToD(200, 340)
+
+	sg := buildImageSpanGenerator(source, interp, st)
+	renscan.RenderScanlinesAA[icol.RGBA8[icol.Linear]](ras, sl, rb, alloc, &spanGenAdapter{gen: sg})
+}
+
+func buildImageSpanGenerator(
+	source *imageCloneSource,
+	interp *span.SpanInterpolatorLinear[*transform.TransAffine],
+	st imageFilters2State,
+) spanImageGenerator {
+	if st.filterIdx == 0 {
+		return span.NewSpanImageFilterRGBANNWithParams[*imageCloneSource, *span.SpanInterpolatorLinear[*transform.TransAffine]](
+			source, interp,
+		)
 	}
-	par := []float64{
-		200, 40,
-		500, 40,
-		500, 340,
-	}
-	_ = internal.TransformImageParallelogramSimple(srcImg.ToInternalImage(), par)
+	return span.NewSpanImageFilterRGBAWithParams[*imageCloneSource, *span.SpanInterpolatorLinear[*transform.TransAffine]](
+		source,
+		interp,
+		imgacc.NewImageFilterLUTWithFilter(newFilter(st.filterIdx, st.radius), st.normalize),
+	)
 }
 
 func drawGraph(ctx *agg.Context, st imageFilters2State) {
