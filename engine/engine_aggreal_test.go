@@ -168,6 +168,47 @@ func TestCPPCompOpSrcDoesNotWipeBackgroundWithAggReal(t *testing.T) {
 	}
 }
 
+func TestCPPGradientUnderSrcBlendDoesNotWipeBackgroundWithAggReal(t *testing.T) {
+	// A gradient fill under a non-src-over blend must apply the operator only
+	// within the shape's coverage. The earlier gradient path composited the whole
+	// layer rectangle, so src wiped the untouched background to transparent.
+	ctx, err := engine.NewContext(256, 256, engine.Config{Kind: engine.CPP})
+	if err != nil {
+		t.Fatalf("NewContext(CPP) error = %v", err)
+	}
+	ctx.Clear(agg.White)
+	// Opaque green background block.
+	ctx.SetFillColor(agg.NewColorRGB(40, 130, 60))
+	ctx.FillRectangle(30, 30, 150, 150)
+	// Translucent gradient circle under src.
+	ctx.SetBlendMode(agg.BlendSrc)
+	ctx.SetLinearGradient(96, 96, 220, 220,
+		agg.NewColor(220, 40, 40, 160), agg.NewColor(40, 60, 220, 160))
+	ctx.FillCircle(140, 140, 70)
+
+	img := ctx.GetImage().ToGoImage()
+
+	// Background inside the green block but outside the circle must survive.
+	bg := img.RGBAAt(40, 40)
+	within := func(got, want uint8) bool {
+		d := int(got) - int(want)
+		return d >= -2 && d <= 2
+	}
+	if !within(bg.R, 40) || !within(bg.G, 130) || !within(bg.B, 60) || bg.A != 255 {
+		t.Fatalf("background outside gradient circle = %+v, want opaque green ~(40,130,60,255)", bg)
+	}
+
+	// Circle interior must hold the straight translucent gradient (alpha ~160),
+	// proving src replaced the destination rather than wiping or src-over blending.
+	center := img.RGBAAt(140, 140)
+	if center.A < 150 || center.A > 170 {
+		t.Fatalf("gradient circle center alpha = %d, want straight translucent ~160", center.A)
+	}
+	if center.R == bg.R && center.G == bg.G && center.B == bg.B {
+		t.Fatalf("gradient circle center = %+v, expected gradient colour not the background", center)
+	}
+}
+
 func TestCPPDashedStrokeReducesInkWithAggReal(t *testing.T) {
 	inkOnLine := func(dashed bool) int {
 		ctx, err := engine.NewContext(120, 20, engine.Config{Kind: engine.CPP})

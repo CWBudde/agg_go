@@ -367,11 +367,14 @@ across two active repositories.
       the supported compositing set (`src`/`srcover`/`clear`/`alpha`/`dst`) now
       renders solid fills/strokes directly through a comp-op pixfmt with a
       straight-alpha adaptor, so `compositing_src`/`srcover`/`clear` are
-      byte-exact (promoted from logged divergences to strict). Remaining: blend
-      modes beyond the supported five, gradient fills under a non-src-over blend
-      (still CPU-layer composited), transformed image-region behavior, dashed
-      strokes under a non-identity transform, and image paths that still bypass
-      AGG in the real-native build.
+      byte-exact (promoted from logged divergences to strict); gradient fills and
+      strokes under every supported blend mode (the recoloured shape layer is
+      composited through the same comp-op operator using the shape's AA coverage
+      as the per-pixel rasterizer cover, so non-src-over no longer wipes the
+      background — covered by the `compositing_gradient` scene). Remaining: blend
+      modes beyond the supported five, transformed image-region behavior, dashed
+      strokes under a non-identity transform, and image paths (incl. image draw
+      under a non-src-over blend) that still bypass AGG in the real-native build.
 - [x] Make the current package-private C++ backend gradient setters affect
       actual fill/stroke rendering for the migrated subset, with tagged tests
       covering at least one fill gradient and one stroke gradient case.

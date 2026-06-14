@@ -40,27 +40,28 @@ handled cleanly inside this repository.
 This matrix reflects the `engine.Capabilities(...)` contract and the currently
 implemented high-level facade subset.
 
-| Capability      | `port` | `cpp` stub (`agogo`) | `cpp` real (`agogo aggreal`) | Notes                                                                                                                                                                                                                                          |
-| --------------- | ------ | -------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `solid_style`   | yes    | unavailable          | yes                          | Fill and stroke colors work in both available engines, with symmetric `GetFillColor`/`GetStrokeColor`/`GetLineWidth`/`GetLineCap`/`GetLineJoin` readback.                                                                                      |
-| `path`          | yes    | unavailable          | yes                          | `MoveTo`, `LineTo`, `QuadTo`, `CubicTo`, `ClosePath`, fill, stroke, rectangle, and circle helpers are available.                                                                                                                               |
-| `transforms`    | yes    | unavailable          | yes                          | Translation, rotation, scale, and reset are implemented, plus `GetTransform` readback of the cumulative affine matrix (`agg.Transformations`, AGG order).                                                                                      |
-| `clip_box`      | yes    | unavailable          | yes                          | The current C++ backend clips fill, stroke, and image operations.                                                                                                                                                                              |
-| `compositing`   | yes    | unavailable          | partial                      | `BlendAlpha`, `BlendClear`, `BlendSrc`, `BlendDst`, `BlendSrcOver` are faithful: solid fills/strokes render directly through a comp-op pixfmt (straight-alpha adaptor), byte-matching the port. Other modes fail with typed capability errors. |
-| `image_draw`    | yes    | unavailable          | partial                      | Copy, region draw, scaling, and quad mapping are implemented. `DrawImageRegion` with an active transform is still rejected as unsupported.                                                                                                     |
-| `image_export`  | yes    | unavailable          | yes                          | PNG, JPEG, `ToGoImage`, and `ToStandardImage` work through the facade.                                                                                                                                                                         |
-| `image_interop` | yes    | unavailable          | no                           | The C++ backend still rejects `Premultiply` and `Demultiply`.                                                                                                                                                                                  |
-| `gradients`     | yes    | unavailable          | yes                          | The current C++ subset applies fill and stroke gradients during actual rendering.                                                                                                                                                              |
-| `text`          | yes    | unavailable          | partial                      | Font loading, hinting, draw, measure, and bounds exist in the real-native path. Advanced text features are still out of scope.                                                                                                                 |
-| `dashed_stroke` | yes    | unavailable          | yes                          | `AddDash`/`RemoveAllDashes`/`DashStart`/`GetDashStart` drive AGG `conv_dash` on both backends.                                                                                                                                                 |
+| Capability      | `port` | `cpp` stub (`agogo`) | `cpp` real (`agogo aggreal`) | Notes                                                                                                                                                                                                                                                                                                                                                     |
+| --------------- | ------ | -------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `solid_style`   | yes    | unavailable          | yes                          | Fill and stroke colors work in both available engines, with symmetric `GetFillColor`/`GetStrokeColor`/`GetLineWidth`/`GetLineCap`/`GetLineJoin` readback.                                                                                                                                                                                                 |
+| `path`          | yes    | unavailable          | yes                          | `MoveTo`, `LineTo`, `QuadTo`, `CubicTo`, `ClosePath`, fill, stroke, rectangle, and circle helpers are available.                                                                                                                                                                                                                                          |
+| `transforms`    | yes    | unavailable          | yes                          | Translation, rotation, scale, and reset are implemented, plus `GetTransform` readback of the cumulative affine matrix (`agg.Transformations`, AGG order).                                                                                                                                                                                                 |
+| `clip_box`      | yes    | unavailable          | yes                          | The current C++ backend clips fill, stroke, and image operations.                                                                                                                                                                                                                                                                                         |
+| `compositing`   | yes    | unavailable          | partial                      | `BlendAlpha`, `BlendClear`, `BlendSrc`, `BlendDst`, `BlendSrcOver` are faithful for solid and gradient fills/strokes: solids render directly through a comp-op pixfmt (straight-alpha adaptor); gradients composite the recoloured layer through the same operator using the shape's AA coverage as cover. Other modes fail with typed capability errors. |
+| `image_draw`    | yes    | unavailable          | partial                      | Copy, region draw, scaling, and quad mapping are implemented. `DrawImageRegion` with an active transform is still rejected as unsupported.                                                                                                                                                                                                                |
+| `image_export`  | yes    | unavailable          | yes                          | PNG, JPEG, `ToGoImage`, and `ToStandardImage` work through the facade.                                                                                                                                                                                                                                                                                    |
+| `image_interop` | yes    | unavailable          | no                           | The C++ backend still rejects `Premultiply` and `Demultiply`.                                                                                                                                                                                                                                                                                             |
+| `gradients`     | yes    | unavailable          | yes                          | The current C++ subset applies fill and stroke gradients during actual rendering.                                                                                                                                                                                                                                                                         |
+| `text`          | yes    | unavailable          | partial                      | Font loading, hinting, draw, measure, and bounds exist in the real-native path. Advanced text features are still out of scope.                                                                                                                                                                                                                            |
+| `dashed_stroke` | yes    | unavailable          | yes                          | `AddDash`/`RemoveAllDashes`/`DashStart`/`GetDashStart` drive AGG `conv_dash` on both backends.                                                                                                                                                                                                                                                            |
 
 ## Intentional Gaps
 
 - The `engine` facade is deliberately narrower than the root `agg` API.
 - The current C++ backend is still partial even in `agogo aggreal`.
-- Solid fills/strokes composite through AGG's comp-op pixfmt, but gradient fills
-  still render via a CPU layer (correct only for src-over) and image draw paths
-  still use local CPU compositing helpers rather than AGG-native blends.
+- Solid and gradient fills/strokes composite faithfully through AGG's comp-op
+  operator, but image draw paths still use local CPU compositing helpers rather
+  than AGG-native blends, so image draw under a non-src-over blend is not yet a
+  guaranteed parity case.
 - The current real-native build uses the temporary `aggreal` tag and
   compile-time system-library assumptions.
 
@@ -105,6 +106,7 @@ bounded fraction of pixels. Strict scenes must stay within these envelopes
 | solid / dashed / path / clip        | 2         | 0.025             | Edge-AA disagreement on ~1.5% of pixels; bulk identical within 2 LSB.  |
 | compositing (src / srcover / clear) | 2         | 0.005             | Byte-exact apart from 1-LSB premul/demul rounding on AA edges.         |
 | linear / radial gradient            | 3         | 0.020             | Independent gradient interpolation rounding.                           |
+| compositing gradient                | 3         | 0.020             | Gradient interp plus a thin src-replaced AA rim (~0.8% of pixels).     |
 | scaled image (`image_scaled`)       | 4         | 0.080             | Independent samplers disagree along upscaled hard edges (~6%).         |
 | text (`text_basic`)                 | 8         | 0.100             | Native AGG vs Go-port FreeType AA/hinting; observed ~0.5% in practice. |
 
@@ -122,9 +124,23 @@ rectangle — so `src`/`clear` wiped the untouched background. The
 `compositing_src`, `compositing_srcover`, and `compositing_clear` scenes are now
 strict (byte-exact within 1-LSB rounding) rather than logged divergences.
 
-Two compositing gaps remain (PLAN.md §5.5): gradient fills still composite via
-the CPU layer (faithful only for src-over), and blend modes outside the
-supported five still fail with a typed capability error.
+Gradient fills and strokes are faithful under every supported blend mode too.
+The shape is rasterised into a transparent layer to capture its anti-aliased
+coverage; the layer is then recoloured with the straight gradient colour (RGB
+plus the gradient's own alpha, not premultiplied by coverage) and composited
+through the same comp-op operator using the captured coverage as the per-pixel
+rasterizer cover (`agg_go_cpp_image_composite_cover` →
+`comp_op_adaptor_rgba_plain::blend_pix`). Pixels outside the shape keep cover 0,
+so `src`/`clear` no longer wipe the background. This mirrors AGG's
+`renderer_scanline_aa` + `span_gradient` + comp-op pixfmt path; the gradient
+colour itself is still the backend's Go-side computation, which already matches
+the port within the gradient tolerance. The `compositing_gradient` scene
+(gradient circle under `src` over an opaque block) covers this.
+
+One compositing gap remains (PLAN.md §5.5): blend modes outside the supported
+five still fail with a typed capability error, and image draw paths still use the
+CPU composite helper (so image draw under a non-src-over blend is not yet a
+guaranteed parity case).
 
 ### Known Cross-Backend Divergences
 
