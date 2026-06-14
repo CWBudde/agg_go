@@ -173,7 +173,7 @@ func drawRasterTextDemo() {
 		}
 		g.SetFont(fe.data)
 		text := fmt.Sprintf("A quick brown fox jumps over the lazy dog 0123456789: %s", fe.name)
-		textRen.RenderText(5, y, text, false)
+		textRen.RenderText(5, y, text, true)
 		y += g.Height() + 1
 	}
 
@@ -181,5 +181,5 @@ func drawRasterTextDemo() {
 	gradRen := newRasterTextGradientRenderer(img)
 	g.SetFont(fonts.GetVerdana18Bold())
 	gradTextRen := rtext.NewRendererRasterHText[*rasterTextGradientRenderer, *glyph.GlyphRasterBin](gradRen, g)
-	gradTextRen.RenderText(5, float64(height)-15, "RADIAL REPEATING GRADIENT: A quick brown fox jumps over the lazy dog", false)
+	gradTextRen.RenderText(5, float64(height)-15, "RADIAL REPEATING GRADIENT: A quick brown fox jumps over the lazy dog", true)
 }

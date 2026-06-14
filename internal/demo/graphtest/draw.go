@@ -23,7 +23,19 @@ type Config struct {
 	NumNodes     int
 	NumEdges     int
 	ShowControls bool
+
+	// FillCanvas remaps the normalized node coordinates so the graph fills the
+	// whole image with a small uniform margin. The C++ AGG demo intentionally
+	// confines nodes to x:[0.2,0.95] y:[0.1,0.95] to leave room for the on-screen
+	// controls; the web demo doesn't draw those controls, so without this the
+	// graph appears off-centre with a large empty left/bottom strip. Leave false
+	// to preserve exact C++ parity (used by the standalone example).
+	FillCanvas bool
 }
+
+// fillCanvasMargin is the fraction of the image left empty on each side when
+// FillCanvas is enabled.
+const fillCanvasMargin = 0.05
 
 type node struct {
 	x float64
@@ -35,10 +47,16 @@ type edge struct {
 	n2 int
 }
 
+type preparedKey struct {
+	width  int
+	height int
+	fill   bool
+}
+
 type Graph struct {
 	nodes    []node
 	edges    []edge
-	prepared map[[2]int]*preparedGraph
+	prepared map[preparedKey]*preparedGraph
 }
 
 type preparedEdge struct {
@@ -69,7 +87,7 @@ func NewGraph(numNodes, numEdges int) *Graph {
 	g := &Graph{
 		nodes:    make([]node, numNodes),
 		edges:    make([]edge, 0, numEdges),
-		prepared: make(map[[2]int]*preparedGraph),
+		prepared: make(map[preparedKey]*preparedGraph),
 	}
 	for i := range g.nodes {
 		g.nodes[i] = node{
@@ -193,8 +211,8 @@ func graphEdgeColor(r, g, b, a uint8) agg.Color {
 	return agg.NewColorRGBA8(linear)
 }
 
-func (g *Graph) prepare(width, height int) *preparedGraph {
-	key := [2]int{width, height}
+func (g *Graph) prepare(width, height int, fill bool) *preparedGraph {
+	key := preparedKey{width: width, height: height, fill: fill}
 	if pg, ok := g.prepared[key]; ok {
 		return pg
 	}
@@ -206,8 +224,34 @@ func (g *Graph) prepare(width, height int) *preparedGraph {
 		edges: make([]preparedEdge, len(g.edges)),
 	}
 
+	// mapX/mapY turn a normalized node coordinate into a pixel coordinate. By
+	// default this is the plain C++ scaling (node * w, node * h). When fill is
+	// set we first remap the node bounding box to [margin, 1-margin] on each axis
+	// so the graph fills the image instead of leaving the empty strip the C++
+	// demo reserves for its controls.
+	mapX := func(x float64) float64 { return x * w }
+	mapY := func(y float64) float64 { return y * h }
+	if fill {
+		minX, minY := math.Inf(1), math.Inf(1)
+		maxX, maxY := math.Inf(-1), math.Inf(-1)
+		for _, n := range g.nodes {
+			minX, maxX = math.Min(minX, n.x), math.Max(maxX, n.x)
+			minY, maxY = math.Min(minY, n.y), math.Max(maxY, n.y)
+		}
+		spanX, spanY := maxX-minX, maxY-minY
+		remap := func(v, lo, span, size float64) float64 {
+			if span <= 1e-9 {
+				return size * 0.5
+			}
+			t := (v - lo) / span
+			return (fillCanvasMargin + t*(1.0-2.0*fillCanvasMargin)) * size
+		}
+		mapX = func(x float64) float64 { return remap(x, minX, spanX, w) }
+		mapY = func(y float64) float64 { return remap(y, minY, spanY, h) }
+	}
+
 	for i, n := range g.nodes {
-		pg.nodes[i] = node{x: n.x * w, y: n.y * h}
+		pg.nodes[i] = node{x: mapX(n.x), y: mapY(n.y)}
 	}
 	for i, e := range g.edges {
 		n1 := pg.nodes[e.n1]
