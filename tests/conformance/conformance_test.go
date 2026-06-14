@@ -80,7 +80,7 @@ func toleranceFor(s scene.Scene) framework.ComparisonOptions {
 		base.Tolerance = 8
 		base.MaxDifferentRatio = 0.10
 	case "compositing_srcover", "compositing_src", "compositing_clear",
-		"compositing_multiply":
+		"compositing_multiply", "compositing_xor", "compositing_dstout":
 		// The C++ backend renders solid fills directly through a comp-op pixfmt
 		// with a straight-alpha (premultiply/op/demultiply) adaptor that mirrors
 		// the port's CompositeBlenderPlain, so these are byte-exact apart from
@@ -89,12 +89,15 @@ func toleranceFor(s scene.Scene) framework.ComparisonOptions {
 		// five Porter-Duff operators): both engines evaluate the same comp_op in
 		// premultiplied space, and the scene is byte-exact (0/65536).
 		//
-		// Operators that produce a *translucent* result over an opaque
-		// destination (e.g. xor, dst-out) are intentionally not in the strict
-		// corpus: the C++ backend is AGG-faithful there, but the port currently
-		// leaves premultiplied data in its straight buffer for such results, a
-		// separate port-side bug tracked in PLAN.md §5.5. The CPP side is locked by
-		// TestCPPXorBlendIsAGGFaithfulWithAggReal instead.
+		// compositing_xor and compositing_dstout exercise operators that produce a
+		// *translucent* result over an opaque destination (Da' < 255). The port
+		// used to leave premultiplied data in its straight buffer there (the
+		// premult-dst SIMD comp kernels bypassed the demultiply bridge); fixing
+		// pixfmt_composite to always route the straight buffer through
+		// CompositeBlenderPlain closed that gap (PLAN.md §5.5). Both now agree
+		// cross-backend with no pixel exceeding tolerance 2 (max 1 LSB from the
+		// port float-demultiply vs CPP integer-demultiply rounding). The CPP side
+		// is additionally locked by TestCPPXorBlendIsAGGFaithfulWithAggReal.
 		base.Tolerance = 2
 		base.MaxDifferentRatio = 0.005
 	case "compositing_gradient":

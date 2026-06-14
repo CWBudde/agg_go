@@ -6,7 +6,6 @@ import (
 	"github.com/cwbudde/agg_go/internal/color"
 	"github.com/cwbudde/agg_go/internal/order"
 	"github.com/cwbudde/agg_go/internal/pixfmt/blender"
-	"github.com/cwbudde/agg_go/internal/simd"
 )
 
 type compositeRGBABlender[CS color.Space, O order.RGBAOrder] interface {
@@ -124,42 +123,18 @@ func (pf *PixFmtCompositeRGBA[CS, O]) BlendHline(x, y, length int, c color.RGBA8
 	if startX >= endX {
 		return
 	}
-	length = endX - startX
 
 	row := buffer.RowU8(pf.rbuf, y)
-	spanStart := startX * 4
 
-	// SIMD fast paths for standard RGBA byte order.
-	var o O
-	if o.IdxR() == 0 && o.IdxG() == 1 && o.IdxB() == 2 && o.IdxA() == 3 && !pf.premultiplied {
-		dst := row[spanStart:]
-		switch pf.blender.GetOp() {
-		case blender.CompOpSrcOver:
-			simd.CompSrcOverHspanRGBA(dst, nil, c.R, c.G, c.B, c.A, length)
-			return
-		case blender.CompOpDstOver:
-			simd.CompDstOverHspanRGBA(dst, nil, c.R, c.G, c.B, c.A, length)
-			return
-		case blender.CompOpSrcIn:
-			simd.CompSrcInHspanRGBA(dst, nil, c.R, c.G, c.B, c.A, length)
-			return
-		case blender.CompOpDstIn:
-			simd.CompDstInHspanRGBA(dst, nil, c.R, c.G, c.B, c.A, length)
-			return
-		case blender.CompOpSrcOut:
-			simd.CompSrcOutHspanRGBA(dst, nil, c.R, c.G, c.B, c.A, length)
-			return
-		case blender.CompOpDstOut:
-			simd.CompDstOutHspanRGBA(dst, nil, c.R, c.G, c.B, c.A, length)
-			return
-		case blender.CompOpXor:
-			simd.CompXorHspanRGBA(dst, nil, c.R, c.G, c.B, c.A, length)
-			return
-		case blender.CompOpClear:
-			simd.CompClearHspanRGBA(dst, length)
-			return
-		}
-	}
+	// NB: no SIMD fast path here. The simd.Comp*HspanRGBA kernels operate on a
+	// *premultiplied* destination (Dca, Da) and leave a premultiplied result,
+	// matching AGG's pixfmt_custom_blend_rgba over a premultiplied blender_rgba
+	// buffer. This pixfmt stores *straight* alpha (the Agg2D convention), so the
+	// scalar CompositeBlenderPlain must do the premultiply-on-read /
+	// demultiply-on-write bridge per pixel. Routing the straight buffer through
+	// the premult-dst kernels left premultiplied data in storage for any operator
+	// whose result is translucent over an opaque destination (xor, dst-out,
+	// src-in, dst-in), reading back too dark. See blender.CompositeBlenderPlain.
 
 	for i := startX; i < endX; i++ {
 		pixelOffset := i * 4
@@ -203,50 +178,12 @@ func (pf *PixFmtCompositeRGBA[CS, O]) BlendSolidHspan(x, y, length int, c color.
 	if startX >= endX {
 		return
 	}
-	length = endX - startX
 
 	row := buffer.RowU8(pf.rbuf, y)
-	spanStart := startX * 4
-	var cvSlice []byte
-	if covers != nil {
-		off := startX - x
-		cvSlice = covers[off:]
-		if len(cvSlice) > length {
-			cvSlice = cvSlice[:length]
-		}
-	}
 
-	// SIMD fast paths for standard RGBA byte order.
-	var o O
-	if o.IdxR() == 0 && o.IdxG() == 1 && o.IdxB() == 2 && o.IdxA() == 3 && !pf.premultiplied {
-		dst := row[spanStart:]
-		switch pf.blender.GetOp() {
-		case blender.CompOpSrcOver:
-			simd.CompSrcOverHspanRGBA(dst, cvSlice, c.R, c.G, c.B, c.A, length)
-			return
-		case blender.CompOpDstOver:
-			simd.CompDstOverHspanRGBA(dst, cvSlice, c.R, c.G, c.B, c.A, length)
-			return
-		case blender.CompOpSrcIn:
-			simd.CompSrcInHspanRGBA(dst, cvSlice, c.R, c.G, c.B, c.A, length)
-			return
-		case blender.CompOpDstIn:
-			simd.CompDstInHspanRGBA(dst, cvSlice, c.R, c.G, c.B, c.A, length)
-			return
-		case blender.CompOpSrcOut:
-			simd.CompSrcOutHspanRGBA(dst, cvSlice, c.R, c.G, c.B, c.A, length)
-			return
-		case blender.CompOpDstOut:
-			simd.CompDstOutHspanRGBA(dst, cvSlice, c.R, c.G, c.B, c.A, length)
-			return
-		case blender.CompOpXor:
-			simd.CompXorHspanRGBA(dst, cvSlice, c.R, c.G, c.B, c.A, length)
-			return
-		case blender.CompOpClear:
-			simd.CompClearHspanRGBA(dst, length)
-			return
-		}
-	}
+	// No SIMD fast path: the premult-dst simd.Comp*HspanRGBA kernels are
+	// incompatible with this straight-alpha buffer. See BlendHline above and
+	// blender.CompositeBlenderPlain for the straight<->premult bridge.
 
 	for i := startX; i < endX; i++ {
 		pixelOffset := i * 4

@@ -273,6 +273,44 @@ var corpus = []Scene{
 		},
 	},
 	{
+		// Translucent source XOR'd over an opaque destination: the result alpha is
+		// < 255 over opaque content (Da'=Sa+Da-2·Sa·Da). This is the case the Go
+		// port previously got wrong by leaving premultiplied data in its straight
+		// buffer (PLAN.md §5.5); the CPP backend has always been AGG-faithful.
+		// Axis-aligned integer rectangles keep it byte-exact cross-backend.
+		Name:   "compositing_xor",
+		Width:  canvasW,
+		Height: canvasH,
+		Caps:   []engine.Capability{engine.CapabilityCompositing},
+		Draw: func(ctx engine.Context, _ *Assets) error {
+			ctx.Clear(agg.White)
+			ctx.SetFillColor(agg.NewColorRGB(40, 130, 60))
+			ctx.FillRectangle(50, 50, 120, 120)
+			ctx.SetBlendMode(agg.BlendXor)
+			ctx.SetFillColor(agg.NewColor(40, 60, 220, 160))
+			ctx.FillRectangle(100, 100, 110, 110)
+			return nil
+		},
+	},
+	{
+		// DstOut: the source alpha erases the destination (Dca'=Dca·(1-Sa),
+		// Da'=Da·(1-Sa)), leaving a translucent result over the opaque background —
+		// the same premultiplied-storage class as compositing_xor.
+		Name:   "compositing_dstout",
+		Width:  canvasW,
+		Height: canvasH,
+		Caps:   []engine.Capability{engine.CapabilityCompositing},
+		Draw: func(ctx engine.Context, _ *Assets) error {
+			ctx.Clear(agg.White)
+			ctx.SetFillColor(agg.NewColorRGB(40, 130, 60))
+			ctx.FillRectangle(50, 50, 120, 120)
+			ctx.SetBlendMode(agg.BlendDstOut)
+			ctx.SetFillColor(agg.NewColor(0, 0, 0, 160))
+			ctx.FillRectangle(100, 100, 110, 110)
+			return nil
+		},
+	},
+	{
 		Name:   "image_scaled",
 		Width:  canvasW,
 		Height: canvasH,

@@ -235,11 +235,11 @@ module. `../AGoGo` remains only a read-only oracle for auditing edge cases. The
 end state is a single repository that can be renamed back to `AGoGo`.
 
 The foundation (5.1–5.4, 5.6–5.8) and most verification (5.9) are **done**, and
-the C++ backend's parity gaps (§5.5) are all closed. What remains is one tracked
-port-side comp-op bug (§5.5), keeping the behavioural-difference docs current
-(§5.9), and the final rename (§5.10). The sections below preserve their numbers
-because `docs/BACKENDS.md` and `tests/conformance/` cross-reference §5.5 and §5.9
-by number.
+the C++ backend's parity gaps plus the one port-side comp-op bug they surfaced
+(§5.5) are all closed. What remains is keeping the behavioural-difference docs
+current (§5.9) and the final rename (§5.10). The sections below preserve their
+numbers because `docs/BACKENDS.md` and `tests/conformance/` cross-reference §5.5
+and §5.9 by number.
 
 ### 5.1–5.4 Facade, API boundary, and v1 scope — DONE
 
@@ -270,7 +270,7 @@ implement it.
   backend reads its native matrix via the `agg_go_cpp_matrix_store` bridge).
   Round-trips exactly on both backends (`engine_test.go`/`engine_aggreal_test.go`).
 
-### 5.5 In-repo C++ engine — DONE (C++ parity gaps closed; one port-side bug tracked)
+### 5.5 In-repo C++ engine — DONE (all parity gaps closed)
 
 The in-repo `agogo`-tagged native layer is self-contained (local header/source,
 cgo config, probes, build-mode tests). The real AGG-backed build (`agogo aggreal`)
@@ -309,7 +309,7 @@ record, with the parity-relevant deviation each fix uncovered):
       `DrawImageScaled` delegating to it) map the dest-rect corners through the
       active matrix and blit via the quad path, mirroring the port's `renderImage`.
       Strict `image_affine` scene (Tol 4 / ratio 0.10, CPP nearest-neighbour vs
-      Port bilinear). *Deviation fixed:* the native matrix composed `Translate`/
+      Port bilinear). _Deviation fixed:_ the native matrix composed `Translate`/
       `Rotate`/`Scale` in reverse of `agg::trans_affine`; corrected via
       `matrix_premultiply` (primitive pre-multiplied in output space), which also
       fixes transformed vector rendering. Locked by
@@ -327,16 +327,28 @@ record, with the parity-relevant deviation each fix uncovered):
       `TestCPPDashedStrokeUnderTransformDashesInUserSpaceWithAggReal`. (Stub build,
       never advertised, ignores the matrix.)
 
-**Open — tracked port-side bug** (surfaced by the CPP work but living in the Go
-port, not the C++ backend):
+**Port-side comp-op bug (surfaced by the CPP work) — fixed:**
 
-- [ ] **Port stores premultiplied data in its straight buffer** for comp-ops that
-      yield a *translucent* result over an opaque destination (e.g. `xor`,
-      `dst-out`). The C++ backend is AGG-faithful here (proved by
-      `TestCPPXorBlendIsAGGFaithfulWithAggReal`), so these operators are kept out of
-      the strict conformance corpus until the port is fixed. The fix belongs in the
-      port's comp-op render/readback path, not in `engine/`. See conformance note in
-      `tests/conformance/conformance_test.go` (compositing case).
+- [x] **Port stored premultiplied data in its straight buffer** for comp-ops whose
+      result is _translucent_ over an opaque destination (`xor`, `dst-out`, and the
+      `src-in`/`dst-in` family). Root cause: `internal/pixfmt/pixfmt_composite.go`'s
+      `BlendHline`/`BlendSolidHspan` took a "SIMD fast path" through the
+      `simd.Comp*HspanRGBA` kernels, which operate on a **premultiplied** destination
+      and leave a premultiplied result — but this pixfmt stores **straight** alpha,
+      so the per-pixel premultiply-on-read / demultiply-on-write bridge that
+      `blender.CompositeBlenderPlain` performs was skipped. It only showed when the
+      result alpha < 255 (src-over/clear stayed correct: opaque result ⇒ premult ==
+      straight, hence those scenes were byte-exact while xor read back too dark).
+      Fix: drop the premult-dst SIMD fast path from the straight composite pixfmt and
+      always route through the scalar `CompositeBlenderPlain` (the SIMD kernels were
+      only ever wired to this straight pixfmt and only `SrcOver` had a real vector
+      kernel, so the cost is limited to explicit non-default blend modes; the comp
+      pixfmt is bypassed entirely for the default `BlendAlpha`). The float path
+      (`pixfmt_composite_rgba128.go`) was already correct (no SIMD, scalar
+      `CompositeBlenderRGBA128Plain`). New strict `compositing_xor` and
+      `compositing_dstout` corpus scenes now agree cross-backend (0 px over tolerance
+      2; max 1 LSB from float-demul vs CPP integer-demul rounding); the CPP side
+      stays locked by `TestCPPXorBlendIsAGGFaithfulWithAggReal`.
 
 ### 5.6–5.8 AGoGo audit, trust boundaries, and comparison layer — DONE
 
