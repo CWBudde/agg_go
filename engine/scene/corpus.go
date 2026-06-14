@@ -251,6 +251,28 @@ var corpus = []Scene{
 		},
 	},
 	{
+		Name:   "image_blend",
+		Width:  canvasW,
+		Height: canvasH,
+		Caps:   []engine.Capability{engine.CapabilityImageDraw, engine.CapabilityCompositing},
+		Draw: func(ctx engine.Context, assets *Assets) error {
+			if assets == nil || assets.Source == nil {
+				return ErrAssetUnavailable
+			}
+			ctx.Clear(agg.White)
+			// Lay down an opaque colour field, then draw the image over it under a
+			// separable blend (multiply). Both backends composite the image span
+			// onto the canvas through the same comp-op operator — the CPP backend
+			// via comp_op_adaptor_rgba_plain, the port via its comp-op image
+			// renderer (renBaseCompPre) — so the result is the per-channel product
+			// of the tile and the field, confined to the image footprint.
+			ctx.SetFillColor(agg.NewColorRGB(120, 90, 200))
+			ctx.FillRectangle(32, 32, 192, 192)
+			ctx.SetBlendMode(agg.BlendMultiply)
+			return ctx.DrawImageScaled(assets.Source, 32, 32, 192, 192)
+		},
+	},
+	{
 		Name:   "image_affine",
 		Width:  canvasW,
 		Height: canvasH,

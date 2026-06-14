@@ -54,6 +54,16 @@ func toleranceFor(s scene.Scene) framework.ComparisonOptions {
 		// avg < 1 LSB. Same float-sampler-noise class as image_filters2.
 		base.Tolerance = 4
 		base.MaxDifferentRatio = 0.08
+	case "image_blend":
+		// Image drawn over an opaque colour field under a separable blend (multiply).
+		// Both backends composite the image span onto the canvas through the same
+		// comp-op operator, so divergence is the image-sampler noise of image_scaled
+		// (independent nearest-neighbour vs bilinear samplers along the tile seams)
+		// carried through the multiply — measured ratio ~0.053, avg < 1 LSB, same
+		// class as image_scaled. The non-zero max is a seam pixel where the two
+		// samplers picked different source quadrants before the product.
+		base.Tolerance = 4
+		base.MaxDifferentRatio = 0.08
 	case "image_affine":
 		// Image drawn under an active transform (translate/scale/rotate). The CPP
 		// backend maps the destination rectangle's corners through the matrix and

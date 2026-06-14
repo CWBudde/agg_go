@@ -546,7 +546,7 @@ func (c *cppContext) DrawImageRegion(img Image, srcX, srcY, srcW, srcH int, dstX
 		}
 		return c.DrawImageRegionQuad(img, srcX, srcY, srcW, srcH, quad)
 	}
-	if err := c.requireImageBlendMode("DrawImageRegion"); err != nil {
+	if err := c.requireBlendMode("DrawImageRegion"); err != nil {
 		return err
 	}
 	return c.img.img.compositeScaledFrom(
@@ -576,7 +576,7 @@ func (c *cppContext) DrawImageRegionQuad(img Image, srcX, srcY, srcW, srcH int, 
 	if err != nil {
 		return err
 	}
-	if err := c.requireImageBlendMode("DrawImageRegionQuad"); err != nil {
+	if err := c.requireBlendMode("DrawImageRegionQuad"); err != nil {
 		return err
 	}
 	return c.img.img.compositeQuadFrom(
@@ -690,10 +690,56 @@ func (c *cppContext) GetTextBounds(text string) (x, y, width, height float64) {
 func (c *cppContext) GetImage() Image { return c.img }
 
 func (c *cppContext) compositeLayer(layer *cppNativeImage, operation string) error {
-	if err := c.requireImageBlendMode(operation); err != nil {
+	if err := c.requireBlendMode(operation); err != nil {
 		return err
 	}
-	return c.img.img.compositeFrom(layer, 0, 0, c.clipRectangle(), c.blendMode)
+	switch c.blendMode {
+	case agg.BlendAlpha, agg.BlendSrcOver, agg.BlendDst:
+		// src-over/alpha leave alpha==0 layer pixels untouched and dst is a no-op,
+		// so compositing the whole canvas-sized layer affects only the glyph pixels —
+		// byte-identical to the proven default text path. Keep it for these modes.
+		return c.img.img.compositeFrom(layer, 0, 0, c.clipRectangle(), c.blendMode)
+	default:
+		// Every other operator (clear/src and the separable blend modes) must be
+		// confined to the glyph coverage: a whole-layer composite would let clear/src
+		// wipe the untouched background. Composite the coverage layer through the AGG
+		// comp-op operator with the layer alpha as the per-pixel cover, exactly as
+		// AGG's renderer_scanline_aa_solid over a comp-op base renderer would.
+		return c.compositeCoverLayer(layer)
+	}
+}
+
+// compositeCoverLayer composites a glyph-coverage layer onto the canvas through the
+// comp-op operator, using the layer's own alpha (the anti-aliased glyph coverage,
+// with the fill colour's alpha already folded in by the text renderer) as the
+// per-pixel rasterizer cover. This confines the operator to the glyphs, mirroring
+// AGG's comp-op pixfmt, so operators like clear/src/multiply do not disturb the
+// background. The comp-op math uses only premultiply(rgb)·cover and alpha·cover, so
+// folding the source alpha into the cover (cover = layer alpha, source alpha = 255)
+// is identical to keeping them separate. It shares the cover primitive the gradient
+// path uses (compositeCoverFrom).
+func (c *cppContext) compositeCoverLayer(layer *cppNativeImage) error {
+	pixels, err := layer.pixelView()
+	if err != nil {
+		return err
+	}
+	stride := layer.stride()
+	width := layer.width()
+	height := layer.height()
+	if stride == 0 || width == 0 || height == 0 {
+		return nil
+	}
+	cover := make([]byte, width*height)
+	for y := 0; y < height; y++ {
+		row := y * stride
+		coverRow := y * width
+		for x := 0; x < width; x++ {
+			offset := row + x*4
+			cover[coverRow+x] = pixels[offset+3]
+			pixels[offset+3] = 255
+		}
+	}
+	return c.img.img.compositeCoverFrom(layer, cover, width, c.clipRectangle(), c.blendMode)
 }
 
 // compositeGradientLayer recolours a shape-coverage layer by the gradient and
@@ -835,11 +881,13 @@ func (c *cppContext) clipRectangle() image.Rectangle {
 	)
 }
 
-// requireBlendMode gates the vector fill/stroke and gradient paths. These render
-// through AGG's comp-op pixfmt (the real backend dispatches g_comp_op_func[op];
-// the gradient path composites its coverage layer through the same operator), so
-// they honour every operator in the agg.BlendMode enum — the full Porter-Duff set
-// plus the separable blend modes.
+// requireBlendMode gates every drawing path: vector fill/stroke, gradients, image
+// blits (region/quad/plain), and the text coverage layer. They all composite
+// through AGG's comp-op operator (the real backend dispatches g_comp_op_func[op];
+// the image blits via comp_op_adaptor_rgba_plain, the gradient and text layers via
+// the same operator with the shape/glyph coverage as cover), so they honour every
+// operator in the agg.BlendMode enum — the full Porter-Duff set plus the separable
+// blend modes.
 func (c *cppContext) requireBlendMode(operation string) error {
 	if c.blendMode >= agg.BlendAlpha && c.blendMode <= agg.BlendExclusion {
 		return nil
@@ -848,25 +896,6 @@ func (c *cppContext) requireBlendMode(operation string) error {
 		Kind:       CPP,
 		Capability: CapabilityCompositing,
 		Operation:  operation,
-	}
-}
-
-// requireImageBlendMode gates the image-draw and text paths (region/quad blits and
-// the text coverage layer), which still composite through the CPU helper and only
-// implement the five operators the Go port's image blits also cover. Image or text
-// draw under any other operator stays a documented gap (PLAN.md §5.5,
-// docs/BACKENDS.md) and fails with a typed capability error rather than silently
-// rendering the wrong result.
-func (c *cppContext) requireImageBlendMode(operation string) error {
-	switch c.blendMode {
-	case agg.BlendAlpha, agg.BlendClear, agg.BlendSrc, agg.BlendDst, agg.BlendSrcOver:
-		return nil
-	default:
-		return &UnsupportedCapabilityError{
-			Kind:       CPP,
-			Capability: CapabilityCompositing,
-			Operation:  operation,
-		}
 	}
 }
 

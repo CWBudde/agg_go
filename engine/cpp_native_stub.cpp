@@ -345,10 +345,11 @@ uint8_t clamp_byte(double value) {
   return static_cast<uint8_t>(std::lround(value));
 }
 
-// supported_blend_mode gates the CPU image-composite paths (composite_pixel),
-// which only implement the five operators that the Go port's image blits also
-// cover. Image draw under any other operator stays a documented gap (PLAN.md
-// §5.5) rather than silently falling back.
+// supported_blend_mode gates the composite_pixel paths, which only implement the
+// five operators with a direct straight-alpha CPU formula. The whole-rect plain
+// composite (the default text-layer blit) and the stub build use it; the scaled/
+// quad image blits route through blend_image_pixel and so honour the full operator
+// set in the real build (supported_comp_op_mode).
 bool supported_blend_mode(int blend_mode) {
   switch (blend_mode) {
     case kBlendAlpha:
@@ -438,6 +439,25 @@ void composite_pixel(uint8_t* dst, const uint8_t* src, int blend_mode) {
     default:
       return;
   }
+}
+
+// blend_image_pixel composites one straight-RGBA source pixel onto the straight-
+// RGBA destination through the blend operator. It is used by the image blits whose
+// loops only ever visit pixels the image actually covers, so a full rasterizer
+// cover (255) is correct and no untouched background is disturbed. In the real AGG
+// build it routes through comp_op_adaptor_rgba_plain — the same premultiply →
+// comp_op → demultiply path the gradient cover blit and AGG's comp-op pixfmt use —
+// so image draw honours the full operator set, matching the port's comp-op image
+// renderer (renBaseCompPre). The stub build has only the five composite_pixel
+// operators and is never advertised as a valid backend.
+void blend_image_pixel(uint8_t* d, const uint8_t* s, int blend_mode) {
+#ifdef AGG_GO_CPP_REAL
+  const unsigned op = static_cast<unsigned>(map_comp_op(blend_mode));
+  comp_op_adaptor_rgba_plain<agg::rgba8, agg::order_rgba>::blend_pix(op, d, s[0], s[1], s[2], s[3],
+                                                                     255);
+#else
+  composite_pixel(d, s, blend_mode);
+#endif
 }
 
 bool point_in_path_even_odd(const AggGoCPPPath& path, float px, float py) {
@@ -833,7 +853,7 @@ extern "C" int agg_go_cpp_image_composite_scaled(AggGoCPPImage* dst, const AggGo
     set_last_error("source image is nil");
     return -1;
   }
-  if (!supported_blend_mode(blend_mode)) {
+  if (!supported_comp_op_mode(blend_mode)) {
     set_last_error("unsupported blend mode");
     return -1;
   }
@@ -878,7 +898,7 @@ extern "C" int agg_go_cpp_image_composite_scaled(AggGoCPPImage* dst, const AggGo
                                 static_cast<size_t>(src_x + static_cast<int>(src_px)) * 4;
       const size_t dst_offset =
           static_cast<size_t>(y) * dst->stride + static_cast<size_t>(x) * 4;
-      composite_pixel(&dst->pixels[dst_offset], &src->pixels[src_offset], blend_mode);
+      blend_image_pixel(&dst->pixels[dst_offset], &src->pixels[src_offset], blend_mode);
     }
   }
   return 0;
@@ -896,7 +916,7 @@ extern "C" int agg_go_cpp_image_composite_quad(AggGoCPPImage* dst, const AggGoCP
     set_last_error("source image is nil");
     return -1;
   }
-  if (!supported_blend_mode(blend_mode)) {
+  if (!supported_comp_op_mode(blend_mode)) {
     set_last_error("unsupported blend mode");
     return -1;
   }
@@ -978,7 +998,7 @@ extern "C" int agg_go_cpp_image_composite_quad(AggGoCPPImage* dst, const AggGoCP
           static_cast<size_t>(src_py) * src->stride + static_cast<size_t>(src_px) * 4;
       const size_t dst_offset =
           static_cast<size_t>(y) * dst->stride + static_cast<size_t>(x) * 4;
-      composite_pixel(&dst->pixels[dst_offset], &src->pixels[src_offset], blend_mode);
+      blend_image_pixel(&dst->pixels[dst_offset], &src->pixels[src_offset], blend_mode);
     }
   }
   return 0;

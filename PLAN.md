@@ -317,16 +317,28 @@ or a documented conformance skip, never a silent wrong render):
       `TestCPPTransformComposeOrderMatchesPortWithAggReal` and the updated
       `TestCPPNativeMatrixTransformPointTranslateRotateScale`. This also corrects
       transformed _vector_ rendering, which no corpus scene had been exercising.
-- [ ] **Image and text draw under blend modes beyond the original five.** The
-      image blits (region/quad/plain) and the text coverage layer still composite
-      through the CPU helper rather than the AGG comp-op operator, so they are
-      gated to the five `composite_pixel` modes by `requireImageBlendMode` and
-      reject the rest with a typed capability error
-      (`TestCPPImageDrawUnderExtendedBlendModeIsTyped`). Route these through the
-      `agg_go_cpp_image_composite_cover` primitive (added for gradients) to lift
-      them to the full operator set. (This subsumes the former "replace remaining
-      CPU helper paths" item — it is specifically the image/text paths that still
-      bypass AGG.)
+- [x] **Image and text draw under blend modes beyond the original five.** The
+      scaled/quad image blits now composite each pixel through
+      `comp_op_adaptor_rgba_plain` (the straight-alpha premultiply → `g_comp_op_func`
+      → demultiply bridge the gradient cover blit uses), via the `blend_image_pixel`
+      helper, so they honour the full `agg.BlendMode` enum. Their loops only ever
+      visit pixels the image covers, so full cover (255) is correct and the
+      untouched background is never disturbed. The text coverage layer routes
+      clear/src and every separable mode through `compositeCoverFrom` (the gradient
+      cover primitive) with the layer alpha as per-pixel cover, confining the
+      operator to the glyphs — a whole-layer composite would let clear/src wipe the
+      background. The Go gate is now the single `requireBlendMode` (full enum;
+      `requireImageBlendMode` is removed) and the native gate is
+      `supported_comp_op_mode`. This matches the port, whose `currentImageRenderer`
+      composites image spans through the comp-op base renderer (`renBaseCompPre`) for
+      every non-`BlendAlpha` mode. `TestCPPImageDrawUnderExtendedBlendModeIsFaithfulWithAggReal`,
+      `TestCPPTextUnderExtendedBlendModePreservesBackgroundWithAggReal`, and
+      `TestCPPBackendExtendedBlendModeOnDrawImageQuad` lock it; the new strict
+      `image_blend` conformance scene (image over a colour field under multiply)
+      agrees cross-backend at ratio ~0.053 (Tolerance 4, MaxDifferentRatio 0.08 —
+      the image_scaled sampler-noise class). (This subsumes the former "replace
+      remaining CPU helper paths" item — it was specifically the image/text paths
+      that still bypassed AGG.)
 - [ ] **Dashed strokes under a non-identity transform.** The port dashes in user
       space; the C++ backend dashes the pre-transformed (device-space) path, so
       dash lengths diverge under a transform. The `dashed_stroke` scene therefore

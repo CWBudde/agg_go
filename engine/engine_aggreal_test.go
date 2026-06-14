@@ -3,7 +3,6 @@
 package engine_test
 
 import (
-	"errors"
 	"math"
 	"os"
 	"testing"
@@ -281,25 +280,95 @@ func TestCPPXorBlendIsAGGFaithfulWithAggReal(t *testing.T) {
 	}
 }
 
-func TestCPPImageDrawUnderExtendedBlendModeIsTyped(t *testing.T) {
-	// Image draw still composites through the CPU helper, which only implements the
-	// five image-blit operators, so image draw under an extended mode must fail with
-	// a typed capability error rather than silently rendering wrong (PLAN.md §5.5).
-	src, err := engine.NewImage(4, 4, engine.Config{Kind: engine.CPP})
+func TestCPPImageDrawUnderExtendedBlendModeIsFaithfulWithAggReal(t *testing.T) {
+	// Image blits now route through comp_op_adaptor_rgba_plain (the same primitive
+	// the gradient cover blit uses), so they honour the full operator set rather
+	// than rejecting anything beyond the original five with a typed error. Multiply
+	// of an opaque grey tile over an opaque colour must give the per-channel product
+	// (Dca' = Sca·Dca for opaque src/dst): the operator actually ran, not a src-over
+	// copy. This is what the port's comp-op image renderer (renBaseCompPre) produces.
+	src, err := engine.NewImage(8, 8, engine.Config{Kind: engine.CPP})
 	if err != nil {
 		t.Fatalf("NewImage(CPP) error = %v", err)
 	}
+	srcCtx, err := engine.NewContextForImage(src)
+	if err != nil {
+		t.Fatalf("NewContextForImage(CPP) error = %v", err)
+	}
+	srcCtx.Clear(agg.NewColorRGB(128, 128, 128)) // opaque mid-grey tile
+
 	dst, err := engine.NewContext(32, 32, engine.Config{Kind: engine.CPP})
 	if err != nil {
 		t.Fatalf("NewContext(CPP) error = %v", err)
 	}
+	dst.Clear(agg.NewColorRGB(100, 150, 200))
 	dst.SetBlendMode(agg.BlendMultiply)
-	err = dst.DrawImage(src, 4, 4)
-	if err == nil {
-		t.Fatal("expected DrawImage under multiply to fail with a typed capability error")
+	if err := dst.DrawImageScaled(src, 8, 8, 16, 16); err != nil {
+		t.Fatalf("DrawImageScaled under multiply error = %v", err)
 	}
-	if !errors.Is(err, engine.ErrUnsupportedCapability) {
-		t.Fatalf("expected ErrUnsupportedCapability, got %v", err)
+
+	got := dst.GetImage().ToGoImage().RGBAAt(16, 16)
+	within := func(got, want uint8, tol int) bool {
+		d := int(got) - int(want)
+		return d >= -tol && d <= tol
+	}
+	// multiply(grey 128, bg) = bg·128/255 per channel: (50, 75, 100); a stays opaque.
+	if !within(got.R, 50, 3) || !within(got.G, 75, 3) || !within(got.B, 100, 3) || got.A != 255 {
+		t.Fatalf("multiply image pixel = %+v, want ~(50,75,100,255); src-over would be (128,128,128)", got)
+	}
+
+	// A pixel outside the tile footprint must keep the untouched background.
+	bg := dst.GetImage().ToGoImage().RGBAAt(2, 2)
+	if bg.R != 100 || bg.G != 150 || bg.B != 200 {
+		t.Fatalf("background outside tile = %+v, want (100,150,200); the blit disturbed untouched pixels", bg)
+	}
+}
+
+func TestCPPTextUnderExtendedBlendModePreservesBackgroundWithAggReal(t *testing.T) {
+	// Text under an operator beyond the original five must composite through the AGG
+	// comp-op operator confined to the glyph coverage (the cover path), NOT a whole-
+	// canvas layer composite. The whole-rect path would let clear/src wipe — and any
+	// operator disturb — the untouched background. Render opaque-black text under
+	// clear and confirm: glyph pixels are knocked out (alpha→0) while a pixel far
+	// from any glyph keeps the original background untouched.
+	fontPath := "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+	if _, err := os.Stat(fontPath); err != nil {
+		t.Skipf("font not available: %v", err)
+	}
+
+	ctx, err := engine.NewContext(160, 40, engine.Config{Kind: engine.CPP})
+	if err != nil {
+		t.Fatalf("NewContext(CPP) error = %v", err)
+	}
+	ctx.Clear(agg.NewColorRGB(40, 130, 60)) // opaque green background
+	if err := ctx.LoadFont(fontPath); err != nil {
+		t.Fatalf("LoadFont() error = %v", err)
+	}
+	ctx.SetFillColor(agg.Black)
+	ctx.SetBlendMode(agg.BlendClear)
+	if err := ctx.DrawText("Hello", 10, 26); err != nil {
+		t.Fatalf("DrawText under clear error = %v", err)
+	}
+
+	img := ctx.GetImage().ToGoImage()
+	// Far-from-glyph corner must keep the opaque green background untouched.
+	bg := img.RGBAAt(155, 2)
+	if bg.R != 40 || bg.G != 130 || bg.B != 60 || bg.A != 255 {
+		t.Fatalf("background corner = %+v, want untouched (40,130,60,255); clear wiped the whole layer", bg)
+	}
+	// At least one glyph pixel must have been knocked down by clear (alpha = 255 −
+	// coverage for opaque text), proving the operator ran on the glyph coverage.
+	knockedOut := false
+	for y := 0; y < img.Bounds().Dy() && !knockedOut; y++ {
+		for x := 0; x < img.Bounds().Dx(); x++ {
+			if img.RGBAAt(x, y).A < 255 {
+				knockedOut = true
+				break
+			}
+		}
+	}
+	if !knockedOut {
+		t.Fatal("expected clear to reduce at least one glyph pixel's alpha below the opaque background")
 	}
 }
 

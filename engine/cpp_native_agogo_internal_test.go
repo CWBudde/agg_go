@@ -644,22 +644,49 @@ func TestCPPBackendExtendedBlendModeOnFill(t *testing.T) {
 	}
 }
 
-func TestCPPBackendUnsupportedBlendModeOnDrawImageQuadIsTyped(t *testing.T) {
-	src, err := newCPPBackendImage(2, 2)
+func TestCPPBackendExtendedBlendModeOnDrawImageQuad(t *testing.T) {
+	src, err := newCPPBackendImage(4, 4)
 	if err != nil {
 		t.Fatalf("newCPPBackendImage(src) error = %v", err)
 	}
-	dst, err := newCPPBackendContext(8, 8)
+	srcCtx, err := newCPPBackendContextForImage(src)
+	if err != nil {
+		t.Fatalf("newCPPBackendContextForImage(src) error = %v", err)
+	}
+	srcCtx.Clear(agg.NewColorRGB(128, 128, 128)) // opaque mid-grey tile
+
+	dst, err := newCPPBackendContext(12, 12)
 	if err != nil {
 		t.Fatalf("newCPPBackendContext(dst) error = %v", err)
 	}
+	dst.Clear(agg.NewColorRGB(100, 150, 200))
 	dst.SetBlendMode(agg.BlendMultiply)
 
-	err = dst.DrawImageQuad(src, [8]float64{1, 1, 6, 1, 6, 6, 1, 6})
-	if err == nil {
-		t.Fatal("expected DrawImageQuad() to fail")
+	quad := [8]float64{2, 2, 10, 2, 10, 10, 2, 10}
+
+	if currentCPPNativeMetadata().Stub {
+		// The stub image-composite path only honours the five composite_pixel
+		// operators, so it rejects an extended mode loudly. The stub backend is
+		// never advertised as available, so the exact error type is not part of the
+		// contract — only that it fails rather than silently rendering wrong.
+		if err := dst.DrawImageQuad(src, quad); err == nil {
+			t.Fatal("expected DrawImageQuad() under multiply to fail in stub build")
+		}
+		return
 	}
-	if !errors.Is(err, ErrUnsupportedCapability) {
-		t.Fatalf("expected ErrUnsupportedCapability, got %v", err)
+
+	// The real backend blits images through comp_op_adaptor_rgba_plain, so an
+	// extended mode like multiply must render rather than error. Multiply of the
+	// grey tile over the background gives the per-channel product (~50,75,100).
+	if err := dst.DrawImageQuad(src, quad); err != nil {
+		t.Fatalf("DrawImageQuad() under multiply error = %v", err)
+	}
+	got := dst.GetImage().ToGoImage().RGBAAt(6, 6)
+	within := func(got, want uint8, tol int) bool {
+		d := int(got) - int(want)
+		return d >= -tol && d <= tol
+	}
+	if !within(got.R, 50, 3) || !within(got.G, 75, 3) || !within(got.B, 100, 3) || got.A != 255 {
+		t.Fatalf("multiply quad pixel = %+v, want ~(50,75,100,255)", got)
 	}
 }
