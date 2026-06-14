@@ -494,6 +494,10 @@ func TestPixFmtCompositeRGBA32FastPathMatchesScalar(t *testing.T) {
 	}{
 		{"src_over", blender.CompOpSrcOver},
 		{"xor", blender.CompOpXor},
+		{"dst_out", blender.CompOpDstOut},
+		{"clear", blender.CompOpClear},
+		{"multiply", blender.CompOpMultiply},
+		{"src_in", blender.CompOpSrcIn},
 	}
 	src := color.RGBA8[color.Linear]{R: 40, G: 60, B: 220, A: 160}
 
@@ -565,6 +569,42 @@ func TestPixFmtCompositeRGBA32FastPathMatchesScalar(t *testing.T) {
 					if fpBuf[i] != refBuf[i] {
 						t.Fatalf("px=%d byte=%d: fast-path %d != scalar %d", i/4, i%4, fpBuf[i], refBuf[i])
 					}
+				}
+			})
+		}
+	}
+}
+
+// TestPixFmtCompositeRGBA32StraightOverOpaqueFaithful is the end-to-end (through
+// the pixfmt's wired fast path) regression guard for the §5.5 premultiplied-
+// storage bug: a translucent source xor'd / dst-out over an opaque destination
+// must read back as a STRAIGHT (demultiplied) value, not premultiplied. The bug
+// would store ~(15,48,22,95) for xor; the faithful straight result is (40,130,60,95).
+// Covers both BlendSolidHspan and BlendHline.
+func TestPixFmtCompositeRGBA32StraightOverOpaqueFaithful(t *testing.T) {
+	src := color.RGBA8[color.Linear]{R: 40, G: 60, B: 220, A: 160}
+	want := color.RGBA8[color.Linear]{R: 40, G: 130, B: 60, A: 95}
+	ops := []struct {
+		name string
+		op   blender.CompOp
+	}{
+		{"xor", blender.CompOpXor},
+		{"dst_out", blender.CompOpDstOut},
+	}
+	for _, oc := range ops {
+		for _, path := range []string{"hspan", "hline"} {
+			t.Run(oc.name+"/"+path, func(t *testing.T) {
+				buf := []basics.Int8u{40, 130, 60, 255} // 1px opaque green
+				rbuf := buffer.NewRenderingBufferU8WithData(buf, 1, 1, 4)
+				pf := NewPixFmtCompositeRGBA32(rbuf, oc.op)
+				if path == "hspan" {
+					pf.BlendSolidHspan(0, 0, 1, src, nil)
+				} else {
+					pf.BlendHline(0, 0, 1, src, basics.CoverFull)
+				}
+				if got := pf.GetPixel(0, 0); got != want {
+					t.Errorf("%s/%s: got %+v want %+v (premultiplied-storage bug would give ~{15,48,22,95})",
+						oc.name, path, got, want)
 				}
 			})
 		}

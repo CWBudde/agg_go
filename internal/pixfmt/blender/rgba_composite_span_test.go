@@ -22,14 +22,27 @@ var allCompOps = []CompOp{
 // PLAN.md Phase 6: the span fast path must be byte-for-byte identical to calling
 // BlendPix per pixel, for EVERY operator, over randomised straight destinations
 // (including translucent ones — the case the premult-dst SIMD kernels got wrong),
-// translucent sources, and full / partial / zero-mixed coverage.
+// translucent sources, and full / partial / zero-mixed coverage. It runs for both
+// a standard RGBA order and a swapped (BGRA) order, so the span method's
+// channel-index handling (o.IdxR()/…) is exercised, not just position 0..3.
 func TestBlendSolidSpanStraightMatchesBlendPix(t *testing.T) {
-	rng := rand.New(rand.NewSource(0xC0FFEE))
+	t.Run("RGBA", func(t *testing.T) {
+		diffSpanVsBlendPix[order.RGBA](t, rand.New(rand.NewSource(0xC0FFEE)))
+	})
+	t.Run("BGRA", func(t *testing.T) {
+		diffSpanVsBlendPix[order.BGRA](t, rand.New(rand.NewSource(0xB264A)))
+	})
+}
+
+// diffSpanVsBlendPix asserts BlendSolidSpanStraight == per-pixel BlendPix for the
+// blender's byte order O across all operators and coverage modes.
+func diffSpanVsBlendPix[O order.RGBAOrder](t *testing.T, rng *rand.Rand) {
+	t.Helper()
 	const span = 48
 	coverModes := []string{"full", "partial", "zero-mixed"}
 
 	for _, op := range allCompOps {
-		bl := NewCompositeBlenderPlain[color.Linear, order.RGBA](op)
+		bl := NewCompositeBlenderPlain[color.Linear, O](op)
 		for _, mode := range coverModes {
 			for trial := 0; trial < 200; trial++ {
 				dst := make([]basics.Int8u, span*4)
@@ -81,6 +94,41 @@ func TestBlendSolidSpanStraightMatchesBlendPix(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+// TestBlendSolidSpanStraightFaithfulStraightOverOpaque value-pins the AGG-faithful
+// result of a translucent source composited over an OPAQUE destination, for the
+// operators whose result is translucent over opaque dst. This is the port-side
+// regression anchor for the §5.5 premultiplied-storage bug (mirrors the CPP-side
+// TestCPPXorBlendIsAGGFaithfulWithAggReal): the bug would leave PREMULTIPLIED data
+// in the straight buffer — e.g. xor would read back ~(15,48,22,95) instead of the
+// straight (40,130,60,95). Unlike the differential test (which only proves
+// span == BlendPix), this pins the actual demultiplied values, so it also guards
+// the scalar bridge itself.
+func TestBlendSolidSpanStraightFaithfulStraightOverOpaque(t *testing.T) {
+	// src translucent blue (40,60,220) a=160; dst opaque green (40,130,60) a=255.
+	// xor over opaque: Dca'=Dca(1-Sa), Da'=1-Sa → straight color unchanged, a=95.
+	// dst-out over opaque: same straight color, Da'=Da(1-Sa)=95.
+	cases := []struct {
+		name string
+		op   CompOp
+		want [4]basics.Int8u
+	}{
+		{"xor", CompOpXor, [4]basics.Int8u{40, 130, 60, 95}},
+		{"dst_out", CompOpDstOut, [4]basics.Int8u{40, 130, 60, 95}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			bl := NewCompositeBlenderPlain[color.Linear, order.RGBA](c.op)
+			dst := []basics.Int8u{40, 130, 60, 255}
+			bl.BlendSolidSpanStraight(dst, 40, 60, 220, 160, nil, 1)
+			got := [4]basics.Int8u{dst[0], dst[1], dst[2], dst[3]}
+			if got != c.want {
+				t.Errorf("%s over opaque green: got %v want %v (premultiplied-storage bug would give ~{15,48,22,95})",
+					c.name, got, c.want)
+			}
+		})
 	}
 }
 
