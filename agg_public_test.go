@@ -258,3 +258,40 @@ func TestFillRadialGradientStops(t *testing.T) {
 		t.Errorf("outer pixel alpha = %d, want 0", buf[outerIdx+3])
 	}
 }
+
+func TestFillLinearGradientStops(t *testing.T) {
+	const w, h = 60, 16
+	buf := make([]uint8, w*h*4)
+	a := NewAgg2D()
+	a.Attach(buf, w, h, w*4)
+	a.ClearAll(NewColor(0, 0, 0, 255))
+
+	// Four-stop ramp: red → green → blue → red. The interior green and blue
+	// stops only appear if every stop is fed into the gradient LUT.
+	stops := []GradientStop{
+		{Position: 0.0, Color: NewColor(255, 0, 0, 255)},
+		{Position: 1.0 / 3.0, Color: NewColor(0, 255, 0, 255)},
+		{Position: 2.0 / 3.0, Color: NewColor(0, 0, 255, 255)},
+		{Position: 1.0, Color: NewColor(255, 0, 0, 255)},
+	}
+
+	a.NoLine()
+	a.ResetPath()
+	a.MoveTo(0, 0)
+	a.LineTo(w, 0)
+	a.LineTo(w, h)
+	a.LineTo(0, h)
+	a.ClosePolygon()
+	a.FillLinearGradientStops(0, 8, w, 8, stops)
+	a.DrawPath(FillOnly)
+
+	// Green stop sits at x = 60/3 = 20; blue stop at x = 40.
+	greenIdx := (8*w + 20) * 4
+	if buf[greenIdx+1] <= buf[greenIdx] || buf[greenIdx+1] <= buf[greenIdx+2] {
+		t.Errorf("green stop missing at x=20: rgb=(%d,%d,%d)", buf[greenIdx], buf[greenIdx+1], buf[greenIdx+2])
+	}
+	blueIdx := (8*w + 40) * 4
+	if buf[blueIdx+2] <= buf[blueIdx] || buf[blueIdx+2] <= buf[blueIdx+1] {
+		t.Errorf("blue stop missing at x=40: rgb=(%d,%d,%d)", buf[blueIdx], buf[blueIdx+1], buf[blueIdx+2])
+	}
+}

@@ -317,6 +317,21 @@ func (a *Agg2D) FillRadialGradientStops(x, y, r float64, stops []GradientStop) {
 	a.impl.FillRadialGradientStops(x, y, r, internalStops)
 }
 
+// FillLinearGradientStops sets up a linear fill gradient from an arbitrary
+// sorted slice of GradientStops (Position 0 = start point, Position 1 = end
+// point). Stops must be in ascending Position order; positions outside [0, 1]
+// are clamped. This enables arbitrary multi-stop linear colour/alpha profiles.
+func (a *Agg2D) FillLinearGradientStops(x1, y1, x2, y2 float64, stops []GradientStop) {
+	internalStops := make([]agg2d.ColorStop, len(stops))
+	for i, s := range stops {
+		internalStops[i] = agg2d.ColorStop{
+			Position: s.Position,
+			Color:    [4]uint8{s.Color.R, s.Color.G, s.Color.B, s.Color.A},
+		}
+	}
+	a.impl.FillLinearGradientStops(x1, y1, x2, y2, internalStops)
+}
+
 // LineLinearGradient sets up a linear gradient for line/stroke operations.
 func (a *Agg2D) LineLinearGradient(x1, y1, x2, y2 float64, c1, c2 Color, profile float64) {
 	internalC1 := [4]uint8{c1.R, c1.G, c1.B, c1.A}

@@ -75,6 +75,27 @@ func (a *Agg2DFloat) FillLinearGradient(x1, y1, x2, y2 float64, c1, c2 Color, pr
 	a.fillColor = NewColor(0, 0, 0, 255)
 }
 
+// FillLinearGradientStops sets up a linear fill gradient from an arbitrary sorted
+// slice of ColorStops (Position 0 = start point, Position 1 = end point). It is
+// the float twin of Agg2D.FillLinearGradientStops, building the LUT from every
+// stop instead of a two-color profile.
+func (a *Agg2DFloat) FillLinearGradientStops(x1, y1, x2, y2 float64, stops []ColorStop) {
+	buildNStopGradient32(&a.fillGradient, stops)
+	a.fillGradientLUTDirty = true
+
+	angle := math.Atan2(y2-y1, x2-x1)
+	a.fillGradientMatrix.Reset()
+	a.fillGradientMatrix.Rotate(angle)
+	a.fillGradientMatrix.Translate(x1, y1)
+	a.fillGradientMatrix.Multiply(a.transform)
+	a.fillGradientMatrix.Invert()
+
+	a.fillGradientD1 = 0.0
+	a.fillGradientD2 = math.Sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1))
+	a.fillGradientFlag = Linear
+	a.fillColor = NewColor(0, 0, 0, 255)
+}
+
 // LineLinearGradient sets up a linear gradient for stroke operations.
 func (a *Agg2DFloat) LineLinearGradient(x1, y1, x2, y2 float64, c1, c2 Color, profile float64) {
 	buildProfileGradient32(&a.lineGradient, c1, c2, 128-int(profile*128.0), 128+int(profile*128.0))

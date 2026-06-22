@@ -144,6 +144,30 @@ func (agg2d *Agg2D) FillLinearGradient(x1, y1, x2, y2 float64, c1, c2 Color, pro
 	agg2d.fillColor = NewColor(0, 0, 0, 255)
 }
 
+// FillLinearGradientStops sets up a linear fill gradient from an arbitrary
+// sorted slice of ColorStops (Position 0 = start point, Position 1 = end point).
+// It mirrors FillLinearGradient but builds the full LUT from every stop instead
+// of a two-color profile, so any number of intermediate stops is honored.
+func (agg2d *Agg2D) FillLinearGradientStops(x1, y1, x2, y2 float64, stops []ColorStop) {
+	buildNStopGradient(&agg2d.fillGradient, stops)
+	agg2d.fillGradientLUTDirty = true
+
+	// Calculate gradient angle and setup transformation matrix
+	angle := math.Atan2(y2-y1, x2-x1)
+
+	agg2d.fillGradientMatrix.Reset()
+	agg2d.fillGradientMatrix.Rotate(angle)
+	agg2d.fillGradientMatrix.Translate(x1, y1)
+	agg2d.fillGradientMatrix.Multiply(agg2d.transform)
+	agg2d.fillGradientMatrix.Invert()
+
+	agg2d.fillGradientD1 = 0.0
+	agg2d.fillGradientD2 = math.Sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1))
+	agg2d.fillGradientFlag = Linear
+
+	agg2d.fillColor = NewColor(0, 0, 0, 255)
+}
+
 // LineLinearGradient sets up a linear gradient for line/stroke operations.
 // Parameters are identical to FillLinearGradient but affect line rendering.
 // This matches the C++ Agg2D::lineLinearGradient method.
