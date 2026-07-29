@@ -83,6 +83,24 @@ func (agg2d *Agg2D) AttachImage(img *Image) {
 	agg2d.Attach(img.renBuf.Buf(), img.renBuf.Width(), img.renBuf.Height(), img.renBuf.Stride())
 }
 
+// SetHighPrecisionPlainBlend selects AGG 2.4's original high-precision plain
+// RGBA blender over the agg24-svn one that Agg2D uses by default. The two
+// differ by one LSB on most channels of a translucent composite; Matplotlib
+// restores the high-precision form for its own Agg backend, so renderers
+// chasing pixel parity with Matplotlib want this on.
+//
+// It only takes effect on the next Attach, because the pixel format is built
+// there.
+func (agg2d *Agg2D) SetHighPrecisionPlainBlend(on bool) {
+	agg2d.highPrecisionPlainBlend = on
+}
+
+// GetHighPrecisionPlainBlend reports whether the high-precision plain blender
+// is selected.
+func (agg2d *Agg2D) GetHighPrecisionPlainBlend() bool {
+	return agg2d.highPrecisionPlainBlend
+}
+
 // initializeRendering sets up the rendering pipeline
 func (agg2d *Agg2D) initializeRendering() {
 	// Initialize pixel format with the attached buffer
@@ -91,7 +109,11 @@ func (agg2d *Agg2D) initializeRendering() {
 
 	if width > 0 && height > 0 {
 		// Create pixel format
-		agg2d.pixfmt = pixfmt.NewPixFmtRGBA32Plain[color.Linear](agg2d.rbuf)
+		if agg2d.highPrecisionPlainBlend {
+			agg2d.pixfmt = pixfmt.NewPixFmtRGBA32PlainFixed[color.Linear](agg2d.rbuf)
+		} else {
+			agg2d.pixfmt = pixfmt.NewPixFmtRGBA32Plain[color.Linear](agg2d.rbuf)
+		}
 		agg2d.pixfmtPre = pixfmt.NewPixFmtRGBA32Pre[color.Linear](agg2d.rbuf)
 		agg2d.renBase = newBaseRendererAdapter[color.RGBA8[color.Linear]](agg2d.pixfmt)
 		agg2d.renBasePre = newBaseRendererAdapter[color.RGBA8[color.Linear]](agg2d.pixfmtPre)

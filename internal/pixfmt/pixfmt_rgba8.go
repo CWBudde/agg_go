@@ -1217,6 +1217,13 @@ type (
 	PixFmtBGRA32Plain[S color.Space] = PixFmtAlphaBlendRGBA[S, blender.BlenderRGBA8Plain[S, order.BGRA]]
 	PixFmtARGB32Plain[S color.Space] = PixFmtAlphaBlendRGBA[S, blender.BlenderRGBA8Plain[S, order.ARGB]]
 	PixFmtABGR32Plain[S color.Space] = PixFmtAlphaBlendRGBA[S, blender.BlenderRGBA8Plain[S, order.ABGR]]
+
+	// Plain framebuffer, high precision (AGG 2.4's original blender_rgba_plain,
+	// the form Matplotlib restores as fixed_blender_rgba_plain)
+	PixFmtRGBA32PlainFixed[S color.Space] = PixFmtAlphaBlendRGBA[S, blender.BlenderRGBA8PlainFixed[S, order.RGBA]]
+	PixFmtBGRA32PlainFixed[S color.Space] = PixFmtAlphaBlendRGBA[S, blender.BlenderRGBA8PlainFixed[S, order.BGRA]]
+	PixFmtARGB32PlainFixed[S color.Space] = PixFmtAlphaBlendRGBA[S, blender.BlenderRGBA8PlainFixed[S, order.ARGB]]
+	PixFmtABGR32PlainFixed[S color.Space] = PixFmtAlphaBlendRGBA[S, blender.BlenderRGBA8PlainFixed[S, order.ABGR]]
 )
 
 //////////////////////////////////////////////////////////////////////////////////////
@@ -1274,6 +1281,23 @@ func NewPixFmtABGR32Plain[S color.Space](r *buffer.RenderingBufferU8) *PixFmtABG
 	return NewPixFmtAlphaBlendRGBA[S](r, blender.BlenderRGBA8Plain[S, order.ABGR]{})
 }
 
+// Constructors for RGBA pixel formats (plain, high precision)
+func NewPixFmtRGBA32PlainFixed[S color.Space](r *buffer.RenderingBufferU8) *PixFmtRGBA32PlainFixed[S] {
+	return NewPixFmtAlphaBlendRGBA[S](r, blender.BlenderRGBA8PlainFixed[S, order.RGBA]{})
+}
+
+func NewPixFmtBGRA32PlainFixed[S color.Space](r *buffer.RenderingBufferU8) *PixFmtBGRA32PlainFixed[S] {
+	return NewPixFmtAlphaBlendRGBA[S](r, blender.BlenderRGBA8PlainFixed[S, order.BGRA]{})
+}
+
+func NewPixFmtARGB32PlainFixed[S color.Space](r *buffer.RenderingBufferU8) *PixFmtARGB32PlainFixed[S] {
+	return NewPixFmtAlphaBlendRGBA[S](r, blender.BlenderRGBA8PlainFixed[S, order.ARGB]{})
+}
+
+func NewPixFmtABGR32PlainFixed[S color.Space](r *buffer.RenderingBufferU8) *PixFmtABGR32PlainFixed[S] {
+	return NewPixFmtAlphaBlendRGBA[S](r, blender.BlenderRGBA8PlainFixed[S, order.ABGR]{})
+}
+
 // Constructors for RGBA pixel formats (linear)
 
 func NewPixFmtRGBA32Linear(r *buffer.RenderingBufferU8) *PixFmtRGBA32[color.Linear] {
@@ -1326,6 +1350,12 @@ func NewPixFmtARGB32PlainLinear(r *buffer.RenderingBufferU8) *PixFmtARGB32Plain[
 
 func NewPixFmtABGR32PlainLinear(r *buffer.RenderingBufferU8) *PixFmtABGR32Plain[color.Linear] {
 	return NewPixFmtABGR32Plain[color.Linear](r)
+}
+
+// Constructors for RGBA pixel formats (linear, plain, high precision)
+
+func NewPixFmtRGBA32PlainFixedLinear(r *buffer.RenderingBufferU8) *PixFmtRGBA32PlainFixed[color.Linear] {
+	return NewPixFmtRGBA32PlainFixed[color.Linear](r)
 }
 
 // ==============================================================================

@@ -104,7 +104,7 @@ type Agg2D struct {
 	rasterizer *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip]
 
 	// Rendering components (now properly typed)
-	pixfmt         *pixfmt.PixFmtRGBA32Plain[color.Linear]
+	pixfmt         plainPixFmt
 	pixfmtPre      *pixfmt.PixFmtRGBA32Pre[color.Linear]
 	pixfmtComp     *pixfmt.PixFmtCompositeRGBA32
 	pixfmtCompPre  *pixfmt.PixFmtCompositeRGBA32Pre
@@ -120,6 +120,12 @@ type Agg2D struct {
 	// any cell the rasterizer touches becomes a fully covered pixel. The zero
 	// value keeps the normal anti-aliased pipeline.
 	antiAliasOff bool
+
+	// highPrecisionPlainBlend selects BlenderRGBA8PlainFixed for the plain
+	// framebuffer instead of the agg24-svn BlenderRGBA8Plain. It must be set
+	// before the buffer is attached, since initializeRendering is what builds
+	// the pixel format.
+	highPrecisionPlainBlend bool
 
 	// Fill and line colors
 	fillColor Color

@@ -156,6 +156,23 @@ func NewAgg2D() *Agg2D {
 	}
 }
 
+// SetHighPrecisionPlainBlend selects AGG 2.4's original high-precision plain
+// RGBA blender over the agg24-svn one used by default. The two differ by one
+// LSB on most channels of a translucent composite; Matplotlib restores the
+// high-precision form for its own Agg backend, so renderers chasing pixel
+// parity with Matplotlib want this on.
+//
+// Call it before Attach -- the pixel format is built there.
+func (a *Agg2D) SetHighPrecisionPlainBlend(on bool) {
+	a.impl.SetHighPrecisionPlainBlend(on)
+}
+
+// GetHighPrecisionPlainBlend reports whether the high-precision plain blender
+// is selected.
+func (a *Agg2D) GetHighPrecisionPlainBlend() bool {
+	return a.impl.GetHighPrecisionPlainBlend()
+}
+
 // Attach attaches a rendering buffer to the AGG2D context.
 func (a *Agg2D) Attach(buf []uint8, width, height, stride int) {
 	a.impl.Attach(buf, width, height, stride)

@@ -8,6 +8,20 @@ import (
 	"github.com/cwbudde/agg_go/internal/renderer"
 )
 
+// plainPixFmt is the subset of PixFmtAlphaBlendRGBA that Agg2D touches directly
+// on the plain (non-premultiplied) framebuffer. Holding the field as an
+// interface lets the blender vary -- see Agg2D.highPrecisionPlainBlend -- while
+// everything downstream keeps going through renderer.PixelFormat.
+type plainPixFmt interface {
+	renderer.PixelFormat[color.RGBA8[color.Linear]]
+	Clear(c color.RGBA8[color.Linear])
+	CopyFrom(src interface {
+		RowData(y int) []basics.Int8u
+		Width() int
+		Height() int
+	}, xdst, ydst, xsrc, ysrc, length int)
+}
+
 // baseRendererAdapter adapts renderer base functionality.
 // It caches a RendererBase instance, matching the C++ design where
 // renderer_base is stored as a value member of Agg2D and reused across

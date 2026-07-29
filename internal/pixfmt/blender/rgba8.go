@@ -212,6 +212,81 @@ func (BlenderRGBA8Plain[S, O]) IdxB() int { var o O; return o.IdxB() }
 func (BlenderRGBA8Plain[S, O]) IdxA() int { var o O; return o.IdxA() }
 
 ////////////////////////////////////////////////////////////////////////////////
+// Plain source -> Plain destination, high precision
+////////////////////////////////////////////////////////////////////////////////
+
+// BlenderRGBA8PlainFixed is AGG 2.4's original high-precision plain blender.
+// BlenderRGBA8Plain ports the agg24-svn rewrite, which routes the blend through
+// multiply -> lerp -> demultiply and loses a bit of precision doing so; this one
+// keeps the composite in a single fixed-point expression and divides by the
+// combined alpha directly. Matplotlib restores exactly this form for its Agg
+// backend (src/agg_workaround.h, fixed_blender_rgba_plain), so a renderer that
+// wants pixel parity with Matplotlib needs this blender rather than the SVN one.
+type BlenderRGBA8PlainFixed[S color.Space, O order.RGBAOrder] struct{}
+
+// BlendPix blends non-premultiplied src into a non-premultiplied destination.
+// The arithmetic is deliberately identical to the C++ original:
+//
+//	a = ((alpha + a) << 8) - alpha * a
+//	p[R] = (((cr << 8) - r) * alpha + (r << 8)) / a    // r = p[R] * p[A]
+//
+// Note the integer division truncates and the divisor is the *unshifted*
+// combined alpha; both are load-bearing for parity.
+func (BlenderRGBA8PlainFixed[S, O]) BlendPix(dst []basics.Int8u, r, g, b, a, cover basics.Int8u) {
+	var o O
+
+	// C++ AGG never reaches blend_pix for an opaque source at full coverage --
+	// copy_or_blend_pix and blend_hline short-circuit to a plain store first.
+	// The formula below is not exact for that case (it would return 199 for a
+	// source of 200), so the short-circuit is load-bearing, and this blender
+	// carries it because the pixfmt's opaque fast path is reserved for
+	// RGBAFastBlender implementations.
+	if a == color.RGBA8BaseMask && cover == color.RGBA8BaseMask {
+		dst[o.IdxR()], dst[o.IdxG()], dst[o.IdxB()], dst[o.IdxA()] = r, g, b, a
+		return
+	}
+
+	alpha := int64(color.RGBA8MultCover(a, cover))
+	if alpha == 0 {
+		return
+	}
+
+	da := int64(dst[o.IdxA()])
+	pr := int64(dst[o.IdxR()]) * da
+	pg := int64(dst[o.IdxG()]) * da
+	pb := int64(dst[o.IdxB()]) * da
+
+	combined := ((alpha + da) << 8) - alpha*da
+	if combined == 0 {
+		dst[o.IdxR()], dst[o.IdxG()], dst[o.IdxB()], dst[o.IdxA()] = 0, 0, 0, 0
+		return
+	}
+
+	dst[o.IdxA()] = basics.Int8u(combined >> 8)
+	dst[o.IdxR()] = basics.Int8u(((int64(r)<<8-pr)*alpha + pr<<8) / combined)
+	dst[o.IdxG()] = basics.Int8u(((int64(g)<<8-pg)*alpha + pg<<8) / combined)
+	dst[o.IdxB()] = basics.Int8u(((int64(b)<<8-pb)*alpha + pb<<8) / combined)
+}
+
+func (BlenderRGBA8PlainFixed[S, O]) SetPlain(dst []basics.Int8u, r, g, b, a basics.Int8u) {
+	var o O
+	dst[o.IdxR()], dst[o.IdxG()], dst[o.IdxB()], dst[o.IdxA()] = r, g, b, a
+}
+
+func (BlenderRGBA8PlainFixed[S, O]) GetPlain(src []basics.Int8u) (r, g, b, a basics.Int8u) {
+	var o O
+	return src[o.IdxR()], src[o.IdxG()], src[o.IdxB()], src[o.IdxA()]
+}
+
+// RawRGBAOrder interface implementation for fast path access. PremulSrc is
+// deliberately not implemented: the standard RGBA fast paths substitute lerp
+// math for BlendPix, which is the very thing this blender exists to avoid.
+func (BlenderRGBA8PlainFixed[S, O]) IdxR() int { var o O; return o.IdxR() }
+func (BlenderRGBA8PlainFixed[S, O]) IdxG() int { var o O; return o.IdxG() }
+func (BlenderRGBA8PlainFixed[S, O]) IdxB() int { var o O; return o.IdxB() }
+func (BlenderRGBA8PlainFixed[S, O]) IdxA() int { var o O; return o.IdxA() }
+
+////////////////////////////////////////////////////////////////////////////////
 // Gamma-correct (linearising) source -> Premultiplied destination
 ////////////////////////////////////////////////////////////////////////////////
 

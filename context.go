@@ -57,15 +57,31 @@ func NewContext(width, height int) *Context {
 	return ctx
 }
 
+// ContextOptions tunes how a Context renders. The zero value is the default
+// behavior, so it can always be omitted or passed empty.
+type ContextOptions struct {
+	// HighPrecisionPlainBlend selects AGG 2.4's original high-precision plain
+	// RGBA blender instead of the agg24-svn one. See
+	// Agg2D.SetHighPrecisionPlainBlend.
+	HighPrecisionPlainBlend bool
+}
+
 // NewContextForImage creates a Context that renders into an existing Image.
 //
 // Use this when image allocation is managed elsewhere but you still want the
 // higher-level Context API on top of that buffer.
 func NewContextForImage(img *Image) *Context {
+	return NewContextForImageWithOptions(img, ContextOptions{})
+}
+
+// NewContextForImageWithOptions is NewContextForImage with the rendering
+// options applied before the buffer is attached.
+func NewContextForImageWithOptions(img *Image, opts ContextOptions) *Context {
 	if img == nil {
 		return nil
 	}
 	agg2d := NewAgg2D()
+	agg2d.SetHighPrecisionPlainBlend(opts.HighPrecisionPlainBlend)
 	agg2d.Attach(img.Data, img.width, img.height, img.renBuf.Stride())
 
 	ctx := &Context{
