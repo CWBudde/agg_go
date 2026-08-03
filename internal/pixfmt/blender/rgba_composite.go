@@ -37,6 +37,25 @@ const (
 	CompOpSoftLight
 	CompOpDifference
 	CompOpExclusion
+
+	// Photoshop-compatible operators. Keep these after the original AGG/SVG
+	// range so all existing numeric values remain stable.
+	CompOpDissolve
+	CompOpLinearBurn
+	CompOpDarkerColor
+	CompOpLighterColor
+	CompOpVividLight
+	CompOpLinearLight
+	CompOpPinLight
+	CompOpHardMix
+	CompOpSubtract
+	CompOpDivide
+	CompOpHue
+	CompOpSaturation
+	CompOpColor
+	CompOpLuminosity
+	CompOpColorBurnPhotoshop
+	CompOpSoftLightPhotoshop
 )
 
 // CompositeBlender operates in premultiplied space (Sca/Dca, Sa/Da).
@@ -131,16 +150,15 @@ func (bl CompositeBlenderPre[S, O]) SetPlain(px []basics.Int8u, r, g, b, a basic
 }
 
 func (bl CompositeBlenderPre[S, O]) BlendPix(dst []basics.Int8u, r, g, b, a, cover basics.Int8u) {
+	if cover == 0 {
+		return
+	}
 	if cover != 255 {
 		r = color.RGBA8MultCover(r, cover)
 		g = color.RGBA8MultCover(g, cover)
 		b = color.RGBA8MultCover(b, cover)
 		a = color.RGBA8MultCover(a, cover)
 	}
-	if a == 0 && r == 0 && g == 0 && b == 0 {
-		return
-	}
-
 	var o O
 	d := normalizedRGBA{
 		r: float64(dst[o.IdxR()]) / 255.0,
@@ -155,6 +173,34 @@ func (bl CompositeBlenderPre[S, O]) BlendPix(dst []basics.Int8u, r, g, b, a, cov
 		a: float64(a) / 255.0,
 	}
 
+	res := CompositeBlender[S, O](bl).blendOperation(d, s)
+	dst[o.IdxR()] = to8(res.r)
+	dst[o.IdxG()] = to8(res.g)
+	dst[o.IdxB()] = to8(res.b)
+	dst[o.IdxA()] = to8(res.a)
+}
+
+// BlendPixFloat is the non-quantizing coverage variant of BlendPix. It is
+// additive API for callers such as the public rectangle compositor that keep
+// opacity and mask products in float64 until the blend equation.
+func (bl CompositeBlenderPre[S, O]) BlendPixFloat(dst []basics.Int8u, r, g, b, a basics.Int8u, coverage float64) {
+	coverage = clamp01(coverage)
+	if coverage <= 0 {
+		return
+	}
+	var o O
+	d := normalizedRGBA{
+		r: float64(dst[o.IdxR()]) / 255.0,
+		g: float64(dst[o.IdxG()]) / 255.0,
+		b: float64(dst[o.IdxB()]) / 255.0,
+		a: float64(dst[o.IdxA()]) / 255.0,
+	}
+	s := normalizedRGBA{
+		r: float64(r) / 255.0 * coverage,
+		g: float64(g) / 255.0 * coverage,
+		b: float64(b) / 255.0 * coverage,
+		a: float64(a) / 255.0 * coverage,
+	}
 	res := CompositeBlender[S, O](bl).blendOperation(d, s)
 	dst[o.IdxR()] = to8(res.r)
 	dst[o.IdxG()] = to8(res.g)
@@ -201,12 +247,12 @@ func (bl CompositeBlenderPlain[S, O]) SetPlain(px []basics.Int8u, r, g, b, a bas
 
 func (bl CompositeBlenderPlain[S, O]) BlendPix(dst []basics.Int8u, r, g, b, a, cover basics.Int8u) {
 	var o O
+	if cover == 0 {
+		return
+	}
 
 	// Sa with coverage in [0,1]
 	sa := float64(color.RGBA8MultCover(a, cover)) / 255.0
-	if sa <= 0 {
-		return
-	}
 
 	// Sca (premultiplied source)
 	s := normalizedRGBA{
@@ -238,6 +284,39 @@ func (bl CompositeBlenderPlain[S, O]) BlendPix(dst []basics.Int8u, r, g, b, a, c
 	dst[o.IdxA()] = to8(res.a)
 }
 
+// BlendPixFloat composites a straight-alpha source into a straight-alpha
+// destination while retaining float64 coverage through the blend operation.
+func (bl CompositeBlenderPlain[S, O]) BlendPixFloat(dst []basics.Int8u, r, g, b, a basics.Int8u, coverage float64) {
+	coverage = clamp01(coverage)
+	if coverage <= 0 {
+		return
+	}
+	sa := float64(a) / 255.0 * coverage
+	var o O
+	s := normalizedRGBA{
+		r: float64(r) / 255.0 * sa,
+		g: float64(g) / 255.0 * sa,
+		b: float64(b) / 255.0 * sa,
+		a: sa,
+	}
+	da := float64(dst[o.IdxA()]) / 255.0
+	d := normalizedRGBA{
+		r: float64(dst[o.IdxR()]) / 255.0 * da,
+		g: float64(dst[o.IdxG()]) / 255.0 * da,
+		b: float64(dst[o.IdxB()]) / 255.0 * da,
+		a: da,
+	}
+	res := CompositeBlender[S, O](bl).blendOperation(d, s)
+	if res.a <= 0 {
+		dst[o.IdxR()], dst[o.IdxG()], dst[o.IdxB()], dst[o.IdxA()] = 0, 0, 0, 0
+		return
+	}
+	dst[o.IdxR()] = to8(res.r / res.a)
+	dst[o.IdxG()] = to8(res.g / res.a)
+	dst[o.IdxB()] = to8(res.b / res.a)
+	dst[o.IdxA()] = to8(res.a)
+}
+
 // normalizedRGBA holds premultiplied color components in [0,1]
 type normalizedRGBA struct{ r, g, b, a float64 }
 
@@ -250,6 +329,35 @@ func to8(v float64) basics.Int8u {
 		return 255
 	}
 	return basics.Int8u(v*255.0 + 0.5)
+}
+
+func clamp01(v float64) float64 {
+	if v < 0 {
+		return 0
+	}
+	if v > 1 {
+		return 1
+	}
+	return v
+}
+
+// DissolveSeed returns a stable, well-distributed seed for destination
+// coordinates. The splitmix64 finalizer avoids visible patterns near the
+// origin and gives clipped and full-image renders identical decisions.
+func DissolveSeed(x, y int) uint32 {
+	z := uint64(uint32(x))<<32 | uint64(uint32(y))
+	z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9
+	z = (z ^ (z >> 27)) * 0x94d049bb133111eb
+	z ^= z >> 31
+	return uint32(z)
+}
+
+// DissolveAccept compares the full uint32 seed against an unquantized
+// effective alpha. Accepted pixels are composited as opaque source pixels;
+// rejected pixels leave the destination unchanged.
+func DissolveAccept(effectiveAlpha float64, seed uint32) bool {
+	const invUint32Range = 1.0 / (1 << 32)
+	return float64(seed)*invUint32Range < clamp01(effectiveAlpha)
 }
 
 // Select the composite equation
@@ -303,6 +411,41 @@ func (bl CompositeBlender[S, O]) blendOperation(d, s normalizedRGBA) normalizedR
 		return bl.difference(d, s)
 	case CompOpExclusion:
 		return bl.exclusion(d, s)
+	case CompOpDissolve:
+		// The coordinate-aware compositor handles the stochastic alpha decision
+		// before invoking SrcOver. Falling back to SrcOver keeps direct pixfmt
+		// use deterministic and avoids spatially correlated pseudo-randomness.
+		return bl.sourceOver(d, s)
+	case CompOpLinearBurn:
+		return bl.linearBurn(d, s)
+	case CompOpDarkerColor:
+		return bl.darkerColor(d, s)
+	case CompOpLighterColor:
+		return bl.lighterColor(d, s)
+	case CompOpVividLight:
+		return bl.vividLight(d, s)
+	case CompOpLinearLight:
+		return bl.linearLight(d, s)
+	case CompOpPinLight:
+		return bl.pinLight(d, s)
+	case CompOpHardMix:
+		return bl.hardMix(d, s)
+	case CompOpSubtract:
+		return bl.subtract(d, s)
+	case CompOpDivide:
+		return bl.divide(d, s)
+	case CompOpHue:
+		return bl.hue(d, s)
+	case CompOpSaturation:
+		return bl.saturation(d, s)
+	case CompOpColor:
+		return bl.blendColor(d, s)
+	case CompOpLuminosity:
+		return bl.luminosity(d, s)
+	case CompOpColorBurnPhotoshop:
+		return bl.colorBurnPhotoshop(d, s)
+	case CompOpSoftLightPhotoshop:
+		return bl.softLightPhotoshop(d, s)
 	default:
 		return bl.sourceOver(d, s)
 	}
@@ -354,7 +497,7 @@ func (bl CompositeBlenderPlain[S, O]) BlendSolidSpanStraight(dst []basics.Int8u,
 			saByte = a
 		}
 		sa := float64(saByte) / 255.0
-		if sa <= 0 {
+		if sa <= 0 && (covers != nil && covers[i] == 0) {
 			continue
 		}
 		p := i * 4
@@ -405,10 +548,10 @@ func (bl CompositeBlenderPlain[S, O]) BlendColorSpanStraight(dst []basics.Int8u,
 			cv = covers[i]
 		}
 		// Sa with coverage, matching BlendPix's color.RGBA8MultCover(a, cover)/255.
-		sa := float64(color.RGBA8MultCover(c.A, cv)) / 255.0
-		if sa <= 0 {
+		if cv == 0 {
 			continue
 		}
+		sa := float64(color.RGBA8MultCover(c.A, cv)) / 255.0
 		p := i * 4
 		// Premultiplied source.
 		s := normalizedRGBA{
@@ -777,6 +920,257 @@ func (bl CompositeBlender[S, O]) exclusion(d, s normalizedRGBA) normalizedRGBA {
 		b: s.b*d.a + d.b*s.a - 2*s.b*d.b + s.b*id + d.b*is,
 		a: d.a + s.a - s.a*d.a,
 	}
+}
+
+// blendSeparable applies the W3C/PDF source-over blending equation to a
+// straight-colour, per-channel blend function while storing premultiplied
+// components. It is intentionally separate from the legacy operators above.
+func (bl CompositeBlender[S, O]) blendSeparable(d, s normalizedRGBA, fn func(float64, float64) float64) normalizedRGBA {
+	if s.a <= 0 {
+		return d
+	}
+	dc := straightRGB(d)
+	sc := straightRGB(s)
+	return blendRGBResult(d, s, [3]float64{
+		clamp01(fn(dc[0], sc[0])),
+		clamp01(fn(dc[1], sc[1])),
+		clamp01(fn(dc[2], sc[2])),
+	})
+}
+
+func straightRGB(c normalizedRGBA) [3]float64 {
+	if c.a <= 0 {
+		return [3]float64{}
+	}
+	return [3]float64{c.r / c.a, c.g / c.a, c.b / c.a}
+}
+
+func blendRGBResult(d, s normalizedRGBA, blended [3]float64) normalizedRGBA {
+	id, is := 1.0-d.a, 1.0-s.a
+	sada := s.a * d.a
+	return normalizedRGBA{
+		r: s.r*id + d.r*is + sada*blended[0],
+		g: s.g*id + d.g*is + sada*blended[1],
+		b: s.b*id + d.b*is + sada*blended[2],
+		a: s.a + d.a - sada,
+	}
+}
+
+func (bl CompositeBlender[S, O]) linearBurn(d, s normalizedRGBA) normalizedRGBA {
+	return bl.blendSeparable(d, s, func(backdrop, source float64) float64 {
+		return backdrop + source - 1
+	})
+}
+
+func (bl CompositeBlender[S, O]) darkerColor(d, s normalizedRGBA) normalizedRGBA {
+	return bl.componentColorChoice(d, s, false)
+}
+
+func (bl CompositeBlender[S, O]) lighterColor(d, s normalizedRGBA) normalizedRGBA {
+	return bl.componentColorChoice(d, s, true)
+}
+
+func (bl CompositeBlender[S, O]) componentColorChoice(d, s normalizedRGBA, lighter bool) normalizedRGBA {
+	if s.a <= 0 {
+		return d
+	}
+	dc, sc := straightRGB(d), straightRGB(s)
+	useSource := photoshopLuminosity(sc) < photoshopLuminosity(dc)
+	if lighter {
+		useSource = photoshopLuminosity(sc) > photoshopLuminosity(dc)
+	}
+	if useSource {
+		return blendRGBResult(d, s, sc)
+	}
+	return blendRGBResult(d, s, dc)
+}
+
+func (bl CompositeBlender[S, O]) vividLight(d, s normalizedRGBA) normalizedRGBA {
+	return bl.blendSeparable(d, s, func(backdrop, source float64) float64 {
+		if source < 0.5 {
+			return photoshopColorBurn(backdrop, 2*source)
+		}
+		return photoshopColorDodge(backdrop, 2*source-1)
+	})
+}
+
+func (bl CompositeBlender[S, O]) linearLight(d, s normalizedRGBA) normalizedRGBA {
+	return bl.blendSeparable(d, s, func(backdrop, source float64) float64 {
+		return backdrop + 2*source - 1
+	})
+}
+
+func (bl CompositeBlender[S, O]) pinLight(d, s normalizedRGBA) normalizedRGBA {
+	return bl.blendSeparable(d, s, func(backdrop, source float64) float64 {
+		if source < 0.5 {
+			return math.Min(backdrop, 2*source)
+		}
+		return math.Max(backdrop, 2*source-1)
+	})
+}
+
+func (bl CompositeBlender[S, O]) hardMix(d, s normalizedRGBA) normalizedRGBA {
+	return bl.blendSeparable(d, s, func(backdrop, source float64) float64 {
+		var vivid float64
+		if source < 0.5 {
+			vivid = photoshopColorBurn(backdrop, 2*source)
+		} else {
+			vivid = photoshopColorDodge(backdrop, 2*source-1)
+		}
+		if vivid < 0.5 {
+			return 0
+		}
+		return 1
+	})
+}
+
+func (bl CompositeBlender[S, O]) subtract(d, s normalizedRGBA) normalizedRGBA {
+	return bl.blendSeparable(d, s, func(backdrop, source float64) float64 {
+		return backdrop - source
+	})
+}
+
+func (bl CompositeBlender[S, O]) divide(d, s normalizedRGBA) normalizedRGBA {
+	return bl.blendSeparable(d, s, func(backdrop, source float64) float64 {
+		if source <= 0 {
+			return 1
+		}
+		return backdrop / source
+	})
+}
+
+func (bl CompositeBlender[S, O]) hue(d, s normalizedRGBA) normalizedRGBA {
+	if s.a <= 0 {
+		return d
+	}
+	dc, sc := straightRGB(d), straightRGB(s)
+	return blendRGBResult(d, s, setLuminosity(setSaturation(sc, photoshopSaturation(dc)), photoshopLuminosity(dc)))
+}
+
+func (bl CompositeBlender[S, O]) saturation(d, s normalizedRGBA) normalizedRGBA {
+	if s.a <= 0 {
+		return d
+	}
+	dc, sc := straightRGB(d), straightRGB(s)
+	return blendRGBResult(d, s, setLuminosity(setSaturation(dc, photoshopSaturation(sc)), photoshopLuminosity(dc)))
+}
+
+func (bl CompositeBlender[S, O]) blendColor(d, s normalizedRGBA) normalizedRGBA {
+	if s.a <= 0 {
+		return d
+	}
+	dc, sc := straightRGB(d), straightRGB(s)
+	return blendRGBResult(d, s, setLuminosity(sc, photoshopLuminosity(dc)))
+}
+
+func (bl CompositeBlender[S, O]) luminosity(d, s normalizedRGBA) normalizedRGBA {
+	if s.a <= 0 {
+		return d
+	}
+	dc, sc := straightRGB(d), straightRGB(s)
+	return blendRGBResult(d, s, setLuminosity(dc, photoshopLuminosity(sc)))
+}
+
+func (bl CompositeBlender[S, O]) colorBurnPhotoshop(d, s normalizedRGBA) normalizedRGBA {
+	return bl.blendSeparable(d, s, photoshopColorBurn)
+}
+
+func (bl CompositeBlender[S, O]) softLightPhotoshop(d, s normalizedRGBA) normalizedRGBA {
+	return bl.blendSeparable(d, s, func(backdrop, source float64) float64 {
+		if source <= 0.5 {
+			return backdrop - (1-2*source)*backdrop*(1-backdrop)
+		}
+		var curve float64
+		if backdrop <= 0.25 {
+			curve = ((16*backdrop-12)*backdrop + 4) * backdrop
+		} else {
+			curve = math.Sqrt(backdrop)
+		}
+		return backdrop + (2*source-1)*(curve-backdrop)
+	})
+}
+
+func photoshopColorDodge(backdrop, source float64) float64 {
+	if backdrop <= 0 {
+		return 0
+	}
+	if source >= 1 {
+		return 1
+	}
+	return math.Min(1, backdrop/(1-source))
+}
+
+func photoshopColorBurn(backdrop, source float64) float64 {
+	if backdrop >= 1 {
+		return 1
+	}
+	if source <= 0 {
+		return 0
+	}
+	return 1 - math.Min(1, (1-backdrop)/source)
+}
+
+func photoshopLuminosity(c [3]float64) float64 {
+	return 0.3*c[0] + 0.59*c[1] + 0.11*c[2]
+}
+
+func photoshopSaturation(c [3]float64) float64 {
+	return math.Max(c[0], math.Max(c[1], c[2])) - math.Min(c[0], math.Min(c[1], c[2]))
+}
+
+func setLuminosity(c [3]float64, target float64) [3]float64 {
+	delta := target - photoshopLuminosity(c)
+	return clipBlendColor([3]float64{c[0] + delta, c[1] + delta, c[2] + delta})
+}
+
+func clipBlendColor(c [3]float64) [3]float64 {
+	lum := photoshopLuminosity(c)
+	minimum := math.Min(c[0], math.Min(c[1], c[2]))
+	maximum := math.Max(c[0], math.Max(c[1], c[2]))
+	if minimum < 0 {
+		denom := lum - minimum
+		if denom > 0 {
+			for i := range c {
+				c[i] = lum + (c[i]-lum)*lum/denom
+			}
+		} else {
+			c = [3]float64{lum, lum, lum}
+		}
+	}
+	if maximum > 1 {
+		denom := maximum - lum
+		if denom > 0 {
+			for i := range c {
+				c[i] = lum + (c[i]-lum)*(1-lum)/denom
+			}
+		} else {
+			c = [3]float64{lum, lum, lum}
+		}
+	}
+	for i := range c {
+		c[i] = clamp01(c[i])
+	}
+	return c
+}
+
+func setSaturation(c [3]float64, target float64) [3]float64 {
+	indices := [3]int{0, 1, 2}
+	for i := 0; i < len(indices); i++ {
+		for j := i + 1; j < len(indices); j++ {
+			if c[indices[i]] > c[indices[j]] {
+				indices[i], indices[j] = indices[j], indices[i]
+			}
+		}
+	}
+	minimum, middle, maximum := indices[0], indices[1], indices[2]
+	if c[maximum] > c[minimum] {
+		c[middle] = (c[middle] - c[minimum]) * target / (c[maximum] - c[minimum])
+		c[maximum] = target
+	} else {
+		c[middle], c[maximum] = 0, 0
+	}
+	c[minimum] = 0
+	return [3]float64{clamp01(c[0]), clamp01(c[1]), clamp01(c[2])}
 }
 
 // ---------- Helpers / convenience ----------

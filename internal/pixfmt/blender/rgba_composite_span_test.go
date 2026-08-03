@@ -17,6 +17,10 @@ var allCompOps = []CompOp{
 	CompOpDstAtop, CompOpXor, CompOpPlus, CompOpMultiply, CompOpScreen,
 	CompOpOverlay, CompOpDarken, CompOpLighten, CompOpColorDodge, CompOpColorBurn,
 	CompOpHardLight, CompOpSoftLight, CompOpDifference, CompOpExclusion,
+	CompOpDissolve, CompOpLinearBurn, CompOpDarkerColor, CompOpLighterColor,
+	CompOpVividLight, CompOpLinearLight, CompOpPinLight, CompOpHardMix,
+	CompOpSubtract, CompOpDivide, CompOpHue, CompOpSaturation, CompOpColor,
+	CompOpLuminosity, CompOpColorBurnPhotoshop,
 }
 
 // TestBlendSolidSpanStraightMatchesBlendPix is the differential test required by

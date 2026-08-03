@@ -39,6 +39,30 @@ const (
 	BlendSoftLight  // Soft light blending
 	BlendDifference // Difference blending
 	BlendExclusion  // Exclusion blending
+
+	// Photoshop-compatible blending modes. These are appended deliberately:
+	// the numeric values of every pre-existing mode are part of the public API.
+	BlendDissolve
+	BlendLinearBurn
+	BlendDarkerColor
+	BlendLinearDodge
+	BlendLighterColor
+	BlendVividLight
+	BlendLinearLight
+	BlendPinLight
+	BlendHardMix
+	BlendSubtract
+	BlendDivide
+	BlendHue
+	BlendSaturation
+	BlendColor
+	BlendLuminosity
+	// BlendColorBurnPhotoshop is Photoshop's/W3C's straight-colour Color Burn.
+	// BlendColorBurn retains its historical AGG output for compatibility.
+	BlendColorBurnPhotoshop
+	// BlendSoftLightPhotoshop is the straight-colour Photoshop/W3C formula.
+	// BlendSoftLight retains its historical AGG output for compatibility.
+	BlendSoftLightPhotoshop
 )
 
 // BlendModeString returns a string representation of the blend mode
@@ -94,6 +118,40 @@ func BlendModeString(mode BlendMode) string {
 		return "Difference"
 	case BlendExclusion:
 		return "Exclusion"
+	case BlendDissolve:
+		return "Dissolve"
+	case BlendLinearBurn:
+		return "LinearBurn"
+	case BlendDarkerColor:
+		return "DarkerColor"
+	case BlendLinearDodge:
+		return "LinearDodge"
+	case BlendLighterColor:
+		return "LighterColor"
+	case BlendVividLight:
+		return "VividLight"
+	case BlendLinearLight:
+		return "LinearLight"
+	case BlendPinLight:
+		return "PinLight"
+	case BlendHardMix:
+		return "HardMix"
+	case BlendSubtract:
+		return "Subtract"
+	case BlendDivide:
+		return "Divide"
+	case BlendHue:
+		return "Hue"
+	case BlendSaturation:
+		return "Saturation"
+	case BlendColor:
+		return "Color"
+	case BlendLuminosity:
+		return "Luminosity"
+	case BlendColorBurnPhotoshop:
+		return "ColorBurnPhotoshop"
+	case BlendSoftLightPhotoshop:
+		return "SoftLightPhotoshop"
 	default:
 		return "Unknown"
 	}
@@ -193,6 +251,40 @@ func blendModeToCompOp(mode BlendMode) blender.CompOp {
 		return blender.CompOpDifference
 	case BlendExclusion:
 		return blender.CompOpExclusion
+	case BlendDissolve:
+		return blender.CompOpDissolve
+	case BlendLinearBurn:
+		return blender.CompOpLinearBurn
+	case BlendDarkerColor:
+		return blender.CompOpDarkerColor
+	case BlendLinearDodge:
+		return blender.CompOpPlus
+	case BlendLighterColor:
+		return blender.CompOpLighterColor
+	case BlendVividLight:
+		return blender.CompOpVividLight
+	case BlendLinearLight:
+		return blender.CompOpLinearLight
+	case BlendPinLight:
+		return blender.CompOpPinLight
+	case BlendHardMix:
+		return blender.CompOpHardMix
+	case BlendSubtract:
+		return blender.CompOpSubtract
+	case BlendDivide:
+		return blender.CompOpDivide
+	case BlendHue:
+		return blender.CompOpHue
+	case BlendSaturation:
+		return blender.CompOpSaturation
+	case BlendColor:
+		return blender.CompOpColor
+	case BlendLuminosity:
+		return blender.CompOpLuminosity
+	case BlendColorBurnPhotoshop:
+		return blender.CompOpColorBurnPhotoshop
+	case BlendSoftLightPhotoshop:
+		return blender.CompOpSoftLightPhotoshop
 	default:
 		return blender.CompOpSrcOver // Default to SrcOver for unsupported modes
 	}
@@ -217,7 +309,7 @@ func IsPorterDuffMode(mode BlendMode) bool {
 
 // IsExtendedBlendMode returns true if the blend mode is an extended blending mode
 func IsExtendedBlendMode(mode BlendMode) bool {
-	return mode >= BlendAdd && mode <= BlendExclusion
+	return mode >= BlendAdd && mode <= BlendSoftLightPhotoshop
 }
 
 // RequiresPremultipliedAlpha returns true if the blend mode requires premultiplied alpha
@@ -233,5 +325,5 @@ func GetDefaultBlendMode() BlendMode {
 
 // ValidateBlendMode returns true if the blend mode is valid
 func ValidateBlendMode(mode BlendMode) bool {
-	return mode >= BlendAlpha && mode <= BlendExclusion
+	return mode >= BlendAlpha && mode <= BlendSoftLightPhotoshop
 }

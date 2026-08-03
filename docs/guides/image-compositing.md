@@ -10,6 +10,50 @@ At the `Context` level, the usual flow is:
 3. draw or transform the image
 4. save the target image
 
+For caller-owned buffers, `CompositeImage` and `DrawImageAffine` provide a
+stateless public surface. Both APIs use RGBA byte order, honor positive and
+negative strides, and interpret rectangles and clips as half-open.
+
+## Composite caller-owned images
+
+```go
+err := agg.CompositeImage(dst, src, agg.Rect{X1: 0, Y1: 0, X2: 64, Y2: 64},
+	agg.PointI{X: 24, Y: 12}, agg.CompositeOptions{
+		BlendMode: agg.BlendSrcOver,
+		Opacity:   0.75,
+		AlphaMode: agg.AlphaStraight,
+	})
+```
+
+Source and destination must use the same declared alpha representation.
+Clipping never writes outside the destination intersection. The operation does
+not normally allocate; overlapping source and destination storage allocates a
+snapshot of only the clipped source region.
+
+## Draw an affine-transformed image
+
+```go
+transform := agg.NewTransformationsFromValues(1.5, 0, 0.2, 1.5, 20, 12)
+err := agg.DrawImageAffine(dst, src, agg.Rect{X2: src.Width(), Y2: src.Height()},
+	transform, agg.ImageTransformOptions{
+		Filter:           agg.ImageFilterBilinear,
+		EdgeMode:         agg.ImageEdgeTransparent,
+		SourceAlpha:      agg.AlphaStraight,
+		DestinationAlpha: agg.AlphaStraight,
+		BlendMode:        agg.BlendSrcOver,
+		Opacity:          1,
+	})
+```
+
+Filtering straight-alpha input uses premultiplied samples so RGB in transparent
+texels cannot create dark or colored fringes. `ImageEdgeClamp` repeats boundary
+pixels; `ImageEdgeTransparent` samples transparent black beyond the source.
+`DrawImageAffine` builds AGG rendering state per call. In addition,
+straight-alpha sources with non-opaque pixels use a source-sized premultiplication
+copy, premultiplied destinations use a destination-sized conversion, and
+transparent-edge filtering allocates a bordered source image. The caller
+retains ownership of all input buffers.
+
 ## Draw an image at a position
 
 ```go

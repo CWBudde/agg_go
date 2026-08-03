@@ -254,6 +254,10 @@ func (agg2d *Agg2D) clipImageTransfer(img *Image, imgX1, imgY1, imgX2, imgY2, ds
 
 // renderImage renders the current path using AGG-style image span interpolation.
 func (agg2d *Agg2D) renderImage(img *Image, x1, y1, x2, y2 int, parallelogram []float64) error {
+	return agg2d.renderImageFloat(img, float64(x1), float64(y1), float64(x2), float64(y2), parallelogram)
+}
+
+func (agg2d *Agg2D) renderImageFloat(img *Image, x1, y1, x2, y2 float64, parallelogram []float64) error {
 	if img == nil || img.renBuf == nil {
 		return errors.New("image or image buffer is nil")
 	}
@@ -265,9 +269,9 @@ func (agg2d *Agg2D) renderImage(img *Image, x1, y1, x2, y2 int, parallelogram []
 	}
 
 	src := [6]float64{
-		float64(x1), float64(y1),
-		float64(x2), float64(y1),
-		float64(x2), float64(y2),
+		x1, y1,
+		x2, y1,
+		x2, y2,
 	}
 	dst := [6]float64{
 		parallelogram[0], parallelogram[1],
@@ -391,6 +395,19 @@ func (agg2d *Agg2D) TransformImagePathParallelogram(img *Image, imgX1, imgY1, im
 	}
 
 	return agg2d.renderImage(img, imgX1, imgY1, imgX2, imgY2, parallelogram)
+}
+
+// TransformImagePathParallelogramFloat is the fractional-source-coordinate
+// counterpart used by public pixel-center adapters. The current destination
+// path remains the rasterized geometry; only image sampling coordinates shift.
+func (agg2d *Agg2D) TransformImagePathParallelogramFloat(img *Image, imgX1, imgY1, imgX2, imgY2 float64, parallelogram []float64) error {
+	if img == nil {
+		return errors.New("image is nil")
+	}
+	if len(parallelogram) < 6 {
+		return errors.New("parallelogram requires 6 coordinates (3 points)")
+	}
+	return agg2d.renderImageFloat(img, imgX1, imgY1, imgX2, imgY2, parallelogram)
 }
 
 // TransformImagePathParallelogramSimple transforms and renders entire image along current path to destination parallelogram.
@@ -588,26 +605,30 @@ func (img *Image) Premultiply() error {
 		return errors.New("image data is nil")
 	}
 
-	// Process each pixel (assuming RGBA format with 4 bytes per pixel)
-	for i := 0; i < len(img.Data); i += 4 {
-		r := float64(img.Data[i+0])
-		g := float64(img.Data[i+1])
-		b := float64(img.Data[i+2])
-		a := float64(img.Data[i+3])
-
-		// Premultiply RGB by alpha
-		if a > 0 {
-			scale := a / 255.0
-			img.Data[i+0] = uint8(r * scale)
-			img.Data[i+1] = uint8(g * scale)
-			img.Data[i+2] = uint8(b * scale)
-		} else {
-			// If alpha is 0, RGB should be 0 in premultiplied format
-			img.Data[i+0] = 0
-			img.Data[i+1] = 0
-			img.Data[i+2] = 0
+	for y := 0; y < img.height; y++ {
+		row, err := img.alphaConversionRow(y)
+		if err != nil {
+			return err
 		}
-		// Alpha remains unchanged
+		for i := 0; i < img.width*4; i += 4 {
+			r := float64(row[i])
+			g := float64(row[i+1])
+			b := float64(row[i+2])
+			a := float64(row[i+3])
+
+			// Premultiply RGB by alpha
+			if a > 0 {
+				scale := a / 255.0
+				row[i] = uint8(r * scale)
+				row[i+1] = uint8(g * scale)
+				row[i+2] = uint8(b * scale)
+			} else {
+				// If alpha is 0, RGB should be 0 in premultiplied format
+				row[i] = 0
+				row[i+1] = 0
+				row[i+2] = 0
+			}
+		}
 	}
 
 	return nil
@@ -623,25 +644,52 @@ func (img *Image) Demultiply() error {
 		return errors.New("image data is nil")
 	}
 
-	// Process each pixel (assuming RGBA format with 4 bytes per pixel)
-	for i := 0; i < len(img.Data); i += 4 {
-		r := float64(img.Data[i+0])
-		g := float64(img.Data[i+1])
-		b := float64(img.Data[i+2])
-		a := float64(img.Data[i+3])
-
-		// Demultiply RGB by alpha
-		if a > 0 {
-			scale := 255.0 / a
-			img.Data[i+0] = uint8(Clamp(r*scale, 0, 255))
-			img.Data[i+1] = uint8(Clamp(g*scale, 0, 255))
-			img.Data[i+2] = uint8(Clamp(b*scale, 0, 255))
+	for y := 0; y < img.height; y++ {
+		row, err := img.alphaConversionRow(y)
+		if err != nil {
+			return err
 		}
-		// If alpha is 0, RGB values remain as they are
-		// Alpha remains unchanged
+		for i := 0; i < img.width*4; i += 4 {
+			r := float64(row[i])
+			g := float64(row[i+1])
+			b := float64(row[i+2])
+			a := float64(row[i+3])
+
+			// Demultiply RGB by alpha
+			if a > 0 {
+				scale := 255.0 / a
+				row[i] = uint8(Clamp(r*scale, 0, 255))
+				row[i+1] = uint8(Clamp(g*scale, 0, 255))
+				row[i+2] = uint8(Clamp(b*scale, 0, 255))
+			}
+		}
 	}
 
 	return nil
+}
+
+// alphaConversionRow normally uses the attached rendering buffer so alpha
+// conversion honors padded and negative strides. A few legacy internal users
+// construct Image values directly and leave the rendering buffer unattached;
+// retain their tightly-packed behavior as a compatibility fallback.
+func (img *Image) alphaConversionRow(y int) ([]uint8, error) {
+	rowBytes := img.width * 4
+	if rowBytes == 0 {
+		return nil, nil
+	}
+	if img.renBuf.Width() == img.width && img.renBuf.Height() == img.height {
+		row := img.renBuf.Row(y)
+		if len(row) < rowBytes {
+			return nil, errors.New("image data is smaller than its dimensions and stride")
+		}
+		return row[:rowBytes], nil
+	}
+	start := y * rowBytes
+	end := start + rowBytes
+	if start < 0 || end < start || end > len(img.Data) {
+		return nil, errors.New("image data is smaller than its dimensions")
+	}
+	return img.Data[start:end], nil
 }
 
 // Attach attaches buffer data to the image.

@@ -39,6 +39,8 @@ type SpanGradient[ColorT any, InterpolatorT SpanInterpolatorInterface, GradientT
 	d1               int // Start distance (subpixel precision)
 	d2               int // End distance (subpixel precision)
 	downscaleShift   int // Calculated as interpolator.SubpixelShift - GradientSubpixelShift
+	precisionShift   int
+	precisionScale   int
 }
 
 // NewSpanGradient creates a gradient span generator with AGG-style d1/d2
@@ -49,7 +51,28 @@ func NewSpanGradient[ColorT any, InterpolatorT SpanInterpolatorInterface, Gradie
 	colorFunction ColorT2,
 	d1, d2 float64,
 ) *SpanGradient[ColorT, InterpolatorT, GradientT, ColorT2] {
-	downscaleShift := interpolator.SubpixelShift() - GradientSubpixelShift
+	return NewSpanGradientWithSubpixelShift(interpolator, gradientFunction, colorFunction, d1, d2, GradientSubpixelShift)
+}
+
+// NewSpanGradientWithSubpixelShift constructs a gradient with caller-selected
+// coordinate precision. Existing AGG-compatible callers use NewSpanGradient;
+// full-surface public rendering uses the interpolator's higher precision to
+// avoid visible stop shifts on short or rotated gradients.
+func NewSpanGradientWithSubpixelShift[ColorT any, InterpolatorT SpanInterpolatorInterface, GradientT GradientFunction, ColorT2 ColorFunction[ColorT]](
+	interpolator InterpolatorT,
+	gradientFunction GradientT,
+	colorFunction ColorT2,
+	d1, d2 float64,
+	precisionShift int,
+) *SpanGradient[ColorT, InterpolatorT, GradientT, ColorT2] {
+	if precisionShift < 0 {
+		precisionShift = 0
+	}
+	if precisionShift > interpolator.SubpixelShift() {
+		precisionShift = interpolator.SubpixelShift()
+	}
+	precisionScale := 1 << precisionShift
+	downscaleShift := interpolator.SubpixelShift() - precisionShift
 	if downscaleShift < 0 {
 		downscaleShift = 0
 	}
@@ -58,9 +81,11 @@ func NewSpanGradient[ColorT any, InterpolatorT SpanInterpolatorInterface, Gradie
 		interpolator:     interpolator,
 		gradientFunction: gradientFunction,
 		colorFunction:    colorFunction,
-		d1:               basics.IRound(d1 * GradientSubpixelScale),
-		d2:               basics.IRound(d2 * GradientSubpixelScale),
+		d1:               basics.IRound(d1 * float64(precisionScale)),
+		d2:               basics.IRound(d2 * float64(precisionScale)),
 		downscaleShift:   downscaleShift,
+		precisionShift:   precisionShift,
+		precisionScale:   precisionScale,
 	}
 }
 
@@ -81,19 +106,19 @@ func (sg *SpanGradient[ColorT, InterpolatorT, GradientT, ColorT2]) ColorFunction
 
 // D1 returns the lower gradient distance bound in user-space units.
 func (sg *SpanGradient[ColorT, InterpolatorT, GradientT, ColorT2]) D1() float64 {
-	return float64(sg.d1) / GradientSubpixelScale
+	return float64(sg.d1) / float64(sg.precisionScale)
 }
 
 // D2 returns the upper gradient distance bound in user-space units.
 func (sg *SpanGradient[ColorT, InterpolatorT, GradientT, ColorT2]) D2() float64 {
-	return float64(sg.d2) / GradientSubpixelScale
+	return float64(sg.d2) / float64(sg.precisionScale)
 }
 
 // SetInterpolator replaces the coordinate interpolator and recomputes the
 // downscale step between interpolator precision and gradient precision.
 func (sg *SpanGradient[ColorT, InterpolatorT, GradientT, ColorT2]) SetInterpolator(interpolator InterpolatorT) {
 	sg.interpolator = interpolator
-	sg.downscaleShift = interpolator.SubpixelShift() - GradientSubpixelShift
+	sg.downscaleShift = interpolator.SubpixelShift() - sg.precisionShift
 	if sg.downscaleShift < 0 {
 		sg.downscaleShift = 0
 	}
@@ -111,12 +136,12 @@ func (sg *SpanGradient[ColorT, InterpolatorT, GradientT, ColorT2]) SetColorFunct
 
 // SetD1 updates the lower gradient distance bound.
 func (sg *SpanGradient[ColorT, InterpolatorT, GradientT, ColorT2]) SetD1(d1 float64) {
-	sg.d1 = basics.IRound(d1 * GradientSubpixelScale)
+	sg.d1 = basics.IRound(d1 * float64(sg.precisionScale))
 }
 
 // SetD2 updates the upper gradient distance bound.
 func (sg *SpanGradient[ColorT, InterpolatorT, GradientT, ColorT2]) SetD2(d2 float64) {
-	sg.d2 = basics.IRound(d2 * GradientSubpixelScale)
+	sg.d2 = basics.IRound(d2 * float64(sg.precisionScale))
 }
 
 // Prepare is a no-op for the base gradient generator.

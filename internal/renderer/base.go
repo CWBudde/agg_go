@@ -100,10 +100,16 @@ func (r *RendererBase[PF, C]) ClipBox(x1, y1, x2, y2 int) bool {
 	if y1 > y2 {
 		y1, y2 = y2, y1
 	}
-	cb := basics.RectI{X1: x1, Y1: y1, X2: x2, Y2: y2}
-	bufferBounds := basics.RectI{X1: 0, Y1: 0, X2: r.Width() - 1, Y2: r.Height() - 1}
-	clipped, hasIntersection := basics.IntersectRectangles(cb, bufferBounds)
-	if hasIntersection {
+	// RendererBase clip coordinates are inclusive. IntersectRectangles uses
+	// half-open bounds, so it would incorrectly reject a one-pixel clip such as
+	// {0,0,0,0}.
+	clipped := basics.RectI{
+		X1: max(x1, 0),
+		Y1: max(y1, 0),
+		X2: min(x2, r.Width()-1),
+		Y2: min(y2, r.Height()-1),
+	}
+	if clipped.X1 <= clipped.X2 && clipped.Y1 <= clipped.Y2 {
 		r.clipBox = clipped
 		return true
 	}

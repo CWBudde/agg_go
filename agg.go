@@ -1017,6 +1017,10 @@ func (a *Agg2D) TransformImagePathParallelogram(img *Image, imgX1, imgY1, imgX2,
 	return a.impl.TransformImagePathParallelogram(img.ToInternalImage(), imgX1, imgY1, imgX2, imgY2, parallelogram)
 }
 
+func (a *Agg2D) transformImagePathParallelogramFloat(img *Image, imgX1, imgY1, imgX2, imgY2 float64, parallelogram []float64) error {
+	return a.impl.TransformImagePathParallelogramFloat(img.ToInternalImage(), imgX1, imgY1, imgX2, imgY2, parallelogram)
+}
+
 // TransformImagePathParallelogramSimple maps the whole image into the current path using a parallelogram.
 func (a *Agg2D) TransformImagePathParallelogramSimple(img *Image, parallelogram []float64) error {
 	return a.impl.TransformImagePathParallelogramSimple(img.ToInternalImage(), parallelogram)

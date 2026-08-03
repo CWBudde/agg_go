@@ -9,31 +9,48 @@ type BlendMode = ia.BlendMode
 
 // Blend mode constants (re-exported from internal).
 const (
-	BlendAlpha      = ia.BlendAlpha
-	BlendClear      = ia.BlendClear
-	BlendSrc        = ia.BlendSrc
-	BlendDst        = ia.BlendDst
-	BlendSrcOver    = ia.BlendSrcOver
-	BlendDstOver    = ia.BlendDstOver
-	BlendSrcIn      = ia.BlendSrcIn
-	BlendDstIn      = ia.BlendDstIn
-	BlendSrcOut     = ia.BlendSrcOut
-	BlendDstOut     = ia.BlendDstOut
-	BlendSrcAtop    = ia.BlendSrcAtop
-	BlendDstAtop    = ia.BlendDstAtop
-	BlendXor        = ia.BlendXor
-	BlendAdd        = ia.BlendAdd
-	BlendMultiply   = ia.BlendMultiply
-	BlendScreen     = ia.BlendScreen
-	BlendOverlay    = ia.BlendOverlay
-	BlendDarken     = ia.BlendDarken
-	BlendLighten    = ia.BlendLighten
-	BlendColorDodge = ia.BlendColorDodge
-	BlendColorBurn  = ia.BlendColorBurn
-	BlendHardLight  = ia.BlendHardLight
-	BlendSoftLight  = ia.BlendSoftLight
-	BlendDifference = ia.BlendDifference
-	BlendExclusion  = ia.BlendExclusion
+	BlendAlpha              = ia.BlendAlpha
+	BlendClear              = ia.BlendClear
+	BlendSrc                = ia.BlendSrc
+	BlendDst                = ia.BlendDst
+	BlendSrcOver            = ia.BlendSrcOver
+	BlendDstOver            = ia.BlendDstOver
+	BlendSrcIn              = ia.BlendSrcIn
+	BlendDstIn              = ia.BlendDstIn
+	BlendSrcOut             = ia.BlendSrcOut
+	BlendDstOut             = ia.BlendDstOut
+	BlendSrcAtop            = ia.BlendSrcAtop
+	BlendDstAtop            = ia.BlendDstAtop
+	BlendXor                = ia.BlendXor
+	BlendAdd                = ia.BlendAdd
+	BlendMultiply           = ia.BlendMultiply
+	BlendScreen             = ia.BlendScreen
+	BlendOverlay            = ia.BlendOverlay
+	BlendDarken             = ia.BlendDarken
+	BlendLighten            = ia.BlendLighten
+	BlendColorDodge         = ia.BlendColorDodge
+	BlendColorBurn          = ia.BlendColorBurn
+	BlendHardLight          = ia.BlendHardLight
+	BlendSoftLight          = ia.BlendSoftLight
+	BlendDifference         = ia.BlendDifference
+	BlendExclusion          = ia.BlendExclusion
+	BlendDissolve           = ia.BlendDissolve
+	BlendLinearBurn         = ia.BlendLinearBurn
+	BlendDarkerColor        = ia.BlendDarkerColor
+	BlendLinearDodge        = ia.BlendLinearDodge
+	BlendLighterColor       = ia.BlendLighterColor
+	BlendVividLight         = ia.BlendVividLight
+	BlendLinearLight        = ia.BlendLinearLight
+	BlendPinLight           = ia.BlendPinLight
+	BlendHardMix            = ia.BlendHardMix
+	BlendSubtract           = ia.BlendSubtract
+	BlendDivide             = ia.BlendDivide
+	BlendHue                = ia.BlendHue
+	BlendSaturation         = ia.BlendSaturation
+	BlendColor              = ia.BlendColor
+	BlendLuminosity         = ia.BlendLuminosity
+	BlendColorBurnPhotoshop = ia.BlendColorBurnPhotoshop
+	BlendSoftLightPhotoshop = ia.BlendSoftLightPhotoshop
 )
 
 // Blend mode operations
@@ -189,6 +206,40 @@ func StringToBlendMode(s string) BlendMode {
 		return BlendDifference
 	case "exclusion":
 		return BlendExclusion
+	case "dissolve":
+		return BlendDissolve
+	case "linear-burn":
+		return BlendLinearBurn
+	case "darker-color":
+		return BlendDarkerColor
+	case "linear-dodge":
+		return BlendLinearDodge
+	case "lighter-color":
+		return BlendLighterColor
+	case "vivid-light":
+		return BlendVividLight
+	case "linear-light":
+		return BlendLinearLight
+	case "pin-light":
+		return BlendPinLight
+	case "hard-mix":
+		return BlendHardMix
+	case "subtract":
+		return BlendSubtract
+	case "divide":
+		return BlendDivide
+	case "hue":
+		return BlendHue
+	case "saturation":
+		return BlendSaturation
+	case "color":
+		return BlendColor
+	case "luminosity":
+		return BlendLuminosity
+	case "color-burn-photoshop":
+		return BlendColorBurnPhotoshop
+	case "soft-light-photoshop":
+		return BlendSoftLightPhotoshop
 	default:
 		return BlendSrcOver
 	}
