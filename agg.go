@@ -968,7 +968,7 @@ func (a *Agg2D) ResetStyle() {
 }
 
 // SaveImagePPM writes the currently attached RGBA buffer as a binary PPM file.
-func (a *Agg2D) SaveImagePPM(filename string) error {
+func (a *Agg2D) SaveImagePPM(filename string) (err error) {
 	if a.attachedBuffer == nil || a.attachedWidth <= 0 || a.attachedHeight <= 0 || a.attachedStride <= 0 {
 		return fmt.Errorf("no attached RGBA buffer")
 	}
@@ -977,7 +977,11 @@ func (a *Agg2D) SaveImagePPM(filename string) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		if cerr := file.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 
 	if _, err := fmt.Fprintf(file, "P6\n%d %d\n255\n", a.attachedWidth, a.attachedHeight); err != nil {
 		return err

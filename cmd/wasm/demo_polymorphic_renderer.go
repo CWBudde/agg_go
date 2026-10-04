@@ -52,8 +52,8 @@ type polyRenRGB555Renderer struct {
 	ren     *renscan.RendererScanlineAASolid[*renderer.RendererBase[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]], color.RGBA8[color.Linear]]
 }
 
-func newPolyRenRGB555Renderer(w, h int) (*polyRenRGB555Renderer, []basics.Int16u) {
-	buf16 := make([]basics.Int16u, w*h)
+func newPolyRenRGB555Renderer(w, h int) (rgb555 *polyRenRGB555Renderer, buf16 []basics.Int16u) {
+	buf16 = make([]basics.Int16u, w*h)
 	rbuf16 := buffer.NewRenderingBufferU16WithData(buf16, w, h, w*2) // positive stride = y-down (no flip)
 	pf := pixfmt.NewPixFmtRGB555(rbuf16, blender.BlenderRGB555{})
 	rb := renderer.NewRendererBaseWithPixfmt[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]](pf)

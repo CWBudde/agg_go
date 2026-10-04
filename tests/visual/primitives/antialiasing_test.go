@@ -384,9 +384,9 @@ func thinLineOverPurple(lw float64) func() (image.Image, error) {
 type aaStlPathVS struct{ ps *aggpath.PathStorageStl }
 
 func (s aaStlPathVS) Rewind(id uint) { s.ps.Rewind(id) }
-func (s aaStlPathVS) Vertex() (float64, float64, basics.PathCommand) {
-	x, y, cmd := s.ps.NextVertex()
-	return x, y, basics.PathCommand(cmd)
+func (s aaStlPathVS) Vertex() (x, y float64, cmd basics.PathCommand) {
+	x, y, rawCmd := s.ps.NextVertex()
+	return x, y, basics.PathCommand(rawCmd)
 }
 
 func countDarkPerThreshold(img *image.NRGBA, x0, x1, y0, y1 int, thresholds []struct {

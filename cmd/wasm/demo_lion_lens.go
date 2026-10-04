@@ -48,9 +48,9 @@ type llSegmAdapter struct{ s *conv.ConvSegmentator }
 
 func (a *llSegmAdapter) Rewind(id uint) { a.s.Rewind(id) }
 
-func (a *llSegmAdapter) Vertex() (float64, float64, basics.PathCommand) {
-	x, y, cmd := a.s.Vertex()
-	return x, y, basics.PathCommand(cmd)
+func (a *llSegmAdapter) Vertex() (x, y float64, cmd basics.PathCommand) {
+	x, y, rawCmd := a.s.Vertex()
+	return x, y, basics.PathCommand(rawCmd)
 }
 
 func initLionLensDemo() {

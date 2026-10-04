@@ -92,9 +92,9 @@ func (r *rendererEnlargedAA) drawSquare(x, y float64, c color.RGBA8[color.Linear
 type pathStlVSAA struct{ ps *path.PathStorageStl }
 
 func (a *pathStlVSAA) Rewind(id uint) { a.ps.Rewind(id) }
-func (a *pathStlVSAA) Vertex() (float64, float64, basics.PathCommand) {
-	x, y, cmd := a.ps.NextVertex()
-	return x, y, basics.PathCommand(cmd)
+func (a *pathStlVSAA) Vertex() (x, y float64, cmd basics.PathCommand) {
+	x, y, rawCmd := a.ps.NextVertex()
+	return x, y, basics.PathCommand(rawCmd)
 }
 
 // convVSAA adapts a conv.VertexSource to the rasterizer's VertexSource interface.

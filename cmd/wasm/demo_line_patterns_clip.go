@@ -259,7 +259,7 @@ func linePatternClipClamp(v, lo, hi float64) float64 {
 	return v
 }
 
-func clampLinePatternClipPoint(x, y float64) (float64, float64) {
+func clampLinePatternClipPoint(x, y float64) (cx, cy float64) {
 	if ctx == nil {
 		return x, y
 	}
@@ -289,9 +289,9 @@ func linePatternClipSegmentDistanceSquared(px, py, ax, ay, bx, by float64) float
 	return linePatternClipDistanceSquared(px, py, cx, cy)
 }
 
-func linePatternClipNearestSegment(x, y float64) (int, float64) {
-	bestIdx := -1
-	bestDist2 := math.MaxFloat64
+func linePatternClipNearestSegment(x, y float64) (bestIdx int, bestDist2 float64) {
+	bestIdx = -1
+	bestDist2 = math.MaxFloat64
 	for i := 0; i+1 < len(linePatternClipPoints); i++ {
 		a := linePatternClipPoints[i]
 		b := linePatternClipPoints[i+1]

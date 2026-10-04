@@ -138,7 +138,7 @@ func CompareImageFiles(referencePath, generatedPath string, options ComparisonOp
 	if err != nil {
 		return nil, fmt.Errorf("failed to open reference image %s: %v", referencePath, err)
 	}
-	defer refFile.Close()
+	defer func() { _ = refFile.Close() }()
 
 	refImage, _, err := image.Decode(refFile)
 	if err != nil {
@@ -150,7 +150,7 @@ func CompareImageFiles(referencePath, generatedPath string, options ComparisonOp
 	if err != nil {
 		return nil, fmt.Errorf("failed to open generated image %s: %v", generatedPath, err)
 	}
-	defer genFile.Close()
+	defer func() { _ = genFile.Close() }()
 
 	genImage, _, err := image.Decode(genFile)
 	if err != nil {
@@ -173,11 +173,14 @@ func SaveDiffImage(diffImage *image.RGBA, outputPath string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create diff image file %s: %v", outputPath, err)
 	}
-	defer file.Close()
 
 	// Encode as PNG
 	if err := png.Encode(file, diffImage); err != nil {
+		_ = file.Close()
 		return fmt.Errorf("failed to encode diff image: %v", err)
+	}
+	if err := file.Close(); err != nil {
+		return fmt.Errorf("failed to close diff image file %s: %v", outputPath, err)
 	}
 
 	return nil
@@ -189,7 +192,7 @@ func LoadImage(path string) (image.Image, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open image %s: %v", path, err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	img, _, err := image.Decode(file)
 	if err != nil {
@@ -212,11 +215,14 @@ func SaveImage(img image.Image, path string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create image file %s: %v", path, err)
 	}
-	defer file.Close()
 
 	// Encode as PNG
 	if err := png.Encode(file, img); err != nil {
+		_ = file.Close()
 		return fmt.Errorf("failed to encode image: %v", err)
+	}
+	if err := file.Close(); err != nil {
+		return fmt.Errorf("failed to close image file %s: %v", path, err)
 	}
 
 	return nil

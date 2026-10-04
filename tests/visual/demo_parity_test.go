@@ -242,7 +242,7 @@ func tryGenerateFromDir(outDir string, demo demoConfig, runDir string, args []st
 	}
 	stampPath := stamp.Name()
 	_ = stamp.Close()
-	defer os.Remove(stampPath)
+	defer func() { _ = os.Remove(stampPath) }()
 
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Dir = runDir
@@ -256,7 +256,7 @@ func tryGenerateFromDir(outDir string, demo demoConfig, runDir string, args []st
 	if err != nil {
 		return fmt.Errorf("find generated png after %s in %s: %w\n%s", strings.Join(args, " "), runDir, err, strings.TrimSpace(string(output)))
 	}
-	defer os.Remove(generated)
+	defer func() { _ = os.Remove(generated) }()
 
 	dstPath := filepath.Join(outDir, demo.name+".png")
 	return copyFile(generated, dstPath)
@@ -298,15 +298,15 @@ func copyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer in.Close()
+	defer func() { _ = in.Close() }()
 
 	out, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
-	defer out.Close()
 
 	if _, err := io.Copy(out, in); err != nil {
+		_ = out.Close()
 		return err
 	}
 	return out.Close()

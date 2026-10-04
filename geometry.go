@@ -70,9 +70,9 @@ func (a *Affine) Reset() {
 }
 
 // Transform applies the affine transformation to a point.
-func (a *Affine) Transform(x, y float64) (float64, float64) {
-	tx := a.matrix[0]*x + a.matrix[2]*y + a.matrix[4]
-	ty := a.matrix[1]*x + a.matrix[3]*y + a.matrix[5]
+func (a *Affine) Transform(x, y float64) (tx, ty float64) {
+	tx = a.matrix[0]*x + a.matrix[2]*y + a.matrix[4]
+	ty = a.matrix[1]*x + a.matrix[3]*y + a.matrix[5]
 	return tx, ty
 }
 

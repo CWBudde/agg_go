@@ -269,7 +269,7 @@ func LoadImageFromFile(filename string) (*Image, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	img, _, err := image.Decode(file)
 	if err != nil {
@@ -306,12 +306,16 @@ func NewImageFromStandardImage(img image.Image) (*Image, error) {
 }
 
 // SaveImageToPNG saves an AGG Image to a PNG file.
-func (img *Image) SaveToPNG(filename string) error {
+func (img *Image) SaveToPNG(filename string) (err error) {
 	file, err := os.Create(filename)
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		if cerr := file.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 
 	stdImg, err := img.ToStandardImage()
 	if err != nil {
@@ -322,12 +326,16 @@ func (img *Image) SaveToPNG(filename string) error {
 }
 
 // SaveImageToJPEG saves an AGG Image to a JPEG file.
-func (img *Image) SaveToJPEG(filename string, quality int) error {
+func (img *Image) SaveToJPEG(filename string, quality int) (err error) {
 	file, err := os.Create(filename)
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		if cerr := file.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 
 	stdImg, err := img.ToStandardImage()
 	if err != nil {

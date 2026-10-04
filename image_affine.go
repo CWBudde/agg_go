@@ -227,7 +227,7 @@ func affineImageOpaque(img *Image) bool {
 	return true
 }
 
-func affineTransparentPadding(transform *Transformations, opts ImageTransformOptions) (int, int, error) {
+func affineTransparentPadding(transform *Transformations, opts ImageTransformOptions) (padX, padY int, err error) {
 	if opts.Filter == ImageFilterNoFilter {
 		return 1, 1, nil
 	}

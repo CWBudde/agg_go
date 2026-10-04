@@ -136,7 +136,7 @@ func ensureLinePatternCurves() {
 	}
 }
 
-func linePatternControlPoint(c *linepatterns.Curve, idx int) (*float64, *float64) {
+func linePatternControlPoint(c *linepatterns.Curve, idx int) (x, y *float64) {
 	switch idx {
 	case 0:
 		return &c.X1, &c.Y1
@@ -159,7 +159,7 @@ func linePatternClamp(v, lo, hi float64) float64 {
 	return v
 }
 
-func clampLinePatternPoint(x, y float64) (float64, float64) {
+func clampLinePatternPoint(x, y float64) (cx, cy float64) {
 	if ctx == nil {
 		return x, y
 	}
@@ -169,14 +169,14 @@ func clampLinePatternPoint(x, y float64) (float64, float64) {
 	return linePatternClamp(x, pad, maxX), linePatternClamp(y, pad, maxY)
 }
 
-func cubicPoint(c linepatterns.Curve, t float64) (float64, float64) {
+func cubicPoint(c linepatterns.Curve, t float64) (x, y float64) {
 	u := 1 - t
 	tt := t * t
 	uu := u * u
 	uuu := uu * u
 	ttt := tt * t
-	x := uuu*c.X1 + 3*uu*t*c.X2 + 3*u*tt*c.X3 + ttt*c.X4
-	y := uuu*c.Y1 + 3*uu*t*c.Y2 + 3*u*tt*c.Y3 + ttt*c.Y4
+	x = uuu*c.X1 + 3*uu*t*c.X2 + 3*u*tt*c.X3 + ttt*c.X4
+	y = uuu*c.Y1 + 3*uu*t*c.Y2 + 3*u*tt*c.Y3 + ttt*c.Y4
 	return x, y
 }
 

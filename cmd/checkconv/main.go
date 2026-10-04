@@ -16,7 +16,7 @@ func main() {
 		f2, _ := os.Open("alpha_mask2.png")
 		if f2 != nil {
 			img, _ := png.Decode(f2)
-			f2.Close()
+			_ = f2.Close()
 			for _, pt := range [][2]int{{300, 100}, {250, 150}, {350, 80}} {
 				x, y := pt[0], pt[1]
 				c := img.At(x, y).(color.RGBA)
@@ -25,7 +25,7 @@ func main() {
 		}
 		return
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	img, _ := png.Decode(f)
 	_ = image.Point{}
 

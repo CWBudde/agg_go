@@ -127,7 +127,7 @@ func loadPNG(path string) (image.Image, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	img, err := png.Decode(f)
 	if err != nil {
 		return nil, err
@@ -336,7 +336,7 @@ func tryGenerateFromDir(ctx context.Context, outDir string, demo demoConfig, run
 	}
 	stampPath := stamp.Name()
 	_ = stamp.Close()
-	defer os.Remove(stampPath)
+	defer func() { _ = os.Remove(stampPath) }()
 
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 	cmd.Dir = runDir
@@ -350,7 +350,7 @@ func tryGenerateFromDir(ctx context.Context, outDir string, demo demoConfig, run
 	if err != nil {
 		return fmt.Errorf("find generated png after %s in %s: %w\n%s", strings.Join(args, " "), runDir, err, strings.TrimSpace(string(output)))
 	}
-	defer os.Remove(generated)
+	defer func() { _ = os.Remove(generated) }()
 
 	dstPath := filepath.Join(outDir, demo.name+".png")
 	return copyFile(generated, dstPath)
@@ -397,15 +397,15 @@ func copyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer in.Close()
+	defer func() { _ = in.Close() }()
 
 	out, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
-	defer out.Close()
 
 	if _, err := io.Copy(out, in); err != nil {
+		_ = out.Close()
 		return err
 	}
 	return out.Close()
@@ -1075,7 +1075,10 @@ func badgeClassDiffRatio(r float64) string {
 	return "badge-bad"
 }
 
-func renderCard(w io.Writer, d *demoEntry) {
+// renderCard appends the HTML for one demo card to w. Writing into an
+// in-memory buffer cannot fail, so the page is assembled first and then sent
+// to the client with a single checked write in renderPage.
+func renderCard(w *bytes.Buffer, d *demoEntry) {
 	pctDiff := d.DiffRatio * 100.0
 
 	fmt.Fprintf(w, `<div class="card" data-name="%s" data-rmse="%.4f" data-avg-diff="%.4f" data-max-diff="%d" data-diff-pixels="%d" data-diff-ratio="%.6f">`, d.Name, d.RMSE, d.AvgDiff, d.MaxDiff, d.DiffPixels, d.DiffRatio)
@@ -1157,12 +1160,15 @@ func renderCard(w io.Writer, d *demoEntry) {
 	fmt.Fprintf(w, `</div>`) // card
 }
 
-func renderPage(w io.Writer, demos []demoEntry) {
-	fmt.Fprint(w, pageHeader)
+func renderPage(w io.Writer, demos []demoEntry) error {
+	var buf bytes.Buffer
+	buf.WriteString(pageHeader)
 	for i := range demos {
-		renderCard(w, &demos[i])
+		renderCard(&buf, &demos[i])
 	}
-	fmt.Fprint(w, pageFooter)
+	buf.WriteString(pageFooter)
+	_, err := buf.WriteTo(w)
+	return err
 }
 
 func isRegenerateFetch(r *http.Request) bool {
@@ -1191,7 +1197,9 @@ func main() {
 			http.Error(w, fmt.Sprintf("Error loading demos: %v", err), http.StatusInternalServerError)
 			return
 		}
-		renderPage(w, demos)
+		if err := renderPage(w, demos); err != nil {
+			log.Printf("warning: failed to write page: %v", err)
+		}
 	})
 	http.HandleFunc("/regenerate", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {

@@ -61,9 +61,9 @@ func (ev *aaTestEllipseVS) Vertex(x, y *float64) uint32 {
 type aaTestPathStlVS struct{ ps *path.PathStorageStl }
 
 func (a *aaTestPathStlVS) Rewind(id uint) { a.ps.Rewind(id) }
-func (a *aaTestPathStlVS) Vertex() (float64, float64, basics.PathCommand) {
-	x, y, cmd := a.ps.NextVertex()
-	return x, y, basics.PathCommand(cmd)
+func (a *aaTestPathStlVS) Vertex() (x, y float64, cmd basics.PathCommand) {
+	x, y, rawCmd := a.ps.NextVertex()
+	return x, y, basics.PathCommand(rawCmd)
 }
 
 type aaTestConvVS struct{ src conv.VertexSource }

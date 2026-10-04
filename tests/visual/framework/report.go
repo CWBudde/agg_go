@@ -22,7 +22,7 @@ func NewReportGenerator(outputDir string) *ReportGenerator {
 }
 
 // GenerateReport creates an HTML report for the test suite results.
-func (rg *ReportGenerator) GenerateReport(suite *TestSuite) error {
+func (rg *ReportGenerator) GenerateReport(suite *TestSuite) (err error) {
 	// Ensure output directory exists
 	if err := os.MkdirAll(rg.OutputDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create reports directory: %v", err)
@@ -34,7 +34,11 @@ func (rg *ReportGenerator) GenerateReport(suite *TestSuite) error {
 	if err != nil {
 		return fmt.Errorf("failed to create report file: %v", err)
 	}
-	defer file.Close()
+	defer func() {
+		if cerr := file.Close(); cerr != nil && err == nil {
+			err = fmt.Errorf("failed to close report file: %v", cerr)
+		}
+	}()
 
 	// Execute template
 	tmpl := template.Must(template.New("report").Funcs(reportTemplateFuncs()).Parse(reportTemplate))

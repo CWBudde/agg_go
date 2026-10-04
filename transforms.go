@@ -200,7 +200,7 @@ func (t *Transformations) Invert() bool {
 }
 
 // Transform applies the transformation to a point.
-func (t *Transformations) Transform(x, y float64) (float64, float64) {
+func (t *Transformations) Transform(x, y float64) (tx, ty float64) {
 	affine := transform.NewTransAffineFromValues(
 		t.AffineMatrix[0], t.AffineMatrix[1], t.AffineMatrix[2],
 		t.AffineMatrix[3], t.AffineMatrix[4], t.AffineMatrix[5],

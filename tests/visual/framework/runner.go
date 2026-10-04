@@ -102,7 +102,9 @@ func (r *TestRunner) RunTestSuite(suiteName string, tests map[string]func() (ima
 	}
 
 	// Ensure output directories exist
-	r.ensureDirectories()
+	if err := r.ensureDirectories(); err != nil {
+		fmt.Printf("Warning: %v\n", err)
+	}
 
 	// Run each test
 	for testName, testFunc := range tests {
@@ -204,11 +206,14 @@ func (r *TestRunner) findReferenceImage(testName string) string {
 }
 
 // ensureDirectories creates necessary directories if they don't exist.
-func (r *TestRunner) ensureDirectories() {
+func (r *TestRunner) ensureDirectories() error {
 	dirs := []string{r.OutputDir, r.DiffsDir, r.ReportsDir}
 	for _, dir := range dirs {
-		os.MkdirAll(dir, 0o755)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return fmt.Errorf("failed to create directory %s: %v", dir, err)
+		}
 	}
+	return nil
 }
 
 // CleanOutputs removes generated test outputs (useful for cleanup).
@@ -283,7 +288,7 @@ func envFloat64(name string) (float64, bool) {
 	return value, true
 }
 
-func envBool(name string) (bool, bool) {
+func envBool(name string) (value, ok bool) {
 	raw, ok := os.LookupEnv(name)
 	if !ok || raw == "" {
 		return false, false

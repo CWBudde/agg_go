@@ -23,7 +23,7 @@ const (
 	transCurveRefH = 600.0
 )
 
-func transCurveFrameOffset() (float64, float64) {
+func transCurveFrameOffset() (offX, offY float64) {
 	return (float64(width) - transCurveRefW) * 0.5, (float64(height) - transCurveRefH) * 0.5
 }
 
