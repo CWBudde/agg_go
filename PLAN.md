@@ -1069,6 +1069,12 @@ Fonts / controls / platform
     missing `docs/api/`), `update-tasks`, `build-windows`, `list-examples`
   - `lint` must not use `--new`
   - `check` must not run the mutating `fmt`/`tidy`
+  - `fmt` runs `treefmt --allow-missing-formatter`, so without a local `prettier` it silently
+    skips Markdown/YAML and only CI's format check catches it. Fail (or warn loudly) when a
+    formatter is missing.
+- [ ] x11 backend: `createImageBuffer` overwrites `x.ximg` without destroying the old XImage,
+      so every resize (`SetWindowSize`, ConfigureNotify) leaks one. The C side also keeps a
+      pointer to the Go-allocated `imgData`, which violates the cgo pointer-passing rules.
 - [ ] Untrack the committed artifacts: `examples/platform/sdl2/sdl2` (ELF),
       `examples/core/basic/shapes/ellipse_test.ppm`, `.claude/agents/*`.
 - [ ] Remove the duplicate `tests/visual/reference/bootstrap/go-golden/primitives`, the
