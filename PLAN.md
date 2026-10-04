@@ -103,6 +103,7 @@ and finally the genuinely algorithmic/architectural gaps).
 > `UPDATE_VISUAL=1` render on **darwin/arm64** vs `reference/cpp/examples`, RGB pixel-diff count.
 > The older rows were probably measured on linux/amd64 (no FMA), so small residuals in
 > "exact" rows such as `bspline` may be FMA artefacts (see the 8.2 FMA sweep).
+>
 > - **Now 0 px, rows below are stale:** `bezier_div`, `image_filters2`, `multi_clip`,
 >   `gouraud` (352 → 0 px from the rasterizer gamma `uround` fix).
 > - **Much smaller than listed:** `conv_dash_marker` 34 px (max Δ2), `idea` 60 px.
@@ -124,7 +125,7 @@ and finally the genuinely algorithmic/architectural gaps).
 - [x] `blur` — pixel-exact (RMSE 0.0, 0/145200 px). The shadow polygon control (`shadowCtrl`) was rendered after the "a" shape, placing it in front; C++ `on_draw()` renders it after the blur but before the shape. Moving the `renderCtrl(shadowCtrl)` call to that position fixed the z-order.
 - [ ] `line_patterns` — RMSE 0.1216 (936 px). Image-pattern glyph sampling/positioning along each curved path plus a couple of saturated control-pin pixels.
 - [ ] `gamma_ctrl` — RMSE 0.0644 (1378 px). Sub-pixel AA edge fringing on the green GSV "Text 2345" glyph outlines and the thin radial-spline lines; controls exact.
-  → 2026-10-04: the rasterizer gamma-table truncation is fixed (§8.2, `SetGamma` now uses `uround`), but the re-measurement above still lists this row as unchanged. Still open: the glyph-outline and spline-line AA.
+      → 2026-10-04: the rasterizer gamma-table truncation is fixed (§8.2, `SetGamma` now uses `uround`), but the re-measurement above still lists this row as unchanged. Still open: the glyph-outline and spline-line AA.
 - [ ] `trans_polar` — RMSE 0.0506 (1628 px). Transform-resampling AA on the curved polar ring plus the control text and slider-knob X positions.
 - [ ] `conv_stroke` — RMSE 0.0803 (1709 px). Faint float-vs-8bit AA edge fringing along the dashed-stroke borders and miter-join markers; near-exact.
 - [ ] `mol_view` — RMSE 0.2857 (2138 px). Sub-pixel AA fringing on the green GSV title-text glyph edges and the thin atom-bond strokes; geometry/colors already corrected.
@@ -132,20 +133,20 @@ and finally the genuinely algorithmic/architectural gaps).
 - [ ] `compositing2` — RMSE 0.0967 (5004 px). Comp-op blend rounding (8-bit vs float) on the edges of the four overlapping translucent circles; controls exact.
 - [ ] `aa_test` — RMSE 0.1728 (10685 px). Float-vs-8bit AA fringing on the many thin anti-aliased lines/dashes in the radial sub-pixel line fans; no logic error.
 - [ ] `alpha_gradient` — RMSE 0.4158 (26799 px). Accumulated 8-bit blend rounding (agg.RGBA truncates `uint8(v*255)` instead of round-to-nearest `*255+0.5`) across the whole alpha-blended gradient circle and translucent ellipses; the round-to-nearest fix is one-line but touches a shared blend path.
-  → 2026-10-04: the rasterizer gamma-table rounding fix (§8.2) did not move this row (26835 px in the re-measurement above). The `agg.RGBA` truncation (`colors.go:153-156`) is still the lead.
+      → 2026-10-04: the rasterizer gamma-table rounding fix (§8.2) did not move this row (26835 px in the re-measurement above). The `agg.RGBA` truncation (`colors.go:153-156`) is still the lead.
 - [ ] `line_thickness` — RMSE 0.3650 (25756 px). Uniform BGR96-float-vs-8bit edge-AA fringe along every diagonal line and radial spoke; essentially done pending a float renderer.
 - [ ] `graph_test` — RMSE 0.7717 (37004 px). Sub-pixel AA on the grid of node-circle outlines plus glyph edges in the bottom timing/status text; residual after per-control text-height fixes.
 - [ ] `pattern_fill` — RMSE 0.2836 (64555 px). Background tint off by integer-rounding the premultiplied RGBA8(102,0,26,26) instead of float premultiply-then-quantize (rgba_pre), spread across the pattern-filled star interior; controls/margins clean.
 - [ ] `alpha_mask3` — RMSE 0.3438 (69120 px). Renders into 4-channel RGBA32 instead of the C++ opaque 3-channel BGR24 (pixfmt_rgb) buffer, so the layered low-alpha (25/127) over-blend rounds one LSB darker across the translucent shapes; controls/background identical.
 - [ ] `conv_dash_marker` — RMSE 0.9998 (4672 px). Dash-phase / sub-pixel dash-segment positioning offset along the dashed line (every dash lands slightly shifted) plus the green smooth-outline edges.
-  → 2026-10 audit: the geometry stages (smooth_poly1, curve3_div, vcgen_dash, markers_term) look numerically equivalent; the plain smooth outline differs too, so suspect thin-stroke AA downstream. Dump the stroke vertices from both sides to confirm.
+      → 2026-10 audit: the geometry stages (smooth_poly1, curve3_div, vcgen_dash, markers_term) look numerically equivalent; the plain smooth outline differs too, so suspect thin-stroke AA downstream. Dump the stroke vertices from both sides to confirm.
 - [ ] `bezier_div` — RMSE 1.1956 (2861 px). Stroke vertex generation at the Miter-Revert + Inner-Round join near the curve cusp differs slightly from C++ vcgen_stroke; diff concentrates at the inner-join triangle fan and dashed inner-stroke outline.
-  → 2026-10-04: the swapped `curve4_div` case selector is fixed (§8.2), and the re-measurement above shows this row at 0 px, so the description is stale. Re-baseline it with 8.3 and tick it if 0 px is confirmed.
+      → 2026-10-04: the swapped `curve4_div` case selector is fixed (§8.2), and the re-measurement above shows this row at 0 px, so the description is stale. Re-baseline it with 8.3 and tick it if 0 px is confirmed.
 - [ ] `compositing` — RMSE 0.5101 (98059 px). ±1-LSB gradient/composite interpolation rounding in the 8-bit-linear scene path (the known RGBA128 float comp-op residual) spread across the gradient-filled shapes; controls/text exact.
 - [ ] `scanline_boolean2` — RMSE 1.2047 (69301 px). Sub-pixel cover/span-boundary discrepancy in the scanline boolean AND-combine path (num_spans 1033 vs C++ 1031) on the intersection-shape AA edges; GSV text stroke already corrected.
-  → 2026-10 audit: the sbool AND helpers match C++; diff the input storages first (the demo's contour round-trip is the likely cause, §8.2).
+      → 2026-10 audit: the sbool AND helpers match C++; diff the input storages first (the demo's contour round-trip is the likely cause, §8.2).
 - [ ] `image_filters2` — RMSE 1.2622 (53494 px). Largest real gap: the scaled right-side image is rendered via Agg2D's dedicated bilinear resampler instead of the C++ LUT-based span_image_filter_rgba general filter, so every fractional sample blends source texels differently across the whole image; control panel clean.
-  → 2026-10 audit: this description is stale — the example already uses `SpanImageFilterRGBA`. The 2026-10-04 re-measurement above shows 0 px, so re-baseline it with 8.3 and close the matching §8.2 `image_filters2` item if 0 px is confirmed.
+      → 2026-10 audit: this description is stale — the example already uses `SpanImageFilterRGBA`. The 2026-10-04 re-measurement above shows 0 px, so re-baseline it with 8.3 and close the matching §8.2 `image_filters2` item if 0 px is confirmed.
 
 ### 1.3 Exit criteria
 
@@ -489,17 +490,17 @@ they are correct over **translucent** — not just opaque — destinations.
 ## Phase 7 - Image Resample Performance
 
 Downscaling a photograph through `DrawImageAffine` is currently ~50× slower than
-libvips and the gap widens as the reduction ratio *falls*. Benchmarked in
+libvips and the gap widens as the reduction ratio _falls_. Benchmarked in
 `../rasterbench` (12th Gen i7-1255U, Go 1.26.5, libvips 8.15.1, agg_go v0.5.0)
 on a 3024² centre crop, decode excluded:
 
-| output | reduction | libvips | agg_go |
-| ---: | ---: | ---: | ---: |
-| 48 px | 63× | ~0 | 21 ms |
-| 128 px | 24× | ~0 | 624 ms |
-| 192 px | 16× | ~0 | 3.3 s |
-| 512 px | 5.9× | ~0 | 5.0 s |
-| 1024 px | 3.0× | ~0 | 5.9 s |
+|  output | reduction | libvips | agg_go |
+| ------: | --------: | ------: | -----: |
+|   48 px |       63× |      ~0 |  21 ms |
+|  128 px |       24× |      ~0 | 624 ms |
+|  192 px |       16× |      ~0 |  3.3 s |
+|  512 px |      5.9× |      ~0 |  5.0 s |
+| 1024 px |      3.0× |      ~0 |  5.9 s |
 
 Full pipeline including codecs: 574 ms for nine renditions vs 29.6 s. Pinning
 libvips to one thread only moves it to 726 ms, so this is **not** a
@@ -515,9 +516,9 @@ C++ AGG:
    walk a `(2·radius_x)×(2·radius_y)` window per destination pixel, and
    `radius_x = (diameter · m_rx) >> 1` grows with the reduction ratio. Cost per
    destination pixel is therefore O(r²), and since r ∝ reduction while the
-   destination area ∝ 1/reduction², total work is *constant* in output size
+   destination area ∝ 1/reduction², total work is _constant_ in output size
    once unclamped — which is the ~5 s plateau at 512 and 1024 px.
-2. **`m_scale_limit` clamps the footprint.** *(Corrected 2026-10-04.)* The
+2. **`m_scale_limit` clamps the footprint.** _(Corrected 2026-10-04.)_ The
    `DrawImageAffine` resample path (`internal/agg2d/image.go:119`) uses
    `SpanImageResampleRGBAAffine`, whose base `SpanImageResampleAffine` defaults
    to `scaleLimit: 200.0` (`internal/span/span_image_filter.go:143,166`), as C++
@@ -527,7 +528,7 @@ C++ AGG:
    which this path does not use. `prepare()` (`agg_span_image_filter.h:140-150`)
    compares the **product** `scale_x·scale_y` with the limit. For a uniform
    reduction s the clamp therefore starts at s > √200 ≈ 14.1, and from there the
-   per-axis scale is `200/s`: the footprint *shrinks* as the reduction grows,
+   per-axis scale is `200/s`: the footprint _shrinks_ as the reduction grows,
    down to the floor of 1. That is why 48 px is cheap, and also why 48 px is where
    agg_go and libvips disagree most (RMSE 6.7 vs 0.8 at 512 px): the footprint is
    far too narrow to band-limit the source.
@@ -647,7 +648,7 @@ measurable from outside the module.
 ## Phase 8 - Review Remediation (2026-10-04 audit)
 
 Source: an 8-area review against `../agg-2.6/agg-src`. Items marked ✔ were re-verified
-against the C++ source by hand. Several existing tests *encode* the bugs below, so fix
+against the C++ source by hand. Several existing tests _encode_ the bugs below, so fix
 the test together with the code and derive expected values from C++, not from Go.
 
 Ratings at the time of the audit (0–10): fidelity — vertex 7, rasterizer 6, renderer/span 7,
@@ -683,19 +684,15 @@ Priorities: **P0** = blocks everything, **P1** = parity bug or parity-gate gap,
       blend_src_over 6 px; `TestGradients`: 10 cases; the thin_line references are missing).
       Decide per case whether the Go golden image or the code is wrong,
       checking against C++ where it has an equivalent.
-      → 2026-10-04: Done, decided per case:
-      - **Gradients (10 cases):** stale goldens. They changed with 7d9e45a, which ports
-        `rgba8T::gradient`; the new `TestCPPOracleColorGradient` checks `Color.Gradient` against
-        a C++ `Agg2D::Color::gradient` hash.
-      - **blend_src_over:** stale golden. It changed with 4e431e6, which removed the premultiplied
-        SIMD comp kernels from the straight-alpha pixfmt. The new
-        `TestCompositeBlenderPlainMatchesCppOracle` checks that bridge against stock AGG
-        premultiply → comp_op → demultiply, within ±2 in premultiplied space.
-      - **blend_xor:** the code was wrong. `Image.ToGoImage`/`ToStandardImage` put straight bytes
-        into a premultiplied `*image.RGBA`. They now return `*image.NRGBA`: a breaking signature
-        change, the user's choice, also applied to the `engine.Image` interface. The golden only
-        moves by ±1 quantisation, 0 in premultiplied space.
-      - **thin_line:** the missing references only log a warning; that test does not fail.
+      → 2026-10-04: Done, decided per case: - **Gradients (10 cases):** stale goldens. They changed with 7d9e45a, which ports
+      `rgba8T::gradient`; the new `TestCPPOracleColorGradient` checks `Color.Gradient` against
+      a C++ `Agg2D::Color::gradient` hash. - **blend_src_over:** stale golden. It changed with 4e431e6, which removed the premultiplied
+      SIMD comp kernels from the straight-alpha pixfmt. The new
+      `TestCompositeBlenderPlainMatchesCppOracle` checks that bridge against stock AGG
+      premultiply → comp_op → demultiply, within ±2 in premultiplied space. - **blend_xor:** the code was wrong. `Image.ToGoImage`/`ToStandardImage` put straight bytes
+      into a premultiplied `*image.RGBA`. They now return `*image.NRGBA`: a breaking signature
+      change, the user's choice, also applied to the `engine.Image` interface. The golden only
+      moves by ±1 quantisation, 0 in premultiplied space. - **thin_line:** the missing references only log a warning; that test does not fail.
   - [x] Then drop the `grep -v /tests/visual/primitives` filter from `unit-tests.yml`, so CI
         really runs `go test ./...`. Until then this package is not covered by CI.
         → 2026-10-04: Done; `unit-tests.yml` and `just test-all` run `go test ./...`.
@@ -705,19 +702,15 @@ Priorities: **P0** = blocks everything, **P1** = parity bug or parity-gate gap,
       golangci-lint step in `lint.yml`, so lint checks the whole tree again, not just new code.
       → 2026-10-04: Done. The real backlog was 149 on darwin and 153 with `x11,sdl2` on Linux.
       The 55 was golangci-lint's capped default output (3 identical issues, 50 per linter).
-      Fixes, with no new `//nolint`:
-      - `OutlineAARenderer.Line0-3` take `*LineParameters`, as C++ `const&` does. This also
-        removed 32 old `//nolint`.
-      - `CurrentBitmap` returns a `GlyphBitmap`.
-      - Four files over 1500 lines are split by pure moves (`fonts`, `gpc`, `pixfmt_rgb_packed`,
-        `simd/cpu_test`); `cmd/wasm/main.go` is split too.
-      - Tests now use `GetGSE4x6` instead of the deprecated `GetSimple4x6Font`.
-      - SDL uses `GetTicks64`.
+      Fixes, with no new `//nolint`: - `OutlineAARenderer.Line0-3` take `*LineParameters`, as C++ `const&` does. This also
+      removed 32 old `//nolint`. - `CurrentBitmap` returns a `GlyphBitmap`. - Four files over 1500 lines are split by pure moves (`fonts`, `gpc`, `pixfmt_rgb_packed`,
+      `simd/cpu_test`); `cmd/wasm/main.go` is split too. - Tests now use `GetGSE4x6` instead of the deprecated `GetSimple4x6Font`. - SDL uses `GetTicks64`.
       `only-new-issues` is removed.
 
 ### 8.2 P1 — Confirmed numeric parity bugs
 
 Cross-cutting
+
 - [ ] FMA sweep. Go fuses `x*y±z` on arm64, but the C++ references are x86 builds without
       contraction. `go build -gcflags=-S ./... 2>&1 | grep -E 'F(N?M(ADD|SUB))D'` found about
       1300 fused sites (distinct source lines) in 221 files at audit time; after the guards
@@ -807,7 +800,7 @@ Pixfmt / color / blenders
       `clip_to_dst` adaptors.
       Measured 2026-10-04: the straight-alpha bridge is within ±2 of AGG in premultiplied
       space (`comp_plain_oracle_test.go`); the residual is this integer source premultiply.
-- [ ] `pixfmt_rgba8.go:114,409,422` take an opaque+full-cover copy shortcut for *every*
+- [ ] `pixfmt_rgba8.go:114,409,422` take an opaque+full-cover copy shortcut for _every_
       blender, so comp-op blenders wrapped in `PixFmtAlphaBlendRGBA` (the compositing demos)
       skip the operator. Restrict the shortcut to `RGBAFastBlender`.
 - [ ] Unify the 6 demultiply/premultiply variants into one AGG-exact `multiplier_rgba`
@@ -855,7 +848,7 @@ Renderer / span / image / blur
 Agg2D
 
 - [x] ✔ Master alpha is applied twice to solid fill/stroke: the colour alpha
-      (`rendering.go:196,217`) *and* the rasterizer gamma. C++ applies it only via
+      (`rendering.go:196,217`) _and_ the rasterizer gamma. C++ applies it only via
       `Agg2DRasterizerGamma` (`agg2d.cpp:1747`). Same in `rendering_float.go:46`.
       `color_blending_test.go:153` is too weak to notice.
       → 2026-10-04: Done in both twins, including float Gouraud and raster text; `cpp_oracle_test.go` checks 14 scenes byte-exact against agg2d.cpp.
@@ -912,6 +905,7 @@ Fonts / controls / platform
 
   The same bug is in `freetype2/engine.go:238`. Test against C++ vertex dumps of glyphs
   whose contours start off-curve.
+
 - [ ] Agg2D raster text must use `glyph_ren_agg_gray8` (AGG rasterizer), not
       FreeType's `FT_Render_Glyph`. Adopt C++'s five-value `glyph_rendering` enum.
 - [ ] Outline glyphs: serialize them into the cache as int 26.6 (`dbl_to_int26p6`)
@@ -982,23 +976,23 @@ Fonts / controls / platform
    - rename `scanline/scanline_hit_test.go`: production code is hidden in a test-named file
 3. [ ] Remove `reflect.ValueOf(...).IsZero()` from the span hot path (`span/converter.go:62-81`).
 4. [ ] One gamma/sRGB implementation. Today it exists in `internal/gamma`, `internal/pixfmt/gamma`
-      (plus its `init()`), and `color/conversion.go`. Keep one LUT behind a lazy `sync.Once`.
+       (plus its `init()`), and `color/conversion.go`. Keep one LUT behind a lazy `sync.Once`.
 5. [ ] **One vertex-source protocol** (the biggest structural win; today there are 4
-      protocols with 145 adapters). Decision: `Rewind(pathID uint)` +
-      `Vertex() (x, y float64, cmd basics.PathCommand)`. This is idiomatic, and the
-      pointer-out form makes x/y escape to the heap through interface calls. Define it
-      once and alias it in `conv`, `rasterizer`, `path`, `shapes`, `bezierarc`, `ctrl`,
-      `transform`, then delete the adapters. Record the signature delta in `AGG_DELTAS.md`.
+       protocols with 145 adapters). Decision: `Rewind(pathID uint)` +
+       `Vertex() (x, y float64, cmd basics.PathCommand)`. This is idiomatic, and the
+       pointer-out form makes x/y escape to the heap through interface calls. Define it
+       once and alias it in `conv`, `rasterizer`, `path`, `shapes`, `bezierarc`, `ctrl`,
+       `transform`, then delete the adapters. Record the signature delta in `AGG_DELTAS.md`.
 6. [ ] Canonical contracts in one package (aliased everywhere else): PixelFormat (5 copies),
-      BaseRenderer (6), Scanline (10, incl. the deprecated `rasterizer.ScanlineInterface`),
-      Rasterizer (7). The scanline interface takes C++ signatures plus `Reset`, so
-      rasterizers/storages plug straight into `sbool_*` without the ~5 demo adapters.
-      One span-generator contract: `Generate(colors []C, x, y, n int)` + `Prepare()` (3
-      signatures today).
+       BaseRenderer (6), Scanline (10, incl. the deprecated `rasterizer.ScanlineInterface`),
+       Rasterizer (7). The scanline interface takes C++ signatures plus `Reset`, so
+       rasterizers/storages plug straight into `sbool_*` without the ~5 demo adapters.
+       One span-generator contract: `Generate(colors []C, x, y, n int)` + `Prepare()` (3
+       signatures today).
 7. [ ] Instantiate `RendererBase` with **concrete** pixfmt types in agg2d instead of the
-      interface `renderer.PixelFormat[C]` (31 sites of generics over an interface:
-      dictionary *and* dynamic dispatch). Drop the phantom `Clip any` parameter on
-      `RasterizerScanlineAA`.
+       interface `renderer.PixelFormat[C]` (31 sites of generics over an interface:
+       dictionary _and_ dynamic dispatch). Drop the phantom `Clip any` parameter on
+       `RasterizerScanlineAA`.
 8. [ ] Collapse the remaining duplicates:
    - small types: one `VertexDist`, generic `VertexSequence[T]`, one dda/dda2 (4 copies today)
    - one blur package mirroring `agg_blur.h` with a full recursive blur (`blur` currently imports `effects`)
@@ -1006,20 +1000,20 @@ Fonts / controls / platform
    - duplicated code paths: cells simple/styled sharing one core, gamma/nogamma
      rasterizers sharing one core, 16/32-bit scanlines generic over the cover type
 9. [ ] Pixfmt: map the 9 hand-written RGBA/RGB/gray structs back onto C++'s 3 templates where
-      a benchmark confirms no regression. Collapse packed 555/565 into one `PixFmtRGBPacked[B]`.
-      Prune the blender alias sprawl.
+       a benchmark confirms no regression. Collapse packed 555/565 into one `PixFmtRGBPacked[B]`.
+       Prune the blender alias sprawl.
 10. [ ] Agg2D float twin (~4.8k LOC across 19 `*_float.go` + root wrappers): one generic core
-       over colour/pixfmt, instantiated twice (C++ does this with one typedef). It has already
-       drifted: image blend mode, `Context` line width, `BlendImage` renderer, missing rect overloads.
+        over colour/pixfmt, instantiated twice (C++ does this with one typedef). It has already
+        drifted: image blend mode, `Context` line width, `BlendImage` renderer, missing rect overloads.
 11. [ ] Demos:
-   - one implementation per demo under the existing repository-level `internal/demo/<name>`
-     behind a single Demo interface. Do not move them to `examples/internal/`: Go's
-     internal-package rule would then block `cmd/wasm` from importing them
-   - `examples/*/main.go` and `cmd/wasm` become thin adapters with a registry (34 wasm demos
-     are re-implementations today; `cmd/wasm/main.go` is a 1945-line if-chain)
-   - merge `demorunner` and `lowlevelrunner`
+    - one implementation per demo under the existing repository-level `internal/demo/<name>`
+      behind a single Demo interface. Do not move them to `examples/internal/`: Go's
+      internal-package rule would then block `cmd/wasm` from importing them
+    - `examples/*/main.go` and `cmd/wasm` become thin adapters with a registry (34 wasm demos
+      are re-implementations today; `cmd/wasm/main.go` is a 1945-line if-chain)
+    - merge `demorunner` and `lowlevelrunner`
 12. [ ] One FreeType engine: keep the `freetype2` design (correct enum, agg_gray8 path) after
-       fixing decomposition, then delete the other.
+        fixing decomposition, then delete the other.
 
 ### 8.5 P2 — Public API
 

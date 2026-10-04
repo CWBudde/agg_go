@@ -444,8 +444,7 @@ are verified against AGG 2.6 C++ by `internal/color/fixedpoint_parity_test.go`
   which wraps for `|(q-p)*a| >= 2^31` (e.g. `lerp(0, 65535, 65535) == 65534`).
   C++ -O0 and -O2 builds agree; Go reproduces it with `int32` arithmetic
   (`RGBA16Lerp`, `Gray16Lerp`).
-- `gray8T::gradient` / `gray16::gradient` scale `k` by `base_scale` (256 /
-  65536) instead of `base_mask` and truncate the result to `value_type`, so
+- `gray8T::gradient` / `gray16::gradient` scale `k` by `base_scale` (256 / 65536) instead of `base_mask` and truncate the result to `value_type`, so
   `k >= 255.5/256` (gray8) or `k >= 65535.5/65536` (gray16) wraps to 0 and
   returns the start colour. Reproduced in `Gray8.Gradient` / `Gray16.Gradient`.
 
