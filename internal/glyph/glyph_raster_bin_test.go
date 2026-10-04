@@ -119,7 +119,7 @@ func TestGlyphRasterBinPrepareValidGlyph(t *testing.T) {
 	if rect.X1 != 10 {
 		t.Errorf("rect.X1 = %d, want 10", rect.X1)
 	}
-	if rect.X2 != 13 { // X1 + width - 1 = 10 + 4 - 1
+	if rect.X2 != 13 { // X1 plus width minus 1, i.e. 10 plus 4 minus 1
 		t.Errorf("rect.X2 = %d, want 13", rect.X2)
 	}
 

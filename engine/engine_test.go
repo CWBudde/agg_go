@@ -395,7 +395,11 @@ func TestImageInteropHelpers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open(%q) error = %v", out, err)
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			t.Errorf("Close(%q) error = %v", out, err)
+		}
+	}()
 
 	decoded, err := jpeg.Decode(f)
 	if err != nil {

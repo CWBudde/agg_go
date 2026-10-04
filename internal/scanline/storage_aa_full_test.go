@@ -173,7 +173,7 @@ func TestScanlineStorageAA_StoreMultipleScanlines(t *testing.T) {
 
 	// Check bounds
 	expectedMinX := 50
-	expectedMaxX := 53 // 52 + 2 - 1 = 53
+	expectedMaxX := 53 // 52 plus 2 minus 1
 	expectedMinY := 50
 	expectedMaxY := 52
 

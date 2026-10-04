@@ -8,9 +8,9 @@ import (
 	"github.com/cwbudde/agg_go/internal/color"
 )
 
-func newRGB96Buf(w, h int) ([]float32, *buffer.RenderingBufferF32) {
-	buf := make([]float32, w*h*3)
-	rbuf := buffer.NewRenderingBufferF32WithData(buf, w, h, w*3*4)
+func newRGB96Buf(w, h int) (buf []float32, rbuf *buffer.RenderingBufferF32) {
+	buf = make([]float32, w*h*3)
+	rbuf = buffer.NewRenderingBufferF32WithData(buf, w, h, w*3*4)
 	return buf, rbuf
 }
 

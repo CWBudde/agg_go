@@ -646,7 +646,7 @@ func TestPixFmtRGB24Pre_ComprehensiveBlending(t *testing.T) {
 
 	// Test case 4: Various alpha values
 	testAlphas := []basics.Int8u{64, 128, 192}
-	expectedResults := []basics.Int8u{191, 127, 63} // prelerp(255, 0, alpha)
+	expectedResults := []basics.Int8u{191, 127, 63} // prelerp of 255 towards 0 by alpha
 
 	for i, alpha := range testAlphas {
 		pixfmt.CopyPixel(3, i, white)

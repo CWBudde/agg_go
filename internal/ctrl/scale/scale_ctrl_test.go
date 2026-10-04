@@ -60,7 +60,7 @@ func TestValueConstraints(t *testing.T) {
 
 	// Test clamping with minD constraint - when value2=0.7, max value1 is 0.6
 	scale.SetValue1(1.5)                             // Should be constrained by minD
-	expectedMax := scale.Value2() - scale.MinDelta() // 0.7 - 0.1 = 0.6
+	expectedMax := scale.Value2() - scale.MinDelta() // 0.7 minus 0.1 gives 0.6
 	if math.Abs(scale.Value1()-expectedMax) > 0.001 {
 		t.Errorf("Expected Value1 to be constrained to %.2f, got %.2f", expectedMax, scale.Value1())
 	}
@@ -316,11 +316,11 @@ func TestBorderThickness(t *testing.T) {
 }
 
 func TestResize(t *testing.T) {
-	scale := NewScaleCtrl(0, 0, 100, 30, false) // horizontal: borderExtra = 15
+	scale := NewScaleCtrl(0, 0, 100, 30, false) // horizontal, so borderExtra is 15
 	originalBorderExtra := scale.borderExtra
 
 	// Resize to make it vertical with different aspect ratio
-	scale.Resize(0, 0, 20, 100) // vertical: borderExtra = 10
+	scale.Resize(0, 0, 20, 100) // vertical, so borderExtra is 10
 
 	if scale.X2() != 20 || scale.Y2() != 100 {
 		t.Errorf("Expected bounds (0, 0, 20, 100), got (%.1f, %.1f, %.1f, %.1f)",

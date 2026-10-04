@@ -373,11 +373,8 @@ func TestGammaCtrlVertexGeneration(t *testing.T) {
 				}
 
 				vertexCount++
-				switch cmd {
-				case basics.PathCmdMoveTo:
+				if cmd == basics.PathCmdMoveTo {
 					hasMoveTo = true
-				case basics.PathCmdLineTo:
-					// hasLineTo = true
 				}
 
 				// Coordinates should be reasonable

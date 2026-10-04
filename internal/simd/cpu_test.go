@@ -1183,9 +1183,9 @@ func TestDemultiplyRGBAComprehensive(t *testing.T) {
 			{100, 50, 25, 128},
 			{0, 0, 0, 0},
 		})},
-		// Boundary: alpha = 1.
+		// Boundary case: alpha of 1.
 		{"alpha_1", mkBuf([][4]byte{{1, 0, 0, 1}, {0, 1, 0, 1}, {0, 0, 1, 1}})},
-		// Boundary: alpha = 254.
+		// Boundary case: alpha of 254.
 		{"alpha_254", mkBuf([][4]byte{{200, 100, 50, 254}})},
 	}
 

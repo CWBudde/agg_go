@@ -226,7 +226,7 @@ func TestCppOracleImageFilterLUT(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open oracle: %v", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	seen := 0
 	sc := bufio.NewScanner(f)

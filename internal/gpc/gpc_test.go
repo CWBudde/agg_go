@@ -10,6 +10,14 @@ import (
 
 // Test constants (removed unused testEpsilon)
 
+// mustAddContour adds a contour in fixture helpers that have no *testing.T;
+// a failure means the fixture itself is malformed.
+func mustAddContour(polygon *GPCPolygon, contour *GPCVertexList, isHole bool) {
+	if err := polygon.AddContour(contour, isHole); err != nil {
+		panic(err)
+	}
+}
+
 // Helper function to create a simple rectangle polygon
 func createRectanglePolygon(x1, y1, x2, y2 float64) *GPCPolygon {
 	polygon := NewGPCPolygon()
@@ -18,7 +26,7 @@ func createRectanglePolygon(x1, y1, x2, y2 float64) *GPCPolygon {
 	contour.AddVertex(x2, y1)
 	contour.AddVertex(x2, y2)
 	contour.AddVertex(x1, y2)
-	polygon.AddContour(contour, false)
+	mustAddContour(polygon, contour, false)
 	return polygon
 }
 
@@ -29,7 +37,7 @@ func createTrianglePolygon(x1, y1, x2, y2, x3, y3 float64) *GPCPolygon {
 	contour.AddVertex(x1, y1)
 	contour.AddVertex(x2, y2)
 	contour.AddVertex(x3, y3)
-	polygon.AddContour(contour, false)
+	mustAddContour(polygon, contour, false)
 	return polygon
 }
 
@@ -43,7 +51,7 @@ func createPolygonWithHole() *GPCPolygon {
 	outer.AddVertex(10, 0)
 	outer.AddVertex(10, 10)
 	outer.AddVertex(0, 10)
-	polygon.AddContour(outer, false)
+	mustAddContour(polygon, outer, false)
 
 	// Inner hole (clockwise)
 	inner := NewGPCVertexList(4)
@@ -51,7 +59,7 @@ func createPolygonWithHole() *GPCPolygon {
 	inner.AddVertex(3, 7)
 	inner.AddVertex(7, 7)
 	inner.AddVertex(7, 3)
-	polygon.AddContour(inner, true)
+	mustAddContour(polygon, inner, true)
 
 	return polygon
 }
@@ -417,7 +425,9 @@ func TestGPCTristrip_GetStrip(t *testing.T) {
 	strip.AddVertex(0, 0)
 	strip.AddVertex(1, 0)
 	strip.AddVertex(0, 1)
-	tristrip.AddStrip(strip)
+	if err := tristrip.AddStrip(strip); err != nil {
+		t.Fatalf("AddStrip failed: %v", err)
+	}
 
 	// Valid index
 	retrievedStrip, err := tristrip.GetStrip(0)
@@ -807,7 +817,9 @@ func TestComplexGeometricOperations(t *testing.T) {
 		contour.AddVertex(x2, y1) // Bottom-right
 		contour.AddVertex(x2, y2) // Top-right
 		contour.AddVertex(x1, y2) // Top-left
-		poly.AddContour(contour, false)
+		if err := poly.AddContour(contour, false); err != nil {
+			t.Fatalf("AddContour failed: %v", err)
+		}
 		return poly
 	}
 
@@ -966,7 +978,9 @@ func TestGPCPerformanceBenchmark(t *testing.T) {
 			contour.AddVertex(x, y)
 		}
 
-		poly.AddContour(contour, false)
+		if err := poly.AddContour(contour, false); err != nil {
+			t.Fatalf("AddContour failed: %v", err)
+		}
 		return poly
 	}
 
@@ -1070,7 +1084,9 @@ func TestTristripClipWithComplexPolygons(t *testing.T) {
 		y := 5 + 3*math.Sin(angle)
 		vertices.AddVertex(x, y)
 	}
-	hexagon.AddContour(vertices, false)
+	if err := hexagon.AddContour(vertices, false); err != nil {
+		t.Fatalf("AddContour failed: %v", err)
+	}
 
 	// Create a square for clipping
 	square := createRectanglePolygon(3, 3, 7, 7)
@@ -1131,7 +1147,9 @@ func TestPolygonWithMultipleHoles(t *testing.T) {
 	outer.AddVertex(20, 0)
 	outer.AddVertex(20, 20)
 	outer.AddVertex(0, 20)
-	polygon.AddContour(outer, false)
+	if err := polygon.AddContour(outer, false); err != nil {
+		t.Fatalf("AddContour failed: %v", err)
+	}
 
 	// First hole
 	hole1 := NewGPCVertexList(4)
@@ -1139,7 +1157,9 @@ func TestPolygonWithMultipleHoles(t *testing.T) {
 	hole1.AddVertex(2, 8)
 	hole1.AddVertex(8, 8)
 	hole1.AddVertex(8, 2)
-	polygon.AddContour(hole1, true)
+	if err := polygon.AddContour(hole1, true); err != nil {
+		t.Fatalf("AddContour failed: %v", err)
+	}
 
 	// Second hole
 	hole2 := NewGPCVertexList(4)
@@ -1147,7 +1167,9 @@ func TestPolygonWithMultipleHoles(t *testing.T) {
 	hole2.AddVertex(12, 18)
 	hole2.AddVertex(18, 18)
 	hole2.AddVertex(18, 12)
-	polygon.AddContour(hole2, true)
+	if err := polygon.AddContour(hole2, true); err != nil {
+		t.Fatalf("AddContour failed: %v", err)
+	}
 
 	// Test validation
 	err := polygon.Validate()

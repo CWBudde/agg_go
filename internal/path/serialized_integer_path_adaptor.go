@@ -81,7 +81,7 @@ func (sipa *SerializedIntegerPathAdaptor[T]) Rewind(pathID uint32) {
 }
 
 // Vertex reads the next vertex from the serialized data.
-func (sipa *SerializedIntegerPathAdaptor[T]) Vertex() (float64, float64, basics.PathCommand) {
+func (sipa *SerializedIntegerPathAdaptor[T]) Vertex() (x, y float64, cmd basics.PathCommand) {
 	if len(sipa.data) == 0 || sipa.ptr > sipa.end {
 		return 0, 0, basics.PathCmdStop
 	}
@@ -104,7 +104,7 @@ func (sipa *SerializedIntegerPathAdaptor[T]) Vertex() (float64, float64, basics.
 		return 0, 0, basics.PathCmdStop
 	}
 
-	x, y, cmd := vertex.Vertex(sipa.dx, sipa.dy, sipa.scale, sipa.coordShift)
+	x, y, cmd = vertex.Vertex(sipa.dx, sipa.dy, sipa.scale, sipa.coordShift)
 
 	// Handle polygon closing for move_to commands after we've already processed vertices
 	if basics.IsMoveTo(cmd) && sipa.vertices > 2 {

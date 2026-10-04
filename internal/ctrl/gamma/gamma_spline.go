@@ -224,13 +224,13 @@ func (gs *GammaSpline) ApplyGammaFloat(input float64) float64 {
 // GetCurvePoints returns points along the gamma curve for debugging/inspection.
 // numPoints: number of points to sample along the curve
 // Returns: slices of X and Y coordinates
-func (gs *GammaSpline) GetCurvePoints(numPoints int) ([]float64, []float64) {
+func (gs *GammaSpline) GetCurvePoints(numPoints int) (xPoints, yPoints []float64) {
 	if numPoints <= 0 {
 		return nil, nil
 	}
 
-	xPoints := make([]float64, numPoints)
-	yPoints := make([]float64, numPoints)
+	xPoints = make([]float64, numPoints)
+	yPoints = make([]float64, numPoints)
 
 	for i := 0; i < numPoints; i++ {
 		x := float64(i) / float64(numPoints-1)

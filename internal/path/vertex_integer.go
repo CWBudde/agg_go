@@ -55,14 +55,14 @@ func NewVertexIntegerFromFloat[T ~int16 | ~int32 | ~int64](x, y float64, cmd uin
 // Vertex extracts the coordinates and command from the integer vertex.
 // Returns the floating-point coordinates with optional offset and scaling,
 // and the corresponding path command.
-func (v VertexInteger[T]) Vertex(dx, dy, scale float64, coordShift int) (float64, float64, basics.PathCommand) {
+func (v VertexInteger[T]) Vertex(dx, dy, scale float64, coordShift int) (x, y float64, cmd basics.PathCommand) {
 	if coordShift == 0 {
 		coordShift = DefaultCoordShift
 	}
 	coordScale := float64(int(1) << uint(coordShift))
 
-	x := dx + (float64(v.X>>1)/coordScale)*scale
-	y := dy + (float64(v.Y>>1)/coordScale)*scale
+	x = dx + (float64(v.X>>1)/coordScale)*scale
+	y = dy + (float64(v.Y>>1)/coordScale)*scale
 
 	cmdBits := ((uint32(v.Y) & 1) << 1) | (uint32(v.X) & 1)
 
@@ -81,6 +81,6 @@ func (v VertexInteger[T]) Vertex(dx, dy, scale float64, coordShift int) (float64
 }
 
 // VertexSimple extracts coordinates and command using default parameters.
-func (v VertexInteger[T]) VertexSimple() (float64, float64, basics.PathCommand) {
+func (v VertexInteger[T]) VertexSimple() (x, y float64, cmd basics.PathCommand) {
 	return v.Vertex(0, 0, 1.0, DefaultCoordShift)
 }

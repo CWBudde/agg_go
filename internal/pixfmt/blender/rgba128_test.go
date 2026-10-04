@@ -29,7 +29,7 @@ func TestRGBA128LerpAndPrelerp(t *testing.T) {
 	if got := RGBA128Lerp(0.2, 1.0, 0.5); !approxEq(got, 0.6) {
 		t.Errorf("RGBA128Lerp(0.2,1.0,0.5) = %v, want 0.6", got)
 	}
-	// prelerp(p,q,a) = p + q - p*a
+	// prelerp computes p + q - p*a
 	if got := RGBA128Prelerp(0.5, 0.5, 0.5); !approxEq(got, 0.75) {
 		t.Errorf("RGBA128Prelerp(0.5,0.5,0.5) = %v, want 0.75", got)
 	}

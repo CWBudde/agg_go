@@ -349,7 +349,9 @@ func copyPolygon(src *GPCPolygon) *GPCPolygon {
 					newContour.AddVertex(vertex.X, vertex.Y)
 				}
 			}
-			result.AddContour(newContour, isHole)
+			// PolygonClip validates its inputs before copying, so every contour
+			// has at least three vertices and AddContour cannot fail here.
+			_ = result.AddContour(newContour, isHole)
 		}
 	}
 

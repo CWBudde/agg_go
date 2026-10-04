@@ -34,7 +34,11 @@ func TestCurveDivGoldenCpp(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			t.Errorf("close golden file: %v", err)
+		}
+	}()
 
 	sc := bufio.NewScanner(f)
 	line := 0

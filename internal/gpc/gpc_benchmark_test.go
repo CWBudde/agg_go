@@ -30,7 +30,7 @@ func createComplexPolygon(numVertices int, radius float64) *GPCPolygon {
 		contour.AddVertex(x, y)
 	}
 
-	polygon.AddContour(contour, false)
+	mustAddContour(polygon, contour, false)
 	return polygon
 }
 
@@ -55,7 +55,7 @@ func createStarPolygon(numPoints int, outerRadius, innerRadius float64) *GPCPoly
 		)
 	}
 
-	polygon.AddContour(contour, false)
+	mustAddContour(polygon, contour, false)
 	return polygon
 }
 
@@ -70,7 +70,7 @@ func createRandomPolygon(numVertices int, bounds float64) *GPCPolygon {
 		contour.AddVertex(x, y)
 	}
 
-	polygon.AddContour(contour, false)
+	mustAddContour(polygon, contour, false)
 	return polygon
 }
 
@@ -124,7 +124,9 @@ func BenchmarkGPCPolygon_AddContour(b *testing.B) {
 				polygon := NewGPCPolygon()
 				for j := 0; j < bm.numContours; j++ {
 					contour := createComplexPolygon(bm.numVertices, 100.0).Contours[0]
-					polygon.AddContour(contour, false)
+					if err := polygon.AddContour(contour, false); err != nil {
+						b.Fatalf("AddContour failed: %v", err)
+					}
 				}
 			}
 		})
@@ -308,7 +310,9 @@ func BenchmarkMemoryAllocation(b *testing.B) {
 				for k := 0; k < 100; k++ {
 					contour.AddVertex(float64(k), float64(k))
 				}
-				polygon.AddContour(contour, false)
+				if err := polygon.AddContour(contour, false); err != nil {
+					b.Fatalf("AddContour failed: %v", err)
+				}
 			}
 		}
 	})

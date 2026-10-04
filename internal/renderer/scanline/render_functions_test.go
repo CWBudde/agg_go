@@ -108,7 +108,7 @@ func TestRenderScanlineAASolid(t *testing.T) {
 		}
 
 		call := renderer.hlineCalls[0]
-		expectedEndX := 10 - (-5) - 1 // 10 + 5 - 1 = 14
+		expectedEndX := 10 - (-5) - 1 // 10 plus 5 minus 1
 		if call.X != 10 || call.Y != 15 || call.X2 != expectedEndX || call.Color != color || call.Cover != 200 {
 			t.Errorf("Unexpected hline call: %+v", call)
 		}

@@ -596,7 +596,7 @@ func CompSrcOutHspanRGBA(dst, covers []byte, r, g, b, a uint8, count int) {
 			sa = a
 		}
 		da := dst[p+3]
-		// Sca*(1-Da) = Sca - mul(Sca, Da)
+		// Sca*(1-Da) is computed as Sca - mul(Sca, Da)
 		scar := rgba8Multiply(r, sa)
 		scag := rgba8Multiply(g, sa)
 		scab := rgba8Multiply(b, sa)

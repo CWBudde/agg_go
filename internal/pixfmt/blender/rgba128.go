@@ -147,7 +147,7 @@ func (BlenderRGBA128Plain[S, O]) BlendPix(dst []float32, r, g, b, a, cover float
 }
 
 // demultiplyRGBA128 converts premultiplied r,g,b back to straight given alpha.
-func demultiplyRGBA128(r, g, b, a float32) (float32, float32, float32) {
+func demultiplyRGBA128(r, g, b, a float32) (sr, sg, sb float32) {
 	if a <= 0 {
 		return 0, 0, 0
 	}

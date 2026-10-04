@@ -355,12 +355,12 @@ func (t *TransAffine) GetRotation() float64 {
 }
 
 // GetTranslation extracts the translation values from the matrix.
-func (t *TransAffine) GetTranslation() (float64, float64) {
+func (t *TransAffine) GetTranslation() (dx, dy float64) {
 	return t.TX, t.TY
 }
 
 // GetScaling extracts the scaling factors from the matrix.
-func (t *TransAffine) GetScaling() (float64, float64) {
+func (t *TransAffine) GetScaling() (sx, sy float64) {
 	x1, y1 := 0.0, 0.0
 	x2, y2 := 1.0, 1.0
 	temp := *t
@@ -371,7 +371,7 @@ func (t *TransAffine) GetScaling() (float64, float64) {
 }
 
 // GetScalingAbs extracts absolute scaling factors (used for image resampling).
-func (t *TransAffine) GetScalingAbs() (float64, float64) {
+func (t *TransAffine) GetScalingAbs() (sx, sy float64) {
 	x := math.Sqrt(t.SX*t.SX + t.SHX*t.SHX)
 	y := math.Sqrt(t.SHY*t.SHY + t.SY*t.SY)
 	return x, y
