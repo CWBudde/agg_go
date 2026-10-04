@@ -151,10 +151,12 @@ func CalcPolygonArea[T ~float64](vertices []Point[T]) float64 {
 // vertex(i) returns the i-th vertex. The summation order is the C++ one (start
 // at vertex 0, accumulate x*v.y - y*v.x, then add the closing term), and
 // products are explicitly rounded so that FMA contraction cannot change the
-// result. Unlike C++ (undefined behaviour for an empty storage) it returns 0
-// when n == 0.
+// result. It returns 0 for fewer than three vertices without calling vertex
+// (so a nil accessor is safe). For one or two finite vertices C++ also yields
+// 0, because the shoelace cross terms cancel exactly; for an empty storage C++
+// has undefined behaviour.
 func CalcPolygonAreaFunc(n int, vertex func(i int) (x, y float64)) float64 {
-	if n <= 0 {
+	if n < 3 {
 		return 0
 	}
 	sum := 0.0

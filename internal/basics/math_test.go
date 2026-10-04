@@ -266,8 +266,24 @@ func TestCalcPolygonAreaSignedCpp(t *testing.T) {
 			}
 		})
 	}
-	if got := CalcPolygonAreaFunc(0, nil); got != 0 {
-		t.Errorf("CalcPolygonAreaFunc(0) = %v, want 0", got)
+	for n := 0; n < 3; n++ {
+		if got := CalcPolygonAreaFunc(n, nil); got != 0 {
+			t.Errorf("CalcPolygonAreaFunc(%d, nil) = %v, want 0", n, got)
+		}
+	}
+	for n := 1; n <= 2; n++ {
+		calls := 0
+		got := CalcPolygonAreaFunc(n, func(i int) (float64, float64) {
+			calls++
+			return math.Inf(1), math.NaN()
+		})
+		if got != 0 || calls != 0 {
+			t.Errorf("CalcPolygonAreaFunc(%d) = %v with %d accessor calls, want 0 and 0", n, got, calls)
+		}
+	}
+	one := []PointD{{X: 3, Y: 4}}
+	if got := CalcPolygonArea(one); got != 0 {
+		t.Errorf("CalcPolygonArea(1 vertex) = %v, want 0", got)
 	}
 }
 
