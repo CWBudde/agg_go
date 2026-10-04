@@ -57,6 +57,7 @@ func DefaultDissolveSeed(x, y int) uint32 {
 //
 // Both images must contain RGBA bytes, have a stride whose absolute value is at
 // least width*4, and use the common alpha convention selected by opts.AlphaMode.
+// That convention is recorded as dst's AlphaMode.
 // CompositeImage writes only the clipped destination pixels and normally does
 // not allocate. If source and destination storage overlap, it snapshots only
 // the clipped source rectangle before writing.
@@ -83,6 +84,10 @@ func CompositeImage(dst, src *Image, srcRect Rect, dstOrigin PointI, opts Compos
 	if err != nil {
 		return err
 	}
+
+	// dst holds data in the declared convention from here on, also when
+	// nothing is drawn; record it so exports convert correctly.
+	dst.alpha = opts.AlphaMode
 
 	region, ok := clipCompositeRegion(dst, src, srcRect, dstOrigin, opts.Clip)
 	if !ok || opts.Opacity == 0 {

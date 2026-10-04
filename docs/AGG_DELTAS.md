@@ -258,7 +258,14 @@ which Go reads as premultiplied, so every translucent pixel (e.g. a comp-op
 xor result) was exported wrong. The comp-op bridge is checked against stock
 AGG premultiply → comp_op → demultiply in
 `internal/pixfmt/blender/comp_plain_oracle_test.go`.
-**Files**: `images.go`, `engine/engine.go` (`Image.ToGoImage`).
+An `Image` records its alpha mode (`AlphaMode`/`SetAlphaMode`). `Premultiply`,
+`Demultiply`, `CompositeImage` (`opts.AlphaMode`) and `DrawImageAffine`
+(`opts.DestinationAlpha`) keep it current, and the export demultiplies a
+premultiplied image with `Demultiply`'s rounding. `NewImageFromStandardImage`
+converts through `color.NRGBAModel`, because `color.Color.RGBA()` is
+premultiplied; translucent PNGs used to load darkened.
+**Files**: `images.go`, `composite.go`, `image_affine.go`, `engine/engine.go`
+(`Image.ToGoImage`).
 
 ### Float image transforms (`TransformImage*`)
 

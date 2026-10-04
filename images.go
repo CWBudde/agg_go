@@ -2,7 +2,9 @@ package agg
 
 import (
 	"errors"
+	"fmt"
 	"image"
+	"image/color"
 	_ "image/gif" // Import for gif decoding
 	"image/jpeg"
 	"image/png"
@@ -57,11 +59,16 @@ const (
 
 // Image represents a raster image that can be used as a rendering target.
 // This matches the C++ Agg2D::Image structure.
+//
+// An Image remembers whether its bytes hold straight or premultiplied alpha
+// (see AlphaMode) so that ToGoImage, ToStandardImage and the Save methods can
+// export the correct colours. New images are straight.
 type Image struct {
 	renBuf *buffer.RenderingBuffer[uint8]
 	Data   []uint8 // Raw pixel data (RGBA format)
 	width  int     // Width in pixels
 	height int     // Height in pixels
+	alpha  AlphaMode
 }
 
 func (img *Image) ensureRenderingBuffer() {
@@ -110,6 +117,30 @@ func (img *Image) Attach(buf []uint8, width, height, stride int) {
 	img.height = height
 }
 
+// AlphaMode reports whether the image bytes hold straight or premultiplied
+// alpha.
+func (img *Image) AlphaMode() AlphaMode {
+	if img == nil {
+		return AlphaStraight
+	}
+	return img.alpha
+}
+
+// SetAlphaMode declares how the image bytes store alpha without converting
+// them. Use it for buffers that were filled with premultiplied data outside
+// this package; Premultiply, Demultiply, CompositeImage and DrawImageAffine
+// keep the mode up to date themselves.
+func (img *Image) SetAlphaMode(mode AlphaMode) error {
+	if img == nil {
+		return errors.New("image is nil")
+	}
+	if mode != AlphaStraight && mode != AlphaPremultiplied {
+		return fmt.Errorf("agg: invalid alpha mode %d", mode)
+	}
+	img.alpha = mode
+	return nil
+}
+
 // Premultiply converts the image from straight alpha to premultiplied alpha.
 // This mirrors the C++ Agg2D::Image::premultiply method.
 func (img *Image) Premultiply() error {
@@ -120,7 +151,11 @@ func (img *Image) Premultiply() error {
 	if internal == nil {
 		return errors.New("image is nil")
 	}
-	return internal.Premultiply()
+	if err := internal.Premultiply(); err != nil {
+		return err
+	}
+	img.alpha = AlphaPremultiplied
+	return nil
 }
 
 // Demultiply converts the image from premultiplied alpha to straight alpha.
@@ -133,7 +168,11 @@ func (img *Image) Demultiply() error {
 	if internal == nil {
 		return errors.New("image is nil")
 	}
-	return internal.Demultiply()
+	if err := internal.Demultiply(); err != nil {
+		return err
+	}
+	img.alpha = AlphaStraight
+	return nil
 }
 
 // ToInternalImage converts this Image to the internal agg2d.Image type.
@@ -148,6 +187,8 @@ func (img *Image) ToInternalImage() *agg2d.Image {
 // ToGoImage converts the AGG image to a standard Go image.NRGBA. The AGG
 // framebuffer stores straight (non-premultiplied) alpha, which is the NRGBA
 // convention; image.RGBA would misread translucent pixels as premultiplied.
+// A premultiplied image (see AlphaMode) is demultiplied into the copy with the
+// rounding of Demultiply; the image itself is left unchanged.
 func (img *Image) ToGoImage() *image.NRGBA {
 	if img == nil {
 		return nil
@@ -178,10 +219,28 @@ func (img *Image) ToGoImage() *image.NRGBA {
 		}
 		if copyLen > 0 {
 			copy(goImg.Pix[dstRow:dstRow+copyLen], srcRow[:copyLen])
+			if img.alpha == AlphaPremultiplied {
+				demultiplyRGBARow(goImg.Pix[dstRow : dstRow+copyLen])
+			}
 		}
 	}
 
 	return goImg
+}
+
+// demultiplyRGBARow converts premultiplied RGBA bytes to straight alpha in
+// place, with the same arithmetic as agg2d.Image.Demultiply.
+func demultiplyRGBARow(row []byte) {
+	for i := 0; i+3 < len(row); i += 4 {
+		a := float64(row[i+3])
+		if a == 0 {
+			continue
+		}
+		scale := 255.0 / a
+		for c := 0; c < 3; c++ {
+			row[i+c] = uint8(min(float64(row[i+c])*scale, 255))
+		}
+	}
 }
 
 // Context image methods
@@ -289,16 +348,16 @@ func NewImageFromStandardImage(img image.Image) (*Image, error) {
 	// Create buffer and copy image data
 	buffer := make([]uint8, height*stride)
 
+	// color.Color.RGBA() is premultiplied, but the AGG framebuffer stores
+	// straight alpha, so convert through the NRGBA model.
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
-			r, g, b, a := img.At(bounds.Min.X+x, bounds.Min.Y+y).RGBA()
-
-			// Convert from 16-bit to 8-bit
+			c := color.NRGBAModel.Convert(img.At(bounds.Min.X+x, bounds.Min.Y+y)).(color.NRGBA)
 			index := y*stride + x*4
-			buffer[index] = uint8(r >> 8)   // R
-			buffer[index+1] = uint8(g >> 8) // G
-			buffer[index+2] = uint8(b >> 8) // B
-			buffer[index+3] = uint8(a >> 8) // A
+			buffer[index] = c.R
+			buffer[index+1] = c.G
+			buffer[index+2] = c.B
+			buffer[index+3] = c.A
 		}
 	}
 
@@ -347,43 +406,13 @@ func (img *Image) SaveToJPEG(filename string, quality int) (err error) {
 }
 
 // ToStandardImage converts an AGG Image to a standard Go image. Like
-// ToGoImage it returns straight-alpha *image.NRGBA data.
+// ToGoImage it returns straight-alpha *image.NRGBA data, demultiplying a
+// premultiplied image.
 func (img *Image) ToStandardImage() (image.Image, error) {
 	if img == nil || img.renBuf == nil {
 		return nil, errors.New("image or buffer is nil")
 	}
-
-	width := img.Width()
-	height := img.Height()
-	bounds := image.Rect(0, 0, width, height)
-	stdImg := image.NewNRGBA(bounds)
-
-	// Copy pixel data row-by-row in top-down image order. Bottom-up (flip_y)
-	// buffers are read in reverse row order so exported images match the C++
-	// platform_support screenshots.
-	for y := 0; y < height; y++ {
-		srcY := y
-		if img.Stride() < 0 {
-			srcY = height - 1 - y
-		}
-		srcRow := img.renBuf.Row(srcY)
-		if len(srcRow) == 0 {
-			continue
-		}
-		dstIndex := y * stdImg.Stride
-		for x := 0; x < width; x++ {
-			srcIndex := x * 4
-			dstOff := dstIndex + x*4
-			if srcIndex+3 < len(srcRow) && dstOff+3 < len(stdImg.Pix) {
-				stdImg.Pix[dstOff] = srcRow[srcIndex]     // R
-				stdImg.Pix[dstOff+1] = srcRow[srcIndex+1] // G
-				stdImg.Pix[dstOff+2] = srcRow[srcIndex+2] // B
-				stdImg.Pix[dstOff+3] = srcRow[srcIndex+3] // A
-			}
-		}
-	}
-
-	return stdImg, nil
+	return img.ToGoImage(), nil
 }
 
 // Image filtering methods
