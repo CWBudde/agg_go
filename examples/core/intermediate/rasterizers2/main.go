@@ -220,13 +220,13 @@ type outlineAAAdapter struct {
 func (a *outlineAAAdapter) AccurateJoinOnly() bool { return a.ren.AccurateJoinOnly() }
 func (a *outlineAAAdapter) Color(c colorType)      { a.ren.Color(c) }
 
-func (a *outlineAAAdapter) Line0(lp primitives.LineParameters)             { a.ren.Line0(&lp) }         //nolint:gocritic
-func (a *outlineAAAdapter) Line1(lp primitives.LineParameters, sx, sy int) { a.ren.Line1(&lp, sx, sy) } //nolint:gocritic
+func (a *outlineAAAdapter) Line0(lp *primitives.LineParameters)             { a.ren.Line0(lp) }
+func (a *outlineAAAdapter) Line1(lp *primitives.LineParameters, sx, sy int) { a.ren.Line1(lp, sx, sy) }
 
-func (a *outlineAAAdapter) Line2(lp primitives.LineParameters, ex, ey int) { a.ren.Line2(&lp, ex, ey) } //nolint:gocritic
+func (a *outlineAAAdapter) Line2(lp *primitives.LineParameters, ex, ey int) { a.ren.Line2(lp, ex, ey) }
 
-func (a *outlineAAAdapter) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) { //nolint:gocritic
-	a.ren.Line3(&lp, sx, sy, ex, ey)
+func (a *outlineAAAdapter) Line3(lp *primitives.LineParameters, sx, sy, ex, ey int) {
+	a.ren.Line3(lp, sx, sy, ex, ey)
 }
 func (a *outlineAAAdapter) Pie(x, y, x1, y1, x2, y2 int) { a.ren.Pie(x, y, x1, y1, x2, y2) }
 func (a *outlineAAAdapter) Semidot(cmp func(int) bool, x, y, x1, y1 int) {
@@ -274,13 +274,13 @@ type outlineImageAdapter struct {
 
 func (a *outlineImageAdapter) AccurateJoinOnly() bool                     { return a.ren.AccurateJoinOnly() }
 func (a *outlineImageAdapter) Color(colorType)                            {}
-func (a *outlineImageAdapter) Line0(primitives.LineParameters)            {} //nolint:gocritic
-func (a *outlineImageAdapter) Line1(primitives.LineParameters, int, int)  {} //nolint:gocritic
-func (a *outlineImageAdapter) Line2(primitives.LineParameters, int, int)  {} //nolint:gocritic
+func (a *outlineImageAdapter) Line0(*primitives.LineParameters)           {}
+func (a *outlineImageAdapter) Line1(*primitives.LineParameters, int, int) {}
+func (a *outlineImageAdapter) Line2(*primitives.LineParameters, int, int) {}
 func (a *outlineImageAdapter) Pie(int, int, int, int, int, int)           {}
 func (a *outlineImageAdapter) Semidot(func(int) bool, int, int, int, int) {}
-func (a *outlineImageAdapter) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) { //nolint:gocritic
-	a.ren.Line3(&lp, sx, sy, ex, ey)
+func (a *outlineImageAdapter) Line3(lp *primitives.LineParameters, sx, sy, ex, ey int) {
+	a.ren.Line3(lp, sx, sy, ex, ey)
 }
 
 // --- helpers ---

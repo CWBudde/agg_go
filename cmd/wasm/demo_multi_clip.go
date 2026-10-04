@@ -56,24 +56,20 @@ type multiClipOutlineAAAdapter struct {
 func (a *multiClipOutlineAAAdapter) AccurateJoinOnly() bool            { return a.ren.AccurateJoinOnly() }
 func (a *multiClipOutlineAAAdapter) Color(c color.RGBA8[color.Linear]) { a.ren.Color(c) }
 
-//nolint:gocritic // Interface compatibility requires a by-value parameter here.
-func (a *multiClipOutlineAAAdapter) Line0(lp primitives.LineParameters) {
-	a.ren.Line0(&lp)
+func (a *multiClipOutlineAAAdapter) Line0(lp *primitives.LineParameters) {
+	a.ren.Line0(lp)
 }
 
-//nolint:gocritic // Interface compatibility requires a by-value parameter here.
-func (a *multiClipOutlineAAAdapter) Line1(lp primitives.LineParameters, sx, sy int) {
-	a.ren.Line1(&lp, sx, sy)
+func (a *multiClipOutlineAAAdapter) Line1(lp *primitives.LineParameters, sx, sy int) {
+	a.ren.Line1(lp, sx, sy)
 }
 
-//nolint:gocritic // Interface compatibility requires a by-value parameter here.
-func (a *multiClipOutlineAAAdapter) Line2(lp primitives.LineParameters, ex, ey int) {
-	a.ren.Line2(&lp, ex, ey)
+func (a *multiClipOutlineAAAdapter) Line2(lp *primitives.LineParameters, ex, ey int) {
+	a.ren.Line2(lp, ex, ey)
 }
 
-//nolint:gocritic // Interface compatibility requires a by-value parameter here.
-func (a *multiClipOutlineAAAdapter) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) {
-	a.ren.Line3(&lp, sx, sy, ex, ey)
+func (a *multiClipOutlineAAAdapter) Line3(lp *primitives.LineParameters, sx, sy, ex, ey int) {
+	a.ren.Line3(lp, sx, sy, ex, ey)
 }
 
 func (a *multiClipOutlineAAAdapter) Pie(x, y, x1, y1, x2, y2 int) {

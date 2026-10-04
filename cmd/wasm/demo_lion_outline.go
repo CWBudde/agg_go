@@ -74,24 +74,20 @@ type loOutlineAAAdapter struct {
 func (a *loOutlineAAAdapter) AccurateJoinOnly() bool            { return a.ren.AccurateJoinOnly() }
 func (a *loOutlineAAAdapter) Color(c color.RGBA8[color.Linear]) { a.ren.Color(c) }
 
-//nolint:gocritic // Interface compatibility requires a by-value parameter here.
-func (a *loOutlineAAAdapter) Line0(lp primitives.LineParameters) {
-	a.ren.Line0(&lp)
+func (a *loOutlineAAAdapter) Line0(lp *primitives.LineParameters) {
+	a.ren.Line0(lp)
 }
 
-//nolint:gocritic // Interface compatibility requires a by-value parameter here.
-func (a *loOutlineAAAdapter) Line1(lp primitives.LineParameters, sx, sy int) {
-	a.ren.Line1(&lp, sx, sy)
+func (a *loOutlineAAAdapter) Line1(lp *primitives.LineParameters, sx, sy int) {
+	a.ren.Line1(lp, sx, sy)
 }
 
-//nolint:gocritic // Interface compatibility requires a by-value parameter here.
-func (a *loOutlineAAAdapter) Line2(lp primitives.LineParameters, ex, ey int) {
-	a.ren.Line2(&lp, ex, ey)
+func (a *loOutlineAAAdapter) Line2(lp *primitives.LineParameters, ex, ey int) {
+	a.ren.Line2(lp, ex, ey)
 }
 
-//nolint:gocritic // Interface compatibility requires a by-value parameter here.
-func (a *loOutlineAAAdapter) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) {
-	a.ren.Line3(&lp, sx, sy, ex, ey)
+func (a *loOutlineAAAdapter) Line3(lp *primitives.LineParameters, sx, sy, ex, ey int) {
+	a.ren.Line3(lp, sx, sy, ex, ey)
 }
 
 func (a *loOutlineAAAdapter) Pie(x, y, x1, y1, x2, y2 int) { a.ren.Pie(x, y, x1, y1, x2, y2) }
