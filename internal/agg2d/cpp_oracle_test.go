@@ -270,3 +270,37 @@ func TestCppOracleImageFilterLUT(t *testing.T) {
 		t.Fatalf("checked %d filters, want %d", seen, len(filters))
 	}
 }
+
+// TestCPPOracleColorGradient checks Color.Gradient against Agg2D::Color::
+// gradient (rgba8T::gradient) over the channel grid dumped by
+// agg2d_oracle.cpp into color_gradient.txt.
+func TestCPPOracleColorGradient(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("testdata", "cpporacle", "color_gradient.txt"))
+	if err != nil {
+		t.Fatalf("read oracle: %v", err)
+	}
+	want, err := strconv.ParseUint(strings.TrimSpace(string(data)), 16, 64)
+	if err != nil {
+		t.Fatalf("parse oracle hash: %v", err)
+	}
+
+	values := []uint8{0, 1, 2, 51, 100, 127, 128, 200, 254, 255}
+	const steps = 4096
+	n := len(values)
+	h := fnv.New64a()
+	for i := 0; i < n; i++ {
+		for j := 0; j < n; j++ {
+			a, b := values[i], values[j]
+			ra, rb := values[n-1-i], values[n-1-j]
+			c1 := Color{a, b, ra, rb}
+			c2 := Color{b, ra, rb, a}
+			for s := 0; s <= steps; s++ {
+				r := c1.Gradient(c2, float64(s)/float64(steps))
+				_, _ = h.Write(r[:])
+			}
+		}
+	}
+	if got := h.Sum64(); got != want {
+		t.Fatalf("Color.Gradient hash %016x, want %016x", got, want)
+	}
+}

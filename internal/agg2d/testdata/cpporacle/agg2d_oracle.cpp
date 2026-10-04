@@ -1,6 +1,7 @@
 // Agg2D C++ oracle: renders small scenes through the original AGG 2.6
 // agg2d.cpp and dumps the raw pixel buffers (RGBA order, top row first) plus
-// the image-filter LUTs selected by Agg2D::imageFilter(). The Go test
+// the image-filter LUTs selected by Agg2D::imageFilter() and a hash of
+// Agg2D::Color::gradient over a channel grid. The Go test
 // cpp_oracle_test.go replays the same scenes and compares byte-for-byte.
 //
 // Agg2D::Color is srgba8 and is converted to the linear rgba8 ColorType on
@@ -315,6 +316,44 @@ int main(int argc, char** argv)
     dumpFilter(f, "Spline16", agg::image_filter_spline16());
     dumpFilter(f, "Spline36", agg::image_filter_spline36());
     dumpFilter(f, "Blackman144", agg::image_filter_blackman144());
+    fclose(f);
+
+    // Agg2D::Color::gradient (rgba8T::gradient: uround(k * base_mask), then
+    // the integer lerp) over every channel pair from kGradientValues and
+    // k = i / kGradientSteps. Components are independent; r/g/b/a each carry
+    // a different pair so all four channels are exercised.
+    static const unsigned kGradientValues[] = {0, 1, 2, 51, 100, 127, 128, 200, 254, 255};
+    static const unsigned kGradientCount = sizeof(kGradientValues) / sizeof(kGradientValues[0]);
+    static const int kGradientSteps = 4096;
+    std::vector<unsigned char> grad;
+    for (unsigned i = 0; i < kGradientCount; ++i)
+    {
+        for (unsigned j = 0; j < kGradientCount; ++j)
+        {
+            unsigned a = kGradientValues[i];
+            unsigned b = kGradientValues[j];
+            unsigned ra = kGradientValues[kGradientCount - 1 - i];
+            unsigned rb = kGradientValues[kGradientCount - 1 - j];
+            Agg2D::Color c1(a, b, ra, rb);
+            Agg2D::Color c2(b, ra, rb, a);
+            for (int s = 0; s <= kGradientSteps; ++s)
+            {
+                Agg2D::Color r = c1.gradient(c2, double(s) / double(kGradientSteps));
+                grad.push_back(r.r);
+                grad.push_back(r.g);
+                grad.push_back(r.b);
+                grad.push_back(r.a);
+            }
+        }
+    }
+    path = out + "/color_gradient.txt";
+    f = fopen(path.c_str(), "w");
+    if (!f)
+    {
+        perror(path.c_str());
+        return 1;
+    }
+    fprintf(f, "%016llx\n", fnv1a(grad.data(), grad.size()));
     fclose(f);
     return 0;
 }
