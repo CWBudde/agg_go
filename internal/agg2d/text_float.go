@@ -645,7 +645,7 @@ func (a *Agg2DFloat) Text(x, y float64, str string, roundOff bool, dx, dy float6
 }
 
 // renderGlyphScanlines renders a glyph using scanline data, mirroring the 8-bit flow.
-func (a *Agg2DFloat) renderGlyphScanlines(adaptor font.SerializedScanlinesAdaptor, glyph *font.GlyphCache) {
+func (a *Agg2DFloat) renderGlyphScanlines(adaptor renscan.RasterizerInterface, glyph *font.GlyphCache) {
 	if a.scanline == nil || glyph == nil || adaptor == nil {
 		return
 	}

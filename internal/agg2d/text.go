@@ -826,7 +826,7 @@ func (t *transformedPathSource) NextVertex() (x, y float64, cmd uint32) {
 
 // renderGlyphScanlines renders a glyph using scanline data.
 // This mirrors AGG2D's render(gray8_adaptor/mono_adaptor, scanline) flow.
-func (agg2d *Agg2D) renderGlyphScanlines(adaptor font.SerializedScanlinesAdaptor, glyph *font.GlyphCache, x, y float64) {
+func (agg2d *Agg2D) renderGlyphScanlines(adaptor renscan.RasterizerInterface, glyph *font.GlyphCache, x, y float64) {
 	if agg2d.scanline == nil || glyph == nil || adaptor == nil {
 		return
 	}

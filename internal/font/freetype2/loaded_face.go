@@ -731,61 +731,12 @@ func (a rasterizerVertexSourceAdapter) Vertex(x, y *float64) uint32 {
 	return uint32(cmd)
 }
 
-type rasterizerScanlineU8Adapter struct {
-	sl *scanline.ScanlineU8
-}
-
-func (a *rasterizerScanlineU8Adapter) ResetSpans() {
-	a.sl.ResetSpans()
-}
-
-func (a *rasterizerScanlineU8Adapter) AddCell(x int, cover uint32) {
-	a.sl.AddCell(x, uint(cover))
-}
-
-func (a *rasterizerScanlineU8Adapter) AddSpan(x, len int, cover uint32) {
-	a.sl.AddSpan(x, len, uint(cover))
-}
-
-func (a *rasterizerScanlineU8Adapter) Finalize(y int) {
-	a.sl.Finalize(y)
-}
-
-func (a *rasterizerScanlineU8Adapter) NumSpans() int {
-	return a.sl.NumSpans()
-}
-
-type rasterizerScanlineBinAdapter struct {
-	sl *scanline.ScanlineBin
-}
-
-func (a *rasterizerScanlineBinAdapter) ResetSpans() {
-	a.sl.ResetSpans()
-}
-
-func (a *rasterizerScanlineBinAdapter) AddCell(x int, cover uint32) {
-	a.sl.AddCell(x, uint(cover))
-}
-
-func (a *rasterizerScanlineBinAdapter) AddSpan(x, len int, cover uint32) {
-	a.sl.AddSpan(x, len, uint(cover))
-}
-
-func (a *rasterizerScanlineBinAdapter) Finalize(y int) {
-	a.sl.Finalize(y)
-}
-
-func (a *rasterizerScanlineBinAdapter) NumSpans() int {
-	return a.sl.NumSpans()
-}
-
 func renderRasterizerToAAStorage(ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip], sl *scanline.ScanlineU8, storage *scanline.ScanlineStorageAA[uint8]) bool {
 	if !ras.RewindScanlines() {
 		return true
 	}
 	sl.Reset(ras.MinX(), ras.MaxX())
-	adapter := &rasterizerScanlineU8Adapter{sl: sl}
-	for ras.SweepScanline(adapter) {
+	for ras.SweepScanline(sl) {
 		storage.Render(scanlineU8Wrapper{sl})
 	}
 	return true
@@ -796,8 +747,7 @@ func renderRasterizerToBinStorage(ras *rasterizer.RasterizerScanlineAA[int, rast
 		return true
 	}
 	sl.Reset(ras.MinX(), ras.MaxX())
-	adapter := &rasterizerScanlineBinAdapter{sl: sl}
-	for ras.SweepScanline(adapter) {
+	for ras.SweepScanline(sl) {
 		storage.RenderBinScanline(sl)
 	}
 	return true
