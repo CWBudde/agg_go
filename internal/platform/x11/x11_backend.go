@@ -200,28 +200,30 @@ func (x *X11Backend) setWindowProperties(flags types.WindowFlags) {
 	}
 }
 
-// createImageBuffer creates the XImage for displaying the rendering buffer
+// createImageBuffer creates the XImage for displaying the rendering buffer.
+// On resize it replaces the previous XImage, which is only released once the
+// new one exists, so a failed recreation keeps the old buffer usable.
 func (x *X11Backend) createImageBuffer() error {
-	// Calculate buffer size
-	x.imgStride = x.width * x.bpp / 8
-	bufferSize := x.imgStride * x.height
+	stride := x.width * x.bpp / 8
+	data := make([]byte, stride*x.height)
 
-	// Allocate image data
-	x.imgData = make([]byte, bufferSize)
-
-	// Create XImage
-	x.ximg = C.createXImage(
+	ximg := C.createXImage(
 		x.display, x.visual, C.uint(x.depth),
 		C.ZPixmap, 0,
-		(*C.char)(unsafe.Pointer(&x.imgData[0])),
+		(*C.char)(unsafe.Pointer(&data[0])),
 		C.uint(x.width), C.uint(x.height),
-		32, C.int(x.imgStride),
+		32, C.int(stride),
 	)
-
-	if x.ximg == nil {
+	if ximg == nil {
 		return fmt.Errorf("failed to create XImage")
 	}
 
+	if x.ximg != nil {
+		C.destroyXImage(x.ximg)
+	}
+	x.ximg = ximg
+	x.imgData = data
+	x.imgStride = stride
 	return nil
 }
 
@@ -326,6 +328,8 @@ func (x *X11Backend) SetWindowSize(width, height int) error {
 	// Recreate image buffer
 	err := x.createImageBuffer()
 	if err != nil {
+		// The previous image buffer is kept; keep its size with it.
+		x.width, x.height = oldWidth, oldHeight
 		return fmt.Errorf("failed to recreate image buffer: %w", err)
 	}
 
