@@ -389,7 +389,7 @@ func (s aaStlPathVS) Vertex() (float64, float64, basics.PathCommand) {
 	return x, y, basics.PathCommand(cmd)
 }
 
-func countDarkPerThreshold(img *image.RGBA, x0, x1, y0, y1 int, thresholds []struct {
+func countDarkPerThreshold(img *image.NRGBA, x0, x1, y0, y1 int, thresholds []struct {
 	name  string
 	limit uint32
 },
@@ -397,7 +397,7 @@ func countDarkPerThreshold(img *image.RGBA, x0, x1, y0, y1 int, thresholds []str
 	counts := make([]int, len(thresholds))
 	for y := y0; y < y1; y++ {
 		for x := x0; x < x1; x++ {
-			c := img.RGBAAt(x, y)
+			c := img.NRGBAAt(x, y)
 			r := uint32(c.R) << 8
 			g := uint32(c.G) << 8
 			b := uint32(c.B) << 8
@@ -424,11 +424,4 @@ func formatCounts(thresholds []struct {
 		s += fmt.Sprintf("%s=%d", th.name, counts[i])
 	}
 	return s
-}
-
-func min2(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }

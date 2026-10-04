@@ -100,7 +100,7 @@ func TestFillCPPNativePathFillsRectangle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("toGoImage() error = %v", err)
 	}
-	center := goImg.RGBAAt(5, 5)
+	center := goImg.NRGBAAt(5, 5)
 	if center.R < 200 || center.G != 0 || center.B != 0 || center.A != 255 {
 		t.Fatalf("unexpected filled pixel: %+v", center)
 	}
@@ -164,7 +164,7 @@ func TestStrokeCPPNativePathDrawsHorizontalLine(t *testing.T) {
 	if err != nil {
 		t.Fatalf("toGoImage() error = %v", err)
 	}
-	center := goImg.RGBAAt(8, 8)
+	center := goImg.NRGBAAt(8, 8)
 	if center.B < 200 || center.R != 0 || center.G != 0 || center.A != 255 {
 		t.Fatalf("unexpected stroked center pixel: %+v", center)
 	}
@@ -223,7 +223,7 @@ func TestCPPNativeImageBlitCopiesRegion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("toGoImage() error = %v", err)
 	}
-	inside := goImg.RGBAAt(3, 4)
+	inside := goImg.NRGBAAt(3, 4)
 	if inside.R < 200 || inside.G != 0 || inside.B != 0 || inside.A != 255 {
 		t.Fatalf("unexpected blitted pixel: %+v", inside)
 	}
@@ -333,7 +333,7 @@ func TestCPPNativePathTransformMovesFilledGeometry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("toGoImage() error = %v", err)
 	}
-	inside := goImg.RGBAAt(8, 5)
+	inside := goImg.NRGBAAt(8, 5)
 	if inside.G < 200 || inside.R != 0 || inside.B != 0 || inside.A != 255 {
 		t.Fatalf("unexpected transformed fill pixel: %+v", inside)
 	}
@@ -349,7 +349,7 @@ func TestCPPBackendContextFillRectangle(t *testing.T) {
 	ctx.SetColor(agg.Red)
 	ctx.FillRectangle(2, 2, 10, 10)
 
-	got := ctx.GetImage().ToGoImage().RGBAAt(6, 6)
+	got := ctx.GetImage().ToGoImage().NRGBAAt(6, 6)
 	if got.R < 200 || got.G != 0 || got.B != 0 || got.A != 255 {
 		t.Fatalf("unexpected rendered pixel: %+v", got)
 	}
@@ -375,7 +375,7 @@ func TestCPPBackendContextDrawImage(t *testing.T) {
 		t.Fatalf("DrawImage() error = %v", err)
 	}
 
-	got := dst.GetImage().ToGoImage().RGBAAt(4, 5)
+	got := dst.GetImage().ToGoImage().NRGBAAt(4, 5)
 	if got.B < 200 || got.R != 0 || got.G != 0 || got.A != 255 {
 		t.Fatalf("unexpected drawn image pixel: %+v", got)
 	}
@@ -391,7 +391,7 @@ func TestCPPBackendContextTransformAffectsFill(t *testing.T) {
 	ctx.Translate(5, 4)
 	ctx.FillRectangle(1, 1, 4, 4)
 
-	got := ctx.GetImage().ToGoImage().RGBAAt(7, 6)
+	got := ctx.GetImage().ToGoImage().NRGBAAt(7, 6)
 	if got.G < 200 || got.R != 0 || got.B != 0 || got.A != 255 {
 		t.Fatalf("unexpected transformed fill pixel: %+v", got)
 	}
@@ -408,11 +408,11 @@ func TestCPPBackendContextClipBoxClipsFill(t *testing.T) {
 	ctx.ClipBox(4, 4, 8, 8)
 	ctx.FillRectangle(2, 2, 8, 8)
 
-	inside := ctx.GetImage().ToGoImage().RGBAAt(5, 5)
+	inside := ctx.GetImage().ToGoImage().NRGBAAt(5, 5)
 	if inside.R < 200 || inside.G != 0 || inside.B != 0 || inside.A != 255 {
 		t.Fatalf("unexpected clipped inside pixel: %+v", inside)
 	}
-	outside := ctx.GetImage().ToGoImage().RGBAAt(3, 3)
+	outside := ctx.GetImage().ToGoImage().NRGBAAt(3, 3)
 	if outside.R != agg.White.R || outside.G != agg.White.G || outside.B != agg.White.B || outside.A != agg.White.A {
 		t.Fatalf("unexpected clipped outside pixel: %+v", outside)
 	}
@@ -439,7 +439,7 @@ func TestCPPBackendContextDrawImageScaled(t *testing.T) {
 		t.Fatalf("DrawImageScaled() error = %v", err)
 	}
 
-	got := ctx.GetImage().ToGoImage().RGBAAt(7, 7)
+	got := ctx.GetImage().ToGoImage().NRGBAAt(7, 7)
 	if got.B < 200 || got.R != 0 || got.G != 0 || got.A != 255 {
 		t.Fatalf("unexpected scaled image pixel: %+v", got)
 	}
@@ -467,11 +467,11 @@ func TestCPPBackendContextDrawImageQuad(t *testing.T) {
 		t.Fatalf("DrawImageQuad() error = %v", err)
 	}
 
-	inside := dst.GetImage().ToGoImage().RGBAAt(5, 5)
+	inside := dst.GetImage().ToGoImage().NRGBAAt(5, 5)
 	if inside.B < 200 || inside.R != 0 || inside.G != 0 || inside.A != 255 {
 		t.Fatalf("unexpected quad pixel: %+v", inside)
 	}
-	outside := dst.GetImage().ToGoImage().RGBAAt(10, 10)
+	outside := dst.GetImage().ToGoImage().NRGBAAt(10, 10)
 	if outside.R != agg.White.R || outside.G != agg.White.G || outside.B != agg.White.B || outside.A != agg.White.A {
 		t.Fatalf("unexpected pixel outside quad: %+v", outside)
 	}
@@ -486,8 +486,8 @@ func TestCPPBackendContextFillLinearGradient(t *testing.T) {
 	ctx.SetLinearGradient(2, 0, 14, 0, agg.Red, agg.Blue)
 	ctx.FillRectangle(2, 1, 12, 8)
 
-	left := ctx.GetImage().ToGoImage().RGBAAt(3, 5)
-	right := ctx.GetImage().ToGoImage().RGBAAt(12, 5)
+	left := ctx.GetImage().ToGoImage().NRGBAAt(3, 5)
+	right := ctx.GetImage().ToGoImage().NRGBAAt(12, 5)
 	if left.R <= left.B {
 		t.Fatalf("expected left gradient pixel to skew red, got %+v", left)
 	}
@@ -506,8 +506,8 @@ func TestCPPBackendContextStrokeRadialGradient(t *testing.T) {
 	ctx.SetStrokeRadialGradient(9, 9, 6, agg.Green, agg.Blue)
 	ctx.DrawCircle(9, 9, 5)
 
-	top := ctx.GetImage().ToGoImage().RGBAAt(9, 4)
-	right := ctx.GetImage().ToGoImage().RGBAAt(14, 9)
+	top := ctx.GetImage().ToGoImage().NRGBAAt(9, 4)
+	right := ctx.GetImage().ToGoImage().NRGBAAt(14, 9)
 	if (top.R == agg.White.R && top.G == agg.White.G && top.B == agg.White.B && top.A == agg.White.A) || top.A != 255 || (int(top.G)+int(top.B)) < 120 {
 		t.Fatalf("expected stroke gradient pixel to be colored, got %+v", top)
 	}
@@ -563,11 +563,11 @@ func TestCPPBackendContextDrawImageRegionScaledHonorsClipAndBlend(t *testing.T) 
 		t.Fatalf("DrawImageRegion() error = %v", err)
 	}
 
-	clippedOut := dst.GetImage().ToGoImage().RGBAAt(1, 1)
+	clippedOut := dst.GetImage().ToGoImage().NRGBAAt(1, 1)
 	if clippedOut.R != agg.White.R || clippedOut.G != agg.White.G || clippedOut.B != agg.White.B || clippedOut.A != agg.White.A {
 		t.Fatalf("unexpected pixel outside clip: %+v", clippedOut)
 	}
-	inside := dst.GetImage().ToGoImage().RGBAAt(3, 3)
+	inside := dst.GetImage().ToGoImage().NRGBAAt(3, 3)
 	if inside.R < 240 || inside.G > 140 || inside.B > 140 || inside.A != 255 {
 		t.Fatalf("unexpected blended pixel inside clip: %+v", inside)
 	}
@@ -596,11 +596,11 @@ func TestCPPBackendContextDrawImageRegionQuadHonorsClip(t *testing.T) {
 		t.Fatalf("DrawImageRegionQuad() error = %v", err)
 	}
 
-	outside := dst.GetImage().ToGoImage().RGBAAt(2, 2)
+	outside := dst.GetImage().ToGoImage().NRGBAAt(2, 2)
 	if outside.R != agg.White.R || outside.G != agg.White.G || outside.B != agg.White.B || outside.A != agg.White.A {
 		t.Fatalf("unexpected pixel outside clip: %+v", outside)
 	}
-	inside := dst.GetImage().ToGoImage().RGBAAt(5, 5)
+	inside := dst.GetImage().ToGoImage().NRGBAAt(5, 5)
 	if inside.G < 200 || inside.R != 0 || inside.B != 0 || inside.A != 255 {
 		t.Fatalf("unexpected quad region pixel: %+v", inside)
 	}
@@ -638,7 +638,7 @@ func TestCPPBackendExtendedBlendModeOnFill(t *testing.T) {
 	ctx.Clear(agg.White)
 	ctx.SetFillColor(agg.NewColorRGB(0, 0, 0))
 	ctx.FillRectangle(1, 1, 4, 4)
-	got := ctx.GetImage().ToGoImage().RGBAAt(2, 2)
+	got := ctx.GetImage().ToGoImage().NRGBAAt(2, 2)
 	if got.R > 4 || got.G > 4 || got.B > 4 || got.A != 255 {
 		t.Fatalf("multiply of black over white = %+v, want opaque black", got)
 	}
@@ -681,7 +681,7 @@ func TestCPPBackendExtendedBlendModeOnDrawImageQuad(t *testing.T) {
 	if err := dst.DrawImageQuad(src, quad); err != nil {
 		t.Fatalf("DrawImageQuad() under multiply error = %v", err)
 	}
-	got := dst.GetImage().ToGoImage().RGBAAt(6, 6)
+	got := dst.GetImage().ToGoImage().NRGBAAt(6, 6)
 	within := func(got, want uint8, tol int) bool {
 		d := int(got) - int(want)
 		return d >= -tol && d <= tol

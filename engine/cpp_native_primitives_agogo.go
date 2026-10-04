@@ -152,12 +152,12 @@ func (img *cppNativeImage) pixelView() ([]byte, error) {
 	return unsafe.Slice((*byte)(unsafe.Pointer(ptr)), size), nil
 }
 
-func (img *cppNativeImage) toGoImage() (*image.RGBA, error) {
+func (img *cppNativeImage) toGoImage() (*image.NRGBA, error) {
 	pixels, err := img.pixelsRGBA()
 	if err != nil {
 		return nil, err
 	}
-	return &image.RGBA{
+	return &image.NRGBA{
 		Pix:    pixels,
 		Stride: img.stride(),
 		Rect:   image.Rect(0, 0, img.width(), img.height()),

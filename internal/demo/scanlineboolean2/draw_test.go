@@ -86,7 +86,7 @@ func TestDrawUsesFlipYBufferWithoutManualSceneMirror(t *testing.T) {
 	if got == nil {
 		t.Fatal("ToGoImage returned nil")
 	}
-	northernScotland := got.RGBAAt(275, 45)
+	northernScotland := got.NRGBAAt(275, 45)
 	if nearWhite(northernScotland) {
 		t.Fatalf("northern GB sample is white, scene appears vertically mirrored: %v", northernScotland)
 	}
@@ -108,6 +108,6 @@ func TestBlendPixelUsesImageStride(t *testing.T) {
 	}
 }
 
-func nearWhite(c color.RGBA) bool {
+func nearWhite(c color.NRGBA) bool {
 	return c.R > 252 && c.G > 252 && c.B > 252
 }

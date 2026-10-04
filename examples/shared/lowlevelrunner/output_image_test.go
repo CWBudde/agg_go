@@ -14,7 +14,7 @@ func TestOutputImage_EncodeLinearRGBToSRGB(t *testing.T) {
 	img.Data[3] = 255
 
 	goImg := outputImage(img, true)
-	got := goImg.RGBAAt(0, 0)
+	got := goImg.NRGBAAt(0, 0)
 	if got.R != 255 || got.G != 249 || got.B != 249 || got.A != 255 {
 		t.Fatalf("encoded pixel = %v, want rgba(255,249,249,255)", got)
 	}

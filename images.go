@@ -145,13 +145,15 @@ func (img *Image) ToInternalImage() *agg2d.Image {
 	return agg2d.NewImage(img.Data, img.width, img.height, img.renBuf.Stride())
 }
 
-// ToGoImage converts the AGG image to a standard Go image.RGBA.
-func (img *Image) ToGoImage() *image.RGBA {
+// ToGoImage converts the AGG image to a standard Go image.NRGBA. The AGG
+// framebuffer stores straight (non-premultiplied) alpha, which is the NRGBA
+// convention; image.RGBA would misread translucent pixels as premultiplied.
+func (img *Image) ToGoImage() *image.NRGBA {
 	if img == nil {
 		return nil
 	}
 
-	goImg := image.NewRGBA(image.Rect(0, 0, img.width, img.height))
+	goImg := image.NewNRGBA(image.Rect(0, 0, img.width, img.height))
 
 	// Copy pixel data row-by-row in top-down image order. Bottom-up (flip_y)
 	// buffers are read in reverse row order so exported images match the C++
@@ -336,7 +338,8 @@ func (img *Image) SaveToJPEG(filename string, quality int) error {
 	return jpeg.Encode(file, stdImg, options)
 }
 
-// ToStandardImage converts an AGG Image to a standard Go image.
+// ToStandardImage converts an AGG Image to a standard Go image. Like
+// ToGoImage it returns straight-alpha *image.NRGBA data.
 func (img *Image) ToStandardImage() (image.Image, error) {
 	if img == nil || img.renBuf == nil {
 		return nil, errors.New("image or buffer is nil")
@@ -345,7 +348,7 @@ func (img *Image) ToStandardImage() (image.Image, error) {
 	width := img.Width()
 	height := img.Height()
 	bounds := image.Rect(0, 0, width, height)
-	stdImg := image.NewRGBA(bounds)
+	stdImg := image.NewNRGBA(bounds)
 
 	// Copy pixel data row-by-row in top-down image order. Bottom-up (flip_y)
 	// buffers are read in reverse row order so exported images match the C++

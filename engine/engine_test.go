@@ -16,12 +16,12 @@ import (
 
 type foreignImage struct{}
 
-func (foreignImage) Kind() engine.Kind      { return engine.CPP }
-func (foreignImage) Width() int             { return 1 }
-func (foreignImage) Height() int            { return 1 }
-func (foreignImage) Premultiply() error     { return nil }
-func (foreignImage) Demultiply() error      { return nil }
-func (foreignImage) ToGoImage() *image.RGBA { return image.NewRGBA(image.Rect(0, 0, 1, 1)) }
+func (foreignImage) Kind() engine.Kind       { return engine.CPP }
+func (foreignImage) Width() int              { return 1 }
+func (foreignImage) Height() int             { return 1 }
+func (foreignImage) Premultiply() error      { return nil }
+func (foreignImage) Demultiply() error       { return nil }
+func (foreignImage) ToGoImage() *image.NRGBA { return image.NewNRGBA(image.Rect(0, 0, 1, 1)) }
 func (foreignImage) ToStandardImage() (image.Image, error) {
 	return image.NewRGBA(image.Rect(0, 0, 1, 1)), nil
 }
@@ -125,7 +125,7 @@ func TestNewContextDefaultsToPort(t *testing.T) {
 	ctx.SetColor(agg.Red)
 	ctx.FillRectangle(1, 1, 6, 6)
 
-	got := ctx.GetImage().ToGoImage().RGBAAt(4, 4)
+	got := ctx.GetImage().ToGoImage().NRGBAAt(4, 4)
 	if got.R < 200 || got.G > 40 || got.B > 40 || got.A != 255 {
 		t.Fatalf("unexpected rendered color at center: %+v", got)
 	}
@@ -167,7 +167,7 @@ func TestDrawImageThroughPortEngine(t *testing.T) {
 		t.Fatalf("DrawImageScaled() error = %v", err)
 	}
 
-	got := ctx.GetImage().ToGoImage().RGBAAt(2, 2)
+	got := ctx.GetImage().ToGoImage().NRGBAAt(2, 2)
 	if got.R < 200 || got.A != 255 {
 		t.Fatalf("unexpected scaled image pixel: %+v", got)
 	}
@@ -184,7 +184,7 @@ func TestNewImageAndContextForImagePort(t *testing.T) {
 	}
 
 	ctx.Clear(agg.Blue)
-	got := img.ToGoImage().RGBAAt(1, 1)
+	got := img.ToGoImage().NRGBAAt(1, 1)
 	if got.B < 200 || got.A != 255 {
 		t.Fatalf("unexpected attached image pixel: %+v", got)
 	}

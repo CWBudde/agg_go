@@ -2,6 +2,7 @@ package visual
 
 import (
 	"image"
+	"image/color"
 	"path/filepath"
 	"testing"
 
@@ -122,7 +123,7 @@ func TestFloatPathVisualParity(t *testing.T) {
 	for _, s := range samples {
 		if d := maxRGBADiff(imgF, img8, s.x, s.y); d > s.tol {
 			f := imgF.RGBAAt(s.x, s.y)
-			e := img8.RGBAAt(s.x, s.y)
+			e := img8.NRGBAAt(s.x, s.y)
 			t.Errorf("%s at (%d,%d): float=%v 8bit=%v maxdiff=%d (tol=%d)",
 				s.what, s.x, s.y, f, e, d, s.tol)
 		}
@@ -167,7 +168,7 @@ func TestFloatTextVisualParity(t *testing.T) {
 			if d := maxRGBADiff(imgF, img8, x, y); d > maxDiff {
 				maxDiff = d
 			}
-			c := img8.RGBAAt(x, y)
+			c := img8.NRGBAAt(x, y)
 			if c.R < 250 || c.G < 250 || c.B < 250 {
 				ink++
 			}
@@ -183,9 +184,11 @@ func TestFloatTextVisualParity(t *testing.T) {
 
 // maxRGBADiff returns the largest per-channel absolute difference between two
 // *image.RGBA at (x,y).
-func maxRGBADiff(a, b *image.RGBA, x, y int) int {
-	ca := a.RGBAAt(x, y)
-	cb := b.RGBAAt(x, y)
+// maxRGBADiff compares two images in premultiplied space, so a premultiplied
+// float export and a straight 8-bit export of the same pixel compare equal.
+func maxRGBADiff(a, b image.Image, x, y int) int {
+	ca := color.RGBAModel.Convert(a.At(x, y)).(color.RGBA)
+	cb := color.RGBAModel.Convert(b.At(x, y)).(color.RGBA)
 	diff := func(p, q uint8) int {
 		d := int(p) - int(q)
 		if d < 0 {

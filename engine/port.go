@@ -284,7 +284,7 @@ func (i *portImage) Premultiply() error { return i.img.Premultiply() }
 
 func (i *portImage) Demultiply() error { return i.img.Demultiply() }
 
-func (i *portImage) ToGoImage() *image.RGBA { return i.img.ToGoImage() }
+func (i *portImage) ToGoImage() *image.NRGBA { return i.img.ToGoImage() }
 
 func (i *portImage) ToStandardImage() (image.Image, error) { return i.img.ToStandardImage() }
 
