@@ -66,8 +66,8 @@ func (fe *FontEngineFreetype) PrepareGlyphIndexSubpixel(glyphIndex uint, offsetX
 	return false
 }
 
-func (fe *FontEngineFreetype) CurrentBitmap() (data []byte, width, height, pitch, left, top int, pixelMode uint8) {
-	return nil, 0, 0, 0, 0, 0, 0
+func (fe *FontEngineFreetype) CurrentBitmap() GlyphBitmap {
+	return GlyphBitmap{}
 }
 
 func (fe *FontEngineFreetype) GlyphIndex() uint {

@@ -1041,8 +1041,16 @@ func (fe *FontEngineFreetype) PrepareGlyphIndexSubpixel(glyphIndex uint, offsetX
 }
 
 // CurrentBitmap returns the raw rendered bitmap of the current glyph, if any.
-func (fe *FontEngineFreetype) CurrentBitmap() (data []byte, width, height, pitch, left, top int, pixelMode uint8) {
-	return fe.bitmapData, fe.bitmapW, fe.bitmapH, fe.bitmapPitch, fe.bitmapLeft, fe.bitmapTop, fe.bitmapMode
+func (fe *FontEngineFreetype) CurrentBitmap() GlyphBitmap {
+	return GlyphBitmap{
+		Data:      fe.bitmapData,
+		Width:     fe.bitmapW,
+		Height:    fe.bitmapH,
+		Pitch:     fe.bitmapPitch,
+		Left:      fe.bitmapLeft,
+		Top:       fe.bitmapTop,
+		PixelMode: fe.bitmapMode,
+	}
 }
 
 // GlyphIndex returns the current glyph index.
