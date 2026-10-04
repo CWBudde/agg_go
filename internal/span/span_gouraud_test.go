@@ -130,7 +130,7 @@ func TestSpanGouraudVertexSource(t *testing.T) {
 	}
 
 	// End - Stop
-	x, y, cmd = sg.Vertex()
+	_, _, cmd = sg.Vertex()
 	if cmd != basics.PathCmdStop {
 		t.Errorf("Expected PathCmdStop, got %v", cmd)
 	}

@@ -516,7 +516,7 @@ func (bl CompositeBlenderPlain[S, O]) BlendSolidSpanStraight(dst []basics.Int8u,
 			saByte = a
 		}
 		sa := float64(saByte) / 255.0
-		if sa <= 0 && (covers != nil && covers[i] == 0) {
+		if sa <= 0 && (len(covers) > i && covers[i] == 0) {
 			continue
 		}
 		p := i * 4

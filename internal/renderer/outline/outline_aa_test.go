@@ -257,11 +257,8 @@ func TestLineProfileAA(t *testing.T) {
 		profile.SetGamma(linearGamma)
 		profile.Width(1.0)
 
-		// Should not panic and should produce valid values
-		value := profile.Value(SubpixelScale)
-		if value < 0 {
-			t.Error("Profile value should not be negative")
-		}
+		// Should not panic; ValueType is uint8, so it cannot be negative
+		_ = profile.Value(SubpixelScale)
 	})
 }
 

@@ -82,15 +82,16 @@ func (m *mockTextFontEngine) PrepareGlyph(glyphCode uint) bool {
 
 func (m *mockTextFontEngine) PrepareGlyphIndex(glyphIndex uint) bool {
 	for _, g := range m.glyphs {
-		if g.glyphIndex == glyphIndex {
-			m.current = g
-			m.currentValid = true
-			m.pathStorage.RemoveAll()
-			if g.buildPath != nil {
-				g.buildPath(m.pathStorage)
-			}
-			return true
+		if g.glyphIndex != glyphIndex {
+			continue
 		}
+		m.current = g
+		m.currentValid = true
+		m.pathStorage.RemoveAll()
+		if g.buildPath != nil {
+			g.buildPath(m.pathStorage)
+		}
+		return true
 	}
 	m.currentValid = false
 	return false

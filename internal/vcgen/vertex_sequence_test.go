@@ -44,7 +44,7 @@ func TestVCGenVertexSequence_Basic(t *testing.T) {
 	}
 
 	// Should reach end
-	x, y, cmd = gen.Vertex()
+	_, _, cmd = gen.Vertex()
 	if cmd != basics.PathCmdStop {
 		t.Errorf("Expected PathCmdStop, got %v", cmd)
 	}
@@ -216,7 +216,7 @@ func TestVCGenVertexSequence_SingleVertex(t *testing.T) {
 	}
 
 	// Then stop
-	x, y, cmd = gen.Vertex()
+	_, _, cmd = gen.Vertex()
 	if cmd != basics.PathCmdStop {
 		t.Errorf("After single vertex, should return Stop, got %v", cmd)
 	}

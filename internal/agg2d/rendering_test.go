@@ -200,7 +200,7 @@ func TestClipBoxClipsStrokedPaths(t *testing.T) {
 	agg2d.DrawPath(StrokeOnly)
 
 	r, g, b, a := pixelAt(buffer, width, 15, 15)
-	if (r >= 255 && g >= 255 && b >= 255) || a == 0 {
+	if (r == 255 && g == 255 && b == 255) || a == 0 {
 		t.Fatalf("stroked pixel inside clip = (%d,%d,%d,%d), want visible clipped stroke coverage", r, g, b, a)
 	}
 

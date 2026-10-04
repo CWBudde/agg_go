@@ -79,7 +79,7 @@ func TestPixFmtRGBA32GammaBlendColorHspanUsesGammaBlendMath(t *testing.T) {
 func TestRGBAMultiplierPremultiplyAndDemultiply(t *testing.T) {
 	rgba := []basics.Int8u{100, 50, 25, 128}
 	RGBAMultiplier[order.RGBA]{}.Premultiply(rgba)
-	if rgba != nil && (rgba[0] != 50 || rgba[1] != 25 || rgba[2] != 12 || rgba[3] != 128) {
+	if rgba[0] != 50 || rgba[1] != 25 || rgba[2] != 12 || rgba[3] != 128 {
 		t.Fatalf("Premultiply RGBA = %v", rgba)
 	}
 	RGBAMultiplier[order.RGBA]{}.Demultiply(rgba)

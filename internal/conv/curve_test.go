@@ -69,7 +69,7 @@ func TestConvCurve_BasicLinearPath(t *testing.T) {
 	}
 
 	// Stop
-	x, y, cmd = curve.Vertex()
+	_, _, cmd = curve.Vertex()
 	if cmd != basics.PathCmdStop {
 		t.Errorf("Expected PathCmdStop, got %v", cmd)
 	}
@@ -89,10 +89,10 @@ func TestConvCurve_QuadraticBezier(t *testing.T) {
 
 	curve.Rewind(0)
 
-	// First vertex should be MoveTo
+	// First vertex should be the source MoveTo, passed through unchanged
 	x, y, cmd := curve.Vertex()
-	if cmd != basics.PathCmdMoveTo {
-		t.Errorf("Expected PathCmdMoveTo, got %v", cmd)
+	if cmd != basics.PathCmdMoveTo || x != 0 || y != 0 {
+		t.Errorf("Expected MoveTo(0,0), got %v(%f,%f)", cmd, x, y)
 	}
 
 	// Next vertex should be first approximated point from the curve
@@ -139,10 +139,10 @@ func TestConvCurve_CubicBezier(t *testing.T) {
 
 	curve.Rewind(0)
 
-	// First vertex should be MoveTo
+	// First vertex should be the source MoveTo, passed through unchanged
 	x, y, cmd := curve.Vertex()
-	if cmd != basics.PathCmdMoveTo {
-		t.Errorf("Expected PathCmdMoveTo, got %v", cmd)
+	if cmd != basics.PathCmdMoveTo || x != 0 || y != 0 {
+		t.Errorf("Expected MoveTo(0,0), got %v(%f,%f)", cmd, x, y)
 	}
 
 	// Collect all curve approximation points

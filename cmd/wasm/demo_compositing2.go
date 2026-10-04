@@ -167,15 +167,3 @@ func drawCompositing2Demo() {
 
 	logStatus(fmt.Sprintf("Compositing 2 Demo: Op=%d, AlphaSrc=%.2f, AlphaDst=%.2f", comp2Op, comp2AlphaSrc, comp2AlphaDst))
 }
-
-func setComp2Op(op int) {
-	comp2Op = blender.CompOp(op)
-}
-
-func setComp2AlphaSrc(a float64) {
-	comp2AlphaSrc = a
-}
-
-func setComp2AlphaDst(a float64) {
-	comp2AlphaDst = a
-}

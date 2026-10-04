@@ -59,11 +59,3 @@ func cppUnavailableError(reason string) error {
 func cppMissingTagReason() string {
 	return fmt.Sprintf("the C++ engine is disabled in this build; rebuild with the %q build tag", cppBuildTag)
 }
-
-func cppMissingCGOReason() string {
-	return fmt.Sprintf("the %q build tag is enabled, but cgo is disabled", cppBuildTag)
-}
-
-func cppBridgeNotImplementedReason() string {
-	return fmt.Sprintf("the %q build tag is enabled, but the in-repo C++ engine bridge is not implemented yet", cppBuildTag)
-}

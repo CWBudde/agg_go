@@ -97,7 +97,7 @@ func TestConvAdaptorVPGen_Basic(t *testing.T) {
 	}
 
 	// Should stop
-	x, y, cmd = adaptor.Vertex()
+	_, _, cmd = adaptor.Vertex()
 	if cmd != basics.PathCmdStop {
 		t.Errorf("Expected Stop, got %v", cmd)
 	}
@@ -140,7 +140,7 @@ func TestConvAdaptorVPGen_AutoClose(t *testing.T) {
 	}
 
 	// Should get EndPoly with close flag
-	x, y, cmd = adaptor.Vertex()
+	_, _, cmd = adaptor.Vertex()
 	expectedCmd := basics.PathCmdEndPoly | basics.PathCommand(basics.PathFlagsClose)
 	if cmd != expectedCmd {
 		t.Errorf("Expected EndPoly with close flag %v, got %v", expectedCmd, cmd)
@@ -213,7 +213,7 @@ func TestConvAdaptorVPGen_SinglePoint(t *testing.T) {
 	}
 
 	// Should process EndPoly (no auto-close for single point)
-	x, y, cmd = adaptor.Vertex()
+	_, _, cmd = adaptor.Vertex()
 	if cmd != basics.PathCmdEndPoly {
 		t.Errorf("Expected EndPoly, got %v", cmd)
 	}

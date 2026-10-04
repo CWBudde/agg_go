@@ -124,13 +124,13 @@ func TestColorConvRGB555RGB24(t *testing.T) {
 	// RGB555 values should be expanded to 8-bit
 	// R=31 (5-bit) → ~248 (8-bit), G=0 → 0, B=31 → ~248
 	// Check approximate values due to bit expansion
-	if dst[0] < 240 || dst[0] > 255 {
+	if dst[0] < 240 {
 		t.Errorf("Expected red ~248, got %d", dst[0])
 	}
 	if dst[1] != 0 {
 		t.Errorf("Expected green 0, got %d", dst[1])
 	}
-	if dst[2] < 240 || dst[2] > 255 {
+	if dst[2] < 240 {
 		t.Errorf("Expected blue ~248, got %d", dst[2])
 	}
 
@@ -138,7 +138,7 @@ func TestColorConvRGB555RGB24(t *testing.T) {
 	if dst[3] != 0 {
 		t.Errorf("Expected red 0, got %d", dst[3])
 	}
-	if dst[4] < 240 || dst[4] > 255 {
+	if dst[4] < 240 {
 		t.Errorf("Expected green ~248, got %d", dst[4])
 	}
 	if dst[5] != 0 {
@@ -189,13 +189,13 @@ func TestColorConvRGB565RGB24(t *testing.T) {
 
 	// RGB565 values should be expanded to 8-bit
 	// R=31 (5-bit) → ~248, G=0 → 0, B=31 (5-bit) → ~248
-	if dst[0] < 240 || dst[0] > 255 {
+	if dst[0] < 240 {
 		t.Errorf("Expected red ~248, got %d", dst[0])
 	}
 	if dst[1] != 0 {
 		t.Errorf("Expected green 0, got %d", dst[1])
 	}
-	if dst[2] < 240 || dst[2] > 255 {
+	if dst[2] < 240 {
 		t.Errorf("Expected blue ~248, got %d", dst[2])
 	}
 
@@ -203,7 +203,7 @@ func TestColorConvRGB565RGB24(t *testing.T) {
 	if dst[3] != 0 {
 		t.Errorf("Expected red 0, got %d", dst[3])
 	}
-	if dst[4] < 250 || dst[4] > 255 {
+	if dst[4] < 250 {
 		t.Errorf("Expected green ~252, got %d", dst[4])
 	}
 	if dst[5] != 0 {

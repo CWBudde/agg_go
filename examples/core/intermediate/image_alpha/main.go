@@ -151,18 +151,6 @@ func newImageAlphaRGBBilinear(
 	return span.NewSpanImageFilterRGBBilinearWithParams(src, interp)
 }
 
-// rasScanlineAdapter adapts ScanlineU8 to rasterizer.ScanlineInterface.
-// pathSourceAdapter bridges PathStorageStl to rasterizer VertexSource.
-type pathSourceAdapter struct{ ps *path.PathStorageStl }
-
-func (a *pathSourceAdapter) Rewind(id uint32) { a.ps.Rewind(uint(id)) }
-func (a *pathSourceAdapter) Vertex(x, y *float64) uint32 {
-	vx, vy, cmd := a.ps.NextVertex()
-	*x = vx
-	*y = vy
-	return cmd
-}
-
 type ctrlPathSource interface {
 	NumPaths() uint
 	Rewind(pathID uint)
@@ -263,13 +251,6 @@ func (a *ctrlPathAdapter) Vertex(x, y *float64) uint32 {
 	return uint32(cmd)
 }
 
-func toAggColor(c color.RGBA8[color.Linear]) agg.Color {
-	clamp := func(v basics.Int8u) uint8 {
-		return uint8(v)
-	}
-	return agg.NewColor(clamp(c.R), clamp(c.G), clamp(c.B), clamp(c.A))
-}
-
 type clibcRand struct {
 	state [31]int32
 	fptr  int
@@ -307,18 +288,6 @@ func (r *clibcRand) next() int32 {
 
 func (r *clibcRand) randN(n int) int {
 	return int(r.next()) % n
-}
-
-func renderCtrl(ctx *agg.Context, ctrl ctrlPathSource) {
-	a := ctx.GetAgg2D()
-	ras := a.GetInternalRasterizer()
-	adapter := &ctrlPathAdapter{ctrl: ctrl}
-
-	for pathID := uint(0); pathID < ctrl.NumPaths(); pathID++ {
-		ras.Reset()
-		ras.AddPath(adapter, uint32(pathID))
-		a.RenderRasterizerWithColor(toAggColor(ctrl.Color(pathID)))
-	}
 }
 
 func renderCtrlBGR(

@@ -210,11 +210,7 @@ func TestSpanImageFilterRGBBilinear_Generate(t *testing.T) {
 	filter.Generate(span, 0, 0)
 
 	// For bilinear interpolation, results should be reasonable but not exact matches
-	// Just verify we get non-zero values and they're within expected range
 	for i, pixel := range span {
-		if pixel.R > 255 || pixel.G > 255 || pixel.B > 255 {
-			t.Errorf("Pixel %d has invalid values: %+v", i, pixel)
-		}
 		t.Logf("Bilinear pixel %d: %+v", i, pixel)
 	}
 }
@@ -306,10 +302,6 @@ func TestSpanImageFilterRGB2x2_WithFilter(t *testing.T) {
 	// Results should be filtered values (not pure black/white due to filtering)
 	for i, pixel := range span {
 		t.Logf("2x2 filtered pixel %d: %+v", i, pixel)
-		// Just verify reasonable values
-		if pixel.R > 255 || pixel.G > 255 || pixel.B > 255 {
-			t.Errorf("Pixel %d has invalid values: %+v", i, pixel)
-		}
 	}
 }
 
@@ -350,10 +342,6 @@ func TestSpanImageFilterRGB_WithVariousFilters(t *testing.T) {
 
 			for i, pixel := range span {
 				t.Logf("%s filtered pixel %d: %+v", tt.name, i, pixel)
-				// Verify reasonable values
-				if pixel.R > 255 || pixel.G > 255 || pixel.B > 255 {
-					t.Errorf("Pixel %d has invalid values: %+v", i, pixel)
-				}
 			}
 		})
 	}
@@ -402,12 +390,8 @@ func TestSpanImageFilterRGB_BoundaryConditions(t *testing.T) {
 			span := make([]color.RGB8[color.Linear], 1)
 			filter.Generate(span, tc.x, tc.y)
 
+			// Should not crash.
 			t.Logf("Position (%d,%d): %+v", tc.x, tc.y, span[0])
-
-			// Should not crash and should produce reasonable values
-			if span[0].R > 255 || span[0].G > 255 || span[0].B > 255 {
-				t.Errorf("Invalid pixel values at (%d,%d): %+v", tc.x, tc.y, span[0])
-			}
 		})
 	}
 }

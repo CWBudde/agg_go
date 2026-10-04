@@ -113,7 +113,7 @@ func (h *handler) OnMouseButtonUp(x, y int, flags platform.InputFlags) {
 	}
 }
 
-func (h *handler) OnKey(_ int, _ int, key platform.KeyCode, _ platform.InputFlags) {
+func (h *handler) OnKey(_, _ int, key platform.KeyCode, _ platform.InputFlags) {
 	switch key {
 	case platform.KeyEscape:
 		h.running = false

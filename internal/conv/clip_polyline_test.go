@@ -31,7 +31,7 @@ func TestConvClipPolyline_BasicLine(t *testing.T) {
 	}
 
 	// Should be done
-	x, y, cmd = conv.Vertex()
+	_, _, cmd = conv.Vertex()
 	if cmd != basics.PathCmdStop {
 		t.Errorf("Expected stop, got %v", cmd)
 	}
@@ -62,7 +62,7 @@ func TestConvClipPolyline_ClippedLine(t *testing.T) {
 	}
 
 	// Should be done
-	x, y, cmd = conv.Vertex()
+	_, _, cmd = conv.Vertex()
 	if cmd != basics.PathCmdStop {
 		t.Errorf("Expected stop, got %v", cmd)
 	}
@@ -134,7 +134,7 @@ func TestConvClipPolyline_MultipleSegments(t *testing.T) {
 	}
 
 	// Should be done
-	x, y, cmd = conv.Vertex()
+	_, _, cmd = conv.Vertex()
 	if cmd != basics.PathCmdStop {
 		t.Errorf("Expected stop, got %v", cmd)
 	}
@@ -165,7 +165,7 @@ func TestConvClipPolyline_LineAcrossBoundary(t *testing.T) {
 	}
 
 	// Should be done
-	x, y, cmd = conv.Vertex()
+	_, _, cmd = conv.Vertex()
 	if cmd != basics.PathCmdStop {
 		t.Errorf("Expected stop, got %v", cmd)
 	}

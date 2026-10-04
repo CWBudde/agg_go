@@ -319,7 +319,7 @@ func (s *SDL2Backend) DestroyImageSurface(surface types.ImageSurface) error {
 
 // GetTicks returns the current tick count
 func (s *SDL2Backend) GetTicks() uint32 {
-	return sdl.GetTicks()
+	return uint32(sdl.GetTicks64())
 }
 
 // Delay provides a delay using SDL2

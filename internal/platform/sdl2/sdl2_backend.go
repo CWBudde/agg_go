@@ -127,7 +127,7 @@ func (s *SDL2Backend) Init(width, height int, flags types.WindowFlags) error {
 	}
 
 	s.initialized = true
-	s.startTicks = sdl.GetTicks()
+	s.startTicks = uint32(sdl.GetTicks64())
 
 	// Trigger init callback
 	if s.eventCallback != nil {

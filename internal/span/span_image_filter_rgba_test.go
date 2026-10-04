@@ -281,10 +281,7 @@ func TestSpanImageFilterRGBA_Generate(t *testing.T) {
 	for y := 0; y < 4; y++ {
 		for x := 0; x < 4; x++ {
 			// Create a gradient with varying alpha
-			alpha := basics.Int8u((x + y) * 32)
-			if alpha > 255 {
-				alpha = 255
-			}
+			alpha := basics.Int8u((x + y) * 32) // at most 192 on a 4x4 grid
 			source.SetPixel(x, y, color.RGBA8[color.Linear]{
 				R: basics.Int8u(x * 64),
 				G: basics.Int8u(y * 64),

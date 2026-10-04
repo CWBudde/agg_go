@@ -32,15 +32,16 @@ func applyPremulLinearToSRGB(img *agg.Image) {
 	for i := 0; i+3 < len(d); i += 4 {
 		a := d[i+3]
 		var r, g, b uint8
-		if a == 0 {
+		switch a {
+		case 0:
 			// Fully transparent premul pixel — treat as white (the standard clear color).
 			r, g, b = 255, 255, 255
-		} else if a == 255 {
+		case 255:
 			c := icol.ConvertToSRGBFromLinear(icol.RGBA8[icol.Linear]{
 				R: d[i], G: d[i+1], B: d[i+2], A: 255,
 			})
 			r, g, b = c.R, c.G, c.B
-		} else {
+		default:
 			// Un-premultiply: straight = premul * 255 / alpha (rounded).
 			sr := uint8((uint32(d[i])*255 + uint32(a)/2) / uint32(a))
 			sg := uint8((uint32(d[i+1])*255 + uint32(a)/2) / uint32(a))

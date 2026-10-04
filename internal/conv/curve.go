@@ -119,8 +119,9 @@ func (c *ConvCurve) Vertex() (x, y float64, cmd basics.PathCommand) {
 		// Initialize the curve with start, control, and end points
 		c.curve3.Init(c.lastX, c.lastY, x, y, endX, endY)
 
-		// Get the first vertex (should be move_to)
-		x, y, _ = c.curve3.Vertex()
+		// The first call returns the move_to (the start point); discard it,
+		// as AGG does.
+		c.curve3.Vertex()
 		// Get the second vertex (first line_to of the approximation)
 		x, y, _ = c.curve3.Vertex()
 
@@ -136,8 +137,9 @@ func (c *ConvCurve) Vertex() (x, y float64, cmd basics.PathCommand) {
 		// Initialize the curve with start, control1, control2, and end points
 		c.curve4.Init(c.lastX, c.lastY, x, y, ct2X, ct2Y, endX, endY)
 
-		// Get the first vertex (should be move_to)
-		x, y, _ = c.curve4.Vertex()
+		// The first call returns the move_to (the start point); discard it,
+		// as AGG does.
+		c.curve4.Vertex()
 		// Get the second vertex (first line_to of the approximation)
 		x, y, _ = c.curve4.Vertex()
 
