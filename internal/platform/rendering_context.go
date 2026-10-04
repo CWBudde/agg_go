@@ -72,14 +72,14 @@ func (rc *RenderingContext) ResizeTransform() *transform.TransAffine {
 }
 
 // TransformPoint applies the resize transformation to a point.
-func (rc *RenderingContext) TransformPoint(x, y float64) (float64, float64) {
+func (rc *RenderingContext) TransformPoint(x, y float64) (tx, ty float64) {
 	rc.resizeMatrix.Transform(&x, &y)
 	return x, y
 }
 
 // InverseTransformPoint applies the inverse resize transformation to a point.
 // This is useful for converting screen coordinates back to logical coordinates.
-func (rc *RenderingContext) InverseTransformPoint(x, y float64) (float64, float64) {
+func (rc *RenderingContext) InverseTransformPoint(x, y float64) (lx, ly float64) {
 	// Create a copy for inversion
 	inverse := *rc.resizeMatrix
 	inverted := inverse.Invert()

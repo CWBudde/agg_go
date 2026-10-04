@@ -159,7 +159,9 @@ func (x *X11Backend) Init(width, height int, flags types.WindowFlags) error {
 	// Create image buffer
 	err := x.createImageBuffer()
 	if err != nil {
-		x.Destroy()
+		// Destroy is a no-op before initialized is set, so release the
+		// partially created resources directly.
+		x.releaseResources()
 		return fmt.Errorf("failed to create image buffer: %w", err)
 	}
 
@@ -233,6 +235,14 @@ func (x *X11Backend) Destroy() error {
 		x.eventCallback.OnDestroy()
 	}
 
+	x.releaseResources()
+	x.initialized = false
+	return nil
+}
+
+// releaseResources frees the XImage, graphics context, window and display
+// connection, whichever of them have been created.
+func (x *X11Backend) releaseResources() {
 	if x.ximg != nil {
 		C.destroyXImage(x.ximg)
 		x.ximg = nil
@@ -252,9 +262,6 @@ func (x *X11Backend) Destroy() error {
 		C.XCloseDisplay(x.display)
 		x.display = nil
 	}
-
-	x.initialized = false
-	return nil
 }
 
 // Run starts the X11 event loop

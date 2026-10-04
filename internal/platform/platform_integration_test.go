@@ -363,7 +363,9 @@ func TestEdgeCases(t *testing.T) {
 // BenchmarkPlatformSupport benchmarks platform support operations
 func BenchmarkPlatformSupport(b *testing.B) {
 	ps := NewPlatformSupport(PixelFormatRGBA32, false)
-	ps.Init(800, 600, 0)
+	if err := ps.Init(800, 600, 0); err != nil {
+		b.Fatalf("Init failed: %v", err)
+	}
 
 	b.Run("WindowBufferAccess", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {

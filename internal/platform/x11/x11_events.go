@@ -92,8 +92,12 @@ func (x *X11Backend) handleConfigureEvent(event *C.XEvent) {
 		x.width = newWidth
 		x.height = newHeight
 
-		// Recreate image buffer for new size
-		x.createImageBuffer()
+		// Recreate image buffer for new size. Without a buffer there is
+		// nothing to resize into, so skip the callback (as the SDL2 backend does).
+		err := x.createImageBuffer()
+		if err != nil {
+			return
+		}
 
 		if x.eventCallback != nil {
 			x.eventCallback.OnResize(newWidth, newHeight)

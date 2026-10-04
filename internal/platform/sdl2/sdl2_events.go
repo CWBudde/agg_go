@@ -81,9 +81,10 @@ func (s *SDL2Backend) handleWindowEvent(event *sdl.WindowEvent) {
 			s.width = newWidth
 			s.height = newHeight
 
-			// Recreate texture and surface for new size
+			// Recreate texture and surface for new size. SDL_DestroyTexture
+			// only fails for an invalid handle, and the texture is replaced below.
 			if s.texture != nil {
-				s.texture.Destroy()
+				_ = s.texture.Destroy()
 			}
 			if s.surface != nil {
 				s.surface.Free()

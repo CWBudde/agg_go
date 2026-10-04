@@ -153,7 +153,9 @@ func TestWaitMode(t *testing.T) {
 
 func TestImageBuffers(t *testing.T) {
 	ps := NewPlatformSupport(PixelFormatRGBA32, false)
-	ps.Init(400, 300, 0)
+	if err := ps.Init(400, 300, 0); err != nil {
+		t.Fatalf("Init failed: %v", err)
+	}
 
 	// Test creating image
 	if !ps.CreateImage(0, 200, 150) {
@@ -199,7 +201,9 @@ func TestImageBuffers(t *testing.T) {
 
 func TestImageCopyOperations(t *testing.T) {
 	ps := NewPlatformSupport(PixelFormatRGBA32, false)
-	ps.Init(100, 100, 0)
+	if err := ps.Init(100, 100, 0); err != nil {
+		t.Fatalf("Init failed: %v", err)
+	}
 
 	// Create an image buffer
 	if !ps.CreateImage(0, 50, 50) {
@@ -264,7 +268,9 @@ func TestEventHandlers(t *testing.T) {
 	ps.SetOnCtrlChange(func() { /* no-op for test */ })
 
 	// Initialize (should trigger OnInit)
-	ps.Init(100, 100, 0)
+	if err := ps.Init(100, 100, 0); err != nil {
+		t.Fatalf("Init failed: %v", err)
+	}
 	if !initCalled {
 		t.Error("OnInit handler was not called during Init")
 	}
@@ -315,7 +321,9 @@ func TestEventHandlers(t *testing.T) {
 
 func TestTriggerResize(t *testing.T) {
 	ps := NewPlatformSupport(PixelFormatRGBA32, false)
-	ps.Init(100, 100, 0)
+	if err := ps.Init(100, 100, 0); err != nil {
+		t.Fatalf("Init failed: %v", err)
+	}
 
 	var resizeWidth, resizeHeight int
 	ps.SetOnResize(func(w, h int) {
@@ -432,7 +440,9 @@ func TestWindowFlags(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Test that flags can be set and retrieved
 			ps := NewPlatformSupport(PixelFormatRGB24, false)
-			ps.Init(100, 100, tt.flags)
+			if err := ps.Init(100, 100, tt.flags); err != nil {
+				t.Fatalf("Init failed: %v", err)
+			}
 
 			if ps.WindowFlags() != tt.flags {
 				t.Errorf("Expected flags %v, got %v", tt.flags, ps.WindowFlags())

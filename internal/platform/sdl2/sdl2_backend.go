@@ -3,6 +3,7 @@
 package sdl2
 
 import (
+	"errors"
 	"fmt"
 	"unsafe"
 
@@ -90,7 +91,7 @@ func (s *SDL2Backend) Init(width, height int, flags types.WindowFlags) error {
 		windowFlags,
 	)
 	if err != nil {
-		s.cleanup()
+		_ = s.cleanup() // best-effort teardown; the creation error is reported
 		return fmt.Errorf("failed to create SDL2 window: %w", err)
 	}
 
@@ -100,7 +101,7 @@ func (s *SDL2Backend) Init(width, height int, flags types.WindowFlags) error {
 		// Fall back to software rendering
 		s.renderer, err = sdl.CreateRenderer(s.window, -1, sdl.RENDERER_SOFTWARE)
 		if err != nil {
-			s.cleanup()
+			_ = s.cleanup() // best-effort teardown; the creation error is reported
 			return fmt.Errorf("failed to create SDL2 renderer: %w", err)
 		}
 	}
@@ -112,7 +113,7 @@ func (s *SDL2Backend) Init(width, height int, flags types.WindowFlags) error {
 		int32(width), int32(height),
 	)
 	if err != nil {
-		s.cleanup()
+		_ = s.cleanup() // best-effort teardown; the creation error is reported
 		return fmt.Errorf("failed to create SDL2 texture: %w", err)
 	}
 
@@ -122,7 +123,7 @@ func (s *SDL2Backend) Init(width, height int, flags types.WindowFlags) error {
 		s.rmask, s.gmask, s.bmask, s.amask,
 	)
 	if err != nil {
-		s.cleanup()
+		_ = s.cleanup() // best-effort teardown; the creation error is reported
 		return fmt.Errorf("failed to create SDL2 surface: %w", err)
 	}
 
@@ -249,13 +250,16 @@ func (s *SDL2Backend) Destroy() error {
 		s.eventCallback.OnDestroy()
 	}
 
-	s.cleanup()
+	err := s.cleanup()
 	s.initialized = false
-	return nil
+	return err
 }
 
-// cleanup performs the actual resource cleanup
-func (s *SDL2Backend) cleanup() {
+// cleanup performs the actual resource cleanup. It releases every resource
+// even if some of them fail to be destroyed and reports all failures.
+func (s *SDL2Backend) cleanup() error {
+	var errs []error
+
 	// Clean up image surfaces
 	for i := range s.imageSurfaces {
 		if s.imageSurfaces[i] != nil {
@@ -270,21 +274,28 @@ func (s *SDL2Backend) cleanup() {
 	}
 
 	if s.texture != nil {
-		s.texture.Destroy()
+		if err := s.texture.Destroy(); err != nil {
+			errs = append(errs, fmt.Errorf("failed to destroy SDL2 texture: %w", err))
+		}
 		s.texture = nil
 	}
 
 	if s.renderer != nil {
-		s.renderer.Destroy()
+		if err := s.renderer.Destroy(); err != nil {
+			errs = append(errs, fmt.Errorf("failed to destroy SDL2 renderer: %w", err))
+		}
 		s.renderer = nil
 	}
 
 	if s.window != nil {
-		s.window.Destroy()
+		if err := s.window.Destroy(); err != nil {
+			errs = append(errs, fmt.Errorf("failed to destroy SDL2 window: %w", err))
+		}
 		s.window = nil
 	}
 
 	sdl.Quit()
+	return errors.Join(errs...)
 }
 
 // Run starts the SDL2 event loop
@@ -328,9 +339,10 @@ func (s *SDL2Backend) SetWindowSize(width, height int) error {
 	// Resize window
 	s.window.SetSize(int32(width), int32(height))
 
-	// Recreate texture and surface for new size
+	// Recreate texture and surface for new size. SDL_DestroyTexture only
+	// fails for an invalid handle, and the texture is replaced right below.
 	if s.texture != nil {
-		s.texture.Destroy()
+		_ = s.texture.Destroy()
 	}
 
 	var err error
@@ -387,8 +399,12 @@ func (s *SDL2Backend) UpdateWindow(buffer *buffer.RenderingBuffer[uint8]) error 
 	}
 
 	// Clear renderer and copy texture
-	s.renderer.Clear()
-	s.renderer.Copy(s.texture, nil, nil)
+	if err := s.renderer.Clear(); err != nil {
+		return fmt.Errorf("failed to clear renderer: %w", err)
+	}
+	if err := s.renderer.Copy(s.texture, nil, nil); err != nil {
+		return fmt.Errorf("failed to copy texture: %w", err)
+	}
 	s.renderer.Present()
 
 	return nil
