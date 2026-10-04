@@ -35,7 +35,7 @@ func NewRasterizerScanlineAANoGamma[C basics.CoordType, V Conv[C], Clip any](con
 },
 ) *RasterizerScanlineAANoGamma[C, V, Clip] {
 	return &RasterizerScanlineAANoGamma[C, V, Clip]{
-		outline:     NewRasterizerCellsAASimple(256), // Default cell block limit
+		outline:     NewRasterizerCellsAASimple(1024), // AGG default cell_block_limit
 		clipper:     clipper,
 		conv:        conv,
 		fillingRule: basics.FillNonZero,
@@ -128,7 +128,10 @@ func (r *RasterizerScanlineAANoGamma[C, V, Clip]) LineToD(x, y float64) {
 
 // ClosePolygon closes the current polygon contour
 func (r *RasterizerScanlineAANoGamma[C, V, Clip]) ClosePolygon() {
-	if r.status == StatusLineTo || r.status == StatusMoveTo {
+	// AGG close_polygon(): only an open line_to contour is closed. A bare
+	// move_to must not emit a (zero-length) closing edge, which would still
+	// extend the cell bounding box in Line().
+	if r.status == StatusLineTo {
 		r.clipper.LineTo(r.outline, r.startX, r.startY)
 		r.status = StatusClosed
 	}

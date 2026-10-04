@@ -48,7 +48,7 @@ func NewRasterizerScanlineAA[C basics.CoordType, V Conv[C], Clip any](conv V, cl
 },
 ) *RasterizerScanlineAA[C, V, Clip] {
 	r := &RasterizerScanlineAA[C, V, Clip]{
-		outline:     NewRasterizerCellsAASimple(256), // Default cell block limit
+		outline:     NewRasterizerCellsAASimple(1024), // AGG default cell_block_limit
 		clipper:     clipper,
 		conv:        conv,
 		fillingRule: basics.FillNonZero,
@@ -113,16 +113,26 @@ func (r *RasterizerScanlineAA[C, V, Clip]) AutoClose(flag bool) {
 }
 
 // SetGamma rebuilds the coverage gamma table used when converting area to alpha.
+//
+// Matches AGG rasterizer_scanline_aa::gamma():
+//
+//	m_gamma[i] = uround(gamma_function(double(i) / aa_mask) * aa_mask);
+//
+// where uround(v) = unsigned(v + 0.5). The result is clamped to [0, AAMask]
+// because the Go table stores uint8 (C++ stores int and would otherwise wrap
+// out-of-range functor results when narrowing to cover_type).
 func (r *RasterizerScanlineAA[C, V, Clip]) SetGamma(gammaFunc func(float64) float64) {
 	for i := 0; i < AAScale; i++ {
 		val := gammaFunc(float64(i)/float64(AAMask)) * float64(AAMask)
-		if val < 0 {
-			val = 0
+		if !(val > 0) { // also catches NaN, whose integer conversion is arch-dependent
+			r.gamma[i] = 0
+			continue
 		}
-		if val > AAMask {
-			val = AAMask
+		u := basics.URound(val)
+		if u > AAMask {
+			u = AAMask
 		}
-		r.gamma[i] = uint8(val)
+		r.gamma[i] = uint8(u)
 	}
 }
 
@@ -182,7 +192,10 @@ func (r *RasterizerScanlineAA[C, V, Clip]) LineToD(x, y float64) {
 
 // ClosePolygon closes the current contour by connecting back to the start point.
 func (r *RasterizerScanlineAA[C, V, Clip]) ClosePolygon() {
-	if r.status == StatusLineTo || r.status == StatusMoveTo {
+	// AGG close_polygon(): only an open line_to contour is closed. A bare
+	// move_to must not emit a (zero-length) closing edge, which would still
+	// extend the cell bounding box in Line().
+	if r.status == StatusLineTo {
 		r.clipper.LineTo(r.outline, r.startX, r.startY)
 		r.status = StatusClosed
 	}
@@ -213,6 +226,7 @@ func (r *RasterizerScanlineAA[C, V, Clip]) Edge(x1, y1, x2, y2 int) {
 	y2Coord := r.conv.Downscale(y2 * basics.PolySubpixelScale)
 	r.clipper.MoveTo(x1Coord, y1Coord)
 	r.clipper.LineTo(r.outline, x2Coord, y2Coord)
+	r.status = StatusMoveTo
 }
 
 // EdgeD rasterizes a single edge given floating-point endpoint coordinates.
@@ -226,6 +240,7 @@ func (r *RasterizerScanlineAA[C, V, Clip]) EdgeD(x1, y1, x2, y2 float64) {
 	y2Coord := r.conv.Upscale(y2)
 	r.clipper.MoveTo(x1Coord, y1Coord)
 	r.clipper.LineTo(r.outline, x2Coord, y2Coord)
+	r.status = StatusMoveTo
 }
 
 // AddPath adds all vertices from a vertex source

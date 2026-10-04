@@ -379,3 +379,37 @@ Observed while writing C++ oracle tests: `basics.PathCmdEndPoly` is `8`,
 whereas C++ `path_cmd_end_poly` is `0x0F`. The flag bits (`0x10` CCW, `0x20` CW,
 `0x40` close) and the `IsEndPoly` predicate behave the same, but raw command
 words differ numerically, so oracle tests map `0x0F` to `PathCmdEndPoly`.
+
+---
+
+## Scanline Rasterizer (`internal/rasterizer`)
+
+### Coverage gamma table is clamped to `[0, aa_mask]`
+
+`RasterizerScanlineAA.SetGamma` builds the table with AGG's formula
+`uround(gamma_function(i / aa_mask) * aa_mask)` (`uround(v) = unsigned(v + 0.5)`),
+bit-exact against C++ for `gamma_none`, `gamma_power`, `gamma_threshold`,
+`gamma_linear` and `gamma_multiply` (`scanline_aa_gamma_test.go`). The Go table
+stores `uint8`, so results are clamped to `[0, 255]`; C++ stores `int` and
+would let an out-of-range functor result (> 1 or < 0) wrap when narrowed to
+`cover_type`. No AGG functor produces such values.
+
+### Cell block limit: no constructor option, block reuse check
+
+The scanline rasterizers use AGG's default `cell_block_limit` of 1024 blocks
+(4096 cells each), but the limit is not exposed as a constructor argument.
+`RasterizerCellsAASimple/Styled.addCurrCell` also checks whether an
+already-allocated block can be reused before applying the limit. C++
+`add_curr_cell` tests `m_num_blocks >= m_cell_block_limit` at every block
+boundary, so once a rasterizer object has allocated the maximum number of
+blocks, later renders drop cells at block boundaries. Go keeps reusing the
+allocated blocks. This only matters for scenes over about 4M cells.
+
+### Integer `MoveTo`/`LineTo`/`Edge` take pixel units
+
+The `int` entry points of the scanline rasterizers scale by
+`poly_subpixel_scale` before calling the converter (`Downscale(x*256)`).
+C++ `move_to(int)`/`line_to(int)`/`edge(int)` pass the value directly to
+`conv_type::downscale`, so they expect 1/256 subpixel units. Callers that
+port C++ integer calls must pass pixel coordinates. (Status/closing
+behaviour of these methods matches C++.)

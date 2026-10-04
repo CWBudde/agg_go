@@ -125,15 +125,16 @@ func TestMasterAlphaAffectsRasterizerGamma(t *testing.T) {
 	buf := make([]uint8, 100*100*4)
 	agg2d.Attach(buf, 100, 100, 100*4)
 
+	// The rasterizer gamma table rounds like C++ uround(v) = unsigned(v + 0.5).
 	agg2d.SetMasterAlpha(0.5)
 	got := agg2d.rasterizer.ApplyGamma(255)
-	if got != 127 {
-		t.Fatalf("expected master alpha to scale full coverage to 127, got %d", got)
+	if got != 128 {
+		t.Fatalf("expected master alpha to scale full coverage to uround(127.5)=128, got %d", got)
 	}
 
 	agg2d.SetAntiAliasGamma(2.0)
 	got = agg2d.rasterizer.ApplyGamma(64)
-	want := uint8(0.5 * math.Pow(float64(64)/255.0, 0.5) * 255.0)
+	want := uint8(0.5*math.Pow(float64(64)/255.0, 0.5)*255.0 + 0.5)
 	if got != want {
 		t.Fatalf("expected combined master alpha/gamma coverage %d, got %d", want, got)
 	}

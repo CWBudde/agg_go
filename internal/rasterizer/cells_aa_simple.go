@@ -259,14 +259,18 @@ func (r *RasterizerCellsAASimple) SortCells() {
 		return
 	}
 
-	// Flush any pending current cell before sorting
+	// Flush any pending current cell before sorting, then park the current
+	// cell like AGG sort_cells() does, so geometry appended after sorting
+	// (without reset) cannot re-add the already-flushed cell.
 	r.addCurrCell()
+	r.currCell.X = math.MaxInt32
+	r.currCell.Y = math.MaxInt32
+	r.currCell.Cover = 0
+	r.currCell.Area = 0
 
-	// Empty/degenerate?
-	if r.numCells == 0 || r.minY > r.maxY {
-		r.sortedY.Clear()
-		r.sortedCells.Clear()
-		r.sorted = true
+	// AGG returns here without setting m_sorted, so an empty sort keeps the
+	// accumulated bounds and a following move_to does not reset().
+	if r.numCells == 0 {
 		return
 	}
 
