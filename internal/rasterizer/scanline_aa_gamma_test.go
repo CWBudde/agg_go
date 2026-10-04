@@ -1,6 +1,7 @@
 package rasterizer
 
 import (
+	"math"
 	"testing"
 
 	"github.com/cwbudde/agg_go/internal/gamma"
@@ -53,6 +54,32 @@ func TestRasterizerScanlineAA_GammaLUTMatchesCpp(t *testing.T) {
 			for i := 0; i < AAScale; i++ {
 				if got := r.ApplyGamma(i); got != want[i] {
 					t.Errorf("gamma[%d] = %d, want %d (C++)", i, got, want[i])
+				}
+			}
+		})
+	}
+}
+
+func TestRasterizerScanlineAA_SetGammaClampsBeforeConversion(t *testing.T) {
+	cases := []struct {
+		name string
+		fn   func(float64) float64
+		want func(i int) uint8
+	}{
+		{"+Inf", func(float64) float64 { return math.Inf(1) }, func(int) uint8 { return 255 }},
+		{"huge", func(float64) float64 { return 1e30 }, func(int) uint8 { return 255 }},
+		{"-Inf", func(float64) float64 { return math.Inf(-1) }, func(int) uint8 { return 0 }},
+		{"negative", func(float64) float64 { return -1 }, func(int) uint8 { return 0 }},
+		{"NaN", func(float64) float64 { return math.NaN() }, func(int) uint8 { return 0 }},
+		{"above one", func(float64) float64 { return 2 }, func(int) uint8 { return 255 }},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			r := NewRasterizerScanlineAA[float64, DblConv, *MockClip](DblConv{}, &MockClip{})
+			r.SetGamma(tc.fn)
+			for i := 0; i < AAScale; i++ {
+				if got, want := r.ApplyGamma(i), tc.want(i); got != want {
+					t.Errorf("gamma[%d] = %d, want %d", i, got, want)
 				}
 			}
 		})
