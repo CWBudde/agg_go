@@ -658,7 +658,7 @@ docs 5; hygiene 4; demo organization 3. **Overall 4.5.**
 Priorities: **P0** = blocks everything, **P1** = parity bug or parity-gate gap,
 **P2** = simplification/API, **P3** = performance/polish.
 
-### 8.1 P0 — Green tree and honest CI
+### 8.1 P0 — Green tree and honest CI — ✅ DONE (2026-10-04)
 
 - [x] Fix the broken build. The uncommitted deletion of `internal/font/interfaces.go`
       removed `font.SerializedScanlinesAdaptor`, which `internal/agg2d/text.go:829` and
@@ -679,16 +679,41 @@ Priorities: **P0** = blocks everything, **P1** = parity bug or parity-gate gap,
       `-tags freetype` job.
       → 2026-10-04: Done for the CI wiring: amd64+arm64 matrix, `pull_request` trigger, pinned linters, a `freetype` job, `go-version-file` in deploy-wasm. The matrix runs `go vet ./...`, but **not** the full `go test ./...`: `unit-tests.yml` runs `go test $(go list ./... | grep -v /tests/visual/primitives)`, because that package still fails (next item). Re-adding it is tracked there.
 
-- [ ] `tests/visual/primitives` fails at HEAD (`TestBlendModes`: blend_xor 9000 px and
+- [x] `tests/visual/primitives` fails at HEAD (`TestBlendModes`: blend_xor 9000 px and
       blend_src_over 6 px; `TestGradients`: 10 cases; the thin_line references are missing).
       Decide per case whether the Go golden image or the code is wrong,
       checking against C++ where it has an equivalent.
-  - [ ] Then drop the `grep -v /tests/visual/primitives` filter from `unit-tests.yml`, so CI
+      → 2026-10-04: Done, decided per case:
+      - **Gradients (10 cases):** stale goldens. They changed with 7d9e45a, which ports
+        `rgba8T::gradient`; the new `TestCPPOracleColorGradient` checks `Color.Gradient` against
+        a C++ `Agg2D::Color::gradient` hash.
+      - **blend_src_over:** stale golden. It changed with 4e431e6, which removed the premultiplied
+        SIMD comp kernels from the straight-alpha pixfmt. The new
+        `TestCompositeBlenderPlainMatchesCppOracle` checks that bridge against stock AGG
+        premultiply → comp_op → demultiply, within ±2 in premultiplied space.
+      - **blend_xor:** the code was wrong. `Image.ToGoImage`/`ToStandardImage` put straight bytes
+        into a premultiplied `*image.RGBA`. They now return `*image.NRGBA`: a breaking signature
+        change, the user's choice, also applied to the `engine.Image` interface. The golden only
+        moves by ±1 quantisation, 0 in premultiplied space.
+      - **thin_line:** the missing references only log a warning; that test does not fail.
+  - [x] Then drop the `grep -v /tests/visual/primitives` filter from `unit-tests.yml`, so CI
         really runs `go test ./...`. Until then this package is not covered by CI.
-- [ ] Clear the golangci-lint backlog (55 pre-existing findings in a local
+        → 2026-10-04: Done; `unit-tests.yml` and `just test-all` run `go test ./...`.
+- [x] Clear the golangci-lint backlog (55 pre-existing findings in a local
       `golangci-lint run ./...` on darwin: gocritic 23, staticcheck 15, unused 10, revive 4,
       ineffassign 3). Then remove the `only-new-issues: true` setting that PR #5 adds to the
       golangci-lint step in `lint.yml`, so lint checks the whole tree again, not just new code.
+      → 2026-10-04: Done. The real backlog was 149 on darwin and 153 with `x11,sdl2` on Linux.
+      The 55 was golangci-lint's capped default output (3 identical issues, 50 per linter).
+      Fixes, with no new `//nolint`:
+      - `OutlineAARenderer.Line0-3` take `*LineParameters`, as C++ `const&` does. This also
+        removed 32 old `//nolint`.
+      - `CurrentBitmap` returns a `GlyphBitmap`.
+      - Four files over 1500 lines are split by pure moves (`fonts`, `gpc`, `pixfmt_rgb_packed`,
+        `simd/cpu_test`); `cmd/wasm/main.go` is split too.
+      - Tests now use `GetGSE4x6` instead of the deprecated `GetSimple4x6Font`.
+      - SDL uses `GetTicks64`.
+      `only-new-issues` is removed.
 
 ### 8.2 P1 — Confirmed numeric parity bugs
 
@@ -731,6 +756,9 @@ Vertex pipeline
       `ConvMarkerAdaptor` therefore turn into open ones. Reuse a generic `array.ShortenPath`.
 - [ ] `internal/transform/trans_single_path.go:124` does not write back the merged last
       segment distance, and `trans_double_path.go:177` writes it to the wrong index.
+- [ ] `internal/conv/curve.go` `ConvCurve.Vertex` updates `lastX`/`lastY` only for vertex
+      commands; C++ `conv_curve::vertex` sets `m_last_x`/`m_last_y` after every command
+      (found 2026-10-04 during the lint cleanup).
 - [ ] `internal/basics/types.go:148` `IsEqualEps` uses an absolute difference. Port AGG's
       frexp/ldexp relative comparison (used by `IsIdentity` / `IsEqual`).
 - [ ] `internal/path/path_base.go:136` `ArcTo` emits a duplicate start vertex. Route it
@@ -777,6 +805,8 @@ Pixfmt / color / blenders
       alpha (`blender/rgba_composite.go:587-675`). Also port `clip()` and the `plus`
       formula, the integer source premultiply in the adaptor (`:1256`), and the
       `clip_to_dst` adaptors.
+      Measured 2026-10-04: the straight-alpha bridge is within ±2 of AGG in premultiplied
+      space (`comp_plain_oracle_test.go`); the residual is this integer source premultiply.
 - [ ] `pixfmt_rgba8.go:114,409,422` take an opaque+full-cover copy shortcut for *every*
       blender, so comp-op blenders wrapped in `PixFmtAlphaBlendRGBA` (the compositing demos)
       skip the operator. Restrict the shortcut to `RGBAFastBlender`.
@@ -1036,6 +1066,9 @@ Fonts / controls / platform
 
 ### 8.7 P2 — Tooling, docs, hygiene
 
+- [ ] `AGG_DELTAS.md` "Composite blend modes" still says the 8-bit composite pixfmt treats
+      the buffer as premultiplied; since 4e431e6 it is straight (`CompositeBlenderPlain`).
+      Re-check the float twin and fix the text.
 - [ ] Justfile:
   - fix or delete the broken recipes: `serve-web` (`go run -e`), `profile-mem/cpu`,
     `run-examples-*`, `run-tests`, `stats` (the `$$` escapes), `docs` (writes to the
