@@ -92,13 +92,15 @@ int main() {
     std::vector<unsigned> s16 = sample16();
 
     // ---------------------------------------------------------------- 8-bit
-    fnv m8, gm8, d8, gd8, sc8, gsc8, l8, gl8, pl8, gpl8, md8, gmd8, fd8, gfd8, gg8, lum8;
+    fnv m8, gm8, d8, sc8, gsc8, l8, gl8, pl8, gpl8, md8, gmd8, fd8, gfd8, gg8, lum8;
     for (unsigned a = 0; a < 256; ++a)
         for (unsigned b = 0; b < 256; ++b) {
             m8.u8(rgba8::multiply(a, b));
             gm8.u8(gray8::multiply(a, b));
+            // The static gray8/gray16::demultiply are not hashed: AGG never calls
+            // them (only multiplier_rgba uses the rgba variants) and the Go port
+            // has no counterpart.
             d8.u8(rgba8::demultiply(a, b));
-            gd8.u8(gray8::demultiply(a, b));
             sc8.u8(rgba8::scale_cover(a, b));
             gsc8.u8(gray8::scale_cover(a, b));
             rgba8 c(a, a, a, b);
@@ -130,7 +132,7 @@ int main() {
     }
 
     // --------------------------------------------------------------- 16-bit
-    fnv m16, gm16, d16, gd16, dw16, mc16, gmc16, sc16, gsc16, l16, gl16, pl16, gpl16,
+    fnv m16, gm16, d16, dw16, mc16, gmc16, sc16, gsc16, l16, gl16, pl16, gpl16,
         md16, gmd16, fd16, gfd16, gg16, lum16;
     for (unsigned a = 0; a < 65536; ++a) {
         for (size_t j = 0; j < s16.size(); ++j) {
@@ -140,7 +142,6 @@ int main() {
             // Well-defined region of the static demultiply only.
             if (u64(a) * 65535ULL + (b >> 1) <= u64(INT_MAX)) {
                 d16.u16(rgba16::demultiply(a, b));
-                gd16.u16(gray16::demultiply(a, b));
             }
             // Overflow-free (unsigned) reading of the same formula.
             unsigned w;
@@ -229,7 +230,6 @@ int main() {
     H("goldenHashRGBA8Multiply", m8);
     H("goldenHashGray8Multiply", gm8);
     H("goldenHashRGBA8Demultiply", d8);
-    H("goldenHashGray8Demultiply", gd8);
     H("goldenHashRGBA8ScaleCover", sc8);
     H("goldenHashGray8ScaleCover", gsc8);
     H("goldenHashRGBA8Lerp", l8);
@@ -245,7 +245,6 @@ int main() {
     H("goldenHashRGBA16Multiply", m16);
     H("goldenHashGray16Multiply", gm16);
     H("goldenHashRGBA16DemultiplyDefined", d16);
-    H("goldenHashGray16DemultiplyDefined", gd16);
     H("goldenHashRGBA16DemultiplyWide", dw16);
     H("goldenHashRGBA16MultCover", mc16);
     H("goldenHashGray16MultCover", gmc16);

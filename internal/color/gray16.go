@@ -147,6 +147,14 @@ func Gray16Prelerp(p, q, a basics.Int16u) basics.Int16u {
 	return p + q - Gray16Multiply(p, a)
 }
 
+// Gray16ScaleCover scales an 8-bit coverage by a 16-bit gray value.
+// Matches C++ gray16::scale_cover: mult_cover(b, a) >> 8, i.e.
+// multiply(b, (a << 8) | a) >> 8.
+func Gray16ScaleCover(cover basics.Int8u, b basics.Int16u) basics.Int8u {
+	c16 := basics.Int16u(cover)<<8 | basics.Int16u(cover)
+	return basics.Int8u(Gray16Multiply(b, c16) >> 8)
+}
+
 // Gradient interpolates towards c2 by k. Matches C++ gray16::gradient:
 // ik = uround(k * base_scale) (65536, not base_mask) truncated to value_type,
 // so k >= 65535.5/65536 wraps to 0 and yields the start colour. This is

@@ -7,7 +7,6 @@ const (
 	goldenHashRGBA8Multiply           = 0x1cc09b6f9711c88b
 	goldenHashGray8Multiply           = 0x1cc09b6f9711c88b
 	goldenHashRGBA8Demultiply         = 0xcb60e8c1e52cdbb8
-	goldenHashGray8Demultiply         = 0xcb60e8c1e52cdbb8
 	goldenHashRGBA8ScaleCover         = 0x1cc09b6f9711c88b
 	goldenHashGray8ScaleCover         = 0x1cc09b6f9711c88b
 	goldenHashRGBA8Lerp               = 0xf3df3d7ae4b6d329
@@ -23,7 +22,6 @@ const (
 	goldenHashRGBA16Multiply          = 0x692b6408101e378c
 	goldenHashGray16Multiply          = 0x692b6408101e378c
 	goldenHashRGBA16DemultiplyDefined = 0x098da0d85dfff366
-	goldenHashGray16DemultiplyDefined = 0x098da0d85dfff366
 	goldenHashRGBA16DemultiplyWide    = 0x89ff7a770fffccbd
 	goldenHashRGBA16MultCover         = 0xbf2809e7c2e91b4f
 	goldenHashGray16MultCover         = 0xbf2809e7c2e91b4f

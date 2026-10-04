@@ -118,9 +118,12 @@ func (r *RasterizerScanlineAA[C, V, Clip]) AutoClose(flag bool) {
 //
 //	m_gamma[i] = uround(gamma_function(double(i) / aa_mask) * aa_mask);
 //
-// where uround(v) = unsigned(v + 0.5). The result is clamped to [0, AAMask]
-// because the Go table stores uint8 (C++ stores int and would otherwise wrap
-// out-of-range functor results when narrowing to cover_type).
+// where uround(v) = unsigned(v + 0.5). The scaled value is clamped to
+// [0, AAMask] before the integer conversion because the Go table stores uint8
+// (C++ stores int and would otherwise wrap out-of-range functor results when
+// narrowing to cover_type) and float-to-unsigned conversion of NaN, +Inf or
+// huge values is implementation-dependent. NaN and non-positive values map
+// to 0; values >= AAMask map to AAMask.
 func (r *RasterizerScanlineAA[C, V, Clip]) SetGamma(gammaFunc func(float64) float64) {
 	for i := 0; i < AAScale; i++ {
 		val := gammaFunc(float64(i)/float64(AAMask)) * float64(AAMask)
@@ -128,11 +131,11 @@ func (r *RasterizerScanlineAA[C, V, Clip]) SetGamma(gammaFunc func(float64) floa
 			r.gamma[i] = 0
 			continue
 		}
-		u := basics.URound(val)
-		if u > AAMask {
-			u = AAMask
+		if val >= float64(AAMask) { // also catches +Inf; avoids out-of-range float->uint conversion
+			r.gamma[i] = AAMask
+			continue
 		}
-		r.gamma[i] = uint8(u)
+		r.gamma[i] = uint8(basics.URound(val))
 	}
 }
 
