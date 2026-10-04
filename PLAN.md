@@ -124,7 +124,7 @@ and finally the genuinely algorithmic/architectural gaps).
 - [x] `blur` — pixel-exact (RMSE 0.0, 0/145200 px). The shadow polygon control (`shadowCtrl`) was rendered after the "a" shape, placing it in front; C++ `on_draw()` renders it after the blur but before the shape. Moving the `renderCtrl(shadowCtrl)` call to that position fixed the z-order.
 - [ ] `line_patterns` — RMSE 0.1216 (936 px). Image-pattern glyph sampling/positioning along each curved path plus a couple of saturated control-pin pixels.
 - [ ] `gamma_ctrl` — RMSE 0.0644 (1378 px). Sub-pixel AA edge fringing on the green GSV "Text 2345" glyph outlines and the thin radial-spline lines; controls exact.
-  → 2026-10 audit: check rasterizer gamma-table rounding first (§8.2, `scanline_aa.go:118` truncates).
+  → 2026-10-04: the rasterizer gamma-table truncation is fixed (§8.2, `SetGamma` now uses `uround`), but the re-measurement above still lists this row as unchanged. Still open: the glyph-outline and spline-line AA.
 - [ ] `trans_polar` — RMSE 0.0506 (1628 px). Transform-resampling AA on the curved polar ring plus the control text and slider-knob X positions.
 - [ ] `conv_stroke` — RMSE 0.0803 (1709 px). Faint float-vs-8bit AA edge fringing along the dashed-stroke borders and miter-join markers; near-exact.
 - [ ] `mol_view` — RMSE 0.2857 (2138 px). Sub-pixel AA fringing on the green GSV title-text glyph edges and the thin atom-bond strokes; geometry/colors already corrected.
@@ -132,7 +132,7 @@ and finally the genuinely algorithmic/architectural gaps).
 - [ ] `compositing2` — RMSE 0.0967 (5004 px). Comp-op blend rounding (8-bit vs float) on the edges of the four overlapping translucent circles; controls exact.
 - [ ] `aa_test` — RMSE 0.1728 (10685 px). Float-vs-8bit AA fringing on the many thin anti-aliased lines/dashes in the radial sub-pixel line fans; no logic error.
 - [ ] `alpha_gradient` — RMSE 0.4158 (26799 px). Accumulated 8-bit blend rounding (agg.RGBA truncates `uint8(v*255)` instead of round-to-nearest `*255+0.5`) across the whole alpha-blended gradient circle and translucent ellipses; the round-to-nearest fix is one-line but touches a shared blend path.
-  → 2026-10 audit: also check rasterizer gamma-table rounding (§8.2).
+  → 2026-10-04: the rasterizer gamma-table rounding fix (§8.2) did not move this row (26835 px in the re-measurement above). The `agg.RGBA` truncation (`colors.go:153-156`) is still the lead.
 - [ ] `line_thickness` — RMSE 0.3650 (25756 px). Uniform BGR96-float-vs-8bit edge-AA fringe along every diagonal line and radial spoke; essentially done pending a float renderer.
 - [ ] `graph_test` — RMSE 0.7717 (37004 px). Sub-pixel AA on the grid of node-circle outlines plus glyph edges in the bottom timing/status text; residual after per-control text-height fixes.
 - [ ] `pattern_fill` — RMSE 0.2836 (64555 px). Background tint off by integer-rounding the premultiplied RGBA8(102,0,26,26) instead of float premultiply-then-quantize (rgba_pre), spread across the pattern-filled star interior; controls/margins clean.
@@ -140,12 +140,12 @@ and finally the genuinely algorithmic/architectural gaps).
 - [ ] `conv_dash_marker` — RMSE 0.9998 (4672 px). Dash-phase / sub-pixel dash-segment positioning offset along the dashed line (every dash lands slightly shifted) plus the green smooth-outline edges.
   → 2026-10 audit: the geometry stages (smooth_poly1, curve3_div, vcgen_dash, markers_term) look numerically equivalent; the plain smooth outline differs too, so suspect thin-stroke AA downstream. Dump the stroke vertices from both sides to confirm.
 - [ ] `bezier_div` — RMSE 1.1956 (2861 px). Stroke vertex generation at the Miter-Revert + Inner-Round join near the curve cusp differs slightly from C++ vcgen_stroke; diff concentrates at the inner-join triangle fan and dashed inner-stroke outline.
-  → 2026-10 audit: prime suspect is the swapped `curve4_div` case selector (§8.2, `curves.go:727`); `calc_join`/`calc_miter`/`calc_arc` match C++.
+  → 2026-10-04: the swapped `curve4_div` case selector is fixed (§8.2), and the re-measurement above shows this row at 0 px, so the description is stale. Re-baseline it with 8.3 and tick it if 0 px is confirmed.
 - [ ] `compositing` — RMSE 0.5101 (98059 px). ±1-LSB gradient/composite interpolation rounding in the 8-bit-linear scene path (the known RGBA128 float comp-op residual) spread across the gradient-filled shapes; controls/text exact.
 - [ ] `scanline_boolean2` — RMSE 1.2047 (69301 px). Sub-pixel cover/span-boundary discrepancy in the scanline boolean AND-combine path (num_spans 1033 vs C++ 1031) on the intersection-shape AA edges; GSV text stroke already corrected.
   → 2026-10 audit: the sbool AND helpers match C++; diff the input storages first (the demo's contour round-trip is the likely cause, §8.2).
 - [ ] `image_filters2` — RMSE 1.2622 (53494 px). Largest real gap: the scaled right-side image is rendered via Agg2D's dedicated bilinear resampler instead of the C++ LUT-based span_image_filter_rgba general filter, so every fractional sample blends source texels differently across the whole image; control panel clean.
-  → 2026-10 audit: this description looks stale — the example already uses `SpanImageFilterRGBA`; the remaining gap is in `internal/demo/imagefilters2` + the Agg2D LUT path (§8.2).
+  → 2026-10 audit: this description is stale — the example already uses `SpanImageFilterRGBA`. The 2026-10-04 re-measurement above shows 0 px, so re-baseline it with 8.3 and close the matching §8.2 `image_filters2` item if 0 px is confirmed.
 
 ### 1.3 Exit criteria
 
@@ -516,18 +516,31 @@ C++ AGG:
    `radius_x = (diameter · m_rx) >> 1` grows with the reduction ratio. Cost per
    destination pixel is therefore O(r²), and since r ∝ reduction while the
    destination area ∝ 1/reduction², total work is *constant* in output size
-   once unclamped — which is exactly the ~5 s plateau from 192 px down.
-2. **`m_scale_limit` caps the footprint at 20×.** `agg_span_image_filter.h:191`
-   defaults `span_image_resample_affine` to `m_scale_limit(20)`; agg_go mirrors
-   this (`internal/span/span_image_filter.go`, asserted at 20 in
-   `span_image_filter_test.go:299`). Above 20:1 the filter footprint stops
-   growing, which is why 48 px is cheap — and also why 48 px is where agg_go and
-   libvips disagree most (RMSE 6.7 vs 0.8 at 512 px): the footprint is no longer
-   wide enough to band-limit the source.
+   once unclamped — which is the ~5 s plateau at 512 and 1024 px.
+2. **`m_scale_limit` clamps the footprint.** *(Corrected 2026-10-04.)* The
+   `DrawImageAffine` resample path (`internal/agg2d/image.go:119`) uses
+   `SpanImageResampleRGBAAffine`, whose base `SpanImageResampleAffine` defaults
+   to `scaleLimit: 200.0` (`internal/span/span_image_filter.go:143,166`), as C++
+   `span_image_resample_affine` does (`agg_span_image_filter.h:104,114`). The limit
+   of 20 at `agg_span_image_filter.h:191`, asserted in
+   `span_image_filter_test.go:299`, belongs to the generic `span_image_resample`,
+   which this path does not use. `prepare()` (`agg_span_image_filter.h:140-150`)
+   compares the **product** `scale_x·scale_y` with the limit. For a uniform
+   reduction s the clamp therefore starts at s > √200 ≈ 14.1, and from there the
+   per-axis scale is `200/s`: the footprint *shrinks* as the reduction grows,
+   down to the floor of 1. That is why 48 px is cheap, and also why 48 px is where
+   agg_go and libvips disagree most (RMSE 6.7 vs 0.8 at 512 px): the footprint is
+   far too narrow to band-limit the source.
 
-Below 20:1 the measured cost still falls faster than the O(r²) model predicts
-(48/96/128 px come in at 21/220/624 ms against a predicted 0.5/2.0/3.6 s). That
-residual is unexplained and is task 7.3.
+All of 48/96/128 px (63×/31.5×/23.6×) are in the clamped regime. They are also
+above 20×, so they cannot show a "below-20×" anomaly, and 192 px (15.75×) is
+clamped too. The earlier "predicted 0.5/2.0/3.6 s" assumed a constant footprint
+of 20 above 20:1, which this path does not have. With the actual `200/s` clamp, a
+work ∝ (output px)²·scale² model scaled from 5.0 s at 512 px predicts about
+13/203/642 ms and 3.25 s for 48/96/128/192 px, against the measured
+21/220/624 ms and 3.3 s. That is a plausible explanation, not a confirmed one:
+no output size between the clamp threshold and 512 px (14.1:1 to 5.9:1) has been
+measured yet. Task 7.3 confirms or rejects it.
 
 ### 7.1 Separable two-pass for axis-aligned transforms
 
@@ -574,22 +587,33 @@ such stage, so adding one **changes rendered output** and cannot be the default.
   the gap that carrying a deviation is not worth it. Measure before committing
   to it.
 
-### 7.3 Explain the sub-20× cost anomaly
+### 7.3 Confirm the clamped-regime cost model
 
-Between 48 px and 192 px the cost curve is far cheaper than the O(r²) footprint
-model predicts, and the transition is not monotonic in a way `m_scale_limit`
-alone explains. Profile `../rasterbench`'s `cmd/curve` sweep before optimising
-anything in that range — an optimisation aimed at the wrong mechanism is worse
-than none. Confirm whether `m_rx`/`m_ry` derivation in
-`SpanImageResampleAffine` matches `agg_span_image_filter.h:135-155` exactly,
-including the `scale_xy > m_scale_limit` proportional rescale on line 140.
+The 48–192 px measurements are all in the clamped regime (see the corrected
+mechanism 2 above), so they cannot show a "sub-20×" anomaly. Their fall-off fits
+the shrinking `200/s` footprint, but that is a model, not a measurement. Settle it
+before optimising anything in that range, because an optimisation aimed at the
+wrong mechanism is worse than none:
+
+- Measure at least two output sizes in the unclamped range between 192 px and
+  512 px (reduction below ≈14.1:1, for example 256 px and 384 px) in
+  `../rasterbench`'s `cmd/curve` sweep. No such measurement exists yet. Check
+  that the cost stays at the ~5 s plateau there.
+- Profile or count taps per destination pixel at 48/96/128/192 px, and confirm
+  that they follow `rx = uround(200/s · image_subpixel_scale)`.
+- Confirm that the `m_rx`/`m_ry` derivation in `SpanImageResampleAffine`
+  matches `agg_span_image_filter.h:135-155` exactly, including the
+  `scale_xy > m_scale_limit` proportional rescale on line 140.
+- Record whether the shrinking footprint at high reductions (the 48 px aliasing)
+  is AGG-faithful behaviour to keep, or a reason to set a lower limit via 7.4.
 
 ### 7.4 Expose `scale_limit` and `blur` on the public affine API
 
 `SpanImageResampleAffine` has `ScaleLimit`/`SetScaleLimit` and blur internally,
-mirroring C++ (`agg_span_image_filter.h:121-129, 207`), but neither is reachable
-from `ImageTransformOptions` — so a caller cannot trade the aliasing at >20:1
-for footprint, nor tighten it for speed. This is a genuine API-surface gap
+mirroring C++ (`agg_span_image_filter.h:120-128`), but neither is reachable
+from `ImageTransformOptions`. A caller therefore cannot trade the aliasing above
+the clamp threshold (≈14.1:1 with the default limit of 200) for a wider footprint,
+nor tighten it for speed. This is a genuine API-surface gap
 against C++ AGG rather than a performance change; it is cheap and it makes 7.3
 measurable from outside the module.
 
@@ -602,8 +626,9 @@ measurable from outside the module.
 - [ ] Visual regression corpus green; any deviation documented in
       `docs/AGG_DELTAS.md` and opt-in.
 - [ ] `scale_limit` / `blur` reachable from `ImageTransformOptions`.
-- [ ] The sub-20× anomaly is explained in this plan or in `docs/`, not merely
-      optimised around.
+- [ ] The clamped-regime cost model (7.3) is confirmed with tap counts and with
+      unclamped measurements between 192 and 512 px, in this plan or in `docs/`,
+      not merely optimised around.
 
 ### 7.6 Non-goals
 
@@ -652,27 +677,41 @@ Priorities: **P0** = blocks everything, **P1** = parity bug or parity-gate gap,
       Also: add a `pull_request` trigger, pin the golangci-lint/gofumpt/gci versions, read
       the Go version from `go.mod` in `deploy-wasm.yml`, add an arm64 job (NEON + FMA) and a
       `-tags freetype` job.
-      → 2026-10-04: Done: amd64+arm64 matrix running `go vet/test ./...`, `pull_request` trigger, pinned linters, a `freetype` job, `go-version-file` in deploy-wasm. CI is still red because of the pre-existing `tests/visual/primitives` failures (see the new item below).
+      → 2026-10-04: Done for the CI wiring: amd64+arm64 matrix, `pull_request` trigger, pinned linters, a `freetype` job, `go-version-file` in deploy-wasm. The matrix runs `go vet ./...`, but **not** the full `go test ./...`: `unit-tests.yml` runs `go test $(go list ./... | grep -v /tests/visual/primitives)`, because that package still fails (next item). Re-adding it is tracked there.
 
 - [ ] `tests/visual/primitives` fails at HEAD (`TestBlendModes`: blend_xor 9000 px and
-      blend_src_over 6 px; `TestGradients`: 10 cases; the thin_line references are missing),
-      which keeps the new CI red. Decide per case whether the Go golden image or the code is wrong,
+      blend_src_over 6 px; `TestGradients`: 10 cases; the thin_line references are missing).
+      Decide per case whether the Go golden image or the code is wrong,
       checking against C++ where it has an equivalent.
+  - [ ] Then drop the `grep -v /tests/visual/primitives` filter from `unit-tests.yml`, so CI
+        really runs `go test ./...`. Until then this package is not covered by CI.
+- [ ] Clear the golangci-lint backlog (55 pre-existing findings in a local
+      `golangci-lint run ./...` on darwin: gocritic 23, staticcheck 15, unused 10, revive 4,
+      ineffassign 3). Then remove the `only-new-issues: true` setting that PR #5 adds to the
+      golangci-lint step in `lint.yml`, so lint checks the whole tree again, not just new code.
 
 ### 8.2 P1 — Confirmed numeric parity bugs
 
 Cross-cutting
 - [ ] FMA sweep. Go fuses `x*y±z` on arm64, but the C++ references are x86 builds without
-      contraction. `go build -gcflags=all=-S ./... | grep -E 'F(N?M(ADD|SUB))D'` finds about
-      1300 fused sites in 221 files. Already guarded: `curves.go`, `basics/math.go`
-      (`CalcPolygonArea`), `blender/rgba_composite.go`, `image/filters.go`.
+      contraction. `go build -gcflags=-S ./... 2>&1 | grep -E 'F(N?M(ADD|SUB))D'` found about
+      1300 fused sites (distinct source lines) in 221 files at audit time; after the guards
+      below it is 1228 lines in 210 files on darwin/arm64. The compiler writes the `-S` listing
+      to stderr, so the `2>&1` is required; `-gcflags=all=-S` would also list the standard
+      library. Already guarded: `curve3_div`/`curve4_div` in `curves.go`, `CalcPolygonArea`
+      in `basics/math.go`, `blender/rgba_composite.go`, `image/filters.go`.
       Next, by parity impact:
   - `basics/math_stroke.go`, `CalcDistance`/`CalcSqDistance` (stroke/contour have 1-ulp drift)
   - `transform/*` (affine, perspective, bilinear)
   - `span/interpolator_persp`, gouraud, gradients
   - `renderer/outline*`, `vcgen/smooth_poly1`, `color/rgba8` / `rgba32`
 
-  Add the `-S` grep as a CI regression check for packages already guarded.
+  Add the `-S` grep (with `2>&1`) as an arm64 CI regression check for the guarded code.
+  Only `rgba_composite.go` and `filters.go` have 0 fused sites. `curves.go` (38) and
+  `basics/math.go` (21) are guarded only in the functions named above, so check those per
+  function, not per file. The div recursion still has 8 fused `(a+b)/2` midpoint lines
+  (`curves.go:319-320, 711-716`); confirm that they are exact, or guard them, before the check
+  goes in.
 
 Vertex pipeline
 
@@ -943,8 +982,9 @@ Fonts / controls / platform
        over colour/pixfmt, instantiated twice (C++ does this with one typedef). It has already
        drifted: image blend mode, `Context` line width, `BlendImage` renderer, missing rect overloads.
 11. [ ] Demos:
-   - one implementation per demo under `examples/internal/demo/<name>` (move out of the
-     library's `internal/`) behind a single Demo interface
+   - one implementation per demo under the existing repository-level `internal/demo/<name>`
+     behind a single Demo interface. Do not move them to `examples/internal/`: Go's
+     internal-package rule would then block `cmd/wasm` from importing them
    - `examples/*/main.go` and `cmd/wasm` become thin adapters with a registry (34 wasm demos
      are re-implementations today; `cmd/wasm/main.go` is a 1945-line if-chain)
    - merge `demorunner` and `lowlevelrunner`
