@@ -223,7 +223,7 @@ func (pf *PixFmtAlphaBlendGray[CS, B]) BlendFromColor(src interface {
 		if srcOffset < 0 || srcOffset >= len(srcRow) {
 			continue
 		}
-		scaledCover := color.Gray8Multiply(srcRow[srcOffset], cover)
+		scaledCover := color.Gray8ScaleCover(cover, srcRow[srcOffset])
 		if scaledCover == 0 {
 			continue
 		}

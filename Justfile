@@ -83,10 +83,10 @@ build-example EXAMPLE:
 # Run all tests
 test: test-unit test-integration
 
-# Run the whole module's tests (what CI runs)
+# Run all tests as CI does (excludes tests/visual/primitives: stale goldens, PLAN.md 8.1)
 test-all:
-    @echo "Running all tests..."
-    go test ./...
+    @echo "Running all tests (excluding tests/visual/primitives, as CI does)..."
+    go test $(go list ./... | grep -v /tests/visual/primitives)
 
 # Run unit tests
 test-unit:
