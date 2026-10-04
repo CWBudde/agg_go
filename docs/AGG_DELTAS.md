@@ -491,6 +491,9 @@ Verified against C++ `agg2d.cpp` by `internal/agg2d/cpp_oracle_test.go`
   negative line widths).
 - **`Blackman144`** is its own filter (`image_filter_blackman144`, radius 6),
   no longer an alias of the Go-extension `Blackman` (radius 4).
+- **Image filter LUT** matches C++ on all architectures (`TestCppOracleImageFilterLUT`):
+  `internal/image/filters.go` rounds each product explicitly with `float64(...)`,
+  so no FMA contraction changes the `iround` result (e.g. `Spline16` on arm64).
 
 ### Remaining deltas
 
@@ -501,10 +504,5 @@ Verified against C++ `agg2d.cpp` by `internal/agg2d/cpp_oracle_test.go`
   scenes therefore only use 0/255 channels (alpha is not converted).
 - **Push/PopTransform** are Go extensions; pop restores the approximation
   scales saved at push time together with the matrix.
-- **Image filter LUT on arm64**: `Spline16` differs from C++ by 1 LSB in a few
-  weights because the Go compiler fuses `x*y+z` into FMA on arm64 (C++ oracle
-  built with `-ffp-contract=off`); the exact `.5` products then round the other
-  way in `iround`. Fix belongs in `internal/image/filters.go` (explicit
-  `float64(...)` around the products).
 - **Strokes use non-zero winding** in Go; C++ strokes share the even-odd flag
   set by `fillEvenOdd`.
