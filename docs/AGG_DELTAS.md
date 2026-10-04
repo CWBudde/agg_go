@@ -349,3 +349,33 @@ These additions have no C++ counterpart and are Go-specific conveniences:
   for convenience.
 - `RenderRasterizerWithColor`, `ScanlineRender`, `RenderScanlinesAAWithSpanGen`
   — advanced escape hatches for direct rasterizer/renderer access.
+
+---
+
+## Curves and Polygon Math (`internal/curves`, `internal/basics/math.go`)
+
+### Explicit rounding of products (no FMA contraction)
+
+Go may fuse `a*b + c` into a fused multiply-add on arm64 (and other FMA
+targets); the C++ reference images are built without contraction. Where the
+result feeds a branch decision, the Go port wraps products in `float64(...)`
+so they round exactly like the C++ code (`curve3_div`/`curve4_div`
+`recursive_bezier`, `calc_polygon_area`). Without this, e.g. a cubic whose
+p2 coincides with p1 got a non-zero `d2` and took a different subdivision
+branch than C++. `Curve3Div`/`Curve4Div` are bit-exact against C++ vertex dumps
+(`internal/curves/testdata/curve_div_golden.txt`).
+
+### `CalcPolygonArea` is signed (matches C++)
+
+`basics.CalcPolygonArea` returns the signed area with the C++ summation order
+(positive = CCW in a Y-up frame), as `vcgen_contour` auto orientation relies on
+the sign. `basics.CalcPolygonAreaFunc(n, vertex)` is the storage-agnostic form
+of the templated C++ function. Only difference: an empty input returns 0
+(C++ reads `st[0]` unconditionally).
+
+### Path command `end_poly` encoding
+
+Observed while writing C++ oracle tests: `basics.PathCmdEndPoly` is `8`,
+whereas C++ `path_cmd_end_poly` is `0x0F`. The flag bits (`0x10` CCW, `0x20` CW,
+`0x40` close) and the `IsEndPoly` predicate behave the same, but raw command
+words differ numerically, so oracle tests map `0x0F` to `PathCmdEndPoly`.

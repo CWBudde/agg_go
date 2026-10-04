@@ -233,6 +233,44 @@ func TestCalcPolygonArea(t *testing.T) {
 	})
 }
 
+// TestCalcPolygonAreaSignedCpp checks the signed result and summation order
+// against C++ agg::calc_polygon_area (clang++ -O0 -ffp-contract=off). CW input
+// (Y-up) yields a negative area, CCW a positive one.
+func TestCalcPolygonAreaSignedCpp(t *testing.T) {
+	const o = 1e5
+	tests := []struct {
+		name string
+		pts  []float64
+		want float64
+	}{
+		{"cw_square", []float64{0, 0, 0, 100, 100, 100, 100, 0}, -10000},
+		{"ccw_square", []float64{0, 0, 100, 0, 100, 100, 0, 100}, 10000},
+		{"cw_irregular", []float64{10.5, 20.25, 30.75, 180.5, 120.125, 150.0, 200.0, 170.5, 160.25, 40.75, 90.5, 60.0}, -18679.53125},
+		{"ccw_irregular", []float64{90.5, 60.0, 160.25, 40.75, 200.0, 170.5, 120.125, 150.0, 30.75, 180.5, 10.5, 20.25}, 18679.53125},
+		// Large offset: result is dominated by rounding, so it pins the exact
+		// C++ evaluation order (and the absence of FMA contraction).
+		{"ccw_offset_1e5", []float64{o + 0.1, o + 0.3, o + 0.7, o + 0.2, o + 0.9, o + 0.8, o + 0.2, o + 0.9}, 0.40500068664550781},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			v := make([]PointD, len(tt.pts)/2)
+			for i := range v {
+				v[i] = PointD{X: tt.pts[2*i], Y: tt.pts[2*i+1]}
+			}
+			if got := CalcPolygonArea(v); got != tt.want {
+				t.Errorf("CalcPolygonArea = %.17g, want %.17g", got, tt.want)
+			}
+			got := CalcPolygonAreaFunc(len(v), func(i int) (float64, float64) { return v[i].X, v[i].Y })
+			if got != tt.want {
+				t.Errorf("CalcPolygonAreaFunc = %.17g, want %.17g", got, tt.want)
+			}
+		})
+	}
+	if got := CalcPolygonAreaFunc(0, nil); got != 0 {
+		t.Errorf("CalcPolygonAreaFunc(0) = %v, want 0", got)
+	}
+}
+
 func TestCalcSegmentPointSqDistance(t *testing.T) {
 	tests := []struct {
 		name     string
