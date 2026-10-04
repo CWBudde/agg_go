@@ -45,11 +45,18 @@ func TestRGBA16Lerp(t *testing.T) {
 }
 
 func TestRGBA16Prelerp(t *testing.T) {
-	// Test premultiplied lerp - this should be same as Lerp for RGBA16
-	result := RGBA16Prelerp(10000, 5000, 32768)
-	expected := RGBA16Lerp(10000, 5000, 32768)
-	if result != expected {
-		t.Errorf("RGBA16Prelerp(10000, 5000, 32768) = %d, expected %d", result, expected)
+	// C++ rgba16::prelerp is p + q - multiply(p, a), not a plain lerp.
+	// Expected values come from the AGG 2.6 C++ oracle.
+	cases := []struct{ p, q, a, want basics.Int16u }{
+		{10000, 5000, 32768, 10000},
+		{16384, 49152, 32768, 57344},
+		{0, 0, 0, 0},
+		{65535, 0, 65535, 0},
+	}
+	for _, c := range cases {
+		if got := RGBA16Prelerp(c.p, c.q, c.a); got != c.want {
+			t.Errorf("RGBA16Prelerp(%d, %d, %d) = %d, C++ %d", c.p, c.q, c.a, got, c.want)
+		}
 	}
 }
 
@@ -200,9 +207,12 @@ func TestRGBA16Gradient(t *testing.T) {
 		t.Errorf("Gradient at k=0 should return first color")
 	}
 
+	// C++ rgba16::lerp(0, 65535, 65535) wraps its 32-bit int product and
+	// yields 65534; lerp(65535, 65535, 65535) stays 65535 (C++ oracle).
 	end := c1.Gradient(c2, 65535)
-	if end.R != c2.R || end.G != c2.G || end.B != c2.B || end.A != c2.A {
-		t.Errorf("Gradient at k=65535 should return second color")
+	if end.R != 65534 || end.G != 65534 || end.B != 65534 || end.A != 65535 {
+		t.Errorf("Gradient at k=65535: got (%d,%d,%d,%d), C++ (65534,65534,65534,65535)",
+			end.R, end.G, end.B, end.A)
 	}
 }
 

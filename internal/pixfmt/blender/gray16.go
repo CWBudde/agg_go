@@ -97,30 +97,25 @@ type (
 )
 
 ////////////////////////////////////////////////////////////////////////////////
-// Fixed-point arithmetic helpers (unchanged semantics)
+// Fixed-point arithmetic helpers (C++ gray16 parity, see internal/color)
 ////////////////////////////////////////////////////////////////////////////////
 
-// Gray16Multiply performs fixed-point multiplication for 16-bit values.
-// Same “(x*65535 + 0x8000) / 65535” rounded behavior as your original.
+// Gray16Multiply performs fixed-point multiplication for 16-bit values
+// (C++ gray16::multiply). Delegates to the color package helper.
 func Gray16Multiply(a, b basics.Int16u) basics.Int16u {
-	t := uint64(a)*uint64(b) + 0x8000
-	return basics.Int16u(((t >> 16) + t) >> 16)
+	return color.Gray16Multiply(a, b)
 }
 
-// Gray16Lerp: straight interpolation p + (q - p)*a with rounding parity guard
+// Gray16Lerp interpolates p to q by a (C++ gray16::lerp). Delegates to the
+// color package helper, which reproduces the C++ 32-bit int arithmetic.
 func Gray16Lerp(p, q, a basics.Int16u) basics.Int16u {
-	var t int64
-	if p > q {
-		t = int64(q-p)*int64(a) + 0x8000 - 1
-	} else {
-		t = int64(q-p)*int64(a) + 0x8000
-	}
-	return basics.Int16u(int64(p) + (((t >> 16) + t) >> 16))
+	return color.Gray16Lerp(p, q, a)
 }
 
-// Gray16Prelerp: premultiplied interpolation p + q - p*a
+// Gray16Prelerp: premultiplied interpolation p + q - multiply(p, a)
+// (C++ gray16::prelerp).
 func Gray16Prelerp(p, q, a basics.Int16u) basics.Int16u {
-	return p + q - Gray16Multiply(p, a)
+	return color.Gray16Prelerp(p, q, a)
 }
 
 ////////////////////////////////////////////////////////////////////////////////

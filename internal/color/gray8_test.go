@@ -317,24 +317,17 @@ func TestGray8Gradient_Endpoints_And_Rounding(t *testing.T) {
 	if r := g1.Gradient(g2, 0.0); r != g1 {
 		t.Fatalf("k=0 should return first")
 	}
-	// k=1.0 should return very close to second (might not be exact due to rounding)
+	// C++ gray8T::gradient uses uround(k * base_scale) truncated to int8u,
+	// so k=1.0 gives ik = 256 -> 0 and returns the first colour (C++ oracle).
 	r := g1.Gradient(g2, 1.0)
-	diffV := int(r.V) - int(g2.V)
-	diffA := int(r.A) - int(g2.A)
-	if diffV < 0 {
-		diffV = -diffV
-	}
-	if diffA < 0 {
-		diffA = -diffA
-	}
-	if diffV > 1 || diffA > 1 {
-		t.Fatalf("k=1 should return close to second: got V=%d A=%d, expected V=%d A=%d", r.V, r.A, g2.V, g2.A)
+	if r != g1 {
+		t.Fatalf("k=1: got V=%d A=%d, C++ V=%d A=%d", r.V, r.A, g1.V, g1.A)
 	}
 
-	// Rounding near half
-	r = g1.Gradient(g2, 0.50196) // ~128/255
-	if r.V < 129 || r.V > 132 {
-		t.Fatalf("rounding check V around 0.5: got %d", r.V)
+	// Value near half (C++ oracle: 131, 131).
+	r = g1.Gradient(g2, 0.50196)
+	if r.V != 131 || r.A != 131 {
+		t.Fatalf("k=0.50196: got V=%d A=%d, C++ V=131 A=131", r.V, r.A)
 	}
 }
 

@@ -28,5 +28,6 @@ func LuminanceFromRGBA8SRGB(c RGBA8[SRGB]) basics.Int8u {
 
 // LuminanceFromRGBA computes floating-point BT.709 luminance.
 func LuminanceFromRGBA(c RGBA) float64 {
-	return 0.2126*c.R + 0.7152*c.G + 0.0722*c.B
+	// float64() conversions stop arm64 FMA fusion so results match C++ on x86.
+	return float64(0.2126*c.R) + float64(0.7152*c.G) + float64(0.0722*c.B)
 }

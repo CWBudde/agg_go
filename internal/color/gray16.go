@@ -57,8 +57,8 @@ func (g Gray16[CS]) ConvertToRGBA16() RGBA16[CS] {
 func ConvertGray16FromRGBA[CS Space](c RGBA) Gray16[CS] {
 	lum := LuminanceFromRGBA(c)
 	return Gray16[CS]{
-		V: basics.Int16u(lum*65535 + 0.5),
-		A: basics.Int16u(c.A*65535 + 0.5),
+		V: RGBA16FromDouble(lum),
+		A: RGBA16FromDouble(c.A),
 	}
 }
 
@@ -88,8 +88,11 @@ func (g Gray16[CS]) IsOpaque() bool {
 	return g.A == Gray16BaseMask
 }
 
+// Opacity sets the alpha channel (0.0 to 1.0). In-range values use
+// from_double rounding (in float64) like C++. Out-of-range values saturate;
+// C++ gray16::opacity literally stores 1 for a > 1 (see docs/AGG_DELTAS.md).
 func (g *Gray16[CS]) Opacity(a float32) {
-	g.A = basics.Int16u(clamp01f32(a)*65535.0 + 0.5)
+	g.A = RGBA16FromDouble(float64(clamp01f32(a)))
 }
 
 func (g Gray16[CS]) GetOpacity() float32 {
@@ -132,29 +135,24 @@ func Gray16Multiply(a, b basics.Int16u) basics.Int16u {
 	return basics.Int16u(((t >> Gray16BaseShift) + t) >> Gray16BaseShift)
 }
 
-// Lerp performs linear interpolation
+// Gray16Lerp interpolates p to q by a. Identical to C++ gray16::lerp, including
+// the 32-bit int wrap-around of (q - p) * a; see RGBA16Lerp.
 func Gray16Lerp(p, q, a basics.Int16u) basics.Int16u {
-	var t int64
-	if p > q {
-		t = (int64(q)-int64(p))*int64(a) + Gray16BaseMSB - 1
-	} else {
-		t = (int64(q)-int64(p))*int64(a) + Gray16BaseMSB
-	}
-	return basics.Int16u(int64(p) + (((t >> Gray16BaseShift) + t) >> Gray16BaseShift))
+	return RGBA16Lerp(p, q, a)
 }
 
-// Prelerp performs premultiplied linear interpolation
+// Gray16Prelerp interpolates p to q by a, assuming q is premultiplied by a.
+// Matches C++ gray16::prelerp: p + q - multiply(p, a) (modulo 2^16).
 func Gray16Prelerp(p, q, a basics.Int16u) basics.Int16u {
 	return p + q - Gray16Multiply(p, a)
 }
 
-// Gradient performs linear interpolation between two colors
+// Gradient interpolates towards c2 by k. Matches C++ gray16::gradient:
+// ik = uround(k * base_scale) (65536, not base_mask) truncated to value_type,
+// so k >= 65535.5/65536 wraps to 0 and yields the start colour. This is
+// reproduced for parity; see Gray8.Gradient.
 func (g Gray16[CS]) Gradient(c2 Gray16[CS], k float64) Gray16[CS] {
-	ik := k*float64(Gray16BaseScale) + 0.5
-	if ik > float64(Gray16BaseMask) {
-		ik = float64(Gray16BaseMask)
-	}
-	ikInt := basics.Int16u(ik)
+	ikInt := basics.Int16u(basics.URound(k * Gray16BaseScale))
 	return Gray16[CS]{
 		V: Gray16Lerp(g.V, c2.V, ikInt),
 		A: Gray16Lerp(g.A, c2.A, ikInt),

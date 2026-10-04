@@ -450,8 +450,10 @@ func TestGray16Lerp_Endpoints_And_Branches(t *testing.T) {
 	if Gray16Lerp(2560, 51200, 0) != 2560 {
 		t.Fatal("a=0 should return p")
 	}
-	if Gray16Lerp(2560, 51200, 65535) != 51200 {
-		t.Fatal("a=65535 should return q")
+	// C++ gray16::lerp evaluates (q-p)*a in 32-bit int; 48640*65535 wraps,
+	// so the C++ result is q-1 (value from the AGG 2.6 C++ oracle).
+	if got := Gray16Lerp(2560, 51200, 65535); got != 51199 {
+		t.Fatalf("a=65535: got %d, C++ 51199", got)
 	}
 	// p>q branch
 	r := Gray16Lerp(51200, 2560, 32768)
@@ -503,24 +505,17 @@ func TestGray16Gradient_Endpoints_And_Rounding(t *testing.T) {
 	if r := g1.Gradient(g2, 0.0); r != g1 {
 		t.Fatalf("k=0 should return first")
 	}
-	// k=1.0 should return very close to second (might not be exact due to rounding)
+	// C++ gray16::gradient uses uround(k * base_scale) truncated to int16u,
+	// so k=1.0 gives ik = 65536 -> 0 and returns the first colour (C++ oracle).
 	r := g1.Gradient(g2, 1.0)
-	diffV := int32(r.V) - int32(g2.V)
-	diffA := int32(r.A) - int32(g2.A)
-	if diffV < 0 {
-		diffV = -diffV
-	}
-	if diffA < 0 {
-		diffA = -diffA
-	}
-	if diffV > 1 || diffA > 1 {
-		t.Fatalf("k=1 should return close to second: got V=%d A=%d, expected V=%d A=%d", r.V, r.A, g2.V, g2.A)
+	if r != g1 {
+		t.Fatalf("k=1: got V=%d A=%d, C++ V=%d A=%d", r.V, r.A, g1.V, g1.A)
 	}
 
-	// Rounding near half
-	r = g1.Gradient(g2, 0.50003) // ~32769/65535
-	if r.V < 33000 || r.V > 34000 {
-		t.Fatalf("rounding check V around 0.5: got %d", r.V)
+	// Value near half (C++ oracle: 33282, 33282).
+	r = g1.Gradient(g2, 0.50003)
+	if r.V != 33282 || r.A != 33282 {
+		t.Fatalf("k=0.50003: got V=%d A=%d, C++ V=33282 A=33282", r.V, r.A)
 	}
 }
 

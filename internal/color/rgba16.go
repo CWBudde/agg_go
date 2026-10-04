@@ -13,42 +13,83 @@ const (
 	RGBA16BaseMSB   = 1 << (RGBA16BaseShift - 1)
 )
 
-// RGBA16Multiply performs fixed-point multiplication for 16-bit values
+// RGBA16Multiply performs fixed-point multiplication for 16-bit values.
+// Matches C++ rgba16::multiply (exact over int16u).
 func RGBA16Multiply(a, b basics.Int16u) basics.Int16u {
 	t := uint32(a)*uint32(b) + RGBA16BaseMSB
 	return basics.Int16u(((t >> RGBA16BaseShift) + t) >> RGBA16BaseShift)
 }
 
-// RGBA16Lerp performs linear interpolation between two 16-bit values
+// RGBA16Lerp interpolates p to q by a. Matches C++ rgba16::lerp:
+//
+//	int t = (q - p) * a + base_MSB - (p > q);
+//	return value_type(p + (((t >> base_shift) + t) >> base_shift));
+//
+// The product is evaluated in 32-bit int exactly as in C++, so it wraps for
+// |(q-p)*a| >= 2^31 (e.g. lerp(0, 65535, 65535) == 65534). Every C++ build
+// (-O0 and -O2, x86-64 and arm64) produces this result; it is kept for parity.
 func RGBA16Lerp(p, q, a basics.Int16u) basics.Int16u {
-	diff := int64(q) - int64(p)
-	result := int64(p) + (diff*int64(a)+32767)/65535
-	if result < 0 {
-		return 0
+	var gt int32
+	if p > q {
+		gt = 1
 	}
-	if result > 65535 {
-		return 65535
-	}
-	return basics.Int16u(result)
+	t := (int32(q)-int32(p))*int32(a) + RGBA16BaseMSB - gt
+	return basics.Int16u(int32(p) + (((t >> RGBA16BaseShift) + t) >> RGBA16BaseShift))
 }
 
-// RGBA16Prelerp performs premultiplied linear interpolation for 16-bit values
+// RGBA16Prelerp interpolates p to q by a, assuming q is premultiplied by a.
+// Matches C++ rgba16::prelerp: p + q - multiply(p, a) (modulo 2^16).
 func RGBA16Prelerp(p, q, a basics.Int16u) basics.Int16u {
-	diff := int64(q) - int64(p)
-	result := int64(p) + (diff*int64(a)+32767)/65535
-	if result < 0 {
-		return 0
-	}
-	if result > 65535 {
-		return 65535
-	}
-	return basics.Int16u(result)
+	return p + q - RGBA16Multiply(p, a)
 }
 
-// RGBA16MultCover multiplies a 16-bit color component by coverage
+// RGBA16MultCover multiplies a 16-bit color component by a coverage value
+// that has already been expanded to 16 bits ((cover8 << 8) | cover8).
+// With an expanded cover this equals C++ rgba16::mult_cover(c, cover8),
+// which is multiply(c, (cover8 << 8) | cover8).
 func RGBA16MultCover(c, cover basics.Int16u) basics.Int16u {
 	return RGBA16Multiply(c, cover)
 }
+
+// RGBA16ScaleCover scales an 8-bit coverage by a 16-bit value.
+// Matches C++ rgba16::scale_cover: multiply((a << 8) | a, b) >> 8.
+func RGBA16ScaleCover(cover basics.Int8u, b basics.Int16u) basics.Int8u {
+	c16 := basics.Int16u(cover)<<8 | basics.Int16u(cover)
+	return basics.Int8u(RGBA16Multiply(c16, b) >> 8)
+}
+
+// RGBA16Demultiply divides a by b in fixed point (static C++
+// rgba16::demultiply). C++ evaluates a*base_mask in signed int, which
+// overflows for a > 32768 (undefined behaviour; -O0 and -O2 builds disagree).
+// Go uses the overflow-free unsigned reading of the same formula, which is
+// what optimised C++ builds produce. See docs/AGG_DELTAS.md.
+func RGBA16Demultiply(a, b basics.Int16u) basics.Int16u {
+	switch {
+	case a == 0 || b == 0:
+		return 0
+	case a >= b:
+		return RGBA16BaseMask
+	default:
+		return basics.Int16u((uint32(a)*RGBA16BaseMask + uint32(b>>1)) / uint32(b))
+	}
+}
+
+// RGBA16FromDouble converts a [0,1] value to 16-bit fixed point.
+// Matches C++ rgba16::from_double: value_type(uround(a * base_mask)).
+func RGBA16FromDouble(a float64) basics.Int16u {
+	return basics.Int16u(basics.URound(a * RGBA16BaseMask))
+}
+
+// RGBA16Invert returns base_mask - x (C++ rgba16::invert).
+func RGBA16Invert(x basics.Int16u) basics.Int16u {
+	return RGBA16BaseMask - x
+}
+
+// RGBA16EmptyValue returns the empty value (C++ rgba16::empty_value).
+func RGBA16EmptyValue() basics.Int16u { return 0 }
+
+// RGBA16FullValue returns the full value (C++ rgba16::full_value).
+func RGBA16FullValue() basics.Int16u { return RGBA16BaseMask }
 
 // Helper functions for min operations
 func minUint32(a, b uint32) uint32 {
@@ -103,10 +144,10 @@ func (c RGBA16[CS]) ConvertToRGBA() RGBA {
 // ConvertFromRGBA converts from floating-point RGBA
 func ConvertFromRGBA16[CS Space](c RGBA) RGBA16[CS] {
 	return RGBA16[CS]{
-		R: basics.Int16u(c.R*65535 + 0.5),
-		G: basics.Int16u(c.G*65535 + 0.5),
-		B: basics.Int16u(c.B*65535 + 0.5),
-		A: basics.Int16u(c.A*65535 + 0.5),
+		R: RGBA16FromDouble(c.R),
+		G: RGBA16FromDouble(c.G),
+		B: RGBA16FromDouble(c.B),
+		A: RGBA16FromDouble(c.A),
 	}
 }
 
@@ -130,9 +171,11 @@ func (c *RGBA16[CS]) Demultiply() *RGBA16[CS] {
 		if c.A == 0 {
 			c.R, c.G, c.B = 0, 0, 0
 		} else {
-			c.R = basics.Int16u((uint32(c.R)*65535 + uint32(c.A)/2) / uint32(c.A))
-			c.G = basics.Int16u((uint32(c.G)*65535 + uint32(c.A)/2) / uint32(c.A))
-			c.B = basics.Int16u((uint32(c.B)*65535 + uint32(c.A)/2) / uint32(c.A))
+			// C++ rgba16::demultiply: truncating division, clamped to base_mask.
+			a := uint32(c.A)
+			c.R = basics.Int16u(minUint32(uint32(c.R)*RGBA16BaseMask/a, RGBA16BaseMask))
+			c.G = basics.Int16u(minUint32(uint32(c.G)*RGBA16BaseMask/a, RGBA16BaseMask))
+			c.B = basics.Int16u(minUint32(uint32(c.B)*RGBA16BaseMask/a, RGBA16BaseMask))
 		}
 	}
 	return c
@@ -170,7 +213,10 @@ func (c RGBA16[CS]) IsOpaque() bool {
 	return c.A == 65535
 }
 
-// Opacity sets the alpha channel (0.0 to 1.0)
+// Opacity sets the alpha channel (0.0 to 1.0). In-range values use
+// from_double rounding like C++. Out-of-range values saturate to 0 / 65535;
+// C++ rgba16::opacity has no else-branches and stores uround(a*65535) even
+// for a < 0 or a > 1 (see docs/AGG_DELTAS.md).
 func (c *RGBA16[CS]) Opacity(a float64) *RGBA16[CS] {
 	switch {
 	case a < 0:
@@ -178,7 +224,7 @@ func (c *RGBA16[CS]) Opacity(a float64) *RGBA16[CS] {
 	case a > 1:
 		c.A = 65535
 	default:
-		c.A = basics.Int16u(a*65535 + 0.5)
+		c.A = RGBA16FromDouble(a)
 	}
 	return c
 }
