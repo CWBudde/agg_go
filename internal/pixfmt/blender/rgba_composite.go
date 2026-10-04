@@ -320,7 +320,7 @@ func (bl CompositeBlenderPlain[S, O]) BlendPixFloat(dst []basics.Int8u, r, g, b,
 // normalizedRGBA holds premultiplied color components in [0,1]
 type normalizedRGBA struct{ r, g, b, a float64 }
 
-// Utility: clamp [0,1] -> uint8 with rounding
+// Utility: clamp [0,1] -> uint8 with rounding (AGG from_double: uround(v*255)).
 func to8(v float64) basics.Int8u {
 	if v < 0 {
 		return 0
@@ -328,7 +328,25 @@ func to8(v float64) basics.Int8u {
 	if v > 1 {
 		return 255
 	}
-	return basics.Int8u(v*255.0 + 0.5)
+	return basics.Int8u(float64(v*255.0) + 0.5)
+}
+
+// FMA note: Go may fuse x*y+z into a single fused multiply-add on arm64,
+// ppc64le, s390x and riscv64 (and amd64 with GOAMD64=v3), even across
+// statements and inlined calls, which skips the intermediate rounding of x*y.
+// C++ AGG built for x86 without -mfma never fuses (each rgba component is a
+// stored double), and the 1-ULP difference flips byte rounding at .5
+// boundaries (e.g. xor over a half-transparent destination: 128 vs 127).
+// Every product that feeds an addition or subtraction in this file is
+// therefore wrapped in an explicit float64() conversion, which the Go spec
+// guarantees rounds the product and prevents fusion, and blendOperation
+// rounds its inputs via rounded() because callers build them from products.
+// Results are thereby identical on every architecture.
+
+// rounded forces each component to a stored float64, so premultiply products
+// computed by the callers can not be fused into the operator arithmetic.
+func (c normalizedRGBA) rounded() normalizedRGBA {
+	return normalizedRGBA{r: float64(c.r), g: float64(c.g), b: float64(c.b), a: float64(c.a)}
 }
 
 func clamp01(v float64) float64 {
@@ -362,6 +380,7 @@ func DissolveAccept(effectiveAlpha float64, seed uint32) bool {
 
 // Select the composite equation
 func (bl CompositeBlender[S, O]) blendOperation(d, s normalizedRGBA) normalizedRGBA {
+	d, s = d.rounded(), s.rounded()
 	switch bl.op {
 	case CompOpClear:
 		return bl.clear(d, s)
@@ -605,10 +624,10 @@ func (bl CompositeBlender[S, O]) sourceOver(d, s normalizedRGBA) normalizedRGBA 
 	}
 	is1 := 1.0 - s.a
 	return normalizedRGBA{
-		r: s.r + d.r*is1,
-		g: s.g + d.g*is1,
-		b: s.b + d.b*is1,
-		a: s.a + d.a*is1,
+		r: s.r + float64(d.r*is1),
+		g: s.g + float64(d.g*is1),
+		b: s.b + float64(d.b*is1),
+		a: s.a + float64(d.a*is1),
 	}
 }
 
@@ -619,10 +638,10 @@ func (bl CompositeBlender[S, O]) dstOver(d, s normalizedRGBA) normalizedRGBA {
 	}
 	id1 := 1.0 - d.a
 	return normalizedRGBA{
-		r: d.r + s.r*id1,
-		g: d.g + s.g*id1,
-		b: d.b + s.b*id1,
-		a: d.a + s.a*id1,
+		r: d.r + float64(s.r*id1),
+		g: d.g + float64(s.g*id1),
+		b: d.b + float64(s.b*id1),
+		a: d.a + float64(s.a*id1),
 	}
 }
 
@@ -652,9 +671,9 @@ func (bl CompositeBlender[S, O]) dstOut(d, s normalizedRGBA) normalizedRGBA {
 func (bl CompositeBlender[S, O]) srcAtop(d, s normalizedRGBA) normalizedRGBA {
 	is := 1.0 - s.a
 	return normalizedRGBA{
-		r: s.r*d.a + d.r*is,
-		g: s.g*d.a + d.g*is,
-		b: s.b*d.a + d.b*is,
+		r: float64(s.r*d.a) + float64(d.r*is),
+		g: float64(s.g*d.a) + float64(d.g*is),
+		b: float64(s.b*d.a) + float64(d.b*is),
 		a: d.a,
 	}
 }
@@ -663,9 +682,9 @@ func (bl CompositeBlender[S, O]) srcAtop(d, s normalizedRGBA) normalizedRGBA {
 func (bl CompositeBlender[S, O]) dstAtop(d, s normalizedRGBA) normalizedRGBA {
 	id := 1.0 - d.a
 	return normalizedRGBA{
-		r: d.r*s.a + s.r*id,
-		g: d.g*s.a + s.g*id,
-		b: d.b*s.a + s.b*id,
+		r: float64(d.r*s.a) + float64(s.r*id),
+		g: float64(d.g*s.a) + float64(s.g*id),
+		b: float64(d.b*s.a) + float64(s.b*id),
 		a: s.a,
 	}
 }
@@ -675,10 +694,10 @@ func (bl CompositeBlender[S, O]) xor(d, s normalizedRGBA) normalizedRGBA {
 	is := 1.0 - s.a
 	id := 1.0 - d.a
 	return normalizedRGBA{
-		r: s.r*id + d.r*is,
-		g: s.g*id + d.g*is,
-		b: s.b*id + d.b*is,
-		a: s.a + d.a - 2*s.a*d.a,
+		r: float64(s.r*id) + float64(d.r*is),
+		g: float64(s.g*id) + float64(d.g*is),
+		b: float64(s.b*id) + float64(d.b*is),
+		a: s.a + d.a - float64(2*s.a*d.a),
 	}
 }
 
@@ -688,7 +707,7 @@ func (bl CompositeBlender[S, O]) plus(d, s normalizedRGBA) normalizedRGBA {
 		r: d.r + s.r,
 		g: d.g + s.g,
 		b: d.b + s.b,
-		a: s.a + d.a - s.a*d.a,
+		a: s.a + d.a - float64(s.a*d.a),
 	}
 }
 
@@ -700,10 +719,10 @@ func (bl CompositeBlender[S, O]) multiply(d, s normalizedRGBA) normalizedRGBA {
 	is := 1.0 - s.a
 	id := 1.0 - d.a
 	return normalizedRGBA{
-		r: s.r*d.r + s.r*id + d.r*is,
-		g: s.g*d.g + s.g*id + d.g*is,
-		b: s.b*d.b + s.b*id + d.b*is,
-		a: d.a + s.a - s.a*d.a,
+		r: float64(s.r*d.r) + float64(s.r*id) + float64(d.r*is),
+		g: float64(s.g*d.g) + float64(s.g*id) + float64(d.g*is),
+		b: float64(s.b*d.b) + float64(s.b*id) + float64(d.b*is),
+		a: d.a + s.a - float64(s.a*d.a),
 	}
 }
 
@@ -713,10 +732,10 @@ func (bl CompositeBlender[S, O]) screen(d, s normalizedRGBA) normalizedRGBA {
 		return d
 	}
 	return normalizedRGBA{
-		r: s.r + d.r - s.r*d.r,
-		g: s.g + d.g - s.g*d.g,
-		b: s.b + d.b - s.b*d.b,
-		a: d.a + s.a - s.a*d.a,
+		r: s.r + d.r - float64(s.r*d.r),
+		g: s.g + d.g - float64(s.g*d.g),
+		b: s.b + d.b - float64(s.b*d.b),
+		a: d.a + s.a - float64(s.a*d.a),
 	}
 }
 
@@ -727,20 +746,20 @@ func (bl CompositeBlender[S, O]) overlay(d, s normalizedRGBA) normalizedRGBA {
 	}
 	id := 1.0 - d.a
 	is := 1.0 - s.a
-	sada := s.a * d.a
+	sada := float64(s.a * d.a)
 
 	calc := func(dca, sca, da, sa, sada, id, is float64) float64 {
 		if 2*dca <= da {
-			return 2*sca*dca + sca*id + dca*is
+			return float64(2*sca*dca) + float64(sca*id) + float64(dca*is)
 		}
-		return sada - 2*(da-dca)*(sa-sca) + sca*id + dca*is
+		return sada - float64(2*(da-dca)*(sa-sca)) + float64(sca*id) + float64(dca*is)
 	}
 
 	return normalizedRGBA{
 		r: calc(d.r, s.r, d.a, s.a, sada, id, is),
 		g: calc(d.g, s.g, d.a, s.a, sada, id, is),
 		b: calc(d.b, s.b, d.a, s.a, sada, id, is),
-		a: d.a + s.a - s.a*d.a,
+		a: d.a + s.a - float64(s.a*d.a),
 	}
 }
 
@@ -752,10 +771,10 @@ func (bl CompositeBlender[S, O]) darken(d, s normalizedRGBA) normalizedRGBA {
 	id := 1.0 - d.a
 	is := 1.0 - s.a
 	return normalizedRGBA{
-		r: math.Min(s.r*d.a, d.r*s.a) + s.r*id + d.r*is,
-		g: math.Min(s.g*d.a, d.g*s.a) + s.g*id + d.g*is,
-		b: math.Min(s.b*d.a, d.b*s.a) + s.b*id + d.b*is,
-		a: d.a + s.a - s.a*d.a,
+		r: math.Min(s.r*d.a, d.r*s.a) + float64(s.r*id) + float64(d.r*is),
+		g: math.Min(s.g*d.a, d.g*s.a) + float64(s.g*id) + float64(d.g*is),
+		b: math.Min(s.b*d.a, d.b*s.a) + float64(s.b*id) + float64(d.b*is),
+		a: d.a + s.a - float64(s.a*d.a),
 	}
 }
 
@@ -767,10 +786,10 @@ func (bl CompositeBlender[S, O]) lighten(d, s normalizedRGBA) normalizedRGBA {
 	id := 1.0 - d.a
 	is := 1.0 - s.a
 	return normalizedRGBA{
-		r: math.Max(s.r*d.a, d.r*s.a) + s.r*id + d.r*is,
-		g: math.Max(s.g*d.a, d.g*s.a) + s.g*id + d.g*is,
-		b: math.Max(s.b*d.a, d.b*s.a) + s.b*id + d.b*is,
-		a: d.a + s.a - s.a*d.a,
+		r: math.Max(s.r*d.a, d.r*s.a) + float64(s.r*id) + float64(d.r*is),
+		g: math.Max(s.g*d.a, d.g*s.a) + float64(s.g*id) + float64(d.g*is),
+		b: math.Max(s.b*d.a, d.b*s.a) + float64(s.b*id) + float64(d.b*is),
+		a: d.a + s.a - float64(s.a*d.a),
 	}
 }
 
@@ -784,16 +803,16 @@ func (bl CompositeBlender[S, O]) colorDodge(d, s normalizedRGBA) normalizedRGBA 
 		id := 1.0 - d.a
 		return normalizedRGBA{r: s.r * id, g: s.g * id, b: s.b * id, a: s.a}
 	}
-	sada := s.a * d.a
+	sada := float64(s.a * d.a)
 	is := 1.0 - s.a
 	id := 1.0 - d.a
 
 	calc := func(dca, sca, da, sa, sada, id, is float64) float64 {
 		if sca < sa {
-			return sada*math.Min(1.0, (dca/da)*sa/(sa-sca)) + sca*id + dca*is
+			return float64(sada*math.Min(1.0, (dca/da)*sa/(sa-sca))) + float64(sca*id) + float64(dca*is)
 		}
 		if dca > 0 {
-			return sada + sca*id + dca*is
+			return sada + float64(sca*id) + float64(dca*is)
 		}
 		return sca * id
 	}
@@ -802,7 +821,7 @@ func (bl CompositeBlender[S, O]) colorDodge(d, s normalizedRGBA) normalizedRGBA 
 		r: calc(d.r, s.r, d.a, s.a, sada, id, is),
 		g: calc(d.g, s.g, d.a, s.a, sada, id, is),
 		b: calc(d.b, s.b, d.a, s.a, sada, id, is),
-		a: d.a + s.a - s.a*d.a,
+		a: d.a + s.a - float64(s.a*d.a),
 	}
 }
 
@@ -815,16 +834,16 @@ func (bl CompositeBlender[S, O]) colorBurn(d, s normalizedRGBA) normalizedRGBA {
 		id := 1.0 - d.a
 		return normalizedRGBA{r: s.r * id, g: s.g * id, b: s.b * id, a: s.a}
 	}
-	sada := s.a * d.a
+	sada := float64(s.a * d.a)
 	is := 1.0 - s.a
 	id := 1.0 - d.a
 
 	calc := func(dca, sca, da, sa, sada, id, is float64) float64 {
 		if sca > 0 {
-			return sada*(1.0-math.Min(1.0, (1.0-dca/da)*sa/sca)) + sca*id + dca*is
+			return float64(sada*(1.0-math.Min(1.0, (1.0-dca/da)*sa/sca))) + float64(sca*id) + float64(dca*is)
 		}
 		if dca > da {
-			return sada + dca*is
+			return sada + float64(dca*is)
 		}
 		return dca * is
 	}
@@ -833,7 +852,7 @@ func (bl CompositeBlender[S, O]) colorBurn(d, s normalizedRGBA) normalizedRGBA {
 		r: calc(d.r, s.r, d.a, s.a, sada, id, is),
 		g: calc(d.g, s.g, d.a, s.a, sada, id, is),
 		b: calc(d.b, s.b, d.a, s.a, sada, id, is),
-		a: d.a + s.a - s.a*d.a,
+		a: d.a + s.a - float64(s.a*d.a),
 	}
 }
 
@@ -844,20 +863,20 @@ func (bl CompositeBlender[S, O]) hardLight(d, s normalizedRGBA) normalizedRGBA {
 	}
 	id := 1.0 - d.a
 	is := 1.0 - s.a
-	sada := s.a * d.a
+	sada := float64(s.a * d.a)
 
 	calc := func(dca, sca, da, sa, sada, id, is float64) float64 {
 		if 2*sca <= sa {
-			return 2*sca*dca + sca*id + dca*is
+			return float64(2*sca*dca) + float64(sca*id) + float64(dca*is)
 		}
-		return sada - 2*(da-dca)*(sa-sca) + sca*id + dca*is
+		return sada - float64(2*(da-dca)*(sa-sca)) + float64(sca*id) + float64(dca*is)
 	}
 
 	return normalizedRGBA{
 		r: calc(d.r, s.r, d.a, s.a, sada, id, is),
 		g: calc(d.g, s.g, d.a, s.a, sada, id, is),
 		b: calc(d.b, s.b, d.a, s.a, sada, id, is),
-		a: d.a + s.a - s.a*d.a,
+		a: d.a + s.a - float64(s.a*d.a),
 	}
 }
 
@@ -871,19 +890,20 @@ func (bl CompositeBlender[S, O]) softLight(d, s normalizedRGBA) normalizedRGBA {
 		return normalizedRGBA{r: s.r * id, g: s.g * id, b: s.b * id, a: s.a}
 	}
 
-	sada := s.a * d.a
+	sada := float64(s.a * d.a)
 	is := 1.0 - s.a
 	id := 1.0 - d.a
 
 	calc := func(dca, sca, da, sa, sada, id, is float64) float64 {
-		dcasa := dca * sa
+		dcasa := float64(dca * sa)
 		if 2*sca <= sa {
-			return dcasa - (sada-2*sca*da)*dcasa*(sada-dcasa) + sca*id + dca*is
+			return dcasa - float64((sada-float64(2*sca*da))*dcasa*(sada-dcasa)) + float64(sca*id) + float64(dca*is)
 		}
 		if 4*dca <= da {
-			return dcasa + (2*sca*da-sada)*((((16*dcasa-12)*dcasa+4)*dca*da)-dca*da) + sca*id + dca*is
+			poly := float64((float64(16*dcasa)-12)*dcasa) + 4
+			return dcasa + float64((float64(2*sca*da)-sada)*(float64(poly*dca*da)-float64(dca*da))) + float64(sca*id) + float64(dca*is)
 		}
-		return dcasa + (2*sca*da-sada)*(math.Sqrt(dcasa)-dcasa) + sca*id + dca*is
+		return dcasa + float64((float64(2*sca*da)-sada)*(math.Sqrt(dcasa)-dcasa)) + float64(sca*id) + float64(dca*is)
 	}
 
 	return normalizedRGBA{
@@ -900,10 +920,10 @@ func (bl CompositeBlender[S, O]) difference(d, s normalizedRGBA) normalizedRGBA 
 		return d
 	}
 	return normalizedRGBA{
-		r: s.r + d.r - 2*math.Min(s.r*d.a, d.r*s.a),
-		g: s.g + d.g - 2*math.Min(s.g*d.a, d.g*s.a),
-		b: s.b + d.b - 2*math.Min(s.b*d.a, d.b*s.a),
-		a: s.a + d.a - s.a*d.a,
+		r: s.r + d.r - float64(2*math.Min(s.r*d.a, d.r*s.a)),
+		g: s.g + d.g - float64(2*math.Min(s.g*d.a, d.g*s.a)),
+		b: s.b + d.b - float64(2*math.Min(s.b*d.a, d.b*s.a)),
+		a: s.a + d.a - float64(s.a*d.a),
 	}
 }
 
@@ -915,10 +935,10 @@ func (bl CompositeBlender[S, O]) exclusion(d, s normalizedRGBA) normalizedRGBA {
 	id := 1.0 - d.a
 	is := 1.0 - s.a
 	return normalizedRGBA{
-		r: s.r*d.a + d.r*s.a - 2*s.r*d.r + s.r*id + d.r*is,
-		g: s.g*d.a + d.g*s.a - 2*s.g*d.g + s.g*id + d.g*is,
-		b: s.b*d.a + d.b*s.a - 2*s.b*d.b + s.b*id + d.b*is,
-		a: d.a + s.a - s.a*d.a,
+		r: float64(s.r*d.a) + float64(d.r*s.a) - float64(2*s.r*d.r) + float64(s.r*id) + float64(d.r*is),
+		g: float64(s.g*d.a) + float64(d.g*s.a) - float64(2*s.g*d.g) + float64(s.g*id) + float64(d.g*is),
+		b: float64(s.b*d.a) + float64(d.b*s.a) - float64(2*s.b*d.b) + float64(s.b*id) + float64(d.b*is),
+		a: d.a + s.a - float64(s.a*d.a),
 	}
 }
 
@@ -947,11 +967,11 @@ func straightRGB(c normalizedRGBA) [3]float64 {
 
 func blendRGBResult(d, s normalizedRGBA, blended [3]float64) normalizedRGBA {
 	id, is := 1.0-d.a, 1.0-s.a
-	sada := s.a * d.a
+	sada := float64(s.a * d.a)
 	return normalizedRGBA{
-		r: s.r*id + d.r*is + sada*blended[0],
-		g: s.g*id + d.g*is + sada*blended[1],
-		b: s.b*id + d.b*is + sada*blended[2],
+		r: float64(s.r*id) + float64(d.r*is) + float64(sada*blended[0]),
+		g: float64(s.g*id) + float64(d.g*is) + float64(sada*blended[1]),
+		b: float64(s.b*id) + float64(d.b*is) + float64(sada*blended[2]),
 		a: s.a + d.a - sada,
 	}
 }
@@ -990,13 +1010,13 @@ func (bl CompositeBlender[S, O]) vividLight(d, s normalizedRGBA) normalizedRGBA 
 		if source < 0.5 {
 			return photoshopColorBurn(backdrop, 2*source)
 		}
-		return photoshopColorDodge(backdrop, 2*source-1)
+		return photoshopColorDodge(backdrop, float64(2*source)-1)
 	})
 }
 
 func (bl CompositeBlender[S, O]) linearLight(d, s normalizedRGBA) normalizedRGBA {
 	return bl.blendSeparable(d, s, func(backdrop, source float64) float64 {
-		return backdrop + 2*source - 1
+		return backdrop + float64(2*source) - 1
 	})
 }
 
@@ -1005,7 +1025,7 @@ func (bl CompositeBlender[S, O]) pinLight(d, s normalizedRGBA) normalizedRGBA {
 		if source < 0.5 {
 			return math.Min(backdrop, 2*source)
 		}
-		return math.Max(backdrop, 2*source-1)
+		return math.Max(backdrop, float64(2*source)-1)
 	})
 }
 
@@ -1015,7 +1035,7 @@ func (bl CompositeBlender[S, O]) hardMix(d, s normalizedRGBA) normalizedRGBA {
 		if source < 0.5 {
 			vivid = photoshopColorBurn(backdrop, 2*source)
 		} else {
-			vivid = photoshopColorDodge(backdrop, 2*source-1)
+			vivid = photoshopColorDodge(backdrop, float64(2*source)-1)
 		}
 		if vivid < 0.5 {
 			return 0
@@ -1078,15 +1098,15 @@ func (bl CompositeBlender[S, O]) colorBurnPhotoshop(d, s normalizedRGBA) normali
 func (bl CompositeBlender[S, O]) softLightPhotoshop(d, s normalizedRGBA) normalizedRGBA {
 	return bl.blendSeparable(d, s, func(backdrop, source float64) float64 {
 		if source <= 0.5 {
-			return backdrop - (1-2*source)*backdrop*(1-backdrop)
+			return backdrop - float64((1-float64(2*source))*backdrop*(1-backdrop))
 		}
 		var curve float64
 		if backdrop <= 0.25 {
-			curve = ((16*backdrop-12)*backdrop + 4) * backdrop
+			curve = float64((float64((float64(16*backdrop)-12)*backdrop) + 4) * backdrop)
 		} else {
 			curve = math.Sqrt(backdrop)
 		}
-		return backdrop + (2*source-1)*(curve-backdrop)
+		return backdrop + float64((float64(2*source)-1)*(curve-backdrop))
 	})
 }
 
@@ -1111,7 +1131,7 @@ func photoshopColorBurn(backdrop, source float64) float64 {
 }
 
 func photoshopLuminosity(c [3]float64) float64 {
-	return 0.3*c[0] + 0.59*c[1] + 0.11*c[2]
+	return float64(0.3*c[0]) + float64(0.59*c[1]) + float64(0.11*c[2])
 }
 
 func photoshopSaturation(c [3]float64) float64 {

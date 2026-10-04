@@ -182,10 +182,11 @@ func TestRGB16EdgeCases(t *testing.T) {
 		t.Errorf("Gradient with k=0 should return first color: got %v", grad0)
 	}
 
-	// k=65535 should return second color
+	// k=65535: C++ rgba16::lerp(0, 65535, 65535) wraps its 32-bit int
+	// product and yields 65534 (C++ oracle).
 	grad1 := black.Gradient(white, 65535)
-	if grad1.R != 65535 || grad1.G != 65535 || grad1.B != 65535 {
-		t.Errorf("Gradient with k=65535 should return second color: got %v", grad1)
+	if grad1.R != 65534 || grad1.G != 65534 || grad1.B != 65534 {
+		t.Errorf("Gradient with k=65535: got %v, C++ {65534 65534 65534}", grad1)
 	}
 }
 
@@ -245,10 +246,10 @@ func TestRGB16HelperFunctions(t *testing.T) {
 	}
 
 	// Test RGB16Prelerp (premultiplied interpolation)
+	// C++ rgba16::prelerp: p + q - multiply(p, a) = 57344 (C++ oracle).
 	prelerpResult := RGB16Prelerp(16384, 49152, 32768)
-	// This should be similar to regular lerp for this case
-	if prelerpResult < 30000 || prelerpResult > 35000 {
-		t.Errorf("RGB16Prelerp result seems out of range: got %d", prelerpResult)
+	if prelerpResult != 57344 {
+		t.Errorf("RGB16Prelerp(16384, 49152, 32768) = %d, C++ 57344", prelerpResult)
 	}
 
 	// Test RGB16MultCover

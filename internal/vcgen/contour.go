@@ -104,13 +104,9 @@ func (vc *VCGenContour) Rewind(pathID uint) {
 
 		if vc.autoDetect {
 			if !basics.IsOriented(vc.orientation) {
-				// Calculate polygon area to determine orientation
-				vertices := make([]basics.Point[float64], vc.srcVertices.Size())
-				for i := 0; i < vc.srcVertices.Size(); i++ {
-					v := vc.srcVertices.Get(i)
-					vertices[i] = basics.Point[float64]{X: v.X, Y: v.Y}
-				}
-				area := basics.CalcPolygonArea(vertices)
+				// C++: calc_polygon_area(m_src_vertices) > 0.0 ? ccw : cw.
+				// The signed area is computed directly over the vertex storage.
+				area := basics.CalcPolygonAreaFunc(vc.srcVertices.Size(), vc.srcVertexXY)
 				if area > 0.0 {
 					vc.orientation = uint32(basics.PathFlagsCCW)
 				} else {
@@ -304,4 +300,11 @@ func (vc *VCGenContour) next(idx int) basics.VertexDist {
 		v = vc.srcVertices.At(idx + 1)
 	}
 	return basics.VertexDist{X: v.X, Y: v.Y, Dist: v.Dist}
+}
+
+// srcVertexXY returns the coordinates of source vertex i (storage accessor for
+// basics.CalcPolygonAreaFunc).
+func (vc *VCGenContour) srcVertexXY(i int) (float64, float64) {
+	v := vc.srcVertices.At(i)
+	return v.X, v.Y
 }

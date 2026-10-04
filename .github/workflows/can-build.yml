@@ -28,5 +28,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libx11-dev libsdl2-dev
 
-      - name: Build
+      - name: Build (default tags)
         run: just build
+
+      # The X11 and SDL2 backends only compile with their build tags.
+      - name: Build platform backends (-tags x11,sdl2)
+        run: just build-platform

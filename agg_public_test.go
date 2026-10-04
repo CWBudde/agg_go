@@ -115,14 +115,17 @@ func TestAgg2DPublicWrappers(t *testing.T) {
 
 	a.FillRadialGradient(2, 2, 3, Red, Blue, 1.0)
 	a.FillRadialGradientPos(4, 5, 6)
-	if got := a.FillGradientD2(); math.Abs(got-6) > 1e-9 {
-		t.Fatalf("FillRadialGradientPos() radius = %v, want 6", got)
+	// C++ worldToScreen(r) uses the truncated 0.7071068 (agg2d.cpp:296).
+	wantD2 := math.Sqrt(6*6+6*6) * 0.7071068
+	if got := a.FillGradientD2(); math.Abs(got-wantD2) > 1e-12 {
+		t.Fatalf("FillRadialGradientPos() radius = %v, want %v", got, wantD2)
 	}
 
 	a.LineRadialGradient(2, 2, 3, Red, Blue, 1.0)
 	a.LineRadialGradientPos(7, 8, 9)
-	if got := a.LineGradientD2(); math.Abs(got-9) > 1e-9 {
-		t.Fatalf("LineRadialGradientPos() radius = %v, want 9", got)
+	wantLineD2 := math.Sqrt(9*9+9*9) * 0.7071068
+	if got := a.LineGradientD2(); math.Abs(got-wantLineD2) > 1e-12 {
+		t.Fatalf("LineRadialGradientPos() radius = %v, want %v", got, wantLineD2)
 	}
 
 	a.ResetTransformations()
@@ -178,14 +181,13 @@ func TestAgg2DCompatibilityShims(t *testing.T) {
 		t.Fatalf("Demultiply() alpha = %d, want 128", got[3])
 	}
 
-	if ImageFilterBlackman144 != ImageFilterBlackman {
-		t.Fatalf("ImageFilterBlackman144 = %v, want %v", ImageFilterBlackman144, ImageFilterBlackman)
+	// C++ Agg2D::Blackman144 is image_filter_blackman144 (radius 6), distinct
+	// from the Go-extension Blackman (radius 4).
+	if ImageFilterBlackman144 == ImageFilterBlackman {
+		t.Fatalf("ImageFilterBlackman144 must not alias ImageFilterBlackman")
 	}
-	if Blackman144 != Blackman {
-		t.Fatalf("Blackman144 = %v, want %v", Blackman144, Blackman)
-	}
-	if FilterBlackman144 != FilterBlackman {
-		t.Fatalf("FilterBlackman144 = %v, want %v", FilterBlackman144, FilterBlackman)
+	if Blackman144 != ImageFilterBlackman144 || FilterBlackman144 != ImageFilterBlackman144 {
+		t.Fatalf("Blackman144 aliases disagree: %v %v %v", Blackman144, FilterBlackman144, ImageFilterBlackman144)
 	}
 
 	a.ResetPath()

@@ -8,7 +8,6 @@ package agg2d
 import (
 	"github.com/cwbudde/agg_go/internal/basics"
 	"github.com/cwbudde/agg_go/internal/conv"
-	"github.com/cwbudde/agg_go/internal/path"
 )
 
 // AddDash appends one dash-gap pair to the current dash pattern. The first call
@@ -75,8 +74,7 @@ func (a *Agg2DFloat) initializeDashing() {
 
 	// Insert the dash converter on top of the curve converter, then stroke the
 	// dashed output: Path -> Curve -> Dash -> Stroke.
-	pathAdapter := path.NewPathStorageStlVertexSourceAdapter(a.path)
-	a.convCurve = conv.NewConvCurve(pathAdapter)
+	// Reuse the existing curve converter so its approximation scale survives.
 	a.convDash = conv.NewConvDash(a.convCurve)
 	a.convStroke = conv.NewConvStroke(a.convDash)
 

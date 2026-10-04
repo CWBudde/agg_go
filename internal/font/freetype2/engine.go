@@ -25,10 +25,24 @@ import (
 	"fmt"
 	"unsafe"
 
-	"github.com/cwbudde/agg_go/internal/font"
+	"github.com/cwbudde/agg_go/internal/basics"
 	"github.com/cwbudde/agg_go/internal/path"
 	"github.com/cwbudde/agg_go/internal/transform"
 )
+
+// integerPathStorage abstracts the 16-bit and 32-bit integer outline storages
+// (AGG's path_storage_integer<int16/int32>) used for glyph decomposition.
+type integerPathStorage interface {
+	RemoveAll()
+	MoveTo64(x, y int64)
+	LineTo64(x, y int64)
+	Curve3_64(xCtrl, yCtrl, xTo, yTo int64)
+	Curve4_64(xCtrl1, yCtrl1, xCtrl2, yCtrl2, xTo, yTo int64)
+	ClosePolygon()
+	Size() uint32
+	ByteSize() uint32
+	Vertex(idx uint32) (float64, float64, basics.PathCommand)
+}
 
 // FontEngine is the main FreeType2 font engine with enhanced multi-face support.
 // This corresponds to AGG's fman::font_engine_freetype_base class.
@@ -175,7 +189,7 @@ func (fe *FontEngine) pathStorage32ForTests() *path.PathStorageInteger[int32] {
 }
 
 // pathStorageForTests exposes the active internal path storage for package-local tests.
-func (fe *FontEngine) pathStorageForTests() font.IntegerPathStorage {
+func (fe *FontEngine) pathStorageForTests() integerPathStorage {
 	if fe.flag32 {
 		return fe.pathStorage32
 	}
@@ -191,7 +205,7 @@ func (fe *FontEngine) DecomposeFTOutline(outline *C.FT_Outline, flipY bool, affi
 	}
 
 	// Clear the appropriate path storage
-	var pathStorage font.IntegerPathStorage
+	var pathStorage integerPathStorage
 	if fe.flag32 {
 		fe.pathStorage32.RemoveAll()
 		pathStorage = fe.pathStorage32
@@ -205,7 +219,7 @@ func (fe *FontEngine) DecomposeFTOutline(outline *C.FT_Outline, flipY bool, affi
 
 // decomposeOutlineToPath performs the actual outline decomposition.
 // This implements the complex FreeType outline walking algorithm from AGG.
-func (fe *FontEngine) decomposeOutlineToPath(outline *C.FT_Outline, flipY bool, affine *transform.TransAffine, pathStorage font.IntegerPathStorage) error {
+func (fe *FontEngine) decomposeOutlineToPath(outline *C.FT_Outline, flipY bool, affine *transform.TransAffine, pathStorage integerPathStorage) error {
 	first := 0
 
 	for n := 0; n < int(outline.n_contours); n++ {
@@ -277,7 +291,7 @@ func (fe *FontEngine) decomposeOutlineToPath(outline *C.FT_Outline, flipY bool, 
 // processContourPoints processes the points in a single contour.
 func (fe *FontEngine) processContourPoints(outline *C.FT_Outline, first, last int, flipY bool,
 	affine *transform.TransAffine,
-	pathStorage font.IntegerPathStorage, startPoint *C.FT_Vector,
+	pathStorage integerPathStorage, startPoint *C.FT_Vector,
 ) error {
 	i := first
 	for i < last {
@@ -316,7 +330,7 @@ func (fe *FontEngine) processContourPoints(outline *C.FT_Outline, first, last in
 // processConicCurve handles quadratic Bézier curves.
 func (fe *FontEngine) processConicCurve(outline *C.FT_Outline, i *int, last int, flipY bool,
 	affine *transform.TransAffine,
-	pathStorage font.IntegerPathStorage, startPoint *C.FT_Vector,
+	pathStorage integerPathStorage, startPoint *C.FT_Vector,
 ) error {
 	// Get control point
 	controlPtr := uintptr(unsafe.Pointer(outline.points)) + uintptr(*i)*unsafe.Sizeof(C.FT_Vector{})
@@ -374,7 +388,7 @@ func (fe *FontEngine) processConicCurve(outline *C.FT_Outline, i *int, last int,
 // processCubicCurve handles cubic Bézier curves.
 func (fe *FontEngine) processCubicCurve(outline *C.FT_Outline, i *int, last int, flipY bool,
 	affine *transform.TransAffine,
-	pathStorage font.IntegerPathStorage, startPoint *C.FT_Vector,
+	pathStorage integerPathStorage, startPoint *C.FT_Vector,
 ) error {
 	if *i+1 > last {
 		return errors.New("insufficient points for cubic curve")

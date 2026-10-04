@@ -26,9 +26,11 @@ func (a *Agg2DFloat) GouraudTriangle(x1, y1, x2, y2, x3, y3 float64, c1, c2, c3 
 	}
 	a.rasterizer.Reset()
 
-	gc1 := a.applyMasterAlpha(colorToRGBA32(c1))
-	gc2 := a.applyMasterAlpha(colorToRGBA32(c2))
-	gc3 := a.applyMasterAlpha(colorToRGBA32(c3))
+	// Master alpha is applied by the rasterizer gamma (as for every Agg2D
+	// fill), so the vertex colours stay unscaled -- same as the 8-bit twin.
+	gc1 := colorToRGBA32(c1)
+	gc2 := colorToRGBA32(c2)
+	gc3 := colorToRGBA32(c3)
 
 	spanGen := span.NewSpanGouraudRGBA128WithTriangle(gc1, gc2, gc3, x1, y1, x2, y2, x3, y3, d)
 

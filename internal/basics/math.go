@@ -136,22 +136,38 @@ func CalcTriangleArea(x1, y1, x2, y2, x3, y3 float64) float64 {
 	return math.Abs((x1*(y2-y3) + x2*(y3-y1) + x3*(y1-y2)) * 0.5)
 }
 
-// Calculate polygon area using the shoelace formula
+// CalcPolygonArea returns the SIGNED area of a polygon (shoelace formula),
+// matching AGG's calc_polygon_area (agg_math.h). The result is positive for
+// counter-clockwise vertex order in a Y-up frame (negative for clockwise);
+// callers that need the magnitude must apply math.Abs themselves.
 func CalcPolygonArea[T ~float64](vertices []Point[T]) float64 {
-	if len(vertices) < 3 {
+	return CalcPolygonAreaFunc(len(vertices), func(i int) (float64, float64) {
+		return float64(vertices[i].X), float64(vertices[i].Y)
+	})
+}
+
+// CalcPolygonAreaFunc is the storage-agnostic form of CalcPolygonArea, mirroring
+// the templated C++ calc_polygon_area<Storage>: n is the vertex count and
+// vertex(i) returns the i-th vertex. The summation order is the C++ one (start
+// at vertex 0, accumulate x*v.y - y*v.x, then add the closing term), and
+// products are explicitly rounded so that FMA contraction cannot change the
+// result. It returns 0 for fewer than three vertices without calling vertex
+// (so a nil accessor is safe). For one or two finite vertices C++ also yields
+// 0, because the shoelace cross terms cancel exactly; for an empty storage C++
+// has undefined behaviour.
+func CalcPolygonAreaFunc(n int, vertex func(i int) (x, y float64)) float64 {
+	if n < 3 {
 		return 0
 	}
-
-	area := 0.0
-	n := len(vertices)
-
-	for i := 0; i < n; i++ {
-		j := (i + 1) % n
-		area += float64(vertices[i].X * vertices[j].Y)
-		area -= float64(vertices[j].X * vertices[i].Y)
+	sum := 0.0
+	x, y := vertex(0)
+	xs, ys := x, y
+	for i := 1; i < n; i++ {
+		vx, vy := vertex(i)
+		sum += float64(x*vy) - float64(y*vx)
+		x, y = vx, vy
 	}
-
-	return math.Abs(area) * 0.5
+	return (sum + float64(x*ys) - float64(y*xs)) * 0.5
 }
 
 // Fast sqrt lookup table (1024 entries for fast square root approximation)

@@ -826,7 +826,7 @@ func (t *transformedPathSource) NextVertex() (x, y float64, cmd uint32) {
 
 // renderGlyphScanlines renders a glyph using scanline data.
 // This mirrors AGG2D's render(gray8_adaptor/mono_adaptor, scanline) flow.
-func (agg2d *Agg2D) renderGlyphScanlines(adaptor font.SerializedScanlinesAdaptor, glyph *font.GlyphCache, x, y float64) {
+func (agg2d *Agg2D) renderGlyphScanlines(adaptor renscan.RasterizerInterface, glyph *font.GlyphCache, x, y float64) {
 	if agg2d.scanline == nil || glyph == nil || adaptor == nil {
 		return
 	}
@@ -846,10 +846,9 @@ func (agg2d *Agg2D) renderScanlines(ras renscan.RasterizerInterface, sl renscan.
 		B: agg2d.fillColor[2],
 		A: agg2d.fillColor[3],
 	}
-	if agg2d.masterAlpha != 1.0 {
-		alpha := uint8(float64(fillColor.A) * agg2d.masterAlpha)
-		fillColor.A = alpha
-	}
+	// No master alpha here: C++ renders gray8 glyphs through the font cache's
+	// own scanline adaptor (Agg2D::render(FontRasterizer&, FontScanline&),
+	// agg2d.cpp:1589), which bypasses m_rasterizer and its master-alpha gamma.
 
 	if mono {
 		renscan.RenderScanlinesBinSolid(ras, sl, renderer, fillColor)

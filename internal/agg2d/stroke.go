@@ -4,7 +4,6 @@ package agg2d
 
 import (
 	"github.com/cwbudde/agg_go/internal/conv"
-	"github.com/cwbudde/agg_go/internal/path"
 )
 
 // MiterLimit sets the miter limit for line joins.
@@ -131,9 +130,9 @@ func (agg2d *Agg2D) initializeDashing() {
 	approximationScale := agg2d.GetApproximationScale()
 	shorten := agg2d.GetShorten()
 
-	// Create dash converter that operates on the curve converter
-	pathAdapter := path.NewPathStorageStlVertexSourceAdapter(agg2d.path)
-	agg2d.convCurve = conv.NewConvCurve(pathAdapter)
+	// Create dash converter on top of the existing curve converter, so the
+	// curve's approximation scale (set by the transform setters, as in C++)
+	// and its other settings survive.
 	agg2d.convDash = conv.NewConvDash(agg2d.convCurve)
 
 	// Recreate stroke converter to operate on dashed output

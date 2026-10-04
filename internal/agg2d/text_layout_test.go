@@ -2,6 +2,7 @@ package agg2d
 
 import (
 	"bytes"
+	"math"
 	"testing"
 
 	"github.com/cwbudde/agg_go/internal/basics"
@@ -787,7 +788,10 @@ func TestRasterTextBoundsMatchRenderedBitmapPlacement(t *testing.T) {
 	gotW := float64(maxX - minX + 1)
 	gotH := float64(maxY - minY + 1)
 
-	if x != gotX || y != gotY || w != gotW || h != gotH {
+	// Raster bounds go through screenToWorld, which uses C++'s truncated
+	// 0.7071068 factor (agg2d.cpp:309), so identity transforms are not bit-exact.
+	near := func(a, b float64) bool { return math.Abs(a-b) <= 1e-6*math.Max(1, math.Abs(b)) }
+	if !near(x, gotX) || !near(y, gotY) || !near(w, gotW) || !near(h, gotH) {
 		t.Fatalf(
 			"GetTextBounds(%q)=(%v,%v,%v,%v), rendered bounds relative to baseline=(%v,%v,%v,%v)",
 			text, x, y, w, h, gotX, gotY, gotW, gotH,

@@ -47,18 +47,18 @@ func (c RGB16[CS]) ConvertToRGBA() RGBA {
 // ConvertFromRGB converts from floating-point RGB
 func ConvertFromRGB16[CS Space](c RGB) RGB16[CS] {
 	return RGB16[CS]{
-		R: basics.Int16u(c.R*65535 + 0.5),
-		G: basics.Int16u(c.G*65535 + 0.5),
-		B: basics.Int16u(c.B*65535 + 0.5),
+		R: RGBA16FromDouble(c.R),
+		G: RGBA16FromDouble(c.G),
+		B: RGBA16FromDouble(c.B),
 	}
 }
 
 // ConvertRGBAToRGB16 converts from RGBA (ignores alpha)
 func ConvertRGBAToRGB16[CS Space](c RGBA) RGB16[CS] {
 	return RGB16[CS]{
-		R: basics.Int16u(c.R*65535 + 0.5),
-		G: basics.Int16u(c.G*65535 + 0.5),
-		B: basics.Int16u(c.B*65535 + 0.5),
+		R: RGBA16FromDouble(c.R),
+		G: RGBA16FromDouble(c.G),
+		B: RGBA16FromDouble(c.B),
 	}
 }
 
@@ -111,9 +111,9 @@ func (c RGB16[CS]) IsWhite() bool {
 
 // Luminance calculates the ITU-R BT.709 luminance
 func (c RGB16[CS]) Luminance() basics.Int16u {
-	// ITU-R BT.709: Y = 0.2126*R + 0.7152*G + 0.0722*B
-	// Using fixed-point arithmetic for performance, scaled for 16-bit
-	return basics.Int16u((uint32(c.R)*13933 + uint32(c.G)*46871 + uint32(c.B)*4731) >> 16)
+	// ITU-R BT.709 with the integer weights of C++ gray16::luminance(rgba16):
+	// (13933*r + 46872*g + 4732*b) >> 16.
+	return basics.Int16u((uint32(c.R)*13933 + uint32(c.G)*46872 + uint32(c.B)*4732) >> 16)
 }
 
 func ApplyGammaDir16RGB[CS Space, LUT lut16Like](px *RGB16[CS], lut LUT) {

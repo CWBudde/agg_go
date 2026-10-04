@@ -36,18 +36,18 @@ func (c RGB8[CS]) ConvertToRGBA() RGBA {
 // ConvertFromRGB converts from floating-point RGB
 func ConvertFromRGB[CS Space](c RGB) RGB8[CS] {
 	return RGB8[CS]{
-		R: basics.Int8u(c.R*255 + 0.5),
-		G: basics.Int8u(c.G*255 + 0.5),
-		B: basics.Int8u(c.B*255 + 0.5),
+		R: RGBA8FromDouble(c.R),
+		G: RGBA8FromDouble(c.G),
+		B: RGBA8FromDouble(c.B),
 	}
 }
 
 // ConvertRGBAToRGB8 converts from RGBA (ignores alpha)
 func ConvertRGBAToRGB8[CS Space](c RGBA) RGB8[CS] {
 	return RGB8[CS]{
-		R: basics.Int8u(c.R*255 + 0.5),
-		G: basics.Int8u(c.G*255 + 0.5),
-		B: basics.Int8u(c.B*255 + 0.5),
+		R: RGBA8FromDouble(c.R),
+		G: RGBA8FromDouble(c.G),
+		B: RGBA8FromDouble(c.B),
 	}
 }
 
@@ -100,9 +100,9 @@ func (c RGB8[CS]) IsWhite() bool {
 
 // Luminance calculates the ITU-R BT.709 luminance
 func (c RGB8[CS]) Luminance() basics.Int8u {
-	// ITU-R BT.709: Y = 0.2126*R + 0.7152*G + 0.0722*B
-	// Using fixed-point arithmetic for performance
-	return basics.Int8u((uint32(c.R)*54 + uint32(c.G)*183 + uint32(c.B)*18) >> 8)
+	// ITU-R BT.709 with the integer weights of C++ gray8T::luminance(rgba8):
+	// (55*r + 184*g + 18*b) >> 8.
+	return basics.Int8u((uint32(c.R)*bt709R + uint32(c.G)*bt709G + uint32(c.B)*bt709B) >> 8)
 }
 
 // Apply 8-bit gamma (RGB only) to an RGB8 pixel in-place.

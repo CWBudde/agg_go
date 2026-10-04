@@ -12,8 +12,8 @@ import (
 
 // Rotate applies a rotation (radians) to the world transform.
 func (a *Agg2DFloat) Rotate(angle float64) {
+	// C++ rotate() does not update the approximation scale.
 	a.transform.Rotate(angle)
-	a.updateApproximationScales()
 }
 
 // Scale applies a scaling transformation.
@@ -28,7 +28,8 @@ func (a *Agg2DFloat) UniformScale(s float64) { a.Scale(s, s) }
 // Skew applies a skewing transformation (radians).
 func (a *Agg2DFloat) Skew(sx, sy float64) {
 	skew := transform.NewTransAffineFromValues(1.0, math.Tan(sy), math.Tan(sx), 1.0, 0.0, 0.0)
-	a.Affine(skew)
+	// C++ skew() does not update the approximation scale (unlike affine()).
+	a.transform.Multiply(skew)
 }
 
 // Translate applies a translation.

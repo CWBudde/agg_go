@@ -206,10 +206,10 @@ func TestRGB32HelperFunctions(t *testing.T) {
 	}
 
 	// Test RGB16Prelerp (premultiplied interpolation)
+	// C++ rgba16::prelerp: p + q - multiply(p, a) = 57344 (C++ oracle).
 	prelerpResult := RGB16Prelerp(16384, 49152, 32768)
-	// This should be similar to regular lerp for this case
-	if prelerpResult < 30000 || prelerpResult > 35000 {
-		t.Errorf("RGB16Prelerp result seems out of range: got %d", prelerpResult)
+	if prelerpResult != 57344 {
+		t.Errorf("RGB16Prelerp(16384, 49152, 32768) = %d, C++ 57344", prelerpResult)
 	}
 
 	// Test RGB16MultCover

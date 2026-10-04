@@ -15,9 +15,11 @@ const (
 
 // Curve approximation constants
 const (
-	// ApproxScale is the global approximation scale factor for curves.
-	// This matches g_approxScale from the original C++ AGG library.
-	ApproxScale = 1.0
+	// ApproxScale is C++ g_approxScale (agg2d.cpp:28). The curve and stroke
+	// converters get worldToScreen(1.0) * ApproxScale whenever the world
+	// transform is scaled or replaced (scale, affine, parallelogram, viewport,
+	// transformations); until then they keep AGG's default scale of 1.0.
+	ApproxScale = 2.0
 )
 
 // Additional ImageFilter constants
@@ -37,6 +39,12 @@ const (
 	ImageFilterMitchell ImageFilter = 14
 	ImageFilterSinc     ImageFilter = 15
 	ImageFilterLanczos  ImageFilter = 16
+
+	// ImageFilterBlackman144 is C++ Agg2D::Blackman144, i.e.
+	// image_filter_blackman144 = image_filter_blackman with radius 6
+	// (agg_image_filters.h:435). ImageFilterBlackman (radius 4) is a Go
+	// extension and is not the same filter.
+	ImageFilterBlackman144 ImageFilter = 17
 )
 
 // Additional ImageResample constants
@@ -82,7 +90,7 @@ const (
 	Spline16                = ImageFilterSpline16
 	Spline36                = ImageFilterSpline36
 	Blackman                = ImageFilterBlackman
-	Blackman144             = ImageFilterBlackman
+	Blackman144             = ImageFilterBlackman144
 	Kaiser                  = ImageFilterKaiser
 	Gaussian                = ImageFilterGaussian
 	Bessel                  = ImageFilterBessel

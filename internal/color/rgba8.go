@@ -47,10 +47,10 @@ func (c RGBA8[CS]) ConvertToRGBA() RGBA {
 // ConvertFromRGBA converts from floating-point RGBA
 func ConvertFromRGBA[CS Space](c RGBA) RGBA8[CS] {
 	return RGBA8[CS]{
-		R: basics.Int8u(c.R*255 + 0.5),
-		G: basics.Int8u(c.G*255 + 0.5),
-		B: basics.Int8u(c.B*255 + 0.5),
-		A: basics.Int8u(c.A*255 + 0.5),
+		R: RGBA8FromDouble(c.R),
+		G: RGBA8FromDouble(c.G),
+		B: RGBA8FromDouble(c.B),
+		A: RGBA8FromDouble(c.A),
 	}
 }
 
@@ -73,10 +73,11 @@ func (c *RGBA8[CS]) Demultiply() {
 		if c.A == 0 {
 			c.R, c.G, c.B = 0, 0, 0
 		} else {
-			// Use accurate division for demultiplication
-			c.R = basics.Int8u((uint32(c.R)*RGBA8BaseMask + uint32(c.A)/2) / uint32(c.A))
-			c.G = basics.Int8u((uint32(c.G)*RGBA8BaseMask + uint32(c.A)/2) / uint32(c.A))
-			c.B = basics.Int8u((uint32(c.B)*RGBA8BaseMask + uint32(c.A)/2) / uint32(c.A))
+			// C++ rgba8T::demultiply: truncating division, clamped to base_mask.
+			a := uint32(c.A)
+			c.R = basics.Int8u(minUint32(uint32(c.R)*RGBA8BaseMask/a, RGBA8BaseMask))
+			c.G = basics.Int8u(minUint32(uint32(c.G)*RGBA8BaseMask/a, RGBA8BaseMask))
+			c.B = basics.Int8u(minUint32(uint32(c.B)*RGBA8BaseMask/a, RGBA8BaseMask))
 		}
 	}
 }
@@ -111,7 +112,9 @@ func (c RGBA8[CS]) IsOpaque() bool {
 	return c.A == 255
 }
 
-// Opacity sets the alpha channel (0.0 to 1.0)
+// Opacity sets the alpha channel (0.0 to 1.0). In-range values use
+// from_double rounding like C++. Values above 1 saturate to 255; C++
+// rgba8T::opacity literally stores 1 in that case (see docs/AGG_DELTAS.md).
 func (c *RGBA8[CS]) Opacity(a float64) {
 	switch {
 	case a < 0:
@@ -119,7 +122,7 @@ func (c *RGBA8[CS]) Opacity(a float64) {
 	case a > 1:
 		c.A = 255
 	default:
-		c.A = basics.Int8u(a*255 + 0.5)
+		c.A = RGBA8FromDouble(a)
 	}
 }
 
@@ -240,7 +243,8 @@ func RGBA8Lerp(p, q, a basics.Int8u) basics.Int8u {
 	return basics.Int8u(int32(p) + (((t >> RGBA8BaseShift) + t) >> RGBA8BaseShift))
 }
 
-// RGBA8Prelerp performs premultiplied linear interpolation
+// RGBA8Prelerp interpolates p to q by a, assuming q is premultiplied by a.
+// Matches C++ rgba8T::prelerp: p + q - multiply(p, a) (modulo 2^8).
 func RGBA8Prelerp(p, q, a basics.Int8u) basics.Int8u {
 	return p + q - RGBA8Multiply(p, a)
 }
@@ -249,6 +253,43 @@ func RGBA8Prelerp(p, q, a basics.Int8u) basics.Int8u {
 func RGBA8MultCover(c, cover basics.Int8u) basics.Int8u {
 	return RGBA8Multiply(c, cover)
 }
+
+// RGBA8ScaleCover scales a coverage value by a color component.
+// Matches C++ rgba8T::scale_cover: multiply(b, a).
+func RGBA8ScaleCover(cover, b basics.Int8u) basics.Int8u {
+	return RGBA8Multiply(b, cover)
+}
+
+// RGBA8Demultiply divides a by b in fixed point (static C++
+// rgba8T::demultiply): 0 if a*b == 0, base_mask if a >= b, else
+// (a*base_mask + b/2) / b.
+func RGBA8Demultiply(a, b basics.Int8u) basics.Int8u {
+	switch {
+	case a == 0 || b == 0:
+		return 0
+	case a >= b:
+		return RGBA8BaseMask
+	default:
+		return basics.Int8u((uint32(a)*RGBA8BaseMask + uint32(b>>1)) / uint32(b))
+	}
+}
+
+// RGBA8FromDouble converts a [0,1] value to 8-bit fixed point.
+// Matches C++ rgba8T::from_double: value_type(uround(a * base_mask)).
+func RGBA8FromDouble(a float64) basics.Int8u {
+	return basics.Int8u(basics.URound(a * RGBA8BaseMask))
+}
+
+// RGBA8Invert returns base_mask - x (C++ rgba8T::invert).
+func RGBA8Invert(x basics.Int8u) basics.Int8u {
+	return RGBA8BaseMask - x
+}
+
+// RGBA8EmptyValue returns the empty value (C++ rgba8T::empty_value).
+func RGBA8EmptyValue() basics.Int8u { return 0 }
+
+// RGBA8FullValue returns the full value (C++ rgba8T::full_value).
+func RGBA8FullValue() basics.Int8u { return RGBA8BaseMask }
 
 // Apply 8-bit gamma (RGB only) to an RGBA8 pixel in-place.
 func ApplyGammaDir8[CS Space, LUT lut8Like](px *RGBA8[CS], lut LUT) {

@@ -78,45 +78,7 @@ func (a *Agg2DFloat) ImageFilter(f ImageFilter) {
 		a.imageFilterLUT = aggimage.NewImageFilterLUT()
 	}
 
-	switch f {
-	case NoFilter:
-		// AGG keeps the LUT unchanged for NoFilter.
-		return
-	case Bilinear:
-		a.imageFilterLUT.Calculate(aggimage.BilinearFilter{}, true)
-	case Hanning:
-		a.imageFilterLUT.Calculate(aggimage.HanningFilter{}, true)
-	case Hamming:
-		a.imageFilterLUT.Calculate(aggimage.HammingFilter{}, true)
-	case Hermite:
-		a.imageFilterLUT.Calculate(aggimage.HermiteFilter{}, true)
-	case Quadric:
-		a.imageFilterLUT.Calculate(aggimage.QuadricFilter{}, true)
-	case Bicubic:
-		a.imageFilterLUT.Calculate(aggimage.BicubicFilter{}, true)
-	case Catrom:
-		a.imageFilterLUT.Calculate(aggimage.CatromFilter{}, true)
-	case Spline16:
-		a.imageFilterLUT.Calculate(aggimage.Spline16Filter{}, true)
-	case Spline36:
-		a.imageFilterLUT.Calculate(aggimage.Spline36Filter{}, true)
-	case Blackman:
-		a.imageFilterLUT.Calculate(aggimage.NewBlackmanFilter(4.0), true)
-	case Kaiser:
-		a.imageFilterLUT.Calculate(aggimage.NewKaiserFilter(0), true)
-	case Gaussian:
-		a.imageFilterLUT.Calculate(aggimage.GaussianFilter{}, true)
-	case Bessel:
-		a.imageFilterLUT.Calculate(aggimage.BesselFilter{}, true)
-	case Mitchell:
-		a.imageFilterLUT.Calculate(aggimage.NewMitchellFilter(0, 0), true)
-	case Sinc:
-		a.imageFilterLUT.Calculate(aggimage.NewSincFilter(4.0), true)
-	case Lanczos:
-		a.imageFilterLUT.Calculate(aggimage.NewLanczosFilter(4.0), true)
-	default:
-		a.imageFilterLUT.Calculate(aggimage.BilinearFilter{}, true)
-	}
+	calculateImageFilterLUT(a.imageFilterLUT, f)
 }
 
 // SetImageFilterRadius sets the image filtering method with a custom radius for
@@ -173,6 +135,7 @@ func (a *Agg2DFloat) ResetStyle() {
 	a.lineCap = CapRound
 	a.lineJoin = JoinRound
 	a.masterAlpha = 1.0
+	a.updateRasterizerGamma() // master alpha lives in the rasterizer gamma
 	a.evenOddFlag = false
 	if a.convStroke != nil {
 		a.convStroke.SetWidth(1.0)

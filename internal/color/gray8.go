@@ -32,8 +32,8 @@ func NewGray8WithAlpha[CS Space](v, a basics.Int8u) Gray8[CS] {
 func ConvertGray8FromRGBA[CS Space](c RGBA) Gray8[CS] {
 	lum := LuminanceFromRGBA(c)
 	return Gray8[CS]{
-		V: basics.Int8u(lum*255 + 0.5),
-		A: basics.Int8u(c.A*255 + 0.5),
+		V: RGBA8FromDouble(lum),
+		A: RGBA8FromDouble(c.A),
 	}
 }
 
@@ -76,7 +76,9 @@ func (g *Gray8[CS]) Transparent() {
 	g.A = 0
 }
 
-// Opacity sets the alpha channel (0.0 to 1.0)
+// Opacity sets the alpha channel (0.0 to 1.0). In-range values use
+// from_double rounding like C++. Values above 1 saturate to 255; C++
+// gray8T::opacity literally stores 1 in that case (see docs/AGG_DELTAS.md).
 func (g *Gray8[CS]) Opacity(a float64) {
 	switch {
 	case a < 0:
@@ -84,7 +86,7 @@ func (g *Gray8[CS]) Opacity(a float64) {
 	case a > 1:
 		g.A = Gray8BaseMask
 	default:
-		g.A = basics.Int8u(a*float64(Gray8BaseMask) + 0.5)
+		g.A = RGBA8FromDouble(a)
 	}
 }
 
@@ -121,9 +123,16 @@ func Gray8Lerp(p, q, a basics.Int8u) basics.Int8u {
 	return basics.Int8u(int32(p) + (((t >> Gray8BaseShift) + t) >> Gray8BaseShift))
 }
 
-// Prelerp performs premultiplied linear interpolation
+// Prelerp interpolates p to q by a, assuming q is premultiplied by a.
+// Matches C++ gray8T::prelerp: p + q - multiply(p, a) (modulo 2^8).
 func Gray8Prelerp(p, q, a basics.Int8u) basics.Int8u {
 	return p + q - Gray8Multiply(p, a)
+}
+
+// Gray8ScaleCover scales a coverage value by a gray value.
+// Matches C++ gray8T::scale_cover: multiply(b, a).
+func Gray8ScaleCover(cover, b basics.Int8u) basics.Int8u {
+	return Gray8Multiply(b, cover)
 }
 
 // Premultiply premultiplies the color by alpha
@@ -153,13 +162,16 @@ func (g *Gray8[CS]) Demultiply() {
 	}
 }
 
-// Gradient performs linear interpolation between two colors
+// Gradient interpolates towards c2 by k. Matches C++ gray8T::gradient:
+//
+//	calc_type ik = uround(k * base_scale);
+//	ret.v = lerp(v, c.v, ik); // ik is truncated to value_type
+//
+// Note that C++ scales by base_scale (256), not base_mask, and the implicit
+// conversion to value_type wraps 256 to 0, so k >= 255.5/256 yields the start
+// colour. This is reproduced for parity.
 func (g Gray8[CS]) Gradient(c2 Gray8[CS], k float64) Gray8[CS] {
-	ik := k*float64(Gray8BaseScale) + 0.5
-	if ik > Gray8BaseMask {
-		ik = Gray8BaseMask
-	}
-	ikInt := basics.Int8u(ik)
+	ikInt := basics.Int8u(basics.URound(k * Gray8BaseScale))
 	return Gray8[CS]{
 		V: Gray8Lerp(g.V, c2.V, ikInt),
 		A: Gray8Lerp(g.A, c2.A, ikInt),

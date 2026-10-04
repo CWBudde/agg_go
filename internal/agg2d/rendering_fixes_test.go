@@ -29,10 +29,10 @@ func TestGammaCorrection(t *testing.T) {
 		t.Errorf("Expected gamma to be %f, got %f", testGamma, gamma)
 	}
 
-	// Test gamma bounds
-	agg2d.SetAntiAliasGamma(-1.0) // Should clamp to minimum
-	if gamma := agg2d.GetAntiAliasGamma(); gamma <= 0 {
-		t.Error("Gamma should not be zero or negative")
+	// C++ Agg2D::antiAliasGamma stores the value unclamped.
+	agg2d.SetAntiAliasGamma(4.5)
+	if gamma := agg2d.GetAntiAliasGamma(); gamma != 4.5 {
+		t.Errorf("Expected unclamped gamma 4.5, got %f", gamma)
 	}
 
 	// Test gamma correction is applied to rasterizer
@@ -83,15 +83,14 @@ func TestMasterAlpha(t *testing.T) {
 		t.Errorf("Expected master alpha to be %f, got %f", testAlpha, alpha)
 	}
 
-	// Test alpha bounds
-	agg2d.SetMasterAlpha(-1.0)
-	if alpha := agg2d.GetMasterAlpha(); alpha != 0.0 {
-		t.Errorf("Expected clamped alpha to be 0.0, got %f", alpha)
-	}
-
+	// C++ Agg2D::masterAlpha stores the value unclamped; gamma_multiply
+	// clamps the coverage product instead.
 	agg2d.SetMasterAlpha(2.0)
-	if alpha := agg2d.GetMasterAlpha(); alpha != 1.0 {
-		t.Errorf("Expected clamped alpha to be 1.0, got %f", alpha)
+	if alpha := agg2d.GetMasterAlpha(); alpha != 2.0 {
+		t.Errorf("Expected unclamped alpha 2.0, got %f", alpha)
+	}
+	if got := agg2d.rasterizer.ApplyGamma(128); got != 255 {
+		t.Errorf("master alpha 2.0: coverage 128 should saturate to 255, got %d", got)
 	}
 
 	// Test master alpha affects rendering — verify alpha attenuation.
@@ -100,8 +99,7 @@ func TestMasterAlpha(t *testing.T) {
 	// Clear to white first.
 	agg2d.ClearAllRGBA(255, 255, 255, 255)
 
-	agg2d.Rectangle(10, 10, 50, 50)
-	agg2d.DrawPath(FillOnly)
+	agg2d.Rectangle(10, 10, 50, 50) // fills once (plus the outline stroke)
 
 	// Interior pixel: master alpha scales coverage via the gamma table.
 	// With src-over compositing on a white background, the output alpha
@@ -113,9 +111,12 @@ func TestMasterAlpha(t *testing.T) {
 	if r == 0 {
 		t.Fatal("master alpha 0.25: interior pixel has zero red, expected red fill")
 	}
-	// Green/blue channels should be > 0 because the red is blended with white background.
-	if g == 0 && b == 0 {
-		t.Fatal("master alpha 0.25: expected partial blend with white, but g=b=0 indicates full opacity")
+	// Master alpha is applied exactly once (via the gamma table, as in C++
+	// Agg2DRasterizerGamma): cover = uround(0.25*255) = 64, so the opaque red
+	// lerps white by 64/255 -> 255 - 64 = 191. Applying it to the colour as
+	// well would give cover 16 -> 239.
+	if r != 255 || g != 191 || b != 191 {
+		t.Fatalf("master alpha 0.25: interior pixel = (%d,%d,%d), want (255,191,191)", r, g, b)
 	}
 }
 
@@ -125,15 +126,16 @@ func TestMasterAlphaAffectsRasterizerGamma(t *testing.T) {
 	buf := make([]uint8, 100*100*4)
 	agg2d.Attach(buf, 100, 100, 100*4)
 
+	// C++: m_gamma[i] = uround(gamma_multiply(alpha)(gamma_power(g)(i/255)) * 255).
 	agg2d.SetMasterAlpha(0.5)
 	got := agg2d.rasterizer.ApplyGamma(255)
-	if got != 127 {
-		t.Fatalf("expected master alpha to scale full coverage to 127, got %d", got)
+	if got != 128 {
+		t.Fatalf("expected master alpha to scale full coverage to uround(127.5)=128, got %d", got)
 	}
 
 	agg2d.SetAntiAliasGamma(2.0)
 	got = agg2d.rasterizer.ApplyGamma(64)
-	want := uint8(0.5 * math.Pow(float64(64)/255.0, 0.5) * 255.0)
+	want := uint8(math.Floor(0.5*math.Pow(float64(64)/255.0, 2.0)*255.0 + 0.5))
 	if got != want {
 		t.Fatalf("expected combined master alpha/gamma coverage %d, got %d", want, got)
 	}
@@ -320,8 +322,7 @@ func TestRenderingIntegration(t *testing.T) {
 	agg2d.LineWidth(2.0)
 
 	// Filled rectangle.
-	agg2d.Rectangle(10, 10, 50, 50)
-	agg2d.DrawPath(FillOnly)
+	agg2d.Rectangle(10, 10, 50, 50) // fills once (plus the outline stroke)
 
 	// Stroked rectangle.
 	agg2d.Rectangle(20, 20, 60, 60)

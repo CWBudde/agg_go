@@ -107,7 +107,7 @@ func (agg2d *Agg2D) renderStroke() {
 	// conv_stroke and conv_stroke<conv_dash> pipelines: when no dashes are set,
 	// the plain conv_stroke<conv_curve> is used rather than the dashed one.
 	if agg2d.convDash != nil && agg2d.convDash.NumDashes() == 0 {
-		agg2d.addStrokeToRasterizer(conv.NewConvStroke(agg2d.convCurve))
+		agg2d.addStrokeToRasterizer(agg2d.undashedStroke())
 	} else {
 		agg2d.addStrokeToRasterizer(agg2d.convStroke)
 	}
@@ -118,6 +118,20 @@ func (agg2d *Agg2D) renderStroke() {
 	} else {
 		agg2d.renderGradientStroke()
 	}
+}
+
+// undashedStroke returns a conv_stroke over the curve converter that carries
+// every setting of the (dashed) main stroke converter -- in particular the
+// approximation scale, which C++ only updates from the transform setters.
+func (agg2d *Agg2D) undashedStroke() *conv.ConvStroke {
+	src := agg2d.convStroke
+	stroke := conv.NewConvStroke(agg2d.convCurve)
+	stroke.SetMiterLimit(src.MiterLimit())
+	stroke.SetInnerMiterLimit(src.InnerMiterLimit())
+	stroke.SetInnerJoin(src.InnerJoin())
+	stroke.SetApproximationScale(src.ApproximationScale())
+	stroke.SetShorten(src.Shorten())
+	return stroke
 }
 
 // addStrokeToRasterizer applies the given stroke converter (with current settings)
@@ -193,12 +207,10 @@ func (agg2d *Agg2D) renderSolidFillWithColor(c Color) {
 		return
 	}
 
-	// Apply master alpha to color
-	masterAlpha := uint8(agg2d.masterAlpha * 255.0)
-	adjustedAlpha := uint8((uint16(c[3]) * uint16(masterAlpha)) / 255)
-
-	// Convert Color to internal color format with master alpha applied
-	internalColor := color.RGBA8[color.Linear]{R: c[0], G: c[1], B: c[2], A: adjustedAlpha}
+	// Master alpha is not applied to the colour: C++ Agg2D folds it into the
+	// rasterizer gamma (Agg2DRasterizerGamma, agg2d.cpp:1747) and passes the
+	// unscaled colour to renSolid.color() (agg2d.cpp:1493).
+	internalColor := color.RGBA8[color.Linear]{R: c[0], G: c[1], B: c[2], A: c[3]}
 
 	// Create solid renderer
 	renSolid := renscan.NewRendererScanlineAASolidWithColor(renderer, internalColor)
@@ -214,12 +226,10 @@ func (agg2d *Agg2D) renderSolidStroke() {
 		return
 	}
 
-	// Apply master alpha to line color
-	masterAlpha := uint8(agg2d.masterAlpha * 255.0)
-	adjustedAlpha := uint8((uint16(agg2d.lineColor[3]) * uint16(masterAlpha)) / 255)
-
-	// Convert Color to internal color format with master alpha applied
-	internalColor := color.RGBA8[color.Linear]{R: agg2d.lineColor[0], G: agg2d.lineColor[1], B: agg2d.lineColor[2], A: adjustedAlpha}
+	// Unscaled colour; master alpha lives in the rasterizer gamma (see
+	// renderSolidFillWithColor).
+	c := agg2d.lineColor
+	internalColor := color.RGBA8[color.Linear]{R: c[0], G: c[1], B: c[2], A: c[3]}
 
 	// Create solid renderer
 	renSolid := renscan.NewRendererScanlineAASolidWithColor(renderer, internalColor)
@@ -377,54 +387,63 @@ func (agg2d *Agg2D) scanlineRender(renderer renscan.RendererInterface[color.RGBA
 	}
 }
 
-// updateApproximationScales updates the approximation scale for curve converters
-// based on the current transformation matrix scaling
+// updateApproximationScales mirrors the C++ idiom
+//
+//	m_convCurve.approximation_scale(worldToScreen(1.0) * g_approxScale);
+//	m_convStroke.approximation_scale(worldToScreen(1.0) * g_approxScale);
+//
+// which agg2d.cpp runs only from transformations(), affine(), scale(),
+// parallelogram() and viewport() -- not from rotate/skew/translate,
+// resetTransformations or drawPath.
 func (agg2d *Agg2D) updateApproximationScales() {
+	scale := agg2d.WorldToScreenScalar(1.0) * ApproxScale
 	if agg2d.convCurve != nil {
-		// Use the world-to-screen scaling factor with the global approximation scale
-		scale := agg2d.WorldToScreenScalar(1.0) * ApproxScale
-
-		// Update curve approximation scale
 		agg2d.convCurve.SetApproximationScale(scale)
 	}
-
 	if agg2d.convStroke != nil {
-		// Also update the stroke converter with the same scale for consistency
-		scale := agg2d.WorldToScreenScalar(1.0) * ApproxScale
 		agg2d.convStroke.SetApproximationScale(scale)
 	}
 }
 
-// updateRasterizerGamma updates the rasterizer gamma correction
+// rasterizerGamma is C++ Agg2DRasterizerGamma (agg2d.cpp:1747):
+// gamma_multiply(alpha)(gamma_power(gamma)(x)) = min(alpha * pow(x, gamma), 1).
+func rasterizerGamma(alpha, gamma float64) func(float64) float64 {
+	return func(x float64) float64 {
+		y := math.Pow(x, gamma) * alpha
+		if y > 1.0 {
+			y = 1.0
+		}
+		return y
+	}
+}
+
+// binaryRasterizerGamma is the aliased (SetAntiAliased(false)) Go extension:
+// AGG's scanline_bin path emits a fully covered pixel for every touched cell,
+// regardless of partial coverage; master alpha still applies like
+// gamma_multiply.
+func binaryRasterizerGamma(alpha float64) func(float64) float64 {
+	return func(x float64) float64 {
+		if x <= 0.0 {
+			return 0.0
+		}
+		if alpha > 1.0 {
+			return 1.0
+		}
+		return alpha
+	}
+}
+
+// updateRasterizerGamma mirrors C++ Agg2D::updateRasterizerGamma
+// (agg2d.cpp:1762), called from masterAlpha() and antiAliasGamma().
 func (agg2d *Agg2D) updateRasterizerGamma() {
 	if agg2d.rasterizer == nil {
 		return
 	}
-
-	gamma := agg2d.antiAliasGamma
-	alpha := agg2d.masterAlpha
 	if agg2d.antiAliasOff {
-		// AGG's aliased path (render_scanlines_bin / scanline_bin) emits a
-		// fully covered pixel for every cell the rasterizer touches,
-		// regardless of partial coverage.
-		agg2d.rasterizer.SetGamma(func(x float64) float64 {
-			if x <= 0.0 {
-				return 0.0
-			}
-			return alpha
-		})
+		agg2d.rasterizer.SetGamma(binaryRasterizerGamma(agg2d.masterAlpha))
 		return
 	}
-	gammaFunc := func(x float64) float64 {
-		if x <= 0.0 {
-			return 0.0
-		}
-		if x >= 1.0 {
-			return alpha
-		}
-		return alpha * math.Pow(x, 1.0/gamma)
-	}
-	agg2d.rasterizer.SetGamma(gammaFunc)
+	agg2d.rasterizer.SetGamma(rasterizerGamma(agg2d.masterAlpha, agg2d.antiAliasGamma))
 }
 
 // SetAntiAliased toggles between the anti-aliased scanline pipeline and the
@@ -474,51 +493,63 @@ func (agg2d *Agg2D) ResetTransformations() {
 }
 
 // ImageFilter sets the image filtering method.
+// This matches the C++ Agg2D::imageFilter method (agg2d.cpp:1241).
 func (agg2d *Agg2D) ImageFilter(f ImageFilter) {
 	agg2d.imageFilter = f
 	if agg2d.imageFilterLUT == nil {
 		agg2d.imageFilterLUT = aggimage.NewImageFilterLUT()
 	}
+	calculateImageFilterLUT(agg2d.imageFilterLUT, f)
+}
 
+// calculateImageFilterLUT recomputes lut for f exactly like the switch in C++
+// Agg2D::imageFilter (agg2d.cpp:1241-1258) for the C++ enum members: NoFilter
+// leaves the LUT untouched; every other filter is normalized. The members
+// after Spline36 other than Blackman144 are Go extensions.
+func calculateImageFilterLUT(lut *aggimage.ImageFilterLUT, f ImageFilter) {
+	var filter aggimage.FilterFunction
 	switch f {
 	case NoFilter:
-		// AGG keeps the LUT unchanged for NoFilter.
 		return
 	case Bilinear:
-		agg2d.imageFilterLUT.Calculate(aggimage.BilinearFilter{}, true)
+		filter = aggimage.BilinearFilter{}
 	case Hanning:
-		agg2d.imageFilterLUT.Calculate(aggimage.HanningFilter{}, true)
-	case Hamming:
-		agg2d.imageFilterLUT.Calculate(aggimage.HammingFilter{}, true)
+		filter = aggimage.HanningFilter{}
 	case Hermite:
-		agg2d.imageFilterLUT.Calculate(aggimage.HermiteFilter{}, true)
+		filter = aggimage.HermiteFilter{}
 	case Quadric:
-		agg2d.imageFilterLUT.Calculate(aggimage.QuadricFilter{}, true)
+		filter = aggimage.QuadricFilter{}
 	case Bicubic:
-		agg2d.imageFilterLUT.Calculate(aggimage.BicubicFilter{}, true)
+		filter = aggimage.BicubicFilter{}
 	case Catrom:
-		agg2d.imageFilterLUT.Calculate(aggimage.CatromFilter{}, true)
+		filter = aggimage.CatromFilter{}
 	case Spline16:
-		agg2d.imageFilterLUT.Calculate(aggimage.Spline16Filter{}, true)
+		filter = aggimage.Spline16Filter{}
 	case Spline36:
-		agg2d.imageFilterLUT.Calculate(aggimage.Spline36Filter{}, true)
+		filter = aggimage.Spline36Filter{}
+	case Blackman144:
+		filter = aggimage.NewBlackman144Filter()
+	// Go extensions (not in C++ Agg2D::ImageFilter).
+	case Hamming:
+		filter = aggimage.HammingFilter{}
 	case Blackman:
-		agg2d.imageFilterLUT.Calculate(aggimage.NewBlackmanFilter(4.0), true)
+		filter = aggimage.NewBlackmanFilter(4.0)
 	case Kaiser:
-		agg2d.imageFilterLUT.Calculate(aggimage.NewKaiserFilter(0), true)
+		filter = aggimage.NewKaiserFilter(0)
 	case Gaussian:
-		agg2d.imageFilterLUT.Calculate(aggimage.GaussianFilter{}, true)
+		filter = aggimage.GaussianFilter{}
 	case Bessel:
-		agg2d.imageFilterLUT.Calculate(aggimage.BesselFilter{}, true)
+		filter = aggimage.BesselFilter{}
 	case Mitchell:
-		agg2d.imageFilterLUT.Calculate(aggimage.NewMitchellFilter(0, 0), true)
+		filter = aggimage.NewMitchellFilter(0, 0)
 	case Sinc:
-		agg2d.imageFilterLUT.Calculate(aggimage.NewSincFilter(4.0), true)
+		filter = aggimage.NewSincFilter(4.0)
 	case Lanczos:
-		agg2d.imageFilterLUT.Calculate(aggimage.NewLanczosFilter(4.0), true)
+		filter = aggimage.NewLanczosFilter(4.0)
 	default:
-		agg2d.imageFilterLUT.Calculate(aggimage.BilinearFilter{}, true)
+		filter = aggimage.BilinearFilter{}
 	}
+	lut.Calculate(filter, true)
 }
 
 // SetImageFilterRadius sets the image filtering method with a custom radius for supported filters.
@@ -596,13 +627,10 @@ func (agg2d *Agg2D) GetMasterAlpha() float64 {
 	return agg2d.masterAlpha
 }
 
-// SetMasterAlpha sets the master alpha value
+// SetMasterAlpha sets the master alpha value. Like C++ Agg2D::masterAlpha
+// (agg2d.cpp:220) the value is not clamped; it is folded into the rasterizer
+// gamma, where gamma_multiply clamps the product to 1.
 func (agg2d *Agg2D) SetMasterAlpha(alpha float64) {
-	if alpha < 0.0 {
-		alpha = 0.0
-	} else if alpha > 1.0 {
-		alpha = 1.0
-	}
 	agg2d.masterAlpha = alpha
 	agg2d.updateRasterizerGamma()
 }
@@ -612,13 +640,10 @@ func (agg2d *Agg2D) GetAntiAliasGamma() float64 {
 	return agg2d.antiAliasGamma
 }
 
-// SetAntiAliasGamma sets the anti-alias gamma value
+// SetAntiAliasGamma sets the anti-alias gamma value. Like C++
+// Agg2D::antiAliasGamma (agg2d.cpp:233) the value is not clamped; coverage is
+// mapped through gamma_power, i.e. pow(cover, gamma).
 func (agg2d *Agg2D) SetAntiAliasGamma(gamma float64) {
-	if gamma < 0.1 {
-		gamma = 0.1
-	} else if gamma > 3.0 {
-		gamma = 3.0
-	}
 	agg2d.antiAliasGamma = gamma
 	agg2d.updateRasterizerGamma()
 }

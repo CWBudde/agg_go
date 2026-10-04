@@ -312,25 +312,36 @@ func (agg2d *Agg2D) ClosePolygon() {
 }
 
 // DrawPath renders the current path according to the specified flag.
-// This matches the C++ Agg2D::drawPath method.
+// This matches the C++ Agg2D::drawPath method (agg2d.cpp:1366), including its
+// guards: the fill is skipped when the fill colour is fully transparent and
+// the stroke when the line colour is transparent or lineWidth <= 0. As in C++
+// the colour alpha is tested even when a gradient is active (the gradient
+// setters store an opaque placeholder colour). The approximation scale is not
+// touched here; it follows the transform setters.
 func (agg2d *Agg2D) DrawPath(flag DrawPathFlag) {
-	// Update approximation scales before rendering
-	agg2d.updateApproximationScales()
+	fill := agg2d.fillColor[3] != 0
+	stroke := agg2d.lineColor[3] != 0 && agg2d.lineWidth > 0.0
 
 	switch flag {
 	case FillOnly:
-		// Render fill only
-		agg2d.renderFill()
+		if fill {
+			agg2d.renderFill()
+		}
 	case StrokeOnly:
-		// Render stroke only
-		agg2d.renderStroke()
+		if stroke {
+			agg2d.renderStroke()
+		}
 	case FillAndStroke:
-		// Render both fill and stroke
-		agg2d.renderFill()
-		agg2d.renderStroke()
+		if fill {
+			agg2d.renderFill()
+		}
+		if stroke {
+			agg2d.renderStroke()
+		}
 	case FillWithLineColor:
-		// Render fill using line color
-		agg2d.renderFillWithLineColor()
+		if agg2d.lineColor[3] != 0 {
+			agg2d.renderFillWithLineColor()
+		}
 	}
 }
 
