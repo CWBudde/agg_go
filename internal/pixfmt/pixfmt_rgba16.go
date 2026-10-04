@@ -80,7 +80,22 @@ func (pf *PixFmtAlphaBlendRGBA16[S, B]) BlendPixel(x, y int, c color.RGBA16[S], 
 	if off+pixWidth16 > len(row) {
 		return
 	}
-	pf.blender.BlendPix(row[off:off+pixWidth16], c.R, c.G, c.B, c.A, cover8to16(cover))
+	pf.copyOrBlendPix(row[off:off+pixWidth16], c, cover8to16(cover))
+}
+
+// copyOrBlendPix mirrors C++ pixfmt_alpha_blend_rgba::copy_or_blend_pix: a
+// transparent colour is skipped, an opaque colour at full cover is stored as-is
+// (p->set(c)), everything else goes through the blender. Without the shortcut
+// the C++-exact 16-bit lerp would turn an opaque 65535 into 65534.
+func (pf *PixFmtAlphaBlendRGBA16[S, B]) copyOrBlendPix(px []basics.Int8u, c color.RGBA16[S], cover basics.Int16u) {
+	if c.A == 0 || cover == 0 {
+		return
+	}
+	if c.A == 0xFFFF && cover == 0xFFFF {
+		pf.blender.SetPlain(px, c.R, c.G, c.B, c.A)
+		return
+	}
+	pf.blender.BlendPix(px, c.R, c.G, c.B, c.A, cover)
 }
 
 // CopyHline copies a horizontal line without blending.
@@ -154,13 +169,13 @@ func (pf *PixFmtAlphaBlendRGBA16[S, B]) BlendSolidHspan(x, y, length int, c colo
 	off := x * pixWidth16
 	if covers == nil {
 		for i := 0; i < length; i++ {
-			pf.blender.BlendPix(row[off:off+pixWidth16], c.R, c.G, c.B, c.A, 0xFFFF)
+			pf.copyOrBlendPix(row[off:off+pixWidth16], c, 0xFFFF)
 			off += pixWidth16
 		}
 	} else {
 		for i := 0; i < length && i < len(covers); i++ {
 			if covers[i] > 0 {
-				pf.blender.BlendPix(row[off:off+pixWidth16], c.R, c.G, c.B, c.A, cover8to16(covers[i]))
+				pf.copyOrBlendPix(row[off:off+pixWidth16], c, cover8to16(covers[i]))
 			}
 			off += pixWidth16
 		}

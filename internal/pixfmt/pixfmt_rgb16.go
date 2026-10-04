@@ -89,8 +89,21 @@ func (pf *PixFmtAlphaBlendRGB48[S, B]) BlendPixel(x, y int, c color.RGB16[S], al
 		return
 	}
 
-	// Direct blending call - no type assertion needed with proper constraints
-	pf.blender.BlendPix(row[pixelOffset:pixelOffset+3], c.R, c.G, c.B, alpha, cover)
+	pf.copyOrBlendPix(row[pixelOffset:pixelOffset+3], c, alpha, cover)
+}
+
+// copyOrBlendPix mirrors C++ pixfmt_alpha_blend_rgb::copy_or_blend_pix:
+// a transparent colour is skipped, an opaque colour at full cover is stored
+// as-is (p->set(c)), everything else goes through the blender.
+func (pf *PixFmtAlphaBlendRGB48[S, B]) copyOrBlendPix(px []basics.Int16u, c color.RGB16[S], alpha, cover basics.Int16u) {
+	if alpha == 0 {
+		return
+	}
+	if alpha == 65535 && cover == 65535 {
+		pf.blender.SetPlain(px, c.R, c.G, c.B)
+		return
+	}
+	pf.blender.BlendPix(px, c.R, c.G, c.B, alpha, cover)
 }
 
 // Clear clears the entire buffer with the given color
@@ -215,7 +228,7 @@ func (pf *PixFmtAlphaBlendRGB48[S, B]) BlendHline(x1, y, x2 int, c color.RGB16[S
 		if off+2 >= len(row) {
 			break
 		}
-		pf.blender.BlendPix(row[off:off+3], c.R, c.G, c.B, alpha, cover)
+		pf.copyOrBlendPix(row[off:off+3], c, alpha, cover)
 	}
 }
 
@@ -297,7 +310,7 @@ func (pf *PixFmtAlphaBlendRGB48[S, B]) BlendSolidHspan(x, y, length int, c color
 			if off+2 >= len(row) {
 				break
 			}
-			pf.blender.BlendPix(row[off:off+3], c.R, c.G, c.B, alpha, 65535)
+			pf.copyOrBlendPix(row[off:off+3], c, alpha, 65535)
 		}
 		return
 	}
@@ -309,7 +322,7 @@ func (pf *PixFmtAlphaBlendRGB48[S, B]) BlendSolidHspan(x, y, length int, c color
 		if off+2 >= len(row) {
 			break
 		}
-		pf.blender.BlendPix(row[off:off+3], c.R, c.G, c.B, alpha, covers[i])
+		pf.copyOrBlendPix(row[off:off+3], c, alpha, covers[i])
 	}
 }
 

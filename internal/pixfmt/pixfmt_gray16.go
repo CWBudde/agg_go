@@ -84,9 +84,24 @@ func (pf *PixFmtAlphaBlendGray16[B, CS]) BlendPixel(x, y int, c color.Gray16[CS]
 	if InBounds(x, y, pf.Width(), pf.Height()) && c.A > 0 {
 		pixel := pf.PixPtr(x, y)
 		if pixel != nil {
-			pf.blender.BlendPix(pixel, c.V, c.A, cover)
+			pf.copyOrBlendPix(pixel, c, cover)
 		}
 	}
+}
+
+// copyOrBlendPix mirrors C++ pixfmt_alpha_blend_gray::copy_or_blend_pix: an
+// opaque colour at full cover is stored as-is (*p = c.v), everything else goes
+// through the blender. Without the shortcut the C++-exact 16-bit lerp would
+// turn an opaque 65535 into 65534.
+func (pf *PixFmtAlphaBlendGray16[B, CS]) copyOrBlendPix(px *basics.Int16u, c color.Gray16[CS], cover basics.Int16u) {
+	if c.A == 0 || cover == 0 {
+		return
+	}
+	if c.A == 0xFFFF && cover == 0xFFFF {
+		*px = c.V
+		return
+	}
+	pf.blender.BlendPix(px, c.V, c.A, cover)
 }
 
 // GetPixel gets the pixel color at the specified coordinates
@@ -137,7 +152,7 @@ func (pf *PixFmtAlphaBlendGray16[B, CS]) BlendHline(x, y, length int, c color.Gr
 
 	row := pf.RowPtr(y)
 	for i := 0; i < length; i++ {
-		pf.blender.BlendPix(&row[x+i], c.V, c.A, cover)
+		pf.copyOrBlendPix(&row[x+i], c, cover)
 	}
 }
 
@@ -240,7 +255,7 @@ func (pf *PixFmtAlphaBlendGray16[B, CS]) BlendSolidHspan(x, y, length int, c col
 	row := pf.RowPtr(y)
 	for i := 0; i < length; i++ {
 		if covers[i] > 0 {
-			pf.blender.BlendPix(&row[x+i], c.V, c.A, covers[i])
+			pf.copyOrBlendPix(&row[x+i], c, covers[i])
 		}
 	}
 }
