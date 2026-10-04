@@ -129,6 +129,12 @@ func Gray8Prelerp(p, q, a basics.Int8u) basics.Int8u {
 	return p + q - Gray8Multiply(p, a)
 }
 
+// Gray8ScaleCover scales a coverage value by a gray value.
+// Matches C++ gray8T::scale_cover: multiply(b, a).
+func Gray8ScaleCover(cover, b basics.Int8u) basics.Int8u {
+	return Gray8Multiply(b, cover)
+}
+
 // Premultiply premultiplies the color by alpha
 func (g *Gray8[CS]) Premultiply() {
 	if g.A < Gray8BaseMask {

@@ -83,7 +83,7 @@ func cover8to16(c basics.Int8u) basics.Int16u {
 }
 
 func TestFixedPointParity8Bit(t *testing.T) {
-	m8, gm8, d8, sc8 := newFNV64(), newFNV64(), newFNV64(), newFNV64()
+	m8, gm8, d8, sc8, gsc8 := newFNV64(), newFNV64(), newFNV64(), newFNV64(), newFNV64()
 	l8, gl8, pl8, gpl8 := newFNV64(), newFNV64(), newFNV64(), newFNV64()
 	md8, gmd8, lum8 := newFNV64(), newFNV64(), newFNV64()
 	for a := 0; a < 256; a++ {
@@ -93,6 +93,7 @@ func TestFixedPointParity8Bit(t *testing.T) {
 			gm8.u8(Gray8Multiply(ua, ub))
 			d8.u8(RGBA8Demultiply(ua, ub))
 			sc8.u8(RGBA8ScaleCover(ua, ub))
+			gsc8.u8(Gray8ScaleCover(ua, ub))
 
 			c := NewRGBA8[Linear](ua, ua, ua, ub)
 			c.Demultiply()
@@ -115,6 +116,7 @@ func TestFixedPointParity8Bit(t *testing.T) {
 	checkHash(t, "gray8::multiply", gm8, goldenHashGray8Multiply)
 	checkHash(t, "rgba8::demultiply", d8, goldenHashRGBA8Demultiply)
 	checkHash(t, "rgba8::scale_cover", sc8, goldenHashRGBA8ScaleCover)
+	checkHash(t, "gray8::scale_cover", gsc8, goldenHashGray8ScaleCover)
 	checkHash(t, "rgba8::lerp", l8, goldenHashRGBA8Lerp)
 	checkHash(t, "gray8::lerp", gl8, goldenHashGray8Lerp)
 	checkHash(t, "rgba8::prelerp", pl8, goldenHashRGBA8Prelerp)
@@ -181,7 +183,7 @@ func TestFixedPointParity16Bit(t *testing.T) {
 
 	m16, gm16, dd16, dw16 := newFNV64(), newFNV64(), newFNV64(), newFNV64()
 	md16, gmd16 := newFNV64(), newFNV64()
-	mc16, gmc16, sc16 := newFNV64(), newFNV64(), newFNV64()
+	mc16, gmc16, sc16, gsc16 := newFNV64(), newFNV64(), newFNV64(), newFNV64()
 	for ai := 0; ai < 65536; ai++ {
 		a := basics.Int16u(ai)
 		for _, b := range s16 {
@@ -205,6 +207,7 @@ func TestFixedPointParity16Bit(t *testing.T) {
 			mc16.u16(RGBA16MultCover(a, cover8to16(c8)))
 			gmc16.u16(Gray16Multiply(a, cover8to16(c8)))
 			sc16.u8(RGBA16ScaleCover(c8, a))
+			gsc16.u8(Gray16ScaleCover(c8, a))
 		}
 	}
 	checkHash(t, "rgba16::multiply", m16, goldenHashRGBA16Multiply)
@@ -216,6 +219,7 @@ func TestFixedPointParity16Bit(t *testing.T) {
 	checkHash(t, "rgba16::mult_cover", mc16, goldenHashRGBA16MultCover)
 	checkHash(t, "gray16::mult_cover", gmc16, goldenHashGray16MultCover)
 	checkHash(t, "rgba16::scale_cover", sc16, goldenHashRGBA16ScaleCover)
+	checkHash(t, "gray16::scale_cover", gsc16, goldenHashGray16ScaleCover)
 
 	l16, gl16, pl16, gpl16 := newFNV64(), newFNV64(), newFNV64(), newFNV64()
 	triples16(func(p, q, a basics.Int16u) {
