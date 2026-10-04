@@ -76,8 +76,8 @@ func (d *demo) Render(img *agg.Image) {
 	defer func() { _ = engine.Close() }()
 
 	for _, p := range buildPanels() {
-		if err := renderPanel(renBase, engine, p, fontPath); err != nil {
-			drawPanelError(a, p, err.Error())
+		if err := renderPanel(renBase, engine, &p, fontPath); err != nil {
+			drawPanelError(a, &p, err.Error())
 		}
 	}
 
@@ -125,7 +125,7 @@ func buildPanels() []panel {
 func renderPanel(
 	renBase *renderer.RendererBase[*pixfmt.PixFmtRGBA32Pre[color.Linear], color.RGBA8[color.Linear]],
 	engine *freetype.FontEngineFreetype,
-	p panel,
+	p *panel,
 	fontPath string,
 ) error {
 	if err := engine.LoadFont(fontPath, 0, p.rendering, nil); err != nil {
@@ -302,7 +302,7 @@ func drawFallback(a *agg.Agg2D, fontErr error, missingFont bool) {
 	}
 }
 
-func drawPanelError(a *agg.Agg2D, p panel, msg string) {
+func drawPanelError(a *agg.Agg2D, p *panel, msg string) {
 	a.FontGSV(9)
 	a.FillColor(agg.Black)
 	a.Text(float64(p.panelX1+8), float64(p.panelY1+18), msg, false, 0, 0)

@@ -173,10 +173,10 @@ func Draw(ctx *agg.Context, g *Graph, cfg Config) {
 				ras.AddPath(&convToRasSource{src: concat}, 0)
 				a.RenderRasterizerWithColor(col)
 			case 1:
-				drawPreparedCurve(a, e, cfg.Width)
+				drawPreparedCurve(a, &e, cfg.Width)
 				drawArrowHead(ctx, e.arrowX0, e.arrowY0, e.arrowX1, e.arrowY1, 10.0, col)
 			case 2:
-				drawPreparedCurve(a, e, cfg.Width)
+				drawPreparedCurve(a, &e, cfg.Width)
 				drawArrowHead(ctx, e.arrowX0, e.arrowY0, e.arrowX1, e.arrowY1, 10.0, col)
 			}
 		}
@@ -353,7 +353,7 @@ func curveControls(x1, y1, x2, y2 float64) (float64, float64, float64, float64) 
 	return cx1, cy1, cx2, cy2
 }
 
-func drawPreparedCurve(a *agg.Agg2D, e preparedEdge, width float64) {
+func drawPreparedCurve(a *agg.Agg2D, e *preparedEdge, width float64) {
 	a.ResetPath()
 	a.MoveTo(e.x1, e.y1)
 	a.CubicCurveTo(e.cx1, e.cy1, e.cx2, e.cy2, e.x2, e.y2)

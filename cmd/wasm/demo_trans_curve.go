@@ -33,7 +33,7 @@ func drawTransCurveDemo() {
 	}
 
 	offX, offY := transCurveFrameOffset()
-	transcurve.Draw(ctx, transcurve.Config{
+	transcurve.Draw(ctx, &transcurve.Config{
 		Points:          transCurvePoints,
 		NumIntermediate: transCurveNumPoints,
 		Close:           transCurveClose,

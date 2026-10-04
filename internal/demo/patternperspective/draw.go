@@ -123,7 +123,7 @@ func Draw(ctx *agg.Context, cfg Config) {
 	}
 	renderQuadTool(ctx, quad)
 
-	quadwarp.Draw(ctx, quadwarp.Config{
+	quadwarp.Draw(ctx, &quadwarp.Config{
 		CanvasWidth:        ctx.GetImage().Width(),
 		CanvasHeight:       ctx.GetImage().Height(),
 		Source:             source,

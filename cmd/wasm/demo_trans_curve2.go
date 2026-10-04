@@ -61,7 +61,7 @@ func drawTransCurve2Demo() {
 		}
 	}
 
-	transcurve.DrawDouble(ctx, transcurve.DoubleConfig{
+	transcurve.DrawDouble(ctx, &transcurve.DoubleConfig{
 		Points1:         transCurve2Points1,
 		Points2:         transCurve2Points2,
 		NumIntermediate: transCurve2NumPoints,

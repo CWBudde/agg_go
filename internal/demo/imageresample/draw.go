@@ -78,13 +78,13 @@ func SourceSize() (int, int, bool) {
 	return base.Width(), base.Height(), true
 }
 
-func DrawTimed(ctx *agg.Context, cfg Config) time.Duration {
+func DrawTimed(ctx *agg.Context, cfg *Config) time.Duration {
 	start := time.Now()
 	Draw(ctx, cfg)
 	return time.Since(start)
 }
 
-func Draw(ctx *agg.Context, cfg Config) {
+func Draw(ctx *agg.Context, cfg *Config) {
 	if ctx == nil {
 		return
 	}
@@ -153,7 +153,7 @@ func Draw(ctx *agg.Context, cfg Config) {
 		return
 	}
 
-	quadwarp.Draw(ctx, quadwarp.Config{
+	quadwarp.Draw(ctx, &quadwarp.Config{
 		CanvasWidth:        ctx.GetImage().Width(),
 		CanvasHeight:       ctx.GetImage().Height(),
 		Source:             source,

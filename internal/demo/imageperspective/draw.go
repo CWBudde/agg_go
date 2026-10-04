@@ -103,7 +103,7 @@ func flippedVerticalCopy(src *agg.Image) *agg.Image {
 	return agg.NewImage(buf, w, h, rowBytes)
 }
 
-func Draw(ctx *agg.Context, cfg Config) {
+func Draw(ctx *agg.Context, cfg *Config) {
 	if cachedSpheres == nil {
 		img, err := imageassets.Spheres()
 		if err != nil {
@@ -151,7 +151,7 @@ func Draw(ctx *agg.Context, cfg Config) {
 	}
 	renderQuadTool(ctx, quad)
 
-	quadwarp.Draw(ctx, quadwarp.Config{
+	quadwarp.Draw(ctx, &quadwarp.Config{
 		CanvasWidth:        ctx.GetImage().Width(),
 		CanvasHeight:       ctx.GetImage().Height(),
 		Source:             source,

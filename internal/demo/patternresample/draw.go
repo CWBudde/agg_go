@@ -89,17 +89,17 @@ func renderQuadTool(ctx *agg.Context, quad [4][2]float64) {
 	renderCtrl(a, a.GetInternalRasterizer(), tool)
 }
 
-func Draw(ctx *agg.Context, cfg Config) {
+func Draw(ctx *agg.Context, cfg *Config) {
 	_ = draw(ctx, cfg)
 }
 
 // DrawTimed renders the demo and returns the time spent in the core image
 // resampling pass, matching the original AGG timer label more closely.
-func DrawTimed(ctx *agg.Context, cfg Config) time.Duration {
+func DrawTimed(ctx *agg.Context, cfg *Config) time.Duration {
 	return draw(ctx, cfg)
 }
 
-func draw(ctx *agg.Context, cfg Config) time.Duration {
+func draw(ctx *agg.Context, cfg *Config) time.Duration {
 	if cachedAgg == nil {
 		img, err := imageassets.Agg()
 		if err != nil {
@@ -176,7 +176,7 @@ func draw(ctx *agg.Context, cfg Config) time.Duration {
 	renderQuadTool(ctx, quad)
 
 	start := time.Now()
-	quadwarp.Draw(ctx, quadwarp.Config{
+	quadwarp.Draw(ctx, &quadwarp.Config{
 		CanvasWidth:        ctx.GetImage().Width(),
 		CanvasHeight:       ctx.GetImage().Height(),
 		Source:             src,

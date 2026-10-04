@@ -173,7 +173,7 @@ func (d *demo) Render(img *agg.Image) {
 	rb.Clear(color.RGBA8[color.Linear]{R: 255, G: 255, B: 255, A: 255})
 
 	work := agg.CreateImage(d.srcImg.Width(), d.srcImg.Height())
-	renderTransformedImage(work, d.srcImg, d.state)
+	renderTransformedImage(work, d.srcImg, &d.state)
 
 	workRbuf := buffer.NewRenderingBufferU8WithData(work.Data, work.Width(), work.Height(), work.Width()*4)
 	workPf := pixfmt.NewPixFmtRGBA32Linear(workRbuf)
@@ -188,7 +188,7 @@ func (d *demo) Render(img *agg.Image) {
 	drawControls(ras, sl, rb, &d.state)
 }
 
-func renderTransformedImage(dst, src *agg.Image, st filterState) {
+func renderTransformedImage(dst, src *agg.Image, st *filterState) {
 	dstRbuf := buffer.NewRenderingBufferWithData[uint8](dst.Data, dst.Width(), dst.Height(), dst.Width()*4)
 
 	// C++ transform_image clears through the plain renderer base before
@@ -281,7 +281,7 @@ func buildEllipsePath(cx, cy, r float64, mtx *transform.TransAffine) *path.PathS
 func buildSpanGenerator(
 	source *imageClipSource,
 	interp *span.SpanInterpolatorLinear[*transform.TransAffine],
-	st filterState,
+	st *filterState,
 ) spanImageGenerator {
 	switch st.filterIdx {
 	case 0:

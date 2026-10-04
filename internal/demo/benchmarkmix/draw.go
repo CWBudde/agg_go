@@ -138,7 +138,7 @@ func (s *Scene) DrawPatternResampleTile() {
 			{float64(s.patternTile.w) * 0.06, float64(s.patternTile.h) * 0.84},
 		},
 	}
-	patternresample.Draw(s.patternTile.ctx, cfg)
+	patternresample.Draw(s.patternTile.ctx, &cfg)
 }
 
 func (s *Scene) DrawGPCTile() {
