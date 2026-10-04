@@ -321,11 +321,11 @@ func (c *Curve3Div) recursiveBezier(x1, y1, x2, y2, x3, y3 float64, level uint, 
 
 	dx := x3 - x1
 	dy := y3 - y1
-	d := math.Abs((x2-x3)*dy - (y2-y3)*dx)
+	d := math.Abs(float64((x2-x3)*dy) - float64((y2-y3)*dx))
 
 	if d > CurveCollinearityEpsilon {
 		// Regular case
-		if d*d <= distanceToleranceSquare*(dx*dx+dy*dy) {
+		if d*d <= distanceToleranceSquare*(float64(dx*dx)+float64(dy*dy)) {
 			// If the curvature doesn't exceed the distance_tolerance value
 			// we tend to finish subdivisions.
 			if c.angleTolerance < CurveAngleToleranceEpsilon {
@@ -347,11 +347,11 @@ func (c *Curve3Div) recursiveBezier(x1, y1, x2, y2, x3, y3 float64, level uint, 
 		}
 	} else {
 		// Collinear case
-		da := dx*dx + dy*dy
+		da := float64(dx*dx) + float64(dy*dy)
 		if da == 0 {
 			d = basics.CalcSqDistance(x1, y1, x2, y2)
 		} else {
-			d = ((x2-x1)*dx + (y2-y1)*dy) / da
+			d = (float64((x2-x1)*dx) + float64((y2-y1)*dy)) / da
 			if d > 0 && d < 1 {
 				// Simple collinear case, 1---2---3
 				// We can leave just two endpoints
@@ -363,7 +363,7 @@ func (c *Curve3Div) recursiveBezier(x1, y1, x2, y2, x3, y3 float64, level uint, 
 			case d >= 1:
 				d = basics.CalcSqDistance(x2, y2, x3, y3)
 			default:
-				d = basics.CalcSqDistance(x2, y2, x1+d*dx, y1+d*dy)
+				d = basics.CalcSqDistance(x2, y2, x1+float64(d*dx), y1+float64(d*dy))
 			}
 		}
 		if d < distanceToleranceSquare {
@@ -719,24 +719,26 @@ func (c *Curve4Div) recursiveBezier(x1, y1, x2, y2, x3, y3, x4, y4 float64, leve
 	dx := x4 - x1
 	dy := y4 - y1
 
-	d2 := math.Abs((x2-x4)*dy - (y2-y4)*dx)
-	d3 := math.Abs((x3-x4)*dy - (y3-y4)*dx)
+	d2 := math.Abs(float64((x2-x4)*dy) - float64((y2-y4)*dx))
+	d3 := math.Abs(float64((x3-x4)*dy) - float64((y3-y4)*dx))
 
 	var da1, da2, k float64
 
-	switch func() int {
-		result := 0
-		if d2 > CurveCollinearityEpsilon {
-			result += 1
-		}
-		if d3 > CurveCollinearityEpsilon {
-			result += 2
-		}
-		return result
-	}() {
+	// Case selector mirrors agg_curves.cpp:
+	//   (int(d2 > curve_collinearity_epsilon) << 1) + int(d3 > curve_collinearity_epsilon)
+	// i.e. bit 1 = p2 significant, bit 0 = p3 significant.
+	sel := 0
+	if d2 > CurveCollinearityEpsilon {
+		sel |= 2
+	}
+	if d3 > CurveCollinearityEpsilon {
+		sel |= 1
+	}
+
+	switch sel {
 	case 0:
 		// All collinear OR p1==p4
-		k = dx*dx + dy*dy
+		k = float64(dx*dx) + float64(dy*dy)
 		if k == 0 {
 			d2 = basics.CalcSqDistance(x1, y1, x2, y2)
 			d3 = basics.CalcSqDistance(x4, y4, x3, y3)
@@ -744,10 +746,10 @@ func (c *Curve4Div) recursiveBezier(x1, y1, x2, y2, x3, y3, x4, y4 float64, leve
 			k = 1 / k
 			da1 = x2 - x1
 			da2 = y2 - y1
-			d2 = k * (da1*dx + da2*dy)
+			d2 = k * (float64(da1*dx) + float64(da2*dy))
 			da1 = x3 - x1
 			da2 = y3 - y1
-			d3 = k * (da1*dx + da2*dy)
+			d3 = k * (float64(da1*dx) + float64(da2*dy))
 			if d2 > 0 && d2 < 1 && d3 > 0 && d3 < 1 {
 				// Simple collinear case, 1---2---3---4
 				// We can leave just two endpoints
@@ -759,7 +761,7 @@ func (c *Curve4Div) recursiveBezier(x1, y1, x2, y2, x3, y3, x4, y4 float64, leve
 			case d2 >= 1:
 				d2 = basics.CalcSqDistance(x2, y2, x4, y4)
 			default:
-				d2 = basics.CalcSqDistance(x2, y2, x1+d2*dx, y1+d2*dy)
+				d2 = basics.CalcSqDistance(x2, y2, x1+float64(d2*dx), y1+float64(d2*dy))
 			}
 
 			switch {
@@ -768,7 +770,7 @@ func (c *Curve4Div) recursiveBezier(x1, y1, x2, y2, x3, y3, x4, y4 float64, leve
 			case d3 >= 1:
 				d3 = basics.CalcSqDistance(x3, y3, x4, y4)
 			default:
-				d3 = basics.CalcSqDistance(x3, y3, x1+d3*dx, y1+d3*dy)
+				d3 = basics.CalcSqDistance(x3, y3, x1+float64(d3*dx), y1+float64(d3*dy))
 			}
 		}
 		if d2 > d3 {
@@ -785,7 +787,7 @@ func (c *Curve4Div) recursiveBezier(x1, y1, x2, y2, x3, y3, x4, y4 float64, leve
 
 	case 1:
 		// p1,p2,p4 are collinear, p3 is significant
-		if d3*d3 <= distanceToleranceSquare*(dx*dx+dy*dy) {
+		if d3*d3 <= distanceToleranceSquare*(float64(dx*dx)+float64(dy*dy)) {
 			if c.angleTolerance < CurveAngleToleranceEpsilon {
 				c.points.Add(basics.Point[float64]{X: x23, Y: y23})
 				return
@@ -813,7 +815,7 @@ func (c *Curve4Div) recursiveBezier(x1, y1, x2, y2, x3, y3, x4, y4 float64, leve
 
 	case 2:
 		// p1,p3,p4 are collinear, p2 is significant
-		if d2*d2 <= distanceToleranceSquare*(dx*dx+dy*dy) {
+		if d2*d2 <= distanceToleranceSquare*(float64(dx*dx)+float64(dy*dy)) {
 			if c.angleTolerance < CurveAngleToleranceEpsilon {
 				c.points.Add(basics.Point[float64]{X: x23, Y: y23})
 				return
@@ -841,7 +843,7 @@ func (c *Curve4Div) recursiveBezier(x1, y1, x2, y2, x3, y3, x4, y4 float64, leve
 
 	case 3:
 		// Regular case
-		if (d2+d3)*(d2+d3) <= distanceToleranceSquare*(dx*dx+dy*dy) {
+		if (d2+d3)*(d2+d3) <= distanceToleranceSquare*(float64(dx*dx)+float64(dy*dy)) {
 			// If the curvature doesn't exceed the distance_tolerance value
 			// we tend to finish subdivisions.
 			if c.angleTolerance < CurveAngleToleranceEpsilon {
