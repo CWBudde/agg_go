@@ -1,3 +1,5 @@
+//go:build x11
+
 package x11
 
 /*

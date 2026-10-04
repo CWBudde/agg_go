@@ -1,5 +1,4 @@
 //go:build x11
-// +build x11
 
 // Package main is the X11 platform backend entry point for the interactive AGG demo.
 package main

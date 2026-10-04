@@ -1,5 +1,4 @@
 //go:build !x11 && !sdl2
-// +build !x11,!sdl2
 
 package platform
 

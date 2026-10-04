@@ -25,6 +25,13 @@ build-lib:
     @echo "Building AGG Go library..."
     go build ./...
 
+# Untagged builds skip internal/platform/{x11,sdl2}; this needs libx11-dev + libsdl2-dev.
+# Build and vet with the X11 and SDL2 backends enabled
+build-platform:
+    @echo "Building with X11 + SDL2 backends..."
+    go build -tags x11,sdl2 ./...
+    go vet -tags x11,sdl2 ./internal/platform/... ./examples/platform/... ./examples/shared/...
+
 # Build WASM demo
 build-wasm:
     @echo "Building AGG Go WASM demo..."
@@ -75,6 +82,11 @@ build-example EXAMPLE:
 
 # Run all tests
 test: test-unit test-integration
+
+# Run the whole module's tests (what CI runs)
+test-all:
+    @echo "Running all tests..."
+    go test ./...
 
 # Run unit tests
 test-unit:
@@ -257,7 +269,7 @@ list-demos:
     @find examples/core -mindepth 2 -name "main.go" -exec dirname {} \; | sort | \
         sed 's|examples/core/[a-z]*/||; s|examples/core/[a-z]*/controls/|controls_|' | sort
 
-# Run the interactive platform showcase demo (SDL2)
+# Run the interactive platform showcase demo (X11)
 run-x11-demo:
     go run -tags x11 examples/platform/x11/main.go
 
@@ -426,7 +438,7 @@ build-windows:
 build-linux:
     GOOS=linux go build ./...
 
-# Build with X11 support (Linux only)
+# Build with X11 support (Linux only, needs libx11-dev)
 build-x11:
     @echo "Building with X11 support..."
     go build -tags x11 ./...

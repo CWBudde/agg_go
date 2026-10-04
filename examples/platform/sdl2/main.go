@@ -1,5 +1,4 @@
 //go:build sdl2
-// +build sdl2
 
 // Package main is the SDL2 platform backend entry point for the interactive AGG demo.
 package main
