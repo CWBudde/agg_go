@@ -67,10 +67,10 @@ type transformedPathVS struct {
 }
 
 func (t *transformedPathVS) Rewind(id uint) { t.ps.Rewind(id) }
-func (t *transformedPathVS) Vertex() (float64, float64, basics.PathCommand) {
-	x, y, cmd := t.ps.NextVertex()
+func (t *transformedPathVS) Vertex() (x, y float64, cmd basics.PathCommand) {
+	x, y, rawCmd := t.ps.NextVertex()
 	t.mtx.Transform(&x, &y)
-	return x, y, basics.PathCommand(cmd)
+	return x, y, basics.PathCommand(rawCmd)
 }
 
 // ---------------------------------------------------------------------------
@@ -106,12 +106,12 @@ func (s *spiral) Rewind(_ uint) {
 	s.start = true
 }
 
-func (s *spiral) Vertex() (float64, float64, basics.PathCommand) {
+func (s *spiral) Vertex() (x, y float64, cmd basics.PathCommand) {
 	if s.currR > s.r2 {
 		return 0, 0, basics.PathCmdStop
 	}
-	x := s.x + math.Cos(s.angle)*s.currR
-	y := s.y + math.Sin(s.angle)*s.currR
+	x = s.x + math.Cos(s.angle)*s.currR
+	y = s.y + math.Sin(s.angle)*s.currR
 	s.currR += s.dr
 	s.angle += s.da
 	if s.start {
@@ -211,9 +211,9 @@ func generateAlphaMask(
 	vs conv.VertexSource,
 	opAND bool,
 	w, h int,
-) (*pixfmt.AMaskNoClipU8, *buffer.RenderingBufferU8) {
+) (mask *pixfmt.AMaskNoClipU8, maskBuf *buffer.RenderingBufferU8) {
 	maskData := make([]uint8, w*h)
-	maskBuf := buffer.NewRenderingBufferU8WithData(maskData, w, h, w)
+	maskBuf = buffer.NewRenderingBufferU8WithData(maskData, w, h, w)
 	maskPixf := pixfmt.NewPixFmtSGray8(maskBuf)
 	maskRb := renderer.NewRendererBaseWithPixfmt(maskPixf)
 
@@ -230,7 +230,7 @@ func generateAlphaMask(
 	ras.AddPath(&rasterVS{src: vs}, 0)
 	renscan.RenderScanlinesAASolid(ras, sl, maskRb, fillColor)
 
-	mask := pixfmt.NewAMaskNoClipU8WithBuffer(maskBuf, 1, 0, pixfmt.OneComponentMaskU8{})
+	mask = pixfmt.NewAMaskNoClipU8WithBuffer(maskBuf, 1, 0, pixfmt.OneComponentMaskU8{})
 	return mask, maskBuf
 }
 
@@ -593,9 +593,9 @@ func (d *demo) renderSpiralAndGlyph(
 type pathStorageVS struct{ ps *path.PathStorageStl }
 
 func (p *pathStorageVS) Rewind(id uint) { p.ps.Rewind(id) }
-func (p *pathStorageVS) Vertex() (float64, float64, basics.PathCommand) {
-	x, y, cmd := p.ps.NextVertex()
-	return x, y, basics.PathCommand(cmd)
+func (p *pathStorageVS) Vertex() (x, y float64, cmd basics.PathCommand) {
+	x, y, rawCmd := p.ps.NextVertex()
+	return x, y, basics.PathCommand(rawCmd)
 }
 
 // ---------------------------------------------------------------------------

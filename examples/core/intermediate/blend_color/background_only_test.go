@@ -35,7 +35,7 @@ func TestBackgroundOnlyPixelDiffersFromCPPReference(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open cpp reference: %v", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	refImg, err := png.Decode(f)
 	if err != nil {

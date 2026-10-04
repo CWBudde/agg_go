@@ -85,7 +85,7 @@ func Draw(ctx *agg.Context, cfg Config) {
 	overlayStats(agg2d, frameOffX, frameOffY, resultPoly, err, clipTime, renderTime)
 }
 
-func buildScene(cfg Config, w, h float64) ([]contour, []contour) {
+func buildScene(cfg Config, w, h float64) (subject, clip []contour) {
 	switch cfg.Scene {
 	case 0:
 		return sceneSimple(cfg, w, h)
@@ -102,7 +102,7 @@ func buildScene(cfg Config, w, h float64) ([]contour, []contour) {
 	}
 }
 
-func sceneSimple(cfg Config, w, h float64) ([]contour, []contour) {
+func sceneSimple(cfg Config, w, h float64) (subject, clip []contour) {
 	x := cfg.CenterX - w*0.5 + 100
 	y := cfg.CenterY - h*0.5 + 100
 
@@ -135,7 +135,7 @@ func sceneSimple(cfg Config, w, h float64) ([]contour, []contour) {
 	return pathToContours(ps1), pathToContours(ps2)
 }
 
-func sceneClosedStroke(cfg Config, w, h float64) ([]contour, []contour) {
+func sceneClosedStroke(cfg Config, w, h float64) (subject, clip []contour) {
 	x := cfg.CenterX - w*0.5 + 100
 	y := cfg.CenterY - h*0.5 + 100
 
@@ -165,7 +165,7 @@ func sceneClosedStroke(cfg Config, w, h float64) ([]contour, []contour) {
 	return pathToContours(ps1), vertexSourceToContours(stroke)
 }
 
-func sceneGBArrows(cfg Config, w, h float64) ([]contour, []contour) {
+func sceneGBArrows(cfg Config, w, h float64) (subject, clip []contour) {
 	gbPoly := path.NewPathStorageStl()
 	aggshapes.MakeGBPoly(gbPoly)
 	arrows := path.NewPathStorageStl()
@@ -184,7 +184,7 @@ func sceneGBArrows(cfg Config, w, h float64) ([]contour, []contour) {
 	return a, b
 }
 
-func sceneGBSpiral(cfg Config, w, h float64) ([]contour, []contour) {
+func sceneGBSpiral(cfg Config, w, h float64) (subject, clip []contour) {
 	gbPoly := path.NewPathStorageStl()
 	aggshapes.MakeGBPoly(gbPoly)
 
@@ -195,7 +195,7 @@ func sceneGBSpiral(cfg Config, w, h float64) ([]contour, []contour) {
 	return transformContours(pathToContours(gbPoly), -1150, -1150, 2.0, 2.0, 0, 0), vertexSourceToContours(stroke)
 }
 
-func sceneSpiralGlyph(cfg Config) ([]contour, []contour) {
+func sceneSpiralGlyph(cfg Config) (subject, clip []contour) {
 	spiralPath := buildSpiralPath(cfg.CenterX, cfg.CenterY, 10, 150, 30, 0.0)
 	stroke := conv.NewConvStroke(path.NewPathStorageStlVertexSourceAdapter(spiralPath))
 	stroke.SetWidth(15.0)
@@ -454,7 +454,7 @@ func overlayStats(a *agg.Agg2D, offX, offY float64, result *gpc.GPCPolygon, err 
 	}
 }
 
-func polygonStats(p *gpc.GPCPolygon) (int, int) {
+func polygonStats(p *gpc.GPCPolygon) (contours, vertices int) {
 	if p == nil {
 		return 0, 0
 	}

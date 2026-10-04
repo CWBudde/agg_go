@@ -36,9 +36,9 @@ func (p *transPolar) Transform(x, y *float64) {
 type segmAdapter struct{ s *conv.ConvSegmentator }
 
 func (a *segmAdapter) Rewind(id uint) { a.s.Rewind(id) }
-func (a *segmAdapter) Vertex() (float64, float64, basics.PathCommand) {
-	x, y, cmd := a.s.Vertex()
-	return x, y, basics.PathCommand(cmd)
+func (a *segmAdapter) Vertex() (x, y float64, cmd basics.PathCommand) {
+	x, y, rawCmd := a.s.Vertex()
+	return x, y, basics.PathCommand(rawCmd)
 }
 
 type TransformedControl struct {
@@ -54,9 +54,8 @@ func (tc *TransformedControl) Rewind(pathID uint) {
 	tc.pipeline.Rewind(pathID)
 }
 
-func (tc *TransformedControl) Vertex() (float64, float64, basics.PathCommand) {
-	x, y, cmd := tc.pipeline.Vertex()
-	return x, y, cmd
+func (tc *TransformedControl) Vertex() (x, y float64, cmd basics.PathCommand) {
+	return tc.pipeline.Vertex()
 }
 
 func (tc *TransformedControl) Color(i uint) color.RGBA {

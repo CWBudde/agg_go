@@ -108,7 +108,9 @@ func (s *Scene) Draw(ctx *agg.Context) error {
 	s.DrawGraphTile()
 	s.DrawFilterGraphTile()
 
-	s.drawBackdrop(ctx)
+	if err := s.drawBackdrop(ctx); err != nil {
+		return err
+	}
 	return s.DrawOverlay(ctx)
 }
 
@@ -202,10 +204,9 @@ func (s *Scene) DrawOverlay(ctx *agg.Context) error {
 	return nil
 }
 
-func (s *Scene) drawBackdrop(ctx *agg.Context) {
+func (s *Scene) drawBackdrop(ctx *agg.Context) error {
 	if s.backdrop != nil {
-		ctx.GetAgg2D().CopyImageSimple(s.backdrop, 0, 0)
-		return
+		return ctx.GetAgg2D().CopyImageSimple(s.backdrop, 0, 0)
 	}
 	ctx.Clear(agg.RGBA(0.985, 0.985, 0.97, 1.0))
 	a := ctx.GetAgg2D()
@@ -215,6 +216,7 @@ func (s *Scene) drawBackdrop(ctx *agg.Context) {
 		agg.RGBA(0.91, 0.93, 0.95, 1.0), 1.0)
 	a.NoLine()
 	a.Rectangle(0, 0, float64(s.width), float64(s.height))
+	return nil
 }
 
 func (s *Scene) initLayers() {

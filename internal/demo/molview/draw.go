@@ -351,7 +351,7 @@ func computeLayout(m Molecule, st State) layout {
 	}
 }
 
-func transformPoint(x, y, midX, midY, centerX, centerY, scale, cosA, sinA float64) (float64, float64) {
+func transformPoint(x, y, midX, midY, centerX, centerY, scale, cosA, sinA float64) (tx, ty float64) {
 	x -= midX
 	y -= midY
 	rx := x*cosA - y*sinA

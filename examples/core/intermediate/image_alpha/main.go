@@ -195,7 +195,7 @@ func imageAlphaSRGBA8(r, g, b, a uint8) color.RGBA8[color.Linear] {
 	})
 }
 
-func imageAlphaSRGBToLinearBGR(r, g, b uint8) (uint8, uint8, uint8) {
+func imageAlphaSRGBToLinearBGR(r, g, b uint8) (lb, lg, lr uint8) {
 	c := imageAlphaSRGBA8(r, g, b, 255)
 	return c.B, c.G, c.R
 }
@@ -309,7 +309,7 @@ func loadImageAsset(filename string) (*agg.Image, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	switch filepath.Ext(filename) {
 	case ".bmp", ".BMP":

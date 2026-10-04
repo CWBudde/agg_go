@@ -331,25 +331,25 @@ func (g *Graph) prepare(width, height int, fill bool) *preparedGraph {
 	return pg
 }
 
-func cubicPoint(x1, y1, cx1, cy1, cx2, cy2, x2, y2, t float64) (float64, float64) {
+func cubicPoint(x1, y1, cx1, cy1, cx2, cy2, x2, y2, t float64) (x, y float64) {
 	u := 1.0 - t
 	tt := t * t
 	uu := u * u
 	uuu := uu * u
 	ttt := tt * t
-	x := uuu*x1 + 3*uu*t*cx1 + 3*u*tt*cx2 + ttt*x2
-	y := uuu*y1 + 3*uu*t*cy1 + 3*u*tt*cy2 + ttt*y2
+	x = uuu*x1 + 3*uu*t*cx1 + 3*u*tt*cx2 + ttt*x2
+	y = uuu*y1 + 3*uu*t*cy1 + 3*u*tt*cy2 + ttt*y2
 	return x, y
 }
 
-func curveControls(x1, y1, x2, y2 float64) (float64, float64, float64, float64) {
+func curveControls(x1, y1, x2, y2 float64) (cx1, cy1, cx2, cy2 float64) {
 	k := 0.5
 	dx := x2 - x1
 	dy := y2 - y1
-	cx1 := x1 - dy*k
-	cy1 := y1 + dx*k
-	cx2 := x2 + dy*k
-	cy2 := y2 - dx*k
+	cx1 = x1 - dy*k
+	cy1 = y1 + dx*k
+	cx2 = x2 + dy*k
+	cy2 = y2 - dx*k
 	return cx1, cy1, cx2, cy2
 }
 

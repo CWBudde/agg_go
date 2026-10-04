@@ -294,8 +294,11 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	defer f.Close()
 	if err := png.Encode(f, out); err != nil {
+		_ = f.Close()
+		panic(err)
+	}
+	if err := f.Close(); err != nil {
 		panic(err)
 	}
 

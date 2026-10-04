@@ -272,7 +272,7 @@ func (app *App) removeNearby(x, y, radius float64) int {
 }
 
 // Run initializes the window and starts the event loop.
-func (app *App) Run() error {
+func (app *App) Run() (err error) {
 	if setter, ok := app.backend.(platform.EventCallbackSetter); ok {
 		setter.SetEventCallback(app)
 	}
@@ -283,7 +283,11 @@ func (app *App) Run() error {
 	if err := app.backend.Init(windowWidth, windowHeight, platform.WindowResize); err != nil {
 		return fmt.Errorf("backend init: %w", err)
 	}
-	defer app.backend.Destroy()
+	defer func() {
+		if derr := app.backend.Destroy(); derr != nil && err == nil {
+			err = fmt.Errorf("backend destroy: %w", derr)
+		}
+	}()
 
 	for app.running {
 		if !app.backend.PollEvents() {

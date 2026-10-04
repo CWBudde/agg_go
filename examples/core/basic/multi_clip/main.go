@@ -58,7 +58,7 @@ func newDemo() *demo {
 	}
 }
 
-func lionBaseDelta(ld liondemo.LionData) (float64, float64) {
+func lionBaseDelta(ld liondemo.LionData) (dx, dy float64) {
 	vs := path.NewPathStorageStlVertexSourceAdapter(ld.Path)
 	rect, ok := basics.BoundingRect[float64](vs, basics.SliceGetID(ld.PathIdx), 0, uint(ld.NPaths))
 	if !ok {

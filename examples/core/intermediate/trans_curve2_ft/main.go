@@ -48,7 +48,7 @@ func (d *demo) Render(img *agg.Image) {
 	drawCurves(ctx, a, bspline1, bspline2)
 }
 
-func buildCurve() (*transform.TransDoublePath, *conv.ConvBSpline, *conv.ConvBSpline) {
+func buildCurve() (dp *transform.TransDoublePath, bspline1, bspline2 *conv.ConvBSpline) {
 	buildSpline := func(points [12]float64) *conv.ConvBSpline {
 		ps := path.NewPathStorageStl()
 		ps.MoveTo(points[0], points[1])
@@ -60,10 +60,10 @@ func buildCurve() (*transform.TransDoublePath, *conv.ConvBSpline, *conv.ConvBSpl
 		return bspline
 	}
 
-	bspline1 := buildSpline(points1)
-	bspline2 := buildSpline(points2)
+	bspline1 = buildSpline(points1)
+	bspline2 = buildSpline(points2)
 
-	dp := transform.NewTransDoublePath()
+	dp = transform.NewTransDoublePath()
 	dp.SetPreserveXScale(true)
 	dp.SetBaseLength(baseLength)
 	dp.SetBaseHeight(baseHeight)

@@ -49,9 +49,9 @@ func (a *convVS) Vertex(x, y *float64) uint32 {
 type pathStlVS struct{ ps *path.PathStorageStl }
 
 func (a *pathStlVS) Rewind(id uint) { a.ps.Rewind(id) }
-func (a *pathStlVS) Vertex() (float64, float64, basics.PathCommand) {
-	x, y, cmd := a.ps.NextVertex()
-	return x, y, basics.PathCommand(cmd)
+func (a *pathStlVS) Vertex() (x, y float64, cmd basics.PathCommand) {
+	x, y, rawCmd := a.ps.NextVertex()
+	return x, y, basics.PathCommand(rawCmd)
 }
 
 // ---------------------------------------------------------------------------

@@ -70,7 +70,7 @@ func sourceImage(src *agg.Image) *agg.Image {
 	return cachedFlipped
 }
 
-func SourceSize() (int, int, bool) {
+func SourceSize() (width, height int, ok bool) {
 	base := loadSpheres()
 	if base == nil {
 		return 0, 0, false

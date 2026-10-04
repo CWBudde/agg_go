@@ -370,7 +370,7 @@ func (d *demo) measureCurveTime(angleTol, cuspLimitVal float64, incremental bool
 	return time.Since(start).Seconds() * 1_000_000.0 / 100.0
 }
 
-func (d *demo) calcMaxError(scale, angleTol, cuspLimitVal float64, incremental bool) (float64, float64) {
+func (d *demo) calcMaxError(scale, angleTol, cuspLimitVal float64, incremental bool) (distErr, angleErrDeg float64) {
 	curve := d.newCurve(d.approxScale.Value()*scale, angleTol, cuspLimitVal, incremental)
 
 	var curvePoints []curvePoint
@@ -463,7 +463,7 @@ func countPathVertices(p *path.PathStorageStl) int {
 	return count
 }
 
-func findPoint(points []curvePoint, dist float64) (int, int) {
+func findPoint(points []curvePoint, dist float64) (lo, hi int) {
 	i := 0
 	j := len(points) - 1
 	for j-i > 1 {
@@ -477,12 +477,12 @@ func findPoint(points []curvePoint, dist float64) (int, int) {
 	return i, j
 }
 
-func bezier4Point(x1, y1, x2, y2, x3, y3, x4, y4, mu float64) (float64, float64) {
+func bezier4Point(x1, y1, x2, y2, x3, y3, x4, y4, mu float64) (x, y float64) {
 	mum1 := 1 - mu
 	mum13 := mum1 * mum1 * mum1
 	mu3 := mu * mu * mu
-	x := mum13*x1 + 3*mu*mum1*mum1*x2 + 3*mu*mu*mum1*x3 + mu3*x4
-	y := mum13*y1 + 3*mu*mum1*mum1*y2 + 3*mu*mu*mum1*y3 + mu3*y4
+	x = mum13*x1 + 3*mu*mum1*mum1*x2 + 3*mu*mu*mum1*x3 + mu3*x4
+	y = mum13*y1 + 3*mu*mum1*mum1*y2 + 3*mu*mu*mum1*y3 + mu3*y4
 	return x, y
 }
 

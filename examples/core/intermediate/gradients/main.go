@@ -119,11 +119,11 @@ func newGammaControl() *gammactrl.GammaCtrl {
 	return gc
 }
 
-func newSplineControls() (*splinectrl.SplineCtrl[icol.RGBA], *splinectrl.SplineCtrl[icol.RGBA], *splinectrl.SplineCtrl[icol.RGBA], *splinectrl.SplineCtrl[icol.RGBA]) {
-	splineR := splinectrl.NewSplineCtrlRGBA(210, 10, 460, 45, 6, false)
-	splineG := splinectrl.NewSplineCtrlRGBA(210, 50, 460, 85, 6, false)
-	splineB := splinectrl.NewSplineCtrlRGBA(210, 90, 460, 125, 6, false)
-	splineA := splinectrl.NewSplineCtrlRGBA(210, 130, 460, 165, 6, false)
+func newSplineControls() (splineR, splineG, splineB, splineA *splinectrl.SplineCtrl[icol.RGBA]) {
+	splineR = splinectrl.NewSplineCtrlRGBA(210, 10, 460, 45, 6, false)
+	splineG = splinectrl.NewSplineCtrlRGBA(210, 50, 460, 85, 6, false)
+	splineB = splinectrl.NewSplineCtrlRGBA(210, 90, 460, 125, 6, false)
+	splineA = splinectrl.NewSplineCtrlRGBA(210, 130, 460, 165, 6, false)
 
 	splineR.SetBackgroundColor(icol.NewRGBA(1.0, 0.8, 0.8, 1.0))
 	splineG.SetBackgroundColor(icol.NewRGBA(0.8, 1.0, 0.8, 1.0))

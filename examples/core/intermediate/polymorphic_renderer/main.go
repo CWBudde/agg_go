@@ -50,7 +50,7 @@ type rgb555Renderer struct {
 	ren     *rendsl.RendererScanlineAASolid[*renderer.RendererBase[renderer.PixelFormat[color.RGBA8[color.Linear]], color.RGBA8[color.Linear]], color.RGBA8[color.Linear]]
 }
 
-func newRGB555Renderer(w, h int) (*rgb555Renderer, []basics.Int16u) {
+func newRGB555Renderer(w, h int) (r *rgb555Renderer, pixels []basics.Int16u) {
 	buf16 := make([]basics.Int16u, w*h)
 	rbuf16 := buffer.NewRenderingBufferU16WithData(buf16, w, h, -w*2) // negative stride = flip_y
 	pf := pixfmt.NewPixFmtRGB555(rbuf16, blender.BlenderRGB555{})

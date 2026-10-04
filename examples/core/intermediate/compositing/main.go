@@ -169,7 +169,7 @@ func loadBMPImage(filename string, flipY bool) (*agg.Image, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	var fileHeader struct {
 		Type      uint16
