@@ -37,9 +37,7 @@ jobs:
         run: go vet ./...
 
       - name: Test
-        # tests/visual/primitives compares against stale Go-generated goldens and fails
-        # at HEAD on every platform; tracked as PLAN.md Phase 8.1. Re-add it once fixed.
-        run: go test $(go list ./... | grep -v /tests/visual/primitives)
+        run: go test ./...
 
   freetype:
     name: go test -tags freetype
