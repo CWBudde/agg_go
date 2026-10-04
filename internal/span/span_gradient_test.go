@@ -40,7 +40,7 @@ func TestGradientShapeFunctions(t *testing.T) {
 
 		// Test basic radial gradient (Pythagorean theorem)
 		result := g.Calculate(3, 4, 100)
-		expected := 5 // sqrt(3^2 + 4^2) = 5
+		expected := 5 // hypotenuse of a 3-4-5 triangle
 		if result != expected {
 			t.Errorf("Radial (3,4): got %d, want %d", result, expected)
 		}
@@ -94,7 +94,7 @@ func TestGradientShapeFunctions(t *testing.T) {
 
 		// At (0, 1), angle is π/2, so result should be around d2/2
 		result2 := g.Calculate(0, 1, 100)
-		expected2 := 50 // (π/2) * 100 / π = 50
+		expected2 := 50 // half of d2, since the angle is half of π
 		if absInt(result2-expected2) > 2 {
 			t.Errorf("Conic (0,1): got %d, want ~%d", result2, expected2)
 		}

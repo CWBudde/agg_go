@@ -12,9 +12,6 @@ func init() {
 	_ = setCompOp
 	_ = setCompAlphaSrc
 	_ = setCompAlphaDst
-	_ = setComp2Op
-	_ = setComp2AlphaSrc
-	_ = setComp2AlphaDst
 	_ = handleDashMouseDown
 	_ = handleDashMouseMove
 	_ = handleDashMouseUp

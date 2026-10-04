@@ -426,14 +426,14 @@ func BenchmarkRGB565BlendSolidHspan(b *testing.B) {
 
 // --- Contract tests ---
 
-func makeRGB565Buf(w, h int) (*PixFmtRGB565[blender.BlenderRGB565], []basics.Int16u) {
-	buf := make([]basics.Int16u, w*h)
+func makeRGB565Buf(w, h int) (pf *PixFmtRGB565[blender.BlenderRGB565], buf []basics.Int16u) {
+	buf = make([]basics.Int16u, w*h)
 	rbuf := buffer.NewRenderingBufferU16WithData(buf, w, h, w*2)
 	return NewPixFmtRGB565(rbuf, blender.BlenderRGB565{}), buf
 }
 
-func makeRGB555Buf(w, h int) (*PixFmtRGB555[blender.BlenderRGB555], []basics.Int16u) {
-	buf := make([]basics.Int16u, w*h)
+func makeRGB555Buf(w, h int) (pf *PixFmtRGB555[blender.BlenderRGB555], buf []basics.Int16u) {
+	buf = make([]basics.Int16u, w*h)
 	rbuf := buffer.NewRenderingBufferU16WithData(buf, w, h, w*2)
 	return NewPixFmtRGB555(rbuf, blender.BlenderRGB555{}), buf
 }

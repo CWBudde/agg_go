@@ -108,7 +108,7 @@ type Image interface {
 	Height() int
 	Premultiply() error
 	Demultiply() error
-	ToGoImage() *image.RGBA
+	ToGoImage() *image.NRGBA
 	ToStandardImage() (image.Image, error)
 	SaveToPNG(filename string) error
 	SaveToJPEG(filename string, quality int) error

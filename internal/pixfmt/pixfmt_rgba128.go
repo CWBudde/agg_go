@@ -364,7 +364,7 @@ func coverToF32(cover basics.Int8u) float32 {
 }
 
 // normalizeBar orders the rectangle corners so x1<=x2 and y1<=y2.
-func normalizeBar(x1, y1, x2, y2 int) (int, int, int, int) {
+func normalizeBar(x1, y1, x2, y2 int) (minX, minY, maxX, maxY int) {
 	if x1 > x2 {
 		x1, x2 = x2, x1
 	}

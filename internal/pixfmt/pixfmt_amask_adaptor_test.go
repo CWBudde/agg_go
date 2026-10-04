@@ -601,7 +601,7 @@ func TestPixFmtAMaskAdaptorWrapsBGR24(t *testing.T) {
 	}
 
 	gotMid := pf.Pixel(1, 0)
-	if gotMid.R >= 255 || gotMid.G <= 0 || gotMid.B <= 0 {
+	if gotMid.R == 255 || gotMid.G == 0 || gotMid.B == 0 {
 		t.Fatalf("half-masked BGR24 pixel = %+v, want blended red over white", gotMid)
 	}
 
@@ -627,7 +627,7 @@ func TestPixFmtAMaskAdaptorWrapsBGR24WithRGBAColors(t *testing.T) {
 	rb.BlendPixel(0, 0, color.RGBA8[color.Linear]{R: 200, G: 0, B: 0, A: 128}, basics.CoverFull)
 
 	got := pf.Pixel(0, 0)
-	if got.R >= 255 || got.R <= 200 || got.G >= 255 || got.G == 0 || got.B >= 255 || got.B == 0 {
+	if got.R == 255 || got.R <= 200 || got.G == 255 || got.G == 0 || got.B == 255 || got.B == 0 {
 		t.Fatalf("alpha-aware masked BGR24 pixel = %+v, want blended red over white", got)
 	}
 }

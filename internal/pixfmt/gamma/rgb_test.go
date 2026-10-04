@@ -224,13 +224,13 @@ func TestApplyGammaRGB_EdgeCases(t *testing.T) {
 			copy(inversePixel, original)
 			invApp.Apply(inversePixel)
 
-			// Ensure values are in valid range
+			// Each channel must be mapped through the LUT exactly once
 			for j := 0; j < 3; j++ {
-				if directPixel[j] > 255 {
-					t.Errorf("Direct gamma produced invalid value: %d > 255", directPixel[j])
+				if want := gamma.Dir(original[j]); directPixel[j] != want {
+					t.Errorf("Direct gamma channel %d = %d, want %d", j, directPixel[j], want)
 				}
-				if inversePixel[j] > 255 {
-					t.Errorf("Inverse gamma produced invalid value: %d > 255", inversePixel[j])
+				if want := gamma.Inv(original[j]); inversePixel[j] != want {
+					t.Errorf("Inverse gamma channel %d = %d, want %d", j, inversePixel[j], want)
 				}
 			}
 		})

@@ -73,7 +73,7 @@ func loadPNG(path string) (image.Image, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	img, err := png.Decode(f)
 	if err != nil {
@@ -82,7 +82,7 @@ func loadPNG(path string) (image.Image, error) {
 	return img, nil
 }
 
-func savePNG(img image.Image, path string) error {
+func savePNG(img image.Image, path string) (err error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
@@ -90,6 +90,10 @@ func savePNG(img image.Image, path string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() {
+		if cerr := f.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 	return png.Encode(f, img)
 }

@@ -44,6 +44,9 @@ func savePNG(ctx *agg.Context, filename string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	return png.Encode(f, goImg)
+	if err := png.Encode(f, goImg); err != nil {
+		_ = f.Close()
+		return err
+	}
+	return f.Close()
 }

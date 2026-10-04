@@ -93,8 +93,8 @@ func TestTransformInsideRadius(t *testing.T) {
 	m.Transform(&x, &y)
 
 	// Expected: center + (original - center) * magnification
-	expectedX := 100.0 + (originalX-100.0)*2.0 // 100 + 20*2 = 140
-	expectedY := 100.0 + (originalY-100.0)*2.0 // 100 + 30*2 = 160
+	expectedX := 100.0 + (originalX-100.0)*2.0 // offset 20 doubled gives 140
+	expectedY := 100.0 + (originalY-100.0)*2.0 // offset 30 doubled gives 160
 
 	if math.Abs(x-expectedX) > warpMagnifierTestEpsilon || math.Abs(y-expectedY) > warpMagnifierTestEpsilon {
 		t.Errorf("Inside radius transform failed, expected (%g,%g), got (%g,%g)", expectedX, expectedY, x, y)
@@ -108,7 +108,7 @@ func TestTransformOutsideRadius(t *testing.T) {
 	m.SetRadius(10.0)
 
 	// Test point outside radius
-	x, y := 20.0, 0.0 // distance = 20 > 10
+	x, y := 20.0, 0.0 // distance 20 lies outside radius 10
 	m.Transform(&x, &y)
 
 	// Expected calculation: r = 20, mult = (20 + 10*(2-1)) / 20 = 30/20 = 1.5

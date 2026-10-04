@@ -301,7 +301,7 @@ func TestPublicAgg2DFloatShapes(t *testing.T) {
 	for y := range h {
 		for x := range w {
 			cf := rgbaF.RGBAAt(x, y)
-			c8 := img8.RGBAAt(x, y)
+			c8 := img8.NRGBAAt(x, y)
 			for _, d := range []int{
 				absInt(int(cf.R) - int(c8.R)),
 				absInt(int(cf.G) - int(c8.G)),
@@ -395,7 +395,7 @@ func TestPublicAgg2DFloatCurves(t *testing.T) {
 	for y := range h {
 		for x := range w {
 			cf := rgbaF.RGBAAt(x, y)
-			c8 := img8.RGBAAt(x, y)
+			c8 := img8.NRGBAAt(x, y)
 			for _, d := range []int{
 				absInt(int(cf.R) - int(c8.R)),
 				absInt(int(cf.G) - int(c8.G)),
@@ -475,7 +475,7 @@ func TestPublicAgg2DFloatDashedStrokes(t *testing.T) {
 	for y := range h {
 		for x := range w {
 			cf := rgbaF.RGBAAt(x, y)
-			c8 := img8.RGBAAt(x, y)
+			c8 := img8.NRGBAAt(x, y)
 			for _, d := range []int{
 				absInt(int(cf.R) - int(c8.R)),
 				absInt(int(cf.G) - int(c8.G)),
@@ -549,7 +549,7 @@ func TestPublicAgg2DFloatGradientVariants(t *testing.T) {
 	for y := range h {
 		for x := range w {
 			cf := rgbaF.RGBAAt(x, y)
-			c8 := img8.RGBAAt(x, y)
+			c8 := img8.NRGBAAt(x, y)
 			for _, d := range []int{
 				absInt(int(cf.R) - int(c8.R)),
 				absInt(int(cf.G) - int(c8.G)),
@@ -1187,7 +1187,7 @@ func TestPublicAgg2DFloatGouraudTriangle(t *testing.T) {
 	for y := range h {
 		for x := range w {
 			cf := rgbaF.RGBAAt(x, y)
-			c8 := img8.RGBAAt(x, y)
+			c8 := img8.NRGBAAt(x, y)
 			for _, d := range []int{
 				absInt(int(cf.R) - int(c8.R)),
 				absInt(int(cf.G) - int(c8.G)),

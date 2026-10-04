@@ -145,7 +145,7 @@ func render(s scene.Scene, kind engine.Kind, assets *scene.Assets) (image.Image,
 // real failure. Treating typed capability errors as skips is the correct
 // response to the documented CPP partial-coverage gaps (e.g. scaled image draw
 // under an active transform).
-func skipReason(err error) (bool, string) {
+func skipReason(err error) (skip bool, reason string) {
 	switch {
 	case err == nil:
 		return false, ""

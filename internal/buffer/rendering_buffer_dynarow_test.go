@@ -289,7 +289,7 @@ func TestRenderingBufferDynarowEdgeCases(t *testing.T) {
 		t.Error("Allocation beyond byte width should still succeed")
 	}
 	// Length should be truncated
-	if len(rowPtr) > 50 { // 400 - 350 = 50
+	if len(rowPtr) > 50 { // 400 minus 350 leaves 50 bytes
 		t.Errorf("Allocation beyond byte width should be truncated, got length %d", len(rowPtr))
 	}
 

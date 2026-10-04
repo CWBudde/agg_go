@@ -54,7 +54,7 @@ func TestGraphArrowsRenderOnTopOfNodes(t *testing.T) {
 		DrawEdges: true,
 	})
 
-	got := img.ToGoImage().RGBAAt(73, 50)
+	got := img.ToGoImage().NRGBAAt(73, 50)
 	if !isDarkArrowPixel(got) {
 		t.Fatalf("arrow sample at destination node = rgba(%d,%d,%d,%d), want dark edge/arrow color on top of node gradient",
 			got.R, got.G, got.B, got.A)
@@ -88,13 +88,13 @@ func TestGraphEdgeColorsMatchCPPsRGBConversion(t *testing.T) {
 	}
 	want := internalcolor.ConvertRGBA8SRGBToLinear(srgb)
 
-	got := img.ToGoImage().RGBAAt(50, 50)
+	got := img.ToGoImage().NRGBAAt(50, 50)
 	if got.R != want.R || got.G != want.G || got.B != want.B || got.A != want.A {
 		t.Fatalf("edge sample = rgba(%d,%d,%d,%d), want C++ srgba8 converted to linear rgba(%d,%d,%d,%d)",
 			got.R, got.G, got.B, got.A, want.R, want.G, want.B, want.A)
 	}
 }
 
-func isDarkArrowPixel(c color.RGBA) bool {
+func isDarkArrowPixel(c color.NRGBA) bool {
 	return c.R < 150 && c.G < 150 && c.B < 150 && c.A == 255
 }

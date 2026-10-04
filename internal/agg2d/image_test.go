@@ -1035,7 +1035,7 @@ func makeHighFrequencyTraceFixture() []uint8 {
 	return buf
 }
 
-func firstVisiblePixel(buf []uint8, width, height int) (int, int, bool) {
+func firstVisiblePixel(buf []uint8, width, height int) (px, py int, found bool) {
 	for y := range height {
 		for x := range width {
 			if buf[(y*width+x)*4+3] != 0 {
@@ -1178,7 +1178,9 @@ func BenchmarkTransformImage(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		agg2d.TransformImage(img, 0, 0, 100, 100, 50, 50, 150, 150)
+		if err := agg2d.TransformImage(img, 0, 0, 100, 100, 50, 50, 150, 150); err != nil {
+			b.Fatalf("TransformImage failed: %v", err)
+		}
 	}
 }
 
@@ -1271,6 +1273,8 @@ func BenchmarkBlendImage(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		agg2d.BlendImage(img, 0, 0, 64, 64, 100, 100, 128)
+		if err := agg2d.BlendImage(img, 0, 0, 64, 64, 100, 100, 128); err != nil {
+			b.Fatalf("BlendImage failed: %v", err)
+		}
 	}
 }

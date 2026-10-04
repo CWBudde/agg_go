@@ -104,14 +104,14 @@ func (tb *TransBilinear) Transform(x, y *float64) {
 // TransformValues applies the bilinear transformation to a point and returns new coordinates
 // Extension: This method is not present in the original C++ AGG implementation.
 // It provides a convenient value-returning variant of the pointer-based Transform method.
-func (tb *TransBilinear) TransformValues(x, y float64) (float64, float64) {
+func (tb *TransBilinear) TransformValues(x, y float64) (newX, newY float64) {
 	if !tb.valid {
 		return x, y
 	}
 
 	xy := x * y
-	newX := tb.mtx[0][0] + tb.mtx[1][0]*xy + tb.mtx[2][0]*x + tb.mtx[3][0]*y
-	newY := tb.mtx[0][1] + tb.mtx[1][1]*xy + tb.mtx[2][1]*x + tb.mtx[3][1]*y
+	newX = tb.mtx[0][0] + tb.mtx[1][0]*xy + tb.mtx[2][0]*x + tb.mtx[3][0]*y
+	newY = tb.mtx[0][1] + tb.mtx[1][1]*xy + tb.mtx[2][1]*x + tb.mtx[3][1]*y
 	return newX, newY
 }
 
@@ -132,7 +132,7 @@ func (tb *TransBilinear) InverseTransform(x, y *float64) {
 // InverseTransformValues finds the source coordinates that would transform to the given destination coordinates
 // Extension: This method is not present in the original C++ AGG implementation.
 // Uses Newton-Raphson iteration to solve the inverse bilinear transformation.
-func (tb *TransBilinear) InverseTransformValues(dx, dy float64) (float64, float64) {
+func (tb *TransBilinear) InverseTransformValues(dx, dy float64) (sx, sy float64) {
 	if !tb.valid {
 		return dx, dy
 	}

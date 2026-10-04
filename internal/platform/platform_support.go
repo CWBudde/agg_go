@@ -365,12 +365,12 @@ func (ps *PlatformSupport) CreateImage(idx, width, height int) bool {
 }
 
 // loadBMP loads a BMP image file and converts it to the platform's pixel format
-func (ps *PlatformSupport) loadBMP(filename string) ([]uint8, int, int, error) {
+func (ps *PlatformSupport) loadBMP(filename string) (pixels []uint8, width, height int, err error) {
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, 0, 0, err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	// Read BMP file header
 	var fileHeader BMPFileHeader
@@ -400,8 +400,8 @@ func (ps *PlatformSupport) loadBMP(filename string) ([]uint8, int, int, error) {
 		return nil, 0, 0, fmt.Errorf("unsupported bit depth: %d", infoHeader.BitCount)
 	}
 
-	width := int(infoHeader.Width)
-	height := int(infoHeader.Height)
+	width = int(infoHeader.Width)
+	height = int(infoHeader.Height)
 	if width <= 0 || height <= 0 {
 		return nil, 0, 0, fmt.Errorf("invalid image dimensions: %dx%d", width, height)
 	}
@@ -475,16 +475,16 @@ func (ps *PlatformSupport) loadBMP(filename string) ([]uint8, int, int, error) {
 }
 
 // loadPPM loads a PPM P6 (binary) image file
-func (ps *PlatformSupport) loadPPM(filename string) ([]uint8, int, int, error) {
+func (ps *PlatformSupport) loadPPM(filename string) (pixels []uint8, width, height int, err error) {
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, 0, 0, err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	// Read PPM header
 	var magic string
-	var width, height, maxVal int
+	var maxVal int
 
 	// Read magic number
 	if _, err := fmt.Fscanf(file, "%s", &magic); err != nil {
@@ -564,12 +564,12 @@ func (ps *PlatformSupport) loadPPM(filename string) ([]uint8, int, int, error) {
 }
 
 // loadPNG loads a PNG image file using Go's standard library
-func (ps *PlatformSupport) loadPNG(filename string) ([]uint8, int, int, error) {
+func (ps *PlatformSupport) loadPNG(filename string) (pixels []uint8, width, height int, err error) {
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, 0, 0, err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	// Decode PNG image
 	img, err := png.Decode(file)
@@ -578,8 +578,8 @@ func (ps *PlatformSupport) loadPNG(filename string) ([]uint8, int, int, error) {
 	}
 
 	bounds := img.Bounds()
-	width := bounds.Dx()
-	height := bounds.Dy()
+	width = bounds.Dx()
+	height = bounds.Dy()
 
 	// Calculate target stride and allocate buffer
 	targetStride := width * ps.bpp / 8
@@ -675,12 +675,16 @@ func (ps *PlatformSupport) LoadImage(idx int, filename string) bool {
 }
 
 // saveBMP saves an image buffer to a BMP file
-func (ps *PlatformSupport) saveBMP(filename string, buffer []uint8, width, height, stride int) error {
+func (ps *PlatformSupport) saveBMP(filename string, buffer []uint8, width, height, stride int) (err error) {
 	file, err := os.Create(filename)
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		if cerr := file.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 
 	// Calculate BMP parameters
 	bitsPerPixel := uint16(ps.bpp)
@@ -700,7 +704,7 @@ func (ps *PlatformSupport) saveBMP(filename string, buffer []uint8, width, heigh
 	infoHeader := BMPInfoHeader{
 		Size:          40,
 		Width:         int32(width),
-		Height:        int32(height), // Positive = bottom-to-top
+		Height:        int32(height), // a positive height means bottom-up row order
 		Planes:        1,
 		BitCount:      bitsPerPixel,
 		Compression:   0, // No compression
@@ -723,6 +727,7 @@ func (ps *PlatformSupport) saveBMP(filename string, buffer []uint8, width, heigh
 	bmpStride := ((width*int(bitsPerPixel) + 31) / 32) * 4
 	rowPadding := bmpStride - (width * int(bitsPerPixel) / 8)
 	padding := make([]uint8, rowPadding)
+	row := make([]byte, 0, bmpStride)
 
 	// Write pixel data (BMP is bottom-to-top, BGR format)
 	for y := height - 1; y >= 0; y-- {
@@ -731,6 +736,7 @@ func (ps *PlatformSupport) saveBMP(filename string, buffer []uint8, width, heigh
 			srcY = height - 1 - y
 		}
 
+		row = row[:0]
 		for x := 0; x < width; x++ {
 			srcIdx := srcY*stride + x*ps.bpp/8
 
@@ -742,19 +748,20 @@ func (ps *PlatformSupport) saveBMP(filename string, buffer []uint8, width, heigh
 				g := buffer[srcIdx+1]
 				b := buffer[srcIdx+2]
 				a := buffer[srcIdx+3]
-				file.Write([]byte{b, g, r, a})
+				row = append(row, b, g, r, a)
 			case 24:
 				// Source is RGB, write as BGR
 				r := buffer[srcIdx]
 				g := buffer[srcIdx+1]
 				b := buffer[srcIdx+2]
-				file.Write([]byte{b, g, r})
+				row = append(row, b, g, r)
 			}
 		}
 
-		// Write row padding
-		if rowPadding > 0 {
-			file.Write(padding)
+		// Append row padding
+		row = append(row, padding...)
+		if _, err := file.Write(row); err != nil {
+			return fmt.Errorf("failed to write BMP pixel data: %v", err)
 		}
 	}
 
@@ -762,12 +769,16 @@ func (ps *PlatformSupport) saveBMP(filename string, buffer []uint8, width, heigh
 }
 
 // savePPM saves an image buffer to a PPM P6 file
-func (ps *PlatformSupport) savePPM(filename string, buffer []uint8, width, height, stride int) error {
+func (ps *PlatformSupport) savePPM(filename string, buffer []uint8, width, height, stride int) (err error) {
 	file, err := os.Create(filename)
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		if cerr := file.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 
 	// Write PPM header
 	header := fmt.Sprintf("P6\n%d %d\n255\n", width, height)
@@ -808,12 +819,16 @@ func (ps *PlatformSupport) savePPM(filename string, buffer []uint8, width, heigh
 }
 
 // savePNG saves an image buffer to a PNG file
-func (ps *PlatformSupport) savePNG(filename string, buffer []uint8, width, height, stride int) error {
+func (ps *PlatformSupport) savePNG(filename string, buffer []uint8, width, height, stride int) (err error) {
 	file, err := os.Create(filename)
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		if cerr := file.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 
 	// Create Go image from buffer
 	bounds := image.Rect(0, 0, width, height)

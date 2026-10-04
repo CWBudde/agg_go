@@ -45,6 +45,7 @@ type ImageTransformOptions struct {
 // source is opaque. Premultiplied destinations are converted through a
 // destination-sized straight-alpha image. ImageEdgeTransparent additionally
 // allocates a transparent border large enough for the filter footprint.
+// opts.DestinationAlpha is recorded as dst's AlphaMode.
 func DrawImageAffine(dst, src *Image, srcRect Rect, sourceToDestination *Transformations, opts ImageTransformOptions) error {
 	if err := validateCompositeImage("affine destination", dst); err != nil {
 		return err
@@ -180,6 +181,7 @@ func DrawImageAffine(dst, src *Image, srcRect Rect, sourceToDestination *Transfo
 		}
 		copy(dst.Data, renderTarget.Data)
 	}
+	dst.alpha = opts.DestinationAlpha
 	return nil
 }
 
@@ -227,7 +229,7 @@ func affineImageOpaque(img *Image) bool {
 	return true
 }
 
-func affineTransparentPadding(transform *Transformations, opts ImageTransformOptions) (int, int, error) {
+func affineTransparentPadding(transform *Transformations, opts ImageTransformOptions) (padX, padY int, err error) {
 	if opts.Filter == ImageFilterNoFilter {
 		return 1, 1, nil
 	}

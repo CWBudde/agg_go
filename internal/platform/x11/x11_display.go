@@ -194,7 +194,7 @@ func (x *X11Backend) loadBMP(filename string) (*X11ImageSurface, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	// Read BMP file header
 	fileHeader := make([]byte, 14)
@@ -269,7 +269,7 @@ func (x *X11Backend) loadBMP(filename string) (*X11ImageSurface, error) {
 }
 
 // saveBMP saves a 24-bit uncompressed BMP file.
-func (x *X11Backend) saveBMP(surface *X11ImageSurface, filename string) error {
+func (x *X11Backend) saveBMP(surface *X11ImageSurface, filename string) (err error) {
 	if surface.bpp != 24 {
 		return fmt.Errorf("only 24-bit BMP saving is supported, got %d bpp", surface.bpp)
 	}
@@ -278,7 +278,11 @@ func (x *X11Backend) saveBMP(surface *X11ImageSurface, filename string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
 	}
-	defer file.Close()
+	defer func() {
+		if cerr := file.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 
 	width := surface.width
 	height := surface.height

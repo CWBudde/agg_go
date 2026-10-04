@@ -100,9 +100,9 @@ func TestPorterDuffOperations(t *testing.T) {
 			tt.blender.BlendPix(dst, tt.src[0], tt.src[1], tt.src[2], tt.src[3], 255)
 
 			// Allow for small rounding differences
-			tolerance := basics.Int8u(2)
+			const tolerance = 2
 			for i := 0; i < 4; i++ {
-				diff := dst[i] - tt.expected[i]
+				diff := int(dst[i]) - int(tt.expected[i])
 				if diff < 0 {
 					diff = -diff
 				}

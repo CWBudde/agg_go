@@ -103,15 +103,15 @@ func (fc *FontCache) FontIs(fontSignature string) bool {
 
 // FindGlyph returns the cached glyph for glyphCode, or nil if it is absent.
 func (fc *FontCache) FindGlyph(glyphCode uint) *GlyphCache {
-	return findGlyphFromTable(fc.glyphs, glyphCode)
+	return findGlyphFromTable(&fc.glyphs, glyphCode)
 }
 
 // FindGlyphIndex returns the cached glyph for glyphIndex, or nil if absent.
 func (fc *FontCache) FindGlyphIndex(glyphIndex uint) *GlyphCache {
-	return findGlyphFromTable(fc.glyphIndices, glyphIndex)
+	return findGlyphFromTable(&fc.glyphIndices, glyphIndex)
 }
 
-func findGlyphFromTable(table [256]*[256]*GlyphCache, key uint) *GlyphCache {
+func findGlyphFromTable(table *[256]*[256]*GlyphCache, key uint) *GlyphCache {
 	msb := (key >> 8) & 0xFF
 	lsb := key & 0xFF
 

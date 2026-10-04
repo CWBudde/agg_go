@@ -6,7 +6,9 @@ import (
 
 func TestNewRenderingContext(t *testing.T) {
 	ps := NewPlatformSupport(PixelFormatRGBA32, false)
-	ps.Init(800, 600, 0)
+	if err := ps.Init(800, 600, 0); err != nil {
+		t.Fatalf("Init failed: %v", err)
+	}
 
 	rc := NewRenderingContext(ps)
 
@@ -25,7 +27,9 @@ func TestNewRenderingContext(t *testing.T) {
 
 func TestSetupResizeTransform(t *testing.T) {
 	ps := NewPlatformSupport(PixelFormatRGBA32, false)
-	ps.Init(400, 300, WindowKeepAspectRatio)
+	if err := ps.Init(400, 300, WindowKeepAspectRatio); err != nil {
+		t.Fatalf("Init failed: %v", err)
+	}
 
 	rc := NewRenderingContext(ps)
 
@@ -42,7 +46,10 @@ func TestSetupResizeTransform(t *testing.T) {
 
 	// Test non-aspect ratio preserving resize
 	ps2 := NewPlatformSupport(PixelFormatRGBA32, false)
-	ps2.Init(400, 300, 0) // No aspect ratio preservation
+	// No aspect ratio preservation
+	if err := ps2.Init(400, 300, 0); err != nil {
+		t.Fatalf("Init failed: %v", err)
+	}
 
 	rc2 := NewRenderingContext(ps2)
 	rc2.SetupResizeTransform(800, 600)
@@ -55,7 +62,9 @@ func TestSetupResizeTransform(t *testing.T) {
 
 func TestTransformPoint(t *testing.T) {
 	ps := NewPlatformSupport(PixelFormatRGBA32, false)
-	ps.Init(100, 100, 0)
+	if err := ps.Init(100, 100, 0); err != nil {
+		t.Fatalf("Init failed: %v", err)
+	}
 
 	rc := NewRenderingContext(ps)
 	rc.SetupResizeTransform(200, 200) // 2x scaling
@@ -75,7 +84,9 @@ func TestTransformPoint(t *testing.T) {
 
 func TestClearWindow(t *testing.T) {
 	ps := NewPlatformSupport(PixelFormatRGBA32, false)
-	ps.Init(10, 10, 0)
+	if err := ps.Init(10, 10, 0); err != nil {
+		t.Fatalf("Init failed: %v", err)
+	}
 
 	rc := NewRenderingContext(ps)
 
@@ -102,7 +113,9 @@ func TestClearWindow(t *testing.T) {
 
 func TestClearImage(t *testing.T) {
 	ps := NewPlatformSupport(PixelFormatRGBA32, false)
-	ps.Init(100, 100, 0)
+	if err := ps.Init(100, 100, 0); err != nil {
+		t.Fatalf("Init failed: %v", err)
+	}
 
 	rc := NewRenderingContext(ps)
 
@@ -120,7 +133,9 @@ func TestClearImage(t *testing.T) {
 
 func TestGetSetPixel(t *testing.T) {
 	ps := NewPlatformSupport(PixelFormatRGBA32, false)
-	ps.Init(100, 100, 0)
+	if err := ps.Init(100, 100, 0); err != nil {
+		t.Fatalf("Init failed: %v", err)
+	}
 
 	rc := NewRenderingContext(ps)
 
@@ -169,7 +184,9 @@ func TestGetSetPixel(t *testing.T) {
 
 func TestBlendPixel(t *testing.T) {
 	ps := NewPlatformSupport(PixelFormatRGBA32, false)
-	ps.Init(100, 100, 0)
+	if err := ps.Init(100, 100, 0); err != nil {
+		t.Fatalf("Init failed: %v", err)
+	}
 
 	rc := NewRenderingContext(ps)
 
@@ -223,7 +240,9 @@ func TestBlendPixel(t *testing.T) {
 
 func TestDrawLine(t *testing.T) {
 	ps := NewPlatformSupport(PixelFormatRGBA32, false)
-	ps.Init(100, 100, 0)
+	if err := ps.Init(100, 100, 0); err != nil {
+		t.Fatalf("Init failed: %v", err)
+	}
 
 	rc := NewRenderingContext(ps)
 	rc.ClearWindow(0, 0, 0, 255) // Black background
@@ -259,7 +278,9 @@ func TestDrawLine(t *testing.T) {
 
 func TestDrawRectangle(t *testing.T) {
 	ps := NewPlatformSupport(PixelFormatRGBA32, false)
-	ps.Init(100, 100, 0)
+	if err := ps.Init(100, 100, 0); err != nil {
+		t.Fatalf("Init failed: %v", err)
+	}
 
 	rc := NewRenderingContext(ps)
 	rc.ClearWindow(0, 0, 0, 255) // Black background
@@ -296,7 +317,9 @@ func TestDrawRectangle(t *testing.T) {
 
 func TestFillRectangle(t *testing.T) {
 	ps := NewPlatformSupport(PixelFormatRGBA32, false)
-	ps.Init(100, 100, 0)
+	if err := ps.Init(100, 100, 0); err != nil {
+		t.Fatalf("Init failed: %v", err)
+	}
 
 	rc := NewRenderingContext(ps)
 	rc.ClearWindow(0, 0, 0, 255) // Black background
@@ -325,7 +348,9 @@ func TestFillRectangle(t *testing.T) {
 
 func TestDrawCircle(t *testing.T) {
 	ps := NewPlatformSupport(PixelFormatRGBA32, false)
-	ps.Init(100, 100, 0)
+	if err := ps.Init(100, 100, 0); err != nil {
+		t.Fatalf("Init failed: %v", err)
+	}
 
 	rc := NewRenderingContext(ps)
 	rc.ClearWindow(0, 0, 0, 255) // Black background
@@ -340,7 +365,9 @@ func TestDrawCircle(t *testing.T) {
 
 func TestGetBufferInfo(t *testing.T) {
 	ps := NewPlatformSupport(PixelFormatRGBA32, false)
-	ps.Init(800, 600, 0)
+	if err := ps.Init(800, 600, 0); err != nil {
+		t.Fatalf("Init failed: %v", err)
+	}
 
 	rc := NewRenderingContext(ps)
 
@@ -369,7 +396,9 @@ func TestGetBufferInfo(t *testing.T) {
 
 func TestGetImageInfo(t *testing.T) {
 	ps := NewPlatformSupport(PixelFormatRGB24, false)
-	ps.Init(400, 300, 0)
+	if err := ps.Init(400, 300, 0); err != nil {
+		t.Fatalf("Init failed: %v", err)
+	}
 
 	rc := NewRenderingContext(ps)
 
@@ -408,7 +437,9 @@ func TestGetImageInfo(t *testing.T) {
 
 func TestValidateBufferAccess(t *testing.T) {
 	ps := NewPlatformSupport(PixelFormatRGBA32, false)
-	ps.Init(100, 100, 0)
+	if err := ps.Init(100, 100, 0); err != nil {
+		t.Fatalf("Init failed: %v", err)
+	}
 
 	rc := NewRenderingContext(ps)
 
@@ -445,7 +476,9 @@ func TestValidateBufferAccess(t *testing.T) {
 
 func TestStatistics(t *testing.T) {
 	ps := NewPlatformSupport(PixelFormatRGBA32, false)
-	ps.Init(800, 600, 0)
+	if err := ps.Init(800, 600, 0); err != nil {
+		t.Fatalf("Init failed: %v", err)
+	}
 
 	rc := NewRenderingContext(ps)
 
@@ -518,7 +551,9 @@ func TestDifferentPixelFormats(t *testing.T) {
 	for _, format := range formats {
 		t.Run(format.String(), func(t *testing.T) {
 			ps := NewPlatformSupport(format, false)
-			ps.Init(50, 50, 0)
+			if err := ps.Init(50, 50, 0); err != nil {
+				t.Fatalf("Init failed: %v", err)
+			}
 
 			rc := NewRenderingContext(ps)
 

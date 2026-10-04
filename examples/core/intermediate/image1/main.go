@@ -236,9 +236,8 @@ type ellipseVS struct {
 }
 
 func (ev *ellipseVS) Rewind(id uint) { ev.e.Rewind(uint32(id)) }
-func (ev *ellipseVS) Vertex() (float64, float64, basics.PathCommand) {
-	var x, y float64
-	cmd := ev.e.Vertex(&x, &y)
+func (ev *ellipseVS) Vertex() (x, y float64, cmd basics.PathCommand) {
+	cmd = ev.e.Vertex(&x, &y)
 	return x, y, cmd
 }
 

@@ -55,7 +55,7 @@ func rgb24ToGrayU8NEON(dst, src []byte, count int) {
 	}
 }
 
-func blendSolidHspanRGBANEON(dst []byte, covers []byte, r, g, b, a uint8, premulSrc bool) {
+func blendSolidHspanRGBANEON(dst, covers []byte, r, g, b, a uint8, premulSrc bool) {
 	blendSolidHspanRGBAWithRunFill(dst, covers, r, g, b, a, premulSrc, fillRGBANEON)
 }
 

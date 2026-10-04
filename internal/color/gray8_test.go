@@ -77,7 +77,7 @@ func TestGray8Arithmetic(t *testing.T) {
 
 	// Test Prelerp
 	result = Gray8Prelerp(100, 50, 128)
-	// p + q - multiply(p, a) = 100 + 50 - multiply(100, 128)
+	// Prelerp computes p + q - multiply(p, a), here with p=100, q=50, a=128.
 	mulResult := Gray8Multiply(100, 128)
 	expected = 100 + 50 - mulResult
 	if result != expected {
@@ -277,7 +277,7 @@ func TestGray8Lerp_Endpoints_And_Branches(t *testing.T) {
 func TestGray8Prelerp_Extremes(t *testing.T) {
 	// Prelerp formula: p + q - multiply(p, a)
 	// When a=0: p + q - multiply(p, 0) = p + q - 0 = p + q
-	expected := basics.Int8u(150) // 100 + 50 = 150
+	expected := basics.Int8u(150) // 100 plus 50
 	if Gray8Prelerp(100, 50, 0) != expected {
 		t.Fatalf("a=0: expected %d, got %d", expected, Gray8Prelerp(100, 50, 0))
 	}

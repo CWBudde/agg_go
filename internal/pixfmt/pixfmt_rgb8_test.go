@@ -92,7 +92,7 @@ func TestPixFmtRGB24BlendPixel(t *testing.T) {
 
 	pixel = pixfmt.GetPixel(1, 0)
 	// Should be somewhere between gray and red
-	if pixel.R <= 128 || pixel.R >= 255 {
+	if pixel.R <= 128 || pixel.R == 255 {
 		t.Errorf("BlendPixel half alpha failed: red component %d should be between 128 and 255", pixel.R)
 	}
 	if pixel.G >= 128 {
@@ -133,7 +133,7 @@ func TestPixFmtRGB24Lines(t *testing.T) {
 
 	for x := 2; x <= 5; x++ {
 		pixel := pixfmt.GetPixel(x, 7)
-		if pixel.R <= 128 || pixel.R >= 255 {
+		if pixel.R <= 128 || pixel.R == 255 {
 			t.Errorf("BlendHline failed at (%d,7): red component %d should be between 128 and 255", x, pixel.R)
 		}
 	}
@@ -166,7 +166,7 @@ func TestPixFmtRGB24Bar(t *testing.T) {
 	for y := 1; y <= 3; y++ {
 		for x := 1; x <= 3; x++ {
 			pixel := pixfmt.GetPixel(x, y)
-			if pixel.B <= 128 || pixel.B >= 255 {
+			if pixel.B <= 128 || pixel.B == 255 {
 				t.Errorf("BlendBar failed at (%d,%d): blue component %d should be between 128 and 255", x, y, pixel.B)
 			}
 		}
@@ -205,7 +205,7 @@ func TestPixFmtRGB24Spans(t *testing.T) {
 	// Other pixels should be partially blended
 	for i := 1; i < 4; i++ {
 		pixel = pixfmt.GetPixel(2+i, 2)
-		if pixel.G <= 128 || pixel.G >= 255 {
+		if pixel.G <= 128 || pixel.G == 255 {
 			t.Errorf("BlendSolidHspan varying coverage pixel %d failed: green component %d should be between 128 and 255", i, pixel.G)
 		}
 	}
@@ -425,7 +425,7 @@ func TestPixFmtRGB24BlendPixelRGBA(t *testing.T) {
 
 	// Should be blended based on RGBA's alpha
 	pixel := pixfmt.GetPixel(0, 0)
-	if pixel.R <= 128 || pixel.R >= 255 {
+	if pixel.R <= 128 || pixel.R == 255 {
 		t.Errorf("BlendPixelRGBA failed: red component %d should be between 128 and 255", pixel.R)
 	}
 	if pixel.G >= 128 {
@@ -646,7 +646,7 @@ func TestPixFmtRGB24Pre_ComprehensiveBlending(t *testing.T) {
 
 	// Test case 4: Various alpha values
 	testAlphas := []basics.Int8u{64, 128, 192}
-	expectedResults := []basics.Int8u{191, 127, 63} // prelerp(255, 0, alpha)
+	expectedResults := []basics.Int8u{191, 127, 63} // prelerp of 255 towards 0 by alpha
 
 	for i, alpha := range testAlphas {
 		pixfmt.CopyPixel(3, i, white)

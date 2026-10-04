@@ -513,7 +513,7 @@ func TestLookupTables(t *testing.T) {
 			if i == 0 {
 				expected = 0
 			} else {
-				// floor(log2(i))
+				// expected is the floor of log2 of i
 				v := i
 				for (v >> 1) > 0 {
 					expected++

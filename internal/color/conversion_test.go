@@ -206,7 +206,8 @@ func TestGray16Approximation(t *testing.T) {
 	for _, v := range vals {
 		g := Gray16[Linear]{V: v, A: 0xBEEF}
 		s := ConvertGray16LinearToSRGB(g)
-		// Expected: v8 = v>>8; s8 = linear8ToSrgb8(v8); s.V == replicate(s8)
+		// Expected: the high byte of v is converted with linear8ToSrgb8 and the
+		// result is replicated into both bytes of s.V.
 		v8 := basics.Int8u(v >> 8)
 		wantV8 := linear8ToSrgb8(v8)
 		wantV16 := basics.Int16u(wantV8)

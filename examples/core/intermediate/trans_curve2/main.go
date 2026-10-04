@@ -29,7 +29,7 @@ type demo struct{}
 
 func (d *demo) Render(img *agg.Image) {
 	ctx := agg.NewContextForImage(img)
-	transcurve.DrawDouble(ctx, transcurve.DoubleConfig{
+	transcurve.DrawDouble(ctx, &transcurve.DoubleConfig{
 		Points1:         transcurve.DefaultPoints1,
 		Points2:         transcurve.DefaultPoints2,
 		NumIntermediate: 200,

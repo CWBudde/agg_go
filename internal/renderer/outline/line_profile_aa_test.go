@@ -214,17 +214,9 @@ func TestLineProfileAAGammaFunctions(t *testing.T) {
 			profile.SetGamma(tc.gamma)
 			profile.Width(2.0)
 
-			// Should not panic and should produce valid values
-			centerValue := profile.Value(0)
-			if centerValue < 0 || centerValue > 255 {
-				t.Errorf("Center value should be in range [0, 255], got %d", centerValue)
-			}
-
-			// Test edge values
-			edgeValue := profile.Value(SubpixelScale)
-			if edgeValue < 0 || edgeValue > 255 {
-				t.Errorf("Edge value should be in range [0, 255], got %d", edgeValue)
-			}
+			// Should not panic; ValueType is uint8, so any result is in [0, 255]
+			_ = profile.Value(0)
+			_ = profile.Value(SubpixelScale)
 		})
 	}
 }
@@ -243,10 +235,8 @@ func TestLineProfileAAValueRetrieval(t *testing.T) {
 		// Test values at small distances from center
 		distances := []int{1, -1, 10, -10, 50, -50}
 		for _, dist := range distances {
-			value := profile.Value(dist)
-			if value < 0 || value > 255 {
-				t.Errorf("Value at distance %d should be in range [0, 255], got %d", dist, value)
-			}
+			// Should not panic; ValueType is uint8, so any result is in [0, 255]
+			_ = profile.Value(dist)
 		}
 	})
 
@@ -259,16 +249,9 @@ func TestLineProfileAAValueRetrieval(t *testing.T) {
 			minDist := -(SubpixelScale * 2)
 			maxDist := profileSize - (SubpixelScale * 2) - 1
 
-			minValue := profile.Value(minDist)
-			maxValue := profile.Value(maxDist)
-
-			if minValue < 0 || minValue > 255 {
-				t.Errorf("Min boundary value should be in range [0, 255], got %d", minValue)
-			}
-
-			if maxValue < 0 || maxValue > 255 {
-				t.Errorf("Max boundary value should be in range [0, 255], got %d", maxValue)
-			}
+			// Should not panic; ValueType is uint8, so any result is in [0, 255]
+			_ = profile.Value(minDist)
+			_ = profile.Value(maxDist)
 		}
 	})
 
@@ -385,11 +368,8 @@ func TestLineProfileAADifferentWidthScenarios(t *testing.T) {
 				t.Error("Subpixel width should not be negative")
 			}
 
-			// Test that center value is reasonable
-			centerValue := profile.Value(0)
-			if centerValue < 0 || centerValue > 255 {
-				t.Errorf("Center value should be in range [0, 255], got %d", centerValue)
-			}
+			// Should not panic; ValueType is uint8, so any result is in [0, 255]
+			_ = profile.Value(0)
 		})
 	}
 }
@@ -457,11 +437,8 @@ func TestLineProfileAAEdgeCases(t *testing.T) {
 			t.Error("Profile should be created even with negative width")
 		}
 
-		// Test that values are still reasonable
-		centerValue := profile.Value(0)
-		if centerValue < 0 || centerValue > 255 {
-			t.Errorf("Center value should be valid even for edge case width, got %d", centerValue)
-		}
+		// Should not panic even for edge case widths
+		_ = profile.Value(0)
 	})
 
 	t.Run("Very large widths", func(t *testing.T) {

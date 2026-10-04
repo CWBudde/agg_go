@@ -414,7 +414,7 @@ func Draw(ctx *agg.Context, cfg Config) {
 	drawOverlay(agg2d, ctx.GetImage(), frameOffX, frameOffY, combineMS, renderMS, numSpans, cfg.FillRule)
 }
 
-func combineAndRender(img *agg.Image, cfg Config, a, b []contour) (float64, float64, int) {
+func combineAndRender(img *agg.Image, cfg Config, a, b []contour) (combineMS, renderMS float64, numSpans int) {
 	ras1 := newRasterizer(cfg.FillRule)
 	ras2 := newRasterizer(cfg.FillRule)
 	ras1.AddPath(contoursToRasterPath(a), 0)
@@ -434,7 +434,7 @@ func combineAndRenderP8(
 	img *agg.Image,
 	ras1, ras2 *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
 	op int,
-) (float64, float64, int) {
+) (combineMS, renderMS float64, numSpans int) {
 	storage1 := isc.NewScanlineStorageAA[basics.Int8u]()
 	storage2 := isc.NewScanlineStorageAA[basics.Int8u]()
 	slRaster := isc.NewScanlineP8()
@@ -451,11 +451,11 @@ func combineAndRenderP8(
 
 	start := time.Now()
 	isc.CombineShapesAA(mapOperation(op), sg1, sg2, sl1, sl2, slOut, ren)
-	combineMS := float64(time.Since(start).Microseconds()) / 1000.0
+	combineMS = float64(time.Since(start).Microseconds()) / 1000.0
 
 	start = time.Now()
-	numSpans := renderCollectedScanlines(img, ren.scanlines)
-	renderMS := float64(time.Since(start).Microseconds()) / 1000.0
+	numSpans = renderCollectedScanlines(img, ren.scanlines)
+	renderMS = float64(time.Since(start).Microseconds()) / 1000.0
 	return combineMS, renderMS, numSpans
 }
 
@@ -463,7 +463,7 @@ func combineAndRenderU8(
 	img *agg.Image,
 	ras1, ras2 *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
 	op int,
-) (float64, float64, int) {
+) (combineMS, renderMS float64, numSpans int) {
 	storage1 := isc.NewScanlineStorageAA[basics.Int8u]()
 	storage2 := isc.NewScanlineStorageAA[basics.Int8u]()
 	slRaster := isc.NewScanlineU8()
@@ -480,11 +480,11 @@ func combineAndRenderU8(
 
 	start := time.Now()
 	isc.CombineShapesAA(mapOperation(op), sg1, sg2, sl1, sl2, slOut, ren)
-	combineMS := float64(time.Since(start).Microseconds()) / 1000.0
+	combineMS = float64(time.Since(start).Microseconds()) / 1000.0
 
 	start = time.Now()
-	numSpans := renderCollectedScanlines(img, ren.scanlines)
-	renderMS := float64(time.Since(start).Microseconds()) / 1000.0
+	numSpans = renderCollectedScanlines(img, ren.scanlines)
+	renderMS = float64(time.Since(start).Microseconds()) / 1000.0
 	return combineMS, renderMS, numSpans
 }
 
@@ -492,7 +492,7 @@ func combineAndRenderBin(
 	img *agg.Image,
 	ras1, ras2 *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
 	op int,
-) (float64, float64, int) {
+) (combineMS, renderMS float64, numSpans int) {
 	storage1 := isc.NewScanlineStorageBin()
 	storage2 := isc.NewScanlineStorageBin()
 	slRaster := isc.NewScanlineBin()
@@ -509,11 +509,11 @@ func combineAndRenderBin(
 
 	start := time.Now()
 	isc.CombineShapesBin(mapOperation(op), sg1, sg2, sl1, sl2, slOut, ren)
-	combineMS := float64(time.Since(start).Microseconds()) / 1000.0
+	combineMS = float64(time.Since(start).Microseconds()) / 1000.0
 
 	start = time.Now()
-	numSpans := renderCollectedScanlines(img, ren.scanlines)
-	renderMS := float64(time.Since(start).Microseconds()) / 1000.0
+	numSpans = renderCollectedScanlines(img, ren.scanlines)
+	renderMS = float64(time.Since(start).Microseconds()) / 1000.0
 	return combineMS, renderMS, numSpans
 }
 
@@ -621,12 +621,12 @@ func boolScanlineBounds(
 		MinX() int
 		MaxX() int
 	},
-) (int, int) {
-	minX := sg1.MinX()
+) (minX, maxX int) {
+	minX = sg1.MinX()
 	if sg2.MinX() < minX {
 		minX = sg2.MinX()
 	}
-	maxX := sg1.MaxX()
+	maxX = sg1.MaxX()
 	if sg2.MaxX() > maxX {
 		maxX = sg2.MaxX()
 	}
@@ -695,7 +695,7 @@ func resultColor() colorDef {
 	return colorDef{r: 0.5, g: 0.0, b: 0.0, a: 0.5}
 }
 
-func sceneColors(mode int) (agg.Color, agg.Color, agg.Color) {
+func sceneColors(mode int) (fillA, lineA, fillB agg.Color) {
 	if mode == 2 || mode == 3 {
 		return agg.RGBA(0.5, 0.5, 0.0, 0.1), agg.Black, agg.RGBA(0.0, 0.5, 0.5, 0.1)
 	}
@@ -770,7 +770,7 @@ func mapOperation(op int) isc.BoolOp {
 	}
 }
 
-func buildShapes(cfg Config, w, h float64) ([]contour, []contour) {
+func buildShapes(cfg Config, w, h float64) (shapeA, shapeB []contour) {
 	switch cfg.Mode {
 	case 0:
 		return modeSimple(cfg, w, h)
@@ -787,7 +787,7 @@ func buildShapes(cfg Config, w, h float64) ([]contour, []contour) {
 	}
 }
 
-func modeSimple(cfg Config, w, h float64) ([]contour, []contour) {
+func modeSimple(cfg Config, w, h float64) (shapeA, shapeB []contour) {
 	dx := cfg.CenterX - w/2 + 100
 	dy := cfg.CenterY - h/2 + 100
 	a := []contour{
@@ -800,7 +800,7 @@ func modeSimple(cfg Config, w, h float64) ([]contour, []contour) {
 	return a, b
 }
 
-func modeClosedStroke(cfg Config, w, h float64) ([]contour, []contour) {
+func modeClosedStroke(cfg Config, w, h float64) (shapeA, shapeB []contour) {
 	dx := cfg.CenterX - w/2 + 100
 	dy := cfg.CenterY - h/2 + 100
 
@@ -829,7 +829,7 @@ func modeClosedStroke(cfg Config, w, h float64) ([]contour, []contour) {
 	return pathToContours(ps1), vertexSourceToContours(stroke)
 }
 
-func modeGBArrows(cfg Config, w, h float64) ([]contour, []contour) {
+func modeGBArrows(cfg Config, w, h float64) (shapeA, shapeB []contour) {
 	psGB := path.NewPathStorageStl()
 	aggshapes.MakeGBPoly(psGB)
 	psAr := path.NewPathStorageStl()
@@ -842,7 +842,7 @@ func modeGBArrows(cfg Config, w, h float64) ([]contour, []contour) {
 	return a, b
 }
 
-func modeGBSpiral(cfg Config, w, h float64) ([]contour, []contour) {
+func modeGBSpiral(cfg Config, w, h float64) (shapeA, shapeB []contour) {
 	psGB := path.NewPathStorageStl()
 	aggshapes.MakeGBPoly(psGB)
 	a := transformContours(pathToContours(psGB), -1150, -1150, 2.0, 2.0, 0, 0)
@@ -854,7 +854,7 @@ func modeGBSpiral(cfg Config, w, h float64) ([]contour, []contour) {
 	return a, b
 }
 
-func modeSpiralGlyph(cfg Config) ([]contour, []contour) {
+func modeSpiralGlyph(cfg Config) (shapeA, shapeB []contour) {
 	spiralPath := buildSpiralPath(cfg.CenterX, cfg.CenterY, 10, 150, 30, 0.0)
 	stroke := conv.NewConvStroke(pathSource(spiralPath))
 	stroke.SetWidth(15.0)

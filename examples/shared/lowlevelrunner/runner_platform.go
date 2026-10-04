@@ -57,7 +57,11 @@ func Run(cfg Config, demo Demo) {
 		fmt.Fprintf(os.Stderr, "lowlevelrunner: backend init: %v\n", err)
 		os.Exit(1)
 	}
-	defer backend.Destroy()
+	defer func() {
+		if err := backend.Destroy(); err != nil {
+			fmt.Fprintf(os.Stderr, "lowlevelrunner: backend destroy: %v\n", err)
+		}
+	}()
 
 	for h.running {
 		if !backend.PollEvents() {
@@ -130,7 +134,7 @@ func (h *handler) OnMouseButtonUp(x, y int, flags platform.InputFlags) {
 	}
 }
 
-func (h *handler) OnKey(_ int, _ int, key platform.KeyCode, _ platform.InputFlags) {
+func (h *handler) OnKey(_, _ int, key platform.KeyCode, _ platform.InputFlags) {
 	switch key {
 	case platform.KeyEscape:
 		h.running = false
@@ -205,9 +209,13 @@ func (h *handler) saveScreenshot() {
 		fmt.Fprintf(os.Stderr, "screenshot: %v\n", err)
 		return
 	}
-	defer f.Close()
 	if err := png.Encode(f, goImg); err != nil {
+		_ = f.Close()
 		fmt.Fprintf(os.Stderr, "screenshot: encode: %v\n", err)
+		return
+	}
+	if err := f.Close(); err != nil {
+		fmt.Fprintf(os.Stderr, "screenshot: close: %v\n", err)
 		return
 	}
 	fmt.Printf("screenshot saved to %s\n", filename)

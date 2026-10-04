@@ -8,7 +8,7 @@ import (
 )
 
 func TestNewGlyphRasterBin(t *testing.T) {
-	font := fonts.GetSimple4x6Font()
+	font := fonts.GetGSE4x6()
 	g := NewGlyphRasterBin(font)
 
 	if g == nil {
@@ -20,7 +20,7 @@ func TestNewGlyphRasterBin(t *testing.T) {
 }
 
 func TestGlyphRasterBinFontProperties(t *testing.T) {
-	font := fonts.GetSimple4x6Font()
+	font := fonts.GetGSE4x6()
 	g := NewGlyphRasterBin(font)
 
 	// Test height
@@ -64,7 +64,7 @@ func TestGlyphRasterBinShortFont(t *testing.T) {
 
 func TestGlyphRasterBinSetFont(t *testing.T) {
 	g := NewGlyphRasterBin([]byte{})
-	font := fonts.GetSimple4x6Font()
+	font := fonts.GetGSE4x6()
 
 	g.SetFont(font)
 
@@ -77,20 +77,24 @@ func TestGlyphRasterBinSetFont(t *testing.T) {
 }
 
 func TestGlyphRasterBinWidth(t *testing.T) {
-	font := fonts.GetSimple4x6Font()
+	font := fonts.GetGSE4x6()
 	g := NewGlyphRasterBin(font)
 
 	tests := []struct {
 		text     string
 		expected float64
 	}{
-		{"", 0},     // Empty string
-		{" ", 0},    // Space character (outside range of simple font)
-		{"A", 3},    // Single character 'A'
-		{"AB", 6},   // Two characters
-		{"ABC", 9},  // Three characters
-		{"\x00", 0}, // Null character (outside range)
-		{"\xFF", 0}, // Character outside range
+		// GSE4x6 covers 0x20..0x7F and every glyph is 4 pixels wide.
+		{"", 0},       // Empty string
+		{" ", 4},      // Space is the first glyph in range
+		{"A", 4},      // Single character 'A'
+		{"AB", 8},     // Two characters
+		{"ABC", 12},   // Three characters
+		{"\x7f", 4},   // Last glyph in range
+		{"\x00", 0},   // Null character (outside range)
+		{"\x1f", 0},   // Just below range
+		{"\u0080", 0}, // Just above range
+		{"\xFF", 0},   // Invalid UTF-8 decodes to U+FFFD (outside range)
 	}
 
 	for _, tt := range tests {
@@ -102,7 +106,7 @@ func TestGlyphRasterBinWidth(t *testing.T) {
 }
 
 func TestGlyphRasterBinPrepareValidGlyph(t *testing.T) {
-	font := fonts.GetSimple4x6Font()
+	font := fonts.GetGSE4x6()
 	g := NewGlyphRasterBin(font)
 
 	var rect GlyphRect
@@ -115,13 +119,13 @@ func TestGlyphRasterBinPrepareValidGlyph(t *testing.T) {
 	if rect.X1 != 10 {
 		t.Errorf("rect.X1 = %d, want 10", rect.X1)
 	}
-	if rect.X2 != 12 { // X1 + width - 1 = 10 + 3 - 1
-		t.Errorf("rect.X2 = %d, want 12", rect.X2)
+	if rect.X2 != 13 { // X1 plus width minus 1, i.e. 10 plus 4 minus 1
+		t.Errorf("rect.X2 = %d, want 13", rect.X2)
 	}
 
 	// Check advance vector
-	if rect.DX != 3 { // Width of 'A'
-		t.Errorf("rect.DX = %f, want 3", rect.DX)
+	if rect.DX != 4 { // Width of 'A'
+		t.Errorf("rect.DX = %f, want 4", rect.DX)
 	}
 	if rect.DY != 0 {
 		t.Errorf("rect.DY = %f, want 0", rect.DY)
@@ -139,7 +143,7 @@ func TestGlyphRasterBinPrepareValidGlyph(t *testing.T) {
 }
 
 func TestGlyphRasterBinPrepareFlipped(t *testing.T) {
-	font := fonts.GetSimple4x6Font()
+	font := fonts.GetGSE4x6()
 	g := NewGlyphRasterBin(font)
 
 	var rect GlyphRect
@@ -160,7 +164,7 @@ func TestGlyphRasterBinPrepareFlipped(t *testing.T) {
 }
 
 func TestGlyphRasterBinPrepareInvalidGlyph(t *testing.T) {
-	font := fonts.GetSimple4x6Font()
+	font := fonts.GetGSE4x6()
 	g := NewGlyphRasterBin(font)
 
 	var rect GlyphRect
@@ -178,7 +182,7 @@ func TestGlyphRasterBinPrepareInvalidGlyph(t *testing.T) {
 }
 
 func TestGlyphRasterBinSpan(t *testing.T) {
-	font := fonts.GetSimple4x6Font()
+	font := fonts.GetGSE4x6()
 	g := NewGlyphRasterBin(font)
 
 	var rect GlyphRect
@@ -207,7 +211,7 @@ func TestGlyphRasterBinSpan(t *testing.T) {
 }
 
 func TestGlyphRasterBinSpanOutOfBounds(t *testing.T) {
-	font := fonts.GetSimple4x6Font()
+	font := fonts.GetGSE4x6()
 	g := NewGlyphRasterBin(font)
 
 	var rect GlyphRect
@@ -226,7 +230,7 @@ func TestGlyphRasterBinSpanOutOfBounds(t *testing.T) {
 }
 
 func TestGlyphRasterBinSpanWithoutPrepare(t *testing.T) {
-	font := fonts.GetSimple4x6Font()
+	font := fonts.GetGSE4x6()
 	g := NewGlyphRasterBin(font)
 
 	// Call Span without calling Prepare first
@@ -258,11 +262,11 @@ func TestGlyphRasterBinGetValue(t *testing.T) {
 }
 
 func TestGlyphRasterBinMultipleCharacters(t *testing.T) {
-	font := fonts.GetSimple4x6Font()
+	font := fonts.GetGSE4x6()
 	g := NewGlyphRasterBin(font)
 
-	// Test preparing different characters (only A, B, C are in simple font)
-	validCharacters := []rune{'A', 'B', 'C'}
+	// GSE4x6 covers the printable ASCII range 0x20..0x7F.
+	validCharacters := []rune{' ', '0', '9', '@', 'A', 'B', 'C', 'D', '~', 0x7f}
 
 	for _, char := range validCharacters {
 		var rect GlyphRect
@@ -283,7 +287,7 @@ func TestGlyphRasterBinMultipleCharacters(t *testing.T) {
 	}
 
 	// Test invalid characters
-	invalidCharacters := []rune{' ', '0', '9', '@', 'D'}
+	invalidCharacters := []rune{0x00, 0x1f, 0x80, 'é', 1000}
 	for _, char := range invalidCharacters {
 		var rect GlyphRect
 		g.Prepare(&rect, 0, 0, char, false)
@@ -296,7 +300,7 @@ func TestGlyphRasterBinMultipleCharacters(t *testing.T) {
 }
 
 func TestGlyphRasterBinBitUnpacking(t *testing.T) {
-	font := fonts.GetSimple4x6Font()
+	font := fonts.GetGSE4x6()
 	g := NewGlyphRasterBin(font)
 
 	// Prepare a glyph that has some set pixels
@@ -321,10 +325,33 @@ func TestGlyphRasterBinBitUnpacking(t *testing.T) {
 	if !foundCoverage {
 		t.Error("Expected to find some non-zero coverage for character 'A'")
 	}
+
+	// GSE4x6 stores 'A' top-down as 0x40, 0xa0, 0xe0, 0xa0, 0xa0, 0x00;
+	// Span(y) reads stored row height-1-y, as AGG's glyph_raster_bin does.
+	const f = basics.CoverFull
+	want := [][]basics.CoverType{
+		{0, 0, 0, 0}, // 0x00
+		{f, 0, f, 0}, // 0xa0
+		{f, 0, f, 0}, // 0xa0
+		{f, f, f, 0}, // 0xe0
+		{f, 0, f, 0}, // 0xa0
+		{0, f, 0, 0}, // 0x40
+	}
+	for y, row := range want {
+		span := g.Span(y)
+		if len(span) != len(row) {
+			t.Fatalf("Span(%d) length = %d, want %d", y, len(span), len(row))
+		}
+		for i := range row {
+			if span[i] != row[i] {
+				t.Errorf("Span(%d)[%d] = %d, want %d", y, i, span[i], row[i])
+			}
+		}
+	}
 }
 
 func TestGlyphRasterBinConsistency(t *testing.T) {
-	font := fonts.GetSimple4x6Font()
+	font := fonts.GetGSE4x6()
 	g := NewGlyphRasterBin(font)
 
 	// Test that preparing the same glyph multiple times gives consistent results
@@ -353,7 +380,7 @@ func TestGlyphRasterBinConsistency(t *testing.T) {
 }
 
 func TestGlyphRasterBinInterface(t *testing.T) {
-	font := fonts.GetSimple4x6Font()
+	font := fonts.GetGSE4x6()
 	g := NewGlyphRasterBin(font)
 
 	// Verify that GlyphRasterBin implements GlyphGenerator interface

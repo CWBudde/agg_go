@@ -185,8 +185,8 @@ func (d *demo) Render(img *agg.Image) {
 	gradFunc.SetPeriods(5)
 
 	colorFunc := span.NewGradientLinearColorRGBA8(
-		color.RGBA8[color.Linear]{R: 255, G: 0, B: 0, A: 255}, // rgba(1.0, 0, 0)
-		color.RGBA8[color.Linear]{R: 0, G: 128, B: 0, A: 255}, // rgba(0, 0.5, 0)
+		color.RGBA8[color.Linear]{R: 255, G: 0, B: 0, A: 255}, // pure red, as in the C++ demo
+		color.RGBA8[color.Linear]{R: 0, G: 128, B: 0, A: 255}, // half-intensity green, as in the C++ demo
 		256,
 	)
 

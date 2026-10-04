@@ -64,7 +64,7 @@ func loadSavedDemoPNG(t *testing.T) image.Image {
 	if err != nil {
 		t.Fatalf("open output PNG: %v", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	got, err := png.Decode(f)
 	if err != nil {

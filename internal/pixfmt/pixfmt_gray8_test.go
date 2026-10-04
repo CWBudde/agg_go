@@ -361,7 +361,7 @@ func TestPixFmtGray8BlendHline(t *testing.T) {
 
 	for x := 1; x < 6; x++ {
 		p := pf.GetPixel(x, 0)
-		if p.V <= 128 || p.V >= 255 {
+		if p.V <= 128 || p.V == 255 {
 			t.Errorf("BlendHline at x=%d: V=%d should be between 128 and 255", x, p.V)
 		}
 	}

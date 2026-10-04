@@ -436,12 +436,6 @@ func FillRGBASpan[S color.Space, O order.RGBAOrder](
 	CopyRGBAHline[S, O](dst, x, length, src)
 }
 
-// demul8 converts a premultiplied component x back to straight by x * 255 / a with rounding.
-func demul8(x, a basics.Int8u) basics.Int8u {
-	// (x*255 + a/2) / a  — classic rounded divide
-	return basics.Int8u((uint32(x)*255 + uint32(a)/2) / uint32(a))
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 // Convenience aliases for common Order/Space combinations
 ////////////////////////////////////////////////////////////////////////////////

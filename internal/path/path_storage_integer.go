@@ -107,7 +107,7 @@ func (psi *PathStorageInteger[T]) Size() uint32 {
 }
 
 // Vertex returns the vertex at the given index.
-func (psi *PathStorageInteger[T]) Vertex(idx uint32) (float64, float64, basics.PathCommand) {
+func (psi *PathStorageInteger[T]) Vertex(idx uint32) (x, y float64, cmd basics.PathCommand) {
 	if idx >= psi.Size() {
 		return 0, 0, basics.PathCmdStop
 	}
@@ -141,7 +141,7 @@ func (psi *PathStorageInteger[T]) Rewind(pathID uint32) {
 }
 
 // Vertex iteration method for path traversal.
-func (psi *PathStorageInteger[T]) VertexIterate() (float64, float64, basics.PathCommand) {
+func (psi *PathStorageInteger[T]) VertexIterate() (x, y float64, cmd basics.PathCommand) {
 	if psi.storage.Size() < 2 || psi.vertexIdx > psi.Size() {
 		return 0, 0, basics.PathCmdStop
 	}
@@ -152,7 +152,7 @@ func (psi *PathStorageInteger[T]) VertexIterate() (float64, float64, basics.Path
 	}
 
 	vertex := psi.storage.At(int(psi.vertexIdx))
-	x, y, cmd := vertex.Vertex(0, 0, 1.0, psi.coordShift)
+	x, y, cmd = vertex.Vertex(0, 0, 1.0, psi.coordShift)
 
 	if basics.IsMoveTo(cmd) && !psi.closed {
 		psi.closed = true

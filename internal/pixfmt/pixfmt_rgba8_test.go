@@ -525,7 +525,7 @@ func TestPixFmtRGBA32BlendHlinePartialAlpha(t *testing.T) {
 
 	for x := 0; x < width; x++ {
 		p := pf.GetPixel(x, 0)
-		if p.R >= 255 || p.R == 0 {
+		if p.R == 255 || p.R == 0 {
 			t.Errorf("BlendHline partial alpha at x=%d: red=%d should be between 0 and 255", x, p.R)
 		}
 	}

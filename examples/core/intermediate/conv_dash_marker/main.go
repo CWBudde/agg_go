@@ -167,8 +167,8 @@ func newDemo() *demo {
 	return d
 }
 
-func mapPoint(x, y float64) (float64, float64)   { return x, y }
-func unmapPoint(x, y float64) (float64, float64) { return x, y }
+func mapPoint(x, y float64) (mx, my float64)   { return x, y }
+func unmapPoint(x, y float64) (ux, uy float64) { return x, y }
 
 func (d *demo) buildPath() *path.PathStorageStl {
 	cx := (d.x[0] + d.x[1] + d.x[2]) / 3

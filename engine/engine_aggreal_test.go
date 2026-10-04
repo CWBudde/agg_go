@@ -71,7 +71,7 @@ func TestNewContextCPPWorksWithAggReal(t *testing.T) {
 	ctx.SetColor(agg.Red)
 	ctx.FillRectangle(2, 2, 10, 10)
 
-	got := ctx.GetImage().ToGoImage().RGBAAt(6, 6)
+	got := ctx.GetImage().ToGoImage().NRGBAAt(6, 6)
 	if got.R < 200 || got.G > 40 || got.B > 40 || got.A != 255 {
 		t.Fatalf("unexpected rendered color at center: %+v", got)
 	}
@@ -136,7 +136,7 @@ func TestCPPCompOpSrcKeepsStraightAlphaWithAggReal(t *testing.T) {
 	ctx.SetFillColor(agg.NewColor(40, 60, 220, 160))
 	ctx.FillRectangle(8, 8, 48, 48)
 
-	got := ctx.GetImage().ToGoImage().RGBAAt(32, 32)
+	got := ctx.GetImage().ToGoImage().NRGBAAt(32, 32)
 	// Straight colour is (40,60,220,160); the premultiplied bug would store
 	// roughly (25,38,138,160). Allow 1-LSB slack from the integer
 	// premultiply/demultiply round-trip — the distinction from premultiplied is
@@ -163,7 +163,7 @@ func TestCPPCompOpSrcDoesNotWipeBackgroundWithAggReal(t *testing.T) {
 	ctx.FillRectangle(20, 20, 24, 24)
 
 	// A pixel well outside the rectangle must still be the opaque white clear.
-	bg := ctx.GetImage().ToGoImage().RGBAAt(4, 4)
+	bg := ctx.GetImage().ToGoImage().NRGBAAt(4, 4)
 	if bg.R != 255 || bg.G != 255 || bg.B != 255 || bg.A != 255 {
 		t.Fatalf("background outside src rect = %+v, want opaque white", bg)
 	}
@@ -242,7 +242,7 @@ func TestCPPExtendedBlendModesRenderWithAggReal(t *testing.T) {
 	ctx.SetBlendMode(agg.BlendMultiply)
 	ctx.SetFillColor(agg.NewColorRGB(0, 0, 0))
 	ctx.FillRectangle(2, 2, 12, 12)
-	got := ctx.GetImage().ToGoImage().RGBAAt(8, 8)
+	got := ctx.GetImage().ToGoImage().NRGBAAt(8, 8)
 	if got.R > 4 || got.G > 4 || got.B > 4 || got.A != 255 {
 		t.Fatalf("multiply(black, white) = %+v, want opaque black", got)
 	}
@@ -269,7 +269,7 @@ func TestCPPXorBlendIsAGGFaithfulWithAggReal(t *testing.T) {
 	ctx.SetFillColor(agg.NewColor(40, 60, 220, 160))
 	ctx.FillRectangle(8, 8, 16, 16)
 
-	got := ctx.GetImage().ToGoImage().RGBAAt(16, 16)
+	got := ctx.GetImage().ToGoImage().NRGBAAt(16, 16)
 	within := func(got, want uint8, tol int) bool {
 		d := int(got) - int(want)
 		return d >= -tol && d <= tol
@@ -307,7 +307,7 @@ func TestCPPImageDrawUnderExtendedBlendModeIsFaithfulWithAggReal(t *testing.T) {
 		t.Fatalf("DrawImageScaled under multiply error = %v", err)
 	}
 
-	got := dst.GetImage().ToGoImage().RGBAAt(16, 16)
+	got := dst.GetImage().ToGoImage().NRGBAAt(16, 16)
 	within := func(got, want uint8, tol int) bool {
 		d := int(got) - int(want)
 		return d >= -tol && d <= tol
@@ -318,7 +318,7 @@ func TestCPPImageDrawUnderExtendedBlendModeIsFaithfulWithAggReal(t *testing.T) {
 	}
 
 	// A pixel outside the tile footprint must keep the untouched background.
-	bg := dst.GetImage().ToGoImage().RGBAAt(2, 2)
+	bg := dst.GetImage().ToGoImage().NRGBAAt(2, 2)
 	if bg.R != 100 || bg.G != 150 || bg.B != 200 {
 		t.Fatalf("background outside tile = %+v, want (100,150,200); the blit disturbed untouched pixels", bg)
 	}

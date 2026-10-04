@@ -148,16 +148,15 @@ func (a *vsAdapter) Vertex(x, y *float64) uint32 {
 type ellipseVS struct{ e *shapes.Ellipse }
 
 func (ev *ellipseVS) Rewind(id uint) { ev.e.Rewind(uint32(id)) }
-func (ev *ellipseVS) Vertex() (float64, float64, basics.PathCommand) {
-	var x, y float64
-	cmd := ev.e.Vertex(&x, &y)
+func (ev *ellipseVS) Vertex() (x, y float64, cmd basics.PathCommand) {
+	cmd = ev.e.Vertex(&x, &y)
 	return x, y, cmd
 }
 
 type gsvOutlineVS struct{ o *gsv.GSVTextOutline }
 
 func (g *gsvOutlineVS) Rewind(id uint) { g.o.Rewind(id) }
-func (g *gsvOutlineVS) Vertex() (float64, float64, basics.PathCommand) {
+func (g *gsvOutlineVS) Vertex() (x, y float64, cmd basics.PathCommand) {
 	return g.o.Vertex()
 }
 

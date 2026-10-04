@@ -178,12 +178,12 @@ func bdCalcDistance(x1, y1, x2, y2 float64) float64 {
 }
 
 // bdBezier4Point evaluates the cubic Bezier curve at parameter mu in [0,1].
-func bdBezier4Point(x1, y1, x2, y2, x3, y3, x4, y4, mu float64) (float64, float64) {
+func bdBezier4Point(x1, y1, x2, y2, x3, y3, x4, y4, mu float64) (x, y float64) {
 	mum1 := 1 - mu
 	mum13 := mum1 * mum1 * mum1
 	mu3 := mu * mu * mu
-	x := mum13*x1 + 3*mu*mum1*mum1*x2 + 3*mu*mu*mum1*x3 + mu3*x4
-	y := mum13*y1 + 3*mu*mum1*mum1*y2 + 3*mu*mu*mum1*y3 + mu3*y4
+	x = mum13*x1 + 3*mu*mum1*mum1*x2 + 3*mu*mu*mum1*x3 + mu3*x4
+	y = mum13*y1 + 3*mu*mum1*mum1*y2 + 3*mu*mu*mum1*y3 + mu3*y4
 	return x, y
 }
 
@@ -200,7 +200,7 @@ func bdCalcLinePointDist(x1, y1, x2, y2, x, y float64) float64 {
 type bdCurvePoint struct{ x, y, dist float64 }
 
 // bdCalcMaxError computes approximation accuracy (dist error, angle error) at a given scale.
-func bdCalcMaxError(x1, y1, x2, y2, x3, y3, x4, y4, approxScale, angleTol, cuspLimit, scale float64, incremental bool) (float64, float64) {
+func bdCalcMaxError(x1, y1, x2, y2, x3, y3, x4, y4, approxScale, angleTol, cuspLimit, scale float64, incremental bool) (distErr, angleErr float64) {
 	scaledApprox := approxScale * scale
 
 	var cps []bdCurvePoint

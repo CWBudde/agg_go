@@ -468,13 +468,13 @@ func (t *TransPerspective) Rotation() float64 {
 }
 
 // Translation extracts the translation components.
-func (t *TransPerspective) Translation() (float64, float64) {
+func (t *TransPerspective) Translation() (dx, dy float64) {
 	return t.TX, t.TY
 }
 
 // Scaling determines the major affine scaling factors.
 // Use with caution considering possible degenerate cases.
-func (t *TransPerspective) Scaling() (float64, float64) {
+func (t *TransPerspective) Scaling() (sx, sy float64) {
 	x1, y1 := 0.0, 0.0
 	x2, y2 := 1.0, 1.0
 	temp := *t
@@ -485,7 +485,7 @@ func (t *TransPerspective) Scaling() (float64, float64) {
 }
 
 // ScalingAbs determines the absolute scaling factors.
-func (t *TransPerspective) ScalingAbs() (float64, float64) {
+func (t *TransPerspective) ScalingAbs() (sx, sy float64) {
 	x := math.Sqrt(t.SX*t.SX + t.SHX*t.SHX)
 	y := math.Sqrt(t.SHY*t.SHY + t.SY*t.SY)
 	return x, y

@@ -44,7 +44,7 @@ func matricesEqual(a, b [6]float64) bool {
 
 // runTransformStackSeq performs a fixed sequence of transform-stack operations
 // and returns the resulting affine matrix plus the final stack depth.
-func runTransformStackSeq(s transformStackScene) ([6]float64, int) {
+func runTransformStackSeq(s transformStackScene) (matrix [6]float64, depth int) {
 	s.ResetTransformations()
 	s.Translate(10, 20)
 	s.PushTransform()       // save T(10,20)

@@ -130,8 +130,8 @@ func TestSerializedIntegerPathAdaptor_Vertex_WithTransformation(t *testing.T) {
 	adaptor.Rewind(0)
 
 	x, y, cmd := adaptor.Vertex()
-	expectedX := dx + (1.0 * scale) // 10 + (1 * 2) = 12
-	expectedY := dy + (2.0 * scale) // 20 + (2 * 2) = 24
+	expectedX := dx + (1.0 * scale) // 10 plus 1 scaled by 2 gives 12
+	expectedY := dy + (2.0 * scale) // 20 plus 2 scaled by 2 gives 24
 
 	if math.Abs(x-expectedX) > 1e-9 {
 		t.Errorf("Transformed X = %f, expected %f", x, expectedX)

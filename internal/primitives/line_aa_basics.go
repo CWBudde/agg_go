@@ -152,7 +152,7 @@ func (lp *LineParameters) SameDiagonalQuadrant(other *LineParameters) bool {
 }
 
 // Divide splits this line into two halves.
-func (lp *LineParameters) Divide() (LineParameters, LineParameters) {
+func (lp *LineParameters) Divide() (first, second LineParameters) {
 	xmid := (lp.X1 + lp.X2) >> 1
 	ymid := (lp.Y1 + lp.Y2) >> 1
 	len2 := lp.Len >> 1
@@ -176,7 +176,7 @@ func (lp *LineParameters) Divide() (LineParameters, LineParameters) {
 
 // Bisectrix calculates the bisector point between two line segments.
 // This is equivalent to AGG's bisectrix function.
-func Bisectrix(l1, l2 *LineParameters) (int, int) {
+func Bisectrix(l1, l2 *LineParameters) (x, y int) {
 	k := float64(l2.Len) / float64(l1.Len)
 	tx := float64(l2.X2) - float64(l2.X1-l1.X1)*k
 	ty := float64(l2.Y2) - float64(l2.Y1-l1.Y1)*k
@@ -194,8 +194,8 @@ func Bisectrix(l1, l2 *LineParameters) (int, int) {
 	dx := tx - float64(l2.X1)
 	dy := ty - float64(l2.Y1)
 	if int(math.Sqrt(dx*dx+dy*dy)) < LineSubpixelScale {
-		x := (l2.X1 + l2.X1 + (l2.Y1 - l1.Y1) + (l2.Y2 - l2.Y1)) >> 1
-		y := (l2.Y1 + l2.Y1 - (l2.X1 - l1.X1) - (l2.X2 - l2.X1)) >> 1
+		x = (l2.X1 + l2.X1 + (l2.Y1 - l1.Y1) + (l2.Y2 - l2.Y1)) >> 1
+		y = (l2.Y1 + l2.Y1 - (l2.X1 - l1.X1) - (l2.X2 - l2.X1)) >> 1
 		return x, y
 	}
 

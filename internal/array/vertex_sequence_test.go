@@ -191,7 +191,7 @@ func TestVertexSequenceRemoveAll(t *testing.T) {
 
 func TestVertexDist(t *testing.T) {
 	v1 := NewVertexDist(0.0, 0.0)
-	v2 := NewVertexDist(3.0, 4.0)     // Distance = 5.0
+	v2 := NewVertexDist(3.0, 4.0)     // distance is 5.0
 	v3 := NewVertexDist(1e-15, 1e-15) // Very close, below epsilon (1e-14)
 
 	// Test validation - distant vertices should validate
@@ -224,7 +224,7 @@ func TestVertexDistCalculateDistanceSmall(t *testing.T) {
 	v1.CalculateDistance(v2)
 
 	// For very small distances, it should be set to 1/epsilon
-	expectedDist := 1.0 / 1e-14 // VertexDistEpsilon = 1e-14
+	expectedDist := 1.0 / 1e-14 // VertexDistEpsilon is 1e-14
 	if v1.Dist != expectedDist {
 		t.Errorf("CalculateDistance for small distance = %f, want %f", v1.Dist, expectedDist)
 	}

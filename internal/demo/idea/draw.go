@@ -133,9 +133,9 @@ func addContour(a *agg.Agg2D, c contour, cosA, sinA, centerX, centerY, scale flo
 	a.ClosePolygon()
 }
 
-func transformPoint(p point, cosA, sinA, centerX, centerY, scale float64, roundoff bool) (float64, float64) {
-	x := p.x*cosA - p.y*sinA
-	y := p.x*sinA + p.y*cosA
+func transformPoint(p point, cosA, sinA, centerX, centerY, scale float64, roundoff bool) (x, y float64) {
+	x = p.x*cosA - p.y*sinA
+	y = p.x*sinA + p.y*cosA
 	x = centerX + x*scale
 	y = centerY + y*scale
 	if roundoff {

@@ -133,7 +133,7 @@ func TestImageAlphaRenderTargetUsesCXXBGR24(t *testing.T) {
 	target.copyToImage(img)
 
 	goImg := img.ToGoImage()
-	got := goImg.RGBAAt(0, 0)
+	got := goImg.NRGBAAt(0, 0)
 	if got.R != 10 || got.G != 20 || got.B != 30 || got.A != 255 {
 		t.Fatalf("copied BGR24 target pixel = RGBA(%d,%d,%d,%d), want RGBA(10,20,30,255)", got.R, got.G, got.B, got.A)
 	}

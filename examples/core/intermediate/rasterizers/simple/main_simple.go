@@ -230,19 +230,27 @@ func (app *Application) onDraw() {
 }
 
 // saveImage saves the current frame as a PPM file
-func (app *Application) saveImage(filename string) error {
+func (app *Application) saveImage(filename string) (err error) {
 	file, err := os.Create(filename)
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		if cerr := file.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 
 	// Write PPM header
-	fmt.Fprintf(file, "P6\n%d %d\n255\n", frameWidth, frameHeight)
+	if _, err = fmt.Fprintf(file, "P6\n%d %d\n255\n", frameWidth, frameHeight); err != nil {
+		return err
+	}
 
 	// Write pixel data (convert RGBA to RGB)
 	for i := 0; i < len(app.imageData); i += 4 {
-		file.Write([]byte{app.imageData[i], app.imageData[i+1], app.imageData[i+2]})
+		if _, err = file.Write([]byte{app.imageData[i], app.imageData[i+1], app.imageData[i+2]}); err != nil {
+			return err
+		}
 	}
 
 	return nil

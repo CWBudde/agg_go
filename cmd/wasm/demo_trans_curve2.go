@@ -32,7 +32,7 @@ const (
 	transCurve2RefH = 600.0
 )
 
-func transCurve2FrameOffset() (float64, float64) {
+func transCurve2FrameOffset() (offX, offY float64) {
 	return (float64(width) - transCurve2RefW) * 0.5, (float64(height) - transCurve2RefH) * 0.5
 }
 
@@ -61,7 +61,7 @@ func drawTransCurve2Demo() {
 		}
 	}
 
-	transcurve.DrawDouble(ctx, transcurve.DoubleConfig{
+	transcurve.DrawDouble(ctx, &transcurve.DoubleConfig{
 		Points1:         transCurve2Points1,
 		Points2:         transCurve2Points2,
 		NumIntermediate: transCurve2NumPoints,

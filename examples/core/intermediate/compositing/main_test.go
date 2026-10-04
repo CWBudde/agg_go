@@ -16,7 +16,7 @@ func TestRenderFrontRoundedRectMatchesCPPReferenceSample(t *testing.T) {
 		t.Fatalf("ToGoImage returned nil")
 	}
 
-	gotLinear := goImg.RGBAAt(250, 145)
+	gotLinear := goImg.NRGBAAt(250, 145)
 	got := color.ConvertToSRGBFromLinear(color.RGBA8[color.Linear]{
 		R: gotLinear.R,
 		G: gotLinear.G,

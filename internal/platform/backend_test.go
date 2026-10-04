@@ -161,10 +161,14 @@ func TestBackendFactory(t *testing.T) {
 
 	// Clean up
 	if mockBackend != nil {
-		mockBackend.Destroy()
+		if err := mockBackend.Destroy(); err != nil {
+			t.Errorf("Failed to destroy mock backend: %v", err)
+		}
 	}
 	if macBackend != nil {
-		macBackend.Destroy()
+		if err := macBackend.Destroy(); err != nil {
+			t.Errorf("Failed to destroy fallback backend: %v", err)
+		}
 	}
 }
 
@@ -347,15 +351,23 @@ func TestPixelFormatConversion(t *testing.T) {
 			t.Errorf("Failed to update window with format %s: %v", format.String(), err)
 		}
 
-		backend.Destroy()
+		if err := backend.Destroy(); err != nil {
+			t.Errorf("Failed to destroy backend with format %s: %v", format.String(), err)
+		}
 	}
 }
 
 // BenchmarkMockBackend benchmarks the mock backend performance
 func BenchmarkMockBackend(b *testing.B) {
 	backend := NewMockBackend(PixelFormatRGBA32, false)
-	backend.Init(800, 600, 0)
-	defer backend.Destroy()
+	if err := backend.Init(800, 600, 0); err != nil {
+		b.Fatalf("Init failed: %v", err)
+	}
+	defer func() {
+		if err := backend.Destroy(); err != nil {
+			b.Errorf("Destroy failed: %v", err)
+		}
+	}()
 
 	// Create test buffer
 	data := make([]uint8, 800*600*4)
@@ -365,6 +377,8 @@ func BenchmarkMockBackend(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		backend.UpdateWindow(testBuffer)
+		if err := backend.UpdateWindow(testBuffer); err != nil {
+			b.Fatalf("UpdateWindow failed: %v", err)
+		}
 	}
 }

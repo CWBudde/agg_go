@@ -304,7 +304,7 @@ func (vc *VCGenContour) next(idx int) basics.VertexDist {
 
 // srcVertexXY returns the coordinates of source vertex i (storage accessor for
 // basics.CalcPolygonAreaFunc).
-func (vc *VCGenContour) srcVertexXY(i int) (float64, float64) {
+func (vc *VCGenContour) srcVertexXY(i int) (x, y float64) {
 	v := vc.srcVertices.At(i)
 	return v.X, v.Y
 }

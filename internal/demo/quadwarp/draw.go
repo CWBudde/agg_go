@@ -131,7 +131,7 @@ func (a *pathAdapter) Vertex(x, y *float64) uint32 {
 	return cmd
 }
 
-func Draw(ctx *agg.Context, cfg Config) {
+func Draw(ctx *agg.Context, cfg *Config) {
 	if ctx == nil || cfg.Source == nil {
 		return
 	}

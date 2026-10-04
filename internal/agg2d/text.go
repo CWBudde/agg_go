@@ -223,7 +223,8 @@ func (agg2d *Agg2D) rasterPlacedGlyphBounds(glyphs []font.PositionedGlyph) (minX
 			continue
 		}
 
-		_, width, height, pitch, left, top, _ := agg2d.fontEngine.CurrentBitmap()
+		bm := agg2d.fontEngine.CurrentBitmap()
+		width, height, pitch, left, top := bm.Width, bm.Height, bm.Pitch, bm.Left, bm.Top
 		if width > 0 && height > 0 && pitch != 0 {
 			dstX := baseX + left
 			dstY := baseY - top + 1
@@ -422,7 +423,8 @@ func (agg2d *Agg2D) renderShapedRasterMask(startX, startY float64, glyphs []font
 			continue
 		}
 
-		data, width, height, pitch, left, top, pixelMode := agg2d.fontEngine.CurrentBitmap()
+		bm := agg2d.fontEngine.CurrentBitmap()
+		data, width, height, pitch, left, top, pixelMode := bm.Data, bm.Width, bm.Height, bm.Pitch, bm.Left, bm.Top, bm.PixelMode
 		if len(data) == 0 || width <= 0 || height <= 0 || pitch == 0 {
 			currentX += placedGlyph.XAdvance
 			currentY += placedGlyph.YAdvance

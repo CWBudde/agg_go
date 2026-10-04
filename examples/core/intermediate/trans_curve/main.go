@@ -26,7 +26,7 @@ type demo struct{}
 
 func (d *demo) Render(img *agg.Image) {
 	ctx := agg.NewContextForImage(img)
-	transcurve.Draw(ctx, transcurve.Config{
+	transcurve.Draw(ctx, &transcurve.Config{
 		Points:          transcurve.DefaultPoints,
 		NumIntermediate: 200,
 		PreserveXScale:  true,

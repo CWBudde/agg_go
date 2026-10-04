@@ -388,14 +388,6 @@ func TestGammaSplineNumericalStability(t *testing.T) {
 					t.Errorf("Y(%f) = %f outside valid range [0,1]", x, y)
 				}
 			}
-
-			// Test gamma table
-			gamma := gs.Gamma()
-			for i, val := range gamma {
-				if val > 255 { // uint8 overflow check
-					t.Errorf("Gamma[%d] = %d > 255", i, val)
-				}
-			}
 		})
 	}
 }

@@ -103,7 +103,9 @@ func BenchmarkMixedDemoComponents(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			scene.DrawOverlay(ctx)
+			if err := scene.DrawOverlay(ctx); err != nil {
+				b.Fatalf("DrawOverlay: %v", err)
+			}
 		}
 	})
 }

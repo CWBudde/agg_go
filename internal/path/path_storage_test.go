@@ -282,7 +282,7 @@ func TestPathBase(t *testing.T) {
 
 		path.FlipX(0.0, 100.0) // Flip horizontally between 0 and 100
 		x, y, _ = path.Vertex(0)
-		if x != 90.0 || y != 20.0 { // 100 - 10 + 0 = 90
+		if x != 90.0 || y != 20.0 { // mirrored: 100 minus 10 gives 90
 			t.Errorf("Expected flipped vertex 0 (90, 20), got (%f, %f)", x, y)
 		}
 	})

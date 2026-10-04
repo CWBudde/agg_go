@@ -329,13 +329,6 @@ func renderMaskedImageRGBA(mask AlphaMask, src *Image) []byte {
 	return dest.Data
 }
 
-func (mask AlphaMask) alphaAt(index int) uint8 {
-	if index < 0 || index >= len(mask.Pix) {
-		return 0
-	}
-	return mask.Pix[index]
-}
-
 func scaleAlpha(alpha, maskAlpha uint8) uint8 {
 	return uint8((uint16(alpha)*uint16(maskAlpha) + 127) / 255)
 }

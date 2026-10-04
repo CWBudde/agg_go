@@ -23,7 +23,7 @@ func TestBackgroundOnlyPixelMatchesCurrentPipeline(t *testing.T) {
 	renBase.Clear(bg)
 
 	goImg := img.ToGoImage()
-	got := goImg.RGBAAt(0, 0)
+	got := goImg.NRGBAAt(0, 0)
 	if got.R != 255 || got.G != 242 || got.B != 242 || got.A != 255 {
 		t.Fatalf("background-only pixel = %v, want rgba(255,242,242,255)", got)
 	}
@@ -35,7 +35,7 @@ func TestBackgroundOnlyPixelDiffersFromCPPReference(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open cpp reference: %v", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	refImg, err := png.Decode(f)
 	if err != nil {

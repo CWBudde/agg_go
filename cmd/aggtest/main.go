@@ -8,8 +8,10 @@ import (
 	"image"
 	gocolor "image/color"
 	"image/png"
+	"log"
 	"math"
 	"os"
+	"path/filepath"
 
 	"github.com/cwbudde/agg_go/internal/basics"
 	"github.com/cwbudde/agg_go/internal/buffer"
@@ -34,9 +36,20 @@ func savePNG4(fname string, buf []uint8, w, h int) {
 			img.SetRGBA(x, y, gocolor.RGBA{R: buf[i], G: buf[i+1], B: buf[i+2], A: 255})
 		}
 	}
-	f, _ := os.Create(fname)
-	defer f.Close()
-	png.Encode(f, img)
+	if err := os.MkdirAll(filepath.Dir(fname), 0o755); err != nil {
+		log.Fatalf("create output dir for %s: %v", fname, err)
+	}
+	f, err := os.Create(fname)
+	if err != nil {
+		log.Fatalf("create %s: %v", fname, err)
+	}
+	if err := png.Encode(f, img); err != nil {
+		_ = f.Close()
+		log.Fatalf("encode %s: %v", fname, err)
+	}
+	if err := f.Close(); err != nil {
+		log.Fatalf("close %s: %v", fname, err)
+	}
 }
 
 func px4(buf []uint8, x, y int) (r, g, b uint8) {

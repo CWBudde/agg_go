@@ -27,13 +27,8 @@ jobs:
 
       # Lint with the x11/sdl2 tags so the platform backends are covered too
       # (they are excluded from untagged builds).
-      #
-      # only-new-issues: the pre-existing lint backlog (gocritic, staticcheck,
-      # unused, ineffassign, revive) is tracked in PLAN.md Phase 8. Report only
-      # findings introduced by a change; remove this flag once the backlog is cleared.
       - name: GolangCI-Lint
         uses: golangci/golangci-lint-action@v9
         with:
           version: v2.13.2
           args: --build-tags=x11,sdl2
-          only-new-issues: true

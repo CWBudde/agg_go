@@ -97,7 +97,10 @@ func AnimatePoints(points *[ControlPointCount * 2]float64, anim *AnimationState,
 	}
 }
 
-func Draw(ctx *agg.Context, cfg Config) {
+func Draw(ctx *agg.Context, in *Config) {
+	// Work on a copy: defaults are filled in below and the control-point
+	// array is sliced, neither of which may leak back to the caller.
+	cfg := *in
 	ctx.Clear(agg.White)
 
 	a := ctx.GetAgg2D()
@@ -195,7 +198,10 @@ type DoubleConfig struct {
 // and drag handles are drawn on top.
 //
 // C++ reference: ../agg-2.6/agg-src/examples/trans_curve2.cpp.
-func DrawDouble(ctx *agg.Context, cfg DoubleConfig) {
+func DrawDouble(ctx *agg.Context, in *DoubleConfig) {
+	// Work on a copy: defaults are filled in below and the control-point
+	// arrays are sliced, neither of which may leak back to the caller.
+	cfg := *in
 	ctx.Clear(agg.White)
 
 	a := ctx.GetAgg2D()

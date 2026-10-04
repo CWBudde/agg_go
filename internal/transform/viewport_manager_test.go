@@ -57,7 +57,9 @@ func TestSwitchTo(t *testing.T) {
 	vm := NewViewportManager()
 
 	// Create a viewport
-	vm.CreateViewport("test", 0.0, 0.0, 100.0, 100.0, 0.0, 0.0, 800.0, 600.0)
+	if err := vm.CreateViewport("test", 0.0, 0.0, 100.0, 100.0, 0.0, 0.0, 800.0, 600.0); err != nil {
+		t.Fatalf("CreateViewport failed: %v", err)
+	}
 
 	// Switch to it
 	err := vm.SwitchTo("test")
@@ -98,8 +100,12 @@ func TestRemoveViewport(t *testing.T) {
 	vm := NewViewportManager()
 
 	// Create and switch to a viewport
-	vm.CreateViewport("test", 0.0, 0.0, 100.0, 100.0, 0.0, 0.0, 800.0, 600.0)
-	vm.SwitchTo("test")
+	if err := vm.CreateViewport("test", 0.0, 0.0, 100.0, 100.0, 0.0, 0.0, 800.0, 600.0); err != nil {
+		t.Fatalf("CreateViewport failed: %v", err)
+	}
+	if err := vm.SwitchTo("test"); err != nil {
+		t.Fatalf("SwitchTo failed: %v", err)
+	}
 
 	// Remove it
 	err := vm.RemoveViewport("test")
@@ -130,7 +136,9 @@ func TestCopyViewport(t *testing.T) {
 	vm := NewViewportManager()
 
 	// Create a viewport with specific settings
-	vm.CreateViewport("source", 10.0, 20.0, 110.0, 120.0, 0.0, 0.0, 800.0, 600.0)
+	if err := vm.CreateViewport("source", 10.0, 20.0, 110.0, 120.0, 0.0, 0.0, 800.0, 600.0); err != nil {
+		t.Fatalf("CreateViewport failed: %v", err)
+	}
 	source := vm.GetViewport("source")
 	source.PreserveAspectRatio(0.25, 0.75, AspectRatioMeet)
 
@@ -160,9 +168,15 @@ func TestClear(t *testing.T) {
 	vm := NewViewportManager()
 
 	// Create some viewports
-	vm.CreateViewport("test1", 0.0, 0.0, 100.0, 100.0, 0.0, 0.0, 800.0, 600.0)
-	vm.CreateViewport("test2", 0.0, 0.0, 100.0, 100.0, 0.0, 0.0, 800.0, 600.0)
-	vm.SwitchTo("test1")
+	if err := vm.CreateViewport("test1", 0.0, 0.0, 100.0, 100.0, 0.0, 0.0, 800.0, 600.0); err != nil {
+		t.Fatalf("CreateViewport failed: %v", err)
+	}
+	if err := vm.CreateViewport("test2", 0.0, 0.0, 100.0, 100.0, 0.0, 0.0, 800.0, 600.0); err != nil {
+		t.Fatalf("CreateViewport failed: %v", err)
+	}
+	if err := vm.SwitchTo("test1"); err != nil {
+		t.Fatalf("SwitchTo failed: %v", err)
+	}
 
 	vm.Clear()
 

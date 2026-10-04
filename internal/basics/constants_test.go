@@ -123,7 +123,7 @@ func TestMulOne(t *testing.T) {
 
 		// Test with shift = 16
 		mulOne16 := NewMulOne[uint32](16)
-		result16 := mulOne16.Apply(65536) // 65536 >> 16 = 1
+		result16 := mulOne16.Apply(65536) // 65536 shifted right by 16 gives 1
 		if result16 != 1 {
 			t.Errorf("Shift 16: expected 1, got %d", result16)
 		}

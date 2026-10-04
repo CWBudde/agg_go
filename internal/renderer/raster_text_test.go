@@ -174,21 +174,21 @@ func (m *MockScanlineRenderer) Render(scanline ScanlineInterface) {
 }
 
 func TestGlyphRasterBin(t *testing.T) {
-	font := fonts.GetSimple4x6Font()
+	font := fonts.GetGSE4x6()
 	g := glyph.NewGlyphRasterBin(font)
 
 	// Test font properties
 	if g.Height() != 6 {
 		t.Errorf("Expected height 6, got %f", g.Height())
 	}
-	if g.BaseLine() != 5 {
-		t.Errorf("Expected baseline 5, got %f", g.BaseLine())
+	if g.BaseLine() != 0 {
+		t.Errorf("Expected baseline 0, got %f", g.BaseLine())
 	}
 
 	// Test width calculation
 	width := g.Width("A")
-	if width != 3 { // Based on our font data, 'A' has width 3
-		t.Errorf("Expected width 3 for 'A', got %f", width)
+	if width != 4 { // Every GSE4x6 glyph, including 'A', is 4 pixels wide
+		t.Errorf("Expected width 4 for 'A', got %f", width)
 	}
 
 	// Test glyph preparation
@@ -198,11 +198,11 @@ func TestGlyphRasterBin(t *testing.T) {
 	if rect.X1 != 10 {
 		t.Errorf("Expected X1=10, got %d", rect.X1)
 	}
-	if rect.X2 != 12 { // X1 + width - 1
-		t.Errorf("Expected X2=12, got %d", rect.X2)
+	if rect.X2 != 13 { // X1 + width - 1
+		t.Errorf("Expected X2=13, got %d", rect.X2)
 	}
-	if rect.DX != 3 {
-		t.Errorf("Expected DX=3, got %f", rect.DX)
+	if rect.DX != 4 {
+		t.Errorf("Expected DX=4, got %f", rect.DX)
 	}
 	if rect.DY != 0 {
 		t.Errorf("Expected DY=0, got %f", rect.DY)
@@ -213,14 +213,14 @@ func TestGlyphRasterBin(t *testing.T) {
 	if span == nil {
 		t.Fatal("Expected non-nil span")
 	}
-	if len(span) != 3 {
-		t.Errorf("Expected span length 3, got %d", len(span))
+	if len(span) != 4 {
+		t.Errorf("Expected span length 4, got %d", len(span))
 	}
 }
 
 func TestRendererRasterHTextSolid(t *testing.T) {
 	mockRenderer := NewMockBaseRenderer[string]()
-	font := fonts.GetSimple4x6Font()
+	font := fonts.GetGSE4x6()
 	g := glyph.NewGlyphRasterBin(font)
 
 	renderer := NewRendererRasterHTextSolid[*MockBaseRenderer[string], *glyph.GlyphRasterBin, string](mockRenderer, g)
@@ -248,14 +248,14 @@ func TestRendererRasterHTextSolid(t *testing.T) {
 	if call.Color != color {
 		t.Errorf("Expected color=%v, got %v", color, call.Color)
 	}
-	if call.Len != 3 { // Width of 'A'
-		t.Errorf("Expected len=3, got %d", call.Len)
+	if call.Len != 4 { // Width of 'A'
+		t.Errorf("Expected len=4, got %d", call.Len)
 	}
 }
 
 func TestRendererRasterVTextSolid(t *testing.T) {
 	mockRenderer := NewMockBaseRenderer[string]()
-	font := fonts.GetSimple4x6Font()
+	font := fonts.GetGSE4x6()
 	g := glyph.NewGlyphRasterBin(font)
 
 	renderer := NewRendererRasterVTextSolid[*MockBaseRenderer[string], *glyph.GlyphRasterBin, string](mockRenderer, g)
@@ -280,14 +280,14 @@ func TestRendererRasterVTextSolid(t *testing.T) {
 	if call.Color != color {
 		t.Errorf("Expected color=%v, got %v", color, call.Color)
 	}
-	if call.Len != 3 { // Width of 'B'
-		t.Errorf("Expected len=3, got %d", call.Len)
+	if call.Len != 4 { // Width of 'B'
+		t.Errorf("Expected len=4, got %d", call.Len)
 	}
 }
 
 func TestRendererRasterHText(t *testing.T) {
 	mockRenderer := NewMockScanlineRenderer()
-	font := fonts.GetSimple4x6Font()
+	font := fonts.GetGSE4x6()
 	g := glyph.NewGlyphRasterBin(font)
 
 	renderer := NewRendererRasterHText[*MockScanlineRenderer, *glyph.GlyphRasterBin](mockRenderer, g)
@@ -318,8 +318,8 @@ func TestRendererRasterHText(t *testing.T) {
 	if span.X != 5 {
 		t.Errorf("Expected span X=5, got %d", span.X)
 	}
-	if span.Len != 3 { // Width of 'C'
-		t.Errorf("Expected span len=3, got %d", span.Len)
+	if span.Len != 4 { // Width of 'C'
+		t.Errorf("Expected span len=4, got %d", span.Len)
 	}
 }
 
@@ -364,7 +364,7 @@ func TestScanlineSingleSpan(t *testing.T) {
 
 func TestRendererRasterTextWithMultipleCharacters(t *testing.T) {
 	mockRenderer := NewMockBaseRenderer[string]()
-	font := fonts.GetSimple4x6Font()
+	font := fonts.GetGSE4x6()
 	g := glyph.NewGlyphRasterBin(font)
 
 	renderer := NewRendererRasterHTextSolid[*MockBaseRenderer[string], *glyph.GlyphRasterBin, string](mockRenderer, g)
@@ -379,30 +379,30 @@ func TestRendererRasterTextWithMultipleCharacters(t *testing.T) {
 	}
 
 	// The calls should be for different X positions due to character advance
-	// First character at X=0, second character should be at X=3 (width of 'A')
+	// First character at X=0, second character should be at X=4 (width of 'A')
 	foundX0 := false
-	foundX3 := false
+	foundX4 := false
 
 	for _, call := range mockRenderer.blendHSpanCalls {
 		if call.X == 0 {
 			foundX0 = true
 		}
-		if call.X == 3 {
-			foundX3 = true
+		if call.X == 4 {
+			foundX4 = true
 		}
 	}
 
 	if !foundX0 {
 		t.Error("Expected call at X=0 for first character")
 	}
-	if !foundX3 {
-		t.Error("Expected call at X=3 for second character")
+	if !foundX4 {
+		t.Error("Expected call at X=4 for second character")
 	}
 }
 
 func TestRendererRasterTextWithFlip(t *testing.T) {
 	mockRenderer := NewMockBaseRenderer[string]()
-	font := fonts.GetSimple4x6Font()
+	font := fonts.GetGSE4x6()
 	g := glyph.NewGlyphRasterBin(font)
 
 	renderer := NewRendererRasterHTextSolid[*MockBaseRenderer[string], *glyph.GlyphRasterBin, string](mockRenderer, g)
@@ -421,7 +421,7 @@ func TestRendererRasterTextWithFlip(t *testing.T) {
 }
 
 func TestRendererRasterHTextSolidRowOrder(t *testing.T) {
-	font := fonts.GetSimple4x6Font()
+	font := fonts.GetGSE4x6()
 	g := glyph.NewGlyphRasterBin(font)
 
 	t.Run("normal", func(t *testing.T) {
@@ -478,7 +478,7 @@ func TestRendererRasterHTextSolidRowOrder(t *testing.T) {
 }
 
 func TestRendererRasterHTextRowOrder(t *testing.T) {
-	font := fonts.GetSimple4x6Font()
+	font := fonts.GetGSE4x6()
 	g := glyph.NewGlyphRasterBin(font)
 
 	t.Run("normal", func(t *testing.T) {
@@ -539,7 +539,7 @@ func TestRendererRasterHTextRowOrder(t *testing.T) {
 }
 
 func TestGlyphRasterBinInvalidGlyph(t *testing.T) {
-	font := fonts.GetSimple4x6Font()
+	font := fonts.GetGSE4x6()
 	g := glyph.NewGlyphRasterBin(font)
 
 	var rect glyph.GlyphRect
@@ -570,7 +570,7 @@ func TestGlyphRasterBinEmptyFont(t *testing.T) {
 func TestRendererRasterVTextSolidAttach(t *testing.T) {
 	mockRenderer1 := NewMockBaseRenderer[string]()
 	mockRenderer2 := NewMockBaseRenderer[string]()
-	font := fonts.GetSimple4x6Font()
+	font := fonts.GetGSE4x6()
 	g := glyph.NewGlyphRasterBin(font)
 
 	renderer := NewRendererRasterVTextSolid[*MockBaseRenderer[string], *glyph.GlyphRasterBin, string](mockRenderer1, g)

@@ -34,7 +34,7 @@ func TestVCGenMarkersTerm_Basic(t *testing.T) {
 	}
 
 	// Should stop after start marker
-	x, y, cmd = gen.Vertex()
+	_, _, cmd = gen.Vertex()
 	if cmd != basics.PathCmdStop {
 		t.Errorf("Expected PathCmdStop after start marker, got %v", cmd)
 	}
@@ -60,7 +60,7 @@ func TestVCGenMarkersTerm_Basic(t *testing.T) {
 	}
 
 	// Should stop after end marker
-	x, y, cmd = gen.Vertex()
+	_, _, cmd = gen.Vertex()
 	if cmd != basics.PathCmdStop {
 		t.Errorf("Expected PathCmdStop after end marker, got %v", cmd)
 	}

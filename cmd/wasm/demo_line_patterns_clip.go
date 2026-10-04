@@ -166,17 +166,17 @@ func (a *lineClipOutlineImageAdapter) Pie(x, y, x1, y1, x2, y2 int)      { a.ren
 func (a *lineClipOutlineImageAdapter) Semidot(cmp func(int) bool, x, y, x1, y1 int) {
 	a.ren.Semidot(cmp, x, y, x1, y1)
 }
-func (a *lineClipOutlineImageAdapter) Line0(lp primitives.LineParameters) { a.ren.Line0(&lp) }
-func (a *lineClipOutlineImageAdapter) Line1(lp primitives.LineParameters, sx, sy int) {
-	a.ren.Line1(&lp, sx, sy)
+func (a *lineClipOutlineImageAdapter) Line0(lp *primitives.LineParameters) { a.ren.Line0(lp) }
+func (a *lineClipOutlineImageAdapter) Line1(lp *primitives.LineParameters, sx, sy int) {
+	a.ren.Line1(lp, sx, sy)
 }
 
-func (a *lineClipOutlineImageAdapter) Line2(lp primitives.LineParameters, ex, ey int) {
-	a.ren.Line2(&lp, ex, ey)
+func (a *lineClipOutlineImageAdapter) Line2(lp *primitives.LineParameters, ex, ey int) {
+	a.ren.Line2(lp, ex, ey)
 }
 
-func (a *lineClipOutlineImageAdapter) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) {
-	a.ren.Line3(&lp, sx, sy, ex, ey)
+func (a *lineClipOutlineImageAdapter) Line3(lp *primitives.LineParameters, sx, sy, ex, ey int) {
+	a.ren.Line3(lp, sx, sy, ex, ey)
 }
 
 type lineClipOutlineAAAdapter struct {
@@ -190,17 +190,17 @@ func (a *lineClipOutlineAAAdapter) Pie(x, y, x1, y1, x2, y2 int)      { a.ren.Pi
 func (a *lineClipOutlineAAAdapter) Semidot(cmp func(int) bool, x, y, x1, y1 int) {
 	a.ren.Semidot(cmp, x, y, x1, y1)
 }
-func (a *lineClipOutlineAAAdapter) Line0(lp primitives.LineParameters) { a.ren.Line0(&lp) }
-func (a *lineClipOutlineAAAdapter) Line1(lp primitives.LineParameters, sx, sy int) {
-	a.ren.Line1(&lp, sx, sy)
+func (a *lineClipOutlineAAAdapter) Line0(lp *primitives.LineParameters) { a.ren.Line0(lp) }
+func (a *lineClipOutlineAAAdapter) Line1(lp *primitives.LineParameters, sx, sy int) {
+	a.ren.Line1(lp, sx, sy)
 }
 
-func (a *lineClipOutlineAAAdapter) Line2(lp primitives.LineParameters, ex, ey int) {
-	a.ren.Line2(&lp, ex, ey)
+func (a *lineClipOutlineAAAdapter) Line2(lp *primitives.LineParameters, ex, ey int) {
+	a.ren.Line2(lp, ex, ey)
 }
 
-func (a *lineClipOutlineAAAdapter) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) {
-	a.ren.Line3(&lp, sx, sy, ex, ey)
+func (a *lineClipOutlineAAAdapter) Line3(lp *primitives.LineParameters, sx, sy, ex, ey int) {
+	a.ren.Line3(lp, sx, sy, ex, ey)
 }
 
 func linePatternClipPadding(w, h int) float64 {
@@ -259,7 +259,7 @@ func linePatternClipClamp(v, lo, hi float64) float64 {
 	return v
 }
 
-func clampLinePatternClipPoint(x, y float64) (float64, float64) {
+func clampLinePatternClipPoint(x, y float64) (cx, cy float64) {
 	if ctx == nil {
 		return x, y
 	}
@@ -289,9 +289,9 @@ func linePatternClipSegmentDistanceSquared(px, py, ax, ay, bx, by float64) float
 	return linePatternClipDistanceSquared(px, py, cx, cy)
 }
 
-func linePatternClipNearestSegment(x, y float64) (int, float64) {
-	bestIdx := -1
-	bestDist2 := math.MaxFloat64
+func linePatternClipNearestSegment(x, y float64) (bestIdx int, bestDist2 float64) {
+	bestIdx = -1
+	bestDist2 = math.MaxFloat64
 	for i := 0; i+1 < len(linePatternClipPoints); i++ {
 		a := linePatternClipPoints[i]
 		b := linePatternClipPoints[i+1]

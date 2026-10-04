@@ -246,6 +246,27 @@ stays straight). Source-linked tests:
 **Files**: `internal/agg2d/buffer_float.go`, `internal/pixfmt/blender/rgba128.go`,
 `internal/color/rgba32.go`.
 
+### 8-bit image export is straight `*image.NRGBA`
+
+**C++**: Agg2D renders into a premultiplied buffer (`blender_rgba`,
+`comp_op_adaptor_rgba`); there is no Go-image export.
+**Go**: the 8-bit framebuffer stores straight alpha (`PixFmtRGBA32Plain`, and
+`CompositeBlenderPlain` for comp-ops), so `Image.ToGoImage` returns
+`*image.NRGBA` and `ToStandardImage` (PNG/JPEG export) returns NRGBA data too.
+Until 2026-10-04 both returned `*image.RGBA` filled with the straight bytes,
+which Go reads as premultiplied, so every translucent pixel (e.g. a comp-op
+xor result) was exported wrong. The comp-op bridge is checked against stock
+AGG premultiply → comp_op → demultiply in
+`internal/pixfmt/blender/comp_plain_oracle_test.go`.
+An `Image` records its alpha mode (`AlphaMode`/`SetAlphaMode`). `Premultiply`,
+`Demultiply`, `CompositeImage` (`opts.AlphaMode`) and `DrawImageAffine`
+(`opts.DestinationAlpha`) keep it current, and the export demultiplies a
+premultiplied image with `Demultiply`'s rounding. `NewImageFromStandardImage`
+converts through `color.NRGBAModel`, because `color.Color.RGBA()` is
+premultiplied; translucent PNGs used to load darkened.
+**Files**: `images.go`, `composite.go`, `image_affine.go`, `engine/engine.go`
+(`Image.ToGoImage`).
+
 ### Float image transforms (`TransformImage*`)
 
 **C++**: `Agg2D::renderImage` (`agg2d/agg2d.cpp`) instantiates
@@ -430,8 +451,7 @@ are verified against AGG 2.6 C++ by `internal/color/fixedpoint_parity_test.go`
   which wraps for `|(q-p)*a| >= 2^31` (e.g. `lerp(0, 65535, 65535) == 65534`).
   C++ -O0 and -O2 builds agree; Go reproduces it with `int32` arithmetic
   (`RGBA16Lerp`, `Gray16Lerp`).
-- `gray8T::gradient` / `gray16::gradient` scale `k` by `base_scale` (256 /
-  65536) instead of `base_mask` and truncate the result to `value_type`, so
+- `gray8T::gradient` / `gray16::gradient` scale `k` by `base_scale` (256 / 65536) instead of `base_mask` and truncate the result to `value_type`, so
   `k >= 255.5/256` (gray8) or `k >= 65535.5/65536` (gray16) wraps to 0 and
   returns the start colour. Reproduced in `Gray8.Gradient` / `Gray16.Gradient`.
 

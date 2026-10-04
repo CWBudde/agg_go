@@ -663,7 +663,7 @@ func TestConvSmoothPoly1Curve_ApproximationMethods(t *testing.T) {
 
 	// Test default approximation method
 	defaultMethod := smoothCurve.ApproximationMethod()
-	if defaultMethod < 0 || defaultMethod > 2 {
+	if defaultMethod != curves.CurveInc && defaultMethod != curves.CurveDiv {
 		t.Errorf("Default approximation method should be valid, got %v", defaultMethod)
 	}
 

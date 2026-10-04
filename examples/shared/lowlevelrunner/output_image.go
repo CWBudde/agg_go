@@ -7,7 +7,7 @@ import (
 	"github.com/cwbudde/agg_go/internal/color"
 )
 
-func outputImage(img *agg.Image, encodeLinearRGBToSRGB bool) *image.RGBA {
+func outputImage(img *agg.Image, encodeLinearRGBToSRGB bool) *image.NRGBA {
 	goImg := img.ToGoImage()
 	if goImg == nil || !encodeLinearRGBToSRGB {
 		return goImg

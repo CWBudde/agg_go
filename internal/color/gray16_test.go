@@ -203,7 +203,7 @@ func TestGray16_WithGray8Interop(t *testing.T) {
 func TestGray16Arithmetic(t *testing.T) {
 	// Test Multiply
 	result := Gray16Multiply(32768, 32768)
-	expected := basics.Int16u(16384) // 32768*32768/65536 = 16384
+	expected := basics.Int16u(16384) // 32768 times 32768 divided by 65536 gives 16384
 	if result != expected {
 		t.Errorf("Gray16Multiply(32768, 32768) expected %d, got %d", expected, result)
 	}
@@ -216,7 +216,7 @@ func TestGray16Arithmetic(t *testing.T) {
 
 	// Test Prelerp
 	result = Gray16Prelerp(25600, 12800, 32768)
-	// p + q - multiply(p, a) = 25600 + 12800 - multiply(25600, 32768)
+	// Prelerp computes p + q - multiply(p, a), here with p=25600, q=12800, a=32768.
 	mulResult := Gray16Multiply(25600, 32768)
 	expected = 25600 + 12800 - mulResult
 	if result != expected {
@@ -465,7 +465,7 @@ func TestGray16Lerp_Endpoints_And_Branches(t *testing.T) {
 func TestGray16Prelerp_Extremes(t *testing.T) {
 	// Prelerp formula: p + q - multiply(p, a)
 	// When a=0: p + q - multiply(p, 0) = p + q - 0 = p + q
-	expected := basics.Int16u(38400) // 25600 + 12800 = 38400
+	expected := basics.Int16u(38400) // 25600 plus 12800
 	if Gray16Prelerp(25600, 12800, 0) != expected {
 		t.Fatalf("a=0: expected %d, got %d", expected, Gray16Prelerp(25600, 12800, 0))
 	}

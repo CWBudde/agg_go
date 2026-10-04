@@ -72,13 +72,17 @@ func BenchmarkViewportManager(b *testing.B) {
 	// Create several viewports
 	for i := 0; i < 10; i++ {
 		name := "viewport" + string(rune('0'+i))
-		vm.CreateViewport(name, 0.0, 0.0, 1000.0, 1000.0, 0.0, 0.0, 1024.0, 768.0)
+		if err := vm.CreateViewport(name, 0.0, 0.0, 1000.0, 1000.0, 0.0, 0.0, 1024.0, 768.0); err != nil {
+			b.Fatalf("CreateViewport failed: %v", err)
+		}
 	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		name := "viewport" + string(rune('0'+(i%10)))
-		vm.SwitchTo(name)
+		if err := vm.SwitchTo(name); err != nil {
+			b.Fatalf("SwitchTo failed: %v", err)
+		}
 		vm.GetCurrent()
 	}
 }

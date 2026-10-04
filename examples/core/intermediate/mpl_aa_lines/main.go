@@ -123,14 +123,14 @@ func renderPreview(ctx *agg.Context) {
 //
 //	pixelPanel – each pixel of the zoom region rendered as a zoomScale² block.
 //	coverPanel – coverage heat-map (see coverToHeat).
-func buildMagnifiedPanels(src *image.RGBA) (pixelPanel, coverPanel *image.RGBA) {
+func buildMagnifiedPanels(src *image.NRGBA) (pixelPanel, coverPanel *image.NRGBA) {
 	panelRect := image.Rect(0, 0, zoomPanelW, zoomPanelH)
-	pixelPanel = image.NewRGBA(panelRect)
-	coverPanel = image.NewRGBA(panelRect)
+	pixelPanel = image.NewNRGBA(panelRect)
+	coverPanel = image.NewNRGBA(panelRect)
 
 	for py := 0; py < zoomSrcH; py++ {
 		for px := 0; px < zoomSrcW; px++ {
-			sc := src.RGBAAt(zoomSrcX+px, zoomSrcY+py)
+			sc := src.NRGBAAt(zoomSrcX+px, zoomSrcY+py)
 
 			// Estimate ink coverage from the green channel.
 			// bg≈201 (viridis green), ink≈31; this is a rough heuristic.
@@ -152,11 +152,11 @@ func buildMagnifiedPanels(src *image.RGBA) (pixelPanel, coverPanel *image.RGBA) 
 					ny := py*zoomScale + dy
 					// 1-pixel grid border for the heat-map panel.
 					if dx == 0 || dy == 0 {
-						pixelPanel.SetRGBA(nx, ny, color.RGBA{80, 80, 80, 255})
-						coverPanel.SetRGBA(nx, ny, color.RGBA{80, 80, 80, 255})
+						pixelPanel.SetNRGBA(nx, ny, color.NRGBA{80, 80, 80, 255})
+						coverPanel.SetNRGBA(nx, ny, color.NRGBA{80, 80, 80, 255})
 					} else {
-						pixelPanel.SetRGBA(nx, ny, sc)
-						coverPanel.SetRGBA(nx, ny, heat)
+						pixelPanel.SetNRGBA(nx, ny, sc)
+						coverPanel.SetNRGBA(nx, ny, heat)
 					}
 				}
 			}
@@ -171,15 +171,15 @@ func buildMagnifiedPanels(src *image.RGBA) (pixelPanel, coverPanel *image.RGBA) 
 //	0.0 → white  (pure background, no ink)
 //	0.5 → red    (50% edge pixel – the "halo" region)
 //	1.0 → black  (fully covered line core)
-func coverToHeat(c float64) color.RGBA {
+func coverToHeat(c float64) color.NRGBA {
 	if c < 0.5 {
 		t := c * 2 // 0→1
 		v := uint8(255 * (1 - t))
-		return color.RGBA{255, v, v, 255}
+		return color.NRGBA{255, v, v, 255}
 	}
 	t := (c - 0.5) * 2 // 0→1
 	v := uint8(255 * (1 - t))
-	return color.RGBA{v, 0, 0, 255}
+	return color.NRGBA{v, 0, 0, 255}
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -187,7 +187,7 @@ func coverToHeat(c float64) color.RGBA {
 // printCoverageStats counts "dark" pixels (all channels below threshold) in the
 // region [x0,x1) × [y0,y1) at several thresholds, mirroring the analysis done
 // in the matplotlib-go parity tests.
-func printCoverageStats(label string, src *image.RGBA, x0, x1, y0, y1 int) {
+func printCoverageStats(label string, src *image.NRGBA, x0, x1, y0, y1 int) {
 	thresholds := []struct {
 		pct   int
 		limit uint32
@@ -203,7 +203,7 @@ func printCoverageStats(label string, src *image.RGBA, x0, x1, y0, y1 int) {
 		count := 0
 		for y := y0; y < y1; y++ {
 			for x := x0; x < x1; x++ {
-				c := src.RGBAAt(x, y)
+				c := src.NRGBAAt(x, y)
 				r := uint32(c.R) << 8
 				g := uint32(c.G) << 8
 				b := uint32(c.B) << 8
@@ -219,8 +219,8 @@ func printCoverageStats(label string, src *image.RGBA, x0, x1, y0, y1 int) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 // compositeOutput assembles the three panels side by side.
-func compositeOutput(preview, pixelPanel, coverPanel *image.RGBA) *image.RGBA {
-	out := image.NewRGBA(image.Rect(0, 0, totalWidth, totalHeight))
+func compositeOutput(preview, pixelPanel, coverPanel *image.NRGBA) *image.NRGBA {
+	out := image.NewNRGBA(image.Rect(0, 0, totalWidth, totalHeight))
 
 	// Grey filler so panel seams are visible.
 	for i := 0; i < len(out.Pix); i += 4 {
@@ -230,12 +230,12 @@ func compositeOutput(preview, pixelPanel, coverPanel *image.RGBA) *image.RGBA {
 		out.Pix[i+3] = 255
 	}
 
-	blit := func(dst, src *image.RGBA, offX, offY int) {
+	blit := func(dst, src *image.NRGBA, offX, offY int) {
 		for y := 0; y < src.Bounds().Dy(); y++ {
 			for x := 0; x < src.Bounds().Dx(); x++ {
 				dx, dy := offX+x, offY+y
 				if dx < dst.Bounds().Dx() && dy < dst.Bounds().Dy() {
-					dst.SetRGBA(dx, dy, src.RGBAAt(x, y))
+					dst.SetNRGBA(dx, dy, src.NRGBAAt(x, y))
 				}
 			}
 		}
@@ -246,14 +246,14 @@ func compositeOutput(preview, pixelPanel, coverPanel *image.RGBA) *image.RGBA {
 	blit(out, coverPanel, previewW+zoomPanelW, 0)
 
 	// Draw red rectangle in preview marking the magnified sub-region.
-	red := color.RGBA{255, 0, 0, 255}
+	red := color.NRGBA{255, 0, 0, 255}
 	for x := zoomSrcX; x < zoomSrcX+zoomSrcW; x++ {
-		out.SetRGBA(x, zoomSrcY, red)
-		out.SetRGBA(x, zoomSrcY+zoomSrcH, red)
+		out.SetNRGBA(x, zoomSrcY, red)
+		out.SetNRGBA(x, zoomSrcY+zoomSrcH, red)
 	}
 	for y := zoomSrcY; y <= zoomSrcY+zoomSrcH; y++ {
-		out.SetRGBA(zoomSrcX, y, red)
-		out.SetRGBA(zoomSrcX+zoomSrcW, y, red)
+		out.SetNRGBA(zoomSrcX, y, red)
+		out.SetNRGBA(zoomSrcX+zoomSrcW, y, red)
 	}
 
 	return out
@@ -294,8 +294,11 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	defer f.Close()
 	if err := png.Encode(f, out); err != nil {
+		_ = f.Close()
+		panic(err)
+	}
+	if err := f.Close(); err != nil {
 		panic(err)
 	}
 

@@ -104,7 +104,7 @@ func TestVPGenClipPolygon_InsideTriangle(t *testing.T) {
 	}
 
 	// End
-	x, y, cmd = vpgen.Vertex()
+	_, _, cmd = vpgen.Vertex()
 	if cmd != basics.PathCmdStop {
 		t.Errorf("Should end with Stop command, got %v", cmd)
 	}

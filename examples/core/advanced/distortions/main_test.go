@@ -45,8 +45,8 @@ func TestBuildGradientColorsConvertsSRGBTableToLinear(t *testing.T) {
 	}
 }
 
-func encodeLinearToSRGBForTest(src *image.RGBA) *image.RGBA {
-	dst := image.NewRGBA(src.Bounds())
+func encodeLinearToSRGBForTest(src *image.NRGBA) *image.NRGBA {
+	dst := image.NewNRGBA(src.Bounds())
 	copy(dst.Pix, src.Pix)
 	for i := 0; i+3 < len(dst.Pix); i += 4 {
 		c := color.ConvertToSRGBFromLinear(color.RGBA8[color.Linear]{
@@ -69,7 +69,7 @@ func loadPNGForTest(t *testing.T, path string) *image.RGBA {
 	if err != nil {
 		t.Fatalf("open %s: %v", path, err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	img, err := png.Decode(f)
 	if err != nil {
@@ -85,7 +85,7 @@ func loadPNGForTest(t *testing.T, path string) *image.RGBA {
 	return rgba
 }
 
-func compareRGBWithTolerance(got, want *image.RGBA, tolerance uint8) (diffPixels, totalPixels, maxDiff int) {
+func compareRGBWithTolerance(got *image.NRGBA, want *image.RGBA, tolerance uint8) (diffPixels, totalPixels, maxDiff int) {
 	bounds := got.Bounds()
 	totalPixels = bounds.Dx() * bounds.Dy()
 	for y := 0; y < bounds.Dy(); y++ {

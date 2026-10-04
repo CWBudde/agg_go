@@ -70,7 +70,7 @@ func TestPixFmtRGB48Linear(t *testing.T) {
 	pixfmt.BlendPixel(0, 1, red, 32768, 65535) // Blend with half alpha
 
 	pixel = pixfmt.GetPixel(0, 1)
-	if pixel.R <= 32768 || pixel.R >= 65535 {
+	if pixel.R <= 32768 || pixel.R == 65535 {
 		t.Errorf("BlendPixel failed: red component %d should be between 32768 and 65535", pixel.R)
 	}
 }
@@ -109,7 +109,7 @@ func TestPixFmtRGB48BlendHline(t *testing.T) {
 
 	for x := 0; x < width; x++ {
 		p := pf.GetPixel(x, 0)
-		if p.R <= 32768 || p.R >= 65535 {
+		if p.R <= 32768 || p.R == 65535 {
 			t.Errorf("BlendHline x=%d: R=%d should be between 32768 and 65535", x, p.R)
 		}
 	}

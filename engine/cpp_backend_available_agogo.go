@@ -11,6 +11,10 @@ import (
 	"os"
 )
 
+func cppBridgeNotImplementedReason() string {
+	return fmt.Sprintf("the %q build tag is enabled, but the in-repo C++ engine bridge is not implemented yet", cppBuildTag)
+}
+
 func newCPPBackendContextAvailable(width, height int) (Context, error) {
 	return newCPPBackendContext(width, height)
 }

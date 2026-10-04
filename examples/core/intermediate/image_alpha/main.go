@@ -151,18 +151,6 @@ func newImageAlphaRGBBilinear(
 	return span.NewSpanImageFilterRGBBilinearWithParams(src, interp)
 }
 
-// rasScanlineAdapter adapts ScanlineU8 to rasterizer.ScanlineInterface.
-// pathSourceAdapter bridges PathStorageStl to rasterizer VertexSource.
-type pathSourceAdapter struct{ ps *path.PathStorageStl }
-
-func (a *pathSourceAdapter) Rewind(id uint32) { a.ps.Rewind(uint(id)) }
-func (a *pathSourceAdapter) Vertex(x, y *float64) uint32 {
-	vx, vy, cmd := a.ps.NextVertex()
-	*x = vx
-	*y = vy
-	return cmd
-}
-
 type ctrlPathSource interface {
 	NumPaths() uint
 	Rewind(pathID uint)
@@ -207,7 +195,7 @@ func imageAlphaSRGBA8(r, g, b, a uint8) color.RGBA8[color.Linear] {
 	})
 }
 
-func imageAlphaSRGBToLinearBGR(r, g, b uint8) (uint8, uint8, uint8) {
+func imageAlphaSRGBToLinearBGR(r, g, b uint8) (lb, lg, lr uint8) {
 	c := imageAlphaSRGBA8(r, g, b, 255)
 	return c.B, c.G, c.R
 }
@@ -263,13 +251,6 @@ func (a *ctrlPathAdapter) Vertex(x, y *float64) uint32 {
 	return uint32(cmd)
 }
 
-func toAggColor(c color.RGBA8[color.Linear]) agg.Color {
-	clamp := func(v basics.Int8u) uint8 {
-		return uint8(v)
-	}
-	return agg.NewColor(clamp(c.R), clamp(c.G), clamp(c.B), clamp(c.A))
-}
-
 type clibcRand struct {
 	state [31]int32
 	fptr  int
@@ -309,18 +290,6 @@ func (r *clibcRand) randN(n int) int {
 	return int(r.next()) % n
 }
 
-func renderCtrl(ctx *agg.Context, ctrl ctrlPathSource) {
-	a := ctx.GetAgg2D()
-	ras := a.GetInternalRasterizer()
-	adapter := &ctrlPathAdapter{ctrl: ctrl}
-
-	for pathID := uint(0); pathID < ctrl.NumPaths(); pathID++ {
-		ras.Reset()
-		ras.AddPath(adapter, uint32(pathID))
-		a.RenderRasterizerWithColor(toAggColor(ctrl.Color(pathID)))
-	}
-}
-
 func renderCtrlBGR(
 	ras *rasterizer.RasterizerScanlineAA[int, rasterizer.RasConvInt, *rasterizer.RasterizerSlNoClip],
 	sl *scanline.ScanlineU8,
@@ -340,7 +309,7 @@ func loadImageAsset(filename string) (*agg.Image, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	switch filepath.Ext(filename) {
 	case ".bmp", ".BMP":

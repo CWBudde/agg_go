@@ -81,7 +81,7 @@ func TestFloatImageTransformVisualParity(t *testing.T) {
 	for _, p := range [][2]int{{32, 32}, {48, 48}, {64, 64}, {40, 56}, {56, 40}} {
 		if d := maxRGBADiff(imgF, img8, p[0], p[1]); d > tol {
 			f := imgF.RGBAAt(p[0], p[1])
-			e := img8.RGBAAt(p[0], p[1])
+			e := img8.NRGBAAt(p[0], p[1])
 			t.Errorf("transform mismatch at (%d,%d): float=%v 8bit=%v maxdiff=%d (tol=%d)",
 				p[0], p[1], f, e, d, tol)
 		}

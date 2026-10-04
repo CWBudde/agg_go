@@ -62,7 +62,7 @@ func (a *Agg2DFloat) BlendImageSimpleDefaultAlpha(img *ImageFloat, dstX, dstY fl
 // SaveImagePPM writes the currently attached float buffer as a binary PPM file.
 // Float twin of the 8-bit SaveImagePPM: the straight RGB channels are clamped
 // and rounded to 8 bits (alpha is dropped, as PPM has no alpha channel).
-func (a *Agg2DFloat) SaveImagePPM(filename string) error {
+func (a *Agg2DFloat) SaveImagePPM(filename string) (err error) {
 	if a.rbuf == nil {
 		return fmt.Errorf("no attached float buffer")
 	}
@@ -76,7 +76,11 @@ func (a *Agg2DFloat) SaveImagePPM(filename string) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		if cerr := file.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 
 	if _, err := fmt.Fprintf(file, "P6\n%d %d\n255\n", width, height); err != nil {
 		return err

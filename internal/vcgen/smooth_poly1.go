@@ -251,7 +251,7 @@ func (v *VCGenSmoothPoly1) calculate(idx int) {
 
 	v1 = v.srcVertices.At(idx)
 
-	// v2 = next(idx)
+	// v2 is the vertex following idx
 	if idx >= n-1 {
 		if v.closed {
 			v2 = v.srcVertices.At(0)
@@ -262,7 +262,7 @@ func (v *VCGenSmoothPoly1) calculate(idx int) {
 		v2 = v.srcVertices.At(idx + 1)
 	}
 
-	// v3 = next(idx+1)
+	// v3 is the vertex following idx+1
 	if idx >= n-2 {
 		if v.closed {
 			v3 = v.srcVertices.At((idx + 2) % n)

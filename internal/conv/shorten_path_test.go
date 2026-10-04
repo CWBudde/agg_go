@@ -66,7 +66,7 @@ func TestConvShortenPath_Basic(t *testing.T) {
 		t.Errorf("Expected LineTo(20,0), got %v(%.1f,%.1f)", cmd, x, y)
 	}
 
-	x, y, cmd = converter.Vertex()
+	_, _, cmd = converter.Vertex()
 	if cmd != basics.PathCmdStop {
 		t.Errorf("Expected Stop, got %v", cmd)
 	}
@@ -113,7 +113,7 @@ func TestConvShortenPath_ShortenFromEnd(t *testing.T) {
 		t.Errorf("Expected LineTo(15,0), got LineTo(%.1f,%.1f)", x, y)
 	}
 
-	x, y, cmd = converter.Vertex()
+	_, _, cmd = converter.Vertex()
 	if cmd != basics.PathCmdStop {
 		t.Errorf("Expected Stop, got %v", cmd)
 	}
@@ -147,7 +147,7 @@ func TestConvShortenPath_ShortenWholeSegment(t *testing.T) {
 	}
 
 	// Third vertex should be removed completely
-	x, y, cmd = converter.Vertex()
+	_, _, cmd = converter.Vertex()
 	if cmd != basics.PathCmdStop {
 		t.Errorf("Expected Stop, got %v", cmd)
 	}
@@ -208,7 +208,7 @@ func TestConvShortenPath_SingleVertex(t *testing.T) {
 		t.Errorf("Expected MoveTo(0,0), got %v(%.1f,%.1f)", cmd, x, y)
 	}
 
-	x, y, cmd = converter.Vertex()
+	_, _, cmd = converter.Vertex()
 	if cmd != basics.PathCmdStop {
 		t.Errorf("Expected Stop, got %v", cmd)
 	}

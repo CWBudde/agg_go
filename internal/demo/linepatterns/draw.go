@@ -102,17 +102,17 @@ func (a *lineOutlineImageAdapter) Pie(x, y, x1, y1, x2, y2 int)      { a.ren.Pie
 func (a *lineOutlineImageAdapter) Semidot(cmp func(int) bool, x, y, x1, y1 int) {
 	a.ren.Semidot(cmp, x, y, x1, y1)
 }
-func (a *lineOutlineImageAdapter) Line0(lp primitives.LineParameters) { a.ren.Line0(&lp) }
-func (a *lineOutlineImageAdapter) Line1(lp primitives.LineParameters, sx, sy int) {
-	a.ren.Line1(&lp, sx, sy)
+func (a *lineOutlineImageAdapter) Line0(lp *primitives.LineParameters) { a.ren.Line0(lp) }
+func (a *lineOutlineImageAdapter) Line1(lp *primitives.LineParameters, sx, sy int) {
+	a.ren.Line1(lp, sx, sy)
 }
 
-func (a *lineOutlineImageAdapter) Line2(lp primitives.LineParameters, ex, ey int) {
-	a.ren.Line2(&lp, ex, ey)
+func (a *lineOutlineImageAdapter) Line2(lp *primitives.LineParameters, ex, ey int) {
+	a.ren.Line2(lp, ex, ey)
 }
 
-func (a *lineOutlineImageAdapter) Line3(lp primitives.LineParameters, sx, sy, ex, ey int) {
-	a.ren.Line3(&lp, sx, sy, ex, ey)
+func (a *lineOutlineImageAdapter) Line3(lp *primitives.LineParameters, sx, sy, ex, ey int) {
+	a.ren.Line3(lp, sx, sy, ex, ey)
 }
 
 type curveDef struct {

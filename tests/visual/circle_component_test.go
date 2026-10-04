@@ -19,7 +19,7 @@ import (
 )
 
 // savePNG saves the RGBA buffer as a PNG file for visual verification
-func savePNG(filename string, pixelData []uint8, width, height int) error {
+func savePNG(filename string, pixelData []uint8, width, height int) (err error) {
 	dir := filepath.Dir(filename)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
@@ -32,7 +32,11 @@ func savePNG(filename string, pixelData []uint8, width, height int) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() {
+		if cerr := f.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 
 	return png.Encode(f, img)
 }

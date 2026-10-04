@@ -43,8 +43,6 @@ func TestPathConversionStrokeToDash(t *testing.T) {
 
 	// Compare results
 	solidPixel := getPixel(buffer1, stride, 100, 50) // Middle of solid line
-	// dashedMiddlePixel := getPixel(buffer2, stride, 100, 50) // Middle of dashed line
-	// dashedGapPixel := getPixel(buffer2, stride, 70, 50) // Should be in a gap
 
 	// Solid line should be black
 	if solidPixel[0] != 0 || solidPixel[1] != 0 || solidPixel[2] != 0 {

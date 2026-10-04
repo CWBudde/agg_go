@@ -149,7 +149,7 @@ func (i *cppImage) Demultiply() error {
 	return &UnsupportedCapabilityError{Kind: CPP, Capability: CapabilityImageInterop, Operation: "Demultiply"}
 }
 
-func (i *cppImage) ToGoImage() *image.RGBA {
+func (i *cppImage) ToGoImage() *image.NRGBA {
 	if i == nil || i.img == nil {
 		return nil
 	}

@@ -31,16 +31,16 @@ type OutlineAARenderer[C any] interface {
 
 	// Line rendering methods for different configurations
 	// line0: render line without caps
-	Line0(lp primitives.LineParameters)
+	Line0(lp *primitives.LineParameters)
 
 	// line1: render line with start cap
-	Line1(lp primitives.LineParameters, sx, sy int)
+	Line1(lp *primitives.LineParameters, sx, sy int)
 
 	// line2: render line with end cap
-	Line2(lp primitives.LineParameters, ex, ey int)
+	Line2(lp *primitives.LineParameters, ex, ey int)
 
 	// line3: render line with both caps
-	Line3(lp primitives.LineParameters, sx, sy, ex, ey int)
+	Line3(lp *primitives.LineParameters, sx, sy, ex, ey int)
 
 	// Pie renders a pie-shaped join (for round joins)
 	Pie(x, y, x1, y1, x2, y2 int)
@@ -202,13 +202,13 @@ func (r *RasterizerOutlineAA[R, C]) draw(dv *DrawVars, start, end int) {
 
 		switch dv.Flags {
 		case 0:
-			r.renderer.Line3(dv.Curr, dv.XB1, dv.YB1, dv.XB2, dv.YB2)
+			r.renderer.Line3(&dv.Curr, dv.XB1, dv.YB1, dv.XB2, dv.YB2)
 		case 1:
-			r.renderer.Line2(dv.Curr, dv.XB2, dv.YB2)
+			r.renderer.Line2(&dv.Curr, dv.XB2, dv.YB2)
 		case 2:
-			r.renderer.Line1(dv.Curr, dv.XB1, dv.YB1)
+			r.renderer.Line1(&dv.Curr, dv.XB1, dv.YB1)
 		case 3:
-			r.renderer.Line0(dv.Curr)
+			r.renderer.Line0(&dv.Curr)
 		}
 
 		if r.lineJoin == OutlineRoundJoin && (dv.Flags&2) == 0 {
@@ -373,7 +373,7 @@ func (r *RasterizerOutlineAA[R, C]) renderTwoVertices() {
 			v1.X+(v2.Y-v1.Y), v1.Y-(v2.X-v1.X))
 	}
 
-	r.renderer.Line3(lp,
+	r.renderer.Line3(&lp,
 		v1.X+(v2.Y-v1.Y), v1.Y-(v2.X-v1.X),
 		v2.X+(v2.Y-v1.Y), v2.Y-(v2.X-v1.X))
 
@@ -398,18 +398,18 @@ func (r *RasterizerOutlineAA[R, C]) renderThreeVertices() {
 	}
 
 	if r.lineJoin == OutlineRoundJoin {
-		r.renderer.Line3(lp1, v1.X+(v2.Y-v1.Y), v1.Y-(v2.X-v1.X),
+		r.renderer.Line3(&lp1, v1.X+(v2.Y-v1.Y), v1.Y-(v2.X-v1.X),
 			v2.X+(v2.Y-v1.Y), v2.Y-(v2.X-v1.X))
 
 		r.renderer.Pie(v2.X, v2.Y, v2.X+(v2.Y-v1.Y), v2.Y-(v2.X-v1.X),
 			v2.X+(v3.Y-v2.Y), v2.Y-(v3.X-v2.X))
 
-		r.renderer.Line3(lp2, v2.X+(v3.Y-v2.Y), v2.Y-(v3.X-v2.X),
+		r.renderer.Line3(&lp2, v2.X+(v3.Y-v2.Y), v2.Y-(v3.X-v2.X),
 			v3.X+(v3.Y-v2.Y), v3.Y-(v3.X-v2.X))
 	} else {
 		xb, yb := primitives.Bisectrix(&lp1, &lp2)
-		r.renderer.Line3(lp1, v1.X+(v2.Y-v1.Y), v1.Y-(v2.X-v1.X), xb, yb)
-		r.renderer.Line3(lp2, xb, yb, v3.X+(v3.Y-v2.Y), v3.Y-(v3.X-v2.X))
+		r.renderer.Line3(&lp1, v1.X+(v2.Y-v1.Y), v1.Y-(v2.X-v1.X), xb, yb)
+		r.renderer.Line3(&lp2, xb, yb, v3.X+(v3.Y-v2.Y), v3.Y-(v3.X-v2.X))
 	}
 
 	if r.roundCap {
@@ -464,7 +464,7 @@ func (r *RasterizerOutlineAA[R, C]) renderMultipleVertices() {
 	// Render first segment
 	if (dv.Flags & 1) == 0 {
 		if r.lineJoin == OutlineRoundJoin {
-			r.renderer.Line3(prev, v1.X+(v2.Y-v1.Y), v1.Y-(v2.X-v1.X),
+			r.renderer.Line3(&prev, v1.X+(v2.Y-v1.Y), v1.Y-(v2.X-v1.X),
 				v2.X+(v2.Y-v1.Y), v2.Y-(v2.X-v1.X))
 			r.renderer.Pie(prev.X2, prev.Y2,
 				v2.X+(v2.Y-v1.Y), v2.Y-(v2.X-v1.X),
@@ -472,10 +472,10 @@ func (r *RasterizerOutlineAA[R, C]) renderMultipleVertices() {
 				dv.Curr.Y1-(dv.Curr.X2-dv.Curr.X1))
 		} else {
 			dv.XB1, dv.YB1 = primitives.Bisectrix(&prev, &dv.Curr)
-			r.renderer.Line3(prev, v1.X+(v2.Y-v1.Y), v1.Y-(v2.X-v1.X), dv.XB1, dv.YB1)
+			r.renderer.Line3(&prev, v1.X+(v2.Y-v1.Y), v1.Y-(v2.X-v1.X), dv.XB1, dv.YB1)
 		}
 	} else {
-		r.renderer.Line1(prev, v1.X+(v2.Y-v1.Y), v1.Y-(v2.X-v1.X))
+		r.renderer.Line1(&prev, v1.X+(v2.Y-v1.Y), v1.Y-(v2.X-v1.X))
 	}
 
 	if (dv.Flags&2) == 0 && r.lineJoin != OutlineRoundJoin {
@@ -488,18 +488,18 @@ func (r *RasterizerOutlineAA[R, C]) renderMultipleVertices() {
 	// Render last segment
 	if (dv.Flags & 1) == 0 {
 		if r.lineJoin == OutlineRoundJoin {
-			r.renderer.Line3(dv.Curr,
+			r.renderer.Line3(&dv.Curr,
 				dv.Curr.X1+(dv.Curr.Y2-dv.Curr.Y1),
 				dv.Curr.Y1-(dv.Curr.X2-dv.Curr.X1),
 				dv.Curr.X2+(dv.Curr.Y2-dv.Curr.Y1),
 				dv.Curr.Y2-(dv.Curr.X2-dv.Curr.X1))
 		} else {
-			r.renderer.Line3(dv.Curr, dv.XB1, dv.YB1,
+			r.renderer.Line3(&dv.Curr, dv.XB1, dv.YB1,
 				dv.Curr.X2+(dv.Curr.Y2-dv.Curr.Y1),
 				dv.Curr.Y2-(dv.Curr.X2-dv.Curr.X1))
 		}
 	} else {
-		r.renderer.Line2(dv.Curr,
+		r.renderer.Line2(&dv.Curr,
 			dv.Curr.X2+(dv.Curr.Y2-dv.Curr.Y1),
 			dv.Curr.Y2-(dv.Curr.X2-dv.Curr.X1))
 	}

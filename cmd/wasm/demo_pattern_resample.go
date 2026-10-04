@@ -62,7 +62,7 @@ func setPatternResampleQuad(x0, y0, x1, y1, x2, y2, x3, y3 float64) {
 }
 
 func drawPatternResampleDemo() {
-	patternresample.Draw(ctx, patternresample.Config{
+	patternresample.Draw(ctx, &patternresample.Config{
 		Mode:  patternResampleType,
 		Gamma: patternResampleGamma,
 		Blur:  patternResampleBlur,
