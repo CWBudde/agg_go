@@ -139,7 +139,9 @@ func TestWorldScreenScalarConversion(t *testing.T) {
 	// Test world to screen
 	worldScalar := 10.0
 	screenScalar := agg2d.WorldToScreenScalar(worldScalar)
-	expectedScreen := 20.0 // 10 * 2
+	// C++ worldToScreen(scalar) multiplies by the truncated 0.7071068, not
+	// 1/sqrt(2) (agg2d.cpp:296).
+	expectedScreen := math.Sqrt(20*20+20*20) * 0.7071068
 
 	if math.Abs(screenScalar-expectedScreen) > 1e-10 {
 		t.Errorf("WorldToScreenScalar(%v) = %v, want %v", worldScalar, screenScalar, expectedScreen)
@@ -147,8 +149,9 @@ func TestWorldScreenScalarConversion(t *testing.T) {
 
 	// Test screen to world
 	backToWorld := agg2d.ScreenToWorldScalar(screenScalar)
-	if math.Abs(backToWorld-worldScalar) > 1e-10 {
-		t.Errorf("ScreenToWorldScalar(%v) = %v, want %v", screenScalar, backToWorld, worldScalar)
+	expectedWorld := math.Sqrt(2*(screenScalar/2)*(screenScalar/2)) * 0.7071068
+	if math.Abs(backToWorld-expectedWorld) > 1e-10 {
+		t.Errorf("ScreenToWorldScalar(%v) = %v, want %v", screenScalar, backToWorld, expectedWorld)
 	}
 
 	t.Run("anisotropic transform uses AGG scalar metric", func(t *testing.T) {
@@ -159,7 +162,7 @@ func TestWorldScreenScalarConversion(t *testing.T) {
 		x2, y2 := scalar, scalar
 		agg2d.transform.Transform(&x1, &y1)
 		agg2d.transform.Transform(&x2, &y2)
-		expected := math.Sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1)) / math.Sqrt(2.0)
+		expected := math.Sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1)) * 0.7071068
 
 		got := agg2d.WorldToScreenScalar(scalar)
 		if math.Abs(got-expected) > 1e-10 {

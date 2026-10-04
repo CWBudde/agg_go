@@ -496,7 +496,7 @@ const (
 	FilterSpline16    ImageFilter = agg2d.Spline16
 	FilterSpline36    ImageFilter = agg2d.Spline36
 	FilterBlackman    ImageFilter = agg2d.Blackman
-	FilterBlackman144 ImageFilter = agg2d.Blackman
+	FilterBlackman144 ImageFilter = agg2d.Blackman144
 	FilterHamming     ImageFilter = agg2d.Blackman + 1
 	FilterMitchell    ImageFilter = agg2d.Blackman + 2
 	FilterGaussian    ImageFilter = agg2d.Blackman + 3
@@ -927,6 +927,9 @@ func (a *Agg2D) GetMasterAlpha() float64 {
 }
 
 // AntiAliasGamma sets the gamma applied to scanline coverage values.
+// As in AGG's Agg2D, coverage is mapped through pow(cover, gamma) (gamma_power)
+// and then scaled by the master alpha; values > 1 thin edges, < 1 thicken them.
+// The value is not clamped.
 func (a *Agg2D) AntiAliasGamma(gamma float64) {
 	a.impl.SetAntiAliasGamma(gamma)
 }

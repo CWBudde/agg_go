@@ -57,6 +57,7 @@ func (a *Agg2DFloat) PushTransform() {
 		a.transform.SY, a.transform.TX, a.transform.TY,
 	)
 	a.transformStack.stack = append(a.transformStack.stack, transformCopy)
+	a.transformStack.approx = append(a.transformStack.approx, saveApproxScales(a.convCurve, a.convStroke))
 }
 
 // PopTransform restores the most recently saved world transform; returns false
@@ -69,6 +70,8 @@ func (a *Agg2DFloat) PopTransform() bool {
 	lastIndex := len(stack) - 1
 	saved := stack[lastIndex]
 	a.transformStack.stack = stack[:lastIndex]
+	approx := a.transformStack.approx[lastIndex]
+	a.transformStack.approx = a.transformStack.approx[:lastIndex]
 
 	a.transform.SX = saved.SX
 	a.transform.SHY = saved.SHY
@@ -77,7 +80,7 @@ func (a *Agg2DFloat) PopTransform() bool {
 	a.transform.TX = saved.TX
 	a.transform.TY = saved.TY
 
-	a.updateApproximationScales()
+	approx.restore(a.convCurve, a.convStroke)
 	return true
 }
 

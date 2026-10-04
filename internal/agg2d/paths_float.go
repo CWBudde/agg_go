@@ -206,19 +206,32 @@ func (a *Agg2DFloat) ClosePolygon() {
 	a.path.ClosePolygon(basics.PathFlagsNone)
 }
 
-// DrawPath renders the current path according to the given flag.
+// DrawPath renders the current path according to the given flag, with the
+// C++ Agg2D::drawPath guards (agg2d.cpp:1366). Mirrors paths.go.
 func (a *Agg2DFloat) DrawPath(flag DrawPathFlag) {
-	a.updateApproximationScales()
+	fill := a.fillColor[3] != 0
+	stroke := a.lineColor[3] != 0 && a.lineWidth > 0.0
+
 	switch flag {
 	case FillOnly:
-		a.renderFill()
+		if fill {
+			a.renderFill()
+		}
 	case StrokeOnly:
-		a.renderStroke()
+		if stroke {
+			a.renderStroke()
+		}
 	case FillAndStroke:
-		a.renderFill()
-		a.renderStroke()
+		if fill {
+			a.renderFill()
+		}
+		if stroke {
+			a.renderStroke()
+		}
 	case FillWithLineColor:
-		a.renderFillWithLineColor()
+		if a.lineColor[3] != 0 {
+			a.renderFillWithLineColor()
+		}
 	}
 }
 

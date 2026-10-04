@@ -24,7 +24,7 @@ const (
 	ImageFilterSpline16    ImageFilter = ImageFilter(agg2d.Spline16)
 	ImageFilterSpline36    ImageFilter = ImageFilter(agg2d.Spline36)
 	ImageFilterBlackman    ImageFilter = ImageFilter(agg2d.Blackman)
-	ImageFilterBlackman144 ImageFilter = ImageFilter(agg2d.Blackman)
+	ImageFilterBlackman144 ImageFilter = ImageFilter(agg2d.Blackman144)
 )
 
 // Short aliases matching the original AGG2D naming.
@@ -39,7 +39,7 @@ const (
 	Spline16    = ImageFilterSpline16
 	Spline36    = ImageFilterSpline36
 	Blackman    = ImageFilterBlackman
-	Blackman144 = ImageFilterBlackman
+	Blackman144 = ImageFilterBlackman144
 )
 
 // ImageResample defines image resampling modes.

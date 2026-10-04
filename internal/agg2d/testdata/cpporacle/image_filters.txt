@@ -1,0 +1,9 @@
+Bilinear 1 2 0 5f8a07bc783fd620
+Hanning 1 2 0 d00090b33d09f04a
+Hermite 1 2 0 8c6eed4d1eddc236
+Quadric 1.5 4 -1 34cf77427b804849
+Bicubic 2 4 -1 2d41a5080fcbfcb1
+Catrom 2 4 -1 7ccc3a459c26a7dd
+Spline16 2 4 -1 eddeea13b79c0bd2
+Spline36 3 6 -2 84a1f1a43a94ddc8
+Blackman144 6 12 -5 20816bbe8b744825

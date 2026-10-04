@@ -254,6 +254,35 @@ func NewColor(r, g, b, a uint8) Color {
 // style workflows.
 type TransformStack struct {
 	stack []*transform.TransAffine
+	// approx holds the converters' approximation scales saved alongside each
+	// matrix. Push/pop is a Go extension; restoring the scales with the
+	// matrix keeps the C++ rule that only scale/affine/parallelogram/viewport/
+	// transformations() change them (a push/rotate/pop sequence is neutral).
+	approx []approxScales
+}
+
+type approxScales struct {
+	curve, stroke float64
+}
+
+func saveApproxScales(c *conv.ConvCurve, s *conv.ConvStroke) approxScales {
+	r := approxScales{curve: 1.0, stroke: 1.0}
+	if c != nil {
+		r.curve = c.ApproximationScale()
+	}
+	if s != nil {
+		r.stroke = s.ApproximationScale()
+	}
+	return r
+}
+
+func (r approxScales) restore(c *conv.ConvCurve, s *conv.ConvStroke) {
+	if c != nil {
+		c.SetApproximationScale(r.curve)
+	}
+	if s != nil {
+		s.SetApproximationScale(r.stroke)
+	}
 }
 
 // Gradient creates a linear interpolation between two colors

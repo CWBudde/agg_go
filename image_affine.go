@@ -70,7 +70,7 @@ func DrawImageAffine(dst, src *Image, srcRect Rect, sourceToDestination *Transfo
 	if opts.EdgeMode != ImageEdgeClamp && opts.EdgeMode != ImageEdgeTransparent {
 		return fmt.Errorf("agg: invalid affine edge mode %d", opts.EdgeMode)
 	}
-	if opts.Filter < ImageFilterNoFilter || opts.Filter > ImageFilterLanczos {
+	if opts.Filter < ImageFilterNoFilter || opts.Filter > ImageFilterBlackman144 {
 		return fmt.Errorf("agg: invalid affine image filter %d", opts.Filter)
 	}
 	if opts.Resample < NoResample || opts.Resample > ResampleOnZoomOut {
@@ -231,7 +231,10 @@ func affineTransparentPadding(transform *Transformations, opts ImageTransformOpt
 	if opts.Filter == ImageFilterNoFilter {
 		return 1, 1, nil
 	}
-	radius := 4.0 // Largest built-in default support (Blackman/Sinc/Lanczos).
+	radius := 4.0 // Default support of Blackman/Sinc/Lanczos.
+	if opts.Filter == ImageFilterBlackman144 {
+		radius = 6.0 // image_filter_blackman144
+	}
 	if opts.FilterRadius > radius {
 		radius = math.Ceil(opts.FilterRadius)
 	}

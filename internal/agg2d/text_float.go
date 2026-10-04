@@ -167,7 +167,7 @@ func (a *Agg2DFloat) ScreenToWorldScalar(scalar float64) float64 {
 	a.ScreenToWorld(&x2, &y2)
 	dx := x2 - x1
 	dy := y2 - y1
-	return math.Sqrt(dx*dx+dy*dy) / math.Sqrt(2.0)
+	return math.Sqrt(dx*dx+dy*dy) * 0.7071068 // agg2d.cpp:296,309
 }
 
 func (a *Agg2DFloat) shapedRasterGlyphs(str string) ([]font.PositionedGlyph, bool) {
@@ -330,14 +330,11 @@ func (a *Agg2DFloat) GetTextBounds(str string) (x, y, width, height float64) {
 	return minX, minY, maxX - minX, maxY - minY
 }
 
-// textFillColor builds the float solid text color from the public fill color,
-// applying master alpha exactly like the 8-bit renderScanlines.
+// textFillColor builds the float solid text color from the public fill color.
+// Like the 8-bit renderScanlines (and C++ Agg2D::render for gray8 glyphs) it
+// does not apply master alpha, which only acts through the main rasterizer.
 func (a *Agg2DFloat) textFillColor() color.RGBA32[color.Linear] {
-	c := colorToRGBA32(a.fillColor)
-	if a.masterAlpha != 1.0 {
-		c.A *= float32(a.masterAlpha)
-	}
-	return c
+	return colorToRGBA32(a.fillColor)
 }
 
 func (a *Agg2DFloat) renderShapedRasterMask(startX, startY float64, glyphs []font.PositionedGlyph) bool {

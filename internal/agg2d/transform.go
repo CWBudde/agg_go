@@ -74,8 +74,8 @@ func (agg2d *Agg2D) AffineFromMatrix(tr *Transformations) {
 // angle: rotation angle in radians (positive = counter-clockwise)
 // This matches the C++ Agg2D::rotate(double angle) method.
 func (agg2d *Agg2D) Rotate(angle float64) {
+	// C++ rotate() does not update the approximation scale.
 	agg2d.transform.Rotate(angle)
-	agg2d.updateApproximationScales()
 }
 
 // Scale applies a scaling transformation.
@@ -102,7 +102,9 @@ func (agg2d *Agg2D) Skew(sx, sy float64) {
 	skewTransform := transform.NewTransAffineFromValues(
 		1.0, math.Tan(sy), math.Tan(sx), 1.0, 0.0, 0.0,
 	)
-	agg2d.Affine(skewTransform)
+	// C++ skew() multiplies directly and does not update the approximation
+	// scale (unlike affine()).
+	agg2d.transform.Multiply(skewTransform)
 }
 
 // Translate applies a translation transformation.
@@ -141,6 +143,8 @@ func (agg2d *Agg2D) PushTransform() {
 	)
 
 	agg2d.transformStack.stack = append(agg2d.transformStack.stack, transformCopy)
+	agg2d.transformStack.approx = append(agg2d.transformStack.approx,
+		saveApproxScales(agg2d.convCurve, agg2d.convStroke))
 }
 
 // PopTransform restores the most recently saved transformation state.
@@ -157,6 +161,8 @@ func (agg2d *Agg2D) PopTransform() bool {
 
 	// Remove from stack
 	agg2d.transformStack.stack = stack[:lastIndex]
+	approx := agg2d.transformStack.approx[lastIndex]
+	agg2d.transformStack.approx = agg2d.transformStack.approx[:lastIndex]
 
 	// Restore the transformation
 	agg2d.transform.SX = savedTransform.SX
@@ -166,7 +172,7 @@ func (agg2d *Agg2D) PopTransform() bool {
 	agg2d.transform.TX = savedTransform.TX
 	agg2d.transform.TY = savedTransform.TY
 
-	agg2d.updateApproximationScales()
+	approx.restore(agg2d.convCurve, agg2d.convStroke)
 	return true
 }
 

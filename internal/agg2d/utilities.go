@@ -57,7 +57,7 @@ func (agg2d *Agg2D) WorldToScreenScalar(scalar float64) float64 {
 	agg2d.WorldToScreen(&x2, &y2)
 	dx := x2 - x1
 	dy := y2 - y1
-	return math.Sqrt(dx*dx+dy*dy) / math.Sqrt(2.0)
+	return math.Sqrt(dx*dx+dy*dy) * 0.7071068 // agg2d.cpp:296,309
 }
 
 // ScreenToWorldScalar converts a screen scalar value to world coordinates.
@@ -69,7 +69,7 @@ func (agg2d *Agg2D) ScreenToWorldScalar(scalar float64) float64 {
 	agg2d.ScreenToWorld(&x2, &y2)
 	dx := x2 - x1
 	dy := y2 - y1
-	return math.Sqrt(dx*dx+dy*dy) / math.Sqrt(2.0)
+	return math.Sqrt(dx*dx+dy*dy) * 0.7071068 // agg2d.cpp:296,309
 }
 
 // NoFill disables fill rendering.
@@ -97,6 +97,7 @@ func (agg2d *Agg2D) ResetStyle() {
 	agg2d.lineCap = CapRound
 	agg2d.lineJoin = JoinRound
 	agg2d.masterAlpha = 1.0
+	agg2d.updateRasterizerGamma() // master alpha lives in the rasterizer gamma
 	agg2d.evenOddFlag = false
 	if agg2d.convStroke != nil {
 		agg2d.convStroke.SetWidth(1.0)

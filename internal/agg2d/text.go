@@ -846,10 +846,9 @@ func (agg2d *Agg2D) renderScanlines(ras renscan.RasterizerInterface, sl renscan.
 		B: agg2d.fillColor[2],
 		A: agg2d.fillColor[3],
 	}
-	if agg2d.masterAlpha != 1.0 {
-		alpha := uint8(float64(fillColor.A) * agg2d.masterAlpha)
-		fillColor.A = alpha
-	}
+	// No master alpha here: C++ renders gray8 glyphs through the font cache's
+	// own scanline adaptor (Agg2D::render(FontRasterizer&, FontScanline&),
+	// agg2d.cpp:1589), which bypasses m_rasterizer and its master-alpha gamma.
 
 	if mono {
 		renscan.RenderScanlinesBinSolid(ras, sl, renderer, fillColor)

@@ -41,12 +41,6 @@ func (a *Agg2DFloat) currentRenderer() *baseRendererAdapter[color.RGBA32[color.L
 	return a.renBase
 }
 
-// applyMasterAlpha scales a straight float color's alpha by master alpha.
-func (a *Agg2DFloat) applyMasterAlpha(c color.RGBA32[color.Linear]) color.RGBA32[color.Linear] {
-	c.A *= float32(a.masterAlpha)
-	return c
-}
-
 // renderFill renders the current path as a filled shape.
 func (a *Agg2DFloat) renderFill() {
 	if a.rasterizer == nil || a.path == nil || a.scanline == nil {
@@ -85,7 +79,7 @@ func (a *Agg2DFloat) renderStroke() {
 	a.rasterizer.FillingRule(basics.FillNonZero)
 
 	if a.convDash != nil && a.convDash.NumDashes() == 0 {
-		a.addStrokeToRasterizer(conv.NewConvStroke(a.convCurve))
+		a.addStrokeToRasterizer(a.undashedStroke())
 	} else {
 		a.addStrokeToRasterizer(a.convStroke)
 	}
@@ -95,6 +89,20 @@ func (a *Agg2DFloat) renderStroke() {
 	} else {
 		a.renderGradientStroke()
 	}
+}
+
+// undashedStroke returns a conv_stroke over the curve converter that carries
+// every setting of the (dashed) main stroke converter -- in particular the
+// approximation scale, which C++ only updates from the transform setters.
+func (a *Agg2DFloat) undashedStroke() *conv.ConvStroke {
+	src := a.convStroke
+	stroke := conv.NewConvStroke(a.convCurve)
+	stroke.SetMiterLimit(src.MiterLimit())
+	stroke.SetInnerMiterLimit(src.InnerMiterLimit())
+	stroke.SetInnerJoin(src.InnerJoin())
+	stroke.SetApproximationScale(src.ApproximationScale())
+	stroke.SetShorten(src.Shorten())
+	return stroke
 }
 
 func (a *Agg2DFloat) addStrokeToRasterizer(stroke *conv.ConvStroke) {
@@ -147,7 +155,9 @@ func (a *Agg2DFloat) renderSolidFillWithColor(c Color) {
 	if renderer == nil {
 		return
 	}
-	internalColor := a.applyMasterAlpha(colorToRGBA32(c))
+	// Unscaled colour: master alpha lives in the rasterizer gamma, as in C++
+	// Agg2D (agg2d.cpp:1493, 1747).
+	internalColor := colorToRGBA32(c)
 	renSolid := renscan.NewRendererScanlineAASolidWithColor(renderer, internalColor)
 	a.scanlineRender(renSolid)
 }
@@ -267,6 +277,8 @@ func (a *Agg2DFloat) scanlineRender(renderer renscan.RendererInterface[color.RGB
 	}
 }
 
+// updateApproximationScales mirrors the 8-bit Agg2D.updateApproximationScales
+// (C++: transformations/affine/scale/parallelogram/viewport only).
 func (a *Agg2DFloat) updateApproximationScales() {
 	scale := a.WorldToScreenScalar(1.0) * ApproxScale
 	if a.convCurve != nil {
@@ -277,21 +289,13 @@ func (a *Agg2DFloat) updateApproximationScales() {
 	}
 }
 
+// updateRasterizerGamma mirrors C++ Agg2D::updateRasterizerGamma
+// (agg2d.cpp:1762); see the 8-bit twin.
 func (a *Agg2DFloat) updateRasterizerGamma() {
 	if a.rasterizer == nil {
 		return
 	}
-	gamma := a.antiAliasGamma
-	alpha := a.masterAlpha
-	a.rasterizer.SetGamma(func(x float64) float64 {
-		if x <= 0.0 {
-			return 0.0
-		}
-		if x >= 1.0 {
-			return alpha
-		}
-		return alpha * math.Pow(x, 1.0/gamma)
-	})
+	a.rasterizer.SetGamma(rasterizerGamma(a.masterAlpha, a.antiAliasGamma))
 }
 
 // WorldToScreenScalar converts a world scalar to screen units.
@@ -302,7 +306,7 @@ func (a *Agg2DFloat) WorldToScreenScalar(scalar float64) float64 {
 	a.WorldToScreen(&x2, &y2)
 	dx := x2 - x1
 	dy := y2 - y1
-	return math.Sqrt(dx*dx+dy*dy) / math.Sqrt(2.0)
+	return math.Sqrt(dx*dx+dy*dy) * 0.7071068 // agg2d.cpp:296
 }
 
 // LineWidth sets the line width.
@@ -333,12 +337,8 @@ func (a *Agg2DFloat) LineJoin(join LineJoin) {
 func (a *Agg2DFloat) GetLineWidth() float64 { return a.lineWidth }
 
 // SetMasterAlpha sets the master alpha and updates the rasterizer gamma.
+// Unclamped, like C++ Agg2D::masterAlpha (agg2d.cpp:220).
 func (a *Agg2DFloat) SetMasterAlpha(alpha float64) {
-	if alpha < 0.0 {
-		alpha = 0.0
-	} else if alpha > 1.0 {
-		alpha = 1.0
-	}
 	a.masterAlpha = alpha
 	a.updateRasterizerGamma()
 }
@@ -347,12 +347,8 @@ func (a *Agg2DFloat) SetMasterAlpha(alpha float64) {
 func (a *Agg2DFloat) GetMasterAlpha() float64 { return a.masterAlpha }
 
 // SetAntiAliasGamma sets the anti-alias gamma and updates the rasterizer gamma.
+// Unclamped, like C++ Agg2D::antiAliasGamma (agg2d.cpp:233).
 func (a *Agg2DFloat) SetAntiAliasGamma(gamma float64) {
-	if gamma < 0.1 {
-		gamma = 0.1
-	} else if gamma > 3.0 {
-		gamma = 3.0
-	}
 	a.antiAliasGamma = gamma
 	a.updateRasterizerGamma()
 }

@@ -459,3 +459,52 @@ matches C++ bit-exactly.
 (`(cover8 << 8) | cover8`); C++ `rgba16::mult_cover` does this expansion
 internally from an 8-bit `cover_type`. `RGBA8.Gradient` / `RGBA16.Gradient`
 take the already-quantised `ik = uround(k * base_mask)` instead of a `double`.
+
+---
+
+## Agg2D master alpha, gamma, approximation scale and drawPath guards
+
+Verified against C++ `agg2d.cpp` by `internal/agg2d/cpp_oracle_test.go`
+(byte-exact 40x40 scenes rendered by `internal/agg2d/testdata/cpporacle/agg2d_oracle.cpp`).
+
+### Parity (no longer deltas)
+
+- **Master alpha / anti-alias gamma**: applied only through the rasterizer
+  gamma table, `min(masterAlpha * pow(cover, gamma), 1)` (C++
+  `Agg2DRasterizerGamma`, `agg2d.cpp:1747`); solid fill/stroke colours,
+  gradients, images and Gouraud spans are not pre-multiplied by master alpha.
+  Neither value is clamped (`masterAlpha > 1` boosts partial coverage, as in
+  C++). The table is installed from `masterAlpha()`/`antiAliasGamma()`; attach
+  resets both to 1.0 (identity table).
+- **Raster (gray8) text** ignores master alpha, like C++ `Agg2D::render(FontRasterizer&, FontScanline&)`
+  which bypasses `m_rasterizer`. Outline text goes through `drawPath` and gets it.
+- **`ApproxScale = 2.0`** (`g_approxScale`). The curve/stroke approximation
+  scale is set to `worldToScreen(1.0) * 2.0` only by `Scale`, `Affine`,
+  `AffineFromMatrix`, `Parallelogram*`, `Viewport` and `SetTransformations`;
+  `Rotate`, `Skew`, `Translate`, `ResetTransformations` and `DrawPath` leave it
+  alone (so a fresh context uses AGG's default 1.0, and a user
+  `ApproximationScale()` survives drawing). `worldToScreen(scalar)` uses C++'s
+  truncated `0.7071068` factor.
+- **`DrawPath` guards** (`agg2d.cpp:1366`): fill skipped when `fillColor.a == 0`,
+  stroke skipped when `lineColor.a == 0 || lineWidth <= 0`, `FillWithLineColor`
+  skipped when `lineColor.a == 0` (observable with comp-op blend modes and
+  negative line widths).
+- **`Blackman144`** is its own filter (`image_filter_blackman144`, radius 6),
+  no longer an alias of the Go-extension `Blackman` (radius 4).
+
+### Remaining deltas
+
+- **`Agg2D::Color` is `srgba8` in C++** and is converted sRGB->linear whenever
+  it reaches the linear `rgba8` pipeline (`clearAll`, `renSolid.color`,
+  gradient LUT entries). The Go `Color` is used as linear bytes directly, so
+  any channel other than 0/255 renders differently from C++ Agg2D. The oracle
+  scenes therefore only use 0/255 channels (alpha is not converted).
+- **Push/PopTransform** are Go extensions; pop restores the approximation
+  scales saved at push time together with the matrix.
+- **Image filter LUT on arm64**: `Spline16` differs from C++ by 1 LSB in a few
+  weights because the Go compiler fuses `x*y+z` into FMA on arm64 (C++ oracle
+  built with `-ffp-contract=off`); the exact `.5` products then round the other
+  way in `iround`. Fix belongs in `internal/image/filters.go` (explicit
+  `float64(...)` around the products).
+- **Strokes use non-zero winding** in Go; C++ strokes share the even-odd flag
+  set by `fillEvenOdd`.
