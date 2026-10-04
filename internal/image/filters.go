@@ -61,7 +61,7 @@ func (lut *ImageFilterLUT) Calculate(filter FilterFunction, normalization bool) 
 	for i := 0; i < pivot; i++ {
 		x := float64(i) / float64(ImageSubpixelScale)
 		y := filter.CalcWeight(x)
-		weight := int16(basics.IRound(y * ImageFilterScale))
+		weight := int16(basics.IRound(float64(y * ImageFilterScale)))
 		lut.weightArray.Set(pivot+i, weight)
 		lut.weightArray.Set(pivot-i, weight)
 	}
@@ -105,7 +105,7 @@ func (lut *ImageFilterLUT) Normalize() {
 			for j := 0; j < lut.diameter; j++ {
 				idx := j*ImageSubpixelScale + i
 				oldWeight := int(lut.weightArray.At(idx))
-				newWeight := basics.IRound(float64(oldWeight) * k)
+				newWeight := basics.IRound(float64(float64(oldWeight) * k))
 				lut.weightArray.Set(idx, int16(newWeight))
 				sum += newWeight
 			}
@@ -189,7 +189,7 @@ type HanningFilter struct{}
 
 func (HanningFilter) Radius() float64 { return 1.0 }
 func (HanningFilter) CalcWeight(x float64) float64 {
-	return 0.5 + 0.5*math.Cos(basics.Pi*x)
+	return 0.5 + float64(0.5*math.Cos(basics.Pi*x))
 }
 
 // HammingFilter implements Hamming window filter
@@ -197,7 +197,7 @@ type HammingFilter struct{}
 
 func (HammingFilter) Radius() float64 { return 1.0 }
 func (HammingFilter) CalcWeight(x float64) float64 {
-	return 0.54 + 0.46*math.Cos(basics.Pi*x)
+	return 0.54 + float64(0.46*math.Cos(basics.Pi*x))
 }
 
 // HermiteFilter implements Hermite interpolation filter
@@ -205,7 +205,7 @@ type HermiteFilter struct{}
 
 func (HermiteFilter) Radius() float64 { return 1.0 }
 func (HermiteFilter) CalcWeight(x float64) float64 {
-	return (2.0*x-3.0)*x*x + 1.0
+	return float64(float64(float64(2.0*x)-3.0)*x*x) + 1.0
 }
 
 // QuadricFilter implements quadric B-spline filter
@@ -214,7 +214,7 @@ type QuadricFilter struct{}
 func (QuadricFilter) Radius() float64 { return 1.5 }
 func (QuadricFilter) CalcWeight(x float64) float64 {
 	if x < 0.5 {
-		return 0.75 - x*x
+		return 0.75 - float64(x*x)
 	}
 	if x < 1.5 {
 		t := x - 1.5
@@ -235,7 +235,7 @@ func (BicubicFilter) CalcWeight(x float64) float64 {
 		return x * x * x
 	}
 
-	return (1.0 / 6.0) * (pow3(x+2) - 4*pow3(x+1) + 6*pow3(x) - 4*pow3(x-1))
+	return (1.0 / 6.0) * (pow3(x+2) - float64(4*pow3(x+1)) + float64(6*pow3(x)) - float64(4*pow3(x-1)))
 }
 
 // KaiserFilter implements Kaiser window filter
@@ -260,7 +260,7 @@ func NewKaiserFilter(b float64) *KaiserFilter {
 
 func (k *KaiserFilter) Radius() float64 { return 1.0 }
 func (k *KaiserFilter) CalcWeight(x float64) float64 {
-	return k.besselI0(k.a*math.Sqrt(1.0-x*x)) * k.i0a
+	return k.besselI0(k.a*math.Sqrt(1.0-float64(x*x))) * k.i0a
 }
 
 func (k *KaiserFilter) besselI0(x float64) float64 {
@@ -281,10 +281,10 @@ type CatromFilter struct{}
 func (CatromFilter) Radius() float64 { return 2.0 }
 func (CatromFilter) CalcWeight(x float64) float64 {
 	if x < 1.0 {
-		return 0.5 * (2.0 + x*x*(-5.0+x*3.0))
+		return 0.5 * (2.0 + float64(x*x*(-5.0+float64(x*3.0))))
 	}
 	if x < 2.0 {
-		return 0.5 * (4.0 + x*(-8.0+x*(5.0-x)))
+		return 0.5 * (4.0 + float64(x*(-8.0+float64(x*(5.0-x)))))
 	}
 	return 0.0
 }
@@ -302,23 +302,23 @@ func NewMitchellFilter(b, c float64) *MitchellFilter {
 		c = 1.0 / 3.0
 	}
 	return &MitchellFilter{
-		p0: (6.0 - 2.0*b) / 6.0,
-		p2: (-18.0 + 12.0*b + 6.0*c) / 6.0,
-		p3: (12.0 - 9.0*b - 6.0*c) / 6.0,
-		q0: (8.0*b + 24.0*c) / 6.0,
-		q1: (-12.0*b - 48.0*c) / 6.0,
-		q2: (6.0*b + 30.0*c) / 6.0,
-		q3: (-b - 6.0*c) / 6.0,
+		p0: (6.0 - float64(2.0*b)) / 6.0,
+		p2: (-18.0 + float64(12.0*b) + float64(6.0*c)) / 6.0,
+		p3: (12.0 - float64(9.0*b) - float64(6.0*c)) / 6.0,
+		q0: (float64(8.0*b) + float64(24.0*c)) / 6.0,
+		q1: (float64(-12.0*b) - float64(48.0*c)) / 6.0,
+		q2: (float64(6.0*b) + float64(30.0*c)) / 6.0,
+		q3: (-b - float64(6.0*c)) / 6.0,
 	}
 }
 
 func (m *MitchellFilter) Radius() float64 { return 2.0 }
 func (m *MitchellFilter) CalcWeight(x float64) float64 {
 	if x < 1.0 {
-		return m.p0 + x*x*(m.p2+x*m.p3)
+		return m.p0 + float64(x*x*(m.p2+float64(x*m.p3)))
 	}
 	if x < 2.0 {
-		return m.q0 + x*(m.q1+x*(m.q2+x*m.q3))
+		return m.q0 + float64(x*(m.q1+float64(x*(m.q2+float64(x*m.q3)))))
 	}
 	return 0.0
 }
@@ -329,9 +329,9 @@ type Spline16Filter struct{}
 func (Spline16Filter) Radius() float64 { return 2.0 }
 func (Spline16Filter) CalcWeight(x float64) float64 {
 	if x < 1.0 {
-		return ((x-9.0/5.0)*x-1.0/5.0)*x + 1.0
+		return float64(float64(float64((x-9.0/5.0)*x)-1.0/5.0)*x) + 1.0
 	}
-	return ((-1.0/3.0*(x-1)+4.0/5.0)*(x-1) - 7.0/15.0) * (x - 1)
+	return (float64(float64(float64(-1.0/3.0*(x-1))+4.0/5.0)*(x-1)) - 7.0/15.0) * (x - 1)
 }
 
 // Spline36Filter implements 36-point spline filter
@@ -340,12 +340,12 @@ type Spline36Filter struct{}
 func (Spline36Filter) Radius() float64 { return 3.0 }
 func (Spline36Filter) CalcWeight(x float64) float64 {
 	if x < 1.0 {
-		return ((13.0/11.0*x-453.0/209.0)*x-3.0/209.0)*x + 1.0
+		return float64((float64((float64(13.0/11.0*x)-453.0/209.0)*x)-3.0/209.0)*x) + 1.0
 	}
 	if x < 2.0 {
-		return ((-6.0/11.0*(x-1)+270.0/209.0)*(x-1) - 156.0/209.0) * (x - 1)
+		return (float64(float64(float64(-6.0/11.0*(x-1))+270.0/209.0)*(x-1)) - 156.0/209.0) * (x - 1)
 	}
-	return ((1.0/11.0*(x-2)-45.0/209.0)*(x-2) + 26.0/209.0) * (x - 2)
+	return (float64(float64(float64(1.0/11.0*(x-2))-45.0/209.0)*(x-2)) + 26.0/209.0) * (x - 2)
 }
 
 // GaussianFilter implements Gaussian filter
@@ -438,7 +438,7 @@ func (b *BlackmanFilter) CalcWeight(x float64) float64 {
 	}
 	x *= basics.Pi
 	xr := x / b.radius
-	return (math.Sin(x) / x) * (0.42 + 0.5*math.Cos(xr) + 0.08*math.Cos(2*xr))
+	return (math.Sin(x) / x) * (0.42 + float64(0.5*math.Cos(xr)) + float64(0.08*math.Cos(2*xr)))
 }
 
 // Pre-defined filter variants
